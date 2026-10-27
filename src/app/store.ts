@@ -1,7 +1,7 @@
 /* The app's shared state, owned here (phase 3a, r51): the log (state), what
    the screens are showing (ui), the sync's progress (cloud), and the account
-   (acct, and acctWait while a new account waits for its email to be
-   confirmed). The legacy script imports them under the same names, so every
+   (acct; the wait for a new account's email is account.ts's own since r63).
+   The legacy script imports them under the same names, so every
    reader is as it was. An import cannot be assigned to, so the log is
    replaced only through setState, which returns the value as the
    assignment did; the properties of ui and the log are still written from
@@ -49,6 +49,8 @@ export const HIST_PAGE = 25;
     calendar's month, the bests list opened, and others) are allowed by the
     index signature; a field named here holds what its first value says. */
 export interface Ui {
+  /** The tab shown before this one (Back's entry, and where a report from Settings says it came from). */
+  prevTab?: string | null | undefined;
   blkOpen: Set<unknown>;
   help: Set<unknown>;
   tab: string;
@@ -254,15 +256,3 @@ export interface AcctUser {
   email: string;
 }
 export const acct: Acct = { user: null, checked: false, reader: false };
-
-/** A new account waiting for its email to be confirmed: kept in memory only (r21), the password never stored. */
-export interface AcctWait {
-  email: string;
-  pw: string;
-  t: number;
-  timer: unknown;
-  busy: boolean;
-  last: number;
-  [field: string]: unknown;
-}
-export const acctWait: AcctWait = { email: '', pw: '', t: 0, timer: null, busy: false, last: 0 };

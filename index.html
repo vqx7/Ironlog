@@ -4052,7 +4052,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     fx = f3;
   }
   var acct = { user: null, checked: false, reader: false };
-  var acctWait = { email: "", pw: "", t: 0, timer: null, busy: false, last: 0 };
 
   // src/app/storage.ts
   var ENV = typeof window !== "undefined" && window.IRONLOG_ENV === "preview" ? "preview" : "live";
@@ -6031,8 +6030,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     opts = opts || {};
     const ex = EXIn(M3, exId);
     const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M3, exId, plan, opts) : 0;
-    const back = off > BACK_DAYS;
-    if (!(opts.deload || opts.light || back) || ex.timed)
+    const back2 = off > BACK_DAYS;
+    if (!(opts.deload || opts.light || back2) || ex.timed)
       return snapUnitIn(M3, ex, plan, suggestCoreIn(M3, exId, plan, opts));
     const base = suggestCoreIn(M3, exId, plan, { ...opts, deload: false, light: false });
     if (base.kin && base.w > 0) {
@@ -6058,7 +6057,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ) : ex.bw ? (w0 + bl) * LIGHT_SHARE - bl > 0 ? lighterLoadIn(M3, ex, plan, w0, (w0 + bl) * LIGHT_SHARE - bl) : 0 : lighterLoadIn(M3, ex, plan, w0, w0 * LIGHT_SHARE);
     const w2 = w0 > 0 || ex.assist ? dw : w0;
     const n3 = Math.max(1, (base.lastR || []).length || +plan.sets || 1);
-    if (back)
+    if (back2)
       return snapUnitIn(
         M3,
         ex,
@@ -6981,18 +6980,18 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!(Lt > 0) || !(light || heavy)) return null;
     const est = fitE(Lt, r4, qe == null ? 0 : Math.min(qe, E1_MAX_RIR));
     if (!est) return null;
-    const back = backDaysIn(M3, b2.exId, p3, {}) > BACK_DAYS;
-    const pre = back ? suggestCoreIn(M3, b2.exId, p3, {}) : null;
+    const back2 = backDaysIn(M3, b2.exId, p3, {}) > BACK_DAYS;
+    const pre = back2 ? suggestCoreIn(M3, b2.exId, p3, {}) : null;
     const preTop = pre && pre.top != null && pre.top > 0 ? pre.top : null;
-    const resUp = back ? Math.max(BACK_RIR, Math.min(tgt, E1_MAX_RIR)) : Math.min(tgt, E1_MAX_RIR) + FATIGUE_RIR;
-    const resDown = back ? Math.max(BACK_RIR, Math.min(tgt, E1_MAX_RIR) + FATIGUE_RIR) : Math.min(tgt, E1_MAX_RIR) + FATIGUE_RIR;
+    const resUp = back2 ? Math.max(BACK_RIR, Math.min(tgt, E1_MAX_RIR)) : Math.min(tgt, E1_MAX_RIR) + FATIGUE_RIR;
+    const resDown = back2 ? Math.max(BACK_RIR, Math.min(tgt, E1_MAX_RIR) + FATIGUE_RIR) : Math.min(tgt, E1_MAX_RIR) + FATIGUE_RIR;
     const n3 = b2.sets.slice(0, si + 1).filter((x2) => !x2.warm && !x2.drop).length;
     const easy = () => sc === "rpe" ? `set ${n3} was RPE ${effAt(sc, q ?? 0)}, against a target of RPE ${effAt(sc, tgt)}` : `set ${n3} had ${effAt(sc, q ?? 0)} in reserve, against a target of ${effAt(sc, tgt)}`;
     let nw = null;
     if (light) {
-      const byEst = e1inv(est, back ? lo + resUp : Math.round((lo + hi) / 2) + resUp) - bw;
-      const done = back ? preTop : stretchTopIn(M3, b2.exId, p3);
-      const lim = back && done != null ? done : Math.max(done ?? -Infinity, Lt * jumpCap(ex, Lt, false) - bw);
+      const byEst = e1inv(est, back2 ? lo + resUp : Math.round((lo + hi) / 2) + resUp) - bw;
+      const done = back2 ? preTop : stretchTopIn(M3, b2.exId, p3);
+      const lim = back2 && done != null ? done : Math.max(done ?? -Infinity, Lt * jumpCap(ex, Lt, false) - bw);
       const want = Math.min(byEst, lim);
       const cap = capOfIn(M3, ex, p3);
       nw = heavierLoadIn(M3, ex, p3, s3.w, cap != null ? Math.min(want, cap) : want);
@@ -7014,7 +7013,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     if (light && q != null && q >= tgt + CLEARLY_OFF && r4 < hi) {
       const f3 = rtfAt(est, Lt);
-      const er = f3 == null ? null : Math.min(hi, Math.floor(f3 - (back ? resUp : Math.min(tgt, E1_MAX_RIR)) + EPS));
+      const er = f3 == null ? null : Math.min(hi, Math.floor(f3 - (back2 ? resUp : Math.min(tgt, E1_MAX_RIR)) + EPS));
       if (er != null && er > r4)
         return {
           at: si,
@@ -8289,10 +8288,42 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var suggest = live(suggestIn);
 
   // src/app/providers.ts
+  var SERVICE_CODES = [
+    "bad_code",
+    "breached",
+    "capability_disabled",
+    "capability_removed",
+    "declined",
+    "denied",
+    "email_not_confirmed",
+    "error",
+    "gone",
+    "limit",
+    "no_code",
+    "not_deployed",
+    "not_granted",
+    "not_set_up",
+    "quota_exceeded",
+    "revoked",
+    "signin",
+    "timeout",
+    "too_big",
+    "wait"
+  ];
+  var KNOWN = new Set(SERVICE_CODES);
+  function codeOf(e5) {
+    const c4 = e5 && typeof e5 === "object" && "code" in e5 ? e5.code : null;
+    return typeof c4 === "string" && KNOWN.has(c4) ? SERVICE_CODES.find((k2) => k2 === c4) || null : null;
+  }
+  function said(e5, or) {
+    const m3 = e5 && typeof e5 === "object" && "message" in e5 ? e5.message : null;
+    return typeof m3 === "string" && m3 ? m3 : or;
+  }
   var AUTH = () => window.ironlogAuth && typeof window.ironlogAuth.user === "function" ? window.ironlogAuth : null;
   var FB = () => window.ironlogFeedback && typeof window.ironlogFeedback.send === "function" ? window.ironlogFeedback : null;
 
   // src/app/sync.ts
+  var NET_MS = 2e4;
   var SYNC_MS = {
     save: 400,
     track: 800,
@@ -8300,7 +8331,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     leaseBusy: 2500,
     lease: 3e4,
     leaseWait: 1e4,
-    net: 2e4,
+    net: NET_MS,
     errToast: 8e3,
     pullAfter: 2e4
   };
@@ -8541,7 +8572,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function cloudFail(e5) {
     const E2 = rec(e5);
-    const c4 = E2 && E2.code;
+    const c4 = codeOf(e5);
     if (c4 === "revoked" || c4 === "not_granted" || c4 === "capability_disabled" || c4 === "capability_removed") {
       cloud.on = false;
       setCloud("local");
@@ -8565,9 +8596,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return;
     }
     setCloud("offline", c4 === "denied" && E2 && typeof E2.message === "string" ? E2.message : void 0);
-    const wait = RETRY_S[Math.min(cloud.retry++, RETRY_S.length - 1)] * SECOND_MS;
+    const wait2 = RETRY_S[Math.min(cloud.retry++, RETRY_S.length - 1)] * SECOND_MS;
     clearTimer(cloud.t);
-    cloud.t = setTimeout(() => cq(cloudFlush), wait);
+    cloud.t = setTimeout(() => cq(cloudFlush), wait2);
   }
   function normChunk(id, data) {
     if (!data) return null;
@@ -10041,6 +10072,195 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return s3.trim();
   }
   var GENERIC_WORKOUT = /^\s*((early|late)\s+)?(morning|afternoon|evening|night|midday|lunch|weekend)?\s*(workout|session|training|lifting|lift|gym)?\s*$|^imported$/i;
+  var TYPED = { reps: 100, sets: 20 };
+  var TENTHS2 = 10;
+  function readSets(text, ex, defW, conv, rpe) {
+    const fromRpe = (v3) => v3 >= 1 && v3 <= EFFORT_TOP ? Math.round((EFFORT_TOP - v3) * TENTHS2) / TENTHS2 : NaN;
+    let s3 = String(text || "").toLowerCase().replace(/[×*]/g, "x").replace(/\bfor\b/g, "x").replace(/\bat\b/g, "@").replace(/\breps?\b/g, "").replace(/\blbs?\b|\bkgs?\b/g, "");
+    let allRir = null;
+    const m3 = s3.match(/\b(rir|rpe)\s*(\d+(?:\.\d+)?)\s*$/);
+    if (m3) {
+      allRir = m3[1] === "rpe" ? fromRpe(+(m3[2] || "")) : +(m3[2] || "");
+      if (!isFinite(allRir)) return null;
+      s3 = s3.slice(0, m3.index);
+    }
+    s3 = s3.replace(/\s*x\s*/g, "x").replace(/\s*@\s*/g, "@").replace(/\s*\+\s*/g, "+").trim();
+    if (!s3) return null;
+    const toks = s3.split(/[\s,;/]+/).filter(Boolean);
+    const re = /^(?:(bw)(?:\+(\d+(?:\.\d+)?))?x|(\d+(?:\.\d+)?)x)?(\d{1,3})(?:@(\d+(?:\.\d+)?))?$/;
+    let w2 = defW == null ? null : defW;
+    const out = [];
+    for (const t4 of toks) {
+      const g2 = t4.match(re);
+      if (!g2) return null;
+      const [, bw, added, load2, reps, at2] = g2;
+      if (bw) w2 = added ? conv(+added) : 0;
+      else if (load2 != null) w2 = conv(+load2);
+      const r4 = +(reps || "");
+      if (!(r4 >= 1 && r4 <= TYPED.reps)) return null;
+      const rir = at2 != null ? rpe ? fromRpe(+at2) : +at2 : allRir;
+      if (rir != null && !(rir >= 0 && rir <= EFFORT_TOP)) return null;
+      if (w2 == null && !ex.bw) return null;
+      out.push({ w: w2 == null ? 0 : w2, r: r4, rir });
+    }
+    return out.length && out.length <= TYPED.sets ? out : null;
+  }
+  var UNREAD_SHOWN = 50;
+  function impFromText(text) {
+    const lines = String(text).split(/\r?\n/);
+    const S4 = [];
+    let cur = null, ex = null, pend = null, hint = null;
+    const unread = [];
+    const day = (date, name) => {
+      if (pend) unread.push(pend.raw);
+      const d3 = { date, name: name || "", items: [] };
+      cur = d3;
+      S4.push(d3);
+      ex = null;
+      pend = null;
+      return d3;
+    };
+    const raw = (v3) => v3;
+    const nextIsName = (i5) => {
+      for (let j3 = i5 + 1; j3 < lines.length; j3++) {
+        const t4 = (lines[j3] || "").trim();
+        if (t4) return /^[\s\-•*–]*[a-z]{3,}/i.test(t4) && !impDate(t4);
+      }
+      return true;
+    };
+    const REPS = /^\d{1,2}(\s*[/,]\s*\d{1,2})+$/;
+    for (let li = 0; li < lines.length; li++) {
+      const L0 = lines[li] || "";
+      const L2 = L0.replace(/^[\s\-•*–]+/, "").trim();
+      if (!L2) continue;
+      const under = li > 0 && !!(lines[li - 1] || "").trim();
+      if (/\bkgs?\b|\dkg/i.test(L2)) hint = hint || "kg";
+      else if (/\blbs?\b|\dlb|#/i.test(L2)) hint = hint || "lb";
+      const words = L2.split(/\s+/);
+      let dt = impDate(L2);
+      if (dt && (ex || pend) && /^[\d\s/.,-]+$/.test(L2) && !nextIsName(li)) dt = null;
+      const e0 = ex;
+      const lone = !!e0 && e0.setsText.length > 0 && /^\d{2,}(\.\d+)?$/.test((e0.setsText[e0.setsText.length - 1] || "").trim());
+      if (e0 && lone && REPS.test(L2)) {
+        e0.setsText[e0.setsText.length - 1] += " " + L2;
+        continue;
+      }
+      if (dt && pend && under && REPS.test(L2)) dt = null;
+      if (dt) {
+        const rest = L2.replace(/\b(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?\b/gi, "").replace(
+          /\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{1,2}(st|nd|rd|th)?\s+[a-z]{3,9}\.?,?(\s*\d{4})?\b|\b[a-z]{3,9}\.?\s+\d{1,2}(st|nd|rd|th)?(,?\s*\d{4})?\b/gi,
+          ""
+        ).replace(/[,:;\-–|]+/g, " ").trim();
+        if (!/\d/.test(rest)) {
+          day(dt, rest);
+          continue;
+        }
+      }
+      const target = ex || pend;
+      const alone = readSets(impSetsText(L2), { bw: true }, null, raw);
+      if (alone && target && !/[a-z]{3,}/i.test(L2.replace(/\b(bw|x|at|for|rir|reps?|sets?|of|lbs?|kgs?|sec|secs|seconds)\b/gi, ""))) {
+        const p3 = pend;
+        let into = cur;
+        if (!into) {
+          pend = null;
+          into = day(null, "");
+        }
+        let e5 = ex;
+        if (p3 && target === p3) {
+          e5 = { name: p3.name, sets: [], setsText: [] };
+          into.items.push(e5);
+          ex = e5;
+          pend = null;
+        }
+        if (e5) e5.setsText.push(L2);
+        continue;
+      }
+      let done = false;
+      for (let i5 = 1; i5 < words.length; i5++) {
+        const name = words.slice(0, i5).join(" ").replace(/[:\-–]+$/, "").trim();
+        const rest = words.slice(i5).join(" ");
+        if (!/[a-z]/i.test(name)) continue;
+        const got = readSets(impSetsText(rest), { bw: true }, null, raw);
+        if (got) {
+          const into = cur || day(null, "");
+          const e5 = { name, sets: [], setsText: [rest] };
+          into.items.push(e5);
+          ex = e5;
+          pend = null;
+          done = true;
+          break;
+        }
+      }
+      if (done) continue;
+      {
+        const g2 = L2.match(/^(.*?[a-z].*?)\s+(\d{2,}(?:\.\d+)?\s*(?:lbs?|kgs?|#)?)$/i);
+        const nx = (lines[li + 1] || "").replace(/^[\s\-•*–]+/, "").trim();
+        if (g2 && REPS.test(nx)) {
+          const into = cur || day(null, "");
+          const pw = pend;
+          if (pw) unread.push(pw.raw);
+          pend = null;
+          const e5 = {
+            name: (g2[1] || "").replace(/[:\-–]+$/, "").trim(),
+            sets: [],
+            setsText: [g2[2] + " " + nx]
+          };
+          into.items.push(e5);
+          ex = e5;
+          li++;
+          continue;
+        }
+      }
+      if (/[a-z]{3,}/i.test(L2) && !/\d{2,}\s*[x×*]/.test(L2)) {
+        const pw = pend;
+        if (pw) unread.push(pw.raw);
+        pend = { name: L2.replace(/[:\-–]+$/, "").trim(), raw: L0.trim() };
+        ex = null;
+        continue;
+      }
+      unread.push(L0.trim());
+    }
+    const last = pend;
+    if (last) unread.push(last.raw);
+    return {
+      sessions: S4.filter((x2) => x2.items.length).map((x2) => ({ date: x2.date, name: x2.name, items: x2.items })),
+      unit: hint,
+      skipped: 0,
+      cardio: 0,
+      unread: unread.slice(0, UNREAD_SHOWN),
+      unreadN: unread.length,
+      text: true
+    };
+  }
+  var BW_SETS_OF = 10;
+  function impTextSets(it, exo, conv) {
+    const out = [];
+    let defW = null;
+    for (const t4 of it.setsText || []) {
+      let st = impSetsText(t4);
+      const lu = /(?:\b|\d)kgs?(?![a-wyz])/i.test(t4) ? "kg" : /(?:\b|\d)lbs?(?![a-wyz])|\d\s*#/i.test(t4) ? "lb" : null;
+      const cv = lu === "kg" ? (v3) => v3 : lu === "lb" ? (v3) => v3 * LB : conv;
+      if (exo.bw && !exo.assist) {
+        const at2 = /@/.test(st);
+        st = st.replace(
+          /(^|[\s,])(\d{1,2})x(\d{1,3})(?=$|[\s,])/g,
+          (m3, p3, a2, b2) => Number(a2) <= BW_SETS_OF && !at2 ? String(p3) + Array(Number(a2)).fill("bwx" + String(b2)).join(" ") : String(m3)
+        );
+      } else if (!exo.timed && /^\s*[1-5]\s*[x×*]\s*\d{1,3}(\s*,?\s*[1-5]\s*[x×*]\s*\d{1,3})*\s*$/.test(String(t4).toLowerCase())) {
+        if (defW == null) return null;
+        for (const g3 of String(t4).toLowerCase().matchAll(/([1-5])\s*[x×*]\s*(\d{1,3})/g))
+          for (let k2 = 0; k2 < +(g3[1] || 0); k2++)
+            out.push({ w: defW, r: +(g3[2] || 0), rir: void 0, warm: false, drop: false });
+        continue;
+      }
+      const g2 = readSets(st, { bw: !!exo.bw || !!exo.timed }, defW, cv);
+      if (!g2) return null;
+      out.push(...g2.map((x2) => ({ w: x2.w, r: x2.r, rir: x2.rir, warm: false, drop: false })));
+      const lastSet = g2[g2.length - 1];
+      defW = lastSet ? lastSet.w : defW;
+    }
+    return out;
+  }
 
   // src/app/feedback.ts
   var FB_CATS = [
@@ -10393,11 +10613,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const d28 = addDays(today(), -(RECENT_DAYS - 1)), d56 = addDays(today(), -(2 * RECENT_DAYS - 1));
     const ss = sortedSessions();
     const first = ss[0];
-    const back = !!first && first.date <= d56;
+    const back2 = !!first && first.date <= d56;
     const in28 = (d3) => d3 >= d28, in56 = (d3) => d3 >= d56 && d3 < d28;
     const P2 = IDX().prs.filter((p3) => p3.big);
     return {
-      back,
+      back: back2,
       sess: ss.filter((x2) => in28(x2.date)).length,
       sessP: ss.filter((x2) => in56(x2.date)).length,
       prs: P2.filter((p3) => in28(p3.date)),
@@ -11550,11 +11770,11 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }
     const v3 = document.getElementById("view");
     if (!v3) return;
-    const said = e5 && typeof e5 === "object" && "message" in e5 && e5.message || String(e5);
+    const said2 = e5 && typeof e5 === "object" && "message" in e5 && e5.message || String(e5);
     drawScreen(
       v3,
       b`<div class="card"><h2>Something broke on this screen</h2><p class="small">Your data is saved and was not changed. Tap Try again to go back to Today. Report this sends the error to the app owner. If it keeps happening, copy the backup text below and keep it somewhere safe.</p>
-  <p class="small muted">Error: ${String(said)} · version ${VERSION_LINE}</p>
+  <p class="small muted">Error: ${String(said2)} · version ${VERSION_LINE}</p>
   <div class="row"><button class="btn primary" data-act="crashRetry">Try again</button><button class="btn" data-act="fbOpen" data-cat="bug" data-crash="1">Report this</button></div>
   <label class="field" style="margin-top:10px">Backup text<textarea readonly style="min-height:160px;font-size:12px">${txt}</textarea></label></div>`
     );
@@ -13592,6 +13812,43 @@ ${detail}`
     const n3 = numIn(v3);
     return n3 != null && n3 > 0 ? Math.min(r3(U() === "kg" ? n3 : n3 * KM_MI), LIMITS.distKm) : null;
   };
+  function parseSets(text, ex, defW, conv, rpe) {
+    return readSets(text, ex, defW, conv || ((v3) => Number(fromD(v3))), rpe);
+  }
+  function fillSets(bi, list) {
+    const d3 = state.draft;
+    const b2 = d3 && d3.ex[bi];
+    if (!d3 || !b2) return 0;
+    if (EX(b2.exId).assist) {
+      for (const p3 of list) if (p3.w > 0) p3.w = -p3.w;
+    }
+    let far = -1;
+    act(
+      () => {
+        let si = b2.sets.findIndex((x2) => !x2.done && !x2.warm);
+        if (si < 0) si = b2.sets.length;
+        for (const p3 of list) {
+          if (si >= b2.sets.length) b2.sets.push(newRow());
+          const x2 = b2.sets[si];
+          if (!x2) break;
+          x2.w = p3.w;
+          x2.r = p3.r;
+          x2.rir = p3.rir;
+          x2.warm = false;
+          x2.drop = false;
+          x2.done = !oddLoad(b2, si, d3.date) && !oddReps(b2, x2);
+          if (!x2.done && far < 0) far = si;
+          si++;
+        }
+      },
+      { inProgress: true }
+    );
+    if (far >= 0) {
+      rerenderKeepScroll();
+      setDone(bi, far, true);
+    }
+    return list.length;
+  }
 
   // src/app/plan.ts
   var BAR_SCALE_MIN = 24;
@@ -19982,7 +20239,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     const shot = m3.shot && FB_SHOT_RE.test(m3.shot) ? b`<div class="fbshot">\x3cimg src=${m3.shot} alt="Screenshot to send"><button type="button" class="btn sm" data-act="fbShotDel">Remove</button></div>` : b`<label class="btn sm fbpick">Add a screenshot<input type="file" accept="image/png,image/jpeg,image/heic,image/heif,image/webp" id="fbShot" hidden></label>`;
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(FB_TITLE[cat] || "")}<div class="stack">
   ${kinds}
-  <label class="field">${FB_ASK[cat]}<textarea data-fbind="msg" maxlength=${FB_MAX} rows="5" placeholder=${FB_HINT[cat] || ""}>${m3.msg || ""}</textarea><span class="fbcount small muted" id="fbCount" aria-live="polite">${n3} / ${FB_MAX}</span></label>
+  <label class="field">${FB_ASK[cat]}<textarea data-fbind="msg" maxlength=${FB_MAX} rows="5" placeholder=${FB_HINT[cat] || ""}>${m3.msg || ""}</textarea><span class="fbcount small muted" id="fbCount" aria-live="polite" .textContent=${`${n3} / ${FB_MAX}`}></span></label>
   <div><p class="small muted" style="margin:0 0 6px">Screenshot, optional. One image, up to ${FB_IMG_MB} MB.</p><div class="row">${shot}</div></div>
   <p class="small muted" style="margin:0">${u4 ? `Replies go to ${u4.email}. ` : ""}Device details are added, never your workouts. ${tipButton(FB_WHAT, "What is attached")}</p>
   ${m3.err ? b`<p class="small" role="alert" style="color:var(--red);margin:0">${m3.err}</p>` : A}
@@ -20034,20 +20291,2165 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-label=${title}><div class="sheet-h"><h3>${title}</h3>${closeX()}</div><form class="stack" id="acctForm" novalidate>${b2}</form></div>`;
   }
 
+  // src/app/report.ts
+  var NO_ANSWER = "No answer. Check your connection and try again.";
+  var CTX = { device: 300, errors: 10, words: 100 };
+  var DAY_MS2 = 864e5;
+  var SHOT = { sides: [1280, 960, 720], q0: 0.72, qStep: 0.14, qMin: 0.3, chars: 5e5 };
+  var MB = 1048576;
+  var INBOX_N = 50;
+  var FB_SENT = KEY + ".fbSent";
+  function fbRecent() {
+    const raw = prefGet(FB_SENT);
+    let a2 = [];
+    try {
+      a2 = parseJson(raw || "[]");
+    } catch (e5) {
+      return [];
+    }
+    const cut = Date.now() - DAY_MS2;
+    return (arr(a2) || []).map((t4) => Number(t4)).filter((t4) => t4 > cut);
+  }
+  async function fbCheckReader() {
+    const F3 = FB();
+    const was = !!acct.reader;
+    try {
+      acct.reader = !!(F3 && acct.user && typeof F3.isReader === "function" && await F3.isReader());
+    } catch (e5) {
+      log("feedback", e5);
+      acct.reader = false;
+    }
+    if (was !== acct.reader && ui.tab === "settings" && !ui.modal) rerenderKeepScroll();
+  }
+  function fbContext(m3) {
+    const safe = (f3, alt) => {
+      try {
+        return f3();
+      } catch (e5) {
+        return alt;
+      }
+    };
+    const d3 = safe(() => state.draft, null);
+    const ctx = {
+      build: APP_VERSION,
+      version: DISPLAY_VERSION,
+      env: ENV,
+      at: (/* @__PURE__ */ new Date()).toISOString(),
+      device: String(navigator.userAgent || "").slice(0, CTX.device),
+      screen: `${window.innerWidth}x${window.innerHeight} @${window.devicePixelRatio || 1}x`,
+      installed: isStandalone(),
+      theme: state.settings.theme,
+      accent: state.settings.accent || ACCENT0,
+      unit: U(),
+      from: m3.from || ui.tab,
+      exercise: m3.ex || void 0,
+      session: d3 ? { past: !!d3.past, free: !!d3.free, editing: !!d3.editingId, exercises: d3.ex.length } : null,
+      signedIn: !!acct.user,
+      sync: cloud.on ? cloud.status : "off",
+      crash: m3.crash || void 0,
+      counts: safe(
+        () => ({ sessions: state.sessions.filter((x2) => !x2.demo).length, routines: state.routines.length }),
+        null
+      ),
+      errors: logBuf.slice(-CTX.errors)
+    };
+    const bytes = () => safe(() => new TextEncoder().encode(JSON.stringify(ctx)).length, 0);
+    while (ctx.errors.length > 1 && bytes() > FB_CTX_MAX) ctx.errors.shift();
+    if (bytes() > FB_CTX_MAX)
+      ctx.errors = ctx.errors.map(({ s: s3, ...x2 }) => ({ ...x2, m: String(x2.m).slice(0, CTX.words) }));
+    return ctx;
+  }
+  function fbShrink(file) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let d3 = null;
+          for (const side of SHOT.sides) {
+            const k2 = Math.min(1, side / Math.max(img.naturalWidth, img.naturalHeight));
+            const c4 = document.createElement("canvas");
+            c4.width = Math.max(1, Math.round(img.naturalWidth * k2));
+            c4.height = Math.max(1, Math.round(img.naturalHeight * k2));
+            const g2 = c4.getContext("2d");
+            if (g2) g2.drawImage(img, 0, 0, c4.width, c4.height);
+            for (let q = SHOT.q0; q > SHOT.qMin; q -= SHOT.qStep) {
+              d3 = c4.toDataURL("image/jpeg", q);
+              if (d3.length <= SHOT.chars) break;
+            }
+            if (d3 && d3.length <= SHOT.chars) break;
+          }
+          URL.revokeObjectURL(url);
+          res(d3 && d3.length <= SHOT.chars ? d3 : null);
+        } catch (e5) {
+          URL.revokeObjectURL(url);
+          rej(e5);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        rej(new Error("Not an image"));
+      };
+      img.src = url;
+    });
+  }
+  var reportOpen = () => {
+    const m3 = ui.modal;
+    return m3 && m3.kind === "feedback" ? m3 : null;
+  };
+  function readText(m3) {
+    for (const el of document.querySelectorAll("#modal [data-fbind]"))
+      if (el instanceof HTMLTextAreaElement && el.dataset.fbind === "msg") m3.msg = el.value;
+  }
+  var asText = (cat, msg, ctx) => `${APP_NAME}: ${FB_TITLE[cat] || FB_TITLE["bug"]}
+
+${msg}
+
+${JSON.stringify(ctx, null, 1)}`;
+  async function copied(txt) {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(txt);
+        return true;
+      }
+    } catch (e5) {
+    }
+    return false;
+  }
+  var REPORT_ACTS = {
+    fbOpen(t4) {
+      const d3 = state.draft;
+      const bi = t4 && t4.dataset && t4.dataset.b != null ? +t4.dataset.b : null;
+      const b2 = bi != null && d3 ? d3.ex[bi] : null;
+      const from = ui.tab === "settings" ? ui.prevTab || "settings" : ui.tab;
+      const c4 = t4 && t4.dataset ? t4.dataset.cat : void 0;
+      const cat = c4 && FB_TITLE[c4] ? c4 : "bug";
+      const crash = !!(t4 && t4.dataset && t4.dataset.crash);
+      const last = crash ? logBuf.filter((x2) => x2.a === "render").slice(-1)[0] : null;
+      const TABS = {
+        today: state.draft ? "Session" : "Today",
+        program: "Plan",
+        dash: "Stats",
+        history: "History",
+        settings: "Settings"
+      };
+      const tabName = TABS[ui.tab] || ui.tab;
+      const msg = crash ? `The app broke on the ${tabName} screen.${last ? ` Error: ${last.m}` : ""}` : "";
+      openModal({
+        kind: "feedback",
+        cat,
+        msg,
+        shot: null,
+        from: crash ? "crash" : ui.tab === "today" && d3 ? "session" : from,
+        ex: b2 ? exName(b2.exId) : null,
+        crash: crash || void 0
+      });
+    },
+    /* A lifter's own exercise stays in their log (r34). Suggesting it sends
+       it to the owner as a report; the library changes only when the owner
+       adds it in a build. */
+    exSuggest() {
+      const m3 = ui.modal;
+      const e5 = m3 && m3.kind === "exEdit" ? state.exercises.find((x2) => x2.id === m3.e.id) : null;
+      if (!e5) return;
+      const sec = (e5.secondary || []).map((k2) => ML[k2]).filter(Boolean);
+      const msg = `Add to the library: ${e5.name}. Main muscle: ${ML[e5.primary] || e5.primary}${sec.length ? `; also ${andList(sec)}` : ""}. Equipment: ${EQL[e5.equip] || e5.equip}${e5.perSide ? ", one side at a time" : ""}${e5.bw ? ", bodyweight" : ""}${e5.timed ? ", timed" : ""}.${e5.note ? ` Note: ${e5.note}` : ""}`.slice(
+        0,
+        FB_MAX
+      );
+      openModal({ kind: "feedback", cat: "idea", msg, shot: null, from: "library", ex: e5.name });
+    },
+    // Signed out: the report as text for a message, without sending anything.
+    async fbCopy() {
+      const m3 = reportOpen();
+      if (!m3) return;
+      const txt = asText(m3.cat, m3.msg && m3.msg.trim() ? m3.msg.trim() : "(Write it here)", fbContext(m3));
+      if (!await copied(txt)) {
+        closeModal();
+        openModal({
+          kind: "text",
+          title: "Report details",
+          help: "Copy this into a message to the app owner, with what happened.",
+          text: txt,
+          readonly: true
+        });
+        return;
+      }
+      m3.sent = true;
+      m3.copied = true;
+      renderModal();
+    },
+    fbCat(t4) {
+      const m3 = reportOpen();
+      if (!m3) return;
+      readText(m3);
+      m3.cat = t4.dataset.v || "bug";
+      renderModal();
+    },
+    fbShotDel() {
+      const m3 = reportOpen();
+      if (!m3) return;
+      m3.shot = null;
+      renderModal();
+    },
+    async fbSend() {
+      const m3 = reportOpen();
+      if (!m3 || m3.busy) return;
+      readText(m3);
+      const msg = String(m3.msg || "").trim().slice(0, FB_MAX);
+      const reply = acct.user && acct.user.email || "";
+      if (msg.length < FB_MIN) {
+        m3.err = `A few more words, please (${FB_MIN} characters or more).`;
+        renderModal();
+        return;
+      }
+      const F3 = FB();
+      if (F3 && fbRecent().length >= FB_DAY) {
+        m3.err = `You have sent ${FB_DAY} reports today. Try again tomorrow.`;
+        renderModal();
+        return;
+      }
+      if (!m3.cid) m3.cid = uid();
+      const fb = {
+        category: FB_CATS.some(([k2]) => k2 === m3.cat) ? m3.cat : "bug",
+        message: msg,
+        reply_to: reply || null,
+        screenshot: m3.shot || null,
+        context: fbContext(m3),
+        client_id: m3.cid
+      };
+      if (!F3) {
+        const txt = asText(fb.category, msg, fb.context);
+        if (!await copied(txt)) {
+          closeModal();
+          openModal({
+            kind: "text",
+            title: "Feedback",
+            help: "Copy this and send it to the app owner.",
+            text: txt,
+            readonly: true
+          });
+          return;
+        }
+        m3.sent = true;
+        m3.copied = true;
+        m3.dirty = false;
+        renderModal();
+        return;
+      }
+      m3.busy = true;
+      m3.err = "";
+      renderModal();
+      try {
+        await withTimeout(F3.send(fb), NET_MS, "feedback-late");
+        prefSet(FB_SENT, JSON.stringify([...fbRecent(), Date.now()]));
+        if (ui.modal === m3) {
+          m3.sent = true;
+          m3.dirty = false;
+        }
+      } catch (e5) {
+        log("feedback", e5);
+        if (ui.modal === m3) m3.err = codeOf(e5) === "timeout" ? NO_ANSWER : said(e5, "Could not send. Try again.");
+      } finally {
+        if (ui.modal === m3) {
+          m3.busy = false;
+          renderModal();
+        }
+      }
+    },
+    async fbInbox() {
+      const F3 = FB();
+      if (!F3 || typeof F3.inbox !== "function") return;
+      const m3 = { kind: "fbInbox", items: null };
+      openModal(m3);
+      try {
+        const it = await withTimeout(F3.inbox(INBOX_N), NET_MS, "feedback-late");
+        if (ui.modal === m3) {
+          m3.items = it;
+          renderModal();
+        }
+      } catch (e5) {
+        log("feedback", e5);
+        if (ui.modal === m3) {
+          m3.err = codeOf(e5) === "timeout" ? NO_ANSWER : said(e5, "Could not load feedback.");
+          renderModal();
+        }
+      }
+    },
+    diagCopy() {
+      const t4 = JSON.stringify(
+        {
+          build: APP_VERSION,
+          version: DISPLAY_VERSION,
+          cloud: { on: cloud.on, status: cloud.status, err: cloud.err, last: cloud.last },
+          log: logBuf
+        },
+        null,
+        1
+      );
+      openModal({
+        kind: "text",
+        title: "Diagnostics",
+        help: "Copy this and paste it into a bug report. It holds errors and sync status, not your workouts.",
+        text: t4,
+        readonly: true
+      });
+    }
+  };
+  function reportInput(t4) {
+    const m3 = reportOpen();
+    if (!m3 || !(t4 instanceof HTMLTextAreaElement) || t4.dataset.fbind !== "msg") return false;
+    m3.msg = t4.value;
+    m3.dirty = true;
+    const c4 = document.getElementById("fbCount");
+    if (c4) c4.textContent = `${t4.value.length} / ${FB_MAX}`;
+    return true;
+  }
+  function reportChange(t4) {
+    const m3 = reportOpen();
+    if (!(t4 instanceof HTMLInputElement) || t4.id !== "fbShot" || !t4.files || !t4.files[0] || !m3) return false;
+    const f0 = t4.files[0];
+    if (f0.size > FB_IMG_MB * MB) {
+      toast(`That image is over ${FB_IMG_MB} MB. Try a screenshot instead.`);
+      t4.value = "";
+      return true;
+    }
+    if (f0.type && !/^image\//.test(f0.type)) {
+      toast("Only an image can be attached.");
+      t4.value = "";
+      return true;
+    }
+    fbShrink(f0).then(
+      (d3) => {
+        if (ui.modal !== m3) return;
+        if (!d3) {
+          toast("That picture is too large");
+          return;
+        }
+        m3.shot = d3;
+        m3.dirty = true;
+        renderModal();
+      },
+      (e5) => {
+        log("feedback", e5);
+        toast("Could not read that image. Try a screenshot (PNG or JPG).");
+      }
+    );
+    t4.value = "";
+    return true;
+  }
+
+  // src/app/account.ts
+  var WAIT_MS = {
+    most: 30 * 6e4,
+    slowAfter: 5 * 6e4,
+    every: 2e4,
+    slowEvery: 6e4,
+    gap: 3e3,
+    marker: 60 * 6e4
+  };
+  var CODE_WAIT = { tries: 50, stepMs: 100 };
+  var OUT_FLUSH_MS = 15e3;
+  var PW_MIN = 8;
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  function syncLine() {
+    settingsSyncLine();
+  }
+  function acctRerender() {
+    if ((ui.tab === "settings" || ui.tab === "today") && !ui.modal) rerenderKeepScroll();
+    else syncLine();
+  }
+  var ACCT_WAIT = KEY + ".acctWait";
+  var wait = null;
+  var flight = null;
+  var lastTry = 0;
+  var waiting = () => !!wait;
+  var acctOpen = () => {
+    const m3 = ui.modal;
+    return m3 && m3.kind === "account" ? m3 : null;
+  };
+  var waitSheet = () => {
+    const m3 = acctOpen();
+    return m3 && m3.mode === "wait" ? m3 : null;
+  };
+  function back() {
+    const m3 = acctOpen();
+    if (m3 && m3.back) openModal(m3.back);
+    else closeModal();
+  }
+  var limited = (pr) => withTimeout(pr, NET_MS, "auth-late");
+  var failed = (e5, or) => codeOf(e5) === "timeout" ? NO_ANSWER : said(e5, or);
+  function waitStart(email, pw) {
+    wait = { email, pw, since: Date.now(), timer: null };
+    prefSet(ACCT_WAIT, JSON.stringify({ t: Date.now() }));
+    waitSchedule();
+  }
+  function waitStop() {
+    if (wait && wait.timer) clearTimeout(wait.timer);
+    wait = null;
+    prefDel(ACCT_WAIT);
+  }
+  function waitSchedule() {
+    if (!wait) return;
+    if (wait.timer) clearTimeout(wait.timer);
+    wait.timer = null;
+    const age = Date.now() - wait.since;
+    if (age > WAIT_MS.most) {
+      waitStop();
+      const m3 = waitSheet();
+      if (m3) {
+        m3.mode = "signin";
+        m3.needCode = true;
+        m3.err = "Still not confirmed. Type the code from the email, or open its link and sign in here.";
+        renderModal();
+      }
+      return;
+    }
+    wait.timer = setTimeout(() => waitTry(false), age < WAIT_MS.slowAfter ? WAIT_MS.every : WAIT_MS.slowEvery);
+  }
+  var unconfirmed2 = (e5) => codeOf(e5) === "email_not_confirmed" || /Confirm your email/i.test(said(e5, ""));
+  async function waitTry(manual) {
+    const A2 = AUTH();
+    const w2 = wait;
+    if (!A2 || !w2 || flight) return;
+    if (!manual && (document.visibilityState !== "visible" || Date.now() - lastTry < WAIT_MS.gap)) {
+      waitSchedule();
+      return;
+    }
+    flight = "poll";
+    lastTry = Date.now();
+    const m0 = waitSheet();
+    if (manual && m0) {
+      m0.busy = true;
+      m0.err = "";
+      renderModal();
+    }
+    try {
+      acct.user = await limited(A2.signIn(w2.email, w2.pw));
+      waitStop();
+      obOutClear();
+      prefDel(ACCT_LATER);
+      if (waitSheet()) back();
+      toast("Email confirmed. Signed in and syncing.");
+      await cloudInit();
+      acctRerender();
+    } catch (e5) {
+      const m3 = waitSheet();
+      const un = unconfirmed2(e5);
+      if (!un && /Wrong email or password/.test(said(e5, ""))) {
+        waitStop();
+        if (m3) {
+          m3.mode = "signin";
+          m3.err = "That password did not work. Sign in with the one you chose.";
+        }
+      } else if (m3 && manual)
+        m3.err = un ? "Not confirmed yet. Type the code from the email, or open its link." : failed(e5, "Try again.");
+      if (!un) log("auth", e5);
+    } finally {
+      flight = null;
+      const m3 = waitSheet();
+      if (m3) {
+        m3.busy = false;
+        renderModal();
+      }
+      waitSchedule();
+    }
+  }
+  async function acctInit() {
+    const A2 = AUTH();
+    if (!A2) return;
+    A2.onChange((ev, user) => {
+      acct.user = user;
+      if (ev === "PASSWORD_RECOVERY" && !acctOpen()) openModal({ kind: "account", mode: "newpw", pw: "" });
+      if (ev === "SIGNED_IN" && user && wait && flight !== "code") {
+        waitStop();
+        if (waitSheet()) {
+          back();
+          toast("Email confirmed. Signed in and syncing.");
+        }
+      }
+      if (ev === "SIGNED_IN" && !cloud.on) cloudInit();
+      if (ev === "SIGNED_OUT" && cloud.on && !window.claude) cloudStop();
+      if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") fbCheckReader();
+      acctRerender();
+    });
+    acct.user = await A2.user();
+    acct.checked = true;
+    fbCheckReader();
+    const L2 = A2.landing;
+    if (L2 && L2.error) {
+      openModal({
+        kind: "account",
+        mode: "sent",
+        title: "Link did not work",
+        msg: /expired|invalid/i.test(L2.error) ? "That link has expired or was already used. Ask for a new one." : L2.error
+      });
+    } else if (L2 && L2.type === "recovery") {
+      if (!acctOpen()) openModal({ kind: "account", mode: "newpw", pw: "" });
+    } else if (L2 && L2.type && !isStandalone()) {
+      let mine = null;
+      try {
+        mine = parseJson(prefGet(ACCT_WAIT) || "null");
+      } catch (e5) {
+      }
+      const t4 = rec(mine);
+      if (t4 && Date.now() - (+(t4["t"] || 0) || 0) < WAIT_MS.marker) {
+        prefDel(ACCT_WAIT);
+        if (typeof A2.release === "function") A2.release();
+        openModal({
+          kind: "account",
+          mode: "sent",
+          title: "Email confirmed",
+          msg: "You are signed in. Your log syncs to your account."
+        });
+        cloudInit();
+      } else openModal({ kind: "account", mode: "where", title: "Email confirmed" });
+    }
+    acctRerender();
+  }
+  function accountStart() {
+    window.addEventListener("focus", () => {
+      if (wait) waitTry(false);
+    });
+    window.addEventListener("pageshow", () => {
+      if (wait) waitTry(false);
+    });
+    window.addEventListener("online", () => {
+      if (AUTH() && !cloud.on) cloudInit();
+      else if (cloud.on && cloud.status === "offline") {
+        cloud.retry = 0;
+        if (cloud.t) clearTimeout(cloud.t);
+        cq(cloudFlush);
+      }
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      if (wait) {
+        waitTry(false);
+        return;
+      }
+      if (AUTH() && !cloud.on) cloudInit();
+    });
+  }
+  function acctClosed(m3) {
+    if (m3.mode === "wait") waitStop();
+    if (m3.mode === "where" && !m3.answered) {
+      const A2 = AUTH();
+      acct.user = null;
+      if (A2)
+        A2.signOut().catch((e5) => {
+          log("auth", e5);
+        }).then(() => acctRerender());
+    }
+  }
+  function readFields(m3) {
+    for (const el of document.querySelectorAll("#modal [data-abind]")) {
+      if (!(el instanceof HTMLInputElement)) continue;
+      const k2 = el.dataset.abind;
+      if (k2 === "email" || k2 === "pw" || k2 === "code") m3[k2] = el.value;
+    }
+  }
+  var inCode = () => {
+    const a2 = document.activeElement;
+    return a2 instanceof HTMLElement && a2.dataset.abind === "code";
+  };
+  async function acctCode() {
+    const m3 = acctOpen(), A2 = AUTH();
+    if (!m3 || m3.busy || !A2 || !A2.verifyCode) return;
+    const verify = A2.verifyCode;
+    readFields(m3);
+    if (flight) {
+      m3.busy = true;
+      renderModal();
+      for (let i5 = 0; i5 < CODE_WAIT.tries && flight; i5++) await new Promise((r4) => setTimeout(r4, CODE_WAIT.stepMs));
+      m3.busy = false;
+      if (acct.user || ui.modal !== m3) return;
+      if (flight) {
+        m3.err = "Still checking. Try again in a moment.";
+        renderModal();
+        return;
+      }
+    }
+    const email = String(m3.email || wait && wait.email || "").trim().toLowerCase();
+    const pw = wait && wait.pw || String(m3.pw || "");
+    if (!EMAIL_RE.test(email)) {
+      m3.err = "Enter your email address.";
+      renderModal();
+      return;
+    }
+    if (wait && wait.timer) {
+      clearTimeout(wait.timer);
+      wait.timer = null;
+    }
+    flight = "code";
+    m3.busy = true;
+    m3.err = "";
+    renderModal();
+    const ok = (user) => {
+      acct.user = user;
+      waitStop();
+      obOutClear();
+      prefDel(ACCT_LATER);
+      if (ui.modal === m3) back();
+      toast("Email confirmed. Signed in and syncing.");
+      if (!cloud.on) cloudInit();
+      acctRerender();
+    };
+    try {
+      ok(await limited(verify(email, m3.code || "")));
+    } catch (e5) {
+      let done = false;
+      if (pw && codeOf(e5) !== "no_code") {
+        try {
+          ok(await limited(A2.signIn(email, pw)));
+          done = true;
+        } catch (e22) {
+        }
+      }
+      if (!done) {
+        log("auth", e5);
+        if (ui.modal === m3) m3.err = failed(e5, "Something went wrong. Try again.");
+      }
+    } finally {
+      flight = null;
+      if (ui.modal === m3) {
+        m3.busy = false;
+        renderModal();
+      }
+      waitSchedule();
+    }
+  }
+  function accountSubmit(e5) {
+    const f3 = e5.target;
+    if (!(f3 instanceof HTMLFormElement) || f3.id !== "acctForm") return;
+    e5.preventDefault();
+    const b2 = f3.querySelector('[data-act="acctSubmit"]');
+    if (inCode()) {
+      acctCode();
+      return;
+    }
+    if (b2 instanceof HTMLButtonElement && !b2.disabled && e5.submitter !== b2) acctSubmit();
+  }
+  function accountInput(t4) {
+    const m3 = acctOpen();
+    if (!m3 || !(t4 instanceof HTMLInputElement)) return false;
+    const k2 = t4.dataset.abind;
+    if (k2 !== "email" && k2 !== "pw" && k2 !== "code") return false;
+    m3[k2] = t4.value;
+    if (m3.err) m3.err = "";
+    return true;
+  }
+  async function acctSubmit() {
+    const m3 = acctOpen(), A2 = AUTH();
+    if (!m3 || m3.busy || !A2) return;
+    if (inCode()) return acctCode();
+    readFields(m3);
+    const email = String(m3.email || "").trim().toLowerCase(), pw = String(m3.pw || "");
+    const need = (ok, msg) => {
+      if (!ok) {
+        m3.err = msg;
+        renderModal();
+      }
+      return ok;
+    };
+    if (m3.mode !== "newpw" && !need(EMAIL_RE.test(email), "Enter your email address.")) return;
+    if ((m3.mode === "signup" || m3.mode === "newpw") && !need(pw.length >= PW_MIN, `Use ${PW_MIN} or more characters.`))
+      return;
+    if (m3.mode === "signin" && !need(pw.length > 0, "Enter your password.")) return;
+    m3.busy = true;
+    m3.err = "";
+    renderModal();
+    const done = (next) => {
+      if (ui.modal !== m3) return;
+      if (next) {
+        ui.modal = { kind: "account", back: m3.back, ...next };
+        renderModal();
+      } else back();
+    };
+    try {
+      if (m3.mode === "signin") {
+        acct.user = await limited(A2.signIn(email, pw));
+        obOutClear();
+        prefDel(ACCT_LATER);
+        done(null);
+        toast("Signed in. Syncing your log.");
+        await cloudInit();
+        acctRerender();
+      } else if (m3.mode === "signup") {
+        const r4 = await limited(A2.signUp(email, pw));
+        if (r4.confirm) {
+          done({ mode: "wait", email });
+          waitStart(email, pw);
+        } else {
+          acct.user = r4.user;
+          obOutClear();
+          done(null);
+          toast("Account created. Syncing your log.");
+          await cloudInit();
+          acctRerender();
+        }
+      } else if (m3.mode === "forgot") {
+        await limited(A2.resetPassword(email));
+        done({
+          mode: "sent",
+          title: "Check your email",
+          msg: `If there is an account for ${email}, a reset link is on its way. It opens in your browser: set the new password there, then sign in here.`
+        });
+      } else if (m3.mode === "newpw") {
+        await limited(A2.updatePassword(pw));
+        if (!isStandalone()) {
+          try {
+            await A2.signOut();
+          } catch (e5) {
+            log("auth", e5);
+          }
+          acct.user = null;
+          done({
+            mode: "sent",
+            title: "Password changed",
+            msg: `Open ${APP_NAME} from your home screen and sign in with the new password. If you use ${APP_NAME} in this browser instead, sign in here.`
+          });
+        } else {
+          done(null);
+          toast("Password changed");
+        }
+      }
+    } catch (e5) {
+      log("auth", e5);
+      if (ui.modal === m3) {
+        m3.err = failed(e5, "Something went wrong. Try again.");
+        if (m3.mode === "signin" && codeOf(e5) === "email_not_confirmed") m3.needCode = true;
+      }
+    } finally {
+      if (ui.modal === m3) {
+        m3.busy = false;
+        renderModal();
+      }
+    }
+  }
+  var ACCOUNT_ACTS = {
+    async acctRetry() {
+      await cloudInit();
+      acctRerender();
+      if (!cloud.on) toast("Still not syncing. Check your connection, or sign out and in again.");
+    },
+    // From a problem report, signing in goes back to it (r55, the audit: the report and what was typed in it were gone).
+    acctOpen(t4) {
+      const m3 = ui.modal;
+      openModal({
+        kind: "account",
+        mode: t4.dataset.mode === "signup" ? "signup" : "signin",
+        email: "",
+        pw: "",
+        back: m3 && m3.kind === "feedback" ? m3 : void 0
+      });
+    },
+    acctMode(t4) {
+      const m3 = acctOpen();
+      if (!m3) return;
+      if (m3.mode === "wait") waitStop();
+      const k2 = t4.dataset.mode;
+      m3.mode = k2 === "signin" || k2 === "signup" || k2 === "forgot" ? k2 : "signin";
+      m3.err = "";
+      m3.pw = "";
+      renderModal();
+    },
+    acctWaitNow() {
+      waitTry(true);
+    },
+    acctCode() {
+      acctCode();
+    },
+    async acctResend() {
+      const m3 = acctOpen(), A2 = AUTH();
+      if (!m3 || m3.busy || !A2 || !A2.resendCode) return;
+      const resend = A2.resendCode;
+      readFields(m3);
+      const email = String(m3.email || wait && wait.email || "").trim().toLowerCase();
+      if (!EMAIL_RE.test(email)) {
+        m3.err = "Enter your email address.";
+        renderModal();
+        return;
+      }
+      m3.busy = true;
+      m3.err = "";
+      renderModal();
+      try {
+        await limited(resend(email));
+        m3.code = "";
+        toast("A new email is on its way. Use its code.");
+      } catch (e5) {
+        log("auth", e5);
+        m3.err = failed(e5, "Something went wrong. Try again.");
+      } finally {
+        if (ui.modal === m3) {
+          m3.busy = false;
+          renderModal();
+        }
+      }
+    },
+    /* The answer on a browser that opened the confirmation link (item 61b). */
+    async acctWhere(t4) {
+      const m3 = acctOpen(), A2 = AUTH();
+      if (!m3 || m3.mode !== "where" || !A2) return;
+      m3.answered = true;
+      if (t4.dataset.v === "here") {
+        if (typeof A2.release === "function") A2.release();
+        closeModal();
+        toast("Signed in here. Syncing your log.");
+        await cloudInit();
+        acctRerender();
+        return;
+      }
+      try {
+        await A2.signOut();
+      } catch (e5) {
+        log("auth", e5);
+      }
+      acct.user = null;
+      ui.modal = {
+        kind: "account",
+        mode: "sent",
+        title: "Switch back to the app",
+        msg: `Open ${APP_NAME} from your home screen. If it still shows Check your email, it signs in by itself; otherwise sign in there.`
+      };
+      renderModal();
+      acctRerender();
+    },
+    acctSubmit() {
+      acctSubmit();
+    },
+    acctDelete() {
+      const A2 = AUTH();
+      if (!A2 || typeof A2.deleteAccount !== "function") return;
+      const del = A2.deleteAccount;
+      confirmBox(
+        "Delete your account?",
+        "Your account and the synced copy of your log are deleted for good. The copy on this phone stays; export a backup first if you want one elsewhere.",
+        "Delete account",
+        async () => {
+          toast("Deleting your account");
+          try {
+            await del();
+          } catch (e5) {
+            log("auth", e5);
+            toast(said(e5, "Could not delete the account. Try again."));
+            acctRerender();
+            return;
+          }
+          acct.user = null;
+          cloudStop(true);
+          rerenderKeepScroll();
+          toast("Account deleted. Your log is still on this phone.");
+        },
+        true
+      );
+    },
+    /* Sign out works like any app with an account (r33, V): the log lives in
+       the account and comes back on sign-in, so the phone's copy goes with the
+       sign-out. Keeping a copy on the phone is offered, quietly, second. Either
+       way the app opens on the first page. Nothing is removed until every
+       change has reached the account. */
+    acctSignOut() {
+      const A2 = AUTH();
+      if (!A2) return;
+      const NOT_IN = "Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.";
+      const out = async (remove) => {
+        if (cloud.on && navigator.onLine !== false) {
+          try {
+            if (cloud.t) clearTimeout(cloud.t);
+            await withTimeout(cq(cloudFlush), OUT_FLUSH_MS);
+          } catch (e5) {
+            log("auth", e5);
+          }
+        }
+        if (remove && !(cloud.on && cloud.status === "synced")) {
+          confirmBox("Not in your account yet", NOT_IN, "Keep on this phone and sign out", () => out(false));
+          return;
+        }
+        try {
+          await A2.signOut();
+        } catch (e5) {
+          log("auth", e5);
+          toast(said(e5, "Could not sign out"));
+          return;
+        }
+        acct.user = null;
+        cloudStop(remove);
+        const mid2 = !remove && !!state.draft;
+        if (!mid2) {
+          prefSet(OB_OUT, "1");
+          prefDel(OB_ACCT);
+        }
+        if (remove)
+          act(() => {
+            undoForget();
+            setState(normalize(null));
+          });
+        if (!mid2) {
+          ui.tab = "today";
+          window.scrollTo(0, 0);
+        }
+        render();
+        toast(remove ? "Signed out" : "Signed out. A copy stays on this phone.");
+      };
+      if (navigator.onLine === false && hasUnsent()) {
+        confirmBox("Not in your account yet", NOT_IN, "Keep on this phone and sign out", () => out(false));
+        return;
+      }
+      confirmBox(
+        "Sign out?",
+        "Your log is saved in your account. Sign in on any phone to pick it up again.",
+        "Sign out",
+        () => out(true),
+        false,
+        { label: "Sign out, keep a copy on this phone", fn: () => out(false), quiet: true }
+      );
+    }
+  };
+
+  // src/app/targets.ts
+  function fitRecordOld() {
+    const s3 = state.settings;
+    if (s3.bandsFit || s3.profile) return false;
+    const b2 = s3.bands;
+    for (const R2 of [activeRoutine(), starterRoutine(), defaultRoutine()]) {
+      if (!R2) continue;
+      const p3 = plannedSets(R2);
+      const fit = {};
+      let ok = true;
+      for (const m3 of MK) {
+        const d3 = BANDS[m3];
+        const lo = TRACK_ONLY.has(m3) ? d3[0] : Math.min(d3[0], Math.floor(p3[m3] || 0));
+        if (b2[m3][0] !== lo || b2[m3][1] !== d3[1]) {
+          ok = false;
+          break;
+        }
+        if (lo < d3[0]) fit[m3] = lo;
+      }
+      if (ok && Object.keys(fit).length) {
+        s3.bandsFit = fit;
+        return true;
+      }
+    }
+    return false;
+  }
+  function fitTargets(R2, actual) {
+    if (!R2) return false;
+    const b2 = state.settings.bands;
+    const same = (x2) => MK.every((m3) => b2[m3] && b2[m3][0] === x2[m3][0] && b2[m3][1] === x2[m3][1]);
+    const D2 = {};
+    for (const m3 of MK) D2[m3] = defBand(m3);
+    const foc = new Set(prof().focus || []);
+    const fitOf = (r4) => {
+      const p3 = plannedSets(r4);
+      const o3 = {};
+      for (const m3 of MK)
+        o3[m3] = TRACK_ONLY.has(m3) || foc.has(m3) ? D2[m3] : [Math.min(D2[m3][0], Math.floor(p3[m3] || 0)), D2[m3][1]];
+      return o3;
+    };
+    if (!same(D2) && ![starterRoutine(), defaultRoutine()].some((r4) => same(fitOf(r4)))) return false;
+    const was = JSON.stringify(MK.map((m3) => b2[m3]));
+    for (const m3 of MK) b2[m3] = [D2[m3][0], D2[m3][1]];
+    const fit = fitFloors(R2, actual);
+    for (const m3 of MK) {
+      const lo = fit[m3];
+      if (lo != null && !foc.has(m3)) b2[m3] = [lo, b2[m3][1]];
+    }
+    if (Object.keys(fit).length) state.settings.bandsFit = fit;
+    else delete state.settings.bandsFit;
+    return JSON.stringify(MK.map((m3) => b2[m3])) !== was;
+  }
+
+  // src/app/importflow.ts
+  var MATCH = { pickAt: 0.6, eqOff: 0.5, modOff: 0.7, shown: 8 };
+  var NAME_CHARS = 60;
+  var ODD = { kg: 2.3, reps: 30 };
+  var MINUTE_S3 = 60;
+  var SAID = { made: 9e3, pick: 8e3, notFound: 6e3, days: 4 };
+  var EQW = {
+    db: "dumbbell",
+    bb: "barbell",
+    cable: "cable",
+    machine: "machine",
+    smith: "smith"
+  };
+  var MOD = [
+    "incline",
+    "decline",
+    "reverse",
+    "seated",
+    "standing",
+    "lying",
+    "single",
+    "one",
+    "close",
+    "wide",
+    "front",
+    "rear",
+    "hammer",
+    "preacher",
+    "sumo",
+    "rdl",
+    "hack",
+    "split",
+    "bulgarian",
+    "goblet",
+    "overhead",
+    "assisted",
+    "weighted",
+    "deficit",
+    "pause",
+    "spider",
+    "concentration",
+    "upright",
+    "face"
+  ];
+  function impMatch(name) {
+    const a2 = new Set(impNorm(name));
+    if (!a2.size) return [];
+    const out = [];
+    let al = IMP_ALIAS[[...a2].join(" ")] || null;
+    if (!al) {
+      const eq = [...a2].filter((w2) => EQW[w2]);
+      const bare = [...a2].filter((w2) => !EQW[w2]).join(" ");
+      const c4 = IMP_ALIAS[bare];
+      const e0 = eq[0];
+      if (c4 && eq.length === 1 && e0 && state.exercises.some((e5) => e5.id === c4 && e5.equip === EQW[e0])) al = c4;
+    }
+    if (!(al && state.exercises.some((e5) => e5.id === al && !e5.archived))) al = null;
+    else out.push({ id: al, sc: 1 });
+    for (const e5 of state.exercises) {
+      if (e5.archived) continue;
+      const b2 = new Set(impNorm(e5.name));
+      if (!b2.size) continue;
+      let hit = 0;
+      for (const w2 of a2) if (b2.has(w2)) hit++;
+      if (!hit) continue;
+      const union = (/* @__PURE__ */ new Set([...a2, ...b2])).size;
+      let sc = hit / union;
+      const eq = ["db", "bb", "cable", "machine", "smith"];
+      const ea = eq.filter((w2) => a2.has(w2)), eb = eq.filter((w2) => b2.has(w2));
+      if (ea.length && eb.length && !ea.some((w2) => eb.includes(w2))) sc *= MATCH.eqOff;
+      for (const w2 of MOD) if (a2.has(w2) !== b2.has(w2)) sc *= MATCH.modOff;
+      if (e5.id !== al) out.push({ id: e5.id, sc });
+    }
+    return out.sort((x2, y2) => y2.sc - x2.sc).slice(0, MATCH.shown);
+  }
+  var inputStep = (err) => openModal({ kind: "imp", step: "input", text: "", err });
+  async function impStart(input) {
+    try {
+      let rows = null, text = null;
+      if (input && input.file) {
+        const f3 = input.file;
+        const nm = (f3.name || "").toLowerCase();
+        if (/\.json$/.test(nm) || f3.type === "application/json") {
+          importData(await f3.text());
+          return;
+        }
+        if (/\.xlsx$/.test(nm)) {
+          try {
+            rows = await impXlsx(await f3.arrayBuffer());
+          } catch (e5) {
+            inputStep(
+              e5 instanceof Error && e5.message === "old" ? "This phone cannot open .xlsx files. Save the sheet as CSV and try again." : "That spreadsheet could not be read. Save it as CSV and try again."
+            );
+            return;
+          }
+        } else if (/\.(xls|numbers|pdf|docx?)$/.test(nm)) {
+          inputStep("Save it as CSV (or copy the cells and paste them here) and try again.");
+          return;
+        } else text = await f3.text();
+      } else text = String(input && input.text || "");
+      if (text != null) {
+        const t4 = text.trim();
+        if (!t4) {
+          inputStep("Paste your log or choose a file.");
+          return;
+        }
+        if (/^\s*\{/.test(t4) && /"sessions"/.test(t4)) {
+          importData(t4);
+          return;
+        }
+        rows = impRows(t4);
+        const head = rows && rows[0];
+        if (head && Object.keys(impHeader(head)).filter((k2) => ["date", "ex", "r", "w"].includes(k2)).length < 2 && !/\t/.test(t4.split(/\r?\n/)[0] || ""))
+          rows = null;
+        if (!rows) {
+          openPreview(impFromText(t4), null);
+          return;
+        }
+      }
+      if (!rows || !rows[0]) {
+        inputStep("That could not be read.");
+        return;
+      }
+      const map = impHeader(rows[0]);
+      openPreview(
+        map["ex"] != null && (map["r"] != null || map["secs"] != null) && map["w"] != null && map["date"] != null ? impFromTable(rows, map) : { sessions: [], unit: null, skipped: 0, cardio: 0, needMap: true },
+        { rows, map }
+      );
+    } catch (e5) {
+      log("import", e5);
+      inputStep("That could not be read.");
+    }
+  }
+  var ASSISTED = {
+    pullup: "assistPullup",
+    chinup: "assistPullup",
+    dips: "assistDip",
+    triDips: "assistDip"
+  };
+  function openPreview(res, tab) {
+    const names = [...new Set(res.sessions.flatMap((x2) => x2.items.map((i5) => i5.name)))];
+    const pickE = [], guessE = [];
+    for (const n3 of names) {
+      const c4 = impMatch(n3);
+      const c0 = c4[0];
+      let id = c0 && c0.sc >= MATCH.pickAt ? c0.id : "new";
+      const neg = res.sessions.some((x2) => x2.items.some((i5) => i5.name === n3 && i5.sets && i5.sets.some((q) => q.w < 0)));
+      if (neg && id !== "new" && !EX(id).assist) {
+        const as = ASSISTED[id];
+        id = as && state.exercises.some((e5) => e5.id === as) ? as : "new";
+      }
+      pickE.push([n3, id]);
+      const g2 = impGuess(n3);
+      guessE.push([n3, neg && id === "new" ? { ...g2, assist: true, equip: "machine" } : g2]);
+    }
+    const pick2 = Object.fromEntries(pickE), guess = Object.fromEntries(guessE);
+    openModal({
+      kind: "imp",
+      step: "preview",
+      res,
+      tab,
+      pick: pick2,
+      guess,
+      unit: res.unit || U(),
+      unitKnown: !!res.unit,
+      date: today(),
+      showAll: false
+    });
+  }
+  function impBuild(m3) {
+    const conv = m3.unit === "kg" ? (v3) => v3 : (v3) => v3 * LB;
+    const out = [];
+    const ssOf = {};
+    const bad = [];
+    const odd = [];
+    let timedOff = 0;
+    const allTimed = (n3) => m3.res.sessions.every(
+      (x2) => x2.items.every((i5) => i5.name !== n3 || i5.sets && i5.sets.length && i5.sets.every((q) => q.timed))
+    );
+    const newExE = [];
+    for (const n3 in m3.pick)
+      if (m3.pick[n3] === "new") {
+        const g2 = m3.guess[n3] || impGuess(n3);
+        const e5 = {
+          id: "c_" + uid(),
+          name: n3.slice(0, NAME_CHARS),
+          primary: g2.primary,
+          secondary: [],
+          equip: g2.equip,
+          bw: g2.equip === "bodyweight" || !!g2.assist,
+          rare: false,
+          note: "",
+          custom: true,
+          archived: false
+        };
+        if (g2.assist) e5.assist = true;
+        if (!m3.res.text && allTimed(n3)) e5.timed = true;
+        newExE.push([n3, e5]);
+      }
+    const newEx = Object.fromEntries(newExE);
+    for (const x2 of m3.res.sessions) {
+      const date = x2.date || m3.date;
+      const ex = [];
+      const sid = uid(), grp = {};
+      for (const it of x2.items) {
+        const exo = m3.pick[it.name] === "new" ? newEx[it.name] || EX("") : EX(m3.pick[it.name] || "");
+        const fileSets = it.sets || [];
+        if (!it.setsText && !exo.timed && fileSets.some((q) => q.timed)) timedOff += fileSets.filter((q) => q.timed).length;
+        const sets = it.setsText ? impTextSets(it, exo, conv) : fileSets.filter((q) => exo.timed || !q.timed).map((s3) => ({
+          w: s3.u ? s3.u === "kg" ? s3.w : s3.w * LB : conv(s3.w),
+          r: s3.r,
+          rir: s3.rir,
+          warm: s3.warm,
+          drop: s3.drop && !s3.warm
+        }));
+        if (!sets || !sets.length) {
+          if (!bad.includes(it.name)) bad.push(it.name);
+          continue;
+        }
+        for (const q of sets) {
+          if (exo.assist) q.w = -Math.abs(q.w);
+          else if (q.w < 0) q.w = 0;
+        }
+        if (!exo.bw && !exo.timed) {
+          for (const q of sets)
+            if (q.w > 0 && q.w < ODD.kg || q.r > ODD.reps) {
+              odd.push(`${exo.name} ${fmtW(q.w)} ${U()} x ${q.r}${x2.date ? `, ${fmtDate(x2.date)}` : ""}`);
+              break;
+            }
+        }
+        const prev = ex.find((b2) => b2.exId === exo.id);
+        if (prev) prev.sets.push(...sets);
+        else ex.push({ exId: exo.id, note: it.note || "", rr: null, sets });
+        if (it.ss) grp[exo.id] = it.ss;
+      }
+      if (ex.length && Object.keys(grp).length) ssOf[sid] = grp;
+      if (ex.length)
+        out.push({
+          id: sid,
+          date,
+          dayIdx: 0,
+          dayId: null,
+          dayName: (x2.name || "").slice(0, NAME_CHARS) || "Imported",
+          routineId: "",
+          free: true,
+          ex,
+          notes: x2.note || "",
+          durMin: x2.durMin || null,
+          deload: !!x2.deload,
+          light: false
+        });
+    }
+    const fp = (ss) => ss.date + "|" + ss.ex.map((b2) => b2.exId + ":" + b2.sets.map((q) => q.r).join(",")).sort().join(";");
+    const have = new Set(state.sessions.map(fp));
+    const seen = /* @__PURE__ */ new Set();
+    const fresh = [];
+    let dup = 0;
+    for (const ss of out) {
+      const k2 = fp(ss);
+      if (have.has(k2) || seen.has(k2)) {
+        dup++;
+        continue;
+      }
+      seen.add(k2);
+      fresh.push(ss);
+    }
+    const cardio = [];
+    let cardioNoTime = 0;
+    for (const c4 of m3.res.cardioRows || []) {
+      const min = c4.min || Math.round(c4.secs / MINUTE_S3);
+      if (!(min > 0)) {
+        cardioNoTime++;
+        continue;
+      }
+      if (state.cardio.some((x2) => x2.date === c4.date && x2.kind === c4.kind && x2.min === min)) {
+        dup++;
+        continue;
+      }
+      cardio.push(
+        cleanCardio({
+          id: uid(),
+          date: c4.date,
+          kind: c4.kind,
+          min,
+          hr: c4.hr || null,
+          when: c4.when || "solo",
+          note: c4.note || "",
+          dist: c4.km != null ? c4.km : c4.dist > 0 ? m3.unit === "kg" ? c4.dist : c4.dist * KM_MI : null
+        })
+      );
+    }
+    return {
+      sessions: fresh,
+      ssOf,
+      cardio,
+      cardioNoTime,
+      dup,
+      bad,
+      odd,
+      timedOff,
+      newEx: Object.values(newEx).filter((e5) => fresh.some((ss) => ss.ex.some((b2) => b2.exId === e5.id)))
+    };
+  }
+  var FROM_LOG = {
+    sameAt: 0.5,
+    days: 7,
+    cover: 0.8,
+    latest: 3,
+    sets: 10,
+    rir: 4,
+    cycle: 14,
+    rounds: 3,
+    name: 40
+  };
+  var ORDER = { older: 100, none: 999 };
+  var USUAL_RANGES = [
+    [3, [1, 3]],
+    [5, [3, 5]],
+    [8, [6, 8]],
+    [10, [8, 10]],
+    [12, [10, 12]],
+    [15, [12, 15]]
+  ];
+  var HIGH_RANGE = [15, 20];
+  var LETTER_A = 65;
+  function routineFromLog(sessions, ssOf) {
+    const all = sessions.filter((x2) => !x2.demo && x2.ex && x2.ex.length);
+    const first = all[0];
+    if (!first) return null;
+    const byDate = (a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0;
+    const newest = all.reduce((m3, x2) => x2.date > m3 ? x2.date : m3, first.date);
+    const rec2 = all.filter((x2) => x2.date >= addDays(newest, 1 - IMPORT_DAYS)).sort(byDate);
+    const I2 = IDX();
+    const tot = {}, off = {};
+    for (const id in I2.byEx)
+      for (const x2 of I2.byEx[id] || []) {
+        tot[x2.sid] = (tot[x2.sid] || 0) + 1;
+        if (offTarget(x2)) off[x2.sid] = (off[x2.sid] || 0) + 1;
+      }
+    const offS = (x2) => x2.deload || x2.light || (tot[x2.id] || 0) > 0 && (off[x2.id] || 0) * 2 >= (tot[x2.id] || 0);
+    const lifts = (x2) => new Set(x2.ex.filter((b2) => b2.sets.some((q) => !q.warm)).map((b2) => b2.exId));
+    const jac = (a2, b2) => {
+      let n3 = 0;
+      for (const v3 of a2) if (b2.has(v3)) n3++;
+      const u4 = a2.size + b2.size - n3;
+      return u4 ? n3 / u4 : 0;
+    };
+    const nm = (x2) => String(x2.dayName || "").trim();
+    const named = !rec2.some((x2) => GENERIC_WORKOUT.test(nm(x2)));
+    let groups = [];
+    let pop;
+    if (named) {
+      pop = rec2;
+      const by = /* @__PURE__ */ new Map();
+      for (const x2 of rec2) {
+        const k2 = nm(x2).slice(0, FROM_LOG.name).toLowerCase();
+        let g2 = by.get(k2);
+        if (!g2) {
+          g2 = { name: nm(x2).slice(0, FROM_LOG.name), list: [], ids: /* @__PURE__ */ new Set() };
+          by.set(k2, g2);
+          groups.push(g2);
+        }
+        g2.list.push(x2);
+      }
+    } else {
+      pop = rec2.filter((x2) => !offS(x2));
+      for (const x2 of pop) {
+        const L3 = lifts(x2);
+        let g2 = null, bj = 0;
+        for (const q of groups) {
+          const j3 = jac(L3, q.ids);
+          if (j3 >= FROM_LOG.sameAt && j3 > bj) {
+            g2 = q;
+            bj = j3;
+          }
+        }
+        if (!g2) {
+          g2 = { name: "", list: [], ids: L3 };
+          groups.push(g2);
+        }
+        g2.list.push(x2);
+        g2.ids = L3;
+      }
+    }
+    groups = groups.filter((g2) => g2.list.length >= IMPORT_REPEATS);
+    if (!groups.length || groups.length > FROM_LOG.days || groups.reduce((a2, g2) => a2 + g2.list.length, 0) < pop.length * FROM_LOG.cover)
+      return null;
+    const lastOf2 = (g2) => g2.list[g2.list.length - 1] || first;
+    groups.sort((a2, b2) => byDate(lastOf2(a2), lastOf2(b2)));
+    if (!named)
+      groups.forEach((g2, i5) => {
+        g2.name = "Day " + String.fromCharCode(LETTER_A + i5);
+      });
+    const med = (a2) => median(a2.filter((v3) => v3 != null && isFinite(v3)));
+    const band = (r4) => {
+      for (const [top, range] of USUAL_RANGES) if (r4 <= top) return range;
+      return HIGH_RANGE;
+    };
+    const work = (b2) => b2.sets.filter((q) => !q.warm && !q.drop);
+    const days = groups.map((g2) => {
+      const full = g2.list.filter((x2) => !offS(x2));
+      const recent = (full.length ? full : g2.list).slice(-FROM_LOG.latest);
+      const latest = recent[recent.length - 1] || first;
+      const cnt = /* @__PURE__ */ new Map();
+      for (const x2 of recent) for (const id of lifts(x2)) cnt.set(id, (cnt.get(id) || 0) + 1);
+      const order = (id) => {
+        for (let k2 = recent.length - 1; k2 >= 0; k2--) {
+          const s3 = recent[k2];
+          const i5 = s3 ? s3.ex.findIndex((b2) => b2.exId === id) : -1;
+          if (i5 >= 0) return k2 === recent.length - 1 ? i5 : ORDER.older + i5;
+        }
+        return ORDER.none;
+      };
+      const ids = [...cnt.keys()].filter((id) => (cnt.get(id) || 0) * 2 >= recent.length && state.exercises.some((e5) => e5.id === id && !e5.archived)).sort((a2, b2) => order(a2) - order(b2));
+      const items = ids.map((id) => {
+        const ex = EX(id);
+        const it = newItem(id);
+        let b2 = null;
+        for (let k2 = recent.length - 1; k2 >= 0 && !b2; k2--) {
+          const s3 = recent[k2];
+          b2 = s3 && s3.ex.find((q2) => q2.exId === id && work(q2).length) || null;
+        }
+        if (!b2) return it;
+        const ws = work(b2);
+        it.sets = Math.min(FROM_LOG.sets, Math.max(1, ws.length));
+        if (!ex.timed) {
+          const r4 = med(ws.map((q2) => Number(q2.r)));
+          if (r4 != null && r4 > 0) [it.repMin, it.repMax] = band(r4);
+        }
+        const rt = ws.filter((x2) => x2.rir != null);
+        const q = rt.length * 2 > ws.length ? med(rt.map((x2) => Number(x2.rir))) : null;
+        if (q != null) it.rir = Math.min(FROM_LOG.rir, Math.max(0, Math.round(q)));
+        return it;
+      });
+      {
+        const sg = ssOf && ssOf[latest.id] || {};
+        const gid = {};
+        for (const it of items) {
+          const k2 = sg[it.exId];
+          if (k2 && items.filter((o3) => sg[o3.exId] === k2).length > 1) it.ss = gid[k2] || (gid[k2] = uid());
+        }
+      }
+      return { g: g2, day: { id: uid(), name: g2.name, rest: false, items }, ids: lifts(latest) };
+    }).filter((d3) => d3.day.items.length);
+    const r0 = rec2[0];
+    if (!days.length || !r0) return null;
+    const span = Math.max(WEEK_DAYS, daysBetween(r0.date, newest) + 1);
+    const perWeek = Math.min(WEEK_DAYS, Math.max(1, Math.round(rec2.length / (span / WEEK_DAYS))));
+    const reps = perWeek >= days.length * 2 ? Math.min(FROM_LOG.rounds, Math.floor(perWeek / days.length)) : 1;
+    const seq = [];
+    for (let r4 = 0; r4 < reps; r4++)
+      days.forEach(
+        (d3) => seq.push(r4 ? { ...d3.day, id: uid(), items: d3.day.items.map((it) => ({ ...it, uid: uid() })) } : d3.day)
+      );
+    const K2 = seq.length;
+    const L2 = Math.min(FROM_LOG.cycle, Math.max(K2, Math.round(WEEK_DAYS * K2 / perWeek)));
+    let rest = L2 - K2;
+    const cyc = [];
+    const restDay = () => ({ id: uid(), name: "Rest", rest: true, items: [] });
+    const K0 = days.length;
+    seq.forEach((day, i5) => {
+      cyc.push(day);
+      let k2 = 0;
+      if (reps > 1) {
+        if ((i5 + 1) % K0 === 0) {
+          const roundsLeft = reps - (i5 + 1) / K0 + 1;
+          k2 = Math.floor(rest / roundsLeft);
+        }
+      } else {
+        const left = K2 - i5 - 1;
+        k2 = left ? Math.floor(rest / (left + 1)) : rest;
+      }
+      for (let j3 = 0; j3 < k2; j3++) cyc.push(restDay());
+      rest -= k2;
+    });
+    const dayFor = (x2) => {
+      if (named) {
+        const k2 = nm(x2).slice(0, FROM_LOG.name).toLowerCase();
+        const d3 = days.find((q) => q.g.name.toLowerCase() === k2);
+        return d3 ? d3.day : null;
+      }
+      const L22 = lifts(x2);
+      let best = null, bj = 0;
+      for (const d3 of days) {
+        const j3 = jac(L22, d3.ids);
+        if (j3 >= FROM_LOG.sameAt && j3 > bj) {
+          best = d3.day;
+          bj = j3;
+        }
+      }
+      return best;
+    };
+    return { routine: { id: uid(), name: "From your log", schedule: "cycle", days: cyc }, perWeek, dayFor };
+  }
+  async function liveLogFetch() {
+    let local = null;
+    try {
+      const raw = prefGet(`${STORAGE_ID}.v1`);
+      if (raw) local = normalize(parseJson(raw));
+    } catch (e5) {
+      log("preview-copy", e5);
+      local = null;
+    }
+    let remote = null, err = null;
+    if (typeof window.ironlogLiveDocs === "function" && acct.user) {
+      try {
+        const parts = {};
+        for (const d3 of await window.ironlogLiveDocs()) {
+          const data = d3.data && typeof d3.data === "object" && "json" in d3.data ? d3.data.json : null;
+          if (!isChunkId(d3.id) || typeof data !== "string") continue;
+          try {
+            parts[d3.id] = rec(parseJson(data));
+          } catch (e5) {
+            log("preview-copy", {
+              message: `${d3.id} could not be read and is left out`,
+              stack: e5 instanceof Error ? e5.stack : void 0
+            });
+          }
+        }
+        if (Object.keys(parts).length) remote = assemble(parts);
+      } catch (e5) {
+        err = e5;
+      }
+    }
+    const both = [];
+    for (const x2 of [local, remote]) if (x2) both.push(x2);
+    const best = both.sort((a2, b2) => realCount(b2) - realCount(a2))[0] || null;
+    return { st: best && realCount(best) ? best : null, err };
+  }
+  function importData(text, after2) {
+    let obj;
+    try {
+      obj = parseJson(text);
+    } catch (e5) {
+      toast("That is not valid backup text");
+      return;
+    }
+    const o3 = obj && typeof obj === "object" ? obj : null;
+    const s0 = o3 && "state" in o3 && o3.state ? o3.state : o3;
+    const s3 = s0 && typeof s0 === "object" ? s0 : null;
+    const sessions = arr(s3 && "sessions" in s3 ? s3.sessions : void 0);
+    if (!s3 || !("exercises" in s3 && Array.isArray(s3.exercises)) || !("routines" in s3 && Array.isArray(s3.routines)) || !sessions) {
+      toast(`That file is not a backup from ${APP_NAME}`);
+      return;
+    }
+    let clean;
+    try {
+      clean = normalize(s3);
+    } catch (e5) {
+      toast("That backup could not be read");
+      return;
+    }
+    const dropped = normalize.dropped;
+    if (!clean.sessions.length && sessions.length) {
+      toast("No readable sessions in that backup");
+      return;
+    }
+    const body = `This backup has ${clean.sessions.length} session${clean.sessions.length === 1 ? "" : "s"} and ${clean.routines.length} routine${clean.routines.length === 1 ? "" : "s"}.` + (dropped ? ` ${dropped} damaged record${dropped === 1 ? " was" : "s were"} skipped.` : "") + " It will replace everything currently in the app. You can step this back with Undo.";
+    confirmBox(
+      "Replace all data?",
+      body,
+      "Replace my data",
+      () => {
+        act(
+          () => {
+            setState(clean);
+            if (!cloud.on) cloudStop(true);
+          },
+          { undo: true }
+        );
+        closeModal();
+        ui.tab = "today";
+        render();
+        toast("Backup imported", true);
+        if (after2) after2();
+      },
+      true
+    );
+  }
+  var preview = () => {
+    const m3 = ui.modal;
+    return m3 && m3.kind === "imp" && m3.step === "preview" ? m3 : null;
+  };
+  var IMPORT_ACTS = {
+    impOpen() {
+      inputStep("");
+    },
+    impRead() {
+      const el = document.getElementById("impText");
+      const text = el instanceof HTMLTextAreaElement ? el.value : "";
+      const m3 = ui.modal;
+      if (m3 && m3.kind === "imp" && m3.step === "input") m3.text = text;
+      impStart({ text });
+    },
+    impUnit(t4) {
+      const m3 = preview();
+      const v3 = t4.dataset.v;
+      if (!m3 || v3 !== "lb" && v3 !== "kg") return;
+      m3.unit = v3;
+      renderModal();
+    },
+    impBack() {
+      inputStep("");
+    },
+    impMapDone() {
+      const m3 = preview();
+      if (!m3 || !m3.tab) return;
+      const mp = m3.tab.map;
+      if (mp["date"] == null || mp["ex"] == null || mp["r"] == null) {
+        toast("Choose the date, exercise, and reps columns");
+        return;
+      }
+      const cols = {};
+      for (const k2 in mp) {
+        const v3 = mp[k2];
+        if (v3 != null) cols[k2] = v3;
+      }
+      openPreview(impFromTable(m3.tab.rows, cols), m3.tab);
+    },
+    impGo() {
+      const m3 = preview();
+      if (!m3) return;
+      const b2 = impBuild(m3);
+      if (!b2.sessions.length && !b2.cardio.length) return;
+      const AR = activeRoutine();
+      const first = !realCount(state) && !!AR && starterSigs().includes(routineSig(AR)) && !state.sessions.some((q) => q.routineId === AR.id);
+      const msg = `Imported ${b2.sessions.length} session${b2.sessions.length === 1 ? "" : "s"}${b2.cardio.length ? `, ${b2.cardio.length} cardio entr${b2.cardio.length === 1 ? "y" : "ies"}` : ""}${b2.newEx.length ? `, ${b2.newEx.length} new exercise${b2.newEx.length === 1 ? "" : "s"}` : ""}`;
+      const made = { v: null };
+      act(
+        () => {
+          setState(
+            normalize({
+              ...state,
+              exercises: [...state.exercises, ...b2.newEx],
+              sessions: [...state.sessions, ...b2.sessions],
+              cardio: [...state.cardio, ...b2.cardio],
+              settings: { ...state.settings, onboarded: true }
+            })
+          );
+          invalidate();
+          const inf2 = first && b2.sessions.length ? routineFromLog(state.sessions, b2.ssOf) : null;
+          made.v = inf2;
+          if (inf2) {
+            const R2 = inf2.routine;
+            state.routines = dropStarter(state.routines, state.sessions, starterSigs());
+            state.routines.push(R2);
+            state.activeRoutineId = R2.id;
+            for (const x2 of state.sessions) {
+              if (x2.demo) continue;
+              const d3 = inf2.dayFor(x2);
+              if (!d3) continue;
+              x2.routineId = R2.id;
+              x2.dayId = d3.id;
+              x2.dayIdx = R2.days.indexOf(d3);
+              x2.free = void 0;
+            }
+            invalidate();
+            fitTargets(R2, actualAvg4());
+          }
+        },
+        { undo: true }
+      );
+      const inf = made.v;
+      if (inf) {
+        const R2 = inf.routine;
+        closeModal();
+        ui.tab = "today";
+        ui.todayDay = null;
+        window.scrollTo(0, 0);
+        render();
+        toast(
+          `${msg}. Your routine is made from them: ${andList(
+            R2.days.filter((d3) => !d3.rest).map((d3) => d3.name),
+            SAID.days
+          )}, about ${inf.perWeek} day${inf.perWeek === 1 ? "" : "s"} a week. Change it in Plan.`,
+          true,
+          SAID.made
+        );
+        return;
+      }
+      closeModal();
+      ui.tab = "history";
+      window.scrollTo(0, 0);
+      render();
+      if (first && b2.sessions.length) {
+        openModal({ kind: "templates", from: "welcome", imported: true });
+        toast(`${msg}. Now pick the routine you follow, or the closest one.`, true, SAID.pick);
+        return;
+      }
+      toast(msg, true);
+    },
+    async previewCopy() {
+      if (ENV !== "preview") return;
+      toast(`Looking for your ${APP_NAME} log`);
+      const { st, err } = await liveLogFetch();
+      if (!st) {
+        if (!acct.user && AUTH()) {
+          confirmBox(
+            "Sign in first",
+            `This test version keeps a separate log. Sign in with your ${APP_NAME} account to copy your log in. Your log in ${APP_NAME} stays as it is.`,
+            "Sign in",
+            () => openModal({ kind: "account", mode: "signin", email: "", pw: "" })
+          );
+          return;
+        }
+        toast(
+          err ? `Could not read your ${APP_NAME} log: ${err instanceof Error ? err.message : String(err)}` : `No ${APP_NAME} log found for this account or on this phone.`,
+          null,
+          SAID.notFound
+        );
+        return;
+      }
+      const n3 = realCount(st);
+      st.draft = null;
+      const go = () => {
+        act(
+          () => {
+            setState(st);
+            if (!cloud.on) cloudStop(true);
+          },
+          { undo: true }
+        );
+        closeModal();
+        ui.tab = "today";
+        render();
+        toast(`Copied ${n3} session${n3 === 1 ? "" : "s"} from ${APP_NAME}. ${APP_NAME} is unchanged.`, true);
+      };
+      if (realCount(state) || state.draft)
+        confirmBox(
+          "Replace the preview log?",
+          `Your ${APP_NAME} log has ${n3} session${n3 === 1 ? "" : "s"}. Copying replaces everything in this test version; your log in ${APP_NAME} stays as it is. Undo can step this back.`,
+          "Copy my log",
+          go
+        );
+      else go();
+    },
+    // The save kept aside at start (r45): restored through the import's checks, or shown as text (Forget it is Settings', settings.ts).
+    unreadRestore() {
+      const raw = unreadableRaw();
+      if (!raw) return;
+      importData(raw, unreadableForget);
+    },
+    unreadShow() {
+      const raw = unreadableRaw();
+      if (raw)
+        openModal({
+          kind: "text",
+          title: "Save kept aside",
+          help: "Select all and copy it somewhere safe.",
+          text: raw,
+          readonly: true
+        });
+    },
+    importText() {
+      const el = document.getElementById("mText");
+      importData(el instanceof HTMLTextAreaElement ? el.value : "");
+    },
+    pasteImport() {
+      openModal({
+        kind: "text",
+        title: "Import backup text",
+        help: "Paste the full backup text here.",
+        text: "",
+        readonly: false
+      });
+    }
+  };
+  function importChange(t4) {
+    if (!(t4 instanceof HTMLInputElement || t4 instanceof HTMLSelectElement)) return false;
+    if (t4 instanceof HTMLInputElement && t4.id === "impFile" && t4.files && t4.files[0]) {
+      const f3 = t4.files[0];
+      t4.value = "";
+      impStart({ file: f3 });
+      return true;
+    }
+    if (t4 instanceof HTMLInputElement && t4.id === "importFile" && t4.files && t4.files[0]) {
+      const fr = new FileReader();
+      fr.onload = () => importData(String(fr.result));
+      fr.onerror = () => toast("Could not read that file");
+      fr.readAsText(t4.files[0]);
+      t4.value = "";
+      return true;
+    }
+    const m3 = ui.modal;
+    if (!m3 || m3.kind !== "imp") return false;
+    if (m3.step === "preview") {
+      if (t4.dataset.imppick != null) {
+        m3.pick[t4.dataset.imppick] = t4.value;
+        renderModal();
+        return true;
+      }
+      if (t4.dataset.impmus != null) {
+        const g2 = m3.guess[t4.dataset.impmus];
+        if (ML[t4.value] && g2) g2.primary = t4.value;
+        return true;
+      }
+      if (t4.dataset.impdate != null) {
+        if (isDate(t4.value) && t4.value <= today()) m3.date = t4.value;
+        else t4.value = m3.date;
+        renderModal();
+        return true;
+      }
+      if (t4.dataset.mapf != null && m3.tab) {
+        m3.tab.map[t4.dataset.mapf] = t4.value === "" ? void 0 : +t4.value;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // src/app/sheetsimport.ts
+  var SURE_AT = 0.85;
+  var SHOWN = { sessions: 40, cardio: 3, bad: 8, odd: 4 };
+  var COL_CHARS = 30;
+  var draws2 = 0;
+  var frame = (t4, body) => b`<div class="sheet fixed" role="dialog" aria-modal="true" aria-labelledby="impH"><div class="sheet-h"><h3 id="impH">${t4}</h3>${closeX()}</div><div class="sheet-scroll">${body}</div></div>`;
+  var WHAT_TIP = `Notes: a date on its own line, then one exercise per line with its sets (185x8, 185x7, or 3x10 @ 120). A spreadsheet: a file, or copy the cells and paste them, with columns such as date, exercise, weight, and reps. Another app: export your workouts as a CSV file from its settings, then choose that file here. Handwritten: photograph the page, open it in Photos, press and hold the writing, tap Copy, and paste it here. A backup file from ${APP_NAME} restores your whole log instead.`;
+  function inputStep2(m3) {
+    return frame(
+      "Import workouts",
+      b`<p class="small muted" style="margin:0 0 8px">Notes, a spreadsheet, or an export from another app. Nothing is saved until you check it.</p>
+    <label class="btn primary block" style="position:relative">Choose a file<input type="file" id="impFile" accept=".csv,.tsv,.txt,.xlsx,.json,text/csv,text/plain,application/json" style="position:absolute;width:1px;height:1px;opacity:0"></label>
+    <p class="small muted" style="margin:10px 0 4px">or paste it</p>
+    <textarea id="impText" aria-label="Paste your log" style="min-height:160px;font-size:14px" placeholder=${"Sep 20\nBench press 185x8, 185x7, 185x6\nLat pulldown 3x10 @ 120"}>${m3.text || ""}</textarea>
+    ${m3.err ? b`<p class="small" style="color:var(--red);margin:8px 0 0">${m3.err}</p>` : A}
+    <button class="btn block" style="margin-top:10px" data-act="impRead">Read it</button>
+    <p class="small muted hastip" style="margin:10px 0 0" data-tip=${WHAT_TIP}>What can I import?</p>`
+    );
+  }
+  function mapStep(m3) {
+    const tab = m3.tab;
+    const head = tab && tab.rows[0] || [];
+    const opt = (f3, label, need) => b`<label class="field">${label}${need ? "" : b` <span class="muted">(optional)</span>`}<select data-mapf=${f3}><option value="">None</option>${head.map(
+      (h3, i5) => b`<option value=${String(i5)} ?selected=${!!tab && tab.map[f3] === i5}>${String(h3 || "Column " + (i5 + 1)).slice(0, COL_CHARS)}</option>`
+    )}</select></label>`;
+    return frame(
+      "Which column is which?",
+      b`<p class="small muted" style="margin:0 0 8px">The first row is read as column names.</p>${opt("date", "Date", true)}${opt("ex", "Exercise", true)}${opt("w", "Weight, none if bodyweight only")}${opt("r", "Reps", true)}${opt("sets", "Sets")}${opt("rir", "RIR")}${opt("name", "Workout name")}
+      <button class="btn primary block" style="margin-top:10px" data-act="impMapDone">Continue</button>`
+    );
+  }
+  function previewStep(m3) {
+    const r4 = m3.res;
+    const b2 = impBuild(m3);
+    const nSets = b2.sessions.reduce((a2, x2) => a2 + x2.ex.reduce((c4, e5) => c4 + e5.sets.length, 0), 0);
+    const dates = b2.sessions.map((x2) => x2.date).sort();
+    const names = Object.keys(m3.pick);
+    const lib = state.exercises.filter((e5) => !e5.archived).sort((x2, y2) => x2.name.localeCompare(y2.name));
+    const row = (n3) => {
+      const c4 = impMatch(n3);
+      const top = new Set(c4.map((x2) => x2.id));
+      const v3 = m3.pick[n3];
+      const g2 = m3.guess[n3];
+      return b`<div class="imp-ex"><div class="imp-n">${n3}</div><select data-imppick=${n3} aria-label=${`${n3} is`}><option value="new" ?selected=${v3 === "new"}>New exercise</option>${c4.map(
+        (x2) => b`<option value=${x2.id} ?selected=${v3 === x2.id}>${exName(x2.id)}</option>`
+      )}<option disabled>──────</option>${lib.filter((e5) => !top.has(e5.id)).map((e5) => b`<option value=${e5.id} ?selected=${v3 === e5.id}>${e5.name}</option>`)}</select>
+    ${v3 === "new" ? b`<select data-impmus=${n3} aria-label=${`Main muscle for ${n3}`}>${MUSCLES.map(([k2, l4]) => b`<option value=${k2} ?selected=${!!g2 && g2.primary === k2}>${l4}</option>`)}</select>` : A}</div>`;
+    };
+    const unsure = names.filter((n3) => {
+      const c0 = impMatch(n3)[0];
+      return m3.pick[n3] === "new" || !c0 || c0.id !== m3.pick[n3] || c0.sc < SURE_AT;
+    });
+    const sure = names.filter((n3) => !unsure.includes(n3));
+    const noDate = r4.sessions.some((x2) => !x2.date);
+    const nUnread = r4.unreadN || r4.unread && r4.unread.length || 0;
+    const date0 = dates[0], dateN = dates[dates.length - 1];
+    return frame(
+      "Check the import",
+      b`<div class="kpis"><div class="kpi"><div class="v">${b2.sessions.length}</div><div class="l">sessions</div></div><div class="kpi"><div class="v">${nSets}</div><div class="l">sets</div></div><div class="kpi"><div class="v">${names.length}</div><div class="l">exercises</div></div></div>
+  ${date0 ? b`<p class="small muted" style="margin:6px 0 0">${fmtDate(date0)}${dates.length > 1 && dateN ? " to " + fmtDate(dateN) : ""}</p>` : A}
+  ${b2.dup ? b`<p class="small" style="margin:6px 0 0">${b2.dup} already in your log, skipped.</p>` : A}
+  <div style="margin-top:10px"><p class="small muted" style="margin:0 0 6px;font-weight:600">Weights in the file are</p><div class="ob-units">${["lb", "kg"].map(
+        (k2) => b`<button class=${"chip " + (m3.unit === k2 ? "on" : "")} data-act="impUnit" data-v=${k2} aria-pressed=${String(m3.unit === k2)}>${k2}</button>`
+      )}</div>${m3.unitKnown ? A : b`<p class="small muted" style="margin:4px 0 0">It does not say which; check this.</p>`}</div>
+  ${noDate ? b`<label class="field" style="margin-top:10px">No date found. Log it on<input type="date" data-impdate value=${m3.date} max=${today()}></label>` : A}
+  ${unsure.length ? b`<p class="small" style="margin:12px 0 4px;font-weight:650">Check these exercises</p>${unsure.map(row)}` : A}
+  ${sure.length ? b`<details class="subsec" style="margin-top:8px"><summary>${sure.length} matched</summary>${sure.map(row)}</details>` : A}
+  ${nUnread ? b`<details class="subsec" style="margin-top:8px"><summary>${nUnread} line${nUnread === 1 ? "" : "s"} not understood</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">${(r4.unread || []).map((l4) => b`<li>${l4}</li>`)}</ul></details>` : A}
+  ${r4.skipped ? b`<p class="small muted" style="margin:6px 0 0">${r4.skipped} row${r4.skipped === 1 ? "" : "s"} without an exercise, date, or reps were skipped.</p>` : A}${b2.cardio.length ? b`<p class="small" style="margin:6px 0 0">Cardio: ${b2.cardio.length} entr${b2.cardio.length === 1 ? "y" : "ies"} (${andList(
+        b2.cardio.slice(0, SHOWN.cardio).map(
+          (c4) => `${String(CARDIOL[c4.kind]).toLowerCase()} ${fmtDate(c4.date)}, ${c4.min} min${c4.dist ? `, ${distShow(c4.dist)} ${distU()}` : ""}`
+        ),
+        SHOWN.cardio
+      )}${b2.cardio.length > SHOWN.cardio ? ", and more" : ""}). Distances are read in ${m3.unit === "kg" ? "km" : "miles"}, with the unit above.</p>` : A}${b2.cardioNoTime ? b`<p class="small muted" style="margin:6px 0 0">${b2.cardioNoTime} cardio entr${b2.cardioNoTime === 1 ? "y" : "ies"} without a time left out: minutes are needed.</p>` : A}
+  ${b2.bad.length ? b`<p class="small" style="margin:6px 0 0;color:var(--yellow)">Not imported, no weight given: ${andList(b2.bad, SHOWN.bad)}. Write the load in, like 3x10 @ 60, and read it again.</p>` : A}
+  ${b2.odd.length ? b`<p class="small" id="impOdd" style="margin:6px 0 0;color:var(--yellow)">Check these, they look misread: ${andList(b2.odd, SHOWN.odd)}. Fix the line and read it again if they are wrong.</p>` : A}
+  ${b2.timedOff ? b`<p class="small" style="margin:6px 0 0;color:var(--yellow)">${b2.timedOff} timed set${b2.timedOff === 1 ? " was" : "s were"} left out: the exercise chosen counts reps. Pick a timed one to keep them.</p>` : A}
+  ${r4.cut ? b`<p class="small" style="margin:6px 0 0;color:var(--yellow)">Only the first ${IMP_MAX_ROWS.toLocaleString()} rows were read. Split the file to import the rest.</p>` : A}
+  ${b2.sessions.length ? b`<details class="subsec" style="margin-top:8px" id="impRead"><summary>What was read</summary>${b2.sessions.slice(0, SHOWN.sessions).map(
+        (x2) => b`<p class="small" style="margin:8px 0 2px;font-weight:650">${fmtDate(x2.date)}${x2.dayName && x2.dayName !== "Imported" ? " · " + x2.dayName : ""}</p>${x2.ex.map(
+          (e5) => {
+            const known = EX(e5.exId);
+            const exo = known.id === e5.exId && !known.archived ? known : b2.newEx.find((n3) => n3.id === e5.exId) || known;
+            return b`<p class="small muted" style="margin:0">${exo.name}: ${e5.sets.map((q) => (q.warm ? "W " : q.drop ? "D " : "") + setShort(exo, q.w, q.r)).join(", ")}</p>`;
+          }
+        )}`
+      )}${b2.sessions.length > SHOWN.sessions ? b`<p class="small muted">and ${b2.sessions.length - SHOWN.sessions} more</p>` : A}</details>` : A}
+  <button class="btn primary block" style="margin-top:12px" data-act="impGo" ?disabled=${!(b2.sessions.length || b2.cardio.length)}>Import ${b2.sessions.length} session${b2.sessions.length === 1 ? "" : "s"}${b2.cardio.length ? ` and ${b2.cardio.length} cardio` : ""}</button>
+  <button class="btn block" style="margin-top:6px" data-act="impBack">Back</button>`
+    );
+  }
+  function impSheet(m3) {
+    const body = m3.step === "input" ? inputStep2(m3) : m3.res.needMap ? mapStep(m3) : previewStep(m3);
+    return b`${i4(++draws2, body)}`;
+  }
+
+  // src/app/demo.ts
+  var BASE_LB = {
+    bench: 225,
+    incBench: 185,
+    ohp: 135,
+    backSquat: 275,
+    frontSquat: 205,
+    rdl: 245,
+    sldl: 225,
+    rackPull: 365,
+    hackSquat: 315,
+    legPress: 540,
+    bss: 40,
+    hipThrust: 275,
+    goblet: 70,
+    revLunge: 40,
+    dbRdl: 70,
+    slRdl: 40,
+    bbRow: 185,
+    cableRow: 180,
+    machRow: 180,
+    landmineRow: 180,
+    latPulldown: 160,
+    leanAwayLat: 35,
+    pullup: 25,
+    dips: 45,
+    dbRow: 80,
+    csDbRow: 55,
+    dbPullover: 65,
+    seatedDbPress: 60,
+    machPress: 180,
+    machShoulder: 130,
+    incDb: 65,
+    dbBench: 70,
+    cableFly: 35,
+    lowHighFly: 35,
+    pecDeck: 150,
+    cableLateral: 20,
+    dbLateral: 25,
+    cableY: 15,
+    facePull: 50,
+    reversePecDeck: 100,
+    dbRearFly: 20,
+    kelsoShrug: 155,
+    dbShrug: 70,
+    inclineCurl: 30,
+    bayesianCurl: 30,
+    preacher: 80,
+    hammer: 35,
+    dbCurl: 35,
+    reverseCurl: 60,
+    wristCurl: 85,
+    revWristCurl: 45,
+    ohCableExt: 70,
+    jmPress: 135,
+    pressdown: 80,
+    ohDbExt: 50,
+    woodchop: 50,
+    cableCrunch: 120,
+    legExt: 180,
+    adductor: 200,
+    abductor: 200,
+    standCalf: 250,
+    seatedCalf: 160,
+    slCalf: 25,
+    seatedCurl: 130,
+    lyingCurl: 110,
+    tibRaise: 35,
+    neckCurl: 25,
+    neckExt: 45,
+    hyperext: 35
+  };
+  var EQ_LB = {
+    barbell: [185, 65],
+    dumbbell: [60, 25],
+    cable: [150, 45],
+    machine: [180, 100],
+    smith: [185, 95],
+    landmine: [150, 60],
+    other: [50, 50],
+    bodyweight: [0, 0]
+  };
+  var LIFTER = {
+    bw: 185,
+    help: 40,
+    near: 0.9,
+    step: 5,
+    short: 0.15,
+    rir: 1,
+    rirTop: 3,
+    repPct: 2.5,
+    seed: 11
+  };
+  var BACK = { deload: 21, missed: 42 };
+  var DELOAD_RIR = 3;
+  var WEIGH = { days: 56, every: 2, under: 1.5, perDay: 0.03, spread: 1.2, centre: 0.5 };
+  var BAR_EPS = 1e-6;
+  var MEASURE = {
+    before: { arm: 16, forearm: 13.1, chest: 44, waist: 33.5, thigh: 24, calf: 15, neck: 16 },
+    after: { arm: 16.3, forearm: 13.2, chest: 44.4, waist: 33.4, thigh: 24.4, calf: 15.1, neck: 16.2 }
+  };
+  var PCT = 100;
+  var REPS_DEF = 8;
+  var inches = (o3) => Object.fromEntries(Object.entries(o3).map(([k2, v3]) => [k2, v3 * IN]));
+  function makeDemo() {
+    act(() => {
+      state.sessions = state.sessions.filter((s3) => !s3.demo);
+      state.bodyweights = state.bodyweights.filter((b2) => !b2.demo);
+      state.measurements = state.measurements.filter((m3) => !m3.demo);
+      const R2 = activeRoutine();
+      const rnd = mulberry(LIFTER.seed);
+      const eqBase = (e5) => {
+        const c4 = isCompound(e5);
+        const t5 = EQ_LB[e5.equip] || EQ_LB["other"] || [0, 0];
+        return t5[c4 ? 0 : 1];
+      };
+      const BW = LIFTER.bw;
+      const cur = weekStart(today());
+      const t4 = today();
+      const realDates = new Set(state.sessions.map((x2) => x2.date));
+      const realBW = new Set(state.bodyweights.map((x2) => x2.date)), realMeas = new Set(state.measurements.map((x2) => x2.date));
+      const slots = [];
+      if (R2.schedule === "weekly") {
+        for (let k2 = 0; k2 < DEMO_WEEKS; k2++) {
+          const ws = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1 - k2));
+          R2.days.forEach((_2, di) => slots.push({ date: addDays(ws, di), di }));
+        }
+      } else {
+        const start = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1));
+        for (let p3 = 0; ; p3++) {
+          const date = addDays(start, p3);
+          if (date > t4) break;
+          slots.push({ date, di: p3 % R2.days.length });
+        }
+      }
+      const prog = {};
+      const startOf = (e5, it) => {
+        const known = BASE_LB[it.exId];
+        const lb = known != null && known > 0 || e5.bw && known === 0 ? known || 0 : eqBase(e5);
+        if (e5.assist) return { w: -LIFTER.help * LB, reps: null };
+        const step = progStep(e5, it, lb * LB) || LIFTER.step * LB;
+        let w2 = lb > 0 ? Math.max(step, Math.round(lb * LB * LIFTER.near / step) * step) : 0;
+        if (w2 > 0 && platesMode(e5) === "bar" && loadMode(e5) === "total") {
+          const bar2 = exBarKg(e5);
+          if (w2 < bar2 - BAR_EPS) w2 = bar2;
+        }
+        return { w: w2, reps: null };
+      };
+      const dlw = addDays(weekStart(t4), -BACK.deload), msw = addDays(weekStart(t4), -BACK.missed);
+      let msn = 0;
+      for (const sl of slots) {
+        const date = sl.date, di = sl.di, d3 = R2.days[di];
+        if (!d3 || d3.rest || !d3.items.length || date >= t4) continue;
+        if (realDates.has(date)) continue;
+        if (weekStart(date) === msw && msn++ === 1) continue;
+        if (weekStart(date) === dlw) {
+          const ex2 = d3.items.map((it) => {
+            const e5 = EX(it.exId);
+            const key = it.exId + "|" + it.repMin + "-" + it.repMax;
+            const g2 = prog[key] || (prog[key] = Object.assign(startOf(e5, it), {
+              lv: Math.round(((+it.repMin || REPS_DEF) + Math.max(+it.repMin || REPS_DEF, +it.repMax || REPS_DEF)) / 2),
+              n: 0
+            }));
+            const n3 = Math.max(1, Math.ceil(it.sets / 2));
+            const lo = +it.repMin || REPS_DEF;
+            const w2 = e5.assist ? g2.w - (progStep(e5, it, BW * LB) || LIFTER.step * LB) : g2.w > 0 ? lighterLoad(e5, it, g2.w, g2.w * LIFTER.near) : g2.w;
+            return { exId: it.exId, sets: Array.from({ length: n3 }, () => ({ w: w2, r: lo, rir: DELOAD_RIR, warm: false })) };
+          });
+          state.sessions.push(
+            cleanSess(
+              {
+                id: uid(),
+                date,
+                dayIdx: di,
+                dayId: d3.id,
+                dayName: d3.name + " (deload)",
+                routineId: R2.id,
+                ex: ex2,
+                notes: DELOAD_NOTE,
+                deload: true,
+                demo: true
+              },
+              state.sessions.length
+            )
+          );
+          continue;
+        }
+        const ex = d3.items.map((it) => {
+          const e5 = EX(it.exId);
+          const key = it.exId + "|" + it.repMin + "-" + it.repMax;
+          let g2 = prog[key];
+          const lo = +it.repMin || REPS_DEF, hi = Math.max(lo, +it.repMax || lo);
+          const repsAt = (lv, n3) => Array.from({ length: n3 }, (_2, j3) => Math.max(lo, Math.min(hi, lv - (j3 >= 2 && lv < hi ? 1 : 0))));
+          const known = BASE_LB[it.exId];
+          const pureBw = e5.bw && !e5.assist && !(known != null && known > 0);
+          if (!g2) {
+            g2 = prog[key] = Object.assign(startOf(e5, it), { lv: pureBw ? lo : Math.round((lo + hi) / 2), n: 0 });
+          } else if (pureBw) {
+            g2.n++;
+            if (g2.n % 2 === 1) g2.lv = Math.min(hi, g2.lv + 1);
+          } else if (repsAt(g2.lv, it.sets).every((r4) => r4 >= hi) && (e5.assist || g2.w > 0 || !e5.bw)) {
+            const was = (e5.bw ? BW * LB : 0) + g2.w;
+            const step = progStep(e5, it, e5.assist ? BW * LB : was) || LIFTER.step * LB;
+            if (e5.assist) g2.w = Math.min(0, g2.w + step);
+            else g2.w = g2.w + step;
+            g2.lv = Math.max(lo, hi - Math.max(1, Math.round(step / Math.max(was, step) * PCT / LIFTER.repPct)));
+          } else g2.lv++;
+          const reps = repsAt(g2.lv, it.sets);
+          g2.reps = reps;
+          const lastR = reps[reps.length - 1];
+          if (reps.length > 2 && lastR != null && rnd() < LIFTER.short) reps[reps.length - 1] = Math.max(lo, lastR - 1);
+          const rir = Math.max(0, Math.min(LIFTER.rirTop, isNum(+it.rir) ? +it.rir : LIFTER.rir));
+          const w2 = g2.w;
+          const sets = reps.map((r4, j3) => ({
+            w: w2,
+            r: r4,
+            rir: j3 === reps.length - 1 ? Math.max(0, rir - 1) : rir,
+            warm: false
+          }));
+          return { exId: it.exId, sets };
+        });
+        state.sessions.push(
+          cleanSess(
+            { id: uid(), date, dayIdx: di, dayId: d3.id, dayName: d3.name, routineId: R2.id, ex, notes: "", demo: true },
+            state.sessions.length
+          )
+        );
+      }
+      for (let i5 = WEIGH.days; i5 >= 1; i5 -= WEIGH.every) {
+        const date = addDays(t4, -i5);
+        if (realBW.has(date)) continue;
+        state.bodyweights.push({
+          id: uid(),
+          date,
+          kg: (BW - WEIGH.under + (WEIGH.days - i5) * WEIGH.perDay + (rnd() - WEIGH.centre) * WEIGH.spread) * LB,
+          demo: true
+        });
+      }
+      const back2 = addDays(t4, -WEEK_DAYS * DEMO_WEEKS);
+      if (!realMeas.has(back2)) state.measurements.push({ id: uid(), date: back2, ...inches(MEASURE.before), demo: true });
+      const yday = addDays(t4, -1);
+      if (!realMeas.has(yday)) state.measurements.push({ id: uid(), date: yday, ...inches(MEASURE.after), demo: true });
+    });
+  }
+  var DEMO_SAID = 6e3;
+  var DEMO_ACTS = {
+    /* Signed in, the demo would sync into the account (r55.1, the second
+       review of r55); signing out to load it would make the next sign-in a
+       first link, which brings back what other phones deleted meanwhile, so it
+       is not offered. */
+    demoLoad() {
+      if (acct.user) {
+        toast("Demo data is for looking around before you sign in, so it stays off your account.", null, DEMO_SAID);
+        return;
+      }
+      confirmBox(
+        "Load demo data?",
+        "Adds 8 weeks of generated sessions tagged as demo, based on your active routine. Your own logs are not changed.",
+        "Load demo data",
+        () => {
+          const first = demoFirstRun();
+          demoKeep();
+          act(() => {
+            if (first) fitTargets(activeRoutine());
+            if (!cloud.on) cloudStop(true);
+            makeDemo();
+          });
+          ui.tab = "dash";
+          window.scrollTo(0, 0);
+          render();
+          toast("Demo data loaded");
+        }
+      );
+    }
+  };
+
   // src/legacy.js
   (function() {
     "use strict";
     const $2 = (s3, r4 = document) => r4.querySelector(s3);
     setRoot(renderInner);
     setSheets({
-      account: { draw: acctSheet, closed: (m3) => {
-        if (m3.mode === "wait") waitStop();
-        if (m3.mode === "where" && !m3.answered) {
-          const A2 = AUTH();
-          acct.user = null;
-          if (A2) A2.signOut().catch((e5) => log("auth", e5)).then(() => acctRerender());
-        }
-      } },
+      account: { draw: acctSheet, closed: acctClosed },
       install: { draw: installSheet },
       icon: { draw: iconSheet },
       menu: { draw: menuSheet },
@@ -20108,309 +22510,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     syncStart();
     viewStart();
     updateStart();
-    function syncLine() {
-      settingsSyncLine();
-    }
-    function acctRerender() {
-      if ((ui.tab === "settings" || ui.tab === "today") && !ui.modal) rerenderKeepScroll();
-      else syncLine();
-    }
-    const FB_SENT = KEY + ".fbSent";
-    function fbRecent() {
-      try {
-        const a2 = JSON.parse(localStorage.getItem(FB_SENT) || "[]");
-        const cut = Date.now() - 864e5;
-        return Array.isArray(a2) ? a2.filter((t4) => +t4 > cut) : [];
-      } catch (e5) {
-        return [];
-      }
-    }
-    async function fbCheckReader() {
-      const F3 = FB();
-      const was = !!acct.reader;
-      try {
-        acct.reader = !!(F3 && acct.user && typeof F3.isReader === "function" && await F3.isReader());
-      } catch (e5) {
-        log("feedback", e5);
-        acct.reader = false;
-      }
-      if (was !== acct.reader && ui.tab === "settings" && !ui.modal) rerenderKeepScroll();
-    }
-    function fbContext(m3) {
-      const safe = (f3, alt) => {
-        try {
-          return f3();
-        } catch (e5) {
-          return alt;
-        }
-      };
-      const d3 = safe(() => state.draft, null);
-      const ctx = {
-        build: APP_VERSION,
-        version: DISPLAY_VERSION,
-        env: ENV,
-        at: (/* @__PURE__ */ new Date()).toISOString(),
-        device: String(navigator.userAgent || "").slice(0, 300),
-        screen: `${window.innerWidth}x${window.innerHeight} @${window.devicePixelRatio || 1}x`,
-        installed: isStandalone(),
-        theme: state.settings.theme,
-        accent: state.settings.accent || ACCENT0,
-        unit: U(),
-        from: m3.from || ui.tab,
-        exercise: m3.ex || void 0,
-        session: d3 ? { past: !!d3.past, free: !!d3.free, editing: !!d3.editingId, exercises: d3.ex.length } : null,
-        signedIn: !!acct.user,
-        sync: cloud.on ? cloud.status : "off",
-        crash: m3.crash || void 0,
-        counts: safe(() => ({ sessions: state.sessions.filter((x2) => !x2.demo).length, routines: state.routines.length }), null),
-        errors: logBuf.slice(-10)
-      };
-      const bytes = () => safe(() => new TextEncoder().encode(JSON.stringify(ctx)).length, 0);
-      while (ctx.errors.length > 1 && bytes() > FB_CTX_MAX) ctx.errors.shift();
-      if (bytes() > FB_CTX_MAX) ctx.errors = ctx.errors.map(({ s: s3, ...x2 }) => ({ ...x2, m: String(x2.m).slice(0, 100) }));
-      return ctx;
-    }
-    function fbShrink(file) {
-      return new Promise((res, rej) => {
-        const url = URL.createObjectURL(file);
-        const img = new Image();
-        img.onload = () => {
-          try {
-            const L2 = 5e5;
-            let d3 = null;
-            for (const side of [1280, 960, 720]) {
-              const k2 = Math.min(1, side / Math.max(img.naturalWidth, img.naturalHeight));
-              const c4 = document.createElement("canvas");
-              c4.width = Math.max(1, Math.round(img.naturalWidth * k2));
-              c4.height = Math.max(1, Math.round(img.naturalHeight * k2));
-              c4.getContext("2d").drawImage(img, 0, 0, c4.width, c4.height);
-              for (let q = 0.72; q > 0.3; q -= 0.14) {
-                d3 = c4.toDataURL("image/jpeg", q);
-                if (d3.length <= L2) break;
-              }
-              if (d3.length <= L2) break;
-            }
-            URL.revokeObjectURL(url);
-            res(d3 && d3.length <= L2 ? d3 : null);
-          } catch (e5) {
-            URL.revokeObjectURL(url);
-            rej(e5);
-          }
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(url);
-          rej(new Error("Not an image"));
-        };
-        img.src = url;
-      });
-    }
-    const ACCT_WAIT = KEY + ".acctWait";
-    function waitStart(email, pw) {
-      acctWait.email = email;
-      acctWait.pw = pw;
-      acctWait.t = Date.now();
-      try {
-        localStorage.setItem(ACCT_WAIT, JSON.stringify({ t: Date.now() }));
-      } catch (e5) {
-      }
-      waitSchedule();
-    }
-    function waitStop() {
-      clearTimeout(acctWait.timer);
-      acctWait.timer = null;
-      acctWait.pw = "";
-      acctWait.email = "";
-      acctWait.t = 0;
-      try {
-        localStorage.removeItem(ACCT_WAIT);
-      } catch (e5) {
-      }
-    }
-    function waitSchedule() {
-      clearTimeout(acctWait.timer);
-      acctWait.timer = null;
-      if (!acctWait.pw) return;
-      const age = Date.now() - acctWait.t;
-      if (age > 30 * 6e4) {
-        waitStop();
-        const m3 = ui.modal;
-        if (m3 && m3.kind === "account" && m3.mode === "wait") {
-          m3.mode = "signin";
-          m3.needCode = true;
-          m3.err = "Still not confirmed. Type the code from the email, or open its link and sign in here.";
-          renderModal();
-        }
-        return;
-      }
-      acctWait.timer = setTimeout(() => waitTry(false), age < 5 * 6e4 ? 2e4 : 6e4);
-    }
-    async function waitTry(manual) {
-      const A2 = AUTH();
-      if (!A2 || !acctWait.pw || acctWait.busy) return;
-      if (!manual && (document.visibilityState !== "visible" || Date.now() - acctWait.last < 3e3)) {
-        waitSchedule();
-        return;
-      }
-      acctWait.busy = true;
-      acctWait.last = Date.now();
-      const m0 = ui.modal;
-      const sheet = () => {
-        const m3 = ui.modal;
-        return m3 && m3.kind === "account" && m3.mode === "wait" ? m3 : null;
-      };
-      if (manual && sheet()) {
-        m0.busy = true;
-        m0.err = "";
-        renderModal();
-      }
-      try {
-        acct.user = await A2.signIn(acctWait.email, acctWait.pw);
-        waitStop();
-        obOutClear();
-        try {
-          localStorage.removeItem(ACCT_LATER);
-        } catch (e5) {
-        }
-        if (sheet()) ACT.exBack();
-        toast("Email confirmed. Signed in and syncing.");
-        await cloudInit();
-        acctRerender();
-      } catch (e5) {
-        const m3 = sheet();
-        const unconfirmed2 = e5 && (e5.code === "email_not_confirmed" || /Confirm your email/i.test(e5.message || ""));
-        if (!unconfirmed2 && /Wrong email or password/.test(e5 && e5.message || "")) {
-          waitStop();
-          if (m3) {
-            m3.mode = "signin";
-            m3.err = "That password did not work. Sign in with the one you chose.";
-          }
-        } else if (m3 && manual) m3.err = unconfirmed2 ? "Not confirmed yet. Type the code from the email, or open its link." : e5 && e5.message || "Try again.";
-        if (!unconfirmed2) log("auth", e5);
-      } finally {
-        acctWait.busy = false;
-        const m3 = sheet();
-        if (m3) {
-          m3.busy = false;
-          renderModal();
-        }
-        waitSchedule();
-      }
-    }
-    window.addEventListener("focus", () => {
-      if (acctWait.pw) waitTry(false);
-    });
-    window.addEventListener("pageshow", () => {
-      if (acctWait.pw) waitTry(false);
-    });
-    async function acctInit() {
-      const A2 = AUTH();
-      if (!A2) return;
-      A2.onChange((ev, user) => {
-        acct.user = user;
-        if (ev === "PASSWORD_RECOVERY" && !(ui.modal && ui.modal.kind === "account")) openModal({ kind: "account", mode: "newpw", pw: "" });
-        if (ev === "SIGNED_IN" && user && acctWait.pw && !acctWait.coding) {
-          waitStop();
-          const m3 = ui.modal;
-          if (m3 && m3.kind === "account" && m3.mode === "wait") {
-            ACT.exBack();
-            toast("Email confirmed. Signed in and syncing.");
-          }
-        }
-        if (ev === "SIGNED_IN" && !cloud.on) cloudInit();
-        if (ev === "SIGNED_OUT" && cloud.on && !window.claude) cloudStop();
-        if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") fbCheckReader();
-        acctRerender();
-      });
-      acct.user = await A2.user();
-      acct.checked = true;
-      fbCheckReader();
-      const L2 = A2.landing;
-      if (L2 && L2.error) {
-        openModal({ kind: "account", mode: "sent", title: "Link did not work", msg: /expired|invalid/i.test(L2.error) ? "That link has expired or was already used. Ask for a new one." : L2.error });
-      } else if (L2 && L2.type === "recovery") {
-        if (!(ui.modal && ui.modal.kind === "account")) openModal({ kind: "account", mode: "newpw", pw: "" });
-      } else if (L2 && L2.type && !isStandalone()) {
-        let mine = null;
-        try {
-          mine = JSON.parse(localStorage.getItem(ACCT_WAIT) || "null");
-        } catch (e5) {
-        }
-        if (mine && Date.now() - (+mine.t || 0) < 60 * 6e4) {
-          try {
-            localStorage.removeItem(ACCT_WAIT);
-          } catch (e5) {
-          }
-          if (typeof A2.release === "function") A2.release();
-          openModal({ kind: "account", mode: "sent", title: "Email confirmed", msg: "You are signed in. Your log syncs to your account." });
-          cloudInit();
-        } else openModal({ kind: "account", mode: "where", title: "Email confirmed" });
-      }
-      acctRerender();
-    }
-    window.addEventListener("online", () => {
-      if (AUTH() && !cloud.on) cloudInit();
-      else if (cloud.on && cloud.status === "offline") {
-        cloud.retry = 0;
-        clearTimeout(cloud.t);
-        cq(cloudPull);
-      }
-    });
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState !== "visible") return;
-      if (acctWait.pw) {
-        waitTry(false);
-        return;
-      }
-      if (AUTH() && !cloud.on) cloudInit();
-    });
-    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    function fitRecordOld() {
-      const s3 = state.settings;
-      if (s3.bandsFit || s3.profile) return false;
-      const b2 = s3.bands;
-      for (const R2 of [activeRoutine(), starterRoutine(), defaultRoutine()]) {
-        if (!R2) continue;
-        const p3 = plannedSets(R2);
-        const fit = {};
-        let ok = true;
-        for (const m3 of MK) {
-          const d3 = BANDS[m3];
-          const lo = TRACK_ONLY.has(m3) ? d3[0] : Math.min(d3[0], Math.floor(p3[m3] || 0));
-          if (b2[m3][0] !== lo || b2[m3][1] !== d3[1]) {
-            ok = false;
-            break;
-          }
-          if (lo < d3[0]) fit[m3] = lo;
-        }
-        if (ok && Object.keys(fit).length) {
-          s3.bandsFit = fit;
-          return true;
-        }
-      }
-      return false;
-    }
-    function fitTargets(R2, actual) {
-      if (!R2) return false;
-      const b2 = state.settings.bands;
-      const same = (x2) => MK.every((m3) => b2[m3] && b2[m3][0] === x2[m3][0] && b2[m3][1] === x2[m3][1]);
-      const D2 = {};
-      for (const m3 of MK) D2[m3] = defBand(m3);
-      const foc = new Set(prof().focus || []);
-      const fitOf = (r4) => {
-        const p3 = plannedSets(r4);
-        const o3 = {};
-        for (const m3 of MK) o3[m3] = TRACK_ONLY.has(m3) || foc.has(m3) ? D2[m3] : [Math.min(D2[m3][0], Math.floor(p3[m3] || 0)), D2[m3][1]];
-        return o3;
-      };
-      if (!same(D2) && ![starterRoutine(), defaultRoutine()].some((r4) => same(fitOf(r4)))) return false;
-      const was = JSON.stringify(MK.map((m3) => b2[m3]));
-      for (const m3 of MK) b2[m3] = [D2[m3][0], D2[m3][1]];
-      const fit = fitFloors(R2, actual);
-      for (const m3 in fit) if (!foc.has(m3)) b2[m3] = [fit[m3], b2[m3][1]];
-      if (Object.keys(fit).length) state.settings.bandsFit = fit;
-      else delete state.settings.bandsFit;
-      return JSON.stringify(MK.map((m3) => b2[m3])) !== was;
-    }
+    accountStart();
     function swapPlan(p3, fromId, toId, R2, dayId) {
       R2 = R2 || activeRoutine();
       const inR = R2.days.some((d3) => d3.items.some((it) => it.exId === toId));
@@ -20825,742 +22925,6 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
         "Copy all of this and paste it into a spreadsheet. This is not a backup."
       );
     }
-    function impMatch(name) {
-      const a2 = new Set(impNorm(name));
-      if (!a2.size) return [];
-      const out = [];
-      const EQW = { db: "dumbbell", bb: "barbell", cable: "cable", machine: "machine", smith: "smith" };
-      let al = IMP_ALIAS[[...a2].join(" ")];
-      if (!al) {
-        const eq = [...a2].filter((w2) => EQW[w2]);
-        const bare = [...a2].filter((w2) => !EQW[w2]).join(" ");
-        const c4 = IMP_ALIAS[bare];
-        if (c4 && eq.length === 1 && state.exercises.some((e5) => e5.id === c4 && e5.equip === EQW[eq[0]])) al = c4;
-      }
-      if (!(al && state.exercises.some((e5) => e5.id === al && !e5.archived))) al = null;
-      else out.push({ id: al, sc: 1 });
-      const MOD = ["incline", "decline", "reverse", "seated", "standing", "lying", "single", "one", "close", "wide", "front", "rear", "hammer", "preacher", "sumo", "rdl", "hack", "split", "bulgarian", "goblet", "overhead", "assisted", "weighted", "deficit", "pause", "spider", "concentration", "upright", "face"];
-      for (const e5 of state.exercises) {
-        if (e5.archived) continue;
-        const b2 = new Set(impNorm(e5.name));
-        if (!b2.size) continue;
-        let hit = 0;
-        for (const w2 of a2) if (b2.has(w2)) hit++;
-        if (!hit) continue;
-        const union = (/* @__PURE__ */ new Set([...a2, ...b2])).size;
-        let sc = hit / union;
-        const eq = ["db", "bb", "cable", "machine", "smith"];
-        const ea = eq.filter((w2) => a2.has(w2)), eb = eq.filter((w2) => b2.has(w2));
-        if (ea.length && eb.length && !ea.some((w2) => eb.includes(w2))) sc *= 0.5;
-        for (const w2 of MOD) if (a2.has(w2) !== b2.has(w2)) sc *= 0.7;
-        if (e5.id !== al) out.push({ id: e5.id, sc });
-      }
-      return out.sort((x2, y2) => y2.sc - x2.sc).slice(0, 8);
-    }
-    function impFromText(text) {
-      const lines = String(text).split(/\r?\n/);
-      const S4 = [];
-      let cur = null, ex = null, pend = null, hint = null;
-      const unread = [];
-      const day = (date, name) => {
-        if (pend) unread.push(pend.raw);
-        cur = { date, name: name || "", items: [] };
-        S4.push(cur);
-        ex = null;
-        pend = null;
-      };
-      const raw = (v3) => v3;
-      const nextIsName = (i5) => {
-        for (let j3 = i5 + 1; j3 < lines.length; j3++) {
-          const t4 = lines[j3].trim();
-          if (t4) return /^[\s\-•*–]*[a-z]{3,}/i.test(t4) && !impDate(t4);
-        }
-        return true;
-      };
-      const REPS = /^\d{1,2}(\s*[/,]\s*\d{1,2})+$/;
-      for (let li = 0; li < lines.length; li++) {
-        const L0 = lines[li];
-        const L2 = L0.replace(/^[\s\-•*–]+/, "").trim();
-        if (!L2) continue;
-        const under = li > 0 && !!lines[li - 1].trim();
-        if (/\bkgs?\b|\dkg/i.test(L2)) hint = hint || "kg";
-        else if (/\blbs?\b|\dlb|#/i.test(L2)) hint = hint || "lb";
-        const words = L2.split(/\s+/);
-        let dt = impDate(L2);
-        if (dt && (ex || pend) && /^[\d\s/.,-]+$/.test(L2) && !nextIsName(li)) dt = null;
-        const lone = ex && ex.setsText.length && /^\d{2,}(\.\d+)?$/.test(ex.setsText[ex.setsText.length - 1].trim());
-        if (lone && REPS.test(L2)) {
-          ex.setsText[ex.setsText.length - 1] += " " + L2;
-          continue;
-        }
-        if (dt && pend && under && REPS.test(L2)) dt = null;
-        if (dt) {
-          const rest = L2.replace(/\b(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?\b/ig, "").replace(/\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{1,2}(st|nd|rd|th)?\s+[a-z]{3,9}\.?,?(\s*\d{4})?\b|\b[a-z]{3,9}\.?\s+\d{1,2}(st|nd|rd|th)?(,?\s*\d{4})?\b/ig, "").replace(/[,:;\-–|]+/g, " ").trim();
-          if (!/\d/.test(rest)) {
-            day(dt, rest);
-            continue;
-          }
-        }
-        const target = ex || pend;
-        const alone = parseSets(impSetsText(L2), { bw: true }, null, raw);
-        if (alone && target && !/[a-z]{3,}/i.test(L2.replace(/\b(bw|x|at|for|rir|reps?|sets?|of|lbs?|kgs?|sec|secs|seconds)\b/ig, ""))) {
-          const p3 = pend;
-          if (!cur) {
-            pend = null;
-            day(null, "");
-          }
-          if (p3 && target === p3) {
-            ex = { name: p3.name, sets: [], setsText: [] };
-            cur.items.push(ex);
-            pend = null;
-          }
-          ex.setsText.push(L2);
-          continue;
-        }
-        let done = false;
-        for (let i5 = 1; i5 < words.length; i5++) {
-          const name = words.slice(0, i5).join(" ").replace(/[:\-–]+$/, "").trim();
-          const rest = words.slice(i5).join(" ");
-          if (!/[a-z]/i.test(name)) continue;
-          const got = parseSets(impSetsText(rest), { bw: true }, null, raw);
-          if (got) {
-            if (!cur) day(null, "");
-            ex = { name, sets: [], setsText: [rest] };
-            cur.items.push(ex);
-            pend = null;
-            done = true;
-            break;
-          }
-        }
-        if (done) continue;
-        {
-          const g2 = L2.match(/^(.*?[a-z].*?)\s+(\d{2,}(?:\.\d+)?\s*(?:lbs?|kgs?|#)?)$/i);
-          const nx = (lines[li + 1] || "").replace(/^[\s\-•*–]+/, "").trim();
-          if (g2 && REPS.test(nx)) {
-            if (!cur) day(null, "");
-            if (pend) unread.push(pend.raw);
-            pend = null;
-            ex = { name: g2[1].replace(/[:\-–]+$/, "").trim(), sets: [], setsText: [g2[2] + " " + nx] };
-            cur.items.push(ex);
-            li++;
-            continue;
-          }
-        }
-        if (/[a-z]{3,}/i.test(L2) && !/\d{2,}\s*[x×*]/.test(L2)) {
-          if (pend) unread.push(pend.raw);
-          pend = { name: L2.replace(/[:\-–]+$/, "").trim(), raw: L0.trim() };
-          ex = null;
-          continue;
-        }
-        unread.push(L0.trim());
-      }
-      if (pend) unread.push(pend.raw);
-      return { sessions: S4.filter((x2) => x2.items.length).map((x2) => ({ date: x2.date, name: x2.name, items: x2.items })), unit: hint, skipped: 0, cardio: 0, unread: unread.slice(0, 50), unreadN: unread.length, text: true };
-    }
-    function impTextSets(it, exo, conv) {
-      const out = [];
-      let defW = null;
-      for (const t4 of it.setsText) {
-        let st = impSetsText(t4);
-        const lu = /(?:\b|\d)kgs?(?![a-wyz])/i.test(t4) ? "kg" : /(?:\b|\d)lbs?(?![a-wyz])|\d\s*#/i.test(t4) ? "lb" : null;
-        const cv = lu === "kg" ? ((v3) => v3) : lu === "lb" ? ((v3) => v3 * LB) : conv;
-        if (exo.bw && !exo.assist) st = st.replace(/(^|[\s,])(\d{1,2})x(\d{1,3})(?=$|[\s,])/g, (m3, p3, a2, b2) => +a2 <= 10 && !/@/.test(st) ? p3 + Array(+a2).fill("bwx" + b2).join(" ") : m3);
-        else if (!exo.timed && /^\s*[1-5]\s*[x×*]\s*\d{1,3}(\s*,?\s*[1-5]\s*[x×*]\s*\d{1,3})*\s*$/.test(String(t4).toLowerCase())) {
-          if (defW == null) return null;
-          for (const g3 of String(t4).toLowerCase().matchAll(/([1-5])\s*[x×*]\s*(\d{1,3})/g)) for (let k2 = 0; k2 < +g3[1]; k2++) out.push({ w: defW, r: +g3[2], rir: void 0, warm: false, drop: false });
-          continue;
-        }
-        const g2 = parseSets(st, { bw: !!exo.bw || !!exo.timed }, defW, cv);
-        if (!g2) return null;
-        out.push(...g2.map((x2) => ({ w: x2.w, r: x2.r, rir: x2.rir, warm: false, drop: false })));
-        defW = g2[g2.length - 1].w;
-      }
-      return out;
-    }
-    async function impStart(input) {
-      const m3 = { kind: "imp", step: "input", text: "", err: "" };
-      try {
-        let rows = null, text = null;
-        if (input && input.file) {
-          const f3 = input.file;
-          const nm = (f3.name || "").toLowerCase();
-          if (/\.json$/.test(nm) || f3.type === "application/json") {
-            importData(await f3.text());
-            return;
-          }
-          if (/\.xlsx$/.test(nm)) {
-            try {
-              rows = await impXlsx(await f3.arrayBuffer());
-            } catch (e5) {
-              openModal({ ...m3, err: e5 && e5.message === "old" ? "This phone cannot open .xlsx files. Save the sheet as CSV and try again." : "That spreadsheet could not be read. Save it as CSV and try again." });
-              return;
-            }
-          } else if (/\.(xls|numbers|pdf|docx?)$/.test(nm)) {
-            openModal({ ...m3, err: "Save it as CSV (or copy the cells and paste them here) and try again." });
-            return;
-          } else text = await f3.text();
-        } else text = String(input && input.text || "");
-        if (text != null) {
-          const t4 = text.trim();
-          if (!t4) {
-            openModal({ ...m3, err: "Paste your log or choose a file." });
-            return;
-          }
-          if (/^\s*\{/.test(t4) && /"sessions"/.test(t4)) {
-            importData(t4);
-            return;
-          }
-          rows = impRows(t4);
-          if (rows && Object.keys(impHeader(rows[0])).filter((k2) => ["date", "ex", "r", "w"].includes(k2)).length < 2 && !/\t/.test(t4.split(/\r?\n/)[0])) rows = null;
-          if (!rows) {
-            openPreview(impFromText(t4), null);
-            return;
-          }
-        }
-        const map = impHeader(rows[0]);
-        openPreview(map.ex != null && (map.r != null || map.secs != null) && map.w != null && map.date != null ? impFromTable(rows, map) : { sessions: [], needMap: true }, { rows, map });
-      } catch (e5) {
-        log("import", e5);
-        openModal({ ...m3, err: "That could not be read." });
-      }
-    }
-    function openPreview(res, tab) {
-      const names = [...new Set(res.sessions.flatMap((x2) => x2.items.map((i5) => i5.name)))];
-      const pick2 = /* @__PURE__ */ Object.create(null), guess = /* @__PURE__ */ Object.create(null);
-      const ASSISTED = { pullup: "assistPullup", chinup: "assistPullup", dips: "assistDip", triDips: "assistDip" };
-      for (const n3 of names) {
-        const c4 = impMatch(n3);
-        let id = c4[0] && c4[0].sc >= 0.6 ? c4[0].id : "new";
-        const neg = res.sessions.some((x2) => x2.items.some((i5) => i5.name === n3 && i5.sets && i5.sets.some((q) => q.w < 0)));
-        if (neg && id !== "new" && !EX(id).assist) id = ASSISTED[id] && state.exercises.some((e5) => e5.id === ASSISTED[id]) ? ASSISTED[id] : "new";
-        pick2[n3] = id;
-        guess[n3] = impGuess(n3);
-        if (neg && id === "new") guess[n3] = { ...guess[n3], assist: true, equip: "machine" };
-      }
-      openModal({ kind: "imp", step: "preview", res, tab, pick: pick2, guess, unit: res.unit || U(), unitKnown: !!res.unit, date: today(), showAll: false });
-    }
-    function impBuild(m3) {
-      const conv = m3.unit === "kg" ? ((v3) => v3) : ((v3) => v3 * LB);
-      const newEx = /* @__PURE__ */ Object.create(null);
-      const out = [];
-      const ssOf = {};
-      const bad = [];
-      const odd = [];
-      let timedOff = 0;
-      const allTimed = (n3) => m3.res.sessions.every((x2) => x2.items.every((i5) => i5.name !== n3 || i5.sets && i5.sets.length && i5.sets.every((q) => q.timed)));
-      for (const n3 in m3.pick) if (m3.pick[n3] === "new") {
-        const g2 = m3.guess[n3];
-        const e5 = { id: "c_" + uid(), name: n3.slice(0, 60), primary: g2.primary, secondary: [], equip: g2.equip, bw: g2.equip === "bodyweight" || !!g2.assist, rare: false, note: "", custom: true, archived: false };
-        if (g2.assist) e5.assist = true;
-        if (!m3.res.text && allTimed(n3)) e5.timed = true;
-        newEx[n3] = e5;
-      }
-      for (const x2 of m3.res.sessions) {
-        const date = x2.date || m3.date;
-        const ex = [];
-        const sid = uid(), grp = {};
-        for (const it of x2.items) {
-          const exo = m3.pick[it.name] === "new" ? newEx[it.name] : EX(m3.pick[it.name]);
-          if (!it.setsText && !exo.timed && it.sets.some((q) => q.timed)) {
-            timedOff += it.sets.filter((q) => q.timed).length;
-          }
-          let sets = it.setsText ? impTextSets(it, exo, conv) : it.sets.filter((q) => exo.timed || !q.timed).map((s3) => ({ w: s3.u ? s3.u === "kg" ? s3.w : s3.w * LB : conv(s3.w), r: s3.r, rir: s3.rir, warm: s3.warm, drop: s3.drop && !s3.warm }));
-          if (!sets || !sets.length) {
-            if (!bad.includes(it.name)) bad.push(it.name);
-            continue;
-          }
-          for (const q of sets) {
-            if (exo.assist) q.w = -Math.abs(q.w);
-            else if (q.w < 0) q.w = 0;
-          }
-          if (!exo.bw && !exo.timed) {
-            for (const q of sets) if (q.w > 0 && q.w < 2.3 || q.r > 30) {
-              odd.push(`${exo.name} ${fmtW(q.w)} ${U()} x ${q.r}${x2.date ? `, ${fmtDate(x2.date)}` : ""}`);
-              break;
-            }
-          }
-          const prev = ex.find((b2) => b2.exId === exo.id);
-          if (prev) prev.sets.push(...sets);
-          else ex.push({ exId: exo.id, note: it.note || "", rr: null, sets });
-          if (it.ss) grp[exo.id] = it.ss;
-        }
-        if (ex.length && Object.keys(grp).length) ssOf[sid] = grp;
-        if (ex.length) out.push({ id: sid, date, dayIdx: 0, dayId: null, dayName: (x2.name || "").slice(0, 60) || "Imported", routineId: "", free: true, ex, notes: x2.note || "", durMin: x2.durMin || null, deload: !!x2.deload, light: false });
-      }
-      const fp = (ss) => ss.date + "|" + ss.ex.map((b2) => b2.exId + ":" + b2.sets.map((q) => q.r).join(",")).sort().join(";");
-      const have = new Set(state.sessions.map(fp));
-      const seen = /* @__PURE__ */ new Set();
-      const fresh = [];
-      let dup = 0;
-      for (const ss of out) {
-        const k2 = fp(ss);
-        if (have.has(k2) || seen.has(k2)) {
-          dup++;
-          continue;
-        }
-        seen.add(k2);
-        fresh.push(ss);
-      }
-      const cardio = [];
-      let cardioNoTime = 0;
-      for (const c4 of m3.res.cardioRows || []) {
-        const min = c4.min || Math.round(c4.secs / 60);
-        if (!(min > 0)) {
-          cardioNoTime++;
-          continue;
-        }
-        if (state.cardio.some((x2) => x2.date === c4.date && x2.kind === c4.kind && x2.min === min)) {
-          dup++;
-          continue;
-        }
-        cardio.push(cleanCardio({ id: uid(), date: c4.date, kind: c4.kind, min, hr: c4.hr || null, when: c4.when || "solo", note: c4.note || "", dist: c4.km != null ? c4.km : c4.dist > 0 ? m3.unit === "kg" ? c4.dist : c4.dist * KM_MI : null }));
-      }
-      return { sessions: fresh, ssOf, cardio, cardioNoTime, dup, bad, odd, timedOff, newEx: Object.values(newEx).filter((e5) => fresh.some((ss) => ss.ex.some((b2) => b2.exId === e5.id))) };
-    }
-    function routineFromLog(sessions, ssOf) {
-      const all = sessions.filter((x2) => !x2.demo && x2.ex && x2.ex.length);
-      if (!all.length) return null;
-      const byDate = (a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0;
-      const newest = all.reduce((m3, x2) => x2.date > m3 ? x2.date : m3, all[0].date);
-      const rec2 = all.filter((x2) => x2.date >= addDays(newest, 1 - IMPORT_DAYS)).sort(byDate);
-      const I2 = IDX();
-      const tot = {}, off = {};
-      for (const id in I2.byEx) for (const x2 of I2.byEx[id]) {
-        tot[x2.sid] = (tot[x2.sid] || 0) + 1;
-        if (offTarget(x2)) off[x2.sid] = (off[x2.sid] || 0) + 1;
-      }
-      const offS = (x2) => x2.deload || x2.light || tot[x2.id] > 0 && (off[x2.id] || 0) * 2 >= tot[x2.id];
-      const lifts = (x2) => new Set(x2.ex.filter((b2) => b2.sets.some((q) => !q.warm)).map((b2) => b2.exId));
-      const jac = (a2, b2) => {
-        let n3 = 0;
-        for (const v3 of a2) if (b2.has(v3)) n3++;
-        const u4 = a2.size + b2.size - n3;
-        return u4 ? n3 / u4 : 0;
-      };
-      const nm = (x2) => String(x2.dayName || "").trim();
-      const named = !rec2.some((x2) => GENERIC_WORKOUT.test(nm(x2)));
-      let groups = [], pop;
-      if (named) {
-        pop = rec2;
-        const by = /* @__PURE__ */ new Map();
-        for (const x2 of rec2) {
-          const k2 = nm(x2).slice(0, 40).toLowerCase();
-          if (!by.has(k2)) {
-            by.set(k2, { name: nm(x2).slice(0, 40), list: [] });
-            groups.push(by.get(k2));
-          }
-          by.get(k2).list.push(x2);
-        }
-      } else {
-        pop = rec2.filter((x2) => !offS(x2));
-        for (const x2 of pop) {
-          const L3 = lifts(x2);
-          let g2 = null, bj = 0;
-          for (const q of groups) {
-            const j3 = jac(L3, q.ids);
-            if (j3 >= 0.5 && j3 > bj) {
-              g2 = q;
-              bj = j3;
-            }
-          }
-          if (!g2) {
-            g2 = { list: [], ids: L3 };
-            groups.push(g2);
-          }
-          g2.list.push(x2);
-          g2.ids = L3;
-        }
-      }
-      groups = groups.filter((g2) => g2.list.length >= IMPORT_REPEATS);
-      if (!groups.length || groups.length > 7 || groups.reduce((a2, g2) => a2 + g2.list.length, 0) < pop.length * 0.8) return null;
-      groups.sort((a2, b2) => byDate(a2.list[a2.list.length - 1], b2.list[b2.list.length - 1]));
-      if (!named) groups.forEach((g2, i5) => {
-        g2.name = "Day " + String.fromCharCode(65 + i5);
-      });
-      const med = (a2) => median(a2.filter((v3) => v3 != null && isFinite(v3)));
-      const band = (r4) => r4 <= 3 ? [1, 3] : r4 <= 5 ? [3, 5] : r4 <= 8 ? [6, 8] : r4 <= 10 ? [8, 10] : r4 <= 12 ? [10, 12] : r4 <= 15 ? [12, 15] : [15, 20];
-      const work = (b2) => b2.sets.filter((q) => !q.warm && !q.drop);
-      const days = groups.map((g2) => {
-        const full = g2.list.filter((x2) => !offS(x2));
-        const recent = (full.length ? full : g2.list).slice(-3);
-        const latest = recent[recent.length - 1];
-        const cnt = /* @__PURE__ */ new Map();
-        for (const x2 of recent) for (const id of lifts(x2)) cnt.set(id, (cnt.get(id) || 0) + 1);
-        const order = (id) => {
-          for (let k2 = recent.length - 1; k2 >= 0; k2--) {
-            const i5 = recent[k2].ex.findIndex((b2) => b2.exId === id);
-            if (i5 >= 0) return k2 === recent.length - 1 ? i5 : 100 + i5;
-          }
-          return 999;
-        };
-        const ids = [...cnt.keys()].filter((id) => cnt.get(id) * 2 >= recent.length && state.exercises.some((e5) => e5.id === id && !e5.archived)).sort((a2, b2) => order(a2) - order(b2));
-        const items = ids.map((id) => {
-          const ex = EX(id);
-          const it = newItem(id);
-          let b2 = null;
-          for (let k2 = recent.length - 1; k2 >= 0 && !b2; k2--) b2 = recent[k2].ex.find((q2) => q2.exId === id && work(q2).length) || null;
-          if (!b2) return it;
-          const ws = work(b2);
-          it.sets = Math.min(10, Math.max(1, ws.length));
-          if (!ex.timed) {
-            const r4 = med(ws.map((q2) => +q2.r));
-            if (r4 > 0) [it.repMin, it.repMax] = band(r4);
-          }
-          const rt = ws.filter((x2) => x2.rir != null);
-          const q = rt.length * 2 > ws.length ? med(rt.map((x2) => +x2.rir)) : null;
-          if (q != null) it.rir = Math.min(4, Math.max(0, Math.round(q)));
-          return it;
-        });
-        {
-          const sg = ssOf && ssOf[latest.id] || {};
-          const gid = {};
-          for (const it of items) {
-            const k2 = sg[it.exId];
-            if (k2 && items.filter((o3) => sg[o3.exId] === k2).length > 1) it.ss = gid[k2] || (gid[k2] = uid());
-          }
-        }
-        return { g: g2, day: { id: uid(), name: g2.name, rest: false, items }, ids: lifts(latest) };
-      }).filter((d3) => d3.day.items.length);
-      if (!days.length) return null;
-      const span = Math.max(7, daysBetween(rec2[0].date, newest) + 1);
-      const perWeek = Math.min(7, Math.max(1, Math.round(rec2.length / (span / 7))));
-      const reps = perWeek >= days.length * 2 ? Math.min(3, Math.floor(perWeek / days.length)) : 1;
-      const seq = [];
-      for (let r4 = 0; r4 < reps; r4++) days.forEach((d3) => seq.push(r4 ? { ...d3.day, id: uid(), items: d3.day.items.map((it) => ({ ...it, uid: uid() })) } : d3.day));
-      const K2 = seq.length;
-      const L2 = Math.min(14, Math.max(K2, Math.round(7 * K2 / perWeek)));
-      let rest = L2 - K2;
-      const cyc = [];
-      const restDay = () => ({ id: uid(), name: "Rest", rest: true, items: [] });
-      const K0 = days.length;
-      seq.forEach((day, i5) => {
-        cyc.push(day);
-        let k2 = 0;
-        if (reps > 1) {
-          if ((i5 + 1) % K0 === 0) {
-            const roundsLeft = reps - (i5 + 1) / K0 + 1;
-            k2 = Math.floor(rest / roundsLeft);
-          }
-        } else {
-          const left = K2 - i5 - 1;
-          k2 = left ? Math.floor(rest / (left + 1)) : rest;
-        }
-        for (let j3 = 0; j3 < k2; j3++) cyc.push(restDay());
-        rest -= k2;
-      });
-      const dayFor = (x2) => {
-        if (named) {
-          const k2 = nm(x2).slice(0, 40).toLowerCase();
-          const d3 = days.find((q) => q.g.name.toLowerCase() === k2);
-          return d3 ? d3.day : null;
-        }
-        const L3 = lifts(x2);
-        let best = null, bj = 0;
-        for (const d3 of days) {
-          const j3 = jac(L3, d3.ids);
-          if (j3 >= 0.5 && j3 > bj) {
-            best = d3.day;
-            bj = j3;
-          }
-        }
-        return best;
-      };
-      return { routine: { id: uid(), name: "From your log", schedule: "cycle", days: cyc }, perWeek, dayFor };
-    }
-    function impSheet(m3) {
-      const H2 = (t4) => `<div class="sheet fixed" role="dialog" aria-modal="true" aria-labelledby="impH"><div class="sheet-h"><h3 id="impH">${t4}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><div class="sheet-scroll">`;
-      if (m3.step === "input") return H2("Import workouts") + `<p class="small muted" style="margin:0 0 8px">Notes, a spreadsheet, or an export from another app. Nothing is saved until you check it.</p>
-    <label class="btn primary block" style="position:relative">Choose a file<input type="file" id="impFile" accept=".csv,.tsv,.txt,.xlsx,.json,text/csv,text/plain,application/json" style="position:absolute;width:1px;height:1px;opacity:0"></label>
-    <p class="small muted" style="margin:10px 0 4px">or paste it</p>
-    <textarea id="impText" aria-label="Paste your log" style="min-height:160px;font-size:14px" placeholder="Sep 20&#10;Bench press 185x8, 185x7, 185x6&#10;Lat pulldown 3x10 @ 120">${esc(m3.text || "")}</textarea>
-    ${m3.err ? `<p class="small" style="color:var(--red);margin:8px 0 0">${esc(m3.err)}</p>` : ""}
-    <button class="btn block" style="margin-top:10px" data-act="impRead">Read it</button>
-    <p class="small muted hastip" style="margin:10px 0 0" data-tip="Notes: a date on its own line, then one exercise per line with its sets (185x8, 185x7, or 3x10 @ 120). A spreadsheet: a file, or copy the cells and paste them, with columns such as date, exercise, weight, and reps. Another app: export your workouts as a CSV file from its settings, then choose that file here. Handwritten: photograph the page, open it in Photos, press and hold the writing, tap Copy, and paste it here. A backup file from ${APP_NAME} restores your whole log instead.">What can I import?</p></div></div>`;
-      const r4 = m3.res;
-      if (r4.needMap) {
-        const head = m3.tab.rows[0];
-        const opt = (f3, label, need) => `<label class="field">${label}${need ? "" : ' <span class="muted">(optional)</span>'}<select data-mapf="${f3}"><option value="">None</option>${head.map((h3, i5) => `<option value="${i5}" ${m3.tab.map[f3] === i5 ? "selected" : ""}>${esc(String(h3 || "Column " + (i5 + 1)).slice(0, 30))}</option>`).join("")}</select></label>`;
-        return H2("Which column is which?") + `<p class="small muted" style="margin:0 0 8px">The first row is read as column names.</p>${opt("date", "Date", 1)}${opt("ex", "Exercise", 1)}${opt("w", "Weight, none if bodyweight only")}${opt("r", "Reps", 1)}${opt("sets", "Sets")}${opt("rir", "RIR")}${opt("name", "Workout name")}
-      <button class="btn primary block" style="margin-top:10px" data-act="impMapDone">Continue</button></div></div>`;
-      }
-      const b2 = impBuild(m3);
-      const nSets = b2.sessions.reduce((a2, x2) => a2 + x2.ex.reduce((c4, e5) => c4 + e5.sets.length, 0), 0);
-      const dates = b2.sessions.map((x2) => x2.date).sort();
-      const names = Object.keys(m3.pick);
-      const lib = state.exercises.filter((e5) => !e5.archived).sort((x2, y2) => x2.name.localeCompare(y2.name));
-      const row = (n3) => {
-        const c4 = impMatch(n3);
-        const top = new Set(c4.map((x2) => x2.id));
-        const v3 = m3.pick[n3];
-        return `<div class="imp-ex"><div class="imp-n">${esc(n3)}</div><select data-imppick="${esc(n3)}" aria-label="${esc(n3)} is">${`<option value="new" ${v3 === "new" ? "selected" : ""}>New exercise</option>`}${c4.map((x2) => `<option value="${x2.id}" ${v3 === x2.id ? "selected" : ""}>${esc(exName(x2.id))}</option>`).join("")}<option disabled>──────</option>${lib.filter((e5) => !top.has(e5.id)).map((e5) => `<option value="${e5.id}" ${v3 === e5.id ? "selected" : ""}>${esc(e5.name)}</option>`).join("")}</select>
-    ${v3 === "new" ? `<select data-impmus="${esc(n3)}" aria-label="Main muscle for ${esc(n3)}">${MUSCLES.map(([k2, l4]) => `<option value="${k2}" ${m3.guess[n3].primary === k2 ? "selected" : ""}>${l4}</option>`).join("")}</select>` : ""}</div>`;
-      };
-      const unsure = names.filter((n3) => {
-        const c4 = impMatch(n3);
-        return m3.pick[n3] === "new" || !c4[0] || c4[0].id !== m3.pick[n3] || c4[0].sc < 0.85;
-      });
-      const sure = names.filter((n3) => !unsure.includes(n3));
-      const noDate = r4.sessions.some((x2) => !x2.date);
-      return H2("Check the import") + `<div class="kpis"><div class="kpi"><div class="v">${b2.sessions.length}</div><div class="l">sessions</div></div><div class="kpi"><div class="v">${nSets}</div><div class="l">sets</div></div><div class="kpi"><div class="v">${names.length}</div><div class="l">exercises</div></div></div>
-  ${dates.length ? `<p class="small muted" style="margin:6px 0 0">${fmtDate(dates[0])}${dates.length > 1 ? " to " + fmtDate(dates[dates.length - 1]) : ""}</p>` : ""}
-  ${b2.dup ? `<p class="small" style="margin:6px 0 0">${b2.dup} already in your log, skipped.</p>` : ""}
-  <div style="margin-top:10px"><p class="small muted" style="margin:0 0 6px;font-weight:600">Weights in the file are</p><div class="ob-units">${["lb", "kg"].map((k2) => `<button class="chip ${m3.unit === k2 ? "on" : ""}" data-act="impUnit" data-v="${k2}" aria-pressed="${m3.unit === k2}">${k2}</button>`).join("")}</div>${m3.unitKnown ? "" : '<p class="small muted" style="margin:4px 0 0">It does not say which; check this.</p>'}</div>
-  ${noDate ? `<label class="field" style="margin-top:10px">No date found. Log it on<input type="date" data-impdate value="${m3.date}" max="${today()}"></label>` : ""}
-  ${unsure.length ? `<p class="small" style="margin:12px 0 4px;font-weight:650">Check these exercises</p>${unsure.map(row).join("")}` : ""}
-  ${sure.length ? `<details class="subsec" style="margin-top:8px"><summary>${sure.length} matched</summary>${sure.map(row).join("")}</details>` : ""}
-  ${r4.unreadN || r4.unread && r4.unread.length ? `<details class="subsec" style="margin-top:8px"><summary>${r4.unreadN || r4.unread.length} line${(r4.unreadN || r4.unread.length) === 1 ? "" : "s"} not understood</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">${r4.unread.map((l4) => `<li>${esc(l4)}</li>`).join("")}</ul></details>` : ""}
-  ${r4.skipped ? `<p class="small muted" style="margin:6px 0 0">${r4.skipped} row${r4.skipped === 1 ? "" : "s"} without an exercise, date, or reps were skipped.</p>` : ""}${b2.cardio.length ? `<p class="small" style="margin:6px 0 0">Cardio: ${b2.cardio.length} entr${b2.cardio.length === 1 ? "y" : "ies"} (${esc(andList(b2.cardio.slice(0, 3).map((c4) => `${CARDIOL[c4.kind].toLowerCase()} ${fmtDate(c4.date)}, ${c4.min} min${c4.dist ? `, ${distShow(c4.dist)} ${distU()}` : ""}`), 3))}${b2.cardio.length > 3 ? ", and more" : ""}). Distances are read in ${m3.unit === "kg" ? "km" : "miles"}, with the unit above.</p>` : ""}${b2.cardioNoTime ? `<p class="small muted" style="margin:6px 0 0">${b2.cardioNoTime} cardio entr${b2.cardioNoTime === 1 ? "y" : "ies"} without a time left out: minutes are needed.</p>` : ""}
-  ${b2.bad.length ? `<p class="small" style="margin:6px 0 0;color:var(--yellow)">Not imported, no weight given: ${esc(andList(b2.bad, 8))}. Write the load in, like 3x10 @ 60, and read it again.</p>` : ""}
-  ${b2.odd.length ? `<p class="small" id="impOdd" style="margin:6px 0 0;color:var(--yellow)">Check these, they look misread: ${esc(andList(b2.odd, 4))}. Fix the line and read it again if they are wrong.</p>` : ""}
-  ${b2.timedOff ? `<p class="small" style="margin:6px 0 0;color:var(--yellow)">${b2.timedOff} timed set${b2.timedOff === 1 ? " was" : "s were"} left out: the exercise chosen counts reps. Pick a timed one to keep them.</p>` : ""}
-  ${r4.cut ? `<p class="small" style="margin:6px 0 0;color:var(--yellow)">Only the first ${IMP_MAX_ROWS.toLocaleString()} rows were read. Split the file to import the rest.</p>` : ""}
-  ${b2.sessions.length ? `<details class="subsec" style="margin-top:8px" id="impRead"><summary>What was read</summary>${b2.sessions.slice(0, 40).map((x2) => `<p class="small" style="margin:8px 0 2px;font-weight:650">${fmtDate(x2.date)}${x2.dayName && x2.dayName !== "Imported" ? " · " + esc(x2.dayName) : ""}</p>${x2.ex.map((e5) => {
-        const exo = EX(e5.exId).id === e5.exId && !EX(e5.exId).archived ? EX(e5.exId) : b2.newEx.find((n3) => n3.id === e5.exId) || EX(e5.exId);
-        return `<p class="small muted" style="margin:0">${esc(exo.name)}: ${e5.sets.map((q) => (q.warm ? "W " : q.drop ? "D " : "") + setShort(exo, q.w, q.r)).join(", ")}</p>`;
-      }).join("")}`).join("")}${b2.sessions.length > 40 ? `<p class="small muted">and ${b2.sessions.length - 40} more</p>` : ""}</details>` : ""}
-  <button class="btn primary block" style="margin-top:12px" data-act="impGo" ${b2.sessions.length || b2.cardio.length ? "" : "disabled"}>Import ${b2.sessions.length} session${b2.sessions.length === 1 ? "" : "s"}${b2.cardio.length ? ` and ${b2.cardio.length} cardio` : ""}</button>
-  <button class="btn block" style="margin-top:6px" data-act="impBack">Back</button></div></div>`;
-    }
-    async function liveLogFetch() {
-      let local = null;
-      try {
-        const raw = localStorage.getItem(`${STORAGE_ID}.v1`);
-        if (raw) local = normalize(JSON.parse(raw));
-      } catch (e5) {
-        log("preview-copy", e5);
-        local = null;
-      }
-      let remote = null, err = null;
-      if (typeof window.ironlogLiveDocs === "function" && acct.user) {
-        try {
-          const parts = {};
-          for (const d3 of await window.ironlogLiveDocs()) {
-            if (!isChunkId(d3.id) || !d3.data || typeof d3.data.json !== "string") continue;
-            try {
-              parts[d3.id] = JSON.parse(d3.data.json);
-            } catch (e5) {
-              log("preview-copy", { message: `${d3.id} could not be read and is left out`, stack: e5 && e5.stack });
-            }
-          }
-          if (Object.keys(parts).length) remote = assemble(parts);
-        } catch (e5) {
-          err = e5;
-        }
-      }
-      const best = [local, remote].filter(Boolean).sort((a2, b2) => realCount(b2) - realCount(a2))[0] || null;
-      return { st: best && realCount(best) ? best : null, err };
-    }
-    function previewCopyBtn(cls) {
-      return ENV === "preview" ? `<button class="btn ${cls || ""}" data-act="previewCopy">Copy my log in</button>` : "";
-    }
-    function importData(text, after2) {
-      let obj;
-      try {
-        obj = JSON.parse(text);
-      } catch (e5) {
-        toast("That is not valid backup text");
-        return;
-      }
-      const s3 = obj && obj.state ? obj.state : obj;
-      if (!s3 || typeof s3 !== "object" || !Array.isArray(s3.exercises) || !Array.isArray(s3.routines) || !Array.isArray(s3.sessions)) {
-        toast(`That file is not a backup from ${APP_NAME}`);
-        return;
-      }
-      let clean;
-      try {
-        clean = normalize(s3);
-      } catch (e5) {
-        toast("That backup could not be read");
-        return;
-      }
-      const dropped = normalize.dropped;
-      if (!clean.sessions.length && s3.sessions.length) {
-        toast("No readable sessions in that backup");
-        return;
-      }
-      const body = `This backup has ${clean.sessions.length} session${clean.sessions.length === 1 ? "" : "s"} and ${clean.routines.length} routine${clean.routines.length === 1 ? "" : "s"}.` + (dropped ? ` ${dropped} damaged record${dropped === 1 ? " was" : "s were"} skipped.` : "") + " It will replace everything currently in the app. You can step this back with Undo.";
-      confirmBox("Replace all data?", body, "Replace my data", () => {
-        snapshot();
-        setState(clean);
-        if (!cloud.on) cloudStop(true);
-        commit();
-        closeModal();
-        ui.tab = "today";
-        render();
-        toast("Backup imported", true);
-        if (after2) after2();
-      }, true);
-    }
-    function makeDemo() {
-      state.sessions = state.sessions.filter((s3) => !s3.demo);
-      state.bodyweights = state.bodyweights.filter((b2) => !b2.demo);
-      state.measurements = state.measurements.filter((m3) => !m3.demo);
-      const R2 = activeRoutine();
-      const rnd = mulberry(11);
-      const base = {
-        bench: 225,
-        incBench: 185,
-        ohp: 135,
-        backSquat: 275,
-        frontSquat: 205,
-        rdl: 245,
-        sldl: 225,
-        rackPull: 365,
-        hackSquat: 315,
-        legPress: 540,
-        bss: 40,
-        hipThrust: 275,
-        goblet: 70,
-        revLunge: 40,
-        dbRdl: 70,
-        slRdl: 40,
-        bbRow: 185,
-        cableRow: 180,
-        machRow: 180,
-        landmineRow: 180,
-        latPulldown: 160,
-        leanAwayLat: 35,
-        pullup: 25,
-        dips: 45,
-        dbRow: 80,
-        csDbRow: 55,
-        dbPullover: 65,
-        seatedDbPress: 60,
-        machPress: 180,
-        machShoulder: 130,
-        incDb: 65,
-        dbBench: 70,
-        cableFly: 35,
-        lowHighFly: 35,
-        pecDeck: 150,
-        cableLateral: 20,
-        dbLateral: 25,
-        cableY: 15,
-        facePull: 50,
-        reversePecDeck: 100,
-        dbRearFly: 20,
-        kelsoShrug: 155,
-        dbShrug: 70,
-        inclineCurl: 30,
-        bayesianCurl: 30,
-        preacher: 80,
-        hammer: 35,
-        dbCurl: 35,
-        reverseCurl: 60,
-        wristCurl: 85,
-        revWristCurl: 45,
-        ohCableExt: 70,
-        jmPress: 135,
-        pressdown: 80,
-        ohDbExt: 50,
-        woodchop: 50,
-        cableCrunch: 120,
-        legExt: 180,
-        adductor: 200,
-        abductor: 200,
-        standCalf: 250,
-        seatedCalf: 160,
-        slCalf: 25,
-        seatedCurl: 130,
-        lyingCurl: 110,
-        tibRaise: 35,
-        neckCurl: 25,
-        neckExt: 45,
-        hyperext: 35
-      };
-      const eqBase = (e5) => {
-        const c4 = isCompound(e5);
-        return { barbell: c4 ? 185 : 65, dumbbell: c4 ? 60 : 25, cable: c4 ? 150 : 45, machine: c4 ? 180 : 100, smith: c4 ? 185 : 95, landmine: c4 ? 150 : 60, other: 50, bodyweight: 0 }[e5.equip] ?? 50;
-      };
-      const BW = 185;
-      const cur = weekStart(today());
-      const t4 = today();
-      const realDates = new Set(state.sessions.map((x2) => x2.date));
-      const realBW = new Set(state.bodyweights.map((x2) => x2.date)), realMeas = new Set(state.measurements.map((x2) => x2.date));
-      const slots = [];
-      if (R2.schedule === "weekly") {
-        for (let k2 = 0; k2 < DEMO_WEEKS; k2++) {
-          const ws = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1 - k2));
-          R2.days.forEach((d3, di) => slots.push({ date: addDays(ws, di), di }));
-        }
-      } else {
-        const start = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1));
-        for (let p3 = 0; ; p3++) {
-          const date = addDays(start, p3);
-          if (date > t4) break;
-          slots.push({ date, di: p3 % R2.days.length });
-        }
-      }
-      const prog = {};
-      const startOf = (e5, it) => {
-        const lb = base[it.exId] > 0 || e5.bw && base[it.exId] === 0 ? base[it.exId] : eqBase(e5);
-        if (e5.assist) return { w: -40 * LB, reps: null };
-        const step = progStep(e5, it, lb * LB) || 5 * LB;
-        let w2 = lb > 0 ? Math.max(step, Math.round(lb * LB * 0.9 / step) * step) : 0;
-        if (w2 > 0 && platesMode(e5) === "bar" && loadMode(e5) === "total") {
-          const bar2 = exBarKg(e5);
-          if (w2 < bar2 - 1e-6) w2 = bar2;
-        }
-        return { w: w2, reps: null };
-      };
-      const dlw = addDays(weekStart(t4), -21), msw = addDays(weekStart(t4), -42);
-      let msn = 0;
-      for (const sl of slots) {
-        const date = sl.date, di = sl.di, d3 = R2.days[di];
-        if (d3.rest || !d3.items.length || date >= t4) continue;
-        if (realDates.has(date)) continue;
-        if (weekStart(date) === msw && msn++ === 1) continue;
-        if (weekStart(date) === dlw) {
-          const ex2 = d3.items.map((it) => {
-            const e5 = EX(it.exId);
-            const key = it.exId + "|" + it.repMin + "-" + it.repMax;
-            const g2 = prog[key] || (prog[key] = Object.assign(startOf(e5, it), { lv: Math.round(((+it.repMin || 8) + Math.max(+it.repMin || 8, +it.repMax || 8)) / 2), n: 0 }));
-            const n3 = Math.max(1, Math.ceil(it.sets / 2));
-            const lo = +it.repMin || 8;
-            const w2 = e5.assist ? g2.w - (progStep(e5, it, BW * LB) || 5 * LB) : g2.w > 0 ? lighterLoad(e5, it, g2.w, g2.w * 0.9) : g2.w;
-            return { exId: it.exId, sets: Array.from({ length: n3 }, () => ({ w: w2, r: lo, rir: 3, warm: false })) };
-          });
-          state.sessions.push({ id: uid(), date, dayIdx: di, dayId: d3.id, dayName: d3.name + " (deload)", routineId: R2.id, ex: ex2, notes: DELOAD_NOTE, deload: true, demo: true });
-          continue;
-        }
-        const ex = d3.items.map((it) => {
-          const e5 = EX(it.exId);
-          const key = it.exId + "|" + it.repMin + "-" + it.repMax;
-          let g2 = prog[key];
-          const lo = +it.repMin || 8, hi = Math.max(lo, +it.repMax || lo);
-          const repsAt = (lv, n3) => Array.from({ length: n3 }, (_2, j3) => Math.max(lo, Math.min(hi, lv - (j3 >= 2 && lv < hi ? 1 : 0))));
-          const pureBw = e5.bw && !e5.assist && !(base[it.exId] > 0);
-          if (!g2) {
-            g2 = prog[key] = startOf(e5, it);
-            g2.lv = pureBw ? lo : Math.round((lo + hi) / 2);
-            g2.n = 0;
-          } else if (pureBw) {
-            g2.n++;
-            if (g2.n % 2 === 1) g2.lv = Math.min(hi, g2.lv + 1);
-          } else if (repsAt(g2.lv, it.sets).every((r4) => r4 >= hi) && (e5.assist || g2.w > 0 || !e5.bw)) {
-            const was = (e5.bw ? BW * LB : 0) + g2.w;
-            const step = progStep(e5, it, e5.assist ? BW * LB : was) || 5 * LB;
-            if (e5.assist) g2.w = Math.min(0, g2.w + step);
-            else g2.w = g2.w + step;
-            g2.lv = Math.max(lo, hi - Math.max(1, Math.round(step / Math.max(was, step) * 100 / 2.5)));
-          } else g2.lv++;
-          g2.reps = repsAt(g2.lv, it.sets);
-          if (g2.reps.length > 2 && rnd() < 0.15) g2.reps[g2.reps.length - 1] = Math.max(lo, g2.reps[g2.reps.length - 1] - 1);
-          const rir = Math.max(0, Math.min(3, isNum(+it.rir) ? +it.rir : 1));
-          const sets = g2.reps.map((r4, j3) => ({ w: g2.w, r: r4, rir: j3 === g2.reps.length - 1 ? Math.max(0, rir - 1) : rir, warm: false }));
-          return { exId: it.exId, sets };
-        });
-        state.sessions.push({ id: uid(), date, dayIdx: di, dayId: d3.id, dayName: d3.name, routineId: R2.id, ex, notes: "", demo: true });
-      }
-      for (let i5 = 56; i5 >= 1; i5 -= 2) {
-        const date = addDays(t4, -i5);
-        if (realBW.has(date)) continue;
-        state.bodyweights.push({ id: uid(), date, kg: (BW - 1.5 + (56 - i5) * 0.03 + (rnd() - 0.5) * 1.2) * LB, demo: true });
-      }
-      if (!realMeas.has(addDays(t4, -WEEK_DAYS * DEMO_WEEKS))) state.measurements.push({ id: uid(), date: addDays(t4, -WEEK_DAYS * DEMO_WEEKS), arm: 16 * IN, forearm: 13.1 * IN, chest: 44 * IN, waist: 33.5 * IN, thigh: 24 * IN, calf: 15 * IN, neck: 16 * IN, demo: true });
-      if (!realMeas.has(addDays(t4, -1))) state.measurements.push({ id: uid(), date: addDays(t4, -1), arm: 16.3 * IN, forearm: 13.2 * IN, chest: 44.4 * IN, waist: 33.4 * IN, thigh: 24.4 * IN, calf: 15.1 * IN, neck: 16.2 * IN, demo: true });
-      commit();
-    }
     function pastDraft(date, di) {
       const R2 = activeRoutine();
       const day = di == null ? null : R2.days[di];
@@ -21579,11 +22943,10 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       ...MAP_ACTS,
       ...WORKOUT_ACTS,
       ...UPDATE_ACTS,
-      async acctRetry() {
-        await cloudInit();
-        acctRerender();
-        if (!cloud.on) toast("Still not syncing. Check your connection, or sign out and in again.");
-      },
+      ...ACCOUNT_ACTS,
+      ...REPORT_ACTS,
+      ...IMPORT_ACTS,
+      ...DEMO_ACTS,
       iconHow() {
         openModal({ kind: "icon" });
       },
@@ -21690,301 +23053,6 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
           return;
         }
         openModal({ kind: "install", how });
-      },
-      acctOpen(t4) {
-        openModal({ kind: "account", mode: t4.dataset.mode === "signup" ? "signup" : "signin", email: "", pw: "", back: ui.modal && ui.modal.kind === "feedback" ? ui.modal : void 0 });
-      },
-      // from a problem report, signing in goes back to it (r55, the audit: the report and what was typed in it were gone)
-      acctMode(t4) {
-        const m3 = ui.modal;
-        if (!m3 || m3.kind !== "account") return;
-        if (m3.mode === "wait") waitStop();
-        m3.mode = t4.dataset.mode;
-        m3.err = "";
-        m3.pw = "";
-        renderModal();
-      },
-      acctWaitNow() {
-        waitTry(true);
-      },
-      /* Confirm sign-up with the emailed code (r45). This action owns success:
-         the poll is held off while it runs, and the sign-in event's own wait
-         branch stands aside (acctWait.coding), so nothing toasts or syncs twice.
-         A code fails when the emailed link was opened first (it used the code up),
-         so the password is tried once before the error is shown. */
-      async acctCode() {
-        const m3 = ui.modal, A2 = AUTH();
-        if (!m3 || m3.kind !== "account" || m3.busy || !A2 || !A2.verifyCode) return;
-        for (const el of document.querySelectorAll("#modal [data-abind]")) m3[el.dataset.abind] = el.value;
-        if (acctWait.busy) {
-          m3.busy = true;
-          renderModal();
-          for (let i5 = 0; i5 < 50 && acctWait.busy; i5++) await new Promise((r4) => setTimeout(r4, 100));
-          m3.busy = false;
-          if (acct.user || ui.modal !== m3) return;
-          if (acctWait.busy) {
-            m3.err = "Still checking. Try again in a moment.";
-            renderModal();
-            return;
-          }
-        }
-        const email = String(m3.email || acctWait.email || "").trim().toLowerCase();
-        const pw = acctWait.pw || String(m3.pw || "");
-        if (!EMAIL_RE.test(email)) {
-          m3.err = "Enter your email address.";
-          renderModal();
-          return;
-        }
-        clearTimeout(acctWait.timer);
-        acctWait.timer = null;
-        acctWait.busy = true;
-        acctWait.coding = true;
-        m3.busy = true;
-        m3.err = "";
-        renderModal();
-        const ok = (user) => {
-          acct.user = user;
-          waitStop();
-          obOutClear();
-          try {
-            localStorage.removeItem(ACCT_LATER);
-          } catch (e5) {
-          }
-          if (ui.modal === m3) ACT.exBack();
-          toast("Email confirmed. Signed in and syncing.");
-          if (!cloud.on) cloudInit();
-          acctRerender();
-        };
-        try {
-          ok(await A2.verifyCode(email, m3.code));
-        } catch (e5) {
-          let done = false;
-          if (pw && e5 && e5.code !== "no_code") {
-            try {
-              ok(await A2.signIn(email, pw));
-              done = true;
-            } catch (e22) {
-            }
-          }
-          if (!done) {
-            log("auth", e5);
-            if (ui.modal === m3) m3.err = e5 && e5.message || "Something went wrong. Try again.";
-          }
-        } finally {
-          acctWait.busy = false;
-          acctWait.coding = false;
-          if (ui.modal === m3) {
-            m3.busy = false;
-            renderModal();
-          }
-          waitSchedule();
-        }
-      },
-      async acctResend() {
-        const m3 = ui.modal, A2 = AUTH();
-        if (!m3 || m3.kind !== "account" || m3.busy || !A2 || !A2.resendCode) return;
-        for (const el of document.querySelectorAll("#modal [data-abind]")) m3[el.dataset.abind] = el.value;
-        const email = String(m3.email || acctWait.email || "").trim().toLowerCase();
-        if (!EMAIL_RE.test(email)) {
-          m3.err = "Enter your email address.";
-          renderModal();
-          return;
-        }
-        m3.busy = true;
-        m3.err = "";
-        renderModal();
-        try {
-          await A2.resendCode(email);
-          m3.code = "";
-          toast("A new email is on its way. Use its code.");
-        } catch (e5) {
-          log("auth", e5);
-          m3.err = e5 && e5.message || "Something went wrong. Try again.";
-        } finally {
-          if (ui.modal === m3) {
-            m3.busy = false;
-            renderModal();
-          }
-        }
-      },
-      /* The answer on a browser that opened the confirmation link (item 61b). */
-      async acctWhere(t4) {
-        const m3 = ui.modal, A2 = AUTH();
-        if (!m3 || m3.kind !== "account" || m3.mode !== "where" || !A2) return;
-        m3.answered = true;
-        if (t4.dataset.v === "here") {
-          if (typeof A2.release === "function") A2.release();
-          closeModal();
-          toast("Signed in here. Syncing your log.");
-          await cloudInit();
-          acctRerender();
-          return;
-        }
-        try {
-          await A2.signOut();
-        } catch (e5) {
-          log("auth", e5);
-        }
-        acct.user = null;
-        ui.modal = { kind: "account", mode: "sent", title: "Switch back to the app", msg: `Open ${APP_NAME} from your home screen. If it still shows Check your email, it signs in by itself; otherwise sign in there.` };
-        renderModal();
-        acctRerender();
-      },
-      async acctSubmit() {
-        const m3 = ui.modal, A2 = AUTH();
-        if (!m3 || m3.kind !== "account" || m3.busy || !A2) return;
-        if (document.activeElement && document.activeElement.dataset && document.activeElement.dataset.abind === "code") return ACT.acctCode();
-        for (const el of document.querySelectorAll("#modal [data-abind]")) m3[el.dataset.abind] = el.value;
-        const email = String(m3.email || "").trim().toLowerCase(), pw = String(m3.pw || "");
-        const need = (ok, msg) => {
-          if (!ok) {
-            m3.err = msg;
-            renderModal();
-          }
-          return ok;
-        };
-        if (m3.mode !== "newpw" && !need(EMAIL_RE.test(email), "Enter your email address.")) return;
-        if ((m3.mode === "signup" || m3.mode === "newpw") && !need(pw.length >= 8, "Use 8 or more characters.")) return;
-        if (m3.mode === "signin" && !need(pw.length > 0, "Enter your password.")) return;
-        m3.busy = true;
-        m3.err = "";
-        renderModal();
-        const done = (next) => {
-          if (ui.modal !== m3) return;
-          if (next) {
-            ui.modal = { kind: "account", back: m3.back, ...next };
-            renderModal();
-          } else ACT.exBack();
-        };
-        try {
-          if (m3.mode === "signin") {
-            acct.user = await A2.signIn(email, pw);
-            obOutClear();
-            try {
-              localStorage.removeItem(ACCT_LATER);
-            } catch (e5) {
-            }
-            done(null);
-            toast("Signed in. Syncing your log.");
-            await cloudInit();
-            acctRerender();
-          } else if (m3.mode === "signup") {
-            const r4 = await A2.signUp(email, pw);
-            if (r4.confirm) {
-              done({ mode: "wait", email });
-              waitStart(email, pw);
-            } else {
-              acct.user = r4.user;
-              obOutClear();
-              done(null);
-              toast("Account created. Syncing your log.");
-              await cloudInit();
-              acctRerender();
-            }
-          } else if (m3.mode === "forgot") {
-            await A2.resetPassword(email);
-            done({ mode: "sent", title: "Check your email", msg: `If there is an account for ${email}, a reset link is on its way. It opens in your browser: set the new password there, then sign in here.` });
-          } else if (m3.mode === "newpw") {
-            await A2.updatePassword(pw);
-            if (!isStandalone()) {
-              try {
-                await A2.signOut();
-              } catch (e5) {
-                log("auth", e5);
-              }
-              acct.user = null;
-              done({ mode: "sent", title: "Password changed", msg: `Open ${APP_NAME} from your home screen and sign in with the new password. If you use ${APP_NAME} in this browser instead, sign in here.` });
-            } else {
-              done(null);
-              toast("Password changed");
-            }
-          }
-        } catch (e5) {
-          log("auth", e5);
-          if (ui.modal === m3) {
-            m3.err = e5 && e5.message || "Something went wrong. Try again.";
-            if (m3.mode === "signin" && e5 && e5.code === "email_not_confirmed") m3.needCode = true;
-          }
-        } finally {
-          if (ui.modal === m3) {
-            m3.busy = false;
-            renderModal();
-          }
-        }
-      },
-      acctDelete() {
-        const A2 = AUTH();
-        if (!A2 || typeof A2.deleteAccount !== "function") return;
-        confirmBox("Delete your account?", "Your account and the synced copy of your log are deleted for good. The copy on this phone stays; export a backup first if you want one elsewhere.", "Delete account", async () => {
-          toast("Deleting your account");
-          try {
-            await A2.deleteAccount();
-          } catch (e5) {
-            log("auth", e5);
-            toast(e5.message || "Could not delete the account. Try again.");
-            acctRerender();
-            return;
-          }
-          acct.user = null;
-          cloudStop(true);
-          rerenderKeepScroll();
-          toast("Account deleted. Your log is still on this phone.");
-        }, true);
-      },
-      /* Sign out works like any app with an account (r33, V): the log lives in
-         the account and comes back on sign-in, so the phone's copy goes with the
-         sign-out. Keeping a copy on the phone is offered, quietly, second. Either
-         way the app opens on the first page. Nothing is removed until every
-         change has reached the account. */
-      acctSignOut() {
-        const A2 = AUTH();
-        if (!A2) return;
-        const out = async (remove) => {
-          if (cloud.on && navigator.onLine !== false) {
-            try {
-              clearTimeout(cloud.t);
-              await withTimeout(cq(cloudFlush), 15e3);
-            } catch (e5) {
-              log("auth", e5);
-            }
-          }
-          if (remove && !(cloud.on && cloud.status === "synced")) {
-            confirmBox("Not in your account yet", "Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.", "Keep on this phone and sign out", () => out(false));
-            return;
-          }
-          try {
-            await A2.signOut();
-          } catch (e5) {
-            log("auth", e5);
-            toast(e5.message || "Could not sign out");
-            return;
-          }
-          acct.user = null;
-          cloudStop(remove);
-          const mid2 = !remove && !!state.draft;
-          if (!mid2) try {
-            localStorage.setItem(OB_OUT, "1");
-            localStorage.removeItem(OB_ACCT);
-          } catch (e5) {
-          }
-          if (remove) {
-            undoForget();
-            setState(normalize(null));
-            saveNow();
-            invalidate();
-          }
-          if (!mid2) {
-            ui.tab = "today";
-            window.scrollTo(0, 0);
-          }
-          render();
-          toast(remove ? "Signed out" : "Signed out. A copy stays on this phone.");
-        };
-        if (navigator.onLine === false && hasUnsent()) {
-          confirmBox("Not in your account yet", "Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.", "Keep on this phone and sign out", () => out(false));
-          return;
-        }
-        confirmBox("Sign out?", "Your log is saved in your account. Sign in on any phone to pick it up again.", "Sign out", () => out(true), false, { label: "Sign out, keep a copy on this phone", fn: () => out(false), quiet: true });
       },
       startFree() {
         if (state.draft) {
@@ -22170,123 +23238,8 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
         const el = document.querySelector('#view > [data-mkey="layout"]');
         if (el) el.scrollIntoView({ block: "start" });
       },
-      impOpen() {
-        openModal({ kind: "imp", step: "input", text: "", err: "" });
-      },
-      impRead() {
-        const el = $2("#impText");
-        const text = el ? el.value : "";
-        if (ui.modal) ui.modal.text = text;
-        impStart({ text });
-      },
-      impUnit(t4) {
-        const m3 = ui.modal;
-        if (!m3 || m3.kind !== "imp" || !["lb", "kg"].includes(t4.dataset.v)) return;
-        m3.unit = t4.dataset.v;
-        renderModal();
-      },
-      impBack() {
-        openModal({ kind: "imp", step: "input", text: "", err: "" });
-      },
-      impMapDone() {
-        const m3 = ui.modal;
-        if (!m3 || !m3.tab) return;
-        const mp = m3.tab.map;
-        if (mp.date == null || mp.ex == null || mp.r == null) {
-          toast("Choose the date, exercise, and reps columns");
-          return;
-        }
-        openPreview(impFromTable(m3.tab.rows, mp), m3.tab);
-      },
-      impGo() {
-        const m3 = ui.modal;
-        if (!m3 || m3.kind !== "imp" || m3.step !== "preview") return;
-        const b2 = impBuild(m3);
-        if (!b2.sessions.length && !b2.cardio.length) return;
-        const AR = activeRoutine();
-        const first = !realCount(state) && !!AR && starterSigs().includes(routineSig(AR)) && !state.sessions.some((q) => q.routineId === AR.id);
-        snapshot();
-        setState(normalize({ ...state, exercises: state.exercises.concat(b2.newEx), sessions: state.sessions.concat(b2.sessions), cardio: state.cardio.concat(b2.cardio), settings: { ...state.settings, onboarded: true } }));
-        invalidate();
-        const msg = `Imported ${b2.sessions.length} session${b2.sessions.length === 1 ? "" : "s"}${b2.cardio.length ? `, ${b2.cardio.length} cardio entr${b2.cardio.length === 1 ? "y" : "ies"}` : ""}${b2.newEx.length ? `, ${b2.newEx.length} new exercise${b2.newEx.length === 1 ? "" : "s"}` : ""}`;
-        const inf = first && b2.sessions.length ? routineFromLog(state.sessions, b2.ssOf) : null;
-        if (inf) {
-          const R2 = inf.routine;
-          state.routines = dropStarter(state.routines, state.sessions, starterSigs());
-          state.routines.push(R2);
-          state.activeRoutineId = R2.id;
-          for (const x2 of state.sessions) {
-            if (x2.demo) continue;
-            const d3 = inf.dayFor(x2);
-            if (!d3) continue;
-            x2.routineId = R2.id;
-            x2.dayId = d3.id;
-            x2.dayIdx = R2.days.indexOf(d3);
-            x2.free = void 0;
-          }
-          invalidate();
-          fitTargets(R2, actualAvg4());
-          invalidate();
-          commit();
-          closeModal();
-          ui.tab = "today";
-          ui.todayDay = null;
-          window.scrollTo(0, 0);
-          render();
-          toast(`${msg}. Your routine is made from them: ${andList(R2.days.filter((d3) => !d3.rest).map((d3) => d3.name), 4)}, about ${inf.perWeek} day${inf.perWeek === 1 ? "" : "s"} a week. Change it in Plan.`, true, 9e3);
-          return;
-        }
-        commit();
-        closeModal();
-        ui.tab = "history";
-        window.scrollTo(0, 0);
-        render();
-        if (first && b2.sessions.length) {
-          openModal({ kind: "templates", from: "welcome", imported: true });
-          toast(`${msg}. Now pick the routine you follow, or the closest one.`, true, 8e3);
-          return;
-        }
-        toast(msg, true);
-      },
-      async previewCopy() {
-        if (ENV !== "preview") return;
-        toast(`Looking for your ${APP_NAME} log`);
-        const { st, err } = await liveLogFetch();
-        if (!st) {
-          if (!acct.user && AUTH()) {
-            confirmBox("Sign in first", `This test version keeps a separate log. Sign in with your ${APP_NAME} account to copy your log in. Your log in ${APP_NAME} stays as it is.`, "Sign in", () => ACT.acctOpen({ dataset: { mode: "signin" } }));
-            return;
-          }
-          toast(err ? `Could not read your ${APP_NAME} log: ${err.message}` : `No ${APP_NAME} log found for this account or on this phone.`, null, 6e3);
-          return;
-        }
-        const n3 = realCount(st);
-        st.draft = null;
-        const go = () => {
-          snapshot();
-          setState(st);
-          if (!cloud.on) cloudStop(true);
-          commit();
-          closeModal();
-          ui.tab = "today";
-          render();
-          toast(`Copied ${n3} session${n3 === 1 ? "" : "s"} from ${APP_NAME}. ${APP_NAME} is unchanged.`, true);
-        };
-        if (realCount(state) || state.draft) confirmBox("Replace the preview log?", `Your ${APP_NAME} log has ${n3} session${n3 === 1 ? "" : "s"}. Copying replaces everything in this test version; your log in ${APP_NAME} stays as it is. Undo can step this back.`, "Copy my log", go);
-        else go();
-      },
       obSample() {
         openModal({ kind: "templates", from: "welcome" });
-      },
-      // The save kept aside at start (r45): restored through the import's checks, or shown as text (Forget it is Settings', src/app/settings.ts).
-      unreadRestore() {
-        const raw = unreadableRaw();
-        if (!raw) return;
-        importData(raw, unreadableForget);
-      },
-      unreadShow() {
-        const raw = unreadableRaw();
-        if (raw) openModal({ kind: "text", title: "Save kept aside", help: "Select all and copy it somewhere safe.", text: raw, readonly: true });
       },
       // The fold in the first-run routine picker (r44): its own state, so a re-render keeps it open.
       obProfTog() {
@@ -22395,159 +23348,6 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
         render();
       },
       // the sheet closed first (r56.1): a question left open reads as Cancel, so the sync waiting on it does not wait forever
-      fbOpen(t4) {
-        const d3 = state.draft;
-        const bi = t4 && t4.dataset && t4.dataset.b != null ? +t4.dataset.b : null;
-        const b2 = bi != null && d3 ? d3.ex[bi] : null;
-        const from = ui.tab === "settings" ? ui.prevTab || "settings" : ui.tab;
-        const cat = t4 && t4.dataset && FB_TITLE[t4.dataset.cat] ? t4.dataset.cat : "bug";
-        const crash = !!(t4 && t4.dataset && t4.dataset.crash);
-        const last = crash ? logBuf.filter((x2) => x2.a === "render").slice(-1)[0] : null;
-        const tabName = { today: state.draft ? "Session" : "Today", program: "Plan", dash: "Stats", history: "History", settings: "Settings" }[ui.tab] || ui.tab;
-        const msg = crash ? `The app broke on the ${tabName} screen.${last ? ` Error: ${last.m}` : ""}` : "";
-        openModal({ kind: "feedback", cat, msg, shot: null, from: crash ? "crash" : ui.tab === "today" && d3 ? "session" : from, ex: b2 ? exName(b2.exId) : null, crash: crash || void 0 });
-      },
-      /* A lifter's own exercise stays in their log (r34). Suggesting it sends
-         it to the owner as a report; the library changes only when the owner
-         adds it in a build. */
-      exSuggest() {
-        const m3 = ui.modal;
-        const e5 = m3 && m3.kind === "exEdit" ? state.exercises.find((x2) => x2.id === m3.e.id) : null;
-        if (!e5) return;
-        const sec = (e5.secondary || []).map((k2) => ML[k2]).filter(Boolean);
-        const msg = `Add to the library: ${e5.name}. Main muscle: ${ML[e5.primary] || e5.primary}${sec.length ? `; also ${andList(sec)}` : ""}. Equipment: ${EQL[e5.equip] || e5.equip}${e5.perSide ? ", one side at a time" : ""}${e5.bw ? ", bodyweight" : ""}${e5.timed ? ", timed" : ""}.${e5.note ? ` Note: ${e5.note}` : ""}`.slice(0, FB_MAX);
-        openModal({ kind: "feedback", cat: "idea", msg, shot: null, from: "library", ex: e5.name });
-      },
-      // Signed out: the report as text for a message, without sending anything.
-      async fbCopy() {
-        const m3 = ui.modal;
-        if (!m3 || m3.kind !== "feedback") return;
-        const txt = `${APP_NAME}: ${FB_TITLE[m3.cat] || FB_TITLE.bug}
-
-${m3.msg && m3.msg.trim() ? m3.msg.trim() : "(Write it here)"}
-
-${JSON.stringify(fbContext(m3), null, 1)}`;
-        let ok = false;
-        try {
-          if (navigator.clipboard) {
-            await navigator.clipboard.writeText(txt);
-            ok = true;
-          }
-        } catch (e5) {
-          ok = false;
-        }
-        if (!ok) {
-          closeModal();
-          openModal({ kind: "text", title: "Report details", help: "Copy this into a message to the app owner, with what happened.", text: txt, readonly: true });
-          return;
-        }
-        m3.sent = true;
-        m3.copied = true;
-        renderModal();
-      },
-      fbCat(t4) {
-        const m3 = ui.modal;
-        if (!m3 || m3.kind !== "feedback") return;
-        for (const el of document.querySelectorAll("#modal [data-fbind]")) m3[el.dataset.fbind] = el.value;
-        m3.cat = t4.dataset.v;
-        renderModal();
-      },
-      fbShotDel() {
-        const m3 = ui.modal;
-        if (!m3 || m3.kind !== "feedback") return;
-        m3.shot = null;
-        renderModal();
-      },
-      async fbSend() {
-        const m3 = ui.modal;
-        if (!m3 || m3.kind !== "feedback" || m3.busy) return;
-        for (const el of document.querySelectorAll("#modal [data-fbind]")) m3[el.dataset.fbind] = el.value;
-        const msg = String(m3.msg || "").trim().slice(0, FB_MAX);
-        const reply = acct.user && acct.user.email || "";
-        if (msg.length < FB_MIN) {
-          m3.err = `A few more words, please (${FB_MIN} characters or more).`;
-          renderModal();
-          return;
-        }
-        const F3 = FB();
-        if (F3 && fbRecent().length >= FB_DAY) {
-          m3.err = `You have sent ${FB_DAY} reports today. Try again tomorrow.`;
-          renderModal();
-          return;
-        }
-        const fb = { category: FB_CATS.some(([k2]) => k2 === m3.cat) ? m3.cat : "bug", message: msg, reply_to: reply || null, screenshot: m3.shot || null, context: fbContext(m3) };
-        if (!F3) {
-          const txt = `${APP_NAME}: ${FB_TITLE[fb.category]}
-
-${msg}
-
-${JSON.stringify(fb.context, null, 1)}`;
-          let ok = false;
-          try {
-            if (navigator.clipboard) {
-              await navigator.clipboard.writeText(txt);
-              ok = true;
-            }
-          } catch (e5) {
-            ok = false;
-          }
-          if (!ok) {
-            closeModal();
-            openModal({ kind: "text", title: "Feedback", help: "Copy this and send it to the app owner.", text: txt, readonly: true });
-            return;
-          }
-          m3.sent = true;
-          m3.copied = true;
-          m3.dirty = false;
-          renderModal();
-          return;
-        }
-        m3.busy = true;
-        m3.err = "";
-        renderModal();
-        try {
-          await F3.send(fb);
-          try {
-            localStorage.setItem(FB_SENT, JSON.stringify([...fbRecent(), Date.now()]));
-          } catch (e22) {
-          }
-          if (ui.modal === m3) {
-            m3.sent = true;
-            m3.dirty = false;
-          }
-        } catch (e5) {
-          log("feedback", e5);
-          if (ui.modal === m3) m3.err = e5 && e5.message || "Could not send. Try again.";
-        } finally {
-          if (ui.modal === m3) {
-            m3.busy = false;
-            renderModal();
-          }
-        }
-      },
-      async fbInbox() {
-        const F3 = FB();
-        if (!F3 || typeof F3.inbox !== "function") return;
-        const m3 = { kind: "fbInbox", items: null };
-        openModal(m3);
-        try {
-          const it = await F3.inbox(50);
-          if (ui.modal === m3) {
-            m3.items = it;
-            renderModal();
-          }
-        } catch (e5) {
-          log("feedback", e5);
-          if (ui.modal === m3) {
-            m3.err = e5 && e5.message || "Could not load feedback.";
-            renderModal();
-          }
-        }
-      },
-      diagCopy() {
-        const t4 = JSON.stringify({ build: APP_VERSION, version: DISPLAY_VERSION, cloud: { on: cloud.on, status: cloud.status, err: cloud.err, last: cloud.last }, log: logBuf }, null, 1);
-        openModal({ kind: "text", title: "Diagnostics", help: "Copy this and paste it into a bug report. It holds errors and sync status, not your workouts.", text: t4, readonly: true });
-      },
       undo() {
         if (!undoStack.length) {
           toast("Nothing left to undo");
@@ -23085,9 +23885,9 @@ ${JSON.stringify(fb.context, null, 1)}`;
         openModal({ kind: "exEdit", isNew: true, e: { id: "c_" + uid(), name: "", primary: "chest", secondary: [], equip: "cable", bw: false, rare: false, note: "", custom: true, archived: false } });
       },
       exNewFromPicker() {
-        const back = ui.modal;
-        if (!back || back.kind !== "picker") return;
-        openModal({ kind: "exEdit", isNew: true, back, e: { id: "c_" + uid(), name: (back.q || "").trim(), primary: back.m || "", secondary: [], equip: "cable", bw: false, rare: false, note: "", custom: true, archived: false, incRaw: "" } });
+        const back2 = ui.modal;
+        if (!back2 || back2.kind !== "picker") return;
+        openModal({ kind: "exEdit", isNew: true, back: back2, e: { id: "c_" + uid(), name: (back2.q || "").trim(), primary: back2.m || "", secondary: [], equip: "cable", bw: false, rare: false, note: "", custom: true, archived: false, incRaw: "" } });
       },
       exBack() {
         const m3 = ui.modal;
@@ -23177,15 +23977,15 @@ ${JSON.stringify(fb.context, null, 1)}`;
           saveNow();
         }
         if (m3.isNew && m3.back && m3.back.kind === "picker") {
-          const back = m3.back;
-          applyPick(back, e5.id);
-          toast(back.mode === "addBlock" || back.mode === "addDay" ? `${e5.name} created and added` : `${e5.name} created and swapped in`);
+          const back2 = m3.back;
+          applyPick(back2, e5.id);
+          toast(back2.mode === "addBlock" || back2.mode === "addDay" ? `${e5.name} created and added` : `${e5.name} created and swapped in`);
           return;
         }
         if (m3.back) {
-          const back = m3.back;
-          back.q = e5.name;
-          openModal(back);
+          const back2 = m3.back;
+          back2.q = e5.name;
+          openModal(back2);
         } else closeModal();
         rerenderKeepScroll();
         toast(m3.isNew ? "Exercise created" : "Exercise saved");
@@ -23290,43 +24090,10 @@ ${JSON.stringify(fb.context, null, 1)}`;
         }
         if (ok) markExported();
         toast(ok ? "Copied" : "Select the text and copy it manually");
-      },
-      pasteImport() {
-        openModal({ kind: "text", title: "Import backup text", help: "Paste the full backup text here.", text: "", readonly: false });
-      },
-      importText() {
-        importData($2("#mText").value);
-      },
-      demoLoad() {
-        if (acct.user) {
-          toast("Demo data is for looking around before you sign in, so it stays off your account.", null, 6e3);
-          return;
-        }
-        confirmBox("Load demo data?", "Adds 8 weeks of generated sessions tagged as demo, based on your active routine. Your own logs are not changed.", "Load demo data", () => {
-          const first = demoFirstRun();
-          demoKeep();
-          if (first) fitTargets(activeRoutine());
-          if (!cloud.on) cloudStop(true);
-          makeDemo();
-          ui.tab = "dash";
-          window.scrollTo(0, 0);
-          render();
-          toast("Demo data loaded");
-        });
       }
     };
     tipsStart();
-    document.addEventListener("submit", (e5) => {
-      if (e5.target && e5.target.id === "acctForm") {
-        e5.preventDefault();
-        const b2 = e5.target.querySelector('[data-act="acctSubmit"]');
-        if (document.activeElement && document.activeElement.dataset && document.activeElement.dataset.abind === "code") {
-          ACT.acctCode();
-          return;
-        }
-        if (b2 && !b2.disabled && !(e5.submitter === b2)) ACT.acctSubmit();
-      }
-    });
+    document.addEventListener("submit", accountSubmit);
     document.addEventListener("click", (e5) => {
       const tab = e5.target.closest("#tabs button");
       if (tab) {
@@ -23374,20 +24141,8 @@ ${JSON.stringify(fb.context, null, 1)}`;
         bandInput(t4);
         return;
       }
-      if (t4.dataset.fbind && ui.modal && ui.modal.kind === "feedback") {
-        ui.modal[t4.dataset.fbind] = t4.value;
-        ui.modal.dirty = true;
-        const c4 = document.getElementById("fbCount");
-        if (c4 && t4.dataset.fbind === "msg") c4.textContent = `${t4.value.length} / ${FB_MAX}`;
-        return;
-      }
-      if (t4.dataset.abind && ui.modal && ui.modal.kind === "account") {
-        ui.modal[t4.dataset.abind] = t4.value;
-        if (ui.modal.err) {
-          ui.modal.err = "";
-        }
-        return;
-      }
+      if (reportInput(t4)) return;
+      if (accountInput(t4)) return;
       if (t4.dataset.ebind && ui.modal && ui.modal.kind === "exEdit") {
         const k2 = t4.dataset.ebind;
         if (t4.type === "checkbox") return;
@@ -23405,49 +24160,8 @@ ${JSON.stringify(fb.context, null, 1)}`;
     document.addEventListener("change", (e5) => {
       const t4 = e5.target;
       if (ui.modal && FORM_SHEETS.has(ui.modal.kind) && t4 && t4.closest && t4.closest("#modal")) ui.modal.dirty = true;
-      if (t4.id === "fbShot" && t4.files && t4.files[0] && ui.modal && ui.modal.kind === "feedback") {
-        const m3 = ui.modal;
-        const f0 = t4.files[0];
-        if (f0.size > FB_IMG_MB * 1048576) {
-          toast(`That image is over ${FB_IMG_MB} MB. Try a screenshot instead.`);
-          t4.value = "";
-          return;
-        }
-        if (f0.type && !/^image\//.test(f0.type)) {
-          toast("Only an image can be attached.");
-          t4.value = "";
-          return;
-        }
-        fbShrink(f0).then((d3) => {
-          if (ui.modal !== m3) return;
-          if (!d3) {
-            toast("That picture is too large");
-            return;
-          }
-          m3.shot = d3;
-          m3.dirty = true;
-          renderModal();
-        }, (e6) => {
-          log("feedback", e6);
-          toast("Could not read that image. Try a screenshot (PNG or JPG).");
-        });
-        t4.value = "";
-        return;
-      }
-      if (t4.id === "impFile" && t4.files && t4.files[0]) {
-        const f3 = t4.files[0];
-        t4.value = "";
-        impStart({ file: f3 });
-        return;
-      }
-      if (t4.id === "importFile" && t4.files && t4.files[0]) {
-        const fr = new FileReader();
-        fr.onload = () => importData(String(fr.result));
-        fr.onerror = () => toast("Could not read that file");
-        fr.readAsText(t4.files[0]);
-        t4.value = "";
-        return;
-      }
+      if (reportChange(t4)) return;
+      if (importChange(t4)) return;
       if (planChange(t4)) return;
       if (t4.dataset.gym) {
         gymField(t4);
@@ -23472,28 +24186,6 @@ ${JSON.stringify(fb.context, null, 1)}`;
         if (k2 === "plates" && t4.value === "auto") delete ui.modal.e.plates;
         if (k2 === "timed" || k2 === "equip" || k2 === "plates") renderModal();
         return;
-      }
-      if (ui.modal && ui.modal.kind === "imp") {
-        const m3 = ui.modal;
-        if (t4.dataset.imppick != null) {
-          m3.pick[t4.dataset.imppick] = t4.value;
-          renderModal();
-          return;
-        }
-        if (t4.dataset.impmus != null) {
-          if (ML[t4.value]) m3.guess[t4.dataset.impmus].primary = t4.value;
-          return;
-        }
-        if (t4.dataset.impdate != null) {
-          if (isDate(t4.value) && t4.value <= today()) m3.date = t4.value;
-          else t4.value = m3.date;
-          renderModal();
-          return;
-        }
-        if (t4.dataset.mapf != null) {
-          m3.tab.map[t4.dataset.mapf] = t4.value === "" ? void 0 : +t4.value;
-          return;
-        }
       }
       if (t4.dataset.mbind) return;
       if (t4.dataset.pbind === "date" && ui.modal && ui.modal.kind === "past") {
@@ -23644,66 +24336,6 @@ ${JSON.stringify(fb.context, null, 1)}`;
       const lib = $2("#bLib");
       if (lib) sortables.push(window.Sortable.create(lib, { ...opts, group: { name: "days", pull: "clone", put: false }, sort: false, handle: ".grip", onEnd: dropLib }));
     }
-    function parseSets(text, ex, defW, conv, rpe) {
-      conv = conv || fromD;
-      const fromRpe = (v3) => v3 >= 1 && v3 <= 10 ? Math.round((10 - v3) * 10) / 10 : NaN;
-      let s3 = String(text || "").toLowerCase().replace(/[×*]/g, "x").replace(/\bfor\b/g, "x").replace(/\bat\b/g, "@").replace(/\breps?\b/g, "").replace(/\blbs?\b|\bkgs?\b/g, "");
-      let allRir = null;
-      const m3 = s3.match(/\b(rir|rpe)\s*(\d+(?:\.\d+)?)\s*$/);
-      if (m3) {
-        allRir = m3[1] === "rpe" ? fromRpe(+m3[2]) : +m3[2];
-        if (!isFinite(allRir)) return null;
-        s3 = s3.slice(0, m3.index);
-      }
-      s3 = s3.replace(/\s*x\s*/g, "x").replace(/\s*@\s*/g, "@").replace(/\s*\+\s*/g, "+").trim();
-      if (!s3) return null;
-      const toks = s3.split(/[\s,;/]+/).filter(Boolean);
-      const re = /^(?:(bw)(?:\+(\d+(?:\.\d+)?))?x|(\d+(?:\.\d+)?)x)?(\d{1,3})(?:@(\d+(?:\.\d+)?))?$/;
-      let w2 = defW == null ? null : defW;
-      const out = [];
-      for (const t4 of toks) {
-        const g2 = t4.match(re);
-        if (!g2) return null;
-        if (g2[1]) w2 = g2[2] ? conv(+g2[2]) : 0;
-        else if (g2[3] != null) w2 = conv(+g2[3]);
-        const r4 = +g2[4];
-        if (!(r4 >= 1 && r4 <= 100)) return null;
-        const rir = g2[5] != null ? rpe ? fromRpe(+g2[5]) : +g2[5] : allRir;
-        if (rir != null && !(rir >= 0 && rir <= 10)) return null;
-        if (w2 == null && !ex.bw) return null;
-        out.push({ w: w2 == null ? 0 : w2, r: r4, rir });
-      }
-      return out.length && out.length <= 20 ? out : null;
-    }
-    function fillSets(bi, list) {
-      const d3 = state.draft;
-      const b2 = d3 && d3.ex[bi];
-      if (!b2) return 0;
-      if (EX(b2.exId).assist) {
-        for (const p3 of list) if (p3.w > 0) p3.w = -p3.w;
-      }
-      let si = b2.sets.findIndex((x2) => !x2.done && !x2.warm);
-      if (si < 0) si = b2.sets.length;
-      let far = -1;
-      for (const p3 of list) {
-        if (si >= b2.sets.length) b2.sets.push(newRow());
-        const x2 = b2.sets[si];
-        x2.w = p3.w;
-        x2.r = p3.r;
-        x2.rir = p3.rir;
-        x2.warm = false;
-        x2.drop = false;
-        x2.done = !oddLoad(b2, si, d3.date) && !oddReps(b2, x2);
-        if (!x2.done && far < 0) far = si;
-        si++;
-      }
-      saveNow();
-      if (far >= 0) {
-        rerenderKeepScroll();
-        setDone(bi, far, true);
-      }
-      return list.length;
-    }
     window.__onLib = (which) => {
       if (which === "chart" && ui.tab === "dash" || which === "sortable" && ui.tab === "program") rerenderKeepScroll();
     };
@@ -23732,7 +24364,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
     }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet: (m3) => markupOf(installSheet(m3)), siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, exReasons, recentExIds, trimPlan, isCompound, patternOf, noE1, whtrLine: (p3) => markupOf(whtrLine(p3)), exHeadline: (id) => markupOf(exHeadline(id)), remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, hasTarget, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard: () => {
       const b2 = bestsBoard();
       return { n: b2.n, html: markupOf(b2.html) };
-    }, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m3) => B3.mats[m3].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m3, mt]) => [m3, "#" + mt.color.getHexString()])), pick: (x2, y2) => map3dPick(x2, y2), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), cloudInit, cloudStop, asideList, backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote: (d3) => markupOf(sessionCapNote(d3)), routineClutter, rowBlank, dayReasons, impTextSets, liftTrend: (id) => markupOf(liftTrend(id)), prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote: (pv) => markupOf(planEvidenceNote(pv)), howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, pwOf, planSetsOf, withPlanSets, dropStarter, trainOn, planItemOf, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard: () => markupOf(bwDueCard()), bwNoLoad, applyPick, joinAdjacent, sameExOnce, savedEx, goalState, goalLine: (id) => markupOf(goalLine(id)), bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, logBack, logStart, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame, stallWords, atRangeTop, oddLoad, lightZero };
+    }, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m3) => B3.mats[m3].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m3, mt]) => [m3, "#" + mt.color.getHexString()])), pick: (x2, y2) => map3dPick(x2, y2), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: waiting, flush: () => cq(cloudFlush), cloudInit, cloudStop, asideList, backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote: (d3) => markupOf(sessionCapNote(d3)), routineClutter, rowBlank, dayReasons, impTextSets, liftTrend: (id) => markupOf(liftTrend(id)), prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote: (pv) => markupOf(planEvidenceNote(pv)), howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, pwOf, planSetsOf, withPlanSets, dropStarter, trainOn, planItemOf, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard: () => markupOf(bwDueCard()), bwNoLoad, applyPick, joinAdjacent, sameExOnce, savedEx, goalState, goalLine: (id) => markupOf(goalLine(id)), bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, logBack, logStart, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame, stallWords, atRangeTop, oddLoad, lightZero };
     render();
     wakeOn();
     timerResume();

@@ -100,8 +100,11 @@ create table public.feedback (
   reply_to text check (reply_to is null or char_length(reply_to) <= 200),
   screenshot text check (screenshot is null or (screenshot ~ '^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$' and char_length(screenshot) <= 1500000)),
   context jsonb not null default '{}'::jsonb check (pg_column_size(context) <= 20000),
-  issue_url text
+  issue_url text,
+  client_id text check (client_id is null or char_length(client_id) <= 40)
 );
+-- A report's key, made on the phone (r63): the same report sent again is kept once.
+create unique index feedback_client_once on public.feedback (user_id, client_id);
 alter table public.feedback enable row level security;
 create policy "signed-in people can add" on public.feedback
   for insert to authenticated
@@ -113,6 +116,10 @@ begin
   -- report would slip past the daily limit, and a made-up link would show in your Inbox.
   new.created_at := now();
   new.issue_url := null;
+  -- The same report sent again (its answer lost on the way back, r63): kept once, and not counted again.
+  if new.client_id is not null and exists (select 1 from public.feedback where user_id = new.user_id and client_id = new.client_id) then
+    return null;
+  end if;
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
   end if;
@@ -184,6 +191,29 @@ end $$;
 revoke all on function public.feedback_limit() from public, anon, authenticated;
 alter table public.feedback drop constraint if exists feedback_screenshot_check;
 alter table public.feedback add constraint feedback_screenshot_check check (screenshot is null or (screenshot ~ '^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$' and char_length(screenshot) <= 1500000)) not valid;
+```
+
+   **Ran step 1 before r63?** Run this as well, after any block above (r63): a report sent again after its answer was lost on the way back (a phone dropping off the network mid-send) is kept once, so it makes one ticket, not two. Until it runs, the app sends reports as before, without the key.
+
+```sql
+alter table public.feedback add column if not exists client_id text check (client_id is null or char_length(client_id) <= 40);
+create unique index if not exists feedback_client_once on public.feedback (user_id, client_id);
+create or replace function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  -- The time and the ticket link are the server's, never the sender's: a back-dated
+  -- report would slip past the daily limit, and a made-up link would show in your Inbox.
+  new.created_at := now();
+  new.issue_url := null;
+  -- The same report sent again (its answer lost on the way back, r63): kept once, and not counted again.
+  if new.client_id is not null and exists (select 1 from public.feedback where user_id = new.user_id and client_id = new.client_id) then
+    return null;
+  end if;
+  if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
+    raise exception 'feedback_rate_limited' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+revoke all on function public.feedback_limit() from public, anon, authenticated;
 ```
 
 Steps 2 to 5 turn each report into a GitHub issue, which is what lets Claude pick it up (`FEEDBACK.md`). They can wait.

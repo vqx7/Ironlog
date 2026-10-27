@@ -81,6 +81,40 @@ const V = '11111111-1111-1111-1111-111111111111', F = '22222222-2222-2222-2222-2
   const row = (await db.query(`select issue_url, created_at > now() - interval '1 minute' as fresh from public.feedback where message = 'with a made-up link'`)).rows[0];
   ok(row && row.issue_url === null && row.fresh === true, 'the ticket link and the time are the server\'s, not the sender\'s');
 }
+{ // r63 (PENDING 306): a report's key. The same report sent again is kept once and not counted again, on a new table and on one made before r63.
+  const repeat = async (db, label) => {
+    await as(db, V);
+    const once = await tryq(db, `insert into public.feedback(category,message,client_id) values ('bug','sent with its key','k1')`);
+    const again = await tryq(db, `insert into public.feedback(category,message,client_id) values ('bug','sent with its key','k1')`);
+    const n1 = (await db.query(`select count(*)::int n from public.feedback where client_id = 'k1'`)).rows[0].n;
+    ok(once === 'ok' && again === 'ok' && n1 === 1, `${label}: the same report sent twice is kept once, the second refused without an error (${once}, ${again}, ${n1} kept)`);
+    await as(db, F);
+    ok(await tryq(db, `insert into public.feedback(category,message,client_id) values ('bug','another account, same key','k1')`) === 'ok', `${label}: another account's report with the same key is its own`);
+    await as(db, V);
+    let n = 1; for (let i = 2; i <= 5; i++) if (await tryq(db, `insert into public.feedback(category,message,client_id) values ('bug','report number ${i} here','k${i}')`) === 'ok') n++;
+    ok(n === 5, `${label}: five reports with their keys are accepted (${n})`);
+    ok(await tryq(db, `insert into public.feedback(category,message,client_id) values ('bug','report number 5 here','k5')`) === 'ok', `${label}: the fifth sent again at the day's limit is read as sent, not refused`);
+    ok(/feedback_rate_limited/.test(await tryq(db, `insert into public.feedback(category,message,client_id) values ('bug','a sixth new report','k6')`)), `${label}: a sixth new report is still refused`);
+    await as(db, F);
+    ok(await tryq(db, `insert into public.feedback(category,message) values ('bug','no key, an older build')`) === 'ok' && await tryq(db, `insert into public.feedback(category,message) values ('bug','no key, an older build')`) === 'ok', `${label}: reports without a key (older builds) are each kept`);
+    await db.exec('reset role');
+  };
+  const db = new PGlite(); await db.exec(stub);
+  await db.exec(pick('create table public.feedback (').replace('YOUR IRONLOG ACCOUNT EMAIL', 'v@example.com'));
+  await repeat(db, 'a new table');
+  const old = new PGlite(); await old.exec(stub);
+  const pre = pick('create table public.feedback (').replace('YOUR IRONLOG ACCOUNT EMAIL', 'v@example.com').replace(/,\n  client_id text[^\n]*\n\);/, '\n);').replace(/-- A report's key[^\n]*\ncreate unique index[^\n]*\n/, '').replace(/  -- The same report sent again[\s\S]*?end if;\n/, '');
+  ok(!/client_id/.test(pre), 'the table as step 1 made it before r63 has no key');
+  await old.exec(pre);
+  await as(old, V);
+  await old.exec(`insert into public.feedback(category,message) values ('bug','a report from before r63')`);
+  await old.exec('reset role');
+  await run(old, pick('alter table public.feedback add column if not exists client_id'), 'the r63 block runs on a table made before r63, with reports in it');
+  ok((await old.query(`select count(*)::int n from public.feedback where client_id is null`)).rows[0].n === 1, 'the report from before r63 is kept, with no key');
+  await old.exec('delete from public.feedback');
+  await repeat(old, 'after the r63 block');
+  await run(old, pick('alter table public.feedback add column if not exists client_id'), 'the r63 block runs a second time without harm');
+}
 { // r29: the block for a table made by step 1 between r25 and r28.
   const db = new PGlite(); await db.exec(stub);
   const r25 = pick('create table public.feedback (').replace('YOUR IRONLOG ACCOUNT EMAIL', 'v@example.com').replace("screenshot ~ '^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$'", "screenshot like 'data:image/jpeg;base64,%'").replace(/  -- The time and the ticket link[\s\S]*?new\.issue_url := null;\n/, '');

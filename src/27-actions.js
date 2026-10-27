@@ -19,8 +19,7 @@ function pastDraft(date,di){
 /* The page's actions by data-act: the moved screens' (History and Settings,
    r57; Plan and Stats, r58; Today, r59; the session screen, r60; each change
    to the log through act) and the legacy script's own, the sheets'. */
-const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_ACTS,...MAP_ACTS,...WORKOUT_ACTS,...UPDATE_ACTS,
-  async acctRetry(){await cloudInit();acctRerender();if(!cloud.on)toast('Still not syncing. Check your connection, or sign out and in again.');},
+const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_ACTS,...MAP_ACTS,...WORKOUT_ACTS,...UPDATE_ACTS,...ACCOUNT_ACTS,...REPORT_ACTS,...IMPORT_ACTS,...DEMO_ACTS,
   iconHow(){openModal({kind:'icon'});},
   guideOpen(t){const k=t&&t.dataset&&t.dataset.g;if(ui.modal)closeModal();openModal({kind:'guide',open:k||''});},
   menuOpen(){if(ui.modal&&ui.modal.kind==='menu'){closeModal();return;}if(ui.modal)closeModal();openModal({kind:'menu'});},
@@ -63,124 +62,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
       return;
     }
     openModal({kind:'install',how});
-  },
-  acctOpen(t){openModal({kind:'account',mode:t.dataset.mode==='signup'?'signup':'signin',email:'',pw:'',back:ui.modal&&ui.modal.kind==='feedback'?ui.modal:undefined});}, // from a problem report, signing in goes back to it (r55, the audit: the report and what was typed in it were gone)
-  acctMode(t){const m=ui.modal;if(!m||m.kind!=='account')return;if(m.mode==='wait')waitStop();m.mode=t.dataset.mode;m.err='';m.pw='';renderModal();},
-  acctWaitNow(){waitTry(true);},
-  /* Confirm sign-up with the emailed code (r45). This action owns success:
-     the poll is held off while it runs, and the sign-in event's own wait
-     branch stands aside (acctWait.coding), so nothing toasts or syncs twice.
-     A code fails when the emailed link was opened first (it used the code up),
-     so the password is tried once before the error is shown. */
-  async acctCode(){
-    const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A||!A.verifyCode)return;
-    for(const el of document.querySelectorAll('#modal [data-abind]'))m[el.dataset.abind]=el.value;
-    // A poll already signing in (the app just came back to the front): let it finish first, and stop if it signed in (r45 review).
-    if(acctWait.busy){m.busy=true;renderModal();for(let i=0;i<50&&acctWait.busy;i++)await new Promise(r=>setTimeout(r,100));m.busy=false;if(acct.user||ui.modal!==m)return;
-      if(acctWait.busy){m.err='Still checking. Try again in a moment.';renderModal();return;}}
-    const email=String(m.email||acctWait.email||'').trim().toLowerCase();const pw=acctWait.pw||String(m.pw||'');
-    if(!EMAIL_RE.test(email)){m.err='Enter your email address.';renderModal();return;}
-    clearTimeout(acctWait.timer);acctWait.timer=null;acctWait.busy=true;acctWait.coding=true;m.busy=true;m.err='';renderModal();
-    const ok=user=>{acct.user=user;waitStop();obOutClear();try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}if(ui.modal===m)ACT.exBack();toast('Email confirmed. Signed in and syncing.');if(!cloud.on)cloudInit();acctRerender();};
-    try{ok(await A.verifyCode(email,m.code));}
-    catch(e){
-      let done=false;
-      if(pw&&e&&e.code!=='no_code'){try{ok(await A.signIn(email,pw));done=true;}catch(e2){/* still not confirmed: show the code's error */}}
-      if(!done){log('auth',e);if(ui.modal===m)m.err=(e&&e.message)||'Something went wrong. Try again.';}
-    }finally{acctWait.busy=false;acctWait.coding=false;if(ui.modal===m){m.busy=false;renderModal();}waitSchedule();}
-  },
-  async acctResend(){
-    const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A||!A.resendCode)return;
-    for(const el of document.querySelectorAll('#modal [data-abind]'))m[el.dataset.abind]=el.value;
-    const email=String(m.email||acctWait.email||'').trim().toLowerCase();if(!EMAIL_RE.test(email)){m.err='Enter your email address.';renderModal();return;}
-    m.busy=true;m.err='';renderModal();
-    try{await A.resendCode(email);m.code='';toast('A new email is on its way. Use its code.');}
-    catch(e){log('auth',e);m.err=(e&&e.message)||'Something went wrong. Try again.';}
-    finally{if(ui.modal===m){m.busy=false;renderModal();}}
-  },
-  /* The answer on a browser that opened the confirmation link (item 61b). */
-  async acctWhere(t){
-    const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.mode!=='where'||!A)return;m.answered=true;
-    if(t.dataset.v==='here'){
-      if(typeof A.release==='function')A.release();
-      closeModal();toast('Signed in here. Syncing your log.');await cloudInit();acctRerender();return;
-    }
-    try{await A.signOut();}catch(e){log('auth',e);}
-    acct.user=null;
-    ui.modal={kind:'account',mode:'sent',title:'Switch back to the app',msg:`Open ${APP_NAME} from your home screen. If it still shows Check your email, it signs in by itself; otherwise sign in there.`};renderModal();acctRerender();
-  },
-  async acctSubmit(){
-    const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A)return;
-    // Go in the code field: the browser clicks the form's first button (Sign in), so route it to the code (r45).
-    if(document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.abind==='code')return ACT.acctCode();
-    // Read the fields as they are now: autofill does not always fire input events.
-    for(const el of document.querySelectorAll('#modal [data-abind]'))m[el.dataset.abind]=el.value;
-    const email=String(m.email||'').trim().toLowerCase(),pw=String(m.pw||'');
-    const need=(ok,msg)=>{if(!ok){m.err=msg;renderModal();}return ok;};
-    if(m.mode!=='newpw'&&!need(EMAIL_RE.test(email),'Enter your email address.'))return;
-    if((m.mode==='signup'||m.mode==='newpw')&&!need(pw.length>=8,'Use 8 or more characters.'))return;
-    if(m.mode==='signin'&&!need(pw.length>0,'Enter your password.'))return;
-    m.busy=true;m.err='';renderModal();
-    const done=next=>{if(ui.modal!==m)return;if(next){ui.modal={kind:'account',back:m.back,...next};renderModal();}else ACT.exBack();};
-    try{
-      if(m.mode==='signin'){
-        acct.user=await A.signIn(email,pw);obOutClear();try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}done(null);
-        toast('Signed in. Syncing your log.');await cloudInit();acctRerender();
-      }else if(m.mode==='signup'){
-        const r=await A.signUp(email,pw);
-        if(r.confirm){done({mode:'wait',email});waitStart(email,pw);}
-        else{acct.user=r.user;obOutClear();done(null);toast('Account created. Syncing your log.');await cloudInit();acctRerender();}
-      }else if(m.mode==='forgot'){
-        await A.resetPassword(email);
-        done({mode:'sent',title:'Check your email',msg:`If there is an account for ${email}, a reset link is on its way. It opens in your browser: set the new password there, then sign in here.`});
-      }else if(m.mode==='newpw'){
-        await A.updatePassword(pw);
-        if(!isStandalone()){
-          // Same reason as a confirmation link: this browser was signed in by
-          // the emailed link only. The installed app signs in with the new password.
-          try{await A.signOut();}catch(e){log('auth',e);}acct.user=null;
-          done({mode:'sent',title:'Password changed',msg:`Open ${APP_NAME} from your home screen and sign in with the new password. If you use ${APP_NAME} in this browser instead, sign in here.`});
-        }else{done(null);toast('Password changed');}
-      }
-    }catch(e){log('auth',e);if(ui.modal===m){m.err=(e&&e.message)||'Something went wrong. Try again.';
-      // Not confirmed yet: the code works from here too (r45), whatever happened to the waiting sheet.
-      if(m.mode==='signin'&&e&&e.code==='email_not_confirmed')m.needCode=true;}}
-    finally{if(ui.modal===m){m.busy=false;renderModal();}}
-  },
-  acctDelete(){
-    const A=AUTH();if(!A||typeof A.deleteAccount!=='function')return;
-    confirmBox('Delete your account?','Your account and the synced copy of your log are deleted for good. The copy on this phone stays; export a backup first if you want one elsewhere.','Delete account',async()=>{
-      toast('Deleting your account');
-      try{await A.deleteAccount();}catch(e){log('auth',e);toast(e.message||'Could not delete the account. Try again.');acctRerender();return;}
-      acct.user=null;cloudStop(true);rerenderKeepScroll();toast('Account deleted. Your log is still on this phone.');
-    },true);
-  },
-  /* Sign out works like any app with an account (r33, V): the log lives in
-     the account and comes back on sign-in, so the phone's copy goes with the
-     sign-out. Keeping a copy on the phone is offered, quietly, second. Either
-     way the app opens on the first page. Nothing is removed until every
-     change has reached the account. */
-  acctSignOut(){
-    const A=AUTH();if(!A)return;
-    const out=async remove=>{
-      // Send anything not yet synced first, so signing out never loses work.
-      // Offline there is nothing to wait for (r34.2: 15 s with no sign of anything happening).
-      if(cloud.on&&navigator.onLine!==false){try{clearTimeout(cloud.t);await withTimeout(cq(cloudFlush),15000);}catch(e){log('auth',e);}}
-      if(remove&&!(cloud.on&&cloud.status==='synced')){
-        confirmBox('Not in your account yet','Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.','Keep on this phone and sign out',()=>out(false));return;}
-      try{await A.signOut();}catch(e){log('auth',e);toast(e.message||'Could not sign out');return;}
-      acct.user=null;cloudStop(remove);
-      /* A session in progress kept on the phone carries on where it was, and
-         the app stays as it is after it: sending someone mid-workout to the
-         first page would read as the session lost. */
-      const mid=!remove&&!!state.draft;
-      if(!mid)try{localStorage.setItem(OB_OUT,'1');localStorage.removeItem(OB_ACCT);}catch(e){/* per device only */}
-      if(remove){undoForget();setState(normalize(null));saveNow();invalidate();}
-      if(!mid){ui.tab='today';window.scrollTo(0,0);}render();toast(remove?'Signed out':'Signed out. A copy stays on this phone.');
-    };
-    // With changes not yet in the account, say so first rather than "saved in your account" (r34.2).
-    if(navigator.onLine===false&&hasUnsent()){confirmBox('Not in your account yet','Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.','Keep on this phone and sign out',()=>out(false));return;}
-    confirmBox('Sign out?','Your log is saved in your account. Sign in on any phone to pick it up again.','Sign out',()=>out(true),false,{label:'Sign out, keep a copy on this phone',fn:()=>out(false),quiet:true});
   },
   startFree(){
     if(state.draft){ui.tab='today';render();return;}
@@ -259,48 +140,7 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
     toast(`${lab} added. Hide it again in Settings, Layout.`);
   },
   goLayout(){if(ui.modal)closeModal();ui.tab='settings';ui.folds['settings:layout']=true;window.scrollTo(0,0);render();const el=document.querySelector('#view > [data-mkey="layout"]');if(el)el.scrollIntoView({block:'start'});},
-  impOpen(){openModal({kind:'imp',step:'input',text:'',err:''});},
-  impRead(){const el=$('#impText');const text=el?el.value:'';if(ui.modal)ui.modal.text=text;impStart({text});},
-  impUnit(t){const m=ui.modal;if(!m||m.kind!=='imp'||!['lb','kg'].includes(t.dataset.v))return;m.unit=t.dataset.v;renderModal();},
-  impBack(){openModal({kind:'imp',step:'input',text:'',err:''});},
-  impMapDone(){const m=ui.modal;if(!m||!m.tab)return;const mp=m.tab.map;if(mp.date==null||mp.ex==null||mp.r==null){toast('Choose the date, exercise, and reps columns');return;}openPreview(impFromTable(m.tab.rows,mp),m.tab);},
-  impGo(){
-    const m=ui.modal;if(!m||m.kind!=='imp'||m.step!=='preview')return;const b=impBuild(m);if(!b.sessions.length&&!b.cardio.length)return;
-    /* A first run (no log of their own yet, the starter routine untouched):
-       the routine comes from the import (r31), or the picker opens. */
-    const AR=activeRoutine();const first=!realCount(state)&&!!AR&&starterSigs().includes(routineSig(AR))&&!state.sessions.some(q=>q.routineId===AR.id);
-    snapshot();setState(normalize({...state,exercises:state.exercises.concat(b.newEx),sessions:state.sessions.concat(b.sessions),cardio:state.cardio.concat(b.cardio),settings:{...state.settings,onboarded:true}}));invalidate();
-    const msg=`Imported ${b.sessions.length} session${b.sessions.length===1?'':'s'}${b.cardio.length?`, ${b.cardio.length} cardio entr${b.cardio.length===1?'y':'ies'}`:''}${b.newEx.length?`, ${b.newEx.length} new exercise${b.newEx.length===1?'':'s'}`:''}`;
-    const inf=first&&b.sessions.length?routineFromLog(state.sessions,b.ssOf):null;
-    if(inf){
-      const R=inf.routine;state.routines=dropStarter(state.routines,state.sessions,starterSigs());state.routines.push(R);state.activeRoutineId=R.id;
-      // Imported sessions join their day (by name, or by their lifts), so the cycle, the streak and adherence read them.
-      for(const x of state.sessions){if(x.demo)continue;const d=inf.dayFor(x);if(!d)continue;x.routineId=R.id;x.dayId=d.id;x.dayIdx=R.days.indexOf(d);x.free=undefined;}
-      invalidate();fitTargets(R,actualAvg4());invalidate();
-      commit();closeModal();ui.tab='today';ui.todayDay=null;window.scrollTo(0,0);render();
-      toast(`${msg}. Your routine is made from them: ${andList(R.days.filter(d=>!d.rest).map(d=>d.name),4)}, about ${inf.perWeek} day${inf.perWeek===1?'':'s'} a week. Change it in Plan.`,true,9000);
-      return;
-    }
-    commit();closeModal();ui.tab='history';window.scrollTo(0,0);render();
-    if(first&&b.sessions.length){openModal({kind:'templates',from:'welcome',imported:true});toast(`${msg}. Now pick the routine you follow, or the closest one.`,true,8000);return;}
-    toast(msg,true);
-  },
-  async previewCopy(){
-    if(ENV!=='preview')return;
-    toast(`Looking for your ${APP_NAME} log`);
-    const {st,err}=await liveLogFetch();
-    if(!st){
-      if(!acct.user&&AUTH()){confirmBox('Sign in first',`This test version keeps a separate log. Sign in with your ${APP_NAME} account to copy your log in. Your log in ${APP_NAME} stays as it is.`,'Sign in',()=>ACT.acctOpen({dataset:{mode:'signin'}}));return;}
-      toast(err?`Could not read your ${APP_NAME} log: ${err.message}`:`No ${APP_NAME} log found for this account or on this phone.`,null,6000);return;}
-    const n=realCount(st);st.draft=null;
-    const go=()=>{snapshot();setState(st);if(!cloud.on)cloudStop(true);commit();closeModal();ui.tab='today';render();toast(`Copied ${n} session${n===1?'':'s'} from ${APP_NAME}. ${APP_NAME} is unchanged.`,true);};
-    if(realCount(state)||state.draft)confirmBox('Replace the preview log?',`Your ${APP_NAME} log has ${n} session${n===1?'':'s'}. Copying replaces everything in this test version; your log in ${APP_NAME} stays as it is. Undo can step this back.`,'Copy my log',go);
-    else go();
-  },
   obSample(){openModal({kind:'templates',from:'welcome'});},
-  // The save kept aside at start (r45): restored through the import's checks, or shown as text (Forget it is Settings', src/app/settings.ts).
-  unreadRestore(){const raw=unreadableRaw();if(!raw)return;importData(raw,unreadableForget);},
-  unreadShow(){const raw=unreadableRaw();if(raw)openModal({kind:'text',title:'Save kept aside',help:'Select all and copy it somewhere safe.',text:raw,readonly:true});},
   // The fold in the first-run routine picker (r44): its own state, so a re-render keeps it open.
   obProfTog(){ui.obProf=!ui.obProf;rerenderKeepScroll();},
   tplPick(t){
@@ -346,64 +186,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
     if(state.draft)confirmBox('Replace the session in progress?','You have an unsaved session open. Starting this one discards it.','Discard and start',go,true);else go();
   },
   crashRetry(){ui.tab='today';ui.planView='routine';try{closeModal();}catch(e){log('render',e);}ui.modal=null;window.scrollTo(0,0);render();}, // the sheet closed first (r56.1): a question left open reads as Cancel, so the sync waiting on it does not wait forever
-  fbOpen(t){
-    const d=state.draft;const bi=t&&t.dataset&&t.dataset.b!=null?+t.dataset.b:null;const b=bi!=null&&d?d.ex[bi]:null;
-    const from=ui.tab==='settings'?(ui.prevTab||'settings'):ui.tab;
-    const cat=t&&t.dataset&&FB_TITLE[t.dataset.cat]?t.dataset.cat:'bug';
-    /* From the crash screen (r47): the report opens written, with the error the
-       screen shows, so one tap sends it; the context marks it a crash and
-       carries the stack the log kept. Until r47 a crash reached the owner only
-       if the lifter wrote it up by hand. */
-    const crash=!!(t&&t.dataset&&t.dataset.crash);const last=crash?logBuf.filter(x=>x.a==='render').slice(-1)[0]:null;
-    const tabName={today:state.draft?'Session':'Today',program:'Plan',dash:'Stats',history:'History',settings:'Settings'}[ui.tab]||ui.tab;
-    const msg=crash?`The app broke on the ${tabName} screen.${last?` Error: ${last.m}`:''}`:'';
-    openModal({kind:'feedback',cat,msg,shot:null,from:crash?'crash':ui.tab==='today'&&d?'session':from,ex:b?exName(b.exId):null,crash:crash||undefined});
-  },
-  /* A lifter's own exercise stays in their log (r34). Suggesting it sends
-     it to the owner as a report; the library changes only when the owner
-     adds it in a build. */
-  exSuggest(){
-    const m=ui.modal;const e=m&&m.kind==='exEdit'?state.exercises.find(x=>x.id===m.e.id):null;if(!e)return;
-    const sec=(e.secondary||[]).map(k=>ML[k]).filter(Boolean);
-    const msg=`Add to the library: ${e.name}. Main muscle: ${ML[e.primary]||e.primary}${sec.length?`; also ${andList(sec)}`:''}. Equipment: ${EQL[e.equip]||e.equip}${e.perSide?', one side at a time':''}${e.bw?', bodyweight':''}${e.timed?', timed':''}.${e.note?` Note: ${e.note}`:''}`.slice(0,FB_MAX);
-    openModal({kind:'feedback',cat:'idea',msg,shot:null,from:'library',ex:e.name});
-  },
-  // Signed out: the report as text for a message, without sending anything.
-  async fbCopy(){
-    const m=ui.modal;if(!m||m.kind!=='feedback')return;
-    // A report opened from the crash screen is already written (r47), so the copy carries it.
-    const txt=`${APP_NAME}: ${FB_TITLE[m.cat]||FB_TITLE.bug}\n\n${m.msg&&m.msg.trim()?m.msg.trim():'(Write it here)'}\n\n${JSON.stringify(fbContext(m),null,1)}`;
-    let ok=false;try{if(navigator.clipboard){await navigator.clipboard.writeText(txt);ok=true;}}catch(e){ok=false;}
-    if(!ok){closeModal();openModal({kind:'text',title:'Report details',help:'Copy this into a message to the app owner, with what happened.',text:txt,readonly:true});return;}
-    m.sent=true;m.copied=true;renderModal();
-  },
-  fbCat(t){const m=ui.modal;if(!m||m.kind!=='feedback')return;for(const el of document.querySelectorAll('#modal [data-fbind]'))m[el.dataset.fbind]=el.value;m.cat=t.dataset.v;renderModal();},
-  fbShotDel(){const m=ui.modal;if(!m||m.kind!=='feedback')return;m.shot=null;renderModal();},
-  async fbSend(){
-    const m=ui.modal;if(!m||m.kind!=='feedback'||m.busy)return;
-    for(const el of document.querySelectorAll('#modal [data-fbind]'))m[el.dataset.fbind]=el.value;
-    const msg=String(m.msg||'').trim().slice(0,FB_MAX);const reply=acct.user&&acct.user.email||'';
-    if(msg.length<FB_MIN){m.err=`A few more words, please (${FB_MIN} characters or more).`;renderModal();return;}
-    const F=FB();
-    if(F&&fbRecent().length>=FB_DAY){m.err=`You have sent ${FB_DAY} reports today. Try again tomorrow.`;renderModal();return;}
-    const fb={category:FB_CATS.some(([k])=>k===m.cat)?m.cat:'bug',message:msg,reply_to:reply||null,screenshot:m.shot||null,context:fbContext(m)};
-    if(!F){
-      // No feedback service here: the report as text, to paste into a message.
-      const txt=`${APP_NAME}: ${FB_TITLE[fb.category]}\n\n${msg}\n\n${JSON.stringify(fb.context,null,1)}`;
-      let ok=false;try{if(navigator.clipboard){await navigator.clipboard.writeText(txt);ok=true;}}catch(e){ok=false;}
-      if(!ok){closeModal();openModal({kind:'text',title:'Feedback',help:'Copy this and send it to the app owner.',text:txt,readonly:true});return;}
-      m.sent=true;m.copied=true;m.dirty=false;renderModal();return;
-    }
-    m.busy=true;m.err='';renderModal();
-    try{await F.send(fb);try{localStorage.setItem(FB_SENT,JSON.stringify([...fbRecent(),Date.now()]));}catch(e2){/* the database still counts */}if(ui.modal===m){m.sent=true;m.dirty=false;}}
-    catch(e){log('feedback',e);if(ui.modal===m)m.err=(e&&e.message)||'Could not send. Try again.';}
-    finally{if(ui.modal===m){m.busy=false;renderModal();}}
-  },
-  async fbInbox(){
-    const F=FB();if(!F||typeof F.inbox!=='function')return;const m={kind:'fbInbox',items:null};openModal(m);
-    try{const it=await F.inbox(50);if(ui.modal===m){m.items=it;renderModal();}}catch(e){log('feedback',e);if(ui.modal===m){m.err=(e&&e.message)||'Could not load feedback.';renderModal();}}
-  },
-  diagCopy(){const t=JSON.stringify({build:APP_VERSION,version:DISPLAY_VERSION,cloud:{on:cloud.on,status:cloud.status,err:cloud.err,last:cloud.last},log:logBuf},null,1);openModal({kind:'text',title:'Diagnostics',help:'Copy this and paste it into a bug report. It holds errors and sync status, not your workouts.',text:t,readonly:true});},
   undo(){
     if(!undoStack.length){toast('Nothing left to undo');return;}
     /* Undo used to put back the whole state from before the action, which
@@ -662,10 +444,4 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   exportCsv(){exportCSV();},
   showBackup(){openModal({kind:'text',title:'Backup text',help:'Select all and copy. Paste it into Import on any device to restore.',text:JSON.stringify({app:STORAGE_ID,exported:new Date().toISOString(),state}),readonly:true});},
   copyText(){const ta=$('#mText');ta.select();let ok=false;try{if(navigator.clipboard){navigator.clipboard.writeText(ta.value).then(()=>{markExported();toast('Copied');},()=>toast('Select the text and copy it manually'));return;}ok=document.execCommand('copy');}catch(e){log('copy',e);}if(ok)markExported();toast(ok?'Copied':'Select the text and copy it manually');},
-  pasteImport(){openModal({kind:'text',title:'Import backup text',help:'Paste the full backup text here.',text:'',readonly:false});},
-  importText(){importData($('#mText').value);},
-  demoLoad(){if(acct.user){toast('Demo data is for looking around before you sign in, so it stays off your account.',null,6000);return;} /* signed in, it would sync into the account (r55.1, the second review of r55); signing out to load it would make the next sign-in a first link, which brings back what other phones deleted meanwhile, so it is not offered */confirmBox('Load demo data?','Adds 8 weeks of generated sessions tagged as demo, based on your active routine. Your own logs are not changed.','Load demo data',()=>{const first=demoFirstRun();demoKeep();
-    // On a first run the targets fit the routine, as picking it would (r29);
-    // demoRestore puts the settings back when the demo is cleared.
-    if(first)fitTargets(activeRoutine());if(!cloud.on)cloudStop(true);makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},
 };

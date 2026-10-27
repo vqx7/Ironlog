@@ -72,6 +72,7 @@ export function fbSheet(m: FeedbackModal): TemplateResult {
     <p style="margin:0 0 12px">Sign in to send a report, so a reply can reach you.</p>
     <div class="stack"><button type="button" class="btn primary block" data-act="acctOpen" data-mode="signin">Sign in</button><button type="button" class="btn block" data-act="acctOpen" data-mode="signup">Create account</button></div>
     <p class="small muted" style="margin:12px 0 0">No account? <button type="button" class="linkbtn" data-act="fbCopy">Copy the details</button> and send them to the app owner.</p></div>`;
+  // The count is the span's text, set whole (reportInput sets it as each letter is typed), so no part of it is lit-html's to keep.
   const n = String(m.msg || '').length;
   // Only the app's own JPEG data URL is ever shown (r44 security review): m.shot comes from fbShrink's canvas, and the check keeps it so if that changes.
   const shot =
@@ -80,7 +81,7 @@ export function fbSheet(m: FeedbackModal): TemplateResult {
       : html`<label class="btn sm fbpick">Add a screenshot<input type="file" accept="image/png,image/jpeg,image/heic,image/heif,image/webp" id="fbShot" hidden></label>`;
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(FB_TITLE[cat] || '')}<div class="stack">
   ${kinds}
-  <label class="field">${FB_ASK[cat]}<textarea data-fbind="msg" maxlength=${FB_MAX} rows="5" placeholder=${FB_HINT[cat] || ''}>${m.msg || ''}</textarea><span class="fbcount small muted" id="fbCount" aria-live="polite">${n} / ${FB_MAX}</span></label>
+  <label class="field">${FB_ASK[cat]}<textarea data-fbind="msg" maxlength=${FB_MAX} rows="5" placeholder=${FB_HINT[cat] || ''}>${m.msg || ''}</textarea><span class="fbcount small muted" id="fbCount" aria-live="polite" .textContent=${`${n} / ${FB_MAX}`}></span></label>
   <div><p class="small muted" style="margin:0 0 6px">Screenshot, optional. One image, up to ${FB_IMG_MB} MB.</p><div class="row">${shot}</div></div>
   <p class="small muted" style="margin:0">${u ? `Replies go to ${u.email}. ` : ''}Device details are added, never your workouts. ${tipButton(FB_WHAT, 'What is attached')}</p>
   ${m.err ? html`<p class="small" role="alert" style="color:var(--red);margin:0">${m.err}</p>` : nothing}

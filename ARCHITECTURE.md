@@ -49,8 +49,8 @@ src/01-03, 99       the page's markup and styles
 Layer 0, config and record shapes: config, types
 Layer 1, data: util, units, library, routines, formulas, records, gym, profile, model, layout
 Layer 2, engine and analytics: session, loads, prs, trend, volume, goals, importing, format, charts, analytics, time, weeks, coach, engine, plans, pick
-Layer 3, storage and sync: chunks, merge, modals, store, live, providers, normalize, storage, sync, act
-Layer 4, screens: icons, feedback, effort, toast, timer, tips, guide, sheets, sheetsmisc, sheetslift, sheetsplan, sheetsexercise, sheetspicker, sheetsapp, sheetsaccount, env, outside, display, view, page, update, history, settings, graphs, plan, stats, calendar, week, map, today, workstate, worksets, workfinish, workdrag, workout
+Layer 3, storage and sync: chunks, merge, modals, store, live, providers, normalize, storage, sync, act, targets
+Layer 4, screens: icons, feedback, effort, toast, timer, tips, guide, sheets, sheetsmisc, sheetslift, sheetsplan, sheetsexercise, sheetspicker, sheetsapp, sheetsaccount, sheetsimport, env, outside, display, view, page, update, history, settings, graphs, plan, stats, calendar, week, map, today, workstate, worksets, workfinish, workdrag, workout, report, account, importflow, demo
 
 - **Screens as components**, one per tab, reading copy and labels from one place.
 
@@ -62,8 +62,8 @@ The current code is the **legacy script**: `src/10-*.js` to `src/29-*.js`, joine
 
 **The ratchet:** the legacy script may never grow. `tests/hygiene.js` fails when it has more top-level declarations or more lines than the numbers below, and also when it has fewer, until the numbers are lowered to match, so each phase locks in what it moved. A change that adds code adds it in `src/app/`.
 
-Legacy top-level declarations: 51
-Legacy lines: 1763
+Legacy top-level declarations: 21
+Legacy lines: 859
 
 | Measured (scripts/depmap.js) | r49 | r50 | r51 | r52 | r53 | r54 | r55 | r56 | r57 | r58 | r59 | r60 |
 |---|---|---|---|---|---|---|---|---|---|---|---| --- |
@@ -116,14 +116,14 @@ V brought two lists of engineering practice from another assistant (Gemini) and 
 
 Casts: 86
 Non-null assertions: 26
-Open types: 13
+Open types: 12
 
 Marks in r52's moved code (from baselines/r51.html): 21 casts, 77 non-null assertions
 Marks in r56's moved code (from baselines/r55.html): 2 casts, 2 non-null assertions
 
 Restated in r56 (the move of storage and sync): 85 casts from 76, each explained where it stands: the four readers through which every raw value is read (`rec`, `arr` and `parseJson` in `records.ts`, `spread` in `normalize.ts`), the two error events' payloads (`storageStart`, typed any by the browser's own types), and the three fields of the sync notes read as they were saved (`notesIn` in `sync.ts`), which go when r56.1 checks every entry of the notes (PENDING 305); 26 non-null assertions from 25 (`fx`, set at start as `state` is); 16 open types from 18 (`cloud`'s three `Record<string, unknown>` and its index signature typed, `Rec` added). The 4 casts and 2 `!` in the code r56 moved: `normalize`'s result typed as the State it builds field by field and an exercise's muscles read as the list the build above made them, `plainTemplate`'s routine given to `routineSig` under its try, `undoRestore`'s IndexedDB result typed any by the browser, the starter routine's template that always exists, and the device id set before any sync. A `!` on a value typed any (an `IDBRequest`'s result) is read through a cast to unknown, as `JSON.parse` is.
 
-r63: 13 open types from 14: the account (`acct`) typed, its user `AcctUser`, with no index signature. 86 casts from 85: the page's history entry (`histState` in `page.ts`), typed any by the browser, read as unknown and checked where it is used, as `JSON.parse` is.
+r63: 12 open types from 14: the account (`acct`) typed, its user `AcctUser`, with no index signature, and the wait for a new account's email (`acctWait`, with its own) replaced by account.ts's typed state. 86 casts from 85: the page's history entry (`histState` in `page.ts`), typed any by the browser, read as unknown and checked where it is used, as `JSON.parse` is.
 
 r60: 14 open types from 16: `cleanTgt` returns a `Target`, and the plan of a session's block is typed where `normalize` builds it, the block itself checked against `DraftBlock` (`satisfies`), so a field the session screen reads without a check of its own is one the compiler sees written.
 

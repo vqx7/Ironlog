@@ -254,9 +254,20 @@
       const s = await session().catch(() => null);
       if (!s) throw Object.assign(new Error('Sign in to send a report.'), { code: 'signin' });
       const row = { category: fb.category, message: fb.message, reply_to: fb.reply_to || null, screenshot: fb.screenshot || null, context: fb.context || {} };
-      const { error } = await sb.from('feedback').insert(row);
+      /* The report's key (r63, PENDING 306): the table keeps a report sent
+         again once (SUPABASE.md, Part 4), so a retry after a lost answer is
+         not a second report and a second ticket. A table without the key's
+         column yet (its step not run) is sent the report without it. */
+      if (fb.client_id) row.client_id = fb.client_id;
+      let { error } = await sb.from('feedback').insert(row);
+      if (error && row.client_id && /client_id/i.test(String(error.message || '')) && /PGRST204|42703/.test(String(error.code || ''))) {
+        delete row.client_id;
+        ({ error } = await sb.from('feedback').insert(row));
+      }
       if (error) {
         const t = String(error.code || '') + ' ' + String(error.message || '');
+        // Two sends of one report at the same moment: the table took the other, so this one is sent.
+        if (/23505/.test(String(error.code || '')) && /feedback_client_once/.test(t)) return;
         if (/relation .*feedback.* does not exist|PGRST205|42P01/i.test(t)) throw Object.assign(new Error('Reports are not set up yet. Your text is kept.'), { code: 'not_set_up' });
         if (/feedback_rate_limited/i.test(t)) throw Object.assign(new Error('You have sent 5 reports today. Try again tomorrow.'), { code: 'limit' });
         throw friendly(error);

@@ -128,6 +128,8 @@ export interface FeedbackModal extends SheetBase {
   copied?: boolean | undefined;
   busy?: boolean | undefined;
   err?: string | undefined;
+  /** The report's key, made when it is first sent and sent again with it (r63, PENDING 306). */
+  cid?: string | undefined;
 }
 
 /** One report in the owner's inbox, as the table returns it. */

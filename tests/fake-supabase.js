@@ -4,7 +4,7 @@
 // rows, signed-out requests see nothing). It also serves a folder of static
 // files, so the app and its "cloud" share one origin like in production.
 //
-// start(root) -> {base, users, rows, feedback, confirm(email), addReader(email), expireTokens(), log, close()}
+// start(root) -> {base, users, rows, feedback, confirm(email), addReader(email), feedbackTables(on), feedbackKey(on), loseReplies(n), expireTokens(), log, close()}
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -24,6 +24,8 @@ function start(root) {
   const feedback = [];          // rows of public.feedback
   const readers = new Set();    // user ids in public.feedback_readers
   let fbOn = true;              // false: the feedback tables are not created yet
+  let fbKey = true;             // false: the table as step 1 made it before r63, with no client_id column (SUPABASE.md, Part 4)
+  let fbLose = 0;               // the next reports' answers lost on the way back: stored, then the connection dropped (PENDING 306)
   const log = [];
   let tokenLife = 3600; let deny = false; let fnDeployed = false; const gone = new Set(); const codeLife = 3600 * 1000;
   const now = () => Math.floor(Date.now() / 1000);
@@ -154,9 +156,14 @@ function start(root) {
             // Since r25: signed-in accounts only, 10 to 1,000 characters, 5 a day each (SUPABASE.md, Part 4).
             if (!c || (r.user_id && r.user_id !== c.id)) return send(res, 401, { code: '42501', message: 'new row violates row-level security policy for table "feedback"' });
             if (!['bug', 'idea', 'question'].includes(r.category) || !r.message || String(r.message).length < 10 || String(r.message).length > 1000) return send(res, 400, { code: '23514', message: 'new row violates check constraint' });
+            // A column the table lacks is refused as PostgREST refuses it.
+            if (!fbKey && r.client_id !== undefined) return send(res, 400, { code: 'PGRST204', message: "Could not find the 'client_id' column of 'feedback' in the schema cache" });
+            // The same report again (r63): the trigger skips it before counting, so it is neither stored nor refused.
+            if (r.client_id && feedback.some(f => f.user_id === c.id && f.client_id === r.client_id)) continue;
             if (feedback.filter(f => f.user_id === c.id && Date.now() - Date.parse(f.created_at) < 864e5).length >= 5) return send(res, 400, { code: 'P0001', message: 'feedback_rate_limited' });
-            feedback.push({ id: feedback.length + 1, created_at: new Date().toISOString(), user_id: c ? c.id : null, category: r.category, message: r.message, reply_to: r.reply_to || null, screenshot: r.screenshot || null, context: r.context || {}, issue_url: null });
+            feedback.push({ id: feedback.length + 1, created_at: new Date().toISOString(), user_id: c ? c.id : null, category: r.category, message: r.message, reply_to: r.reply_to || null, screenshot: r.screenshot || null, context: r.context || {}, issue_url: null, client_id: r.client_id || null });
           }
+          if (fbLose > 0) { fbLose--; req.socket.destroy(); return; }
           return send(res, 201);
         }
         if (req.method === 'GET') return send(res, 200, c && readers.has(c.id) ? feedback.slice().reverse() : []);
@@ -218,7 +225,7 @@ function start(root) {
       setTokenLife(s) { tokenLife = s; },
       setDeny(v) { deny = !!v; },
       deployDelete(v) { fnDeployed = !!v; },
-      feedback, addReader(email) { const x = users.get(email); if (x) readers.add(x.id); }, feedbackTables(v) { fbOn = !!v; },
+      feedback, addReader(email) { const x = users.get(email); if (x) readers.add(x.id); }, feedbackTables(v) { fbOn = !!v; }, feedbackKey(v) { fbKey = !!v; }, loseReplies(n) { fbLose = n; },
       /* server.close waits for every open request to end, and one the browser
          left half sent never does (r33 stopped at 15 minutes on GitHub after
          its last check, 2026-10-14). The suites are done with the server by

@@ -43,7 +43,7 @@ import type { CardioEntry } from './types';
 import { routineEmpty } from './routines';
 import { cleanCardio, normalize, plainTemplate } from './normalize';
 import { invalidate } from './live';
-import { AUTH } from './providers';
+import { AUTH, codeOf } from './providers';
 import { acct, cloud, fx, setState, state, ui } from './store';
 import type { Base, CloudDb, CloudRef, CloudStatus, State, SyncNote } from './store';
 import {
@@ -65,6 +65,8 @@ import {
     lease), the lease and the wait for it, the wait for any answer from the
     account, an account error's toast, and how long after the last pull a
     return to the app pulls again. */
+/** How long a request to the account may go without an answer before it is given up, in milliseconds: the sync's, the sign-in's and a problem report's (r63, PENDING 306 and 309). */
+export const NET_MS = 20000;
 const SYNC_MS = {
   save: 400,
   track: 800,
@@ -72,7 +74,7 @@ const SYNC_MS = {
   leaseBusy: 2500,
   lease: 30000,
   leaseWait: 10000,
-  net: 20000,
+  net: NET_MS,
   errToast: 8000,
   pullAfter: 20000
 } as const;
@@ -416,7 +418,7 @@ function ref(id: string): CloudRef {
 }
 function cloudFail(e: unknown): void {
   const E = rec(e);
-  const c = E && E.code;
+  const c = codeOf(e);
   if (c === 'revoked' || c === 'not_granted' || c === 'capability_disabled' || c === 'capability_removed') {
     cloud.on = false;
     setCloud('local');

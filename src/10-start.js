@@ -7,10 +7,7 @@ const $=(s,r=document)=>r.querySelector(s);
    does beyond hiding it. */
 setRoot(renderInner);
 setSheets({
-  account:{draw:acctSheet,closed:m=>{
-    if(m.mode==='wait')waitStop();
-    // No answer to "Where do you use Ironlog?": the safe choice, as before item 61.
-    if(m.mode==='where'&&!m.answered){const A=AUTH();acct.user=null;if(A)A.signOut().catch(e=>log('auth',e)).then(()=>acctRerender());}}},
+  account:{draw:acctSheet,closed:acctClosed},
   install:{draw:installSheet},icon:{draw:iconSheet},menu:{draw:menuSheet},guide:{draw:guideSheet},calendar:{draw:calSheet},past:{draw:pastSheet},
   feedback:{draw:fbSheet},fbInbox:{draw:fbInboxSheet},restwk:{draw:restWeekSheet},daypick:{draw:dayPickSheet},confirm:{draw:confirmSheet},
   picker:{draw:pickerSheet},exEdit:{draw:exEditSheet},exhist:{draw:exHistSheet},bmenu:{draw:bmenuSheet},injury:{draw:injurySheet},

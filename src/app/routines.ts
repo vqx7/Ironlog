@@ -584,7 +584,7 @@ export function dayShare(R: RoutineLike): number {
 
 /* Adds one day's planned hard sets per muscle into `out`, each counted f
    times: each planned set's credit (above), a helper muscle's at half. */
-function addDayCredit(M: Model, d: Day, f: number, out: Record<string, number>): void {
+function addDayCredit(M: Model, d: Day | NewRoutine['days'][number], f: number, out: Record<string, number>): void {
   if (d.rest) return;
   for (const it of d.items) {
     const pc = planCreditIn(M, it);
@@ -611,7 +611,7 @@ export function dayCreditIn(M: Model, d: Day): Record<string, number> {
    divided by its length times a week (weekFactor), and the targets a
    first-run pick fitted by that reading are refitted from it (refitIn). */
 /** Planned hard sets a week for each muscle, from a routine (each day `share` times a week, dayShare unless given). */
-export function plannedSetsIn(M: Model, routine: Routine, share?: number): Record<string, number> {
+export function plannedSetsIn(M: Model, routine: Routine | NewRoutine, share?: number): Record<string, number> {
   const out: Record<string, number> = {};
   const f = share ?? dayShare(routine);
   for (const d of routine.days) addDayCredit(M, d, f, out);

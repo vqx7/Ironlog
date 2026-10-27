@@ -53,7 +53,8 @@ import {
   oddLoad,
   lightZero,
   exName,
-  trimPlan
+  trimPlan,
+  fromD
 } from './live';
 import { state, ui } from './store';
 import { lastDup, effTarget, blockRest, newRow, greyW, effW, blockDone } from './session';
@@ -98,6 +99,8 @@ const MIX_TOAST_MS = 7000;
 /** A ticked exercise moves up this many milliseconds after the tick, and tries again after ORDER_MS.again while something is being typed or open. */
 const ORDER_MS = { soon: 900, again: 1500 } as const;
 import { LIMITS } from './records';
+import { readSets } from './importing';
+import type { TypedSet } from './importing';
 import { toast } from './toast';
 import { confirmBox, rerenderKeepScroll } from './page';
 import { startTimer } from './timer';
@@ -1205,3 +1208,54 @@ export const distIn = (v: string): number | null => {
   const n = numIn(v);
   return n != null && n > 0 ? Math.min(r3(U() === 'kg' ? n : n * KM_MI), LIMITS.distKm) : null;
 };
+
+/* ---------- typed sets (r63, from the legacy script's 29-sections.js) ---------- */
+
+/** Sets typed or dictated for a lift (importing.ts's readSets), the loads in the unit on screen unless conv says otherwise. */
+export function parseSets(
+  text: unknown,
+  ex: { bw?: boolean | undefined },
+  defW: number | null | undefined,
+  conv?: ((v: number) => number) | null,
+  rpe?: boolean
+): TypedSet[] | null {
+  // A load typed is a number, which fromD always turns into one.
+  return readSets(text, ex, defW, conv || ((v: number) => Number(fromD(v))), rpe);
+}
+/* Sets typed for a lift fill its rows from the first one not done, each
+   ticked; a set far off is left for setDone's question, as a tick asks it
+   (r55.1, the audit of r55: 1000x8 was saved as typed, a 1285 kg PR). On an
+   assisted lift the numbers typed or said are the machine's help. */
+/** Fills a lift's rows with typed sets, ticked unless one is far off (then asked about); how many sets were typed. */
+export function fillSets(bi: number, list: TypedSet[]): number {
+  const d = state.draft;
+  const b = d && d.ex[bi];
+  if (!d || !b) return 0;
+  if (EX(b.exId).assist) for (const p of list) if (p.w > 0) p.w = -p.w;
+  let far = -1;
+  act(
+    () => {
+      let si = b.sets.findIndex(x => !x.done && !x.warm);
+      if (si < 0) si = b.sets.length;
+      for (const p of list) {
+        if (si >= b.sets.length) b.sets.push(newRow());
+        const x = b.sets[si];
+        if (!x) break;
+        x.w = p.w;
+        x.r = p.r;
+        x.rir = p.rir;
+        x.warm = false;
+        x.drop = false;
+        x.done = !oddLoad(b, si, d.date) && !oddReps(b, x);
+        if (!x.done && far < 0) far = si;
+        si++;
+      }
+    },
+    { inProgress: true }
+  );
+  if (far >= 0) {
+    rerenderKeepScroll();
+    setDone(bi, far, true);
+  }
+  return list.length;
+}
