@@ -23,6 +23,9 @@
 //      opened on it does, without waiting for the log to change.
 //  10  F2: notes that name both kg and lb start on the app's unit and say
 //      so, so a line with no unit is not read in the first unit named.
+//  11  302: the ready-made routines rest an isolation lift 90 s at least
+//      (V, 2026-10-25), one named value; a copy made before r64, untouched,
+//      still reads as ready-made, and a routine on a phone keeps its rests.
 const { open, engine } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 700) : ''); } else console.log('ok  ', m); };
 const FILE = process.argv[2] || 'index.html';
@@ -337,6 +340,43 @@ const run = n => !ONLY || ONLY.includes(n);
     ok(k.pv.unit === 'kg' && k.pv.unitKnown === true && !/both kg and lb/i.test(k.pv.text), '10. (a guard) notes naming kg alone start on kg, known', k.pv);
     const n0 = await imp('Oct 20\nBench press 185 x 5\n');
     ok(n0.pv.unit === 'lb' && n0.pv.unitKnown === false && /does not say which/.test(n0.pv.text), '10. (a guard) notes naming no unit start on the app\'s and ask', n0.pv);
+  }
+
+  // ---- 11. 302: the ready-made routines rested most isolation lifts 45 or 60 s; Singer 2024 found a small benefit to growth
+  // past 60 s and none detected past 90 s. V (2026-10-25): 90 s, easy to change.
+  if (run(11)) {
+    const read = async file => {
+      const P = await open(file, { browser, clock: '2026-10-15T10:00:00' }); pages.push(P);
+      return P.page.evaluate(() => {
+        const L = window.__ironlog;
+        const keys = L.TEMPLATES.filter(t => !t.hidden).map(t => t.key);
+        return { keys, made: keys.map(k => L.routineFromTemplate(k)), iso: Object.fromEntries(L.libExercises().map(e => [e.id, !L.isCompound(e)])) };
+      });
+    };
+    const was = await read('baselines/r63.html'), now = await read(FILE);
+    const items = R => R.days.flatMap(d => d.items);
+    const rows = [];
+    now.made.forEach((R, i) => items(R).forEach((it, j) => rows.push({ key: now.keys[i], exId: it.exId, iso: now.iso[it.exId], now: it.rest, was: items(was.made[i])[j] && items(was.made[i])[j].rest })));
+    const isoShort = rows.filter(r => r.iso && r.now < 90);
+    ok(rows.length > 100 && !isoShort.length, `11. every isolation lift in the ready-made routines rests 90 s or more (r63: ${rows.filter(r => r.iso && r.was < 90).length} under 90)`, isoShort.slice(0, 6));
+    ok(rows.every(r => (r.iso && r.was < 90 ? r.now === 90 : r.now === r.was)), '11. each one under 90 s is raised to 90 s exactly; compound lifts and isolation lifts at 90 s or more keep their rest', rows.filter(r => !(r.iso && r.was < 90 ? r.now === 90 : r.now === r.was)).slice(0, 6));
+    // Copies made before r64, untouched, still read as ready-made: Recently deleted leaves them out, and a first run replaces the starter.
+    const P = await open(FILE, { browser, clock: '2026-10-15T10:00:00', realStarter: true }); pages.push(P);
+    const c = await P.page.evaluate(old => {
+      const L = window.__ironlog;
+      const plain = old.map(R => L.plainTemplate(R));
+      const ul4 = old[old.length - 1];
+      const starter = L.starterSigs().includes(L.routineSig(ul4));
+      // A phone's routine as r63 made it keeps its rests through a load (a migration never overwrites a value the lifter has).
+      const s = L.state; s.routines = [JSON.parse(JSON.stringify(ul4))]; s.activeRoutineId = ul4.id; L.state = L.normalize(s);
+      const kept = JSON.stringify(L.state.routines[0].days.map(d => d.items.map(it => it.rest))) === JSON.stringify(ul4.days.map(d => d.items.map(it => it.rest)));
+      // One changed by the lifter is theirs, as before (a guard).
+      const mine = JSON.parse(JSON.stringify(ul4)); mine.days[0].items[0].sets = 9;
+      return { plain, starter, kept, mine: L.plainTemplate(mine) };
+    }, [...was.made, was.made[now.keys.indexOf('ul4')]]);
+    ok(c.plain.every(Boolean), '11. each ready-made routine as r63 made it, untouched, still reads as ready-made', c.plain);
+    ok(c.starter, '11. r63\'s untouched starter, Upper / lower, is still the starter a first run replaces');
+    ok(c.kept && !c.mine, '11. (a guard) a routine on a phone keeps its rests, and one the lifter changed is theirs', c);
   }
 
   const errors = pages.flatMap(P => P.errors);

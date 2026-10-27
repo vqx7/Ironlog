@@ -40,6 +40,7 @@ import {
   fixSupersets,
   routineFromTemplate,
   routineSig,
+  templatesBefore,
   DEFAULT_PLAN
 } from './routines';
 import type { NewRoutine } from './routines';
@@ -345,7 +346,16 @@ export function starterRoutine(): NewRoutine {
    before r29, is replaced when a ready-made routine is picked on a first run. */
 /** The signatures of the two routines a new install has begun with. */
 export function starterSigs(): string[] {
-  return [routineSig(starterRoutine()), routineSig(defaultRoutine())];
+  return [routineSig(starterRoutine()), routineSig(starterBefore()), routineSig(defaultRoutine())];
+}
+/* The starter as installs made it up to r63, before an isolation lift's
+   rest became ISO_REST at least (r64, 302): a phone set up then and never
+   changed still has it. */
+function starterBefore(): NewRoutine {
+  const k = window.IRONLOG_STARTER;
+  const key = k && TEMPLATES.some(t => t.key === k) ? k : 'ul4';
+  // templatesBefore lists every template in TEMPLATES' order, so the key's place finds it.
+  return templatesBefore()[TEMPLATES.findIndex(t => t.key === key)] ?? starterRoutine();
 }
 
 /* A ready-made routine removed exactly as shipped can be added again from
@@ -356,7 +366,7 @@ let tplCache: Set<string> | null = null;
 function tplSigs(): Set<string> {
   if (!tplCache)
     tplCache = new Set(
-      [...TEMPLATES.map(t => routineFromTemplate(t.key)), starterRoutine(), defaultRoutine()]
+      [...TEMPLATES.map(t => routineFromTemplate(t.key)), ...templatesBefore(), starterRoutine(), defaultRoutine()]
         .filter(r => !!r)
         .map(r => routineSig(r))
     );

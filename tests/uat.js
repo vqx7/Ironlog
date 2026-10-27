@@ -55,9 +55,13 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   const lr = await ev(() => window.__ironlog.state.draft.ex[1].lastR.slice());
   await ev(() => window.__ironlog.ACT.wAdd({ dataset: { b: '1' } })); await page.waitForTimeout(80);
   const ph = await ev(() => [...document.querySelectorAll('.sg input[data-f="r"][data-b="1"]')].map(i => i.placeholder));
-  ok(ph[0] === '' && ph[1] === String(lr[0]) && ph[2] === String(lr[1]), 'placeholders after a warm-up: blank, then last time\'s ' + lr.slice(0, 2).join(', ') + ' (' + ph.join('|') + ')');
+  // Since r64 (V's decision 3, the r63 audit's P-S4-5) a warm-up has grey reps of its own: last time's warm-up, else the
+  // top of the range (none last time here), never a working set's number.
+  const top = await ev(() => String(window.__ironlog.state.draft.ex[1].plan.repMax));
+  ok(ph[0] === top && ph[1] === String(lr[0]) && ph[2] === String(lr[1]), 'placeholders after a warm-up: its own, the top of the range (' + top + '), then last time\'s ' + lr.slice(0, 2).join(', ') + ' (' + ph.join('|') + ')');
   await page.click('[data-act="sDone"][data-b="1"][data-s="0"]'); await page.waitForTimeout(60);
-  ok(await ev(() => !window.__ironlog.state.draft.ex[1].sets[0].done), 'ticking an empty warm-up asks for reps instead of taking a working set\'s number');
+  const w0 = await ev(() => { const x = window.__ironlog.state.draft.ex[1].sets[0]; const t = document.getElementById('toast'); return { done: !!x.done, r: x.r, w: x.w, toast: t && !t.hidden ? t.textContent : '' }; });
+  ok(w0.done ? w0.r === +top && w0.w != null : /Add the weight first/.test(w0.toast), 'ticking an empty warm-up takes its own grey reps, the top of the range, with its load, or asks for its load ' + JSON.stringify(w0));
   await tick(1, 1);
   ok(await ev(r => window.__ironlog.state.draft.ex[1].sets[1].r === r, lr[0]), 'working set 1 logs last time\'s first set');
   const num = await ev(() => [...document.querySelectorAll('#blk-1 .sg:not(.head) .n')].map(n => n.textContent));

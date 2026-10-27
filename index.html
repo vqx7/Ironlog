@@ -3056,7 +3056,16 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     )
   };
   function defaultRoutine() {
-    return routineOf(LEGACY);
+    return routineOf(LEGACY, true);
+  }
+  var ISO_REST = 90;
+  var isoIds = null;
+  function isIso(exId) {
+    if (!isoIds)
+      isoIds = new Set(
+        libExercises().filter((e5) => !isCompound(e5)).map((e5) => e5.id)
+      );
+    return isoIds.has(exId);
   }
   var TEMPLATES = (() => {
     const I2 = (exId, sets, repMin, repMax, rir, rest) => ({ exId, sets, repMin, repMax, rir, rest });
@@ -3172,7 +3181,11 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const t4 = TEMPLATES.find((x2) => x2.key === key);
     return t4 ? routineOf(t4) : null;
   }
-  function routineOf(t4) {
+  function templatesBefore() {
+    return TEMPLATES.map((t4) => routineOf(t4, true));
+  }
+  function routineOf(t4, shipped) {
+    const asShipped = shipped || !!t4.hidden;
     return {
       id: uid(),
       name: t4.name,
@@ -3181,7 +3194,12 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         id: uid(),
         name: d3.name,
         rest: !!d3.rest,
-        items: d3.items.map((it) => ({ uid: uid(), ...it, inc: STEP_LB }))
+        items: d3.items.map((it) => ({
+          uid: uid(),
+          ...it,
+          ...!asShipped && isIso(it.exId) && it.rest < ISO_REST ? { rest: ISO_REST } : {},
+          inc: STEP_LB
+        }))
       }))
     };
   }
@@ -4041,13 +4059,18 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return routineFromTemplate(k2 && TEMPLATES.some((t4) => t4.key === k2) ? k2 : "ul4");
   }
   function starterSigs() {
-    return [routineSig(starterRoutine()), routineSig(defaultRoutine())];
+    return [routineSig(starterRoutine()), routineSig(starterBefore()), routineSig(defaultRoutine())];
+  }
+  function starterBefore() {
+    const k2 = window.IRONLOG_STARTER;
+    const key = k2 && TEMPLATES.some((t4) => t4.key === k2) ? k2 : "ul4";
+    return templatesBefore()[TEMPLATES.findIndex((t4) => t4.key === key)] ?? starterRoutine();
   }
   var tplCache = null;
   function tplSigs() {
     if (!tplCache)
       tplCache = new Set(
-        [...TEMPLATES.map((t4) => routineFromTemplate(t4.key)), starterRoutine(), defaultRoutine()].filter((r4) => !!r4).map((r4) => routineSig(r4))
+        [...TEMPLATES.map((t4) => routineFromTemplate(t4.key)), ...templatesBefore(), starterRoutine(), defaultRoutine()].filter((r4) => !!r4).map((r4) => routineSig(r4))
       );
     return tplCache;
   }
