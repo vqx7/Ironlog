@@ -7540,18 +7540,20 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const { ex, plan, all, exps, last, top, cap, planPts, lastR, lastS, basis, lbl, prevBest, tgtRir } = C2;
     if (C2.injM || C2.noAdd || ex.assist || noE1(ex) || !(top > 0)) return null;
     const i5 = all.indexOf(last);
-    if (i5 < 1 || !afterBreak(all[i5 - 1], last.date)) return null;
-    const k2 = exps.indexOf(last);
-    const pre = k2 > 0 ? exps[k2 - 1] : null;
-    if (!pre || !afterBreak(pre, last.date)) return null;
+    let j3 = i5;
+    while (j3 > 0 && !afterBreak(all[j3 - 1], all[j3].date)) j3--;
+    if (j3 < 1) return null;
+    const pre = exps.filter((x2) => x2.date < all[j3].date).pop();
+    if (!pre) return null;
     const preTop = workLoad(pre.pts, +plan.repMin);
-    if (!(preTop > top + EPS_SAME)) return null;
+    if (all.slice(j3, i5 + 1).some((x2) => x2.topW >= preTop - EPS_SAME)) return null;
     if (triedAt(last, top).some((p3) => p3.missed || p3.r < +plan.repMin)) return null;
     const bw = bwRefLoadIn(M3, ex);
     if (ex.bw && !(bw > 0)) return null;
     let est = 0;
     for (const p3 of planPts) {
-      const v3 = fitE(p3.load, p3.r, p3.rir == null ? BACK_RIR : Math.min(p3.rir, E1_MAX_RIR));
+      const q = p3.rir != null ? p3.rir : i5 === j3 ? BACK_RIR : p3.rq;
+      const v3 = fitE(p3.load, p3.r, q == null ? q : Math.min(q, E1_MAX_RIR));
       if (v3 != null && v3 > est) est = v3;
     }
     if (!(est > 0)) return null;
@@ -7559,7 +7561,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!rs.length) return null;
     const preR = Math.max(+plan.repMin, Math.min(+plan.repMax, rs[Math.floor((rs.length - 1) / 2)]));
     const want = Math.min(e1inv(est, preR + Math.min(tgtRir, E1_MAX_RIR)) - bw, preTop);
-    const nw = heavierLoadIn(M3, ex, plan, top, cap != null ? Math.min(want, cap) : want);
+    const up = heavierLoadIn(M3, ex, plan, top, cap != null ? Math.min(want, cap) : want);
+    if (up == null) return null;
+    const g2 = unitGridIn(M3, ex, plan, top, up, true);
+    const nw = g2 == null ? up : g2 > top + EPS_SAME ? g2 : null;
     if (nw == null) return null;
     return {
       top,
@@ -8320,16 +8325,17 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!(incOfIn(M3, ex, p3, s3.w) > 0) || bwNoLoadIn(M3, ex, b2)) return null;
     if (ex.bw && !(bwRefLoadIn(M3, ex) > 0)) return null;
     const sc = effScale(M3.s.settings.rirScale);
+    const back2 = backDaysIn(M3, b2.exId, p3, {}) > BACK_DAYS;
     const tgt = +p3.rir || 0, lo = +p3.repMin, hi = +p3.repMax, r4 = +(s3.r ?? 0);
     const q = s3.rir == null || s3.rir === "" ? null : +s3.rir;
-    const qe = q != null ? q : rirEstIn(M3, s3, ex);
+    const qe = q != null ? q : back2 ? BACK_RIR : rirEstIn(M3, s3, ex);
     const bw = bwRefLoadIn(M3, ex), Lt = s3.w + bw;
     const expR = b2.tgt && b2.tgt.kind === "load" && +(b2.tgt.repMin ?? 0) > 0 ? +(b2.tgt.repMin ?? 0) : lastR != null ? lastR : lo;
-    const light = q != null && q >= tgt + CLEARLY_OFF && r4 >= lo || r4 >= hi + CLEARLY_OFF, heavy = r4 <= Math.min(lo, expR) - CLEARLY_OFF && (q == null || q <= tgt);
+    const offLight = q != null && q >= tgt + CLEARLY_OFF && r4 >= lo || r4 >= hi + CLEARLY_OFF;
+    const light = offLight || back2 && r4 >= lo, heavy = r4 <= Math.min(lo, expR) - CLEARLY_OFF && (q == null || q <= tgt);
     if (!(Lt > 0) || !(light || heavy)) return null;
     const est = fitE(Lt, r4, qe == null ? 0 : Math.min(qe, E1_MAX_RIR));
     if (!est) return null;
-    const back2 = backDaysIn(M3, b2.exId, p3, {}) > BACK_DAYS;
     const pre = back2 ? suggestCoreIn(M3, b2.exId, p3, {}) : null;
     const preTop = pre && pre.top != null && pre.top > 0 ? pre.top : null;
     const resUp = back2 ? Math.max(BACK_RIR, Math.min(tgt, E1_MAX_RIR)) : Math.min(tgt, E1_MAX_RIR) + FATIGUE_RIR;
@@ -8357,7 +8363,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (nw != null) {
       const f3 = rtfAt(est, nw + bw);
       const er = f3 == null ? lo : Math.max(lo, Math.min(hi, Math.floor(f3 - (light ? resUp : resDown) + EPS)));
-      const why = light ? q != null && q >= tgt + CLEARLY_OFF ? easy() : `set ${n3} went ${r4} reps, past your ${hi}` : `set ${n3} stopped at ${r4}, under your ${rangeWords(p3)}`;
+      const why = light ? q != null && q >= tgt + CLEARLY_OFF ? easy() : r4 >= hi + CLEARLY_OFF ? `set ${n3} went ${r4} reps, past your ${hi}` : `set ${n3} showed more strength than a first session back asks` : `set ${n3} stopped at ${r4}, under your ${rangeWords(p3)}`;
       return { at: si, w: nw, from: s3.w, r: er, up: light, why, ...typeof s3.rid === "string" ? { rid: s3.rid } : {} };
     }
     if (light && q != null && q >= tgt + CLEARLY_OFF && r4 < hi) {

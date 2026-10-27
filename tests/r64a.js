@@ -186,7 +186,7 @@ const TODAY = '2026-10-26';
     const g = await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; L.render(); L.openModal({ kind: 'guide', open: '' }); const m = document.getElementById('modal'); m.querySelectorAll('details').forEach(d => { d.open = true; }); const t = m.innerText; L.ACT.mClose(); return t; });
     ok(!/strength holds for about 4 weeks/.test(g) && /The 4 weeks is the app's convention for where a break begins: strength falls the longer a lift is left \(Bosquet 2013\)/.test(g), 'R-5. the Guide\'s break sentence: the 4 weeks is the app\'s convention, strength falling the longer a lift is left (Bosquet 2013), no figure the study does not give', (g.match(/Back after more than[^\n]*/) || [''])[0]);
     ok(/at most 10% up past the loads you have done since a break/.test(g), 'R-5. the next sets: at most 10% up past the loads done since a break, as the rule is (r63: "at most 10% up", while a set after a break goes 165 to 185)', (g.match(/The next sets adjust[^\n]*/) || [''])[0]);
-    ok(/Until the lift is back at that load, each full session sets the next load/.test(g), 'R-5. the Guide states decision 1\'s way back', (g.match(/Back after more than[^\n]*/) || [''])[0]);
+    ok(/Until the lift is back at its load from before the break, each full session sets the next load: what its sets say fits your usual reps, never lower than the load you did and never past that load \(a convention\)/.test(g), 'R-5. the Guide states decision 1\'s way back', (g.match(/Back after more than[^\n]*/) || [''])[0]);
   }
 
   // ---- P-S2-1: an injury flag and the break, Lighter day and deload rules.
