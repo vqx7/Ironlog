@@ -13,10 +13,10 @@
    a check of the wait or the code, in place of the email, password, busy,
    coding and timer kept side by side, which could say two things at once. */
 
-import { APP_NAME } from './config';
+import { APP_NAME, NET_MS } from './config';
 import { ACCT_LATER, OB_ACCT, OB_OUT, KEY, log, prefDel, prefGet, prefSet, undoForget } from './storage';
 import { parseJson, rec } from './records';
-import { NET_MS, cloudFlush, cloudInit, cloudPull, cloudStop, cq, hasUnsent, withTimeout } from './sync';
+import { cloudFlush, cloudInit, cloudPull, cloudStop, cq, hasUnsent, withTimeout } from './sync';
 import { normalize } from './normalize';
 import { acct, cloud, setState, state, ui } from './store';
 import type { AccountModal, AcctMode } from './modals';

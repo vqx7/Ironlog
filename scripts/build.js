@@ -73,8 +73,14 @@ if (cloudCfg) {
   // cloud.js gets the values it needs from src/app/config.ts written in at
   // build time (r49), not from a global set at run time: its sign-in storage
   // key must never come out as "undefined.auth". Every placeholder is filled
-  // or the build stops.
-  const cloudJs = fs.readFileSync(path.join(ROOT, 'scripts/cloud-supabase.js'), 'utf8').replace(/\{\{(\w+)\}\}/g, (m, k) => { must(typeof cfg[k] === 'string' && cfg[k], `cloud-supabase.js: unknown placeholder ${m}`); return cfg[k]; });
+  // or the build stops: a name config defines, as a string that is not empty
+  // or, since r64, a finite number (NET_MS, the time limit the account
+  // library's requests share with the app's).
+  const cloudJs = fs.readFileSync(path.join(ROOT, 'scripts/cloud-supabase.js'), 'utf8').replace(/\{\{(\w+)\}\}/g, (m, k) => {
+    const v = Object.prototype.hasOwnProperty.call(cfg, k) ? cfg[k] : undefined;
+    must((typeof v === 'string' && v) || (typeof v === 'number' && Number.isFinite(v)), `cloud-supabase.js: unknown placeholder ${m}`);
+    return String(v);
+  });
   fs.writeFileSync(path.join(DIST, 'cloud.js'), cloudJs);
 }
 

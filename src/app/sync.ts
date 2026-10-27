@@ -17,6 +17,7 @@
    save are here too. Nothing runs on import: syncStart() runs what the parts
    ran as the page loaded, called from main.ts at start (r63). */
 
+import { NET_MS } from './config';
 import { uid, hashStr, SECOND_MS } from './util';
 import { fmtDate } from './format';
 import { arr, parseJson, rec } from './records';
@@ -65,8 +66,6 @@ import {
     lease), the lease and the wait for it, the wait for any answer from the
     account, an account error's toast, and how long after the last pull a
     return to the app pulls again. */
-/** How long a request to the account may go without an answer before it is given up, in milliseconds: the sync's, the sign-in's and a problem report's (r63, PENDING 306 and 309). */
-export const NET_MS = 20000;
 const SYNC_MS = {
   save: 400,
   track: 800,

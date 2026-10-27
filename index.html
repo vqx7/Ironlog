@@ -2945,6 +2945,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     `${UNPKG}/three@${THREE_VERSION}/build/three.module.min.js`
   ];
   var THREE_URLS = typeof window !== "undefined" && window.IRONLOG_APP ? ["./vendor/three.module.min.js"] : THREE_CDN;
+  var NET_MS = 2e4;
   var TICKETS_AT = "https://github.com/";
 
   // src/app/icons.ts
@@ -10547,7 +10548,6 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var FB = () => window.ironlogFeedback && typeof window.ironlogFeedback.send === "function" ? window.ironlogFeedback : null;
 
   // src/app/sync.ts
-  var NET_MS = 2e4;
   var SYNC_MS = {
     save: 400,
     track: 800,
