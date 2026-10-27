@@ -5,6 +5,8 @@
 //      "was" number, in the recap and in the toast as the set is ticked.
 //   2  P-S4-8: a workout left open overnight says it started yesterday (or
 //      on its date), not a bare time that reads as this morning.
+//   3  F8: a workout from 23:30 to 00:20 is saved on the day it began with
+//      its 50 minutes, as one done before midnight is.
 const { open, engine } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 700) : ''); } else console.log('ok  ', m); };
 const FILE = process.argv[2] || 'index.html';
@@ -61,6 +63,26 @@ const run = n => !ONLY || ONLY.includes(n);
     ok(/started yesterday/.test(r.yesterday) && !/9:00/.test(r.yesterday), '2. begun yesterday at 9:00 and opened this morning: "started yesterday", not "started 9:00 AM" (r63)', r.yesterday);
     ok(/started (Sat, )?Oct 24/.test(r.earlier) && !/9:00/.test(r.earlier), '2. begun three days before: started on its date', r.earlier);
     ok(/started 7:40/.test(r.today), '2. (a guard) begun this morning: started at its time, as before', r.today);
+  }
+
+  // ---- 3. F8: begun at 23:30 on Oct 31, finished at 00:20 on Nov 1: saved on Oct 31 with no minutes on r63.
+  if (run(3)) {
+    const P = await open(FILE, { browser, clock: '2026-11-01T00:20:00' }); pages.push(P);
+    const r = await P.page.evaluate(async () => {
+      const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; L.saveNow();
+      const fin = async (date, minsAgo, past) => {
+        L.ACT.startFree(); await new Promise(q => setTimeout(q, 120));
+        const f = L.state.draft; f.date = date; f.startedAt = Date.now() - minsAgo * 60000; if (past) f.past = true;
+        f.ex = [L.newBlock('bench', L.planFor('bench', null, null, false, f.date), {})]; f.ex[0].sets.length = 1;
+        Object.assign(f.ex[0].sets[0], { w: 100, r: 8, rir: 2, done: true }); f._rampAsked = true; f._leftAsked = true;
+        const id = f.id; L.ACT.finishNow(); await new Promise(q => setTimeout(q, 300)); if (L.ui.modal) L.ACT.mClose();
+        const x = L.state.sessions.find(z => z.id === id); return x ? { date: x.date, durMin: x.durMin ?? null } : null;
+      };
+      return { across: await fin('2026-10-31', 50, false), past: await fin('2026-10-20', 50, true), tonight: await fin('2026-11-01', 15, false) };
+    });
+    ok(r.across && r.across.date === '2026-10-31' && r.across.durMin === 50, '3. begun at 23:30 and finished at 00:20: saved on Oct 31 with its 50 minutes (r63: no minutes)', r.across);
+    ok(r.past && r.past.durMin === null, '3. (a guard) a past workout logged later is not timed by the clock', r.past);
+    ok(r.tonight && r.tonight.durMin === 15, '3. (a guard) a workout begun and finished the same day is timed as before', r.tonight);
   }
 
   const errors = pages.flatMap(P => P.errors);

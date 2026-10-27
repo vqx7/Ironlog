@@ -18135,7 +18135,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     else save();
   }
   function saveSession(d3, ex, cardio) {
-    const durMin = d3.editingId ? d3.durMin || null : d3.startedAt && d3.date === today() ? (() => {
+    const durMin = d3.editingId ? d3.durMin || null : d3.startedAt && !d3.past && iso(new Date(d3.startedAt)) === d3.date ? (() => {
       const m3 = Math.round((Date.now() - (d3.startedAt || 0)) / (MINUTE_S * SECOND_MS));
       return m3 >= 1 && m3 <= TIMED_MAX_MIN ? m3 : null;
     })() : null;
