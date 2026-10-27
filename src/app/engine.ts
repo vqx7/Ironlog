@@ -580,8 +580,14 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
      lifter can do moves up by what the estimate allows, not a step at a
      time; a set rated RIR_CALL_TOP or more in reserve is read as
      E1_MAX_RIR, which errs low, so from such sets it moves about a step a
-     session (PENDING 338 E; the Guide said 5 until r61). */
-  const early = exps.length <= EARLY_SESSIONS;
+     session (PENDING 338 E; the Guide said 5 until r61). A lift's first
+     sessions are counted since its last break or New machine or gym (all
+     is read from that mark), whatever their rep range (r64, the r63 audit's
+     R-4: counted in the plan's range only, a bench with 11 sessions whose
+     range changed was allowed 25%, 200 to 240, where 10% gives 220). */
+  let since = all!.length - 1;
+  while (since > 0 && !afterBreak(all![since - 1], all![since].date)) since--;
+  const early = all!.length - since <= EARLY_SESSIONS;
   // One set under the range among sets made reads as the bottom of it (repFloor); a missed set never does.
   const fl = repFloor(
     topPts.filter(p => !p.missed),

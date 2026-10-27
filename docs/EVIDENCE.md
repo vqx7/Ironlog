@@ -43,7 +43,7 @@ Since r61 every number a rule uses is a named constant in `src/app/`, declared o
 
 - `JUMP_COMPOUND` 0.025 and `JUMP_ISOLATION` 0.05 (formulas): the load added at the top of the range when the plan sets no jump. A convention, double progression (r30; Loads going up, above).
 - `JUMP_CAP` 1.1, `JUMP_CAP_LIGHT` 1.15 and `LIGHT_LIFT_KG` 20 (formulas): the most one session's adjustment may raise a load, 15% on an isolation lift under 20 kg. Conventions, in the app since r13 (Well past the range, and Loads going up, above).
-- `JUMP_CAP_EARLY` 1.25 and `EARLY_SESSIONS` 3 (formulas): the cap in a lift's first three sessions, while its load is found. A convention (r31; Second review conventions, above).
+- `JUMP_CAP_EARLY` 1.25 and `EARLY_SESSIONS` 3 (formulas): the cap in a lift's first three sessions, while its load is found, counted since its last break or New machine or gym, in any rep range (r64; until r64 the sessions in the plan's range only, so a range changed on a long-trained lift was allowed 25%). A convention (r31; Second review conventions, above).
 - `CLEARLY_OFF` 2 (formulas): the reps or reps in reserve off the plan that move the next session's load and the next sets. A convention (r27, r34; 3 until r45, V).
 - `FATIGUE_RIR` 1 (formulas): the rep more in reserve a load worked out from an estimate leaves, in the next sets and a close variation's first session. A convention, meant to err light (r32.1, r34).
 - `JUST_UP` steps: 1.5, short: 3 (engine): just after a step up of no more than 1.5 steps, reps short by up to 3 are the step's, not a drop. A convention (r31).
