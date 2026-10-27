@@ -33,7 +33,7 @@ import {
 import { state, ui } from './store';
 import { joinAdjacent, savedEx, draftCardio, effTarget, withNew } from './session';
 import type { DraftSet, CardioEntry, SessionEx, Session } from './types';
-import { setShort, fmtDateLong, fmtE, prSet } from './display';
+import { setShort, fmtDateLong, fmtE, prSet, wasE } from './display';
 import { W, blkOpen, blkRef, redraw } from './workstate';
 import type { Draft } from './workstate';
 import { blockProgress, calDueIdx, draftPlanMin, oddReps, rowBlank, setDone, settleLoad } from './worksets';
@@ -468,11 +468,11 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
           name: e.name,
           what: `${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e)}`,
           was: prOverall(pr)
-            ? pr.prevAll != null
-              ? `was ${fmtE(pr.prevAll)}`
+            ? wasE(pr.value, pr.prevAll)
+              ? `was ${wasE(pr.value, pr.prevAll)}`
               : ''
-            : pr.prev != null
-              ? `was ${fmtE(pr.prev)} at those reps`
+            : wasE(pr.value, pr.prev)
+              ? `was ${wasE(pr.value, pr.prev)} at those reps`
               : ''
         }
       : {

@@ -9618,6 +9618,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const v3 = toD(kg2) ?? 0;
     return String(U() === "lb" ? Math.round(v3) : Math.round(v3 * 2) / 2);
   }
+  function wasE(now, before) {
+    const b2 = fmtE(before);
+    return b2 && b2 !== fmtE(now) ? b2 : "";
+  }
   var LU = () => U() === "lb" ? "in" : "cm";
   function measAt(m3, k2) {
     const v3 = rec(m3)?.[k2];
@@ -13047,7 +13051,7 @@ ${more}`;
       for (const x2 of exps)
         if (x2.pb != null && !(date && x2.date === date)) all = all == null ? x2.pb : Math.max(all, x2.pb);
       if (!isCompound(ex)) return ` (your best for ${bandW})`;
-      return all == null || (shown2 ?? 0) > all + EPS_SAME ? ` (estimated 1RM ${fmtE(shown2)} ${U()}${all != null ? `; was ${fmtE(all)}` : ""})` : ` (your best for ${bandW}, ${fmtE(shown2)} ${U()})`;
+      return all == null || (shown2 ?? 0) > all + EPS_SAME ? ` (estimated 1RM ${fmtE(shown2)} ${U()}${wasE(shown2, all) ? `; was ${wasE(shown2, all)}` : ""})` : ` (your best for ${bandW}, ${fmtE(shown2)} ${U()})`;
     }
     if (pr === "Weight PR") {
       const mw = f3.heaviest;
@@ -18241,7 +18245,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       return pr.type === "e1RM" ? {
         name: e5.name,
         what: `${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e5)}`,
-        was: prOverall(pr) ? pr.prevAll != null ? `was ${fmtE(pr.prevAll)}` : "" : pr.prev != null ? `was ${fmtE(pr.prev)} at those reps` : ""
+        was: prOverall(pr) ? wasE(pr.value, pr.prevAll) ? `was ${wasE(pr.value, pr.prevAll)}` : "" : wasE(pr.value, pr.prev) ? `was ${wasE(pr.value, pr.prev)} at those reps` : ""
       } : {
         name: e5.name,
         what: `${e5.timed ? "Time" : "Rep"} PR, ${setShort(e5, pr.w, pr.r)}`,

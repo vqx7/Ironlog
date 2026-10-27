@@ -125,6 +125,16 @@ export function fmtE(kg: number | null | undefined): string {
   return String(U() === 'lb' ? Math.round(v) : Math.round(v * 2) / 2);
 }
 
+/* A best estimate a little above the one before it can show as the same
+   number (r64, the r63 audit's P-S4-2: "Best estimate 8 lb per dumbbell
+   (was 8)"): the PR stands, and a "was" that reads the same number is left
+   out, in the recap and the toast alike. */
+/** What an estimate was before, as shown, or '' when it shows as the same number now. */
+export function wasE(now: number | null | undefined, before: number | null | undefined): string {
+  const b = fmtE(before);
+  return b && b !== fmtE(now) ? b : '';
+}
+
 /** The unit tape measurements are shown in: inches with lb, cm with kg. */
 export const LU = (): 'in' | 'cm' => (U() === 'lb' ? 'in' : 'cm');
 /** A tape entry's site in cm, or undefined when it was not measured. */

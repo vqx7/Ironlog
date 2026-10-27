@@ -61,7 +61,7 @@ import { lastDup, effTarget, blockRest, newRow, greyW, effW, blockDone } from '.
 import type { BlkRef } from './session';
 import type { DraftBlock, DraftSet, Routine, PlanItem, NextSetsAdj } from './types';
 import type { ExerciseLike } from './model';
-import { fmtE, setShort, rirShow } from './display';
+import { fmtE, setShort, rirShow, wasE } from './display';
 import { drawing } from './view';
 import {
   W,
@@ -318,7 +318,7 @@ export function prBeat(exId: string, s: DraftSet, date: string, pr: string): str
       if (x.pb != null && !(date && x.date === date)) all = all == null ? x.pb : Math.max(all, x.pb);
     if (!isCompound(ex)) return ` (your best for ${bandW})`;
     return all == null || (shown ?? 0) > all + EPS_SAME
-      ? ` (estimated 1RM ${fmtE(shown)} ${U()}${all != null ? `; was ${fmtE(all)}` : ''})`
+      ? ` (estimated 1RM ${fmtE(shown)} ${U()}${wasE(shown, all) ? `; was ${wasE(shown, all)}` : ''})`
       : ` (your best for ${bandW}, ${fmtE(shown)} ${U()})`;
   }
   if (pr === 'Weight PR') {
