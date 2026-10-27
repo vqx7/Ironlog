@@ -350,7 +350,10 @@ const run = n => !ONLY || ONLY.includes(n);
       return P.page.evaluate(() => {
         const L = window.__ironlog;
         const keys = L.TEMPLATES.filter(t => !t.hidden).map(t => t.key);
-        return { keys, made: keys.map(k => L.routineFromTemplate(k)), iso: Object.fromEntries(L.libExercises().map(e => [e.id, !L.isCompound(e)])) };
+        // The minutes each routine's line says on the templates sheet.
+        L.state.settings.onboarded = true; L.openModal({ kind: 'templates', from: 'plan' });
+        const mins = Object.fromEntries([...document.querySelectorAll('#modal .tpl[data-k]')].map(b => [b.dataset.k, ((b.querySelector('.tpl-m') || {}).textContent || '').match(/(\d+)(?: to (\d+))? min/)]).map(([k, m]) => [k, m ? +(m[2] || m[1]) : null]));
+        return { keys, made: keys.map(k => L.routineFromTemplate(k)), iso: Object.fromEntries(L.libExercises().map(e => [e.id, !L.isCompound(e)])), mins };
       });
     };
     const was = await read('baselines/r63.html'), now = await read(FILE);
@@ -360,6 +363,11 @@ const run = n => !ONLY || ONLY.includes(n);
     const isoShort = rows.filter(r => r.iso && r.now < 90);
     ok(rows.length > 100 && !isoShort.length, `11. every isolation lift in the ready-made routines rests 90 s or more (r63: ${rows.filter(r => r.iso && r.was < 90).length} under 90)`, isoShort.slice(0, 6));
     ok(rows.every(r => (r.iso && r.was < 90 ? r.now === 90 : r.now === r.was)), '11. each one under 90 s is raised to 90 s exactly; compound lifts and isolation lifts at 90 s or more keep their rest', rows.filter(r => !(r.iso && r.was < 90 ? r.now === 90 : r.now === r.was)).slice(0, 6));
+    // The templates sheet says the longer days: no routine's minutes fall, and those whose rests rose say more in all.
+    const raised = now.keys.filter(k => rows.some(r => r.key === k && r.now > r.was));
+    const fell = now.keys.filter(k => !(now.mins[k] >= was.mins[k]));
+    const sum = ks => ks.reduce((a, k) => a + (now.mins[k] || 0) - (was.mins[k] || 0), 0);
+    ok(raised.length && !fell.length && sum(raised) > 0, `11. the templates sheet's minutes follow: none falls, and the routines whose rests rose say ${sum(raised)} minutes more in all`, { was: was.mins, now: now.mins });
     // Copies made before r64, untouched, still read as ready-made: Recently deleted leaves them out, and a first run replaces the starter.
     const P = await open(FILE, { browser, clock: '2026-10-15T10:00:00', realStarter: true }); pages.push(P);
     const c = await P.page.evaluate(old => {

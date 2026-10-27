@@ -137,7 +137,9 @@ const SHEETS = [
 
   // ---- 1. Every sheet against r61's (both pages built from src/).
   // The page's own address shows in a sheet (Install, the app icon): each build's file, read as one.
-  const page = t => t.replace(/Open \S+ in Safari/g, 'Open PAGE in Safari');
+  // r64 (302) rests the ready-made routines' isolation lifts 90 s at least, so their minutes on the templates sheet
+  // rise: read as one here, and held by tests/r64.js section 11. The rest of each line is held exactly.
+  const page = t => t.replace(/Open \S+ in Safari/g, 'Open PAGE in Safari').replace(/(a week|every other day) · \d+(?: to \d+)? min/g, '$1 · (minutes)');
   const flat = s => ({ ...s, tree: s.tree.map(page), text: page(s.text).replace(/\s+/g, ' ') });
   const textDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return { at: i, r61: a.slice(Math.max(0, i - 80), i + 160), now: b.slice(Math.max(0, i - 80), i + 160) }; };
   if (!run(1));
