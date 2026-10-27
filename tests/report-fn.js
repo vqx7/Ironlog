@@ -95,6 +95,16 @@ const linesOf = s => s.split(/\r\n|\r|\n/);
     const r3 = await send(record());
     ok(r3.status === 200 && !r3.logged.length, '4. a report linked as it should be logs nothing', r3.logged);
   }
+  // 6. A screenshot stays out of GitHub (V's choice of 2026-10-27, PENDING 287): it is kept with the report in the table and
+  // shown in the app's Inbox, so nothing is written to the tickets repository, and the issue says where to see it.
+  {
+    const shot = 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
+    const { issue, calls } = await send(record({ screenshot: shot }));
+    ok(calls.every(c => !/\/contents\//.test(c.url)) && calls.filter(c => c.method !== 'GET').length === 1, '6. a report with a screenshot writes nothing to the repository: one request, the issue', calls.map(c => c.method + ' ' + c.url));
+    ok(/Screenshot: in the app's Inbox, report 41\./.test(issue.body) && !/!\[screenshot\]|\/shots\//.test(issue.body), '6. the issue says the screenshot is in the Inbox, and links no image', linesOf(issue.body).filter(l => /creenshot/.test(l)));
+    const none = await send(record());
+    ok(/_No screenshot\._/.test(none.issue.body), '6. a report without one says so (a guard)');
+  }
   // 5. Guards: what held before still holds.
   {
     const { issue } = await send(record({ message: 'Hey @octocat look at this one' }));

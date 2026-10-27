@@ -271,14 +271,14 @@ end $$;
 Steps 2 to 5 turn each report into a GitHub issue in a private repository, so you can read reports on GitHub as well as in the app's Inbox. Nothing automated reads them (V's ruling, `FEEDBACK.md`). They can wait.
 
 2. **A private repository for tickets.** GitHub > New repository, name `ironlog-feedback`, **Private**, tick "Add a README". Reports quote what people wrote and may show their screen, so they must not go into the public Ironlog repository.
-3. **A GitHub token for it.** GitHub > Settings > Developer settings > Fine-grained tokens > Generate new token. Repository access: Only select repositories > `ironlog-feedback`. Permissions: Issues read and write, Contents read and write. Nothing else. Expiry: a year. Copy it.
+3. **A GitHub token for it.** GitHub > Settings > Developer settings > Fine-grained tokens > Generate new token. Repository access: Only select repositories > `ironlog-feedback`. Permissions: Issues read and write. Nothing else (Contents read and write was needed until r64, for screenshots; a token that has it still works). Expiry: a year. Copy it.
 4. **The function.** Supabase > Edge Functions > Deploy a new function > Via editor. Name it exactly `feedback-to-issue`, paste everything in `supabase/functions/feedback-to-issue/index.ts`, turn **Verify JWT off**, Deploy. Then Edge Functions > Secrets, add:
    - `GITHUB_TOKEN`: the token from step 3.
    - `TICKETS_REPO`: `vqx7/ironlog-feedback`.
    - `WEBHOOK_SECRET`: a long random string (a password manager can make one). Keep it for step 5.
 5. **The trigger.** Database > Webhooks > Create a new hook. Name `feedback-to-issue`, table `feedback`, events **Insert** only, type **Supabase Edge Functions**, function `feedback-to-issue`, method POST. Under HTTP Headers add `x-webhook-secret` with the same random string. Create.
 
-   To check: send a report from the app. Within a few seconds an issue labelled `feedback` appears in `ironlog-feedback`, with any screenshot saved under `shots/`, and the report's row gets its `issue_url`. If nothing appears, Edge Functions > feedback-to-issue > Logs says why (a 401 means the header and the secret differ).
+   To check: send a report from the app. Within a few seconds an issue labelled `feedback` appears in `ironlog-feedback` (a screenshot stays in the app's Inbox, r64), and the report's row gets its `issue_url`. If nothing appears, Edge Functions > feedback-to-issue > Logs says why (a 401 means the header and the secret differ).
 
 ## Security Advisor (r26)
 

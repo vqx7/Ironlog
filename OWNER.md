@@ -199,11 +199,11 @@ Status: done, as you reported (2026-10-04). Tell Claude the token's expiry date 
 GitHub > your photo > **Settings** > **Developer settings** > **Personal access tokens** > **Fine-grained tokens** > **Generate new token**.
 - Name: `ironlog-feedback`. Expiration: 1 year. Claude adds a reminder to this file to renew it before then.
 - Repository access: **Only select repositories** > `ironlog-feedback`.
-- Permissions > Repository: **Issues: Read and write**, **Contents: Read and write**. Nothing else.
+- Permissions > Repository: **Issues: Read and write**. Nothing else. (Until r64 it also needed Contents for screenshots; a token you already made with it keeps working, and you may take Contents off it.)
 - **Generate token**, copy it. It is shown once. It goes only into Supabase in B4.
 
 ### B4. The function that turns a report into a GitHub issue
-Status: done, as you reported (2026-10-04). **Paste it again with r64's code** (to do): Supabase > **Edge Functions** > `feedback-to-issue` > **Code**, select all, paste the code below over it, **Deploy**. r64 keeps a report's words inside their quote whatever line endings they carry, shows the reply address as code on one line, cuts text to the app's own limits, and logs a report it could not link to its issue (the r63 audit's A-3, A-9 and A-12). It is not published by a merge: the copy in Supabase changes only when you paste it.
+Status: done, as you reported (2026-10-04). **Paste it again with r64's code** (to do): Supabase > **Edge Functions** > `feedback-to-issue` > **Code**, select all, paste the code below over it, **Deploy**. r64 keeps a report's words inside their quote whatever line endings they carry, shows the reply address as code on one line, cuts text to the app's own limits, and logs a report it could not link to its issue (the r63 audit's A-3, A-9 and A-12). It also stops committing screenshots to `ironlog-feedback` (your choice A, 2026-10-27): a screenshot stays in your Inbox, and the issue says so. Screenshots already in the repository's `shots/` folder stay until you delete them. It is not published by a merge: the copy in Supabase changes only when you paste it.
 Supabase > **Edge Functions** > **Deploy a new function** > **Via editor**. Name it exactly `feedback-to-issue`. Delete the sample code, paste all of this:
 
 ````ts
@@ -217,7 +217,7 @@ Supabase > **Edge Functions** > **Deploy a new function** > **Via editor**. Name
 // Secrets (Edge Functions > Secrets):
 //   WEBHOOK_SECRET  a long random string, also set as a header on the webhook
 //   GITHUB_TOKEN    a fine-grained token for the tickets repository only,
-//                   with Issues: read and write, Contents: read and write
+//                   with Issues: read and write (Contents is no longer used, r64)
 //   TICKETS_REPO    owner/name of that private repository
 //
 // Feedback text is written by other people. It is quoted, never followed:
@@ -255,14 +255,9 @@ Deno.serve(async (req) => {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'ironlog-feedback', 'Content-Type': 'application/json' },
   });
 
-  // The screenshot goes into the private repository, so the issue can show it.
-  let shot = '';
-  const data = typeof r.screenshot === 'string' && r.screenshot.startsWith('data:image/jpeg;base64,') ? r.screenshot.slice(23) : '';
-  if (data) {
-    const p = `shots/${r.id}.jpg`;
-    const res = await gh(`/repos/${repo}/contents/${p}`, { method: 'PUT', body: JSON.stringify({ message: `Screenshot for feedback ${r.id}`, content: data }) });
-    if (res.ok) shot = `https://github.com/${repo}/blob/HEAD/${p}?raw=true`;
-  }
+  // A screenshot stays with its report in the table, shown in the app's Inbox; nothing of it goes to GitHub, where a file
+  // committed to the repository is kept for good (V, 2026-10-27, PENDING 287; GitHub has no way for a server to attach one).
+  const shot = typeof r.screenshot === 'string' && r.screenshot.length > 0;
 
   const cat = ['bug', 'idea', 'question'].includes(r.category) ? r.category : 'bug';
   const msg = String(r.message ?? '').slice(0, MSG_MAX);
@@ -274,7 +269,7 @@ Deno.serve(async (req) => {
     '',
     quote(msg),
     '',
-    shot ? `![screenshot](${shot})` : '_No screenshot._',
+    shot ? `_Screenshot: in the app's Inbox, report ${Number(r.id)}._` : '_No screenshot._',
     '',
     r.reply_to ? `Reply to: ${code(String(r.reply_to).slice(0, 200))}` : '_No reply address._',
     '',

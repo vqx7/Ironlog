@@ -42,7 +42,7 @@ export const NO_ANSWER = 'No answer. Check your connection and try again.';
 const CTX = { device: 300, errors: 10, words: 100 } as const;
 /** A day, in milliseconds (the reports sent in the last one). */
 const DAY_MS = 864e5;
-/** A screenshot as kept: its long side tried at each of these, in pixels, at each JPEG quality from the first down by the step to the last, until it fits in the characters allowed (r45, audit item 287: each is kept in the tickets repository's history for good). */
+/** A screenshot as kept: its long side tried at each of these, in pixels, at each JPEG quality from the first down by the step to the last, until it fits in the characters allowed (r45, audit item 287, when each was also committed to the tickets repository for good; since r64 it is kept only with its report in the table and shown in the Inbox). */
 const SHOT = { sides: [1280, 960, 720], q0: 0.72, qStep: 0.14, qMin: 0.3, chars: 500000 } as const;
 /** A megabyte, in bytes. */
 const MB = 1048576;
