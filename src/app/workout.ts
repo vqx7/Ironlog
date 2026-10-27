@@ -733,7 +733,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
      reps, picking RIR and then tapping the checkmark is the natural order,
      and it used to untick the set. A second tap undoes it. Tapping done on
      an empty reps field logs the grey number in it (see greyR), like the
-     paper log you copy from; warm-ups have none, so those still ask; a typed
+     paper log you copy from; warm-ups and drops have theirs since r64; a typed
      0 is a missed set (r55, V), ticked as typed. Unticked (r55, the audit):
      numbers that are what the row shows in grey go back to grey, so a tap by
      mistake leaves nothing typed for Finish to offer to save, and an

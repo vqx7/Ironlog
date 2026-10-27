@@ -23,9 +23,12 @@ const menuAuth = () => (AUTH() && !(window.claude && typeof window.claude.use ==
 /* The menu (r27): one tap from every tab for the things people look for
    outside a workout: who is signed in, signing in or out, the save state,
    Report a problem and the Guide. Since r28 Settings has a Help group near
-   the bottom with the same Guide and reports (V asked for both places). */
-/** The menu. */
-export function menuSheet(): TemplateResult {
+   the bottom with the same Guide and reports (V asked for both places).
+   Opened from the first pages (their Help, r64, the r63 audit's P-S4-6), it
+   leaves out the sections and Your data: both open a tab, and the tabs open
+   only once Set up is done, so a tap there would do nothing. */
+/** The menu; `first` when it is opened from the first pages. */
+export function menuSheet(m: { first?: true | undefined }): TemplateResult {
   const A = menuAuth();
   const u = A && acct.user;
   const st = saveStateNow();
@@ -43,7 +46,7 @@ export function menuSheet(): TemplateResult {
     html`<button type="button" class="mnu" data-act=${act} data-cat=${cat || nothing}><span>${label}</span><span aria-hidden="true">›</span></button>`;
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h"><h3 id="menuH">${ENV === 'preview' ? PREVIEW_NAME : APP_NAME}</h3>${closeX()}</div>
   <div class="panel" id="menuAcct">${acc}</div>${due}
-  <div class="mnus">${item('fbOpen', 'Report a problem', 'bug')}${acct.reader && FB() ? item('fbInbox', 'Reports inbox') : nothing}${item('guideOpen', 'Guide')}${item('goLayout', 'Show, hide, or reorder sections')}${item('goBackup', 'Your data and backups')}</div>
+  <div class="mnus">${item('fbOpen', 'Report a problem', 'bug')}${acct.reader && FB() ? item('fbInbox', 'Reports inbox') : nothing}${item('guideOpen', 'Guide')}${m.first ? nothing : html`${item('goLayout', 'Show, hide, or reorder sections')}${item('goBackup', 'Your data and backups')}`}</div>
   <p class="small muted" style="margin:12px 0 0">Version ${DISPLAY_VERSION}</p></div>`;
 }
 

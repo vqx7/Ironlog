@@ -121,9 +121,32 @@ export const LIVE: Model = {
   c: freshCaches()
 };
 
-/** A function of the model as the app calls it: LIVE, then every argument as given. */
+/* LIVE's caches hold what was read on one day (r64, the r63 audit's A-4).
+   They were dropped only when the log changed, so a page left open past
+   midnight kept yesterday's readings of days and weeks back ("No clear
+   change yet" beside "Last done Sep 22, 4 weeks ago") until the next change.
+   Every call through an adapter drops them once the clock has left the day
+   they were built on; read with Date.now() alone, since an adapter runs
+   thousands of times a draw. The first call builds the day's bounds. */
+let dayFrom = 0;
+let dayTo = 0;
+function cachesForToday(): void {
+  const now = Date.now();
+  if (now >= dayFrom && now < dayTo) return;
+  const d = new Date(now);
+  d.setHours(0, 0, 0, 0);
+  dayFrom = d.getTime();
+  d.setDate(d.getDate() + 1);
+  dayTo = d.getTime();
+  invalidateIn(LIVE);
+}
+
+/** A function of the model as the app calls it: LIVE, its caches of today, then every argument as given. */
 export function live<A extends unknown[], R>(f: (M: Model, ...args: A) => R): (...args: A) => R {
-  return (...args) => f(LIVE, ...args);
+  return (...args) => {
+    cachesForToday();
+    return f(LIVE, ...args);
+  };
 }
 
 /** The engine and the analytics under their r51 names, each on LIVE: one

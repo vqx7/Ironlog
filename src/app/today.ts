@@ -20,7 +20,7 @@ import { act } from './act';
 import { APP_NAME } from './config';
 import { LOCKUP } from './icons';
 import { MEAS, injLabel } from './library';
-import { DAYS, dayLabel, daySets, dropStarter, ssLetters, tplCountLine } from './routines';
+import { DAYS, dayLabel, daySets, dropStarter, sessDayIdx, ssLetters, tplCountLine } from './routines';
 import { starterSigs } from './normalize';
 import { fmtDate, greeting, repSpan, todayEye, LIGHT_RIR } from './format';
 import { BW_MAX_KG, BW_MIN_KG, MEAS_MAX_CM, LIMITS } from './records';
@@ -369,7 +369,9 @@ function obView(): TemplateResult {
      for, and Continue without an account as a plain, clearly worded link. A
      page that opened on an account request alone lost a friend at the first
      screen. After Erase everything these pages are all there is, so its Undo
-     is here too (r55, the audit). */
+     is here too (r55, the audit). The header and its menu are hidden on these
+     pages, so the Set up page ends with Help, the menu (Report a problem, the
+     Guide), for someone stuck before the app opens (r64, the r63 audit's P-S4-6). */
   if (obAcctOffered())
     return html`<div class="ob" id="obPage" data-step="acct">
 <div class="ob-top"><h1 class="ob-logo">${markup(LOCKUP)}</h1></div>
@@ -407,7 +409,8 @@ ${acctStep && !acct.user ? html`<button class="linkbtn ob-back" data-act="obAcct
       : nothing
   }</div>
 <button class="linkbtn ob-skip" data-act="demoLoad">Look around with sample data first</button>${undo}
-<p class="small muted" id="obSafety" style="margin:10px 0 0;text-align:center"><span class="hastip" data-tip=${SAFETY_TXT}>Suggestions are estimates, not advice.</span></p></div>`;
+<p class="small muted" id="obSafety" style="margin:10px 0 0;text-align:center"><span class="hastip" data-tip=${SAFETY_TXT}>Suggestions are estimates, not advice.</span></p>
+<button class="linkbtn ob-skip" data-act="menuOpen">Help</button></div>`;
 }
 
 /* ---------- the lines above the start card ---------- */
@@ -586,7 +589,15 @@ export function viewToday(): TemplateResult {
     if (cs.lastDate === t) note = `${dayLabel(R, cs.last)} done today.`;
     else if (cs.restToday)
       note = html`<b>Scheduled rest today</b> (${dayLabel(R, cs.restIdx)} of your cycle). ${(R.days[cs.next] || { name: '' }).name} is ready whenever you want it.`;
-  }
+  } else if (
+    weekly &&
+    chosen == null &&
+    state.sessions.some(x => x.date === t && x.routineId === R.id && sessDayIdx(R, x) === wd)
+  )
+    /* A weekly routine offers today's day again once it is done (the day is
+       the weekday), so it says so, as a cycle's card does (r64, the r63
+       audit's P-S4-4). */
+    note = `${day.name || dayLabel(R, wd)} done today.`;
   const playable = !day.rest && day.items.length > 0;
   const deload = isDeloadWeek();
   /* Freestyle by default (r34, V): for a lifter who never follows a plan,

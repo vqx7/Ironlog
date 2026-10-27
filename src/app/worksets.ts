@@ -59,7 +59,7 @@ import {
 import { state, ui } from './store';
 import { lastDup, effTarget, blockRest, newRow, greyW, effW, blockDone } from './session';
 import type { BlkRef } from './session';
-import type { DraftBlock, DraftSet, Routine, PlanItem, NextSetsAdj } from './types';
+import type { DraftBlock, DraftSet, Routine, PlanItem, NextSetsAdj, Session } from './types';
 import type { ExerciseLike } from './model';
 import { fmtE, setShort, rirShow, wasE } from './display';
 import { drawing } from './view';
@@ -98,7 +98,7 @@ const MIX_RANGE = [0.6, 1.4] as const;
 const MIX_TOAST_MS = 7000;
 /** A ticked exercise moves up this many milliseconds after the tick, and tries again after ORDER_MS.again while something is being typed or open. */
 const ORDER_MS = { soon: 900, again: 1500 } as const;
-import { LIMITS } from './records';
+import { LIMITS, sessCmp } from './records';
 import { readSets } from './importing';
 import type { TypedSet } from './importing';
 import { toast } from './toast';
@@ -174,7 +174,7 @@ export function lastRFor(b: DraftBlock, si: number): number | null {
    the keyboard's Done take as the set's reps: last time's reps for that set;
    with none (a new or just-swapped exercise, or more sets than last time),
    the reps of the working set above it in this session; else the bottom of
-   the planned range. Warm-ups and drop sets have none. When the target is a
+   the planned range. Warm-ups and drop sets have their own (warmDropR). When the target is a
    new load (up a step, down after missing the range, or a range change),
    last time's reps were at the old load, so a tick without typing would log
    reps never done there (r27). Then the grey number is the set above, else
@@ -183,7 +183,8 @@ export function lastRFor(b: DraftBlock, si: number): number | null {
 /** The grey reps of row si, or null. */
 export function greyR(b: DraftBlock | null | undefined, si: number): number | null {
   const s = b && b.sets[si];
-  if (!b || !s || s.warm || s.drop) return null;
+  if (!b || !s) return null;
+  if (s.warm || s.drop) return warmDropR(b, si);
   if (b.adj && si > b.adj.at) {
     for (let i = si - 1; i > b.adj.at; i--) {
       const x = b.sets[i];
@@ -200,6 +201,55 @@ export function greyR(b: DraftBlock | null | undefined, si: number): number | nu
   }
   const m = +(loadT && b.tgt && +(b.tgt.repMin ?? 0) > 0 ? (b.tgt.repMin ?? 0) : b.plan.repMin);
   return m > 0 ? m : null;
+}
+
+/* The grey reps of a warm-up or a drop set (r64, V's decision 3 on the r63
+   audit's P-S4-5; until then they had none, and their checkmark asked for
+   reps): what that row did last time, the warm-up or drop in the same place
+   among the lift's warm-ups or drops in the last session that did it. With
+   none, a drop takes the set before it (its reps, else its grey reps), and a
+   warm-up the top of the range. A lift done twice in this session has no
+   last time of its own, as its working rows have none (lastDup). */
+function warmDropR(b: DraftBlock, si: number): number | null {
+  const s = b.sets[si];
+  if (!s) return null;
+  const warm = !!s.warm;
+  const same = (x: { warm?: boolean | undefined; drop?: boolean | undefined }) =>
+    warm ? !!x.warm : !x.warm && !!x.drop;
+  let k = 0;
+  for (let i = 0; i < si; i++) {
+    const x = b.sets[i];
+    if (x && same(x)) k++;
+  }
+  const d = state.draft;
+  const bi = d ? d.ex.indexOf(b) : -1;
+  const lr = d && !(bi > 0 && lastDup(d, bi)) ? lastRowR(b.exId, d, same, k) : null;
+  if (lr != null) return lr;
+  if (!warm) {
+    const x = si > 0 ? b.sets[si - 1] : undefined;
+    if (!x) return null;
+    return +(x.r ?? 0) > 0 ? +(x.r ?? 0) : greyR(b, si - 1);
+  }
+  const top = +b.plan.repMax;
+  return top > 0 ? top : null;
+}
+
+/* The reps of row k among the rows `same` picks, in the last session before
+   this one that did the lift (its blocks of the lift in order), or null. */
+function lastRowR(
+  exId: string,
+  d: Draft,
+  same: (x: { warm?: boolean | undefined; drop?: boolean | undefined }) => boolean,
+  k: number
+): number | null {
+  let last: Session | null = null;
+  for (const x of state.sessions)
+    if (x.id !== d.id && x.date <= d.date && x.ex.some(e => e.exId === exId) && (!last || sessCmp(last, x) < 0))
+      last = x;
+  if (!last) return null;
+  const rows = last.ex.filter(e => e.exId === exId).flatMap(e => e.sets.filter(same));
+  const r = rows[k] ? +(rows[k].r ?? 0) : 0;
+  return r > 0 ? r : null;
 }
 
 /* Anything the lifter put into a session: a ticked set, typed reps or a
@@ -1186,7 +1236,8 @@ export function acceptGrey(bi: number, si: number): boolean {
   if (!d || !state.settings.autoDone || drawing()) return false;
   const b = d.ex[bi];
   const x = b && b.sets[si];
-  if (!b || !x || x.done || x.warm || x.drop || +(x.r ?? 0) > 0) return false;
+  // A warm-up or a drop takes its grey reps here too, since r64 gave them some (P-S4-5).
+  if (!b || !x || x.done || +(x.r ?? 0) > 0) return false;
   const lr = greyR(b, si);
   if (lr == null || !(lr > 0)) return false;
   // The grey reps and the tick are one change, saved once (as sDone's, from the independent review of r60).

@@ -804,7 +804,10 @@ export function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
       const rk = onR ? (heavierLoadIn(M, ex, plan, top, want) ?? (easy5 ? top + step : null)) : null;
       if (onR ? rk != null : k >= 1) {
         const nw = rk != null ? capW(rk) : ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
-        const rr = r1(topPts.reduce((a, p) => a + p.rir!, 0) / topPts.length);
+        /* The reserve said is that of the sets the rule read, the plan's (r64,
+           the r63 audit's 363: a set past them, at 0 in reserve, made 4 read 3).
+           Each has an RIR: the test above holds every one to a number. */
+        const rr = r1(planPts.reduce((a, p) => a + p.rir!, 0) / planPts.length);
         // In the lifter's effort scale (r54, from the audit V asked for: RPE lifters were told RIR).
         const sc = effScale(M.s.settings.rirScale);
         return {

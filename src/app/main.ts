@@ -232,7 +232,7 @@ import { act } from './act';
 import { fitRecordOld, fitTargets } from './targets';
 import { FB_CTX_MAX } from './feedback';
 import { effShow, rirScale } from './effort';
-import { toast } from './toast';
+import { toast, undoToastHide } from './toast';
 import { timer, timerResume, wakeOn } from './timer';
 import { tipsStart } from './tips';
 import { howToUrl } from './sheetslift';
@@ -321,7 +321,7 @@ setSheets(SHEETS, afterSheet);
    effect runs. Then what the storage and sync parts ran as the page loaded,
    in their order: the save read into the store, the sync notes, the device
    id, the listeners. */
-setFx({ render, rerenderKeepScroll, toast, setSaveState, syncLine, obGate, ask });
+setFx({ render, rerenderKeepScroll, toast, undoToastHide, setSaveState, syncLine, obGate, ask });
 storageStart();
 syncStart();
 // Fields typed in, and the update bar (r60): started before the page's handlers are added below.

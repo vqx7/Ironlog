@@ -7605,7 +7605,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         const rk = onR ? heavierLoadIn(M3, ex, plan, top, want) ?? (easy5 ? top + step : null) : null;
         if (onR ? rk != null : k2 >= 1) {
           const nw = rk != null ? capW(rk) : ex.assist && top < 0 ? Math.min(0, top + k2 * step) : capW(top + k2 * step);
-          const rr = r1(topPts.reduce((a2, p3) => a2 + p3.rir, 0) / topPts.length);
+          const rr = r1(planPts.reduce((a2, p3) => a2 + p3.rir, 0) / planPts.length);
           const sc = effScale(M3.s.settings.rirScale);
           return {
             top,
@@ -9447,8 +9447,23 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     today,
     c: freshCaches()
   };
+  var dayFrom = 0;
+  var dayTo = 0;
+  function cachesForToday() {
+    const now = Date.now();
+    if (now >= dayFrom && now < dayTo) return;
+    const d3 = new Date(now);
+    d3.setHours(0, 0, 0, 0);
+    dayFrom = d3.getTime();
+    d3.setDate(d3.getDate() + 1);
+    dayTo = d3.getTime();
+    invalidateIn(LIVE);
+  }
   function live(f3) {
-    return (...args) => f3(LIVE, ...args);
+    return (...args) => {
+      cachesForToday();
+      return f3(LIVE, ...args);
+    };
   }
   var EX = live(EXIn);
   var U = live(UIn);
@@ -11743,6 +11758,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       change();
       return true;
     }
+    fx.undoToastHide();
     if (opts.undo) snapshot(typeof opts.undo === "function" ? opts.undo : null);
     outerUndo = !!opts.undo;
     depth++;
@@ -12682,6 +12698,7 @@ ${more}`;
     const lines = String(text).split(/\r?\n/);
     const S4 = [];
     let cur = null, ex = null, pend = null, hint = null;
+    const named = { kg: false, lb: false };
     const unread = [];
     const day = (date, name) => {
       if (pend) unread.push(pend.raw);
@@ -12706,8 +12723,13 @@ ${more}`;
       const L2 = L0.replace(/^[\s\-•*–]+/, "").trim();
       if (!L2) continue;
       const under = li > 0 && !!(lines[li - 1] || "").trim();
-      if (/\bkgs?\b|\dkg/i.test(L2)) hint = hint || "kg";
-      else if (/\blbs?\b|\dlb|#/i.test(L2)) hint = hint || "lb";
+      if (/\bkgs?\b|\dkg/i.test(L2)) {
+        hint = hint || "kg";
+        named.kg = true;
+      } else if (/\blbs?\b|\dlb|#/i.test(L2)) {
+        hint = hint || "lb";
+        named.lb = true;
+      }
       const words = L2.split(/\s+/);
       let dt = impDate(L2);
       if (dt && (ex || pend) && /^[\d\s/.,-]+$/.test(L2) && !nextIsName(li)) dt = null;
@@ -12796,7 +12818,8 @@ ${more}`;
     if (last) unread.push(last.raw);
     return {
       sessions: S4.filter((x2) => x2.items.length).map((x2) => ({ date: x2.date, name: x2.name, items: x2.items })),
-      unit: hint,
+      unit: named.kg && named.lb ? null : hint,
+      ...named.kg && named.lb ? { mixed: true } : {},
       skipped: 0,
       cardio: 0,
       unread: unread.slice(0, UNREAD_SHOWN),
@@ -12965,7 +12988,8 @@ ${more}`;
   }
   function greyR(b2, si) {
     const s3 = b2 && b2.sets[si];
-    if (!b2 || !s3 || s3.warm || s3.drop) return null;
+    if (!b2 || !s3) return null;
+    if (s3.warm || s3.drop) return warmDropR(b2, si);
     if (b2.adj && si > b2.adj.at) {
       for (let i5 = si - 1; i5 > b2.adj.at; i5--) {
         const x2 = b2.sets[i5];
@@ -12982,6 +13006,38 @@ ${more}`;
     }
     const m3 = +(loadT && b2.tgt && +(b2.tgt.repMin ?? 0) > 0 ? b2.tgt.repMin ?? 0 : b2.plan.repMin);
     return m3 > 0 ? m3 : null;
+  }
+  function warmDropR(b2, si) {
+    const s3 = b2.sets[si];
+    if (!s3) return null;
+    const warm = !!s3.warm;
+    const same = (x2) => warm ? !!x2.warm : !x2.warm && !!x2.drop;
+    let k2 = 0;
+    for (let i5 = 0; i5 < si; i5++) {
+      const x2 = b2.sets[i5];
+      if (x2 && same(x2)) k2++;
+    }
+    const d3 = state.draft;
+    const bi = d3 ? d3.ex.indexOf(b2) : -1;
+    const lr = d3 && !(bi > 0 && lastDup(d3, bi)) ? lastRowR(b2.exId, d3, same, k2) : null;
+    if (lr != null) return lr;
+    if (!warm) {
+      const x2 = si > 0 ? b2.sets[si - 1] : void 0;
+      if (!x2) return null;
+      return +(x2.r ?? 0) > 0 ? +(x2.r ?? 0) : greyR(b2, si - 1);
+    }
+    const top = +b2.plan.repMax;
+    return top > 0 ? top : null;
+  }
+  function lastRowR(exId, d3, same, k2) {
+    let last = null;
+    for (const x2 of state.sessions)
+      if (x2.id !== d3.id && x2.date <= d3.date && x2.ex.some((e5) => e5.exId === exId) && (!last || sessCmp(last, x2) < 0))
+        last = x2;
+    if (!last) return null;
+    const rows = last.ex.filter((e5) => e5.exId === exId).flatMap((e5) => e5.sets.filter(same));
+    const r4 = rows[k2] ? +(rows[k2].r ?? 0) : 0;
+    return r4 > 0 ? r4 : null;
   }
   function draftEntered(d3) {
     if (!d3) return false;
@@ -13634,7 +13690,7 @@ ${more}`;
     if (!d3 || !state.settings.autoDone || drawing()) return false;
     const b2 = d3.ex[bi];
     const x2 = b2 && b2.sets[si];
-    if (!b2 || !x2 || x2.done || x2.warm || x2.drop || +(x2.r ?? 0) > 0) return false;
+    if (!b2 || !x2 || x2.done || +(x2.r ?? 0) > 0) return false;
     const lr = greyR(b2, si);
     if (lr == null || !(lr > 0)) return false;
     act(
@@ -17330,7 +17386,8 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
 <button class="ob-opt" data-act="obOwn"><b>Build my own routine</b><span>Your days, your exercises</span></button>
 <button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, another app, a backup</span></button>${ENV === "preview" ? b`<button class="ob-opt" data-act="previewCopy"><b>Copy my log in</b><span>Try this test version on your own log</span></button>` : A}</div>
 <button class="linkbtn ob-skip" data-act="demoLoad">Look around with sample data first</button>${undo}
-<p class="small muted" id="obSafety" style="margin:10px 0 0;text-align:center"><span class="hastip" data-tip=${SAFETY_TXT}>Suggestions are estimates, not advice.</span></p></div>`;
+<p class="small muted" id="obSafety" style="margin:10px 0 0;text-align:center"><span class="hastip" data-tip=${SAFETY_TXT}>Suggestions are estimates, not advice.</span></p>
+<button class="linkbtn ob-skip" data-act="menuOpen">Help</button></div>`;
   }
   function welcomeCard() {
     if (state.settings.onboarded || !cloudChecked || state.draft || state.sessions.some((s3) => !s3.demo)) return A;
@@ -17419,7 +17476,8 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
       if (cs.lastDate === t4) note = `${dayLabel(R2, cs.last)} done today.`;
       else if (cs.restToday)
         note = b`<b>Scheduled rest today</b> (${dayLabel(R2, cs.restIdx)} of your cycle). ${(R2.days[cs.next] || { name: "" }).name} is ready whenever you want it.`;
-    }
+    } else if (weekly && chosen == null && state.sessions.some((x2) => x2.date === t4 && x2.routineId === R2.id && sessDayIdx(R2, x2) === wd))
+      note = `${day.name || dayLabel(R2, wd)} done today.`;
     const playable = !day.rest && day.items.length > 0;
     const deload = isDeloadWeek();
     const free = state.settings.todayStart === "free" && chosen == null;
@@ -18670,7 +18728,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
        reps, picking RIR and then tapping the checkmark is the natural order,
        and it used to untick the set. A second tap undoes it. Tapping done on
        an empty reps field logs the grey number in it (see greyR), like the
-       paper log you copy from; warm-ups have none, so those still ask; a typed
+       paper log you copy from; warm-ups and drops have theirs since r64; a typed
        0 is a missed set (r55, V), ticked as typed. Unticked (r55, the audit):
        numbers that are what the row shows in grey go back to grey, so a tap by
        mistake leaves nothing typed for Finish to offer to save, and an
@@ -21743,7 +21801,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         return;
       }
       if (ui.modal) closeModal();
-      openModal({ kind: "menu" });
+      openModal(obActive() ? { kind: "menu", first: true } : { kind: "menu" });
     },
     install() {
       const how = installKind();
@@ -23786,7 +23844,7 @@ ${JSON.stringify(ctx, null, 1)}`;
 
   // src/app/sheetsaccount.ts
   var menuAuth = () => AUTH() && !(window.claude && typeof window.claude.use === "function") ? AUTH() : null;
-  function menuSheet() {
+  function menuSheet(m3) {
     const A2 = menuAuth();
     const u4 = A2 && acct.user;
     const st = saveStateNow();
@@ -23797,7 +23855,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const item = (act2, label, cat) => b`<button type="button" class="mnu" data-act=${act2} data-cat=${cat || A}><span>${label}</span><span aria-hidden="true">›</span></button>`;
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h"><h3 id="menuH">${ENV === "preview" ? PREVIEW_NAME : APP_NAME}</h3>${closeX()}</div>
   <div class="panel" id="menuAcct">${acc}</div>${due}
-  <div class="mnus">${item("fbOpen", "Report a problem", "bug")}${acct.reader && FB() ? item("fbInbox", "Reports inbox") : A}${item("guideOpen", "Guide")}${item("goLayout", "Show, hide, or reorder sections")}${item("goBackup", "Your data and backups")}</div>
+  <div class="mnus">${item("fbOpen", "Report a problem", "bug")}${acct.reader && FB() ? item("fbInbox", "Reports inbox") : A}${item("guideOpen", "Guide")}${m3.first ? A : b`${item("goLayout", "Show, hide, or reorder sections")}${item("goBackup", "Your data and backups")}`}</div>
   <p class="small muted" style="margin:12px 0 0">Version ${DISPLAY_VERSION}</p></div>`;
   }
   function fbSheet(m3) {
@@ -24061,7 +24119,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   ${b2.dup ? b`<p class="small" style="margin:6px 0 0">${b2.dup} already in your log, skipped.</p>` : A}
   <div style="margin-top:10px"><p class="small muted" style="margin:0 0 6px;font-weight:600">Weights in the file are</p><div class="ob-units">${["lb", "kg"].map(
         (k2) => b`<button class=${"chip " + (m3.unit === k2 ? "on" : "")} data-act="impUnit" data-v=${k2} aria-pressed=${String(m3.unit === k2)}>${k2}</button>`
-      )}</div>${m3.unitKnown ? A : b`<p class="small muted" style="margin:4px 0 0">It does not say which; check this.</p>`}</div>
+      )}</div>${m3.unitKnown ? A : b`<p class="small muted" style="margin:4px 0 0">${r4.mixed ? "It names both kg and lb. A line with neither is read in the unit picked here; check this." : "It does not say which; check this."}</p>`}</div>
   ${noDate ? b`<label class="field" style="margin-top:10px">No date found. Log it on<input type="date" data-impdate value=${m3.date} max=${today()}></label>` : A}
   ${unsure.length ? b`<p class="small" style="margin:12px 0 4px;font-weight:650">Check these exercises</p>${unsure.map(row)}` : A}
   ${sure.length ? b`<details class="subsec" style="margin-top:8px"><summary>${sure.length} matched</summary>${sure.map(row)}</details>` : A}
@@ -24870,7 +24928,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   // src/app/main.ts
   setRoot(renderInner);
   setSheets(SHEETS, afterSheet2);
-  setFx({ render, rerenderKeepScroll, toast, setSaveState, syncLine, obGate, ask });
+  setFx({ render, rerenderKeepScroll, toast, undoToastHide, setSaveState, syncLine, obGate, ask });
   storageStart();
   syncStart();
   viewStart();

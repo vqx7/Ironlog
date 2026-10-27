@@ -20,6 +20,7 @@ import { distShow, distU } from './display';
 import { closeModal, confirmBox, openModal, render, rerenderKeepScroll } from './page';
 import { stopTimer, timerAdd } from './timer';
 import { toast, toastHide } from './toast';
+import { obActive } from './today';
 import type { Tap } from './workstate';
 
 /** Clears what earlier builds put in Recently deleted: a ready-made routine removed unchanged is not kept (r34.1). Once, at start. */
@@ -281,7 +282,8 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       return;
     }
     if (ui.modal) closeModal();
-    openModal({ kind: 'menu' });
+    // From the first pages (Help, r64) the menu leaves out what needs the app's tabs.
+    openModal(obActive() ? { kind: 'menu', first: true } : { kind: 'menu' });
   },
   install() {
     const how = installKind();

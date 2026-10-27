@@ -8,7 +8,8 @@
 //      open), the week bar on three tabs, and the calendar, give the same
 //      elements, attributes, field values and visible text as r58
 //      (baselines/r58.html), but for the changes held on purpose below (the
-//      calendar's days ahead and its Next month, section 4);
+//      calendar's days ahead and its Next month, section 4; Set up's Help,
+//      r64, held by tests/r64.js section 4);
 //   2  (a guard: r58 placed these steps by hand) every Today action and field
 //      that changes the log does act's steps, read on the page after a tap or
 //      a typed value (changed, saved, the caches dropped, the edit noted for
@@ -134,7 +135,10 @@ const SCREENS = [
   /* The calendar's days ahead and its Next month (329, held by section 4) are left out of both: r58 left days
      ahead blank and stopped at this month. The days before them are held exactly. */
   const ahead = t => t.replace(/<(span|button)[^>]*class="cd fut[^"]*"[^>]*><span class="n">"\d+"<\/span><span class="x"><\/span><\/\1>/g, '(a day ahead)').replace(/(aria-label="Next month"[^>]*) p-disabled="(true|false)"/g, '$1');
-  const flat = s => ({ ...s, tree: s.tree.map(t => ahead(t.replace(/(<p class="bm3d-msg muted small" hidden="">)"Loading the 3D body"(<\/p>)/g, '$1$2'))), text: s.text.replace(/\s+/g, ' ') });
+  /* Set up's Help at its foot (r64, the r63 audit's P-S4-6, held by tests/r64.js section 4) is left out of the
+     page now: r58 had no way to the menu there. Everything else on the page is held exactly. */
+  const help = t => t.replace(/<button class="linkbtn ob-skip" data-act="menuOpen">"Help"<\/button>/g, '');
+  const flat = s => ({ ...s, tree: s.tree.map(t => help(ahead(t.replace(/(<p class="bm3d-msg muted small" hidden="">)"Loading the 3D body"(<\/p>)/g, '$1$2')))), text: s.text.replace(/\s+/g, ' ').replace(/ Help$/, '') });
   const textDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return { at: i, r58: a.slice(Math.max(0, i - 80), i + 160), now: b.slice(Math.max(0, i - 80), i + 160) }; };
   if (!run(1));
   else if (process.env.IRONLOG_FILE) console.log('note r59 section 1 compares source pages; it runs on the source build');
