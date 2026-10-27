@@ -3181,8 +3181,18 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const t4 = TEMPLATES.find((x2) => x2.key === key);
     return t4 ? routineOf(t4) : null;
   }
-  function templatesBefore() {
-    return TEMPLATES.map((t4) => routineOf(t4, true));
+  function templateBefore(key) {
+    const t4 = TEMPLATES.find((x2) => x2.key === key);
+    return t4 ? routineOf(t4, true) : null;
+  }
+  function templateSigsBefore() {
+    return TEMPLATES.map(
+      (t4) => routineSig({
+        name: t4.name,
+        schedule: "cycle",
+        days: t4.days.map((d3) => ({ name: d3.name, rest: !!d3.rest, items: d3.items }))
+      })
+    );
   }
   function routineOf(t4, shipped) {
     const asShipped = shipped || !!t4.hidden;
@@ -4059,18 +4069,18 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return routineFromTemplate(k2 && TEMPLATES.some((t4) => t4.key === k2) ? k2 : "ul4");
   }
   function starterSigs() {
-    return [routineSig(starterRoutine()), routineSig(starterBefore()), routineSig(defaultRoutine())];
+    return [routineSig(starterRoutine()), starterSigBefore(), routineSig(defaultRoutine())];
   }
-  function starterBefore() {
+  function starterSigBefore() {
     const k2 = window.IRONLOG_STARTER;
     const key = k2 && TEMPLATES.some((t4) => t4.key === k2) ? k2 : "ul4";
-    return templatesBefore()[TEMPLATES.findIndex((t4) => t4.key === key)] ?? starterRoutine();
+    return templateSigsBefore()[TEMPLATES.findIndex((t4) => t4.key === key)] ?? routineSig(starterRoutine());
   }
   var tplCache = null;
   function tplSigs() {
     if (!tplCache)
       tplCache = new Set(
-        [...TEMPLATES.map((t4) => routineFromTemplate(t4.key)), ...templatesBefore(), starterRoutine(), defaultRoutine()].filter((r4) => !!r4).map((r4) => routineSig(r4))
+        [...TEMPLATES.map((t4) => routineFromTemplate(t4.key)), starterRoutine(), defaultRoutine()].filter((r4) => !!r4).map((r4) => routineSig(r4)).concat(templateSigsBefore())
       );
     return tplCache;
   }
@@ -25337,7 +25347,9 @@ ${JSON.stringify(ctx, null, 1)}`;
     stallWords,
     atRangeTop,
     oddLoad,
-    lightZero
+    lightZero,
+    // Names added since r63 go last, so the earlier builds' suites find theirs in their order (tests/r63.js section 4).
+    templateBefore
   };
   render();
   wakeOn();

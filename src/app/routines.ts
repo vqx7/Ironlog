@@ -206,9 +206,21 @@ export function routineFromTemplate(key: string): NewRoutine | null {
   return t ? routineOf(t) : null;
 }
 
-/** Each ready-made routine as it was made before r64 (the rests as the table writes them), for the signatures of copies made then. */
-export function templatesBefore(): NewRoutine[] {
-  return TEMPLATES.map(t => routineOf(t, true));
+/** A ready-made routine as it was made before r64 (the rests as the table writes them), with ids of its own, as routineFromTemplate makes one: the suites compare earlier builds' screens with it. */
+export function templateBefore(key: string): NewRoutine | null {
+  const t = TEMPLATES.find(x => x.key === key);
+  return t ? routineOf(t, true) : null;
+}
+
+/** The signature of each ready-made routine as made up to r63, in the table's order: a copy made then, untouched, is still ready-made (302). Read from the table, so no ids are made and no random number is drawn. */
+export function templateSigsBefore(): string[] {
+  return TEMPLATES.map(t =>
+    routineSig({
+      name: t.name,
+      schedule: 'cycle',
+      days: t.days.map(d => ({ name: d.name, rest: !!d.rest, items: d.items }))
+    })
+  );
 }
 
 /** A template's routine, with ids of its own: as shipped up to r63 (shipped, and the hidden one always), or with an isolation lift's rest at ISO_REST at least. */

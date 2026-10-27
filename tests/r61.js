@@ -10,7 +10,10 @@
 //      elements, attributes, field values and visible text as r60's; and the
 //      Guide, every topic open, in pounds and kilograms with RIR on and off,
 //      the same markup and text as r60's (its numbers now read from the
-//      constants their rules apply), but for the sentences section 2 corrects.
+//      constants their rules apply), but for the sentences section 2 corrects
+//      (and two changes of r64 read as one: the reserve number in the reason
+//      for a load raised on easy sets, 363, and the ready-made routines'
+//      isolation rests, 302; tests/r64.js sections 8 and 11 hold them).
 //   2  the Guide says what the code does where it did not: a set rated 5 or
 //      more in reserve is read as 4, reps built past the top before a large
 //      step are a quarter of the top of the range with two at least, and a new
@@ -99,7 +102,11 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
          compared whole. */
       const la = a.split('\n'), lb = b.split('\n');
       const thrown = l => /\t"ERR [^"]*"$/.test(l);
-      const alike = (x, y) => x === y || (x[0] === '~' && y[0] === '~' && x.split('\t').slice(0, 2).join('\t') === y.split('\t').slice(0, 2).join('\t') && thrown(x) && thrown(y));
+      /* r64 (the r63 audit's 363) says the reserve of the plan's sets in the reason for a load raised on easy sets,
+         where r60 to r63 averaged a set past them in: that number is read as one here, the rest of the line whole,
+         and tests/r64.js section 8 holds the number itself. */
+      const r363 = l => l.replace(/(RIR|RPE) [\d.]+( at [^"]*? against a target of)/g, '$1 #$2');
+      const alike = (x, y) => x === y || r363(x) === r363(y) || (x[0] === '~' && y[0] === '~' && x.split('\t').slice(0, 2).join('\t') === y.split('\t').slice(0, 2).join('\t') && thrown(x) && thrown(y));
       if (la.length === lb.length && la.every((l, k) => alike(l, lb[k]))) same++;
       else if (!first) { let k = 0; while (k < la.length && alike(la[k], lb[k] || '')) k++; first = { seed: 61000 + i, line: k, r60: (la[k] || '').slice(0, 700), now: (lb[k] || '').slice(0, 700) }; }
     }
@@ -222,6 +229,8 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
     const A = await open(OLD, { browser, clock: '2026-10-20T10:00:00', realStarter: true });
     const B = await open(FILE, { browser, clock: '2026-10-20T10:00:00', realStarter: true });
     const LIB = await B.page.evaluate(() => window.__ironlog.libExercises());
+    // The isolation lifts, whose rest in a ready-made routine r64 raises to 90 s at least (302, held by tests/r64.js section 11).
+    const ISO = await B.page.evaluate(() => Object.fromEntries(window.__ironlog.libExercises().map(e => [e.id, !window.__ironlog.isCompound(e)])));
     // Each raw log normalized with the same ids for a new routine in both pages (the clock and Math.random held), and,
     // where asked, the answer read once more; with the damaged records dropped and the unknown fields kept.
     const norm = (P, list) => P.page.evaluate(list => {
@@ -277,7 +286,12 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
         const s = JSON.parse(raw), a = ra[i], b = rb[i];
         // Where no routine is kept, r60's starter as its next load reads it; a falsy workout as none; the rest as r60 gave it.
         let want = a.j;
-        if (none && a.j2) { routineCases++; const w = JSON.parse(a.j); w.routines = JSON.parse(a.j2).routines; want = JSON.stringify(w); }
+        if (none && a.j2) {
+          routineCases++; const w = JSON.parse(a.j); w.routines = JSON.parse(a.j2).routines;
+          // The starter as r64 makes it: each isolation lift under 90 s rests 90 s (302); nothing else in it changes.
+          for (const R of w.routines) for (const d of R.days || []) for (const it of d.items || []) if (ISO[it.exId] && it.rest < 90) it.rest = 90;
+          want = JSON.stringify(w);
+        }
         if (falsyDraft(s)) { draftCases++; const w = JSON.parse(want); w.draft = null; want = JSON.stringify(w); }
         if (b.j === want && a.d === b.d && a.k === b.k) same++;
         else if (off.length < 5) { let at = 0; while (at < want.length && want[at] === b.j[at]) at++; off.push({ seed, i, none, want: want.slice(Math.max(0, at - 150), at + 150), b: b.j.slice(Math.max(0, at - 150), at + 150), d: [a.d, b.d], k: [a.k, b.k] }); }

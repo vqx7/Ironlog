@@ -19,7 +19,9 @@
 //      (impTextSets), each preview built in both units (impBuild), the
 //      import confirmed on a first run (the routine made from it, the
 //      targets fitted), a backup restored, and the demo made from every
-//      ready-made routine.
+//      ready-made routine (made only since r64: the loop read the list's
+//      indexes until then). Notes naming both kg and lb read their unit as
+//      one (r64, F2, held by tests/r64.js section 10).
 //   3  the time limits and the report's key (PENDING 306 and 309), each
 //      failing on r62: a problem report whose send never answers leaves
 //      Sending after the sync's limit (20 s) with words that say so, its
@@ -179,8 +181,14 @@ const CASES = [
       for (const n of names) call('impMatch ' + n, () => L.impMatch(n));
       const kinds = [L.EX('bench'), L.EX('pullup'), L.EX('plank'), L.EX('assistPullup'), L.EX('dbCurl')];
       for (const t of typed) for (const ex of kinds) { call('parseSets ' + t + ' ' + ex.id, () => L.parseSets(t, ex, null)); call('parseSets@ ' + t + ' ' + ex.id, () => L.parseSets(t, ex, 60, KG, true)); call('parseSets lb ' + t + ' ' + ex.id, () => L.parseSets(t, ex, 100, LBC)); }
+      /* Notes naming both kg and lb (r64, the r63 audit's F2, held by tests/r64.js section 10): r62 and r63 took the
+         first unit named as the whole note's, r64 names neither and the preview starts on the app's unit. Their unit
+         is read as one here, and the rest of their answers is compared with the unit r62 chose given to both. */
+      const named = t => { const n = { kg: false, lb: false, first: null }; for (const l of String(t).split(/\r?\n/)) { const x = l.replace(/^[\s\-•*–]+/, '').trim(); if (/\bkgs?\b|\dkg/i.test(x)) { n.kg = true; n.first = n.first || 'kg'; } else if (/\blbs?\b|\dlb|#/i.test(x)) { n.lb = true; n.first = n.first || 'lb'; } } return n; };
+      const both = t => { const n = named(t); return n.kg && n.lb; };
+      const asOne = x => { if (!x || typeof x !== 'object') return x; const y = { ...x, unit: 'both named' }; delete y.mixed; return y; };
       for (const t of texts) {
-        const res = call('impFromText', () => L.impFromText(t));
+        const res = call('impFromText', () => { const x = L.impFromText(t); return both(t) ? asOne(x) : x; });
         for (const s of (res && res.sessions) || []) for (const it of s.items.slice(0, 3)) for (const ex of kinds) { call('impTextSets kg', () => L.impTextSets(it, ex, KG)); call('impTextSets lb', () => L.impTextSets(it, ex, LBC)); }
       }
       // Each input previewed, built in both units, and confirmed on a first run (the routine made from it) and over a log.
@@ -190,8 +198,10 @@ const CASES = [
           if (first) fresh(); else demoed();
           await L.impStart({ text: t });
           const m = L.ui.modal;
-          out.push('preview\t' + ser(m && { kind: m.kind, step: m.step, pick: m.pick, guess: m.guess, unit: m.unit, unitKnown: m.unitKnown, date: m.date, res: m.res, err: m.err }));
+          const mix = both(t);
+          out.push('preview\t' + ser(m && { kind: m.kind, step: m.step, pick: m.pick, guess: m.guess, unit: mix ? 'both named' : m.unit, unitKnown: mix ? 'both named' : m.unitKnown, date: m.date, res: mix ? asOne(m.res) : m.res, err: m.err }));
           if (!m || m.step !== 'preview' || m.res.needMap) { L.ACT.mClose(); continue; }
+          if (mix) m.unit = named(t).first;
           call('impBuild', () => L.impBuild(m));
           m.unit = m.unit === 'kg' ? 'lb' : 'kg';
           call('impBuild other unit', () => L.impBuild(m));
@@ -208,7 +218,10 @@ const CASES = [
       out.push('backup in\t' + ser(L.normalize(JSON.parse(JSON.stringify(L.state)))));
       for (const bad of ['not json', '{"state":{}}', '{"exercises":[],"routines":[],"sessions":[{"bad":1}]}']) { L.ACT.mClose(); L.importData(bad); out.push('backup refused\t' + ser({ modal: L.ui.modal && L.ui.modal.kind, toast: (document.getElementById('toast') || {}).textContent })); }
       // The demo from every ready-made routine.
-      for (const k of Object.keys(L.TEMPLATES)) { fresh(); const r = L.routineFromTemplate(k); if (!r) continue; L.state.routines = [r]; L.state.activeRoutineId = r.id; L.invalidate(); L.makeDemo(); out.push('demo ' + k + '\t' + ser(L.normalize(JSON.parse(JSON.stringify(L.state))))); }
+      /* Each routine by its key (until r64 this read the list's indexes, which name no routine, so no demo was made:
+         found in r64, PENDING.md's tracker row NEW-1), as r62 and r63 made it in both builds (r64's rests, 302, are
+         held by tests/r64.js section 11). */
+      for (const k of L.TEMPLATES.map(t => t.key)) { fresh(); const r = (L.templateBefore || L.routineFromTemplate)(k); if (!r) continue; L.state.routines = [r]; L.state.activeRoutineId = r.id; L.invalidate(); L.makeDemo(); out.push('demo ' + k + '\t' + ser(L.normalize(JSON.parse(JSON.stringify(L.state))))); }
       return out;
     }, { seed, texts: G.texts, tables: G.tables, typed: TYPED, names: NAMES });
     const r = rng(63000);
@@ -337,8 +350,11 @@ const CASES = [
     const firstDiff = (x, y) => { for (let i = 0; i < Math.max(x.length, y.length); i++) if (x[i] !== y[i]) return { at: i, r62: x.slice(Math.max(0, i - 3), i + 4), now: y.slice(Math.max(0, i - 3), i + 4) }; return null; };
     const da = firstDiff(a.adds, b.adds);
     ok(a.adds.length > 20 && !da, `4. the page adds r62's ${a.adds.length} listeners and intervals, in r62's order`, da);
-    const dh = firstDiff(a.hook, b.hook);
-    ok(a.hook.length > 300 && !dh, `4. window.__ironlog holds r62's ${a.hook.length} names in r62's order, each the same kind of value`, dh);
+    // Names a later build adds to the hook go after r62's, each listed here with the release that added it.
+    const LATER = ['templateBefore function'];
+    const dh = firstDiff(a.hook, b.hook.slice(0, a.hook.length));
+    const unlisted = b.hook.slice(a.hook.length).filter(k => !LATER.includes(k));
+    ok(a.hook.length > 300 && !dh && !unlisted.length, `4. window.__ironlog holds r62's ${a.hook.length} names in r62's order, each the same kind of value, and after them only the names later builds list (r64: templateBefore)`, dh || unlisted);
     // rNewDo sat in r62's table as the helper New routine's Save called by name (ACT.rNewDo(name)): no element named it, and a tap would have handed it the element as the name. It is a function of actsroutine.ts since r63.
     const NOT_TAPS = ['rNewDo'];
     const gone = a.acts.filter(k => !b.acts.includes(k) && !NOT_TAPS.includes(k)), extra = b.acts.filter(k => !a.acts.includes(k));
