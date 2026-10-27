@@ -38,7 +38,7 @@ export function calBounds(): { min: string; max: string } {
 
 /** The month This week shows: the one moved to, while it is within the calendar's months, else this month. */
 export function calNow(): string {
-  const ym = ui['calYm'];
+  const ym = ui.calYm;
   const { min, max } = calBounds();
   return typeof ym === 'string' && ym >= min && ym <= max ? ym : monthOf(today());
 }

@@ -45,9 +45,9 @@ export function setState(next: State): State {
     page (kept here, so the state layer imports no screen module). */
 export const HIST_PAGE = 25;
 
-/** What the screens are showing. Fields the legacy script adds later (the
-    calendar's month, the bests list opened, and others) are allowed by the
-    index signature; a field named here holds what its first value says. */
+/** What the screens are showing, field by field (r63 closed the index
+    signature the legacy script's own fields went in): a field set only once
+    a screen needs it is optional. */
 interface Ui {
   /** The tab shown before this one (Back's entry, and where a report from Settings says it came from). */
   prevTab?: string | null | undefined;
@@ -87,7 +87,24 @@ interface Ui {
   gymU?: 'lb' | 'kg' | undefined;
   /** A ticked set unticked to ask about a load far off, to tick again once Fix it's load is in (r55): its block, through blkRef, and its row. */
   refix: { b: BlkRef | null; s: number } | null;
-  [field: string]: unknown;
+  /** The exercise editor's body figure shown (r40). */
+  exBody?: boolean | undefined;
+  /** Your training's fold in the first-run routine picker opened (r44). */
+  obProf?: boolean | undefined;
+  /** The date a day of the plan was opened for from the week bar or the calendar, said on Today's card when past this week (329, r59). */
+  todayAt?: { d: string | undefined; di: number } | null | undefined;
+  /** The month This week shows, when moved off this one. */
+  calYm?: string | undefined;
+  /** This week on Today as the week or the month (remembered on this device). */
+  wkView?: 'week' | 'month' | undefined;
+  /** The weeks Volume by region averages, picked this visit. */
+  regionWk?: number | undefined;
+  /** The day Plan has open: its id, '' for none, unset for the routine's target day. */
+  dayFocus?: string | undefined;
+  /** Stats' bests list shown whole. */
+  bestsAll?: boolean | undefined;
+  /** More options opened on Today's start card. */
+  heroMore?: boolean | undefined;
 }
 /** What the screens are showing (the type above). */
 export const ui: Ui = {

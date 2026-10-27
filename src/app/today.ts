@@ -529,12 +529,12 @@ function changeBtn(di: number, free: boolean): TemplateResult {
    card had none, so a freestyler could not mark a rest week, a deload, an
    injury, or cardio from Today). */
 function moreBtn(deload: boolean): Part {
-  return html`<button class="btn sm" data-act="heroMore" aria-expanded=${String(!!ui['heroMore'])}>${ui['heroMore'] ? 'Fewer options' : 'More options'}</button>${
-    deload && !ui['heroMore'] ? html`<span class="tag blue">Deload week on</span>` : nothing
+  return html`<button class="btn sm" data-act="heroMore" aria-expanded=${String(!!ui.heroMore)}>${ui.heroMore ? 'Fewer options' : 'More options'}</button>${
+    deload && !ui.heroMore ? html`<span class="tag blue">Deload week on</span>` : nothing
   }`;
 }
 function moreRow(deload: boolean, playable: boolean, di: number): Part {
-  if (!ui['heroMore']) return nothing;
+  if (!ui.heroMore) return nothing;
   const t = today();
   const rw = isRestWeek(weekStart(t)) || isRestWeek(addDays(weekStart(t), -WEEK_DAYS));
   return html`<div class="row" style="margin-top:8px"><button class=${`btn sm ${deload ? 'noted' : ''}`} data-act="deloadToggle" aria-pressed=${String(deload)}>${
@@ -560,7 +560,7 @@ export function viewToday(): TemplateResult {
   // On a scheduled rest day the card shows the next training day, and says so (r30: "Day 1 of 7" beside "rest today, Day 7").
   /* A day opened from a date past this week (the calendar's days ahead, 329)
      says that date, so a Wednesday weeks ahead does not read as this one. */
-  const at = ui['todayAt'];
+  const at = ui.todayAt;
   const ahead =
     chosen != null &&
     at &&
@@ -933,7 +933,7 @@ function field(id: string): HTMLInputElement | null {
 /** Today's taps that change the log, each through `act`, and those that change only what Today shows or what this device remembers. */
 export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   heroMore() {
-    ui['heroMore'] = !ui['heroMore'];
+    ui.heroMore = !ui.heroMore;
     rerenderKeepScroll();
   },
   deloadToggle() {
@@ -971,8 +971,8 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   // This week on Today: the week, or the month (remembered on this device).
   wkView(t) {
     const v = t.dataset['v'] === 'month' ? 'month' : 'week';
-    ui['wkView'] = v;
-    if (v === 'month') ui['calYm'] = monthOf(today());
+    ui.wkView = v;
+    if (v === 'month') ui.calYm = monthOf(today());
     prefSet(WKVIEW_KEY, v);
     rerenderKeepScroll();
   },

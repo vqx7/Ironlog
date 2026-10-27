@@ -117,14 +117,14 @@ V brought two lists of engineering practice from another assistant (Gemini) and 
 
 Casts: 86
 Non-null assertions: 26
-Open types: 12
+Open types: 11
 
 Marks in r52's moved code (from baselines/r51.html): 21 casts, 77 non-null assertions
 Marks in r56's moved code (from baselines/r55.html): 2 casts, 2 non-null assertions
 
 Restated in r56 (the move of storage and sync): 85 casts from 76, each explained where it stands: the four readers through which every raw value is read (`rec`, `arr` and `parseJson` in `records.ts`, `spread` in `normalize.ts`), the two error events' payloads (`storageStart`, typed any by the browser's own types), and the three fields of the sync notes read as they were saved (`notesIn` in `sync.ts`), which go when r56.1 checks every entry of the notes (PENDING 305); 26 non-null assertions from 25 (`fx`, set at start as `state` is); 16 open types from 18 (`cloud`'s three `Record<string, unknown>` and its index signature typed, `Rec` added). The 4 casts and 2 `!` in the code r56 moved: `normalize`'s result typed as the State it builds field by field and an exercise's muscles read as the list the build above made them, `plainTemplate`'s routine given to `routineSig` under its try, `undoRestore`'s IndexedDB result typed any by the browser, the starter routine's template that always exists, and the device id set before any sync. A `!` on a value typed any (an `IDBRequest`'s result) is read through a cast to unknown, as `JSON.parse` is.
 
-r63: 12 open types from 14: the account (`acct`) typed, its user `AcctUser`, with no index signature, and the wait for a new account's email (`acctWait`, with its own) replaced by account.ts's typed state. 86 casts from 85: the page's history entry (`histState` in `page.ts`), typed any by the browser, read as unknown and checked where it is used, as `JSON.parse` is.
+r63: 11 open types from 14: the account (`acct`) typed, its user `AcctUser`, with no index signature, the wait for a new account's email (`acctWait`, with its own) replaced by account.ts's typed state, and `ui`'s index signature closed, the nine fields the legacy script added through it each typed. 86 casts from 85: the page's history entry (`histState` in `page.ts`), typed any by the browser, read as unknown and checked where it is used, as `JSON.parse` is.
 
 r60: 14 open types from 16: `cleanTgt` returns a `Target`, and the plan of a session's block is typed where `normalize` builds it, the block itself checked against `DraftBlock` (`satisfies`), so a field the session screen reads without a check of its own is one the compiler sees written.
 

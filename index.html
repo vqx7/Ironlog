@@ -16261,7 +16261,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     return { min: f3 && monthOf(f3) < t4 ? monthOf(f3) : t4, max: monthPlus(t4, AHEAD_MONTHS) };
   }
   function calNow() {
-    const ym = ui["calYm"];
+    const ym = ui.calYm;
     const { min, max } = calBounds();
     return typeof ym === "string" && ym >= min && ym <= max ? ym : monthOf(today());
   }
@@ -16410,8 +16410,8 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     return b`<button class="linkbtn wklift" data-act="goDash" data-sec="svol" style="margin:6px 0 0;text-decoration:none;text-align:left"><b>${tn.now ? fmtBig(tn.now) : 0} ${U()}</b> lifted</button>`;
   }
   function monthView() {
-    if (ui["wkView"] === void 0) ui["wkView"] = prefGet(WKVIEW_KEY) === "month" ? "month" : "week";
-    return ui["wkView"] === "month";
+    if (ui.wkView === void 0) ui.wkView = prefGet(WKVIEW_KEY) === "month" ? "month" : "week";
+    return ui.wkView === "month";
   }
   function cardioLine(w2) {
     return w2.cardioMin ? b`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w2.cardioMin} min in ${w2.cardioN} entr${w2.cardioN === 1 ? "y" : "ies"}</p>` : A;
@@ -17381,10 +17381,10 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     return b`<button class="btn sm" data-act="startAltOpen" data-day=${di} data-free=${free ? "1" : A}>Change</button>`;
   }
   function moreBtn(deload) {
-    return b`<button class="btn sm" data-act="heroMore" aria-expanded=${String(!!ui["heroMore"])}>${ui["heroMore"] ? "Fewer options" : "More options"}</button>${deload && !ui["heroMore"] ? b`<span class="tag blue">Deload week on</span>` : A}`;
+    return b`<button class="btn sm" data-act="heroMore" aria-expanded=${String(!!ui.heroMore)}>${ui.heroMore ? "Fewer options" : "More options"}</button>${deload && !ui.heroMore ? b`<span class="tag blue">Deload week on</span>` : A}`;
   }
   function moreRow(deload, playable, di) {
-    if (!ui["heroMore"]) return A;
+    if (!ui.heroMore) return A;
     const t4 = today();
     const rw = isRestWeek(weekStart(t4)) || isRestWeek(addDays(weekStart(t4), -WEEK_DAYS));
     return b`<div class="row" style="margin-top:8px"><button class=${`btn sm ${deload ? "noted" : ""}`} data-act="deloadToggle" aria-pressed=${String(deload)}>${deload ? "Deload week: on" : "Deload week"}</button>${playable ? b`<button class="btn sm" data-act="eqOpen" data-day=${di}>Limited equipment</button>` : A}<button class=${`btn sm ${rw ? "noted" : ""}`} data-act="restWkOpen">Rest week</button><button class="btn sm" data-act="injAdd">Flag an injury</button><button class="btn sm" data-act="cardioNew">Log cardio</button></div>`;
@@ -17401,7 +17401,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const di = chosen == null ? weekly ? wd : cs ? cs.next : 0 : chosen;
     const day = R2.days[di] || { id: "", name: "", rest: true, items: [] };
     const t4 = today();
-    const at2 = ui["todayAt"];
+    const at2 = ui.todayAt;
     const ahead = chosen != null && at2 && typeof at2 === "object" && "d" in at2 && "di" in at2 && at2.di === chosen && typeof at2.d === "string" && at2.d > addDays(weekStart(t4), SUNDAY) ? at2.d : null;
     const eyebrow = ahead ? weekly ? `Viewing ${DAYS[di]}, ${fmtDateYr(ahead)}` : `Viewing ${fmtDateYr(ahead)} · ${dayLabel(R2, di)}` : weekly ? di === wd ? "Today" : `Viewing ${DAYS[di]}` : `${cs && cs.restToday && chosen == null ? "Next: " : ""}${dayLabel(R2, di)}`;
     let note = A;
@@ -17618,7 +17618,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
   }
   var TODAY_ACTS = {
     heroMore() {
-      ui["heroMore"] = !ui["heroMore"];
+      ui.heroMore = !ui.heroMore;
       rerenderKeepScroll();
     },
     deloadToggle() {
@@ -17655,8 +17655,8 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     // This week on Today: the week, or the month (remembered on this device).
     wkView(t4) {
       const v3 = t4.dataset["v"] === "month" ? "month" : "week";
-      ui["wkView"] = v3;
-      if (v3 === "month") ui["calYm"] = monthOf(today());
+      ui.wkView = v3;
+      if (v3 === "month") ui.calYm = monthOf(today());
       prefSet(WKVIEW_KEY, v3);
       rerenderKeepScroll();
     },
@@ -22618,8 +22618,9 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (!state.draft) {
       const R2 = activeRoutine();
       const di = t4.dataset.day != null ? Number(t4.dataset.day) : null;
-      ui.todayDay = d3 === today() || di == null || !R2.days[di] ? null : di;
-      ui["todayAt"] = ui.todayDay == null ? null : { d: d3, di };
+      const on = d3 === today() || di == null || !R2.days[di] ? null : di;
+      ui.todayDay = on;
+      ui.todayAt = on == null ? null : { d: d3, di: on };
     }
     if (ui.modal) closeModal();
     window.scrollTo(0, 0);
@@ -22659,7 +22660,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const m3 = ui.modal;
       const sheet = m3 && m3.kind === "calendar" ? m3 : null;
       if (!inline && !sheet) return;
-      const kept = ui["calYm"];
+      const kept = ui.calYm;
       const cur = inline || !sheet ? typeof kept === "string" && kept || monthOf(today()) : sheet.ym;
       const { min, max } = calBounds();
       let ym;
@@ -22671,7 +22672,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
       if (ym < min || ym > max) return;
       if (inline || !sheet) {
-        ui["calYm"] = ym;
+        ui.calYm = ym;
         rerenderKeepScroll();
       } else {
         sheet.ym = ym;
@@ -22855,7 +22856,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const i5 = Number(t4.dataset.i);
       closeModal();
       ui.todayDay = i5;
-      ui["todayAt"] = null;
+      ui.todayAt = null;
       window.scrollTo(0, 0);
       render();
     },
@@ -22866,7 +22867,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     pickView(t4) {
       closeModal();
       ui.todayDay = Number(t4.dataset.day);
-      ui["todayAt"] = null;
+      ui.todayAt = null;
       ui.tab = "today";
       window.scrollTo(0, 0);
       render();

@@ -182,8 +182,8 @@ function liftedLine(): Part {
 
 /** Whether This week shows the month, remembered on this device (Week or Month, r26). */
 function monthView(): boolean {
-  if (ui['wkView'] === undefined) ui['wkView'] = prefGet(WKVIEW_KEY) === 'month' ? 'month' : 'week';
-  return ui['wkView'] === 'month';
+  if (ui.wkView === undefined) ui.wkView = prefGet(WKVIEW_KEY) === 'month' ? 'month' : 'week';
+  return ui.wkView === 'month';
 }
 
 function cardioLine(w: WeekNow): Part {

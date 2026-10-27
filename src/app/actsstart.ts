@@ -149,9 +149,10 @@ function wkGo(t: Tap): void {
   if (!state.draft) {
     const R = activeRoutine();
     const di = t.dataset.day != null ? Number(t.dataset.day) : null;
-    ui.todayDay = d === today() || di == null || !R.days[di] ? null : di;
+    const on = d === today() || di == null || !R.days[di] ? null : di;
+    ui.todayDay = on;
     // The date it was opened for, said on the card when past this week (329, r59).
-    ui['todayAt'] = ui.todayDay == null ? null : { d, di };
+    ui.todayAt = on == null ? null : { d, di: on };
   }
   if (ui.modal) closeModal();
   window.scrollTo(0, 0);
@@ -199,7 +200,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const m = ui.modal;
     const sheet = m && m.kind === 'calendar' ? m : null;
     if (!inline && !sheet) return;
-    const kept = ui['calYm'];
+    const kept = ui.calYm;
     const cur = inline || !sheet ? (typeof kept === 'string' && kept) || monthOf(today()) : sheet.ym;
     const { min, max } = calBounds();
     let ym: string;
@@ -212,7 +213,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     }
     if (ym < min || ym > max) return;
     if (inline || !sheet) {
-      ui['calYm'] = ym;
+      ui.calYm = ym;
       rerenderKeepScroll();
     } else {
       sheet.ym = ym;
@@ -402,7 +403,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const i = Number(t.dataset.i);
     closeModal();
     ui.todayDay = i;
-    ui['todayAt'] = null;
+    ui.todayAt = null;
     window.scrollTo(0, 0);
     render();
   },
@@ -413,7 +414,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   pickView(t) {
     closeModal();
     ui.todayDay = Number(t.dataset.day);
-    ui['todayAt'] = null;
+    ui.todayAt = null;
     ui.tab = 'today';
     window.scrollTo(0, 0);
     render();
