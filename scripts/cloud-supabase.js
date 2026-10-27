@@ -46,14 +46,16 @@
   let hold = !!(landing && landing.type && !standalone());
 
   /* The time limit every request to the account server has, in milliseconds
-     (NET_MS in src/app/config.ts, written in by the build), and what a
+     (NET_MS in src/app/config.ts, written in by the build; inside quotes, so
+     this file parses as it stands, and under a name of its own, since a name
+     config defines is never bound again, tests/hygiene.js), and what a
      request given up for want of an answer fails with: code 'timeout', which
      the app words as it words every request with no answer (NO_ANSWER in
      src/app/report.ts). It is named AbortError, as the browser names an
      aborted request, so the database client does not send it again; the
      libraries keep only its message, which marks it. */
-  const NET_MS = {{NET_MS}};
-  const LATE = `No answer in ${NET_MS / 1000} s`;
+  const LIMIT_MS = Number('{{NET_MS}}');
+  const LATE = `No answer in ${LIMIT_MS / 1000} s`;
   const late = () => Object.assign(new Error(LATE), { name: 'AbortError', code: 'timeout', unanswered: true });
   const isLate = e => !!e && [e.message, e.context && e.context.message].some(m => typeof m === 'string' && m.indexOf(LATE) >= 0);
   /* Every request the account library makes has that limit (r64, the r63
@@ -68,7 +70,7 @@
     const stop = () => ctl.abort();
     if (own) { if (own.aborted) ctl.abort(); else own.addEventListener('abort', stop); }
     let timedOut = false;
-    const t = setTimeout(() => { timedOut = true; ctl.abort(); }, NET_MS);
+    const t = setTimeout(() => { timedOut = true; ctl.abort(); }, LIMIT_MS);
     return fetch(input, Object.assign({}, init, { signal: ctl.signal }))
       .catch(e => { throw timedOut ? late() : e; })
       .finally(() => { clearTimeout(t); if (own) own.removeEventListener('abort', stop); });
@@ -95,7 +97,7 @@
     let t;
     // Given up on, the call may still fail later; that is no longer anyone's to hear.
     p.catch(() => {});
-    return Promise.race([p, new Promise((_, no) => { t = setTimeout(() => { if (!started) waitedOut = true; no(late()); }, NET_MS); })]).finally(() => clearTimeout(t));
+    return Promise.race([p, new Promise((_, no) => { t = setTimeout(() => { if (!started) waitedOut = true; no(late()); }, LIMIT_MS); })]).finally(() => clearTimeout(t));
   }
   /* A failure where the server could not be asked: no answer in time, no
      connection, or a server error (the library's retryable kind). */
