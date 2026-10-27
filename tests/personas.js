@@ -654,9 +654,11 @@ async function finish() {
   if (run(11)) {
     const T0 = '2026-10-05'; // a Monday
     // Signed in as the app's owner, who reads reports; a report service whose first send never answers (no connection), then answers.
+    // The tickets' address is config's (TICKETS_AT); the second link only starts like it.
+    const TICKETS_AT = require('../scripts/config').TICKETS_AT;
     const ITEMS = [
-      { id: 1, created_at: '2026-10-04T09:12:00Z', category: 'bug', message: 'The timer <b>stuck</b> & went silent', reply_to: 'a@example.com', context: {}, screenshot: null, issue_url: 'https://github.com/vqx7/ironlog-feedback/issues/7' },
-      { id: 2, created_at: '2026-10-03T18:00:00Z', category: 'idea', message: 'A dark theme for the plates line', reply_to: null, context: {}, screenshot: null, issue_url: 'https://github.com.example.net/issues/8' }
+      { id: 1, created_at: '2026-10-04T09:12:00Z', category: 'bug', message: 'The timer <b>stuck</b> & went silent', reply_to: 'a@example.com', context: {}, screenshot: null, issue_url: TICKETS_AT + 'vqx7/ironlog-feedback/issues/7' },
+      { id: 2, created_at: '2026-10-03T18:00:00Z', category: 'idea', message: 'A dark theme for the plates line', reply_to: null, context: {}, screenshot: null, issue_url: TICKETS_AT.replace(/\/$/, '.example.net/') + 'issues/8' }
     ];
     const init = `window.ironlogAuth={landing:null,onChange(){},user(){return Promise.resolve({id:'u11',email:'owner@example.com'});},signIn(){return new Promise(()=>{});},signUp(){return new Promise(()=>{});},signOut(){return Promise.resolve();},resetPassword(){return Promise.resolve();},updatePassword(){return Promise.resolve();},release(){}};
       window.__sent=[];window.ironlogFeedback={send(r){window.__sent.push(r);return window.__sent.length===1?new Promise(()=>{}):Promise.resolve();},isReader(){return Promise.resolve(true);},inbox(){return Promise.resolve(${JSON.stringify(ITEMS)});}};`;
