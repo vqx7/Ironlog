@@ -323,7 +323,8 @@ const MENU = () => { const el = document.getElementById('saveState'); return el 
     await tick(D);
     // The write waits out the limit for the refresh (the library tries it again for up to 30 s), then the sync reads the failure.
     await until(async () => ['offline', 'local'].includes((await D.cloud()).status), NET_MS + 15000);
-    await wait(1000);
+    // And through its first retry (5 s on), which meets the same refresh.
+    await wait(10000);
     const said = (await D.toasts()).filter(x => x.at >= t && /in again/.test(x.text));
     const c = await D.cloud();
     ok(!said.length && c.on && c.status === 'offline', 'a refresh that gets no answer after a refused request: no "sign in again", and the sync waits to retry (r63: read as a refused sign-in, the sync switched off)', { said, c });
