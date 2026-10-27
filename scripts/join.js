@@ -1,11 +1,8 @@
-// Builds index.html from src/ (r36 split, r49 modules). The page parts
-// (01 to 03 and 99, HTML and CSS) are joined in name order as before, their
-// {{NAME}} placeholders filled from src/app/config.ts. The script is bundled by
-// esbuild: the legacy parts (10 to 29), one script in one scope since the
-// Claude artifact days, are joined as one module that starts with
-// src/09-imports.js, the real imports from the typed modules in src/app/. Each
-// phase of ARCHITECTURE.md moves code from the legacy parts into src/app/
-// until the legacy parts are gone.
+// Builds index.html from src/ (r36 split, r49 modules, r63 modules only). The
+// page parts (01 to 03 and 99, HTML and CSS) are joined in name order, their
+// {{NAME}} placeholders filled from src/app/config.ts. The script is the
+// typed modules in src/app/, bundled by esbuild from the page's start,
+// src/app/main.ts (the legacy parts that started it until r63 are gone).
 //
 // The output stays one inline classic script on purpose: every suite opens
 // index.html as a file, where module scripts are refused, and the standalone
@@ -14,20 +11,14 @@
 //   node scripts/join.js            writes index.html
 //   node scripts/join.js --stdout   prints the page instead
 //   node scripts/join.js --check    exits 1 when index.html is not what src/ builds to
-//   require('./join').build({ override: { '16-engine.js': text, 'app/normalize.ts': text } })
-//                                   the page built with some parts or modules replaced, for
-//                                   a suite that needs a different build (tests/r43.js)
+//   require('./join').build({ override: { 'app/normalize.ts': text } })
+//                                   the page built with some modules or page parts replaced,
+//                                   for a suite that needs a different build (tests/r43.js)
 const fs = require('fs'); const path = require('path'); const os = require('os');
 const esbuild = require('esbuild');
 const root = path.join(__dirname, '..'); const dir = path.join(root, 'src');
-const IMPORTS = '09-imports.js';
-const isLegacy = f => /^[12]\d-.+\.js$/.test(f);
-// The legacy parts are one IIFE, kept as written: inside it every const and
-// let stays a const and a let (bundling would turn top-level ones into var,
-// so a reassigned constant or a read before its line would stop failing).
-// The imports sit outside the wrapper, in the module's scope, and the
-// wrapper's code sees them as it sees its own names.
-const OPEN = "(function(){\n'use strict';\n", CLOSE = '})();\n';
+// The bundle's entry: the page's start, which imports every module it runs.
+const ENTRY = "import './app/main';\n";
 
 // Every placeholder must be known and filled, so the page title and heading
 // are never a second copy of the name. A list of addresses (the library
@@ -69,24 +60,17 @@ function fill(t) {
 }
 
 function build({ override = {} } = {}) {
-  const all = fs.readdirSync(dir).filter(f => /^\d\d-.+\.(html|css|js)$/.test(f)).sort();
+  const page = fs.readdirSync(dir).filter(f => /^\d\d-.+\.(html|css)$/.test(f)).sort();
+  // A script part beside the page parts would be one the build leaves out (the legacy script's, r63).
+  const stray = fs.readdirSync(dir).filter(f => /\.js$/.test(f));
+  if (stray.length) throw new Error(`join: src/ holds scripts the page does not build from: ${stray.join(', ')}; the script is src/app/`);
   // A replaced module (app/<name>.ts, r56) is written into a copy of src/ that
   // the bundle reads instead, because the bundler takes the modules from disk
   // (its synchronous build, which the --check and the suites need, takes no plugin).
   const mods = Object.keys(override).filter(f => /^app\/[\w-]+\.ts$/.test(f));
-  for (const f of Object.keys(override)) if (!mods.includes(f) && !all.includes(f)) throw new Error(`join: no part ${f} to override`);
+  for (const f of Object.keys(override)) if (!mods.includes(f) && !page.includes(f)) throw new Error(`join: no part ${f} to override`);
   for (const f of mods) if (!fs.existsSync(path.join(dir, f))) throw new Error(`join: no module ${f} to override`);
   const read = f => (f in override ? override[f] : fs.readFileSync(path.join(dir, f), 'utf8'));
-  const legacy = all.filter(isLegacy);
-  const page = all.filter(f => !isLegacy(f) && f !== IMPORTS);
-
-  const body = legacy.map(read).join('');
-  if (!body.startsWith(OPEN)) throw new Error(`join: ${legacy[0]} must start with the wrapper ${JSON.stringify(OPEN)}`);
-  if (!body.endsWith(CLOSE)) throw new Error(`join: ${legacy[legacy.length - 1]} must end with ${JSON.stringify(CLOSE)}`);
-  // The parts are that one call and nothing after it: a second script
-  // appended inside a part would otherwise ride along (the r51 mutation test).
-  const parsed = require('acorn').parse(body, { ecmaVersion: 'latest', sourceType: 'script' });
-  if (parsed.body.length !== 1) throw new Error(`join: the legacy parts must be one statement, the wrapper's call; they are ${parsed.body.length}`);
   let srcDir = dir, copy = null;
   if (mods.length) {
     copy = fs.mkdtempSync(path.join(os.tmpdir(), 'join-'));
@@ -97,7 +81,7 @@ function build({ override = {} } = {}) {
   let out;
   try {
     out = esbuild.buildSync({
-      stdin: { contents: read(IMPORTS) + body, sourcefile: 'legacy.js', resolveDir: srcDir, loader: 'js' },
+      stdin: { contents: ENTRY, sourcefile: 'entry.js', resolveDir: srcDir, loader: 'js' },
       bundle: true, format: 'iife', target: 'esnext', platform: 'browser',
       // An import resolves to a .ts or .js file by its path and nothing else:
       // never a .tsx beside a module (the r51 mutation test put one there, and
@@ -112,13 +96,13 @@ function build({ override = {} } = {}) {
       // ../ironlog/node_modules and tests/r36.js found index.html 77
       // characters off GitHub's.
       preserveSymlinks: true,
-      // Nothing is removed beyond what bundling needs: the legacy code keeps
-      // every function, so window.__ironlog and the tests see it whole.
+      // Nothing is removed beyond what bundling needs, so window.__ironlog and
+      // the tests see every module whole.
       treeShaking: false, minify: false, charset: 'utf8', legalComments: 'none',
-      // ES modules always run in strict mode, and the legacy script declares it
-      // itself, but the wrapper esbuild puts around the bundle does not, so the
-      // modules' code would run in sloppy mode on the page (the r50 review).
-      // The directive at the top of the script makes all of it strict.
+      // ES modules always run in strict mode, but the wrapper esbuild puts
+      // around the bundle does not declare it, so the modules' code would run
+      // in sloppy mode on the page (the r50 review). The directive at the top
+      // of the script makes all of it strict.
       banner: { js: '"use strict";' },
       write: false, logLevel: 'silent',
     });
@@ -132,7 +116,7 @@ function build({ override = {} } = {}) {
     parts.push(fill(read(f)));
     if (f === '03-body.html') parts.push(script);
   }
-  return { html: parts.join(''), parts: { page: page.length, legacy: legacy.length } };
+  return { html: parts.join(''), parts: { page: page.length } };
 }
 
 // Chromium's look-ahead scanner can read "<img" inside an inline script as
@@ -171,6 +155,6 @@ if (require.main === module) {
       const same = fs.readFileSync(target, 'utf8') === html;
       console.log(same ? 'index.html matches src/' : 'index.html differs from src/: edit src/ and run npm run join');
       process.exit(same ? 0 : 1);
-    } else { fs.writeFileSync(target, html); console.log(`index.html written from ${parts.page} page parts and ${parts.legacy} script parts`); }
+    } else { fs.writeFileSync(target, html); console.log(`index.html written from ${parts.page} page parts and src/app/`); }
   } catch (e) { console.error(e.message); process.exit(1); }
 }

@@ -80,6 +80,7 @@ import { acct, cloud, setState, state, ui } from './store';
 import { effName, effShow, halfLbl, rirScale } from './effort';
 import { canInstallHere, coarse, installKind, isStandalone } from './env';
 import { drawScreen, fieldValue, howText, labelTip, pageTitle, placed, section, tabFoot, tipButton } from './view';
+import type { Field } from './view';
 import type { DbRack, Gym, MuscleKey, PlanItem, Profile, Routine } from './types';
 
 /** The example dumbbell rack Your gym's fields show, per unit: from, to, a step, and a finer step up to a weight. */
@@ -1297,7 +1298,6 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
 /* ---------- Settings' fields ---------- */
 
 /** What a field holds on change: a box's tick, or the text or option picked. */
-type Field = HTMLInputElement | HTMLSelectElement;
 const checked = (t: Field): boolean => t instanceof HTMLInputElement && t.checked;
 
 /** Settings' fields, by the data-bind they carry, read on change; each change to a setting goes through `act`, with no Undo step (an edit, as before r57) unless it says. */
@@ -1464,7 +1464,7 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
 };
 
 /** A weekly set target typed (data-band, on input): the number, in halves from 0 to LIMITS.weeklySets, saved once the typing pauses. */
-export function bandInput(t: HTMLInputElement): void {
+export function bandInput(t: Field): void {
   const m = MK.find(x => x === t.dataset.band);
   const n = numIn(t.value);
   if (!m || n == null) return;
@@ -1477,7 +1477,7 @@ export function bandInput(t: HTMLInputElement): void {
   );
 }
 /** A weekly set target left (data-band, on change): never a minimum above the maximum. */
-export function bandChange(t: HTMLInputElement): void {
+export function bandChange(t: Field): void {
   const m = MK.find(x => x === t.dataset.band);
   if (!m) return;
   act(() => {
@@ -1487,6 +1487,7 @@ export function bandChange(t: HTMLInputElement): void {
   rerenderKeepScroll();
 }
 /** A Your gym field left (data-gym, on change). */
-export function gymField(t: HTMLInputElement): void {
-  gymInput(t);
+export function gymField(t: Field): void {
+  // Every Your gym field is a text input.
+  if (t instanceof HTMLInputElement) gymInput(t);
 }

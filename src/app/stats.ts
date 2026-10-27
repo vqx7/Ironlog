@@ -129,6 +129,7 @@ import {
 } from './display';
 import { volumeRows } from './plan';
 import { pageTitle, helpButton, howText, section, slotted, subsection, tabFoot, tipButton } from './view';
+import type { Field } from './view';
 import type { Part } from './view';
 import type { Routine } from './types';
 import { rangeKey, weekWindow } from './graphs';
@@ -1265,7 +1266,7 @@ export const DASH_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
 };
 
 /** Stats' fields with a data-bind, read on change: the lift and the muscle shown. */
-export const DASH_BINDS: Readonly<Record<string, (t: HTMLInputElement | HTMLSelectElement) => void>> = {
+export const DASH_BINDS: Readonly<Record<string, (t: Field) => void>> = {
   dashEx(t) {
     ui.dashEx = t.value;
     rerenderKeepScroll();

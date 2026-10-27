@@ -107,6 +107,7 @@ import {
   tabFoot,
   tipButton
 } from './view';
+import type { Field } from './view';
 import type { Part } from './view';
 import { heroRing, weekCard } from './week';
 import { mapCard } from './map';
@@ -1182,7 +1183,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   }
 };
 /** Today's fields kept by data-bind: the height (Tape measurements). */
-export const TODAY_BINDS: Readonly<Record<string, (t: HTMLInputElement) => void>> = {
+export const TODAY_BINDS: Readonly<Record<string, (t: Field) => void>> = {
   height(t) {
     const v = t.value.trim();
     if (!v) {
@@ -1205,7 +1206,7 @@ export const TODAY_BINDS: Readonly<Record<string, (t: HTMLInputElement) => void>
   }
 };
 /** A field of Today changed (on change): the Set up page's bodyweight, today's weigh-in, replaced if typed again and removed if cleared (r34); whether it was Today's. */
-export function todayChange(t: HTMLInputElement): boolean {
+export function todayChange(t: Field): boolean {
   if (t.id !== 'obBw') return false;
   const v = numIn(t.value);
   const kg = v == null ? null : fromD(v);

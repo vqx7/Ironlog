@@ -198,6 +198,13 @@ export function prSet(exId: string, date: string): { v: number; w: number; r: nu
    sessions and PRs on Today, the Stats tiles and Recent PRs (r46). The 4
    weeks before are given only when the log covers all of them, so 2 days of
    a first month never read as a jump. Counted PRs only (r32). */
+/* The screens use recent4w; the suites reach for this one to check a window
+   of their own (r63, from the legacy script's 19-today.js). */
+/** The counted PRs (the ones marked big, r32) of the last days given. */
+export function prsWithin(days: number): Pr[] {
+  const from = addDays(today(), -days);
+  return IDX().prs.filter(x => x.date >= from && x.big);
+}
 /** Sessions and counted PRs in the last 4 weeks, and in the 4 before when the log covers them. */
 export function recent4w(): { back: boolean; sess: number; sessP: number; prs: Pr[]; prsP: number } {
   // The window's days counted with today: RECENT_DAYS of them, and the RECENT_DAYS before.

@@ -17,7 +17,7 @@ import { state, ui } from './store';
 import { act, undoStep } from './act';
 import { isStandalone, installKind } from './env';
 import { distShow, distU } from './display';
-import { closeModal, openModal, render, rerenderKeepScroll } from './page';
+import { closeModal, confirmBox, openModal, render, rerenderKeepScroll } from './page';
 import { stopTimer, timerAdd } from './timer';
 import { toast, toastHide } from './toast';
 import type { Tap } from './workstate';
@@ -38,12 +38,6 @@ export function markExported(): void {
   });
 }
 
-/** The downloads service where the page runs inside Claude (retired), which says when a file is saved, else null. */
-async function downloads(): Promise<{ save(o: { filename: string; data: string }): Promise<unknown> } | null> {
-  const c = window.claude;
-  if (!(c && typeof c.use === 'function')) return null;
-  return (await c.use('downloads')) || null;
-}
 /** A code an error carries, else ''. */
 const codeIs = (e: unknown, c: string): boolean => !!e && typeof e === 'object' && 'code' in e && e.code === c;
 /** An error's name, else ''. */
@@ -66,8 +60,13 @@ export async function exportFile(
   fallbackTitle: string,
   fallbackHelp: string
 ): Promise<void> {
+  /* The downloads service where the page runs inside Claude (retired), which
+     says when a file is saved. Waited for only there: everywhere else the
+     share sheet and the download link run in the tap itself, as before r63,
+     since a browser may refuse them once the tap has passed. */
   try {
-    const dl = await downloads();
+    const c = window.claude;
+    const dl = c && typeof c.use === 'function' ? await c.use('downloads') : null;
     if (dl) {
       try {
         await dl.save({ filename, data });
@@ -126,24 +125,21 @@ export async function exportFile(
     openModal({ kind: 'text', title: fallbackTitle, help: fallbackHelp, text: data, readonly: true });
     return;
   }
-  confirmSaved(filename, onSaved, fallbackTitle, fallbackHelp, data);
-}
-/** Asks whether the download landed (only the lifter can see it did). */
-function confirmSaved(filename: string, onSaved: (() => void) | null, title: string, help: string, data: string): void {
-  openModal({
-    kind: 'confirm',
-    title: 'Did the file download?',
-    body: `Look for ${filename}. If nothing appeared, this browser blocked the download and you should copy the text instead.`,
-    okLabel: 'Yes, I have the file',
-    fn: () => {
+  // Only the lifter can see whether the download landed.
+  confirmBox(
+    'Did the file download?',
+    `Look for ${filename}. If nothing appeared, this browser blocked the download and you should copy the text instead.`,
+    'Yes, I have the file',
+    () => {
       if (onSaved) onSaved();
       toast('Backup recorded');
     },
-    alt: {
+    false,
+    {
       label: 'Show the text instead',
-      fn: () => openModal({ kind: 'text', title, help, text: data, readonly: true })
+      fn: () => openModal({ kind: 'text', title: fallbackTitle, help: fallbackHelp, text: data, readonly: true })
     }
-  });
+  );
 }
 /** Exports the whole log as a backup file. */
 export function exportBackup(): Promise<void> {

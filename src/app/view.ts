@@ -38,20 +38,35 @@ declare global {
   }
 }
 
-/** The options a moved screen gives SortableJS for a list it drags (the session's exercises, r60). */
+/** The options a screen gives SortableJS for a list it drags: the session's exercises (r60), Plan's lists and a tab's sections (r63). */
 export interface SortableOptions {
-  group: { name: string; pull: boolean; put: boolean };
+  group: { name: string; pull: boolean | 'clone'; put: boolean | string[] };
   handle: string;
-  draggable: string;
+  draggable?: string | undefined;
+  /** False for a list that is only copied from (Plan's library). */
+  sort?: boolean | undefined;
   animation: number;
   fallbackOnBody: boolean;
   onStart(e: { item: HTMLElement }): void;
-  onEnd(e: {
-    item: HTMLElement;
-    oldDraggableIndex?: number | null | undefined;
-    newDraggableIndex?: number | null | undefined;
-  }): void;
+  onEnd(e: SortableEnd): void;
 }
+/** What SortableJS says when a drag ends: the element, the lists it left and reached, the copy a copying list keeps, and the places, among all children and among the draggable ones. */
+export interface SortableEnd {
+  item: HTMLElement;
+  from: HTMLElement;
+  to: HTMLElement;
+  clone?: HTMLElement | null | undefined;
+  oldIndex?: number | undefined;
+  newIndex?: number | undefined;
+  oldDraggableIndex?: number | null | undefined;
+  newDraggableIndex?: number | null | undefined;
+}
+
+/** A field an input or change event comes from: what the screens' field handlers read (its value, checked, dataset). */
+export type Field = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+/** The field an event came from, or null when it came from anything else. */
+export const fieldOf = (t: EventTarget | null): Field | null =>
+  t instanceof HTMLInputElement || t instanceof HTMLSelectElement || t instanceof HTMLTextAreaElement ? t : null;
 
 /** What a screen's template may hold where a part goes: a template, text, several of them, or nothing. */
 export type Part = TemplateResult | DirectiveResult | string | number | typeof nothing | readonly Part[];

@@ -22,6 +22,7 @@ import { normalize } from './normalize';
 import { HIST_PAGE, setState, state, ui } from './store';
 import { distShow, distU, fmtK, noLog, setStr } from './display';
 import { pageTitle, placed, section, tabFoot } from './view';
+import type { Field } from './view';
 import type { CardioEntry, Session } from './types';
 import type { ExerciseLike } from './model';
 import { UNDO_DAYS } from './storage';
@@ -371,7 +372,7 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
 };
 
 /** History's fields, by the data-bind they carry: what was picked, read on change. */
-export const HISTORY_BINDS: Readonly<Record<string, (t: HTMLInputElement | HTMLSelectElement) => void>> = {
+export const HISTORY_BINDS: Readonly<Record<string, (t: Field) => void>> = {
   histEx(t) {
     ui.histEx = t.value;
     ui.histLimit = HIST_PAGE;

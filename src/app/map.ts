@@ -147,6 +147,7 @@ interface T3Color {
   set(c: string | T3Color): T3Color;
   copy(c: T3Color): T3Color;
   lerp(c: T3Color, k: number): T3Color;
+  getHexString(): string;
 }
 interface T3Material {
   color: T3Color;

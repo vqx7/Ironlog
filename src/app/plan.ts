@@ -79,6 +79,7 @@ import {
   tabFoot,
   tipButton
 } from './view';
+import type { Field } from './view';
 import type { Part } from './view';
 import type { Day, Exercise, PlanItem, Routine } from './types';
 import { confirmBox, render, rerenderKeepScroll } from './page';
@@ -644,7 +645,6 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
 /* ---------- Plan's fields ---------- */
 
 /** What a field holds: a box's tick, or the text or option picked. */
-type Field = HTMLInputElement | HTMLSelectElement;
 const clamp = (x: number, lo: number, hi: number): number => Math.min(Math.max(x, lo), hi);
 
 /* An exercise's numbers, typed (data-it): each keystroke that reads as a

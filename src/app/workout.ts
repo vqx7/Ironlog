@@ -56,6 +56,7 @@ import type { ExerciseLike } from './model';
 import { distU, distShow, rirShow, setShort, bestLine, effTgt, loadHead, fmtDateLong } from './display';
 import { coarse } from './env';
 import { section, tipButton, fieldValue, helpButton, howText, drawing, drawScreen, fieldShown } from './view';
+import type { Field } from './view';
 import type { Part } from './view';
 import {
   W,
@@ -1188,7 +1189,7 @@ function noteDown(e: Event): void {
    progress line and the plates follow at once, as the legacy patches had
    them; a name or notes are drawn at the next draw, as before. */
 /** A keystroke in one of the session screen's fields; whether it was one. */
-export function workoutInput(t: HTMLInputElement): boolean {
+export function workoutInput(t: Field): boolean {
   const d = state.draft;
   if (!d) return false;
   if (t.dataset.cf && d.cardio) {
@@ -1215,6 +1216,8 @@ export function workoutInput(t: HTMLInputElement): boolean {
     return true;
   }
   if (t.dataset.f === 'w' || t.dataset.f === 'r') {
+    // A set's load and reps are text inputs.
+    if (!(t instanceof HTMLInputElement)) return true;
     const s = draftSet(t);
     if (!s) return true;
     greyTyped(t);
@@ -1286,7 +1289,7 @@ export function workoutInput(t: HTMLInputElement): boolean {
    time and the targets are read as of the session's date, so a new date
    reads them again; typed and ticked sets are left alone. */
 /** A change in one of the session screen's fields; whether it was one. */
-export function workoutChange(t: HTMLInputElement): boolean {
+export function workoutChange(t: Field): boolean {
   const d = state.draft;
   if (!d) return false;
   if (t.dataset.cf && d.cardio) {

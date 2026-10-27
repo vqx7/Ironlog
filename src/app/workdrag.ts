@@ -4,6 +4,7 @@
 
 import { state } from './store';
 import { dragStart, dragDrop } from './view';
+import type { SortableEnd } from './view';
 import { W } from './workstate';
 import { moveBlock } from './worksets';
 import { rerenderKeepScroll } from './page';
@@ -139,7 +140,7 @@ export function mountBlockDrag(): { destroy(): void } | null {
       window.scrollTo(0, want);
       edgeScroll.start();
     },
-    onEnd: (e: { item: HTMLElement; oldDraggableIndex?: number | null; newDraggableIndex?: number | null }) => {
+    onEnd: (e: SortableEnd) => {
       W.blockDrag = false;
       edgeScroll.stop();
       dragOpenUp(e.item);

@@ -189,6 +189,8 @@ interface ChartObj {
 /** Chart.js's constructor and the defaults the page sets. */
 interface ChartLib {
   new (el: HTMLCanvasElement, cfg: { type: string; data: unknown; options: unknown }): ChartObj;
+  /** The chart drawn in a canvas, if any. */
+  getChart(el: HTMLCanvasElement): { resize(): void } | undefined;
   defaults: {
     font: { family: string; size: number };
     color: string;
@@ -218,6 +220,22 @@ declare global {
 }
 
 const charts: ChartObj[] = [];
+/* A chart created inside a closed <details> has no size; it is given one
+   when the fold opens. */
+/** Sizes the charts inside a fold just opened. */
+export function chartsResize(el: Element): void {
+  const C = window.Chart;
+  if (!C) return;
+  el.querySelectorAll('canvas').forEach(cv => {
+    const ch = C.getChart(cv);
+    if (ch)
+      try {
+        ch.resize();
+      } catch (err) {
+        // The chart is gone.
+      }
+  });
+}
 /** Takes down every chart drawn, before the page draws again. */
 export function killCharts(): void {
   while (charts.length) {

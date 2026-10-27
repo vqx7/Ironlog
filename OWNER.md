@@ -36,8 +36,11 @@ create table public.feedback (
   reply_to text check (reply_to is null or char_length(reply_to) <= 200),
   screenshot text check (screenshot is null or (screenshot ~ '^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$' and char_length(screenshot) <= 1500000)),
   context jsonb not null default '{}'::jsonb check (pg_column_size(context) <= 20000),
-  issue_url text
+  issue_url text,
+  client_id text check (client_id is null or char_length(client_id) <= 40)
 );
+-- A report's key, made on the phone (r63): the same report sent again is kept once.
+create unique index feedback_client_once on public.feedback (user_id, client_id);
 alter table public.feedback enable row level security;
 create policy "signed-in people can add" on public.feedback
   for insert to authenticated
@@ -49,6 +52,10 @@ begin
   -- report would slip past the daily limit, and a made-up link would show in your Inbox.
   new.created_at := now();
   new.issue_url := null;
+  -- The same report sent again (its answer lost on the way back, r63): kept once, and not counted again.
+  if new.client_id is not null and exists (select 1 from public.feedback where user_id = new.user_id and client_id = new.client_id) then
+    return null;
+  end if;
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
   end if;
@@ -72,6 +79,32 @@ insert into public.feedback_readers (user_id) select id from auth.users where em
 ```
 
 Check: Report a problem from the app (signed in), then Supabase > **Table Editor** > `feedback` shows it, and Settings > Help shows **Inbox** for your account.
+
+### B1a. A report's key (r63): before you merge r63
+Status: to do. Supabase > **SQL Editor** > **New query**, paste, Run. It is safe to run more than once. A report sent again after its answer was lost on the way back (a phone dropping off the network mid-send) is then kept once, so it makes one ticket, not two. Until it runs, r63 sends reports as before, without the key, so nothing breaks if it waits.
+
+```sql
+alter table public.feedback add column if not exists client_id text check (client_id is null or char_length(client_id) <= 40);
+create unique index if not exists feedback_client_once on public.feedback (user_id, client_id);
+create or replace function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  -- The time and the ticket link are the server's, never the sender's: a back-dated
+  -- report would slip past the daily limit, and a made-up link would show in your Inbox.
+  new.created_at := now();
+  new.issue_url := null;
+  -- The same report sent again (its answer lost on the way back, r63): kept once, and not counted again.
+  if new.client_id is not null and exists (select 1 from public.feedback where user_id = new.user_id and client_id = new.client_id) then
+    return null;
+  end if;
+  if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
+    raise exception 'feedback_rate_limited' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+revoke all on function public.feedback_limit() from public, anon, authenticated;
+```
+
+Check: Supabase > **Table Editor** > `feedback` has a `client_id` column, and a report sent from r63 fills it.
 
 Only if you ever ran the older version of this step (before r25), run this instead:
 

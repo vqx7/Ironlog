@@ -213,7 +213,7 @@ export function eqSheet(m: { day: number; equip: readonly string[] }): TemplateR
 /* ---------- Short on time ---------- */
 
 /** Short on time: the minutes there are, what the trim changes, and the minutes after; null once the session is gone. */
-export function shortSheet(m: { mins?: number | undefined }): TemplateResult | null {
+export function shortSheet(m: { mins?: number | null | undefined }): TemplateResult | null {
   const d = state.draft;
   if (!d) return null;
   const left = remainMin(d);

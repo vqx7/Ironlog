@@ -28,6 +28,12 @@
 //      new code each leave their busy state the same way, with the fields as
 //      typed; a check of the wait for the email that never answers ends, and
 //      the wait goes on.
+//   4  (a guard, the source build) the start in typed modules (main.ts,
+//      events.ts, screens.ts) does what r62's legacy start did, in its order:
+//      every listener and interval the page adds as it opens, on the same
+//      target, type and phase, one for one; window.__ironlog with r62's names
+//      in r62's order, each the same kind of value; every action r62 had by
+//      data-act; and no page errors.
 const { engine, screenOf, screenDiff, open } = require('./h');
 const cfg = require('../scripts/config');
 const FILE = process.argv[2] || 'index.html';
@@ -304,6 +310,37 @@ const CASES = [
       ok(tries === 2, '3. and the next check goes out', tries);
       await Q.ctx.close();
     }
+  }
+
+  // ---- 4. The start against r62's: the listeners in their order, the suites' hook and the actions.
+  if (run(4) && !process.env.IRONLOG_FILE) {
+    // Every listener and interval added while the page opens, in order: its target, type and phase, or the interval's period.
+    const SPY = `(()=>{const L=window.__adds=[];const at=t=>t===window?'window':t===document?'document':t&&t.nodeName?(t.nodeName+(t.id?'#'+t.id:'')):String(t);
+      const add=EventTarget.prototype.addEventListener;EventTarget.prototype.addEventListener=function(type,fn,o){L.push([at(this),type,!!(o===true||(o&&o.capture))].join(' '));return add.call(this,type,fn,o);};
+      const si=window.setInterval;window.setInterval=function(f,ms,...a){L.push('interval '+ms);return si.call(this,f,ms,...a);};})();`;
+    const seen = [];
+    for (const file of [OLD, FILE]) {
+      const Q = await open(file, { browser, setup: async ctx => { await ctx.addInitScript(SPY); } });
+      await Q.page.waitForTimeout(300);
+      seen.push(await Q.page.evaluate(() => {
+        const L = window.__ironlog;
+        return { adds: window.__adds.slice(), hook: Object.keys(Object.getOwnPropertyDescriptors(L)).map(k => { const d = Object.getOwnPropertyDescriptor(L, k); return k + ' ' + (d.get || d.set ? 'accessor' : typeof d.value); }), acts: Object.keys(L.ACT).sort() };
+      }));
+      seen[seen.length - 1].errors = Q.errors.slice();
+      await Q.ctx.close();
+    }
+    const [a, b] = seen;
+    const firstDiff = (x, y) => { for (let i = 0; i < Math.max(x.length, y.length); i++) if (x[i] !== y[i]) return { at: i, r62: x.slice(Math.max(0, i - 3), i + 4), now: y.slice(Math.max(0, i - 3), i + 4) }; return null; };
+    const da = firstDiff(a.adds, b.adds);
+    ok(a.adds.length > 20 && !da, `4. the page adds r62's ${a.adds.length} listeners and intervals, in r62's order`, da);
+    const dh = firstDiff(a.hook, b.hook);
+    ok(a.hook.length > 300 && !dh, `4. window.__ironlog holds r62's ${a.hook.length} names in r62's order, each the same kind of value`, dh);
+    // rNewDo sat in r62's table as the helper New routine's Save called by name (ACT.rNewDo(name)): no element named it, and a tap would have handed it the element as the name. It is a function of actsroutine.ts since r63.
+    const NOT_TAPS = ['rNewDo'];
+    const gone = a.acts.filter(k => !b.acts.includes(k) && !NOT_TAPS.includes(k)), extra = b.acts.filter(k => !a.acts.includes(k));
+    ok(NOT_TAPS.every(k => a.acts.includes(k) && !b.acts.includes(k)), '4. r62\'s one helper in the table (rNewDo) is a function now, not an action');
+    ok(a.acts.length > 200 && !gone.length && !extra.length, `4. every other one of r62's ${a.acts.length} actions by data-act, and no new one`, { gone, extra });
+    ok(!b.errors.length, '4. no page errors', b.errors);
   }
 
   await browser.close();
