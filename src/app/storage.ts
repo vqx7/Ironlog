@@ -337,11 +337,19 @@ export function load(): State {
        save, destroying it. Keep the raw text aside so it can be recovered. */
     log('load', e);
     device.hadLocal = false;
+    let kept = false;
     try {
-      if (raw) localStorage.setItem(UNREAD_KEY, raw);
+      if (raw) {
+        localStorage.setItem(UNREAD_KEY, raw);
+        kept = true;
+      }
     } catch (e2) {
       log('load', e2);
     }
+    /* Not kept aside (a full store refused the copy, or the save could not
+       even be read out): it is the only copy, so nothing is saved over it
+       this visit, and the menu says Not saving (r64, the r63 audit's A-2). */
+    if (!kept) device.ok = device.boot = false;
   }
   return normalize(null);
 }

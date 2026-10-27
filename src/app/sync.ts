@@ -156,6 +156,28 @@ export function saveNow(): void {
   fx.setSaveState();
   cloudSoon();
 }
+/* The log taken in from the account (a pull, or a flush that merged the
+   account's copy) is written to this device before the sync notes say it
+   agrees with the account: the notes describe the log on this device, so
+   notes written ahead of a refused write read, on the next start, the
+   records taken in as deleted here, and that deletion was sent to the
+   account and the other phone (r64, the r63 audit's A-1). A refused write
+   marks the save failed, which keeps the notes as they were (saveMeta) and
+   says Not saving; a save that later succeeds (saveNow) clears it. A save
+   that could not be read at start is never written over (device.boot). */
+/** Writes the log just taken in from the account to this device, and says whether it is saved. */
+function writeTakenIn(): boolean {
+  if (!device.boot) return false;
+  try {
+    writeLocal(JSON.stringify(state));
+    device.ok = true;
+  } catch (e) {
+    device.ok = false;
+    log('storage', e);
+  }
+  fx.setSaveState();
+  return device.ok;
+}
 /** Writes the log once the taps pause (SYNC_MS.save). */
 export function saveSoon(): void {
   clearTimer(saveT);
@@ -274,7 +296,11 @@ const newEp = (): void => {
 const epOf = (m: Rec | null): number => (m && typeof m.ep === 'number' ? m.ep : 0);
 /** Writes the sync notes to this device: whether they were written (above). */
 function saveMeta(): boolean {
-  if (device.boot && !device.ok) return false;
+  /* The notes describe the log on this device, so they are written only while
+     it is saved: never while a write of it fails, and never over a save that
+     could not be read at start (device.boot false: a blocked store, where a
+     write fails anyway, or an unreadable save not kept aside, r64). */
+  if (!device.ok) return false;
   try {
     if (epOf(rec(parseJson(localStorage.getItem(SYNC_KEY) || 'null'))) > notesEp) {
       log('tabs', new Error('newer sync notes from another tab; not written over'));
@@ -956,6 +982,7 @@ export async function cloudFlush(): Promise<void> {
           if (dn && dn.prev && (!mergedDraft || mergedDraft.id !== dn.prev.id)) await sessionFromCloud(dn.prev, legB);
           applyChunk(x.id, merged);
           adopted = true;
+          writeTakenIn();
           if (x.id === 'draft' && dn) {
             // The copy that lost (this device's, dirty here, or the account's, which a later edit here replaced) keeps its sets.
             const prev = dn.prev,
@@ -986,11 +1013,7 @@ export async function cloudFlush(): Promise<void> {
     }
     if (adopted) {
       invalidate();
-      try {
-        writeLocal(JSON.stringify(state));
-      } catch (e) {
-        log('storage', e);
-      }
+      writeTakenIn();
       resyncLocalH();
       if (!ui.modal) fx.rerenderKeepScroll();
       conflictNote(stat);
@@ -1182,11 +1205,7 @@ export async function cloudPull(): Promise<void> {
   }
   if (parts || merged) {
     invalidate();
-    try {
-      writeLocal(JSON.stringify(state));
-    } catch (e) {
-      log('storage', e);
-    }
+    writeTakenIn();
     for (const id of adoptedIds) {
       // Mark adopted documents as agreed with the cloud copy. Normalizing can
       // change a document (a newer build adds defaults); it then differs from

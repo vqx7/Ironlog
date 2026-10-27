@@ -4815,11 +4815,16 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     } catch (e5) {
       log("load", e5);
       device.hadLocal = false;
+      let kept = false;
       try {
-        if (raw) localStorage.setItem(UNREAD_KEY, raw);
+        if (raw) {
+          localStorage.setItem(UNREAD_KEY, raw);
+          kept = true;
+        }
       } catch (e22) {
         log("load", e22);
       }
+      if (!kept) device.ok = device.boot = false;
     }
     return normalize(null);
   }
@@ -10602,6 +10607,18 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     fx.setSaveState();
     cloudSoon();
   }
+  function writeTakenIn() {
+    if (!device.boot) return false;
+    try {
+      writeLocal(JSON.stringify(state));
+      device.ok = true;
+    } catch (e5) {
+      device.ok = false;
+      log("storage", e5);
+    }
+    fx.setSaveState();
+    return device.ok;
+  }
   function saveSoon() {
     clearTimer(saveT);
     saveT = setTimeout(saveNow, SYNC_MS.save);
@@ -10681,7 +10698,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   };
   var epOf = (m3) => m3 && typeof m3.ep === "number" ? m3.ep : 0;
   function saveMeta() {
-    if (device.boot && !device.ok) return false;
+    if (!device.ok) return false;
     try {
       if (epOf(rec(parseJson(localStorage.getItem(SYNC_KEY) || "null"))) > notesEp) {
         log("tabs", new Error("newer sync notes from another tab; not written over"));
@@ -11177,6 +11194,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
             if (dn && dn.prev && (!mergedDraft || mergedDraft.id !== dn.prev.id)) await sessionFromCloud(dn.prev, legB);
             applyChunk(x2.id, merged);
             adopted = true;
+            writeTakenIn();
             if (x2.id === "draft" && dn) {
               const prev = dn.prev, remoteDraft = draftOf(rec(rd));
               dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins);
@@ -11204,11 +11222,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       }
       if (adopted) {
         invalidate();
-        try {
-          writeLocal(JSON.stringify(state));
-        } catch (e5) {
-          log("storage", e5);
-        }
+        writeTakenIn();
         resyncLocalH();
         if (!ui.modal) fx.rerenderKeepScroll();
         conflictNote(stat);
@@ -11368,11 +11382,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }
     if (parts || merged) {
       invalidate();
-      try {
-        writeLocal(JSON.stringify(state));
-      } catch (e5) {
-        log("storage", e5);
-      }
+      writeTakenIn();
       for (const id of adoptedIds) {
         cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
       }
