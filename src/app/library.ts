@@ -5,6 +5,7 @@
    moved unchanged from the legacy script. Nothing here reads the log or the settings. */
 
 import type { Exercise, LibRow, LoadMode, MuscleKey } from './types';
+import { pctOf } from './util';
 
 /* ---------- muscles ---------- */
 
@@ -81,6 +82,11 @@ export const TARGETED: ReadonlySet<MuscleKey> = new Set<MuscleKey>([
   'calves',
   'abs'
 ]);
+
+/** The weekly hard sets typical for a major muscle in the dose-response studies, lowest and highest (10 to 20; Pelland 2025, Currier 2026): typical, not a ceiling. */
+export const USUAL_RANGE = [10, 20] as const;
+/** A muscle whose default minimum is at least MAJOR_MIN is a major one, which USUAL_RANGE is about. */
+export const MAJOR_MIN = 8;
 
 /** The default weekly hard-set band for each muscle, [minimum, maximum]
     (CLAUDE.md, Evidence base: 10 to 20 for the major muscles is typical, not
@@ -243,6 +249,45 @@ export const MEAS: readonly (readonly [string, string])[] = [
 
 /* ---------- the exercise library ---------- */
 
+/* Share of bodyweight an exercise actually moves. Only push-ups are measured
+   (force plates, Ebben 2011: 64% on the floor, about 70% feet on a 30 cm
+   box). A deficit adds depth, not load, so it stays at 64%. Pull-ups and dips
+   use the whole body (the hands and forearms barely move; about 95% by
+   segment tables). The rest are estimates from segment masses (de Leva 1996)
+   and are editable per exercise. Only a user edit is stored. */
+export const BWF: Readonly<Record<string, number>> = {
+  assistPullup: 1,
+  assistDip: 1,
+  pullup: 1,
+  chinup: 1,
+  dips: 1,
+  triDips: 1,
+  pushup: 0.64,
+  deficitPushup: 0.64,
+  declinePushup: 0.7,
+  invertedRow: 0.6,
+  hyperext: 0.6,
+  hangingLegRaise: 0.35,
+  abWheel: 0.5,
+  dragonFlag: 0.7,
+  neckBridge: 0.3,
+  sissy: 0.85,
+  revNordic: 0.85,
+  nordic: 0.85,
+  ghr: 0.85,
+  plank: 0.65,
+  sidePlank: 0.6,
+  deadHang: 1,
+  neckBridgeHold: 0.3,
+  wallSit: 0.7,
+  pushupPlus: 0.64,
+  kneeRaise: 0.3,
+  reverseCrunch: 0.3,
+  crunch: 0.3,
+  russianTwist: 0.4,
+  copenhagen: 0.5
+};
+
 // id, name, primary, secondary, equipment, flags (b = bodyweight plus added load, r = less common), note
 // (also s = one side at a time, t = timed, a = assisted; the type checks that each row's main muscle
 // is a muscle key, not the helper muscles, which are one string)
@@ -265,7 +310,7 @@ export const LIB: readonly LibRow[] = [
 ['dbFly','DB Fly','chest','frontDelts','dumbbell','',''],
 ['pushup','Push-up','chest','triceps frontDelts serratus','bodyweight','b',''],
 ['deficitPushup','Deficit Push-up','chest','triceps frontDelts serratus','bodyweight','br','Hands on handles or plates so the chest drops below hand level.'],
-['declinePushup','Decline Push-up (feet raised)','chest','frontDelts triceps serratus','bodyweight','b','Feet on a bench: about 70% of bodyweight, against 64% for a floor push-up (Ebben 2011).'],
+['declinePushup','Decline Push-up (feet raised)','chest','frontDelts triceps serratus','bodyweight','b',`Feet on a bench: about ${pctOf(BWF.declinePushup)}% of bodyweight, against ${pctOf(BWF.pushup)}% for a floor push-up (Ebben 2011).`],
 ['pullup','Pull-up','lats','biceps upperBack','bodyweight','b','Log added load only. Bodyweight is added automatically for trends.'],
 ['chinup','Chin-up','lats','biceps upperBack','bodyweight','b',''],
 ['assistPullup','Assisted Pull-up (machine)','lats','biceps upperBack','machine','ba','Type the help the machine gives. Less help is progress.'],
@@ -600,45 +645,6 @@ export const SLOW_RECOVERY: ReadonlySet<string> = new Set([
   'ghr',
   'walkingLunge'
 ]);
-
-/* Share of bodyweight an exercise actually moves. Only push-ups are measured
-   (force plates, Ebben 2011: 64% on the floor, about 70% feet on a 30 cm
-   box). A deficit adds depth, not load, so it stays at 64%. Pull-ups and dips
-   use the whole body (the hands and forearms barely move; about 95% by
-   segment tables). The rest are estimates from segment masses (de Leva 1996)
-   and are editable per exercise. Only a user edit is stored. */
-export const BWF: Readonly<Record<string, number>> = {
-  assistPullup: 1,
-  assistDip: 1,
-  pullup: 1,
-  chinup: 1,
-  dips: 1,
-  triDips: 1,
-  pushup: 0.64,
-  deficitPushup: 0.64,
-  declinePushup: 0.7,
-  invertedRow: 0.6,
-  hyperext: 0.6,
-  hangingLegRaise: 0.35,
-  abWheel: 0.5,
-  dragonFlag: 0.7,
-  neckBridge: 0.3,
-  sissy: 0.85,
-  revNordic: 0.85,
-  nordic: 0.85,
-  ghr: 0.85,
-  plank: 0.65,
-  sidePlank: 0.6,
-  deadHang: 1,
-  neckBridgeHold: 0.3,
-  wallSit: 0.7,
-  pushupPlus: 0.64,
-  kneeRaise: 0.3,
-  reverseCrunch: 0.3,
-  crunch: 0.3,
-  russianTwist: 0.4,
-  copenhagen: 0.5
-};
 
 /** The share of bodyweight an exercise moves: the lifter's own figure, else
     the table's, else all of it. */

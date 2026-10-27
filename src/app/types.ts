@@ -127,7 +127,9 @@ export interface LoggedSet {
     nor read (V's one rule reads the log), and sessions saved before keep it.
     `ps` is the sets its routine's plan gave it when saved (r58, 339 h): on
     a session saved on a day of a routine with the lift in it, absent on the
-    rest, on an edit's new exercises and on sessions saved before r58. */
+    rest, on an edit's new exercises and on sessions saved before r58.
+    `nw` marks it done at a new machine or gym (r61, 343 7): the lift starts
+    over from this session (sinceNew), absent unless marked. */
 export interface SessionEx {
   exId: string;
   note: string;
@@ -137,6 +139,7 @@ export interface SessionEx {
   inj?: string | undefined;
   sets: LoggedSet[];
   ps?: number | undefined;
+  nw?: true | undefined;
 }
 
 /** A saved session (cleanSess in the storage part). `t` is when it started,
@@ -151,7 +154,8 @@ export interface Session {
   dayName: string;
   routineId: string;
   notes: string;
-  demo: boolean;
+  /** Made by Load demo data. normalize writes it on every session; one just saved by Finish carries it only when it is an edit of a saved session (the new one is read as false until the next load, as before r60). */
+  demo?: boolean;
   deload: boolean;
   light: boolean;
   free?: true | undefined;
@@ -298,6 +302,8 @@ export interface EngineState {
   injuries: Injury[];
   deloadWeek: string | null;
   settings: EngineSettings;
+  /** The session in progress as the rules read it: its day, and the lifts it marks as done at a new machine or gym (r61, liftReadIn); absent or null with none. */
+  draft?: { date: string; ex: readonly { exId: string; nw?: true | undefined }[] } | null | undefined;
 }
 
 /** One set as the analytics read it (a point in IDX's byEx): the load as typed,
@@ -368,13 +374,19 @@ export interface Target {
     from History keeps the saved range (`keepRR`); an exercise held for an
     injury carries its key (`inj`, r54). */
 export interface DraftBlock {
+  /** The exercise's own id in this session (r46), which a move or a merge keeps; absent on a session begun before r46. */
+  bid?: string | undefined;
   exId: string;
+  /** What it is done for: the sets, rest, superset, range, effort and load step a routine item or the lift's default gave it; normalize writes every one but the jump (a superset's letter key, or null). */
   plan: {
-    sets?: number | undefined;
-    rest?: number | string | undefined;
-    ss?: string | null | undefined;
-    repMin?: number | string | undefined;
-    repMax?: number | string | undefined;
+    sets: number;
+    rest: number;
+    ss: string | null;
+    repMin: number;
+    repMax: number;
+    rir: number;
+    inc: number;
+    jump?: number | undefined;
   };
   sets: DraftSet[];
   light?: boolean | undefined;
@@ -386,10 +398,37 @@ export interface DraftBlock {
   full?: number | undefined;
   tgt?: Target | null | undefined;
   target?: string | undefined;
-  /** The next sets adjusted from a set (r34): at the row it came from, whose id (`rid`, since PENDING 333) keeps it on that row when rows are added above. */
-  adj?: { at: number; w: number; rid?: string | undefined } | null | undefined;
+  /** The next sets adjusted from a set (r34): at the row it came from, whose id (`rid`, since PENDING 333) keeps it on that row when rows are added above; the load they take and the one they had, the reps the estimate expects there, up or down, and why. */
+  adj?: NextSetsAdj | null | undefined;
+  /** Keep as it was: no adjustment for this exercise for the rest of the session (r34). */
+  adjOff?: boolean | undefined;
   sw?: number | null | undefined;
   prev?: string[] | undefined;
   prevOff?: boolean | undefined;
   last?: string | undefined;
+  /** The suggestion's words, shown under the exercise when it has no target. */
+  hint?: string | undefined;
+  /** Last time's reps per working set, the grey reps. */
+  lastR?: (number | null)[] | undefined;
+  /** The easier way the suggestion offers, when it offers one. */
+  easier?: string | null | undefined;
+  /** The date of the full session the target came from, when the last was not one (r26). */
+  basis?: string | undefined;
+  /** The note left on this lift last time, shown until one is written today. */
+  lastNote?: { date: string; text: string } | null | undefined;
+  /** The exercise it was swapped from, for Finish's offer to the routine. */
+  swappedFrom?: string | null | undefined;
+  /** Done at a new machine or gym (r61, 343 7): every block of the lift in the session carries it, its suggestion read as a first session's; absent unless marked. */
+  nw?: true | undefined;
+}
+
+/** The next sets adjusted from a ticked set (r34): see DraftBlock's `adj`. */
+export interface NextSetsAdj {
+  at: number;
+  w: number;
+  from: number;
+  r: number;
+  up: boolean;
+  why: string;
+  rid?: string | undefined;
 }

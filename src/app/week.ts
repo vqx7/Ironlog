@@ -10,7 +10,7 @@ import { html, nothing, render } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { DAYS, dayLabel, weekFactor } from './routines';
 import { NIL, WD2, fmtDate } from './format';
-import { addDays, r1, today, weekStart } from './util';
+import { addDays, r1, today, weekStart, monthOf, dayOfMonth, WEEK_DAYS } from './util';
 import { U, activeRoutine, dateIndex, freeMode, isRestWeek, weekStats } from './live';
 import { state, ui } from './store';
 import { WKVIEW_KEY, log, prefGet } from './storage';
@@ -43,7 +43,7 @@ export function weekBar(): TemplateResult[] {
   // The + on empty past days appears once there is a log to add to; a brand-new week bar stays clean (the days still open the sheet).
   const hasLog = state.sessions.length > 0;
   const out: TemplateResult[] = [];
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < WEEK_DAYS; i++) {
     const d = addDays(cur, i),
       ss = sessionsOn(d),
       trained = ss.length > 0,
@@ -94,7 +94,7 @@ export function weekBar(): TemplateResult[] {
               ? 'rest week'
               : 'nothing logged';
     const label = `${DAYS[i]} ${fmtDate(d)}: ${what}${cd.length ? `, cardio ${cd.reduce((a, c) => a + c.min, 0)} min` : ''}`;
-    const inner = html`<span class="wd">${WD2[i]}</span><span class="dn">${+d.slice(8)}</span><span class="nm">${name || ' '}</span>`;
+    const inner = html`<span class="wd">${WD2[i]}</span><span class="dn">${dayOfMonth(d)}</span><span class="nm">${name || ' '}</span>`;
     if (live && d < t)
       out.push(
         html`<button type="button" class=${cls} data-act="wkGo" data-date=${d} data-tip=${label} aria-label=${`${label}. Open the session`}>${inner}</button>`
@@ -137,6 +137,9 @@ export function drawWeekBar(): void {
 /** What weekStats says of the week, as the ring and the card read it. */
 export type WeekNow = ReturnType<typeof weekStats>;
 
+/** The week ring's radius, in the units of its 64 by 64 drawing. */
+const RING_R = 26;
+
 /* The week at a glance, beside the day's name: sessions done against the
    sessions the routine plans this week, the same two numbers as This week's
    title. V (2026-10-13): the headline counts what was done, not planned
@@ -145,7 +148,7 @@ export type WeekNow = ReturnType<typeof weekStats>;
 /** The ring: sessions done of those planned this week; nothing when none is planned. */
 export function heroRing(w: WeekNow): TemplateResult | typeof nothing {
   if (!(w.planDays > 0)) return nothing;
-  const r = 26,
+  const r = RING_R,
     c = 2 * Math.PI * r,
     p = Math.max(0, Math.min(1, w.doneDays / w.planDays));
   const pd = `${w.weekly || weekFactor(w.R) === 1 ? '' : 'about '}${w.planDays}`;
@@ -222,9 +225,9 @@ export function weekCard(): TemplateResult {
      month's name for an earlier one) with that month's session count. */
   if (monthView()) {
     const ym = calNow();
-    const cur = today().slice(0, 7);
+    const cur = monthOf(today());
     const n = Object.keys(dateIndex().byDate)
-      .filter(d => d.slice(0, 7) === ym)
+      .filter(d => monthOf(d) === ym)
       .reduce((a, d) => a + sessionsOn(d).length, 0);
     const title =
       ym === cur

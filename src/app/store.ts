@@ -12,7 +12,7 @@
    four objects moved unchanged. */
 
 import type { DbRack, EngineState, Measurement, PlanItem, Routine, Settings } from './types';
-import type { DraftLike } from './session';
+import type { BlkRef, DraftLike } from './session';
 import type { Trashed } from './records';
 
 /** The whole log as normalize() returns it: the fields the engine and the
@@ -21,7 +21,7 @@ import type { Trashed } from './records';
     in progress as the sync reads them (r56), Recently deleted as History
     reads it (r57), and the rest still open until they are typed with the
     screens that read them (phase 5). */
-export type State = Omit<EngineState, 'settings'> & {
+export type State = Omit<EngineState, 'settings' | 'draft'> & {
   version: number;
   settings: Settings;
   measurements: Measurement[];
@@ -82,7 +82,7 @@ export interface Ui {
   /** The unit Your gym is labelled in, chosen before anything is saved there. */
   gymU?: 'lb' | 'kg' | undefined;
   /** A ticked set unticked to ask about a load far off, to tick again once Fix it's load is in (r55): its block, through blkRef, and its row. */
-  refix: { b: unknown; s: number } | null;
+  refix: { b: BlkRef | null; s: number } | null;
   [field: string]: unknown;
 }
 export const ui: Ui = {
@@ -221,8 +221,15 @@ export interface Fx {
   render(): void;
   /** Asks a question with two answers and Cancel (the confirm sheet): the answer, 'cancel' when the sheet is closed without one. */
   ask(title: string, body: string, ok: string, alt: string): Promise<'ok' | 'alt' | 'cancel'>;
-  /** Asks before an action (the confirm sheet): the title, the question, the button's words, what the button does, and whether it deletes. */
-  confirm(title: string, body: string, okLabel: string, fn: () => void, danger?: boolean): void;
+  /** Asks before an action (the confirm sheet): the title, the question, the button's words, what the button does, whether it deletes, and a second answer (`only`: no Cancel beside it; `quiet`: a link under the buttons). */
+  confirm(
+    title: string,
+    body: string,
+    okLabel: string,
+    fn: () => void,
+    danger?: boolean,
+    alt?: { label: string; fn: () => void; only?: boolean; quiet?: boolean }
+  ): void;
   /** Redraws the page keeping the scroll position. */
   rerenderKeepScroll(): void;
   /** Closes the sheet that is open (the sheets are the legacy script's until r60). */
@@ -243,6 +250,19 @@ export interface Fx {
   unitWords(): void;
   /** Stops the rest timer (with the session screen, r60). */
   stopTimer(): void;
+  /** Starts the rest timer for so many seconds (the bar is the page's, outside the screens; r60). */
+  startTimer(sec: number): void;
+  /** Opens the recap after a session is saved (the sheets are the legacy script's until they move; r60). */
+  recap(m: {
+    title: string;
+    lines: string[];
+    prs: { name: string; what: string; was: string }[];
+    note: string;
+    upd: unknown;
+    sid: string;
+  }): void;
+  /** Hides the toast when it offers an Undo: a session saved has nothing left to undo from its own steps (r60). */
+  undoToastHide(): void;
   /** Readies the rest timer's sound, on a tap (with the session screen, r60). */
   primeAudio(): void;
   /** Draws the rest timer again in its current style, when it is showing (with the session screen, r60). */

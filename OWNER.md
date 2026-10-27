@@ -2,11 +2,11 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r54 live, r55 in pull request #48, 2026-10-20.
+Last updated: r58 live, r59 and r60 in pull requests #55 and #56, r61 on #56, 2026-10-26.
 
 ## Now, in this order
 
-1. A24 (the stack r55.1, r56 and r56.1, versions 2.7 to 2.9): pull requests #49, #50 and #51; the preview is r56.1, which carries all three. After the stack's review is clean (PENDING 333): export a backup on your phone, merge #49 on GitHub's website, wait for Claude to point #50 at `main`, merge #50, then #51 the same way. Then tap Reload on every phone and computer when New version ready shows, and do that before using two devices on one workout: a device still on r55 can drop sets of a workout open on both, as r55 always could (PENDING 333). A23 (r55): done 2026-10-20, merged by you, live as build 2026.10.19-r55.
+1. A26 (r59, version 2.13; r60, 2.14; r61, 2.15): pull requests #55 (r59), #56 (r60, on #55) and r61's (on #56), which Claude opens once every suite passes in both browsers and r61's independent review is clean. The preview carries the newest pull request, so it shows r61, with r60 and r59 under it. Try it on your phone (Checks on your phone, below, r59 to r61), then merge #55 on GitHub's website; Claude then points #56 at `main`, and you merge it the same way; then r61's. When "Update ready" shows on a phone, tap Update. A25 (r57 and r58): done, merged by you (#53 on 2026-10-25 at 01:48 UTC, #54 at 13:58), r58 live as build 2026.10.24-r58. A24 (r55.1 to r56.2): done, merged by you on 2026-10-24 (#49 and #51 at 20:58 UTC, r56's commits with #51, its own #50 closed; #52 at 21:47).
 2. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below). Status: to do, unless you have done it (Claude cannot see Supabase from here).
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
    D7, any time (with C6 is easiest): a 1 MB limit on each synced document (1 minute, below). Status: to do, unless you have done it.
@@ -312,9 +312,9 @@ Status: to do. Each step is free and none of them stops Claude from building and
 10. **Never paste** the Supabase secret key, a GitHub token or the Resend key into a chat, the app or the repository. They belong only in the dashboards named in B4 and C4.
 
 ### D6. Old branches
-Status: to do (checked by Claude on 2026-10-20: the branches below are on GitHub, and Automatically delete head branches is still off). Claude's GitHub access cannot delete branches.
-The first seven are wholly in `main` (GitHub shows each 0 commits ahead of it), so deleting them loses nothing. Leave `r55` until pull request #48 is merged.
-1. github.com/vqx7/Ironlog/branches > tap the trash icon on `modular`, `modular-2`, `r48`, `r51`, `r52`, `r53` and `r54`. Two more hold commits that are not in `main`, your call: `r42-look` (the restyle you turned down, pull request #32) and `r31.2` (one commit pushed after its pull request #17 merged).
+Status: to do (checked by Claude on 2026-10-25: the branches below are on GitHub, and Automatically delete head branches is still off). Claude's GitHub access cannot delete branches.
+These are wholly in `main` (GitHub shows each 0 commits ahead of it), so deleting them loses nothing. Leave `r59`, `r60` and `r61-on-r60` until their pull requests are merged. `r61` (22ac59e) and `r61-normalize-draft` can go now: the first is an earlier copy of r61's first commits, each in `r61-on-r60` (checked by Claude on 2026-10-26), and the second held drafts r61 has since built.
+1. github.com/vqx7/Ironlog/branches > tap the trash icon on `modular`, `modular-2`, `r48`, `r51`, `r52`, `r53`, `r54`, `r55`, `r55.1`, `r56-wip`, `r56`, `r56.1`, `r56.2`, `r57`, `r58`, `r61` and `r61-normalize-draft`. Two more hold commits that are not in `main`, your call: `r42-look` (the restyle you turned down, pull request #32) and `r31.2` (one commit pushed after its pull request #17 merged).
 2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged.
 
 ### D7. A size limit on each synced document (r45, item 286, 1 minute)
@@ -331,18 +331,21 @@ alter table public.docs_preview add constraint docs_preview_data_size check (pg_
 
 ## Checks on your phone (items 7 and 63)
 Status: to do whenever you are at the gym; tell Claude what you see.
-- Rest timer across a screen lock; the share sheet to Files for a backup; the notch in the home-screen app; "New version ready" then Reload.
+- Rest timer across a screen lock; the share sheet to Files for a backup; the notch in the home-screen app; "Update ready" then Update (from r60; until then "New version ready" then Reload).
 - Auto-mark with the keyboard's Done on a grey reps field; the 3D body's drag and tap; the Add to Home Screen guide on iOS 26 Safari.
 - The app signing itself in after a confirmation link; a past workout from the week bar; the light Today card; a screenshot attached to a report.
 - From r54, in the preview (PENDING 311 f, 322; no browser here has an on-screen keyboard), in Safari and in the home-screen app: sign in with a wrong password, then tap the email field and change it without closing the sheet; the sheets you type in (sign in, create account, a problem report, a goal, a note) open tall with their fields at the top, so the field you tap stays in view with the keyboard up, nothing moves up and down as it comes, and nothing of the page shows under the sheet.
 - r55, in the preview (pull request #48): tick a set with 0 reps (it shows as missed); type 1000 on a bench set and tick it (it asks Log it or Fix it); change a ticked set's load to 1000, tap Fix it, type the right load (the set stays ticked); Settings > More shows one demo button and the version; save one tape measurement, then another the same day (one entry with both); in the preview, sign out with Keep on this phone, log a set or two, and sign back in (everything is still there, the new sets included).
 
 - r55.1, in the preview (pull request #49): tick a set at a light weight with 0 reps (it asks Log it as missed or Fix it); in Settings > Your gym, turn a small plate off and look at a barbell lift's next load and its warm-ups (all loadable with the plates left); after a set, type a load 10 times too heavy in Type or dictate sets (it asks); signed in, Settings > More > Load demo data (it says why it does not).
+- r56.1 to r59, in the preview or live: one workout open on two phones, a set ticked on each (both kept); Your gym's plates and the next load on a barbell lift; History, Settings, Plan, Stats and Today look and work as before (r57 to r59 moved them, nothing meant to change); the calendar's days ahead (r59).
+- r60, in the preview, in Safari and in the home-screen app (no browser here has an on-screen keyboard or iPhone selection): in a workout, tap a load field with a grey number (it shows the number selected; type a digit and it replaces it; tap away untouched and it is grey again) and a typed one (the same); a second tap places the cursor; one tap on the checkmark still logs the grey load. A barbell lift's first time, nothing typed: tap the checkmark (it says Add the weight first and puts the cursor in the load). Back after five weeks or more off a lift: the next sets after an easy first set (V's 165 x 10 at 3 in reserve case: 185 for 6). The update bar says "Update ready".
+- r61, in the preview: in a workout, ⋯ on an exercise you have logged before > New machine or gym (its target and grey load go, the first-time hint shows, and a New machine tag sits by its name); ⋯ again > Same machine as before (they come back). Mark it, log and Finish: no PR for that lift even if the numbers are higher, and on Stats its best estimate is today's, with its earlier sessions still in History.
 ## Reminders
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.
 
 ## Done
-- A9 to A22 (r30 to r45, 2026-10-04 to 2026-10-13), and r46 to r54 since: every release merged and published (pull requests #13 to #47; #32, the restyle, closed unmerged). r54 is live, build 2026.10.18-r54, checked by Claude on the gh-pages branch on 2026-10-20. Each release's own line is in this file's git history.
+- A9 to A25 (r30 to r58, 2026-10-04 to 2026-10-25): every release merged and published (pull requests #13 to #54; #32, the restyle, closed unmerged, and #50, r56, closed when #51 took its commits). r58 is live, build 2026.10.24-r58, checked by Claude on GitHub on 2026-10-25 (main at 0ed4bac). Each release's own line is in this file's git history.
 - B6, protect main: done 2026-10-15 (details under B6).
 - The tab bar on iOS 26 home-screen apps (r51): two iPhone users confirmed it stays on the bottom edge (2026-10-17).
 - Supabase Part 1 (project, `docs` table, keys) and your account, with real sync confirmed (2026-09-27).

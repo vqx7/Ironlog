@@ -7,7 +7,7 @@ Report a problem (app)  ->  feedback table (Supabase)  ->  issue in vqx7/ironlog
       ->  Claude, on a schedule: reproduce, fix on a branch, run every suite, open a pull request
       ->  the pull request's check runs every suite again (.github/workflows/publish.yml)
       ->  V merges it on the phone  ->  the same workflow tests main and publishes dist/ to gh-pages
-      ->  open apps show "New version ready"
+      ->  open apps show "Update ready" with Update
 ```
 
 ## What is built (r21)

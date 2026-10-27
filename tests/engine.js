@@ -68,6 +68,8 @@ const EXTRA = {
   // The app's own targets (src/app/profile.ts since r54): with the log's own profile and floors, a focus, and floors given.
   // Whether a muscle has a weekly target (r58, 339 e): one by default, one the app does not give one, and one tracked only.
   hasTarget: () => [['chest'], ['traps'], ['serratus'], ['neck'], ['forearms']],
+  // A lift's sessions as its rules read them (r61, 343 7): all of them, up to the log's middle session, and up to today.
+  liftRead: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : ''], [id, '9999-12-31']]),
   defBand: () => [['chest'], ['serratus'], ['quads', { focus: ['quads'] }], ['biceps', { focus: ['quads'] }]],
   appBand: () => [['chest'], ['serratus'], ['quads', { focus: ['quads'] }], ['chest', null, { chest: 5 }], ['chest', null, null]],
   fitFloors: (s) => s.routines.flatMap(r => [[r], [r, { chest: 3, quads: 4 }], [r, null, 1.75]]),
@@ -84,6 +86,11 @@ const EXTRA = {
   oddLoad: (s, ids) => ids.flatMap(id => { const d = s.sessions.length ? s.sessions[s.sessions.length - 1].date : ''; const S = (w, r, done, o) => ({ w, r, done, warm: false, drop: false, ...(o || {}) }); const b = sets => ({ exId: id, sw: 40, sets }); return [[b([S(50, 6, true), S(50, 6, true), S(300, 1, false)]), 2, d], [b([S(300, 5, true), S(30, 5, false)]), 1, d], [b([S(1000, 5, false)]), 0, d], [b([S(60, 8, false)]), 0, d], [b([S(null, null, false)]), 0, d], [b([S(0, 10, false)]), 0, d], [b([S(50, 8, true), S(null, null, false)]), 1, d], [b([S(40, 5, false, { warm: true })]), 0, d]]; }),
   // A set ticked with 0 reps (r55.1, V): at a light load after working sets, at the working load, under the suggested load with
   // nothing done yet, at a load with no working load known, on a warm-up, and a set that is no 0; on every lift, with the log's newest date.
+  // r60: the next sets after a set (341 b), for each lift and one never done, from a set clearly light by effort or by reps,
+  // heavy, on target, unrated, at 5 or more in reserve, light on a light load, against a load target, with no load, and missed.
+  nextSets: (s, ids) => { const fresh = (s.exercises.find(e => !e.bw && !e.timed && !s.sessions.some(x => x.ex.some(b => b.exId === e.id))) || {}).id; const S = (w, r, rir, o) => ({ w, r, rir, done: true, warm: false, drop: false, ...(o || {}) }); const blk = (id, sets, o) => ({ exId: id, plan: { sets: 3, rest: 120, ss: null, repMin: 6, repMax: 10, rir: 1, inc: 2.5 }, sets, ...(o || {}) }); return [...ids.slice(0, 6), ...(fresh ? [fresh] : [])].flatMap(id => [[blk(id, [S(60, 12, 4)]), 0, null], [blk(id, [S(60, 7, 3)]), 0, 8], [blk(id, [S(60, 3, 0)]), 0, 8], [blk(id, [S(60, 8, 1)]), 0, 8], [blk(id, [S(60, 14, null)]), 0, null], [blk(id, [S(60, 6, 5)]), 0, null], [blk(id, [S(20, 10, 5)]), 0, null], [blk(id, [S(60, 9, 1, { rid: 'r1' })], { tgt: { kind: 'load', w: 60, repMin: 9 } }), 0, null], [blk(id, [S(null, 8, 1)]), 0, null], [blk(id, [S(60, 0, null)]), 0, null], [blk(id, [S(150, 6, 3)]), 0, null]]); },
+  // r60: whether a bodyweight lift has had no added load, in the log alone, with a session's load, and with one left blank.
+  bwNoLoad: (s, ids) => ids.map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e], [e, { exId: e.id, sets: [{ w: 10, r: 5 }] }], [e, { exId: e.id, sets: [{ w: null, r: 5 }] }]]),
   lightZero: (s, ids) => ids.flatMap(id => { const d = s.sessions.length ? s.sessions[s.sessions.length - 1].date : ''; const S = (w, r, done, o) => ({ w, r, done, warm: false, drop: false, ...(o || {}) }); const b = (sets, sw) => ({ exId: id, sw, sets }); return [[b([S(100, 8, true), S(60, 0, false)], 100), 1, d], [b([S(100, 8, true), S(100, 0, false)], 100), 1, d], [b([S(40, 0, false)], 100), 0, d], [b([S(40, 0, false)], null), 0, d], [b([S(40, 0, false, { warm: true })], 100), 0, d], [b([S(40, 8, false)], 100), 0, d]]; }),
   // Each muscle's score as the page reads it, and the shapes no history may hold: none measured, one, two, flat, rising and falling.
   musTrend: () => [...window.__ironlog.IDX().scores.map(x => [x]), [{ clear: false, n: 0, score: 0 }], [{ clear: false, n: 1, score: 0 }], [{ clear: false, n: 2, score: 0 }], [{ clear: true, n: 2, score: 1.5 }], [{ clear: true, n: 1, score: 4.2, wk: 5 }], [{ clear: true, n: 3, score: -6 }]]
@@ -185,11 +192,26 @@ const SCENARIOS = [
     return { ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] }, routines: [...h.raw.routines.filter(r => r.id !== R.id), R], activeRoutineId: R.id,
       sessions: [[100, 4, 4], [102.5, 3, 3], [105, 3, 3], [107.5, 3, 3], [110, 3, 3], [112.5, 3, 4], [112.5, 4, 4]].map(([w, n, ps], i) => ({ id: 'ps' + i, date: day(h.today, -44 + 7 * i), dayIdx: 0, dayId: 'psD', dayName: 'Push', routineId: R.id, notes: '',
         ex: [{ exId: 'bench', rr: [6, 10], sets: Array.from({ length: n }, () => ({ w, r: 8, rir: 1, done: true })), ps }] })) } }; },
+  // Back after a break (341 b, r60): bench 3 x 6-10 at 1 in reserve, three sessions at 80 kg x 8, then seven weeks off: the
+  // next sets of a first session back (rules 3 and 4), which the wide histories, trained without a break before today, never reach.
+  h => { const R = { id: 'rtR', name: 'Return', schedule: 'weekly', days: [{ id: 'rtD', name: 'Push', rest: false, items: [{ uid: 'rt1', exId: 'bench', sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.5, ss: null }] }] };
+    return { ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] }, routines: [...h.raw.routines.filter(r => r.id !== R.id), R], activeRoutineId: R.id,
+      sessions: [-63, -56, -49].map((n, i) => ({ id: 'rt' + i, date: day(h.today, n), dayIdx: 0, dayId: 'rtD', dayName: 'Push', routineId: R.id, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [0, 1, 2].map(() => ({ w: 80, r: 8, rir: 1, done: true })) }] })) } }; },
+  // The same, then the first session back a week ago at 72.5 kg x 8 x 3 unrated, done as asked: the session after it (rule 5).
+  h => { const R = { id: 'rtR', name: 'Return', schedule: 'weekly', days: [{ id: 'rtD', name: 'Push', rest: false, items: [{ uid: 'rt1', exId: 'bench', sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.5, ss: null }] }] };
+    return { ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] }, routines: [...h.raw.routines.filter(r => r.id !== R.id), R], activeRoutineId: R.id,
+      sessions: [[-63, 80, 1], [-56, 80, 1], [-49, 80, 1], [-7, 72.5, null]].map(([n, w, rir], i) => ({ id: 'rs' + i, date: day(h.today, n), dayIdx: 0, dayId: 'rtD', dayName: 'Push', routineId: R.id, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [0, 1, 2].map(() => ({ w, r: 8, rir, done: true })) }] })) } }; },
   // Missed sets (r55, V): a bench session with a set tried and not made between two done and one after them, so the
   // analytics keep them for the Last line in their places (missedTag), which no wide history reaches (their reps are 1 or more).
   h => ({ ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] },
     sessions: [[-9, [[100, 8], [100, 8]]], [-2, [[100, 8], [120, 0], [100, 7], [100, 0]]]].map(([n, sets], i) => ({ id: 'miss' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
-      ex: [{ exId: 'bench', rr: [6, 10], sets: sets.map(([w, r]) => ({ w, r, rir: 1, done: true })) }] })) } })
+      ex: [{ exId: 'bench', rr: [6, 10], sets: sets.map(([w, r]) => ({ w, r, rir: 1, done: true })) }] })) } }),
+  // New machine or gym (r61, 343 7): leg press at the old gym, then a session marked new, heavier, and one after it; and a
+  // workout in progress marking the bench, which the rules read as starting over now (liftReadIn), which no wide history reaches.
+  h => ({ ...h, ids: ['legPress', 'bench', ...h.ids], raw: { ...h.raw, injuries: [], deloadWeek: null, settings: { ...h.raw.settings, restWeeks: [] },
+    sessions: [[-28, 'legPress', 160, false], [-21, 'legPress', 165, false], [-14, 'legPress', 230, true], [-7, 'legPress', 235, false], [-7, 'bench', 80, false]].map(([n, exId, w, nw], i) => ({ id: 'nw' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
+      ex: [{ exId, rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r: 10, rir: 2, done: true })), ...(nw ? { nw: true } : {}) }] })),
+    draft: { id: 'nwd', date: h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: null, r: null }], nw: true }] } } })
 ];
 
 // The child: the bundle on the page's histories, under V8's coverage.

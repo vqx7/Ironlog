@@ -8,12 +8,12 @@
 //   node tests/run.js --browser webkit   the same suites in WebKit, the engine of every iPhone browser
 const {execFile,execFileSync}=require('child_process');const fs=require('fs');const os=require('os');const path=require('path');
 fs.mkdirSync('screenshots',{recursive:true});
-const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','flows','charts-layout','cycle-create','fuzz','integrity','gym-ux','design','uat','essentials','comeback-removed','map3d','cleanup','ios-bar','pwa','update','accounts','install','r21','r22','r23','r24','r25','preview','owner-doc','sql','journey','progress','breach','custom','r27','r28','r29','r29b','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r36','r38','r39','r40','r41','realism','r42','r43','r44','r45','r46','r47','r49','r52','r53','r53w','r54','r54b','r55','r55b','r55-1','r55-1b','lifter','engine','bests','coherence','seams','r56','r56-1','r56-1b','r56-1c','r56-2','mixed','wayback','room','r57','r58','r59','security','hygiene','perf'];
+const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','flows','charts-layout','cycle-create','fuzz','integrity','gym-ux','design','uat','essentials','comeback-removed','map3d','cleanup','ios-bar','pwa','update','accounts','install','r21','r22','r23','r24','r25','preview','owner-doc','sql','journey','progress','breach','custom','r27','r28','r29','r29b','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r36','r38','r39','r40','r41','realism','r42','r43','r44','r45','r46','r47','r49','r52','r53','r53w','r54','r54b','r55','r55b','r55-1','r55-1b','lifter','engine','bests','coherence','seams','r56','r56-1','r56-1b','r56-1c','r56-2','mixed','wayback','inflight','personas','loadrules','room','r57','r58','r59','r60','r61','security','hygiene','perf'];
 // The standalone build (dist/) runs the user-facing suites again.
 // map3d is not among them: a file:// page cannot import a module, and pwa checks the 3D body in dist/ over http.
 // r39 is not either, for the same reason: most of it is the 3D body in a sheet.
 // r22 is not repeated on dist/: its first-run part checks the source file's no-account path, and the accounts suite covers the build's.
-const distSuites=['dataflow','acceptance','flows','gym-ux','design','uat','essentials','comeback-removed','r21','r24','r25','journey','progress','custom','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r38','r40','r41','r42','r43','r44','r46','r49','coherence','security','lifter','r55-1','r56-2','r56-1','r57','r58','r59'];
+const distSuites=['dataflow','acceptance','flows','gym-ux','design','uat','essentials','comeback-removed','r21','r24','r25','journey','progress','custom','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r38','r40','r41','r42','r43','r44','r46','r49','coherence','security','lifter','r55-1','r56-2','r56-1','r57','r58','r59','r60'];
 /* Suites that lean on real time (rest timers, toasts, short waits, the clock)
    run one at a time after the others, so a busy machine cannot make them
    flaky (the r44 review). No retries: a retry would hide a real flake.
@@ -58,7 +58,14 @@ execFileSync('node',[path.join('scripts','build.js')],{stdio:'inherit'});
 execFileSync('node',[path.join('scripts','build.js'),'--preview'],{stdio:'inherit'});
 
 let bad=0;const failed=[];
+/* On GitHub each suite's start and end are also written to
+   screenshots/times.txt, which the workflow keeps even from a job stopped
+   at its limit (r61's WebKit shards, 2026-10-26: two passed the hour and
+   the log, behind a sign-in, was all that could say where; the install had
+   taken it, publish.yml). */
+const timesLog=l=>{if(!process.env.GITHUB_ACTIONS)return;try{fs.mkdirSync('screenshots',{recursive:true});fs.appendFileSync(path.join('screenshots','times.txt'),`${new Date().toISOString()} ${l}\n`);}catch(e){/* a log of times only; the run goes on without it */}};
 function runOne(x){
+  timesLog(`start ${x.s}${x.tag}`);
   return new Promise(done=>{const t=Date.now();
     // 15 minutes a suite, and a suite stopped for time or by a signal says so.
     // Since r43 a stopped suite also names the last check it passed: r33
@@ -71,6 +78,7 @@ function runOne(x){
          2026-10-14: stopped at 15 minutes and said nothing). */
       if(e&&e.killed&&Date.now()-t>=899000){const last=out.trim().split('\n').filter(l=>/^ok /.test(l)).slice(-1)[0]||'(no check passed)';out+=`\nFAIL stopped after 15 minutes; the last check that passed: ${last.replace(/^ok +/,'').slice(0,200)}`;}
       else if(e&&(e.signal||e.killed))out+=`\nFAIL stopped by ${e.signal||'the runner'}`;
+      timesLog(`end ${x.s}${x.tag} ${Math.round((Date.now()-t)/1000)} s`);
       done({...x,out,sec:Math.round((Date.now()-t)/1000)});});});
 }
 // Results print in suite order whatever order they finish in, so a log reads the same every run.
@@ -82,6 +90,10 @@ function report(r){
      so on GitHub it is written as a notice, which the API serves; else a
      stall that comes back would pass unseen. */
   const notes=r.out.split('\n').filter(l=>/^note /.test(l));
+  /* A suite that runs four minutes or more is named with its time, readable
+     through the API as the notes are: a shard past its hour said nothing
+     of what took it there (r61's first run, 2026-10-26; the install). */
+  if(r.sec>=240)notes.push(`note ran for ${r.sec} s`);
   for(const l of notes){console.log(l);if(process.env.GITHUB_ACTIONS)console.log(`::notice title=${r.s}${r.tag}::${l.replace(/%/g,'%25').replace(/\r/g,'').replace(/\n/g,'%0A').slice(0,400)}`);}
   if(!pass){bad++;failed.push(r);const lines=r.out.split('\n').filter(l=>!/^ok /.test(l)&&/FAIL|Error|error/.test(l)).slice(0,15);console.log(lines.join('\n'));
     // On GitHub the job log sits behind a sign-in, but annotations can be read

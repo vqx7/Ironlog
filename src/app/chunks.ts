@@ -6,6 +6,7 @@
 
 import { rec, sessCmp } from './records';
 import type { Rec } from './records';
+import { monthOf, dayOfMonth, yearOf } from './util';
 
 /** A dated record a document holds: a session, a cardio entry, a weigh-in or a tape entry. */
 type Dated = { date: string; t?: number | null | undefined; id: string };
@@ -27,8 +28,10 @@ type Save = {
   measurements?: Dated[];
 };
 
-/** The session document a date belongs to: s-YYYY-MM-1 for days 1 to 15, -2 after. */
-export const chunkOf = (date: string): string => `s-${date.slice(0, 7)}-${+date.slice(8, 10) <= 15 ? 1 : 2}`;
+/** The last day of a month whose sessions go in its first document; the rest go in its second. */
+export const CHUNK_HALF_DAY = 15;
+/** The session document a date belongs to: s-YYYY-MM-1 for days 1 to CHUNK_HALF_DAY, -2 after. */
+export const chunkOf = (date: string): string => `s-${monthOf(date)}-${dayOfMonth(date) <= CHUNK_HALF_DAY ? 1 : 2}`;
 
 /** Records in a document are kept in the one session order. */
 export const bySess = sessCmp;
@@ -39,7 +42,7 @@ export const bySess = sessCmp;
    syncing. Builds before r22 read only core, draft and s- documents and never
    touch a b- document, so they cannot delete one; they still write weigh-ins
    into core, and those are picked up (legacyBody) and moved on the next sync. */
-export const bodyChunkOf = (date: unknown): string => 'b-' + String(date || '').slice(0, 4);
+export const bodyChunkOf = (date: unknown): string => 'b-' + yearOf(String(date || ''));
 
 /** One sync document: core's fields, the draft, or the lists of dated
     records a session or body document holds. */

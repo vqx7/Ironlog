@@ -6,8 +6,9 @@
    sentences use it; a few words here read the clock (fmtDateRow, todayEye,
    greeting) and so may never be reached from the engine (tests/hygiene.js). */
 
-import { parse, today } from './util';
+import { parse, today, yearOf, r1, r3 } from './util';
 import { isMissed } from './formulas';
+import { EFFORT_TOP } from './records';
 
 /* ---------- dates and times ---------- */
 
@@ -17,7 +18,7 @@ export const fmtDateRow = (s: string): string =>
     weekday: 'short',
     month: 'short',
     day: 'numeric',
-    ...(s.slice(0, 4) === today().slice(0, 4) ? {} : { year: 'numeric' })
+    ...(yearOf(s) === yearOf(today()) ? {} : { year: 'numeric' })
   });
 
 /* Today's date without the comma (V, r42): "Mon Oct 12". Built from two
@@ -43,10 +44,17 @@ export function sessTm(x: { t?: number | null | undefined }): string {
   }
 }
 
+/** The greeting on Today by the hour each part of the day ends at; past the last, and before the first, Evening. */
+const GREETINGS: readonly { readonly until: number; readonly word: string }[] = [
+  { until: 5, word: 'Evening' },
+  { until: 12, word: 'Morning' },
+  { until: 17, word: 'Afternoon' }
+];
+
 /* The greeting on Today, when a name is set in Settings > General. */
 export function greeting(): string {
   const h = new Date().getHours();
-  return h < 5 ? 'Evening' : h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
+  return (GREETINGS.find(g => h < g.until) || { word: 'Evening' }).word;
 }
 
 /** How long ago, in days: today, yesterday, or "N days ago". */
@@ -75,17 +83,28 @@ export const MONTHS: readonly string[] = [
 
 /* ---------- durations ---------- */
 
-/* Rounded to 5 minutes, as in the routine picker (r32, from the third review:
-   the picker said 55 to 75 min and Today "about 77 min" for the same day),
-   and so is the time left in a session; under 10 minutes, to the minute.
-   The budget is compared before rounding. */
-export const min5 = (m: number): number => (m >= 10 ? Math.round(m / 5) * 5 : Math.max(1, Math.round(m)));
+/* Rounded to MIN_STEP minutes, as in the routine picker (r32, from the third
+   review: the picker said 55 to 75 min and Today "about 77 min" for the same
+   day), and so is the time left in a session; under MIN_STEP_FROM minutes, to
+   the minute. The budget is compared before rounding. */
+/** The step estimated minutes are rounded to, and the minutes from which they are. */
+export const MIN_STEP = 5,
+  MIN_STEP_FROM = 10;
+/** Estimated minutes, rounded as above (at least 1). */
+export const min5 = (m: number): number =>
+  m >= MIN_STEP_FROM ? Math.round(m / MIN_STEP) * MIN_STEP : Math.max(1, Math.round(m));
 
 /* Every estimated duration on screen is written here and nowhere else (V,
    r42: "~75 min", never "about"). Callers round first, as each did before;
    this only words the number. tests/hygiene.js fails on the wording typed
    anywhere else in the source. */
 export const estMin = (n: number): string => `~${n} min`;
+
+/** Where a time in ISO form (YYYY-MM-DDTHH:MM:SS) holds its month, day, hour and minute, MM-DDTHH:MM. */
+const STAMP_FROM = 5,
+  STAMP_TO = 16;
+/** A time in ISO form as its date and time without the year: "10-25 18:44". */
+export const stampShort = (t: string): string => t.slice(STAMP_FROM, STAMP_TO).replace('T', ' ');
 
 /* ---------- numbers and ranges ---------- */
 
@@ -104,7 +123,7 @@ export const DIRTY_SAID = 'Save or cancel first. Your changes are still here.';
 export const MISSED_SAID = 'Logged as missed. It counts toward no volume, PRs, or targets.';
 
 /** A number to at most three decimals, without trailing zeros. */
-export const fmtG = (v: number): string => String(Math.round(v * 1000) / 1000);
+export const fmtG = (v: number): string => String(r3(v));
 
 // A rep range in words and labels: "5" when both ends are the same (r31: "5-5", "5×5-5").
 export const repSpan = (lo: number | string, hi: number | string, sep = ' to '): string =>
@@ -145,11 +164,11 @@ export function effScale(v: unknown): 'whole' | 'half' | 'rpe' {
   return v === 'half' || v === 'rpe' ? v : 'whole';
 }
 
-/* What is stored is always RIR; RPE is 10 less it. One decimal, so half
-   points show as they were entered. */
+/* What is stored is always RIR; RPE is EFFORT_TOP less it. One decimal, so
+   half points show as they were entered. */
 /** An effort, stored as RIR, as shown in a scale. */
 export function effAt(scale: 'whole' | 'half' | 'rpe', rir: number): string {
-  return scale === 'rpe' ? String(Math.round((10 - rir) * 10) / 10) : String(Math.round(rir * 10) / 10);
+  return scale === 'rpe' ? String(r1(EFFORT_TOP - rir)) : String(r1(rir));
 }
 
 /* A lighter day, a deload and a flagged injury ask for 3 or more reps in

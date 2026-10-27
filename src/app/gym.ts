@@ -5,8 +5,8 @@
 
 import type { DbRack, Exercise, Gym, Plan } from './types';
 import type { ExerciseLike, Model } from './model';
-import { isNum, r3 } from './util';
-import { LB, PLATES_KG, PLATES_LB, stepReadIn, unitStepIn } from './units';
+import { isNum, r3, EPS_SAME } from './util';
+import { LB, PLATES_KG, PLATES_LB, stepReadIn, unitStepIn, BAR, TYPED_STEP } from './units';
 import { ONE_DB, PLATE_SIDE_IDS, loadMode, rackKind } from './library';
 import { UIn, gymOfIn } from './model';
 
@@ -49,6 +49,9 @@ export function platesPerSide(list: readonly number[], side: number, tol: number
     the Settings form: any field may hold anything, so each is checked. */
 type Raw = Partial<Record<string, unknown>> | null | undefined;
 
+/** The bounds Your gym's numbers are kept within, in its unit: a dumbbell and its step, a kettlebell, how many bells, a stack's step, and how many weights a dumbbell rack may make. Past them a number is a typo. */
+const GYM_LIMITS = { dumbbell: 500, dumbbellStep: 50, bell: 300, bells: 40, stackStep: 100, rack: 300 } as const;
+
 /* A gym cleaned for normalize() and the Settings form. Every field checked;
    anything out of range is dropped, never guessed. A gym with nothing left
    but its unit is null, so it is not stored. */
@@ -59,7 +62,7 @@ export function gymClean(g: Raw): Gym | null {
   // refuses it on an unknown value, hence the cast.
   const n = (v: unknown): number => {
     const x = +(v as number);
-    return isFinite(x) ? Math.round(x * 1000) / 1000 : NaN;
+    return isFinite(x) ? r3(x) : NaN;
   };
   // g.db is whatever was stored or typed in Settings; the cast lets the lines
   // below test its fields, each of which is read through n().
@@ -70,7 +73,7 @@ export function gymClean(g: Raw): Gym | null {
       st = n(d.st),
       fine = n(d.fine),
       fineTo = n(d.fineTo);
-    if (lo > 0 && hi >= lo && hi <= 500 && st > 0 && st <= 50) {
+    if (lo > 0 && hi >= lo && hi <= GYM_LIMITS.dumbbell && st > 0 && st <= GYM_LIMITS.dumbbellStep) {
       const db: DbRack = { lo, hi, st };
       if (fine > 0 && fine < st && fineTo > lo) {
         db.fine = fine;
@@ -81,9 +84,9 @@ export function gymClean(g: Raw): Gym | null {
   }
   if (Array.isArray(g.kb)) {
     // Array.isArray turns an unknown into any[]; the cast keeps each entry unknown until n() reads it.
-    const kb = [...new Set((g.kb as unknown[]).map(n).filter(x => x > 0 && x <= 300))]
+    const kb = [...new Set((g.kb as unknown[]).map(n).filter(x => x > 0 && x <= GYM_LIMITS.bell))]
       .sort((a, b) => a - b)
-      .slice(0, 40);
+      .slice(0, GYM_LIMITS.bells);
     if (kb.length) out.kb = kb;
   }
   if (Array.isArray(g.plates)) {
@@ -94,7 +97,7 @@ export function gymClean(g: Raw): Gym | null {
   }
   {
     const st = n(g.stack);
-    if (st > 0 && st <= 100) out.stack = st;
+    if (st > 0 && st <= GYM_LIMITS.stackStep) out.stack = st;
   }
   return Object.keys(out).length > 1 ? out : null;
 }
@@ -110,15 +113,15 @@ export const gymK = (g: Pick<Gym, 'u'>, v: number): number => (g.u === 'kg' ? v 
    The smaller step's two fields are optional and read the same way, which
    is what the two casts say, and the two ! after them: each field is used
    only once it is above 0. */
-// More than 300 weights is a typo (0.5 to 200 by 0.5), refused rather than cut short.
+// More than GYM_LIMITS.rack weights is a typo (0.5 to 200 by 0.5), refused rather than cut short.
 export function dbListOf(d: DbRack | null | undefined): number[] | null {
   if (!d || !(d.lo > 0) || !(d.hi >= d.lo) || !(d.st > 0)) return null;
   const out: number[] = [];
   let v = d.lo;
-  while (v <= d.hi + 1e-6) {
-    if (out.length >= 300) return null;
+  while (v <= d.hi + EPS_SAME) {
+    if (out.length >= GYM_LIMITS.rack) return null;
     out.push(r3(v));
-    v = r3(v + ((d.fine as number) > 0 && (d.fineTo as number) > 0 && v < d.fineTo! - 1e-6 ? d.fine! : d.st));
+    v = r3(v + ((d.fine as number) > 0 && (d.fineTo as number) > 0 && v < d.fineTo! - EPS_SAME ? d.fine! : d.st));
   }
   return out;
 }
@@ -145,7 +148,7 @@ export function gymRackIn(
 ): number[] | null {
   const g = gymOfIn(M);
   if (!g || !ex || ex.bw || ex.assist || ex.timed || ex.inc != null) return null;
-  if (plan && isNum(+plan.inc) && Math.abs(stepReadIn(M, +plan.inc) - unitStepIn(M)) > 1e-6) return null;
+  if (plan && isNum(+plan.inc) && Math.abs(stepReadIn(M, +plan.inc) - unitStepIn(M)) > EPS_SAME) return null;
   const k = rackKind(ex);
   if (!k) return null;
   const m = loadMode(ex);
@@ -154,6 +157,9 @@ export function gymRackIn(
   return L && L.length ? L.map(v => gymK(g, v)) : null;
 }
 
+/** A load is the bell it is nearer than this share of the gap to its neighbours (r34.2, a convention). */
+const BELL_TOL = 0.45;
+
 /* A load typed as shown on screen is within half the last shown digit of
    the bell it means: an 8 kg dumbbell is shown as 17.6 lb, which is 7.983 kg
    (review of r33). Rack comparisons use this, so a bell typed as shown is
@@ -161,12 +167,12 @@ export function gymRackIn(
 /* A load typed for a bell is that bell when it is nearer to it than to
    its neighbours (r34.2, from the review: a 16 kg dumbbell typed as 35 lb,
    15.88 kg, read as just under itself, and the "step up" was the same bell,
-   "add 0.3 lb"). Within 45% of the gap around the bell; never less than half
+   "add 0.3 lb"). Within BELL_TOL of the gap around the bell; never less than half
    the last shown digit. Bounds a load must not pass (the target, the cap)
    keep the narrow tolerance. The filter keeps only gaps above 0, which
    TypeScript cannot follow into Math.min, hence the cast to numbers. */
 export function rackTolIn(M: Model, L?: readonly number[] | null, at?: number | null): number {
-  const base = UIn(M) === 'lb' ? 0.05 * LB : 0.05;
+  const base = UIn(M) === 'lb' ? TYPED_STEP * LB : TYPED_STEP;
   if (!L || !L.length || at == null || !isNum(at)) return base;
   let i = 0;
   for (let k = 1; k < L.length; k++) if (Math.abs(L[k] - at) < Math.abs(L[i] - at)) i = k;
@@ -174,7 +180,7 @@ export function rackTolIn(M: Model, L?: readonly number[] | null, at?: number | 
     g => g != null && g > 0
   ) as number[];
   const gap = gs.length ? Math.min(...gs) : 0;
-  return Math.abs(L[i] - at) <= Math.max(base, 0.45 * gap) ? Math.max(base, Math.abs(L[i] - at) + 1e-6) : base;
+  return Math.abs(L[i] - at) <= Math.max(base, BELL_TOL * gap) ? Math.max(base, Math.abs(L[i] - at) + EPS_SAME) : base;
 }
 
 // The step up from `at` on the rack; with no load to step from, its most common spacing.
@@ -240,7 +246,8 @@ export function atCapOfIn(
 ): boolean {
   const L = gymRackIn(M, ex, plan);
   return (
-    cap != null && top >= cap - (L && (ex.maxLoad == null || cap < ex.maxLoad - 1e-6) ? rackTolIn(M, L, top) : 1e-6)
+    cap != null &&
+    top >= cap - (L && (ex.maxLoad == null || cap < ex.maxLoad - EPS_SAME) ? rackTolIn(M, L, top) : EPS_SAME)
   );
 }
 
@@ -259,5 +266,5 @@ export function barKgIn(M: Model): number {
   if (b != null) return b;
   const g = gymOfIn(M);
   const u = (g && g.u) || UIn(M);
-  return u === 'lb' ? 45 * LB : 20;
+  return u === 'lb' ? BAR.lb * LB : BAR.kg;
 }

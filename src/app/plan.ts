@@ -12,7 +12,20 @@ import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { live } from 'lit-html/directives/live.js';
 import { act, toTrash } from './act';
-import { BANDS, COMMON_TIP, EQL, EQUIP, MK, ML, MUSCLES, commonFirst, isCommon, isCompound } from './library';
+import {
+  BANDS,
+  COMMON_TIP,
+  EQL,
+  EQUIP,
+  MK,
+  ML,
+  MUSCLES,
+  commonFirst,
+  isCommon,
+  isCompound,
+  USUAL_RANGE,
+  MAJOR_MIN
+} from './library';
 import {
   MAX_DAYS,
   RIR_TGT_TIP,
@@ -28,13 +41,13 @@ import {
   linkToggle,
   routineEmpty
 } from './routines';
-import { JUMP_TIP, SESSION_CAP } from './formulas';
+import { JUMP_TIP, SESSION_CAP, HELPER_CREDIT } from './formulas';
 import { repSpan } from './format';
 import { belowMin } from './volume';
 import { ON_PLAN_TIP } from './weeks';
 import { loadWords } from './loads';
-import { TRASH_DAYS } from './records';
-import { andList, numIn, r1, uid } from './util';
+import { TRASH_DAYS, LIMITS, EFFORT_TOP } from './records';
+import { andList, numIn, r1, uid, PERCENT, WEEK_DAYS } from './util';
 import { plainTemplate } from './normalize';
 import { effIn, effName, effShow } from './effort';
 import {
@@ -78,6 +91,9 @@ import {
 import type { Part } from './view';
 import type { Day, Exercise, PlanItem, Routine } from './types';
 
+/** The fewest sets the volume bars' scale shows, so a light week's bars are not stretched. */
+const BAR_SCALE_MIN = 24;
+
 /* ---------- small parts ---------- */
 
 /** What a muscle with no weekly target says where its target would be (r58: any muscle may be given one). */
@@ -111,20 +127,20 @@ export function sessionCapNote(day: Day): Part {
 /** Plan's note naming the muscles it plans under the usual weekly range, or nothing. */
 export function planEvidenceNote(pv: Readonly<Record<string, number>>): Part {
   const b = state.settings.bands;
-  // Major muscles only (a default minimum of 8 or more): the usual range is about them; smaller ones have lower, softer defaults.
+  // Major muscles only (a default minimum of MAJOR_MIN or more): the usual range is about them; smaller ones have lower, softer defaults.
   // Brought down below the profile's own default too (r44): a focus's maintenance targets were not lowered to meet the plan.
   const low = MK.filter(
     m =>
       hasTarget(m) &&
-      BANDS[m][0] >= 8 &&
+      BANDS[m][0] >= MAJOR_MIN &&
       b[m][0] < Math.min(BANDS[m][0], defBand(m)[0]) &&
       belowMin(pv[m] || 0, BANDS[m][0])
   );
   if (!low.length) return nothing;
+  // Every one named: only major muscles can be on it, never so many that the line needs cutting.
   return html`<p class="small muted" id="planUsual" style="margin:8px 0 0">Under the usual range in this plan: ${andList(
-    low.map(m => `${ML[m]} ${r1(pv[m] || 0)} of ${BANDS[m][0]}`),
-    12
-  )}. ${tipButton('The usual weekly range is 10 to 20 hard sets for most major muscles (typical in studies, not a ceiling); smaller muscles have lower ones. Your targets were set to this plan when you picked it, so Stats measures you against the plan. Fewer sets still build muscle, more slowly; add a set at a time when it feels easy.', 'About the usual range')}</p>`;
+    low.map(m => `${ML[m]} ${r1(pv[m] || 0)} of ${BANDS[m][0]}`)
+  )}. ${tipButton(`The usual weekly range is ${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets for most major muscles (typical in studies, not a ceiling); smaller muscles have lower ones. Your targets were set to this plan when you picked it, so Stats measures you against the plan. Fewer sets still build muscle, more slowly; add a set at a time when it feels easy.`, 'About the usual range')}</p>`;
 }
 
 /* soFar: this week while it is still going, so short of the minimum is
@@ -139,7 +155,7 @@ export function volumeRows(
   soFar?: boolean
 ): TemplateResult {
   const bands = state.settings.bands;
-  const maxScale = Math.max(24, ...MK.map(m => Math.max(sets[m] || 0, bands[m][1] + 2)));
+  const maxScale = Math.max(BAR_SCALE_MIN, ...MK.map(m => Math.max(sets[m] || 0, bands[m][1] + 2)));
   const hasConf = !!conf;
   const st = muscleStatus(sets, soFar);
   const plates: Record<string, string> = {
@@ -163,7 +179,7 @@ export function volumeRows(
     const plate = plates[cls];
     const c = hasConf && conf ? Math.min(conf[m] || 0, v) : 0;
     const tip = `${ML[m]}: ${r1(v)} hard sets${hasConf ? `, ${r1(c)} with RIR logged, ${r1(v - c)} assumed` : ''}. ${tr ? TRACKED_TIP : `Target ${lo} to ${hi}; the upper number is typical, not a ceiling.${cls === 'plan' ? ` On plan: ${ON_PLAN_TIP}` : ''}`}`;
-    return html`<div class="mrow"><span class=${`plate ${plate}`}></span><span>${ML[m]}</span><div class="band" data-tip=${tip}>${tr ? nothing : html`<div class="zone" style=${`left:${(lo / maxScale) * 100}%;width:${((hi - lo) / maxScale) * 100}%`}></div>`}<div class=${`fill ${cls}${hasConf ? ' ghost' : ''}`} style=${`width:${Math.min(100, (v / maxScale) * 100)}%`}></div>${hasConf && c > 0 ? html`<div class="fill conf" style=${`width:${Math.min(100, (c / maxScale) * 100)}%`}></div>` : nothing}</div><span class="r num">${r1(v)}<span class="muted small">${tr ? ' tracked' : ` /${lo}-${hi}`}</span></span></div>`;
+    return html`<div class="mrow"><span class=${`plate ${plate}`}></span><span>${ML[m]}</span><div class="band" data-tip=${tip}>${tr ? nothing : html`<div class="zone" style=${`left:${(lo / maxScale) * PERCENT}%;width:${((hi - lo) / maxScale) * PERCENT}%`}></div>`}<div class=${`fill ${cls}${hasConf ? ' ghost' : ''}`} style=${`width:${Math.min(PERCENT, (v / maxScale) * PERCENT)}%`}></div>${hasConf && c > 0 ? html`<div class="fill conf" style=${`width:${Math.min(PERCENT, (c / maxScale) * PERCENT)}%`}></div>` : nothing}</div><span class="r num">${r1(v)}<span class="muted small">${tr ? ' tracked' : ` /${lo}-${hi}`}</span></span></div>`;
   })}`;
 }
 
@@ -275,10 +291,10 @@ export function viewProgram(): TemplateResult {
     <option value="weekly" .selected=${live(weekly)}>Fixed weekdays: Monday to Sunday</option></select></label>
     <p class="small muted hastip" style="margin:0" data-tip=${weekly ? 'Each day is pinned to a weekday and Today opens on the calendar day.' : `The cycle runs in order whatever the calendar says. Today opens on the day after your last session, so a missed workout waits instead of being skipped. A week plans the whole sessions the cycle brings round in 7 days, ${plannedPerWeek(R)} here. 1 to ${MAX_DAYS} days.`}>How this works</p></div>`
   });
-  // The weekly count is in the header; a cycle of other than 7 days says its own count here (r34.2).
+  // The weekly count is in the header; a cycle of other than a week's days says its own count here (r34.2).
   const dnd = !!(window.__libs && window.__libs.sortable);
   const focus = dayFocusId(R);
-  const daysBody = html`${!weekly && R.days.length !== 7 ? html`<p class="muted small" style="margin:0 0 4px">${totSets} sets a ${R.days.length}-day cycle ${tipButton('Drag the ⠿ beside a day number to reorder days; they renumber from their new position.', 'About days')}</p>` : nothing}<div id="dayList">${R.days.map((d, di) => dayPart(R, d, di, weekly, dnd, focus))}</div>${weekly ? nothing : html`<div class="row" style="margin-top:10px"><button class="btn sm" data-act="dAdd" ?disabled=${R.days.length >= MAX_DAYS}>+ Training day</button><button class="btn sm" data-act="dAddRest" ?disabled=${R.days.length >= MAX_DAYS}>+ Rest day</button></div>`}`;
+  const daysBody = html`${!weekly && R.days.length !== WEEK_DAYS ? html`<p class="muted small" style="margin:0 0 4px">${totSets} sets a ${R.days.length}-day cycle ${tipButton('Drag the ⠿ beside a day number to reorder days; they renumber from their new position.', 'About days')}</p>` : nothing}<div id="dayList">${R.days.map((d, di) => dayPart(R, d, di, weekly, dnd, focus))}</div>${weekly ? nothing : html`<div class="row" style="margin-top:10px"><button class="btn sm" data-act="dAdd" ?disabled=${R.days.length >= MAX_DAYS}>+ Training day</button><button class="btn sm" data-act="dAddRest" ?disabled=${R.days.length >= MAX_DAYS}>+ Rest day</button></div>`}`;
   const daysSec = section({
     sk: 'program:days',
     key: 'days',
@@ -297,7 +313,7 @@ export function viewProgram(): TemplateResult {
       ? html`<span class="pill yellow">${pUnder} under target</span>`
       : html`<span class="pill green">all on target</span>`,
     help: 'pvol',
-    helpBody: `Hard sets per muscle this routine plans for a week${weekly ? '' : `: ${plannedPerWeek(R)} sessions a week from its ${trainDaysOf(R)} training days`}. Direct work counts 1 set, secondary involvement counts 0.5. The shaded zone is your weekly target (editable in Settings).`,
+    helpBody: `Hard sets per muscle this routine plans for a week${weekly ? '' : `: ${plannedPerWeek(R)} sessions a week from its ${trainDaysOf(R)} training days`}. Direct work counts 1 set, secondary involvement counts ${HELPER_CREDIT}. The shaded zone is your weekly target (editable in Settings).`,
     body: html`${volumeRows(pv)}${planEvidenceNote(pv)}`
   });
   return html`${slotted('program', [
@@ -659,18 +675,18 @@ function itemInput(t: Field): void {
   if (n == null) return;
   act(
     () => {
-      if (k === 'jump') f.it.jump = Math.round(clamp(n, 0, 20) * 10) / 10;
+      if (k === 'jump') f.it.jump = r1(clamp(n, 0, LIMITS.jumpPct));
       else if (k === 'inc') {
         const e = state.exercises.find(x => x.id === f.it.exId);
-        // fromD gives null only for no number, and n is one.
-        const v = fromD(clamp(n, 0, 500)) ?? 0;
+        // fromD gives null only for no number, and n is one. Within the step's bound in kilograms, the one a save keeps (r61; until then 500 in the unit typed).
+        const v = Math.min(fromD(Math.max(n, 0)) ?? 0, LIMITS.step);
         f.it.inc = v;
         if (e) e.inc = v > 0 ? v : null;
-      } else if (k === 'rir') f.it.rir = clamp(effIn(n), 0, 10);
-      else if (k === 'sets') f.it.sets = clamp(Math.round(n), 1, 30);
-      else if (k === 'rest') f.it.rest = clamp(Math.round(n), 0, 1800);
-      else if (k === 'repMin') f.it.repMin = clamp(Math.round(n), 1, 600);
-      else if (k === 'repMax') f.it.repMax = clamp(Math.round(n), 1, 600);
+      } else if (k === 'rir') f.it.rir = clamp(effIn(n), 0, EFFORT_TOP);
+      else if (k === 'sets') f.it.sets = clamp(Math.round(n), 1, LIMITS.sets);
+      else if (k === 'rest') f.it.rest = clamp(Math.round(n), 0, LIMITS.restS);
+      else if (k === 'repMin') f.it.repMin = clamp(Math.round(n), 1, LIMITS.repRange);
+      else if (k === 'repMax') f.it.repMax = clamp(Math.round(n), 1, LIMITS.repRange);
     },
     { soon: true }
   );
@@ -814,14 +830,15 @@ export const PLAN_BINDS: Readonly<Record<string, (t: Field) => void>> = {
     const R = curRoutineB();
     const v = t.value === 'weekly' ? 'weekly' : 'cycle';
     if (v === R.schedule) return;
-    if (v === 'weekly' && R.days.length > 7) {
-      fx.toast(`Fixed weekdays needs exactly 7 days. Remove ${R.days.length - 7} first.`);
+    if (v === 'weekly' && R.days.length > WEEK_DAYS) {
+      fx.toast(`Fixed weekdays needs exactly ${WEEK_DAYS} days. Remove ${R.days.length - WEEK_DAYS} first.`);
       fx.rerenderKeepScroll();
       return;
     }
     act(
       () => {
-        if (v === 'weekly') while (R.days.length < 7) R.days.push({ id: uid(), name: 'Rest', rest: true, items: [] });
+        if (v === 'weekly')
+          while (R.days.length < WEEK_DAYS) R.days.push({ id: uid(), name: 'Rest', rest: true, items: [] });
         R.schedule = v;
       },
       { undo: true }

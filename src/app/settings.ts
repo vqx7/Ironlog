@@ -15,7 +15,18 @@ import { repeat } from 'lit-html/directives/repeat.js';
 import { APP_NAME, PREVIEW_NAME, VERSION_LINE } from './config';
 import { act } from './act';
 import { MK, ML, MUSCLES, TARGETED, TRACK_ONLY } from './library';
-import { ACCENT0, ACCENTS, BW_EVERY, DEFAULT_HIDDEN, HIDEABLE, HIDEABLE_KEYS, HIDE_TABS, defaultOrder } from './layout';
+import {
+  ACCENT0,
+  ACCENTS,
+  BW_EVERY,
+  DEFAULT_HIDDEN,
+  HIDEABLE,
+  HIDEABLE_KEYS,
+  HIDE_TABS,
+  defaultOrder,
+  BW_EVERY_DEFAULT,
+  bwEveryKept
+} from './layout';
 import {
   FOCUS_MAX,
   PROF_DAYS,
@@ -27,10 +38,10 @@ import {
   profClean
 } from './profile';
 import { dbListOf, gymClean, gymPlates } from './gym';
-import { fmtDate, fmtG } from './format';
-import { CAL_WEEKS } from './analytics';
-import { TRASH_DAYS, rec } from './records';
-import { iso, numIn, r1 } from './util';
+import { fmtDate, fmtG, stampShort } from './format';
+import { CAL_WEEKS, CAL_MIN } from './analytics';
+import { TRASH_DAYS, rec, LIMITS } from './records';
+import { iso, numIn, r1, MINUTE_S, SECOND_MS, HOUR_MIN, DAY_MIN } from './util';
 import { stripDemo } from './chunks';
 import { normalize } from './normalize';
 import {
@@ -44,7 +55,8 @@ import {
   logClear,
   undoStack,
   unreadableForget,
-  unreadableRaw
+  unreadableRaw,
+  UNDO_DAYS
 } from './storage';
 import { cloudPull, cloudStop, cq, setCloud } from './sync';
 import { AUTH, FB } from './providers';
@@ -70,12 +82,28 @@ import { canInstallHere, coarse, installKind, isStandalone } from './env';
 import { drawScreen, fieldValue, howText, labelTip, pageTitle, placed, section, tabFoot, tipButton } from './view';
 import type { DbRack, Gym, MuscleKey, PlanItem, Profile, Routine } from './types';
 
+/** The example dumbbell rack Your gym's fields show, per unit: from, to, a step, and a finer step up to a weight. */
+const DB_EXAMPLE = {
+  lb: { lo: 5, hi: 120, st: 5, fine: 2.5, fineTo: 25 },
+  kg: { lo: 2, hi: 50, st: 2, fine: 1, fineTo: 10 }
+} as const;
+/** A dumbbell rack's weights listed in full up to RACK_LIST.whole, else the first RACK_LIST.head, an ellipsis and the last RACK_LIST.tail. */
+const RACK_LIST = { whole: 9, head: 5, tail: 2 } as const;
+/** The newest errors Settings lists. */
+const LOG_SHOWN = 5;
+/** How long the toast saying a focus kept a typed target stays, in milliseconds: long enough to read its two sentences. */
+const KEPT_TOAST_MS = 8000;
+import { HARD_RIR } from './formulas';
+import { PROFILE_PLAN } from './routines';
+import { SMALL_PLATE, DEFAULT_STEP } from './units';
+import { DEMO_WEEKS } from './importing';
+
 /* ---------- settings other screens read ---------- */
 
-/** How often the weigh-in reminder asks, in days (0 never; 14 when unset). */
+/** How often the weigh-in reminder asks, in days (0 never; BW_EVERY_DEFAULT when unset). */
 export function bwEvery(): 0 | 7 | 14 | 30 {
-  const v = state.settings.bwEvery;
-  return v === 0 || v === 7 || v === 30 ? v : 14;
+  const v = bwEveryKept(state.settings.bwEvery);
+  return v === undefined ? BW_EVERY_DEFAULT : v;
 }
 
 /** Whether the next sets move after a set clearly off its plan (r34; on unless turned off). */
@@ -126,11 +154,11 @@ export function profApplyList(R: Routine | null | undefined): ProfApply[] {
 /** What Apply changes, said in its question. */
 function profApplyWhat(): string {
   const p = prof();
+  const P = PROFILE_PLAN;
+  const heavy = p.goal === 'both' ? P.both : P.strength;
   return p.exp === 'new'
-    ? 'Reps in reserve go up to 3 on compounds and 2 on isolation; rep ranges stay.'
-    : p.goal === 'both'
-      ? "Heavy compounds go to 5 to 8 reps, 2 in reserve, and at least 3 minutes' rest."
-      : "Heavy compounds go to 3 to 6 reps, 2 in reserve, and at least 3 minutes' rest.";
+    ? `Reps in reserve go up to ${P.first.rirCompound} on compounds and ${P.first.rirIsolation} on isolation; rep ranges stay.`
+    : `Heavy compounds go to ${heavy.repMin} to ${heavy.repMax} reps, ${heavy.rir} in reserve, and at least ${heavy.rest / MINUTE_S} minutes' rest.`;
 }
 /** Moves the app's own weekly targets from the old profile's to the new one's, leaving a target the lifter typed; returns what moved, as copies. */
 export function profMoveBands(
@@ -271,15 +299,16 @@ function gymSettings(): TemplateResult {
   const plates = gymPlates(u);
   const on = g && g.plates ? g.plates : plates;
   const listTxt = (a: number[]): string =>
-    a.length > 9
-      ? `${a.slice(0, 5).map(fmtG).join(', ')} … ${a.slice(-2).map(fmtG).join(', ')}`
+    a.length > RACK_LIST.whole
+      ? `${a.slice(0, RACK_LIST.head).map(fmtG).join(', ')} … ${a.slice(-RACK_LIST.tail).map(fmtG).join(', ')}`
       : a.map(fmtG).join(', ');
   const half = !!typed && !dbListOf(asRack(typed));
   const pair = !!typed && !half && (typed.fine == null) !== (typed.fineTo == null);
-  const small = (gymOf() || { u: U() }).u === 'kg' ? '0.5 kg' : '1.25 lb';
+  const su = (gymOf() || { u: U() }).u === 'kg' ? 'kg' : 'lb';
+  const small = `${SMALL_PLATE[su]} ${su}`;
   return html`${howText(
     'gym',
-    'What your gym has, so suggested loads are ones you can pick up. Blank keeps the usual steps (5 lb or 2.5 kg, and dumbbells read from what you log). A step set on an exercise or in your plan still wins for that lift.'
+    `What your gym has, so suggested loads are ones you can pick up. Blank keeps the usual steps (${DEFAULT_STEP.lb} lb or ${DEFAULT_STEP.kg} kg, and dumbbells read from what you log). A step set on an exercise or in your plan still wins for that lift.`
   )}
 <div>
 <p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Type the weights as they are labelled in your gym. Suggestions show in the app's unit and land on these weights.">Labelled in</span></p>
@@ -309,17 +338,17 @@ ${
 <div>
 <p class="small muted" style="margin:0 0 6px;font-weight:600">Dumbbells (${u})</p>
 <div class="grid3">
-<label class="field">From<input type="text" inputmode="decimal" data-gym="db.lo" .value=${fieldValue(v('lo'))} placeholder=${lb ? '5' : '2'} /></label>
-<label class="field">To<input type="text" inputmode="decimal" data-gym="db.hi" .value=${fieldValue(v('hi'))} placeholder=${lb ? '120' : '50'} /></label>
-<label class="field">Step<input type="text" inputmode="decimal" data-gym="db.st" .value=${fieldValue(v('st'))} placeholder=${lb ? '5' : '2'}/></label>
+<label class="field">From<input type="text" inputmode="decimal" data-gym="db.lo" .value=${fieldValue(v('lo'))} placeholder=${String(DB_EXAMPLE[u].lo)} /></label>
+<label class="field">To<input type="text" inputmode="decimal" data-gym="db.hi" .value=${fieldValue(v('hi'))} placeholder=${String(DB_EXAMPLE[u].hi)} /></label>
+<label class="field">Step<input type="text" inputmode="decimal" data-gym="db.st" .value=${fieldValue(v('st'))} placeholder=${String(DB_EXAMPLE[u].st)}/></label>
 </div>
 <div class="grid2" style="margin-top:6px;align-items:end">
 <label class="field">${labelTip(
     'lt-dbFine',
     'Lighter end steps by',
-    'Many racks go up in smaller steps at the light end, such as 2.5 lb up to 25, or 1 kg up to 10. Leave blank if yours does not.'
-  )}<input type="text" inputmode="decimal" data-gym="db.fine" aria-labelledby="lt-dbFine" .value=${fieldValue(v('fine'))} placeholder=${lb ? '2.5' : '1'} /></label>
-<label class="field">Up to<input type="text" inputmode="decimal" data-gym="db.fineTo" .value=${fieldValue(v('fineTo'))} placeholder=${lb ? '25' : '10'}/></label>
+    `Many racks go up in smaller steps at the light end, such as ${DB_EXAMPLE.lb.fine} lb up to ${DB_EXAMPLE.lb.fineTo}, or ${DB_EXAMPLE.kg.fine} kg up to ${DB_EXAMPLE.kg.fineTo}. Leave blank if yours does not.`
+  )}<input type="text" inputmode="decimal" data-gym="db.fine" aria-labelledby="lt-dbFine" .value=${fieldValue(v('fine'))} placeholder=${String(DB_EXAMPLE[u].fine)} /></label>
+<label class="field">Up to<input type="text" inputmode="decimal" data-gym="db.fineTo" .value=${fieldValue(v('fineTo'))} placeholder=${String(DB_EXAMPLE[u].fineTo)}/></label>
 </div>
 <p class=${half ? 'small' : 'small muted'} id="gymDbList" style="margin:6px 0 0">${
     half
@@ -374,7 +403,8 @@ function gymInput(t: HTMLInputElement): void {
     gymSave(g);
     return;
   }
-  const f = k.slice(3);
+  // A dumbbell field's key after its db. (data-gym="db.lo").
+  const f = k.slice('db.'.length);
   if (f !== 'lo' && f !== 'hi' && f !== 'st' && f !== 'fine' && f !== 'fineTo') return;
   const d: DbTyped = { ...(dbTyped() || g.db || {}) };
   const n = numIn(v);
@@ -450,7 +480,7 @@ function rirSettings(): TemplateResult {
 `
   }${
     s.rirMode === 'cal' && c.recent < 2
-      ? html`<p class="small" style="margin:0"><b>Needs 2 calibration sets from the last 12 weeks before any correction applies.</b></p>
+      ? html`<p class="small" style="margin:0"><b>Needs ${CAL_MIN} calibration sets from the last ${CAL_WEEKS} weeks before any correction applies.</b></p>
 `
       : nothing
   }
@@ -533,16 +563,16 @@ function syncInfo(): TemplateResult {
 `
         : html`<p class="small hastip" style="margin:0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>
 `;
-  const ago = cloud.last ? Math.round((Date.now() - cloud.last) / 60000) : null;
+  const ago = cloud.last ? Math.round((Date.now() - cloud.last) / (MINUTE_S * SECOND_MS)) : null;
   const when =
     ago == null
       ? 'not yet'
       : ago < 1
         ? 'just now'
-        : ago < 60
+        : ago < HOUR_MIN
           ? `${ago} min ago`
-          : ago < 1440
-            ? `${Math.round(ago / 60)} h ago`
+          : ago < DAY_MIN
+            ? `${Math.round(ago / HOUR_MIN)} h ago`
             : fmtDate(iso(new Date(cloud.last ?? 0)));
   const st =
     cloud.status === 'synced'
@@ -551,7 +581,7 @@ function syncInfo(): TemplateResult {
         ? html`<span class="tag yellow">Waiting to sync</span>`
         : html`<span class="tag blue">Syncing</span>`;
   return html`<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
-<p class="small hastip" style="margin:6px 0 0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last 7 days.`}>${
+<p class="small hastip" style="margin:6px 0 0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last ${UNDO_DAYS} days.`}>${
     cloud.status !== 'synced'
       ? 'Saved on this device. It reaches your account when you are back online.'
       : window.claude
@@ -646,7 +676,7 @@ function dataBody(): TemplateResult {
 <div class="card stack">
 <div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
 <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button> <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"/></label> <button class="btn" data-act="pasteImport">Paste backup text instead</button>
-<div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Deletes, resets, and imports from the last 7 days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.`}>Undo last delete or reset${undoStack.length ? ` (${undoStack.length} available)` : ''}</button></div>
+<div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Deletes, resets, and imports from the last ${UNDO_DAYS} days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.`}>Undo last delete or reset${undoStack.length ? ` (${undoStack.length} available)` : ''}</button></div>
 </div>
 `;
 }
@@ -870,7 +900,7 @@ ${MUSCLES.map(([k, l]) =>
       html`<div class="card stack">
 <div>
 <p class="small" style="margin:0 0 6px"><b>Demo data</b> ${tipButton(
-        '8 weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.',
+        `${DEMO_WEEKS} weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.`,
         'About demo data'
       )}</p>
 <div class="row">${
@@ -888,11 +918,11 @@ ${MUSCLES.map(([k, l]) =>
 ${
   logBuf.length
     ? html`<ul class="clist">${logBuf
-        .slice(-5)
+        .slice(-LOG_SHOWN)
         .reverse()
         .map(
           x =>
-            html`<li><span class="small"><b>${x.a}</b> ${x.m}${x.n ? ` (${x.n} times)` : ''}</span><span class="small muted">${x.t.slice(5, 16).replace('T', ' ')}</span></li>
+            html`<li><span class="small"><b>${x.a}</b> ${x.m}${x.n ? ` (${x.n} times)` : ''}</span><span class="small muted">${stampShort(x.t)}</span></li>
 `
         )}</ul>
 `
@@ -1105,7 +1135,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       fx.toast(
         `Your ${ML[raw]} target is one you set, so it stays. Default targets in Weekly set targets puts the app's back.`,
         n > 0,
-        8000
+        KEPT_TOAST_MS
       );
     else if (n) fx.toast(`Weekly targets moved for ${n} muscle${n === 1 ? '' : 's'}. Ones you typed stay.`, true);
   },
@@ -1331,7 +1361,7 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
     fx.toast(
       on
         ? `${halfLbl()} now counts as half a set`
-        : `Only ${effName()} ${effShow(3)} ${rirScale() === 'rpe' ? 'or more' : 'or less'} counts`,
+        : `Only ${effName()} ${effShow(HARD_RIR)} ${rirScale() === 'rpe' ? 'or more' : 'or less'} counts`,
       true
     );
   },
@@ -1374,7 +1404,8 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
   bwEvery(t) {
     const v = +t.value;
     act(() => {
-      if (v === 0 || v === 7 || v === 30) state.settings.bwEvery = v;
+      const k = bwEveryKept(v);
+      if (k !== undefined) state.settings.bwEvery = k;
       else delete state.settings.bwEvery;
     });
     fx.rerenderKeepScroll();
@@ -1405,18 +1436,20 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
   timeBudget(t) {
     const n = numIn(t.value);
     act(() => {
-      state.settings.timeBudget = n == null || n < 10 ? null : Math.min(Math.round(n), 300);
+      state.settings.timeBudget =
+        n == null || n < LIMITS.budgetMin[0] ? null : Math.min(Math.round(n), LIMITS.budgetMin[1]);
     });
   },
   barKg(t) {
     const n = numIn(t.value);
     act(() => {
-      state.settings.barKg = n == null || n <= 0 ? null : fromD(Math.min(n, U() === 'lb' ? 110 : 50));
+      // Within the bar's bound in kilograms, the one a save keeps (r61; until then 110 in lb and 50 in kg, typed).
+      state.settings.barKg = n == null || n <= 0 ? null : Math.min(fromD(n) ?? 0, LIMITS.barKg);
     });
     fx.rerenderKeepScroll();
   },
   userName(t) {
-    const n = t.value.replace(/\s+/g, ' ').trim().slice(0, 40);
+    const n = t.value.replace(/\s+/g, ' ').trim().slice(0, LIMITS.name);
     act(() => {
       if (n) state.settings.userName = n;
       else delete state.settings.userName;
@@ -1425,12 +1458,12 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
   bwGoalPct(t) {
     const n = numIn(t.value);
     act(() => {
-      state.settings.bwGoalPct = n == null ? null : Math.min(Math.max(n, -2), 2);
+      state.settings.bwGoalPct = n == null ? null : Math.min(Math.max(n, -LIMITS.bwRatePct), LIMITS.bwRatePct);
     });
   }
 };
 
-/** A weekly set target typed (data-band, on input): the number, in halves from 0 to 100, saved once the typing pauses. */
+/** A weekly set target typed (data-band, on input): the number, in halves from 0 to LIMITS.weeklySets, saved once the typing pauses. */
 export function bandInput(t: HTMLInputElement): void {
   const m = MK.find(x => x === t.dataset.band);
   const n = numIn(t.value);
@@ -1438,7 +1471,7 @@ export function bandInput(t: HTMLInputElement): void {
   const i = t.dataset.bi === '1' ? 1 : 0;
   act(
     () => {
-      state.settings.bands[m][i] = Math.min(Math.max(Math.round(n * 2) / 2, 0), 100);
+      state.settings.bands[m][i] = Math.min(Math.max(Math.round(n * 2) / 2, 0), LIMITS.weeklySets);
     },
     { soon: true }
   );

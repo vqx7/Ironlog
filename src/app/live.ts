@@ -45,6 +45,7 @@ import {
   dateIndexIn,
   hardCreditIn,
   isHardIn,
+  liftReadIn,
   loadOfIn,
   prFrameIn,
   prLoadIn,
@@ -86,6 +87,8 @@ import {
   lighterLoadIn,
   oddLoadIn,
   lightZeroIn,
+  nextSetsIn,
+  bwNoLoadIn,
   progStepIn,
   rackStepIn,
   suggestCoreIn,
@@ -156,6 +159,7 @@ export const calStats = live(calStatsIn);
 export const dateIndex = live(dateIndexIn);
 export const hardCredit = live(hardCreditIn);
 export const isHard = live(isHardIn);
+export const liftRead = live(liftReadIn);
 export const loadOf = live(loadOfIn);
 export const prFrame = live(prFrameIn);
 export const prLoad = live(prLoadIn);
@@ -201,6 +205,8 @@ export const incOf = live(incOfIn);
 export const heavierLoad = live(heavierLoadIn);
 export const oddLoad = live(oddLoadIn);
 export const lightZero = live(lightZeroIn);
+export const nextSets = live(nextSetsIn);
+export const bwNoLoad = live(bwNoLoadIn);
 export const lighterLoad = live(lighterLoadIn);
 export const progStep = live(progStepIn);
 export const rackStep = live(rackStepIn);

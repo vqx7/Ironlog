@@ -16,7 +16,7 @@
    None of this is a fixed rule of physiology: it is a transparent ranking. */
 function rolling7(m,extra,at){
   const dm=IDX().dayMus;const t=at||today();let v=0;
-  for(let k=0;k<7;k++){const x=dm[addDays(t,-k)];if(x&&x[m])v+=x[m];}
+  for(let k=0;k<PICK_DAYS;k++){const x=dm[addDays(t,-k)];if(x&&x[m])v+=x[m];}
   return v+(extra&&extra[m]||0);
 }
 /* Days a muscle needs after a dose: 1 under 4 hard sets, 2 for 4 to 7, 3 for
@@ -51,7 +51,7 @@ function dayDirect(day){const out={};for(const it of day.items){const ex=EX(it.e
 function rankDays(){
   const R=activeRoutine();const t=today();const I=IDX();const bands=state.settings.bands;const inj=injuredSet();
   const pri=new Set(state.settings.priorities);const lag=new Set(I.scores.filter(x=>x.label==='lagging').map(x=>x.m));
-  const deload=isDeloadWeek();const f=deload?0.5:1;
+  const deload=isDeloadWeek();const f=deload?LIGHTER_SET_SHARE:1;
   const weekly=R.schedule==='weekly';const cs=weekly?null:cycleState(R);
   const planIdx=weekly?(new Date().getDay()+6)%7:cs.next;
   const lastDone={};for(const x of state.sessions)if(x.routineId===R.id&&x.dayId&&(!lastDone[x.dayId]||x.date>lastDone[x.dayId]))lastDone[x.dayId]=x.date;
@@ -237,7 +237,7 @@ function liftTrend(exId){
      follows the numbers shown: within 1% is flat, so "301 → 300.7 · up"
      cannot happen. Isolation lifts show their top sets, not a 1RM. */
   const ex=EX(exId);const st=IDX().exStats[exId];
-  const exps=(IDX().byEx[exId]||[]).filter(x=>x.tv!=null&&!lighter(x)&&(!st||sameRR(x.rr,st.rr))).slice(-3); // in the trend's range, so a heavy and a light day are not read as one line (r55)
+  const exps=liftRead(exId).filter(x=>x.tv!=null&&!lighter(x)&&(!st||sameRR(x.rr,st.rr))).slice(-3); // in the trend's range, so a heavy and a light day are not read as one line (r55), and since a new machine or gym (liftRead, r61)
   if(exps.length<2)return '';
   /* The word follows the lift's trend when it has one (r32, from the third
      review: a press flat for 7 weeks read "67.5 → 69.7 → 69.7 · up" from its
@@ -253,19 +253,6 @@ function liftTrend(exId){
   return `<p class="small muted" style="margin:2px 0">Top sets <span class="trend">${exps.map(x=>topSetOf(ex,x)).join(' → ')}</span>${dir?' · '+dir:''}</p>`;
 }
 function topSetOf(ex,x){return topSetPt(ex,x).txt;}
-/* The most recent non-empty note you left on this exercise in a saved session:
-   seat height, pin, grip, which station. Shown when the exercise comes up again. */
-function lastNoteOf(exId,before){
-  let best=null;
-  for(const ss of state.sessions)if(!before||ss.date<=before)for(const b of ss.ex)if(b.exId===exId&&b.note&&b.note.trim()&&(!best||ss.date>best.date))best={date:ss.date,text:b.note.trim()};
-  return best;
-}
-function newBlock(exId,plan,opts){
-  const sg=suggest(exId,plan,opts);
-  // sw is the load the app suggested, kept so a later refresh can tell a row
-  // still on the suggestion from one the lifter typed (refreshBlock).
-  return {bid:uid(),exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>newRow({w:fillLoads()?sg.w:null}))};
-}
 /* A muscle's weekly target with a profile (defBand) and the app's own
    target (appBand) are in src/app/profile.ts since r54, beside the floors a
    first-run pick records (fitFloors) and their refit (refit). */
@@ -274,138 +261,4 @@ function strengthPick(e,st,rec,at){
   if(!(daysOff(e.id,{before:at})>=STR_REST))return null;
   const near=st.bestAll>0&&st.last.best>=st.bestAll*STR_NEAR;
   return st.stalled?'stalled':near?'near':null;
-}
-function effOpts(){const sc=rirScale();return sc==='whole'?RIR_OPTS.slice():['0','0.5','1','1.5','2','2.5','3','3.5','4','4.5','5'];}
-const effAria=si=>rirScale()==='rpe'?`RPE for set ${si+1}`:`Reps in reserve for set ${si+1}`;
-function rirSelect(val,bi,si,target){
-  const cur=effShow(val);
-  return `<button type="button" class="rirb${cur===''?' unset':''}" data-act="rirOpen" data-f="rir" data-b="${bi}" data-s="${si}" aria-haspopup="true" aria-expanded="false" aria-label="${effAria(si)}: ${cur===''?'not set':cur}">${cur===''?(target!=null?'–':effName()):esc(cur)}</button>`;
-}
-/* Whole RIR is one row of 0 to 5. Half points and RPE are a grid under the
-   label: whole numbers on top, each half between the two it sits between,
-   every button 44 px tall and at least 40 px wide at 320 px. The buttons
-   carry RIR; RPE only changes what they say. */
-function rirStripHTML(bi,si,cur){
-  const sc=rirScale();const two=sc!=='whole';
-  // A stored value off the grid (0.25 from an import) shows in the set's box; the grid keeps its 11 places.
-  const opts=effOpts();if(!two&&cur!==''&&!opts.includes(cur)){opts.push(cur);opts.sort((a,b)=>a-b);}
-  const btn=o=>`<button type="button" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="${o}" aria-pressed="${cur===o}"${cur===o?' class="on"':''}>${sc==='rpe'?effShow(o):o}</button>`;
-  // RPE reads up from 5 to 10, as RPE charts do; RIR from 0 up.
-  const ord=sc==='rpe'?opts.slice().reverse():opts;
-  const body=two?`<div class="rs-g">${ord.filter(o=>Number.isInteger(+o)).map(btn).join('')}${ord.filter(o=>!Number.isInteger(+o)).map(btn).join('')}</div>`:opts.map(btn).join('');
-  return `<div class="rirstrip${two?' two':''}" role="group" aria-label="${effAria(si)}" data-b="${bi}" data-s="${si}"><span class="rs-l">${effName()}</span>${body}<button type="button" class="rs-x" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="" aria-label="Clear ${effName()}">✕</button></div>`;
-}
-function rirClose(){const el=document.querySelector('.rirstrip');if(!el)return;const b=document.querySelector(`.rirb[data-b="${el.dataset.b}"][data-s="${el.dataset.s}"]`);if(b)b.setAttribute('aria-expanded','false');el.remove();autoPending();}
-/* Typed reps, then a tap on the same row's RIR box (r30): auto-mark waits
-   until the RIR strip closes, picked or not. Ticking at once started the
-   rest timer, whose bar rose under the finger near the bottom of the
-   screen, so the tap landed on the timer and the strip never opened. */
-let pendAuto=null;
-function autoPending(){
-  const p=pendAuto;pendAuto=null;if(!p||!state.draft||!state.settings.autoDone)return;
-  const bi=blkIdx(p.b);if(bi<0)return;
-  const s=state.draft.ex[bi].sets[p.s];if(!s||s.done||!(+s.r>0||isMissed(s)))return;
-  lastAuto={b:blkRef(bi),s:p.s,t:Date.now()};setDone(bi,p.s,true);
-}
-function rirShowStrip(bi,si){
-  rirClose();const btn=document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);const s=state.draft&&state.draft.ex[bi]&&state.draft.ex[bi].sets[si];
-  if(!btn||!s)return;const row=btn.closest('.sg');if(!row)return;
-  row.insertAdjacentHTML('afterend',rirStripHTML(bi,si,s.rir==null?'':String(s.rir)));btn.setAttribute('aria-expanded','true');
-  // The rest bar appears on the same tap and can cover the strip; lift it
-  // into view above the bar and the tabs.
-  requestAnimationFrame(()=>{const st=row.nextElementSibling;if(!st||!st.classList.contains('rirstrip'))return;
-    let lim=window.innerHeight;for(const id of ['timer','tabs']){const el=document.getElementById(id);if(el&&!el.hidden){const t=el.getBoundingClientRect().top;if(t>0)lim=Math.min(lim,t);}}
-    const r=st.getBoundingClientRect();if(r.bottom>lim-8)window.scrollBy({top:r.bottom-lim+16,behavior:'smooth'});});
-}
-/* Cardio and mobility inside a session: saved as their own entries on Finish,
-   never counted as lifting sets. */
-function cardioDraftCard(d){
-  const rows=(d.cardio||[]).map((c,ci)=>`<div class="cgrid"><label class="field">Type<select data-cf="kind" data-c="${ci}">${CARDIO.map(([k,l])=>`<option value="${k}" ${c.kind===k?'selected':''}>${l}</option>`).join('')}</select></label>
-    <label class="field">Minutes<input type="text" inputmode="numeric" data-cf="min" data-c="${ci}" value="${c.min==null?'':c.min}"></label>
-    <label class="field">Avg HR<input type="text" inputmode="numeric" data-cf="hr" data-c="${ci}" value="${c.hr==null?'':c.hr}" placeholder="optional"></label></div>
-    <label class="field" style="margin-top:6px">Distance (${distU()})<input type="text" inputmode="decimal" data-cf="dist" data-c="${ci}" value="${c.dist?distShow(c.dist):''}" placeholder="optional"></label>
-    <div class="row" style="margin-top:6px"><select data-cf="when" data-c="${ci}" style="flex:1" aria-label="When">${CWHEN.map(([k,l])=>`<option value="${k}" ${c.when===k?'selected':''}>${l}</option>`).join('')}</select><button class="btn sm danger" data-act="cDraftDel" data-c="${ci}">Remove</button></div>`).join('');
-  const n=(d.cardio||[]).length;const mins=(d.cardio||[]).reduce((a,c)=>a+(c.min||0),0);
-  return sec({sk:'logger:cardio',title:'Cardio and mobility',sub:n?`${n} entr${n===1?'y':'ies'}${mins?`, ${mins} min`:''}`:'optional',body:`${rows}
-  <div class="row" style="margin-top:${n?10:0}px"><button class="btn sm" data-act="cDraftAdd" data-when="pre">+ Before lifting</button><button class="btn sm" data-act="cDraftAdd" data-when="post">+ After lifting</button></div>`});
-}
-function viewLogger(){
-  // Warm-ups are not counted, the same as the progress bar under it.
-  const d=state.draft;const hintSeen=new Set();const doneN=d.ex.reduce((a,b)=>a+b.sets.filter(s=>s.done&&!s.warm).length,0);
-  const left=leftMin(d);
-  let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':d.past?'Past workout':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN===1?'set':'sets'}</span> done${d.past?`, for ${esc(fmtDateLong(d.date))}`:''}${d.startedAt&&!d.past?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}<span id="sessLeft">${left>0?`, ${estMin(left)} left`:''}</span></p>${(()=>{const sp=sessProgress(d);return sp.n?`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style="width:${sp.pct}%"></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`:'';})()}
-  <div class="row lh-row"><input type="date" data-bind="draftDate" value="${d.date}" max="${today()}" aria-label="Session date" data-tip="Change to log a past session">${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div></div>
-  ${helpText('log',(state.settings.rirMode==='off'?'RIR is switched off in Settings, so every working set counts as hard. ':'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ')+'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. Drag an exercise by its ⠿ to change the order. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.'+(d.past?' Quick entry: no rest timer, and a set counts as done once its reps are typed.':state.settings.autoDone?' Auto-mark is on: sets tick themselves when you leave the reps field.':''))}
-  ${d.free?`<label class="field" style="margin-top:8px">Name<input type="text" data-bind="draftName" maxlength="40" value="${esc(d.dayName)}"></label><p class="small muted" style="margin:4px 0 0">Not tied to a routine day, so your cycle stays put.</p>`:''}
-  ${d.past?'':checkinCard(d)}${bwAskCard(d)}`;
-  if(!d.ex.length)h+=`<div class="card"><p class="small" style="margin:0">No exercises yet. Tap + Add exercise below${d.editingId?'':', or Pick for me for a suggestion based on your last 7 days,'} and log as you go.</p></div>`;
-  const calIdx=d.editingId?-1:calDueIdx(d);
-  const letters=ssLetters(d.ex.map(b=>b.plan));
-  d.ex.forEach((b,bi)=>{
-    const ex=EX(b.exId);const p=b.plan;const ss=p.ss?letters[p.ss]:null;const nr=!rirShow(ex);const dupB=lastDup(d,bi);
-    if(!d.editingId&&blockDone(b)&&!blkIsOpen(bi,b)){
-      const ws=b.sets.filter(x=>!x.warm);const prs=ws.filter(x=>livePR(b.exId,x,d.date)).length;
-      h+=`<section class="block folded" id="blk-${bi}" data-bi="${bi}">${bgrip(bi,ex.name)}<button class="bfold" data-act="bOpen" data-b="${bi}" aria-expanded="false" aria-label="${esc(ex.name)}, done. Open to edit"><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${esc(ex.name)}</b><span>${esc(ws.map(x=>setShort(ex,x.w,x.r)+missedTag(x)).join(', '))}</span></span>${prs?`<span class="bf-pr">PR</span>`:''}<span class="chev" aria-hidden="true"></span></button></section>`;
-      return;
-    }
-    const partner=ss?d.ex.filter(x=>x!==b&&x.plan.ss===p.ss).map(x=>exName(x.exId)).join(' + '):'';
-    h+=`<section class="block${ss?' ss':''}" id="blk-${bi}" data-bi="${bi}"><div class="bh">${bgrip(bi,ex.name)}<div class="bh-m"><h3 ${ex.note?`aria-labelledby="bhn-${bi}"`:''}><span id="bhn-${bi}">${esc(ex.name)}</span>${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter(x=>!x.warm&&!x.drop).length||p.sets}×${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${b.inj||(d.light||d.deload||b.light)&&b.last?effLeastShort(rirScale(),LIGHT_RIR):effTgt(p.rir)}`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>`:''}</p>${lmChips(ex)}</div>
-      <div class="bh-acts">${!d.editingId&&blockDone(b)?`<button class="ib" aria-label="Fold ${esc(ex.name)}" data-act="bFold" data-b="${bi}">▴</button>`:''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
-      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${whyTarget(b)?` ${tipi(whyTarget(b),'Why this target')}`:''}<span class="tp muted" style="display:block">${esc(lastHead(b,dupB))}</span>${(()=>{const bl=bestLine(b.exId,d.past?d.date:'');return bl?`<span class="tp muted" style="display:block">${esc(bl)}</span>`:'';})()}${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
-      ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
-      ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
-      ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}
-      <div class="sg head${nr?' norir':''}"><span data-tip="Tap a set's number to mark it a warm-up or a drop set.">#</span><span class="lsh">Last</span><span class="lh" data-tip="${esc('Load: '+loadWords(ex))}">${loadHead(ex)}</span><span>${ex.timed?(ex.perSide?'Sec/side':'Sec'):ex.perSide?'Reps/side':'Reps'}</span>${nr?'':`<span>${effName()}</span>`}<span>Done</span></div>`;
-    b.sets.forEach((s,si)=>{
-      const g=greyR(b,si);const ph=g==null?'':g;
-      const pr=s.done?livePR(b.exId,s,d.date):null;
-      const wn=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
-      // Last time's set for this row, beside this time's (r44, V): working sets only, by their order.
-      const lt=s.warm||s.drop?'':lastCell(b,wn-1,dupB);
-      h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><button class="n wbtn${s.drop?' drop':s.warm?' warm':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'↓':s.warm?'W':wn}</button><span class="ls" aria-label="${lt?esc('Last time '+lt):'No set last time'}">${lt?esc(lt).replace('×','<wbr>×'):'–'}</span>
-        <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${loadIn(ex,s.w)}" placeholder="${(()=>{const g=s.w==null?greyW(b,si):null;return g!=null?loadIn(ex,g):emptyLoad(ex);})()}">
-        <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} ${ex.timed?'seconds':'reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">
-        ${nr?'':rirSelect(s.rir,bi,si,p.rir)}
-        <button class="cbtn ${s.done?'on':''}" aria-label="Set ${si+1} ${s.done&&isMissed(s)?'missed':'done'}" aria-pressed="${s.done?'true':'false'}" data-act="sDone" data-b="${bi}" data-s="${si}">✓</button></div>`;
-    });
-    h+=adjLine(b,bi);
-    if(platesMode(ex)!=='none')h+=`<p class="small muted" id="pl-${bi}" style="margin:6px 0 0">${esc(plateLine(b))}</p>`;
-    // Copy last reps used to be hidden whenever the suggestion was "add load",
-    // which is exactly the session where prefilled reps save the most typing.
-    const canFill=b.lastR&&b.lastR.some(r=>r!=null)&&b.sets.some((s,i)=>!s.done&&!s.warm&&!s.drop&&s.r==null&&lastRFor(b,i)!=null);
-    h+=`<div class="row" style="margin-top:8px">${canFill?`<button class="btn sm" data-act="fillLast" data-b="${bi}" aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>`:''}<button class="btn sm" data-act="sAdd" data-b="${bi}" aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b="${bi}" aria-label="Remove a set" data-tip="Removes the last set not yet done." ${b.sets.length?'':'disabled'}>− Set</button>${!ex.timed&&b.sets.some(x=>x.done&&!x.warm&&!x.drop)?`<button class="btn sm" data-act="dropAdd" data-b="${bi}" aria-label="Add a drop set" data-tip="About 75% of the last working load, in your steps. Counts as half a set and never sets a target.">+ Drop</button>`:''}${state.settings.timerMode!=='off'&&+p.rest>0&&!d.past?`<button class="btn sm rest" data-act="tStart" data-b="${bi}" aria-label="Start a ${p.rest} second rest" data-tip="Start the rest timer.">⏱ ${p.rest}s</button>`:''}</div></section>`;
-  });
-  h+=`<div class="row"><button class="btn" style="flex:1" data-act="pickSession">+ Add exercise</button>${d.editingId?'':'<button class="btn" data-act="pickEx">Pick for me</button>'}</div>`;
-  if(!d.editingId)h+=cardioDraftCard(d);
-  h+=`<label class="field" style="margin-top:12px">Notes<textarea data-bind="draftNotes">${esc(d.notes||'')}</textarea></label>
-  <div class="row fin-row" style="margin-top:12px"><button class="btn danger" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button><button class="btn primary" style="flex:1" data-act="finish" data-tip="Only sets marked done are saved; you are asked about any with reps but no checkmark.">${d.editingId?'Save changes':'Finish and save'}</button></div>`;
-  return h;
-}
-/* Bodyweight, asked once in the first session with a bodyweight lift when
-   none is logged (r32, from the third review: pull-ups and leg raises added
-   nothing to weight lifted, and had no estimate, with no weigh-in). Saved
-   like a weigh-in on Today; Not now is kept per device. */
-function bwAskCard(d){
-  if(d.editingId||d.past||state.bodyweights.length||!d.ex.some(b=>EX(b.exId).bw))return '';
-  try{if(localStorage.getItem(BWASK_KEY))return '';}catch(e){return '';}
-  return `<div class="card" id="bwAsk"><p class="small" style="margin:0 0 8px"><b>Your bodyweight</b> counts in bodyweight lifts, for weight lifted and estimates. ${tipi('Logged as a weigh-in for today. Add more on Today, under Body.','About bodyweight')}</p>
-  <div class="row"><label class="field" style="flex:1;margin:0"><span class="vh">Bodyweight (${U()})</span><input type="text" inputmode="decimal" id="bwVal" placeholder="Weight (${U()})" aria-label="Bodyweight (${U()})"></label><button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
-}
-/* The first session no longer asks grey or filled in (r35, V: two systems for
-   one thing, and a card asking which). Loads are grey; Settings > Rest timer
-   and logging > Fill in suggested loads still fills them for anyone who wants. */
-/* The first machine, cable or Smith exercise in a session is offered a
-   calibration set when none was done in the last 3 weeks, RIR is on, and
-   you have at least 3 real sessions. Not now waits another 3 weeks. */
-function calDueIdx(d){
-  if(state.settings.rirMode==='off')return -1;
-  if(state.sessions.filter(s=>!s.demo).length<3)return -1;
-  const cut=addDays(today(),-21);
-  if(state.settings.calSnooze&&state.settings.calSnooze>cut)return -1;
-  const c=calStats();if(c.lastDate&&c.lastDate>cut)return -1;
-  if(d.ex.some(b=>b.sets.some(x=>x.cal)))return -1;
-  // Not on a day meant to be easy (r31): a deload, a lighter day, or two or more low check-in answers.
-  if(d.deload||d.light||d.past||(d.chk&&['sleep','energy','joints'].filter(k=>d.chk[k]===1).length>=2))return -1;
-  // Nor on a lift's first session back after weeks off (r34.2): a set to failure is the last thing it needs.
-  return d.ex.findIndex(b=>{const ex=EX(b.exId);return !ex.timed&&['machine','cable','smith'].includes(ex.equip)&&!b.inj&&!b.light&&daysOff(b.exId)<=BACK_DAYS;});
 }

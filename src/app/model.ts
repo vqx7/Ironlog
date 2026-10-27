@@ -69,6 +69,30 @@ export interface Exposure {
   tv?: number | null;
   progress?: boolean;
   miss?: MissedPoint[];
+  /** Done at a new machine or gym (SessionEx.nw, r61): the lift's stretch starts here (sinceNew). */
+  nw?: true;
+}
+
+/* A lift's sessions from its newest "New machine or gym" mark (r61, PENDING
+   343 7, V's decision of 2026-10-24): a session marked so starts the lift
+   over, so its targets, trend, stalls, PRs, bests and rack spacing read from
+   it as from a first session, and the sessions before it, at another
+   machine, are kept and shown (its history, its chart, History) but read by
+   none of them. All of them when none is marked. */
+/** The sessions of a lift since its newest new-machine mark, or all of them when none is marked. */
+export function sinceNew<X extends { nw?: true | undefined }>(xs: readonly X[]): X[] {
+  for (let i = xs.length - 1; i > 0; i--) if (xs[i].nw) return xs.slice(i);
+  return xs.slice();
+}
+
+/** A lift's sessions cut at each new-machine mark into its stretches, in order, each read as its own (the PR list, r61). */
+export function stretchesOf<X extends { nw?: true | undefined }>(xs: readonly X[]): X[][] {
+  const out: X[][] = [];
+  for (const x of xs) {
+    if (x.nw || !out.length) out.push([]);
+    out[out.length - 1].push(x);
+  }
+  return out;
 }
 
 /** A change seen over a lift's last three sessions in range: the load it was

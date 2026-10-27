@@ -10,7 +10,7 @@
    ran when the page loaded, from the start of the legacy script. */
 
 import { APP_VERSION, STORAGE_ID } from './config';
-import { daysBetween, today } from './util';
+import { daysBetween, today, DAY_MS } from './util';
 import { arr, fixId, parseJson, rec } from './records';
 import type { Rec } from './records';
 import type { LogEntry } from './types';
@@ -109,24 +109,30 @@ const logEntryIn = (v: unknown): LogEntry | null => {
 /** Text with the query and fragment of any URL in it cut out. */
 export const logCut = (t: unknown): string =>
   String(t).replace(/([a-z][a-z0-9+.-]*:\/\/[^\s?#)]*)[?#](?:[^\s):]|:(?!\d))*/gi, '$1');
+/** What the error log keeps: the first lines of a stack and how many characters of it, a message's characters, and how many entries. */
+const LOG_LIMITS = { stackLines: 4, stackChars: 400, messageChars: 300, kept: 60 } as const;
+
 /** Records an error under an area, with the first lines of its stack, in the log Settings can copy. */
 export function log(area: string, err: unknown): void {
   try {
     const E = rec(err);
     const m = E && E.message ? E.message : E ? JSON.stringify(err) : String(err);
     // Where it broke, not only what it said (r47): the first lines of the stack travel with a problem report, so a crash can be found in the code without the phone.
-    const st = E && typeof E.stack === 'string' ? logCut(E.stack.split('\n').slice(0, 4).join('\n')).slice(0, 400) : '';
+    const st =
+      E && typeof E.stack === 'string'
+        ? logCut(E.stack.split('\n').slice(0, LOG_LIMITS.stackLines).join('\n')).slice(0, LOG_LIMITS.stackChars)
+        : '';
     const t = new Date().toISOString(),
-      msg = logCut(m).slice(0, 300);
+      msg = logCut(m).slice(0, LOG_LIMITS.messageChars);
     /* The same error again (its area, message, build and place in the code), straight after itself, is counted on its line (n) with the time it last came, so one that
        repeats (a sign-in tried each time the app comes back to the screen, offline) cannot push an earlier one out of
-       the 60 kept or the 10 a problem report carries (the second review of r59). */
+       the LOG_LIMITS.kept kept or the 10 a problem report carries (the second review of r59). */
     const last = logBuf[logBuf.length - 1];
     if (last && last.a === area && last.m === msg && last.v === APP_VERSION && (last.s || '') === st) {
       last.t = t;
       last.n = (last.n || 1) + 1;
     } else logBuf.push({ t, a: area, m: msg, v: APP_VERSION, ...(st ? { s: st } : {}) });
-    while (logBuf.length > 60) logBuf.shift();
+    while (logBuf.length > LOG_LIMITS.kept) logBuf.shift();
     localStorage.setItem(LOGK, JSON.stringify(logBuf));
   } catch (e) {
     /* logging must never throw */
@@ -142,6 +148,11 @@ export interface UndoStep {
   inv: (() => boolean) | null;
   t: number;
 }
+/** Undo's steps are kept this many days; the Settings line says so. */
+export const UNDO_DAYS = 7;
+/** Undo's steps are written to IndexedDB this long after the last change, so a burst of changes writes once. */
+const UNDO_SAVE_MS = 400;
+
 /* Undo steps: the state before a destructive action, and the state right
    after it (captured at the next save). See snapshot() and ACT.undo. */
 /** The steps Undo can take back, oldest first; UNDO_MAX at most. */
@@ -150,12 +161,12 @@ export const undoStack: UndoStep[] = [],
 /* Undo history survives a reload and a closed app (item 20). It holds whole
    copies of the log, so it lives in IndexedDB, whose quota is separate from
    and much larger than localStorage's: it can never crowd out the main save.
-   Entries older than a week are dropped. The reversal functions some
+   Entries older than UNDO_DAYS are dropped. The reversal functions some
    in-session entries carry cannot be stored; after a reload those entries
    undo through the three-way merge, which gives the same result. Best
    effort: without IndexedDB, Undo works as before, for this visit only. */
 const UNDO_DB = ENV === 'preview' ? `${STORAGE_ID}-preview-undo` : `${STORAGE_ID}-undo`,
-  UNDO_TTL = 7 * 864e5;
+  UNDO_TTL = UNDO_DAYS * DAY_MS;
 let undoDbP: Promise<IDBDatabase | null> | null = null,
   undoT: number | null = null;
 function undoDb(): Promise<IDBDatabase | null> {
@@ -188,7 +199,7 @@ export function undoPersist(): void {
     } catch (e) {
       log('undo-save', e);
     }
-  }, 400);
+  }, UNDO_SAVE_MS);
 }
 /** Reads the steps saved by an earlier visit, those under a week old, once at start. */
 export async function undoRestore(): Promise<void> {
@@ -581,6 +592,9 @@ async function asideStart(): Promise<void> {
 
 /* ---------- the menu button's two readings ---------- */
 
+/** A backup is due this many days after the last one when this device holds the only copy, and an account counts as synced when it synced within as many. */
+const BACKUP_DAYS = 7;
+
 /* Everything lives in this one browser, so a backup is the only thing that
    survives a cleared cache or a new phone. Once real sessions exist, the
    header says so until a backup has been exported or copied in the last week.
@@ -588,17 +602,17 @@ async function asideStart(): Promise<void> {
 /** Whether the menu should say a backup is due. */
 export function backupDue(): boolean {
   /* Signed in and synced, the account is where the log lives, as in any
-     app; deletions are covered by Recently deleted (30 days) and Undo (7),
+     app; deletions are covered by Recently deleted (TRASH_DAYS) and Undo (UNDO_DAYS),
      so no reminder (r34.2, from the review: the menu said "Backup due" to a
      synced account while the first page says the account backs it up). */
   if (!state.sessions.some(s => !s.demo)) return false;
-  const synced = cloud.on && cloud.last && Date.now() - cloud.last < 7 * 864e5;
+  const synced = cloud.on && cloud.last && Date.now() - cloud.last < BACKUP_DAYS * DAY_MS;
   if (synced) return false;
   if (!device.ok && !synced) return false;
   const le = state.settings.lastExport;
-  // Weekly when this device holds the only copy: a phone that is lost or wiped
-  // loses everything since the last backup.
-  return !le || daysBetween(le, today()) > (synced ? 30 : 7);
+  // Every BACKUP_DAYS when this device holds the only copy: a phone that is
+  // lost or wiped loses everything since the last backup.
+  return !le || daysBetween(le, today()) > BACKUP_DAYS;
 }
 /* The menu button (r27) ends the top bar on every tab: a person for the
    account, with a dot for the save state (green synced, blue syncing, amber

@@ -7,8 +7,8 @@
 import type { Routine, Session } from './types';
 import type { Model } from './model';
 import { activeRoutineIn, freeModeIn, isDeloadWeekIn, isRestWeekIn, sortedSessionsIn } from './model';
-import { addDays, daysBetween, weekStart } from './util';
-import { BACK_DAYS } from './formulas';
+import { addDays, daysBetween, weekStart, WEEK_DAYS, SUNDAY, PERCENT } from './util';
+import { BACK_DAYS, DELOAD_GAP_DAYS } from './formulas';
 import { sessCmp } from './records';
 import { firstDate } from './charts';
 import { IDXIn, dateIndexIn, lighterTally, weekSessionsIn } from './analytics';
@@ -74,7 +74,7 @@ export function firstFullWeekIn(M: Model): string | null {
   const f = logStartIn(M);
   if (!f) return null;
   const w = weekStart(f);
-  return f > w ? addDays(w, 7) : w;
+  return f > w ? addDays(w, WEEK_DAYS) : w;
 }
 
 /* The weekly averages leave out the week the log starts in, however it
@@ -89,12 +89,12 @@ export const FIRST_WEEK_REASON = 'the week your loads are found, when sets usual
 export const FIRST_WEEK_WHY = `Your first week is left out of the weekly averages: it is ${FIRST_WEEK_REASON}.`;
 
 /** The same for a first week back after a break of more than 4 weeks (logStartIn). */
-export const BACK_WEEK_WHY = `Your first week back after a break of more than 4 weeks is left out of the weekly averages: like a first week, it is ${FIRST_WEEK_REASON}.`;
+export const BACK_WEEK_WHY = `Your first week back after a break of more than ${BACK_DAYS / WEEK_DAYS} weeks is left out of the weekly averages: like a first week, it is ${FIRST_WEEK_REASON}.`;
 
 /** The first week the weekly averages count, or null with nothing logged. */
 export function avgFirstWeekIn(M: Model): string | null {
   const f = logStartIn(M);
-  return f ? addDays(weekStart(f), 7) : null;
+  return f ? addDays(weekStart(f), WEEK_DAYS) : null;
 }
 
 /* The weeks an average covers, in words: "your last 4 full weeks", or
@@ -121,7 +121,7 @@ export function avgWeeksTxt(
     l ? `${l === 1 ? 'a lighter week' : l + ' lighter weeks'}` : '',
     r ? `${r === 1 ? 'a rest week' : r + ' rest weeks'}` : ''
   ].filter(Boolean);
-  return `the ${w} week${w === 1 ? '' : 's'} you trained of the last ${avg._span || Math.min(avg._n || 4, w + m)}${out.length ? `, ${out.join(' and ')} left out` : ''}`;
+  return `the ${w} week${w === 1 ? '' : 's'} you trained of the last ${avg._span || Math.min(avg._n || AVG_WEEKS, w + m)}${out.length ? `, ${out.join(' and ')} left out` : ''}`;
 }
 
 /* Why there is no weekly average yet, said one way by the coach, Stats'
@@ -135,10 +135,15 @@ export function avgWeeksTxt(
    only where there is no average. */
 /** What brings a weekly average where there is none yet, with a lead sentence for a lifter back from a break, and why the first week waits. */
 export function avgWaitIn(M: Model): { kind: 'back' | 'second' | 'full'; lead: string; after: string; why: string } {
-  const ago = addDays(weekStart(M.today()), -28);
+  const ago = addDays(weekStart(M.today()), -WEEK_DAYS * AVG_WEEKS);
   const af = avgFirstWeekIn(M);
   if (M.s.sessions.some(x => x.date < ago) && !M.s.sessions.some(x => x.date >= ago))
-    return { kind: 'back', lead: 'Nothing logged in the last 4 weeks. ', after: 'a full week of training', why: '' };
+    return {
+      kind: 'back',
+      lead: `Nothing logged in the last ${AVG_WEEKS} weeks. `,
+      after: 'a full week of training',
+      why: ''
+    };
   // Back after a break, the week the averages wait for is the second week back (r55, logStartIn).
   if (!af || weekStart(M.today()) <= af)
     return logBackIn(M)
@@ -147,11 +152,14 @@ export function avgWaitIn(M: Model): { kind: 'back' | 'second' | 'full'; lead: s
   return { kind: 'full', lead: '', after: 'a full week of training', why: '' };
 }
 
-/* The 4-week average every flag, the coach and Muscles read. The radar on
-   Stats can choose 2 or 8 weeks instead (avgWeeks, r31.2); nothing else does,
-   so a flag never changes with that choice. */
+/** The weeks the average every flag, the coach and Muscles read covers. */
+export const AVG_WEEKS = 4;
+
+/* The AVG_WEEKS-week average every flag, the coach and Muscles read. The
+   radar on Stats can choose 2 or 8 weeks instead (avgWeeks, r31.2); nothing
+   else does, so a flag never changes with that choice. */
 export function actualAvg4In(M: Model, lightToo?: boolean): WeeklyAvg | null {
-  return avgWeeksIn(M, 4, lightToo);
+  return avgWeeksIn(M, AVG_WEEKS, lightToo);
 }
 
 /** The weekly average of hard sets per muscle over the last n full weeks (below), or null with none trained. */
@@ -177,7 +185,7 @@ export function avgWeeksIn(M: Model, n: number, lightToo?: boolean): WeeklyAvg |
     light = 0;
   const used: string[] = [];
   for (let k = 1; k <= Math.min(2 * n, n + extra); k++) {
-    const wk = addDays(cur, -7 * k);
+    const wk = addDays(cur, -WEEK_DAYS * k);
     if (ff && wk < ff) {
       ffHit = true;
       continue;
@@ -390,7 +398,7 @@ export function regionBalanceIn(
       mid,
       lo,
       hi,
-      pct: lo > 0 ? (got / lo) * 100 : 0,
+      pct: lo > 0 ? (got / lo) * PERCENT : 0,
       low: short && !plan,
       plan,
       high: aboveMax(got, hi)
@@ -443,6 +451,9 @@ export function weekNeedIn(M: Model, ws: string): number {
   return Math.max(1, (rec && rec[ws]) || plannedPerWeek(R));
 }
 
+/** The weeks the streak looks back over: two years of them. */
+const STREAK_WEEKS = 104;
+
 /* Consecutive weeks in which you trained at least as many days as the routine
    plans. The current week joins the streak once it is met, and does not break
    it before it is over. Rest weeks are skipped (r34). */
@@ -456,8 +467,8 @@ export function weekStreakIn(M: Model): { weeks: number; best: number; need: num
   let run: number | null = null,
     cnt = 0,
     best = 0;
-  for (let k = 1; k <= 104; k++) {
-    const wk = addDays(cur, -7 * k);
+  for (let k = 1; k <= STREAK_WEEKS; k++) {
+    const wk = addDays(cur, -WEEK_DAYS * k);
     if (wk < first) break;
     if (isRestWeekIn(M, wk)) continue;
     if (weekSessionsIn(M, wk) >= weekNeedIn(M, wk)) {
@@ -523,7 +534,7 @@ export function recentLighterIn(M: Model, days: number): string | null {
   const off: string[] = [];
   const f = firstDate(M.s.sessions);
   if (f)
-    for (let w = weekStart(f) > weekStart(from) ? weekStart(f) : weekStart(from); w < cur; w = addDays(w, 7))
+    for (let w = weekStart(f) > weekStart(from) ? weekStart(f) : weekStart(from); w < cur; w = addDays(w, WEEK_DAYS))
       if (!T[w]) off.push(w);
   /* A rest week is recovery too, and so is a week with nothing trained in it,
      or a marked deload week with nothing trained in it yet: its last day, or
@@ -533,7 +544,7 @@ export function recentLighterIn(M: Model, days: number): string | null {
     ...(M.s.deloadWeek && !T[M.s.deloadWeek] ? [M.s.deloadWeek] : []),
     ...off
   ]) {
-    const e = addDays(w, 6) < M.today() ? addDays(w, 6) : M.today();
+    const e = addDays(w, SUNDAY) < M.today() ? addDays(w, SUNDAY) : M.today();
     if (e >= from && w <= M.today() && (!d || e > d)) d = e;
   }
   return d;
@@ -544,7 +555,7 @@ export const LIGHTER_WEEK_WORDS =
   'more than half its sessions done lighter, or two or more deload sessions done lighter at its end';
 
 /** The tip beside Stats' line on the last lighter week: what counts, and what reads it. */
-export const LIGHTER_WEEK_TIP = `A lighter week has ${LIGHTER_WEEK_WORDS}. A rest week or a week with nothing trained counts too. Your weekly averages leave these weeks out, and a deload is not suggested within 4 weeks of one.`;
+export const LIGHTER_WEEK_TIP = `A lighter week has ${LIGHTER_WEEK_WORDS}. A rest week or a week with nothing trained counts too. Your weekly averages leave these weeks out, and a deload is not suggested within ${DELOAD_GAP_DAYS / WEEK_DAYS} weeks of one.`;
 
 /* The last lighter week, said under Stalls on Stats (r30). Until r54 it was
    read by hard sets, a week at 65% or less of the usual, and named weeks the
@@ -554,6 +565,9 @@ export const LIGHTER_WEEK_TIP = `A lighter week has ${LIGHTER_WEEK_WORDS}. A res
    Completed weeks only, back to the week the log began, 12 at most; nothing
    until 4 of them were trained, nor just after two empty weeks, which are a
    break, not a lighter week (r34.2). */
+/** The last lighter week is looked for in the last LIGHTER_LOOK.weeks weeks, once LIGHTER_LOOK.trained of them were trained (r30, a convention). */
+const LIGHTER_LOOK = { weeks: 12, trained: 4 } as const;
+
 /** How many weeks ago the last lighter week was and what kind it was, weeks null for none in 12, or null with nothing to say. */
 export function lastLighterWeekIn(M: Model): { weeks: number | null; kind?: 'lighter' | 'rest' | 'off' } | null {
   const f = firstDate(M.s.sessions);
@@ -561,9 +575,10 @@ export function lastLighterWeekIn(M: Model): { weeks: number | null; kind?: 'lig
   const I = IDXIn(M);
   const cur = weekStart(M.today());
   const ks: string[] = [];
-  for (let k = 1; k <= 12 && addDays(cur, -7 * k) >= weekStart(f); k++) ks.push(addDays(cur, -7 * k));
+  for (let k = 1; k <= LIGHTER_LOOK.weeks && addDays(cur, -WEEK_DAYS * k) >= weekStart(f); k++)
+    ks.push(addDays(cur, -WEEK_DAYS * k));
   const trained = (w: string): boolean => weekSessionsIn(M, w) > 0;
-  if (ks.filter(trained).length < 4) return null;
+  if (ks.filter(trained).length < LIGHTER_LOOK.trained) return null;
   if (ks.length >= 2 && !trained(ks[0]) && !trained(ks[1])) return null;
   for (let k = 0; k < ks.length; k++) {
     const w = ks[k];
@@ -581,7 +596,7 @@ export function weekStatsIn(M: Model) {
   let cardioMin = 0,
     cardioN = 0;
   for (const c of M.s.cardio)
-    if (c.date >= cur && c.date <= addDays(cur, 6)) {
+    if (c.date >= cur && c.date <= addDays(cur, SUNDAY)) {
       cardioMin += c.min;
       cardioN++;
     }
@@ -608,7 +623,7 @@ export function weekStatsIn(M: Model) {
     doneDays,
     got,
     tgt: rest ? 0 : tgt,
-    pct: !rest && tgt > 0 ? Math.min(100, (got / tgt) * 100) : 0,
+    pct: !rest && tgt > 0 ? Math.min(PERCENT, (got / tgt) * PERCENT) : 0,
     cardioMin,
     cardioN,
     rest

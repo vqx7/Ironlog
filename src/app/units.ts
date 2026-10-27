@@ -6,6 +6,7 @@
 
 import type { Model } from './model';
 import { UIn } from './model';
+import { EPS_SAME } from './util';
 
 /** Kilograms in a pound, and centimetres in an inch (both exact by definition). */
 export const LB = 0.45359237,
@@ -13,6 +14,10 @@ export const LB = 0.45359237,
 
 /** Kilometres in a mile (exact by definition). */
 export const KM_MI = 1.609344;
+/** Inches in a foot, for a height in feet and inches. */
+export const FT_IN = 12;
+/** The standard bar, in the unit a gym is labelled in: 45 lb, or 20 kg. */
+export const BAR: Readonly<Record<'kg' | 'lb', number>> = { lb: 45, kg: 20 };
 
 /** The default load step in each unit, as typed in it: 5 lb and 2.5 kg. */
 export const DEFAULT_STEP: Readonly<Record<'kg' | 'lb', number>> = { kg: 2.5, lb: 5 };
@@ -23,7 +28,7 @@ export const DEFAULT_STEP: Readonly<Record<'kg' | 'lb', number>> = { kg: 2.5, lb
 export const STEP_LB = DEFAULT_STEP.lb * LB;
 
 /** Whether a number is a whole number of a step, to a millionth of the step. */
-export const onStep = (v: number, step: number): boolean => Math.abs(v / step - Math.round(v / step)) < 1e-6;
+export const onStep = (v: number, step: number): boolean => Math.abs(v / step - Math.round(v / step)) < EPS_SAME;
 
 /** What a load typed in its unit is a whole number of (r54): a load converted
     from the other unit almost never is, so a number on it reads as typed. */
@@ -33,6 +38,8 @@ export const TYPED_STEP = 0.05;
     count for a barbell load is made from unless Your gym lists its own. */
 export const PLATES_LB = [45, 35, 25, 10, 5, 2.5],
   PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
+/** The small change plate added with Small change plates on (r29, item 98), per unit. */
+export const SMALL_PLATE: Readonly<Record<'kg' | 'lb', number>> = { lb: 1.25, kg: 0.5 };
 
 /** A load in kilograms, a number, in the unit on screen. */
 export const inUnitIn = (M: Model, kg: number): number => (UIn(M) === 'lb' ? kg / LB : kg);
@@ -59,5 +66,5 @@ export function unitStepIn(M: Model): number {
 
 /** A step as stored, read as the unit on screen's default when it is either unit's default. */
 export function stepReadIn(M: Model, v: number): number {
-  return Math.abs(v - STEP_LB) < 1e-6 || Math.abs(v - DEFAULT_STEP.kg) < 1e-6 ? unitStepIn(M) : v;
+  return Math.abs(v - STEP_LB) < EPS_SAME || Math.abs(v - DEFAULT_STEP.kg) < EPS_SAME ? unitStepIn(M) : v;
 }

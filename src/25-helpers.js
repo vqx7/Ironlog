@@ -1,11 +1,4 @@
 /* ---------- actions ---------- */
-/* Null when the row is gone. Rebuilding the view removes a still-focused reps
-   field, and the browser then fires its pending change for a set that − Set,
-   Swap or Undo has just removed. */
-function draftSet(t){const b=state.draft&&state.draft.ex[+t.dataset.b];return b&&b.sets[+t.dataset.s]||null;}
-/* Distance (r30) is stored in km, shown in miles to someone logging in lb.
-   Optional and absent unless given, so older entries keep their hashes. */
-const distIn=v=>{const n=numIn(v);return n!=null&&n>0?Math.min(Math.round((U()==='kg'?n:n*KM_MI)*1000)/1000,1000):null;};
 /* Clears what earlier builds put there. Runs once at start, after every
    definition it reads exists. */
 function trashTidy(){const tr=state.trash||[];const keep=tr.filter(t=>!(t.kind==='routine'&&plainTemplate(t.data)));if(keep.length!==tr.length){state.trash=keep;commit();}}

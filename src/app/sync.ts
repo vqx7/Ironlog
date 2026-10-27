@@ -17,7 +17,7 @@
    save are here too. Nothing runs on import: syncStart() runs what the parts
    ran as the page loaded, from the start of the legacy script. */
 
-import { uid, hashStr } from './util';
+import { uid, hashStr, SECOND_MS } from './util';
 import { fmtDate } from './format';
 import { arr, parseJson, rec } from './records';
 import type { Rec } from './records';
@@ -39,6 +39,7 @@ import {
 import { Hx, canon, merge3List, merge3Val, mergeSession, mergeWorkout } from './merge';
 import { draftCardio, draftSession } from './session';
 import type { DraftLike } from './session';
+import type { CardioEntry } from './types';
 import { routineEmpty } from './routines';
 import { cleanCardio, normalize, plainTemplate } from './normalize';
 import { invalidate } from './live';
@@ -59,6 +60,29 @@ import {
   undoForget
 } from './storage';
 
+/** Sync's timings, in milliseconds: a save and the edit notes once the taps
+    pause, a flush once they pause (and again when another device holds the
+    lease), the lease and the wait for it, the wait for any answer from the
+    account, an account error's toast, and how long after the last pull a
+    return to the app pulls again. */
+const SYNC_MS = {
+  save: 400,
+  track: 800,
+  flush: 1200,
+  leaseBusy: 2500,
+  lease: 30000,
+  leaseWait: 10000,
+  net: 20000,
+  errToast: 8000,
+  pullAfter: 20000
+} as const;
+/** The waits between tries after a sync fails, in seconds, the last repeated. */
+const RETRY_S: readonly number[] = [5, 15, 60, 180];
+/** A sync document over this many characters of JSON is left unwritten (the account's size cap), so it cannot stop the others. */
+const DOC_MAX = 250000;
+/** Tries at keeping the log aside before giving up (a set ticked while the copy is written makes another). */
+const KEEP_TRIES = 10;
+
 declare global {
   interface Window {
     /** Claude's artifact services, where the page runs inside Claude (retired; the sync suites inject a stand-in db through it). */
@@ -78,20 +102,55 @@ interface ClaudeUse {
 /* ---------- the save on this device ---------- */
 
 let saveT: number | null = null;
+/** Writes the log's text to this device and notes it as the last saved, the base another tab's write is merged against (onStorage); throws as setItem does. */
+function writeLocal(j: string): void {
+  localStorage.setItem(KEY, j);
+  device.lastSaved = j;
+}
+/* Whether another tab wrote the log since this one last saved or heard it:
+   the save there is not yet heard here (a storage event comes a task later),
+   so writing now would replace it (from the independent review of r60: a
+   tick in one tab and a load typed in another, each tab saving what it had,
+   lost one of them). A log never saved or read here has nothing to compare. */
+function storedElsewhere(): string | null {
+  if (!device.boot || device.lastSaved == null) return null;
+  try {
+    const cur = localStorage.getItem(KEY);
+    return cur != null && cur !== device.lastSaved ? cur : null;
+  } catch (e) {
+    // Storage that cannot be read now cannot be written either; the save below says so.
+    log('storage', e);
+    return null;
+  }
+}
+let mergeDue = false;
 /** Writes the log to this device now, notes the edit for the sync and schedules the flush. */
 export function saveNow(): void {
   clearTimer(saveT);
   saveT = null;
   capturePost();
+  /* Another tab's save not yet heard here is merged in first, once the
+     change being made has run to its end (a microtask: the change may go on
+     with the records it holds after this save), and the merge then saves. */
+  if (storedElsewhere() != null) {
+    if (!mergeDue) {
+      mergeDue = true;
+      queueMicrotask(() => {
+        mergeDue = false;
+        const cur = storedElsewhere();
+        if (cur != null) mergeIn(cur, true);
+        else saveNow();
+      });
+    }
+    return;
+  }
   /* Storage that failed its check at startup stays off: its old contents were
      never read, so writing now could overwrite them. A write that fails later
      (storage full) is tried again on every save, and saving resumes as soon
      as one succeeds, rather than stopping for the rest of the visit. */
   if (device.boot) {
     try {
-      const j = JSON.stringify(state);
-      localStorage.setItem(KEY, j);
-      device.lastSaved = j;
+      writeLocal(JSON.stringify(state));
       device.ok = true;
     } catch (e) {
       device.ok = false;
@@ -102,10 +161,10 @@ export function saveNow(): void {
   fx.setSaveState();
   cloudSoon();
 }
-/** Writes the log once the taps pause (400 ms). */
+/** Writes the log once the taps pause (SYNC_MS.save). */
 export function saveSoon(): void {
   clearTimer(saveT);
-  saveT = setTimeout(saveNow, 400);
+  saveT = setTimeout(saveNow, SYNC_MS.save);
 }
 /** Drops every cached reading of the log and writes it now. */
 export function commit(): void {
@@ -338,7 +397,7 @@ export function withTimeout<T>(pr: Promise<T>, ms: number, area = 'sync-late'): 
         pr.catch((e: unknown) => {
           log(area, e);
         });
-        rej({ code: 'timeout', message: `Timed out: no answer in ${ms / 1000} s` });
+        rej({ code: 'timeout', message: `Timed out: no answer in ${ms / SECOND_MS} s` });
       }, ms);
     })
   ]);
@@ -374,7 +433,7 @@ function cloudFail(e: unknown): void {
         log('auth', x);
       });
     fx.render();
-    fx.toast(String(E && E.message), null, 8000);
+    fx.toast(String(E && E.message), null, SYNC_MS.errToast);
     return;
   }
   if (c === 'quota_exceeded') {
@@ -382,7 +441,7 @@ function cloudFail(e: unknown): void {
     return;
   }
   setCloud('offline', c === 'denied' && E && typeof E.message === 'string' ? E.message : undefined);
-  const wait = [5, 15, 60, 180][Math.min(cloud.retry++, 3)] * 1000;
+  const wait = RETRY_S[Math.min(cloud.retry++, RETRY_S.length - 1)] * SECOND_MS;
   clearTimer(cloud.t);
   cloud.t = setTimeout(() => cq(cloudFlush), wait);
 }
@@ -560,7 +619,7 @@ let trackT: number | null = null;
 function markEdit(): void {
   if (!cloud.pendAt) cloud.pendAt = Date.now();
   clearTimer(trackT);
-  trackT = setTimeout(trackEdits, 800);
+  trackT = setTimeout(trackEdits, SYNC_MS.track);
 }
 /** Notes which documents changed since the last look, and when (editAt). */
 export function trackEdits(): void {
@@ -687,7 +746,7 @@ function keepLost(
        its sets do: an edit made here is kept, a row the other phone deleted
        stays deleted (the review of the fix: a row in the log stood as it was,
        so an edit here was lost and a deletion there came back). */
-    const norm = (l: readonly unknown[]): Rec[] => l.map(c => cleanCardio(c));
+    const norm = (l: readonly unknown[]): CardioEntry[] => l.map(c => cleanCardio(c));
     const ids = new Set(
       [...(was ? draftCardio(was) : []), ...cardio].map(c => c.id).filter(x => typeof x === 'string')
     );
@@ -733,7 +792,7 @@ function lostNote(kept: Kept): void {
 async function sessionFromCloud(d: DraftLike, legB: Base | null): Promise<void> {
   if (d.editingId || state.sessions.some(q => q.id === d.id)) return;
   const id = chunkOf(d.date);
-  const sn = await withTimeout(ref(id).get(), 20000, 'sync-read');
+  const sn = await withTimeout(ref(id).get(), SYNC_MS.net, 'sync-read');
   const sb = sn && sn.exists ? rec(sn.data()) : null;
   if (!sb || typeof sb.json !== 'string') return;
   const data = parseJson(sb.json);
@@ -770,7 +829,11 @@ async function takeLease(): Promise<boolean> {
     const r = ref('lock');
     if (typeof r.acquire !== 'function') return true;
     // The device id is set before any sync starts (syncStart), the !.
-    const res = await withTimeout(r.acquire({ holder: cloud.devId!, ttlMs: 30000 }), 10000, 'sync-lease');
+    const res = await withTimeout(
+      r.acquire({ holder: cloud.devId!, ttlMs: SYNC_MS.lease }),
+      SYNC_MS.leaseWait,
+      'sync-lease'
+    );
     const R = rec(res);
     return !(R && R.acquired === false);
   } catch (e) {
@@ -800,12 +863,12 @@ export function hasUnsent(): boolean {
   }
   return false;
 }
-/** Schedules a flush once the taps pause (1.2 s). */
+/** Schedules a flush once the taps pause (SYNC_MS.flush). */
 export function cloudSoon(): void {
   if (!cloud.on) return;
   cloud.dirtyAt = Date.now();
   clearTimer(cloud.t);
-  cloud.t = setTimeout(() => cq(cloudFlush), 1200);
+  cloud.t = setTimeout(() => cq(cloudFlush), SYNC_MS.flush);
 }
 
 /* ---------- sending and pulling ---------- */
@@ -849,7 +912,7 @@ export async function cloudFlush(): Promise<void> {
   try {
     if (!(await takeLease())) {
       clearTimer(cloud.t);
-      cloud.t = setTimeout(() => cq(cloudFlush), 2500);
+      cloud.t = setTimeout(() => cq(cloudFlush), SYNC_MS.leaseBusy);
       return;
     }
     let adopted = false,
@@ -868,7 +931,7 @@ export async function cloudFlush(): Promise<void> {
       /* Read before write. If another device changed this document since we
          last agreed on it, merge record by record instead of overwriting. */
       const m = cloud.meta[x.id];
-      const snap = await withTimeout(ref(x.id).get(), 20000, 'sync-read');
+      const snap = await withTimeout(ref(x.id).get(), SYNC_MS.net, 'sync-read');
       /* Sets logged while that read was in flight are in state, not in the
          copy taken before it. Work from the current document, or the merge
          below would write the older copy back and lose them. */
@@ -916,20 +979,20 @@ export async function cloudFlush(): Promise<void> {
         }
       }
       // One document over the size cap must not stop the others from syncing.
-      if (json.length > 250000) {
+      if (json.length > DOC_MAX) {
         tooBig.push(x.id);
         log('sync-flush', { code: 'too_big', id: x.id, len: json.length });
         continue;
       }
       const at = Date.now();
-      await withTimeout(ref(x.id).set({ v: 1, at, et: cloud.editAt[x.id] || at, json }), 20000, 'sync-write');
+      await withTimeout(ref(x.id).set({ v: 1, at, et: cloud.editAt[x.id] || at, json }), SYNC_MS.net, 'sync-write');
       cloud.meta[x.id] = { h: hashStr(json), at, b: baseOf(x.id, parseJson(json)) };
       saveMeta();
     }
     if (adopted) {
       invalidate();
       try {
-        localStorage.setItem(KEY, JSON.stringify(state));
+        writeLocal(JSON.stringify(state));
       } catch (e) {
         log('storage', e);
       }
@@ -977,7 +1040,7 @@ export async function cloudPull(): Promise<void> {
   setCloud('connecting');
   let snap: Awaited<ReturnType<ReturnType<CloudDb['collection']>['get']>>;
   try {
-    snap = await withTimeout(cloud.db.collection(`data/users/${cloud.uid}`).get(), 20000, 'sync-pull');
+    snap = await withTimeout(cloud.db.collection(`data/users/${cloud.uid}`).get(), SYNC_MS.net, 'sync-pull');
   } catch (e) {
     log('sync-pull', e);
     cloudFail(e);
@@ -1125,7 +1188,7 @@ export async function cloudPull(): Promise<void> {
   if (parts || merged) {
     invalidate();
     try {
-      localStorage.setItem(KEY, JSON.stringify(state));
+      writeLocal(JSON.stringify(state));
     } catch (e) {
       log('storage', e);
     }
@@ -1296,7 +1359,7 @@ function joinLogs(base: State, here: State): State {
 /** Keeps the log here aside for its account, with its notes, as it stands once written (a set ticked while the copy is written makes a second copy): 'room' when the phone has no room for it. */
 async function keepHere(from: string): Promise<'kept' | 'room' | 'busy'> {
   const notes = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < KEEP_TRIES; i++) {
     const text = JSON.stringify(state);
     if (!(await keepAside(from, text, notes))) return 'room';
     if (JSON.stringify(state) === text) return 'kept';
@@ -1508,12 +1571,35 @@ function onStorage(ev: StorageEvent): void {
     return;
   }
   if (ev.key !== KEY || ev.newValue == null || ev.newValue === device.lastSaved) return;
+  /* A write since replaced: by this tab, which merged what was stored before
+     it wrote (saveNow), or by another, whose own event follows. */
+  try {
+    if (localStorage.getItem(KEY) !== ev.newValue) return;
+  } catch (e) {
+    // Storage unreadable now: the write is read from the event, as before.
+    log('tabs', e);
+  }
+  mergeIn(ev.newValue, false);
+}
+/* Another tab's save merged into this tab's log: taken whole when this tab
+   has nothing unsaved, else three ways against this tab's last save; what
+   was only here is saved back so the other tab has it too. own: the merge is
+   this tab's own save's (saveNow), which then saves whatever it holds. */
+function mergeIn(text: string, own: boolean): void {
   let incoming: State,
     base: State | null = null;
   try {
-    incoming = normalize(parseJson(ev.newValue));
+    const raw = parseJson(text);
+    // A save is a record; anything else (null, a number) would read as an empty log, every record in it deleted.
+    if (!rec(raw)) throw new Error('another tab saved something that is not a log');
+    incoming = normalize(raw);
   } catch (e) {
     log('tabs', e);
+    // Not merged. This tab's own save goes ahead over it, as every save did before r60.
+    if (own) {
+      device.lastSaved = text;
+      saveNow();
+    }
     return;
   }
   try {
@@ -1541,13 +1627,13 @@ function onStorage(ev: StorageEvent): void {
       );
     setState(assemble(parts));
   }
-  device.lastSaved = ev.newValue;
+  device.lastSaved = text;
   clearTimer(saveT);
   saveT = null;
   invalidate();
   resyncLocalH();
-  // Anything that was only here goes back out, so the other tab has it too.
-  if (canon(state) !== canon(incoming)) saveNow();
+  // Anything that was only here goes back out, so the other tab has it too (and this tab's own save, made, is noted for the sync).
+  if (own || canon(state) !== canon(incoming)) saveNow();
   if (!ui.modal) fx.rerenderKeepScroll();
   else fx.render();
   conflictNote(stat);
@@ -1559,7 +1645,7 @@ function onVisibility(): void {
       clearTimer(cloud.t);
       cq(cloudFlush);
     }
-  } else if (cloud.on && Date.now() - cloud.lastPull > 20000) cq(cloudPull);
+  } else if (cloud.on && Date.now() - cloud.lastPull > SYNC_MS.pullAfter) cq(cloudPull);
 }
 function onPageHide(): void {
   if (saveT) saveNow();

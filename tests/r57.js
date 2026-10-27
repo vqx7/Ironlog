@@ -226,6 +226,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await tp('touchStart', x0, y0); await wait(50);
     for (let k = 1; k <= 14; k++) { await tp('touchMove', x0, y0 + (y1 - y0) * k / 20); await wait(25); }
     await q(() => window.__ironlog.render()); await wait(50);
+    // The finger rests where it drops after the redraw, as a finger does (PENDING 346 b; tests/r58.js): SortableJS reads a touch drag every 50 ms.
+    await wait(150);
     await tp('touchEnd', x0, y0 + (y1 - y0) * 14 / 20); await wait(500);
     const after = await read();
     ok(after.dom.join() === before.dom.join() && !after.ghost && after.saved.join() === before.saved.join(), `5a. ${tab}: a draw mid-drag puts the section back where it was drawn, with no ghost and nothing saved`, { before, after });
@@ -254,7 +256,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const q = (f, a) => Q.page.evaluate(f, a);
     await q(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.saveNow(); L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
     await wait(300);
-    for (const [name, sel, typed, want] of [['chest max', 'input[data-band="chest"][data-bi="1"]', '150', '100'], ['bar weight', 'input[data-bind="barKg"]', '500', '110'], ['name', 'input[data-bind="userName"]', '  V   x ', '  V   x ']]) {
+    // The bar's bound is 50 kg whatever the unit since r61 (PENDING 354, tests/r61.js section 3), 110.2 in pounds; it was 110 lb before.
+    for (const [name, sel, typed, want] of [['chest max', 'input[data-band="chest"][data-bi="1"]', '150', '100'], ['bar weight', 'input[data-bind="barKg"]', '500', '110.2'], ['name', 'input[data-bind="userName"]', '  V   x ', '  V   x ']]) {
       const loc = Q.page.locator(sel).first(); await loc.click(); await loc.fill(typed); await loc.press('Enter'); await wait(300);
       const now = await q(sel => document.querySelector(sel).value, sel);
       await Q.page.locator('#view h2').first().click(); await wait(300);

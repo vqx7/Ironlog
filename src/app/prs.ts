@@ -1,14 +1,18 @@
 /* What a PR is called and the rep bands estimates are judged in (phase 3a,
    r51; moved unchanged from the legacy script). Finding the PRs moves with the analytics. */
 
+import { EPS_SAME } from './util';
+import { PR_BANDS } from './formulas';
+
 // The bands in words, counted as reps to failure (reps plus RIR).
 /* Bands count reps to failure (reps plus reps in reserve), so they say so (r34.2, from the review:
    "sets of 11 to 12 reps" named the band of a set of 8 at 3 in reserve). */
-export const BAND_WORDS: Readonly<Record<number, string>> = {
-  1: '1 to 5 reps to failure',
-  2: '6 to 10 reps to failure',
-  3: '11 to 12 reps to failure'
-};
+/** Each band's reps to failure as a range, "1 to 5", in band order. */
+export const BAND_RANGES: readonly string[] = PR_BANDS.map((b, i) => `${i ? PR_BANDS[i - 1].top + 1 : 1} to ${b.top}`);
+/** Each band in words, by band. */
+export const BAND_WORDS: Readonly<Record<number, string>> = Object.fromEntries(
+  PR_BANDS.map((b, i) => [b.band, `${BAND_RANGES[i]} reps to failure`])
+);
 
 /** An estimate PR (type e1RM, the only kind these are given): its value, the
     best before it of any band, and its band. The analytics record a band with
@@ -18,7 +22,7 @@ type PrMark = { value?: number | null; prevAll?: number | null; bb: number | nul
 
 /** Whether an estimate PR beats every earlier estimate, not only its band's. */
 export function prOverall(p: Pick<PrMark, 'value' | 'prevAll'>): boolean {
-  return p.prevAll == null || (p.value != null && p.value > p.prevAll + 1e-6);
+  return p.prevAll == null || (p.value != null && p.value > p.prevAll + EPS_SAME);
 }
 
 /* What an estimate PR is called (r34.2, from the review: a best for 6 to 8

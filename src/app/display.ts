@@ -3,14 +3,29 @@
    and imported back by the screens still in the legacy script. Each is as it
    was there. */
 
-import { IN, KM_MI } from './units';
+import { IN, KM_MI, FT_IN } from './units';
 import { NIL, fmtDate, fmtWith, missedTag } from './format';
-import { e1, fitE, trendE } from './formulas';
+import { e1, fitE, trendE, RECENT_DAYS, HELPER_CREDIT, BEST_WEEKS, TAPE_WEEKS } from './formulas';
 import { MK, isCommon, loadMode, nameMatch } from './library';
 import { nextTrainIdx, routineEmpty, routineSig, sessDayIdx } from './routines';
 import { rec, sessCmp } from './records';
-import { REGION_WKS } from './layout';
-import { addDays, daysBetween, r1, today, uid, weekStart } from './util';
+import { REGION_WKS, REGION_WK_DEFAULT } from './layout';
+import {
+  addDays,
+  daysBetween,
+  r1,
+  today,
+  uid,
+  weekStart,
+  EPS,
+  EPS_SAME,
+  yearOf,
+  HUNDREDTHS,
+  PERCENT,
+  WEEK_DAYS,
+  SUNDAY,
+  dayOfWeek
+} from './util';
 import { loadNote } from './loads';
 import { goalOk } from './goals';
 import { avgWeeksTxt } from './weeks';
@@ -20,6 +35,7 @@ import { effShow, rirScale } from './effort';
 import {
   EX,
   IDX,
+  liftRead,
   U,
   activeRoutine,
   allTimeBests,
@@ -49,17 +65,20 @@ export function noLog(): boolean {
 /** The sessions logged on a date, in the order done. */
 export const sessionsOn = (d: string): Session[] => dateIndex().byDate[d] || [];
 
-/** A load lifted, in the unit on screen: whole, and in thousands from 10,000 (12k). */
+/** A load lifted is written in thousands (12k) from K_FROM, whole below it. */
+const K_FROM = 10000,
+  K = 1000;
+/** A load lifted, in the unit on screen: whole, and in thousands from K_FROM. */
 export function fmtK(kg: number): string {
   const v = Math.round(toD(kg) ?? 0);
-  return v >= 10000 ? Math.round(v / 1000) + 'k' : v.toLocaleString();
+  return v >= K_FROM ? Math.round(v / K) + 'k' : v.toLocaleString();
 }
 
 /** The unit cardio distances are shown in: km with kg, miles with lb. */
 export const distU = (): 'km' | 'mi' => (U() === 'kg' ? 'km' : 'mi');
 
 /** A distance kept in km, in the unit on screen, to two places. */
-export const distShow = (km: number): number => Math.round((U() === 'kg' ? km : km / KM_MI) * 100) / 100;
+export const distShow = (km: number): number => Math.round((U() === 'kg' ? km : km / KM_MI) * HUNDREDTHS) / HUNDREDTHS;
 
 /** One set, short: the load and reps (185×8), or the hold (BW for 45s). */
 export function setShort(
@@ -133,9 +152,7 @@ export function loadHead(ex: ExerciseLike | null | undefined): string {
 /* Here, not in format.ts beside fmtDate: only the screens use it, and format.ts is one of the engine's modules, whose share of lines run is a ratchet (tests/engine.js). */
 /** A date as "Oct 17", with its year when it is not this one ("Mar 1, 2027"): a date a year ahead is not read as one this year. */
 export const fmtDateYr = (s: string): string =>
-  s.slice(0, 4) === today().slice(0, 4)
-    ? fmtDate(s)
-    : fmtWith('dy', { month: 'short', day: 'numeric', year: 'numeric' }, s);
+  yearOf(s) === yearOf(today()) ? fmtDate(s) : fmtWith('dy', { month: 'short', day: 'numeric', year: 'numeric' }, s);
 
 /** A date written out: "Sat, Oct 24, 2026". */
 export const fmtDateLong = (s: string): string =>
@@ -154,10 +171,10 @@ export function topSetPt(ex: ExerciseLike, x: Exposure): { v: number; txt: strin
 /** A lift's strongest working set by reps alone, with its date; at one score, the one with more reps (r55). */
 export function bestSet(exId: string): { v: number; w: number; r: number; date: string } | null {
   let b: { v: number; w: number; r: number; date: string } | null = null;
-  for (const x of IDX().byEx[exId] || [])
+  for (const x of liftRead(exId))
     for (const p of x.pts) {
       const v = trendE(p.load, p.r, 0) || p.load;
-      if (!b || v > b.v + 1e-9 || (v > b.v - 1e-9 && p.r > b.r)) b = { v, w: p.w, r: p.r, date: x.date };
+      if (!b || v > b.v + EPS || (v > b.v - EPS && p.r > b.r)) b = { v, w: p.w, r: p.r, date: x.date };
     }
   return b;
 }
@@ -182,8 +199,9 @@ export function prSet(exId: string, date: string): { v: number; w: number; r: nu
    a first month never read as a jump. Counted PRs only (r32). */
 /** Sessions and counted PRs in the last 4 weeks, and in the 4 before when the log covers them. */
 export function recent4w(): { back: boolean; sess: number; sessP: number; prs: Pr[]; prsP: number } {
-  const d28 = addDays(today(), -27),
-    d56 = addDays(today(), -55);
+  // The window's days counted with today: RECENT_DAYS of them, and the RECENT_DAYS before.
+  const d28 = addDays(today(), -(RECENT_DAYS - 1)),
+    d56 = addDays(today(), -(2 * RECENT_DAYS - 1));
   const ss = sortedSessions();
   const first = ss[0];
   const back = !!first && first.date <= d56;
@@ -201,7 +219,7 @@ export function recent4w(): { back: boolean; sess: number; sessP: number; prs: P
 
 /** The weight lifted in a week, to its day `upto` (0 Monday), or all of it. */
 export function weekVolume(ws: string, upto?: number | null): number {
-  const end = addDays(ws, upto == null ? 6 : upto);
+  const end = addDays(ws, upto == null ? SUNDAY : upto);
   let v = 0;
   for (const x of IDX().sessVol) if (x.date >= ws && x.date <= end) v += x.vol;
   return v;
@@ -213,36 +231,49 @@ export function tonnageNow(): { now: number; prev: number; prevFull: number; del
   const cur = weekStart(today());
   const off = daysBetween(cur, today());
   const now = weekVolume(cur, off),
-    prev = weekVolume(addDays(cur, -7), off),
-    prevFull = weekVolume(addDays(cur, -7));
-  return { now, prev, prevFull, delta: prev > 0 ? (now / prev - 1) * 100 : null };
+    prev = weekVolume(addDays(cur, -WEEK_DAYS), off),
+    prevFull = weekVolume(addDays(cur, -WEEK_DAYS));
+  return { now, prev, prevFull, delta: prev > 0 ? (now / prev - 1) * PERCENT : null };
 }
 
-/* Bodyweight rate: the 7-day average now against the 7-day average 2 to 6
-   weeks earlier, per week. Needs entries at least 14 days apart. */
+/* Bodyweight rate: the week's average now against the week's average
+   BW_RATE.from to BW_RATE.to days earlier (2 to 6 weeks), per week. Needs
+   entries at least BW_RATE.from days apart. */
+/** The span the bodyweight rate reads, in days (a convention). */
+const BW_RATE = { from: 14, to: 42 } as const;
 /** The bodyweight's weekly change, in percent and kg, and the dates it reads, or null. */
 export function bwRate(): { pct: number; wk: number; days: number; from: string; to: string } | null {
   const bw = [...state.bodyweights].sort((a, b) => (a.date < b.date ? -1 : 1));
   const last = bw[bw.length - 1];
   if (bw.length < 2 || !last) return null;
   const avgAt = (d: string): number => {
-    const from = addDays(d, -6);
+    const from = addDays(d, -(WEEK_DAYS - 1));
     const w = bw.filter(x => x.date >= from && x.date <= d);
     return w.reduce((a, x) => a + x.kg, 0) / w.length;
   };
-  const first = bw.find(x => daysBetween(x.date, last.date) <= 42 && daysBetween(x.date, last.date) >= 14);
+  const first = bw.find(
+    x => daysBetween(x.date, last.date) <= BW_RATE.to && daysBetween(x.date, last.date) >= BW_RATE.from
+  );
   if (!first) return null;
   const days = daysBetween(first.date, last.date);
   const a = avgAt(first.date),
     b = avgAt(last.date);
-  return { pct: (((b / a - 1) * 100) / days) * 7, wk: ((b - a) / days) * 7, days, from: first.date, to: last.date };
+  return {
+    pct: (((b / a - 1) * PERCENT) / days) * WEEK_DAYS,
+    wk: ((b - a) / days) * WEEK_DAYS,
+    days,
+    from: first.date,
+    to: last.date
+  };
 }
 /* The weekly rate in the lifter's unit (r41): "+0.4 lb a week" is what a
-   scale shows. Under 0.05 of a unit a week reads flat. */
+   scale shows. Under BW_FLAT of a unit a week reads flat. */
+/** Half the last digit the weekly rate shows (a tenth of a unit): less reads flat. */
+const BW_FLAT = 0.05;
 /** The bodyweight's weekly rate in words, in the unit on screen. */
 export function bwWeekTxt(r: { wk: number }): string {
   const v = toD(r.wk) ?? 0;
-  return Math.abs(v) < 0.05 ? 'Flat' : `${v > 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} ${U()} a week`;
+  return Math.abs(v) < BW_FLAT ? 'Flat' : `${v > 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} ${U()} a week`;
 }
 
 /** A height kept in cm, as the lifter reads it: 5'10" with lb, 178 cm with kg. */
@@ -250,7 +281,7 @@ export function heightTxt(cm: number | null | undefined): string {
   if (cm == null) return '';
   if (U() === 'kg') return `${Math.round(cm)} cm`;
   const i = Math.round(cm / IN);
-  return `${Math.floor(i / 12)}'${i % 12}"`;
+  return `${Math.floor(i / FT_IN)}'${i % FT_IN}"`;
 }
 
 /* ---------- routines, as Plan reads them ---------- */
@@ -300,7 +331,7 @@ export function sessionMuscleSets(day: {
     const ex = EX(it.exId);
     const n = +it.sets || 0;
     out[ex.primary] = (out[ex.primary] || 0) + n;
-    for (const m of ex.secondary) out[m] = (out[m] || 0) + 0.5 * n;
+    for (const m of ex.secondary) out[m] = (out[m] || 0) + HELPER_CREDIT * n;
   }
   return out;
 }
@@ -368,15 +399,18 @@ export function cycleState(
   return { last: L.i, lastDate: L.s.date, next, done, restToday, restIdx: restToday ? (L.i + since) % n : -1 };
 }
 
+/** The timed sessions the average session needs (r30, a convention). */
+const AVG_SESSIONS = 3;
+
 /* Session length measured from Start to Finish. Sessions logged for a past
    date, left open over six hours, or shorter than a minute are not timed. */
 /** The average session in the last 4 weeks, in minutes, from 3 timed sessions or more, with the plan's for the same days, or null. */
 export function sessionLength(): { avg: number; n: number; plan: number | null } | null {
-  const from = addDays(today(), -28);
+  const from = addDays(today(), -RECENT_DAYS);
   const R = activeRoutine();
   const ss = state.sessions.filter(x => x.date >= from && x.durMin);
-  // An average of one is not an average (r30): shown from 3 timed sessions.
-  if (ss.length < 3) return null;
+  // An average of one is not an average (r30): shown from AVG_SESSIONS timed sessions.
+  if (ss.length < AVG_SESSIONS) return null;
   const avg = Math.round(ss.reduce((a, x) => a + (x.durMin || 0), 0) / ss.length);
   const pl = ss
     .filter(x => x.routineId === R.id)
@@ -427,20 +461,21 @@ export function goalState(exId: string): {
   const ex = EX(exId);
   const g = ex && ex.goal;
   if (!g || !goalOk(ex)) return null;
-  const exps = IDX().byEx[exId] || [];
+  // Since a new machine or gym (liftRead, r61): a goal reached at another machine is not reached here.
+  const exps = liftRead(exId);
   const bw = bwRefLoad(ex);
   // With no weigh-in a bodyweight lift has no load to compare: say so rather than a number read from the added load alone (the review of r40).
   const noBw = !!ex.bw && !((bwRef() ?? 0) > 0);
   let hit: string | null = null;
   for (const x of exps) {
-    if (x.pts.some(p => p.w >= g.w - 1e-6 && p.r >= g.r)) {
+    if (x.pts.some(p => p.w >= g.w - EPS_SAME && p.r >= g.r)) {
       hit = x.date;
       break;
     }
   }
   const need = fitE(g.w + bw, g.r, 0);
-  const from = addDays(today(), -84);
-  // Every set of the last 12 weeks, a lighter day's and a deload's too, as the bests read them (r54, PENDING 311 e).
+  const from = addDays(today(), -WEEK_DAYS * BEST_WEEKS);
+  // Every set of the last BEST_WEEKS weeks, a lighter day's and a deload's too, as the bests read them (r54, PENDING 311 e).
   let cur: number | null = null;
   for (const x of exps) {
     if (x.date < from) continue;
@@ -449,7 +484,7 @@ export function goalState(exId: string): {
       if (v != null && (cur == null || v > cur)) cur = v;
     }
   }
-  const pct = !noBw && need && cur ? Math.min(100, (cur / need) * 100) : null;
+  const pct = !noBw && need && cur ? Math.min(PERCENT, (cur / need) * PERCENT) : null;
   return { g, hit, pct, cur, need, noBw };
 }
 /** A goal in words: "225 lb × 5", in the lift's own frame. */
@@ -459,11 +494,11 @@ export function goalWords(ex: ExerciseLike, g: { w: number; r: number }): string
 
 /* ---------- Volume by region: what it reads ---------- */
 
-/** The weeks By region averages: picked this visit, else as remembered on this phone, else 4. */
+/** The weeks By region averages: picked this visit, else as remembered on this phone, else REGION_WK_DEFAULT. */
 export function regionWk(): number {
   const v: unknown = ui.regionWk != null ? ui.regionWk : prefGet(REGION_KEY);
-  const n = v == null ? 4 : +String(v);
-  return REGION_WKS.some(x => x[0] === n) ? n : 4;
+  const n = v == null ? REGION_WK_DEFAULT : +String(v);
+  return REGION_WKS.some(x => x[0] === n) ? n : REGION_WK_DEFAULT;
 }
 
 /** What By region draws from, and how it says so. */
@@ -517,11 +552,11 @@ export function regionSrc(): RegionSrc {
     .sort();
   const full = all.filter(w => !ff || w >= ff);
   // With no full week, the first week (back, after a break: r55, logStart) alone, not weeks before the break.
-  const wks = (full.length ? full : all.filter(w => !ff || w >= addDays(ff, -7))).slice(-n);
+  const wks = (full.length ? full : all.filter(w => !ff || w >= addDays(ff, -WEEK_DAYS))).slice(-n);
   const lastWk = wks[wks.length - 1];
   if (lastWk) {
     const out = weeksAvg(wks);
-    const end = addDays(lastWk, 6);
+    const end = addDays(lastWk, SUNDAY);
     return {
       src: out,
       n,
@@ -539,7 +574,7 @@ export function regionSrc(): RegionSrc {
 
 /* ---------- size check ---------- */
 
-/** Each tape site measured 3 to 12 weeks apart: the change, the stretch, and the hard sets a week its muscles got in between. */
+/** Each tape site measured TAPE_WEEKS.from to TAPE_WEEKS.to weeks apart: the change, the stretch, and the hard sets a week its muscles got in between. */
 export function sizeRows(): {
   k: string;
   mus: readonly string[];
@@ -561,7 +596,11 @@ export function sizeRows(): {
     const has = ms.filter(m => at(m, k) > 0);
     const L = has[has.length - 1];
     if (has.length < 2 || !L) return null;
-    const b = has.find(m => daysBetween(m.date, L.date) >= 21 && daysBetween(m.date, L.date) <= 84);
+    const b = has.find(
+      m =>
+        daysBetween(m.date, L.date) >= WEEK_DAYS * TAPE_WEEKS.from &&
+        daysBetween(m.date, L.date) <= WEEK_DAYS * TAPE_WEEKS.to
+    );
     return b ? { b, L } : null;
   };
   for (const [k, mus] of SIZE_MAP) {
@@ -570,7 +609,7 @@ export function sizeRows(): {
     const { b, L } = pr;
     let weeks = 0,
       sum = 0;
-    for (let wk = weekStart(b.date); wk <= weekStart(L.date); wk = addDays(wk, 7)) {
+    for (let wk = weekStart(b.date); wk <= weekStart(L.date); wk = addDays(wk, WEEK_DAYS)) {
       const ws = I.weekSets[wk];
       if (!ws) continue;
       const v = mus.reduce((a, m) => a + (ws[m] || 0), 0);
@@ -608,7 +647,7 @@ export function cycleProjection(R: Routine, days?: number, restWeeks?: boolean):
     idx = cs.next;
     start = t;
   }
-  for (let k = 0; k < (days || 7); k++) {
+  for (let k = 0; k < (days || WEEK_DAYS); k++) {
     const d = addDays(start, k);
     if (restWeeks && isRestWeek(weekStart(d))) continue;
     out[d] = idx;
@@ -629,14 +668,15 @@ export function weekPlan(R: Routine): Record<string, PlannedDay> {
   const cur = weekStart(today());
   const out: Record<string, PlannedDay> = {};
   if (R.schedule === 'weekly') {
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < WEEK_DAYS; i++) {
       const day = R.days[i];
       if (day) out[addDays(cur, i)] = { di: i, day };
     }
     return out;
   }
-  const pj = cycleProjection(R, 8);
-  for (let i = 0; i < 7; i++) {
+  // A week from tomorrow at the latest, where the projection starts after a session today.
+  const pj = cycleProjection(R, WEEK_DAYS + 1);
+  for (let i = 0; i < WEEK_DAYS; i++) {
     const d = addDays(cur, i);
     const di = pj[d];
     const day = di == null ? undefined : R.days[di];
@@ -663,7 +703,7 @@ export function planAhead(to: string): Record<string, PlannedDay> {
   for (let k = 1; k <= n; k++) {
     const d = addDays(t, k);
     if (isRestWeek(weekStart(d))) continue;
-    const di = pj ? pj[d] : (new Date(d + 'T12:00:00').getDay() + 6) % 7;
+    const di = pj ? pj[d] : dayOfWeek(d);
     const day = di == null ? undefined : R.days[di];
     if (di != null && day) out[d] = { di, day };
   }

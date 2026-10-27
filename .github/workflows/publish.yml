@@ -22,9 +22,23 @@ jobs:
   # r44: the suites in four shards on four runners at once, one suite at a
   # time on each (the same conditions as before, so nothing new can flake),
   # about a quarter of the old 19 minutes plus each runner's setup.
+  # The hour a job had went to the install on a slow runner (r61, 2026-10-26:
+  # in four runs six WebKit shards spent 30 to 60 minutes installing the
+  # browser's system packages, and the four past their limit were stopped
+  # before their suites finished, three before any ran; every shard's suites took 12 to 20 minutes, and
+  # Chromium's install at most 13). Since r62 every shard runs in
+  # Playwright's own image for the version package-lock.json pins, which
+  # holds both browsers and the packages they need, so nothing is installed
+  # from the system's mirrors; `playwright install` is kept, which does
+  # nothing when the image's browser is the one the lock wants and fetches
+  # only the browser when it is not. The install and the suites keep their
+  # own limits, and the install says how long each part took.
   suites:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
+      options: --ipc=host
+    timeout-minutes: 80
     strategy:
       fail-fast: false
       matrix:
@@ -35,13 +49,15 @@ jobs:
         with:
           node-version: 22
       - name: Install
+        timeout-minutes: 30
         run: |
-          npm install --no-audit --no-fund
-          npx playwright install --with-deps chromium
+          t=$SECONDS; npm install --no-audit --no-fund; n=$((SECONDS-t))
+          t=$SECONDS; npx playwright install chromium; echo "::notice title=install::npm $n s, chromium $((SECONDS-t)) s"
       # tests/moved.js ran here beside hygiene until it was retired in r54 (PENDING 316).
       - name: The proof suite on its own, so a runner that dropped it could not hide it
         run: node tests/hygiene.js
       - name: Every suite in shard ${{ matrix.shard }} of 4, source and standalone build
+        timeout-minutes: 40
         run: node tests/run.js --shard ${{ matrix.shard }}/4 --jobs 1
       - name: Screenshots from the run
         if: always()
@@ -57,7 +73,10 @@ jobs:
   # caught here before it reaches the phone.
   webkit:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
+      options: --ipc=host
+    timeout-minutes: 80
     strategy:
       fail-fast: false
       matrix:
@@ -68,10 +87,12 @@ jobs:
         with:
           node-version: 22
       - name: Install
+        timeout-minutes: 30
         run: |
-          npm install --no-audit --no-fund
-          npx playwright install --with-deps webkit
+          t=$SECONDS; npm install --no-audit --no-fund; n=$((SECONDS-t))
+          t=$SECONDS; npx playwright install webkit; echo "::notice title=install::npm $n s, webkit $((SECONDS-t)) s"
       - name: Every suite in shard ${{ matrix.shard }} of 4 in WebKit, source and standalone build
+        timeout-minutes: 40
         run: node tests/run.js --browser webkit --shard ${{ matrix.shard }}/4 --jobs 1
       - name: Screenshots from the run
         if: always()

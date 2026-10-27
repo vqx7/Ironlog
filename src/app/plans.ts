@@ -10,7 +10,7 @@ import { EXIn, exNameIn } from './model';
 import { andList, isDate } from './util';
 import { offTarget } from './formulas';
 import { IDXIn } from './analytics';
-import { defPlanIn, profRuleIn, routinePlanIn } from './routines';
+import { defPlanIn, profRuleIn, routinePlanIn, DEFAULT_PLAN } from './routines';
 
 /* An exercise added mid-session borrows its settings from wherever it
    already sits in the routine (the active one unless given), the day being
@@ -119,7 +119,7 @@ export function routineUpdatesIn(M: Model, d: FinishedDraft): RoutineUpdate | nu
     } else {
       const { ss: _s, ...p } = b.plan;
       const sets = d.deload || d.light ? (b.full ?? planForIn(M, b.exId, R, d.dayId, false, d.date).sets) : p.sets;
-      add.push({ exId: b.exId, plan: { ...p, sets: Math.max(1, +(sets || 0) || 3) } });
+      add.push({ exId: b.exId, plan: { ...p, sets: Math.max(1, +(sets || 0) || DEFAULT_PLAN.sets) } });
     }
   }
   /* A superset made in the session (r35, V, as Strong and Hevy ask): pairs

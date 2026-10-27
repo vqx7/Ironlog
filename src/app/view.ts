@@ -7,9 +7,9 @@
    its markup string, drawn fresh on every draw as innerHTML drew it, so the
    moves that follow its draw (the saved order, the hidden sections, the drag
    lists) work on it as before. The parts every moved screen shares are here,
-   drawing the markup the legacy script's helpers of the same names draw (the
-   legacy copies stay for the screens not moved yet, and go with the last of
-   them, r60; tests/r57.js compares the two screens with r56.2's). */
+   drawing the markup the legacy script's helpers of the same names drew (the
+   legacy copies went with the last screen drawn from it, r60; tests/r57.js
+   compares the two screens with r56.2's). */
 
 import { html, nothing, render, noChange } from 'lit-html';
 import type { TemplateResult, AttributePart } from 'lit-html';
@@ -28,9 +28,29 @@ declare global {
   interface Window {
     /** Which of the page's two outside libraries loaded (03-body.html): the drag lists and the charts. */
     __libs?: { sortable: boolean; chart: boolean } | undefined;
-    /** SortableJS, read here only for the copy a drag out of a list that copies (Plan's library) leaves in it. */
-    Sortable?: { clone?: Element | null | undefined } | undefined;
+    /** SortableJS, loaded by script tag: the copy a drag out of a list that copies (Plan's library) leaves in it, and the lists a moved screen makes (the session's exercises, r60). */
+    Sortable?:
+      | {
+          clone?: Element | null | undefined;
+          create(el: Element, o: SortableOptions): { destroy(): void };
+        }
+      | undefined;
   }
+}
+
+/** The options a moved screen gives SortableJS for a list it drags (the session's exercises, r60). */
+export interface SortableOptions {
+  group: { name: string; pull: boolean; put: boolean };
+  handle: string;
+  draggable: string;
+  animation: number;
+  fallbackOnBody: boolean;
+  onStart(e: { item: HTMLElement }): void;
+  onEnd(e: {
+    item: HTMLElement;
+    oldDraggableIndex?: number | null | undefined;
+    newDraggableIndex?: number | null | undefined;
+  }): void;
 }
 
 /** What a screen's template may hold where a part goes: a template, text, several of them, or nothing. */
@@ -54,10 +74,21 @@ export function drawLegacy(view: HTMLElement, markup: string): void {
   drawnFor = today();
   render(keyed(++legacyDraws, unsafeHTML(markup)), view);
 }
+/* While lit-html is drawing a screen: a field it takes away fires its
+   change and blur as if the lifter had left it, which must not tick a set or
+   draw the screen again inside the draw (the legacy host's `rebuilding`). */
+let inDraw = 0;
+/** Whether a screen is being drawn this moment. */
+export const drawing = (): boolean => inDraw > 0;
 /** Draws a moved screen into the page's view, updating what is there in place. */
 export function drawScreen(view: HTMLElement, screen: TemplateResult): void {
   drawnFor = today();
-  render(screen, view);
+  inDraw++;
+  try {
+    render(screen, view);
+  } finally {
+    inDraw--;
+  }
 }
 /* The suites read some parts as the markup the legacy script made of them
    (tests/r44.js reads Plan's usual-range note): the part drawn into an
@@ -82,13 +113,38 @@ export function markup(fixed: string): Part {
 
 /* A field shows the value the log holds. While it is being typed in, the text
    under the lifter's fingers stays when it reads as the value saved ("152."
-   for 152, a name with its spaces, half a number not saved yet), as
-   rerenderKeepScroll kept it before r57; text the log saved as something else
-   (150 typed as a maximum of 100, confirmed with Enter) is replaced by what
-   was saved at once (the review of r57: it showed 150 until the page drew
-   again). The part is told its value is stale each time, as lit's `live`
-   does, so a value typed over and left is put back even when the log still
-   holds the value drawn last. */
+   for 152, a name with its spaces), as rerenderKeepScroll kept it before r57,
+   and so does text typed and not yet confirmed (r60, PENDING 345 item 11: a
+   field saved only when left, as Settings' numbers, Plan's step and the Set
+   up page's bodyweight are, lost a half-typed number whenever anything drew
+   the page meanwhile, a sync taking in another phone's change, or the new
+   day's draw, since the log still held the old value). Text the log saved as
+   something else once confirmed (150 typed as a maximum of 100, confirmed
+   with Enter) is replaced by what was saved at once (the review of r57: it
+   showed 150 until the page drew again). The part is told its value is stale
+   each time, as lit's `live` does, so a value typed over and left is put
+   back even when the log still holds the value drawn last. */
+const unconfirmed = new WeakSet<EventTarget>();
+// Fields showing text the screen put there for the lifter to type over (a grey load, selected on a tap: workout.ts, r60).
+const shown = new WeakSet<EventTarget>();
+/** Marks a field as showing text the screen put there to be typed over, kept through a draw while it is focused, or unmarks it. */
+export function fieldShown(el: EventTarget, on: boolean): void {
+  if (on) shown.add(el);
+  else shown.delete(el);
+}
+// Notes a field typed in and not yet confirmed (the page's input events), or confirmed or left (its change and focusout).
+function fieldTyped(e: Event): void {
+  const t = e.target;
+  if (!t) return;
+  if (e.type === 'input') unconfirmed.add(t);
+  else unconfirmed.delete(t);
+}
+/** Starts noting fields typed in, before the page's own handlers run (they are added after it), so a draw they cause keeps the text. Called once at start. */
+export function viewStart(): void {
+  document.addEventListener('input', fieldTyped);
+  document.addEventListener('change', fieldTyped);
+  document.addEventListener('focusout', fieldTyped);
+}
 class FieldValue extends Directive {
   constructor(info: PartInfo) {
     super(info);
@@ -101,7 +157,12 @@ class FieldValue extends Directive {
     const el = part.element;
     const now = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.value : null;
     if (now === v) return noChange;
-    if (el === document.activeElement && now != null && numIn(now) === numIn(v)) return noChange;
+    if (
+      el === document.activeElement &&
+      now != null &&
+      (unconfirmed.has(el) || shown.has(el) || numIn(now) === numIn(v))
+    )
+      return noChange;
     setCommittedValue(part);
     return v;
   }
@@ -150,6 +211,18 @@ export function dragDrop(): boolean {
 
 /* ---------- the shared parts ---------- */
 
+/* One component for every foldable block on every tab. Fold state lives in
+   memory for this visit only (ui.folds). Each time Ironlog opens, every
+   section starts folded (V, r28: the titles say what is inside), except
+   Sessions on History, which is that tab's content. Every fold inside a
+   section starts closed too. Folds used to be saved to the synced settings,
+   where one tap (or another device) could leave a section open or closed
+   for good. One ? button per explanation: the paragraph is in the page but
+   hidden until tapped, so nothing has to be read twice and nothing has to be
+   scrolled past; inside a section (r28) the explanation is the first line,
+   How this works, since a ? in the header sat beside the fold arrow. The
+   legacy script's string copies of these parts went with the last screen
+   drawn from it (r60). */
 /** Whether a section is open: what was chosen on this visit, else its default (r28: folded unless it is the tab's content). */
 export function isOpen(sk: string, def?: boolean): boolean {
   return Object.prototype.hasOwnProperty.call(ui.folds, sk) ? !!ui.folds[sk] : !!def;

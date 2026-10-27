@@ -25,6 +25,8 @@
 // 6. Nothing behind the model's back (r52, ARCHITECTURE.md phase 3b): the
 //    engine and the analytics read the log, the date and their caches only
 //    through the model they are given, all the way down.
+// 7. One name for every number (r61): in src/app/, a number past 0, 1 and 2
+//    is part of a named constant declared at the top of a module.
 const fs = require('fs'); const path = require('path');
 const ROOT = path.join(__dirname, '..');
 // Every script file under src/: the legacy parts and the typed modules in src/app/.
@@ -327,7 +329,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // only when its line ran. A new global the code really needs goes on this list.
   const GLOBALS = new Set(['Array', 'Blob', 'Boolean', 'CSS', 'DOMParser', 'DataView', 'Date', 'DecompressionStream', 'Error', 'File', 'FileReader', 'Image', 'Infinity', 'Intl', 'JSON', 'Map', 'Math', 'MouseEvent', 'MutationObserver', 'NaN', 'Number', 'Object', 'Promise', 'Response', 'Set', 'String', 'TextDecoder', 'TextEncoder', 'URL', 'Uint8Array', 'WeakMap', 'WeakSet', 'cancelAnimationFrame', 'clearInterval', 'clearTimeout', 'document', 'encodeURIComponent', 'getComputedStyle', 'history', 'indexedDB', 'isFinite', 'isNaN', 'localStorage', 'location', 'matchMedia', 'navigator', 'parseFloat', 'parseInt', 'performance', 'queueMicrotask', 'requestAnimationFrame', 'setInterval', 'setTimeout', 'undefined', 'window']);
   const unknown = dm.free.filter(n => !GLOBALS.has(n));
-  ok(dm.free.length > 40 && unknown.length === 0, 'every name the legacy script reads without declaring or importing it is a known browser or JavaScript global', unknown);
+  // The count only shows the map read the script at all: the script shrinks phase by phase (37 globals at r60, from over 40).
+  ok(dm.free.length > 20 && unknown.length === 0, 'every name the legacy script reads without declaring or importing it is a known browser or JavaScript global', unknown);
   // src/09-imports.js holds named imports from src/app/ and nothing else: an
   // import with no names (`import './x'`, `import {} from './x'`) or a
   // re-export (`export * from './x'`) runs a module for its effects alone,
@@ -926,6 +929,42 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   };
   for (const s0 of starts) visit(s0, []);
   ok(problems.length === 0 && starts.length >= 97 && seen.size > starts.length, `every function taking the model (${starts.length}) and all it reaches (${seen.size - starts.length} more declarations) read the log, the date and the caches only through the model: no clock, randomness, store, live model, page or module state but the listed`, problems.slice(0, 8));
+}
+
+// 7. One name for every number (r61, PENDING 350; V, 2026-10-25: "why do we
+// have hardcode?", "nothing should be" hardcoded). In src/app/, a number
+// written in code is 0, 1 or 2, a literal type, or part of a named constant:
+// an UPPER_CASE const declared at the top of a module, its value or a table
+// it holds (built by a function called in its initialiser included, not a
+// function merely stored in it). Any other number is a rule's number with no
+// name, which is how a rule and the words that state it drifted apart (the
+// Guide's numbers are now built from the same constants). A constant declared
+// inside a function is not one: it is made again on every call, and cannot be
+// read by the Guide or a test.
+{
+  const ts = require('typescript');
+  const APP = path.join(ROOT, 'src', 'app');
+  const SMALL = new Set(['0', '1', '2']);
+  const NAMED = /^[A-Z][A-Z0-9_]*$/;
+  const topNamed = d => ts.isVariableDeclaration(d) && ts.isIdentifier(d.name) && NAMED.test(d.name.text) && ts.isVariableDeclarationList(d.parent) && (d.parent.flags & ts.NodeFlags.Const) !== 0 && ts.isVariableStatement(d.parent.parent) && ts.isSourceFile(d.parent.parent.parent);
+  // A function run where it is written: the callee of a call, through parentheses (an IIFE).
+  const called = fn => { let c = fn; while (ts.isParenthesizedExpression(c.parent)) c = c.parent; return ts.isCallExpression(c.parent) && c.parent.expression === c; };
+  const inNamed = n => { for (let p = n.parent; p; p = p.parent) { if (topNamed(p)) return true; if ((ts.isFunctionLike(p) && !called(p)) || ts.isSourceFile(p)) return false; } return false; };
+  const typePos = n => ts.isLiteralTypeNode(n.parent) || (ts.isPrefixUnaryExpression(n.parent) && ts.isLiteralTypeNode(n.parent.parent));
+  const bare = []; let named = 0;
+  for (const f of SRC_CODE.filter(f => f.startsWith('app/'))) {
+    const txt = fs.readFileSync(path.join(ROOT, 'src', f), 'utf8');
+    const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+    const walk = n => {
+      if (ts.isNumericLiteral(n) && !SMALL.has(n.text) && !typePos(n)) {
+        if (inNamed(n)) named++;
+        else bare.push(`${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1} ${n.text}`);
+      }
+      ts.forEachChild(n, walk);
+    };
+    walk(sf);
+  }
+  ok(bare.length === 0 && named > 500, `every number in src/app/ past 0, 1 and 2 is part of a named constant (${named} of them)`, bare.slice(0, 12));
 }
 
 // The build this one replaces is kept as a baseline and read by the
