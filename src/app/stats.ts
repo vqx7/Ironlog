@@ -98,7 +98,8 @@ import {
   weekNeed,
   weekSessions,
   weekStats,
-  weekStreak
+  weekStreak,
+  cycleState
 } from './live';
 import { fx, state, ui } from './store';
 import {
@@ -106,7 +107,6 @@ import {
   bestSet,
   bwRate,
   bwWeekTxt,
-  cycleState,
   fmtBig,
   fmtDateLong,
   fmtE,

@@ -52,7 +52,8 @@ import {
   nextSets,
   oddLoad,
   lightZero,
-  exName
+  exName,
+  trimPlan
 } from './live';
 import { state, fx, ui } from './store';
 import { lastDup, effTarget, blockRest, newRow, greyW, effW, blockDone } from './session';
@@ -74,7 +75,8 @@ import {
   ordBack,
   orderQ,
   redraw,
-  FOLD_MS
+  FOLD_MS,
+  unloaded
 } from './workstate';
 import type { Draft } from './workstate';
 
@@ -123,6 +125,15 @@ export function appLoad(b: DraftBlock | null | undefined, x: DraftSet): boolean 
 /** Whether a row holds nothing of the lifter's. */
 export function rowBlank(b: DraftBlock | null | undefined, x: DraftSet): boolean {
   return !x.done && x.r == null && x.rir == null && appLoad(b, x);
+}
+
+/** Short on time's trim of the session in progress to so many minutes, taking only blank rows (pick.ts, trimPlanIn). */
+export function shortPlan(d: { ex: DraftBlock[] }, mins: number): ReturnType<typeof trimPlan> {
+  return trimPlan(
+    d,
+    mins,
+    d.ex.map(b => b.sets.map(x => rowBlank(b, x)))
+  );
 }
 
 /* Last time's reps for row si. lastR lists last session's working sets in
@@ -818,6 +829,11 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
     const f = document.querySelector<HTMLInputElement>(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
     if (f) f.focus();
     return;
+  }
+  // A set its cleared load unticked is ticked again as the same set: its rest is not started over (356).
+  if (val && unloaded.has(s)) {
+    unloaded.delete(s);
+    again = true;
   }
   const okKey = `${bi}:${si}:${s.r}:${effW(b, si)}`;
   const far = val && W.oddOk !== okKey && !oddReps(b, s) ? oddLoad(b, si, d.date) : null;

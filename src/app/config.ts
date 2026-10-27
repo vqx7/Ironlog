@@ -42,7 +42,7 @@ export const WORDMARK = { mark: 'I', strong: 'ron', light: 'log' } as const;
 
 /** The version people see (V, 2026-10-16): 2.0 from r49, the minor number up
     by one for each release merged, the major number for a large change. */
-export const DISPLAY_VERSION = '2.15';
+export const DISPLAY_VERSION = '2.16';
 
 /** The build: shown beside the version in Diagnostics, problem reports and
     backups, so a report is matched to the exact code; also names the service
@@ -50,7 +50,7 @@ export const DISPLAY_VERSION = '2.15';
     Problem reports and Copy diagnostics carry it as `build` and the version
     people see as `version`; a backup keeps it under `version`, as every
     build before r49 wrote backups, so old and new backups read the same. */
-export const APP_VERSION = '2026.10.26-r61';
+export const APP_VERSION = '2026.10.26-r62';
 
 /** Version and build together, for Diagnostics and the recovery screen. */
 export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
@@ -105,6 +105,10 @@ export const FONT_BODY_WEIGHTS = '400;500;600;700';
 export const FONTS_ORIGIN = 'https://fonts.googleapis.com';
 export const FONT_FILES_ORIGIN = 'https://fonts.gstatic.com';
 export const FONTS_CSS = `${FONTS_ORIGIN}/css2?family=${FONT_DISPLAY.replace(/ /g, '+')}:wght@${FONT_DISPLAY_WEIGHTS}&family=${FONT_BODY.replace(/ /g, '+')}:wght@${FONT_BODY_WEIGHTS}&display=swap`;
+
+/** The How-to videos link of a lift: a YouTube search, to which only the
+    lift's name is added (src/app/sheetslift.ts). */
+export const HOWTO_SEARCH = 'https://www.youtube.com/results?search_query=';
 
 /** Have I Been Pwned's password range service (r26), which the account
     script asks before an account takes a password; the installed app's

@@ -78,6 +78,13 @@ export type Draft = DraftLike;
 /** The rows whose load was carried down from a load typed above them (in this visit only). */
 export const carried = new WeakSet<DraftSet>();
 
+/* A ticked set whose load is cleared is unticked and waits for its weight
+   (356, and the independent review of r62): a load typed, or the checkmark
+   tapped on its grey load, ticks it again as the same set, so the rest under
+   way is not started over. In this visit only, like carried. */
+/** The rows unticked because their load was cleared, to be ticked again as the same set. */
+export const unloaded = new WeakSet<DraftSet>();
+
 // The set an adjustment came from, by object, so a row added or removed above it cannot move it onto another set (r34.2); after a reload or a merge, by its row id (PENDING 333).
 export const adjSrc = new WeakMap<DraftBlock, DraftSet>();
 

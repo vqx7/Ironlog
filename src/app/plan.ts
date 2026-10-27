@@ -62,20 +62,11 @@ import {
   incOf,
   invalidate,
   muscleStatus,
-  plannedSets
+  plannedSets,
+  sessionMuscleSets
 } from './live';
 import { fx, state, ui } from './store';
-import {
-  curRoutineB,
-  effTgt,
-  findItem,
-  libFiltered,
-  nameTaken,
-  newItem,
-  rirShow,
-  routineClutter,
-  sessionMuscleSets
-} from './display';
+import { curRoutineB, effTgt, findItem, libFiltered, nameTaken, newItem, rirShow, routineClutter } from './display';
 import {
   dragDrop,
   fieldValue,
@@ -100,7 +91,7 @@ const BAR_SCALE_MIN = 24;
 export const TRACKED_TIP = 'Tracked only: counted, with no target. Give it one in Settings, Weekly set targets.';
 
 /** An exercise's library tags (exTags): Most common and Less common, but not the one the list is filtered to. */
-export function exTagParts(e: Exercise, skip?: string): Part {
+export function exTagParts(e: Pick<Exercise, 'id'> & Partial<Pick<Exercise, 'custom' | 'rare'>>, skip?: string): Part {
   return html`${isCommon(e) && skip !== 'common' ? html`<span class="tag common">Most common</span>` : nothing}${e.rare && skip !== 'rare' ? html`<span class="tag rare">Less common</span>` : nothing}`;
 }
 

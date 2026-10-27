@@ -78,7 +78,6 @@ function openModal(m){
   if(target)try{target.focus({preventScroll:true});}catch(e){/* focus is best effort */}
 }
 function closeModal(){
-  if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}AI.ctl=null;}
   const was=ui.modal;
   ui.modal=null;if(was&&was.kind==='confirm'&&was.onClose&&!was.answered)was.onClose();
   if(was&&was.kind==='account'){
@@ -87,7 +86,7 @@ function closeModal(){
     if(was.mode==='where'&&!was.answered){const A=AUTH();acct.user=null;if(A)A.signOut().catch(e=>log('auth',e)).then(()=>acctRerender());}
   }
   if(was&&was.kind==='short'&&was.temp&&!was.applied&&state.draft&&state.draft.id===was.temp&&!state.draft.ex.some(b=>b.sets.some(x=>x.done))){
-    state.draft=null;stopTimer();wakeOff();saveNow();setTimeout(render,0);}$('#modal').hidden=true;$('#modal').innerHTML='';document.body.classList.remove('modal-open');renderModal.last=null;
+    state.draft=null;stopTimer();wakeOff();saveNow();setTimeout(render,0);}$('#modal').hidden=true;sheetClear($('#modal'));document.body.classList.remove('modal-open');renderModal.last=null;
   // The 3D body goes back to Today's map, coloured by the week again.
   // Turned in the sheet, the body goes back to Today facing the way it was, a turn still running stopped first (r54: it went on, on Today's body).
   if(was&&was.kind==='exMus'){cancelAnimationFrame(B3.anim);B3.ex=null;if(B3.yawKeep!=null){B3.yaw=B3.yawKeep;B3.yawKeep=null;}if(document.getElementById('bm3d'))mount3D();}

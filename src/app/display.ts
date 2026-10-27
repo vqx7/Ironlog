@@ -5,10 +5,10 @@
 
 import { IN, KM_MI, FT_IN } from './units';
 import { NIL, fmtDate, fmtWith, missedTag } from './format';
-import { e1, fitE, trendE, RECENT_DAYS, HELPER_CREDIT, BEST_WEEKS, TAPE_WEEKS } from './formulas';
+import { e1, fitE, trendE, RECENT_DAYS, BEST_WEEKS, TAPE_WEEKS } from './formulas';
 import { MK, isCommon, loadMode, nameMatch } from './library';
-import { nextTrainIdx, routineEmpty, routineSig, sessDayIdx } from './routines';
-import { rec, sessCmp } from './records';
+import { routineEmpty, routineSig, sessDayIdx } from './routines';
+import { rec } from './records';
 import { REGION_WKS, REGION_WK_DEFAULT } from './layout';
 import {
   addDays,
@@ -51,7 +51,8 @@ import {
   logBack,
   sortedSessions,
   toD,
-  weeksAvg
+  weeksAvg,
+  cycleState
 } from './live';
 import { state, ui } from './store';
 import type { ExPoint, Exposure, ExerciseLike, Pr } from './model';
@@ -322,19 +323,6 @@ export function routineClutter(): Routine[] {
   }
   return out;
 }
-/** The hard sets a routine day plans per muscle: direct work 1, helpers half. */
-export function sessionMuscleSets(day: {
-  items: readonly { exId: string; sets: number | string }[];
-}): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const it of day.items) {
-    const ex = EX(it.exId);
-    const n = +it.sets || 0;
-    out[ex.primary] = (out[ex.primary] || 0) + n;
-    for (const m of ex.secondary) out[m] = (out[m] || 0) + HELPER_CREDIT * n;
-  }
-  return out;
-}
 
 /** The library's exercises a search, a muscle, a kind of equipment and a kind (common or less common) leave, by name; archived ones never. */
 export function libFiltered(q: string | null | undefined, m: string, e: string, kind: string | false): Exercise[] {
@@ -351,53 +339,7 @@ export function libFiltered(q: string | null | undefined, m: string, e: string, 
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/* ---------- where the cycle stands ---------- */
-
-/* Where you are in the cycle. Next up is the first training day after the last
-   one you logged, so a missed day moves with you instead of being skipped.
-   A rest day right after your last session counts as scheduled only while the
-   calendar says you are inside it. asOf reads the cycle as it stood on a past
-   date (sessions up to that day), which is what a past workout entered late
-   was due to be. */
-/** A routine's cycle: the day last logged and its date, the next day due, the days done this time round, and a rest day due today. */
-export function cycleState(
-  R: Routine,
-  asOf?: string | null
-): { last: number; lastDate: string | null; next: number; done: Set<number>; restToday: boolean; restIdx: number } {
-  const n = R.days.length;
-  const T = asOf || today();
-  const mine = state.sessions
-    .filter(x => x.routineId === R.id && (!asOf || x.date <= asOf))
-    .map(x => ({ s: x, i: sessDayIdx(R, x) }))
-    .filter(x => x.i >= 0)
-    .sort((a, b) => sessCmp(a.s, b.s));
-  const L = mine[mine.length - 1];
-  if (!L)
-    return { last: -1, lastDate: null, next: nextTrainIdx(R, -1), done: new Set(), restToday: false, restIdx: -1 };
-  const next = nextTrainIdx(R, L.i);
-  const done = new Set<number>();
-  if (next > L.i) {
-    done.add(L.i);
-    let prev = L.i;
-    for (let k = mine.length - 2; k >= 0; k--) {
-      const m = mine[k];
-      if (!m) break;
-      if (m.i < prev) {
-        done.add(m.i);
-        prev = m.i;
-      } else break;
-    }
-  }
-  let run = 0;
-  for (let k = 1; k < n; k++) {
-    const d = R.days[(L.i + k) % n];
-    if (d && d.rest) run++;
-    else break;
-  }
-  const since = daysBetween(L.s.date, T);
-  const restToday = since >= 1 && since <= run;
-  return { last: L.i, lastDate: L.s.date, next, done, restToday, restIdx: restToday ? (L.i + since) % n : -1 };
-}
+/* ---------- where the cycle stands: cycleStateIn in pick.ts since r62 ---------- */
 
 /** The timed sessions the average session needs (r30, a convention). */
 const AVG_SESSIONS = 3;

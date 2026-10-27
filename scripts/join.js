@@ -106,6 +106,12 @@ function build({ override = {} } = {}) {
       // A package (lit-html, r57) resolves from the repo's node_modules, also
       // when the bundle reads a copy of src/ (a suite's override, above).
       nodePaths: [path.join(root, 'node_modules')],
+      // A linked node_modules (a second worktree's, r62) is read as the folder
+      // it stands for, so the bundle's path comments, and index.html, are the
+      // same in every checkout: resolved through the link they named
+      // ../ironlog/node_modules and tests/r36.js found index.html 77
+      // characters off GitHub's.
+      preserveSymlinks: true,
       // Nothing is removed beyond what bundling needs: the legacy code keeps
       // every function, so window.__ironlog and the tests see it whole.
       treeShaking: false, minify: false, charset: 'utf8', legalComments: 'none',

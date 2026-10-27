@@ -5,12 +5,8 @@
    quick entry (draft.past): no rest timer, no clock, no check-in, and a set
    ticks itself once its reps are typed, so a whole workout goes in one pass.
    The session is saved under its date, so next up, targets and PRs after it
-   read correctly even when it is entered after later sessions. */
-function pastDue(R,date){
-  const ok=i=>!!R.days[i]&&!R.days[i].rest&&R.days[i].items.length>0;
-  if(R.schedule==='weekly'){const i=(parse(date).getDay()+6)%7;return ok(i)?i:-1;}
-  const cs=cycleState(R,date);return ok(cs.next)?cs.next:-1;
-}
+   read correctly even when it is entered after later sessions. Its sheet
+   and the day due then are src/app/sheetsapp.ts's since r62. */
 /* Never a deload (r54, from the audit V asked for): the week's mark does not
    say which day Deload week was tapped, so a workout logged for a day before
    it opened and saved as one. It is logged as what was done, and a lift done
@@ -19,17 +15,6 @@ function pastDraft(date,di){
   const R=activeRoutine();const day=di==null?null:R.days[di];
   if(!day){const d=freeDraft('Freestyle');return {...d,date,startedAt:null,past:true};}
   return {id:uid(),startedAt:null,date,dayIdx:di,dayId:day.id,dayName:day.name,routineId:R.id,deload:false,light:false,past:true,cardio:[],notes:'',note0:'',editingId:null,ex:day.items.map(it=>newBlock(it.exId,it,{before:date}))};
-}
-function pastSheet(m){
-  const R=activeRoutine();const due=pastDue(R,m.date);
-  const on=sessionsOn(m.date).map(x=>x.dayName||'Session');
-  const opts=R.days.map((d,i)=>({d,i})).filter(x=>!x.d.rest&&x.d.items.length>0).sort((a,b)=>(b.i===due)-(a.i===due));
-  const btn=({d,i})=>`<button class="btn block${i===due?' primary':''} pastday" data-act="pastGo" data-day="${i}"><span>${esc(dayLabel(R,i))}: ${esc(d.name)}</span>${i===due?'<small>due then</small>':`<small>${d.items.length} exercises</small>`}</button>`;
-  return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pastH"><div class="sheet-h"><h3 id="pastH">Log a past workout</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-  <label class="field">Date<input type="date" data-pbind="date" value="${m.date}" max="${today()}"></label>
-  ${on.length?`<p class="small muted" style="margin:6px 0 0">Already logged that day: ${esc(on.join(', '))}.</p>`:''}
-  <div class="stack" style="margin-top:12px">${opts.map(btn).join('')}<button class="btn block pastday" data-act="pastGo" data-day="free"><span>Freestyle</span><small>any exercises</small></button></div>
-  <p class="small muted" style="margin:10px 0 0">Quick entry: type each set. ${tipi('No rest timer or clock. A set counts as done once its reps are typed. Last time, targets, and PRs are read as of that date.','About quick entry')}</p></div>`;
 }
 /* The page's actions by data-act: the moved screens' (History and Settings,
    r57; Plan and Stats, r58; Today, r59; the session screen, r60; each change
@@ -533,7 +518,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
     const finish=list=>{const n=fillSets(m.b,list);if(!(ui.modal&&ui.modal.kind==='confirm')){closeModal();rerenderKeepScroll();toast(`${n} set${n===1?'':'s'} filled and marked done`);}};
     if(got){finish(got);return;}
 m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();  },
-  aiStop(){if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}}},
   startAltOpen(t){openModal({kind:'startAlt',di:+t.dataset.day,free:t.dataset.free==='1'});},
   // A choice in Change: the sheet closes first, then the start it names runs as the card's button did.
   altGo(t){const go=t.dataset.go;closeModal();if(ACT[go])ACT[go](t);},

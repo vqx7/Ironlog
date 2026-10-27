@@ -125,7 +125,8 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
         L.openModal({ kind: 'guide', open: '' });
         const m = document.getElementById('modal');
         m.querySelectorAll('details').forEach(d => { d.open = true; });
-        const out = { html: m.innerHTML, text: m.innerText };
+        // lit-html's markers taken out, as markupOf does: since r62 every sheet is drawn by lit-html into the sheet layer, and a marker is no part of the Guide.
+        const out = { html: m.innerHTML.replace(/<!--[^]*?-->/g, ''), text: m.innerText };
         L.ACT.mClose();
         return out;
       }, [unit, rir]);

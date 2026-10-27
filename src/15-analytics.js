@@ -55,5 +55,3 @@ function fitTargets(R,actual){
    YouTube for the exercise's name, opened in the browser: no list of videos
    to keep current, and nothing leaves the app until it is tapped (then only
    the name). A custom exercise's name is searched as typed. */
-function howToUrl(e){return 'https://www.youtube.com/results?search_query='+encodeURIComponent(`${e.name} exercise form`);}
-function howToLink(e){return e&&e.name?`<a class="btn block" style="margin-top:6px" href="${esc(howToUrl(e))}" target="_blank" rel="noopener noreferrer" data-tip="Opens a YouTube search for ${esc(e.name)} in your browser. Only the exercise name is sent.">How-to videos</a>`:'';}

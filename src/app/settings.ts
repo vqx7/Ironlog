@@ -194,7 +194,8 @@ function profChips(
   )}</div>
 `;
 }
-function profFields(): TemplateResult {
+/** Your training's three questions (goal, years lifting, days a week), in Settings and on a first run's routine templates. */
+export function profFields(): TemplateResult {
   const p = prof();
   return html`<div>
 <p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_GOAL_TIP}>Goal</span></p>

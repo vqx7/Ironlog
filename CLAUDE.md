@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r61, version 2.15, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r62, version 2.16, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -71,7 +71,10 @@ stand-in cloud.
   `calendar.ts` (r59; three.js loads by address in `outside.ts` alone), the session screen (r60): `workout.ts` (the
   screen, its taps and fields), `worksets.ts` (a set and what a tick changes), `workfinish.ts` (Finish, save, the
   recap), `workdrag.ts` and `workstate.ts` (what they change between draws, as `W`), with `update.ts` (the update
-  bar), `display.ts` and `env.ts` for what more than one screen reads. A change made inside another change is part
+  bar), `display.ts` and `env.ts` for what more than one screen reads, and the sheets (r62): `sheets.ts` (the layer every
+  sheet is drawn into: a sheet opened is drawn fresh, the open one drawn again is updated in place) with `sheetsmisc.ts`,
+  `sheetslift.ts`, `sheetsplan.ts`, `sheetsexercise.ts`, `sheetspicker.ts` and `sheetsapp.ts`; Pick for me, Swap's
+  closest matches, Limited equipment and Short on time are functions of the model in `pick.ts`. A change made inside another change is part
   of it (`act`, r60): one Undo step and one save.
 - `src/1*.js`, `src/2*.js`: the legacy script, cut into parts at its section headers (start-up, accounts, the
   screens, sheets, actions and events), one function scope. It reads `src/app/` only through the imports in
