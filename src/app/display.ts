@@ -1,7 +1,7 @@
 /* Words and numbers more than one screen shows (r57): moved with History,
    the first screen to move that reads them, and with Plan and Stats (r58),
-   and imported back by the screens still in the legacy script. Each is as it
-   was there. */
+   and imported by every screen that shows them. Each is as it was in the
+   legacy script it came from (deleted in r63). */
 
 import { IN, KM_MI, FT_IN } from './units';
 import { NIL, fmtDate, fmtWith, missedTag } from './format';

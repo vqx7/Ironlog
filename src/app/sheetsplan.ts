@@ -2,8 +2,8 @@
    other way to start), the routine templates (on a first run with Your
    training folded above them), a new routine, and the recap after Finish, which offers the routine the session's changes. Each
    is drawn by lit-html as src/24-sheets.js drew it (tests/r62.js holds them
-   to r61's), and answered by the legacy script's actions by their data-act
-   until those move (r63). */
+   to r61's), and answered by actsstart.ts's and actsroutine.ts's actions by
+   their data-act (r63). */
 
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';

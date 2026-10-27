@@ -6,8 +6,8 @@
    logged last, then the most common lifts and all the others; with them,
    the matches, common ones first, and a swap's closest matches above its
    muscle's list. Drawn by lit-html as src/24-sheets.js drew it (tests/r62.js
-   holds it to r61's), and answered by the legacy script's actions by their
-   data-act until those move (r63). A search typed redraws the list in
+   holds it to r61's), and answered by actspick.ts's and actsstart.ts's
+   actions by their data-act (r63). A search typed redraws the list in
    place, so the field keeps the focus and the keyboard. */
 
 import { html } from 'lit-html';

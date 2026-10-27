@@ -5,12 +5,12 @@
    muscle map, the workout preview, the body), drawn by lit-html as
    src/19-today.js and src/21-pick-session.js drew them, with the actions
    and fields that change what they show, each change to the log through
-   `act`. What Today opens or starts elsewhere stays with that code in the
-   legacy script, by the button's data-act as before: the sheets (Change,
-   Pick for me, Short on time, Install, the new icon's steps, a past
-   workout, an injury, cardio, a rest week, Limited equipment, the routine
-   picker, import), the account's actions, demo data's Load, and every start
-   of a session (the session screen moves in r60). */
+   `act`. What Today opens or starts elsewhere is reached by the button's
+   data-act through events.ts's table (r63): the sheets (Change, Pick for
+   me, Short on time, Install, the new icon's steps, a past workout, an
+   injury, cardio, a rest week, Limited equipment, the routine picker,
+   import), the account's actions, demo data's Load, and every start of a
+   session (actsstart.ts; the session screen is workout.ts since r60). */
 
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';

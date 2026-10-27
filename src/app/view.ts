@@ -3,13 +3,12 @@
    load, so offline and the Content Security Policy need nothing new), draws
    every tab into #view, and owns it: a moved screen is a template of the
    state and `ui`, updated in place on each draw, so its elements, the field
-   being typed in and its focus stay; a screen still in the legacy script is
-   its markup string, drawn fresh on every draw as innerHTML drew it, so the
-   moves that follow its draw (the saved order, the hidden sections, the drag
-   lists) work on it as before. The parts every moved screen shares are here,
-   drawing the markup the legacy script's helpers of the same names drew (the
-   legacy copies went with the last screen drawn from it, r60; tests/r57.js
-   compares the two screens with r56.2's). */
+   being typed in and its focus stay. Until r63 a screen still in the legacy
+   script was drawn here as its markup string (drawLegacy, deleted with the
+   script); every tab is a template now. The parts every screen shares are
+   here, drawing the markup the legacy script's helpers of the same names drew
+   (the legacy copies went with the last screen drawn from it, r60;
+   tests/r57.js compares the two screens with r56.2's). */
 
 import { html, nothing, render, noChange } from 'lit-html';
 import type { TemplateResult, AttributePart } from 'lit-html';

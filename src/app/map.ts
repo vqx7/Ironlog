@@ -2,8 +2,8 @@
    outline, or a 3D body, each muscle shaded by where its weekly hard sets
    sit against its own target, drawn by lit-html as src/20-map.js drew it,
    with the actions that change what it shows. The exercise sheets (an
-   exercise's muscles on the body, in the legacy script until the session
-   screen moves, r60) draw the same figures and the same 3D body from here.
+   exercise's muscles on the body, sheetsexercise.ts since r62) draw the same
+   figures and the same 3D body from here.
 
    The flat figures: coordinates for a 120 x 210 box, left-side shapes
    mirrored to the right.

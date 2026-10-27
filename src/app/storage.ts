@@ -7,7 +7,7 @@
    menu button makes of all that (backupDue, saveStateNow). Writing the save
    is in sync.ts (saveNow), since every write goes on to the account.
    Nothing here runs on import: storageStart() runs what the legacy part
-   ran when the page loaded, from the start of the legacy script. */
+   ran when the page loaded, called from main.ts at start (r63). */
 
 import { APP_VERSION, STORAGE_ID } from './config';
 import { daysBetween, today, DAY_MS } from './util';

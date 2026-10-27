@@ -1,7 +1,7 @@
 /* The month calendar (r59, phase 5): any date one tap away. A day with a
    session opens it in History, a day with two asks which, an empty past day
    logs a workout for it (as in the week bar), and today opens Today (calDay,
-   in the legacy script with what it opens). A day ahead shows the workout
+   in actsstart.ts with what it opens, r63). A day ahead shows the workout
    the routine plans on it and opens Today on that workout, for a year ahead
    (329, r59: until then days ahead were blank and the months stopped at
    this one). It sits inline in This week on

@@ -2,8 +2,8 @@
    answers, a block of text to copy or paste, a rest week, the sessions of a
    day with two, and cardio logged on its own. Each is drawn by lit-html as
    src/24-sheets.js drew it (tests/r62.js holds them to r61's), and opened and
-   answered by the legacy script's actions by their data-act until those move
-   (r63). */
+   answered by the actions by their data-act, through events.ts's table since
+   r63. */
 
 import { html } from 'lit-html';
 import type { TemplateResult } from 'lit-html';

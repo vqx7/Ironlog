@@ -2,11 +2,11 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r62 live (2026-10-27 02:41 UTC, from #59), r63 next as its own pull request, 2026-10-27.
+Last updated: r63 live (#60 merged by you at 05:28 UTC, published 05:57 from ce83d0c; checked by Claude: gh-pages "Publish ce83d0c", service worker ironlog-2026.10.27-r63-667bd9407f), r64 in progress, 2026-10-27.
 
 ## Now, in this order
 
-1. A27 (r63, version 2.17): its pull request, which Claude opens once every suite passes in both browsers and r63's independent review is clean. Before you merge it, run B1a (below, one SQL block, a minute): it lets a report sent again after a lost answer be kept once. Until it runs nothing breaks; reports go without the key. Try the preview on your phone (Checks on your phone, below), then merge on GitHub's website. When "Update ready" shows on a phone, tap Update. A26 (r59 to r62): done, merged by you (#55 on 2026-10-26 at 21:09 UTC; #58, r60 and r61, at 2026-10-27 00:04; #59, r62, at 02:14), r62 live as build 2026.10.26-r62 (checked file for file against main's build).
+1. A28 (r64 and r65, the hardening of the r63 audit): Claude opens r64's and r65's pull requests, stacked, once every suite passes in both browsers and one independent review over both is clean; you try the preview and merge them in order on GitHub's website. When r64 is built: one SQL step for problem reports (exact code given then). A27 (r63): done, merged by you (#60, 2026-10-27 05:28 UTC), r63 live as build 2026.10.27-r63. B1a (below), meant to run before that merge: status unknown, asked 2026-10-27; it is safe to run now if you have not (nothing breaks meanwhile: reports go without the key).
 2. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below). Status: to do, unless you have done it (Claude cannot see Supabase from here).
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
    D7, any time (with C6 is easiest): a 1 MB limit on each synced document (1 minute, below). Status: to do, unless you have done it.
@@ -80,8 +80,8 @@ insert into public.feedback_readers (user_id) select id from auth.users where em
 
 Check: Report a problem from the app (signed in), then Supabase > **Table Editor** > `feedback` shows it, and Settings > Help shows **Inbox** for your account.
 
-### B1a. A report's key (r63): before you merge r63
-Status: to do. Supabase > **SQL Editor** > **New query**, paste, Run. It is safe to run more than once. A report sent again after its answer was lost on the way back (a phone dropping off the network mid-send) is then kept once, so it makes one ticket, not two. Until it runs, r63 sends reports as before, without the key, so nothing breaks if it waits.
+### B1a. A report's key (r63)
+Status: unknown (asked 2026-10-27; meant to run before r63's merge, safe to run any time). Supabase > **SQL Editor** > **New query**, paste, Run. It is safe to run more than once. A report sent again after its answer was lost on the way back (a phone dropping off the network mid-send) is then kept once, so it makes one ticket, not two. Until it runs, r63 sends reports as before, without the key, so nothing breaks if it waits.
 
 ```sql
 alter table public.feedback add column if not exists client_id text check (client_id is null or char_length(client_id) <= 40);
@@ -345,9 +345,9 @@ Status: to do. Each step is free and none of them stops Claude from building and
 10. **Never paste** the Supabase secret key, a GitHub token or the Resend key into a chat, the app or the repository. They belong only in the dashboards named in B4 and C4.
 
 ### D6. Old branches
-Status: to do (checked by Claude on 2026-10-25: the branches below are on GitHub, and Automatically delete head branches is still off). Claude's GitHub access cannot delete branches.
-These are wholly in `main` (GitHub shows each 0 commits ahead of it), so deleting them loses nothing. Leave `r59`, `r60` and `r61-on-r60` until their pull requests are merged. `r61` (22ac59e) and `r61-normalize-draft` can go now: the first is an earlier copy of r61's first commits, each in `r61-on-r60` (checked by Claude on 2026-10-26), and the second held drafts r61 has since built.
-1. github.com/vqx7/Ironlog/branches > tap the trash icon on `modular`, `modular-2`, `r48`, `r51`, `r52`, `r53`, `r54`, `r55`, `r55.1`, `r56-wip`, `r56`, `r56.1`, `r56.2`, `r57`, `r58`, `r61` and `r61-normalize-draft`. Two more hold commits that are not in `main`, your call: `r42-look` (the restyle you turned down, pull request #32) and `r31.2` (one commit pushed after its pull request #17 merged).
+Status: to do (checked by Claude on 2026-10-27 through GitHub's compare API: the branches below are on GitHub, and Automatically delete head branches is still off). Claude's GitHub access cannot delete branches.
+These are wholly in `main` (GitHub shows each 0 commits ahead of it), so deleting them loses nothing: `modular`, `modular-2`, `r48`, `r51`, `r52`, `r53`, `r54`, `r55`, `r55.1`, `r56-wip`, `r56`, `r56.1`, `r56.2`, `r57`, `r58`, `r60`, `r61-on-r60`, `r62` and `r63`. Three more hold only what is in `main` already: `r59` (one commit ahead, the merge of #56 into it, changing no file), `r61` (22ac59e, an earlier copy of r61's first commits, each in `r61-on-r60`, checked 2026-10-26) and `r61-normalize-draft` (drafts r61 has since built). Keep `r64` (and `r65` when it exists) until their pull requests are merged.
+1. github.com/vqx7/Ironlog/branches > tap the trash icon on `modular`, `modular-2`, `r48`, `r51`, `r52`, `r53`, `r54`, `r55`, `r55.1`, `r56-wip`, `r56`, `r56.1`, `r56.2`, `r57`, `r58`, `r59`, `r60`, `r61`, `r61-normalize-draft`, `r61-on-r60`, `r62` and `r63`. Two more hold commits that are not in `main`, your call: `r42-look` (the restyle you turned down, pull request #32) and `r31.2` (one commit pushed after its pull request #17 merged).
 2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged.
 
 ### D7. A size limit on each synced document (r45, item 286, 1 minute)
@@ -380,6 +380,7 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.
 
 ## Done
+- A26 and A27 (r59 to r63): merged by you (#55; #58 with r60 and r61; #59, r62; #60, r63 on 2026-10-27 at 05:28 UTC), r63 live as build 2026.10.27-r63 (checked by Claude on gh-pages, 2026-10-27).
 - A9 to A25 (r30 to r58, 2026-10-04 to 2026-10-25): every release merged and published (pull requests #13 to #54; #32, the restyle, closed unmerged, and #50, r56, closed when #51 took its commits). r58 is live, build 2026.10.24-r58, checked by Claude on GitHub on 2026-10-25 (main at 0ed4bac). Each release's own line is in this file's git history.
 - B6, protect main: done 2026-10-15 (details under B6).
 - The tab bar on iOS 26 home-screen apps (r51): two iPhone users confirmed it stays on the bottom edge (2026-10-17).

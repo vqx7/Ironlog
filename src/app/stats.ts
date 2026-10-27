@@ -4,8 +4,8 @@
    (IDX, the weekly averages, the coach), so a headline and the section under
    it cannot disagree; this module only decides what to say and draws it. The
    charts are drawn after the screen, from graphs.ts. What Stats opens
-   elsewhere stays with that code in the legacy script, by the button's
-   data-act as before: a day of the calendar, a goal's sheet, Layout. */
+   elsewhere is reached by the button's data-act through events.ts's table
+   (r63): a day of the calendar, a goal's sheet, Layout. */
 
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';

@@ -1,7 +1,7 @@
 {
   "name": "ironlog",
   "private": true,
-  "description": "Workout tracker: a web app built from src/ (TypeScript modules and the legacy script) plus its test suites",
+  "description": "Workout tracker: a web app built from src/ (TypeScript modules in src/app/, the page's markup and styles) plus its test suites",
   "scripts": {
     "test": "node tests/run.js",
     "setup": "npx playwright install chromium",

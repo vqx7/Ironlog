@@ -50,6 +50,15 @@ stand-in cloud.
 8. The proper thing is done the first time (V, 2026-10-17): a type rather than a cast, one source for a value, a
    test for a new rule, documents kept true. Nothing that works for a lifter is weakened for the sake of the code.
 9. Report what was verified and how, and what was not checked. Never report a problem that does not exist.
+10. The tracker at the top of `PENDING.md` is the one list of what is open (V, 2026-10-27, from the r63 audit): a
+    row for every audit finding and every PENDING item placed in a release, with its release, status and evidence.
+    A row is OPEN (found and verified), FIXED (only with the commit and the test that fails before it and passes
+    after), NOT REPRODUCED (rerun and it did not happen; the output is the evidence, and V is told), NOT A PROBLEM
+    (correct by a written rule or V's ruling, cited), DECISION PENDING (V's, the question quoted), DEFERRED (only on
+    V's word, dated) or NEW (found while building, added with its reproduction the moment it is found and reported
+    to V in the same message; never fixed without a reproduction, never folded silently into scope). No row is
+    deleted or merged into another. A message to V about progress names rows by ID, and every session ends with the
+    tracker and the project's ledger updated, so nothing lives only in a chat.
 
 ## What is in this repo
 

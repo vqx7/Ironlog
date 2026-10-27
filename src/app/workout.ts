@@ -11,9 +11,9 @@
    (afterSet, the checkmark's classes, the progress bar, the grey numbers, the
    PR mark, the plates line, the effort strip put in after a row); the
    numbers a row shows are read from the session each draw, so the screen
-   cannot say what the log does not. What the screen opens stays with the
-   sheet code in the legacy script, by the button's data-act, until the
-   sheets move: the exercise menu, the picker, Short on time, the calibration
+   cannot say what the log does not. What the screen opens is reached by the
+   button's data-act through events.ts's table (the sheets moved in r62, the
+   actions in r63): the exercise menu, the picker, Short on time, the calibration
    set, the heaviest load, the load step, the note, Type or dictate sets, a
    lift's history and muscles, Pick for me, and the recap. */
 

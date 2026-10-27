@@ -15,7 +15,7 @@
    at a time, in order. The three-way merge of a document edited on two
    devices, the sync notes each device keeps, and the merge of another tab's
    save are here too. Nothing runs on import: syncStart() runs what the parts
-   ran as the page loaded, from the start of the legacy script. */
+   ran as the page loaded, called from main.ts at start (r63). */
 
 import { uid, hashStr, SECOND_MS } from './util';
 import { fmtDate } from './format';
@@ -1651,7 +1651,7 @@ function onPageHide(): void {
     read from this device, the device id, the notes forgotten when no save
     was readable, this device's hashes of the log, then the listeners for
     another tab's save and for the page being hidden or left. Called once,
-    from the start of the legacy script, after storageStart(). */
+    from main.ts at start, after storageStart(). */
 export function syncStart(): void {
   try {
     const m = rec(parseJson(localStorage.getItem(SYNC_KEY) || 'null'));
