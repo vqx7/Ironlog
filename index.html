@@ -1080,6 +1080,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     `${UNPKG}/three@${THREE_VERSION}/build/three.module.min.js`
   ];
   var THREE_URLS = typeof window !== "undefined" && window.IRONLOG_APP ? ["./vendor/three.module.min.js"] : THREE_CDN;
+  var TICKETS_AT = "https://github.com/";
 
   // src/app/util.ts
   var EPS = 1e-9;
@@ -11012,7 +11013,16 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const el = box();
     if (!el) return;
     el.classList.toggle("pr", kind === "pr");
-    D(b`<span>${msg}</span>${undo ? b`<button data-act="undo">Undo</button>` : A}`, el);
+    const say = document.createElement("span");
+    say.textContent = msg;
+    const parts = [say];
+    if (undo) {
+      const b2 = document.createElement("button");
+      b2.dataset.act = "undo";
+      b2.textContent = "Undo";
+      parts.push(b2);
+    }
+    el.replaceChildren(...parts);
     el.hidden = false;
     clearTimeout(toastT);
     toastT = setTimeout(
@@ -11816,8 +11826,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     D(b`${markup(MENU_ICON)}<span class="sd" aria-hidden="true"></span><span class="sst">${txt}</span>`, el);
     el.setAttribute("aria-label", "Menu. " + txt);
     el.setAttribute("data-tip", txt);
-    const u4 = acct.user;
-    const who = u4 && typeof u4 === "object" && "email" in u4 && typeof u4.email === "string" ? u4.email : "";
+    const who = acct.user ? acct.user.email : "";
     const key = cls + "|" + txt + "|" + who;
     if (saveShown !== key) {
       saveShown = key;
@@ -17024,8 +17033,8 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       ]
     ];
     const open = m3.open || "";
-    return `<div class="sheet guide" role="dialog" aria-modal="true" aria-labelledby="guideH"><div class="sheet-h"><h3 id="guideH">Guide</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-  ${T2.map(([k2, t4, b2]) => `<details class="gsec" data-g="${k2}" ${open === k2 ? "open" : ""}><summary>${esc(t4)}</summary><div class="gbody">${b2}</div></details>`).join("")}</div>`;
+    return b`<div class="sheet guide" role="dialog" aria-modal="true" aria-labelledby="guideH"><div class="sheet-h"><h3 id="guideH">Guide</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
+  ${T2.map(([k2, t4, b2]) => b`<details class="gsec" data-g=${k2} ?open=${open === k2}><summary>${t4}</summary><div class="gbody">${markup(b2)}</div></details>`)}</div>`;
   }
 
   // src/app/history.ts
@@ -19940,6 +19949,91 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     }
   };
 
+  // src/app/sheetsaccount.ts
+  var menuAuth = () => AUTH() && !(window.claude && typeof window.claude.use === "function") ? AUTH() : null;
+  function menuSheet() {
+    const A2 = menuAuth();
+    const u4 = A2 && acct.user;
+    const st = saveStateNow();
+    const dot = st.cls ? b`<span class=${"mdot " + st.cls} aria-hidden="true"></span>` : A;
+    const acc = u4 ? b`<div class="row spread" style="flex-wrap:nowrap;gap:10px"><div style="min-width:0"><p class="small muted" style="margin:0">Signed in as</p><p style="margin:2px 0 0;overflow-wrap:anywhere"><b>${u4.email}</b></p></div><button class="btn sm" data-act="acctSignOut">Sign out</button></div>
+    <p class="small" style="margin:8px 0 0">${dot}${cloud.on ? st.txt : "Not syncing right now."}${cloud.on ? A : b` <button class="linkbtn" data-act="acctRetry">Try again</button>`}</p>` : A2 ? b`<p style="margin:0"><b>Not signed in.</b> Your log is on this phone only.</p><div class="row" style="margin-top:10px"><button class="btn primary" data-act="acctOpen" data-mode="signin">Sign in</button><button class="btn" data-act="acctOpen" data-mode="signup">Create account</button></div>` : b`<p class="small" style="margin:0">${dot}${st.txt}</p>`;
+    const due = backupDue() ? b`<div class="callout yellow row spread" style="margin:10px 0 0"><span class="small"><b>Backup due.</b></span><button class="btn sm" data-act="export">Export backup</button></div>` : A;
+    const item = (act2, label, cat) => b`<button type="button" class="mnu" data-act=${act2} data-cat=${cat || A}><span>${label}</span><span aria-hidden="true">›</span></button>`;
+    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h"><h3 id="menuH">${ENV === "preview" ? PREVIEW_NAME : APP_NAME}</h3>${closeX()}</div>
+  <div class="panel" id="menuAcct">${acc}</div>${due}
+  <div class="mnus">${item("fbOpen", "Report a problem", "bug")}${acct.reader && FB() ? item("fbInbox", "Reports inbox") : A}${item("guideOpen", "Guide")}${item("goLayout", "Show, hide, or reorder sections")}${item("goBackup", "Your data and backups")}</div>
+  <p class="small muted" style="margin:12px 0 0">Version ${DISPLAY_VERSION}</p></div>`;
+  }
+  function fbSheet(m3) {
+    const head = (t4) => b`<div class="sheet-h"><h3 id="fbH">${t4}</h3>${closeX()}</div>`;
+    const u4 = acct.user;
+    if (m3.sent)
+      return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(m3.copied ? "Copied" : "Sent")}<p style="margin:0">${m3.copied ? "Paste it in a message to the app owner." : u4 ? `Thanks. Any reply goes to ${u4.email}.` : "Thanks."}</p><button type="button" class="btn primary block" style="margin-top:14px" data-act="mClose">Done</button></div>`;
+    const F3 = FB();
+    const cat = FB_TITLE[m3.cat] ? m3.cat : "bug";
+    const kinds = b`<div class="fbkind" role="group" aria-label="Kind">${FB_CATS.map(([k2, l4]) => b`<button type="button" class=${cat === k2 ? "on" : ""} data-act="fbCat" data-v=${k2} aria-pressed=${String(cat === k2)}>${l4}</button>`)}</div>`;
+    if (F3 && !u4)
+      return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(FB_TITLE[cat] || "")}
+    <p style="margin:0 0 12px">Sign in to send a report, so a reply can reach you.</p>
+    <div class="stack"><button type="button" class="btn primary block" data-act="acctOpen" data-mode="signin">Sign in</button><button type="button" class="btn block" data-act="acctOpen" data-mode="signup">Create account</button></div>
+    <p class="small muted" style="margin:12px 0 0">No account? <button type="button" class="linkbtn" data-act="fbCopy">Copy the details</button> and send them to the app owner.</p></div>`;
+    const n3 = String(m3.msg || "").length;
+    const shot = m3.shot && FB_SHOT_RE.test(m3.shot) ? b`<div class="fbshot">\x3cimg src=${m3.shot} alt="Screenshot to send"><button type="button" class="btn sm" data-act="fbShotDel">Remove</button></div>` : b`<label class="btn sm fbpick">Add a screenshot<input type="file" accept="image/png,image/jpeg,image/heic,image/heif,image/webp" id="fbShot" hidden></label>`;
+    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(FB_TITLE[cat] || "")}<div class="stack">
+  ${kinds}
+  <label class="field">${FB_ASK[cat]}<textarea data-fbind="msg" maxlength=${FB_MAX} rows="5" placeholder=${FB_HINT[cat] || ""}>${m3.msg || ""}</textarea><span class="fbcount small muted" id="fbCount" aria-live="polite">${n3} / ${FB_MAX}</span></label>
+  <div><p class="small muted" style="margin:0 0 6px">Screenshot, optional. One image, up to ${FB_IMG_MB} MB.</p><div class="row">${shot}</div></div>
+  <p class="small muted" style="margin:0">${u4 ? `Replies go to ${u4.email}. ` : ""}Device details are added, never your workouts. ${tipButton(FB_WHAT, "What is attached")}</p>
+  ${m3.err ? b`<p class="small" role="alert" style="color:var(--red);margin:0">${m3.err}</p>` : A}
+  <button type="button" class="btn primary block" data-act="fbSend" ?disabled=${!!m3.busy}>${m3.busy ? "Sending" : F3 ? "Send" : "Copy report"}</button></div></div>`;
+  }
+  var STAMP_CHARS = 16;
+  var TAG = { bug: "red", idea: "green" };
+  function fbItem(x2) {
+    const shot = x2.screenshot && FB_SHOT_RE.test(x2.screenshot) ? b`\x3cimg class="fbthumb" src=${x2.screenshot} alt="Screenshot">` : A;
+    const ticket = x2.issue_url && x2.issue_url.startsWith(TICKETS_AT) ? b`<p class="small" style="margin:4px 0 0"><a href=${x2.issue_url} target="_blank" rel="noopener">GitHub issue</a></p>` : A;
+    return b`<li><div style="min-width:0;flex:1"><p class="small" style="margin:0"><span class=${"tag " + (TAG[String(x2.category)] || "blue")}>${String(x2.category)}</span> <span class="muted">${String(
+      x2.created_at || ""
+    ).slice(0, STAMP_CHARS).replace(
+      "T",
+      " "
+    )}${x2.reply_to ? ` · ${x2.reply_to}` : ""}</span></p><p style="margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere">${String(x2.message)}</p>${shot}${ticket}<details class="small muted"><summary>Attached by the app</summary><pre class="fbctx">${JSON.stringify(x2.context || {}, null, 1)}</pre></details></div></li>`;
+  }
+  function fbInboxSheet(m3) {
+    const it = m3.items;
+    const body = m3.err ? b`<p class="small" role="alert" style="color:var(--red)">${m3.err}</p>` : !it ? b`<p class="muted">Loading</p>` : !it.length ? b`<p class="muted">No feedback yet.</p>` : b`<ul class="clist fbinbox">${it.map(fbItem)}</ul>`;
+    return b`<div class="sheet fixed" role="dialog" aria-modal="true" aria-labelledby="fbiH"><div class="sheet-h"><h3 id="fbiH">Feedback inbox</h3>${closeX()}</div><div class="sheet-scroll">${body}</div></div>`;
+  }
+  function codeField(m3) {
+    return b`<label class="field">Code from the email<input type="text" inputmode="numeric" autocomplete="one-time-code" data-abind="code" .value=${l3(m3.code || "")} enterkeyhint="go"></label><button type="button" class="btn primary block" data-act="acctCode" ?disabled=${!!m3.busy}>Confirm with the code</button><div class="row"><button type="button" class="linkbtn tall" data-act="acctResend" ?disabled=${!!m3.busy}>Send a new code</button></div>`;
+  }
+  var BUSY = {
+    signin: "Signing in",
+    signup: "Creating your account",
+    forgot: "Sending the link",
+    newpw: "Saving"
+  };
+  function acctSheet(m3) {
+    const email = b`<label class="field">Email<input type="email" data-abind="email" .value=${l3(m3.email || "")} autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" enterkeyhint="next"></label>`;
+    const pw = (label, ac, min) => b`<label class="field">${label}<input type="password" data-abind="pw" .value=${l3(m3.pw || "")} autocomplete=${ac} minlength=${min ? "8" : A} enterkeyhint="go"></label>`;
+    const err = b`<p class="small" role="alert" style="color:var(--red);margin:0" ?hidden=${!m3.err}>${m3.err || ""}</p>`;
+    const go = (label) => b`<button type="submit" class="btn primary block" data-act="acctSubmit" ?disabled=${!!m3.busy}>${m3.busy ? BUSY[m3.mode] || "One moment" : label}</button>`;
+    const link = (mode, label) => b`<button type="button" class="linkbtn tall" data-act="acctMode" data-mode=${mode}>${label}</button>`;
+    const T2 = {
+      signin: "Sign in",
+      signup: "Create account",
+      forgot: "Reset password",
+      newpw: "New password",
+      sent: m3.title || "Check your email",
+      wait: "Check your email",
+      where: m3.title || "Email confirmed"
+    };
+    const b2 = m3.mode === "signin" ? b`${email}${pw("Password", "current-password", false)}${err}${m3.needCode ? codeField(m3) : A}${go("Sign in")}<div class="row spread">${link("forgot", "Forgot password?")}${link("signup", "Create an account")}</div>` : m3.mode === "signup" ? b`${email}${pw("Password (8 or more characters)", "new-password", true)}${err}${go("Create account")}<p class="small muted" style="margin:0">We email you a link and a code to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link("signin", "I have an account")}</div>` : m3.mode === "forgot" ? b`${email}${err}${go("Email me a reset link")}<p class="small muted" style="margin:0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link("signin", "Back to sign in")}</div>` : m3.mode === "newpw" ? b`${pw("New password (8 or more characters)", "new-password", true)}${err}${go("Save new password")}` : m3.mode === "wait" ? b`<p style="margin:0">We sent a confirmation email to <b>${m3.email || ""}</b>. Type its code here, or tap its link and come back: ${APP_NAME} signs you in by itself.</p>${codeField(m3)}<p class="small muted waitline" style="margin:0" aria-live="polite">${m3.busy ? "Checking" : "Waiting for the confirmation"}</p>${err}<button type="button" class="btn block" data-act="acctWaitNow" ?disabled=${!!m3.busy}>I have confirmed</button><div class="row">${link("signup", "Use a different email")}</div>` : m3.mode === "where" ? b`<p style="margin:0">Where do you use ${APP_NAME}?</p><button type="button" class="btn primary block" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn block" data-act="acctWhere" data-v="here">Here in this browser</button>` : b`<p style="margin:0">${m3.msg || ""}</p><button type="button" class="btn primary block" data-act="mClose">OK</button>`;
+    const title = T2[m3.mode] || "Account";
+    return b`<div class="sheet" role="dialog" aria-modal="true" aria-label=${title}><div class="sheet-h"><h3>${title}</h3>${closeX()}</div><form class="stack" id="acctForm" novalidate>${b2}</form></div>`;
+  }
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -20075,48 +20169,6 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       while (ctx.errors.length > 1 && bytes() > FB_CTX_MAX) ctx.errors.shift();
       if (bytes() > FB_CTX_MAX) ctx.errors = ctx.errors.map(({ s: s3, ...x2 }) => ({ ...x2, m: String(x2.m).slice(0, 100) }));
       return ctx;
-    }
-    function menuSheet() {
-      const A2 = AUTH() && !(window.claude && typeof window.claude.use === "function") ? AUTH() : null;
-      const u4 = A2 && acct.user;
-      const st = saveStateNow();
-      const dot = st.cls ? `<span class="mdot ${st.cls}" aria-hidden="true"></span>` : "";
-      let acc;
-      if (u4) acc = `<div class="row spread" style="flex-wrap:nowrap;gap:10px"><div style="min-width:0"><p class="small muted" style="margin:0">Signed in as</p><p style="margin:2px 0 0;overflow-wrap:anywhere"><b>${esc(u4.email)}</b></p></div><button class="btn sm" data-act="acctSignOut">Sign out</button></div>
-    <p class="small" style="margin:8px 0 0">${dot}${cloud.on ? esc(st.txt) : "Not syncing right now."}${cloud.on ? "" : ' <button class="linkbtn" data-act="acctRetry">Try again</button>'}</p>`;
-      else if (A2) acc = `<p style="margin:0"><b>Not signed in.</b> Your log is on this phone only.</p><div class="row" style="margin-top:10px"><button class="btn primary" data-act="acctOpen" data-mode="signin">Sign in</button><button class="btn" data-act="acctOpen" data-mode="signup">Create account</button></div>`;
-      else acc = `<p class="small" style="margin:0">${dot}${esc(st.txt)}</p>`;
-      const due = backupDue() ? `<div class="callout yellow row spread" style="margin:10px 0 0"><span class="small"><b>Backup due.</b></span><button class="btn sm" data-act="export">Export backup</button></div>` : "";
-      const item = (act2, label, extra) => `<button type="button" class="mnu" data-act="${act2}"${extra || ""}><span>${label}</span><span aria-hidden="true">›</span></button>`;
-      return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h"><h3 id="menuH">${ENV === "preview" ? PREVIEW_NAME : APP_NAME}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-  <div class="panel" id="menuAcct">${acc}</div>${due}
-  <div class="mnus">${item("fbOpen", "Report a problem", ' data-cat="bug"')}${acct.reader && FB() ? item("fbInbox", "Reports inbox") : ""}${item("guideOpen", "Guide")}${item("goLayout", "Show, hide, or reorder sections")}${item("goBackup", "Your data and backups")}</div>
-  <p class="small muted" style="margin:12px 0 0">Version ${esc(DISPLAY_VERSION)}</p></div>`;
-    }
-    function fbSheet(m3) {
-      const head = (t4) => `<div class="sheet-h"><h3 id="fbH">${t4}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>`;
-      if (m3.sent) return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(m3.copied ? "Copied" : "Sent")}<p style="margin:0">${m3.copied ? "Paste it in a message to the app owner." : acct.user ? `Thanks. Any reply goes to ${esc(acct.user.email)}.` : "Thanks."}</p><button type="button" class="btn primary block" style="margin-top:14px" data-act="mClose">Done</button></div>`;
-      const F3 = FB();
-      const cat = FB_TITLE[m3.cat] ? m3.cat : "bug";
-      const kinds = `<div class="fbkind" role="group" aria-label="Kind">${FB_CATS.map(([k2, l4]) => `<button type="button" class="${cat === k2 ? "on" : ""}" data-act="fbCat" data-v="${k2}" aria-pressed="${cat === k2}">${l4}</button>`).join("")}</div>`;
-      if (F3 && !acct.user) return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(FB_TITLE[cat])}
-    <p style="margin:0 0 12px">Sign in to send a report, so a reply can reach you.</p>
-    <div class="stack"><button type="button" class="btn primary block" data-act="acctOpen" data-mode="signin">Sign in</button><button type="button" class="btn block" data-act="acctOpen" data-mode="signup">Create account</button></div>
-    <p class="small muted" style="margin:12px 0 0">No account? <button type="button" class="linkbtn" data-act="fbCopy">Copy the details</button> and send them to the app owner.</p></div>`;
-      const n3 = String(m3.msg || "").length;
-      const shot = m3.shot && FB_SHOT_RE.test(m3.shot) ? `<div class="fbshot">\x3cimg src="${m3.shot}" alt="Screenshot to send"><button type="button" class="btn sm" data-act="fbShotDel">Remove</button></div>` : `<label class="btn sm fbpick">Add a screenshot<input type="file" accept="image/png,image/jpeg,image/heic,image/heif,image/webp" id="fbShot" hidden></label>`;
-      return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(FB_TITLE[cat])}<div class="stack">
-  ${kinds}
-  <label class="field">${FB_ASK[cat]}<textarea data-fbind="msg" maxlength="${FB_MAX}" rows="5" placeholder="${esc(FB_HINT[cat])}">${esc(m3.msg || "")}</textarea><span class="fbcount small muted" id="fbCount" aria-live="polite">${n3} / ${FB_MAX}</span></label>
-  <div><p class="small muted" style="margin:0 0 6px">Screenshot, optional. One image, up to ${FB_IMG_MB} MB.</p><div class="row">${shot}</div></div>
-  <p class="small muted" style="margin:0">${acct.user ? `Replies go to ${esc(acct.user.email)}. ` : ""}Device details are added, never your workouts. ${tipi(FB_WHAT, "What is attached")}</p>
-  ${m3.err ? `<p class="small" role="alert" style="color:var(--red);margin:0">${esc(m3.err)}</p>` : ""}
-  <button type="button" class="btn primary block" data-act="fbSend" ${m3.busy ? "disabled" : ""}>${m3.busy ? "Sending" : F3 ? "Send" : "Copy report"}</button></div></div>`;
-    }
-    function fbInboxSheet(m3) {
-      const it = m3.items;
-      const body = m3.err ? `<p class="small" role="alert" style="color:var(--red)">${esc(m3.err)}</p>` : !it ? '<p class="muted">Loading</p>' : !it.length ? '<p class="muted">No feedback yet.</p>' : `<ul class="clist fbinbox">${it.map((x2) => `<li><div style="min-width:0;flex:1"><p class="small" style="margin:0"><span class="tag ${x2.category === "bug" ? "red" : x2.category === "idea" ? "green" : "blue"}">${esc(x2.category)}</span> <span class="muted">${esc(String(x2.created_at || "").slice(0, 16).replace("T", " "))}${x2.reply_to ? ` · ${esc(x2.reply_to)}` : ""}</span></p><p style="margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere">${esc(x2.message)}</p>${x2.screenshot && FB_SHOT_RE.test(x2.screenshot) ? `\x3cimg class="fbthumb" src="${esc(x2.screenshot)}" alt="Screenshot">` : ""}${x2.issue_url && /^https:\/\/github\.com\//.test(x2.issue_url) ? `<p class="small" style="margin:4px 0 0"><a href="${esc(x2.issue_url)}" target="_blank" rel="noopener">GitHub issue</a></p>` : ""}<details class="small muted"><summary>Attached by the app</summary><pre class="fbctx">${esc(JSON.stringify(x2.context || {}, null, 1))}</pre></details></div></li>`).join("")}</ul>`;
-      return `<div class="sheet fixed" role="dialog" aria-modal="true" aria-labelledby="fbiH"><div class="sheet-h"><h3 id="fbiH">Feedback inbox</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><div class="sheet-scroll">${body}</div></div>`;
     }
     function fbShrink(file) {
       return new Promise((res, rej) => {
@@ -20312,27 +20364,6 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       if (AUTH() && !cloud.on) cloudInit();
     });
     const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    function codeField(m3) {
-      return `<label class="field">Code from the email<input type="text" inputmode="numeric" autocomplete="one-time-code" data-abind="code" value="${esc(m3.code || "")}" enterkeyhint="go"></label><button type="button" class="btn primary block" data-act="acctCode" ${m3.busy ? "disabled" : ""}>Confirm with the code</button><div class="row"><button type="button" class="linkbtn tall" data-act="acctResend" ${m3.busy ? "disabled" : ""}>Send a new code</button></div>`;
-    }
-    function acctSheet(m3) {
-      const f3 = (label, k2, type, ac, extra) => `<label class="field">${label}<input type="${type}" data-abind="${k2}" value="${esc(m3[k2] || "")}" autocomplete="${ac}" ${extra || ""}></label>`;
-      const email = f3("Email", "email", "email", "email", 'autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" enterkeyhint="next"');
-      const err = `<p class="small" role="alert" style="color:var(--red);margin:0"${m3.err ? "" : " hidden"}>${esc(m3.err || "")}</p>`;
-      const busyW = { signin: "Signing in", signup: "Creating your account", forgot: "Sending the link", newpw: "Saving" }[m3.mode] || "One moment";
-      const go = (label) => `<button type="submit" class="btn primary block" data-act="acctSubmit" ${m3.busy ? "disabled" : ""}>${m3.busy ? busyW : esc(label)}</button>`;
-      const link = (mode, label) => `<button type="button" class="linkbtn tall" data-act="acctMode" data-mode="${mode}">${label}</button>`;
-      const T2 = { signin: "Sign in", signup: "Create account", forgot: "Reset password", newpw: "New password", sent: m3.title || "Check your email", wait: "Check your email", where: m3.title || "Email confirmed" };
-      let b2 = "";
-      if (m3.mode === "signin") b2 = `${email}${f3("Password", "pw", "password", "current-password", 'enterkeyhint="go"')}${err}${m3.needCode ? codeField(m3) : ""}${go("Sign in")}<div class="row spread">${link("forgot", "Forgot password?")}${link("signup", "Create an account")}</div>`;
-      else if (m3.mode === "signup") b2 = `${email}${f3("Password (8 or more characters)", "pw", "password", "new-password", 'minlength="8" enterkeyhint="go"')}${err}${go("Create account")}<p class="small muted" style="margin:0">We email you a link and a code to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link("signin", "I have an account")}</div>`;
-      else if (m3.mode === "forgot") b2 = `${email}${err}${go("Email me a reset link")}<p class="small muted" style="margin:0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link("signin", "Back to sign in")}</div>`;
-      else if (m3.mode === "newpw") b2 = `${f3("New password (8 or more characters)", "pw", "password", "new-password", 'minlength="8" enterkeyhint="go"')}${err}${go("Save new password")}`;
-      else if (m3.mode === "wait") b2 = `<p style="margin:0">We sent a confirmation email to <b>${esc(m3.email || "")}</b>. Type its code here, or tap its link and come back: ${APP_NAME} signs you in by itself.</p>${codeField(m3)}<p class="small muted waitline" style="margin:0" aria-live="polite">${m3.busy ? "Checking" : "Waiting for the confirmation"}</p>${err}<button type="button" class="btn block" data-act="acctWaitNow" ${m3.busy ? "disabled" : ""}>I have confirmed</button><div class="row">${link("signup", "Use a different email")}</div>`;
-      else if (m3.mode === "where") b2 = `<p style="margin:0">Where do you use ${APP_NAME}?</p><button type="button" class="btn primary block" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn block" data-act="acctWhere" data-v="here">Here in this browser</button>`;
-      else b2 = `<p style="margin:0">${esc(m3.msg || "")}</p><button type="button" class="btn primary block" data-act="mClose">OK</button>`;
-      return `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(T2[m3.mode] || "Account")}"><div class="sheet-h"><h3>${esc(T2[m3.mode] || "Account")}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><form class="stack" id="acctForm" novalidate>${b2}</form></div>`;
-    }
     function fitRecordOld() {
       const s3 = state.settings;
       if (s3.bandsFit || s3.profile) return false;
@@ -23284,9 +23315,6 @@ ${JSON.stringify(fb.context, null, 1)}`;
         });
       }
     };
-    function tipi(text, label) {
-      return `<button type="button" class="tipi" data-tip="${esc(text)}" aria-label="${esc(label || "More")}">i</button>`;
-    }
     tipsStart();
     document.addEventListener("submit", (e5) => {
       if (e5.target && e5.target.id === "acctForm") {

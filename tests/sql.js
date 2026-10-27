@@ -3,6 +3,7 @@
 // and roles, and does what the docs say: own rows only, nothing for signed-out
 // visitors, report length limits, 5 reports a day per account, the owner
 // reads them, and the upgrade from the pre-r25 report table.
+const cfg = require('../scripts/config');
 const fs = require('fs');
 const fails = [];
 (async () => {
@@ -75,7 +76,7 @@ const V = '11111111-1111-1111-1111-111111111111', F = '22222222-2222-2222-2222-2
   let back = 0; for (let i = 0; i < 6; i++) if (await tryq(db, `insert into public.feedback(category,message,created_at) values ('bug','back-dated report ${i}','2001-01-01')`) === 'ok') back++;
   ok(back === 5, 'back-dated reports still count toward today: the sixth is refused (' + back + ' of 6 went in)');
   await as(db, V);
-  ok(await tryq(db, `insert into public.feedback(category,message,issue_url,screenshot) values ('bug','with a made-up link','https://github.com/x/y','data:image/jpeg;base64,/9j/4AAQSkZJRg==')`) === 'ok', 'a report with a plain JPEG screenshot is accepted');
+  ok(await tryq(db, `insert into public.feedback(category,message,issue_url,screenshot) values ('bug','with a made-up link','${cfg.TICKETS_AT}x/y','data:image/jpeg;base64,/9j/4AAQSkZJRg==')`) === 'ok', 'a report with a plain JPEG screenshot is accepted');
   ok(/check/i.test(await tryq(db, `insert into public.feedback(category,message,screenshot) values ('bug','hostile screenshot here','data:image/jpeg;base64,AAAA" onerror="x')`)), 'a screenshot with anything but base64 after the prefix is refused');
   const row = (await db.query(`select issue_url, created_at > now() - interval '1 minute' as fresh from public.feedback where message = 'with a made-up link'`)).rows[0];
   ok(row && row.issue_url === null && row.fresh === true, 'the ticket link and the time are the server\'s, not the sender\'s');

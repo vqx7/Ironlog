@@ -128,3 +128,8 @@ const THREE_CDN = [
 /** The addresses map3dLoad tries in turn: the installed app's own copy, or the CDNs. */
 export const THREE_URLS: readonly string[] =
   typeof window !== 'undefined' && window.IRONLOG_APP ? ['./vendor/three.module.min.js'] : THREE_CDN;
+
+/** Where a report's ticket lives: the Inbox links a report to its ticket
+    only when the address starts here (a report's fields are written by
+    whoever sent it, so any other address is not linked; FEEDBACK.md). */
+export const TICKETS_AT = 'https://github.com/';

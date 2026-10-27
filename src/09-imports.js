@@ -2,13 +2,13 @@
    scripts/join.js puts this part first, outside the legacy wrapper, and the
    legacy parts (10 to 29) read these names as they read their own. Each phase
    of ARCHITECTURE.md moves more code into src/app/ and out of those parts. */
-import { STORAGE_ID, APP_NAME, FILE_PREFIX, PREVIEW_NAME, DISPLAY_VERSION, APP_VERSION, THREE_URLS } from './app/config';
+import { STORAGE_ID, APP_NAME, FILE_PREFIX, DISPLAY_VERSION, APP_VERSION, THREE_URLS } from './app/config';
 import { esc, uid, addDays, weekStart, daysBetween, today, isNum, isDate, median, andList, numIn, mulberry, WEEK_DAYS } from './app/util';
 import { LB, IN, KM_MI } from './app/units';
 import { MUSCLES, MK, ML, TRACK_ONLY, BANDS, EQUIP, EQL, CARDIOL, CWHENL, JK, injLabel, exJoints, libExercises, COMMON, isCommon, patternOf, isCompound, noE1, BWF, bwShare, loadMode, HARD_EX, profHeavy, COMMON_TIP, nameMatch } from './app/library';
 import { dayLabel, defaultRoutine, TEMPLATES, routineFromTemplate, daySets, fixSupersets, plannedPerWeek, dropStarter, planItemOf, pwOf, planSetsOf, withPlanSets, trainOn, routineEmpty, routineSig, sessDayIdx, ssLetters, tplCountLine } from './app/routines';
 import { keepExtra, cleanCardio, normalize, starterRoutine, starterSigs, plainTemplate } from './app/normalize';
-import { ENV, KEY, ACCT_LATER, OB_ACCT, OB_OUT, logBuf, logCut, log, unreadableRaw, unreadableForget, undoStack, undoPersist, undoRestore, undoForget, snapshot, demoFirstRun, demoKeep, backupDue, saveStateNow, storageStart, asideList } from './app/storage';
+import { ENV, KEY, ACCT_LATER, OB_ACCT, OB_OUT, logBuf, logCut, log, unreadableRaw, unreadableForget, undoStack, undoPersist, undoRestore, undoForget, snapshot, demoFirstRun, demoKeep, backupDue, storageStart, asideList } from './app/storage';
 import { saveNow, commit, assemble, cq, withTimeout, baseOf, mergeChunk, hasUnsent, cloudFlush, cloudPull, cloudInit, cloudStop, syncStart } from './app/sync';
 import { rtfOf, e1, e1inv, rtfAt, fitE, rtfBand, jumpCap, workLoad, repFloor, isWork, setCredit, lighter, offTarget, sameRR, setSecs, setupSecs, BACK_DAYS, PACE_N, PACE_DAYS, PACE_MIN } from './app/formulas';
 import { DIRTY_SAID, estMin, fmtDate, min5, rangeWords, repSpan, sessTm } from './app/format';
@@ -23,7 +23,7 @@ import { estInLoad, loadNote, loadWords } from './app/loads';
 import { prName } from './app/prs';
 import { aboveMax, belowMin } from './app/volume';
 import { DEMO_WEEKS, GENERIC_WORKOUT, IMP_ALIAS, IMP_MAX_ROWS, IMPORT_DAYS, IMPORT_REPEATS, impDate, impFromTable, impGuess, impHeader, impNorm, impRows, impSetsText, impXlsx } from './app/importing';
-import { FB_ASK, FB_CATS, FB_CTX_MAX, FB_DAY, FB_HINT, FB_IMG_MB, FB_MAX, FB_MIN, FB_SHOT_RE, FB_TITLE, FB_WHAT } from './app/feedback';
+import { FB_CATS, FB_CTX_MAX, FB_DAY, FB_IMG_MB, FB_MAX, FB_MIN, FB_TITLE } from './app/feedback';
 import { state, setState, ui, cloud, acct, acctWait, HIST_PAGE, setFx } from './app/store';
 import { sessionWord } from './app/analytics';
 import { avgWeeksTxt } from './app/weeks';
@@ -59,4 +59,5 @@ import { updateStart, UPDATE_ACTS } from './app/update';
 import { toast, toastQuiet, toastHide } from './app/toast';
 import { timer, stopTimer, timerResume, tick, timerAdd, wakeOn, wakeOff } from './app/timer';
 import { tipsStart } from './app/tips';
+import { menuSheet, fbSheet, fbInboxSheet, acctSheet } from './app/sheetsaccount';
 import { setRoot, setSheets, render, rerenderKeepScroll, applyTheme, pageBack, openModal, closeModal, confirmBox, ask, renderModal, modalFocusables, setSaveState } from './app/page';

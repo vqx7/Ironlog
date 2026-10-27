@@ -1,7 +1,4 @@
-/* ---------- tips ----------
-   An i button's markup for the legacy sheets still written as markup (the
-   problem report's, until it moves in r63). */
-function tipi(text,label){return `<button type="button" class="tipi" data-tip="${esc(text)}" aria-label="${esc(label||'More')}">i</button>`;}
+/* ---------- tips ---------- */
 // The tips' listeners (src/app/tips.ts since r63), added here as they always were, before the page's own.
 tipsStart();
 

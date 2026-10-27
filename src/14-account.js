@@ -43,56 +43,6 @@ function fbContext(m){
   if(bytes()>FB_CTX_MAX)ctx.errors=ctx.errors.map(({s,...x})=>({...x,m:String(x.m).slice(0,100)}));
   return ctx;
 }
-/* The menu (r27): one tap from every tab for the things people look for
-   outside a workout: who is signed in, signing in or out, the save state,
-   Report a problem and the Guide. Since r28 Settings has a Help group near
-   the bottom with the same Guide and reports (V asked for both places). */
-function menuSheet(){
-  const A=AUTH()&&!(window.claude&&typeof window.claude.use==='function')?AUTH():null;const u=A&&acct.user;const st=saveStateNow();
-  const dot=st.cls?`<span class="mdot ${st.cls}" aria-hidden="true"></span>`:'';
-  let acc;
-  if(u)acc=`<div class="row spread" style="flex-wrap:nowrap;gap:10px"><div style="min-width:0"><p class="small muted" style="margin:0">Signed in as</p><p style="margin:2px 0 0;overflow-wrap:anywhere"><b>${esc(u.email)}</b></p></div><button class="btn sm" data-act="acctSignOut">Sign out</button></div>
-    <p class="small" style="margin:8px 0 0">${dot}${cloud.on?esc(st.txt):'Not syncing right now.'}${cloud.on?'':' <button class="linkbtn" data-act="acctRetry">Try again</button>'}</p>`;
-  else if(A)acc=`<p style="margin:0"><b>Not signed in.</b> Your log is on this phone only.</p><div class="row" style="margin-top:10px"><button class="btn primary" data-act="acctOpen" data-mode="signin">Sign in</button><button class="btn" data-act="acctOpen" data-mode="signup">Create account</button></div>`;
-  else acc=`<p class="small" style="margin:0">${dot}${esc(st.txt)}</p>`;
-  const due=backupDue()?`<div class="callout yellow row spread" style="margin:10px 0 0"><span class="small"><b>Backup due.</b></span><button class="btn sm" data-act="export">Export backup</button></div>`:'';
-  const item=(act,label,extra)=>`<button type="button" class="mnu" data-act="${act}"${extra||''}><span>${label}</span><span aria-hidden="true">›</span></button>`;
-  return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h"><h3 id="menuH">${ENV==='preview'?PREVIEW_NAME:APP_NAME}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-  <div class="panel" id="menuAcct">${acc}</div>${due}
-  <div class="mnus">${item('fbOpen','Report a problem',' data-cat="bug"')}${acct.reader&&FB()?item('fbInbox','Reports inbox'):''}${item('guideOpen','Guide')}${item('goLayout','Show, hide, or reorder sections')}${item('goBackup','Your data and backups')}</div>
-  <p class="small muted" style="margin:12px 0 0">Version ${esc(DISPLAY_VERSION)}</p></div>`;
-}
-function fbSheet(m){
-  const head=t=>`<div class="sheet-h"><h3 id="fbH">${t}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>`;
-  if(m.sent)return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(m.copied?'Copied':'Sent')}<p style="margin:0">${m.copied?'Paste it in a message to the app owner.':acct.user?`Thanks. Any reply goes to ${esc(acct.user.email)}.`:'Thanks.'}</p><button type="button" class="btn primary block" style="margin-top:14px" data-act="mClose">Done</button></div>`;
-  const F=FB();const cat=FB_TITLE[m.cat]?m.cat:'bug';
-  const kinds=`<div class="fbkind" role="group" aria-label="Kind">${FB_CATS.map(([k,l])=>`<button type="button" class="${cat===k?'on':''}" data-act="fbCat" data-v="${k}" aria-pressed="${cat===k}">${l}</button>`).join('')}</div>`;
-  // Signed out where reports exist: sign in first (the copy stays for a message).
-  if(F&&!acct.user)return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(FB_TITLE[cat])}
-    <p style="margin:0 0 12px">Sign in to send a report, so a reply can reach you.</p>
-    <div class="stack"><button type="button" class="btn primary block" data-act="acctOpen" data-mode="signin">Sign in</button><button type="button" class="btn block" data-act="acctOpen" data-mode="signup">Create account</button></div>
-    <p class="small muted" style="margin:12px 0 0">No account? <button type="button" class="linkbtn" data-act="fbCopy">Copy the details</button> and send them to the app owner.</p></div>`;
-  const n=String(m.msg||'').length;
-  /* \x3cimg, not the tag itself (r29): the browser's look-ahead scanner can
-     read this script as page markup and fetch "${m.shot}" as an image, a
-     stray 404 seen in tests. The string is the same once it runs. */
-  // Only the app's own JPEG data URL is ever written in (r44 security review): m.shot comes from fbShrink's canvas, and the check keeps it so if that changes.
-  const shot=m.shot&&FB_SHOT_RE.test(m.shot)?`<div class="fbshot">\x3cimg src="${m.shot}" alt="Screenshot to send"><button type="button" class="btn sm" data-act="fbShotDel">Remove</button></div>`
-    :`<label class="btn sm fbpick">Add a screenshot<input type="file" accept="image/png,image/jpeg,image/heic,image/heif,image/webp" id="fbShot" hidden></label>`;
-  return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(FB_TITLE[cat])}<div class="stack">
-  ${kinds}
-  <label class="field">${FB_ASK[cat]}<textarea data-fbind="msg" maxlength="${FB_MAX}" rows="5" placeholder="${esc(FB_HINT[cat])}">${esc(m.msg||'')}</textarea><span class="fbcount small muted" id="fbCount" aria-live="polite">${n} / ${FB_MAX}</span></label>
-  <div><p class="small muted" style="margin:0 0 6px">Screenshot, optional. One image, up to ${FB_IMG_MB} MB.</p><div class="row">${shot}</div></div>
-  <p class="small muted" style="margin:0">${acct.user?`Replies go to ${esc(acct.user.email)}. `:''}Device details are added, never your workouts. ${tipi(FB_WHAT,'What is attached')}</p>
-  ${m.err?`<p class="small" role="alert" style="color:var(--red);margin:0">${esc(m.err)}</p>`:''}
-  <button type="button" class="btn primary block" data-act="fbSend" ${m.busy?'disabled':''}>${m.busy?'Sending':F?'Send':'Copy report'}</button></div></div>`;
-}
-/* The owner's inbox: the reports, newest first, read-only. */
-function fbInboxSheet(m){
-  const it=m.items;
-  const body=m.err?`<p class="small" role="alert" style="color:var(--red)">${esc(m.err)}</p>`:!it?'<p class="muted">Loading</p>':!it.length?'<p class="muted">No feedback yet.</p>':`<ul class="clist fbinbox">${it.map(x=>`<li><div style="min-width:0;flex:1"><p class="small" style="margin:0"><span class="tag ${x.category==='bug'?'red':x.category==='idea'?'green':'blue'}">${esc(x.category)}</span> <span class="muted">${esc(String(x.created_at||'').slice(0,16).replace('T',' '))}${x.reply_to?` · ${esc(x.reply_to)}`:''}</span></p><p style="margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere">${esc(x.message)}</p>${x.screenshot&&FB_SHOT_RE.test(x.screenshot)?`\x3cimg class="fbthumb" src="${esc(x.screenshot)}" alt="Screenshot">`:''}${x.issue_url&&/^https:\/\/github\.com\//.test(x.issue_url)?`<p class="small" style="margin:4px 0 0"><a href="${esc(x.issue_url)}" target="_blank" rel="noopener">GitHub issue</a></p>`:''}<details class="small muted"><summary>Attached by the app</summary><pre class="fbctx">${esc(JSON.stringify(x.context||{},null,1))}</pre></details></div></li>`).join('')}</ul>`;
-  return `<div class="sheet fixed" role="dialog" aria-modal="true" aria-labelledby="fbiH"><div class="sheet-h"><h3 id="fbiH">Feedback inbox</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><div class="sheet-scroll">${body}</div></div>`;
-}
 /* A picked photo, shrunk to 1280 px on its long side as JPEG, so a report
    stays small enough to store (the table caps it). */
 function fbShrink(file){
@@ -205,28 +155,5 @@ document.addEventListener('visibilitychange',()=>{
   if(AUTH()&&!cloud.on)cloudInit();
 });
 const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-/* The code from the confirmation email (r45), on the waiting sheet and, after
-   "Confirm your email first", on sign-in: the code needs only the email, so
-   it still works after the wait gives up or the app was closed. Digits only
-   are sent; the length is the project's (6 by default), so none is forced. */
-function codeField(m){return `<label class="field">Code from the email<input type="text" inputmode="numeric" autocomplete="one-time-code" data-abind="code" value="${esc(m.code||'')}" enterkeyhint="go"></label><button type="button" class="btn primary block" data-act="acctCode" ${m.busy?'disabled':''}>Confirm with the code</button><div class="row"><button type="button" class="linkbtn tall" data-act="acctResend" ${m.busy?'disabled':''}>Send a new code</button></div>`;}
-function acctSheet(m){
-  const f=(label,k,type,ac,extra)=>`<label class="field">${label}<input type="${type}" data-abind="${k}" value="${esc(m[k]||'')}" autocomplete="${ac}" ${extra||''}></label>`;
-  const email=f('Email','email','email','email','autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" enterkeyhint="next"');
-  const err=`<p class="small" role="alert" style="color:var(--red);margin:0"${m.err?'':' hidden'}>${esc(m.err||'')}</p>`;
-  // What it is doing while busy, not "Working" (r34.2).
-  const busyW={signin:'Signing in',signup:'Creating your account',forgot:'Sending the link',newpw:'Saving'}[m.mode]||'One moment';
-  const go=(label)=>`<button type="submit" class="btn primary block" data-act="acctSubmit" ${m.busy?'disabled':''}>${m.busy?busyW:esc(label)}</button>`;
-  const link=(mode,label)=>`<button type="button" class="linkbtn tall" data-act="acctMode" data-mode="${mode}">${label}</button>`;
-  const T={signin:'Sign in',signup:'Create account',forgot:'Reset password',newpw:'New password',sent:m.title||'Check your email',wait:'Check your email',where:m.title||'Email confirmed'};
-  let b='';
-  if(m.mode==='signin')b=`${email}${f('Password','pw','password','current-password','enterkeyhint="go"')}${err}${m.needCode?codeField(m):''}${go('Sign in')}<div class="row spread">${link('forgot','Forgot password?')}${link('signup','Create an account')}</div>`;
-  else if(m.mode==='signup')b=`${email}${f('Password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Create account')}<p class="small muted" style="margin:0">We email you a link and a code to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link('signin','I have an account')}</div>`;
-  else if(m.mode==='forgot')b=`${email}${err}${go('Email me a reset link')}<p class="small muted" style="margin:0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link('signin','Back to sign in')}</div>`;
-  else if(m.mode==='newpw')b=`${f('New password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Save new password')}`;
-  else if(m.mode==='wait')b=`<p style="margin:0">We sent a confirmation email to <b>${esc(m.email||'')}</b>. Type its code here, or tap its link and come back: ${APP_NAME} signs you in by itself.</p>${codeField(m)}<p class="small muted waitline" style="margin:0" aria-live="polite">${m.busy?'Checking':'Waiting for the confirmation'}</p>${err}<button type="button" class="btn block" data-act="acctWaitNow" ${m.busy?'disabled':''}>I have confirmed</button><div class="row">${link('signup','Use a different email')}</div>`;
-  else if(m.mode==='where')b=`<p style="margin:0">Where do you use ${APP_NAME}?</p><button type="button" class="btn primary block" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn block" data-act="acctWhere" data-v="here">Here in this browser</button>`;
-  else b=`<p style="margin:0">${esc(m.msg||'')}</p><button type="button" class="btn primary block" data-act="mClose">OK</button>`;
-  return `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(T[m.mode]||'Account')}"><div class="sheet-h"><h3>${esc(T[m.mode]||'Account')}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><form class="stack" id="acctForm" novalidate>${b}</form></div>`;
-}
-
+/* The menu, the account sheet, a problem report and its inbox are drawn by
+   src/app/sheetsaccount.ts since r63. */

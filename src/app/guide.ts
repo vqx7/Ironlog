@@ -3,7 +3,7 @@
    legacy script it lived in then changed only by moving). Its words change
    with the rules they state. */
 
-import { esc, numWord, orList, pct1, pctOf, shareWords, timesWord, MINUTE_S, WEEK_DAYS } from './util';
+import { numWord, orList, pct1, pctOf, shareWords, timesWord, MINUTE_S, WEEK_DAYS } from './util';
 import {
   BACK_DAYS,
   BACK_RIR,
@@ -71,6 +71,9 @@ import { AUTH, FB } from './providers';
 import { halfLbl } from './effort';
 import { whtrBands } from './stats';
 import { CAL_OFFER, ODD_REPS, ODD_REPS_TIMES } from './worksets';
+import { html } from 'lit-html';
+import type { TemplateResult } from 'lit-html';
+import { markup } from './view';
 
 /* The Guide's numbers, each the constant its rule applies (the numbers pass,
    r61), so a changed rule changes what the Guide says. The profile's plans
@@ -93,7 +96,7 @@ const OTHER_WKS = orList(REGION_WKS.map(([n]) => n).filter(n => n !== REGION_WK_
    the reasoning lives here, so it is findable on a phone where nothing can
    be hovered. Each topic folds. Keep it in step with the code: the rules
    here are the ones suggest(), IDX() and shortPlan() apply. */
-export function guideSheet(m: { open?: string | undefined }): string {
+export function guideSheet(m: { open?: string | undefined }): TemplateResult {
   const off = state.settings.rirMode === 'off';
   const kg = U() === 'kg';
   const inClaude = !!(window.claude && typeof window.claude.use === 'function');
@@ -219,6 +222,6 @@ export function guideSheet(m: { open?: string | undefined }): string {
     ]
   ];
   const open = m.open || '';
-  return `<div class="sheet guide" role="dialog" aria-modal="true" aria-labelledby="guideH"><div class="sheet-h"><h3 id="guideH">Guide</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-  ${T.map(([k, t, b]) => `<details class="gsec" data-g="${k}" ${open === k ? 'open' : ''}><summary>${esc(t)}</summary><div class="gbody">${b}</div></details>`).join('')}</div>`;
+  return html`<div class="sheet guide" role="dialog" aria-modal="true" aria-labelledby="guideH"><div class="sheet-h"><h3 id="guideH">Guide</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
+  ${T.map(([k, t, b]) => html`<details class="gsec" data-g=${k} ?open=${open === k}><summary>${t}</summary><div class="gbody">${markup(b)}</div></details>`)}</div>`;
 }

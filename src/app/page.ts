@@ -432,8 +432,7 @@ export function setSaveState(): void {
   draw(html`${markup(MENU_ICON)}<span class="sd" aria-hidden="true"></span><span class="sst">${txt}</span>`, el);
   el.setAttribute('aria-label', 'Menu. ' + txt);
   el.setAttribute('data-tip', txt);
-  const u = acct.user;
-  const who = u && typeof u === 'object' && 'email' in u && typeof u.email === 'string' ? u.email : '';
+  const who = acct.user ? acct.user.email : '';
   const key = cls + '|' + txt + '|' + who;
   if (saveShown !== key) {
     saveShown = key;

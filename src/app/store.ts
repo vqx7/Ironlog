@@ -244,10 +244,14 @@ export function setFx(f: Fx): void {
 
 /** The account on this device: the user signed in, whether the check has run, and whether they read reports. */
 export interface Acct {
-  user: unknown;
+  user: AcctUser | null;
   checked: boolean;
   reader: boolean;
-  [field: string]: unknown;
+}
+/** A signed-in account, as the account service gives it (scripts/cloud-supabase.js, who()): its id and email. */
+export interface AcctUser {
+  id: string;
+  email: string;
 }
 export const acct: Acct = { user: null, checked: false, reader: false };
 

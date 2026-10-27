@@ -4,8 +4,6 @@
    the steps are kept in storage.ts since r30, and the toast only offers the
    newest. */
 
-import { html, nothing, render } from 'lit-html';
-
 /** How long a toast stays, in milliseconds: one that offers Undo, and one that does not. */
 const TOAST_MS = { undo: 6000, plain: 2600 } as const;
 
@@ -17,7 +15,19 @@ export function toast(msg: string, undo?: boolean | null, ms?: number | null, ki
   const el = box();
   if (!el) return;
   el.classList.toggle('pr', kind === 'pr');
-  render(html`<span>${msg}</span>${undo ? html`<button data-act="undo">Undo</button>` : nothing}`, el);
+  /* Made as nodes, its words as text, rather than drawn by lit-html: what
+     shows here is replaced whole each time, and a toast emptied by anything
+     else (a suite clears it between checks) must not stop the next one. */
+  const say = document.createElement('span');
+  say.textContent = msg;
+  const parts: Node[] = [say];
+  if (undo) {
+    const b = document.createElement('button');
+    b.dataset.act = 'undo';
+    b.textContent = 'Undo';
+    parts.push(b);
+  }
+  el.replaceChildren(...parts);
   el.hidden = false;
   clearTimeout(toastT);
   toastT = setTimeout(
