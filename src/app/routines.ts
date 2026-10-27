@@ -19,6 +19,11 @@ export type NewItem = Omit<PlanItem, 'ss' | 'jump'>;
 
 /** A routine as first made, before normalize() completes its items. */
 export type NewRoutine = Omit<Routine, 'days'> & { days: (Omit<Day, 'items'> & { items: NewItem[] })[] };
+/** A routine as first made, its items given the empty superset link normalize() gives them, so it can join the log. */
+export const fullRoutine = (r: NewRoutine): Routine => ({
+  ...r,
+  days: r.days.map(d => ({ ...d, items: d.items.map(it => ({ ...it, ss: null })) }))
+});
 
 /** A ready-made routine's exercise: the plan without ids, which a copy gets. */
 export type TemplateItem = Pick<PlanItem, 'exId' | 'sets' | 'repMin' | 'repMax' | 'rir' | 'rest'>;

@@ -380,18 +380,34 @@ export function mergeSession(
 
 /** A session in progress as Undo merges it: its id, its exercises and the fields merged whole. */
 type UndoDraft = { id: string; ex: { exId: string }[] } & Record<string, unknown>;
+/* A session in progress read for Undo (r63, as the typed Undo reads the
+   documents): an object with an id and a list of exercises, each an object
+   with its exercise's id, else null. Each is read as a shallow copy; the
+   merge picks among them by their contents, and what it returns is
+   normalized when the log is put back together. */
+function undoDraftOf(v: unknown): UndoDraft | null {
+  const d = rec(v);
+  const ex = d && arr(d['ex']);
+  if (!d || typeof d['id'] !== 'string' || !ex) return null;
+  const blocks: { exId: string }[] = [];
+  for (const b0 of ex) {
+    const b = rec(b0);
+    if (!b || typeof b['exId'] !== 'string') return null;
+    blocks.push({ ...b, exId: b['exId'] });
+  }
+  return { ...d, id: d['id'], ex: blocks };
+}
 
 /* Undo inside a session: the session in progress merged exercise by
    exercise (keyed by exercise and its occurrence), base = right after the
    action, local = now, other = before it. Exercises changed only by the
    action go back; ones changed since keep the newer version. As a whole
    record, any set logged after the action used to block the undo. */
-export function mergeDraft(
-  base: UndoDraft | null | undefined,
-  cur: UndoDraft | null | undefined,
-  pre: UndoDraft | null | undefined
-): UndoDraft | null {
-  if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur === undefined ? null : cur;
+export function mergeDraft(base0: unknown, cur0: unknown, pre0: unknown): unknown {
+  const base = undoDraftOf(base0),
+    cur = undoDraftOf(cur0),
+    pre = undoDraftOf(pre0);
+  if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur0 === undefined ? null : cur0;
   type B = UndoDraft['ex'][number];
   const keyed = (list: readonly B[] | null | undefined): [string, B][] => {
     const seen: Record<string, number> = {};

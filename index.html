@@ -1977,9 +1977,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var TYPED_STEP = 0.05;
   var PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
   var SMALL_PLATE = { lb: 1.25, kg: 0.5 };
-  var inUnitIn = (M3, kg) => UIn(M3) === "lb" ? kg / LB : kg;
+  var inUnitIn = (M3, kg2) => UIn(M3) === "lb" ? kg2 / LB : kg2;
   var kgOfIn = (M3, v3) => UIn(M3) === "lb" ? v3 * LB : v3;
-  var toDIn = (M3, kg) => kg == null ? null : inUnitIn(M3, kg);
+  var toDIn = (M3, kg2) => kg2 == null ? null : inUnitIn(M3, kg2);
   var fromDIn = (M3, v3) => v3 == null ? null : kgOfIn(M3, v3);
   function unitStepIn(M3) {
     return UIn(M3) === "kg" ? DEFAULT_STEP.kg : STEP_LB;
@@ -2042,8 +2042,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function typedUnit(w2) {
     const a2 = Math.abs(w2);
     if (!(a2 > 0)) return null;
-    const kg = onStep(a2, TYPED_STEP), lb = onStep(a2 / LB, TYPED_STEP);
-    return kg === lb ? null : kg ? "kg" : "lb";
+    const kg2 = onStep(a2, TYPED_STEP), lb = onStep(a2 / LB, TYPED_STEP);
+    return kg2 === lb ? null : kg2 ? "kg" : "lb";
   }
   function halfStep(a2, u4) {
     const k2 = u4 === "lb" ? LB : 1;
@@ -2206,6 +2206,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var JUMP_TIP = `When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: ${pct1(JUMP_COMPOUND)}% on compound lifts, ${pct1(JUMP_ISOLATION)}% on isolation lifts, a convention. 0: one step every time. Until then the target is to beat last time's total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.`;
 
   // src/app/routines.ts
+  var fullRoutine = (r4) => ({
+    ...r4,
+    days: r4.days.map((d3) => ({ ...d3, items: d3.items.map((it) => ({ ...it, ss: null })) }))
+  });
   var DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   var MAX_DAYS = 14;
   function dayLabel(R2, i5) {
@@ -3010,8 +3014,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     );
     return out;
   }
-  function mergeDraft(base, cur, pre) {
-    if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur === void 0 ? null : cur;
+  function undoDraftOf(v3) {
+    const d3 = rec(v3);
+    const ex = d3 && arr(d3["ex"]);
+    if (!d3 || typeof d3["id"] !== "string" || !ex) return null;
+    const blocks = [];
+    for (const b0 of ex) {
+      const b2 = rec(b0);
+      if (!b2 || typeof b2["exId"] !== "string") return null;
+      blocks.push({ ...b2, exId: b2["exId"] });
+    }
+    return { ...d3, id: d3["id"], ex: blocks };
+  }
+  function mergeDraft(base0, cur0, pre0) {
+    const base = undoDraftOf(base0), cur = undoDraftOf(cur0), pre = undoDraftOf(pre0);
+    if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur0 === void 0 ? null : cur0;
     const keyed = (list) => {
       const seen = {};
       return (list || []).map((b2) => {
@@ -5906,12 +5923,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return isCompound(ex) && !ex.bw && !noE1(ex) && loadMode(ex) === "total";
   }
   var emptyLoad = (ex) => ex.bw && !ex.assist ? "0" : "";
-  var fmtWIn = (M3, kg) => kg == null || isNaN(kg) ? "" : String(r1(toDIn(M3, kg)));
-  function loadLabelIn(M3, ex, kg) {
+  var fmtWIn = (M3, kg2) => kg2 == null || isNaN(kg2) ? "" : String(r1(toDIn(M3, kg2)));
+  function loadLabelIn(M3, ex, kg2) {
     if (ex.bw) {
-      return kg > 0 ? `BW+${fmtWIn(M3, kg)}` : kg < 0 ? `BW−${fmtWIn(M3, -kg)}` : "BW";
+      return kg2 > 0 ? `BW+${fmtWIn(M3, kg2)}` : kg2 < 0 ? `BW−${fmtWIn(M3, -kg2)}` : "BW";
     }
-    return fmtWIn(M3, kg);
+    return fmtWIn(M3, kg2);
   }
   function swapWIn(M3, ex, res, nw) {
     const a2 = loadLabelIn(M3, ex, res.w), b2 = loadLabelIn(M3, ex, nw);
@@ -5921,9 +5938,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (res.tgt && res.tgt.w != null) out.tgt = { ...res.tgt, w: nw };
     return out;
   }
-  function roundLoadIn(M3, kg, down) {
+  function roundLoadIn(M3, kg2, down) {
     const step = DEFAULT_STEP[UIn(M3)];
-    const d3 = toDIn(M3, kg);
+    const d3 = toDIn(M3, kg2);
     return fromDIn(M3, Math.max(step, (down ? Math.floor(d3 / step + EPS) : Math.round(d3 / step)) * step));
   }
 
@@ -10545,8 +10562,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   var sessionsOn = (d3) => dateIndex().byDate[d3] || [];
   var K_FROM = 1e4, K = 1e3;
-  function fmtK(kg) {
-    const v3 = Math.round(toD(kg) ?? 0);
+  function fmtK(kg2) {
+    const v3 = Math.round(toD(kg2) ?? 0);
     return v3 >= K_FROM ? Math.round(v3 / K) + "k" : v3.toLocaleString();
   }
   var distU = () => U() === "kg" ? "km" : "mi";
@@ -10562,9 +10579,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function effTgt(rir) {
     return rirScale() === "rpe" ? `RPE ${effShow(rir)}` : `${effShow(rir)} RIR`;
   }
-  function fmtE(kg) {
-    if (kg == null || isNaN(kg)) return "";
-    const v3 = toD(kg) ?? 0;
+  function fmtE(kg2) {
+    if (kg2 == null || isNaN(kg2)) return "";
+    const v3 = toD(kg2) ?? 0;
     return String(U() === "lb" ? Math.round(v3) : Math.round(v3 * 2) / 2);
   }
   var LU = () => U() === "lb" ? "in" : "cm";
@@ -10574,7 +10591,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   var lenFrom = (v3) => U() === "lb" ? v3 * IN : v3;
   var lenD = (cm) => cm == null ? "" : String(r1(U() === "lb" ? cm / IN : cm));
-  var fmtBig = (kg) => Math.round(toD(kg) ?? 0).toLocaleString();
+  var fmtBig = (kg2) => Math.round(toD(kg2) ?? 0).toLocaleString();
   function loadHead(ex) {
     const m3 = loadMode(ex), u4 = U().toUpperCase();
     if (ex && ex.assist) return "Help " + u4;
@@ -12747,12 +12764,12 @@ ${detail}`
     const b2 = blockAt(m3.b);
     if (!b2) return null;
     const ex = EX(b2.exId);
-    const kg = U() === "kg";
+    const kg2 = U() === "kg";
     const rp = rirScale() === "rpe";
     const tail = rp ? "rpe 9" : "rir 1";
-    const eg1 = kg ? `100x5, 5, 4 ${tail}` : `235x5, 5, 4 ${tail}`;
-    const eg2 = rp ? kg ? "80x8@8 90x6@9" : "185x8@8 205x6@9" : kg ? "80x8@2 90x6@1" : "185x8@2 205x6@1";
-    const ph = kg ? `100x5, 5, 4 ${tail}` : `225x5, 5, 4 ${tail}`;
+    const eg1 = kg2 ? `100x5, 5, 4 ${tail}` : `235x5, 5, 4 ${tail}`;
+    const eg2 = rp ? kg2 ? "80x8@8 90x6@9" : "185x8@8 205x6@9" : kg2 ? "80x8@2 90x6@1" : "185x8@2 205x6@1";
+    const ph = kg2 ? `100x5, 5, 4 ${tail}` : `225x5, 5, 4 ${tail}`;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}: type sets</h3>${closeX()}</div>
     ${ex.timed ? b`<p class="small muted" style="margin:0">Timed hold: the number after x is seconds, for example <b>25x45, 40</b> or <b>bw x 60, 50</b>.</p>` : ""}
     <p class="small muted">Loads in ${U()}${loadNote(ex)}${ex.bw ? ", added to bodyweight (bw or bw+25)" : ""}. <b>${eg1}</b> or <b>${eg2}</b>. <span class="hastip" data-tip=${`Type or use the keyboard's dictation mic. ${rp ? "rpe" : "rir"} at the end applies to every set; @ gives ${effName()} per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.`}>More</span></p>
@@ -13006,6 +13023,51 @@ ${detail}`
     ].slice(0, TRASH_MAX);
     while (state.trash.length > 1 && JSON.stringify(state.trash).length > TRASH_BYTES) state.trash.pop();
   }
+  function undoStep() {
+    const e5 = undoStack.pop();
+    if (!e5) return "none";
+    undoPersist();
+    const before = canon(state);
+    let done = false;
+    if (e5.inv) {
+      try {
+        done = e5.inv() === true;
+      } catch (x2) {
+        log("undo", x2);
+        done = false;
+      }
+      if (done) setState(normalize(state));
+    }
+    if (!done)
+      try {
+        const pre = normalize(parseJson(e5.pre));
+        const post = e5.post ? normalize(parseJson(e5.post)) : state;
+        const P2 = chunksOf(pre), Q = chunksOf(post), C2 = chunksOf(state);
+        const stat = { conflicts: 0 };
+        const parts = {};
+        for (const id of /* @__PURE__ */ new Set([...Object.keys(P2), ...Object.keys(Q), ...Object.keys(C2)])) {
+          const q = Q[id] || emptyChunk(id);
+          const qd = Q["draft"], pd = P2["draft"];
+          parts[id] = id === "draft" ? {
+            draft: mergeDraft(
+              qd && qd["draft"],
+              normalize(parseJson(JSON.stringify(state))).draft,
+              pd && pd["draft"]
+            )
+          } : mergeChunk(id, q ? baseOf(id, q) : null, C2[id] || emptyChunk(id), P2[id] || emptyChunk(id), false, stat);
+        }
+        setState(assemble(parts));
+      } catch (x2) {
+        log("undo", x2);
+        return "failed";
+      }
+    const below = undoStack[undoStack.length - 1];
+    if (below && below.post == null) below.post = e5.pre;
+    if (canon(state) === before) return "unchanged";
+    invalidate();
+    saveNow();
+    return undoStack.length;
+  }
 
   // src/app/workstate.ts
   var FOLD_MS = { tick: 1200, effort: 900, strip: 1500 };
@@ -13231,15 +13293,15 @@ ${detail}`
     const b2 = own || (unit === "lb" ? PLATES_LB : PLATES_KG);
     return state.settings.smallPlates ? [...b2, SMALL_PLATE[unit]] : b2.slice();
   }
-  function plateText(kg, mode, ex) {
+  function plateText(kg2, mode, ex) {
     const md = mode || "bar";
     if (md === "none") return "";
     const g2 = gymOf();
     const pu = g2 && g2.u && g2.u !== U() ? g2.u : U();
     const inU = (v3) => pu === "lb" ? v3 / LB : v3;
-    const load2 = inU(kg), bar2 = md === "bar" ? inU(exBarKg(ex)) : 0;
+    const load2 = inU(kg2), bar2 = md === "bar" ? inU(exBarKg(ex)) : 0;
     if (!(load2 > 0)) return "";
-    if (load2 < bar2 - EPS_SAME) return `${fmtW(kg)} ${U()} is below the ${r1(bar2)} ${pu} bar`;
+    if (load2 < bar2 - EPS_SAME) return `${fmtW(kg2)} ${U()} is below the ${r1(bar2)} ${pu} bar`;
     const { plates: out, rest: left } = platesPerSide(
       plateList(pu),
       md === "sleeve" ? load2 : (load2 - bar2) / 2,
@@ -13247,7 +13309,7 @@ ${detail}`
     );
     const rest = Math.round(left * HUNDREDTHS) / HUNDREDTHS;
     const tiny = pu !== U() && rest < PLATE_DUST[pu];
-    const lead = md === "sleeve" ? `On the sleeve at ${fmtW(kg)}` : md === "side" ? `Per side at ${fmtW(kg)} (no bar)` : `Per side at ${fmtW(kg)}`;
+    const lead = md === "sleeve" ? `On the sleeve at ${fmtW(kg2)}` : md === "side" ? `Per side at ${fmtW(kg2)} (no bar)` : `Per side at ${fmtW(kg2)}`;
     const tag = pu !== U() ? ` ${pu}` : "";
     return `${lead}: ${out.length ? out.join(", ") + tag : "bar only"}${rest > 0 && !tiny ? ` (${rest} ${pu} not loadable)` : ""}`;
   }
@@ -17168,11 +17230,11 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
   // src/app/guide.ts
   var S3 = PROFILE_PLAN.strength, B4 = PROFILE_PLAN.both, F2 = PROFILE_PLAN.first;
   var CAP = pctOf(JUMP_CAP - 1), CAP_LIGHT = pctOf(JUMP_CAP_LIGHT - 1), CAP_EARLY = pctOf(JUMP_CAP_EARLY - 1);
-  var lightLift = (kg) => kg ? `${LIGHT_LIFT_KG} kg` : `about ${Math.round(LIGHT_LIFT_KG / LB / DEFAULT_STEP.lb) * DEFAULT_STEP.lb} lb`;
+  var lightLift = (kg2) => kg2 ? `${LIGHT_LIFT_KG} kg` : `about ${Math.round(LIGHT_LIFT_KG / LB / DEFAULT_STEP.lb) * DEFAULT_STEP.lb} lb`;
   var OTHER_WKS = orList(REGION_WKS.map(([n3]) => n3).filter((n3) => n3 !== REGION_WK_DEFAULT));
   function guideSheet(m3) {
     const off = state.settings.rirMode === "off";
-    const kg = U() === "kg";
+    const kg2 = U() === "kg";
     const inClaude2 = !!(window.claude && typeof window.claude.use === "function");
     const accts = !inClaude2 && !!AUTH();
     const where = inClaude2 ? `<p><b>Your log</b> is saved with your Claude account and in this browser.</p>` : accts ? `<p><b>Without an account</b> your log is on this phone only: deleting the app deletes it. Export a backup in Settings, Your data, and keep it in Files.</p>
@@ -17226,9 +17288,9 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
    <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about ${pct1(JUMP_COMPOUND)}% of the load on compound lifts and ${pct1(JUMP_ISOLATION)}% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (it costs ${BIG_STEP_REPS} reps or more, as 5 lb on a 35 lb dumbbell does), on a range ${FIXED_RANGE} or more reps wide, you first build a few reps past the top at this load, up to ${shareWords(BUILD_PAST.share)} of the top of the range more (${numWord(BUILD_PAST.min)} at least), until your estimate says the new load allows the bottom of the range; then the load goes up. Past that, the load goes up anyway, with the reps your estimate allows there as the target. A fixed-rep plan (5 x 5, 3 x 3-5) goes up a step every time all its sets are done.</p>
    <p><b>Dumbbells and kettlebells</b> step by what your rack has: with no load step set on the exercise, the step fits every load you logged on it (12, 14, and 16 kg is a rack in 2 kg steps; 12.5 and 15, one in 2.5).</p>
    <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets, a set past the top of the range counting as the top. One set under the range among the others counts as the bottom of the range, so one bad set does not set the next target. A session clearly below your usual repeats the last target (One rule for every session, below); a second in a row is your usual, and then every set under the range at a load you did in it the time before asks for the bottom of the range in every set again.</p>
-   <p><b>Well past the range</b> (every set ${CLEARLY_OFF} or more reps over the top, as after moving the range down): the load your estimated 1RM gives for the middle of the range, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg)}), in whole steps.</p>
+   <p><b>Well past the range</b> (every set ${CLEARLY_OFF} or more reps over the top, as after moving the range down): the load your estimated 1RM gives for the middle of the range, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg2)}), in whole steps.</p>
    <p><b>Below the range</b> (every set ${CLEARLY_OFF} or more reps short, or short two sessions running at the same load, or ${numWord(SHORT_RUN)} running even with the reps creeping up, or the first time in a range you have not trained, as after an import): down to what your estimate says fits the range, in whole steps. Not just after one step up while you are ${JUST_UP.short} or fewer reps short, and not while your reps at that load are rising. The rep target counts as many sets as the plan has. A single session clearly below your usual is not read this way: it repeats the last target, and a second in a row becomes your usual.</p>
-   <p><b>Too easy</b> (every top set logged ${CLEARLY_OFF} or more RIR above the target): the same estimate sets a heavier load, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg)}), and at least one step when every set was rated ${RIR_CALL_TOP} or more in reserve, where the estimate is only a floor.</p>
+   <p><b>Too easy</b> (every top set logged ${CLEARLY_OFF} or more RIR above the target): the same estimate sets a heavier load, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg2)}), and at least one step when every set was rated ${RIR_CALL_TOP} or more in reserve, where the estimate is only a floor.</p>
    <p><b>The first ${EARLY_SESSIONS} sessions</b> of a lift find its load: there the most these two can add is ${CAP_EARLY}%, so a first guess well under what you can do moves up by what your reps and reps in reserve allow, not a step at a time. A set rated ${RIR_CALL_TOP} or more in reserve is read as ${E1_MAX_RIR}, so from such sets the load moves about a step a session: rate the reps left as closely as you can. For picking a load only, sets past ${E1_MAX_REPS} reps to failure are read with Epley up to ${FIT_MAX_RTF}, so a set of 25 still moves the load the right amount (never shown as a 1RM). A convention.</p>
    <p><b>The first session of a close variation</b> (a hammer curl after DB curls, a front squat after back squats) starts from the related lift's last full session in the last ${KIN.days} days, when both use the same equipment, load, main muscle, and movement, with both arms or both legs at once. About ${pctOf(KIN.isolation)}% of its estimate (${pctOf(KIN.compound)}% on a compound lift), for the middle of the range with ${numWord(FATIGUE_RIR)} more rep in reserve, rounded down. Machines and cables start fresh, since two machines' numbers do not compare.</p>
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
@@ -17823,9 +17885,9 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
     t: null
   };
   function obTourSlides() {
-    const kg = U() === "kg";
+    const kg2 = U() === "kg";
     const u4 = U();
-    const w2 = TOUR.loads[kg ? "kg" : "lb"];
+    const w2 = TOUR.loads[kg2 ? "kg" : "lb"];
     const f3 = (v3) => fmtW(fromD(v3 || 0));
     const log2 = b`<div class="obv" aria-hidden="true"><div class="row spread"><b>Incline DB Press</b><span class="mu">Last ${f3(w2[0])} × 10, 10, 10</span></div>
 <div class="obv-row"><b class="mu">1</b><span>${f3(w2[1])}</span><span>10</span><i class="on"></i></div>
@@ -17850,7 +17912,7 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
     const plan = b`<div class="obv" aria-hidden="true"><div class="obv-week">${days.map(([d3, t4]) => b`<div class=${t4 ? "t" : A}><b></b>${d3}</div>`)}</div>
 <div class="obv-plan"><div><b>Bench Press</b><span class="mu">3 × 6-10</span></div><div><b>Chest-Supported Row</b><span class="mu">3 × 8-12</span></div><div class="free"><b>Freestyle</b><span class="mu">add as you go</span></div></div></div>`;
     const pts = TOUR.line.map((y2, i5) => [TOUR.x0 + i5 * TOUR.dx, y2]);
-    const e12 = TOUR.e1[kg ? "kg" : "lb"];
+    const e12 = TOUR.e1[kg2 ? "kg" : "lb"];
     const end = pts[pts.length - 1] || [0, 0];
     const prog = b`<div class="obv" aria-hidden="true"><b>Bench Press</b> <span class="mu">est. 1RM ${e12[0]} to ${e12[1]} ${u4}</span><span class="obv-chip">PR</span>
 <svg viewBox="0 0 290 80" style="margin-top:6px">${TOUR.grid.map((y2) => b`<line class="gl" x1="0" x2="290" y1=${y2} y2=${y2}></line>`)}
@@ -18344,14 +18406,14 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
         toast("Enter a bodyweight");
         return;
       }
-      const kg = fromD(v3);
-      if (kg == null || kg < BW_MIN_KG || kg > BW_MAX_KG) {
+      const kg2 = fromD(v3);
+      if (kg2 == null || kg2 < BW_MIN_KG || kg2 > BW_MAX_KG) {
         toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);
         return;
       }
       act(() => {
         state.bodyweights = state.bodyweights.filter((b2) => b2.date !== date);
-        state.bodyweights.push({ id: uid(), date, kg, demo: false });
+        state.bodyweights.push({ id: uid(), date, kg: kg2, demo: false });
       });
       if (inp) inp.value = "";
       if (de) de.value = today();
@@ -18560,9 +18622,9 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
   function todayChange(t4) {
     if (t4.id !== "obBw") return false;
     const v3 = numIn(t4.value);
-    const kg = v3 == null ? null : fromD(v3);
-    const okKg = kg != null && kg >= BW_MIN_KG && kg <= BW_MAX_KG ? kg : null;
-    if (kg != null && okKg == null) {
+    const kg2 = v3 == null ? null : fromD(v3);
+    const okKg = kg2 != null && kg2 >= BW_MIN_KG && kg2 <= BW_MAX_KG ? kg2 : null;
+    if (kg2 != null && okKg == null) {
       toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);
       t4.value = "";
     }
@@ -18969,15 +19031,15 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
   function plateLine(b2, si) {
     let at2 = si != null && b2.sets[si] ? si : -1;
     if (at2 < 0) at2 = b2.sets.findIndex((x2, i5) => !x2.done && !x2.warm && +(effW(b2, i5) ?? 0) > 0);
-    const kg = at2 >= 0 ? +(effW(b2, at2) ?? 0) || 0 : Math.max(0, ...b2.sets.map((x2, i5) => x2.warm ? 0 : +(effW(b2, i5) ?? 0) || 0));
+    const kg2 = at2 >= 0 ? +(effW(b2, at2) ?? 0) || 0 : Math.max(0, ...b2.sets.map((x2, i5) => x2.warm ? 0 : +(effW(b2, i5) ?? 0) || 0));
     const ex = EX(b2.exId);
     const pm = platesMode(ex);
     if (loadMode(ex) === "side")
-      return plateText(kg * 2 + (pm === "bar" ? exBarKg(ex) : 0), pm, ex).replace(
+      return plateText(kg2 * 2 + (pm === "bar" ? exBarKg(ex) : 0), pm, ex).replace(
         /^Per side at [^:]+:/,
         "Plates a side:"
       );
-    return plateText(kg, pm, ex);
+    return plateText(kg2, pm, ex);
   }
   function adjLine(b2, bi) {
     const a2 = b2.adj;
@@ -21386,7 +21448,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
       const map = impHeader(rows[0]);
       openPreview(
-        map["ex"] != null && (map["r"] != null || map["secs"] != null) && map["w"] != null && map["date"] != null ? impFromTable(rows, map) : { sessions: [], unit: null, skipped: 0, cardio: 0, needMap: true },
+        map["ex"] != null && (map["r"] != null || map["secs"] != null) && map["w"] != null && map["date"] != null ? impFromTable(rows, map) : { sessions: [], needMap: true },
         { rows, map }
       );
     } catch (e5) {
@@ -21460,13 +21522,13 @@ ${JSON.stringify(ctx, null, 1)}`;
         if (!m3.res.text && allTimed(n3)) e5.timed = true;
         newExE.push([n3, e5]);
       }
-    const newEx = Object.fromEntries(newExE);
+    const newEx2 = Object.fromEntries(newExE);
     for (const x2 of m3.res.sessions) {
       const date = x2.date || m3.date;
       const ex = [];
       const sid = uid(), grp = {};
       for (const it of x2.items) {
-        const exo = m3.pick[it.name] === "new" ? newEx[it.name] || EX("") : EX(m3.pick[it.name] || "");
+        const exo = m3.pick[it.name] === "new" ? newEx2[it.name] || EX("") : EX(m3.pick[it.name] || "");
         const fileSets = it.sets || [];
         if (!it.setsText && !exo.timed && fileSets.some((q) => q.timed)) timedOff += fileSets.filter((q) => q.timed).length;
         const sets = it.setsText ? impTextSets(it, exo, conv) : fileSets.filter((q) => exo.timed || !q.timed).map((s3) => ({
@@ -21561,7 +21623,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       bad,
       odd,
       timedOff,
-      newEx: Object.values(newEx).filter((e5) => fresh.some((ss) => ss.ex.some((b2) => b2.exId === e5.id)))
+      newEx: Object.values(newEx2).filter((e5) => fresh.some((ss) => ss.ex.some((b2) => b2.exId === e5.id)))
     };
   }
   var FROM_LOG = {
@@ -22443,6 +22505,1874 @@ ${JSON.stringify(ctx, null, 1)}`;
     }
   };
 
+  // src/app/actsapp.ts
+  function trashTidy() {
+    const tr = state.trash || [];
+    const keep = tr.filter((t4) => !(t4.kind === "routine" && plainTemplate(t4.data)));
+    if (keep.length !== tr.length)
+      act(() => {
+        state.trash = keep;
+      });
+  }
+  function markExported() {
+    act(() => {
+      state.settings.lastExport = today();
+    });
+  }
+  async function downloads() {
+    const c4 = window.claude;
+    if (!(c4 && typeof c4.use === "function")) return null;
+    return await c4.use("downloads") || null;
+  }
+  var codeIs = (e5, c4) => !!e5 && typeof e5 === "object" && "code" in e5 && e5.code === c4;
+  var nameIs = (e5, n3) => e5 instanceof Error && e5.name === n3;
+  var LINK_MS = 1e3;
+  async function exportFile(data, filename, mime, okMsg, onSaved, fallbackTitle, fallbackHelp) {
+    try {
+      const dl = await downloads();
+      if (dl) {
+        try {
+          await dl.save({ filename, data });
+          if (onSaved) onSaved();
+          toast(okMsg);
+          return;
+        } catch (e5) {
+          if (codeIs(e5, "declined")) {
+            toast("Save cancelled");
+            return;
+          }
+          log("export", e5);
+        }
+      }
+    } catch (e5) {
+      log("export", e5);
+    }
+    try {
+      const file = typeof File === "function" ? new File([data], filename, { type: mime }) : null;
+      if (file && isStandalone() && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: filename });
+          if (onSaved) onSaved();
+          toast(okMsg);
+          return;
+        } catch (e5) {
+          if (nameIs(e5, "AbortError")) {
+            toast("Save cancelled");
+            return;
+          }
+          log("export", e5);
+        }
+      }
+    } catch (e5) {
+      log("export", e5);
+    }
+    let clicked = false;
+    try {
+      const a2 = document.createElement("a");
+      a2.href = URL.createObjectURL(new Blob([data], { type: mime }));
+      a2.download = filename;
+      document.body.appendChild(a2);
+      a2.click();
+      setTimeout(() => {
+        URL.revokeObjectURL(a2.href);
+        a2.remove();
+      }, LINK_MS);
+      clicked = true;
+    } catch (e5) {
+      log("export", e5);
+    }
+    if (!clicked) {
+      openModal({ kind: "text", title: fallbackTitle, help: fallbackHelp, text: data, readonly: true });
+      return;
+    }
+    confirmSaved(filename, onSaved, fallbackTitle, fallbackHelp, data);
+  }
+  function confirmSaved(filename, onSaved, title, help, data) {
+    openModal({
+      kind: "confirm",
+      title: "Did the file download?",
+      body: `Look for ${filename}. If nothing appeared, this browser blocked the download and you should copy the text instead.`,
+      okLabel: "Yes, I have the file",
+      fn: () => {
+        if (onSaved) onSaved();
+        toast("Backup recorded");
+      },
+      alt: {
+        label: "Show the text instead",
+        fn: () => openModal({ kind: "text", title, help, text: data, readonly: true })
+      }
+    });
+  }
+  function exportBackup() {
+    const data = JSON.stringify(
+      { app: STORAGE_ID, version: APP_VERSION, exported: (/* @__PURE__ */ new Date()).toISOString(), state },
+      null,
+      1
+    );
+    return exportFile(
+      data,
+      `${FILE_PREFIX}-backup-${today()}.json`,
+      "application/json",
+      "Backup saved",
+      markExported,
+      "Backup text",
+      "Copy all of this and keep it somewhere safe. Paste it into Import on any device to restore."
+    );
+  }
+  function exportCSV() {
+    const q = (v3) => {
+      const s3 = String(v3 == null ? "" : v3);
+      return /[",\n]/.test(s3) ? '"' + s3.replace(/"/g, '""') + '"' : s3;
+    };
+    const rows = [
+      [
+        "date",
+        "day",
+        "deload",
+        "exercise",
+        "primary",
+        "set",
+        "warmup",
+        "dropset",
+        "per_side",
+        "load_entry",
+        `load_${U()}`,
+        `total_load_${U()}`,
+        "reps",
+        "rir",
+        `e1rm_${U()}`,
+        "exercise_note",
+        "session_note",
+        "session_minutes",
+        "avg_hr",
+        "unit",
+        "calibration"
+      ]
+    ];
+    for (const ss of sortedSessions()) {
+      for (const b2 of ss.ex) {
+        const ex = EX(b2.exId);
+        b2.sets.forEach((s3, i5) => {
+          const total = loadOf(ex, s3, ss.date);
+          const est = s3.warm || s3.drop || noE1(ex) ? null : e1(total, +s3.r, rirEst(s3, ex));
+          rows.push([
+            ss.date,
+            ss.dayName,
+            ss.deload ? "yes" : "no",
+            ex.name,
+            ML[ex.primary] || ex.primary,
+            i5 + 1,
+            s3.warm ? "yes" : "no",
+            s3.drop ? "yes" : "no",
+            ex.perSide ? "yes" : "no",
+            loadWords(ex),
+            fmtW(+s3.w || 0),
+            fmtW(total),
+            s3.r,
+            s3.rir == null ? "" : s3.rir,
+            est == null ? "" : fmtW(est),
+            b2.note || "",
+            ss.notes || "",
+            ss.durMin || "",
+            "",
+            ex.timed ? "seconds" : "reps",
+            s3.cal ? `stop at ${s3.cal.at}, called ${s3.cal.pred} left` : ""
+          ]);
+        });
+      }
+    }
+    for (const c4 of [...state.cardio].sort((a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0))
+      rows.push([
+        c4.date,
+        "Cardio",
+        "no",
+        CARDIOL[c4.kind],
+        "",
+        1,
+        "no",
+        "no",
+        "no",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        [CWHENL[c4.when], c4.dist ? `${distShow(c4.dist)} ${distU()}` : "", c4.note].filter(Boolean).join("; "),
+        "",
+        c4.min,
+        c4.hr == null ? "" : c4.hr,
+        "minutes",
+        ""
+      ]);
+    if (rows.length === 1) {
+      toast("No sessions to export");
+      return void 0;
+    }
+    const data = rows.map((r4) => r4.map(q).join(",")).join("\r\n");
+    return exportFile(
+      data,
+      `${FILE_PREFIX}-sets-${today()}.csv`,
+      "text/csv",
+      "CSV saved",
+      null,
+      "CSV text",
+      "Copy all of this and paste it into a spreadsheet. This is not a backup."
+    );
+  }
+  var APP_ACTS = {
+    iconHow() {
+      openModal({ kind: "icon" });
+    },
+    guideOpen(t4) {
+      const k2 = t4 && t4.dataset && t4.dataset.g;
+      if (ui.modal) closeModal();
+      openModal({ kind: "guide", open: k2 || "" });
+    },
+    menuOpen() {
+      if (ui.modal && ui.modal.kind === "menu") {
+        closeModal();
+        return;
+      }
+      if (ui.modal) closeModal();
+      openModal({ kind: "menu" });
+    },
+    install() {
+      const how = installKind();
+      if (how === "prompt") {
+        const e5 = window.__installEvt;
+        window.__installEvt = null;
+        try {
+          if (!e5) throw new Error("No install offer");
+          e5.prompt();
+          Promise.resolve(e5.userChoice).then(
+            (r4) => {
+              if (r4 && typeof r4 === "object" && "outcome" in r4 && r4.outcome === "accepted")
+                toast(`Installing ${APP_NAME}. Open it from your home screen.`);
+              rerenderKeepScroll();
+            },
+            () => {
+            }
+          );
+        } catch (err) {
+          log("install", err);
+          openModal({ kind: "install", how: "menu" });
+        }
+        return;
+      }
+      openModal({ kind: "install", how });
+    },
+    secShow(t4) {
+      const k2 = t4.dataset.k;
+      if (!k2 || !HIDEABLE_KEYS.has(k2)) return;
+      act(() => {
+        state.settings.hidden = state.settings.hidden.filter((x2) => x2 !== k2);
+      });
+      ui.folds[k2] = true;
+      rerenderKeepScroll();
+      const el = document.querySelector(`#view > [data-sk="${k2}"]`);
+      if (el) el.scrollIntoView({ block: "nearest" });
+      const lab = (HIDEABLE.find((x2) => x2[0] + ":" + x2[1] === k2) || [])[2] || "Section";
+      toast(`${lab} added. Hide it again in Settings, Layout.`);
+    },
+    goLayout() {
+      if (ui.modal) closeModal();
+      ui.tab = "settings";
+      ui.folds["settings:layout"] = true;
+      window.scrollTo(0, 0);
+      render();
+      const el = document.querySelector('#view > [data-mkey="layout"]');
+      if (el) el.scrollIntoView({ block: "start" });
+    },
+    goBackup() {
+      if (ui.modal) closeModal();
+      ui.tab = "settings";
+      ui.folds["settings:data"] = true;
+      window.scrollTo(0, 0);
+      render();
+      const el = document.getElementById("dataSec");
+      if (el) el.scrollIntoView({ block: "start" });
+    },
+    /* Every tile, summary row and map detail lands on the matching dashboard
+       section, opened even if you had folded it, with the relevant muscle or
+       exercise already selected. */
+    goDash(t4) {
+      const el0 = t4 instanceof Element ? t4 : null;
+      const raw = el0 ? el0.getAttribute("data-sec") : t4.dataset.sec || null, m3 = el0 ? el0.getAttribute("data-m") : t4.dataset.m || null, ex = el0 ? el0.getAttribute("data-ex") : t4.dataset.ex || null;
+      const sec = raw && DSEC_ALIAS[raw] ? DSEC_ALIAS[raw] : raw;
+      if (sec && state.settings.hidden.includes("dash:" + sec)) {
+        toast("That section is hidden. Turn it back on in Settings under Layout.");
+        return;
+      }
+      if (raw === "svol") ui.volMode = "load";
+      if (m3 && MK.some((k2) => k2 === m3)) {
+        ui.dashMuscle = m3;
+        if (sec === "volume") ui.volMode = "trend";
+      }
+      if (ex) ui.dashEx = ex;
+      if (sec) {
+        ui.folds["dash:" + sec] = true;
+        if (raw !== sec) ui.folds["dash:sub:" + raw] = true;
+      }
+      ui.tab = "dash";
+      window.scrollTo(0, 0);
+      render();
+      if (sec) {
+        try {
+          const el = document.getElementById("sec-" + sec);
+          if (el) {
+            if (el instanceof HTMLDetailsElement) el.open = true;
+            const inner = raw !== sec ? document.getElementById("sub-" + raw) : null;
+            if (inner instanceof HTMLDetailsElement) inner.open = true;
+            const tgt = inner || el;
+            if (tgt.scrollIntoView) tgt.scrollIntoView({ block: "start" });
+          }
+        } catch (e5) {
+        }
+      }
+    },
+    // The sheet closed first (r56.1): a question left open reads as Cancel, so the sync waiting on it does not wait forever.
+    crashRetry() {
+      ui.tab = "today";
+      ui.planView = "routine";
+      try {
+        closeModal();
+      } catch (e5) {
+        log("render", e5);
+      }
+      ui.modal = null;
+      window.scrollTo(0, 0);
+      render();
+    },
+    undo() {
+      const r4 = undoStep();
+      if (r4 === "none") toast("Nothing left to undo");
+      else if (r4 === "failed") toast("Could not undo that");
+      else if (r4 === "unchanged") toast("Nothing to undo there: it has changed since.");
+      else {
+        toastHide();
+        render();
+        toast(`Undone. ${r4} step${r4 === 1 ? "" : "s"} left`);
+      }
+    },
+    help(t4) {
+      const k2 = t4.dataset.h || "";
+      const on = !ui.help.has(k2);
+      if (on) ui.help.add(k2);
+      else ui.help.delete(k2);
+      const el = document.getElementById("help-" + k2);
+      if (el) {
+        el.hidden = !on;
+        const d3 = on ? el.closest("details") : null;
+        if (d3 && !d3.open) d3.open = true;
+      }
+      document.querySelectorAll(`[data-act="help"][data-h="${k2}"]`).forEach((b2) => b2.setAttribute("aria-expanded", String(on)));
+    },
+    tAdd() {
+      timerAdd();
+    },
+    tStop() {
+      stopTimer();
+    },
+    mClose() {
+      closeModal();
+    },
+    mOk() {
+      const m3 = ui.modal;
+      const fn = m3 && m3.kind === "confirm" ? m3.fn : null;
+      if (m3 && m3.kind === "confirm") m3.answered = true;
+      closeModal();
+      if (fn) fn();
+    },
+    mAlt() {
+      const m3 = ui.modal;
+      const a2 = m3 && m3.kind === "confirm" ? m3.alt : null;
+      if (m3 && m3.kind === "confirm") m3.answered = true;
+      closeModal();
+      if (a2 && a2.fn) a2.fn();
+    },
+    export() {
+      exportBackup();
+    },
+    exportCsv() {
+      exportCSV();
+    },
+    showBackup() {
+      openModal({
+        kind: "text",
+        title: "Backup text",
+        help: "Select all and copy. Paste it into Import on any device to restore.",
+        text: JSON.stringify({ app: STORAGE_ID, exported: (/* @__PURE__ */ new Date()).toISOString(), state }),
+        readonly: true
+      });
+    },
+    copyText() {
+      const ta = document.getElementById("mText");
+      if (!(ta instanceof HTMLTextAreaElement)) return;
+      ta.select();
+      let ok = false;
+      try {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(ta.value).then(
+            () => {
+              markExported();
+              toast("Copied");
+            },
+            () => {
+              toast("Select the text and copy it manually");
+            }
+          );
+          return;
+        }
+        ok = document.execCommand("copy");
+      } catch (e5) {
+        log("copy", e5);
+      }
+      if (ok) markExported();
+      toast(ok ? "Copied" : "Select the text and copy it manually");
+    }
+  };
+
+  // src/app/actsroutine.ts
+  var READY_SAID = 6e3;
+  var NEW_DAYS = [0, 1, 0, 1, 0, 1, 1];
+  function rNewDo(nm) {
+    const blank = state.routines.find((r5) => routineEmpty(r5) && r5.id !== state.activeRoutineId);
+    if (blank) {
+      act(() => {
+        blank.name = nm || blank.name;
+      });
+      ui.bRoutine = blank.id;
+      render();
+      toast("Reused your empty routine");
+      return;
+    }
+    const r4 = {
+      id: uid(),
+      name: nm || "New routine",
+      schedule: "cycle",
+      days: NEW_DAYS.map((x2) => ({ id: uid(), name: x2 ? "Rest" : "Training day", rest: !!x2, items: [] }))
+    };
+    act(() => {
+      state.routines.push(r4);
+    });
+    ui.bRoutine = r4.id;
+    render();
+  }
+  var ROUTINE_ACTS = {
+    obSample() {
+      openModal({ kind: "templates", from: "welcome" });
+    },
+    // The fold in the first-run routine picker (r44): its own state, so a re-render keeps it open.
+    obProfTog() {
+      ui.obProf = !ui.obProf;
+      rerenderKeepScroll();
+    },
+    tplPick(t4) {
+      const m3 = ui.modal;
+      const from = m3 && m3.kind === "templates" ? m3.from : "plan";
+      const k2 = t4.dataset.k || "";
+      const r0 = routineFromTemplate(k2);
+      if (!r0) return;
+      const r4 = fullRoutine(r0);
+      closeModal();
+      const same = state.routines.find((x2) => routineSig(x2) === routineSig(r4));
+      if (from === "welcome") {
+        let fit = false;
+        let pa = [];
+        act(() => {
+          if (same) state.activeRoutineId = same.id;
+          else {
+            state.routines = dropStarter(state.routines, state.sessions, starterSigs());
+            state.routines.push(r4);
+            state.activeRoutineId = r4.id;
+          }
+          fit = fitTargets(state.routines.find((x2) => x2.id === state.activeRoutineId));
+          pa = profApplyList(activeRoutine());
+          for (const x2 of pa) Object.assign(x2.it, x2.ch);
+          state.settings.onboarded = true;
+        });
+        ui.todayDay = null;
+        ui.tab = "today";
+        window.scrollTo(0, 0);
+        render();
+        toast(
+          `${r4.name} is ready${pa.length ? ", set to Your training" : ""}${fit ? ". Weekly set targets now match it; change them in Settings." : ""}`,
+          null,
+          fit || pa.length ? READY_SAID : 0
+        );
+        return;
+      }
+      if (same) {
+        ui.bRoutine = same.id;
+        render();
+        toast("You already have this routine unchanged. Opened it instead.");
+        return;
+      }
+      act(() => {
+        state.routines.push(r4);
+      });
+      ui.bRoutine = r4.id;
+      render();
+      toast(`${r4.name} added. Tap Make active to use it.`);
+    },
+    rNew() {
+      openModal({ kind: "routineNew" });
+    },
+    rNewSave() {
+      const el = document.getElementById("rNewName");
+      const nm = (el instanceof HTMLInputElement ? el.value : "").trim();
+      if (!nm) {
+        toast("Give the routine a name");
+        return;
+      }
+      if (nameTaken(nm)) {
+        toast("A routine already has that name. Pick another.");
+        return;
+      }
+      closeModal();
+      rNewDo(nm);
+    },
+    rTemplate() {
+      openModal({ kind: "templates", from: "plan" });
+    },
+    applyUpd() {
+      const m3 = ui.modal;
+      const u4 = m3 && m3.kind === "recap" ? m3.upd : null;
+      closeModal();
+      if (!u4) return;
+      const R2 = state.routines.find((r4) => r4.id === u4.rid);
+      const day = R2 && R2.days.find((x2) => x2.id === u4.dayId);
+      if (!day) {
+        toast("That routine day no longer exists");
+        return;
+      }
+      act(
+        () => {
+          for (const x2 of u4.swap) {
+            const it = day.items.find((i5) => i5.exId === x2.from);
+            if (it) {
+              it.exId = x2.to;
+              if (x2.plan) {
+                Object.assign(it, x2.plan);
+                if (x2.plan.jump == null) delete it.jump;
+              }
+            }
+          }
+          for (const x2 of u4.add)
+            if (!day.items.some((i5) => i5.exId === x2.exId))
+              day.items.push({ ...DEFAULT_PLAN, ...x2.plan, uid: uid(), exId: x2.exId, ss: null });
+          for (const ids of u4.ss || []) {
+            const its = ids.flatMap((id) => day.items.filter((i5) => i5.exId === id).slice(0, 1));
+            if (its.length < 2) continue;
+            const at2 = Math.min(...its.map((i5) => day.items.indexOf(i5)));
+            day.items = day.items.filter((i5) => !its.includes(i5));
+            day.items.splice(at2, 0, ...its);
+            const g2 = uid();
+            for (const i5 of its) i5.ss = g2;
+          }
+          fixSupersets(day.items);
+          if (day.items.length) Object.assign(day, trainOn(day));
+        },
+        { undo: true }
+      );
+      render();
+      toast(`${day.name} updated`, true);
+    }
+  };
+
+  // src/app/actspick.ts
+  var MAX_SETS = 30;
+  var MAX_LOAD = { lb: 4e3, kg: 2e3 };
+  var BWF_PCT = { most: 150, off: 5e-3, whole: 100 };
+  function swapPlan(p3, fromId, toId, R0, dayId) {
+    const R2 = R0 || activeRoutine();
+    const inR = R2.days.some((d3) => d3.items.some((it) => it.exId === toId));
+    if (!inR && !!EX(fromId).timed === !!EX(toId).timed) return { ...p3 };
+    const q = inR ? planFor(toId, R2, dayId) : defPlan(toId);
+    const o3 = { ...p3, repMin: q.repMin, repMax: q.repMax, rir: q.rir, rest: q.rest, inc: q.inc };
+    if (q.jump != null) o3.jump = q.jump;
+    else delete o3.jump;
+    return o3;
+  }
+  function afterAdd(bi) {
+    rerenderKeepScroll();
+    const el = document.getElementById("blk-" + bi);
+    if (!el) return;
+    let calm = false;
+    try {
+      calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch (e5) {
+    }
+    try {
+      el.scrollIntoView({ block: "start", behavior: calm ? "auto" : "smooth" });
+    } catch (e5) {
+      el.scrollIntoView();
+    }
+    el.classList.remove("flash");
+    void el.offsetWidth;
+    el.classList.add("flash");
+    el.addEventListener("animationend", () => el.classList.remove("flash"), { once: true });
+  }
+  function applyPick(m3, id) {
+    if (!m3 || !id) return;
+    if (m3.mode === "addDay") {
+      const R2 = curRoutineB();
+      const di = m3.day ?? -1;
+      const d4 = R2.days[di];
+      closeModal();
+      if (!d4) {
+        rerenderKeepScroll();
+        return;
+      }
+      act(() => {
+        d4.items.push(newItem(id));
+        Object.assign(d4, trainOn(d4));
+      });
+      rerenderKeepScroll();
+      toast(`${exName(id)} added to ${dayLabel(R2, di)}`);
+      return;
+    }
+    if (m3.mode === "swapItem") {
+      const f3 = findItem(m3.uid);
+      if (f3) {
+        const day = f3.r.days[f3.di];
+        const q = swapPlan(f3.it, f3.it.exId, id, f3.r, day ? day.id : void 0);
+        act(() => {
+          Object.assign(f3.it, { repMin: q.repMin, repMax: q.repMax, rir: q.rir, rest: q.rest, inc: q.inc });
+          if (q.jump != null) f3.it.jump = q.jump;
+          else delete f3.it.jump;
+          f3.it.exId = id;
+        });
+      }
+      closeModal();
+      rerenderKeepScroll();
+      return;
+    }
+    const d3 = state.draft;
+    closeModal();
+    if (!d3) {
+      rerenderKeepScroll();
+      return;
+    }
+    const half = (p3) => ({
+      ...p3,
+      ss: p3.ss ?? null,
+      ...d3.deload || d3.light ? { sets: Math.max(1, Math.ceil(p3.sets / 2)) } : {}
+    });
+    if (m3.mode === "addBlock") {
+      const p0 = planFor(id, null, d3.dayId, false, d3.date);
+      const nb = newBlock(id, half(p0), { deload: !!d3.deload, light: !!d3.light, before: d3.date });
+      if (d3.deload || d3.light) nb.full = +p0.sets;
+      const li = d3.ex.length - 1;
+      const last = d3.ex[li];
+      if (last && joinable(last, nb)) {
+        const had = last.sets.length;
+        const plan = { ...last.plan }, did2 = d3.id;
+        let added = [];
+        act(
+          () => {
+            added = joinRows(last, nb);
+          },
+          {
+            inProgress: true,
+            undo: () => {
+              const dd = state.draft;
+              if (!dd || dd.id !== did2) return false;
+              const y2 = dd.ex.find((x2) => x2 === last);
+              if (!y2 || added.some((x2) => x2.done)) return false;
+              y2.sets = y2.sets.filter((x2) => !added.includes(x2));
+              y2.plan = plan;
+              return y2.sets.length === had;
+            }
+          }
+        );
+        afterAdd(li);
+        toast(`${EX(id).name}: ${added.length} more set${added.length === 1 ? "" : "s"}, with the ones above`, true);
+        return;
+      }
+      act(() => d3.ex.push(nb), { inProgress: true });
+      afterAdd(d3.ex.length - 1);
+      return;
+    }
+    if (m3.mode === "swapBlock") {
+      const bi = m3.b ?? -1;
+      const b2 = d3.ex[bi];
+      if (!b2) {
+        rerenderKeepScroll();
+        return;
+      }
+      const orig = structuredClone(b2);
+      const did2 = d3.id;
+      const done = b2.sets.filter((x2) => !rowBlank(b2, x2));
+      const left = b2.sets.filter((x2) => !x2.warm && !x2.drop && rowBlank(b2, x2)).length;
+      const rows = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
+      if (done.length && !left && !m3.all) {
+        const nn = EX(id).name;
+        confirmBox(
+          `Every set of ${EX(b2.exId).name} is logged`,
+          `Logged on the wrong exercise? Move the sets to ${nn}. Or add ${nn} after it.`,
+          "Move the sets",
+          () => applyPick({ ...m3, all: "move" }, id),
+          false,
+          { label: `Add ${nn}`, fn: () => applyPick({ ...m3, all: "add" }, id) }
+        );
+        return;
+      }
+      const nb = newBlock(
+        id,
+        {
+          ...swapPlan(b2.plan, b2.exId, id, null, d3.dayId),
+          sets: done.length && left ? left : Math.max(1, rows || +b2.plan.sets || 1)
+        },
+        { deload: !!d3.deload, light: !!d3.light, before: d3.date }
+      );
+      if (m3.all === "move") {
+        nb.sets = b2.sets;
+        if (b2.bid) nb.bid = b2.bid;
+        act(
+          () => {
+            d3.ex[bi] = nb;
+            fixSupersets(d3.ex.map((x2) => x2.plan));
+          },
+          {
+            inProgress: true,
+            undo: () => {
+              const dd = state.draft;
+              if (!dd || dd.id !== did2) return false;
+              const i5 = dd.ex.indexOf(nb);
+              if (i5 < 0) return false;
+              dd.ex[i5] = orig;
+              return true;
+            }
+          }
+        );
+        rerenderKeepScroll();
+        toast(`Your sets are on ${EX(id).name} now`, true);
+        return;
+      }
+      nb.swappedFrom = b2.swappedFrom || b2.exId;
+      if (nb.swappedFrom === id) nb.swappedFrom = null;
+      const ni = done.length ? joinable(d3.ex[bi + 1], nb) ? bi + 1 : -1 : joinable(d3.ex[bi - 1], nb) ? bi - 1 : joinable(d3.ex[bi + 1], nb) ? bi + 1 : -1;
+      const y2 = ni >= 0 ? d3.ex[ni] : void 0;
+      if (y2) {
+        const plan = { ...y2.plan };
+        let added = [];
+        act(
+          () => {
+            added = joinRows(y2, nb);
+            if (done.length) {
+              b2.sets = done;
+              b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
+            } else keepOpen(() => d3.ex.splice(bi, 1));
+            fixSupersets(d3.ex.map((x2) => x2.plan));
+          },
+          {
+            inProgress: true,
+            undo: () => {
+              const dd = state.draft;
+              if (!dd || dd.id !== did2) return false;
+              const yy = dd.ex.find((x2) => x2 === y2);
+              if (!yy || added.some((x2) => x2.done)) return false;
+              yy.sets = yy.sets.filter((x2) => !added.includes(x2));
+              yy.plan = plan;
+              if (done.length) {
+                const i5 = dd.ex.findIndex((x2) => x2 === b2);
+                if (i5 < 0) return false;
+                dd.ex[i5] = orig;
+              } else dd.ex.splice(dd.ex.indexOf(yy) + (ni < bi ? 1 : 0), 0, orig);
+              return true;
+            }
+          }
+        );
+        rerenderKeepScroll();
+        toast(
+          done.length ? `${EX(id).name}: the sets left join the ones below. Your sets so far stay with ${EX(orig.exId).name}.` : `Swapped to ${EX(id).name}: its sets are together now`,
+          true
+        );
+        return;
+      }
+      act(
+        () => {
+          if (done.length) {
+            b2.sets = done;
+            b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
+            keepOpen(() => d3.ex.splice(bi + 1, 0, nb));
+          } else d3.ex[bi] = nb;
+          fixSupersets(d3.ex.map((x2) => x2.plan));
+        },
+        {
+          inProgress: true,
+          undo: () => {
+            const dd = state.draft;
+            if (!dd || dd.id !== did2) return false;
+            const at2 = dd.ex.findIndex((x2) => x2 === nb);
+            if (at2 < 0 || nb.sets.some((x2) => x2.done)) return false;
+            if (done.length) {
+              dd.ex.splice(at2, 1);
+              const i5 = dd.ex.findIndex((x2) => x2 === b2);
+              if (i5 >= 0) dd.ex[i5] = orig;
+              else return false;
+            } else dd.ex[at2] = orig;
+            return true;
+          }
+        }
+      );
+      rerenderKeepScroll();
+      toast(
+        done.length && left ? `${EX(id).name} added for the sets left. Your sets so far stay with ${EX(orig.exId).name}.` : done.length ? `${EX(id).name} added after ${EX(orig.exId).name}` : `Swapped to ${EX(id).name}`,
+        true
+      );
+      return;
+    }
+    rerenderKeepScroll();
+  }
+  var newEx = (name, primary) => ({
+    id: "c_" + uid(),
+    name,
+    primary,
+    secondary: [],
+    equip: "cable",
+    bw: false,
+    rare: false,
+    note: "",
+    custom: true,
+    archived: false,
+    perSide: false
+  });
+  var editorOpen = () => {
+    const m3 = ui.modal;
+    return m3 && m3.kind === "exEdit" ? m3 : null;
+  };
+  var hasSets = (id, test) => state.sessions.some((x2) => x2.ex.some((b2) => b2.exId === id && b2.sets.some((q) => test(+q.w)))) || !!(state.draft && state.draft.ex.some((b2) => b2.exId === id && b2.sets.some((q) => test(+(q.w ?? 0)))));
+  var PICK_ACTS = {
+    bSwap(t4) {
+      const bi = Number(t4.dataset.b);
+      const b2 = state.draft && state.draft.ex[bi];
+      if (!b2) return;
+      openModal({ kind: "picker", mode: "swapBlock", b: bi, title: "Swap exercise", q: "", m: EX(b2.exId).primary });
+    },
+    pickSession() {
+      openModal({ kind: "picker", mode: "addBlock", title: "Add exercise to session", q: "", m: "" });
+    },
+    pickDay(t4) {
+      const di = Number(t4.dataset.day);
+      openModal({
+        kind: "picker",
+        mode: "addDay",
+        day: di,
+        title: `Add to ${dayLabel(curRoutineB(), di)}`,
+        q: "",
+        m: ""
+      });
+    },
+    iSwap(t4) {
+      const f3 = findItem(t4.dataset.uid);
+      openModal({
+        kind: "picker",
+        mode: "swapItem",
+        uid: t4.dataset.uid,
+        title: "Swap exercise",
+        q: "",
+        m: f3 ? EX(f3.it.exId).primary : ""
+      });
+    },
+    pickDo(t4) {
+      const m3 = ui.modal;
+      applyPick(m3 && m3.kind === "picker" ? m3 : null, t4.dataset.ex);
+    },
+    /* Pick for me, inside a session: what to add next. */
+    pickEx() {
+      if (!state.draft) return;
+      openModal({ kind: "pickEx" });
+    },
+    pickExAdd(t4) {
+      const d3 = state.draft;
+      if (!d3) return;
+      const id = t4.dataset.ex || "";
+      if (!state.exercises.some((e5) => e5.id === id)) {
+        closeModal();
+        return;
+      }
+      const p3 = planFor(id, null, d3.dayId, false, d3.date);
+      const n3 = Math.round(+(t4.dataset.sets ?? NaN)), full = Math.round(+(t4.dataset.full ?? NaN));
+      if (n3 >= 1 && n3 <= MAX_SETS) p3.sets = n3;
+      const nb = newBlock(id, { ...p3, ss: p3.ss ?? null }, { deload: !!d3.deload, light: !!d3.light, before: d3.date });
+      if ((d3.deload || d3.light) && full >= 1 && full <= MAX_SETS) nb.full = full;
+      act(() => d3.ex.push(nb), { inProgress: true });
+      closeModal();
+      afterAdd(d3.ex.length - 1);
+      toast(`${exName(id)} added: ${p3.sets} set${p3.sets === 1 ? "" : "s"}`);
+    },
+    exNew() {
+      openModal({ kind: "exEdit", isNew: true, e: newEx("", "chest") });
+    },
+    exNewFromPicker() {
+      const back2 = ui.modal;
+      if (!back2 || back2.kind !== "picker") return;
+      openModal({ kind: "exEdit", isNew: true, back: back2, e: { ...newEx((back2.q || "").trim(), back2.m || ""), incRaw: "" } });
+    },
+    // Back to the sheet this one was opened from, else closed: the exercise editor's, and an account sheet's opened from a problem report (r55).
+    exBack() {
+      const m3 = ui.modal;
+      const back2 = m3 && (m3.kind === "exEdit" || m3.kind === "account") ? m3.back : null;
+      if (back2) openModal(back2);
+      else closeModal();
+    },
+    exEdit(t4) {
+      ui.exBody = false;
+      const src = state.exercises.find((x2) => x2.id === t4.dataset.ex);
+      if (!src) return;
+      const e5 = structuredClone(src);
+      e5.incRaw = e5.inc != null ? fmtW(stepRead(e5.inc)) : "";
+      e5.bwfRaw = String(Math.round(bwShare(e5) * BWF_PCT.whole));
+      e5.maxRaw = e5.maxLoad != null ? fmtW(e5.maxLoad) : "";
+      e5.barRaw = e5.barKg != null ? fmtW(e5.barKg) : "";
+      openModal({ kind: "exEdit", isNew: false, e: e5 });
+    },
+    secToggle(t4) {
+      const m3 = editorOpen();
+      if (!m3) return;
+      const e5 = m3.e;
+      const k2 = t4.dataset.m || "";
+      e5.secondary = e5.secondary.includes(k2) ? e5.secondary.filter((x2) => x2 !== k2) : [...e5.secondary, k2];
+      renderModal();
+    },
+    exSave() {
+      const m3 = editorOpen();
+      if (!m3) return;
+      const e5 = m3.e;
+      e5.name = (e5.name || "").trim();
+      if (!e5.name) {
+        toast("Give the exercise a name");
+        return;
+      }
+      if (!MK.some((k2) => k2 === e5.primary)) {
+        toast("Pick the main muscle it trains");
+        const el = document.querySelector('[data-ebind="primary"]');
+        if (el instanceof HTMLElement)
+          try {
+            el.focus();
+          } catch (x2) {
+          }
+        return;
+      }
+      e5.secondary = e5.secondary.filter((k2) => k2 !== e5.primary);
+      {
+        const n3 = numIn(e5.incRaw);
+        e5.inc = n3 != null && n3 > 0 ? Math.min(Number(fromD(n3)), LIMITS.step) : null;
+        delete e5.incRaw;
+      }
+      {
+        const n3 = numIn(e5.maxRaw);
+        if (n3 != null && n3 > 0) e5.maxLoad = Number(fromD(Math.min(n3, U() === "lb" ? MAX_LOAD.lb : MAX_LOAD.kg)));
+        else delete e5.maxLoad;
+        delete e5.maxRaw;
+      }
+      {
+        const n3 = numIn(e5.barRaw);
+        if (n3 != null && n3 > 0 && platesMode(e5) === "bar") e5.barKg = Math.min(Number(fromD(n3)), LIMITS.barKg);
+        else delete e5.barKg;
+        delete e5.barRaw;
+      }
+      {
+        const n3 = numIn(e5.bwfRaw);
+        delete e5.bwfRaw;
+        const def = BWF[e5.id] != null ? BWF[e5.id] : 1;
+        if (e5.bw && n3 != null && n3 > 0 && n3 <= BWF_PCT.most && Math.abs(n3 / BWF_PCT.whole - Number(def)) > BWF_PCT.off)
+          e5.bwf = Math.round(n3) / BWF_PCT.whole;
+        else delete e5.bwf;
+      }
+      if (e5.timed !== true) delete e5.timed;
+      if (e5.kind !== "compound" && e5.kind !== "iso") delete e5.kind;
+      const pl = e5.plates;
+      e5.plates = pl === "bar" || pl === "side" || pl === "sleeve" || pl === "none" ? pl : null;
+      const ld = e5.load;
+      if ((ld === "each" || ld === "total" || ld === "side" || ld === "stack") && !e5.bw) e5.load = ld;
+      else delete e5.load;
+      if (!m3.isNew && !(e5.bw && e5.assist) && hasSets(e5.id, (w2) => w2 < 0)) {
+        toast("This exercise has sets logged with machine help, so it stays assisted.");
+        return;
+      }
+      const old = state.exercises.find((x2) => x2.id === e5.id);
+      const wasA = !m3.isNew && !!(old && old.assist);
+      if (!m3.isNew && e5.bw && e5.assist && !wasA && hasSets(e5.id, (w2) => w2 > 0)) {
+        toast(
+          "This exercise has sets with added weight. Use Assisted Pull-up or Assisted Dip, or a new exercise, for machine help."
+        );
+        return;
+      }
+      const saved = savedExercise(e5);
+      act(() => {
+        if (m3.isNew) state.exercises.push(saved);
+        else {
+          const i5 = state.exercises.findIndex((x2) => x2.id === e5.id);
+          if (i5 >= 0) state.exercises[i5] = saved;
+        }
+      });
+      if (!m3.isNew) refreshEx(e5.id);
+      const back2 = m3.back;
+      if (m3.isNew && back2 && back2.kind === "picker") {
+        applyPick(back2, e5.id);
+        toast(
+          back2.mode === "addBlock" || back2.mode === "addDay" ? `${e5.name} created and added` : `${e5.name} created and swapped in`
+        );
+        return;
+      }
+      if (back2) {
+        back2.q = e5.name;
+        openModal(back2);
+      } else closeModal();
+      rerenderKeepScroll();
+      toast(m3.isNew ? "Exercise created" : "Exercise saved");
+    }
+  };
+  function savedExercise(e5) {
+    const { kind, load: load2, timed, assist, ...rest } = e5;
+    return {
+      ...rest,
+      ...kind === "compound" || kind === "iso" ? { kind } : {},
+      ...load2 === "each" || load2 === "total" || load2 === "side" || load2 === "stack" ? { load: load2 } : {},
+      ...timed === true ? { timed } : {},
+      ...assist === true ? { assist } : {}
+    };
+  }
+
+  // src/app/actsstart.ts
+  var MAX_FULL = 30;
+  var HARD_SWAP = { repMin: 3, repMax: 6, rir: 2 };
+  var AGAIN_CHARS = 40;
+  var MONTH_RE = /^\d{4}-\d{2}$/;
+  var halfSets = (n3) => Math.max(1, Math.ceil(n3 / 2));
+  var blockPlan = (p3) => ({ ...p3, ss: p3.ss ?? null });
+  function begin(d3, live2) {
+    act(
+      () => {
+        state.draft = d3;
+        if (live2) d3.note0 = d3.notes || "";
+      },
+      { inProgress: true }
+    );
+    window.scrollTo(0, 0);
+    render();
+    if (live2) wakeOn();
+  }
+  function pastDraft(date, di) {
+    const R2 = activeRoutine();
+    const day = di == null ? null : R2.days[di];
+    if (!day || di == null) return { ...freeDraft("Freestyle"), date, startedAt: null, past: true };
+    return {
+      id: uid(),
+      startedAt: null,
+      date,
+      dayIdx: di,
+      dayId: day.id,
+      dayName: day.name,
+      routineId: R2.id,
+      deload: false,
+      light: false,
+      past: true,
+      cardio: [],
+      notes: "",
+      note0: "",
+      editingId: null,
+      ex: day.items.map((it) => newBlock(it.exId, it, { before: date }))
+    };
+  }
+  function startFree() {
+    if (state.draft) {
+      ui.tab = "today";
+      render();
+      return;
+    }
+    const dl = isDeloadWeek();
+    ui.tab = "today";
+    begin({ ...freeDraft(dl ? "Freestyle (deload)" : "Freestyle"), deload: dl, notes: dl ? DELOAD_NOTE : "" }, true);
+    openModal({ kind: "picker", mode: "addBlock", title: "Add exercise to session", q: "", m: "" });
+  }
+  function startSession(t4) {
+    if (ui.modal) closeModal();
+    toastQuiet();
+    const R2 = activeRoutine();
+    const di = Number(t4.dataset.day);
+    const d3 = R2.days[di];
+    if (!d3) return;
+    const light = t4.dataset.light === "1";
+    const deload = !light && isDeloadWeek();
+    const items = d3.rest ? [] : d3.items.map((it) => light || deload ? { ...it, sets: halfSets(it.sets) } : it);
+    begin(
+      {
+        id: uid(),
+        startedAt: Date.now(),
+        date: today(),
+        dayIdx: di,
+        dayId: d3.id,
+        dayName: d3.name + (light ? " (lighter)" : deload ? " (deload)" : ""),
+        routineId: R2.id,
+        deload,
+        light,
+        cardio: [],
+        notes: light ? LIGHTER_NOTE : deload ? DELOAD_NOTE : "",
+        editingId: null,
+        ex: items.map((it) => newBlock(it.exId, it, { deload, light }))
+      },
+      true
+    );
+  }
+  function wkGo(t4) {
+    const d3 = t4.dataset.date;
+    ui.tab = "today";
+    if (!state.draft) {
+      const R2 = activeRoutine();
+      const di = t4.dataset.day != null ? Number(t4.dataset.day) : null;
+      ui.todayDay = d3 === today() || di == null || !R2.days[di] ? null : di;
+      ui["todayAt"] = ui.todayDay == null ? null : { d: d3, di };
+    }
+    if (ui.modal) closeModal();
+    window.scrollTo(0, 0);
+    render();
+  }
+  function wkOpen(t4) {
+    if (ui.modal && ui.modal.kind === "daypick") closeModal();
+    const id = t4.dataset.id;
+    ui.tab = "history";
+    ui.histEx = "";
+    ui.histOpen = id;
+    const at2 = [...state.sessions].sort((a2, b2) => sessCmp(b2, a2)).findIndex((x2) => x2.id === id);
+    ui.histLimit = Math.max(HIST_PAGE, at2 + 1);
+    window.scrollTo(0, 0);
+    render();
+    try {
+      const el = document.querySelector(`[data-act="histToggle"][data-id="${id}"]`);
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: "start" });
+    } catch (e5) {
+    }
+  }
+  function pastOpen(t4) {
+    const v3 = t4 && t4.dataset.date;
+    const d3 = v3 && isDate(v3) && v3 <= today() ? v3 : addDays(today(), -1);
+    openModal({ kind: "past", date: d3 });
+  }
+  var START_ACTS = {
+    // 'calendar', not 'cal', the calibration set's sheet (r59: from r25 a calibration set opened the calendar and threw).
+    calOpen(t4) {
+      const v3 = t4 && t4.dataset ? t4.dataset.ym : void 0;
+      const ym = v3 && MONTH_RE.test(v3) ? v3 : monthOf(today());
+      if (ui.modal) closeModal();
+      openModal({ kind: "calendar", ym });
+    },
+    calMonth(t4) {
+      const inline = t4.dataset.inline === "1";
+      const m3 = ui.modal;
+      const sheet = m3 && m3.kind === "calendar" ? m3 : null;
+      if (!inline && !sheet) return;
+      const kept = ui["calYm"];
+      const cur = inline || !sheet ? typeof kept === "string" && kept || monthOf(today()) : sheet.ym;
+      const { min, max } = calBounds();
+      let ym;
+      if (t4.dataset.v === "now") ym = monthOf(today());
+      else {
+        const [y2 = 0, mo = 1] = cur.split("-").map(Number);
+        const d3 = new Date(y2, mo - 1 + (+(t4.dataset.v ?? 0) || 0), 1);
+        ym = `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, "0")}`;
+      }
+      if (ym < min || ym > max) return;
+      if (inline || !sheet) {
+        ui["calYm"] = ym;
+        rerenderKeepScroll();
+      } else {
+        sheet.ym = ym;
+        renderModal();
+      }
+    },
+    calDay(t4) {
+      const d3 = t4.dataset.date;
+      if (!d3 || !isDate(d3) || d3 > today()) return;
+      if (ui.modal) closeModal();
+      const ss = sessionsOn(d3);
+      const one = ss.length === 1 ? ss[0] : void 0;
+      if (one) {
+        wkOpen({ dataset: { id: one.id } });
+        return;
+      }
+      if (ss.length > 1) {
+        openModal({ kind: "daypick", date: d3 });
+        return;
+      }
+      if (d3 === today()) {
+        wkGo({ dataset: { date: d3 } });
+        return;
+      }
+      pastOpen({ dataset: { date: d3 } });
+    },
+    startFree,
+    /* The session is built first so the sheet can preview what gets trimmed. If
+       the sheet is closed without applying and nothing was logged, the session
+       is removed again, since the user only asked a question. */
+    startShort(t4) {
+      const had = !!state.draft;
+      startSession(t4);
+      if (state.draft && !had) openModal({ kind: "short", mins: null, temp: state.draft.id });
+    },
+    shortOpen() {
+      if (state.draft) openModal({ kind: "short", mins: null });
+    },
+    shortPick(t4) {
+      const m3 = ui.modal;
+      if (!m3 || m3.kind !== "short") return;
+      m3.mins = Number(t4.dataset.v);
+      renderModal();
+    },
+    shortApply() {
+      const m3 = ui.modal;
+      const d3 = state.draft;
+      if (!m3 || m3.kind !== "short" || !d3 || !m3.mins) {
+        closeModal();
+        return;
+      }
+      const pl = shortPlan(d3, m3.mins);
+      m3.applied = true;
+      if (!pl.changes.length) {
+        closeModal();
+        return;
+      }
+      const drop = /* @__PURE__ */ new Set();
+      const removed = /* @__PURE__ */ new Map(), order = d3.ex.slice(), did2 = d3.id;
+      act(
+        () => {
+          for (const x2 of pl.bl) {
+            if (x2.keep === x2.undone) continue;
+            const b2 = d3.ex[x2.bi];
+            if (!b2) continue;
+            if (x2.keep === 0 && !x2.started) {
+              drop.add(x2.bi);
+              continue;
+            }
+            let n3 = x2.undone - x2.keep;
+            const gone = [];
+            for (let i5 = b2.sets.length - 1; i5 >= 0 && n3 > 0; i5--) {
+              const s3 = b2.sets[i5];
+              if (s3 && !s3.warm && rowBlank(b2, s3)) {
+                gone.unshift(...b2.sets.splice(i5, 1));
+                n3--;
+              }
+            }
+            removed.set(b2, gone);
+          }
+          d3.ex = d3.ex.filter((_b, bi) => !drop.has(bi));
+          fixSupersets(d3.ex.map((b2) => b2.plan));
+        },
+        {
+          inProgress: true,
+          /* Undo puts back exactly what the trim took (r25): the blank rows, at
+             the end of their exercise, and the skipped exercises in their
+             places. Sets logged since stay (the merge Undo used before brought
+             back skipped exercises but not removed rows). Nothing is marked
+             since r54. */
+          undo: () => {
+            const dd = state.draft;
+            if (!dd || dd.id !== did2) return false;
+            for (const [b2, rows] of removed) if (dd.ex.includes(b2)) b2.sets.push(...rows);
+            order.forEach((b2, i5) => {
+              if (drop.has(i5) && !dd.ex.includes(b2)) dd.ex.splice(Math.min(i5, dd.ex.length), 0, b2);
+            });
+            fixSupersets(dd.ex.map((b2) => b2.plan));
+            return true;
+          }
+        }
+      );
+      closeModal();
+      rerenderKeepScroll();
+      toast(`Trimmed to ${estMin(min5(pl.est))}`, true);
+    },
+    /* Log a workout now is a freestyle choice (r34.2, from the review: the
+       starter's 4 days a week became the bar for someone training 3 times as
+       they liked, "0-week streak", "of 88 planned"). Today opens on a blank
+       session, the starter stays one tap away as the plan, and the default
+       targets stay, with nothing said over the exercise picker. */
+    obFree() {
+      act(() => {
+        state.settings.onboarded = true;
+        state.settings.todayStart = "free";
+      });
+      startFree();
+    },
+    histRepeat(t4) {
+      const s3 = state.sessions.find((x2) => x2.id === t4.dataset.id);
+      if (!s3) return;
+      const go = () => {
+        const R2 = activeRoutine();
+        const day = !s3.free && s3.routineId === R2.id && s3.dayId ? R2.days.find((x2) => x2.id === s3.dayId) : void 0;
+        const deload = isDeloadWeek();
+        const plan = (b2) => {
+          const it = day && day.items.find((i5) => i5.exId === b2.exId);
+          if (it) return deload ? { ...it, sets: halfSets(it.sets) } : { ...it };
+          const p3 = planFor(b2.exId);
+          if (b2.rr) {
+            p3.repMin = b2.rr[0];
+            p3.repMax = Math.max(b2.rr[0], b2.rr[1]);
+          }
+          const n3 = b2.sets.filter(isWork).length;
+          if (n3) p3.sets = deload ? halfSets(n3) : n3;
+          return blockPlan(p3);
+        };
+        const ex = s3.ex.map((b2) => {
+          const nb = newBlock(b2.exId, plan(b2), { deload });
+          const n3 = b2.sets.filter(isWork).length;
+          if (deload && n3 && !(day && day.items.some((i5) => i5.exId === b2.exId))) nb.full = Math.min(n3, MAX_FULL);
+          return nb;
+        });
+        ui.tab = "today";
+        begin(
+          day ? {
+            id: uid(),
+            startedAt: Date.now(),
+            date: today(),
+            dayIdx: R2.days.indexOf(day),
+            dayId: day.id,
+            dayName: day.name + (deload ? " (deload)" : ""),
+            routineId: R2.id,
+            deload,
+            light: false,
+            cardio: [],
+            notes: deload ? DELOAD_NOTE : "",
+            editingId: null,
+            ex
+          } : { ...freeDraft(s3.free ? s3.dayName : `Again: ${s3.dayName}`.slice(0, AGAIN_CHARS), ex), deload },
+          true
+        );
+        toast(day ? `${day.name} started with the same exercises` : "Started as a freestyle session");
+      };
+      if (state.draft)
+        confirmBox(
+          "Replace the session in progress?",
+          "You have an unsaved session open. Starting this one discards it.",
+          "Discard and start",
+          go,
+          true
+        );
+      else go();
+    },
+    startSession,
+    startAltOpen(t4) {
+      openModal({ kind: "startAlt", di: Number(t4.dataset.day), free: t4.dataset.free === "1" });
+    },
+    // Another day of the plan on the card (the old Change day list); in a blank-session Today it shows that day's card.
+    dayPick(t4) {
+      const i5 = Number(t4.dataset.i);
+      closeModal();
+      ui.todayDay = i5;
+      ui["todayAt"] = null;
+      window.scrollTo(0, 0);
+      render();
+    },
+    /* Pick for me, before a session: rank the routine's days for today. */
+    pickToday() {
+      openModal({ kind: "pickToday" });
+    },
+    pickView(t4) {
+      closeModal();
+      ui.todayDay = Number(t4.dataset.day);
+      ui["todayAt"] = null;
+      ui.tab = "today";
+      window.scrollTo(0, 0);
+      render();
+    },
+    /* Limited equipment: pick what is available, preview the swaps, start. */
+    eqOpen(t4) {
+      const di = Number(t4.dataset.day);
+      const R2 = activeRoutine();
+      if (!R2.days[di]) return;
+      openModal({ kind: "eq", day: di, equip: (ui.eqLast || EQUIP.map((x2) => x2[0])).slice() });
+    },
+    eqToggle(t4) {
+      const m3 = ui.modal;
+      if (!m3 || m3.kind !== "eq") return;
+      const k2 = t4.dataset.k || "";
+      m3.equip = m3.equip.includes(k2) ? m3.equip.filter((x2) => x2 !== k2) : [...m3.equip, k2];
+      renderModal();
+    },
+    eqStart() {
+      const m3 = ui.modal;
+      if (!m3 || m3.kind !== "eq") return;
+      const R2 = activeRoutine();
+      const day = R2.days[m3.day];
+      if (!day) {
+        closeModal();
+        return;
+      }
+      const eq = new Set(m3.equip);
+      const pl = eqPlan(day, eq).filter((x2) => x2.to);
+      if (!pl.length) {
+        toast("Nothing in this workout fits that equipment");
+        return;
+      }
+      ui.eqLast = m3.equip.slice();
+      closeModal();
+      const deload = isDeloadWeek();
+      const ex = pl.flatMap((x2) => {
+        if (!x2.to) return [];
+        const it = deload ? { ...x2.it, sets: halfSets(x2.it.sets) } : x2.it;
+        const sp = x2.from ? swapPlan(it, x2.from, x2.to, R2, day.id) : { ...it };
+        if (x2.hard) Object.assign(sp, HARD_SWAP);
+        const b2 = newBlock(x2.to, sp, { deload });
+        if (x2.from) b2.swappedFrom = x2.from;
+        return [b2];
+      });
+      const sw = eqPlan(day, eq).filter((x2) => x2.from);
+      const note = sw.length ? "Limited equipment: " + sw.map((x2) => `${exName(x2.from || "")} → ${x2.to ? exName(x2.to) : "left out"}`).join("; ") + "." : "";
+      begin(
+        {
+          id: uid(),
+          startedAt: Date.now(),
+          date: today(),
+          dayIdx: m3.day,
+          dayId: day.id,
+          dayName: day.name + (deload ? " (deload)" : ""),
+          routineId: R2.id,
+          deload,
+          light: false,
+          limited: true,
+          cardio: [],
+          notes: [deload ? DELOAD_NOTE : "", note].filter(Boolean).join(" "),
+          editingId: null,
+          ex
+        },
+        true
+      );
+    },
+    pastOpen,
+    pastGo(t4) {
+      const m3 = ui.modal;
+      if (!m3 || m3.kind !== "past") return;
+      const date = m3.date;
+      const di = t4.dataset.day === "free" ? null : Number(t4.dataset.day);
+      const go = () => {
+        stopTimer();
+        wakeOff();
+        ui.tab = "today";
+        ui.todayDay = null;
+        begin(pastDraft(date, di), false);
+        if (di == null) openModal({ kind: "picker", mode: "addBlock", title: "Add exercise to session", q: "", m: "" });
+      };
+      closeModal();
+      const d3 = state.draft;
+      if (d3 && (d3.editingId || draftEntered(d3)))
+        confirmBox(
+          "Replace the session in progress?",
+          d3.editingId ? "You are editing a saved session. Your edits will be lost." : "You have an unsaved session open. Starting this one discards it.",
+          "Discard and start",
+          go,
+          true
+        );
+      else go();
+    },
+    wkGo,
+    wkOpen,
+    histEdit(t4) {
+      const s3 = state.sessions.find((x2) => x2.id === t4.dataset.id);
+      if (!s3) return;
+      const go = () => {
+        const R2 = state.routines.find((r4) => r4.id === s3.routineId) || activeRoutine();
+        const dayItems = s3.free ? [] : (R2.days[sessDayIdx(R2, s3)] || { items: [] }).items;
+        const d3 = {
+          id: uid(),
+          editingId: s3.id,
+          deload: !!s3.deload,
+          light: !!s3.light,
+          free: s3.free ? true : void 0,
+          chk: s3.chk ? { ...s3.chk } : void 0,
+          startedAt: null,
+          durMin: s3.durMin || null,
+          date: s3.date,
+          dayIdx: s3.dayIdx,
+          dayId: s3.dayId || null,
+          dayName: s3.dayName,
+          routineId: s3.routineId,
+          notes: s3.notes || "",
+          ex: s3.ex.map((b2) => {
+            const it = dayItems.find((i5) => i5.exId === b2.exId);
+            const plan = it ? { ...it } : blockPlan(planFor(b2.exId, null, null, false, s3.date));
+            return {
+              bid: uid(),
+              exId: b2.exId,
+              plan,
+              note: b2.note || "",
+              keepRR: b2.rr || null,
+              light: b2.light ? true : void 0,
+              hint: "Editing saved sets.",
+              lastR: [],
+              sets: b2.sets.map(
+                (x2) => newRow({
+                  w: x2.w,
+                  r: x2.r,
+                  rir: x2.rir,
+                  warm: !!x2.warm,
+                  drop: !!x2.drop,
+                  done: true,
+                  cal: x2.cal ? { ...x2.cal } : void 0,
+                  rid: x2.rid
+                })
+              ),
+              ...b2.nw ? { nw: true } : {}
+            };
+          })
+        };
+        editFp0.set(d3.id, editFp(d3));
+        ui.tab = "today";
+        begin(d3, false);
+      };
+      if (state.draft)
+        confirmBox(
+          "Replace the session in progress?",
+          "You have an unsaved session open. Editing this one will discard it.",
+          "Discard and edit",
+          go,
+          true
+        );
+      else go();
+    }
+  };
+
+  // src/app/actslift.ts
+  var MAX_LOAD2 = { lb: 4e3, kg: 2e3 };
+  var CAL_MOST = 100;
+  var CAL_PRED_MOST = 5;
+  var CAL_SAID = 7e3;
+  function fieldText(id) {
+    const el = document.getElementById(id);
+    return el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement ? el.value : "";
+  }
+  var kg = (n3) => fromD(n3) ?? 0;
+  var LIFT_ACTS = {
+    /* The choice applies to the session in progress too: rows still on the
+       suggestion switch between grey and filled, typed loads stay as typed. */
+    loadAsk(t4) {
+      const fill = t4.dataset.v === "fill";
+      act(() => {
+        if (fill) state.settings.loadFill = "fill";
+        else delete state.settings.loadFill;
+        const d3 = state.draft;
+        if (d3)
+          for (const b2 of d3.ex)
+            b2.sets.forEach((x2, i5) => {
+              if (x2.done || x2.warm || x2.drop || x2.r != null || x2.rir != null) return;
+              if (fill && x2.w == null) {
+                const g2 = greyW(b2, i5);
+                if (g2 != null) {
+                  x2.w = g2;
+                  if (g2 !== b2.sw) carried.add(x2);
+                }
+              } else if (!fill && (x2.w === b2.sw || carried.has(x2))) {
+                x2.w = null;
+                carried.delete(x2);
+              }
+            });
+      });
+      rerenderKeepScroll();
+      toast(fill ? "Loads filled in" : "Loads in grey");
+    },
+    bCal(t4) {
+      const bi = Number(t4.dataset.b);
+      const d3 = state.draft;
+      const b2 = d3 && d3.ex[bi];
+      if (!b2) return;
+      const nx = b2.sets.find((x2) => !x2.done && !x2.warm);
+      const w2 = nx && nx.w != null ? nx.w : b2.sets.filter((x2) => !x2.warm && +(x2.w ?? 0) > 0).map((x2) => +(x2.w ?? 0)).pop();
+      openModal({
+        kind: "cal",
+        b: bi,
+        w: w2 != null ? fmtW(w2) : "",
+        at: "",
+        pred: b2.plan && isNum(+b2.plan.rir) ? Math.min(CAL_PRED_MOST, Math.round(+b2.plan.rir)) : 1,
+        total: ""
+      });
+    },
+    calSave() {
+      const m3 = ui.modal;
+      const d3 = state.draft;
+      const sheet = m3 && m3.kind === "cal" ? m3 : null;
+      const b2 = d3 && sheet && d3.ex[sheet.b];
+      if (!sheet || !b2) {
+        closeModal();
+        return;
+      }
+      const ex = EX(b2.exId);
+      sheet.w = fieldText("calW");
+      sheet.at = fieldText("calAt");
+      sheet.pred = Number(fieldText("calPred"));
+      sheet.total = fieldText("calTot");
+      const pred = sheet.pred;
+      const w2 = numIn(sheet.w), at2 = Math.round(numIn(sheet.at) ?? 0), tot = Math.round(numIn(sheet.total) ?? 0);
+      const no = (err) => {
+        sheet.err = err;
+        renderModal();
+      };
+      if (!ex.bw && !(w2 != null && w2 > 0)) return no("Enter the load.");
+      if (!(at2 >= 1)) return no("Enter the rep you would normally have stopped at.");
+      if (!(tot >= at2)) return no("Total reps to failure should be at least the rep you would have stopped at.");
+      if (tot > CAL_MOST) return no("That is more than 100 reps. Check the number.");
+      const set = { w: kg(Math.max(0, w2 || 0)), r: tot, rir: 0, warm: false, drop: false, done: true, cal: { at: at2, pred } };
+      act(
+        () => {
+          let si = b2.sets.findIndex((x2) => !x2.done && !x2.warm && x2.r == null);
+          if (si < 0) si = b2.sets.findIndex((x2) => !x2.done && !x2.warm);
+          if (si >= 0) b2.sets[si] = set;
+          else b2.sets.push(set);
+        },
+        { inProgress: true }
+      );
+      closeModal();
+      rerenderKeepScroll();
+      const left = tot - at2, diff = left - pred;
+      toast(
+        `${left} rep${left === 1 ? " was" : "s were"} left where you called ${pred}. ${diff > 0 ? "Your sets are easier than you log." : diff < 0 ? "You were closer to failure than you thought." : "Spot on."}`,
+        false,
+        CAL_SAID
+      );
+    },
+    bMax(t4) {
+      const bi = Number(t4.dataset.b);
+      const b2 = state.draft && state.draft.ex[bi];
+      if (!b2) return;
+      openModal({ kind: "max", exId: b2.exId, b: bi });
+    },
+    maxSave() {
+      const m3 = ui.modal;
+      const e5 = m3 && m3.kind === "max" ? state.exercises.find((x2) => x2.id === m3.exId) : void 0;
+      if (!e5) {
+        closeModal();
+        return;
+      }
+      const n3 = numIn(fieldText("maxVal"));
+      if (n3 != null && n3 < 0) {
+        toast("Enter a load of 0 or more, or leave it blank");
+        return;
+      }
+      closeModal();
+      act(() => {
+        if (n3 != null && n3 > 0) e5.maxLoad = kg(Math.min(n3, U() === "lb" ? MAX_LOAD2.lb : MAX_LOAD2.kg));
+        else delete e5.maxLoad;
+      });
+      refreshEx(e5.id);
+      rerenderKeepScroll();
+      toast(e5.maxLoad != null ? `Heaviest available for ${e5.name}: ${fmtW(e5.maxLoad)} ${U()}` : `No limit for ${e5.name}`);
+    },
+    goalOpen(t4) {
+      openModal({ kind: "goal", exId: t4.dataset.ex || "" });
+    },
+    goalSave() {
+      const m3 = ui.modal;
+      const e5 = m3 && m3.kind === "goal" ? state.exercises.find((x2) => x2.id === m3.exId) : void 0;
+      if (!e5) {
+        closeModal();
+        return;
+      }
+      const w2 = numIn(fieldText("goalW")), r4 = Math.round(numIn(fieldText("goalR")) ?? NaN);
+      if (!(r4 >= 1 && r4 <= LIMITS.goalReps)) {
+        toast(`Reps from 1 to ${LIMITS.goalReps}`);
+        return;
+      }
+      if (w2 == null && !e5.bw) {
+        toast("Enter a load");
+        return;
+      }
+      if (w2 != null && w2 < 0) {
+        toast("Enter a load of 0 or more");
+        return;
+      }
+      const goal = { w: kg(w2 || 0), r: r4 };
+      act(
+        () => {
+          e5.goal = goal;
+        },
+        { undo: true }
+      );
+      closeModal();
+      rerenderKeepScroll();
+      toast(`Goal set: ${goalWords(e5, goal)}`, true);
+    },
+    goalClear() {
+      const m3 = ui.modal;
+      const e5 = m3 && m3.kind === "goal" ? state.exercises.find((x2) => x2.id === m3.exId) : void 0;
+      if (!e5) {
+        closeModal();
+        return;
+      }
+      act(
+        () => {
+          delete e5.goal;
+        },
+        { undo: true }
+      );
+      closeModal();
+      rerenderKeepScroll();
+      toast("Goal removed", true);
+    },
+    bInc(t4) {
+      const b2 = state.draft && state.draft.ex[Number(t4.dataset.b)];
+      if (!b2) return;
+      openModal({ kind: "inc", exId: b2.exId, plan: b2.plan });
+    },
+    incSave() {
+      const m3 = ui.modal;
+      const n3 = numIn(fieldText("incVal"));
+      if (n3 == null || n3 <= 0) {
+        toast("Enter a step above 0");
+        return;
+      }
+      const sheet = m3 && m3.kind === "inc" ? m3 : null;
+      const e5 = sheet && state.exercises.find((x2) => x2.id === sheet.exId);
+      if (!sheet || !e5) {
+        closeModal();
+        return;
+      }
+      if (e5.inc == null && !sheet.typed && String(numIn(fmtW(incOf(e5, sheet.plan)))) === String(n3)) {
+        closeModal();
+        return;
+      }
+      const inc = Math.min(kg(n3), LIMITS.step);
+      closeModal();
+      act(() => {
+        e5.inc = inc;
+      });
+      refreshEx(e5.id);
+      rerenderKeepScroll();
+      toast(`Load step for ${e5.name}: ${fmtW(inc)} ${U()}`);
+    },
+    cardioNew() {
+      openModal({ kind: "cardio" });
+    },
+    cardioSave() {
+      const min = numIn(fieldText("cMin"));
+      if (min == null || min <= 0) {
+        toast("Enter the minutes");
+        return;
+      }
+      const date = fieldText("cDate") || today();
+      const c4 = cleanCardio({
+        id: uid(),
+        date: isDate(date) ? date : today(),
+        kind: fieldText("cKind"),
+        min,
+        hr: numIn(fieldText("cHr")),
+        when: "solo",
+        note: fieldText("cNote").trim(),
+        dist: distIn(fieldText("cDist"))
+      });
+      closeModal();
+      act(() => {
+        state.cardio.push(c4);
+      });
+      rerenderKeepScroll();
+      toast("Cardio logged");
+    },
+    restWkOpen() {
+      openModal({ kind: "restwk" });
+    },
+    restWk(t4) {
+      const ws = t4.dataset.w;
+      if (!ws || !isDate(ws)) return;
+      const r4 = (state.settings.restWeeks || []).slice();
+      const on = r4.includes(ws);
+      act(
+        () => {
+          const next = on ? r4.filter((x2) => x2 !== ws) : [...r4, ws].sort();
+          if (next.length) state.settings.restWeeks = next;
+          else delete state.settings.restWeeks;
+        },
+        { undo: true }
+      );
+      renderModal();
+      rerenderKeepScroll();
+      toast(on ? "Rest week cleared" : "Rest week marked", true);
+    },
+    injAdd() {
+      openModal({ kind: "injury" });
+    },
+    injSave() {
+      const m3 = fieldText("injM");
+      const note = fieldText("injNote").trim();
+      if (!MK.some((k2) => k2 === m3) && !JK.some((k2) => k2 === m3)) return;
+      closeModal();
+      act(() => {
+        state.injuries = (state.injuries || []).filter((x2) => x2.m !== m3);
+        state.injuries.push({ id: uid(), m: m3, note, date: today() });
+      });
+      render();
+      toast(`${injLabel(m3)} flagged`);
+    },
+    bMenu(t4) {
+      openModal({ kind: "bmenu", b: Number(t4.dataset.b) });
+    },
+    bQuick(t4) {
+      openModal({ kind: "quick", b: Number(t4.dataset.b), text: "" });
+    },
+    bHist(t4) {
+      const b2 = state.draft && state.draft.ex[Number(t4.dataset.b)];
+      if (b2) openModal({ kind: "exhist", exId: b2.exId });
+    },
+    // The editor's muscle pickers already name the muscles; the figure is there on request (r40, V: not both at once).
+    exBodyTog() {
+      ui.exBody = !ui.exBody;
+      renderModal();
+    },
+    bMus(t4) {
+      const b2 = state.draft && state.draft.ex[Number(t4.dataset.b)];
+      if (b2) openModal({ kind: "exMus", exId: b2.exId });
+    },
+    qFill() {
+      const m3 = ui.modal;
+      if (!m3 || m3.kind !== "quick") return;
+      const d3 = state.draft;
+      const b2 = d3 && d3.ex[m3.b];
+      if (!b2) return;
+      const txt = fieldText("qTxt").trim();
+      m3.text = txt;
+      if (!txt) {
+        m3.err = "Type at least one set.";
+        renderModal();
+        return;
+      }
+      const fi = b2.sets.findIndex((x2) => !x2.done && !x2.warm);
+      const defW = fi >= 0 ? effW(b2, fi) : null;
+      const got = parseSets(txt, EX(b2.exId), defW, null, rirScale() === "rpe");
+      if (got) {
+        const n3 = fillSets(m3.b, got);
+        const now = ui.modal;
+        if (!(now && now.kind === "confirm")) {
+          closeModal();
+          rerenderKeepScroll();
+          toast(`${n3} set${n3 === 1 ? "" : "s"} filled and marked done`);
+        }
+        return;
+      }
+      m3.err = `Could not read that. Try the pattern 225x5, 5, 4 ${rirScale() === "rpe" ? "rpe 9" : "rir 1"}.`;
+      renderModal();
+    },
+    bNote(t4) {
+      const bi = Number(t4.dataset.b);
+      const b2 = state.draft && state.draft.ex[bi];
+      if (!b2) return;
+      openModal({ kind: "note", bi, title: `Note: ${exName(b2.exId)}`, text: b2.note || "" });
+    },
+    noteSave() {
+      const m3 = ui.modal;
+      const ta = document.getElementById("mNote");
+      const d3 = state.draft;
+      if (!m3 || m3.kind !== "note" || !(ta instanceof HTMLTextAreaElement) || !d3) return;
+      const b2 = d3.ex[m3.bi];
+      act(
+        () => {
+          if (b2) b2.note = ta.value.trim();
+        },
+        { inProgress: true }
+      );
+      closeModal();
+      rerenderKeepScroll();
+    }
+  };
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -22511,16 +24441,6 @@ ${JSON.stringify(ctx, null, 1)}`;
     viewStart();
     updateStart();
     accountStart();
-    function swapPlan(p3, fromId, toId, R2, dayId) {
-      R2 = R2 || activeRoutine();
-      const inR = R2.days.some((d3) => d3.items.some((it) => it.exId === toId));
-      if (!inR && !!EX(fromId).timed === !!EX(toId).timed) return { ...p3 };
-      const q = inR ? planFor(toId, R2, dayId) : defPlan(toId);
-      const o3 = { ...p3, repMin: q.repMin, repMax: q.repMax, rir: q.rir, rest: q.rest, inc: q.inc };
-      if (q.jump != null) o3.jump = q.jump;
-      else delete o3.jump;
-      return o3;
-    }
     window.addEventListener("popstate", pageBack);
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState !== "visible") return;
@@ -22597,343 +24517,6 @@ ${JSON.stringify(ctx, null, 1)}`;
       const from = addDays(today(), -days);
       return IDX().prs.filter((x2) => x2.date >= from && x2.big);
     }
-    function applyPick(m3, id) {
-      if (!m3 || !id) return;
-      if (m3.mode === "addDay") {
-        const R2 = curRoutineB();
-        const d4 = R2.days[m3.day];
-        closeModal();
-        if (!d4) {
-          rerenderKeepScroll();
-          return;
-        }
-        d4.items.push(newItem(id));
-        Object.assign(d4, trainOn(d4));
-        commit();
-        rerenderKeepScroll();
-        toast(`${exName(id)} added to ${dayLabel(R2, m3.day)}`);
-        return;
-      }
-      if (m3.mode === "swapItem") {
-        const f3 = findItem(m3.uid);
-        if (f3) {
-          const q = swapPlan(f3.it, f3.it.exId, id, f3.r, f3.r.days[f3.di].id);
-          Object.assign(f3.it, { repMin: q.repMin, repMax: q.repMax, rir: q.rir, rest: q.rest, inc: q.inc });
-          if (q.jump != null) f3.it.jump = q.jump;
-          else delete f3.it.jump;
-          f3.it.exId = id;
-          commit();
-        }
-        closeModal();
-        rerenderKeepScroll();
-        return;
-      }
-      const d3 = state.draft;
-      closeModal();
-      if (!d3) {
-        rerenderKeepScroll();
-        return;
-      }
-      const half = (p3) => d3.deload || d3.light ? { ...p3, sets: Math.max(1, Math.ceil(p3.sets / 2)) } : p3;
-      if (m3.mode === "addBlock") {
-        const p0 = planFor(id, null, d3.dayId, false, d3.date);
-        const nb = newBlock(id, half(p0), { deload: !!d3.deload, light: !!d3.light, before: d3.date });
-        if (d3.deload || d3.light) nb.full = +p0.sets;
-        const li = d3.ex.length - 1;
-        const last = d3.ex[li];
-        if (joinable(last, nb)) {
-          const before = JSON.parse(JSON.stringify(last.sets)), plan = { ...last.plan }, did2 = d3.id;
-          const added = joinRows(last, nb);
-          snapshot(() => {
-            const dd = state.draft;
-            if (!dd || dd.id !== did2) return false;
-            const y2 = dd.ex.find((x2) => x2 === last);
-            if (!y2 || added.some((x2) => x2.done)) return false;
-            y2.sets = y2.sets.filter((x2) => !added.includes(x2));
-            y2.plan = plan;
-            return y2.sets.length === before.length;
-          });
-          saveNow();
-          afterAdd(li);
-          toast(`${EX(id).name}: ${added.length} more set${added.length === 1 ? "" : "s"}, with the ones above`, true);
-          return;
-        }
-        d3.ex.push(nb);
-        saveNow();
-        afterAdd(d3.ex.length - 1);
-        return;
-      }
-      if (m3.mode === "swapBlock") {
-        const b2 = d3.ex[m3.b];
-        if (!b2) {
-          rerenderKeepScroll();
-          return;
-        }
-        const orig = JSON.parse(JSON.stringify(b2));
-        const bi = m3.b, did2 = d3.id;
-        const done = b2.sets.filter((x2) => !rowBlank(b2, x2));
-        const left = b2.sets.filter((x2) => !x2.warm && !x2.drop && rowBlank(b2, x2)).length;
-        const rows = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
-        if (done.length && !left && !m3.all) {
-          const nn = EX(id).name;
-          confirmBox(`Every set of ${EX(b2.exId).name} is logged`, `Logged on the wrong exercise? Move the sets to ${nn}. Or add ${nn} after it.`, "Move the sets", () => applyPick({ ...m3, all: "move" }, id), false, { label: `Add ${nn}`, fn: () => applyPick({ ...m3, all: "add" }, id) });
-          return;
-        }
-        const nb = newBlock(id, { ...swapPlan(b2.plan, b2.exId, id, null, d3.dayId), sets: done.length && left ? left : Math.max(1, rows || +b2.plan.sets || 1) }, { deload: !!d3.deload, light: !!d3.light, before: d3.date });
-        if (m3.all === "move") {
-          nb.sets = b2.sets;
-          if (b2.bid) nb.bid = b2.bid;
-          snapshot(() => {
-            const dd = state.draft;
-            if (!dd || dd.id !== did2) return false;
-            const i5 = dd.ex.indexOf(nb);
-            if (i5 < 0) return false;
-            dd.ex[i5] = orig;
-            return true;
-          });
-          d3.ex[bi] = nb;
-          fixSupersets(d3.ex.map((x2) => x2.plan));
-          saveNow();
-          rerenderKeepScroll();
-          toast(`Your sets are on ${EX(id).name} now`, true);
-          return;
-        }
-        nb.swappedFrom = b2.swappedFrom || b2.exId;
-        if (nb.swappedFrom === id) nb.swappedFrom = null;
-        const ni = done.length ? joinable(d3.ex[bi + 1], nb) ? bi + 1 : -1 : joinable(d3.ex[bi - 1], nb) ? bi - 1 : joinable(d3.ex[bi + 1], nb) ? bi + 1 : -1;
-        if (ni >= 0) {
-          const y2 = d3.ex[ni];
-          const plan = { ...y2.plan };
-          const added = joinRows(y2, nb);
-          snapshot(() => {
-            const dd = state.draft;
-            if (!dd || dd.id !== did2) return false;
-            const yy = dd.ex.find((x2) => x2 === y2);
-            if (!yy || added.some((x2) => x2.done)) return false;
-            yy.sets = yy.sets.filter((x2) => !added.includes(x2));
-            yy.plan = plan;
-            if (done.length) {
-              const i5 = dd.ex.findIndex((x2) => x2 === b2);
-              if (i5 < 0) return false;
-              dd.ex[i5] = orig;
-            } else dd.ex.splice(dd.ex.indexOf(yy) + (ni < bi ? 1 : 0), 0, orig);
-            return true;
-          });
-          if (done.length) {
-            b2.sets = done;
-            b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
-          } else keepOpen(() => d3.ex.splice(bi, 1));
-          fixSupersets(d3.ex.map((x2) => x2.plan));
-          saveNow();
-          rerenderKeepScroll();
-          toast(done.length ? `${EX(id).name}: the sets left join the ones below. Your sets so far stay with ${EX(orig.exId).name}.` : `Swapped to ${EX(id).name}: its sets are together now`, true);
-          return;
-        }
-        snapshot(() => {
-          const dd = state.draft;
-          if (!dd || dd.id !== did2) return false;
-          const at2 = dd.ex.findIndex((x2) => x2 === nb);
-          if (at2 < 0 || nb.sets.some((x2) => x2.done)) return false;
-          if (done.length) {
-            dd.ex.splice(at2, 1);
-            const i5 = dd.ex.findIndex((x2) => x2 === b2);
-            if (i5 >= 0) dd.ex[i5] = orig;
-            else return false;
-          } else dd.ex[at2] = orig;
-          return true;
-        });
-        if (done.length) {
-          b2.sets = done;
-          b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
-          keepOpen(() => d3.ex.splice(bi + 1, 0, nb));
-        } else d3.ex[bi] = nb;
-        fixSupersets(d3.ex.map((x2) => x2.plan));
-        saveNow();
-        rerenderKeepScroll();
-        toast(done.length && left ? `${EX(id).name} added for the sets left. Your sets so far stay with ${EX(orig.exId).name}.` : done.length ? `${EX(id).name} added after ${EX(orig.exId).name}` : `Swapped to ${EX(id).name}`, true);
-        return;
-      }
-      rerenderKeepScroll();
-    }
-    function afterAdd(bi) {
-      rerenderKeepScroll();
-      const el = document.getElementById("blk-" + bi);
-      if (!el) return;
-      let calm = false;
-      try {
-        calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      } catch (e5) {
-      }
-      try {
-        el.scrollIntoView({ block: "start", behavior: calm ? "auto" : "smooth" });
-      } catch (e5) {
-        el.scrollIntoView();
-      }
-      el.classList.remove("flash");
-      void el.offsetWidth;
-      el.classList.add("flash");
-      el.addEventListener("animationend", () => el.classList.remove("flash"), { once: true });
-    }
-    function trashTidy() {
-      const tr = state.trash || [];
-      const keep = tr.filter((t4) => !(t4.kind === "routine" && plainTemplate(t4.data)));
-      if (keep.length !== tr.length) {
-        state.trash = keep;
-        commit();
-      }
-    }
-    function markExported() {
-      state.settings.lastExport = today();
-      saveNow();
-    }
-    async function exportFile(data, filename, mime, okMsg, onSaved, fallbackTitle, fallbackHelp) {
-      try {
-        if (window.claude && typeof window.claude.use === "function") {
-          const dl = await window.claude.use("downloads");
-          if (dl) {
-            try {
-              await dl.save({ filename, data });
-              onSaved && onSaved();
-              toast(okMsg);
-              return;
-            } catch (e5) {
-              if (e5 && e5.code === "declined") {
-                toast("Save cancelled");
-                return;
-              }
-              log("export", e5);
-            }
-          }
-        }
-      } catch (e5) {
-        log("export", e5);
-      }
-      try {
-        const file = typeof File === "function" ? new File([data], filename, { type: mime }) : null;
-        if (file && isStandalone() && navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file], title: filename });
-            onSaved && onSaved();
-            toast(okMsg);
-            return;
-          } catch (e5) {
-            if (e5 && e5.name === "AbortError") {
-              toast("Save cancelled");
-              return;
-            }
-            log("export", e5);
-          }
-        }
-      } catch (e5) {
-        log("export", e5);
-      }
-      let clicked = false;
-      try {
-        const a2 = document.createElement("a");
-        a2.href = URL.createObjectURL(new Blob([data], { type: mime }));
-        a2.download = filename;
-        document.body.appendChild(a2);
-        a2.click();
-        setTimeout(() => {
-          URL.revokeObjectURL(a2.href);
-          a2.remove();
-        }, 1e3);
-        clicked = true;
-      } catch (e5) {
-        log("export", e5);
-      }
-      if (!clicked) {
-        openModal({ kind: "text", title: fallbackTitle, help: fallbackHelp, text: data, readonly: true });
-        return;
-      }
-      confirmBox(
-        "Did the file download?",
-        `Look for ${filename}. If nothing appeared, this browser blocked the download and you should copy the text instead.`,
-        "Yes, I have the file",
-        () => {
-          onSaved && onSaved();
-          toast("Backup recorded");
-        },
-        false,
-        { label: "Show the text instead", fn: () => openModal({ kind: "text", title: fallbackTitle, help: fallbackHelp, text: data, readonly: true }) }
-      );
-    }
-    function exportBackup() {
-      const data = JSON.stringify({ app: STORAGE_ID, version: APP_VERSION, exported: (/* @__PURE__ */ new Date()).toISOString(), state }, null, 1);
-      return exportFile(
-        data,
-        `${FILE_PREFIX}-backup-${today()}.json`,
-        "application/json",
-        "Backup saved",
-        markExported,
-        "Backup text",
-        "Copy all of this and keep it somewhere safe. Paste it into Import on any device to restore."
-      );
-    }
-    function exportCSV() {
-      const q = (v3) => {
-        const s3 = String(v3 == null ? "" : v3);
-        return /[",\n]/.test(s3) ? '"' + s3.replace(/"/g, '""') + '"' : s3;
-      };
-      const rows = [["date", "day", "deload", "exercise", "primary", "set", "warmup", "dropset", "per_side", "load_entry", `load_${U()}`, `total_load_${U()}`, "reps", "rir", `e1rm_${U()}`, "exercise_note", "session_note", "session_minutes", "avg_hr", "unit", "calibration"]];
-      for (const ss of sortedSessions()) {
-        for (const b2 of ss.ex) {
-          const ex = EX(b2.exId);
-          b2.sets.forEach((s3, i5) => {
-            const total = loadOf(ex, s3, ss.date);
-            const est = s3.warm || s3.drop || noE1(ex) ? null : e1(total, +s3.r, rirEst(s3, ex));
-            rows.push([
-              ss.date,
-              ss.dayName,
-              ss.deload ? "yes" : "no",
-              ex.name,
-              ML[ex.primary] || ex.primary,
-              i5 + 1,
-              s3.warm ? "yes" : "no",
-              s3.drop ? "yes" : "no",
-              ex.perSide ? "yes" : "no",
-              loadWords(ex),
-              fmtW(+s3.w || 0),
-              fmtW(total),
-              s3.r,
-              s3.rir == null || s3.rir === "" ? "" : s3.rir,
-              est == null ? "" : fmtW(est),
-              b2.note || "",
-              ss.notes || "",
-              ss.durMin || "",
-              "",
-              ex.timed ? "seconds" : "reps",
-              s3.cal ? `stop at ${s3.cal.at}, called ${s3.cal.pred} left` : ""
-            ]);
-          });
-        }
-      }
-      for (const c4 of [...state.cardio].sort((a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0))
-        rows.push([c4.date, "Cardio", "no", CARDIOL[c4.kind], "", 1, "no", "no", "no", "", "", "", "", "", "", [CWHENL[c4.when], c4.dist ? `${distShow(c4.dist)} ${distU()}` : "", c4.note].filter(Boolean).join("; "), "", c4.min, c4.hr == null ? "" : c4.hr, "minutes", ""]);
-      if (rows.length === 1) {
-        toast("No sessions to export");
-        return;
-      }
-      const data = rows.map((r4) => r4.map(q).join(",")).join("\r\n");
-      return exportFile(
-        data,
-        `${FILE_PREFIX}-sets-${today()}.csv`,
-        "text/csv",
-        "CSV saved",
-        null,
-        "CSV text",
-        "Copy all of this and paste it into a spreadsheet. This is not a backup."
-      );
-    }
-    function pastDraft(date, di) {
-      const R2 = activeRoutine();
-      const day = di == null ? null : R2.days[di];
-      if (!day) {
-        const d3 = freeDraft("Freestyle");
-        return { ...d3, date, startedAt: null, past: true };
-      }
-      return { id: uid(), startedAt: null, date, dayIdx: di, dayId: day.id, dayName: day.name, routineId: R2.id, deload: false, light: false, past: true, cardio: [], notes: "", note0: "", editingId: null, ex: day.items.map((it) => newBlock(it.exId, it, { before: date })) };
-    }
     const ACT = {
       ...HISTORY_ACTS,
       ...SETTINGS_ACTS,
@@ -22947,1149 +24530,21 @@ ${JSON.stringify(ctx, null, 1)}`;
       ...REPORT_ACTS,
       ...IMPORT_ACTS,
       ...DEMO_ACTS,
-      iconHow() {
-        openModal({ kind: "icon" });
-      },
-      guideOpen(t4) {
-        const k2 = t4 && t4.dataset && t4.dataset.g;
-        if (ui.modal) closeModal();
-        openModal({ kind: "guide", open: k2 || "" });
-      },
-      menuOpen() {
-        if (ui.modal && ui.modal.kind === "menu") {
-          closeModal();
-          return;
-        }
-        if (ui.modal) closeModal();
-        openModal({ kind: "menu" });
-      },
-      /* The choice applies to the session in progress too: rows still on the
-         suggestion switch between grey and filled, typed loads stay as typed. */
-      loadAsk(t4) {
-        const fill = t4.dataset.v === "fill";
-        if (fill) state.settings.loadFill = "fill";
-        else delete state.settings.loadFill;
-        const d3 = state.draft;
-        if (d3) for (const b2 of d3.ex) b2.sets.forEach((x2, i5) => {
-          if (x2.done || x2.warm || x2.drop || x2.r != null || x2.rir != null) return;
-          if (fill && x2.w == null) {
-            const g2 = greyW(b2, i5);
-            if (g2 != null) {
-              x2.w = g2;
-              if (g2 !== b2.sw) carried.add(x2);
-            }
-          } else if (!fill && (x2.w === b2.sw || carried.has(x2))) {
-            x2.w = null;
-            carried.delete(x2);
-          }
-        });
-        commit();
-        rerenderKeepScroll();
-        toast(fill ? "Loads filled in" : "Loads in grey");
-      },
-      calOpen(t4) {
-        const ym = t4 && t4.dataset && /^\d{4}-\d{2}$/.test(t4.dataset.ym || "") ? t4.dataset.ym : today().slice(0, 7);
-        if (ui.modal) closeModal();
-        openModal({ kind: "calendar", ym });
-      },
-      // 'calendar', not 'cal', the calibration set's sheet (r59: from r25 a calibration set opened the calendar and threw)
-      calMonth(t4) {
-        const inline = t4.dataset.inline === "1";
-        const m3 = ui.modal;
-        if (!inline && (!m3 || m3.kind !== "calendar")) return;
-        const cur = inline ? ui.calYm || today().slice(0, 7) : m3.ym;
-        const { min, max } = calBounds();
-        let ym;
-        if (t4.dataset.v === "now") ym = today().slice(0, 7);
-        else {
-          const [y2, mo] = cur.split("-").map(Number);
-          const d3 = new Date(y2, mo - 1 + (+t4.dataset.v || 0), 1);
-          ym = `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, "0")}`;
-        }
-        if (ym < min || ym > max) return;
-        if (inline) {
-          ui.calYm = ym;
-          rerenderKeepScroll();
-        } else {
-          m3.ym = ym;
-          renderModal();
-        }
-      },
-      calDay(t4) {
-        const d3 = t4.dataset.date;
-        if (!isDate(d3) || d3 > today()) return;
-        if (ui.modal) closeModal();
-        const ss = sessionsOn(d3);
-        if (ss.length === 1) {
-          ACT.wkOpen({ dataset: { id: ss[0].id } });
-          return;
-        }
-        if (ss.length > 1) {
-          openModal({ kind: "daypick", date: d3 });
-          return;
-        }
-        if (d3 === today()) {
-          ACT.wkGo({ dataset: { date: d3 } });
-          return;
-        }
-        ACT.pastOpen({ dataset: { date: d3 } });
-      },
-      install() {
-        const how = installKind();
-        if (how === "prompt") {
-          const e5 = window.__installEvt;
-          window.__installEvt = null;
-          try {
-            e5.prompt();
-            Promise.resolve(e5.userChoice).then((r4) => {
-              if (r4 && r4.outcome === "accepted") toast(`Installing ${APP_NAME}. Open it from your home screen.`);
-              rerenderKeepScroll();
-            }, () => {
-            });
-          } catch (err) {
-            log("install", err);
-            openModal({ kind: "install", how: "menu" });
-          }
-          return;
-        }
-        openModal({ kind: "install", how });
-      },
-      startFree() {
-        if (state.draft) {
-          ui.tab = "today";
-          render();
-          return;
-        }
-        const dl = isDeloadWeek();
-        state.draft = { ...freeDraft(dl ? "Freestyle (deload)" : "Freestyle"), deload: dl, notes: dl ? DELOAD_NOTE : "" };
-        ui.tab = "today";
-        state.draft.note0 = state.draft.notes || "";
-        saveNow();
-        window.scrollTo(0, 0);
-        render();
-        wakeOn();
-        openModal({ kind: "picker", mode: "addBlock", title: "Add exercise to session", q: "", m: "" });
-      },
-      /* The session is built first so the sheet can preview what gets trimmed. If
-         the sheet is closed without applying and nothing was logged, the session
-         is removed again, since the user only asked a question. */
-      startShort(t4) {
-        const had = !!state.draft;
-        ACT.startSession(t4);
-        if (state.draft && !had) openModal({ kind: "short", mins: null, temp: state.draft.id });
-      },
-      shortOpen() {
-        if (state.draft) openModal({ kind: "short", mins: null });
-      },
-      shortPick(t4) {
-        const m3 = ui.modal;
-        if (!m3 || m3.kind !== "short") return;
-        m3.mins = +t4.dataset.v;
-        renderModal();
-      },
-      shortApply() {
-        const m3 = ui.modal;
-        const d3 = state.draft;
-        if (!m3 || !d3 || !m3.mins) {
-          closeModal();
-          return;
-        }
-        const pl = shortPlan(d3, m3.mins);
-        m3.applied = true;
-        if (!pl.changes.length) {
-          closeModal();
-          return;
-        }
-        const drop = /* @__PURE__ */ new Set();
-        const removed = /* @__PURE__ */ new Map(), order = d3.ex.slice(), did2 = d3.id;
-        snapshot(() => {
-          const dd = state.draft;
-          if (!dd || dd.id !== did2) return false;
-          for (const [b2, rows] of removed) if (dd.ex.includes(b2)) b2.sets.push(...rows);
-          order.forEach((b2, i5) => {
-            if (drop.has(i5) && !dd.ex.includes(b2)) dd.ex.splice(Math.min(i5, dd.ex.length), 0, b2);
-          });
-          fixSupersets(dd.ex.map((b2) => b2.plan));
-          return true;
-        });
-        for (const x2 of pl.bl) {
-          if (x2.keep === x2.undone) continue;
-          const b2 = d3.ex[x2.bi];
-          if (x2.keep === 0 && !x2.started) {
-            drop.add(x2.bi);
-            continue;
-          }
-          let n3 = x2.undone - x2.keep;
-          const gone = [];
-          for (let i5 = b2.sets.length - 1; i5 >= 0 && n3 > 0; i5--) {
-            const s3 = b2.sets[i5];
-            if (!s3.warm && rowBlank(b2, s3)) {
-              gone.unshift(...b2.sets.splice(i5, 1));
-              n3--;
-            }
-          }
-          removed.set(b2, gone);
-        }
-        d3.ex = d3.ex.filter((b2, bi) => !drop.has(bi));
-        fixSupersets(d3.ex.map((b2) => b2.plan));
-        closeModal();
-        saveNow();
-        rerenderKeepScroll();
-        toast(`Trimmed to ${estMin(min5(pl.est))}`, true);
-      },
-      bCal(t4) {
-        const bi = +t4.dataset.b;
-        const d3 = state.draft;
-        const b2 = d3 && d3.ex[bi];
-        if (!b2) return;
-        const nx = b2.sets.find((x2) => !x2.done && !x2.warm);
-        const w2 = nx && nx.w != null ? nx.w : b2.sets.filter((x2) => !x2.warm && +x2.w > 0).map((x2) => +x2.w).pop();
-        openModal({ kind: "cal", b: bi, w: w2 != null ? fmtW(w2) : "", at: "", pred: b2.plan && isNum(+b2.plan.rir) ? Math.min(5, Math.round(+b2.plan.rir)) : 1, total: "" });
-      },
-      calSave() {
-        const m3 = ui.modal;
-        const d3 = state.draft;
-        const b2 = d3 && m3 && d3.ex[m3.b];
-        if (!b2) {
-          closeModal();
-          return;
-        }
-        const ex = EX(b2.exId);
-        m3.w = $2("#calW").value;
-        m3.at = $2("#calAt").value;
-        m3.pred = +$2("#calPred").value;
-        m3.total = $2("#calTot").value;
-        const w2 = numIn(m3.w), at2 = Math.round(numIn(m3.at)), tot = Math.round(numIn(m3.total));
-        if (!ex.bw && !(w2 > 0)) {
-          m3.err = "Enter the load.";
-          renderModal();
-          return;
-        }
-        if (!(at2 >= 1)) {
-          m3.err = "Enter the rep you would normally have stopped at.";
-          renderModal();
-          return;
-        }
-        if (!(tot >= at2)) {
-          m3.err = "Total reps to failure should be at least the rep you would have stopped at.";
-          renderModal();
-          return;
-        }
-        if (tot > 100) {
-          m3.err = "That is more than 100 reps. Check the number.";
-          renderModal();
-          return;
-        }
-        const set = { w: fromD(Math.max(0, w2 || 0)), r: tot, rir: 0, warm: false, drop: false, done: true, cal: { at: at2, pred: m3.pred } };
-        let si = b2.sets.findIndex((x2) => !x2.done && !x2.warm && x2.r == null);
-        if (si < 0) si = b2.sets.findIndex((x2) => !x2.done && !x2.warm);
-        if (si >= 0) b2.sets[si] = set;
-        else b2.sets.push(set);
-        closeModal();
-        saveNow();
-        rerenderKeepScroll();
-        const left = tot - at2, diff = left - m3.pred;
-        toast(`${left} rep${left === 1 ? " was" : "s were"} left where you called ${m3.pred}. ${diff > 0 ? "Your sets are easier than you log." : diff < 0 ? "You were closer to failure than you thought." : "Spot on."}`, false, 7e3);
-      },
-      bMax(t4) {
-        const b2 = state.draft && state.draft.ex[+t4.dataset.b];
-        if (!b2) return;
-        openModal({ kind: "max", exId: b2.exId, b: +t4.dataset.b });
-      },
-      maxSave() {
-        const m3 = ui.modal;
-        const e5 = state.exercises.find((x2) => x2.id === m3.exId);
-        if (!e5) {
-          closeModal();
-          return;
-        }
-        const n3 = numIn(($2("#maxVal") || {}).value);
-        if (n3 != null && n3 < 0) {
-          toast("Enter a load of 0 or more, or leave it blank");
-          return;
-        }
-        if (n3 != null && n3 > 0) e5.maxLoad = fromD(Math.min(n3, U() === "lb" ? 4e3 : 2e3));
-        else delete e5.maxLoad;
-        closeModal();
-        commit();
-        refreshEx(e5.id);
-        saveNow();
-        rerenderKeepScroll();
-        toast(e5.maxLoad != null ? `Heaviest available for ${e5.name}: ${fmtW(e5.maxLoad)} ${U()}` : `No limit for ${e5.name}`);
-      },
-      secShow(t4) {
-        const k2 = t4.dataset.k;
-        if (!HIDEABLE_KEYS.has(k2)) return;
-        state.settings.hidden = state.settings.hidden.filter((x2) => x2 !== k2);
-        ui.folds[k2] = true;
-        commit();
-        rerenderKeepScroll();
-        const el = document.querySelector(`#view > [data-sk="${k2}"]`);
-        if (el) el.scrollIntoView({ block: "nearest" });
-        const lab = (HIDEABLE.find((x2) => x2[0] + ":" + x2[1] === k2) || [])[2] || "Section";
-        toast(`${lab} added. Hide it again in Settings, Layout.`);
-      },
-      goLayout() {
-        if (ui.modal) closeModal();
-        ui.tab = "settings";
-        ui.folds["settings:layout"] = true;
-        window.scrollTo(0, 0);
-        render();
-        const el = document.querySelector('#view > [data-mkey="layout"]');
-        if (el) el.scrollIntoView({ block: "start" });
-      },
-      obSample() {
-        openModal({ kind: "templates", from: "welcome" });
-      },
-      // The fold in the first-run routine picker (r44): its own state, so a re-render keeps it open.
-      obProfTog() {
-        ui.obProf = !ui.obProf;
-        rerenderKeepScroll();
-      },
-      tplPick(t4) {
-        const m3 = ui.modal;
-        const from = m3 && m3.kind === "templates" ? m3.from : "plan";
-        const k2 = t4.getAttribute("data-k");
-        const r4 = routineFromTemplate(k2);
-        if (!r4) return;
-        closeModal();
-        const same = state.routines.find((x2) => routineSig(x2) === routineSig(r4));
-        if (from === "welcome") {
-          if (same) state.activeRoutineId = same.id;
-          else {
-            state.routines = dropStarter(state.routines, state.sessions, starterSigs());
-            state.routines.push(r4);
-            state.activeRoutineId = r4.id;
-          }
-          const fit = fitTargets(state.routines.find((x2) => x2.id === state.activeRoutineId));
-          const pa = profApplyList(activeRoutine());
-          for (const x2 of pa) Object.assign(x2.it, x2.ch);
-          state.settings.onboarded = true;
-          ui.todayDay = null;
-          ui.tab = "today";
-          commit();
-          window.scrollTo(0, 0);
-          render();
-          toast(`${r4.name} is ready${pa.length ? ", set to Your training" : ""}${fit ? ". Weekly set targets now match it; change them in Settings." : ""}`, null, fit || pa.length ? 6e3 : 0);
-          return;
-        }
-        if (same) {
-          ui.bRoutine = same.id;
-          render();
-          toast("You already have this routine unchanged. Opened it instead.");
-          return;
-        }
-        state.routines.push(r4);
-        ui.bRoutine = r4.id;
-        commit();
-        render();
-        toast(`${r4.name} added. Tap Make active to use it.`);
-      },
-      // Log a workout now keeps the starter routine, so its targets fit it the
-      // same way a routine picked on this page does (decision 114, r29).
-      /* Log a workout now is a freestyle choice (r34.2, from the review: the
-         starter's 4 days a week became the bar for someone training 3 times as
-         they liked, "0-week streak", "of 88 planned"). Today opens on a blank
-         session, the starter stays one tap away as the plan, and the default
-         targets stay, with nothing said over the exercise picker. */
-      obFree() {
-        state.settings.onboarded = true;
-        state.settings.todayStart = "free";
-        commit();
-        ACT.startFree();
-      },
-      histRepeat(t4) {
-        const s3 = state.sessions.find((x2) => x2.id === t4.dataset.id);
-        if (!s3) return;
-        const go = () => {
-          const R2 = activeRoutine();
-          const day = !s3.free && s3.routineId === R2.id && s3.dayId ? R2.days.find((x2) => x2.id === s3.dayId) : null;
-          const deload = isDeloadWeek();
-          const plan = (b2) => {
-            const it = day && day.items.find((i5) => i5.exId === b2.exId);
-            if (it) return deload ? { ...it, sets: Math.max(1, Math.ceil(it.sets / 2)) } : { ...it };
-            const p3 = planFor(b2.exId);
-            if (b2.rr) {
-              p3.repMin = b2.rr[0];
-              p3.repMax = Math.max(b2.rr[0], b2.rr[1]);
-            }
-            const n3 = b2.sets.filter(isWork).length;
-            if (n3) p3.sets = deload ? Math.max(1, Math.ceil(n3 / 2)) : n3;
-            return p3;
-          };
-          const ex = s3.ex.map((b2) => {
-            const nb = newBlock(b2.exId, plan(b2), { deload });
-            const n3 = b2.sets.filter(isWork).length;
-            if (deload && n3 && !(day && day.items.some((i5) => i5.exId === b2.exId))) nb.full = Math.min(n3, 30);
-            return nb;
-          });
-          state.draft = day ? { id: uid(), startedAt: Date.now(), date: today(), dayIdx: R2.days.indexOf(day), dayId: day.id, dayName: day.name + (deload ? " (deload)" : ""), routineId: R2.id, deload, light: false, cardio: [], notes: deload ? DELOAD_NOTE : "", editingId: null, ex } : { ...freeDraft(s3.free ? s3.dayName : `Again: ${s3.dayName}`.slice(0, 40), ex), deload };
-          if (state.draft) state.draft.note0 = state.draft.notes || "";
-          ui.tab = "today";
-          saveNow();
-          window.scrollTo(0, 0);
-          render();
-          wakeOn();
-          toast(day ? `${day.name} started with the same exercises` : "Started as a freestyle session");
-        };
-        if (state.draft) confirmBox("Replace the session in progress?", "You have an unsaved session open. Starting this one discards it.", "Discard and start", go, true);
-        else go();
-      },
-      crashRetry() {
-        ui.tab = "today";
-        ui.planView = "routine";
-        try {
-          closeModal();
-        } catch (e5) {
-          log("render", e5);
-        }
-        ui.modal = null;
-        window.scrollTo(0, 0);
-        render();
-      },
-      // the sheet closed first (r56.1): a question left open reads as Cancel, so the sync waiting on it does not wait forever
-      undo() {
-        if (!undoStack.length) {
-          toast("Nothing left to undo");
-          return;
-        }
-        const e5 = undoStack.pop();
-        undoPersist();
-        const before = canon(state);
-        let done = false;
-        if (e5.inv) {
-          try {
-            done = e5.inv() === true;
-          } catch (x2) {
-            log("undo", x2);
-            done = false;
-          }
-          if (done) setState(normalize(state));
-        }
-        if (!done) try {
-          const pre = normalize(JSON.parse(e5.pre));
-          const post = e5.post ? normalize(JSON.parse(e5.post)) : state;
-          const P2 = chunksOf(pre), Q = chunksOf(post), C2 = chunksOf(state);
-          const stat = { conflicts: 0 };
-          const parts = {};
-          for (const id of /* @__PURE__ */ new Set([...Object.keys(P2), ...Object.keys(Q), ...Object.keys(C2)])) {
-            const q = Q[id] || emptyChunk(id);
-            parts[id] = id === "draft" ? { draft: mergeDraft(Q.draft && Q.draft.draft, normalize(JSON.parse(JSON.stringify(state))).draft, P2.draft && P2.draft.draft) } : mergeChunk(id, q ? baseOf(id, q) : null, C2[id] || emptyChunk(id), P2[id] || emptyChunk(id), false, stat);
-          }
-          setState(assemble(parts));
-        } catch (x2) {
-          log("undo", x2);
-          toast("Could not undo that");
-          return;
-        }
-        if (canon(state) === before) {
-          toast("Nothing to undo there: it has changed since.");
-          const below0 = undoStack[undoStack.length - 1];
-          if (below0 && below0.post == null) below0.post = e5.pre;
-          return;
-        }
-        const below = undoStack[undoStack.length - 1];
-        if (below && below.post == null) below.post = e5.pre;
-        commit();
-        toastHide();
-        render();
-        toast(`Undone. ${undoStack.length} step${undoStack.length === 1 ? "" : "s"} left`);
-      },
-      help(t4) {
-        const k2 = t4.dataset.h;
-        const on = !ui.help.has(k2);
-        if (on) ui.help.add(k2);
-        else ui.help.delete(k2);
-        const el = document.getElementById("help-" + k2);
-        if (el) {
-          el.hidden = !on;
-          const d3 = on && el.closest("details");
-          if (d3 && !d3.open) d3.open = true;
-        }
-        document.querySelectorAll(`[data-act="help"][data-h="${k2}"]`).forEach((b2) => b2.setAttribute("aria-expanded", String(on)));
-      },
-      applyUpd() {
-        const u4 = ui.modal && ui.modal.upd;
-        closeModal();
-        if (!u4) return;
-        const R2 = state.routines.find((r4) => r4.id === u4.rid);
-        const day = R2 && R2.days.find((x2) => x2.id === u4.dayId);
-        if (!day) {
-          toast("That routine day no longer exists");
-          return;
-        }
-        snapshot();
-        for (const x2 of u4.swap) {
-          const it = day.items.find((i5) => i5.exId === x2.from);
-          if (it) {
-            it.exId = x2.to;
-            if (x2.plan) {
-              Object.assign(it, x2.plan);
-              if (x2.plan.jump == null) delete it.jump;
-            }
-          }
-        }
-        for (const x2 of u4.add) if (!day.items.some((i5) => i5.exId === x2.exId)) day.items.push({ ...x2.plan, uid: uid(), exId: x2.exId, ss: null });
-        for (const ids of u4.ss || []) {
-          const its = ids.map((id) => day.items.find((i5) => i5.exId === id)).filter(Boolean);
-          if (its.length < 2) continue;
-          const at2 = Math.min(...its.map((i5) => day.items.indexOf(i5)));
-          day.items = day.items.filter((i5) => !its.includes(i5));
-          day.items.splice(at2, 0, ...its);
-          const g2 = uid();
-          for (const i5 of its) i5.ss = g2;
-        }
-        fixSupersets(day.items);
-        if (day.items.length) Object.assign(day, trainOn(day));
-        commit();
-        render();
-        toast(`${day.name} updated`, true);
-      },
-      goalOpen(t4) {
-        openModal({ kind: "goal", exId: t4.dataset.ex });
-      },
-      goalSave() {
-        const m3 = ui.modal;
-        const e5 = state.exercises.find((x2) => x2.id === m3.exId);
-        if (!e5) {
-          closeModal();
-          return;
-        }
-        const w2 = numIn(($2("#goalW") || {}).value), r4 = Math.round(numIn(($2("#goalR") || {}).value));
-        if (!(r4 >= 1 && r4 <= LIMITS.goalReps)) {
-          toast(`Reps from 1 to ${LIMITS.goalReps}`);
-          return;
-        }
-        if (w2 == null && !e5.bw) {
-          toast("Enter a load");
-          return;
-        }
-        if (w2 != null && w2 < 0) {
-          toast("Enter a load of 0 or more");
-          return;
-        }
-        snapshot();
-        e5.goal = { w: fromD(w2 || 0), r: r4 };
-        closeModal();
-        commit();
-        rerenderKeepScroll();
-        toast(`Goal set: ${goalWords(e5, e5.goal)}`, true);
-      },
-      goalClear() {
-        const m3 = ui.modal;
-        const e5 = state.exercises.find((x2) => x2.id === m3.exId);
-        if (!e5) {
-          closeModal();
-          return;
-        }
-        snapshot();
-        delete e5.goal;
-        closeModal();
-        commit();
-        rerenderKeepScroll();
-        toast("Goal removed", true);
-      },
-      bInc(t4) {
-        const b2 = state.draft.ex[+t4.dataset.b];
-        openModal({ kind: "inc", exId: b2.exId, plan: b2.plan });
-      },
-      incSave() {
-        const m3 = ui.modal;
-        const n3 = numIn(($2("#incVal") || {}).value);
-        if (n3 == null || n3 <= 0) {
-          toast("Enter a step above 0");
-          return;
-        }
-        const e5 = state.exercises.find((x2) => x2.id === m3.exId);
-        if (!e5) {
-          closeModal();
-          return;
-        }
-        if (e5.inc == null && !m3.typed && String(numIn(fmtW(incOf(e5, m3.plan)))) === String(n3)) {
-          closeModal();
-          return;
-        }
-        e5.inc = Math.min(fromD(n3), LIMITS.step);
-        closeModal();
-        commit();
-        refreshEx(e5.id);
-        saveNow();
-        rerenderKeepScroll();
-        toast(`Load step for ${e5.name}: ${fmtW(e5.inc)} ${U()}`);
-      },
-      cardioNew() {
-        openModal({ kind: "cardio" });
-      },
-      cardioSave() {
-        const min = numIn($2("#cMin").value);
-        if (min == null || min <= 0) {
-          toast("Enter the minutes");
-          return;
-        }
-        const date = $2("#cDate").value || today();
-        state.cardio.push(cleanCardio({ id: uid(), date: isDate(date) ? date : today(), kind: $2("#cKind").value, min, hr: numIn($2("#cHr").value), when: "solo", note: ($2("#cNote").value || "").trim(), dist: distIn($2("#cDist").value) }));
-        closeModal();
-        commit();
-        rerenderKeepScroll();
-        toast("Cardio logged");
-      },
-      restWkOpen() {
-        openModal({ kind: "restwk" });
-      },
-      restWk(t4) {
-        const ws = t4.dataset.w;
-        if (!isDate(ws)) return;
-        snapshot();
-        const r4 = (state.settings.restWeeks || []).slice();
-        const on = r4.includes(ws);
-        state.settings.restWeeks = on ? r4.filter((x2) => x2 !== ws) : [...r4, ws].sort();
-        if (!state.settings.restWeeks.length) delete state.settings.restWeeks;
-        invalidate();
-        commit();
-        renderModal();
-        rerenderKeepScroll();
-        toast(on ? "Rest week cleared" : "Rest week marked", true);
-      },
-      injAdd() {
-        openModal({ kind: "injury" });
-      },
-      injSave() {
-        const m3 = $2("#injM").value;
-        const note = ($2("#injNote").value || "").trim();
-        if (!MK.includes(m3) && !JK.includes(m3)) return;
-        state.injuries = (state.injuries || []).filter((x2) => x2.m !== m3);
-        state.injuries.push({ id: uid(), m: m3, note, date: today() });
-        closeModal();
-        commit();
-        render();
-        toast(`${injLabel(m3)} flagged`);
-      },
-      bMenu(t4) {
-        openModal({ kind: "bmenu", b: +t4.dataset.b });
-      },
-      // A choice in the exercise menu: the sheet closes, then the session screen's action it names runs (workout.ts).
+      ...APP_ACTS,
+      ...ROUTINE_ACTS,
+      ...PICK_ACTS,
+      ...START_ACTS,
+      ...LIFT_ACTS,
       bMenuDo(t4) {
         const op = t4.dataset.op;
         closeModal();
         const f3 = ACT[op];
         if (f3) f3(t4);
       },
-      tAdd() {
-        timerAdd();
-      },
-      tStop() {
-        stopTimer();
-      },
-      mClose() {
-        closeModal();
-      },
-      mOk() {
-        const m3 = ui.modal;
-        const fn = m3 && m3.fn;
-        if (m3) m3.answered = true;
-        closeModal();
-        fn && fn();
-      },
-      mAlt() {
-        const m3 = ui.modal;
-        const a2 = m3 && m3.alt;
-        if (m3) m3.answered = true;
-        closeModal();
-        a2 && a2.fn && a2.fn();
-      },
-      startSession(t4) {
-        if (ui.modal) closeModal();
-        toastQuiet();
-        const R2 = activeRoutine();
-        const di = +t4.dataset.day;
-        const d3 = R2.days[di];
-        if (!d3) return;
-        const light = t4.dataset.light === "1";
-        const deload = !light && isDeloadWeek();
-        const items = d3.rest ? [] : d3.items.map((it) => light || deload ? { ...it, sets: Math.max(1, Math.ceil(it.sets / 2)) } : it);
-        state.draft = { id: uid(), startedAt: Date.now(), date: today(), dayIdx: di, dayId: d3.id, dayName: d3.name + (light ? " (lighter)" : deload ? " (deload)" : ""), routineId: R2.id, deload, light, cardio: [], notes: light ? LIGHTER_NOTE : deload ? DELOAD_NOTE : "", editingId: null, ex: items.map((it) => newBlock(it.exId, it, { deload, light })) };
-        state.draft.note0 = state.draft.notes || "";
-        saveNow();
-        window.scrollTo(0, 0);
-        render();
-        wakeOn();
-      },
-      goBackup() {
-        if (ui.modal) closeModal();
-        ui.tab = "settings";
-        ui.folds["settings:data"] = true;
-        window.scrollTo(0, 0);
-        render();
-        const el = document.getElementById("dataSec");
-        if (el) el.scrollIntoView({ block: "start" });
-      },
-      bQuick(t4) {
-        openModal({ kind: "quick", b: +t4.dataset.b, text: "" });
-      },
-      bHist(t4) {
-        const b2 = state.draft && state.draft.ex[+t4.dataset.b];
-        if (b2) openModal({ kind: "exhist", exId: b2.exId });
-      },
-      // The editor's muscle pickers already name the muscles; the figure is there on request (r40, V: not both at once).
-      exBodyTog() {
-        ui.exBody = !ui.exBody;
-        renderModal();
-      },
-      bMus(t4) {
-        const b2 = state.draft && state.draft.ex[+t4.dataset.b];
-        if (b2) openModal({ kind: "exMus", exId: b2.exId });
-      },
-      qFill() {
-        const m3 = ui.modal;
-        if (!m3 || m3.kind !== "quick") return;
-        const d3 = state.draft;
-        const b2 = d3 && d3.ex[m3.b];
-        if (!b2) return;
-        const txt = (($2("#qTxt") || {}).value || "").trim();
-        m3.text = txt;
-        if (!txt) {
-          m3.err = "Type at least one set.";
-          renderModal();
-          return;
-        }
-        const ex = EX(b2.exId);
-        const fi = b2.sets.findIndex((x2) => !x2.done && !x2.warm);
-        const fw = fi >= 0 ? effW(b2, fi) : null;
-        const defW = fw != null ? fw : null;
-        const got = parseSets(txt, ex, defW, null, rirScale() === "rpe");
-        const finish2 = (list) => {
-          const n3 = fillSets(m3.b, list);
-          if (!(ui.modal && ui.modal.kind === "confirm")) {
-            closeModal();
-            rerenderKeepScroll();
-            toast(`${n3} set${n3 === 1 ? "" : "s"} filled and marked done`);
-          }
-        };
-        if (got) {
-          finish2(got);
-          return;
-        }
-        m3.err = `Could not read that. Try the pattern 225x5, 5, 4 ${rirScale() === "rpe" ? "rpe 9" : "rir 1"}.`;
-        renderModal();
-      },
-      startAltOpen(t4) {
-        openModal({ kind: "startAlt", di: +t4.dataset.day, free: t4.dataset.free === "1" });
-      },
-      // A choice in Change: the sheet closes first, then the start it names runs as the card's button did.
       altGo(t4) {
         const go = t4.dataset.go;
         closeModal();
         if (ACT[go]) ACT[go](t4);
-      },
-      // Another day of the plan on the card (the old Change day list); in a blank-session Today it shows that day's card.
-      dayPick(t4) {
-        const i5 = +t4.dataset.i;
-        closeModal();
-        ui.todayDay = i5;
-        ui.todayAt = null;
-        window.scrollTo(0, 0);
-        render();
-      },
-      bNote(t4) {
-        const bi = +t4.dataset.b;
-        openModal({ kind: "note", bi, title: `Note: ${exName(state.draft.ex[bi].exId)}`, text: state.draft.ex[bi].note || "" });
-      },
-      noteSave() {
-        const m3 = ui.modal;
-        const ta = $2("#mNote");
-        if (!m3 || !ta || !state.draft) return;
-        const b2 = state.draft.ex[m3.bi];
-        if (b2) b2.note = ta.value.trim();
-        closeModal();
-        saveNow();
-        rerenderKeepScroll();
-      },
-      bSwap(t4) {
-        openModal({ kind: "picker", mode: "swapBlock", b: +t4.dataset.b, title: "Swap exercise", q: "", m: EX(state.draft.ex[+t4.dataset.b].exId).primary });
-      },
-      pickSession() {
-        openModal({ kind: "picker", mode: "addBlock", title: "Add exercise to session", q: "", m: "" });
-      },
-      pickDay(t4) {
-        openModal({ kind: "picker", mode: "addDay", day: +t4.dataset.day, title: `Add to ${dayLabel(curRoutineB(), +t4.dataset.day)}`, q: "", m: "" });
-      },
-      iSwap(t4) {
-        const f3 = findItem(t4.dataset.uid);
-        openModal({ kind: "picker", mode: "swapItem", uid: t4.dataset.uid, title: "Swap exercise", q: "", m: f3 ? EX(f3.it.exId).primary : "" });
-      },
-      pickDo(t4) {
-        applyPick(ui.modal, t4.dataset.ex);
-      },
-      /* Pick for me, before a session: rank the routine's days for today. */
-      pickToday() {
-        openModal({ kind: "pickToday" });
-      },
-      pickView(t4) {
-        closeModal();
-        ui.todayDay = +t4.dataset.day;
-        ui.todayAt = null;
-        ui.tab = "today";
-        window.scrollTo(0, 0);
-        render();
-      },
-      /* Pick for me, inside a session: what to add next. */
-      pickEx() {
-        if (!state.draft) return;
-        openModal({ kind: "pickEx" });
-      },
-      pickExAdd(t4) {
-        const d3 = state.draft;
-        if (!d3) return;
-        const id = t4.dataset.ex;
-        if (!state.exercises.some((e5) => e5.id === id)) {
-          closeModal();
-          return;
-        }
-        const p3 = planFor(id, null, d3.dayId, false, d3.date);
-        const n3 = Math.round(+t4.dataset.sets), full = Math.round(+t4.dataset.full);
-        if (n3 >= 1 && n3 <= 30) p3.sets = n3;
-        const nb = newBlock(id, p3, { deload: !!d3.deload, light: !!d3.light, before: d3.date });
-        if ((d3.deload || d3.light) && full >= 1 && full <= 30) nb.full = full;
-        d3.ex.push(nb);
-        saveNow();
-        closeModal();
-        afterAdd(d3.ex.length - 1);
-        toast(`${exName(id)} added: ${p3.sets} set${p3.sets === 1 ? "" : "s"}`);
-      },
-      /* Limited equipment: pick what is available, preview the swaps, start. */
-      eqOpen(t4) {
-        const di = +t4.dataset.day;
-        const R2 = activeRoutine();
-        if (!R2.days[di]) return;
-        openModal({ kind: "eq", day: di, equip: (ui.eqLast || EQUIP.map((x2) => x2[0])).slice() });
-      },
-      eqToggle(t4) {
-        const m3 = ui.modal;
-        if (!m3 || m3.kind !== "eq") return;
-        const k2 = t4.dataset.k;
-        m3.equip = m3.equip.includes(k2) ? m3.equip.filter((x2) => x2 !== k2) : [...m3.equip, k2];
-        renderModal();
-      },
-      eqStart() {
-        const m3 = ui.modal;
-        if (!m3 || m3.kind !== "eq") return;
-        const R2 = activeRoutine();
-        const day = R2.days[m3.day];
-        if (!day) {
-          closeModal();
-          return;
-        }
-        const eq = new Set(m3.equip);
-        const pl = eqPlan(day, eq).filter((x2) => x2.to);
-        if (!pl.length) {
-          toast("Nothing in this workout fits that equipment");
-          return;
-        }
-        ui.eqLast = m3.equip.slice();
-        closeModal();
-        const deload = isDeloadWeek();
-        const ex = pl.map((x2) => {
-          const it = deload ? { ...x2.it, sets: Math.max(1, Math.ceil(x2.it.sets / 2)) } : x2.it;
-          const sp = x2.from ? swapPlan(it, x2.from, x2.to, R2, day.id) : { ...it };
-          if (x2.hard) Object.assign(sp, { repMin: 3, repMax: 6, rir: 2 });
-          const b2 = newBlock(x2.to, sp, { deload });
-          if (x2.from) b2.swappedFrom = x2.from;
-          return b2;
-        });
-        const sw = eqPlan(day, eq).filter((x2) => x2.from);
-        const note = sw.length ? "Limited equipment: " + sw.map((x2) => `${exName(x2.from)} → ${x2.to ? exName(x2.to) : "left out"}`).join("; ") + "." : "";
-        state.draft = { id: uid(), startedAt: Date.now(), date: today(), dayIdx: m3.day, dayId: day.id, dayName: day.name + (deload ? " (deload)" : ""), routineId: R2.id, deload, light: false, limited: true, cardio: [], notes: [deload ? DELOAD_NOTE : "", note].filter(Boolean).join(" "), editingId: null, ex };
-        state.draft.note0 = state.draft.notes || "";
-        saveNow();
-        window.scrollTo(0, 0);
-        render();
-        wakeOn();
-      },
-      /* Log a past workout: from an empty past day in the top bar (that date),
-         or from History (yesterday, changeable in the sheet). */
-      pastOpen(t4) {
-        const d3 = t4 && t4.dataset && isDate(t4.dataset.date) && t4.dataset.date <= today() ? t4.dataset.date : addDays(today(), -1);
-        openModal({ kind: "past", date: d3 });
-      },
-      pastGo(t4) {
-        const m3 = ui.modal;
-        if (!m3 || m3.kind !== "past") return;
-        const date = m3.date;
-        const di = t4.dataset.day === "free" ? null : +t4.dataset.day;
-        const go = () => {
-          stopTimer();
-          wakeOff();
-          state.draft = pastDraft(date, di);
-          ui.tab = "today";
-          ui.todayDay = null;
-          saveNow();
-          window.scrollTo(0, 0);
-          render();
-          if (di == null) openModal({ kind: "picker", mode: "addBlock", title: "Add exercise to session", q: "", m: "" });
-        };
-        closeModal();
-        if (state.draft && (state.draft.editingId || draftEntered(state.draft))) confirmBox("Replace the session in progress?", state.draft.editingId ? "You are editing a saved session. Your edits will be lost." : "You have an unsaved session open. Starting this one discards it.", "Discard and start", go, true);
-        else go();
-      },
-      /* A day in the top bar: today or ahead opens Today on it. */
-      wkGo(t4) {
-        const d3 = t4.dataset.date;
-        ui.tab = "today";
-        if (!state.draft) {
-          const R2 = activeRoutine();
-          const di = t4.dataset.day != null ? +t4.dataset.day : null;
-          ui.todayDay = d3 === today() || di == null || !R2.days[di] ? null : di;
-          ui.todayAt = ui.todayDay == null ? null : { d: d3, di };
-        }
-        if (ui.modal) closeModal();
-        window.scrollTo(0, 0);
-        render();
-      },
-      rNew() {
-        openModal({ kind: "routineNew" });
-      },
-      rNewSave() {
-        const nm = (($2("#rNewName") || {}).value || "").trim();
-        if (!nm) {
-          toast("Give the routine a name");
-          return;
-        }
-        if (nameTaken(nm)) {
-          toast("A routine already has that name. Pick another.");
-          return;
-        }
-        closeModal();
-        ACT.rNewDo(nm);
-      },
-      rNewDo(nm) {
-        const blank = state.routines.find((r5) => routineEmpty(r5) && r5.id !== state.activeRoutineId);
-        if (blank) {
-          blank.name = nm || blank.name;
-          ui.bRoutine = blank.id;
-          commit();
-          render();
-          toast("Reused your empty routine");
-          return;
-        }
-        const r4 = { id: uid(), name: nm || "New routine", schedule: "cycle", days: [0, 1, 0, 1, 0, 1, 1].map((x2) => ({ id: uid(), name: x2 ? "Rest" : "Training day", rest: !!x2, items: [] })) };
-        state.routines.push(r4);
-        ui.bRoutine = r4.id;
-        commit();
-        render();
-      },
-      // Laid out as Build my own's (r55, the audit: three training days and no rest planned 7 sessions a week).
-      rTemplate() {
-        openModal({ kind: "templates", from: "plan" });
-      },
-      exNew() {
-        openModal({ kind: "exEdit", isNew: true, e: { id: "c_" + uid(), name: "", primary: "chest", secondary: [], equip: "cable", bw: false, rare: false, note: "", custom: true, archived: false } });
-      },
-      exNewFromPicker() {
-        const back2 = ui.modal;
-        if (!back2 || back2.kind !== "picker") return;
-        openModal({ kind: "exEdit", isNew: true, back: back2, e: { id: "c_" + uid(), name: (back2.q || "").trim(), primary: back2.m || "", secondary: [], equip: "cable", bw: false, rare: false, note: "", custom: true, archived: false, incRaw: "" } });
-      },
-      exBack() {
-        const m3 = ui.modal;
-        if (m3 && m3.back) openModal(m3.back);
-        else closeModal();
-      },
-      // back to the sheet this one was opened from, else closed: the exercise editor's, and an account sheet's opened from a problem report (r55)
-      exEdit(t4) {
-        ui.exBody = false;
-        const e5 = JSON.parse(JSON.stringify(EX(t4.dataset.ex)));
-        e5.incRaw = e5.inc != null ? fmtW(stepRead(e5.inc)) : "";
-        e5.bwfRaw = String(Math.round(bwShare(e5) * 100));
-        e5.maxRaw = e5.maxLoad != null ? fmtW(e5.maxLoad) : "";
-        e5.barRaw = e5.barKg != null ? fmtW(e5.barKg) : "";
-        openModal({ kind: "exEdit", isNew: false, e: e5 });
-      },
-      secToggle(t4) {
-        const e5 = ui.modal.e;
-        const k2 = t4.dataset.m;
-        e5.secondary = e5.secondary.includes(k2) ? e5.secondary.filter((x2) => x2 !== k2) : [...e5.secondary, k2];
-        renderModal();
-      },
-      exSave() {
-        const m3 = ui.modal;
-        const e5 = m3.e;
-        e5.name = (e5.name || "").trim();
-        if (!e5.name) {
-          toast("Give the exercise a name");
-          return;
-        }
-        if (!MK.includes(e5.primary)) {
-          toast("Pick the main muscle it trains");
-          const el = document.querySelector('[data-ebind="primary"]');
-          if (el) try {
-            el.focus();
-          } catch (x2) {
-          }
-          return;
-        }
-        e5.secondary = e5.secondary.filter((k2) => k2 !== e5.primary);
-        {
-          const n3 = numIn(e5.incRaw);
-          e5.inc = n3 != null && n3 > 0 ? Math.min(fromD(n3), LIMITS.step) : null;
-          delete e5.incRaw;
-        }
-        {
-          const n3 = numIn(e5.maxRaw);
-          if (n3 != null && n3 > 0) e5.maxLoad = fromD(Math.min(n3, U() === "lb" ? 4e3 : 2e3));
-          else delete e5.maxLoad;
-          delete e5.maxRaw;
-        }
-        {
-          const n3 = numIn(e5.barRaw);
-          if (n3 != null && n3 > 0 && platesMode(e5) === "bar") e5.barKg = Math.min(fromD(n3), LIMITS.barKg);
-          else delete e5.barKg;
-          delete e5.barRaw;
-        }
-        {
-          const n3 = numIn(e5.bwfRaw);
-          delete e5.bwfRaw;
-          const def = BWF[e5.id] != null ? BWF[e5.id] : 1;
-          if (e5.bw && n3 != null && n3 > 0 && n3 <= 150 && Math.abs(n3 / 100 - def) > 5e-3) e5.bwf = Math.round(n3) / 100;
-          else delete e5.bwf;
-        }
-        if (e5.timed !== true) delete e5.timed;
-        if (e5.kind !== "compound" && e5.kind !== "iso") delete e5.kind;
-        e5.plates = ["bar", "side", "sleeve", "none"].includes(e5.plates) ? e5.plates : null;
-        if (["each", "total", "side", "stack"].includes(e5.load) && !e5.bw) e5.load = e5.load;
-        else delete e5.load;
-        if (!m3.isNew && !(e5.bw && e5.assist) && (state.sessions.some((x2) => x2.ex.some((b2) => b2.exId === e5.id && b2.sets.some((q) => +q.w < 0))) || state.draft && state.draft.ex.some((b2) => b2.exId === e5.id && b2.sets.some((q) => +q.w < 0)))) {
-          toast("This exercise has sets logged with machine help, so it stays assisted.");
-          return;
-        }
-        const wasA = !m3.isNew && (state.exercises.find((x2) => x2.id === e5.id) || {}).assist;
-        if (!m3.isNew && e5.bw && e5.assist && !wasA && (state.sessions.some((x2) => x2.ex.some((b2) => b2.exId === e5.id && b2.sets.some((q) => +q.w > 0))) || state.draft && state.draft.ex.some((b2) => b2.exId === e5.id && b2.sets.some((q) => +q.w > 0)))) {
-          toast("This exercise has sets with added weight. Use Assisted Pull-up or Assisted Dip, or a new exercise, for machine help.");
-          return;
-        }
-        if (m3.isNew) state.exercises.push(e5);
-        else {
-          const i5 = state.exercises.findIndex((x2) => x2.id === e5.id);
-          if (i5 >= 0) state.exercises[i5] = e5;
-        }
-        commit();
-        if (!m3.isNew) {
-          refreshEx(e5.id);
-          saveNow();
-        }
-        if (m3.isNew && m3.back && m3.back.kind === "picker") {
-          const back2 = m3.back;
-          applyPick(back2, e5.id);
-          toast(back2.mode === "addBlock" || back2.mode === "addDay" ? `${e5.name} created and added` : `${e5.name} created and swapped in`);
-          return;
-        }
-        if (m3.back) {
-          const back2 = m3.back;
-          back2.q = e5.name;
-          openModal(back2);
-        } else closeModal();
-        rerenderKeepScroll();
-        toast(m3.isNew ? "Exercise created" : "Exercise saved");
-      },
-      /* Every tile, summary row and map detail lands on the matching dashboard
-         section, opened even if you had folded it, with the relevant muscle or
-         exercise already selected. */
-      goDash(t4) {
-        const raw = t4.getAttribute("data-sec"), m3 = t4.getAttribute("data-m"), ex = t4.getAttribute("data-ex");
-        const sec = raw && DSEC_ALIAS[raw] ? DSEC_ALIAS[raw] : raw;
-        if (sec && state.settings.hidden.includes("dash:" + sec)) {
-          toast("That section is hidden. Turn it back on in Settings under Layout.");
-          return;
-        }
-        if (raw === "svol") ui.volMode = "load";
-        if (m3 && MK.includes(m3)) {
-          ui.dashMuscle = m3;
-          if (sec === "volume") ui.volMode = "trend";
-        }
-        if (ex) ui.dashEx = ex;
-        if (sec) {
-          ui.folds["dash:" + sec] = true;
-          if (raw !== sec) ui.folds["dash:sub:" + raw] = true;
-        }
-        ui.tab = "dash";
-        window.scrollTo(0, 0);
-        render();
-        if (sec) {
-          try {
-            const el = document.getElementById("sec-" + sec);
-            if (el) {
-              el.open = true;
-              const inner = raw !== sec && document.getElementById("sub-" + raw);
-              if (inner) inner.open = true;
-              const tgt = inner || el;
-              if (tgt.scrollIntoView) tgt.scrollIntoView({ block: "start" });
-            }
-          } catch (e5) {
-          }
-        }
-      },
-      wkOpen(t4) {
-        if (ui.modal && ui.modal.kind === "daypick") closeModal();
-        const id = t4.dataset.id;
-        ui.tab = "history";
-        ui.histEx = "";
-        ui.histOpen = id;
-        const at2 = [...state.sessions].sort((a2, b2) => sessCmp(b2, a2)).findIndex((x2) => x2.id === id);
-        ui.histLimit = Math.max(HIST_PAGE, at2 + 1);
-        window.scrollTo(0, 0);
-        render();
-        try {
-          const el = document.querySelector(`[data-act="histToggle"][data-id="${id}"]`);
-          if (el && el.scrollIntoView) el.scrollIntoView({ block: "start" });
-        } catch (e5) {
-        }
-      },
-      histEdit(t4) {
-        const s3 = state.sessions.find((x2) => x2.id === t4.dataset.id);
-        if (!s3) return;
-        const go = () => {
-          const R2 = state.routines.find((r4) => r4.id === s3.routineId) || activeRoutine();
-          const dayItems = s3.free ? [] : (R2.days[sessDayIdx(R2, s3)] || { items: [] }).items;
-          state.draft = { id: uid(), editingId: s3.id, deload: !!s3.deload, light: !!s3.light, free: s3.free ? true : void 0, chk: s3.chk ? { ...s3.chk } : void 0, startedAt: null, durMin: s3.durMin || null, date: s3.date, dayIdx: s3.dayIdx, dayId: s3.dayId || null, dayName: s3.dayName, routineId: s3.routineId, notes: s3.notes || "", ex: s3.ex.map((b2) => {
-            const it = dayItems.find((i5) => i5.exId === b2.exId);
-            const plan = it ? { ...it } : planFor(b2.exId, null, null, false, s3.date);
-            return { bid: uid(), exId: b2.exId, plan, note: b2.note || "", keepRR: b2.rr || null, light: b2.light ? true : void 0, hint: "Editing saved sets.", lastR: [], sets: b2.sets.map((x2) => newRow({ w: x2.w, r: x2.r, rir: x2.rir, warm: !!x2.warm, drop: !!x2.drop, done: true, cal: x2.cal ? { ...x2.cal } : void 0, rid: x2.rid })), ...b2.nw ? { nw: true } : {} };
-          }) };
-          editFp0.set(state.draft.id, editFp(state.draft));
-          saveNow();
-          ui.tab = "today";
-          window.scrollTo(0, 0);
-          render();
-        };
-        if (state.draft) confirmBox("Replace the session in progress?", "You have an unsaved session open. Editing this one will discard it.", "Discard and edit", go, true);
-        else go();
-      },
-      export() {
-        exportBackup();
-      },
-      exportCsv() {
-        exportCSV();
-      },
-      showBackup() {
-        openModal({ kind: "text", title: "Backup text", help: "Select all and copy. Paste it into Import on any device to restore.", text: JSON.stringify({ app: STORAGE_ID, exported: (/* @__PURE__ */ new Date()).toISOString(), state }), readonly: true });
-      },
-      copyText() {
-        const ta = $2("#mText");
-        ta.select();
-        let ok = false;
-        try {
-          if (navigator.clipboard) {
-            navigator.clipboard.writeText(ta.value).then(() => {
-              markExported();
-              toast("Copied");
-            }, () => toast("Select the text and copy it manually"));
-            return;
-          }
-          ok = document.execCommand("copy");
-        } catch (e5) {
-          log("copy", e5);
-        }
-        if (ok) markExported();
-        toast(ok ? "Copied" : "Select the text and copy it manually");
       }
     };
     tipsStart();

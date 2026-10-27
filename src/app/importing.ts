@@ -64,9 +64,9 @@ export interface ImpReadSession {
 /** What a file or pasted text was read as, before the preview: the sessions, the unit when it says one, what was skipped or not understood, cardio from a table, and whether it came from notes or still needs its columns named. */
 export interface ImpRead {
   sessions: ImpReadSession[];
-  unit: 'kg' | 'lb' | null;
-  skipped: number;
-  cardio: number;
+  unit?: 'kg' | 'lb' | null | undefined;
+  skipped?: number | undefined;
+  cardio?: number | undefined;
   cardioRows?: ImpCardio[] | undefined;
   unread?: string[] | undefined;
   unreadN?: number | undefined;

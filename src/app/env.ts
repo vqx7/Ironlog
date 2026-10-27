@@ -5,8 +5,8 @@
 
 declare global {
   interface Window {
-    /** The install prompt the browser offered, kept until the lifter taps Install (Chrome and Edge). */
-    __installEvt?: unknown;
+    /** The install prompt the browser offered, kept until the lifter taps Install (Chrome and Edge's beforeinstallprompt event): its prompt, and the choice it resolves to. */
+    __installEvt?: { prompt(): unknown; userChoice?: unknown } | null | undefined;
   }
   interface Navigator {
     /** Safari's own flag for a page opened from the home screen. */

@@ -79,7 +79,8 @@ export interface Ui {
   modal: Modal | null;
   folds: Record<string, unknown>;
   rng: Record<string, unknown>;
-  eqLast: unknown;
+  /** The equipment Limited equipment last started with, which it opens on next. */
+  eqLast: string[] | null;
   /** Your gym's dumbbell fields as typed, until they make a rack (r33). */
   gymDb?: Partial<DbRack> | null | undefined;
   /** The unit Your gym is labelled in, chosen before anything is saved there. */

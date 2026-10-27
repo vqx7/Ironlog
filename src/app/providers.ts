@@ -92,6 +92,8 @@ export function said(e: unknown, or: string): string {
 export interface ClaudeUse {
   (what: 'db'): Promise<CloudDb | null | undefined>;
   (what: 'user'): Promise<{ id(): Promise<unknown> } | null | undefined>;
+  /** The artifact's downloads: a saved file, confirmed (the export's). */
+  (what: 'downloads'): Promise<{ save(o: { filename: string; data: string }): Promise<unknown> } | null | undefined>;
 }
 
 declare global {

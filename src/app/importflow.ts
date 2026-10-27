@@ -214,7 +214,7 @@ export async function impStart(input: { file?: File | undefined; text?: string |
     openPreview(
       map['ex'] != null && (map['r'] != null || map['secs'] != null) && map['w'] != null && map['date'] != null
         ? impFromTable(rows, map)
-        : { sessions: [], unit: null, skipped: 0, cardio: 0, needMap: true },
+        : { sessions: [], needMap: true },
       { rows, map }
     );
   } catch (e) {

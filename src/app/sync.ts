@@ -87,18 +87,11 @@ const KEEP_TRIES = 10;
 
 declare global {
   interface Window {
-    /** Claude's artifact services, where the page runs inside Claude (retired; the sync suites inject a stand-in db through it). */
-    claude?: { use?: ClaudeUse | undefined } | undefined;
     /** The account backend's handle for the sync (scripts/cloud-supabase.js): the document store and who is signed in. */
     ironlogCloud?:
       | (() => Promise<{ db?: CloudDb | null | undefined; userId?: unknown } | null | undefined>)
       | undefined;
   }
-}
-/** `window.claude.use`: the artifact's database, and the viewer. */
-interface ClaudeUse {
-  (what: 'db'): Promise<CloudDb | null | undefined>;
-  (what: 'user'): Promise<{ id(): Promise<unknown> } | null | undefined>;
 }
 
 /* ---------- the save on this device ---------- */
