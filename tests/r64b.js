@@ -149,11 +149,13 @@ const MENU = () => { const el = document.getElementById('saveState'); return el 
     const ok = report('F3: signing in again while stalled');
     const B = await stalled(ok, 'again@example.com', 'sB1');
     await wait(1000);
+    const t = Date.now();
     await B.signIn('again@example.com');
-    const said = (await B.toasts()).filter(t => /^Signed in\. Syncing your log\./.test(t.text));
-    ok(said.every(t => t.on), '"Signed in. Syncing your log." is said only when the sync has started (r63: said with the sync off)', said);
-    const going = await B.synced(NET_MS + 15000);
-    ok(going || !said.length, 'and when it is said, the log syncs', { cloud: await B.cloud(), menu: await B.menu() });
+    // The library's start, which the new sign-in's first sync waits behind, ends after its second try at the refresh, twice the limit on.
+    const going = await B.synced(2 * NET_MS + 20000);
+    const said = (await B.toasts()).filter(x => x.at >= t && /^Signed in\. Syncing your log\./.test(x.text));
+    ok(said.length && said.every(x => x.on), '"Signed in. Syncing your log." is said, and only once the sync has started (r63: said with the sync off)', said);
+    ok(going, 'and the log syncs', { s: (Date.now() - t) / 1000, cloud: await B.cloud(), menu: await B.menu() });
     await B.log('sB2');
     ok(await until(() => sessIn('again@example.com').includes('sB2'), 30000, 500), 'a session logged after it reaches the account', sessIn('again@example.com'));
     ok(await B.has('sB1') && await B.has('sB2'), 'the log stays on the phone');
