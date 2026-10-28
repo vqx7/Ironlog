@@ -412,8 +412,6 @@ export const IMP_ALIAS: Readonly<Record<string, string>> = {
   'assisted dip': 'assistDip',
   'tricep dip assisted': 'assistDip',
   'pullup assisted': 'assistPullup',
-  // @ts-expect-error: this key is written twice with the same value; kept so the move changes no code.
-  'assisted dip': 'assistDip',
   'dip assisted': 'assistDip',
   'squat': 'backSquat',
   'bb squat': 'backSquat',

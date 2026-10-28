@@ -414,7 +414,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // expected error only where listed with its reason (the second r51 review
   // hid a copy of the legacy script in config.ts behind @ts-nocheck).
   {
-    const EXPECT = { 'importing.ts': 1 }; // the duplicate 'assisted dip' key, kept so the move changes no code (PENDING 304)
+    // None listed since r65 (PENDING 304): the one there was, the import table's 'assisted dip' key written twice, is written once.
+    const EXPECT = {};
     const bad = [];
     // A directive is a comment that opens with it (`// @ts-ignore`); prose that mentions one is not (the r51 mutation test).
     for (const id of MODS) {
@@ -423,7 +424,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       const n = (txt.match(/(\/\/|\/\*)\s*@ts-expect-error\b/g) || []).length;
       if (n !== (EXPECT[f] || 0)) bad.push(`${f}: ${n} @ts-expect-error, ${EXPECT[f] || 0} listed`);
     }
-    ok(bad.length === 0, 'the type checker is switched off nowhere in src/app/, beyond the one listed exception', bad);
+    ok(bad.length === 0, 'the type checker is switched off nowhere in src/app/: no @ts-nocheck, @ts-ignore or @ts-expect-error', bad);
   }
   // Every name a module exports says what it is for, in a comment of its own
   // directly above it, or shares the comment of the group it sits in (related

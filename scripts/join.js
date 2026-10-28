@@ -109,7 +109,7 @@ function build({ override = {} } = {}) {
   } finally {
     if (copy) fs.rmSync(copy, { recursive: true, force: true });
   }
-  const script = escapeMarkup(out.outputFiles[0].text);
+  const script = escapeMarkup(pageConfig(out.outputFiles[0].text));
 
   const parts = [];
   for (const f of page) {
@@ -117,6 +117,48 @@ function build({ override = {} } = {}) {
     if (f === '03-body.html') parts.push(script);
   }
   return { html: parts.join(''), parts: { page: page.length } };
+}
+
+/* config.ts's values that only the build and the markup read (the library
+   addresses and versions, the fonts, the password check's origin, the
+   preview's label) are left out of the page's script (r65, PENDING 304; the
+   outside review of r51 found them riding in the bundle, read by nothing on
+   the page). The bundle keeps every other declaration whole (treeShaking is
+   off, above), so this reads config.ts's part of it only: a declaration there
+   that nothing else in the script names is dropped, and again until none is,
+   so a constant only a dropped one used goes with it. config.ts stays the
+   one place each value is defined; scripts/config.js reads all of them. */
+function pageConfig(js) {
+  const acorn = require('acorn');
+  const at = js.indexOf('// src/app/config.ts\n');
+  if (at < 0) throw new Error('join: config.ts\'s part of the bundle not found');
+  const next = js.indexOf('\n  // src/', at + 1);
+  const end = next < 0 ? js.length : next;
+  const ast = acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'script' });
+  const iife = ast.body.find(st => st.type === 'ExpressionStatement' && st.expression.type === 'CallExpression');
+  const body = iife ? iife.expression.callee.body.body : [];
+  const decls = body.filter(st => st.type === 'VariableDeclaration' && st.start >= at && st.end <= end && st.declarations.every(d => d.id.type === 'Identifier'));
+  // The script with some statements left out, to ask whether anything else still names a declaration.
+  const without = list => {
+    let t = '', p = 0;
+    for (const st of [...list].sort((x, y) => x.start - y.start)) { t += js.slice(p, st.start); p = st.end; }
+    return t + js.slice(p);
+  };
+  const dropped = [];
+  for (let more = true; more; ) {
+    more = false;
+    for (const st of decls) {
+      if (dropped.includes(st)) continue;
+      const rest = without([...dropped, st]);
+      if (st.declarations.every(d => !new RegExp(`\\b${d.id.name}\\b`).test(rest))) { dropped.push(st); more = true; }
+    }
+  }
+  for (const st of dropped.sort((a, b) => b.start - a.start)) {
+    const lineStart = js.lastIndexOf('\n', st.start) + 1;
+    const lineEnd = js.indexOf('\n', st.end);
+    js = js.slice(0, lineStart) + js.slice(lineEnd + 1);
+  }
+  return js;
 }
 
 // Chromium's look-ahead scanner can read "<img" inside an inline script as

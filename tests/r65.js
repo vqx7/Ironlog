@@ -20,6 +20,13 @@
 //      fixed text (r64 had 342); each is a u- class in the stylesheet, which
 //      sets what the attribute did with !important and comes before every
 //      other !important rule, so it wins and loses where the attribute did.
+//   5  PENDING 304: the import table writes each name once and the type
+//      checker is switched off nowhere (r64: 'assisted dip' twice, under a
+//      @ts-expect-error); config.ts's values that only the build and the
+//      markup read are left out of the page's script (r64: all rode in it),
+//      those the page reads kept; and, a guard, the gym's plate lists
+//      are the unit's own (gymPlates has read PLATES_KG and PLATES_LB since
+//      r54).
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
@@ -129,6 +136,34 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
     const important = rules.filter(r => !/^\.u-/.test(r.sel) && /!important/.test(r.body));
     ok(util.length > 0 && util.every(r => r.body.split(';').filter(d => d.trim()).every(d => /!important\s*$/.test(d))), `4. each of the ${util.length} u- classes sets every declaration !important, as an attribute wins over every ordinary rule`, util.filter(r => !r.body.split(';').filter(d => d.trim()).every(d => /!important\s*$/.test(d))).map(r => r.sel));
     ok(important.every(r => r.at > lastUtil), '4. every other !important rule comes after the u- classes, so it wins over them as it did over the attribute', important.filter(r => r.at < lastUtil).map(r => r.sel));
+  }
+
+  // ---- 5. PENDING 304, from the source (R65_ROOT names another checkout) and the built page (the first argument).
+  if (run(5)) {
+    const ROOT = process.env.R65_ROOT || path.join(__dirname, '..');
+    const app = path.join(ROOT, 'src', 'app');
+    const imp = fs.readFileSync(path.join(app, 'importing.ts'), 'utf8');
+    const table = (imp.match(/export const IMP_ALIAS[^=]*= \{([\s\S]*?)\n\};/) || [])[1] || '';
+    const keys = [...table.matchAll(/^\s*'([^']+)':/gm)].map(m => m[1]);
+    const twice = keys.filter((k, i) => keys.indexOf(k) !== i);
+    ok(keys.length > 50 && !twice.length, `5. the import table writes each of its ${keys.length} names once (r64: 'assisted dip' twice)`, twice);
+    const off = fs.readdirSync(app).filter(f => f.endsWith('.ts') && /(\/\/|\/\*)\s*@ts-(expect-error|ignore|nocheck)\b/.test(fs.readFileSync(path.join(app, f), 'utf8')));
+    ok(!off.length, '5. the type checker is switched off nowhere in src/app (r64: one @ts-expect-error, for that key)', off);
+    const cfgSrc = fs.readFileSync(path.join(app, 'config.ts'), 'utf8');
+    const exported = [...cfgSrc.matchAll(/^export const (\w+)/gm)].map(m => m[1]);
+    const others = fs.readdirSync(app).filter(f => f.endsWith('.ts') && f !== 'config.ts').map(f => fs.readFileSync(path.join(app, f), 'utf8')).join('\n');
+    const imported = new Set([...others.matchAll(/import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*'\.\/config'/g)].flatMap(m => m[1].split(',').map(x => x.trim().split(/\s+as\s+/)[0]).filter(Boolean)));
+    // What the page needs: a value a module imports, and any config.ts declaration one of those is made from (THREE_URLS from THREE_VERSION).
+    const decl = new Map([...cfgSrc.matchAll(/^(?:export )?const (\w+)[\s\S]*?;$/gm)].map(m => [m[1], m[0]]));
+    const needed = new Set(imported);
+    for (let grew = true; grew; ) { grew = false; for (const k of [...needed]) for (const [d] of decl) if (!needed.has(d) && new RegExp(`\\b${d}\\b`).test((decl.get(k) || '').replace(/^(?:export )?const \w+/, ''))) { needed.add(d); grew = true; } }
+    const buildOnly = exported.filter(k => !needed.has(k)), pageRead = exported.filter(k => needed.has(k));
+    const page = fs.readFileSync(path.join(SRC, 'index.html'), 'utf8');
+    const declared = k => new RegExp(`\\bvar ${k} =`).test(page);
+    ok(buildOnly.length >= 10 && buildOnly.every(k => !declared(k)), `5. none of the ${buildOnly.length} values config.ts defines for the build and the markup alone is in the page's script (r64: all of them)`, buildOnly.filter(declared));
+    ok(pageRead.length >= 10 && pageRead.every(declared), `5. (a guard) each of the ${pageRead.length} the page's modules read is in it`, pageRead.filter(k => !declared(k)));
+    const gym = fs.readFileSync(path.join(app, 'gym.ts'), 'utf8');
+    ok(/return \[\.\.\.\(u === 'kg' \? PLATES_KG : PLATES_LB\)\];/.test(gym) && !/\[45, 35, 25/.test(gym) && !/\[25, 20, 15/.test(gym), '5. (a guard) the gym\'s plate lists are the unit\'s own, PLATES_KG and PLATES_LB, typed once in units.ts (since r54)');
   }
 
   await browser.close(); server.close();
