@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-FTsl6r1RXuU4Y413hIbtwXHQHBX+FXIKjTKFihmv1Dk=' 'sha256-g9sG2FtFbhPt9f9dK3t5NNyscdsrSfZHHxskrAve6Hk='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-yYmEvrd2EBAkQTbWBE4+QRQOAEaruNIFnyUgteEIZOA=' 'sha256-g9sG2FtFbhPt9f9dK3t5NNyscdsrSfZHHxskrAve6Hk='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="app-build" content="2026.10.27-r63">
+<meta name="app-build" content="2026.10.27-r64">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2230,7 +2230,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var NIL = "–";
   var missedTag = (s3) => isMissed(s3) ? " missed" : "";
   var DIRTY_SAID = "Save or cancel first. Your changes are still here.";
-  var MISSED_SAID = "Logged as missed. It counts toward no volume, PRs, or targets.";
+  var MISSED_SAID = "Logged as missed. It counts toward no volume or PRs, and keeps the load from going up.";
   var fmtG = (v3) => String(r3(v3));
   var repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
   var rangeWords = (p3) => +p3.repMin === +p3.repMax ? `target of ${+p3.repMin}` : `${+p3.repMin}-${+p3.repMax} range`;
@@ -2241,6 +2241,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return isNaN(+d3) ? "" : dtf(k2, o3).format(d3);
   };
   var fmtDate = (s3) => fmtWith("d", { month: "short", day: "numeric" }, s3);
+  var fmtDateFrom = (s3, now) => yearOf(s3) === yearOf(now) ? fmtDate(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
   function effScale(v3) {
     return v3 === "half" || v3 === "rpe" ? v3 : "whole";
   }
@@ -2926,8 +2927,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var PREVIEW_LABEL = "Preview";
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
-  var DISPLAY_VERSION = "2.17";
-  var APP_VERSION = "2026.10.27-r63";
+  var DISPLAY_VERSION = "2.18";
+  var APP_VERSION = "2026.10.27-r64";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -6490,19 +6491,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
               bb = rtfBand(rtfOf(p3.r, p3.rq));
             }
           }
-        let pb = best, pbb = bb;
-        if (ex.bw) {
-          pb = null;
-          pbb = null;
-          if (!noE1(ex))
-            for (const p3 of pts) {
-              const v4 = e1(p3.pl, p3.r, p3.rq);
-              if (v4 != null && (pb == null || v4 > pb)) {
-                pb = v4;
-                pbb = rtfBand(rtfOf(p3.r, p3.rq));
-              }
-            }
-        }
+        const { pb, pbb } = prBestOf(ex, pts);
         let tAdj = null, tRaw = null, topL = 0, rated = 0;
         if (!noE1(ex)) {
           const avg = (f3) => {
@@ -6538,6 +6527,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
           rr: b2.rr || null,
           ...b2.ps ? { ps: b2.ps } : {},
           ...b2.nw ? { nw: true } : {},
+          // Read from its drop sets alone (r64): neither the PR list nor the bests board reads it, as no drop set feeds a PR.
+          ...main.length ? {} : { dropOnly: true },
           topN: atTop.length,
           tAdj,
           tRaw,
@@ -6624,11 +6615,12 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var USUAL_SHARE = 0.97;
   var mid = (v3) => [...v3].sort((a2, b2) => a2 - b2)[Math.floor(v3.length / 2)];
   function setsAt(q, usualW) {
+    const tried = q.miss ? [...q.pts, ...q.miss] : q.pts;
     let tw = -Infinity;
     for (const p3 of q.pts) if (Math.abs(p3.w - q.topW) < EPS_SAME) tw = Math.max(tw, p3.load);
-    if (!(tw > 0)) return q.pts.length;
+    if (!(tw > 0)) return tried.length;
     let n3 = 0;
-    for (const p3 of q.pts)
+    for (const p3 of tried)
       if (p3.load >= tw * LIGHTER_LOAD - EPS && (p3.load * LIGHTER_LOAD <= tw + EPS || p3.w <= usualW + EPS_SAME)) n3++;
     return n3;
   }
@@ -6741,105 +6733,125 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     for (const k2 in T2) if (T2[k2].light * 2 > T2[k2].all || T2[k2].tail >= 2) lightWk[k2] = true;
     return lightWk;
   }
-  function idxPRsIn(M3, id, exps, prs) {
-    const front = [];
-    let maxBest = null, maxPb = null;
-    const ex = EXIn(M3, id);
-    let prevMaxW = -Infinity, topSc = 0;
-    const bestIn = (i5, band) => {
-      let m3 = null;
-      for (let k2 = 0; k2 < i5; k2++) {
-        const q = exps[k2];
-        if (q.pb != null && q.pbb === band) m3 = m3 == null ? q.pb : Math.max(m3, q.pb);
+  function prSoFar() {
+    return { front: [], topSc: 0, prevMaxW: -Infinity, byBand: {}, maxPb: null, seen: /* @__PURE__ */ new Set(), none: true };
+  }
+  var prScore = (q) => e1(q.pl, q.r, q.rq) || epley(q.pl, q.r);
+  var prDominated = (h3, p3) => h3.front.some((q) => q.pl >= p3.pl - EPS_SAME && q.r >= p3.r);
+  function prAdd(h3, x2) {
+    if (x2.pb != null) h3.maxPb = h3.maxPb == null ? x2.pb : Math.max(h3.maxPb, x2.pb);
+    if (x2.pb != null && x2.pbb != null) h3.byBand[x2.pbb] = Math.max(h3.byBand[x2.pbb] ?? -Infinity, x2.pb);
+    for (const p3 of x2.pts) if (p3.r > 0) h3.prevMaxW = Math.max(h3.prevMaxW, p3.w);
+    for (const p3 of x2.pts) h3.topSc = Math.max(h3.topSc, prScore(p3));
+    for (const p3 of x2.pts) {
+      if (prDominated(h3, p3)) continue;
+      for (let k2 = h3.front.length - 1; k2 >= 0; k2--)
+        if (p3.pl >= h3.front[k2].pl - EPS_SAME && p3.r >= h3.front[k2].r) h3.front.splice(k2, 1);
+      h3.front.push(p3);
+    }
+    for (const p3 of x2.pts) h3.seen.add(p3.w);
+    h3.none = false;
+  }
+  function prBestOf(ex, pts) {
+    let pb = null, pbb = null;
+    if (noE1(ex)) return { pb, pbb };
+    for (const p3 of pts) {
+      const v3 = e1(ex.bw ? p3.pl : p3.load, p3.r, p3.rq), rt = rtfOf(p3.r, p3.rq);
+      if (v3 != null && rt != null && (pb == null || v3 > pb)) {
+        pb = v3;
+        pbb = rtfBand(rt);
       }
-      return m3;
-    };
-    const dominated = (p3) => front.some((q) => q.pl >= p3.pl - EPS_SAME && q.r >= p3.r);
-    const addFront = (p3) => {
-      if (dominated(p3)) return;
-      for (let k2 = front.length - 1; k2 >= 0; k2--)
-        if (p3.pl >= front[k2].pl - EPS_SAME && p3.r >= front[k2].r) front.splice(k2, 1);
-      front.push(p3);
-    };
-    const seen = /* @__PURE__ */ new Set();
-    exps.forEach((x2, i5) => {
-      let repPR = null;
-      const sc = (q) => e1(q.pl, q.r, q.rq) || epley(q.pl, q.r);
-      const judged = x2.pts.map((p3) => {
-        const w2 = prSameLoad(p3.w, seen);
-        return { p: w2 === p3.w ? p3 : { ...p3, w: w2, pl: p3.pl + (w2 - p3.w) }, at: p3 };
-      });
-      const pts = judged.map((j3) => j3.p);
-      const asLogged = (q) => (judged.find((j3) => j3.p === q) || { at: q }).at;
-      const floor = front.reduce((a2, q) => Math.max(a2, sc(q)), 0) * REP_PR_SHARE;
-      if (i5 > 0) {
-        for (const p3 of pts) {
-          if (!dominated(p3) && sc(p3) >= floor - EPS && (!repPR || sc(p3) > sc(repPR))) repPR = p3;
+    }
+    return { pb, pbb };
+  }
+  function prJudge(ex, h3, x2) {
+    if (h3.none) return { pr: null, progress: false };
+    let repPR = null;
+    const judged = x2.pts.map((p3) => {
+      const w2 = prSameLoad(p3.w, h3.seen);
+      return { p: w2 === p3.w ? p3 : { ...p3, w: w2, pl: p3.pl + (w2 - p3.w) }, at: p3 };
+    });
+    const pts = judged.map((j3) => j3.p);
+    const asLogged = (q) => (judged.find((j3) => j3.p === q) || { at: q }).at;
+    const floor = h3.front.reduce((a2, q) => Math.max(a2, prScore(q)), 0) * REP_PR_SHARE;
+    for (const p3 of pts) {
+      if (!prDominated(h3, p3) && prScore(p3) >= floor - EPS && (!repPR || prScore(p3) > prScore(repPR))) repPR = p3;
+    }
+    let pbJ = x2.pb, bandJ = x2.pbb, shown2 = x2.pb;
+    if (x2.pb != null && judged.some((j3) => j3.p !== j3.at)) {
+      pbJ = null;
+      for (const j3 of judged) {
+        const v3 = e1(j3.p.pl, j3.p.r, j3.p.rq), rt = rtfOf(j3.p.r, j3.p.rq);
+        if (v3 != null && rt != null && (pbJ == null || v3 > pbJ)) {
+          pbJ = v3;
+          bandJ = rtfBand(rt);
+          shown2 = e1(j3.at.pl, j3.at.r, j3.at.rq);
         }
       }
-      let pbJ = x2.pb, bandJ = x2.pbb, shown2 = x2.pb;
-      if (x2.pb != null && judged.some((j3) => j3.p !== j3.at)) {
-        pbJ = null;
-        for (const j3 of judged) {
-          const v3 = e1(j3.p.pl, j3.p.r, j3.p.rq), rt = rtfOf(j3.p.r, j3.p.rq);
-          if (v3 != null && rt != null && (pbJ == null || v3 > pbJ)) {
-            pbJ = v3;
-            bandJ = rtfBand(rt);
-            shown2 = e1(j3.at.pl, j3.at.r, j3.at.rq);
-          }
-        }
-      }
-      const pb = bestIn(i5, bandJ);
-      const e1PR = i5 > 0 && pbJ != null && pb != null && pbJ > pb + EPS_SAME;
-      const wJ = i5 > 0 && !ex.timed ? pts.filter((p3) => p3.r > 0 && p3.w > prevMaxW + EPS_SAME).sort((a2, b2) => b2.w - a2.w || sc(b2) - sc(a2) || b2.r - a2.r)[0] : null;
-      const wPR = wJ ? asLogged(wJ) : null;
-      x2.progress = i5 > 0 && (!!repPR || e1PR || !!wPR);
-      const big = noE1(ex) || !!ex.timed || !!ex.bw && !pts.some((q) => q.pl > 0) || pts.some((q) => sc(q) > topSc + EPS);
-      if (wPR)
-        prs.push({
-          date: x2.date,
-          sid: x2.sid,
-          exId: id,
+    }
+    const pb = (bandJ != null ? h3.byBand[bandJ] : void 0) ?? h3.maxPb;
+    const e1PR = pbJ != null && pb != null && pbJ > pb + EPS_SAME;
+    const wJ = !ex.timed ? pts.filter((p3) => p3.r > 0 && p3.w > h3.prevMaxW + EPS_SAME).sort((a2, b2) => b2.w - a2.w || prScore(b2) - prScore(a2) || b2.r - a2.r)[0] : null;
+    const wPR = wJ ? asLogged(wJ) : null;
+    const progress = !!repPR || e1PR || !!wPR;
+    const big = noE1(ex) || !!ex.timed || !!ex.bw && !pts.some((q) => q.pl > 0) || pts.some((q) => prScore(q) > h3.topSc + EPS);
+    if (wPR)
+      return {
+        pr: {
           type: "Weight PR",
           w: wPR.w,
           r: wPR.r,
-          prevW: prevMaxW,
+          prevW: h3.prevMaxW,
           value: e1PR ? shown2 : null,
           prev: e1PR ? pb : null,
-          prevAll: maxPb,
+          prevAll: h3.maxPb,
           bb: bandJ,
           big
-        });
-      else if (e1PR)
-        prs.push({
-          date: x2.date,
-          sid: x2.sid,
-          exId: id,
-          type: "e1RM",
-          value: shown2,
-          prev: pb,
-          prevAll: maxPb,
-          bb: bandJ,
-          big
-        });
-      else if (repPR)
-        prs.push({
-          date: x2.date,
-          sid: x2.sid,
-          exId: id,
+        },
+        progress
+      };
+    if (e1PR) return { pr: { type: "e1RM", value: shown2, prev: pb, prevAll: h3.maxPb, bb: bandJ, big }, progress };
+    if (repPR) {
+      const rp = repPR;
+      return {
+        pr: {
           type: "Rep PR",
-          w: asLogged(repPR).w,
-          r: repPR.r,
-          prevR: front.filter((q) => q.pl >= repPR.pl - EPS_SAME).reduce((a2, q) => Math.max(a2, q.r), 0),
+          w: asLogged(rp).w,
+          r: rp.r,
+          prevR: h3.front.filter((q) => q.pl >= rp.pl - EPS_SAME).reduce((a2, q) => Math.max(a2, q.r), 0),
           big
-        });
-      if (x2.pb != null) maxPb = maxPb == null ? x2.pb : Math.max(maxPb, x2.pb);
-      for (const p3 of x2.pts) if (p3.r > 0) prevMaxW = Math.max(prevMaxW, p3.w);
-      for (const p3 of x2.pts) topSc = Math.max(topSc, sc(p3));
-      for (const p3 of x2.pts) addFront(p3);
-      for (const p3 of x2.pts) seen.add(p3.w);
+        },
+        progress
+      };
+    }
+    return { pr: null, progress };
+  }
+  function prCounted(ex, h3, x2) {
+    const ORDER2 = ["Rep PR", "e1RM", "Weight PR"];
+    const rank = (t4) => ORDER2.indexOf(t4);
+    let top = null;
+    for (const p3 of x2.pts) {
+      const { pr } = prJudge(ex, h3, { pts: [p3], ...prBestOf(ex, [p3]) });
+      if (!pr || !pr.big) continue;
+      const key = pr.type === "Weight PR" ? pr.w : pr.type === "e1RM" ? pr.value ?? 0 : prScore(p3);
+      if (!top || rank(pr.type) > rank(top.pr.type) || rank(pr.type) === rank(top.pr.type) && key > top.key + EPS_SAME)
+        top = { pr, key };
+    }
+    return top && top.pr;
+  }
+  function idxPRsIn(M3, id, exps, prs) {
+    const ex = EXIn(M3, id);
+    const h3 = prSoFar();
+    let maxBest = null;
+    for (const x2 of exps) {
+      if (x2.dropOnly) continue;
+      const j3 = prJudge(ex, h3, x2);
+      x2.progress = j3.progress;
+      const pr = prCounted(ex, h3, x2) ?? j3.pr;
+      if (pr) prs.push({ date: x2.date, sid: x2.sid, exId: id, ...pr });
+      prAdd(h3, x2);
       if (x2.best != null) maxBest = maxBest == null ? x2.best : Math.max(maxBest, x2.best);
-    });
+    }
     return maxBest;
   }
   function stallStretch(wE) {
@@ -6921,7 +6933,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       return { b: b2, se, my, n: n3 };
     };
     let stalled = false;
-    const current = !!lastReal && lastReal.date >= winStart && lastReal.date >= addDays(M3.today(), -TREND_DAYS) && !exI.archived && M3.s.exercises.some((e5) => e5.id === id) && !exInjuryIn(M3, exI);
+    const current = !!lastReal && lastReal.date >= winStart && !afterBreak(lastReal, M3.today()) && !exI.archived && M3.s.exercises.some((e5) => e5.id === id) && !exInjuryIn(M3, exI);
     const listed = (x2) => prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === id);
     const stalledIn = (rr, all) => {
       const inR = all.filter((x2) => !x2.held);
@@ -7100,7 +7112,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       }
     return out;
   }
-  function lastOf(all, base, fmt, repMin) {
+  function lastOf(all, base, fmt, now, repMin) {
     const rec2 = all && all.length ? all[all.length - 1] : base;
     const kind = sessionWord(rec2);
     const miss = rec2.miss || [];
@@ -7110,7 +7122,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       sets.push(fmt(p3));
     });
     for (const m3 of miss) if (m3.at >= rec2.pts.length) sets.push(fmt(m3) + missedTag(m3));
-    const line = `Last (${fmtDate(rec2.date)}${kind ? ", " + kind : ""}): ${sets.join(", ")}.`;
+    const line = `Last (${fmtDateFrom(rec2.date, now)}${kind ? ", " + kind : ""}): ${sets.join(", ")}.`;
     const repsFrom = rec2 !== base && (lighter(rec2) || rec2.short === "reading" || Math.abs(rec2.topW - base.topW) > EPS_SAME) ? base : rec2;
     const wl = workLoad(repsFrom.pts, repMin || 0);
     const wp = atLoad(repsFrom.pts, wl);
@@ -7170,6 +7182,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const front = [];
     const seen = /* @__PURE__ */ new Set();
     for (const x2 of exps) {
+      if (x2.dropOnly) continue;
       const fresh = [];
       for (const p3 of x2.pts) {
         const d3 = prSameLoad(p3.w, seen) - p3.w, j3 = p3.pl + d3;
@@ -7288,8 +7301,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var RACK_READ_N = 12;
   function snapUnitIn(M3, ex, plan, res, down) {
     const G = res && res.w != null && !ex.timed ? plateGridIn(M3, ex, plan) : null;
-    if (G) return plateSnap(M3, ex, plan, res, G, down);
-    return gridSnap(M3, ex, plan, unitSnap(M3, ex, plan, res, down));
+    const out = G ? plateSnap(M3, ex, plan, res, G, down) : gridSnap(M3, ex, plan, unitSnap(M3, ex, plan, res, down));
+    if (!down || res.top == null || res.w == null || out.w == null || out.w <= Math.max(res.top, loadFloorIn(M3, ex)) + EPS)
+      return out;
+    return Math.abs(res.w - res.top) < EPS ? res : swapWIn(M3, ex, res, res.top);
   }
   function plateGridIn(M3, ex, plan) {
     const g2 = gymOfIn(M3);
@@ -7318,21 +7333,39 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   function unitSnap(M3, ex, plan, res, down) {
     if (!res || res.w == null || res.top == null || ex.timed) return res;
     if (gymRackIn(M3, ex, plan)) return rackSnapIn(M3, ex, plan, res);
-    const st = inUnitIn(M3, incOfIn(M3, ex, plan));
-    if (!(st > 0)) return res;
-    const off = (v3) => Math.abs(inUnitIn(M3, v3) / st - Math.round(inUnitIn(M3, v3) / st)) > OFF_STEP;
-    const typed = (v3) => onStep(inUnitIn(M3, v3), TYPED_STEP);
-    if (!off(res.top) || !off(res.w) || typed(res.top)) return res;
-    const x2 = inUnitIn(M3, res.w);
-    const lo = Math.floor(x2 / st + EPS) * st;
-    const loaded = !ex.bw && !ex.assist;
-    const fl = Math.max(inUnitIn(M3, loadFloorIn(M3, ex)), loaded ? st : 0);
-    let d3 = down ? lo : Math.round(x2 / st) * st;
-    if (!down && loaded && d3 < x2 * LIGHTER_LOAD - EPS) d3 = lo + st;
-    if (!ex.assist && d3 < fl - EPS) d3 = Math.ceil(fl / st - EPS) * st;
-    const nw = kgOfIn(M3, d3);
-    if (Math.abs(nw - res.w) < EPS) return res;
+    const nw = unitGridIn(M3, ex, plan, res.top, res.w, down);
+    if (nw == null || Math.abs(nw - res.w) < EPS) return res;
     return moveIn(M3, ex, plan, res, nw, `the nearest load in ${UIn(M3)}`);
+  }
+  function unitGridIn(M3, ex, plan, top, w2, down, whole) {
+    if (ex.timed || gymRackIn(M3, ex, plan) || plateGridIn(M3, ex, plan)) return null;
+    const st = inUnitIn(M3, incOfIn(M3, ex, plan));
+    if (!(st > 0)) return null;
+    const o3 = inUnitIn(M3, loadFloorIn(M3, ex));
+    const at2 = (k2) => o3 + k2 * st;
+    const off = (v3) => {
+      const k2 = (inUnitIn(M3, v3) - o3) / st;
+      return Math.abs(k2 - Math.round(k2)) > OFF_STEP;
+    };
+    const typed = (v3) => onStep(inUnitIn(M3, v3), TYPED_STEP);
+    if (!off(top) || !off(w2) || typed(top)) return null;
+    const x2 = inUnitIn(M3, w2);
+    const lo = at2(Math.floor((x2 - o3) / st + EPS));
+    const loaded = !ex.bw && !ex.assist;
+    const fl = Math.max(o3, loaded ? st : 0);
+    let d3 = down ? lo : at2(Math.round((x2 - o3) / st));
+    if (!down && loaded && d3 < x2 * LIGHTER_LOAD - EPS) d3 = lo + st;
+    if (!ex.assist && d3 < fl - EPS) d3 = at2(Math.ceil((fl - o3) / st - EPS));
+    const bwK = bwRefLoadIn(M3, ex);
+    const tp = inUnitIn(M3, top);
+    if (!down && !ex.assist && !(ex.bw && !(bwK > 0)) && d3 > tp + EPS) {
+      const tot = top + bwK;
+      const most = Math.max(x2, inUnitIn(M3, tot * jumpCap(ex, tot) - bwK));
+      const under = at2(Math.floor((most - o3) / st + EPS));
+      if (d3 > most + EPS && under > tp + EPS && !(whole && under < tp + st - EPS)) d3 = under;
+    }
+    const cp = capOfIn(M3, ex, plan, top);
+    return cp != null && kgOfIn(M3, d3) > cp + EPS ? null : kgOfIn(M3, d3);
   }
   function moveIn(M3, ex, plan, res, nw, why) {
     if (res.w == null || Math.abs(nw - res.w) < EPS) return res;
@@ -7390,7 +7423,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         text: `First time, ${opts.deload ? "deload" : "Lighter day"}. About ${loadLabelIn(M3, ex, lw)} ${UIn(M3)}${loadNote(ex)} for ${repSpan(plan.repMin, plan.repMax, "-")} with ${effLeast(effScale(M3.s.settings.rirScale), LIGHT_RIR)}, from your ${EXIn(M3, base.kin).name}. Half the usual sets, nothing to beat.`
       };
     }
-    if (base.inj || !base.last || base.w == null) return base;
+    if (!base.last || base.w == null) return base;
     const word = opts.deload ? "Deload" : opts.light ? "Lighter day" : `Back after ${Math.round(off / WEEK_DAYS)} weeks`;
     const step = incOfIn(M3, ex, plan);
     const w0 = base.top != null ? Math.min(base.w, base.top) : base.w;
@@ -7403,6 +7436,22 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     ) : ex.bw ? (w0 + bl) * LIGHT_SHARE - bl > 0 ? lighterLoadIn(M3, ex, plan, w0, (w0 + bl) * LIGHT_SHARE - bl) : 0 : lighterLoadIn(M3, ex, plan, w0, w0 * LIGHT_SHARE);
     const w2 = w0 > 0 || ex.assist ? dw : w0;
     const n3 = Math.max(1, (base.lastR || []).length || +plan.sets || 1);
+    if (base.inj) {
+      const lw = Math.min(base.w, w2);
+      return snapUnitIn(
+        M3,
+        ex,
+        plan,
+        {
+          ...base,
+          w: lw,
+          text: `${base.last} Injury flagged (${injLabel(base.inj)}): stay at or below ${lbl(lw)}, keep ${effLeast(effScale(M3.s.settings.rirScale), LIGHT_RIR)}, stop on pain.`,
+          lastR: lw < base.w - EPS ? Array(n3).fill(+plan.repMin) : base.lastR,
+          ...back2 ? { back: Math.round(off / WEEK_DAYS) } : {}
+        },
+        true
+      );
+    }
     if (back2)
       return snapUnitIn(
         M3,
@@ -7483,7 +7532,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const capW = (w2) => cap != null ? Math.min(w2, cap) : w2;
     const topPts = triedAt(last, top);
     const planPts = topPts.slice(0, Math.max(1, +plan.sets || topPts.length));
-    const L0 = lastOf(seen, last, (p3) => `${loadLabelIn(M3, ex, p3.w)}×${p3.r}`, +plan.repMin);
+    const L0 = lastOf(seen, last, (p3) => `${loadLabelIn(M3, ex, p3.w)}×${p3.r}`, M3.today(), +plan.repMin);
     const lastR = L0.lastR, lastS = L0.line, basis = L0.basis;
     const lbl = (w2) => `${loadLabelIn(M3, ex, w2)}${ex.bw ? "" : " " + UIn(M3)}${loadNote(ex)}`;
     const prevBest = stx.best == null ? null : stx.best;
@@ -7503,7 +7552,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         inj: injM
       };
     const tgtRir = +plan.rir || 0;
-    const early = exps.length <= EARLY_SESSIONS;
+    const xs = all || [];
+    let since = xs.length - 1;
+    while (since > 0 && !afterBreak(xs[since - 1], xs[since].date)) since--;
+    const early = xs.length - since <= EARLY_SESSIONS;
     const fl = repFloor(
       topPts.filter((p3) => !p3.missed),
       plan.repMin
@@ -7552,18 +7604,37 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const { ex, plan, all, exps, last, top, cap, planPts, lastR, lastS, basis, lbl, prevBest, tgtRir } = C2;
     if (C2.injM || C2.noAdd || ex.assist || noE1(ex) || !(top > 0)) return null;
     const i5 = all.indexOf(last);
-    if (i5 < 1 || !afterBreak(all[i5 - 1], last.date)) return null;
-    const k2 = exps.indexOf(last);
-    const pre = k2 > 0 ? exps[k2 - 1] : null;
-    if (!pre || !afterBreak(pre, last.date)) return null;
+    let j3 = i5;
+    while (j3 > 0 && !afterBreak(all[j3 - 1], all[j3].date)) j3--;
+    if (j3 < 1) return null;
+    const pre = exps.filter((x2) => x2.date < all[j3].date).pop();
+    if (!pre) return null;
     const preTop = workLoad(pre.pts, +plan.repMin);
-    if (!(preTop > top + EPS_SAME)) return null;
+    const backAt = all.slice(j3, i5 + 1).filter((x2) => x2.topW >= preTop - EPS_SAME);
+    if (backAt.length) {
+      const at2 = triedAt(last, top);
+      const fewest = Math.min(...at2.map((p3) => p3.r));
+      if (backAt.length > 1 || backAt[0] !== last || !(top >= preTop - EPS_SAME) || at2.length >= +plan.sets || at2.some((p3) => p3.missed) || !(fewest >= +plan.repMin))
+        return null;
+      return {
+        top,
+        w: top,
+        text: `${lastS} Back at your load from before the break: ${lbl(top)} for ${fewest}+ reps in every set next.`,
+        lastR,
+        basis,
+        last: lastS,
+        target: `${lbl(top)} for ${fewest}+ reps in every set`,
+        tgt: { kind: "load", w: top, repMin: fewest, prevBest },
+        easier: null
+      };
+    }
     if (triedAt(last, top).some((p3) => p3.missed || p3.r < +plan.repMin)) return null;
     const bw = bwRefLoadIn(M3, ex);
     if (ex.bw && !(bw > 0)) return null;
     let est = 0;
     for (const p3 of planPts) {
-      const v3 = fitE(p3.load, p3.r, p3.rir == null ? BACK_RIR : Math.min(p3.rir, E1_MAX_RIR));
+      const q = p3.rir != null ? p3.rir : i5 === j3 ? BACK_RIR : p3.rq;
+      const v3 = fitE(p3.load, p3.r, q == null ? q : Math.min(q, E1_MAX_RIR));
       if (v3 != null && v3 > est) est = v3;
     }
     if (!(est > 0)) return null;
@@ -7571,12 +7642,15 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!rs.length) return null;
     const preR = Math.max(+plan.repMin, Math.min(+plan.repMax, rs[Math.floor((rs.length - 1) / 2)]));
     const want = Math.min(e1inv(est, preR + Math.min(tgtRir, E1_MAX_RIR)) - bw, preTop);
-    const nw = heavierLoadIn(M3, ex, plan, top, cap != null ? Math.min(want, cap) : want);
+    const up = heavierLoadIn(M3, ex, plan, top, cap != null ? Math.min(want, cap) : want);
+    if (up == null) return null;
+    const g2 = unitGridIn(M3, ex, plan, top, up, true);
+    const nw = g2 == null ? up : g2 > top + EPS_SAME ? g2 : null;
     if (nw == null) return null;
     return {
       top,
       w: nw,
-      text: `${lastS} Back from the break: those sets say ${lbl(nw)} fits your usual ${preR} reps, so ${lbl(nw)} next${nw < preTop - EPS_SAME ? `, on the way back to ${lbl(preTop)}` : ""}. Aim for ${plan.repMin}+ reps in every set.`,
+      text: `${lastS} Back from the break: those sets say ${lbl(nw)} fits your usual ${preR} reps, so ${lbl(nw)} next${nw < preTop - EPS_SAME && lbl(nw) !== lbl(preTop) ? `, on the way back to ${lbl(preTop)}` : ""}. Aim for ${plan.repMin}+ reps in every set.`,
       lastR,
       basis,
       last: lastS,
@@ -7790,7 +7864,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   function sgTopOfRangeIn(M3, C2) {
     const { ex, plan, top, cap, capW, topPts, planPts, lastR, lastS, basis, lbl, prevBest, tgtRir, tp } = C2;
     if (planPts.every((p3) => p3.r >= plan.repMax)) {
-      const nw = capW(top + progStepIn(M3, ex, plan, top + bwRefLoadIn(M3, ex), top));
+      const n0 = capW(top + progStepIn(M3, ex, plan, top + bwRefLoadIn(M3, ex), top));
+      const nw = ex.assist ? n0 : capW(unitGridIn(M3, ex, plan, top, n0, false, true) ?? n0);
       if (ex.assist) {
         const aw = top < 0 ? Math.min(0, nw) : nw;
         return {
@@ -7984,7 +8059,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const top = Math.max(...ws.map((p3) => p3.w));
     const topPts = ws.filter((p3) => Math.abs(p3.w - top) < EPS_SAME);
     const lbl = (w2) => `${loadLabelIn(M3, ex, w2)}${ex.bw ? "" : " " + UIn(M3)}${loadNote(ex)}`;
-    const L0 = lastOf(all, last, (p3) => `${loadLabelIn(M3, ex, p3.w)} for ${p3.r}s`);
+    const L0 = lastOf(all, last, (p3) => `${loadLabelIn(M3, ex, p3.w)} for ${p3.r}s`, M3.today());
     const lastR = L0.lastR, lastS = L0.line, basis = L0.basis;
     if (injM)
       return {
@@ -8236,6 +8311,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
   var ODD_SESSION = 3;
   var ODD_BEST = 2;
+  var ODD_ADDED_BW = 0.9;
+  var ODD_ADDED_BEST = 2;
   function lightZeroIn(M3, b2, si, date) {
     const s3 = b2.sets[si];
     if (!s3 || s3.warm || s3.drop || !isMissed(s3)) return false;
@@ -8289,6 +8366,18 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         }
     if (best > 0 && load2 > Math.max(best, top) * ODD_BEST + EPS)
       return `${say(w2)} is more than twice the heaviest you have logged on this exercise, ${say(bestW)}.`;
+    if (ex.bw && w2 > 0) {
+      const kg2 = bwAtIn(M3, date);
+      if (kg2 != null && kg2 > 0 && w2 >= kg2 * ODD_ADDED_BW - EPS)
+        return `${say(w2)} adds ${pctOf(ODD_ADDED_BW)}% or more of your bodyweight, ${fmtWIn(M3, kg2)} ${UIn(M3)}.`;
+      let most = 0;
+      for (const x2 of liftReadIn(M3, b2.exId, date)) for (const p3 of x2.pts) most = Math.max(most, p3.w);
+      b2.sets.forEach((x2, i5) => {
+        if (i5 !== si && x2.done && isWork(x2) && !x2.drop && x2.w != null) most = Math.max(most, x2.w);
+      });
+      if (most > 0 && w2 > most * ODD_ADDED_BEST + EPS)
+        return `${say(w2)} is more than ${timesWord(ODD_ADDED_BEST)} the most you have added on this exercise, ${say(most)}.`;
+    }
     return under;
   }
   function stretchTopIn(M3, exId, plan) {
@@ -8317,16 +8406,17 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!(incOfIn(M3, ex, p3, s3.w) > 0) || bwNoLoadIn(M3, ex, b2)) return null;
     if (ex.bw && !(bwRefLoadIn(M3, ex) > 0)) return null;
     const sc = effScale(M3.s.settings.rirScale);
+    const back2 = backDaysIn(M3, b2.exId, p3, {}) > BACK_DAYS;
     const tgt = +p3.rir || 0, lo = +p3.repMin, hi = +p3.repMax, r4 = +(s3.r ?? 0);
     const q = s3.rir == null || s3.rir === "" ? null : +s3.rir;
-    const qe = q != null ? q : rirEstIn(M3, s3, ex);
+    const qe = q != null ? q : back2 ? BACK_RIR : rirEstIn(M3, s3, ex);
     const bw = bwRefLoadIn(M3, ex), Lt = s3.w + bw;
     const expR = b2.tgt && b2.tgt.kind === "load" && +(b2.tgt.repMin ?? 0) > 0 ? +(b2.tgt.repMin ?? 0) : lastR != null ? lastR : lo;
-    const light = q != null && q >= tgt + CLEARLY_OFF && r4 >= lo || r4 >= hi + CLEARLY_OFF, heavy = r4 <= Math.min(lo, expR) - CLEARLY_OFF && (q == null || q <= tgt);
+    const offLight = q != null && q >= tgt + CLEARLY_OFF && r4 >= lo || r4 >= hi + CLEARLY_OFF;
+    const light = offLight || back2 && r4 >= lo, heavy = r4 <= Math.min(lo, expR) - CLEARLY_OFF && (q == null || q <= tgt);
     if (!(Lt > 0) || !(light || heavy)) return null;
     const est = fitE(Lt, r4, qe == null ? 0 : Math.min(qe, E1_MAX_RIR));
     if (!est) return null;
-    const back2 = backDaysIn(M3, b2.exId, p3, {}) > BACK_DAYS;
     const pre = back2 ? suggestCoreIn(M3, b2.exId, p3, {}) : null;
     const preTop = pre && pre.top != null && pre.top > 0 ? pre.top : null;
     const resUp = back2 ? Math.max(BACK_RIR, Math.min(tgt, E1_MAX_RIR)) : Math.min(tgt, E1_MAX_RIR) + FATIGUE_RIR;
@@ -8354,7 +8444,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (nw != null) {
       const f3 = rtfAt(est, nw + bw);
       const er = f3 == null ? lo : Math.max(lo, Math.min(hi, Math.floor(f3 - (light ? resUp : resDown) + EPS)));
-      const why = light ? q != null && q >= tgt + CLEARLY_OFF ? easy() : `set ${n3} went ${r4} reps, past your ${hi}` : `set ${n3} stopped at ${r4}, under your ${rangeWords(p3)}`;
+      const why = light ? q != null && q >= tgt + CLEARLY_OFF ? easy() : r4 >= hi + CLEARLY_OFF ? `set ${n3} went ${r4} reps, past your ${hi}` : `set ${n3} showed more strength than a first session back asks` : `set ${n3} stopped at ${r4}, under your ${rangeWords(p3)}`;
       return { at: si, w: nw, from: s3.w, r: er, up: light, why, ...typeof s3.rid === "string" ? { rid: s3.rid } : {} };
     }
     if (light && q != null && q >= tgt + CLEARLY_OFF && r4 < hi) {
@@ -9699,7 +9789,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (ex && ex.assist) return "Help " + u4;
     return m3 === "each" ? u4 + " each" : m3 === "side" ? u4 + "/side" : m3 === "stack" ? "Stack" : m3 === "bw" ? "+" + u4 : u4;
   }
-  var fmtDateYr = (s3) => yearOf(s3) === yearOf(today()) ? fmtDate(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
+  var fmtDateYr = (s3) => fmtDateFrom(s3, today());
   var fmtDateLong = (s3) => fmtWith("l", { weekday: "short", month: "short", day: "numeric", year: "numeric" }, s3);
   function topSetPt(ex, x2) {
     let q = null;
@@ -13145,33 +13235,31 @@ ${more}`;
     if (!n3) return false;
     return typeof d3.note0 === "string" ? n3 !== d3.note0.trim() : true;
   }
-  function livePR(exId, s3, date) {
+  function liveMade(exId, s3, date) {
     if (!s3 || s3.warm || s3.drop || !(+(s3.r ?? 0) > 0)) return null;
     const f3 = prFrame(exId, s3, date);
     if (!f3) return null;
-    const { ex, exps, st, load: load2 } = f3;
-    const q0 = rirEst(s3, ex);
-    const r4 = +(s3.r ?? 0);
-    const v3 = noE1(ex) ? null : e1(load2, r4, q0);
-    const scq = (l4, rr, q) => e1(l4, rr, q) || epley(l4, rr);
-    let top = 0, dom = false;
-    for (const x2 of exps)
-      for (const q of x2.pts) {
-        if (q.pl >= load2 - EPS_SAME && q.r >= r4) dom = true;
-        top = Math.max(top, scq(q.pl, q.r, q.rq));
-      }
-    const judge = !noE1(ex) && !ex.timed && load2 > 0;
-    const stronger = !judge || scq(load2, r4, q0) > top + EPS;
-    if (!ex.timed && s3.w != null && isNum(+s3.w) && f3.w > f3.heaviest + EPS_SAME && stronger) return "Weight PR";
-    if (!(load2 > 0) && !ex.timed && !ex.bw) return null;
-    if (v3 != null && st && stronger) {
-      const rtf = rtfOf(r4, q0);
-      const bd = rtf == null ? void 0 : st.byBand && st.byBand[rtfBand(rtf)];
-      if (bd != null && v3 > bd + EPS_SAME) return "Best";
-    }
-    if (dom || !stronger) return null;
-    if (!ex.timed && scq(load2, r4, q0) < top * REP_PR_SHARE - EPS) return null;
-    return ex.timed ? "Time PR" : "Rep PR";
+    const { ex, exps } = f3;
+    const h3 = prSoFar();
+    for (const x2 of exps) if (!x2.dropOnly) prAdd(h3, x2);
+    const p3 = {
+      load: ex.bw ? f3.own : loadOf(ex, s3, date),
+      pl: f3.own,
+      r: +(s3.r ?? 0),
+      w: Number(s3.w) || 0,
+      rir: rirEff(s3, ex),
+      rq: rirEst(s3, ex)
+    };
+    const { pb, pbb } = prBestOf(ex, [p3]);
+    return { ex, pr: prJudge(ex, h3, { pts: [p3], pb, pbb }).pr };
+  }
+  function livePR(exId, s3, date) {
+    const m3 = liveMade(exId, s3, date);
+    const pr = m3 && m3.pr;
+    if (!m3 || !pr || !pr.big) return null;
+    if (pr.type === "Weight PR") return "Weight PR";
+    if (pr.type === "e1RM") return "Best";
+    return m3.ex.timed ? "Time PR" : "Rep PR";
   }
   function rowPR(b2, si, date) {
     const s3 = b2.sets[si];
@@ -13188,32 +13276,23 @@ ${more}`;
     return b2.sets.some((x2, i5) => i5 < si && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && scq(x2) >= me - EPS) ? null : pr;
   }
   function prBeat(exId, s3, date, pr) {
-    const f3 = prFrame(exId, s3, date);
-    if (!f3) return "";
-    const { ex, exps, st, load: load2 } = f3;
-    const r4 = +(s3.r ?? 0);
-    const q = rirEst(s3, ex);
-    const rtf = rtfOf(r4, q);
-    const band = rtf == null ? null : rtfBand(rtf);
-    const bd = band == null ? void 0 : st && st.byBand && st.byBand[band];
-    const v3 = noE1(ex) ? null : e1(load2, r4, q), shown2 = noE1(ex) ? null : e1(f3.own, r4, q);
-    const bandW = band != null && BAND_WORDS[band] || "";
-    if (pr === "Best") {
-      if (bd == null || v3 == null) return "";
-      let all = null;
-      for (const x2 of exps)
-        if (x2.pb != null && !(date && x2.date === date)) all = all == null ? x2.pb : Math.max(all, x2.pb);
+    const m3 = liveMade(exId, s3, date);
+    const j3 = m3 && m3.pr;
+    if (!m3 || !j3) return "";
+    const { ex } = m3;
+    const bandW = j3.type !== "Rep PR" && j3.bb != null && BAND_WORDS[j3.bb] || "";
+    if (pr === "Best" && j3.type === "e1RM") {
+      if (j3.value == null) return "";
       if (!isCompound(ex)) return ` (your best for ${bandW})`;
-      return all == null || (shown2 ?? 0) > all + EPS_SAME ? ` (estimated 1RM ${fmtE(shown2)} ${U()}${wasE(shown2, all) ? `; was ${wasE(shown2, all)}` : ""})` : ` (your best for ${bandW}, ${fmtE(shown2)} ${U()})`;
+      const all = j3.prevAll;
+      return all == null || j3.value > all + EPS_SAME ? ` (estimated 1RM ${fmtE(j3.value)} ${U()}${wasE(j3.value, all) ? `; was ${wasE(j3.value, all)}` : ""})` : ` (your best for ${bandW}, ${fmtE(j3.value)} ${U()})`;
     }
-    if (pr === "Weight PR") {
-      const mw = f3.heaviest;
-      const was = ex.assist ? `less help than ever` : `heaviest before ${ex.bw ? loadLabel(ex, mw) : fmtW(mw) + " " + U()}`;
-      return ` (${was}${isCompound(ex) && bd != null && v3 != null && v3 > bd + EPS_SAME ? `; best estimate for ${bandW} now ${fmtE(shown2)}` : ""})`;
+    if (pr === "Weight PR" && j3.type === "Weight PR") {
+      const was = ex.assist ? `less help than ever` : `heaviest before ${ex.bw ? loadLabel(ex, j3.prevW) : fmtW(j3.prevW) + " " + U()}`;
+      return ` (${was}${isCompound(ex) && j3.value != null ? `; best estimate for ${bandW} now ${fmtE(j3.value)}` : ""})`;
     }
-    let m3 = 0;
-    for (const x2 of exps) for (const p3 of x2.pts) if (p3.pl >= load2 - EPS_SAME) m3 = Math.max(m3, p3.r);
-    return m3 ? ` (was ${m3} ${ex.timed ? "s" : "reps"})` : " (heaviest yet)";
+    if (j3.type === "Rep PR") return j3.prevR ? ` (was ${j3.prevR} ${ex.timed ? "s" : "reps"})` : " (heaviest yet)";
+    return "";
   }
   var loadIn = (ex, w2) => w2 == null ? "" : fmtW(ex && ex.assist ? -w2 : w2);
   function plateList(u4) {
@@ -24064,13 +24143,13 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Grey reps</b> are last time's reps for that set, at today's load, and one set under the bottom of the range among the others shows the bottom of the range. When today's target is a new load, last time's reps were at the old load, so they are the reps of the set above instead, or the bottom of the range. On a lighter day or in a deload, they are the bottom of the range.</p>
    <p><b>Grey loads</b> are the set above, or today's suggested load. To have loads typed in for you: Settings, Rest timer and logging, Fill in suggested loads.</p>
    <p><b>Auto-mark</b> (Settings): a set ticks itself when you leave its reps field.</p>
-   <p><b>A missed set</b>: type 0 reps and tick it (auto-mark ticks it too). It is kept and shown as missed, and counts toward no volume, PR, estimate, or target; the next set's grey numbers come from the last set you completed.</p>
-   <p><b>A number far off</b> asks before the set is logged, Log it or Fix it: reps over ${ODD_REPS} and more than ${timesWord(ODD_REPS_TIMES)} the top of your range or your most ever, whichever is more, or a load more than ${timesWord(ODD_SESSION)}, or under ${shareWords(1 / ODD_SESSION)} of, the heaviest set you ticked today, or more than ${timesWord(ODD_BEST)} the heaviest you have logged on the exercise (conventions, to catch a slipped digit or the other unit). So does a load under the empty bar, on any set of a lift on the full bar typed as the total (the bar in Settings, or the exercise's own).</p>
+   <p><b>A missed set</b>: type 0 reps and tick it (auto-mark ticks it too). It is kept and shown as missed, and counts toward no volume, PR, or estimate. The next target reads it as a set short of the range, so it keeps the load from going up. The next set's grey numbers come from the last set you completed.</p>
+   <p><b>A number far off</b> asks before the set is logged, Log it or Fix it: reps over ${ODD_REPS} and more than ${timesWord(ODD_REPS_TIMES)} the top of your range or your most ever, whichever is more, or a load more than ${timesWord(ODD_SESSION)}, or under ${shareWords(1 / ODD_SESSION)} of, the heaviest set you ticked today, or more than ${timesWord(ODD_BEST)} the heaviest you have logged on the exercise (conventions, to catch a slipped digit or the other unit). On a bodyweight lift, so does added load of ${pctOf(ODD_ADDED_BW)}% or more of your bodyweight, or more than ${timesWord(ODD_ADDED_BEST)} the most you have added (conventions too). So does a load under the empty bar, on any set of a lift on the full bar typed as the total (the bar in Settings, or the exercise's own).</p>
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to ${RIR_CALL_TOP} (Settings can switch it to half reps or RPE; RPE ${effAt("rpe", 2)} is RIR 2). ${off ? "RIR is off in Settings, so every working set counts as hard." : `It is optional: a blank reads as your usual RIR on that lift once you have rated ${RIR_USUAL_MIN} of its sets in ${CAL_WEEKS} weeks, and until then as hard.`}</p>
    <p><b>RIR check</b>: once you have ${CAL_OFFER.sessions} sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits ${CAL_OFFER.weeks} weeks.</p>
    <p><b>Last</b>, beside each set, is what you did on that set last time at your working load, from the session named above the sets; a top single or lighter sets stay in that line. <b>W and D</b>: tap a set's number once for a warm-up (kept, never analysed), twice for a drop set (counts ${shareWords(DROP_CREDIT)} a set of volume, never as a PR or target). <b>+ Drop</b> beside + Set adds one at about ${pctOf(DROP_START)}% once a set is done; warm-ups are in the exercise's ⋯ menu.</p>
    <p><b>Supersets</b>: an exercise's ⋯ menu, Superset with the next one (Finish then offers to keep it in your plan), or Plan's Superset with next. The rest timer waits until the partners are done, and session minutes leave out the rest between them.</p>
-   <p><b>The next sets adjust</b> after a set that was clearly off plan, on the sets whose load is still the app's (never one you typed). Up: ${CLEARLY_OFF} or more reps in reserve over your target with the reps in your range, or ${CLEARLY_OFF} or more reps past the top. Down: ${CLEARLY_OFF} or more reps under both the range and what today asked for, without reserve to spare. The new load is what that set says you can do in the middle of the range (up) or at its bottom (down), with ${numWord(FATIGUE_RIR)} more rep in reserve, in real steps, at most ${CAP}% up (${CAP_LIGHT}% on light isolation lifts), and at least one step when a set was rated ${RIR_CALL_TOP} or more in reserve. When no heavier load fits, the same load for more reps. A blank effort reads as your usual. Keep stays on your load. Not on a lighter day, a deload, a past workout, an injured area, an assisted lift, or a bodyweight lift never done with added load. Settings, Rest timer and logging turns it off.</p>
+   <p><b>The next sets adjust</b> after a set that was clearly off plan, on the sets whose load is still the app's (never one you typed). Up: ${CLEARLY_OFF} or more reps in reserve over your target with the reps in your range, or ${CLEARLY_OFF} or more reps past the top; on a first session back after a break, any set in your range that shows more strength. Down: ${CLEARLY_OFF} or more reps under both the range and what today asked for, without reserve to spare. The new load is what that set says you can do in the middle of the range (up) or at its bottom (down), with ${numWord(FATIGUE_RIR)} more rep in reserve, in real steps, at most ${CAP}% up past the loads you have done since a break (${CAP_LIGHT}% on light isolation lifts), and at least one step when a set was rated ${RIR_CALL_TOP} or more in reserve. On a first session back they aim for the bottom of the range with ${BACK_RIR} or more in reserve, never past the load from before the break. When no heavier load fits, the same load for more reps. A blank effort reads as your usual (on a first session back, as ${BACK_RIR} in reserve). Keep stays on your load. Not on a lighter day, a deload, a past workout, an injured area, an assisted lift, or a bodyweight lift never done with added load. Settings, Rest timer and logging turns it off.</p>
    <p><b>+ Set and − Set</b>: − Set takes an empty row first and asks before a filled one. Removing anything you entered asks first, and Undo follows.</p>
    <p><b>Muscles worked</b>, in an exercise's ⋯ menu, shows what it trains on the body: the main muscle in your accent colour, helpers lighter (they count ${shareWords(HELPER_CREDIT)} a set). Flat or 3D, as on Today's map. The exercise editor shows the same as you pick the muscles.</p>
    <p><b>Order</b>: drag an exercise by its ⠿ to move it, or use the arrow keys on the ⠿, or Move up and Move down in its ⋯ menu. A superset split by a move becomes two single exercises. An exercise you start ahead of ones not yet touched moves up, to just after the last one you started.</p>
@@ -24083,7 +24162,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         "rules",
         "How targets are set",
         `<p class="muted">These are estimates from your log, not medical or coaching advice. Adjust them to how you feel on the day, and stop on pain.</p>
-   <p><b>In short.</b> Before a session, from your last full session: every set at the top of the range, or ${CLEARLY_OFF} or more in reserve over your target, more load; well short of the range, less load; anything else, the same load for more total reps. During a session, the next sets change only after a set that was clearly off: ${CLEARLY_OFF} or more reps past the top, or ${CLEARLY_OFF} or more in reserve over your target with the reps in the range, heavier; ${CLEARLY_OFF} or more reps under the range and under what was asked, lighter; anything else, the same load, with last time's reps in grey. Loads show in grey, taken when you tick the set, or typed in for you with Settings, Rest timer and logging, Fill in suggested loads. A load you type is never changed. Every target on the session screen has an i beside it, Why this target, which gives the reason for that exact number and what makes the load go up next. The details follow.</p>
+   <p><b>In short.</b> Before a session, from your last full session: every set at the top of the range, or ${CLEARLY_OFF} or more in reserve over your target, more load; well short of the range, less load; anything else, the same load for more total reps. During a session, the next sets change only after a set that was clearly off (or, on a first session back after a break, one that shows more strength): ${CLEARLY_OFF} or more reps past the top, or ${CLEARLY_OFF} or more in reserve over your target with the reps in the range, heavier; ${CLEARLY_OFF} or more reps under the range and under what was asked, lighter; anything else, the same load, with last time's reps in grey. Loads show in grey, taken when you tick the set, or typed in for you with Settings, Rest timer and logging, Fill in suggested loads. A load you type is never changed. Every target on the session screen has an i beside it, Why this target, which gives the reason for that exact number and what makes the load go up next. The details follow.</p>
    <p><b>A target is not a record.</b> The target is what to beat in today's session, worked out from your last full session of that lift. A record is the best you have ever done: the heaviest set of a lift shows while you train it, and every record is under Stats, Lifts, All-time bests. A PR is the moment you set one, and it is announced as you log the set, on any day. Lifts you did before this app count the same way once they are in: History, Log a past workout.</p>
    <p>Each exercise progresses from its <b>last full session in the rep range you plan for it that day</b>, so the same lift on a heavy day and a light day progresses on each separately. A range not used within ${TREND_WEEKS} weeks of your latest session of the lift starts from that latest session instead.</p>
    <p><b>The working load</b> is the load you did the most sets with (the heavier on a tie), leaving out loads under ${pctOf(WORK_FLOOR)}% of your heaviest. A heavy top set, or two, before your back-off sets counts for bests and PRs, while targets, grey reps, and trends build on the back-off sets.</p>
@@ -24093,11 +24172,11 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Well past the range</b> (every set ${CLEARLY_OFF} or more reps over the top, as after moving the range down): the load your estimated 1RM gives for the middle of the range, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg2)}), in whole steps.</p>
    <p><b>Below the range</b> (every set ${CLEARLY_OFF} or more reps short, or short two sessions running at the same load, or ${numWord(SHORT_RUN)} running even with the reps creeping up, or the first time in a range you have not trained, as after an import): down to what your estimate says fits the range, in whole steps. Not just after one step up while you are ${JUST_UP.short} or fewer reps short, and not while your reps at that load are rising. The rep target counts as many sets as the plan has. A single session clearly below your usual is not read this way: it repeats the last target, and a second in a row becomes your usual.</p>
    <p><b>Too easy</b> (every top set logged ${CLEARLY_OFF} or more RIR above the target): the same estimate sets a heavier load, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg2)}), and at least one step when every set was rated ${RIR_CALL_TOP} or more in reserve, where the estimate is only a floor.</p>
-   <p><b>The first ${EARLY_SESSIONS} sessions</b> of a lift find its load: there the most these two can add is ${CAP_EARLY}%, so a first guess well under what you can do moves up by what your reps and reps in reserve allow, not a step at a time. A set rated ${RIR_CALL_TOP} or more in reserve is read as ${E1_MAX_RIR}, so from such sets the load moves about a step a session: rate the reps left as closely as you can. For picking a load only, sets past ${E1_MAX_REPS} reps to failure are read with Epley up to ${FIT_MAX_RTF}, so a set of 25 still moves the load the right amount (never shown as a 1RM). A convention.</p>
+   <p><b>The first ${EARLY_SESSIONS} sessions</b> of a lift, counted again after a break or a New machine or gym, find its load: there the most these two can add is ${CAP_EARLY}%, so a first guess well under what you can do moves up by what your reps and reps in reserve allow, not a step at a time. A set rated ${RIR_CALL_TOP} or more in reserve is read as ${E1_MAX_RIR}, so from such sets the load moves about a step a session: rate the reps left as closely as you can. For picking a load only, sets past ${E1_MAX_REPS} reps to failure are read with Epley up to ${FIT_MAX_RTF}, so a set of 25 still moves the load the right amount (never shown as a 1RM). A convention.</p>
    <p><b>The first session of a close variation</b> (a hammer curl after DB curls, a front squat after back squats) starts from the related lift's last full session in the last ${KIN.days} days, when both use the same equipment, load, main muscle, and movement, with both arms or both legs at once. About ${pctOf(KIN.isolation)}% of its estimate (${pctOf(KIN.compound)}% on a compound lift), for the middle of the range with ${numWord(FATIGUE_RIR)} more rep in reserve, rounded down. Machines and cables start fresh, since two machines' numbers do not compare.</p>
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
    <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load. <b>Bodyweight lifts never done with added load</b> (push-ups, pull-ups, a hanging leg raise): more reps, then harder reps or a little added load when you type it; the app never adds load you did not use.</p>
-   <p><b>Back after more than ${BACK_DAYS / WEEK_DAYS} weeks off a lift</b>: about ${pctOf(LIGHT_SHARE)}% of its last working load, with ${BACK_RIR} or more reps in reserve (a convention: strength holds for about 4 weeks without training and falls faster after, Bosquet 2013). That first session back is the lift's new start. The next target picks up from it; its trend and stall test start again from it too, never drawn across the break. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about ${pctOf(LIGHT_SHARE)}% as long.</p>
+   <p><b>Back after more than ${BACK_DAYS / WEEK_DAYS} weeks off a lift</b>: about ${pctOf(LIGHT_SHARE)}% of its last working load, with ${BACK_RIR} or more reps in reserve (a convention). The ${BACK_DAYS / WEEK_DAYS} weeks is the app's convention for where a break begins: strength falls the longer a lift is left (Bosquet 2013). That first session back is the lift's new start: its trend and stall test start again from it, never drawn across the break. Until the lift is back at its load from before the break, each full session sets the next load: what its sets say fits your usual reps, never lower than the load you did and never past that load (a convention). Back at it in fewer than your planned sets, the next session asks every set at it, for the fewest reps you did there. Then the usual rules. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about ${pctOf(LIGHT_SHARE)}% as long.</p>
    <p><b>Your gym</b> (Settings): the dumbbells, kettlebells, plates, and stack steps you have. Suggestions stay on them, and a weight you type for a dumbbell counts as the nearest one.</p>
    <p><b>New machine or gym</b> (in an exercise's ⋯ menu during a session): the lift starts over from that session, as from a first one, so another machine's loads give no target, PR, or best. Its trend, stalls, and dumbbell steps read from that session on; earlier sessions stay in History and its chart. Tap it again before Finish to take it off.</p>
    <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the ${numWord(USUAL_BEFORE)} before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks, and in a session on a day of your routine they are the sets the plan gave the lift that day, once a session has done that many, so fewer sets than planned never become the usual there. Each session keeps the plan it was done to, so a plan changed later never rereads the sessions before it; sessions saved before version 2.12 read their own sets. A set counts toward them when its load is within ${shareWords(1 - LIGHTER_LOAD)} of the session's working load, or at the usual load (a convention): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set ${shareWords(1 - LIGHTER_LOAD)} or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than ${pctOf(1 - USUAL_SHARE)}% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the ${numWord(USUAL_BEFORE)} before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
