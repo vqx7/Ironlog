@@ -311,6 +311,8 @@ declare global {
     __onLib?: ((which: string) => void) | undefined;
     /** Called by the installed app's install listener (scripts/build.js) when the browser makes or withdraws its offer. */
     ironlogInstallReady?: (() => void) | undefined;
+    /** Called by the installed app's start script (scripts/build.js) with an error of its own, to keep in the error log. */
+    ironlogLog?: ((area: string, e: unknown) => void) | undefined;
   }
 }
 
@@ -338,6 +340,8 @@ pageListeners();
 window.ironlogInstallReady = () => {
   if (ui.tab === 'today' || ui.tab === 'settings') rerenderKeepScroll();
 };
+// The installed app's start script keeps its errors in the error log (r65, the r63 audit's A-12: it dropped them).
+window.ironlogLog = (area, e) => log(area, e);
 // The tips' listeners, before the page's own.
 tipsStart();
 eventListeners();

@@ -175,7 +175,9 @@ if (cloudCfg) html = replaceOnce(html, '</head>', `<script>window.IRONLOG_SUPABA
 // controlled the page at open, so on an app installed in the same visit, which
 // iOS keeps open for days, Update cleared the bar and the old build stayed).
 // It never reloads by itself: a first install taking over, or another window's
-// update, leaves the page as it is. The check also runs whenever the app comes back
+// update, leaves the page as it is. Its errors go to the app's error log through
+// window.ironlogLog (r65, the r63 audit's A-12: they were dropped), but for an
+// update check that fails offline, which is expected and tried again. The check also runs whenever the app comes back
 // to the foreground, because an installed iPhone app is often resumed rather
 // than relaunched and would otherwise not look for updates for days.
 const boot = `<script>
@@ -188,10 +190,10 @@ if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostnam
     window.ironlogApplyUpdate=()=>{tapped=true;if(reg.waiting)reg.waiting.postMessage('skipWaiting');else location.reload();};
     reg.addEventListener('updatefound',()=>{const w=reg.installing;if(w)w.addEventListener('statechange',()=>{if(w.state==='installed')offer();});});
     offer();
-    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{});});
-  }).catch(()=>{});});
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{/* Offline or the site not answering: expected, and the check runs again when the app comes back. */});});
+  }).catch(e=>{if(window.ironlogLog)window.ironlogLog('sw-register',e);});});
 }
-try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>{if(!p)navigator.storage.persist();});}catch(e){}
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).catch(e=>{if(window.ironlogLog)window.ironlogLog('storage-persist',e);});}catch(e){if(window.ironlogLog)window.ironlogLog('storage-persist',e);}
 </script>
 `;
 html = replaceOnce(html, '</body>', boot + '</body>', 'closing body tag');

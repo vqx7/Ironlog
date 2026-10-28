@@ -25100,6 +25100,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   window.ironlogInstallReady = () => {
     if (ui.tab === "today" || ui.tab === "settings") rerenderKeepScroll();
   };
+  window.ironlogLog = (area, e5) => log(area, e5);
   tipsStart();
   eventListeners();
   workoutStart();
