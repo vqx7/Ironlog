@@ -195,6 +195,27 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
     }
   }
 
+  // ---- A lift on a break, wherever a stall is named (r64, the r63 audit's P-S2-2: a pull-up last done 39 days ago was Stuck on Stats and
+  // "has stalled" in the coach). Pull-ups flat at BW x 8 x 3 for seven weeks, then the bench trained; in one log the pull-ups end 39 days
+  // before today (a break), in the other 21 days. Stats' Stalls, the stalled lifts the coach reads and the coach's words name the same lifts.
+  for (const [name, shift, stalled] of [['on a break', 0, false], ['21 days ago', 18, true]]) {
+    const P = await open(FILE, { browser, clock: '2026-10-26T10:00:00' });
+    const r = await P.page.evaluate(shift => { const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.hidden = []; s.injuries = []; s.draft = null; s.deloadWeek = null;
+      const plus = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+      const ses = (id, date, exId, w) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId, rr: [6, 10], sets: [0, 1, 2].map(() => ({ w, r: 8, rir: 1, done: true })) }] });
+      s.sessions = [...[0, 1, 2, 3, 4, 5, 6].map(i => ses('p' + i, plus('2026-08-06', 7 * i + shift), 'pullup', 0)), ...[0, 1, 2, 3].map(i => ses('q' + i, plus('2026-10-05', 5 * i), 'bench', 60 + 2.5 * i))];
+      s.bodyweights = [{ id: 'w1', date: '2026-08-01', kg: 80 }];
+      L.state = L.normalize(s); L.invalidate(); L.saveNow();
+      return { ids: L.stalledIds().map(id => L.EX(id).name), coach: L.coach().text };
+    }, shift);
+    const sp = await P.page.evaluate(stallsAndPRs);
+    const shown = sp.stalls.map(x => x.name);
+    ok(shown.join() === r.ids.join() && shown.includes('Pull-up') === stalled, `${name}: the pull-up is ${stalled ? '' : 'not '}under Stalls, as the stalled lifts the coach reads say`, { shown, ids: r.ids });
+    ok(!/has stalled/.test(r.coach) || r.ids.some(n => r.coach.includes(n + ' has stalled') || r.coach.includes(n + ' is at the top')), `${name}: the coach names as stalled only a lift Stats lists`, r);
+    ok(!P.errors.length, `no page errors (a lift ${name})`, P.errors);
+    await P.ctx.close();
+  }
+
   // ---- Two sessions in a day: every screen counts a week the same way.
   {
     const P = await open(FILE, { browser, clock: '2026-10-14T10:00:00' });

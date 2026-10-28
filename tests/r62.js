@@ -1,11 +1,11 @@
 // r62: the sheets and the exercise picker moved into typed modules (PENDING
 // 355; ARCHITECTURE.md, What is left). Run on r61 (`node tests/r62.js
 // baselines/r61.html`, R62_ONLY=n for one section):
-//   1  (a guard, the source build) every sheet, opened as the app opens it,
+//   1  (a guard, pinned since r64 to the build it proved, baselines/r62.html) every sheet, opened as the app opens it,
 //      in the states a lifter meets it in, has the same elements,
 //      attributes, field values and visible text as r61's
 //      (baselines/r61.html), in light and dark, pounds and kilograms.
-//   2  (a guard, the source build) Pick for me, Swap's closest matches,
+//   2  (a guard, pinned since r64 to baselines/r62.html) Pick for me, Swap's closest matches,
 //      Limited equipment and Short on time, moved from the legacy script
 //      into src/app/pick.ts as functions of the model, give r61's answers
 //      on N wide histories (R62_N, 1,000 by default): the cycle, a day's
@@ -24,6 +24,12 @@ const { engine, screenOf, screenDiff, open } = require('./h');
 const { wide, specOf } = require('./wide');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r61.html';
+/* Sections 1 and 2 are pinned to the build they proved, r62 (baselines/r62.html), as CLAUDE.md's rule for the comparisons
+   of old builds says: r64 changes on purpose the Guide's sentences on the next sets, a break and a load far off (the r63
+   audit's R-4, R-5 and P-S2-3), which section 1 opens, and which lifts read as stalled (P-S2-2: none across a break; R-1:
+   missed sets count as a session's sets), which Pick for me and the swaps rank by: 22 of the 1,000 histories of section 2
+   differ, every one with a lift's stall reading changed. tests/r64a.js holds r64's changes. */
+const PROVED = 'baselines/r62.html';
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
 const ONLY = process.env.R62_ONLY ? process.env.R62_ONLY.split(',') : null;
@@ -146,7 +152,7 @@ const SHEETS = [
   else if (process.env.IRONLOG_FILE) console.log('note r62 section 1 compares source pages; it runs on the source build');
   else for (const [name, seed, prep, want] of SHEETS) {
     const o = { browser, seed, tab: 'today', prep, root: 'modal', spaces: true };
-    const a = flat(await screenOf(OLD, o)), b0 = await screenOf(FILE, o), b = flat(b0);
+    const a = flat(await screenOf(OLD, o)), b0 = await screenOf(PROVED, o), b = flat(b0);
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     ok(!d, `1. ${name}: the same elements, attributes and field values as r61`, d && { at: d.at, r61: d.before, now: d.now });
     ok(a.text === b.text, `1. ${name}: the same visible text as r61`, a.text === b.text ? '' : textDiff(a.text, b.text));
@@ -210,7 +216,7 @@ const SHEETS = [
     const T0 = new Date('2026-10-11T12:00:00');
     const setup = async (ctx, page) => { await page.clock.setFixedTime(T0); };
     const A = await open(OLD, { browser, setup });
-    const B = await open(FILE, { browser, setup });
+    const B = await open(PROVED, { browser, setup });
     const LIB = await B.page.evaluate(() => window.__ironlog.libExercises());
     let same = 0, first = null, calls = 0;
     const t0 = Date.now();

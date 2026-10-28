@@ -1,7 +1,7 @@
 // r63: the actions, the events, import and the account flow moved into typed
 // modules and the legacy script deleted (PENDING 358). Run on r62 (`node
 // tests/r63.js baselines/r62.html`, R63_ONLY=n for one section):
-//   1  (a guard, the source build) every sheet and part of the page r63
+//   1  (a guard, pinned since r64 to baselines/r63.html) every sheet and part of the page r63
 //      moves (the menu, the account sheet in each of its pages, a problem
 //      report and its inbox, import, the Guide, the toast, the rest timer's
 //      bar, the menu button and the crash screen), opened as the app opens
@@ -44,6 +44,10 @@ const { engine, screenOf, screenDiff, open } = require('./h');
 const cfg = require('../scripts/config');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r62.html';
+/* Section 1 is pinned to the build it proved, r63 (baselines/r63.html), as CLAUDE.md's rule for the comparisons of old
+   builds says: r64 changes on purpose the Guide's sentences on the next sets, a break and a load far off (the r63 audit's
+   R-4, R-5 and P-S2-3), and the Guide is one of the sheets section 1 opens. tests/r64a.js holds r64's changes. */
+const PROVED = 'baselines/r63.html';
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
 const ONLY = process.env.R63_ONLY ? process.env.R63_ONLY.split(',') : null;
@@ -137,7 +141,7 @@ const CASES = [
   else if (process.env.IRONLOG_FILE) console.log('note r63 section 1 compares source pages; it runs on the source build');
   else for (const [name, init, seed, prep, want, root] of CASES.filter(c => !process.env.R63_CASE || c[0].includes(process.env.R63_CASE))) {
     const o = { browser, seed, tab: 'today', prep, root: root || 'modal', spaces: true, init: init || undefined };
-    const a = flat(await screenOf(OLD, o)), b0 = await screenOf(FILE, o), b = flat(b0);
+    const a = flat(await screenOf(OLD, o)), b0 = await screenOf(PROVED, o), b = flat(b0);
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     ok(!d, `1. ${name}: the same elements, attributes and field values as r62`, d && { at: d.at, r62: d.before, now: d.now });
     ok(a.text === b.text, `1. ${name}: the same visible text as r62`, a.text === b.text ? '' : textDiff(a.text, b.text));

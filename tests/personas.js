@@ -15,7 +15,10 @@
 //      load), a PR, and a heavier set that is not one;
 //   3  back after six weeks off (V's case, 341): the first session back at
 //      about 90% of the last working load with 2 or more in reserve, then
-//      V's rules for the next sets and the next session (341 b);
+//      V's rules for the next sets and the next session (341 b, and since
+//      r64 V's decision 1: a set back in the range whose estimate gives a
+//      heavier load moves the next sets, a blank effort there read as 2 in
+//      reserve);
 //   4  in kilograms with effort as RPE: the strip reads RPE and stores RIR,
 //      loads on the kilogram step, the plates per side, a PR in kilograms;
 //   5  at home with bodyweight work: the bodyweight question, pull-ups with
@@ -307,14 +310,57 @@ async function finish() {
     }
     {
       const H = await phone(T0); await seed(H); await H.start();
-      // Done as asked: 165 x 8, 8, 8, effort not rated. The next session asks what the return's estimate gives at the usual reps and target, up to 185: 170 (rule 5).
-      for (const s of [0, 1, 2]) { await H.type('r', 0, s, 8); await H.tick(0, s); }
+      // V's own case (decision 1, r64): 165 x 10 rated 2 in reserve, as the return asked. 12 to failure, Epley 165 x (1 + 12/30) = 231.0;
+      // the bottom of the range with 2 in reserve is 8 to failure: 231.0 x 29/36 = 186.1, past 185, so 185; there 37 - 36 x 185/231.0 = 8.17 to failure, less 2: 6.
+      await H.type('r', 0, 0, 10); await H.effort(0, 0, 2); await H.tick(0, 0);
+      const a = await H.draft(); const r1 = await H.row(0, 1);
+      ok(Number(r1.w) === 185 && a.ex[0].adj && a.ex[0].adj.r === 6, '3. 165 x 10 at 2 in reserve: the next sets go to 185 for 6 (decision 1; r63: they stayed at 165)', { grey: r1.w, adj: a.ex[0].adj });
+      await H.P.ctx.close();
+    }
+    {
+      const H = await phone(T0); await seed(H); await H.start();
+      /* Done as asked: 165 x 8, 8, 8, effort not rated. Set 1 read as 2 in reserve (decision 1, r64) is 10 to failure, 165 x 36/27 = 220.0;
+         the bottom of the range with 2 in reserve, 8 to failure: 220.0 x 29/36 = 177.2, so 175; there 37 - 36 x 175/220.0 = 8.36, less 2: 6.
+         The lifter keeps 165, as the return asked, and the next session asks what the return's estimate gives at the usual 8 reps and the
+         planned 1 in reserve, up to 185: 220.0 x 28/36 = 171.1, so 170 (rule 5, decision 1). */
+      await H.type('r', 0, 0, 8); await H.tick(0, 0);
+      const up = await H.draft(); const u1 = await H.row(0, 1);
+      ok(Number(u1.w) === 175 && up.ex[0].adj && up.ex[0].adj.r === 6, '3. 165 x 8 unrated, read as 2 in reserve: the next sets go to 175 for 6 (decision 1; r63: they stayed at 165)', { grey: u1.w, adj: up.ex[0].adj });
+      if (await H.page.$('#view [data-act="adjKeep"][data-b="0"]')) { await H.page.click('#view [data-act="adjKeep"][data-b="0"]'); await wait(120); }
+      const kept = await H.row(0, 1);
+      ok(Number(kept.w) === 165, '3. Keep 165: the next sets go back to 165', kept);
+      for (const s of [1, 2]) { await H.type('r', 0, s, 8); await H.tick(0, s); }
       const before = await H.draft();
       await H.finish();
       await H.day(addD(T0, 7)); await H.start();
       const d = await H.draft(); const r0 = await H.row(0, 0);
       ok(Number(r0.w) === 170, '3. done as asked (165 x 8 x 3, unrated): the next session asks 170 (341 b, rule 5), not 165 again', { grey: r0.w, tgt: d.ex[0].tgt, hint: d.ex[0].hint, ticked: before.ex[0].sets.map(s => [s.w && Math.round(s.w / LB), s.r, s.done]) });
       ok(!H.P.errors.length, '3. no page errors (c)', H.P.errors);
+      await H.P.ctx.close();
+    }
+    {
+      /* The way back at full strength (V's decision 1, r64), by taps: the return 165 x 10 x 3 at 2 in reserve (the next sets kept at
+         165), then each session's sets as a full-strength lifter does them. The usual reps before the break are 8 at 1 in reserve, 9 to failure:
+           165 x 10 at 2, 12 to failure, Epley 231.0; x 28/36 = 179.7: 175 next;
+           175 x 9 at 1, 10 to failure, Brzycki 175 x 36/27 = 233.3; x 28/36 = 181.5: 180 next;
+           180 x 9 at 1, 10 to failure, 240.0; x 28/36 = 186.7, past 185: 185 next, the load from before the break. */
+      const H = await phone(T0); await seed(H);
+      const sess = async (day, r, rir) => {
+        await H.day(day); await H.start();
+        const g = Number((await H.row(0, 0)).w);
+        for (const s of [0, 1, 2]) {
+          await H.type('r', 0, s, r); await H.effort(0, s, rir); await H.tick(0, s);
+          if (await H.page.$('#view [data-act="adjKeep"][data-b="0"]')) { await H.page.click('#view [data-act="adjKeep"][data-b="0"]'); await wait(120); }
+        }
+        await H.finish();
+        return g;
+      };
+      // The routine's chest day is a Monday: a session a week.
+      const asked = [await sess(T0, 10, 2), await sess(addD(T0, 7), 9, 1), await sess(addD(T0, 14), 9, 1)];
+      await H.day(addD(T0, 21)); await H.start();
+      asked.push(Number((await H.row(0, 0)).w));
+      ok(asked.join() === '165,175,180,185', '3. back at full strength by taps: 165, then 175, 180 and 185 (decision 1; r63: 165, 175, 175, 175)', asked);
+      ok(!H.P.errors.length, '3. no page errors (d)', H.P.errors);
       await H.P.ctx.close();
     }
   }

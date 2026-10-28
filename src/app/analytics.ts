@@ -490,10 +490,12 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
         };
       };
       const pts = ptsSrc.map(point);
-      /* Missed sets (r55, V): kept for the Last line alone, each with the
-         number of the session's sets read before it, so the line lists every
-         set in the order done. Nothing else reads them, and the field is
-         absent when there are none. */
+      /* Missed sets (r55, V): kept for the Last line, each with the number
+         of the session's sets read before it, so the line lists every set in
+         the order done; the next target reads them as sets short of the range
+         (triedAt, PENDING 338 A) and a session's sets count them (setsAt, r64).
+         No volume, PR, estimate or trend reads them, and the field is absent
+         when there are none. */
       const miss: MissedPoint[] = [];
       let seen = 0;
       for (const s of b.sets)
@@ -758,13 +760,20 @@ const mid = (v: readonly number[]): number => [...v].sort((a, b) => a - b)[Math.
    working load read 100 x 10, 9 and 9 with 97.5 x 9, all four planned sets,
    as fewer sets, and so a heavier last set, and the sets after a load
    lowered mid-session. With no load to compare (a bodyweight lift with
-   nothing added, an assisted one before any weigh-in), every working set. */
+   nothing added, an assisted one before any weigh-in), every working set.
+   A set tried and missed (r55) counts by the same test (r64, the r63 audit's
+   R-1): it was one of the session's sets, short of the range, which the
+   next target reads (triedAt). Left out, 185 x 10, 0, 0 after 185 x 10 x 3
+   read as a session of fewer sets, which sets no target, so the target came
+   from the session before and stepped the load up, "every set at 185 hit
+   10", the sets missed at that very load. */
 function setsAt(q: Exposure, usualW: number): number {
+  const tried: readonly ExPoint[] = q.miss ? [...q.pts, ...q.miss] : q.pts;
   let tw = -Infinity;
   for (const p of q.pts) if (Math.abs(p.w - q.topW) < EPS_SAME) tw = Math.max(tw, p.load);
-  if (!(tw > 0)) return q.pts.length;
+  if (!(tw > 0)) return tried.length;
   let n = 0;
-  for (const p of q.pts)
+  for (const p of tried)
     if (p.load >= tw * LIGHTER_LOAD - EPS && (p.load * LIGHTER_LOAD <= tw + EPS || p.w <= usualW + EPS_SAME)) n++;
   return n;
 }
@@ -1366,15 +1375,19 @@ export function idxLiftIn(
   };
   let stalled = false;
   /* Only a lift still being trained can be stalled: one not done in the
-     last 42 days (counted from today and from the last session), or deleted
-     or archived, used to stay stalled forever and kept the Coach calling
-     for a deload (r27). Nor one held for a flagged injury (r53, from the
-     audit V asked for): the engine keeps it at last time's load on purpose,
-     and three weeks of doing as told read as a stall to change the range. */
+     42 days up to the log's newest session, or deleted or archived,
+     used to stay stalled forever and kept the Coach calling for a deload
+     (r27). Nor one on a break today (afterBreak, more than BACK_DAYS since
+     its last session, r64, the r63 audit's P-S2-2): its next session starts
+     its readings over, so a pull-up last done 39 days ago read as stalled on
+     Stats and by the coach until then. Nor one held for a flagged injury
+     (r53, from the audit V asked for): the engine keeps it at last time's
+     load on purpose, and three weeks of doing as told read as a stall to
+     change the range. */
   const current =
     !!lastReal &&
     lastReal.date >= winStart &&
-    lastReal.date >= addDays(M.today(), -TREND_DAYS) &&
+    !afterBreak(lastReal, M.today()) &&
     !exI.archived &&
     M.s.exercises.some(e => e.id === id) &&
     !exInjuryIn(M, exI);
