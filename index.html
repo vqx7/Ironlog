@@ -3060,12 +3060,12 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
   var ISO_REST = 90;
   var isoIds = null;
-  function isIso(exId) {
+  function templateRest(exId, rest) {
     if (!isoIds)
       isoIds = new Set(
         libExercises().filter((e5) => !isCompound(e5)).map((e5) => e5.id)
       );
-    return isoIds.has(exId);
+    return isoIds.has(exId) && rest < ISO_REST ? ISO_REST : rest;
   }
   var TEMPLATES = (() => {
     const I2 = (exId, sets, repMin, repMax, rir, rest) => ({ exId, sets, repMin, repMax, rir, rest });
@@ -3207,7 +3207,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         items: d3.items.map((it) => ({
           uid: uid(),
           ...it,
-          ...!asShipped && isIso(it.exId) && it.rest < ISO_REST ? { rest: ISO_REST } : {},
+          ...asShipped ? {} : { rest: templateRest(it.exId, it.rest) },
           inc: STEP_LB
         }))
       }))
@@ -25349,7 +25349,9 @@ ${JSON.stringify(ctx, null, 1)}`;
     oddLoad,
     lightZero,
     // Names added since r63 go last, so the earlier builds' suites find theirs in their order (tests/r63.js section 4).
-    templateBefore
+    templateBefore,
+    templateRest,
+    templateSigsBefore
   };
   render();
   wakeOn();

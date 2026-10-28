@@ -99,16 +99,17 @@ export function defaultRoutine(): NewRoutine {
 /** The least rest, in seconds, of an isolation lift in a ready-made routine. */
 const ISO_REST = 90;
 
-/** Whether each library exercise is an isolation lift, by id, read once. */
+/** The library's isolation lifts, by id, read once. */
 let isoIds: ReadonlySet<string> | null = null;
-function isIso(exId: string): boolean {
+/** The rest a ready-made routine gives a lift the table rests this long: ISO_REST at least on an isolation lift. */
+export function templateRest(exId: string, rest: number): number {
   if (!isoIds)
     isoIds = new Set(
       libExercises()
         .filter(e => !isCompound(e))
         .map(e => e.id)
     );
-  return isoIds.has(exId);
+  return isoIds.has(exId) && rest < ISO_REST ? ISO_REST : rest;
 }
 
 /* Ready-made routines, so nobody has to build one from scratch. Most land
@@ -237,7 +238,7 @@ function routineOf(t: Template, shipped?: boolean): NewRoutine {
       items: d.items.map(it => ({
         uid: uid(),
         ...it,
-        ...(!asShipped && isIso(it.exId) && it.rest < ISO_REST ? { rest: ISO_REST } : {}),
+        ...(asShipped ? {} : { rest: templateRest(it.exId, it.rest) }),
         inc: STEP_LB
       }))
     }))

@@ -35,7 +35,8 @@ const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 // and musTrend, a muscle's strength trend in words, which Stats and the muscles sheet call and no adapter reaches (r54);
 // and r55's routine helpers: what a session records of its routine (pwOf), a first-run choice replacing the starter
 // (dropStarter), a day given an exercise (trainOn) and the item a lift's plan comes from (planItemOf).
-const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'platesPerSide', 'planSetsOf', 'withPlanSets'];
+// r64 (302): the rest a ready-made routine gives each lift, and the signatures the routines had up to r63.
+const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'platesPerSide', 'planSetsOf', 'withPlanSets', 'templateRest', 'templateSigsBefore'];
 // Every adapter live.ts gives the legacy script, read from live.ts itself, so a new one cannot go uncalled.
 const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
 // The adapters added since r53, and the plain functions above the digest does not call: tests/wide.js is shared with
@@ -43,6 +44,8 @@ const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll
 const EXTRA = {
   // Each routine's day labels (a cycle's Day N, a weekly one's weekday), planned sets a day, superset letters and signature, and the templates' line.
   dayLabel: (s) => s.routines.flatMap(r => [[r, 0], [r, 3], [{ ...r, schedule: 'weekly' }, 2]]), daySets: (s) => s.routines.flatMap(r => r.days.map(d => [d])),
+  // r64 (302): each lift of the log's routines at its own rest and at 45 s, and the old signatures.
+  templateRest: (s) => s.routines.flatMap(r => r.days.flatMap(d => d.items.flatMap(it => [[it.exId, +it.rest], [it.exId, 45]]))), templateSigsBefore: () => [[]],
   ssLetters: (s) => s.routines.flatMap(r => r.days.map(d => [d.items])), routineSig: (s) => s.routines.map(r => [r]), tplCountLine: () => [[]],
   // r55: each routine's sessions a week by id (and an id no routine has), the routines less the first one's signature as a
   // starter, each day given an exercise, and where each tagged lift's plan comes from, with and without a day to look at first.
