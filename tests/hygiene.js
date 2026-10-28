@@ -289,8 +289,13 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // statement that exports several names, a set of constants under one comment, is read when one of them is.
   {
     const ts = require('typescript');
-    const T = ['tests', 'scripts'].flatMap(d => fs.readdirSync(path.join(ROOT, d)).filter(f => f.endsWith('.js')).map(f => fs.readFileSync(path.join(ROOT, d, f), 'utf8'))).join('\n');
-    const named = n => new RegExp('\\b' + n.replace(/\$/g, '\\$') + '\\b').test(T);
+    /* The suites and scripts without their comments (r64, the r63 audit's A-10: a name in a comment, or a suite's own
+       helper of the same name, counted as a use, so util.ts's esc, read by nothing, passed): a name counts when it is
+       read off the page's hook or a bundle (L.esc, E.esc, window.__ironlog.esc), destructured from one, or named as a
+       string, as tests/engine.js's lists name the functions it calls. */
+    const printer = ts.createPrinter({ removeComments: true });
+    const T = ['tests', 'scripts'].flatMap(d => fs.readdirSync(path.join(ROOT, d)).filter(f => f.endsWith('.js')).map(f => printer.printFile(ts.createSourceFile(f, fs.readFileSync(path.join(ROOT, d, f), 'utf8'), ts.ScriptTarget.Latest, true)))).join('\n');
+    const named = n => { const x = n.replace(/\$/g, '\\$'); return new RegExp('\\.' + x + '\\b|[\'"`]' + x + '[\'"`]|\\{[^}]*\\b' + x + '\\b[^}]*\\}\\s*=\\s*(window\\.__ironlog|L|E|require)\\b').test(T); };
     const table = e0 => { let e = e0; while (e && (ts.isAsExpression(e) || ts.isSatisfiesExpression(e) || ts.isParenthesizedExpression(e))) e = e.expression; return !!e && (ts.isObjectLiteralExpression(e) || ts.isArrayLiteralExpression(e) || ts.isNewExpression(e)); };
     const imported = new Set(), stmts = [];
     for (const f of SRC_CODE.filter(f => f.startsWith('app/'))) {

@@ -227,7 +227,7 @@ export function rolling7In(M: Model, m: string, extra?: Readonly<Record<string, 
 }
 
 /** How recovered a muscle is: r from 0 to 1, the days needed, and the latest dose's days ago and sets. */
-export interface Recovery {
+interface Recovery {
   r: number;
   days: number | null;
   sets: number;

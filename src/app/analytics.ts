@@ -1374,7 +1374,7 @@ function stallScopesIn(
 }
 
 /* Step 5: one lift's trend, stall, signals and bests. */
-export function idxLiftIn(
+function idxLiftIn(
   M: Model,
   id: string,
   exps: Exposure[],

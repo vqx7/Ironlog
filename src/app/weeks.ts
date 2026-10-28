@@ -256,7 +256,7 @@ export function avgWeeksIn(M: Model, n: number, lightToo?: boolean): WeeklyAvg |
    below. Never on a weekly schedule, whose weeks are all alike, nor in
    Freestyle, where the plan is not followed. */
 /** The muscles an average of the given weeks leaves under their minimum only by which days of a cycle fell in them. */
-export function cycleMixIn(
+function cycleMixIn(
   M: Model,
   weeks: readonly string[],
   avg: Readonly<Record<string, number>>

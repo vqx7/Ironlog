@@ -894,7 +894,7 @@ function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: stri
 
 /* Every top set 2 or more over the target reserve: the load from the estimate.
    Every top set has a RIR here (the test below), as the ! say. */
-export function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
+function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
   const {
     ex,
     plan,

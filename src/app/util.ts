@@ -49,14 +49,6 @@ export function orList(a: readonly (string | number)[]): string {
   return a.length <= 2 ? a.join(' or ') : a.slice(0, -1).join(', ') + ', or ' + a[a.length - 1];
 }
 
-/** Text made safe to put into markup: the five characters HTML treats as syntax.
-    The cast lets TypeScript look a character up in the table by any string. */
-export const esc = (s: unknown): string =>
-  String(s == null ? '' : s).replace(
-    /[&<>"']/g,
-    c => (({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }) as Record<string, string>)[c]
-  );
-
 /** A new record id: up to UID_RANDOM random base-36 characters, then the last UID_TIME of the time. */
 const UID_RANDOM = 7,
   UID_TIME = 4;

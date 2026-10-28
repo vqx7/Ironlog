@@ -269,7 +269,7 @@ export type ExerciseLike = Pick<Exercise, 'id' | 'name' | 'primary' | 'secondary
 
 /** The values built from the log once per change, under their r51 names,
     each null (or undefined) until first read and again after invalidate. */
-export interface Caches {
+interface Caches {
   EXMAP: Partial<Record<string, Exercise>> | null;
   _idx: Idx | null;
   _dix: DateIndex | null;

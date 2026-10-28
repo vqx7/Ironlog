@@ -1059,10 +1059,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function orList(a2) {
     return a2.length <= 2 ? a2.join(" or ") : a2.slice(0, -1).join(", ") + ", or " + a2[a2.length - 1];
   }
-  var esc = (s3) => String(s3 == null ? "" : s3).replace(
-    /[&<>"']/g,
-    (c4) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c4]
-  );
   var UID_RANDOM = 7, UID_TIME = 4;
   var uid = () => Math.random().toString(ID_RADIX).slice(2, 2 + UID_RANDOM) + Date.now().toString(ID_RADIX).slice(-UID_TIME);
   var pad = (n3) => String(n3).padStart(2, "0");
