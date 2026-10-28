@@ -87,7 +87,8 @@ const ROOT = path.join(__dirname, '..');
       const cloud = fs.readFileSync(path.join(ROOT, dir, 'cloud.js'), 'utf8');
       ok(!/\{\{\w+\}\}/.test(cloud) && cloud.includes(`Sign in with your ${cfg.APP_NAME} account first.`), `${dir}: the account script has the name from config written in, and no placeholder left`);
       // ---- 4 (in the build). The sign-in slot keeps its exact keys.
-      ok(cloud.includes("storageKey: PREVIEW ? 'ironlog-preview.auth' : 'ironlog.auth'"), `${dir}: the sign-in slot is still "ironlog.auth" (preview "ironlog-preview.auth")`);
+      // Since r64 (F3) the key is named once, as the script also reads the stored sign-in itself; the keys are the same.
+      ok(cloud.includes("const AUTH_KEY = PREVIEW ? 'ironlog-preview.auth' : 'ironlog.auth';") && cloud.includes('storageKey: AUTH_KEY'), `${dir}: the sign-in slot is still "ironlog.auth" (preview "ironlog-preview.auth")`);
       ok(html.includes(`<meta name="app-build" content="${cfg.APP_VERSION}">`), `${dir}: the build tag matches config`);
     }
     for (const [dir, prefix] of [['dist', 'ironlog-'], ['dist-preview', 'ilpreview-']]) {
