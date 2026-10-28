@@ -232,7 +232,7 @@ import {
   withTimeout
 } from './sync';
 import { act } from './act';
-import { fitRecordOld, fitTargets } from './targets';
+import { fitTargets, oldFloors } from './targets';
 import { FB_CTX_MAX } from './feedback';
 import { effShow, rirScale } from './effort';
 import { toast, undoToastHide } from './toast';
@@ -352,29 +352,40 @@ window.__onLib = which => {
   if ((which === 'chart' && ui.tab === 'dash') || (which === 'sortable' && ui.tab === 'program')) rerenderKeepScroll();
 };
 trashTidy();
+/** Records the floors of a fit made before r44 that are not recorded yet, inside `act`; whether it did (the suites' fitRecordOld). */
+function recordOldFloors(): boolean {
+  const fit = oldFloors();
+  if (fit)
+    act(() => {
+      state.settings.bandsFit = fit;
+    });
+  return !!fit;
+}
 /* Fixes of a log an older build saved, once, on this device's state, each
-   saved only when it changed something (a save is also a sync, so one at
-   every start would send the log each time). */
-// r44: floors from a first-run pick made before they were recorded (fitRecordOld).
+   made only when it changes something (a save is also a sync, so one at
+   every start would send the log each time), and inside `act`, as every
+   change to the log is (r65, the r63 audit's A-5: they were written and
+   saved by hand). */
+// r44: floors from a first-run pick made before they were recorded (oldFloors).
 try {
-  if (fitRecordOld()) saveNow();
+  recordOldFloors();
 } catch (e) {
   log('fitRecordOld', e);
 }
 // r54: targets fitted to a cycle by the reading of its plan before r54 follow r54's (refit, src/app/profile.ts).
 try {
   const rf = refit();
-  if (rf) {
-    const b = state.settings.bands;
-    // In the muscles' order, the order refit gives them in.
-    for (const m of MK) {
-      const v = rf.bands[m];
-      if (v) b[m] = [v[0], v[1]];
-    }
-    if (Object.keys(rf.fit).length) state.settings.bandsFit = rf.fit;
-    else delete state.settings.bandsFit;
-    saveNow();
-  }
+  if (rf)
+    act(() => {
+      const b = state.settings.bands;
+      // In the muscles' order, the order refit gives them in.
+      for (const m of MK) {
+        const v = rf.bands[m];
+        if (v) b[m] = [v[0], v[1]];
+      }
+      if (Object.keys(rf.fit).length) state.settings.bandsFit = rf.fit;
+      else delete state.settings.bandsFit;
+    });
 } catch (e) {
   log('refit', e);
 }
@@ -412,7 +423,7 @@ window.__ironlog = {
   dropOnlyLift,
   profHeavy,
   appBand,
-  fitRecordOld,
+  fitRecordOld: recordOldFloors,
   prof,
   profClean,
   profRule,

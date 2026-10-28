@@ -6,8 +6,8 @@
    (whole sets), so following it is on target. The maximums and the
    evidence-based defaults stay as they are for everyone else; Settings,
    Weekly set targets raises them as sets are added. These change the log:
-   each is called inside a change given to `act`, or once at start on this
-   device's own state. */
+   each is called inside a change given to `act`; the one read at start
+   (oldFloors) only reads it, and the start writes what it gives in `act`. */
 
 import { BANDS, MK, TRACK_ONLY } from './library';
 import { defaultRoutine } from './routines';
@@ -21,11 +21,13 @@ import { state } from './store';
    device's state at start, when every target is exactly what a first-run
    pick of the routine in use, the starter or the old default gives, record
    those floors. Any target that differs (typed) leaves it alone. Not in
-   normalize, which also runs inside the sync comparison and Undo. */
-/** Records the floors of a fit made before r44; whether it did. */
-export function fitRecordOld(): boolean {
+   normalize, which also runs inside the sync comparison and Undo. Since r65
+   (the r63 audit's A-5) it only reads the log, and the start records what
+   it gives inside `act`, as every change is made. */
+/** The floors of a fit made before r44 that are not recorded yet, or null. */
+export function oldFloors(): Record<string, number> | null {
   const s = state.settings;
-  if (s.bandsFit || s.profile) return false;
+  if (s.bandsFit || s.profile) return null;
   const b = s.bands;
   for (const R of [activeRoutine(), starterRoutine(), defaultRoutine()]) {
     if (!R) continue;
@@ -41,12 +43,9 @@ export function fitRecordOld(): boolean {
       }
       if (lo < d[0]) fit[m] = lo;
     }
-    if (ok && Object.keys(fit).length) {
-      s.bandsFit = fit;
-      return true;
-    }
+    if (ok && Object.keys(fit).length) return fit;
   }
-  return false;
+  return null;
 }
 
 /** Fits the weekly targets to a routine on a first run (with what the log averaged, for a routine made from an import); whether a target changed. */

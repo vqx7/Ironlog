@@ -361,6 +361,10 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       const MOVED = ['history', 'settings', 'plan', 'stats'];
       const screens = mods.filter(m => LAYER[m] === 4 && (MOVED.includes(m) || EDGES.get(m).some(e => e.to === 'act')));
       ok(MOVED.every(m => screens.includes(m)), 'History and Settings (r57), Plan and Stats (r58) are screen modules in src/app/', screens);
+      /* The page's start too (r65, the r63 audit's A-5: it wrote two settings and saved them by hand), but for the
+         suites' hook (window.__ironlog), which hands the suites the log and the functions that save it: main.ts may
+         import them for the hook, and calls none of them itself. */
+      screens.push('main');
       const MUT = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin']);
       const NO = new Set(['saveNow', 'saveSoon', 'commit', 'snapshot', 'capturePost']);
       const bad = [];
@@ -377,8 +381,11 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
         const sf = ts.createSourceFile(m, txt, ts.ScriptTarget.Latest, true);
         const at = n => `${m}.ts:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`;
         (function walk(n) {
-          if (ts.isImportDeclaration(n) && n.importClause && n.importClause.namedBindings && ts.isNamedImports(n.importClause.namedBindings))
+          const hook = m === 'main' && ts.isBinaryExpression(n) && ts.isPropertyAccessExpression(n.left) && n.left.name.text === '__ironlog';
+          if (hook) return;
+          if (m !== 'main' && ts.isImportDeclaration(n) && n.importClause && n.importClause.namedBindings && ts.isNamedImports(n.importClause.namedBindings))
             for (const el of n.importClause.namedBindings.elements) if (NO.has((el.propertyName || el.name).text)) bad.push(`${at(n)} imports ${(el.propertyName || el.name).text}`);
+          if (m === 'main' && ts.isCallExpression(n) && ts.isIdentifier(n.expression) && NO.has(n.expression.text)) bad.push(`${at(n)} calls ${n.expression.text}`);
           let w = null;
           if (ts.isBinaryExpression(n) && n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && n.operatorToken.kind <= ts.SyntaxKind.LastAssignment && rootOf(n.left) === 'state' && n.left !== null && !ts.isIdentifier(n.left)) w = n;
           else if (ts.isDeleteExpression(n) && rootOf(n.expression) === 'state') w = n;
@@ -389,7 +396,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
           ts.forEachChild(n, walk);
         })(sf);
       }
-      ok(bad.length === 0, 'a moved screen changes the log only inside act, and never saves or keeps an Undo step by itself', bad);
+      ok(bad.length === 0, 'a moved screen, and the page\'s start, changes the log only inside act, and never saves or keeps an Undo step by itself', bad);
     }
   }
   // The checker is never switched off: no @ts-nocheck or @ts-ignore, and an

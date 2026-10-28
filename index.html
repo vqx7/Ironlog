@@ -20602,9 +20602,9 @@ ${JSON.stringify(ctx, null, 1)}`;
   };
 
   // src/app/targets.ts
-  function fitRecordOld() {
+  function oldFloors() {
     const s3 = state.settings;
-    if (s3.bandsFit || s3.profile) return false;
+    if (s3.bandsFit || s3.profile) return null;
     const b2 = s3.bands;
     for (const R2 of [activeRoutine(), starterRoutine(), defaultRoutine()]) {
       if (!R2) continue;
@@ -20620,12 +20620,9 @@ ${JSON.stringify(ctx, null, 1)}`;
         }
         if (lo < d3[0]) fit[m3] = lo;
       }
-      if (ok && Object.keys(fit).length) {
-        s3.bandsFit = fit;
-        return true;
-      }
+      if (ok && Object.keys(fit).length) return fit;
     }
-    return false;
+    return null;
   }
   function fitTargets(R2, actual) {
     if (!R2) return false;
@@ -25109,23 +25106,31 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (which === "chart" && ui.tab === "dash" || which === "sortable" && ui.tab === "program") rerenderKeepScroll();
   };
   trashTidy();
+  function recordOldFloors() {
+    const fit = oldFloors();
+    if (fit)
+      act(() => {
+        state.settings.bandsFit = fit;
+      });
+    return !!fit;
+  }
   try {
-    if (fitRecordOld()) saveNow();
+    recordOldFloors();
   } catch (e5) {
     log("fitRecordOld", e5);
   }
   try {
     const rf = refit();
-    if (rf) {
-      const b2 = state.settings.bands;
-      for (const m3 of MK) {
-        const v3 = rf.bands[m3];
-        if (v3) b2[m3] = [v3[0], v3[1]];
-      }
-      if (Object.keys(rf.fit).length) state.settings.bandsFit = rf.fit;
-      else delete state.settings.bandsFit;
-      saveNow();
-    }
+    if (rf)
+      act(() => {
+        const b2 = state.settings.bands;
+        for (const m3 of MK) {
+          const v3 = rf.bands[m3];
+          if (v3) b2[m3] = [v3[0], v3[1]];
+        }
+        if (Object.keys(rf.fit).length) state.settings.bandsFit = rf.fit;
+        else delete state.settings.bandsFit;
+      });
   } catch (e5) {
     log("refit", e5);
   }
@@ -25163,7 +25168,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     dropOnlyLift,
     profHeavy,
     appBand,
-    fitRecordOld,
+    fitRecordOld: recordOldFloors,
     prof,
     profClean,
     profRule,
