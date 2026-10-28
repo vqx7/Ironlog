@@ -8,7 +8,7 @@
 
 import type { EngineState, Exercise, Gym, Profile, Routine, Session, Target } from './types';
 import { weekStart } from './util';
-import { exJoints } from './library';
+import { MK, exJoints } from './library';
 import { sessCmp } from './records';
 
 /** One working set as the analytics read it: the load as typed (`w`), the
@@ -412,4 +412,13 @@ export function gymOfIn(M: Model): Gym | null {
 /** The profile set in Settings, or an empty one. */
 export function profIn(M: Model): Profile {
   return M.s.settings.profile || {};
+}
+
+/** A muscle with no band of its own (none the log can hold: every muscle key has one). */
+const NO_BAND: readonly [number, number] = [0, 0];
+
+/** A muscle's weekly band, found by its key among the muscles (an index's keys are typed as any string): one reading for Pick for me and Stats (r65, the r63 audit's A-6, where each had its own). */
+export function bandOfIn(M: Model, m: string): readonly [number, number] {
+  for (const k of MK) if (k === m) return M.s.settings.bands[k];
+  return NO_BAND;
 }

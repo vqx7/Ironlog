@@ -43,6 +43,8 @@ const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll
 // the comparisons pinned to r52 and r53 (tests/r52.js, tests/r53w.js), so their calls are made here, after it, with these arguments.
 const EXTRA = {
   // Each routine's day labels (a cycle's Day N, a weekly one's weekday), planned sets a day, superset letters and signature, and the templates' line.
+  // r65 (A-6): a muscle's band by any key, one of none.
+  bandOf: () => [['chest'], ['quads'], ['neck'], ['nope']],
   dayLabel: (s) => s.routines.flatMap(r => [[r, 0], [r, 3], [{ ...r, schedule: 'weekly' }, 2]]), daySets: (s) => s.routines.flatMap(r => r.days.map(d => [d])),
   // r64 (302): each lift of the log's routines at its own rest and at 45 s, and the old signatures.
   templateRest: (s) => s.routines.flatMap(r => r.days.flatMap(d => d.items.flatMap(it => [[it.exId, +it.rest], [it.exId, 45]]))), templateSigsBefore: () => [[]],

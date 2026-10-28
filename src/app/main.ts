@@ -96,6 +96,7 @@ import {
   avgFirstWeek,
   avgWait,
   avgWeeks,
+  bandOf,
   barKg,
   bwAt,
   bwLoad,
@@ -743,7 +744,8 @@ window.__ironlog = {
   // Names added since r63 go last, so the earlier builds' suites find theirs in their order (tests/r63.js section 4).
   templateBefore,
   templateRest,
-  templateSigsBefore
+  templateSigsBefore,
+  bandOf
 };
 render();
 wakeOn();

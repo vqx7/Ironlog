@@ -17,6 +17,7 @@ import {
   EXIn,
   UIn,
   activeRoutineIn,
+  bandOfIn,
   exInjuryIn,
   exNameIn,
   freeModeIn,
@@ -155,6 +156,7 @@ export function live<A extends unknown[], R>(f: (M: Model, ...args: A) => R): (.
 export const EX = live(EXIn);
 export const U = live(UIn);
 export const activeRoutine = live(activeRoutineIn);
+export const bandOf = live(bandOfIn);
 export const exInjury = live(exInjuryIn);
 export const exName = live(exNameIn);
 export const freeMode = live(freeModeIn);

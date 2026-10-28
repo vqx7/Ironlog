@@ -6,6 +6,10 @@
 //      service worker that cannot register, or storage the browser will not
 //      keep, is written to the app's error log under its own area; an update
 //      check that fails offline is expected and logs nothing.
+//   2  A-6 (its band half; the PR half went in r64): a muscle's band by any
+//      key is one function of the model (bandOfIn), read by Pick for me and,
+//      through its adapter, by Stats, not a copy in each (read from the
+//      source files: `node tests/r65.js <dist> 2 <src folder>` reads another).
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
@@ -53,6 +57,15 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
     const quiet = await p2.evaluate(() => window.__ironlog.logBuf.map(e => e.a).filter(a => /^sw-|^storage-persist/.test(a)));
     ok(!quiet.length, '1. (a guard) an app that starts as it should logs nothing from its start script', quiet);
     await ctx2.close();
+  }
+
+  // ---- 2. A-6's band half: one function, no copy (from the source, as tests/hygiene.js reads it).
+  if (run(2)) {
+    const SRCDIR = process.argv[4] || path.join(__dirname, '..', 'src', 'app');
+    const files = fs.readdirSync(SRCDIR).filter(f => f.endsWith('.ts'));
+    const copies = files.filter(f => /function bandOf\s*\(/.test(fs.readFileSync(path.join(SRCDIR, f), 'utf8')));
+    const one = /export function bandOfIn\(M: Model, m: string\)/.test(fs.readFileSync(path.join(SRCDIR, 'model.ts'), 'utf8'));
+    ok(one && !copies.length, '2. a muscle\'s band by any key is one function of the model, bandOfIn, with no copy in a screen or the engine (r64: one in pick.ts, one in stats.ts)', { one, copies });
   }
 
   await browser.close(); server.close();

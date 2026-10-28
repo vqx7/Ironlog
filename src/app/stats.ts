@@ -64,6 +64,7 @@ import {
   liftRead,
   U,
   activeRoutine,
+  bandOf,
   actualAvg4,
   allTimeBests,
   atRangeTop,
@@ -165,12 +166,6 @@ const HEAT_WEEKS = 12,
   CARDIO_WEEKS = 8;
 
 /* ---------- the parts more than one section, or another screen, reads ---------- */
-
-/** A muscle's weekly target, by its key as the analytics give it. */
-function bandOf(m: string): readonly [number, number] {
-  const k = MK.find(x => x === m);
-  return k ? state.settings.bands[k] : [0, 0];
-}
 
 /* This used to print under all five charts at once. It is one fact about the
    page, so it is shown once a draw and the later calls draw nothing. */

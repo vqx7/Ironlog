@@ -1918,6 +1918,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function profIn(M3) {
     return M3.s.settings.profile || {};
   }
+  var NO_BAND = [0, 0];
+  function bandOfIn(M3, m3) {
+    for (const k2 of MK) if (k2 === m3) return M3.s.settings.bands[k2];
+    return NO_BAND;
+  }
 
   // src/app/units.ts
   var LB = 0.45359237, IN = 2.54;
@@ -8583,11 +8588,6 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     injured: 5
   };
   var TRIM = { priority: 4, lagging: 2, compound: 1, order: 0.01, stops: [500, 1e3, 1500] };
-  var NO_BAND = [0, 0];
-  function bandOf(M3, m3) {
-    for (const k2 of MK) if (k2 === m3) return M3.s.settings.bands[k2];
-    return NO_BAND;
-  }
   var TREND_WEEKS_SAID = 6;
   function cycleStateIn(M3, R2, asOf) {
     const n3 = R2.days.length;
@@ -8709,10 +8709,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
           continue;
         }
         const has = hasTargetIn(M3, m3);
-        const def = !has ? 0 : Math.max(0, bandOf(M3, m3)[0] - (r7[m3] || 0));
+        const def = !has ? 0 : Math.max(0, bandOfIn(M3, m3)[0] - (r7[m3] || 0));
         fill += Math.min(w2, def) * (pri.has(m3) || lag.has(m3) ? DAY_RANK.focus : 1);
         fat += w2 * (1 - rc.r);
-        if (has) over += Math.max(0, (r7[m3] || 0) + w2 - bandOf(M3, m3)[1]);
+        if (has) over += Math.max(0, (r7[m3] || 0) + w2 - bandOfIn(M3, m3)[1]);
       }
       for (const [m3, w2] of Object.entries(dir)) {
         if (inj.has(m3)) continue;
@@ -8751,7 +8751,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         continue;
       }
       const rc = recoveryIn(M3, m3);
-      const [lo, hi] = bandOf(M3, m3);
+      const [lo, hi] = bandOfIn(M3, m3);
       const tired = rc.r < 1 ? ` Likely still recovering (about ${rc.need} day${rc.need === 1 ? "" : "s"}).` : "";
       out.push(`${ML[m3]}: ${r1(r7[m3] || 0)} of ${lo}-${hi} hard sets in 7 days, ${lastHitTxtIn(M3, m3)}.${tired}`);
     }
@@ -8792,11 +8792,11 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const rec2 = {};
     for (const m3 of MK) rec2[m3] = recoveryIn(M3, m3, at2);
     const best = {};
-    const need = (m3) => !hasTargetIn(M3, m3) ? 0 : Math.max(0, bandOf(M3, m3)[0] - (r7[m3] || 0));
+    const need = (m3) => !hasTargetIn(M3, m3) ? 0 : Math.max(0, bandOfIn(M3, m3)[0] - (r7[m3] || 0));
     for (const e5 of M3.s.exercises) {
       if (e5.archived || inS.has(e5.id) || exInjuryIn(M3, e5)) continue;
       const m3 = e5.primary;
-      const hi = bandOf(M3, m3)[1];
+      const hi = bandOfIn(M3, m3)[1];
       const r7m = r7[m3] || 0;
       const recM = rec2[m3] || { r: 1, days: null, sets: 0, need: 0 };
       const def = need(m3);
@@ -8853,7 +8853,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     });
   }
   function exReasonsIn(M3, x2) {
-    const [lo, hi] = bandOf(M3, x2.m);
+    const [lo, hi] = bandOfIn(M3, x2.m);
     const out = [];
     const name = ML[x2.m];
     out.push(
@@ -9588,6 +9588,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var EX = live(EXIn);
   var U = live(UIn);
   var activeRoutine = live(activeRoutineIn);
+  var bandOf = live(bandOfIn);
   var exInjury = live(exInjuryIn);
   var exName = live(exNameIn);
   var freeMode = live(freeModeIn);
@@ -15788,10 +15789,6 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   var RIR_COVER_PCT = 70;
   var FLAT_TRY = { sets: 2, weeks: 3 };
   var HEAT_WEEKS = 12, CARDIO_WEEKS = 8;
-  function bandOf2(m3) {
-    const k2 = MK.find((x2) => x2 === m3);
-    return k2 ? state.settings.bands[k2] : [0, 0];
-  }
   var chartNoticeUsed = false;
   function chartFallback() {
     if (window.__libs && window.__libs.chart || chartNoticeUsed) return A;
@@ -15932,7 +15929,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   function muscleHeadline(m3) {
     const I2 = IDX();
     const avg = actualAvg4();
-    const [lo, hi] = bandOf2(m3);
+    const [lo, hi] = bandOf(m3);
     const sc = I2.scores.find((x2) => x2.m === m3);
     const parts = [];
     const tr = !hasTarget(m3);
@@ -16270,7 +16267,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const tags = rs.map(([t5, c4]) => b`<span class=${`tag ${c4}`}>${t5}</span>`);
       if (!MK.some((x2) => x2 === m3))
         return b`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${injLabel(m3)}</b><div class="chips">${tags}</div></div></div>`;
-      const [lo, hi] = bandOf2(m3);
+      const [lo, hi] = bandOf(m3);
       const hs = (v3) => `${r1(v3)} hard set${r1(v3) === 1 ? "" : "s"}`;
       const bits = avg ? [`${hs(avg[m3] || 0)} a week on average, target ${lo}-${hi}`, `this week ${r1(thisWeek[m3] || 0)}`] : [`this week ${hs(thisWeek[m3] || 0)} of ${lo}-${hi}`];
       if (belowMin(plan[m3], lo)) bits.push(`your routine plans ${r1(plan[m3] || 0)}`);
@@ -16403,12 +16400,12 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       return b`<p class="muted">Not enough data yet. Log at least ${TREND_MIN.sessions} sessions of an exercise over ${TREND_MIN.days / WEEK_DAYS} weeks or more, within ${TREND_WEEKS} weeks.</p>`;
     const maxAbs = Math.max(1, ...I2.scores.filter((s3) => s3.clear).map((s3) => Math.abs(s3.score)));
     const trained = I2.scores.filter((s3) => (src[s3.m] || 0) > 0);
-    const fine = trained.filter((s3) => s3.clear && s3.score >= GROW_PCT && (src[s3.m] || 0) >= bandOf2(s3.m)[0]);
+    const fine = trained.filter((s3) => s3.clear && s3.score >= GROW_PCT && (src[s3.m] || 0) >= bandOf(s3.m)[0]);
     const missing = MK.filter((m3) => !I2.scores.find((s3) => s3.m === m3));
     return b`${trained.filter((s3) => !fine.includes(s3)).map((s3) => {
       const c4 = s3.label === "progressing" ? "green" : s3.label === "lagging" ? "red" : "none";
       const sets = src[s3.m] || 0;
-      const [lo, hi] = bandOf2(s3.m);
+      const [lo, hi] = bandOf(s3.m);
       const read = !s3.clear ? s3.stall ? "A lift has stalled: see Stalls under Lifts." : musTrend(s3) + "." : s3.score >= GROW_PCT ? sets < lo ? "Rising, on fewer sets than your target." : "" : s3.score <= -GROW_PCT ? "Falling: check recovery first." : sets >= hi ? "Flat at high volume: change exercises or effort, not sets." : `Flat: try ${FLAT_TRY.sets} more sets a week for ${FLAT_TRY.weeks} weeks.`;
       return b`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="mrow" style="border:0;padding:0"><span class=${`plate ${c4}`}></span><span>${ML[s3.m]}${s3.indirect ? b` <span class="tag" data-tip="No direct exercise for this muscle. Trend inferred from lifts where it assists.">indirect</span>` : A}</span><div class="band"><div class=${`fill ${s3.score >= 0 ? "in" : "down"}`} style=${`width:${s3.clear ? Math.abs(s3.score) / maxAbs * PERCENT : 0}%`}></div></div><span class="r small">${!s3.clear ? "unclear" : s3.score >= GROW_PCT ? "rising" : s3.score <= -GROW_PCT ? "falling" : "flat"}</span></div><p class="small muted" style="margin:2px 0 0">${r1(sets)} sets a week${read ? ` · ${read}` : ""}</p></div>`;
     })}${fine.length ? b`<p class="small muted" style="margin-top:8px">Rising at ${fine.length === 1 ? "its" : "their"} volume: ${andList(
@@ -25486,7 +25483,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     // Names added since r63 go last, so the earlier builds' suites find theirs in their order (tests/r63.js section 4).
     templateBefore,
     templateRest,
-    templateSigsBefore
+    templateSigsBefore,
+    bandOf
   };
   render();
   wakeOn();
