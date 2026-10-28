@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r63, version 2.17, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r64, version 2.18, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -73,7 +73,7 @@ stand-in cloud.
   the error log (`log`), Undo's steps, a log kept aside for another account, in IndexedDB as Undo's copies are) and
   `sync.ts` (every write of the log, the account's documents, the sync notes, another tab, one workout open on two
   phones, the account question); they reach the screens only through `fx` in `store.ts`, which `main.ts`
-  fills at start (`render`, `toast`, `ask`, `confirm`, and the session's effects a moved screen calls), and run
+  fills at start (`render`, `toast`, `ask`, `confirm`, the session's effects a moved screen calls, and, for `act`, hiding a toast's Undo once a later change is made, r64), and run
   nothing on import (`storageStart()`, `syncStart()`). The screens move here from r57 (phase 5): `view.ts` (the
   host that draws every tab into `#view`, and the parts the moved screens share), `act.ts` (the one way to change
   the log), `history.ts`, `settings.ts`, `plan.ts` and `stats.ts` (its charts in `graphs.ts`, r58), `today.ts` with `week.ts`, `map.ts` and
