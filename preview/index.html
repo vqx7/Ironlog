@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-7kiiU/wcT92hCPz3kavylspytkAminjBKTIzC2ZEeq8=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-FTsl6r1RXuU4Y413hIbtwXHQHBX+FXIKjTKFihmv1Dk=' 'sha256-g9sG2FtFbhPt9f9dK3t5NNyscdsrSfZHHxskrAve6Hk='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="app-build" content="2026.10.27-r63">
 <title>Ironlog Preview</title>
@@ -2960,6 +2960,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     `${UNPKG}/three@${THREE_VERSION}/build/three.module.min.js`
   ];
   var THREE_URLS = typeof window !== "undefined" && window.IRONLOG_APP ? ["./vendor/three.module.min.js"] : THREE_CDN;
+  var NET_MS = 2e4;
   var TICKETS_AT = "https://github.com/";
 
   // src/app/icons.ts
@@ -3071,7 +3072,16 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     )
   };
   function defaultRoutine() {
-    return routineOf(LEGACY);
+    return routineOf(LEGACY, true);
+  }
+  var ISO_REST = 90;
+  var isoIds = null;
+  function templateRest(exId, rest) {
+    if (!isoIds)
+      isoIds = new Set(
+        libExercises().filter((e5) => !isCompound(e5)).map((e5) => e5.id)
+      );
+    return isoIds.has(exId) && rest < ISO_REST ? ISO_REST : rest;
   }
   var TEMPLATES = (() => {
     const I2 = (exId, sets, repMin, repMax, rir, rest) => ({ exId, sets, repMin, repMax, rir, rest });
@@ -3187,7 +3197,21 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const t4 = TEMPLATES.find((x2) => x2.key === key);
     return t4 ? routineOf(t4) : null;
   }
-  function routineOf(t4) {
+  function templateBefore(key) {
+    const t4 = TEMPLATES.find((x2) => x2.key === key);
+    return t4 ? routineOf(t4, true) : null;
+  }
+  function templateSigsBefore() {
+    return TEMPLATES.map(
+      (t4) => routineSig({
+        name: t4.name,
+        schedule: "cycle",
+        days: t4.days.map((d3) => ({ name: d3.name, rest: !!d3.rest, items: d3.items }))
+      })
+    );
+  }
+  function routineOf(t4, shipped) {
+    const asShipped = shipped || !!t4.hidden;
     return {
       id: uid(),
       name: t4.name,
@@ -3196,7 +3220,12 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         id: uid(),
         name: d3.name,
         rest: !!d3.rest,
-        items: d3.items.map((it) => ({ uid: uid(), ...it, inc: STEP_LB }))
+        items: d3.items.map((it) => ({
+          uid: uid(),
+          ...it,
+          ...asShipped ? {} : { rest: templateRest(it.exId, it.rest) },
+          inc: STEP_LB
+        }))
       }))
     };
   }
@@ -4056,13 +4085,18 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return routineFromTemplate(k2 && TEMPLATES.some((t4) => t4.key === k2) ? k2 : "ul4");
   }
   function starterSigs() {
-    return [routineSig(starterRoutine()), routineSig(defaultRoutine())];
+    return [routineSig(starterRoutine()), starterSigBefore(), routineSig(defaultRoutine())];
+  }
+  function starterSigBefore() {
+    const k2 = window.IRONLOG_STARTER;
+    const key = k2 && TEMPLATES.some((t4) => t4.key === k2) ? k2 : "ul4";
+    return templateSigsBefore()[TEMPLATES.findIndex((t4) => t4.key === key)] ?? routineSig(starterRoutine());
   }
   var tplCache = null;
   function tplSigs() {
     if (!tplCache)
       tplCache = new Set(
-        [...TEMPLATES.map((t4) => routineFromTemplate(t4.key)), starterRoutine(), defaultRoutine()].filter((r4) => !!r4).map((r4) => routineSig(r4))
+        [...TEMPLATES.map((t4) => routineFromTemplate(t4.key)), starterRoutine(), defaultRoutine()].filter((r4) => !!r4).map((r4) => routineSig(r4)).concat(templateSigsBefore())
       );
     return tplCache;
   }
@@ -4830,11 +4864,16 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     } catch (e5) {
       log("load", e5);
       device.hadLocal = false;
+      let kept = false;
       try {
-        if (raw) localStorage.setItem(UNREAD_KEY, raw);
+        if (raw) {
+          localStorage.setItem(UNREAD_KEY, raw);
+          kept = true;
+        }
       } catch (e22) {
         log("load", e22);
       }
+      if (!kept) device.ok = device.boot = false;
     }
     return normalize(null);
   }
@@ -7615,7 +7654,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         const rk = onR ? heavierLoadIn(M3, ex, plan, top, want) ?? (easy5 ? top + step : null) : null;
         if (onR ? rk != null : k2 >= 1) {
           const nw = rk != null ? capW(rk) : ex.assist && top < 0 ? Math.min(0, top + k2 * step) : capW(top + k2 * step);
-          const rr = r1(topPts.reduce((a2, p3) => a2 + p3.rir, 0) / topPts.length);
+          const rr = r1(planPts.reduce((a2, p3) => a2 + p3.rir, 0) / planPts.length);
           const sc = effScale(M3.s.settings.rirScale);
           return {
             top,
@@ -9457,8 +9496,23 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     today,
     c: freshCaches()
   };
+  var dayFrom = 0;
+  var dayTo = 0;
+  function cachesForToday() {
+    const now = Date.now();
+    if (now >= dayFrom && now < dayTo) return;
+    const d3 = new Date(now);
+    d3.setHours(0, 0, 0, 0);
+    dayFrom = d3.getTime();
+    d3.setDate(d3.getDate() + 1);
+    dayTo = d3.getTime();
+    invalidateIn(LIVE);
+  }
   function live(f3) {
-    return (...args) => f3(LIVE, ...args);
+    return (...args) => {
+      cachesForToday();
+      return f3(LIVE, ...args);
+    };
   }
   var EX = live(EXIn);
   var U = live(UIn);
@@ -9627,6 +9681,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (kg2 == null || isNaN(kg2)) return "";
     const v3 = toD(kg2) ?? 0;
     return String(U() === "lb" ? Math.round(v3) : Math.round(v3 * 2) / 2);
+  }
+  function wasE(now, before) {
+    const b2 = fmtE(before);
+    return b2 && b2 !== fmtE(now) ? b2 : "";
   }
   var LU = () => U() === "lb" ? "in" : "cm";
   function measAt(m3, k2) {
@@ -10557,7 +10615,6 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var FB = () => window.ironlogFeedback && typeof window.ironlogFeedback.send === "function" ? window.ironlogFeedback : null;
 
   // src/app/sync.ts
-  var NET_MS = 2e4;
   var SYNC_MS = {
     save: 400,
     track: 800,
@@ -10570,6 +10627,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     pullAfter: 2e4
   };
   var RETRY_S = [5, 15, 60, 180];
+  var SIGNIN_AGAIN = "Your sign-in has expired. Sign in again to sync. Your log stays on this phone.";
+  var offline = () => navigator.onLine === false;
   var DOC_MAX = 25e4;
   var KEEP_TRIES = 10;
   var saveT = null;
@@ -10616,6 +10675,18 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     markEdit();
     fx.setSaveState();
     cloudSoon();
+  }
+  function writeTakenIn() {
+    if (!device.boot) return false;
+    try {
+      writeLocal(JSON.stringify(state));
+      device.ok = true;
+    } catch (e5) {
+      device.ok = false;
+      log("storage", e5);
+    }
+    fx.setSaveState();
+    return device.ok;
   }
   function saveSoon() {
     clearTimer(saveT);
@@ -10696,7 +10767,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   };
   var epOf = (m3) => m3 && typeof m3.ep === "number" ? m3.ep : 0;
   function saveMeta() {
-    if (device.boot && !device.ok) return false;
+    if (!device.ok) return false;
     try {
       if (epOf(rec(parseJson(localStorage.getItem(SYNC_KEY) || "null"))) > notesEp) {
         log("tabs", new Error("newer sync notes from another tab; not written over"));
@@ -10808,8 +10879,19 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const E2 = rec(e5);
     const c4 = codeOf(e5);
     if (c4 === "revoked" || c4 === "not_granted" || c4 === "capability_disabled" || c4 === "capability_removed") {
+      const was = cloud.on;
       cloud.on = false;
       setCloud("local");
+      if (c4 === "revoked" && was) {
+        const A2 = AUTH();
+        acct.user = null;
+        cloudStop();
+        if (A2)
+          A2.signOut().catch((x2) => {
+            log("auth", x2);
+          });
+        fx.toast(SIGNIN_AGAIN, null, SYNC_MS.errToast);
+      }
       fx.render();
       return;
     }
@@ -10830,8 +10912,9 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       return;
     }
     setCloud("offline", c4 === "denied" && E2 && typeof E2.message === "string" ? E2.message : void 0);
-    const wait2 = RETRY_S[Math.min(cloud.retry++, RETRY_S.length - 1)] * SECOND_MS;
     clearTimer(cloud.t);
+    if (offline()) return;
+    const wait2 = RETRY_S[Math.min(cloud.retry++, RETRY_S.length - 1)] * SECOND_MS;
     cloud.t = setTimeout(() => cq(cloudFlush), wait2);
   }
   function normChunk(id, data) {
@@ -11129,6 +11212,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
   async function cloudFlush() {
     if (!cloud.on) return;
+    if (!pulled) return cloudPull();
     if (trackT || cloud.pendAt) trackEdits();
     const ch = chunksOf(state);
     const ids = /* @__PURE__ */ new Set([...Object.keys(ch), ...Object.keys(cloud.meta)]);
@@ -11155,6 +11239,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         saveMeta();
         setCloud("synced");
       }
+      return;
+    }
+    if (offline()) {
+      setCloud("offline");
       return;
     }
     setCloud("saving");
@@ -11192,6 +11280,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
             if (dn && dn.prev && (!mergedDraft || mergedDraft.id !== dn.prev.id)) await sessionFromCloud(dn.prev, legB);
             applyChunk(x2.id, merged);
             adopted = true;
+            writeTakenIn();
             if (x2.id === "draft" && dn) {
               const prev = dn.prev, remoteDraft = draftOf(rec(rd));
               dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins);
@@ -11219,11 +11308,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       }
       if (adopted) {
         invalidate();
-        try {
-          writeLocal(JSON.stringify(state));
-        } catch (e5) {
-          log("storage", e5);
-        }
+        writeTakenIn();
         resyncLocalH();
         if (!ui.modal) fx.rerenderKeepScroll();
         conflictNote(stat);
@@ -11253,6 +11338,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   async function cloudPull() {
     if (!cloud.on || !cloud.db) return;
     if (trackT || cloud.pendAt) trackEdits();
+    if (offline()) {
+      setCloud("offline");
+      return;
+    }
     setCloud("connecting");
     let snap;
     try {
@@ -11263,6 +11352,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       return;
     }
     cloud.lastPull = Date.now();
+    pulled = true;
     const remote = {};
     for (const d3 of snap.docs) {
       if (!d3.exists || !isChunkId(d3.id)) continue;
@@ -11383,11 +11473,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }
     if (parts || merged) {
       invalidate();
-      try {
-        writeLocal(JSON.stringify(state));
-      } catch (e5) {
-        log("storage", e5);
-      }
+      writeTakenIn();
       for (const id of adoptedIds) {
         cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
       }
@@ -11426,7 +11512,14 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }
     return null;
   }
-  var cloudStarting = false;
+  var starting = null;
+  var starts = 0;
+  var firstPull = false;
+  var pulled = false;
+  async function cloudDecided() {
+    while (starting) await starting;
+  }
+  var cloudFirstPull = () => cloud.on && firstPull;
   async function oneTab(fn) {
     const L2 = typeof navigator !== "undefined" ? navigator.locks : void 0;
     if (L2 && typeof L2.request === "function") return await L2.request(KEY + ".account", () => fn());
@@ -11572,8 +11665,22 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return true;
   }
   async function cloudInit() {
-    if (cloud.on || cloudStarting) return;
-    cloudStarting = true;
+    if (starting) {
+      await starting;
+      return;
+    }
+    if (cloud.on) return;
+    const run2 = ++starts;
+    let decided = () => {
+    };
+    const mine = new Promise((r4) => {
+      decided = r4;
+    });
+    starting = mine;
+    const decide = () => {
+      if (starting === mine) starting = null;
+      decided();
+    };
     try {
       const pv = await cloudProvider();
       if (!pv) return;
@@ -11589,7 +11696,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       cloud.db = db;
       cloud.uid = id;
       cloud.on = true;
+      pulled = false;
+      firstPull = true;
       setCloud("connecting");
+      decide();
       if (ui.tab === "settings") fx.render();
       await cq(cloudPull);
     } catch (e5) {
@@ -11597,7 +11707,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       cloud.on = false;
       setCloud("local");
     } finally {
-      cloudStarting = false;
+      decide();
+      if (run2 === starts) firstPull = false;
       cloudChecked = true;
       if (ui.tab === "today" && !ui.modal && (fx.obGate() || !state.settings.onboarded && !state.draft && !state.sessions.some((s3) => !s3.demo)))
         fx.rerenderKeepScroll();
@@ -11744,6 +11855,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       change();
       return true;
     }
+    fx.undoToastHide();
     if (opts.undo) snapshot(typeof opts.undo === "function" ? opts.undo : null);
     outerUndo = !!opts.undo;
     depth++;
@@ -12683,6 +12795,7 @@ ${more}`;
     const lines = String(text).split(/\r?\n/);
     const S4 = [];
     let cur = null, ex = null, pend = null, hint = null;
+    const named = { kg: false, lb: false };
     const unread = [];
     const day = (date, name) => {
       if (pend) unread.push(pend.raw);
@@ -12707,8 +12820,13 @@ ${more}`;
       const L2 = L0.replace(/^[\s\-•*–]+/, "").trim();
       if (!L2) continue;
       const under = li > 0 && !!(lines[li - 1] || "").trim();
-      if (/\bkgs?\b|\dkg/i.test(L2)) hint = hint || "kg";
-      else if (/\blbs?\b|\dlb|#/i.test(L2)) hint = hint || "lb";
+      if (/\bkgs?\b|\dkg/i.test(L2)) {
+        hint = hint || "kg";
+        named.kg = true;
+      } else if (/\blbs?\b|\dlb|#/i.test(L2)) {
+        hint = hint || "lb";
+        named.lb = true;
+      }
       const words = L2.split(/\s+/);
       let dt = impDate(L2);
       if (dt && (ex || pend) && /^[\d\s/.,-]+$/.test(L2) && !nextIsName(li)) dt = null;
@@ -12797,7 +12915,8 @@ ${more}`;
     if (last) unread.push(last.raw);
     return {
       sessions: S4.filter((x2) => x2.items.length).map((x2) => ({ date: x2.date, name: x2.name, items: x2.items })),
-      unit: hint,
+      unit: named.kg && named.lb ? null : hint,
+      ...named.kg && named.lb ? { mixed: true } : {},
       skipped: 0,
       cardio: 0,
       unread: unread.slice(0, UNREAD_SHOWN),
@@ -12966,7 +13085,8 @@ ${more}`;
   }
   function greyR(b2, si) {
     const s3 = b2 && b2.sets[si];
-    if (!b2 || !s3 || s3.warm || s3.drop) return null;
+    if (!b2 || !s3) return null;
+    if (s3.warm || s3.drop) return warmDropR(b2, si);
     if (b2.adj && si > b2.adj.at) {
       for (let i5 = si - 1; i5 > b2.adj.at; i5--) {
         const x2 = b2.sets[i5];
@@ -12983,6 +13103,38 @@ ${more}`;
     }
     const m3 = +(loadT && b2.tgt && +(b2.tgt.repMin ?? 0) > 0 ? b2.tgt.repMin ?? 0 : b2.plan.repMin);
     return m3 > 0 ? m3 : null;
+  }
+  function warmDropR(b2, si) {
+    const s3 = b2.sets[si];
+    if (!s3) return null;
+    const warm = !!s3.warm;
+    const same = (x2) => warm ? !!x2.warm : !x2.warm && !!x2.drop;
+    let k2 = 0;
+    for (let i5 = 0; i5 < si; i5++) {
+      const x2 = b2.sets[i5];
+      if (x2 && same(x2)) k2++;
+    }
+    const d3 = state.draft;
+    const bi = d3 ? d3.ex.indexOf(b2) : -1;
+    const lr = d3 && !(bi > 0 && lastDup(d3, bi)) ? lastRowR(b2.exId, d3, same, k2) : null;
+    if (lr != null) return lr;
+    if (!warm) {
+      const x2 = si > 0 ? b2.sets[si - 1] : void 0;
+      if (!x2) return null;
+      return +(x2.r ?? 0) > 0 ? +(x2.r ?? 0) : greyR(b2, si - 1);
+    }
+    const top = +b2.plan.repMax;
+    return top > 0 ? top : null;
+  }
+  function lastRowR(exId, d3, same, k2) {
+    let last = null;
+    for (const x2 of state.sessions)
+      if (x2.id !== d3.id && x2.date <= d3.date && x2.ex.some((e5) => e5.exId === exId) && (!last || sessCmp(last, x2) < 0))
+        last = x2;
+    if (!last) return null;
+    const rows = last.ex.filter((e5) => e5.exId === exId).flatMap((e5) => e5.sets.filter(same));
+    const r4 = rows[k2] ? +(rows[k2].r ?? 0) : 0;
+    return r4 > 0 ? r4 : null;
   }
   function draftEntered(d3) {
     if (!d3) return false;
@@ -13052,7 +13204,7 @@ ${more}`;
       for (const x2 of exps)
         if (x2.pb != null && !(date && x2.date === date)) all = all == null ? x2.pb : Math.max(all, x2.pb);
       if (!isCompound(ex)) return ` (your best for ${bandW})`;
-      return all == null || (shown2 ?? 0) > all + EPS_SAME ? ` (estimated 1RM ${fmtE(shown2)} ${U()}${all != null ? `; was ${fmtE(all)}` : ""})` : ` (your best for ${bandW}, ${fmtE(shown2)} ${U()})`;
+      return all == null || (shown2 ?? 0) > all + EPS_SAME ? ` (estimated 1RM ${fmtE(shown2)} ${U()}${wasE(shown2, all) ? `; was ${wasE(shown2, all)}` : ""})` : ` (your best for ${bandW}, ${fmtE(shown2)} ${U()})`;
     }
     if (pr === "Weight PR") {
       const mw = f3.heaviest;
@@ -13635,7 +13787,7 @@ ${more}`;
     if (!d3 || !state.settings.autoDone || drawing()) return false;
     const b2 = d3.ex[bi];
     const x2 = b2 && b2.sets[si];
-    if (!b2 || !x2 || x2.done || x2.warm || x2.drop || +(x2.r ?? 0) > 0) return false;
+    if (!b2 || !x2 || x2.done || +(x2.r ?? 0) > 0) return false;
     const lr = greyR(b2, si);
     if (lr == null || !(lr > 0)) return false;
     act(
@@ -17297,7 +17449,7 @@ ${detail}`
     }, TOUR.advanceMs);
   }
   function obView() {
-    if (!cloudChecked || AUTH() && !window.claude && !acct.checked || cloud.on && !cloud.lastPull)
+    if (!cloudChecked || AUTH() && !window.claude && !acct.checked || cloudFirstPull())
       return b`<div class="ob"><div class="ob-splash"><p class="ob-logo">${markup(LOCKUP)}</p></div></div>`;
     const acctStep = !!AUTH() && !window.claude;
     const undo = undoStack.length ? b`<button class="linkbtn ob-skip" data-act="undo">Undo last delete or reset</button>` : A;
@@ -17331,7 +17483,8 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
 <button class="ob-opt" data-act="obOwn"><b>Build my own routine</b><span>Your days, your exercises</span></button>
 <button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, another app, a backup</span></button>${ENV === "preview" ? b`<button class="ob-opt" data-act="previewCopy"><b>Copy my log in</b><span>Try this test version on your own log</span></button>` : A}</div>
 <button class="linkbtn ob-skip" data-act="demoLoad">Look around with sample data first</button>${undo}
-<p class="small muted" id="obSafety" style="margin:10px 0 0;text-align:center"><span class="hastip" data-tip=${SAFETY_TXT}>Suggestions are estimates, not advice.</span></p></div>`;
+<p class="small muted" id="obSafety" style="margin:10px 0 0;text-align:center"><span class="hastip" data-tip=${SAFETY_TXT}>Suggestions are estimates, not advice.</span></p>
+<button class="linkbtn ob-skip" data-act="menuOpen">Help</button></div>`;
   }
   function welcomeCard() {
     if (state.settings.onboarded || !cloudChecked || state.draft || state.sessions.some((s3) => !s3.demo)) return A;
@@ -17420,7 +17573,8 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
       if (cs.lastDate === t4) note = `${dayLabel(R2, cs.last)} done today.`;
       else if (cs.restToday)
         note = b`<b>Scheduled rest today</b> (${dayLabel(R2, cs.restIdx)} of your cycle). ${(R2.days[cs.next] || { name: "" }).name} is ready whenever you want it.`;
-    }
+    } else if (weekly && chosen == null && state.sessions.some((x2) => x2.date === t4 && x2.routineId === R2.id && sessDayIdx(R2, x2) === wd))
+      note = `${day.name || dayLabel(R2, wd)} done today.`;
     const playable = !day.rest && day.items.length > 0;
     const deload = isDeloadWeek();
     const free = state.settings.todayStart === "free" && chosen == null;
@@ -18136,7 +18290,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     else save();
   }
   function saveSession(d3, ex, cardio) {
-    const durMin = d3.editingId ? d3.durMin || null : d3.startedAt && d3.date === today() ? (() => {
+    const durMin = d3.editingId ? d3.durMin || null : d3.startedAt && !d3.past && iso(new Date(d3.startedAt)) === d3.date ? (() => {
       const m3 = Math.round((Date.now() - (d3.startedAt || 0)) / (MINUTE_S * SECOND_MS));
       return m3 >= 1 && m3 <= TIMED_MAX_MIN ? m3 : null;
     })() : null;
@@ -18246,7 +18400,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       return pr.type === "e1RM" ? {
         name: e5.name,
         what: `${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e5)}`,
-        was: prOverall(pr) ? pr.prevAll != null ? `was ${fmtE(pr.prevAll)}` : "" : pr.prev != null ? `was ${fmtE(pr.prev)} at those reps` : ""
+        was: prOverall(pr) ? wasE(pr.value, pr.prevAll) ? `was ${wasE(pr.value, pr.prevAll)}` : "" : wasE(pr.value, pr.prev) ? `was ${wasE(pr.value, pr.prev)} at those reps` : ""
       } : {
         name: e5.name,
         what: `${e5.timed ? "Time" : "Rep"} PR, ${setShort(e5, pr.w, pr.r)}`,
@@ -18461,6 +18615,11 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
   }
   var LOG_HELP_ON = "RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ";
   var LOG_HELP = "W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. Drag an exercise by its ⠿ to change the order. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.";
+  function startedWords(t4) {
+    const began = iso(new Date(t4)), now = today();
+    if (began === now) return new Date(t4).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return began === addDays(now, -1) ? "yesterday" : fmtDate(began);
+  }
   function viewWorkout(d3) {
     const hintSeen = /* @__PURE__ */ new Set();
     const doneN = d3.ex.reduce((a2, b2) => a2 + b2.sets.filter((s3) => s3.done && !s3.warm).length, 0);
@@ -18468,7 +18627,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     const sp = sessProgress(d3);
     const calIdx = d3.editingId ? -1 : calDueIdx(d3);
     const letters = ssLetters(d3.ex.map((b2) => b2.plan));
-    return b`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d3.editingId ? "Editing a saved session" : d3.past ? "Past workout" : "Session in progress"}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${d3.dayName}</h2>${helpButton("log")}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d3.editingId ? "Cancel edit" : "Discard"}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? "set" : "sets"}</span> done${d3.past ? `, for ${fmtDateLong(d3.date)}` : ""}${d3.startedAt && !d3.past ? `, started ${new Date(d3.startedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ""}</span></p>${sp.n ? b`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%`}></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>` : ""}
+    return b`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d3.editingId ? "Editing a saved session" : d3.past ? "Past workout" : "Session in progress"}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${d3.dayName}</h2>${helpButton("log")}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d3.editingId ? "Cancel edit" : "Discard"}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? "set" : "sets"}</span> done${d3.past ? `, for ${fmtDateLong(d3.date)}` : ""}${d3.startedAt && !d3.past ? `, started ${startedWords(d3.startedAt)}` : ""}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ""}</span></p>${sp.n ? b`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%`}></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>` : ""}
   <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d3.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${left > 0 ? b`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ""}</div></div></div>
   ${howText("log", (state.settings.rirMode === "off" ? "RIR is switched off in Settings, so every working set counts as hard. " : LOG_HELP_ON) + LOG_HELP + (d3.past ? " Quick entry: no rest timer, and a set counts as done once its reps are typed." : state.settings.autoDone ? " Auto-mark is on: sets tick themselves when you leave the reps field." : ""))}
   ${d3.free ? b`<label class="field" style="margin-top:8px">Name<input type="text" data-bind="draftName" maxlength="40" .value=${fieldValue(d3.dayName || "")}></label><p class="small muted" style="margin:4px 0 0">Not tied to a routine day, so your cycle stays put.</p>` : ""}
@@ -18666,7 +18825,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
        reps, picking RIR and then tapping the checkmark is the natural order,
        and it used to untick the set. A second tap undoes it. Tapping done on
        an empty reps field logs the grey number in it (see greyR), like the
-       paper log you copy from; warm-ups have none, so those still ask; a typed
+       paper log you copy from; warm-ups and drops have theirs since r64; a typed
        0 is a missed set (r55, V), ticked as typed. Unticked (r55, the audit):
        numbers that are what the row shows in grey go back to grey, so a tap by
        mistake leaves nothing typed for Finish to offer to save, and an
@@ -19848,6 +20007,17 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   var limited = (pr) => withTimeout(pr, NET_MS, "auth-late");
   var failed = (e5, or) => codeOf(e5) === "timeout" ? NO_ANSWER : said(e5, or);
+  async function syncAndSay(msg) {
+    const go = cloudInit();
+    await cloudDecided();
+    if (cloud.on) toast(msg);
+    await go;
+  }
+  function resume() {
+    cloud.retry = 0;
+    if (cloud.t) clearTimeout(cloud.t);
+    cq(cloudPull);
+  }
   function waitStart(email, pw) {
     wait = { email, pw, since: Date.now(), timer: null };
     prefSet(ACCT_WAIT, JSON.stringify({ t: Date.now() }));
@@ -19899,8 +20069,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       obOutClear();
       prefDel(ACCT_LATER);
       if (waitSheet()) back();
-      toast("Email confirmed. Signed in and syncing.");
-      await cloudInit();
+      await syncAndSay("Email confirmed. Signed in and syncing.");
       acctRerender();
     } catch (e5) {
       const m3 = waitSheet();
@@ -19934,10 +20103,13 @@ ${JSON.stringify(ctx, null, 1)}`;
         waitStop();
         if (waitSheet()) {
           back();
-          toast("Email confirmed. Signed in and syncing.");
+          syncAndSay("Email confirmed. Signed in and syncing.");
         }
       }
-      if (ev === "SIGNED_IN" && !cloud.on) cloudInit();
+      if (user && (ev === "SIGNED_IN" || ev === "TOKEN_REFRESHED" || ev === "INITIAL_SESSION")) {
+        if (!cloud.on) cloudInit();
+        else if (cloud.status === "offline") resume();
+      }
       if (ev === "SIGNED_OUT" && cloud.on && !window.claude) cloudStop();
       if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") fbCheckReader();
       acctRerender();
@@ -19985,11 +20157,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     });
     window.addEventListener("online", () => {
       if (AUTH() && !cloud.on) cloudInit();
-      else if (cloud.on && cloud.status === "offline") {
-        cloud.retry = 0;
-        if (cloud.t) clearTimeout(cloud.t);
-        cq(cloudPull);
-      }
+      else if (cloud.on && cloud.status === "offline") resume();
     });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState !== "visible") return;
@@ -20060,8 +20228,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       obOutClear();
       prefDel(ACCT_LATER);
       if (ui.modal === m3) back();
-      toast("Email confirmed. Signed in and syncing.");
-      if (!cloud.on) cloudInit();
+      syncAndSay("Email confirmed. Signed in and syncing.");
       acctRerender();
     };
     try {
@@ -20141,8 +20308,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         obOutClear();
         prefDel(ACCT_LATER);
         done(null);
-        toast("Signed in. Syncing your log.");
-        await cloudInit();
+        await syncAndSay("Signed in. Syncing your log.");
         acctRerender();
       } else if (m3.mode === "signup") {
         const r4 = await limited(A2.signUp(email, pw));
@@ -20153,8 +20319,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           acct.user = r4.user;
           obOutClear();
           done(null);
-          toast("Account created. Syncing your log.");
-          await cloudInit();
+          await syncAndSay("Account created. Syncing your log.");
           acctRerender();
         }
       } else if (m3.mode === "forgot") {
@@ -20200,7 +20365,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     async acctRetry() {
       await cloudInit();
       acctRerender();
-      if (!cloud.on) toast("Still not syncing. Check your connection, or sign out and in again.");
+      if (!cloud.on && acct.user) toast("Still not syncing. Check your connection, or sign out and in again.");
     },
     // From a problem report, signing in goes back to it (r55, the audit: the report and what was typed in it were gone).
     acctOpen(t4) {
@@ -20265,8 +20430,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (t4.dataset.v === "here") {
         if (typeof A2.release === "function") A2.release();
         closeModal();
-        toast("Signed in here. Syncing your log.");
-        await cloudInit();
+        await syncAndSay("Signed in here. Syncing your log.");
         acctRerender();
         return;
       }
@@ -20302,7 +20466,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             await del();
           } catch (e5) {
             log("auth", e5);
-            toast(said(e5, "Could not delete the account. Try again."));
+            toast(failed(e5, "Could not delete the account. Try again."));
             acctRerender();
             return;
           }
@@ -20340,7 +20504,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           await A2.signOut();
         } catch (e5) {
           log("auth", e5);
-          toast(said(e5, "Could not sign out"));
+          toast(failed(e5, "Could not sign out"));
           return;
         }
         acct.user = null;
@@ -21136,7 +21300,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           return;
         }
         toast(
-          err ? `Could not read your ${APP_NAME} log: ${err instanceof Error ? err.message : String(err)}` : `No ${APP_NAME} log found for this account or on this phone.`,
+          err ? `Could not read your ${APP_NAME} log: ${codeOf(err) === "timeout" ? NO_ANSWER : err instanceof Error ? err.message : String(err)}` : `No ${APP_NAME} log found for this account or on this phone.`,
           null,
           SAID.notFound
         );
@@ -21739,7 +21903,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         return;
       }
       if (ui.modal) closeModal();
-      openModal({ kind: "menu" });
+      openModal(obActive() ? { kind: "menu", first: true } : { kind: "menu" });
     },
     install() {
       const how = installKind();
@@ -23782,7 +23946,7 @@ ${JSON.stringify(ctx, null, 1)}`;
 
   // src/app/sheetsaccount.ts
   var menuAuth = () => AUTH() && !(window.claude && typeof window.claude.use === "function") ? AUTH() : null;
-  function menuSheet() {
+  function menuSheet(m3) {
     const A2 = menuAuth();
     const u4 = A2 && acct.user;
     const st = saveStateNow();
@@ -23793,7 +23957,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const item = (act2, label, cat) => b`<button type="button" class="mnu" data-act=${act2} data-cat=${cat || A}><span>${label}</span><span aria-hidden="true">›</span></button>`;
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h"><h3 id="menuH">${ENV === "preview" ? PREVIEW_NAME : APP_NAME}</h3>${closeX()}</div>
   <div class="panel" id="menuAcct">${acc}</div>${due}
-  <div class="mnus">${item("fbOpen", "Report a problem", "bug")}${acct.reader && FB() ? item("fbInbox", "Reports inbox") : A}${item("guideOpen", "Guide")}${item("goLayout", "Show, hide, or reorder sections")}${item("goBackup", "Your data and backups")}</div>
+  <div class="mnus">${item("fbOpen", "Report a problem", "bug")}${acct.reader && FB() ? item("fbInbox", "Reports inbox") : A}${item("guideOpen", "Guide")}${m3.first ? A : b`${item("goLayout", "Show, hide, or reorder sections")}${item("goBackup", "Your data and backups")}`}</div>
   <p class="small muted" style="margin:12px 0 0">Version ${DISPLAY_VERSION}</p></div>`;
   }
   function fbSheet(m3) {
@@ -24057,7 +24221,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   ${b2.dup ? b`<p class="small" style="margin:6px 0 0">${b2.dup} already in your log, skipped.</p>` : A}
   <div style="margin-top:10px"><p class="small muted" style="margin:0 0 6px;font-weight:600">Weights in the file are</p><div class="ob-units">${["lb", "kg"].map(
         (k2) => b`<button class=${"chip " + (m3.unit === k2 ? "on" : "")} data-act="impUnit" data-v=${k2} aria-pressed=${String(m3.unit === k2)}>${k2}</button>`
-      )}</div>${m3.unitKnown ? A : b`<p class="small muted" style="margin:4px 0 0">It does not say which; check this.</p>`}</div>
+      )}</div>${m3.unitKnown ? A : b`<p class="small muted" style="margin:4px 0 0">${r4.mixed ? "It names both kg and lb. A line with neither is read in the unit picked here; check this." : "It does not say which; check this."}</p>`}</div>
   ${noDate ? b`<label class="field" style="margin-top:10px">No date found. Log it on<input type="date" data-impdate value=${m3.date} max=${today()}></label>` : A}
   ${unsure.length ? b`<p class="small" style="margin:12px 0 4px;font-weight:650">Check these exercises</p>${unsure.map(row)}` : A}
   ${sure.length ? b`<details class="subsec" style="margin-top:8px"><summary>${sure.length} matched</summary>${sure.map(row)}</details>` : A}
@@ -24866,7 +25030,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   // src/app/main.ts
   setRoot(renderInner);
   setSheets(SHEETS, afterSheet2);
-  setFx({ render, rerenderKeepScroll, toast, setSaveState, syncLine, obGate, ask });
+  setFx({ render, rerenderKeepScroll, toast, undoToastHide, setSaveState, syncLine, obGate, ask });
   storageStart();
   syncStart();
   viewStart();
@@ -25252,7 +25416,11 @@ ${JSON.stringify(ctx, null, 1)}`;
     stallWords,
     atRangeTop,
     oddLoad,
-    lightZero
+    lightZero,
+    // Names added since r63 go last, so the earlier builds' suites find theirs in their order (tests/r63.js section 4).
+    templateBefore,
+    templateRest,
+    templateSigsBefore
   };
   render();
   wakeOn();
@@ -25269,11 +25437,11 @@ ${JSON.stringify(ctx, null, 1)}`;
 <script>
 /* Standalone build only. */
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
-  const hadController=!!navigator.serviceWorker.controller;let reloading=false;
-  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadController&&!reloading){reloading=true;location.reload();}});
+  let tapped=false,reloading=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(tapped&&!reloading){reloading=true;location.reload();}});
   window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').then(reg=>{
     const offer=()=>{if(reg.waiting&&navigator.serviceWorker.controller&&window.ironlogUpdateReady)window.ironlogUpdateReady();};
-    window.ironlogApplyUpdate=()=>{if(reg.waiting)reg.waiting.postMessage('skipWaiting');else location.reload();};
+    window.ironlogApplyUpdate=()=>{tapped=true;if(reg.waiting)reg.waiting.postMessage('skipWaiting');else location.reload();};
     reg.addEventListener('updatefound',()=>{const w=reg.installing;if(w)w.addEventListener('statechange',()=>{if(w.state==='installed')offer();});});
     offer();
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{});});
