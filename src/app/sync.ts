@@ -1537,10 +1537,15 @@ async function takeAccount(id: string): Promise<boolean> {
 }
 /** Starts the sync for the account signed in, if there is one: the first pull, then every save flushes. */
 export async function cloudInit(): Promise<void> {
-  /* A start under way is waited for, then read: a sign-in made while one was
-     under way said "Signed in. Syncing your log." and nothing synced (r64,
-     the r63 audit's F3). Still off after it, this call starts its own. */
-  while (starting) await starting;
+  /* A start under way is joined: this call waits for its answer, which is
+     this call's too, rather than reading the sync as off while it is still
+     deciding (r64, the r63 audit's F3: a sign-in made meanwhile said "Signed
+     in. Syncing your log." and nothing synced). A start of its own after it
+     would ask again a question just answered Cancel (tests/r56-1.js). */
+  if (starting) {
+    await starting;
+    return;
+  }
   if (cloud.on) return;
   const run = ++starts;
   let decided = (): void => {};

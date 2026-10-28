@@ -11598,7 +11598,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return true;
   }
   async function cloudInit() {
-    while (starting) await starting;
+    if (starting) {
+      await starting;
+      return;
+    }
     if (cloud.on) return;
     const run2 = ++starts;
     let decided = () => {

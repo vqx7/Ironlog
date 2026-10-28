@@ -45,7 +45,8 @@ const MENU = () => { const el = document.getElementById('saveState'); return el 
   function report(name) {
     const lines = [];
     results.push({ name, lines });
-    return (c, m, x) => lines.push([!!c, m + (c || x === undefined ? '' : ' ' + JSON.stringify(x))]);
+    // R64B_SHOW=1 prints what each check read on a pass too (the times it measured).
+    return (c, m, x) => lines.push([!!c, m + ((c && !process.env.R64B_SHOW) || x === undefined ? '' : ' ' + JSON.stringify(x))]);
   }
   async function device(ok, o = {}) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: o.sw ? 'allow' : 'block' });
