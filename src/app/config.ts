@@ -129,6 +129,14 @@ const THREE_CDN = [
 export const THREE_URLS: readonly string[] =
   typeof window !== 'undefined' && window.IRONLOG_APP ? ['./vendor/three.module.min.js'] : THREE_CDN;
 
+/** How long a request to the account server may go without an answer
+    before it is given up, in milliseconds. One limit for every such request:
+    the sync's, the sign-in's and a problem report's (r63, PENDING 306 and
+    309), and since r64 every request the account library makes itself,
+    whose token refresh every later call waits behind (scripts/cloud-supabase.js
+    reads it through the build's placeholder; the r63 audit's F3). */
+export const NET_MS = 20000;
+
 /** Where a report's ticket lives: the Inbox links a report to its ticket
     only when the address starts here (a report's fields are written by
     whoever sent it, so any other address is not linked; FEEDBACK.md). */

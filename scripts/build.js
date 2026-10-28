@@ -73,8 +73,14 @@ if (cloudCfg) {
   // cloud.js gets the values it needs from src/app/config.ts written in at
   // build time (r49), not from a global set at run time: its sign-in storage
   // key must never come out as "undefined.auth". Every placeholder is filled
-  // or the build stops.
-  const cloudJs = fs.readFileSync(path.join(ROOT, 'scripts/cloud-supabase.js'), 'utf8').replace(/\{\{(\w+)\}\}/g, (m, k) => { must(typeof cfg[k] === 'string' && cfg[k], `cloud-supabase.js: unknown placeholder ${m}`); return cfg[k]; });
+  // or the build stops: a name config defines, as a string that is not empty
+  // or, since r64, a finite number (NET_MS, the time limit the account
+  // library's requests share with the app's).
+  const cloudJs = fs.readFileSync(path.join(ROOT, 'scripts/cloud-supabase.js'), 'utf8').replace(/\{\{(\w+)\}\}/g, (m, k) => {
+    const v = Object.prototype.hasOwnProperty.call(cfg, k) ? cfg[k] : undefined;
+    must((typeof v === 'string' && v) || (typeof v === 'number' && Number.isFinite(v)), `cloud-supabase.js: unknown placeholder ${m}`);
+    return String(v);
+  });
   fs.writeFileSync(path.join(DIST, 'cloud.js'), cloudJs);
 }
 
@@ -164,17 +170,22 @@ if (cloudCfg) html = replaceOnce(html, '</head>', `<script>window.IRONLOG_SUPABA
 // Updates: a new version downloads in the background and then waits. The page
 // is told (ironlogUpdateReady) and shows "Update ready"; tapping Update
 // calls ironlogApplyUpdate, which lets the waiting worker take over, and the
-// page reloads once it has. The check also runs whenever the app comes back
+// page reloads once it has: because Update was tapped, whatever controlled the
+// page when it opened (r64, the r63 audit's F4: it reloaded only when a worker
+// controlled the page at open, so on an app installed in the same visit, which
+// iOS keeps open for days, Update cleared the bar and the old build stayed).
+// It never reloads by itself: a first install taking over, or another window's
+// update, leaves the page as it is. The check also runs whenever the app comes back
 // to the foreground, because an installed iPhone app is often resumed rather
 // than relaunched and would otherwise not look for updates for days.
 const boot = `<script>
 /* Standalone build only. */
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
-  const hadController=!!navigator.serviceWorker.controller;let reloading=false;
-  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadController&&!reloading){reloading=true;location.reload();}});
+  let tapped=false,reloading=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(tapped&&!reloading){reloading=true;location.reload();}});
   window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').then(reg=>{
     const offer=()=>{if(reg.waiting&&navigator.serviceWorker.controller&&window.ironlogUpdateReady)window.ironlogUpdateReady();};
-    window.ironlogApplyUpdate=()=>{if(reg.waiting)reg.waiting.postMessage('skipWaiting');else location.reload();};
+    window.ironlogApplyUpdate=()=>{tapped=true;if(reg.waiting)reg.waiting.postMessage('skipWaiting');else location.reload();};
     reg.addEventListener('updatefound',()=>{const w=reg.installing;if(w)w.addEventListener('statechange',()=>{if(w.state==='installed')offer();});});
     offer();
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{});});

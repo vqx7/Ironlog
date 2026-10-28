@@ -75,7 +75,7 @@ import {
   prefSet,
   undoStack
 } from './storage';
-import { cloudChecked } from './sync';
+import { cloudChecked, cloudFirstPull } from './sync';
 import { AUTH } from './providers';
 import { canInstallHere, installKind, isStandalone } from './env';
 import { SAFETY_TXT, bwEvery } from './settings';
@@ -357,8 +357,8 @@ export function mountObTour(): void {
   }, TOUR.advanceMs);
 }
 function obView(): TemplateResult {
-  // Still finding out whether this device is signed in, or pulling its log: show nothing that could flash away.
-  if (!cloudChecked || (AUTH() && !window.claude && !acct.checked) || (cloud.on && !cloud.lastPull))
+  // Still finding out whether this device is signed in, or pulling its log: show nothing that could flash away. A first pull that failed shows the page (r64, F3: with no answer it waited for ever).
+  if (!cloudChecked || (AUTH() && !window.claude && !acct.checked) || cloudFirstPull())
     return html`<div class="ob"><div class="ob-splash"><p class="ob-logo">${markup(LOCKUP)}</p></div></div>`;
   const acctStep = !!AUTH() && !window.claude;
   const undo = undoStack.length

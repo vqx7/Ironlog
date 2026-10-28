@@ -13,10 +13,10 @@
    a check of the wait or the code, in place of the email, password, busy,
    coding and timer kept side by side, which could say two things at once. */
 
-import { APP_NAME } from './config';
+import { APP_NAME, NET_MS } from './config';
 import { ACCT_LATER, OB_ACCT, OB_OUT, KEY, log, prefDel, prefGet, prefSet, undoForget } from './storage';
 import { parseJson, rec } from './records';
-import { NET_MS, cloudFlush, cloudInit, cloudPull, cloudStop, cq, hasUnsent, withTimeout } from './sync';
+import { cloudDecided, cloudFlush, cloudInit, cloudPull, cloudStop, cq, hasUnsent, withTimeout } from './sync';
 import { normalize } from './normalize';
 import { acct, cloud, setState, state, ui } from './store';
 import type { AccountModal, AcctMode } from './modals';
@@ -102,6 +102,19 @@ function back(): void {
 const limited = <T>(pr: Promise<T>): Promise<T> => withTimeout(pr, NET_MS, 'auth-late');
 /** What the sheet says of a failed request: no answer, or the service's own words. */
 const failed = (e: unknown, or: string): string => (codeOf(e) === 'timeout' ? NO_ANSWER : said(e, or));
+/** Starts the sync after a sign-in and says the words given once it has started, and only then (r64, the r63 audit's F3: "Signed in. Syncing your log." was said while nothing synced). */
+async function syncAndSay(msg: string): Promise<void> {
+  const go = cloudInit();
+  await cloudDecided();
+  if (cloud.on) toast(msg);
+  await go;
+}
+/** A sync waiting to try again goes now: back online, or the sign-in answered. A pull, so what another phone sent meanwhile comes in (r63's review: a flush only sent this phone's). */
+function resume(): void {
+  cloud.retry = 0;
+  if (cloud.t) clearTimeout(cloud.t);
+  cq(cloudPull);
+}
 
 function waitStart(email: string, pw: string): void {
   wait = { email, pw, since: Date.now(), timer: null };
@@ -158,8 +171,7 @@ async function waitTry(manual: boolean): Promise<void> {
     obOutClear();
     prefDel(ACCT_LATER);
     if (waitSheet()) back();
-    toast('Email confirmed. Signed in and syncing.');
-    await cloudInit();
+    await syncAndSay('Email confirmed. Signed in and syncing.');
     acctRerender();
   } catch (e) {
     // Not confirmed yet is what a try finds while the email waits, so only other errors are logged.
@@ -197,10 +209,17 @@ export async function acctInit(): Promise<void> {
       waitStop();
       if (waitSheet()) {
         back();
-        toast('Email confirmed. Signed in and syncing.');
+        syncAndSay('Email confirmed. Signed in and syncing.');
       }
     }
-    if (ev === 'SIGNED_IN' && !cloud.on) cloudInit();
+    /* The sign-in answered (signed in, its token refreshed, or the library's
+       start ended with it): a sync that is off starts, and one waiting to try
+       again goes now (r64, the r63 audit's F3: after a request with no answer
+       it never synced again until the app was relaunched). */
+    if (user && (ev === 'SIGNED_IN' || ev === 'TOKEN_REFRESHED' || ev === 'INITIAL_SESSION')) {
+      if (!cloud.on) cloudInit();
+      else if (cloud.status === 'offline') resume();
+    }
     if (ev === 'SIGNED_OUT' && cloud.on && !window.claude) cloudStop();
     if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') fbCheckReader();
     acctRerender();
@@ -260,12 +279,8 @@ export function accountStart(): void {
      foreground: a sign-in that could not refresh offline starts syncing then. */
   window.addEventListener('online', () => {
     if (AUTH() && !cloud.on) cloudInit();
-    // Back from a dead zone: sync now instead of waiting out the retry timer, a pull, so what another phone sent meanwhile comes in (r63's review: a flush only sent this phone's).
-    else if (cloud.on && cloud.status === 'offline') {
-      cloud.retry = 0;
-      if (cloud.t) clearTimeout(cloud.t);
-      cq(cloudPull);
-    }
+    // Back from a dead zone: sync now, where the sync waits for the network (r64, F5) or for its retry.
+    else if (cloud.on && cloud.status === 'offline') resume();
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
@@ -353,8 +368,7 @@ async function acctCode(): Promise<void> {
     obOutClear();
     prefDel(ACCT_LATER);
     if (ui.modal === m) back();
-    toast('Email confirmed. Signed in and syncing.');
-    if (!cloud.on) cloudInit();
+    syncAndSay('Email confirmed. Signed in and syncing.');
     acctRerender();
   };
   try {
@@ -445,8 +459,7 @@ async function acctSubmit(): Promise<void> {
       obOutClear();
       prefDel(ACCT_LATER);
       done(null);
-      toast('Signed in. Syncing your log.');
-      await cloudInit();
+      await syncAndSay('Signed in. Syncing your log.');
       acctRerender();
     } else if (m.mode === 'signup') {
       const r = await limited(A.signUp(email, pw));
@@ -457,8 +470,7 @@ async function acctSubmit(): Promise<void> {
         acct.user = r.user;
         obOutClear();
         done(null);
-        toast('Account created. Syncing your log.');
-        await cloudInit();
+        await syncAndSay('Account created. Syncing your log.');
         acctRerender();
       }
     } else if (m.mode === 'forgot') {
@@ -509,7 +521,8 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   async acctRetry() {
     await cloudInit();
     acctRerender();
-    if (!cloud.on) toast('Still not syncing. Check your connection, or sign out and in again.');
+    // A sign-in the server refused has signed the phone out and said so (sync.ts, cloudFail): nothing to add to that.
+    if (!cloud.on && acct.user) toast('Still not syncing. Check your connection, or sign out and in again.');
   },
   // From a problem report, signing in goes back to it (r55, the audit: the report and what was typed in it were gone).
   acctOpen(t) {
@@ -578,8 +591,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (t.dataset.v === 'here') {
       if (typeof A.release === 'function') A.release();
       closeModal();
-      toast('Signed in here. Syncing your log.');
-      await cloudInit();
+      await syncAndSay('Signed in here. Syncing your log.');
       acctRerender();
       return;
     }
@@ -615,7 +627,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           await del();
         } catch (e) {
           log('auth', e);
-          toast(said(e, 'Could not delete the account. Try again.'));
+          toast(failed(e, 'Could not delete the account. Try again.'));
           acctRerender();
           return;
         }
@@ -656,7 +668,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         await A.signOut();
       } catch (e) {
         log('auth', e);
-        toast(said(e, 'Could not sign out'));
+        toast(failed(e, 'Could not sign out'));
         return;
       }
       acct.user = null;

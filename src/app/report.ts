@@ -16,14 +16,14 @@
    again after its reply was lost is refused by the table as a repeat and
    read as sent, rather than made twice (and ticketed twice). */
 
-import { APP_NAME, APP_VERSION, DISPLAY_VERSION } from './config';
+import { APP_NAME, APP_VERSION, DISPLAY_VERSION, NET_MS } from './config';
 import { andList, uid } from './util';
 import { ACCENT0 } from './layout';
 import { FB_CATS, FB_CTX_MAX, FB_DAY, FB_IMG_MB, FB_MAX, FB_MIN, FB_TITLE } from './feedback';
 import { ENV, KEY, log, logBuf, prefGet, prefSet } from './storage';
 import type { LogEntry } from './types';
 import { arr, parseJson } from './records';
-import { NET_MS, withTimeout } from './sync';
+import { withTimeout } from './sync';
 import { U, exName } from './live';
 import { acct, cloud, state, ui } from './store';
 import type { FeedbackModal, Modal } from './modals';
