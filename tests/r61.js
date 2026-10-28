@@ -11,10 +11,7 @@
 //      elements, attributes, field values and visible text as r60's; and the
 //      Guide, every topic open, in pounds and kilograms with RIR on and off,
 //      the same markup and text as r60's (its numbers now read from the
-//      constants their rules apply), but for the sentences section 2 corrects
-//      (and two changes of r64 read as one: the reserve number in the reason
-//      for a load raised on easy sets, 363, and the ready-made routines'
-//      isolation rests, 302; tests/r64.js sections 8 and 11 hold them).
+//      constants their rules apply), but for the sentences section 2 corrects.
 //   2  the Guide says what the code does where it did not: a set rated 5 or
 //      more in reserve is read as 4, reps built past the top before a large
 //      step are a quarter of the top of the range with two at least, and a new
@@ -36,6 +33,8 @@
 //      is (its items with their superset field), where r60 gave it unread
 //      until the next load; and the workout in progress is still cleaned in
 //      place, the very object given, its own fields first in their order.
+//      (The starter a log with no routine gets rests its isolation lifts 90 s
+//      since r64, 302: r60's starter is read so, tests/r64.js section 11.)
 //      (On r60 the first check fails too, by exactly those two inputs.)
 //   5  New machine or gym (343 7, 339 g, 338 B): the exercise menu marks a
 //      lift as done at a new machine or gym, and tapped again takes it off;
@@ -108,11 +107,7 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
          compared whole. */
       const la = a.split('\n'), lb = b.split('\n');
       const thrown = l => /\t"ERR [^"]*"$/.test(l);
-      /* r64 (the r63 audit's 363) says the reserve of the plan's sets in the reason for a load raised on easy sets,
-         where r60 to r63 averaged a set past them in: that number is read as one here, the rest of the line whole,
-         and tests/r64.js section 8 holds the number itself. */
-      const r363 = l => l.replace(/(RIR|RPE) [\d.]+( at [^"]*? against a target of)/g, '$1 #$2');
-      const alike = (x, y) => x === y || r363(x) === r363(y) || (x[0] === '~' && y[0] === '~' && x.split('\t').slice(0, 2).join('\t') === y.split('\t').slice(0, 2).join('\t') && thrown(x) && thrown(y));
+      const alike = (x, y) => x === y || (x[0] === '~' && y[0] === '~' && x.split('\t').slice(0, 2).join('\t') === y.split('\t').slice(0, 2).join('\t') && thrown(x) && thrown(y));
       if (la.length === lb.length && la.every((l, k) => alike(l, lb[k]))) same++;
       else if (!first) { let k = 0; while (k < la.length && alike(la[k], lb[k] || '')) k++; first = { seed: 61000 + i, line: k, r60: (la[k] || '').slice(0, 700), now: (lb[k] || '').slice(0, 700) }; }
     }
