@@ -7302,7 +7302,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       const under = at2(Math.floor((most - o3) / st + EPS));
       if (d3 > most + EPS && under > tp + EPS) d3 = under;
     }
-    return kgOfIn(M3, d3);
+    const cp = capOfIn(M3, ex, plan, top);
+    return cp != null && kgOfIn(M3, d3) > cp + EPS ? null : kgOfIn(M3, d3);
   }
   function moveIn(M3, ex, plan, res, nw, why) {
     if (res.w == null || Math.abs(nw - res.w) < EPS) return res;
@@ -7570,7 +7571,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return {
       top,
       w: nw,
-      text: `${lastS} Back from the break: those sets say ${lbl(nw)} fits your usual ${preR} reps, so ${lbl(nw)} next${nw < preTop - EPS_SAME ? `, on the way back to ${lbl(preTop)}` : ""}. Aim for ${plan.repMin}+ reps in every set.`,
+      text: `${lastS} Back from the break: those sets say ${lbl(nw)} fits your usual ${preR} reps, so ${lbl(nw)} next${nw < preTop - EPS_SAME && lbl(nw) !== lbl(preTop) ? `, on the way back to ${lbl(preTop)}` : ""}. Aim for ${plan.repMin}+ reps in every set.`,
       lastR,
       basis,
       last: lastS,

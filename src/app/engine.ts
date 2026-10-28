@@ -318,7 +318,9 @@ function unitGridIn(M: Model, ex: ExerciseLike, plan: Plan, top: number, w: numb
     const under = at(Math.floor((most - o) / st + EPS));
     if (d > most + EPS && under > tp + EPS) d = under;
   }
-  return kgOfIn(M, d);
+  // Never past the heaviest load the lift has (capOfIn), which the engine's own load already keeps to: that load, then.
+  const cp = capOfIn(M, ex, plan, top);
+  return cp != null && kgOfIn(M, d) > cp + EPS ? null : kgOfIn(M, d);
 }
 
 /* A suggestion moved to another load (by unitSnap or plateSnap): the load
@@ -779,7 +781,7 @@ function sgAfterReturnIn(M: Model, C: SuggestCtx): Suggestion | null {
   return {
     top,
     w: nw,
-    text: `${lastS} Back from the break: those sets say ${lbl(nw)} fits your usual ${preR} reps, so ${lbl(nw)} next${nw < preTop - EPS_SAME ? `, on the way back to ${lbl(preTop)}` : ''}. Aim for ${plan.repMin}+ reps in every set.`,
+    text: `${lastS} Back from the break: those sets say ${lbl(nw)} fits your usual ${preR} reps, so ${lbl(nw)} next${nw < preTop - EPS_SAME && lbl(nw) !== lbl(preTop) ? `, on the way back to ${lbl(preTop)}` : ''}. Aim for ${plan.repMin}+ reps in every set.`,
     lastR,
     basis,
     last: lastS,
