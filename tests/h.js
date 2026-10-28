@@ -202,9 +202,26 @@ async function screenOf(file, { browser, seed, tab, env, prep, clock, root, init
         if (t) out.push(JSON.stringify(t)); txt = ''; };
       for (const c of n.childNodes) { if (c.nodeType === 3) txt += c.textContent; else if (c.nodeType === 1) { flush(c); out.push(walk(c)); prev = c; } }
       flush(null); return out; };
+    /* Since r65 (the r63 audit's A-9) a fixed style is a u- class whose rule
+       holds what the attribute held, in the same order (tests/r65.js section
+       4 holds that it wins and loses where the attribute did). A screen is
+       read with each such class put back as the style attribute it was, so a
+       build before r65 and one after compare element by element and any
+       other change still shows. */
+    const UTIL = new Map();
+    for (const st of document.querySelectorAll('style')) for (const m of st.textContent.matchAll(/\.(u-[\w-]+)\{([^}]*)\}/g)) UTIL.set(m[1], m[2].split(';').map(d => d.replace(/!important\s*$/, '').trim()).filter(Boolean).join(';'));
+    const attrsOf = n => {
+      const util = [...n.classList].filter(c => UTIL.has(c));
+      if (!util.length) return [...n.attributes];
+      const rest = [...n.classList].filter(c => !UTIL.has(c)).join(' ');
+      const list = [...n.attributes].filter(a => a.name !== 'class').map(a => ({ name: a.name, value: a.value }));
+      if (rest) list.push({ name: 'class', value: rest });
+      list.push({ name: 'style', value: util.map(c => UTIL.get(c)).join(';') });
+      return list;
+    };
     const walk = n => {
       const canvas = n.tagName === 'CANVAS';
-      const at = [...n.attributes].filter(a => !['value', 'checked', 'selected', 'open', 'disabled'].includes(a.name) && !(a.name === 'class' && !a.value.trim()) && !(a.name === 'id' && /^lt/.test(a.value)) && !(canvas && ['width', 'height', 'style'].includes(a.name)))
+      const at = attrsOf(n).filter(a => !['value', 'checked', 'selected', 'open', 'disabled'].includes(a.name) && !(a.name === 'class' && !a.value.trim()) && !(a.name === 'id' && /^lt/.test(a.value)) && !(canvas && ['width', 'height', 'style'].includes(a.name)))
         .map(a => a.name === 'aria-labelledby' ? `${a.name}=>${byId(a.value)}` : a.name === 'class' ? `class=${JSON.stringify(a.value.trim().split(/\s+/).sort().join(' '))}` : RID.has(a.name) ? `${a.name}=${idOf(a.value)}` : `${a.name}=${JSON.stringify(a.value)}`).sort();
       return `<${n.tagName.toLowerCase()}${at.length ? ' ' + at.join(' ') : ''}>${canvas ? '' : kidsOf(n).join('')}</${n.tagName.toLowerCase()}>`;
     };

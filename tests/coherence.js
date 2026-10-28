@@ -308,7 +308,7 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
         const plan = Object.keys(st).filter(m => st[m].st === 'plan').map(m => ML[m]).sort();
         const c = L.coach();
         L.ui.tab = 'dash'; L.ui.folds['dash:volume'] = true; L.ui.folds['dash:weak'] = true; L.ui.volMode = 'avg'; L.render();
-        const flagged = [...document.querySelectorAll('#view .tag')].filter(e => e.textContent === 'Below target').map(e => txt(e.closest('div[style]').querySelector('b'))).sort();
+        const flagged = [...document.querySelectorAll('#view .tag')].filter(e => e.textContent === 'Below target').map(e => txt(e.closest('.row').querySelector('b'))).sort();
         const rows = [...document.querySelectorAll('#view .mrow')];
         const rowsUnder = rows.filter(e => e.querySelector('.fill.under')).map(e => txt(e.children[1])).sort();
         const rowsPlan = rows.filter(e => e.querySelector('.fill.plan')).map(e => txt(e.children[1])).sort();
