@@ -619,7 +619,7 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
      (tp, below): a set past the plan's count is left out (r55, the audit: 80
      x 10 x 4 and a fifth set of 8 held the load and asked 41+ reps over 4). */
   const planPts = topPts.slice(0, Math.max(1, +plan.sets || topPts.length));
-  const L0 = lastOf(seen, last, p => `${loadLabelIn(M, ex, p.w)}×${p.r}`, +plan.repMin);
+  const L0 = lastOf(seen, last, p => `${loadLabelIn(M, ex, p.w)}×${p.r}`, M.today(), +plan.repMin);
   const lastR = L0.lastR,
     lastS = L0.line,
     basis = L0.basis;
@@ -1408,7 +1408,7 @@ function suggestTimedIn(
   const top = Math.max(...ws.map(p => p.w));
   const topPts = ws.filter(p => Math.abs(p.w - top) < EPS_SAME);
   const lbl = (w: number): string => `${loadLabelIn(M, ex, w)}${ex.bw ? '' : ' ' + UIn(M)}${loadNote(ex)}`;
-  const L0 = lastOf(all, last, p => `${loadLabelIn(M, ex, p.w)} for ${p.r}s`);
+  const L0 = lastOf(all, last, p => `${loadLabelIn(M, ex, p.w)} for ${p.r}s`, M.today());
   const lastR = L0.lastR,
     lastS = L0.line,
     basis = L0.basis;

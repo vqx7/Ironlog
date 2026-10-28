@@ -119,8 +119,10 @@ export const missedTag = (s: { r: number | string | null }): string => (isMissed
 /** Said when a sheet with something typed in it is asked to close by a tap outside it or by Back (r55: Back closed it unasked). */
 export const DIRTY_SAID = 'Save or cancel first. Your changes are still here.';
 
+/* What a missed set does, as the next target reads it since r56.2 (a set short of the range) and R-1 (one of the
+   session's sets): r64, the r63 audit's NEW-4, where it said "or targets". */
 /** Said once when a set is ticked as missed (r55). */
-export const MISSED_SAID = 'Logged as missed. It counts toward no volume, PRs, or targets.';
+export const MISSED_SAID = 'Logged as missed. It counts toward no volume or PRs, and keeps the load from going up.';
 
 /** A number to at most three decimals, without trailing zeros. */
 export const fmtG = (v: number): string => String(r3(v));
@@ -151,6 +153,10 @@ export const fmtWith = (k: string, o: Intl.DateTimeFormatOptions, s: string): st
 
 /** A date as "Oct 17". */
 export const fmtDate = (s: string): string => fmtWith('d', { month: 'short', day: 'numeric' }, s);
+
+/** A date as "Oct 17", with its year when it is not the year of now ("Oct 20, 2025"), so a date a year away is not read as this year's (r64, the r63 audit's R-7). */
+export const fmtDateFrom = (s: string, now: string): string =>
+  yearOf(s) === yearOf(now) ? fmtDate(s) : fmtWith('dy', { month: 'short', day: 'numeric', year: 'numeric' }, s);
 
 /* ---------- effort ---------- */
 

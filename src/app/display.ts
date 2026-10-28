@@ -4,7 +4,7 @@
    legacy script it came from (deleted in r63). */
 
 import { IN, KM_MI, FT_IN } from './units';
-import { NIL, fmtDate, fmtWith, missedTag } from './format';
+import { NIL, fmtDate, fmtDateFrom, fmtWith, missedTag } from './format';
 import { e1, fitE, trendE, RECENT_DAYS, BEST_WEEKS, TAPE_WEEKS } from './formulas';
 import { MK, isCommon, loadMode, nameMatch } from './library';
 import { routineEmpty, routineSig, sessDayIdx } from './routines';
@@ -19,7 +19,6 @@ import {
   weekStart,
   EPS,
   EPS_SAME,
-  yearOf,
   HUNDREDTHS,
   PERCENT,
   WEEK_DAYS,
@@ -160,10 +159,9 @@ export function loadHead(ex: ExerciseLike | null | undefined): string {
   return m === 'each' ? u + ' each' : m === 'side' ? u + '/side' : m === 'stack' ? 'Stack' : m === 'bw' ? '+' + u : u;
 }
 
-/* Here, not in format.ts beside fmtDate: only the screens use it, and format.ts is one of the engine's modules, whose share of lines run is a ratchet (tests/engine.js). */
+/* The screens' name for fmtDateFrom (format.ts, since r64 the one rule, which the engine's Last line reads with the model's date) on this phone's today. */
 /** A date as "Oct 17", with its year when it is not this one ("Mar 1, 2027"): a date a year ahead is not read as one this year. */
-export const fmtDateYr = (s: string): string =>
-  yearOf(s) === yearOf(today()) ? fmtDate(s) : fmtWith('dy', { month: 'short', day: 'numeric', year: 'numeric' }, s);
+export const fmtDateYr = (s: string): string => fmtDateFrom(s, today());
 
 /** A date written out: "Sat, Oct 24, 2026". */
 export const fmtDateLong = (s: string): string =>

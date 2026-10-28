@@ -119,7 +119,7 @@ Casts: 86
 Non-null assertions: 26
 Open types: 11
 
-Marks in r52's moved code (from baselines/r51.html): 21 casts, 77 non-null assertions
+Marks in r52's moved code (from baselines/r51.html): 21 casts, 76 non-null assertions
 Marks in r56's moved code (from baselines/r55.html): 2 casts, 2 non-null assertions
 
 Restated in r56 (the move of storage and sync): 85 casts from 76, each explained where it stands: the four readers through which every raw value is read (`rec`, `arr` and `parseJson` in `records.ts`, `spread` in `normalize.ts`), the two error events' payloads (`storageStart`, typed any by the browser's own types), and the three fields of the sync notes read as they were saved (`notesIn` in `sync.ts`), which go when r56.1 checks every entry of the notes (PENDING 305); 26 non-null assertions from 25 (`fx`, set at start as `state` is); 16 open types from 18 (`cloud`'s three `Record<string, unknown>` and its index signature typed, `Rec` added). The 4 casts and 2 `!` in the code r56 moved: `normalize`'s result typed as the State it builds field by field and an exercise's muscles read as the list the build above made them, `plainTemplate`'s routine given to `routineSig` under its try, `undoRestore`'s IndexedDB result typed any by the browser, the starter routine's template that always exists, and the device id set before any sync. A `!` on a value typed any (an `IDBRequest`'s result) is read through a cast to unknown, as `JSON.parse` is.
@@ -128,7 +128,7 @@ r63: 11 open types from 14: the account (`acct`) typed, its user `AcctUser`, wit
 
 r60: 14 open types from 16: `cleanTgt` returns a `Target`, and the plan of a session's block is typed where `normalize` builds it, the block itself checked against `DraftBlock` (`satisfies`), so a field the session screen reads without a check of its own is one the compiler sees written.
 
-A mark counts against the move that moved its declaration, edited or not: 86 non-null assertions when r52 moved them, 85 since r53's edit of `recentLighterIn` took one out, 77 since r54's snap of a suggestion onto the step in the unit on screen (`snapUnitIn`, now `unitSnap` beside it) reads its loads with `inUnitIn` and `kgOfIn`, the conversions of a number, where `toDIn` and `fromDIn` needed a `!` to say a number gives a number; 22 casts when r52 moved them, 21 since r54's `loadFloorIn`, which took the empty-bar test out of `lighterLoadIn`, reads a lift with no bar of its own as 0 (`?? 0`) where the cast said an absent bar compares false.
+A mark counts against the move that moved its declaration, edited or not: 86 non-null assertions when r52 moved them, 85 since r53's edit of `recentLighterIn` took one out, 77 since r54's snap of a suggestion onto the step in the unit on screen (`snapUnitIn`, now `unitSnap` beside it) reads its loads with `inUnitIn` and `kgOfIn`, the conversions of a number, where `toDIn` and `fromDIn` needed a `!` to say a number gives a number, 76 since r64's PR scorer (`prBestOf`, analytics.ts) reads a session's band only where it has one, where the index's own copy said so with a `!`; 22 casts when r52 moved them, 21 since r54's `loadFloorIn`, which took the empty-bar test out of `lighterLoadIn`, reads a lift with no bar of its own as 0 (`?? 0`) where the cast said an absent bar compares false.
 
 Engine coverage, lines run by tests/engine.js: model 100%, units 100%, routines 83.8%, gym 74.7%, format 72.6%, loads 66.6%, analytics 100%, time 100%, weeks 100%, coach 100%, engine 100%, plans 100%, pick 99.1%
 

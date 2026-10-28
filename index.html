@@ -2215,7 +2215,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var NIL = "–";
   var missedTag = (s3) => isMissed(s3) ? " missed" : "";
   var DIRTY_SAID = "Save or cancel first. Your changes are still here.";
-  var MISSED_SAID = "Logged as missed. It counts toward no volume, PRs, or targets.";
+  var MISSED_SAID = "Logged as missed. It counts toward no volume or PRs, and keeps the load from going up.";
   var fmtG = (v3) => String(r3(v3));
   var repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
   var rangeWords = (p3) => +p3.repMin === +p3.repMax ? `target of ${+p3.repMin}` : `${+p3.repMin}-${+p3.repMax} range`;
@@ -2226,6 +2226,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return isNaN(+d3) ? "" : dtf(k2, o3).format(d3);
   };
   var fmtDate = (s3) => fmtWith("d", { month: "short", day: "numeric" }, s3);
+  var fmtDateFrom = (s3, now) => yearOf(s3) === yearOf(now) ? fmtDate(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
   function effScale(v3) {
     return v3 === "half" || v3 === "rpe" ? v3 : "whole";
   }
@@ -6475,19 +6476,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
               bb = rtfBand(rtfOf(p3.r, p3.rq));
             }
           }
-        let pb = best, pbb = bb;
-        if (ex.bw) {
-          pb = null;
-          pbb = null;
-          if (!noE1(ex))
-            for (const p3 of pts) {
-              const v4 = e1(p3.pl, p3.r, p3.rq);
-              if (v4 != null && (pb == null || v4 > pb)) {
-                pb = v4;
-                pbb = rtfBand(rtfOf(p3.r, p3.rq));
-              }
-            }
-        }
+        const { pb, pbb } = prBestOf(ex, pts);
         let tAdj = null, tRaw = null, topL = 0, rated = 0;
         if (!noE1(ex)) {
           const avg = (f3) => {
@@ -6523,6 +6512,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
           rr: b2.rr || null,
           ...b2.ps ? { ps: b2.ps } : {},
           ...b2.nw ? { nw: true } : {},
+          // Read from its drop sets alone (r64): neither the PR list nor the bests board reads it, as no drop set feeds a PR.
+          ...main.length ? {} : { dropOnly: true },
           topN: atTop.length,
           tAdj,
           tRaw,
@@ -6727,105 +6718,125 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     for (const k2 in T2) if (T2[k2].light * 2 > T2[k2].all || T2[k2].tail >= 2) lightWk[k2] = true;
     return lightWk;
   }
-  function idxPRsIn(M3, id, exps, prs) {
-    const front = [];
-    let maxBest = null, maxPb = null;
-    const ex = EXIn(M3, id);
-    let prevMaxW = -Infinity, topSc = 0;
-    const bestIn = (i5, band) => {
-      let m3 = null;
-      for (let k2 = 0; k2 < i5; k2++) {
-        const q = exps[k2];
-        if (q.pb != null && q.pbb === band) m3 = m3 == null ? q.pb : Math.max(m3, q.pb);
+  function prSoFar() {
+    return { front: [], topSc: 0, prevMaxW: -Infinity, byBand: {}, maxPb: null, seen: /* @__PURE__ */ new Set(), none: true };
+  }
+  var prScore = (q) => e1(q.pl, q.r, q.rq) || epley(q.pl, q.r);
+  var prDominated = (h3, p3) => h3.front.some((q) => q.pl >= p3.pl - EPS_SAME && q.r >= p3.r);
+  function prAdd(h3, x2) {
+    if (x2.pb != null) h3.maxPb = h3.maxPb == null ? x2.pb : Math.max(h3.maxPb, x2.pb);
+    if (x2.pb != null && x2.pbb != null) h3.byBand[x2.pbb] = Math.max(h3.byBand[x2.pbb] ?? -Infinity, x2.pb);
+    for (const p3 of x2.pts) if (p3.r > 0) h3.prevMaxW = Math.max(h3.prevMaxW, p3.w);
+    for (const p3 of x2.pts) h3.topSc = Math.max(h3.topSc, prScore(p3));
+    for (const p3 of x2.pts) {
+      if (prDominated(h3, p3)) continue;
+      for (let k2 = h3.front.length - 1; k2 >= 0; k2--)
+        if (p3.pl >= h3.front[k2].pl - EPS_SAME && p3.r >= h3.front[k2].r) h3.front.splice(k2, 1);
+      h3.front.push(p3);
+    }
+    for (const p3 of x2.pts) h3.seen.add(p3.w);
+    h3.none = false;
+  }
+  function prBestOf(ex, pts) {
+    let pb = null, pbb = null;
+    if (noE1(ex)) return { pb, pbb };
+    for (const p3 of pts) {
+      const v3 = e1(ex.bw ? p3.pl : p3.load, p3.r, p3.rq), rt = rtfOf(p3.r, p3.rq);
+      if (v3 != null && rt != null && (pb == null || v3 > pb)) {
+        pb = v3;
+        pbb = rtfBand(rt);
       }
-      return m3;
-    };
-    const dominated = (p3) => front.some((q) => q.pl >= p3.pl - EPS_SAME && q.r >= p3.r);
-    const addFront = (p3) => {
-      if (dominated(p3)) return;
-      for (let k2 = front.length - 1; k2 >= 0; k2--)
-        if (p3.pl >= front[k2].pl - EPS_SAME && p3.r >= front[k2].r) front.splice(k2, 1);
-      front.push(p3);
-    };
-    const seen = /* @__PURE__ */ new Set();
-    exps.forEach((x2, i5) => {
-      let repPR = null;
-      const sc = (q) => e1(q.pl, q.r, q.rq) || epley(q.pl, q.r);
-      const judged = x2.pts.map((p3) => {
-        const w2 = prSameLoad(p3.w, seen);
-        return { p: w2 === p3.w ? p3 : { ...p3, w: w2, pl: p3.pl + (w2 - p3.w) }, at: p3 };
-      });
-      const pts = judged.map((j3) => j3.p);
-      const asLogged = (q) => (judged.find((j3) => j3.p === q) || { at: q }).at;
-      const floor = front.reduce((a2, q) => Math.max(a2, sc(q)), 0) * REP_PR_SHARE;
-      if (i5 > 0) {
-        for (const p3 of pts) {
-          if (!dominated(p3) && sc(p3) >= floor - EPS && (!repPR || sc(p3) > sc(repPR))) repPR = p3;
+    }
+    return { pb, pbb };
+  }
+  function prJudge(ex, h3, x2) {
+    if (h3.none) return { pr: null, progress: false };
+    let repPR = null;
+    const judged = x2.pts.map((p3) => {
+      const w2 = prSameLoad(p3.w, h3.seen);
+      return { p: w2 === p3.w ? p3 : { ...p3, w: w2, pl: p3.pl + (w2 - p3.w) }, at: p3 };
+    });
+    const pts = judged.map((j3) => j3.p);
+    const asLogged = (q) => (judged.find((j3) => j3.p === q) || { at: q }).at;
+    const floor = h3.front.reduce((a2, q) => Math.max(a2, prScore(q)), 0) * REP_PR_SHARE;
+    for (const p3 of pts) {
+      if (!prDominated(h3, p3) && prScore(p3) >= floor - EPS && (!repPR || prScore(p3) > prScore(repPR))) repPR = p3;
+    }
+    let pbJ = x2.pb, bandJ = x2.pbb, shown2 = x2.pb;
+    if (x2.pb != null && judged.some((j3) => j3.p !== j3.at)) {
+      pbJ = null;
+      for (const j3 of judged) {
+        const v3 = e1(j3.p.pl, j3.p.r, j3.p.rq), rt = rtfOf(j3.p.r, j3.p.rq);
+        if (v3 != null && rt != null && (pbJ == null || v3 > pbJ)) {
+          pbJ = v3;
+          bandJ = rtfBand(rt);
+          shown2 = e1(j3.at.pl, j3.at.r, j3.at.rq);
         }
       }
-      let pbJ = x2.pb, bandJ = x2.pbb, shown2 = x2.pb;
-      if (x2.pb != null && judged.some((j3) => j3.p !== j3.at)) {
-        pbJ = null;
-        for (const j3 of judged) {
-          const v3 = e1(j3.p.pl, j3.p.r, j3.p.rq), rt = rtfOf(j3.p.r, j3.p.rq);
-          if (v3 != null && rt != null && (pbJ == null || v3 > pbJ)) {
-            pbJ = v3;
-            bandJ = rtfBand(rt);
-            shown2 = e1(j3.at.pl, j3.at.r, j3.at.rq);
-          }
-        }
-      }
-      const pb = bestIn(i5, bandJ);
-      const e1PR = i5 > 0 && pbJ != null && pb != null && pbJ > pb + EPS_SAME;
-      const wJ = i5 > 0 && !ex.timed ? pts.filter((p3) => p3.r > 0 && p3.w > prevMaxW + EPS_SAME).sort((a2, b2) => b2.w - a2.w || sc(b2) - sc(a2) || b2.r - a2.r)[0] : null;
-      const wPR = wJ ? asLogged(wJ) : null;
-      x2.progress = i5 > 0 && (!!repPR || e1PR || !!wPR);
-      const big = noE1(ex) || !!ex.timed || !!ex.bw && !pts.some((q) => q.pl > 0) || pts.some((q) => sc(q) > topSc + EPS);
-      if (wPR)
-        prs.push({
-          date: x2.date,
-          sid: x2.sid,
-          exId: id,
+    }
+    const pb = (bandJ != null ? h3.byBand[bandJ] : void 0) ?? h3.maxPb;
+    const e1PR = pbJ != null && pb != null && pbJ > pb + EPS_SAME;
+    const wJ = !ex.timed ? pts.filter((p3) => p3.r > 0 && p3.w > h3.prevMaxW + EPS_SAME).sort((a2, b2) => b2.w - a2.w || prScore(b2) - prScore(a2) || b2.r - a2.r)[0] : null;
+    const wPR = wJ ? asLogged(wJ) : null;
+    const progress = !!repPR || e1PR || !!wPR;
+    const big = noE1(ex) || !!ex.timed || !!ex.bw && !pts.some((q) => q.pl > 0) || pts.some((q) => prScore(q) > h3.topSc + EPS);
+    if (wPR)
+      return {
+        pr: {
           type: "Weight PR",
           w: wPR.w,
           r: wPR.r,
-          prevW: prevMaxW,
+          prevW: h3.prevMaxW,
           value: e1PR ? shown2 : null,
           prev: e1PR ? pb : null,
-          prevAll: maxPb,
+          prevAll: h3.maxPb,
           bb: bandJ,
           big
-        });
-      else if (e1PR)
-        prs.push({
-          date: x2.date,
-          sid: x2.sid,
-          exId: id,
-          type: "e1RM",
-          value: shown2,
-          prev: pb,
-          prevAll: maxPb,
-          bb: bandJ,
-          big
-        });
-      else if (repPR)
-        prs.push({
-          date: x2.date,
-          sid: x2.sid,
-          exId: id,
+        },
+        progress
+      };
+    if (e1PR) return { pr: { type: "e1RM", value: shown2, prev: pb, prevAll: h3.maxPb, bb: bandJ, big }, progress };
+    if (repPR) {
+      const rp = repPR;
+      return {
+        pr: {
           type: "Rep PR",
-          w: asLogged(repPR).w,
-          r: repPR.r,
-          prevR: front.filter((q) => q.pl >= repPR.pl - EPS_SAME).reduce((a2, q) => Math.max(a2, q.r), 0),
+          w: asLogged(rp).w,
+          r: rp.r,
+          prevR: h3.front.filter((q) => q.pl >= rp.pl - EPS_SAME).reduce((a2, q) => Math.max(a2, q.r), 0),
           big
-        });
-      if (x2.pb != null) maxPb = maxPb == null ? x2.pb : Math.max(maxPb, x2.pb);
-      for (const p3 of x2.pts) if (p3.r > 0) prevMaxW = Math.max(prevMaxW, p3.w);
-      for (const p3 of x2.pts) topSc = Math.max(topSc, sc(p3));
-      for (const p3 of x2.pts) addFront(p3);
-      for (const p3 of x2.pts) seen.add(p3.w);
+        },
+        progress
+      };
+    }
+    return { pr: null, progress };
+  }
+  function prCounted(ex, h3, x2) {
+    const ORDER2 = ["Rep PR", "e1RM", "Weight PR"];
+    const rank = (t4) => ORDER2.indexOf(t4);
+    let top = null;
+    for (const p3 of x2.pts) {
+      const { pr } = prJudge(ex, h3, { pts: [p3], ...prBestOf(ex, [p3]) });
+      if (!pr || !pr.big) continue;
+      const key = pr.type === "Weight PR" ? pr.w : pr.type === "e1RM" ? pr.value ?? 0 : prScore(p3);
+      if (!top || rank(pr.type) > rank(top.pr.type) || rank(pr.type) === rank(top.pr.type) && key > top.key + EPS_SAME)
+        top = { pr, key };
+    }
+    return top && top.pr;
+  }
+  function idxPRsIn(M3, id, exps, prs) {
+    const ex = EXIn(M3, id);
+    const h3 = prSoFar();
+    let maxBest = null;
+    for (const x2 of exps) {
+      if (x2.dropOnly) continue;
+      const j3 = prJudge(ex, h3, x2);
+      x2.progress = j3.progress;
+      const pr = prCounted(ex, h3, x2) ?? j3.pr;
+      if (pr) prs.push({ date: x2.date, sid: x2.sid, exId: id, ...pr });
+      prAdd(h3, x2);
       if (x2.best != null) maxBest = maxBest == null ? x2.best : Math.max(maxBest, x2.best);
-    });
+    }
     return maxBest;
   }
   function stallStretch(wE) {
@@ -7086,7 +7097,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       }
     return out;
   }
-  function lastOf(all, base, fmt, repMin) {
+  function lastOf(all, base, fmt, now, repMin) {
     const rec2 = all && all.length ? all[all.length - 1] : base;
     const kind = sessionWord(rec2);
     const miss = rec2.miss || [];
@@ -7096,7 +7107,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       sets.push(fmt(p3));
     });
     for (const m3 of miss) if (m3.at >= rec2.pts.length) sets.push(fmt(m3) + missedTag(m3));
-    const line = `Last (${fmtDate(rec2.date)}${kind ? ", " + kind : ""}): ${sets.join(", ")}.`;
+    const line = `Last (${fmtDateFrom(rec2.date, now)}${kind ? ", " + kind : ""}): ${sets.join(", ")}.`;
     const repsFrom = rec2 !== base && (lighter(rec2) || rec2.short === "reading" || Math.abs(rec2.topW - base.topW) > EPS_SAME) ? base : rec2;
     const wl = workLoad(repsFrom.pts, repMin || 0);
     const wp = atLoad(repsFrom.pts, wl);
@@ -7156,6 +7167,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const front = [];
     const seen = /* @__PURE__ */ new Set();
     for (const x2 of exps) {
+      if (x2.dropOnly) continue;
       const fresh = [];
       for (const p3 of x2.pts) {
         const d3 = prSameLoad(p3.w, seen) - p3.w, j3 = p3.pl + d3;
@@ -7504,7 +7516,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const capW = (w2) => cap != null ? Math.min(w2, cap) : w2;
     const topPts = triedAt(last, top);
     const planPts = topPts.slice(0, Math.max(1, +plan.sets || topPts.length));
-    const L0 = lastOf(seen, last, (p3) => `${loadLabelIn(M3, ex, p3.w)}×${p3.r}`, +plan.repMin);
+    const L0 = lastOf(seen, last, (p3) => `${loadLabelIn(M3, ex, p3.w)}×${p3.r}`, M3.today(), +plan.repMin);
     const lastR = L0.lastR, lastS = L0.line, basis = L0.basis;
     const lbl = (w2) => `${loadLabelIn(M3, ex, w2)}${ex.bw ? "" : " " + UIn(M3)}${loadNote(ex)}`;
     const prevBest = stx.best == null ? null : stx.best;
@@ -8014,7 +8026,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const top = Math.max(...ws.map((p3) => p3.w));
     const topPts = ws.filter((p3) => Math.abs(p3.w - top) < EPS_SAME);
     const lbl = (w2) => `${loadLabelIn(M3, ex, w2)}${ex.bw ? "" : " " + UIn(M3)}${loadNote(ex)}`;
-    const L0 = lastOf(all, last, (p3) => `${loadLabelIn(M3, ex, p3.w)} for ${p3.r}s`);
+    const L0 = lastOf(all, last, (p3) => `${loadLabelIn(M3, ex, p3.w)} for ${p3.r}s`, M3.today());
     const lastR = L0.lastR, lastS = L0.line, basis = L0.basis;
     if (injM)
       return {
@@ -9744,7 +9756,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (ex && ex.assist) return "Help " + u4;
     return m3 === "each" ? u4 + " each" : m3 === "side" ? u4 + "/side" : m3 === "stack" ? "Stack" : m3 === "bw" ? "+" + u4 : u4;
   }
-  var fmtDateYr = (s3) => yearOf(s3) === yearOf(today()) ? fmtDate(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
+  var fmtDateYr = (s3) => fmtDateFrom(s3, today());
   var fmtDateLong = (s3) => fmtWith("l", { weekday: "short", month: "short", day: "numeric", year: "numeric" }, s3);
   function topSetPt(ex, x2) {
     let q = null;
@@ -13190,33 +13202,31 @@ ${more}`;
     if (!n3) return false;
     return typeof d3.note0 === "string" ? n3 !== d3.note0.trim() : true;
   }
-  function livePR(exId, s3, date) {
+  function liveMade(exId, s3, date) {
     if (!s3 || s3.warm || s3.drop || !(+(s3.r ?? 0) > 0)) return null;
     const f3 = prFrame(exId, s3, date);
     if (!f3) return null;
-    const { ex, exps, st, load: load2 } = f3;
-    const q0 = rirEst(s3, ex);
-    const r4 = +(s3.r ?? 0);
-    const v3 = noE1(ex) ? null : e1(load2, r4, q0);
-    const scq = (l4, rr, q) => e1(l4, rr, q) || epley(l4, rr);
-    let top = 0, dom = false;
-    for (const x2 of exps)
-      for (const q of x2.pts) {
-        if (q.pl >= load2 - EPS_SAME && q.r >= r4) dom = true;
-        top = Math.max(top, scq(q.pl, q.r, q.rq));
-      }
-    const judge = !noE1(ex) && !ex.timed && load2 > 0;
-    const stronger = !judge || scq(load2, r4, q0) > top + EPS;
-    if (!ex.timed && s3.w != null && isNum(+s3.w) && f3.w > f3.heaviest + EPS_SAME && stronger) return "Weight PR";
-    if (!(load2 > 0) && !ex.timed && !ex.bw) return null;
-    if (v3 != null && st && stronger) {
-      const rtf = rtfOf(r4, q0);
-      const bd = rtf == null ? void 0 : st.byBand && st.byBand[rtfBand(rtf)];
-      if (bd != null && v3 > bd + EPS_SAME) return "Best";
-    }
-    if (dom || !stronger) return null;
-    if (!ex.timed && scq(load2, r4, q0) < top * REP_PR_SHARE - EPS) return null;
-    return ex.timed ? "Time PR" : "Rep PR";
+    const { ex, exps } = f3;
+    const h3 = prSoFar();
+    for (const x2 of exps) if (!x2.dropOnly) prAdd(h3, x2);
+    const p3 = {
+      load: ex.bw ? f3.own : loadOf(ex, s3, date),
+      pl: f3.own,
+      r: +(s3.r ?? 0),
+      w: Number(s3.w) || 0,
+      rir: rirEff(s3, ex),
+      rq: rirEst(s3, ex)
+    };
+    const { pb, pbb } = prBestOf(ex, [p3]);
+    return { ex, pr: prJudge(ex, h3, { pts: [p3], pb, pbb }).pr };
+  }
+  function livePR(exId, s3, date) {
+    const m3 = liveMade(exId, s3, date);
+    const pr = m3 && m3.pr;
+    if (!m3 || !pr || !pr.big) return null;
+    if (pr.type === "Weight PR") return "Weight PR";
+    if (pr.type === "e1RM") return "Best";
+    return m3.ex.timed ? "Time PR" : "Rep PR";
   }
   function rowPR(b2, si, date) {
     const s3 = b2.sets[si];
@@ -13233,32 +13243,23 @@ ${more}`;
     return b2.sets.some((x2, i5) => i5 < si && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && scq(x2) >= me - EPS) ? null : pr;
   }
   function prBeat(exId, s3, date, pr) {
-    const f3 = prFrame(exId, s3, date);
-    if (!f3) return "";
-    const { ex, exps, st, load: load2 } = f3;
-    const r4 = +(s3.r ?? 0);
-    const q = rirEst(s3, ex);
-    const rtf = rtfOf(r4, q);
-    const band = rtf == null ? null : rtfBand(rtf);
-    const bd = band == null ? void 0 : st && st.byBand && st.byBand[band];
-    const v3 = noE1(ex) ? null : e1(load2, r4, q), shown2 = noE1(ex) ? null : e1(f3.own, r4, q);
-    const bandW = band != null && BAND_WORDS[band] || "";
-    if (pr === "Best") {
-      if (bd == null || v3 == null) return "";
-      let all = null;
-      for (const x2 of exps)
-        if (x2.pb != null && !(date && x2.date === date)) all = all == null ? x2.pb : Math.max(all, x2.pb);
+    const m3 = liveMade(exId, s3, date);
+    const j3 = m3 && m3.pr;
+    if (!m3 || !j3) return "";
+    const { ex } = m3;
+    const bandW = j3.type !== "Rep PR" && j3.bb != null && BAND_WORDS[j3.bb] || "";
+    if (pr === "Best" && j3.type === "e1RM") {
+      if (j3.value == null) return "";
       if (!isCompound(ex)) return ` (your best for ${bandW})`;
-      return all == null || (shown2 ?? 0) > all + EPS_SAME ? ` (estimated 1RM ${fmtE(shown2)} ${U()}${wasE(shown2, all) ? `; was ${wasE(shown2, all)}` : ""})` : ` (your best for ${bandW}, ${fmtE(shown2)} ${U()})`;
+      const all = j3.prevAll;
+      return all == null || j3.value > all + EPS_SAME ? ` (estimated 1RM ${fmtE(j3.value)} ${U()}${wasE(j3.value, all) ? `; was ${wasE(j3.value, all)}` : ""})` : ` (your best for ${bandW}, ${fmtE(j3.value)} ${U()})`;
     }
-    if (pr === "Weight PR") {
-      const mw = f3.heaviest;
-      const was = ex.assist ? `less help than ever` : `heaviest before ${ex.bw ? loadLabel(ex, mw) : fmtW(mw) + " " + U()}`;
-      return ` (${was}${isCompound(ex) && bd != null && v3 != null && v3 > bd + EPS_SAME ? `; best estimate for ${bandW} now ${fmtE(shown2)}` : ""})`;
+    if (pr === "Weight PR" && j3.type === "Weight PR") {
+      const was = ex.assist ? `less help than ever` : `heaviest before ${ex.bw ? loadLabel(ex, j3.prevW) : fmtW(j3.prevW) + " " + U()}`;
+      return ` (${was}${isCompound(ex) && j3.value != null ? `; best estimate for ${bandW} now ${fmtE(j3.value)}` : ""})`;
     }
-    let m3 = 0;
-    for (const x2 of exps) for (const p3 of x2.pts) if (p3.pl >= load2 - EPS_SAME) m3 = Math.max(m3, p3.r);
-    return m3 ? ` (was ${m3} ${ex.timed ? "s" : "reps"})` : " (heaviest yet)";
+    if (j3.type === "Rep PR") return j3.prevR ? ` (was ${j3.prevR} ${ex.timed ? "s" : "reps"})` : " (heaviest yet)";
+    return "";
   }
   var loadIn = (ex, w2) => w2 == null ? "" : fmtW(ex && ex.assist ? -w2 : w2);
   function plateList(u4) {
@@ -24109,7 +24110,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Grey reps</b> are last time's reps for that set, at today's load, and one set under the bottom of the range among the others shows the bottom of the range. When today's target is a new load, last time's reps were at the old load, so they are the reps of the set above instead, or the bottom of the range. On a lighter day or in a deload, they are the bottom of the range.</p>
    <p><b>Grey loads</b> are the set above, or today's suggested load. To have loads typed in for you: Settings, Rest timer and logging, Fill in suggested loads.</p>
    <p><b>Auto-mark</b> (Settings): a set ticks itself when you leave its reps field.</p>
-   <p><b>A missed set</b>: type 0 reps and tick it (auto-mark ticks it too). It is kept and shown as missed, and counts toward no volume, PR, estimate, or target; the next set's grey numbers come from the last set you completed.</p>
+   <p><b>A missed set</b>: type 0 reps and tick it (auto-mark ticks it too). It is kept and shown as missed, and counts toward no volume, PR, or estimate. The next target reads it as a set short of the range, so it keeps the load from going up. The next set's grey numbers come from the last set you completed.</p>
    <p><b>A number far off</b> asks before the set is logged, Log it or Fix it: reps over ${ODD_REPS} and more than ${timesWord(ODD_REPS_TIMES)} the top of your range or your most ever, whichever is more, or a load more than ${timesWord(ODD_SESSION)}, or under ${shareWords(1 / ODD_SESSION)} of, the heaviest set you ticked today, or more than ${timesWord(ODD_BEST)} the heaviest you have logged on the exercise (conventions, to catch a slipped digit or the other unit). On a bodyweight lift, so does added load of ${pctOf(ODD_ADDED_BW)}% or more of your bodyweight, or more than ${timesWord(ODD_ADDED_BEST)} the most you have added (conventions too). So does a load under the empty bar, on any set of a lift on the full bar typed as the total (the bar in Settings, or the exercise's own).</p>
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to ${RIR_CALL_TOP} (Settings can switch it to half reps or RPE; RPE ${effAt("rpe", 2)} is RIR 2). ${off ? "RIR is off in Settings, so every working set counts as hard." : `It is optional: a blank reads as your usual RIR on that lift once you have rated ${RIR_USUAL_MIN} of its sets in ${CAL_WEEKS} weeks, and until then as hard.`}</p>
    <p><b>RIR check</b>: once you have ${CAL_OFFER.sessions} sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits ${CAL_OFFER.weeks} weeks.</p>

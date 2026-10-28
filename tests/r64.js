@@ -26,6 +26,18 @@
 //  11  302: the ready-made routines rest an isolation lift 90 s at least
 //      (V, 2026-10-25), one named value; a copy made before r64, untouched,
 //      still reads as ready-made, and a routine on a phone keeps its rests.
+//  12  NEW-4: the Guide and the toast say what a missed set does: it counts
+//      toward no volume or PR, and keeps the load from going up (since R-1
+//      and r56.2 the target reads it as a set short of the range).
+//  13  R-6: a set that sets the board's best estimate is a best-estimate PR
+//      in the PR list too, though no earlier set fell in its band of reps,
+//      and in the toast as the set is ticked.
+//  14  R-7: a session from another year says its year in the Last line.
+//  15  A-6 and 339 o: one PR scorer for the PR list and the toast as a set
+//      is ticked: on wide.js's histories each session's counted PR in the
+//      list is the biggest the toast named for its sets; a block of drop
+//      sets alone makes none; a set with a blank effort is read alike by
+//      the bests board, the list and the toast.
 const { open, engine } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 700) : ''); } else console.log('ok  ', m); };
 const FILE = process.argv[2] || 'index.html';
@@ -385,6 +397,129 @@ const run = n => !ONLY || ONLY.includes(n);
     ok(c.plain.every(Boolean), '11. each ready-made routine as r63 made it, untouched, still reads as ready-made', c.plain);
     ok(c.starter, '11. r63\'s untouched starter, Upper / lower, is still the starter a first run replaces');
     ok(c.kept && !c.mine, '11. (a guard) a routine on a phone keeps its rests, and one the lifter changed is theirs', c);
+  }
+
+  // ---- 12. NEW-4: a missed set "counts toward no volume, PR, estimate, or target" (the Guide) and "no volume, PRs, or
+  // targets" (the toast), while the next target reads it as a set short of the range and so never steps the load up.
+  if (run(12)) {
+    const P = await open(FILE, { browser, clock: '2026-10-15T10:00:00' }); pages.push(P);
+    const r = await P.page.evaluate(async () => {
+      const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; L.saveNow();
+      L.openModal({ kind: 'guide', open: '' }); document.querySelectorAll('#modal details').forEach(d => { d.open = true; });
+      const guide = [...document.querySelectorAll('#modal p')].map(p => p.textContent.replace(/\s+/g, ' ')).find(t => /^A missed set/.test(t)) || '';
+      L.ACT.mClose();
+      L.ACT.startFree(); await new Promise(q => setTimeout(q, 120));
+      const d = L.state.draft; d.ex = [L.newBlock('bench', L.planFor('bench', null, null, false, d.date), {})];
+      Object.assign(d.ex[0].sets[0], { w: 100, r: 0 }); L.render(); await new Promise(q => setTimeout(q, 120));
+      document.querySelector('[data-act="sDone"][data-b="0"][data-s="0"]').click(); await new Promise(q => setTimeout(q, 200));
+      const t = document.getElementById('toast');
+      return { guide, toast: t ? t.textContent : '', missed: !!d.ex[0].sets[0].done };
+    });
+    ok(r.guide && !/target/.test(r.guide.replace(/next target[^.]*/, '')) && /never (goes|go) up|keeps the load from going up|short of the range/.test(r.guide), '12. the Guide says a missed set counts toward no volume or PR and keeps the load from going up (r63: "no ... target")', r.guide);
+    ok(r.missed && /Logged as missed/.test(r.toast) && !/targets/.test(r.toast) && /load from going up/.test(r.toast), '12. the toast as a 0 is ticked says the same (r63: "no volume, PRs, or targets")', r.toast);
+  }
+
+  // ---- 13. R-6: bench 200 x 3 (estimate 211.8), then 185 x 8 (229.7): the board's best estimate is 185 x 8's, the PR list
+  // called it a Rep PR, since no earlier set fell in its band (6 to 10 reps to failure).
+  if (run(13)) {
+    const P = await open(FILE, { browser, clock: '2026-10-25T10:00:00' }); pages.push(P);
+    const r = await P.page.evaluate(() => {
+      const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'lb';
+      const LB = 0.45359237;
+      const mk = (id, date, w, reps) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [3, 8], sets: reps.map(r => ({ w: w * LB, r, rir: 0, warm: false, drop: false })) }] });
+      const one = sess => {
+        s.sessions = sess; L.state = L.normalize(s); L.invalidate();
+        const prs = L.IDX().prs.filter(p => p.exId === 'bench');
+        const est = (L.allTimeBests('bench') || {}).est;
+        // The toast as the second session's set is ticked, with the first session alone in the log.
+        s.sessions = sess.slice(0, 1); L.state = L.normalize(s); L.invalidate();
+        const liveFirst = L.livePR('bench', { w: sess[1].ex[0].sets[0].w, r: sess[1].ex[0].sets[0].r, rir: 0, warm: false, drop: false, done: true }, '2026-10-25');
+        s.sessions = sess; L.state = L.normalize(s); L.invalidate();
+        return { prs: prs.map(p => ({ sid: p.sid, type: p.type, value: p.value && Math.round(p.value / LB * 10) / 10, prev: p.prev && Math.round(p.prev / LB * 10) / 10, big: p.big })), board: est && Math.round(est.v / LB * 10) / 10, live: liveFirst };
+      };
+      return { up: one([mk('a', '2026-10-11', 200, [3]), mk('b', '2026-10-18', 185, [8])]), down: one([mk('a', '2026-10-11', 200, [3]), mk('c', '2026-10-18', 150, [10])]) };
+    });
+    const b = r.up.prs.find(p => p.sid === 'b');
+    ok(b && b.type === 'e1RM' && Math.abs(b.value - 229.7) < 0.2 && Math.abs(b.prev - 211.8) < 0.2 && b.big && Math.abs(r.up.board - b.value) < 0.05, '13. 185 x 8 after 200 x 3 is a best-estimate PR in the list, 229.7 over 211.8, as the board shows it (r63: Rep PR)', r.up);
+    ok(r.up.live === 'Best', '13. ticked live, after 200 x 3 alone, the toast calls 185 x 8 a best estimate too (r63: Rep PR)', r.up);
+    const c = r.down.prs.find(p => p.sid === 'c');
+    ok(!c || c.type !== 'e1RM', '13. (a guard) 150 x 10 after 200 x 3, an estimate of 200, is no best-estimate PR', r.down);
+  }
+
+  // ---- 14. R-7: bench last done Oct 20, 2025, read on Oct 25, 2026: "Last (Oct 20): ..." read as five days ago.
+  if (run(14)) {
+    const P = await open(FILE, { browser, clock: '2026-10-25T10:00:00' }); pages.push(P);
+    const r = await P.page.evaluate(() => {
+      const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg';
+      const plan = { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.5 };
+      const one = (date, ex) => { s.draft = null; s.sessions = [{ id: 'y1', date, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: ex, rr: [6, 10], sets: [0, 1, 2].map(() => ({ w: 60, r: 8, rir: 2, warm: false, drop: false })) }] }]; L.state = L.normalize(s); L.invalidate(); return L.suggest(ex, plan).last || L.suggest(ex, plan).text; };
+      return { old: one('2025-10-20', 'bench'), now: one('2026-10-18', 'bench'), hold: one('2025-10-20', 'plank') };
+    });
+    ok(/^Last \(Oct 20, 2025\b/.test(r.old), '14. a session a year back says its year: "Last (Oct 20, 2025 ..." (r63: "Last (Oct 20")', r);
+    ok(/^Last \(Oct 20, 2025\b/.test(r.hold), '14. and a timed hold\'s Last line too', r.hold);
+    ok(/^Last \(Oct 18\b(?!, 20)/.test(r.now), '14. (a guard) one this year says the day alone, as before', r.now);
+  }
+
+  // ---- 15. A-6 and 339 o: the list judged a session as a whole and the toast a set alone, each with its own copy of the
+  // rules (its bands from the lift's current stretch, a band's first set, a block of drop sets alone read otherwise).
+  if (run(15)) {
+    const { wide } = require('./wide');
+    const P = await open(FILE, { browser, clock: '2026-10-11T12:00:00' }); pages.push(P);
+    const LIB = await P.page.evaluate(() => window.__ironlog.libExercises());
+    const N = +process.env.R64_N15 || 24; let n = 0, same = 0; const off = [];
+    for (let i = 0; i < N; i++) {
+      const h = wide(64100 + i, LIB);
+      await P.page.clock.setFixedTime(new Date(h.today + 'T12:00:00'));
+      // Effort read as typed, every set rated: a blank is read as the lift's usual, and Corrected RIR from the whole log,
+      // both of which the list reads with the log as it is now and the toast with the log as it was (cases below hold blanks).
+      const r = await P.page.evaluate(raw => {
+        const L = window.__ironlog; const all = L.normalize(JSON.parse(raw)); all.draft = null; delete all.settings.rirMode;
+        for (const x of all.sessions) for (const b of x.ex) for (const t of b.sets) if (t.rir == null) t.rir = 2;
+        L.state = all; L.invalidate();
+        const byS = {}; for (const p of L.IDX().prs) if (p.big) byS[p.sid + '|' + p.exId] = p.type === 'e1RM' ? 'Best' : p.type;
+        const rank = { 'Weight PR': 3, Best: 2, 'Rep PR': 1, 'Time PR': 1 };
+        const sess = [...all.sessions].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+        let n = 0, same = 0; const off = [];
+        for (const x of sess) {
+          // Two sessions on one day are ordered by their start time in the list; the toast's log is cut by date, so they are left out.
+          if (sess.some(y => y.date === x.date && y.id !== x.id)) continue;
+          L.state = { ...all, sessions: all.sessions.filter(y => y.date < x.date) }; L.invalidate();
+          for (const b of x.ex) {
+            // A lift done twice in a session, or marked New machine or gym (which the toast reads from the workout open), is left out.
+            if (x.ex.filter(c => c.exId === b.exId).length > 1 || b.nw) continue;
+            let best = null;
+            for (const t of b.sets) { if (t.warm || t.drop || !(t.r > 0)) continue; const k = L.livePR(b.exId, { ...t, done: true }, x.date); if (k && (!best || rank[k] > rank[best])) best = k; }
+            const want = byS[x.id + '|' + b.exId] || null, norm = k => (k === 'Time PR' ? 'Rep PR' : k);
+            n++; if (norm(want) === norm(best)) same++; else if (off.length < 3) off.push({ date: x.date, ex: b.exId, list: want, toast: best, sets: b.sets.map(t => [t.w, t.r, t.rir, t.warm ? 'w' : t.drop ? 'd' : '']) });
+          }
+        }
+        return { n, same, off };
+      }, JSON.stringify(h.raw));
+      n += r.n; same += r.same; for (const o of r.off) if (off.length < 6) off.push({ seed: 64100 + i, ...o });
+    }
+    ok(n > 400 && same === n, `15. every session's counted PR in the list is the biggest the toast named for its sets (${same} of ${n} across ${N} histories; r63: the list named a best estimate counted by another set's strength)`, off);
+    // A block of drop sets alone, and a blank effort on the board, in the list and in the toast.
+    const c = await P.page.evaluate(() => {
+      const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg'; delete s.settings.rirMode; s.draft = null;
+      const mk = (id, date, sets) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets }] });
+      const set = (w, r, rir, drop) => ({ w, r, rir, warm: false, drop: !!drop });
+      const read = sess => { s.sessions = sess; L.state = L.normalize(s); L.invalidate(); return L.IDX().prs.filter(p => p.exId === 'bench').map(p => ({ sid: p.sid, type: p.type, big: p.big, value: p.value != null ? Math.round(p.value * 10) / 10 : null })); };
+      const drop = read([mk('d1', '2026-10-01', [set(80, 8, 2), set(80, 8, 2)]), mk('d2', '2026-10-05', [set(90, 8, 2, true)])]);
+      const board = () => { const e = (L.allTimeBests('bench') || {}).est; return e ? { v: Math.round(e.v * 10) / 10, date: e.date } : null; };
+      const dropBoard = board();
+      // Rated sessions give bench a usual of 2 in reserve (100 x 8 at 2: 133.3); then 97.5 x 10 with the effort left blank,
+      // read at 2: 12 to failure, Epley 97.5 x 1.4 = 136.5, a best estimate past every earlier one, not a heavier load.
+      const base = [mk('b1', '2026-09-20', [set(100, 8, 2), set(100, 8, 2)]), mk('b2', '2026-09-27', [set(100, 8, 2), set(100, 8, 2)])];
+      const blank = read([...base, mk('b3', '2026-10-04', [set(97.5, 10, null)])]);
+      const blankBoard = board();
+      s.sessions = base; L.state = L.normalize(s); L.invalidate();
+      const toast = L.livePR('bench', { w: 97.5, r: 10, rir: null, warm: false, drop: false, done: true }, '2026-10-04');
+      const beat = L.prBeat('bench', { w: 97.5, r: 10, rir: null, warm: false, drop: false, done: true }, '2026-10-04', toast || '');
+      return { drop, dropBoard, blank, blankBoard, toast, beat, usual: L.rirUsual('bench') };
+    });
+    ok(!c.drop.some(p => p.sid === 'd2') && c.dropBoard && c.dropBoard.date === '2026-10-01', '15. a block of drop sets alone makes no PR in the list and no record on the board, as no drop set feeds one (r63: a Weight PR)', c);
+    const b3 = c.blank.find(p => p.sid === 'b3');
+    ok(c.usual === 2 && b3 && b3.type === 'e1RM' && Math.abs(b3.value - 136.5) < 0.05 && b3.big && c.toast === 'Best' && c.blankBoard && c.blankBoard.date === '2026-10-04' && Math.abs(c.blankBoard.v - b3.value) < 0.05 && c.beat.includes(b3.value.toFixed(1)), '15. 97.5 x 10 with its effort blank is read at the usual 2 in reserve alike by the board, the list and the toast, one number (136.5)', c);
   }
 
   const errors = pages.flatMap(P => P.errors);
