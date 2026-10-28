@@ -41,7 +41,7 @@ import { dbListOf, gymClean, gymPlates } from './gym';
 import { fmtDate, fmtG, stampShort } from './format';
 import { CAL_WEEKS, CAL_MIN } from './analytics';
 import { TRASH_DAYS, rec, LIMITS } from './records';
-import { iso, numIn, r1, MINUTE_S, SECOND_MS, HOUR_MIN, DAY_MIN } from './util';
+import { iso, numIn, numWord, r1, upFirst, MINUTE_S, SECOND_MS, HOUR_MIN, DAY_MIN } from './util';
 import { stripDemo } from './chunks';
 import { normalize } from './normalize';
 import {
@@ -1089,7 +1089,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       if (i >= 0) focus.splice(i, 1);
       else {
         if (focus.length >= FOCUS_MAX) {
-          toast('Two at most. Tap one to take it off.');
+          toast(`${upFirst(numWord(FOCUS_MAX))} at most. Tap one to take it off.`);
           return;
         }
         focus.push(raw);

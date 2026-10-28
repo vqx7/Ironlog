@@ -7,7 +7,7 @@
 
 import type { Day, Plan, PlanItem, Profile, Routine } from './types';
 import type { ExerciseLike, Model } from './model';
-import { uid, EPS, WEEK_DAYS, LETTERS, numWord } from './util';
+import { uid, EPS, WEEK_DAYS, LETTERS, numWord, upFirst } from './util';
 import { STEP_LB } from './units';
 import { EXIn, activeRoutineIn, profIn, rirHalfOnIn } from './model';
 import { isCompound, libExercises, profHeavy } from './library';
@@ -504,7 +504,7 @@ export function tplCountLine(): string {
     return (r.days.filter(d => !d.rest).length * WEEK_DAYS) / r.days.length;
   });
   const w = T.length ? numWord(T.length) : 'no';
-  return `${w[0].toUpperCase()}${w.slice(1)} plans, ${Math.floor(Math.min(...n))} to ${Math.round(Math.max(...n))} days a week`;
+  return `${upFirst(w)} plans, ${Math.floor(Math.min(...n))} to ${Math.round(Math.max(...n))} days a week`;
 }
 
 /** The Plan editor's tip on target RIR (r29.5): why the default is 1, a convention. */

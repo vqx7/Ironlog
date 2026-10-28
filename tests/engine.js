@@ -36,7 +36,7 @@ const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 // and r55's routine helpers: what a session records of its routine (pwOf), a first-run choice replacing the starter
 // (dropStarter), a day given an exercise (trainOn) and the item a lift's plan comes from (planItemOf).
 // r64 (302): the rest a ready-made routine gives each lift, and the signatures the routines had up to r63.
-const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'platesPerSide', 'planSetsOf', 'withPlanSets', 'templateRest', 'templateSigsBefore'];
+const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'platesPerSide', 'planSetsOf', 'withPlanSets', 'templateRest', 'templateSigsBefore', 'gymClean'];
 // Every adapter live.ts gives the legacy script, read from live.ts itself, so a new one cannot go uncalled.
 const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
 // The adapters added since r53, and the plain functions above the digest does not call: tests/wide.js is shared with
@@ -45,6 +45,8 @@ const EXTRA = {
   // Each routine's day labels (a cycle's Day N, a weekly one's weekday), planned sets a day, superset letters and signature, and the templates' line.
   // r65 (A-6): a muscle's band by any key, one of none.
   bandOf: () => [['chest'], ['quads'], ['neck'], ['nope']],
+  // r65 (A-8): a gym read from what was stored, its dumbbells, plates, rack and stack typed well and badly, and none at all.
+  gymClean: () => [[{ u: 'lb', kb: [25, '35', -5, 'x', 25], plates: [45, 25, '10', 99], stack: 10, db: { lo: 5, hi: 50, st: 5 } }], [{ u: 'kg', kb: 'none', plates: null, stack: -1, db: { lo: 2, hi: 40, st: 2, fine: 1, fineTo: 10 } }], [{ u: 'st' }], [null]],
   dayLabel: (s) => s.routines.flatMap(r => [[r, 0], [r, 3], [{ ...r, schedule: 'weekly' }, 2]]), daySets: (s) => s.routines.flatMap(r => r.days.map(d => [d])),
   // r64 (302): each lift of the log's routines at its own rest and at 45 s, and the old signatures.
   templateRest: (s) => s.routines.flatMap(r => r.days.flatMap(d => d.items.flatMap(it => [[it.exId, +it.rest], [it.exId, 45]]))), templateSigsBefore: () => [[]],

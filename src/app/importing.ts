@@ -189,11 +189,10 @@ export function impDate(str: unknown, ref?: string): string | null {
 }
 
 /* Spreadsheet day numbers (days since 30 Dec 1899). A blank cell is null,
-   which compares as 0 and so fails the range check; the casts say that to
-   TypeScript, and past the check the number is real, as the ! says. */
+   which fails the range check. */
 function impSerial(n: number | null): string | null {
-  if (!((n as number) > SERIAL.min && (n as number) < SERIAL.max)) return null;
-  const d = new Date(SERIAL.epoch + Math.floor(n!) * DAY_MS);
+  if (n === null || !(n > SERIAL.min && n < SERIAL.max)) return null;
+  const d = new Date(SERIAL.epoch + Math.floor(n) * DAY_MS);
   return isoDateOf(d.toISOString());
 }
 
@@ -823,9 +822,8 @@ function impSetsText(t: unknown): string {
     s = s.replace(
       /@?\s*\brpe\s*(\d+(?:\.\d+)?)|@\s*(\d+(?:\.\d+)?)\s*rpe\b/g,
       (_m: string, a: string | undefined, b: string | undefined) => {
-        // One of the two groups matched, digits and all, so a || b is a number's
-        // text; the cast says so, since TypeScript refuses + on undefined.
-        const v = +((a || b) as string);
+        // One of the two groups matched, digits and all, so a || b is a number's text.
+        const v = Number(a || b);
         if (v >= RPE_LOW && v <= EFFORT_TOP) rpe = v;
         return ' ';
       }

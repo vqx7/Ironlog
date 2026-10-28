@@ -40,6 +40,11 @@ export const PREVIEW_LABEL = 'Preview';
     weight, `light` in the muted colour (.ob-logo in the styles). */
 export const WORDMARK = { mark: 'I', strong: 'ron', light: 'log' } as const;
 
+/** The dark theme's page colour (r65, the r63 audit's A-9, where it was typed
+    in five places): the style sheet's --bg in dark mode, the installed app's
+    splash and status bar, and the status bar's when the page's cannot be read. */
+export const DARK_BG = '#08090b';
+
 /** The version people see (V, 2026-10-16): 2.0 from r49, the minor number up
     by one for each release merged, the major number for a large change. */
 export const DISPLAY_VERSION = '2.18';

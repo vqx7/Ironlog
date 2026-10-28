@@ -9,7 +9,7 @@
 
 import { html, render as draw } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
-import { APP_VERSION, STORAGE_ID, VERSION_LINE } from './config';
+import { APP_VERSION, DARK_BG, STORAGE_ID, VERSION_LINE } from './config';
 import { ACCENT0 } from './layout';
 import { DIRTY_SAID } from './format';
 import { numIn } from './util';
@@ -126,7 +126,7 @@ export function applyTheme(): void {
   const m = document.querySelector('meta[name="theme-color"]');
   if (m)
     try {
-      m.setAttribute('content', getComputedStyle(document.body).backgroundColor || '#08090b');
+      m.setAttribute('content', getComputedStyle(document.body).backgroundColor || DARK_BG);
     } catch (e) {
       // The status bar's colour is cosmetic.
     }

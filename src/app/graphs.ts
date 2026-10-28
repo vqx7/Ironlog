@@ -13,6 +13,7 @@ import { loadNote } from './loads';
 import { addDays, daysBetween, r1, today, weekStart, WEEK_DAYS, PERCENT } from './util';
 import { log } from './storage';
 import { EX, IDX, U, hasTarget, regionBalance, toD } from './live';
+import type { Idx } from './model';
 import { state, ui } from './store';
 import { fmtDateLong, fmtE, regionSrc } from './display';
 
@@ -347,15 +348,36 @@ function radarOpts(max: number): unknown {
   };
 }
 
-/** Draws Stats' charts into the canvases its template left. */
-export function mountCharts(): void {
-  const C = window.Chart;
-  if (!C) return;
-  const I = IDX();
-  const blue = cssv('--blue'),
-    green = cssv('--green'),
-    muted = cssv('--muted'),
-    yellow = cssv('--yellow');
+/** The colours the charts share, read from the style sheet once a draw. */
+interface Pal {
+  blue: string;
+  green: string;
+  muted: string;
+  yellow: string;
+}
+
+/* Weekly bar charts share one x axis: the window from weekWindow(), weeks
+   ahead drawn empty with a fainter label. */
+function weekAxis(win: readonly { wk: string; fut: boolean }[], o: Opts): string[] {
+  const cur = weekStart(today());
+
+  const ink = cssv('--muted');
+  const faded = ink + '80';
+  o.scales.x.ticks = {
+    ...o.scales.x.ticks,
+    autoSkip: win.length > CHART_WEEKS,
+    maxTicksLimit: win.length > CHART_WEEKS ? CS.xTicks : undefined,
+    font: { size: CS.tickFont },
+    color: c => {
+      const w = win[c.tick ? c.tick.value : c.index];
+      return w && w.fut ? faded : ink;
+    }
+  };
+  return win.map(w => (w.wk === cur ? 'This wk' : fmtDate(w.wk)));
+}
+
+/** Chart.js's defaults as the page draws them: its font, the muted ink, and the tooltip in the page's colours. */
+function chartDefaults(C: ChartLib, muted: string): void {
   try {
     const D = C.defaults;
     D.font.family = getComputedStyle(document.body).fontFamily || 'system-ui, sans-serif';
@@ -376,121 +398,106 @@ export function mountCharts(): void {
   } catch (e) {
     log('chart', e);
   }
-  const cur = weekStart(today());
-  const sFirst = firstDate(state.sessions);
-  /* Weekly bar charts share one x axis: the window from weekWindow(), weeks
-     ahead drawn empty with a fainter label. */
-  const weekAxis = (win: readonly { wk: string; fut: boolean }[], o: Opts): string[] => {
-    const ink = cssv('--muted');
-    const faded = ink + '80';
-    o.scales.x.ticks = {
-      ...o.scales.x.ticks,
-      autoSkip: win.length > CHART_WEEKS,
-      maxTicksLimit: win.length > CHART_WEEKS ? CS.xTicks : undefined,
-      font: { size: CS.tickFont },
-      color: c => {
-        const w = win[c.tick ? c.tick.value : c.index];
-        return w && w.fut ? faded : ink;
+}
+
+/** The weekly hard sets of the muscle picked on Stats, with its target band. */
+function muscleChart(I: Idx, sFirst: string | null, { blue, green }: Pal): void {
+  const win = weekWindow(sFirst, 'muscle', CHART_WEEKS);
+  const m = MK.find(x => x === ui.dashMuscle);
+  if (win.length && m) {
+    const confV: (number | null)[] = [],
+      assumV: (number | null)[] = [];
+    for (const w of win) {
+      if (w.fut) {
+        confV.push(null);
+        assumV.push(null);
+        continue;
+      }
+      const tot = (I.weekSets[w.wk] || {})[m] || 0;
+      const c = Math.min((I.weekConf[w.wk] || {})[m] || 0, tot);
+      confV.push(r1(c));
+      assumV.push(r1(tot - c));
+    }
+    const [lo, hi] = state.settings.bands[m];
+    // The band lines sit on a second, hidden axis so that turning on stacking
+    // for the bars cannot stack them on top of each other. Both axes are pinned
+    // to the same explicit range so the lines land where they should.
+    const yMax =
+      Math.ceil((Math.max(hi + 2, ...confV.map((v, i) => (v || 0) + (assumV[i] || 0))) * CS.yHead) / CS.yRound) *
+      CS.yRound;
+    const mOpts = baseOpts();
+    mOpts.scales.x.stacked = true;
+    mOpts.scales.y.stacked = true;
+    mOpts.scales.y.min = 0;
+    mOpts.scales.y.max = yMax;
+    mOpts.scales.y1 = {
+      display: false,
+      stacked: false,
+      min: 0,
+      max: yMax,
+      position: 'right',
+      grid: { drawOnChartArea: false }
+    };
+    mOpts.plugins.legend.labels.filter = it => it.text !== '_bandLo';
+    mOpts.plugins.tooltip = {
+      filter: it => !(win[it.dataIndex] || { fut: false }).fut || it.datasetIndex > 1,
+      callbacks: {
+        title: its => {
+          const w = its[0] ? win[its[0].dataIndex] : undefined;
+          return w ? `Week of ${fmtDate(w.wk)}${w.fut ? ' (ahead)' : ''}` : '';
+        }
       }
     };
-    return win.map(w => (w.wk === cur ? 'This wk' : fmtDate(w.wk)));
-  };
-  // muscle weekly
-  {
-    const win = weekWindow(sFirst, 'muscle', CHART_WEEKS);
-    const m = MK.find(x => x === ui.dashMuscle);
-    if (win.length && m) {
-      const confV: (number | null)[] = [],
-        assumV: (number | null)[] = [];
-      for (const w of win) {
-        if (w.fut) {
-          confV.push(null);
-          assumV.push(null);
-          continue;
-        }
-        const tot = (I.weekSets[w.wk] || {})[m] || 0;
-        const c = Math.min((I.weekConf[w.wk] || {})[m] || 0, tot);
-        confV.push(r1(c));
-        assumV.push(r1(tot - c));
-      }
-      const [lo, hi] = state.settings.bands[m];
-      // The band lines sit on a second, hidden axis so that turning on stacking
-      // for the bars cannot stack them on top of each other. Both axes are pinned
-      // to the same explicit range so the lines land where they should.
-      const yMax =
-        Math.ceil((Math.max(hi + 2, ...confV.map((v, i) => (v || 0) + (assumV[i] || 0))) * CS.yHead) / CS.yRound) *
-        CS.yRound;
-      const mOpts = baseOpts();
-      mOpts.scales.x.stacked = true;
-      mOpts.scales.y.stacked = true;
-      mOpts.scales.y.min = 0;
-      mOpts.scales.y.max = yMax;
-      mOpts.scales.y1 = {
-        display: false,
-        stacked: false,
-        min: 0,
-        max: yMax,
-        position: 'right',
-        grid: { drawOnChartArea: false }
-      };
-      mOpts.plugins.legend.labels.filter = it => it.text !== '_bandLo';
-      mOpts.plugins.tooltip = {
-        filter: it => !(win[it.dataIndex] || { fut: false }).fut || it.datasetIndex > 1,
-        callbacks: {
-          title: its => {
-            const w = its[0] ? win[its[0].dataIndex] : undefined;
-            return w ? `Week of ${fmtDate(w.wk)}${w.fut ? ' (ahead)' : ''}` : '';
-          }
-        }
-      };
-      const labels = weekAxis(win, mOpts);
-      mkChart('chMuscle', {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: state.settings.rirMode === 'off' ? 'Hard sets' : 'RIR logged',
-              data: confV,
-              backgroundColor: blue,
-              yAxisID: 'y'
-            },
-            { label: 'Assumed hard', data: assumV, backgroundColor: blue + '55', yAxisID: 'y' },
-            // No target lines for a muscle with no target (r29; hasTargetIn since r58).
-            ...(!hasTarget(m)
-              ? []
-              : [
-                  {
-                    type: 'line',
-                    label: '_bandLo',
-                    data: labels.map(() => lo),
-                    borderColor: green + 'aa',
-                    borderWidth: 1,
-                    borderDash: CS.bandDash,
-                    pointRadius: 0,
-                    yAxisID: 'y1',
-                    fill: false
-                  },
-                  {
-                    type: 'line',
-                    label: `Target ${lo} to ${hi}`,
-                    data: labels.map(() => hi),
-                    borderColor: green + 'aa',
-                    borderWidth: 1,
-                    borderDash: CS.bandDash,
-                    backgroundColor: green + '22',
-                    pointRadius: 0,
-                    yAxisID: 'y1',
-                    fill: '-1'
-                  }
-                ])
-          ]
-        },
-        options: mOpts
-      });
-    }
+    const labels = weekAxis(win, mOpts);
+    mkChart('chMuscle', {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: state.settings.rirMode === 'off' ? 'Hard sets' : 'RIR logged',
+            data: confV,
+            backgroundColor: blue,
+            yAxisID: 'y'
+          },
+          { label: 'Assumed hard', data: assumV, backgroundColor: blue + '55', yAxisID: 'y' },
+          // No target lines for a muscle with no target (r29; hasTargetIn since r58).
+          ...(!hasTarget(m)
+            ? []
+            : [
+                {
+                  type: 'line',
+                  label: '_bandLo',
+                  data: labels.map(() => lo),
+                  borderColor: green + 'aa',
+                  borderWidth: 1,
+                  borderDash: CS.bandDash,
+                  pointRadius: 0,
+                  yAxisID: 'y1',
+                  fill: false
+                },
+                {
+                  type: 'line',
+                  label: `Target ${lo} to ${hi}`,
+                  data: labels.map(() => hi),
+                  borderColor: green + 'aa',
+                  borderWidth: 1,
+                  borderDash: CS.bandDash,
+                  backgroundColor: green + '22',
+                  pointRadius: 0,
+                  yAxisID: 'y1',
+                  fill: '-1'
+                }
+              ])
+        ]
+      },
+      options: mOpts
+    });
   }
-  // balance radar, built from the same source the table on screen uses
+}
+
+/** The balance radar, built from the same source the table on screen uses. */
+function radarChart({ blue, green }: Pal): void {
   const regs = regionBalance(regionSrc().src);
   // Drawn up to CS.radarMax (r29), the real share in the table and the tooltip.
   const rMax = Math.min(
@@ -526,7 +533,10 @@ export function mountCharts(): void {
     },
     options: radarOpts(rMax)
   });
+}
 
+/** The lift picked on Stats: its best estimate or top-set load, its PRs marked, and its RIR at the top load. */
+function liftChart(I: Idx, { blue, green, yellow }: Pal): void {
   const exId = typeof ui.dashEx === 'string' ? ui.dashEx : null;
   const all = exId ? I.byEx[exId] : undefined;
   if (exId && all && !noE1(EX(exId)) && all.length) {
@@ -614,66 +624,71 @@ export function mountCharts(): void {
       mkChart('chEx', { type: 'line', data: { datasets: ds }, options: eo });
     }
   }
-  /* One bar per week, split by the session it came from. Session-by-session
-     bars alternated chest days with leg days, which are not comparable; weeks
-     are. The unfinished current week is labelled as such. */
-  {
-    const win = weekWindow(sFirst, 'vol', CHART_WEEKS);
-    const wks = win.map(w => w.wk);
-    if (win.length) {
-      const baseName = (n: string | null | undefined): string =>
-        String(n || 'Session').replace(/ \((lighter|deload)\)$/, '');
-      const types: string[] = [];
-      const byT: Record<string, (number | null)[]> = {};
-      for (const x of I.sessVol) {
-        const i = wks.indexOf(weekStart(x.date));
-        if (i < 0) continue;
-        const t = baseName(x.day);
-        let row = byT[t];
-        if (!row) {
-          row = byT[t] = wks.map((_, j) => ((win[j] || { fut: false }).fut ? null : 0));
-          types.push(t);
-        }
-        row[i] = (row[i] || 0) + x.vol;
+}
+
+/* One bar per week, split by the session it came from. Session-by-session
+   bars alternated chest days with leg days, which are not comparable; weeks
+   are. The unfinished current week is labelled as such. */
+function volumeChart(I: Idx, sFirst: string | null, { blue, green, muted, yellow }: Pal): void {
+  const win = weekWindow(sFirst, 'vol', CHART_WEEKS);
+  const wks = win.map(w => w.wk);
+  if (win.length) {
+    const baseName = (n: string | null | undefined): string =>
+      String(n || 'Session').replace(/ \((lighter|deload)\)$/, '');
+    const types: string[] = [];
+    const byT: Record<string, (number | null)[]> = {};
+    for (const x of I.sessVol) {
+      const i = wks.indexOf(weekStart(x.date));
+      if (i < 0) continue;
+      const t = baseName(x.day);
+      let row = byT[t];
+      if (!row) {
+        row = byT[t] = wks.map((_, j) => ((win[j] || { fut: false }).fut ? null : 0));
+        types.push(t);
       }
-      const pal = [blue, green, yellow, cssv('--red'), '#8b5cf6', '#14b8a6', '#f97316', muted];
-      const vo = baseOpts();
-      vo.scales.x.stacked = true;
-      vo.scales.y.stacked = true;
-      const labels = weekAxis(win, vo);
-      vo.plugins.tooltip = {
-        filter: it => it.raw != null,
-        callbacks: {
-          title: its => {
-            const w = its[0] ? wks[its[0].dataIndex] : undefined;
-            return w ? `Week of ${fmtDate(w)}` : '';
-          },
-          label: it => `${it.dataset.label}: ${Math.round(Number(it.raw)).toLocaleString()} ${U()}`,
-          footer: its => {
-            const it = its[0];
-            if (!it) return '';
-            const i = it.dataIndex;
-            const tot = types.reduce((a, t) => a + (toD((byT[t] || [])[i] || 0) ?? 0), 0);
-            return `Week total: ${Math.round(tot).toLocaleString()} ${U()}`;
-          }
-        }
-      };
-      mkChart('chVol', {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: types.map((t, i) => ({
-            label: t,
-            data: (byT[t] || []).map(v => (v == null ? null : Math.round(toD(v) ?? 0))),
-            backgroundColor: (pal[i % pal.length] || muted) + (i < pal.length ? '' : '99'),
-            borderRadius: 2,
-            stack: 'v'
-          }))
-        },
-        options: vo
-      });
+      row[i] = (row[i] || 0) + x.vol;
     }
+    const pal = [blue, green, yellow, cssv('--red'), '#8b5cf6', '#14b8a6', '#f97316', muted];
+    const vo = baseOpts();
+    vo.scales.x.stacked = true;
+    vo.scales.y.stacked = true;
+    const labels = weekAxis(win, vo);
+    vo.plugins.tooltip = {
+      filter: it => it.raw != null,
+      callbacks: {
+        title: its => {
+          const w = its[0] ? wks[its[0].dataIndex] : undefined;
+          return w ? `Week of ${fmtDate(w)}` : '';
+        },
+        label: it => `${it.dataset.label}: ${Math.round(Number(it.raw)).toLocaleString()} ${U()}`,
+        footer: its => {
+          const it = its[0];
+          if (!it) return '';
+          const i = it.dataIndex;
+          const tot = types.reduce((a, t) => a + (toD((byT[t] || [])[i] || 0) ?? 0), 0);
+          return `Week total: ${Math.round(tot).toLocaleString()} ${U()}`;
+        }
+      }
+    };
+    mkChart('chVol', {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: types.map((t, i) => ({
+          label: t,
+          data: (byT[t] || []).map(v => (v == null ? null : Math.round(toD(v) ?? 0))),
+          backgroundColor: (pal[i % pal.length] || muted) + (i < pal.length ? '' : '99'),
+          borderRadius: 2,
+          stack: 'v'
+        }))
+      },
+      options: vo
+    });
   }
+}
+
+/** Bodyweight: each weigh-in and the average of the week up to it. */
+function bodyweightChart({ blue, muted }: Pal): void {
   const bw = [...state.bodyweights].sort((a, b) => (a.date < b.date ? -1 : 1));
   const b0 = bw[0];
   if (b0) {
@@ -717,4 +732,19 @@ export function mountCharts(): void {
       options: bo
     });
   }
+}
+
+/** Draws Stats' charts into the canvases its template left (one function a chart since r65, the r63 audit's A-7). */
+export function mountCharts(): void {
+  const C = window.Chart;
+  if (!C) return;
+  const I = IDX();
+  const pal: Pal = { blue: cssv('--blue'), green: cssv('--green'), muted: cssv('--muted'), yellow: cssv('--yellow') };
+  chartDefaults(C, pal.muted);
+  const sFirst = firstDate(state.sessions);
+  muscleChart(I, sFirst, pal);
+  radarChart(pal);
+  liftChart(I, pal);
+  volumeChart(I, sFirst, pal);
+  bodyweightChart(pal);
 }

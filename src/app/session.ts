@@ -41,13 +41,13 @@ export function effW(b: DraftBlock | null | undefined, si: number): number | nul
    first n. When today has fewer working sets (removed, or trimmed by Short on
    time), the target shrinks to those sets, since the old total could no
    longer be reached. Targets saved before rs existed keep the old numbers.
-   cleanTgt lets a target's n be absent or null, which the comparison reads
-   as JavaScript does; the cast only lets TypeScript accept that. */
+   cleanTgt lets a target's n be absent or null: Number reads null as 0 and
+   an absent n as NaN, which no count reaches. */
 export function effTarget(b: DraftBlock): Target | null | undefined {
   const t = b.tgt;
   if (!t || t.kind !== 'reps') return t;
   const nw = b.sets.filter(x => !x.warm && !x.drop).length;
-  if (!Array.isArray(t.rs) || !(nw > 0) || nw >= (t.n as number)) return t;
+  if (!Array.isArray(t.rs) || !(nw > 0) || nw >= Number(t.n)) return t;
   return { ...t, n: nw, total: t.rs.slice(0, nw).reduce((a, v) => a + v, 0) };
 }
 
@@ -86,7 +86,7 @@ export function whyTarget(b: TargetReason | null | undefined): string {
 /** The target as worded on the block, with the sets it counts brought down to today's (effTarget).
     effTarget gives back a target whenever the block has one, and with none
     the function returns before e is read, as the ! says. cleanTgt lets total
-    be null, and the cast lets TypeScript add 1 to it as JavaScript does. */
+    be null, which Number reads as 0, as JavaScript would add it. */
 export function targetText(b: DraftBlock): string | undefined {
   const t = b.tgt,
     e = effTarget(b)!;
@@ -98,17 +98,17 @@ export function targetText(b: DraftBlock): string | undefined {
   const [, , s, reps, at] = m;
   const hold = s === 's';
   const over = e.n === 1 ? (hold ? 'in one hold' : 'in one set') : `over ${e.n} ${hold ? 'holds' : 'sets'}`;
-  return `${(e.total as number) + 1}${s}+ ${reps || ''}${over}${at}`;
+  return `${Number(e.total) + 1}${s}+ ${reps || ''}${over}${at}`;
 }
 
 /* "Over your first 3 sets" only when the plan has more sets than that, so
    the extra ones are clearly not counted; "over 4 sets" when 4 is all there
-   are (r34.2, from the review). With no plan or no count, + reads 0 or NaN,
-   neither more than n; the cast only lets TypeScript accept the +. */
+   are (r34.2, from the review). With no plan or no count, Number reads 0 or
+   NaN, neither more than n. */
 export function overSets(n: number, plan: { sets?: number | undefined } | null | undefined, kind?: string): string {
   const w = kind === 'hold' ? 'hold' : 'set';
   if (n === 1) return `in one ${w}`;
-  return +((plan && plan.sets) as number) > n ? `over your first ${n} ${w}s` : `over ${n} ${w}s`;
+  return Number(plan && plan.sets) > n ? `over your first ${n} ${w}s` : `over ${n} ${w}s`;
 }
 
 /* ---------- progress ---------- */
@@ -133,11 +133,11 @@ export function sessProgress(d: { ex: DraftBlock[] }): { n: number; k: number; p
 }
 
 /** The rest after an exercise: none before the next one of the same superset, else its plan's.
-    A plan with no rest reads as 0; the cast only lets TypeScript accept the +. */
+    A plan with no rest reads as 0. */
 export function blockRest(d: { ex: DraftBlock[] }, bi: number): number {
   const b = d.ex[bi],
     nx = d.ex[bi + 1];
-  return b.plan.ss && nx && nx.plan.ss === b.plan.ss ? 0 : +(b.plan.rest as number) || 0;
+  return b.plan.ss && nx && nx.plan.ss === b.plan.ss ? 0 : +b.plan.rest || 0;
 }
 
 /* ---------- the Last column ---------- */

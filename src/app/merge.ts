@@ -27,14 +27,16 @@ type Fields = Record<string, unknown>;
 export function canon(x: unknown): string {
   if (x === undefined) return 'null';
   if (x === null || typeof x !== 'object') return JSON.stringify(x);
-  // Array.isArray turns x, an object here, into any[]; the cast keeps each entry unknown for canon.
-  if (Array.isArray(x)) return '[' + (x as unknown[]).map(canon).join(',') + ']';
+  const list = arr(x);
+  if (list) return '[' + list.map(canon).join(',') + ']';
+  // x is an object here, so rec gives its fields (the empty fallback is never used).
+  const f = rec(x) || {};
   return (
     '{' +
-    Object.keys(x)
-      .filter(k => (x as Fields)[k] !== undefined)
+    Object.keys(f)
+      .filter(k => f[k] !== undefined)
       .sort()
-      .map(k => JSON.stringify(k) + ':' + canon((x as Fields)[k]))
+      .map(k => JSON.stringify(k) + ':' + canon(f[k]))
       .join(',') +
     '}'
   );

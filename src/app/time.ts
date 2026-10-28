@@ -76,9 +76,8 @@ export function sessModelMinIn(M: Model, ss: Session): number {
 }
 
 /* Each timed session's minutes against its model, newest first, the ones the
-   pace reads. A session with no time is skipped: an absent time compares
-   false with 1, which the cast lets TypeScript accept, and past that test
-   the time is there, as the ! says. */
+   pace reads. A session with no time is skipped: Number reads an absent
+   time as NaN or 0, neither 1 or more. */
 export function paceRatiosIn(M: Model): number[] {
   const from = addDays(M.today(), -PACE_DAYS);
   const out: number[] = [];
@@ -86,7 +85,8 @@ export function paceRatiosIn(M: Model): number[] {
   for (const x of M.s.sessions) sameDay[x.date] = (sameDay[x.date] || 0) + 1;
   for (const ss of sortedSessionsIn(M).slice().reverse()) {
     if (out.length >= PACE_N || ss.date < from) break;
-    if (ss.demo || !((ss.durMin as number) >= 1)) continue;
+    const dur = Number(ss.durMin);
+    if (ss.demo || !(dur >= 1)) continue;
     const m = sessModelMinIn(M, ss);
     if (m < 1) continue;
     // Cardio done before or after lifting is timed with the session but is not
@@ -97,7 +97,7 @@ export function paceRatiosIn(M: Model): number[] {
             .filter(c => c.date === ss.date && (c.when === 'pre' || c.when === 'post'))
             .reduce((a, c) => a + (+c.min || 0), 0)
         : 0;
-    const r = (ss.durMin! - cm) / m;
+    const r = (dur - cm) / m;
     if (r >= PACE_LO && r <= PACE_HI) out.push(r);
   }
   return out;

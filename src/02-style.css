@@ -60,7 +60,7 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#08090b; --surface:#131518; --surface-2:#1c1f23; --surface-3:#272b30;
+    --bg:{{DARK_BG}}; --surface:#131518; --surface-2:#1c1f23; --surface-3:#272b30;
     --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1b1e22;
     --btn:#1e2125; --btn-b:transparent; --field:#1e2125; --field-b:transparent; --card-b:transparent;
     --glass:rgba(8,9,11,.88);
@@ -77,7 +77,7 @@
   }
 }
 :root[data-theme="dark"]{
-  --bg:#08090b; --surface:#131518; --surface-2:#1c1f23; --surface-3:#272b30;
+  --bg:{{DARK_BG}}; --surface:#131518; --surface-2:#1c1f23; --surface-3:#272b30;
   --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1b1e22;
   --btn:#1e2125; --btn-b:transparent; --field:#1e2125; --field-b:transparent; --card-b:transparent;
   --glass:rgba(8,9,11,.88);

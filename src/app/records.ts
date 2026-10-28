@@ -173,10 +173,10 @@ export function did(tag: string, obj: unknown, i: number | undefined): string {
 const okId = (v: unknown): boolean => typeof v === 'string' && /^[\w.:-]{1,100}$/.test(v) && !(v in Object.prototype);
 
 /** An id as normalize() keeps it: the value itself when okId accepts it,
-    else "x" and a hash of it (see above). The cast stands for okId's check
-    that v is a string, which TypeScript cannot follow. */
+    else "x" and a hash of it (see above). okId tests that v is a string
+    first; the typeof here says so to TypeScript. */
 export function fixId(v: unknown): string {
-  return okId(v) ? (v as string) : 'x' + hashStr(String(v));
+  return typeof v === 'string' && okId(v) ? v : 'x' + hashStr(String(v));
 }
 
 /** A key safe to put in markup: a string with none of the characters HTML treats as syntax. */
@@ -237,9 +237,9 @@ export function cleanTgt(t: Raw): Target | null {
     const v = t[k];
     o[k] = v == null ? null : isNum(numOr(v, NaN)) ? numOr(v, 0) : null;
   }
-  // Array.isArray turns an unknown into any[]; the cast keeps each entry unknown, for the checks below.
-  if (Array.isArray(t.rs))
-    o.rs = (t.rs as unknown[]).slice(0, LIMITS.sets).map((v: unknown) => {
+  const rs = arr(t.rs);
+  if (rs)
+    o.rs = rs.slice(0, LIMITS.sets).map(v => {
       const n = numOr(v, NaN);
       return isNum(n) && n >= 0 ? Math.min(n, LIMITS.reps) : 0;
     });

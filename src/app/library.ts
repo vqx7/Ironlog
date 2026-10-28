@@ -156,8 +156,7 @@ export const JL = Object.fromEntries(JOINTS);
 export const injLabel = (k: string): string => ML[k] || JL[k] || k;
 
 /** The joints an exercise loads, by its movement pattern, main muscle and
-    name. p is null for a name with no pattern, which no list holds, so
-    includes says false; the two casts, `p as string`, let TypeScript ask. */
+    name. p is null for a name with no pattern, which no list holds. */
 export function exJoints(e: Pick<Exercise, 'name' | 'primary' | 'equip'>): string[] {
   const p = patternOf(e),
     n = String(e.name || '').toLowerCase(),
@@ -167,14 +166,14 @@ export function exJoints(e: Pick<Exercise, 'name' | 'primary' | 'equip'>): strin
   if (p === 'hinge' || p === 'squat' || ['glutes', 'adductors', 'abductors'].includes(m) || /thrust|bridge/.test(n))
     out.push('j_hip');
   if (
-    (['press', 'fly', 'raise', 'vpull', 'pullover', 'rearfly'].includes(p as string) &&
+    (['press', 'fly', 'raise', 'vpull', 'pullover', 'rearfly'].some(x => x === p) &&
       !['quads', 'hamstrings', 'glutes', 'calves', 'abs', 'obliques'].includes(m)) ||
     ['chest', 'frontDelts', 'sideDelts', 'rearDelts', 'rotatorCuff'].includes(m) ||
     /\bdips?\b|face pull|upright/.test(n)
   )
     out.push('j_shoulder');
   if (
-    ((['ext', 'vpull', 'row'].includes(p as string) || (p === 'curl' && m !== 'hamstrings')) && m !== 'quads') ||
+    ((['ext', 'vpull', 'row'].some(x => x === p) || (p === 'curl' && m !== 'hamstrings')) && m !== 'quads') ||
     ['biceps', 'triceps', 'forearms'].includes(m) ||
     /\bdips?\b|close.grip|skull/.test(n)
   )
@@ -591,12 +590,12 @@ type Kinded = Pick<Exercise, 'name' | 'primary' | 'timed' | 'kind'>;
    so the editor can set it (ex.kind, r27): compound or isolation; absent
    reads it from the name as before. */
 export function autoCompound(ex: Kinded | null | undefined): boolean {
-  // A null pattern is in no list (see exJoints for the cast).
+  // A null pattern is in no list.
   return (
     !!ex &&
     !ex.timed &&
     !NON_COMPOUND_PRIMARY.has(ex.primary) &&
-    ['press', 'row', 'vpull', 'squat', 'hinge'].includes(patternOf(ex) as string)
+    ['press', 'row', 'vpull', 'squat', 'hinge'].some(x => x === patternOf(ex))
   );
 }
 

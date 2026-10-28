@@ -806,19 +806,16 @@ const LIFTS_HELP = `Estimated 1RM uses reps to failure, which is reps plus RIR: 
 const MUSCLES_HELP = `Muscles are flagged because the trend is falling, or flat with one of its lifts stalled, or the hard sets you logged average below your target, or you named it a priority, or you flagged an injury. A muscle is never flagged for what the routine plans, only for what you log. A muscle whose strength is rising is never flagged. Strength return on volume: the median change in estimated 1RM across a muscle's main exercises over up to ${TREND_WEEKS} weeks (each lift with ${MUSCLE_TREND_MIN.sessions} sessions over ${MUSCLE_TREND_MIN.days / WEEK_DAYS} weeks or more), in the current rep range, next to the hard sets a week that produced it. This measures strength, not size: early gains are largely neural, and high-rep estimates are noisy. Size check reads your tape measurements, which are the closer signal for size.`;
 const CONSISTENCY_HELP = `${HEAT_WEEKS} weeks from your first logged session; once you have more, the latest ${HEAT_WEEKS}, with All for the rest. Faded squares are days still ahead. Filled squares are days with a logged lifting session. The streak counts weeks that hit the sessions your routine plans. Cardio minutes are shown under the grid and never count as lifting sessions. Adherence is the planned sessions done over the previous ${AVG_WEEKS} full weeks, each week counted up to its plan.`;
 
-/** Stats, as a template of the log and `ui`; its charts are drawn after it (graphs.ts, mountCharts). */
-export function viewDash(): TemplateResult {
-  chartNoticeUsed = false;
-  const I = IDX();
-  const R = activeRoutine();
+/** Consistency: adherence to the routine over the full weeks before this one, the heat map of days lifted,
+    cardio minutes a week and readiness (out of viewDash since r65, the r63 audit's A-7). */
+function consistencySec(R: ReturnType<typeof activeRoutine>, cur: string): TemplateResult {
+  const sessDates = new Set(Object.keys(dateIndex().byDate));
   /* Adherence counts only days the routine actually plans work on: a non-rest
      day with no exercises in it used to inflate the denominator. Each week is
      capped at its own planned days, so training seven days against a six-day
      routine no longer reports 117%. The window is the four completed weeks
      before this one, which the label now says out loud. */
   const planned = freeMode() ? 0 : trainDaysOf(R) * weekFactor(R);
-  const cur = weekStart(today());
-  const sessDates = new Set(Object.keys(dateIndex().byDate));
   /* Only weeks since your first session count. Before that there was nothing
      to adhere to, and counting those weeks read 0% on day one. */
   const firstWk = firstFullWeek();
@@ -838,6 +835,70 @@ export function viewDash(): TemplateResult {
     need4 += nw;
   }
   const adher = planned && wks4 && need4 > 0 ? Math.round((done4 / need4) * PERCENT) : null;
+  // consistency heat map
+  // Starts at your first logged week; weeks ahead fill a young log.
+  const hFirst = firstDate(state.sessions);
+  const hWin = weekWindow(hFirst, 'heat', HEAT_WEEKS);
+  const hN = weeksSpan(hFirst);
+  const t = today();
+  // r25: each past day is a button, so a square opens that date (calDay).
+  const squares = hWin.flatMap(w =>
+    Array.from({ length: WEEK_DAYS }, (_, i) => i).map(i => {
+      const d = addDays(w.wk, i);
+      const c = `${sessDates.has(d) ? 'on' : ''} ${d > t ? 'fut' : ''} ${d === t ? 'today' : ''}`;
+      const tip = `${fmtDateLong(d)}${sessDates.has(d) ? ': lifted' : ''}`;
+      return d > t
+        ? html`<div class=${c} data-tip=${tip}></div>`
+        : html`<button type="button" class=${c} data-act="calDay" data-date=${d} data-tip=${tip} aria-label=${`${tip}. Open`}></button>`;
+    })
+  );
+  const heatGrid = hWin.length
+    ? html`<div class="heat">${squares}</div>`
+    : html`<div class="heat"></div><p class="small muted" style="margin:6px 0 0">Your first logged session starts this grid.</p><div></div>`;
+  // Cardio and mobility minutes a week, from your first cardio week only: no rows of zero before it.
+  const cf = firstDate(state.cardio);
+  const cn = Math.min(CARDIO_WEEKS, weeksSpan(cf));
+  const crows: { ws: string; min: number }[] = [];
+  for (let k = cn - 1; k >= 0; k--) {
+    const ws = addDays(cur, -WEEK_DAYS * k),
+      we = addDays(ws, SUNDAY);
+    crows.push({ ws, min: state.cardio.filter(c => c.date >= ws && c.date <= we).reduce((a, c) => a + c.min, 0) });
+  }
+  const cmx = Math.max(1, ...crows.map(r => r.min));
+  const cw = state.cardio.length
+    ? html`<div class="card"><b>Cardio and mobility, minutes per week</b>${crows.map(
+        r =>
+          html`<div class="mrow"><span></span><span>${k0(r.ws)}</span><div class="band"><div class="fill in" style=${`width:${(r.min / cmx) * PERCENT}%`}></div></div><span class="r num">${r.min}<span class="muted small"> min</span></span></div>`
+      )}</div>`
+    : nothing;
+  // Only once a check-in has been answered: for anyone who skips it, the fold only said it needs 6 (r41).
+  const ready = readiness().n ? dashSub('ready', 'Readiness and performance', readinessBody()) : nothing;
+  const heat = html`<div class="card">${rangeChips('heat', hN, HEAT_WEEKS)}<div class="heat-h">${DAYS.map(d => html`<span>${d[0]}</span>`)}</div>${heatGrid}</div>${cw}${ready}`;
+  const sk = weekStreak();
+  const adhLine = html`<p class="small muted" style="margin:0 0 8px" id="adhLine">${
+    freeMode()
+      ? 'Adherence: freestyle, no plan to follow'
+      : !planned
+        ? 'Adherence: no planned days'
+        : adher == null
+          ? 'Adherence: appears after your first full week'
+          : `Adherence, previous ${wks4} full week${wks4 === 1 ? '' : 's'}: ${adher}% of planned sessions (${Math.round(done4)}/${Math.round(need4)})`
+  }</p>`;
+  return dashSection(
+    'consistency',
+    'Consistency',
+    CONSISTENCY_HELP,
+    noLog() ? heat : html`${adhLine}${heat}`,
+    noLog() ? 'Nothing logged yet' : `${sk.weeks}-week streak${adher != null ? ` · ${adher}% adherence` : ''}`
+  );
+}
+
+/** Stats, as a template of the log and `ui`; its charts are drawn after it (graphs.ts, mountCharts). */
+export function viewDash(): TemplateResult {
+  chartNoticeUsed = false;
+  const I = IDX();
+  const R = activeRoutine();
+  const cur = weekStart(today());
   const thisWeek = I.weekSets[cur] || {};
   const thisWeekConf = I.weekConf[cur] || {};
   // Each set once, as on Today. Summing the per-muscle counts double counts
@@ -1016,63 +1077,6 @@ ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
     noLog() ? 'Nothing logged yet' : `${nLifts} lift${nLifts === 1 ? '' : 's'} tracked`
   );
 
-  // consistency heat map
-  // Starts at your first logged week; weeks ahead fill a young log.
-  const hFirst = firstDate(state.sessions);
-  const hWin = weekWindow(hFirst, 'heat', HEAT_WEEKS);
-  const hN = weeksSpan(hFirst);
-  const t = today();
-  // r25: each past day is a button, so a square opens that date (calDay).
-  const squares = hWin.flatMap(w =>
-    Array.from({ length: WEEK_DAYS }, (_, i) => i).map(i => {
-      const d = addDays(w.wk, i);
-      const c = `${sessDates.has(d) ? 'on' : ''} ${d > t ? 'fut' : ''} ${d === t ? 'today' : ''}`;
-      const tip = `${fmtDateLong(d)}${sessDates.has(d) ? ': lifted' : ''}`;
-      return d > t
-        ? html`<div class=${c} data-tip=${tip}></div>`
-        : html`<button type="button" class=${c} data-act="calDay" data-date=${d} data-tip=${tip} aria-label=${`${tip}. Open`}></button>`;
-    })
-  );
-  const heatGrid = hWin.length
-    ? html`<div class="heat">${squares}</div>`
-    : html`<div class="heat"></div><p class="small muted" style="margin:6px 0 0">Your first logged session starts this grid.</p><div></div>`;
-  // Cardio and mobility minutes a week, from your first cardio week only: no rows of zero before it.
-  const cf = firstDate(state.cardio);
-  const cn = Math.min(CARDIO_WEEKS, weeksSpan(cf));
-  const crows: { ws: string; min: number }[] = [];
-  for (let k = cn - 1; k >= 0; k--) {
-    const ws = addDays(cur, -WEEK_DAYS * k),
-      we = addDays(ws, SUNDAY);
-    crows.push({ ws, min: state.cardio.filter(c => c.date >= ws && c.date <= we).reduce((a, c) => a + c.min, 0) });
-  }
-  const cmx = Math.max(1, ...crows.map(r => r.min));
-  const cw = state.cardio.length
-    ? html`<div class="card"><b>Cardio and mobility, minutes per week</b>${crows.map(
-        r =>
-          html`<div class="mrow"><span></span><span>${k0(r.ws)}</span><div class="band"><div class="fill in" style=${`width:${(r.min / cmx) * PERCENT}%`}></div></div><span class="r num">${r.min}<span class="muted small"> min</span></span></div>`
-      )}</div>`
-    : nothing;
-  // Only once a check-in has been answered: for anyone who skips it, the fold only said it needs 6 (r41).
-  const ready = readiness().n ? dashSub('ready', 'Readiness and performance', readinessBody()) : nothing;
-  const heat = html`<div class="card">${rangeChips('heat', hN, HEAT_WEEKS)}<div class="heat-h">${DAYS.map(d => html`<span>${d[0]}</span>`)}</div>${heatGrid}</div>${cw}${ready}`;
-  const sk = weekStreak();
-  const adhLine = html`<p class="small muted" style="margin:0 0 8px" id="adhLine">${
-    freeMode()
-      ? 'Adherence: freestyle, no plan to follow'
-      : !planned
-        ? 'Adherence: no planned days'
-        : adher == null
-          ? 'Adherence: appears after your first full week'
-          : `Adherence, previous ${wks4} full week${wks4 === 1 ? '' : 's'}: ${adher}% of planned sessions (${Math.round(done4)}/${Math.round(need4)})`
-  }</p>`;
-  const consSec = dashSection(
-    'consistency',
-    'Consistency',
-    CONSISTENCY_HELP,
-    noLog() ? heat : html`${adhLine}${heat}`,
-    noLog() ? 'Nothing logged yet' : `${sk.weeks}-week streak${adher != null ? ` · ${adher}% adherence` : ''}`
-  );
-
   // ranking (folded inside Muscles)
   const rank = html`<div class="card">${rankBody(avg || thisWeek)}</div>`;
   const musSec = dashSection(
@@ -1108,7 +1112,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
     ['volume', volSec],
     ['exercise', liftsSec],
     ['weak', musSec],
-    ['consistency', consSec],
+    ['consistency', consistencySec(R, cur)],
     ['body', bodySec]
   ])}${tabFoot('dash')}`;
 }

@@ -3,7 +3,7 @@
    legacy script it lived in then changed only by moving). Its words change
    with the rules they state. */
 
-import { numWord, orList, pct1, pctOf, shareWords, timesWord, MINUTE_S, WEEK_DAYS } from './util';
+import { andList, numWord, orList, pct1, pctOf, shareWords, timesWord, MINUTE_S, WEEK_DAYS } from './util';
 import {
   BACK_DAYS,
   BACK_RIR,
@@ -52,7 +52,7 @@ import {
   WORK_FLOOR
 } from './formulas';
 import { DEFAULT_STEP, LB } from './units';
-import { USUAL_RANGE } from './library';
+import { MK, ML, TARGETED, TRACK_ONLY, USUAL_RANGE } from './library';
 import { DEFAULT_PLAN, PROFILE_PLAN } from './routines';
 import { FOCUS_MAX, FOCUS_UP, MAINT_SHARE, STR_NEAR, STR_REST } from './profile';
 import { BW_EVERY_DEFAULT, REGION_WKS, REGION_WK_DEFAULT } from './layout';
@@ -85,6 +85,15 @@ import { CAL_OFFER, ODD_REPS, ODD_REPS_TIMES } from './worksets';
 import { html } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { markup } from './view';
+
+/* The muscles the Guide names, read from the tables that decide them (r65,
+   the r63 audit's A-9: the lists were typed in, so a muscle added to a table
+   would have been missing here). Those with a target in their table's order;
+   the others in the muscles' order, the ones never a focus last. */
+const musSaid = (m: string): string => String(ML[m]).toLowerCase();
+const TARGETED_SAID = andList([...TARGETED].map(musSaid));
+const TRACKED_SAID = andList([...MK.filter(m => !TARGETED.has(m) && !TRACK_ONLY.has(m)), ...TRACK_ONLY].map(musSaid));
+const NO_FOCUS_SAID = andList([...TRACK_ONLY].map(musSaid));
 
 /* The Guide's numbers, each the constant its rule applies (the numbers pass,
    r61), so a changed rule changes what the Guide says. The profile's plans
@@ -192,7 +201,7 @@ export function guideSheet(m: { open?: string | undefined }): TemplateResult {
       'stats',
       'Volume and Stats',
       `<p><b>A hard set</b> is a working set at RIR ${HARD_RIR} or less${off ? ' (with RIR off, every working set)' : ''}. Helper muscles count ${shareWords(HELPER_CREDIT)} a set (Pelland 2025); which muscles are helpers on each lift is the library's own call, a convention. With Settings, Count ${halfLbl()} as half a set on, a working set past RIR ${HARD_RIR} counts ${shareWords(HALF_SET)} toward your weekly sets and targets, planned ones too (a convention); estimates, PRs, recovery, and the per-workout flag still count hard sets only.</p>
-   <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. ${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets a week for major muscles is typical, not a ceiling. The muscles lifters train directly for size (chest, lats, upper back, side delts, rear delts, biceps, triceps, quads, hamstrings, glutes, calves, and abs) have a target to start, since the dose-response studies measure such muscles. Every other muscle (traps, forearms, front delts, lower back, obliques, adductors, abductors, serratus, rotator cuff, neck, and tibialis) is tracked only: counted and shown, with no target, until you give it one with Set a target in Weekly set targets or name it a focus (any but serratus, rotator cuff, neck, and tibialis); then it counts everywhere a target counts. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. On a routine run as a cycle, weeks can differ in which of its days fall in them (two days in turn, three times a week). A muscle under its minimum only because fewer of the days that train it fell in the weeks averaged reads <b>on plan</b> when every session and set the cycle had due in those weeks was done and the plan reaches the target over the whole cycle. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last ${REGION_WK_DEFAULT} full weeks, from the week after your first; the chips above it switch to ${OTHER_WKS} weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
+   <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. ${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets a week for major muscles is typical, not a ceiling. The muscles lifters train directly for size (${TARGETED_SAID}) have a target to start, since the dose-response studies measure such muscles. Every other muscle (${TRACKED_SAID}) is tracked only: counted and shown, with no target, until you give it one with Set a target in Weekly set targets or name it a focus (any but ${NO_FOCUS_SAID}); then it counts everywhere a target counts. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. On a routine run as a cycle, weeks can differ in which of its days fall in them (two days in turn, three times a week). A muscle under its minimum only because fewer of the days that train it fell in the weeks averaged reads <b>on plan</b> when every session and set the cycle had due in those weeks was done and the plan reaches the target over the whole cycle. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last ${REGION_WK_DEFAULT} full weeks, from the week after your first; the chips above it switch to ${OTHER_WKS} weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
    <p><b>Lagging strength</b> is a muscle whose lifts are falling, or flat with one of them stalled (a convention); with no clear trend, a stalled lift reads <b>A lift stalled</b>. A muscle whose lifts are all within day-to-day noise reads <b>unclear</b>, never 0%.</p>
    <p><b>Your target and the usual range</b>: picking a ready-made routine sets your minimums to what it plans, so Stats measures you against your plan. Plan, Weekly volume names the muscles that plan puts under the usual range.</p>
    <p><b>Planned sets</b> count the same way: a set planned at RIR ${HARD_RIR + 1} or more is not a planned hard set, and in a deload week the target is halved.</p>

@@ -1079,19 +1079,20 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   };
   var dayOfWeek = (s3) => (parse(s3).getDay() + WEEK_DAYS - 1) % WEEK_DAYS;
   var weekStart = (s3) => addDays(s3, -dayOfWeek(s3));
-  var daysBetween = (a2, b2) => Math.round((parse(b2) - parse(a2)) / DAY_MS);
+  var daysBetween = (a2, b2) => Math.round((parse(b2).getTime() - parse(a2).getTime()) / DAY_MS);
   var today = () => iso(/* @__PURE__ */ new Date());
   var isNum = (v3) => typeof v3 === "number" && isFinite(v3);
   var numOr = (v3, d3) => {
     const n3 = typeof v3 === "string" ? parseFloat(v3) : v3;
-    return isNum(n3) ? n3 : d3;
+    return typeof n3 === "number" && isNum(n3) ? n3 : d3;
   };
   var clampN = (v3, lo, hi, d3) => {
     const n3 = numOr(v3, d3);
-    return Math.min(Math.max(n3, lo), hi);
+    return Math.min(Math.max(Number(n3), lo), hi);
   };
   var isDate = (v3) => typeof v3 === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v3);
   var numWord = (n3) => ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"][n3] ?? String(n3);
+  var upFirst = (s3) => s3.charAt(0).toUpperCase() + s3.slice(1);
   var timesWord = (n3) => n3 === 1 ? "once" : n3 === 2 ? "twice" : `${numWord(n3)} times`;
   var SHARE_WORDS = [
     [1 / 2, "half"],
@@ -1257,9 +1258,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (p3 === "squat" || m3 === "quads" || /leg curl|nordic|lunge|step-up|split squat/.test(n3)) out.push("j_knee");
     if (p3 === "hinge" || p3 === "squat" || ["glutes", "adductors", "abductors"].includes(m3) || /thrust|bridge/.test(n3))
       out.push("j_hip");
-    if (["press", "fly", "raise", "vpull", "pullover", "rearfly"].includes(p3) && !["quads", "hamstrings", "glutes", "calves", "abs", "obliques"].includes(m3) || ["chest", "frontDelts", "sideDelts", "rearDelts", "rotatorCuff"].includes(m3) || /\bdips?\b|face pull|upright/.test(n3))
+    if (["press", "fly", "raise", "vpull", "pullover", "rearfly"].some((x2) => x2 === p3) && !["quads", "hamstrings", "glutes", "calves", "abs", "obliques"].includes(m3) || ["chest", "frontDelts", "sideDelts", "rearDelts", "rotatorCuff"].includes(m3) || /\bdips?\b|face pull|upright/.test(n3))
       out.push("j_shoulder");
-    if ((["ext", "vpull", "row"].includes(p3) || p3 === "curl" && m3 !== "hamstrings") && m3 !== "quads" || ["biceps", "triceps", "forearms"].includes(m3) || /\bdips?\b|close.grip|skull/.test(n3))
+    if ((["ext", "vpull", "row"].some((x2) => x2 === p3) || p3 === "curl" && m3 !== "hamstrings") && m3 !== "quads" || ["biceps", "triceps", "forearms"].includes(m3) || /\bdips?\b|close.grip|skull/.test(n3))
       out.push("j_elbow");
     if (m3 === "forearms" || p3 === "curl" && m3 === "biceps" || /push-up|front squat|\bdips?\b|wrist/.test(n3) || p3 === "press" && ["barbell", "dumbbell"].includes(e5.equip))
       out.push("j_wrist");
@@ -1612,7 +1613,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     "tibialis"
   ]);
   function autoCompound(ex) {
-    return !!ex && !ex.timed && !NON_COMPOUND_PRIMARY.has(ex.primary) && ["press", "row", "vpull", "squat", "hinge"].includes(patternOf(ex));
+    return !!ex && !ex.timed && !NON_COMPOUND_PRIMARY.has(ex.primary) && ["press", "row", "vpull", "squat", "hinge"].some((x2) => x2 === patternOf(ex));
   }
   function isCompound(ex) {
     if (ex && ex.kind === "compound") return !ex.timed;
@@ -1799,7 +1800,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   var okId = (v3) => typeof v3 === "string" && /^[\w.:-]{1,100}$/.test(v3) && !(v3 in Object.prototype);
   function fixId(v3) {
-    return okId(v3) ? v3 : "x" + hashStr(String(v3));
+    return typeof v3 === "string" && okId(v3) ? v3 : "x" + hashStr(String(v3));
   }
   var safeKey = (k2) => typeof k2 === "string" && !/["'<>&`]/.test(k2);
   var EXTRA_MAX = 2e3, EXTRA_KEYS = 20;
@@ -1828,8 +1829,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const v3 = t4[k2];
       o3[k2] = v3 == null ? null : isNum(numOr(v3, NaN)) ? numOr(v3, 0) : null;
     }
-    if (Array.isArray(t4.rs))
-      o3.rs = t4.rs.slice(0, LIMITS.sets).map((v3) => {
+    const rs = arr(t4.rs);
+    if (rs)
+      o3.rs = rs.slice(0, LIMITS.sets).map((v3) => {
         const n3 = numOr(v3, NaN);
         return isNum(n3) && n3 >= 0 ? Math.min(n3, LIMITS.reps) : 0;
       });
@@ -2018,7 +2020,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (e5 < w2 - EPS && e5 >= lo && (best === w2 || e5 > best) && typedUnit(e5) === (u4 === "kg" ? "lb" : "kg")) best = e5;
     return best;
   }
-  var isWork = (s3) => !s3.warm && +s3.r > 0;
+  var isWork = (s3) => !s3.warm && Number(s3.r) > 0;
   var isMissed = (s3) => s3.r !== null && s3.r !== "" && +s3.r === 0;
   var HARD_RIR = 3;
   var HALF_SET = 0.5;
@@ -2054,7 +2056,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   var atLoad = (pts, w2) => pts.filter((p3) => Math.abs(p3.w - w2) < EPS_SAME);
   function repFloor(pts, repMin) {
-    const m3 = +repMin || 0;
+    const m3 = Number(repMin) || 0;
     const ok = m3 > 0 && pts.length >= 2 && pts.filter((p3) => p3.r < m3).length === 1;
     return (r4) => ok ? Math.max(r4, m3) : r4;
   }
@@ -2913,6 +2915,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var PREVIEW_LABEL = "Preview";
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
+  var DARK_BG = "#08090b";
   var DISPLAY_VERSION = "2.18";
   var APP_VERSION = "2026.10.27-r64";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
@@ -3003,8 +3006,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var baseFor = (id, m3, legB) => m3 && m3.b ? m3.b : id.startsWith("b-") ? legB : null;
   function legacyBody(raw) {
     return {
-      bodyweights: raw && Array.isArray(raw.bodyweights) ? raw.bodyweights : [],
-      measurements: raw && Array.isArray(raw.measurements) ? raw.measurements : []
+      bodyweights: raw && arr(raw.bodyweights) || [],
+      measurements: raw && arr(raw.measurements) || []
     };
   }
   function unionById(a2, b2) {
@@ -3340,7 +3343,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       return r4.days.filter((d3) => !d3.rest).length * WEEK_DAYS / r4.days.length;
     });
     const w2 = T2.length ? numWord(T2.length) : "no";
-    return `${w2[0].toUpperCase()}${w2.slice(1)} plans, ${Math.floor(Math.min(...n3))} to ${Math.round(Math.max(...n3))} days a week`;
+    return `${upFirst(w2)} plans, ${Math.floor(Math.min(...n3))} to ${Math.round(Math.max(...n3))} days a week`;
   }
   var RIR_TGT_TIP = `Target RIR is ${DEFAULT_PLAN.rir} unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.`;
   var PROFILE_PLAN = {
@@ -3446,7 +3449,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!g2 || typeof g2 !== "object" || g2.u !== "lb" && g2.u !== "kg") return null;
     const out = { u: g2.u };
     const n3 = (v3) => {
-      const x2 = +v3;
+      const x2 = Number(v3);
       return isFinite(x2) ? r3(x2) : NaN;
     };
     const d3 = g2.db;
@@ -3461,13 +3464,15 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         if (dbListOf(db)) out.db = db;
       }
     }
-    if (Array.isArray(g2.kb)) {
-      const kb = [...new Set(g2.kb.map(n3).filter((x2) => x2 > 0 && x2 <= GYM_LIMITS.bell))].sort((a2, b2) => a2 - b2).slice(0, GYM_LIMITS.bells);
+    const kbs = arr(g2.kb);
+    if (kbs) {
+      const kb = [...new Set(kbs.map(n3).filter((x2) => x2 > 0 && x2 <= GYM_LIMITS.bell))].sort((a2, b2) => a2 - b2).slice(0, GYM_LIMITS.bells);
       if (kb.length) out.kb = kb;
     }
-    if (Array.isArray(g2.plates)) {
+    const plates = arr(g2.plates);
+    if (plates) {
       const all = gymPlates(g2.u);
-      const pl = all.filter((x2) => g2.plates.map(n3).includes(x2));
+      const pl = all.filter((x2) => plates.map(n3).includes(x2));
       if (pl.length) out.plates = pl;
     }
     {
@@ -3484,7 +3489,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     while (v3 <= d3.hi + EPS_SAME) {
       if (out.length >= GYM_LIMITS.rack) return null;
       out.push(r3(v3));
-      v3 = r3(v3 + (d3.fine > 0 && d3.fineTo > 0 && v3 < d3.fineTo - EPS_SAME ? d3.fine : d3.st));
+      v3 = r3(v3 + (Number(d3.fine) > 0 && Number(d3.fineTo) > 0 && v3 < Number(d3.fineTo) - EPS_SAME ? Number(d3.fine) : d3.st));
     }
     return out;
   }
@@ -3513,8 +3518,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!L2 || !L2.length || at2 == null || !isNum(at2)) return base;
     let i5 = 0;
     for (let k2 = 1; k2 < L2.length; k2++) if (Math.abs(L2[k2] - at2) < Math.abs(L2[i5] - at2)) i5 = k2;
-    const gs = [i5 > 0 ? L2[i5] - L2[i5 - 1] : null, i5 < L2.length - 1 ? L2[i5 + 1] - L2[i5] : null].filter(
-      (g2) => g2 != null && g2 > 0
+    const gs = [i5 > 0 ? L2[i5] - L2[i5 - 1] : null, i5 < L2.length - 1 ? L2[i5 + 1] - L2[i5] : null].flatMap(
+      (g2) => g2 != null && g2 > 0 ? [g2] : []
     );
     const gap = gs.length ? Math.min(...gs) : 0;
     return Math.abs(L2[i5] - at2) <= Math.max(base, BELL_TOL * gap) ? Math.max(base, Math.abs(L2[i5] - at2) + EPS_SAME) : base;
@@ -3544,7 +3549,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       const mn = Math.min(...g2.plates);
       return gymK(g2, m3 === "side" || pm === "sleeve" ? mn : 2 * mn);
     }
-    if (m3 === "stack" && g2.stack > 0) return gymK(g2, g2.stack);
+    if (m3 === "stack" && g2.stack !== void 0 && g2.stack > 0) return gymK(g2, g2.stack);
     return null;
   }
   function capOfIn(M3, ex, plan, top) {
@@ -3558,7 +3563,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return cap != null && top >= cap - (L2 && (ex.maxLoad == null || cap < ex.maxLoad - EPS_SAME) ? rackTolIn(M3, L2, top) : EPS_SAME);
   }
   function exBarKgIn(M3, ex) {
-    return ex && ex.barKg > 0 ? ex.barKg : barKgIn(M3);
+    return ex && ex.barKg !== void 0 && ex.barKg > 0 ? ex.barKg : barKgIn(M3);
   }
   function barKgIn(M3) {
     const b2 = M3.s.settings.barKg;
@@ -3585,18 +3590,17 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   function profClean(p3) {
     if (!p3 || typeof p3 !== "object" || Array.isArray(p3)) return null;
     const o3 = {};
-    if (PROF_GOALS.some((g2) => g2[0] === p3.goal)) o3.goal = p3.goal;
-    if (PROF_EXP.some((g2) => g2[0] === p3.exp)) o3.exp = p3.exp;
-    if (PROF_DAYS.includes(p3.days)) o3.days = p3.days;
-    const f3 = Array.isArray(p3.focus) ? [
+    const goal = PROF_GOALS.find((g2) => g2[0] === p3.goal);
+    if (goal) o3.goal = goal[0];
+    const exp = PROF_EXP.find((g2) => g2[0] === p3.exp);
+    if (exp) o3.exp = exp[0];
+    const days = PROF_DAYS.find((d3) => d3 === p3.days);
+    if (days !== void 0) o3.days = days;
+    const f3 = [
       ...new Set(
-        // Array.isArray turns an unknown into any[]; the cast keeps each entry unknown for the test below.
-        p3.focus.filter(
-          // The type predicate is a cast, and true: typeof says m is a string.
-          (m3) => typeof m3 === "string" && MK.includes(m3) && !TRACK_ONLY.has(m3)
-        )
+        (arr(p3.focus) || []).filter((m3) => typeof m3 === "string").filter((m3) => MK.some((k2) => k2 === m3) && !TRACK_ONLY.has(m3))
       )
-    ].slice(0, FOCUS_MAX) : [];
+    ].slice(0, FOCUS_MAX);
     if (f3.length) o3.focus = f3;
     return Object.keys(o3).length ? o3 : null;
   }
@@ -3665,8 +3669,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   function canon(x2) {
     if (x2 === void 0) return "null";
     if (x2 === null || typeof x2 !== "object") return JSON.stringify(x2);
-    if (Array.isArray(x2)) return "[" + x2.map(canon).join(",") + "]";
-    return "{" + Object.keys(x2).filter((k2) => x2[k2] !== void 0).sort().map((k2) => JSON.stringify(k2) + ":" + canon(x2[k2])).join(",") + "}";
+    const list = arr(x2);
+    if (list) return "[" + list.map(canon).join(",") + "]";
+    const f3 = rec(x2) || {};
+    return "{" + Object.keys(f3).filter((k2) => f3[k2] !== void 0).sort().map((k2) => JSON.stringify(k2) + ":" + canon(f3[k2])).join(",") + "}";
   }
   var Hx = (x2) => hashStr(canon(x2));
   function merge3List(base, l4, r4, remoteWins, stat) {
@@ -5650,7 +5656,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const m3 = document.querySelector('meta[name="theme-color"]');
     if (m3)
       try {
-        m3.setAttribute("content", getComputedStyle(document.body).backgroundColor || "#08090b");
+        m3.setAttribute("content", getComputedStyle(document.body).backgroundColor || DARK_BG);
       } catch (e5) {
       }
   }
@@ -5959,7 +5965,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const t4 = b2.tgt;
     if (!t4 || t4.kind !== "reps") return t4;
     const nw = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
-    if (!Array.isArray(t4.rs) || !(nw > 0) || nw >= t4.n) return t4;
+    if (!Array.isArray(t4.rs) || !(nw > 0) || nw >= Number(t4.n)) return t4;
     return { ...t4, n: nw, total: t4.rs.slice(0, nw).reduce((a2, v3) => a2 + v3, 0) };
   }
   function whyTarget(b2) {
@@ -5979,12 +5985,12 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const [, , s3, reps, at2] = m3;
     const hold = s3 === "s";
     const over = e5.n === 1 ? hold ? "in one hold" : "in one set" : `over ${e5.n} ${hold ? "holds" : "sets"}`;
-    return `${e5.total + 1}${s3}+ ${reps || ""}${over}${at2}`;
+    return `${Number(e5.total) + 1}${s3}+ ${reps || ""}${over}${at2}`;
   }
   function overSets(n3, plan, kind) {
     const w2 = kind === "hold" ? "hold" : "set";
     if (n3 === 1) return `in one ${w2}`;
-    return +(plan && plan.sets) > n3 ? `over your first ${n3} ${w2}s` : `over ${n3} ${w2}s`;
+    return Number(plan && plan.sets) > n3 ? `over your first ${n3} ${w2}s` : `over ${n3} ${w2}s`;
   }
   function blockDone(b2) {
     const w2 = b2.sets.filter((x2) => !x2.warm);
@@ -6320,20 +6326,20 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return ex && ex.bw ? (bwAtIn(M3, date) || 0) * bwShare(ex) : 0;
   }
   function loadOfIn(M3, ex, s3, date) {
-    return bwLoadIn(M3, ex, date) + (+s3.w || 0);
+    return bwLoadIn(M3, ex, date) + (Number(s3.w) || 0);
   }
   var bwRefIn = (M3) => M3.c._bwRef !== void 0 ? M3.c._bwRef : M3.c._bwRef = bwAtIn(M3, "9999-12-31") || 0;
   var bwRefLoadIn = (M3, ex) => ex && ex.bw ? bwRefIn(M3) * bwShare(ex) : 0;
   function prLoadIn(M3, ex, s3, date) {
-    return ex && ex.bw ? bwRefIn(M3) * bwShare(ex) + (+s3.w || 0) : loadOfIn(M3, ex, s3, date);
+    return ex && ex.bw ? bwRefIn(M3) * bwShare(ex) + (Number(s3.w) || 0) : loadOfIn(M3, ex, s3, date);
   }
   function tonnageIn(M3, ex, s3, date) {
     const m3 = loadMode(ex);
-    const w2 = +s3.w || 0;
+    const w2 = Number(s3.w) || 0;
     const known = bwKnownAtIn(M3, date || M3.today());
     const bl = ex && ex.bw && known != null ? known * bwShare(ex) : 0;
     const load2 = m3 === "bw" ? Math.max(0, bl + w2) : m3 === "each" || m3 === "side" ? w2 * 2 : w2;
-    return load2 * (+s3.r || 0) * (ex.perSide ? 2 : 1);
+    return load2 * (Number(s3.r) || 0) * (ex.perSide ? 2 : 1);
   }
   function dateIndexIn(M3) {
     if (M3.c._dix) return M3.c._dix;
@@ -6417,7 +6423,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         ];
         for (const s3 of b2.sets) {
           if (!isWork(s3)) continue;
-          const logged2 = M3.s.settings.rirMode === "off" || !(s3.rir == null || s3.rir === "");
+          const logged2 = M3.s.settings.rirMode === "off" || !(s3.rir == null || String(s3.rir) === "");
           if (ss.date >= recentFrom) {
             rirTotal++;
             if (logged2) rirLogged++;
@@ -6887,6 +6893,58 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       }
     return out;
   }
+  function slopeOf(list) {
+    const xs = list.map((x2) => daysBetween(list[0].date, x2.date)), ys = list.map((x2) => x2.tv);
+    const n3 = xs.length;
+    const mx = xs.reduce((a2, b3) => a2 + b3, 0) / n3, my = ys.reduce((a2, b3) => a2 + b3, 0) / n3;
+    let sxy = 0, sxx = 0;
+    xs.forEach((xv, k2) => {
+      sxy += (xv - mx) * (ys[k2] - my);
+      sxx += (xv - mx) ** 2;
+    });
+    if (!(sxx > 0)) return null;
+    const b2 = sxy / sxx;
+    let rss = 0;
+    xs.forEach((xv, k2) => {
+      const e5 = ys[k2] - (my + b2 * (xv - mx));
+      rss += e5 * e5;
+    });
+    const se = n3 > 2 ? Math.sqrt(rss / (n3 - 2) / sxx) : null;
+    return { b: b2, se, my, n: n3 };
+  }
+  function liftTrendIn(M3, exI, w2) {
+    let pct = null, slope = null, slopeSe = null, moving = false, falling = false, pLo = null, pHi = null, spanW = null, loadUp = false;
+    const spanD = w2.length ? daysBetween(w2[0].date, w2[w2.length - 1].date) : 0;
+    if (w2.length >= TREND_MIN.sessions && spanD >= TREND_MIN.days && !(exI.bw && !(bwRefIn(M3) > 0))) {
+      spanW = Math.max(2, Math.round(spanD / WEEK_DAYS));
+      const ends = trendEnds(w2);
+      pct = (ends.last.tv / ends.first.tv - 1) * PERCENT;
+      const f3 = slopeOf(w2);
+      if (f3) {
+        slope = f3.b * WEEK_DAYS / f3.my * PERCENT;
+        slopeSe = f3.se != null ? f3.se * WEEK_DAYS / f3.my * PERCENT : null;
+        const tq = t90(f3.n - 2);
+        const lo = slopeSe != null ? slope - tq * slopeSe : slope, hi = slopeSe != null ? slope + tq * slopeSe : slope;
+        moving = pct >= GROW_PCT && lo > 0;
+        falling = pct <= -GROW_PCT && hi < 0;
+        if (slopeSe != null) {
+          pLo = lo;
+          pHi = hi;
+        }
+      }
+      const z2 = w2[w2.length - 1], a0 = w2[0];
+      const zr = z2.pts.filter((p3) => Math.abs(p3.w - z2.topW) < EPS_SAME).map((p3) => p3.r);
+      if (z2.topW > a0.topW + EPS_SAME && zr.length && Math.min(...zr) >= (z2.rr ? +z2.rr[0] : 1) && pct < 0) {
+        loadUp = true;
+        falling = false;
+        if (pHi != null && pHi < 0) {
+          pLo = null;
+          pHi = null;
+        }
+      }
+    }
+    return { pct, slope, slopeSe, moving, falling, pLo, pHi, spanW, loadUp };
+  }
   function idxLiftIn(M3, id, exps, maxBest, anchor, winStart, prs) {
     const sc = trendScope(exps, anchor);
     const { real, curRR, inRange, lastReal } = sc;
@@ -6899,25 +6957,6 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const nPts = recent.reduce((a2, x2) => a2 + x2.pts.length, 0), nRated = recent.reduce((a2, x2) => a2 + x2.rated, 0);
     const useAdj = M3.s.settings.rirMode !== "off" && nPts > 0 && nRated / nPts >= RIR_TREND.share;
     for (const x2 of exps) x2.tv = useAdj ? x2.tAdj : x2.tRaw;
-    const slopeOf = (list) => {
-      const xs = list.map((x2) => daysBetween(list[0].date, x2.date)), ys = list.map((x2) => x2.tv);
-      const n3 = xs.length;
-      const mx = xs.reduce((a2, b3) => a2 + b3, 0) / n3, my = ys.reduce((a2, b3) => a2 + b3, 0) / n3;
-      let sxy = 0, sxx = 0;
-      xs.forEach((xv, k2) => {
-        sxy += (xv - mx) * (ys[k2] - my);
-        sxx += (xv - mx) ** 2;
-      });
-      if (!(sxx > 0)) return null;
-      const b2 = sxy / sxx;
-      let rss = 0;
-      xs.forEach((xv, k2) => {
-        const e5 = ys[k2] - (my + b2 * (xv - mx));
-        rss += e5 * e5;
-      });
-      const se = n3 > 2 ? Math.sqrt(rss / (n3 - 2) / sxx) : null;
-      return { b: b2, se, my, n: n3 };
-    };
     let stalled = false;
     const current = !!lastReal && lastReal.date >= winStart && !afterBreak(lastReal, M3.today()) && !exI.archived && M3.s.exercises.some((e5) => e5.id === id) && !exInjuryIn(M3, exI);
     const listed = (x2) => prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === id);
@@ -6945,48 +6984,15 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       return withE1.length < 2 && inR.length >= STALL.min && inR.slice(-STALL.noProgress).every((x2) => !x2.progress) && !offSince(inR[inR.length - STALL.noProgress].date).some((x2) => x2.progress);
     };
     if (!capped && current) stalled = stallScopesIn(M3, id, sc).every((q) => stalledIn(q.rr, q.inR));
-    const trendOf = (w3) => {
-      let pct2 = null, slope2 = null, slopeSe2 = null, moving2 = false, falling2 = false, pLo2 = null, pHi2 = null, spanW2 = null, loadUp2 = false;
-      const spanD = w3.length ? daysBetween(w3[0].date, w3[w3.length - 1].date) : 0;
-      if (w3.length >= TREND_MIN.sessions && spanD >= TREND_MIN.days && !(exI.bw && !(bwRefIn(M3) > 0))) {
-        spanW2 = Math.max(2, Math.round(spanD / WEEK_DAYS));
-        const ends = trendEnds(w3);
-        pct2 = (ends.last.tv / ends.first.tv - 1) * PERCENT;
-        const f3 = slopeOf(w3);
-        if (f3) {
-          slope2 = f3.b * WEEK_DAYS / f3.my * PERCENT;
-          slopeSe2 = f3.se != null ? f3.se * WEEK_DAYS / f3.my * PERCENT : null;
-          const tq = t90(f3.n - 2);
-          const lo = slopeSe2 != null ? slope2 - tq * slopeSe2 : slope2, hi = slopeSe2 != null ? slope2 + tq * slopeSe2 : slope2;
-          moving2 = pct2 >= GROW_PCT && lo > 0;
-          falling2 = pct2 <= -GROW_PCT && hi < 0;
-          if (slopeSe2 != null) {
-            pLo2 = lo;
-            pHi2 = hi;
-          }
-        }
-        const z2 = w3[w3.length - 1], a0 = w3[0];
-        const zr = z2.pts.filter((p3) => Math.abs(p3.w - z2.topW) < EPS_SAME).map((p3) => p3.r);
-        if (z2.topW > a0.topW + EPS_SAME && zr.length && Math.min(...zr) >= (z2.rr ? +z2.rr[0] : 1) && pct2 < 0) {
-          loadUp2 = true;
-          falling2 = false;
-          if (pHi2 != null && pHi2 < 0) {
-            pLo2 = null;
-            pHi2 = null;
-          }
-        }
-      }
-      return { pct: pct2, slope: slope2, slopeSe: slopeSe2, moving: moving2, falling: falling2, pLo: pLo2, pHi: pHi2, spanW: spanW2, loadUp: loadUp2 };
-    };
     const w2 = trendW(sc);
-    const t4 = trendOf(w2);
+    const t4 = liftTrendIn(M3, exI, w2);
     const { pct, slope, slopeSe, moving, pLo, pHi, spanW, loadUp } = t4;
     const scopes = stallScopesIn(M3, id, sc);
     const rrIn = scopes.length > 1 ? curRR : null;
     const holdRR = [], quietRR = [];
     if (t4.falling)
       for (const q of scopes.slice(1)) {
-        const o3 = q.rr ? trendOf(trendW({ inRange: q.inR, exWin: sc.exWin })) : null;
+        const o3 = q.rr ? liftTrendIn(M3, exI, trendW({ inRange: q.inR, exWin: sc.exWin })) : null;
         if (q.rr && o3 && o3.pct == null) quietRR.push(q.rr);
         else if (q.rr && o3 && !o3.falling) holdRR.push(q.rr);
       }
@@ -6997,7 +7003,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       const sameW = l32.every((x2) => Math.abs(x2.topW - l32[0].topW) < EPS_SAME);
       const allRir = l32.every((x2) => x2.topRir != null);
       const repsHeld = l32.every((x2) => x2.topReps >= l32[0].topReps);
-      const climbing = l32[1].topRir >= l32[0].topRir && l32[2].topRir >= l32[1].topRir && l32[2].topRir - l32[0].topRir >= 1;
+      const climbing = Number(l32[1].topRir) >= Number(l32[0].topRir) && Number(l32[2].topRir) >= Number(l32[1].topRir) && Number(l32[2].topRir) - Number(l32[0].topRir) >= 1;
       if (sameW && allRir && repsHeld && climbing)
         easier = { w: l32[0].topW, from: r1(l32[0].topRir), to: r1(l32[2].topRir) };
     }
@@ -8494,11 +8500,12 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     for (const x2 of M3.s.sessions) sameDay[x2.date] = (sameDay[x2.date] || 0) + 1;
     for (const ss of sortedSessionsIn(M3).slice().reverse()) {
       if (out.length >= PACE_N || ss.date < from) break;
-      if (ss.demo || !(ss.durMin >= 1)) continue;
+      const dur = Number(ss.durMin);
+      if (ss.demo || !(dur >= 1)) continue;
       const m3 = sessModelMinIn(M3, ss);
       if (m3 < 1) continue;
       const cm = sameDay[ss.date] === 1 ? M3.s.cardio.filter((c4) => c4.date === ss.date && (c4.when === "pre" || c4.when === "post")).reduce((a2, c4) => a2 + (+c4.min || 0), 0) : 0;
-      const r4 = (ss.durMin - cm) / m3;
+      const r4 = (dur - cm) / m3;
       if (r4 >= PACE_LO && r4 <= PACE_HI) out.push(r4);
     }
     return out;
@@ -10259,11 +10266,23 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       }
     };
   }
-  function mountCharts() {
-    const C2 = window.Chart;
-    if (!C2) return;
-    const I2 = IDX();
-    const blue = cssv("--blue"), green = cssv("--green"), muted = cssv("--muted"), yellow = cssv("--yellow");
+  function weekAxis(win, o3) {
+    const cur = weekStart(today());
+    const ink = cssv("--muted");
+    const faded = ink + "80";
+    o3.scales.x.ticks = {
+      ...o3.scales.x.ticks,
+      autoSkip: win.length > CHART_WEEKS,
+      maxTicksLimit: win.length > CHART_WEEKS ? CS.xTicks : void 0,
+      font: { size: CS.tickFont },
+      color: (c4) => {
+        const w2 = win[c4.tick ? c4.tick.value : c4.index];
+        return w2 && w2.fut ? faded : ink;
+      }
+    };
+    return win.map((w2) => w2.wk === cur ? "This wk" : fmtDate(w2.wk));
+  }
+  function chartDefaults(C2, muted) {
     try {
       const D2 = C2.defaults;
       D2.font.family = getComputedStyle(document.body).fontFamily || "system-ui, sans-serif";
@@ -10284,109 +10303,94 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     } catch (e5) {
       log("chart", e5);
     }
-    const cur = weekStart(today());
-    const sFirst = firstDate(state.sessions);
-    const weekAxis = (win, o3) => {
-      const ink = cssv("--muted");
-      const faded = ink + "80";
-      o3.scales.x.ticks = {
-        ...o3.scales.x.ticks,
-        autoSkip: win.length > CHART_WEEKS,
-        maxTicksLimit: win.length > CHART_WEEKS ? CS.xTicks : void 0,
-        font: { size: CS.tickFont },
-        color: (c4) => {
-          const w2 = win[c4.tick ? c4.tick.value : c4.index];
-          return w2 && w2.fut ? faded : ink;
+  }
+  function muscleChart(I2, sFirst, { blue, green }) {
+    const win = weekWindow(sFirst, "muscle", CHART_WEEKS);
+    const m3 = MK.find((x2) => x2 === ui.dashMuscle);
+    if (win.length && m3) {
+      const confV = [], assumV = [];
+      for (const w2 of win) {
+        if (w2.fut) {
+          confV.push(null);
+          assumV.push(null);
+          continue;
+        }
+        const tot = (I2.weekSets[w2.wk] || {})[m3] || 0;
+        const c4 = Math.min((I2.weekConf[w2.wk] || {})[m3] || 0, tot);
+        confV.push(r1(c4));
+        assumV.push(r1(tot - c4));
+      }
+      const [lo, hi] = state.settings.bands[m3];
+      const yMax = Math.ceil(Math.max(hi + 2, ...confV.map((v3, i5) => (v3 || 0) + (assumV[i5] || 0))) * CS.yHead / CS.yRound) * CS.yRound;
+      const mOpts = baseOpts();
+      mOpts.scales.x.stacked = true;
+      mOpts.scales.y.stacked = true;
+      mOpts.scales.y.min = 0;
+      mOpts.scales.y.max = yMax;
+      mOpts.scales.y1 = {
+        display: false,
+        stacked: false,
+        min: 0,
+        max: yMax,
+        position: "right",
+        grid: { drawOnChartArea: false }
+      };
+      mOpts.plugins.legend.labels.filter = (it) => it.text !== "_bandLo";
+      mOpts.plugins.tooltip = {
+        filter: (it) => !(win[it.dataIndex] || { fut: false }).fut || it.datasetIndex > 1,
+        callbacks: {
+          title: (its) => {
+            const w2 = its[0] ? win[its[0].dataIndex] : void 0;
+            return w2 ? `Week of ${fmtDate(w2.wk)}${w2.fut ? " (ahead)" : ""}` : "";
+          }
         }
       };
-      return win.map((w2) => w2.wk === cur ? "This wk" : fmtDate(w2.wk));
-    };
-    {
-      const win = weekWindow(sFirst, "muscle", CHART_WEEKS);
-      const m3 = MK.find((x2) => x2 === ui.dashMuscle);
-      if (win.length && m3) {
-        const confV = [], assumV = [];
-        for (const w2 of win) {
-          if (w2.fut) {
-            confV.push(null);
-            assumV.push(null);
-            continue;
-          }
-          const tot = (I2.weekSets[w2.wk] || {})[m3] || 0;
-          const c4 = Math.min((I2.weekConf[w2.wk] || {})[m3] || 0, tot);
-          confV.push(r1(c4));
-          assumV.push(r1(tot - c4));
-        }
-        const [lo, hi] = state.settings.bands[m3];
-        const yMax = Math.ceil(Math.max(hi + 2, ...confV.map((v3, i5) => (v3 || 0) + (assumV[i5] || 0))) * CS.yHead / CS.yRound) * CS.yRound;
-        const mOpts = baseOpts();
-        mOpts.scales.x.stacked = true;
-        mOpts.scales.y.stacked = true;
-        mOpts.scales.y.min = 0;
-        mOpts.scales.y.max = yMax;
-        mOpts.scales.y1 = {
-          display: false,
-          stacked: false,
-          min: 0,
-          max: yMax,
-          position: "right",
-          grid: { drawOnChartArea: false }
-        };
-        mOpts.plugins.legend.labels.filter = (it) => it.text !== "_bandLo";
-        mOpts.plugins.tooltip = {
-          filter: (it) => !(win[it.dataIndex] || { fut: false }).fut || it.datasetIndex > 1,
-          callbacks: {
-            title: (its) => {
-              const w2 = its[0] ? win[its[0].dataIndex] : void 0;
-              return w2 ? `Week of ${fmtDate(w2.wk)}${w2.fut ? " (ahead)" : ""}` : "";
-            }
-          }
-        };
-        const labels = weekAxis(win, mOpts);
-        mkChart("chMuscle", {
-          type: "bar",
-          data: {
-            labels,
-            datasets: [
+      const labels = weekAxis(win, mOpts);
+      mkChart("chMuscle", {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: state.settings.rirMode === "off" ? "Hard sets" : "RIR logged",
+              data: confV,
+              backgroundColor: blue,
+              yAxisID: "y"
+            },
+            { label: "Assumed hard", data: assumV, backgroundColor: blue + "55", yAxisID: "y" },
+            // No target lines for a muscle with no target (r29; hasTargetIn since r58).
+            ...!hasTarget(m3) ? [] : [
               {
-                label: state.settings.rirMode === "off" ? "Hard sets" : "RIR logged",
-                data: confV,
-                backgroundColor: blue,
-                yAxisID: "y"
+                type: "line",
+                label: "_bandLo",
+                data: labels.map(() => lo),
+                borderColor: green + "aa",
+                borderWidth: 1,
+                borderDash: CS.bandDash,
+                pointRadius: 0,
+                yAxisID: "y1",
+                fill: false
               },
-              { label: "Assumed hard", data: assumV, backgroundColor: blue + "55", yAxisID: "y" },
-              // No target lines for a muscle with no target (r29; hasTargetIn since r58).
-              ...!hasTarget(m3) ? [] : [
-                {
-                  type: "line",
-                  label: "_bandLo",
-                  data: labels.map(() => lo),
-                  borderColor: green + "aa",
-                  borderWidth: 1,
-                  borderDash: CS.bandDash,
-                  pointRadius: 0,
-                  yAxisID: "y1",
-                  fill: false
-                },
-                {
-                  type: "line",
-                  label: `Target ${lo} to ${hi}`,
-                  data: labels.map(() => hi),
-                  borderColor: green + "aa",
-                  borderWidth: 1,
-                  borderDash: CS.bandDash,
-                  backgroundColor: green + "22",
-                  pointRadius: 0,
-                  yAxisID: "y1",
-                  fill: "-1"
-                }
-              ]
+              {
+                type: "line",
+                label: `Target ${lo} to ${hi}`,
+                data: labels.map(() => hi),
+                borderColor: green + "aa",
+                borderWidth: 1,
+                borderDash: CS.bandDash,
+                backgroundColor: green + "22",
+                pointRadius: 0,
+                yAxisID: "y1",
+                fill: "-1"
+              }
             ]
-          },
-          options: mOpts
-        });
-      }
+          ]
+        },
+        options: mOpts
+      });
     }
+  }
+  function radarChart({ blue, green }) {
     const regs = regionBalance(regionSrc().src);
     const rMax = Math.min(
       CS.radarMax,
@@ -10421,6 +10425,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       },
       options: radarOpts(rMax)
     });
+  }
+  function liftChart(I2, { blue, green, yellow }) {
     const exId = typeof ui.dashEx === "string" ? ui.dashEx : null;
     const all = exId ? I2.byEx[exId] : void 0;
     if (exId && all && !noE1(EX(exId)) && all.length) {
@@ -10498,62 +10504,64 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         mkChart("chEx", { type: "line", data: { datasets: ds }, options: eo });
       }
     }
-    {
-      const win = weekWindow(sFirst, "vol", CHART_WEEKS);
-      const wks = win.map((w2) => w2.wk);
-      if (win.length) {
-        const baseName = (n3) => String(n3 || "Session").replace(/ \((lighter|deload)\)$/, "");
-        const types = [];
-        const byT = {};
-        for (const x2 of I2.sessVol) {
-          const i5 = wks.indexOf(weekStart(x2.date));
-          if (i5 < 0) continue;
-          const t4 = baseName(x2.day);
-          let row = byT[t4];
-          if (!row) {
-            row = byT[t4] = wks.map((_2, j3) => (win[j3] || { fut: false }).fut ? null : 0);
-            types.push(t4);
-          }
-          row[i5] = (row[i5] || 0) + x2.vol;
+  }
+  function volumeChart(I2, sFirst, { blue, green, muted, yellow }) {
+    const win = weekWindow(sFirst, "vol", CHART_WEEKS);
+    const wks = win.map((w2) => w2.wk);
+    if (win.length) {
+      const baseName = (n3) => String(n3 || "Session").replace(/ \((lighter|deload)\)$/, "");
+      const types = [];
+      const byT = {};
+      for (const x2 of I2.sessVol) {
+        const i5 = wks.indexOf(weekStart(x2.date));
+        if (i5 < 0) continue;
+        const t4 = baseName(x2.day);
+        let row = byT[t4];
+        if (!row) {
+          row = byT[t4] = wks.map((_2, j3) => (win[j3] || { fut: false }).fut ? null : 0);
+          types.push(t4);
         }
-        const pal = [blue, green, yellow, cssv("--red"), "#8b5cf6", "#14b8a6", "#f97316", muted];
-        const vo = baseOpts();
-        vo.scales.x.stacked = true;
-        vo.scales.y.stacked = true;
-        const labels = weekAxis(win, vo);
-        vo.plugins.tooltip = {
-          filter: (it) => it.raw != null,
-          callbacks: {
-            title: (its) => {
-              const w2 = its[0] ? wks[its[0].dataIndex] : void 0;
-              return w2 ? `Week of ${fmtDate(w2)}` : "";
-            },
-            label: (it) => `${it.dataset.label}: ${Math.round(Number(it.raw)).toLocaleString()} ${U()}`,
-            footer: (its) => {
-              const it = its[0];
-              if (!it) return "";
-              const i5 = it.dataIndex;
-              const tot = types.reduce((a2, t4) => a2 + (toD((byT[t4] || [])[i5] || 0) ?? 0), 0);
-              return `Week total: ${Math.round(tot).toLocaleString()} ${U()}`;
-            }
-          }
-        };
-        mkChart("chVol", {
-          type: "bar",
-          data: {
-            labels,
-            datasets: types.map((t4, i5) => ({
-              label: t4,
-              data: (byT[t4] || []).map((v3) => v3 == null ? null : Math.round(toD(v3) ?? 0)),
-              backgroundColor: (pal[i5 % pal.length] || muted) + (i5 < pal.length ? "" : "99"),
-              borderRadius: 2,
-              stack: "v"
-            }))
-          },
-          options: vo
-        });
+        row[i5] = (row[i5] || 0) + x2.vol;
       }
+      const pal = [blue, green, yellow, cssv("--red"), "#8b5cf6", "#14b8a6", "#f97316", muted];
+      const vo = baseOpts();
+      vo.scales.x.stacked = true;
+      vo.scales.y.stacked = true;
+      const labels = weekAxis(win, vo);
+      vo.plugins.tooltip = {
+        filter: (it) => it.raw != null,
+        callbacks: {
+          title: (its) => {
+            const w2 = its[0] ? wks[its[0].dataIndex] : void 0;
+            return w2 ? `Week of ${fmtDate(w2)}` : "";
+          },
+          label: (it) => `${it.dataset.label}: ${Math.round(Number(it.raw)).toLocaleString()} ${U()}`,
+          footer: (its) => {
+            const it = its[0];
+            if (!it) return "";
+            const i5 = it.dataIndex;
+            const tot = types.reduce((a2, t4) => a2 + (toD((byT[t4] || [])[i5] || 0) ?? 0), 0);
+            return `Week total: ${Math.round(tot).toLocaleString()} ${U()}`;
+          }
+        }
+      };
+      mkChart("chVol", {
+        type: "bar",
+        data: {
+          labels,
+          datasets: types.map((t4, i5) => ({
+            label: t4,
+            data: (byT[t4] || []).map((v3) => v3 == null ? null : Math.round(toD(v3) ?? 0)),
+            backgroundColor: (pal[i5 % pal.length] || muted) + (i5 < pal.length ? "" : "99"),
+            borderRadius: 2,
+            stack: "v"
+          }))
+        },
+        options: vo
+      });
     }
+  }
+  function bodyweightChart({ blue, muted }) {
     const bw = [...state.bodyweights].sort((a2, b2) => a2.date < b2.date ? -1 : 1);
     const b0 = bw[0];
     if (b0) {
@@ -10597,6 +10605,19 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         options: bo
       });
     }
+  }
+  function mountCharts() {
+    const C2 = window.Chart;
+    if (!C2) return;
+    const I2 = IDX();
+    const pal = { blue: cssv("--blue"), green: cssv("--green"), muted: cssv("--muted"), yellow: cssv("--yellow") };
+    chartDefaults(C2, pal.muted);
+    const sFirst = firstDate(state.sessions);
+    muscleChart(I2, sFirst, pal);
+    radarChart(pal);
+    liftChart(I2, pal);
+    volumeChart(I2, sFirst, pal);
+    bodyweightChart(pal);
   }
 
   // node_modules/lit-html/directives/repeat.js
@@ -12343,7 +12364,7 @@ ${more}`;
     return null;
   }
   function impSerial(n3) {
-    if (!(n3 > SERIAL.min && n3 < SERIAL.max)) return null;
+    if (n3 === null || !(n3 > SERIAL.min && n3 < SERIAL.max)) return null;
     const d3 = new Date(SERIAL.epoch + Math.floor(n3) * DAY_MS);
     return isoDateOf(d3.toISOString());
   }
@@ -12787,7 +12808,7 @@ ${more}`;
       s3 = s3.replace(
         /@?\s*\brpe\s*(\d+(?:\.\d+)?)|@\s*(\d+(?:\.\d+)?)\s*rpe\b/g,
         (_m, a2, b2) => {
-          const v3 = +(a2 || b2);
+          const v3 = Number(a2 || b2);
           if (v3 >= RPE_LOW && v3 <= EFFORT_TOP) rpe = v3;
           return " ";
         }
@@ -14663,7 +14684,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         if (i5 >= 0) focus.splice(i5, 1);
         else {
           if (focus.length >= FOCUS_MAX) {
-            toast("Two at most. Tap one to take it off.");
+            toast(`${upFirst(numWord(FOCUS_MAX))} at most. Tap one to take it off.`);
             return;
           }
           focus.push(raw);
@@ -16181,13 +16202,9 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   var LIFTS_HELP = `Estimated 1RM uses reps to failure, which is reps plus RIR: Brzycki up to ${BRZYCKI_TOP}, Epley at ${BRZYCKI_TOP + 1} and ${E1_MAX_REPS}, none above ${E1_MAX_REPS} or for a set called above RIR ${E1_MAX_RIR}. A blank RIR reads as your usual RIR on that lift once you have rated ${RIR_USUAL_MIN} of its sets in ${CAL_WEEKS} weeks; until then it counts as 0, so the estimate errs low. Numbers stay in the frame you log in, per dumbbell or per side where that applies. Bodyweight lifts add the share of your bodyweight they move: all of it for pull-ups and dips, ${pctOf(BWF.pushup)}% for push-ups. Lifts that turn about one joint (leg raises, crunches, Nordics) get no estimate; their progress is reps and load. Trends read the average of each session's working sets and need ${TREND_MIN.sessions} sessions over ${TREND_MIN.days / WEEK_DAYS} weeks or more within ${TREND_WEEKS} weeks. A heavy single before back-off sets counts toward bests only. Moving or falling means past ${GROW_PCT}% with a clear trend, since estimates swing ${DAY_SWING_PCT[0]} to ${DAY_SWING_PCT[1]}% day to day. A PR is a weight PR (more weight than any earlier set), a new best estimate within its range of reps to failure (${BAND_RANGES.join(", ")}), or a rep PR (more reps at a load than any earlier set); a set that is more than one shows the first. Stalled: flat or falling over your last ${STALL.sessions} sessions, or ${STALL.days / WEEK_DAYS} weeks if that covers more (at least ${STALL.min} sessions), with no PR in the last ${STALL.noProgress}, no heavier load, and no more reps at the same load, not counting sessions done lighter; a lift on two rep ranges is stalled only when it is in both.`;
   var MUSCLES_HELP = `Muscles are flagged because the trend is falling, or flat with one of its lifts stalled, or the hard sets you logged average below your target, or you named it a priority, or you flagged an injury. A muscle is never flagged for what the routine plans, only for what you log. A muscle whose strength is rising is never flagged. Strength return on volume: the median change in estimated 1RM across a muscle's main exercises over up to ${TREND_WEEKS} weeks (each lift with ${MUSCLE_TREND_MIN.sessions} sessions over ${MUSCLE_TREND_MIN.days / WEEK_DAYS} weeks or more), in the current rep range, next to the hard sets a week that produced it. This measures strength, not size: early gains are largely neural, and high-rep estimates are noisy. Size check reads your tape measurements, which are the closer signal for size.`;
   var CONSISTENCY_HELP = `${HEAT_WEEKS} weeks from your first logged session; once you have more, the latest ${HEAT_WEEKS}, with All for the rest. Faded squares are days still ahead. Filled squares are days with a logged lifting session. The streak counts weeks that hit the sessions your routine plans. Cardio minutes are shown under the grid and never count as lifting sessions. Adherence is the planned sessions done over the previous ${AVG_WEEKS} full weeks, each week counted up to its plan.`;
-  function viewDash() {
-    chartNoticeUsed = false;
-    const I2 = IDX();
-    const R2 = activeRoutine();
-    const planned = freeMode() ? 0 : trainDaysOf(R2) * weekFactor(R2);
-    const cur = weekStart(today());
+  function consistencySec(R2, cur) {
     const sessDates = new Set(Object.keys(dateIndex().byDate));
+    const planned = freeMode() ? 0 : trainDaysOf(R2) * weekFactor(R2);
     const firstWk = firstFullWeek();
     let done4 = 0, wks4 = 0, need4 = 0;
     for (let k2 = 1; k2 <= AVG_WEEKS; k2++) {
@@ -16201,6 +16218,47 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       need4 += nw;
     }
     const adher = planned && wks4 && need4 > 0 ? Math.round(done4 / need4 * PERCENT) : null;
+    const hFirst = firstDate(state.sessions);
+    const hWin = weekWindow(hFirst, "heat", HEAT_WEEKS);
+    const hN = weeksSpan(hFirst);
+    const t4 = today();
+    const squares = hWin.flatMap(
+      (w2) => Array.from({ length: WEEK_DAYS }, (_2, i5) => i5).map((i5) => {
+        const d3 = addDays(w2.wk, i5);
+        const c4 = `${sessDates.has(d3) ? "on" : ""} ${d3 > t4 ? "fut" : ""} ${d3 === t4 ? "today" : ""}`;
+        const tip = `${fmtDateLong(d3)}${sessDates.has(d3) ? ": lifted" : ""}`;
+        return d3 > t4 ? b`<div class=${c4} data-tip=${tip}></div>` : b`<button type="button" class=${c4} data-act="calDay" data-date=${d3} data-tip=${tip} aria-label=${`${tip}. Open`}></button>`;
+      })
+    );
+    const heatGrid = hWin.length ? b`<div class="heat">${squares}</div>` : b`<div class="heat"></div><p class="small muted" style="margin:6px 0 0">Your first logged session starts this grid.</p><div></div>`;
+    const cf = firstDate(state.cardio);
+    const cn = Math.min(CARDIO_WEEKS, weeksSpan(cf));
+    const crows = [];
+    for (let k2 = cn - 1; k2 >= 0; k2--) {
+      const ws = addDays(cur, -WEEK_DAYS * k2), we = addDays(ws, SUNDAY);
+      crows.push({ ws, min: state.cardio.filter((c4) => c4.date >= ws && c4.date <= we).reduce((a2, c4) => a2 + c4.min, 0) });
+    }
+    const cmx = Math.max(1, ...crows.map((r4) => r4.min));
+    const cw = state.cardio.length ? b`<div class="card"><b>Cardio and mobility, minutes per week</b>${crows.map(
+      (r4) => b`<div class="mrow"><span></span><span>${k0(r4.ws)}</span><div class="band"><div class="fill in" style=${`width:${r4.min / cmx * PERCENT}%`}></div></div><span class="r num">${r4.min}<span class="muted small"> min</span></span></div>`
+    )}</div>` : A;
+    const ready = readiness().n ? dashSub("ready", "Readiness and performance", readinessBody()) : A;
+    const heat = b`<div class="card">${rangeChips("heat", hN, HEAT_WEEKS)}<div class="heat-h">${DAYS.map((d3) => b`<span>${d3[0]}</span>`)}</div>${heatGrid}</div>${cw}${ready}`;
+    const sk = weekStreak();
+    const adhLine = b`<p class="small muted" style="margin:0 0 8px" id="adhLine">${freeMode() ? "Adherence: freestyle, no plan to follow" : !planned ? "Adherence: no planned days" : adher == null ? "Adherence: appears after your first full week" : `Adherence, previous ${wks4} full week${wks4 === 1 ? "" : "s"}: ${adher}% of planned sessions (${Math.round(done4)}/${Math.round(need4)})`}</p>`;
+    return dashSection(
+      "consistency",
+      "Consistency",
+      CONSISTENCY_HELP,
+      noLog() ? heat : b`${adhLine}${heat}`,
+      noLog() ? "Nothing logged yet" : `${sk.weeks}-week streak${adher != null ? ` · ${adher}% adherence` : ""}`
+    );
+  }
+  function viewDash() {
+    chartNoticeUsed = false;
+    const I2 = IDX();
+    const R2 = activeRoutine();
+    const cur = weekStart(today());
     const thisWeek = I2.weekSets[cur] || {};
     const thisWeekConf = I2.weekConf[cur] || {};
     const wkHard = weekStats().got;
@@ -16249,8 +16307,8 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     );
     const inj = injuredSet();
     const reasons = {};
-    const add = (m3, t5, c4) => {
-      (reasons[m3] || (reasons[m3] = [])).push([t5, c4]);
+    const add = (m3, t4, c4) => {
+      (reasons[m3] || (reasons[m3] = [])).push([t4, c4]);
     };
     for (const m3 of inj) add(m3, "Injured, targets paused", "red");
     for (const s3 of I2.scores)
@@ -16264,7 +16322,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     for (const m3 of state.settings.priorities) add(m3, "Your priority", "blue");
     const wp = Object.entries(reasons).sort((a2, b2) => b2[1].length - a2[1].length);
     const weakBody = b`<div class="card">${wp.length ? wp.map(([m3, rs]) => {
-      const tags = rs.map(([t5, c4]) => b`<span class=${`tag ${c4}`}>${t5}</span>`);
+      const tags = rs.map(([t4, c4]) => b`<span class=${`tag ${c4}`}>${t4}</span>`);
       if (!MK.some((x2) => x2 === m3))
         return b`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${injLabel(m3)}</b><div class="chips">${tags}</div></div></div>`;
       const [lo, hi] = bandOf(m3);
@@ -16308,41 +16366,6 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       )}${dashSub("stalls", "Stalls", stl, stalled.length ? b`<span class=${`pill ${bigN >= FATIGUE_STALLS ? "red" : "yellow"}`}>${stalled.length} stalled</span>` : "none")}`,
       noLog() ? "Nothing logged yet" : `${nLifts} lift${nLifts === 1 ? "" : "s"} tracked`
     );
-    const hFirst = firstDate(state.sessions);
-    const hWin = weekWindow(hFirst, "heat", HEAT_WEEKS);
-    const hN = weeksSpan(hFirst);
-    const t4 = today();
-    const squares = hWin.flatMap(
-      (w2) => Array.from({ length: WEEK_DAYS }, (_2, i5) => i5).map((i5) => {
-        const d3 = addDays(w2.wk, i5);
-        const c4 = `${sessDates.has(d3) ? "on" : ""} ${d3 > t4 ? "fut" : ""} ${d3 === t4 ? "today" : ""}`;
-        const tip = `${fmtDateLong(d3)}${sessDates.has(d3) ? ": lifted" : ""}`;
-        return d3 > t4 ? b`<div class=${c4} data-tip=${tip}></div>` : b`<button type="button" class=${c4} data-act="calDay" data-date=${d3} data-tip=${tip} aria-label=${`${tip}. Open`}></button>`;
-      })
-    );
-    const heatGrid = hWin.length ? b`<div class="heat">${squares}</div>` : b`<div class="heat"></div><p class="small muted" style="margin:6px 0 0">Your first logged session starts this grid.</p><div></div>`;
-    const cf = firstDate(state.cardio);
-    const cn = Math.min(CARDIO_WEEKS, weeksSpan(cf));
-    const crows = [];
-    for (let k2 = cn - 1; k2 >= 0; k2--) {
-      const ws = addDays(cur, -WEEK_DAYS * k2), we = addDays(ws, SUNDAY);
-      crows.push({ ws, min: state.cardio.filter((c4) => c4.date >= ws && c4.date <= we).reduce((a2, c4) => a2 + c4.min, 0) });
-    }
-    const cmx = Math.max(1, ...crows.map((r4) => r4.min));
-    const cw = state.cardio.length ? b`<div class="card"><b>Cardio and mobility, minutes per week</b>${crows.map(
-      (r4) => b`<div class="mrow"><span></span><span>${k0(r4.ws)}</span><div class="band"><div class="fill in" style=${`width:${r4.min / cmx * PERCENT}%`}></div></div><span class="r num">${r4.min}<span class="muted small"> min</span></span></div>`
-    )}</div>` : A;
-    const ready = readiness().n ? dashSub("ready", "Readiness and performance", readinessBody()) : A;
-    const heat = b`<div class="card">${rangeChips("heat", hN, HEAT_WEEKS)}<div class="heat-h">${DAYS.map((d3) => b`<span>${d3[0]}</span>`)}</div>${heatGrid}</div>${cw}${ready}`;
-    const sk = weekStreak();
-    const adhLine = b`<p class="small muted" style="margin:0 0 8px" id="adhLine">${freeMode() ? "Adherence: freestyle, no plan to follow" : !planned ? "Adherence: no planned days" : adher == null ? "Adherence: appears after your first full week" : `Adherence, previous ${wks4} full week${wks4 === 1 ? "" : "s"}: ${adher}% of planned sessions (${Math.round(done4)}/${Math.round(need4)})`}</p>`;
-    const consSec = dashSection(
-      "consistency",
-      "Consistency",
-      CONSISTENCY_HELP,
-      noLog() ? heat : b`${adhLine}${heat}`,
-      noLog() ? "Nothing logged yet" : `${sk.weeks}-week streak${adher != null ? ` · ${adher}% adherence` : ""}`
-    );
     const rank = b`<div class="card">${rankBody(avg || thisWeek)}</div>`;
     const musSec = dashSection(
       "weak",
@@ -16366,7 +16389,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       ["volume", volSec],
       ["exercise", liftsSec],
       ["weak", musSec],
-      ["consistency", consSec],
+      ["consistency", consistencySec(R2, cur)],
       ["body", bodySec]
     ])}${tabFoot("dash")}`;
   }
@@ -19678,6 +19701,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
 
   // src/app/report.ts
   var NO_ANSWER = "No answer. Check your connection and try again.";
+  var LIMIT_SAID = `You have sent ${FB_DAY} reports today. Try again tomorrow.`;
   var CTX = { device: 300, errors: 10, words: 100 };
   var DAY_MS2 = 864e5;
   var SHOT = { sides: [1280, 960, 720], q0: 0.72, qStep: 0.14, qMin: 0.3, chars: 5e5 };
@@ -19890,7 +19914,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
       const F3 = FB();
       if (F3 && fbRecent().length >= FB_DAY) {
-        m3.err = `You have sent ${FB_DAY} reports today. Try again tomorrow.`;
+        m3.err = LIMIT_SAID;
         renderModal();
         return;
       }
@@ -19934,7 +19958,8 @@ ${JSON.stringify(ctx, null, 1)}`;
         }
       } catch (e5) {
         log("feedback", e5);
-        if (ui.modal === m3) m3.err = codeOf(e5) === "timeout" ? NO_ANSWER : said(e5, "Could not send. Try again.");
+        if (ui.modal === m3)
+          m3.err = codeOf(e5) === "timeout" ? NO_ANSWER : codeOf(e5) === "limit" ? LIMIT_SAID : said(e5, "Could not send. Try again.");
       } finally {
         if (ui.modal === m3) {
           m3.busy = false;
@@ -24084,6 +24109,10 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
 
   // src/app/guide.ts
+  var musSaid = (m3) => String(ML[m3]).toLowerCase();
+  var TARGETED_SAID = andList([...TARGETED].map(musSaid));
+  var TRACKED_SAID = andList([...MK.filter((m3) => !TARGETED.has(m3) && !TRACK_ONLY.has(m3)), ...TRACK_ONLY].map(musSaid));
+  var NO_FOCUS_SAID = andList([...TRACK_ONLY].map(musSaid));
   var S3 = PROFILE_PLAN.strength, B4 = PROFILE_PLAN.both, F2 = PROFILE_PLAN.first;
   var CAP = pctOf(JUMP_CAP - 1), CAP_LIGHT = pctOf(JUMP_CAP_LIGHT - 1), CAP_EARLY = pctOf(JUMP_CAP_EARLY - 1);
   var lightLift = (kg2) => kg2 ? `${LIGHT_LIFT_KG} kg` : `about ${Math.round(LIGHT_LIFT_KG / LB / DEFAULT_STEP.lb) * DEFAULT_STEP.lb} lb`;
@@ -24167,7 +24196,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         "stats",
         "Volume and Stats",
         `<p><b>A hard set</b> is a working set at RIR ${HARD_RIR} or less${off ? " (with RIR off, every working set)" : ""}. Helper muscles count ${shareWords(HELPER_CREDIT)} a set (Pelland 2025); which muscles are helpers on each lift is the library's own call, a convention. With Settings, Count ${halfLbl()} as half a set on, a working set past RIR ${HARD_RIR} counts ${shareWords(HALF_SET)} toward your weekly sets and targets, planned ones too (a convention); estimates, PRs, recovery, and the per-workout flag still count hard sets only.</p>
-   <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. ${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets a week for major muscles is typical, not a ceiling. The muscles lifters train directly for size (chest, lats, upper back, side delts, rear delts, biceps, triceps, quads, hamstrings, glutes, calves, and abs) have a target to start, since the dose-response studies measure such muscles. Every other muscle (traps, forearms, front delts, lower back, obliques, adductors, abductors, serratus, rotator cuff, neck, and tibialis) is tracked only: counted and shown, with no target, until you give it one with Set a target in Weekly set targets or name it a focus (any but serratus, rotator cuff, neck, and tibialis); then it counts everywhere a target counts. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. On a routine run as a cycle, weeks can differ in which of its days fall in them (two days in turn, three times a week). A muscle under its minimum only because fewer of the days that train it fell in the weeks averaged reads <b>on plan</b> when every session and set the cycle had due in those weeks was done and the plan reaches the target over the whole cycle. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last ${REGION_WK_DEFAULT} full weeks, from the week after your first; the chips above it switch to ${OTHER_WKS} weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
+   <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. ${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets a week for major muscles is typical, not a ceiling. The muscles lifters train directly for size (${TARGETED_SAID}) have a target to start, since the dose-response studies measure such muscles. Every other muscle (${TRACKED_SAID}) is tracked only: counted and shown, with no target, until you give it one with Set a target in Weekly set targets or name it a focus (any but ${NO_FOCUS_SAID}); then it counts everywhere a target counts. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. On a routine run as a cycle, weeks can differ in which of its days fall in them (two days in turn, three times a week). A muscle under its minimum only because fewer of the days that train it fell in the weeks averaged reads <b>on plan</b> when every session and set the cycle had due in those weeks was done and the plan reaches the target over the whole cycle. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last ${REGION_WK_DEFAULT} full weeks, from the week after your first; the chips above it switch to ${OTHER_WKS} weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
    <p><b>Lagging strength</b> is a muscle whose lifts are falling, or flat with one of them stalled (a convention); with no clear trend, a stalled lift reads <b>A lift stalled</b>. A muscle whose lifts are all within day-to-day noise reads <b>unclear</b>, never 0%.</p>
    <p><b>Your target and the usual range</b>: picking a ready-made routine sets your minimums to what it plans, so Stats measures you against your plan. Plan, Weekly volume names the muscles that plan puts under the usual range.</p>
    <p><b>Planned sets</b> count the same way: a set planned at RIR ${HARD_RIR + 1} or more is not a planned hard set, and in a deload week the target is halved.</p>

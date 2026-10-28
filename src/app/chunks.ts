@@ -4,7 +4,7 @@
    (phase 3a, r51; moved unchanged from the legacy script). Sending, pulling and merging them moves with
    sync in phase 4. */
 
-import { rec, sessCmp } from './records';
+import { arr, rec, sessCmp } from './records';
 import type { Rec } from './records';
 import { monthOf, dayOfMonth, yearOf } from './util';
 
@@ -116,10 +116,9 @@ export function legacyBody(raw: { bodyweights?: unknown; measurements?: unknown 
   bodyweights: unknown[];
   measurements: unknown[];
 } {
-  // Array.isArray turns an unknown into any[]; the casts keep the entries unknown, as the return type says.
   return {
-    bodyweights: raw && Array.isArray(raw.bodyweights) ? (raw.bodyweights as unknown[]) : [],
-    measurements: raw && Array.isArray(raw.measurements) ? (raw.measurements as unknown[]) : []
+    bodyweights: (raw && arr(raw.bodyweights)) || [],
+    measurements: (raw && arr(raw.measurements)) || []
   };
 }
 
