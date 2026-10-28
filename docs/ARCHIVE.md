@@ -286,6 +286,17 @@ Not written here as each shipped; what each moved and changed, with its names, i
 - **Elsewhere:** the update bar in `update.ts` (`updateStart`, `UPDATE_ACTS`; "Update ready" with Update); normalize's draft blocks built against `DraftBlock` (`satisfies`), `cleanTgt` returning a `Target`; the installed build's library loaders list its own copies alone (`scripts/build.js`).
 - **Checks:** `tests/r60.js` (section 1 holds the screen to r59 in 35 sessions and modes; sections 2 to 7 fail on r59 or on a build before r60), `tests/inflight.js`, `tests/personas.js`, `tests/loadrules.js`; `tests/engine.js` calls `nextSets` and `bwNoLoad` in Node, with two return histories.
 
+### r65 (2026-10-28, version 2.19; the r63 audit's cleanup, PENDING.md's tracker)
+
+- **No change a lifter sees** but one word order: the Guide's tracked-only muscles, now read from the muscle table, come in its order. Every screen compared with r64's build in light and dark (35 screens and sheets, every element's computed style and box: identical). `tests/r65.js` holds each change, section by section, failing on r64.
+- **Errors kept (A-12):** the built app's start script writes a service worker that cannot register and storage the browser will not keep to the error log (`window.ironlogLog`, main.ts); an update check that fails offline is expected and says nothing (section 1). The report function's half went in r64.
+- **One writer (A-5):** start-up's two fixes of an older log, the fit's old floors recorded and refit's bands, are made inside `act` (`recordOldFloors`, `oldFloors` in targets.ts); `tests/hygiene.js`'s act rule reads main.ts too.
+- **One function a quantity (A-6):** a muscle's band by any key is `bandOfIn` in model.ts, read by Pick for me and through `bandOf` by Stats (section 2). The PR half went in r64.
+- **One source a value (A-9):** the report limit's message from `FB_DAY` (the account script says no number), the focus limit's word from `FOCUS_MAX` (`upFirst`, util.ts), the Guide's muscle lists from `TARGETED`, `TRACK_ONLY` and the muscle table, the dark page colour once (`DARK_BG`, config.ts, filled into the stylesheet and the build) (section 3); the 342 style attributes with fixed text are 89 `u-` classes before every other `!important` rule, so each wins and loses where its attribute did (section 4, and hygiene refuses a fixed style attribute).
+- **Types (A-8, A-10):** 48 casts from 85 and 6 from 21 in r52's moved code, 23 and 73 non-null assertions from 26 and 76, 9 open types from 11 (ARCHITECTURE.md says which and how); `esc` gone, and the dead-export check reads code without its comments.
+- **Shorter functions (A-7):** `mountCharts` one function a chart, Consistency out of `viewDash` (`consistencySec`), the trend and its line fit out of `idxLiftIn` (`liftTrendIn`, `slopeOf`); none is over 300 lines.
+- **The suites (A-S5):** wide.js stores a generated load as the app stores a typed one; r64's and r65's suites wait for results, not fixed times; tests/engine.js runs `gymClean` (gym 100%).
+
 ### r64 (2026-10-27, version 2.18; the r63 audit's hardening, PENDING.md's tracker)
 
 - **The tracker:** every finding of the r63 audit and every PENDING item it placed is a row at the top of `PENDING.md`, with its release, status and evidence (CLAUDE.md, How work is done 10); the suites `tests/r64.js` (the smaller fixes, sections 1 to 17), `tests/r64a.js` (the training rules) and `tests/r64b.js` (the account, sync status and update, on the built app against `tests/fake-supabase.js`), each case failing on r63.
