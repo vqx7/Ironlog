@@ -130,10 +130,14 @@ function build({ override = {} } = {}) {
    one place each value is defined; scripts/config.js reads all of them. */
 function pageConfig(js) {
   const acorn = require('acorn');
-  const at = js.indexOf('// src/app/config.ts\n');
-  if (at < 0) throw new Error('join: config.ts\'s part of the bundle not found');
-  const next = js.indexOf('\n  // src/', at + 1);
-  const end = next < 0 ? js.length : next;
+  // Each module's part opens with its path as a comment: src/app/config.ts, or a copy's path when a suite replaces a module (tests/r43.js).
+  const head = /\n {2}\/\/ \S*app\/config\.ts\n/.exec(js);
+  if (!head) throw new Error('join: config.ts\'s part of the bundle not found');
+  const at = head.index + 1;
+  const next = /\n {2}\/\/ \S+\.(?:ts|js|mjs)\n/g;
+  next.lastIndex = at + head[0].length - 1;
+  const after = next.exec(js);
+  const end = after ? after.index : js.length;
   const ast = acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'script' });
   const iife = ast.body.find(st => st.type === 'ExpressionStatement' && st.expression.type === 'CallExpression');
   const body = iife ? iife.expression.callee.body.body : [];

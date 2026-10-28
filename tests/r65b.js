@@ -48,11 +48,14 @@ const AGAIN = /Sign in again to sync/;
     const hook = () => {
       const el = document.getElementById('toast');
       if (!el) { setTimeout(hook, 20); return; }
-      new MutationObserver(() => {
+      const seen = () => {
         if (el.hidden) return;
         const t = el.innerText.replace(/\s+/g, ' ').trim(), last = window.__toasts[window.__toasts.length - 1];
         if (t && (!last || last.text !== t || Date.now() - last.at > 3000)) { window.__toasts.push({ at: Date.now(), text: t }); sessionStorage.setItem('__toasts', JSON.stringify(window.__toasts)); }
-      }).observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
+      };
+      // A toast already up when the hook finds the element counts too.
+      seen();
+      new MutationObserver(seen).observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
     };
     hook();
   };
@@ -115,7 +118,9 @@ const AGAIN = /Sign in again to sync/;
     const said = await until(async () => (await D.again(t)).length > 0, 15000);
     await wait(3000);
     const all = await D.again(t);
-    ok(said && all.length === 1, 'the phone opened with a sign-in the server refuses: a toast says to sign in again, once (r64: nothing)', { toasts: await D.toasts() });
+    // What the phone held, for a failure's line: who it reads as signed in, the sign-in and sign-out records, the sync, and the error log's account lines.
+    const held = await D.ev(() => { const L = window.__ironlog; return { user: L.acctUser(), auth: !!localStorage.getItem('ironlog.auth'), out: localStorage.getItem('ironlog.auth.out'), cloud: L.cloudState(), log: (L.logBuf || []).filter(e => /auth|sync|cloud/.test(e.a)).slice(-6).map(e => [e.a, String(e.m).slice(0, 160)]) }; });
+    ok(said && all.length === 1, 'the phone opened with a sign-in the server refuses: a toast says to sign in again, once (r64: nothing)', { toasts: await D.toasts(), held });
     ok(!(await D.user()), 'and the phone reads signed out, so Sign in shows');
     ok(await D.has(wid('gone@example.com')), 'the log stays on the phone (the weigh-in, in memory and saved)');
     ok(!D.st.errors.length, 'no page errors', D.st.errors.slice(0, 3));
