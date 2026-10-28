@@ -362,7 +362,8 @@
         // Two sends of one report at the same moment: the table took the other, so this one is sent.
         if (/23505/.test(String(error.code || '')) && /feedback_client_once/.test(t)) return;
         if (/relation .*feedback.* does not exist|PGRST205|42P01/i.test(t)) throw Object.assign(new Error('Reports are not set up yet. Your text is kept.'), { code: 'not_set_up' });
-        if (/feedback_rate_limited/i.test(t)) throw Object.assign(new Error('You have sent 5 reports today. Try again tomorrow.'), { code: 'limit' });
+        // The app says the limit in its own words, with its own number (report.ts); this one is never shown by it.
+        if (/feedback_rate_limited/i.test(t)) throw Object.assign(new Error('Too many reports today. Try again tomorrow.'), { code: 'limit' });
         throw friendly(error);
       }
     },
