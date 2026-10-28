@@ -38,6 +38,12 @@
 //      list is the biggest the toast named for its sets; a block of drop
 //      sets alone makes none; a set with a blank effort is read alike by
 //      the bests board, the list and the toast.
+//  16  NEW-5 (V, 2026-10-27): a first session back that climbs to the load
+//      from before the break in one set (165, 175, 185 x 8) asks every
+//      planned set at that load next, not "8 reps in one set".
+//  17  NEW-6 (V, 2026-10-27): a whole step that would pass the 10% cap is
+//      not cut to a sliver of a step ("add 0.5 lb"): the load holds on the
+//      grid of the unit on screen and the reps build first.
 const { open, engine } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 700) : ''); } else console.log('ok  ', m); };
 const FILE = process.argv[2] || 'index.html';
@@ -520,6 +526,39 @@ const run = n => !ONLY || ONLY.includes(n);
     ok(!c.drop.some(p => p.sid === 'd2') && c.dropBoard && c.dropBoard.date === '2026-10-01', '15. a block of drop sets alone makes no PR in the list and no record on the board, as no drop set feeds one (r63: a Weight PR)', c);
     const b3 = c.blank.find(p => p.sid === 'b3');
     ok(c.usual === 2 && b3 && b3.type === 'e1RM' && Math.abs(b3.value - 136.5) < 0.05 && b3.big && c.toast === 'Best' && c.blankBoard && c.blankBoard.date === '2026-10-04' && Math.abs(c.blankBoard.v - b3.value) < 0.05 && c.beat.includes(b3.value.toFixed(1)), '15. 97.5 x 10 with its effort blank is read at the usual 2 in reserve alike by the board, the list and the toast, one number (136.5)', c);
+  }
+
+  // ---- 16. NEW-5: bench at 185 x 8 x 3 before a break; the first set back 165 x 8, the next sets moved up to 175 and 185.
+  // The next target was "Beat 8 reps in one set at 185 lb" with three sets planned. V's choice: 185 for 8+ in every set.
+  if (run(16)) {
+    const P = await open(FILE, { browser, clock: '2026-10-26T10:00:00' }); pages.push(P);
+    const r = await P.page.evaluate(() => {
+      const L = window.__ironlog; const S = L.state; const LB = 0.45359237; S.settings.onboarded = true; S.settings.unit = 'lb';
+      const mk = (id, date, sets) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: sets.map(([w, r, rir]) => ({ w: w * LB, r, rir, warm: false, drop: false })) }] });
+      const plan = { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 5 * LB };
+      const before = [mk('a', '2026-08-10', [[185, 8, 1], [185, 8, 1], [185, 7, 1]]), mk('b', '2026-08-17', [[185, 8, 1], [185, 8, 1], [185, 8, 1]]), mk('c', '2026-08-24', [[185, 8, 1], [185, 8, 1], [185, 7, 1]])];
+      const one = back => { S.sessions = [...before, mk('d', '2026-10-19', back)]; S.draft = null; L.state = L.normalize(S); L.invalidate(); const g = L.suggest('bench', plan); return { lb: Math.round(g.w / LB * 10) / 10, text: g.text, target: g.target }; };
+      return { climb: one([[165, 8, null], [175, 8, null], [185, 8, null]]), two: one([[165, 8, 2], [185, 9, 1], [185, 7, 1]]), full: one([[185, 8, 1], [185, 8, 1], [185, 8, 1]]) };
+    });
+    ok(r.climb.lb === 185 && /^185 lb for 8\+ reps in every set$/.test(r.climb.target) && !/in one set/.test(r.climb.text), '16. 165, 175 and 185 x 8 after the break: 185 lb for 8+ reps in every set next (r64 before: "Beat 8 reps in one set at 185 lb")', r.climb);
+    ok(r.two.lb === 185 && /^185 lb for 7\+ reps in every set$/.test(r.two.target), '16. two sets at 185 (9 and 7) of three: 185 for 7+ in every set, the fewest done there', r.two);
+    ok(r.full.lb === 185 && /over 3 sets/.test(r.full.target), '16. (a guard) every planned set at 185: the usual target over 3 sets', r.full);
+  }
+
+  // ---- 17. NEW-6: meadows row kept in kg, 22.45 kg (49.5 lb), shown in lb on a 10 lb step, every set past the top of
+  // 10-15: one whole step (59.5, 60 on the grid) passes the 10% cap (54.5), and r64's R-2 fix cut it to 50, "add 0.5 lb".
+  // A guard on r64's own change: r63 already said 50, the nearest load in lb; it fails on the build before NEW-6.
+  if (run(17)) {
+    const P = await open(FILE, { browser, clock: '2026-10-26T10:00:00' }); pages.push(P);
+    const r = await P.page.evaluate(() => {
+      const L = window.__ironlog; const S = L.state; const LB = 0.45359237; S.settings.onboarded = true; S.settings.unit = 'lb'; S.draft = null;
+      const mk = (id, date, w, reps) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'meadowsRow', rr: [10, 15], sets: reps.map(r => ({ w, r, rir: 1, warm: false, drop: false })) }] });
+      const plan = { sets: 2, repMin: 10, repMax: 15, rir: 1, rest: 90, inc: 10 * LB };
+      S.sessions = [mk('a', '2026-10-12', 22.45, [15, 15]), mk('b', '2026-10-19', 22.45, [16, 16])]; L.state = L.normalize(S); L.invalidate();
+      const g = L.suggest('meadowsRow', plan);
+      return { lb: Math.round(g.w / LB * 10) / 10, text: g.text, target: g.target };
+    });
+    ok(r.lb === 50 && !/add 0\.5 lb/.test(r.text) && /nearest load in lb/.test(r.text), '17. 49.5 lb at the top of the range on a 10 lb step: 50, the nearest load in lb to what was done, never "add 0.5 lb" (r64\'s R-2 fix before NEW-6 said so; r63 said 50 too)', r);
   }
 
   const errors = pages.flatMap(P => P.errors);

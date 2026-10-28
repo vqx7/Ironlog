@@ -174,7 +174,17 @@ interface SuggestCtx {
 function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
   const G = res && res.w != null && !ex.timed ? plateGridIn(M, ex, plan) : null;
   const out = G ? plateSnap(M, ex, plan, res, G, down) : gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
-  if (!down || res.top == null || res.w == null || out.w == null || out.w <= res.top + EPS) return out;
+  /* A lighter day, a deload or a return is never above last time's load (r64,
+     R-2), but never under the bar either (CLAUDE.md, Numbers): the empty 20 kg
+     bar shown in lb is the 45 lb bar, a Lighter day too (r54). */
+  if (
+    !down ||
+    res.top == null ||
+    res.w == null ||
+    out.w == null ||
+    out.w <= Math.max(res.top, loadFloorIn(M, ex)) + EPS
+  )
+    return out;
   return Math.abs(res.w - res.top) < EPS ? res : swapWIn(M, ex, res, res.top);
 }
 
@@ -264,7 +274,15 @@ function unitSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?
    engine's cases whose words depend on the load (the step at the top of the
    range, the way back after a break) take it before they word it, so what
    they say is said of the load shown. */
-function unitGridIn(M: Model, ex: ExerciseLike, plan: Plan, top: number, w: number, down?: boolean): number | null {
+function unitGridIn(
+  M: Model,
+  ex: ExerciseLike,
+  plan: Plan,
+  top: number,
+  w: number,
+  down?: boolean,
+  whole?: boolean
+): number | null {
   if (ex.timed || gymRackIn(M, ex, plan) || plateGridIn(M, ex, plan)) return null;
   const st = inUnitIn(M, incOfIn(M, ex, plan));
   if (!(st > 0)) return null;
@@ -309,14 +327,18 @@ function unitGridIn(M: Model, ex: ExerciseLike, plan: Plan, top: number, w: numb
      time (r64, the r63 audit's R-2: 57.5 kg on its own 10 lb step, 126.8 lb,
      was rounded from 136.8 to 140, 10.4% up; a 44 kg kettlebell, 97 lb, from
      107 to 110). With no step between last time and the cap, the step past
-     it: one real step at least, as at the top of the range. */
+     it: one real step at least, as at the top of the range. Asked for a whole
+     step (whole: the step at the top of the range), the step under is taken
+     only when it is a whole step above last time: a sliver of one (49.5 lb
+     to 50 on a 10 lb step, "add 0.5 lb") is none, so the whole step stays
+     and the top of the range builds reps for it first (V, 2026-10-27, NEW-6). */
   const bwK = bwRefLoadIn(M, ex);
   const tp = inUnitIn(M, top);
   if (!down && !ex.assist && !(ex.bw && !(bwK > 0)) && d > tp + EPS) {
     const tot = top + bwK;
     const most = Math.max(x, inUnitIn(M, tot * jumpCap(ex, tot) - bwK));
     const under = at(Math.floor((most - o) / st + EPS));
-    if (d > most + EPS && under > tp + EPS) d = under;
+    if (d > most + EPS && under > tp + EPS && !(whole && under < tp + st - EPS)) d = under;
   }
   // Never past the heaviest load the lift has (capOfIn), which the engine's own load already keeps to: that load, then.
   const cp = capOfIn(M, ex, plan, top);
@@ -754,7 +776,36 @@ function sgAfterReturnIn(M: Model, C: SuggestCtx): Suggestion | null {
   const pre = exps.filter(x => x.date < all[j].date).pop();
   if (!pre) return null;
   const preTop = workLoad(pre.pts, +plan.repMin);
-  if (all.slice(j, i + 1).some(x => x.topW >= preTop - EPS_SAME)) return null;
+  const backAt = all.slice(j, i + 1).filter(x => x.topW >= preTop - EPS_SAME);
+  if (backAt.length) {
+    /* Back at the load from before the break in this session alone, at fewer
+       of the planned sets (the next sets moved up within it: 165, 175, 185 x
+       8): every planned set at that load next, for the fewest reps done
+       there, then the usual rules (NEW-5, V's choice of 2026-10-27; the reps
+       target asked to beat 8 reps in one set with three planned). */
+    const at = triedAt(last, top);
+    const fewest = Math.min(...at.map(p => p.r));
+    if (
+      backAt.length > 1 ||
+      backAt[0] !== last ||
+      !(top >= preTop - EPS_SAME) ||
+      at.length >= +plan.sets ||
+      at.some(p => p.missed) ||
+      !(fewest >= +plan.repMin)
+    )
+      return null;
+    return {
+      top,
+      w: top,
+      text: `${lastS} Back at your load from before the break: ${lbl(top)} for ${fewest}+ reps in every set next.`,
+      lastR,
+      basis,
+      last: lastS,
+      target: `${lbl(top)} for ${fewest}+ reps in every set`,
+      tgt: { kind: 'load', w: top, repMin: fewest, prevBest },
+      easier: null
+    };
+  }
   if (triedAt(last, top).some(p => p.missed || p.r < +plan.repMin)) return null;
   const bw = bwRefLoadIn(M, ex);
   if (ex.bw && !(bw > 0)) return null;
@@ -1109,7 +1160,7 @@ function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
   if (planPts.every(p => p.r >= plan.repMax)) {
     const n0 = capW(top + progStepIn(M, ex, plan, top + bwRefLoadIn(M, ex), top));
     // On the step in the unit on screen before it is worded (unitGridIn, r64), so the reps aimed for are those of the load shown.
-    const nw = ex.assist ? n0 : capW(unitGridIn(M, ex, plan, top, n0) ?? n0);
+    const nw = ex.assist ? n0 : capW(unitGridIn(M, ex, plan, top, n0, false, true) ?? n0);
     if (ex.assist) {
       const aw = top < 0 ? Math.min(0, nw) : nw;
       return {

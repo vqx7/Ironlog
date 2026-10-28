@@ -77,21 +77,24 @@ const TODAY = '2026-10-26';
     await log(twice('bench', [8, 12], 20, 9));
     const n = await suggest('bench', p812);
     ok(Math.abs(lb(n.w) - 45) < EPS && /45 lb is the nearest load in lb/.test(n.text), 'R-2. 20 kg bench (44.1 lb) x 9 on 10 lb steps: 45 lb, the nearest load in lb (r63: 50, "the nearest")', { lb: lb(n.w), text: n.text });
-    // Lighter day, deload and a return after six weeks: never more than last time's 20 kg, the bar itself here.
+    // Lighter day, deload and a return after six weeks: never more than last time's load, and never under the bar (CLAUDE.md,
+    // Numbers; tests/r54.js): 20 kg is under the 45 lb bar shown in lb, so the bar, 45, never 50.
     for (const [name, opts, back] of [['a Lighter day', { light: true }], ['a deload', { deload: true }], ['back after 6 weeks', {}, true]]) {
       await log(twice('bench', [8, 12], 20, 9, back));
       const x = await suggest('bench', p812, opts);
-      ok(x.w <= 20 + EPS, `R-2. 20 kg bench, ${name}: no more than last time's 44.1 lb (r63: 50)`, { lb: lb(x.w), text: x.text });
+      ok(Math.abs(lb(x.w) - 45) < EPS, `R-2. 20 kg bench, ${name}: the 45 lb bar, never under it and never 50 (r63: 50)`, { lb: lb(x.w), text: x.text });
     }
     // 57.5 kg (126.8 lb) on its own 10 lb step, every set at the top: one step is 136.8; the bar's grid has 135 and 145; 135 is the nearest and within the 10% cap (126.8 x 1.1 = 139.4).
     const p610 = { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 10 * LB };
     await log(twice('bench', [6, 10], 57.5, 10));
     const top = await suggest('bench', p610);
     ok(Math.abs(lb(top.w) - 135) < EPS, 'R-2. 57.5 kg bench (126.8 lb) x 10 x 3 on 10 lb steps: 135 lb, within 10% (r63: 140, +10.4%)', { lb: lb(top.w), text: top.text });
-    // A 44 kg kettlebell (97.0 lb) at the top of 8-12 on 10 lb steps: one step is 107.0, past the cap of 106.7 (97.0 x 1.1); 110 is past both, so 100, the step under, still above 97.
+    // A 44 kg kettlebell (97.0 lb) at the top of 8-12 on 10 lb steps: one step is 107.0, past the cap of 106.7 (97.0 x 1.1).
+    // Since NEW-6 (V, 2026-10-27) the whole step stays and is large for the load, so the reps build at 97 first, shown on
+    // the grid in lb as 100, the nearest load to what was done; never 110 in one session (r63).
     await log(twice('kbSwing', [8, 12], 44, 12));
     const kb = await suggest('kbSwing', p812);
-    ok(Math.abs(lb(kb.w) - 100) < EPS, 'R-2. 44 kg kettlebell (97 lb) x 12 x 3 on 10 lb steps: 100 lb, within 10% (r63: 110, +13.4%)', { lb: lb(kb.w), text: kb.text });
+    ok(Math.abs(lb(kb.w) - 100) < EPS && /100 lb is the nearest load in lb/.test(kb.text), 'R-2. 44 kg kettlebell (97 lb) x 12 x 3 on 10 lb steps: 100 lb, the nearest load in lb, within 10% (r63: 110, +13.4%)', { lb: lb(kb.w), text: kb.text });
   }
 
   // ---- R-3: back after six weeks off, V's decision 1.

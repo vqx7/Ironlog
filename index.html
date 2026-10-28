@@ -7287,7 +7287,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   function snapUnitIn(M3, ex, plan, res, down) {
     const G = res && res.w != null && !ex.timed ? plateGridIn(M3, ex, plan) : null;
     const out = G ? plateSnap(M3, ex, plan, res, G, down) : gridSnap(M3, ex, plan, unitSnap(M3, ex, plan, res, down));
-    if (!down || res.top == null || res.w == null || out.w == null || out.w <= res.top + EPS) return out;
+    if (!down || res.top == null || res.w == null || out.w == null || out.w <= Math.max(res.top, loadFloorIn(M3, ex)) + EPS)
+      return out;
     return Math.abs(res.w - res.top) < EPS ? res : swapWIn(M3, ex, res, res.top);
   }
   function plateGridIn(M3, ex, plan) {
@@ -7321,7 +7322,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (nw == null || Math.abs(nw - res.w) < EPS) return res;
     return moveIn(M3, ex, plan, res, nw, `the nearest load in ${UIn(M3)}`);
   }
-  function unitGridIn(M3, ex, plan, top, w2, down) {
+  function unitGridIn(M3, ex, plan, top, w2, down, whole) {
     if (ex.timed || gymRackIn(M3, ex, plan) || plateGridIn(M3, ex, plan)) return null;
     const st = inUnitIn(M3, incOfIn(M3, ex, plan));
     if (!(st > 0)) return null;
@@ -7346,7 +7347,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       const tot = top + bwK;
       const most = Math.max(x2, inUnitIn(M3, tot * jumpCap(ex, tot) - bwK));
       const under = at2(Math.floor((most - o3) / st + EPS));
-      if (d3 > most + EPS && under > tp + EPS) d3 = under;
+      if (d3 > most + EPS && under > tp + EPS && !(whole && under < tp + st - EPS)) d3 = under;
     }
     const cp = capOfIn(M3, ex, plan, top);
     return cp != null && kgOfIn(M3, d3) > cp + EPS ? null : kgOfIn(M3, d3);
@@ -7594,7 +7595,24 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const pre = exps.filter((x2) => x2.date < all[j3].date).pop();
     if (!pre) return null;
     const preTop = workLoad(pre.pts, +plan.repMin);
-    if (all.slice(j3, i5 + 1).some((x2) => x2.topW >= preTop - EPS_SAME)) return null;
+    const backAt = all.slice(j3, i5 + 1).filter((x2) => x2.topW >= preTop - EPS_SAME);
+    if (backAt.length) {
+      const at2 = triedAt(last, top);
+      const fewest = Math.min(...at2.map((p3) => p3.r));
+      if (backAt.length > 1 || backAt[0] !== last || !(top >= preTop - EPS_SAME) || at2.length >= +plan.sets || at2.some((p3) => p3.missed) || !(fewest >= +plan.repMin))
+        return null;
+      return {
+        top,
+        w: top,
+        text: `${lastS} Back at your load from before the break: ${lbl(top)} for ${fewest}+ reps in every set next.`,
+        lastR,
+        basis,
+        last: lastS,
+        target: `${lbl(top)} for ${fewest}+ reps in every set`,
+        tgt: { kind: "load", w: top, repMin: fewest, prevBest },
+        easier: null
+      };
+    }
     if (triedAt(last, top).some((p3) => p3.missed || p3.r < +plan.repMin)) return null;
     const bw = bwRefLoadIn(M3, ex);
     if (ex.bw && !(bw > 0)) return null;
@@ -7832,7 +7850,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const { ex, plan, top, cap, capW, topPts, planPts, lastR, lastS, basis, lbl, prevBest, tgtRir, tp } = C2;
     if (planPts.every((p3) => p3.r >= plan.repMax)) {
       const n0 = capW(top + progStepIn(M3, ex, plan, top + bwRefLoadIn(M3, ex), top));
-      const nw = ex.assist ? n0 : capW(unitGridIn(M3, ex, plan, top, n0) ?? n0);
+      const nw = ex.assist ? n0 : capW(unitGridIn(M3, ex, plan, top, n0, false, true) ?? n0);
       if (ex.assist) {
         const aw = top < 0 ? Math.min(0, nw) : nw;
         return {
@@ -24143,7 +24161,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>The first session of a close variation</b> (a hammer curl after DB curls, a front squat after back squats) starts from the related lift's last full session in the last ${KIN.days} days, when both use the same equipment, load, main muscle, and movement, with both arms or both legs at once. About ${pctOf(KIN.isolation)}% of its estimate (${pctOf(KIN.compound)}% on a compound lift), for the middle of the range with ${numWord(FATIGUE_RIR)} more rep in reserve, rounded down. Machines and cables start fresh, since two machines' numbers do not compare.</p>
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
    <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load. <b>Bodyweight lifts never done with added load</b> (push-ups, pull-ups, a hanging leg raise): more reps, then harder reps or a little added load when you type it; the app never adds load you did not use.</p>
-   <p><b>Back after more than ${BACK_DAYS / WEEK_DAYS} weeks off a lift</b>: about ${pctOf(LIGHT_SHARE)}% of its last working load, with ${BACK_RIR} or more reps in reserve (a convention). The ${BACK_DAYS / WEEK_DAYS} weeks is the app's convention for where a break begins: strength falls the longer a lift is left (Bosquet 2013). That first session back is the lift's new start: its trend and stall test start again from it, never drawn across the break. Until the lift is back at its load from before the break, each full session sets the next load: what its sets say fits your usual reps, never lower than the load you did and never past that load (a convention). Then the usual rules. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about ${pctOf(LIGHT_SHARE)}% as long.</p>
+   <p><b>Back after more than ${BACK_DAYS / WEEK_DAYS} weeks off a lift</b>: about ${pctOf(LIGHT_SHARE)}% of its last working load, with ${BACK_RIR} or more reps in reserve (a convention). The ${BACK_DAYS / WEEK_DAYS} weeks is the app's convention for where a break begins: strength falls the longer a lift is left (Bosquet 2013). That first session back is the lift's new start: its trend and stall test start again from it, never drawn across the break. Until the lift is back at its load from before the break, each full session sets the next load: what its sets say fits your usual reps, never lower than the load you did and never past that load (a convention). Back at it in fewer than your planned sets, the next session asks every set at it, for the fewest reps you did there. Then the usual rules. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about ${pctOf(LIGHT_SHARE)}% as long.</p>
    <p><b>Your gym</b> (Settings): the dumbbells, kettlebells, plates, and stack steps you have. Suggestions stay on them, and a weight you type for a dumbbell counts as the nearest one.</p>
    <p><b>New machine or gym</b> (in an exercise's ⋯ menu during a session): the lift starts over from that session, as from a first one, so another machine's loads give no target, PR, or best. Its trend, stalls, and dumbbell steps read from that session on; earlier sessions stay in History and its chart. Tap it again before Finish to take it off.</p>
    <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the ${numWord(USUAL_BEFORE)} before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks, and in a session on a day of your routine they are the sets the plan gave the lift that day, once a session has done that many, so fewer sets than planned never become the usual there. Each session keeps the plan it was done to, so a plan changed later never rereads the sessions before it; sessions saved before version 2.12 read their own sets. A set counts toward them when its load is within ${shareWords(1 - LIGHTER_LOAD)} of the session's working load, or at the usual load (a convention): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set ${shareWords(1 - LIGHTER_LOAD)} or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than ${pctOf(1 - USUAL_SHARE)}% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the ${numWord(USUAL_BEFORE)} before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
