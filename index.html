@@ -10796,6 +10796,9 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   };
   var RETRY_S = [5, 15, 60, 180];
   var SIGNIN_AGAIN = "Your sign-in has expired. Sign in again to sync. Your log stays on this phone.";
+  function signInAgain() {
+    fx.toast(SIGNIN_AGAIN, null, SYNC_MS.errToast);
+  }
   var offline = () => navigator.onLine === false;
   var DOC_MAX = 25e4;
   var KEEP_TRIES = 10;
@@ -11058,7 +11061,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
           A2.signOut().catch((x2) => {
             log("auth", x2);
           });
-        fx.toast(SIGNIN_AGAIN, null, SYNC_MS.errToast);
+        signInAgain();
       }
       fx.render();
       return;
@@ -20265,11 +20268,13 @@ ${JSON.stringify(ctx, null, 1)}`;
         else if (cloud.status === "offline") resume();
       }
       if (ev === "SIGNED_OUT" && cloud.on && !window.claude) cloudStop();
+      if (ev === "SIGNED_OUT" && A2.refused && A2.refused()) signInAgain();
       if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") fbCheckReader();
       acctRerender();
     });
     acct.user = await A2.user();
     acct.checked = true;
+    if (!acct.user && A2.refused && A2.refused()) signInAgain();
     fbCheckReader();
     const L2 = A2.landing;
     if (L2 && L2.error) {

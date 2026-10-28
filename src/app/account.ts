@@ -16,7 +16,17 @@
 import { APP_NAME, NET_MS } from './config';
 import { ACCT_LATER, OB_ACCT, OB_OUT, KEY, log, prefDel, prefGet, prefSet, undoForget } from './storage';
 import { parseJson, rec } from './records';
-import { cloudDecided, cloudFlush, cloudInit, cloudPull, cloudStop, cq, hasUnsent, withTimeout } from './sync';
+import {
+  cloudDecided,
+  cloudFlush,
+  cloudInit,
+  cloudPull,
+  cloudStop,
+  cq,
+  hasUnsent,
+  signInAgain,
+  withTimeout
+} from './sync';
 import { normalize } from './normalize';
 import { acct, cloud, setState, state, ui } from './store';
 import type { AccountModal, AcctMode } from './modals';
@@ -221,11 +231,16 @@ export async function acctInit(): Promise<void> {
       else if (cloud.status === 'offline') resume();
     }
     if (ev === 'SIGNED_OUT' && cloud.on && !window.claude) cloudStop();
+    if (ev === 'SIGNED_OUT' && A.refused && A.refused()) signInAgain();
     if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') fbCheckReader();
     acctRerender();
   });
   acct.user = await A.user();
   acct.checked = true;
+  /* The phone opened signed in and the server refused the sign-in as the
+     account library refreshed it: the library signed the phone out itself,
+     and before r65 nothing said so (the r63 audit's NEW-3). The log stays. */
+  if (!acct.user && A.refused && A.refused()) signInAgain();
   fbCheckReader();
   const L = A.landing;
   if (L && L.error) {

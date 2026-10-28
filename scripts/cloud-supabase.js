@@ -92,6 +92,21 @@
      (r64, F3: a phone not yet set up showed only the logo for over 45 s). */
   let started = false, waitedOut = false;
   sb.auth.initialize().then(() => { started = true; }, () => { started = true; });
+  /* A sign-out this phone makes (Sign out, Delete my account, a sign-in the
+     server refused during a sync) is marked with its time, where every tab
+     of the app reads it. One the library makes itself, when the server
+     refuses a sign-in it was refreshing, is not, and that is how the app
+     tells the two apart: before r65 the phone read signed out with nothing
+     said (the r63 audit's NEW-3). A sign-out in another tab reaches this one
+     within moments, so a mark a minute old is no longer this phone's. */
+  const OUT_KEY = AUTH_KEY + '.out';
+  const OUT_MS = 60000;
+  const markOut = () => {
+    try { localStorage.setItem(OUT_KEY, String(Date.now())); } catch (e) { /* storage blocked: no sign-in is kept here either */ }
+  };
+  // Whether this phone has had a sign-in since the page opened: the one kept at the start, or one made since.
+  let had = !!kept();
+  sb.auth.onAuthStateChange((ev, s) => { if (s && s.user) had = true; });
   function answered(p) {
     if (!started && waitedOut) return Promise.reject(late());
     let t;
@@ -242,6 +257,7 @@
        kept on this phone goes either way. */
     async signOut() {
       hold = false;
+      markOut();
       await answered(sb.auth.signOut({ scope: 'local' })).catch(() => {
         // No answer in time: this phone signs out all the same, below.
       });
@@ -270,6 +286,7 @@
         throw friendly(error);
       }
       if (!data || !data.deleted) throw Object.assign(new Error('The account was not deleted. Try again.'), { code: 'error' });
+      markOut();
       try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* the account is already gone */ }
       hold = false;
     },
@@ -277,6 +294,16 @@
        after a confirmation link, or the link opened where the app waits for
        it): let it sync. */
     release() { hold = false; },
+    /* Whether the sign-in this phone had is gone and the phone did not sign
+       out itself: the server refused it (r65, NEW-3). True once, then false
+       until there is a sign-in again. */
+    refused() {
+      if (!had || kept()) return false;
+      had = false;
+      let t = 0;
+      try { t = +localStorage.getItem(OUT_KEY) || 0; } catch (e) { /* storage blocked: no mark to read */ }
+      return !(Date.now() - t < OUT_MS);
+    },
     /* cb(event, user): INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, PASSWORD_RECOVERY, TOKEN_REFRESHED, USER_UPDATED.
        A sign-in the library could not refresh for want of an answer is still
        this phone's (signedIn above): its start reports it with no session. */
