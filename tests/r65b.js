@@ -8,12 +8,15 @@
 //   N1  opened with an expired sign-in the server refuses: "Sign in again to
 //       sync" once, signed out, the log kept;
 //   N2  Sign out on this phone: no "Sign in again" (a guard);
-//   N3  Sign out in another tab: this tab says nothing either (a guard);
+//   N3  Sign out in another tab: this tab says nothing either (a guard), also
+//       when it hears of it over a minute later (N3b, a phone's background tab);
 //   N4  a sign-in refused during a sync says it once, not twice (a guard on
 //       r64's F10, which also signs the phone out);
 //   N5  opened with an expired sign-in whose refresh gets no answer: still
 //       signed in, nothing said (a guard);
-//   N6  a phone never signed in, reopened: nothing said (a guard).
+//   N6  a phone never signed in, reopened: nothing said (a guard);
+//   N7  signed out of one account and into another that the server then
+//       refuses as the phone opens: said, once (the mark is the first's).
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -162,6 +165,39 @@ const AGAIN = /Sign in again to sync/;
     await D.close();
   })();
 
+  // ---- N3b: Sign out in another tab, heard over a minute later (a phone's background tab, resumed).
+  const n3b = (async () => {
+    const ok = report('N3b: Sign out in another tab, heard late (a guard)');
+    const D = await signedIn(ok, 'late@example.com');
+    // The second tab's messages from the other tabs wait while it is away, and arrive when it is back, as a suspended tab's do.
+    await D.ctx.addInitScript(() => {
+      window.__held = []; window.__hold = false;
+      const Orig = window.BroadcastChannel;
+      window.BroadcastChannel = class extends Orig {
+        constructor(name) {
+          super(name); this.__ls = [];
+          super.addEventListener('message', ev => { if (window.__hold) window.__held.push([this, ev]); else for (const l of this.__ls) l.call(this, ev); });
+        }
+        addEventListener(type, fn, o) { if (type === 'message') this.__ls.push(fn); else super.addEventListener(type, fn, o); }
+      };
+      window.__release = () => { window.__hold = false; for (const [ch, ev] of window.__held.splice(0)) for (const l of ch.__ls) l.call(ch, ev); };
+    });
+    const B = await tabOf(D.ctx);
+    await until(async () => (await B.user()) === 'late@example.com', 10000);
+    await B.ev(() => { window.__hold = true; });
+    const t = Date.now();
+    await D.ev(() => window.__ironlog.ACT.acctSignOut({ dataset: {} }));
+    await D.page.waitForSelector('#modal [data-act="mOk"]', { timeout: 5000 }).then(() => D.page.click('#modal [data-act="mOk"]')).catch(() => {});
+    await until(async () => !(await D.user()), 10000);
+    await wait(65000);
+    await B.ev(() => window.__release());
+    await until(async () => !(await B.user()), 10000);
+    await wait(3000);
+    ok(!(await B.again(t)).length, 'the other tab, hearing of the sign-out 65 s later, says nothing (a mark of the sign-out, not a minute\'s grace)', await B.toasts());
+    ok(!D.st.errors.length && !B.st.errors.length, 'no page errors', [...D.st.errors, ...B.st.errors].slice(0, 3));
+    await D.close();
+  })();
+
   // ---- N4: a sign-in refused during a sync says so once.
   const n4 = (async () => {
     const ok = report('N4: a sign-in refused during a sync, once (a guard on F10)');
@@ -174,6 +210,28 @@ const AGAIN = /Sign in again to sync/;
     await wait(4000);
     ok((await D.again(t)).length === 1, 'the refusal met by a sync: "Sign in again" once, not again as the phone is signed out', { toasts: await D.toasts() });
     ok(await D.has('w-mid2'), 'the weigh-in stays on the phone');
+    ok(!D.st.errors.length, 'no page errors', D.st.errors.slice(0, 3));
+    await D.close();
+  })();
+
+  // ---- N7: signed out of one account, into another, and that one refused as the phone opens, all within a minute.
+  const n7 = (async () => {
+    const ok = report('N7: another account, refused just after a sign-out');
+    const D = await signedIn(ok, 'first@example.com');
+    await D.ev(() => window.__ironlog.ACT.acctSignOut({ dataset: {} }));
+    await D.page.waitForSelector('#modal [data-act="mOk"]', { timeout: 5000 }).then(() => D.page.click('#modal [data-act="mOk"]')).catch(() => {});
+    await until(async () => !(await D.user()), 10000);
+    fake.addUser('second@example.com', PW);
+    await D.signIn('second@example.com'); await D.synced();
+    await D.weigh(wid('second@example.com')); await D.ev(() => window.__ironlog.flush()); await D.synced();
+    await D.ctx.route(REFRESH, REFUSE);
+    await D.expire('second@example.com');
+    const t = Date.now();
+    await D.reload();
+    await until(async () => (await D.again(t)).length > 0, 15000);
+    await wait(3000);
+    ok((await D.again(t)).length === 1 && !(await D.user()), 'the second account refused as the phone opens: said once, though the first was signed out a moment before (the mark is the first account\'s)', { toasts: await D.toasts() });
+    ok(await D.has(wid('second@example.com')), 'the log stays on the phone');
     ok(!D.st.errors.length, 'no page errors', D.st.errors.slice(0, 3));
     await D.close();
   })();
@@ -206,7 +264,7 @@ const AGAIN = /Sign in again to sync/;
     await D.close();
   })();
 
-  await Promise.all([n1, n2, n3, n4, n5, n6].map(p => p.catch(e => { results.push({ name: 'a case threw', lines: [[false, String(e && e.stack || e)]] }); })));
+  await Promise.all([n1, n2, n3, n3b, n4, n5, n6, n7].map(p => p.catch(e => { results.push({ name: 'a case threw', lines: [[false, String(e && e.stack || e)]] }); })));
   let fails = 0;
   for (const r of results) {
     console.log('# ' + r.name);

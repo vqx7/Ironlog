@@ -93,20 +93,27 @@
   let started = false, waitedOut = false;
   sb.auth.initialize().then(() => { started = true; }, () => { started = true; });
   /* A sign-out this phone makes (Sign out, Delete my account, a sign-in the
-     server refused during a sync) is marked with its time, where every tab
-     of the app reads it. One the library makes itself, when the server
-     refuses a sign-in it was refreshing, is not, and that is how the app
-     tells the two apart: before r65 the phone read signed out with nothing
-     said (the r63 audit's NEW-3). A sign-out in another tab reaches this one
-     within moments, so a mark a minute old is no longer this phone's. */
+     server refused during a sync) is marked with whose sign-in it ended and
+     when, where every tab of the app reads it. One the library makes itself,
+     when the server refuses a sign-in it was refreshing, is not, and that is
+     how the app tells the two apart: before r65 the phone read signed out
+     with nothing said (the r63 audit's NEW-3). A tab knows the sign-in it
+     has, whose it is and since when; a sign-in gone without a mark for it
+     made since then was refused. No time limit: a tab that hears of another
+     tab's sign-out late (a phone's background tab, resumed) still finds the
+     mark. */
   const OUT_KEY = AUTH_KEY + '.out';
-  const OUT_MS = 60000;
+  let known = null, gone = null;
+  const seeUser = id => { if (!known || known.id !== id) known = { id, since: Date.now() }; };
+  { const k = kept(); if (k) seeUser(k.id); }
+  sb.auth.onAuthStateChange((ev, s) => {
+    if (s && s.user) seeUser(s.user.id);
+    else if (ev === 'SIGNED_OUT' && known) { gone = known; known = null; }
+  });
   const markOut = () => {
-    try { localStorage.setItem(OUT_KEY, String(Date.now())); } catch (e) { /* storage blocked: no sign-in is kept here either */ }
+    const k = kept() || known;
+    try { localStorage.setItem(OUT_KEY, JSON.stringify({ id: k ? k.id : '', t: Date.now() })); } catch (e) { /* storage blocked: no sign-in is kept here either */ }
   };
-  // Whether this phone has had a sign-in since the page opened: the one kept at the start, or one made since.
-  let had = !!kept();
-  sb.auth.onAuthStateChange((ev, s) => { if (s && s.user) had = true; });
   function answered(p) {
     if (!started && waitedOut) return Promise.reject(late());
     let t;
@@ -294,15 +301,17 @@
        after a confirmation link, or the link opened where the app waits for
        it): let it sync. */
     release() { hold = false; },
-    /* Whether the sign-in this phone had is gone and the phone did not sign
-       out itself: the server refused it (r65, NEW-3). True once, then false
-       until there is a sign-in again. */
+    /* Whether the sign-in this tab had is gone with no sign-out of it marked
+       since this tab first had it: the server refused it (r65, NEW-3). True
+       once, then false until there is a sign-in again. */
     refused() {
-      if (!had || kept()) return false;
-      had = false;
-      let t = 0;
-      try { t = +localStorage.getItem(OUT_KEY) || 0; } catch (e) { /* storage blocked: no mark to read */ }
-      return !(Date.now() - t < OUT_MS);
+      if (kept()) return false;
+      const was = known || gone;
+      known = null; gone = null;
+      if (!was) return false;
+      let m = null;
+      try { m = JSON.parse(localStorage.getItem(OUT_KEY) || 'null'); } catch (e) { /* no mark to read: none was made */ }
+      return !(m && m.id === was.id && +m.t >= was.since);
     },
     /* cb(event, user): INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, PASSWORD_RECOVERY, TOKEN_REFRESHED, USER_UPDATED.
        A sign-in the library could not refresh for want of an answer is still
