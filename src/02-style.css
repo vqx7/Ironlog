@@ -110,6 +110,102 @@
 :root[data-accent="ember"][data-theme="dark"]{--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
 :root[data-accent="pink"][data-theme="dark"]{--volt:#ec4899;--on-volt:#0b0c0e;--volt-line:#f472b6;--volt-soft:#3a0f25}
 *,*::before,*::after{box-sizing:inherit}
+/* One-off spacing and layout for single elements (r65, the r63 audit's A-9),
+   which sat in 342 style attributes in the screens' markup. Each class does
+   what its style attribute did, and wins as that attribute did: over every
+   ordinary rule, so !important, and under every !important rule below, which
+   all come after it with as much specificity. A class here is named from
+   what it sets (u-mt8 is margin-top:8px) and used where that was typed;
+   tests/hygiene.js refuses a style attribute with fixed text in src/app/. */
+.u-aiend{align-items:end!important}
+.u-aistart_fwrnw{align-items:flex-start!important;flex-wrap:nowrap!important}
+.u-asflex-end{align-self:flex-end!important}
+.u-b0_p0{border:0!important;padding:0!important}
+.u-bggreen_op34{background:var(--green)!important;opacity:.34!important}
+.u-bgink_op55{background:var(--ink)!important;opacity:.55!important}
+.u-cblue_mt6{color:var(--blue)!important;margin-top:6px!important}
+.u-cred{color:var(--red)!important}
+.u-cred_m0{color:var(--red)!important;margin:0!important}
+.u-cred_m8-0-0{color:var(--red)!important;margin:8px 0 0!important}
+.u-cred_mt8{color:var(--red)!important;margin-top:8px!important}
+.u-cyellow{color:var(--yellow)!important}
+.u-cyellow_mt6{color:var(--yellow)!important;margin-top:6px!important}
+.u-dblock{display:block!important}
+.u-diflex_aicenter_minh44{display:inline-flex!important;align-items:center!important;min-height:44px!important}
+.u-f1{flex:1!important}
+.u-f1_m0{flex:1!important;margin:0!important}
+.u-fnone_g4{flex:none!important;gap:4px!important}
+.u-font700n20-display_m6-0-0{font:700 20px var(--display)!important;margin:6px 0 0!important}
+.u-fw400{font-weight:400!important}
+.u-fwrnw_aistart{flex-wrap:nowrap!important;align-items:flex-start!important}
+.u-fwrnw_g10{flex-wrap:nowrap!important;gap:10px!important}
+.u-g6_aicenter{gap:6px!important;align-items:center!important}
+.u-g6_fnone{gap:6px!important;flex:none!important}
+.u-h12_van1{height:12px!important;vertical-align:-1px!important}
+.u-h14_van2{height:14px!important;vertical-align:-2px!important}
+.u-lsnone_m0_p0{list-style:none!important;margin:0!important;padding:0!important}
+.u-lsnone_m8-0-0_p0{list-style:none!important;margin:8px 0 0!important;padding:0!important}
+.u-m0{margin:0!important}
+.u-m0-0-4{margin:0 0 4px!important}
+.u-m0-0-6{margin:0 0 6px!important}
+.u-m0-0-6_fw600{margin:0 0 6px!important;font-weight:600!important}
+.u-m0-0-8{margin:0 0 8px!important}
+.u-m0-0n10{margin:0 0 10px!important}
+.u-m0-0n12{margin:0 0 12px!important}
+.u-m0_cyellow{margin:0!important;color:var(--yellow)!important}
+.u-m0_f1n1n180{margin:0!important;flex:1 1 180px!important}
+.u-m0_minw0_owany{margin:0!important;min-width:0!important;overflow-wrap:anywhere!important}
+.u-m10-0{margin:10px 0!important}
+.u-m10-0-0{margin:10px 0 0!important}
+.u-m10-0-0_tacenter{margin:10px 0 0!important;text-align:center!important}
+.u-m10-0-4{margin:10px 0 4px!important}
+.u-m12-0-0{margin:12px 0 0!important}
+.u-m12-0-4_fw650{margin:12px 0 4px!important;font-weight:650!important}
+.u-m14-0-0{margin:14px 0 0!important}
+.u-m14-0-6{margin:14px 0 6px!important}
+.u-m2-0{margin:2px 0!important}
+.u-m2-0-0{margin:2px 0 0!important}
+.u-m2-0-0_owany{margin:2px 0 0!important;overflow-wrap:anywhere!important}
+.u-m4-0-0{margin:4px 0 0!important}
+.u-m4-0-0_wsprew_owany{margin:4px 0 0!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important}
+.u-m4-0-6{margin:4px 0 6px!important}
+.u-m4n12-0{margin:4px 12px 0!important}
+.u-m5-0-0{margin:5px 0 0!important}
+.u-m6-0{margin:6px 0!important}
+.u-m6-0-0{margin:6px 0 0!important}
+.u-m6-0-0_cyellow{margin:6px 0 0!important;color:var(--yellow)!important}
+.u-m6-0-0_dflex_fwrwrap_g4{margin:6px 0 0!important;display:flex!important;flex-wrap:wrap!important;gap:4px!important}
+.u-m6-0-0_pl18{margin:6px 0 0!important;padding-left:18px!important}
+.u-m6-0-0_tdnone_taleft{margin:6px 0 0!important;text-decoration:none!important;text-align:left!important}
+.u-m8-0-0{margin:8px 0 0!important}
+.u-m8-0n2_fw650{margin:8px 0 2px!important;font-weight:650!important}
+.u-mb0{margin-bottom:0!important}
+.u-mb10{margin-bottom:10px!important}
+.u-minh110{min-height:110px!important}
+.u-minh160_fs12{min-height:160px!important;font-size:12px!important}
+.u-minh160_fs14{min-height:160px!important;font-size:14px!important}
+.u-minh220_fs13{min-height:220px!important;font-size:13px!important}
+.u-minh44{min-height:44px!important}
+.u-minw0{min-width:0!important}
+.u-minw0_f1{min-width:0!important;flex:1!important}
+.u-minw0_f1n1-auto{min-width:0!important;flex:1 1 auto!important}
+.u-mlauto{margin-left:auto!important}
+.u-mlauto_fnone{margin-left:auto!important;flex:none!important}
+.u-mt10{margin-top:10px!important}
+.u-mt12{margin-top:12px!important}
+.u-mt14{margin-top:14px!important}
+.u-mt6{margin-top:6px!important}
+.u-mt6_aiend{margin-top:6px!important;align-items:end!important}
+.u-mt6_g4{margin-top:6px!important;gap:4px!important}
+.u-mt8{margin-top:8px!important}
+.u-mt8_cred{margin-top:8px!important;color:var(--red)!important}
+.u-owany_minw0{overflow-wrap:anywhere!important;min-width:0!important}
+.u-p0n10n12{padding:0 10px 12px!important}
+.u-p6-0_bb1-solid-line{padding:6px 0!important;border-bottom:1px solid var(--line)!important}
+.u-posabs_w1_h1_o0{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important}
+.u-posrel{position:relative!important}
+.u-taright_fnone{text-align:right!important;flex:none!important}
+.u-w70{width:70px!important}
 [hidden]{display:none!important}
 /* Content inside <details> is rendered through the browser's own shadow slot,
    which the rule above cannot reach, so padded inputs stuck out of their card. */

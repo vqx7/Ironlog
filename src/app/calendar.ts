@@ -113,7 +113,7 @@ export function calBody(ym: string, inline: boolean): TemplateResult {
     inline ? '' : html`<button class="ib" aria-label="Close" data-act="mClose">✕</button>`
   }</div>
 <div class="cal-g">${DAYS.map(d => html`<span class="wd">${d.slice(0, 2)}</span>`)}${Array.from({ length: lead }, () => html`<span></span>`)}${cells}</div>
-<div class="row spread" style="margin-top:10px"><p class="small muted" style="margin:0">${
+<div class="row spread u-mt10"><p class="small muted u-m0">${
     ym > cur
       ? planWords(Object.keys(plan).length)
       : `${n ? `${n} session${n === 1 ? '' : 's'}` : 'No sessions'}${ym === cur ? ' so far' : ''}`

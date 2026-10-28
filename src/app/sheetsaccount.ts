@@ -34,20 +34,20 @@ export function menuSheet(m: { first?: true | undefined }): TemplateResult {
   const st = saveStateNow();
   const dot = st.cls ? html`<span class=${'mdot ' + st.cls} aria-hidden="true"></span>` : nothing;
   const acc = u
-    ? html`<div class="row spread" style="flex-wrap:nowrap;gap:10px"><div style="min-width:0"><p class="small muted" style="margin:0">Signed in as</p><p style="margin:2px 0 0;overflow-wrap:anywhere"><b>${u.email}</b></p></div><button class="btn sm" data-act="acctSignOut">Sign out</button></div>
-    <p class="small" style="margin:8px 0 0">${dot}${cloud.on ? st.txt : 'Not syncing right now.'}${cloud.on ? nothing : html` <button class="linkbtn" data-act="acctRetry">Try again</button>`}</p>`
+    ? html`<div class="row spread u-fwrnw_g10"><div class="u-minw0"><p class="small muted u-m0">Signed in as</p><p class="u-m2-0-0_owany"><b>${u.email}</b></p></div><button class="btn sm" data-act="acctSignOut">Sign out</button></div>
+    <p class="small u-m8-0-0">${dot}${cloud.on ? st.txt : 'Not syncing right now.'}${cloud.on ? nothing : html` <button class="linkbtn" data-act="acctRetry">Try again</button>`}</p>`
     : A
-      ? html`<p style="margin:0"><b>Not signed in.</b> Your log is on this phone only.</p><div class="row" style="margin-top:10px"><button class="btn primary" data-act="acctOpen" data-mode="signin">Sign in</button><button class="btn" data-act="acctOpen" data-mode="signup">Create account</button></div>`
-      : html`<p class="small" style="margin:0">${dot}${st.txt}</p>`;
+      ? html`<p class="u-m0"><b>Not signed in.</b> Your log is on this phone only.</p><div class="row u-mt10"><button class="btn primary" data-act="acctOpen" data-mode="signin">Sign in</button><button class="btn" data-act="acctOpen" data-mode="signup">Create account</button></div>`
+      : html`<p class="small u-m0">${dot}${st.txt}</p>`;
   const due = backupDue()
-    ? html`<div class="callout yellow row spread" style="margin:10px 0 0"><span class="small"><b>Backup due.</b></span><button class="btn sm" data-act="export">Export backup</button></div>`
+    ? html`<div class="callout yellow row spread u-m10-0-0"><span class="small"><b>Backup due.</b></span><button class="btn sm" data-act="export">Export backup</button></div>`
     : nothing;
   const item = (act: string, label: string, cat?: string) =>
     html`<button type="button" class="mnu" data-act=${act} data-cat=${cat || nothing}><span>${label}</span><span aria-hidden="true">›</span></button>`;
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h"><h3 id="menuH">${ENV === 'preview' ? PREVIEW_NAME : APP_NAME}</h3>${closeX()}</div>
   <div class="panel" id="menuAcct">${acc}</div>${due}
   <div class="mnus">${item('fbOpen', 'Report a problem', 'bug')}${acct.reader && FB() ? item('fbInbox', 'Reports inbox') : nothing}${item('guideOpen', 'Guide')}${m.first ? nothing : html`${item('goLayout', 'Show, hide, or reorder sections')}${item('goBackup', 'Your data and backups')}`}</div>
-  <p class="small muted" style="margin:12px 0 0">Version ${DISPLAY_VERSION}</p></div>`;
+  <p class="small muted u-m12-0-0">Version ${DISPLAY_VERSION}</p></div>`;
 }
 
 /* ---------- problem reports (PENDING 58, reworked in r25) ----------
@@ -65,16 +65,16 @@ export function fbSheet(m: FeedbackModal): TemplateResult {
   const head = (t: string) => html`<div class="sheet-h"><h3 id="fbH">${t}</h3>${closeX()}</div>`;
   const u = acct.user;
   if (m.sent)
-    return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(m.copied ? 'Copied' : 'Sent')}<p style="margin:0">${m.copied ? 'Paste it in a message to the app owner.' : u ? `Thanks. Any reply goes to ${u.email}.` : 'Thanks.'}</p><button type="button" class="btn primary block" style="margin-top:14px" data-act="mClose">Done</button></div>`;
+    return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(m.copied ? 'Copied' : 'Sent')}<p class="u-m0">${m.copied ? 'Paste it in a message to the app owner.' : u ? `Thanks. Any reply goes to ${u.email}.` : 'Thanks.'}</p><button type="button" class="btn primary block u-mt14" data-act="mClose">Done</button></div>`;
   const F = FB();
   const cat = FB_TITLE[m.cat] ? m.cat : 'bug';
   const kinds = html`<div class="fbkind" role="group" aria-label="Kind">${FB_CATS.map(([k, l]) => html`<button type="button" class=${cat === k ? 'on' : ''} data-act="fbCat" data-v=${k} aria-pressed=${String(cat === k)}>${l}</button>`)}</div>`;
   // Signed out where reports exist: sign in first (the copy stays for a message).
   if (F && !u)
     return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(FB_TITLE[cat] || '')}
-    <p style="margin:0 0 12px">Sign in to send a report, so a reply can reach you.</p>
+    <p class="u-m0-0n12">Sign in to send a report, so a reply can reach you.</p>
     <div class="stack"><button type="button" class="btn primary block" data-act="acctOpen" data-mode="signin">Sign in</button><button type="button" class="btn block" data-act="acctOpen" data-mode="signup">Create account</button></div>
-    <p class="small muted" style="margin:12px 0 0">No account? <button type="button" class="linkbtn" data-act="fbCopy">Copy the details</button> and send them to the app owner.</p></div>`;
+    <p class="small muted u-m12-0-0">No account? <button type="button" class="linkbtn" data-act="fbCopy">Copy the details</button> and send them to the app owner.</p></div>`;
   // The count is the span's text, set whole (reportInput sets it as each letter is typed), so no part of it is lit-html's to keep.
   const n = String(m.msg || '').length;
   // Only the app's own JPEG data URL is ever shown (r44 security review): m.shot comes from fbShrink's canvas, and the check keeps it so if that changes.
@@ -85,9 +85,9 @@ export function fbSheet(m: FeedbackModal): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(FB_TITLE[cat] || '')}<div class="stack">
   ${kinds}
   <label class="field">${FB_ASK[cat]}<textarea data-fbind="msg" maxlength=${FB_MAX} rows="5" placeholder=${FB_HINT[cat] || ''}>${m.msg || ''}</textarea><span class="fbcount small muted" id="fbCount" aria-live="polite" .textContent=${`${n} / ${FB_MAX}`}></span></label>
-  <div><p class="small muted" style="margin:0 0 6px">Screenshot, optional. One image, up to ${FB_IMG_MB} MB.</p><div class="row">${shot}</div></div>
-  <p class="small muted" style="margin:0">${u ? `Replies go to ${u.email}. ` : ''}Device details are added, never your workouts. ${tipButton(FB_WHAT, 'What is attached')}</p>
-  ${m.err ? html`<p class="small" role="alert" style="color:var(--red);margin:0">${m.err}</p>` : nothing}
+  <div><p class="small muted u-m0-0-6">Screenshot, optional. One image, up to ${FB_IMG_MB} MB.</p><div class="row">${shot}</div></div>
+  <p class="small muted u-m0">${u ? `Replies go to ${u.email}. ` : ''}Device details are added, never your workouts. ${tipButton(FB_WHAT, 'What is attached')}</p>
+  ${m.err ? html`<p class="small u-cred_m0" role="alert">${m.err}</p>` : nothing}
   <button type="button" class="btn primary block" data-act="fbSend" ?disabled=${!!m.busy}>${m.busy ? 'Sending' : F ? 'Send' : 'Copy report'}</button></div></div>`;
 }
 
@@ -103,22 +103,22 @@ function fbItem(x: FbItem): TemplateResult {
       : nothing;
   const ticket =
     x.issue_url && x.issue_url.startsWith(TICKETS_AT)
-      ? html`<p class="small" style="margin:4px 0 0"><a href=${x.issue_url} target="_blank" rel="noopener">GitHub issue</a></p>`
+      ? html`<p class="small u-m4-0-0"><a href=${x.issue_url} target="_blank" rel="noopener">GitHub issue</a></p>`
       : nothing;
-  return html`<li><div style="min-width:0;flex:1"><p class="small" style="margin:0"><span class=${'tag ' + (TAG[String(x.category)] || 'blue')}>${String(x.category)}</span> <span class="muted">${String(
+  return html`<li><div class="u-minw0_f1"><p class="small u-m0"><span class=${'tag ' + (TAG[String(x.category)] || 'blue')}>${String(x.category)}</span> <span class="muted">${String(
     x.created_at || ''
   )
     .slice(0, STAMP_CHARS)
     .replace(
       'T',
       ' '
-    )}${x.reply_to ? ` · ${x.reply_to}` : ''}</span></p><p style="margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere">${String(x.message)}</p>${shot}${ticket}<details class="small muted"><summary>Attached by the app</summary><pre class="fbctx">${JSON.stringify(x.context || {}, null, 1)}</pre></details></div></li>`;
+    )}${x.reply_to ? ` · ${x.reply_to}` : ''}</span></p><p class="u-m4-0-0_wsprew_owany">${String(x.message)}</p>${shot}${ticket}<details class="small muted"><summary>Attached by the app</summary><pre class="fbctx">${JSON.stringify(x.context || {}, null, 1)}</pre></details></div></li>`;
 }
 /** The owner's inbox: the reports, newest first, read-only. */
 export function fbInboxSheet(m: { items: FbItem[] | null; err?: string | undefined }): TemplateResult {
   const it = m.items;
   const body = m.err
-    ? html`<p class="small" role="alert" style="color:var(--red)">${m.err}</p>`
+    ? html`<p class="small u-cred" role="alert">${m.err}</p>`
     : !it
       ? html`<p class="muted">Loading</p>`
       : !it.length
@@ -151,7 +151,7 @@ export function acctSheet(m: AccountModal): TemplateResult {
   const pw = (label: string, ac: string, min: boolean) =>
     html`<label class="field">${label}<input type="password" data-abind="pw" .value=${live(m.pw || '')} autocomplete=${ac} minlength=${min ? '8' : nothing} enterkeyhint="go"></label>`;
   // The error line is always there, hidden when empty, so the sheet keeps its shape when one is said (r54).
-  const err = html`<p class="small" role="alert" style="color:var(--red);margin:0" ?hidden=${!m.err}>${m.err || ''}</p>`;
+  const err = html`<p class="small u-cred_m0" role="alert" ?hidden=${!m.err}>${m.err || ''}</p>`;
   const go = (label: string) =>
     html`<button type="submit" class="btn primary block" data-act="acctSubmit" ?disabled=${!!m.busy}>${m.busy ? BUSY[m.mode] || 'One moment' : label}</button>`;
   const link = (mode: AcctMode, label: string) =>
@@ -169,16 +169,16 @@ export function acctSheet(m: AccountModal): TemplateResult {
     m.mode === 'signin'
       ? html`${email}${pw('Password', 'current-password', false)}${err}${m.needCode ? codeField(m) : nothing}${go('Sign in')}<div class="row spread">${link('forgot', 'Forgot password?')}${link('signup', 'Create an account')}</div>`
       : m.mode === 'signup'
-        ? html`${email}${pw('Password (8 or more characters)', 'new-password', true)}${err}${go('Create account')}<p class="small muted" style="margin:0">We email you a link and a code to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link('signin', 'I have an account')}</div>`
+        ? html`${email}${pw('Password (8 or more characters)', 'new-password', true)}${err}${go('Create account')}<p class="small muted u-m0">We email you a link and a code to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link('signin', 'I have an account')}</div>`
         : m.mode === 'forgot'
-          ? html`${email}${err}${go('Email me a reset link')}<p class="small muted" style="margin:0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link('signin', 'Back to sign in')}</div>`
+          ? html`${email}${err}${go('Email me a reset link')}<p class="small muted u-m0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link('signin', 'Back to sign in')}</div>`
           : m.mode === 'newpw'
             ? html`${pw('New password (8 or more characters)', 'new-password', true)}${err}${go('Save new password')}`
             : m.mode === 'wait'
-              ? html`<p style="margin:0">We sent a confirmation email to <b>${m.email || ''}</b>. Type its code here, or tap its link and come back: ${APP_NAME} signs you in by itself.</p>${codeField(m)}<p class="small muted waitline" style="margin:0" aria-live="polite">${m.busy ? 'Checking' : 'Waiting for the confirmation'}</p>${err}<button type="button" class="btn block" data-act="acctWaitNow" ?disabled=${!!m.busy}>I have confirmed</button><div class="row">${link('signup', 'Use a different email')}</div>`
+              ? html`<p class="u-m0">We sent a confirmation email to <b>${m.email || ''}</b>. Type its code here, or tap its link and come back: ${APP_NAME} signs you in by itself.</p>${codeField(m)}<p class="small muted waitline u-m0" aria-live="polite">${m.busy ? 'Checking' : 'Waiting for the confirmation'}</p>${err}<button type="button" class="btn block" data-act="acctWaitNow" ?disabled=${!!m.busy}>I have confirmed</button><div class="row">${link('signup', 'Use a different email')}</div>`
               : m.mode === 'where'
-                ? html`<p style="margin:0">Where do you use ${APP_NAME}?</p><button type="button" class="btn primary block" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn block" data-act="acctWhere" data-v="here">Here in this browser</button>`
-                : html`<p style="margin:0">${m.msg || ''}</p><button type="button" class="btn primary block" data-act="mClose">OK</button>`;
+                ? html`<p class="u-m0">Where do you use ${APP_NAME}?</p><button type="button" class="btn primary block" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn block" data-act="acctWhere" data-v="here">Here in this browser</button>`
+                : html`<p class="u-m0">${m.msg || ''}</p><button type="button" class="btn primary block" data-act="mClose">OK</button>`;
   const title = T[m.mode] || 'Account';
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-label=${title}><div class="sheet-h"><h3>${title}</h3>${closeX()}</div><form class="stack" id="acctForm" novalidate>${b}</form></div>`;
 }

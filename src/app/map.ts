@@ -804,19 +804,19 @@ export function mapCard(): TemplateResult {
             : x.st === 'plan'
               ? 'hastip'
               : '';
-    detail = html`<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class=${`tag ${tagCls}`} data-tip=${x.st === 'plan' ? ON_PLAN_TIP : nothing}>${where}</span></div><p class="small" style="margin:4px 0 6px">${
+    detail = html`<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class=${`tag ${tagCls}`} data-tip=${x.st === 'plan' ? ON_PLAN_TIP : nothing}>${where}</span></div><p class="small u-m4-0-6">${
       src === 'avg' && avg
         ? `${hsw(x.v)} on average over ${avgWeeksTxt(avg)}`
         : `${r1(x.v)} hard set${r1(x.v) === 1 ? '' : 's'} so far this week`
     }${tgt(sel)}. ${tr}</p><div class="row"><button class="btn sm" data-act="goDash" data-sec="volume" data-m=${sel}>Weekly trend</button><button class="btn sm" data-act="mapSel" data-m=${sel}>Close</button></div></div>`;
   } else {
     const low = MK.filter(m => hasTarget(m) && lowSt(S(m)));
-    detail = html`<p class="small muted" style="margin:6px 0 0">Tap a muscle ${tipButton(
+    detail = html`<p class="small muted u-m6-0-0">Tap a muscle ${tipButton(
       `${mapView() === '3d' ? 'Drag sideways to turn it. ' : ''}Tap a muscle for its numbers.${src === 'week' ? ' This is the week so far, so most muscles read low early in the week.' : ''}`,
       'About the map'
     )}</p>${
       low.length && src === 'avg'
-        ? html`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0, LOW_SHOWN).map(m => html`<button class="chip" data-act="mapSel" data-m=${m}>${ML[m]}</button>`)}</div>`
+        ? html`<div class="row u-mt6_g4"><span class="small muted">Below target:</span>${low.slice(0, LOW_SHOWN).map(m => html`<button class="chip" data-act="mapSel" data-m=${m}>${ML[m]}</button>`)}</div>`
         : nothing
     }`;
   }
@@ -924,7 +924,7 @@ export function exBodyFlat(
 /** An exercise's muscles in words: the main one and the helpers, with what a helper counts. */
 export function exMusWords(e: { primary: string; secondary?: readonly string[] | undefined }): TemplateResult {
   const { main, help } = exMusParts(e);
-  return html`<p class="small" style="margin:0"><b>Main</b>: ${ML[main] || main}${
+  return html`<p class="small u-m0"><b>Main</b>: ${ML[main] || main}${
     help.length
       ? html`. <b>Helpers</b>: ${andList(help.map(k => ML[k] || k))} ${tipButton(
           "A helper muscle counts half a set toward its weekly total (Pelland 2025). Which muscles are helpers on a lift is the library's own call, including grip and holding muscles such as the forearms and traps on a deadlift, which the study behind the half credit did not measure.",

@@ -186,7 +186,8 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   model reads nothing but the model and its arguments: no clock, randomness, store, page or changing module value
   (new engine or analytics code takes `M` first; the screens reach it through an adapter in `live.ts`).
   `tests/hygiene.js` checks these.
-- **Code:** edit `src/`, then `npm run join`. Never reuse a class name the app has (`.tv`). Image tags in the
+- **Code:** edit `src/`, then `npm run join`. Never reuse a class name the app has (`.tv`). A style attribute carries only
+  a value worked out as the page is drawn; a fixed one is a `u-` class in the stylesheet (r65). Image tags in the
   script are written `\x3cimg`. Any new inline script, outside host or `eval` needs the Content Security Policy in
   `scripts/build.js` changed with it. Keep `window.__ironlog`: it is how the tests reach in.
 - **Tests:** never weaken or delete an assertion to make it pass. Suites reach no outside service. A suite left out

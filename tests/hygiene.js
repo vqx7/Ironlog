@@ -6,6 +6,8 @@
 // 2. No CSS selector is defined twice in the same block of src/02-style.css
 //    (top level, or inside one @media). A second copy silently overrides the
 //    first and hides what a rule really does; eight sat there until r42.
+//    Since r65 no style attribute in src/ has fixed text: it is a class in the
+//    stylesheet, each defined one used and each used one defined.
 // 3. Estimated minutes are worded in one place, `estMin`. A "~N min" or an
 //    "about N min" typed into any other template is how r42's first build
 //    missed one spot ("About 40 min after the change").
@@ -90,6 +92,15 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   }
   ok(stack.length === 1, 'the stylesheet\'s braces balance');
   ok(dups.length === 0, 'no selector is defined twice in the same block of the stylesheet', dups);
+  // Style lives in the stylesheet (r65, the r63 audit's A-9): a style attribute in the screens' markup carries only a
+  // value worked out as the page is drawn (a bar's width, a colour); one with fixed text is a class in the stylesheet.
+  const fixed = [];
+  for (const f of SRC_CODE) fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').split('\n').forEach((line, i) => { for (const m of line.matchAll(/\bstyle="([^"]*)"/g)) if (!m[1].includes('${')) fixed.push(`${f}:${i + 1} style="${m[1]}"`); });
+  ok(fixed.length === 0, 'no style attribute with fixed text in src/: each is a class in the stylesheet', fixed);
+  // Each of those classes (u-...) is used, and each used is defined, so none is left behind or missing.
+  const defined = new Set([...css.matchAll(/\.(u-[\w-]+)\{/g)].map(m => m[1]));
+  const used = new Set(SRC_CODE.flatMap(f => [...fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').matchAll(/(?<![\w-])(u-[a-z0-9][\w-]*)/g)].map(m => m[1])));
+  ok(defined.size > 0 && [...defined].every(c => used.has(c)) && [...used].every(c => defined.has(c)), `every one-off class in the stylesheet is used in src/, and every one used is defined (${defined.size})`, { unused: [...defined].filter(c => !used.has(c)), undefined: [...used].filter(c => !defined.has(c)) });
 }
 
 // 3. Minutes wording only from estMin.

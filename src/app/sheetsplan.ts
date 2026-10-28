@@ -30,7 +30,7 @@ export function templatesSheet(m: { from?: string | undefined; imported?: boolea
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick a routine</h3>${closeX()}</div>
     
     ${m.from === 'welcome' ? html`<div class="ob-prof" id="obProf"><button class="ob-prof-h" data-act="obProfTog" aria-expanded=${String(!!ui.obProf)}>Your training <span class="muted">(optional)</span></button>${ui.obProf ? html`<div class="stack">${profFields()}</div>` : ''}</div>` : ''}
-    <p class="small muted" style="margin:0 0 8px">${m.imported ? 'Your workouts are in. The names in the file did not say which days they were, so pick the routine you follow, or the closest; your targets and the next workout come from it. Change anything later in Plan.' : 'A starting point with sets, reps, and rest worked out. Change anything later in Plan.'}</p>
+    <p class="small muted u-m0-0-8">${m.imported ? 'Your workouts are in. The names in the file did not say which days they were, so pick the routine you follow, or the closest; your targets and the next workout come from it. Change anything later in Plan.' : 'A starting point with sets, reps, and rest worked out. Change anything later in Plan.'}</p>
     <div class="tpl-list">${TEMPLATES.filter(t => !t.hidden).map(t => {
       const r = routineFromTemplate(t.key);
       if (!r) return '';
@@ -49,7 +49,7 @@ export function routineNewSheet(): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3>${closeX()}</div>
     <label class="field">Name<input type="text" id="rNewName" placeholder="e.g. Upper focus, 6 days"></label>
     <p class="small muted">Three empty training days with rest days between. It is not active until you tap Make active.</p>
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+    <div class="row u-mt10"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 
 /** The recap after Finish. */
@@ -58,7 +58,7 @@ export function recapSheet(m: RecapSheet): TemplateResult {
   const prs = m.prs || [];
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.title}</h3>${closeX()}</div>${prs.length ? html`<div class="prblk" id="recapPR"><h4>${prs.length === 1 ? 'New PR' : `${prs.length} new PRs`}</h4><ul>${prs.map(p => html`<li><b>${p.name}</b>: ${p.what}${p.was ? html` <span class="was">(${p.was})</span>` : ''}</li>`)}</ul></div>` : ''}<ul class="recap">${m.lines.map(l => html`<li>${l}</li>`)}</ul>${m.note ? html`<p class="small muted">${m.note}</p>` : ''}
     ${u ? html`<div class="hint"><b>Update ${u.dayName} in your routine?</b><br>${u.text}. Next time this day starts with the change.</div><button class="btn block" data-act="applyUpd">Update ${u.dayName}</button>` : ''}
-    <button class="btn primary block" style="margin-top:10px" data-act="mClose">${u ? 'Not now' : 'Done'}</button></div>`;
+    <button class="btn primary block u-mt10" data-act="mClose">${u ? 'Not now' : 'Done'}</button></div>`;
 }
 
 /** A week's days from Monday, for a weekly routine's today mark (Date counts from Sunday). */
@@ -97,5 +97,5 @@ export function startAltSheet(m: { di?: number | string | undefined; free?: bool
     return html`<button type="button" class=${'btn block pastday' + (on ? ' on' : '')} data-act="dayPick" data-i=${String(i)} aria-current=${String(on)}><span>${dayLabel(R, i)}: ${d.name}</span><small>${d.rest ? 'Rest day' : `${d.items.length} exercises`}${mark(i)}</small></button>`;
   });
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="saH"><div class="sheet-h"><h3 id="saH">Start something else</h3>${closeX()}</div>
-  <div class="ob-opts">${opts}</div><p class="small muted" style="margin:14px 0 6px">Another day</p><div class="stack">${days}</div></div>`;
+  <div class="ob-opts">${opts}</div><p class="small muted u-m14-0-6">Another day</p><div class="stack">${days}</div></div>`;
 }

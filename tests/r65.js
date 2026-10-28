@@ -16,6 +16,10 @@
 //      (from the tables that give a muscle its target), and the dark page
 //      colour (five copies, now config's DARK_BG). The source is read from
 //      R65_ROOT (a checkout; the repo by default), the Guide from the page.
+//   4  A-9's inline styles: no style attribute in the screens' markup has
+//      fixed text (r64 had 342); each is a u- class in the stylesheet, which
+//      sets what the attribute did with !important and comes before every
+//      other !important rule, so it wins and loses where the attribute did.
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
@@ -110,6 +114,21 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
     ok(JSON.stringify(g.lists[1]) === JSON.stringify(g.rest), '3. the Guide\'s tracked-only muscles are the rest, in the muscles\' order, those never a focus last (r64: typed, in another order)', { guide: g.lists[1], tables: g.rest });
     ok(JSON.stringify(g.lists[2]) === JSON.stringify(g.never), '3. the muscles the Guide says cannot be a focus are TRACK_ONLY', { guide: g.lists[2], table: g.never });
     await ctx.close();
+  }
+
+  // ---- 4. A-9's inline styles, from the source (R65_ROOT names another checkout).
+  if (run(4)) {
+    const ROOT = process.env.R65_ROOT || path.join(__dirname, '..');
+    const app = path.join(ROOT, 'src', 'app');
+    const fixed = fs.readdirSync(app).filter(f => f.endsWith('.ts')).flatMap(f => [...fs.readFileSync(path.join(app, f), 'utf8').matchAll(/\bstyle="([^"]*)"/g)].filter(m => !m[1].includes('${')).map(m => `${f}: ${m[1]}`));
+    ok(fixed.length === 0, '4. no style attribute in src/app has fixed text (r64: 342)', { count: fixed.length, first: fixed.slice(0, 3) });
+    const css = fs.readFileSync(path.join(ROOT, 'src', '02-style.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => ({ sel: m[1].trim(), body: m[2], at: m.index }));
+    const util = rules.filter(r => /^\.u-[\w-]+$/.test(r.sel));
+    const lastUtil = Math.max(...util.map(r => r.at));
+    const important = rules.filter(r => !/^\.u-/.test(r.sel) && /!important/.test(r.body));
+    ok(util.length > 0 && util.every(r => r.body.split(';').filter(d => d.trim()).every(d => /!important\s*$/.test(d))), `4. each of the ${util.length} u- classes sets every declaration !important, as an attribute wins over every ordinary rule`, util.filter(r => !r.body.split(';').filter(d => d.trim()).every(d => /!important\s*$/.test(d))).map(r => r.sel));
+    ok(important.every(r => r.at > lastUtil), '4. every other !important rule comes after the u- classes, so it wins over them as it did over the attribute', important.filter(r => r.at < lastUtil).map(r => r.sel));
   }
 
   await browser.close(); server.close();

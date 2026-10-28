@@ -40,13 +40,13 @@ const WHAT_TIP = `Notes: a date on its own line, then one exercise per line with
 function inputStep(m: ImpInputModal): TemplateResult {
   return frame(
     'Import workouts',
-    html`<p class="small muted" style="margin:0 0 8px">Notes, a spreadsheet, or an export from another app. Nothing is saved until you check it.</p>
-    <label class="btn primary block" style="position:relative">Choose a file<input type="file" id="impFile" accept=".csv,.tsv,.txt,.xlsx,.json,text/csv,text/plain,application/json" style="position:absolute;width:1px;height:1px;opacity:0"></label>
-    <p class="small muted" style="margin:10px 0 4px">or paste it</p>
-    <textarea id="impText" aria-label="Paste your log" style="min-height:160px;font-size:14px" placeholder=${'Sep 20\nBench press 185x8, 185x7, 185x6\nLat pulldown 3x10 @ 120'}>${m.text || ''}</textarea>
-    ${m.err ? html`<p class="small" style="color:var(--red);margin:8px 0 0">${m.err}</p>` : nothing}
-    <button class="btn block" style="margin-top:10px" data-act="impRead">Read it</button>
-    <p class="small muted hastip" style="margin:10px 0 0" data-tip=${WHAT_TIP}>What can I import?</p>`
+    html`<p class="small muted u-m0-0-8">Notes, a spreadsheet, or an export from another app. Nothing is saved until you check it.</p>
+    <label class="btn primary block u-posrel">Choose a file<input type="file" id="impFile" accept=".csv,.tsv,.txt,.xlsx,.json,text/csv,text/plain,application/json" class="u-posabs_w1_h1_o0"></label>
+    <p class="small muted u-m10-0-4">or paste it</p>
+    <textarea id="impText" aria-label="Paste your log" class="u-minh160_fs14" placeholder=${'Sep 20\nBench press 185x8, 185x7, 185x6\nLat pulldown 3x10 @ 120'}>${m.text || ''}</textarea>
+    ${m.err ? html`<p class="small u-cred_m8-0-0">${m.err}</p>` : nothing}
+    <button class="btn block u-mt10" data-act="impRead">Read it</button>
+    <p class="small muted hastip u-m10-0-0" data-tip=${WHAT_TIP}>What can I import?</p>`
   );
 }
 
@@ -60,8 +60,8 @@ function mapStep(m: ImpPreviewModal): TemplateResult {
     )}</select></label>`;
   return frame(
     'Which column is which?',
-    html`<p class="small muted" style="margin:0 0 8px">The first row is read as column names.</p>${opt('date', 'Date', true)}${opt('ex', 'Exercise', true)}${opt('w', 'Weight, none if bodyweight only')}${opt('r', 'Reps', true)}${opt('sets', 'Sets')}${opt('rir', 'RIR')}${opt('name', 'Workout name')}
-      <button class="btn primary block" style="margin-top:10px" data-act="impMapDone">Continue</button>`
+    html`<p class="small muted u-m0-0-8">The first row is read as column names.</p>${opt('date', 'Date', true)}${opt('ex', 'Exercise', true)}${opt('w', 'Weight, none if bodyweight only')}${opt('r', 'Reps', true)}${opt('sets', 'Sets')}${opt('rir', 'RIR')}${opt('name', 'Workout name')}
+      <button class="btn primary block u-mt10" data-act="impMapDone">Continue</button>`
   );
 }
 
@@ -96,9 +96,9 @@ function previewStep(m: ImpPreviewModal): TemplateResult {
   return frame(
     'Check the import',
     html`<div class="kpis"><div class="kpi"><div class="v">${b.sessions.length}</div><div class="l">sessions</div></div><div class="kpi"><div class="v">${nSets}</div><div class="l">sets</div></div><div class="kpi"><div class="v">${names.length}</div><div class="l">exercises</div></div></div>
-  ${date0 ? html`<p class="small muted" style="margin:6px 0 0">${fmtDate(date0)}${dates.length > 1 && dateN ? ' to ' + fmtDate(dateN) : ''}</p>` : nothing}
-  ${b.dup ? html`<p class="small" style="margin:6px 0 0">${b.dup} already in your log, skipped.</p>` : nothing}
-  <div style="margin-top:10px"><p class="small muted" style="margin:0 0 6px;font-weight:600">Weights in the file are</p><div class="ob-units">${(
+  ${date0 ? html`<p class="small muted u-m6-0-0">${fmtDate(date0)}${dates.length > 1 && dateN ? ' to ' + fmtDate(dateN) : ''}</p>` : nothing}
+  ${b.dup ? html`<p class="small u-m6-0-0">${b.dup} already in your log, skipped.</p>` : nothing}
+  <div class="u-mt10"><p class="small muted u-m0-0-6_fw600">Weights in the file are</p><div class="ob-units">${(
     ['lb', 'kg'] as const
   ).map(
     k =>
@@ -106,15 +106,15 @@ function previewStep(m: ImpPreviewModal): TemplateResult {
   )}</div>${
     m.unitKnown
       ? nothing
-      : html`<p class="small muted" style="margin:4px 0 0">${r.mixed ? 'It names both kg and lb. A line with neither is read in the unit picked here; check this.' : 'It does not say which; check this.'}</p>`
+      : html`<p class="small muted u-m4-0-0">${r.mixed ? 'It names both kg and lb. A line with neither is read in the unit picked here; check this.' : 'It does not say which; check this.'}</p>`
   }</div>
-  ${noDate ? html`<label class="field" style="margin-top:10px">No date found. Log it on<input type="date" data-impdate value=${m.date} max=${today()}></label>` : nothing}
-  ${unsure.length ? html`<p class="small" style="margin:12px 0 4px;font-weight:650">Check these exercises</p>${unsure.map(row)}` : nothing}
-  ${sure.length ? html`<details class="subsec" style="margin-top:8px"><summary>${sure.length} matched</summary>${sure.map(row)}</details>` : nothing}
-  ${nUnread ? html`<details class="subsec" style="margin-top:8px"><summary>${nUnread} line${nUnread === 1 ? '' : 's'} not understood</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">${(r.unread || []).map(l => html`<li>${l}</li>`)}</ul></details>` : nothing}
-  ${r.skipped ? html`<p class="small muted" style="margin:6px 0 0">${r.skipped} row${r.skipped === 1 ? '' : 's'} without an exercise, date, or reps were skipped.</p>` : nothing}${
+  ${noDate ? html`<label class="field u-mt10">No date found. Log it on<input type="date" data-impdate value=${m.date} max=${today()}></label>` : nothing}
+  ${unsure.length ? html`<p class="small u-m12-0-4_fw650">Check these exercises</p>${unsure.map(row)}` : nothing}
+  ${sure.length ? html`<details class="subsec u-mt8"><summary>${sure.length} matched</summary>${sure.map(row)}</details>` : nothing}
+  ${nUnread ? html`<details class="subsec u-mt8"><summary>${nUnread} line${nUnread === 1 ? '' : 's'} not understood</summary><ul class="small u-m6-0-0_pl18">${(r.unread || []).map(l => html`<li>${l}</li>`)}</ul></details>` : nothing}
+  ${r.skipped ? html`<p class="small muted u-m6-0-0">${r.skipped} row${r.skipped === 1 ? '' : 's'} without an exercise, date, or reps were skipped.</p>` : nothing}${
     b.cardio.length
-      ? html`<p class="small" style="margin:6px 0 0">Cardio: ${b.cardio.length} entr${b.cardio.length === 1 ? 'y' : 'ies'} (${andList(
+      ? html`<p class="small u-m6-0-0">Cardio: ${b.cardio.length} entr${b.cardio.length === 1 ? 'y' : 'ies'} (${andList(
           b.cardio
             .slice(0, SHOWN.cardio)
             .map(
@@ -124,30 +124,30 @@ function previewStep(m: ImpPreviewModal): TemplateResult {
           SHOWN.cardio
         )}${b.cardio.length > SHOWN.cardio ? ', and more' : ''}). Distances are read in ${m.unit === 'kg' ? 'km' : 'miles'}, with the unit above.</p>`
       : nothing
-  }${b.cardioNoTime ? html`<p class="small muted" style="margin:6px 0 0">${b.cardioNoTime} cardio entr${b.cardioNoTime === 1 ? 'y' : 'ies'} without a time left out: minutes are needed.</p>` : nothing}
-  ${b.bad.length ? html`<p class="small" style="margin:6px 0 0;color:var(--yellow)">Not imported, no weight given: ${andList(b.bad, SHOWN.bad)}. Write the load in, like 3x10 @ 60, and read it again.</p>` : nothing}
-  ${b.odd.length ? html`<p class="small" id="impOdd" style="margin:6px 0 0;color:var(--yellow)">Check these, they look misread: ${andList(b.odd, SHOWN.odd)}. Fix the line and read it again if they are wrong.</p>` : nothing}
-  ${b.timedOff ? html`<p class="small" style="margin:6px 0 0;color:var(--yellow)">${b.timedOff} timed set${b.timedOff === 1 ? ' was' : 's were'} left out: the exercise chosen counts reps. Pick a timed one to keep them.</p>` : nothing}
-  ${r.cut ? html`<p class="small" style="margin:6px 0 0;color:var(--yellow)">Only the first ${IMP_MAX_ROWS.toLocaleString()} rows were read. Split the file to import the rest.</p>` : nothing}
+  }${b.cardioNoTime ? html`<p class="small muted u-m6-0-0">${b.cardioNoTime} cardio entr${b.cardioNoTime === 1 ? 'y' : 'ies'} without a time left out: minutes are needed.</p>` : nothing}
+  ${b.bad.length ? html`<p class="small u-m6-0-0_cyellow">Not imported, no weight given: ${andList(b.bad, SHOWN.bad)}. Write the load in, like 3x10 @ 60, and read it again.</p>` : nothing}
+  ${b.odd.length ? html`<p class="small u-m6-0-0_cyellow" id="impOdd">Check these, they look misread: ${andList(b.odd, SHOWN.odd)}. Fix the line and read it again if they are wrong.</p>` : nothing}
+  ${b.timedOff ? html`<p class="small u-m6-0-0_cyellow">${b.timedOff} timed set${b.timedOff === 1 ? ' was' : 's were'} left out: the exercise chosen counts reps. Pick a timed one to keep them.</p>` : nothing}
+  ${r.cut ? html`<p class="small u-m6-0-0_cyellow">Only the first ${IMP_MAX_ROWS.toLocaleString()} rows were read. Split the file to import the rest.</p>` : nothing}
   ${
     b.sessions.length
-      ? html`<details class="subsec" style="margin-top:8px" id="impRead"><summary>What was read</summary>${b.sessions
+      ? html`<details class="subsec u-mt8" id="impRead"><summary>What was read</summary>${b.sessions
           .slice(0, SHOWN.sessions)
           .map(
             x =>
-              html`<p class="small" style="margin:8px 0 2px;font-weight:650">${fmtDate(x.date)}${x.dayName && x.dayName !== 'Imported' ? ' · ' + x.dayName : ''}</p>${x.ex.map(
+              html`<p class="small u-m8-0n2_fw650">${fmtDate(x.date)}${x.dayName && x.dayName !== 'Imported' ? ' · ' + x.dayName : ''}</p>${x.ex.map(
                 e => {
                   const known = EX(e.exId);
                   const exo =
                     known.id === e.exId && !known.archived ? known : b.newEx.find(n => n.id === e.exId) || known;
-                  return html`<p class="small muted" style="margin:0">${exo.name}: ${e.sets.map(q => (q.warm ? 'W ' : q.drop ? 'D ' : '') + setShort(exo, q.w, q.r)).join(', ')}</p>`;
+                  return html`<p class="small muted u-m0">${exo.name}: ${e.sets.map(q => (q.warm ? 'W ' : q.drop ? 'D ' : '') + setShort(exo, q.w, q.r)).join(', ')}</p>`;
                 }
               )}`
           )}${b.sessions.length > SHOWN.sessions ? html`<p class="small muted">and ${b.sessions.length - SHOWN.sessions} more</p>` : nothing}</details>`
       : nothing
   }
-  <button class="btn primary block" style="margin-top:12px" data-act="impGo" ?disabled=${!(b.sessions.length || b.cardio.length)}>Import ${b.sessions.length} session${b.sessions.length === 1 ? '' : 's'}${b.cardio.length ? ` and ${b.cardio.length} cardio` : ''}</button>
-  <button class="btn block" style="margin-top:6px" data-act="impBack">Back</button>`
+  <button class="btn primary block u-mt12" data-act="impGo" ?disabled=${!(b.sessions.length || b.cardio.length)}>Import ${b.sessions.length} session${b.sessions.length === 1 ? '' : 's'}${b.cardio.length ? ` and ${b.cardio.length} cardio` : ''}</button>
+  <button class="btn block u-mt6" data-act="impBack">Back</button>`
   );
 }
 

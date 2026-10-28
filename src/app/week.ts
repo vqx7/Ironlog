@@ -177,7 +177,7 @@ function liftedLine(): Part {
   /* No percentage against last week (r30): weight lifted falls when loads
      go up and reps come down, so as a headline it read progress as decline
      ("−5%" on a week of PRs). The number stays; the detail is in Stats. */
-  return html`<button class="linkbtn wklift" data-act="goDash" data-sec="svol" style="margin:6px 0 0;text-decoration:none;text-align:left"><b>${tn.now ? fmtBig(tn.now) : 0} ${U()}</b> lifted</button>`;
+  return html`<button class="linkbtn wklift u-m6-0-0_tdnone_taleft" data-act="goDash" data-sec="svol"><b>${tn.now ? fmtBig(tn.now) : 0} ${U()}</b> lifted</button>`;
 }
 
 /** Whether This week shows the month, remembered on this device (Week or Month, r26). */
@@ -188,7 +188,7 @@ function monthView(): boolean {
 
 function cardioLine(w: WeekNow): Part {
   return w.cardioMin
-    ? html`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN === 1 ? 'y' : 'ies'}</p>`
+    ? html`<p class="small u-m5-0-0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN === 1 ? 'y' : 'ies'}</p>`
     : nothing;
 }
 
@@ -202,17 +202,17 @@ function weekBody(w: WeekNow): Part {
   const tog = html`<div class="wkview" role="group" aria-label="Show"><button type="button" data-act="wkView" data-v="week" aria-pressed=${String(!month)} class=${month ? nothing : 'on'}>Week</button><button type="button" data-act="wkView" data-v="month" aria-pressed=${String(month)} class=${month ? 'on' : nothing}>Month</button></div>`;
   if (month) return html`${tog}<div class="cal-inline">${calBody(calNow(), true)}</div>`;
   if (freeMode())
-    return html`${tog}<div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${noLog() ? 'Nothing logged yet.' : `${r1(w.got)} hard sets this week.`}</p>${helpButton('wk')}</div>
+    return html`${tog}<div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">${noLog() ? 'Nothing logged yet.' : `${r1(w.got)} hard sets this week.`}</p>${helpButton('wk')}</div>
 ${cardioLine(w)}${liftedLine()}
 ${howText('wk', 'Each set counts once; a set at RIR 4 or more is not hard and does not count. Muscle targets are on the Muscle map and in Stats.')}`;
   if (w.rest)
-    return html`${tog}<div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">Rest week. ${w.got ? `${r1(w.got)} hard sets logged.` : 'Nothing planned.'}</p>${helpButton('wk')}</div>
+    return html`${tog}<div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">Rest week. ${w.got ? `${r1(w.got)} hard sets logged.` : 'Nothing planned.'}</p>${helpButton('wk')}</div>
 ${cardioLine(w)}${liftedLine()}
 ${howText('wk', 'A rest week you marked under More options on Today. It does not count as missed: your averages, streak, and adherence skip it.')}`;
   return html`${tog}${w.weekly ? nothing : cycleStrip(w.R)}
 <div class="band" data-tip=${noLog() ? `${w.tgt} hard sets planned` : `${w.got} hard sets logged of ${w.tgt} planned`}><div class="fill prog" style=${`width:${w.pct}%`}></div></div>
 ${cardioLine(w)}
-<div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${noLog() ? `${w.tgt} hard sets planned this week.` : `${w.got} hard sets logged of ${w.tgt} planned${w.tgt > 0 ? ` (${Math.round(w.pct)}%)` : ''}.`}</p>${helpButton('wk')}</div>
+<div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">${noLog() ? `${w.tgt} hard sets planned this week.` : `${w.got} hard sets logged of ${w.tgt} planned${w.tgt > 0 ? ` (${Math.round(w.pct)}%)` : ''}.`}</p>${helpButton('wk')}</div>
 ${liftedLine()}
 ${howText('wk', `Each set counts once; a set at RIR 4 or more is not hard and does not count. The bar at the top of every tab is this calendar week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead${w.weekly ? ', a red ring is a planned workout that was missed' : ''}. Tap a filled day to open it in History; tap today or a day ahead to see its workout here; tap an empty past day (marked +) to log a workout for it.${w.weekly ? '' : ' The row above the bar is your cycle: green is done this round, outlined is next.'}`)}`;
 }

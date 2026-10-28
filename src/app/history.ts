@@ -63,7 +63,7 @@ export function viewHistory(): TemplateResult {
   if (cs.length) keyed.push(['cardio', cardioSec(cs)]);
   const tr = state.trash;
   if (tr.length) keyed.push(['trash', trashSec()]);
-  const impLine = html`<p class="small" style="margin:14px 0 0"><button class="linkbtn" style="min-height:44px" data-act="impOpen" data-tip=${IMPORT_TIP}>Import workouts</button></p>
+  const impLine = html`<p class="small u-m14-0-0"><button class="linkbtn u-minh44" data-act="impOpen" data-tip=${IMPORT_TIP}>Import workouts</button></p>
 `;
   const sections = (list: readonly (readonly [string, TemplateResult])[]): TemplateResult =>
     html`${repeat(
@@ -74,7 +74,7 @@ export function viewHistory(): TemplateResult {
   if (!ss.length)
     return html`${head}${sections(keyed)}
 <div class="card">
-<p style="margin:0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p>
+<p class="u-m0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p>
 </div>
 ${impLine}${tabFoot('history')}`;
   keyed.push(['sessions', sessionsSec(ss, perDay)]);
@@ -121,10 +121,10 @@ function trashSec(): TemplateResult {
     sub: html`<span class="hastip" data-tip=${`The ${TRASH_MAX} most recent deletions, each kept ${TRASH_DAYS} days`}>${tr.length}</span>`,
     body: html`<ul class="clist">${tr.map(x => {
       const nm = trashName(x);
-      return html`<li><span>${nm} <span class="small muted">deleted ${fmtDate(x.date)}</span></span><span class="row" style="gap:6px;flex:none"><button class="btn sm" data-act="restore" data-id=${x.id} data-k=${x.kind}>Restore</button><button class="ib sm" data-act="trashDel" data-id=${x.id} data-k=${x.kind} aria-label=${`Delete ${nm} for good`}>✕</button></span></li>
+      return html`<li><span>${nm} <span class="small muted">deleted ${fmtDate(x.date)}</span></span><span class="row u-g6_fnone"><button class="btn sm" data-act="restore" data-id=${x.id} data-k=${x.kind}>Restore</button><button class="ib sm" data-act="trashDel" data-id=${x.id} data-k=${x.kind} aria-label=${`Delete ${nm} for good`}>✕</button></span></li>
 `;
     })}</ul>
-<p class="small" style="margin:10px 0 0"><button class="linkbtn" style="min-height:44px" data-act="trashEmpty">Delete all for good</button></p>
+<p class="small u-m10-0-0"><button class="linkbtn u-minh44" data-act="trashEmpty">Delete all for good</button></p>
 `
   });
 }
@@ -175,7 +175,7 @@ function sessionsSec(ss: readonly Session[], perDay: Record<string, number>): Te
   }
   const more =
     shown.length > page.length
-      ? html`<button class="btn block" style="margin-top:10px" data-act="histMore">Show ${Math.min(HIST_PAGE, shown.length - page.length)} more (${page.length} of ${shown.length})</button>`
+      ? html`<button class="btn block u-mt10" data-act="histMore">Show ${Math.min(HIST_PAGE, shown.length - page.length)} more (${page.length} of ${shown.length})</button>`
       : nothing;
   const body = html`<label class="field">Show sessions with<select data-bind="histEx">
 <option value="" .selected=${!ui.histEx}>Any exercise</option>
@@ -183,7 +183,7 @@ ${withData.map(
   id => html`<option value=${id} .selected=${ui.histEx === id}>${exName(id)}</option>
 `
 )}</select></label>
-<div style="margin-top:6px">${
+<div class="u-mt6">${
     shown.length
       ? nothing
       : html`<p class="muted">No sessions with that exercise.</p>
@@ -215,13 +215,13 @@ function sessionRow(
   const tm = (perDay[s.date] || 0) > 1 && sessTm(s) ? `, ${sessTm(s)}` : '';
   const filtered = ui.histEx && !open ? s.ex.find(x => x.exId === ui.histEx) : undefined;
   const fex = filtered ? EX(filtered.exId) : null;
-  return html`<div class=${open ? 'hitem open' : 'hitem'}><button class="pick" style="border:0;padding:0" data-act="histToggle" data-id=${s.id} aria-expanded=${String(open)}><span style="min-width:0"><b>${name}</b>${s.deload ? html` <span class="tag blue">deload</span>` : nothing}${
+  return html`<div class=${open ? 'hitem open' : 'hitem'}><button class="pick u-b0_p0" data-act="histToggle" data-id=${s.id} aria-expanded=${String(open)}><span class="u-minw0"><b>${name}</b>${s.deload ? html` <span class="tag blue">deload</span>` : nothing}${
     s.free && !/freestyle/i.test(s.dayName || '') ? html` <span class="tag">freestyle</span>` : nothing
   }${
     Object.values(wd[s.id] || {}).includes('fewer sets') ? html` <span class="tag">fewer sets</span>` : nothing
-  }${s.demo ? html` <span class="tag">demo</span>` : nothing}<br /><span class="small muted">${fmtDateRow(s.date)}${tm}</span></span><span class="num small" style="text-align:right;flex:none">${nSets} sets<br /><span class="muted">${Math.round(toD(vol) ?? 0).toLocaleString()} ${U()}${s.durMin ? ` · ${s.durMin} min` : ''}</span></span></button>${
+  }${s.demo ? html` <span class="tag">demo</span>` : nothing}<br /><span class="small muted">${fmtDateRow(s.date)}${tm}</span></span><span class="num small u-taright_fnone">${nSets} sets<br /><span class="muted">${Math.round(toD(vol) ?? 0).toLocaleString()} ${U()}${s.durMin ? ` · ${s.durMin} min` : ''}</span></span></button>${
     filtered && fex
-      ? html`<p class="small" style="margin:6px 0 0">${filtered.sets.map(x => setStr(fex, x)).join(', ')}${histUnits(fex)}</p>
+      ? html`<p class="small u-m6-0-0">${filtered.sets.map(x => setStr(fex, x)).join(', ')}${histUnits(fex)}</p>
 `
       : nothing
   }${open ? sessionPanel(s, wTag) : nothing}</div>
@@ -230,26 +230,26 @@ function sessionRow(
 
 function sessionPanel(s: Session, wTag: (s: Session, exId: string) => TemplateResult | typeof nothing): TemplateResult {
   const chk = s.chk;
-  return html`<div class="panel" style="margin-top:10px">${
+  return html`<div class="panel u-mt10">${
     chk
-      ? html`<p class="small muted" style="margin:0 0 6px">Check-in: ${CHK_Q.filter(([k]) => chk[k])
+      ? html`<p class="small muted u-m0-0-6">Check-in: ${CHK_Q.filter(([k]) => chk[k])
           .map(([k, l, n]) => `${l.toLowerCase()} ${chkWord(n[(chk[k] || 1) - 1] || '')}`)
           .join(', ')}</p>
 `
       : nothing
   }${s.ex.map(b => {
     const ex = EX(b.exId);
-    return html`<p class="small" style="margin:0 0 6px"><b>${ex.name}</b>${wTag(s, b.exId)}: ${b.sets.map(x => setStr(ex, x)).join(', ')}${histUnits(ex)}${
+    return html`<p class="small u-m0-0-6"><b>${ex.name}</b>${wTag(s, b.exId)}: ${b.sets.map(x => setStr(ex, x)).join(', ')}${histUnits(ex)}${
       b.note ? html`<br /><span class="muted">${b.note}</span>` : nothing
     }</p>
 `;
   })}${
     s.notes
-      ? html`<p class="small muted" style="margin:0 0 6px">${s.notes}</p>
+      ? html`<p class="small muted u-m0-0-6">${s.notes}</p>
 `
       : nothing
   }
-<div class="row" style="margin-top:8px"><button class="btn sm" data-act="histEdit" data-id=${s.id}>Edit</button><button class="btn sm" data-act="histRepeat" data-id=${s.id} data-tip="Start a new session today with these exercises">Do again</button><button class="btn sm danger" data-act="histDel" data-id=${s.id}>Delete</button></div>
+<div class="row u-mt8"><button class="btn sm" data-act="histEdit" data-id=${s.id}>Edit</button><button class="btn sm" data-act="histRepeat" data-id=${s.id} data-tip="Start a new session today with these exercises">Do again</button><button class="btn sm danger" data-act="histDel" data-id=${s.id}>Delete</button></div>
 </div>
 `;
 }
