@@ -4,7 +4,7 @@
 // rows, signed-out requests see nothing). It also serves a folder of static
 // files, so the app and its "cloud" share one origin like in production.
 //
-// start(root) -> {base, users, rows, feedback, confirm(email), addReader(email), feedbackTables(on), feedbackKey(on), loseReplies(n), expireTokens(), log, close()}
+// start(root) -> {base, users, rows, feedback, confirm(email), addReader(email), feedbackTables(on), feedbackKey(on), loseReplies(n), expireTokens(email?), log, close()}
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -221,7 +221,8 @@ function start(root) {
       confirm(email) { const x = users.get(email); if (x) { x.confirmed = true; x.code = null; } },
       codeFor(email) { const x = users.get(email); return x && x.code; },
       ageCode(email, ms) { const x = users.get(email); if (x) { x.codeAt -= ms; x.sentAt -= ms; } },
-      expireTokens() { for (const v of tokens.values()) v.exp = now() - 10; },
+      // Every access token, or one account's only (r64: suites whose cases run side by side expire one account's sign-in without touching the others').
+      expireTokens(email) { const u = email ? users.get(email) : null; for (const v of tokens.values()) if (!email || (u && v.uid === u.id)) v.exp = now() - 10; },
       setTokenLife(s) { tokenLife = s; },
       setDeny(v) { deny = !!v; },
       deployDelete(v) { fnDeployed = !!v; },

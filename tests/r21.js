@@ -164,11 +164,13 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   await page.focus('.sg input[data-f="r"][data-b="0"][data-s="2"]'); await page.keyboard.press('Enter'); await page.waitForTimeout(150);
   const s2 = await ev(() => { const s = window.__ironlog.state.draft.ex[0].sets[2]; return { done: s.done, r: s.r }; });
   ok(s2.done && s2.r === 11, 'auto-mark on Next takes the grey number after a swap', s2);
-  // A warm-up has no grey number and still asks.
+  // A warm-up has grey reps of its own since r64 (V's decision 3, P-S4-5: none last time here, so the top of the range,
+  // never a working set's 11); with no load it is not ticked and asks for the load, so no set is saved without one.
   await ev(() => { window.__ironlog.state.settings.autoDone = false; const b = window.__ironlog.state.draft.ex[0]; b.sets.push({ w: null, r: null, rir: null, warm: true, drop: false, done: false }); window.__ironlog.render(); });
   const wi = await ev(() => window.__ironlog.state.draft.ex[0].sets.length - 1);
+  const wph = await ev(i => ({ ph: document.querySelector(`.sg input[data-f="r"][data-b="0"][data-s="${i}"]`).placeholder, top: String(window.__ironlog.state.draft.ex[0].plan.repMax) }), wi);
   await ev(i => document.querySelector(`[data-act="sDone"][data-b="0"][data-s="${i}"]`).click(), wi); await page.waitForTimeout(60);
-  ok(await ev(i => !window.__ironlog.state.draft.ex[0].sets[i].done && /Enter reps first/.test(document.getElementById('toast').innerText), wi), 'a warm-up row with no reps still asks for them');
+  ok(wph.ph === wph.top && wph.ph !== '11' && await ev(i => !window.__ironlog.state.draft.ex[0].sets[i].done && /Add the weight first/.test(document.getElementById('toast').innerText), wi), 'a warm-up row shows its own grey reps, the top of the range, and with no load asks for it', wph);
 
   // ---- Reload keeps a past draft as a past draft.
   await ev(() => { const L = window.__ironlog; L.state.draft = null; L.ACT.pastOpen({ dataset: { date: '2026-09-21' } }); });

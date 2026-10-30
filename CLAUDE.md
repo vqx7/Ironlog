@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r63, version 2.17, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r64, version 2.18, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -50,6 +50,15 @@ stand-in cloud.
 8. The proper thing is done the first time (V, 2026-10-17): a type rather than a cast, one source for a value, a
    test for a new rule, documents kept true. Nothing that works for a lifter is weakened for the sake of the code.
 9. Report what was verified and how, and what was not checked. Never report a problem that does not exist.
+10. The tracker at the top of `PENDING.md` is the one list of what is open (V, 2026-10-27, from the r63 audit): a
+    row for every audit finding and every PENDING item placed in a release, with its release, status and evidence.
+    A row is OPEN (found and verified), FIXED (only with the commit and the test that fails before it and passes
+    after), NOT REPRODUCED (rerun and it did not happen; the output is the evidence, and V is told), NOT A PROBLEM
+    (correct by a written rule or V's ruling, cited), DECISION PENDING (V's, the question quoted), DEFERRED (only on
+    V's word, dated) or NEW (found while building, added with its reproduction the moment it is found and reported
+    to V in the same message; never fixed without a reproduction, never folded silently into scope). No row is
+    deleted or merged into another. A message to V about progress names rows by ID, and every session ends with the
+    tracker and the project's ledger updated, so nothing lives only in a chat.
 
 ## What is in this repo
 
@@ -64,7 +73,7 @@ stand-in cloud.
   the error log (`log`), Undo's steps, a log kept aside for another account, in IndexedDB as Undo's copies are) and
   `sync.ts` (every write of the log, the account's documents, the sync notes, another tab, one workout open on two
   phones, the account question); they reach the screens only through `fx` in `store.ts`, which `main.ts`
-  fills at start (`render`, `toast`, `ask`, `confirm`, and the session's effects a moved screen calls), and run
+  fills at start (`render`, `toast`, `ask`, `confirm`, the session's effects a moved screen calls, and, for `act`, hiding a toast's Undo once a later change is made, r64), and run
   nothing on import (`storageStart()`, `syncStart()`). The screens move here from r57 (phase 5): `view.ts` (the
   host that draws every tab into `#view`, and the parts the moved screens share), `act.ts` (the one way to change
   the log), `history.ts`, `settings.ts`, `plan.ts` and `stats.ts` (its charts in `graphs.ts`, r58), `today.ts` with `week.ts`, `map.ts` and
@@ -199,4 +208,6 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
 - By hand, if the workflow cannot run: `npm test`, then `git worktree add ../pages gh-pages`, copy dist/* in,
   commit, push.
 - The comparisons of old builds stay pinned to what they proved: `tests/r36.js` (r35 and r52), `tests/r52.js`
-  (r51 and r52) and `tests/r53w.js` (r52 and r53).
+  (r51 and r52), `tests/r53w.js` (r52 and r53), and since r64, which changes those numbers and sentences on purpose,
+  `tests/r61.js` section 1 (r60 and r61), `tests/r62.js` sections 1 and 2 (r61 and r62) and `tests/r63.js` section 1
+  (r62 and r63).

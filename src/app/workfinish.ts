@@ -7,7 +7,7 @@ import { isCompound, noE1 } from './library';
 import { withPlanSets, pwOf } from './routines';
 import { estMin } from './format';
 import { rtfAt, isMissed, isWork, RIR_CALL_TOP } from './formulas';
-import { putById, andList, today, r1, EPS_SAME, MINUTE_S, SECOND_MS } from './util';
+import { putById, andList, today, iso, r1, EPS_SAME, MINUTE_S, SECOND_MS } from './util';
 import { cleanCardio, keepExtra } from './normalize';
 import { KNOWN_BLOCK, cleanChk } from './records';
 import type { Rec } from './records';
@@ -33,7 +33,7 @@ import {
 import { state, ui } from './store';
 import { joinAdjacent, savedEx, draftCardio, effTarget, withNew } from './session';
 import type { DraftSet, CardioEntry, SessionEx, Session } from './types';
-import { setShort, fmtDateLong, fmtE, prSet } from './display';
+import { setShort, fmtDateLong, fmtE, prSet, wasE } from './display';
 import { W, blkOpen, blkRef, redraw } from './workstate';
 import type { Draft } from './workstate';
 import { blockProgress, calDueIdx, draftPlanMin, oddReps, rowBlank, setDone, settleLoad } from './worksets';
@@ -335,9 +335,12 @@ export function finishNow(): void {
    best estimate is said once, quietly, not counted as a PR (r32); the PR
    moment (item 28) is its own gold block, each with what it beat. */
 function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioEntry[]): void {
+  /* Timed by the clock when the workout began on the day it is saved on, so one
+     that runs past midnight keeps its minutes (r64, the r63 audit's F8); a past
+     workout logged later, or one moved to another date, is not timed. */
   const durMin = d.editingId
     ? d.durMin || null
-    : d.startedAt && d.date === today()
+    : d.startedAt && !d.past && iso(new Date(d.startedAt)) === d.date
       ? ((): number | null => {
           const m = Math.round((Date.now() - (d.startedAt || 0)) / (MINUTE_S * SECOND_MS));
           return m >= 1 && m <= TIMED_MAX_MIN ? m : null;
@@ -468,11 +471,11 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
           name: e.name,
           what: `${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e)}`,
           was: prOverall(pr)
-            ? pr.prevAll != null
-              ? `was ${fmtE(pr.prevAll)}`
+            ? wasE(pr.value, pr.prevAll)
+              ? `was ${wasE(pr.value, pr.prevAll)}`
               : ''
-            : pr.prev != null
-              ? `was ${fmtE(pr.prev)} at those reps`
+            : wasE(pr.value, pr.prev)
+              ? `was ${wasE(pr.value, pr.prev)} at those reps`
               : ''
         }
       : {

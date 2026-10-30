@@ -1,7 +1,8 @@
 /* The app's own sheets (r62, PENDING 355): installing it from a browser,
    getting the new icon, and logging a past workout. Each is drawn by
    lit-html as the legacy script drew it (tests/r62.js holds them to r61's),
-   and answered by its actions by their data-act until those move (r63).
+   and answered by its actions by their data-act (actsapp.ts, actsstart.ts,
+   through events.ts's table since r63).
 
    Install: Android and desktop Chrome offer a real install, which the build
    catches and Install uses. An iPhone has no install button for websites

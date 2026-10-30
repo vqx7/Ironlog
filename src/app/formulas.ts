@@ -366,9 +366,9 @@ export function jumpCap(ex: Parameters<typeof isCompound>[0], loadKg: number, ea
 
 /* Back after more than 4 weeks off a lift (a convention, r34.2, from the
    review: after 6 weeks away the app asked for the next load up, as if no
-   time had passed). Strength holds for about 4 weeks without training and
-   falls faster after (Bosquet 2013, a meta-analysis of training cessation),
-   so the first session back is about 90% of the last working load, in whole
+   time had passed). Strength falls the longer training stops (Bosquet
+   2013, a meta-analysis of training cessation, which names no number of
+   weeks; the 4 weeks is the app's line), so the first session back is about 90% of the last working load, in whole
    steps, like a Lighter day but with the usual sets. It is the lift's new
    start (r54): the sessions before the break are not its usual any more, so
    it is not read lighter than them, and its trend and stall test start from

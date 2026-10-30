@@ -18,7 +18,7 @@ import { invalidate } from './live';
 import { normalize, plainTemplate } from './normalize';
 import { TRASH_BYTES, TRASH_MAX, parseJson, rec } from './records';
 import type { Trashed } from './records';
-import { setState, state } from './store';
+import { fx, setState, state } from './store';
 import { today } from './util';
 
 /** How a change is made: its check, and the Undo step it keeps. */
@@ -55,6 +55,13 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
     change();
     return true;
   }
+  /* A toast's Undo takes back the change it reports. Once another change is
+     made after it, the newest step is no longer that change alone (a set
+     ticked on a lift just swapped in, Undo put the old lift back and moved
+     the new one, its set with it, to the end: the r63 audit's P-S4-9), so
+     the toast goes; a change that keeps a step shows its own after this.
+     Settings' Undo last delete or reset still takes back the steps kept. */
+  fx.undoToastHide();
   if (opts.undo) snapshot(typeof opts.undo === 'function' ? opts.undo : null);
   outerUndo = !!opts.undo;
   depth++;

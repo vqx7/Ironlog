@@ -2,7 +2,8 @@
 // read through its types end to end (351), and the sheets moved (r61's
 // own sections, added as each is built). Run on r60 (`node tests/r61.js
 // baselines/r60.html`, R61_ONLY=n for one section):
-//   1  (a guard, the source build) it gives every number r60 gave: the wide
+//   1  (a guard, pinned since r64 to the build it proved, baselines/r61.html)
+//      r61 gives every number r60 gave: the wide
 //      histories of tests/wide.js (1,000, every day of the week as today)
 //      through every function the screens call, the same answers as r60
 //      (baselines/r60.html), call for call; and every tab, in light and dark,
@@ -32,6 +33,8 @@
 //      is (its items with their superset field), where r60 gave it unread
 //      until the next load; and the workout in progress is still cleaned in
 //      place, the very object given, its own fields first in their order.
+//      (The starter a log with no routine gets rests its isolation lifts 90 s
+//      since r64, 302: r60's starter is read so, tests/r64.js section 11.)
 //      (On r60 the first check fails too, by exactly those two inputs.)
 //   5  New machine or gym (343 7, 339 g, 338 B): the exercise menu marks a
 //      lift as done at a new machine or gym, and tapped again takes it off;
@@ -47,6 +50,11 @@ const { open, engine, screenOf, screenDiff } = require('./h');
 const { wide, digest, specOf } = require('./wide');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r60.html';
+/* Section 1 is pinned to the build it proved, r61 (baselines/r61.html), as CLAUDE.md's rule for the comparisons of old builds
+   says: r64 changes numbers r60 gave on purpose (the r63 audit's R-1 to R-4, P-S2-1 and P-S2-2: about 580 of the 1,000 wide
+   histories differ, each in a suggestion or a stall those findings change) and the Guide's sentences on them (R-4, R-5,
+   P-S2-3), so the source build no longer gives r60's every number, and should not. tests/r64a.js holds r64's changes. */
+const PROVED = 'baselines/r61.html';
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
 const ONLY = process.env.R61_ONLY ? process.env.R61_ONLY.split(',') : null;
@@ -80,7 +88,7 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
     const T0 = new Date('2026-10-11T12:00:00');
     const setup = async (ctx, page) => { await page.clock.setFixedTime(T0); };
     const A = await open(OLD, { browser, setup });
-    const B = await open(FILE, { browser, setup });
+    const B = await open(PROVED, { browser, setup });
     const LIB = await B.page.evaluate(() => window.__ironlog.libExercises());
     let same = 0, first = null, calls = 0;
     const t0 = Date.now();
@@ -109,7 +117,7 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
     for (const [vn, v] of VARIANTS) for (const tab of [...TABS, 'session']) {
       const seed = DEMO + SET(v) + (tab === 'session' ? START : '');
       const o = { browser, seed, tab: tab === 'session' ? 'today' : tab, spaces: true, prep: "document.querySelectorAll('#view details').forEach(d=>{d.open=true;});" };
-      const a = flat(await screenOf(OLD, o)), b0 = await screenOf(FILE, o), b = flat(b0);
+      const a = flat(await screenOf(OLD, o)), b0 = await screenOf(PROVED, o), b = flat(b0);
       const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
       ok(!d && a.text === b.text, `1. ${tab}, ${vn}: the same elements, attributes, field values and text as r60`, d ? { at: d.at, r60: d.before, now: d.now } : a.text === b.text ? '' : { r60: a.text.slice(0, 300), now: b.text.slice(0, 300) });
       ok(!b0.errors.length, `1. ${tab}, ${vn}: no page errors`, b0.errors);
@@ -135,7 +143,7 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
       return { ...g, errors };
     };
     for (const unit of ['lb', 'kg']) for (const rir of ['on', 'off']) {
-      const [a0, b] = [await guideOf(OLD, unit, rir), await guideOf(FILE, unit, rir)];
+      const [a0, b] = [await guideOf(OLD, unit, rir), await guideOf(PROVED, unit, rir)];
       // r60's Guide with the sentences section 2 corrects on purpose put as r61 words them; each must be there to correct.
       const missing = GUIDE_FIXED.filter(([was]) => !a0.html.includes(was) || !a0.text.includes(was)).map(([was]) => was);
       ok(!missing.length, `1. the Guide in ${unit} with RIR ${rir}: r60 has each sentence section 2 corrects`, missing);
@@ -222,6 +230,8 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
     const A = await open(OLD, { browser, clock: '2026-10-20T10:00:00', realStarter: true });
     const B = await open(FILE, { browser, clock: '2026-10-20T10:00:00', realStarter: true });
     const LIB = await B.page.evaluate(() => window.__ironlog.libExercises());
+    // The isolation lifts, whose rest in a ready-made routine r64 raises to 90 s at least (302, held by tests/r64.js section 11).
+    const ISO = await B.page.evaluate(() => Object.fromEntries(window.__ironlog.libExercises().map(e => [e.id, !window.__ironlog.isCompound(e)])));
     // Each raw log normalized with the same ids for a new routine in both pages (the clock and Math.random held), and,
     // where asked, the answer read once more; with the damaged records dropped and the unknown fields kept.
     const norm = (P, list) => P.page.evaluate(list => {
@@ -277,7 +287,12 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
         const s = JSON.parse(raw), a = ra[i], b = rb[i];
         // Where no routine is kept, r60's starter as its next load reads it; a falsy workout as none; the rest as r60 gave it.
         let want = a.j;
-        if (none && a.j2) { routineCases++; const w = JSON.parse(a.j); w.routines = JSON.parse(a.j2).routines; want = JSON.stringify(w); }
+        if (none && a.j2) {
+          routineCases++; const w = JSON.parse(a.j); w.routines = JSON.parse(a.j2).routines;
+          // The starter as r64 makes it: each isolation lift under 90 s rests 90 s (302); nothing else in it changes.
+          for (const R of w.routines) for (const d of R.days || []) for (const it of d.items || []) if (ISO[it.exId] && it.rest < 90) it.rest = 90;
+          want = JSON.stringify(w);
+        }
         if (falsyDraft(s)) { draftCases++; const w = JSON.parse(want); w.draft = null; want = JSON.stringify(w); }
         if (b.j === want && a.d === b.d && a.k === b.k) same++;
         else if (off.length < 5) { let at = 0; while (at < want.length && want[at] === b.j[at]) at++; off.push({ seed, i, none, want: want.slice(Math.max(0, at - 150), at + 150), b: b.j.slice(Math.max(0, at - 150), at + 150), d: [a.d, b.d], k: [a.k, b.k] }); }

@@ -274,6 +274,31 @@ const refuseSave = P => P.ev(() => { const KEY = window.__ironlog.KEY; const o =
     ok(cloud.sessionsIn('u1').length === 2 && (await P.ev(() => window.__ironlog.state.sessions.length)) === 2, 'reopened: both workouts are in the account and back on the phone (r55 and d04ec3b: the second was deleted everywhere)', { acct: cloud.sessionsIn('u1').length, phone: await P.ev(() => window.__ironlog.state.sessions.length) });
   }
 
+  // ---- A-1 (the r63 audit, r64): a pull, or a flush that takes in the other phone's copy, whose save on this phone is
+  // refused. The notes say what the log on this phone holds, so they are not written ahead of it: reopened, the phone
+  // pulls the other phone's session again instead of reading it as deleted (r63 deleted it from the account, then from
+  // the other phone), and the menu says the phone is not saving.
+  for (const how of ['pull', 'flush']) {
+    const cloud = cloudOf();
+    const A = await phone(browser, cloud, 'u1'); pages.push(A);
+    await wait(900);
+    await addSession(A, session('s-a1', '2026-10-19', [[100, 8]])); await A.flush();
+    const B = await phone(browser, cloud, 'u1'); pages.push(B);
+    await wait(1500); await B.sync();
+    await addSession(B, session('s-b1', '2026-10-20', [[60, 10]])); await B.flush();
+    ok(cloud.sessionsIn('u1').map(s => s.id).sort().join() === 's-a1,s-b1', `A-1 ${how}, set up: the account holds both phones' sessions`, cloud.sessionsIn('u1').map(s => s.id));
+    if (how === 'pull') { await refuseSave(A); await A.sync(); }
+    // The flush reads the document before writing it: a change saved here to the same half-month document, then the
+    // storage full, so the flush takes in B's copy and the write of the log after it is refused.
+    else { await A.ev(() => { const L = window.__ironlog; L.state.sessions.find(s => s.id === 's-a1').notes = 'kept'; L.saveNow(); }); await refuseSave(A); await A.flush(); }
+    await wait(1200);
+    const menu = await A.ev(() => { const el = document.getElementById('saveState'); return el ? el.getAttribute('aria-label') : ''; });
+    ok(/Not saving/.test(menu), `A-1 ${how}: with the save refused, the menu says the phone is not saving (r63: "Synced")`, menu);
+    await A.reopen(); await A.sync(); await wait(1500); await A.flush(); await wait(600); await B.sync(); await wait(600);
+    const acct = cloud.sessionsIn('u1').map(s => s.id).sort().join(), onA = (await A.ids()).join(), onB = (await B.ids()).join();
+    ok(acct === 's-a1,s-b1' && onA === 's-a1,s-b1' && onB === 's-a1,s-b1', `A-1 ${how}: reopened, the other phone's session is pulled again, in the account and on both phones (r63: deleted everywhere)`, { acct, onA, onB });
+  }
+
   // ---- G5: a log kept aside for G comes back while the phone holds nothing of the lifter's (demo data, or the starter
   // routine after the menu's Sign out): it comes back as it was, so no demo session or second routine reaches the account.
   for (const how of ['demo', 'signout']) {

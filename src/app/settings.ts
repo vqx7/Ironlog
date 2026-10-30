@@ -2,8 +2,8 @@
    data, drawn by lit-html as src/23-history-settings.js and the account part
    of src/14-account.js drew them, and the actions and fields that change
    what it shows, each change to the log through `act`. What Settings opens
-   or starts elsewhere stays with that code in the legacy script, reached by
-   the button's data-act as before: the sheets (backup text, the save kept
+   or starts elsewhere is reached by the button's data-act through events.ts's
+   table (r63; actsapp.ts, account.ts, importflow.ts, demo.ts, actslift.ts): the sheets (backup text, the save kept
    aside, diagnostics, the guide, reports, import), the backup files, Install,
    Undo, demo data's Load, the account's own actions (sign in, sign out,
    delete) and the fill-in choice for the session's rows (loadAsk). */

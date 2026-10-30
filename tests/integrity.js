@@ -22,6 +22,7 @@ const CASES = [
   ['bignum', [/stored bw: \[ 80, 400 \]/], 'absurd body numbers are capped', out => !/"crash":true/.test(out) && !/"bad":\["/.test(out)],
   ['undo_kinds', [/"afterEraseUndo":"a,b"/, /"afterImportUndo":"a,b"/, /"afterDeleteUndo":"a,b","bwKept":true,"trashA":false/, /errors \[\]/], 'Undo reverses erase, import and delete, and nothing else'],
   ['quota_once', [/stored done sets: 2/], 'saving resumes after a storage error'],
+  ['unreadable_full', [/stored unchanged: true/, /menu: .*Not saving/], 'an unreadable save whose copy aside fails is never written over (r64, the r63 audit A-2)'],
 ];
 
 function run(name) {

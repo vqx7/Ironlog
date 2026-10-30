@@ -15,8 +15,9 @@
    at a time, in order. The three-way merge of a document edited on two
    devices, the sync notes each device keeps, and the merge of another tab's
    save are here too. Nothing runs on import: syncStart() runs what the parts
-   ran as the page loaded, from the start of the legacy script. */
+   ran as the page loaded, called from main.ts at start (r63). */
 
+import { NET_MS } from './config';
 import { uid, hashStr, SECOND_MS } from './util';
 import { fmtDate } from './format';
 import { arr, parseJson, rec } from './records';
@@ -65,8 +66,6 @@ import {
     lease), the lease and the wait for it, the wait for any answer from the
     account, an account error's toast, and how long after the last pull a
     return to the app pulls again. */
-/** How long a request to the account may go without an answer before it is given up, in milliseconds: the sync's, the sign-in's and a problem report's (r63, PENDING 306 and 309). */
-export const NET_MS = 20000;
 const SYNC_MS = {
   save: 400,
   track: 800,
@@ -80,6 +79,10 @@ const SYNC_MS = {
 } as const;
 /** The waits between tries after a sync fails, in seconds, the last repeated. */
 const RETRY_S: readonly number[] = [5, 15, 60, 180];
+/** What a phone whose sign-in the server refuses says (r64, the r63 audit's F10). */
+const SIGNIN_AGAIN = 'Your sign-in has expired. Sign in again to sync. Your log stays on this phone.';
+/** Whether the phone says it has no network: the sync then waits for it (the 'online' event, account.ts) rather than trying what cannot reach anything (r64, the r63 audit's F5). */
+const offline = (): boolean => navigator.onLine === false;
 /** A sync document over this many characters of JSON is left unwritten (the account's size cap), so it cannot stop the others. */
 const DOC_MAX = 250000;
 /** Tries at keeping the log aside before giving up (a set ticked while the copy is written makes another). */
@@ -155,6 +158,28 @@ export function saveNow(): void {
   markEdit();
   fx.setSaveState();
   cloudSoon();
+}
+/* The log taken in from the account (a pull, or a flush that merged the
+   account's copy) is written to this device before the sync notes say it
+   agrees with the account: the notes describe the log on this device, so
+   notes written ahead of a refused write read, on the next start, the
+   records taken in as deleted here, and that deletion was sent to the
+   account and the other phone (r64, the r63 audit's A-1). A refused write
+   marks the save failed, which keeps the notes as they were (saveMeta) and
+   says Not saving; a save that later succeeds (saveNow) clears it. A save
+   that could not be read at start is never written over (device.boot). */
+/** Writes the log just taken in from the account to this device, and says whether it is saved. */
+function writeTakenIn(): boolean {
+  if (!device.boot) return false;
+  try {
+    writeLocal(JSON.stringify(state));
+    device.ok = true;
+  } catch (e) {
+    device.ok = false;
+    log('storage', e);
+  }
+  fx.setSaveState();
+  return device.ok;
 }
 /** Writes the log once the taps pause (SYNC_MS.save). */
 export function saveSoon(): void {
@@ -274,7 +299,11 @@ const newEp = (): void => {
 const epOf = (m: Rec | null): number => (m && typeof m.ep === 'number' ? m.ep : 0);
 /** Writes the sync notes to this device: whether they were written (above). */
 function saveMeta(): boolean {
-  if (device.boot && !device.ok) return false;
+  /* The notes describe the log on this device, so they are written only while
+     it is saved: never while a write of it fails, and never over a save that
+     could not be read at start (device.boot false: a blocked store, where a
+     write fails anyway, or an unreadable save not kept aside, r64). */
+  if (!device.ok) return false;
   try {
     if (epOf(rec(parseJson(localStorage.getItem(SYNC_KEY) || 'null'))) > notesEp) {
       log('tabs', new Error('newer sync notes from another tab; not written over'));
@@ -413,8 +442,24 @@ function cloudFail(e: unknown): void {
   const E = rec(e);
   const c = codeOf(e);
   if (c === 'revoked' || c === 'not_granted' || c === 'capability_disabled' || c === 'capability_removed') {
+    const was = cloud.on;
     cloud.on = false;
     setCloud('local');
+    /* A sign-in the server refuses can never sync again: this phone signs out
+       of it, keeping the log and the sync notes (signing back in to the
+       account goes on from them), and says so, once, as the failure turns the
+       sync off (r64, the r63 audit's F10: nothing was said, and Your data
+       read "Not syncing right now" with no way to sign in). */
+    if (c === 'revoked' && was) {
+      const A = AUTH();
+      acct.user = null;
+      cloudStop();
+      if (A)
+        A.signOut().catch((x: unknown) => {
+          log('auth', x);
+        });
+      fx.toast(SIGNIN_AGAIN, null, SYNC_MS.errToast);
+    }
     fx.render();
     return;
   }
@@ -436,8 +481,9 @@ function cloudFail(e: unknown): void {
     return;
   }
   setCloud('offline', c === 'denied' && E && typeof E.message === 'string' ? E.message : undefined);
-  const wait = RETRY_S[Math.min(cloud.retry++, RETRY_S.length - 1)] * SECOND_MS;
   clearTimer(cloud.t);
+  if (offline()) return;
+  const wait = RETRY_S[Math.min(cloud.retry++, RETRY_S.length - 1)] * SECOND_MS;
   cloud.t = setTimeout(() => cq(cloudFlush), wait);
 }
 
@@ -871,6 +917,11 @@ function cloudSoon(): void {
 /** Writes every document that changed here to the account, merging each the account changed meanwhile. */
 export async function cloudFlush(): Promise<void> {
   if (!cloud.on) return;
+  /* No pull has come through since the sync started (it failed, or got no
+     answer): this one pulls first, which then sends. A retry that only sent
+     found nothing to send and said Synced, the account's own changes never
+     read (found building r64's fix of the r63 audit's F3). */
+  if (!pulled) return cloudPull();
   if (trackT || cloud.pendAt) trackEdits();
   const ch = chunksOf(state);
   const ids = new Set([...Object.keys(ch), ...Object.keys(cloud.meta)]);
@@ -901,6 +952,10 @@ export async function cloudFlush(): Promise<void> {
       saveMeta();
       setCloud('synced');
     }
+    return;
+  }
+  if (offline()) {
+    setCloud('offline');
     return;
   }
   setCloud('saving');
@@ -956,6 +1011,7 @@ export async function cloudFlush(): Promise<void> {
           if (dn && dn.prev && (!mergedDraft || mergedDraft.id !== dn.prev.id)) await sessionFromCloud(dn.prev, legB);
           applyChunk(x.id, merged);
           adopted = true;
+          writeTakenIn();
           if (x.id === 'draft' && dn) {
             // The copy that lost (this device's, dirty here, or the account's, which a later edit here replaced) keeps its sets.
             const prev = dn.prev,
@@ -986,11 +1042,7 @@ export async function cloudFlush(): Promise<void> {
     }
     if (adopted) {
       invalidate();
-      try {
-        writeLocal(JSON.stringify(state));
-      } catch (e) {
-        log('storage', e);
-      }
+      writeTakenIn();
       resyncLocalH();
       if (!ui.modal) fx.rerenderKeepScroll();
       conflictNote(stat);
@@ -1032,6 +1084,10 @@ export async function cloudFlush(): Promise<void> {
 export async function cloudPull(): Promise<void> {
   if (!cloud.on || !cloud.db) return;
   if (trackT || cloud.pendAt) trackEdits();
+  if (offline()) {
+    setCloud('offline');
+    return;
+  }
   setCloud('connecting');
   let snap: Awaited<ReturnType<ReturnType<CloudDb['collection']>['get']>>;
   try {
@@ -1042,6 +1098,7 @@ export async function cloudPull(): Promise<void> {
     return;
   }
   cloud.lastPull = Date.now();
+  pulled = true;
   const remote: Record<string, { at: number; et: number; data: unknown; h: string }> = {};
   for (const d of snap.docs) {
     if (!d.exists || !isChunkId(d.id)) continue;
@@ -1182,11 +1239,7 @@ export async function cloudPull(): Promise<void> {
   }
   if (parts || merged) {
     invalidate();
-    try {
-      writeLocal(JSON.stringify(state));
-    } catch (e) {
-      log('storage', e);
-    }
+    writeTakenIn();
     for (const id of adoptedIds) {
       // Mark adopted documents as agreed with the cloud copy. Normalizing can
       // change a document (a newer build adds defaults); it then differs from
@@ -1245,7 +1298,21 @@ async function cloudProvider(): Promise<{ db: CloudDb; userId: string } | null> 
   }
   return null;
 }
-let cloudStarting = false;
+/* A start under way (cloudInit), settled once it has decided whether the
+   sync is on, before its first pull; and where that pull stands: the first
+   pull of the latest start not yet tried (the first page waits for it,
+   today.ts), and whether a pull has come through since the sync started
+   (a flush pulls first until one has, cloudFlush). */
+let starting: Promise<void> | null = null;
+let starts = 0;
+let firstPull = false;
+let pulled = false;
+/** Settles once no start of the sync is under way, so the sync then reads on or off: what a sign-in says waits for it (r64, the r63 audit's F3). */
+export async function cloudDecided(): Promise<void> {
+  while (starting) await starting;
+}
+/** Whether the sync has started and its first pull is not yet tried: the first page shows only the logo until it is, so it never flashes before the account's log (r64, the r63 audit's F3: until a pull came through, which with no answer was never). */
+export const cloudFirstPull = (): boolean => cloud.on && firstPull;
 /* ---------- signing in: which log the phone holds (r56.1, PENDING 328 b and 333) ---------- */
 
 /* The sync notes belong to one account (cloud.acct), and the log on the
@@ -1470,8 +1537,26 @@ async function takeAccount(id: string): Promise<boolean> {
 }
 /** Starts the sync for the account signed in, if there is one: the first pull, then every save flushes. */
 export async function cloudInit(): Promise<void> {
-  if (cloud.on || cloudStarting) return;
-  cloudStarting = true;
+  /* A start under way is joined: this call waits for its answer, which is
+     this call's too, rather than reading the sync as off while it is still
+     deciding (r64, the r63 audit's F3: a sign-in made meanwhile said "Signed
+     in. Syncing your log." and nothing synced). A start of its own after it
+     would ask again a question just answered Cancel (tests/r56-1.js). */
+  if (starting) {
+    await starting;
+    return;
+  }
+  if (cloud.on) return;
+  const run = ++starts;
+  let decided = (): void => {};
+  const mine = new Promise<void>(r => {
+    decided = r;
+  });
+  starting = mine;
+  const decide = (): void => {
+    if (starting === mine) starting = null;
+    decided();
+  };
   try {
     const pv = await cloudProvider();
     if (!pv) return;
@@ -1489,7 +1574,10 @@ export async function cloudInit(): Promise<void> {
     cloud.db = db;
     cloud.uid = id;
     cloud.on = true;
+    pulled = false;
+    firstPull = true;
     setCloud('connecting');
+    decide();
     if (ui.tab === 'settings') fx.render();
     await cq(cloudPull);
   } catch (e) {
@@ -1498,7 +1586,8 @@ export async function cloudInit(): Promise<void> {
     cloud.on = false;
     setCloud('local');
   } finally {
-    cloudStarting = false;
+    decide();
+    if (run === starts) firstPull = false;
     cloudChecked = true;
     // The first page waits for this check (a splash until then): after a sign-out too (r33).
     if (
@@ -1651,7 +1740,7 @@ function onPageHide(): void {
     read from this device, the device id, the notes forgotten when no save
     was readable, this device's hashes of the log, then the listeners for
     another tab's save and for the page being hidden or left. Called once,
-    from the start of the legacy script, after storageStart(). */
+    from main.ts at start, after storageStart(). */
 export function syncStart(): void {
   try {
     const m = rec(parseJson(localStorage.getItem(SYNC_KEY) || 'null'));

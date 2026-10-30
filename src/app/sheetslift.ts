@@ -2,10 +2,9 @@
    what the menu opens there (typed sets, a note, a calibration set, its load
    step, the heaviest load the gym has); its goal; an injury flagged; and the
    how-to link. Each is drawn by lit-html as src/24-sheets.js drew it
-   (tests/r62.js holds them to r61's), and answered by the legacy script's
-   actions by their data-act until those move (r63). A sheet of a session's
-   lift is null once that lift or the session is gone, and the legacy host
-   then closes it. */
+   (tests/r62.js holds them to r61's), and answered by actslift.ts's actions
+   by their data-act (r63). A sheet of a session's lift is null once that
+   lift or the session is gone, and the sheet host (page.ts) then closes it. */
 
 import { html } from 'lit-html';
 import type { TemplateResult } from 'lit-html';

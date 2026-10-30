@@ -2,9 +2,9 @@
    Recently deleted, drawn by lit-html as src/23-history-settings.js drew
    them, and the actions that change what it shows, each change to the log
    through `act`. Starting a workout from a session (Edit, Do again) and the
-   sheets it opens (the calendar, a past workout, an import) stay with the
-   session and sheet code they drive, in the legacy script, and are reached as
-   before, by the button's data-act. */
+   sheets it opens (the calendar, a past workout, an import) are the session
+   and sheet modules' actions (actsstart.ts, the sheets*.ts modules),
+   reached by the button's data-act through events.ts's table (r63). */
 
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';

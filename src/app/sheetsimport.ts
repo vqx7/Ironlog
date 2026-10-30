@@ -103,7 +103,11 @@ function previewStep(m: ImpPreviewModal): TemplateResult {
   ).map(
     k =>
       html`<button class=${'chip ' + (m.unit === k ? 'on' : '')} data-act="impUnit" data-v=${k} aria-pressed=${String(m.unit === k)}>${k}</button>`
-  )}</div>${m.unitKnown ? nothing : html`<p class="small muted" style="margin:4px 0 0">It does not say which; check this.</p>`}</div>
+  )}</div>${
+    m.unitKnown
+      ? nothing
+      : html`<p class="small muted" style="margin:4px 0 0">${r.mixed ? 'It names both kg and lb. A line with neither is read in the unit picked here; check this.' : 'It does not say which; check this.'}</p>`
+  }</div>
   ${noDate ? html`<label class="field" style="margin-top:10px">No date found. Log it on<input type="date" data-impdate value=${m.date} max=${today()}></label>` : nothing}
   ${unsure.length ? html`<p class="small" style="margin:12px 0 4px;font-weight:650">Check these exercises</p>${unsure.map(row)}` : nothing}
   ${sure.length ? html`<details class="subsec" style="margin-top:8px"><summary>${sure.length} matched</summary>${sure.map(row)}</details>` : nothing}

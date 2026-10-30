@@ -16,14 +16,14 @@
    again after its reply was lost is refused by the table as a repeat and
    read as sent, rather than made twice (and ticketed twice). */
 
-import { APP_NAME, APP_VERSION, DISPLAY_VERSION } from './config';
+import { APP_NAME, APP_VERSION, DISPLAY_VERSION, NET_MS } from './config';
 import { andList, uid } from './util';
 import { ACCENT0 } from './layout';
 import { FB_CATS, FB_CTX_MAX, FB_DAY, FB_IMG_MB, FB_MAX, FB_MIN, FB_TITLE } from './feedback';
 import { ENV, KEY, log, logBuf, prefGet, prefSet } from './storage';
 import type { LogEntry } from './types';
 import { arr, parseJson } from './records';
-import { NET_MS, withTimeout } from './sync';
+import { withTimeout } from './sync';
 import { U, exName } from './live';
 import { acct, cloud, state, ui } from './store';
 import type { FeedbackModal, Modal } from './modals';
@@ -42,7 +42,7 @@ export const NO_ANSWER = 'No answer. Check your connection and try again.';
 const CTX = { device: 300, errors: 10, words: 100 } as const;
 /** A day, in milliseconds (the reports sent in the last one). */
 const DAY_MS = 864e5;
-/** A screenshot as kept: its long side tried at each of these, in pixels, at each JPEG quality from the first down by the step to the last, until it fits in the characters allowed (r45, audit item 287: each is kept in the tickets repository's history for good). */
+/** A screenshot as kept: its long side tried at each of these, in pixels, at each JPEG quality from the first down by the step to the last, until it fits in the characters allowed (r45, audit item 287, when each was also committed to the tickets repository for good; since r64 it is kept only with its report in the table and shown in the Inbox). */
 const SHOT = { sides: [1280, 960, 720], q0: 0.72, qStep: 0.14, qMin: 0.3, chars: 500000 } as const;
 /** A megabyte, in bytes. */
 const MB = 1048576;

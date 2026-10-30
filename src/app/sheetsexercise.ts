@@ -2,8 +2,8 @@
    new or saved, the muscles it works, flat or in 3D, and its history from
    inside a session with the trend line. Each is drawn by
    lit-html as src/24-sheets.js drew it (tests/r62.js holds them to r61's),
-   and answered by the legacy script's actions and listeners by their
-   data-act and data-ebind until those move (r63). The editor is drawn again
+   and answered by the editor's actions and listeners by their data-act and
+   data-ebind (actspick.ts and events.ts since r63). The editor is drawn again
    in place as its fields change (a helper muscle, bodyweight, timed, the
    equipment), so what is typed stays; so its labels' tips are drawn with
    the labels (labelTip), not added by the page's tip pass, which would

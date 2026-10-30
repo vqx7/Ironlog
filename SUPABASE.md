@@ -31,6 +31,22 @@ create policy "own rows only" on public.docs
 -- Signed-in users may use the table (subject to the rule above); signed-out visitors may not.
 grant select, insert, update, delete on public.docs to authenticated;
 revoke all on public.docs from anon;
+-- At most 2,000 documents and 25 MB stored per account (r64): three and a half years
+-- of four sessions a week is 88 documents and about 1.1 MB, so this only stops one
+-- account filling the free database. A document being replaced is not counted twice.
+create or replace function public.docs_limit() returns trigger language plpgsql security definer set search_path = '' as $$
+declare n bigint; b bigint;
+begin
+  execute format('select count(*), coalesce(sum(pg_column_size(data)), 0) from %I.%I where user_id = $1 and path <> $2', tg_table_schema, tg_table_name)
+    into n, b using new.user_id, new.path;
+  if n >= 2000 or b + pg_column_size(new.data) > 26214400 then
+    raise exception 'docs_limit' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+-- Only the triggers run it; nobody can call it through the API.
+revoke all on function public.docs_limit() from public, anon, authenticated;
+create or replace trigger docs_limit before insert or update on public.docs for each row execute function public.docs_limit();
 ```
 
    `on delete cascade` means deleting an account deletes its data too.
@@ -116,6 +132,8 @@ begin
   -- report would slip past the daily limit, and a made-up link would show in your Inbox.
   new.created_at := now();
   new.issue_url := null;
+  -- The reply address is the account's own email, never what was sent (r64): a made-up one could write anything into the ticket.
+  new.reply_to := (select u.email from auth.users u where u.id = new.user_id and char_length(u.email) <= 200);
   -- The same report sent again (its answer lost on the way back, r63): kept once, and not counted again.
   if new.client_id is not null and exists (select 1 from public.feedback where user_id = new.user_id and client_id = new.client_id) then
     return null;
@@ -193,9 +211,10 @@ alter table public.feedback drop constraint if exists feedback_screenshot_check;
 alter table public.feedback add constraint feedback_screenshot_check check (screenshot is null or (screenshot ~ '^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$' and char_length(screenshot) <= 1500000)) not valid;
 ```
 
-   **Ran step 1 before r63?** Run this as well, after any block above (r63): a report sent again after its answer was lost on the way back (a phone dropping off the network mid-send) is kept once, so it makes one ticket, not two. Until it runs, the app sends reports as before, without the key.
+   **Set up before r64?** Run this as well, after any block above, once (running it again does no harm): it brings a project set up before r64 to the rules above. A report sent again after its answer was lost is kept once (r63, its key); a report's reply address is the account's own email, set by the database (r64); a synced document is at most 1 MB (r45, Part 6) and an account at most 2,000 documents and 25 MB (r64). Nothing changes in the app; until it runs, reports go without the key and take the reply address as sent.
 
 ```sql
+-- r64: run once, after any block above; running it again does no harm.
 alter table public.feedback add column if not exists client_id text check (client_id is null or char_length(client_id) <= 40);
 create unique index if not exists feedback_client_once on public.feedback (user_id, client_id);
 create or replace function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
@@ -204,6 +223,8 @@ begin
   -- report would slip past the daily limit, and a made-up link would show in your Inbox.
   new.created_at := now();
   new.issue_url := null;
+  -- The reply address is the account's own email, never what was sent (r64): a made-up one could write anything into the ticket.
+  new.reply_to := (select u.email from auth.users u where u.id = new.user_id and char_length(u.email) <= 200);
   -- The same report sent again (its answer lost on the way back, r63): kept once, and not counted again.
   if new.client_id is not null and exists (select 1 from public.feedback where user_id = new.user_id and client_id = new.client_id) then
     return null;
@@ -214,19 +235,50 @@ begin
   return new;
 end $$;
 revoke all on function public.feedback_limit() from public, anon, authenticated;
+-- At most 2,000 documents and 25 MB stored per account (r64): three and a half years
+-- of four sessions a week is 88 documents and about 1.1 MB, so this only stops one
+-- account filling the free database. A document being replaced is not counted twice.
+create or replace function public.docs_limit() returns trigger language plpgsql security definer set search_path = '' as $$
+declare n bigint; b bigint;
+begin
+  execute format('select count(*), coalesce(sum(pg_column_size(data)), 0) from %I.%I where user_id = $1 and path <> $2', tg_table_schema, tg_table_name)
+    into n, b using new.user_id, new.path;
+  if n >= 2000 or b + pg_column_size(new.data) > 26214400 then
+    raise exception 'docs_limit' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+-- Only the triggers run it; nobody can call it through the API.
+revoke all on function public.docs_limit() from public, anon, authenticated;
+-- Each table only if this project has it, and each limit only once.
+do $$
+begin
+  if to_regclass('public.docs') is not null then
+    if not exists (select 1 from pg_constraint where conname = 'docs_data_size') then
+      alter table public.docs add constraint docs_data_size check (pg_column_size(data) <= 1048576) not valid;
+    end if;
+    create or replace trigger docs_limit before insert or update on public.docs for each row execute function public.docs_limit();
+  end if;
+  if to_regclass('public.docs_preview') is not null then
+    if not exists (select 1 from pg_constraint where conname = 'docs_preview_data_size') then
+      alter table public.docs_preview add constraint docs_preview_data_size check (pg_column_size(data) <= 1048576) not valid;
+    end if;
+    create or replace trigger docs_preview_limit before insert or update on public.docs_preview for each row execute function public.docs_limit();
+  end if;
+end $$;
 ```
 
-Steps 2 to 5 turn each report into a GitHub issue, which is what lets Claude pick it up (`FEEDBACK.md`). They can wait.
+Steps 2 to 5 turn each report into a GitHub issue in a private repository, so you can read reports on GitHub as well as in the app's Inbox. Nothing automated reads them (V's ruling, `FEEDBACK.md`). They can wait.
 
 2. **A private repository for tickets.** GitHub > New repository, name `ironlog-feedback`, **Private**, tick "Add a README". Reports quote what people wrote and may show their screen, so they must not go into the public Ironlog repository.
-3. **A GitHub token for it.** GitHub > Settings > Developer settings > Fine-grained tokens > Generate new token. Repository access: Only select repositories > `ironlog-feedback`. Permissions: Issues read and write, Contents read and write. Nothing else. Expiry: a year. Copy it.
+3. **A GitHub token for it.** GitHub > Settings > Developer settings > Fine-grained tokens > Generate new token. Repository access: Only select repositories > `ironlog-feedback`. Permissions: Issues read and write. Nothing else (Contents read and write was needed until r64, for screenshots; a token that has it still works). Expiry: a year. Copy it.
 4. **The function.** Supabase > Edge Functions > Deploy a new function > Via editor. Name it exactly `feedback-to-issue`, paste everything in `supabase/functions/feedback-to-issue/index.ts`, turn **Verify JWT off**, Deploy. Then Edge Functions > Secrets, add:
    - `GITHUB_TOKEN`: the token from step 3.
    - `TICKETS_REPO`: `vqx7/ironlog-feedback`.
    - `WEBHOOK_SECRET`: a long random string (a password manager can make one). Keep it for step 5.
 5. **The trigger.** Database > Webhooks > Create a new hook. Name `feedback-to-issue`, table `feedback`, events **Insert** only, type **Supabase Edge Functions**, function `feedback-to-issue`, method POST. Under HTTP Headers add `x-webhook-secret` with the same random string. Create.
 
-   To check: send a report from the app. Within a few seconds an issue labelled `feedback` appears in `ironlog-feedback`, with any screenshot saved under `shots/`, and the report's row gets its `issue_url`. If nothing appears, Edge Functions > feedback-to-issue > Logs says why (a 401 means the header and the secret differ).
+   To check: send a report from the app. Within a few seconds an issue labelled `feedback` appears in `ironlog-feedback` (a screenshot stays in the app's Inbox, r64), and the report's row gets its `issue_url`. If nothing appears, Edge Functions > feedback-to-issue > Logs says why (a 401 means the header and the secret differ).
 
 ## Security Advisor (r26)
 
@@ -264,6 +316,8 @@ create policy "own rows only" on public.docs_preview
   with check ((select auth.uid()) = user_id);
 grant select, insert, update, delete on public.docs_preview to authenticated;
 revoke all on public.docs_preview from anon;
+-- The same per-account limit as docs (Part 1's docs_limit, r64).
+create or replace trigger docs_preview_limit before insert or update on public.docs_preview for each row execute function public.docs_limit();
 ```
 
    To check: sign in on the preview, log a set, then Table Editor > docs_preview shows your rows, and docs is unchanged.
@@ -282,7 +336,7 @@ alter table public.docs add constraint docs_data_size check (pg_column_size(data
 alter table public.docs_preview add constraint docs_preview_data_size check (pg_column_size(data) <= 1048576) not valid;
 ```
 
-   To check, run `select conname from pg_constraint where conname like '%data_size';` in a new query: it lists both names. Nothing changes in the app.
+   To check, run `select conname from pg_constraint where conname like '%data_size';` in a new query: it lists both names. Nothing changes in the app. Since r64 this is part of Part 4's r64 block, which adds it only where it is missing; run that block instead.
 
 ## Who can see the data
 

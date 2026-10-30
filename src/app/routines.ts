@@ -10,7 +10,7 @@ import type { ExerciseLike, Model } from './model';
 import { uid, EPS, WEEK_DAYS, LETTERS, numWord } from './util';
 import { STEP_LB } from './units';
 import { EXIn, activeRoutineIn, profIn, rirHalfOnIn } from './model';
-import { isCompound, profHeavy } from './library';
+import { isCompound, libExercises, profHeavy } from './library';
 import { SESSION_CAP, HARD_RIR, RIR_CALL_TOP, HALF_SET, HELPER_CREDIT, lighterSets } from './formulas';
 
 /** A plan item as a routine is first made: normalize() adds its superset
@@ -85,7 +85,31 @@ const LEGACY: Template = {
    until then), so its key order is theirs. */
 /** The routine installs started with before r29. */
 export function defaultRoutine(): NewRoutine {
-  return routineOf(LEGACY);
+  return routineOf(LEGACY, true);
+}
+
+/* An isolation lift's rest in the ready-made routines (r64, PENDING 302; V,
+   2026-10-25: "go with 90 then but easy to change"). Singer 2024 found a
+   small benefit to growth from resting more than 60 s and no difference
+   detected past 90 s (docs/EVIDENCE.md, Rest between sets). The table below
+   keeps the rests the routines shipped with up to r63; an isolation item
+   resting less rests this long, so a change is this one number, and a copy
+   made before, untouched, is still known as ready-made (templateSigsBefore).
+   The routine installs started with before r29 is kept as it shipped. */
+/** The least rest, in seconds, of an isolation lift in a ready-made routine. */
+const ISO_REST = 90;
+
+/** The library's isolation lifts, by id, read once. */
+let isoIds: ReadonlySet<string> | null = null;
+/** The rest a ready-made routine gives a lift the table rests this long: ISO_REST at least on an isolation lift. */
+export function templateRest(exId: string, rest: number): number {
+  if (!isoIds)
+    isoIds = new Set(
+      libExercises()
+        .filter(e => !isCompound(e))
+        .map(e => e.id)
+    );
+  return isoIds.has(exId) && rest < ISO_REST ? ISO_REST : rest;
 }
 
 /* Ready-made routines, so nobody has to build one from scratch. Most land
@@ -183,8 +207,26 @@ export function routineFromTemplate(key: string): NewRoutine | null {
   return t ? routineOf(t) : null;
 }
 
-/** A template's routine, with ids of its own. */
-function routineOf(t: Template): NewRoutine {
+/** A ready-made routine as it was made before r64 (the rests as the table writes them), with ids of its own, as routineFromTemplate makes one: the suites compare earlier builds' screens with it. */
+export function templateBefore(key: string): NewRoutine | null {
+  const t = TEMPLATES.find(x => x.key === key);
+  return t ? routineOf(t, true) : null;
+}
+
+/** The signature of each ready-made routine as made up to r63, in the table's order: a copy made then, untouched, is still ready-made (302). Read from the table, so no ids are made and no random number is drawn. */
+export function templateSigsBefore(): string[] {
+  return TEMPLATES.map(t =>
+    routineSig({
+      name: t.name,
+      schedule: 'cycle',
+      days: t.days.map(d => ({ name: d.name, rest: !!d.rest, items: d.items }))
+    })
+  );
+}
+
+/** A template's routine, with ids of its own: as shipped up to r63 (shipped, and the hidden one always), or with an isolation lift's rest at ISO_REST at least. */
+function routineOf(t: Template, shipped?: boolean): NewRoutine {
+  const asShipped = shipped || !!t.hidden;
   return {
     id: uid(),
     name: t.name,
@@ -193,7 +235,12 @@ function routineOf(t: Template): NewRoutine {
       id: uid(),
       name: d.name,
       rest: !!d.rest,
-      items: d.items.map(it => ({ uid: uid(), ...it, inc: STEP_LB }))
+      items: d.items.map(it => ({
+        uid: uid(),
+        ...it,
+        ...(asShipped ? {} : { rest: templateRest(it.exId, it.rest) }),
+        inc: STEP_LB
+      }))
     }))
   };
 }

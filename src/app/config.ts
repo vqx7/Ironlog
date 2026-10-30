@@ -42,7 +42,7 @@ export const WORDMARK = { mark: 'I', strong: 'ron', light: 'log' } as const;
 
 /** The version people see (V, 2026-10-16): 2.0 from r49, the minor number up
     by one for each release merged, the major number for a large change. */
-export const DISPLAY_VERSION = '2.17';
+export const DISPLAY_VERSION = '2.18';
 
 /** The build: shown beside the version in Diagnostics, problem reports and
     backups, so a report is matched to the exact code; also names the service
@@ -50,7 +50,7 @@ export const DISPLAY_VERSION = '2.17';
     Problem reports and Copy diagnostics carry it as `build` and the version
     people see as `version`; a backup keeps it under `version`, as every
     build before r49 wrote backups, so old and new backups read the same. */
-export const APP_VERSION = '2026.10.27-r63';
+export const APP_VERSION = '2026.10.27-r64';
 
 /** Version and build together, for Diagnostics and the recovery screen. */
 export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
@@ -128,6 +128,14 @@ const THREE_CDN = [
 /** The addresses map3dLoad tries in turn: the installed app's own copy, or the CDNs. */
 export const THREE_URLS: readonly string[] =
   typeof window !== 'undefined' && window.IRONLOG_APP ? ['./vendor/three.module.min.js'] : THREE_CDN;
+
+/** How long a request to the account server may go without an answer
+    before it is given up, in milliseconds. One limit for every such request:
+    the sync's, the sign-in's and a problem report's (r63, PENDING 306 and
+    309), and since r64 every request the account library makes itself,
+    whose token refresh every later call waits behind (scripts/cloud-supabase.js
+    reads it through the build's placeholder; the r63 audit's F3). */
+export const NET_MS = 20000;
 
 /** Where a report's ticket lives: the Inbox links a report to its ticket
     only when the address starts here (a report's fields are written by

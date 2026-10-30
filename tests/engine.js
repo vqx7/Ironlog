@@ -35,7 +35,8 @@ const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 // and musTrend, a muscle's strength trend in words, which Stats and the muscles sheet call and no adapter reaches (r54);
 // and r55's routine helpers: what a session records of its routine (pwOf), a first-run choice replacing the starter
 // (dropStarter), a day given an exercise (trainOn) and the item a lift's plan comes from (planItemOf).
-const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'platesPerSide', 'planSetsOf', 'withPlanSets'];
+// r64 (302): the rest a ready-made routine gives each lift, and the signatures the routines had up to r63.
+const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'platesPerSide', 'planSetsOf', 'withPlanSets', 'templateRest', 'templateSigsBefore'];
 // Every adapter live.ts gives the legacy script, read from live.ts itself, so a new one cannot go uncalled.
 const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
 // The adapters added since r53, and the plain functions above the digest does not call: tests/wide.js is shared with
@@ -43,6 +44,8 @@ const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll
 const EXTRA = {
   // Each routine's day labels (a cycle's Day N, a weekly one's weekday), planned sets a day, superset letters and signature, and the templates' line.
   dayLabel: (s) => s.routines.flatMap(r => [[r, 0], [r, 3], [{ ...r, schedule: 'weekly' }, 2]]), daySets: (s) => s.routines.flatMap(r => r.days.map(d => [d])),
+  // r64 (302): each lift of the log's routines at its own rest and at 45 s, and the old signatures.
+  templateRest: (s) => s.routines.flatMap(r => r.days.flatMap(d => d.items.flatMap(it => [[it.exId, +it.rest], [it.exId, 45]]))), templateSigsBefore: () => [[]],
   ssLetters: (s) => s.routines.flatMap(r => r.days.map(d => [d.items])), routineSig: (s) => s.routines.map(r => [r]), tplCountLine: () => [[]],
   // r55: each routine's sessions a week by id (and an id no routine has), the routines less the first one's signature as a
   // starter, each day given an exercise, and where each tagged lift's plan comes from, with and without a day to look at first.
@@ -231,7 +234,11 @@ const SCENARIOS = [
   h => ({ ...h, ids: ['legPress', 'bench', ...h.ids], raw: { ...h.raw, injuries: [], deloadWeek: null, settings: { ...h.raw.settings, restWeeks: [] },
     sessions: [[-28, 'legPress', 160, false], [-21, 'legPress', 165, false], [-14, 'legPress', 230, true], [-7, 'legPress', 235, false], [-7, 'bench', 80, false]].map(([n, exId, w, nw], i) => ({ id: 'nw' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
       ex: [{ exId, rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r: 10, rir: 2, done: true })), ...(nw ? { nw: true } : {}) }] })),
-    draft: { id: 'nwd', date: h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: null, r: null }], nw: true }] } } })
+    draft: { id: 'nwd', date: h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: null, r: null }], nw: true }] } } }),
+  // Bench on the heavy and light days flat a rep under the top of the heavy range, 100 x 4 x 5 and 70 x 10 x 4, the heavy day
+  // last: stalled in both and not at the top of its range (the coach's stalled line). Until r64 wide histories reached it through
+  // lifts read as stalled across a break of more than four weeks, which since r64 (the r63 audit's P-S2-2) are not stalled.
+  (h, o) => heavyLight(h, o, () => [100, 4], () => [70, 10], true)
 ];
 
 // The child: the bundle on the page's histories, under V8's coverage.
@@ -369,7 +376,7 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
     histories.push({ seed: 52000 + i, today: h.today, state, calls });
     if (histories.length === BATCH || i === K + SCENARIOS.length - 1) { batches.push(path.join(tmp, `data-${batches.length}.json`)); fs.writeFileSync(batches[batches.length - 1], JSON.stringify({ histories })); histories.length = 0; }
   }
-  ok(/Volume advice appears here after your second week back/.test(made[0] || '') && /Every muscle on plan, nothing stalled/.test(made[1] || '') && /Every muscle at target, nothing stalled/.test(made[3] || '') && /Chest strength is falling over \d+ weeks/.test(made[4] || '') && /is at the top of its range at [^:]+ and has stalled over the last \d+ weeks: it is due a step up/.test(made[5] || '') && /Every muscle at target, nothing stalled/.test(made[6] || ''), 'the hand-made histories reach the coach lines they were made for', made);
+  ok(/Volume advice appears here after your second week back/.test(made[0] || '') && /Every muscle on plan, nothing stalled/.test(made[1] || '') && /Every muscle at target, nothing stalled/.test(made[3] || '') && /Chest strength is falling over \d+ weeks/.test(made[4] || '') && /is at the top of its range at [^:]+ and has stalled over the last \d+ weeks: it is due a step up/.test(made[5] || '') && /Every muscle at target, nothing stalled/.test(made[6] || '') && /Barbell Bench Press has stalled\. Try another rep range/.test(made[made.length - 1] || ''), 'the hand-made histories reach the coach lines they were made for', made);
   ok(!B.errors.length, 'no page errors while the page answered', B.errors.slice(0, 3));
   await settle(browser.close(), 'closing the browser');
 

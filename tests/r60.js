@@ -119,7 +119,11 @@ const SCREENS = [
   /* The PR pulse on a row ticked as a PR (prflash, 2 s) is the page's effect, not part of the screen: r59's next draw
      made the row afresh without it, r60 keeps the row and takes the mark off when the pulse ends. It is left out of both. */
   const noPulse = t => t.replace(/class="([^"]*)"/g, (m, c) => `class="${c.split(' ').filter(x => x !== 'prflash').join(' ')}"`);
-  const flat = s => ({ ...s, tree: s.tree.map(noPulse), text: s.text.replace(/\s+/g, ' ') });
+  /* Since r64 (V's decision 3, the r63 audit's P-S4-5) a warm-up or drop row has grey reps, held by tests/r64.js
+     section 7; r59 had none. The grey number in a warm-up or drop row's reps field is read as none in both, every
+     other placeholder exactly: a row's type is its number button's label, read before its fields. */
+  const warmGrey = tree => { let cur = null; return tree.map(t => t.replace(/aria-label="Set (\d+) type: (warm-up|drop set|working set)\.|(, set (\d+) (?:reps|seconds)(?: per side)?"[^>]*?placeholder=")(\d*)(")/g, (m, n, kind, pre, sn, g, post) => { if (kind) { cur = { n, wd: kind !== 'working set' }; return m; } return cur && cur.wd && cur.n === sn ? pre + post : m; })); };
+  const flat = s => ({ ...s, tree: warmGrey(s.tree.map(noPulse)), text: s.text.replace(/\s+/g, ' ') });
   const textDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return { at: i, r59: a.slice(Math.max(0, i - 80), i + 160), now: b.slice(Math.max(0, i - 80), i + 160) }; };
   if (!run(1));
   else if (process.env.IRONLOG_FILE) console.log('note r60 section 1 compares source pages; it runs on the source build');

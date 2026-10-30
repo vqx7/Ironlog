@@ -40,7 +40,8 @@ export const FOCUS_MAX = 2;
    grow a muscle more (Pelland 2025, the dose-response meta-regression the
    targets rest on); 30% is a convention, not a measured dose. Size and
    strength were kept for months on a third of the volume when load stayed
-   up (Bickel 2011; Spiering 2021 review). */
+   up, in adults aged 20 to 35 who had trained for 16 weeks (Bickel 2011,
+   where those aged 60 to 75 lost size on it; Spiering 2021 review). */
 export const FOCUS_UP = 1.3,
   MAINT_SHARE = 1 / 3;
 

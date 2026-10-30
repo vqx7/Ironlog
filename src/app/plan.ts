@@ -2,9 +2,9 @@
    add from and the routine's weekly volume, and the exercise library page,
    drawn by lit-html as src/22-plan-stats.js drew them, with the actions and
    fields that change what they show, each change to the log through `act`.
-   What Plan opens elsewhere stays with that code in the legacy script, by the
-   button's data-act as before: the pickers (Add exercise, Swap), the sheets
-   (a new routine, a template, the exercise editor) and the guide. A drag of
+   What Plan opens elsewhere is reached by the button's data-act through
+   events.ts's table (r63): the pickers (Add exercise, Swap), the sheets (a
+   new routine, a template, the exercise editor) and the guide. A drag of
    an exercise, a day or a library card ends here (`dropItem`, `dropDay`,
    `dropLib`), the dragged element put back where lit-html drew it first. */
 

@@ -248,6 +248,8 @@ interface Fx {
   rerenderKeepScroll(): void;
   /** Shows a toast: the message, whether it offers Undo, for how long, and its kind. */
   toast(msg: string, undo?: boolean | null, ms?: number | null, kind?: string): void;
+  /** Hides the toast when it offers an Undo (a change made after the one it reports). */
+  undoToastHide(): void;
   /** Draws the save state's button (the menu button's dot and words). */
   setSaveState(): void;
   /** Redraws the sync line on Settings, when it is on screen. */

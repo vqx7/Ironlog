@@ -65,6 +65,8 @@ interface ImpReadSession {
 export interface ImpRead {
   sessions: ImpReadSession[];
   unit?: 'kg' | 'lb' | null | undefined;
+  /** Notes that name both kg and lb: no unit is read as theirs, and the preview says so (r64). */
+  mixed?: true | undefined;
   skipped?: number | undefined;
   cardio?: number | undefined;
   cardioRows?: ImpCardio[] | undefined;
@@ -978,6 +980,12 @@ export function impFromText(text: unknown): ImpRead {
     ex: TextItem | null = null,
     pend: { name: string; raw: string } | null = null,
     hint: 'kg' | 'lb' | null = null;
+  /* Both units named (r64, the r63 audit's F2): a line with its unit is read
+     in it, and a line with none was read in the first unit named, so 225
+     under an earlier 100kg became 225 kg beside a 135lb line. Notes naming
+     both say neither as theirs: the preview starts on the app's unit and
+     asks. */
+  const named = { kg: false, lb: false };
   const unread: string[] = [];
   const day = (date: string | null, name: string): { date: string | null; name: string; items: TextItem[] } => {
     if (pend) unread.push(pend.raw);
@@ -1002,8 +1010,13 @@ export function impFromText(text: unknown): ImpRead {
     const L = L0.replace(/^[\s\-•*–]+/, '').trim();
     if (!L) continue;
     const under = li > 0 && !!(lines[li - 1] || '').trim();
-    if (/\bkgs?\b|\dkg/i.test(L)) hint = hint || 'kg';
-    else if (/\blbs?\b|\dlb|#/i.test(L)) hint = hint || 'lb';
+    if (/\bkgs?\b|\dkg/i.test(L)) {
+      hint = hint || 'kg';
+      named.kg = true;
+    } else if (/\blbs?\b|\dlb|#/i.test(L)) {
+      hint = hint || 'lb';
+      named.lb = true;
+    }
     const words = L.split(/\s+/);
     // A date line: a date and no sets on it; what is left may be the workout's name.
     let dt = impDate(L);
@@ -1113,7 +1126,8 @@ export function impFromText(text: unknown): ImpRead {
   if (last) unread.push(last.raw);
   return {
     sessions: S.filter(x => x.items.length).map(x => ({ date: x.date, name: x.name, items: x.items })),
-    unit: hint,
+    unit: named.kg && named.lb ? null : hint,
+    ...(named.kg && named.lb ? { mixed: true as const } : {}),
     skipped: 0,
     cardio: 0,
     unread: unread.slice(0, UNREAD_SHOWN),

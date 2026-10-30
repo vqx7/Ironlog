@@ -71,6 +71,8 @@ export interface Exposure {
   miss?: MissedPoint[];
   /** Done at a new machine or gym (SessionEx.nw, r61): the lift's stretch starts here (sinceNew). */
   nw?: true;
+  /** Every working set a drop set, so its points are the drops (r64): neither the PR list nor the bests board reads it. */
+  dropOnly?: true;
 }
 
 /* A lift's sessions from its newest "New machine or gym" mark (r61, PENDING

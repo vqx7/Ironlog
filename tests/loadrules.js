@@ -15,14 +15,16 @@
 //     plates), never under the bar;
 //   - the reps it states leave the reserve its aim says by the set's own
 //     estimate: the target plus one for fatigue, or on a first session back
-//     the return's own 2 or more (rule 4);
+//     the return's own 2 or more (rule 4), a set left unrated there read as
+//     2 in reserve, what the return asked (V's decision 1, r64);
 //   - on a first session back it never asks past the load from before the
 //     break (rules 3 and 4), and anywhere else past the loads done since the
 //     last break it rises at most 10% (15% on a light isolation lift), or
 //     one step when the set was rated 5 or more in reserve (r34.2);
 //   - and a first session back done as asked (every set at its load for the
 //     bottom of the range or more, at 2 or more in reserve or unrated) never
-//     asks less the next session (rule 5).
+//     asks less the next session, nor past the load from before the break
+//     (rule 5, V's decision 1 of r64).
 const { open, engine } = require('./h');
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
 const fails = [];
@@ -68,7 +70,8 @@ const RIRS = [null, 0, 1, 2, 3, 4, 5];
     if (L.ui.modal) { const m = L.ui.modal; L.ACT.mClose(); return { skip: 'asked: ' + m.title }; }
     const b2 = L.state.draft.ex[0];
     const bw = ex.bw ? L.bwRefLoad(ex) : 0;
-    const rq = c.rir != null ? c.rir : L.rirEst(b2.sets[0], ex);
+    // A blank effort reads as the lift's usual, but on a first session back as 2 in reserve, what the return asked (V's decision 1, r64).
+    const rq = c.rir != null ? c.rir : c.brk > L.BACK_DAYS ? 2 : L.rirEst(b2.sets[0], ex);
     return { w0, adj: b2.adj || null, step: L.incOf(ex, b2.plan, w0), bar: L.exBarKg(ex), barbell: ex.equip === 'barbell', bw, rq, iso: !L.isCompound(ex), est: L.fitE(w0 + bw, c.r, rq == null ? 0 : Math.min(rq, 4)), preKg: kg(c.P), hint: b2.hint, next: L.heavierLoad(ex, b2.plan, w0, w0 + L.incOf(ex, b2.plan, w0) * 4) == null ? null : (() => { let t = w0 + L.incOf(ex, b2.plan, w0) * 0.5, h = null; for (let k = 0; k < 40 && h == null; k++, t += L.incOf(ex, b2.plan, w0) * 0.5) h = L.heavierLoad(ex, b2.plan, w0, t); return h; })() };
   }, c);
   const fitE = (load, r, q) => { const t = r + Math.max(0, Math.min(q == null ? 0 : q, 4)); return t <= 10 ? load * 36 / (37 - t) : t <= 30 ? load * (1 + t / 30) : null; };
@@ -124,11 +127,12 @@ const RIRS = [null, 0, 1, 2, 3, 4, 5];
     L.state.sessions.push({ id: 'ret', date: back, dayIdx: 0, dayId: 'D1', dayName: 'Day', routineId: 'R1', notes: '', ex: [{ exId: c.id, rr: [c.lo, c.hi], sets: [0, 1, 2].map(() => ({ w, r: c.r, rir: c.rir, warm: false, drop: false })) }] });
     L.state = L.normalize(L.state); L.invalidate();
     const nx = L.suggest(c.id, it, {});
-    return { ret: w, next: nx.w, text: nx.text, sg: sg.text };
+    return { ret: w, next: nx.w, text: nx.text, sg: sg.text, pre: kg(c.P) };
   }, c);
   for (const [id, unit, Pl] of LIFTS.filter(l => !l[3])) for (const [lo, hi, tgt] of PLANS) for (const brk of [42, 70]) for (const r of [lo, lo + 2, hi]) for (const rir of [null, 2, 3, 4]) {
     const x = await asked({ id, unit, P: Pl, lo, hi, tgt, brk, r, rir, T });
     ok(x.ret != null && x.next != null && x.next >= x.ret - 1e-6, `${id} ${unit} ${lo}-${hi} @${tgt}, back after ${brk / 7} weeks, the return done as asked (${r} reps @${rir == null ? '-' : rir} at its load): the next session asks no less`, x);
+    ok(x.next != null && x.next <= x.pre + 1e-6, `${id} ${unit} ${lo}-${hi} @${tgt}, back after ${brk / 7} weeks, the return done as asked (${r} reps @${rir == null ? '-' : rir} at its load): the next session asks no more than the load before the break`, x);
   }
   ok(!P.errors.length, 'no page errors', P.errors);
   await browser.close();

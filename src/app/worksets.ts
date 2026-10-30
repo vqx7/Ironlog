@@ -7,29 +7,20 @@
    through act; the screen is drawn again through redraw (workstate.ts). */
 
 import { act } from './act';
-import { noE1, isCompound } from './library';
+import { isCompound } from './library';
 import { planItemOf, move, fixSupersets, DEFAULT_PLAN } from './routines';
 import { min5, rangeWords, MISSED_SAID } from './format';
-import {
-  e1,
-  rtfOf,
-  rtfBand,
-  REP_PR_SHARE,
-  prSameLoad,
-  setupSecs,
-  setSecs,
-  BACK_DAYS,
-  isMissed,
-  epley
-} from './formulas';
+import { e1, prSameLoad, setupSecs, setSecs, BACK_DAYS, isMissed, epley } from './formulas';
 import { PLATES_LB, PLATES_KG, LB, KM_MI, SMALL_PLATE } from './units';
-import { isNum, r1, addDays, today, uid, numIn, EPS, EPS_SAME, HUNDREDTHS, MINUTE_S, WEEK_DAYS, r3 } from './util';
+import { r1, addDays, today, uid, numIn, EPS, EPS_SAME, HUNDREDTHS, MINUTE_S, WEEK_DAYS, r3 } from './util';
 import { platesPerSide } from './gym';
 import { loadWords } from './loads';
 import { BAND_WORDS } from './prs';
 import {
   prFrame,
   rirEst,
+  rirEff,
+  loadOf,
   EX,
   prLoad,
   U,
@@ -59,9 +50,9 @@ import {
 import { state, ui } from './store';
 import { lastDup, effTarget, blockRest, newRow, greyW, effW, blockDone } from './session';
 import type { BlkRef } from './session';
-import type { DraftBlock, DraftSet, Routine, PlanItem, NextSetsAdj } from './types';
-import type { ExerciseLike } from './model';
-import { fmtE, setShort, rirShow } from './display';
+import type { DraftBlock, DraftSet, Routine, PlanItem, NextSetsAdj, Session } from './types';
+import type { ExPoint, ExerciseLike } from './model';
+import { fmtE, setShort, rirShow, wasE } from './display';
 import { drawing } from './view';
 import {
   W,
@@ -98,7 +89,8 @@ const MIX_RANGE = [0.6, 1.4] as const;
 const MIX_TOAST_MS = 7000;
 /** A ticked exercise moves up this many milliseconds after the tick, and tries again after ORDER_MS.again while something is being typed or open. */
 const ORDER_MS = { soon: 900, again: 1500 } as const;
-import { LIMITS } from './records';
+import { LIMITS, sessCmp } from './records';
+import { prAdd, prBestOf, prJudge, prSoFar } from './analytics';
 import { readSets } from './importing';
 import type { TypedSet } from './importing';
 import { toast } from './toast';
@@ -174,7 +166,7 @@ export function lastRFor(b: DraftBlock, si: number): number | null {
    the keyboard's Done take as the set's reps: last time's reps for that set;
    with none (a new or just-swapped exercise, or more sets than last time),
    the reps of the working set above it in this session; else the bottom of
-   the planned range. Warm-ups and drop sets have none. When the target is a
+   the planned range. Warm-ups and drop sets have their own (warmDropR). When the target is a
    new load (up a step, down after missing the range, or a range change),
    last time's reps were at the old load, so a tick without typing would log
    reps never done there (r27). Then the grey number is the set above, else
@@ -183,7 +175,8 @@ export function lastRFor(b: DraftBlock, si: number): number | null {
 /** The grey reps of row si, or null. */
 export function greyR(b: DraftBlock | null | undefined, si: number): number | null {
   const s = b && b.sets[si];
-  if (!b || !s || s.warm || s.drop) return null;
+  if (!b || !s) return null;
+  if (s.warm || s.drop) return warmDropR(b, si);
   if (b.adj && si > b.adj.at) {
     for (let i = si - 1; i > b.adj.at; i--) {
       const x = b.sets[i];
@@ -200,6 +193,55 @@ export function greyR(b: DraftBlock | null | undefined, si: number): number | nu
   }
   const m = +(loadT && b.tgt && +(b.tgt.repMin ?? 0) > 0 ? (b.tgt.repMin ?? 0) : b.plan.repMin);
   return m > 0 ? m : null;
+}
+
+/* The grey reps of a warm-up or a drop set (r64, V's decision 3 on the r63
+   audit's P-S4-5; until then they had none, and their checkmark asked for
+   reps): what that row did last time, the warm-up or drop in the same place
+   among the lift's warm-ups or drops in the last session that did it. With
+   none, a drop takes the set before it (its reps, else its grey reps), and a
+   warm-up the top of the range. A lift done twice in this session has no
+   last time of its own, as its working rows have none (lastDup). */
+function warmDropR(b: DraftBlock, si: number): number | null {
+  const s = b.sets[si];
+  if (!s) return null;
+  const warm = !!s.warm;
+  const same = (x: { warm?: boolean | undefined; drop?: boolean | undefined }) =>
+    warm ? !!x.warm : !x.warm && !!x.drop;
+  let k = 0;
+  for (let i = 0; i < si; i++) {
+    const x = b.sets[i];
+    if (x && same(x)) k++;
+  }
+  const d = state.draft;
+  const bi = d ? d.ex.indexOf(b) : -1;
+  const lr = d && !(bi > 0 && lastDup(d, bi)) ? lastRowR(b.exId, d, same, k) : null;
+  if (lr != null) return lr;
+  if (!warm) {
+    const x = si > 0 ? b.sets[si - 1] : undefined;
+    if (!x) return null;
+    return +(x.r ?? 0) > 0 ? +(x.r ?? 0) : greyR(b, si - 1);
+  }
+  const top = +b.plan.repMax;
+  return top > 0 ? top : null;
+}
+
+/* The reps of row k among the rows `same` picks, in the last session before
+   this one that did the lift (its blocks of the lift in order), or null. */
+function lastRowR(
+  exId: string,
+  d: Draft,
+  same: (x: { warm?: boolean | undefined; drop?: boolean | undefined }) => boolean,
+  k: number
+): number | null {
+  let last: Session | null = null;
+  for (const x of state.sessions)
+    if (x.id !== d.id && x.date <= d.date && x.ex.some(e => e.exId === exId) && (!last || sessCmp(last, x) < 0))
+      last = x;
+  if (!last) return null;
+  const rows = last.ex.filter(e => e.exId === exId).flatMap(e => e.sets.filter(same));
+  const r = rows[k] ? +(rows[k].r ?? 0) : 0;
+  return r > 0 ? r : null;
 }
 
 /* Anything the lifter put into a session: a ticked set, typed reps or a
@@ -220,50 +262,53 @@ export function draftEntered(d: Draft | null | undefined): boolean {
 
 /* ---------- PRs as a set is logged ---------- */
 
-/* A set is a PR live if its estimate beats your best, or no earlier set
-   matched it on both load and reps: the same two tests the PR list uses.
-   Only sets logged up to the session's date count, so a past session entered
-   late is judged against what came before it, at its load as the list judges
-   it (prFrame, r54: changing units or gyms is not a PR). Announced only when
-   stronger than ever (r32, as the list's big): by the same score as the rep
-   PR floor, against every earlier set. A lift with no estimate (timed, joint
-   rotation) or no load known keeps every kind, a bodyweight lift before any
-   weigh-in by its reps alone (r54). More weight than any earlier working set
-   comes first (r29), as in the PR list, and before the load check: an
-   assisted set with no bodyweight logged has no load to estimate from, but
-   less help is still a PR. A new best is judged within the set's own band of
-   reps to failure, and is a PR only when stronger than ever, as every PR is
-   (r58, 343 6). A rep PR needs 90% or more of the strongest set before it,
-   as in the PR list (r30). */
-/** The PR a set being logged makes against the log up to its date, or null. */
-export function livePR(exId: string, s: DraftSet | null | undefined, date: string): string | null {
+/* The PR a set makes as it is logged: the PR list's own scorer (prJudge,
+   r64, the r63 audit's A-6), the set judged as a session of one against the
+   lift's sessions before it. Only sets logged up to the session's date count,
+   so a past session entered late is judged against what came before it, at
+   its load as the list judges it (prSameLoad, r54: changing units or gyms is
+   not a PR); since a New machine or gym, against the sessions there. Said
+   only when the list counts it (big: stronger than ever by the rep PR score,
+   r32; any kind on a lift with no estimate, timed, or with no load known),
+   one label, the biggest news first: more weight than any earlier working
+   set (r29), a new best estimate (in its band of reps to failure, or past
+   every earlier estimate as its band's first, R-6), more reps at a load
+   (90% or more of the strongest set before it, r30). A blank effort is read
+   as every estimate reads it (rirEst, 339 o). */
+/* The set judged, with its lift: what livePR names and prBeat words. */
+function liveMade(
+  exId: string,
+  s: DraftSet | null | undefined,
+  date: string
+): { ex: ExerciseLike; pr: ReturnType<typeof prJudge>['pr'] } | null {
   if (!s || s.warm || s.drop || !(+(s.r ?? 0) > 0)) return null;
   const f = prFrame(exId, s, date);
   if (!f) return null;
-  const { ex, exps, st, load } = f;
-  const q0 = rirEst(s, ex);
-  const r = +(s.r ?? 0);
-  const v = noE1(ex) ? null : e1(load, r, q0);
-  const scq = (l: number, rr: number, q: number | null): number => e1(l, rr, q) || epley(l, rr);
-  let top = 0,
-    dom = false;
-  for (const x of exps)
-    for (const q of x.pts) {
-      if (q.pl >= load - EPS_SAME && q.r >= r) dom = true;
-      top = Math.max(top, scq(q.pl, q.r, q.rq));
-    }
-  const judge = !noE1(ex) && !ex.timed && load > 0;
-  const stronger = !judge || scq(load, r, q0) > top + EPS;
-  if (!ex.timed && s.w != null && isNum(+s.w) && f.w > f.heaviest + EPS_SAME && stronger) return 'Weight PR';
-  if (!(load > 0) && !ex.timed && !ex.bw) return null;
-  if (v != null && st && stronger) {
-    const rtf = rtfOf(r, q0);
-    const bd = rtf == null ? undefined : st.byBand && st.byBand[rtfBand(rtf)];
-    if (bd != null && v > bd + EPS_SAME) return 'Best';
-  }
-  if (dom || !stronger) return null;
-  if (!ex.timed && scq(load, r, q0) < top * REP_PR_SHARE - EPS) return null;
-  return ex.timed ? 'Time PR' : 'Rep PR';
+  const { ex, exps } = f;
+  const h = prSoFar();
+  // As the list reads them: a block of drop sets alone feeds no PR (r64).
+  for (const x of exps) if (!x.dropOnly) prAdd(h, x);
+  // The set as the index reads a logged one: its load, its PR load, its reps, its load as typed and its effort.
+  const p: ExPoint = {
+    load: ex.bw ? f.own : loadOf(ex, s, date),
+    pl: f.own,
+    r: +(s.r ?? 0),
+    w: Number(s.w) || 0,
+    rir: rirEff(s, ex),
+    rq: rirEst(s, ex)
+  };
+  const { pb, pbb } = prBestOf(ex, [p]);
+  return { ex, pr: prJudge(ex, h, { pts: [p], pb, pbb }).pr };
+}
+
+/** The PR a set being logged makes against the log up to its date, or null. */
+export function livePR(exId: string, s: DraftSet | null | undefined, date: string): string | null {
+  const m = liveMade(exId, s, date);
+  const pr = m && m.pr;
+  if (!m || !pr || !pr.big) return null;
+  if (pr.type === 'Weight PR') return 'Weight PR';
+  if (pr.type === 'e1RM') return 'Best';
+  return m.ex.timed ? 'Time PR' : 'Rep PR';
 }
 
 /* Not a PR when an earlier set in this session was as strong (r32, second
@@ -300,37 +345,28 @@ export function rowPR(b: DraftBlock, si: number, date: string): string | null {
    reads as lower than the bests board (r34.2). */
 /** The tail of a PR toast: what the set beat. */
 export function prBeat(exId: string, s: DraftSet, date: string, pr: string): string {
-  const f = prFrame(exId, s, date);
-  if (!f) return '';
-  const { ex, exps, st, load } = f;
-  const r = +(s.r ?? 0);
-  const q = rirEst(s, ex);
-  const rtf = rtfOf(r, q);
-  const band = rtf == null ? null : rtfBand(rtf);
-  const bd = band == null ? undefined : st && st.byBand && st.byBand[band];
-  const v = noE1(ex) ? null : e1(load, r, q),
-    shown = noE1(ex) ? null : e1(f.own, r, q);
-  const bandW = (band != null && BAND_WORDS[band]) || '';
-  if (pr === 'Best') {
-    if (bd == null || v == null) return '';
-    let all: number | null = null;
-    for (const x of exps)
-      if (x.pb != null && !(date && x.date === date)) all = all == null ? x.pb : Math.max(all, x.pb);
+  // The words come from the same judgement the label does (r64, A-6), so a toast never names a number the list does not.
+  const m = liveMade(exId, s, date);
+  const j = m && m.pr;
+  if (!m || !j) return '';
+  const { ex } = m;
+  const bandW = (j.type !== 'Rep PR' && j.bb != null && BAND_WORDS[j.bb]) || '';
+  if (pr === 'Best' && j.type === 'e1RM') {
+    if (j.value == null) return '';
     if (!isCompound(ex)) return ` (your best for ${bandW})`;
-    return all == null || (shown ?? 0) > all + EPS_SAME
-      ? ` (estimated 1RM ${fmtE(shown)} ${U()}${all != null ? `; was ${fmtE(all)}` : ''})`
-      : ` (your best for ${bandW}, ${fmtE(shown)} ${U()})`;
+    const all = j.prevAll;
+    return all == null || j.value > all + EPS_SAME
+      ? ` (estimated 1RM ${fmtE(j.value)} ${U()}${wasE(j.value, all) ? `; was ${wasE(j.value, all)}` : ''})`
+      : ` (your best for ${bandW}, ${fmtE(j.value)} ${U()})`;
   }
-  if (pr === 'Weight PR') {
-    const mw = f.heaviest;
+  if (pr === 'Weight PR' && j.type === 'Weight PR') {
     const was = ex.assist
       ? `less help than ever`
-      : `heaviest before ${ex.bw ? loadLabel(ex, mw) : fmtW(mw) + ' ' + U()}`;
-    return ` (${was}${isCompound(ex) && bd != null && v != null && v > bd + EPS_SAME ? `; best estimate for ${bandW} now ${fmtE(shown)}` : ''})`;
+      : `heaviest before ${ex.bw ? loadLabel(ex, j.prevW) : fmtW(j.prevW) + ' ' + U()}`;
+    return ` (${was}${isCompound(ex) && j.value != null ? `; best estimate for ${bandW} now ${fmtE(j.value)}` : ''})`;
   }
-  let m = 0;
-  for (const x of exps) for (const p of x.pts) if (p.pl >= load - EPS_SAME) m = Math.max(m, p.r);
-  return m ? ` (was ${m} ${ex.timed ? 's' : 'reps'})` : ' (heaviest yet)';
+  if (j.type === 'Rep PR') return j.prevR ? ` (was ${j.prevR} ${ex.timed ? 's' : 'reps'})` : ' (heaviest yet)';
+  return '';
 }
 
 /* ---------- loads as shown ---------- */
@@ -1186,7 +1222,8 @@ export function acceptGrey(bi: number, si: number): boolean {
   if (!d || !state.settings.autoDone || drawing()) return false;
   const b = d.ex[bi];
   const x = b && b.sets[si];
-  if (!b || !x || x.done || x.warm || x.drop || +(x.r ?? 0) > 0) return false;
+  // A warm-up or a drop takes its grey reps here too, since r64 gave them some (P-S4-5).
+  if (!b || !x || x.done || +(x.r ?? 0) > 0) return false;
   const lr = greyR(b, si);
   if (lr == null || !(lr > 0)) return false;
   // The grey reps and the tick are one change, saved once (as sDone's, from the independent review of r60).

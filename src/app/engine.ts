@@ -9,7 +9,7 @@ import type { DraftBlock, NextSetsAdj, Plan } from './types';
 import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from './model';
 import type { LiftBests } from './analytics';
 import { EXIn, UIn, exInjuryIn, gymOfIn } from './model';
-import { IDXIn, bwLoadIn, bwRefLoadIn, lastOf, liftReadIn, rirEstIn, statsUpToIn, triedAt } from './analytics';
+import { IDXIn, bwAtIn, bwLoadIn, bwRefLoadIn, lastOf, liftReadIn, rirEstIn, statsUpToIn, triedAt } from './analytics';
 import { atCapOfIn, capOfIn, exBarKgIn, gymK, gymRackIn, gymStepIn, platesMode, rackGapIn, rackTolIn } from './gym';
 import {
   DEFAULT_STEP,
@@ -25,7 +25,19 @@ import {
   unitStepIn
 } from './units';
 import { fmtWIn, loadLabelIn, loadNote, roundLoadIn, swapWIn } from './loads';
-import { addDays, daysBetween, isDate, isNum, r1, EPS, EPS_SAME, WEEK_DAYS, MILLIONTHS, pctOf } from './util';
+import {
+  addDays,
+  daysBetween,
+  isDate,
+  isNum,
+  r1,
+  EPS,
+  EPS_SAME,
+  WEEK_DAYS,
+  MILLIONTHS,
+  pctOf,
+  timesWord
+} from './util';
 import {
   BACK_DAYS,
   afterBreak,
@@ -153,11 +165,27 @@ interface SuggestCtx {
    day), and the words follow. Loads already on the step are untouched, so
    a stack with odd pins keeps its whole steps. On a rack read from its
    spacing the result then goes onto the rack (gridSnap, r54), as on a rack
-   from Your gym. */
+   from Your gym. A lighter day, a deload or a return after a break (down)
+   never comes out heavier than last time's load (r64, the r63 audit's R-2:
+   20 kg logged on the bar, shown in lb, was raised to the 45 lb bar the app
+   assumes, so a Lighter day asked more than last time); when nothing
+   lighter is loadable, last time's own load, which was lifted, is the one
+   asked. */
 function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
   const G = res && res.w != null && !ex.timed ? plateGridIn(M, ex, plan) : null;
-  if (G) return plateSnap(M, ex, plan, res, G, down);
-  return gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
+  const out = G ? plateSnap(M, ex, plan, res, G, down) : gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
+  /* A lighter day, a deload or a return is never above last time's load (r64,
+     R-2), but never under the bar either (CLAUDE.md, Numbers): the empty 20 kg
+     bar shown in lb is the 45 lb bar, a Lighter day too (r54). */
+  if (
+    !down ||
+    res.top == null ||
+    res.w == null ||
+    out.w == null ||
+    out.w <= Math.max(res.top, loadFloorIn(M, ex)) + EPS
+  )
+    return out;
+  return Math.abs(res.w - res.top) < EPS ? res : swapWIn(M, ex, res, res.top);
 }
 
 /* Your gym's plates on a bar lift (r55.1, from the audit of r55: with no 2.5
@@ -235,17 +263,48 @@ function plateSnap(
 function unitSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
   if (!res || res.w == null || res.top == null || ex.timed) return res;
   if (gymRackIn(M, ex, plan)) return rackSnapIn(M, ex, plan, res);
+  const nw = unitGridIn(M, ex, plan, res.top, res.w, down);
+  if (nw == null || Math.abs(nw - res.w) < EPS) return res;
+  return moveIn(M, ex, plan, res, nw, `the nearest load in ${UIn(M)}`);
+}
+
+/* The load on the step in the unit on screen for a load `w` asked after
+   last time's `top` (kg), or null where that step does not apply: a load
+   typed in the unit on screen, or on its step already (unitSnap, above). The
+   engine's cases whose words depend on the load (the step at the top of the
+   range, the way back after a break) take it before they word it, so what
+   they say is said of the load shown. */
+function unitGridIn(
+  M: Model,
+  ex: ExerciseLike,
+  plan: Plan,
+  top: number,
+  w: number,
+  down?: boolean,
+  whole?: boolean
+): number | null {
+  if (ex.timed || gymRackIn(M, ex, plan) || plateGridIn(M, ex, plan)) return null;
   const st = inUnitIn(M, incOfIn(M, ex, plan));
-  if (!(st > 0)) return res;
+  if (!(st > 0)) return null;
+  /* The loads the step makes are counted from the bar on a lift on the full
+     bar typed as the total (loadFloorIn), from 0 on any other (r64, the r63
+     audit's R-2): counted from 0, a 10 lb step made 40 and 50 around a 20 kg
+     bar (44.1 lb), so 50 was called "the nearest load in lb" where the 45
+     lb bar and 10 lb steps make 45, 55 and so on. */
+  const o = inUnitIn(M, loadFloorIn(M, ex));
+  const at = (k: number): number => o + k * st;
   /* Off the step and not a number anyone types (220.462 from 100 kg): a
      custom step (185 lb on a 10 lb step) or microplates (101.25) are left as
      they are. Typed is exact in the unit on screen, as a number typed in it
      reads back (r54, from the audit V asked for: within a tenth of 0.05, one
      load in five converted from the other unit passed for typed, so 42.5 kg
      shown as 93.7 lb was told to add 5 lb, to 98.7). */
-  const off = (v: number): boolean => Math.abs(inUnitIn(M, v) / st - Math.round(inUnitIn(M, v) / st)) > OFF_STEP;
+  const off = (v: number): boolean => {
+    const k = (inUnitIn(M, v) - o) / st;
+    return Math.abs(k - Math.round(k)) > OFF_STEP;
+  };
   const typed = (v: number): boolean => onStep(inUnitIn(M, v), TYPED_STEP);
-  if (!off(res.top) || !off(res.w) || typed(res.top)) return res;
+  if (!off(top) || !off(w) || typed(top)) return null;
   /* Which step (r54). A lighter day, a deload or a return after a break takes
      the step below; anything else the nearest. Never under the floor (the
      empty bar on a full-bar lift typed as the total, else one step on a
@@ -255,16 +314,35 @@ function unitSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?
      then. From the review of r54's first fix, which rounded down under every
      target of reps: 2 kg dumbbells read in lb went to 0 lb, the 20 kg bar to
      40 lb, and 4 kg to 5 lb, three sessions running. */
-  const x = inUnitIn(M, res.w);
-  const lo = Math.floor(x / st + EPS) * st;
+  const x = inUnitIn(M, w);
+  const lo = at(Math.floor((x - o) / st + EPS));
   const loaded = !ex.bw && !ex.assist;
-  const fl = Math.max(inUnitIn(M, loadFloorIn(M, ex)), loaded ? st : 0);
-  let d = down ? lo : Math.round(x / st) * st;
+  const fl = Math.max(o, loaded ? st : 0);
+  let d = down ? lo : at(Math.round((x - o) / st));
   if (!down && loaded && d < x * LIGHTER_LOAD - EPS) d = lo + st;
-  if (!ex.assist && d < fl - EPS) d = Math.ceil(fl / st - EPS) * st;
-  const nw = kgOfIn(M, d);
-  if (Math.abs(nw - res.w) < EPS) return res;
-  return moveIn(M, ex, plan, res, nw, `the nearest load in ${UIn(M)}`);
+  if (!ex.assist && d < fl - EPS) d = at(Math.ceil((fl - o) / st - EPS));
+  /* Up from last time, never past both what was asked and the cap on one
+     session's rise (jumpCap, on the load as moved: a bodyweight lift's share
+     of its bodyweight with it) while a step under that is still above last
+     time (r64, the r63 audit's R-2: 57.5 kg on its own 10 lb step, 126.8 lb,
+     was rounded from 136.8 to 140, 10.4% up; a 44 kg kettlebell, 97 lb, from
+     107 to 110). With no step between last time and the cap, the step past
+     it: one real step at least, as at the top of the range. Asked for a whole
+     step (whole: the step at the top of the range), the step under is taken
+     only when it is a whole step above last time: a sliver of one (49.5 lb
+     to 50 on a 10 lb step, "add 0.5 lb") is none, so the whole step stays
+     and the top of the range builds reps for it first (V, 2026-10-27, NEW-6). */
+  const bwK = bwRefLoadIn(M, ex);
+  const tp = inUnitIn(M, top);
+  if (!down && !ex.assist && !(ex.bw && !(bwK > 0)) && d > tp + EPS) {
+    const tot = top + bwK;
+    const most = Math.max(x, inUnitIn(M, tot * jumpCap(ex, tot) - bwK));
+    const under = at(Math.floor((most - o) / st + EPS));
+    if (d > most + EPS && under > tp + EPS && !(whole && under < tp + st - EPS)) d = under;
+  }
+  // Never past the heaviest load the lift has (capOfIn), which the engine's own load already keeps to: that load, then.
+  const cp = capOfIn(M, ex, plan, top);
+  return cp != null && kgOfIn(M, d) > cp + EPS ? null : kgOfIn(M, d);
 }
 
 /* A suggestion moved to another load (by unitSnap or plateSnap): the load
@@ -371,7 +449,7 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
       text: `First time, ${opts.deload ? 'deload' : 'Lighter day'}. About ${loadLabelIn(M, ex, lw)} ${UIn(M)}${loadNote(ex)} for ${repSpan(plan.repMin, plan.repMax, '-')} with ${effLeast(effScale(M.s.settings.rirScale), LIGHT_RIR)}, from your ${EXIn(M, base.kin).name}. Half the usual sets, nothing to beat.`
     };
   }
-  if (base.inj || !base.last || base.w == null) return base;
+  if (!base.last || base.w == null) return base;
   // Never above last time's working load either: after 25 lb x 12 the normal day may ask 30, and a deload at 25 is not lighter.
   const word = opts.deload ? 'Deload' : opts.light ? 'Lighter day' : `Back after ${Math.round(off / WEEK_DAYS)} weeks`;
   const step = incOfIn(M, ex, plan);
@@ -396,6 +474,28 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
   const w = w0 > 0 || ex.assist ? dw : w0;
   // Grey reps at the bottom of the range: at about 90% of the load that is 3 or more in reserve for anyone in the range last time.
   const n = Math.max(1, (base.lastR || []).length || +plan.sets || 1);
+  /* An injury flag keeps these rules (r64, the r63 audit's P-S2-1): the
+     lift is held at or below the lower of last time's load and the day's or
+     the return's, in the injury's words, nothing to beat. Until r64 the flag
+     returned first: a flagged bench back after six weeks asked its 195 from
+     before the break, and on a Lighter day or deload flagged lifts kept their
+     full loads while the others dropped to about 90%. */
+  if (base.inj) {
+    const lw = Math.min(base.w, w);
+    return snapUnitIn(
+      M,
+      ex,
+      plan,
+      {
+        ...base,
+        w: lw,
+        text: `${base.last} Injury flagged (${injLabel(base.inj)}): stay at or below ${lbl(lw)}, keep ${effLeast(effScale(M.s.settings.rirScale), LIGHT_RIR)}, stop on pain.`,
+        lastR: lw < base.w - EPS ? Array<number>(n).fill(+plan.repMin) : base.lastR,
+        ...(back ? { back: Math.round(off / WEEK_DAYS) } : {})
+      },
+      true
+    );
+  }
   if (back)
     return snapUnitIn(
       M,
@@ -541,7 +641,7 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
      (tp, below): a set past the plan's count is left out (r55, the audit: 80
      x 10 x 4 and a fifth set of 8 held the load and asked 41+ reps over 4). */
   const planPts = topPts.slice(0, Math.max(1, +plan.sets || topPts.length));
-  const L0 = lastOf(seen, last, p => `${loadLabelIn(M, ex, p.w)}×${p.r}`, +plan.repMin);
+  const L0 = lastOf(seen, last, p => `${loadLabelIn(M, ex, p.w)}×${p.r}`, M.today(), +plan.repMin);
   const lastR = L0.lastR,
     lastS = L0.line,
     basis = L0.basis;
@@ -580,8 +680,15 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
      lifter can do moves up by what the estimate allows, not a step at a
      time; a set rated RIR_CALL_TOP or more in reserve is read as
      E1_MAX_RIR, which errs low, so from such sets it moves about a step a
-     session (PENDING 338 E; the Guide said 5 until r61). */
-  const early = exps.length <= EARLY_SESSIONS;
+     session (PENDING 338 E; the Guide said 5 until r61). A lift's first
+     sessions are counted since its last break or New machine or gym (all
+     is read from that mark), whatever their rep range (r64, the r63 audit's
+     R-4: counted in the plan's range only, a bench with 11 sessions whose
+     range changed was allowed 25%, 200 to 240, where 10% gives 220). */
+  const xs = all || [];
+  let since = xs.length - 1;
+  while (since > 0 && !afterBreak(xs[since - 1], xs[since].date)) since--;
+  const early = xs.length - since <= EARLY_SESSIONS;
   // One set under the range among sets made reads as the bottom of it (repFloor); a missed set never does.
   const fl = repFloor(
     topPts.filter(p => !p.missed),
@@ -637,37 +744,75 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   return res && res.last ? { ...res, prev: L0.prev, prevOff: L0.prevOff } : res;
 }
 
-/* The session after a return from a break (341 b, rule 5; V 2026-10-24:
-   "make the decision that is not convoluted and most comprehensive"). The
-   return asked about LIGHT_SHARE of the load from before the break with
-   BACK_RIR or more in reserve; done as asked (every planned set at its load reached the
-   bottom of the range), its sets say how much came back. The next session
-   asks the load that estimate gives for the reps the lift was done for
-   before the break at the planned reserve, in whole steps on the rack or
-   plates, up to the load from before the break and never past it; a set
-   left unrated reads as BACK_RIR in reserve, what the return asked. Until r60 the
-   return's sets set a reps target at its load (165 x 8 x 3 unrated: beat 24
-   reps at 165), the app reading its own instruction to stop short as the
-   lifter's limit, so the load took several sessions of reps to come back.
-   When the estimate gives no more than the return's load, the usual cases
-   below decide. Conventions (docs/EVIDENCE.md, Back after a break). */
+/* The way back after a break (V's decision 1 of 2026-10-27, from the r63
+   audit's R-3; it replaces 341 b's rule 5 of r60). The first session back
+   asks about LIGHT_SHARE of the load from before the break with BACK_RIR or
+   more in reserve (suggestIn). Until the lift is back at that load, each
+   full session's next load is what that session's own estimate gives for
+   the lift's usual reps (the middle of its sets at its load before the
+   break) at the planned reserve, in whole steps on its rack or plates (or
+   the step in the unit on screen, unitGridIn), never past the load from
+   before the break; when that is no more than the current load, the usual
+   cases below decide, which never lower a load done as asked. Once a
+   session since the break is done at that load, the usual rules alone. On
+   the first session back a set left unrated reads as BACK_RIR in reserve,
+   what it asked, here as in the next sets (nextSetsIn). Done as asked: every
+   planned set at its load reached the bottom of the range; a session under
+   it is read by the usual cases. Until r64 this ran on the session after the
+   return only, so from the second session the usual one step at the top of
+   the range took over and a full-strength lifter stayed at 175 x 9 for weeks,
+   never back to 185. No study gives a per-session rate of return for trained
+   lifters, so the climb is a convention (docs/EVIDENCE.md, Back after a
+   break, Loads going up). */
 function sgAfterReturnIn(M: Model, C: SuggestCtx): Suggestion | null {
   const { ex, plan, all, exps, last, top, cap, planPts, lastR, lastS, basis, lbl, prevBest, tgtRir } = C;
   if (C.injM || C.noAdd || ex.assist || noE1(ex) || !(top > 0)) return null;
+  // The first session after the lift's latest break up to its last full session (all is read since a New machine or gym).
   const i = all.indexOf(last);
-  if (i < 1 || !afterBreak(all[i - 1], last.date)) return null;
-  const k = exps.indexOf(last);
-  const pre = k > 0 ? exps[k - 1] : null;
-  if (!pre || !afterBreak(pre, last.date)) return null;
+  let j = i;
+  while (j > 0 && !afterBreak(all[j - 1], all[j].date)) j--;
+  if (j < 1) return null;
+  // The load from before the break: the last full session before it that the target reads (exps).
+  const pre = exps.filter(x => x.date < all[j].date).pop();
+  if (!pre) return null;
   const preTop = workLoad(pre.pts, +plan.repMin);
-  if (!(preTop > top + EPS_SAME)) return null;
-  // Done as asked: every set at its load reached the bottom of the range (a return with fewer sets is short, so it is not in exps).
+  const backAt = all.slice(j, i + 1).filter(x => x.topW >= preTop - EPS_SAME);
+  if (backAt.length) {
+    /* Back at the load from before the break in this session alone, at fewer
+       of the planned sets (the next sets moved up within it: 165, 175, 185 x
+       8): every planned set at that load next, for the fewest reps done
+       there, then the usual rules (NEW-5, V's choice of 2026-10-27; the reps
+       target asked to beat 8 reps in one set with three planned). */
+    const at = triedAt(last, top);
+    const fewest = Math.min(...at.map(p => p.r));
+    if (
+      backAt.length > 1 ||
+      backAt[0] !== last ||
+      !(top >= preTop - EPS_SAME) ||
+      at.length >= +plan.sets ||
+      at.some(p => p.missed) ||
+      !(fewest >= +plan.repMin)
+    )
+      return null;
+    return {
+      top,
+      w: top,
+      text: `${lastS} Back at your load from before the break: ${lbl(top)} for ${fewest}+ reps in every set next.`,
+      lastR,
+      basis,
+      last: lastS,
+      target: `${lbl(top)} for ${fewest}+ reps in every set`,
+      tgt: { kind: 'load', w: top, repMin: fewest, prevBest },
+      easier: null
+    };
+  }
   if (triedAt(last, top).some(p => p.missed || p.r < +plan.repMin)) return null;
   const bw = bwRefLoadIn(M, ex);
   if (ex.bw && !(bw > 0)) return null;
   let est = 0;
   for (const p of planPts) {
-    const v = fitE(p.load, p.r, p.rir == null ? BACK_RIR : Math.min(p.rir, E1_MAX_RIR));
+    const q = p.rir != null ? p.rir : i === j ? BACK_RIR : p.rq;
+    const v = fitE(p.load, p.r, q == null ? q : Math.min(q, E1_MAX_RIR));
     if (v != null && v > est) est = v;
   }
   if (!(est > 0)) return null;
@@ -679,12 +824,15 @@ function sgAfterReturnIn(M: Model, C: SuggestCtx): Suggestion | null {
   if (!rs.length) return null;
   const preR = Math.max(+plan.repMin, Math.min(+plan.repMax, rs[Math.floor((rs.length - 1) / 2)]));
   const want = Math.min(e1inv(est, preR + Math.min(tgtRir, E1_MAX_RIR)) - bw, preTop);
-  const nw = heavierLoadIn(M, ex, plan, top, cap != null ? Math.min(want, cap) : want);
+  const up = heavierLoadIn(M, ex, plan, top, cap != null ? Math.min(want, cap) : want);
+  if (up == null) return null;
+  const g = unitGridIn(M, ex, plan, top, up, true);
+  const nw = g == null ? up : g > top + EPS_SAME ? g : null;
   if (nw == null) return null;
   return {
     top,
     w: nw,
-    text: `${lastS} Back from the break: those sets say ${lbl(nw)} fits your usual ${preR} reps, so ${lbl(nw)} next${nw < preTop - EPS_SAME ? `, on the way back to ${lbl(preTop)}` : ''}. Aim for ${plan.repMin}+ reps in every set.`,
+    text: `${lastS} Back from the break: those sets say ${lbl(nw)} fits your usual ${preR} reps, so ${lbl(nw)} next${nw < preTop - EPS_SAME && lbl(nw) !== lbl(preTop) ? `, on the way back to ${lbl(preTop)}` : ''}. Aim for ${plan.repMin}+ reps in every set.`,
     lastR,
     basis,
     last: lastS,
@@ -804,7 +952,10 @@ export function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
       const rk = onR ? (heavierLoadIn(M, ex, plan, top, want) ?? (easy5 ? top + step : null)) : null;
       if (onR ? rk != null : k >= 1) {
         const nw = rk != null ? capW(rk) : ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
-        const rr = r1(topPts.reduce((a, p) => a + p.rir!, 0) / topPts.length);
+        /* The reserve said is that of the sets the rule read, the plan's (r64,
+           the r63 audit's 363: a set past them, at 0 in reserve, made 4 read 3).
+           Each has an RIR: the test above holds every one to a number. */
+        const rr = r1(planPts.reduce((a, p) => a + p.rir!, 0) / planPts.length);
         // In the lifter's effort scale (r54, from the audit V asked for: RPE lifters were told RIR).
         const sc = effScale(M.s.settings.rirScale);
         return {
@@ -1007,7 +1158,9 @@ function sgNoStep(C: SuggestCtx): Suggestion | null {
 function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
   const { ex, plan, top, cap, capW, topPts, planPts, lastR, lastS, basis, lbl, prevBest, tgtRir, tp } = C;
   if (planPts.every(p => p.r >= plan.repMax)) {
-    const nw = capW(top + progStepIn(M, ex, plan, top + bwRefLoadIn(M, ex), top));
+    const n0 = capW(top + progStepIn(M, ex, plan, top + bwRefLoadIn(M, ex), top));
+    // On the step in the unit on screen before it is worded (unitGridIn, r64), so the reps aimed for are those of the load shown.
+    const nw = ex.assist ? n0 : capW(unitGridIn(M, ex, plan, top, n0, false, true) ?? n0);
     if (ex.assist) {
       const aw = top < 0 ? Math.min(0, nw) : nw;
       return {
@@ -1306,7 +1459,7 @@ function suggestTimedIn(
   const top = Math.max(...ws.map(p => p.w));
   const topPts = ws.filter(p => Math.abs(p.w - top) < EPS_SAME);
   const lbl = (w: number): string => `${loadLabelIn(M, ex, w)}${ex.bw ? '' : ' ' + UIn(M)}${loadNote(ex)}`;
-  const L0 = lastOf(all, last, p => `${loadLabelIn(M, ex, p.w)} for ${p.r}s`);
+  const L0 = lastOf(all, last, p => `${loadLabelIn(M, ex, p.w)} for ${p.r}s`, M.today());
   const lastR = L0.lastR,
     lastS = L0.line,
     basis = L0.basis;
@@ -1731,6 +1884,21 @@ export function heavierLoadIn(
 export const ODD_SESSION = 3;
 /** How many times a lift's heaviest logged load a set may be before the app asks (r55, a convention, above). */
 export const ODD_BEST = 2;
+/* Bodyweight typed as added load (r64, V's decision 2 of 2026-10-27, from
+   the r63 audit's P-S2-3: pull-ups at a bodyweight of 180 lb typed as
+   BW+180 were saved with no question and became a PR, "best estimate 463
+   lb"). Read as totals, added load equal to bodyweight sits exactly on the
+   limit of twice the heaviest logged, so on a bodyweight lift the added
+   load is read on its own too: the app asks, Log it or Fix it, when it is
+   ODD_ADDED_BW of the bodyweight or more, or more than ODD_ADDED_BEST times
+   the most added on the lift before (in its log or today's sets). Both are
+   conventions, set to catch the bodyweight typed in the field for added
+   load and a slipped digit: a vest or belt heavier than nine tenths of the
+   lifter is rare, and no lifter doubles their added load in a session. */
+/** The share of bodyweight added load on a bodyweight lift may reach before the app asks (r64, V's decision 2, a convention, above). */
+export const ODD_ADDED_BW = 0.9;
+/** How many times the most added before a bodyweight lift's added load may be before the app asks (r64, V's decision 2, a convention, above). */
+export const ODD_ADDED_BEST = 2;
 /* A set ticked with 0 reps at a load well under the session's working load
    (r55.1, V 2026-10-19): at a warm weight a slip of the finger is likelier
    than a missed attempt, so it is asked about, Log it as missed or Fix it,
@@ -1816,6 +1984,18 @@ export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): st
       }
   if (best > 0 && load > Math.max(best, top) * ODD_BEST + EPS)
     return `${say(w)} is more than twice the heaviest you have logged on this exercise, ${say(bestW)}.`;
+  if (ex.bw && w > 0) {
+    const kg = bwAtIn(M, date);
+    if (kg != null && kg > 0 && w >= kg * ODD_ADDED_BW - EPS)
+      return `${say(w)} adds ${pctOf(ODD_ADDED_BW)}% or more of your bodyweight, ${fmtWIn(M, kg)} ${UIn(M)}.`;
+    let most = 0;
+    for (const x of liftReadIn(M, b.exId, date)) for (const p of x.pts) most = Math.max(most, p.w);
+    b.sets.forEach((x, i) => {
+      if (i !== si && x.done && isWork(x) && !x.drop && x.w != null) most = Math.max(most, x.w);
+    });
+    if (most > 0 && w > most * ODD_ADDED_BEST + EPS)
+      return `${say(w)} is more than ${timesWord(ODD_ADDED_BEST)} the most you have added on this exercise, ${say(most)}.`;
+  }
   return under;
 }
 
@@ -1842,7 +2022,10 @@ export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): st
    or more in reserve, and never past the load from before the break (341 b,
    rule 4: 165 x 10 at 3 in reserve gives 185 x 6, 165 x 6 at 3 gives 170;
    until r60 the 10% cap and the middle of the range held them at 175 and
-   165 for 8). Conventions, meant to err light.
+   165 for 8); since r64 (V's decision 1) any set there in the range whose
+   estimate gives a heavier load moves them, not only one clearly off, and a
+   blank effort there reads as BACK_RIR in reserve (165 x 10 at 2, or
+   unrated, gives 185 x 6). Conventions, meant to err light.
    A rep or two lost per set is normal fatigue and changes nothing. What the
    session decides (adjusting off in Settings, Keep, a warm-up, a drop, an
    unticked set, no row left to move, a past workout, an edit, a lighter day
@@ -1890,25 +2073,32 @@ export function nextSetsIn(M: Model, b: DraftBlock, si: number, lastR: number | 
   // Nor a bodyweight lift with no weigh-in, which has no total load to estimate from (r55).
   if (ex.bw && !(bwRefLoadIn(M, ex) > 0)) return null;
   const sc = effScale(M.s.settings.rirScale);
+  // A first session back after a break: its reserve is the return's, 2 or more; the load from before it is a re-approach, and the most it asks.
+  const back = backDaysIn(M, b.exId, p, {}) > BACK_DAYS;
   /* A blank effort is read as the lift's usual effort, as everywhere else
-     (r34.2: a blank set was read as failure here only, and dropped further). */
+     (r34.2: a blank set was read as failure here only, and dropped further),
+     but on a first session back, where it reads as BACK_RIR, what the return
+     asked (V's decision 1, r64). */
   const tgt = +p.rir || 0,
     lo = +p.repMin,
     hi = +p.repMax,
     r = +(s.r ?? 0);
   const q = s.rir == null || s.rir === '' ? null : +s.rir;
-  const qe = q != null ? q : rirEstIn(M, s, ex);
+  const qe = q != null ? q : back ? BACK_RIR : rirEstIn(M, s, ex);
   const bw = bwRefLoadIn(M, ex),
     Lt = s.w + bw;
   const expR =
     b.tgt && b.tgt.kind === 'load' && +(b.tgt.repMin ?? 0) > 0 ? +(b.tgt.repMin ?? 0) : lastR != null ? lastR : lo;
-  const light = (q != null && q >= tgt + CLEARLY_OFF && r >= lo) || r >= hi + CLEARLY_OFF,
+  /* On a first session back any set in the range whose estimate gives a
+     heavier load moves the next sets up, not only one clearly off the plan
+     (V's decision 1, r64, from the r63 audit's R-3: 165 x 10 at 2 in reserve,
+     or unrated, left them at 165, where its estimate gives 185 x 6). */
+  const offLight = (q != null && q >= tgt + CLEARLY_OFF && r >= lo) || r >= hi + CLEARLY_OFF;
+  const light = offLight || (back && r >= lo),
     heavy = r <= Math.min(lo, expR) - CLEARLY_OFF && (q == null || q <= tgt);
   if (!(Lt > 0) || !(light || heavy)) return null;
   const est = fitE(Lt, r, qe == null ? 0 : Math.min(qe, E1_MAX_RIR));
   if (!est) return null;
-  // A first session back after a break: its reserve is the return's, 2 or more; the load from before it is a re-approach, and the most it asks.
-  const back = backDaysIn(M, b.exId, p, {}) > BACK_DAYS;
   const pre = back ? suggestCoreIn(M, b.exId, p, {}) : null;
   const preTop = pre && pre.top != null && pre.top > 0 ? pre.top : null;
   const resUp = back ? Math.max(BACK_RIR, Math.min(tgt, E1_MAX_RIR)) : Math.min(tgt, E1_MAX_RIR) + FATIGUE_RIR;
@@ -1948,7 +2138,9 @@ export function nextSetsIn(M: Model, b: DraftBlock, si: number, lastR: number | 
     const why = light
       ? q != null && q >= tgt + CLEARLY_OFF
         ? easy()
-        : `set ${n} went ${r} reps, past your ${hi}`
+        : r >= hi + CLEARLY_OFF
+          ? `set ${n} went ${r} reps, past your ${hi}`
+          : `set ${n} showed more strength than a first session back asks`
       : `set ${n} stopped at ${r}, under your ${rangeWords(p)}`;
     return { at: si, w: nw, from: s.w, r: er, up: light, why, ...(typeof s.rid === 'string' ? { rid: s.rid } : {}) };
   }
