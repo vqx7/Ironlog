@@ -2,11 +2,11 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r63 live (#60 merged by you at 05:28 UTC, published 05:57 from ce83d0c; checked by Claude: gh-pages "Publish ce83d0c", service worker ironlog-2026.10.27-r63-667bd9407f); r64 (version 2.18, #61) and r65 (version 2.19, #62, on #61) ready for you, 2026-10-28; problem reports on r64's code confirmed by you, 2026-10-30.
+Last updated: r65 live (2026-10-30; checked by Claude on gh-pages: "Publish c83be32" and the service worker's name). R64 (#61, merged by you at 20:22 UTC, published 20:50 from 3391e69, service worker ironlog-2026.10.27-r64-27e517ec0f), then r65 (#62, merged by you at 20:59 UTC, published 21:32 from c83be32, service worker ironlog-2026.10.28-r65-f0e19f0339). Problem reports on r64's code confirmed by you the same day.
 
 ## Now, in this order
 
-1. A28 (r64 and r65, the hardening of the r63 audit): r64 is pull request #61 and r65 is #62, built on it. Both are ready (2026-10-28): every suite passed in both browsers (r64's run 40631375573; r65's checks are on its pull request, rerun with NEW-3 and 304, which you gave the go that day), and the independent review over both found no data-loss or wrong-number problem (its one finding, five suites out of step, NEW-11, is fixed). Try the preview (it carries both; r64's and r65's checks below). Then on GitHub's website: merge #61; open #62, tap Edit beside its title and change its base from r64 to main (GitHub keeps r64 after the merge, so #62 would otherwise merge into r64, not main); merge #62. When r64 is built: one SQL step for problem reports (exact code given then). A27 (r63): done, merged by you (#60, 2026-10-27 05:28 UTC), r63 live as build 2026.10.27-r63. B1a (below), meant to run before that merge: status unknown, asked 2026-10-27; it is safe to run now if you have not (nothing breaks meanwhile: reports go without the key).
+1. A28 (r64 and r65): done, merged by you on 2026-10-30 and live (see Done).
 2. Problem reports: done (2026-10-30, you). B4's r64 code is deployed, B1a has been run, and a test report from the preview became an issue in `ironlog-feedback`, which confirms B5. See Done.
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
 4. D6: delete the old branches and stop them piling up (2 minutes, below).
@@ -420,6 +420,7 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.
 
 ## Done
+- A28 (r64 and r65, the hardening of the r63 audit): merged by you on 2026-10-30, r64 (#61, merged by you at 20:22 UTC, published 20:50 from 3391e69, service worker ironlog-2026.10.27-r64-27e517ec0f), then r65 (#62, merged by you at 20:59 UTC, published 21:32 from c83be32, service worker ironlog-2026.10.28-r65-f0e19f0339). Checked by Claude on gh-pages: "Publish 3391e69", then "Publish c83be32", every suite passed in both browsers on each merge.
 - A26 and A27 (r59 to r63): merged by you (#55; #58 with r60 and r61; #59, r62; #60, r63 on 2026-10-27 at 05:28 UTC), r63 live as build 2026.10.27-r63 (checked by Claude on gh-pages, 2026-10-27).
 - A9 to A25 (r30 to r58, 2026-10-04 to 2026-10-25): every release merged and published (pull requests #13 to #54; #32, the restyle, closed unmerged, and #50, r56, closed when #51 took its commits). r58 is live, build 2026.10.24-r58, checked by Claude on GitHub on 2026-10-25 (main at 0ed4bac). Each release's own line is in this file's git history.
 - B6, protect main: done 2026-10-15 (details under B6).
