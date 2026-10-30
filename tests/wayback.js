@@ -13,13 +13,13 @@
 //       undone): the set is there, every row keeps its id, and the log kept
 //       aside is still kept.
 // `node tests/wayback.js <older page> ...` runs it against other builds
-// (default: baselines/r63.html, the build a revert of r64 republishes,
-// then r62, r61, r60, r59, r58, r57, r56.2, r56.1, r56 and r55; r55.1 and r56 went out inside r56.1's
+// (default: baselines/r64.html, the build a revert of r65 republishes,
+// then r63, r62, r61, r60, r59, r58, r57, r56.2, r56.1, r56 and r55; r55.1 and r56 went out inside r56.1's
 // merge and were never published on their own).
 const { open, engine } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 800) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
-const OLDER = process.argv.length > 2 ? process.argv.slice(2) : ['baselines/r63.html', 'baselines/r62.html', 'baselines/r61.html', 'baselines/r60.html', 'baselines/r59.html', 'baselines/r58.html', 'baselines/r57.html', 'baselines/r56-2.html', 'baselines/r56-1.html', 'baselines/r56.html', 'baselines/r55.html'];
+const OLDER = process.argv.length > 2 ? process.argv.slice(2) : ['baselines/r64.html', 'baselines/r63.html', 'baselines/r62.html', 'baselines/r61.html', 'baselines/r60.html', 'baselines/r59.html', 'baselines/r58.html', 'baselines/r57.html', 'baselines/r56-2.html', 'baselines/r56-1.html', 'baselines/r56.html', 'baselines/r55.html'];
 const CLOCK = '2026-10-21T10:00:00';
 
 // One stand-in cloud: documents by path, shared by every page opened with it, with a count of writes.

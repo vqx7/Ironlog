@@ -71,7 +71,7 @@ function pickerUsed(m: PickerSheet): { set: Set<string>; label: string } {
    it is already, and Most common and Less common (under the Most common
    heading the tag on every row would only repeat it, so only Less common). */
 function pickRow(e: ExerciseLike, used: { set: Set<string>; label: string }, grouped?: boolean): TemplateResult {
-  return html`<button class="pick" data-act="pickDo" data-ex=${e.id}><span style="min-width:0"><b>${e.name}</b><br><span class="small muted">${ML[e.primary]}, ${EQL[e.equip] || e.equip}</span></span><span class="tags">${used.set.has(e.id) ? html`<span class="tag blue">${used.label}</span>` : ''}${grouped ? (e.rare ? html`<span class="tag rare">Less common</span>` : '') : exTagParts(e)}</span></button>`;
+  return html`<button class="pick" data-act="pickDo" data-ex=${e.id}><span class="u-minw0"><b>${e.name}</b><br><span class="small muted">${ML[e.primary]}, ${EQL[e.equip] || e.equip}</span></span><span class="tags">${used.set.has(e.id) ? html`<span class="tag blue">${used.label}</span>` : ''}${grouped ? (e.rare ? html`<span class="tag rare">Less common</span>` : '') : exTagParts(e)}</span></button>`;
 }
 
 /** The picker's list for its search and muscle. */
@@ -126,7 +126,7 @@ export function pickerSheet(m: PickerSheet): TemplateResult {
   const d = state.draft;
   return html`<div class="sheet fixed" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.title}</h3>${closeX()}</div>
     <div class="grid2"><input type="search" placeholder="Search" data-mbind="q" value=${m.q || ''} id="pickQ" enterkeyhint="search" autocomplete="off"><select data-mbind="m" aria-label="Muscle"><option value="">All muscles</option>${MUSCLES.map(([k, l]) => html`<option value=${k} ?selected=${m.m === k}>${l}</option>`)}</select></div>
-    <div class="row" style="margin-top:8px"><button class="btn sm" data-act="exNewFromPicker">+ New exercise</button>${m.mode === 'addBlock' && d && !d.editingId ? html`<button class="btn sm" data-act="pickEx">Pick for me</button>` : ''}</div>
+    <div class="row u-mt8"><button class="btn sm" data-act="exNewFromPicker">+ New exercise</button>${m.mode === 'addBlock' && d && !d.editingId ? html`<button class="btn sm" data-act="pickEx">Pick for me</button>` : ''}</div>
     <div class="sheet-scroll" id="pickList">${pickerBody(m)}</div></div>`;
 }
 
@@ -142,23 +142,22 @@ export function pickTodaySheet(): TemplateResult {
   if (!best)
     lead = html`<p class="small">Your active routine has no training days with exercises. Start a freestyle session and use Pick for me inside it.</p>`;
   else if (best.ready < READY.rest)
-    lead = html`<p class="callout yellow" style="margin:0">Everything your routine has left leans on muscles still recovering from the last few days. A rest day, or easy cardio and mobility, is the better call. If you train anyway, the first option is the least fatigued.</p>`;
-  else if (best.plan)
-    lead = html`<p class="small" style="margin:0">Stick with the plan: it is also the best fit for today.</p>`;
+    lead = html`<p class="callout yellow u-m0">Everything your routine has left leans on muscles still recovering from the last few days. A rest day, or easy cardio and mobility, is the better call. If you train anyway, the first option is the least fatigued.</p>`;
+  else if (best.plan) lead = html`<p class="small u-m0">Stick with the plan: it is also the best fit for today.</p>`;
   else if (plan)
-    lead = html`<p class="small" style="margin:0">${best.day.name} fits today better than ${plan.day.name}, next in your plan: ${plan.ready < 1 ? `${plan.day.name} leans on muscles that may still be recovering.` : 'it trains what is furthest behind this week.'} ${tipButton('Starting it moves your cycle on from there, the same as choosing it under Change day.', 'About the cycle')}</p>`;
+    lead = html`<p class="small u-m0">${best.day.name} fits today better than ${plan.day.name}, next in your plan: ${plan.ready < 1 ? `${plan.day.name} leans on muscles that may still be recovering.` : 'it trains what is furthest behind this week.'} ${tipButton('Starting it moves your cycle on from there, the same as choosing it under Change day.', 'About the cycle')}</p>`;
   const sameDay = sessionsOn(today()).length > 0;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3>${closeX()}</div>
-    ${lead}${sameDay ? html`<p class="small muted" style="margin:8px 0 0">Includes the session you logged today.</p>` : ''}${rk.deload ? html`<p class="small muted" style="margin:8px 0 0">Deload week: counted at half the sets.</p>` : ''}
+    ${lead}${sameDay ? html`<p class="small muted u-m8-0-0">Includes the session you logged today.</p>` : ''}${rk.deload ? html`<p class="small muted u-m8-0-0">Deload week: counted at half the sets.</p>` : ''}
     ${top.map(
       (
         x,
         k
       ) => html`<div class=${'pcard' + (k === 0 ? ' best' : '')}><div class="row spread"><b>${dayLabel(rk.R, x.i)}: ${x.day.name}</b>${k === 0 ? html`<span class="tag green">Best fit</span>` : ''}</div>
       <ul>${dayReasons(x, rk.r7).map(r => html`<li>${r}</li>`)}</ul>
-      <div class="row" style="margin-top:8px"><button class=${'btn sm ' + (k === 0 ? 'primary' : '')} data-act="startSession" data-day=${String(x.i)}>Start</button>${!rk.deload && x.ready < READY.lighter ? html`<button class="btn sm" data-act="startSession" data-day=${String(x.i)} data-light="1">Start lighter</button>` : ''}<button class="btn sm" data-act="pickView" data-day=${String(x.i)}>Preview</button></div></div>`
+      <div class="row u-mt8"><button class=${'btn sm ' + (k === 0 ? 'primary' : '')} data-act="startSession" data-day=${String(x.i)}>Start</button>${!rk.deload && x.ready < READY.lighter ? html`<button class="btn sm" data-act="startSession" data-day=${String(x.i)} data-light="1">Start lighter</button>` : ''}<button class="btn sm" data-act="pickView" data-day=${String(x.i)}>Preview</button></div></div>`
     )}
-    <p class="small muted hastip" style="margin:10px 0 0" data-tip="Ranked by what each muscle got in the last 7 days against your targets, how recently it was trained hard (about 1 to 3 days, more after failure sets, new lifts, or heavy hinges), injuries, and your cycle order. A ranking, not a rule: how you feel wins.">How this is ranked</p></div>`;
+    <p class="small muted hastip u-m10-0-0" data-tip="Ranked by what each muscle got in the last 7 days against your targets, how recently it was trained hard (about 1 to 3 days, more after failure sets, new lifts, or heavy hinges), injuries, and your cycle order. A ranking, not a rule: how you feel wins.">How this is ranked</p></div>`;
 }
 
 /* ---------- Pick for me, inside a session ---------- */
@@ -170,8 +169,8 @@ export function pickExSheet(): TemplateResult | null {
   const picks = rankExercises(d);
   const allMet = picks.length && picks.every(x => x.def <= 0);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3>${closeX()}</div>
-    <p class="small muted hastip" style="margin:0" data-tip="From this session so far, your last 7 days against your targets, recovery, injuries, and your trends.">What to add next.</p>
-    ${allMet ? html`<p class="callout green" style="margin:8px 0 0">Every muscle is at or above target for the last 7 days. Anything more is optional.</p>` : ''}
+    <p class="small muted hastip u-m0" data-tip="From this session so far, your last 7 days against your targets, recovery, injuries, and your trends.">What to add next.</p>
+    ${allMet ? html`<p class="callout green u-m8-0-0">Every muscle is at or above target for the last 7 days. Anything more is optional.</p>` : ''}
     ${
       picks.length
         ? picks.map((x, k) => {
@@ -180,13 +179,13 @@ export function pickExSheet(): TemplateResult | null {
             const mins = Math.round(
               ((p.sets * (setSecs(ex, p) + (+p.rest || 0)) + setupSecs(ex, 2)) * pace()) / MINUTE_S
             );
-            return html`<div class=${'pcard' + (k === 0 ? ' best' : '')}><div class="row spread" style="flex-wrap:nowrap;align-items:flex-start"><span style="min-width:0"><b>${ex.name}</b><br><span class="small muted">${p.sets} × ${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? ' per side' : ''} · ${estMin(mins)}</span></span>${k === 0 ? html`<span class="tag green">Best fit</span>` : ''}</div>
+            return html`<div class=${'pcard' + (k === 0 ? ' best' : '')}><div class="row spread u-fwrnw_aistart"><span class="u-minw0"><b>${ex.name}</b><br><span class="small muted">${p.sets} × ${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? ' per side' : ''} · ${estMin(mins)}</span></span>${k === 0 ? html`<span class="tag green">Best fit</span>` : ''}</div>
       <ul>${exReasons(x).map(r => html`<li>${r}</li>`)}</ul>
-      <div class="row" style="margin-top:8px"><button class=${'btn sm ' + (k === 0 ? 'primary' : '')} data-act="pickExAdd" data-ex=${ex.id} data-sets=${String(p.sets)} data-full=${String(x.full)}>Add to session</button></div></div>`;
+      <div class="row u-mt8"><button class=${'btn sm ' + (k === 0 ? 'primary' : '')} data-act="pickExAdd" data-ex=${ex.id} data-sets=${String(p.sets)} data-full=${String(x.full)}>Add to session</button></div></div>`;
           })
         : html`<p class="small">Nothing in your library fits: every exercise is already in this session or loads an injury.</p>`
     }
-    <div class="row" style="margin-top:10px"><button class="btn sm" data-act="pickSession">Browse all exercises</button></div></div>`;
+    <div class="row u-mt10"><button class="btn sm" data-act="pickSession">Browse all exercises</button></div></div>`;
 }
 
 /* ---------- Limited equipment ---------- */
@@ -203,11 +202,11 @@ export function eqSheet(m: { day: number; equip: readonly string[] }): TemplateR
   const pl = eqPlan(day, eq);
   const sw = pl.filter(x => x.from);
   return html`<div class="sheet fixed" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Limited equipment</h3>${closeX()}</div>
-    <p class="small muted" style="margin:0 0 8px">Turn off what this gym lacks. Each affected exercise is swapped for the closest same-muscle match.</p>
+    <p class="small muted u-m0-0-8">Turn off what this gym lacks. Each affected exercise is swapped for the closest same-muscle match.</p>
     <div class="chips">${EQUIP.map(([k, l]) => html`<button class=${'chip ' + (eq.has(k) ? 'on' : '')} data-act="eqToggle" data-k=${k} aria-pressed=${String(eq.has(k))}>${l}</button>`)}</div>
-    <div class="sheet-scroll">${sw.length ? html`<ul class="eqsw">${sw.map(x => html`<li>${exName(x.from || '')} → ${x.to ? html`<b>${exName(x.to)}</b>${x.hard ? html`<br><span class="small" style="color:var(--yellow)">Much harder than what it replaces: aim for 3 to 6 reps, use a band or a shorter range, and stop 2 reps short.</span>` : ''}` : html`<span class="muted">no match with this equipment, left out</span>`}</li>`)}</ul>` : html`<p class="small" style="margin:10px 0 0">Everything in this workout fits the equipment on.</p>`}
-    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="eqStart" ?disabled=${!pl.some(x => x.to)}>Start ${day.name}</button><button class="btn" data-act="mClose">Cancel</button></div>
-    <p class="small muted" style="margin:8px 0 0">Sets, reps, and rest as planned (a much harder swap gets 3 to 6 reps); swaps are for this session only.</p></div></div>`;
+    <div class="sheet-scroll">${sw.length ? html`<ul class="eqsw">${sw.map(x => html`<li>${exName(x.from || '')} → ${x.to ? html`<b>${exName(x.to)}</b>${x.hard ? html`<br><span class="small u-cyellow">Much harder than what it replaces: aim for 3 to 6 reps, use a band or a shorter range, and stop 2 reps short.</span>` : ''}` : html`<span class="muted">no match with this equipment, left out</span>`}</li>`)}</ul>` : html`<p class="small u-m10-0-0">Everything in this workout fits the equipment on.</p>`}
+    <div class="row u-mt12"><button class="btn primary" data-act="eqStart" ?disabled=${!pl.some(x => x.to)}>Start ${day.name}</button><button class="btn" data-act="mClose">Cancel</button></div>
+    <p class="small muted u-m8-0-0">Sets, reps, and rest as planned (a much harder swap gets 3 to 6 reps); swaps are for this session only.</p></div></div>`;
 }
 
 /* ---------- Short on time ---------- */
@@ -223,17 +222,17 @@ export function shortSheet(m: { mins?: number | null | undefined }): TemplateRes
     : !pl
       ? ''
       : pl.changes.length
-        ? html`<ul class="short-list">${pl.changes.map(c => html`<li>${c}</li>`)}</ul><p class="small muted" style="margin:6px 0 0">${estMin(min5(pl.est))} after the change.${pl.over ? ' Still over, because exercises you have started are kept.' : ''} Done sets are never touched.</p>`
+        ? html`<ul class="short-list">${pl.changes.map(c => html`<li>${c}</li>`)}</ul><p class="small muted u-m6-0-0">${estMin(min5(pl.est))} after the change.${pl.over ? ' Still over, because exercises you have started are kept.' : ''} Done sets are never touched.</p>`
         : html`<p class="small">Everything left fits in ${m.mins} minutes as planned.</p>`;
   const trims = !!pl && pl.changes.length > 0;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Short on time</h3>${closeX()}</div>
     ${
       left
-        ? html`<p class="small muted" style="margin:0 0 8px">How long do you have? Planned: ${estMin(min5(left))}.</p>
+        ? html`<p class="small muted u-m0-0-8">How long do you have? Planned: ${estMin(min5(left))}.</p>
     <div class="chips">${SHORT_CHOICES.map(v => html`<button class=${'chip ' + (m.mins === v ? 'on' : '')} data-act="shortPick" data-v=${String(v)} aria-pressed=${String(m.mins === v)}>${v} min</button>`)}</div>`
         : ''
     }
     ${body}
-    <div class="row" style="margin-top:12px">${trims ? html`<button class="btn primary" data-act="shortApply">Trim the session</button>` : ''}<button class="btn" data-act="mClose">${trims ? 'Cancel' : 'Close'}</button></div>
-    <p class="small muted hastip" style="margin:8px 0 0" data-tip="Kept longest: priority and lagging muscles, exercises you have started, and at least one exercise per muscle. The rest lose sets down to 2, then drop out, later exercises first. Trimmed work does not count against trends. Undo is in the message after.">What gets cut first</p></div>`;
+    <div class="row u-mt12">${trims ? html`<button class="btn primary" data-act="shortApply">Trim the session</button>` : ''}<button class="btn" data-act="mClose">${trims ? 'Cancel' : 'Close'}</button></div>
+    <p class="small muted hastip u-m8-0-0" data-tip="Kept longest: priority and lagging muscles, exercises you have started, and at least one exercise per muscle. The rest lose sets down to 2, then drop out, later exercises first. Trimmed work does not count against trends. Undo is in the message after.">What gets cut first</p></div>`;
 }

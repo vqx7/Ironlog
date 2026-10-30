@@ -9,6 +9,7 @@ import { isNum, r3, EPS_SAME } from './util';
 import { LB, PLATES_KG, PLATES_LB, stepReadIn, unitStepIn, BAR, TYPED_STEP } from './units';
 import { ONE_DB, PLATE_SIDE_IDS, loadMode, rackKind } from './library';
 import { UIn, gymOfIn } from './model';
+import { arr } from './records';
 
 /** How plates load on an exercise, as chosen in the exercise editor. */
 export const PLATE_MODES: readonly (readonly [string, string])[] = [
@@ -58,10 +59,9 @@ const GYM_LIMITS = { dumbbell: 500, dumbbellStep: 50, bell: 300, bells: 40, stac
 export function gymClean(g: Raw): Gym | null {
   if (!g || typeof g !== 'object' || (g.u !== 'lb' && g.u !== 'kg')) return null;
   const out: Gym = { u: g.u };
-  // Unary plus turns whatever is there into a number or NaN; TypeScript
-  // refuses it on an unknown value, hence the cast.
+  // Number turns whatever is there into a number or NaN.
   const n = (v: unknown): number => {
-    const x = +(v as number);
+    const x = Number(v);
     return isFinite(x) ? r3(x) : NaN;
   };
   // g.db is whatever was stored or typed in Settings; the cast lets the lines
@@ -82,17 +82,17 @@ export function gymClean(g: Raw): Gym | null {
       if (dbListOf(db)) out.db = db;
     }
   }
-  if (Array.isArray(g.kb)) {
-    // Array.isArray turns an unknown into any[]; the cast keeps each entry unknown until n() reads it.
-    const kb = [...new Set((g.kb as unknown[]).map(n).filter(x => x > 0 && x <= GYM_LIMITS.bell))]
+  const kbs = arr(g.kb);
+  if (kbs) {
+    const kb = [...new Set(kbs.map(n).filter(x => x > 0 && x <= GYM_LIMITS.bell))]
       .sort((a, b) => a - b)
       .slice(0, GYM_LIMITS.bells);
     if (kb.length) out.kb = kb;
   }
-  if (Array.isArray(g.plates)) {
+  const plates = arr(g.plates);
+  if (plates) {
     const all = gymPlates(g.u);
-    // Inside the callback TypeScript no longer knows g.plates is an array, hence the cast.
-    const pl = all.filter(x => (g.plates as unknown[]).map(n).includes(x));
+    const pl = all.filter(x => plates.map(n).includes(x));
     if (pl.length) out.plates = pl;
   }
   {
@@ -121,7 +121,7 @@ export function dbListOf(d: DbRack | null | undefined): number[] | null {
   while (v <= d.hi + EPS_SAME) {
     if (out.length >= GYM_LIMITS.rack) return null;
     out.push(r3(v));
-    v = r3(v + ((d.fine as number) > 0 && (d.fineTo as number) > 0 && v < d.fineTo! - EPS_SAME ? d.fine! : d.st));
+    v = r3(v + (Number(d.fine) > 0 && Number(d.fineTo) > 0 && v < Number(d.fineTo) - EPS_SAME ? Number(d.fine) : d.st));
   }
   return out;
 }
@@ -176,9 +176,9 @@ export function rackTolIn(M: Model, L?: readonly number[] | null, at?: number | 
   if (!L || !L.length || at == null || !isNum(at)) return base;
   let i = 0;
   for (let k = 1; k < L.length; k++) if (Math.abs(L[k] - at) < Math.abs(L[i] - at)) i = k;
-  const gs = [i > 0 ? L[i] - L[i - 1] : null, i < L.length - 1 ? L[i + 1] - L[i] : null].filter(
-    g => g != null && g > 0
-  ) as number[];
+  const gs = [i > 0 ? L[i] - L[i - 1] : null, i < L.length - 1 ? L[i + 1] - L[i] : null].flatMap(g =>
+    g != null && g > 0 ? [g] : []
+  );
   const gap = gs.length ? Math.min(...gs) : 0;
   return Math.abs(L[i] - at) <= Math.max(base, BELL_TOL * gap) ? Math.max(base, Math.abs(L[i] - at) + EPS_SAME) : base;
 }
@@ -217,7 +217,7 @@ export function gymStepIn(M: Model, ex: ExerciseLike | null | undefined): number
     const mn = Math.min(...g.plates);
     return gymK(g, m === 'side' || pm === 'sleeve' ? mn : 2 * mn);
   }
-  if (m === 'stack' && (g.stack as number) > 0) return gymK(g, g.stack!);
+  if (m === 'stack' && g.stack !== undefined && g.stack > 0) return gymK(g, g.stack);
   return null;
 }
 
@@ -253,10 +253,9 @@ export function atCapOfIn(
 
 /* The bar an exercise is loaded on: its own (a trap bar, an EZ bar) when set
    in the exercise editor, else the bar in Settings. An exercise without its
-   own bar has none, and an absent bar compares false with 0, which the cast
-   lets TypeScript accept; past that test the bar is there, as the ! says. */
+   own bar has none. */
 export function exBarKgIn(M: Model, ex: ExerciseLike | null | undefined): number {
-  return ex && (ex.barKg as number) > 0 ? ex.barKg! : barKgIn(M);
+  return ex && ex.barKg !== undefined && ex.barKg > 0 ? ex.barKg : barKgIn(M);
 }
 
 /* The default bar is the gym's: a 20 kg bar in a gym labelled in kg, 45 lb in one in lb,

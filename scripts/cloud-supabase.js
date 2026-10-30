@@ -92,6 +92,28 @@
      (r64, F3: a phone not yet set up showed only the logo for over 45 s). */
   let started = false, waitedOut = false;
   sb.auth.initialize().then(() => { started = true; }, () => { started = true; });
+  /* A sign-out this phone makes (Sign out, Delete my account, a sign-in the
+     server refused during a sync) is marked with whose sign-in it ended and
+     when, where every tab of the app reads it. One the library makes itself,
+     when the server refuses a sign-in it was refreshing, is not, and that is
+     how the app tells the two apart: before r65 the phone read signed out
+     with nothing said (the r63 audit's NEW-3). A tab knows the sign-in it
+     has, whose it is and since when; a sign-in gone without a mark for it
+     made since then was refused. No time limit: a tab that hears of another
+     tab's sign-out late (a phone's background tab, resumed) still finds the
+     mark. */
+  const OUT_KEY = AUTH_KEY + '.out';
+  let known = null, gone = null;
+  const seeUser = id => { if (!known || known.id !== id) known = { id, since: Date.now() }; };
+  { const k = kept(); if (k) seeUser(k.id); }
+  sb.auth.onAuthStateChange((ev, s) => {
+    if (s && s.user) seeUser(s.user.id);
+    else if (ev === 'SIGNED_OUT' && known) { gone = known; known = null; }
+  });
+  const markOut = () => {
+    const k = kept() || known;
+    try { localStorage.setItem(OUT_KEY, JSON.stringify({ id: k ? k.id : '', t: Date.now() })); } catch (e) { /* storage blocked: no sign-in is kept here either */ }
+  };
   function answered(p) {
     if (!started && waitedOut) return Promise.reject(late());
     let t;
@@ -242,6 +264,7 @@
        kept on this phone goes either way. */
     async signOut() {
       hold = false;
+      markOut();
       await answered(sb.auth.signOut({ scope: 'local' })).catch(() => {
         // No answer in time: this phone signs out all the same, below.
       });
@@ -270,6 +293,7 @@
         throw friendly(error);
       }
       if (!data || !data.deleted) throw Object.assign(new Error('The account was not deleted. Try again.'), { code: 'error' });
+      markOut();
       try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* the account is already gone */ }
       hold = false;
     },
@@ -277,6 +301,18 @@
        after a confirmation link, or the link opened where the app waits for
        it): let it sync. */
     release() { hold = false; },
+    /* Whether the sign-in this tab had is gone with no sign-out of it marked
+       since this tab first had it: the server refused it (r65, NEW-3). True
+       once, then false until there is a sign-in again. */
+    refused() {
+      if (kept()) return false;
+      const was = known || gone;
+      known = null; gone = null;
+      if (!was) return false;
+      let m = null;
+      try { m = JSON.parse(localStorage.getItem(OUT_KEY) || 'null'); } catch (e) { /* no mark to read: none was made */ }
+      return !(m && m.id === was.id && +m.t >= was.since);
+    },
     /* cb(event, user): INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, PASSWORD_RECOVERY, TOKEN_REFRESHED, USER_UPDATED.
        A sign-in the library could not refresh for want of an answer is still
        this phone's (signedIn above): its start reports it with no session. */
@@ -362,7 +398,8 @@
         // Two sends of one report at the same moment: the table took the other, so this one is sent.
         if (/23505/.test(String(error.code || '')) && /feedback_client_once/.test(t)) return;
         if (/relation .*feedback.* does not exist|PGRST205|42P01/i.test(t)) throw Object.assign(new Error('Reports are not set up yet. Your text is kept.'), { code: 'not_set_up' });
-        if (/feedback_rate_limited/i.test(t)) throw Object.assign(new Error('You have sent 5 reports today. Try again tomorrow.'), { code: 'limit' });
+        // The app says the limit in its own words, with its own number (report.ts); this one is never shown by it.
+        if (/feedback_rate_limited/i.test(t)) throw Object.assign(new Error('Too many reports today. Try again tomorrow.'), { code: 'limit' });
         throw friendly(error);
       }
     },

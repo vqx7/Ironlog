@@ -41,7 +41,7 @@ import { dbListOf, gymClean, gymPlates } from './gym';
 import { fmtDate, fmtG, stampShort } from './format';
 import { CAL_WEEKS, CAL_MIN } from './analytics';
 import { TRASH_DAYS, rec, LIMITS } from './records';
-import { iso, numIn, r1, MINUTE_S, SECOND_MS, HOUR_MIN, DAY_MIN } from './util';
+import { iso, numIn, numWord, r1, upFirst, MINUTE_S, SECOND_MS, HOUR_MIN, DAY_MIN } from './util';
 import { stripDemo } from './chunks';
 import { normalize } from './normalize';
 import {
@@ -198,13 +198,13 @@ function profChips(
 export function profFields(): TemplateResult {
   const p = prof();
   return html`<div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_GOAL_TIP}>Goal</span></p>
+<p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip=${PROF_GOAL_TIP}>Goal</span></p>
 ${profChips('goal', PROF_GOALS, p.goal, 'Goal')}</div>
 <div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_EXP_TIP}>Years lifting</span></p>
+<p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip=${PROF_EXP_TIP}>Years lifting</span></p>
 ${profChips('exp', PROF_EXP, p.exp, 'Years lifting')}</div>
 <div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>
+<p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>
 ${profChips(
   'days',
   PROF_DAYS.map(d => [d, String(d)] as const),
@@ -234,7 +234,7 @@ function profSettings(): TemplateResult {
     'Planned days whose time estimate runs over it are flagged. Rest per exercise is set in Plan; 0 s means no timer.'
   )}<input type="text" inputmode="numeric" data-bind="timeBudget" aria-labelledby="lt-timeBudget" .value=${fieldValue(s.timeBudget == null ? '' : String(s.timeBudget))} placeholder="e.g. 70"/></label>
 <div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_FOCUS_TIP}>Focus muscles</span> <span class="muted" style="font-weight:400">${f.length} of ${FOCUS_MAX}</span></p>
+<p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip=${PROF_FOCUS_TIP}>Focus muscles</span> <span class="muted u-fw400">${f.length} of ${FOCUS_MAX}</span></p>
 <div class="chips" role="group" aria-label="Focus muscles">${MUSCLES.filter(([k]) => !TRACK_ONLY.has(k)).map(
     ([k, l]) =>
       html`<button class=${f.includes(k) ? 'chip on' : 'chip'} data-act="profSet" data-k="focus" data-v=${k} aria-pressed=${String(f.includes(k))}>${l}</button>`
@@ -243,7 +243,7 @@ function profSettings(): TemplateResult {
 ${
   ap.length
     ? html`<div class="panel row spread" id="profApply">
-<p class="small" style="margin:0;flex:1 1 180px"><b>${ap.length} exercise${ap.length === 1 ? '' : 's'}</b> in ${R.name} differ from your profile.</p>
+<p class="small u-m0_f1n1n180"><b>${ap.length} exercise${ap.length === 1 ? '' : 's'}</b> in ${R.name} differ from your profile.</p>
 <button class="btn sm" data-act="profApply">Apply</button></div>
 `
     : nothing
@@ -312,7 +312,7 @@ function gymSettings(): TemplateResult {
     `What your gym has, so suggested loads are ones you can pick up. Blank keeps the usual steps (${DEFAULT_STEP.lb} lb or ${DEFAULT_STEP.kg} kg, and dumbbells read from what you log). A step set on an exercise or in your plan still wins for that lift.`
   )}
 <div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Type the weights as they are labelled in your gym. Suggestions show in the app's unit and land on these weights.">Labelled in</span></p>
+<p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="Type the weights as they are labelled in your gym. Suggestions show in the app's unit and land on these weights.">Labelled in</span></p>
 <div class="ob-units" role="group" aria-label="Your gym's weights are labelled in">${(['lb', 'kg'] as const).map(
     k =>
       html`<button class=${u === k ? 'chip on' : 'chip'} data-act="gymUnit" data-v=${k} aria-pressed=${String(u === k)}>${k}</button>`
@@ -320,12 +320,12 @@ function gymSettings(): TemplateResult {
 </div>
 ${
   u !== U()
-    ? html`<p class="small" style="margin:0">Suggestions show in ${U()}, on the ${u} weights below.</p>
+    ? html`<p class="small u-m0">Suggestions show in ${U()}, on the ${u} weights below.</p>
 `
     : nothing
 } <label class="field">${labelTip('lt-barKg', `Bar weight (${U()})`, 'Used by the plates-per-side line in the logger.')}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
 <div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="A barbell or a plate-loaded machine steps by two of the smallest plate you have, one a side; a landmine by one. Tap a plate your gym does not have.">Plates on hand (${u})</span></p>
+<p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="A barbell or a plate-loaded machine steps by two of the smallest plate you have, one a side; a landmine by one. Tap a plate your gym does not have.">Plates on hand (${u})</span></p>
 <div class="chips" role="group" aria-label="Plates on hand">${plates.map(
     p =>
       html`<button class=${on.includes(p) ? 'chip on' : 'chip'} data-act="gymPlate" data-v=${String(p)} aria-pressed=${String(on.includes(p))}>${fmtG(p)}</button>`
@@ -337,13 +337,13 @@ ${
     "Adds them to the plates-per-side line. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor."
   )}</label>
 <div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600">Dumbbells (${u})</p>
+<p class="small muted u-m0-0-6_fw600">Dumbbells (${u})</p>
 <div class="grid3">
 <label class="field">From<input type="text" inputmode="decimal" data-gym="db.lo" .value=${fieldValue(v('lo'))} placeholder=${String(DB_EXAMPLE[u].lo)} /></label>
 <label class="field">To<input type="text" inputmode="decimal" data-gym="db.hi" .value=${fieldValue(v('hi'))} placeholder=${String(DB_EXAMPLE[u].hi)} /></label>
 <label class="field">Step<input type="text" inputmode="decimal" data-gym="db.st" .value=${fieldValue(v('st'))} placeholder=${String(DB_EXAMPLE[u].st)}/></label>
 </div>
-<div class="grid2" style="margin-top:6px;align-items:end">
+<div class="grid2 u-mt6_aiend">
 <label class="field">${labelTip(
     'lt-dbFine',
     'Lighter end steps by',
@@ -351,7 +351,7 @@ ${
   )}<input type="text" inputmode="decimal" data-gym="db.fine" aria-labelledby="lt-dbFine" .value=${fieldValue(v('fine'))} placeholder=${String(DB_EXAMPLE[u].fine)} /></label>
 <label class="field">Up to<input type="text" inputmode="decimal" data-gym="db.fineTo" .value=${fieldValue(v('fineTo'))} placeholder=${String(DB_EXAMPLE[u].fineTo)}/></label>
 </div>
-<p class=${half ? 'small' : 'small muted'} id="gymDbList" style="margin:6px 0 0">${
+<p class=${half ? 'small u-m6-0-0' : 'small muted u-m6-0-0'} id="gymDbList">${
     half
       ? 'Add From, To, and Step to use these.'
       : L
@@ -447,7 +447,7 @@ function rirSettings(): TemplateResult {
       : `${c.recent} recent calibration set${c.recent === 1 ? '' : 's'}: median miss ${raw > 0 ? '+' : ''}${r1(raw)} reps (${raw > 0 ? 'you stop with more left than you call' : raw < 0 ? 'closer to failure than you call' : 'accurate'}). Correction applied: ${c.bias > 0 ? '+' : ''}${c.bias}.`;
   const sc = rirScale();
   // What RIR is stays on screen here (V, r27): this is where it is decided whether to use it.
-  return html`<p class="small" style="margin:0"><b>RIR, reps in reserve:</b> reps you could still have done. RIR 3 or less is a hard set.</p>
+  return html`<p class="small u-m0"><b>RIR, reps in reserve:</b> reps you could still have done. RIR 3 or less is a hard set.</p>
 <label class="field">Reps in reserve<select data-bind="rirMode">
 <option value="on" .selected=${live(s.rirMode === 'on')}>On: log RIR and use it as logged</option>
 <option value="cal" .selected=${live(s.rirMode === 'cal')}>On, corrected by my calibration sets</option>
@@ -477,22 +477,22 @@ function rirSettings(): TemplateResult {
           `Count ${halfLbl()} as half a set`,
           "Off: a set counts toward your weekly sets at RIR 3 or less. On: a set past RIR 3 counts as half a set too, in your weekly sets, targets, and the plan's weekly sets. Growth rises as sets end closer to failure (Robinson 2024), so sets further away still do something; half is a convention. Estimates, PRs, and recovery are unchanged."
         )}</label>
-<p class="small muted hastip" style="margin:4px 0 0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration, and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>
+<p class="small muted hastip u-m4-0-0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration, and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>
 `
   }${
     s.rirMode === 'cal' && c.recent < 2
-      ? html`<p class="small" style="margin:0"><b>Needs ${CAL_MIN} calibration sets from the last ${CAL_WEEKS} weeks before any correction applies.</b></p>
+      ? html`<p class="small u-m0"><b>Needs ${CAL_MIN} calibration sets from the last ${CAL_WEEKS} weeks before any correction applies.</b></p>
 `
       : nothing
   }
-<p class="small hastip" style="margin:4px 0 0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure (Halperin 2022). Your log never changes, so switching is reversible.">${sum}</p>
+<p class="small hastip u-m4-0-0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure (Halperin 2022). Your log never changes, so switching is reversible.">${sum}</p>
 `;
 }
 
 function layoutSettings(): TemplateResult {
   const h = state.settings.hidden;
   const dflt = DEFAULT_HIDDEN.length === h.length && DEFAULT_HIDDEN.every(k => h.includes(k));
-  return html`<p class="small muted" style="margin:0">Tap to show or hide. ${tipButton(
+  return html`<p class="small muted u-m0">Tap to show or hide. ${tipButton(
     `Hidden sections are still tracked, and come back where they were. Each time ${APP_NAME} opens, every section starts folded except Sessions on History. Drag a section by its ⠿ to move it; each tab keeps its order.`,
     'About layout'
   )}</p>
@@ -522,8 +522,8 @@ function acctPanel(): TemplateResult | typeof nothing {
   // Signed in but not syncing: the sign-in could not be used (offline at launch, or refused). Said, with a retry, rather than looking fine.
   const stuck =
     u && !cloud.on
-      ? html`<div class="row spread" style="margin-top:6px">
-<p class="small" style="margin:0;color:var(--yellow)">Not syncing right now.</p>
+      ? html`<div class="row spread u-mt6">
+<p class="small u-m0_cyellow">Not syncing right now.</p>
 <button class="btn sm" data-act="acctRetry">Try again</button></div>
 `
       : nothing;
@@ -532,16 +532,16 @@ function acctPanel(): TemplateResult | typeof nothing {
   return u
     ? html`<div class="panel" id="acctPanel">
 <div class="row spread">
-<p class="small" style="margin:0;min-width:0;overflow-wrap:anywhere">Signed in as <b>${typeof u.email === 'string' ? u.email : ''}</b></p>
+<p class="small u-m0_minw0_owany">Signed in as <b>${typeof u.email === 'string' ? u.email : ''}</b></p>
 <button class="btn sm" data-act="acctSignOut">Sign out</button></div>
 ${stuck}${
         typeof A.deleteAccount === 'function'
-          ? html`<button type="button" class="linkbtn" style="margin-top:8px;color:var(--red)" data-act="acctDelete">Delete my account</button>`
+          ? html`<button type="button" class="linkbtn u-mt8_cred" data-act="acctDelete">Delete my account</button>`
           : nothing
       }</div>
 `
     : html`<div class="panel" id="acctPanel">
-<p class="small hastip" style="margin:0 0 8px" data-tip=${
+<p class="small hastip u-m0-0-8" data-tip=${
         isStandalone()
           ? 'Deleting the app from the home screen deletes the log on this phone. An account keeps it, or save a backup file below.'
           : "Clearing this browser's data deletes the log here. An account keeps it, or save a backup file below."
@@ -555,14 +555,14 @@ ${stuck}${
 function syncInfo(): TemplateResult {
   if (!cloud.on)
     return isStandalone()
-      ? html`<p class="small hastip" style="margin:0" data-tip="Without an account this app keeps your data on this phone only. Deleting the app from the home screen deletes it too. Sign in to keep a copy in your account, or save a backup file to Files or iCloud Drive; Import brings it back on any device."><b>Saved on this phone.</b> ${
+      ? html`<p class="small hastip u-m0" data-tip="Without an account this app keeps your data on this phone only. Deleting the app from the home screen deletes it too. Sign in to keep a copy in your account, or save a backup file to Files or iCloud Drive; Import brings it back on any device."><b>Saved on this phone.</b> ${
           AUTH() ? 'Sign in to sync, or export a backup weekly.' : 'Export a backup weekly.'
         }</p>
 `
       : AUTH()
-        ? html`<p class="small hastip" style="margin:0" data-tip="Everything is saved in this browser only. Clearing its data deletes it. Sign in below to keep a copy in your account, or export a backup."><b>Saved in this browser only.</b> Sign in to sync, or export a backup.</p>
+        ? html`<p class="small hastip u-m0" data-tip="Everything is saved in this browser only. Clearing its data deletes it. Sign in below to keep a copy in your account, or export a backup."><b>Saved in this browser only.</b> Sign in to sync, or export a backup.</p>
 `
-        : html`<p class="small hastip" style="margin:0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>
+        : html`<p class="small hastip u-m0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>
 `;
   const ago = cloud.last ? Math.round((Date.now() - cloud.last) / (MINUTE_S * SECOND_MS)) : null;
   const when =
@@ -582,19 +582,19 @@ function syncInfo(): TemplateResult {
         ? html`<span class="tag yellow">Waiting to sync</span>`
         : html`<span class="tag blue">Syncing</span>`;
   return html`<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
-<p class="small hastip" style="margin:6px 0 0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last ${UNDO_DAYS} days.`}>${
+<p class="small hastip u-m6-0-0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last ${UNDO_DAYS} days.`}>${
     cloud.status !== 'synced'
       ? 'Saved on this device. It reaches your account when you are back online.'
       : window.claude
         ? 'Saved to your Claude account and this device.'
         : 'Saved to your account and this device.'
-  }${cloud.err ? html` <b style="color:var(--red)">${cloud.err}</b>` : nothing}</p>
+  }${cloud.err ? html` <b class="u-cred">${cloud.err}</b>` : nothing}</p>
 `;
 }
 
 /** What the suggestions are, said once where people look (r31.1, V: a subtle notice). */
 function safetyLine(): TemplateResult {
-  return html`<p class="small muted" id="safety" style="margin:8px 0 0"><b>Suggestions:</b> estimates from your log, not medical or coaching advice. Train within your limits and stop on pain. ${tipButton(SAFETY_TXT, 'About suggestions')}</p>
+  return html`<p class="small muted u-m8-0-0" id="safety"><b>Suggestions:</b> estimates from your log, not medical or coaching advice. Train within your limits and stop on pain. ${tipButton(SAFETY_TXT, 'About suggestions')}</p>
 `;
 }
 
@@ -602,21 +602,21 @@ function safetyLine(): TemplateResult {
 function privacyLine(): TemplateResult {
   const claude = inClaude();
   if (!claude && AUTH() && acct.user)
-    return html`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your ${APP_NAME} account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipButton(
+    return html`<p class="small muted u-m8-0-0" id="privacy"><b>Privacy:</b> no ads, no tracking. Your log syncs to your ${APP_NAME} account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipButton(
       'It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data and your email address, as with any app without end-to-end encryption. Your email is used only to sign in and reset your password, and nothing is shared or sold. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them.',
       'About privacy'
     )}</p>
 `;
   if (!claude && AUTH())
-    return html`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking, and nothing sent without an account. Reports you send go to the app owner. ${tipButton(
+    return html`<p class="small muted u-m8-0-0" id="privacy"><b>Privacy:</b> no ads, no tracking, and nothing sent without an account. Reports you send go to the app owner. ${tipButton(
       "Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log and email are stored in a Supabase database, readable by your account and by the app owner; the email is used only to sign in and reset your password. A new password is checked against known breaches with only the first 5 characters of its hash. Deleting the app or this site's data deletes the copy on this device, so keep a backup file or an account.",
       'About privacy'
     )}</p>
 `;
   return claude
-    ? html`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipButton('Export and CSV files go only where you save them.', 'About privacy')}</p>
+    ? html`<p class="small muted u-m8-0-0" id="privacy"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipButton('Export and CSV files go only where you save them.', 'About privacy')}</p>
 `
-    : html`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner. ${tipButton(
+    : html`<p class="small muted u-m8-0-0" id="privacy"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner. ${tipButton(
         `${APP_NAME} has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site's data deletes your log, so keep a backup file.`,
         'About privacy'
       )}</p>
@@ -628,7 +628,7 @@ function asideLine(): TemplateResult | typeof nothing {
   const kept = asideList();
   if (!kept.length) return nothing;
   const words = kept.map(a => `${a.sessions} session${a.sessions === 1 ? '' : 's'}`).join(', ');
-  return html`<p class="small" id="asideLine" style="margin:8px 0 0"><b>A log from another account is kept on this phone</b> (${words}). It is used again when that account signs in here. Erase everything removes it.</p>
+  return html`<p class="small u-m8-0-0" id="asideLine"><b>A log from another account is kept on this phone</b> (${words}). It is used again when that account signs in here. Erase everything removes it.</p>
 `;
 }
 
@@ -643,32 +643,32 @@ function dataBody(): TemplateResult {
 `
   }${
     canInstallHere()
-      ? html`<div class="panel row spread" id="installPanel" style="margin-top:8px">
-<p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p>
+      ? html`<div class="panel row spread u-mt8" id="installPanel">
+<p class="small u-m0_f1n1n180"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p>
 <button class="btn sm primary" data-act="install">${/^ios/.test(installKind()) ? 'Add to Home Screen' : 'Install'}</button></div>
 `
       : nothing
   }${
     ENV === 'preview'
-      ? html`<div class="panel row spread" style="margin-top:8px">
-<p class="small" style="margin:0;flex:1 1 180px"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in ${APP_NAME} stays as it is.</p>
+      ? html`<div class="panel row spread u-mt8">
+<p class="small u-m0_f1n1n180"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in ${APP_NAME} stays as it is.</p>
 <button class="btn sm primary" data-act="previewCopy">Copy my log in</button></div>
 `
       : nothing
   }${asideLine()}${privacyLine()}${safetyLine()}${
     backupDue()
-      ? html`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport ? `Last backup file ${fmtDate(s.lastExport)}.` : 'No backup file yet.'}${cloud.on ? 'Your account has not synced this week. Export one below.' : ''}</p>
+      ? html`<p class="callout yellow u-m10-0-0"><b>Backup due.</b> ${s.lastExport ? `Last backup file ${fmtDate(s.lastExport)}.` : 'No backup file yet.'}${cloud.on ? 'Your account has not synced this week. Export one below.' : ''}</p>
 `
       : nothing
   }${
     device.ok
       ? nothing
-      : html`<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>
+      : html`<p class="small u-cred">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>
 `
   }${
     unreadableRaw()
-      ? html`<div class="panel" id="unreadPanel" style="margin-top:8px">
-<p class="small" style="margin:0 0 6px"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p>
+      ? html`<div class="panel u-mt8" id="unreadPanel">
+<p class="small u-m0-0-6"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p>
 <div class="row"><button class="btn sm primary" data-act="unreadRestore">Restore it</button><button class="btn sm" data-act="unreadShow">Show its text</button><button class="btn sm" data-act="unreadForget">Forget it</button></div>
 </div>
 `
@@ -729,7 +729,7 @@ export function viewSettings(): TemplateResult {
 </div>
 <label class="field">Name (optional)<input type="text" data-bind="userName" .value=${fieldValue(s.userName || '')} maxlength="40" autocomplete="given-name"/></label>
 <div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600">Accent colour</p>
+<p class="small muted u-m0-0-6_fw600">Accent colour</p>
 <div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
         ([k, l]) =>
           html`<button class=${(s.accent || ACCENT0) === k ? 'chip acc on' : 'chip acc'} data-act="accent" data-v=${k} aria-pressed=${String((s.accent || ACCENT0) === k)}><i class=${`sw sw-${k}`} aria-hidden="true"></i>${l}</button>`
@@ -858,13 +858,13 @@ ${MUSCLES.map(([k, l]) =>
 `
     : html`<tr>
 <td>${l}${TARGETED.has(k) || (prof().focus || []).includes(k) ? nothing : html`<br><button type="button" class="linkbtn tall" data-act="tgtOff" data-m=${k}>Track only</button>`}</td>
-<td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l} minimum hard sets a week`} data-band=${k} data-bi="0" .value=${fieldValue(String(s.bands[k][0]))}/></td>
-<td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l} maximum hard sets a week`} data-band=${k} data-bi="1" .value=${fieldValue(String(s.bands[k][1]))}/></td>
+<td class="r"><input class="u-w70" type="text" inputmode="numeric" aria-label=${`${l} minimum hard sets a week`} data-band=${k} data-bi="0" .value=${fieldValue(String(s.bands[k][0]))}/></td>
+<td class="r"><input class="u-w70" type="text" inputmode="numeric" aria-label=${`${l} maximum hard sets a week`} data-band=${k} data-bi="1" .value=${fieldValue(String(s.bands[k][1]))}/></td>
 </tr>
 `
 )}</tbody>
 </table>
-<div class="row" style="margin-top:8px"><button class="btn sm" data-act="bandsDefault" ?disabled=${
+<div class="row u-mt8"><button class="btn sm" data-act="bandsDefault" ?disabled=${
         MK.every(m => {
           const d = defBand(m);
           return s.bands[m][0] === d[0] && s.bands[m][1] === d[1];
@@ -900,7 +900,7 @@ ${MUSCLES.map(([k, l]) =>
       hasDemo ? 'demo data loaded' : 'demo data, version, erase',
       html`<div class="card stack">
 <div>
-<p class="small" style="margin:0 0 6px"><b>Demo data</b> ${tipButton(
+<p class="small u-m0-0-6"><b>Demo data</b> ${tipButton(
         `${DEMO_WEEKS} weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.`,
         'About demo data'
       )}</p>
@@ -911,7 +911,7 @@ ${MUSCLES.map(([k, l]) =>
       }</div>
 </div>
 <div>
-<p class="small" style="margin:0 0 6px"><b>Version</b> ${VERSION_LINE}${
+<p class="small u-m0-0-6"><b>Version</b> ${VERSION_LINE}${
         logBuf.length
           ? html` <span class="muted">· cloud ${cloud.on ? cloud.status : 'off'} · ${logBuf.length} logged error${logBuf.length === 1 ? '' : 's'}</span>`
           : nothing
@@ -935,7 +935,7 @@ ${
           : nothing
       }${
         window.IRONLOG_APP
-          ? html`<p class="small" style="margin:8px 0 0"><a href="LICENSES.txt" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;min-height:44px">Open-source licenses</a></p>
+          ? html`<p class="small u-m8-0-0"><a href="LICENSES.txt" target="_blank" rel="noopener" class="u-diflex_aicenter_minh44">Open-source licenses</a></p>
 `
           : nothing
       }</div>
@@ -1089,7 +1089,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       if (i >= 0) focus.splice(i, 1);
       else {
         if (focus.length >= FOCUS_MAX) {
-          toast('Two at most. Tap one to take it off.');
+          toast(`${upFirst(numWord(FOCUS_MAX))} at most. Tap one to take it off.`);
           return;
         }
         focus.push(raw);

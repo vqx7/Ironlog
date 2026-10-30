@@ -145,7 +145,7 @@ for (const w of ['AI_STYLE', 'aiDigest', 'debriefPrompt', 'Ask Claude', 'Debrief
 const head = `<script>window.IRONLOG_APP=true;${PREVIEW ? "window.IRONLOG_ENV='preview';" : ''}window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
 window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.ironlogInstallReady)window.ironlogInstallReady();});</script>
-<meta name="theme-color" content="#08090b">
+<meta name="theme-color" content="${cfg.DARK_BG}">
 <meta name="color-scheme" content="dark light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -175,7 +175,9 @@ if (cloudCfg) html = replaceOnce(html, '</head>', `<script>window.IRONLOG_SUPABA
 // controlled the page at open, so on an app installed in the same visit, which
 // iOS keeps open for days, Update cleared the bar and the old build stayed).
 // It never reloads by itself: a first install taking over, or another window's
-// update, leaves the page as it is. The check also runs whenever the app comes back
+// update, leaves the page as it is. Its errors go to the app's error log through
+// window.ironlogLog (r65, the r63 audit's A-12: they were dropped), but for an
+// update check that fails offline, which is expected and tried again. The check also runs whenever the app comes back
 // to the foreground, because an installed iPhone app is often resumed rather
 // than relaunched and would otherwise not look for updates for days.
 const boot = `<script>
@@ -188,10 +190,10 @@ if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostnam
     window.ironlogApplyUpdate=()=>{tapped=true;if(reg.waiting)reg.waiting.postMessage('skipWaiting');else location.reload();};
     reg.addEventListener('updatefound',()=>{const w=reg.installing;if(w)w.addEventListener('statechange',()=>{if(w.state==='installed')offer();});});
     offer();
-    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{});});
-  }).catch(()=>{});});
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{/* Offline or the site not answering: expected, and the check runs again when the app comes back. */});});
+  }).catch(e=>{if(window.ironlogLog)window.ironlogLog('sw-register',e);});});
 }
-try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>{if(!p)navigator.storage.persist();});}catch(e){}
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).catch(e=>{if(window.ironlogLog)window.ironlogLog('storage-persist',e);});}catch(e){if(window.ironlogLog)window.ironlogLog('storage-persist',e);}
 </script>
 `;
 html = replaceOnce(html, '</body>', boot + '</body>', 'closing body tag');
@@ -231,7 +233,7 @@ fs.writeFileSync(path.join(DIST, 'index.html'), html);
 const manifest = {
   name: NAME, short_name: SHORT, description: 'Log lifting sessions, track progress and plan training. Works offline.',
   id: './', start_url: './', scope: './', display: 'standalone', orientation: 'portrait',
-  background_color: '#08090b', theme_color: '#08090b', categories: ['health', 'fitness', 'sports'],
+  background_color: cfg.DARK_BG, theme_color: cfg.DARK_BG, categories: ['health', 'fitness', 'sports'],
   icons: [
     { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
     { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },

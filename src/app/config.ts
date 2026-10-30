@@ -40,9 +40,14 @@ export const PREVIEW_LABEL = 'Preview';
     weight, `light` in the muted colour (.ob-logo in the styles). */
 export const WORDMARK = { mark: 'I', strong: 'ron', light: 'log' } as const;
 
+/** The dark theme's page colour (r65, the r63 audit's A-9, where it was typed
+    in five places): the style sheet's --bg in dark mode, the installed app's
+    splash and status bar, and the status bar's when the page's cannot be read. */
+export const DARK_BG = '#08090b';
+
 /** The version people see (V, 2026-10-16): 2.0 from r49, the minor number up
     by one for each release merged, the major number for a large change. */
-export const DISPLAY_VERSION = '2.18';
+export const DISPLAY_VERSION = '2.19';
 
 /** The build: shown beside the version in Diagnostics, problem reports and
     backups, so a report is matched to the exact code; also names the service
@@ -50,7 +55,7 @@ export const DISPLAY_VERSION = '2.18';
     Problem reports and Copy diagnostics carry it as `build` and the version
     people see as `version`; a backup keeps it under `version`, as every
     build before r49 wrote backups, so old and new backups read the same. */
-export const APP_VERSION = '2026.10.27-r64';
+export const APP_VERSION = '2026.10.28-r65';
 
 /** Version and build together, for Diagnostics and the recovery screen. */
 export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;

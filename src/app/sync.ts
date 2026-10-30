@@ -81,6 +81,10 @@ const SYNC_MS = {
 const RETRY_S: readonly number[] = [5, 15, 60, 180];
 /** What a phone whose sign-in the server refuses says (r64, the r63 audit's F10). */
 const SIGNIN_AGAIN = 'Your sign-in has expired. Sign in again to sync. Your log stays on this phone.';
+/** Says that the server refused this phone's sign-in: when a sync meets the refusal (F10), and when the account library met it first and signed the phone out itself (r65, NEW-3). */
+export function signInAgain(): void {
+  fx.toast(SIGNIN_AGAIN, null, SYNC_MS.errToast);
+}
 /** Whether the phone says it has no network: the sync then waits for it (the 'online' event, account.ts) rather than trying what cannot reach anything (r64, the r63 audit's F5). */
 const offline = (): boolean => navigator.onLine === false;
 /** A sync document over this many characters of JSON is left unwritten (the account's size cap), so it cannot stop the others. */
@@ -458,7 +462,7 @@ function cloudFail(e: unknown): void {
         A.signOut().catch((x: unknown) => {
           log('auth', x);
         });
-      fx.toast(SIGNIN_AGAIN, null, SYNC_MS.errToast);
+      signInAgain();
     }
     fx.render();
     return;

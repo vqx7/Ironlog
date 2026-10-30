@@ -49,14 +49,6 @@ export function orList(a: readonly (string | number)[]): string {
   return a.length <= 2 ? a.join(' or ') : a.slice(0, -1).join(', ') + ', or ' + a[a.length - 1];
 }
 
-/** Text made safe to put into markup: the five characters HTML treats as syntax.
-    The cast lets TypeScript look a character up in the table by any string. */
-export const esc = (s: unknown): string =>
-  String(s == null ? '' : s).replace(
-    /[&<>"']/g,
-    c => (({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }) as Record<string, string>)[c]
-  );
-
 /** A new record id: up to UID_RANDOM random base-36 characters, then the last UID_TIME of the time. */
 const UID_RANDOM = 7,
   UID_TIME = 4;
@@ -109,10 +101,9 @@ export const dayOfWeek = (s: string): number => (parse(s).getDay() + WEEK_DAYS -
 /** The Monday of a date's week. */
 export const weekStart = (s: string): string => addDays(s, -dayOfWeek(s));
 
-/** Whole days from a to b (subtracting two dates subtracts their time values;
-    the casts tell TypeScript so, and are not code). */
+/** Whole days from a to b, from the two dates' time values. */
 export const daysBetween = (a: string, b: string): number =>
-  Math.round(((parse(b) as unknown as number) - (parse(a) as unknown as number)) / DAY_MS);
+  Math.round((parse(b).getTime() - parse(a).getTime()) / DAY_MS);
 
 /** Today's date on the phone's clock, in the log's form. */
 export const today = (): string => iso(new Date());
@@ -126,17 +117,17 @@ export const isNum = (v: unknown): boolean => typeof v === 'number' && isFinite(
 /** A number from a number or a numeric string, else the default. */
 export const numOr = <T>(v: unknown, d: T): number | T => {
   const n = typeof v === 'string' ? parseFloat(v) : v;
-  // isNum is no type guard (above), so the cast says what it just checked.
-  return isNum(n) ? (n as number) : d;
+  // isNum is no type guard (above); the typeof says to TypeScript what it checks.
+  return typeof n === 'number' && isNum(n) ? n : d;
 };
 
 /** A number kept between lo and hi, else the default kept between them. A
     null default does not come out as null: Math.max reads it as 0, so an
-    unusable value comes out as 0 kept between lo and hi, as it always has. The
-    cast says so to TypeScript and is not code. */
+    unusable value comes out as 0 kept between lo and hi, as it always has
+    (Number(null) is 0). */
 export const clampN = (v: unknown, lo: number, hi: number, d: number | null): number => {
   const n = numOr(v, d);
-  return Math.min(Math.max(n as number, lo), hi);
+  return Math.min(Math.max(Number(n), lo), hi);
 };
 
 /** A date in the log's form, YYYY-MM-DD (the shape, not whether the day
@@ -148,6 +139,8 @@ export const isDate = (v: unknown): boolean => typeof v === 'string' && /^\d{4}-
 export const numWord = (n: number): string =>
   ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'][n] ??
   String(n);
+/** Words as a sentence starts them, the first letter capital ("Two at most"). */
+export const upFirst = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 /** How many times, as copy says it ("more than twice"); past two, the number in words and "times". */
 export const timesWord = (n: number): string => (n === 1 ? 'once' : n === 2 ? 'twice' : `${numWord(n)} times`);
 /** The shares copy says in words. */

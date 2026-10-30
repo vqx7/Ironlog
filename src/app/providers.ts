@@ -23,6 +23,8 @@ interface AuthService {
   deleteAccount?: (() => Promise<unknown>) | undefined;
   /** This browser is where the app is used: let it sync. */
   release?: (() => void) | undefined;
+  /** Whether the sign-in this phone had is gone without the phone signing out: the server refused it (r65, NEW-3). True once. */
+  refused?: (() => boolean) | undefined;
   /** Calls back on every sign-in change: the event's name and who is signed in after it. */
   onChange(cb: (ev: string, user: AcctUser | null) => void): void;
 }

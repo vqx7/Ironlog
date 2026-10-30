@@ -312,10 +312,10 @@ export function readyCard(d: Draft, low: number): Part {
   const open = d.ex.some(b => !b.light && !b.sets.some(x => !x.warm && !rowBlank(b, x)));
   const left = remainMin(d);
   if (low >= 2 && !open && d.ex.some(b => b.light))
-    return html`<p class="callout" style="margin:8px 0 0" id="readyCard">Made lighter: the exercises not started are half the sets at about ${pctOf(LIGHT_SHARE)}% loads.</p>`;
+    return html`<p class="callout u-m8-0-0" id="readyCard">Made lighter: the exercises not started are half the sets at about ${pctOf(LIGHT_SHARE)}% loads.</p>`;
   if (low < 2)
-    return html`<p class="callout" style="margin:8px 0 0" id="readyCard">One low answer: keep the loads and leave a rep more in reserve than planned if it feels heavy.</p>`;
-  return html`<div class="callout yellow" style="margin:8px 0 0" id="readyCard"><p style="margin:0">Low readiness today. ${tipButton(`A lighter or shorter session fits a low day better than pushing. Make it lighter changes only the exercises not started: half the sets, about ${pctOf(LIGHT_SHARE)}% loads, nothing to beat.`)}</p><div class="row" style="margin-top:8px">${open ? html`<button class="btn sm" data-act="makeLight">Make it lighter</button>` : ''}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div>`;
+    return html`<p class="callout u-m8-0-0" id="readyCard">One low answer: keep the loads and leave a rep more in reserve than planned if it feels heavy.</p>`;
+  return html`<div class="callout yellow u-m8-0-0" id="readyCard"><p class="u-m0">Low readiness today. ${tipButton(`A lighter or shorter session fits a low day better than pushing. Make it lighter changes only the exercises not started: half the sets, about ${pctOf(LIGHT_SHARE)}% loads, nothing to beat.`)}</p><div class="row u-mt8">${open ? html`<button class="btn sm" data-act="makeLight">Make it lighter</button>` : ''}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div>`;
 }
 
 /* Bodyweight, asked once in the first session with a bodyweight lift when
@@ -325,8 +325,8 @@ export function readyCard(d: Draft, low: number): Part {
 function bwAskCard(d: Draft): Part {
   if (d.editingId || d.past || state.bodyweights.length || !d.ex.some(b => EX(b.exId).bw)) return '';
   if (prefGet(BWASK_KEY)) return '';
-  return html`<div class="card" id="bwAsk"><p class="small" style="margin:0 0 8px"><b>Your bodyweight</b> counts in bodyweight lifts, for weight lifted and estimates. ${tipButton('Logged as a weigh-in for today. Add more on Today, under Body.', 'About bodyweight')}</p>
-  <div class="row"><label class="field" style="flex:1;margin:0"><span class="vh">Bodyweight (${U()})</span><input type="text" inputmode="decimal" id="bwVal" placeholder=${`Weight (${U()})`} aria-label=${`Bodyweight (${U()})`}></label><button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
+  return html`<div class="card" id="bwAsk"><p class="small u-m0-0-8"><b>Your bodyweight</b> counts in bodyweight lifts, for weight lifted and estimates. ${tipButton('Logged as a weigh-in for today. Add more on Today, under Body.', 'About bodyweight')}</p>
+  <div class="row"><label class="field u-f1_m0"><span class="vh">Bodyweight (${U()})</span><input type="text" inputmode="decimal" id="bwVal" placeholder=${`Weight (${U()})`} aria-label=${`Bodyweight (${U()})`}></label><button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
 }
 
 /* Cardio and mobility inside a session: saved as their own entries on Finish,
@@ -340,8 +340,8 @@ function cardioDraftCard(d: Draft): TemplateResult {
     ) => html`<div class="cgrid"><label class="field">Type<select data-cf="kind" data-c=${ci}>${CARDIO.map(([k, l]) => html`<option value=${k} .selected=${c.kind === k}>${l}</option>`)}</select></label>
     <label class="field">Minutes<input type="text" inputmode="numeric" data-cf="min" data-c=${ci} .value=${fieldValue(c.min == null ? '' : String(c.min))}></label>
     <label class="field">Avg HR<input type="text" inputmode="numeric" data-cf="hr" data-c=${ci} .value=${fieldValue(c.hr == null ? '' : String(c.hr))} placeholder="optional"></label></div>
-    <label class="field" style="margin-top:6px">Distance (${distU()})<input type="text" inputmode="decimal" data-cf="dist" data-c=${ci} .value=${fieldValue(c.dist ? String(distShow(c.dist)) : '')} placeholder="optional"></label>
-    <div class="row" style="margin-top:6px"><select data-cf="when" data-c=${ci} style="flex:1" aria-label="When">${CWHEN.map(([k, l]) => html`<option value=${k} .selected=${c.when === k}>${l}</option>`)}</select><button class="btn sm danger" data-act="cDraftDel" data-c=${ci}>Remove</button></div>`
+    <label class="field u-mt6">Distance (${distU()})<input type="text" inputmode="decimal" data-cf="dist" data-c=${ci} .value=${fieldValue(c.dist ? String(distShow(c.dist)) : '')} placeholder="optional"></label>
+    <div class="row u-mt6"><select data-cf="when" data-c=${ci} class="u-f1" aria-label="When">${CWHEN.map(([k, l]) => html`<option value=${k} .selected=${c.when === k}>${l}</option>`)}</select><button class="btn sm danger" data-act="cDraftDel" data-c=${ci}>Remove</button></div>`
   );
   const n = list.length;
   const mins = list.reduce((a, c) => a + (c.min || 0), 0);
@@ -431,10 +431,10 @@ function blockPart(
       <div class="bh-acts">${!d.editingId && blockDone(b) ? html`<button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button>` : ''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
       ${
         b.target
-          ? html`<p class="hint"><b>Today: ${targetText(b)}</b>${why ? html` ${tipButton(why, 'Why this target')}` : ''}<span class="tp muted" style="display:block">${lastHead(b, dupB)}</span>${bl ? html`<span class="tp muted" style="display:block">${bl}</span>` : ''}${b.easier ? html`<span class="tp ez">${b.easier}</span>` : ''}${progressLine(b, bi)}</p>`
+          ? html`<p class="hint"><b>Today: ${targetText(b)}</b>${why ? html` ${tipButton(why, 'Why this target')}` : ''}<span class="tp muted u-dblock">${lastHead(b, dupB)}</span>${bl ? html`<span class="tp muted u-dblock">${bl}</span>` : ''}${b.easier ? html`<span class="tp ez">${b.easier}</span>` : ''}${progressLine(b, bi)}</p>`
           : html`<p class="hint">${hintOnce(b.hint || '', hintSeen)}</p>`
       }${bi === calIdx ? html`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ''}
-      ${ss && partner ? html`<p class="small muted" style="margin:2px 0 0">Superset with ${partner}; rest after the pair.</p>` : ''}
+      ${ss && partner ? html`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the pair.</p>` : ''}
       ${b.lastNote && !b.note ? html`<p class="small lnote">Your note, ${fmtDate(b.lastNote.date)}: ${b.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ''}
       ${b.note ? html`<p class="small bnote" id=${`bn-${bi}`}>${b.note}</p>` : html`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}
       <div class=${'sg head' + (nr ? ' norir' : '')}><span data-tip="Tap a set's number to mark it a warm-up or a drop set.">#</span><span class="lsh">Last</span><span class="lh" data-tip=${'Load: ' + loadWords(ex)}>${loadHead(ex)}</span><span>${ex.timed ? (ex.perSide ? 'Sec/side' : 'Sec') : ex.perSide ? 'Reps/side' : 'Reps'}</span>${nr ? '' : html`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
@@ -443,9 +443,9 @@ function blockPart(
         (_, si) => setRow(d, b, bi, si, ex, nr, dupB)
       )}${adjLine(b, bi)}${
         platesMode(ex) !== 'none'
-          ? html`<p class="small muted" id=${`pl-${bi}`} style="margin:6px 0 0">${plateLine(b, W.platesAt && blkIdx(W.platesAt.b) === bi ? W.platesAt.s : null)}</p>`
+          ? html`<p class="small muted u-m6-0-0" id=${`pl-${bi}`}>${plateLine(b, W.platesAt && blkIdx(W.platesAt.b) === bi ? W.platesAt.s : null)}</p>`
           : ''
-      }<div class="row" style="margin-top:8px">${canFill ? html`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>` : ''}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done." ?disabled=${!b.sets.length}>− Set</button>${
+      }<div class="row u-mt8">${canFill ? html`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>` : ''}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done." ?disabled=${!b.sets.length}>− Set</button>${
         !ex.timed && b.sets.some(x => x.done && !x.warm && !x.drop)
           ? html`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working load, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>`
           : ''
@@ -483,7 +483,7 @@ export function viewWorkout(d: Draft): TemplateResult {
   const sp = sessProgress(d);
   const calIdx = d.editingId ? -1 : calDueIdx(d);
   const letters = ssLetters(d.ex.map(b => b.plan));
-  return html`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId ? 'Editing a saved session' : d.past ? 'Past workout' : 'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${d.dayName}</h2>${helpButton('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? 'set' : 'sets'}</span> done${d.past ? `, for ${fmtDateLong(d.date)}` : ''}${d.startedAt && !d.past ? `, started ${startedWords(d.startedAt)}` : ''}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ''}</span></p>${
+  return html`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d.editingId ? 'Editing a saved session' : d.past ? 'Past workout' : 'Session in progress'}</p><div class="hrow"><h2 class="u-owany_minw0">${d.dayName}</h2>${helpButton('log')}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? 'set' : 'sets'}</span> done${d.past ? `, for ${fmtDateLong(d.date)}` : ''}${d.startedAt && !d.past ? `, started ${startedWords(d.startedAt)}` : ''}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ''}</span></p>${
     sp.n
       ? html`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%`}></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`
       : ''
@@ -492,19 +492,19 @@ export function viewWorkout(d: Draft): TemplateResult {
   ${howText('log', (state.settings.rirMode === 'off' ? 'RIR is switched off in Settings, so every working set counts as hard. ' : LOG_HELP_ON) + LOG_HELP + (d.past ? ' Quick entry: no rest timer, and a set counts as done once its reps are typed.' : state.settings.autoDone ? ' Auto-mark is on: sets tick themselves when you leave the reps field.' : ''))}
   ${
     d.free
-      ? html`<label class="field" style="margin-top:8px">Name<input type="text" data-bind="draftName" maxlength="40" .value=${fieldValue(d.dayName || '')}></label><p class="small muted" style="margin:4px 0 0">Not tied to a routine day, so your cycle stays put.</p>`
+      ? html`<label class="field u-mt8">Name<input type="text" data-bind="draftName" maxlength="40" .value=${fieldValue(d.dayName || '')}></label><p class="small muted u-m4-0-0">Not tied to a routine day, so your cycle stays put.</p>`
       : ''
   }
   ${d.past ? '' : checkinCard(d)}${bwAskCard(d)}${
     !d.ex.length
-      ? html`<div class="card"><p class="small" style="margin:0">No exercises yet. Tap + Add exercise below${d.editingId ? '' : `, or Pick for me for a suggestion based on your last ${PICK_DAYS} days,`} and log as you go.</p></div>`
+      ? html`<div class="card"><p class="small u-m0">No exercises yet. Tap + Add exercise below${d.editingId ? '' : `, or Pick for me for a suggestion based on your last ${PICK_DAYS} days,`} and log as you go.</p></div>`
       : ''
   }${repeatKeyed(
     d.ex,
     b => b.bid,
     (b, bi) => blockPart(d, b, bi, letters, hintSeen, calIdx)
-  )}<div class="row"><button class="btn" style="flex:1" data-act="pickSession">+ Add exercise</button>${d.editingId ? '' : html`<button class="btn" data-act="pickEx">Pick for me</button>`}</div>${d.editingId ? '' : cardioDraftCard(d)}<label class="field" style="margin-top:12px">Notes<textarea data-bind="draftNotes" .defaultValue=${d.notes || ''} .value=${fieldValue(d.notes || '')}></textarea></label>
-  <div class="row fin-row" style="margin-top:12px"><button class="btn danger" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button><button class="btn primary" style="flex:1" data-act="finish" data-tip="Only sets marked done are saved; you are asked about any with reps but no checkmark.">${d.editingId ? 'Save changes' : 'Finish and save'}</button></div>`;
+  )}<div class="row"><button class="btn u-f1" data-act="pickSession">+ Add exercise</button>${d.editingId ? '' : html`<button class="btn" data-act="pickEx">Pick for me</button>`}</div>${d.editingId ? '' : cardioDraftCard(d)}<label class="field u-mt12">Notes<textarea data-bind="draftNotes" .defaultValue=${d.notes || ''} .value=${fieldValue(d.notes || '')}></textarea></label>
+  <div class="row fin-row u-mt12"><button class="btn danger" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button><button class="btn primary u-f1" data-act="finish" data-tip="Only sets marked done are saved; you are asked about any with reps but no checkmark.">${d.editingId ? 'Save changes' : 'Finish and save'}</button></div>`;
 }
 
 /* ---------- drawing it again ---------- */

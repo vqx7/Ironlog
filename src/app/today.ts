@@ -243,7 +243,7 @@ function obTourSlides(): (readonly [TemplateResult, string])[] {
   const e1 = TOUR.e1[kg ? 'kg' : 'lb'];
   const end = pts[pts.length - 1] || [0, 0];
   const prog = html`<div class="obv" aria-hidden="true"><b>Bench Press</b> <span class="mu">est. 1RM ${e1[0]} to ${e1[1]} ${u}</span><span class="obv-chip">PR</span>
-<svg viewBox="0 0 290 80" style="margin-top:6px">${TOUR.grid.map(y => html`<line class="gl" x1="0" x2="290" y1=${y} y2=${y}></line>`)}
+<svg viewBox="0 0 290 80" class="u-mt6">${TOUR.grid.map(y => html`<line class="gl" x1="0" x2="290" y1=${y} y2=${y}></line>`)}
 <polyline class="ln" points=${pts.map(p => p.join(',')).join(' ')}></polyline>${pts.slice(0, -1).map(([x, y]) => html`<circle class="pt" cx=${x} cy=${y} r="3.2"></circle>`)}<circle class="pr" cx=${end[0]} cy=${end[1]} r="5.5"></circle></svg></div>`;
   return [
     [log, 'Log a set in one tap'],
@@ -388,7 +388,7 @@ ${acctStep && !acct.user ? html`<button class="linkbtn ob-back" data-act="obAcct
 <p class="ob-logo sm">${markup(LOCKUP)}</p>
 <h2 class="ob-h">Set up</h2>
 <label class="field">Name <span class="muted">(optional)</span><input type="text" data-bind="userName" maxlength="40" autocomplete="given-name" .value=${fieldValue(state.settings.userName || '')}></label>
-<div><p class="small muted" style="margin:0 0 6px;font-weight:600">Units</p><div class="ob-units" role="group" aria-label="Units">${(
+<div><p class="small muted u-m0-0-6_fw600">Units</p><div class="ob-units" role="group" aria-label="Units">${(
     [
       ['lb', 'lb and inches'],
       ['kg', 'kg and cm']
@@ -398,7 +398,7 @@ ${acctStep && !acct.user ? html`<button class="linkbtn ob-back" data-act="obAcct
       html`<button class=${`chip ${U() === k ? 'on' : ''}`} data-act="obUnit" data-v=${k} aria-pressed=${String(U() === k)}>${l}</button>`
   )}</div></div>
 <label class="field">Bodyweight <span class="muted">(optional)</span><input type="text" inputmode="decimal" id="obBw" .value=${fieldValue(todayBw ? fmtW(todayBw.kg) : '')} placeholder=${`${U()}, for pull-ups, dips, and push-ups`} enterkeyhint="done"></label>
-<h3 style="font:700 20px var(--display);margin:6px 0 0">How do you want to start?</h3>
+<h3 class="u-font700n20-display_m6-0-0">How do you want to start?</h3>
 <div class="ob-opts">
 <button class="ob-opt primary" data-act="obSample"><b>Pick a ready-made routine</b><span>${tplCountLine()}</span></button>
 <button class="ob-opt" data-act="obFree"><b>Log a workout now</b><span>Add exercises as you go</span></button>
@@ -409,7 +409,7 @@ ${acctStep && !acct.user ? html`<button class="linkbtn ob-back" data-act="obAcct
       : nothing
   }</div>
 <button class="linkbtn ob-skip" data-act="demoLoad">Look around with sample data first</button>${undo}
-<p class="small muted" id="obSafety" style="margin:10px 0 0;text-align:center"><span class="hastip" data-tip=${SAFETY_TXT}>Suggestions are estimates, not advice.</span></p>
+<p class="small muted u-m10-0-0_tacenter" id="obSafety"><span class="hastip" data-tip=${SAFETY_TXT}>Suggestions are estimates, not advice.</span></p>
 <button class="linkbtn ob-skip" data-act="menuOpen">Help</button></div>`;
 }
 
@@ -422,7 +422,7 @@ ${acctStep && !acct.user ? html`<button class="linkbtn ob-back" data-act="obAcct
 function welcomeCard(): Part {
   if (state.settings.onboarded || !cloudChecked || state.draft || state.sessions.some(s => !s.demo)) return nothing;
   if (state.sessions.some(s => s.demo))
-    return html`<div class="card welcome" id="demoNote"><p class="small" style="margin:0 0 8px"><b>You are looking at demo data.</b> ${DEMO_WEEKS} weeks of generated sessions to look around; none of it is yours.</p><button class="btn sm primary" data-act="demoStart">Clear demo and set up</button></div>`;
+    return html`<div class="card welcome" id="demoNote"><p class="small u-m0-0-8"><b>You are looking at demo data.</b> ${DEMO_WEEKS} weeks of generated sessions to look around; none of it is yours.</p><button class="btn sm primary" data-act="demoStart">Clear demo and set up</button></div>`;
   return nothing;
 }
 /* Signed out: one slim line on Today, because a log that lives only on the
@@ -514,10 +514,10 @@ export function bwDueCard(): Part {
     return nothing;
   const z = prefGet(BWSNOOZE_KEY);
   if (z && z > t) return nothing;
-  return html`<div class="card" id="bwDue"><p class="small" style="margin:0 0 8px"><b>Weigh-in due.</b> ${
+  return html`<div class="card" id="bwDue"><p class="small u-m0-0-8"><b>Weigh-in due.</b> ${
     last ? `Last ${fmtW(last.kg)} ${U()}, ${ago} days ago.` : 'Pull-ups, dips, and push-ups count it.'
   } ${tipButton('Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > General.', 'About weigh-ins')}</p>
-<div class="row"><label class="field" style="flex:1;margin:0"><span class="vh">Bodyweight (${U()})</span>${inUnit(
+<div class="row"><label class="field u-f1_m0"><span class="vh">Bodyweight (${U()})</span>${inUnit(
     U(),
     html`<input type="text" inputmode="decimal" id="bwDueVal" placeholder=${last ? fmtW(last.kg) : `Weight (${U()})`} data-grey=${last ? fmtW(last.kg) : nothing} aria-label=${`Bodyweight (${U()})`} enterkeyhint="done">`
   )}</label><button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
@@ -540,7 +540,7 @@ function moreRow(deload: boolean, playable: boolean, di: number): Part {
   if (!ui.heroMore) return nothing;
   const t = today();
   const rw = isRestWeek(weekStart(t)) || isRestWeek(addDays(weekStart(t), -WEEK_DAYS));
-  return html`<div class="row" style="margin-top:8px"><button class=${`btn sm ${deload ? 'noted' : ''}`} data-act="deloadToggle" aria-pressed=${String(deload)}>${
+  return html`<div class="row u-mt8"><button class=${`btn sm ${deload ? 'noted' : ''}`} data-act="deloadToggle" aria-pressed=${String(deload)}>${
     deload ? 'Deload week: on' : 'Deload week'
   }</button>${playable ? html`<button class="btn sm" data-act="eqOpen" data-day=${di}>Limited equipment</button>` : nothing}<button class=${`btn sm ${rw ? 'noted' : ''}`} data-act="restWkOpen">Rest week</button><button class="btn sm" data-act="injAdd">Flag an injury</button><button class="btn sm" data-act="cardioNew">Log cardio</button></div>`;
 }
@@ -618,9 +618,9 @@ export function viewToday(): TemplateResult {
             : 'Nothing yet this week.';
         })();
     return html`${above}<section class="hero" data-day="free"><div class="hero-top"><div class="hero-t">${hello}<p class="eyebrow">${todayEye()} · Freestyle${deload ? ' · deload week' : ''}</p><h2>Blank session</h2>
-<p class="muted small" style="margin:0">${w}</p></div></div>
+<p class="muted small u-m0">${w}</p></div></div>
 <button class="btn primary block big" data-act="startFree">Start session</button>
-<div class="row" style="margin-top:8px">${changeBtn(di, true)}${moreBtn(deload)}</div>${moreRow(deload, false, di)}</section>${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
+<div class="row u-mt8">${changeBtn(di, true)}${moreBtn(deload)}</div>${moreRow(deload, false, di)}</section>${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
   }
   const sets = deload
     ? `${day.items.reduce((a, it) => a + Math.max(1, Math.ceil(it.sets / 2)), 0)} sets (deload)`
@@ -637,7 +637,7 @@ export function viewToday(): TemplateResult {
   return html`${above}<section class="hero" data-day=${di}><div class="hero-top"><div class="hero-t">${hello}<p class="eyebrow">${todayEye()} · ${eyebrow}${
     deload ? ' · deload week' : isRestWeek(weekStart(t)) ? ' · rest week' : ''
   }</p><h2>${day.name}</h2>
-<p class="muted small" style="margin:0" data-tip=${'Routine: ' + R.name}>${
+<p class="muted small u-m0" data-tip=${'Routine: ' + R.name}>${
     playable
       ? html`${day.items.length} exercises · ${sets} · ${minPart(dayMinutes(day, deload))}`
       : day.rest
@@ -647,8 +647,8 @@ export function viewToday(): TemplateResult {
 ${note !== nothing ? html`<p class="hero-note small">${note}</p>` : nothing}${
     playable
       ? html`<button class="btn primary block big" data-act="startSession" data-day=${di}>${deload ? 'Start deload session' : 'Start session'}</button>`
-      : html`<p class="small" style="margin:10px 0 0">${day.rest ? 'Rest day.' : 'Nothing planned for this day.'}</p>`
-  }<div class="row" style="margin-top:8px">${changeBtn(di, false)}${moreBtn(deload)}<span style="margin-left:auto"></span>${helpButton('starts')}</div>
+      : html`<p class="small u-m10-0-0">${day.rest ? 'Rest day.' : 'Nothing planned for this day.'}</p>`
+  }<div class="row u-mt8">${changeBtn(di, false)}${moreBtn(deload)}<span class="u-mlauto"></span>${helpButton('starts')}</div>
 ${howText('starts', STARTS_HELP)}${moreRow(deload, playable, di)}</section>${bwDueCard()}${todayRest({ playable, di, day, deload, cs })}`;
 }
 
@@ -679,9 +679,8 @@ function homeTiles(): TemplateResult {
    (The coach names no lighter day of its own: CoachLine has no such action.) */
 function coachButton(c: ReturnType<typeof coach>): Part {
   if (!c.act) return nothing;
-  if (c.act.deload)
-    return html`<button class="btn sm" style="margin-top:8px" data-act="deloadToggle">${c.act.label}</button>`;
-  return html`<button class="btn sm" style="margin-top:8px" data-act="goDash" data-sec=${c.act.sec ?? nothing} data-m=${c.act.m || nothing} data-ex=${c.act.ex || nothing}>${c.act.label}</button>`;
+  if (c.act.deload) return html`<button class="btn sm u-mt8" data-act="deloadToggle">${c.act.label}</button>`;
+  return html`<button class="btn sm u-mt8" data-act="goDash" data-sec=${c.act.sec ?? nothing} data-m=${c.act.m || nothing} data-ex=${c.act.ex || nothing}>${c.act.label}</button>`;
 }
 /* Injuries: one line per flagged muscle or joint. Exercises that load it are
    marked in every session, their progression target is paused, and the
@@ -694,11 +693,11 @@ function injuryCard(): TemplateResult | null {
     key: 'injuries',
     title: 'Injuries',
     sub: html`<span class="pill red">${inj.length} flagged</span>`,
-    body: html`<ul class="inj-list" style="list-style:none;margin:0;padding:0">${inj.map(
+    body: html`<ul class="inj-list u-lsnone_m0_p0">${inj.map(
       x =>
         html`<li><span><b>${injLabel(x.m)}</b> <span class="muted small">since ${fmtDate(x.date)}${x.note ? ' · ' + x.note : ''}</span></span><button class="btn sm" data-act="injClear" data-id=${x.id}>Cleared</button></li>`
     )}</ul>
-<p class="small muted hastip" style="margin:8px 0 0" data-tip="Exercises that load these are marked in each session, their targets are paused, and the muscle is left out of below-target advice. Tap Cleared when it has settled.">What a flag does</p>`
+<p class="small muted hastip u-m8-0-0" data-tip="Exercises that load these are marked in each session, their targets are paused, and the muscle is left out of below-target advice. Tap Cleared when it has settled.">What a flag does</p>`
   });
 }
 /* Quick answers before a session starts: is this lift moving, and what to
@@ -748,10 +747,10 @@ function previewCard(day: Day, deload: boolean): TemplateResult {
       rirShow(ex) ? `, ${effTgt(it.rir)}` : ''
     }</span>${it.ss ? html` <span class="tag blue">Superset ${letters[it.ss]}</span>` : nothing}${sg.inj ? html` <span class="tag red">Injury: ${injLabel(sg.inj)}</span>` : nothing}</span>${liftTags(
       it.exId
-    )}</div>${short ? html`<p class="small muted hastip" style="margin-bottom:0" data-tip=${text}>${short}</p>` : nothing}</div>`;
+    )}</div>${short ? html`<p class="small muted hastip u-mb0" data-tip=${text}>${short}</p>` : nothing}</div>`;
   });
   const first = fresh
-    ? html`<p class="small muted" style="margin:0 0 10px">${fresh === day.items.length ? 'First time' : `${fresh} new`}: start lighter than you think and stop while the reps still move well. Warm up on the first big lift. ${tipButton(
+    ? html`<p class="small muted u-m0-0n10">${fresh === day.items.length ? 'First time' : `${fresh} new`}: start lighter than you think and stop while the reps still move well. Warm up on the first big lift. ${tipButton(
         'No history yet, so there is no target. Pick a load you think you could lift for the top of the rep range plus the reps in reserve shown, erring light, and stop when the reps start to slow. On a barbell or other big lift, do 1 or 2 lighter sets of 5 first. From the next session the app works the load out, catching up quickly over the first few.',
         'About first sessions'
       )}</p>`
@@ -838,19 +837,19 @@ ${
         .map(
           b =>
             html`<li><span class="d">${fmtDate(b.date)}</span><span class="num">${fmtW(b.kg)} ${U()}</span><button class="ib sm" data-act="delBW" data-id=${b.id} aria-label=${`Delete ${fmtDate(b.date)} entry`}>✕</button></li>`
-        )}</ul>${bws.length > BODY_SHOWN.weights ? html`<p class="small muted" style="margin:4px 0 0">${bws.length - BODY_SHOWN.weights} older on Stats.</p>` : nothing}`
+        )}</ul>${bws.length > BODY_SHOWN.weights ? html`<p class="small muted u-m4-0-0">${bws.length - BODY_SHOWN.weights} older on Stats.</p>` : nothing}`
     : nothing
 }
 ${subsection(
   'today:tape',
   `Tape measurements (${LU()})`,
-  html`<div class="grid2" style="align-items:end">${heightField()}<span></span></div>
-<div class="grid3" style="margin-top:10px">${MEAS.map(([k, l]) => html`<label class="field">${l}${inUnit(LU(), html`<input type="text" inputmode="decimal" id=${'ms_' + k}>`)}</label>`)}</div>
+  html`<div class="grid2 u-aiend">${heightField()}<span></span></div>
+<div class="grid3 u-mt10">${MEAS.map(([k, l]) => html`<label class="field">${l}${inUnit(LU(), html`<input type="text" inputmode="decimal" id=${'ms_' + k}>`)}</label>`)}</div>
 ${whtrLine(true)}
-<button class="btn" style="margin-top:8px" data-act="addMeas">Save measurements for ${fmtDate(t)}</button>
+<button class="btn u-mt8" data-act="addMeas">Save measurements for ${fmtDate(t)}</button>
 ${
   ms.length
-    ? html`<div class="scroll-x" style="margin-top:10px"><table class="t"><tr><th>Date</th>${MEAS.map(m => html`<th class="r">${m[1]}</th>`)}<th class="stick-r"><span class="vh">Delete</span></th></tr>${ms.map(
+    ? html`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>${MEAS.map(m => html`<th class="r">${m[1]}</th>`)}<th class="stick-r"><span class="vh">Delete</span></th></tr>${ms.map(
         m =>
           html`<tr><td>${fmtDate(m.date)}</td>${MEAS.map(([k]) => html`<td class="r">${lenD(measAt(m, k))}</td>`)}<td class="stick-r"><button class="ib sm" data-act="delMeas" data-id=${m.id} aria-label=${`Delete ${fmtDate(m.date)} measurements`}>✕</button></td></tr>`
       )}</table></div>`
@@ -899,7 +898,7 @@ function todayRest(o: {
      do (r48, V). History's empty state says the same; Today said nothing. */
   const pre =
     noLog() && !state.draft
-      ? html`<p class="small muted" id="preApp" style="margin:0 0 10px">Lifted before this app? <button class="linkbtn" data-act="pastOpen">Log a past workout</button> to bring your bests in; targets then start from them.</p>`
+      ? html`<p class="small muted u-m0-0n10" id="preApp">Lifted before this app? <button class="linkbtn" data-act="pastOpen">Log a past workout</button> to bring your bests in; targets then start from them.</p>`
       : nothing;
   // Item 62: a section's subtitle states a number, not what the section is about.
   const tiles = section({
@@ -916,7 +915,7 @@ function todayRest(o: {
     key: 'coach',
     title: 'Coach',
     sub: html`<span class=${`pill ${c.tone}`}>${toneWord}</span>`,
-    body: html`<p style="margin:0">${c.text}${c.why ? html` ${tipButton(c.why, 'Why')}` : nothing}</p>${coachButton(c)}`
+    body: html`<p class="u-m0">${c.text}${c.why ? html` ${tipButton(c.why, 'Why')}` : nothing}</p>${coachButton(c)}`
   });
   const inj = injuryCard();
   const parts: (readonly [string | null, Part])[] = [

@@ -179,9 +179,9 @@ export function prSameLoad(w: number, earlier: ReadonlySet<number>): number {
 /* ---------- sets and sessions ---------- */
 
 /** A working set: not a warm-up, and reps done. Reps are null on a row with
-    none typed, which + reads as 0; the cast only lets TypeScript accept the +. */
+    none typed, which Number reads as 0. */
 export const isWork = (s: { warm?: boolean | undefined; r: number | string | null }): boolean =>
-  !s.warm && +(s.r as number) > 0;
+  !s.warm && Number(s.r) > 0;
 
 /** A missed set (r55, V 2026-10-19): reps typed as 0, a lift tried and not
     made. Ticked, it is kept and shown as missed, and counts toward no volume,
@@ -271,8 +271,8 @@ export function repFloor(
   pts: readonly Pick<Point, 'r'>[],
   repMin: number | string | null | undefined
 ): (r: number) => number {
-  // No range reads as 0: +undefined is NaN, and NaN || 0 is 0 (the cast tells TypeScript so).
-  const m = +(repMin as number) || 0;
+  // No range reads as 0: Number(undefined) is NaN, and NaN || 0 is 0.
+  const m = Number(repMin) || 0;
   const ok = m > 0 && pts.length >= 2 && pts.filter(p => p.r < m).length === 1;
   return r => (ok ? Math.max(r, m) : r);
 }

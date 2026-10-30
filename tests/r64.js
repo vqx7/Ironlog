@@ -46,6 +46,8 @@
 //      grid of the unit on screen and the reps build first.
 const { open, engine } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 700) : ''); } else console.log('ok  ', m); };
+// Waits for what a step leads to, not a fixed time (r65, the r63 audit's A-S5); a wait that times out is left to the check after it.
+const until = (P, fn, arg) => P.page.waitForFunction(fn, arg, { timeout: 5000 }).catch(() => {});
 const FILE = process.argv[2] || 'index.html';
 const ONLY = process.argv[3] ? process.argv[3].split(',').map(Number) : null;
 const run = n => !ONLY || ONLY.includes(n);
@@ -206,14 +208,15 @@ const run = n => !ONLY || ONLY.includes(n);
     await P.page.fill('[data-f="w"][data-b="0"][data-s="0"]', '135').catch(() => {});
     await P.page.fill('[data-f="r"][data-b="0"][data-s="0"]', '8').catch(() => {});
     await P.page.evaluate(async () => { const L = window.__ironlog; const x = L.state.draft.ex[0].sets[0]; if (!(x.w > 0)) x.w = 135 * 0.45359237; if (!(x.r > 0)) x.r = 8; L.render(); await new Promise(q => setTimeout(q, 100)); });
-    await P.page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await P.page.waitForTimeout(250);
+    await P.page.click('[data-act="sDone"][data-b="0"][data-s="0"]');
+    await until(P, () => window.__ironlog.state.draft.ex[0].sets[0].done);
     const after = await P.page.evaluate(() => { const t = document.getElementById('toast'); return { visible: !!(t && !t.hidden), undo: !!(t && !t.hidden && t.querySelector('[data-act="undo"]')), text: t ? t.textContent : '' }; });
     const s1 = await shape();
     ok(s1 === 'hackSquat* latPulldown dbCurl', '6. (the case) Hack Squat\'s first set is ticked', s1);
     ok(!after.undo, '6. once a set is ticked after the swap, the toast no longer offers the swap\'s Undo (r63: it did, and it moved Hack Squat to the end)', after);
     // A guard: the Undo offered and tapped at once still reverses the swap.
     const b = await start();
-    if (b.undo) { await P.page.click('#toast [data-act="undo"]'); await P.page.waitForTimeout(250); }
+    if (b.undo) { await P.page.click('#toast [data-act="undo"]'); await until(P, () => window.__ironlog.state.draft.ex[0].exId === 'bench'); }
     ok(b.undo && (await shape()) === 'bench latPulldown dbCurl', '6. (a guard) the swap\'s Undo tapped before anything else puts Bench back in its place', await shape());
     // A guard: Settings' Undo last delete or reset still takes back a delete after other changes.
     const g = await P.page.evaluate(async () => {
@@ -257,19 +260,21 @@ const run = n => !ONLY || ONLY.includes(n);
     // The first warm-up's load typed, then its checkmark: logged at 10 reps.
     await P.page.fill('.sg input[data-f="w"][data-b="0"][data-s="0"]', '40');
     await P.page.press('.sg input[data-f="w"][data-b="0"][data-s="0"]', 'Tab').catch(() => {});
-    await P.page.waitForTimeout(150);
-    await P.page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await P.page.waitForTimeout(250);
+    await until(P, () => window.__ironlog.state.draft.ex[0].sets[0].w === 40);
+    await P.page.click('[data-act="sDone"][data-b="0"][data-s="0"]');
+    await until(P, () => window.__ironlog.state.draft.ex[0].sets[0].done);
     const t1 = await P.page.evaluate(() => { const x = window.__ironlog.state.draft.ex[0].sets[0]; const t = document.getElementById('toast'); return { done: !!x.done, r: x.r, w: x.w, toast: t && !t.hidden ? t.textContent : '' }; });
     ok(t1.done && t1.r === 10 && t1.w === 40, '7. the warm-up\'s checkmark logs it at its grey 10 reps (r63: "Enter reps first")', t1);
     // Curl's working set before the drop typed at 10: the drop's grey reps follow it.
     const last = a.n[1] - 2;
     await P.page.fill(`.sg input[data-f="r"][data-b="1"][data-s="${last}"]`, '10');
     await P.page.press(`.sg input[data-f="r"][data-b="1"][data-s="${last}"]`, 'Tab').catch(() => {});
-    await P.page.waitForTimeout(200);
+    await until(P, n => document.querySelector(`.sg input[data-f="r"][data-b="1"][data-s="${n}"]`).placeholder === '10', a.n[1] - 1);
     const dropPh = await P.page.evaluate(n => document.querySelector(`.sg input[data-f="r"][data-b="1"][data-s="${n}"]`).placeholder, a.n[1] - 1);
     ok(dropPh === '10', '7. the first time, a drop takes the reps typed in the set before it, 10', dropPh);
     // A warm-up with no load still asks for it: a set is never saved without its load (a guard).
-    await P.page.click('[data-act="sDone"][data-b="0"][data-s="1"]'); await P.page.waitForTimeout(250);
+    await P.page.click('[data-act="sDone"][data-b="0"][data-s="1"]');
+    await until(P, () => { const t = document.getElementById('toast'); return t && !t.hidden && /weight/.test(t.textContent); });
     const t2 = await P.page.evaluate(() => { const x = window.__ironlog.state.draft.ex[0].sets[1]; const t = document.getElementById('toast'); return { done: !!x.done, toast: t && !t.hidden ? t.textContent : '' }; });
     ok(!t2.done && /Add the weight first/.test(t2.toast), '7. (a guard) a warm-up with no load is not ticked: "Add the weight first"', t2);
   }
@@ -336,13 +341,14 @@ const run = n => !ONLY || ONLY.includes(n);
     const P = await open(FILE, { browser, clock: '2026-10-25T10:00:00' }); pages.push(P);
     const imp = async (text, pick) => {
       await P.page.evaluate(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ui.modal = null; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'lb'; s.sessions = []; s.draft = null; L.state = L.normalize(s); L.invalidate(); L.saveNow(); L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); });
-      await P.page.waitForTimeout(150);
-      await P.page.click('#view [data-act="impOpen"]'); await P.page.waitForTimeout(150);
+      await P.page.click('#view [data-act="impOpen"]');
       await P.page.fill('#impText', text);
-      await P.page.click('#modal [data-act="impRead"]'); await P.page.waitForTimeout(300);
+      await P.page.click('#modal [data-act="impRead"]');
+      await P.page.waitForSelector('#modal [data-act="impGo"]', { timeout: 5000 }).catch(() => {});
       const pv = await P.page.evaluate(() => { const m = window.__ironlog.ui.modal; return { unit: m && m.unit, unitKnown: m && m.unitKnown, text: document.getElementById('modal').innerText.replace(/\s+/g, ' ') }; });
-      if (pick) { await P.page.click(`#modal [data-act="impUnit"][data-v="${pick}"]`); await P.page.waitForTimeout(150); }
-      await P.page.click('#modal [data-act="impGo"]'); await P.page.waitForTimeout(400);
+      if (pick) { await P.page.click(`#modal [data-act="impUnit"][data-v="${pick}"]`); await until(P, v => window.__ironlog.ui.modal && window.__ironlog.ui.modal.unit === v, pick); }
+      await P.page.click('#modal [data-act="impGo"]');
+      await until(P, () => window.__ironlog.state.sessions.length > 0);
       const kg = await P.page.evaluate(() => { const L = window.__ironlog; const o = {}; for (const s of L.state.sessions) for (const b of s.ex) o[L.EX(b.exId).name] = b.sets.map(x => Math.round(x.w * 100) / 100); return o; });
       return { pv, kg };
     };

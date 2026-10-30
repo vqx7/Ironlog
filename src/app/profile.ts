@@ -12,6 +12,7 @@ import { BANDS, MK, TARGETED, TRACK_ONLY } from './library';
 import { plannedSetsIn, weekFactor, PROFILE_PLAN } from './routines';
 import type { NewRoutine } from './routines';
 import { MINUTE_S, numWord, pctOf, shareWords } from './util';
+import { arr } from './records';
 
 /* The profile (r44): its choices, read by normalize while the save loads. */
 
@@ -59,21 +60,18 @@ export const FOCUS_UP = 1.3,
 export function profClean(p: Partial<Record<string, unknown>> | null | undefined): Profile | null {
   if (!p || typeof p !== 'object' || Array.isArray(p)) return null;
   const o: Profile = {};
-  if (PROF_GOALS.some(g => g[0] === p.goal)) o.goal = p.goal as string;
-  if (PROF_EXP.some(g => g[0] === p.exp)) o.exp = p.exp as string;
-  if (PROF_DAYS.includes(p.days as number)) o.days = p.days as number;
-  const f = Array.isArray(p.focus)
-    ? [
-        ...new Set(
-          // Array.isArray turns an unknown into any[]; the cast keeps each entry unknown for the test below.
-          (p.focus as unknown[]).filter(
-            // The type predicate is a cast, and true: typeof says m is a string.
-            (m: unknown): m is string =>
-              typeof m === 'string' && (MK as readonly string[]).includes(m) && !TRACK_ONLY.has(m)
-          )
-        )
-      ].slice(0, FOCUS_MAX)
-    : [];
+  // Each value is the table's own entry that equals the one saved, so it is typed as the table is, with no cast (r65).
+  const goal = PROF_GOALS.find(g => g[0] === p.goal);
+  if (goal) o.goal = goal[0];
+  const exp = PROF_EXP.find(g => g[0] === p.exp);
+  if (exp) o.exp = exp[0];
+  const days = PROF_DAYS.find(d => d === p.days);
+  if (days !== undefined) o.days = days;
+  const f = [
+    ...new Set(
+      (arr(p.focus) || []).filter(m => typeof m === 'string').filter(m => MK.some(k => k === m) && !TRACK_ONLY.has(m))
+    )
+  ].slice(0, FOCUS_MAX);
   if (f.length) o.focus = f;
   return Object.keys(o).length ? o : null;
 }

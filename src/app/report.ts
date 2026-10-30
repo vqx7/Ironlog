@@ -38,6 +38,9 @@ import type { Tap } from './workstate';
 /** What a request with no answer within the time limit says, on the sheet that sent it. */
 export const NO_ANSWER = 'No answer. Check your connection and try again.';
 
+/** What a report past the day's limit is told, whether this phone or the database counted it (r65, the r63 audit's A-9: the account script said its own 5). */
+const LIMIT_SAID = `You have sent ${FB_DAY} reports today. Try again tomorrow.`;
+
 /** What a report says of the device and the log, at most: the browser's own name, the errors kept, and an error's words once the context is too large. */
 const CTX = { device: 300, errors: 10, words: 100 } as const;
 /** A day, in milliseconds (the reports sent in the last one). */
@@ -314,7 +317,7 @@ export const REPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     }
     const F = FB();
     if (F && fbRecent().length >= FB_DAY) {
-      m.err = `You have sent ${FB_DAY} reports today. Try again tomorrow.`;
+      m.err = LIMIT_SAID;
       renderModal();
       return;
     }
@@ -361,7 +364,13 @@ export const REPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
     } catch (e) {
       log('feedback', e);
-      if (ui.modal === m) m.err = codeOf(e) === 'timeout' ? NO_ANSWER : said(e, 'Could not send. Try again.');
+      if (ui.modal === m)
+        m.err =
+          codeOf(e) === 'timeout'
+            ? NO_ANSWER
+            : codeOf(e) === 'limit'
+              ? LIMIT_SAID
+              : said(e, 'Could not send. Try again.');
     } finally {
       if (ui.modal === m) {
         m.busy = false;

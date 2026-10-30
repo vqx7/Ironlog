@@ -110,7 +110,7 @@ export function sessionCapNote(day: Day): Part {
     .sort((a, b) => b[1] - a[1]);
   if (!over.length) return nothing;
   const who = andList(over.map(([m, v]) => `${ML[m]} ${r1(v)}`));
-  return html`<p class="small" style="margin:4px 12px 0"><span class="flag hastip" data-tip=${`More than ${SESSION_CAP} sets for one muscle in one workout. That line is a convention from one study not yet peer reviewed (Remmert 2025), which found no extra growth past it. Consider moving some to another day. Helper-muscle sets count as half.`}>Heavy for one workout: ${who} sets</span></p>`;
+  return html`<p class="small u-m4n12-0"><span class="flag hastip" data-tip=${`More than ${SESSION_CAP} sets for one muscle in one workout. That line is a convention from one study not yet peer reviewed (Remmert 2025), which found no extra growth past it. Consider moving some to another day. Helper-muscle sets count as half.`}>Heavy for one workout: ${who} sets</span></p>`;
 }
 
 /* Plan against the usual ranges (r30, V's choice). Picking a routine on a
@@ -133,7 +133,7 @@ export function planEvidenceNote(pv: Readonly<Record<string, number>>): Part {
   );
   if (!low.length) return nothing;
   // Every one named: only major muscles can be on it, never so many that the line needs cutting.
-  return html`<p class="small muted" id="planUsual" style="margin:8px 0 0">Under the usual range in this plan: ${andList(
+  return html`<p class="small muted u-m8-0-0" id="planUsual">Under the usual range in this plan: ${andList(
     low.map(m => `${ML[m]} ${r1(pv[m] || 0)} of ${BANDS[m][0]}`)
   )}. ${tipButton(`The usual weekly range is ${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets for most major muscles (typical in studies, not a ceiling); smaller muscles have lower ones. Your targets were set to this plan when you picked it, so Stats measures you against the plan. Fewer sets still build muscle, more slowly; add a set at a time when it feels easy.`, 'About the usual range')}</p>`;
 }
@@ -163,7 +163,7 @@ export function volumeRows(
     in: 'green'
   };
   const head = hasConf
-    ? html`<div class="legend"><span><i style="background:var(--ink);opacity:.55"></i>RIR logged</span><span><i style="background:var(--green);opacity:.34"></i>assumed hard (RIR blank)</span></div>`
+    ? html`<div class="legend"><span><i class="u-bgink_op55"></i>RIR logged</span><span><i class="u-bggreen_op34"></i>assumed hard (RIR blank)</span></div>`
     : nothing;
   return html`${head}${MK.map(m => {
     const v = sets[m] || 0;
@@ -209,9 +209,9 @@ function itemPart(R: Routine, di: number, it: PlanItem, ii: number): TemplateRes
     <label class="field">Rest (s)<input type="text" inputmode="numeric" data-it="rest" data-uid=${it.uid} .value=${fieldValue(String(it.rest))}></label>
     <label class="field">Load step (${U()})<input type="text" inputmode="decimal" data-it="inc" data-uid=${it.uid} .value=${fieldValue(fmtW(incOf(ex, it)))} data-tip="Applies to this exercise on every day and routine"></label>
     ${ex.timed ? nothing : html`<label class="field"><span class="hastip" data-tip=${JUMP_TIP}>Load jump %</span><input type="text" inputmode="decimal" data-it="jump" data-uid=${it.uid} .value=${fieldValue(it.jump != null ? String(it.jump) : '')} placeholder=${`auto ${isCompound(ex) ? '2.5' : '5'}`}></label>`}</div>
-    <div class="row" style="margin-top:8px"><label class="field" style="flex:1">Move to<select data-moveto=${it.uid} data-day=${String(di)}>${R.days.map((d, i) => html`<option value=${String(i)} .selected=${live(i === di)}>${dayLabel(R, i)}: ${d.name}</option>`)}</select></label>
-    <button class="btn sm" data-act="iSwap" data-uid=${it.uid} style="align-self:flex-end">Swap</button><button class="btn sm danger" data-act="iDel" data-day=${String(di)} data-i=${String(ii)} style="align-self:flex-end">Remove</button></div>
-    ${nx ? html`<div class="row" style="margin-top:8px"><button class=${linked ? 'btn sm noted' : 'btn sm '} data-act="ssToggle" data-uid=${it.uid}>${linked ? 'Unlink superset' : 'Superset with next'}</button>${linked ? html`<span class="small muted">Paired with ${exName(nx.exId)}: alternate sets, rest once after the pair.</span>` : nothing}</div>` : nothing}
+    <div class="row u-mt8"><label class="field u-f1">Move to<select data-moveto=${it.uid} data-day=${String(di)}>${R.days.map((d, i) => html`<option value=${String(i)} .selected=${live(i === di)}>${dayLabel(R, i)}: ${d.name}</option>`)}</select></label>
+    <button class="btn sm u-asflex-end" data-act="iSwap" data-uid=${it.uid}>Swap</button><button class="btn sm danger u-asflex-end" data-act="iDel" data-day=${String(di)} data-i=${String(ii)}>Remove</button></div>
+    ${nx ? html`<div class="row u-mt8"><button class=${linked ? 'btn sm noted' : 'btn sm '} data-act="ssToggle" data-uid=${it.uid}>${linked ? 'Unlink superset' : 'Superset with next'}</button>${linked ? html`<span class="small muted">Paired with ${exName(nx.exId)}: alternate sets, rest once after the pair.</span>` : nothing}</div>` : nothing}
     ${ex.note ? html`<p class="small muted">${ex.note}</p>` : nothing}</div>`
     : nothing;
   const letter = it.ss ? letters[it.ss] : undefined;
@@ -233,7 +233,7 @@ function dayPart(R: Routine, d: Day, di: number, weekly: boolean, dnd: boolean, 
   return html`<section class=${`day ${d.rest ? 'rest' : ''}`} data-did=${d.id}><div class="dh">${weekly ? nothing : html`<span class="dgrip" role="button" tabindex="0" data-di=${String(di)} aria-label=${`Move ${label}: drag, or use the arrow keys`} data-tip="Drag to reorder days">⠿</span>`}<span class="dlabel">${label}</span><input type="text" aria-label="Day name" data-dayname=${String(di)} .value=${fieldValue(d.name)}><button class="ib dfold" data-act="dFold" data-id=${d.id} aria-expanded=${String(dOpen)} aria-label=${`${dOpen ? 'Fold' : 'Unfold'} ${label}`}></button></div>
     <div class="dmeta row spread"><span>${d.rest ? '' : html`${d.items.length} exercises, ${daySets(d)} sets, ${minPart(dayMinutes(d))}`}</span><label class="check-inline"><input type="checkbox" data-dayrest=${String(di)} .checked=${live(d.rest)}>Rest day</label></div><div class="dbody" ?hidden=${!dOpen}>${sessionCapNote(d)}
     <ul class="items" data-day=${String(di)}>${d.items.map((it, ii) => itemPart(R, di, it, ii))}</ul>
-    <div class="row" style="padding:0 10px 12px"><button class="btn sm" data-act="pickDay" data-day=${String(di)}>Add exercise</button>${weekly ? nothing : html`${dnd ? nothing : html`<button class="btn sm" data-act="dUp" data-day=${String(di)} ?disabled=${di === 0} aria-label=${`Move ${label} earlier`}>↑ Day</button><button class="btn sm" data-act="dDown" data-day=${String(di)} ?disabled=${di === R.days.length - 1} aria-label=${`Move ${label} later`}>↓ Day</button>`}<button class="btn sm danger" data-act="dDel" data-day=${String(di)} ?disabled=${R.days.length < 2}>Remove day</button>`}</div></div></section>`;
+    <div class="row u-p0n10n12"><button class="btn sm" data-act="pickDay" data-day=${String(di)}>Add exercise</button>${weekly ? nothing : html`${dnd ? nothing : html`<button class="btn sm" data-act="dUp" data-day=${String(di)} ?disabled=${di === 0} aria-label=${`Move ${label} earlier`}>↑ Day</button><button class="btn sm" data-act="dDown" data-day=${String(di)} ?disabled=${di === R.days.length - 1} aria-label=${`Move ${label} later`}>↓ Day</button>`}<button class="btn sm danger" data-act="dDel" data-day=${String(di)} ?disabled=${R.days.length < 2}>Remove day</button>`}</div></div></section>`;
 }
 
 /** Plan, as a template of the log and `ui`: the routine shown (ui.bRoutine), its days and its weekly volume. */
@@ -265,7 +265,7 @@ export function viewProgram(): TemplateResult {
   });
   const c = routineClutter();
   const clutter = c.length
-    ? html`<div class="callout yellow" style="margin:10px 0"><p style="margin:0 0 8px">${c.length} routine${c.length > 1 ? 's are' : ' is'} empty or an exact duplicate, with no logged sessions: ${c.map(r => r.name + (routineEmpty(r) ? ' (empty)' : ' (duplicate)')).join(', ')}.</p><button class="btn sm" data-act="rClean">Remove ${c.length > 1 ? 'them' : 'it'}</button></div>`
+    ? html`<div class="callout yellow u-m10-0"><p class="u-m0-0-8">${c.length} routine${c.length > 1 ? 's are' : ' is'} empty or an exact duplicate, with no logged sessions: ${c.map(r => r.name + (routineEmpty(r) ? ' (empty)' : ' (duplicate)')).join(', ')}.</p><button class="btn sm" data-act="rClean">Remove ${c.length > 1 ? 'them' : 'it'}</button></div>`
     : nothing;
   const libSec = section({
     sk: 'program:library',
@@ -273,7 +273,7 @@ export function viewProgram(): TemplateResult {
     title: 'Add exercises',
     sub: '',
     body: html`<div class="grid2"><input type="search" placeholder="Search" aria-label="Search exercises" data-bind="bLibQ" .value=${fieldValue(ui.bLibQ)}><select data-bind="bLibM" aria-label="Muscle"><option value="" .selected=${live(!ui.bLibM)}>All muscles</option>${MUSCLES.map(([k, l]) => html`<option value=${k} .selected=${live(ui.bLibM === k)}>${l}</option>`)}</select></div>
-    <label class="field" style="margin-top:8px">+ adds to<select data-bind="bTarget">${R.days.map((d, i) => html`<option value=${String(i)} .selected=${live(i === ui.bTarget)}>${dayLabel(R, i)}: ${d.name}</option>`)}</select></label>
+    <label class="field u-mt8">+ adds to<select data-bind="bTarget">${R.days.map((d, i) => html`<option value=${String(i)} .selected=${live(i === ui.bTarget)}>${dayLabel(R, i)}: ${d.name}</option>`)}</select></label>
     <div class="lib-panel"><ul class="lib" id="bLib">${bLibItems()}</ul></div>`
   });
   const schedSec = section({
@@ -284,12 +284,12 @@ export function viewProgram(): TemplateResult {
     body: html`<div class="stack"><label class="field">Schedule<select data-bind="rSchedule">
     <option value="cycle" .selected=${live(!weekly)}>Numbered cycle: Day 1, 2, 3… in order</option>
     <option value="weekly" .selected=${live(weekly)}>Fixed weekdays: Monday to Sunday</option></select></label>
-    <p class="small muted hastip" style="margin:0" data-tip=${weekly ? 'Each day is pinned to a weekday and Today opens on the calendar day.' : `The cycle runs in order whatever the calendar says. Today opens on the day after your last session, so a missed workout waits instead of being skipped. A week plans the whole sessions the cycle brings round in 7 days, ${plannedPerWeek(R)} here. 1 to ${MAX_DAYS} days.`}>How this works</p></div>`
+    <p class="small muted hastip u-m0" data-tip=${weekly ? 'Each day is pinned to a weekday and Today opens on the calendar day.' : `The cycle runs in order whatever the calendar says. Today opens on the day after your last session, so a missed workout waits instead of being skipped. A week plans the whole sessions the cycle brings round in 7 days, ${plannedPerWeek(R)} here. 1 to ${MAX_DAYS} days.`}>How this works</p></div>`
   });
   // The weekly count is in the header; a cycle of other than a week's days says its own count here (r34.2).
   const dnd = !!(window.__libs && window.__libs.sortable);
   const focus = dayFocusId(R);
-  const daysBody = html`${!weekly && R.days.length !== WEEK_DAYS ? html`<p class="muted small" style="margin:0 0 4px">${totSets} sets a ${R.days.length}-day cycle ${tipButton('Drag the ⠿ beside a day number to reorder days; they renumber from their new position.', 'About days')}</p>` : nothing}<div id="dayList">${R.days.map((d, di) => dayPart(R, d, di, weekly, dnd, focus))}</div>${weekly ? nothing : html`<div class="row" style="margin-top:10px"><button class="btn sm" data-act="dAdd" ?disabled=${R.days.length >= MAX_DAYS}>+ Training day</button><button class="btn sm" data-act="dAddRest" ?disabled=${R.days.length >= MAX_DAYS}>+ Rest day</button></div>`}`;
+  const daysBody = html`${!weekly && R.days.length !== WEEK_DAYS ? html`<p class="muted small u-m0-0-4">${totSets} sets a ${R.days.length}-day cycle ${tipButton('Drag the ⠿ beside a day number to reorder days; they renumber from their new position.', 'About days')}</p>` : nothing}<div id="dayList">${R.days.map((d, di) => dayPart(R, d, di, weekly, dnd, focus))}</div>${weekly ? nothing : html`<div class="row u-mt10"><button class="btn sm" data-act="dAdd" ?disabled=${R.days.length >= MAX_DAYS}>+ Training day</button><button class="btn sm" data-act="dAddRest" ?disabled=${R.days.length >= MAX_DAYS}>+ Rest day</button></div>`}`;
   const daysSec = section({
     sk: 'program:days',
     key: 'days',
@@ -328,10 +328,10 @@ export function viewProgram(): TemplateResult {
 function libCards(): TemplateResult {
   const list = libFiltered(ui.libQ, ui.libM, ui.libE, ui.libKind);
   if (!list.length)
-    return html`<div class="card"><p style="margin:0">No exercises match. Clear the filters or create a new exercise.</p></div>`;
+    return html`<div class="card"><p class="u-m0">No exercises match. Clear the filters or create a new exercise.</p></div>`;
   return html`<div class="card">${list.map(
-    e => html`<div class="hitem"><div class="row spread" style="align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><b>${e.name}</b>${e.note ? html` ${tipButton(e.note, 'About ' + e.name)}` : nothing}<p class="small muted" style="margin:2px 0 0">${ML[e.primary]}${e.secondary.length ? ', plus ' + e.secondary.map(m => ML[m]).join(', ') : ''}</p></div><div class="row" style="flex:none;gap:4px"><button class="btn sm" data-act="exEdit" data-ex=${e.id}>Edit</button><button class="ib sm" data-act="exDel" data-ex=${e.id} aria-label=${`Delete ${e.name}`}>✕</button></div></div>
-    <p class="small" style="margin:6px 0 0;display:flex;flex-wrap:wrap;gap:4px">${exTagParts(e, ui.libKind)}<span class="tag">${EQL[e.equip] || e.equip}</span>${e.custom ? html`<span class="tag blue">Custom</span>` : nothing}${e.bw ? html`<span class="tag">Bodyweight + load</span>` : nothing}<span class="tag">${loadWords(e)}</span>${e.perSide ? html`<span class="tag">Reps per side</span>` : nothing}${e.timed ? html`<span class="tag">Timed</span>` : nothing}${e.maxLoad != null ? html`<span class="tag">Max ${fmtW(e.maxLoad)} ${U()}</span>` : nothing}</p></div>`
+    e => html`<div class="hitem"><div class="row spread u-aistart_fwrnw"><div class="u-minw0"><b>${e.name}</b>${e.note ? html` ${tipButton(e.note, 'About ' + e.name)}` : nothing}<p class="small muted u-m2-0-0">${ML[e.primary]}${e.secondary.length ? ', plus ' + e.secondary.map(m => ML[m]).join(', ') : ''}</p></div><div class="row u-fnone_g4"><button class="btn sm" data-act="exEdit" data-ex=${e.id}>Edit</button><button class="ib sm" data-act="exDel" data-ex=${e.id} aria-label=${`Delete ${e.name}`}>✕</button></div></div>
+    <p class="small u-m6-0-0_dflex_fwrwrap_g4">${exTagParts(e, ui.libKind)}<span class="tag">${EQL[e.equip] || e.equip}</span>${e.custom ? html`<span class="tag blue">Custom</span>` : nothing}${e.bw ? html`<span class="tag">Bodyweight + load</span>` : nothing}<span class="tag">${loadWords(e)}</span>${e.perSide ? html`<span class="tag">Reps per side</span>` : nothing}${e.timed ? html`<span class="tag">Timed</span>` : nothing}${e.maxLoad != null ? html`<span class="tag">Max ${fmtW(e.maxLoad)} ${U()}</span>` : nothing}</p></div>`
   )}</div>`;
 }
 
@@ -341,7 +341,7 @@ export function viewLibrary(): TemplateResult {
   <div class="card stack"><input type="search" placeholder="Search exercises" aria-label="Search exercises" data-bind="libQ" .value=${fieldValue(ui.libQ)}>
   <div class="grid2"><select data-bind="libM" aria-label="Filter by muscle"><option value="" .selected=${live(!ui.libM)}>All muscles</option>${MUSCLES.map(([k, l]) => html`<option value=${k} .selected=${live(ui.libM === k)}>${l}</option>`)}</select>
   <select data-bind="libE" aria-label="Filter by equipment"><option value="" .selected=${live(!ui.libE)}>All equipment</option>${EQUIP.map(([k, l]) => html`<option value=${k} .selected=${live(ui.libE === k)}>${l}</option>`)}</select></div>
-  <div class="row" style="gap:6px;align-items:center"><div class="chips" role="group" aria-label="Show">${(
+  <div class="row u-g6_aicenter"><div class="chips" role="group" aria-label="Show">${(
     [
       ['', 'All'],
       ['common', 'Most common'],

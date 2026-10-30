@@ -99,7 +99,11 @@ function wide(seed, LIB) {
         for (let i = 0; i < nS; i++) {
           const reps = mode === 'flat' ? Math.round((it.repMin + it.repMax) / 2) : mode === 'top' ? it.repMax : L.k === 'timed' ? int(it.repMin - 10, it.repMax + 10) : badDay ? Math.max(1, it.repMin - int(1, 2)) : Math.max(1, int(it.repMin - 2, it.repMax + 3));
           const rir = chance(0.2) ? null : int(0, 5);
-          const set = { w: Math.round(wv * 100) / 100, r: reps, rir, done: true };
+          // The load as a lifter types it (to the hundredth, in the log's unit) and as the app stores it: in kilograms,
+          // unrounded, so a load typed in pounds is stored as that many pounds' kilograms (r65, the r63 audit's A-S5;
+          // the generator rounded the kilograms, which the app never does).
+          const typed = Math.round((kg ? wv : wv / LB) * 100) / 100;
+          const set = { w: kg ? typed : typed * LB, r: reps, rir, done: true };
           if (i === 0 && chance(0.1)) set.warm = true;
           if (i === nS - 1 && chance(0.06)) set.drop = true;
           if (rir != null && chance(0.06)) set.cal = { at: reps + rir, pred: rir };

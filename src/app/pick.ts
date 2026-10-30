@@ -20,7 +20,16 @@
    here as well, as the ranking reads them. */
 
 import type { Model, ExerciseLike, ExStat } from './model';
-import { EXIn, activeRoutineIn, exInjuryIn, injuredSetIn, isDeloadWeekIn, profIn, sortedSessionsIn } from './model';
+import {
+  EXIn,
+  activeRoutineIn,
+  bandOfIn,
+  exInjuryIn,
+  injuredSetIn,
+  isDeloadWeekIn,
+  profIn,
+  sortedSessionsIn
+} from './model';
 import type { Day, DraftBlock, Exercise, Plan, Routine } from './types';
 import type { DraftLike } from './session';
 import { blockRest } from './session';
@@ -136,15 +145,6 @@ const SWAP_RANK = {
 /** Short on time's order (Short on time, docs/EVIDENCE.md): priority muscles first, then lagging ones, then compound lifts, then the earlier exercise; and the steps taken by the end of each of its three passes, past which it stops (a guard against a loop). */
 const TRIM = { priority: 4, lagging: 2, compound: 1, order: 0.01, stops: [500, 1000, 1500] } as const;
 
-/** A muscle with no band of its own (none the log can hold: every muscle key has one). */
-const NO_BAND: readonly [number, number] = [0, 0];
-
-/** A muscle's weekly band, found by its key among the muscles (an index's keys are typed as any string). */
-function bandOf(M: Model, m: string): readonly [number, number] {
-  for (const k of MK) if (k === m) return M.s.settings.bands[k];
-  return NO_BAND;
-}
-
 /** What the trend fallback says when a lift's trend has no span yet, in weeks. */
 const TREND_WEEKS_SAID = 6;
 
@@ -227,7 +227,7 @@ export function rolling7In(M: Model, m: string, extra?: Readonly<Record<string, 
 }
 
 /** How recovered a muscle is: r from 0 to 1, the days needed, and the latest dose's days ago and sets. */
-export interface Recovery {
+interface Recovery {
   r: number;
   days: number | null;
   sets: number;
@@ -350,10 +350,10 @@ export function rankDaysIn(M: Model): {
         continue;
       }
       const has = hasTargetIn(M, m);
-      const def = !has ? 0 : Math.max(0, bandOf(M, m)[0] - (r7[m] || 0));
+      const def = !has ? 0 : Math.max(0, bandOfIn(M, m)[0] - (r7[m] || 0));
       fill += Math.min(w, def) * (pri.has(m) || lag.has(m) ? DAY_RANK.focus : 1);
       fat += w * (1 - rc.r);
-      if (has) over += Math.max(0, (r7[m] || 0) + w - bandOf(M, m)[1]);
+      if (has) over += Math.max(0, (r7[m] || 0) + w - bandOfIn(M, m)[1]);
     }
     for (const [m, w] of Object.entries(dir)) {
       if (inj.has(m)) continue;
@@ -407,7 +407,7 @@ export function dayReasonsIn(M: Model, x: DayRow, r7: Readonly<Record<string, nu
       continue;
     }
     const rc = recoveryIn(M, m);
-    const [lo, hi] = bandOf(M, m);
+    const [lo, hi] = bandOfIn(M, m);
     const tired = rc.r < 1 ? ` Likely still recovering (about ${rc.need} day${rc.need === 1 ? '' : 's'}).` : '';
     out.push(`${ML[m]}: ${r1(r7[m] || 0)} of ${lo}-${hi} hard sets in 7 days, ${lastHitTxtIn(M, m)}.${tired}`);
   }
@@ -485,11 +485,11 @@ export function rankExercisesIn(
   const rec: Record<string, Recovery> = {};
   for (const m of MK) rec[m] = recoveryIn(M, m, at);
   const best: Record<string, ExPick> = {};
-  const need = (m: string): number => (!hasTargetIn(M, m) ? 0 : Math.max(0, bandOf(M, m)[0] - (r7[m] || 0)));
+  const need = (m: string): number => (!hasTargetIn(M, m) ? 0 : Math.max(0, bandOfIn(M, m)[0] - (r7[m] || 0)));
   for (const e of M.s.exercises) {
     if (e.archived || inS.has(e.id) || exInjuryIn(M, e)) continue;
     const m = e.primary;
-    const hi = bandOf(M, m)[1];
+    const hi = bandOfIn(M, m)[1];
     const r7m = r7[m] || 0;
     const recM = rec[m] || { r: 1, days: null, sets: 0, need: 0 };
     const def = need(m);
@@ -555,7 +555,7 @@ export function rankExercisesIn(
 
 /** Why an exercise is picked: its muscle's week against target, its recovery, the session so far, its history, a long-length lift, a priority or focus muscle, and the strength focus. */
 export function exReasonsIn(M: Model, x: ExPick): string[] {
-  const [lo, hi] = bandOf(M, x.m);
+  const [lo, hi] = bandOfIn(M, x.m);
   const out: string[] = [];
   const name = ML[x.m];
   out.push(

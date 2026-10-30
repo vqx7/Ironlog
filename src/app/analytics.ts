@@ -261,8 +261,8 @@ export function bwLoadIn(M: Model, ex: ExerciseLike | null | undefined, date: st
 
 /** The total a set moved: its load as typed plus, on a bodyweight lift, that day's bodyweight share. */
 export function loadOfIn(M: Model, ex: ExerciseLike | null | undefined, s: LoadedSet, date: string): number {
-  // A row with no load reads as 0 through + and ||; the cast lets TypeScript accept the +.
-  return bwLoadIn(M, ex, date) + (+(s.w as number) || 0);
+  // A row with no load reads as 0: Number(null) is 0, and NaN || 0 is 0.
+  return bwLoadIn(M, ex, date) + (Number(s.w) || 0);
 }
 
 /* PRs on a bodyweight lift are judged at one bodyweight (r32.1): the latest
@@ -283,15 +283,15 @@ export const bwRefLoadIn = (M: Model, ex: ExerciseLike | null | undefined): numb
 
 /** The load a set's PRs are judged at: on a bodyweight lift at the latest weigh-in, else loadOf. */
 export function prLoadIn(M: Model, ex: ExerciseLike | null | undefined, s: LoadedSet, date: string): number {
-  // A row with no load reads as 0 through + and ||; the cast lets TypeScript accept the +.
-  return ex && ex.bw ? bwRefIn(M) * bwShare(ex) + (+(s.w as number) || 0) : loadOfIn(M, ex, s, date);
+  // A row with no load reads as 0, as in loadOfIn.
+  return ex && ex.bw ? bwRefIn(M) * bwShare(ex) + (Number(s.w) || 0) : loadOfIn(M, ex, s, date);
 }
 
 /* Weight actually moved by one set, for weekly totals. */
 export function tonnageIn(M: Model, ex: ExerciseLike, s: LoadedSet, date?: string): number {
   const m = loadMode(ex);
-  // A row with no load or reps reads as 0 through + and ||; the two casts let TypeScript accept the +.
-  const w = +(s.w as number) || 0;
+  // A row with no load or reps reads as 0, as in loadOfIn.
+  const w = Number(s.w) || 0;
   // Assisted with no bodyweight logged would go below 0; weight lifted is then 0.
   /* Bodyweight known on or before the date only (r30): a first weigh-in
      logged today used to be applied to every earlier session, so weight
@@ -299,8 +299,7 @@ export function tonnageIn(M: Model, ex: ExerciseLike, s: LoadedSet, date?: strin
   const known = bwKnownAtIn(M, date || M.today());
   const bl = ex && ex.bw && known != null ? known * bwShare(ex) : 0;
   const load = m === 'bw' ? Math.max(0, bl + w) : m === 'each' || m === 'side' ? w * 2 : w;
-  // No reps reads as 0 the same way, which the cast lets TypeScript accept.
-  return load * (+(s.r as number) || 0) * (ex.perSide ? 2 : 1);
+  return load * (Number(s.r) || 0) * (ex.perSide ? 2 : 1);
 }
 
 /* The sessions on each date, in sessCmp order, and the count per week (r47).
@@ -436,9 +435,9 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
       for (const s of b.sets) {
         if (!isWork(s)) continue;
         // A saved set's RIR is a number or null, never '' (normalize), so the
-        // test for '' never passes here; the cast widens it to the RIR as typed
-        // so TypeScript accepts the test written for rows of a session too.
-        const logged = M.s.settings.rirMode === 'off' || !(s.rir == null || (s.rir as Rir) === '');
+        // test for '' never passes here; it is the test written for rows of a
+        // session too, read through String so it holds for any value.
+        const logged = M.s.settings.rirMode === 'off' || !(s.rir == null || String(s.rir) === '');
         if (ss.date >= recentFrom) {
           rirTotal++;
           if (logged) rirLogged++;
@@ -1373,8 +1372,100 @@ function stallScopesIn(
   return out;
 }
 
+/** The least-squares line through a lift's readings by day: its slope, the slope's standard error (with 3 or more), the mean and the count; null when every reading is on one day. */
+function slopeOf(
+  list: readonly { date: string; tv: number }[]
+): { b: number; se: number | null; my: number; n: number } | null {
+  const xs = list.map(x => daysBetween(list[0].date, x.date)),
+    ys = list.map(x => x.tv);
+  const n = xs.length;
+  const mx = xs.reduce((a, b) => a + b, 0) / n,
+    my = ys.reduce((a, b) => a + b, 0) / n;
+  let sxy = 0,
+    sxx = 0;
+  xs.forEach((xv, k) => {
+    sxy += (xv - mx) * (ys[k] - my);
+    sxx += (xv - mx) ** 2;
+  });
+  if (!(sxx > 0)) return null;
+  const b = sxy / sxx;
+  let rss = 0;
+  xs.forEach((xv, k) => {
+    const e = ys[k] - (my + b * (xv - mx));
+    rss += e * e;
+  });
+  const se = n > 2 ? Math.sqrt(rss / (n - 2) / sxx) : null;
+  return { b, se, my, n };
+}
+
+/* The trend of a lift in one rep range, over its sessions with a reading in
+   the window (trendW): the change and the weekly rate, moving or falling, and
+   a heavier load read as no fall (out of idxLiftIn since r65, the r63 audit's A-7). */
+function liftTrendIn(M: Model, exI: Pick<ExerciseLike, 'bw'>, w: (Exposure & { tv: number })[]) {
+  let pct: number | null = null,
+    slope: number | null = null,
+    slopeSe: number | null = null,
+    moving = false,
+    falling = false,
+    pLo: number | null = null,
+    pHi: number | null = null,
+    spanW: number | null = null,
+    loadUp = false;
+  /* A trend needs 3 sessions spread over 2 weeks or more (r31): three
+       sessions in nine days read as "+6.6% a week" from what was mostly one
+       good day. The text gives the weeks it really covers (spanW). A
+       bodyweight lift needs a weigh-in too (r55, found while fixing the
+       audit's C10): with none its readings are the added load alone, so
+       pull-ups from BW+10 to BW+17.5 read as 40% stronger, where at an 80 kg
+       weigh-in they are 5%. Goals have said so since r40 (goalState). */
+  const spanD = w.length ? daysBetween(w[0].date, w[w.length - 1].date) : 0;
+  if (w.length >= TREND_MIN.sessions && spanD >= TREND_MIN.days && !(exI.bw && !(bwRefIn(M) > 0))) {
+    spanW = Math.max(2, Math.round(spanD / WEEK_DAYS));
+    const ends = trendEnds(w);
+    pct = (ends.last.tv / ends.first.tv - 1) * PERCENT;
+    // Slope in % of the mean per week, with its standard error. Moving or
+    // falling needs 3% or more and the slope's 80% interval clear of zero.
+    const f = slopeOf(w);
+    if (f) {
+      slope = ((f.b * WEEK_DAYS) / f.my) * PERCENT;
+      slopeSe = f.se != null ? ((f.se * WEEK_DAYS) / f.my) * PERCENT : null;
+      const tq = t90(f.n - 2);
+      const lo = slopeSe != null ? slope - tq * slopeSe : slope,
+        hi = slopeSe != null ? slope + tq * slopeSe : slope;
+      moving = pct >= GROW_PCT && lo > 0;
+      falling = pct <= -GROW_PCT && hi < 0;
+      // The weekly rate the 80% interval allows (r30): "about 1.5% a week,
+      // likely 1.2 to 1.8" rather than one number stated as fact. It is
+      // given on the weekly rate the line measures; a range on the 6-week
+      // change beside an endpoint percentage could leave that percentage
+      // outside its own range.
+      if (slopeSe != null) {
+        pLo = lo;
+        pHi = hi;
+      }
+    }
+    /* A heavier working load with the reps still in the range is progress
+         that rep-max formulas disagree on, never a fall (r34.2, from the
+         review: a lat pulldown from 90 x 14 to 95 x 10, on plan, read "down
+         4%, look at recovery"; Brzycki says -10%, Lombardi +2%, all inside
+         the 2 to 8% day-to-day noise). */
+    const z = w[w.length - 1],
+      a0 = w[0];
+    const zr = z.pts.filter(p => Math.abs(p.w - z.topW) < EPS_SAME).map(p => p.r);
+    if (z.topW > a0.topW + EPS_SAME && zr.length && Math.min(...zr) >= (z.rr ? +z.rr[0] : 1) && pct < 0) {
+      loadUp = true;
+      falling = false;
+      if (pHi != null && pHi < 0) {
+        pLo = null;
+        pHi = null;
+      }
+    }
+  }
+  return { pct, slope, slopeSe, moving, falling, pLo, pHi, spanW, loadUp };
+}
+
 /* Step 5: one lift's trend, stall, signals and bests. */
-export function idxLiftIn(
+function idxLiftIn(
   M: Model,
   id: string,
   exps: Exposure[],
@@ -1420,28 +1511,6 @@ export function idxLiftIn(
      line through estimates reads as flat). A lift with no reading at all
      (timed, joint-rotation) keeps a count-based test: 4 or more sessions
      and no PR of any kind in the last 3. */
-  const slopeOf = (list: readonly { date: string; tv: number }[]) => {
-    const xs = list.map(x => daysBetween(list[0].date, x.date)),
-      ys = list.map(x => x.tv);
-    const n = xs.length;
-    const mx = xs.reduce((a, b) => a + b, 0) / n,
-      my = ys.reduce((a, b) => a + b, 0) / n;
-    let sxy = 0,
-      sxx = 0;
-    xs.forEach((xv, k) => {
-      sxy += (xv - mx) * (ys[k] - my);
-      sxx += (xv - mx) ** 2;
-    });
-    if (!(sxx > 0)) return null;
-    const b = sxy / sxx;
-    let rss = 0;
-    xs.forEach((xv, k) => {
-      const e = ys[k] - (my + b * (xv - mx));
-      rss += e * e;
-    });
-    const se = n > 2 ? Math.sqrt(rss / (n - 2) / sxx) : null;
-    return { b, se, my, n };
-  };
   let stalled = false;
   /* Only a lift still being trained can be stalled: one not done in the
      42 days up to the log's newest session, or deleted or archived,
@@ -1530,73 +1599,8 @@ export function idxLiftIn(
     );
   };
   if (!capped && current) stalled = stallScopesIn(M, id, sc).every(q => stalledIn(q.rr, q.inR));
-  /* The trend in one rep range, over its sessions with a reading in the
-     window (trendW): the change and the weekly rate, moving or falling, and
-     a heavier load read as no fall. */
-  const trendOf = (w: (Exposure & { tv: number })[]) => {
-    let pct: number | null = null,
-      slope: number | null = null,
-      slopeSe: number | null = null,
-      moving = false,
-      falling = false,
-      pLo: number | null = null,
-      pHi: number | null = null,
-      spanW: number | null = null,
-      loadUp = false;
-    /* A trend needs 3 sessions spread over 2 weeks or more (r31): three
-       sessions in nine days read as "+6.6% a week" from what was mostly one
-       good day. The text gives the weeks it really covers (spanW). A
-       bodyweight lift needs a weigh-in too (r55, found while fixing the
-       audit's C10): with none its readings are the added load alone, so
-       pull-ups from BW+10 to BW+17.5 read as 40% stronger, where at an 80 kg
-       weigh-in they are 5%. Goals have said so since r40 (goalState). */
-    const spanD = w.length ? daysBetween(w[0].date, w[w.length - 1].date) : 0;
-    if (w.length >= TREND_MIN.sessions && spanD >= TREND_MIN.days && !(exI.bw && !(bwRefIn(M) > 0))) {
-      spanW = Math.max(2, Math.round(spanD / WEEK_DAYS));
-      const ends = trendEnds(w);
-      pct = (ends.last.tv / ends.first.tv - 1) * PERCENT;
-      // Slope in % of the mean per week, with its standard error. Moving or
-      // falling needs 3% or more and the slope's 80% interval clear of zero.
-      const f = slopeOf(w);
-      if (f) {
-        slope = ((f.b * WEEK_DAYS) / f.my) * PERCENT;
-        slopeSe = f.se != null ? ((f.se * WEEK_DAYS) / f.my) * PERCENT : null;
-        const tq = t90(f.n - 2);
-        const lo = slopeSe != null ? slope - tq * slopeSe : slope,
-          hi = slopeSe != null ? slope + tq * slopeSe : slope;
-        moving = pct >= GROW_PCT && lo > 0;
-        falling = pct <= -GROW_PCT && hi < 0;
-        // The weekly rate the 80% interval allows (r30): "about 1.5% a week,
-        // likely 1.2 to 1.8" rather than one number stated as fact. It is
-        // given on the weekly rate the line measures; a range on the 6-week
-        // change beside an endpoint percentage could leave that percentage
-        // outside its own range.
-        if (slopeSe != null) {
-          pLo = lo;
-          pHi = hi;
-        }
-      }
-      /* A heavier working load with the reps still in the range is progress
-         that rep-max formulas disagree on, never a fall (r34.2, from the
-         review: a lat pulldown from 90 x 14 to 95 x 10, on plan, read "down
-         4%, look at recovery"; Brzycki says -10%, Lombardi +2%, all inside
-         the 2 to 8% day-to-day noise). */
-      const z = w[w.length - 1],
-        a0 = w[0];
-      const zr = z.pts.filter(p => Math.abs(p.w - z.topW) < EPS_SAME).map(p => p.r);
-      if (z.topW > a0.topW + EPS_SAME && zr.length && Math.min(...zr) >= (z.rr ? +z.rr[0] : 1) && pct < 0) {
-        loadUp = true;
-        falling = false;
-        if (pHi != null && pHi < 0) {
-          pLo = null;
-          pHi = null;
-        }
-      }
-    }
-    return { pct, slope, slopeSe, moving, falling, pLo, pHi, spanW, loadUp };
-  };
   const w = trendW(sc);
-  const t = trendOf(w);
+  const t = liftTrendIn(M, exI, w);
   const { pct, slope, slopeSe, moving, pLo, pHi, spanW, loadUp } = t;
   /* A lift trained in two rep ranges, a heavy day and a light day, reads
      falling only when it falls in each range in use, as it reads stalled
@@ -1615,7 +1619,7 @@ export function idxLiftIn(
     quietRR: [number, number][] = [];
   if (t.falling)
     for (const q of scopes.slice(1)) {
-      const o = q.rr ? trendOf(trendW({ inRange: q.inR, exWin: sc.exWin })) : null;
+      const o = q.rr ? liftTrendIn(M, exI, trendW({ inRange: q.inR, exWin: sc.exWin })) : null;
       if (q.rr && o && o.pct == null) quietRR.push(q.rr);
       else if (q.rr && o && !o.falling) holdRR.push(q.rr);
     }
@@ -1629,13 +1633,12 @@ export function idxLiftIn(
     const sameW = l3.every(x => Math.abs(x.topW - l3[0].topW) < EPS_SAME);
     const allRir = l3.every(x => x.topRir != null);
     const repsHeld = l3.every(x => x.topReps >= l3[0].topReps);
-    // Worked out before allRir is tested, so a missing top RIR compares as 0
-    // here, and it counts only when all three have one: the casts let
-    // TypeScript accept the comparison.
+    // Worked out before allRir is tested, so a missing top RIR is read here
+    // as Number reads it (null as 0), and it counts only when all three have one.
     const climbing =
-      (l3[1].topRir as number) >= (l3[0].topRir as number) &&
-      (l3[2].topRir as number) >= (l3[1].topRir as number) &&
-      (l3[2].topRir as number) - (l3[0].topRir as number) >= 1;
+      Number(l3[1].topRir) >= Number(l3[0].topRir) &&
+      Number(l3[2].topRir) >= Number(l3[1].topRir) &&
+      Number(l3[2].topRir) - Number(l3[0].topRir) >= 1;
     // Once allRir holds, each top RIR is there, as the ! say.
     if (sameW && allRir && repsHeld && climbing)
       easier = { w: l3[0].topW, from: r1(l3[0].topRir!), to: r1(l3[2].topRir!) };

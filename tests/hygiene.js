@@ -6,6 +6,8 @@
 // 2. No CSS selector is defined twice in the same block of src/02-style.css
 //    (top level, or inside one @media). A second copy silently overrides the
 //    first and hides what a rule really does; eight sat there until r42.
+//    Since r65 no style attribute in src/ has fixed text: it is a class in the
+//    stylesheet, each defined one used and each used one defined.
 // 3. Estimated minutes are worded in one place, `estMin`. A "~N min" or an
 //    "about N min" typed into any other template is how r42's first build
 //    missed one spot ("About 40 min after the change").
@@ -90,6 +92,15 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   }
   ok(stack.length === 1, 'the stylesheet\'s braces balance');
   ok(dups.length === 0, 'no selector is defined twice in the same block of the stylesheet', dups);
+  // Style lives in the stylesheet (r65, the r63 audit's A-9): a style attribute in the screens' markup carries only a
+  // value worked out as the page is drawn (a bar's width, a colour); one with fixed text is a class in the stylesheet.
+  const fixed = [];
+  for (const f of SRC_CODE) fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').split('\n').forEach((line, i) => { for (const m of line.matchAll(/\bstyle="([^"]*)"/g)) if (!m[1].includes('${')) fixed.push(`${f}:${i + 1} style="${m[1]}"`); });
+  ok(fixed.length === 0, 'no style attribute with fixed text in src/: each is a class in the stylesheet', fixed);
+  // Each of those classes (u-...) is used, and each used is defined, so none is left behind or missing.
+  const defined = new Set([...css.matchAll(/\.(u-[\w-]+)\{/g)].map(m => m[1]));
+  const used = new Set(SRC_CODE.flatMap(f => [...fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').matchAll(/(?<![\w-])(u-[a-z0-9][\w-]*)/g)].map(m => m[1])));
+  ok(defined.size > 0 && [...defined].every(c => used.has(c)) && [...used].every(c => defined.has(c)), `every one-off class in the stylesheet is used in src/, and every one used is defined (${defined.size})`, { unused: [...defined].filter(c => !used.has(c)), undefined: [...used].filter(c => !defined.has(c)) });
 }
 
 // 3. Minutes wording only from estMin.
@@ -289,8 +300,13 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // statement that exports several names, a set of constants under one comment, is read when one of them is.
   {
     const ts = require('typescript');
-    const T = ['tests', 'scripts'].flatMap(d => fs.readdirSync(path.join(ROOT, d)).filter(f => f.endsWith('.js')).map(f => fs.readFileSync(path.join(ROOT, d, f), 'utf8'))).join('\n');
-    const named = n => new RegExp('\\b' + n.replace(/\$/g, '\\$') + '\\b').test(T);
+    /* The suites and scripts without their comments (r64, the r63 audit's A-10: a name in a comment, or a suite's own
+       helper of the same name, counted as a use, so util.ts's esc, read by nothing, passed): a name counts when it is
+       read off the page's hook or a bundle (L.esc, E.esc, window.__ironlog.esc), destructured from one, or named as a
+       string, as tests/engine.js's lists name the functions it calls. */
+    const printer = ts.createPrinter({ removeComments: true });
+    const T = ['tests', 'scripts'].flatMap(d => fs.readdirSync(path.join(ROOT, d)).filter(f => f.endsWith('.js')).map(f => printer.printFile(ts.createSourceFile(f, fs.readFileSync(path.join(ROOT, d, f), 'utf8'), ts.ScriptTarget.Latest, true)))).join('\n');
+    const named = n => { const x = n.replace(/\$/g, '\\$'); return new RegExp('\\.' + x + '\\b|[\'"`]' + x + '[\'"`]|\\{[^}]*\\b' + x + '\\b[^}]*\\}\\s*=\\s*(window\\.__ironlog|L|E|require)\\b').test(T); };
     const table = e0 => { let e = e0; while (e && (ts.isAsExpression(e) || ts.isSatisfiesExpression(e) || ts.isParenthesizedExpression(e))) e = e.expression; return !!e && (ts.isObjectLiteralExpression(e) || ts.isArrayLiteralExpression(e) || ts.isNewExpression(e)); };
     const imported = new Set(), stmts = [];
     for (const f of SRC_CODE.filter(f => f.startsWith('app/'))) {
@@ -356,6 +372,10 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       const MOVED = ['history', 'settings', 'plan', 'stats'];
       const screens = mods.filter(m => LAYER[m] === 4 && (MOVED.includes(m) || EDGES.get(m).some(e => e.to === 'act')));
       ok(MOVED.every(m => screens.includes(m)), 'History and Settings (r57), Plan and Stats (r58) are screen modules in src/app/', screens);
+      /* The page's start too (r65, the r63 audit's A-5: it wrote two settings and saved them by hand), but for the
+         suites' hook (window.__ironlog), which hands the suites the log and the functions that save it: main.ts may
+         import them for the hook, and calls none of them itself. */
+      screens.push('main');
       const MUT = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin']);
       const NO = new Set(['saveNow', 'saveSoon', 'commit', 'snapshot', 'capturePost']);
       const bad = [];
@@ -372,8 +392,11 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
         const sf = ts.createSourceFile(m, txt, ts.ScriptTarget.Latest, true);
         const at = n => `${m}.ts:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`;
         (function walk(n) {
-          if (ts.isImportDeclaration(n) && n.importClause && n.importClause.namedBindings && ts.isNamedImports(n.importClause.namedBindings))
+          const hook = m === 'main' && ts.isBinaryExpression(n) && ts.isPropertyAccessExpression(n.left) && n.left.name.text === '__ironlog';
+          if (hook) return;
+          if (m !== 'main' && ts.isImportDeclaration(n) && n.importClause && n.importClause.namedBindings && ts.isNamedImports(n.importClause.namedBindings))
             for (const el of n.importClause.namedBindings.elements) if (NO.has((el.propertyName || el.name).text)) bad.push(`${at(n)} imports ${(el.propertyName || el.name).text}`);
+          if (m === 'main' && ts.isCallExpression(n) && ts.isIdentifier(n.expression) && NO.has(n.expression.text)) bad.push(`${at(n)} calls ${n.expression.text}`);
           let w = null;
           if (ts.isBinaryExpression(n) && n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && n.operatorToken.kind <= ts.SyntaxKind.LastAssignment && rootOf(n.left) === 'state' && n.left !== null && !ts.isIdentifier(n.left)) w = n;
           else if (ts.isDeleteExpression(n) && rootOf(n.expression) === 'state') w = n;
@@ -384,14 +407,15 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
           ts.forEachChild(n, walk);
         })(sf);
       }
-      ok(bad.length === 0, 'a moved screen changes the log only inside act, and never saves or keeps an Undo step by itself', bad);
+      ok(bad.length === 0, 'a moved screen, and the page\'s start, changes the log only inside act, and never saves or keeps an Undo step by itself', bad);
     }
   }
   // The checker is never switched off: no @ts-nocheck or @ts-ignore, and an
   // expected error only where listed with its reason (the second r51 review
   // hid a copy of the legacy script in config.ts behind @ts-nocheck).
   {
-    const EXPECT = { 'importing.ts': 1 }; // the duplicate 'assisted dip' key, kept so the move changes no code (PENDING 304)
+    // None listed since r65 (PENDING 304): the one there was, the import table's 'assisted dip' key written twice, is written once.
+    const EXPECT = {};
     const bad = [];
     // A directive is a comment that opens with it (`// @ts-ignore`); prose that mentions one is not (the r51 mutation test).
     for (const id of MODS) {
@@ -400,7 +424,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       const n = (txt.match(/(\/\/|\/\*)\s*@ts-expect-error\b/g) || []).length;
       if (n !== (EXPECT[f] || 0)) bad.push(`${f}: ${n} @ts-expect-error, ${EXPECT[f] || 0} listed`);
     }
-    ok(bad.length === 0, 'the type checker is switched off nowhere in src/app/, beyond the one listed exception', bad);
+    ok(bad.length === 0, 'the type checker is switched off nowhere in src/app/: no @ts-nocheck, @ts-ignore or @ts-expect-error', bad);
   }
   // Every name a module exports says what it is for, in a comment of its own
   // directly above it, or shares the comment of the group it sits in (related

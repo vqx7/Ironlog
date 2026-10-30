@@ -77,7 +77,7 @@ export function exEditSheet(m: ExEditSheet): TemplateResult {
     ${platesMode(e) === 'bar' ? html`<label class="field">${labelTip('lt-ex-barRaw', `Bar for this lift (${U()})`, 'A trap bar, EZ bar, or any bar other than the one in Settings. Used for the plates line and so a deload never goes under it.')}<input type="text" inputmode="decimal" data-ebind="barRaw" aria-labelledby="lt-ex-barRaw" value=${e.barRaw || ''} placeholder=${`Settings bar, ${fmtW(barKg())}`}></label>` : ''}
     <label class="field">${labelTip('lt-ex-maxRaw', `Heaviest available (${U()}${e.bw ? ', added' : ''})`, 'The top of the stack or the biggest dumbbell. At that load, targets move to more reps and then harder reps, and the lift is not called stalled.')}<input type="text" inputmode="decimal" data-ebind="maxRaw" aria-labelledby="lt-ex-maxRaw" value=${e.maxRaw || ''} placeholder="No limit"></label>
     <label class="field">Notes and cues<textarea data-ebind="note">${e.note || ''}</textarea></label></div></details>
-    <div class="row"><button class="btn primary" data-act="exSave">${save}</button><button class="btn" data-act=${m.back ? 'exBack' : 'mClose'}>${m.back ? 'Back' : 'Cancel'}</button></div>${m.isNew ? '' : howToLink(e)}${!m.isNew && e.custom && !window.claude ? html`<button class="linkbtn" style="min-height:44px" data-act="exSuggest" data-tip="Your exercises are only in your log. This sends it to the app's owner, who can add it to the library for everyone.">Suggest for the library</button>` : ''}</div></div>`;
+    <div class="row"><button class="btn primary" data-act="exSave">${save}</button><button class="btn" data-act=${m.back ? 'exBack' : 'mClose'}>${m.back ? 'Back' : 'Cancel'}</button></div>${m.isNew ? '' : howToLink(e)}${!m.isNew && e.custom && !window.claude ? html`<button class="linkbtn u-minh44" data-act="exSuggest" data-tip="Your exercises are only in your log. This sends it to the app's owner, who can add it to the library for everyone.">Suggest for the library</button>` : ''}</div></div>`;
 }
 
 /* The 3D body is mounted by the legacy host once the sheet is drawn (its
@@ -92,7 +92,7 @@ export function exMusSheet(m: { exId: string }): TemplateResult {
   if (B3.yawKeep == null) B3.yawKeep = B3.yaw;
   return html`<div class="sheet exmus" role="dialog" aria-modal="true" aria-labelledby="exMusH"><div class="sheet-h"><h3 id="exMusH">Muscles: ${e.name}</h3>${closeX()}</div>
     ${exMusWords(e)}
-    <div class="seg" role="group" aria-label="View" style="margin-top:8px"><button class=${'chip ' + (v3 ? '' : 'on')} data-act="mapView" data-v="flat" aria-pressed=${String(!v3)}>Flat</button><button class=${'chip ' + (v3 ? 'on' : '')} data-act="mapView" data-v="3d" aria-pressed=${String(v3)}>3D</button></div>
+    <div class="seg u-mt8" role="group" aria-label="View"><button class=${'chip ' + (v3 ? '' : 'on')} data-act="mapView" data-v="flat" aria-pressed=${String(!v3)}>Flat</button><button class=${'chip ' + (v3 ? 'on' : '')} data-act="mapView" data-v="3d" aria-pressed=${String(v3)}>3D</button></div>
     ${v3 ? html`<div class="bm3d" id="bm3dx"><div class="bm3d-stage" role="img" aria-label=${`3D body with ${ML[pm.main] || pm.main} lit${pm.help.length ? ', helpers lighter' : ''}. Drag sideways to turn it.`}></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>` : exBodyFlat(e)}
     ${exMusLegend(e)}</div>`;
 }
@@ -137,9 +137,9 @@ export function liftTrend(exId: string): TemplateResult | string {
       : '';
   if (isCompound(ex) && exps.every(x => x.best != null)) {
     const v = exps.map(x => fmtE(x.best));
-    return html`<p class="small muted" style="margin:2px 0">Est. 1RM <span class="trend">${v.join(' → ')} ${U()}</span>${dir ? ' · ' + dir : ''}${st && !st.useAdj ? html` ${tipButton('Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.', 'About this trend')}` : ''}</p>`;
+    return html`<p class="small muted u-m2-0">Est. 1RM <span class="trend">${v.join(' → ')} ${U()}</span>${dir ? ' · ' + dir : ''}${st && !st.useAdj ? html` ${tipButton('Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.', 'About this trend')}` : ''}</p>`;
   }
-  return html`<p class="small muted" style="margin:2px 0">Top sets <span class="trend">${exps.map(x => topSetPt(ex, x).txt).join(' → ')}</span>${dir ? ' · ' + dir : ''}</p>`;
+  return html`<p class="small muted u-m2-0">Top sets <span class="trend">${exps.map(x => topSetPt(ex, x).txt).join(' → ')}</span>${dir ? ' · ' + dir : ''}</p>`;
 }
 
 /** The history sheet's chart: the strength reading of the last full sessions, in a box this wide and tall, inset this much. */
@@ -179,7 +179,7 @@ export function exHistSheet(m: { exId: string }): TemplateResult {
       H - P - (((x.tv || 0) - lo) / span) * (H - 2 * P)
     ]);
     const f = (n: number | undefined): string => (n || 0).toFixed(1);
-    chart = html`<figure class="exh-chart" style="margin:4px 0 0"><svg viewBox=${`0 0 ${W} ${H}`} width="100%" height=${String(H)} role="img" aria-label=${`Strength reading over the last ${pts.length} full sessions`}><polyline fill="none" stroke="var(--volt)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points=${xy.map(p => p.map(f).join(',')).join(' ')}></polyline>${xy.map(p => svg`<circle cx=${f(p[0])} cy=${f(p[1])} r=${String(HIST_CHART.dot)} fill="var(--volt)"></circle>`)}</svg>
+    chart = html`<figure class="exh-chart u-m4-0-0"><svg viewBox=${`0 0 ${W} ${H}`} width="100%" height=${String(H)} role="img" aria-label=${`Strength reading over the last ${pts.length} full sessions`}><polyline fill="none" stroke="var(--volt)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points=${xy.map(p => p.map(f).join(',')).join(' ')}></polyline>${xy.map(p => svg`<circle cx=${f(p[0])} cy=${f(p[1])} r=${String(HIST_CHART.dot)} fill="var(--volt)"></circle>`)}</svg>
       <figcaption class="small muted row spread"><span>${fmtDate(pts[0].date)}</span><span class="hastip" data-tip="Each full session's working sets read as one number from loads, reps, and RIR when it is rated on most sets. It shows direction only and is not a 1RM. Sessions where the lift was done lighter are left out.">Strength reading</span><span>${fmtDate(pts[pts.length - 1].date)}</span></figcaption></figure>`;
   }
   const bs = bestSet(exId);
@@ -199,10 +199,10 @@ export function exHistSheet(m: { exId: string }): TemplateResult {
     .reverse()
     .map(x => {
       const kind = sessionWord(x);
-      return html`<li style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${fmtDate(x.date)}</b>${kind ? html`<span class="tag">${kind}</span>` : ''}</div><span class="small">${setsOf(x)}</span></li>`;
+      return html`<li class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${fmtDate(x.date)}</b>${kind ? html`<span class="tag">${kind}</span>` : ''}</div><span class="small">${setsOf(x)}</span></li>`;
     });
-  return head(html`${best ? html`<p style="margin:0"><b>${best}</b></p>` : ''}${liftTrend(exId)}${chart}
-    <ul style="list-style:none;margin:8px 0 0;padding:0">${rows}</ul>
-    ${all.length > HIST_ROWS ? html`<p class="small muted" style="margin:6px 0 0">The last ${HIST_ROWS} of ${all.length} sessions.</p>` : ''}
-    <button class="btn block" style="margin-top:10px" data-act="goDash" data-sec="exercise" data-ex=${exId}>Open in Stats</button>`);
+  return head(html`${best ? html`<p class="u-m0"><b>${best}</b></p>` : ''}${liftTrend(exId)}${chart}
+    <ul class="u-lsnone_m8-0-0_p0">${rows}</ul>
+    ${all.length > HIST_ROWS ? html`<p class="small muted u-m6-0-0">The last ${HIST_ROWS} of ${all.length} sessions.</p>` : ''}
+    <button class="btn block u-mt10" data-act="goDash" data-sec="exercise" data-ex=${exId}>Open in Stats</button>`);
 }
