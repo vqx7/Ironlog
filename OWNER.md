@@ -2,12 +2,12 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r63 live (#60 merged by you at 05:28 UTC, published 05:57 from ce83d0c; checked by Claude: gh-pages "Publish ce83d0c", service worker ironlog-2026.10.27-r63-667bd9407f); r64 (version 2.18, #61) and r65 (version 2.19, #62, on #61) ready for you, 2026-10-28.
+Last updated: r63 live (#60 merged by you at 05:28 UTC, published 05:57 from ce83d0c; checked by Claude: gh-pages "Publish ce83d0c", service worker ironlog-2026.10.27-r63-667bd9407f); r64 (version 2.18, #61) and r65 (version 2.19, #62, on #61) ready for you, 2026-10-28; problem reports on r64's code confirmed by you, 2026-10-30.
 
 ## Now, in this order
 
 1. A28 (r64 and r65, the hardening of the r63 audit): r64 is pull request #61 and r65 is #62, built on it. Both are ready (2026-10-28): every suite passed in both browsers (r64's run 40631375573; r65's checks are on its pull request, rerun with NEW-3 and 304, which you gave the go that day), and the independent review over both found no data-loss or wrong-number problem (its one finding, five suites out of step, NEW-11, is fixed). Try the preview (it carries both; r64's and r65's checks below). Then on GitHub's website: merge #61; open #62, tap Edit beside its title and change its base from r64 to main (GitHub keeps r64 after the merge, so #62 would otherwise merge into r64, not main); merge #62. When r64 is built: one SQL step for problem reports (exact code given then). A27 (r63): done, merged by you (#60, 2026-10-27 05:28 UTC), r63 live as build 2026.10.27-r63. B1a (below), meant to run before that merge: status unknown, asked 2026-10-27; it is safe to run now if you have not (nothing breaks meanwhile: reports go without the key).
-2. Problem reports, two pastes, any time, before or after r64's merge: B4 again with r64's code, then B1a, the r64 block (both below). Then confirm B5 (you believe it is done): Supabase > Integrations > Database Webhooks lists `feedback-to-issue`.
+2. Problem reports: done (2026-10-30, you). B4's r64 code is deployed, B1a has been run, and a test report from the preview became an issue in `ironlog-feedback`, which confirms B5. See Done.
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
 4. D6: delete the old branches and stop them piling up (2 minutes, below).
 5. D5: lock down every account (two-step verification everywhere, push protection, DNSSEC, Claude's GitHub access limited to Ironlog).
@@ -81,7 +81,7 @@ insert into public.feedback_readers (user_id) select id from auth.users where em
 Check: Report a problem from the app (signed in), then Supabase > **Table Editor** > `feedback` shows it, and Settings > Help shows **Inbox** for your account.
 
 ### B1a. The r64 block: one paste, any time
-Status: to do. It replaces r63's B1a (a report's key, which you may not have run) and D7 (a size limit on each synced document): this block does both, and adds two r64 rules. Supabase > **SQL Editor** > **New query**, paste, **Run**. It is safe to run more than once, and nothing in the app waits for it.
+Status: done (you, 2026-10-30, pasted from the r64 file Claude sent; it is the block below). It replaces r63's B1a (a report's key, which you may not have run) and D7 (a size limit on each synced document): this block does both, and adds two r64 rules. Supabase > **SQL Editor** > **New query**, paste, **Run**. It is safe to run more than once, and nothing in the app waits for it.
 - A report sent again after its answer was lost is kept once, so one ticket, not two (r63).
 - A report's reply address is your friend's account email, set by the database, never what the phone sent: a made-up one could write lines into the GitHub issue (r64, the r63 audit's A-3).
 - A synced document is at most 1 MB (r45, D7), and one account at most 2,000 documents and 25 MB, about 20 times a three-year log, so no account can fill the free database (r64, PENDING 339 l).
@@ -203,7 +203,7 @@ GitHub > your photo > **Settings** > **Developer settings** > **Personal access 
 - **Generate token**, copy it. It is shown once. It goes only into Supabase in B4.
 
 ### B4. The function that turns a report into a GitHub issue
-Status: done, as you reported (2026-10-04). **Paste it again with r64's code** (to do): Supabase > **Edge Functions** > `feedback-to-issue` > **Code**, select all, paste the code below over it, **Deploy**. r64 keeps a report's words inside their quote whatever line endings they carry, shows the reply address as code on one line, cuts text to the app's own limits, and logs a report it could not link to its issue (the r63 audit's A-3, A-9 and A-12). It also stops committing screenshots to `ironlog-feedback` (your choice A, 2026-10-27): a screenshot stays in your Inbox, and the issue says so. Screenshots already in the repository's `shots/` folder stay until you delete them. It is not published by a merge: the copy in Supabase changes only when you paste it.
+Status: done, as you reported (2026-10-04); r64's code deployed by you on 2026-10-30 (from the file Claude sent, which is `supabase/functions/feedback-to-issue/index.ts` on r64 and the code below). Until r64 merges, OWNER.md on `main` still shows r63's code. To paste it again: Supabase > **Edge Functions** > `feedback-to-issue` > **Code**, select all, paste the code below over it, **Deploy**. r64 keeps a report's words inside their quote whatever line endings they carry, shows the reply address as code on one line, cuts text to the app's own limits, and logs a report it could not link to its issue (the r63 audit's A-3, A-9 and A-12). It also stops committing screenshots to `ironlog-feedback` (your choice A, 2026-10-27): a screenshot stays in your Inbox, and the issue says so. Screenshots already in the repository's `shots/` folder stay until you delete them. It is not published by a merge: the copy in Supabase changes only when you paste it.
 Supabase > **Edge Functions** > **Deploy a new function** > **Via editor**. Name it exactly `feedback-to-issue`. Delete the sample code, paste all of this:
 
 ````ts
@@ -308,7 +308,7 @@ Turn **Verify JWT** off for this function, then **Deploy**. Then Edge Functions 
 - `WEBHOOK_SECRET`: a long random string (your password manager can make one). Keep it for B5.
 
 ### B5. The trigger
-Status: you believe it is done (2026-10-27); to confirm: Supabase > **Integrations** > **Database Webhooks** lists `feedback-to-issue`. If it does, paste B4's r64 code first, since until then a report's words can write lines of their own into the issue.
+Status: done, confirmed 2026-10-30. After B4's r64 code and B1a, you sent a test report from the preview (r65), and it became an issue in `ironlog-feedback`. Only this trigger calls the function when a report is saved, so the issue showing up proves the trigger works. You did not find a webhooks page in Supabase's menus, so the page named below may have moved in the dashboard. The test report is the check that counts.
 Supabase > **Integrations** > **Database Webhooks** (enable it if asked) > **Create a new hook**.
 - Name `feedback-to-issue`. Table `feedback`. Events: **Insert** only.
 - Type: **Supabase Edge Functions**. Function `feedback-to-issue`. Method **POST**. Leave the timeout as it is.
@@ -440,5 +440,6 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - A6: r28 tried on the preview and approved; r28 live at https://ironapp.org (2026-10-02, merged by Claude at your go-ahead).
 - A7: r29 tried on the preview and approved; live as r29.3 (2026-10-03). r29.4, the first-run taglines removed, went live the same day at your request without a preview check.
 - B1 to B4 (you, by 2026-10-04).
+- Problem reports on r64's code (you, 2026-10-30): B4's function pasted again and deployed, B1a run, and B5 confirmed by a test report from the preview that became an issue in `ironlog-feedback`.
 - Forgot password email from Ironlog <no-reply@mail.ironapp.org> (you, 2026-10-04).
 - C1 to C5: domain ironapp.org, Resend sender on mail.ironapp.org, Supabase connected, app switched and reinstalled (2026-10-02).
