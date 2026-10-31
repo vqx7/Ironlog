@@ -190,10 +190,16 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const from = shot.text.indexOf('⠿\nWeekly set targets\n'), to = next ? shot.text.indexOf('⠿\n' + next[1] + '\n', from) : -1;
     return { ...shot, tree: shot.tree.map((t, j) => (j === i ? '(Weekly set targets)' : t)), text: from < 0 ? shot.text : shot.text.slice(0, from) + '(Weekly set targets)\n' + (to < 0 ? '' : shot.text.slice(to)) };
   };
+  /* Settings > General's accent chips grew on purpose in r65.2 (370: Violet, Cyan and Red after Pink), held by
+     tests/r65-2.js section 4 and tests/essentials.js; those three chips, their elements and their names, are taken
+     out of this build's page, and everything else in Settings, the four chips r56.2 has among it, is still held to
+     r56.2. */
+  const NEW_ACCENTS = /<button [^>]*data-v="(violet|cyan|red)"[^>]*><i [^>]*><\/i>"(Violet|Cyan|Red)"<\/button>/g;
+  const heldOutAccents = shot => ({ ...shot, tree: shot.tree.map(t => t.replace(NEW_ACCENTS, '')), text: shot.text.replace(/\nPink\nViolet\nCyan\nRed\n/, '\nPink\n') });
   const ENVS = [null, 'preview'];
   for (const [name, seed] of SEEDS) for (const tab of ['settings', 'history']) for (const env of ENVS) {
     if (env && name !== 'demo data, lb') continue;
-    const a = heldOut(await shot(OLD, seed, tab, env)), b = heldOut(await shot(FILE, seed, tab, env));
+    const a = heldOut(await shot(OLD, seed, tab, env)), b = heldOutAccents(heldOut(await shot(FILE, seed, tab, env)));
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     const firstDiff = d && { at: d.at, r56_2: d.before, now: d.now };
     ok(!firstDiff, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same elements, attributes and field values as r56.2`, firstDiff);
