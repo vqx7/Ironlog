@@ -37,18 +37,22 @@ const SCREENS = {
 async function screen(file, name, mode, browser) {
   // mode: 'dark' (chosen in Settings), 'system-dark' (the phone's setting) or 'light'.
   const P = await H.open(file, { browser, clock: '2026-10-24T10:00:00', dark: mode === 'system-dark' });
-  await P.page.evaluate(async ([run, mode]) => {
+  // The theme is saved and the page opened again in it, as a lifter sees it. Switched on a page already drawn,
+  // WebKit kept one section's top line in the theme it was drawn in (GitHub runs 41169400974 and 41171695059,
+  // r65's page as well: tracker NEW-21), which is no part of this release's look.
+  await P.page.evaluate(theme => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.theme = theme; L.saveNow(); },
+    mode === 'dark' ? 'dark' : mode === 'light' ? 'light' : 'system');
+  await P.page.reload();
+  await P.page.waitForFunction(() => window.__libs && window.__libs.chart && window.__libs.sortable && window.__ironlog);
+  await P.page.evaluate(async ([run]) => {
     const L = window.__ironlog;
     const until = f => new Promise(r => { const t = setInterval(() => { if (f()) { clearInterval(t); r(); } }, 20); });
-    // No transitions: the theme is set after the page has drawn in its default, and a colour still easing from
-    // the dark palette (WebKit, GitHub run 41169400974) is not what either build draws once it settles.
+    // No transitions, so each build is read as it settles.
     const still = document.createElement('style'); still.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}'; document.head.appendChild(still);
-    L.state.settings.onboarded = true;
-    L.state.settings.theme = mode === 'dark' ? 'dark' : mode === 'light' ? 'light' : 'system';
     L.makeDemo(); L.invalidate(); L.render();
     await (new Function('L', 'until', 'return (async()=>{' + run + '})()'))(L, until);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-  }, [SCREENS[name], mode]);
+  }, [SCREENS[name]]);
   return P;
 }
 const css = (P, sel, props) => P.page.evaluate(([sel, props]) => {
