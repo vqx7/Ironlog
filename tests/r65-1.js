@@ -10,7 +10,9 @@
 //      a fine brushed grain over a dark metal gradient and a thin rim, with no
 //      accent glow; its Start button and week ring lose their glow;
 //   3  the session's exercise cards and the Stats numbers carry a steel line
-//      along their top in dark (their border's colour, so nothing moves);
+//      along their top in dark (their border's colour, so nothing moves), and
+//      a full-width button, which shares the card's class, has none (NEW-19,
+//      found by the review: it fails on 6d85719, r65.1's first commit);
 //   4  a guard: the light theme is the build before's, element by element
 //      (every computed style and box on Today, a session and Stats), as is
 //      the dark theme's layout (every box), so only paint changed.
@@ -98,6 +100,21 @@ const dump = P => P.page.evaluate(() => [...document.body.querySelectorAll('*')]
       const blk = await css(S, '.block', ['border-top-width', 'border-top-color']);
       ok(blk && blk['border-top-width'] === '1px' && blk['border-top-color'] === 'rgb(138, 145, 153)', '3. a session exercise card has a steel line along its top (its border, so nothing moves)', blk);
       await S.ctx.close();
+      // NEW-19 (found by r65.1's review): a full-width button (.btn.block) outside a card is no card, so it has no steel line,
+      // as on r65: History's "Show N more", and the first-run account page's "I have an account" (markup as today.ts writes it).
+      const H2 = await screen(FILE, 'today', 'dark', browser);
+      const more = await H2.page.evaluate(async () => {
+        const L = window.__ironlog; L.ui.tab = 'history'; L.render();
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const b = document.querySelector('[data-act="histMore"]');
+        const ob = document.createElement('div'); ob.className = 'ob'; ob.dataset.step = 'acct';
+        ob.innerHTML = '<div class="ob-card"><button class="btn primary block">Create account</button><button class="btn block">I have an account</button></div>';
+        document.body.appendChild(ob);
+        const top = el => el ? getComputedStyle(el).borderTopColor : null;
+        const r = { more: top(b), acct: top(ob.querySelector('.btn:not(.primary)')) }; ob.remove(); return r;
+      });
+      ok(more.more && more.more !== 'rgb(138, 145, 153)' && more.acct !== 'rgb(138, 145, 153)', "3. a full-width button is no card: no steel line on History's Show more or the first-run account page's buttons (NEW-19)", more);
+      await H2.ctx.close();
       const T = await screen(FILE, 'stats', 'dark', browser);
       const kp = await css(T, '.kpis', ['border-top-width', 'border-top-color']);
       ok(kp && kp['border-top-width'] === '1px' && kp['border-top-color'] === 'rgb(138, 145, 153)', '3. the Stats numbers have the same steel line', kp);

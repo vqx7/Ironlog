@@ -105,7 +105,7 @@
   --hero:#0b0b0d; --on-hero:#f3f4f6; --hero-2:#18181b;
   --hero-bg:linear-gradient(90deg,#3e434a,#d9dde1 24%,#737a82 48%,#e9ecee 72%,#4d5259) top/100% 2px no-repeat,repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 1px,transparent 1px 3px),linear-gradient(180deg,#1b1c1f,#0b0b0d);
   --hero-ring:var(--volt); --hero-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 0 1px #2a2c30;
-    --go-glow:inset 0 1px 0 rgba(255,255,255,.3); --ring-glow:none; --card-top:#8a9199;
+  --go-glow:inset 0 1px 0 rgba(255,255,255,.3); --ring-glow:none; --card-top:#8a9199;
 
   --shadow:none;
   color-scheme:dark;
@@ -546,7 +546,9 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .lib-panel .it{border-color:var(--line)}
 
 /* ---------- logger ---------- */
-.block{background:var(--surface);border:1px solid var(--card-b);border-top-color:var(--card-top);border-radius:var(--r-lg);padding:16px;margin:12px 0;box-shadow:var(--shadow)}
+.block{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);padding:16px;margin:12px 0;box-shadow:var(--shadow)}
+/* A card's top line (r65.1); a full-width button shares the class (.btn.block) and is no card (NEW-19). */
+.block:not(.btn){border-top-color:var(--card-top)}
 .block.ss{box-shadow:inset 3px 0 0 var(--blue)}
 .block.ss+.block.ss{margin-top:-4px}
 .it.ss .imain b::after{content:" · SS";color:var(--blue);font-size:12px}
