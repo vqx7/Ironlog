@@ -16,8 +16,11 @@
 //      now. Leave out gold"): Settings > General offers Ember, Blue, Volt, Pink,
 //      Violet, Cyan and Red; each new one colours the app in light and dark and
 //      is kept through a save and a reload; with Cyan, "above target" turns
-//      violet (as with Blue), and with Red, missed sets and warnings turn
-//      magenta (V's pick), so a done set never reads as a status; the other
+//      violet (as with Blue), and with Red, the red status colour (errors,
+//      warnings, Delete and Discard, a planned day missed, a falling trend)
+//      turns magenta (V's pick), so the accent never reads as a status; a set
+//      ticked with 0 reps (missed) takes the accent's tick in every accent,
+//      as before, its word "missed" saying so; the other
 //      status colours stay as they are; guards: the four accents there were
 //      keep their colours, and an accent no build knows reads as Ember.
 const H = require('./h');
