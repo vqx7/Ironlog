@@ -6,7 +6,9 @@
 //      root, so every tap is a tap); pinch to zoom stays, an accessibility aid
 //      iOS keeps whatever a page says;
 //   2  a long press on the app's own text (a button, a tab, a row's title) does
-//      not select it or open the phone's Copy and Look Up menu, and a tap
+//      not select it or open the phone's Copy and Look Up menu (read as the
+//      selection each is held to, by the standard's rule for auto, so WebKit and
+//      Chromium agree, and by a word double-clicked selecting nothing), and a tap
 //      leaves no grey flash; the buttons' own press feedback (they shrink a
 //      little) is what shows a tap;
 //   3  a guard: what the lifter types or may copy stays selectable: every
@@ -43,7 +45,21 @@ const run = n => !ONLY || ONLY.includes(n);
       const el = document.querySelector(sel); if (!el) return null;
       const cs = getComputedStyle(el); return Object.fromEntries(props.map(p => [p, cs.getPropertyValue(p)]));
     }, [sel, props]);
-    const sel = s => ev(s => { const el = document.querySelector(s); if (!el) return null; const cs = getComputedStyle(el); return cs.userSelect || cs.webkitUserSelect || cs.getPropertyValue('-webkit-user-select'); }, s);
+    /* The selection an element is held to. user-select is not inherited by the standard: a child reads auto, and auto
+       is used as its parent's none (WebKit reports it so; Chromium reports the none itself). So the value read is the
+       first one up the page that is not auto, as the standard uses it, the same in both engines. */
+    const sel = s => ev(s => {
+      let el = document.querySelector(s); if (!el) return null;
+      for (; el; el = el.parentElement) { const cs = getComputedStyle(el); const v = cs.userSelect || cs.webkitUserSelect || cs.getPropertyValue('-webkit-user-select'); if (v && v !== 'auto') return v; }
+      return 'auto';
+    }, s);
+    // What a thumb gets: a word double-clicked on the element (the desktop stand-in for a long press) is selected or not.
+    const picked = async s => {
+      const box = await P.page.evaluate(s => { const el = document.querySelector(s); if (!el) return null; el.scrollIntoView({ block: 'center' }); const r = document.createRange(); r.selectNodeContents(el); const b = [...r.getClientRects()].find(x => x.width > 8); window.getSelection().removeAllRanges(); return b ? { x: b.left + Math.min(12, b.width / 2), y: b.top + b.height / 2 } : null; }, s);
+      if (!box) return null;
+      await P.page.mouse.dblclick(box.x, box.y); await P.page.waitForTimeout(80);
+      return P.page.evaluate(() => { const t = window.getSelection().toString(); window.getSelection().removeAllRanges(); return t; });
+    };
 
     if (run(1)) {
       const root = await style('html', ['touch-action']);
@@ -57,6 +73,11 @@ const run = n => !ONLY || ONLY.includes(n);
         const u = await sel(s);
         ok(u === 'none', `2. a long press on ${what} selects nothing`, { sel: s, userSelect: u });
       }
+      // A double-click on an exercise's name and on the workout's title selects no word.
+      for (const [s, what] of [['.block h3', "an exercise's name"], ['#view .ph h2', "the workout's title"]]) {
+        const t = await picked(s);
+        ok(t === '', `2. a double-click on ${what} selects no word`, { sel: s, selected: t });
+      }
       const callout = await ev(() => CSS.supports('-webkit-touch-callout', 'none') ? getComputedStyle(document.querySelector('.btn')).getPropertyValue('-webkit-touch-callout') : 'unsupported');
       ok(callout === 'none' || callout === 'unsupported', '2. a long press opens no Copy and Look Up menu (where the engine has one)', callout);
       const flash = await style('.btn', ['-webkit-tap-highlight-color']);
@@ -66,8 +87,13 @@ const run = n => !ONLY || ONLY.includes(n);
     }
     if (run(3)) {
       const field = await sel('.sg input[data-f="w"]');
+      // auto all the way up is text (selectable); none is what a field must never be held to.
       ok(field === 'text' || field === 'auto', '3. guard: a set field stays selectable', field);
-      const ta = await ev(() => { const t = document.createElement('textarea'); t.readOnly = true; t.value = '{"a":1}'; document.body.appendChild(t); const cs = getComputedStyle(t); const v = cs.userSelect || cs.webkitUserSelect; t.remove(); return v; });
+      const ta = await ev(() => {
+        const t = document.createElement('textarea'); t.readOnly = true; t.value = '{"a":1}'; document.body.appendChild(t);
+        let v = 'auto'; for (let el = t; el; el = el.parentElement) { const cs = getComputedStyle(el); const x = cs.userSelect || cs.webkitUserSelect; if (x && x !== 'auto') { v = x; break; } }
+        t.remove(); return v;
+      });
       ok(ta === 'text' || ta === 'auto', '3. guard: a text box (a backup shown to copy) stays selectable', ta);
       const typed = await ev(async () => {
         const f = document.querySelector('.sg input[data-f="w"]'); f.focus(); f.value = '182.5'; f.dispatchEvent(new Event('input', { bubbles: true })); f.blur();
