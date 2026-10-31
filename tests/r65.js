@@ -95,7 +95,7 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
     const walk = d => fs.readdirSync(path.join(ROOT, d), { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
     // One source for the dark page colour: config's DARK_BG, which every place that needs it reads (the style sheet's
     // dark --bg through {{DARK_BG}}, page.ts and build.js through config), and no other place types the value.
-    // Read structurally since r65.1, whose true black (#000000) is also map.ts's 'no glow' for three.js, another meaning.
+    // Read structurally: a page colour can equal another value with another meaning (map.ts's 'no glow' for three.js is #000000).
     const dark = (read('src/app/config.ts').match(/export const DARK_BG = '(#[0-9a-f]{3,6})'/i) || [])[1] || '';
     const css = read('src/02-style.css'), pageTs = read('src/app/page.ts'), build = read('scripts/build.js');
     const bgLines = css.match(/--bg:[^;]*;/g) || [];

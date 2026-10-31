@@ -13,7 +13,7 @@
 //       undone): the set is there, every row keeps its id, and the log kept
 //       aside is still kept.
 // `node tests/wayback.js <older page> ...` runs it against other builds
-// (default: baselines/r65.html, the build a revert of r65.1 republishes,
+// (default: baselines/r65.html, the build a revert of r65.2 republishes,
 // then r64, r63, r62, r61, r60, r59, r58, r57, r56.2, r56.1, r56 and r55; r55.1 and r56 went out inside r56.1's
 // merge and were never published on their own).
 const { open, engine } = require('./h');

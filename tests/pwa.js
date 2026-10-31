@@ -37,7 +37,7 @@ const server = http.createServer((req, res) => {
     return { j, icons, apple: !!document.querySelector('link[rel=apple-touch-icon]'), theme: document.querySelector('meta[name=theme-color]').content }; });
   ok(man.j.display === 'standalone' && man.j.start_url === './' && man.j.scope === './' && man.j.name === 'Ironlog', 'manifest: standalone, relative start and scope');
   ok(man.icons.length === 3 && man.icons.every(i => i.ok && i.sizes === `${i.w}x${i.h}`) && man.icons.some(i => i.purpose === 'maskable') && man.icons.some(i => i.w >= 512), 'manifest icons exist and match their sizes, with a maskable one');
-  // The dark page colour is config's DARK_BG (r65.1 made it true black); the bar may give it as hex or rgb.
+  // The dark page colour is config's DARK_BG, read from config rather than typed here; the bar may give it as hex or rgb.
   const DARK = require('fs').readFileSync(require('path').join(__dirname, '..', 'src/app/config.ts'), 'utf8').match(/export const DARK_BG = '#([0-9a-f]{6})'/i)[1];
   const darkRgb = `rgb(${[0, 2, 4].map(i => parseInt(DARK.slice(i, i + 2), 16)).join(', ')})`;
   ok(man.apple && (man.theme.toLowerCase() === '#' + DARK.toLowerCase() || man.theme === darkRgb), 'iOS home-screen icon and theme colour set (' + man.theme + ')');
