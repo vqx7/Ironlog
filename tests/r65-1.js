@@ -37,6 +37,9 @@ async function screen(file, name, mode, browser) {
   await P.page.evaluate(async ([run, mode]) => {
     const L = window.__ironlog;
     const until = f => new Promise(r => { const t = setInterval(() => { if (f()) { clearInterval(t); r(); } }, 20); });
+    // No transitions: the theme is set after the page has drawn in its default, and a colour still easing from
+    // the dark palette (WebKit, GitHub run 41169400974) is not what either build draws once it settles.
+    const still = document.createElement('style'); still.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}'; document.head.appendChild(still);
     L.state.settings.onboarded = true;
     L.state.settings.theme = mode === 'dark' ? 'dark' : mode === 'light' ? 'light' : 'system';
     L.makeDemo(); L.invalidate(); L.render();
