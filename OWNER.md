@@ -7,7 +7,7 @@ Last updated: r65 live (2026-10-30; checked by Claude on gh-pages: "Publish c83b
 ## Now, in this order
 
 1. A28 (r64 and r65): done, merged by you on 2026-10-30 and live (see Done).
-1a. A29 (r65.1, the look you picked: Today's card in dark steel, dark mode only; true black, the silver card and the steel lines taken back out): pull request "r65.1" once Claude says its checks passed. Try the preview in dark mode on your phone (Checks on your phone, r65.1), then merge it on GitHub's website.
+1a. A29 (r65.1, the look): closed by you unmerged on 2026-10-31 ("lets not push anything into prod"); nothing to do. The live app stays r65.
 2. Problem reports: done (2026-10-30, you). B4's r64 code is deployed, B1a has been run, and a test report from the preview became an issue in `ironlog-feedback`, which confirms B5. See Done.
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
 4. D6: delete the old branches and stop them piling up (2 minutes, below).
