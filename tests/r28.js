@@ -286,7 +286,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     const lum = c => { const v = c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number).map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
     const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
     const bad = [];
-    for (const theme of ['light', 'dark']) for (const acc of ['blue', 'volt', 'ember', 'pink']) {
+    for (const theme of ['light', 'dark']) for (const acc of ['blue', 'volt', 'ember', 'pink', 'violet', 'cyan', 'red']) {
       const c = await ev(([t, a]) => { const L = window.__ironlog; L.state.settings.theme = t; L.state.settings.accent = a; L.state.settings.hidden = ['today:tiles']; L.ui.tab = 'today'; L.render(); const m = document.getElementById('saveState'); const link = document.querySelector('#moreLine .ml-c'); return { icon: getComputedStyle(m).color, iconBg: getComputedStyle(m).backgroundColor, link: getComputedStyle(link).color, bg: getComputedStyle(document.body).backgroundColor }; }, [theme, acc]);
       const ri = ratio(c.icon, c.iconBg), rl = ratio(c.link, c.bg);
       if (ri < 3 || rl < 4.5) bad.push(`${theme}/${acc}: icon ${ri.toFixed(2)} link ${rl.toFixed(2)}`);

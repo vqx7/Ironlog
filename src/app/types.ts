@@ -267,7 +267,7 @@ export interface Settings extends EngineSettings {
   timerSound: boolean;
   timerCompact: boolean;
   autoDone: boolean;
-  accent?: 'blue' | 'volt' | 'ember' | 'pink' | undefined;
+  accent?: 'blue' | 'volt' | 'ember' | 'pink' | 'violet' | 'cyan' | 'red' | undefined;
   rirAsk?: true | undefined;
   autoAdj?: false | undefined;
   bwEvery?: 0 | 7 | 30 | undefined;

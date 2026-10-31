@@ -966,7 +966,10 @@ type Tap = { dataset: DOMStringMap };
 export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   accent(t) {
     const v = t.dataset.v;
-    const a = v === 'blue' || v === 'volt' || v === 'ember' || v === 'pink' ? v : null;
+    const a =
+      v === 'blue' || v === 'volt' || v === 'ember' || v === 'pink' || v === 'violet' || v === 'cyan' || v === 'red'
+        ? v
+        : null;
     if (!a || !ACCENTS.some(([k]) => k === a)) return;
     act(() => {
       if (a === ACCENT0) delete state.settings.accent;

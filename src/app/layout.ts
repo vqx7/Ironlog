@@ -101,12 +101,15 @@ export const FORM_SHEETS: ReadonlySet<string> = new Set([
 ]);
 
 /* The accents Settings > General offers, as a key and a label.
-   Ember is the default since r37 (V: "default to the orange ember one for now"): no accent stored reads as Ember. */
+   Violet, Cyan and Red since r65.2 (V). Ember is the default since r37 (V: "default to the orange ember one for now"): no accent stored reads as Ember. */
 export const ACCENTS: readonly (readonly [string, string])[] = [
   ['ember', 'Ember'],
   ['blue', 'Blue'],
   ['volt', 'Volt'],
-  ['pink', 'Pink']
+  ['pink', 'Pink'],
+  ['violet', 'Violet'],
+  ['cyan', 'Cyan'],
+  ['red', 'Red']
 ];
 
 /** The default accent, read when none is stored; choosing it again removes the stored one. */

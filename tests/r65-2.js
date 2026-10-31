@@ -11,7 +11,15 @@
 //      little) is what shows a tap;
 //   3  a guard: what the lifter types or may copy stays selectable: every
 //      field, the text boxes (a backup shown to copy is one), and a load typed
-//      into a set is still typed and kept.
+//      into a set is still typed and kept;
+//   4  three more accent colours (V, 2026-10-31: "Only add in the new colors
+//      now. Leave out gold"): Settings > General offers Ember, Blue, Volt, Pink,
+//      Violet, Cyan and Red; each new one colours the app in light and dark and
+//      is kept through a save and a reload; with Cyan, "above target" turns
+//      violet (as with Blue), and with Red, missed sets and warnings turn
+//      magenta (V's pick), so a done set never reads as a status; the other
+//      status colours stay as they are; guards: the four accents there were
+//      keep their colours, and an accent no build knows reads as Ember.
 const H = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 600) : ''); } else console.log('ok  ', m); };
 const FILE = process.argv[2] || 'index.html';
@@ -66,6 +74,51 @@ const run = n => !ONLY || ONLY.includes(n);
         return { field: document.querySelector('.sg input[data-f="w"]').value, stored: w };
       });
       ok(typed.field === '182.5' && typed.stored != null, '3. guard: a load typed into a set is still typed and kept', typed);
+    }
+    if (run(4)) {
+      const offered = await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); return [...document.querySelectorAll('[data-act="accent"]')].map(b => b.dataset.v).join(); });
+      ok(offered === 'ember,blue,volt,pink,violet,cyan,red', '4. Settings offers Ember, Blue, Volt, Pink, Violet, Cyan and Red', offered);
+      const tok = (acc, th) => ev(([acc, th]) => {
+        const d = document.documentElement; d.dataset.accent = acc; d.dataset.theme = th;
+        const cs = getComputedStyle(d); const g = n => cs.getPropertyValue(n).trim().toLowerCase();
+        return { volt: g('--volt'), on: g('--on-volt'), line: g('--volt-line'), soft: g('--volt-soft'), red: g('--red'), redBg: g('--red-bg'), blue: g('--blue'), blueBg: g('--blue-bg'), green: g('--green'), yellow: g('--yellow') };
+      }, [acc, th]);
+      const WANT = {
+        violet: { light: { volt: '#7c4dff', on: '#ffffff', line: '#5b2fe0', soft: '#ece6ff' }, dark: { volt: '#7c4dff', on: '#ffffff', line: '#a68bff', soft: '#1d1340' } },
+        cyan: { light: { volt: '#00c8ff', on: '#0b0c0e', line: '#0071a1', soft: '#dcf6ff', blue: '#6d28d9', blueBg: '#efe9ff' }, dark: { volt: '#00c8ff', on: '#0b0c0e', line: '#4fdcff', soft: '#062a36', blue: '#b69cff', blueBg: '#221a3d' } },
+        red: { light: { volt: '#ff2d46', on: '#0b0c0e', line: '#c4001f', soft: '#ffe1e5', red: '#a3168f', redBg: '#fbe3f6' }, dark: { volt: '#ff2d46', on: '#0b0c0e', line: '#ff5c6f', soft: '#3a0a12', red: '#f472d0', redBg: '#3a1233' } }
+      };
+      const base = { light: await tok('ember', 'light'), dark: await tok('ember', 'dark') };
+      for (const acc of Object.keys(WANT)) for (const th of ['light', 'dark']) {
+        const got = await tok(acc, th); const want = { ...WANT[acc][th] };
+        // Statuses not named for this accent stay as Ember has them.
+        for (const k of ['red', 'redBg', 'blue', 'blueBg', 'green', 'yellow']) if (!(k in want)) want[k] = base[th][k];
+        const bad = Object.keys(want).filter(k => got[k] !== want[k]);
+        ok(!bad.length, `4. ${acc} in ${th}: its colours, and the status colours as they should be`, bad.map(k => [k, got[k], want[k]]));
+      }
+      const old = { blue: ['#2a63f5', '#6d28d9'], volt: ['#d4ff3f', null], ember: ['#ff6a2b', null], pink: ['#ec4899', null] };
+      for (const [acc, [v, bl]] of Object.entries(old)) {
+        const g = await tok(acc, 'light');
+        ok(g.volt === v && (bl === null ? g.blue === base.light.blue : g.blue === bl) && g.red === base.light.red, `4. guard: ${acc} keeps its colours`, g);
+      }
+      for (const acc of ['violet', 'cyan', 'red']) {
+        const kept = await ev(async acc => {
+          const L = window.__ironlog; document.documentElement.removeAttribute('data-theme');
+          L.ui.tab = 'settings'; L.render();
+          const b = document.querySelector(`[data-act="accent"][data-v="${acc}"]`); if (!b) return { missing: acc };
+          b.click();
+          await new Promise(r => setTimeout(r, 150));
+          const on = document.querySelector(`[data-act="accent"][data-v="${acc}"]`);
+          const n = L.normalize(JSON.parse(JSON.stringify(L.state)));
+          return { set: L.state.settings.accent, page: document.documentElement.dataset.accent, pressed: on && on.getAttribute('aria-pressed'), normalized: n.settings.accent };
+        }, acc);
+        ok(kept.set === acc && kept.page === acc && kept.pressed === 'true' && kept.normalized === acc, `4. ${acc} is chosen, shown and kept through normalize`, kept);
+      }
+      await P.page.waitForTimeout(800); await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__ironlog.state);
+      const after = await ev(() => ({ set: window.__ironlog.state.settings.accent, page: document.documentElement.dataset.accent }));
+      ok(after.set === 'red' && after.page === 'red', '4. the last one chosen (Red) is still there after a reload', after);
+      const unknown = await ev(() => { const L = window.__ironlog; const s = JSON.parse(JSON.stringify(L.state)); s.settings.accent = 'gold'; return L.normalize(s).settings.accent; });
+      ok(unknown === undefined, '4. guard: an accent no build knows reads as Ember (nothing stored)', unknown);
     }
   } finally { await H.settle(P.ctx.close(), 'context close'); await H.settle(P.browser.close(), 'browser close'); }
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
