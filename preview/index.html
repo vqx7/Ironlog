@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-reQ9RF7D4AAVuHD5BJROiWFRDjokd1Ltl/+t1YqbsGY=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-5QWrzlOGOMjJBF5I2KxToEVTSr6itKCPRv3p3agOAKg=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="app-build" content="2026.10.28-r65">
+<meta name="app-build" content="2026.10.30-r65.1">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -62,10 +62,15 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
   /* The Today card follows the theme (item 57): light on a light page. The
      rest-timer dock stays inked in both themes, so it reads as a bar laid
      over the page rather than part of it. */
-  --hero:#ffffff; --on-hero:#0d0f12; --hero-2:#f1f3f5;
+  --hero:#f4f5f7; --on-hero:#0d0f12; --hero-2:#f1f3f5;
   --shadow:0 1px 2px rgba(13,15,18,.05),0 10px 30px rgba(13,15,18,.06);
-  --hero-bg:radial-gradient(150px 150px at 90% 12%,color-mix(in srgb,var(--volt) 14%,transparent),transparent 70%),linear-gradient(165deg,#ffffff,#f6f7f9 72%);
-  --hero-ring:var(--volt-line); --hero-shadow:0 0 0 1px var(--card-b),0 1px 2px rgba(13,15,18,.05),0 12px 32px rgba(13,15,18,.08);
+  --hero-bg:linear-gradient(90deg,#9aa1a9,#ffffff 24%,#a9b0b7 48%,#ffffff 72%,#a3aab1) top/100% 2px no-repeat,repeating-linear-gradient(0deg,rgba(13,15,18,.022) 0 1px,transparent 1px 3px),linear-gradient(180deg,#fbfbfc,#e2e5e9);
+  --hero-ring:var(--volt-line); --hero-shadow:inset 0 1px 0 #ffffff,0 0 0 1px #cdd2d8,0 1px 2px rgba(13,15,18,.06),0 10px 24px rgba(13,15,18,.07);
+  /* Today's card is brushed steel (r65.1, V's picks with the look picker, PENDING 364): silver here, dark
+     steel in dark, with a steel edge along its top and no glow on it, its Start button or the week ring; the
+     session's and Stats' cards get a steel line along their top (their border's colour, so nothing moves). */
+  --go-glow:0 0 0 1px rgba(0,0,0,.12),inset 0 1px 0 rgba(255,255,255,.3);
+  --ring-glow:none; --card-top:#b3b9c0;
   /* The rest timer (r29, V: it blended into the screen): a deep tint of the
      accent, the same in both themes, with white text and a bar along its top
      that empties as the rest runs down. Done is the full accent. */
@@ -91,9 +96,10 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
     --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
     --on-accent:#0a0b0d; --on-ink:#0a0b0d;
     --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
-    --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
-    --hero-bg:radial-gradient(150px 150px at 90% 10%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
-    --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+    --hero:#0b0b0d; --on-hero:#f3f4f6; --hero-2:#1c1f23;
+    --hero-bg:linear-gradient(90deg,#3e434a,#d9dde1 24%,#737a82 48%,#e9ecee 72%,#4d5259) top/100% 2px no-repeat,repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 1px,transparent 1px 3px),linear-gradient(180deg,#1b1c1f,#0b0b0d);
+    --hero-ring:var(--volt); --hero-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 0 1px #2a2c30;
+    --go-glow:inset 0 1px 0 rgba(255,255,255,.3); --ring-glow:none; --card-top:#8a9199;
 
     --shadow:none;
     color-scheme:dark;
@@ -108,9 +114,10 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
   --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
   --on-accent:#0a0b0d; --on-ink:#0a0b0d;
   --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
-  --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
-  --hero-bg:radial-gradient(150px 150px at 90% 10%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
-  --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+  --hero:#0b0b0d; --on-hero:#f3f4f6; --hero-2:#1c1f23;
+  --hero-bg:linear-gradient(90deg,#3e434a,#d9dde1 24%,#737a82 48%,#e9ecee 72%,#4d5259) top/100% 2px no-repeat,repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 1px,transparent 1px 3px),linear-gradient(180deg,#1b1c1f,#0b0b0d);
+  --hero-ring:var(--volt); --hero-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 0 1px #2a2c30;
+  --go-glow:inset 0 1px 0 rgba(255,255,255,.3); --ring-glow:none; --card-top:#8a9199;
 
   --shadow:none;
   color-scheme:dark;
@@ -552,6 +559,8 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 
 /* ---------- logger ---------- */
 .block{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);padding:16px;margin:12px 0;box-shadow:var(--shadow)}
+/* A card's top line (r65.1); a full-width button shares the class (.btn.block) and is no card (NEW-19). */
+.block:not(.btn){border-top-color:var(--card-top)}
 .block.ss{box-shadow:inset 3px 0 0 var(--blue)}
 .block.ss+.block.ss{margin-top:-4px}
 .it.ss .imain b::after{content:" · SS";color:var(--blue);font-size:12px}
@@ -749,7 +758,7 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .whtr{margin:8px 0 0}
 
 /* ---------- stats ---------- */
-.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--card-b);border-radius:var(--r-lg);overflow:hidden}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--card-b);border-top-color:var(--card-top);border-radius:var(--r-lg);overflow:hidden}
 @media(min-width:560px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:559px){.kpis>.kpi:last-child:nth-child(odd){grid-column:1/-1}}
 .kpi{background:var(--surface);border:0;border-radius:0;padding:14px 16px 15px}
@@ -843,7 +852,7 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .eyebrow{font:600 12px var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0}
 .hero-note{background:color-mix(in srgb,var(--on-hero) 9%,transparent);border-radius:var(--r-md);padding:10px 12px;margin:10px 0 0}
 .hero .btn{background:color-mix(in srgb,var(--on-hero) 9%,transparent);color:var(--on-hero);border-color:transparent}
-.hero .btn.primary{background:var(--volt);color:var(--on-volt);border-color:transparent;box-shadow:0 0 0 1px rgba(0,0,0,.2),0 6px 20px color-mix(in srgb,var(--volt) 25%,transparent)}
+.hero .btn.primary{background:var(--volt);color:var(--on-volt);border-color:transparent;box-shadow:var(--go-glow)}
 .hero .btn.noted{box-shadow:inset 0 0 0 1px var(--on-hero)}
 .hero .tag.blue{background:color-mix(in srgb,var(--on-hero) 16%,transparent);color:var(--on-hero)}
 .btn.big{font:800 23px var(--display);letter-spacing:.07em;text-transform:uppercase;min-height:58px;margin-top:16px;border-radius:999px}
@@ -900,7 +909,7 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .ring{flex:none;position:relative;width:78px;height:78px;margin:2px -2px 0 0;padding:0;border:0;background:none;color:var(--on-hero);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .ring svg{position:absolute;inset:0;width:100%;height:100%}
 .ring .rt{fill:none;stroke:color-mix(in srgb,var(--volt) 16%,transparent);stroke-width:7}
-.ring .rp{fill:none;stroke:var(--hero-ring);stroke-width:7;stroke-linecap:round;transition:stroke-dasharray .6s ease;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--volt) 45%,transparent))}
+.ring .rp{fill:none;stroke:var(--hero-ring);stroke-width:7;stroke-linecap:round;transition:stroke-dasharray .6s ease;filter:var(--ring-glow)}
 .ring .rv{position:relative;font:800 25px/1 var(--display);font-variant-numeric:tabular-nums}
 .ring .rv small{font-size:12px;margin-left:1px}
 .ring .rl{position:relative;font:600 9.5px/1.2 var(--font);letter-spacing:.1em;text-transform:uppercase;opacity:.7}
@@ -3026,8 +3035,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.19";
-  var APP_VERSION = "2026.10.28-r65";
+  var DISPLAY_VERSION = "2.20";
+  var APP_VERSION = "2026.10.30-r65.1";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
