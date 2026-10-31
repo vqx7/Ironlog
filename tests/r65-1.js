@@ -1,24 +1,20 @@
-// r65.1: the look V picked on 2026-10-30 with the look picker (PENDING 364),
-// "Main card: Dark steel" in the dark theme and, V the same day, the same card
-// in brushed silver in light; his other pick, "Background: True black", he took
-// back out the same day. Each case fails on r65 (`node tests/r65-1.js
-// baselines/r65.html`) unless it says it is a guard:
+// r65.1: the look V picked on 2026-10-30 with the look picker (PENDING 364):
+// "Main card: Dark steel" in the dark theme. His other picks and changes that day
+// are out: true black, a silver card for light, and a steel line on the session's
+// and Stats' cards (V, 2026-10-31: the line met the boxes around it, NEW-23).
+// Each case fails on r65 (`node tests/r65-1.js baselines/r65.html`) unless it
+// says it is a guard:
 //   1  a guard: the dark page keeps r65's dark grey (#08090b) and its cards
 //      and fields their greys, whether dark is chosen in Settings or comes
-//      from the phone, and config's DARK_BG (read from R65_1_ROOT) is that
-//      grey (V took true black back out on 2026-10-30);
-//   2  Today's card is brushed steel, dark in dark and silver in light: a
-//      steel edge along its top, a fine brushed grain over a metal gradient and
-//      a thin rim, with no accent glow; its Start button and week ring lose
-//      their glow;
-//   3  the session's exercise cards and the Stats numbers carry a steel line
-//      along their top in both themes (their border's colour, so nothing
-//      moves), and
-//      a full-width button, which shares the card's class, has none (NEW-19,
-//      found by the review: it fails on 6d85719, r65.1's first commit);
+//      from the phone, and config's DARK_BG (read from R65_1_ROOT) is that grey;
+//   2  Today's card in dark is brushed steel: a fine brushed grain over a dark
+//      metal gradient, a rim lit along its rounded top edge and a thin outline,
+//      with no accent glow; its Start button and week ring lose their glow;
+//   3  a guard: no card has a coloured top line, the session's exercise cards,
+//      the Stats numbers and the full-width buttons that share the card's
+//      class (NEW-19) keep r65's borders;
 //   4  a guard: every box on Today, a session and Stats, in both themes, is
-//      the build before's, and so is every drawn style but on Today's card
-//      and the steel lines.
+//      the build before's, and so is every drawn style but on dark's Today card.
 const path = require('path');
 const H = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 700) : ''); } else console.log('ok  ', m); };
@@ -63,9 +59,7 @@ const css = (P, sel, props) => P.page.evaluate(([sel, props]) => {
 const dump = P => P.page.evaluate(() => [...document.body.querySelectorAll('*')].filter(e => (!e.closest('svg') || e.tagName === 'svg') && !e.closest('#toast')).map(e => {
   const cs = getComputedStyle(e); const kv = [];
   // Custom properties are the style sheet's inputs, not what is drawn; r65.1 adds three, so only drawn properties are compared.
-  // A card's steel line is its top border's colour, meant to change; the rest of its style is held.
-  const line = e.matches('.block:not(.btn), .kpis');
-  for (let i = 0; i < cs.length; i++) if (!cs[i].startsWith('--') && !(line && /^border-(top|block-start)-color$/.test(cs[i]))) kv.push(cs[i] + ':' + cs.getPropertyValue(cs[i]));
+  for (let i = 0; i < cs.length; i++) if (!cs[i].startsWith('--')) kv.push(cs[i] + ':' + cs.getPropertyValue(cs[i]));
   const r = e.getBoundingClientRect();
   return [e.tagName + (e.id ? '#' + e.id : '') + (typeof e.className === 'string' && e.className ? '.' + e.className.trim().split(/\s+/).join('.') : ''), [r.x, r.y, r.width, r.height].map(v => Math.round(v * 10)).join(','), kv.sort().join(';'), !!e.closest('.hero')];
 }));
@@ -93,31 +87,30 @@ const dump = P => P.page.evaluate(() => [...document.body.querySelectorAll('*')]
       ok(m && m[1].toLowerCase() === '#08090b', "1. guard: the phone's bar and the installed app's splash keep the page's dark grey (DARK_BG)", m && m[1]);
     }
     if (run(2)) {
-      for (const mode of ['dark', 'system-dark', 'light']) {
+      for (const mode of ['dark', 'system-dark']) {
         const P = await screen(FILE, 'today', mode, browser);
         const hero = await css(P, '.hero', ['background-image', 'box-shadow']);
         const go = await css(P, '.hero .btn.primary', ['box-shadow']);
         const rp = await css(P, '.ring .rp', ['filter']);
         const bi = hero ? hero['background-image'] : '';
         ok(/repeating-linear-gradient/.test(bi) && !/radial-gradient/.test(bi), `2. ${mode}: Today's card is brushed steel, with no accent glow`, hero);
-        const edge = mode === 'light' ? /rgb\(154, 161, 169\).*rgb\(255, 255, 255\)/ : /rgb\(62, 67, 74\).*rgb\(217, 221, 225\)/;
-        const rim = mode === 'light' ? /rgb\(205, 210, 216\)/ : /rgb\(42, 44, 48\)/;
-        ok(edge.test(bi), `2. ${mode}: a steel edge runs along its top`, bi.slice(0, 300));
-        ok(hero && /inset/.test(hero['box-shadow']) && rim.test(hero['box-shadow']), `2. ${mode}: a thin rim and a highlight on its top edge`, hero && hero['box-shadow']);
+        // The rim is lit by an inset highlight, which follows the card's rounded corners (a straight band would be cut off by them).
+        ok(!/linear-gradient\(90deg/.test(bi), `2. ${mode}: no straight band across its top, which its rounded corners would cut off`, bi.slice(0, 300));
+        ok(hero && /rgba\(255, 255, 255, 0\.16\) 0px 1px 0px 0px inset/.test(hero['box-shadow']) && /rgb\(36, 38, 42\)/.test(hero['box-shadow']), `2. ${mode}: a rim lit along its rounded top edge, and a thin outline`, hero && hero['box-shadow']);
         ok(go && /inset/.test(go['box-shadow']) && !/20px/.test(go['box-shadow']), `2. ${mode}: the Start button has no glow`, go);
         ok(rp && rp.filter === 'none', `2. ${mode}: the week ring has no glow`, rp);
         await P.ctx.close();
       }
     }
     if (run(3)) {
-      for (const [mode, steel] of [['dark', 'rgb(138, 145, 153)'], ['light', 'rgb(179, 185, 192)']]) {
+      for (const [mode, card] of [['dark', 'rgba(0, 0, 0, 0)'], ['light', 'rgb(227, 230, 234)']]) {
         const S = await screen(FILE, 'session', mode, browser);
-        const blk = await css(S, '.block', ['border-top-width', 'border-top-color']);
-        ok(blk && blk['border-top-width'] === '1px' && blk['border-top-color'] === steel, `3. ${mode}: a session exercise card has a steel line along its top (its border, so nothing moves)`, blk);
+        const blk = await css(S, '.block', ['border-top-color']);
+        ok(blk && blk['border-top-color'] === card, `3. guard: ${mode}: a session exercise card keeps r65's top border`, blk);
         await S.ctx.close();
         const T = await screen(FILE, 'stats', mode, browser);
-        const kp = await css(T, '.kpis', ['border-top-width', 'border-top-color']);
-        ok(kp && kp['border-top-width'] === '1px' && kp['border-top-color'] === steel, `3. ${mode}: the Stats numbers have the same steel line`, kp);
+        const kp = await css(T, '.kpis', ['border-top-color']);
+        ok(kp && kp['border-top-color'] === card, `3. guard: ${mode}: the Stats numbers keep r65's top border`, kp);
         await T.ctx.close();
       }
       // NEW-19 (found by r65.1's review): a full-width button (.btn.block) outside a card is no card, so it has no steel line,
@@ -133,7 +126,7 @@ const dump = P => P.page.evaluate(() => [...document.body.querySelectorAll('*')]
         const top = el => el ? getComputedStyle(el).borderTopColor : null;
         const r = { more: top(b), acct: top(ob.querySelector('.btn:not(.primary)')) }; ob.remove(); return r;
       });
-      ok(more.more && !['rgb(138, 145, 153)', 'rgb(179, 185, 192)'].includes(more.more) && !['rgb(138, 145, 153)', 'rgb(179, 185, 192)'].includes(more.acct), "3. a full-width button is no card: no steel line on History's Show more or the first-run account page's buttons (NEW-19)", more);
+      ok(more.more === 'rgba(0, 0, 0, 0)' && more.acct !== 'rgb(138, 145, 153)', "3. guard: no line on History's Show more or the first-run account page's buttons (NEW-19)", more);
       await H2.ctx.close();
     }
     if (run(4)) {
@@ -144,10 +137,10 @@ const dump = P => P.page.evaluate(() => [...document.body.querySelectorAll('*')]
           let diff = a.length !== b.length ? { count: [a.length, b.length] } : null;
           for (let i = 0; !diff && i < a.length; i++) {
             if (a[i][0] !== b[i][0] || a[i][1] !== b[i][1]) diff = { at: i, el: [a[i][0], b[i][0]], box: [a[i][1], b[i][1]] };
-            // Both themes keep their colours but on Today's card and the steel lines.
-            else if (!a[i][3] && a[i][2] !== b[i][2]) { const x = a[i][2].split(';'), y = new Set(b[i][2].split(';')); diff = { at: i, el: a[i][0], before: x.filter(p => !y.has(p)).slice(0, 4) }; }
+            // Light keeps every colour; dark every one but on Today's card.
+            else if ((mode === 'light' || !a[i][3]) && a[i][2] !== b[i][2]) { const x = a[i][2].split(';'), y = new Set(b[i][2].split(';')); diff = { at: i, el: a[i][0], before: x.filter(p => !y.has(p)).slice(0, 4) }; }
           }
-          ok(!diff, `4. guard: ${name} in ${mode}: every box and every drawn style outside Today's card and the steel lines is the build before's (${a.length} elements)`, diff);
+          ok(!diff, `4. guard: ${name} in ${mode}: every box and every drawn style${mode === 'light' ? '' : " outside Today's card"} is the build before's (${a.length} elements)`, diff);
         }
       }
     }
