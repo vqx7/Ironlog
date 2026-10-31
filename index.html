@@ -76,15 +76,15 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#000000; --surface:#0e0e10; --surface-2:#18181b; --surface-3:#232326;
-    --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#1d1d20; --line-soft:#141416;
-    --btn:#18181b; --btn-b:transparent; --field:#18181b; --field-b:transparent; --card-b:transparent;
-    --glass:rgba(0,0,0,.88);
+    --bg:#08090b; --surface:#131518; --surface-2:#1c1f23; --surface-3:#272b30;
+    --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1b1e22;
+    --btn:#1e2125; --btn-b:transparent; --field:#1e2125; --field-b:transparent; --card-b:transparent;
+    --glass:rgba(8,9,11,.88);
     --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff; --brand:#ffb020; --brand-bar:#f2f4f6; --part:#1f6b45;
     --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
     --on-accent:#0a0b0d; --on-ink:#0a0b0d;
     --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
-    --hero:#0b0b0d; --on-hero:#f3f4f6; --hero-2:#18181b;
+    --hero:#0b0b0d; --on-hero:#f3f4f6; --hero-2:#1c1f23;
     --hero-bg:linear-gradient(90deg,#3e434a,#d9dde1 24%,#737a82 48%,#e9ecee 72%,#4d5259) top/100% 2px no-repeat,repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 1px,transparent 1px 3px),linear-gradient(180deg,#1b1c1f,#0b0b0d);
     --hero-ring:var(--volt); --hero-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 0 1px #2a2c30;
     --go-glow:inset 0 1px 0 rgba(255,255,255,.3); --ring-glow:none; --card-top:#8a9199;
@@ -94,15 +94,15 @@
   }
 }
 :root[data-theme="dark"]{
-  --bg:#000000; --surface:#0e0e10; --surface-2:#18181b; --surface-3:#232326;
-  --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#1d1d20; --line-soft:#141416;
-  --btn:#18181b; --btn-b:transparent; --field:#18181b; --field-b:transparent; --card-b:transparent;
-  --glass:rgba(0,0,0,.88);
+  --bg:#08090b; --surface:#131518; --surface-2:#1c1f23; --surface-3:#272b30;
+  --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1b1e22;
+  --btn:#1e2125; --btn-b:transparent; --field:#1e2125; --field-b:transparent; --card-b:transparent;
+  --glass:rgba(8,9,11,.88);
   --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff; --brand:#ffb020; --brand-bar:#f2f4f6; --part:#1f6b45;
   --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
   --on-accent:#0a0b0d; --on-ink:#0a0b0d;
   --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
-  --hero:#0b0b0d; --on-hero:#f3f4f6; --hero-2:#18181b;
+  --hero:#0b0b0d; --on-hero:#f3f4f6; --hero-2:#1c1f23;
   --hero-bg:linear-gradient(90deg,#3e434a,#d9dde1 24%,#737a82 48%,#e9ecee 72%,#4d5259) top/100% 2px no-repeat,repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 1px,transparent 1px 3px),linear-gradient(180deg,#1b1c1f,#0b0b0d);
   --hero-ring:var(--volt); --hero-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 0 1px #2a2c30;
   --go-glow:inset 0 1px 0 rgba(255,255,255,.3); --ring-glow:none; --card-top:#8a9199;
@@ -3019,7 +3019,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var FILE_PREFIX = APP_NAME.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
-  var DARK_BG = "#000000";
+  var DARK_BG = "#08090b";
   var DISPLAY_VERSION = "2.20";
   var APP_VERSION = "2026.10.30-r65.1";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;

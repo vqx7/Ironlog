@@ -1,12 +1,12 @@
 // r65.1: the look V picked on 2026-10-30 with the look picker (PENDING 364),
-// two changes and nothing else: "Background: True black" and "Main card: Dark
-// steel", in the dark theme, and in light (V, the same day: silver metal for
-// light) the same card in brushed silver with the same details. Each case fails on r65 (`node tests/r65-1.js
+// "Main card: Dark steel" in the dark theme and, V the same day, the same card
+// in brushed silver in light; his other pick, "Background: True black", he took
+// back out the same day. Each case fails on r65 (`node tests/r65-1.js
 // baselines/r65.html`) unless it says it is a guard:
-//   1  the dark page is true black (#000), with the cards, fields and lines a
-//      step above it in neutral greys, whether dark is chosen in Settings or
-//      comes from the phone; the phone's bar and the installed app's splash
-//      take the same black (config's DARK_BG, read from R65_1_ROOT);
+//   1  a guard: the dark page keeps r65's dark grey (#08090b) and its cards
+//      and fields their greys, whether dark is chosen in Settings or comes
+//      from the phone, and config's DARK_BG (read from R65_1_ROOT) is that
+//      grey (V took true black back out on 2026-10-30);
 //   2  Today's card is brushed steel, dark in dark and silver in light: a
 //      steel edge along its top, a fine brushed grain over a metal gradient and
 //      a thin rim, with no accent glow; its Start button and week ring lose
@@ -17,8 +17,8 @@
 //      a full-width button, which shares the card's class, has none (NEW-19,
 //      found by the review: it fails on 6d85719, r65.1's first commit);
 //   4  a guard: every box on Today, a session and Stats, in both themes, is
-//      the build before's, so only paint changed; and in light every drawn
-//      style is the build before's but on Today's card and the steel lines.
+//      the build before's, and so is every drawn style but on Today's card
+//      and the steel lines.
 const path = require('path');
 const H = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 700) : ''); } else console.log('ok  ', m); };
@@ -80,9 +80,9 @@ const dump = P => P.page.evaluate(() => [...document.body.querySelectorAll('*')]
         const blk = await css(P, '.block', ['background-color']);
         // A set not yet done (a done set's fields take the accent's tint, as before).
         const field = await css(P, '.sg:not(.done):not(.head) input[data-f="w"]', ['background-color']);
-        ok(body && body['background-color'] === 'rgb(0, 0, 0)', `1. ${mode}: the page is true black`, body);
-        ok(blk && blk['background-color'] === 'rgb(14, 14, 16)', `1. ${mode}: a card is a step above it (#0e0e10)`, blk);
-        ok(field && field['background-color'] === 'rgb(24, 24, 27)', `1. ${mode}: a field a step above the card (#18181b)`, field);
+        ok(body && body['background-color'] === 'rgb(8, 9, 11)', `1. guard: ${mode}: the page keeps its dark grey (#08090b)`, body);
+        ok(blk && blk['background-color'] === 'rgb(19, 21, 24)', `1. guard: ${mode}: a card keeps its grey (#131518)`, blk);
+        ok(field && field['background-color'] === 'rgb(28, 31, 35)', `1. guard: ${mode}: a field keeps its grey (#1c1f23)`, field);
         await P.ctx.close();
       }
     }
@@ -90,7 +90,7 @@ const dump = P => P.page.evaluate(() => [...document.body.querySelectorAll('*')]
       // The phone's bar and the installed app's splash take config's DARK_BG (scripts/build.js, page.ts): read from R65_1_ROOT (a checkout; the repo by default).
       const cfg = require('fs').readFileSync(path.join(process.env.R65_1_ROOT || path.join(__dirname, '..'), 'src/app/config.ts'), 'utf8');
       const m = cfg.match(/export const DARK_BG = '([^']+)'/);
-      ok(m && /^#0{3}(0{3})?$/.test(m[1]), "1. the phone's bar and the installed app's splash are the same black (DARK_BG)", m && m[1]);
+      ok(m && m[1].toLowerCase() === '#08090b', "1. guard: the phone's bar and the installed app's splash keep the page's dark grey (DARK_BG)", m && m[1]);
     }
     if (run(2)) {
       for (const mode of ['dark', 'system-dark', 'light']) {
@@ -144,10 +144,10 @@ const dump = P => P.page.evaluate(() => [...document.body.querySelectorAll('*')]
           let diff = a.length !== b.length ? { count: [a.length, b.length] } : null;
           for (let i = 0; !diff && i < a.length; i++) {
             if (a[i][0] !== b[i][0] || a[i][1] !== b[i][1]) diff = { at: i, el: [a[i][0], b[i][0]], box: [a[i][1], b[i][1]] };
-            // Light keeps its colours but on Today's card and the steel lines; dark's surfaces changed on purpose, so there only boxes.
-            else if (mode === 'light' && !a[i][3] && a[i][2] !== b[i][2]) { const x = a[i][2].split(';'), y = new Set(b[i][2].split(';')); diff = { at: i, el: a[i][0], before: x.filter(p => !y.has(p)).slice(0, 4) }; }
+            // Both themes keep their colours but on Today's card and the steel lines.
+            else if (!a[i][3] && a[i][2] !== b[i][2]) { const x = a[i][2].split(';'), y = new Set(b[i][2].split(';')); diff = { at: i, el: a[i][0], before: x.filter(p => !y.has(p)).slice(0, 4) }; }
           }
-          ok(!diff, `4. guard: ${name} in ${mode}: every box is the build before's${mode === 'light' ? ', and every drawn style outside Today\'s card and the steel lines' : ''} (${a.length} elements)`, diff);
+          ok(!diff, `4. guard: ${name} in ${mode}: every box and every drawn style outside Today's card and the steel lines is the build before's (${a.length} elements)`, diff);
         }
       }
     }
