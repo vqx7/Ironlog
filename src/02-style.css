@@ -212,6 +212,13 @@
 details>*{box-sizing:border-box}
 input[type=file]{max-width:100%;width:100%;font-size:14px}
 html{scroll-padding-top:calc(var(--head-h) + env(safe-area-inset-top,0px));-webkit-text-size-adjust:100%}
+/* An app, not a web page (r65.2, PENDING 369): a double tap is a tap, never a zoom (pinch stays, which iOS keeps
+   for accessibility whatever a page says); a long press on the app's own words selects nothing and opens no Copy
+   and Look Up menu; a tap leaves no grey flash, a button's :active shrink being its feedback. What the lifter
+   types, and a text box shown to copy, stay selectable. */
+html{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 /* iOS 26's home-screen app (r51; two iPhone users, 2026-10-17: the tab bar
    rises and the page shrinks when tapping through the tabs, on History,
    Settings and sometimes Plan). With viewport-fit=cover and the translucent
