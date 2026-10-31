@@ -93,8 +93,15 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
     const ROOT = process.env.R65_ROOT || path.join(__dirname, '..');
     const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
     const walk = d => fs.readdirSync(path.join(ROOT, d), { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
-    const where = [...walk('src'), ...walk('scripts')].filter(f => /\.(ts|js|css|html|py)$/.test(f) && /#08090b/i.test(read(f)));
-    ok(where.length === 1 && where[0] === path.join('src', 'app', 'config.ts'), '3. the dark page colour is typed once, in config.ts (r64: in the style sheet twice, page.ts and build.js twice)', where);
+    // One source for the dark page colour: config's DARK_BG, which every place that needs it reads (the style sheet's
+    // dark --bg through {{DARK_BG}}, page.ts and build.js through config), and no other place types the value.
+    // Read structurally since r65.1, whose true black (#000000) is also map.ts's 'no glow' for three.js, another meaning.
+    const dark = (read('src/app/config.ts').match(/export const DARK_BG = '(#[0-9a-f]{3,6})'/i) || [])[1] || '';
+    const css = read('src/02-style.css'), pageTs = read('src/app/page.ts'), build = read('scripts/build.js');
+    const bgLines = css.match(/--bg:[^;]*;/g) || [];
+    const typed = [...walk('src'), ...walk('scripts')].filter(f => /\.(ts|js|css|html|py)$/.test(f) && !/config\.ts$|map\.ts$/.test(f) && dark && read(f).toLowerCase().includes(dark.toLowerCase()));
+    ok(!!dark && bgLines.filter(l => l.includes('{{DARK_BG}}')).length === 2 && /\bDARK_BG\b/.test(pageTs) && (build.match(/cfg\.DARK_BG/g) || []).length >= 2 && typed.length === 0,
+      '3. the dark page colour is typed once, in config.ts, and read from there by the style sheet, page.ts and build.js (r64: in the style sheet twice, page.ts and build.js twice)', { dark, bgLines, typed });
     const cloud = read('scripts/cloud-supabase.js');
     ok(/feedback_rate_limited/.test(cloud) && !/\d+ reports/.test(cloud), '3. the account script names no number of reports; the app says its own limit (r64: "You have sent 5 reports today")', (cloud.match(/[^\n]*reports today[^\n]*/) || [''])[0].trim());
     const day = Number((read('src/app/feedback.ts').match(/\bFB_DAY = (\d+)/) || [])[1]);

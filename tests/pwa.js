@@ -37,7 +37,10 @@ const server = http.createServer((req, res) => {
     return { j, icons, apple: !!document.querySelector('link[rel=apple-touch-icon]'), theme: document.querySelector('meta[name=theme-color]').content }; });
   ok(man.j.display === 'standalone' && man.j.start_url === './' && man.j.scope === './' && man.j.name === 'Ironlog', 'manifest: standalone, relative start and scope');
   ok(man.icons.length === 3 && man.icons.every(i => i.ok && i.sizes === `${i.w}x${i.h}`) && man.icons.some(i => i.purpose === 'maskable') && man.icons.some(i => i.w >= 512), 'manifest icons exist and match their sizes, with a maskable one');
-  ok(man.apple && /^(#08090b|rgb\(8, 9, 11\))$/.test(man.theme), 'iOS home-screen icon and theme colour set (' + man.theme + ')');
+  // The dark page colour is config's DARK_BG (r65.1 made it true black); the bar may give it as hex or rgb.
+  const DARK = require('fs').readFileSync(require('path').join(__dirname, '..', 'src/app/config.ts'), 'utf8').match(/export const DARK_BG = '#([0-9a-f]{6})'/i)[1];
+  const darkRgb = `rgb(${[0, 2, 4].map(i => parseInt(DARK.slice(i, i + 2), 16)).join(', ')})`;
+  ok(man.apple && (man.theme.toLowerCase() === '#' + DARK.toLowerCase() || man.theme === darkRgb), 'iOS home-screen icon and theme colour set (' + man.theme + ')');
   const lightTheme = await page.evaluate(() => { const L = window.__ironlog; L.state.settings.theme = 'light'; L.render(); const v = document.querySelector('meta[name=theme-color]').content; L.state.settings.theme = 'dark'; L.render(); return v; });
   ok(/^rgb\(242, 243, 245\)$/.test(lightTheme), 'the status bar colour follows the light theme (' + lightTheme + ')');
   // The libraries' and fonts' licenses travel with the copies this build serves (r34).
