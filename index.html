@@ -4790,17 +4790,26 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PIC_QUALITY = 0.82;
   var PIC_IN_MAX = 40 * 1024 * 1024;
   var PIC_KEEP_DAYS = 45;
+  var asBytes = false;
+  function storedForm(r4) {
+    const { blob, bytes, ...rest } = r4;
+    return bytes ? { ...rest, bytes, type: blob.type || "image/jpeg" } : { ...rest, blob };
+  }
   var owner = () => cloud.acct || "";
   var rows = /* @__PURE__ */ new Map();
   var urls = /* @__PURE__ */ new Map();
   var ready = false;
   function rowOf(v3) {
     const r4 = rec(v3);
-    if (!r4 || typeof r4.id !== "string" || !isPicId(r4.id) || !(r4.blob instanceof Blob)) return null;
+    if (!r4 || typeof r4.id !== "string" || !isPicId(r4.id)) return null;
+    const bytes = r4.bytes instanceof ArrayBuffer ? r4.bytes : void 0;
+    const blob = r4.blob instanceof Blob ? r4.blob : bytes ? new Blob([bytes], { type: typeof r4.type === "string" && r4.type ? r4.type : "image/jpeg" }) : null;
+    if (!blob) return null;
     const n3 = (x2) => typeof x2 === "number" && Number.isFinite(x2) ? x2 : 0;
     return {
       id: r4.id,
-      blob: r4.blob,
+      blob,
+      ...bytes ? { bytes } : {},
       w: n3(r4.w),
       h: n3(r4.h),
       t: n3(r4.t),
@@ -4892,8 +4901,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!blob) return { why: "This phone could not prepare the photo." };
     const now = Date.now();
     const row = { id: "p" + uid(), blob, w: w2, h: h3, t: now, seen: now, own: owner() };
-    if (!await picRowsWrite([row], []))
-      return { why: "The photo could not be kept on this phone (storage full or blocked)." };
+    if (asBytes) row.bytes = await blob.arrayBuffer();
+    let kept = await picRowsWrite([storedForm(row)], []);
+    if (!kept && !asBytes) {
+      asBytes = true;
+      row.bytes = await blob.arrayBuffer();
+      kept = await picRowsWrite([storedForm(row)], []);
+    }
+    if (!kept) return { why: "The photo could not be kept on this phone (storage full or blocked)." };
     rows.set(row.id, row);
     await picsRefresh();
     return { id: row.id };
@@ -4925,7 +4940,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       } else if (r4.own === me && now - r4.seen > PIC_KEEP_DAYS * DAY_MS) gone.push(r4.id);
     }
     if (!seen.length && !gone.length) return;
-    if (!await picRowsWrite(seen, gone)) return;
+    if (!await picRowsWrite(seen.map(storedForm), gone)) return;
     for (const r4 of seen) rows.set(r4.id, r4);
     for (const id of gone) drop(id);
   }

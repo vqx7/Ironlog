@@ -47,6 +47,21 @@ interface PicRow {
   seen: number;
   /** The log it belongs to: the account's id, or '' for the phone's own. */
   own: string;
+  /** Its bytes, when it is kept as bytes because this browser's store refused the picture itself. */
+  bytes?: ArrayBuffer;
+}
+
+/* A browser whose IndexedDB refuses a Blob keeps the picture's bytes
+   instead, with its type (GitHub's WebKit run of r66, whose pages open in
+   private contexts, could add no picture). Once a Blob is refused, the rest
+   of the visit keeps bytes, so the refusal is logged once. A Blob is kept
+   wherever the browser takes one: the browser then holds it on disk, not in
+   the page's memory. */
+let asBytes = false;
+/** A row as it is written to the store: the picture itself, or its bytes and type where the store refused it. */
+function storedForm(r: PicRow): object {
+  const { blob, bytes, ...rest } = r;
+  return bytes ? { ...rest, bytes, type: blob.type || 'image/jpeg' } : { ...rest, blob };
 }
 
 /** The log on the phone now: the account it belongs to, or '' when it is the phone's own. */
@@ -59,11 +74,20 @@ let ready = false;
 /** A row read back from the store, checked field by field, or null. */
 function rowOf(v: unknown): PicRow | null {
   const r = rec(v);
-  if (!r || typeof r.id !== 'string' || !isPicId(r.id) || !(r.blob instanceof Blob)) return null;
+  if (!r || typeof r.id !== 'string' || !isPicId(r.id)) return null;
+  const bytes = r.bytes instanceof ArrayBuffer ? r.bytes : undefined;
+  const blob =
+    r.blob instanceof Blob
+      ? r.blob
+      : bytes
+        ? new Blob([bytes], { type: typeof r.type === 'string' && r.type ? r.type : 'image/jpeg' })
+        : null;
+  if (!blob) return null;
   const n = (x: unknown): number => (typeof x === 'number' && Number.isFinite(x) ? x : 0);
   return {
     id: r.id,
-    blob: r.blob,
+    blob,
+    ...(bytes ? { bytes } : {}),
     w: n(r.w),
     h: n(r.h),
     t: n(r.t),
@@ -180,8 +204,14 @@ export async function picAdd(f: Blob): Promise<{ id: string } | { why: string }>
   if (!blob) return { why: 'This phone could not prepare the photo.' };
   const now = Date.now();
   const row: PicRow = { id: 'p' + uid(), blob, w, h, t: now, seen: now, own: owner() };
-  if (!(await picRowsWrite([row], [])))
-    return { why: 'The photo could not be kept on this phone (storage full or blocked).' };
+  if (asBytes) row.bytes = await blob.arrayBuffer();
+  let kept = await picRowsWrite([storedForm(row)], []);
+  if (!kept && !asBytes) {
+    asBytes = true;
+    row.bytes = await blob.arrayBuffer();
+    kept = await picRowsWrite([storedForm(row)], []);
+  }
+  if (!kept) return { why: 'The photo could not be kept on this phone (storage full or blocked).' };
   rows.set(row.id, row);
   await picsRefresh();
   return { id: row.id };
@@ -218,7 +248,7 @@ export async function picsTidy(now = Date.now()): Promise<void> {
     } else if (r.own === me && now - r.seen > PIC_KEEP_DAYS * DAY_MS) gone.push(r.id);
   }
   if (!seen.length && !gone.length) return;
-  if (!(await picRowsWrite(seen, gone))) return;
+  if (!(await picRowsWrite(seen.map(storedForm), gone))) return;
   for (const r of seen) rows.set(r.id, r);
   for (const id of gone) drop(id);
 }

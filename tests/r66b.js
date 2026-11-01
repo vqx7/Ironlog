@@ -68,6 +68,10 @@
 //      tidy keep the picture, since nothing on the phone can name it while
 //      its log is in the account; signed in again, History shows it (the
 //      built app with the stand-in account service, on the source run).
+//  14  pictures (373) in a browser whose IndexedDB refuses a Blob, as
+//      WebKit's private contexts may: each picture is kept as its bytes and
+//      type, the refusal logged once, shown in History after a reload, and
+//      written back the same way by the tidy.
 const { open, engine, tab } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
@@ -82,7 +86,7 @@ const addD = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOS
 const SECRET = 'IRONLOG-SECRET-GPS-34.0522N-118.2437W';
 
 async function phone(start, o = {}) {
-  const setup = async ctx => { await ctx.addInitScript(`(()=>{const R=Date;let off=new R(${JSON.stringify(start + 'T09:00:00')}).getTime()-R.now();window.__setClock=t=>{off=new R(t).getTime()-R.now();};class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`); };
+  const setup = async ctx => { await ctx.addInitScript(`(()=>{const R=Date;let off=new R(${JSON.stringify(start + 'T09:00:00')}).getTime()-R.now();window.__setClock=t=>{off=new R(t).getTime()-R.now();};class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`);  if (o.setup) await ctx.addInitScript(o.setup); };
   const P = o.P ? { ...o.P, page: await o.P.ctx.newPage(), errors: [] } : await open(o.file || FILE, { browser, setup, w: o.w || 390, h: 844 });
   if (o.P) {
     P.page.on('pageerror', e => P.errors.push('pageerror: ' + e.message));
@@ -140,9 +144,11 @@ const stored = H => H.ev(async secret => {
   const db = await new Promise((res, rej) => { const r = indexedDB.open(name); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
   const rows = await new Promise(res => { const q = db.transaction('pics').objectStore('pics').getAll(); q.onsuccess = () => res(q.result); q.onerror = () => res([]); });
   const out = [];
+  // A row holds the picture, or its bytes and type where the browser's store refused the picture itself.
   for (const r of rows) {
-    const t = new TextDecoder('latin1').decode(new Uint8Array(await r.blob.arrayBuffer()));
-    out.push({ id: r.id, type: r.blob.type, size: r.blob.size, w: r.w, h: r.h, secret: t.includes(secret) });
+    const buf = r.blob ? await r.blob.arrayBuffer() : r.bytes;
+    const t = new TextDecoder('latin1').decode(new Uint8Array(buf));
+    out.push({ id: r.id, type: r.blob ? r.blob.type : r.type, size: buf.byteLength, w: r.w, h: r.h, secret: t.includes(secret), as: r.blob ? 'blob' : 'bytes' });
   }
   db.close();
   return { name, rows: out };
@@ -154,6 +160,16 @@ const stored = H => H.ev(async secret => {
   if (run(1)) {
     const H = await phone(MON);
     await seed(H);
+    // Whether this browser's IndexedDB keeps a Blob (WebKit's private contexts may not): said, not checked; the app keeps bytes where it does not.
+    const probe = await H.ev(async () => {
+      try {
+        const db = await new Promise((res, rej) => { const r = indexedDB.open('r66b-probe', 1); r.onupgradeneeded = () => r.result.createObjectStore('s'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+        const said = await new Promise(res => { const tx = db.transaction('s', 'readwrite'); tx.objectStore('s').put(new Blob(['x'], { type: 'text/plain' }), 'k'); tx.oncomplete = () => res('kept'); tx.onerror = () => res('refused: ' + (tx.error && tx.error.message)); tx.onabort = () => res('refused: ' + (tx.error && tx.error.message)); });
+        db.close(); indexedDB.deleteDatabase('r66b-probe');
+        return said;
+      } catch (e) { return 'refused: ' + e.message; }
+    });
+    console.log(`note r66b: this browser's IndexedDB, given a Blob: ${probe}`);
     await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
     // The note button sits on the exercise's card itself, not only in its menu (376).
     const noteBtn = await H.page.$('#view [data-act="bNote"][data-b="0"]');
@@ -167,7 +183,9 @@ const stored = H => H.ev(async secret => {
     ok(Buffer.from(bytes).includes(Buffer.from(SECRET)), '1. (the test photo carries the marker in its Exif and comment)');
     if (await H.page.$(fileSel)) await pickFile(H, fileSel, 'IMG_0001.jpg', 'image/jpeg', bytes);
     let d = await H.draft();
-    ok(d.ex[0].pics && d.ex[0].pics.length === 1, '1. the picture is on the bench\'s note at once', d.ex[0].pics);
+    // On a failure, what the phone said and what the app logged go with it (WebKit runs only on GitHub).
+    const why1 = async () => ({ toast: await H.toast(), log: await H.ev(() => window.__ironlog.logBuf.filter(x => /pics|storage/.test(x.a)).map(x => x.a + ': ' + x.m + (x.s ? ' @ ' + x.s.split('\n')[1] : ''))) });
+    ok(d.ex[0].pics && d.ex[0].pics.length === 1, '1. the picture is on the bench\'s note at once', { pics: d.ex[0].pics, ...(d.ex[0].pics ? {} : await why1()) });
     const thumbIn = await H.ev(() => { const i = document.querySelector('#modal .pthumb img'); return i ? { src: i.src.slice(0, 5), w: i.naturalWidth } : null; });
     ok(thumbIn && thumbIn.src === 'blob:' && thumbIn.w > 0, '1. its thumbnail shows in the sheet', thumbIn);
     const st = await stored(H);
@@ -178,11 +196,11 @@ const stored = H => H.ev(async secret => {
     const svg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><rect width="10" height="10"/></svg>`);
     if (await H.page.$(fileSel)) await pickFile(H, fileSel, 'x.svg', 'image/svg+xml', svg);
     d = await H.draft();
-    ok(d.ex[0].pics.length === 1 && /Only photos/.test(await H.toast()), '1. an SVG is refused with a reason, nothing added', { pics: d.ex[0].pics, toast: await H.toast() });
+    ok((d.ex[0].pics || []).length === 1 && /Only photos/.test(await H.toast()), '1. an SVG is refused with a reason, nothing added', { pics: d.ex[0].pics, toast: await H.toast() });
     // A file that only says it is an image is refused when it cannot be read as one.
     if (await H.page.$(fileSel)) await pickFile(H, fileSel, 'fake.jpg', 'image/jpeg', Buffer.from('MZ this is not a photo'));
     d = await H.draft();
-    ok(d.ex[0].pics.length === 1 && /could not be read/.test(await H.toast()), '1. a file that is not a photo is refused', { pics: d.ex[0].pics, toast: await H.toast() });
+    ok((d.ex[0].pics || []).length === 1 && /could not be read/.test(await H.toast()), '1. a file that is not a photo is refused', { pics: d.ex[0].pics, toast: await H.toast() });
     await H.ev(() => { document.getElementById('mNote').value = 'Seat 4'; });
     await H.page.click('#modal [data-act="noteSave"]'); await wait(150);
     const card = await H.ev(() => { const i = document.querySelector('#blk-0 .pthumb img'); return i ? i.naturalWidth : 0; });
@@ -807,7 +825,7 @@ const stored = H => H.ev(async secret => {
       const name = (await indexedDB.databases()).map(d => d.name).find(n => /-pics$/.test(n || ''));
       const db = await new Promise((res, rej) => { const r = indexedDB.open(name); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
       const ids = ['pothertab01', 'pothertab02', 'pothertab03', 'pothertab04'];
-      await new Promise(res => { const tx = db.transaction('pics', 'readwrite'); const st = tx.objectStore('pics'); for (const id of ids) st.put({ id, blob: new Blob([new Uint8Array([255, 216, 255, 217])], { type: 'image/jpeg' }), w: 1, h: 1, t: Date.now(), seen: Date.now(), own: '' }); tx.oncomplete = res; tx.onerror = res; });
+      await new Promise(res => { const tx = db.transaction('pics', 'readwrite'); const st = tx.objectStore('pics'); for (const id of ids) st.put({ id, bytes: new Uint8Array([255, 216, 255, 217]).buffer, type: 'image/jpeg', w: 1, h: 1, t: Date.now(), seen: Date.now(), own: '' }); tx.oncomplete = res; tx.onerror = res; });
       db.close();
       L.state.draft.ex[1].pics = ids;
       return !!document.querySelector('#modal input[type="file"][data-pic="1"]');
@@ -877,6 +895,38 @@ const stored = H => H.ev(async secret => {
     ok(!errors.length, '13. no page errors', errors);
     await settle(ctx.close(), 'closing the account phone');
     await settle(fake.close(), 'closing the stand-in account service');
+  }
+
+  // ---- 14. A browser whose IndexedDB refuses a Blob (as WebKit's private contexts may): the picture's bytes are kept instead.
+  if (run(14)) {
+    // The store refuses any row that carries a Blob, as such a browser does, and takes everything else.
+    const refuse = `(()=>{const put=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(v,...a){if(v&&typeof v==='object'&&Object.values(v).some(x=>x instanceof Blob))throw new DOMException('Error preparing Blob/File data to be stored in object store','UnknownError');return put.call(this,v,...a);};})();`;
+    const H = await phone(MON, { setup: refuse });
+    await seed(H);
+    await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+    const bytes = await jpegWithSecret(H);
+    await pickFile(H, '#view input[type="file"][data-pic="n"]', 'n.jpg', 'image/jpeg', bytes);
+    await pickFile(H, '#view input[type="file"][data-pic="n"]', 'm.jpg', 'image/jpeg', bytes);
+    let d = await H.draft();
+    const st = await stored(H);
+    ok(d.pics && d.pics.length === 2 && st.rows.length === 2 && st.rows.every(r => r.as === 'bytes' && r.type === 'image/jpeg' && !r.secret), '14. both pictures kept, as bytes, still drawn again with nothing hidden kept', { pics: d.pics, rows: st.rows });
+    const errs = await H.ev(() => window.__ironlog.logBuf.filter(x => x.a === 'pics-write').length);
+    ok(errs === 1, '14. the refusal is logged once, not for every picture', errs);
+    await H.ev(() => { const L = window.__ironlog; const s = L.state.draft.ex[0].sets[0]; s.w = 100; s.r = 8; s.done = true; L.saveNow(); L.render(); });
+    await H.page.click('#view [data-act="finish"]');
+    for (let k = 0; k < 5; k++) { await wait(150); const q = await H.modal(); if (!q || q.kind !== 'confirm') break; await H.page.click(/sets not done/.test(q.title) ? '#modal [data-act="mOk"]' : '#modal [data-act="mAlt"]'); }
+    await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    await H.page.reload(); await H.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(500);
+    await H.go('history');
+    await H.page.click('#view [data-act="histToggle"]'); await wait(300);
+    const shown = await H.ev(() => [...document.querySelectorAll('#view .pthumb img')].map(i => i.naturalWidth));
+    ok(shown.length === 2 && shown.every(w => w > 0), '14. after a reload History shows both, read back from their bytes', shown);
+    // The tidy writes a row back as it was kept: as bytes, which the store takes.
+    await H.ev(async () => { await window.__ironlog.picsTidy(Date.now() + 3 * 864e5); });
+    const st2 = await stored(H);
+    ok(st2.rows.length === 2 && st2.rows.every(r => r.as === 'bytes'), '14. the tidy writes them back as bytes', st2.rows.map(r => r.as));
+    ok(!H.P.errors.length, '14. no page errors', H.P.errors);
+    await H.P.ctx.close();
   }
 
   await browser.close();
