@@ -19713,9 +19713,9 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
        log or skip"): one question, then every set left ticked as it shows (its
        load and reps, typed or grey; a 0 typed is a missed set, as a tick logs
        it), or every set left taken off. Either is one change with one Undo. A
-       warm-up left is a set left like any other, logged as a warm-up; the
-       target repeats only when a working set is skipped (V's one rule), so the
-       question says so only then (the review of r66: a warm-up alone was
+       warm-up or a drop set left is a set left like any other, logged as it
+       is; the target repeats only when a working set is skipped (V's one
+       rule), so the question says so only then (the review of r66: a warm-up alone was
        counted as a set whose skip repeats the target, and Log took it off).
        Logging stops before anything is ticked when a set left has no weight
        or reps to take, looks far off, or is a 0 at a weight well under the
@@ -19730,7 +19730,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       const ex = EX(b2.exId);
       const n3 = left.length;
       const sets = `${n3} set${n3 === 1 ? "" : "s"}`;
-      const repeats = left.some((x2) => !x2.s.warm) ? " Skipped sets are fewer than usual, so the target repeats next time." : "";
+      const repeats = left.some((x2) => !x2.s.warm && !x2.s.drop) ? " Skipped sets are fewer than usual, so the target repeats next time." : "";
       const blocked = left.find(
         ({ s: s3, si }) => !ex.bw && !ex.timed && s3.w == null && greyW(b2, si) == null || !(+(s3.r ?? 0) > 0) && !isMissed(s3) && !((greyR(b2, si) ?? 0) > 0) || isMissed(s3) && !s3.warm && !s3.drop && lightZero(b2, si, d3.date) || s3.w != null && !s3.warm && !s3.drop && oddLoad(b2, si, d3.date) || oddReps(b2, s3)
       );

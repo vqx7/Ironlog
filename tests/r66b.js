@@ -344,6 +344,13 @@ const stored = H => H.ev(async secret => {
     d = await H.draft();
     const wu = d.ex[1].sets[0];
     ok(d.ex[1].sets.length === 3 && wu.warm && wu.done && Math.round(wu.w / LB) === wShown[0] && wu.r === wShown[1] && wShown[0] > 0, '2. ... Log keeps it, ticked as a warm-up at what it showed', { shown: wShown, sets: d.ex[1].sets.map(x => [x.warm, x.done, Math.round(x.w / LB), x.r]) });
+    // A drop set alone left is not a working set short either: nothing said of the target.
+    await H.ev(() => window.__ironlog.ACT.bOpen({ dataset: { b: '1' } })); await wait(150);
+    await H.page.click('#view [data-act="dropAdd"][data-b="1"]'); await wait(150);
+    await H.page.click('#view [data-act="bDoneAll"][data-b="1"]'); await wait(150);
+    const qd = await H.modal();
+    ok(qd && /1 set left/.test(qd.title) && !/target repeats/.test(qd.text), '2. a drop set alone left: nothing said of the target', qd);
+    await H.ev(() => window.__ironlog.ACT.mClose());
     ok(!H.P.errors.length, '2. no page errors (a 0 typed, a warm-up left)', H.P.errors);
     await H.P.ctx.close();
   }

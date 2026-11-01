@@ -892,9 +892,9 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
      log or skip"): one question, then every set left ticked as it shows (its
      load and reps, typed or grey; a 0 typed is a missed set, as a tick logs
      it), or every set left taken off. Either is one change with one Undo. A
-     warm-up left is a set left like any other, logged as a warm-up; the
-     target repeats only when a working set is skipped (V's one rule), so the
-     question says so only then (the review of r66: a warm-up alone was
+     warm-up or a drop set left is a set left like any other, logged as it
+     is; the target repeats only when a working set is skipped (V's one
+     rule), so the question says so only then (the review of r66: a warm-up alone was
      counted as a set whose skip repeats the target, and Log took it off).
      Logging stops before anything is ticked when a set left has no weight
      or reps to take, looks far off, or is a 0 at a weight well under the
@@ -909,7 +909,8 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const ex = EX(b.exId);
     const n = left.length;
     const sets = `${n} set${n === 1 ? '' : 's'}`;
-    const repeats = left.some(x => !x.s.warm)
+    // Only a working set skipped leaves the lift short of its usual sets; a warm-up or a drop set is not one.
+    const repeats = left.some(x => !x.s.warm && !x.s.drop)
       ? ' Skipped sets are fewer than usual, so the target repeats next time.'
       : '';
     const blocked = left.find(
