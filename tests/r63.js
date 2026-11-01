@@ -353,8 +353,18 @@ const CASES = [
     }
     const [a, b] = seen;
     const firstDiff = (x, y) => { for (let i = 0; i < Math.max(x.length, y.length); i++) if (x[i] !== y[i]) return { at: i, r62: x.slice(Math.max(0, i - 3), i + 4), now: y.slice(Math.max(0, i - 3), i + 4) }; return null; };
-    const da = firstDiff(a.adds, b.adds);
-    ok(a.adds.length > 20 && !da, `4. the page adds r62's ${a.adds.length} listeners and intervals, in r62's order`, da);
+    /* Listeners a later build adds, as one run in its place, each run listed here with the release that added it:
+       r66 reads the pictures another tab kept when that tab's change arrives or the page comes back to the front
+       (373, R66-3: events.ts, pageListeners). Taken out of this build's list where the run sits; the rest is r62's. */
+    const LATER_ADDS = [['window storage false', 'document visibilitychange false']];
+    const bAdds = [...b.adds];
+    const runsFound = LATER_ADDS.map(run => {
+      const i = bAdds.findIndex((_, k) => run.every((x, j) => bAdds[k + j] === x) && k > 0 && bAdds[k - 1] === 'interval 30000');
+      if (i >= 0) bAdds.splice(i, run.length);
+      return i >= 0;
+    });
+    const da = firstDiff(a.adds, bAdds);
+    ok(a.adds.length > 20 && !da && runsFound.every(Boolean), `4. the page adds r62's ${a.adds.length} listeners and intervals, in r62's order, and after r62's 30-second interval the run later builds list (r66: another tab's pictures)`, da || runsFound);
     // Names a later build adds to the hook go after r62's, each listed here with the release that added it.
     const LATER = ['templateBefore function', 'templateRest function', 'templateSigsBefore function', 'bandOf function', 'picsTidy function'];
     const dh = firstDiff(a.hook, b.hook.slice(0, a.hook.length));
