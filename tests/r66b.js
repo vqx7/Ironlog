@@ -44,6 +44,12 @@
 //      against 990 for 37+ reads beaten on the screen and in the recap, as do
 //      990 x 13 x 3 and bench 235 x 9 x 3 after 225 x 8 x 3; heavier sets
 //      with fewer reps and a lower estimate (235 x 6 x 3) are not beaten.
+//  10  377: the exercise picker finds a lift by what lifters call it: "rear
+//      delt pec deck flyes" finds Reverse Pec Deck (Rear Delt Fly), and
+//      "reverse fly", "peck deck", "bicep curl", "hamstring curl", "dumbbell
+//      row", "rdl", "ohp", "tricep pushdown", "chest fly", "military press" and
+//      "lunges" each find theirs, by the main muscle, a plural or a common
+//      name; "bench" still finds only bench presses.
 const { open, engine } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
@@ -566,6 +572,35 @@ const stored = H => H.ev(async secret => {
       ok(c.line.test(line) && said === (c.beat ? '1 of 1 exercise target beaten' : '0 of 1 exercise target beaten'), `9. ${c.name}: ${c.beat ? 'beaten' : 'not beaten'}, on the screen and in the recap`, { line, said });
       await H.P.ctx.close();
     }
+  }
+
+  // ---- 10. 377: search finds lifts by what lifters call them.
+  if (run(10)) {
+    const H = await phone(MON);
+    await seed(H);
+    await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+    await H.page.click('#view [data-act="pickSession"]'); await wait(200);
+    const find = async q => { await H.page.fill('#pickQ', ''); await H.page.type('#pickQ', q); await wait(250); return H.ev(() => [...document.querySelectorAll('#modal [data-act="pickDo"]')].map(b => b.dataset.ex)); };
+    const want = [
+      ['rear delt pec deck flyes', ['reversePecDeck']], ['rear delt fly', ['reversePecDeck', 'cableRearFly', 'dbRearFly']], ['reverse fly', ['reversePecDeck']], ['peck deck', ['pecDeck', 'reversePecDeck']],
+      ['bicep curl', ['bbCurl', 'hammer', 'preacher']], ['hamstring curl', ['seatedCurl', 'lyingCurl']], ['dumbbell row', ['dbRow']], ['rdl', ['rdl']], ['ohp', ['ohp']],
+      ['tricep pushdown', ['pressdown']], ['chest fly', ['cableFly', 'pecDeck']], ['military press', ['ohp']], ['lunges', ['walkingLunge']]
+    ];
+    // The ids above are the library's own; read them from it by name so a renamed id fails loudly rather than passing.
+    const ids = await H.ev(() => Object.fromEntries(window.__ironlog.state.exercises.map(e => [e.id, e.name])));
+    const off = [];
+    for (const [q, list] of want) {
+      const got = await find(q);
+      const missing = list.filter(id => !got.includes(id) && ids[id]);
+      const unknown = list.filter(id => !ids[id]);
+      if (missing.length || unknown.length) off.push({ q, missing, unknown, got: got.slice(0, 8) });
+    }
+    ok(!off.length, `10. ${want.length} searches a lifter types each find their lift`, off);
+    const bench = await find('bench');
+    const names = await H.ev(b => b.map(id => window.__ironlog.state.exercises.find(e => e.id === id).name), bench);
+    ok(bench.length > 0 && names.every(n => /bench/i.test(n)), '10. "bench" still finds bench presses only', names);
+    ok(ids.reversePecDeck === 'Reverse Pec Deck (Rear Delt Fly)', '10. the machine is named by both names', ids.reversePecDeck);
+    await H.P.ctx.close();
   }
 
   await browser.close();

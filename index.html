@@ -1533,7 +1533,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ["cableY", "Cable Y-Raise", "sideDelts", "traps", "cable", "r", "Arms travel up and out in a Y. Side delts plus lower traps."],
     ["luRaise", "Lu Raise", "sideDelts", "frontDelts traps serratus", "dumbbell", "r", "Light plates or DBs raised to overhead with straight arms."],
     ["uprightRow", "Wide-Grip Cable Upright Row", "sideDelts", "traps", "cable", "", ""],
-    ["reversePecDeck", "Reverse Pec Deck", "rearDelts", "upperBack rotatorCuff", "machine", "", ""],
+    ["reversePecDeck", "Reverse Pec Deck (Rear Delt Fly)", "rearDelts", "upperBack rotatorCuff", "machine", "", ""],
     ["facePull", "Face Pull", "rearDelts", "upperBack traps rotatorCuff", "cable", "", ""],
     ["cableRearFly", "Cross-Body Cable Rear Delt Fly", "rearDelts", "upperBack rotatorCuff", "cable", "s", ""],
     ["ohCableExt", "Overhead Cable Triceps Extension", "triceps", "", "cable", "", "Long head at long length. Grew the triceps more than pushdowns in a 2023 study (Maeo et al.)."],
@@ -1850,11 +1850,35 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ...list.filter(isCommon),
     ...list.filter((e5) => !isCommon(e5))
   ];
-  function nameMatch(name, q) {
+  var SEARCH_SAYS = {
+    rdl: "romanian",
+    sldl: "stiff",
+    ohp: "overhead",
+    military: "overhead",
+    bss: "bulgarian",
+    dumbbell: "db",
+    bb: "barbell",
+    pushdown: "pressdown",
+    peck: "pec",
+    flye: "fly"
+  };
+  var PLURAL_MIN = 4;
+  function wordForms(w2) {
+    const out = /* @__PURE__ */ new Set([w2]);
+    if (w2.length >= PLURAL_MIN) {
+      if (w2.endsWith("ies")) out.add(w2.slice(0, -"ies".length) + "y");
+      if (w2.endsWith("es")) out.add(w2.slice(0, -"es".length));
+      if (w2.endsWith("s")) out.add(w2.slice(0, -"s".length));
+    }
+    for (const f3 of [...out]) if (SEARCH_SAYS[f3]) out.add(SEARCH_SAYS[f3]);
+    return [...out];
+  }
+  function nameMatch(name, q, muscle) {
     const ws = String(q || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
     if (!ws.length) return true;
-    const n3 = String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-    return ws.every((w2) => n3.includes(w2));
+    const squash = (v3) => String(v3 || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const n3 = squash(name), m3 = squash(muscle);
+    return ws.every((w2) => wordForms(w2).some((f3) => n3.includes(f3) || !!m3 && m3.includes(f3)));
   }
 
   // src/app/records.ts
@@ -9224,7 +9248,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function libFiltered(q, m3, e5, kind) {
     const t4 = (q || "").toLowerCase().trim();
     return state.exercises.filter(
-      (x2) => !x2.archived && (!t4 || nameMatch(x2.name, t4)) && (!m3 || x2.primary === m3 || x2.secondary.includes(m3)) && (!e5 || x2.equip === e5) && (!kind || (kind === "rare" ? x2.rare : isCommon(x2)))
+      (x2) => !x2.archived && (!t4 || nameMatch(x2.name, t4, ML[x2.primary])) && (!m3 || x2.primary === m3 || x2.secondary.includes(m3)) && (!e5 || x2.equip === e5) && (!kind || (kind === "rare" ? x2.rare : isCommon(x2)))
     ).sort((a2, b2) => a2.name.localeCompare(b2.name));
   }
   var AVG_SESSIONS = 3;
@@ -26257,7 +26281,6 @@ ${JSON.stringify(ctx, null, 1)}`;
       joinAdjacent,
       sameExOnce,
       savedEx,
-      picsTidy,
       goalState,
       goalLine: (id) => markupOf(goalLine(id)),
       bwRefLoad,
@@ -26297,7 +26320,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       templateBefore,
       templateRest,
       templateSigsBefore,
-      bandOf
+      bandOf,
+      picsTidy
     };
     render();
     wakeOn();

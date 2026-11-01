@@ -740,7 +740,6 @@ function start(): void {
     joinAdjacent,
     sameExOnce,
     savedEx,
-    picsTidy,
     goalState,
     goalLine: (id: string) => markupOf(goalLine(id)),
     bwRefLoad,
@@ -780,7 +779,8 @@ function start(): void {
     templateBefore,
     templateRest,
     templateSigsBefore,
-    bandOf
+    bandOf,
+    picsTidy
   };
   render();
   wakeOn();

@@ -233,7 +233,8 @@ const CASES = [
     for (let i = 0; i < N; i++) G.texts.push(note(r));
     for (let i = 0; i < Math.ceil(N / 3); i++) G.tables.push(table(r));
     const both = [];
-    for (const file of [OLD, FILE]) {
+    // Pinned since r66 to the build it proved (r63): r66 renames a lift in the library on purpose (PENDING 377), and the log's exercises are among these answers.
+    for (const file of [OLD, PROVED]) {
       const Q = await open(file, { browser });
       await Q.page.clock.setFixedTime(new Date('2026-10-24T10:00:00'));
       both.push({ out: await digest(Q, 6300), errors: Q.errors.slice() });
@@ -355,10 +356,10 @@ const CASES = [
     const da = firstDiff(a.adds, b.adds);
     ok(a.adds.length > 20 && !da, `4. the page adds r62's ${a.adds.length} listeners and intervals, in r62's order`, da);
     // Names a later build adds to the hook go after r62's, each listed here with the release that added it.
-    const LATER = ['templateBefore function', 'templateRest function', 'templateSigsBefore function', 'bandOf function'];
+    const LATER = ['templateBefore function', 'templateRest function', 'templateSigsBefore function', 'bandOf function', 'picsTidy function'];
     const dh = firstDiff(a.hook, b.hook.slice(0, a.hook.length));
     const unlisted = b.hook.slice(a.hook.length).filter(k => !LATER.includes(k));
-    ok(a.hook.length > 300 && !dh && !unlisted.length, `4. window.__ironlog holds r62's ${a.hook.length} names in r62's order, each the same kind of value, and after them only the names later builds list (r64: templateBefore, templateRest, templateSigsBefore; r65: bandOf)`, dh || unlisted);
+    ok(a.hook.length > 300 && !dh && !unlisted.length, `4. window.__ironlog holds r62's ${a.hook.length} names in r62's order, each the same kind of value, and after them only the names later builds list (r64: templateBefore, templateRest, templateSigsBefore; r65: bandOf; r66: picsTidy)`, dh || unlisted);
     // rNewDo sat in r62's table as the helper New routine's Save called by name (ACT.rNewDo(name)): no element named it, and a tap would have handed it the element as the name. It is a function of actsroutine.ts since r63.
     const NOT_TAPS = ['rNewDo'];
     // Actions a later build adds go beside r62's, each listed here with the release that added it: r66's Done with sets left (374), the bodyweight sheet (372), and a note's pictures (373).

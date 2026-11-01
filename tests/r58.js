@@ -42,6 +42,10 @@
 const { open, engine, screenOf, screenDiff, touchDriver } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r57.html';
+/* Section 1 is pinned to the build it proved, r58 (baselines/r58.html), as CLAUDE.md's rule for the comparisons of old builds
+   says: r66 renames a lift in the library on purpose (PENDING 377: Reverse Pec Deck is Reverse Pec Deck (Rear Delt Fly), so
+   it is found by both names), and the library is one of the screens section 1 draws. tests/r66b.js holds r66's changes. */
+const PROVED = 'baselines/r58.html';
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 700) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 // R58_ONLY=5,6 runs those sections alone (to show a case failing on r57 without the rest).
@@ -128,7 +132,7 @@ const SCREENS = [
   if (!run(1));
   else if (process.env.IRONLOG_FILE) console.log('note r58 section 1 compares source pages; it runs on the source build');
   else for (const [tab, name, seed, prep, env] of SCREENS) {
-    const a = asNow(await screenOf(OLD, { browser, seed: seed + FIX + KEEP, tab, prep, env, spaces: true })), b1 = await screenOf(FILE, { browser, seed: seed + FIX + KEEP, tab, prep, env, spaces: true }), b0 = { ...b1, tree: b1.tree.map(tipSpace) }, b = { ...b0, text: tipless(b0.text) };
+    const a = asNow(await screenOf(OLD, { browser, seed: seed + FIX + KEEP, tab, prep, env, spaces: true })), b1 = await screenOf(PROVED, { browser, seed: seed + FIX + KEEP, tab, prep, env, spaces: true }), b0 = { ...b1, tree: b1.tree.map(tipSpace) }, b = { ...b0, text: tipless(b0.text) };
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     ok(!d, `1. ${name}: the same elements, attributes and field values as r57`, d && { at: d.at, r57: d.before, now: d.now });
     ok(a.text === b.text, `1. ${name}: the same visible text as r57`, a.text === b.text ? '' : textDiff(a.text, b.text));

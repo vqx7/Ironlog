@@ -639,7 +639,7 @@ const FORMULA_LEAD = /^[=+\-@\t\r]/,
 /** A CSV cell's text made safe for a spreadsheet: a ' before one a spreadsheet would read as a formula. */
 export const csvGuard = (s: string): string => (FORMULA_LEAD.test(s) && !PLAIN_NUMBER.test(s) ? "'" + s : s);
 /** A cell of Ironlog's own export read back: the ' csvGuard put before a formula's first character taken off. */
-export const csvUnguard = (s: string): string =>
+const csvUnguard = (s: string): string =>
   s.startsWith("'") && FORMULA_LEAD.test(s.slice(1)) && !PLAIN_NUMBER.test(s.slice(1)) ? s.slice(1) : s;
 
 /* Table rows to sessions: grouped by date and workout name, exercises in
