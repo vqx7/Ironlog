@@ -17,11 +17,16 @@
 
    Bytes no longer named by the log (a picture taken off, a session deleted)
    are kept PIC_KEEP_DAYS after they were last named, longer than Undo and
-   Recently deleted reach, then dropped; Erase everything drops them at once. */
+   Recently deleted reach, then dropped; Erase everything drops them at once.
+   Each picture belongs to the log it was last named by: the account's log
+   (cloud.acct) or the phone's own (''). Only that log can let it go, so a
+   picture whose log has gone to the account at a sign-out, or been kept
+   aside for another account, stays until that log is back on the phone
+   (the review of r66: fifty days after a sign-out the picture was gone). */
 
 import { arr, isPicId, rec } from './records';
 import { log, picRowsRead, picRowsWrite } from './storage';
-import { state } from './store';
+import { cloud, state } from './store';
 import { uid, DAY_MS } from './util';
 
 /** The longest side a kept picture is drawn at, in pixels: sharp on a phone, a few hundred kilobytes as a JPEG. */
@@ -40,7 +45,12 @@ interface PicRow {
   h: number;
   t: number;
   seen: number;
+  /** The log it belongs to: the account's id, or '' for the phone's own. */
+  own: string;
 }
+
+/** The log on the phone now: the account it belongs to, or '' when it is the phone's own. */
+const owner = (): string => cloud.acct || '';
 
 const rows = new Map<string, PicRow>();
 const urls = new Map<string, string>();
@@ -51,7 +61,15 @@ function rowOf(v: unknown): PicRow | null {
   const r = rec(v);
   if (!r || typeof r.id !== 'string' || !isPicId(r.id) || !(r.blob instanceof Blob)) return null;
   const n = (x: unknown): number => (typeof x === 'number' && Number.isFinite(x) ? x : 0);
-  return { id: r.id, blob: r.blob, w: n(r.w), h: n(r.h), t: n(r.t), seen: n(r.seen) || n(r.t) };
+  return {
+    id: r.id,
+    blob: r.blob,
+    w: n(r.w),
+    h: n(r.h),
+    t: n(r.t),
+    seen: n(r.seen) || n(r.t),
+    own: typeof r.own === 'string' ? r.own : ''
+  };
 }
 
 /** Reads the pictures kept on this phone, once at start; the page draws them when they are in. */
@@ -64,6 +82,26 @@ export async function picsStart(): Promise<void> {
   picsTidy().catch((e: unknown) => {
     log('pics-tidy', e);
   });
+}
+
+/* Another tab of the app on this phone adds pictures to the same store, and
+   this tab read it at start: so it is read again before a note's room is
+   counted for a picture added here, and when the other tab's change arrives
+   or the page comes back to the front (events.ts). Only pictures found are
+   added: one dropped by the other tab stays drawn here until a reload, and a
+   read that began before this tab's own write cannot drop that write. */
+/** Reads the pictures kept on this phone again, adding any another tab kept: true when one was found. */
+export async function picsRefresh(): Promise<boolean> {
+  if (!ready) return false;
+  let found = false;
+  for (const v of await picRowsRead()) {
+    const r = rowOf(v);
+    if (r && !rows.has(r.id)) {
+      rows.set(r.id, r);
+      found = true;
+    }
+  }
+  return found;
 }
 
 /** Whether this phone holds a picture's bytes. */
@@ -141,10 +179,11 @@ export async function picAdd(f: Blob): Promise<{ id: string } | { why: string }>
   const blob = await new Promise<Blob | null>(res => cv.toBlob(res, 'image/jpeg', PIC_QUALITY));
   if (!blob) return { why: 'This phone could not prepare the photo.' };
   const now = Date.now();
-  const row: PicRow = { id: 'p' + uid(), blob, w, h, t: now, seen: now };
+  const row: PicRow = { id: 'p' + uid(), blob, w, h, t: now, seen: now, own: owner() };
   if (!(await picRowsWrite([row], [])))
     return { why: 'The photo could not be kept on this phone (storage full or blocked).' };
   rows.set(row.id, row);
+  await picsRefresh();
   return { id: row.id };
 }
 
@@ -166,16 +205,17 @@ function named(): Set<string> {
   return out;
 }
 
-/** Marks the pictures the log names as seen, and drops those it has not named for PIC_KEEP_DAYS (at start; the suites call it by the hook). */
+/** Marks the pictures the log names as seen and its own, and drops its own it has not named for PIC_KEEP_DAYS (at start; the suites call it by the hook). */
 export async function picsTidy(now = Date.now()): Promise<void> {
   if (!ready) return;
   const live = named();
+  const me = owner();
   const seen: PicRow[] = [],
     gone: string[] = [];
   for (const r of rows.values()) {
     if (live.has(r.id)) {
-      if (now - r.seen > DAY_MS) seen.push({ ...r, seen: now });
-    } else if (now - r.seen > PIC_KEEP_DAYS * DAY_MS) gone.push(r.id);
+      if (now - r.seen > DAY_MS || r.own !== me) seen.push({ ...r, seen: now, own: me });
+    } else if (r.own === me && now - r.seen > PIC_KEEP_DAYS * DAY_MS) gone.push(r.id);
   }
   if (!seen.length && !gone.length) return;
   if (!(await picRowsWrite(seen, gone))) return;

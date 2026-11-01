@@ -456,6 +456,11 @@ export function mergeDraft(base0: unknown, cur0: unknown, pre0: unknown): unknow
   for (const f of ['notes', 'dayName', 'deload', 'light', 'limited', 'cardio', 'chk']) {
     if (canon(cur[f]) === canon(base[f])) res[f] = pre[f];
   }
+  // The workout's pictures (r66, 373) go back the same way, absent where they were (the review of r66: Undo left one taken off gone).
+  if (canon(cur.pics) === canon(base.pics)) {
+    if (pre.pics === undefined) delete res.pics;
+    else res.pics = pre.pics;
+  }
   // The same session with each exercise and field taken from one of its versions.
   return res;
 }

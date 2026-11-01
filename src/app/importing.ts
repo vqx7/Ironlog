@@ -636,11 +636,19 @@ function impCardioKind(name: unknown): string | null {
    round the trip as typed. */
 const FORMULA_LEAD = /^[=+\-@\t\r]/,
   PLAIN_NUMBER = /^[-+]?\d+(?:[.,]\d+)?$/;
+/* A cell gets the mark when a spreadsheet would read it as a formula, and
+   also when it is the lifter's own ' before such a text ('+5 lb' next
+   time): reading the export back takes one ' off a marked cell, so without
+   its own mark that ' would be the one taken off (the review of r66). */
+/** Whether a cell's text needs the ' mark: past any ' it starts with, it reads as a formula and is not a plain number. */
+const needsMark = (s: string): boolean => {
+  const t = s.replace(/^'+/, '');
+  return FORMULA_LEAD.test(t) && !PLAIN_NUMBER.test(t);
+};
 /** A CSV cell's text made safe for a spreadsheet: a ' before one a spreadsheet would read as a formula. */
-export const csvGuard = (s: string): string => (FORMULA_LEAD.test(s) && !PLAIN_NUMBER.test(s) ? "'" + s : s);
-/** A cell of Ironlog's own export read back: the ' csvGuard put before a formula's first character taken off. */
-const csvUnguard = (s: string): string =>
-  s.startsWith("'") && FORMULA_LEAD.test(s.slice(1)) && !PLAIN_NUMBER.test(s.slice(1)) ? s.slice(1) : s;
+export const csvGuard = (s: string): string => (needsMark(s) ? "'" + s : s);
+/** A cell of Ironlog's own export read back: the ' csvGuard put before it taken off, and only that one. */
+const csvUnguard = (s: string): string => (s.startsWith("'") && needsMark(s.slice(1)) ? s.slice(1) : s);
 
 /* Table rows to sessions: grouped by date and workout name, exercises in
    order of first appearance. A row with no date or exercise continues the

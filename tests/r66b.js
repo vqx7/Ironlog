@@ -39,11 +39,13 @@
 //      (=, +, -, @) is written with a ' in front, a number (a negative load
 //      on an assisted lift among them) as it is, and Ironlog's own export
 //      imported back gives every note as typed.
-//   9  NEW-30: sets heavier than a reps target's load count toward its reps
-//      (a heavier set is at least as hard): leg press 1,000 x 15, 15, 14
-//      against 990 for 37+ reads beaten on the screen and in the recap, as do
-//      990 x 13 x 3 and bench 235 x 9 x 3 after 225 x 8 x 3; heavier sets
-//      with fewer reps and a lower estimate (235 x 6 x 3) are not beaten.
+//   9  NEW-30: sets done at one load heavier than a reps target's count
+//      toward its reps (a heavier set is at least as hard): leg press 1,000 x
+//      15, 15, 14 against 990 for 37+ reads beaten on the screen and in the
+//      recap, as do 990 x 13 x 3 and bench 235 x 9 x 3 after 225 x 8 x 3, and
+//      the next session's target has moved; heavier sets with fewer reps and
+//      a lower estimate (235 x 6 x 3) are not beaten; with loads mixed only
+//      the sets at the target's load count, as the next target reads them.
 //  10  377: the exercise picker finds a lift by what lifters call it: "rear
 //      delt pec deck flyes" finds Reverse Pec Deck (Rear Delt Fly), and
 //      "reverse fly", "peck deck", "bicep curl", "hamstring curl", "dumbbell
@@ -53,7 +55,19 @@
 //      which holds every built-in by name, reads the machine by its new name
 //      too and finds it the same way (NEW-37), a name the lifter gave stays,
 //      and an import naming Reverse Pec Deck still finds it first.
-const { open, engine } = require('./h');
+//  11  pictures (373): a lift done twice in a row is saved as one exercise,
+//      and the pictures on both its notes are all kept, through a reload
+//      (they were cut to four).
+//  12  pictures (373): Undo puts back a picture taken off the workout's
+//      notes, as its question says; a second tab open on the same workout
+//      shows the four pictures the first added, and its note is full there
+//      too (it showed none and cut one when it added its own).
+//  13  pictures (373) and the account: signed in, a session saved with a
+//      picture; signed out, the log leaves the phone; fifty days of the app's
+//      tidy keep the picture, since nothing on the phone can name it while
+//      its log is in the account; signed in again, History shows it (the
+//      built app with the stand-in account service, on the source run).
+const { open, engine, tab } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
 const fails = [];
@@ -303,6 +317,36 @@ const stored = H => H.ev(async secret => {
     ok(!H.P.errors.length, '2. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
+  if (run(2)) {
+    // As shown means as typed: a 0 typed in a set left is a missed set, logged as one, never the grey reps (the review of r66).
+    const H = await phone(MON);
+    const hist = [0, 7].map((k, i) => ({ id: 'h' + i, date: addD(MON, -14 + k), dayIdx: 0, dayId: 'D1', dayName: 'Push', routineId: 'R1', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [1, 2, 3].map(() => ({ w: 225 * LB, r: 8, rir: 2, warm: false, drop: false })) }] }));
+    await seed(H, { sessions: hist });
+    await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+    await H.ev(() => { const L = window.__ironlog; L.state.draft.ex[0].sets[0].r = 8; L.render(); });
+    await H.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(150);
+    await H.page.fill('[data-f="r"][data-b="0"][data-s="1"]', '0'); await H.ev(() => document.activeElement && document.activeElement.blur()); await wait(150);
+    await H.page.click('#view [data-act="bDoneAll"][data-b="0"]'); await wait(150);
+    await H.page.click('#modal [data-act="mOk"]'); await wait(200);
+    let d = await H.draft();
+    const got = d.ex[0].sets.map(x => [x.done, Math.round(x.w / LB), x.r]);
+    ok(JSON.stringify(got) === JSON.stringify([[true, 225, 8], [true, 225, 0], [true, 225, 8]]), '2. a 0 typed in a set left is logged as a missed set (225 x 0), the others as shown', got);
+    // A warm-up alone left (every working set done): Done asks about it as a set, says nothing of the target, and Log keeps it as a warm-up.
+    await H.ev(() => { const L = window.__ironlog; L.ACT.wAdd({ dataset: { b: '1' } }); if (L.ui.modal) L.ACT.mClose(); }); await wait(150);
+    await H.ev(() => { const L = window.__ironlog; for (const s of L.state.draft.ex[1].sets) if (!s.warm) { s.w = 135 * 0.45359237; s.r = 8; s.done = true; } L.saveNow(); L.render(); }); await wait(150);
+    await H.ev(() => window.__ironlog.ACT.bOpen({ dataset: { b: '1' } })); await wait(150);
+    await H.page.fill('[data-f="w"][data-b="1"][data-s="0"]', '95'); await H.ev(() => document.activeElement && document.activeElement.blur()); await wait(150);
+    const wShown = await H.ev(() => { const w = document.querySelector('[data-f="w"][data-b="1"][data-s="0"]'), r = document.querySelector('[data-f="r"][data-b="1"][data-s="0"]'); return [Number(w.value || w.placeholder), Number(r.value || r.placeholder)]; });
+    await H.page.click('#view [data-act="bDoneAll"][data-b="1"]'); await wait(150);
+    const q = await H.modal();
+    ok(q && /1 set left/.test(q.title) && !/target repeats/.test(q.text) && /Log them as shown/.test(q.text), '2. a warm-up alone left: one question, nothing said of the target', q);
+    await H.page.click('#modal [data-act="mOk"]'); await wait(200);
+    d = await H.draft();
+    const wu = d.ex[1].sets[0];
+    ok(d.ex[1].sets.length === 3 && wu.warm && wu.done && Math.round(wu.w / LB) === wShown[0] && wu.r === wShown[1] && wShown[0] > 0, '2. ... Log keeps it, ticked as a warm-up at what it showed', { shown: wShown, sets: d.ex[1].sets.map(x => [x.warm, x.done, Math.round(x.w / LB), x.r]) });
+    ok(!H.P.errors.length, '2. no page errors (a 0 typed, a warm-up left)', H.P.errors);
+    await H.P.ctx.close();
+  }
 
   // ---- 3. Supersets and drop sets.
   if (run(3)) {
@@ -469,7 +513,9 @@ const stored = H => H.ev(async secret => {
     if (sheet.add) await pickFile(H, '#modal input[type="file"][data-pic="0"]', 'new.jpg', 'image/jpeg', bytes);
     let d; for (let k = 0; k < 30; k++) { d = await H.draft(); if (d.ex[0].pics.some(x => !/^pdead/.test(x))) break; await wait(100); }
     const mine = d.ex[0].pics.filter(x => !/^pdead/.test(x));
-    ok(d.ex[0].pics.length === 4 && mine.length === 1 && d.ex[0].pics[3] === mine[0], '7. the new picture is kept (the oldest unseen id makes room), never the one cut', d.ex[0].pics);
+    /* Every id is kept with the new one: an id this phone does not hold may name a picture another tab or phone holds
+       (the review of r66 showed a tab opened earlier cutting a picture the other had just added), so none is dropped. */
+    ok(d.ex[0].pics.length === 5 && mine.length === 1 && d.ex[0].pics[4] === mine[0] && ['pdead001', 'pdead002', 'pdead003', 'pdead004'].every(x => d.ex[0].pics.includes(x)), '7. the new picture is kept, and every id from the backup with it', d.ex[0].pics);
     await H.ev(() => window.__ironlog.ACT.mClose());
     // Three pictures: A stays on a saved session, B is taken off, C goes with a session deleted to Recently deleted.
     await H.ev(() => { const L = window.__ironlog; L.state.draft.ex[0].pics = []; L.state.draft.pics = []; L.render(); });
@@ -545,6 +591,16 @@ const stored = H => H.ev(async secret => {
     await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
     const back = await H.ev(() => { const s = window.__ironlog.state.sessions[0]; return s ? { notes: s.notes, ex: s.ex.map(b => b.note) } : null; });
     ok(back && back.notes === '=HYPERLINK("http://x.example","click")' && JSON.stringify(back.ex) === JSON.stringify(['+cmd|calc', '@SUM(1+1)', '-2+3']), '8. imported back, every note is as typed', back);
+    // A note that starts with the lifter's own ' before =, +, - or @ keeps that ' through the export and back (the review of r66).
+    const typed = { notes: "'@home' gym, short on time", ex: ["'+5 lb' next time", "'-1 hole' on the seat", "''=two marks", "'-5"] };
+    await seed(H, { sessions: [{ id: 'c2', date: '2026-10-30', dayIdx: 0, dayId: 'D1', dayName: 'Push', routineId: 'R1', notes: typed.notes, ex: typed.ex.map((note, i) => ({ exId: ['bench', 'ohp', 'dbRow', 'bbCurl'][i], rr: [6, 10], note, sets: [{ w: 40, r: 8, rir: 2, warm: false, drop: false }] })) }] });
+    const csv2 = await H.ev(async () => { const L = window.__ironlog; let out = null; window.claude = { use: async k => (k === 'downloads' ? { save: async o => { out = o.data; } } : null) }; await L.exportCSV(); delete window.claude; return out; });
+    await H.ev(() => { const L = window.__ironlog; L.state.sessions = []; L.invalidate(); L.saveNow(); L.render(); });
+    await H.ev(t => window.__ironlog.impStart({ text: t }), csv2); await wait(300);
+    await H.page.click('#modal [data-act="impGo"]'); await wait(500);
+    await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    const back2 = await H.ev(() => { const s = window.__ironlog.state.sessions[0]; return s ? { notes: s.notes, ex: s.ex.map(b => b.note) } : null; });
+    ok(back2 && JSON.stringify(back2) === JSON.stringify(typed), "8. a note starting with the lifter's own ' (before =, +, - or @, or two of them) comes back as typed", { typed, back2 });
     ok(!H.P.errors.length, '8. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
@@ -555,7 +611,12 @@ const stored = H => H.ev(async secret => {
       { name: 'leg press 1,000 x 15, 15, 14 after 990 x 12 x 3', ex: 'legPress', rr: [10, 15], step: 10, last: [990, 12], sets: [[1000, 15], [1000, 15], [1000, 14]], beat: true, line: /^Beaten: 44 reps at that load or heavier, last time 36/ },
       { name: 'leg press 990 x 13 x 3 after 990 x 12 x 3 (a guard)', ex: 'legPress', rr: [10, 15], step: 10, last: [990, 12], sets: [[990, 13], [990, 13], [990, 13]], beat: true, line: /^Beaten: 39 reps at that load, last time 36/ },
       { name: 'bench 235 x 9 x 3 after 225 x 8 x 3', ex: 'bench', rr: [6, 10], step: 5, last: [225, 8], sets: [[235, 9], [235, 9], [235, 9]], beat: true, line: /^Beaten: 27 reps at that load or heavier, last time 24/ },
-      { name: 'bench 235 x 6 x 3 after 225 x 8 x 3 (heavier, fewer reps, a lower estimate)', ex: 'bench', rr: [6, 10], step: 5, last: [225, 8], sets: [[235, 6], [235, 6], [235, 6]], beat: false, line: /Heavier than target/ }
+      { name: 'bench 235 x 6 x 3 after 225 x 8 x 3 (heavier, fewer reps, a lower estimate)', ex: 'bench', rr: [6, 10], step: 5, last: [225, 8], sets: [[235, 6], [235, 6], [235, 6]], beat: false, line: /Heavier than target/ },
+      /* Loads mixed: the next target reads only the sets at the target's load (the review of r66), so the line and the
+         recap do too, as r65.2 did; counting the heavier set said Beaten while the next target repeated. */
+      { name: 'leg press 1,000 x 13, then 990 x 12 twice, after 990 x 12 x 3 (loads mixed)', ex: 'legPress', rr: [10, 15], step: 10, last: [990, 12], sets: [[1000, 13], [990, 12], [990, 12]], beat: false, line: /^24 of 37 reps so far at that load$/ },
+      { name: 'leg press 990 x 12 twice, then 1,000 x 13, after 990 x 12 x 3 (loads mixed)', ex: 'legPress', rr: [10, 15], step: 10, last: [990, 12], sets: [[990, 12], [990, 12], [1000, 13]], beat: false, line: /^24 of 37 reps so far at that load$/ },
+      { name: 'lateral raise 25 x 16, then 20 x 15 twice, after 20 x 15 x 3 (loads mixed)', ex: 'dbLateral', rr: [12, 20], step: 5, last: [20, 15], sets: [[25, 16], [20, 15], [20, 15]], beat: false, line: /^30 of 46 reps so far at that load$/ }
     ];
     for (const c of CASES) {
       const H = await phone(MON);
@@ -564,6 +625,7 @@ const stored = H => H.ev(async secret => {
         S.sessions = ['2026-10-19', '2026-10-26'].map((date, i) => ({ id: 'h' + i, date, dayIdx: 0, dayId: 'D1', dayName: 'Day', routineId: 'R1', notes: '', ex: [{ exId: c.ex, rr: c.rr, sets: [1, 2, 3].map(() => ({ w: c.last[0] * LB, r: c.last[1], rir: 2, warm: false, drop: false })) }] }));
         L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.render(); }, c);
       await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+      const tgt0 = await H.ev(() => JSON.stringify(window.__ironlog.state.draft.ex[0].tgt));
       for (const [k, [w, r]] of c.sets.entries()) {
         await H.ev(([k, w, r]) => { const L = window.__ironlog; const s = L.state.draft.ex[0].sets[k]; s.w = w * 0.45359237; s.r = r; s.rir = 2; L.render(); }, [k, w, r]);
         await H.page.click(`#view [data-act="sDone"][data-b="0"][data-s="${k}"]`); await wait(120);
@@ -576,6 +638,13 @@ const stored = H => H.ev(async secret => {
       const recap = await H.ev(() => (document.getElementById('modal') || {}).innerText || '');
       const said = (recap.match(/\d+ of \d+ exercise targets? beaten/) || [''])[0];
       ok(c.line.test(line) && said === (c.beat ? '1 of 1 exercise target beaten' : '0 of 1 exercise target beaten'), `9. ${c.name}: ${c.beat ? 'beaten' : 'not beaten'}, on the screen and in the recap`, { line, said });
+      // Beaten is never said of a target the next session asks again: a week on, the target has moved.
+      if (c.beat) {
+        await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); window.__setClock('2026-11-09T09:00:00'); L.invalidate(); L.ui.tab = 'today'; L.render(); }); await wait(150);
+        await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+        const next = await H.ev(() => { const d = window.__ironlog.state.draft; return d && d.ex[0] ? JSON.stringify(d.ex[0].tgt) : null; });
+        ok(next && next !== tgt0, `9. ${c.name}: and the next session's target has moved`, { today: tgt0, next });
+      }
       await H.P.ctx.close();
     }
   }
@@ -639,6 +708,135 @@ const stored = H => H.ev(async secret => {
     ok(!off2.length, '10. ... and its picker finds the machine by "rear delt pec deck flyes", "rear delt fly" and "reverse fly"', off2);
     ok(!N.errors.length, '10. ... no page errors', N.errors);
     await N.ctx.close();
+  }
+
+  // ---- 11. A lift done twice in a row is saved as one exercise (joinAdjacent): its two notes' pictures are all kept.
+  if (run(11)) {
+    const H = await phone(MON);
+    await seed(H);
+    await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+    // Bench twice in a row (bench, bench, overhead press), as a lifter gets by adding it again and moving it up.
+    await H.ev(() => { const L = window.__ironlog; const d = L.state.draft; const b = JSON.parse(JSON.stringify(d.ex[0])); b.bid = (b.bid || 'b') + 'x2'; d.ex.splice(1, 0, b); L.saveNow(); L.render(); });
+    const bytes = await jpegWithSecret(H);
+    for (const bi of [0, 1]) for (let k = 0; k < 3; k++) {
+      await H.ev(bi => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ACT.bNote({ dataset: { b: String(bi) } }); }, bi); await wait(150);
+      const sel = `#modal input[type="file"][data-pic="${bi}"]`;
+      if (await H.page.$(sel)) await pickFile(H, sel, `IMG_${bi}${k}.jpg`, 'image/jpeg', bytes);
+    }
+    await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    let d = await H.draft();
+    const held = [d.ex[0].pics || [], d.ex[1].pics || []];
+    ok(held[0].length === 3 && held[1].length === 3, '11. three pictures on each bench\'s note', held.map(x => x.length));
+    await H.ev(() => { const L = window.__ironlog; const LB = 0.45359237; for (const b of L.state.draft.ex.slice(0, 2)) { b.sets[0].w = 225 * LB; b.sets[0].r = 8; b.sets[0].done = true; } L.saveNow(); L.render(); });
+    await H.page.click('#view [data-act="finish"]');
+    for (let k = 0; k < 5; k++) { await wait(150); const q = await H.modal(); if (!q || q.kind !== 'confirm') break; await H.page.click(/sets not done/.test(q.title) ? '#modal [data-act="mOk"]' : '#modal [data-act="mAlt"]'); }
+    await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    const want = [...held[0], ...held[1]];
+    const saved = await H.ev(() => { const s = window.__ironlog.state.sessions[0]; return s ? s.ex.filter(b => b.exId === 'bench').map(b => b.pics || []) : null; });
+    ok(saved && saved.length === 1 && saved[0].length === 6 && want.every(id => saved[0].includes(id)), '11. saved as one bench, with all six pictures', { saved, want });
+    await H.page.reload(); await H.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(500);
+    const after = await H.ev(() => { const s = window.__ironlog.state.sessions[0]; return s ? s.ex.filter(b => b.exId === 'bench').map(b => (b.pics || []).length) : null; });
+    ok(after && after[0] === 6, '11. ... and all six after a reload', after);
+    ok(!H.P.errors.length, '11. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 12. Pictures and Undo, and two tabs of the app on one phone (the review of r66).
+  if (run(12)) {
+    const H = await phone(MON);
+    await seed(H);
+    await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+    const bytes = await jpegWithSecret(H);
+    // A picture under the workout's notes, taken off with its question, then put back by the toast's Undo.
+    await pickFile(H, '#view input[type="file"][data-pic="n"]', 'n.jpg', 'image/jpeg', bytes);
+    let d = await H.draft();
+    const n0 = d.pics || [];
+    ok(n0.length === 1, "12. a picture under the workout's notes", n0);
+    await H.page.click('#view .pthumb[data-at="n"]'); await wait(150);
+    await H.page.click('#modal [data-act="picRemove"]'); await wait(150);
+    await H.page.click('#modal [data-act="mOk"]'); await wait(200);
+    d = await H.draft();
+    ok(!d.pics, '12. Remove picture takes it off', d.pics);
+    await H.ev(() => { const b = document.querySelector('#toast button'); if (b) b.click(); }); await wait(250);
+    d = await H.draft();
+    const thumbs = await H.ev(() => document.querySelectorAll('#view .pthumb[data-at="n"]').length);
+    ok(d.pics && d.pics.length === 1 && d.pics[0] === n0[0] && thumbs === 1, "12. Undo puts it back under the workout's notes, as the question says", { pics: d.pics, thumbs });
+    // A second tab, open on the same workout before the first adds four pictures to the bench's note.
+    const T = await tab(H.P, FILE);
+    await wait(600);
+    await H.page.bringToFront();
+    await H.page.click('#view [data-act="bNote"][data-b="0"]'); await wait(150);
+    for (let k = 0; k < 4; k++) await pickFile(H, '#modal input[type="file"][data-pic="0"]', `a${k}.jpg`, 'image/jpeg', bytes);
+    await H.ev(() => window.__ironlog.ACT.mClose());
+    const idsA = (await H.draft()).ex[0].pics || [];
+    ok(idsA.length === 4, "12. four pictures on the bench's note in the first tab", idsA);
+    await T.page.bringToFront(); await wait(600);
+    const inB = await T.page.evaluate(() => ({ ids: (window.__ironlog.state.draft.ex[0].pics || []).length, thumbs: document.querySelectorAll('#blk-0 .pthumb').length }));
+    ok(inB.ids === 4 && inB.thumbs === 4, '12. the second tab shows all four', inB);
+    await T.page.click('#view [data-act="bNote"][data-b="0"]'); await wait(150);
+    const roomB = await T.page.evaluate(() => !!document.querySelector('#modal input[type="file"][data-pic="0"]'));
+    ok(!roomB, '12. ... and its note is full there too: no + Picture', roomB);
+    await T.page.evaluate(() => window.__ironlog.ACT.mClose());
+    ok(!T.errors.length && !H.P.errors.length, '12. no page errors in either tab', [...T.errors, ...H.P.errors]);
+    await H.P.ctx.close();
+  }
+
+  // ---- 13. Pictures through a sign-out (the review of r66): the built app with the stand-in account service.
+  if (run(13) && process.env.IRONLOG_FILE) console.log('note r66b section 13 builds the app with the stand-in account; it runs on the source build');
+  else if (run(13)) {
+    const fs = require('fs'), os = require('os'), path = require('path');
+    const { start, quietHibp } = require('./fake-supabase');
+    const { cspFix, build, settle } = require('./h');
+    build();
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-r66b-'));
+    fs.cpSync(path.join(__dirname, '..', 'dist'), tmp, { recursive: true });
+    const fake = await start(tmp);
+    const ip = path.join(tmp, 'index.html');
+    fs.writeFileSync(ip, cspFix(fs.readFileSync(ip, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
+    await quietHibp(ctx);
+    const page = await ctx.newPage(); const errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto(fake.base + '/ironlog/'); await page.waitForFunction(() => window.__ironlog && document.getElementById('obPage'), null, { timeout: 15000 });
+    const H = { page, P: { errors }, ev: (f, a) => page.evaluate(f, a) };
+    const synced = () => page.waitForFunction(() => { const L = window.__ironlog; return L.acctUser() && L.cloudState().on && L.cloudState().status === 'synced'; }, null, { timeout: 20000 }).then(() => true, () => false);
+    await page.click('#obPage [data-act="acctOpen"][data-mode="signup"]'); await wait(100);
+    await page.fill('#modal [data-abind="email"]', 'pics@example.com'); await page.fill('#modal [data-abind="pw"]', 'a good pass 9');
+    await page.click('#modal [data-act="acctSubmit"]'); await wait(800);
+    fake.confirm('pics@example.com');
+    await page.click('#modal [data-act="acctWaitNow"]').catch(() => {}); await wait(1500);
+    ok(await synced(), '13. a new account signs in and syncs');
+    // A workout with a picture under its notes, finished and synced.
+    await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.state.settings.onboarded = true; L.ACT.startFree(); if (L.ui.modal) L.ACT.mClose(); const d = L.state.draft; d.ex.push(L.newBlock('bench', { sets: 1, repMin: 6, repMax: 10, rir: 2, rest: 120, inc: 2.5 })); const b = d.ex[0]; b.sets[0].w = 100; b.sets[0].r = 8; b.sets[0].done = true; L.ui.tab = 'today'; L.saveNow(); L.render(); });
+    await wait(300);
+    await pickFile(H, '#view input[type="file"][data-pic="n"]', 'n.jpg', 'image/jpeg', await jpegWithSecret(H));
+    const pid = await H.ev(() => (window.__ironlog.state.draft.pics || [])[0] || null);
+    await page.click('#view [data-act="finish"]');
+    for (let k = 0; k < 5; k++) { await wait(200); const q = await H.ev(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'confirm' ? m.title || '' : null; }); if (q == null) break; await page.click(/sets not done/.test(q) ? '#modal [data-act="mOk"]' : '#modal [data-act="mAlt"]'); }
+    await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    await wait(1500); await synced();
+    const saved = await H.ev(id => window.__ironlog.state.sessions.some(s => (s.pics || []).includes(id)), pid);
+    ok(!!pid && saved, '13. the session is saved with its picture', { pid, saved });
+    // Sign out, the phone's copy going with it (the first answer), as the question offers.
+    await H.ev(() => window.__ironlog.ACT.acctSignOut()); await wait(150);
+    await page.click('#modal [data-act="mOk"]'); await wait(1500);
+    ok(await H.ev(() => !window.__ironlog.acctUser() && window.__ironlog.state.sessions.length === 0), '13. signed out: the log has gone from the phone');
+    // Fifty days pass, the app opened now and then (its tidy runs at each start).
+    await H.ev(async () => { await window.__ironlog.picsTidy(Date.now() + 20 * 864e5); await window.__ironlog.picsTidy(Date.now() + 50 * 864e5); });
+    const kept = (await stored(H)).rows.some(r => r.id === pid);
+    ok(kept, "13. the picture stays on the phone while its log is in the account (nothing on this phone can name it then)", { pid, rows: (await stored(H)).rows.map(r => r.id) });
+    // Signing in again brings the log back, the picture with it.
+    await page.click('#obPage [data-act="acctOpen"][data-mode="signin"]'); await wait(100);
+    await page.fill('#modal [data-abind="email"]', 'pics@example.com'); await page.fill('#modal [data-abind="pw"]', 'a good pass 9');
+    await page.click('#modal [data-act="acctSubmit"]');
+    ok(await synced(), '13. signed in again');
+    await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ui.tab = 'history'; L.render(); }); await wait(300);
+    await page.click('#view [data-act="histToggle"]').catch(() => {}); await wait(300);
+    const back = await H.ev(id => ({ named: window.__ironlog.state.sessions.some(s => (s.pics || []).includes(id)), shown: [...document.querySelectorAll('#view .pthumb img')].filter(i => i.naturalWidth > 0).length }), pid);
+    ok(back.named && back.shown === 1, '13. after signing in again History shows the picture', back);
+    ok(!errors.length, '13. no page errors', errors);
+    await settle(ctx.close(), 'closing the account phone');
+    await settle(fake.close(), 'closing the stand-in account service');
   }
 
   await browser.close();

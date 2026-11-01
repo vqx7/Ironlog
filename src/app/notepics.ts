@@ -66,7 +66,7 @@ export function picStripSaved(ids: readonly string[] | undefined): TemplateResul
   if (!shown.length) return nothing;
   return html`<div class="pstrip">${shown.map(
     (id, i) =>
-      html`<button class="pthumb" data-act="picOpen" data-id=${id} data-at="h" aria-label=${`Picture ${i + 1}: open`}><img src=${picUrl(id) || ''} alt="" loading="lazy" decoding="async"></button>`
+      html`<button class="pthumb" data-act="picOpen" data-id=${id} data-at="h" aria-label=${`Picture ${i + 1}: open`}>\x3cimg src=${picUrl(id) || ''} alt="" loading="lazy" decoding="async"></button>`
   )}</div>`;
 }
 
@@ -94,19 +94,20 @@ export function picChange(t: EventTarget | null): boolean {
       if (!d || d.id !== d0.id) return;
       const at2 = at == null ? null : bid ? d.ex.findIndex(b => b.bid === bid) : at;
       if (at2 != null && at2 < 0) return;
+      // Counted again now the pictures this phone holds are read afresh (picAdd): another tab may have filled the note.
+      if (picsShown(idsAt(at2)).length >= PIC_MAX) {
+        toast(`A note holds ${PIC_MAX} pictures`);
+        rerenderKeepScroll();
+        return;
+      }
+      /* The new picture goes after every id the note names, those this phone
+         does not hold among them (a backup restored, another phone): each may
+         name a picture held elsewhere, so none is ever taken off to make room
+         (the review of r66: a tab that had not read the other's pictures cut
+         one). Room is counted by the pictures shown here. */
       act(
         () => {
-          /* A note full of ids whose bytes this phone does not hold makes room
-             for the new picture by dropping those first, oldest first: they
-             cannot be shown here, and the list keeps PIC_MAX, so the new one
-             is never the one cut. */
-          const ids = [...idsAt(at2)];
-          while (ids.length >= PIC_MAX) {
-            const k = ids.findIndex(x => !picsShown([x]).length);
-            if (k < 0) break;
-            ids.splice(k, 1);
-          }
-          setAt(at2, [...ids, r.id]);
+          setAt(at2, [...idsAt(at2), r.id]);
         },
         { inProgress: true }
       );

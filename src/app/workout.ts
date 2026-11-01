@@ -34,7 +34,7 @@ import { loadWords, loadNote, emptyLoad } from './loads';
 import { CHK_Q, chkWord } from './coach';
 import { rirScale, effShow, effName } from './effort';
 import { prefGet, BWASK_KEY, prefSet, log } from './storage';
-import { EX, exBarKg, loadLabel, U, exName, lighterLoad, fromD, oddLoad } from './live';
+import { EX, exBarKg, loadLabel, U, exName, lighterLoad, fromD, oddLoad, lightZero } from './live';
 import { state, ui } from './store';
 import {
   effW,
@@ -890,26 +890,33 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   // The load the last working set was, or will be (a grey load counts); a missed set's is passed over (r55).
   /* Done with an exercise that has sets left (r66, PENDING 374; V: "Ask:
      log or skip"): one question, then every set left ticked as it shows (its
-     load and reps, typed or grey), or every set left taken off. Either is one
-     change with one Undo. Logging stops before anything is ticked when a set
-     left has no weight or reps to take, or looks far off (that one is ticked
-     on its own, where it is asked about). Skipped sets are fewer sets than
-     usual, so the target repeats next time (V's one rule). */
+     load and reps, typed or grey; a 0 typed is a missed set, as a tick logs
+     it), or every set left taken off. Either is one change with one Undo. A
+     warm-up left is a set left like any other, logged as a warm-up; the
+     target repeats only when a working set is skipped (V's one rule), so the
+     question says so only then (the review of r66: a warm-up alone was
+     counted as a set whose skip repeats the target, and Log took it off).
+     Logging stops before anything is ticked when a set left has no weight
+     or reps to take, looks far off, or is a 0 at a weight well under the
+     working load (each is ticked on its own, where it is asked about). */
   bDoneAll(t) {
     const bi = Number(t.dataset.b);
     const d = state.draft;
     const b = d && d.ex[bi];
     if (!d || !b) return;
-    // Warm-ups left undone are not part of either answer: Finish never saves an undone set, so they simply go.
-    const left = b.sets.map((s, si) => ({ s, si })).filter(x => !x.s.done && !x.s.warm);
-    if (!left.length && !b.sets.some(x => !x.done)) return;
+    const left = b.sets.map((s, si) => ({ s, si })).filter(x => !x.s.done);
+    if (!left.length) return;
     const ex = EX(b.exId);
-    const n = left.length || b.sets.filter(x => !x.done).length;
+    const n = left.length;
     const sets = `${n} set${n === 1 ? '' : 's'}`;
+    const repeats = left.some(x => !x.s.warm)
+      ? ' Skipped sets are fewer than usual, so the target repeats next time.'
+      : '';
     const blocked = left.find(
       ({ s, si }) =>
         (!ex.bw && !ex.timed && s.w == null && greyW(b, si) == null) ||
-        (!(+(s.r ?? 0) > 0) && !((greyR(b, si) ?? 0) > 0)) ||
+        (!(+(s.r ?? 0) > 0) && !isMissed(s) && !((greyR(b, si) ?? 0) > 0)) ||
+        (isMissed(s) && !s.warm && !s.drop && lightZero(b, si, d.date)) ||
         (s.w != null && !s.warm && !s.drop && oddLoad(b, si, d.date)) ||
         oddReps(b, s)
     );
@@ -938,7 +945,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         s,
         si,
         w: s.w ?? greyW(b, si),
-        r: +(s.r ?? 0) > 0 ? s.r : Math.round(greyR(b, si) ?? 0)
+        r: isMissed(s) || +(s.r ?? 0) > 0 ? s.r : Math.round(greyR(b, si) ?? 0)
       }));
       act(
         () => {
@@ -958,14 +965,14 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (blocked)
       confirmBox(
         `${exName(b.exId)}: ${sets} left`,
-        `Set ${blocked.si + 1} has no weight or reps to take, or looks far off, so tick it on its own. Or skip the sets left: fewer sets than usual, so the target repeats next time.`,
+        `Set ${blocked.si + 1} has no weight or reps to take, or looks far off, so tick it on its own. Or skip the sets left.${repeats}`,
         'Skip them',
         skip
       );
     else
       confirmBox(
         `${exName(b.exId)}: ${sets} left`,
-        'Log them as they show, or skip them. Skipped sets are fewer than usual, so the target repeats next time.',
+        `Log them as shown, or skip them.${repeats}`,
         'Log them as shown',
         log,
         false,

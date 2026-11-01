@@ -2001,12 +2001,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var okSess = (ss) => !!ss && typeof ss === "object" && isDate(ss.date) && Array.isArray(ss.ex);
   var sessCmp = (a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : (a2.t || 0) - (b2.t || 0) || (a2.id < b2.id ? -1 : a2.id > b2.id ? 1 : 0);
   var PIC_MAX = 4;
+  var PIC_KEEP = 10 * PIC_MAX;
   var PIC_ID = /^p[a-z0-9]{6,32}$/;
   var isPicId = (v3) => typeof v3 === "string" && PIC_ID.test(v3);
   function picIds(v3) {
     const out = [];
     for (const x2 of arr(v3) || [])
-      if (typeof x2 === "string" && isPicId(x2) && !out.includes(x2) && out.length < PIC_MAX) out.push(x2);
+      if (typeof x2 === "string" && isPicId(x2) && !out.includes(x2) && out.length < PIC_KEEP) out.push(x2);
     return out.length ? out : void 0;
   }
 
@@ -3318,6 +3319,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const res = { ...cur, ex: out };
     for (const f3 of ["notes", "dayName", "deload", "light", "limited", "cardio", "chk"]) {
       if (canon(cur[f3]) === canon(base[f3])) res[f3] = pre[f3];
+    }
+    if (canon(cur.pics) === canon(base.pics)) {
+      if (pre.pics === void 0) delete res.pics;
+      else res.pics = pre.pics;
     }
     return res;
   }
@@ -4785,6 +4790,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PIC_QUALITY = 0.82;
   var PIC_IN_MAX = 40 * 1024 * 1024;
   var PIC_KEEP_DAYS = 45;
+  var owner = () => cloud.acct || "";
   var rows = /* @__PURE__ */ new Map();
   var urls = /* @__PURE__ */ new Map();
   var ready = false;
@@ -4792,7 +4798,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const r4 = rec(v3);
     if (!r4 || typeof r4.id !== "string" || !isPicId(r4.id) || !(r4.blob instanceof Blob)) return null;
     const n3 = (x2) => typeof x2 === "number" && Number.isFinite(x2) ? x2 : 0;
-    return { id: r4.id, blob: r4.blob, w: n3(r4.w), h: n3(r4.h), t: n3(r4.t), seen: n3(r4.seen) || n3(r4.t) };
+    return {
+      id: r4.id,
+      blob: r4.blob,
+      w: n3(r4.w),
+      h: n3(r4.h),
+      t: n3(r4.t),
+      seen: n3(r4.seen) || n3(r4.t),
+      own: typeof r4.own === "string" ? r4.own : ""
+    };
   }
   async function picsStart() {
     for (const v3 of await picRowsRead()) {
@@ -4803,6 +4817,18 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     picsTidy().catch((e5) => {
       log("pics-tidy", e5);
     });
+  }
+  async function picsRefresh() {
+    if (!ready) return false;
+    let found = false;
+    for (const v3 of await picRowsRead()) {
+      const r4 = rowOf(v3);
+      if (r4 && !rows.has(r4.id)) {
+        rows.set(r4.id, r4);
+        found = true;
+      }
+    }
+    return found;
   }
   var picHere = (id) => rows.has(id);
   function picUrl(id) {
@@ -4865,10 +4891,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const blob = await new Promise((res) => cv.toBlob(res, "image/jpeg", PIC_QUALITY));
     if (!blob) return { why: "This phone could not prepare the photo." };
     const now = Date.now();
-    const row = { id: "p" + uid(), blob, w: w2, h: h3, t: now, seen: now };
+    const row = { id: "p" + uid(), blob, w: w2, h: h3, t: now, seen: now, own: owner() };
     if (!await picRowsWrite([row], []))
       return { why: "The photo could not be kept on this phone (storage full or blocked)." };
     rows.set(row.id, row);
+    await picsRefresh();
     return { id: row.id };
   }
   function named() {
@@ -4890,11 +4917,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   async function picsTidy(now = Date.now()) {
     if (!ready) return;
     const live2 = named();
+    const me = owner();
     const seen = [], gone = [];
     for (const r4 of rows.values()) {
       if (live2.has(r4.id)) {
-        if (now - r4.seen > DAY_MS) seen.push({ ...r4, seen: now });
-      } else if (now - r4.seen > PIC_KEEP_DAYS * DAY_MS) gone.push(r4.id);
+        if (now - r4.seen > DAY_MS || r4.own !== me) seen.push({ ...r4, seen: now, own: me });
+      } else if (r4.own === me && now - r4.seen > PIC_KEEP_DAYS * DAY_MS) gone.push(r4.id);
     }
     if (!seen.length && !gone.length) return;
     if (!await picRowsWrite(seen, gone)) return;
@@ -12490,15 +12518,14 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         if (!d3 || d3.id !== d0.id) return;
         const at22 = at2 == null ? null : bid ? d3.ex.findIndex((b2) => b2.bid === bid) : at2;
         if (at22 != null && at22 < 0) return;
+        if (picsShown(idsAt(at22)).length >= PIC_MAX) {
+          toast(`A note holds ${PIC_MAX} pictures`);
+          rerenderKeepScroll();
+          return;
+        }
         act(
           () => {
-            const ids = [...idsAt(at22)];
-            while (ids.length >= PIC_MAX) {
-              const k2 = ids.findIndex((x2) => !picsShown([x2]).length);
-              if (k2 < 0) break;
-              ids.splice(k2, 1);
-            }
-            setAt(at22, [...ids, r4.id]);
+            setAt(at22, [...idsAt(at22), r4.id]);
           },
           { inProgress: true }
         );
@@ -13251,8 +13278,12 @@ ${more}`;
     return /treadmill.*incline|incline.*walk/.test(n3) ? "incline" : /elliptical|cross ?trainer/.test(n3) ? "elliptical" : /stair|stepper|step ?mill/.test(n3) ? "stairs" : /rowing|rower|\berg\b|concept ?2/.test(n3) ? "rower" : /cycl|bike|spin/.test(n3) ? "bike" : /\b(run|running|jog|jogging|sprint)/.test(n3) ? "run" : /treadmill|\bwalk|walking|hike|hiking/.test(n3) ? "walk" : /hiit|interval/.test(n3) ? "hiit" : /cardio|swim/.test(n3) ? "other" : null;
   }
   var FORMULA_LEAD = /^[=+\-@\t\r]/, PLAIN_NUMBER = /^[-+]?\d+(?:[.,]\d+)?$/;
-  var csvGuard = (s3) => FORMULA_LEAD.test(s3) && !PLAIN_NUMBER.test(s3) ? "'" + s3 : s3;
-  var csvUnguard = (s3) => s3.startsWith("'") && FORMULA_LEAD.test(s3.slice(1)) && !PLAIN_NUMBER.test(s3.slice(1)) ? s3.slice(1) : s3;
+  var needsMark = (s3) => {
+    const t4 = s3.replace(/^'+/, "");
+    return FORMULA_LEAD.test(t4) && !PLAIN_NUMBER.test(t4);
+  };
+  var csvGuard = (s3) => needsMark(s3) ? "'" + s3 : s3;
+  var csvUnguard = (s3) => s3.startsWith("'") && needsMark(s3.slice(1)) ? s3.slice(1) : s3;
   function impFromTable(rows2, map) {
     const head = rows2[0];
     let unit = impUnitOf(head, map);
@@ -13944,7 +13975,9 @@ ${more}`;
       }
     }
     if (t4.kind === "reps") {
-      const atUp = done.filter((s3) => (+(s3.w ?? 0) || 0) >= tw - EPS_SAME);
+      const w0 = +(done[0]?.w ?? 0) || 0;
+      const oneUp = w0 > tw + EPS_SAME && done.every((s3) => Math.abs((+(s3.w ?? 0) || 0) - w0) < EPS_SAME);
+      const atUp = oneUp ? done : done.filter((s3) => Math.abs((+(s3.w ?? 0) || 0) - tw) < EPS_SAME);
       if (!atUp.length) return { text: heavyTxt || `Nothing logged at ${loadLabel(ex, tw)} yet`, beat: heavyBeat };
       const tn = t4.n ?? 0, total = t4.total ?? 0;
       const cnt = tn > 0 ? atUp.slice(0, tn) : atUp;
@@ -19678,23 +19711,28 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     // The load the last working set was, or will be (a grey load counts); a missed set's is passed over (r55).
     /* Done with an exercise that has sets left (r66, PENDING 374; V: "Ask:
        log or skip"): one question, then every set left ticked as it shows (its
-       load and reps, typed or grey), or every set left taken off. Either is one
-       change with one Undo. Logging stops before anything is ticked when a set
-       left has no weight or reps to take, or looks far off (that one is ticked
-       on its own, where it is asked about). Skipped sets are fewer sets than
-       usual, so the target repeats next time (V's one rule). */
+       load and reps, typed or grey; a 0 typed is a missed set, as a tick logs
+       it), or every set left taken off. Either is one change with one Undo. A
+       warm-up left is a set left like any other, logged as a warm-up; the
+       target repeats only when a working set is skipped (V's one rule), so the
+       question says so only then (the review of r66: a warm-up alone was
+       counted as a set whose skip repeats the target, and Log took it off).
+       Logging stops before anything is ticked when a set left has no weight
+       or reps to take, looks far off, or is a 0 at a weight well under the
+       working load (each is ticked on its own, where it is asked about). */
     bDoneAll(t4) {
       const bi = Number(t4.dataset.b);
       const d3 = state.draft;
       const b2 = d3 && d3.ex[bi];
       if (!d3 || !b2) return;
-      const left = b2.sets.map((s3, si) => ({ s: s3, si })).filter((x2) => !x2.s.done && !x2.s.warm);
-      if (!left.length && !b2.sets.some((x2) => !x2.done)) return;
+      const left = b2.sets.map((s3, si) => ({ s: s3, si })).filter((x2) => !x2.s.done);
+      if (!left.length) return;
       const ex = EX(b2.exId);
-      const n3 = left.length || b2.sets.filter((x2) => !x2.done).length;
+      const n3 = left.length;
       const sets = `${n3} set${n3 === 1 ? "" : "s"}`;
+      const repeats = left.some((x2) => !x2.s.warm) ? " Skipped sets are fewer than usual, so the target repeats next time." : "";
       const blocked = left.find(
-        ({ s: s3, si }) => !ex.bw && !ex.timed && s3.w == null && greyW(b2, si) == null || !(+(s3.r ?? 0) > 0) && !((greyR(b2, si) ?? 0) > 0) || s3.w != null && !s3.warm && !s3.drop && oddLoad(b2, si, d3.date) || oddReps(b2, s3)
+        ({ s: s3, si }) => !ex.bw && !ex.timed && s3.w == null && greyW(b2, si) == null || !(+(s3.r ?? 0) > 0) && !isMissed(s3) && !((greyR(b2, si) ?? 0) > 0) || isMissed(s3) && !s3.warm && !s3.drop && lightZero(b2, si, d3.date) || s3.w != null && !s3.warm && !s3.drop && oddLoad(b2, si, d3.date) || oddReps(b2, s3)
       );
       const ref2 = blkRef(bi);
       const after2 = () => {
@@ -19717,7 +19755,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
           s: s3,
           si,
           w: s3.w ?? greyW(b2, si),
-          r: +(s3.r ?? 0) > 0 ? s3.r : Math.round(greyR(b2, si) ?? 0)
+          r: isMissed(s3) || +(s3.r ?? 0) > 0 ? s3.r : Math.round(greyR(b2, si) ?? 0)
         }));
         act(
           () => {
@@ -19737,14 +19775,14 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       if (blocked)
         confirmBox(
           `${exName(b2.exId)}: ${sets} left`,
-          `Set ${blocked.si + 1} has no weight or reps to take, or looks far off, so tick it on its own. Or skip the sets left: fewer sets than usual, so the target repeats next time.`,
+          `Set ${blocked.si + 1} has no weight or reps to take, or looks far off, so tick it on its own. Or skip the sets left.${repeats}`,
           "Skip them",
           skip
         );
       else
         confirmBox(
           `${exName(b2.exId)}: ${sets} left`,
-          "Log them as they show, or skip them. Skipped sets are fewer than usual, so the target repeats next time.",
+          `Log them as shown, or skip them.${repeats}`,
           "Log them as shown",
           log2,
           false,
@@ -24529,6 +24567,23 @@ ${JSON.stringify(ctx, null, 1)}`;
     setInterval(() => {
       if (document.visibilityState === "visible" && !ui.modal && drawnBeforeToday()) rerenderKeepScroll();
     }, NEW_DAY_MS);
+    const picsAgain = () => {
+      picsRefresh().then(
+        (found) => {
+          if (found) {
+            if (ui.modal) renderModal();
+            else rerenderKeepScroll();
+          }
+        },
+        (e5) => {
+          log("pics-refresh", e5);
+        }
+      );
+    };
+    window.addEventListener("storage", picsAgain);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") picsAgain();
+    });
     document.addEventListener("visibilitychange", () => {
       const tm = document.getElementById("timer");
       if (document.visibilityState === "visible" && tm && !tm.hidden) tick();

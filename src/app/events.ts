@@ -16,6 +16,8 @@ import type { ExEdit } from './modals';
 import { drawnBeforeToday, fieldOf } from './view';
 import { closeModal, modalFocusables, pageBack, render, renderModal, rerenderKeepScroll } from './page';
 import { toast } from './toast';
+import { picsRefresh } from './pics';
+import { log } from './storage';
 import { tick, wakeOn } from './timer';
 import { chartsResize } from './graphs';
 import type { Tap } from './workstate';
@@ -133,6 +135,24 @@ export function pageListeners(): void {
   setInterval(() => {
     if (document.visibilityState === 'visible' && !ui.modal && drawnBeforeToday()) rerenderKeepScroll();
   }, NEW_DAY_MS);
+  // Pictures another tab of the app kept (r66, 373): read when its change arrives or this page comes back to the front, and drawn if any are new.
+  const picsAgain = (): void => {
+    picsRefresh().then(
+      found => {
+        if (found) {
+          if (ui.modal) renderModal();
+          else rerenderKeepScroll();
+        }
+      },
+      (e: unknown) => {
+        log('pics-refresh', e);
+      }
+    );
+  };
+  window.addEventListener('storage', picsAgain);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') picsAgain();
+  });
   // Intervals are throttled in a hidden tab, so re-sync on return rather than
   // showing whatever the clock last managed to paint.
   document.addEventListener('visibilitychange', () => {

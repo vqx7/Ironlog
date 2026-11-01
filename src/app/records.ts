@@ -268,16 +268,23 @@ export const sessCmp = (
 
 /* ---------- pictures named by the log (r66, PENDING 373) ---------- */
 
-/** How many pictures one note holds (a convention: enough for a machine's settings and a form check). */
+/** How many pictures + Picture adds to one note (a convention: enough for a machine's settings and a form check). */
 export const PIC_MAX = 4;
+/* PIC_MAX is room to add, not a bound on what is kept: a lift done twice in
+   a row is saved as one exercise (joinAdjacent), its notes' pictures
+   together, so a saved exercise can hold more than one note's four, and
+   cutting them there lost pictures the lifter added (the review of r66).
+   What a record keeps is bounded only against a damaged save. */
+/** The most picture ids one record keeps as a save is read: ten notes' worth, far past what the app's own saves hold. */
+const PIC_KEEP = 10 * PIC_MAX;
 /** The form a picture's id takes, so an id read from a save can only ever name a picture. */
 const PIC_ID = /^p[a-z0-9]{6,32}$/;
 /** Whether a value is a picture's id. */
 export const isPicId = (v: unknown): boolean => typeof v === 'string' && PIC_ID.test(v);
-/** A list of picture ids as a save is read: ids only, each once, at most PIC_MAX; undefined when there are none, so a record without pictures keeps its shape and hash. */
+/** A list of picture ids as a save is read: ids only, each once, at most PIC_KEEP; undefined when there are none, so a record without pictures keeps its shape and hash. */
 export function picIds(v: unknown): string[] | undefined {
   const out: string[] = [];
   for (const x of arr(v) || [])
-    if (typeof x === 'string' && isPicId(x) && !out.includes(x) && out.length < PIC_MAX) out.push(x);
+    if (typeof x === 'string' && isPicId(x) && !out.includes(x) && out.length < PIC_KEEP) out.push(x);
   return out.length ? out : undefined;
 }

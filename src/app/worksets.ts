@@ -489,13 +489,19 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
     }
   }
   if (t.kind === 'reps') {
-    /* A set heavier than the target's load is at least as hard as the same
-       reps at it, so sets at the load or heavier count toward its reps (r66,
+    /* Every set done at one load heavier than the target's counts toward its
+       reps, since a heavier set is at least as hard as the same reps at the
+       target's load, and the next target is then read at that load (r66,
        NEW-30: leg press 1,000 x 15, 15, 14 against 990 for 37+ read "Nothing
        logged at 990 yet", since the estimate the heavier sets were judged by
-       stops at 12 reps to failure). Heavier sets with fewer reps than that are
-       still judged by their estimate, as before. */
-    const atUp = done.filter(s => (+(s.w ?? 0) || 0) >= tw - EPS_SAME);
+       stops at 12 reps to failure). With loads mixed (1,000 x 13, then 990 x
+       12 twice) the next target reads only the sets at the target's load, so
+       this line does too, and a heavier set is judged by its estimate, as
+       before (the review of r66: counting it said Beaten while the next
+       target repeated). */
+    const w0 = +(done[0]?.w ?? 0) || 0;
+    const oneUp = w0 > tw + EPS_SAME && done.every(s => Math.abs((+(s.w ?? 0) || 0) - w0) < EPS_SAME);
+    const atUp = oneUp ? done : done.filter(s => Math.abs((+(s.w ?? 0) || 0) - tw) < EPS_SAME);
     if (!atUp.length) return { text: heavyTxt || `Nothing logged at ${loadLabel(ex, tw)} yet`, beat: heavyBeat };
     const tn = t.n ?? 0,
       total = t.total ?? 0;
