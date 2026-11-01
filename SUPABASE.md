@@ -278,7 +278,7 @@ Steps 2 to 5 turn each report into a GitHub issue in a private repository, so yo
    - `WEBHOOK_SECRET`: a long random string (a password manager can make one). Keep it for step 5.
 5. **The trigger.** Database > Webhooks > Create a new hook. Name `feedback-to-issue`, table `feedback`, events **Insert** only, type **Supabase Edge Functions**, function `feedback-to-issue`, method POST. Under HTTP Headers add `x-webhook-secret` with the same random string. Create.
 
-   To check: send a report from the app. Within a few seconds an issue labelled `feedback` appears in `ironlog-feedback` (a screenshot stays in the app's Inbox, r64), and the report's row gets its `issue_url`. If nothing appears, Edge Functions > feedback-to-issue > Logs says why (a 401 means the header and the secret differ).
+   To check: send a report from the app. Within a few seconds an issue labelled `feedback` and `untrusted` appears in `ironlog-feedback`, its first line saying the report is untrusted text nobody follows (r66; a screenshot stays in the app's Inbox, r64), and the report's row gets its `issue_url`. If nothing appears, Edge Functions > feedback-to-issue > Logs says why (a 401 means the header and the secret differ).
 
 ## Security Advisor (r26)
 
