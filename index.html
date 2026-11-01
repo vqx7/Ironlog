@@ -53,7 +53,12 @@
   --hero:#ffffff; --on-hero:#0d0f12; --hero-2:#f1f3f5;
   --shadow:0 1px 2px rgba(13,15,18,.05),0 10px 30px rgba(13,15,18,.06);
   --hero-bg:radial-gradient(150px 150px at 90% 12%,color-mix(in srgb,var(--volt) 14%,transparent),transparent 70%),linear-gradient(165deg,#ffffff,#f6f7f9 72%);
-  --hero-ring:var(--volt-line); --hero-shadow:0 0 0 1px var(--card-b),0 1px 2px rgba(13,15,18,.05),0 12px 32px rgba(13,15,18,.08);
+  --hero-ring:var(--volt-line); --hero-shadow:0 1px 2px rgba(13,15,18,.05),0 12px 32px rgba(13,15,18,.08);
+  /* Today's main card has a satin steel edge (V, 2026-11-01, PENDING 371): one smooth gradient, lit from the top left,
+     the same steel in every accent; silver on the light page, brighter steel on the dark one. It is the card's edge, so
+     the plain 1px outline it had in light is gone from its shadow. */
+  --hero-edge:conic-gradient(from 215deg,#8d949e 0%,#d9dde3 9%,#ffffff 15%,#c3c8cf 23%,#8a919b 35%,#a6adb6 47%,#eef0f3 56%,#b0b6be 65%,#7d848e 77%,#b9bfc7 89%,#8d949e 100%);
+  --hero-edge-w:1.5px;
   /* The rest timer (r29, V: it blended into the screen): a deep tint of the
      accent, the same in both themes, with white text and a bar along its top
      that empties as the rest runs down. Done is the full accent. */
@@ -82,6 +87,7 @@
     --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
     --hero-bg:radial-gradient(150px 150px at 90% 10%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
     --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+    --hero-edge:conic-gradient(from 215deg,#4f5661 0%,#b4bac3 9%,#eef1f4 15%,#9aa1ab 23%,#4b525c 35%,#6c747e 47%,#d5d9df 55%,#828a95 64%,#434a53 76%,#8c949e 88%,#4f5661 100%);
 
     --shadow:none;
     color-scheme:dark;
@@ -99,6 +105,7 @@
   --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
   --hero-bg:radial-gradient(150px 150px at 90% 10%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
   --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+  --hero-edge:conic-gradient(from 215deg,#4f5661 0%,#b4bac3 9%,#eef1f4 15%,#9aa1ab 23%,#4b525c 35%,#6c747e 47%,#d5d9df 55%,#828a95 64%,#434a53 76%,#8c949e 88%,#4f5661 100%);
 
   --shadow:none;
   color-scheme:dark;
@@ -558,6 +565,10 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 
 /* ---------- logger ---------- */
 .block{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);padding:16px;margin:12px 0;box-shadow:var(--shadow)}
+/* A full-width button keeps exactly what it had while it was named block (r66, PENDING 368): the same declarations, at
+   the card's weight and in the card's place, so every button cascades as before; written apart from the card so a later
+   change to the card no longer reaches buttons. */
+:where(.btn).fullw{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);padding:16px;margin:12px 0;box-shadow:var(--shadow)}
 /* A superset is one box (r66, 375): its exercises joined edge to edge, one blue rail down the side, the group's
    letter at the top and A1, A2 on the names. */
 .block.ss{box-shadow:inset 3px 0 0 var(--blue)}
@@ -856,6 +867,13 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 
 /* ---------- today: the hero is the one inked block ---------- */
 .hero{background:var(--hero-bg),var(--hero);color:var(--on-hero);border:0;border-radius:28px;padding:18px 18px 16px;margin:14px 0 14px;box-shadow:var(--hero-shadow)}
+/* The steel edge (371): a ring drawn on the card's own rounded outline, masked to its edge so the corners stay round and
+   smooth at any pixel density, and never in the way of a tap. Only where the browser can mask it to a ring. */
+@supports ((-webkit-mask-composite:xor) or (mask-composite:exclude)){
+.hero{position:relative;isolation:isolate}
+.hero::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:var(--hero-edge-w);background:var(--hero-edge);pointer-events:none;
+-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+}
 .hero .eyebrow{color:var(--on-hero);opacity:.7}
 .hero .hello{font:700 17px/1.2 var(--font);letter-spacing:-.01em;margin:0 0 6px;color:var(--on-hero)}
 .hero h2{font-size:54px;font-weight:800;line-height:.92;margin:6px 0 8px;letter-spacing:.01em;overflow-wrap:anywhere}
@@ -1069,7 +1087,7 @@ details.more>summary::-webkit-details-marker{display:none}
 details.more>summary::before{content:"+ ";}
 details.more[open]>summary::before{content:"− ";}
 details.more>summary .small{display:block;font-weight:400}
-.block,.day{scroll-margin-top:calc(var(--head-h) + 12px + env(safe-area-inset-top,0px))}
+.block,.day,:where(.btn).fullw{scroll-margin-top:calc(var(--head-h) + 12px + env(safe-area-inset-top,0px))}
 @keyframes flashIn{0%{box-shadow:0 0 0 3px var(--volt-line)}100%{box-shadow:0 0 0 0 transparent}}
 .block.flash{animation:flashIn 1.4s ease-out}
 .sheet h3{font:700 22px/1.15 var(--font);letter-spacing:-.015em}

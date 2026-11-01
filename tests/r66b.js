@@ -24,7 +24,13 @@
 //      opens a sheet to set it, adding one says so once, and Settings holds
 //      the field; one weigh-in later all of it goes quiet.
 //   5  368: no button is a block (the card's class); full-width buttons are
-//      fullw and still full width.
+//      fullw, and every one of them, in light and dark, in Today, the first
+//      page and five sheets, has r65.2's computed look (padding, margins,
+//      corners, colours, height), read beside r65.2 itself.
+//   6  371: Today's main card has a satin steel edge on its own rounded
+//      outline: the same steel in every accent, silver in light and steel in
+//      dark, the card's size unchanged from r65.2, taps reaching Start
+//      through it, and no other element given it.
 const { open, engine } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
@@ -371,6 +377,67 @@ const stored = H => H.ev(async secret => {
     ok(r.both === 0, '5. no button carries the card\'s class block', r);
     ok(r.full.length && r.full.every(x => Math.abs(x) <= 1), '5. a fullw button fills its row', r.full);
     await H.P.ctx.close();
+  }
+
+  // ---- 5b. Every full-width button looks as it did on r65.2 (read beside r65.2 itself).
+  if (run(5)) {
+    const R652 = 'baselines/r65-2.html';
+    const PROPS = ['padding-top', 'padding-bottom', 'padding-left', 'padding-right', 'margin-top', 'margin-bottom', 'margin-left', 'margin-right', 'border-top-width', 'border-top-color', 'border-radius', 'background-color', 'background-image', 'box-shadow', 'height', 'width', 'font-size', 'font-weight', 'color'];
+    const STATES = [
+      ['Today', "L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render();"],
+      ['the first page', "L.ui.tab = 'today'; L.render();"],
+      ['Log a past workout', "L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); L.ACT.pastOpen({ dataset: {} });"],
+      ['the account sheet', "L.state.settings.onboarded = true; L.render(); L.ACT.acctOpen({ dataset: { mode: 'signup' } });"],
+      ['import', "L.state.settings.onboarded = true; L.render(); L.ACT.impOpen({ dataset: {} });"],
+      ['an exercise menu', "L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); document.querySelector('.hero [data-act=\"startSession\"]').click(); L.ACT.bMenu({ dataset: { b: '0' } });"]
+    ];
+    const read = async (file, dark, code) => {
+      const P = await open(file, { browser, w: 390, h: 844, dark, clock: '2026-11-02T09:00:00' });
+      await P.page.evaluate(`(L => { L.state.settings.theme = '${dark ? 'dark' : 'light'}'; ${code} })(window.__ironlog)`);
+      await wait(250);
+      const got = await P.page.evaluate(PROPS => [...document.querySelectorAll('.btn.block, .btn.fullw')].map(e => { const cs = getComputedStyle(e); return { k: (e.dataset.act || '') + ':' + e.innerText.trim().slice(0, 30), s: PROPS.map(p => p + '=' + cs.getPropertyValue(p)).join(';') }; }), PROPS);
+      await P.ctx.close();
+      return got;
+    };
+    const off = []; let n = 0;
+    for (const dark of [false, true]) for (const [name, code] of STATES) {
+      const a = await read(R652, dark, code), b = await read(FILE, dark, code);
+      n += b.length;
+      if (a.length !== b.length) off.push({ name, dark, count: [a.length, b.length] });
+      a.forEach((x, i) => { if (!b[i] || x.k !== b[i].k || x.s !== b[i].s) off.push({ name, dark, was: x, now: b[i] }); });
+    }
+    ok(n > 50 && !off.length, `5. all ${n} full-width buttons, light and dark, look exactly as on r65.2`, off.slice(0, 3));
+  }
+
+  // ---- 6. Today's main card: the steel edge.
+  if (run(6)) {
+    const ACC = ['ember', 'blue', 'volt', 'pink', 'violet', 'cyan', 'red'];
+    const edgeOf = async (file, theme, accent) => {
+      const P = await open(file, { browser, w: 390, h: 844, dark: theme === 'dark', clock: '2026-11-02T09:00:00' });
+      const r = await P.page.evaluate(([t, a]) => {
+        const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.theme = t; L.state.settings.accent = a; L.ui.tab = 'today'; L.render();
+        const h = document.querySelector('.hero'); const cs = getComputedStyle(h, '::before'); const hb = h.getBoundingClientRect();
+        const st = document.querySelector('.hero [data-act="startSession"]'); const sb = st.getBoundingClientRect();
+        const at = document.elementFromPoint(sb.left + sb.width / 2, sb.top + sb.height / 2);
+        const others = [...document.querySelectorAll('#view *')].filter(e => e !== h && /conic-gradient/.test(getComputedStyle(e, '::before').backgroundImage)).length;
+        return { content: cs.content, bg: cs.backgroundImage, mask: cs.webkitMaskComposite || cs.maskComposite || '', events: cs.pointerEvents, radius: [cs.borderTopLeftRadius, getComputedStyle(h).borderTopLeftRadius], size: [Math.round(cs.width === 'auto' ? 0 : parseFloat(cs.width)), Math.round(hb.width)], box: [hb.width, hb.height].map(Math.round), startHit: !!at && (at === st || st.contains(at)), others };
+      }, [theme, accent]);
+      await P.ctx.close();
+      return r;
+    };
+    for (const theme of ['light', 'dark']) {
+      const all = [];
+      for (const a of ACC) all.push(await edgeOf(FILE, theme, a));
+      const e = all[0];
+      ok(e.content !== 'none' && /conic-gradient/.test(e.bg) && /xor|exclude/.test(e.mask) && e.events === 'none', `6. ${theme}: the main card has a steel edge, masked to a ring, never in the way of a tap`, e);
+      ok(e.radius[0] === e.radius[1] && e.size[0] === e.size[1], `6. ${theme}: the edge follows the card's own rounded outline`, { radius: e.radius, size: e.size });
+      ok(all.every(x => x.bg === e.bg), `6. ${theme}: the same steel in all ${ACC.length} accents`, all.map(x => x.bg.slice(0, 60)));
+      ok(all.every(x => x.startHit), `6. ${theme}: a tap on Start reaches Start`, all.map(x => x.startHit));
+      ok(all.every(x => x.others === 0), `6. ${theme}: no other element on Today has the edge`, all.map(x => x.others));
+      const was = await edgeOf('baselines/r65-2.html', theme, 'ember');
+      ok(was.box.join() === e.box.join(), `6. ${theme}: the card is the size it was on r65.2`, { was: was.box, now: e.box });
+      if (theme === 'dark') ok(e.bg !== (await edgeOf(FILE, 'light', 'ember')).bg, '6. silver in light, steel in dark');
+    }
   }
 
   await browser.close();
