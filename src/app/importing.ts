@@ -627,6 +627,29 @@ function impCardioKind(name: unknown): string | null {
                     : null;
 }
 
+/* A spreadsheet reads a cell that starts with =, +, - or @ (or a tab or a
+   carriage return) as a formula, so a note typed "=HYPERLINK(...)" would run
+   as one in the file Export CSV writes (r66, NEW-35, OWASP's CSV injection
+   advice). Such a cell is written with a ' in front, which spreadsheets show
+   as plain text; a number, a negative load among them, is left as it is.
+   Reading Ironlog's own export back takes the ' off again, so a note goes
+   round the trip as typed. */
+const FORMULA_LEAD = /^[=+\-@\t\r]/,
+  PLAIN_NUMBER = /^[-+]?\d+(?:[.,]\d+)?$/;
+/* A cell gets the mark when a spreadsheet would read it as a formula, and
+   also when it is the lifter's own ' before such a text ('+5 lb' next
+   time): reading the export back takes one ' off a marked cell, so without
+   its own mark that ' would be the one taken off (the review of r66). */
+/** Whether a cell's text needs the ' mark: past any ' it starts with, it reads as a formula and is not a plain number. */
+const needsMark = (s: string): boolean => {
+  const t = s.replace(/^'+/, '');
+  return FORMULA_LEAD.test(t) && !PLAIN_NUMBER.test(t);
+};
+/** A CSV cell's text made safe for a spreadsheet: a ' before one a spreadsheet would read as a formula. */
+export const csvGuard = (s: string): string => (needsMark(s) ? "'" + s : s);
+/** A cell of Ironlog's own export read back: the ' csvGuard put before it taken off, and only that one. */
+const csvUnguard = (s: string): string => (s.startsWith("'") && needsMark(s.slice(1)) ? s.slice(1) : s);
+
 /* Table rows to sessions: grouped by date and workout name, exercises in
    order of first appearance. A row with no date or exercise continues the
    one above (sheets often write the date once). Rest timer rows, and rows
@@ -663,7 +686,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     cHr = col('avg_hr'),
     cUnit = col('unit');
   const at = (r: readonly unknown[], i: number | null): string =>
-    i == null ? '' : String(r[i] == null ? '' : r[i]).trim();
+    i == null ? '' : csvUnguard(String(r[i] == null ? '' : r[i]).trim());
   let lastDate: string | null = null,
     lastEx: string | null = null,
     lastName = '';
@@ -677,7 +700,9 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
   };
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
-    const cell = (f: string) => (map[f] == null ? '' : String(r[map[f]] == null ? '' : r[map[f]]).trim());
+    // Ironlog's own export guards a cell a spreadsheet would read as a formula (csvGuard); read back, the guard comes off.
+    const raw = (f: string) => (map[f] == null ? '' : String(r[map[f]] == null ? '' : r[map[f]]).trim());
+    const cell = (f: string) => (ours ? csvUnguard(raw(f)) : raw(f));
     let date: string | null = cell('date');
     date = date ? impDate(date) || impSerial(num(date)) : lastDate;
     const ex: string | null = cell('ex') || lastEx;

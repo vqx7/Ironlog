@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r65.2, version 2.20, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r66, version 2.21, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -15,6 +15,7 @@ stand-in cloud.
 - `docs/ARCHIVE.md`: the code map and the history behind each rule (which bug or ruling made it, where it lives).
   Search it for a function, setting or release name when you need the reason for something. It is not a rule book.
 - `docs/EVIDENCE.md`: the sources behind every number, and which numbers are conventions.
+- `docs/SECURITY.md`: the threats, what protects each now (file and test), and what is tracked for later (r66, 378).
 - `ARCHITECTURE.md`: the module layers `tests/hygiene.js` reads, the counts of casts it holds, and how the legacy
   script moved into typed modules (r49 to r63). Read it when moving code or changing what a module imports.
 - `PENDING.md`: what is open; an item is built when V says go. `OWNER.md`: the steps only V does, with the exact
@@ -211,4 +212,6 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
 - The comparisons of old builds stay pinned to what they proved: `tests/r36.js` (r35 and r52), `tests/r52.js`
   (r51 and r52), `tests/r53w.js` (r52 and r53), and since r64, which changes those numbers and sentences on purpose,
   `tests/r61.js` section 1 (r60 and r61), `tests/r62.js` sections 1 and 2 (r61 and r62) and `tests/r63.js` section 1
+  (r62 and r63); since r66, which changes the session screen, Today and a lift's name on purpose, `tests/r60.js` section 1 (r59
+  and r60), `tests/r59.js` section 1 (r58 and r59), `tests/r58.js` section 1 (r57 and r58) and `tests/r63.js` section 2
   (r62 and r63).

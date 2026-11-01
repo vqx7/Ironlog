@@ -6,6 +6,7 @@
    and sheet modules' actions (actsstart.ts, the sheets*.ts modules),
    reached by the button's data-act through events.ts's table (r63). */
 
+import { picStripSaved } from './notepics';
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { repeat } from 'lit-html/directives/repeat.js';
@@ -175,7 +176,7 @@ function sessionsSec(ss: readonly Session[], perDay: Record<string, number>): Te
   }
   const more =
     shown.length > page.length
-      ? html`<button class="btn block u-mt10" data-act="histMore">Show ${Math.min(HIST_PAGE, shown.length - page.length)} more (${page.length} of ${shown.length})</button>`
+      ? html`<button class="btn fullw u-mt10" data-act="histMore">Show ${Math.min(HIST_PAGE, shown.length - page.length)} more (${page.length} of ${shown.length})</button>`
       : nothing;
   const body = html`<label class="field">Show sessions with<select data-bind="histEx">
 <option value="" .selected=${!ui.histEx}>Any exercise</option>
@@ -241,14 +242,14 @@ function sessionPanel(s: Session, wTag: (s: Session, exId: string) => TemplateRe
     const ex = EX(b.exId);
     return html`<p class="small u-m0-0-6"><b>${ex.name}</b>${wTag(s, b.exId)}: ${b.sets.map(x => setStr(ex, x)).join(', ')}${histUnits(ex)}${
       b.note ? html`<br /><span class="muted">${b.note}</span>` : nothing
-    }</p>
+    }</p>${picStripSaved(b.pics)}
 `;
   })}${
     s.notes
       ? html`<p class="small muted u-m0-0-6">${s.notes}</p>
 `
       : nothing
-  }
+  }${picStripSaved(s.pics)}
 <div class="row u-mt8"><button class="btn sm" data-act="histEdit" data-id=${s.id}>Edit</button><button class="btn sm" data-act="histRepeat" data-id=${s.id} data-tip="Start a new session today with these exercises">Do again</button><button class="btn sm danger" data-act="histDel" data-id=${s.id}>Delete</button></div>
 </div>
 `;

@@ -13,8 +13,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+# Least privilege (r66, PENDING 378): the token every job gets can only read the repository; the one job that
+# publishes to gh-pages (test, below) is given write, and nothing else is. A pull request from a fork gets a
+# read-only token whatever this says, and its preview is never published (the step's condition).
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: ${{ github.event_name == 'pull_request' && format('test-{0}', github.ref) || 'publish' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -44,8 +47,8 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, pinned to its commit (NEW-36)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4, pinned to its commit (NEW-36)
         with:
           node-version: 22
       - name: Install
@@ -61,7 +64,7 @@ jobs:
         run: node tests/run.js --shard ${{ matrix.shard }}/4 --jobs 1
       - name: Screenshots from the run
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4, pinned to its commit (NEW-36)
         with:
           name: screenshots-${{ matrix.shard }}
           path: screenshots/
@@ -82,8 +85,8 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, pinned to its commit (NEW-36)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4, pinned to its commit (NEW-36)
         with:
           node-version: 22
       - name: Install
@@ -96,7 +99,7 @@ jobs:
         run: node tests/run.js --browser webkit --shard ${{ matrix.shard }}/4 --jobs 1
       - name: Screenshots from the run
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4, pinned to its commit (NEW-36)
         with:
           name: screenshots-webkit-${{ matrix.shard }}
           path: screenshots/
@@ -110,6 +113,9 @@ jobs:
   test:
     needs: [suites, webkit]
     if: always()
+    # The only job that writes: it pushes the build to gh-pages.
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -117,8 +123,8 @@ jobs:
         run: |
           if [ "${{ needs.suites.result }}" != "success" ]; then echo "Chromium shards: ${{ needs.suites.result }}"; exit 1; fi
           if [ "${{ needs.webkit.result }}" != "success" ]; then echo "WebKit shards: ${{ needs.webkit.result }}"; exit 1; fi
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, pinned to its commit (NEW-36)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4, pinned to its commit (NEW-36)
         with:
           node-version: 22
       - name: Install and build

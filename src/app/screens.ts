@@ -6,6 +6,8 @@
    with what closing each does. It knows every screen, so the page (page.ts)
    is given its draw and its sheets at start instead of importing them. */
 
+import { bwSheet } from './bwnudge';
+import { picSheet } from './notepics';
 import type { TemplateResult } from 'lit-html';
 import { state, ui } from './store';
 import { act } from './act';
@@ -28,6 +30,7 @@ import { curRoutineB } from './display';
 import { calSheet } from './calendar';
 import { acctSheet, fbInboxSheet, fbSheet, menuSheet } from './sheetsaccount';
 import { acctClosed } from './account';
+import { captchaMount } from './captcha';
 import { guideSheet } from './guide';
 import { impSheet } from './sheetsimport';
 import { cardioSheet, confirmSheet, dayPickSheet, restWeekSheet, textSheet } from './sheetsmisc';
@@ -373,13 +376,16 @@ export const SHEETS: Sheets = {
     }
   },
   note: { draw: noteSheet },
+  pic: { draw: picSheet },
+  bw: { draw: bwSheet },
   startAlt: { draw: startAltSheet },
   pickToday: { draw: pickTodaySheet },
   pickEx: { draw: pickExSheet },
   eq: { draw: eqSheet },
   text: { draw: textSheet }
 };
-/** What a sheet mounts once drawn: the 3D body of an exercise's muscles. */
+/** What a sheet mounts once drawn: the 3D body of an exercise's muscles, and the account sheet's bot check (r66, when on). */
 export function afterSheet(): void {
   if (document.getElementById('bm3dx')) mount3D();
+  captchaMount();
 }

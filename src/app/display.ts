@@ -6,7 +6,7 @@
 import { IN, KM_MI, FT_IN } from './units';
 import { NIL, fmtDate, fmtDateFrom, fmtWith, missedTag } from './format';
 import { e1, fitE, trendE, RECENT_DAYS, BEST_WEEKS, TAPE_WEEKS } from './formulas';
-import { MK, isCommon, loadMode, nameMatch } from './library';
+import { MK, ML, isCommon, loadMode, nameMatch } from './library';
 import { routineEmpty, routineSig, sessDayIdx } from './routines';
 import { rec } from './records';
 import { REGION_WKS, REGION_WK_DEFAULT } from './layout';
@@ -346,7 +346,7 @@ export function libFiltered(q: string | null | undefined, m: string, e: string, 
     .filter(
       x =>
         !x.archived &&
-        (!t || nameMatch(x.name, t)) &&
+        (!t || nameMatch(x.name, t, ML[x.primary])) &&
         (!m || x.primary === m || x.secondary.includes(m)) &&
         (!e || x.equip === e) &&
         (!kind || (kind === 'rare' ? x.rare : isCommon(x)))

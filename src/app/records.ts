@@ -196,10 +196,12 @@ export const okExtraKey = (k: string): boolean => /^[A-Za-z][\w]{0,39}$/.test(k)
 export const KNOWN_ITEM: ReadonlySet<string> = new Set(['jump']),
   KNOWN_CARDIO: ReadonlySet<string> = new Set(['dist']),
   KNOWN_MEAS: ReadonlySet<string> = new Set(MEAS.map(x => x[0])),
-  // A saved session's exercise: the injury it was held for (r54), the sets its plan gave it (r58), and a new machine or gym (r61).
-  KNOWN_SEX: ReadonlySet<string> = new Set(['inj', 'ps', 'nw']),
-  // An exercise of a workout in progress, and one an edit saves over: a new machine or gym (r61), true or absent.
-  KNOWN_BLOCK: ReadonlySet<string> = new Set(['nw']);
+  // A saved session's exercise: the injury it was held for (r54), the sets its plan gave it (r58), a new machine or gym (r61), and its note's pictures (r66).
+  KNOWN_SEX: ReadonlySet<string> = new Set(['inj', 'ps', 'nw', 'pics']),
+  // An exercise of a workout in progress, and one an edit saves over: a new machine or gym (r61), true or absent, and its note's pictures (r66).
+  KNOWN_BLOCK: ReadonlySet<string> = new Set(['nw', 'pics']),
+  // A saved session, and one an edit saves over: its notes' pictures (r66), absent when none.
+  KNOWN_SESS: ReadonlySet<string> = new Set(['pics']);
 
 /* ---------- cleaners ---------- */
 
@@ -263,3 +265,26 @@ export const sessCmp = (
   b: { date: string; t?: number | null | undefined; id: string }
 ): number =>
   a.date < b.date ? -1 : a.date > b.date ? 1 : (a.t || 0) - (b.t || 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
+/* ---------- pictures named by the log (r66, PENDING 373) ---------- */
+
+/** How many pictures + Picture adds to one note (a convention: enough for a machine's settings and a form check). */
+export const PIC_MAX = 4;
+/* PIC_MAX is room to add, not a bound on what is kept: a lift done twice in
+   a row is saved as one exercise (joinAdjacent), its notes' pictures
+   together, so a saved exercise can hold more than one note's four, and
+   cutting them there lost pictures the lifter added (the review of r66).
+   What a record keeps is bounded only against a damaged save. */
+/** The most picture ids one record keeps as a save is read: ten notes' worth, far past what the app's own saves hold. */
+const PIC_KEEP = 10 * PIC_MAX;
+/** The form a picture's id takes, so an id read from a save can only ever name a picture. */
+const PIC_ID = /^p[a-z0-9]{6,32}$/;
+/** Whether a value is a picture's id. */
+export const isPicId = (v: unknown): boolean => typeof v === 'string' && PIC_ID.test(v);
+/** A list of picture ids as a save is read: ids only, each once, at most PIC_KEEP; undefined when there are none, so a record without pictures keeps its shape and hash. */
+export function picIds(v: unknown): string[] | undefined {
+  const out: string[] = [];
+  for (const x of arr(v) || [])
+    if (typeof x === 'string' && isPicId(x) && !out.includes(x) && out.length < PIC_KEEP) out.push(x);
+  return out.length ? out : undefined;
+}

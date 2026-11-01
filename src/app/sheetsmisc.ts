@@ -44,7 +44,7 @@ export function restWeekSheet(): TemplateResult {
     <p class="small muted u-m0-0n10">A week off on purpose. It is not counted as missed: averages, streak, and adherence skip it.</p>
     <div class="stack">${weeks.map(([w, l]) => {
       const on = isRestWeek(w);
-      return html`<button class=${'btn block ' + (on ? 'primary' : '')} data-act="restWk" data-w=${w} aria-pressed=${String(on)}>${l}, ${fmtDate(w)} to ${fmtDate(addDays(w, WEEK_DAYS - 1))}${on ? ': rest week' : ''}</button>`;
+      return html`<button class=${'btn fullw ' + (on ? 'primary' : '')} data-act="restWk" data-w=${w} aria-pressed=${String(on)}>${l}, ${fmtDate(w)} to ${fmtDate(addDays(w, WEEK_DAYS - 1))}${on ? ': rest week' : ''}</button>`;
     })}</div></div>`;
 }
 
@@ -54,7 +54,7 @@ export function dayPickSheet(m: { date: string }): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dpH"><div class="sheet-h"><h3 id="dpH">${fmtDate(m.date)}: ${ss.length} sessions</h3>${closeX()}</div>
     <div class="stack">${ss.map(
       x =>
-        html`<button class="btn block pastday" data-act="wkOpen" data-id=${x.id}><span>${x.dayName}</span><small>${[sessTm(x), `${x.ex.length} exercise${x.ex.length === 1 ? '' : 's'}`].filter(Boolean).join(', ')}</small></button>`
+        html`<button class="btn fullw pastday" data-act="wkOpen" data-id=${x.id}><span>${x.dayName}</span><small>${[sessTm(x), `${x.ex.length} exercise${x.ex.length === 1 ? '' : 's'}`].filter(Boolean).join(', ')}</small></button>`
     )}</div></div>`;
 }
 

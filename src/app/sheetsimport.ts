@@ -41,11 +41,11 @@ function inputStep(m: ImpInputModal): TemplateResult {
   return frame(
     'Import workouts',
     html`<p class="small muted u-m0-0-8">Notes, a spreadsheet, or an export from another app. Nothing is saved until you check it.</p>
-    <label class="btn primary block u-posrel">Choose a file<input type="file" id="impFile" accept=".csv,.tsv,.txt,.xlsx,.json,text/csv,text/plain,application/json" class="u-posabs_w1_h1_o0"></label>
+    <label class="btn primary fullw u-posrel">Choose a file<input type="file" id="impFile" accept=".csv,.tsv,.txt,.xlsx,.json,text/csv,text/plain,application/json" class="u-posabs_w1_h1_o0"></label>
     <p class="small muted u-m10-0-4">or paste it</p>
     <textarea id="impText" aria-label="Paste your log" class="u-minh160_fs14" placeholder=${'Sep 20\nBench press 185x8, 185x7, 185x6\nLat pulldown 3x10 @ 120'}>${m.text || ''}</textarea>
     ${m.err ? html`<p class="small u-cred_m8-0-0">${m.err}</p>` : nothing}
-    <button class="btn block u-mt10" data-act="impRead">Read it</button>
+    <button class="btn fullw u-mt10" data-act="impRead">Read it</button>
     <p class="small muted hastip u-m10-0-0" data-tip=${WHAT_TIP}>What can I import?</p>`
   );
 }
@@ -61,7 +61,7 @@ function mapStep(m: ImpPreviewModal): TemplateResult {
   return frame(
     'Which column is which?',
     html`<p class="small muted u-m0-0-8">The first row is read as column names.</p>${opt('date', 'Date', true)}${opt('ex', 'Exercise', true)}${opt('w', 'Weight, none if bodyweight only')}${opt('r', 'Reps', true)}${opt('sets', 'Sets')}${opt('rir', 'RIR')}${opt('name', 'Workout name')}
-      <button class="btn primary block u-mt10" data-act="impMapDone">Continue</button>`
+      <button class="btn primary fullw u-mt10" data-act="impMapDone">Continue</button>`
   );
 }
 
@@ -146,8 +146,8 @@ function previewStep(m: ImpPreviewModal): TemplateResult {
           )}${b.sessions.length > SHOWN.sessions ? html`<p class="small muted">and ${b.sessions.length - SHOWN.sessions} more</p>` : nothing}</details>`
       : nothing
   }
-  <button class="btn primary block u-mt12" data-act="impGo" ?disabled=${!(b.sessions.length || b.cardio.length)}>Import ${b.sessions.length} session${b.sessions.length === 1 ? '' : 's'}${b.cardio.length ? ` and ${b.cardio.length} cardio` : ''}</button>
-  <button class="btn block u-mt6" data-act="impBack">Back</button>`
+  <button class="btn primary fullw u-mt12" data-act="impGo" ?disabled=${!(b.sessions.length || b.cardio.length)}>Import ${b.sessions.length} session${b.sessions.length === 1 ? '' : 's'}${b.cardio.length ? ` and ${b.cardio.length} cardio` : ''}</button>
+  <button class="btn fullw u-mt6" data-act="impBack">Back</button>`
   );
 }
 

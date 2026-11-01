@@ -276,7 +276,7 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
     // Whether a raw log's workout in progress is falsy other than null (r60 kept it as it came).
     const falsyDraft = s => !!s && typeof s === 'object' && !Array.isArray(s) && s.draft !== null && s.draft !== undefined && !s.draft;
     const N4 = +process.env.R61_N4 || 240;
-    let n = 0, same = 0, routineCases = 0, draftCases = 0; const off = [];
+    let n = 0, same = 0, routineCases = 0, draftCases = 0, renameCases = 0; const off = [];
     for (let seed = 1; seed <= N4; seed++) {
       const h = wide(seed, LIB);
       const raws = [h.raw, damage(h.raw, seed * 31 + 1), damage(h.raw, seed * 31 + 2), damage(h.raw, seed * 31 + 3)];
@@ -295,11 +295,15 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
           want = JSON.stringify(w);
         }
         if (falsyDraft(s)) { draftCases++; const w = JSON.parse(want); w.draft = null; want = JSON.stringify(w); }
+        // The machine the library renamed in r66 (377; NEW-37 for a log holding the old name, held by tests/r66b.js section 10)
+        // reads by its new name where r60 gave it the library's old one; a lift of the lifter's own keeps its name, and nothing else changes.
+        { const w = want[0] === '{' ? JSON.parse(want) : null; const e = w && Array.isArray(w.exercises) ? w.exercises.find(x => x && x.id === 'reversePecDeck' && x.custom === false && x.name === 'Reverse Pec Deck') : null;
+          if (e) { renameCases++; e.name = 'Reverse Pec Deck (Rear Delt Fly)'; want = JSON.stringify(w); } }
         if (b.j === want && a.d === b.d && a.k === b.k) same++;
         else if (off.length < 5) { let at = 0; while (at < want.length && want[at] === b.j[at]) at++; off.push({ seed, i, none, want: want.slice(Math.max(0, at - 150), at + 150), b: b.j.slice(Math.max(0, at - 150), at + 150), d: [a.d, b.d], k: [a.k, b.k] }); }
       });
     }
-    ok(same === n && n > N4 * 6, `4. normalize gives r60's answer, key order included, with the records dropped and the fields kept, on ${n} raw logs (${N4} wide histories, each damaged three ways, and the sync's documents), but for the two inputs below (${routineCases} with no routine, ${draftCases} with a falsy workout)`, off);
+    ok(same === n && n > N4 * 6, `4. normalize gives r60's answer, key order included, with the records dropped and the fields kept, on ${n} raw logs (${N4} wide histories, each damaged three ways, and the sync's documents), but for the two inputs below (${routineCases} with no routine, ${draftCases} with a falsy workout), and r66's name for the rear delt machine (${renameCases})`, off);
     // The two inputs no build writes, read as any other (each fails on r60).
     const named = await B.page.evaluate(() => {
       const L = window.__ironlog;

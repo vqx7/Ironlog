@@ -3,6 +3,7 @@
    and the update a finished session offers its routine day. Each change to
    the log goes through `act`. */
 
+import { bwNudge } from './bwnudge';
 import { uid } from './util';
 import {
   DEFAULT_PLAN,
@@ -113,6 +114,7 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         null,
         fit || pa.length ? READY_SAID : 0
       );
+      bwNudge(r.days.flatMap(x => x.items.map(i => i.exId)));
       return;
     }
     if (same) {
@@ -127,6 +129,7 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     ui.bRoutine = r.id;
     render();
     toast(`${r.name} added. Tap Make active to use it.`);
+    bwNudge(r.days.flatMap(x => x.items.map(i => i.exId)));
   },
   rNew() {
     openModal({ kind: 'routineNew' });

@@ -204,5 +204,5 @@ export function exHistSheet(m: { exId: string }): TemplateResult {
   return head(html`${best ? html`<p class="u-m0"><b>${best}</b></p>` : ''}${liftTrend(exId)}${chart}
     <ul class="u-lsnone_m8-0-0_p0">${rows}</ul>
     ${all.length > HIST_ROWS ? html`<p class="small muted u-m6-0-0">The last ${HIST_ROWS} of ${all.length} sessions.</p>` : ''}
-    <button class="btn block u-mt10" data-act="goDash" data-sec="exercise" data-ex=${exId}>Open in Stats</button>`);
+    <button class="btn fullw u-mt10" data-act="goDash" data-sec="exercise" data-ex=${exId}>Open in Stats</button>`);
 }

@@ -60,6 +60,11 @@
 const { open, engine, screenOf, screenDiff } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r58.html';
+/* Section 1 is pinned to the build it proved, r59 (baselines/r59.html), as CLAUDE.md's rule for the comparisons of old builds
+   says: r66 changes Today on purpose (PENDING 372: the bodyweight card from the first day a bodyweight lift is in the
+   routine; 368: full-width buttons are fullw, not block), so the source build no longer draws r58's Today, and should not.
+   tests/r66b.js holds r66's changes. */
+const PROVED = 'baselines/r59.html';
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 700) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 // R59_ONLY=2,3 runs those sections alone (to show a case failing on r58 without the rest).
@@ -144,7 +149,7 @@ const SCREENS = [
   else if (process.env.IRONLOG_FILE) console.log('note r59 section 1 compares source pages; it runs on the source build');
   else for (const [tab, name, seed, prep, env, init, root] of SCREENS) {
     const o = { browser, seed: seed + FIX, tab, prep, env, init, root, spaces: true };
-    const a = flat(await screenOf(OLD, o)), b0 = await screenOf(FILE, o), b = flat(b0);
+    const a = flat(await screenOf(OLD, o)), b0 = await screenOf(PROVED, o), b = flat(b0);
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     ok(!d, `1. ${name}: the same elements, attributes and field values as r58`, d && { at: d.at, r58: d.before, now: d.now });
     ok(a.text === b.text, `1. ${name}: the same visible text as r58`, a.text === b.text ? '' : textDiff(a.text, b.text));

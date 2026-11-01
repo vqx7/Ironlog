@@ -8,7 +8,7 @@ import type { DraftBlock, DraftSet, Session, SessionEx, Target } from './types';
 import { uid, today, PERCENT, pctOf, shareWords } from './util';
 import { isMissed, isWork, LIGHTER_SET_SHARE, LIGHT_SHARE, RIR_CALL_TOP } from './formulas';
 import { fmtDate, LIGHT_RIR } from './format';
-import { cleanChk } from './records';
+import { cleanChk, picIds } from './records';
 
 /* ---------- loads and targets ---------- */
 
@@ -184,6 +184,7 @@ type Joinable = {
   sets: DraftSet[];
   note?: string | undefined;
   rr?: [number, number] | null | undefined;
+  pics?: string[] | undefined;
 };
 
 /* The same exercise twice in one session (r34.2, V): sets done on one lift
@@ -234,8 +235,20 @@ export function savedEx(b: DraftBlock): SessionEx {
         cal: s.cal && !s.warm ? s.cal : undefined,
         // The row's own id (r56.1), last, where a build before it keeps the unknown field.
         ...(typeof s.rid === 'string' ? { rid: s.rid } : {})
-      }))
+      })),
+    // The note's pictures (r66, 373); put last by picsLast once the plan's sets and a new-machine mark are on.
+    ...(b.pics && b.pics.length ? { pics: [...b.pics] } : {})
   };
+}
+
+/* A saved exercise's pictures go last, where normalize writes them, so a
+   session saved by Finish is the same text a reload reads (r66, 373). */
+/** The saved exercises with each one's pictures moved to the end of its fields. */
+export function picsLast(ex: readonly SessionEx[]): SessionEx[] {
+  return ex.map(b => {
+    const { pics, ...rest } = b;
+    return pics ? { ...rest, pics } : b;
+  });
 }
 
 /* A block in the session over time (r46). Neither handle on its own
@@ -274,6 +287,8 @@ export interface DraftLike {
   note0?: string | undefined;
   /** Started with Limited equipment. */
   limited?: boolean | undefined;
+  /** The pictures on the workout's notes (r66, PENDING 373), by id; absent when none. */
+  pics?: string[] | undefined;
   /** An edit's measured minutes, kept as the saved session had them. */
   durMin?: number | null | undefined;
   /** Finish has asked about the sets left, or the ramp-up sets, once (this visit). */
@@ -303,7 +318,7 @@ interface DraftCardio {
 /** A workout in progress as a saved session of its ticked sets, or null when none is ticked or it is an edit. */
 export function draftSession(d: DraftLike, empty?: boolean): Session | null {
   if (d.editingId) return null;
-  const ex = withNew(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d);
+  const ex = picsLast(withNew(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d));
   // A copy with nothing ticked is no session, unless asked for as the agreed copy of a join (keepLost), where it is the base with no sets.
   if (!ex.length && !empty) return null;
   const chk = cleanChk(d.chk);
@@ -322,7 +337,8 @@ export function draftSession(d: DraftLike, empty?: boolean): Session | null {
     free: d.free ? true : undefined,
     demo: false,
     ...(chk ? { chk } : {}),
-    ...(d.startedAt && d.startedAt > 0 ? { t: d.startedAt } : {})
+    ...(d.startedAt && d.startedAt > 0 ? { t: d.startedAt } : {}),
+    ...(d.pics && d.pics.length ? { pics: [...d.pics] } : {})
   };
 }
 
@@ -346,6 +362,8 @@ export function joinAdjacent<X extends Joinable>(ex: readonly X[]): X[] {
     if (a && a.exId === b.exId && !a.light === !b.light) {
       a.sets = [...a.sets, ...b.sets];
       if (b.note && b.note.trim()) a.note = [a.note, b.note].filter(x => x && x.trim()).join(' ');
+      // Both notes' pictures stay with the joined exercise, the first block's first, up to the note's limit (r66, 373).
+      if (b.pics && b.pics.length) a.pics = picIds([...(a.pics || []), ...b.pics]);
       if (!a.rr && b.rr) a.rr = b.rr;
       continue;
     }
@@ -439,17 +457,21 @@ export function freeDraft(name: string, ex?: DraftBlock[] | null) {
 export function editFp(d: {
   date: string;
   notes?: string | null | undefined;
+  pics?: string[] | undefined;
   ex: DraftBlock[];
   cardio?: { kind?: string | undefined; min?: unknown; hr?: unknown; dist?: unknown }[] | null | undefined;
 }): string {
   return JSON.stringify({
     date: d.date,
     notes: (d.notes || '').trim(),
+    pics: (d.pics || []).join(),
     ex: d.ex.map(b => [
       b.exId,
       (b.note || '').trim(),
       // A new machine or gym marked or taken off is an edit too (r61).
       !!b.nw,
+      // So is a picture added or taken off (r66, 373).
+      (b.pics || []).join(),
       b.sets.map(x => [
         x.w == null ? null : +x.w,
         x.r == null || x.r === '' ? null : +x.r,

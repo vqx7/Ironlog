@@ -17,7 +17,7 @@
 import { APP_NAME, STORAGE_ID } from './config';
 import { addDays, andList, daysBetween, isDate, median, today, uid, WEEK_DAYS } from './util';
 import { KM_MI, LB } from './units';
-import { ML } from './library';
+import { LIB_NAMES_BEFORE, ML } from './library';
 import { dropStarter, routineSig } from './routines';
 import { offTarget } from './formulas';
 import { fmtDate } from './format';
@@ -114,13 +114,17 @@ const MOD = [
   'upright',
   'face'
 ] as const;
+/** The names the library gave a lift before it renamed it, read as aliases of the lift: an import naming it as before finds it first (NEW-37). */
+const NAMED_BEFORE: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries(LIB_NAMES_BEFORE).flatMap(([id, names]) => names.map(n => [impNorm(n).join(' '), id]))
+);
 /** The library's exercises a name may be, best first, with how well each matches (1 for an alias). */
 export function impMatch(name: unknown): { id: string; sc: number }[] {
   const a = new Set(impNorm(name));
   if (!a.size) return [];
   const out: { id: string; sc: number }[] = [];
   // An alias by the name alone, or by the name without its equipment word when the equipment agrees ("Deadlift (Barbell)").
-  let al: string | null = IMP_ALIAS[[...a].join(' ')] || null;
+  let al: string | null = IMP_ALIAS[[...a].join(' ')] || NAMED_BEFORE[[...a].join(' ')] || null;
   if (!al) {
     const eq = [...a].filter(w => EQW[w]);
     const bare = [...a].filter(w => !EQW[w]).join(' ');

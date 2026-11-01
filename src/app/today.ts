@@ -378,9 +378,9 @@ function obView(): TemplateResult {
 ${obTourPart()}
 <div class="ob-card"><h2>Save your log</h2>
 <p class="ob-why">Back up your log and use it on any device</p>
-<button class="btn primary block" data-act="acctOpen" data-mode="signup">Create account</button>
-<button class="btn block" data-act="acctOpen" data-mode="signin">I have an account</button></div>
-${ENV === 'preview' ? html`<button class="btn block" data-act="previewCopy">Copy my log in</button>` : nothing}
+<button class="btn primary fullw" data-act="acctOpen" data-mode="signup">Create account</button>
+<button class="btn fullw" data-act="acctOpen" data-mode="signin">I have an account</button></div>
+${ENV === 'preview' ? html`<button class="btn fullw" data-act="previewCopy">Copy my log in</button>` : nothing}
 <button class="linkbtn ob-later" data-act="obAcctLater">Continue without an account</button>${undo}</div>`;
   const todayBw = state.bodyweights.find(x => x.date === today());
   return html`<div class="ob welcome" id="obPage" data-step="start">
@@ -494,14 +494,20 @@ const inUnit = (u: string, field: TemplateResult): DirectiveResult => keyed(u, f
 /** The weigh-in due card, or nothing. */
 export function bwDueCard(): Part {
   const n = bwEvery();
-  if (!n || noLog()) return nothing;
   let last: (typeof state.bodyweights)[number] | null = null;
   for (const x of state.bodyweights) if (!last || x.date > last.date) last = x;
+  /* Never weighed in, with a bodyweight lift in the routine in use (r66,
+     PENDING 372, V: "should be asked or at least warned"): asked from the
+     first day, before anything is logged, since those lifts count only the
+     weight added until it is set. Later still puts it off two days. */
+  const planned = !last && activeRoutine().days.some(d => d.items.some(i => !!EX(i.exId).bw));
+  if (!n || (noLog() && !planned)) return nothing;
   const t = today();
   const ago = last ? daysBetween(last.date, t) : null;
   if (last && ago != null && ago < n) return nothing;
   if (
     !last &&
+    !planned &&
     !state.sessions.some(
       x =>
         !x.demo &&
@@ -514,8 +520,10 @@ export function bwDueCard(): Part {
     return nothing;
   const z = prefGet(BWSNOOZE_KEY);
   if (z && z > t) return nothing;
-  return html`<div class="card" id="bwDue"><p class="small u-m0-0-8"><b>Weigh-in due.</b> ${
-    last ? `Last ${fmtW(last.kg)} ${U()}, ${ago} days ago.` : 'Pull-ups, dips, and push-ups count it.'
+  return html`<div class="card" id="bwDue"><p class="small u-m0-0-8"><b>${last ? 'Weigh-in due.' : 'Your bodyweight.'}</b> ${
+    last
+      ? `Last ${fmtW(last.kg)} ${U()}, ${ago} days ago.`
+      : 'Pull-ups, dips, and push-ups count it, plus any weight you add; without it they count only what you add. Optional.'
   } ${tipButton('Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > General.', 'About weigh-ins')}</p>
 <div class="row"><label class="field u-f1_m0"><span class="vh">Bodyweight (${U()})</span>${inUnit(
     U(),
@@ -619,7 +627,7 @@ export function viewToday(): TemplateResult {
         })();
     return html`${above}<section class="hero" data-day="free"><div class="hero-top"><div class="hero-t">${hello}<p class="eyebrow">${todayEye()} · Freestyle${deload ? ' · deload week' : ''}</p><h2>Blank session</h2>
 <p class="muted small u-m0">${w}</p></div></div>
-<button class="btn primary block big" data-act="startFree">Start session</button>
+<button class="btn primary fullw big" data-act="startFree">Start session</button>
 <div class="row u-mt8">${changeBtn(di, true)}${moreBtn(deload)}</div>${moreRow(deload, false, di)}</section>${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
   }
   const sets = deload
@@ -646,7 +654,7 @@ export function viewToday(): TemplateResult {
   }</p></div>${heroRing(weekStats())}</div>
 ${note !== nothing ? html`<p class="hero-note small">${note}</p>` : nothing}${
     playable
-      ? html`<button class="btn primary block big" data-act="startSession" data-day=${di}>${deload ? 'Start deload session' : 'Start session'}</button>`
+      ? html`<button class="btn primary fullw big" data-act="startSession" data-day=${di}>${deload ? 'Start deload session' : 'Start session'}</button>`
       : html`<p class="small u-m10-0-0">${day.rest ? 'Rest day.' : 'Nothing planned for this day.'}</p>`
   }<div class="row u-mt8">${changeBtn(di, false)}${moreBtn(deload)}<span class="u-mlauto"></span>${helpButton('starts')}</div>
 ${howText('starts', STARTS_HELP)}${moreRow(deload, playable, di)}</section>${bwDueCard()}${todayRest({ playable, di, day, deload, cs })}`;
@@ -1012,6 +1020,8 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     // The fields are kept between draws now (lit-html): the weigh-in logged leaves them as a fresh card shows them.
     if (inp) inp.value = '';
     if (de) de.value = today();
+    // Saved from the bodyweight sheet (r66, 372): the sheet has done its job.
+    if (ui.modal && ui.modal.kind === 'bw') closeModal();
     rerenderKeepScroll();
     toast('Bodyweight logged');
   },

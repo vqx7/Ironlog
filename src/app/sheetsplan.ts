@@ -57,8 +57,8 @@ export function recapSheet(m: RecapSheet): TemplateResult {
   const u = m.upd;
   const prs = m.prs || [];
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.title}</h3>${closeX()}</div>${prs.length ? html`<div class="prblk" id="recapPR"><h4>${prs.length === 1 ? 'New PR' : `${prs.length} new PRs`}</h4><ul>${prs.map(p => html`<li><b>${p.name}</b>: ${p.what}${p.was ? html` <span class="was">(${p.was})</span>` : ''}</li>`)}</ul></div>` : ''}<ul class="recap">${m.lines.map(l => html`<li>${l}</li>`)}</ul>${m.note ? html`<p class="small muted">${m.note}</p>` : ''}
-    ${u ? html`<div class="hint"><b>Update ${u.dayName} in your routine?</b><br>${u.text}. Next time this day starts with the change.</div><button class="btn block" data-act="applyUpd">Update ${u.dayName}</button>` : ''}
-    <button class="btn primary block u-mt10" data-act="mClose">${u ? 'Not now' : 'Done'}</button></div>`;
+    ${u ? html`<div class="hint"><b>Update ${u.dayName} in your routine?</b><br>${u.text}. Next time this day starts with the change.</div><button class="btn fullw" data-act="applyUpd">Update ${u.dayName}</button>` : ''}
+    <button class="btn primary fullw u-mt10" data-act="mClose">${u ? 'Not now' : 'Done'}</button></div>`;
 }
 
 /** A week's days from Monday, for a weekly routine's today mark (Date counts from Sunday). */
@@ -94,7 +94,7 @@ export function startAltSheet(m: { di?: number | string | undefined; free?: bool
   opts.push(opt('pickToday', 'Pick for me', 'The day that fits today best, and why'));
   const days = R.days.map((d, i) => {
     const on = i === di && !m.free;
-    return html`<button type="button" class=${'btn block pastday' + (on ? ' on' : '')} data-act="dayPick" data-i=${String(i)} aria-current=${String(on)}><span>${dayLabel(R, i)}: ${d.name}</span><small>${d.rest ? 'Rest day' : `${d.items.length} exercises`}${mark(i)}</small></button>`;
+    return html`<button type="button" class=${'btn fullw pastday' + (on ? ' on' : '')} data-act="dayPick" data-i=${String(i)} aria-current=${String(on)}><span>${dayLabel(R, i)}: ${d.name}</span><small>${d.rest ? 'Rest day' : `${d.items.length} exercises`}${mark(i)}</small></button>`;
   });
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="saH"><div class="sheet-h"><h3 id="saH">Start something else</h3>${closeX()}</div>
   <div class="ob-opts">${opts}</div><p class="small muted u-m14-0-6">Another day</p><div class="stack">${days}</div></div>`;

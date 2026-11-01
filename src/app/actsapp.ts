@@ -22,6 +22,7 @@ import { stopTimer, timerAdd } from './timer';
 import { toast, toastHide } from './toast';
 import { obActive } from './today';
 import type { Tap } from './workstate';
+import { csvGuard } from './importing';
 
 /** Clears what earlier builds put in Recently deleted: a ready-made routine removed unchanged is not kept (r34.1). Once, at start. */
 export function trashTidy(): void {
@@ -164,9 +165,10 @@ function exportBackup(): Promise<void> {
    settings. The JSON export remains the thing that restores the app. */
 /** Exports every set as a spreadsheet's rows (CSV), and cardio after them. */
 export function exportCSV(): Promise<void> | undefined {
+  // A cell a spreadsheet would read as a formula gets a ' in front (csvGuard, NEW-35); one with a comma, a quote or a line break is quoted.
   const q = (v: unknown) => {
-    const s = String(v == null ? '' : v);
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    const s = typeof v === 'number' ? String(v) : csvGuard(String(v == null ? '' : v));
+    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
   const rows: unknown[][] = [
     [

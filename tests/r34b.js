@@ -108,7 +108,8 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
 
     // 1n. The weigh-in card: never weighed in, only for someone who logs bodyweight lifts.
     await seed({ ss: [['2026-10-05', 'bench', [[185, 8, 1]], [6, 10]]] });
-    const bw1 = await ev(() => window.__ironlog.bwDueCard());
+    // Since r66 (PENDING 372) a bodyweight lift in the routine in use asks too; this lifter's routine has none, as the case means.
+    const bw1 = await ev(() => { const L = window.__ironlog; for (const r of L.state.routines) for (const d of r.days) d.items = d.items.filter(i => !L.EX(i.exId).bw); L.invalidate(); return L.bwDueCard(); });
     await seed({ ss: [['2026-10-05', 'pushup', [[0, 15, 1]], [10, 20]]] });
     const bw2 = await ev(() => window.__ironlog.bwDueCard());
     ok(!bw1 && !!bw2, 'never weighed in: no weigh-in card for a lifter with no bodyweight lifts; one for a lifter who does push-ups', { bw1: !!bw1, bw2: !!bw2 });

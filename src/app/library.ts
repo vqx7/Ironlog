@@ -346,7 +346,7 @@ export const LIB: readonly LibRow[] = [
 ['cableY','Cable Y-Raise','sideDelts','traps','cable','r','Arms travel up and out in a Y. Side delts plus lower traps.'],
 ['luRaise','Lu Raise','sideDelts','frontDelts traps serratus','dumbbell','r','Light plates or DBs raised to overhead with straight arms.'],
 ['uprightRow','Wide-Grip Cable Upright Row','sideDelts','traps','cable','',''],
-['reversePecDeck','Reverse Pec Deck','rearDelts','upperBack rotatorCuff','machine','',''],
+['reversePecDeck','Reverse Pec Deck (Rear Delt Fly)','rearDelts','upperBack rotatorCuff','machine','',''],
 ['facePull','Face Pull','rearDelts','upperBack traps rotatorCuff','cable','',''],
 ['cableRearFly','Cross-Body Cable Rear Delt Fly','rearDelts','upperBack rotatorCuff','cable','s',''],
 ['ohCableExt','Overhead Cable Triceps Extension','triceps','','cable','','Long head at long length. Grew the triceps more than pushdowns in a 2023 study (Maeo et al.).'],
@@ -518,6 +518,18 @@ export const COMMON: ReadonlySet<string> = new Set([
 export const isCommon = (
   e: (Pick<Exercise, 'id'> & Partial<Pick<Exercise, 'custom' | 'rare'>>) | null | undefined
 ): boolean => !!e && !e.custom && !e.rare && COMMON.has(e.id);
+
+/* A log holds every built-in lift by name (normalize puts the library's own
+   records in beside the lifter's, and the save keeps them), so a lift the
+   library renames keeps its old name on every phone that saved before,
+   unless the log reads it again on load. Since r66 (NEW-37) the names the
+   library gave a lift before are kept here by id: a log holding one of them
+   reads the lift by its name now (normalize), a name the lifter typed stays,
+   and an import naming the lift as before still finds it (impMatch). */
+/** The names the library gave a built-in lift before it renamed it, by id: Reverse Pec Deck until r66 (377). */
+export const LIB_NAMES_BEFORE: Readonly<Record<string, readonly string[]>> = {
+  reversePecDeck: ['Reverse Pec Deck']
+};
 
 /** The library as exercise records, fresh objects on every call. */
 export function libExercises(): Exercise[] {
@@ -782,15 +794,50 @@ export const commonFirst = <E extends Pick<Exercise, 'id' | 'custom' | 'rare'>>(
 ];
 
 /* Search by words, ignoring hyphens, spaces and case (r31): "t bar row" and
-   "tbar" did not find Landmine T-Bar Row, so it looked missing. */
-export function nameMatch(name: unknown, q: unknown): boolean {
+   "tbar" did not find Landmine T-Bar Row, so it looked missing. Since r66
+   (PENDING 377, V: "How was rear delt peck deck flyes missing from
+   library??"), a word typed may also match the lift's main muscle ("rear
+   delt", "bicep", "hamstring curl"), a plural matches its singular ("flyes",
+   "flies", "presses", "raises"), and a few names lifters use for a word the
+   library writes another way match it (SEARCH_SAYS). */
+/** Words lifters type for what the library names another way: each also matches the word it names. */
+const SEARCH_SAYS: Readonly<Record<string, string>> = {
+  rdl: 'romanian',
+  sldl: 'stiff',
+  ohp: 'overhead',
+  military: 'overhead',
+  bss: 'bulgarian',
+  dumbbell: 'db',
+  bb: 'barbell',
+  pushdown: 'pressdown',
+  peck: 'pec',
+  flye: 'fly'
+};
+/** The shortest word read as a plural: "abs" and "lats" are names, not plurals to cut. */
+const PLURAL_MIN = 4;
+/** A word typed and the forms it may also match: its singular, and what SEARCH_SAYS names for either. */
+function wordForms(w: string): string[] {
+  const out = new Set<string>([w]);
+  if (w.length >= PLURAL_MIN) {
+    if (w.endsWith('ies')) out.add(w.slice(0, -'ies'.length) + 'y');
+    if (w.endsWith('es')) out.add(w.slice(0, -'es'.length));
+    if (w.endsWith('s')) out.add(w.slice(0, -'s'.length));
+  }
+  for (const f of [...out]) if (SEARCH_SAYS[f]) out.add(SEARCH_SAYS[f]);
+  return [...out];
+}
+/** Whether every word of a search matches the lift's name, or its main muscle's name, in one of its forms. */
+export function nameMatch(name: unknown, q: unknown, muscle?: string): boolean {
   const ws = String(q || '')
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
   if (!ws.length) return true;
-  const n = String(name || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
-  return ws.every(w => n.includes(w));
+  const squash = (v: unknown): string =>
+    String(v || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+  const n = squash(name),
+    m = squash(muscle);
+  return ws.every(w => wordForms(w).some(f => n.includes(f) || (!!m && m.includes(f))));
 }

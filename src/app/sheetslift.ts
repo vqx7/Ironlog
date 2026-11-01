@@ -6,6 +6,7 @@
    by their data-act (r63). A sheet of a session's lift is null once that
    lift or the session is gone, and the sheet host (page.ts) then closes it. */
 
+import { picStrip } from './notepics';
 import { html } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { JOINTS, MUSCLES, rackKind } from './library';
@@ -29,7 +30,7 @@ export const howToUrl = (e: { name: string }): string => HOWTO_SEARCH + encodeUR
 export function howToLink(e: { name?: string | undefined } | null | undefined): TemplateResult | string {
   const name = e && e.name;
   return name
-    ? html`<a class="btn block u-mt6" href=${howToUrl({ name })} target="_blank" rel="noopener noreferrer" data-tip=${`Opens a YouTube search for ${name} in your browser. Only the exercise name is sent.`}>How-to videos</a>`
+    ? html`<a class="btn fullw u-mt6" href=${howToUrl({ name })} target="_blank" rel="noopener noreferrer" data-tip=${`Opens a YouTube search for ${name} in your browser. Only the exercise name is sent.`}>How-to videos</a>`
     : '';
 }
 
@@ -48,7 +49,7 @@ export function bmenuSheet(m: { b: number }): TemplateResult | null {
   const linked = !!(nx && b.plan.ss && nx.plan.ss === b.plan.ss);
   const e = EX(b.exId);
   const op = (o: string, l: string, dis?: boolean, cls?: string): TemplateResult =>
-    html`<button class=${'btn block u-mt6 ' + (cls || '')} data-act="bMenuDo" data-op=${o} data-b=${String(m.b)} ?disabled=${!!dis}>${l}</button>`;
+    html`<button class=${'btn fullw u-mt6 ' + (cls || '')} data-act="bMenuDo" data-op=${o} data-b=${String(m.b)} ?disabled=${!!dis}>${l}</button>`;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${exName(b.exId)}</h3>${closeX()}</div>
     ${op('bHist', 'History and chart')}${op('bMus', 'Muscles worked')}${op('wAdd', 'Add a warm-up set')}${op('dropAdd', 'Add a drop set (about 75% load)')}${op('bQuick', 'Type or dictate sets')}${op('bNote', b.note ? 'Edit note' : 'Add note')}${op('bSwap', 'Swap exercise')}${op('bNew', markedNew(d, b.exId) ? 'Same machine as before' : 'New machine or gym')}${howToLink(e)}${op('bInc', `Load step: ${fmtW(incOf(e, b.plan))} ${U()}`)}${op('bMax', `Heaviest available: ${e.maxLoad != null ? fmtW(e.maxLoad) + ' ' + U() : 'no limit'}`)}${rirShow(e) ? op('bCal', 'Calibration set (RIR check)') : ''}${nx ? op('bSs', linked ? 'Unlink superset' : `Superset with ${exName(nx.exId)}`) : ''}${op('bUp', 'Move up', m.b === 0)}${op('bDown', 'Move down', !nx)}${op('fbOpen', 'Report a problem')}${op('bDel', 'Remove from session', false, 'danger')}</div>`;
 }
@@ -92,11 +93,11 @@ export function maxSheet(m: { exId: string }): TemplateResult {
     <div class="row u-mt10"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 
-/** A note on a lift in a session, saved with it and shown next time. */
-export function noteSheet(m: { title: string; text?: string | undefined }): TemplateResult {
+/** A note on a lift in a session, saved with it and shown next time, with its pictures (r66, 373). */
+export function noteSheet(m: { bi: number; title: string; text?: string | undefined }): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.title}</h3>${closeX()}</div>
-    <p class="small muted">Saved with this session and shown next time: a cue, a niggle, which machine.</p>
-    <textarea id="mNote" aria-label="Note" class="u-minh110">${m.text || ''}</textarea>
+    <p class="small muted">Saved with this session and shown next time: a cue, a niggle, which machine. Pictures stay on this phone.</p>
+    <textarea id="mNote" aria-label="Note" class="u-minh110">${m.text || ''}</textarea>${picStrip(m.bi)}
     <div class="row u-mt10"><button class="btn primary" data-act="noteSave">Save note</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 

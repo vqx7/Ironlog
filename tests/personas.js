@@ -53,6 +53,15 @@
 //      to a real ticket. (Signing up with the email's code is
 //      tests/accounts.js's, on the real account script and a stand-in
 //      Supabase.)
+//  13  an experienced lifter's push day (r66, PENDING 372 to 376): bench and
+//      rows as a superset, each set ticked by its checkmark, the row's set
+//      brought up after the bench's and the rest only after the pair; a drop
+//      set added under the last bench set and done straight after it; the
+//      rows ended a set early with Done, Skip; a seat note with a picture on
+//      the bench; Finish saving what was done (the drop flagged, the rows
+//      two sets); the week counting the drop as half a set; and the next
+//      week the bench reading its three working sets, not the drop, and the
+//      rows repeating their target, two sets of three being short of usual.
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
 const { open, engine } = require('./h');
@@ -839,6 +848,62 @@ async function finish() {
     await page.click(`#view [data-act="histToggle"][data-id="${sid}"]`); await wait(150);
     const hist = await ev(id => { const b = document.querySelector(`#view [data-act="histToggle"][data-id="${id}"]`); const it = b && b.closest('.hitem'); return it ? it.innerText : null; }, sid);
     ok(hist && /2 sets/.test(hist) && /missed/i.test(hist) && /195/.test(hist), '12. History opens the session: two sets counted, the missed one shown and said', hist);
+    await H.P.ctx.close();
+  }
+
+  // ---- 13. An experienced lifter's push day (r66).
+  if (run(13)) {
+    const T0 = '2026-11-02';
+    const H = await phone(T0);
+    const { ev, page } = H;
+    await seed(H, { unit: 'lb', days: [{ id: 'Dp', name: 'Push', items: [['bench', 3, 6, 10, 2, 150, 5, 'g'], ['bbRow', 3, 8, 12, 2, 150, 5, 'g']] }],
+      sessions: [addD(T0, -14), addD(T0, -7)].map(date => ({ date, day: 'Dp', ex: [['bench', [[225, 8, 2], [225, 8, 2], [225, 8, 2]]], ['bbRow', [[185, 10, 2], [185, 10, 2], [185, 10, 2]]]] })) });
+    await ev(() => { const L = window.__ironlog; L.state.settings.timerMode = 'auto'; L.saveNow(); L.render(); });
+    await H.start();
+    const timer = () => ev(() => !document.getElementById('timer').hidden);
+    const stop = () => ev(() => { const L = window.__ironlog; if (L.ACT.tStop) L.ACT.tStop(); });
+    for (let k = 0; k < 2; k++) {
+      await H.type('r', 0, k, 9); await H.effort(0, k, 2); await H.tick(0, k); await wait(500);
+      const seen = await ev(k => { const r = document.querySelector(`[data-act="sDone"][data-b="1"][data-s="${k}"]`).closest('.sg').getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }, k);
+      ok(!(await timer()) && seen, `13. bench set ${k + 1}: no rest, the row's set ${k + 1} brought up`, { seen });
+      await H.type('r', 1, k, 10); await H.effort(1, k, 2); await H.tick(1, k);
+      ok(await timer(), `13. row set ${k + 1}: the rest after the pair`); await stop();
+    }
+    // The last bench set, then a drop straight under it, done with no rest between.
+    await H.type('r', 0, 2, 8); await H.effort(0, 2, 1); await H.tick(0, 2); await stop();
+    await page.click('#view [data-act="dropAdd"][data-b="0"]'); await wait(150);
+    let d = await H.draft();
+    ok(d.ex[0].sets[3] && d.ex[0].sets[3].drop, '13. + Drop goes under the last bench set', d.ex[0].sets.map(x => x.drop));
+    await H.type('r', 0, 3, 10); await H.effort(0, 3, 0); await H.tick(0, 3); await stop();
+    // The rows end a set early: Done, Skip them.
+    await page.click('#view [data-act="bDoneAll"][data-b="1"]'); await wait(150);
+    await page.click('#modal [data-act="mAlt"]'); await wait(150);
+    d = await H.draft();
+    ok(d.ex[1].sets.length === 2 && d.ex[1].sets.every(x => x.done), '13. Done, Skip: the rows end at two sets', d.ex[1].sets.length);
+    // A seat note with a picture, from the bench's own note button.
+    // The bench folded once done; opened again with a tap, as a lifter does, then its note button.
+    if (await page.$('#view [data-act="bOpen"][data-b="0"]')) { await page.click('#view [data-act="bOpen"][data-b="0"]'); await wait(150); }
+    await page.click('#view [data-act="bNote"][data-b="0"]'); await wait(150);
+    const png = await ev(async () => { const c = document.createElement('canvas'); c.width = 400; c.height = 300; c.getContext('2d').fillRect(0, 0, 400, 300); const b = await new Promise(r => c.toBlob(r, 'image/png')); return Array.from(new Uint8Array(await b.arrayBuffer())); });
+    await page.setInputFiles('#modal input[type="file"][data-pic="0"]', { name: 'seat.png', mimeType: 'image/png', buffer: Buffer.from(png) });
+    for (let k = 0; k < 30 && !(await H.draft()).ex[0].pics; k++) await wait(100);
+    await ev(() => { document.getElementById('mNote').value = 'Seat 4'; }); await page.click('#modal [data-act="noteSave"]'); await wait(150);
+    const fin = await H.finish();
+    ok(fin.recap.kind === 'recap', '13. Finish saves', fin);
+    const sv = await ev(() => window.__ironlog.state.sessions.find(s => s.date === '2026-11-02').ex.map(b => ({ id: b.exId, n: b.sets.length, drops: b.sets.filter(x => x.drop).length, note: b.note, pics: (b.pics || []).length })));
+    ok(sv[0].n === 4 && sv[0].drops === 1 && sv[0].note === 'Seat 4' && sv[0].pics === 1 && sv[1].n === 2, '13. saved: bench 3 sets and the drop, its note and picture; rows 2 sets', sv);
+    // The week: 3 + 2 hard working sets, and the drop as half a set (its tip's rule).
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+    const t = await ev(() => { document.querySelectorAll('#view details:not([open]) > summary').forEach(x => x.click()); return document.getElementById('view').innerText; });
+    const hs = t.match(/([\d.]+) hard sets logged/);
+    ok(hs && +hs[1] === 5.5, '13. this week: 5.5 hard sets (3 bench, 2 rows, the drop a half)', hs ? hs[0] : t.slice(0, 600));
+    // Next week: the bench from its three working sets (225 x 9, 9, 8: short of the top, the same load); the rows repeat, two sets of three.
+    await H.day(addD(T0, 7)); await H.start();
+    d = await H.draft();
+    const b0 = await H.row(0, 0), r0 = await H.row(1, 0);
+    ok(Number(b0.w) === 225 && d.ex[0].tgt && d.ex[0].tgt.kind === 'reps' && d.ex[0].tgt.total === 26, '13. next week the bench asks 225 for 27 reps: its three sets (26), never the drop', { grey: b0.w, tgt: d.ex[0].tgt });
+    ok(Number(r0.w) === 185 && d.ex[1].tgt && d.ex[1].tgt.total === 30, '13. the rows repeat 185 for 30+ over 3 sets: two sets of three are short of usual', { grey: r0.w, tgt: d.ex[1].tgt });
+    ok(!H.P.errors.length, '13. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
 

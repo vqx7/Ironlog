@@ -47,6 +47,30 @@ const server = http.createServer((req, res) => {
   const lic = await page.evaluate(async () => { const r = await fetch('LICENSES.txt'); const t = r.ok ? await r.text() : ''; const L = window.__ironlog; const ob = L.state.settings.onboarded; L.state.settings.onboarded = true; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const a = [...document.querySelectorAll('#view a')].find(x => /Open-source licenses/.test(x.textContent)); const link = a ? a.getAttribute('href') : null; L.state.settings.onboarded = ob; return { ok: r.ok, t, link }; });
   ok(lic.ok && ['Chart.js', 'SortableJS', 'three.js', cfg.FONT_DISPLAY, cfg.FONT_BODY, 'Permission is hereby granted', 'SIL Open Font License'].every(k => lic.t.includes(k)) && lic.link === 'LICENSES.txt', 'LICENSES.txt is served with the MIT and OFL texts, linked from Settings > Diagnostics', { ok: lic.ok, n: lic.t.length, link: lic.link });
   await page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+  // Crawlers (r66, PENDING 378, V: "keep AI crawlers off the site"): the site's robots.txt turns every crawler away,
+  // naming the AI ones, and the page asks not to be indexed, followed, archived or have its pictures indexed. The live
+  // build's robots.txt is the site's (ironapp.org/robots.txt); the preview, under /preview/, is covered by it and
+  // carries the page's own tag too.
+  {
+    const ROBOTS = 'noindex, nofollow, noarchive, noimageindex';
+    const AI = ['GPTBot', 'ChatGPT-User', 'OAI-SearchBot', 'ClaudeBot', 'Claude-Web', 'anthropic-ai', 'Google-Extended', 'CCBot', 'PerplexityBot', 'Bytespider', 'Applebot-Extended', 'meta-externalagent', 'Amazonbot'];
+    // Each group a crawler reads: its User-agent lines and the rules under them.
+    const groups = t => { const out = []; let g = null; for (const raw of t.split(/\r?\n/)) { const l = raw.replace(/#.*/, '').trim(); if (!l) continue; const [k, ...v] = l.split(':'); const key = k.trim().toLowerCase(), val = v.join(':').trim(); if (key === 'user-agent') { if (!g || g.rules.length) out.push(g = { agents: [], rules: [] }); g.agents.push(val); } else if (g) g.rules.push([key, val]); } return out; };
+    const shut = (gs, agent) => gs.some(g => g.agents.some(a => a.toLowerCase() === agent.toLowerCase()) && g.rules.some(([k, v]) => k === 'disallow' && v === '/') && !g.rules.some(([k]) => k === 'allow'));
+    const rob = await page.evaluate(async () => { const r = await fetch(new URL('robots.txt', location.href)); return { ok: r.ok, type: r.headers.get('content-type'), t: r.ok ? await r.text() : '' }; });
+    const gs = groups(rob.t);
+    ok(rob.ok && /text\/plain/.test(rob.type || '') && shut(gs, '*'), 'robots.txt is served as text and turns every crawler away (User-agent: * with Disallow: /)', rob);
+    ok(AI.every(a => shut(gs, a)), 'robots.txt names each known AI crawler and turns it away', AI.filter(a => !shut(gs, a)));
+    const meta = await page.evaluate(() => [...document.querySelectorAll('meta[name="robots"]')].map(m => m.getAttribute('content')));
+    ok(meta.length === 1 && meta[0] === ROBOTS, `the live page asks not to be indexed (${ROBOTS})`, meta);
+    const pv = path.join(__dirname, '..', 'dist-preview');
+    require('./h').build(true);
+    const pvHtml = fs.readFileSync(path.join(pv, 'index.html'), 'utf8');
+    ok((pvHtml.match(/<meta name="robots" content="([^"]*)">/g) || []).length === 1 && pvHtml.includes(`<meta name="robots" content="${ROBOTS}">`), 'the preview page asks the same', (pvHtml.match(/<meta name="robots"[^>]*>/g) || []));
+    ok(fs.existsSync(path.join(pv, 'robots.txt')) && AI.concat('*').every(a => shut(groups(fs.readFileSync(path.join(pv, 'robots.txt'), 'utf8')), a)), 'the preview build carries the same robots.txt');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+    ok(src.includes(`<meta name="robots" content="${ROBOTS}">`), 'and so does the page built from src/ (index.html)');
+  }
   // Service worker.
   await page.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller || false, null, { timeout: 15000 }).catch(() => {});
   if (!(await page.evaluate(() => !!navigator.serviceWorker.controller))) { await page.reload(); await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 }).catch(() => {}); }

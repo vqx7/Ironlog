@@ -233,7 +233,8 @@ const CASES = [
     for (let i = 0; i < N; i++) G.texts.push(note(r));
     for (let i = 0; i < Math.ceil(N / 3); i++) G.tables.push(table(r));
     const both = [];
-    for (const file of [OLD, FILE]) {
+    // Pinned since r66 to the build it proved (r63): r66 renames a lift in the library on purpose (PENDING 377), and the log's exercises are among these answers.
+    for (const file of [OLD, PROVED]) {
       const Q = await open(file, { browser });
       await Q.page.clock.setFixedTime(new Date('2026-10-24T10:00:00'));
       both.push({ out: await digest(Q, 6300), errors: Q.errors.slice() });
@@ -352,18 +353,30 @@ const CASES = [
     }
     const [a, b] = seen;
     const firstDiff = (x, y) => { for (let i = 0; i < Math.max(x.length, y.length); i++) if (x[i] !== y[i]) return { at: i, r62: x.slice(Math.max(0, i - 3), i + 4), now: y.slice(Math.max(0, i - 3), i + 4) }; return null; };
-    const da = firstDiff(a.adds, b.adds);
-    ok(a.adds.length > 20 && !da, `4. the page adds r62's ${a.adds.length} listeners and intervals, in r62's order`, da);
+    /* Listeners a later build adds, as one run in its place, each run listed here with the release that added it:
+       r66 reads the pictures another tab kept when that tab's change arrives or the page comes back to the front
+       (373, R66-3: events.ts, pageListeners). Taken out of this build's list where the run sits; the rest is r62's. */
+    const LATER_ADDS = [['window storage false', 'document visibilitychange false']];
+    const bAdds = [...b.adds];
+    const runsFound = LATER_ADDS.map(run => {
+      const i = bAdds.findIndex((_, k) => run.every((x, j) => bAdds[k + j] === x) && k > 0 && bAdds[k - 1] === 'interval 30000');
+      if (i >= 0) bAdds.splice(i, run.length);
+      return i >= 0;
+    });
+    const da = firstDiff(a.adds, bAdds);
+    ok(a.adds.length > 20 && !da && runsFound.every(Boolean), `4. the page adds r62's ${a.adds.length} listeners and intervals, in r62's order, and after r62's 30-second interval the run later builds list (r66: another tab's pictures)`, da || runsFound);
     // Names a later build adds to the hook go after r62's, each listed here with the release that added it.
-    const LATER = ['templateBefore function', 'templateRest function', 'templateSigsBefore function', 'bandOf function'];
+    const LATER = ['templateBefore function', 'templateRest function', 'templateSigsBefore function', 'bandOf function', 'picsTidy function'];
     const dh = firstDiff(a.hook, b.hook.slice(0, a.hook.length));
     const unlisted = b.hook.slice(a.hook.length).filter(k => !LATER.includes(k));
-    ok(a.hook.length > 300 && !dh && !unlisted.length, `4. window.__ironlog holds r62's ${a.hook.length} names in r62's order, each the same kind of value, and after them only the names later builds list (r64: templateBefore, templateRest, templateSigsBefore; r65: bandOf)`, dh || unlisted);
+    ok(a.hook.length > 300 && !dh && !unlisted.length, `4. window.__ironlog holds r62's ${a.hook.length} names in r62's order, each the same kind of value, and after them only the names later builds list (r64: templateBefore, templateRest, templateSigsBefore; r65: bandOf; r66: picsTidy)`, dh || unlisted);
     // rNewDo sat in r62's table as the helper New routine's Save called by name (ACT.rNewDo(name)): no element named it, and a tap would have handed it the element as the name. It is a function of actsroutine.ts since r63.
     const NOT_TAPS = ['rNewDo'];
-    const gone = a.acts.filter(k => !b.acts.includes(k) && !NOT_TAPS.includes(k)), extra = b.acts.filter(k => !a.acts.includes(k));
+    // Actions a later build adds go beside r62's, each listed here with the release that added it: r66's Done with sets left (374), the bodyweight sheet (372), and a note's pictures (373).
+    const LATER_ACTS = ['bDoneAll', 'bwOpen', 'picOpen', 'picRemove'];
+    const gone = a.acts.filter(k => !b.acts.includes(k) && !NOT_TAPS.includes(k)), extra = b.acts.filter(k => !a.acts.includes(k) && !LATER_ACTS.includes(k));
     ok(NOT_TAPS.every(k => a.acts.includes(k) && !b.acts.includes(k)), '4. r62\'s one helper in the table (rNewDo) is a function now, not an action');
-    ok(a.acts.length > 200 && !gone.length && !extra.length, `4. every other one of r62's ${a.acts.length} actions by data-act, and no new one`, { gone, extra });
+    ok(a.acts.length > 200 && !gone.length && !extra.length && LATER_ACTS.every(k => b.acts.includes(k)), `4. every other one of r62's ${a.acts.length} actions by data-act, and no new one but those later builds list (r66: bDoneAll, bwOpen, picOpen, picRemove)`, { gone, extra });
     ok(!b.errors.length, '4. no page errors', b.errors);
   }
 

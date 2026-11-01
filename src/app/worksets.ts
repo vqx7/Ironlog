@@ -252,9 +252,17 @@ function lastRowR(
 /** Whether the lifter has put anything into a session in progress. */
 export function draftEntered(d: Draft | null | undefined): boolean {
   if (!d) return false;
-  if (d.ex.some(b => (b.note && b.note.trim()) || b.sets.some(x => x.done || +(x.r ?? 0) > 0 || !rowBlank(b, x))))
+  if (
+    d.ex.some(
+      b =>
+        (b.note && b.note.trim()) ||
+        (b.pics && b.pics.length) ||
+        b.sets.some(x => x.done || +(x.r ?? 0) > 0 || !rowBlank(b, x))
+    )
+  )
     return true;
-  if ((d.cardio || []).some(c => (c.min || 0) > 0)) return true;
+  // A picture added is something entered too (r66, 373): Discard asks first.
+  if ((d.pics && d.pics.length) || (d.cardio || []).some(c => (c.min || 0) > 0)) return true;
   const n = (d.notes || '').trim();
   if (!n) return false;
   return typeof d.note0 === 'string' ? n !== d.note0.trim() : true;
@@ -452,7 +460,6 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
   const done = b.sets.filter(s => s.done && !s.warm && !s.drop && +(s.r ?? 0) > 0);
   if (!done.length) return { text: '', beat: false };
   const tw = t.w ?? 0;
-  const at = done.filter(s => Math.abs((+(s.w ?? 0) || 0) - tw) < EPS_SAME);
   const heavier = done.filter(s => (+(s.w ?? 0) || 0) > tw + EPS_SAME);
   let heavyBeat = false,
     heavyTxt = '';
@@ -482,10 +489,24 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
     }
   }
   if (t.kind === 'reps') {
-    if (!at.length) return { text: heavyTxt || `Nothing logged at ${loadLabel(ex, tw)} yet`, beat: heavyBeat };
+    /* Every set done at one load heavier than the target's counts toward its
+       reps, since a heavier set is at least as hard as the same reps at the
+       target's load, and the next target is then read at that load (r66,
+       NEW-30: leg press 1,000 x 15, 15, 14 against 990 for 37+ read "Nothing
+       logged at 990 yet", since the estimate the heavier sets were judged by
+       stops at 12 reps to failure). With loads mixed (1,000 x 13, then 990 x
+       12 twice) the next target reads only the sets at the target's load, so
+       this line does too, and a heavier set is judged by its estimate, as
+       before (the review of r66: counting it said Beaten while the next
+       target repeated). */
+    const w0 = +(done[0]?.w ?? 0) || 0;
+    const oneUp = w0 > tw + EPS_SAME && done.every(s => Math.abs((+(s.w ?? 0) || 0) - w0) < EPS_SAME);
+    const atUp = oneUp ? done : done.filter(s => Math.abs((+(s.w ?? 0) || 0) - tw) < EPS_SAME);
+    if (!atUp.length) return { text: heavyTxt || `Nothing logged at ${loadLabel(ex, tw)} yet`, beat: heavyBeat };
     const tn = t.n ?? 0,
       total = t.total ?? 0;
-    const cnt = tn > 0 ? at.slice(0, tn) : at;
+    const cnt = tn > 0 ? atUp.slice(0, tn) : atUp;
+    const where = cnt.some(s => (+(s.w ?? 0) || 0) > tw + EPS_SAME) ? 'at that load or heavier' : 'at that load';
     const hi = +b.plan.repMax,
       cap = hi > 0 && total < hi * (tn > 0 ? tn : cnt.length) ? hi : Infinity;
     const n = cnt.reduce((a, s) => a + Math.min(+(s.r ?? 0), cap), 0);
@@ -496,8 +517,8 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
         fewer && n > total
           ? `${n}${u} over ${tn} set${tn === 1 ? '' : 's'}, last time ${total}${sx} over those. Fewer sets than usual: the target stays for next time`
           : n > total
-            ? `Beaten: ${n}${u} at that load, last time ${total}${sx}`
-            : `${n}${sx} of ${total + 1}${u} so far at that load`;
+            ? `Beaten: ${n}${u} ${where}, last time ${total}${sx}`
+            : `${n}${sx} of ${total + 1}${u} so far ${where}`;
     return { text: heavyTxt ? `${base}. ${heavyTxt}` : base, beat: !fewer && (n > total || heavyBeat) };
   }
   const rows = b.sets.filter(s => !s.warm && !s.drop),
@@ -962,6 +983,9 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
     const k = grp.indexOf(b);
     if (grp.slice(k + 1).some(x => x.sets.some(y => !y.done && !y.warm && !y.drop))) autoRest = false;
   }
+  // A drop set waiting under this set is done straight after it, with no rest between (r66, 375).
+  const nx = b.sets[si + 1];
+  if (autoRest && !s.drop && nx && nx.drop && !nx.done) autoRest = false;
   if (autoRest) startTimer(+b.plan.rest);
   if (W.foldT) clearTimeout(W.foldT);
   W.foldT = null;
@@ -974,11 +998,39 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
     !!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
   if (askRir) rirShowStrip(bi, si);
   else if (!val) rirClose();
+  if (val && !again && !askRir && !d.editingId && b.plan.ss && !(nx && nx.drop && !nx.done)) ssNext(b);
   if (val && !askRir && !d.editingId && blockDone(b)) {
     const rf = blkRef(bi);
     W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
   }
   if (val && b.sets.filter(x => x.done).length === 1 && orderAt(b) >= 0) orderSoon(b);
+}
+
+/* A superset's next set (r66, PENDING 375): after a set of one exercise in
+   the group, the screen brings up the next exercise in the group with a set
+   still to do, the first again after the last, so the lifter goes A1, A2,
+   A1 without scrolling. Only the view moves: no field takes focus, so no
+   keyboard comes up. */
+function ssNext(b: DraftBlock): void {
+  const d = state.draft;
+  if (!d || !b.plan.ss) return;
+  const grp = d.ex.filter(x => x.plan && x.plan.ss === b.plan.ss);
+  const k = grp.indexOf(b);
+  const order = [...grp.slice(k + 1), ...grp.slice(0, k + 1)];
+  const to = order.find(x => x.sets.some(y => !y.done && !y.warm));
+  if (!to) return;
+  const bi = d.ex.indexOf(to);
+  const si = to.sets.findIndex(y => !y.done && !y.warm);
+  requestAnimationFrame(() => {
+    const row = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
+    const el = row && row.closest('.sg');
+    if (el)
+      try {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      } catch (e) {
+        // Scrolling is best effort; the set is ticked either way.
+      }
+  });
 }
 
 /* Typed reps, then a tap on the same row's RIR box (r30): auto-mark waits

@@ -206,15 +206,24 @@ html = replaceOnce(html, '</body>', boot + '</body>', 'closing body tag');
    the app sets style attributes throughout, and CSS cannot send data out
    without an allowed address. The CDN fallbacks in the loaders are left out
    on purpose: this build ships its own copies. A meta tag cannot set
-   frame-ancestors; GitHub Pages sends no such header, which is acceptable for
-   an app with no actions a framing page could trick a tap into. */
+   frame-ancestors, and GitHub Pages sends no such header, so since r66 the app
+   refuses to start inside another page's frame itself (src/app/main.ts, and
+   the account script; PENDING 378, tests/r66s.js): a framing page on the same
+   site would share the log's storage, and any framing page could lay its own
+   buttons over the app's. */
 
 const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => `'sha256-${crypto.createHash('sha256').update(m[1], 'utf8').digest('base64')}'`);
 must(hashes.length >= 3, 'expected the head, app and boot inline scripts');
 const sbHost = cloudCfg ? cloudCfg.url.replace(/^https:\/\//, '') : null;
+/* The sign-up bot check (r66, PENDING 378; src/app/captcha.ts): Cloudflare Turnstile's script, and the frame it
+   draws its check in, come from its own site. Allowed only when config.ts has a site key: as shipped the key is
+   empty, the app loads nothing from there, and the policy allows no other site for script or frames. */
+const ts = cfg.TURNSTILE_SITE_KEY ? ` ${cfg.TURNSTILE_ORIGIN}` : '';
+must(!cfg.TURNSTILE_SITE_KEY || /^[\w-]{10,100}$/.test(cfg.TURNSTILE_SITE_KEY), 'TURNSTILE_SITE_KEY must be a Turnstile site key (the public one), letters, digits, _ and -');
+must(!/secret/i.test(cfg.TURNSTILE_SITE_KEY), 'TURNSTILE_SITE_KEY: never the secret key');
 const csp = [
   "default-src 'self'",
-  `script-src 'self' ${hashes.join(' ')}`,
+  `script-src 'self' ${hashes.join(' ')}${ts}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
@@ -223,7 +232,7 @@ const csp = [
   "manifest-src 'self'",
   "media-src 'self'",
   "object-src 'none'",
-  "frame-src 'none'",
+  `frame-src ${ts ? ts.trim() : "'none'"}`,
   "base-uri 'none'",
   "form-action 'none'"
 ].join('; ');
@@ -310,6 +319,19 @@ fs.writeFileSync(path.join(DIST, 'sw.js'), sw);
   fs.writeFileSync(path.join(DIST, 'LICENSES.txt'), txt);
 }
 fs.writeFileSync(path.join(DIST, '.nojekyll'), '');
+/* Crawlers (r66, PENDING 378, V: "keep AI crawlers off the site"): the app is one person's log, with nothing to
+   find by search, so every crawler is asked to stay off the whole site, and the known AI crawlers are named as well,
+   since some read only a group that names them. The page's own robots tag (src/01-head.html) asks the same of any
+   that reads the page anyway. robots.txt is a request a well-behaved crawler honours, not a lock: what protects a
+   log is that it is never on the site at all (it lives on the phone and, signed in, in the account behind its
+   sign-in). The live build's file is the site's, at its root; the preview's, under preview/, changes nothing but
+   is kept the same so the two builds match. Not precached: the app never reads it. */
+{
+  const AI_CRAWLERS = ['GPTBot', 'ChatGPT-User', 'OAI-SearchBot', 'ClaudeBot', 'Claude-Web', 'Claude-User', 'Claude-SearchBot', 'anthropic-ai', 'Google-Extended', 'CCBot', 'PerplexityBot', 'Perplexity-User', 'Bytespider', 'Applebot-Extended', 'meta-externalagent', 'meta-externalfetcher', 'FacebookBot', 'Amazonbot', 'cohere-ai', 'Diffbot', 'ImagesiftBot', 'omgili', 'Timpibot', 'YouBot', 'DuckAssistBot', 'MistralAI-User'];
+  const robots = `# ${cfg.APP_NAME}: one lifter's log, nothing to index. Every crawler, and every AI crawler by name, stays off.\n` +
+    AI_CRAWLERS.map(a => `User-agent: ${a}\nDisallow: /\n`).join('\n') + '\nUser-agent: *\nDisallow: /\n';
+  fs.writeFileSync(path.join(DIST, 'robots.txt'), robots);
+}
 fs.writeFileSync(path.join(DIST, '404.html'), `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=./"><title>${NAME}</title>`);
 
 console.log(`built ${path.basename(DIST)}/ for ${version} (${cacheName})`);

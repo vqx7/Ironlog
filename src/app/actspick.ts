@@ -5,6 +5,7 @@
    a change to the session in progress alone leaves the caches as they are
    (inProgress), as the legacy script's save of the session did. */
 
+import { bwNudge } from './bwnudge';
 import { uid, numIn } from './util';
 import { BWF, MK, bwShare } from './library';
 import { dayLabel, fixSupersets, trainOn } from './routines';
@@ -99,6 +100,7 @@ export function applyPick(m: PickerModal | null | undefined, id: string | undefi
     });
     rerenderKeepScroll();
     toast(`${exName(id)} added to ${dayLabel(R, di)}`);
+    bwNudge([id]);
     return;
   }
   if (m.mode === 'swapItem') {
@@ -163,6 +165,7 @@ export function applyPick(m: PickerModal | null | undefined, id: string | undefi
     }
     act(() => d.ex.push(nb), { inProgress: true });
     afterAdd(d.ex.length - 1);
+    bwNudge([id]);
     return;
   }
   /* Swapping used to replace the whole block, so sets already logged on the

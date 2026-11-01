@@ -47,7 +47,7 @@ export const DARK_BG = '#08090b';
 
 /** The version people see (V, 2026-10-16): 2.0 from r49, the minor number up
     by one for each release merged, the major number for a large change. */
-export const DISPLAY_VERSION = '2.20';
+export const DISPLAY_VERSION = '2.21';
 
 /** The build: shown beside the version in Diagnostics, problem reports and
     backups, so a report is matched to the exact code; also names the service
@@ -55,7 +55,7 @@ export const DISPLAY_VERSION = '2.20';
     Problem reports and Copy diagnostics carry it as `build` and the version
     people see as `version`; a backup keeps it under `version`, as every
     build before r49 wrote backups, so old and new backups read the same. */
-export const APP_VERSION = '2026.10.31-r65.2';
+export const APP_VERSION = '2026.11.01-r66';
 
 /** Version and build together, for Diagnostics and the recovery screen. */
 export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
@@ -146,3 +146,16 @@ export const NET_MS = 20000;
     only when the address starts here (a report's fields are written by
     whoever sent it, so any other address is not linked; FEEDBACK.md). */
 export const TICKETS_AT = 'https://github.com/';
+
+/** The sign-up bot check (r66, PENDING 378): the public site key of a Cloudflare Turnstile widget made for the
+    site, which Supabase Auth checks once its CAPTCHA protection is on (OWNER.md, E1). It is public by design, like
+    the Supabase publishable key; the widget's secret key goes only into Supabase. Empty, the check is off: nothing
+    loads, the account sheet is as before, and its requests carry no token. Set, the account sheet draws the check
+    and sends its token, and the installed app's Content Security Policy allows Turnstile's site (scripts/build.js). */
+export const TURNSTILE_SITE_KEY = '';
+
+/** Turnstile's site: the installed app's policy allows script and frames from it only when the key is set. */
+export const TURNSTILE_ORIGIN = 'https://challenges.cloudflare.com';
+
+/** Turnstile's script, loaded by the account sheet the first time it opens with the key set, drawn by the app. */
+export const TURNSTILE_URL = `${TURNSTILE_ORIGIN}/turnstile/v0/api.js?render=explicit`;
