@@ -12,7 +12,8 @@ Last updated: r65.2 live (2026-11-01 UTC; checked by Claude on gh-pages: "Publis
 2. Problem reports: done (2026-10-30, you). B4's r64 code is deployed, B1a has been run, and a test report from the preview became an issue in `ironlog-feedback`, which confirms B5. See Done.
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
 4. D6: delete the old branches and stop them piling up (2 minutes, below).
-5. D5: lock down every account (two-step verification everywhere, push protection, DNSSEC, Claude's GitHub access limited to Ironlog).
+5. D5: lock down every account (two-step verification everywhere, push protection, DNSSEC, Claude's GitHub access limited to Ironlog). `docs/SECURITY.md` has the whole list and what each step protects (r66).
+5a. E2: prove the database's rules with one read-only query (2 minutes, below). After r66: B4 again (the function marks every ticket untrusted), then E1 when you want the sign-up bot check.
 6. Before friends sign up, decide item 15 in PENDING.md: optional encryption. Today you can read every account's log in Supabase's Table Editor, and the app's privacy line says so. With encryption on, nobody but the owner of a log can read it, and a forgotten passphrase loses that cloud copy for good. You chose to launch without it (2026-09-27); this is the last point to change that before other people's logs are in it.
 7. After that, if you want it: decision 129 (make the repository private). Note that it hides the repository, not the app: every website's code is downloaded to the phone that opens it, so anyone can read the app's code at ironapp.org either way. No secret key is in it (checked 2026-10-04).
 8. At the gym: Checks on your phone (below).
@@ -402,6 +403,40 @@ Status: to do. Each step is free and none of them stops Claude from building and
 8. **Resend:** Settings > Account > enable two-factor. The API key you made is sending-only for `mail.ironapp.org`; leave it that way.
 9. **Claude:** your Claude account signs in through your email (or Google), so steps 1 and, if used, your Google account's two-step verification protect it.
 10. **Never paste** the Supabase secret key, a GitHub token or the Resend key into a chat, the app or the repository. They belong only in the dashboards named in B4 and C4.
+
+### E1. The sign-up bot check (r66, PENDING 378; about 10 minutes, any time after r66 is live)
+Status: to do when you want it. Built and off: the app checks for a key and, without one, loads nothing and behaves exactly as before. With it on, a bot has to pass Cloudflare Turnstile (usually invisible to a person; a tap at most) before Supabase accepts a sign-up, a sign-in, a reset link or a new confirmation code. Free.
+
+The order matters. The app must carry the key **before** Supabase asks for it: once CAPTCHA protection is on in Supabase, every phone still on a build without the key is refused at sign-in and sign-up until it updates (`tests/r66s.js` section 2 shows both). Signed-in phones keep syncing either way: a sync does not sign in again.
+1. **Cloudflare:** dash.cloudflare.com > **Turnstile** > **Add widget**. Name `Ironlog`. Hostnames: `ironapp.org` (it covers the preview, which lives under it). Widget mode: **Managed**. Pre-clearance: **No**. **Create**. Cloudflare shows a **Site key** (public) and a **Secret key** (secret). Keep the page open.
+2. **The app:** tell Claude "turn on the sign-up check, site key `<the site key>`". Claude puts it in `TURNSTILE_SITE_KEY` in `src/app/config.ts` (the build then allows Turnstile's site in the page's security policy, for its script and its frame only) and opens a pull request. Try the preview: Create account and Sign in work. Merge it, and wait until your phone shows Update ready and has updated. Never send the secret key: it goes only into Supabase in step 3.
+3. **Supabase:** Authentication > **Attack Protection** (in older dashboards Settings > Auth > Bot and Abuse Protection) > **Enable CAPTCHA protection** on, provider **Turnstile by Cloudflare**, paste the **Secret key**, **Save**.
+4. **Check:** sign out on a phone with the new build, sign in: it works. In a private window, Create account with an address you own: it reaches Check your email. If sign-in says "The security check did not pass", turn CAPTCHA protection off in Supabase (step 3) and tell Claude.
+
+To turn it off again: Supabase first (step 3, off), then ask Claude to empty the key.
+
+### E2. Prove the database's rules, live (r66, PENDING 378; 2 minutes, read-only)
+Status: to do; run it now and again whenever a table is added. The suites prove the rules as SUPABASE.md writes them (`tests/sql.js` runs that SQL in a stand-in database); this shows what your live project actually has. Supabase > **SQL Editor** > **New query**, paste, **Run**. It changes nothing.
+
+```sql
+-- r66: read-only. Every table in the public and storage schemas, whether row level security is on, and every policy on it.
+select t.schemaname, t.tablename, t.rowsecurity as rls_on,
+       p.policyname, p.cmd, p.roles, p.qual as using_rule, p.with_check
+from pg_tables t
+left join pg_policies p on p.schemaname = t.schemaname and p.tablename = t.tablename
+where t.schemaname in ('public', 'storage')
+order by t.schemaname, t.tablename, p.policyname;
+```
+
+What the right answer looks like for this project:
+- Every row in `public` reads `rls_on` **true**: `docs`, `docs_preview`, `feedback` and `feedback_readers`. A public table with `rls_on` false is readable by anyone with the app's public key: tell Claude at once.
+- `docs` and `docs_preview`: one policy each, `own rows only`, cmd `ALL`, roles `{authenticated}`, both rules `(( SELECT auth.uid() AS uid) = user_id)`. Each account reads and writes only its own rows.
+- `feedback`: two policies. `signed-in people can add`, cmd `INSERT`, roles `{authenticated}`, with_check `(user_id = ( SELECT auth.uid() AS uid))`: a person adds reports only as themselves. `readers read feedback`, cmd `SELECT`, roles `{authenticated}`, using a rule that the reader is in `feedback_readers`: only you read reports. No UPDATE or DELETE policy: nobody changes or removes a report through the app.
+- `feedback_readers`: one policy, `see own reader row`, cmd `SELECT`, roles `{authenticated}`, using `(user_id = ( SELECT auth.uid() AS uid))`. Nobody can add themselves: there is no INSERT policy.
+- No other table in `public`. One you do not recognise: tell Claude before changing anything.
+- `storage`: Supabase's own tables. `objects` and `buckets` should read `rls_on` true with no policy: that is right today, since no bucket is used, and with row level security on and no policy nothing in storage can be read or written with the app's key. Supabase's other storage tables are its own bookkeeping; the app's key cannot reach them, because the storage schema is not served by the Data API. If `objects` or `buckets` reads false, tell Claude. Pictures in the account (PENDING 373 b) will add policies here, and this check is run again then.
+
+Paste the result into a chat with Claude if anything differs, or if you want it read for you.
 
 ### D6. Old branches
 Status: to do (checked by Claude on 2026-10-27 through GitHub's compare API: the branches below are on GitHub, and Automatically delete head branches is still off). Claude's GitHub access cannot delete branches.

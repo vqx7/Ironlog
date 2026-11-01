@@ -338,6 +338,30 @@ alter table public.docs_preview add constraint docs_preview_data_size check (pg_
 
    To check, run `select conname from pg_constraint where conname like '%data_size';` in a new query: it lists both names. Nothing changes in the app. Since r64 this is part of Part 4's r64 block, which adds it only where it is missing; run that block instead.
 
+## Part 7: checking the rules live, and the sign-up bot check (r66, PENDING 378)
+
+The rules above are what this file asks you to run; this query shows what the live project has, every table in the `public` and `storage` schemas with row level security on or off and every policy on it. Read-only. SQL Editor > New query, paste, Run:
+
+```sql
+-- r66: read-only. Every table in the public and storage schemas, whether row level security is on, and every policy on it.
+select t.schemaname, t.tablename, t.rowsecurity as rls_on,
+       p.policyname, p.cmd, p.roles, p.qual as using_rule, p.with_check
+from pg_tables t
+left join pg_policies p on p.schemaname = t.schemaname and p.tablename = t.tablename
+where t.schemaname in ('public', 'storage')
+order by t.schemaname, t.tablename, p.policyname;
+```
+
+What the right answer looks like for this project:
+- Every row in `public` reads `rls_on` **true**: `docs`, `docs_preview`, `feedback` and `feedback_readers`. A public table with `rls_on` false is readable by anyone with the app's public key: tell Claude at once.
+- `docs` and `docs_preview`: one policy each, `own rows only`, cmd `ALL`, roles `{authenticated}`, both rules `(( SELECT auth.uid() AS uid) = user_id)`. Each account reads and writes only its own rows.
+- `feedback`: two policies. `signed-in people can add`, cmd `INSERT`, roles `{authenticated}`, with_check `(user_id = ( SELECT auth.uid() AS uid))`: a person adds reports only as themselves. `readers read feedback`, cmd `SELECT`, roles `{authenticated}`, using a rule that the reader is in `feedback_readers`: only you read reports. No UPDATE or DELETE policy: nobody changes or removes a report through the app.
+- `feedback_readers`: one policy, `see own reader row`, cmd `SELECT`, roles `{authenticated}`, using `(user_id = ( SELECT auth.uid() AS uid))`. Nobody can add themselves: there is no INSERT policy.
+- No other table in `public`. One you do not recognise: tell Claude before changing anything.
+- `storage`: Supabase's own tables. `objects` and `buckets` should read `rls_on` true with no policy: that is right today, since no bucket is used, and with row level security on and no policy nothing in storage can be read or written with the app's key. Supabase's other storage tables are its own bookkeeping; the app's key cannot reach them, because the storage schema is not served by the Data API. If `objects` or `buckets` reads false, tell Claude. Pictures in the account (PENDING 373 b) will add policies here, and this check is run again then.
+
+The sign-up bot check: Supabase Auth checks a Cloudflare Turnstile token on sign-up, password sign-in, a reset link and a new confirmation code once **Attack Protection > Enable CAPTCHA protection** is on with Turnstile's secret key. The app sends one only when `TURNSTILE_SITE_KEY` in `src/app/config.ts` is set (`src/app/captcha.ts`), so the app gets its key first and Supabase is switched on second (OWNER.md, E1).
+
 ## Who can see the data
 
 - Other users: never. The rule in step 6 is enforced by the database for every request.
