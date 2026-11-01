@@ -520,7 +520,7 @@ export function bwDueCard(): Part {
     return nothing;
   const z = prefGet(BWSNOOZE_KEY);
   if (z && z > t) return nothing;
-  return html`<div class="card" id="bwDue"><p class="small u-m0-0-8"><b>${last ? 'Weigh-in due.' : 'Your bodyweight'}</b> ${
+  return html`<div class="card" id="bwDue"><p class="small u-m0-0-8"><b>${last ? 'Weigh-in due.' : 'Your bodyweight.'}</b> ${
     last
       ? `Last ${fmtW(last.kg)} ${U()}, ${ago} days ago.`
       : 'Pull-ups, dips, and push-ups count it, plus any weight you add; without it they count only what you add. Optional.'

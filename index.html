@@ -18182,7 +18182,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
       return A;
     const z2 = prefGet(BWSNOOZE_KEY);
     if (z2 && z2 > t4) return A;
-    return b`<div class="card" id="bwDue"><p class="small u-m0-0-8"><b>${last ? "Weigh-in due." : "Your bodyweight"}</b> ${last ? `Last ${fmtW(last.kg)} ${U()}, ${ago} days ago.` : "Pull-ups, dips, and push-ups count it, plus any weight you add; without it they count only what you add. Optional."} ${tipButton("Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > General.", "About weigh-ins")}</p>
+    return b`<div class="card" id="bwDue"><p class="small u-m0-0-8"><b>${last ? "Weigh-in due." : "Your bodyweight."}</b> ${last ? `Last ${fmtW(last.kg)} ${U()}, ${ago} days ago.` : "Pull-ups, dips, and push-ups count it, plus any weight you add; without it they count only what you add. Optional."} ${tipButton("Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > General.", "About weigh-ins")}</p>
 <div class="row"><label class="field u-f1_m0"><span class="vh">Bodyweight (${U()})</span>${inUnit(
       U(),
       b`<input type="text" inputmode="decimal" id="bwDueVal" placeholder=${last ? fmtW(last.kg) : `Weight (${U()})`} data-grey=${last ? fmtW(last.kg) : A} aria-label=${`Bodyweight (${U()})`} enterkeyhint="done">`
