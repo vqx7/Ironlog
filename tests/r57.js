@@ -196,10 +196,20 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
      r56.2. */
   const NEW_ACCENTS = /<button [^>]*data-v="(violet|cyan|red)"[^>]*><i [^>]*><\/i>"(Violet|Cyan|Red)"<\/button>/g;
   const heldOutAccents = shot => ({ ...shot, tree: shot.tree.map(t => t.replace(NEW_ACCENTS, '')), text: shot.text.replace(/\nPink\nViolet\nCyan\nRed\n/, '\nPink\n') });
+  /* Three of r66's changes reach these screens on purpose: Settings' bodyweight field under the weigh-in reminder (372,
+     held by tests/r66b.js section 4), the library's name for the rear delt machine, Reverse Pec Deck (Rear Delt Fly),
+     in History's list of lifts (377 and NEW-37, section 10), and the class of a full-width button, fullw where it was
+     block, with the same look (368, section 5). The field, its element and its text, is taken out of this build's
+     page, the machine read by its old name and fullw as block; everything else is still held to r56.2. */
+  const BW_FIELD = /<div class="row" id="bwSet"[^>]*>.*?<\/div><p [^>]*>"[^"]*"<\/p>/;
+  const BW_TEXT = /\nBodyweight \((lb|kg)\)\n(Set|Log)\n(Not set: bodyweight lifts count only the weight you add\. |Latest [0-9.,]+ (lb|kg)\. )Optional\./;
+  const MACHINE = /Reverse Pec Deck \(Rear Delt Fly\)/g;
+  const asBlock = t => t.replace(/class="([^"]*)"/g, (m, c) => { const k = c.split(' '); return k.includes('btn') && k.includes('fullw') ? `class="${k.map(x => (x === 'fullw' ? 'block' : x)).sort().join(' ')}"` : m; });
+  const heldOutR66 = shot => ({ ...shot, tree: shot.tree.map(t => asBlock(t.replace(BW_FIELD, '').replace(MACHINE, 'Reverse Pec Deck'))), text: shot.text.replace(BW_TEXT, '').replace(MACHINE, 'Reverse Pec Deck') });
   const ENVS = [null, 'preview'];
   for (const [name, seed] of SEEDS) for (const tab of ['settings', 'history']) for (const env of ENVS) {
     if (env && name !== 'demo data, lb') continue;
-    const a = heldOut(await shot(OLD, seed, tab, env)), b = heldOutAccents(heldOut(await shot(FILE, seed, tab, env)));
+    const a = heldOut(await shot(OLD, seed, tab, env)), b = heldOutR66(heldOutAccents(heldOut(await shot(FILE, seed, tab, env))));
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     const firstDiff = d && { at: d.at, r56_2: d.before, now: d.now };
     ok(!firstDiff, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same elements, attributes and field values as r56.2`, firstDiff);

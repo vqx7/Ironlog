@@ -1693,6 +1693,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     "abductor"
   ]);
   var isCommon = (e5) => !!e5 && !e5.custom && !e5.rare && COMMON.has(e5.id);
+  var LIB_NAMES_BEFORE = {
+    reversePecDeck: ["Reverse Pec Deck"]
+  };
   function libExercises() {
     return LIB.map(([id, name, primary, sec, equip, flags, note]) => {
       const o3 = {
@@ -4034,6 +4037,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const gone = new Set(removedLib);
     const lib = libExercises();
     for (const e5 of lib) if (!have.has(e5.id) && !gone.has(e5.id)) exercises.push(e5);
+    const libName = new Map(lib.map((e5) => [e5.id, e5.name]));
+    for (const e5 of exercises) {
+      const now = libName.get(e5.id);
+      if (now && !e5.custom && (LIB_NAMES_BEFORE[e5.id] || []).includes(e5.name)) e5.name = now;
+    }
     if (numOr(s3.version, 1) < V_PER_SIDE) {
       const libMap = new Map(lib.map((e5) => [e5.id, e5]));
       for (const e5 of exercises) {
@@ -21530,11 +21538,14 @@ ${JSON.stringify(ctx, null, 1)}`;
     "upright",
     "face"
   ];
+  var NAMED_BEFORE = Object.fromEntries(
+    Object.entries(LIB_NAMES_BEFORE).flatMap(([id, names]) => names.map((n3) => [impNorm(n3).join(" "), id]))
+  );
   function impMatch(name) {
     const a2 = new Set(impNorm(name));
     if (!a2.size) return [];
     const out = [];
-    let al = IMP_ALIAS[[...a2].join(" ")] || null;
+    let al = IMP_ALIAS[[...a2].join(" ")] || NAMED_BEFORE[[...a2].join(" ")] || null;
     if (!al) {
       const eq = [...a2].filter((w2) => EQW[w2]);
       const bare = [...a2].filter((w2) => !EQW[w2]).join(" ");

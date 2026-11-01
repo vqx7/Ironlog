@@ -49,7 +49,10 @@
 //      "reverse fly", "peck deck", "bicep curl", "hamstring curl", "dumbbell
 //      row", "rdl", "ohp", "tricep pushdown", "chest fly", "military press" and
 //      "lunges" each find theirs, by the main muscle, a plural or a common
-//      name; "bench" still finds only bench presses.
+//      name; "bench" still finds only bench presses. A log saved by r65.2,
+//      which holds every built-in by name, reads the machine by its new name
+//      too and finds it the same way (NEW-37), a name the lifter gave stays,
+//      and an import naming Reverse Pec Deck still finds it first.
 const { open, engine } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
@@ -601,6 +604,38 @@ const stored = H => H.ev(async secret => {
     ok(bench.length > 0 && names.every(n => /bench/i.test(n)), '10. "bench" still finds bench presses only', names);
     ok(ids.reversePecDeck === 'Reverse Pec Deck (Rear Delt Fly)', '10. the machine is named by both names', ids.reversePecDeck);
     await H.P.ctx.close();
+
+    /* NEW-37: a log saved before r66 holds every built-in lift by name, so the library's new name has to reach it on
+       load, or the lifter who asked (V, whose phone holds such a log) still cannot find the machine. A name the
+       lifter gave a built-in, and a lift of their own named as the library once named the machine, stay theirs; an
+       import naming the machine as before still finds it first (r65.2 did, at 1.00). */
+    const O = await open('baselines/r65-2.html', { browser, clock: MON + 'T09:00:00' });
+    const raw = await O.page.evaluate(() => {
+      const L = window.__ironlog; const s = L.state; s.settings.onboarded = true;
+      s.exercises.find(e => e.id === 'dbRearFly').name = 'My rear flyes';
+      s.exercises.push({ id: 'c_rpd', name: 'Reverse Pec Deck', primary: 'rearDelts', secondary: [], equip: 'machine', bw: false, custom: true, archived: false, note: '' });
+      L.saveNow(); return localStorage.getItem('ironlog.v1');
+    });
+    await O.ctx.close();
+    const old = JSON.parse(raw);
+    const N = await open(FILE, { browser, state: old, clock: MON + 'T09:00:00' });
+    const by = await N.page.evaluate(() => { const L = window.__ironlog; const n = id => (L.state.exercises.find(e => e.id === id) || {}).name; return { held: null, rpd: n('reversePecDeck'), own: n('dbRearFly'), custom: n('c_rpd'), imp: L.impMatch('Reverse Pec Deck').slice(0, 2).map(x => x.id + ' ' + x.sc.toFixed(2)) }; });
+    by.held = (old.exercises.find(e => e.id === 'reversePecDeck') || {}).name;
+    ok(by.held === 'Reverse Pec Deck' && by.rpd === 'Reverse Pec Deck (Rear Delt Fly)', '10. a log saved by r65.2 (the machine stored as Reverse Pec Deck) reads it by its new name', by);
+    ok(by.own === 'My rear flyes' && by.custom === 'Reverse Pec Deck', "10. ... a built-in the lifter named, and the lifter's own lift of the old name, keep their names", by);
+    ok(/^reversePecDeck 1\.00$/.test(by.imp[0] || ''), '10. ... an import naming Reverse Pec Deck finds the machine first, as on r65.2', by.imp);
+    await N.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+    await N.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+    await N.page.click('#view [data-act="pickSession"]'); await wait(200);
+    const off2 = [];
+    for (const q of ['rear delt pec deck flyes', 'rear delt fly', 'reverse fly']) {
+      await N.page.fill('#pickQ', ''); await N.page.type('#pickQ', q); await wait(250);
+      const got = await N.page.evaluate(() => [...document.querySelectorAll('#modal [data-act="pickDo"]')].map(b => b.dataset.ex));
+      if (!got.includes('reversePecDeck')) off2.push({ q, got: got.slice(0, 6) });
+    }
+    ok(!off2.length, '10. ... and its picker finds the machine by "rear delt pec deck flyes", "rear delt fly" and "reverse fly"', off2);
+    ok(!N.errors.length, '10. ... no page errors', N.errors);
+    await N.ctx.close();
   }
 
   await browser.close();

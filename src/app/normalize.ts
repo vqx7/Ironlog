@@ -31,7 +31,19 @@ import type { DraftLike } from './session';
 import type { State } from './store';
 import { addDays, clampN, hashStr, isDate, isNum, numOr, today, r1, r3, HUNDREDTHS, WEEK_DAYS, SUNDAY } from './util';
 import { LB } from './units';
-import { BANDS, CARDIO, CWHEN, JK, MEAS, MK, NEW_MUSCLES_V5, TARGETED, TRACK_ONLY, libExercises } from './library';
+import {
+  BANDS,
+  CARDIO,
+  CWHEN,
+  JK,
+  MEAS,
+  MK,
+  NEW_MUSCLES_V5,
+  TARGETED,
+  TRACK_ONLY,
+  LIB_NAMES_BEFORE,
+  libExercises
+} from './library';
 import {
   DAYS,
   MAX_DAYS,
@@ -937,6 +949,12 @@ export function normalize(input: unknown): State {
   const gone = new Set(removedLib);
   const lib = libExercises();
   for (const e of lib) if (!have.has(e.id) && !gone.has(e.id)) exercises.push(e);
+  // A built-in the library has renamed reads by its name now where the log holds one the library gave it before; a name the lifter gave it stays (NEW-37).
+  const libName = new Map(lib.map(e => [e.id, e.name]));
+  for (const e of exercises) {
+    const now = libName.get(e.id);
+    if (now && !e.custom && (LIB_NAMES_BEFORE[e.id] || []).includes(e.name)) e.name = now;
+  }
   // v1 saves predate the per-side flag, so the built-ins in them all carry
   // perSide:false. Backfill it from the library by id, and only that one
   // field, so any other edit the user made to a built-in survives.

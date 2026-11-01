@@ -519,6 +519,18 @@ export const isCommon = (
   e: (Pick<Exercise, 'id'> & Partial<Pick<Exercise, 'custom' | 'rare'>>) | null | undefined
 ): boolean => !!e && !e.custom && !e.rare && COMMON.has(e.id);
 
+/* A log holds every built-in lift by name (normalize puts the library's own
+   records in beside the lifter's, and the save keeps them), so a lift the
+   library renames keeps its old name on every phone that saved before,
+   unless the log reads it again on load. Since r66 (NEW-37) the names the
+   library gave a lift before are kept here by id: a log holding one of them
+   reads the lift by its name now (normalize), a name the lifter typed stays,
+   and an import naming the lift as before still finds it (impMatch). */
+/** The names the library gave a built-in lift before it renamed it, by id: Reverse Pec Deck until r66 (377). */
+export const LIB_NAMES_BEFORE: Readonly<Record<string, readonly string[]>> = {
+  reversePecDeck: ['Reverse Pec Deck']
+};
+
 /** The library as exercise records, fresh objects on every call. */
 export function libExercises(): Exercise[] {
   return LIB.map(([id, name, primary, sec, equip, flags, note]) => {
