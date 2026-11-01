@@ -401,8 +401,11 @@ const stored = H => H.ev(async secret => {
     await H.P.ctx.close();
   }
 
-  // ---- 5b. Every full-width button looks as it did on r65.2 (read beside r65.2 itself).
-  if (run(5)) {
+  // ---- 5b. Every full-width button looks as it did on r65.2 (read beside r65.2 itself). A comparison of two pages built
+  // from src/: the standalone build (IRONLOG_FILE) shows buttons r65.2's source page never does (Create account and I have
+  // an account on the first page), so the standalone run leaves this section to the source run, as r57's section 4 does.
+  if (run(5) && process.env.IRONLOG_FILE) console.log('note r66b section 5b compares source pages; it runs on the source build');
+  else if (run(5)) {
     const R652 = 'baselines/r65-2.html';
     const PROPS = ['padding-top', 'padding-bottom', 'padding-left', 'padding-right', 'margin-top', 'margin-bottom', 'margin-left', 'margin-right', 'border-top-width', 'border-top-color', 'border-radius', 'background-color', 'background-image', 'box-shadow', 'height', 'width', 'font-size', 'font-weight', 'color'];
     const STATES = [
