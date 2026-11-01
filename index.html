@@ -55,12 +55,13 @@
   --shadow:0 1px 2px rgba(13,15,18,.05),0 10px 30px rgba(13,15,18,.06);
   --hero-bg:radial-gradient(150px 150px at 90% 12%,color-mix(in srgb,var(--volt) 14%,transparent),transparent 70%),linear-gradient(165deg,#ffffff,#f6f7f9 72%);
   --hero-ring:var(--volt-line); --hero-shadow:0 1px 2px rgba(13,15,18,.05),0 12px 32px rgba(13,15,18,.08);
-  /* Today's main card has a satin steel edge (V, 2026-11-01, PENDING 371), lit from above as a machined bezel is:
-     bright along the top, darker down the sides and along the bottom, with a fine glint just inside the top edge; the
-     same steel in every accent, silver on the light page and steel on the dark one. It is the card's edge, so the
-     plain 1px outline it had in light is gone from its shadow. */
-  --hero-edge:linear-gradient(180deg,#aeb4bc 0%,#d9dde2 7%,#c3c8cf 18%,#a2a9b2 48%,#858c96 82%,#747b85 94%,#9aa0a8 100%);
-  --hero-glint:rgba(255,255,255,.95);
+  /* Today's main card has a satin steel edge (V, 2026-11-01, PENDING 371: "a subtle real metallic shine"): a quiet
+     steel lit from above, lighter along the top and darker toward the bottom, one soft highlight where the light
+     catches the top-left curve, and a faint glint just inside the top edge; the same steel in every accent, silver on
+     the light page and steel on the dark one. It is the card's edge, so the plain 1px outline it had in light is gone
+     from its shadow. */
+  --hero-edge:radial-gradient(55% 45% at 20% 0%,rgba(255,255,255,.5),transparent 70%),linear-gradient(180deg,#bfc4cb 0%,#b2b8bf 35%,#a0a7af 75%,#929aa3 100%);
+  --hero-glint:rgba(255,255,255,.9);
   --hero-edge-w:1.5px;
   /* The rest timer (r29, V: it blended into the screen): a deep tint of the
      accent, the same in both themes, with white text and a bar along its top
@@ -90,7 +91,7 @@
     --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
     --hero-bg:radial-gradient(150px 150px at 90% 10%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
     --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
-    --hero-edge:linear-gradient(180deg,#f4f6f8 0%,#c3c8cf 9%,#7d8590 40%,#545b65 78%,#454c55 92%,#7b828c 100%); --hero-glint:rgba(255,255,255,.22);
+    --hero-edge:radial-gradient(55% 45% at 20% 0%,rgba(255,255,255,.55),transparent 70%),linear-gradient(180deg,#8d949e 0%,#646b75 40%,#4a515a 80%,#40464e 100%); --hero-glint:rgba(255,255,255,.14);
 
     --shadow:none;
     color-scheme:dark;
@@ -108,7 +109,7 @@
   --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
   --hero-bg:radial-gradient(150px 150px at 90% 10%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
   --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
-  --hero-edge:linear-gradient(180deg,#f4f6f8 0%,#c3c8cf 9%,#7d8590 40%,#545b65 78%,#454c55 92%,#7b828c 100%); --hero-glint:rgba(255,255,255,.22);
+  --hero-edge:radial-gradient(55% 45% at 20% 0%,rgba(255,255,255,.55),transparent 70%),linear-gradient(180deg,#8d949e 0%,#646b75 40%,#4a515a 80%,#40464e 100%); --hero-glint:rgba(255,255,255,.14);
 
   --shadow:none;
   color-scheme:dark;
@@ -13237,6 +13238,9 @@ ${more}`;
     if (/farmer|carry|lunge|suitcase/.test(n3)) return null;
     return /treadmill.*incline|incline.*walk/.test(n3) ? "incline" : /elliptical|cross ?trainer/.test(n3) ? "elliptical" : /stair|stepper|step ?mill/.test(n3) ? "stairs" : /rowing|rower|\berg\b|concept ?2/.test(n3) ? "rower" : /cycl|bike|spin/.test(n3) ? "bike" : /\b(run|running|jog|jogging|sprint)/.test(n3) ? "run" : /treadmill|\bwalk|walking|hike|hiking/.test(n3) ? "walk" : /hiit|interval/.test(n3) ? "hiit" : /cardio|swim/.test(n3) ? "other" : null;
   }
+  var FORMULA_LEAD = /^[=+\-@\t\r]/, PLAIN_NUMBER = /^[-+]?\d+(?:[.,]\d+)?$/;
+  var csvGuard = (s3) => FORMULA_LEAD.test(s3) && !PLAIN_NUMBER.test(s3) ? "'" + s3 : s3;
+  var csvUnguard = (s3) => s3.startsWith("'") && FORMULA_LEAD.test(s3.slice(1)) && !PLAIN_NUMBER.test(s3.slice(1)) ? s3.slice(1) : s3;
   function impFromTable(rows2, map) {
     const head = rows2[0];
     let unit = impUnitOf(head, map);
@@ -13255,7 +13259,7 @@ ${more}`;
     const strong = heads.includes("workout name") && heads.includes("set order");
     const col = (n3) => ours && heads.includes(n3) ? heads.indexOf(n3) : null;
     const cNote = col("session_note"), cMin = col("session_minutes"), cHr = col("avg_hr"), cUnit = col("unit");
-    const at2 = (r4, i5) => i5 == null ? "" : String(r4[i5] == null ? "" : r4[i5]).trim();
+    const at2 = (r4, i5) => i5 == null ? "" : csvUnguard(String(r4[i5] == null ? "" : r4[i5]).trim());
     let lastDate = null, lastEx = null, lastName = "";
     let skipped = 0, cardio = 0;
     const bad = [];
@@ -13266,7 +13270,8 @@ ${more}`;
     };
     for (let i5 = 1; i5 < rows2.length; i5++) {
       const r4 = rows2[i5];
-      const cell = (f3) => map[f3] == null ? "" : String(r4[map[f3]] == null ? "" : r4[map[f3]]).trim();
+      const raw = (f3) => map[f3] == null ? "" : String(r4[map[f3]] == null ? "" : r4[map[f3]]).trim();
+      const cell = (f3) => ours ? csvUnguard(raw(f3)) : raw(f3);
       let date = cell("date");
       date = date ? impDate(date) || impSerial(num2(date)) : lastDate;
       const ex = cell("ex") || lastEx;
@@ -22671,8 +22676,8 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   function exportCSV() {
     const q = (v3) => {
-      const s3 = String(v3 == null ? "" : v3);
-      return /[",\n]/.test(s3) ? '"' + s3.replace(/"/g, '""') + '"' : s3;
+      const s3 = typeof v3 === "number" ? String(v3) : csvGuard(String(v3 == null ? "" : v3));
+      return /[",\n\r]/.test(s3) ? '"' + s3.replace(/"/g, '""') + '"' : s3;
     };
     const rows2 = [
       [
