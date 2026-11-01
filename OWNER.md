@@ -2,13 +2,13 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r65 live (2026-10-30; checked by Claude on gh-pages: "Publish c83be32" and the service worker's name). R64 (#61, merged by you at 20:22 UTC, published 20:50 from 3391e69, service worker ironlog-2026.10.27-r64-27e517ec0f), then r65 (#62, merged by you at 20:59 UTC, published 21:32 from c83be32, service worker ironlog-2026.10.28-r65-f0e19f0339). Problem reports on r64's code confirmed by you the same day.
+Last updated: r65.2 live (2026-11-01 UTC; checked by Claude on gh-pages: "Publish 3e6b627" and the service worker's name ironlog-2026.10.31-r65.2-fc237b1ea0). Pull request #64, merged by you at 01:38 UTC on 2026-11-01 (18:38 on 2026-10-31 in Los Angeles). Before it: r65 live (2026-10-30; checked by Claude on gh-pages: "Publish c83be32" and the service worker's name). R64 (#61, merged by you at 20:22 UTC, published 20:50 from 3391e69, service worker ironlog-2026.10.27-r64-27e517ec0f), then r65 (#62, merged by you at 20:59 UTC, published 21:32 from c83be32, service worker ironlog-2026.10.28-r65-f0e19f0339). Problem reports on r64's code confirmed by you the same day.
 
 ## Now, in this order
 
 1. A28 (r64 and r65): done, merged by you on 2026-10-30 and live (see Done).
 1a. A29 (r65.1, the look): closed by you unmerged on 2026-10-31 ("lets not push anything into prod"); nothing to do. The live app stays r65.
-1b. A30 (r65.2): when Claude says the preview is ready, try it on your phone (the r65.2 line under Phone checks), then merge its pull request on GitHub's website if it is right.
+1b. A30 (r65.2): done, merged by you (#64, 2026-10-31 18:38 Los Angeles) and live (see Last updated).
 2. Problem reports: done (2026-10-30, you). B4's r64 code is deployed, B1a has been run, and a test report from the preview became an issue in `ironlog-feedback`, which confirms B5. See Done.
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
 4. D6: delete the old branches and stop them piling up (2 minutes, below).
