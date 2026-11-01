@@ -18,6 +18,12 @@
 (function () {
   const CFG = window.IRONLOG_SUPABASE;
   if (!CFG || !CFG.url || !CFG.key || !window.supabase || typeof window.supabase.createClient !== 'function') return;
+  /* Inside another page's frame the account does not start (r66, PENDING 378), as the app does not (src/app/main.ts):
+     the library would read an emailed link's tokens from the address and refresh and store a sign-in, all for a page
+     the lifter may not see. A top window that cannot be read is another site's, so that is a frame too. */
+  let framed = true;
+  try { framed = window.top !== window.self; } catch (e) { /* refused: only a frame is refused that */ }
+  if (framed) return;
   /* The preview build (r24) shares the live app's site, accounts and project,
      so the same email and password work in both. It keeps its own sign-in
      slot in storage (signing out of one leaves the other signed in), syncs

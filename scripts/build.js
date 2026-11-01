@@ -206,8 +206,11 @@ html = replaceOnce(html, '</body>', boot + '</body>', 'closing body tag');
    the app sets style attributes throughout, and CSS cannot send data out
    without an allowed address. The CDN fallbacks in the loaders are left out
    on purpose: this build ships its own copies. A meta tag cannot set
-   frame-ancestors; GitHub Pages sends no such header, which is acceptable for
-   an app with no actions a framing page could trick a tap into. */
+   frame-ancestors, and GitHub Pages sends no such header, so since r66 the app
+   refuses to start inside another page's frame itself (src/app/main.ts, and
+   the account script; PENDING 378, tests/r66s.js): a framing page on the same
+   site would share the log's storage, and any framing page could lay its own
+   buttons over the app's. */
 
 const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => `'sha256-${crypto.createHash('sha256').update(m[1], 'utf8').digest('base64')}'`);
 must(hashes.length >= 3, 'expected the head, app and boot inline scripts');

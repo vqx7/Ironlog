@@ -9118,12 +9118,12 @@ ${actions ? b`<div class="ph-a">${actions}</div>
 
   // src/app/weeks.ts
   function logStartIn(M3) {
-    let start = null, prev = null;
+    let start2 = null, prev = null;
     for (const d3 of Object.keys(dateIndexIn(M3).byDate)) {
-      if (!prev || daysBetween(prev, d3) > BACK_DAYS) start = d3;
+      if (!prev || daysBetween(prev, d3) > BACK_DAYS) start2 = d3;
       prev = d3;
     }
-    return start;
+    return start2;
   }
   function logBackIn(M3) {
     const s3 = logStartIn(M3);
@@ -10137,19 +10137,19 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const t4 = today();
     const cs = cycleState(R2);
     const out = {};
-    let idx, start;
+    let idx, start2;
     if (cs.lastDate === t4) {
       idx = (cs.last + 1) % n3;
-      start = addDays(t4, 1);
+      start2 = addDays(t4, 1);
     } else if (cs.restToday) {
       idx = cs.restIdx;
-      start = t4;
+      start2 = t4;
     } else {
       idx = cs.next;
-      start = t4;
+      start2 = t4;
     }
     for (let k2 = 0; k2 < (days || WEEK_DAYS); k2++) {
-      const d3 = addDays(start, k2);
+      const d3 = addDays(start2, k2);
       if (restWeeks && isRestWeek(weekStart(d3))) continue;
       out[d3] = idx;
       idx = (idx + 1) % n3;
@@ -12690,7 +12690,7 @@ ${more}`;
     const equip = has(/\bdb\b/) ? "dumbbell" : has(/\bbb\b/) ? "barbell" : has(/cable/) ? "cable" : has(/smith/) ? "smith" : has(/machine/) ? "machine" : has(/pullup|chinup|pushup|dip|plank|situp/) ? "bodyweight" : "other";
     return { primary, equip };
   }
-  function impSpan(dur, start, end) {
+  function impSpan(dur, start2, end) {
     const d3 = String(dur || "").toLowerCase();
     const h3 = d3.match(/(\d+(?:\.\d+)?)\s*h/), m3 = d3.match(/(\d+)\s*m(?!s)/);
     if (h3 || m3) return (h3 ? +h3[1] * HOUR_MIN : 0) + (m3 ? +m3[1] : 0);
@@ -12700,7 +12700,7 @@ ${more}`;
       const [, hh, mm] = t4;
       return Date.parse(`${day}T00:00:00Z`) / (MINUTE_S * SECOND_MS) + +hh * HOUR_MIN + +mm;
     };
-    const a2 = at2(start), b2 = at2(end);
+    const a2 = at2(start2), b2 = at2(end);
     return a2 != null && b2 != null && b2 > a2 ? b2 - a2 : null;
   }
   var IMP_COLS = {
@@ -16156,13 +16156,13 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   function nextDayWith(exId, R2) {
     const n3 = R2.days.length;
     if (!n3) return null;
-    let start;
+    let start2;
     if (R2.schedule === "weekly") {
       const wd = dayOfWeek(today());
-      start = state.sessions.some((x2) => x2.date === today() && x2.routineId === R2.id && sessDayIdx(R2, x2) === wd) ? (wd + 1) % n3 : wd;
-    } else start = cycleState(R2).next;
+      start2 = state.sessions.some((x2) => x2.date === today() && x2.routineId === R2.id && sessDayIdx(R2, x2) === wd) ? (wd + 1) % n3 : wd;
+    } else start2 = cycleState(R2).next;
     for (let k2 = 0; k2 < n3; k2++) {
-      const d3 = R2.days[(start + k2) % n3];
+      const d3 = R2.days[(start2 + k2) % n3];
       if (d3 && !d3.rest && d3.items.some((it) => it.exId === exId)) return d3;
     }
     return null;
@@ -21709,9 +21709,9 @@ ${JSON.stringify(ctx, null, 1)}`;
           R2.days.forEach((_2, di) => slots.push({ date: addDays(ws, di), di }));
         }
       } else {
-        const start = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1));
+        const start2 = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1));
         for (let p3 = 0; ; p3++) {
-          const date = addDays(start, p3);
+          const date = addDays(start2, p3);
           if (date > t4) break;
           slots.push({ date, di: p3 % R2.days.length });
         }
@@ -25208,27 +25208,6 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
 
   // src/app/main.ts
-  setRoot(renderInner);
-  setSheets(SHEETS, afterSheet2);
-  setFx({ render, rerenderKeepScroll, toast, undoToastHide, setSaveState, syncLine, obGate, ask });
-  storageStart();
-  syncStart();
-  viewStart();
-  updateStart();
-  accountStart();
-  pageListeners();
-  window.ironlogInstallReady = () => {
-    if (ui.tab === "today" || ui.tab === "settings") rerenderKeepScroll();
-  };
-  window.ironlogLog = (area, e5) => log(area, e5);
-  tipsStart();
-  eventListeners();
-  workoutStart();
-  sectionsStart();
-  window.__onLib = (which) => {
-    if (which === "chart" && ui.tab === "dash" || which === "sortable" && ui.tab === "program") rerenderKeepScroll();
-  };
-  trashTidy();
   function recordOldFloors() {
     const fit = oldFloors();
     if (fit)
@@ -25237,391 +25216,438 @@ ${JSON.stringify(ctx, null, 1)}`;
       });
     return !!fit;
   }
-  try {
-    recordOldFloors();
-  } catch (e5) {
-    log("fitRecordOld", e5);
+  function framed() {
+    try {
+      return window.top !== window.self;
+    } catch (e5) {
+      return true;
+    }
   }
-  try {
-    const rf = refit();
-    if (rf)
-      act(() => {
-        const b2 = state.settings.bands;
-        for (const m3 of MK) {
-          const v3 = rf.bands[m3];
-          if (v3) b2[m3] = [v3[0], v3[1]];
-        }
-        if (Object.keys(rf.fit).length) state.settings.bandsFit = rf.fit;
-        else delete state.settings.bandsFit;
-      });
-  } catch (e5) {
-    log("refit", e5);
+  function refuseFramed() {
+    for (const id of ["tabs", "updbar", "timer", "modal", "toast", "tip"]) {
+      const el = document.getElementById(id);
+      if (el) el.hidden = true;
+    }
+    const top = document.querySelector("header.top");
+    if (top instanceof HTMLElement) top.hidden = true;
+    const view = document.getElementById("view");
+    if (view)
+      D(
+        b`<div class="card"><p class="u-m0">${APP_NAME} opens only in its own window, not inside another page. Open ${SITE_HOST} in your browser or from your home screen.</p></div>`,
+        view
+      );
   }
-  window.__ironlog = {
-    act,
-    liftRead,
-    nextSets,
-    bwNoLoad,
-    withTimeout,
-    B3_PARTS,
-    THREE_URLS,
-    platesPerSide,
-    get state() {
-      return state;
-    },
-    set state(v3) {
-      setState(v3);
-    },
-    fbContext,
-    FB_CTX_MAX,
-    logCut,
-    logBuf,
-    log,
-    dateIndex,
-    sessionsOn,
-    bestLine,
-    whyTarget,
-    recent4w,
-    weekSessions,
-    fmtDate,
-    fmtDateLong,
-    fbShrink,
-    orderAt,
-    orderRun,
-    dropOnlyLift,
-    profHeavy,
-    appBand,
-    fitRecordOld: recordOldFloors,
-    prof,
-    profClean,
-    profRule,
-    profPlan,
-    defPlan,
-    defBand,
-    profMoveBands,
-    profApplyList,
-    strengthPick,
-    PROF_DAYS,
-    FOCUS_MAX,
-    estInLoad,
-    keepExtra,
-    EXTRA_MAX,
-    draftPlanMin,
-    pace,
-    paceRatios,
-    sessModelMin,
-    PACE_N,
-    PACE_DAYS,
-    PACE_MIN,
-    plainTemplate,
-    trashTidy,
-    ENV,
-    KEY,
-    COMMON,
-    COMMON_TIP,
-    isCommon,
-    bwEvery,
-    isRestWeek,
-    sessCmp,
-    avgWeeks,
-    weekStreak,
-    coach,
-    noLog,
-    adjOn,
-    bwAt,
-    newBlock,
-    cycleState,
-    sortedSessions,
-    addDays,
-    loadIn,
-    gymRack,
-    gymClean,
-    dbListOf,
-    capOf,
-    refreshEx,
-    effShow,
-    rirScale,
-    setStr,
-    libExercises,
-    obGate,
-    obTour,
-    andList,
-    belowMin,
-    aboveMax,
-    starterRoutine,
-    starterSigs,
-    plateList,
-    exBarKg,
-    VOL_MODES,
-    liveLogFetch,
-    regionSrc,
-    fitTargets,
-    firstFullWeek,
-    moveBlock,
-    BANDS,
-    installSheet: (m3) => markupOf(installSheet(m3)),
-    siteHost,
-    greyW,
-    effW,
-    greyR,
-    lighterLoad,
-    heavierLoad,
-    incOf,
-    swapPlan,
-    planSetsPerWeek,
-    weekNeed,
-    stepRead,
-    e1inv,
-    rtfAt,
-    rtfOf,
-    rtfBand,
-    calStats,
-    rirEff,
-    isHard,
-    setCredit,
-    tonnage,
-    loadMode,
-    loadWords,
-    loadNote,
-    progStep,
-    jumpCap,
-    setSecs,
-    setupSecs,
-    recovery,
-    rolling7,
-    rankDays,
-    rankExercises,
-    exReasons,
-    recentExIds,
-    trimPlan,
-    isCompound,
-    patternOf,
-    noE1,
-    whtrLine: (p3) => markupOf(whtrLine(p3)),
-    exHeadline: (id) => markupOf(exHeadline(id)),
-    remainMin,
-    shortPlan,
-    weekPlan,
-    cycleProjection,
-    lastLighterWeek,
-    avgFirstWeek,
-    avgWait,
-    stallWeeks,
-    weeksAvg,
-    fitFloors,
-    refit,
-    regionBalance,
-    parseHeight,
-    mixCheck,
-    swapCands,
-    eqPlan,
-    exportCSV,
-    importData,
-    chunksOf,
-    assemble,
-    sessionMuscles,
-    TRACK_ONLY,
-    hasTarget,
-    cloud,
-    Hx,
-    mergeChunk,
-    baseOf,
-    sync: () => cq(cloudPull),
-    TEMPLATES,
-    lastRFor,
-    impDate,
-    impRows,
-    impNorm,
-    impMatch,
-    impFromText,
-    impFromTable,
-    impHeader,
-    impBuild,
-    impStart,
-    impXlsx,
-    parseSets,
-    undoStack,
-    undoRestore,
-    undoForget,
-    allTimeBests,
-    bestsBoard: () => {
-      const b2 = bestsBoard();
-      return { n: b2.n, html: markupOf(b2.html) };
-    },
-    obActive,
-    fmtW,
-    rirUsual,
-    rirEst,
-    routineFromTemplate,
-    plannedSets,
-    map3d: () => ({
-      state: B3.state,
-      fail: B3.fail,
-      meshes: B3.meshes.length,
-      yaw: B3.yaw,
-      glow: Object.entries(B3.mats).filter(([, mt]) => mt.emissiveIntensity > 0).map(([m3]) => m3),
-      canvas: !!document.querySelector("#bm3d canvas"),
-      colors: Object.fromEntries(Object.entries(B3.mats).map(([m3, mt]) => [m3, "#" + mt.color.getHexString()])),
-      pick: (x2, y2) => map3dPick(x2, y2),
-      want: map3dColors()
-    }),
-    cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }),
-    acctUser: () => acct.user,
-    acctWaiting: waiting,
-    flush: () => cq(cloudFlush),
-    cloudInit,
-    cloudStop,
-    asideList,
-    backupDue,
-    routineUpdates,
-    planFor,
-    platesMode,
-    plateText,
-    IDX,
-    suggest,
-    e1,
-    render,
-    ACT,
-    ui,
-    makeDemo,
-    invalidate,
-    normalize,
-    snapshot,
-    saveNow,
-    timer,
-    weekStats,
-    weekStart,
-    today,
-    EX,
-    blockProgress,
-    dayMinutes,
-    tonnageNow,
-    livePR,
-    movers,
-    stalledIds,
-    muscleStatus,
-    actualAvg4,
-    plannedPerWeek,
-    fillSets,
-    lastNoteOf,
-    sizeRows,
-    sessionMuscleSets,
-    sessionCapNote: (d3) => markupOf(sessionCapNote(d3)),
-    routineClutter,
-    rowBlank,
-    dayReasons,
-    impTextSets,
-    liftTrend: (id) => markupOf(liftTrend(id)),
-    prsWithin,
-    activeRoutine,
-    rackStep,
-    repFloor,
-    sessionLength,
-    prBeat,
-    exInjury,
-    exJoints,
-    openModal,
-    EQUIP,
-    HARD_EX,
-    recentLighter,
-    planEvidenceNote: (pv) => markupOf(planEvidenceNote(pv)),
-    howToUrl,
-    editFp,
-    toast,
-    regionWk,
-    REGION_WKS,
-    SAFETY_TXT,
-    libFiltered,
-    nameMatch,
-    workLoad,
-    fitE,
-    lighter,
-    offTarget,
-    sessionWord,
-    sessionWords,
-    dayLabel,
-    daySets,
-    ssLetters,
-    routineSig,
-    tplCountLine,
-    pwOf,
-    planSetsOf,
-    withPlanSets,
-    dropStarter,
-    trainOn,
-    planItemOf,
-    fatigueStalls,
-    avgWeeksTxt,
-    routineFromLog,
-    repSpan,
-    rangeWords,
-    calDueIdx,
-    readyCard,
-    sameRR,
-    hintOnce,
-    overSets,
-    rackTol,
-    daysOff,
-    BACK_DAYS,
-    prName,
-    sessTm,
-    effTgt,
-    bwDueCard: () => markupOf(bwDueCard()),
-    applyPick,
-    joinAdjacent,
-    sameExOnce,
-    savedEx,
-    goalState,
-    goalLine: (id) => markupOf(goalLine(id)),
-    bwRefLoad,
-    ML,
-    exMusParts,
-    musTrend,
-    U,
-    toD,
-    fromD,
-    loadLabel,
-    exName,
-    planCredit,
-    gymOf,
-    isDeloadWeek,
-    freeMode,
-    injuredSet,
-    prLoad,
-    statsUpTo,
-    readiness,
-    bwRef,
-    weekRoutine,
-    logBack,
-    logStart,
-    easierText,
-    barKg,
-    suggestCore,
-    loadOf,
-    bwLoad,
-    hardCredit,
-    rirHalfOn,
-    prFrame,
-    stallWords,
-    atRangeTop,
-    oddLoad,
-    lightZero,
-    // Names added since r63 go last, so the earlier builds' suites find theirs in their order (tests/r63.js section 4).
-    templateBefore,
-    templateRest,
-    templateSigsBefore,
-    bandOf
-  };
-  render();
-  wakeOn();
-  timerResume();
-  cloudInit();
-  acctInit().catch((e5) => {
-    log("auth", e5);
-  });
-  undoRestore().catch((e5) => {
-    log("undo-load", e5);
-  });
+  function start() {
+    setRoot(renderInner);
+    setSheets(SHEETS, afterSheet2);
+    setFx({ render, rerenderKeepScroll, toast, undoToastHide, setSaveState, syncLine, obGate, ask });
+    storageStart();
+    syncStart();
+    viewStart();
+    updateStart();
+    accountStart();
+    pageListeners();
+    window.ironlogInstallReady = () => {
+      if (ui.tab === "today" || ui.tab === "settings") rerenderKeepScroll();
+    };
+    window.ironlogLog = (area, e5) => log(area, e5);
+    tipsStart();
+    eventListeners();
+    workoutStart();
+    sectionsStart();
+    window.__onLib = (which) => {
+      if (which === "chart" && ui.tab === "dash" || which === "sortable" && ui.tab === "program")
+        rerenderKeepScroll();
+    };
+    trashTidy();
+    try {
+      recordOldFloors();
+    } catch (e5) {
+      log("fitRecordOld", e5);
+    }
+    try {
+      const rf = refit();
+      if (rf)
+        act(() => {
+          const b2 = state.settings.bands;
+          for (const m3 of MK) {
+            const v3 = rf.bands[m3];
+            if (v3) b2[m3] = [v3[0], v3[1]];
+          }
+          if (Object.keys(rf.fit).length) state.settings.bandsFit = rf.fit;
+          else delete state.settings.bandsFit;
+        });
+    } catch (e5) {
+      log("refit", e5);
+    }
+    window.__ironlog = {
+      act,
+      liftRead,
+      nextSets,
+      bwNoLoad,
+      withTimeout,
+      B3_PARTS,
+      THREE_URLS,
+      platesPerSide,
+      get state() {
+        return state;
+      },
+      set state(v3) {
+        setState(v3);
+      },
+      fbContext,
+      FB_CTX_MAX,
+      logCut,
+      logBuf,
+      log,
+      dateIndex,
+      sessionsOn,
+      bestLine,
+      whyTarget,
+      recent4w,
+      weekSessions,
+      fmtDate,
+      fmtDateLong,
+      fbShrink,
+      orderAt,
+      orderRun,
+      dropOnlyLift,
+      profHeavy,
+      appBand,
+      fitRecordOld: recordOldFloors,
+      prof,
+      profClean,
+      profRule,
+      profPlan,
+      defPlan,
+      defBand,
+      profMoveBands,
+      profApplyList,
+      strengthPick,
+      PROF_DAYS,
+      FOCUS_MAX,
+      estInLoad,
+      keepExtra,
+      EXTRA_MAX,
+      draftPlanMin,
+      pace,
+      paceRatios,
+      sessModelMin,
+      PACE_N,
+      PACE_DAYS,
+      PACE_MIN,
+      plainTemplate,
+      trashTidy,
+      ENV,
+      KEY,
+      COMMON,
+      COMMON_TIP,
+      isCommon,
+      bwEvery,
+      isRestWeek,
+      sessCmp,
+      avgWeeks,
+      weekStreak,
+      coach,
+      noLog,
+      adjOn,
+      bwAt,
+      newBlock,
+      cycleState,
+      sortedSessions,
+      addDays,
+      loadIn,
+      gymRack,
+      gymClean,
+      dbListOf,
+      capOf,
+      refreshEx,
+      effShow,
+      rirScale,
+      setStr,
+      libExercises,
+      obGate,
+      obTour,
+      andList,
+      belowMin,
+      aboveMax,
+      starterRoutine,
+      starterSigs,
+      plateList,
+      exBarKg,
+      VOL_MODES,
+      liveLogFetch,
+      regionSrc,
+      fitTargets,
+      firstFullWeek,
+      moveBlock,
+      BANDS,
+      installSheet: (m3) => markupOf(installSheet(m3)),
+      siteHost,
+      greyW,
+      effW,
+      greyR,
+      lighterLoad,
+      heavierLoad,
+      incOf,
+      swapPlan,
+      planSetsPerWeek,
+      weekNeed,
+      stepRead,
+      e1inv,
+      rtfAt,
+      rtfOf,
+      rtfBand,
+      calStats,
+      rirEff,
+      isHard,
+      setCredit,
+      tonnage,
+      loadMode,
+      loadWords,
+      loadNote,
+      progStep,
+      jumpCap,
+      setSecs,
+      setupSecs,
+      recovery,
+      rolling7,
+      rankDays,
+      rankExercises,
+      exReasons,
+      recentExIds,
+      trimPlan,
+      isCompound,
+      patternOf,
+      noE1,
+      whtrLine: (p3) => markupOf(whtrLine(p3)),
+      exHeadline: (id) => markupOf(exHeadline(id)),
+      remainMin,
+      shortPlan,
+      weekPlan,
+      cycleProjection,
+      lastLighterWeek,
+      avgFirstWeek,
+      avgWait,
+      stallWeeks,
+      weeksAvg,
+      fitFloors,
+      refit,
+      regionBalance,
+      parseHeight,
+      mixCheck,
+      swapCands,
+      eqPlan,
+      exportCSV,
+      importData,
+      chunksOf,
+      assemble,
+      sessionMuscles,
+      TRACK_ONLY,
+      hasTarget,
+      cloud,
+      Hx,
+      mergeChunk,
+      baseOf,
+      sync: () => cq(cloudPull),
+      TEMPLATES,
+      lastRFor,
+      impDate,
+      impRows,
+      impNorm,
+      impMatch,
+      impFromText,
+      impFromTable,
+      impHeader,
+      impBuild,
+      impStart,
+      impXlsx,
+      parseSets,
+      undoStack,
+      undoRestore,
+      undoForget,
+      allTimeBests,
+      bestsBoard: () => {
+        const b2 = bestsBoard();
+        return { n: b2.n, html: markupOf(b2.html) };
+      },
+      obActive,
+      fmtW,
+      rirUsual,
+      rirEst,
+      routineFromTemplate,
+      plannedSets,
+      map3d: () => ({
+        state: B3.state,
+        fail: B3.fail,
+        meshes: B3.meshes.length,
+        yaw: B3.yaw,
+        glow: Object.entries(B3.mats).filter(([, mt]) => mt.emissiveIntensity > 0).map(([m3]) => m3),
+        canvas: !!document.querySelector("#bm3d canvas"),
+        colors: Object.fromEntries(Object.entries(B3.mats).map(([m3, mt]) => [m3, "#" + mt.color.getHexString()])),
+        pick: (x2, y2) => map3dPick(x2, y2),
+        want: map3dColors()
+      }),
+      cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }),
+      acctUser: () => acct.user,
+      acctWaiting: waiting,
+      flush: () => cq(cloudFlush),
+      cloudInit,
+      cloudStop,
+      asideList,
+      backupDue,
+      routineUpdates,
+      planFor,
+      platesMode,
+      plateText,
+      IDX,
+      suggest,
+      e1,
+      render,
+      ACT,
+      ui,
+      makeDemo,
+      invalidate,
+      normalize,
+      snapshot,
+      saveNow,
+      timer,
+      weekStats,
+      weekStart,
+      today,
+      EX,
+      blockProgress,
+      dayMinutes,
+      tonnageNow,
+      livePR,
+      movers,
+      stalledIds,
+      muscleStatus,
+      actualAvg4,
+      plannedPerWeek,
+      fillSets,
+      lastNoteOf,
+      sizeRows,
+      sessionMuscleSets,
+      sessionCapNote: (d3) => markupOf(sessionCapNote(d3)),
+      routineClutter,
+      rowBlank,
+      dayReasons,
+      impTextSets,
+      liftTrend: (id) => markupOf(liftTrend(id)),
+      prsWithin,
+      activeRoutine,
+      rackStep,
+      repFloor,
+      sessionLength,
+      prBeat,
+      exInjury,
+      exJoints,
+      openModal,
+      EQUIP,
+      HARD_EX,
+      recentLighter,
+      planEvidenceNote: (pv) => markupOf(planEvidenceNote(pv)),
+      howToUrl,
+      editFp,
+      toast,
+      regionWk,
+      REGION_WKS,
+      SAFETY_TXT,
+      libFiltered,
+      nameMatch,
+      workLoad,
+      fitE,
+      lighter,
+      offTarget,
+      sessionWord,
+      sessionWords,
+      dayLabel,
+      daySets,
+      ssLetters,
+      routineSig,
+      tplCountLine,
+      pwOf,
+      planSetsOf,
+      withPlanSets,
+      dropStarter,
+      trainOn,
+      planItemOf,
+      fatigueStalls,
+      avgWeeksTxt,
+      routineFromLog,
+      repSpan,
+      rangeWords,
+      calDueIdx,
+      readyCard,
+      sameRR,
+      hintOnce,
+      overSets,
+      rackTol,
+      daysOff,
+      BACK_DAYS,
+      prName,
+      sessTm,
+      effTgt,
+      bwDueCard: () => markupOf(bwDueCard()),
+      applyPick,
+      joinAdjacent,
+      sameExOnce,
+      savedEx,
+      goalState,
+      goalLine: (id) => markupOf(goalLine(id)),
+      bwRefLoad,
+      ML,
+      exMusParts,
+      musTrend,
+      U,
+      toD,
+      fromD,
+      loadLabel,
+      exName,
+      planCredit,
+      gymOf,
+      isDeloadWeek,
+      freeMode,
+      injuredSet,
+      prLoad,
+      statsUpTo,
+      readiness,
+      bwRef,
+      weekRoutine,
+      logBack,
+      logStart,
+      easierText,
+      barKg,
+      suggestCore,
+      loadOf,
+      bwLoad,
+      hardCredit,
+      rirHalfOn,
+      prFrame,
+      stallWords,
+      atRangeTop,
+      oddLoad,
+      lightZero,
+      // Names added since r63 go last, so the earlier builds' suites find theirs in their order (tests/r63.js section 4).
+      templateBefore,
+      templateRest,
+      templateSigsBefore,
+      bandOf
+    };
+    render();
+    wakeOn();
+    timerResume();
+    cloudInit();
+    acctInit().catch((e5) => {
+      log("auth", e5);
+    });
+    undoRestore().catch((e5) => {
+      log("undo-load", e5);
+    });
+  }
+  if (framed()) refuseFramed();
+  else start();
 })();
 </script>
 </body>
