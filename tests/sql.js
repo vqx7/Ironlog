@@ -232,5 +232,38 @@ const V = '11111111-1111-1111-1111-111111111111', F = '22222222-2222-2222-2222-2
   ok(/check/i.test(await tryq(db, `insert into public.feedback(category,message) values ('bug','${'x'.repeat(1001)}')`)), 'after the upgrade, over 1,000 characters is refused');
 }
 
+// r66 (PENDING 378): the read-only query V runs to prove the live rules (OWNER.md E2, SUPABASE.md Part 7), run on the
+// tables SUPABASE.md makes, gives what those documents say the right answer is: every public table with row level
+// security on, docs and docs_preview own rows only, feedback insert own and readers read, feedback_readers own row.
+{
+  const q = blocks.find(b => /^-- r66: read-only\. Every table in the public and storage schemas/.test(b));
+  ok(!!q, 'SUPABASE.md carries the live rules query (OWNER.md E2)');
+  if (q) {
+    const db = new PGlite(); await db.exec(stub);
+    await db.exec(pick('create table public.docs ('));
+    await db.exec(pick('create table public.docs_preview'));
+    await db.exec(pick('create table public.feedback (').replace('YOUR IRONLOG ACCOUNT EMAIL', 'v@example.com'));
+    await db.exec(pick('create or replace function public.ping()'));
+    let rows = [];
+    try { rows = (await db.query(q)).rows; } catch (e) { ok(false, 'the live rules query runs: ' + e.message); }
+    const pub = rows.filter(r => r.schemaname === 'public');
+    const tables = [...new Set(pub.map(r => r.tablename))].sort();
+    ok(tables.join() === 'docs,docs_preview,feedback,feedback_readers', 'it lists the four public tables SUPABASE.md makes', tables);
+    ok(pub.length > 0 && pub.every(r => r.rls_on === true), 'every public table reads rls_on true', pub.filter(r => r.rls_on !== true).map(r => r.tablename));
+    const pol = t => pub.filter(r => r.tablename === t && r.policyname).map(r => `${r.policyname}|${r.cmd}|${[].concat(r.roles).join(',')}`).sort();
+    const norm = s => String(s || '').replace(/\s+/g, ' ');
+    for (const t of ['docs', 'docs_preview']) {
+      const r = pub.find(x => x.tablename === t && x.policyname);
+      ok(pol(t).join() === 'own rows only|ALL|authenticated' && /auth\.uid\(\).*= user_id/.test(norm(r && r.using_rule)) && /auth\.uid\(\).*= user_id/.test(norm(r && r.with_check)), `${t}: one policy, own rows only, for every command, signed-in only, both rules the account's own id`, { p: pol(t), u: r && r.using_rule, w: r && r.with_check });
+    }
+    ok(pol('feedback').join() === 'readers read feedback|SELECT|authenticated,signed-in people can add|INSERT|authenticated', 'feedback: add your own, readers read; no update or delete policy', pol('feedback'));
+    ok(pol('feedback_readers').join() === 'see own reader row|SELECT|authenticated', 'feedback_readers: see your own row only; no insert policy', pol('feedback_readers'));
+    // The documents quote the rules as Postgres prints them; each quoted rule is what this query printed.
+    const doc = fs.readFileSync(require('path').join(__dirname, '..', 'OWNER.md'), 'utf8');
+    const printed = [...new Set(pub.flatMap(r => [r.using_rule, r.with_check]).filter(Boolean).map(norm))];
+    const quoted = [...doc.slice(doc.indexOf('### E2.')).split('### D6.')[0].matchAll(/`(\(+[^`]*\))`/g)].map(m => m[1]);
+    ok(quoted.length >= 2 && quoted.every(x => printed.includes(x)), 'each rule OWNER.md E2 quotes is one Postgres printed for these tables', { quoted, printed });
+  }
+}
 console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.log('FAIL crash', e); process.exit(1); });

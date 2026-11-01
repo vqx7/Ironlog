@@ -16,6 +16,7 @@ import type { AccountModal, AcctMode, FeedbackModal, FbItem } from './modals';
 import { AUTH, FB } from './providers';
 import { tipButton } from './view';
 import { closeX } from './sheetsmisc';
+import { captchaOn } from './captcha';
 
 /** The account service the menu offers: none inside Claude (retired), where the artifact keeps the log. */
 const menuAuth = () => (AUTH() && !(window.claude && typeof window.claude.use === 'function') ? AUTH() : null);
@@ -152,6 +153,9 @@ export function acctSheet(m: AccountModal): TemplateResult {
     html`<label class="field">${label}<input type="password" data-abind="pw" .value=${live(m.pw || '')} autocomplete=${ac} minlength=${min ? '8' : nothing} enterkeyhint="go"></label>`;
   // The error line is always there, hidden when empty, so the sheet keeps its shape when one is said (r54).
   const err = html`<p class="small u-cred_m0" role="alert" ?hidden=${!m.err}>${m.err || ''}</p>`;
+  /* The sign-up bot check's box (captcha.ts, r66): on the pages whose requests the account server checks, only when
+     config.ts has its key; drawn into by Turnstile once the sheet is drawn (screens.ts, afterSheet). */
+  const check = captchaOn() ? html`<div data-captcha></div>` : nothing;
   const go = (label: string) =>
     html`<button type="submit" class="btn primary fullw" data-act="acctSubmit" ?disabled=${!!m.busy}>${m.busy ? BUSY[m.mode] || 'One moment' : label}</button>`;
   const link = (mode: AcctMode, label: string) =>
@@ -167,15 +171,15 @@ export function acctSheet(m: AccountModal): TemplateResult {
   };
   const b =
     m.mode === 'signin'
-      ? html`${email}${pw('Password', 'current-password', false)}${err}${m.needCode ? codeField(m) : nothing}${go('Sign in')}<div class="row spread">${link('forgot', 'Forgot password?')}${link('signup', 'Create an account')}</div>`
+      ? html`${email}${pw('Password', 'current-password', false)}${err}${m.needCode ? codeField(m) : nothing}${check}${go('Sign in')}<div class="row spread">${link('forgot', 'Forgot password?')}${link('signup', 'Create an account')}</div>`
       : m.mode === 'signup'
-        ? html`${email}${pw('Password (8 or more characters)', 'new-password', true)}${err}${go('Create account')}<p class="small muted u-m0">We email you a link and a code to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link('signin', 'I have an account')}</div>`
+        ? html`${email}${pw('Password (8 or more characters)', 'new-password', true)}${err}${check}${go('Create account')}<p class="small muted u-m0">We email you a link and a code to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link('signin', 'I have an account')}</div>`
         : m.mode === 'forgot'
-          ? html`${email}${err}${go('Email me a reset link')}<p class="small muted u-m0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link('signin', 'Back to sign in')}</div>`
+          ? html`${email}${err}${check}${go('Email me a reset link')}<p class="small muted u-m0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link('signin', 'Back to sign in')}</div>`
           : m.mode === 'newpw'
             ? html`${pw('New password (8 or more characters)', 'new-password', true)}${err}${go('Save new password')}`
             : m.mode === 'wait'
-              ? html`<p class="u-m0">We sent a confirmation email to <b>${m.email || ''}</b>. Type its code here, or tap its link and come back: ${APP_NAME} signs you in by itself.</p>${codeField(m)}<p class="small muted waitline u-m0" aria-live="polite">${m.busy ? 'Checking' : 'Waiting for the confirmation'}</p>${err}<button type="button" class="btn fullw" data-act="acctWaitNow" ?disabled=${!!m.busy}>I have confirmed</button><div class="row">${link('signup', 'Use a different email')}</div>`
+              ? html`<p class="u-m0">We sent a confirmation email to <b>${m.email || ''}</b>. Type its code here, or tap its link and come back: ${APP_NAME} signs you in by itself.</p>${codeField(m)}<p class="small muted waitline u-m0" aria-live="polite">${m.busy ? 'Checking' : 'Waiting for the confirmation'}</p>${err}${check}<button type="button" class="btn fullw" data-act="acctWaitNow" ?disabled=${!!m.busy}>I have confirmed</button><div class="row">${link('signup', 'Use a different email')}</div>`
               : m.mode === 'where'
                 ? html`<p class="u-m0">Where do you use ${APP_NAME}?</p><button type="button" class="btn primary fullw" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn fullw" data-act="acctWhere" data-v="here">Here in this browser</button>`
                 : html`<p class="u-m0">${m.msg || ''}</p><button type="button" class="btn primary fullw" data-act="mClose">OK</button>`;

@@ -15,6 +15,7 @@ stand-in cloud.
 - `docs/ARCHIVE.md`: the code map and the history behind each rule (which bug or ruling made it, where it lives).
   Search it for a function, setting or release name when you need the reason for something. It is not a rule book.
 - `docs/EVIDENCE.md`: the sources behind every number, and which numbers are conventions.
+- `docs/SECURITY.md`: the threats, what protects each now (file and test), and what is tracked for later (r66, 378).
 - `ARCHITECTURE.md`: the module layers `tests/hygiene.js` reads, the counts of casts it holds, and how the legacy
   script moved into typed modules (r49 to r63). Read it when moving code or changing what a module imports.
 - `PENDING.md`: what is open; an item is built when V says go. `OWNER.md`: the steps only V does, with the exact
