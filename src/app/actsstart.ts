@@ -538,6 +538,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         dayName: s.dayName,
         routineId: s.routineId,
         notes: s.notes || '',
+        ...(s.pics && s.pics.length ? { pics: [...s.pics] } : {}),
         ex: s.ex.map(b => {
           const it = dayItems.find(i => i.exId === b.exId);
           const plan = it ? { ...it } : blockPlan(planFor(b.exId, null, null, false, s.date));
@@ -562,7 +563,8 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
                 rid: x.rid
               })
             ),
-            ...(b.nw ? { nw: true as const } : {})
+            ...(b.nw ? { nw: true as const } : {}),
+            ...(b.pics && b.pics.length ? { pics: [...b.pics] } : {})
           };
         })
       };

@@ -6,6 +6,7 @@
    by their data-act (r63). A sheet of a session's lift is null once that
    lift or the session is gone, and the sheet host (page.ts) then closes it. */
 
+import { picStrip } from './notepics';
 import { html } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { JOINTS, MUSCLES, rackKind } from './library';
@@ -92,11 +93,11 @@ export function maxSheet(m: { exId: string }): TemplateResult {
     <div class="row u-mt10"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 
-/** A note on a lift in a session, saved with it and shown next time. */
-export function noteSheet(m: { title: string; text?: string | undefined }): TemplateResult {
+/** A note on a lift in a session, saved with it and shown next time, with its pictures (r66, 373). */
+export function noteSheet(m: { bi: number; title: string; text?: string | undefined }): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.title}</h3>${closeX()}</div>
-    <p class="small muted">Saved with this session and shown next time: a cue, a niggle, which machine.</p>
-    <textarea id="mNote" aria-label="Note" class="u-minh110">${m.text || ''}</textarea>
+    <p class="small muted">Saved with this session and shown next time: a cue, a niggle, which machine. Pictures stay on this phone.</p>
+    <textarea id="mNote" aria-label="Note" class="u-minh110">${m.text || ''}</textarea>${picStrip(m.bi)}
     <div class="row u-mt10"><button class="btn primary" data-act="noteSave">Save note</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 

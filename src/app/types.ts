@@ -140,6 +140,8 @@ export interface SessionEx {
   sets: LoggedSet[];
   ps?: number | undefined;
   nw?: true | undefined;
+  /** The pictures on this exercise's note (r66, PENDING 373), by id; their bytes are kept on the phone that took them (pics.ts). Absent when none. */
+  pics?: string[] | undefined;
 }
 
 /** A saved session (cleanSess in the storage part). `t` is when it started,
@@ -163,6 +165,8 @@ export interface Session {
   ex: SessionEx[];
   t?: number | undefined;
   pw?: number | undefined;
+  /** The pictures on the workout's notes (r66, PENDING 373), by id; absent when none. */
+  pics?: string[] | undefined;
 }
 
 /** A weigh-in, in kg. */
@@ -420,6 +424,8 @@ export interface DraftBlock {
   swappedFrom?: string | null | undefined;
   /** Done at a new machine or gym (r61, 343 7): every block of the lift in the session carries it, its suggestion read as a first session's; absent unless marked. */
   nw?: true | undefined;
+  /** The pictures on this exercise's note (r66, PENDING 373), by id, carried to the saved exercise by Finish; absent when none. */
+  pics?: string[] | undefined;
 }
 
 /** The next sets adjusted from a ticked set (r34): see DraftBlock's `adj`. */

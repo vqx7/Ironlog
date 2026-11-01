@@ -35,6 +35,7 @@ import { ROUTINE_ACTS } from './actsroutine';
 import { PICK_ACTS } from './actspick';
 import { START_ACTS } from './actsstart';
 import { LIFT_ACTS } from './actslift';
+import { PIC_ACTS, picChange } from './notepics';
 
 /** How often a page on the screen checks whether the day has turned, in milliseconds. */
 const NEW_DAY_MS = 30000;
@@ -63,6 +64,7 @@ export const ACT: Readonly<Record<string, Act>> = {
   ...PICK_ACTS,
   ...START_ACTS,
   ...LIFT_ACTS,
+  ...PIC_ACTS,
   // A choice in the exercise menu: the sheet closes, then the session screen's action it names runs (workout.ts).
   bMenuDo(t) {
     const f = ACT[t.dataset.op || ''];
@@ -228,6 +230,8 @@ export function eventListeners(): void {
     if (m && FORM_SHEETS.has(m.kind) && t.closest('#modal')) m.dirty = true;
     // A problem report's screenshot (src/app/report.ts).
     if (reportChange(t)) return;
+    // A picture added to a note (r66, src/app/notepics.ts).
+    if (picChange(t)) return;
     // A file to import or restore, and the import preview's choices (src/app/importflow.ts).
     if (importChange(t)) return;
     // Plan's fields (r58): an exercise's numbers, a day's name and rest day, Move to.

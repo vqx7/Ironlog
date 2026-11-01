@@ -65,6 +65,7 @@ import {
   fixId,
   okExtraKey,
   okSess,
+  picIds,
   safeKey,
   arr,
   trashKind,
@@ -242,6 +243,12 @@ export const cleanCardio = (c: unknown, i?: number): CardioEntry => cardioOf(c, 
 /** One cardio row of a workout in progress, cleaned: its minutes may still be blank. */
 export const cleanDraftCardio = (c: unknown, i?: number): CardioRow => cardioOf(c, null, i);
 
+/** A record's pictures as a field to spread last: { pics } when it has any, nothing otherwise (r66, 373). */
+const picsField = (v: unknown): { pics?: string[] } => {
+  const p = picIds(v);
+  return p ? { pics: p } : {};
+};
+
 /** A pair of numbers, as a rep range is kept. */
 const pair = (a: number, b: number): [number, number] => [a, b];
 
@@ -313,7 +320,9 @@ export function cleanSess(raw: unknown, si: number): Session {
                 ? { ps: b.ps }
                 : {}),
               // Done at a new machine or gym (r61, 343 7), last, as Finish writes it; absent unless marked, so older records keep their hash.
-              ...(b.nw === true ? { nw: true as const } : {})
+              ...(b.nw === true ? { nw: true as const } : {}),
+              // The pictures on its note (r66, 373), by id, last; absent unless there are any, so older records keep their hash.
+              ...picsField(b.pics)
             },
             KNOWN_SEX
           )
@@ -323,7 +332,9 @@ export function cleanSess(raw: unknown, si: number): Session {
     // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold (r56.1).
     t: isTime(Math.round(t)) ? Math.round(t) : undefined,
     // The sessions a week its routine planned when saved (r55, pwOf); absent unless recorded, so older records keep their hash.
-    pw: typeof ss.pw === 'number' && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= WEEK_DAYS ? ss.pw : undefined
+    pw: typeof ss.pw === 'number' && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= WEEK_DAYS ? ss.pw : undefined,
+    // The pictures on the workout's notes (r66, 373), by id; absent unless there are any.
+    pics: picIds(ss.pics)
   });
 }
 
@@ -755,6 +766,8 @@ function cleanDraft(d: Rec, date: string): DraftLike {
     deload: !!d.deload,
     light: !!d.light,
     limited: d.limited === true ? true : undefined,
+    // The pictures on the workout's notes (r66, 373), by id; absent unless there are any.
+    pics: picIds(d.pics),
     free: d.free === true ? true : undefined,
     // A past workout typed in after the fact: no rest timer, no clock, no check-in.
     past: d.past === true ? true : undefined,
@@ -870,7 +883,9 @@ function cleanDraft(d: Rec, date: string): DraftLike {
               ];
             }),
             // Done at a new machine or gym (r61, 343 7), last, where the menu adds it; absent unless marked.
-            ...(b.nw === true ? { nw: true as const } : {})
+            ...(b.nw === true ? { nw: true as const } : {}),
+            // The pictures on its note (r66, 373), by id, last; absent unless there are any.
+            ...picsField(b.pics)
           } satisfies DraftBlock,
           KNOWN_BLOCK
         )

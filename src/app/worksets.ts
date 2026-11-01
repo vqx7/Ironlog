@@ -252,9 +252,17 @@ function lastRowR(
 /** Whether the lifter has put anything into a session in progress. */
 export function draftEntered(d: Draft | null | undefined): boolean {
   if (!d) return false;
-  if (d.ex.some(b => (b.note && b.note.trim()) || b.sets.some(x => x.done || +(x.r ?? 0) > 0 || !rowBlank(b, x))))
+  if (
+    d.ex.some(
+      b =>
+        (b.note && b.note.trim()) ||
+        (b.pics && b.pics.length) ||
+        b.sets.some(x => x.done || +(x.r ?? 0) > 0 || !rowBlank(b, x))
+    )
+  )
     return true;
-  if ((d.cardio || []).some(c => (c.min || 0) > 0)) return true;
+  // A picture added is something entered too (r66, 373): Discard asks first.
+  if ((d.pics && d.pics.length) || (d.cardio || []).some(c => (c.min || 0) > 0)) return true;
   const n = (d.notes || '').trim();
   if (!n) return false;
   return typeof d.note0 === 'string' ? n !== d.note0.trim() : true;

@@ -8,6 +8,7 @@
    fixes of an older build's log, the suites' hook, the first draw, the
    screen kept on, the rest timer resumed, the account, and Undo's steps. */
 
+import { picsStart } from './pics';
 import { ACT, eventListeners, pageListeners } from './events';
 import { afterSheet, renderInner, sectionsStart, SHEETS } from './screens';
 import { THREE_URLS } from './config';
@@ -757,3 +758,14 @@ acctInit().catch((e: unknown) => {
 undoRestore().catch((e: unknown) => {
   log('undo-load', e);
 });
+// Pictures on notes are read once the page is up (r66, 373); a page that names any is drawn again with them.
+picsStart().then(
+  () => {
+    const named = (x: { pics?: string[] | undefined; ex: { pics?: string[] | undefined }[] }): boolean =>
+      !!(x.pics && x.pics.length) || x.ex.some(b => !!(b.pics && b.pics.length));
+    if ((state.draft && named(state.draft)) || state.sessions.some(named)) rerenderKeepScroll();
+  },
+  (e: unknown) => {
+    log('pics-read', e);
+  }
+);

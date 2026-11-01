@@ -31,7 +31,7 @@ import {
   fmtW
 } from './live';
 import { state, ui } from './store';
-import { joinAdjacent, savedEx, draftCardio, effTarget, withNew } from './session';
+import { joinAdjacent, savedEx, draftCardio, effTarget, withNew, picsLast } from './session';
 import type { DraftSet, CardioEntry, SessionEx, Session } from './types';
 import { setShort, fmtDateLong, fmtE, prSet, wasE } from './display';
 import { W, blkOpen, blkRef, redraw } from './workstate';
@@ -240,7 +240,7 @@ export function finish(): void {
 export function finishNow(): void {
   const d = state.draft;
   if (!d) return;
-  const ex = withNew(withPlanSets(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d, state.routines), d);
+  const ex = picsLast(withNew(withPlanSets(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d, state.routines), d));
   const cardio = draftCardio(d).map(c => cleanCardio(c));
   if (!ex.length) {
     if (cardio.length && !d.editingId) {
@@ -363,6 +363,8 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     free: d.free ? true : undefined,
     chk: cleanChk(d.chk) || undefined
   };
+  // The workout's pictures go last, after the start time and the plan's week Finish adds below, as normalize writes them (r66, 373).
+  const sessPics = d.pics && d.pics.length ? [...d.pics] : undefined;
   let upd: RoutineUpdate | null = null,
     demoGone = false,
     targets = 0,
@@ -375,6 +377,8 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     if (t0) sess.t = t0;
     const pw = d.editingId || d.free ? undefined : pwOf(state.routines, d.routineId);
     if (pw) sess.pw = pw;
+    // Written even when none, so an edit that took every picture off does not get the saved copy's back (keepExtra skips a field already there).
+    sess.pics = sessPics;
     if (!d.editingId) putById(state.cardio, cardio);
     if (!d.editingId && calDueIdx(d) >= 0 && !d.ex.some(b => b.sets.some(x => x.cal && x.done)))
       state.settings.calSnooze = today();
