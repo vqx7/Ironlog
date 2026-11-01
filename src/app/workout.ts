@@ -107,7 +107,6 @@ import {
   rowBlank,
   rowPR,
   setDone,
-  settleLoad,
   oddReps,
   CAL_OFFER
 } from './worksets';
@@ -931,13 +930,23 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       toast(`${sets} skipped`, true);
     };
     const log = (): void => {
+      /* What each set shows is read before any is ticked: a tick can adjust the
+         grey numbers of the sets after it (a set far easier than planned moves
+         the next ones), and the lifter did what was on the screen when Done was
+         tapped, not what one tick would have changed it to. */
+      const shown = left.map(({ s, si }) => ({
+        s,
+        si,
+        w: s.w ?? greyW(b, si),
+        r: +(s.r ?? 0) > 0 ? s.r : Math.round(greyR(b, si) ?? 0)
+      }));
       act(
         () => {
-          for (const { s, si } of left) {
-            if (!(+(s.r ?? 0) > 0)) s.r = Math.round(greyR(b, si) ?? 0);
-            settleLoad(b, si);
-            s.done = true;
-            assessSet(bi, si);
+          for (const x of shown) {
+            x.s.w = x.w;
+            x.s.r = x.r;
+            x.s.done = true;
+            assessSet(bi, x.si);
           }
           b.sets = b.sets.filter(x => x.done);
         },

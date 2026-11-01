@@ -233,6 +233,17 @@ const stored = H => H.ev(async secret => {
     await H.ev(() => { const b = document.querySelector('#toast button'); if (b) b.click(); }); await wait(200);
     d = await H.draft();
     ok(d.ex[0].sets.filter(x => x.done).length === 1, '2. one Undo takes the whole Log back', d.ex[0].sets.map(x => x.done));
+    // As shown means as shown: set 2 typed far easier than planned (12 at 5 in reserve) would move set 3's grey numbers
+    // once ticked; Log takes what set 3 showed when Done was tapped, 225 x 8 (it took 245 x 9 before this was fixed).
+    await H.ev(() => { const L = window.__ironlog; const s = L.state.draft.ex[0].sets; s[1].w = 225 * 0.45359237; s[1].r = 12; s[1].rir = 5; L.render(); });
+    const shown3 = await H.ev(() => { const w = document.querySelector('[data-f="w"][data-b="0"][data-s="2"]'), r = document.querySelector('[data-f="r"][data-b="0"][data-s="2"]'); return [w.value || w.placeholder, r.value || r.placeholder]; });
+    await H.page.click('#view [data-act="bDoneAll"][data-b="0"]'); await wait(150);
+    await H.page.click('#modal [data-act="mOk"]'); await wait(200);
+    d = await H.draft();
+    const got3 = [String(Math.round(d.ex[0].sets[2].w / LB)), String(d.ex[0].sets[2].r)];
+    ok(JSON.stringify(got3) === JSON.stringify(shown3) && shown3[0] === '225', '2. Log ticks each set at what it showed when Done was tapped, not what a tick before it changed it to', { shown3, got3 });
+    await H.ev(() => { const b = document.querySelector('#toast button'); if (b) b.click(); }); await wait(200);
+    await H.ev(() => { const L = window.__ironlog; const s = L.state.draft.ex[0].sets; s[1].w = null; s[1].r = null; s[1].rir = null; L.render(); });
     // Skip them on the press.
     await H.ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[1]; b.sets[0].w = 135 * 0.45359237; b.sets[0].r = 8; L.render(); });
     await H.page.click('#view [data-act="sDone"][data-b="1"][data-s="0"]'); await wait(150);
