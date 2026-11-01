@@ -5,7 +5,8 @@
 //      workout's notes, drawn again as a JPEG on the phone (what a file hid,
 //      a camera's location among it, is gone), SVG refused, saved with the
 //      session by Finish, shown in History after a reload, taken off with a
-//      question and put back by Undo; Discard asks when only a picture was
+//      question and put back by Undo, taken off for good by an edit saved
+//      (through a reload); Discard asks when only a picture was
 //      added; r65.2 keeps a session's pictures through its own save (a guard
 //      on the build before); Erase everything takes them off the phone.
 //   2  Done with an exercise that has sets left (374): one tap, then Log
@@ -232,8 +233,21 @@ const stored = H => H.ev(async secret => {
     await wait(200);
     d = await H.draft();
     ok(d.ex[0].pics && d.ex[0].pics.length === 1, '1. Undo puts it back', { undoTapped: und, pics: d.ex[0].pics });
-    await H.ev(() => { const L = window.__ironlog; L.ACT.discard(); }); await wait(150);
-    await H.ev(() => { const m = document.querySelector('#modal [data-act="mOk"]'); if (m) m.click(); }); await wait(150);
+    // Taken off for good: the exercise's picture and the workout's both removed in the edit, and the edit saved. The
+    // saved session holds neither, through a reload: an edit's save never brings back from the old copy what was taken off.
+    for (const sel of ['#blk-0 .pthumb', '#view .pthumb[data-at="n"]']) {
+      await H.page.click(sel); await wait(150);
+      await H.page.click('#modal [data-act="picRemove"]'); await wait(150);
+      await H.page.click('#modal [data-act="mOk"]'); await wait(150);
+    }
+    await H.page.click('#view [data-act="finish"]'); await wait(300);
+    for (let k = 0; k < 4; k++) { const m = await H.modal(); if (!m) break; if (m.kind === 'confirm') await H.page.click('#modal [data-act="mOk"]'); else await H.ev(() => window.__ironlog.ACT.mClose()); await wait(150); }
+    const off = () => H.ev(id => { const s = window.__ironlog.state.sessions.find(x => x.id === id); return s ? { saved: true, pics: s.pics || null, ex0: s.ex[0].pics || null, keys: Object.keys(s).includes('pics') } : { saved: false }; }, sid);
+    const off1 = await off();
+    ok(off1.saved && !off1.pics && !off1.ex0 && !off1.keys, '1. both taken off in an edit and saved: the session holds neither picture', off1);
+    await H.page.reload(); await H.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(400);
+    const off2 = await off();
+    ok(off2.saved && !off2.pics && !off2.ex0, '1. ... and neither comes back after a reload', off2);
     // Discard asks when only a picture was added.
     await H.go('today');
     await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
