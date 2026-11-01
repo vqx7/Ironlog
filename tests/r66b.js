@@ -28,7 +28,7 @@
 //      page and five sheets, has r65.2's computed look (padding, margins,
 //      corners, colours, height), read beside r65.2 itself.
 //   6  371: Today's main card has a satin steel edge on its own rounded
-//      outline: the same steel in every accent, silver in light and steel in
+//      outline, lit from above with a glint inside its top edge: the same steel in every accent, silver in light and steel in
 //      dark, the card's size unchanged from r65.2, taps reaching Start
 //      through it, and no other element given it.
 //   7  pictures over time (373): a note whose four ids came from a backup
@@ -424,8 +424,9 @@ const stored = H => H.ev(async secret => {
         const h = document.querySelector('.hero'); const cs = getComputedStyle(h, '::before'); const hb = h.getBoundingClientRect();
         const st = document.querySelector('.hero [data-act="startSession"]'); const sb = st.getBoundingClientRect();
         const at = document.elementFromPoint(sb.left + sb.width / 2, sb.top + sb.height / 2);
-        const others = [...document.querySelectorAll('#view *')].filter(e => e !== h && /conic-gradient/.test(getComputedStyle(e, '::before').backgroundImage)).length;
-        return { content: cs.content, bg: cs.backgroundImage, mask: cs.webkitMaskComposite || cs.maskComposite || '', events: cs.pointerEvents, radius: [cs.borderTopLeftRadius, getComputedStyle(h).borderTopLeftRadius], size: [Math.round(cs.width === 'auto' ? 0 : parseFloat(cs.width)), Math.round(hb.width)], box: [hb.width, hb.height].map(Math.round), startHit: !!at && (at === st || st.contains(at)), others };
+        const gl = getComputedStyle(h, '::after');
+        const others = [...document.querySelectorAll('#view *')].filter(e => e !== h && /xor|exclude/.test(getComputedStyle(e, '::before').webkitMaskComposite || getComputedStyle(e, '::before').maskComposite || '')).length;
+        return { glint: gl.content !== 'none' && /gradient/.test(gl.backgroundImage) && gl.pointerEvents === 'none', content: cs.content, bg: cs.backgroundImage, mask: cs.webkitMaskComposite || cs.maskComposite || '', events: cs.pointerEvents, radius: [cs.borderTopLeftRadius, getComputedStyle(h).borderTopLeftRadius], size: [Math.round(cs.width === 'auto' ? 0 : parseFloat(cs.width)), Math.round(hb.width)], box: [hb.width, hb.height].map(Math.round), startHit: !!at && (at === st || st.contains(at)), others };
       }, [theme, accent]);
       await P.ctx.close();
       return r;
@@ -434,7 +435,7 @@ const stored = H => H.ev(async secret => {
       const all = [];
       for (const a of ACC) all.push(await edgeOf(FILE, theme, a));
       const e = all[0];
-      ok(e.content !== 'none' && /conic-gradient/.test(e.bg) && /xor|exclude/.test(e.mask) && e.events === 'none', `6. ${theme}: the main card has a steel edge, masked to a ring, never in the way of a tap`, e);
+      ok(e.content !== 'none' && /linear-gradient/.test(e.bg) && /xor|exclude/.test(e.mask) && e.events === 'none' && e.glint, `6. ${theme}: the main card has a steel edge lit from above, masked to a ring, with a glint inside its top, never in the way of a tap`, e);
       ok(e.radius[0] === e.radius[1] && e.size[0] === e.size[1], `6. ${theme}: the edge follows the card's own rounded outline`, { radius: e.radius, size: e.size });
       ok(all.every(x => x.bg === e.bg), `6. ${theme}: the same steel in all ${ACC.length} accents`, all.map(x => x.bg.slice(0, 60)));
       ok(all.every(x => x.startHit), `6. ${theme}: a tap on Start reaches Start`, all.map(x => x.startHit));
