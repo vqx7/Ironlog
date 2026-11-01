@@ -45,9 +45,10 @@ Now:
   size (PENDING 373, built in r66 alongside this).
 - An exported CSV quotes a field that holds a comma, a quote or a line break (`exportCSV`, `src/app/actsapp.ts`).
 
-Not yet: a CSV cell that starts with `=`, `+`, `-` or `@` is written as typed, so a spreadsheet program opening the
-export reads it as a formula (a note `=HYPERLINK(...)` comes out as that formula). Only what the lifter typed in their
-own log reaches it, so the risk is small. Recorded in `PENDING.md` as NEW-35.
+Since r66 (NEW-35) a CSV cell that starts with `=`, `+`, `-` or `@` (or a tab or a carriage return) is written with a
+`'` in front, which a spreadsheet shows as plain text, so a note `=HYPERLINK(...)` is never read as a formula; a
+number, a negative load among them, is left as it is, and importing Ironlog's own export takes the `'` off again
+(`csvGuard` and `csvUnguard`, `src/app/importing.ts`).
 
 ### 2. AI agents acting on a report
 
@@ -129,8 +130,9 @@ r66 adds:
 - **Every dependency pinned exactly**: the last three ranges (`playwright`, the two `@fontsource` packages) fixed at
   the versions already installed.
 
-Not yet: the workflows name their actions by version tag (`actions/checkout@v4`), not by commit hash. GitHub's own
-actions are low risk; pinning them by hash means a bot or a person updating them. For V to place.
+Since r66 (NEW-36) every action is pinned to the commit its v4 tag named on 2026-11-01 (`checkout` 11d5960,
+`setup-node` 49933ea, `upload-artifact` ea165f8), so a tag moved by anyone cannot change what runs. Updating one is a
+deliberate change in review: the new commit's hash, with its version in the comment beside it.
 
 Tracked for later: **129**, making the repository private (it hides the source, not the app: a website's code is
 always downloaded to the phone that opens it). Decision pending.

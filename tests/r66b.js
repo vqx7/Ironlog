@@ -35,6 +35,10 @@
 //      + Picture, and keeps the new one; the bytes of a picture taken off are
 //      dropped once it has gone unnamed 45 days, while one the log still
 //      names, and one on a session in Recently deleted, are kept.
+//   8  Export CSV (NEW-35): a note a spreadsheet would read as a formula
+//      (=, +, -, @) is written with a ' in front, a number (a negative load
+//      on an assisted lift among them) as it is, and Ironlog's own export
+//      imported back gives every note as typed.
 const { open, engine } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
@@ -495,6 +499,36 @@ const stored = H => H.ev(async secret => {
     const shown = await H.ev(() => [...document.querySelectorAll('#view .pthumb img')].map(i => i.naturalWidth));
     ok(shown.length === 1 && shown[0] > 0, '7. after a reload the saved session still shows its picture', shown);
     ok(!H.P.errors.length, '7. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 8. Export CSV: no formula cells.
+  if (run(8)) {
+    const H = await phone(MON);
+    await seed(H, { sessions: [{ id: 'c1', date: '2026-10-30', dayIdx: 0, dayId: 'D1', dayName: 'Push', routineId: 'R1', notes: '=HYPERLINK("http://x.example","click")', ex: [
+      { exId: 'bench', rr: [6, 10], note: '+cmd|calc', sets: [{ w: 100, r: 8, rir: 2, warm: false, drop: false }] },
+      { exId: 'assistPullup', rr: [6, 10], note: '@SUM(1+1)', sets: [{ w: -20, r: 8, rir: 2, warm: false, drop: false }] },
+      { exId: 'ohp', rr: [6, 10], note: '-2+3', sets: [{ w: 40, r: 8, rir: 2, warm: false, drop: false }] }] }] });
+    const csv = await H.ev(async () => { const L = window.__ironlog; let out = null; window.claude = { use: async k => (k === 'downloads' ? { save: async o => { out = o.data; } } : null) }; await L.exportCSV(); delete window.claude; return out; });
+    const rows = (csv || '').split(/\r?\n/).filter(Boolean);
+    const head = rows[0].split(',');
+    const cells = r => { const out = []; let cur = '', q = false; for (let i = 0; i < r.length; i++) { const ch = r[i]; if (q) { if (ch === '"' && r[i + 1] === '"') { cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch; } else if (ch === '"') q = true; else if (ch === ',') { out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out; };
+    const body = rows.slice(1).map(cells);
+    const col = n => head.indexOf(n);
+    const formula = body.flatMap(r => r).filter(c => /^[=+\-@\t\r]/.test(c) && !/^[-+]?\d+(?:[.,]\d+)?$/.test(c));
+    ok(!formula.length, '8. no cell of the export starts as a formula (=, +, -, @)', formula);
+    const notes = body.map(r => [r[col('exercise_note')], r[col('session_note')]]);
+    ok(notes.some(n => n[0] === "'+cmd|calc") && notes.some(n => n[0] === "'@SUM(1+1)") && notes.some(n => n[0] === "'-2+3") && notes.every(n => n[1] === '\'=HYPERLINK("http://x.example","click")'), '8. each such note is written with a \' in front', notes);
+    const lw = body.find(r => r[col('exercise')] && /Assisted/.test(r[col('exercise')]));
+    ok(lw && /^-\d+(\.\d+)?$/.test(lw[col(head.find(h => /^load_(lb|kg)$/.test(h)))]), '8. a negative load (the help on an assisted lift) stays a number', lw);
+    // Imported back into an empty log, every note is as typed.
+    await H.ev(() => { const L = window.__ironlog; L.state.sessions = []; L.invalidate(); L.saveNow(); L.render(); });
+    await H.ev(t => window.__ironlog.impStart({ text: t }), csv); await wait(300);
+    await H.page.click('#modal [data-act="impGo"]'); await wait(500);
+    await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    const back = await H.ev(() => { const s = window.__ironlog.state.sessions[0]; return s ? { notes: s.notes, ex: s.ex.map(b => b.note) } : null; });
+    ok(back && back.notes === '=HYPERLINK("http://x.example","click")' && JSON.stringify(back.ex) === JSON.stringify(['+cmd|calc', '@SUM(1+1)', '-2+3']), '8. imported back, every note is as typed', back);
+    ok(!H.P.errors.length, '8. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
 
