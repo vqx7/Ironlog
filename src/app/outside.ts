@@ -3,7 +3,9 @@
    opened instead of with the page (THREE_URLS in config.ts: this build's own
    copy first, then the listed CDNs, as ARCHITECTURE.md lists them). The one
    place a module loads code by address; every other import is a module in
-   src/app/ or lit-html (tests/hygiene.js). */
+   src/app/ or lit-html (tests/hygiene.js). Since r66 also the sign-up bot
+   check's script (Cloudflare Turnstile, captcha.ts), which is a classic
+   script, not a module, and loads only when config.ts has its key. */
 
 import { log } from './storage';
 
@@ -30,4 +32,20 @@ export async function loadModule(urls: readonly string[]): Promise<Loaded | null
     }
   }
   return null;
+}
+
+/** Loads a classic script by address and says whether it loaded; a failure is logged with its address (the sign-up bot check's script, captcha.ts). */
+export function loadScript(url: string): Promise<boolean> {
+  return new Promise(done => {
+    const s = document.createElement('script');
+    s.src = url;
+    s.async = true;
+    s.onload = () => done(true);
+    s.onerror = () => {
+      log('load', { message: `${url}: did not load` });
+      s.remove();
+      done(false);
+    };
+    document.head.appendChild(s);
+  });
 }

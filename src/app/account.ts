@@ -38,6 +38,7 @@ import { toast } from './toast';
 import { settingsSyncLine } from './settings';
 import { obOutClear } from './today';
 import { NO_ANSWER, fbCheckReader } from './report';
+import { captchaTake, captchaWait } from './captcha';
 import type { Tap } from './workstate';
 
 /** The confirmation's wait, in milliseconds: how long it tries at most, when it slows, how often it tries before and after, the least gap between two tries, and how long a browser that opened the link reads the marker as this one's. */
@@ -167,6 +168,17 @@ async function waitTry(manual: boolean): Promise<void> {
     waitSchedule();
     return;
   }
+  // With the bot check on (captcha.ts, r66), each try takes a token of its own; without one yet the try waits.
+  const tk = captchaTake();
+  if (tk === null) {
+    const m1 = waitSheet();
+    if (manual && m1) {
+      m1.err = captchaWait();
+      renderModal();
+    }
+    waitSchedule();
+    return;
+  }
   flight = 'poll';
   lastTry = Date.now();
   const m0 = waitSheet();
@@ -176,7 +188,7 @@ async function waitTry(manual: boolean): Promise<void> {
     renderModal();
   }
   try {
-    acct.user = await limited(A.signIn(w.email, w.pw));
+    acct.user = await limited(A.signIn(w.email, w.pw, tk));
     waitStop();
     obOutClear();
     prefDel(ACCT_LATER);
@@ -390,9 +402,11 @@ async function acctCode(): Promise<void> {
     ok(await limited(verify(email, m.code || '')));
   } catch (e) {
     let done = false;
-    if (pw && codeOf(e) !== 'no_code') {
+    // The password tried after the code is a sign-in, which the bot check (when on) asks a token of; without one it is not tried.
+    const tk = pw && codeOf(e) !== 'no_code' ? captchaTake() : null;
+    if (pw && tk !== null) {
       try {
-        ok(await limited(A.signIn(email, pw)));
+        ok(await limited(A.signIn(email, pw, tk)));
         done = true;
       } catch (e2) {
         // Still not confirmed: the code's error is the one shown.
@@ -458,6 +472,15 @@ async function acctSubmit(): Promise<void> {
   if ((m.mode === 'signup' || m.mode === 'newpw') && !need(pw.length >= PW_MIN, `Use ${PW_MIN} or more characters.`))
     return;
   if (m.mode === 'signin' && !need(pw.length > 0, 'Enter your password.')) return;
+  /* The bot check's token (captcha.ts, r66): undefined when the check is off, so every request goes as before; on,
+     a sign-in, a new account and a reset link each take one, and none is sent until the check has given one. A new
+     password is set by a signed-in session, which the account server does not check. */
+  const tk = m.mode === 'newpw' ? undefined : captchaTake();
+  if (tk === null) {
+    m.err = captchaWait();
+    renderModal();
+    return;
+  }
   m.busy = true;
   m.err = '';
   renderModal();
@@ -470,14 +493,14 @@ async function acctSubmit(): Promise<void> {
   };
   try {
     if (m.mode === 'signin') {
-      acct.user = await limited(A.signIn(email, pw));
+      acct.user = await limited(A.signIn(email, pw, tk));
       obOutClear();
       prefDel(ACCT_LATER);
       done(null);
       await syncAndSay('Signed in. Syncing your log.');
       acctRerender();
     } else if (m.mode === 'signup') {
-      const r = await limited(A.signUp(email, pw));
+      const r = await limited(A.signUp(email, pw, tk));
       if (r.confirm) {
         done({ mode: 'wait', email });
         waitStart(email, pw);
@@ -489,7 +512,7 @@ async function acctSubmit(): Promise<void> {
         acctRerender();
       }
     } else if (m.mode === 'forgot') {
-      await limited(A.resetPassword(email));
+      await limited(A.resetPassword(email, tk));
       done({
         mode: 'sent',
         title: 'Check your email',
@@ -580,11 +603,18 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       renderModal();
       return;
     }
+    // A new code is a request the bot check (when on) asks a token of (captcha.ts, r66).
+    const tk = captchaTake();
+    if (tk === null) {
+      m.err = captchaWait();
+      renderModal();
+      return;
+    }
     m.busy = true;
     m.err = '';
     renderModal();
     try {
-      await limited(resend(email));
+      await limited(resend(email, tk));
       m.code = '';
       toast('A new email is on its way. Use its code.');
     } catch (e) {

@@ -4,7 +4,7 @@
 // rows, signed-out requests see nothing). It also serves a folder of static
 // files, so the app and its "cloud" share one origin like in production.
 //
-// start(root) -> {base, users, rows, feedback, confirm(email), addReader(email), feedbackTables(on), feedbackKey(on), loseReplies(n), expireTokens(email?), log, close()}
+// start(root) -> {base, users, rows, feedback, confirm(email), addReader(email), feedbackTables(on), feedbackKey(on), loseReplies(n), expireTokens(email?), captchaSeen, captcha(on), log, close()}
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -26,6 +26,11 @@ function start(root) {
   let fbOn = true;              // false: the feedback tables are not created yet
   let fbKey = true;             // false: the table as step 1 made it before r63, with no client_id column (SUPABASE.md, Part 4)
   let fbLose = 0;               // the next reports' answers lost on the way back: stored, then the connection dropped (PENDING 306)
+  /* CAPTCHA protection (r66, PENDING 378): what each auth request carried as its token, and, once turned on, the
+     server's refusal of a request without a good one, as Supabase Auth refuses it. A token is good once: the stand-in
+     Turnstile (tests/r66s.js) issues "tok-" tokens. A refresh of a sign-in and the code's check are not asked. */
+  const captchaSeen = [];       // {path, grant, token} for every POST to signup, token, recover, resend, otp and verify
+  let captchaOn = false; const captchaUsed = new Set();
   const log = [];
   let tokenLife = 3600; let deny = false; let fnDeployed = false; const gone = new Set(); const codeLife = 3600 * 1000;
   const now = () => Math.floor(Date.now() / 1000);
@@ -82,6 +87,16 @@ function start(root) {
       if (p.startsWith('/auth/v1/') || p.startsWith('/rest/v1/')) log.push(`${req.method} ${p}${u.search}`);
       if (p.startsWith('/auth/v1/') && !req.headers.apikey) return authErr(res, 401, 'no_api_key', 'No API key found in request');
       // ---- Auth ----
+      if (req.method === 'POST' && /^\/auth\/v1\/(signup|token|recover|resend|otp|verify)$/.test(p)) {
+        const b = json(); const tok = b.gotrue_meta_security && b.gotrue_meta_security.captcha_token;
+        captchaSeen.push({ path: p.slice(9), grant: u.searchParams.get('grant_type'), token: tok === undefined ? null : tok });
+        const asked = p !== '/auth/v1/verify' && !(p === '/auth/v1/token' && u.searchParams.get('grant_type') !== 'password');
+        if (captchaOn && asked) {
+          if (!tok) return authErr(res, 400, 'captcha_failed', 'captcha protection: request disallowed (no captcha response)');
+          if (!/^tok-/.test(tok) || captchaUsed.has(tok)) return authErr(res, 400, 'captcha_failed', 'captcha protection: request disallowed (captcha verification process failed)');
+          captchaUsed.add(tok);
+        }
+      }
       if (p === '/auth/v1/signup' && req.method === 'POST') {
         const { email, password } = json();
         if (!password || password.length < 6) return send(res, 422, { code: 422, error_code: 'weak_password', msg: 'Password should be at least 6 characters.', weak_password: { reasons: ['length'] } });
@@ -226,6 +241,7 @@ function start(root) {
       setTokenLife(s) { tokenLife = s; },
       setDeny(v) { deny = !!v; },
       deployDelete(v) { fnDeployed = !!v; },
+      captchaSeen, captcha(v) { captchaOn = !!v; },
       feedback, addReader(email) { const x = users.get(email); if (x) readers.add(x.id); }, feedbackTables(v) { fbOn = !!v; }, feedbackKey(v) { fbKey = !!v; }, loseReplies(n) { fbLose = n; },
       /* server.close waits for every open request to end, and one the browser
          left half sent never does (r33 stopped at 15 minutes on GitHub after

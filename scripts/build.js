@@ -215,9 +215,15 @@ html = replaceOnce(html, '</body>', boot + '</body>', 'closing body tag');
 const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => `'sha256-${crypto.createHash('sha256').update(m[1], 'utf8').digest('base64')}'`);
 must(hashes.length >= 3, 'expected the head, app and boot inline scripts');
 const sbHost = cloudCfg ? cloudCfg.url.replace(/^https:\/\//, '') : null;
+/* The sign-up bot check (r66, PENDING 378; src/app/captcha.ts): Cloudflare Turnstile's script, and the frame it
+   draws its check in, come from its own site. Allowed only when config.ts has a site key: as shipped the key is
+   empty, the app loads nothing from there, and the policy allows no other site for script or frames. */
+const ts = cfg.TURNSTILE_SITE_KEY ? ` ${cfg.TURNSTILE_ORIGIN}` : '';
+must(!cfg.TURNSTILE_SITE_KEY || /^[\w-]{10,100}$/.test(cfg.TURNSTILE_SITE_KEY), 'TURNSTILE_SITE_KEY must be a Turnstile site key (the public one), letters, digits, _ and -');
+must(!/secret/i.test(cfg.TURNSTILE_SITE_KEY), 'TURNSTILE_SITE_KEY: never the secret key');
 const csp = [
   "default-src 'self'",
-  `script-src 'self' ${hashes.join(' ')}`,
+  `script-src 'self' ${hashes.join(' ')}${ts}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
@@ -226,7 +232,7 @@ const csp = [
   "manifest-src 'self'",
   "media-src 'self'",
   "object-src 'none'",
-  "frame-src 'none'",
+  `frame-src ${ts ? ts.trim() : "'none'"}`,
   "base-uri 'none'",
   "form-action 'none'"
 ].join('; ');

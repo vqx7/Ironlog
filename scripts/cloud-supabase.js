@@ -162,6 +162,8 @@
        sign-in, which is neither. */
     if (code === '23503' || /user_not_found/i.test(code)) return Object.assign(new Error('This account no longer exists. Your log stays on this phone.'), { code: 'gone' });
     if (/invalid login credentials|invalid_credentials/i.test(msg + code)) text = 'Wrong email or password.';
+    // The bot check refused (r66): no token, a used one, or one Cloudflare did not accept.
+    else if (/captcha/i.test(msg + code)) text = 'The security check did not pass. Close this and try again.';
     else if (/email not confirmed|email_not_confirmed/i.test(msg + code)) text = 'Confirm your email first: type the code from the email below, or open its link.';
     else if (/already registered|user_already_exists/i.test(msg + code)) text = 'An account with this email already exists. Sign in instead.';
     // A confirmation code that is wrong, used or expired: Supabase answers all three the same way, so one message (r45 review).
@@ -225,14 +227,18 @@
     } catch (e) { return 0; }
   }
   const BREACHED = 'This password has appeared in a data breach, so it is easy to guess. Choose a different one.';
+  /* The sign-up bot check's token (r66, PENDING 378): given by the app only when config.ts has a Turnstile key
+     (src/app/captcha.ts), and then sent with each request Supabase checks once its CAPTCHA protection is on. With
+     none, the request is exactly what it was. */
+  const check = captchaToken => (captchaToken ? { captchaToken } : {});
 
   window.ironlogAuth = {
     landing,
     user: signedIn,
     /* Returns {confirm: true} when an email must be confirmed first. */
-    async signUp(email, password) {
+    async signUp(email, password, captchaToken) {
       if (await breached(password) > 0) throw Object.assign(new Error(BREACHED), { code: 'breached' });
-      const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: site() } });
+      const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: site(), ...check(captchaToken) } });
       if (error) throw friendly(error);
       // An address that is already registered gets a stand-in user with no
       // identities (so the reply does not reveal who has an account).
@@ -252,12 +258,12 @@
       return who(data && data.session);
     },
     /* A new confirmation email, with its link pointing back at this build (the preview's own address in the preview). */
-    async resendCode(email) {
-      const { error } = await sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: site() } });
+    async resendCode(email, captchaToken) {
+      const { error } = await sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: site(), ...check(captchaToken) } });
       if (error) throw friendly(error);
     },
-    async signIn(email, password) {
-      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    async signIn(email, password, captchaToken) {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password, ...(captchaToken ? { options: check(captchaToken) } : {}) });
       if (error) throw friendly(error);
       hold = false;
       return who(data && data.session);
@@ -276,8 +282,8 @@
       });
       if (kept()) localStorage.removeItem(AUTH_KEY);
     },
-    async resetPassword(email) {
-      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: site() });
+    async resetPassword(email, captchaToken) {
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: site(), ...check(captchaToken) });
       if (error) throw friendly(error);
     },
     async updatePassword(password) {

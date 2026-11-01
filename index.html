@@ -2873,9 +2873,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
   }
   function markupOf(part) {
-    const box2 = document.createElement("div");
-    D(part, box2);
-    return box2.innerHTML.replace(/<!--[^]*?-->/g, "");
+    const box3 = document.createElement("div");
+    D(part, box3);
+    return box3.innerHTML.replace(/<!--[^]*?-->/g, "");
   }
   function markup(fixed) {
     return o2(fixed);
@@ -3048,6 +3048,9 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var THREE_URLS = typeof window !== "undefined" && window.IRONLOG_APP ? ["./vendor/three.module.min.js"] : THREE_CDN;
   var NET_MS = 2e4;
   var TICKETS_AT = "https://github.com/";
+  var TURNSTILE_SITE_KEY = "";
+  var TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
+  var TURNSTILE_URL = `${TURNSTILE_ORIGIN}/turnstile/v0/api.js?render=explicit`;
 
   // src/app/icons.ts
   var MARK_SVG = '<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -4572,7 +4575,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const f3 = freshState();
     normalize.dropped = 0;
     const s3 = rec(input) || f3;
-    const drop = (n3) => {
+    const drop2 = (n3) => {
       normalize.dropped += n3 == null ? 1 : Math.max(0, n3);
     };
     const raw = { ...f3, ...s3 };
@@ -4624,7 +4627,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
     const before = list("sessions").length;
     let sessions = list("sessions").filter((x2) => okSess(rec(x2))).map((x2, i5) => cleanSess(x2, i5)).filter((ss) => ss.ex.length);
-    drop(before - sessions.length);
+    drop2(before - sessions.length);
     let cardio;
     {
       const tS = /* @__PURE__ */ new Map(), tC = /* @__PURE__ */ new Map();
@@ -4706,7 +4709,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         demo: !!b2.demo
       });
     });
-    drop(bBefore - bodyweights.length);
+    drop2(bBefore - bodyweights.length);
     const mBefore = list("measurements").length;
     const measurements = list("measurements").filter((m0) => {
       const m3 = rec(m0);
@@ -4724,7 +4727,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       }
       return keepExtra(m0, o3, KNOWN_MEAS);
     });
-    drop(mBefore - measurements.length);
+    drop2(mBefore - measurements.length);
     const d3 = rec(raw.draft);
     const draft = d3 && Array.isArray(d3.ex) && typeof d3.date === "string" && isDate(d3.date) ? cleanDraft(d3, d3.date) : null;
     const dw = raw.deloadWeek;
@@ -5500,28 +5503,28 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return t4 instanceof Element ? t4 : t4 instanceof Node ? t4.parentElement : null;
   };
   function tipShow(el) {
-    const box2 = document.getElementById("tip");
+    const box3 = document.getElementById("tip");
     const txt = el.getAttribute("data-tip");
-    if (!box2 || !txt) return;
+    if (!box3 || !txt) return;
     TIP.el = el;
-    box2.textContent = txt;
-    box2.hidden = false;
-    const r4 = el.getBoundingClientRect(), b2 = box2.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
+    box3.textContent = txt;
+    box3.hidden = false;
+    const r4 = el.getBoundingClientRect(), b2 = box3.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
     let top = r4.top - b2.height - TIP_AT.gapPx;
     if (top < TIP_AT.gapPx) top = r4.bottom + TIP_AT.gapPx;
     if (top + b2.height > vh - TIP_AT.gapPx) top = Math.max(TIP_AT.gapPx, vh - b2.height - TIP_AT.gapPx);
     let left = r4.left + r4.width / 2 - b2.width / 2;
     left = Math.max(TIP_AT.edgePx, Math.min(left, vw - b2.width - TIP_AT.edgePx));
-    box2.style.top = top + "px";
-    box2.style.left = left + "px";
+    box3.style.top = top + "px";
+    box3.style.left = left + "px";
     el.setAttribute("aria-describedby", "tip");
   }
   function tipHide() {
     clearTimeout(TIP.t);
     if (TIP.hold) clearTimeout(TIP.hold);
     TIP.hold = null;
-    const box2 = document.getElementById("tip");
-    if (box2) box2.hidden = true;
+    const box3 = document.getElementById("tip");
+    if (box3) box3.hidden = true;
     if (TIP.el) {
       TIP.el.removeAttribute("aria-describedby");
       TIP.el = null;
@@ -6569,7 +6572,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         const atTop = atLoad(pts, topW);
         const topRir = tr.length ? tr.reduce((a2, p3) => a2 + p3.rir, 0) / tr.length : null;
         const topReps = atTop.reduce((a2, p3) => a2 + p3.r, 0);
-        const drop = atTop.length >= 2 ? atTop[0].r - atTop[atTop.length - 1].r : null;
+        const drop2 = atTop.length >= 2 ? atTop[0].r - atTop[atTop.length - 1].r : null;
         let best = null, bb = null;
         if (!noE1(ex))
           for (const p3 of pts) {
@@ -6608,7 +6611,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
           topW,
           topRir,
           topReps,
-          drop,
+          drop: drop2,
           deload: !!ss.deload,
           light: !!ss.light || !!b2.light,
           held: !!b2.inj,
@@ -16827,6 +16830,20 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
     }
     return null;
   }
+  function loadScript(url) {
+    return new Promise((done) => {
+      const s3 = document.createElement("script");
+      s3.src = url;
+      s3.async = true;
+      s3.onload = () => done(true);
+      s3.onerror = () => {
+        log("load", { message: `${url}: did not load` });
+        s3.remove();
+        done(false);
+      };
+      document.head.appendChild(s3);
+    });
+  }
 
   // src/app/map.ts
   var BM_BASE = w`<circle cx="60" cy="16" r="11"></circle><rect x="38" y="35" width="44" height="72" rx="12"></rect><rect x="23" y="39" width="14" height="42" rx="7"></rect><rect x="83" y="39" width="14" height="42" rx="7"></rect><rect x="21" y="78" width="11" height="36" rx="5.5"></rect><rect x="88" y="78" width="11" height="36" rx="5.5"></rect><circle cx="26" cy="118" r="5"></circle><circle cx="94" cy="118" r="5"></circle><rect x="37" y="102" width="21" height="54" rx="9"></rect><rect x="62" y="102" width="21" height="54" rx="9"></rect><rect x="40" y="152" width="14" height="46" rx="7"></rect><rect x="66" y="152" width="14" height="46" rx="7"></rect><ellipse cx="47" cy="202" rx="8" ry="4"></ellipse><ellipse cx="73" cy="202" rx="8" ry="4"></ellipse>`;
@@ -17599,10 +17616,10 @@ ${detail}`
         obTour.user = true;
         obTourStop();
       };
-      const box2 = tr.parentNode;
-      if (box2)
+      const box3 = tr.parentNode;
+      if (box3)
         for (const ev of ["pointerdown", "touchstart", "keydown", "focusin", "wheel"])
-          box2.addEventListener(ev, mine, { passive: true });
+          box3.addEventListener(ev, mine, { passive: true });
     }
     let reduce = false;
     try {
@@ -20145,6 +20162,81 @@ ${JSON.stringify(ctx, null, 1)}`;
     return true;
   }
 
+  // src/app/captcha.ts
+  var captchaOn = () => !!TURNSTILE_SITE_KEY;
+  var loading = null;
+  var box2 = null;
+  var token = null;
+  var failedFor = null;
+  function drop() {
+    const b2 = box2;
+    box2 = null;
+    token = null;
+    if (b2 && window.turnstile)
+      try {
+        window.turnstile.remove(b2.id);
+      } catch (e5) {
+        log("captcha", e5);
+      }
+  }
+  function captchaMount() {
+    if (!captchaOn()) return;
+    if (box2 && !box2.el.isConnected) drop();
+    const el = document.querySelector("#modal [data-captcha]");
+    if (!(el instanceof HTMLElement) || box2 && box2.el === el || failedFor === el) return;
+    if (!loading) loading = loadScript(TURNSTILE_URL);
+    const asked = loading;
+    asked.then((loaded) => {
+      const ts = window.turnstile;
+      if (!loaded || !ts) {
+        if (loading === asked) loading = null;
+        failedFor = el;
+        return;
+      }
+      if (!el.isConnected || box2) return;
+      try {
+        const id = ts.render(el, {
+          sitekey: TURNSTILE_SITE_KEY,
+          callback: (t4) => {
+            token = t4;
+          },
+          "expired-callback": () => {
+            token = null;
+          },
+          "error-callback": (code) => {
+            token = null;
+            log("captcha", { message: `Turnstile error ${String(code)}` });
+          },
+          appearance: "interaction-only",
+          size: "flexible"
+        });
+        if (id) box2 = { el, id };
+      } catch (e5) {
+        log("captcha", e5);
+        failedFor = el;
+      }
+    });
+  }
+  function captchaTake() {
+    if (!captchaOn()) return void 0;
+    if (box2 && !box2.el.isConnected) drop();
+    const t4 = token;
+    if (!t4) return null;
+    token = null;
+    const b2 = box2;
+    if (b2 && window.turnstile)
+      try {
+        window.turnstile.reset(b2.id);
+      } catch (e5) {
+        log("captcha", e5);
+      }
+    return t4;
+  }
+  function captchaWait() {
+    const el = document.querySelector("#modal [data-captcha]");
+    return el && failedFor === el ? "The security check could not load. Check your connection, then close this and try again." : "Wait a moment for the security check to finish, then try again.";
+  }
+
   // src/app/account.ts
   var WAIT_MS = {
     most: 30 * 6e4,
@@ -20233,6 +20325,16 @@ ${JSON.stringify(ctx, null, 1)}`;
       waitSchedule();
       return;
     }
+    const tk = captchaTake();
+    if (tk === null) {
+      const m1 = waitSheet();
+      if (manual && m1) {
+        m1.err = captchaWait();
+        renderModal();
+      }
+      waitSchedule();
+      return;
+    }
     flight = "poll";
     lastTry = Date.now();
     const m0 = waitSheet();
@@ -20242,7 +20344,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       renderModal();
     }
     try {
-      acct.user = await limited(A2.signIn(w2.email, w2.pw));
+      acct.user = await limited(A2.signIn(w2.email, w2.pw, tk));
       waitStop();
       obOutClear();
       prefDel(ACCT_LATER);
@@ -20415,9 +20517,10 @@ ${JSON.stringify(ctx, null, 1)}`;
       ok(await limited(verify(email, m3.code || "")));
     } catch (e5) {
       let done = false;
-      if (pw && codeOf(e5) !== "no_code") {
+      const tk = pw && codeOf(e5) !== "no_code" ? captchaTake() : null;
+      if (pw && tk !== null) {
         try {
-          ok(await limited(A2.signIn(email, pw)));
+          ok(await limited(A2.signIn(email, pw, tk)));
           done = true;
         } catch (e22) {
         }
@@ -20472,6 +20575,12 @@ ${JSON.stringify(ctx, null, 1)}`;
     if ((m3.mode === "signup" || m3.mode === "newpw") && !need(pw.length >= PW_MIN, `Use ${PW_MIN} or more characters.`))
       return;
     if (m3.mode === "signin" && !need(pw.length > 0, "Enter your password.")) return;
+    const tk = m3.mode === "newpw" ? void 0 : captchaTake();
+    if (tk === null) {
+      m3.err = captchaWait();
+      renderModal();
+      return;
+    }
     m3.busy = true;
     m3.err = "";
     renderModal();
@@ -20484,14 +20593,14 @@ ${JSON.stringify(ctx, null, 1)}`;
     };
     try {
       if (m3.mode === "signin") {
-        acct.user = await limited(A2.signIn(email, pw));
+        acct.user = await limited(A2.signIn(email, pw, tk));
         obOutClear();
         prefDel(ACCT_LATER);
         done(null);
         await syncAndSay("Signed in. Syncing your log.");
         acctRerender();
       } else if (m3.mode === "signup") {
-        const r4 = await limited(A2.signUp(email, pw));
+        const r4 = await limited(A2.signUp(email, pw, tk));
         if (r4.confirm) {
           done({ mode: "wait", email });
           waitStart(email, pw);
@@ -20503,7 +20612,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           acctRerender();
         }
       } else if (m3.mode === "forgot") {
-        await limited(A2.resetPassword(email));
+        await limited(A2.resetPassword(email, tk));
         done({
           mode: "sent",
           title: "Check your email",
@@ -20585,11 +20694,17 @@ ${JSON.stringify(ctx, null, 1)}`;
         renderModal();
         return;
       }
+      const tk = captchaTake();
+      if (tk === null) {
+        m3.err = captchaWait();
+        renderModal();
+        return;
+      }
       m3.busy = true;
       m3.err = "";
       renderModal();
       try {
-        await limited(resend(email));
+        await limited(resend(email, tk));
         m3.code = "";
         toast("A new email is on its way. Use its code.");
       } catch (e5) {
@@ -23086,7 +23201,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         closeModal();
         return;
       }
-      const drop = /* @__PURE__ */ new Set();
+      const drop2 = /* @__PURE__ */ new Set();
       const removed = /* @__PURE__ */ new Map(), order = d3.ex.slice(), did2 = d3.id;
       act(
         () => {
@@ -23095,7 +23210,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             const b2 = d3.ex[x2.bi];
             if (!b2) continue;
             if (x2.keep === 0 && !x2.started) {
-              drop.add(x2.bi);
+              drop2.add(x2.bi);
               continue;
             }
             let n3 = x2.undone - x2.keep;
@@ -23109,7 +23224,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             }
             removed.set(b2, gone);
           }
-          d3.ex = d3.ex.filter((_b, bi) => !drop.has(bi));
+          d3.ex = d3.ex.filter((_b, bi) => !drop2.has(bi));
           fixSupersets(d3.ex.map((b2) => b2.plan));
         },
         {
@@ -23124,7 +23239,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             if (!dd || dd.id !== did2) return false;
             for (const [b2, rows] of removed) if (dd.ex.includes(b2)) b2.sets.push(...rows);
             order.forEach((b2, i5) => {
-              if (drop.has(i5) && !dd.ex.includes(b2)) dd.ex.splice(Math.min(i5, dd.ex.length), 0, b2);
+              if (drop2.has(i5) && !dd.ex.includes(b2)) dd.ex.splice(Math.min(i5, dd.ex.length), 0, b2);
             });
             fixSupersets(dd.ex.map((b2) => b2.plan));
             return true;
@@ -23891,14 +24006,14 @@ ${JSON.stringify(ctx, null, 1)}`;
       const k2 = t4.dataset.ebind;
       if (k2 && m3 && m3.kind === "exEdit") {
         const ed = m3.e;
-        const box2 = t4 instanceof HTMLInputElement && t4.type === "checkbox";
-        editorSet(ed, k2, box2 ? t4.checked : t4.value);
+        const box3 = t4 instanceof HTMLInputElement && t4.type === "checkbox";
+        editorSet(ed, k2, box3 ? t4.checked : t4.value);
         if (k2 === "primary") {
           ed.secondary = ed.secondary.filter((x2) => x2 !== t4.value);
           renderModal();
         }
         if (k2 === "bw") {
-          if (box2 && t4.checked && !ed.bwfRaw) ed.bwfRaw = String(Math.round(bwShare(ed) * PERCENT2));
+          if (box3 && t4.checked && !ed.bwfRaw) ed.bwfRaw = String(Math.round(bwShare(ed) * PERCENT2));
           renderModal();
         }
         if (k2 === "timed" || k2 === "equip" || k2 === "plates") renderModal();
@@ -23954,8 +24069,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       const first = f3[0], last = f3[f3.length - 1];
       if (!first || !last) return;
       const a2 = document.activeElement;
-      const box2 = document.getElementById("modal");
-      const outside = !box2 || !box2.contains(a2);
+      const box3 = document.getElementById("modal");
+      const outside = !box3 || !box3.contains(a2);
       if (e5.shiftKey && (a2 === first || outside)) {
         e5.preventDefault();
         last.focus();
@@ -24190,6 +24305,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const email = b`<label class="field">Email<input type="email" data-abind="email" .value=${l3(m3.email || "")} autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" enterkeyhint="next"></label>`;
     const pw = (label, ac, min) => b`<label class="field">${label}<input type="password" data-abind="pw" .value=${l3(m3.pw || "")} autocomplete=${ac} minlength=${min ? "8" : A} enterkeyhint="go"></label>`;
     const err = b`<p class="small u-cred_m0" role="alert" ?hidden=${!m3.err}>${m3.err || ""}</p>`;
+    const check = captchaOn() ? b`<div data-captcha></div>` : A;
     const go = (label) => b`<button type="submit" class="btn primary block" data-act="acctSubmit" ?disabled=${!!m3.busy}>${m3.busy ? BUSY[m3.mode] || "One moment" : label}</button>`;
     const link = (mode, label) => b`<button type="button" class="linkbtn tall" data-act="acctMode" data-mode=${mode}>${label}</button>`;
     const T2 = {
@@ -24201,7 +24317,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       wait: "Check your email",
       where: m3.title || "Email confirmed"
     };
-    const b2 = m3.mode === "signin" ? b`${email}${pw("Password", "current-password", false)}${err}${m3.needCode ? codeField(m3) : A}${go("Sign in")}<div class="row spread">${link("forgot", "Forgot password?")}${link("signup", "Create an account")}</div>` : m3.mode === "signup" ? b`${email}${pw("Password (8 or more characters)", "new-password", true)}${err}${go("Create account")}<p class="small muted u-m0">We email you a link and a code to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link("signin", "I have an account")}</div>` : m3.mode === "forgot" ? b`${email}${err}${go("Email me a reset link")}<p class="small muted u-m0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link("signin", "Back to sign in")}</div>` : m3.mode === "newpw" ? b`${pw("New password (8 or more characters)", "new-password", true)}${err}${go("Save new password")}` : m3.mode === "wait" ? b`<p class="u-m0">We sent a confirmation email to <b>${m3.email || ""}</b>. Type its code here, or tap its link and come back: ${APP_NAME} signs you in by itself.</p>${codeField(m3)}<p class="small muted waitline u-m0" aria-live="polite">${m3.busy ? "Checking" : "Waiting for the confirmation"}</p>${err}<button type="button" class="btn block" data-act="acctWaitNow" ?disabled=${!!m3.busy}>I have confirmed</button><div class="row">${link("signup", "Use a different email")}</div>` : m3.mode === "where" ? b`<p class="u-m0">Where do you use ${APP_NAME}?</p><button type="button" class="btn primary block" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn block" data-act="acctWhere" data-v="here">Here in this browser</button>` : b`<p class="u-m0">${m3.msg || ""}</p><button type="button" class="btn primary block" data-act="mClose">OK</button>`;
+    const b2 = m3.mode === "signin" ? b`${email}${pw("Password", "current-password", false)}${err}${m3.needCode ? codeField(m3) : A}${check}${go("Sign in")}<div class="row spread">${link("forgot", "Forgot password?")}${link("signup", "Create an account")}</div>` : m3.mode === "signup" ? b`${email}${pw("Password (8 or more characters)", "new-password", true)}${err}${check}${go("Create account")}<p class="small muted u-m0">We email you a link and a code to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link("signin", "I have an account")}</div>` : m3.mode === "forgot" ? b`${email}${err}${check}${go("Email me a reset link")}<p class="small muted u-m0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link("signin", "Back to sign in")}</div>` : m3.mode === "newpw" ? b`${pw("New password (8 or more characters)", "new-password", true)}${err}${go("Save new password")}` : m3.mode === "wait" ? b`<p class="u-m0">We sent a confirmation email to <b>${m3.email || ""}</b>. Type its code here, or tap its link and come back: ${APP_NAME} signs you in by itself.</p>${codeField(m3)}<p class="small muted waitline u-m0" aria-live="polite">${m3.busy ? "Checking" : "Waiting for the confirmation"}</p>${err}${check}<button type="button" class="btn block" data-act="acctWaitNow" ?disabled=${!!m3.busy}>I have confirmed</button><div class="row">${link("signup", "Use a different email")}</div>` : m3.mode === "where" ? b`<p class="u-m0">Where do you use ${APP_NAME}?</p><button type="button" class="btn primary block" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn block" data-act="acctWhere" data-v="here">Here in this browser</button>` : b`<p class="u-m0">${m3.msg || ""}</p><button type="button" class="btn primary block" data-act="mClose">OK</button>`;
     const title = T2[m3.mode] || "Account";
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-label=${title}><div class="sheet-h"><h3>${title}</h3>${closeX()}</div><form class="stack" id="acctForm" novalidate>${b2}</form></div>`;
   }
@@ -25205,6 +25321,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   };
   function afterSheet2() {
     if (document.getElementById("bm3dx")) mount3D();
+    captchaMount();
   }
 
   // src/app/main.ts

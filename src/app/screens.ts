@@ -28,6 +28,7 @@ import { curRoutineB } from './display';
 import { calSheet } from './calendar';
 import { acctSheet, fbInboxSheet, fbSheet, menuSheet } from './sheetsaccount';
 import { acctClosed } from './account';
+import { captchaMount } from './captcha';
 import { guideSheet } from './guide';
 import { impSheet } from './sheetsimport';
 import { cardioSheet, confirmSheet, dayPickSheet, restWeekSheet, textSheet } from './sheetsmisc';
@@ -379,7 +380,8 @@ export const SHEETS: Sheets = {
   eq: { draw: eqSheet },
   text: { draw: textSheet }
 };
-/** What a sheet mounts once drawn: the 3D body of an exercise's muscles. */
+/** What a sheet mounts once drawn: the 3D body of an exercise's muscles, and the account sheet's bot check (r66, when on). */
 export function afterSheet(): void {
   if (document.getElementById('bm3dx')) mount3D();
+  captchaMount();
 }
