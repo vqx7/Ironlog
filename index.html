@@ -54,15 +54,7 @@
   --hero:#ffffff; --on-hero:#0d0f12; --hero-2:#f1f3f5;
   --shadow:0 1px 2px rgba(13,15,18,.05),0 10px 30px rgba(13,15,18,.06);
   --hero-bg:radial-gradient(150px 150px at 90% 12%,color-mix(in srgb,var(--volt) 14%,transparent),transparent 70%),linear-gradient(165deg,#ffffff,#f6f7f9 72%);
-  --hero-ring:var(--volt-line); --hero-shadow:0 1px 2px rgba(13,15,18,.05),0 12px 32px rgba(13,15,18,.08);
-  /* Today's main card has a satin steel edge (V, 2026-11-01, PENDING 371: "a subtle real metallic shine"): a quiet
-     steel lit from above, lighter along the top and darker toward the bottom, one soft highlight where the light
-     catches the top-left curve, and a faint glint just inside the top edge; the same steel in every accent, silver on
-     the light page and steel on the dark one. It is the card's edge, so the plain 1px outline it had in light is gone
-     from its shadow. */
-  --hero-edge:radial-gradient(55% 45% at 20% 0%,rgba(255,255,255,.5),transparent 70%),linear-gradient(180deg,#bfc4cb 0%,#b2b8bf 35%,#a0a7af 75%,#929aa3 100%);
-  --hero-glint:rgba(255,255,255,.9);
-  --hero-edge-w:1.5px;
+  --hero-ring:var(--volt-line); --hero-shadow:0 0 0 1px var(--card-b),0 1px 2px rgba(13,15,18,.05),0 12px 32px rgba(13,15,18,.08);
   /* The rest timer (r29, V: it blended into the screen): a deep tint of the
      accent, the same in both themes, with white text and a bar along its top
      that empties as the rest runs down. Done is the full accent. */
@@ -91,7 +83,6 @@
     --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
     --hero-bg:radial-gradient(150px 150px at 90% 10%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
     --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
-    --hero-edge:radial-gradient(55% 45% at 20% 0%,rgba(255,255,255,.55),transparent 70%),linear-gradient(180deg,#8d949e 0%,#646b75 40%,#4a515a 80%,#40464e 100%); --hero-glint:rgba(255,255,255,.14);
 
     --shadow:none;
     color-scheme:dark;
@@ -109,7 +100,6 @@
   --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
   --hero-bg:radial-gradient(150px 150px at 90% 10%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
   --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
-  --hero-edge:radial-gradient(55% 45% at 20% 0%,rgba(255,255,255,.55),transparent 70%),linear-gradient(180deg,#8d949e 0%,#646b75 40%,#4a515a 80%,#40464e 100%); --hero-glint:rgba(255,255,255,.14);
 
   --shadow:none;
   color-scheme:dark;
@@ -870,17 +860,7 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .cyc .c.rest{color:var(--muted);border-style:dashed}
 
 /* ---------- today: the hero is the one inked block ---------- */
-.hero{--hero-r:28px;background:var(--hero-bg),var(--hero);color:var(--on-hero);border:0;border-radius:var(--hero-r);padding:18px 18px 16px;margin:14px 0 14px;box-shadow:var(--hero-shadow)}
-/* The steel edge (371): a ring drawn on the card's own rounded outline, masked to its edge so the corners stay round and
-   smooth at any pixel density, and never in the way of a tap. Only where the browser can mask it to a ring. */
-@supports ((-webkit-mask-composite:xor) or (mask-composite:exclude)){
-.hero{position:relative;isolation:isolate}
-.hero::before,.hero::after{content:"";position:absolute;pointer-events:none;
--webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
-.hero::before{inset:0;border-radius:inherit;padding:var(--hero-edge-w);background:var(--hero-edge)}
-/* The glint: a hairline just inside the edge, bright at the top and gone by a fifth of the way down, as light catches a bevel. */
-.hero::after{inset:var(--hero-edge-w);border-radius:calc(var(--hero-r) - var(--hero-edge-w));padding:1px;background:linear-gradient(180deg,var(--hero-glint),transparent 22%)}
-}
+.hero{background:var(--hero-bg),var(--hero);color:var(--on-hero);border:0;border-radius:28px;padding:18px 18px 16px;margin:14px 0 14px;box-shadow:var(--hero-shadow)}
 .hero .eyebrow{color:var(--on-hero);opacity:.7}
 .hero .hello{font:700 17px/1.2 var(--font);letter-spacing:-.01em;margin:0 0 6px;color:var(--on-hero)}
 .hero h2{font-size:54px;font-weight:800;line-height:.92;margin:6px 0 8px;letter-spacing:.01em;overflow-wrap:anywhere}
