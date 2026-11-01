@@ -460,7 +460,6 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
   const done = b.sets.filter(s => s.done && !s.warm && !s.drop && +(s.r ?? 0) > 0);
   if (!done.length) return { text: '', beat: false };
   const tw = t.w ?? 0;
-  const at = done.filter(s => Math.abs((+(s.w ?? 0) || 0) - tw) < EPS_SAME);
   const heavier = done.filter(s => (+(s.w ?? 0) || 0) > tw + EPS_SAME);
   let heavyBeat = false,
     heavyTxt = '';
@@ -490,10 +489,18 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
     }
   }
   if (t.kind === 'reps') {
-    if (!at.length) return { text: heavyTxt || `Nothing logged at ${loadLabel(ex, tw)} yet`, beat: heavyBeat };
+    /* A set heavier than the target's load is at least as hard as the same
+       reps at it, so sets at the load or heavier count toward its reps (r66,
+       NEW-30: leg press 1,000 x 15, 15, 14 against 990 for 37+ read "Nothing
+       logged at 990 yet", since the estimate the heavier sets were judged by
+       stops at 12 reps to failure). Heavier sets with fewer reps than that are
+       still judged by their estimate, as before. */
+    const atUp = done.filter(s => (+(s.w ?? 0) || 0) >= tw - EPS_SAME);
+    if (!atUp.length) return { text: heavyTxt || `Nothing logged at ${loadLabel(ex, tw)} yet`, beat: heavyBeat };
     const tn = t.n ?? 0,
       total = t.total ?? 0;
-    const cnt = tn > 0 ? at.slice(0, tn) : at;
+    const cnt = tn > 0 ? atUp.slice(0, tn) : atUp;
+    const where = cnt.some(s => (+(s.w ?? 0) || 0) > tw + EPS_SAME) ? 'at that load or heavier' : 'at that load';
     const hi = +b.plan.repMax,
       cap = hi > 0 && total < hi * (tn > 0 ? tn : cnt.length) ? hi : Infinity;
     const n = cnt.reduce((a, s) => a + Math.min(+(s.r ?? 0), cap), 0);
@@ -504,8 +511,8 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
         fewer && n > total
           ? `${n}${u} over ${tn} set${tn === 1 ? '' : 's'}, last time ${total}${sx} over those. Fewer sets than usual: the target stays for next time`
           : n > total
-            ? `Beaten: ${n}${u} at that load, last time ${total}${sx}`
-            : `${n}${sx} of ${total + 1}${u} so far at that load`;
+            ? `Beaten: ${n}${u} ${where}, last time ${total}${sx}`
+            : `${n}${sx} of ${total + 1}${u} so far ${where}`;
     return { text: heavyTxt ? `${base}. ${heavyTxt}` : base, beat: !fewer && (n > total || heavyBeat) };
   }
   const rows = b.sets.filter(s => !s.warm && !s.drop),

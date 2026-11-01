@@ -39,6 +39,11 @@
 //      (=, +, -, @) is written with a ' in front, a number (a negative load
 //      on an assisted lift among them) as it is, and Ironlog's own export
 //      imported back gives every note as typed.
+//   9  NEW-30: sets heavier than a reps target's load count toward its reps
+//      (a heavier set is at least as hard): leg press 1,000 x 15, 15, 14
+//      against 990 for 37+ reads beaten on the screen and in the recap, as do
+//      990 x 13 x 3 and bench 235 x 9 x 3 after 225 x 8 x 3; heavier sets
+//      with fewer reps and a lower estimate (235 x 6 x 3) are not beaten.
 const { open, engine } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
@@ -530,6 +535,37 @@ const stored = H => H.ev(async secret => {
     ok(back && back.notes === '=HYPERLINK("http://x.example","click")' && JSON.stringify(back.ex) === JSON.stringify(['+cmd|calc', '@SUM(1+1)', '-2+3']), '8. imported back, every note is as typed', back);
     ok(!H.P.errors.length, '8. no page errors', H.P.errors);
     await H.P.ctx.close();
+  }
+
+  // ---- 9. NEW-30: a reps target beaten by heavier sets.
+  if (run(9)) {
+    const CASES = [
+      { name: 'leg press 1,000 x 15, 15, 14 after 990 x 12 x 3', ex: 'legPress', rr: [10, 15], step: 10, last: [990, 12], sets: [[1000, 15], [1000, 15], [1000, 14]], beat: true, line: /^Beaten: 44 reps at that load or heavier, last time 36/ },
+      { name: 'leg press 990 x 13 x 3 after 990 x 12 x 3 (a guard)', ex: 'legPress', rr: [10, 15], step: 10, last: [990, 12], sets: [[990, 13], [990, 13], [990, 13]], beat: true, line: /^Beaten: 39 reps at that load, last time 36/ },
+      { name: 'bench 235 x 9 x 3 after 225 x 8 x 3', ex: 'bench', rr: [6, 10], step: 5, last: [225, 8], sets: [[235, 9], [235, 9], [235, 9]], beat: true, line: /^Beaten: 27 reps at that load or heavier, last time 24/ },
+      { name: 'bench 235 x 6 x 3 after 225 x 8 x 3 (heavier, fewer reps, a lower estimate)', ex: 'bench', rr: [6, 10], step: 5, last: [225, 8], sets: [[235, 6], [235, 6], [235, 6]], beat: false, line: /Heavier than target/ }
+    ];
+    for (const c of CASES) {
+      const H = await phone(MON);
+      await H.ev(c => { const L = window.__ironlog; const S = L.state; const LB = 0.45359237; S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.autoDone = false;
+        S.routines = [{ id: 'R1', name: 'M', schedule: 'weekly', days: [{ id: 'D1', name: 'Day', items: [{ uid: 'u1', exId: c.ex, sets: 3, repMin: c.rr[0], repMax: c.rr[1], rir: 2, rest: 120, inc: c.step * LB, ss: null }] }] }]; S.activeRoutineId = 'R1';
+        S.sessions = ['2026-10-19', '2026-10-26'].map((date, i) => ({ id: 'h' + i, date, dayIdx: 0, dayId: 'D1', dayName: 'Day', routineId: 'R1', notes: '', ex: [{ exId: c.ex, rr: c.rr, sets: [1, 2, 3].map(() => ({ w: c.last[0] * LB, r: c.last[1], rir: 2, warm: false, drop: false })) }] }));
+        L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.render(); }, c);
+      await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+      for (const [k, [w, r]] of c.sets.entries()) {
+        await H.ev(([k, w, r]) => { const L = window.__ironlog; const s = L.state.draft.ex[0].sets[k]; s.w = w * 0.45359237; s.r = r; s.rir = 2; L.render(); }, [k, w, r]);
+        await H.page.click(`#view [data-act="sDone"][data-b="0"][data-s="${k}"]`); await wait(120);
+        const m = await H.modal(); if (m) await H.ev(() => window.__ironlog.ACT.mClose());
+      }
+      const line = await H.ev(() => { const e = document.getElementById('tp-0'); return e ? e.innerText : ''; });
+      await H.page.click('#view [data-act="finish"]');
+      for (let k = 0; k < 5; k++) { await wait(150); const q = await H.modal(); if (!q || q.kind !== 'confirm') break; await H.page.click(/sets not done/.test(q.title) ? '#modal [data-act="mOk"]' : '#modal [data-act="mAlt"]'); }
+      await wait(150);
+      const recap = await H.ev(() => (document.getElementById('modal') || {}).innerText || '');
+      const said = (recap.match(/\d+ of \d+ exercise targets? beaten/) || [''])[0];
+      ok(c.line.test(line) && said === (c.beat ? '1 of 1 exercise target beaten' : '0 of 1 exercise target beaten'), `9. ${c.name}: ${c.beat ? 'beaten' : 'not beaten'}, on the screen and in the recap`, { line, said });
+      await H.P.ctx.close();
+    }
   }
 
   await browser.close();

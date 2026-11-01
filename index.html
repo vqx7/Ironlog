@@ -13891,7 +13891,6 @@ ${more}`;
     const done = b2.sets.filter((s3) => s3.done && !s3.warm && !s3.drop && +(s3.r ?? 0) > 0);
     if (!done.length) return { text: "", beat: false };
     const tw = t4.w ?? 0;
-    const at2 = done.filter((s3) => Math.abs((+(s3.w ?? 0) || 0) - tw) < EPS_SAME);
     const heavier = done.filter((s3) => (+(s3.w ?? 0) || 0) > tw + EPS_SAME);
     let heavyBeat = false, heavyTxt = "";
     if (heavier.length && t4.prevBest != null && !ex.timed) {
@@ -13913,13 +13912,15 @@ ${more}`;
       }
     }
     if (t4.kind === "reps") {
-      if (!at2.length) return { text: heavyTxt || `Nothing logged at ${loadLabel(ex, tw)} yet`, beat: heavyBeat };
+      const atUp = done.filter((s3) => (+(s3.w ?? 0) || 0) >= tw - EPS_SAME);
+      if (!atUp.length) return { text: heavyTxt || `Nothing logged at ${loadLabel(ex, tw)} yet`, beat: heavyBeat };
       const tn = t4.n ?? 0, total = t4.total ?? 0;
-      const cnt = tn > 0 ? at2.slice(0, tn) : at2;
+      const cnt = tn > 0 ? atUp.slice(0, tn) : atUp;
+      const where = cnt.some((s3) => (+(s3.w ?? 0) || 0) > tw + EPS_SAME) ? "at that load or heavier" : "at that load";
       const hi = +b2.plan.repMax, cap = hi > 0 && total < hi * (tn > 0 ? tn : cnt.length) ? hi : Infinity;
       const n3 = cnt.reduce((a2, s3) => a2 + Math.min(+(s3.r ?? 0), cap), 0);
       const sx = ex.timed ? "s" : "", u4 = ex.timed ? "s" : " reps";
-      const fewer = t4 !== t0, base2 = fewer && n3 > total ? `${n3}${u4} over ${tn} set${tn === 1 ? "" : "s"}, last time ${total}${sx} over those. Fewer sets than usual: the target stays for next time` : n3 > total ? `Beaten: ${n3}${u4} at that load, last time ${total}${sx}` : `${n3}${sx} of ${total + 1}${u4} so far at that load`;
+      const fewer = t4 !== t0, base2 = fewer && n3 > total ? `${n3}${u4} over ${tn} set${tn === 1 ? "" : "s"}, last time ${total}${sx} over those. Fewer sets than usual: the target stays for next time` : n3 > total ? `Beaten: ${n3}${u4} ${where}, last time ${total}${sx}` : `${n3}${sx} of ${total + 1}${u4} so far ${where}`;
       return { text: heavyTxt ? `${base2}. ${heavyTxt}` : base2, beat: !fewer && (n3 > total || heavyBeat) };
     }
     const rows2 = b2.sets.filter((s3) => !s3.warm && !s3.drop), planned = Math.min(rows2.length, +b2.plan.sets || rows2.length);
