@@ -13,8 +13,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+# Least privilege (r66, PENDING 378): the token every job gets can only read the repository; the one job that
+# publishes to gh-pages (test, below) is given write, and nothing else is. A pull request from a fork gets a
+# read-only token whatever this says, and its preview is never published (the step's condition).
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: ${{ github.event_name == 'pull_request' && format('test-{0}', github.ref) || 'publish' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -110,6 +113,9 @@ jobs:
   test:
     needs: [suites, webkit]
     if: always()
+    # The only job that writes: it pushes the build to gh-pages.
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
