@@ -47,7 +47,8 @@ const atKey = (at: At): string => (at == null ? 'n' : String(at));
 /** The pictures of an exercise or of the workout's notes as small buttons that open each large, with Add picture after them while there is room. */
 export function picStrip(at: At, add = true): TemplateResult | typeof nothing {
   const ids = picsShown(idsAt(at));
-  const room = add && idsAt(at).length < PIC_MAX;
+  // Room is counted by the pictures this phone holds: ids whose bytes are elsewhere (a backup restored, another phone) show nothing and take no room.
+  const room = add && ids.length < PIC_MAX;
   if (!ids.length && !room) return nothing;
   return html`<div class="pstrip">${ids.map(
     (id, i) =>
@@ -77,7 +78,7 @@ export function picChange(t: EventTarget | null): boolean {
   const d0 = state.draft;
   t.value = '';
   if (!f || !d0) return true;
-  if (idsAt(at).length >= PIC_MAX) {
+  if (picsShown(idsAt(at)).length >= PIC_MAX) {
     toast(`A note holds ${PIC_MAX} pictures`);
     return true;
   }
@@ -95,7 +96,17 @@ export function picChange(t: EventTarget | null): boolean {
       if (at2 != null && at2 < 0) return;
       act(
         () => {
-          setAt(at2, [...idsAt(at2), r.id]);
+          /* A note full of ids whose bytes this phone does not hold makes room
+             for the new picture by dropping those first, oldest first: they
+             cannot be shown here, and the list keeps PIC_MAX, so the new one
+             is never the one cut. */
+          const ids = [...idsAt(at2)];
+          while (ids.length >= PIC_MAX) {
+            const k = ids.findIndex(x => !picsShown([x]).length);
+            if (k < 0) break;
+            ids.splice(k, 1);
+          }
+          setAt(at2, [...ids, r.id]);
         },
         { inProgress: true }
       );

@@ -8,7 +8,7 @@
    fixes of an older build's log, the suites' hook, the first draw, the
    screen kept on, the rest timer resumed, the account, and Undo's steps. */
 
-import { picsStart } from './pics';
+import { picsStart, picsTidy } from './pics';
 import { ACT, eventListeners, pageListeners } from './events';
 import { afterSheet, renderInner, sectionsStart, SHEETS } from './screens';
 import { THREE_URLS } from './config';
@@ -707,6 +707,7 @@ window.__ironlog = {
   joinAdjacent,
   sameExOnce,
   savedEx,
+  picsTidy,
   goalState,
   goalLine: (id: string) => markupOf(goalLine(id)),
   bwRefLoad,

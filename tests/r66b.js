@@ -31,6 +31,11 @@
 //      outline: the same steel in every accent, silver in light and steel in
 //      dark, the card's size unchanged from r65.2, taps reaching Start
 //      through it, and no other element given it.
+//   7  pictures over time (373): a note whose four ids came from a backup
+//      restored (no bytes on this phone) shows nothing, still offers
+//      + Picture, and keeps the new one; the bytes of a picture taken off are
+//      dropped once it has gone unnamed 45 days, while one the log still
+//      names, and one on a session in Recently deleted, are kept.
 const { open, engine } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
@@ -438,6 +443,70 @@ const stored = H => H.ev(async secret => {
       ok(was.box.join() === e.box.join(), `6. ${theme}: the card is the size it was on r65.2`, { was: was.box, now: e.box });
       if (theme === 'dark') ok(e.bg !== (await edgeOf(FILE, 'light', 'ember')).bg, '6. silver in light, steel in dark');
     }
+  }
+
+  // ---- 7. Pictures over time.
+  if (run(7)) {
+    const H = await phone(MON);
+    await seed(H);
+    await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+    // A backup restored on a new phone: the note names four pictures whose bytes stayed on the old one.
+    await H.ev(() => { const L = window.__ironlog; L.state.draft.ex[0].pics = ['pdead001', 'pdead002', 'pdead003', 'pdead004']; L.saveNow(); L.render(); });
+    await H.page.click('#view [data-act="bNote"][data-b="0"]'); await wait(150);
+    const sheet = await H.ev(() => ({ thumbs: document.querySelectorAll('#modal .pthumb').length, add: !!document.querySelector('#modal input[type="file"][data-pic="0"]') }));
+    ok(sheet.thumbs === 0 && sheet.add, '7. four pictures from a restored backup, not on this phone: none shown, + Picture still offered', sheet);
+    const bytes = await jpegWithSecret(H);
+    if (sheet.add) await pickFile(H, '#modal input[type="file"][data-pic="0"]', 'new.jpg', 'image/jpeg', bytes);
+    let d; for (let k = 0; k < 30; k++) { d = await H.draft(); if (d.ex[0].pics.some(x => !/^pdead/.test(x))) break; await wait(100); }
+    const mine = d.ex[0].pics.filter(x => !/^pdead/.test(x));
+    ok(d.ex[0].pics.length === 4 && mine.length === 1 && d.ex[0].pics[3] === mine[0], '7. the new picture is kept (the oldest unseen id makes room), never the one cut', d.ex[0].pics);
+    await H.ev(() => window.__ironlog.ACT.mClose());
+    // Three pictures: A stays on a saved session, B is taken off, C goes with a session deleted to Recently deleted.
+    await H.ev(() => { const L = window.__ironlog; L.state.draft.ex[0].pics = []; L.state.draft.pics = []; L.render(); });
+    const add = async sel => { const before = JSON.stringify(await H.draft()); await pickFile(H, sel, 'x.jpg', 'image/jpeg', bytes); for (let k = 0; k < 30 && JSON.stringify(await H.draft()) === before; k++) await wait(100); };
+    await add('#view input[type="file"][data-pic="n"]');
+    await add('#view input[type="file"][data-pic="n"]');
+    d = await H.draft();
+    const [A, B] = d.pics;
+    await H.ev(b => { const L = window.__ironlog; const d = L.state.draft; d.pics = d.pics.filter(x => x !== b); const s = d.ex[0].sets[0]; s.w = 100; s.r = 8; s.done = true; L.saveNow(); L.render(); }, B);
+    await H.page.click('#view [data-act="finish"]');
+    for (let k = 0; k < 5; k++) { await wait(150); const q = await H.modal(); if (!q || q.kind !== 'confirm') break; await H.page.click(/sets not done/.test(q.title) ? '#modal [data-act="mOk"]' : '#modal [data-act="mAlt"]'); }
+    await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    // A second session the same day, with C, then deleted (it waits in Recently deleted).
+    await H.go('today');
+    await H.ev(() => window.__ironlog.ACT.startSession({ dataset: { day: '0' } })); await wait(150);
+    await add('#view input[type="file"][data-pic="n"]');
+    const C = (await H.draft()).pics[0];
+    await H.ev(() => { const L = window.__ironlog; const s = L.state.draft.ex[0].sets[0]; s.w = 100; s.r = 8; s.done = true; L.saveNow(); L.render(); });
+    await H.page.click('#view [data-act="finish"]');
+    for (let k = 0; k < 5; k++) { await wait(150); const q = await H.modal(); if (!q || q.kind !== 'confirm') break; await H.page.click(/sets not done/.test(q.title) ? '#modal [data-act="mOk"]' : '#modal [data-act="mAlt"]'); }
+    await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    const dbg = await H.ev(c => ({ C: c, draft: !!window.__ironlog.state.draft, ss: window.__ironlog.state.sessions.map(s => [s.date, s.pics]), modal: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind }), C);
+    const s2 = await H.ev(c => window.__ironlog.state.sessions.find(s => (s.pics || []).includes(c)), C);
+    if (!ok(!!s2, '7. (the second session with its picture saved)', dbg)) throw new Error('no second session');
+    const sid2 = s2.id;
+    await H.ev(id => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); L.ACT.histDel({ dataset: { id } }); }, sid2); await wait(150);
+    await H.ev(() => { const m = document.querySelector('#modal [data-act="mOk"]'); if (m) m.click(); }); await wait(200);
+    const ids = rows => rows.map(r => r.id).sort().join();
+    // The new picture from the backup case, cleared off its note above, is unnamed too (D).
+    const D = mine[0];
+    // The phone's clock moved on, and the tidy it runs at start run now.
+    const at = async days => { await H.ev(async t => { window.__setClock(t); await window.__ironlog.picsTidy(); }, addD(MON, days) + 'T09:00:00'); await wait(100); return (await stored(H)).rows; };
+    let rows = await at(20);
+    ok(ids(rows) === [A, B, C, D].sort().join(), '7. after 20 days every picture is still on the phone (Undo and Recently deleted can still reach them)', { have: ids(rows) });
+    rows = await at(44);
+    ok(ids(rows) === [A, B, C, D].sort().join(), '7. at 44 days too', { have: ids(rows) });
+    rows = await at(50);
+    ok(ids(rows) === [A, C].sort().join(), '7. after 45 days unnamed, the pictures taken off are dropped; the one on a saved session and the one in Recently deleted stay', { have: ids(rows), A, B, C, D });
+    rows = await at(400);
+    ok(rows.some(r => r.id === A), '7. a picture the log names is never dropped, however long', { have: ids(rows) });
+    // A reload reads what the tidy left: the dropped are gone, the kept still show.
+    await H.page.reload(); await H.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(600);
+    await H.go('history'); await H.page.click('#view [data-act="histToggle"]'); await wait(200);
+    const shown = await H.ev(() => [...document.querySelectorAll('#view .pthumb img')].map(i => i.naturalWidth));
+    ok(shown.length === 1 && shown[0] > 0, '7. after a reload the saved session still shows its picture', shown);
+    ok(!H.P.errors.length, '7. no page errors', H.P.errors);
+    await H.P.ctx.close();
   }
 
   await browser.close();

@@ -12433,7 +12433,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var atKey = (at2) => at2 == null ? "n" : String(at2);
   function picStrip(at2, add = true) {
     const ids = picsShown(idsAt(at2));
-    const room = add && idsAt(at2).length < PIC_MAX;
+    const room = add && ids.length < PIC_MAX;
     if (!ids.length && !room) return A;
     return b`<div class="pstrip">${ids.map(
       (id, i5) => b`<button class="pthumb" data-act="picOpen" data-id=${id} data-at=${atKey(at2)} aria-label=${`Picture ${i5 + 1}: open`}>\x3cimg src=${picUrl(id) || ""} alt="" loading="lazy" decoding="async"></button>`
@@ -12453,7 +12453,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const d0 = state.draft;
     t4.value = "";
     if (!f3 || !d0) return true;
-    if (idsAt(at2).length >= PIC_MAX) {
+    if (picsShown(idsAt(at2)).length >= PIC_MAX) {
       toast(`A note holds ${PIC_MAX} pictures`);
       return true;
     }
@@ -12470,7 +12470,13 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         if (at22 != null && at22 < 0) return;
         act(
           () => {
-            setAt(at22, [...idsAt(at22), r4.id]);
+            const ids = [...idsAt(at22)];
+            while (ids.length >= PIC_MAX) {
+              const k2 = ids.findIndex((x2) => !picsShown([x2]).length);
+              if (k2 < 0) break;
+              ids.splice(k2, 1);
+            }
+            setAt(at22, [...ids, r4.id]);
           },
           { inProgress: true }
         );
@@ -26119,6 +26125,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     joinAdjacent,
     sameExOnce,
     savedEx,
+    picsTidy,
     goalState,
     goalLine: (id) => markupOf(goalLine(id)),
     bwRefLoad,

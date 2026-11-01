@@ -166,8 +166,8 @@ function named(): Set<string> {
   return out;
 }
 
-/** Marks the pictures the log names as seen today, and drops those not named for PIC_KEEP_DAYS. */
-async function picsTidy(now = Date.now()): Promise<void> {
+/** Marks the pictures the log names as seen, and drops those it has not named for PIC_KEEP_DAYS (at start; the suites call it by the hook). */
+export async function picsTidy(now = Date.now()): Promise<void> {
   if (!ready) return;
   const live = named();
   const seen: PicRow[] = [],
