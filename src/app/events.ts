@@ -6,6 +6,7 @@
    added them: each document listener runs in the order it was added, so the
    order is part of what a tap does. */
 
+import { BW_ACTS } from './bwnudge';
 import { isDate, today } from './util';
 import { bwShare } from './library';
 import { DIRTY_SAID } from './format';
@@ -65,6 +66,7 @@ export const ACT: Readonly<Record<string, Act>> = {
   ...START_ACTS,
   ...LIFT_ACTS,
   ...PIC_ACTS,
+  ...BW_ACTS,
   // A choice in the exercise menu: the sheet closes, then the session screen's action it names runs (workout.ts).
   bMenuDo(t) {
     const f = ACT[t.dataset.op || ''];

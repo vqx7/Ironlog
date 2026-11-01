@@ -244,12 +244,10 @@ export function savedEx(b: DraftBlock): SessionEx {
 /* A saved exercise's pictures go last, where normalize writes them, so a
    session saved by Finish is the same text a reload reads (r66, 373). */
 /** The saved exercises with each one's pictures moved to the end of its fields. */
-export function picsLast<B extends { pics?: string[] | undefined }>(ex: readonly B[]): B[] {
+export function picsLast(ex: readonly SessionEx[]): SessionEx[] {
   return ex.map(b => {
-    if (!b.pics) return b;
     const { pics, ...rest } = b;
-    // The rest spread back with pics after it is the same record with its fields reordered; the cast says it is still a B.
-    return { ...rest, pics } as unknown as B;
+    return pics ? { ...rest, pics } : b;
   });
 }
 

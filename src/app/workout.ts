@@ -17,6 +17,7 @@
    set, the heaviest load, the load step, the note, Type or dictate sets, a
    lift's history and muscles, Pick for me, and the recap. */
 
+import { bwWarn } from './bwnudge';
 import { picStrip } from './notepics';
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
@@ -106,6 +107,8 @@ import {
   rowBlank,
   rowPR,
   setDone,
+  settleLoad,
+  oddReps,
   CAL_OFFER
 } from './worksets';
 import { finish, finishNow } from './workfinish';
@@ -385,7 +388,9 @@ function setRow(
   // Last time's set for this row, beside this time's (r44, V): working sets only, by their order.
   const lt = s.warm || s.drop ? '' : lastCell(b, wn - 1, dupB);
   const gw = s.w == null ? greyW(b, si) : null;
-  return html`<div class=${`sg${nr ? ' norir' : ''} ${s.done ? 'done' : ''}${pr ? ' pr' : ''}`} data-pr=${pr || nothing}><button class=${'n wbtn' + (s.drop ? ' drop' : s.warm ? ' warm' : '')} aria-label=${`Set ${si + 1} type: ${s.warm ? 'warm-up' : s.drop ? 'drop set' : 'working set'}. Tap to change`} data-act="sWarm" data-b=${bi} data-s=${si}>${s.drop ? '↓' : s.warm ? 'W' : wn}</button><span class="ls" aria-label=${lt ? 'Last time ' + lt : 'No set last time'}>${lt ? lastText(lt) : '–'}</span>
+  /* A drop set sits under the set it drops from (r66, 375): set in, marked ↳
+     and named in the Last column, where it has no set of its own last time. */
+  return html`<div class=${`sg${nr ? ' norir' : ''} ${s.done ? 'done' : ''}${pr ? ' pr' : ''}${s.drop ? ' sgdrop' : ''}`} data-pr=${pr || nothing}><button class=${'n wbtn' + (s.drop ? ' drop' : s.warm ? ' warm' : '')} aria-label=${`Set ${si + 1} type: ${s.warm ? 'warm-up' : s.drop ? 'drop set' : 'working set'}. Tap to change`} data-act="sWarm" data-b=${bi} data-s=${si}>${s.drop ? '↳' : s.warm ? 'W' : wn}</button><span class="ls" aria-label=${lt ? 'Last time ' + lt : s.drop ? 'Drop set' : 'No set last time'}>${lt ? lastText(lt) : s.drop ? 'Drop' : '–'}</span>
         <input type="text" inputmode="decimal" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} load`} data-f="w" data-b=${bi} data-s=${si} class=${needHere(bi, si) ? 'need' : nothing} .value=${fieldValue(loadIn(ex, s.w))} placeholder=${gw != null ? loadIn(ex, gw) : emptyLoad(ex)}>
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} ${ex.timed ? 'seconds' : 'reps'}${ex.perSide ? ' per side' : ''}`} data-f="r" data-b=${bi} data-s=${si} .value=${fieldValue(s.r == null ? '' : String(s.r))} placeholder=${ph}>
         ${nr ? '' : rirButton(s.rir, bi, si, p.rir)}
@@ -410,10 +415,17 @@ function blockPart(
   const ss = p.ss ? letters[p.ss] : null;
   const nr = !rirShow(ex);
   const dupB = lastDup(d, bi);
+  /* A superset is drawn as one group (r66, PENDING 375; V picked "Grouped and
+     attached"): its exercises side by side in one box, A1 and A2 on their
+     names, the group's letter and its rest said once at the top. */
+  const grp = ss ? d.ex.filter(x => x.plan.ss === p.ss) : [];
+  const gk = grp.indexOf(b);
+  const ssCls = ss ? ` ss${gk === 0 ? ' ss-first' : ''}${gk === grp.length - 1 ? ' ss-last' : ''}` : '';
+  const ssLbl = ss ? html`<span class="sslbl">${ss}${gk + 1}</span> ` : '';
   if (!d.editingId && blockDone(b) && !blkIsOpen(bi, b) && !W.foldWait.has(b)) {
     const ws = b.sets.filter(x => !x.warm);
     const prs = b.sets.filter((x, si) => !x.warm && rowPR(b, si, d.date)).length;
-    return html`<section class="block folded" id=${`blk-${bi}`} data-bi=${bi}>${bgrip(bi, ex.name)}<button class="bfold" data-act="bOpen" data-b=${bi} aria-expanded="false" aria-label=${`${ex.name}, done. Open to edit`}><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${ex.name}</b><span>${ws.map(x => setShort(ex, x.w, x.r) + missedTag(x)).join(', ')}</span></span>${prs ? html`<span class="bf-pr">PR</span>` : ''}<span class="chev" aria-hidden="true"></span></button></section>`;
+    return html`<section class=${'block folded' + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${bgrip(bi, ex.name)}<button class="bfold" data-act="bOpen" data-b=${bi} aria-expanded="false" aria-label=${`${ex.name}, done. Open to edit`}><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${ssLbl}${ex.name}</b><span>${ws.map(x => setShort(ex, x.w, x.r) + missedTag(x)).join(', ')}</span></span>${prs ? html`<span class="bf-pr">PR</span>` : ''}<span class="chev" aria-hidden="true"></span></button></section>`;
   }
   const partner = ss
     ? d.ex
@@ -428,14 +440,14 @@ function blockPart(
     !!b.lastR &&
     b.lastR.some(r => r != null) &&
     b.sets.some((s, i) => !s.done && !s.warm && !s.drop && s.r == null && lastRFor(b, i) != null);
-  return html`<section class=${'block' + (ss ? ' ss' : '')} id=${`blk-${bi}`} data-bi=${bi}><div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : nothing}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? html` ${tipButton(ex.note, 'About ' + ex.name)}` : ''}</h3><p class="small muted">${ML[ex.primary]} · ${work || p.sets}×${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? '/side' : ''}${nr ? '' : ` @${b.inj || ((d.light || d.deload || b.light) && b.last) ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}`} · ${p.rest}s${ss ? html` · <span class="tag blue">Superset ${ss}</span>` : ''}${b.inj ? html` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ''}${markedNew(d, b.exId) ? html` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ''}</p>${lmChips(ex)}</div>
+  return html`<section class=${'block' + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? html`<p class="ssh">Superset ${ss}</p>` : ''}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : nothing}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? html` ${tipButton(ex.note, 'About ' + ex.name)}` : ''}</h3><p class="small muted">${ssLbl}${ML[ex.primary]} · ${work || p.sets}×${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? '/side' : ''}${nr ? '' : ` @${b.inj || ((d.light || d.deload || b.light) && b.last) ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}`} · ${p.rest}s${b.inj ? html` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ''}${markedNew(d, b.exId) ? html` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ''}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId && blockDone(b) ? html`<button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button>` : ''}<button class=${'ib' + (b.note || (b.pics && b.pics.length) ? ' noted' : '')} aria-label=${b.note || (b.pics && b.pics.length) ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle.">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
       ${
         b.target
           ? html`<p class="hint"><b>Today: ${targetText(b)}</b>${why ? html` ${tipButton(why, 'Why this target')}` : ''}<span class="tp muted u-dblock">${lastHead(b, dupB)}</span>${bl ? html`<span class="tp muted u-dblock">${bl}</span>` : ''}${b.easier ? html`<span class="tp ez">${b.easier}</span>` : ''}${progressLine(b, bi)}</p>`
           : html`<p class="hint">${hintOnce(b.hint || '', hintSeen)}</p>`
-      }${bi === calIdx ? html`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ''}
-      ${ss && partner ? html`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the pair.</p>` : ''}
+      }${d.editingId ? '' : bwWarn(b.exId)}${bi === calIdx ? html`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ''}
+      ${ss && partner && gk === 0 ? html`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? 'pair' : 'group'}.</p>` : ''}
       ${b.lastNote && !b.note ? html`<p class="small lnote">Your note, ${fmtDate(b.lastNote.date)}: ${b.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ''}
       ${b.note ? html`<p class="small bnote" id=${`bn-${bi}`}>${b.note}</p>` : html`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}${picStrip(bi, false)}
       <div class=${'sg head' + (nr ? ' norir' : '')}><span data-tip="Tap a set's number to mark it a warm-up or a drop set.">#</span><span class="lsh">Last</span><span class="lh" data-tip=${'Load: ' + loadWords(ex)}>${loadHead(ex)}</span><span>${ex.timed ? (ex.perSide ? 'Sec/side' : 'Sec') : ex.perSide ? 'Reps/side' : 'Reps'}</span>${nr ? '' : html`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
@@ -451,6 +463,10 @@ function blockPart(
           ? html`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working load, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>`
           : ''
       }${
+        !d.editingId && b.sets.some(x => x.done && !x.warm) && b.sets.some(x => !x.done)
+          ? html`<button class="btn sm" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them.">✓ Done</button>`
+          : ''
+      }${
         state.settings.timerMode !== 'off' && +p.rest > 0 && !d.past
           ? html`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p.rest} second rest`} data-tip="Start the rest timer.">⏱ ${p.rest}s</button>`
           : ''
@@ -461,7 +477,7 @@ const LOG_HELP_ON =
   'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ';
 
 const LOG_HELP =
-  'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. Drag an exercise by its ⠿ to change the order. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.';
+  'W marks a warm-up (kept, never analysed); tap it again for ↳, a drop set (counts as work and volume, never as a PR or target). + Drop adds one under the last set ticked, with no rest before it; a warm-up is added from the ⋯ menu. Drag an exercise by its ⠿ to change the order. A superset is one box, A1 and A2: after a set of A1 the screen moves to A2, and the rest timer starts after the last exercise of the group. Timed holds log seconds in the Sec column. The date can be changed to log a past session.';
 
 /* When a workout began, in the header: its time on the day it began, and
    "yesterday" or its date after that (r64, the r63 audit's P-S4-8: left open
@@ -873,6 +889,80 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     toast('Warm-up set added');
   },
   // The load the last working set was, or will be (a grey load counts); a missed set's is passed over (r55).
+  /* Done with an exercise that has sets left (r66, PENDING 374; V: "Ask:
+     log or skip"): one question, then every set left ticked as it shows (its
+     load and reps, typed or grey), or every set left taken off. Either is one
+     change with one Undo. Logging stops before anything is ticked when a set
+     left has no weight or reps to take, or looks far off (that one is ticked
+     on its own, where it is asked about). Skipped sets are fewer sets than
+     usual, so the target repeats next time (V's one rule). */
+  bDoneAll(t) {
+    const bi = Number(t.dataset.b);
+    const d = state.draft;
+    const b = d && d.ex[bi];
+    if (!d || !b) return;
+    // Warm-ups left undone are not part of either answer: Finish never saves an undone set, so they simply go.
+    const left = b.sets.map((s, si) => ({ s, si })).filter(x => !x.s.done && !x.s.warm);
+    if (!left.length && !b.sets.some(x => !x.done)) return;
+    const ex = EX(b.exId);
+    const n = left.length || b.sets.filter(x => !x.done).length;
+    const sets = `${n} set${n === 1 ? '' : 's'}`;
+    const blocked = left.find(
+      ({ s, si }) =>
+        (!ex.bw && !ex.timed && s.w == null && greyW(b, si) == null) ||
+        (!(+(s.r ?? 0) > 0) && !((greyR(b, si) ?? 0) > 0)) ||
+        (s.w != null && !s.warm && !s.drop && oddLoad(b, si, d.date)) ||
+        oddReps(b, s)
+    );
+    const ref = blkRef(bi);
+    const after = (): void => {
+      rerenderKeepScroll();
+      if (W.foldT) clearTimeout(W.foldT);
+      W.foldT = setTimeout(() => autoFold(ref), FOLD_MS.tick);
+    };
+    const skip = (): void => {
+      act(
+        () => {
+          b.sets = b.sets.filter(x => x.done);
+        },
+        { inProgress: true, undo: true }
+      );
+      after();
+      toast(`${sets} skipped`, true);
+    };
+    const log = (): void => {
+      act(
+        () => {
+          for (const { s, si } of left) {
+            if (!(+(s.r ?? 0) > 0)) s.r = Math.round(greyR(b, si) ?? 0);
+            settleLoad(b, si);
+            s.done = true;
+            assessSet(bi, si);
+          }
+          b.sets = b.sets.filter(x => x.done);
+        },
+        { inProgress: true, undo: true }
+      );
+      after();
+      toast(`${sets} logged as shown`, true);
+    };
+    if (blocked)
+      confirmBox(
+        `${exName(b.exId)}: ${sets} left`,
+        `Set ${blocked.si + 1} has no weight or reps to take, or looks far off, so tick it on its own. Or skip the sets left: fewer sets than usual, so the target repeats next time.`,
+        'Skip them',
+        skip
+      );
+    else
+      confirmBox(
+        `${exName(b.exId)}: ${sets} left`,
+        'Log them as they show, or skip them. Skipped sets are fewer than usual, so the target repeats next time.',
+        'Log them as shown',
+        log,
+        false,
+        { label: 'Skip them', fn: skip }
+      );
+  },
   dropAdd(t) {
     const b = tapBlock(t);
     if (!b) return;
@@ -887,9 +977,16 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
     }
     const w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * DROP_START) : null;
+    // Attached to the last working set ticked (r66, 375): after it and any drops already under it, not at the end of the exercise.
+    let at = -1;
+    b.sets.forEach((x, i) => {
+      if (x.done && !x.warm && !x.drop) at = i;
+    });
+    if (at < 0) at = b.sets.length - 1;
+    while (at + 1 < b.sets.length && b.sets[at + 1].drop) at++;
     act(
       () => {
-        b.sets.push(newRow({ w, drop: true }));
+        b.sets.splice(at + 1, 0, newRow({ w, drop: true }));
       },
       { inProgress: true }
     );

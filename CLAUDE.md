@@ -211,4 +211,5 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
 - The comparisons of old builds stay pinned to what they proved: `tests/r36.js` (r35 and r52), `tests/r52.js`
   (r51 and r52), `tests/r53w.js` (r52 and r53), and since r64, which changes those numbers and sentences on purpose,
   `tests/r61.js` section 1 (r60 and r61), `tests/r62.js` sections 1 and 2 (r61 and r62) and `tests/r63.js` section 1
-  (r62 and r63).
+  (r62 and r63); since r66, which changes the session screen and Today on purpose, `tests/r60.js` section 1 (r59 and r60) and
+  `tests/r59.js` section 1 (r58 and r59).

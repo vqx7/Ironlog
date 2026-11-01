@@ -253,7 +253,9 @@ const LB = 0.45359237;
       L.state.settings.bwEvery = 30; L.render(); o.every30 = card();
       L.state.settings.bwEvery = 7; L.state.bodyweights = [{ id: 'b1', date: '2026-10-02', kg: 80 }]; L.render(); o.every7 = card();
       L.state.settings.bwEvery = 0; L.render(); o.off = card();
-      delete L.state.settings.bwEvery; L.state.bodyweights = []; L.render(); o.none = card();
+      // Since r66 (PENDING 372) a bodyweight lift in the routine in use asks too, from the first day; this lifter's routine has none, as the case means.
+      for (const r of L.state.routines) for (const d of r.days) d.items = d.items.filter(i => !L.EX(i.exId).bw);
+      delete L.state.settings.bwEvery; L.state.bodyweights = []; L.invalidate(); L.render(); o.none = card();
       // r34.2: never weighed in asks only a lifter whose log has bodyweight lifts, where it changes the numbers.
       L.state.sessions[0].ex.push({ exId: 'pushup', rr: [10, 20], sets: [{ w: 0, r: 15, rir: 1, done: true }] }); L.invalidate(); L.render(); o.noneBw = card();
       return o;
@@ -385,7 +387,8 @@ const LB = 0.45359237;
       const i = document.querySelector('[data-f="r"][data-b="0"][data-s="0"]'); i.value = '10'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true }));
       document.querySelector('[data-act="sDone"][data-b="0"][data-s="0"]').click(); await new Promise(r => setTimeout(r, 100)); L.render();
       const btn = document.querySelector('.row [data-act="dropAdd"][data-b="0"]'); const after = !!btn; if (btn) btn.click(); await new Promise(r => setTimeout(r, 100));
-      const b = L.state.draft.ex[0]; const last = b.sets[b.sets.length - 1];
+      // Since r66 (PENDING 375) the drop set goes straight under the set it drops from, not after the sets still to do.
+      const b = L.state.draft.ex[0]; const last = b.sets[1];
       return { before, after, drop: last.drop, w: last.w, base: b.sets[0].w };
     });
     ok(!drop.before && drop.after && drop.drop && drop.w === drop.base - Math.ceil(drop.base * 0.25 / 2.5 - 1e-6) * 2.5, '+ Drop shows beside + Set once a set is done, and adds a drop set at about 75% in whole 2.5 kg steps (' + drop.base + ' to ' + drop.w + ')', drop);

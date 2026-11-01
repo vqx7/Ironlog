@@ -8,6 +8,7 @@
    Undo, demo data's Load, the account's own actions (sign in, sign out,
    delete) and the fill-in choice for the session's rows (loadAsk). */
 
+import { bwSettings } from './bwnudge';
 import { picsClear } from './pics';
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
@@ -751,6 +752,7 @@ export function viewSettings(): TemplateResult {
 `
       )}</select></label>
 </div>
+${bwSettings()}
 </div>
 `
     ),
@@ -1292,7 +1294,9 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           { undo: true }
         );
         // Pictures are not part of the log Undo keeps, so they go at once, as the question says (r66, 373).
-        picsClear().catch((e: unknown) => log('pics-clear', e));
+        picsClear().catch((e: unknown) => {
+          log('pics-clear', e);
+        });
         ui.tab = 'today';
         render();
         toast('Everything erased', true);

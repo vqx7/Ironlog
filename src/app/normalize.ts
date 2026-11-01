@@ -53,6 +53,7 @@ import {
   KNOWN_MEAS,
   KNOWN_BLOCK,
   KNOWN_SEX,
+  KNOWN_SESS,
   MEAS_MAX_CM,
   STATE_VERSION,
   TRASH_BYTES,
@@ -260,82 +261,86 @@ export function cleanSess(raw: unknown, si: number): Session {
   const ss = rec(raw) || {};
   const durMin = Number(ss.durMin),
     t = Number(ss.t);
-  return keepExtra(raw, {
-    id: typeof ss.id === 'string' ? fixId(ss.id) : did('s', raw, si),
-    date: typeof ss.date === 'string' ? ss.date : '',
-    dayIdx: clampN(ss.dayIdx, 0, MAX_DAYS - 1, 0),
-    dayId: typeof ss.dayId === 'string' ? fixId(ss.dayId) : null,
-    durMin: Number.isFinite(durMin) && durMin >= 1 && durMin <= LIMITS.minutes ? Math.round(durMin) : null,
-    dayName: typeof ss.dayName === 'string' ? ss.dayName : 'Session',
-    routineId: typeof ss.routineId === 'string' && ss.routineId ? fixId(ss.routineId) : '',
-    notes: typeof ss.notes === 'string' ? ss.notes : '',
-    demo: !!ss.demo,
-    deload: !!ss.deload,
-    light:
-      ss.light === true || (ss.light == null && typeof ss.dayName === 'string' && / \(lighter\)$/.test(ss.dayName)),
-    // Freestyle: not tied to a routine day. Check-in: the three pre-session taps.
-    free: ss.free === true ? true : undefined,
-    chk: cleanChk(rec(ss.chk)) || undefined,
-    ex: (arr(ss.ex) || [])
-      .flatMap((b0): SessionEx[] => {
-        const b = rec(b0);
-        if (!b || typeof b.exId !== 'string' || !arr(b.sets)) return [];
-        const rr = arr(b.rr);
-        return [
-          keepExtra(
-            b0,
-            {
-              exId: fixId(b.exId),
-              note: typeof b.note === 'string' ? b.note : '',
-              // Planned rep range at the time, [min,max]. Older sessions have none.
-              rr:
-                rr && rr.length === 2 && rr.every(v => Number.isFinite(Number(v)) && Number(v) > 0)
-                  ? pair(Math.round(Number(rr[0])), Math.round(Number(rr[1])))
-                  : null,
-              // Marked trimmed (Short on time, under half its sets) until r53. Neither written nor read since r54 (V's one rule reads the log); kept, here and in drafts, so a record saved before keeps its shape and hash.
-              cut: b.cut === true ? true : undefined,
-              // One exercise made lighter mid-session (r31, Make it lighter): out of trends and targets, the rest of the session counts.
-              light: b.light === true ? true : undefined,
-              // Held for a flagged injury, its key (r54): left out of the stall test. Absent unless held, so earlier records keep their hash.
-              ...(typeof b.inj === 'string' && isMuscleOrJoint(b.inj) ? { inj: b.inj } : {}),
-              sets: (arr(b.sets) || []).flatMap((x0): LoggedSet[] => {
-                const x = rec(x0);
-                if (!x) return [];
-                return [
-                  keepExtra(x0, {
-                    // Below 0 only for assisted sets (bodyweight minus the machine's help).
-                    w: clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
-                    r: Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
-                    rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
-                    warm: !!x.warm,
-                    drop: !!x.drop && !x.warm,
-                    cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
-                    // The row's own id (r56.1), last, where a build before it kept the unknown field.
-                    ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
-                  })
-                ];
-              }),
-              // The sets its routine's plan gave it when saved (r58, 339 h), last, as Finish writes it; absent unless recorded, so older records keep their hash.
-              ...(typeof b.ps === 'number' && Number.isInteger(b.ps) && b.ps >= 1 && b.ps <= LIMITS.sets
-                ? { ps: b.ps }
-                : {}),
-              // Done at a new machine or gym (r61, 343 7), last, as Finish writes it; absent unless marked, so older records keep their hash.
-              ...(b.nw === true ? { nw: true as const } : {}),
-              // The pictures on its note (r66, 373), by id, last; absent unless there are any, so older records keep their hash.
-              ...picsField(b.pics)
-            },
-            KNOWN_SEX
-          )
-        ];
-      })
-      .filter(b => b.sets.length),
-    // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold (r56.1).
-    t: isTime(Math.round(t)) ? Math.round(t) : undefined,
-    // The sessions a week its routine planned when saved (r55, pwOf); absent unless recorded, so older records keep their hash.
-    pw: typeof ss.pw === 'number' && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= WEEK_DAYS ? ss.pw : undefined,
-    // The pictures on the workout's notes (r66, 373), by id; absent unless there are any.
-    pics: picIds(ss.pics)
-  });
+  return keepExtra(
+    raw,
+    {
+      id: typeof ss.id === 'string' ? fixId(ss.id) : did('s', raw, si),
+      date: typeof ss.date === 'string' ? ss.date : '',
+      dayIdx: clampN(ss.dayIdx, 0, MAX_DAYS - 1, 0),
+      dayId: typeof ss.dayId === 'string' ? fixId(ss.dayId) : null,
+      durMin: Number.isFinite(durMin) && durMin >= 1 && durMin <= LIMITS.minutes ? Math.round(durMin) : null,
+      dayName: typeof ss.dayName === 'string' ? ss.dayName : 'Session',
+      routineId: typeof ss.routineId === 'string' && ss.routineId ? fixId(ss.routineId) : '',
+      notes: typeof ss.notes === 'string' ? ss.notes : '',
+      demo: !!ss.demo,
+      deload: !!ss.deload,
+      light:
+        ss.light === true || (ss.light == null && typeof ss.dayName === 'string' && / \(lighter\)$/.test(ss.dayName)),
+      // Freestyle: not tied to a routine day. Check-in: the three pre-session taps.
+      free: ss.free === true ? true : undefined,
+      chk: cleanChk(rec(ss.chk)) || undefined,
+      ex: (arr(ss.ex) || [])
+        .flatMap((b0): SessionEx[] => {
+          const b = rec(b0);
+          if (!b || typeof b.exId !== 'string' || !arr(b.sets)) return [];
+          const rr = arr(b.rr);
+          return [
+            keepExtra(
+              b0,
+              {
+                exId: fixId(b.exId),
+                note: typeof b.note === 'string' ? b.note : '',
+                // Planned rep range at the time, [min,max]. Older sessions have none.
+                rr:
+                  rr && rr.length === 2 && rr.every(v => Number.isFinite(Number(v)) && Number(v) > 0)
+                    ? pair(Math.round(Number(rr[0])), Math.round(Number(rr[1])))
+                    : null,
+                // Marked trimmed (Short on time, under half its sets) until r53. Neither written nor read since r54 (V's one rule reads the log); kept, here and in drafts, so a record saved before keeps its shape and hash.
+                cut: b.cut === true ? true : undefined,
+                // One exercise made lighter mid-session (r31, Make it lighter): out of trends and targets, the rest of the session counts.
+                light: b.light === true ? true : undefined,
+                // Held for a flagged injury, its key (r54): left out of the stall test. Absent unless held, so earlier records keep their hash.
+                ...(typeof b.inj === 'string' && isMuscleOrJoint(b.inj) ? { inj: b.inj } : {}),
+                sets: (arr(b.sets) || []).flatMap((x0): LoggedSet[] => {
+                  const x = rec(x0);
+                  if (!x) return [];
+                  return [
+                    keepExtra(x0, {
+                      // Below 0 only for assisted sets (bodyweight minus the machine's help).
+                      w: clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
+                      r: Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
+                      rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
+                      warm: !!x.warm,
+                      drop: !!x.drop && !x.warm,
+                      cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
+                      // The row's own id (r56.1), last, where a build before it kept the unknown field.
+                      ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
+                    })
+                  ];
+                }),
+                // The sets its routine's plan gave it when saved (r58, 339 h), last, as Finish writes it; absent unless recorded, so older records keep their hash.
+                ...(typeof b.ps === 'number' && Number.isInteger(b.ps) && b.ps >= 1 && b.ps <= LIMITS.sets
+                  ? { ps: b.ps }
+                  : {}),
+                // Done at a new machine or gym (r61, 343 7), last, as Finish writes it; absent unless marked, so older records keep their hash.
+                ...(b.nw === true ? { nw: true as const } : {}),
+                // The pictures on its note (r66, 373), by id, last; absent unless there are any, so older records keep their hash.
+                ...picsField(b.pics)
+              },
+              KNOWN_SEX
+            )
+          ];
+        })
+        .filter(b => b.sets.length),
+      // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold (r56.1).
+      t: isTime(Math.round(t)) ? Math.round(t) : undefined,
+      // The sessions a week its routine planned when saved (r55, pwOf); absent unless recorded, so older records keep their hash.
+      pw: typeof ss.pw === 'number' && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= WEEK_DAYS ? ss.pw : undefined,
+      // The pictures on the workout's notes (r66, 373), by id, last; absent unless there are any, so older records keep their shape and hash.
+      ...picsField(ss.pics)
+    },
+    KNOWN_SESS
+  );
 }
 
 /* ---------- the routine a new install starts with ---------- */
@@ -752,6 +757,9 @@ function cleanRoutine(r0: unknown, ri: number): Routine {
 function cleanDraft(d: Rec, date: string): DraftLike {
   const startedAt = Number(d.startedAt),
     durMin = Number(d.durMin);
+  // The workout's pictures (r66, 373): kept when valid, else the field goes, so a draft without any keeps its shape.
+  const pics = picIds(d.pics);
+  if (!pics) delete d.pics;
   return Object.assign(d, {
     date,
     id: typeof d.id === 'string' ? fixId(d.id) : did('x', { date: d.date, dayName: d.dayName }, 0),
@@ -766,8 +774,7 @@ function cleanDraft(d: Rec, date: string): DraftLike {
     deload: !!d.deload,
     light: !!d.light,
     limited: d.limited === true ? true : undefined,
-    // The pictures on the workout's notes (r66, 373), by id; absent unless there are any.
-    pics: picIds(d.pics),
+    ...(pics ? { pics } : {}),
     free: d.free === true ? true : undefined,
     // A past workout typed in after the fact: no rest timer, no clock, no check-in.
     past: d.past === true ? true : undefined,

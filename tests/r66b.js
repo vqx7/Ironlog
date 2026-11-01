@@ -8,6 +8,23 @@
 //      question and put back by Undo; Discard asks when only a picture was
 //      added; r65.2 keeps a session's pictures through its own save (a guard
 //      on the build before); Erase everything takes them off the phone.
+//   2  Done with an exercise that has sets left (374): one tap, then Log
+//      them as shown (each set left ticked at its grey load and reps, one
+//      Undo) or Skip them (taken off, one Undo); the next session reads a
+//      skipped exercise as short of its usual sets, so the target repeats;
+//      a set left with nothing to take is not logged blind.
+//   3  supersets and drop sets (375): a superset is one group, its letter at
+//      the top and A1, A2 on the exercises; after A1's set the screen brings
+//      up A2's next set, and the rest starts only after the pair; + Drop puts
+//      the drop set straight under the set it drops from, marked and named,
+//      and ticking that set starts no rest while the drop waits.
+//   4  bodyweight (372): with none logged, Today asks from the first day a
+//      bodyweight lift is in the routine (Later puts it off), each
+//      bodyweight lift in a session says it counts only the weight added and
+//      opens a sheet to set it, adding one says so once, and Settings holds
+//      the field; one weigh-in later all of it goes quiet.
+//   5  368: no button is a block (the card's class); full-width buttons are
+//      fullw and still full width.
 const { open, engine } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
@@ -192,6 +209,156 @@ const stored = H => H.ev(async secret => {
     const after = await stored(H);
     ok(after.rows.length === 0, '1. after Erase everything no picture is left on the phone', after);
     ok(!H.P.errors.length, '1. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 2. Done with sets left.
+  if (run(2)) {
+    const H = await phone(MON);
+    const hist = [0, 7].map((k, i) => ({ id: 'h' + i, date: addD(MON, -14 + k), dayIdx: 0, dayId: 'D1', dayName: 'Push', routineId: 'R1', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [1, 2, 3].map(() => ({ w: 225 * LB, r: 8, rir: 2, warm: false, drop: false })) }] }));
+    await seed(H, { sessions: hist });
+    await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+    ok(!(await H.page.$('#view [data-act="bDoneAll"][data-b="0"]')), '2. no Done before a set is done');
+    // Set 1 done by hand, then Done: Log them as shown.
+    await H.ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; b.sets[0].r = 9; L.render(); });
+    await H.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(150);
+    ok(!!(await H.page.$('#view [data-act="bDoneAll"][data-b="0"]')), '2. Done shows once a set is done and sets are left');
+    await H.page.click('#view [data-act="bDoneAll"][data-b="0"]'); await wait(150);
+    let q = await H.modal();
+    ok(q && q.kind === 'confirm' && /2 sets left/.test(q.title) && /Log them as shown/.test(q.text) && /Skip them/.test(q.text), '2. one question: log the 2 left as shown, or skip them', q);
+    await H.page.click('#modal [data-act="mOk"]'); await wait(200);
+    let d = await H.draft();
+    const b0 = d.ex[0];
+    ok(b0.sets.length === 3 && b0.sets.every(x => x.done) && b0.sets.slice(1).every(x => Math.round(x.w / LB) === 225 && x.r === 8), '2. Log: both left ticked at their grey 225 x 8', b0.sets.map(x => [x.done, Math.round(x.w / LB), x.r]));
+    await H.ev(() => { const b = document.querySelector('#toast button'); if (b) b.click(); }); await wait(200);
+    d = await H.draft();
+    ok(d.ex[0].sets.filter(x => x.done).length === 1, '2. one Undo takes the whole Log back', d.ex[0].sets.map(x => x.done));
+    // Skip them on the press.
+    await H.ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[1]; b.sets[0].w = 135 * 0.45359237; b.sets[0].r = 8; L.render(); });
+    await H.page.click('#view [data-act="sDone"][data-b="1"][data-s="0"]'); await wait(150);
+    await H.page.click('#view [data-act="bDoneAll"][data-b="1"]'); await wait(150);
+    q = await H.modal();
+    ok(q && /1 set left/.test(q.title), '2. the press asks about its 1 set left', q);
+    await H.page.click('#modal [data-act="mAlt"]'); await wait(200);
+    d = await H.draft();
+    ok(d.ex[1].sets.length === 1 && d.ex[1].sets[0].done, '2. Skip: the set left is taken off, the done one kept', d.ex[1].sets);
+    // A set left typed far off (a slipped digit, 3000) is not logged blind: it is ticked on its own, where it is asked about; only Skip is offered.
+    await H.ev(() => { const L = window.__ironlog; const d = L.state.draft; d.ex.push(L.newBlock('dbRow', { sets: 2, repMin: 8, repMax: 12, rir: 2, rest: 90, inc: 2.5 })); const b = d.ex[d.ex.length - 1]; b.sets[0].w = 30; b.sets[0].r = 10; b.sets[0].done = true; b.sets[1].w = 300; b.sets[1].r = 10; L.render(); });
+    const k = d.ex.length;
+    await H.page.click(`#view [data-act="bDoneAll"][data-b="${k}"]`); await wait(150);
+    q = await H.modal();
+    ok(q && /looks far off/.test(q.text) && /Set 2/.test(q.text) && !(await H.page.$('#modal [data-act="mAlt"]')), '2. a set left typed far off: it names it, says to tick it on its own, and offers only Skip', q);
+    await H.ev(() => window.__ironlog.ACT.mClose());
+    // Finish with the bench in full and the press skipped: the next week the press repeats its target.
+    await H.page.click('#view [data-act="bDoneAll"][data-b="0"]'); await wait(150); await H.page.click('#modal [data-act="mOk"]'); await wait(200);
+    await H.ev(() => { const L = window.__ironlog; L.state.draft.ex.pop(); L.render(); });
+    await H.page.click('#view [data-act="finish"]');
+    for (let j = 0; j < 5; j++) { await wait(150); const m = await H.modal(); if (!m || m.kind !== 'confirm') break; await H.page.click('#modal [data-act="mAlt"]'); }
+    await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    const saved = await H.ev(() => window.__ironlog.state.sessions.find(s => s.date === '2026-11-02').ex.map(b => [b.exId, b.sets.length]));
+    ok(JSON.stringify(saved) === JSON.stringify([['bench', 3], ['ohp', 1]]), '2. saved: bench 3 sets, press 1', saved);
+    await H.ev(t => { window.__setClock(t); const L = window.__ironlog; L.invalidate(); L.render(); }, addD(MON, 7) + 'T09:00:00'); await wait(100);
+    await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+    d = await H.draft();
+    ok(d.ex[1].tgt && Math.round(d.ex[1].tgt.w / LB) === 135, '2. the next week the press asks 135 again: one set of two is short of its usual, so the target repeats', d.ex[1].tgt);
+    ok(!H.P.errors.length, '2. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 3. Supersets and drop sets.
+  if (run(3)) {
+    const H = await phone(MON);
+    await seed(H);
+    await H.ev(() => { const L = window.__ironlog; const R = L.state.routines[0]; R.days[0].items[0].ss = 'g1'; R.days[0].items[1].ss = 'g1'; L.state.settings.timerMode = 'auto'; L.state = L.normalize(L.state); L.saveNow(); L.render(); });
+    await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+    const look = await H.ev(() => [0, 1].map(i => { const s = document.getElementById('blk-' + i); return { cls: s.className, top: (s.querySelector('.ssh') || {}).innerText || '', lbl: (s.querySelector('.sslbl') || {}).innerText || '' }; }));
+    ok(/ss-first/.test(look[0].cls) && /ss-last/.test(look[1].cls) && /Superset A/i.test(look[0].top) && !look[1].top && look[0].lbl === 'A1' && look[1].lbl === 'A2', '3. one group: Superset A at the top, A1 and A2 on the exercises', look);
+    const boxed = await H.ev(() => { const a = document.getElementById('blk-0').getBoundingClientRect(), b = document.getElementById('blk-1').getBoundingClientRect(); return Math.round(b.top - a.bottom); });
+    ok(boxed <= 1, '3. the two cards meet edge to edge (one box)', boxed);
+    await H.ev(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets[0].w = 225 * 0.45359237; d.ex[0].sets[0].r = 8; d.ex[1].sets[0].w = 135 * 0.45359237; d.ex[1].sets[0].r = 8; L.render(); });
+    await H.ev(() => window.scrollTo(0, 0));
+    await H.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(900);
+    const timer1 = await H.ev(() => !document.getElementById('timer').hidden);
+    const seen = await H.ev(() => { const r = document.querySelector('[data-act="sDone"][data-b="1"][data-s="0"]').closest('.sg').getBoundingClientRect(); return r.top >= 0 && r.bottom <= window.innerHeight; });
+    ok(!timer1, '3. after A1\'s set: no rest yet');
+    ok(seen, '3. after A1\'s set the screen brings up A2\'s set');
+    await H.page.click('#view [data-act="sDone"][data-b="1"][data-s="0"]'); await wait(300);
+    ok(await H.ev(() => !document.getElementById('timer').hidden), '3. after A2\'s set: the rest starts');
+    await H.ev(() => window.__ironlog.ACT.tStop && window.__ironlog.ACT.tStop());
+    // + Drop on A1 goes under its set 1, before sets 2 and 3.
+    await H.page.click('#view [data-act="dropAdd"][data-b="0"]'); await wait(200);
+    let d = await H.draft();
+    ok(d.ex[0].sets[1].drop && !d.ex[0].sets[2].drop && d.ex[0].sets.length === 4, '3. + Drop puts the drop set straight under set 1', d.ex[0].sets.map(x => (x.drop ? 'D' : x.done ? 'x' : 'o')));
+    const row = await H.ev(() => { const r = document.querySelector('[data-act="sDone"][data-b="0"][data-s="1"]').closest('.sg'); return { cls: r.className, n: r.querySelector('.wbtn').innerText, ls: r.querySelector('.ls').innerText }; });
+    ok(/sgdrop/.test(row.cls) && row.n === '↳' && row.ls === 'Drop', '3. the drop row is set in, marked ↳ and named Drop', row);
+    // Set 2 ticked with a drop waiting under it: no rest before the drop.
+    await H.ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; b.sets.splice(1, 1); b.sets[1].w = 225 * 0.45359237; b.sets[1].r = 8; L.render(); });
+    await H.ev(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[1].sets[1].done = true; d.ex[1].sets[1].w = 135 * 0.45359237; d.ex[1].sets[1].r = 8; d.ex[1].sets[2] && (d.ex[1].sets.length = 2); L.render(); });
+    await H.page.click('#view [data-act="sDone"][data-b="0"][data-s="1"]'); await wait(150);
+    await H.page.click('#view [data-act="dropAdd"][data-b="0"]'); await wait(150);
+    await H.ev(() => window.__ironlog.ACT.tStop && window.__ironlog.ACT.tStop());
+    await H.ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; b.sets[1].done = false; L.render(); });
+    await H.page.click('#view [data-act="sDone"][data-b="0"][data-s="1"]'); await wait(300);
+    ok(await H.ev(() => document.getElementById('timer').hidden), '3. a set with a drop waiting under it starts no rest');
+    await H.page.click('#view [data-act="sDone"][data-b="0"][data-s="2"]'); await wait(300);
+    ok(await H.ev(() => !document.getElementById('timer').hidden), '3. the drop done, the rest starts');
+    ok(!H.P.errors.length, '3. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 4. Bodyweight.
+  if (run(4)) {
+    const H = await phone(MON);
+    await seed(H);
+    await H.ev(() => { const L = window.__ironlog; L.state.routines[0].days[0].items.push({ uid: 'u3', exId: 'pullup', sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 120, inc: 0, ss: null }); L.state = L.normalize(L.state); L.saveNow(); L.render(); });
+    const t0 = await H.ev(() => document.getElementById('view').innerText);
+    ok(/Your bodyweight/.test(t0) && !!(await H.page.$('#bwDue')), '4. no weigh-in and pull-ups in the routine: Today asks from the first day', t0.slice(0, 400));
+    await H.page.click('#bwDue [data-act="bwLater"]'); await wait(120);
+    ok(!(await H.page.$('#bwDue')), '4. Later puts it off');
+    await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+    const d = await H.draft();
+    const pb = d.ex.findIndex(b => b.exId === 'pullup');
+    const warn = await H.ev(i => { const e = document.querySelector(`#blk-${i} .bwwarn`); return e ? e.innerText : ''; }, pb);
+    ok(/counts only the weight you add/.test(warn), '4. the pull-ups say they count only the weight added', warn);
+    ok(!(await H.ev(() => !!document.querySelector('#blk-0 .bwwarn'))), '4. the bench says nothing about bodyweight');
+    await H.page.click(`#blk-${pb} [data-act="bwOpen"]`); await wait(150);
+    const m = await H.modal();
+    ok(m && m.kind === 'bw' && /you type only what you add/.test(m.text) && /Optional/.test(m.text), '4. Set it opens the bodyweight sheet: what it counts, optional', m);
+    await H.ev(() => { document.getElementById('bwSheetVal').value = '180'; });
+    await H.page.click('#modal [data-act="addBW"]'); await wait(200);
+    const after = await H.ev(i => ({ modal: !!window.__ironlog.ui.modal, warn: !!document.querySelector(`#blk-${i} .bwwarn`), bw: window.__ironlog.state.bodyweights.map(b => Math.round(b.kg / 0.45359237)) }), pb);
+    ok(!after.modal && !after.warn && after.bw.join() === '180', '4. saved: the sheet closes, the line goes, one weigh-in of 180', after);
+    await H.go('settings');
+    await H.ev(() => document.querySelectorAll('#view details:not([open]) > summary').forEach(x => x.click())); await wait(120);
+    const st = await H.ev(() => { const e = document.getElementById('bwSet'); return e ? e.parentElement.innerText : ''; });
+    ok(/Latest 180/.test(st), '4. Settings holds the bodyweight field, with the latest', st.slice(0, 200));
+    ok(!H.P.errors.length, '4. no page errors', H.P.errors);
+    await H.P.ctx.close();
+    // Adding a bodyweight lift to a plan day says so once, without a sheet in the way.
+    const H2 = await phone(MON);
+    await seed(H2);
+    await H2.ev(() => { const L = window.__ironlog; L.ui.tab = 'program'; L.render(); L.openModal({ kind: 'picker', mode: 'addDay', day: 0, title: 'Add', q: 'pull-up', m: '' }); });
+    await wait(150);
+    await H2.page.click('#modal [data-act="pickDo"][data-ex="pullup"]'); await wait(250);
+    const said = await H2.ev(() => { const L = window.__ironlog; const t = document.getElementById('toast'); return { modal: L.ui.modal && L.ui.modal.kind, toast: t && !t.hidden ? t.innerText : '', added: L.state.routines[0].days[0].items.some(i => i.exId === 'pullup') }; });
+    ok(said.added && !said.modal && /counts your bodyweight/.test(said.toast), '4. adding pull-ups to a plan day says it counts bodyweight, no sheet in the way', said);
+    await H2.P.ctx.close();
+  }
+
+  // ---- 5. 368: a button is never a block.
+  if (run(5)) {
+    const H = await phone(MON);
+    await seed(H);
+    const r = await H.ev(async () => {
+      const L = window.__ironlog; const out = { both: 0, full: [] };
+      for (const t of ['today', 'program', 'history', 'settings', 'dash']) { L.ui.tab = t; L.render(); await new Promise(r => setTimeout(r, 60)); out.both += document.querySelectorAll('.btn.block').length; }
+      L.ui.tab = 'today'; L.render(); L.ACT.pastOpen({ dataset: {} }); await new Promise(r => setTimeout(r, 100));
+      out.both += document.querySelectorAll('.btn.block').length;
+      out.full = [...document.querySelectorAll('#modal .btn.fullw')].map(b => Math.round(b.getBoundingClientRect().width - b.parentElement.getBoundingClientRect().width + parseFloat(getComputedStyle(b.parentElement).paddingLeft) + parseFloat(getComputedStyle(b.parentElement).paddingRight)));
+      return out;
+    });
+    ok(r.both === 0, '5. no button carries the card\'s class block', r);
+    ok(r.full.length && r.full.every(x => Math.abs(x) <= 1), '5. a fullw button fills its row', r.full);
     await H.P.ctx.close();
   }
 

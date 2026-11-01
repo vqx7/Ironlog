@@ -176,7 +176,7 @@ function sessionsSec(ss: readonly Session[], perDay: Record<string, number>): Te
   }
   const more =
     shown.length > page.length
-      ? html`<button class="btn block u-mt10" data-act="histMore">Show ${Math.min(HIST_PAGE, shown.length - page.length)} more (${page.length} of ${shown.length})</button>`
+      ? html`<button class="btn fullw u-mt10" data-act="histMore">Show ${Math.min(HIST_PAGE, shown.length - page.length)} more (${page.length} of ${shown.length})</button>`
       : nothing;
   const body = html`<label class="field">Show sessions with<select data-bind="histEx">
 <option value="" .selected=${!ui.histEx}>Any exercise</option>

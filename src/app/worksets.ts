@@ -970,6 +970,9 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
     const k = grp.indexOf(b);
     if (grp.slice(k + 1).some(x => x.sets.some(y => !y.done && !y.warm && !y.drop))) autoRest = false;
   }
+  // A drop set waiting under this set is done straight after it, with no rest between (r66, 375).
+  const nx = b.sets[si + 1];
+  if (autoRest && !s.drop && nx && nx.drop && !nx.done) autoRest = false;
   if (autoRest) startTimer(+b.plan.rest);
   if (W.foldT) clearTimeout(W.foldT);
   W.foldT = null;
@@ -982,11 +985,39 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
     !!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
   if (askRir) rirShowStrip(bi, si);
   else if (!val) rirClose();
+  if (val && !again && !askRir && !d.editingId && b.plan.ss && !(nx && nx.drop && !nx.done)) ssNext(b);
   if (val && !askRir && !d.editingId && blockDone(b)) {
     const rf = blkRef(bi);
     W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
   }
   if (val && b.sets.filter(x => x.done).length === 1 && orderAt(b) >= 0) orderSoon(b);
+}
+
+/* A superset's next set (r66, PENDING 375): after a set of one exercise in
+   the group, the screen brings up the next exercise in the group with a set
+   still to do, the first again after the last, so the lifter goes A1, A2,
+   A1 without scrolling. Only the view moves: no field takes focus, so no
+   keyboard comes up. */
+function ssNext(b: DraftBlock): void {
+  const d = state.draft;
+  if (!d || !b.plan.ss) return;
+  const grp = d.ex.filter(x => x.plan && x.plan.ss === b.plan.ss);
+  const k = grp.indexOf(b);
+  const order = [...grp.slice(k + 1), ...grp.slice(0, k + 1)];
+  const to = order.find(x => x.sets.some(y => !y.done && !y.warm));
+  if (!to) return;
+  const bi = d.ex.indexOf(to);
+  const si = to.sets.findIndex(y => !y.done && !y.warm);
+  requestAnimationFrame(() => {
+    const row = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
+    const el = row && row.closest('.sg');
+    if (el)
+      try {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      } catch (e) {
+        // Scrolling is best effort; the set is ticked either way.
+      }
+  });
 }
 
 /* Typed reps, then a tap on the same row's RIR box (r30): auto-mark waits

@@ -48,7 +48,7 @@ export function iconSheet(): TemplateResult {
       : html`<p class="small callout yellow u-m0-0n10"><b>Removing ${APP_NAME} from the home screen also removes the log on this phone.</b> Sign in first so it is kept in your account, or save a backup.</p><div class="row u-mb10">${AUTH() ? html`<button class="btn sm primary" data-act="acctOpen" data-mode="signin">Sign in</button>` : ''}<button class="btn sm" data-act="export">Save a backup</button></div>`
   }
   <ol class="steps"><li>Press and hold ${APP_NAME} on your home screen and remove it.</li><li>Open ${location.host + location.pathname.replace(/index\.html$/, '')} in Safari, tap Share, then Add to Home Screen.</li><li>Open the new icon${safe ? ' and sign in' : ''}.</li></ol>
-  <button class="btn block u-mt12" data-act="iconLater">Done</button></div>`;
+  <button class="btn fullw u-mt12" data-act="iconLater">Done</button></div>`;
 }
 
 /* Where the button is, drawn: Safari 26's compact bar (⋯ beside the
@@ -98,7 +98,7 @@ export function installSheet(m: { how?: string | undefined }): TemplateResult {
       : '') +
     `Then open ${APP_NAME} from your home screen: it starts full screen and works offline. A log kept in this browser does not move by itself: sign in inside the app, or export a backup here and import it there.`;
   const hasLog = state.sessions.some(x => !x.demo) && !acct.user;
-  return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="instH"><div class="sheet-h"><h3 id="instH">${ios ? 'Add to Home Screen' : `Install ${APP_NAME}`}</h3>${tipButton(tip, 'About installing')}<button class="ib u-mlauto" aria-label="Close" data-act="mClose">✕</button></div>${installPic(how)}${body}${hasLog ? html`<p class="small u-m10-0-0">Your log here does not move by itself. Sign in in the app, or use a backup.</p>` : ''}<button type="button" class="btn primary block u-mt14" data-act="mClose">Done</button></div>`;
+  return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="instH"><div class="sheet-h"><h3 id="instH">${ios ? 'Add to Home Screen' : `Install ${APP_NAME}`}</h3>${tipButton(tip, 'About installing')}<button class="ib u-mlauto" aria-label="Close" data-act="mClose">✕</button></div>${installPic(how)}${body}${hasLog ? html`<p class="small u-m10-0-0">Your log here does not move by itself. Sign in in the app, or use a backup.</p>` : ''}<button type="button" class="btn primary fullw u-mt14" data-act="mClose">Done</button></div>`;
 }
 
 /* ---------- a past workout, date first ----------
@@ -131,6 +131,6 @@ export function pastSheet(m: { date: string }): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pastH"><div class="sheet-h"><h3 id="pastH">Log a past workout</h3>${closeX()}</div>
   <label class="field">Date<input type="date" data-pbind="date" .value=${live(m.date)} max=${today()}></label>
   ${on.length ? html`<p class="small muted u-m6-0-0">Already logged that day: ${on.join(', ')}.</p>` : ''}
-  <div class="stack u-mt12">${opts.map(({ d, i }) => html`<button class=${'btn block' + (i === due ? ' primary' : '') + ' pastday'} data-act="pastGo" data-day=${String(i)}><span>${dayLabel(R, i)}: ${d.name}</span>${i === due ? html`<small>due then</small>` : html`<small>${d.items.length} exercises</small>`}</button>`)}<button class="btn block pastday" data-act="pastGo" data-day="free"><span>Freestyle</span><small>any exercises</small></button></div>
+  <div class="stack u-mt12">${opts.map(({ d, i }) => html`<button class=${'btn fullw' + (i === due ? ' primary' : '') + ' pastday'} data-act="pastGo" data-day=${String(i)}><span>${dayLabel(R, i)}: ${d.name}</span>${i === due ? html`<small>due then</small>` : html`<small>${d.items.length} exercises</small>`}</button>`)}<button class="btn fullw pastday" data-act="pastGo" data-day="free"><span>Freestyle</span><small>any exercises</small></button></div>
   <p class="small muted u-m10-0-0">Quick entry: type each set. ${tipButton('No rest timer or clock. A set counts as done once its reps are typed. Last time, targets, and PRs are read as of that date.', 'About quick entry')}</p></div>`;
 }

@@ -700,3 +700,76 @@ export function storageStart(): void {
       )
     );
 }
+
+/* ---------- pictures' bytes (r66, PENDING 373) ----------
+   A picture on a note keeps its bytes in IndexedDB, as Undo's copies and a
+   log kept aside do, under a database of its own, so it never crowds the
+   log's save. pics.ts decides what is kept; these read and write it, and
+   nothing else names the database. Best effort: without IndexedDB, Add
+   picture says the photo could not be kept. */
+const PIC_DB = ENV === 'preview' ? `${STORAGE_ID}-preview-pics` : `${STORAGE_ID}-pics`;
+let picDbP: Promise<IDBDatabase | null> | null = null;
+function picDb(): Promise<IDBDatabase | null> {
+  if (!picDbP)
+    picDbP = new Promise(res => {
+      try {
+        const r = indexedDB.open(PIC_DB, 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('pics', { keyPath: 'id' });
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => {
+          log('pics-open', r.error);
+          res(null);
+        };
+      } catch (e) {
+        // No IndexedDB (a private window, an old browser): no picture can be kept, and the reason is logged.
+        log('pics-open', e);
+        res(null);
+      }
+    });
+  return picDbP;
+}
+/** Every picture row kept on this phone, each still unknown until pics.ts checks it. */
+export async function picRowsRead(): Promise<unknown[]> {
+  const db = await picDb();
+  if (!db) return [];
+  return new Promise(res => {
+    try {
+      // A request's result is typed any; the cast reads it as the unknown value it is, each row then checked by pics.ts.
+      const q = db.transaction('pics').objectStore('pics').getAll() as IDBRequest<unknown>;
+      q.onsuccess = () => res(arr(q.result) || []);
+      q.onerror = () => {
+        log('pics-read', q.error);
+        res([]);
+      };
+    } catch (e) {
+      log('pics-read', e);
+      res([]);
+    }
+  });
+}
+/** Writes picture rows and deletes others, or clears them all, in one transaction: true once it is done. */
+export async function picRowsWrite(put: readonly object[], del: readonly string[], clear = false): Promise<boolean> {
+  const db = await picDb();
+  if (!db) return false;
+  return new Promise(res => {
+    try {
+      const tx = db.transaction('pics', 'readwrite');
+      const st = tx.objectStore('pics');
+      if (clear) st.clear();
+      for (const r of put) st.put(r);
+      for (const id of del) st.delete(id);
+      tx.oncomplete = () => res(true);
+      tx.onerror = () => {
+        log('pics-write', tx.error);
+        res(false);
+      };
+      tx.onabort = () => {
+        log('pics-write', tx.error);
+        res(false);
+      };
+    } catch (e) {
+      log('pics-write', e);
+      res(false);
+    }
+  });
+}

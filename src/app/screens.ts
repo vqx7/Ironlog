@@ -6,6 +6,7 @@
    with what closing each does. It knows every screen, so the page (page.ts)
    is given its draw and its sheets at start instead of importing them. */
 
+import { bwSheet } from './bwnudge';
 import { picSheet } from './notepics';
 import type { TemplateResult } from 'lit-html';
 import { state, ui } from './store';
@@ -375,6 +376,7 @@ export const SHEETS: Sheets = {
   },
   note: { draw: noteSheet },
   pic: { draw: picSheet },
+  bw: { draw: bwSheet },
   startAlt: { draw: startAltSheet },
   pickToday: { draw: pickTodaySheet },
   pickEx: { draw: pickExSheet },

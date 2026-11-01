@@ -459,7 +459,8 @@ details[open]>summary .chev::before{transform:translateY(2px) rotate(-135deg)}
 .btn.primary,.block .btn.primary,.card .btn.primary,.sheet .btn.primary,.panel .btn.primary{background:var(--volt);color:var(--on-volt);border-color:transparent;border-radius:999px}
 .btn.danger{color:var(--red)}
 .btn.sm{min-height:44px;padding:0 12px;font-size:14px;border-radius:var(--r-sm)}
-.btn.block{width:100%}
+/* A full-width button (r66, PENDING 368): fullw, never block, which is a session exercise's card. */
+.btn.fullw{width:100%}
 .btn:disabled{opacity:.4;cursor:default}
 .btn.noted{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
 .ib{width:44px;height:44px;border-radius:50%;border:1px solid var(--btn-b);background:var(--btn);cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--ink)}
@@ -546,8 +547,13 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 
 /* ---------- logger ---------- */
 .block{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);padding:16px;margin:12px 0;box-shadow:var(--shadow)}
+/* A superset is one box (r66, 375): its exercises joined edge to edge, one blue rail down the side, the group's
+   letter at the top and A1, A2 on the names. */
 .block.ss{box-shadow:inset 3px 0 0 var(--blue)}
-.block.ss+.block.ss{margin-top:-4px}
+.block.ss:not(.ss-last){margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom-width:0}
+.block.ss:not(.ss-first){margin-top:0;border-top-left-radius:0;border-top-right-radius:0;border-top:1px dashed var(--line)}
+.ssh{margin:0 0 8px;font:700 12px/1.2 var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--blue)}
+.sslbl{display:inline-block;min-width:26px;margin-right:2px;padding:1px 6px;border-radius:999px;background:var(--blue-bg);color:var(--blue);font:700 12px/1.4 var(--font);text-align:center;vertical-align:middle}
 .it.ss .imain b::after{content:" · SS";color:var(--blue);font-size:12px}
 .bh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
 .bh-acts{display:flex;gap:3px;flex:none}
@@ -560,6 +566,7 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .lm{display:inline-block;font:650 12px/1 var(--font);letter-spacing:.02em;padding:4px 8px;border-radius:999px;border:1px solid var(--ink);color:var(--ink);white-space:nowrap}
 .bnote{margin:6px 0 0;padding:6px 9px;background:var(--surface-2);border-radius:var(--r-sm);color:var(--ink)}
 .aiout{white-space:pre-wrap;margin-top:10px;min-height:1.4em;line-height:1.55}
+.bwwarn{margin:6px 0 0;color:var(--muted)}
 .lnote{margin:6px 0 0;padding:6px 9px;border:1px dashed var(--line);border-radius:var(--r-sm);color:var(--muted)}
 /* Pictures on a note (r66, 373): square thumbs at the touch size, in a row that wraps; Add picture beside them; one large in its sheet. */
 .pstrip{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 0}
@@ -590,6 +597,9 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg.done input,.sg.done select{border-color:color-mix(in srgb,var(--volt-line) 55%,transparent);background:var(--volt-soft)}
 .sg.norir{grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) 44px}
 .sg .n.drop{color:var(--blue)}
+/* A drop set sits under its set (r66, 375): set in on a quiet band, its Last column naming it. */
+.sg.sgdrop{margin-left:14px;padding-left:6px;border-left:2px solid var(--blue);border-radius:0 var(--r-sm) var(--r-sm) 0}
+.sg.sgdrop .ls{color:var(--blue)}
 .sg .n.warm{color:var(--yellow);font-size:15px}
 .cbtn{height:44px;width:44px;border-radius:50%;border:1px solid var(--field-b);background:var(--surface-2);cursor:pointer;font-weight:700;font-size:17px;color:var(--muted)}
 .cbtn.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
