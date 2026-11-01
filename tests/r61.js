@@ -266,7 +266,8 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
       if (r() < 0.25) s.draft = pick([{}, null, { ex: 'x', date: '2026-10-01' }, { ex: [{ exId: 'bench', sets: [null, {}, { w: 'x', r: '' }, []] }, { exId: 'squat', sets: [], plan: { sets: 'x', repMin: 12, repMax: 5, ss: 'A', jump: '7' }, adj: { at: 0, w: 100, from: 90, r: 5, rid: 'q' }, keepRR: [5], prev: ['a', 1], lastR: [1, 'x', -1, 99999] }], date: '2026-10-01', zz: 1, cardio: [{ min: 'x' }, null, { id: 'c', kind: 'run', min: 0 }] }, { date: '2026-10-01', ex: [], startedAt: 1e20, durMin: '30', past: true, extra: { a: 1 } }]);
       if (r() < 0.2) s.trash = [{ id: 't1', kind: 'session', date: '2026-10-10', data: { id: 't1', date: '2026-10-01', ex: [] } }, { id: 't2', kind: 'zz', date: 'x', data: null }, null, { id: 't3', kind: 'cardio', date: '2026-10-11', data: { id: 't3', date: '2026-10-01', min: 20 } }];
       if (r() < 0.15) s.version = pick([1, 2, 3, 4, 'x', null]);
-      if (r() < 0.1) s.settings = pick([null, 'x', [], {}, { unit: 'kg', zz: 1, bwEvery: 14, bands: { chest: [30, 2], lats: 'x' }, secOrder: { today: ['a', 1] }, ownTargets: ['traps', 'chest'], bandsFit: { chest: 5, neck: 3 }, restWeeks: ['2026-10-05', 'x', '2026-10-05'], userName: '  a   b  ', accent: 'red' }]);
+      // The accent is one no build knows, dropped by every build: it was 'red' until r65.2 made Red an accent (370).
+      if (r() < 0.1) s.settings = pick([null, 'x', [], {}, { unit: 'kg', zz: 1, bwEvery: 14, bands: { chest: [30, 2], lats: 'x' }, secOrder: { today: ['a', 1] }, ownTargets: ['traps', 'chest'], bandsFit: { chest: 5, neck: 3 }, restWeeks: ['2026-10-05', 'x', '2026-10-05'], userName: '  a   b  ', accent: 'gold' }]);
       if (r() < 0.1) s.routines = pick([[], null, [{ days: 'x' }], [{ id: 'q', days: [null, { items: 'x' }, { items: [null, { exId: 'bench', sets: 'x' }] }] }]]);
       return s;
     };

@@ -475,7 +475,7 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
   const st: Rec = { ...base, ...spread(s.settings || {}) };
   // The settings as they came, read beside the merged ones for the two fields whose absence means something (the folds, the removed built-ins).
   const sIn = rec(s.settings) || {};
-  const accent = pick(st.accent, ['blue', 'volt', 'ember', 'pink'] as const);
+  const accent = pick(st.accent, ['blue', 'volt', 'ember', 'pink', 'violet', 'cyan', 'red'] as const);
   const bwEvery = bwEveryKept(st.bwEvery);
   const restWeeks = (() => {
     const rw = arr(st.restWeeks);

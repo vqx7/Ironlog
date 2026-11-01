@@ -14,7 +14,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   let x = await acc();
   ok(x.a === 'ember' && x.v === '#ff6a2b' && x.btn === 'rgb(255, 106, 43)', 'Ember is the default accent since r37, on the Start button too', x);
   await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:general'] = true; L.render(); });
-  ok(await ev(() => [...document.querySelectorAll('[data-act="accent"]')].map(b => b.dataset.v).join() === 'ember,blue,volt,pink' && document.querySelector('[data-act="accent"][data-v="ember"]').classList.contains('on')), 'Settings > General offers Ember, Blue, Volt and Pink, Ember selected');
+  ok(await ev(() => [...document.querySelectorAll('[data-act="accent"]')].map(b => b.dataset.v).join() === 'ember,blue,volt,pink,violet,cyan,red' && document.querySelector('[data-act="accent"][data-v="ember"]').classList.contains('on')), 'Settings > General offers Ember, Blue, Volt, Pink, Violet, Cyan and Red (r65.2), Ember selected');
   await A.page.click('[data-act="accent"][data-v="pink"]'); await A.page.waitForTimeout(100);
   ok(await ev(() => document.documentElement.dataset.accent === 'pink' && getComputedStyle(document.documentElement).getPropertyValue('--volt').trim().toLowerCase() === '#ec4899' && window.__ironlog.state.settings.accent === 'pink'), 'Pink switches the accent and is kept (r37)');
   await A.page.reload(); await A.page.waitForFunction(() => window.__ironlog);

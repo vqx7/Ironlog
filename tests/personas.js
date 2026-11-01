@@ -790,5 +790,57 @@ async function finish() {
     await H.P.ctx.close();
   }
 
+  // ---- 12. A lifter who picks the Red accent and trains (r65.2, PENDING 369 and 370): every step a tap or typing.
+  if (run(12)) {
+    const T0 = '2026-10-05'; // a Monday
+    const H = await phone(T0);
+    const { ev, page } = H;
+    await seed(H, { unit: 'lb', days: [{ id: 'A', name: 'Push', items: [['bench', 3, 6, 10, 1, 180, 5]] }], sessions: [{ day: 'A', date: '2026-09-28', ex: [['bench', [[185, 8, 1], [185, 8, 1], [185, 7, 1]]]] }] });
+    // Settings > General, the Red chip, as a thumb taps it.
+    await page.click('#tabs [data-tab="settings"]'); await wait(150);
+    await ev(() => { const L = window.__ironlog; L.ui.folds['settings:general'] = true; L.render(); });
+    await page.click('#view [data-act="accent"][data-v="red"]'); await wait(150);
+    // The magenta is a deeper one in light and a brighter one in dark, as each theme's red was.
+    const col = () => ev(() => { const g = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim().toLowerCase(); return { volt: g('--volt'), red: g('--red'), dark: getComputedStyle(document.body).backgroundColor === 'rgb(8, 9, 11)' }; });
+    const c = await col();
+    const MAG = c.dark ? { hex: '#f472d0', rgb: 'rgb(244, 114, 208)' } : { hex: '#a3168f', rgb: 'rgb(163, 22, 143)' };
+    ok(c.volt === '#ff2d46' && c.red === MAG.hex, '12. tapping Red makes the accent red and the red status colour magenta', c);
+    await page.click('#tabs [data-tab="today"]'); await wait(150);
+    await H.start();
+    const discard = await ev(() => { const b = document.querySelector('#view .ph [data-act="discard"]'); return b ? getComputedStyle(b).color : null; });
+    ok(discard === MAG.rgb, '12. Discard reads in the magenta, not the accent', discard);
+    // A set typed and ticked; the load then selected whole and typed over, as a thumb fixes a typo.
+    await H.type('w', 0, 0, 185); await H.type('r', 0, 0, 9); await H.tick(0, 0);
+    const tickBg = await ev(() => getComputedStyle(document.querySelector('#view [data-act="sDone"][data-b="0"][data-s="0"]')).backgroundColor);
+    ok(tickBg === 'rgb(255, 45, 70)', '12. a done set is ticked in the accent', tickBg);
+    const q = H.sel('w', 0, 1); await page.click(q); await page.keyboard.type('190');
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A'); await page.keyboard.type('195');
+    await ev(() => document.activeElement.blur()); await wait(80);
+    const typed = await ev(s => document.querySelector(s).value, q);
+    ok(typed === '195', '12. a load typed, selected whole and typed over reads as the last typing (fields stay selectable)', typed);
+    await H.type('r', 0, 1, 8); await H.tick(0, 1);
+    // A set missed: 0 reps at the working load, ticked; it keeps the accent's tick and says missed.
+    await H.type('w', 0, 2, 195); await H.type('r', 0, 2, 0); await H.tick(0, 2);
+    await wait(100);
+    const ask = await ev(() => { const m = window.__ironlog.ui.modal; return m ? m.title || m.kind : null; });
+    if (ask) await page.click('#modal [data-act="mOk"]').catch(() => {}), await wait(120);
+    const miss = await ev(() => { const b = document.querySelector('#view [data-act="sDone"][data-b="0"][data-s="2"]'); return b ? { label: b.getAttribute('aria-label'), bg: getComputedStyle(b).backgroundColor } : null; });
+    ok(miss && /missed/.test(miss.label) && miss.bg === 'rgb(255, 45, 70)', '12. a 0-rep set ticked says missed and keeps the accent\'s tick, as in every accent', miss);
+    const fin = await H.finish();
+    const saved = await ev(() => { const S = window.__ironlog.state.sessions; const x = S[S.length - 1]; return x && x.date === '2026-10-05' ? x.ex[0].sets.map(s => [Math.round(s.w / 0.45359237), s.r]) : null; });
+    ok(JSON.stringify(saved) === JSON.stringify([[185, 9], [195, 8], [195, 0]]), '12. Finish saves the three sets as typed, the missed one with them', { saved, fin });
+    // The week bar: today trained, in the accent; a page reload keeps Red.
+    await page.reload(); await page.waitForFunction(() => window.__ironlog && window.__ironlog.state); await wait(200);
+    const after = await ev(() => ({ acc: document.documentElement.dataset.accent, set: window.__ironlog.state.settings.accent }));
+    ok(after.acc === 'red' && after.set === 'red', '12. Red is still chosen after a reload', after);
+    // History: the session's row counts the two sets done (a missed set counts toward no volume); opened, it shows all three, the missed one said.
+    await page.click('#tabs [data-tab="history"]'); await wait(150);
+    const sid = await ev(() => { const S = window.__ironlog.state.sessions; return S[S.length - 1].id; });
+    await page.click(`#view [data-act="histToggle"][data-id="${sid}"]`); await wait(150);
+    const hist = await ev(id => { const b = document.querySelector(`#view [data-act="histToggle"][data-id="${id}"]`); const it = b && b.closest('.hitem'); return it ? it.innerText : null; }, sid);
+    ok(hist && /2 sets/.test(hist) && /missed/i.test(hist) && /195/.test(hist), '12. History opens the session: two sets counted, the missed one shown and said', hist);
+    await H.P.ctx.close();
+  }
+
   return finish();
 })().catch(e => { console.error(e); process.exit(1); });
