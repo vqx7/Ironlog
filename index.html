@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="app-build" content="2026.10.31-r65.2">
+<meta name="app-build" content="2026.10.31-r65.3">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -131,7 +131,10 @@
 :root[data-accent="violet"][data-theme="dark"]{--volt:#7c4dff;--on-volt:#ffffff;--volt-line:#a68bff;--volt-soft:#1d1340}
 :root[data-accent="cyan"][data-theme="dark"]{--volt:#00c8ff;--on-volt:#0b0c0e;--volt-line:#4fdcff;--volt-soft:#062a36;--blue:#b69cff;--blue-bg:#221a3d}
 :root[data-accent="red"][data-theme="dark"]{--volt:#ff2d46;--on-volt:#0b0c0e;--volt-line:#ff5c6f;--volt-soft:#3a0a12;--red:#f472d0;--red-bg:#3a1233}
-*,*::before,*::after{box-sizing:inherit}
+/* A double tap is a tap on every element (r65.3, NEW-29): touch-action is not inherited, and a scrolling area (a sheet,
+   a side-scrolling row) starts its own, so the root's rule alone left double-tap zoom inside them; iPhone Safari is
+   unreliable with it on the root alone too. A grip's none and the 3D body's pan-y are set by class, and win. */
+*,*::before,*::after{box-sizing:inherit;touch-action:manipulation}
 /* One-off spacing and layout for single elements (r65, the r63 audit's A-9),
    which sat in 342 style attributes in the screens' markup. Each class does
    what its style attribute did, and wins as that attribute did: over every
@@ -233,9 +236,9 @@
    which the rule above cannot reach, so padded inputs stuck out of their card. */
 details>*{box-sizing:border-box}
 input[type=file]{max-width:100%;width:100%;font-size:14px}
-html{scroll-padding-top:calc(var(--head-h) + env(safe-area-inset-top,0px));-webkit-text-size-adjust:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+html{scroll-padding-top:calc(var(--head-h) + env(safe-area-inset-top,0px));-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
 /* An app, not a web page (r65.2, PENDING 369): a double tap is a tap, never a zoom (pinch stays, which iOS keeps
-   for accessibility whatever a page says); a long press on the app's own words selects nothing and opens no Copy
+   for accessibility whatever a page says; the rule is on every element, in the box-sizing rule near the top, since r65.3); a long press on the app's own words selects nothing and opens no Copy
    and Look Up menu; a tap leaves no grey flash, a button's :active shrink being its feedback. What the lifter
    types, and a text box shown to copy, stay selectable: the root's rule and the body's above carry the rest, and
    this one gives typing its selection back. */
@@ -3031,8 +3034,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.20";
-  var APP_VERSION = "2026.10.31-r65.2";
+  var DISPLAY_VERSION = "2.21";
+  var APP_VERSION = "2026.10.31-r65.3";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";

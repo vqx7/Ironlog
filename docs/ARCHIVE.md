@@ -286,6 +286,10 @@ Not written here as each shipped; what each moved and changed, with its names, i
 - **Elsewhere:** the update bar in `update.ts` (`updateStart`, `UPDATE_ACTS`; "Update ready" with Update); normalize's draft blocks built against `DraftBlock` (`satisfies`), `cleanTgt` returning a `Target`; the installed build's library loaders list its own copies alone (`scripts/build.js`).
 - **Checks:** `tests/r60.js` (section 1 holds the screen to r59 in 35 sessions and modes; sections 2 to 7 fail on r59 or on a build before r60), `tests/inflight.js`, `tests/personas.js`, `tests/loadrules.js`; `tests/engine.js` calls `nextSets` and `bwNoLoad` in Node, with two return histories.
 
+### r65.3 (2026-10-31, version 2.21; NEW-29)
+
+- **A double tap is a tap everywhere (NEW-29, V on r65.2: "I can still double tap into the app like a fake webpage"):** r65.2 put `touch-action: manipulation` on the root only. touch-action is not inherited, and an element's allowed touch behaviours are its own and its ancestors' only up to the nearest scrolling area, so inside a sheet or a side-scrolling row the root's rule did not reach; iPhone Safari is also unreliable with it on the root alone. It is now on every element, in the stylesheet's `*` rule; the grips' none and the 3D body's pan-y are set by class and win. `tests/r65-3.js` reads every drawn element on the five tabs, a workout and four sheets (fails 10 on r65.2). `baselines/r65-2.html` is the published r65.2 (main at 3e6b627), in `tests/migration.js` and `tests/wayback.js`.
+
 ### r65.2 (2026-10-31, version 2.20; PENDING 369 and 370)
 
 - **An app, not a web page (369):** the root sets `touch-action: manipulation`, so a double tap is a tap and never a zoom (pinch stays: iOS keeps it for accessibility); the page selects no text and opens no Copy and Look Up menu on a long press, and a tap leaves no grey flash; fields, text boxes and anything editable stay selectable (src/02-style.css, after the root's rules). The page's bounce at its edges is kept, as native iPhone apps have it. `tests/r65-2.js` sections 1 to 3.
