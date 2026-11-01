@@ -798,6 +798,25 @@ const stored = H => H.ev(async secret => {
     const roomB = await T.page.evaluate(() => !!document.querySelector('#modal input[type="file"][data-pic="0"]'));
     ok(!roomB, '12. ... and its note is full there too: no + Picture', roomB);
     await T.page.evaluate(() => window.__ironlog.ACT.mClose());
+    /* A note filled by another tab in the moment before this one's photo is ready (its four kept on the phone, this tab
+       not yet told): the room is counted again once the photo is prepared, and the fifth is not added. */
+    await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.state.draft.ex[1].pics = undefined; L.saveNow(); L.render(); });
+    await H.page.click('#view [data-act="bNote"][data-b="1"]'); await wait(150);
+    const race = await H.ev(async () => {
+      const L = window.__ironlog;
+      const name = (await indexedDB.databases()).map(d => d.name).find(n => /-pics$/.test(n || ''));
+      const db = await new Promise((res, rej) => { const r = indexedDB.open(name); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+      const ids = ['pothertab01', 'pothertab02', 'pothertab03', 'pothertab04'];
+      await new Promise(res => { const tx = db.transaction('pics', 'readwrite'); const st = tx.objectStore('pics'); for (const id of ids) st.put({ id, blob: new Blob([new Uint8Array([255, 216, 255, 217])], { type: 'image/jpeg' }), w: 1, h: 1, t: Date.now(), seen: Date.now(), own: '' }); tx.oncomplete = res; tx.onerror = res; });
+      db.close();
+      L.state.draft.ex[1].pics = ids;
+      return !!document.querySelector('#modal input[type="file"][data-pic="1"]');
+    });
+    ok(race, '12. (the note sheet still offers + Picture: this tab has not been told)', race);
+    if (race) await pickFile(H, '#modal input[type="file"][data-pic="1"]', 'late.jpg', 'image/jpeg', bytes);
+    await wait(300);
+    const after = await H.ev(() => (window.__ironlog.state.draft.ex[1].pics || []).length);
+    ok(after === 4 && /A note holds 4 pictures/.test(await H.toast()), '12. the note filled meanwhile takes no fifth: counted again once the photo is ready, and said', { after, toast: await H.toast() });
     ok(!T.errors.length && !H.P.errors.length, '12. no page errors in either tab', [...T.errors, ...H.P.errors]);
     await H.P.ctx.close();
   }
