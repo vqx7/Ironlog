@@ -310,6 +310,19 @@ fs.writeFileSync(path.join(DIST, 'sw.js'), sw);
   fs.writeFileSync(path.join(DIST, 'LICENSES.txt'), txt);
 }
 fs.writeFileSync(path.join(DIST, '.nojekyll'), '');
+/* Crawlers (r66, PENDING 378, V: "keep AI crawlers off the site"): the app is one person's log, with nothing to
+   find by search, so every crawler is asked to stay off the whole site, and the known AI crawlers are named as well,
+   since some read only a group that names them. The page's own robots tag (src/01-head.html) asks the same of any
+   that reads the page anyway. robots.txt is a request a well-behaved crawler honours, not a lock: what protects a
+   log is that it is never on the site at all (it lives on the phone and, signed in, in the account behind its
+   sign-in). The live build's file is the site's, at its root; the preview's, under preview/, changes nothing but
+   is kept the same so the two builds match. Not precached: the app never reads it. */
+{
+  const AI_CRAWLERS = ['GPTBot', 'ChatGPT-User', 'OAI-SearchBot', 'ClaudeBot', 'Claude-Web', 'Claude-User', 'Claude-SearchBot', 'anthropic-ai', 'Google-Extended', 'CCBot', 'PerplexityBot', 'Perplexity-User', 'Bytespider', 'Applebot-Extended', 'meta-externalagent', 'meta-externalfetcher', 'FacebookBot', 'Amazonbot', 'cohere-ai', 'Diffbot', 'ImagesiftBot', 'omgili', 'Timpibot', 'YouBot', 'DuckAssistBot', 'MistralAI-User'];
+  const robots = `# ${cfg.APP_NAME}: one lifter's log, nothing to index. Every crawler, and every AI crawler by name, stays off.\n` +
+    AI_CRAWLERS.map(a => `User-agent: ${a}\nDisallow: /\n`).join('\n') + '\nUser-agent: *\nDisallow: /\n';
+  fs.writeFileSync(path.join(DIST, 'robots.txt'), robots);
+}
 fs.writeFileSync(path.join(DIST, '404.html'), `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=./"><title>${NAME}</title>`);
 
 console.log(`built ${path.basename(DIST)}/ for ${version} (${cacheName})`);
