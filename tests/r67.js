@@ -13,25 +13,31 @@
 //      that theme. WebKit (every iPhone browser) kept Stats' section line in
 //      the old colour; Chromium never did, so here it is a guard and the
 //      WebKit run on GitHub is the evidence.
-//      which holds every built-in by name, reads the machine by its new name
-//      too and finds it the same way (NEW-37), a name the lifter gave stays,
-//      and an import naming Reverse Pec Deck still finds it first.
-//  11  pictures (373): a lift done twice in a row is saved as one exercise,
-//      and the pictures on both its notes are all kept, through a reload
-//      (they were cut to four).
-//  12  pictures (373): Undo puts back a picture taken off the workout's
-//      notes, as its question says; a second tab open on the same workout
-//      shows the four pictures the first added, and its note is full there
-//      too (it showed none and cut one when it added its own).
-//  13  pictures (373) and the account: signed in, a session saved with a
-//      picture; signed out, the log leaves the phone; fifty days of the app's
-//      tidy keep the picture, since nothing on the phone can name it while
-//      its log is in the account; signed in again, History shows it (the
-//      built app with the stand-in account service, on the source run).
-//  14  pictures (373) in a browser whose IndexedDB refuses a Blob, as
-//      WebKit's private contexts may: each picture is kept as its bytes and
-//      type, the refusal logged once, shown in History after a reload, and
-//      written back the same way by the tidy.
+//   3  NEW-40, a blank session started on Today: the first lift left a set
+//      short (two of three ticked, the third row empty), the next lift's sets
+//      done; the screen stays at the lift just finished and does not go back
+//      up to the earlier one (it did after every lift once one had a set
+//      left, since a blank session has nothing below to bring up). A guard:
+//      in a routine, a lift finished still brings up the next one below it.
+//   4  The slight metal shine on Today's main card (V approved the drawing,
+//      2026-11-02): the app's card is, pixel for pixel, the card with the
+//      approved draft (docs/design/today-card-shine.css) laid over it, light
+//      and dark, in all seven accents, so what shipped is what V saw; and
+//      r66's card, without it, fails.
+//   5  From the independent review of r67 (R67-1): the minutes typed on a
+//      past workout stay with it when the sync, not Finish, saves it as a
+//      session: the other phone discards it while this one ticks a set
+//      (its sets kept), a first sign-in on a new phone with its own workout
+//      in progress, and the other phone finishing it while this one typed
+//      the minutes and ticked a set (joined). Each saved it untimed, losing
+//      the minutes typed (r66 had no field to type them in, so there the
+//      check sets them on the workout as the field does).
+//   6  From the same review (R67-2): a session lifted at a real pace whose
+//      sets are mostly drop sets keeps its clock minutes. A drop is done
+//      straight after its set with no rest of its own (r66), so the time
+//      model reads it with that set; read as a full set and a full rest,
+//      3 lifts of a top set and 3 drops at 3 minutes' rest made 54 minutes
+//      and an honest 17 was saved untimed.
 const { open, engine, tab } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
@@ -46,7 +52,7 @@ const addD = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOS
 
 async function phone(start, o = {}) {
   const setup = async ctx => { await ctx.addInitScript(`(()=>{const R=Date;let off=new R(${JSON.stringify(start + 'T09:00:00')}).getTime()-R.now();window.__setClock=t=>{off=new R(t).getTime()-R.now();};class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`);  if (o.setup) await ctx.addInitScript(o.setup); };
-  const P = o.P ? { ...o.P, page: await o.P.ctx.newPage(), errors: [] } : await open(o.file || FILE, { browser, setup, w: o.w || 390, h: 844 });
+  const P = o.P ? { ...o.P, page: await o.P.ctx.newPage(), errors: [] } : await open(o.file || FILE, { browser, setup, w: o.w || 390, h: o.h || 844 });
   if (o.P) {
     P.page.on('pageerror', e => P.errors.push('pageerror: ' + e.message));
     await P.page.route('**/*', require('./h').__serve || (r => r.continue()));
@@ -172,6 +178,193 @@ const tickAll = H => H.ev(() => { const L = window.__ironlog; for (const b of L.
       await A.P.ctx.close(); await B.P.ctx.close();
     }
     ok(!off.length, '2. after switching the theme on a drawn page, every line on every tab is the new theme\'s, as on the page opened fresh in it', off);
+  }
+
+  // ---- 3. NEW-40: a lift finished never takes the screen back up to an earlier one.
+  if (run(3)) {
+    // As a lifter does it: a set's load and reps typed, then its checkmark tapped.
+    const typeSet = async (H, b, s, w, r) => {
+      if (w != null) { await H.page.click(`#view input[data-f="w"][data-b="${b}"][data-s="${s}"]`); await H.page.keyboard.type(String(w)); }
+      await H.page.click(`#view input[data-f="r"][data-b="${b}"][data-s="${s}"]`); await H.page.keyboard.type(String(r));
+      await H.ev(() => document.activeElement && document.activeElement.blur()); await wait(200);
+      await H.page.click(`#view [data-act="sDone"][data-b="${b}"][data-s="${s}"]`);
+    };
+    const closeSheet = async H => { await wait(250); await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); await wait(100); };
+    const add = async (H, q) => {
+      // A blank session opens the picker as it starts; later ones come from + Add exercise.
+      if ((await H.ev(() => { const m = window.__ironlog.ui.modal; return m && m.kind; })) !== 'picker') { await H.page.click('#view [data-act="pickSession"]'); await wait(250); }
+      await H.page.fill('#pickQ', q); await wait(250);
+      await H.page.click('#modal [data-act="pickDo"]'); await closeSheet(H);
+    };
+    const H = await phone(MON, { h: 664 });
+    await H.ev(() => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.autoDone = false; L.saveNow(); L.ui.tab = 'today'; L.render(); });
+    await H.ev(() => window.__ironlog.ACT.startFree()); await wait(300);
+    const lifts = ['bench press', 'lat pulldown', 'shoulder press'];
+    const moved = [];
+    for (let k = 0; k < lifts.length; k++) {
+      await add(H, lifts[k]);
+      const n = await H.ev(k => window.__ironlog.state.draft.ex[k].sets.length, k);
+      // The first lift is left a set short: its last row stays empty.
+      const doN = k === 0 ? n - 1 : n;
+      let y0 = 0;
+      for (let s = 0; s < doN; s++) {
+        await typeSet(H, k, s, s === 0 ? 100 : null, 10);
+        y0 = await H.ev(() => window.scrollY);
+        await closeSheet(H);
+      }
+      await wait(2600);
+      const y1 = await H.ev(() => window.scrollY);
+      const at = await H.ev(() => ({ first: Math.round(document.getElementById('blk-0').getBoundingClientRect().top), end: Math.round(document.documentElement.scrollHeight - innerHeight) }));
+      if (k > 0) moved.push({ lift: k, before: Math.round(y0), after: Math.round(y1), ...at });
+    }
+    const d = await H.draft();
+    ok(d.ex.length === 3 && d.ex[0].sets.filter(x => x.done).length === d.ex[0].sets.length - 1 && d.ex.slice(1).every(b => b.sets.every(x => x.done)), '3. the blank session holds the first lift a set short and the next two done', d.ex.map(b => b.sets.map(x => x.done)));
+    // A lift folding at the page's end shortens it, so there the screen can only move up by what folded.
+    ok(moved.length === 2 && moved.every(m => (m.after >= m.before - 40 || m.after >= m.end - 2) && !(m.first >= -2 && m.first < 140)), '3. finishing each later lift leaves the screen where it was, not back up at the first', moved);
+    ok(!H.P.errors.length, '3. no page errors', H.P.errors);
+    await H.P.ctx.close();
+
+    // A guard: in a routine, a lift finished brings up the next one below it, as before.
+    const G = await phone(MON, { h: 664 });
+    const items = ['bench', 'ohp', 'cableRow', 'latPulldown'].map((exId, i) => ({ uid: 'g' + i, exId, sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 120, inc: 5 * LB, ss: null }));
+    await seed(G, { items });
+    await G.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(200);
+    for (let s = 0; s < 3; s++) { await typeSet(G, 0, s, s === 0 ? 100 : null, 8); await closeSheet(G); }
+    await wait(2600);
+    const top1 = await G.ev(() => { const e = document.getElementById('blk-1'); return e ? Math.round(e.getBoundingClientRect().top) : null; });
+    ok(top1 != null && top1 >= -2 && top1 < 140, '3. (a guard) in a routine, the first lift finished brings the second up to the top of the screen', { top1 });
+    await G.P.ctx.close();
+  }
+
+  // ---- 4. The shine on Today's main card is the drawing V approved, in every theme and accent.
+  if (run(4)) {
+    const draftCss = require('fs').readFileSync(require('path').join(__dirname, '..', 'docs', 'design', 'today-card-shine.css'), 'utf8');
+    // The ring's fill is the only motion on the card; it is stopped so two pictures of one card can be compared.
+    const still = '*,*::before,*::after{transition:none!important;animation:none!important}';
+    const card = async (theme, accent, css) => {
+      const P = await open(FILE, { browser, w: 390, h: 844, dpr: 3, dark: theme === 'dark', clock: '2026-11-02T09:00:00' });
+      await P.page.evaluate(([t, a]) => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.state.settings.theme = t; L.state.settings.accent = a; L.ui.tab = 'today'; L.render(); }, [theme, accent]);
+      await P.page.addStyleTag({ content: still });
+      if (css) await P.page.addStyleTag({ content: css });
+      await P.page.waitForTimeout(400);
+      const box = await (await P.page.$('#view .hero')).boundingBox();
+      const png = await P.page.screenshot({ clip: { x: 0, y: Math.max(0, box.y - 12), width: 390, height: box.height + 24 } });
+      await P.ctx.close();
+      return png;
+    };
+    const off = [];
+    for (const theme of ['light', 'dark']) for (const a of ['ember', 'volt', 'blue', 'pink', 'violet', 'cyan', 'red']) {
+      const app = await card(theme, a, null), approved = await card(theme, a, draftCss);
+      if (!app.equals(approved)) off.push(theme + ' ' + a);
+    }
+    ok(!off.length, '4. Today\'s main card is, pixel for pixel, the approved shine, light and dark in all 7 accents', off);
+  }
+
+  // ---- 5. R67-1: a past workout's typed minutes kept when the sync saves it.
+  if (run(5)) {
+    const CLOCK = '2026-10-21T10:00:00';
+    // A stand-in account (Claude's db, as tests/r56-1.js uses it) that every phone signed in as one lifter shares.
+    const cloudOf = () => {
+      const store = new Map();
+      const setup = uid => async (ctx, page) => {
+        await page.exposeFunction('__dbGet', p => (store.has(p) ? store.get(p) : null));
+        await page.exposeFunction('__dbSet', (p, v) => { store.set(p, v); return true; });
+        await page.exposeFunction('__dbList', p => JSON.stringify([...store.entries()].filter(([k]) => k.startsWith(p + '/') && !k.slice(p.length + 1).includes('/')).map(([k, v]) => [k.slice(p.length + 1), v])));
+        await page.addInitScript(u => {
+          window.__uid = u;
+          window.claude = { use: async k => {
+            if (k === 'user') return { id: async () => window.__uid };
+            if (k === 'db') return { doc: p => ({ get: async () => { const v = await window.__dbGet(p); return v == null ? { exists: false, data: () => null } : { exists: true, data: () => JSON.parse(v) }; }, set: async o => { await window.__dbSet(p, JSON.stringify(o)); return true; } }), collection: p => ({ get: async () => { const l = JSON.parse(await window.__dbList(p)); return { docs: l.map(([id, v]) => ({ id, exists: true, data: () => JSON.parse(v) })) }; } }) };
+            return null;
+          } };
+        }, uid);
+      };
+      return { setup };
+    };
+    const acct = async (cloud, opts = {}) => {
+      const P = await open(FILE, { browser, clock: CLOCK, realStarter: true, setup: cloud.setup('u1'), ...opts });
+      P.ev = (f, a) => P.page.evaluate(f, a);
+      await P.ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); });
+      P.flush = async () => { await P.ev(() => window.__ironlog.flush()); await wait(150); };
+      P.tick = (i, w, r) => P.ev(([i, w, r]) => { const L = window.__ironlog; const s = L.state.draft.ex[0].sets[i]; s.w = w; s.r = r; s.done = true; L.saveNow(); }, [i, w, r]);
+      P.draft = () => P.ev(() => { const d = window.__ironlog.state.draft; return d ? { id: d.id, past: !!d.past, durMin: d.durMin } : null; });
+      P.sess = id => P.ev(id => { const s = window.__ironlog.state.sessions.find(x => x.id === id); return s ? { durMin: s.durMin, sets: s.ex.reduce((a, b) => a + b.sets.length, 0) } : null; }, id);
+      return P;
+    };
+    // Log a past workout, its first day, one lift; minutes typed in its field (on r66, which has none, set on the workout as the field sets them).
+    const past = async P => {
+      await P.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ui.tab = 'today'; L.render(); L.ACT.pastOpen({ dataset: {} }); }); await wait(250);
+      await P.page.click('#modal [data-act="pastGo"]:not([data-day="free"])'); await wait(300);
+      await P.ev(() => { const L = window.__ironlog; const d = L.state.draft; d._rampAsked = true; d.ex = d.ex.slice(0, 1); L.saveNow(); L.render(); });
+    };
+    const typeMin = async (P, m) => {
+      if (await P.page.$('#view input[data-bind="draftMin"]')) { await P.page.fill('#view input[data-bind="draftMin"]', String(m)); await P.ev(() => document.activeElement && document.activeElement.blur()); await wait(150); }
+      else await P.ev(m => { const L = window.__ironlog; L.state.draft.durMin = m; L.saveNow(); }, m);
+    };
+    {
+      const cloud = cloudOf();
+      const A = await acct(cloud); await wait(900);
+      await past(A); await typeMin(A, 55);
+      await A.tick(0, 100, 8); await A.flush();
+      const B = await acct(cloud); await wait(1200);
+      const id = (await A.draft()).id;
+      await B.ev(() => window.__ironlog.ACT.discard()); await wait(200);
+      await B.page.click('#modal [data-act="mOk"]'); await wait(200); await B.flush();
+      await A.tick(1, 100, 7); await A.flush(); await wait(1600); await A.flush();
+      const s = await A.sess(id);
+      ok(s && s.sets === 2 && s.durMin === 55, '5. discarded on the other phone while this one ticked a set: its sets are saved with the 55 minutes typed', s);
+      await A.ctx.close(); await B.ctx.close();
+    }
+    {
+      const cloud = cloudOf();
+      const A = await acct(cloud); await wait(900);
+      await past(A); await typeMin(A, 48);
+      await A.tick(0, 100, 8); await A.flush();
+      const id = (await A.draft()).id;
+      const N = await acct(cloud, { state: { settings: { onboarded: true }, sessions: [], draft: null } }); await wait(300);
+      await N.ev(() => window.__ironlog.cloudStop(true));
+      await N.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ACT.startSession({ dataset: { day: '0', light: '0' } }); const d = L.state.draft; d.ex = d.ex.slice(0, 1); d._rampAsked = true; L.saveNow(); });
+      await N.tick(0, 40, 15);
+      await N.ev(() => window.__ironlog.cloudInit()); await wait(1500);
+      const s = await N.sess(id);
+      ok(s && s.durMin === 48, '5. a first sign-in on a phone with its own workout: the account\'s past workout is saved with the 48 minutes typed', s);
+      await N.flush(); await wait(300); await A.ev(() => window.__ironlog.sync()); await wait(1700);
+      const as = await A.sess(id), ad = await A.draft();
+      ok((as && as.durMin === 48) || (ad && ad.id === id && ad.durMin === 48), '5. ... and the phone it was typed on still holds them', { as, ad });
+      await A.ctx.close(); await N.ctx.close();
+    }
+    {
+      const cloud = cloudOf();
+      const A = await acct(cloud); await wait(900);
+      await past(A);
+      await A.tick(0, 100, 8); await A.flush();
+      const B = await acct(cloud); await wait(1200);
+      const id = (await A.draft()).id;
+      await typeMin(A, 61);
+      await A.tick(1, 100, 7);
+      await B.ev(() => { const L = window.__ironlog; L.state.draft._leftAsked = true; L.ACT.finishNow(); }); await wait(300);
+      await B.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); await B.flush();
+      await A.flush(); await wait(1600); await A.flush();
+      const s = await A.sess(id);
+      ok(s && s.sets === 2 && s.durMin === 61, '5. finished on the other phone while this one typed 61 minutes and ticked a set: the joined session has both', s);
+      await A.ctx.close(); await B.ctx.close();
+    }
+  }
+
+  // ---- 6. R67-2: an honest session of drop sets keeps its clock minutes.
+  if (run(6)) {
+    const H = await phone(MON);
+    const items = ['bench', 'ohp', 'cableRow'].map((exId, i) => ({ uid: 'u' + i, exId, sets: 4, repMin: 6, repMax: 10, rir: 2, rest: 180, inc: 5 * LB, ss: null }));
+    await seed(H, { items });
+    await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
+    // Each lift: a top set, then three drops, every one ticked.
+    await H.ev(() => { const L = window.__ironlog; for (const b of L.state.draft.ex) b.sets.forEach((s, i) => { s.w = (100 - i * 15) * 0.45359237; s.r = 8; s.rir = 0; s.drop = i > 0; s.done = true; }); L.saveNow(); L.render(); });
+    await H.ev(m => { window.__setClock(window.__ironlog.state.draft.startedAt + m * 60000); }, 17);
+    const recap = await finish(H);
+    const s = await H.ev(() => { const s = window.__ironlog.state.sessions[0]; return s && { durMin: s.durMin, drops: s.ex.reduce((a, b) => a + b.sets.filter(x => x.drop).length, 0) }; });
+    ok(s && s.drops === 9 && s.durMin === 17, '6. 3 lifts of a top set and 3 drops, lifted in 17 minutes at 3 minutes\' rest, are saved as 17 minutes', s);
+    ok(/17 minutes/.test(recap) && !/Not timed/.test(recap), '6. ... and the recap says 17 minutes', recap.slice(0, 300));
+    await H.P.ctx.close();
   }
 
   await browser.close();

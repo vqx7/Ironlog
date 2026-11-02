@@ -1124,7 +1124,12 @@ export function carryLoad(b: DraftBlock, si: number): void {
 
 /* ---------- folds and order ---------- */
 
-/** The exercise a done block folds to, after its moment: the next one not done is brought up, unless the thumb is already in it. */
+/* A done exercise brings up only the next one not done below it, never one
+   above (V, 2026-11-02, NEW-40): an earlier exercise left with a set not
+   ticked is one the lifter moved on from, and in a blank session, where
+   nothing is below until it is added, going back to it took the screen up
+   after every exercise finished. Finish still asks about the sets left. */
+/** The exercise a done block folds to, after its moment: the next one not done below it is brought up, unless the thumb is already in it. */
 export function autoFold(ref: BlkRef | null): void {
   W.foldT = null;
   if (W.blockDrag) return;
@@ -1138,8 +1143,7 @@ export function autoFold(ref: BlkRef | null): void {
     W.foldT = setTimeout(() => autoFold(ref), FOLD_MS.strip);
     return;
   }
-  let nx = d.ex.findIndex((x, i) => i > bi && !blockDone(x));
-  if (nx < 0) nx = d.ex.findIndex(x => !blockDone(x));
+  const nx = d.ex.findIndex((x, i) => i > bi && !blockDone(x));
   const a0 = nx >= 0 ? document.getElementById('blk-' + nx) : null;
   const top0 = a0 ? a0.getBoundingClientRect().top : null;
   rerenderKeepScroll();

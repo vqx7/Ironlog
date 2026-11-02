@@ -286,6 +286,15 @@ Not written here as each shipped; what each moved and changed, with its names, i
 - **Elsewhere:** the update bar in `update.ts` (`updateStart`, `UPDATE_ACTS`; "Update ready" with Update); normalize's draft blocks built against `DraftBlock` (`satisfies`), `cleanTgt` returning a `Target`; the installed build's library loaders list its own copies alone (`scripts/build.js`).
 - **Checks:** `tests/r60.js` (section 1 holds the screen to r59 in 35 sessions and modes; sections 2 to 7 fail on r59 or on a build before r60), `tests/inflight.js`, `tests/personas.js`, `tests/loadrules.js`; `tests/engine.js` calls `nextSets` and `bwNoLoad` in Node, with two return histories.
 
+### r67 (2026-11-02, version 2.22; NEW-39, NEW-40, NEW-21, NEW-27 and 371, with the review's R67-1 and R67-2)
+
+- **The time of a workout logged afterwards (NEW-39):** `saveSession` (workfinish.ts) saves a session in progress untimed when its clock reads under `PACE_LO` of `sessModelMin` for its sets, and the recap says how to add the minutes; a past workout and an edit from History take the minutes typed in `draftMin` (workout.ts, `.minf`), one rule for Finish and the sync's saves (`typedMin`, session.ts, R67-1).
+- **The time model and drops (R67-2):** `sessModelMinIn` (time.ts) reads a drop with the set before it, adding no set and no rest.
+- **A finished exercise brings up only one below it (NEW-40):** `autoFold` (worksets.ts) no longer wraps round to an earlier exercise not done, which in a blank session took the screen back up after every lift.
+- **A section's line (NEW-21):** drawn by `.sec>summary::before` over the section's clear border, so WebKit has no details element's border to leave in the old theme.
+- **Today's card shine (371, V approved the drawing):** `--hero-bg` and `--hero-rim` in each theme block (02-style.css); the drawing is `docs/design/today-card-shine.css`.
+- **Checks:** `tests/r67.js` sections 1 to 6; `tests/personas.js` persona 14; `tests/r63.js` section 4 leaves Chart.js's probe out (NEW-27); `tests/r66b.js` section 6 pinned to r66.
+
 ### r66 (2026-11-01, version 2.21; PENDING 372 to 378 and 368, with NEW-30, NEW-35 and NEW-36)
 
 - **Bodyweight, asked for where it matters (372, V: "We should not require it, but it should be more obvious"):** `src/app/bwnudge.ts`. Today's bodyweight card from the first day a bodyweight lift is in the routine in use (`bwDueCard`, today.ts), a line on each bodyweight lift in a session until a weigh-in exists (`bwWarn`, its Set it opening the `bw` sheet), a note once a visit when one is added (`bwNudge`, a toast, never a sheet: a sheet blocked persona 4's taps), and a field in Settings (`bwSettings`). A weigh-in saved anywhere is today's weigh-in (`addBW`).

@@ -9,7 +9,7 @@ import { estMin } from './format';
 import { rtfAt, isMissed, isWork, RIR_CALL_TOP, PACE_LO } from './formulas';
 import { putById, andList, today, iso, r1, EPS_SAME, MINUTE_S, SECOND_MS } from './util';
 import { cleanCardio, keepExtra } from './normalize';
-import { KNOWN_BLOCK, KNOWN_SESS, LIMITS, cleanChk } from './records';
+import { KNOWN_BLOCK, KNOWN_SESS, cleanChk } from './records';
 import type { Rec } from './records';
 import { loadNote } from './loads';
 import { prName, prOverall } from './prs';
@@ -32,7 +32,7 @@ import {
   sessModelMin
 } from './live';
 import { state, ui } from './store';
-import { joinAdjacent, savedEx, draftCardio, effTarget, withNew, picsLast } from './session';
+import { joinAdjacent, savedEx, draftCardio, effTarget, withNew, picsLast, typedMin } from './session';
 import type { DraftSet, CardioEntry, SessionEx, Session } from './types';
 import { setShort, fmtDateLong, fmtE, prSet, wasE } from './display';
 import { W, blkOpen, blkRef, redraw } from './workstate';
@@ -350,13 +350,7 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
           const m = Math.round((Date.now() - (d.startedAt || 0)) / (MINUTE_S * SECOND_MS));
           return m >= 1 && m <= TIMED_MAX_MIN ? m : null;
         })();
-  const typed = Number(d.durMin);
-  const durMin =
-    d.editingId || d.past
-      ? Number.isInteger(typed) && typed >= 1 && typed <= LIMITS.minutes
-        ? typed
-        : null
-      : clockMin;
+  const durMin = d.editingId || d.past ? typedMin(d) : clockMin;
   // Records carrying fields a newer build stored (keepExtra) are plain objects of their fields, as normalize builds them.
   const exR: (SessionEx & Rec)[] = ex.map(b => ({ ...b }));
   const sess: Session & Rec = {

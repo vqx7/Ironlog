@@ -214,4 +214,4 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   `tests/r61.js` section 1 (r60 and r61), `tests/r62.js` sections 1 and 2 (r61 and r62) and `tests/r63.js` section 1
   (r62 and r63); since r66, which changes the session screen, Today and a lift's name on purpose, `tests/r60.js` section 1 (r59
   and r60), `tests/r59.js` section 1 (r58 and r59), `tests/r58.js` section 1 (r57 and r58) and `tests/r63.js` section 2
-  (r62 and r63).
+  (r62 and r63); since r67, which gives Today's main card its shine on purpose, `tests/r66b.js` section 6 (r65.2 and r66).

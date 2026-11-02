@@ -53,7 +53,11 @@
      over the page rather than part of it. */
   --hero:#ffffff; --on-hero:#0d0f12; --hero-2:#f1f3f5;
   --shadow:0 1px 2px rgba(13,15,18,.05),0 10px 30px rgba(13,15,18,.06);
-  --hero-bg:radial-gradient(150px 150px at 90% 12%,color-mix(in srgb,var(--volt) 14%,transparent),transparent 70%),linear-gradient(165deg,#ffffff,#f6f7f9 72%);
+  /* Today's main card has a slight metal shine (V approved the drawing, 2026-11-02, docs/design/today-card-shine.css):
+     one soft diagonal glint over a brushed face, the accent's glow in its corner, and a brighter rim along the top
+     edge (--hero-rim). Dark keeps the same shape with a far fainter glint, so neither theme reads as a sticker. */
+  --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.55) 40%,rgba(255,255,255,.85) 47%,rgba(255,255,255,.35) 55%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#f6f7f9,#e7eaee 58%,#eef0f3);
+  --hero-rim:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(13,15,18,.06);
   --hero-ring:var(--volt-line); --hero-shadow:0 0 0 1px var(--card-b),0 1px 2px rgba(13,15,18,.05),0 12px 32px rgba(13,15,18,.08);
   /* The rest timer (r29, V: it blended into the screen): a deep tint of the
      accent, the same in both themes, with white text and a bar along its top
@@ -81,7 +85,8 @@
     --on-accent:#0a0b0d; --on-ink:#0a0b0d;
     --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
     --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
-    --hero-bg:radial-gradient(150px 150px at 90% 10%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
+    --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.045) 38%,rgba(255,255,255,.095) 47%,rgba(255,255,255,.03) 56%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1d2025,#121417 62%,#16191d);
+    --hero-rim:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.4);
     --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
 
     --shadow:none;
@@ -98,7 +103,8 @@
   --on-accent:#0a0b0d; --on-ink:#0a0b0d;
   --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
   --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
-  --hero-bg:radial-gradient(150px 150px at 90% 10%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
+  --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.045) 38%,rgba(255,255,255,.095) 47%,rgba(255,255,255,.03) 56%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1d2025,#121417 62%,#16191d);
+  --hero-rim:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.4);
   --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
 
   --shadow:none;
@@ -864,7 +870,7 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .cyc .c.rest{color:var(--muted);border-style:dashed}
 
 /* ---------- today: the hero is the one inked block ---------- */
-.hero{background:var(--hero-bg),var(--hero);color:var(--on-hero);border:0;border-radius:28px;padding:18px 18px 16px;margin:14px 0 14px;box-shadow:var(--hero-shadow)}
+.hero{background:var(--hero-bg),var(--hero);color:var(--on-hero);border:0;border-radius:28px;padding:18px 18px 16px;margin:14px 0 14px;box-shadow:var(--hero-rim),var(--hero-shadow)}
 .hero .eyebrow{color:var(--on-hero);opacity:.7}
 .hero .hello{font:700 17px/1.2 var(--font);letter-spacing:-.01em;margin:0 0 6px;color:var(--on-hero)}
 .hero h2{font-size:54px;font-weight:800;line-height:.92;margin:6px 0 8px;letter-spacing:.01em;overflow-wrap:anywhere}
@@ -5377,6 +5383,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return pics ? { ...rest, pics } : b2;
     });
   }
+  function typedMin(d3) {
+    if (!d3.editingId && !d3.past) return null;
+    const t4 = Number(d3.durMin);
+    return Number.isInteger(t4) && t4 >= 1 && t4 <= LIMITS.minutes ? t4 : null;
+  }
   function draftSession(d3, empty) {
     if (d3.editingId) return null;
     const ex = picsLast(withNew(joinAdjacent(d3.ex.map(savedEx).filter((b2) => b2.sets.length)), d3));
@@ -5391,7 +5402,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       routineId: d3.routineId,
       ex,
       notes: d3.notes || "",
-      durMin: null,
+      durMin: typedMin(d3),
       deload: !!d3.deload,
       light: !!d3.light,
       free: d3.free ? true : void 0,
@@ -7868,7 +7879,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         repMin: rr[0],
         repMax: rr[1],
         rest: +p3.rest || 0,
-        sets: b2.sets.filter((x2) => !x2.warm).length
+        sets: b2.sets.filter((x2) => !x2.warm && !x2.drop).length
       };
     }).filter((it) => it.sets > 0);
     return items.length ? dayMinutesIn(M3, { items }, false, true) : 0;
@@ -14451,8 +14462,7 @@ ${more}`;
       W.foldT = setTimeout(() => autoFold(ref2), FOLD_MS.strip);
       return;
     }
-    let nx = d3.ex.findIndex((x2, i5) => i5 > bi && !blockDone(x2));
-    if (nx < 0) nx = d3.ex.findIndex((x2) => !blockDone(x2));
+    const nx = d3.ex.findIndex((x2, i5) => i5 > bi && !blockDone(x2));
     const a0 = nx >= 0 ? document.getElementById("blk-" + nx) : null;
     const top0 = a0 ? a0.getBoundingClientRect().top : null;
     rerenderKeepScroll();
@@ -19062,8 +19072,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       const m3 = Math.round((Date.now() - (d3.startedAt || 0)) / (MINUTE_S * SECOND_MS));
       return m3 >= 1 && m3 <= TIMED_MAX_MIN ? m3 : null;
     })();
-    const typed = Number(d3.durMin);
-    const durMin = d3.editingId || d3.past ? Number.isInteger(typed) && typed >= 1 && typed <= LIMITS.minutes ? typed : null : clockMin;
+    const durMin = d3.editingId || d3.past ? typedMin(d3) : clockMin;
     const exR = ex.map((b2) => ({ ...b2 }));
     const sess = {
       id: d3.editingId || d3.id,

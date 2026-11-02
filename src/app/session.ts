@@ -8,7 +8,7 @@ import type { DraftBlock, DraftSet, Session, SessionEx, Target } from './types';
 import { uid, today, PERCENT, pctOf, shareWords } from './util';
 import { isMissed, isWork, LIGHTER_SET_SHARE, LIGHT_SHARE, RIR_CALL_TOP } from './formulas';
 import { fmtDate, LIGHT_RIR } from './format';
-import { cleanChk, picIds } from './records';
+import { cleanChk, picIds, LIMITS } from './records';
 
 /* ---------- loads and targets ---------- */
 
@@ -311,10 +311,23 @@ interface DraftCardio {
    keeps this device's own (r55, from the review: the merge kept one of the
    two and the other's ticked sets were lost on every device). Only what was
    ticked, as Finish would save it, with its check-in and the time it started
-   (the second review of r55: both were dropped), untimed; its cardio rows are
-   kept beside it through draftCardio, as Finish keeps them. An edit of a
+   (the second review of r55: both were dropped), untimed unless it is a past
+   workout whose minutes were typed (the review of r67: they were dropped);
+   its cardio rows are kept beside it through draftCardio, as Finish keeps them. An edit of a
    saved session is not one (that session is already kept). Null when
    nothing is ticked. */
+/* The minutes typed for a workout entered after it was done or an edit from
+   History (r67, NEW-39): a whole number from 1 to LIMITS.minutes, else none;
+   a workout in progress is timed by its clock instead. One rule for Finish
+   and for the sync, which saves a past workout as a session when another
+   device closes it (the review of r67: those saves dropped the minutes). */
+/** The minutes typed on a past workout or an edit, or null. */
+export function typedMin(d: DraftLike): number | null {
+  if (!d.editingId && !d.past) return null;
+  const t = Number(d.durMin);
+  return Number.isInteger(t) && t >= 1 && t <= LIMITS.minutes ? t : null;
+}
+
 /** A workout in progress as a saved session of its ticked sets, or null when none is ticked or it is an edit. */
 export function draftSession(d: DraftLike, empty?: boolean): Session | null {
   if (d.editingId) return null;
@@ -331,7 +344,7 @@ export function draftSession(d: DraftLike, empty?: boolean): Session | null {
     routineId: d.routineId,
     ex,
     notes: d.notes || '',
-    durMin: null,
+    durMin: typedMin(d),
     deload: !!d.deload,
     light: !!d.light,
     free: d.free ? true : undefined,
