@@ -392,9 +392,13 @@ html[data-env="preview"] .tabs::before{content:"PREVIEW";position:absolute;top:-
    page: a big condensed title and its summary, a hairline above, and no
    box. What sits inside is set on soft filled surfaces. Folds inside a
    section are .subsec: a hairline and a smaller title. */
-.sec{background:transparent;border:0;border-top:1px solid var(--line-soft);border-radius:0;margin:0;overflow:visible}
+.sec{background:transparent;border:0;border-top:1px solid transparent;border-radius:0;margin:0;overflow:visible}
 .hero+.sec,.ph+.sec,.jump+.sec,.sec:first-child{border-top:0}
-.sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:66px;padding:12px 0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+/* A section's line is drawn by its summary, over the section's own (clear) top border, so the section keeps its size:
+   WebKit left a details element's own border in the old colour after the theme changed on a drawn page (NEW-21, r67). */
+.sec>summary::before{content:"";position:absolute;left:0;right:0;top:-1px;height:1px;background:var(--line-soft);pointer-events:none}
+.hero+.sec>summary::before,.ph+.sec>summary::before,.jump+.sec>summary::before,.sec:first-child>summary::before{content:none}
+.sec>summary{position:relative;list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:66px;padding:12px 0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 .sec>summary::-webkit-details-marker{display:none}
 /* The title keeps its width and the summary takes the rest, wrapping to a
    second line instead of being cut off; a title too long to leave the
@@ -1123,3 +1127,5 @@ input.need{box-shadow:0 0 0 2px var(--yellow)}
 .inj-list li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:15px}
 .inj-list li:last-child{border-bottom:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* The minutes a past workout took, beside its date (r67, NEW-39). */
+.lh-row input.minf{width:auto;flex:0 1 104px;min-height:44px;padding:4px 10px;font-size:16px}

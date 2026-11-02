@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.01-r66">
+<meta name="app-build" content="2026.11.02-r67">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -404,9 +404,13 @@ html[data-env="preview"] .tabs::before{content:"PREVIEW";position:absolute;top:-
    page: a big condensed title and its summary, a hairline above, and no
    box. What sits inside is set on soft filled surfaces. Folds inside a
    section are .subsec: a hairline and a smaller title. */
-.sec{background:transparent;border:0;border-top:1px solid var(--line-soft);border-radius:0;margin:0;overflow:visible}
+.sec{background:transparent;border:0;border-top:1px solid transparent;border-radius:0;margin:0;overflow:visible}
 .hero+.sec,.ph+.sec,.jump+.sec,.sec:first-child{border-top:0}
-.sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:66px;padding:12px 0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+/* A section's line is drawn by its summary, over the section's own (clear) top border, so the section keeps its size:
+   WebKit left a details element's own border in the old colour after the theme changed on a drawn page (NEW-21, r67). */
+.sec>summary::before{content:"";position:absolute;left:0;right:0;top:-1px;height:1px;background:var(--line-soft);pointer-events:none}
+.hero+.sec>summary::before,.ph+.sec>summary::before,.jump+.sec>summary::before,.sec:first-child>summary::before{content:none}
+.sec>summary{position:relative;list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:66px;padding:12px 0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 .sec>summary::-webkit-details-marker{display:none}
 /* The title keeps its width and the summary takes the rest, wrapping to a
    second line instead of being cut off; a title too long to leave the
@@ -1135,6 +1139,8 @@ input.need{box-shadow:0 0 0 2px var(--yellow)}
 .inj-list li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:15px}
 .inj-list li:last-child{border-bottom:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* The minutes a past workout took, beside its date (r67, NEW-39). */
+.lh-row input.minf{width:auto;flex:0 1 104px;min-height:44px;padding:4px 10px;font-size:16px}
 </style>
 </head>
 <body>
@@ -2018,8 +2024,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.21";
-  var APP_VERSION = "2026.11.01-r66";
+  var DISPLAY_VERSION = "2.22";
+  var APP_VERSION = "2026.11.02-r67";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -19052,10 +19058,12 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     else save();
   }
   function saveSession(d3, ex, cardio) {
-    const durMin = d3.editingId ? d3.durMin || null : d3.startedAt && !d3.past && iso(new Date(d3.startedAt)) === d3.date ? (() => {
+    const clockMin = d3.editingId || d3.past || !d3.startedAt || iso(new Date(d3.startedAt)) !== d3.date ? null : (() => {
       const m3 = Math.round((Date.now() - (d3.startedAt || 0)) / (MINUTE_S * SECOND_MS));
       return m3 >= 1 && m3 <= TIMED_MAX_MIN ? m3 : null;
-    })() : null;
+    })();
+    const typed = Number(d3.durMin);
+    const durMin = d3.editingId || d3.past ? Number.isInteger(typed) && typed >= 1 && typed <= LIMITS.minutes ? typed : null : clockMin;
     const exR = ex.map((b2) => ({ ...b2 }));
     const sess = {
       id: d3.editingId || d3.id,
@@ -19072,6 +19080,14 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       free: d3.free ? true : void 0,
       chk: cleanChk(d3.chk) || void 0
     };
+    let untimed = false;
+    if (clockMin != null) {
+      const model = sessModelMin(sess);
+      if (model >= 1 && clockMin < PACE_LO * model) {
+        sess.durMin = null;
+        untimed = true;
+      }
+    }
     const sessPics = d3.pics && d3.pics.length ? [...d3.pics] : void 0;
     let upd2 = null, demoGone = false, targets = 0, beaten = 0, pmDraft = 0;
     const editing = !!d3.editingId;
@@ -19148,7 +19164,9 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       `${work} working set${work === 1 ? "" : "s"}, ${hard} ${rirHalfOn() ? "counted toward the week" : "counted as hard"}${miss ? `, and ${miss} missed` : ""}`
     ];
     if (sess.date !== today()) lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
-    if (durMin) lines.push(`${durMin} minutes${pmDraft && !sess.free ? `, planned ${estMin(pmDraft)}` : ""}`);
+    if (sess.durMin) lines.push(`${sess.durMin} minutes${pmDraft && !sess.free ? `, planned ${estMin(pmDraft)}` : ""}`);
+    else if (untimed)
+      lines.push("Not timed: the sets went in faster than they can be lifted. Add its minutes by editing it in History.");
     if (targets) lines.push(`${beaten} of ${targets} exercise target${targets === 1 ? "" : "s"} beaten`);
     if (heavier.length) lines.push(`Heaviest yet: ${andList(heavier, HEAVIEST_SHOWN)}`);
     const prList = prs.map((pr) => {
@@ -19396,7 +19414,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const calIdx = d3.editingId ? -1 : calDueIdx(d3);
     const letters = ssLetters(d3.ex.map((b2) => b2.plan));
     return b`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d3.editingId ? "Editing a saved session" : d3.past ? "Past workout" : "Session in progress"}</p><div class="hrow"><h2 class="u-owany_minw0">${d3.dayName}</h2>${helpButton("log")}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d3.editingId ? "Cancel edit" : "Discard"}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? "set" : "sets"}</span> done${d3.past ? `, for ${fmtDateLong(d3.date)}` : ""}${d3.startedAt && !d3.past ? `, started ${startedWords(d3.startedAt)}` : ""}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ""}</span></p>${sp.n ? b`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%`}></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>` : ""}
-  <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d3.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${left > 0 ? b`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ""}</div></div></div>
+  <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d3.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d3.past || d3.editingId ? b`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d3.durMin ? String(d3.durMin) : "")} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : A}${left > 0 ? b`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ""}</div></div></div>
   ${howText("log", (state.settings.rirMode === "off" ? "RIR is switched off in Settings, so every working set counts as hard. " : LOG_HELP_ON) + LOG_HELP + (d3.past ? " Quick entry: no rest timer, and a set counts as done once its reps are typed." : state.settings.autoDone ? " Auto-mark is on: sets tick themselves when you leave the reps field." : ""))}
   ${d3.free ? b`<label class="field u-mt8">Name<input type="text" data-bind="draftName" maxlength="40" .value=${fieldValue(d3.dayName || "")}></label><p class="small muted u-m4-0-0">Not tied to a routine day, so your cycle stays put.</p>` : ""}
   ${d3.past ? "" : checkinCard(d3)}${bwAskCard(d3)}${!d3.ex.length ? b`<div class="card"><p class="small u-m0">No exercises yet. Tap + Add exercise below${d3.editingId ? "" : `, or Pick for me for a suggestion based on your last ${PICK_DAYS} days,`} and log as you go.</p></div>` : ""}${repeatKeyed(
@@ -20267,6 +20285,22 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       mixCheck(bi, si);
       if (fillLoads()) act(() => carryLoad(d3.ex[bi], si), { inProgress: true });
       redraw();
+      return true;
+    }
+    if (t4.dataset.bind === "draftMin") {
+      const v3 = t4.value.trim();
+      const n3 = Number(v3);
+      if (v3 === "" || Number.isInteger(n3) && n3 >= 1 && n3 <= LIMITS.minutes)
+        act(
+          () => {
+            d3.durMin = v3 === "" ? null : n3;
+          },
+          { inProgress: true }
+        );
+      else {
+        t4.value = d3.durMin ? String(d3.durMin) : "";
+        toast(`Minutes from 1 to ${LIMITS.minutes}`);
+      }
       return true;
     }
     if (t4.dataset.bind === "draftDate") {

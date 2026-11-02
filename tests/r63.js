@@ -351,6 +351,10 @@ const CASES = [
       seen[seen.length - 1].errors = Q.errors.slice();
       await Q.ctx.close();
     }
+    /* Chart.js checks once for passive listeners as its script loads ("window test", chart.umd.js), and that script
+       loads beside the app's start, so its place among the app's listeners depends on timing under load (NEW-27:
+       one place early once, on r65.2, in a full run). It is the library's, not the app's, so it is left out of both lists. */
+    for (const x of seen) x.adds = x.adds.filter(e => !/^window test /.test(e));
     const [a, b] = seen;
     const firstDiff = (x, y) => { for (let i = 0; i < Math.max(x.length, y.length); i++) if (x[i] !== y[i]) return { at: i, r62: x.slice(Math.max(0, i - 3), i + 4), now: y.slice(Math.max(0, i - 3), i + 4) }; return null; };
     /* Listeners a later build adds, as one run in its place, each run listed here with the release that added it:

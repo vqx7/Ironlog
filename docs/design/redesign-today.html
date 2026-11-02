@@ -1,0 +1,174 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=390">
+<style>
+@font-face{font-family:H;font-weight:400;src:url(../../node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-400-normal.woff2)}
+@font-face{font-family:H;font-weight:500;src:url(../../node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-500-normal.woff2)}
+@font-face{font-family:H;font-weight:600;src:url(../../node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-600-normal.woff2)}
+@font-face{font-family:H;font-weight:700;src:url(../../node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-700-normal.woff2)}
+@font-face{font-family:H;font-weight:800;src:url(../../node_modules/@fontsource/hanken-grotesk/files/hanken-grotesk-latin-800-normal.woff2)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:390px;height:844px;overflow:hidden}
+body{font-family:H,system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1}
+
+/* Direction A: today's colours, the focus layout. */
+.dark.a{--bg:#000;--card:#111214;--card2:#1a1c1f;--line:#24272b;--ink:#f4f4f5;--mute:#8b8f96;--faint:#55595f;--acc:#ff6a2b;--on:#0b0c0e;--acc-soft:rgba(255,106,43,.14);--blue:#7aa7ff;--raise:none}
+.light.a{--bg:#f4f4f6;--card:#fff;--card2:#f0f1f3;--line:#e4e6ea;--ink:#0d0f12;--mute:#6b7078;--faint:#a3a8b0;--acc:#ff6a2b;--on:#0b0c0e;--acc-soft:rgba(255,106,43,.12);--blue:#2a63f5;--raise:none}
+/* Direction B: the same layout, surfaces tinted toward the accent, one raised control, one curved edge. */
+.dark.b{--bg:#0a0706;--card:#16110f;--card2:#201814;--line:#2c221d;--ink:#fbf4f0;--mute:#a1928a;--faint:#64574f;--acc:#ff6a2b;--on:#140a05;--acc-soft:rgba(255,106,43,.16);--blue:#ffb38f}
+.light.b{--bg:#fbf5f1;--card:#fffdfb;--card2:#f6ece6;--line:#efe2da;--ink:#1a100b;--mute:#86756c;--faint:#bfaea4;--acc:#ff6a2b;--on:#170a04;--acc-soft:rgba(255,106,43,.13);--blue:#c2410c}
+
+.status{height:47px;display:flex;align-items:center;justify-content:space-between;padding:0 28px 0 32px;font-weight:600;font-size:16px}
+.status i{display:inline-block;width:26px;height:12px;border:1.5px solid var(--ink);border-radius:4px;opacity:.9;position:relative}
+.status i:after{content:"";position:absolute;inset:1.5px 6px 1.5px 1.5px;background:var(--ink);border-radius:1.5px}
+
+.top{padding:6px 20px 0}
+.b .top{background:var(--card);border-bottom-left-radius:28px;border-bottom-right-radius:28px;padding-bottom:16px;margin-bottom:8px}
+.row{display:flex;align-items:center;justify-content:space-between}
+.day{font-size:30px;font-weight:800;letter-spacing:-.02em}
+.day small{display:block;font-size:13px;font-weight:600;color:var(--mute);letter-spacing:0;margin-bottom:2px}
+.finish{height:40px;padding:0 18px;border-radius:999px;border:1.5px solid var(--line);background:transparent;color:var(--ink);font:700 15px H}
+.stats{display:flex;margin-top:14px;gap:0}
+.stats div{flex:1}
+.stats b{display:block;font-size:20px;font-weight:700;letter-spacing:-.01em}
+.stats span{font-size:12px;color:var(--mute);font-weight:500}
+.prog{height:3px;background:var(--line);border-radius:2px;margin-top:12px;overflow:hidden}
+.prog i{display:block;width:38%;height:100%;background:var(--acc)}
+
+.ex{margin:14px 12px 0;padding:18px 16px 12px;background:var(--card);border-radius:24px;position:relative}
+.ss{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--blue);margin-bottom:8px}
+.ss em{font-style:normal;color:var(--mute);font-weight:600;letter-spacing:0}
+.exh{display:flex;align-items:flex-start;gap:10px}
+.exh h2{font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.1;flex:1}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:3px 8px;border-radius:7px;background:var(--acc-soft);color:var(--acc);margin-right:6px;vertical-align:2px}
+.meta{font-size:14px;color:var(--mute);margin-top:6px;font-weight:500}
+.ico{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--mute);flex:none}
+.ico svg{width:20px;height:20px}
+.goal{margin-top:12px;font-size:14px;font-weight:600;color:var(--ink)}
+.goal span{color:var(--mute);font-weight:500}
+
+.done{display:flex;align-items:center;height:48px;margin-top:10px;padding:0 6px 0 4px;color:var(--mute);font-size:16px;font-weight:600;border-top:1px solid var(--line)}
+.done .n{width:28px;color:var(--faint)}
+.done .v{flex:1}
+.done .v b{color:var(--ink);font-weight:700}
+.done .r{width:64px;font-size:14px}
+.ck{width:30px;height:30px;border-radius:50%;background:var(--acc);display:grid;place-items:center;color:var(--on)}
+.ck svg{width:16px;height:16px}
+
+.now{margin-top:6px;border-radius:20px;background:var(--acc);color:var(--on);display:flex;align-items:stretch;height:92px;position:relative}
+.b .now{box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 10px 24px -8px rgba(255,106,43,.55)}
+.now .lab{position:absolute;left:16px;top:10px;font-size:11px;font-weight:800;letter-spacing:.1em;opacity:.7}
+.cell{flex:1;display:flex;align-items:flex-end;padding:0 0 16px 16px}
+.cell+.cell{border-left:1.5px solid rgba(0,0,0,.14)}
+.big{font-size:40px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.unit{font-size:15px;font-weight:700;margin-left:4px;opacity:.72;line-height:1.6}
+.rir{width:62px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:16px;border-left:1.5px solid rgba(0,0,0,.14)}
+.rir b{font-size:22px;font-weight:800;line-height:1}
+.rir span{font-size:11px;font-weight:800;opacity:.7;letter-spacing:.06em;margin-top:4px}
+.go{width:76px;display:grid;place-items:center;border-left:1.5px solid rgba(0,0,0,.14)}
+.go i{width:50px;height:50px;border-radius:50%;background:var(--on);color:var(--acc);display:grid;place-items:center}
+.go svg{width:24px;height:24px}
+.last{font-size:13px;color:var(--mute);margin:8px 4px 0;font-weight:500}
+.last b{color:var(--ink);font-weight:700}
+
+.next{display:flex;align-items:center;height:52px;margin-top:8px;padding:0 6px 0 4px;color:var(--faint);font-size:16px;font-weight:600;border-top:1px solid var(--line)}
+.next .n{width:28px}
+.next .v{flex:1}
+.next .ring{width:30px;height:30px;border-radius:50%;border:2px solid var(--line)}
+.acts{display:flex;gap:4px;margin-top:6px;padding-top:4px;border-top:1px solid var(--line)}
+.acts span{height:44px;display:flex;align-items:center;padding:0 10px;font-size:15px;font-weight:700;color:var(--mute)}
+.acts span:first-child{padding-left:4px}
+.acts .sp{flex:1}
+
+.ex2{margin:10px 12px 0;padding:14px 16px;background:var(--card);border-radius:20px;display:flex;align-items:center;gap:12px}
+.ex2 .ss{margin:0}
+.ex2 h3{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.ex2 p{font-size:13px;color:var(--mute);font-weight:500;margin-top:2px}
+.ex2 .tail{margin-left:auto;font-size:13px;font-weight:700;color:var(--blue)}
+
+.rest{position:absolute;left:12px;right:12px;bottom:92px;height:76px;border-radius:24px;background:var(--card2);display:flex;align-items:center;padding:0 10px 0 12px;gap:12px}
+.dark.a .rest{background:#16181b;border:1px solid var(--line)}
+.dial{width:56px;height:56px;position:relative;flex:none}
+.dial svg{width:56px;height:56px;transform:rotate(-90deg)}
+.rest .t{flex:1}
+.rest .t b{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.rest .t span{display:block;font-size:12px;color:var(--mute);font-weight:600;margin-top:3px}
+.pill{height:44px;min-width:52px;padding:0 12px;border-radius:999px;display:grid;place-items:center;font-weight:700;font-size:15px;color:var(--ink);background:var(--card)}
+.dark.a .pill{background:#24272b}
+.skip{color:var(--acc);background:transparent!important}
+
+.tabs{position:absolute;left:0;right:0;bottom:0;height:84px;background:var(--bg);border-top:1px solid var(--line);display:flex;padding:8px 6px 0}
+.b .tabs{background:var(--card)}
+.tabs div{flex:1;text-align:center;font-size:11px;font-weight:700;color:var(--faint)}
+.tabs div svg{display:block;margin:2px auto 4px;width:24px;height:24px}
+.tabs .on{color:var(--acc)}
+.chg{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:800;letter-spacing:.02em;color:var(--up);margin-top:6px}
+.dark{--up:#3ddc84}.light{--up:#0f9d58}
+.dots{display:inline-flex;gap:5px;margin-left:10px;vertical-align:1px}
+.dots i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--faint)}
+.dots i.f{background:var(--acc);border-color:var(--acc)}
+.dots i.c{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-soft)}
+.why{margin-top:10px;font-size:13px;color:var(--mute);font-weight:500;line-height:1.4}
+.why u{color:var(--ink);font-weight:700;text-decoration:none;border-bottom:1.5px solid var(--line)}
+</style></head>
+<style>
+.ava{width:44px;height:44px;border-radius:50%;background:var(--card2);display:grid;place-items:center;font-weight:800;color:var(--mute)}
+.week{display:flex;justify-content:space-between;margin-top:16px}
+.week .d{width:44px;text-align:center;font-size:12px;font-weight:700;color:var(--mute)}
+.week .d i{display:block;width:10px;height:10px;border-radius:50%;margin:8px auto 0}
+.week .d i{background:var(--acc)} .week .d i.o{background:transparent;border:2px solid var(--faint)} .week .d i.r{background:var(--line);width:6px;height:6px;margin-top:10px}
+.week .wk-cur span{color:var(--ink)} .week .wk-cur i{border-color:var(--acc)!important;box-shadow:0 0 0 3px var(--acc-soft)}
+.hero{margin:16px 12px 0;padding:20px 20px 18px;border-radius:28px;background:var(--acc);color:var(--on)}
+.b .hero{box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 16px 32px -14px rgba(255,106,43,.6)}
+.hk{font-size:11px;font-weight:800;letter-spacing:.1em;opacity:.7}
+.hn{font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1;margin-top:6px}
+.hm{font-size:15px;font-weight:700;margin-top:6px;opacity:.8}
+.hl{font-size:13px;font-weight:600;margin-top:12px;line-height:1.45;opacity:.78}
+.hl b{opacity:1;font-weight:800}
+.start{margin-top:16px;height:54px;border-radius:999px;background:var(--on);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:17px;font-weight:800}
+.start svg{width:18px;height:18px;color:var(--acc)}
+.tiles{display:flex;gap:10px;margin:10px 12px 0}
+.tile{flex:1;background:var(--card);border-radius:22px;padding:14px;display:flex;align-items:center;gap:12px}
+.rg{width:56px;height:56px;position:relative;flex:none}
+.rg svg{width:56px;height:56px;transform:rotate(-90deg)}
+.rg b{position:absolute;inset:0;display:grid;place-items:center;font-size:18px;font-weight:800}
+.tt{font-size:15px;font-weight:700}.ts{font-size:12px;color:var(--mute);font-weight:500;margin-top:2px}
+.card{margin:10px 12px 0;background:var(--card);border-radius:22px;padding:14px 16px 6px}
+.ch{display:flex;justify-content:space-between;font-size:15px;font-weight:700;margin-bottom:4px}
+.ch em{font-style:normal;font-size:12px;color:var(--mute);font-weight:600}
+.li{display:flex;align-items:center;height:46px;border-top:1px solid var(--line);font-size:15px;font-weight:600}
+.li:first-of-type{border-top:0}
+.li span{flex:1}.li svg{width:80px;height:24px;margin-right:14px}
+.li b{width:64px;text-align:right;font-size:17px;font-weight:800}.li small{font-size:12px;color:var(--mute);font-weight:600}
+</style><body class="THEME DIR">
+<div class="status"><span>9:41</span><span><i></i></span></div>
+<div class="top" style="padding-bottom:6px">
+  <div class="row"><div class="day"><small>Monday, Nov 2</small>Today</div><div class="ava">V</div></div>
+  <div class="week">
+    <div class="d wk-ok"><span>M</span><i></i></div><div class="d"><span>T</span><i class="o"></i></div><div class="d wk-cur"><span>W</span><i class="o"></i></div><div class="d"><span>T</span><i class="r"></i></div><div class="d"><span>F</span><i class="o"></i></div><div class="d"><span>S</span><i class="r"></i></div><div class="d"><span>S</span><i class="r"></i></div>
+  </div>
+</div>
+<div class="hero">
+  <div class="hk">NEXT · DAY 3 OF 4</div>
+  <div class="hn">Push</div>
+  <div class="hm">5 exercises · 16 sets · ~55 min</div>
+  <div class="hl">Bench Press <b>↑ 230</b> · Incline DB Press · Cable Fly · Lateral Raise · Pressdown</div>
+  <div class="start"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Start session</div>
+</div>
+<div class="tiles">
+  <div class="tile"><div class="rg"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="none" stroke="var(--line)" stroke-width="6"/><circle cx="32" cy="32" r="27" fill="none" stroke="var(--acc)" stroke-width="6" stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="62"/></svg><b>38</b></div><div><div class="tt">Hard sets</div><div class="ts">of 60 this week</div></div></div>
+  <div class="tile"><div class="rg"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="none" stroke="var(--line)" stroke-width="6"/><circle cx="32" cy="32" r="27" fill="none" stroke="var(--up)" stroke-width="6" stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="85"/></svg><b>2</b></div><div><div class="tt">Sessions</div><div class="ts">of 4 planned</div></div></div>
+</div>
+<div class="card">
+  <div class="ch"><span>Lifts moving</span><em>4 weeks</em></div>
+  <div class="li"><span>Bench Press</span><svg viewBox="0 0 80 24"><polyline points="0,20 16,17 32,16 48,12 64,9 80,5" fill="none" stroke="var(--acc)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><b>230<small> lb</small></b></div>
+  <div class="li"><span>Back Squat</span><svg viewBox="0 0 80 24"><polyline points="0,16 16,15 32,12 48,12 64,10 80,8" fill="none" stroke="var(--acc)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><b>315<small> lb</small></b></div>
+  <div class="li"><span>Pull-up</span><svg viewBox="0 0 80 24"><polyline points="0,14 16,14 32,13 48,13 64,12 80,12" fill="none" stroke="var(--faint)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><b>+25<small> lb</small></b></div>
+</div>
+<div class="tabs">
+  <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>Today</div>
+  <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Plan</div>
+  <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Stats</div>
+  <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>History</div>
+  <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Settings</div>
+</div>
+</body></html>

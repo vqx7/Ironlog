@@ -504,7 +504,7 @@ export function viewWorkout(d: Draft): TemplateResult {
       ? html`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%`}></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`
       : ''
   }
-  <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div></div>
+  <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d.past || d.editingId ? html`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d.durMin ? String(d.durMin) : '')} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : nothing}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div></div>
   ${howText('log', (state.settings.rirMode === 'off' ? 'RIR is switched off in Settings, so every working set counts as hard. ' : LOG_HELP_ON) + LOG_HELP + (d.past ? ' Quick entry: no rest timer, and a set counts as done once its reps are typed.' : state.settings.autoDone ? ' Auto-mark is on: sets tick themselves when you leave the reps field.' : ''))}
   ${
     d.free
@@ -1523,6 +1523,24 @@ export function workoutChange(t: Field): boolean {
     mixCheck(bi, si);
     if (fillLoads()) act(() => carryLoad(d.ex[bi], si), { inProgress: true });
     redraw();
+    return true;
+  }
+  /* The minutes a past workout or an edited session took, typed (r67, NEW-39):
+     empty is none, and a number past what a workout takes is refused. */
+  if (t.dataset.bind === 'draftMin') {
+    const v = t.value.trim();
+    const n = Number(v);
+    if (v === '' || (Number.isInteger(n) && n >= 1 && n <= LIMITS.minutes))
+      act(
+        () => {
+          d.durMin = v === '' ? null : n;
+        },
+        { inProgress: true }
+      );
+    else {
+      t.value = d.durMin ? String(d.durMin) : '';
+      toast(`Minutes from 1 to ${LIMITS.minutes}`);
+    }
     return true;
   }
   if (t.dataset.bind === 'draftDate') {
