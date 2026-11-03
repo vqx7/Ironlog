@@ -33,6 +33,8 @@
 //   7  Warm-ups added one by one stay distinct on the default 10 lb step (found building 367): a 50 lb barbell curl's
 //      three warm-ups are 20, 30 and 40, each under the working load (r68 before the fix: 20, 30, 30). On r67's 5 lb
 //      step they were 20, 30 and 35, so on r67 this is a guard; it fails on d52a2a9's page, the build before the fix.
+//   8  The Guide and the sheets say what r68 does (99): the load steps by equipment in lb and kg, how fixed weekdays
+//      adapt and where a second workout is added, the week bar's plain day, and a load step sheet that fits a barbell.
 const { open, engine } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
@@ -457,6 +459,32 @@ const vLog = mon => {
     const distinct = r.length === 3 && r[0] < r[1] && r[1] < r[2] && r[2] < 50;
     ok(distinct, '7. three warm-ups on a 50 lb barbell curl are distinct and under the working load', r);
     await P.ctx.close();
+  }
+
+  // ---- 8. The Guide and the sheets say what r68 does (99).
+  if (run(8)) {
+    for (const unit of ['lb', 'kg']) {
+      const P = await open(FILE, { browser, clock: '2026-11-02T18:00:00' });
+      const r = await P.page.evaluate(u => {
+        const L = window.__ironlog; const S = L.state;
+        S.settings.onboarded = true; S.settings.unit = u; L.makeDemo(); L.invalidate(); L.ui.tab = 'today'; L.render();
+        L.ACT.guideOpen(document.createElement('button'));
+        const guide = (document.querySelector('#modal') || {}).textContent || '';
+        L.ui.modal = { kind: 'inc', exId: 'bench' }; L.render();
+        const inc = (document.querySelector('#modal') || {}).textContent || '';
+        L.ui.modal = null; L.render();
+        return { guide, inc };
+      }, unit);
+      const g = r.guide.replace(/\s+/g, ' ');
+      const steps = unit === 'lb' ? /Load steps: with none set on the exercise, a barbell or Smith lift and a machine stack go up 10 lb, a dumbbell 5 lb, and anything else 5 lb/ : /Load steps: with none set on the exercise, a barbell or Smith lift and a machine stack go up 5 kg, a dumbbell 2 kg, and anything else 2\.5 kg/;
+      ok(steps.test(g), `8. the Guide gives the load steps by equipment, in ${unit}`, g.match(/Load steps[^.]*\./));
+      if (unit === 'lb') {
+        ok(/Fixed weekdays: a workout done on another day counts for its own day/.test(g) && /Add a second workout/.test(g), '8. the Guide says how fixed weekdays adapt and where the second workout is added', g.match(/Fixed weekdays[^<]{0,300}/));
+        ok(/a plain day one done on another day/.test(g), '8. the Guide names the week bar\'s plain day, a workout done on another day', g.match(/a red ring[^.]*\./));
+        ok(/smallest jump you can load/.test(r.inc) && !/machine or dumbbells/.test(r.inc), '8. the load step sheet fits a barbell lift, not only a machine or dumbbells', r.inc.replace(/\s+/g, ' '));
+      }
+      await P.ctx.close();
+    }
   }
 
   await browser.close();
