@@ -20015,7 +20015,12 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       const frac = WARM_RAMP[Math.min(n3, WARM_RAMP.length - 1)];
       let at2 = 0;
       while (at2 < b2.sets.length && b2.sets[at2].warm) at2++;
-      const w2 = base > 0 ? lighterLoad(EX(b2.exId), b2.plan, base, base * frac) : null;
+      let w2 = base > 0 ? lighterLoad(EX(b2.exId), b2.plan, base, base * frac) : null;
+      const prev = at2 > 0 ? +(effW(b2, at2 - 1) ?? 0) || 0 : 0;
+      if (w2 != null && prev > 0 && w2 <= prev + EPS && base > prev) {
+        const up = heavierLoad(EX(b2.exId), b2.plan, prev, base - EPS);
+        if (up != null) w2 = up;
+      }
       act(
         () => {
           b2.sets.splice(at2, 0, newRow({ w: w2, warm: true }));

@@ -648,7 +648,7 @@ export function weekPlan(R: Routine): Record<string, PlannedDay> {
    Push done on Tuesday fills Monday's slot; one session fills one slot, the earliest first. A rest week plans
    none (weekPlan), and a cycle has no slots (it walks on instead, cycleState). */
 /** One planned workout of this week on a fixed-weekday routine, and when it was done. */
-export interface WeekSlot {
+interface WeekSlot {
   di: number;
   part: 1 | 2;
   day: Day;

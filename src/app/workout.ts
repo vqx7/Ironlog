@@ -34,7 +34,7 @@ import { loadWords, loadNote, emptyLoad } from './loads';
 import { CHK_Q, chkWord } from './coach';
 import { rirScale, effShow, effName } from './effort';
 import { prefGet, BWASK_KEY, prefSet, log } from './storage';
-import { EX, exBarKg, loadLabel, U, exName, lighterLoad, fromD, oddLoad, lightZero } from './live';
+import { EX, exBarKg, loadLabel, U, exName, lighterLoad, heavierLoad, fromD, oddLoad, lightZero } from './live';
 import { state, ui } from './store';
 import {
   effW,
@@ -876,7 +876,14 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const frac = WARM_RAMP[Math.min(n, WARM_RAMP.length - 1)];
     let at = 0;
     while (at < b.sets.length && b.sets[at].warm) at++;
-    const w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * frac) : null;
+    let w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * frac) : null;
+    /* Each warm-up a step heavier than the one before where the loads allow (r68): on a 10 lb step a 50 lb curl's
+       third warm-up came out at 30 again, the second's load; it takes the next load under the working one. */
+    const prev = at > 0 ? +(effW(b, at - 1) ?? 0) || 0 : 0;
+    if (w != null && prev > 0 && w <= prev + EPS && base > prev) {
+      const up = heavierLoad(EX(b.exId), b.plan, prev, base - EPS);
+      if (up != null) w = up;
+    }
     act(
       () => {
         b.sets.splice(at, 0, newRow({ w, warm: true }));
