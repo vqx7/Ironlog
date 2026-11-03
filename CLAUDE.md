@@ -25,7 +25,10 @@ stand-in cloud.
 ## How work is done (V, 2026-10-18; PENDING 316)
 
 1. One release is one pull request. GitHub runs every suite in Chromium and in WebKit (the engine of every iPhone
-   browser) and publishes the preview; V tries it on the phone and merges on GitHub's website.
+   browser) and publishes the preview; V tries it on the phone and merges on GitHub's website. That run is the
+   gate (V, 2026-11-02): all eight jobs green on the exact head commit, read from GitHub's API. It runs the list
+   `npm test` runs (`tests/run.js --shard`), so the full local run is not repeated; locally, `npx tsc --noEmit -p .`,
+   `npm run join:check`, `tests/hygiene.js` and every suite a change touches.
 2. A change a lifter can see gets a test that fails without it, written before the fix, and run on the build
    before it (`node tests/<suite>.js baselines/rN.html`) to show that it fails there.
 3. Passing suites say behaviour did not change, not that it is right. Check a number that moves against what a
