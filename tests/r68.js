@@ -30,6 +30,9 @@
 //      offered first, today's Pull a tap away; done on Tuesday, it fills Monday's slot, so Monday no longer reads
 //      missed and Today moves on to Pull; once today's is done Today shows the next one up; a rest day with
 //      nothing behind keeps its card (a guard).
+//   7  Warm-ups added one by one stay distinct on the default 10 lb step (found building 367): a 50 lb barbell curl's
+//      three warm-ups are 20, 30 and 40, each under the working load (r68 before the fix: 20, 30, 30). On r67's 5 lb
+//      step they were 20, 30 and 35, so on r67 this is a guard; it fails on d52a2a9's page, the build before the fix.
 const { open, engine } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
@@ -434,6 +437,25 @@ const vLog = mon => {
     P = await weekPage('2026-11-07T10:00:00', weekR(), [wkSess('w1', '2026-11-02', 0, 'Dmon', 'Push'), wkSess('w2', '2026-11-03', 1, 'Dtue', 'Pull'), wkSess('w3', '2026-11-04', 2, 'Dwed', 'Legs')]);
     c = await P.page.evaluate(() => { const h = document.querySelector('#view .hero'); return h ? { name: ((h.querySelector('h2') || {}).textContent || '').trim(), start: !!h.querySelector('[data-act="startSession"]') } : null; });
     ok(c && c.name === 'Rest' && !c.start, '6. a guard: a rest day with nothing behind keeps its card', c);
+    await P.ctx.close();
+  }
+
+  // ---- 7. Warm-ups added one by one stay distinct.
+  if (run(7)) {
+    const P = await open(FILE, { browser, clock: '2026-11-02T18:00:00' });
+    const r = await P.page.evaluate(() => {
+      const L = window.__ironlog; const S = L.state; const LB = 0.45359237;
+      S.settings.onboarded = true; S.settings.unit = 'lb'; S.sessions = [];
+      S.routines = [{ id: 'RC', name: 'Arms', schedule: 'cycle', days: [{ id: 'DC', name: 'Arms', rest: false, items: [{ uid: 'c1', exId: 'bbCurl', sets: 2, repMin: 8, repMax: 12, rir: 1, rest: 0, inc: 5 * LB, ss: null }] }] }];
+      S.activeRoutineId = 'RC'; S.draft = null; L.state = L.normalize(S); L.invalidate();
+      L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); L.ACT.startSession({ dataset: { day: '0' } });
+      L.state.draft.ex[0].sets.forEach(x => { x.w = 50 * LB; });
+      for (let k = 0; k < 3; k++) L.ACT.wAdd({ dataset: { b: '0' } });
+      const w = L.state.draft.ex[0].sets.filter(x => x.warm).map(x => Math.round(x.w / LB * 100) / 100);
+      L.state.draft = null; return w;
+    });
+    const distinct = r.length === 3 && r[0] < r[1] && r[1] < r[2] && r[2] < 50;
+    ok(distinct, '7. three warm-ups on a 50 lb barbell curl are distinct and under the working load', r);
     await P.ctx.close();
   }
 
