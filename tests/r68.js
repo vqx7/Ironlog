@@ -12,6 +12,11 @@
 //      whole, read from the canvas's own pixels at four points inside it. In each Volume view (region, weekly
 //      trend, load, this week, average), with the demo's log, at 320, 375 and 390 px. r67 at 320 px wrote "Oct 26" into "This wk" on the weekly
 //      bars and cut the first weigh-in's dot and a lift's first session in half.
+//   3  NEW-18 and 366 (a) and (b), two sessions of a lift on one day (V's ruling of 2026-11-02, "match the morning").
+//      A second bench session the same day asks the morning's load and reps, no step up and nothing set to beat
+//      (r67: 140 x 10 x 3 at 8:00 asked 145 at 17:00); started from Today it shows that in its grey numbers. The
+//      next day reads the day as one, from its best session (r67 read the later one: a weaker evening after a
+//      morning at the top of the range held the load). A guard: when the evening is the better one, it is read.
 const { open, engine } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
@@ -176,6 +181,52 @@ const vLog = mon => {
       }
       await P.ctx.close();
     }
+  }
+
+  // ---- 3. Two sessions of a lift on one day.
+  if (run(3)) {
+    const LBk = 0.45359237;
+    const plan = { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 120, inc: 5 * LBk };
+    const sess = (id, date, startH, reps, w = 140) => ({ id, date, startedAt: Date.parse(date + 'T' + String(startH).padStart(2, '0') + ':00:00'), durMin: 50, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: reps.map(r => ({ w: w * LBk, r, rir: 2 })) }] });
+    const ask = async (clock, sessions) => {
+      const P = await open(FILE, { browser, clock });
+      const r = await P.page.evaluate(([sessions, plan]) => {
+        const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb';
+        S.sessions = sessions; L.state = L.normalize(S); L.invalidate();
+        const g = L.suggest('bench', plan, {});
+        return { w: g.w == null ? null : Math.round(g.w / 0.45359237 * 10) / 10, lastR: g.lastR, tgt: g.tgt, text: g.text };
+      }, [sessions, plan]);
+      await P.ctx.close();
+      return r;
+    };
+    const base = [sess('a', '2026-10-19', 8, [10, 10, 10], 135)];
+    const EVE = [9, 9, 9];
+    // (a) The second session the same day.
+    const a = await ask('2026-10-26T17:00:00', [...base, sess('b', '2026-10-26', 8, [10, 10, 10])]);
+    ok(a.w === 140, '3. after 140 x 10 x 3 this morning, a second bench session today asks 140, not 145', a);
+    ok(JSON.stringify(a.lastR) === '[10,10,10]' && !a.tgt, '3. ... for the same reps, with nothing set to beat', a);
+    ok(/^Earlier today: 140×10, 140×10, 140×10\. /.test(a.text || ''), '3. ... and says it is the same as earlier today', a.text);
+    // V's example: the morning short of the range's top.
+    const a2 = await ask('2026-10-26T17:00:00', [...base, sess('b', '2026-10-26', 8, [7, 7, 6])]);
+    ok(a2.w === 140 && JSON.stringify(a2.lastR) === '[7,7,6]' && !a2.tgt, "3. V's example: 140 x 7, 7, 6 this morning asks 140 x 7, 7, 6 again tonight, nothing to beat", a2);
+    // (b) The next day, from the day's best.
+    const b = await ask('2026-10-29T17:00:00', [...base, sess('b', '2026-10-26', 8, [10, 10, 10]), sess('c', '2026-10-26', 17, EVE)]);
+    ok(b.w === 145, "3. the day after a morning at 140 x 10 x 3 and a weaker evening, the target steps up from the morning to 145", b);
+    const g = await ask('2026-10-29T17:00:00', [...base, sess('b', '2026-10-26', 8, [7, 7, 6]), sess('c', '2026-10-26', 17, [9, 9, 8])]);
+    ok(g.w === 140 && g.tgt && g.tgt.total === 26, '3. a guard: when the evening is the better session, the next target reads it (beat 26 reps at 140)', g);
+    // Through the screens: the evening session started from Today, its grey numbers.
+    const P = await open(FILE, { browser, clock: '2026-10-26T17:00:00' });
+    await P.page.evaluate(([sessions, plan]) => {
+      const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.autoDone = false;
+      S.routines = [{ id: 'R1', name: 'Mine', schedule: 'weekly', days: [{ id: 'D1', name: 'Push', items: [{ uid: 'u1', exId: 'bench', ss: null, ...plan }] }] }]; S.activeRoutineId = 'R1';
+      S.sessions = sessions; L.state = L.normalize(S); L.invalidate(); L.ui.tab = 'today'; L.render();
+    }, [[...base, sess('b', '2026-10-26', 8, [10, 10, 10])], plan]);
+    await wait(150);
+    await P.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])');
+    await wait(250);
+    const blk = await P.page.evaluate(() => { const d = window.__ironlog.state.draft; const b = d && d.ex.find(x => x.exId === 'bench'); return b && { w: [b.sw == null ? null : Math.round(b.sw / 0.45359237)], reps: b.lastR, hint: b.hint, tgt: b.tgt }; });
+    ok(blk && blk.w[0] === 140 && JSON.stringify(blk.reps) === '[10,10,10]' && !blk.tgt && /^Earlier today/.test(blk.hint || ''), '3. started from Today, the evening bench shows 140 x 10 in grey, nothing to beat, and why', blk);
+    await P.ctx.close();
   }
 
   await browser.close();

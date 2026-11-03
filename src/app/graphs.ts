@@ -521,10 +521,13 @@ function weekAxis(win: readonly { wk: string; fut: boolean }[], o: Opts): string
       return w && w.fut ? faded : ink;
     }
   };
+  // A week's date (yyyy-mm-dd) as its month and its day of the month.
+  const ym = (d: string): string => d.split('-').slice(0, 2).join('-');
+  const dom = (d: string): string => String(+(d.split('-')[2] ?? ''));
   return win.map((w, i) => {
     if (w.wk === cur) return 'This wk';
     const prev = win[i - 1];
-    return !many && prev && prev.wk.slice(0, 7) === w.wk.slice(0, 7) ? String(+w.wk.slice(8, 10)) : fmtDate(w.wk);
+    return !many && prev && ym(prev.wk) === ym(w.wk) ? dom(w.wk) : fmtDate(w.wk);
   });
 }
 

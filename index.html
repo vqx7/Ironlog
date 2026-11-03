@@ -6887,6 +6887,40 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return span <= TREND_DAYS;
   }
+  function oneADay(xs, repMin) {
+    if (!xs || xs.length < 2) return xs;
+    const score = (x2) => {
+      const w2 = workLoad(x2.pts, repMin);
+      return [w2, triedAt(x2, w2).reduce((t4, p3) => t4 + p3.r, 0)];
+    };
+    const out = [];
+    for (const x2 of xs) {
+      const prev = out[out.length - 1];
+      if (!prev || prev.date !== x2.date) {
+        out.push(x2);
+        continue;
+      }
+      const [a0, a1] = score(prev), [b0, b1] = score(x2);
+      if (b0 > a0 + EPS_SAME || Math.abs(b0 - a0) <= EPS_SAME && b1 >= a1) out[out.length - 1] = x2;
+    }
+    return out;
+  }
+  function sgSameDayIn(M3, C2) {
+    const { ex, last, T: T2, top, planPts, lastR, lastS, basis } = C2;
+    if (last.date !== T2 || !(planPts.length > 0)) return null;
+    const sets = last.pts.map((p3) => `${loadLabelIn(M3, ex, p3.w)}×${p3.r}`).join(", ");
+    return {
+      top,
+      w: top,
+      text: `Earlier today: ${sets}. The same again: no step up within one day.`,
+      lastR,
+      basis,
+      last: lastS,
+      target: "",
+      tgt: null,
+      easier: null
+    };
+  }
   function suggestCoreIn(M3, exId, plan, opts) {
     opts = opts || {};
     const T2 = opts.before && isDate(opts.before) ? opts.before : M3.today();
@@ -6898,9 +6932,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const want = [+plan.repMin, +plan.repMax];
     const inRR = rangeInUse(full, want);
     const fullRR = inRR ? full.filter((x2) => sameRR(x2.rr, want)) : [];
-    const exps = all && all.length ? fullRR.length ? fullRR : full.length ? full : all : all;
-    const done = all && all.length ? fullRR.length ? all.filter((x2) => !lighter(x2) && sameRR(x2.rr, want)) : full.length ? all.filter((x2) => !lighter(x2)) : all : [];
-    const seen = inRR ? all.filter((x2) => sameRR(x2.rr, want)) : all;
+    const exps = oneADay(all && all.length ? fullRR.length ? fullRR : full.length ? full : all : all, want[0]);
+    const done = oneADay(
+      all && all.length ? fullRR.length ? all.filter((x2) => !lighter(x2) && sameRR(x2.rr, want)) : full.length ? all.filter((x2) => !lighter(x2)) : all : [],
+      want[0]
+    ) ?? [];
+    const seen = oneADay(inRR ? all.filter((x2) => sameRR(x2.rr, want)) : all, want[0]);
     if (ex.timed) return suggestTimedIn(M3, ex, plan, exps, opts, injM, seen);
     if (!exps || !exps.length) return sgFirstIn(M3, ex, plan, T2, injM);
     const last = exps[exps.length - 1], ws = last.pts;
@@ -6980,7 +7017,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       fl,
       tp
     };
-    const res = sgAfterReturnIn(M3, C2) || sgEasyIn(M3, C2) || sgPastRangeIn(M3, C2) || sgBelowRangeIn(M3, C2) || sgNoStep(C2) || sgTopOfRangeIn(M3, C2) || sgBadDay(C2) || sgRepsIn(M3, C2);
+    const res = sgSameDayIn(M3, C2) || sgAfterReturnIn(M3, C2) || sgEasyIn(M3, C2) || sgPastRangeIn(M3, C2) || sgBelowRangeIn(M3, C2) || sgNoStep(C2) || sgTopOfRangeIn(M3, C2) || sgBadDay(C2) || sgRepsIn(M3, C2);
     return res && res.last ? { ...res, prev: L0.prev, prevOff: L0.prevOff } : res;
   }
   function sgAfterReturnIn(M3, C2) {
@@ -10886,10 +10923,12 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         return w2 && w2.fut ? faded : ink;
       }
     };
+    const ym = (d3) => d3.split("-").slice(0, 2).join("-");
+    const dom = (d3) => String(+(d3.split("-")[2] ?? ""));
     return win.map((w2, i5) => {
       if (w2.wk === cur) return "This wk";
       const prev = win[i5 - 1];
-      return !many && prev && prev.wk.slice(0, 7) === w2.wk.slice(0, 7) ? String(+w2.wk.slice(8, 10)) : fmtDate(w2.wk);
+      return !many && prev && ym(prev.wk) === ym(w2.wk) ? dom(w2.wk) : fmtDate(w2.wk);
     });
   }
   function chartDefaults(C2, muted) {
@@ -25130,7 +25169,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Pick for me</b> ranks your routine's days by what each muscle got in the last ${PICK_DAYS} days against your targets, how recently it was trained hard, injuries, and your cycle. Starting one moves your cycle on from there.</p>
    <p><b>Blank session</b>: any exercises, not tied to a routine day, so your cycle stays put.</p>
    <p><b>More options</b>: Deload week, Limited equipment (each exercise your gym cannot do swapped for the closest match), Rest week (a week off on purpose: averages, the streak, and adherence skip it), Flag an injury, and Log cardio.</p>
-   <p><b>Two sessions in a day</b> are kept in the order you started them; the next targets come from the later one, and a calendar day with two asks which to open.</p>
+   <p><b>Two sessions in a day</b> are kept in the order you started them, and a calendar day with two asks which to open. A lift done again the same day asks what it did earlier that day, with no step up; the next day's target comes from the better of the two.</p>
    <p><b>Weigh-in</b>: a card asks for your bodyweight every ${BW_EVERY_DEFAULT / WEEK_DAYS} weeks once you have weighed in or log bodyweight lifts (Settings, General, Weigh-in reminder: every week, 2 weeks, month, or off). Pull-ups, dips, and push-ups are read at your latest weigh-in.</p>
    <p><b>This week</b> counts hard sets logged against hard sets planned; Month shows the calendar instead, and the title becomes This month. The bar at the top of every tab is this week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead, and with fixed weekdays a red ring is one missed. Tap an empty past day to log a workout for it. The calendar shows the workouts planned ahead the same way, for a year: tap one to see it on Today; a numbered cycle is counted on from where you are, one day at a time, and a rest week planned ahead plans nothing and holds the cycle where it is.</p>`
       ],

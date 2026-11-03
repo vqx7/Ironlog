@@ -561,6 +561,51 @@ function rangeInUse(full: readonly Exposure[], want: readonly [number, number]):
   return span <= TREND_DAYS;
 }
 
+/* Two sessions of a lift on one day (366 (a) and (b), NEW-18; V's ruling of 2026-11-02, "match the morning"). A
+   lift's sessions on one day are read as one: the day's best stands for it (the heavier working load, then more
+   reps at it, the later on a tie), so the next day's target comes from the better of a morning and an evening,
+   not simply the later one. Until r68 the later session alone set it, and a second session the same day stepped
+   up from the first (bench 140 x 10 x 3 at 8:00 asked 145 at 17:00). */
+/** The lift's readings with one a day: on a day with more than one, the best of them, in date order. */
+function oneADay(xs: Exposure[] | undefined, repMin: number): Exposure[] | undefined {
+  if (!xs || xs.length < 2) return xs;
+  const score = (x: Exposure): [number, number] => {
+    const w = workLoad(x.pts, repMin);
+    return [w, triedAt(x, w).reduce((t, p) => t + p.r, 0)];
+  };
+  const out: Exposure[] = [];
+  for (const x of xs) {
+    const prev = out[out.length - 1];
+    if (!prev || prev.date !== x.date) {
+      out.push(x);
+      continue;
+    }
+    const [a0, a1] = score(prev),
+      [b0, b1] = score(x);
+    if (b0 > a0 + EPS_SAME || (Math.abs(b0 - a0) <= EPS_SAME && b1 >= a1)) out[out.length - 1] = x;
+  }
+  return out;
+}
+/* A second session of a lift on a day it was already done in full: the same load and reps as the day's best
+   session so far, no step up, nothing set to beat (a load progresses across days, not within one; the lifter
+   can still type more). The next day reads the day's sessions as one (oneADay). */
+function sgSameDayIn(M: Model, C: SuggestCtx): Suggestion | null {
+  const { ex, last, T, top, planPts, lastR, lastS, basis } = C;
+  if (last.date !== T || !(planPts.length > 0)) return null;
+  const sets = last.pts.map(p => `${loadLabelIn(M, ex, p.w)}×${p.r}`).join(', ');
+  return {
+    top,
+    w: top,
+    text: `Earlier today: ${sets}. The same again: no step up within one day.`,
+    lastR,
+    basis,
+    last: lastS,
+    target: '',
+    tgt: null,
+    easier: null
+  };
+}
+
 /* The load engine's prescription for one lift (r36: the 250-line function cut
    into its cases, each below and tried in order, with no change to what comes
    out; tests/r36.js compares it with r35 on random histories). A lift with
@@ -593,20 +638,23 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   const want: [number, number] = [+plan.repMin, +plan.repMax];
   const inRR = rangeInUse(full, want);
   const fullRR = inRR ? full.filter(x => sameRR(x.rr, want)) : [];
-  const exps = all && all.length ? (fullRR.length ? fullRR : full.length ? full : all) : all;
+  const exps = oneADay(all && all.length ? (fullRR.length ? fullRR : full.length ? full : all) : all, want[0]);
   /* The same sessions with those short of their usual (r54, V's one rule):
      a short session sets no target, but it was done, so a case that reads
      the session before last time's (two sessions under the range in a row,
      reps rising after a step) reads it among these. */
   const done =
-    all && all.length
-      ? fullRR.length
-        ? all.filter(x => !lighter(x) && sameRR(x.rr, want))
-        : full.length
-          ? all.filter(x => !lighter(x))
-          : all
-      : [];
-  const seen = inRR ? all!.filter(x => sameRR(x.rr, want)) : all;
+    oneADay(
+      all && all.length
+        ? fullRR.length
+          ? all.filter(x => !lighter(x) && sameRR(x.rr, want))
+          : full.length
+            ? all.filter(x => !lighter(x))
+            : all
+        : [],
+      want[0]
+    ) ?? [];
+  const seen = oneADay(inRR ? all!.filter(x => sameRR(x.rr, want)) : all, want[0]);
   if (ex.timed) return suggestTimedIn(M, ex, plan, exps, opts, injM, seen);
   if (!exps || !exps.length) return sgFirstIn(M, ex, plan, T, injM);
   const last = exps[exps.length - 1],
@@ -733,6 +781,7 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   };
   // The sets of the session shown as Last, for the Last column in the session (r44): each case's result carries them.
   const res =
+    sgSameDayIn(M, C) ||
     sgAfterReturnIn(M, C) ||
     sgEasyIn(M, C) ||
     sgPastRangeIn(M, C) ||
