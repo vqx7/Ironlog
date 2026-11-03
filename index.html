@@ -10636,6 +10636,9 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     radarPoint: 3,
     font: 11,
     tickFont: 10,
+    tickPad: 2,
+    tickGap: 6,
+    ringLabelAt: [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8],
     tipPad: 9,
     tipRadius: 8,
     barRadius: 4,
@@ -10711,6 +10714,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       maintainAspectRatio: false,
       animation: false,
       interaction: { mode: "index", intersect: false },
+      /* A dot on the first or last day, or at the top of the scale, is drawn whole: Chart.js cuts a line chart at its
+         plot's edge, which halved the first weigh-in's dot and a lift's first session (seen 2026-11-02). The room it
+         may take is the largest a dot gets, inside the gap the axis leaves before its labels. */
+      datasets: { line: { clip: CS.hoverRadius } },
       plugins: {
         legend: {
           position: "bottom",
@@ -10738,7 +10745,9 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         stepSize: step,
         includeBounds: false,
         maxRotation: 0,
-        autoSkip: false,
+        // A label that would run into the one beside it is left out (a net: whole weeks rarely crowd).
+        autoSkip: true,
+        autoSkipPadding: CS.tickGap,
         callback: (v3) => fmtDate(addDays(base, Math.round(v3)))
       }
     };
@@ -10754,7 +10763,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }
   }
   function radarOpts(max) {
-    const ink = cssv("--muted"), line = cssv("--line"), surf = cssv("--surface");
+    const ink = cssv("--muted"), line = cssv("--line");
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -10772,17 +10781,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
           min: 0,
           max,
           beginAtZero: true,
-          // z:1 draws the tick labels above the datasets, so the 100% ring no longer
-          // runs through the "100" label.
-          ticks: {
-            color: ink,
-            stepSize: CS.radarStep,
-            showLabelBackdrop: true,
-            backdropColor: surf,
-            backdropPadding: 2,
-            font: { size: CS.tickFont },
-            z: 1
-          },
+          // The ring labels are written by ringLabels (below), not by Chart.js, which puts them on the first spoke.
+          ticks: { stepSize: CS.radarStep, display: false },
           grid: { color: line },
           angleLines: { color: line },
           pointLabels: { color: ink, font: { size: CS.font } }
@@ -10790,21 +10790,107 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       }
     };
   }
+  function segHits(x1, y1, x2, y2, q) {
+    const dx = x2 - x1, dy = y2 - y1;
+    let lo = 0, hi = 1;
+    const edges = [
+      [-dx, x1 - q.l],
+      [dx, q.r - x1],
+      [-dy, y1 - q.t],
+      [dy, q.b - y1]
+    ];
+    for (const [p3, d3] of edges) {
+      if (p3 === 0) {
+        if (d3 < 0) return false;
+        continue;
+      }
+      const k2 = d3 / p3;
+      if (p3 < 0) lo = Math.max(lo, k2);
+      else hi = Math.min(hi, k2);
+      if (lo > hi) return false;
+    }
+    return true;
+  }
+  function dotHits(x2, y2, r4, q) {
+    const nx = Math.max(q.l, Math.min(x2, q.r)), ny = Math.max(q.t, Math.min(y2, q.b));
+    return Math.hypot(x2 - nx, y2 - ny) < r4;
+  }
+  function ringLabels() {
+    return {
+      id: "ringLabels",
+      afterDatasetsDraw: (chart) => {
+        const sc = chart.scales.r;
+        if (!sc) return;
+        const g2 = chart.ctx;
+        const size = CS.tickFont;
+        g2.save();
+        g2.font = `${size}px ${window.Chart?.defaults.font.family ?? "sans-serif"}`;
+        const drawn = chart.data.datasets.map((_2, i5) => i5).filter((i5) => chart.isDatasetVisible(i5)).map((i5) => chart.getDatasetMeta(i5).data.map((p3) => ({ x: p3.x, y: p3.y, r: p3.options?.radius ?? 0 })));
+        const n3 = drawn[0]?.length ?? 0;
+        const o3 = sc.getPointPosition(0, 0);
+        const meets = (q) => drawn.some(
+          (pts) => pts.some((p3, i5) => {
+            const nx = pts[(i5 + 1) % pts.length] ?? p3;
+            return p3.r > 0 && dotHits(p3.x, p3.y, p3.r + CS.tickPad, q) || segHits(p3.x, p3.y, nx.x, nx.y, q);
+          })
+        );
+        const spot = (label, v3, k2, f3) => {
+          const d3 = sc.getDistanceFromCenterForValue(v3);
+          const a2 = sc.getPointPosition(k2, d3);
+          const b2 = sc.getPointPosition((k2 + 1) % n3, d3);
+          const mx = (a2.x + b2.x) / 2, my = (a2.y + b2.y) / 2;
+          const len = Math.hypot(mx - o3.x, my - o3.y) || 1;
+          const ux = (mx - o3.x) / len, uy = (my - o3.y) / len;
+          const hw = g2.measureText(label).width / 2 + CS.tickPad, hh = size / 2 + CS.tickPad;
+          const inset = hw * Math.abs(ux) + hh * Math.abs(uy);
+          const x2 = a2.x + (b2.x - a2.x) * f3 - ux * inset, y2 = a2.y + (b2.y - a2.y) * f3 - uy * inset;
+          return { x: x2, y: y2, q: { l: x2 - hw, t: y2 - hh, r: x2 + hw, b: y2 + hh } };
+        };
+        const ticks = sc.ticks.filter((t4) => t4.value > 0);
+        const placed2 = (k2) => ticks.map((t4) => {
+          for (const f3 of CS.ringLabelAt) {
+            const sp = spot(t4.label, t4.value, k2, f3);
+            if (!meets(sp.q)) return sp;
+          }
+          return null;
+        });
+        let best = placed2(0);
+        for (let k2 = 1; k2 < n3 && best.some((p3) => !p3); k2++) {
+          const here = placed2(k2);
+          if (here.filter(Boolean).length > best.filter(Boolean).length) best = here;
+        }
+        g2.textAlign = "center";
+        g2.textBaseline = "middle";
+        g2.fillStyle = cssv("--muted");
+        best.forEach((p3, i5) => {
+          const t4 = ticks[i5];
+          if (p3 && t4) g2.fillText(t4.label, p3.x, p3.y);
+        });
+        g2.restore();
+      }
+    };
+  }
   function weekAxis(win, o3) {
     const cur = weekStart(today());
     const ink = cssv("--muted");
     const faded = ink + "80";
+    const many = win.length > CHART_WEEKS;
     o3.scales.x.ticks = {
       ...o3.scales.x.ticks,
-      autoSkip: win.length > CHART_WEEKS,
-      maxTicksLimit: win.length > CHART_WEEKS ? CS.xTicks : void 0,
+      autoSkip: many,
+      autoSkipPadding: CS.tickGap,
+      maxTicksLimit: many ? CS.xTicks : void 0,
       font: { size: CS.tickFont },
       color: (c4) => {
         const w2 = win[c4.tick ? c4.tick.value : c4.index];
         return w2 && w2.fut ? faded : ink;
       }
     };
-    return win.map((w2) => w2.wk === cur ? "This wk" : fmtDate(w2.wk));
+    return win.map((w2, i5) => {
+      if (w2.wk === cur) return "This wk";
+      const prev = win[i5 - 1];
+      return !many && prev && prev.wk.slice(0, 7) === w2.wk.slice(0, 7) ? String(+w2.wk.slice(8, 10)) : fmtDate(w2.wk);
+    });
   }
   function chartDefaults(C2, muted) {
     try {
@@ -10947,7 +11033,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
           }
         ]
       },
-      options: radarOpts(rMax)
+      options: radarOpts(rMax),
+      plugins: [ringLabels()]
     });
   }
   function liftChart(I2, { blue, green, yellow }) {
