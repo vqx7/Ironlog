@@ -2215,6 +2215,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var BAR = { lb: 45, kg: 20 };
   var DEFAULT_STEP = { kg: 2.5, lb: 5 };
   var STEP_LB = DEFAULT_STEP.lb * LB;
+  var EQUIP_STEP = {
+    bar: { lb: 10, kg: 5 },
+    stack: { lb: 10, kg: 5 },
+    each: { lb: 5, kg: 2 }
+  };
   var onStep = (v3, step) => Math.abs(v3 / step - Math.round(v3 / step)) < EPS_SAME;
   var TYPED_STEP = 0.05;
   var PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
@@ -6906,8 +6911,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return out;
   }
   function sgSameDayIn(M3, C2) {
-    const { ex, last, T: T2, top, planPts, lastR, lastS, basis } = C2;
-    if (last.date !== T2 || !(planPts.length > 0)) return null;
+    const { ex, last, T: T2, top, planPts, lastR, lastS, basis, opts } = C2;
+    if (!opts.before || last.date !== T2 || !(planPts.length > 0)) return null;
     const sets = last.pts.map((p3) => `${loadLabelIn(M3, ex, p3.w)}×${p3.r}`).join(", ");
     return {
       top,
@@ -7568,8 +7573,18 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (G && at2 != null && at2 > 0 && Math.abs(plateAt(G, at2, -1, t4) - at2) > t4) return plateAt(G, at2, 1, t4) - at2;
       const gs = gymStepIn(M3, ex);
       if (gs) return gs;
+      const es = equipStepIn(M3, ex);
+      if (es) return es;
     }
     return v3;
+  }
+  function equipStepIn(M3, ex) {
+    if (!ex || ex.bw || ex.timed) return null;
+    const m3 = loadMode(ex);
+    const kind = m3 === "stack" ? "stack" : m3 === "each" ? "each" : m3 === "total" && (ex.equip === "barbell" || ex.equip === "smith") ? "bar" : null;
+    if (!kind) return null;
+    const u4 = UIn(M3);
+    return u4 === "kg" ? EQUIP_STEP[kind].kg : EQUIP_STEP[kind].lb * LB;
   }
   function rackSnapIn(M3, ex, plan, res) {
     if (!res || res.w == null || ex.timed) return res;
@@ -7590,9 +7605,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     I2._rack = I2._rack || {};
     const xs = liftReadIn(M3, ex.id);
     const key = UIn(M3) + ex.id + "|" + (xs.length ? xs[0].sid : "");
+    const kind = rackKind(ex);
+    const all = RACK[kind][UIn(M3)];
+    const pref = kind === "dumbbell" ? EQUIP_STEP.each[UIn(M3)] : null;
+    const order = pref != null && all.includes(pref) ? [pref, ...all.filter((g2) => g2 !== pref)] : all;
     const fit = (ws) => {
       const fits = (g3) => ws.every((w2) => Math.abs(w2 / g3 - Math.round(w2 / g3)) < RACK_FIT);
-      const g2 = RACK[rackKind(ex)][UIn(M3)].find(fits);
+      const g2 = order.find(fits);
       return g2 ? fromDIn(M3, g2) : null;
     };
     if (I2._rack[key] === void 0) {
@@ -18550,7 +18569,7 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di)}</section>${bwD
     let fresh = 0;
     const rows2 = day.items.map((it, k2) => {
       const ex = EX(it.exId);
-      const sg = suggest(it.exId, it, { deload });
+      const sg = suggest(it.exId, it, { deload, before: today() });
       const none = !sg.last && !sg.inj && !sg.target;
       if (none) fresh++;
       const text = String(sg.text || "");
@@ -23916,7 +23935,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         cardio: [],
         notes: light ? LIGHTER_NOTE : deload ? DELOAD_NOTE : "",
         editingId: null,
-        ex: items.map((it) => newBlock(it.exId, it, { deload, light }))
+        ex: items.map((it) => newBlock(it.exId, it, { deload, light, before: today() }))
       },
       true
     );
@@ -24120,7 +24139,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           return blockPlan(p3);
         };
         const ex = s3.ex.map((b2) => {
-          const nb = newBlock(b2.exId, plan(b2), { deload });
+          const nb = newBlock(b2.exId, plan(b2), { deload, before: today() });
           const n3 = b2.sets.filter(isWork).length;
           if (deload && n3 && !(day && day.items.some((i5) => i5.exId === b2.exId))) nb.full = Math.min(n3, MAX_FULL);
           return nb;
@@ -24218,7 +24237,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         const it = deload ? { ...x2.it, sets: halfSets(x2.it.sets) } : x2.it;
         const sp = x2.from ? swapPlan(it, x2.from, x2.to, R2, day.id) : { ...it };
         if (x2.hard) Object.assign(sp, HARD_SWAP);
-        const b2 = newBlock(x2.to, sp, { deload });
+        const b2 = newBlock(x2.to, sp, { deload, before: today() });
         if (x2.from) b2.swappedFrom = x2.from;
         return [b2];
       });

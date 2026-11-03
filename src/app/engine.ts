@@ -13,6 +13,7 @@ import { IDXIn, bwAtIn, bwLoadIn, bwRefLoadIn, lastOf, liftReadIn, rirEstIn, sta
 import { atCapOfIn, capOfIn, exBarKgIn, gymK, gymRackIn, gymStepIn, platesMode, rackGapIn, rackTolIn } from './gym';
 import {
   DEFAULT_STEP,
+  EQUIP_STEP,
   LB,
   STEP_LB,
   TYPED_STEP,
@@ -588,10 +589,12 @@ function oneADay(xs: Exposure[] | undefined, repMin: number): Exposure[] | undef
 }
 /* A second session of a lift on a day it was already done in full: the same load and reps as the day's best
    session so far, no step up, nothing set to beat (a load progresses across days, not within one; the lifter
-   can still type more). The next day reads the day's sessions as one (oneADay). */
+   can still type more). The next day reads the day's sessions as one (oneADay). Only for a session asked for on
+   its date (opts.before: one being started or logged, and Today's card for the session Start would begin); a
+   lift's next session elsewhere (Stats) is a later day, so the day's best sets it there. */
 function sgSameDayIn(M: Model, C: SuggestCtx): Suggestion | null {
-  const { ex, last, T, top, planPts, lastR, lastS, basis } = C;
-  if (last.date !== T || !(planPts.length > 0)) return null;
+  const { ex, last, T, top, planPts, lastR, lastS, basis, opts } = C;
+  if (!opts.before || last.date !== T || !(planPts.length > 0)) return null;
   const sets = last.pts.map(p => `${loadLabelIn(M, ex, p.w)}×${p.r}`).join(', ');
   return {
     top,
@@ -1613,8 +1616,27 @@ export function incOfIn(
     if (G && at != null && at > 0 && Math.abs(plateAt(G, at, -1, t) - at) > t) return plateAt(G, at, 1, t) - at;
     const gs = gymStepIn(M, ex);
     if (gs) return gs;
+    const es = equipStepIn(M, ex);
+    if (es) return es;
   }
   return v;
+}
+
+/** The default step for how a lift is loaded (EQUIP_STEP, 367), in kg, or null where the unit's default stands. */
+function equipStepIn(M: Model, ex: ExerciseLike | null | undefined): number | null {
+  if (!ex || ex.bw || ex.timed) return null;
+  const m = loadMode(ex);
+  const kind =
+    m === 'stack'
+      ? 'stack'
+      : m === 'each'
+        ? 'each'
+        : m === 'total' && (ex.equip === 'barbell' || ex.equip === 'smith')
+          ? 'bar'
+          : null;
+  if (!kind) return null;
+  const u = UIn(M);
+  return u === 'kg' ? EQUIP_STEP[kind].kg : EQUIP_STEP[kind].lb * LB;
 }
 
 /* A suggestion that is not on the rack moves onto it: up, to the heaviest
@@ -1666,9 +1688,16 @@ export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): numb
   // Read since a new machine or gym (liftReadIn, r61), its rack another gym's before: kept by where that stretch starts.
   const xs = liftReadIn(M, ex.id);
   const key = UIn(M) + ex.id + '|' + (xs.length ? xs[0].sid : '');
+  /* The spacings tried, largest first, but for dumbbells the default step by equipment first (367, V's pick of
+     2026-11-02: 2 kg each), so loads both spacings fit (10, 20, 30 kg) read as 2 kg; loads only 2.5 kg fits
+     (12.5, 17.5) still read as 2.5. */
+  const kind = rackKind(ex)!;
+  const all = RACK[kind][UIn(M)];
+  const pref = kind === 'dumbbell' ? EQUIP_STEP.each[UIn(M)] : null;
+  const order = pref != null && all.includes(pref) ? [pref, ...all.filter(g => g !== pref)] : all;
   const fit = (ws: readonly number[]): number | null => {
     const fits = (g: number): boolean => ws.every(w => Math.abs(w / g - Math.round(w / g)) < RACK_FIT);
-    const g = RACK[rackKind(ex)!][UIn(M)].find(fits);
+    const g = order.find(fits);
     return g ? fromDIn(M, g) : null;
   };
   if (I._rack[key] === undefined) {

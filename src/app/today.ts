@@ -738,7 +738,8 @@ function previewCard(day: Day, deload: boolean): TemplateResult {
   let fresh = 0;
   const rows = day.items.map((it, k) => {
     const ex = EX(it.exId);
-    const sg = suggest(it.exId, it, { deload });
+    // Asked for today, the day Start would log it on, so a lift already done today shows what the session will.
+    const sg = suggest(it.exId, it, { deload, before: today() });
     const none = !sg.last && !sg.inj && !sg.target;
     if (none) fresh++;
     const text = String(sg.text || '');

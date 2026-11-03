@@ -125,7 +125,9 @@ const FILE = process.argv[2] || 'index.html';
     await ev(() => {
       const L = window.__ironlog; const S = L.state; const R = S.routines.find(r => r.id === S.activeRoutineId);
       const set = (w, r) => ({ w, r, rir: 1, warm: false, drop: false });
-      // Bench, four sets of 100 x 10, 10, 9 and 8 on two Thursdays.
+      // Bench, four sets of 100 x 10, 10, 9 and 8 on two Thursdays, on a 5 lb step set on the lift (the default by
+      // equipment, 10 lb since r68, would take this kg log shown in lb to the nearest 10 lb load, 225).
+      const be = S.exercises.find(x => x.id === 'bench'); if (be) be.inc = 5 * 0.45359237;
       S.sessions = ['2026-10-01', '2026-10-08'].map((d, i) => ({ id: 'h' + i, date: d, dayIdx: 0, dayId: R.days[0].id, dayName: 'Upper A', routineId: R.id, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [set(100, 10), set(100, 10), set(100, 9), set(100, 8)] }] }));
       S.draft = null; S.deloadWeek = null; S.injuries = []; L.invalidate(); L.saveNow(); L.render();
     });

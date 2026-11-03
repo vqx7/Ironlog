@@ -136,7 +136,7 @@ function startSession(t: Tap): void {
       cardio: [],
       notes: light ? LIGHTER_NOTE : deload ? DELOAD_NOTE : '',
       editingId: null,
-      ex: items.map(it => newBlock(it.exId, it, { deload, light }))
+      ex: items.map(it => newBlock(it.exId, it, { deload, light, before: today() }))
     },
     true
   );
@@ -356,7 +356,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         return blockPlan(p);
       };
       const ex = s.ex.map(b => {
-        const nb = newBlock(b.exId, plan(b), { deload });
+        const nb = newBlock(b.exId, plan(b), { deload, before: today() });
         const n = b.sets.filter(isWork).length;
         if (deload && n && !(day && day.items.some(i => i.exId === b.exId))) nb.full = Math.min(n, MAX_FULL);
         return nb;
@@ -457,7 +457,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       // A much harder swap gets a range it can be done in (r30): 3 to 6 reps, 2 in reserve.
       const sp = x.from ? swapPlan(it, x.from, x.to, R, day.id) : { ...it };
       if (x.hard) Object.assign(sp, HARD_SWAP);
-      const b = newBlock(x.to, sp, { deload });
+      const b = newBlock(x.to, sp, { deload, before: today() });
       if (x.from) b.swappedFrom = x.from;
       return [b];
     });

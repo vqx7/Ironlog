@@ -289,7 +289,8 @@ const run = n => !ONLY || ONLY.includes(n);
       const one = (sets, scale) => {
         s.settings.rirScale = scale; s.draft = null;
         s.sessions = [{ id: 'q1', date: '2026-10-08', dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [8, 12], sets: sets.map(([r, rir]) => ({ w: 60, r, rir, warm: false, drop: false })) }] }];
-        L.state = L.normalize(s); L.invalidate(); return L.suggest('bench', plan).text;
+        // A 2.5 kg step set on the bench (the default by equipment is 5 kg since r68, past this jump's cap from 60).
+        L.state = L.normalize(s); L.state.exercises.find(e => e.id === 'bench').inc = 2.5; L.invalidate(); return L.suggest('bench', plan).text;
       };
       return { extra: one([[10, 4], [10, 4], [10, 4], [8, 0]], 'rir'), plain: one([[10, 4], [10, 4], [10, 4]], 'rir'), rpe: one([[10, 4], [10, 4], [10, 4], [8, 0]], 'rpe') };
     });

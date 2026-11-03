@@ -143,7 +143,10 @@ const seed = (H, o) => H.ev(o => {
   S.routines = [R]; S.activeRoutineId = 'R1';
   S.sessions = o.sessions.map((x, i) => { const di = o.days.findIndex(d => d.id === x.day); const day = o.days[di]; return { id: 'h' + i, date: x.date, dayIdx: di, dayId: day.id, dayName: day.name, routineId: 'R1', notes: '', ex: x.ex.map(([exId, sets]) => { const it = day.items.find(y => y[0] === exId); return { exId, rr: [it[2], it[3]], sets: sets.map(([w, r, rir]) => ({ w: kg(w), r, rir: rir == null ? null : rir, warm: false, drop: false })) }; }) }; });
   S.bodyweights = (o.bw || []).map(([date, w], i) => ({ id: 'w' + i, date, kg: kg(w) }));
-  L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
+  L.state = L.normalize(S);
+  // A step set on a lift, as the Plan editor sets it (o.steps, in the unit): it comes before the default by equipment (r68).
+  for (const [id, v] of Object.entries(o.steps || {})) { const e = L.state.exercises.find(x => x.id === id); if (e) e.inc = kg(v); }
+  L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
 }, o);
 // Last time's set beside a row, as shown (100×8).
 const lastCell = (H, b, s) => H.ev(([b, s]) => { const btn = document.querySelector(`#view [data-act="sDone"][data-b="${b}"][data-s="${s}"]`); const ls = btn && btn.closest('.sg') && btn.closest('.sg').querySelector('.ls'); return ls ? ls.innerText.replace(/\s+/g, '') : null; }, [b, s]);
@@ -256,7 +259,8 @@ async function finish() {
     const T0 = '2026-10-12';
     const H = await phone(T0);
     const { ev } = H;
-    // A routine of one day: bench press 3 x 6-10 at 1 in reserve, 5 lb a step; two sessions logged.
+    // A routine of one day: bench press 3 x 6-10 at 1 in reserve, 5 lb a step (set on the lift, as the Plan editor
+    // sets it; the default by equipment, 10 lb, is tests/r68.js section 4); two sessions logged.
     await ev(([T0]) => {
       const L = window.__ironlog; const S = L.state; const LB = 0.45359237;
       S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.autoDone = false;
@@ -266,7 +270,7 @@ async function finish() {
       const mk = (id, date, sets) => ({ id, date, dayIdx: 0, dayId: 'Dp', dayName: 'Push', routineId: 'Rp', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: sets.map(([w, r, rir]) => ({ w: w * LB, r, rir, warm: false, drop: false })) }] });
       const add = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
       S.sessions = [mk('s1', add(T0, -14), [[135, 9, 1], [135, 8, 1], [135, 8, 1]]), mk('s2', add(T0, -7), [[135, 10, 1], [135, 10, 1], [135, 10, 1]])];
-      L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
+      L.state = L.normalize(S); L.state.exercises.find(x => x.id === 'bench').inc = 5 * LB; L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
     }, [T0]);
     await H.start();
     let d = await H.draft();
@@ -306,7 +310,8 @@ async function finish() {
       const add = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
       // Three sessions at 185, the last six weeks ago.
       S.sessions = [mk('b1', add(T0, -56), [[185, 8, 1], [185, 7, 1], [185, 7, 1]]), mk('b2', add(T0, -49), [[185, 8, 1], [185, 8, 1], [185, 7, 1]]), mk('b3', add(T0, -42), [[185, 8, 1], [185, 8, 1], [185, 7, 1]])];
-      L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
+      // 5 lb a step, set on the lift (the climb on the default 10 lb step is tests/r68.js section 4).
+      L.state = L.normalize(S); L.state.exercises.find(x => x.id === 'bench').inc = 5 * LB; L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
     }, [T0]);
     // The first session back: about 90% of 185 (166.5), down to the step, 165, with 2 or more in reserve (Bosquet 2013; r34.2).
     {
@@ -552,7 +557,7 @@ async function finish() {
     const H = await phone(T0);
     const { ev, page } = H;
     const hist = [[135, 10, 1], [135, 10, 1], [135, 10, 1], [135, 10, 1]], row = [[50, 10, 1], [50, 10, 1], [50, 10, 1], [50, 10, 1]];
-    await seed(H, { unit: 'lb', days: [{ id: 'D1', name: 'Upper', items: [['bench', 4, 8, 12, 1, 90, 5, 'A'], ['dbRow', 4, 8, 12, 1, 90, 5, 'A']] }], sessions: [{ date: addD(T0, -14), day: 'D1', ex: [['bench', hist], ['dbRow', row]] }, { date: addD(T0, -7), day: 'D1', ex: [['bench', hist], ['dbRow', row]] }] });
+    await seed(H, { unit: 'lb', steps: { bench: 5 }, days: [{ id: 'D1', name: 'Upper', items: [['bench', 4, 8, 12, 1, 90, 5, 'A'], ['dbRow', 4, 8, 12, 1, 90, 5, 'A']] }], sessions: [{ date: addD(T0, -14), day: 'D1', ex: [['bench', hist], ['dbRow', row]] }, { date: addD(T0, -7), day: 'D1', ex: [['bench', hist], ['dbRow', row]] }] });
     // The target before the deload: 40 reps at 135 to beat.
     await ev(() => { const L = window.__ironlog; L.state.settings.timerMode = 'auto'; L.state.deloadWeek = L.weekStart(L.today()); L.saveNow(); L.render(); });
     await H.start();

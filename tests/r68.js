@@ -17,6 +17,11 @@
 //      (r67: 140 x 10 x 3 at 8:00 asked 145 at 17:00); started from Today it shows that in its grey numbers. The
 //      next day reads the day as one, from its best session (r67 read the later one: a weaker evening after a
 //      morning at the top of the range held the load). A guard: when the evening is the better one, it is read.
+//   4  367, the default load step by how a lift is loaded (V's pick of 2026-11-02): every set at the top of the range
+//      steps a barbell or Smith lift and a pin-loaded machine or cable 10 lb or 5 kg, a dumbbell 5 lb or 2 kg each;
+//      a plate-loaded machine typed a side, load added to a pull-up and a kettlebell keep 5 lb (2.5 kg). Guards: a
+//      step set on the lift, and Your gym's plates, still come first; back after a break on the default barbell
+//      step, the climb goes 165, 175 and back to the 185 from before (decision 1 on 10 lb steps).
 const { open, engine } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
@@ -192,8 +197,10 @@ const vLog = mon => {
       const P = await open(FILE, { browser, clock });
       const r = await P.page.evaluate(([sessions, plan]) => {
         const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb';
-        S.sessions = sessions; L.state = L.normalize(S); L.invalidate();
-        const g = L.suggest('bench', plan, {});
+        // 5 lb a step set on the bench (the default by equipment is section 4), and the target asked as a session
+        // started on the clock's day asks it.
+        S.sessions = sessions; L.state = L.normalize(S); L.state.exercises.find(e => e.id === 'bench').inc = 5 * 0.45359237; L.invalidate();
+        const g = L.suggest('bench', plan, { before: L.today() });
         return { w: g.w == null ? null : Math.round(g.w / 0.45359237 * 10) / 10, lastR: g.lastR, tgt: g.tgt, text: g.text };
       }, [sessions, plan]);
       await P.ctx.close();
@@ -219,13 +226,74 @@ const vLog = mon => {
     await P.page.evaluate(([sessions, plan]) => {
       const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.autoDone = false;
       S.routines = [{ id: 'R1', name: 'Mine', schedule: 'weekly', days: [{ id: 'D1', name: 'Push', items: [{ uid: 'u1', exId: 'bench', ss: null, ...plan }] }] }]; S.activeRoutineId = 'R1';
-      S.sessions = sessions; L.state = L.normalize(S); L.invalidate(); L.ui.tab = 'today'; L.render();
+      S.sessions = sessions; L.state = L.normalize(S); L.state.exercises.find(e => e.id === 'bench').inc = 5 * 0.45359237; L.invalidate(); L.ui.tab = 'today'; L.render();
     }, [[...base, sess('b', '2026-10-26', 8, [10, 10, 10])], plan]);
     await wait(150);
     await P.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])');
     await wait(250);
     const blk = await P.page.evaluate(() => { const d = window.__ironlog.state.draft; const b = d && d.ex.find(x => x.exId === 'bench'); return b && { w: [b.sw == null ? null : Math.round(b.sw / 0.45359237)], reps: b.lastR, hint: b.hint, tgt: b.tgt }; });
     ok(blk && blk.w[0] === 140 && JSON.stringify(blk.reps) === '[10,10,10]' && !blk.tgt && /^Earlier today/.test(blk.hint || ''), '3. started from Today, the evening bench shows 140 x 10 in grey, nothing to beat, and why', blk);
+    await P.ctx.close();
+  }
+
+  // ---- 4. The default load step by how a lift is loaded.
+  if (run(4)) {
+    const LBk = 0.45359237;
+    const P = await open(FILE, { browser, clock: '2026-10-26T10:00:00' });
+    const next = (unit, exId, w, rr, o = {}) => P.page.evaluate(([unit, exId, w, rr, o]) => {
+      const L = window.__ironlog; const S = L.state; const LB = 0.45359237;
+      S.settings.onboarded = true; S.settings.unit = unit; delete S.settings.gym;
+      if (o.gym) S.settings.gym = o.gym;
+      const kg = v => unit === 'kg' ? v : v * LB;
+      const mk = (id, date) => ({ id, date, notes: '', ex: [{ exId, rr, sets: [0, 1, 2].map(() => ({ w: kg(w), r: rr[1], rir: 1 })) }] });
+      S.sessions = [mk('a', '2026-10-12'), mk('b', '2026-10-19')];
+      L.state = L.normalize(S);
+      for (const e of L.state.exercises) if (e.id === exId) { if (o.step) e.inc = kg(o.step); else delete e.inc; }
+      L.invalidate();
+      const plan = { sets: 3, repMin: rr[0], repMax: rr[1], rir: 1, rest: 120, inc: 5 * LB };
+      const g = L.suggest(exId, plan, {});
+      return Math.round((unit === 'kg' ? g.w : g.w / LB) * 100) / 100;
+    }, [unit, exId, w, rr, o]);
+    const cases = [
+      ['a barbell bench', 'lb', 'bench', 135, [6, 10], 145],
+      ['a barbell bench in kg', 'kg', 'bench', 60, [6, 10], 65],
+      ['a Smith incline press', 'lb', 'smithInc', 135, [6, 10], 145],
+      ['a pin-loaded chest press', 'lb', 'machPress', 100, [8, 12], 110],
+      ['a seated cable row', 'lb', 'cableRow', 100, [8, 12], 110],
+      ['a cable row in kg', 'kg', 'cableRow', 45, [8, 12], 50],
+      ['dumbbell presses', 'lb', 'dbBench', 60, [8, 12], 65],
+      ['dumbbell presses in kg', 'kg', 'dbBench', 30, [8, 12], 32],
+      ['a hack squat typed a side', 'lb', 'hackSquat', 90, [8, 12], 95],
+      ['a kettlebell swing', 'lb', 'kbSwing', 53, [10, 15], 58]
+    ];
+    for (const [name, unit, exId, w, rr, want] of cases) {
+      const got = await next(unit, exId, w, rr);
+      ok(got === want, `4. ${name} at ${w} ${unit}, every set at the top: next ${want} ${unit}`, { got });
+    }
+    // Guards: the lift's own step, and Your gym's plates, come first.
+    const own = await next('lb', 'bench', 135, [6, 10], { step: 5 });
+    ok(own === 140, '4. a guard: a 5 lb step set on the bench still steps 135 to 140', { own });
+    const gym = await next('lb', 'bench', 135, [6, 10], { gym: { u: 'lb', plates: [45, 35, 25, 10, 5, 2.5] } });
+    ok(gym === 140, "4. a guard: Your gym with 2.5 lb plates still steps the bench 135 to 140", { gym });
+    // Back after six weeks on the default 10 lb step.
+    const climb = await P.page.evaluate(() => {
+      const L = window.__ironlog; const S = L.state; const LB = 0.45359237;
+      S.settings.unit = 'lb'; delete S.settings.gym;
+      const ses = (id, date, w, reps, rir) => ({ id, date, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: reps.map(r => ({ w: w * LB, r, rir })) }] });
+      const plan = { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 5 * LB };
+      const pre = [ses('b1', '2026-08-17', 185, [8, 7, 7], 1), ses('b2', '2026-08-24', 185, [8, 8, 7], 1), ses('b3', '2026-08-31', 185, [8, 8, 7], 1)];
+      const out = [];
+      const ask = (list, before) => { S.sessions = list; L.state = L.normalize(S); for (const e of L.state.exercises) if (e.id === 'bench') delete e.inc; L.invalidate(); return Math.round(L.suggest('bench', plan, before ? { before } : {}).w / LB); };
+      out.push(ask(pre, '2026-10-12'));
+      const a = [...pre, ses('r0', '2026-10-12', 165, [10, 10, 10], 2)];
+      out.push(ask(a));
+      const b = [...a, ses('r1', '2026-10-15', 175, [10, 10, 10], 1)];
+      out.push(ask(b));
+      const c = [...b, ses('r2', '2026-10-19', 185, [8, 8, 7], 1)];
+      out.push(ask(c));
+      return out;
+    });
+    ok(JSON.stringify(climb) === '[165,175,185,185]', '4. back after six weeks on the default 10 lb step: 165, then 175, then the 185 from before, and no further', climb);
     await P.ctx.close();
   }
 

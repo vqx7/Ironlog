@@ -51,7 +51,10 @@ const TODAY = '2026-10-26';
     delete S.settings.gym; delete S.settings.barKg;
     S.injuries = o.inj || []; S.draft = null; S.deloadWeek = null; S.bodyweights = o.bw || [];
     if (o.routine) { S.routines = [o.routine]; S.activeRoutineId = o.routine.id; }
-    S.sessions = sessions; L.state = L.normalize(S); L.invalidate(); L.saveNow();
+    S.sessions = sessions; L.state = L.normalize(S);
+    // A step set on a lift (o.steps, in lb), as the Plan editor sets it; it comes before the default by equipment (r68, 367).
+    for (const [id, v] of Object.entries(o.steps || {})) { const e = L.state.exercises.find(x => x.id === id); if (e) e.inc = v * 0.45359237; }
+    L.invalidate(); L.saveNow();
   }, [sessions, o || {}]);
   const suggest = (exId, plan, opts) => ev(([exId, plan, opts]) => { const r = window.__ironlog.suggest(exId, plan, opts || {}); return { w: r.w, text: r.text, inj: r.inj || null }; }, [exId, plan, opts || null]);
 
@@ -114,16 +117,16 @@ const TODAY = '2026-10-26';
     const seq = [['r0', add(T0, 0), 165, 10, 2, 175], ['r1', add(T0, 3), 175, 9, 1, 180], ['r2', add(T0, 7), 180, 9, 1, 185]];
     const got = [];
     let done = pre.slice();
-    await log(done, { routine: R });
+    await log(done, { routine: R, steps: { bench: 5 } });
     got.push(await suggest('bench', plan, { before: T0 }));
-    for (const [id, date, w, r, rir] of seq) { done = [...done, three(id, date, w, r, rir)]; await log(done, { routine: R }); got.push(await suggest('bench', plan)); }
+    for (const [id, date, w, r, rir] of seq) { done = [...done, three(id, date, w, r, rir)]; await log(done, { routine: R, steps: { bench: 5 } }); got.push(await suggest('bench', plan)); }
     const want = [165, 175, 180, 185];
     ok(got.every((g, i) => Math.abs(lb(g.w) - want[i]) < EPS), 'R-3. the full-strength lifter back after six weeks: 165, then 175, 180 and 185 in the three sessions after the return (decision 1; r63: 165, 175, 175, 180)', got.map(g => [lb(g.w), g.text]));
-    done = [...done, three('r3', add(T0, 10), 185, 8, 1)]; await log(done, { routine: R });
+    done = [...done, three('r3', add(T0, 10), 185, 8, 1)]; await log(done, { routine: R, steps: { bench: 5 } });
     const at = await suggest('bench', plan);
     ok(Math.abs(lb(at.w) - 185) < EPS && /Beat 24 reps over 3 sets at 185 lb/.test(at.text), 'R-3. back at 185, normal progression: 185 x 8 x 3 asks 185, beat 24 reps', { lb: lb(at.w), text: at.text });
     // The same return left unrated reads as 2 in reserve, what the return asked: 175 again.
-    await log([...pre, three('r0', T0, 165, 10, null)], { routine: R });
+    await log([...pre, three('r0', T0, 165, 10, null)], { routine: R, steps: { bench: 5 } });
     const un = await suggest('bench', plan);
     ok(Math.abs(lb(un.w) - 175) < EPS, 'R-3. the return 165 x 10 x 3 unrated reads as 2 in reserve: 175 next', { lb: lb(un.w), text: un.text });
     /* The return done at the bottom of the range, then honest sets (the audit's case): 165 x 6 x 3 unrated reads 2 in reserve, 8 to failure,
@@ -133,10 +136,10 @@ const TODAY = '2026-10-26';
     const aud = [['a0', add(T0, 0), 165, 6, null, 165], ['a1', add(T0, 3), 165, 10, 3, 180], ['a2', add(T0, 7), 180, 8, 2, 185]];
     const ag = [];
     done = pre.slice();
-    for (const [id, date, w, r, rir] of aud) { done = [...done, three(id, date, w, r, rir)]; await log(done, { routine: R }); ag.push(await suggest('bench', plan)); }
+    for (const [id, date, w, r, rir] of aud) { done = [...done, three(id, date, w, r, rir)]; await log(done, { routine: R, steps: { bench: 5 } }); ag.push(await suggest('bench', plan)); }
     ok(ag.every((g, i) => Math.abs(lb(g.w) - aud[i][5]) < EPS), 'R-3. 165 x 6 x 3 as asked, then honest sets at full strength: 165, 180, 185, back at the load from before the break (r63: 165, 180, 180)', ag.map(g => [lb(g.w), g.text]));
     // Never past the load from before the break, never below the current load: 165 x 10 x 3 at 4 (a 14 to failure estimate of 242) asks 185, not more.
-    await log([...pre, three('r0', T0, 165, 10, 4)], { routine: R });
+    await log([...pre, three('r0', T0, 165, 10, 4)], { routine: R, steps: { bench: 5 } });
     const far = await suggest('bench', plan);
     ok(Math.abs(lb(far.w) - 185) < EPS, 'R-3. a return far stronger than asked: 185, the load from before the break, not past it', { lb: lb(far.w), text: far.text });
 
@@ -159,12 +162,12 @@ const TODAY = '2026-10-26';
     /* By hand: 165 x 10 at 2 is 12 to failure, Epley 231.0; the return's aim, the bottom of the range with 2 in reserve, is 8 to failure:
        231.0 x 29/36 = 186.08, past 185, so 185; at 185 the estimate leaves 37 - 36 x 185/231.0 = 8.17 to failure, less 2 in reserve: 6 reps. */
     for (const [rir, name] of [[2, 'rated 2'], [null, 'unrated']]) {
-      await log(preNow, { routine: R });
+      await log(preNow, { routine: R, steps: { bench: 5 } });
       const x = await firstSet(10, rir);
       ok(Math.abs(x.w0 - 165) < EPS && x.adj && x.adj.up && Math.abs(x.adj.w - 185) < EPS && x.adj.r === 6, `R-3. the first set back, 165 x 10 ${name}: the next sets go to 185 x 6 (r63: they stay at 165)`, x);
     }
     // A first set back at the bottom of the range with 2 in reserve, as asked, says nothing more: 8 to failure, 204.83, 165 for 8 to failure. The next sets stay.
-    await log(preNow, { routine: R });
+    await log(preNow, { routine: R, steps: { bench: 5 } });
     const low = await firstSet(6, 2);
     ok(low.adj == null && Math.abs(low.grey - 165) < EPS, 'R-3. the first set back, 165 x 6 at 2 as asked: the next sets stay at 165 (a guard)', low);
   }
@@ -192,20 +195,20 @@ const TODAY = '2026-10-26';
     ok(/Until the lift is back at its load from before the break, each full session sets the next load: what its sets say fits your usual reps, never lower than the load you did and never past that load \(a convention\)/.test(g), 'R-5. the Guide states decision 1\'s way back', (g.match(/Back after more than[^\n]*/) || [''])[0]);
   }
 
-  // ---- P-S2-1: an injury flag and the break, Lighter day and deload rules.
+  // ---- P-S2-1: an injury flag and the break, Lighter day and deload rules (5 lb a step set on the bench, as by hand below).
   if (run('P-S2-1')) {
     const plan = { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 5 * LB };
     const inj = [{ id: 'i1', m: 'chest', note: '', date: '2026-10-01' }];
     const at = (w, dates) => dates.map((d, i) => ses('j' + i, d, 'bench', [6, 10], [[w, 8, 1], [w, 8, 1], [w, 8, 1]]));
     // Six weeks off at 195: the return is 90% (175.5), in 5 lb steps down from 195: 175. Flagged, the lower of 175 and the injury's 195.
-    await log(at(195, ['2026-08-31', '2026-09-07', '2026-09-14']), { inj });
+    await log(at(195, ['2026-08-31', '2026-09-07', '2026-09-14']), { inj, steps: { bench: 5 } });
     const b = await suggest('bench', plan);
     ok(Math.abs(lb(b.w) - 175) < EPS && b.inj === 'chest', 'P-S2-1. a flagged bench six weeks off: 175 lb, the return\'s load, the injury kept (r63: 195)', { lb: lb(b.w), text: b.text, inj: b.inj });
     // A Lighter day and a deload at 205: 90% is 184.5, in 5 lb steps down from 205: 180, flagged or not.
     for (const [name, opts] of [['a Lighter day', { light: true }], ['a deload', { deload: true }]]) {
-      await log(at(205, ['2026-10-12', '2026-10-19']), { inj });
+      await log(at(205, ['2026-10-12', '2026-10-19']), { inj, steps: { bench: 5 } });
       const x = await suggest('bench', plan, opts);
-      await log(at(205, ['2026-10-12', '2026-10-19']));
+      await log(at(205, ['2026-10-12', '2026-10-19']), { steps: { bench: 5 } });
       const y = await suggest('bench', plan, opts);
       ok(Math.abs(lb(x.w) - 180) < EPS && Math.abs(lb(y.w) - 180) < EPS && x.inj === 'chest', `P-S2-1. ${name} at 205: a flagged bench 180 lb, as an unflagged one (r63: 205 flagged)`, { flagged: [lb(x.w), x.text], plain: [lb(y.w), y.text] });
     }

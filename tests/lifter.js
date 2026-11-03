@@ -137,8 +137,10 @@ const weekDays = (mon, weeks) => Array.from({ length: weeks }, (_, w) => [0, 1, 
       const s = log.flatMap(x => x.out.filter(y => y.id === id).map(y => ({ d: x.d, w: y.sugg, can: y.can, rmin: y.plan[0] }))).filter(x => x.w > 0);
       if (s.length < 6) continue;
       const atStop = Math.max(...s.filter(x => x.d < '2026-06-29').map(x => x.w));
-      // Levelled off: in the last three weeks no load more than one step (or 5%) past the heaviest before the gains stopped.
-      for (const x of s.filter(x => x.d >= '2026-07-20')) if (x.w > Math.max(atStop * 1.05, atStop + 2.5) + 1e-6) over.push([id, x.d, atStop, x.w]);
+      // Levelled off: in the last three weeks no load more than one of the lift's steps (or 5%) past the heaviest before
+      // the gains stopped. The step is the app's for the lift (since r68 it depends on how the lift is loaded, 367).
+      const step = await P.ev(id => window.__ironlog.incOf(window.__ironlog.EX(id), null), id);
+      for (const x of s.filter(x => x.d >= '2026-07-20')) if (x.w > Math.max(atStop * 1.05, atStop + step) + 1e-6) over.push([id, x.d, atStop, x.w, step]);
       for (const x of s) if (x.can < x.rmin - 1) impossible.push([id, x.d, x.w, x.can, x.rmin]);
     }
     ok(over.length === 0, 'plateau: once the gains stop, the loads level off within a step of where they were', over);
