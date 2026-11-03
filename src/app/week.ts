@@ -222,7 +222,7 @@ ${howText('wk', 'A rest week you marked under More options on Today. It does not
 ${cardioLine(w)}
 <div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">${noLog() ? `${w.tgt} hard sets planned this week.` : `${w.got} hard sets logged of ${w.tgt} planned${w.tgt > 0 ? ` (${Math.round(w.pct)}%)` : ''}.`}</p>${helpButton('wk')}</div>
 ${liftedLine()}
-${howText('wk', `Each set counts once; a set at RIR 4 or more is not hard and does not count. The bar at the top of every tab is this calendar week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead${w.weekly ? ', a red ring is a planned workout that was missed' : ''}. Tap a filled day to open it in History; tap today or a day ahead to see its workout here; tap an empty past day (marked +) to log a workout for it.${w.weekly ? '' : ' The row above the bar is your cycle: green is done this round, outlined is next.'}`)}`;
+${howText('wk', `Each set counts once; a set at RIR 4 or more is not hard and does not count. The bar at the top of every tab is this calendar week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead${w.weekly ? ', a red ring is a planned workout that was missed, and a plain day is one done on another day' : ''}. Tap a filled day to open it in History; tap today or a day ahead to see its workout here; tap an empty past day (marked +) to log a workout for it.${w.weekly ? '' : ' The row above the bar is your cycle: green is done this round, outlined is next.'}`)}`;
 }
 
 /** This week on Today: the week (or the month) and what it holds. */

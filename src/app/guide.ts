@@ -51,7 +51,7 @@ import {
   USUAL_BEFORE,
   WORK_FLOOR
 } from './formulas';
-import { DEFAULT_STEP, LB } from './units';
+import { DEFAULT_STEP, EQUIP_STEP, LB } from './units';
 import { MK, ML, TARGETED, TRACK_ONLY, USUAL_RANGE } from './library';
 import { DEFAULT_PLAN, PROFILE_PLAN } from './routines';
 import { FOCUS_MAX, FOCUS_UP, MAINT_SHARE, STR_NEAR, STR_REST } from './profile';
@@ -108,6 +108,9 @@ const CAP = pctOf(JUMP_CAP - 1),
 /** The load under which an isolation lift takes the larger cap, in the unit on screen: in pounds, about it, to the nearest default step. */
 const lightLift = (kg: boolean): string =>
   kg ? `${LIGHT_LIFT_KG} kg` : `about ${Math.round(LIGHT_LIFT_KG / LB / DEFAULT_STEP.lb) * DEFAULT_STEP.lb} lb`;
+/** A default load step in the unit on screen (367). */
+const stepWords = (st: Readonly<Record<'kg' | 'lb', number>>, kg: boolean): string =>
+  kg ? `${st.kg} kg` : `${st.lb} lb`;
 /** The weeks the radar can average besides its default. */
 const OTHER_WKS = orList(REGION_WKS.map(([n]) => n).filter(n => n !== REGION_WK_DEFAULT));
 
@@ -135,6 +138,7 @@ export function guideSheet(m: { open?: string | undefined }): TemplateResult {
       'today',
       'Today',
       `<p><b>The card at the top</b> is the next day of your routine. Start begins it; <b>Change</b> has everything else: a lighter day, short on time, a blank session, Pick for me, and another day of your plan. With Settings, Rest timer and logging, <b>Today starts with</b> a blank session, the card starts an empty session instead, the plan's day in Change; your week is then measured by sessions and hard sets, not a plan.</p>
+   <p><b>Fixed weekdays</b>: a workout done on another day counts for its own day, so the week adapts to a day that slipped. The card offers the earliest workout this week still to do, with today's own a tap away; once today's is done, the next one this week. A day can hold a second workout (Plan, Add a second workout), and the card offers it once the first is done.</p>
    <p><b>Lighter day</b>: every exercise, ${shareWords(LIGHTER_SET_SHARE)} the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the loads, ${LIGHT_RIR} or more reps in reserve, and nothing to beat. For a day you are run down. A lift you still do at its usual load and reps, for as many sets, counts in full for that lift: its next target and its trend; a lift done lighter, or for fewer reps or sets, does not. A PR counts on any day.</p>
    <p><b>Short on time</b>: give your minutes. Sets come off down to ${SHORT_MIN_SETS} per exercise, then exercises not started drop out. Priority and lagging muscles, exercises you have started, and at least one exercise per muscle are kept longest. Done sets are never touched. Trimmed work does not count against trends. Undo puts it back.</p>
    <p><b>Minutes</b> (~75 min) are worked out from your sets, reps, and rest. Once you have finished ${PACE_MIN} sessions in the app in the last ${PACE_DAYS / WEEK_DAYS} weeks, they follow how long yours take against that estimate: the typical one of your newest ${PACE_N}, so one long day does not move it, and a clock left running is left out.</p>
@@ -143,7 +147,7 @@ export function guideSheet(m: { open?: string | undefined }): TemplateResult {
    <p><b>More options</b>: Deload week, Limited equipment (each exercise your gym cannot do swapped for the closest match), Rest week (a week off on purpose: averages, the streak, and adherence skip it), Flag an injury, and Log cardio.</p>
    <p><b>Two sessions in a day</b> are kept in the order you started them, and a calendar day with two asks which to open. A lift done again the same day asks what it did earlier that day, with no step up; the next day's target comes from the better of the two.</p>
    <p><b>Weigh-in</b>: a card asks for your bodyweight every ${BW_EVERY_DEFAULT / WEEK_DAYS} weeks once you have weighed in or log bodyweight lifts (Settings, General, Weigh-in reminder: every week, 2 weeks, month, or off). Pull-ups, dips, and push-ups are read at your latest weigh-in.</p>
-   <p><b>This week</b> counts hard sets logged against hard sets planned; Month shows the calendar instead, and the title becomes This month. The bar at the top of every tab is this week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead, and with fixed weekdays a red ring is one missed. Tap an empty past day to log a workout for it. The calendar shows the workouts planned ahead the same way, for a year: tap one to see it on Today; a numbered cycle is counted on from where you are, one day at a time, and a rest week planned ahead plans nothing and holds the cycle where it is.</p>`
+   <p><b>This week</b> counts hard sets logged against hard sets planned; Month shows the calendar instead, and the title becomes This month. The bar at the top of every tab is this week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead, and with fixed weekdays a red ring is one missed and a plain day one done on another day. Tap an empty past day to log a workout for it. The calendar shows the workouts planned ahead the same way, for a year: tap one to see it on Today; a numbered cycle is counted on from where you are, one day at a time, and a rest week planned ahead plans nothing and holds the cycle where it is.</p>`
     ],
     [
       'log',
@@ -176,6 +180,7 @@ export function guideSheet(m: { open?: string | undefined }): TemplateResult {
    <p>Each exercise progresses from its <b>last full session in the rep range you plan for it that day</b>, so the same lift on a heavy day and a light day progresses on each separately. A range not used within ${TREND_WEEKS} weeks of your latest session of the lift starts from that latest session instead.</p>
    <p><b>The working load</b> is the load you did the most sets with (the heavier on a tie), leaving out loads under ${pctOf(WORK_FLOOR)}% of your heaviest. A heavy top set, or two, before your back-off sets counts for bests and PRs, while targets, grey reps, and trends build on the back-off sets.</p>
    <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about ${pct1(JUMP_COMPOUND)}% of the load on compound lifts and ${pct1(JUMP_ISOLATION)}% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (it costs ${BIG_STEP_REPS} reps or more, as 5 lb on a 35 lb dumbbell does), on a range ${FIXED_RANGE} or more reps wide, you first build a few reps past the top at this load, up to ${shareWords(BUILD_PAST.share)} of the top of the range more (${numWord(BUILD_PAST.min)} at least), until your estimate says the new load allows the bottom of the range; then the load goes up. Past that, the load goes up anyway, with the reps your estimate allows there as the target. A fixed-rep plan (5 x 5, 3 x 3-5) goes up a step every time all its sets are done.</p>
+   <p><b>Load steps</b>: with none set on the exercise, a barbell or Smith lift and a machine stack go up ${stepWords(EQUIP_STEP.bar, kg)}, a dumbbell ${stepWords(EQUIP_STEP.each, kg)}, and anything else ${stepWords(DEFAULT_STEP, kg)} (conventions: the smallest jumps most gyms can load). Your gym, in Settings, and the exercise's own load step come first.</p>
    <p><b>Dumbbells and kettlebells</b> step by what your rack has: with no load step set on the exercise, the step fits every load you logged on it (12, 14, and 16 kg is a rack in 2 kg steps; 12.5 and 15, one in 2.5).</p>
    <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets, a set past the top of the range counting as the top. One set under the range among the others counts as the bottom of the range, so one bad set does not set the next target. A session clearly below your usual repeats the last target (One rule for every session, below); a second in a row is your usual, and then every set under the range at a load you did in it the time before asks for the bottom of the range in every set again.</p>
    <p><b>Well past the range</b> (every set ${CLEARLY_OFF} or more reps over the top, as after moving the range down): the load your estimated 1RM gives for the middle of the range, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg)}), in whole steps.</p>
@@ -229,7 +234,7 @@ export function guideSheet(m: { open?: string | undefined }): TemplateResult {
       'Sections',
       `<p>Tap a section's title to fold or open it. Drag its ⠿ to move it; the order is kept. Each time the app opens, every section starts folded, except Sessions on History.</p>
    <p><b>More sections</b>: when a tab has sections hidden, its bottom lists them; tap one to add it. The menu at the top right has Show, hide, or reorder sections. Settings, Layout shows or hides any section (nothing stops being tracked), and Default layout goes back to how a new install starts.</p>
-   <p><b>Your settings</b>: Settings has your training (goal, days, minutes, and focus), the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>`
+   <p><b>Your settings</b>: Settings has your training (goal, days, minutes, and focus), your gym's weights, the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>`
     ],
     [
       'data',
