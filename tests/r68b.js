@@ -20,6 +20,9 @@
 //  11  NEW-46 (V, 2026-11-03, found after the review; fails on 326077f): a load logged in the other unit is held on
 //      the unit's own loads (5 lb, 2.5 kg), as r67 held it: 100 kg shown in lb was held at 225 and stepped to 235
 //      on 367's 10 lb grid, and 225 lb shown in kg was held at 100.
+//  12  From comparing r67 and r68 on the wide histories (fails on a97506c): a past workout on a date that has the
+//      lift says "Earlier that day"; an earlier session with no range on record is not "the same again"; a lift
+//      with no rack has no rack step (it threw).
 // `node tests/r68b.js [page]`; R68B=1,3 runs some.
 const { open, engine } = require('./h');
 let browser;
@@ -279,6 +282,28 @@ async function finish(page) {
     ok(r.holdKg.w === 102.5, '11. 225 lb x 8 shown in kg (102.1) holds at 102.5, the nearest load, never 100', r.holdKg);
     ok(r.upKg.w === 107.5, '11. 225 lb x 10 shown in kg steps to 107.5, about one 5 kg step', r.upKg);
     ok(r.control.w === 225, '11. (a guard) 225 lb logged and shown in lb holds at 225', r.control);
+    await P.ctx.close();
+  }
+
+  // ---- 12. From comparing r67 and r68 on the wide histories (tests/wide.js), after V asked how NEW-46 got through.
+  if (run(12)) {
+    const P = await open(FILE, { browser, clock: '2026-11-03T19:00:00' });
+    const r = await P.page.evaluate(() => {
+      const L = window.__ironlog; const LB = 0.45359237; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb'; S.draft = null;
+      const sess = (id, date, h, w, reps, rr) => ({ id, date, t: Date.parse(date + 'T' + String(h).padStart(2, '0') + ':00:00'), notes: '', ex: [{ exId: 'bench', ...(rr ? { rr } : {}), sets: reps.map(r => ({ w, r, rir: 2 })) }] });
+      const plan = { sets: 3, repMin: 8, repMax: 12, rir: 2, rest: 90, inc: 5 * LB };
+      S.sessions = [sess('a', '2026-10-20', 8, 130 * LB, [10, 10, 10], [8, 12]), sess('b', '2026-10-27', 8, 135 * LB, [10, 10, 10], [8, 12])];
+      L.state = L.normalize(S); L.state.exercises.find(e => e.id === 'bench').inc = 5 * LB; L.invalidate();
+      const past = L.suggest('bench', plan, { before: '2026-10-27' }).text;
+      S.sessions = [sess('a', '2026-10-27', 8, 130 * LB, [10, 10, 10], [8, 12]), sess('b', '2026-11-03', 8, 135 * LB, [10, 10, 10], null)];
+      L.state = L.normalize(S); L.state.exercises.find(e => e.id === 'bench').inc = 5 * LB; L.invalidate();
+      const noRange = L.suggest('bench', plan, { before: L.today() }).text;
+      let rack; try { rack = L.rackStep(L.EX('ohp')); } catch (e) { rack = 'threw: ' + e.message; }
+      return { past, noRange, rack };
+    });
+    ok(/^Earlier that day: 135×10/.test(r.past), '12. a past workout logged on a date that has the lift says "Earlier that day", not "Earlier today"', r.past);
+    ok(!/Earlier/.test(r.noRange), '12. an earlier session that day with no range on record (an import) is read by the range\'s rules, not "the same again"', r.noRange);
+    ok(r.rack === null, '12. a lift with no rack has no rack step, as on r67 (the rack read first made it throw)', r.rack);
     await P.ctx.close();
   }
 

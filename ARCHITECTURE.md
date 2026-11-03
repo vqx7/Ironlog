@@ -120,7 +120,7 @@ Casts: 49
 Non-null assertions: 23
 Open types: 9
 
-Marks in r52's moved code (from baselines/r51.html): 6 casts, 73 non-null assertions
+Marks in r52's moved code (from baselines/r51.html): 6 casts, 72 non-null assertions
 Marks in r56's moved code (from baselines/r55.html): 2 casts, 2 non-null assertions
 r66: 49 casts from 48: the rows of pictures' bytes read back from IndexedDB (`picRowsRead` in storage.ts, PENDING 373), whose request is typed any, read as unknown as Undo's and the kept-aside log's are.
 

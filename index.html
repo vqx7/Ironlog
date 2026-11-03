@@ -6970,12 +6970,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function sgSameDayIn(M3, C2) {
     const { ex, last, T: T2, top, planPts, lastR, lastS, basis, opts, plan } = C2;
     if (!opts.before || last.date !== T2 || !(planPts.length > 0)) return null;
-    if (last.rr && !sameRR(last.rr, [+plan.repMin, +plan.repMax])) return null;
+    if (!(last.rr && sameRR(last.rr, [+plan.repMin, +plan.repMax]))) return null;
     const sets = last.pts.map((p3) => `${loadLabelIn(M3, ex, p3.w)}×${p3.r}`).join(", ");
     return {
       top,
       w: top,
-      text: `Earlier today: ${sets}. The same again: no step up within one day.`,
+      text: `${T2 === M3.today() ? "Earlier today" : "Earlier that day"}: ${sets}. The same again: no step up within one day.`,
       lastR,
       basis,
       last: lastS,
@@ -7572,12 +7572,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         tgt: null,
         easier: null
       };
-    if (opts.before && last.date === opts.before && !(last.rr && !sameRR(last.rr, [+plan.repMin, +plan.repMax])))
+    if (opts.before && last.date === opts.before && last.rr && sameRR(last.rr, [+plan.repMin, +plan.repMax]))
       return {
         prev: L0.prev,
         prevOff: L0.prevOff,
         w: top,
-        text: `Earlier today: ${ws.map((p3) => `${loadLabelIn(M3, ex, p3.w)} for ${p3.r}s`).join(", ")}. The same again: no step up within one day.`,
+        text: `${opts.before === M3.today() ? "Earlier today" : "Earlier that day"}: ${ws.map((p3) => `${loadLabelIn(M3, ex, p3.w)} for ${p3.r}s`).join(", ")}. The same again: no step up within one day.`,
         lastR,
         basis,
         last: lastS,
@@ -7679,6 +7679,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const xs = liftReadIn(M3, ex.id);
     const key = UIn(M3) + ex.id + "|" + (xs.length ? xs[0].sid : "");
     const kind = rackKind(ex);
+    if (!kind) return null;
     const all = RACK[kind][UIn(M3)];
     const pref = kind === "dumbbell" ? EQUIP_STEP.each[UIn(M3)] : null;
     const fits = (ws, g2) => ws.every((w2) => Math.abs(w2 / g2 - Math.round(w2 / g2)) < RACK_FIT);

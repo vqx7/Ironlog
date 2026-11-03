@@ -613,13 +613,14 @@ function oneADay(xs: Exposure[] | undefined, repMin: number): Exposure[] | undef
 function sgSameDayIn(M: Model, C: SuggestCtx): Suggestion | null {
   const { ex, last, T, top, planPts, lastR, lastS, basis, opts, plan } = C;
   if (!opts.before || last.date !== T || !(planPts.length > 0)) return null;
-  // Earlier today in another rep range (a heavy morning, a light evening): that range's own rules read it (the review of r68).
-  if (last.rr && !sameRR(last.rr, [+plan.repMin, +plan.repMax])) return null;
+  /* Earlier that day in another rep range (a heavy morning, a light evening), or in one not on record (an import):
+     that range's own rules read it (the review of r68, and r67 against r68 on the wide histories). */
+  if (!(last.rr && sameRR(last.rr, [+plan.repMin, +plan.repMax]))) return null;
   const sets = last.pts.map(p => `${loadLabelIn(M, ex, p.w)}×${p.r}`).join(', ');
   return {
     top,
     w: top,
-    text: `Earlier today: ${sets}. The same again: no step up within one day.`,
+    text: `${T === M.today() ? 'Earlier today' : 'Earlier that day'}: ${sets}. The same again: no step up within one day.`,
     lastR,
     basis,
     last: lastS,
@@ -1564,12 +1565,12 @@ function suggestTimedIn(
       easier: null
     };
   // Held again the same day (NEW-18, the review of r68): what it held earlier today, as any lift is (sgSameDayIn).
-  if (opts.before && last.date === opts.before && !(last.rr && !sameRR(last.rr, [+plan.repMin, +plan.repMax])))
+  if (opts.before && last.date === opts.before && last.rr && sameRR(last.rr, [+plan.repMin, +plan.repMax]))
     return {
       prev: L0.prev,
       prevOff: L0.prevOff,
       w: top,
-      text: `Earlier today: ${ws.map(p => `${loadLabelIn(M, ex, p.w)} for ${p.r}s`).join(', ')}. The same again: no step up within one day.`,
+      text: `${opts.before === M.today() ? 'Earlier today' : 'Earlier that day'}: ${ws.map(p => `${loadLabelIn(M, ex, p.w)} for ${p.r}s`).join(', ')}. The same again: no step up within one day.`,
       lastR,
       basis,
       last: lastS,
@@ -1729,7 +1730,9 @@ export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): numb
      steps; a load only 2.5 kg fits (12.5, 17.5), in any session read, keeps 2.5. Read the other way round, the
      newest loads alone (20 kg) read as 2 and an older 17.5 was then taken for another gym's, so 22 kg, which
      that rack does not have, was asked (the review of r68). */
-  const kind = rackKind(ex)!;
+  // A lift with no rack has no rack step (r67 gave null; reading the rack first made it throw, found comparing r67 and r68).
+  const kind = rackKind(ex);
+  if (!kind) return null;
   const all = RACK[kind][UIn(M)];
   const pref = kind === 'dumbbell' ? EQUIP_STEP.each[UIn(M)] : null;
   const fits = (ws: readonly number[], g: number): boolean =>
