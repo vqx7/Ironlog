@@ -320,6 +320,8 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
 .wkbar .w.plan .dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
 .wkbar .w.miss .dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--red)}
 .wkbar .w.rest .dn{background:transparent;color:var(--muted)}
+/* A planned day whose workout was done on another day that week (NEW-31, r68): nothing left there, as a rest day reads. */
+.wkbar .w.moved .dn{background:transparent;color:var(--muted)}
 .wkbar .w.cardio .dn{background:transparent;box-shadow:inset 0 0 0 2px var(--volt-line)}
 .wkbar .w.today .wd{color:var(--ink)}
 .wkbar .w.today .dn{outline:2px solid var(--ink);outline-offset:2px}

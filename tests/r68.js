@@ -22,6 +22,14 @@
 //      a plate-loaded machine typed a side, load added to a pull-up and a kettlebell keep 5 lb (2.5 kg). Guards: a
 //      step set on the lift, and Your gym's plates, still come first; back after a break on the default barbell
 //      step, the climb goes 165, 175 and back to the 185 from before (decision 1 on 10 lb steps).
+//   5  366 (c), two workouts on one weekday of a fixed-weekday routine: Plan adds a second workout to Monday, names
+//      it and moves an exercise into it; Today starts the first, then offers the second, each with its own
+//      exercises, saved as the day's first and second (part 2); a week plans both; the marks survive normalize,
+//      r67 keeps them (its extras) and r68 reads them back; switching to a cycle makes the day one workout again.
+//   6  NEW-31, a slipped day on a fixed-weekday routine (V, 2026-11-02): Monday's Push not done by Tuesday is
+//      offered first, today's Pull a tap away; done on Tuesday, it fills Monday's slot, so Monday no longer reads
+//      missed and Today moves on to Pull; once today's is done Today shows the next one up; a rest day with
+//      nothing behind keeps its card (a guard).
 const { open, engine } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
@@ -294,6 +302,138 @@ const vLog = mon => {
       return out;
     });
     ok(JSON.stringify(climb) === '[165,175,185,185]', '4. back after six weeks on the default 10 lb step: 165, then 175, then the 185 from before, and no further', climb);
+    await P.ctx.close();
+  }
+
+  // ---- 5 and 6: a fixed-weekday routine: Push Mon, Pull Tue, Legs Wed, the rest rest days.
+  const LBw = 0.45359237;
+  const it = (u, exId, extra) => ({ uid: u, exId, sets: 3, repMin: 8, repMax: 12, rir: 2, rest: 90, inc: 5 * LBw, ss: null, ...(extra || {}) });
+  const weekR = (mon) => ({ id: 'RW', name: 'Week', schedule: 'weekly', days: [
+    { id: 'Dmon', name: 'Push', rest: false, items: [it('a1', 'bench'), it('a2', 'ohp'), ...(mon || [])] },
+    { id: 'Dtue', name: 'Pull', rest: false, items: [it('b1', 'cableRow')] },
+    { id: 'Dwed', name: 'Legs', rest: false, items: [it('c1', 'backSquat')] },
+    { id: 'Dthu', name: 'Rest', rest: true, items: [] }, { id: 'Dfri', name: 'Rest', rest: true, items: [] },
+    { id: 'Dsat', name: 'Rest', rest: true, items: [] }, { id: 'Dsun', name: 'Rest', rest: true, items: [] }] });
+  const wkSess = (id, date, di, dayId, dayName, extra) => ({ id, date, dayIdx: di, dayId, dayName, routineId: 'RW', notes: '', t: Date.parse(date + 'T09:00:00'), ex: [{ exId: 'bench', rr: [8, 12], sets: [{ w: 60, r: 10, rir: 2 }] }], ...(extra || {}) });
+  const weekPage = async (clock, routine, sessions) => {
+    const P = await open(FILE, { browser, clock });
+    await P.page.evaluate(([R, ss]) => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.autoDone = false; S.routines = [R]; S.activeRoutineId = R.id; S.sessions = ss; S.draft = null; L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.ui.todayDay = null; L.render(); }, [routine, sessions]);
+    await wait(150);
+    return P;
+  };
+  const card = page => page.evaluate(() => { const h = document.querySelector('#view .hero'); const st = h && h.querySelector('[data-act="startSession"]'); return h ? { name: ((h.querySelector('h2') || {}).textContent || '').trim(), eye: ((h.querySelector('.eyebrow') || {}).textContent || '').replace(/\s+/g, ' ').trim(), note: ((h.querySelector('.hero-note') || {}).textContent || '').replace(/\s+/g, ' ').trim(), day: st ? st.dataset.day : null, part: st ? st.dataset.part || null : null } : null; });
+  const bar = page => page.evaluate(() => [...document.querySelectorAll('#wkbar .w')].map(w => ({ cls: w.className, label: w.getAttribute('aria-label') || '' })));
+  const finishNow = async page => {
+    await page.evaluate(() => { const L = window.__ironlog; for (const b of L.state.draft.ex) for (const x of b.sets) { x.w = x.w == null ? 50 * 0.45359237 : x.w; x.r = x.r || 10; x.done = true; } L.saveNow(); L.render(); });
+    await page.click('#view [data-act="finish"]');
+    for (let k = 0; k < 6; k++) { await wait(150); const kind = await page.evaluate(() => window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind); if (kind !== 'confirm') break; await page.click('#modal [data-act="mOk"]'); }
+    await page.evaluate(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    await wait(150);
+  };
+
+  if (run(5)) {
+    // Plan: a second workout added to Monday, named, and an exercise moved into it.
+    const P = await weekPage('2026-11-02T08:00:00', weekR(), []);
+    const pg = P.page;
+    await pg.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'program'; L.ui.planView = 'routine'; L.ui.dayFocus = 'Dmon'; for (const k of ['routine', 'schedule', 'days']) L.ui.folds['program:' + k] = true; L.render(); });
+    await wait(150);
+    const addBtn = await pg.$('#view [data-act="pickDay"][data-day="0"][data-part="2"]');
+    ok(!!addBtn && /Add a second workout/.test(await addBtn.innerText()), '5. Plan offers "Add a second workout" on a weekday');
+    if (addBtn) {
+      await addBtn.click(); await wait(150);
+      await pg.evaluate(() => { const L = window.__ironlog; L.ACT.pickDo({ dataset: { ex: 'dbCurl' } }); }); await wait(150);
+    }
+    const mon = await pg.evaluate(() => { const d = window.__ironlog.state.routines[0].days[0]; return d.items.map(i => i.exId + (i.pm ? ':pm' : '')); });
+    ok(JSON.stringify(mon) === '["bench","ohp","dbCurl:pm"]', '5. the curl goes into Monday\'s second workout', mon);
+    const pmIn = await pg.$('#view input[data-daypm="0"]');
+    ok(!!pmIn, "5. with a second workout, the day asks the second workout's name");
+    if (pmIn) { await pg.fill('#view input[data-daypm="0"]', 'Arms'); await pg.dispatchEvent('#view input[data-daypm="0"]', 'change'); await wait(150); }
+    // Move the press into the second workout through Move to.
+    await pg.evaluate(() => { const L = window.__ironlog; L.ui.openItem = 'a2'; L.render(); }); await wait(100);
+    const opts = await pg.evaluate(() => { const s = document.querySelector('#view select[data-moveto="a2"]'); return s ? [...s.options].map(o => o.value + '|' + o.textContent) : []; });
+    ok(opts.includes('0:2|Mon: Arms (second workout)'), '5. Move to lists each weekday\'s second workout', opts.slice(0, 4));
+    if (opts.some(o => o.startsWith('0:2|'))) { await pg.selectOption('#view select[data-moveto="a2"]', '0:2'); await wait(150); }
+    const mon2 = await pg.evaluate(() => { const d = window.__ironlog.state.routines[0].days[0]; return { items: d.items.map(i => i.exId + (i.pm ? ':pm' : '')), name: d.pmName }; });
+    ok(mon2.name === 'Arms' && JSON.stringify(mon2.items) === '["bench","dbCurl:pm","ohp:pm"]', '5. ... and moves the press there, the second workout named Arms', mon2);
+    // A week plans both of Monday's workouts.
+    const pw = await pg.evaluate(() => window.__ironlog.plannedPerWeek(window.__ironlog.state.routines[0]));
+    ok(pw === 4, '5. the week plans four workouts: Monday\'s two, Tuesday and Wednesday', pw);
+    // Today: the first workout, then the second.
+    await pg.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.ui.todayDay = null; L.render(); }); await wait(150);
+    const c1 = await card(pg);
+    ok(c1 && c1.name === 'Push' && c1.part === null, '5. Today on Monday starts Push, the first workout', c1);
+    await pg.click('#view .hero [data-act="startSession"]'); await wait(200);
+    const d1 = await pg.evaluate(() => { const d = window.__ironlog.state.draft; return { ex: d.ex.map(b => b.exId), part: d.part || null }; });
+    ok(JSON.stringify(d1) === '{"ex":["bench"],"part":null}', '5. ... with the first workout\'s exercises only', d1);
+    await finishNow(pg);
+    const c2 = await card(pg);
+    ok(c2 && c2.name === 'Arms' && c2.part === '2' && /Push done today\. Next: the day's second workout\./.test(c2.note), '5. then Today offers Arms, the day\'s second workout, and says why', c2);
+    await pg.click('#view .hero [data-act="startSession"]'); await wait(200);
+    const d2 = await pg.evaluate(() => { const d = window.__ironlog.state.draft; return { ex: d.ex.map(b => b.exId), part: d.part || null, name: d.dayName }; });
+    ok(JSON.stringify(d2) === '{"ex":["dbCurl","ohp"],"part":2,"name":"Arms"}', '5. ... started with its own exercises, as the second workout', d2);
+    await finishNow(pg);
+    const saved = await pg.evaluate(() => window.__ironlog.state.sessions.map(s => ({ name: s.dayName, part: s.part || null, pw: s.pw || null })));
+    ok(saved.length === 2 && saved[0].part === null && saved[1].part === 2 && saved[1].name === 'Arms' && saved.every(s => s.pw === 4), '5. saved as the day\'s first and second, each recording the week\'s four', saved);
+    // The marks survive normalize, r67 keeps them, and r68 reads them back.
+    const st = await pg.evaluate(() => JSON.parse(JSON.stringify(window.__ironlog.state)));
+    const back = await pg.evaluate(s => { const n = window.__ironlog.normalize(s); return { d: n.routines[0].days[0], last: n.sessions[n.sessions.length - 1] }; }, st);
+    ok(back.d.pmName === 'Arms' && back.d.items.filter(i => i.pm).length === 2 && back.last.part === 2, '5. normalize keeps the marks', { pm: back.d.pmName, part: back.last.part });
+    if (!/(^|\/)baselines\//.test(FILE)) {
+      const Q = await open('baselines/r67.html', { browser, clock: '2026-11-02T20:00:00' });
+      const old = await Q.page.evaluate(s => { const n = window.__ironlog.normalize(s); return JSON.parse(JSON.stringify(n)); }, st);
+      await Q.ctx.close();
+      const again = await pg.evaluate(s => { const n = window.__ironlog.normalize(s); return { d: n.routines[0].days[0], last: n.sessions[n.sessions.length - 1] }; }, old);
+      ok(old.routines[0].days[0].pmName === 'Arms' && old.sessions[1].part === 2 && again.d.items.filter(i => i.pm).length === 2 && again.last.part === 2, '5. a phone on r67 keeps the marks among its extras, and r68 reads them back', { r67: { pm: old.routines[0].days[0].pmName, part: old.sessions[1].part } });
+    }
+    // To a cycle: one workout a day again, every exercise kept.
+    await pg.evaluate(() => { const L = window.__ironlog; L.state.settings.hidden = L.state.settings.hidden.filter(k => k !== 'program:schedule'); L.ui.folds['program:schedule'] = true; L.ui.tab = 'program'; L.ui.bRoutine = 'RW'; L.render(); }); await wait(100);
+    const hasSel = !!(await pg.$('#view select[data-bind="rSchedule"]'));
+    ok(hasSel, '5. Plan shows the schedule');
+    if (hasSel) { await pg.selectOption('#view select[data-bind="rSchedule"]', 'cycle'); await wait(150); }
+    const cyc = await pg.evaluate(() => { const R = window.__ironlog.state.routines[0]; const d = R.days[0]; return { sch: R.schedule, items: d.items.map(i => i.exId + (i.pm ? ':pm' : '')), pm: d.pmName || null }; });
+    ok(cyc.sch === 'cycle' && JSON.stringify(cyc.items) === '["bench","dbCurl","ohp"]' && cyc.pm === null, '5. switched to a cycle, Monday is one workout again with every exercise', cyc);
+    ok(!P.errors.length, '5. no page errors', P.errors);
+    await P.ctx.close();
+  }
+
+  if (run(6)) {
+    // Tuesday, nothing done this week: Monday's Push first, today's Pull a tap away.
+    let P = await weekPage('2026-11-03T08:00:00', weekR(), []);
+    let c = await card(P.page);
+    ok(c && c.name === 'Push' && c.day === '0' && /Planned Mon/.test(c.eye) && /Push, planned Mon, is still to do this week\./.test(c.note), "6. Tuesday with Monday's Push not done: Today offers Push, planned Mon, still to do", c);
+    const own = await P.page.$('#view .hero [data-act="todayOwn"]');
+    ok(!!own && /Do today's Pull instead/.test(await own.innerText()), "6. ... with today's Pull a tap away");
+    let b = await bar(P.page);
+    ok(/miss/.test(b[0].cls), '6. ... and Monday reads missed, as it is', b[0]);
+    // Push done on Tuesday, from the card.
+    await P.page.click('#view .hero [data-act="startSession"]'); await wait(200);
+    await finishNow(P.page);
+    const s0 = await P.page.evaluate(() => window.__ironlog.state.sessions.map(s => ({ date: s.date, di: s.dayIdx, name: s.dayName })));
+    ok(s0.length === 1 && s0[0].di === 0 && s0[0].date === '2026-11-03', "6. Push done on Tuesday is saved as Monday's workout", s0);
+    c = await card(P.page);
+    ok(c && c.name === 'Pull' && c.day === '1', '6. then Today moves on to Pull, today\'s', c);
+    b = await bar(P.page);
+    ok(!/miss/.test(b[0].cls) && /moved/.test(b[0].cls) && /Push, done Tue/.test(b[0].label) && /on/.test(b[1].cls), '6. Monday no longer reads missed: "Push, done Tue", and Tuesday reads trained', [b[0], b[1]]);
+    ok(!P.errors.length, '6. no page errors (Tuesday)', P.errors);
+    await P.ctx.close();
+    // Wednesday with Pull not done: Pull first; today's Legs a tap away, and the tap shows it.
+    P = await weekPage('2026-11-04T08:00:00', weekR(), [wkSess('w1', '2026-11-03', 0, 'Dmon', 'Push')]);
+    c = await card(P.page);
+    ok(c && c.name === 'Pull' && /Pull, planned Tue, is still to do this week\./.test(c.note), '6. Wednesday with Pull not done: Pull first', c);
+    const ownB = await P.page.$('#view .hero [data-act="todayOwn"]');
+    if (ownB) { await ownB.click(); await wait(150); }
+    c = await card(P.page);
+    ok(c && c.name === 'Legs' && c.day === '2', "6. ... and the tap on today's own shows Legs", c);
+    await P.ctx.close();
+    // Monday with Push done: the next one up.
+    P = await weekPage('2026-11-02T18:00:00', weekR(), [wkSess('w1', '2026-11-02', 0, 'Dmon', 'Push')]);
+    c = await card(P.page);
+    ok(c && c.name === 'Pull' && /Next up · Tue/.test(c.eye) && /Push done today\. Next up: Pull, planned Tue\./.test(c.note), '6. Monday after Push: Today shows the next one up, Pull, planned Tue', c);
+    await P.ctx.close();
+    // A guard: Saturday, a rest day, every workout done: the rest day's card.
+    P = await weekPage('2026-11-07T10:00:00', weekR(), [wkSess('w1', '2026-11-02', 0, 'Dmon', 'Push'), wkSess('w2', '2026-11-03', 1, 'Dtue', 'Pull'), wkSess('w3', '2026-11-04', 2, 'Dwed', 'Legs')]);
+    c = await P.page.evaluate(() => { const h = document.querySelector('#view .hero'); return h ? { name: ((h.querySelector('h2') || {}).textContent || '').trim(), start: !!h.querySelector('[data-act="startSession"]') } : null; });
+    ok(c && c.name === 'Rest' && !c.start, '6. a guard: a rest day with nothing behind keeps its card', c);
     await P.ctx.close();
   }
 

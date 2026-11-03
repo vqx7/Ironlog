@@ -95,11 +95,11 @@ export function applyPick(m: PickerModal | null | undefined, id: string | undefi
       return;
     }
     act(() => {
-      d.items.push(newItem(id));
+      d.items.push(m.pm && R.schedule === 'weekly' ? { ...newItem(id), pm: true } : newItem(id));
       Object.assign(d, trainOn(d));
     });
     rerenderKeepScroll();
-    toast(`${exName(id)} added to ${dayLabel(R, di)}`);
+    toast(`${exName(id)} added to ${dayLabel(R, di)}${m.pm ? ', second workout' : ''}`);
     bwNudge([id]);
     return;
   }
@@ -362,11 +362,13 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   },
   pickDay(t) {
     const di = Number(t.dataset.day);
+    const pm = t.dataset.part === '2' && curRoutineB().schedule === 'weekly';
     openModal({
       kind: 'picker',
       mode: 'addDay',
       day: di,
-      title: `Add to ${dayLabel(curRoutineB(), di)}`,
+      ...(pm ? { pm: true as const } : {}),
+      title: `Add to ${dayLabel(curRoutineB(), di)}${pm ? ', second workout' : ''}`,
       q: '',
       m: ''
     });

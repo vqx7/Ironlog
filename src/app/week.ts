@@ -10,11 +10,11 @@ import { html, nothing, render } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { DAYS, dayLabel, weekFactor } from './routines';
 import { NIL, WD2, fmtDate } from './format';
-import { addDays, r1, today, weekStart, monthOf, dayOfMonth, WEEK_DAYS } from './util';
+import { addDays, r1, today, weekStart, monthOf, dayOfMonth, dayOfWeek, WEEK_DAYS } from './util';
 import { U, activeRoutine, dateIndex, freeMode, isRestWeek, weekStats, cycleState } from './live';
 import { state, ui } from './store';
 import { WKVIEW_KEY, log, prefGet } from './storage';
-import { fmtBig, noLog, sessionsOn, tonnageNow, weekPlan } from './display';
+import { fmtBig, noLog, sessionsOn, tonnageNow, weekPlan, weekSlots } from './display';
 import { helpButton, howText, section } from './view';
 import type { Part } from './view';
 import { calBody, calNow, monthPlanned, planWords } from './calendar';
@@ -40,6 +40,8 @@ function weekBar(): TemplateResult[] {
   // A rest week plans nothing, so no day in it reads planned or missed (r55, the audit: the bar said "Upper A, missed" under "Rest week. Nothing planned.").
   const rw = isRestWeek(cur);
   const plan = rw ? {} : weekPlan(R);
+  // Which planned workouts were done, and on which date, wherever in the week (NEW-31, r68).
+  const slots = weekly && !rw ? weekSlots(R) : [];
   // The + on empty past days appears once there is a log to add to; a brand-new week bar stays clean (the days still open the sheet).
   const hasLog = state.sessions.length > 0;
   const out: TemplateResult[] = [];
@@ -54,12 +56,16 @@ function weekBar(): TemplateResult[] {
     const isRest = !!pd && pd.rest;
     // The session in progress sits on its own date, which for a past workout is not today.
     const live = !!state.draft && !state.draft.editingId && d === state.draft.date;
+    // A past planned day whose every workout was done on another day this week: not missed (NEW-31).
+    const mine = slots.filter(x => x.di === i);
+    const movedTo = !trained && weekly && isPlan && d < t && mine.length && mine.every(x => x.doneOn) ? mine : null;
     const cls = [
       'w',
       trained ? 'on' : '',
       !trained && cd.length ? 'cardio' : '',
       !trained && !cd.length && isPlan && d >= t ? 'plan' : '',
-      !trained && weekly && isPlan && d < t ? 'miss' : '',
+      !trained && weekly && isPlan && d < t && !movedTo ? 'miss' : '',
+      movedTo ? 'moved' : '',
       !trained && !cd.length && isRest && d >= t ? 'rest' : '',
       d === t ? 'today' : '',
       live ? 'live' : ''
@@ -84,9 +90,11 @@ function weekBar(): TemplateResult[] {
         ? 'session in progress'
         : pd && isPlan
           ? d < t
-            ? weekly
-              ? `${pd.name}, missed`
-              : 'nothing logged'
+            ? movedTo
+              ? `${pd.name}, done ${movedTo.map(x => DAYS[dayOfWeek(x.doneOn || d)]).join(' and ')}`
+              : weekly
+                ? `${pd.name}, missed`
+                : 'nothing logged'
             : `${pd.name}, planned`
           : isRest && d >= t
             ? 'rest day'

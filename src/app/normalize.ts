@@ -66,6 +66,7 @@ import {
   KNOWN_BLOCK,
   KNOWN_SEX,
   KNOWN_SESS,
+  KNOWN_DAY,
   MEAS_MAX_CM,
   STATE_VERSION,
   TRASH_BYTES,
@@ -347,9 +348,15 @@ export function cleanSess(raw: unknown, si: number): Session {
       // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold (r56.1).
       t: isTime(Math.round(t)) ? Math.round(t) : undefined,
       // The sessions a week its routine planned when saved (r55, pwOf); absent unless recorded, so older records keep their hash.
-      pw: typeof ss.pw === 'number' && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= WEEK_DAYS ? ss.pw : undefined,
-      // The pictures on the workout's notes (r66, 373), by id, last; absent unless there are any, so older records keep their shape and hash.
-      ...picsField(ss.pics)
+      // Up to two workouts a weekday since r68 (366 (c)).
+      pw:
+        typeof ss.pw === 'number' && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= 2 * WEEK_DAYS
+          ? ss.pw
+          : undefined,
+      // The pictures on the workout's notes (r66, 373), by id; absent unless there are any, so older records keep their shape and hash.
+      ...picsField(ss.pics),
+      // Its day's second workout (r68, 366 (c)): 2 or absent, last, where a build before r68 keeps it among its extras.
+      ...(ss.part === 2 ? { part: 2 as const } : {})
     },
     KNOWN_SESS
   );
@@ -734,7 +741,9 @@ function cleanRoutine(r0: unknown, ri: number): Routine {
             exId: fixId(it.exId),
             ...planNums(it),
             ss: typeof it.ss === 'string' && it.ss ? fixId(it.ss) : null,
-            ...jumpOf(it)
+            ...jumpOf(it),
+            // In the day's second workout (r68, 366 (c)): true or absent, last, so older items keep their hash.
+            ...(it.pm === true && schedule === 'weekly' ? { pm: true as const } : {})
           },
           KNOWN_ITEM
         );
@@ -744,13 +753,20 @@ function cleanRoutine(r0: unknown, ri: number): Routine {
     let id = dbase;
     if (seen.has(id)) id = id + '-' + i;
     seen.add(id);
+    // The second workout's name (r68, 366 (c)), last and absent unless given, so older days keep their hash.
+    const pmName = typeof d.pmName === 'string' ? d.pmName.trim().slice(0, LIMITS.name) : '';
     days.push(
-      keepExtra(d0, {
-        id,
-        name: typeof d.name === 'string' ? d.name : schedule === 'weekly' ? DAYS[i] : `Day ${i + 1}`,
-        rest: !!d.rest,
-        items
-      })
+      keepExtra(
+        d0,
+        {
+          id,
+          name: typeof d.name === 'string' ? d.name : schedule === 'weekly' ? DAYS[i] : `Day ${i + 1}`,
+          rest: !!d.rest,
+          items,
+          ...(pmName && schedule === 'weekly' ? { pmName } : {})
+        },
+        KNOWN_DAY
+      )
     );
   }
   return keepExtra(r0, { id: rid, name: typeof r.name === 'string' ? r.name : 'Routine', schedule, days });
@@ -788,6 +804,8 @@ function cleanDraft(d: Rec, date: string): DraftLike {
     limited: d.limited === true ? true : undefined,
     ...(pics ? { pics } : {}),
     free: d.free === true ? true : undefined,
+    // Started as its day's second workout (r68, 366 (c)).
+    part: d.part === 2 ? (2 as const) : undefined,
     // A past workout typed in after the fact: no rest timer, no clock, no check-in.
     past: d.past === true ? true : undefined,
     // The notes the app wrote when the session started, so Discard can tell them from yours.

@@ -20,7 +20,17 @@ import { act } from './act';
 import { APP_NAME } from './config';
 import { LOCKUP } from './icons';
 import { MEAS, injLabel } from './library';
-import { DAYS, dayLabel, daySets, dropStarter, sessDayIdx, ssLetters, tplCountLine } from './routines';
+import {
+  DAYS,
+  dayLabel,
+  dayParts,
+  daySets,
+  dayWorkout,
+  dropStarter,
+  sessDayIdx,
+  ssLetters,
+  tplCountLine
+} from './routines';
 import { starterSigs } from './normalize';
 import { fmtDate, greeting, repSpan, todayEye, LIGHT_RIR } from './format';
 import { BW_MAX_KG, BW_MIN_KG, MEAS_MAX_CM, LIMITS } from './records';
@@ -93,7 +103,8 @@ import {
   noLog,
   nz,
   recent4w,
-  rirShow
+  rirShow,
+  weekSlots
 } from './display';
 import {
   fieldValue,
@@ -111,7 +122,7 @@ import type { Field } from './view';
 import type { Part } from './view';
 import { heroRing, weekCard } from './week';
 import { mapCard } from './map';
-import type { Day } from './types';
+import type { Day, Routine } from './types';
 
 /** The first-run tour's sample numbers (r34), chosen to follow the app's own
     rules: last time, this time and the next sets' loads per unit (65 for 10,
@@ -533,8 +544,8 @@ export function bwDueCard(): Part {
 
 /* ---------- the start card ---------- */
 
-function changeBtn(di: number, free: boolean): TemplateResult {
-  return html`<button class="btn sm" data-act="startAltOpen" data-day=${di} data-free=${free ? '1' : nothing}>Change</button>`;
+function changeBtn(di: number, free: boolean, part?: 1 | 2): TemplateResult {
+  return html`<button class="btn sm" data-act="startAltOpen" data-day=${di} data-free=${free ? '1' : nothing} data-part=${part === 2 ? '2' : nothing}>Change</button>`;
 }
 /* More options on either card (r34.2, from the review: the blank-session
    card had none, so a freestyler could not mark a rest week, a deload, an
@@ -544,13 +555,64 @@ function moreBtn(deload: boolean): Part {
     deload && !ui.heroMore ? html`<span class="tag blue">Deload week on</span>` : nothing
   }`;
 }
-function moreRow(deload: boolean, playable: boolean, di: number): Part {
+/* NEW-31 (V, 2026-11-02): a fixed-weekday routine adapts to a slipped day. A workout done on another day fills
+   its own slot (weekSlots), so its day stops reading missed, and Today offers the earliest workout this week still
+   to do, else today's; once today's is done, today or earlier, the next one this week ("show what is up next if
+   something was completed already"). A rest day with nothing behind keeps its card. Today's own workout is a tap
+   away on the note (and in the week bar), for a lifter who would rather move on. */
+/** The week's workout Today offers on a fixed-weekday routine, and why; null for the card as before. */
+function weekOffer(R: Routine, wd: number): { di: number; part: 1 | 2; kind: 'behind' | 'today' | 'ahead' } | null {
+  const slots = weekSlots(R);
+  const todo = slots.filter(x => !x.doneOn);
+  const behind = todo.find(x => x.di < wd);
+  if (behind) return { di: behind.di, part: behind.part, kind: 'behind' };
+  const mine = todo.find(x => x.di === wd);
+  if (mine) return { di: wd, part: mine.part, kind: 'today' };
+  if (!slots.some(x => x.di === wd)) return null;
+  const next = todo.find(x => x.di > wd);
+  return next ? { di: next.di, part: next.part, kind: 'ahead' } : null;
+}
+/** When a workout was done this week, in a word: today, yesterday, or its weekday. */
+function doneWhen(d: string): string {
+  const t = today();
+  return d === t ? 'today' : d === addDays(t, -1) ? 'yesterday' : DAYS[dayOfWeek(d)] || d;
+}
+/** The note under an offered workout from another day: still to do, or up next, with today's own a tap away. */
+function offerNote(R: Routine, wd: number, o: { di: number; part: 1 | 2; kind: 'behind' | 'today' | 'ahead' }): Part {
+  const slots = weekSlots(R);
+  const own = slots.filter(x => x.di === wd);
+  const ownTodo = own.find(x => !x.doneOn);
+  const name = (slots.find(x => x.di === o.di && x.part === o.part) || { day: { name: '' } }).day.name;
+  if (o.kind === 'behind')
+    return html`${name}, planned ${DAYS[o.di]}, is still to do this week.${
+      ownTodo
+        ? html` <button class="linkbtn" data-act="todayOwn" data-day=${String(wd)} data-part=${ownTodo.part === 2 ? '2' : nothing}>Do today's ${ownTodo.day.name} instead</button>`
+        : nothing
+    }`;
+  const last =
+    own
+      .filter(x => x.doneOn)
+      .map(x => x.doneOn || '')
+      .sort()
+      .pop() || today();
+  const ownName = (own[0] || { day: { name: '' } }).day.name;
+  return `${ownName} done ${doneWhen(last)}. Next up: ${name}, planned ${DAYS[o.di]}.`;
+}
+/** The note over a day's second workout: its first is done. */
+function secondNote(R: Routine, wd: number): string {
+  const first = weekSlots(R).find(x => x.di === wd && x.part === 1);
+  return first && first.doneOn
+    ? `${first.day.name} done ${doneWhen(first.doneOn)}. Next: the day's second workout.`
+    : '';
+}
+
+function moreRow(deload: boolean, playable: boolean, di: number, part?: 1 | 2): Part {
   if (!ui.heroMore) return nothing;
   const t = today();
   const rw = isRestWeek(weekStart(t)) || isRestWeek(addDays(weekStart(t), -WEEK_DAYS));
   return html`<div class="row u-mt8"><button class=${`btn sm ${deload ? 'noted' : ''}`} data-act="deloadToggle" aria-pressed=${String(deload)}>${
     deload ? 'Deload week: on' : 'Deload week'
-  }</button>${playable ? html`<button class="btn sm" data-act="eqOpen" data-day=${di}>Limited equipment</button>` : nothing}<button class=${`btn sm ${rw ? 'noted' : ''}`} data-act="restWkOpen">Rest week</button><button class="btn sm" data-act="injAdd">Flag an injury</button><button class="btn sm" data-act="cardioNew">Log cardio</button></div>`;
+  }</button>${playable ? html`<button class="btn sm" data-act="eqOpen" data-day=${di} data-part=${part === 2 ? '2' : nothing}>Limited equipment</button>` : nothing}<button class=${`btn sm ${rw ? 'noted' : ''}`} data-act="restWkOpen">Rest week</button><button class="btn sm" data-act="injAdd">Flag an injury</button><button class="btn sm" data-act="cardioNew">Log cardio</button></div>`;
 }
 const STARTS_HELP = html`In <b>Change</b>: <b>Lighter day</b>: every exercise on the day, half the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the loads, ${LIGHT_RIR} or more reps in reserve, and no target to beat: a one-day deload. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine's days for today from what each muscle got in the last ${PICK_DAYS} days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Blank session</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of half sets at about ${pctOf(LIGHT_SHARE)}% loads. <b>Limited equipment</b> (More options): today's workout with each exercise your gym cannot do swapped for the closest match it can.`;
 
@@ -563,8 +625,18 @@ export function viewToday(): TemplateResult {
   const cs = weekly ? null : cycleState(R);
   if (typeof ui.todayDay === 'number' && ui.todayDay >= R.days.length) ui.todayDay = null;
   const chosen = typeof ui.todayDay === 'number' ? ui.todayDay : null;
-  const di = chosen == null ? (weekly ? wd : cs ? cs.next : 0) : chosen;
-  const day: Day = R.days[di] || { id: '', name: '', rest: true, items: [] };
+  // On a fixed-weekday routine the card offers the week's workout due (NEW-31): one still to do, else today's.
+  const offer = weekly && chosen == null && !isRestWeek(weekStart(today())) ? weekOffer(R, wd) : null;
+  const di = chosen == null ? (offer ? offer.di : weekly ? wd : cs ? cs.next : 0) : chosen;
+  const day0: Day = R.days[di] || { id: '', name: '', rest: true, items: [] };
+  // Which of the day's workouts (366 (c)): the one offered, the one picked, else the first not done this week.
+  const parts = weekly ? dayParts(day0) : [];
+  const part: 1 | 2 = offer
+    ? offer.part
+    : chosen != null && ui.todayPart === 2 && parts.includes(2)
+      ? 2
+      : (weekSlots(R).find(x => x.di === di && !x.doneOn) || { part: parts[0] ?? 1 }).part;
+  const day: Day = parts.length > 1 || part === 2 ? dayWorkout(day0, part) : day0;
   const t = today();
   // "Next up" is said once, in Change day below (r28): on the card it made the
   // date line wrap and leave "UP" on a line of its own on a phone.
@@ -588,12 +660,18 @@ export function viewToday(): TemplateResult {
       ? `Viewing ${DAYS[di]}, ${fmtDateYr(ahead)}`
       : `Viewing ${fmtDateYr(ahead)} · ${dayLabel(R, di)}`
     : weekly
-      ? di === wd
-        ? 'Today'
-        : `Viewing ${DAYS[di]}`
+      ? offer && offer.kind === 'behind'
+        ? `Planned ${DAYS[di]}`
+        : offer && offer.kind === 'ahead'
+          ? `Next up · ${DAYS[di]}`
+          : di === wd
+            ? 'Today'
+            : `Viewing ${DAYS[di]}`
       : `${cs && cs.restToday && chosen == null ? 'Next: ' : ''}${dayLabel(R, di)}`;
   let note: Part = nothing;
-  if (cs && chosen == null) {
+  if (offer && offer.kind !== 'today') note = offerNote(R, wd, offer);
+  else if (offer && offer.part === 2) note = secondNote(R, wd);
+  else if (cs && chosen == null) {
     if (cs.lastDate === t) note = `${dayLabel(R, cs.last)} done today.`;
     else if (cs.restToday)
       note = html`<b>Scheduled rest today</b> (${dayLabel(R, cs.restIdx)} of your cycle). ${(R.days[cs.next] || { name: '' }).name} is ready whenever you want it.`;
@@ -654,10 +732,10 @@ export function viewToday(): TemplateResult {
   }</p></div>${heroRing(weekStats())}</div>
 ${note !== nothing ? html`<p class="hero-note small">${note}</p>` : nothing}${
     playable
-      ? html`<button class="btn primary fullw big" data-act="startSession" data-day=${di}>${deload ? 'Start deload session' : 'Start session'}</button>`
+      ? html`<button class="btn primary fullw big" data-act="startSession" data-day=${di} data-part=${part === 2 ? '2' : nothing}>${deload ? 'Start deload session' : 'Start session'}</button>`
       : html`<p class="small u-m10-0-0">${day.rest ? 'Rest day.' : 'Nothing planned for this day.'}</p>`
-  }<div class="row u-mt8">${changeBtn(di, false)}${moreBtn(deload)}<span class="u-mlauto"></span>${helpButton('starts')}</div>
-${howText('starts', STARTS_HELP)}${moreRow(deload, playable, di)}</section>${bwDueCard()}${todayRest({ playable, di, day, deload, cs })}`;
+  }<div class="row u-mt8">${changeBtn(di, false, part)}${moreBtn(deload)}<span class="u-mlauto"></span>${helpButton('starts')}</div>
+${howText('starts', STARTS_HELP)}${moreRow(deload, playable, di, part)}</section>${bwDueCard()}${todayRest({ playable, di, day, deload, cs })}`;
 }
 
 /* ---------- under the start card ---------- */

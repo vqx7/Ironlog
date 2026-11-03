@@ -26,7 +26,7 @@ import {
   recentExIds,
   swapCands
 } from './live';
-import { dayLabel } from './routines';
+import { dayLabel, dayWorkout } from './routines';
 import { estMin, min5, repSpan } from './format';
 import { setSecs, setupSecs } from './formulas';
 import { MINUTE_S, today } from './util';
@@ -194,10 +194,11 @@ export function pickExSheet(): TemplateResult | null {
    upward as swaps were listed, so the chips moved under the finger and the
    next tap landed on the wrong one. */
 /** Limited equipment for a day: the equipment on, each exercise's swap, and Start; null when the day is gone. */
-export function eqSheet(m: { day: number; equip: readonly string[] }): TemplateResult | null {
+export function eqSheet(m: { day: number; equip: readonly string[]; part?: 2 | undefined }): TemplateResult | null {
   const R = activeRoutine();
-  const day = R.days[m.day];
-  if (!day) return null;
+  const day0 = R.days[m.day];
+  if (!day0) return null;
+  const day = R.schedule === 'weekly' ? dayWorkout(day0, m.part === 2 ? 2 : 1) : day0;
   const eq = new Set(m.equip);
   const pl = eqPlan(day, eq);
   const sw = pl.filter(x => x.from);

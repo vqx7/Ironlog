@@ -397,6 +397,8 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     const pw = d.editingId || d.free ? undefined : pwOf(state.routines, d.routineId);
     if (pw) sess.pw = pw;
     if (sessPics) sess.pics = sessPics;
+    // The day's second workout (r68, 366 (c)), last, as normalize writes it.
+    if (d.part === 2) sess.part = 2;
     if (!d.editingId) putById(state.cardio, cardio);
     if (!d.editingId && calDueIdx(d) >= 0 && !d.ex.some(b => b.sets.some(x => x.cal && x.done)))
       state.settings.calSnooze = today();

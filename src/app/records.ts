@@ -193,15 +193,17 @@ export const EXTRA_MAX = 2000,
 export const okExtraKey = (k: string): boolean => /^[A-Za-z][\w]{0,39}$/.test(k) && !(k in Object.prototype);
 
 /** The fields of a plan item, a cardio entry, a tape entry and a saved session's exercise that are written only when valid. */
-export const KNOWN_ITEM: ReadonlySet<string> = new Set(['jump']),
+export const KNOWN_ITEM: ReadonlySet<string> = new Set(['jump', 'pm']),
   KNOWN_CARDIO: ReadonlySet<string> = new Set(['dist']),
   KNOWN_MEAS: ReadonlySet<string> = new Set(MEAS.map(x => x[0])),
   // A saved session's exercise: the injury it was held for (r54), the sets its plan gave it (r58), a new machine or gym (r61), and its note's pictures (r66).
   KNOWN_SEX: ReadonlySet<string> = new Set(['inj', 'ps', 'nw', 'pics']),
   // An exercise of a workout in progress, and one an edit saves over: a new machine or gym (r61), true or absent, and its note's pictures (r66).
   KNOWN_BLOCK: ReadonlySet<string> = new Set(['nw', 'pics']),
-  // A saved session, and one an edit saves over: its notes' pictures (r66), absent when none.
-  KNOWN_SESS: ReadonlySet<string> = new Set(['pics']);
+  // A saved session, and one an edit saves over: its notes' pictures (r66) and its part of the day (r68), absent when none.
+  KNOWN_SESS: ReadonlySet<string> = new Set(['pics', 'part']),
+  // A routine's day: the name of its second workout (r68, 366 (c)), absent when none.
+  KNOWN_DAY: ReadonlySet<string> = new Set(['pmName']);
 
 /* ---------- cleaners ---------- */
 

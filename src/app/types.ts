@@ -74,6 +74,8 @@ export interface PlanItem {
   inc: number;
   ss: string | null;
   jump?: number | undefined;
+  /** On a fixed-weekday routine, in the day's second workout (366 (c), r68); absent for the first. */
+  pm?: true | undefined;
 }
 
 /** The parts of a plan the engine reads (an item, or DEFAULT_PLAN with no ids). */
@@ -85,6 +87,8 @@ export interface Day {
   name: string;
   rest: boolean;
   items: PlanItem[];
+  /** The name of the day's second workout (366 (c), r68), when the lifter gave one; absent otherwise. */
+  pmName?: string | undefined;
 }
 
 /** A routine: its days, one per weekday (weekly) or repeating in order (cycle). */
@@ -167,6 +171,8 @@ export interface Session {
   pw?: number | undefined;
   /** The pictures on the workout's notes (r66, PENDING 373), by id; absent when none. */
   pics?: string[] | undefined;
+  /** Started as its day's second workout on a fixed-weekday routine (366 (c), r68); absent for the first. */
+  part?: 2 | undefined;
 }
 
 /** A weigh-in, in kg. */
