@@ -269,6 +269,20 @@ function unitSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?
   return moveIn(M, ex, plan, res, nw, `the nearest load in ${UIn(M)}`);
 }
 
+/* The spacing of the loads that exist for a lift, in kg: its load step when the lifter set one (on the lift, or a
+   plan's step other than the unit's default, which incOfIn reads as none set), else the finer of its step and the
+   unit's default step (5 lb, 2.5 kg, the smallest plates most gyms keep in pairs). 367's step by equipment (10 lb on a
+   bar) is how far a load goes up, not which loads exist (V, 2026-11-03, NEW-46: on the 10 lb grid 100 kg shown in lb,
+   220.5, was held at 225 and stepped to 235, 225 lb shown in kg was held at 100, and a first front squat's 93.7 kg
+   start was rounded down to 90). */
+function loadGridIn(M: Model, ex: ExerciseLike, plan?: Pick<Plan, 'inc'> | null): number {
+  const step = incOfIn(M, ex, plan);
+  const own =
+    ex.inc != null ||
+    Math.abs(stepReadIn(M, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M)) >= EPS_SAME;
+  return own ? step : Math.min(step, unitStepIn(M));
+}
+
 /* The load on the step in the unit on screen for a load `w` asked after
    last time's `top` (kg), or null where that step does not apply: a load
    typed in the unit on screen, or on its step already (unitSnap, above). The
@@ -287,15 +301,7 @@ function unitGridIn(
   if (ex.timed || gymRackIn(M, ex, plan) || plateGridIn(M, ex, plan)) return null;
   const sl = inUnitIn(M, incOfIn(M, ex, plan));
   if (!(sl > 0)) return null;
-  /* The loads that exist in the unit on screen: on the unit's default step (5 lb, 2.5 kg) when the lift has no step
-     of its own, the smallest plates most gyms keep in pairs. 367's 10 lb step is how far a load goes up, not which
-     loads exist (V, 2026-11-03, NEW-46: on its 10 lb grid 100 kg shown in lb, 220.5, was held at 225 and stepped
-     to 235, and 225 lb shown in kg held at 100). A step the lifter set, on the lift or its plan, is the grid, as
-     before (incOfIn reads a plan's step at the unit's default as none set). */
-  const own =
-    ex.inc != null ||
-    Math.abs(stepReadIn(M, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M)) >= EPS_SAME;
-  const st = own ? sl : Math.min(sl, DEFAULT_STEP[UIn(M)]);
+  const st = inUnitIn(M, loadGridIn(M, ex, plan));
   /* The loads the step makes are counted from the bar on a lift on the full
      bar typed as the total (loadFloorIn), from 0 on any other (r64, the r63
      audit's R-2): counted from 0, a 10 lb step made 40 and 50 around a 20 kg
@@ -1480,7 +1486,7 @@ function kinStartIn(
     w = c[c.length - 1];
   } else {
     const rs = rackKind(ex) && rackKind(k.ex) ? rackStepIn(M, k.ex) : null;
-    const st = toDIn(M, rs || incOfIn(M, ex, plan))!;
+    const st = toDIn(M, rs || loadGridIn(M, ex, plan))!;
     if (!(st > 0)) return null;
     w = fromDIn(M, Math.floor(toDIn(M, want)! / st + EPS) * st)!;
   }
