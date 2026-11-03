@@ -84,18 +84,18 @@ for(const [file,label] of [['baselines/r67.html','r67'],['baselines/r66.html','r
   await N.ctx.close();
 }
 // r55 records on each session the sessions a week its routine planned (pw), read for that week after the routine changes. A valid
-// one is kept and an invalid one dropped on load; a phone still on r54 keeps it when it saves (keepExtra), in its place, so after
+// one is kept and an invalid one dropped on load (since r68, 366 (c), up to 14 a week: two workouts a weekday); a phone still on r54 keeps it when it saves (keepExtra), in its place, so after
 // that phone's save this build still reads the weeks by it; and a save from r54, which has none, reads as r54 read it.
 {
   const N=await open('index.html',{browser,clock:'2026-10-15T10:00:00',realStarter:true});
   const mk=await N.page.evaluate(()=>{const L=window.__ironlog;const s=L.state;s.settings.onboarded=true;const R=L.activeRoutine();const days=R.days.filter(d=>!d.rest);
     const dates=['2026-09-21','2026-09-22','2026-09-24','2026-09-25','2026-09-28','2026-09-29','2026-10-01','2026-10-02','2026-10-05','2026-10-06','2026-10-08','2026-10-09'];
-    s.sessions=dates.map((date,i)=>{const d=days[i%days.length];return {id:'pw'+i,date,dayIdx:R.days.indexOf(d),dayId:d.id,dayName:d.name,routineId:R.id,notes:'',pw:i===0?9:i===1?'4':4,ex:[{exId:'bench',rr:[6,10],sets:[{w:60,r:8,rir:2,warm:false,drop:false}]}]};});
+    s.sessions=dates.map((date,i)=>{const d=days[i%days.length];return {id:'pw'+i,date,dayIdx:R.days.indexOf(d),dayId:d.id,dayName:d.name,routineId:R.id,notes:'',pw:i===0?15:i===1?'4':4,ex:[{exId:'bench',rr:[6,10],sets:[{w:60,r:8,rir:2,warm:false,drop:false}]}]};});
     L.state=L.normalize(s);L.invalidate();L.saveNow();
     // A fifth training day, so the routine as it is now plans 5.
     const di=R.days.findIndex(d=>d.rest);const R2=L.activeRoutine();R2.days[di].items.push({...R2.days[0].items[0],uid:'zz'});R2.days[di].rest=false;L.invalidate();L.saveNow();
     return {pw:L.state.sessions.slice(0,3).map(x=>x.pw===undefined?'none':x.pw),streak:L.weekStreak().weeks};});
-  ok(JSON.stringify(mk.pw)==='["none","none",4]'&&mk.streak===3,'this build keeps a valid pw and drops 9 and "4"; three weeks of four read as a 3-week streak with a fifth day added since',mk);
+  ok(JSON.stringify(mk.pw)==='["none","none",4]'&&mk.streak===3,'this build keeps a valid pw and drops 15 (past 14, two workouts on each of seven days since r68) and "4"; three weeks of four read as a 3-week streak with a fifth day added since',mk);
   const raw=await N.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await N.ctx.close();
   const O=await open('baselines/r54.html',{browser,state:JSON.parse(raw),clock:'2026-10-15T10:00:00',realStarter:true});
   const o=await O.page.evaluate(()=>{const L=window.__ironlog;L.state.settings.userName='Phone two';L.saveNow();const ss=JSON.parse(localStorage.getItem('ironlog.v1')).sessions;return {pw:ss.map(x=>x.pw===undefined?'none':x.pw).join(),last:Object.keys(ss[5]).slice(-2).join()};});

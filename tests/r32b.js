@@ -96,6 +96,9 @@ const mk = (id, d, exId, sets, rr, extra) => ({ id, date: d, dayIdx: 0, dayId: n
     const r = await P.page.evaluate(([mkS]) => {
       const mk = eval(mkS); const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg'; s.settings.rirMode = 'on'; s.draft = null;
       s.sessions = [mk('a', '2026-10-01', 'dbCurl', [[16, 10, 1], [16, 10, 1], [16, 9, 1]], [8, 12]), mk('b', '2026-09-30', 'backSquat', [[120, 8, 2], [120, 8, 2], [120, 7, 2]], [6, 10]), mk('c', '2026-09-29', 'bench', [[100, 8, 1], [100, 7, 1]], [6, 10])];
+      // The 2.5 kg step these cases were worked out on, set on the barbell lifts (the default by equipment, 5 kg on a bar
+      // since r68, is tests/r68.js section 4; on it the front squat's 93.66 rounds down to 90).
+      for (const e of s.exercises) if (['frontSquat', 'incBench'].includes(e.id)) e.inc = 2.5;
       L.invalidate();
       const P8 = { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 2.5 }, P6 = { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 180, inc: 2.5 };
       const g = (id, pl) => { const x = L.suggest(id, pl, {}); return { w: x.w, t: x.text, kin: x.kin || null }; };
