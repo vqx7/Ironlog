@@ -49,6 +49,8 @@ fs.cpSync(DIST, tmp, { recursive: true });
   const logOn = (D, id, w) => D.ev(([id, w]) => { const L = window.__ironlog; const R = L.state.routines[0]; L.state.sessions.push({ id, date: '2026-09-25', dayIdx: 0, dayId: R.days[0].id, dayName: 'Chest', routineId: R.id, notes: '', ex: [{ exId: 'bench', sets: [{ w, r: 8, rir: 2 }] }] }); L.invalidate(); L.saveNow(); L.render(); }, [id, w]);
   const openData = D => D.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); });
   const text = (D, sel) => D.ev(s => { const e = document.querySelector(s); return e ? e.innerText.replace(/\s+/g, ' ').trim() : null; }, sel);
+  // A note in Your data and its i: since r69 the note is one short line and every word it said is in the i (V, 2026-11-03).
+  const note = (D, sel) => D.ev(s => { const e = document.querySelector(s); if (!e) return null; const c = e.cloneNode(true); c.querySelectorAll('.tipi').forEach(x => x.remove()); const i = e.querySelector('.tipi'); return { line: c.textContent.replace(/\s+/g, ' ').trim(), tip: i ? i.getAttribute('data-tip') : '' }; }, sel);
   const synced = D => D.page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 15000 }).then(() => true, () => false);
   async function fill(D, mode, email, pw) {
     if (email != null) await D.page.fill('#modal [data-abind="email"]', email);
@@ -78,7 +80,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(obCopy.fits, 'the whole first page fits a 390 x 844 screen without scrolling');
   ok(await W.ev(() => getComputedStyle(document.querySelector('.tabs')).display === 'none' && getComputedStyle(document.querySelector('header.top')).display === 'none' && !document.getElementById('acctBar') && !document.querySelector('.hero')), 'the setup pages stand alone: no tabs, header, second prompt or session card');
   await W.page.click('#obPage [data-act="obAcctLater"]'); await wait(150);
-  ok((await pg(W)) === 'start' && await W.ev(() => !!document.querySelector('#obPage [data-bind="userName"]') && document.querySelectorAll('#obPage [data-act="obUnit"]').length === 2 && ['obSample', 'obFree', 'obOwn'].every(a => document.querySelector(`#obPage [data-act="${a}"]`)) && !!document.querySelector('#obPage [data-act="impOpen"]')), 'Continue without an account: Set up asks an optional name and the units, then how to start (routine, log now, build, import)');
+  ok((await pg(W)) === 'start' && await W.ev(() => !document.querySelector('#obPage [data-bind="userName"]') && document.querySelectorAll('#obPage [data-act="obUnit"]').length === 2 && ['obSample', 'obFree', 'obOwn'].every(a => document.querySelector(`#obPage [data-act="${a}"]`)) && !!document.querySelector('#obPage [data-act="impOpen"]')), 'Continue without an account: Set up asks the units (no name since r69), then how to start (routine, log now, build, import)');
   await W.page.reload(); await W.page.waitForFunction(() => window.__ironlog && document.getElementById('obPage') && document.getElementById('obPage').dataset.step !== undefined, null, { timeout: 15000 }); await wait(600);
   ok((await pg(W)) === 'start', 'Continue without an account is remembered on this device after a relaunch');
   await W.page.click('#obPage [data-act="obAcctBack"]'); await wait(150);
@@ -90,11 +92,10 @@ fs.cpSync(DIST, tmp, { recursive: true });
   fake.confirm('newbie@example.com');
   await W.page.click('#modal [data-act="acctWaitNow"]').catch(() => {}); await wait(1500);
   ok(await synced(W) && !(await sheet(W)) && (await pg(W)) === 'start' && !(await W.ev(() => document.querySelector('#obPage [data-act="obAcctBack"]'))), 'confirmed: signed in and on Set up, with no way back to the account page', await pg(W));
-  await W.page.fill('#obPage [data-bind="userName"]', 'Sam'); await W.page.dispatchEvent('#obPage [data-bind="userName"]', 'change');
   await W.page.click('#obPage [data-act="obUnit"][data-v="kg"]'); await wait(100);
   await W.page.click('#obPage [data-act="obSample"]'); await wait(150);
   await W.page.click('#modal [data-act="tplPick"][data-k="ul4"]'); await wait(300);
-  ok(await W.ev(() => { const L = window.__ironlog; return !document.getElementById('obPage') && L.state.settings.onboarded && L.state.settings.userName === 'Sam' && L.state.settings.unit === 'kg' && L.ui.tab === 'today' && !!document.querySelector('.hero') && getComputedStyle(document.querySelector('.tabs')).display !== 'none'; }), 'name, kg and a routine picked: Today opens with the tabs back');
+  ok(await W.ev(() => { const L = window.__ironlog; return !document.getElementById('obPage') && L.state.settings.onboarded && L.state.settings.unit === 'kg' && L.ui.tab === 'today' && !!document.querySelector('.hero') && getComputedStyle(document.querySelector('.tabs')).display !== 'none'; }), 'kg and a routine picked: Today opens with the tabs back');
   // r32: after Continue without an account, the first Today does not ask again; the line comes back after a session.
   {
     const W4 = await device(null, false, true); await wait(600);
@@ -112,7 +113,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await W3.page.click('#obPage [data-act="acctOpen"][data-mode="signin"]'); await wait(100);
   await fill(W3, 'signin', 'newbie@example.com', 'first pass 1');
   await synced(W3); await wait(600);
-  ok(await W3.ev(() => !document.getElementById('obPage') && window.__ironlog.state.settings.onboarded && window.__ironlog.state.settings.userName === 'Sam'), 'a second phone signing in on page 1 gets the settings and goes to Today');
+  ok(await W3.ev(() => !document.getElementById('obPage') && window.__ironlog.state.settings.onboarded && window.__ironlog.state.settings.unit === 'kg'), 'a second phone signing in on page 1 gets the settings (kg, set on the first; the name until r69) and goes to Today');
   await W3.ctx.close(); await W.ctx.close();
   // The checks below start from an empty server, as before this section existed.
   fake.log.length = 0; fake.users.clear(); fake.rows.clear();
@@ -131,7 +132,8 @@ fs.cpSync(DIST, tmp, { recursive: true });
   // r34.2: signed out, the account panel is the one line on where the log is (no second storage line).
   ok(await A.ev(() => { const p = document.getElementById('acctPanel'), i = document.getElementById('syncInfo'), d = document.getElementById('dataSec'); return !!p && !i && d.querySelector('.panel') === p && /Saved on this (phone|device) only/.test(p.innerText); }), 'Your data: the account panel is at the top, and says once where the log is');
   ok(/Create account/.test(await text(A, '#acctPanel')) && /Sign in/.test(await text(A, '#acctPanel')), 'signed out: Your data offers Create account and Sign in');
-  ok(/nothing sent without an account/.test(await text(A, '#privacy')), 'signed out: the privacy line says nothing leaves the phone');
+  const pOut = await note(A, '#privacy');
+  ok(/nothing sent without an account/.test(pOut.line) && pOut.tip.startsWith('No ads, no tracking, and nothing sent without an account. Reports you send go to the app owner. Opening or updating the app downloads it'), 'signed out: the privacy line says nothing leaves the phone, its i every word it said before r69 and the rest', pOut);
   ok(!(await A.ev(() => window.__ironlog.cloudState().on)) && fake.log.filter(l => l.startsWith('GET /rest') || l.startsWith('POST /rest')).length === 0, 'signed out: no requests to the database');
 
   // ---- 2. Create an account.
@@ -172,7 +174,8 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(rowsOf('v@example.com').some(r => /\/core$/.test(r.path)), 'routines and settings (core) are in the account too');
   await openData(A);
   ok(/Signed in as v@example\.com/.test(await text(A, '#acctPanel')), 'Your data shows who is signed in');
-  ok(/syncs to your Ironlog account\. Only you and the app's owner can see it/.test(await text(A, '#privacy')), 'the privacy line says where the log goes and who can see it');
+  const pIn = await note(A, '#privacy');
+  ok(pIn.line === 'Privacy: your log syncs to your Ironlog account.' && pIn.tip.startsWith("No ads, no tracking. Your log syncs to your Ironlog account. Only you and the app's owner can see it. Reports you send go to the app owner. It is stored in a Supabase database."), 'the privacy line says where the log goes, and its i who can see it (the line\'s words before r69, word for word)', pIn);
   ok(/Synced/.test(await A.ev(() => document.getElementById('saveState').getAttribute('aria-label'))), 'the header says Synced');
   ok(/Synced to your account and saved on this device/i.test(await A.ev(() => document.getElementById('view').innerText)) && !/Claude account/i.test(await A.ev(() => document.getElementById('view').innerText)), 'Settings says "your account", never "Claude account", in the installed app');
   await A.ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
@@ -410,7 +413,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(/Sign in to send a report/.test(qs.t) && qs.signin && !qs.box && fake.feedback.length === 0, 'signed out: Report a problem asks to sign in, and nothing can be sent', qs);
   // The server refuses a signed-out report even if the app were bypassed.
   ok(await Q.ev(async (base) => { const r = await fetch(base + '/rest/v1/feedback', { method: 'POST', headers: { apikey: 'x', 'Content-Type': 'application/json' }, body: JSON.stringify({ category: 'bug', message: 'spam spam spam spam' }) }); return r.status === 401; }, fake.base) && fake.feedback.length === 0, 'the database refuses a report without an account');
-  ok(/Reports you send go to the app owner/.test(await Q.ev(() => { const L = window.__ironlog; L.ACT.mClose(); L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); return document.getElementById('privacy').innerText; })), 'the privacy line says reports go to the app owner');
+  ok(/Reports you send go to the app owner/.test(await Q.ev(() => { const L = window.__ironlog; L.ACT.mClose(); L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); const p = document.getElementById('privacy'); return p.innerText + ' ' + p.querySelector('.tipi').getAttribute('data-tip'); })), 'the privacy line says reports go to the app owner (in its i since r69)');
   // Signed in.
   const R2 = await device();
   await openData(R2);

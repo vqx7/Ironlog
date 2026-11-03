@@ -121,7 +121,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const s1 = JSON.stringify(L.state);
     return { key, changed: s1 !== s0, saved: localStorage.getItem(KEY) === s1, dropped: L.IDX() !== idx0, noted: JSON.stringify(L.cloud.editAt) !== e0 };
   }, [key, value, tab, prep || '']);
-  for (const [key, value] of [['unit', 'kg'], ['theme', 'light'], ['userName', 'Vee'], ['bwGoalPct', '0.3'], ['bwEvery', '7'], ['barKg', '20'], ['timeBudget', '70'], ['timerMode', 'manual'], ['timerSound', null], ['timerCompact', null], ['autoDone', null], ['todayStart', 'free'], ['autoAdj', null], ['wakeLock', null], ['rirMode', 'cal'], ['rirScale', 'rpe'], ['rirAsk', null], ['rirHalf', null], ['smallPlates', null]]) {
+  // The Name field is gone since r69 (V, 2026-11-03: it drove only Today's greeting, also gone), so userName is not here (tests/r69.js section 1).
+  for (const [key, value] of [['unit', 'kg'], ['theme', 'light'], ['bwGoalPct', '0.3'], ['bwEvery', '7'], ['barKg', '20'], ['timeBudget', '70'], ['timerMode', 'manual'], ['timerSound', null], ['timerCompact', null], ['autoDone', null], ['todayStart', 'free'], ['autoAdj', null], ['wakeLock', null], ['rirMode', 'cal'], ['rirScale', 'rpe'], ['rirAsk', null], ['rirHalf', null], ['smallPlates', null]]) {
     const r = await bind(key, value);
     if (r.missing) { ok(false, `2. the ${key} field is on Settings`, r); continue; }
     ok(r.changed && r.saved && r.dropped && r.noted, `2. ${key}: the setting is changed, saved, the caches dropped and the edit noted for the sync`, r);
@@ -131,12 +132,13 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   for (const tab of ['settings', 'history']) {
     const r = await ev(async tab => {
       const L = window.__ironlog; L.ui.tab = tab; L.render(); await new Promise(r => setTimeout(r, 60));
-      const sel = tab === 'settings' ? '#view [data-bind="userName"]' : '#view [data-bind="histEx"]';
+      // A text field on each: the bodyweight goal on Settings since r69, when the Name field it used went.
+      const sel = tab === 'settings' ? '#view [data-bind="bwGoalPct"]' : '#view [data-bind="histEx"]';
       const first = document.querySelector(sel); const head = document.querySelector('#view .ph');
-      if (tab === 'settings') { first.closest('details').open = true; first.focus(); first.value = 'Half typ'; }
+      if (tab === 'settings') { first.closest('details').open = true; first.focus(); first.value = '0.'; first.dispatchEvent(new Event('input', { bubbles: true })); }
       L.render(); await new Promise(r => setTimeout(r, 60));
       const again = document.querySelector(sel);
-      return { same: again === first && document.querySelector('#view .ph') === head, focus: tab !== 'settings' || document.activeElement === again, text: tab !== 'settings' || again.value === 'Half typ' };
+      return { same: again === first && document.querySelector('#view .ph') === head, focus: tab !== 'settings' || document.activeElement === again, text: tab !== 'settings' || again.value === '0.' };
     }, tab);
     ok(r.same && r.focus && r.text, `3. ${tab}: drawn again, the screen keeps its elements, and a field being typed in keeps its focus and text`, r);
   }
@@ -211,11 +213,34 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const MACHINE = /Reverse Pec Deck \(Rear Delt Fly\)/g;
   const asBlock = t => t.replace(/class="([^"]*)"/g, (m, c) => { const k = c.split(' '); return k.includes('btn') && k.includes('fullw') ? `class="${k.map(x => (x === 'fullw' ? 'block' : x)).sort().join(' ')}"` : m; });
   const heldOutR66 = shot => ({ ...shot, tree: shot.tree.map(t => asBlock(t.replace(BW_FIELD, '').replace(MACHINE, 'Reverse Pec Deck'))), text: shot.text.replace(BW_TEXT, '').replace(MACHINE, 'Reverse Pec Deck') });
+  /* r69 cuts text on these screens on purpose (V, 2026-11-03), each held by tests/r69.js: Settings' Name field
+     (section 1), the line on what RIR is, now the i of Reps in reserve (12), the privacy and suggestions notes, one
+     short line each with every word in the i (11), and a tab's foot without its heading and with "Edit sections"
+     (2). On both pages the Name field and the RIR line are taken out, the two notes and the foot's link read as a
+     placeholder each, and the setting's label read without its i; everything else is still held to r56.2. */
+  const NOTE = /<p class="muted small" id="(privacy|safety)" [^>]*>.*?<\/p>/g;
+  const heldOutR69 = shot => ({
+    ...shot,
+    tree: shot.tree.map(t => t
+      .replace(/<label class="field">"Name \(optional\)"<input [^>]*data-bind="userName"[^>]*><\/input><\/label>/, '')
+      .replace(/<p class="small" style="margin:0"><b>"RIR, reps in reserve:"<\/b>" reps you could still have done\. RIR 3 or less is a hard set\."<\/p><label class="field">"Reps in reserve"<select data-bind="rirMode"/, '<label class="field">(Reps in reserve)<select data-bind="rirMode"')
+      .replace(/<label class="field"><span>"Reps in reserve"<\/span>" "<button aria-label="About Reps in reserve" class="tipi" data-tip="RIR, reps in reserve: reps you could still have done\. RIR 3 or less is a hard set\." type="button">"i"<\/button><select aria-labelledby=>Reps in reserve data-bind="rirMode"/, '<label class="field">(Reps in reserve)<select data-bind="rirMode"')
+      .replace(NOTE, '($1)')
+      .replace('<p class="ml-h muted small">"Add to this tab"</p>', '')
+      .replace(/(data-act="goLayout" type="button">)"(Show, hide, or reorder sections|Edit sections)"/, '$1(Layout)')),
+    text: shot.text
+      .replace(/\nName \(optional\)(?=\n)/, '')
+      .replace(/\nRIR, reps in reserve: reps you could still have done\. RIR 3 or less is a hard set\.(?=\n)/, '')
+      .replace(/\nReps in reserve( i)?(?=\n)/, '\nReps in reserve')
+      .replace(/\n(Privacy|Suggestions): [^\n]*/g, '\n($1)')
+      .replace(/\nAdd to this tab(?=\n)/, '')
+      .replace(/\n(Show, hide, or reorder sections|Edit sections)$/, '\n(Layout)')
+  });
   const ENVS = [null, 'preview'];
   for (const [name, seed] of SEEDS) for (const tab of ['settings', 'history']) for (const env of ENVS) {
     if (env && name !== 'demo data, lb') continue;
     const sd = seed.replace(/L\.makeDemo\(\);/g, PIN + 'L.makeDemo();');
-    const a = heldOut(await shot(OLD, sd, tab, env)), b = heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env))));
+    const a = heldOutR69(heldOut(await shot(OLD, sd, tab, env))), b = heldOutR69(heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env)))));
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     const firstDiff = d && { at: d.at, r56_2: d.before, now: d.now };
     ok(!firstDiff, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same elements, attributes and field values as r56.2`, firstDiff);
@@ -279,7 +304,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await q(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.saveNow(); L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
     await wait(300);
     // The bar's bound is 50 kg whatever the unit since r61 (PENDING 354, tests/r61.js section 3), 110.2 in pounds; it was 110 lb before.
-    for (const [name, sel, typed, want] of [['chest max', 'input[data-band="chest"][data-bi="1"]', '150', '100'], ['bar weight', 'input[data-bind="barKg"]', '500', '110.2'], ['name', 'input[data-bind="userName"]', '  V   x ', '  V   x ']]) {
+    for (const [name, sel, typed, want] of [['chest max', 'input[data-band="chest"][data-bi="1"]', '150', '100'], ['bar weight', 'input[data-bind="barKg"]', '500', '110.2']]) { // the name case went with the Name field in r69
       const loc = Q.page.locator(sel).first(); await loc.click(); await loc.fill(typed); await loc.press('Enter'); await wait(300);
       const now = await q(sel => document.querySelector(sel).value, sel);
       await Q.page.locator('#view h2').first().click(); await wait(300);

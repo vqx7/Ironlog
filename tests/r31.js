@@ -163,7 +163,7 @@ function strongCsv(weeks, name) {
       const linked = st.sessions.filter(s => s.routineId === R.id).length;
       const sq = tr.map(d => d.items.find(i => i.exId === 'backSquat'));
       const bi = tr.map(d => d.items.find(i => i.exId === 'bench')).find(Boolean); const bench = bi && [bi.sets, bi.repMin, bi.repMax];
-      L.ui.tab = 'dash'; L.render(); const dash = (document.getElementById('view').innerText + ' ' + ((document.querySelector('#adhLine') || {}).textContent || '')).replace(/\s+/g, ' '); // adherence moved into Consistency (V 2026-10-13), folded
+      L.ui.tab = 'dash'; L.render(); const dash = (document.getElementById('view').innerText + ' ' + ((document.querySelector('#adhLine') || {}).textContent || '') + ' ' + ((document.querySelector('#adhLine .tipi') || { getAttribute: () => '' }).getAttribute('data-tip') || '')).replace(/\s+/g, ' '); // adherence moved into Consistency (V 2026-10-13), folded; its sentence in full is the line's i since r69
       L.ui.tab = 'today'; L.render(); const hero = (document.querySelector('.hero') || {}).innerText || '';
       return { sqRir: sq.map(i => i && i.rir), bench, routines: st.routines.map(r => r.name), name: R.name, days: R.days.map(d => d.rest ? 'Rest' : d.name), items: tr.map(d => d.items.map(i => i.exId)), sq: sq.map(i => i && [i.sets, i.repMin, i.repMax]),
         linked, n: st.sessions.length, coach: L.coach().text, dash, hero: hero.replace(/\s+/g, ' '), toast: document.getElementById('toast').innerText, tab: L.ui.tab };
@@ -340,9 +340,9 @@ function strongCsv(weeks, name) {
     const a = await ev(() => { const L = window.__ironlog; try { localStorage.setItem('ironlog.v1.obAcct', 'later'); } catch (e) { /* none */ } L.render(); const o = document.getElementById('obSafety'); return { ob: o ? o.innerText : '', over: document.documentElement.scrollWidth > window.innerWidth }; });
     const b = await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.sessions = []; L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); const s = document.getElementById('safety');
       L.ACT.guideOpen && L.ACT.guideOpen({ dataset: {} }); const g = document.getElementById('modal') ? document.getElementById('modal').innerText : '';
-      return { set: s ? s.innerText : '', tip: L.SAFETY_TXT, guide: /estimates from your log, not medical or coaching advice/i.test(g) || /estimates from your log, not medical or coaching advice/.test(document.body.innerHTML) }; });
+      return { set: s ? s.innerText + ' ' + (s.querySelector('.tipi') || { getAttribute: () => '' }).getAttribute('data-tip') : '', tip: L.SAFETY_TXT, guide: /estimates from your log, not medical or coaching advice/i.test(g) || /estimates from your log, not medical or coaching advice/.test(document.body.innerHTML) }; });
     ok(/Suggestions are estimates, not advice/.test(a.ob), 'first-run page: one short line says suggestions are estimates, not advice (the full notice on a tap)', a.ob);
-    ok(/not medical or coaching advice/.test(b.set) && /stop on pain/i.test(b.set), 'Settings, Your data: what suggestions are, beside the privacy line', b.set);
+    ok(/not medical or coaching advice/.test(b.set) && /stop on pain/i.test(b.set), 'Settings, Your data: what suggestions are, beside the privacy line (stop on pain in its i since r69)', b.set);
     ok(/doctor/.test(b.tip) && /own risk/.test(b.tip) && !/\u2014/.test(b.tip), 'its i says: estimates that can be wrong, technique and safety bars, stop on pain, a doctor before starting, at your own risk (no em dash)', b.tip);
     ok(!a.over, 'no sideways scroll at 320 px with the notice');
     await P.browser.close();
@@ -357,7 +357,7 @@ function strongCsv(weeks, name) {
         return { id: 'rw' + i, date: d, dayIdx: 0, dayId: R.days[0].id, routineId: R.id, dayName: 'Upper A', ex: [{ exId: 'bench', rr: [6, 10], note: '', sets: Array.from({ length: n }, () => ({ w: 135 * LB, r: 8, rir: 1, warm: false, drop: false })) }] }; });
       L.state = L.normalize(st); L.invalidate(); L.saveNow(); L.ui.tab = 'dash'; L.ui.volMode = 'region'; L.ui.folds['dash:volume'] = true; L.render(); }, [LB, weeks]);
     const read = () => ev(() => { const L = window.__ironlog; const sec = document.querySelector('#view [data-mkey="volume"]') || document.body; const on = sec.querySelector('[data-act="regionWk"].on');
-      const chest = [...sec.querySelectorAll('table.t tr')].find(tr => /Chest/.test(tr.innerText)); return { chips: [...sec.querySelectorAll('[data-act="regionWk"]')].map(b => b.innerText), on: on ? on.innerText : null, text: sec.innerText.replace(/\s+/g, ' '), chest: chest ? +chest.children[1].innerText : null, coach: L.coach().text }; });
+      const chest = [...sec.querySelectorAll('table.t tr')].find(tr => /Chest/.test(tr.innerText)); return { chips: [...sec.querySelectorAll('[data-act="regionWk"]')].map(b => b.innerText), on: on ? on.innerText : null, text: (sec.innerText + ' ' + [...sec.querySelectorAll('.tipi')].map(i => i.getAttribute('data-tip')).join(' ')).replace(/\s+/g, ' '), chest: chest ? +chest.children[1].innerText : null, coach: L.coach().text }; }); // the weeks it uses in full are in the line's i since r69
     await seed(6);
     const a4 = await read();
     ok(a4.chips.join() === '2 wk,4 wk,8 wk' && a4.on === '4 wk' && /Average of the last/.test(a4.text) && /your 4-week average/.test(a4.text), 'By region averages the last 2, 4, or 8 full weeks, and opens on 4', a4);

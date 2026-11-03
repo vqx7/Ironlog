@@ -33,6 +33,7 @@ const readAll = () => {
   out.volSub = (document.querySelector('[data-mkey="volume"] .sec-s') || {}).textContent || '';
   out.consSub = (document.querySelector('[data-mkey="consistency"] .sec-s') || {}).textContent || '';
   out.adhLine = (document.getElementById('adhLine') || {}).textContent || '';
+  out.adhTip = ((document.querySelector('#adhLine .tipi') || { getAttribute: () => '' }).getAttribute('data-tip')) || '';
   out.dashText = document.getElementById('view').textContent.replace(/\s+/g, ' ');
   out.w = (() => { const w = L.weekStats(); return { planDays: w.planDays, doneDays: w.doneDays, got: w.got, tgt: w.tgt, rest: !!w.rest }; })();
   out.r4 = (() => {
@@ -96,6 +97,14 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
     // 5. The streak on Today is the streak Consistency reports.
     ok(r.todayStreak != null && r.consSub.startsWith(r.todayStreak + '-week streak'),
       'the streak on Today is the streak Consistency shows', { today: r.todayStreak, cons: r.consSub });
+
+    // 5b. Adherence, said as sessions on its line and as a percentage in its i and on the fold (r69): one count.
+    {
+      const line = /Adherence, (\d+) weeks?: (\d+) of (\d+)/.exec(r.adhLine), tip = /previous (\d+) full weeks?: (\d+)% of planned sessions \((\d+)\/(\d+)\)/.exec(r.adhTip), fold = /(\d+)% adherence/.exec(r.consSub);
+      if (line || tip || fold)
+        ok(line && tip && fold && line[1] === tip[1] && line[2] === tip[3] && line[3] === tip[4] && tip[2] === fold[1] && +tip[2] === Math.round(+tip[3] / +tip[4] * 100),
+          'adherence: the line\'s sessions, its i\'s percentage and the fold\'s are one count', { line: r.adhLine, tip: r.adhTip, fold: r.consSub });
+    }
 
     // 6. Nothing claims a number the log cannot support.
     ok(!/in the 4 weeks before/.test(r.dashText) || r.r4.back,
@@ -170,7 +179,8 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
       const lw = lines.map(t => /^Last lighter week: (\d+) weeks? ago( \(a (?:rest week|week off)\))?\./.exec(t)).find(Boolean);
       const big = lines.map(t => /^(\d+) main lifts stalled at once/.exec(t)).find(Boolean);
       const change = [...document.querySelectorAll('#dashSummary .srow')].map(e => e.textContent.replace(/\s+/g, ' ').trim()).find(t => /^Change/.test(t)) || '';
-      const radar = ([...document.querySelectorAll('#view p')].map(e => e.textContent).find(t => /^Using /.test(t)) || '').replace(/\s+/g, ' ');
+      // The weeks the radar reads, in full: the i of its short line since r69.
+      const radar = ([...document.querySelectorAll('#view p .tipi')].map(e => e.getAttribute('data-tip') || '').find(t => /^Using /.test(t)) || '').replace(/\s+/g, ' ');
       return { lw: lw ? { weeks: +lw[1], kind: lw[2] || '' } : null, big: big ? +big[1] : 0, change, radar, none: /No lighter week in the last 12/.test(stalls) };
     };
     const logs = {
@@ -229,11 +239,11 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
         s.sessions.push(mk('a' + n++, L.addDays(ws, 0), '18:00')); }
       L.state = L.normalize(s); L.invalidate(); L.saveNow();
       const out = {}; L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
-      out.adh = (document.getElementById('adhLine') || {}).textContent || '';
+      out.adh = ((document.querySelector('#adhLine .tipi') || { getAttribute: () => '' }).getAttribute('data-tip') || '') + ' ' + ((document.getElementById('adhLine') || {}).textContent || ''); // the sentence in full is the line's i since r69
       out.streak = L.weekStreak().weeks; out.per = per;
       return out; });
-    const pct = /: (\d+)% of planned sessions \((\d+)\/(\d+)\)/.exec(r.adh);
-    ok(pct && +pct[1] === 100 && pct[2] === pct[3],
+    const pct = /: (\d+)% of planned sessions \((\d+)\/(\d+)\)/.exec(r.adh), seen = /: (\d+) of (\d+)/.exec(r.adh);
+    ok(pct && +pct[1] === 100 && pct[2] === pct[3] && seen && seen[1] === pct[2] && seen[2] === pct[3],
       'a week that counts for the streak counts in full for adherence, a two-a-day included', { adh: r.adh, streak: r.streak });
     ok(!P.errors.length, 'no page errors (two-a-day)', P.errors);
     await P.ctx.close();

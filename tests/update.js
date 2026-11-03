@@ -54,7 +54,8 @@ const server = http.createServer((req, res) => {
   // Privacy line, outside Claude.
   const priv = await page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render();
     document.querySelectorAll('#view details').forEach(d => d.open = true); const p = document.getElementById('privacy'); return p ? { t: p.innerText, tip: (p.querySelector('.tipi') || {}).dataset } : null; });
-  ok(priv && /no ads, no tracking/.test(priv.t) && /nothing sent without an account/.test(priv.t), 'Settings shows the privacy line for the app: ' + (priv && priv.t));
+  // Since r69 the line is short and every word it said is in its i (V, 2026-11-03).
+  ok(priv && /nothing sent without an account/.test(priv.t) && priv.tip && /^No ads, no tracking, and nothing sent without an account\./.test(priv.tip.tip), 'Settings shows the privacy line for the app: ' + (priv && priv.t));
   ok(priv && priv.tip && /GitHub Pages/.test(priv.tip.tip) && /app owner/.test(priv.tip.tip) && /keep a backup file or an account/.test(priv.tip.tip), 'the privacy tip explains the host, the account option and backups');
 
   // A session in progress with one logged set.

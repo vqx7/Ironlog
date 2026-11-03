@@ -68,7 +68,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await page.click('[data-bind="autoDone"] + span'); await wait(80);
     ok(await ev(c => document.querySelector('[data-bind="autoDone"]').checked !== c, lab.checked), 'tapping the label text still toggles the setting');
     await page.click('[data-bind="autoDone"] + span'); await wait(80);
-    ok(await ev(() => /RIR, reps in reserve:/.test(document.querySelector('[data-mkey="rir"]').innerText)), 'the Effort (RIR) setting says what RIR is, on screen');
+    ok(await ev(() => /^RIR, reps in reserve:/.test((document.querySelector('[data-mkey="rir"] [data-bind="rirMode"]').closest('label').querySelector('.tipi') || { getAttribute: () => '' }).getAttribute('data-tip'))), 'the Effort (RIR) setting says what RIR is (on screen until r69, in the i of Reps in reserve since: V, 2026-11-03)');
     // The controls keep their spoken names with an i beside the label (review, r27).
     // The time budget sits in Your training since r44.
     await ev(() => { const L = window.__ironlog; L.ui.folds['settings:profile'] = true; L.render(); }); await wait(80);

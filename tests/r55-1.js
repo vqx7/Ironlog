@@ -107,8 +107,8 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
     const sig = () => ev(() => { const d = window.__ironlog.state.draft; return d.ex.map(b => `${b.exId}${b.light ? '(L)' : ''}:${b.sw}:${b.sets.length}`).join(' '); });
     const logSet = async (b, s, w, r) => { if (w != null) await typ(W(b, s), w); await typ(R(b, s), r); await page.click(`[data-act="sDone"][data-b="${b}"][data-s="${s}"]`); await wait(150); const m = await modal(); if (m && m.kind === 'confirm') { await ev(() => window.__ironlog.ACT.mOk()); await wait(100); } };
     const lighten = async () => {
-      await ev(() => { const L = window.__ironlog; L.ui.folds['logger:checkin'] = true; L.render(); }); await wait(80);
-      if (!(await page.$('[data-act="makeLight"]'))) { const ks = await ev(() => [...new Set([...document.querySelectorAll('[data-act="chk"]')].map(b => b.dataset.k))]); for (const k of ks) { await page.click(`[data-act="chk"][data-k="${k}"][data-v="1"]`); await wait(80); } }
+      // The check-in is a sheet behind its button since r69 (a fold at the top of the session until then); the third answer closes it.
+      if (!(await page.$('[data-act="makeLight"]'))) { await page.click('#view [data-act="chkOpen"]'); await wait(80); const ks = await ev(() => [...new Set([...document.querySelectorAll('#modal [data-act="chk"]')].map(b => b.dataset.k))]); for (const k of ks) { await page.click(`#modal [data-act="chk"][data-k="${k}"][data-v="1"]`); await wait(80); } }
       await page.click('[data-act="makeLight"]'); await wait(200);
     };
     await startDay(0); await logSet(0, 0, 60, 8);

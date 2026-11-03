@@ -255,7 +255,7 @@ const FILE = process.argv[2] || 'index.html';
       for (let k = 0, i = 0; k <= 30; k += 2, i++) { const di = (i % 2) * 2; const day = R.days[di]; const date = new Date(Date.parse('2026-09-14T12:00:00Z') + k * 864e5).toISOString().slice(0, 10); S.sessions.push({ id: 'e' + k, date, dayIdx: di, dayId: day.id, dayName: day.name, routineId: R.id, notes: '', ex: day.items.map(it => ({ exId: it.exId, rr: [+it.repMin, +it.repMax], sets: Array.from({ length: +it.sets }, () => ({ w: 60, r: +it.repMin, rir: 2, done: true })) })) }); }
       L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'dash'; L.ui.folds['dash:consistency'] = true; L.render();
       const w = L.weekStats();
-      return { streak: L.weekStreak().weeks, adh: ((document.getElementById('adhLine') || {}).textContent || '').replace(/\s+/g, ' '), done: w.doneDays, plan: w.planDays };
+      return { streak: L.weekStreak().weeks, adh: ((document.querySelector('#adhLine .tipi') || { getAttribute: () => '' }).getAttribute('data-tip') || '').replace(/\s+/g, ' '), /* the sentence in full, in the line's i since r69 */ done: w.doneDays, plan: w.planDays };
     });
     ok(r.streak === 4 && /Adherence, previous 4 full weeks: 100% of planned sessions \(12\/12\)/.test(r.adh) && r.plan === 3 && r.done === 2, 'Strength 5 x 5, every other day, done exactly as the cycle runs: a 4-week streak, 100% adherence, and this week 2 of 3 (r53: weeks of 3 broke the streak, 93% adherence against 3.5 a week, 2 of 4)', r);
     // A slow cycle, one training day in nine (0.78 a week), still plans one a week: rounded down alone it would plan none and lose its ring.

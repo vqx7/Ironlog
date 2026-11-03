@@ -73,6 +73,16 @@
 //      typed in on Today in 3 minutes after the gym, saved untimed with the
 //      recap saying so, since no minutes were given and the clock's are not
 //      how long it took.
+//  15  a lifter who found the app text heavy (r69, V, 2026-11-03): three
+//      days a week for five weeks, one session missed; a Monday session
+//      started from Today, whose header says when it began and the minutes
+//      left with the sets done counted by the bar alone (worked out here: the
+//      sets of the day's plan), a set ticked moving it on; the check-in from
+//      its button beside the date, answered by taps and saved with the
+//      session by Finish; then Stats read by taps: adherence as sessions,
+//      11 of the 12 the routine planned in the 4 full weeks before, with the
+//      percentage a tap away (92%), and By region's weeks named short, in
+//      full a tap away.
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
 const { open, engine } = require('./h');
@@ -984,6 +994,51 @@ async function finish() {
     const last = await ev(() => { const S = window.__ironlog.state.sessions; const s = S.find(x => x.ex.length === 2 && x.ex.every(b => b.sets.length === 3) && !x.ex.some(b => b.exId === 'bench')); return s && { durMin: s.durMin, ex: s.ex.map(b => b.exId) }; });
     ok(last && last.durMin == null && /Not timed/.test(fin.recap.text || ''), '14. six sets typed in 3 minutes are saved untimed, and the recap says so', { last, recap: (fin.recap.text || '').slice(0, 300) });
     ok(!H.P.errors.length, '14. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 15. A lifter who found the app text heavy (r69): the slimmer session header, the check-in behind its button, Stats' short lines.
+  if (run(15)) {
+    const T0 = '2026-11-02';
+    const H = await phone(T0);
+    const { ev, page } = H;
+    // Monday bench and rows, Wednesday squat, Friday pulldown, 3 x 8-12 each, from Monday Sep 28; Friday Oct 16 missed.
+    const days = [{ id: 'Dm', name: 'Push', items: [['bench', 3, 8, 12, 2, 90, 5], ['cableRow', 3, 8, 12, 2, 90, 5]] }, { id: 'Dt', name: 'Rest', items: [] }, { id: 'Dw', name: 'Legs', items: [['backSquat', 3, 8, 12, 2, 120, 5]] }, { id: 'Dh', name: 'Rest', items: [] }, { id: 'Df', name: 'Pull', items: [['latPulldown', 3, 8, 12, 2, 90, 5]] }, { id: 'Ds', name: 'Rest', items: [] }, { id: 'Du', name: 'Rest', items: [] }];
+    const sessions = [];
+    for (let w = 0; w < 5; w++) for (const [k, day, ex] of [[0, 'Dm', [['bench', [[135, 10, 2], [135, 10, 2], [135, 9, 2]]], ['cableRow', [[120, 10, 2], [120, 10, 2], [120, 10, 2]]]]], [2, 'Dw', [['backSquat', [[185, 10, 2], [185, 9, 2], [185, 9, 2]]]]], [4, 'Df', [['latPulldown', [[110, 10, 2], [110, 10, 2], [110, 10, 2]]]]]]) {
+      const date = addD('2026-09-28', 7 * w + k);
+      if (date !== '2026-10-16') sessions.push({ date, day, ex });
+    }
+    await seed(H, { unit: 'lb', days, sessions });
+    await ev(() => { const L = window.__ironlog; for (const d of L.state.routines[0].days) d.rest = !d.items.length; L.state = L.normalize(L.state); L.invalidate(); L.saveNow(); L.render(); });
+    await H.start();
+    const planned = 6; // the Monday's two lifts, 3 sets each
+    const head = () => ev(() => { const b = document.querySelector('#view .sprog .band'); return { meta: document.querySelector('#view .ph .meta').innerText.trim(), of: (document.getElementById('sessOf') || {}).textContent, now: b && b.getAttribute('aria-valuenow'), vt: b && b.getAttribute('aria-valuetext') }; });
+    const h0 = await head();
+    ok(/^Started 9:00 AM · ~\d+ min left$/.test(h0.meta) && h0.of === `0 of ${planned}` && h0.vt === `0 of ${planned} sets done`, '15. the session header: when it began and the minutes left; the bar counts the 6 sets planned', h0);
+    await H.type('w', 0, 0, 140); await H.type('r', 0, 0, 10); await H.effort(0, 0, 2); await H.tick(0, 0);
+    const h1 = await head();
+    ok(h1.of === `1 of ${planned}` && h1.now === '1' && !/sets? done/.test(h1.meta), '15. one set ticked: the bar 1 of 6, and the line still says no count', h1);
+    await page.click('#view [data-act="chkOpen"]'); await wait(120);
+    for (const [k, v] of [['sleep', 3], ['energy', 2], ['joints', 3]]) { await page.click(`#modal [data-act="chk"][data-k="${k}"][data-v="${v}"]`); await wait(100); }
+    const ck = await ev(() => ({ open: !!window.__ironlog.ui.modal, chk: window.__ironlog.state.draft.chk }));
+    ok(!ck.open && JSON.stringify(ck.chk) === '{"sleep":3,"energy":2,"joints":3}', '15. the check-in from its button: three taps, saved on the session, the sheet closed by the third', ck);
+    await H.finish();
+    const saved = await ev(() => { const s = window.__ironlog.state.sessions.find(x => x.date === '2026-11-02'); return s && { chk: s.chk, sets: s.ex.reduce((a, b) => a + b.sets.length, 0) }; });
+    ok(saved && JSON.stringify(saved.chk) === '{"sleep":3,"energy":2,"joints":3}' && saved.sets === 1, '15. Finish saves the set and the check-in', saved);
+    // Stats, read by taps. The 4 full weeks before this one (Oct 5 to Nov 1) planned 3 sessions each; one was missed.
+    const want = { done: 11, need: 12 };
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.ui.volMode = 'region'; L.render(); window.scrollTo(0, 0); });
+    for (const k of ['consistency', 'volume']) { await page.click(`#view > [data-mkey="${k}"] > summary`); await wait(150); }
+    const adh = await ev(() => { const p = document.getElementById('adhLine'); const c = p.cloneNode(true); c.querySelectorAll('.tipi').forEach(x => x.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); });
+    ok(adh === `Adherence, 4 weeks: ${want.done} of ${want.need}`, '15. adherence as sessions: 11 of the 12 planned in the 4 full weeks before', adh);
+    await page.$eval('#adhLine .tipi', e => e.scrollIntoView({ block: 'center' })); await wait(120);
+    await page.click('#adhLine .tipi'); await wait(100);
+    const tip = await ev(() => { const t = document.getElementById('tip'); return t && !t.hidden ? t.textContent : ''; });
+    ok(tip === `Adherence, previous 4 full weeks: ${Math.round(want.done / want.need * 100)}% of planned sessions (${want.done}/${want.need})`, '15. a tap on its i: the percentage, 92%', tip);
+    const reg = await ev(() => { const c = document.getElementById('chRadar') && document.getElementById('chRadar').closest('.card'); const p = c && [...c.querySelectorAll('p.small.muted')].find(x => x.querySelector('.tipi')); if (!p) return null; const q = p.cloneNode(true); q.querySelectorAll('.tipi').forEach(x => x.remove()); return { line: q.textContent.trim(), tip: p.querySelector('.tipi').getAttribute('data-tip') }; });
+    ok(reg && reg.line === '4-week average' && reg.tip.startsWith('Using your 4-week average. '), '15. By region: "4-week average", every week of the four trained, said in full in its i', reg);
+    ok(!H.P.errors.length, '15. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
 
