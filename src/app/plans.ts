@@ -10,7 +10,7 @@ import { EXIn, exNameIn } from './model';
 import { andList, isDate } from './util';
 import { offTarget } from './formulas';
 import { IDXIn } from './analytics';
-import { defPlanIn, profRuleIn, routinePlanIn, DEFAULT_PLAN } from './routines';
+import { dayWorkout, defPlanIn, profRuleIn, routinePlanIn, DEFAULT_PLAN } from './routines';
 
 /* An exercise added mid-session borrows its settings from wherever it
    already sits in the routine (the active one unless given), the day being
@@ -34,9 +34,10 @@ export function planForIn(
   R?: Routine | null,
   dayId?: string | null,
   plain?: boolean,
-  before?: string | null
+  before?: string | null,
+  part?: 1 | 2
 ): Plan {
-  const inR = routinePlanIn(M, exId, R, dayId);
+  const inR = routinePlanIn(M, exId, R, dayId, part);
   if (inR) return inR;
   const base = defPlanIn(M, exId, plain);
   if (plain) return base;
@@ -54,6 +55,7 @@ export function planForIn(
 interface FinishedDraft {
   routineId: string;
   dayId: string | null;
+  part?: 2 | undefined;
   date?: string | undefined;
   limited?: boolean | undefined;
   deload?: boolean | undefined;
@@ -71,6 +73,8 @@ interface FinishedDraft {
 export interface RoutineUpdate {
   rid: string;
   dayId: string;
+  /** The day's second workout, when the session was it (r68, 366 (c)): the change goes there. */
+  part?: 2 | undefined;
   dayName: string;
   add: { exId: string; plan: Partial<Plan> & { sets: number } }[];
   swap: {
@@ -95,8 +99,10 @@ export interface RoutineUpdate {
 export function routineUpdatesIn(M: Model, d: FinishedDraft): RoutineUpdate | null {
   const R = M.s.routines.find(r => r.id === d.routineId);
   if (!R) return null;
-  const day = R.days.find(x => x.id === d.dayId);
-  if (!day) return null;
+  const day0 = R.days.find(x => x.id === d.dayId);
+  if (!day0) return null;
+  // The workout of the day the session was (r68, 366 (c)): its second workout's exercises when it was that one.
+  const day = dayWorkout(day0, d.part === 2 ? 2 : 1);
   const have = new Set(day.items.map(i => i.exId));
   const add: RoutineUpdate['add'] = [],
     swap: RoutineUpdate['swap'] = [];
@@ -118,7 +124,10 @@ export function routineUpdatesIn(M: Model, d: FinishedDraft): RoutineUpdate | nu
       swap.push({ from: b.swappedFrom, to: b.exId, plan });
     } else {
       const { ss: _s, ...p } = b.plan;
-      const sets = d.deload || d.light ? (b.full ?? planForIn(M, b.exId, R, d.dayId, false, d.date).sets) : p.sets;
+      const sets =
+        d.deload || d.light
+          ? (b.full ?? planForIn(M, b.exId, R, d.dayId, false, d.date, d.part === 2 ? 2 : 1).sets)
+          : p.sets;
       add.push({ exId: b.exId, plan: { ...p, sets: Math.max(1, +(sets || 0) || DEFAULT_PLAN.sets) } });
     }
   }
@@ -157,5 +166,14 @@ export function routineUpdatesIn(M: Model, d: FinishedDraft): RoutineUpdate | nu
     ...add.map(x => `add ${exNameIn(M, x.exId)}`),
     ...ss.map(u => `superset ${andList(u.map(id => exNameIn(M, id)))}`)
   ];
-  return { rid: R.id, dayId: day.id, dayName: day.name, add, swap, ss, text: bits.join(', ') };
+  return {
+    rid: R.id,
+    dayId: day.id,
+    ...(d.part === 2 ? { part: 2 as const } : {}),
+    dayName: day.name,
+    add,
+    swap,
+    ss,
+    text: bits.join(', ')
+  };
 }

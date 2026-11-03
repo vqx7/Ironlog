@@ -13,6 +13,7 @@ import { IDXIn, bwAtIn, bwLoadIn, bwRefLoadIn, lastOf, liftReadIn, rirEstIn, sta
 import { atCapOfIn, capOfIn, exBarKgIn, gymK, gymRackIn, gymStepIn, platesMode, rackGapIn, rackTolIn } from './gym';
 import {
   DEFAULT_STEP,
+  EQUIP_STEP,
   LB,
   STEP_LB,
   TYPED_STEP,
@@ -268,6 +269,16 @@ function unitSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?
   return moveIn(M, ex, plan, res, nw, `the nearest load in ${UIn(M)}`);
 }
 
+/* The spacing of the loads that exist for a lift, in kg: its load step as it was before 367 (its own, the plan's, Your
+   gym's rack, plates or stack, the rack read from its loads, else the unit's default, 5 lb or 2.5 kg). 367's step by
+   equipment (10 lb on a bar) is how far a load goes up, not which loads exist (V, 2026-11-03, NEW-46: on the 10 lb
+   grid 100 kg shown in lb, 220.5, was held at 225 and stepped to 235, 225 lb shown in kg was held at 100, and a first
+   front squat's 93.7 kg start was rounded down to 90). Taking the finer of 367's step and the unit's default, as
+   first fixed, also took 5 lb over a kg gym's 2.5 kg plates (r67 against r68 on the wide histories). */
+function loadGridIn(M: Model, ex: ExerciseLike, plan?: Pick<Plan, 'inc'> | null): number {
+  return stepOfIn(M, ex, plan, undefined, false);
+}
+
 /* The load on the step in the unit on screen for a load `w` asked after
    last time's `top` (kg), or null where that step does not apply: a load
    typed in the unit on screen, or on its step already (unitSnap, above). The
@@ -284,8 +295,9 @@ function unitGridIn(
   whole?: boolean
 ): number | null {
   if (ex.timed || gymRackIn(M, ex, plan) || plateGridIn(M, ex, plan)) return null;
-  const st = inUnitIn(M, incOfIn(M, ex, plan));
-  if (!(st > 0)) return null;
+  const sl = inUnitIn(M, incOfIn(M, ex, plan));
+  if (!(sl > 0)) return null;
+  const st = inUnitIn(M, loadGridIn(M, ex, plan));
   /* The loads the step makes are counted from the bar on a lift on the full
      bar typed as the total (loadFloorIn), from 0 on any other (r64, the r63
      audit's R-2): counted from 0, a 10 lb step made 40 and 50 around a 20 kg
@@ -338,7 +350,7 @@ function unitGridIn(
     const tot = top + bwK;
     const most = Math.max(x, inUnitIn(M, tot * jumpCap(ex, tot) - bwK));
     const under = at(Math.floor((most - o) / st + EPS));
-    if (d > most + EPS && under > tp + EPS && !(whole && under < tp + st - EPS)) d = under;
+    if (d > most + EPS && under > tp + EPS && !(whole && under < tp + sl - EPS)) d = under;
   }
   // Never past the heaviest load the lift has (capOfIn), which the engine's own load already keeps to: that load, then.
   const cp = capOfIn(M, ex, plan, top);
@@ -432,8 +444,11 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
   const ex = EXIn(M, exId);
   const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M, exId, plan, opts) : 0;
   const back = off > BACK_DAYS;
-  if (!(opts.deload || opts.light || back) || ex.timed)
-    return snapUnitIn(M, ex, plan, suggestCoreIn(M, exId, plan, opts));
+  if (!(opts.deload || opts.light || back) || ex.timed) {
+    const core = suggestCoreIn(M, exId, plan, opts);
+    // The load lifted earlier today is asked as it was, in the unit it was logged in (the review of r68: 60 kg read as 135 lb).
+    return core.same ? core : snapUnitIn(M, ex, plan, core);
+  }
   const base = suggestCoreIn(M, exId, plan, { ...opts, deload: false, light: false });
   /* A close variation's first session on a Lighter day or deload (r32.1): 90% of the start, like any lighter day. */
   if (base.kin && base.w! > 0) {
@@ -561,6 +576,57 @@ function rangeInUse(full: readonly Exposure[], want: readonly [number, number]):
   return span <= TREND_DAYS;
 }
 
+/* Two sessions of a lift on one day (366 (a) and (b), NEW-18; V's ruling of 2026-11-02, "match the morning"). A
+   lift's sessions on one day are read as one: the day's best stands for it (the heavier working load, then more
+   reps at it, the later on a tie), so the next day's target comes from the better of a morning and an evening,
+   not simply the later one. Until r68 the later session alone set it, and a second session the same day stepped
+   up from the first (bench 140 x 10 x 3 at 8:00 asked 145 at 17:00). */
+/** The lift's readings with one a day: on a day with more than one, the best of them, in date order. */
+function oneADay(xs: Exposure[] | undefined, repMin: number): Exposure[] | undefined {
+  if (!xs || xs.length < 2) return xs;
+  const score = (x: Exposure): [number, number] => {
+    const w = workLoad(x.pts, repMin);
+    return [w, triedAt(x, w).reduce((t, p) => t + p.r, 0)];
+  };
+  const out: Exposure[] = [];
+  for (const x of xs) {
+    const prev = out[out.length - 1];
+    if (!prev || prev.date !== x.date) {
+      out.push(x);
+      continue;
+    }
+    const [a0, a1] = score(prev),
+      [b0, b1] = score(x);
+    if (b0 > a0 + EPS_SAME || (Math.abs(b0 - a0) <= EPS_SAME && b1 >= a1)) out[out.length - 1] = x;
+  }
+  return out;
+}
+/* A second session of a lift on a day it was already done in full: the same load and reps as the day's best
+   session so far, no step up, nothing set to beat (a load progresses across days, not within one; the lifter
+   can still type more). The next day reads the day's sessions as one (oneADay). Only for a session asked for on
+   its date (opts.before: one being started or logged, and Today's card for the session Start would begin); a
+   lift's next session elsewhere (Stats) is a later day, so the day's best sets it there. */
+function sgSameDayIn(M: Model, C: SuggestCtx): Suggestion | null {
+  const { ex, last, T, top, planPts, lastR, lastS, basis, opts, plan } = C;
+  if (!opts.before || last.date !== T || !(planPts.length > 0)) return null;
+  /* Earlier that day in another rep range (a heavy morning, a light evening), or in one not on record (an import):
+     that range's own rules read it (the review of r68, and r67 against r68 on the wide histories). */
+  if (!(last.rr && sameRR(last.rr, [+plan.repMin, +plan.repMax]))) return null;
+  const sets = last.pts.map(p => `${loadLabelIn(M, ex, p.w)}×${p.r}`).join(', ');
+  return {
+    top,
+    w: top,
+    text: `${T === M.today() ? 'Earlier today' : 'Earlier that day'}: ${sets}. The same again: no step up within one day.`,
+    lastR,
+    basis,
+    last: lastS,
+    target: '',
+    tgt: null,
+    easier: null,
+    same: true
+  };
+}
+
 /* The load engine's prescription for one lift (r36: the 250-line function cut
    into its cases, each below and tried in order, with no change to what comes
    out; tests/r36.js compares it with r35 on random histories). A lift with
@@ -593,20 +659,23 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   const want: [number, number] = [+plan.repMin, +plan.repMax];
   const inRR = rangeInUse(full, want);
   const fullRR = inRR ? full.filter(x => sameRR(x.rr, want)) : [];
-  const exps = all && all.length ? (fullRR.length ? fullRR : full.length ? full : all) : all;
+  const exps = oneADay(all && all.length ? (fullRR.length ? fullRR : full.length ? full : all) : all, want[0]);
   /* The same sessions with those short of their usual (r54, V's one rule):
      a short session sets no target, but it was done, so a case that reads
      the session before last time's (two sessions under the range in a row,
      reps rising after a step) reads it among these. */
   const done =
-    all && all.length
-      ? fullRR.length
-        ? all.filter(x => !lighter(x) && sameRR(x.rr, want))
-        : full.length
-          ? all.filter(x => !lighter(x))
-          : all
-      : [];
-  const seen = inRR ? all!.filter(x => sameRR(x.rr, want)) : all;
+    oneADay(
+      all && all.length
+        ? fullRR.length
+          ? all.filter(x => !lighter(x) && sameRR(x.rr, want))
+          : full.length
+            ? all.filter(x => !lighter(x))
+            : all
+        : [],
+      want[0]
+    ) ?? [];
+  const seen = oneADay(inRR ? all!.filter(x => sameRR(x.rr, want)) : all, want[0]);
   if (ex.timed) return suggestTimedIn(M, ex, plan, exps, opts, injM, seen);
   if (!exps || !exps.length) return sgFirstIn(M, ex, plan, T, injM);
   const last = exps[exps.length - 1],
@@ -733,6 +802,7 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   };
   // The sets of the session shown as Last, for the Last column in the session (r44): each case's result carries them.
   const res =
+    sgSameDayIn(M, C) ||
     sgAfterReturnIn(M, C) ||
     sgEasyIn(M, C) ||
     sgPastRangeIn(M, C) ||
@@ -1413,7 +1483,7 @@ function kinStartIn(
     w = c[c.length - 1];
   } else {
     const rs = rackKind(ex) && rackKind(k.ex) ? rackStepIn(M, k.ex) : null;
-    const st = toDIn(M, rs || incOfIn(M, ex, plan))!;
+    const st = toDIn(M, rs || loadGridIn(M, ex, plan))!;
     if (!(st > 0)) return null;
     w = fromDIn(M, Math.floor(toDIn(M, want)! / st + EPS) * st)!;
   }
@@ -1490,6 +1560,21 @@ function suggestTimedIn(
       tgt: null,
       easier: null
     };
+  // Held again the same day (NEW-18, the review of r68): what it held earlier today, as any lift is (sgSameDayIn).
+  if (opts.before && last.date === opts.before && last.rr && sameRR(last.rr, [+plan.repMin, +plan.repMax]))
+    return {
+      prev: L0.prev,
+      prevOff: L0.prevOff,
+      w: top,
+      text: `${opts.before === M.today() ? 'Earlier today' : 'Earlier that day'}: ${ws.map(p => `${loadLabelIn(M, ex, p.w)} for ${p.r}s`).join(', ')}. The same again: no step up within one day.`,
+      lastR,
+      basis,
+      last: lastS,
+      target: '',
+      tgt: null,
+      easier: null,
+      same: true
+    };
   /* Back after a break, as any lift is (r55, from the audit: a plank seven
      weeks off was asked to beat its last time): the same load, holds about
      90% as long (the lighter day's 90%, r32, a convention), nothing to beat,
@@ -1552,6 +1637,17 @@ export function incOfIn(
   plan?: Pick<Plan, 'inc'> | null,
   at?: number | null
 ): number {
+  return stepOfIn(M, ex, plan, at, true);
+}
+
+/** A lift's load step in kg, with the step by equipment (367) or, for the loads that exist (loadGridIn), without it. */
+function stepOfIn(
+  M: Model,
+  ex: ExerciseLike | null | undefined,
+  plan: Pick<Plan, 'inc'> | null | undefined,
+  at: number | null | undefined,
+  byEquip: boolean
+): number {
   const v = stepReadIn(M, ex && ex.inc != null ? ex.inc : plan && isNum(+plan.inc) ? +plan.inc : STEP_LB);
   if (ex && ex.inc == null && Math.abs(v - unitStepIn(M)) < EPS_SAME) {
     const L = gymRackIn(M, ex, plan);
@@ -1564,8 +1660,27 @@ export function incOfIn(
     if (G && at != null && at > 0 && Math.abs(plateAt(G, at, -1, t) - at) > t) return plateAt(G, at, 1, t) - at;
     const gs = gymStepIn(M, ex);
     if (gs) return gs;
+    const es = byEquip ? equipStepIn(M, ex) : null;
+    if (es) return es;
   }
   return v;
+}
+
+/** The default step for how a lift is loaded (EQUIP_STEP, 367), in kg, or null where the unit's default stands. */
+function equipStepIn(M: Model, ex: ExerciseLike | null | undefined): number | null {
+  if (!ex || ex.bw || ex.timed) return null;
+  const m = loadMode(ex);
+  const kind =
+    m === 'stack'
+      ? 'stack'
+      : m === 'each'
+        ? 'each'
+        : m === 'total' && (ex.equip === 'barbell' || ex.equip === 'smith')
+          ? 'bar'
+          : null;
+  if (!kind) return null;
+  const u = UIn(M);
+  return u === 'kg' ? EQUIP_STEP[kind].kg : EQUIP_STEP[kind].lb * LB;
 }
 
 /* A suggestion that is not on the rack moves onto it: up, to the heaviest
@@ -1617,10 +1732,22 @@ export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): numb
   // Read since a new machine or gym (liftReadIn, r61), its rack another gym's before: kept by where that stretch starts.
   const xs = liftReadIn(M, ex.id);
   const key = UIn(M) + ex.id + '|' + (xs.length ? xs[0].sid : '');
+  /* The spacings tried, largest first. For dumbbells the default step by equipment (367, V's pick of 2026-11-02:
+     2 kg each) is read once the rack is: when every load read fits it too (10, 20, 30 kg), the rack is in 2 kg
+     steps; a load only 2.5 kg fits (12.5, 17.5), in any session read, keeps 2.5. Read the other way round, the
+     newest loads alone (20 kg) read as 2 and an older 17.5 was then taken for another gym's, so 22 kg, which
+     that rack does not have, was asked (the review of r68). */
+  // A lift with no rack has no rack step (r67 gave null; reading the rack first made it throw, found comparing r67 and r68).
+  const kind = rackKind(ex);
+  if (!kind) return null;
+  const all = RACK[kind][UIn(M)];
+  const pref = kind === 'dumbbell' ? EQUIP_STEP.each[UIn(M)] : null;
+  const fits = (ws: readonly number[], g: number): boolean =>
+    ws.every(w => Math.abs(w / g - Math.round(w / g)) < RACK_FIT);
+  const fitD = (ws: readonly number[]): number | null => all.find(g => fits(ws, g)) ?? null;
   const fit = (ws: readonly number[]): number | null => {
-    const fits = (g: number): boolean => ws.every(w => Math.abs(w / g - Math.round(w / g)) < RACK_FIT);
-    const g = RACK[rackKind(ex)!][UIn(M)].find(fits);
-    return g ? fromDIn(M, g) : null;
+    const g = pref != null && all.includes(pref) && fits(ws, pref) ? pref : fitD(ws);
+    return g != null ? fromDIn(M, g) : null;
   };
   if (I._rack[key] === undefined) {
     const steps = (a: number, b: number): boolean => Math.abs(a / b - Math.round(a / b)) < RACK_FIT;
@@ -1630,15 +1757,15 @@ export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): numb
       const own: number[] = [];
       for (const p of x.pts) if (p.w > 0) own.push(toDIn(M, p.w)!);
       if (!own.length) continue;
-      const f = fit([...ws, ...own]);
+      const f = fitD([...ws, ...own]);
       if (ws.length && f !== g) {
-        const h = fit(own);
+        const h = fitD(own);
         if (f == null || g == null || h == null || !(steps(g, h) || steps(h, g))) break;
       }
       ws = [...ws, ...own];
       g = f;
     }
-    I._rack[key] = g;
+    I._rack[key] = ws.length ? fit(ws) : null;
   }
   const logged = xs.some(x => x.pts.some(p => p.w > 0));
   const d = logged || at == null || !(at > 0) ? null : toDIn(M, at);

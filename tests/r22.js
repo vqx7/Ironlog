@@ -177,10 +177,13 @@ const ids = list => (list || []).map(x => x.id).sort().join();
     await P.page.click('.hero [data-act="startSession"]:not([data-light])'); await wait(200);
     // At last time's load (r30: the demo can end with a load increase due, and a heavier set is a weight PR, not the rep PR checked here).
     const g = await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; const ex = L.IDX().byEx[b.exId]; const last = ex[ex.length - 1]; b.sets[0].w = last.pts[0].w; L.render(); return last.pts[0].r; });
-    await P.page.fill('[data-f="r"][data-b="0"][data-s="0"]', String(g + 3)); await P.page.dispatchEvent('[data-f="r"][data-b="0"][data-s="0"]', 'change');
+    // At least 3 past last time and past 12 reps, where no estimate is made, so the PR is a rep PR (since r68 the demo's
+    // last session is a fresh step up, 190 x 8, and 190 x 11 is a new best estimate, which the toast names first).
+    const n = Math.max(g + 3, 13);
+    await P.page.fill('[data-f="r"][data-b="0"][data-s="0"]', String(n)); await P.page.dispatchEvent('[data-f="r"][data-b="0"][data-s="0"]', 'change');
     await P.page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(250);
     const t = await ev(() => ({ text: document.getElementById('toast').innerText, pr: document.getElementById('toast').classList.contains('pr'), flash: !!document.querySelector('.sg.prflash[data-pr]') }));
-    ok(t.pr && t.flash && new RegExp(`Rep PR: .*×${g + 3} \\(was ${g} reps\\)`).test(t.text), 'a PR set: gold toast saying what it beat, and a pulse on the row', t);
+    ok(t.pr && t.flash && new RegExp(`Rep PR: .*×${n} \\(was ${g} reps\\)`).test(t.text), 'a PR set: gold toast saying what it beat, and a pulse on the row', t);
     // An ordinary set does not celebrate. Set 1 went 3 reps past last time, so since r34 the sets after it are
     // adjusted up; the load is typed as last time's here, so this stays an ordinary set at a load already lifted.
     await P.page.fill('[data-f="w"][data-b="0"][data-s="1"]', await ev(() => String(window.__ironlog.loadIn(window.__ironlog.EX(window.__ironlog.state.draft.ex[0].exId), window.__ironlog.state.draft.ex[0].sets[0].w))));
@@ -190,7 +193,7 @@ const ids = list => (list || []).map(x => x.id).sort().join();
     ok(await ev(() => !document.querySelector('[data-act="sDone"][data-b="0"][data-s="1"]').closest('.sg').classList.contains('prflash')), 'an ordinary set: no pulse');
     await ev(() => { window.__ironlog.state.draft._rampAsked = true; window.__ironlog.state.draft._leftAsked = true; }); await P.page.click('[data-act="finish"]'); await wait(400);
     const rc = await ev(() => { const b = document.getElementById('recapPR'); return b ? b.innerText.replace(/\s+/g, ' ') : null; });
-    ok(rc && /New PR/i.test(rc) && new RegExp(`×${g + 3}.*was ${g} reps`).test(rc), 'the recap opens with a gold PR block and what it beat', rc);
+    ok(rc && /New PR/i.test(rc) && new RegExp(`×${n}.*was ${g} reps`).test(rc), 'the recap opens with a gold PR block and what it beat', rc);
     await P.page.click('#modal [data-act="mClose"]'); await wait(150);
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
     const bd = await ev(() => { const L = window.__ironlog; const id = L.state.sessions[L.state.sessions.length - 1].ex[0].exId; const rows = [...document.querySelectorAll('#sub-bests .bx')]; const mine = rows.find(r => r.dataset.ex === id); const b = L.allTimeBests(id);

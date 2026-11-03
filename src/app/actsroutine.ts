@@ -162,11 +162,14 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       toast('That routine day no longer exists');
       return;
     }
+    // The workout it was done as: the day's second, or its first (r68, 366 (c); the review of r68: an exercise added in the second went into the first).
+    const pm = u.part === 2;
+    const mine = (i: { pm?: true | undefined }): boolean => !!i.pm === pm;
     act(
       () => {
         // At the plan it was done at (r55).
         for (const x of u.swap) {
-          const it = day.items.find(i => i.exId === x.from);
+          const it = day.items.find(i => i.exId === x.from && mine(i));
           if (it) {
             it.exId = x.to;
             if (x.plan) {
@@ -177,11 +180,18 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         }
         // A session's plan is whole; the default under it only fills what the type allows to be missing, as normalize would.
         for (const x of u.add)
-          if (!day.items.some(i => i.exId === x.exId))
-            day.items.push({ ...DEFAULT_PLAN, ...x.plan, uid: uid(), exId: x.exId, ss: null });
+          if (!day.items.some(i => i.exId === x.exId && mine(i)))
+            day.items.push({
+              ...DEFAULT_PLAN,
+              ...x.plan,
+              uid: uid(),
+              exId: x.exId,
+              ss: null,
+              ...(pm ? { pm: true as const } : {})
+            });
         // Each superset kept: its exercises side by side, in the order done, under one link.
         for (const ids of u.ss || []) {
-          const its = ids.flatMap(id => day.items.filter(i => i.exId === id).slice(0, 1));
+          const its = ids.flatMap(id => day.items.filter(i => i.exId === id && mine(i)).slice(0, 1));
           if (its.length < 2) continue;
           const at = Math.min(...its.map(i => day.items.indexOf(i)));
           day.items = day.items.filter(i => !its.includes(i));
@@ -195,6 +205,6 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       { undo: true }
     );
     render();
-    toast(`${day.name} updated`, true);
+    toast(`${u.dayName} updated`, true);
   }
 };

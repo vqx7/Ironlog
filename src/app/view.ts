@@ -366,15 +366,18 @@ export const MORE_OFFER: Readonly<Record<string, () => boolean>> = {
   'history:trash': () => state.trash.length > 0
 };
 
-/** The foot of a tab: the hidden sections it can show, one tap each (with what the tab says of its own, `offer`), and the way to Layout (r28). */
+/* The foot of a tab: the hidden sections it can show, one tap each, and the
+   way to Layout (r28). The chips say what they do ("+ Coach"), so they need
+   no heading, and the link is "Edit sections" here; the menu keeps its full
+   name (r69, V, 2026-11-03: the app read as text heavy). */
+/** The foot of a tab: the hidden sections it can show, one tap each (with what the tab says of its own, `offer`), and the way to Layout. */
 export function tabFoot(tab: string, offer?: Readonly<Record<string, () => boolean>>): TemplateResult | typeof nothing {
   const list = moreList(tab, state.settings.hidden, offer ? { ...MORE_OFFER, ...offer } : MORE_OFFER);
   if (!list.length) return nothing;
   return html`<div class="moreline" id="moreLine">
-<p class="small muted ml-h">Add to this tab</p>
 <div class="chips">${list.map(
     ([t, k, l]) => html`<button type="button" class="chip add" data-act="secShow" data-k=${`${t}:${k}`}>+ ${l}</button>`
   )}</div>
-<button type="button" class="linkbtn ml-c" data-act="goLayout">Show, hide, or reorder sections</button></div>
+<button type="button" class="linkbtn ml-c" data-act="goLayout">Edit sections</button></div>
 `;
 }

@@ -49,7 +49,7 @@ import {
   setSecs,
   setupSecs
 } from './formulas';
-import { nextTrainIdx, sessDayIdx } from './routines';
+import { dayParts, dayWorkout, nextTrainIdx, partOf, sessDayIdx } from './routines';
 import { sessCmp } from './records';
 import { addDays, andList, daysBetween, r1, MINUTE_S, PERCENT, WEEK_DAYS } from './util';
 import { agoTxt } from './format';
@@ -293,6 +293,8 @@ function dayDirectIn(M: Model, day: Day): Record<string, number> {
 /** A routine day as Pick for me ranks it. */
 interface DayRow {
   i: number;
+  /** Which of the day's workouts (r68, 366 (c)): its second on a fixed-weekday routine, else its first. */
+  part: 1 | 2;
   day: Day;
   score: number;
   fill: number;
@@ -324,15 +326,24 @@ export function rankDaysIn(M: Model): {
   const weekly = R.schedule === 'weekly';
   // Today's place in a weekly routine, Monday first (Date counts from Sunday).
   const planIdx = weekly ? (new Date(t + 'T12:00:00').getDay() + WEEK_DAYS - 1) % WEEK_DAYS : cycleStateIn(M, R).next;
+  // Each workout's last date, by day and workout (a day's second workout is ranked on its own: the second review of r68).
   const lastDone: Record<string, string> = {};
   for (const x of M.s.sessions) {
-    const was = x.dayId ? lastDone[x.dayId] : undefined;
-    if (x.routineId === R.id && x.dayId && (!was || x.date > was)) lastDone[x.dayId] = x.date;
+    const k = x.dayId ? `${x.dayId}:${weekly ? partOf(x) : 1}` : '';
+    const was = k ? lastDone[k] : undefined;
+    if (x.routineId === R.id && k && (!was || x.date > was)) lastDone[k] = x.date;
   }
   const r7: Record<string, number> = {};
   for (const m of MK) r7[m] = rolling7In(M, m);
   const rows: DayRow[] = [];
-  R.days.forEach((day, i) => {
+  const workouts = R.days.flatMap((d0, i) =>
+    (weekly ? dayParts(d0) : d0.rest ? [] : [1 as const]).map(part => ({
+      i,
+      part,
+      day: weekly ? dayWorkout(d0, part) : d0
+    }))
+  );
+  workouts.forEach(({ i, part, day }) => {
     if (day.rest || !day.items.length) return;
     const ms = sessionMuscleSetsIn(M, day);
     const dir = dayDirectIn(M, day);
@@ -370,7 +381,7 @@ export function rankDaysIn(M: Model): {
         })
       : [];
     for (const it of jHit) injS += (+it.sets || 0) * f;
-    const last = lastDone[day.id];
+    const last = lastDone[`${day.id}:${part}`];
     const since = last ? daysBetween(last, t) : null;
     const score =
       fill -
@@ -384,9 +395,22 @@ export function rankDaysIn(M: Model): {
       const j = jointOf(it.exId);
       if (j && !joints.includes(j)) joints.push(j);
     }
-    rows.push({ i, day, score, fill, fat, injS, since, plan: i === planIdx, ready: wT ? wR / wT : 1, dir, joints });
+    rows.push({
+      i,
+      part,
+      day,
+      score,
+      fill,
+      fat,
+      injS,
+      since,
+      plan: i === planIdx,
+      ready: wT ? wR / wT : 1,
+      dir,
+      joints
+    });
   });
-  rows.sort((a, b) => b.score - a.score || +b.plan - +a.plan || a.i - b.i);
+  rows.sort((a, b) => b.score - a.score || +b.plan - +a.plan || a.i - b.i || a.part - b.part);
   return { R, rows, planIdx, r7, deload };
 }
 
@@ -468,7 +492,7 @@ interface ExPick {
 /** The exercises to add next to a session, best first, each with the plan and sets it would be added with (and `full`, the sets before a deload or lighter day halved them, for Finish's offer to the routine, r54). */
 export function rankExercisesIn(
   M: Model,
-  d: Pick<DraftLike, 'ex' | 'date' | 'dayId' | 'deload' | 'light'>
+  d: Pick<DraftLike, 'ex' | 'date' | 'dayId' | 'deload' | 'light' | 'part'>
 ): (ExPick & { plan: Plan; full: number })[] {
   const I = IDXIn(M);
   // Focus muscles in the profile (r44) count as priorities here.
@@ -540,7 +564,7 @@ export function rankExercisesIn(
     .sort((a, b) => b.s - a.s)
     .slice(0, EX_RANK.picks)
     .map(x => {
-      const plan = planForIn(M, x.e.id, null, d.dayId, false, d.date);
+      const plan = planForIn(M, x.e.id, null, d.dayId, false, d.date, d.part === 2 ? 2 : 1);
       const cap = Math.max(1, SESSION_CAP - x.inSess);
       let sets = Math.max(
         1,

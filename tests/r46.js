@@ -46,7 +46,7 @@ const CLOCK = '2026-10-14T10:00:00';
       L.state = L.normalize(s); L.invalidate(); L.ui.tab = 'dash'; L.ui.folds['dash:consistency'] = true; L.render();
       const brute = ws => { const e = L.addDays(ws, 6); return L.state.sessions.filter(x => x.date >= ws && x.date <= e).length; };
       const wks = [0, 1, 2, 3, 4, 5].map(k => L.addDays(L.weekStart(L.today()), -7 * k));
-      return { per, adh: (document.getElementById('adhLine') || {}).textContent, same: wks.every(w => L.weekSessions(w) === brute(w)), streak: L.weekStreak().weeks }; });
+      return { per, adh: ((document.querySelector('#adhLine .tipi') || { getAttribute: () => '' }).getAttribute('data-tip') || ''), /* the sentence in full, in the line's i since r69 */ same: wks.every(w => L.weekSessions(w) === brute(w)), streak: L.weekStreak().weeks }; });
     ok(/: 100% of planned sessions/.test(r.adh) && r.streak >= 4, 'a two-a-day counts as two sessions in adherence, as in the streak (100%, not short a day)', r);
     ok(r.same, 'week session counts read from the cache equal a count of every session', r);
     // Random logs: the cached counts equal a count of every session, every week of two years.

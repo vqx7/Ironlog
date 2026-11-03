@@ -66,8 +66,9 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   ok(await ev(r => window.__ironlog.state.draft.ex[1].sets[1].r === r, lr[0]), 'working set 1 logs last time\'s first set');
   const num = await ev(() => [...document.querySelectorAll('#blk-1 .sg:not(.head) .n')].map(n => n.textContent));
   ok(num[0] === 'W' && num[1] === '1', 'the warm-up row is marked W and working sets count from 1 (' + num.slice(0, 3).join(',') + ')');
-  const wd = await ev(() => { const d = window.__ironlog.state.draft; const w = d.ex.reduce((a, b) => a + b.sets.filter(s => s.done && !s.warm).length, 0); return { head: document.getElementById('doneCount').textContent, bar: document.getElementById('sessOf').textContent, w }; });
-  ok(wd.head === String(wd.w) && wd.bar.startsWith(wd.w + ' of'), 'sets done and the bar agree (' + JSON.stringify(wd) + ')');
+  // Since r69 the bar alone counts the sets done (the header said it too until then): its words and what it says to a screen reader agree with the sets ticked.
+  const wd = await ev(() => { const d = window.__ironlog.state.draft; const w = d.ex.reduce((a, b) => a + b.sets.filter(s => s.done && !s.warm).length, 0); const band = document.querySelector('.sprog .band'); return { head: !!document.getElementById('doneCount'), bar: document.getElementById('sessOf').textContent, now: band && band.getAttribute('aria-valuenow'), w }; });
+  ok(!wd.head && wd.bar.startsWith(wd.w + ' of') && wd.now === String(wd.w), 'sets done and the bar agree (' + JSON.stringify(wd) + ')');
 
   // Fewer sets than last time: header count and target follow.
   await start();
@@ -76,7 +77,10 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   const t1 = await ev(() => ({ head: document.querySelector('#blk-0 .bh .muted').textContent, text: document.querySelector('#blk-0 .hint b').textContent }));
   if (t0.tgt && t0.tgt.kind === 'reps' && t0.tgt.n === t0.n) {
     const want = t0.tgt.rs.slice(0, t0.n - 1).reduce((a, v) => a + v, 0) + 1;
-    ok(t1.head.includes(`${t0.n - 1}×`) && t1.text.includes(`${want}+`) && t1.text.includes(`first ${t0.n - 1} sets`), 'after − Set the header and target use the sets left (' + t1.text + ')');
+    /* With the set taken off, the plan is the sets left (the header says so), so the target is over all of them:
+       "over 3 sets" (overSets, session.ts). Until r68 the demo's first lift never had a target of reps here, so this
+       branch never ran, and its "first 3 sets" was never the app's wording (r67 says "27+ reps over 3 sets" too). */
+    ok(t1.head.includes(`${t0.n - 1}×`) && t1.text.includes(`${want}+ reps over ${t0.n - 1} sets`), 'after − Set the header and target use the sets left (' + t1.text + ')');
   } else ok(t1.head.includes(`${t0.n - 1}×`), 'after − Set the header shows the sets left');
 
   // Short on time from Today, cancelled: no session left behind.

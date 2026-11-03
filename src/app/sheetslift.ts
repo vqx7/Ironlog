@@ -74,12 +74,12 @@ export function goalSheet(m: { exId: string }): TemplateResult {
     <div class="row u-mt12"><button class="btn primary" data-act="goalSave">Save</button>${g ? html`<button class="btn danger" data-act="goalClear">Remove goal</button>` : ''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 
-/** A lift's load step: the smallest jump its machine or dumbbells allow. */
+/** A lift's load step: the smallest jump it can be loaded by (unset, Your gym's or its equipment's usual step, 367). */
 export function incSheet(m: { exId: string; plan?: DraftBlock['plan'] | undefined }): TemplateResult {
   const e = EX(m.exId);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Load step: ${e.name}</h3>${closeX()}</div>
     <label class="field">Step (${U()})<input type="text" inputmode="decimal" id="incVal" value=${fmtW(incOf(e, m.plan))}></label>
-    <p class="small muted">The smallest jump the machine or dumbbells allow. Earned increases are whole multiples of it.</p>
+    <p class="small muted">The smallest jump you can load on it. Earned increases are whole steps of it.</p>
     ${e.inc == null && gymRack(e, m.plan) ? html`<p class="small u-m0">Following the ${rackKind(e) === 'dumbbell' ? 'dumbbells' : 'kettlebells'} in Settings > Your gym. A step saved here replaces them for this lift.</p>` : ''}
     <div class="row u-mt10"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
@@ -89,7 +89,7 @@ export function maxSheet(m: { exId: string }): TemplateResult {
   const e = EX(m.exId);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${e.name}</h3>${closeX()}</div>
     <label class="field">Load (${U()}${e.bw ? ', added to bodyweight' : ''})<input type="text" inputmode="decimal" id="maxVal" value=${e.maxLoad != null ? fmtW(e.maxLoad) : ''} placeholder="No limit"></label>
-    <p class="small muted">Top of the stack or biggest dumbbell. Blank for no limit.</p>
+    <p class="small muted">The most you can load on it, as the top of the stack or the biggest dumbbell. Blank for no limit.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 

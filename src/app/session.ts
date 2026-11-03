@@ -289,6 +289,8 @@ export interface DraftLike {
   limited?: boolean | undefined;
   /** The pictures on the workout's notes (r66, PENDING 373), by id; absent when none. */
   pics?: string[] | undefined;
+  /** Started as its day's second workout (366 (c), r68); absent for the first. */
+  part?: 2 | undefined;
   /** An edit's measured minutes, kept as the saved session had them. */
   durMin?: number | null | undefined;
   /** Finish has asked about the sets left, or the ramp-up sets, once (this visit). */
@@ -351,7 +353,9 @@ export function draftSession(d: DraftLike, empty?: boolean): Session | null {
     demo: false,
     ...(chk ? { chk } : {}),
     ...(d.startedAt && d.startedAt > 0 ? { t: d.startedAt } : {}),
-    ...(d.pics && d.pics.length ? { pics: [...d.pics] } : {})
+    ...(d.pics && d.pics.length ? { pics: [...d.pics] } : {}),
+    // The day's second workout (r68, 366 (c)), last, as normalize writes it.
+    ...(d.part === 2 ? { part: 2 as const } : {})
   };
 }
 

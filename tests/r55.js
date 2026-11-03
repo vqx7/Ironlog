@@ -489,12 +489,16 @@ const LB = 0.45359237;
     await start('bench'); const g2 = await greys();
     ok(g2[0] === 10 && g2[1] === 10, 'stopped short at the same load (80 x 10 and 10), its 10s are the grey reps (a guard)', g2);
     await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); });
-    // An extra set past the plan's four does not hold the step back.
+    // An extra set past the plan's four does not hold the step back. A 2.5 kg step set on the bench for these, as
+    // written (the default by equipment is 5 kg since r68).
+    const benchStep = kg => ev(kg => { const e = window.__ironlog.state.exercises.find(x => x.id === 'bench'); if (e) { if (kg == null) delete e.inc; else e.inc = kg; } }, kg);
     await log([sx('g1', '2026-10-01', 'bench', [6, 10], xs(80, [8, 8, 8, 8])), sx('g2', '2026-10-05', 'bench', [6, 10], xs(80, [9, 9, 8, 8])), sx('g3', '2026-10-08', 'bench', [6, 10], xs(80, [10, 10, 10, 10, 8]))]);
+    await benchStep(2.5);
     const n4 = await next('bench', P4);
     ok(/^82\.5 kg for \d+\+ reps in every set$/.test(n4.target), 'bench 80 x 10 x 4 on a 4-set plan and a fifth set of 8: the load steps up (r54 asked 41+ reps over 4 sets): ' + n4.target, n4);
     // Reps past the top count as the top: the target stays inside the range, and doing it is a beaten target that steps the load.
     await log([sx('h1', '2026-09-24', 'bench', [6, 10], xs(70, [9, 9, 8, 8])), sx('h2', '2026-10-01', 'bench', [6, 10], xs(70, [11, 11, 9, 10]))]);
+    await benchStep(2.5);
     const n5 = await next('bench', P4);
     ok(n5.target === '40+ reps over 4 sets at 70 kg' && /a set past 10 counts as 10/.test(n5.text), 'after 70 x 11, 11, 9 and 10 on 6 to 10: 40+ reps over 4 sets, the 11s counted as 10 (r54 asked 42+, past what the range holds): ' + n5.target, n5);
     await start('bench');
@@ -503,6 +507,7 @@ const LB = 0.45359237;
     for (let k = 0; k < 3; k++) { const m = await modal(); if (!m) break; if (m.kind === 'recap') { rc = m.text; break; } await page.click('#modal [data-act="mOk"]'); await wait(200); }
     const n5b = await next('bench', P4);
     ok(/1 of 1 exercise target beaten/.test(rc || '') && /^72\.5 kg/.test(n5b.target), 'then 70 x 10 x 4: the recap counts the target beaten, and the next session steps up (r54 said 0 of 1 beaten, then stepped up)', { rc, n5b });
+    await benchStep(null);
     await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
     // A weighted pull-up with no weigh-in is stepped as any loaded lift (r54 judged the step against the added load alone).
     await log([sx('p1', '2026-10-01', 'pullup', [6, 10], xs(5, [10, 10, 10])), sx('p2', '2026-10-08', 'pullup', [6, 10], xs(5, [10, 10, 10]))]);
@@ -598,7 +603,7 @@ const LB = 0.45359237;
     ok(pw === 4, 'a session finished on the four-day starter records that it planned 4 a week (r54 recorded nothing, so a later change rescored its week)', pw);
     await back();
     await ev(async ss => { const L = window.__ironlog; L.state.sessions = ss; L.state.draft = null; L.state = L.normalize(L.state); L.invalidate(); L.saveNow(); }, await onRoutine(mtwf(['2026-09-14', '2026-09-21', '2026-09-28', '2026-10-05']), 4));
-    const cons = () => ev(() => { const L = window.__ironlog; L.invalidate(); L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(x => { x.open = true; }); L.render(); document.querySelectorAll('#view details').forEach(x => { x.open = true; }); const t = document.getElementById('view').innerText; return { streak: L.weekStreak().weeks, adh: (/Adherence, previous \d+ full weeks?: (\d+)%/.exec(t) || [])[1] }; });
+    const cons = () => ev(() => { const L = window.__ironlog; L.invalidate(); L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(x => { x.open = true; }); L.render(); document.querySelectorAll('#view details').forEach(x => { x.open = true; }); const t = document.getElementById('view').innerText + ' ' + ((document.querySelector('#adhLine .tipi') || { getAttribute: () => '' }).getAttribute('data-tip') || ''); return { streak: L.weekStreak().weeks, adh: (/Adherence, previous \d+ full weeks?: (\d+)%/.exec(t) || [])[1] }; }); // the sentence in full is the line's i since r69
     const k0 = await cons();
     await ev(() => { const L = window.__ironlog; const R = L.activeRoutine(); const di = R.days.findIndex(d => d.rest); L.ui.tab = 'program'; L.ui.bRoutine = R.id; L.ui.bTarget = di; L.render(); L.ACT.libAdd({ dataset: { ex: 'dbCurl' } }); });
     const k1 = await cons();

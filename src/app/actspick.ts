@@ -8,7 +8,7 @@
 import { bwNudge } from './bwnudge';
 import { uid, numIn } from './util';
 import { BWF, MK, bwShare } from './library';
-import { dayLabel, fixSupersets, trainOn } from './routines';
+import { dayLabel, fixSupersets, partOf, trainOn } from './routines';
 import type { DraftBlock, Exercise, Plan, Routine } from './types';
 import { joinRows, joinable } from './session';
 import { platesMode } from './gym';
@@ -95,11 +95,11 @@ export function applyPick(m: PickerModal | null | undefined, id: string | undefi
       return;
     }
     act(() => {
-      d.items.push(newItem(id));
+      d.items.push(m.pm && R.schedule === 'weekly' ? { ...newItem(id), pm: true } : newItem(id));
       Object.assign(d, trainOn(d));
     });
     rerenderKeepScroll();
-    toast(`${exName(id)} added to ${dayLabel(R, di)}`);
+    toast(`${exName(id)} added to ${dayLabel(R, di)}${m.pm ? ', second workout' : ''}`);
     bwNudge([id]);
     return;
   }
@@ -132,7 +132,7 @@ export function applyPick(m: PickerModal | null | undefined, id: string | undefi
     ...(d.deload || d.light ? { sets: Math.max(1, Math.ceil(p.sets / 2)) } : {})
   });
   if (m.mode === 'addBlock') {
-    const p0 = planFor(id, null, d.dayId, false, d.date);
+    const p0 = planFor(id, null, d.dayId, false, d.date, partOf(d));
     const nb = newBlock(id, half(p0), { deload: !!d.deload, light: !!d.light, before: d.date });
     if (d.deload || d.light) nb.full = +p0.sets;
     const li = d.ex.length - 1;
@@ -362,11 +362,13 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   },
   pickDay(t) {
     const di = Number(t.dataset.day);
+    const pm = t.dataset.part === '2' && curRoutineB().schedule === 'weekly';
     openModal({
       kind: 'picker',
       mode: 'addDay',
       day: di,
-      title: `Add to ${dayLabel(curRoutineB(), di)}`,
+      ...(pm ? { pm: true as const } : {}),
+      title: `Add to ${dayLabel(curRoutineB(), di)}${pm ? ', second workout' : ''}`,
       q: '',
       m: ''
     });
@@ -399,7 +401,7 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       closeModal();
       return;
     }
-    const p = planFor(id, null, d.dayId, false, d.date);
+    const p = planFor(id, null, d.dayId, false, d.date, partOf(d));
     const n = Math.round(+(t.dataset.sets ?? NaN)),
       full = Math.round(+(t.dataset.full ?? NaN));
     if (n >= 1 && n <= MAX_SETS) p.sets = n;

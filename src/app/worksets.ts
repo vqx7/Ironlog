@@ -8,7 +8,7 @@
 
 import { act } from './act';
 import { isCompound } from './library';
-import { planItemOf, move, fixSupersets, DEFAULT_PLAN } from './routines';
+import { planItemOf, move, fixSupersets, partOf, DEFAULT_PLAN } from './routines';
 import { min5, rangeWords, MISSED_SAID } from './format';
 import { e1, prSameLoad, setupSecs, setSecs, BACK_DAYS, isMissed, epley } from './formulas';
 import { PLATES_LB, PLATES_KG, LB, KM_MI, SMALL_PLATE } from './units';
@@ -703,7 +703,7 @@ export function syncDraftPlan(f: { r: Routine; di: number; it: PlanItem }): void
   if (!d || !f || d.editingId) return;
   if (
     f.r !== (state.routines.find(r => r.id === d.routineId) || activeRoutine()) ||
-    planItemOf(f.r, f.it.exId, d.dayId) !== f.it
+    planItemOf(f.r, f.it.exId, d.dayId, partOf(d)) !== f.it
   )
     return;
   const it = f.it;

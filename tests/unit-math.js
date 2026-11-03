@@ -38,7 +38,8 @@ const res=await page.evaluate(()=>{
   ok(L.noE1(EX('hangingLegRaise'))&&L.noE1(EX('nordic'))&&L.noE1(EX('plank'))&&!L.noE1(EX('pullup')),'joint-rotation and timed lifts get no estimate');
   // ---- progression steps
   const inc=5*0.45359237;
-  ok(near(L.progStep(EX('bench'),{inc},100),inc),'bench at 100 kg: one 5 lb step (2.5% = 2.5 kg)');
+  // A plan's 5 lb is the unit's default, which a barbell reads as its default by equipment, 10 lb, since r68 (367).
+  ok(near(L.progStep(EX('bench'),{inc},100),2*inc),'bench at 100 kg: one step, a barbell\'s default 10 lb (2.5% = 2.5 kg is under it)');
   ok(near(L.progStep(EX('legPress'),{inc},250),inc*2),'leg press at 250 kg: two steps (6.25 kg)',L.progStep(EX('legPress'),{inc},250)/inc);
   ok(near(L.progStep(EX('dbLateral'),{inc},11),inc),'lateral raise: never below one step');
   ok(L.jumpCap(EX('dbLateral'),10)===1.15&&L.jumpCap(EX('bench'),10)===1.10&&L.jumpCap(EX('dbLateral'),30)===1.10,'jump caps 15% light isolation, else 10%');

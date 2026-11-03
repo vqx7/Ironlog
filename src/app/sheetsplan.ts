@@ -7,7 +7,7 @@
 
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
-import { TEMPLATES, dayLabel, routineFromTemplate } from './routines';
+import { TEMPLATES, dayLabel, dayParts, dayWorkout, routineFromTemplate } from './routines';
 import { activeRoutine, dayMinutes, isDeloadWeek, prof, cycleState } from './live';
 import {} from './display';
 import { estMin, min5 } from './format';
@@ -68,10 +68,17 @@ const MONDAY_FIRST = 6;
    choice closes it and runs the start it names (altGo); another day of the
    plan shows that day's card (dayPick). */
 /** The start options sheet: the plan's day, a lighter day, Short on time, a blank session, Pick for me, and the other days. */
-export function startAltSheet(m: { di?: number | string | undefined; free?: boolean | undefined }): TemplateResult {
+export function startAltSheet(m: {
+  di?: number | string | undefined;
+  free?: boolean | undefined;
+  part?: 2 | undefined;
+}): TemplateResult {
   const R = activeRoutine();
   const di = Math.min(+(m.di || 0) || 0, R.days.length - 1);
-  const day = R.days[di];
+  // The day's second workout when the card showed it (r68, 366 (c)).
+  const d0 = R.days[di];
+  const part: 1 | 2 = m.part === 2 && d0 && dayParts(d0).includes(2) ? 2 : 1;
+  const day = d0 ? (R.schedule === 'weekly' ? dayWorkout(d0, part) : d0) : undefined;
   const playable = !!day && !day.rest && day.items.length > 0;
   const deload = isDeloadWeek();
   const weekly = R.schedule === 'weekly';
@@ -80,7 +87,7 @@ export function startAltSheet(m: { di?: number | string | undefined; free?: bool
   const mark = (i: number): string =>
     cs ? (i === cs.next ? ' · next' : i === cs.last ? ' · last done' : '') : i === wd ? ' · today' : '';
   const opt = (go: string, title: string, what: string, d?: { day: number; light?: boolean }): TemplateResult =>
-    html`<button class="ob-opt" data-act="altGo" data-go=${go} data-day=${d ? String(d.day) : nothing} data-light=${d && d.light ? '1' : nothing}><b>${title}</b><span>${what}</span></button>`;
+    html`<button class="ob-opt" data-act="altGo" data-go=${go} data-day=${d ? String(d.day) : nothing} data-part=${d && part === 2 ? '2' : nothing} data-light=${d && d.light ? '1' : nothing}><b>${title}</b><span>${what}</span></button>`;
   const opts: TemplateResult[] = [];
   if (day && m.free && playable)
     opts.push(opt('startSession', `Plan: ${day.name}`, `${day.items.length} exercises from your plan`, { day: di }));
@@ -92,10 +99,14 @@ export function startAltSheet(m: { di?: number | string | undefined; free?: bool
     opts.push(opt('startShort', 'Short on time', 'Your minutes; the main work stays at full effort', { day: di }));
   if (!m.free) opts.push(opt('startFree', 'Blank session', 'Add exercises as you go; your plan stays where it is'));
   opts.push(opt('pickToday', 'Pick for me', 'The day that fits today best, and why'));
-  const days = R.days.map((d, i) => {
-    const on = i === di && !m.free;
-    return html`<button type="button" class=${'btn fullw pastday' + (on ? ' on' : '')} data-act="dayPick" data-i=${String(i)} aria-current=${String(on)}><span>${dayLabel(R, i)}: ${d.name}</span><small>${d.rest ? 'Rest day' : `${d.items.length} exercises`}${mark(i)}</small></button>`;
-  });
+  // Each of a day's workouts on a fixed-weekday routine, its second as its own choice (r68, 366 (c)).
+  const days = R.days.flatMap((d, i) =>
+    (weekly && dayParts(d).length > 1 ? dayParts(d) : [1 as const]).map(p => {
+      const w = weekly && dayParts(d).length > 1 ? dayWorkout(d, p) : d;
+      const on = i === di && p === part && !m.free;
+      return html`<button type="button" class=${'btn fullw pastday' + (on ? ' on' : '')} data-act="dayPick" data-i=${String(i)} data-part=${p === 2 ? '2' : nothing} aria-current=${String(on)}><span>${dayLabel(R, i)}: ${w.name}</span><small>${w.rest ? 'Rest day' : `${w.items.length} exercises`}${p === 1 ? mark(i) : ''}</small></button>`;
+    })
+  );
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="saH"><div class="sheet-h"><h3 id="saH">Start something else</h3>${closeX()}</div>
   <div class="ob-opts">${opts}</div><p class="small muted u-m14-0-6">Another day</p><div class="stack">${days}</div></div>`;
 }

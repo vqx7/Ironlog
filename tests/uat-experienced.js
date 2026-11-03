@@ -11,8 +11,8 @@
 //   2  Pull day, a heavy single over the best weight, then back-off sets.
 //   3  Legs on a 320 px phone: a 1,000 lb leg press, calf raises past 20 reps.
 //   4  A typo that makes a PR, fixed from History.
-//   5  A week that slips a day: Monday's Push done on Tuesday (observations
-//      for V, not pass or fail: the rule there is V's to set).
+//   5  A week that slips a day: Monday's Push done on Tuesday (observations;
+//      the rule is V's of 2026-11-02, NEW-31, held by tests/r68.js section 6).
 // `node tests/uat-experienced.js [page]`; UAT=1,3 runs some.
 const { open, engine } = require('./h');
 let browser;
@@ -53,7 +53,9 @@ async function phone(start, w = 390) {
       const cut = [...document.querySelectorAll('#view input, #view .num, #view .ls')].filter(e => e.offsetParent && e.scrollWidth > e.clientWidth + 1).map(e => (e.value || e.innerText || '').slice(0, 20) + ' [' + e.scrollWidth + '>' + e.clientWidth + ']');
       return { page: se.scrollWidth - se.clientWidth, cut: cut.slice(0, 8) };
     }),
-    start: async () => { await page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150); },
+    // This lifter trains the day's own workout: when Today offers one still to do from earlier in the week (r68,
+    // NEW-31), the tap on "Do today's ... instead" comes first, as on the phone.
+    start: async () => { const own = await page.$('#view .hero [data-act="todayOwn"]'); if (own) { await own.click(); await wait(150); } await page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150); },
     // Finish, saving what was done; the questions asked and the recap's words returned.
     finish: async () => {
       await page.click('#view [data-act="finish"]'); const asked = [];

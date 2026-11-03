@@ -73,6 +73,16 @@
 //      typed in on Today in 3 minutes after the gym, saved untimed with the
 //      recap saying so, since no minutes were given and the clock's are not
 //      how long it took.
+//  15  a lifter who found the app text heavy (r69, V, 2026-11-03): three
+//      days a week for five weeks, one session missed; a Monday session
+//      started from Today, whose header says when it began and the minutes
+//      left with the sets done counted by the bar alone (worked out here: the
+//      sets of the day's plan), a set ticked moving it on; the check-in from
+//      its button beside the date, answered by taps and saved with the
+//      session by Finish; then Stats read by taps: adherence as sessions,
+//      11 of the 12 the routine planned in the 4 full weeks before, with the
+//      percentage a tap away (92%), and By region's weeks named short, in
+//      full a tap away.
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
 const { open, engine } = require('./h');
@@ -143,7 +153,10 @@ const seed = (H, o) => H.ev(o => {
   S.routines = [R]; S.activeRoutineId = 'R1';
   S.sessions = o.sessions.map((x, i) => { const di = o.days.findIndex(d => d.id === x.day); const day = o.days[di]; return { id: 'h' + i, date: x.date, dayIdx: di, dayId: day.id, dayName: day.name, routineId: 'R1', notes: '', ex: x.ex.map(([exId, sets]) => { const it = day.items.find(y => y[0] === exId); return { exId, rr: [it[2], it[3]], sets: sets.map(([w, r, rir]) => ({ w: kg(w), r, rir: rir == null ? null : rir, warm: false, drop: false })) }; }) }; });
   S.bodyweights = (o.bw || []).map(([date, w], i) => ({ id: 'w' + i, date, kg: kg(w) }));
-  L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
+  L.state = L.normalize(S);
+  // A step set on a lift, as the Plan editor sets it (o.steps, in the unit): it comes before the default by equipment (r68).
+  for (const [id, v] of Object.entries(o.steps || {})) { const e = L.state.exercises.find(x => x.id === id); if (e) e.inc = kg(v); }
+  L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
 }, o);
 // Last time's set beside a row, as shown (100×8).
 const lastCell = (H, b, s) => H.ev(([b, s]) => { const btn = document.querySelector(`#view [data-act="sDone"][data-b="${b}"][data-s="${s}"]`); const ls = btn && btn.closest('.sg') && btn.closest('.sg').querySelector('.ls'); return ls ? ls.innerText.replace(/\s+/g, '') : null; }, [b, s]);
@@ -256,7 +269,8 @@ async function finish() {
     const T0 = '2026-10-12';
     const H = await phone(T0);
     const { ev } = H;
-    // A routine of one day: bench press 3 x 6-10 at 1 in reserve, 5 lb a step; two sessions logged.
+    // A routine of one day: bench press 3 x 6-10 at 1 in reserve, 5 lb a step (set on the lift, as the Plan editor
+    // sets it; the default by equipment, 10 lb, is tests/r68.js section 4); two sessions logged.
     await ev(([T0]) => {
       const L = window.__ironlog; const S = L.state; const LB = 0.45359237;
       S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.autoDone = false;
@@ -266,7 +280,7 @@ async function finish() {
       const mk = (id, date, sets) => ({ id, date, dayIdx: 0, dayId: 'Dp', dayName: 'Push', routineId: 'Rp', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: sets.map(([w, r, rir]) => ({ w: w * LB, r, rir, warm: false, drop: false })) }] });
       const add = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
       S.sessions = [mk('s1', add(T0, -14), [[135, 9, 1], [135, 8, 1], [135, 8, 1]]), mk('s2', add(T0, -7), [[135, 10, 1], [135, 10, 1], [135, 10, 1]])];
-      L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
+      L.state = L.normalize(S); L.state.exercises.find(x => x.id === 'bench').inc = 5 * LB; L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
     }, [T0]);
     await H.start();
     let d = await H.draft();
@@ -306,7 +320,8 @@ async function finish() {
       const add = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
       // Three sessions at 185, the last six weeks ago.
       S.sessions = [mk('b1', add(T0, -56), [[185, 8, 1], [185, 7, 1], [185, 7, 1]]), mk('b2', add(T0, -49), [[185, 8, 1], [185, 8, 1], [185, 7, 1]]), mk('b3', add(T0, -42), [[185, 8, 1], [185, 8, 1], [185, 7, 1]])];
-      L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
+      // 5 lb a step, set on the lift (the climb on the default 10 lb step is tests/r68.js section 4).
+      L.state = L.normalize(S); L.state.exercises.find(x => x.id === 'bench').inc = 5 * LB; L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
     }, [T0]);
     // The first session back: about 90% of 185 (166.5), down to the step, 165, with 2 or more in reserve (Bosquet 2013; r34.2).
     {
@@ -552,7 +567,7 @@ async function finish() {
     const H = await phone(T0);
     const { ev, page } = H;
     const hist = [[135, 10, 1], [135, 10, 1], [135, 10, 1], [135, 10, 1]], row = [[50, 10, 1], [50, 10, 1], [50, 10, 1], [50, 10, 1]];
-    await seed(H, { unit: 'lb', days: [{ id: 'D1', name: 'Upper', items: [['bench', 4, 8, 12, 1, 90, 5, 'A'], ['dbRow', 4, 8, 12, 1, 90, 5, 'A']] }], sessions: [{ date: addD(T0, -14), day: 'D1', ex: [['bench', hist], ['dbRow', row]] }, { date: addD(T0, -7), day: 'D1', ex: [['bench', hist], ['dbRow', row]] }] });
+    await seed(H, { unit: 'lb', steps: { bench: 5 }, days: [{ id: 'D1', name: 'Upper', items: [['bench', 4, 8, 12, 1, 90, 5, 'A'], ['dbRow', 4, 8, 12, 1, 90, 5, 'A']] }], sessions: [{ date: addD(T0, -14), day: 'D1', ex: [['bench', hist], ['dbRow', row]] }, { date: addD(T0, -7), day: 'D1', ex: [['bench', hist], ['dbRow', row]] }] });
     // The target before the deload: 40 reps at 135 to beat.
     await ev(() => { const L = window.__ironlog; L.state.settings.timerMode = 'auto'; L.state.deloadWeek = L.weekStart(L.today()); L.saveNow(); L.render(); });
     await H.start();
@@ -979,6 +994,51 @@ async function finish() {
     const last = await ev(() => { const S = window.__ironlog.state.sessions; const s = S.find(x => x.ex.length === 2 && x.ex.every(b => b.sets.length === 3) && !x.ex.some(b => b.exId === 'bench')); return s && { durMin: s.durMin, ex: s.ex.map(b => b.exId) }; });
     ok(last && last.durMin == null && /Not timed/.test(fin.recap.text || ''), '14. six sets typed in 3 minutes are saved untimed, and the recap says so', { last, recap: (fin.recap.text || '').slice(0, 300) });
     ok(!H.P.errors.length, '14. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 15. A lifter who found the app text heavy (r69): the slimmer session header, the check-in behind its button, Stats' short lines.
+  if (run(15)) {
+    const T0 = '2026-11-02';
+    const H = await phone(T0);
+    const { ev, page } = H;
+    // Monday bench and rows, Wednesday squat, Friday pulldown, 3 x 8-12 each, from Monday Sep 28; Friday Oct 16 missed.
+    const days = [{ id: 'Dm', name: 'Push', items: [['bench', 3, 8, 12, 2, 90, 5], ['cableRow', 3, 8, 12, 2, 90, 5]] }, { id: 'Dt', name: 'Rest', items: [] }, { id: 'Dw', name: 'Legs', items: [['backSquat', 3, 8, 12, 2, 120, 5]] }, { id: 'Dh', name: 'Rest', items: [] }, { id: 'Df', name: 'Pull', items: [['latPulldown', 3, 8, 12, 2, 90, 5]] }, { id: 'Ds', name: 'Rest', items: [] }, { id: 'Du', name: 'Rest', items: [] }];
+    const sessions = [];
+    for (let w = 0; w < 5; w++) for (const [k, day, ex] of [[0, 'Dm', [['bench', [[135, 10, 2], [135, 10, 2], [135, 9, 2]]], ['cableRow', [[120, 10, 2], [120, 10, 2], [120, 10, 2]]]]], [2, 'Dw', [['backSquat', [[185, 10, 2], [185, 9, 2], [185, 9, 2]]]]], [4, 'Df', [['latPulldown', [[110, 10, 2], [110, 10, 2], [110, 10, 2]]]]]]) {
+      const date = addD('2026-09-28', 7 * w + k);
+      if (date !== '2026-10-16') sessions.push({ date, day, ex });
+    }
+    await seed(H, { unit: 'lb', days, sessions });
+    await ev(() => { const L = window.__ironlog; for (const d of L.state.routines[0].days) d.rest = !d.items.length; L.state = L.normalize(L.state); L.invalidate(); L.saveNow(); L.render(); });
+    await H.start();
+    const planned = 6; // the Monday's two lifts, 3 sets each
+    const head = () => ev(() => { const b = document.querySelector('#view .sprog .band'); return { meta: document.querySelector('#view .ph .meta').innerText.trim(), of: (document.getElementById('sessOf') || {}).textContent, now: b && b.getAttribute('aria-valuenow'), vt: b && b.getAttribute('aria-valuetext') }; });
+    const h0 = await head();
+    ok(/^Started 9:00 AM · ~\d+ min left$/.test(h0.meta) && h0.of === `0 of ${planned}` && h0.vt === `0 of ${planned} sets done`, '15. the session header: when it began and the minutes left; the bar counts the 6 sets planned', h0);
+    await H.type('w', 0, 0, 140); await H.type('r', 0, 0, 10); await H.effort(0, 0, 2); await H.tick(0, 0);
+    const h1 = await head();
+    ok(h1.of === `1 of ${planned}` && h1.now === '1' && !/sets? done/.test(h1.meta), '15. one set ticked: the bar 1 of 6, and the line still says no count', h1);
+    await page.click('#view [data-act="chkOpen"]'); await wait(120);
+    for (const [k, v] of [['sleep', 3], ['energy', 2], ['joints', 3]]) { await page.click(`#modal [data-act="chk"][data-k="${k}"][data-v="${v}"]`); await wait(100); }
+    const ck = await ev(() => ({ open: !!window.__ironlog.ui.modal, chk: window.__ironlog.state.draft.chk }));
+    ok(!ck.open && JSON.stringify(ck.chk) === '{"sleep":3,"energy":2,"joints":3}', '15. the check-in from its button: three taps, saved on the session, the sheet closed by the third', ck);
+    await H.finish();
+    const saved = await ev(() => { const s = window.__ironlog.state.sessions.find(x => x.date === '2026-11-02'); return s && { chk: s.chk, sets: s.ex.reduce((a, b) => a + b.sets.length, 0) }; });
+    ok(saved && JSON.stringify(saved.chk) === '{"sleep":3,"energy":2,"joints":3}' && saved.sets === 1, '15. Finish saves the set and the check-in', saved);
+    // Stats, read by taps. The 4 full weeks before this one (Oct 5 to Nov 1) planned 3 sessions each; one was missed.
+    const want = { done: 11, need: 12 };
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.ui.volMode = 'region'; L.render(); window.scrollTo(0, 0); });
+    for (const k of ['consistency', 'volume']) { await page.click(`#view > [data-mkey="${k}"] > summary`); await wait(150); }
+    const adh = await ev(() => { const p = document.getElementById('adhLine'); const c = p.cloneNode(true); c.querySelectorAll('.tipi').forEach(x => x.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); });
+    ok(adh === `Adherence, 4 weeks: ${want.done} of ${want.need}`, '15. adherence as sessions: 11 of the 12 planned in the 4 full weeks before', adh);
+    await page.$eval('#adhLine .tipi', e => e.scrollIntoView({ block: 'center' })); await wait(120);
+    await page.click('#adhLine .tipi'); await wait(100);
+    const tip = await ev(() => { const t = document.getElementById('tip'); return t && !t.hidden ? t.textContent : ''; });
+    ok(tip === `Adherence, previous 4 full weeks: ${Math.round(want.done / want.need * 100)}% of planned sessions (${want.done}/${want.need})`, '15. a tap on its i: the percentage, 92%', tip);
+    const reg = await ev(() => { const c = document.getElementById('chRadar') && document.getElementById('chRadar').closest('.card'); const p = c && [...c.querySelectorAll('p.small.muted')].find(x => x.querySelector('.tipi')); if (!p) return null; const q = p.cloneNode(true); q.querySelectorAll('.tipi').forEach(x => x.remove()); return { line: q.textContent.trim(), tip: p.querySelector('.tipi').getAttribute('data-tip') }; });
+    ok(reg && reg.line === '4-week average' && reg.tip.startsWith('Using your 4-week average. '), '15. By region: "4-week average", every week of the four trained, said in full in its i', reg);
+    ok(!H.P.errors.length, '15. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
 

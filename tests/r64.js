@@ -174,17 +174,19 @@ const run = n => !ONLY || ONLY.includes(n);
         const s = L.state; s.settings.onboarded = true; s.settings.todayStart = 'plan'; s.draft = null;
         const R = s.routines.find(x => x.id === s.activeRoutineId) || s.routines[0]; s.activeRoutineId = R.id;
         if (weekly) { R.schedule = 'weekly'; while (R.days.length < 7) R.days.push({ id: 'dx' + R.days.length, name: 'Rest', rest: true, items: [] }); R.days = R.days.slice(0, 7); R.days.forEach((d, i) => { if (i > 1) { d.rest = true; d.items = []; } else d.rest = false; }); R.days[1].name = 'Pull'; }
-        const d = R.days[sess.di];
-        s.sessions = sess.date ? [{ id: 'w1', date: sess.date, dayIdx: sess.di, dayId: d.id, dayName: d.name, routineId: R.id, free: false, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w: 100, r: 8, rir: 2, warm: false, drop: false }] }] }] : [];
+        // One session, or several (r68: Monday done as well, so NEW-31's offer of a day still to do stays out of the case).
+        s.sessions = [].concat(sess).filter(x => x.date).map((x, i) => { const d = R.days[x.di]; return { id: 'w' + (i + 1), date: x.date, dayIdx: x.di, dayId: d.id, dayName: d.name, routineId: R.id, free: false, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w: 100, r: 8, rir: 2, warm: false, drop: false }] }] }; });
         L.state = L.normalize(s); L.invalidate(); L.saveNow(); L.ui.todayDay = null; L.ui.tab = 'today'; L.render(); await new Promise(q => setTimeout(q, 150));
         const h = document.querySelector('#view .hero'); const n = h && h.querySelector('.hero-note');
         return { h2: h && h.querySelector('h2') && h.querySelector('h2').textContent.trim(), note: n ? n.textContent.trim() : '' };
       };
       const cycle = await note(false, { di: 0, date: '2026-10-27' }); // first: the weekly cases turn the routine weekly
-      return { cycle, done: await note(true, { di: 1, date: '2026-10-27' }), monday: await note(true, { di: 0, date: '2026-10-26' }), none: await note(true, {}) };
+      return { cycle, done: await note(true, [{ di: 0, date: '2026-10-26' }, { di: 1, date: '2026-10-27' }]), monday: await note(true, { di: 0, date: '2026-10-26' }), none: await note(true, {}) };
     });
-    ok(r.done.h2 === 'Pull' && r.done.note === 'Pull done today.', '5. a weekly routine\'s Tuesday done on Tuesday: Today says "Pull done today." (r63: nothing)', r.done);
-    ok(r.monday.note === '' && r.none.note === '', '5. (a guard) yesterday\'s Monday, or nothing logged, says nothing', r);
+    ok(r.done.h2 === 'Pull' && r.done.note === 'Pull done today.', '5. a weekly routine\'s Tuesday done on Tuesday, Monday done too: Today says "Pull done today." (r63: nothing)', r.done);
+    ok(r.monday.h2 === 'Pull' && r.monday.note === '', '5. (a guard) yesterday\'s Monday done: Today offers Tuesday\'s Pull and says nothing', r.monday);
+    // Since r68 (NEW-31, V's ruling of 2026-11-02) a fixed-weekday day not done is offered first, with a note; before, nothing logged said nothing.
+    ok(r.none.h2 !== 'Pull' && /, planned Mon, is still to do this week\./.test(r.none.note), '5. nothing logged on Tuesday: Monday\'s workout, still to do, is offered first (r68, NEW-31)', r.none);
     ok(r.cycle.note === 'Day 1 done today.', '5. (a guard) a cycle still says its day is done today', r.cycle);
   }
 
@@ -289,7 +291,8 @@ const run = n => !ONLY || ONLY.includes(n);
       const one = (sets, scale) => {
         s.settings.rirScale = scale; s.draft = null;
         s.sessions = [{ id: 'q1', date: '2026-10-08', dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [8, 12], sets: sets.map(([r, rir]) => ({ w: 60, r, rir, warm: false, drop: false })) }] }];
-        L.state = L.normalize(s); L.invalidate(); return L.suggest('bench', plan).text;
+        // A 2.5 kg step set on the bench (the default by equipment is 5 kg since r68, past this jump's cap from 60).
+        L.state = L.normalize(s); L.state.exercises.find(e => e.id === 'bench').inc = 2.5; L.invalidate(); return L.suggest('bench', plan).text;
       };
       return { extra: one([[10, 4], [10, 4], [10, 4], [8, 0]], 'rir'), plain: one([[10, 4], [10, 4], [10, 4]], 'rir'), rpe: one([[10, 4], [10, 4], [10, 4], [8, 0]], 'rpe') };
     });

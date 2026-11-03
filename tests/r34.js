@@ -24,7 +24,12 @@ const LB = 0.45359237;
       if (o.gym) s.settings.gym = o.gym; if (o.off) s.settings.autoAdj = false; if (o.fill) s.settings.loadFill = 'fill'; else delete s.settings.loadFill;
       const u = v => o.kg ? v : v * LB;
       s.sessions = [{ id: 'h1', date: '2026-10-03', dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: o.ex, rr: [o.lo, o.hi], sets: [0, 1, 2].map(i => ({ w: u(o.w), r: o.reps ? o.reps[i] : o.r0 || o.lo + 1, rir: 1, done: true })) }] }];
-      s.draft = null; L.state = L.normalize(s); L.invalidate();
+      s.draft = null; L.state = L.normalize(s);
+      /* The step these cases were written on, 5 lb or 2.5 kg, set on a bar, machine or cable lift as the Plan editor
+         sets it (the default by equipment, 10 lb or 5 kg since r68, is tests/r68.js section 4); Your gym's and a
+         dumbbell rack's steps are left to the app. */
+      for (const e of L.state.exercises) if (e.id === o.ex) { if (!o.gym && ['barbell', 'smith', 'machine', 'cable'].includes(e.equip)) e.inc = o.kg ? 2.5 : 5 * LB; else delete e.inc; }
+      L.invalidate();
       L.ACT.startFree(); if (L.ui.modal) L.ACT.mClose();
       const d = L.state.draft; const plan = { sets: o.sets || 3, repMin: o.lo, repMax: o.hi, rir: o.rir == null ? 1 : o.rir, rest: 90, inc: o.kg ? 2.5 : 5 * LB };
       const b = L.newBlock(o.ex, plan, o.light ? { light: true } : {}); if (o.light) b.light = true; d.ex.push(b);
@@ -313,6 +318,8 @@ const LB = 0.45359237;
     const ev = (f, a) => P.page.evaluate(f, a);
     await ev(() => { const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg'; s.bodyweights = [{ id: 'b', date: '2026-10-09', kg: 80 }];
       s.sessions = [{ id: 'f0', date: '2026-10-03', dayIdx: 0, dayId: null, dayName: 'Freestyle', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w: 60, r: 12, rir: 1, done: true })) }] }];
+      // 2.5 kg a step set on the bench, as these cases were written (the default by equipment is 5 kg since r68).
+      L.state.exercises.find(e => e.id === 'bench').inc = 2.5;
       L.invalidate(); L.saveNow(); });
     // Freestyle by default.
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:timer'] = true; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
@@ -347,7 +354,7 @@ const LB = 0.45359237;
       return o;
     });
     ok(two.order === 'am,a0', 'two sessions on one day are ordered by the time they started, not by id', two);
-    ok(two.w === 65 && /12, 12, 12|12×3|×12/.test(two.last), 'the next suggestion works from the evening session, the later one (62.5 x 12 all sets: 65)', two);
+    ok(two.w === 65 && /12, 12, 12|12×3|×12/.test(two.last), 'the next suggestion works from the evening session, the better of the two (62.5 x 12 all sets: 65)', two);
     await ev(() => { const L = window.__ironlog; L.ACT.calDay({ dataset: { date: '2026-10-09' } }); });
     await wait(80);
     const dp = await ev(() => ({ kind: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind, items: [...document.querySelectorAll('#modal [data-act="wkOpen"]')].map(b => b.innerText.replace(/\s+/g, ' ')) }));
@@ -419,7 +426,10 @@ const LB = 0.45359237;
       s.settings.onboarded = true; s.settings.unit = 'lb'; s.settings.autoDone = false; s.settings.timerMode = 'auto'; s.injuries = [];
       const set3 = (w, r) => [0, 1, 2].map(() => ({ w: w * LB, r, rir: 1, done: true }));
       s.sessions = [{ id: 'h1', date: '2026-10-03', dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: set3(185, 8) }, { exId: 'bbRow', rr: [6, 10], sets: set3(155, 8) }, { exId: 'dbCurl', rr: [10, 15], sets: set3(30, 12) }] }];
-      s.draft = null; L.state = L.normalize(s); L.invalidate();
+      s.draft = null; L.state = L.normalize(s);
+      // 5 lb a step set on the bar lifts, as written (the default by equipment is 10 lb since r68).
+      for (const e of L.state.exercises) if (e.id === 'bench' || e.id === 'bbRow') e.inc = 5 * LB;
+      L.invalidate();
       L.ACT.startFree(); if (L.ui.modal) L.ACT.mClose();
       const d = L.state.draft;
       for (const [id, lo, hi] of [['bench', 6, 10], ['bbRow', 6, 10], ['dbCurl', 10, 15]]) d.ex.push(L.newBlock(id, { sets: 3, repMin: lo, repMax: hi, rir: 1, rest: 120, inc: 5 * LB }, {}));
@@ -487,7 +497,9 @@ const LB = 0.45359237;
       const txt = view.innerText;
       const head = (view.querySelector('.headline') || {}).innerText || '';
       const headTip = !!view.querySelector('.headline .tipi');
-      const radar = [...view.querySelectorAll('p.small.muted')].map(p => p.innerText).find(x => /^Using /.test(x)) || '';
+      // The weeks it uses: named short on the line since r69, in full in its i (V, 2026-11-03).
+      const radarP = [...view.querySelectorAll('p.small.muted')].find(p => { const i = p.querySelector('.tipi'); return i && /^Using /.test(i.dataset.tip); });
+      const radar = radarP ? { line: radarP.innerText.replace(/\s*i$/, '').trim(), tip: radarP.querySelector('.tipi').dataset.tip } : null;
       const radarTip = [...view.querySelectorAll('.tipi')].some(b => /dashed ring/.test(b.dataset.tip));
       const et = [...view.querySelectorAll('table.t')].find(tb => [...tb.querySelectorAll('th')].some(th => /best estimate/i.test(th.innerText)));
       const e1 = et ? [...et.querySelectorAll('tr')].slice(1).map(tr => tr.lastElementChild.innerText.trim()) : [];
@@ -497,9 +509,9 @@ const LB = 0.45359237;
       return { txt, head, headTip, radar, radarTip, e1, set, co };
     });
     ok(!/\b1 hard sets\b/.test(t.txt) && !/hard sets a week on average, target [\d-]+, this week [\d.]+ so far/.test(t.txt), 'Muscles reads as one short line per muscle ("1 hard set", no "so far" clause)', t.txt.match(/.{0,40}a week on average.{0,60}/));
-    ok(!/Rising: hold this volume\./.test(t.txt) && (t.txt.match(/keep the sets as they are/g) || []).length <= 1, 'strength return on volume says "keep the sets" once, not on every rising row', (t.txt.match(/Rising[^\n]*/g) || []).slice(0, 3));
+    ok(!/Rising: hold this volume\./.test(t.txt) && (t.txt.match(/keep the sets/gi) || []).length <= 1, 'strength return on volume says "keep the sets" once, not on every rising row', (t.txt.match(/Rising[^\n]*/g) || []).slice(0, 3));
     ok((t.txt.match(/Same stretch:/g) || []).length <= 1, 'size check states the stretch, waist, and bodyweight once above the rows', (t.txt.match(/Same stretch:/g) || []).length);
-    ok(/^Using /.test(t.radar) && t.radarTip && !/Hard sets per region against/.test(t.txt), 'the radar says which weeks it uses; how to read it is behind an i', t.radar);
+    ok(t.radar && /week average$/.test(t.radar.line) && /^Using your (4-week average|average over )/.test(t.radar.tip) && t.radarTip && !/Hard sets per region against/.test(t.txt), 'the radar says which weeks it uses (short since r69, in full in its i); how to read it is behind the i', t.radar);
     ok(t.head.length < 140 && t.headTip && !/likely/.test(t.head), 'a lift\'s headline is one short line, with the rate and ranges behind an i', t.head);
     ok(t.e1.length > 0 && t.e1.every(x => /^\d+$/.test(x)), 'estimates show whole pounds (no "293.8" next to "294")', t.e1.slice(0, 8));
     ok(/RIR, reps in reserve: reps you could still have done\. RIR 3 or less is a hard set\./.test(t.set) && !/Also in the menu at the top right/.test(t.set) && !/Nothing stops being tracked/.test(t.set), 'Settings: RIR said in one line; the Layout and Help filler gone', t.set.match(/RIR, reps in reserve[^\n]*/));

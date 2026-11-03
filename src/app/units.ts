@@ -27,6 +27,18 @@ export const DEFAULT_STEP: Readonly<Record<'kg' | 'lb', number>> = { kg: 2.5, lb
     unit is on screen (r27). */
 export const STEP_LB = DEFAULT_STEP.lb * LB;
 
+/** The default load step by how a lift is loaded (367, V's pick of 2026-11-02, "By equipment"), as typed in each
+    unit: a barbell or Smith bar and a pin-loaded stack or cable go up 10 lb or 5 kg (5 lb or 2.5 kg a side on a bar,
+    the smallest plates most gyms keep in pairs, and a stack's usual plate), a dumbbell 5 lb or 2 kg each (the usual
+    spacing of a rack). Any other lift, a plate-loaded machine typed a side and load added to a bodyweight lift
+    keep DEFAULT_STEP. Conventions (docs/EVIDENCE.md, Load steps by equipment). A lift's own step, Your gym's plates,
+    stack and rack, and a rack read from a lift's own loads all come first. */
+export const EQUIP_STEP: Readonly<Record<'bar' | 'stack' | 'each', Readonly<Record<'kg' | 'lb', number>>>> = {
+  bar: { lb: 10, kg: 5 },
+  stack: { lb: 10, kg: 5 },
+  each: { lb: 5, kg: 2 }
+};
+
 /** Whether a number is a whole number of a step, to a millionth of the step. */
 export const onStep = (v: number, step: number): boolean => Math.abs(v / step - Math.round(v / step)) < EPS_SAME;
 

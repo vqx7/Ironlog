@@ -449,7 +449,8 @@ function rirSettings(): TemplateResult {
       ? `${c.n} calibration set${c.n === 1 ? '' : 's'}, none in the last ${CAL_WEEKS} weeks.`
       : `${c.recent} recent calibration set${c.recent === 1 ? '' : 's'}: median miss ${raw > 0 ? '+' : ''}${r1(raw)} reps (${raw > 0 ? 'you stop with more left than you call' : raw < 0 ? 'closer to failure than you call' : 'accurate'}). Correction applied: ${c.bias > 0 ? '+' : ''}${c.bias}.`;
   const sc = rirScale();
-  // What RIR is stays on screen here (V, r27): this is where it is decided whether to use it.
+  /* What RIR is stays on screen here (V, r27): this is where it is decided whether to use it. r69 kept it (V,
+     2026-11-03: the text cuts were to override nothing already agreed). */
   return html`<p class="small u-m0"><b>RIR, reps in reserve:</b> reps you could still have done. RIR 3 or less is a hard set.</p>
 <label class="field">Reps in reserve<select data-bind="rirMode">
 <option value="on" .selected=${live(s.rirMode === 'on')}>On: log RIR and use it as logged</option>
@@ -595,35 +596,66 @@ function syncInfo(): TemplateResult {
 `;
 }
 
-/** What the suggestions are, said once where people look (r31.1, V: a subtle notice). */
-function safetyLine(): TemplateResult {
-  return html`<p class="small muted u-m8-0-0" id="safety"><b>Suggestions:</b> estimates from your log, not medical or coaching advice. Train within your limits and stop on pain. ${tipButton(SAFETY_TXT, 'About suggestions')}</p>
+/* Your data's two notes, what the suggestions are (r31.1, V: a subtle
+   notice) and where the log goes, are one short line each, with every word
+   they said before and the longer explanation in the i beside them (r69, V,
+   2026-11-03: two notes of three lines each read as fine print). */
+/** A note in Your data: its bold label, its short words, and the full text behind its i. */
+function noteLine(id: string, label: string, words: string, full: string, more: string, about: string): TemplateResult {
+  return html`<p class="small muted u-m8-0-0" id=${id}><b>${label}:</b> ${words} ${tipButton(`${full} ${more}`, about)}</p>
 `;
+}
+
+/** What the suggestions are, said once where people look. */
+function safetyLine(): TemplateResult {
+  return noteLine(
+    'safety',
+    'Suggestions',
+    'estimates, not medical or coaching advice.',
+    'Estimates from your log, not medical or coaching advice. Train within your limits and stop on pain.',
+    SAFETY_TXT,
+    'About suggestions'
+  );
 }
 
 /** Where the data lives and what leaves the device, plainly. */
 function privacyLine(): TemplateResult {
   const claude = inClaude();
   if (!claude && AUTH() && acct.user)
-    return html`<p class="small muted u-m8-0-0" id="privacy"><b>Privacy:</b> no ads, no tracking. Your log syncs to your ${APP_NAME} account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipButton(
+    return noteLine(
+      'privacy',
+      'Privacy',
+      `your log syncs to your ${APP_NAME} account.`,
+      `No ads, no tracking. Your log syncs to your ${APP_NAME} account. Only you and the app's owner can see it. Reports you send go to the app owner.`,
       'It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data and your email address, as with any app without end-to-end encryption. Your email is used only to sign in and reset your password, and nothing is shared or sold. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them.',
       'About privacy'
-    )}</p>
-`;
+    );
   if (!claude && AUTH())
-    return html`<p class="small muted u-m8-0-0" id="privacy"><b>Privacy:</b> no ads, no tracking, and nothing sent without an account. Reports you send go to the app owner. ${tipButton(
+    return noteLine(
+      'privacy',
+      'Privacy',
+      'nothing sent without an account.',
+      'No ads, no tracking, and nothing sent without an account. Reports you send go to the app owner.',
       "Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log and email are stored in a Supabase database, readable by your account and by the app owner; the email is used only to sign in and reset your password. A new password is checked against known breaches with only the first 5 characters of its hash. Deleting the app or this site's data deletes the copy on this device, so keep a backup file or an account.",
       'About privacy'
-    )}</p>
-`;
+    );
   return claude
-    ? html`<p class="small muted u-m8-0-0" id="privacy"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipButton('Export and CSV files go only where you save them.', 'About privacy')}</p>
-`
-    : html`<p class="small muted u-m8-0-0" id="privacy"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner. ${tipButton(
+    ? noteLine(
+        'privacy',
+        'Privacy',
+        'stored with your Claude account.',
+        'No ads, no tracking. Your log is stored with your Claude account.',
+        'Export and CSV files go only where you save them.',
+        'About privacy'
+      )
+    : noteLine(
+        'privacy',
+        'Privacy',
+        'your log stays on this device.',
+        'No account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner.',
         `${APP_NAME} has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site's data deletes your log, so keep a backup file.`,
         'About privacy'
-      )}</p>
-`;
+      );
 }
 
 /** The line that says a log kept aside for another account is on this phone (r56.1, PENDING 328 b). */
@@ -730,7 +762,6 @@ export function viewSettings(): TemplateResult {
 <option value="light" .selected=${live(s.theme === 'light')}>Light</option>
 </select></label>
 </div>
-<label class="field">Name (optional)<input type="text" data-bind="userName" .value=${fieldValue(s.userName || '')} maxlength="40" autocomplete="given-name"/></label>
 <div>
 <p class="small muted u-m0-0-6_fw600">Accent colour</p>
 <div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
@@ -1458,13 +1489,6 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
       state.settings.barKg = n == null || n <= 0 ? null : Math.min(fromD(n) ?? 0, LIMITS.barKg);
     });
     rerenderKeepScroll();
-  },
-  userName(t) {
-    const n = t.value.replace(/\s+/g, ' ').trim().slice(0, LIMITS.name);
-    act(() => {
-      if (n) state.settings.userName = n;
-      else delete state.settings.userName;
-    });
   },
   bwGoalPct(t) {
     const n = numIn(t.value);

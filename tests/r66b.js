@@ -498,7 +498,9 @@ const stored = H => H.ev(async secret => {
       ['Log a past workout', "L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); L.ACT.pastOpen({ dataset: {} });"],
       ['the account sheet', "L.state.settings.onboarded = true; L.render(); L.ACT.acctOpen({ dataset: { mode: 'signup' } });"],
       ['import', "L.state.settings.onboarded = true; L.render(); L.ACT.impOpen({ dataset: {} });"],
-      ['an exercise menu', "L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); document.querySelector('.hero [data-act=\"startSession\"]').click(); L.ACT.bMenu({ dataset: { b: '0' } });"]
+      // Every lift on a 5 lb step of its own in both builds: r68 gives a barbell lift a 10 lb default on purpose (367),
+      // which the menu's Load step button names, and this compares the buttons' look.
+      ['an exercise menu', "L.state.settings.onboarded = true; for (const e of L.state.exercises) e.inc = 5 * 0.45359237; L.ui.tab = 'today'; L.render(); document.querySelector('.hero [data-act=\"startSession\"]').click(); L.ACT.bMenu({ dataset: { b: '0' } });"]
     ];
     const read = async (file, dark, code) => {
       const P = await open(file, { browser, w: 390, h: 844, dark, clock: '2026-11-02T09:00:00' });

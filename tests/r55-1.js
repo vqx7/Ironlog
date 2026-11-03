@@ -107,8 +107,8 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
     const sig = () => ev(() => { const d = window.__ironlog.state.draft; return d.ex.map(b => `${b.exId}${b.light ? '(L)' : ''}:${b.sw}:${b.sets.length}`).join(' '); });
     const logSet = async (b, s, w, r) => { if (w != null) await typ(W(b, s), w); await typ(R(b, s), r); await page.click(`[data-act="sDone"][data-b="${b}"][data-s="${s}"]`); await wait(150); const m = await modal(); if (m && m.kind === 'confirm') { await ev(() => window.__ironlog.ACT.mOk()); await wait(100); } };
     const lighten = async () => {
-      await ev(() => { const L = window.__ironlog; L.ui.folds['logger:checkin'] = true; L.render(); }); await wait(80);
-      if (!(await page.$('[data-act="makeLight"]'))) { const ks = await ev(() => [...new Set([...document.querySelectorAll('[data-act="chk"]')].map(b => b.dataset.k))]); for (const k of ks) { await page.click(`[data-act="chk"][data-k="${k}"][data-v="1"]`); await wait(80); } }
+      // The check-in is a sheet behind its button since r69 (a fold at the top of the session until then); the third answer closes it.
+      if (!(await page.$('[data-act="makeLight"]'))) { await page.click('#view [data-act="chkOpen"]'); await wait(80); const ks = await ev(() => [...new Set([...document.querySelectorAll('#modal [data-act="chk"]')].map(b => b.dataset.k))]); for (const k of ks) { await page.click(`#modal [data-act="chk"][data-k="${k}"][data-v="1"]`); await wait(80); } }
       await page.click('[data-act="makeLight"]'); await wait(200);
     };
     await startDay(0); await logSet(0, 0, 60, 8);
@@ -271,12 +271,13 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
     await log([ses('k1', '2026-10-01', 'bench', [6, 10], Array(4).fill([102.5, 10])), ses('k2', '2026-10-08', 'bench', [6, 10], Array(4).fill([102.5, 10]))]);
     const kgs = await readBench('kg', 1.25);
     ok(onKg(kgs.sw) && onKg(kgs.light) && kgs.warm.every(onKg) && kgs.sw > 102.5, 'in kg, bench at 102.5 kg with the 1.25 kg plates off: the next load, the lighter day and the warm-ups are loads a 20 kg bar and 2.5 kg plates make (r55: 107.5, 92.5, 87.5)', kgs);
-    // A guard: with every plate on hand, 230 lb is loadable and goes up as before, by 5 lb.
+    // A guard: with Your gym not set, 230 lb is loadable and goes up by the default step, 10 lb on a barbell since r68
+    // (367, V's pick of 2026-11-02; 5 lb until r67).
     await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; L.saveNow(); });
     await log([ses('h1', '2026-10-01', 'bench', [6, 10], Array(4).fill([230 * LB, 10])), ses('h2', '2026-10-08', 'bench', [6, 10], Array(4).fill([230 * LB, 10]))]);
     await ev(() => { const L = window.__ironlog; delete L.state.settings.gym; L.saveNow(); });
     const full = await ev(() => { const L = window.__ironlog; return L.suggest('bench', L.planFor('bench'), {}).w / 0.45359237; });
-    ok(Math.abs(full - 235) < 0.01, 'a guard: with Your gym not set, 230 lb x 10 x 4 still goes to 235', { full });
+    ok(Math.abs(full - 240) < 0.01, 'a guard: with Your gym not set, 230 lb x 10 x 4 goes to 240, the default 10 lb step on a barbell', { full });
     await ev(() => { const L = window.__ironlog; delete L.state.settings.gym; L.state.settings.unit = 'kg'; L.saveNow(); L.render(); });
   }
 

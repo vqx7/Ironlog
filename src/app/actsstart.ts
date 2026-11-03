@@ -8,7 +8,7 @@
 
 import { addDays, isDate, monthOf, today, uid } from './util';
 import { EQUIP } from './library';
-import { fixSupersets, sessDayIdx } from './routines';
+import { dayWorkout, fixSupersets, sessDayIdx } from './routines';
 import { isWork } from './formulas';
 import { sessCmp } from './records';
 import type { DraftBlock, Plan } from './types';
@@ -74,16 +74,19 @@ function begin(d: DraftLike, live: boolean): void {
    it opened and saved as one. It is logged as what was done, and a lift done
    lighter reads lighter from its numbers. */
 /** A past workout's session: the routine day given, or a blank one, on its date. */
-function pastDraft(date: string, di: number | null): DraftLike {
+function pastDraft(date: string, di: number | null, part: 1 | 2 = 1): DraftLike {
   const R = activeRoutine();
-  const day = di == null ? null : R.days[di];
-  if (!day || di == null) return { ...freeDraft('Freestyle'), date, startedAt: null, past: true };
+  const day0 = di == null ? null : R.days[di];
+  if (!day0 || di == null) return { ...freeDraft('Freestyle'), date, startedAt: null, past: true };
+  // One of the day's two workouts on a fixed-weekday routine (r68, 366 (c); the review of r68: both in one).
+  const day = R.schedule === 'weekly' ? dayWorkout(day0, part) : day0;
   return {
     id: uid(),
     startedAt: null,
     date,
     dayIdx: di,
     dayId: day.id,
+    ...(part === 2 && R.schedule === 'weekly' ? { part: 2 as const } : {}),
     dayName: day.name,
     routineId: R.id,
     deload: false,
@@ -117,8 +120,11 @@ function startSession(t: Tap): void {
   toastQuiet();
   const R = activeRoutine();
   const di = Number(t.dataset.day);
-  const d = R.days[di];
-  if (!d) return;
+  const d0 = R.days[di];
+  if (!d0) return;
+  // The day's second workout on a fixed-weekday routine (r68, 366 (c)), else its first.
+  const part = R.schedule === 'weekly' && t.dataset.part === '2' ? 2 : 1;
+  const d = R.schedule === 'weekly' ? dayWorkout(d0, part) : d0;
   const light = t.dataset.light === '1';
   const deload = !light && isDeloadWeek();
   const items = d.rest ? [] : d.items.map(it => (light || deload ? { ...it, sets: halfSets(it.sets) } : it));
@@ -129,6 +135,7 @@ function startSession(t: Tap): void {
       date: today(),
       dayIdx: di,
       dayId: d.id,
+      ...(part === 2 ? { part: 2 as const } : {}),
       dayName: d.name + (light ? ' (lighter)' : deload ? ' (deload)' : ''),
       routineId: R.id,
       deload,
@@ -136,7 +143,7 @@ function startSession(t: Tap): void {
       cardio: [],
       notes: light ? LIGHTER_NOTE : deload ? DELOAD_NOTE : '',
       editingId: null,
-      ex: items.map(it => newBlock(it.exId, it, { deload, light }))
+      ex: items.map(it => newBlock(it.exId, it, { deload, light, before: today() }))
     },
     true
   );
@@ -151,6 +158,7 @@ function wkGo(t: Tap): void {
     const di = t.dataset.day != null ? Number(t.dataset.day) : null;
     const on = d === today() || di == null || !R.days[di] ? null : di;
     ui.todayDay = on;
+    ui.todayPart = null;
     // The date it was opened for, said on the card when past this week (329, r59).
     ui.todayAt = on == null ? null : { d, di: on };
   }
@@ -341,7 +349,10 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!s) return;
     const go = (): void => {
       const R = activeRoutine();
-      const day = !s.free && s.routineId === R.id && s.dayId ? R.days.find(x => x.id === s.dayId) : undefined;
+      const day0 = !s.free && s.routineId === R.id && s.dayId ? R.days.find(x => x.id === s.dayId) : undefined;
+      // A day's second workout done again is that workout again (r68, 366 (c); the review of r68: it started as the first).
+      const part = R.schedule === 'weekly' && s.part === 2 && day0 && day0.items.some(i => i.pm) ? 2 : 1;
+      const day = day0 && R.schedule === 'weekly' ? dayWorkout(day0, part) : day0;
       const deload = isDeloadWeek();
       const plan = (b: (typeof s.ex)[number]): DraftBlock['plan'] => {
         const it = day && day.items.find(i => i.exId === b.exId);
@@ -356,7 +367,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         return blockPlan(p);
       };
       const ex = s.ex.map(b => {
-        const nb = newBlock(b.exId, plan(b), { deload });
+        const nb = newBlock(b.exId, plan(b), { deload, before: today() });
         const n = b.sets.filter(isWork).length;
         if (deload && n && !(day && day.items.some(i => i.exId === b.exId))) nb.full = Math.min(n, MAX_FULL);
         return nb;
@@ -368,8 +379,9 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
               id: uid(),
               startedAt: Date.now(),
               date: today(),
-              dayIdx: R.days.indexOf(day),
+              dayIdx: day0 ? R.days.indexOf(day0) : -1,
               dayId: day.id,
+              ...(part === 2 ? { part: 2 as const } : {}),
               dayName: day.name + (deload ? ' (deload)' : ''),
               routineId: R.id,
               deload,
@@ -396,13 +408,28 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   },
   startSession,
   startAltOpen(t) {
-    openModal({ kind: 'startAlt', di: Number(t.dataset.day), free: t.dataset.free === '1' });
+    openModal({
+      kind: 'startAlt',
+      di: Number(t.dataset.day),
+      free: t.dataset.free === '1',
+      ...(t.dataset.part === '2' ? { part: 2 as const } : {})
+    });
+  },
+  // Today's own workout on a fixed-weekday routine, when the card offered one from another day (NEW-31, r68).
+  todayOwn(t) {
+    ui.todayDay = Number(t.dataset.day);
+    ui.todayPart = t.dataset.part === '2' ? 2 : 1;
+    ui.todayAt = null;
+    window.scrollTo(0, 0);
+    render();
   },
   // Another day of the plan on the card (the old Change day list); in a blank-session Today it shows that day's card.
   dayPick(t) {
     const i = Number(t.dataset.i);
     closeModal();
     ui.todayDay = i;
+    // The workout picked, its first named as one (the second review of r68: tapping Push showed Arms once Push was done).
+    ui.todayPart = t.dataset.part === '2' ? 2 : 1;
     ui.todayAt = null;
     window.scrollTo(0, 0);
     render();
@@ -414,6 +441,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   pickView(t) {
     closeModal();
     ui.todayDay = Number(t.dataset.day);
+    ui.todayPart = t.dataset.part === '2' ? 2 : 1;
     ui.todayAt = null;
     ui.tab = 'today';
     window.scrollTo(0, 0);
@@ -424,7 +452,12 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const di = Number(t.dataset.day);
     const R = activeRoutine();
     if (!R.days[di]) return;
-    openModal({ kind: 'eq', day: di, equip: (ui.eqLast || EQUIP.map(x => x[0])).slice() });
+    openModal({
+      kind: 'eq',
+      day: di,
+      equip: (ui.eqLast || EQUIP.map(x => x[0])).slice(),
+      ...(t.dataset.part === '2' ? { part: 2 as const } : {})
+    });
   },
   eqToggle(t) {
     const m = ui.modal;
@@ -437,11 +470,13 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const m = ui.modal;
     if (!m || m.kind !== 'eq') return;
     const R = activeRoutine();
-    const day = R.days[m.day];
-    if (!day) {
+    const day0 = R.days[m.day];
+    if (!day0) {
       closeModal();
       return;
     }
+    // The day's second workout when the card showed it (r68, 366 (c)).
+    const day = R.schedule === 'weekly' ? dayWorkout(day0, m.part === 2 ? 2 : 1) : day0;
     const eq = new Set(m.equip);
     const pl = eqPlan(day, eq).filter(x => x.to);
     if (!pl.length) {
@@ -457,7 +492,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       // A much harder swap gets a range it can be done in (r30): 3 to 6 reps, 2 in reserve.
       const sp = x.from ? swapPlan(it, x.from, x.to, R, day.id) : { ...it };
       if (x.hard) Object.assign(sp, HARD_SWAP);
-      const b = newBlock(x.to, sp, { deload });
+      const b = newBlock(x.to, sp, { deload, before: today() });
       if (x.from) b.swappedFrom = x.from;
       return [b];
     });
@@ -474,6 +509,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         date: today(),
         dayIdx: m.day,
         dayId: day.id,
+        ...(m.part === 2 ? { part: 2 as const } : {}),
         dayName: day.name + (deload ? ' (deload)' : ''),
         routineId: R.id,
         deload,
@@ -493,12 +529,13 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!m || m.kind !== 'past') return;
     const date = m.date;
     const di = t.dataset.day === 'free' ? null : Number(t.dataset.day);
+    const part = t.dataset.part === '2' ? 2 : 1;
     const go = (): void => {
       stopTimer();
       wakeOff();
       ui.tab = 'today';
       ui.todayDay = null;
-      begin(pastDraft(date, di), false);
+      begin(pastDraft(date, di, part), false);
       if (di == null) openModal({ kind: 'picker', mode: 'addBlock', title: 'Add exercise to session', q: '', m: '' });
     };
     closeModal();
@@ -539,6 +576,8 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         routineId: s.routineId,
         notes: s.notes || '',
         ...(s.pics && s.pics.length ? { pics: [...s.pics] } : {}),
+        // An edit of a day's second workout stays one (r68, 366 (c)).
+        ...(s.part === 2 ? { part: 2 as const } : {}),
         ex: s.ex.map(b => {
           const it = dayItems.find(i => i.exId === b.exId);
           const plan = it ? { ...it } : blockPlan(planFor(b.exId, null, null, false, s.date));

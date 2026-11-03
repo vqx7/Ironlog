@@ -140,9 +140,8 @@ import { rerenderKeepScroll } from './page';
 const PCT_SHOWN = 0.1;
 /** A change and a weekly rate pointing different ways are explained once the change is past DISAGREE_PCT percent and the rate past flat. */
 const DISAGREE_PCT = 0.5;
-/** The lifts or muscles a summary line names before "and N more", and the muscles the line on ones rising at their volume names. */
-const NAMES_SHOWN = 3,
-  RISING_SHOWN = 4;
+/** The lifts or muscles a summary line names before "and N more". */
+const NAMES_SHOWN = 3;
 /** The bests listed before All, the PRs listed, and the sessions in a lift's table. */
 const BESTS_SHOWN = 6,
   PRS_SHOWN = 15,
@@ -512,7 +511,7 @@ function regionBody(): TemplateResult {
     : !worst
       ? plan.length
         ? html`<p class="headline">Every region on plan.</p>`
-        : html`<p class="headline">Every region at or above its minimum${high.length ? '' : ', inside its target'}.</p>`
+        : html`<p class="headline">${high.length ? 'Every region at or above its minimum.' : 'Every region on target.'}</p>`
       : html`<p class="headline">${on} of ${regs.length} regions on target. Furthest short: ${worst.label}, ${r1(worst.got)} of ${r1(worst.lo)} sets.</p>`;
   const note =
     (rs.old ? `Nothing logged in the last ${rs.n || REGION_WK_DEFAULT} weeks, so this shows ${rs.label}. ` : '') +
@@ -522,8 +521,12 @@ function regionBody(): TemplateResult {
     ([k, l]) =>
       html`<button class=${rs.n === k ? 'chip on' : 'chip '} data-act="regionWk" data-v=${String(k)} aria-pressed=${String(rs.n === k)}>${l}</button>`
   )}</div></div>`;
-  return html`<div class="card">${rs.week ? nothing : chips}${rh}<p class="small muted u-m0-0-4">Using ${rs.label}. ${tipButton(
-    `Hard sets per region against the minimum of your weekly targets. On or past the dashed ring is on target.${plan.length ? ' On plan: ' + ON_PLAN_TIP : ''}${rs.first || rs.src._ff ? ' ' + (rs.back ? BACK_WEEK_WHY : FIRST_WEEK_WHY) : ''}`,
+  /* The weeks read are named short on the card ("4-week average") and in
+     full in its tip, with what "on target" means when every region is (r69,
+     V, 2026-11-03: the sentence ran two lines under the headline). */
+  const inside = !rs.week && !worst && !plan.length && !high.length;
+  return html`<div class="card">${rs.week ? nothing : chips}${rh}<p class="small muted u-m0-0-4">${rs.short || rs.label.charAt(0).toUpperCase() + rs.label.slice(1)} ${tipButton(
+    `Using ${rs.label}. ${inside ? 'Every region at or above its minimum, inside its target. ' : ''}Hard sets per region against the minimum of your weekly targets. On or past the dashed ring is on target.${plan.length ? ' On plan: ' + ON_PLAN_TIP : ''}${rs.first || rs.src._ff ? ' ' + (rs.back ? BACK_WEEK_WHY : FIRST_WEEK_WHY) : ''}`,
     'Reading the chart'
   )}</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
   <table class="t u-mt8"><tr><th>Region</th><th class="r">Sets</th><th class="r">Minimum</th><th class="r">Of minimum</th></tr>
@@ -882,7 +885,10 @@ function consistencySec(R: ReturnType<typeof activeRoutine>, cur: string): Templ
         ? 'Adherence: no planned days'
         : adher == null
           ? 'Adherence: appears after your first full week'
-          : `Adherence, previous ${wks4} full week${wks4 === 1 ? '' : 's'}: ${adher}% of planned sessions (${Math.round(done4)}/${Math.round(need4)})`
+          : html`Adherence, ${wks4} week${wks4 === 1 ? '' : 's'}: ${Math.round(done4)} of ${Math.round(need4)} ${tipButton(
+              `Adherence, previous ${wks4} full week${wks4 === 1 ? '' : 's'}: ${adher}% of planned sessions (${Math.round(done4)}/${Math.round(need4)})`,
+              'About adherence'
+            )}`
   }</p>`;
   return dashSection(
     'consistency',
@@ -1177,6 +1183,18 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
    one to act on (r41, V: clutter; it was 16 rows of "+8%" with nothing to
    do). A muscle with no sets lately has an old trend, not a return on volume
    (r34.2: "Quads +7.6% · 0 sets a week" after a break). */
+/* The muscles rising at the volume they get, which need nothing done: one
+   line with their count, and their names in its tip (r69, V, 2026-11-03:
+   four names, "and 18 more", and the advice ran two lines). */
+/** The line for the muscles rising at their volume, and its tip naming every one. */
+export function risingWords(names: readonly string[]): { line: string; tip: string } {
+  const one = names.length === 1;
+  return {
+    line: `${names.length} muscle${one ? '' : 's'} rising: keep the sets.`,
+    tip: `Rising at ${one ? 'its' : 'their'} volume: ${andList(names)}. Keep the sets as they are.`
+  };
+}
+
 function rankBody(src: Readonly<Record<string, number>>): Part {
   const I = IDX();
   if (!I.scores.length)
@@ -1212,10 +1230,10 @@ function rankBody(src: Readonly<Record<string, number>>): Part {
       return html`<div class="u-p6-0_bb1-solid-line"><div class="mrow u-b0_p0"><span class=${`plate ${c}`}></span><span>${ML[s.m]}${s.indirect ? html` <span class="tag" data-tip="No direct exercise for this muscle. Trend inferred from lifts where it assists.">indirect</span>` : nothing}</span><div class="band"><div class=${`fill ${s.score >= 0 ? 'in' : 'down'}`} style=${`width:${s.clear ? (Math.abs(s.score) / maxAbs) * PERCENT : 0}%`}></div></div><span class="r small">${!s.clear ? 'unclear' : s.score >= GROW_PCT ? 'rising' : s.score <= -GROW_PCT ? 'falling' : 'flat'}</span></div><p class="small muted u-m2-0-0">${r1(sets)} sets a week${read ? ` · ${read}` : ''}</p></div>`;
     })}${
     fine.length
-      ? html`<p class="small muted u-mt8">Rising at ${fine.length === 1 ? 'its' : 'their'} volume: ${andList(
-          fine.map(s => ML[s.m] || s.m),
-          RISING_SHOWN
-        )}. Keep the sets as they are.</p>`
+      ? ((w): TemplateResult =>
+          html`<p class="small muted u-mt8" id="risingLine">${w.line} ${tipButton(w.tip, 'Which muscles')}</p>`)(
+          risingWords(fine.map(s => ML[s.m] || s.m))
+        )
       : nothing
   }${
     missing.length

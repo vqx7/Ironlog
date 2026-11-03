@@ -317,6 +317,8 @@ const FILE = process.argv[2] || 'index.html';
       const plan = await ev(() => { const it = window.__ironlog.activeRoutine().days[0].items.find(i => i.exId === 'bench'); return { sets: +it.sets, repMin: +it.repMin, repMax: +it.repMax }; });
       const rr = [plan.repMin, plan.repMax];
       await log([ses('rj1', '2026-10-01', 'bench', rr, x(100, Array(plan.sets).fill(plan.repMin + 1))), ses('rj2', '2026-10-08', 'bench', rr, x(100, Array(plan.sets).fill(plan.repMin + 1)))]);
+      // A 2.5 kg step set on the bench, as the review's reproduction had (the default by equipment is 5 kg since r68).
+      await ev(() => { const e = window.__ironlog.state.exercises.find(x => x.id === 'bench'); if (e) e.inc = 2.5; });
       await ev(() => { const L = window.__ironlog; L.ACT.startSession({ dataset: { day: '0', light: '0' } }); const d = L.state.draft; d.ex = d.ex.filter(b => b.exId === 'bench'); L.saveNow(); L.render(); }); await wait(200);
       const typ = async (sel, v) => { await page.fill(sel, String(v)); await page.dispatchEvent(sel, 'input'); await page.dispatchEvent(sel, 'change'); };
       const tick = async (si, w, r) => {
@@ -332,6 +334,7 @@ const FILE = process.argv[2] || 'index.html';
       await ev(() => { const L = window.__ironlog; L.ui.modal = null; L.render(); });
       const j = await ev(() => { const L = window.__ironlog; const xs = L.IDX().byEx.bench; const q = xs[xs.length - 1]; const g = L.suggest('bench', L.planFor('bench'), {}); return { saved: L.state.sessions.length, short: q.short || null, text: g.text, target: g.target, basis: g.basis || null }; });
       ok(plan.sets === 4 && adj === 82.5 && j.saved === 3 && j.short === 'reading' && j.basis === '2026-10-08' && /^Last \(Oct 15, below usual\): 100×3, 82\.5×7, 82\.5×7, 82\.5×7\. /.test(j.text) && /^29\+ reps over 4 sets at 100 kg$/.test(j.target || ''), 'the starter\'s bench, set 1 stopped at 3 and the rest at the 82.5 the app lowered it to, through the page: all four planned sets, a bad day, so below usual and the target repeats (29+ reps over 4 sets at 100 kg; it read as fewer sets)', { plan, adj, j });
+      await ev(() => { const e = window.__ironlog.state.exercises.find(x => x.id === 'bench'); if (e) delete e.inc; });
     }
     // An extra set of 5 after 11, 10 and 10, on a plan of 3 after 50 x 10 x 3 twice: the planned sets beat the target, so it moves on.
     await log([ses('rd1', '2026-10-01', 'bench', [8, 12], x(50, [10, 10, 10])), ses('rd2', '2026-10-05', 'bench', [8, 12], x(50, [10, 10, 10])), ses('rd3', '2026-10-09', 'bench', [8, 12], [[50, 11], [50, 10], [50, 10], [50, 5, 0]])]);

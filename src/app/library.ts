@@ -709,8 +709,9 @@ export const LOAD_STEPS: { readonly kg: readonly number[]; readonly lb: readonly
 
 /** The spacings dumbbell and kettlebell racks come in, per unit, largest
     first (r32), dumbbells' those of any load. The engine's rackStep picks the
-    largest one every load logged on a lift fits, and a lb dumbbell no spacing
-    fits is read on the 5 lb rack (the engine's rackGrid). */
+    largest one every load logged on a lift fits, trying a dumbbell's default
+    step by equipment first (2 kg, r68, 367), and a lb dumbbell no spacing fits
+    is read on the 5 lb rack (the engine's rackGrid). */
 export const RACK: Readonly<
   Record<'dumbbell' | 'kettlebell', { readonly kg: readonly number[]; readonly lb: readonly number[] }>
 > = { dumbbell: LOAD_STEPS, kettlebell: { kg: [4, 2, 1], lb: [5, 2.5] } };

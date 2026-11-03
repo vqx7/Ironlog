@@ -30,6 +30,9 @@ import {
   MAX_DAYS,
   RIR_TGT_TIP,
   dayLabel,
+  dayParts,
+  dayWorkout,
+  pmNameOf,
   dayShare,
   daySets,
   fixSupersets,
@@ -104,7 +107,10 @@ export function exTagParts(e: Pick<Exercise, 'id'> & Partial<Pick<Exercise, 'cus
 /** A day's flag for a muscle planned past SESSION_CAP sets in one workout, or nothing. */
 export function sessionCapNote(day: Day): Part {
   if (day.rest || !day.items.length) return nothing;
-  const ms = sessionMuscleSets(day);
+  // Each of the day's workouts on its own (r68, 366 (c); the review of r68: a morning and an evening were added up).
+  const ms: Record<string, number> = {};
+  for (const part of dayParts(day))
+    for (const [m, v] of Object.entries(sessionMuscleSets(dayWorkout(day, part)))) ms[m] = Math.max(ms[m] ?? 0, v);
   const over = Object.entries(ms)
     .filter(([, v]) => v > SESSION_CAP)
     .sort((a, b) => b[1] - a[1]);
@@ -209,13 +215,20 @@ function itemPart(R: Routine, di: number, it: PlanItem, ii: number): TemplateRes
     <label class="field">Rest (s)<input type="text" inputmode="numeric" data-it="rest" data-uid=${it.uid} .value=${fieldValue(String(it.rest))}></label>
     <label class="field">Load step (${U()})<input type="text" inputmode="decimal" data-it="inc" data-uid=${it.uid} .value=${fieldValue(fmtW(incOf(ex, it)))} data-tip="Applies to this exercise on every day and routine"></label>
     ${ex.timed ? nothing : html`<label class="field"><span class="hastip" data-tip=${JUMP_TIP}>Load jump %</span><input type="text" inputmode="decimal" data-it="jump" data-uid=${it.uid} .value=${fieldValue(it.jump != null ? String(it.jump) : '')} placeholder=${`auto ${isCompound(ex) ? '2.5' : '5'}`}></label>`}</div>
-    <div class="row u-mt8"><label class="field u-f1">Move to<select data-moveto=${it.uid} data-day=${String(di)}>${R.days.map((d, i) => html`<option value=${String(i)} .selected=${live(i === di)}>${dayLabel(R, i)}: ${d.name}</option>`)}</select></label>
+    <div class="row u-mt8"><label class="field u-f1">Move to<select data-moveto=${it.uid} data-day=${String(di)}>${R.days.map(
+      (d, i) =>
+        html`<option value=${String(i)} .selected=${live(i === di && !it.pm)}>${dayLabel(R, i)}: ${d.name}</option>${
+          R.schedule === 'weekly'
+            ? html`<option value=${`${i}:2`} .selected=${live(i === di && !!it.pm)}>${dayLabel(R, i)}: ${pmNameOf(d)} (second workout)</option>`
+            : nothing
+        }`
+    )}</select></label>
     <button class="btn sm u-asflex-end" data-act="iSwap" data-uid=${it.uid}>Swap</button><button class="btn sm danger u-asflex-end" data-act="iDel" data-day=${String(di)} data-i=${String(ii)}>Remove</button></div>
     ${nx ? html`<div class="row u-mt8"><button class=${linked ? 'btn sm noted' : 'btn sm '} data-act="ssToggle" data-uid=${it.uid}>${linked ? 'Unlink superset' : 'Superset with next'}</button>${linked ? html`<span class="small muted">Paired with ${exName(nx.exId)}: alternate sets, rest once after the pair.</span>` : nothing}</div>` : nothing}
     ${ex.note ? html`<p class="small muted">${ex.note}</p>` : nothing}</div>`
     : nothing;
   const letter = it.ss ? letters[it.ss] : undefined;
-  return html`<li class=${it.ss ? 'it ss' : 'it'} data-uid=${it.uid}><div class="ir"><span class="grip" aria-hidden="true">⠿</span><button class="imain" data-act="toggleItem" data-uid=${it.uid}><b>${ex.name}</b><span>${it.sets} × ${repSpan(it.repMin, it.repMax, '-')}${ex.timed ? 's' : ''}, ${rirShow(ex) ? `${effTgt(it.rir)}, ` : ''}rest ${it.rest}s${it.ss ? ` · superset ${letter}` : ''}</span></button><button class="ib" aria-label=${`Move ${ex.name} up`} data-act="iUp" data-day=${String(di)} data-i=${String(ii)} ?disabled=${ii === 0}>↑</button><button class="ib" aria-label=${`Move ${ex.name} down`} data-act="iDown" data-day=${String(di)} data-i=${String(ii)} ?disabled=${ii === items.length - 1}>↓</button></div>
+  return html`<li class=${it.ss ? 'it ss' : 'it'} data-uid=${it.uid}><div class="ir"><span class="grip" aria-hidden="true">⠿</span><button class="imain" data-act="toggleItem" data-uid=${it.uid}><b>${ex.name}</b><span>${it.sets} × ${repSpan(it.repMin, it.repMax, '-')}${ex.timed ? 's' : ''}, ${rirShow(ex) ? `${effTgt(it.rir)}, ` : ''}rest ${it.rest}s${it.ss ? ` · superset ${letter}` : ''}${it.pm ? ' · second workout' : ''}</span></button><button class="ib" aria-label=${`Move ${ex.name} up`} data-act="iUp" data-day=${String(di)} data-i=${String(ii)} ?disabled=${ii === 0}>↑</button><button class="ib" aria-label=${`Move ${ex.name} down`} data-act="iDown" data-day=${String(di)} data-i=${String(ii)} ?disabled=${ii === items.length - 1}>↓</button></div>
   ${editor}</li>`;
 }
 
@@ -226,14 +239,25 @@ function bLibItems(): TemplateResult[] {
   );
 }
 
+/** A day's line under its name: its exercises, sets and minutes, each workout's when it holds two (366 (c)). */
+function dayMeta(d: Day): TemplateResult {
+  const parts = dayParts(d);
+  if (parts.length < 2) return html`${d.items.length} exercises, ${daySets(d)} sets, ${minPart(dayMinutes(d))}`;
+  const [a, b] = parts.map(p => dayWorkout(d, p));
+  return html`${a ? html`${a.name}: ${a.items.length} exercises, ${minPart(dayMinutes(a))}` : nothing}${
+    b ? html`; ${b.name}: ${b.items.length} exercises, ${minPart(dayMinutes(b))}` : nothing
+  }`;
+}
+
 function dayPart(R: Routine, d: Day, di: number, weekly: boolean, dnd: boolean, focus: string): TemplateResult {
   fixSupersets(d.items);
   const dOpen = d.id === focus;
   const label = dayLabel(R, di);
   return html`<section class=${`day ${d.rest ? 'rest' : ''}`} data-did=${d.id}><div class="dh">${weekly ? nothing : html`<span class="dgrip" role="button" tabindex="0" data-di=${String(di)} aria-label=${`Move ${label}: drag, or use the arrow keys`} data-tip="Drag to reorder days">⠿</span>`}<span class="dlabel">${label}</span><input type="text" aria-label="Day name" data-dayname=${String(di)} .value=${fieldValue(d.name)}><button class="ib dfold" data-act="dFold" data-id=${d.id} aria-expanded=${String(dOpen)} aria-label=${`${dOpen ? 'Fold' : 'Unfold'} ${label}`}></button></div>
-    <div class="dmeta row spread"><span>${d.rest ? '' : html`${d.items.length} exercises, ${daySets(d)} sets, ${minPart(dayMinutes(d))}`}</span><label class="check-inline"><input type="checkbox" data-dayrest=${String(di)} .checked=${live(d.rest)}>Rest day</label></div><div class="dbody" ?hidden=${!dOpen}>${sessionCapNote(d)}
+    <div class="dmeta row spread"><span>${d.rest ? '' : dayMeta(d)}</span><label class="check-inline"><input type="checkbox" data-dayrest=${String(di)} .checked=${live(d.rest)}>Rest day</label></div><div class="dbody" ?hidden=${!dOpen}>${sessionCapNote(d)}
     <ul class="items" data-day=${String(di)}>${d.items.map((it, ii) => itemPart(R, di, it, ii))}</ul>
-    <div class="row u-p0n10n12"><button class="btn sm" data-act="pickDay" data-day=${String(di)}>Add exercise</button>${weekly ? nothing : html`${dnd ? nothing : html`<button class="btn sm" data-act="dUp" data-day=${String(di)} ?disabled=${di === 0} aria-label=${`Move ${label} earlier`}>↑ Day</button><button class="btn sm" data-act="dDown" data-day=${String(di)} ?disabled=${di === R.days.length - 1} aria-label=${`Move ${label} later`}>↓ Day</button>`}<button class="btn sm danger" data-act="dDel" data-day=${String(di)} ?disabled=${R.days.length < 2}>Remove day</button>`}</div></div></section>`;
+    ${weekly && dayParts(d).includes(2) ? html`<label class="field u-p0n10n12">Second workout's name<input type="text" data-daypm=${String(di)} .value=${fieldValue(d.pmName || '')} placeholder=${pmNameOf({ name: d.name })}></label>` : nothing}
+    <div class="row u-p0n10n12"><button class="btn sm" data-act="pickDay" data-day=${String(di)}>Add exercise</button>${weekly ? html`<button class="btn sm" data-act="pickDay" data-day=${String(di)} data-part="2">${dayParts(d).includes(2) ? 'Add to second workout' : 'Add a second workout'}</button>` : nothing}${weekly ? nothing : html`${dnd ? nothing : html`<button class="btn sm" data-act="dUp" data-day=${String(di)} ?disabled=${di === 0} aria-label=${`Move ${label} earlier`}>↑ Day</button><button class="btn sm" data-act="dDown" data-day=${String(di)} ?disabled=${di === R.days.length - 1} aria-label=${`Move ${label} later`}>↓ Day</button>`}<button class="btn sm danger" data-act="dDel" data-day=${String(di)} ?disabled=${R.days.length < 2}>Remove day</button>`}</div></div></section>`;
 }
 
 /** Plan, as a template of the log and `ui`: the routine shown (ui.bRoutine), its days and its weekly volume. */
@@ -731,6 +755,20 @@ export function planInput(t: Field): boolean {
       );
     return true;
   }
+  // A day's second workout's name (r68, 366 (c)): absent when cleared, so the day's name with a 2 shows.
+  if (t.dataset.daypm != null) {
+    const d = curRoutineB().days[num(t.dataset.daypm)];
+    const v = t.value.trim().slice(0, LIMITS.name);
+    if (d)
+      act(
+        () => {
+          if (v) d.pmName = v;
+          else delete d.pmName;
+        },
+        { soon: true }
+      );
+    return true;
+  }
   const b = t.dataset.bind;
   if (b === 'routineName') {
     const R = curRoutineB();
@@ -766,6 +804,11 @@ export function planChange(t: Field): boolean {
     rerenderKeepScroll();
     return true;
   }
+  // The second workout's name, saved as typed (planInput): drawn again so every place it shows reads it.
+  if (t.dataset.daypm != null) {
+    rerenderKeepScroll();
+    return true;
+  }
   if (t.dataset.dayrest != null) {
     const d = curRoutineB().days[num(t.dataset.dayrest)];
     if (!d) return true;
@@ -788,17 +831,22 @@ export function planChange(t: Field): boolean {
   if (t.dataset.moveto) {
     const f = findItem(t.dataset.moveto);
     if (!f) return true;
-    const to = +t.value;
+    // "3" is a day, "3:2" its second workout on a fixed-weekday routine (r68, 366 (c)).
+    const [toS, partS] = t.value.split(':');
+    const to = +(toS ?? '');
+    const pm = partS === '2' && f.r.schedule === 'weekly';
     const from = f.r.days[f.di];
     const dest = f.r.days[to];
-    if (to === f.di || !from || !dest) return true;
+    if (!from || !dest || (to === f.di && pm === !!f.it.pm)) return true;
     act(() => {
       from.items.splice(f.i, 1);
+      if (pm) f.it.pm = true;
+      else delete f.it.pm;
       dest.items.push(f.it);
       Object.assign(dest, trainOn(dest));
     });
     rerenderKeepScroll();
-    toast(`Moved to ${dayLabel(f.r, to)}`);
+    toast(`Moved to ${dayLabel(f.r, to)}${pm ? `, ${pmNameOf(dest)}` : ''}`);
     return true;
   }
   return false;
@@ -833,6 +881,12 @@ export const PLAN_BINDS: Readonly<Record<string, (t: Field) => void>> = {
       () => {
         if (v === 'weekly')
           while (R.days.length < WEEK_DAYS) R.days.push({ id: uid(), name: 'Rest', rest: true, items: [] });
+        // A cycle has no second workouts (366 (c)): a day's two become one, its exercises kept in order.
+        if (v === 'cycle')
+          for (const d of R.days) {
+            delete d.pmName;
+            for (const it of d.items) delete it.pm;
+          }
         R.schedule = v;
       },
       { undo: true }

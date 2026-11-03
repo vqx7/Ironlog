@@ -49,6 +49,8 @@ export interface PickerSheet {
   m?: string | undefined;
   /** The day of the routine shown in Plan (addDay). */
   day?: number | undefined;
+  /** Added to that day's second workout (addDay on a fixed-weekday routine, r68, 366 (c)). */
+  pm?: true | undefined;
   /** The routine item swapped (swapItem). */
   uid?: string | undefined;
   /** The session's exercise swapped (swapBlock). */
@@ -181,7 +183,7 @@ export type Modal =
   | ImpInputModal
   | ImpPreviewModal
   | (SheetBase & { kind: 'install'; how?: string | undefined })
-  | (SheetBase & { kind: 'icon' | 'restwk' | 'injury' | 'routineNew' | 'cardio' | 'pickToday' | 'pickEx' })
+  | (SheetBase & { kind: 'icon' | 'restwk' | 'injury' | 'routineNew' | 'cardio' | 'pickToday' | 'pickEx' | 'checkin' })
   /* first: opened from the first pages, where the app's tabs are not open yet (r64). */
   | (SheetBase & { kind: 'menu'; first?: true | undefined })
   | (SheetBase & { kind: 'guide'; open?: string | undefined })
@@ -216,8 +218,8 @@ export type Modal =
   | (SheetBase & { kind: 'pic'; id: string; at: number | null; ro?: true | undefined })
   // Your bodyweight, asked for where a bodyweight lift reads it (r66, 372): the lift that asked, when one did.
   | (SheetBase & { kind: 'bw'; ex?: string | undefined })
-  | (SheetBase & { kind: 'startAlt'; di?: number | undefined; free?: boolean | undefined })
-  | (SheetBase & { kind: 'eq'; day: number; equip: string[] })
+  | (SheetBase & { kind: 'startAlt'; di?: number | undefined; free?: boolean | undefined; part?: 2 | undefined })
+  | (SheetBase & { kind: 'eq'; day: number; equip: string[]; part?: 2 | undefined })
   | (SheetBase & TextSheet & { kind: 'text' });
 
 /** A sheet's kind. */

@@ -41,6 +41,8 @@ const FILE = process.argv[2] || 'index.html';
     await wait(150);
   };
   const log = (sessions, settings) => ev(([sessions, settings]) => { const L = window.__ironlog; const s = L.state; s.sessions = sessions; s.draft = null; delete s.settings.gym; Object.assign(s.settings, settings); L.state = L.normalize(s); L.invalidate(); L.saveNow(); L.render(); }, [sessions, settings]);
+  // A step set on a lift (in kg), as the Plan editor sets it, or taken off (null): it comes before the default by equipment (r68).
+  const setStep = (id, kg) => ev(([id, kg]) => { const L = window.__ironlog; const e = L.state.exercises.find(x => x.id === id); if (e) { if (kg == null) delete e.inc; else e.inc = kg; } L.invalidate(); L.saveNow(); }, [id, kg]);
   const ses = (id, date, exId, rr, sets) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId, rr, sets: sets.map(([w, r, rir]) => ({ w, r, rir: rir == null ? 1 : rir, done: true })) }] });
 
   // ---- Dumbbells in kg, Your gym not set, the incline curl never done: 6 kg for 15 at 5 in reserve, as typed and ticked.
@@ -99,11 +101,14 @@ const FILE = process.argv[2] || 'index.html';
   // ---- A log kept in kg, then read in lb (the lifter switched units).
   {
     const pl = await ev(() => { const p = window.__ironlog.planFor('bench'); return { lo: +p.repMin, hi: +p.repMax }; });
-    // Bench at 42.5 kg, every set at the top of its range: the next load is on the 5 lb step, and the words add the step that gets there.
+    // Bench at 42.5 kg, every set at the top of its range: the next load is on the 5 lb step (set on the lift; the default
+    // by equipment, 10 lb, is tests/r68.js section 4), and the words add the step that gets there.
     await log([ses('b1', '2026-10-08', 'bench', [pl.lo, pl.hi], [[42.5, pl.hi], [42.5, pl.hi], [42.5, pl.hi]])], { unit: 'lb' });
+    await setStep('bench', 5 * LB);
     await startWith('bench');
     const b = await ev(() => { const L = window.__ironlog; const x = L.state.draft.ex[0]; return { sw: x.sw, hint: x.hint || '' }; });
     ok(Math.round(b.sw / LB * 1000) / 1000 === 100 && /at 93\.7 lb hit \d+: add 6\.3 lb/.test(b.hint), 'bench logged at 42.5 kg, every set at the top, now shown in lb: the next load is 100 lb, on the 5 lb step, and the words add 6.3 lb to the 93.7 shown (r52: 98.7 lb, "add 5 lb")', { lb: b.sw / LB, hint: b.hint });
+    await setStep('bench', null);
     // Incline dumbbell press at 12.5 kg for 11, 10 and 10, short of the top: a target of reps, at 25 lb dumbbells, not 30.
     await log([ses('d1', '2026-10-08', 'incDb', [8, 12], [[12.5, 11], [12.5, 10], [12.5, 10]])], { unit: 'lb' });
     const d = await ev(() => { const L = window.__ironlog; return L.suggest('incDb', { ...L.planFor('incDb'), repMin: 8, repMax: 12 }, {}); });
@@ -118,14 +123,17 @@ const FILE = process.argv[2] || 'index.html';
     await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); });
   }
 
-  // ---- The RPE scale: 40 kg for 8 at 4 in reserve (RPE 6) against a target of 1 in reserve (RPE 9).
+  // ---- The RPE scale: 40 kg for 8 at 4 in reserve (RPE 6) against a target of 1 in reserve (RPE 9), on a 2.5 kg step set
+  // on the bench (on the default 5 kg step the jump from 40 is past the 10% cap, so the reps build first, NEW-6).
   {
     await log([ses('e1', '2026-10-08', 'bench', [6, 10], [[40, 8, 4], [40, 8, 4], [40, 8, 4]])], { unit: 'kg', rirScale: 'rpe' });
+    await setStep('bench', 2.5);
     const r = await ev(() => { const L = window.__ironlog; const p = { ...L.planFor('bench'), repMin: 6, repMax: 10, rir: 1 }; const s = L.suggest('bench', p, {}); const b = { hint: s.text, last: s.last, basis: s.basis }; return { text: s.text, why: L.whyTarget(b) }; });
     ok(/RPE 6 at 40 kg against a target of RPE 9/.test(r.text) && !/RIR/.test(r.why), 'on the RPE scale, an easy set\'s reason says RPE 6 against a target of RPE 9, and Why this target says no RIR (r52: "RIR 4 ... a target of 1")', r);
     await log([ses('e1', '2026-10-08', 'bench', [6, 10], [[40, 8, 4], [40, 8, 4], [40, 8, 4]])], { unit: 'kg', rirScale: undefined });
     const w = await ev(() => { const L = window.__ironlog; return L.suggest('bench', { ...L.planFor('bench'), repMin: 6, repMax: 10, rir: 1 }, {}).text; });
     ok(/RIR 4 at 40 kg against a target of 1, so that load was light/.test(w), 'in whole reps in reserve the words are as before', w);
+    await setStep('bench', null);
   }
 
   // Sessions of several lifts: [exId, rep range, [[load, reps, reserve], ...]] each.
@@ -247,7 +255,7 @@ const FILE = process.argv[2] || 'index.html';
       for (let k = 0, i = 0; k <= 30; k += 2, i++) { const di = (i % 2) * 2; const day = R.days[di]; const date = new Date(Date.parse('2026-09-14T12:00:00Z') + k * 864e5).toISOString().slice(0, 10); S.sessions.push({ id: 'e' + k, date, dayIdx: di, dayId: day.id, dayName: day.name, routineId: R.id, notes: '', ex: day.items.map(it => ({ exId: it.exId, rr: [+it.repMin, +it.repMax], sets: Array.from({ length: +it.sets }, () => ({ w: 60, r: +it.repMin, rir: 2, done: true })) })) }); }
       L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'dash'; L.ui.folds['dash:consistency'] = true; L.render();
       const w = L.weekStats();
-      return { streak: L.weekStreak().weeks, adh: ((document.getElementById('adhLine') || {}).textContent || '').replace(/\s+/g, ' '), done: w.doneDays, plan: w.planDays };
+      return { streak: L.weekStreak().weeks, adh: ((document.querySelector('#adhLine .tipi') || { getAttribute: () => '' }).getAttribute('data-tip') || '').replace(/\s+/g, ' '), /* the sentence in full, in the line's i since r69 */ done: w.doneDays, plan: w.planDays };
     });
     ok(r.streak === 4 && /Adherence, previous 4 full weeks: 100% of planned sessions \(12\/12\)/.test(r.adh) && r.plan === 3 && r.done === 2, 'Strength 5 x 5, every other day, done exactly as the cycle runs: a 4-week streak, 100% adherence, and this week 2 of 3 (r53: weeks of 3 broke the streak, 93% adherence against 3.5 a week, 2 of 4)', r);
     // A slow cycle, one training day in nine (0.78 a week), still plans one a week: rounded down alone it would plan none and lose its ring.

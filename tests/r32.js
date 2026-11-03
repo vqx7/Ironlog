@@ -18,6 +18,11 @@ const seed = (L, unit, exId, list, rr) => {
   const s = L.state; s.settings.onboarded = true; s.settings.unit = unit; s.settings.rirMode = 'on';
   const f = unit === 'lb' ? 0.45359237 : 1; let n = 0;
   s.sessions = s.sessions.filter(x => !x.ex.some(b => b.exId === exId));
+  // The step these cases were written on, 5 lb or 2.5 kg, set on a bar, machine or cable lift, as the
+  // Plan editor sets one (the default by equipment, 10 lb or 5 kg on a bar or a stack since r68, is tests/r68.js
+  // section 4). Read the same by r31.3, where it was the default; dumbbells and kettlebells keep the rack read from their loads.
+  const ex = s.exercises.find(x => x.id === exId);
+  if (ex && ['barbell', 'smith', 'machine', 'cable'].includes(ex.equip)) ex.inc = unit === 'lb' ? 5 * 0.45359237 : 2.5;
   for (const [date, sets] of list) s.sessions.push({ id: 'r32' + exId + (n++), date, dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId, rr: rr || undefined, sets: sets.map(([w, r, rir]) => ({ w: w * f, r, rir: rir == null ? null : rir, warm: false, drop: false })) }] });
   L.invalidate();
 };

@@ -34,7 +34,7 @@ import { loadWords, loadNote, emptyLoad } from './loads';
 import { CHK_Q, chkWord } from './coach';
 import { rirScale, effShow, effName } from './effort';
 import { prefGet, BWASK_KEY, prefSet, log } from './storage';
-import { EX, exBarKg, loadLabel, U, exName, lighterLoad, fromD, oddLoad, lightZero } from './live';
+import { EX, exBarKg, loadLabel, U, exName, lighterLoad, heavierLoad, fromD, oddLoad, lightZero } from './live';
 import { state, ui } from './store';
 import {
   effW,
@@ -113,7 +113,8 @@ import {
 import { finish, finishNow } from './workfinish';
 import { LIMITS, EFFORT_TOP } from './records';
 import { PICK_DAYS } from './analytics';
-import { closeModal, confirmBox, render, rerenderKeepScroll } from './page';
+import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScroll } from './page';
+import { closeX } from './sheetsmisc';
 import { toast } from './toast';
 import { startTimer, stopTimer, wakeOff } from './timer';
 
@@ -166,8 +167,8 @@ function keysOf<X extends object>(xs: readonly X[], id: (x: X) => string | undef
 }
 
 /* What the load number means. Every set stores the number you typed, as
-   you typed it. What it means is a property of the exercise, shown on the
-   exercise and above the load column:
+   you typed it. What it means is a property of the exercise, said above the
+   load column:
    - each:  per dumbbell, two dumbbells (DB bench, curls, lunges)
    - total: everything on one implement (a barbell with its bar, one dumbbell,
             plates on a landmine or a plate-loaded machine)
@@ -178,8 +179,10 @@ function keysOf<X extends object>(xs: readonly X[], id: (x: X) => string | undef
    so progress compares like with like. Weight lifted counts what actually
    moved: both dumbbells, both sides of the plates, both limbs when reps are
    logged per side. Changing an exercise's setting does not convert past
-   sets. On the exercise, always visible: what the load number is, and reps
-   per side when that applies. Tap or hold for the longer version. */
+   sets. The column's heading says it short (LB each, +LB, Stack, Help LB),
+   and the reps column says /side when reps are per side. Each heading shows
+   the words in full on a tap (r69, V, 2026-11-03: the line of chips under
+   the exercise said again what the headings say, on every exercise). */
 // The longer words for a load mode; a mode not listed falls to the equipment's words.
 const LOAD_TIPS: Readonly<Record<string, string>> = {
   each: 'Enter the weight of one dumbbell. Weight lifted counts both.',
@@ -188,24 +191,26 @@ const LOAD_TIPS: Readonly<Record<string, string>> = {
   bw: 'Enter only what you add (belt, vest, dumbbell); 0 for bodyweight. Your logged bodyweight is added for estimates.'
 };
 
-function lmChips(ex: ExerciseLike): Part {
-  if (ex.timed && !ex.bw && loadMode(ex) !== 'each')
-    return ex.perSide ? html`<p class="lmrow"><span class="lm">seconds per side</span></p>` : '';
-  const m = loadMode(ex);
+/** The load column heading's tip: what the number is, short and in full. */
+function loadTip(ex: ExerciseLike): string {
   if (ex.assist)
-    return html`<p class="lmrow"><span class="lm" data-tip="Enter the help the machine gives, as on its pin. Less help is progress; your logged bodyweight minus the help is what counts.">machine help</span></p>`;
+    return 'Load: machine help. Enter the help the machine gives, as on its pin. Less help is progress; your logged bodyweight minus the help is what counts.';
   const long =
-    LOAD_TIPS[m] ||
+    LOAD_TIPS[loadMode(ex)] ||
     (ex.equip === 'barbell'
       ? 'Enter everything on the bar, the bar included.'
       : ex.equip === 'dumbbell'
         ? 'Enter the weight of the one dumbbell you hold.'
         : 'Enter the total load.');
-  return html`<p class="lmrow"><span class="lm" data-tip=${long}>${loadWords(ex)}</span>${
-    ex.perSide
-      ? html`<span class="lm" data-tip=${ex.timed ? 'Seconds for one side; do the same on the other.' : 'Reps for one side; do the same on the other. One set still counts as one set.'}>${ex.timed ? 'seconds' : 'reps'} per side</span>`
-      : ''
-  }</p>`;
+  return `Load: ${loadWords(ex)}. ${long}`;
+}
+
+/** The reps column heading's tip on a lift done one side at a time, or null on any other. */
+function sideTip(ex: ExerciseLike): string | null {
+  if (!ex.perSide) return null;
+  return ex.timed
+    ? 'Seconds per side: seconds for one side; do the same on the other.'
+    : 'Reps per side: reps for one side; do the same on the other. One set still counts as one set.';
 }
 
 /* Which load to show: the set just edited, else the next set not yet done,
@@ -283,30 +288,41 @@ function rirStrip(bi: number, si: number, cur: string): TemplateResult {
   return html`<div class=${'rirstrip' + (two ? ' two' : '')} role="group" aria-label=${effAria(si)} data-b=${bi} data-s=${si}><span class="rs-l">${effName()}</span>${body}<button type="button" class="rs-x" data-act="rirPick" data-b=${bi} data-s=${si} data-v="" aria-label=${`Clear ${effName()}`}>✕</button></div>`;
 }
 
-/* The three taps at the start of a session; how they line up with the
-   sessions is Stats' Readiness and performance (stats.ts). What it offers
-   (r30) sits below it with the two changes that answer it: two or more low
-   answers, a lighter session first; one, a note to keep a rep more in
-   reserve. Already made lighter: said instead of offered again. */
-function checkinCard(d: Draft): TemplateResult {
+/* The check-in: three taps; how they line up with the sessions is Stats'
+   Readiness and performance (stats.ts). It sat at the top of the session as
+   a fold until r69, when it moved behind the Check-in button beside the date
+   (V, 2026-11-03: the top of the session was text before the first
+   exercise); answered the same way and saved on the session the same way.
+   What it offers (r30) stays at the top of the session, with the two changes
+   that answer it: two or more low answers, a lighter session first; one, a
+   note to keep a rep more in reserve. Already made lighter: said instead of
+   offered again. */
+/** The check-in's answers in words ("sleep good, energy low"), or empty when none is given. */
+function chkSum(d: Draft): string {
   const c = d.chk || {};
-  const sum = CHK_Q.filter(([k]) => c[k])
+  return CHK_Q.filter(([k]) => c[k])
     .map(([k, l, n]) => `${l.toLowerCase()} ${chkWord(n[(c[k] || 1) - 1])}`)
     .join(', ');
-  const low = CHK_Q.filter(([k]) => c[k] === 1).length;
-  return html`${section({
-    sk: 'logger:checkin',
-    title: 'Check-in',
-    sub: sum || 'optional',
-    body: html`${CHK_Q.map(
-      ([k, l, names]) =>
-        html`<div class="ci-row"><span class="small">${l}</span><div class="seg" role="group" aria-label=${l}>${names.map(
-          (n, i) =>
-            html`<button class=${'chip ' + (c[k] === i + 1 ? 'on' : '')} data-act="chk" data-k=${k} data-v=${i + 1} aria-pressed=${String(c[k] === i + 1)}>${n}</button>`
-        )}</div></div>`
-    )}
-  `
-  })}${readyCard(d, low)}`;
+}
+
+/** The low answers of a session's check-in. */
+const chkLow = (d: Draft): number => CHK_Q.filter(([k]) => (d.chk || {})[k] === 1).length;
+
+/** The check-in sheet: the three questions of the session in progress, each one tap. */
+export function checkinSheet(): TemplateResult {
+  const d = state.draft;
+  const c = (d && d.chk) || {};
+  return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="chkH"><div class="sheet-h"><h3 id="chkH">Check-in</h3>${closeX()}</div>${
+    d
+      ? CHK_Q.map(
+          ([k, l, names]) =>
+            html`<div class="ci-row"><span class="small">${l}</span><div class="seg" role="group" aria-label=${l}>${names.map(
+              (n, i) =>
+                html`<button class=${'chip ' + (c[k] === i + 1 ? 'on' : '')} data-act="chk" data-k=${k} data-v=${i + 1} aria-pressed=${String(c[k] === i + 1)}>${n}</button>`
+            )}</div></div>`
+        )
+      : nothing
+  }</div>`;
 }
 
 /** What the check-in offers under it, or nothing (above). */
@@ -401,18 +417,24 @@ function progressLine(b: DraftBlock, bi: number): Part {
   return p ? html`<span class=${'tp' + (p.beat ? ' beat' : '')} id=${`tp-${bi}`}>${p.text}</span>` : '';
 }
 
+/** Whether an exercise is drawn folded: done, not opened again, and with no fold waiting for its moment. */
+const isFolded = (d: Draft, b: DraftBlock, bi: number): boolean =>
+  !d.editingId && blockDone(b) && !blkIsOpen(bi, b) && !W.foldWait.has(b);
+
 function blockPart(
   d: Draft,
   b: DraftBlock,
   bi: number,
   letters: Readonly<Record<string, string>>,
   hintSeen: Set<string>,
-  calIdx: number
+  calIdx: number,
+  bwAt: number
 ): TemplateResult {
   const ex = EX(b.exId);
   const p = b.plan;
   const ss = p.ss ? letters[p.ss] : null;
   const nr = !rirShow(ex);
+  const side = sideTip(ex);
   const dupB = lastDup(d, bi);
   /* A superset is drawn as one group (r66, PENDING 375; V picked "Grouped and
      attached"): its exercises side by side in one box, A1 and A2 on their
@@ -421,7 +443,7 @@ function blockPart(
   const gk = grp.indexOf(b);
   const ssCls = ss ? ` ss${gk === 0 ? ' ss-first' : ''}${gk === grp.length - 1 ? ' ss-last' : ''}` : '';
   const ssLbl = ss ? html`<span class="sslbl">${ss}${gk + 1}</span> ` : '';
-  if (!d.editingId && blockDone(b) && !blkIsOpen(bi, b) && !W.foldWait.has(b)) {
+  if (isFolded(d, b, bi)) {
     const ws = b.sets.filter(x => !x.warm);
     const prs = b.sets.filter((x, si) => !x.warm && rowPR(b, si, d.date)).length;
     return html`<section class=${'block folded' + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${bgrip(bi, ex.name)}<button class="bfold" data-act="bOpen" data-b=${bi} aria-expanded="false" aria-label=${`${ex.name}, done. Open to edit`}><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${ssLbl}${ex.name}</b><span>${ws.map(x => setShort(ex, x.w, x.r) + missedTag(x)).join(', ')}</span></span>${prs ? html`<span class="bf-pr">PR</span>` : ''}<span class="chev" aria-hidden="true"></span></button></section>`;
@@ -439,17 +461,17 @@ function blockPart(
     !!b.lastR &&
     b.lastR.some(r => r != null) &&
     b.sets.some((s, i) => !s.done && !s.warm && !s.drop && s.r == null && lastRFor(b, i) != null);
-  return html`<section class=${'block' + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? html`<p class="ssh">Superset ${ss}</p>` : ''}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : nothing}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? html` ${tipButton(ex.note, 'About ' + ex.name)}` : ''}</h3><p class="small muted">${ssLbl}${ML[ex.primary]} · ${work || p.sets}×${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? '/side' : ''}${nr ? '' : ` @${b.inj || ((d.light || d.deload || b.light) && b.last) ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}`} · ${p.rest}s${b.inj ? html` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ''}${markedNew(d, b.exId) ? html` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ''}</p>${lmChips(ex)}</div>
+  return html`<section class=${'block' + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? html`<p class="ssh">Superset ${ss}</p>` : ''}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : nothing}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? html` ${tipButton(ex.note, 'About ' + ex.name)}` : ''}</h3><p class="small muted">${ssLbl}${ML[ex.primary]} · ${work || p.sets}×${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? '/side' : ''}${nr ? '' : ` @${b.inj || ((d.light || d.deload || b.light) && b.last) ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}`} · ${p.rest}s${b.inj ? html` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ''}${markedNew(d, b.exId) ? html` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ''}</p></div>
       <div class="bh-acts">${!d.editingId && blockDone(b) ? html`<button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button>` : ''}<button class=${'ib' + (b.note || (b.pics && b.pics.length) ? ' noted' : '')} aria-label=${b.note || (b.pics && b.pics.length) ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle.">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
       ${
         b.target
           ? html`<p class="hint"><b>Today: ${targetText(b)}</b>${why ? html` ${tipButton(why, 'Why this target')}` : ''}<span class="tp muted u-dblock">${lastHead(b, dupB)}</span>${bl ? html`<span class="tp muted u-dblock">${bl}</span>` : ''}${b.easier ? html`<span class="tp ez">${b.easier}</span>` : ''}${progressLine(b, bi)}</p>`
           : html`<p class="hint">${hintOnce(b.hint || '', hintSeen)}</p>`
-      }${d.editingId ? '' : bwWarn(b.exId)}${bi === calIdx ? html`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ''}
+      }${bi === bwAt ? bwWarn(b.exId) : ''}${bi === calIdx ? html`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ''}
       ${ss && partner && gk === 0 ? html`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? 'pair' : 'group'}.</p>` : ''}
       ${b.lastNote && !b.note ? html`<p class="small lnote">Your note, ${fmtDate(b.lastNote.date)}: ${b.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ''}
       ${b.note ? html`<p class="small bnote" id=${`bn-${bi}`}>${b.note}</p>` : html`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}${picStrip(bi, false)}
-      <div class=${'sg head' + (nr ? ' norir' : '')}><span data-tip="Tap a set's number to mark it a warm-up or a drop set.">#</span><span class="lsh">Last</span><span class="lh" data-tip=${'Load: ' + loadWords(ex)}>${loadHead(ex)}</span><span>${ex.timed ? (ex.perSide ? 'Sec/side' : 'Sec') : ex.perSide ? 'Reps/side' : 'Reps'}</span>${nr ? '' : html`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
+      <div class=${'sg head' + (nr ? ' norir' : '')}><span data-tip="Tap a set's number to mark it a warm-up or a drop set.">#</span><span class="lsh">Last</span><span class="lh hastip" data-tip=${loadTip(ex)}>${loadHead(ex)}</span><span class=${side ? 'hastip' : nothing} data-tip=${side ?? nothing}>${ex.timed ? (ex.perSide ? 'Sec/side' : 'Sec') : ex.perSide ? 'Reps/side' : 'Reps'}</span>${nr ? '' : html`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
         b.sets,
         x => x.rid,
         (_, si) => setRow(d, b, bi, si, ex, nr, dupB)
@@ -498,27 +520,38 @@ export function viewWorkout(d: Draft): TemplateResult {
   const left = leftMin(d);
   const sp = sessProgress(d);
   const calIdx = d.editingId ? -1 : calDueIdx(d);
+  // The bodyweight line, once a session: on the first bodyweight lift still open (r69, V: on every one it read as a wall of text).
+  const bwAt = d.editingId ? -1 : d.ex.findIndex((b, bi) => !!EX(b.exId).bw && !isFolded(d, b, bi));
   const letters = ssLetters(d.ex.map(b => b.plan));
-  return html`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d.editingId ? 'Editing a saved session' : d.past ? 'Past workout' : 'Session in progress'}</p><div class="hrow"><h2 class="u-owany_minw0">${d.dayName}</h2>${helpButton('log')}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? 'set' : 'sets'}</span> done${d.past ? `, for ${fmtDateLong(d.date)}` : ''}${d.startedAt && !d.past ? `, started ${startedWords(d.startedAt)}` : ''}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ''}</span></p>${
+  const when = d.past ? `for ${fmtDateLong(d.date)}` : d.startedAt ? `started ${startedWords(d.startedAt)}` : '';
+  /* The sets done are the bar's to say once it shows (r69, V, 2026-11-03:
+     "0 sets done" beside "0 of 19" said it twice), so the line keeps when the
+     workout began and the minutes left; with no sets to count it says the
+     count as before. The bar names itself to a screen reader, which read the
+     count from this line until then. */
+  const meta = sp.n
+    ? html`${when ? when.charAt(0).toUpperCase() + when.slice(1) : ''}<span id="sessLeft">${left > 0 ? `${when ? ' · ' : ''}${estMin(left)} left` : ''}</span>`
+    : html`<span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? 'set' : 'sets'}</span> done${when ? `, ${when}` : ''}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ''}</span>`;
+  return html`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d.editingId ? 'Editing a saved session' : d.past ? 'Past workout' : 'Session in progress'}</p><div class="hrow"><h2 class="u-owany_minw0">${d.dayName}</h2>${helpButton('log')}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button></div><p class="meta">${meta}</p>${
     sp.n
-      ? html`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%`}></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`
+      ? html`<div class="sprog"><div class="band" role="progressbar" aria-label="Sets done" aria-valuemin="0" aria-valuemax=${sp.n} aria-valuenow=${sp.k} aria-valuetext=${`${sp.k} of ${sp.n} sets done`}><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%`}></div></div><span id="sessOf" aria-hidden="true">${sp.k} of ${sp.n}</span></div>`
       : ''
   }
-  <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d.past || d.editingId ? html`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d.durMin ? String(d.durMin) : '')} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : nothing}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div></div>
+  <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d.past || d.editingId ? html`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d.durMin ? String(d.durMin) : '')} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : nothing}${d.past ? '' : html`<button class="btn sm" data-act="chkOpen" aria-label=${chkSum(d) ? `Check-in: ${chkSum(d)}` : 'Check-in, optional'}>Check-in</button>`}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div></div>
   ${howText('log', (state.settings.rirMode === 'off' ? 'RIR is switched off in Settings, so every working set counts as hard. ' : LOG_HELP_ON) + LOG_HELP + (d.past ? ' Quick entry: no rest timer, and a set counts as done once its reps are typed.' : state.settings.autoDone ? ' Auto-mark is on: sets tick themselves when you leave the reps field.' : ''))}
   ${
     d.free
       ? html`<label class="field u-mt8">Name<input type="text" data-bind="draftName" maxlength="40" .value=${fieldValue(d.dayName || '')}></label><p class="small muted u-m4-0-0">Not tied to a routine day, so your cycle stays put.</p>`
       : ''
   }
-  ${d.past ? '' : checkinCard(d)}${bwAskCard(d)}${
+  ${d.past ? '' : readyCard(d, chkLow(d))}${bwAskCard(d)}${
     !d.ex.length
       ? html`<div class="card"><p class="small u-m0">No exercises yet. Tap + Add exercise below${d.editingId ? '' : `, or Pick for me for a suggestion based on your last ${PICK_DAYS} days,`} and log as you go.</p></div>`
       : ''
   }${repeatKeyed(
     d.ex,
     b => b.bid,
-    (b, bi) => blockPart(d, b, bi, letters, hintSeen, calIdx)
+    (b, bi) => blockPart(d, b, bi, letters, hintSeen, calIdx, bwAt)
   )}<div class="row"><button class="btn u-f1" data-act="pickSession">+ Add exercise</button>${d.editingId ? '' : html`<button class="btn" data-act="pickEx">Pick for me</button>`}</div>${d.editingId ? '' : cardioDraftCard(d)}<label class="field u-mt12">Notes<textarea data-bind="draftNotes" .defaultValue=${d.notes || ''} .value=${fieldValue(d.notes || '')}></textarea></label>${picStrip(null)}
   <div class="row fin-row u-mt12"><button class="btn danger" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button><button class="btn primary u-f1" data-act="finish" data-tip="Only sets marked done are saved; you are asked about any with reps but no checkmark.">${d.editingId ? 'Save changes' : 'Finish and save'}</button></div>`;
 }
@@ -876,7 +909,17 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const frac = WARM_RAMP[Math.min(n, WARM_RAMP.length - 1)];
     let at = 0;
     while (at < b.sets.length && b.sets[at].warm) at++;
-    const w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * frac) : null;
+    let w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * frac) : null;
+    /* Each warm-up a step heavier than the one before where the loads allow (r68): on a 10 lb step a 50 lb curl's
+       third warm-up came out at 30 again, the second's load; it takes the next load up, at most the ramp's top share
+       of the working load, so a warm-up never reaches it. Where no load fits there, it repeats the one before, never
+       a lighter one (the review of r68: a 30 kg bench on 5 kg steps warmed up at 20, 25, then 20). */
+    const prev = at > 0 ? +(effW(b, at - 1) ?? 0) || 0 : 0;
+    const top = WARM_RAMP[WARM_RAMP.length - 1] ?? frac;
+    if (w != null && prev > 0 && w <= prev + EPS) {
+      const up = base * top > prev ? heavierLoad(EX(b.exId), b.plan, prev, base * top) : null;
+      w = up != null && up < base - EPS ? up : prev;
+    }
     act(
       () => {
         b.sets.splice(at, 0, newRow({ w, warm: true }));
@@ -1180,7 +1223,12 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
   },
   cDraftDel: cardioRemove,
-  /* The check-in: answering the last of the three folds it away. */
+  // The check-in's sheet, from its button beside the date.
+  chkOpen() {
+    if (state.draft) openModal({ kind: 'checkin' });
+  },
+  /* The check-in: answering the last of the three closes its sheet, as it
+     folded the check-in away when it was on the session. */
   chk(t) {
     const d = state.draft;
     if (!d) return;
@@ -1196,7 +1244,10 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { inProgress: true }
     );
-    if (!was && CHK_Q.every(([q]) => c[q])) ui.folds['logger:checkin'] = false;
+    if (ui.modal && ui.modal.kind === 'checkin') {
+      if (!was && CHK_Q.every(([q]) => c[q])) closeModal();
+      else renderModal();
+    }
     rerenderKeepScroll();
   },
   /* The check-in's lighter session (r30, r31): only the exercises not

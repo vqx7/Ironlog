@@ -55,8 +55,9 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   ok(r3b.w === 50 && !r3b.drop, '+ Set after a drop set with filled-in loads uses the working load (' + JSON.stringify(r3b) + ')');
 
   // 5. Grammar and Enter order.
-  const word = await ev(() => { const L = window.__ironlog; L.state.draft.ex.forEach((b, i) => b.sets.forEach((s, j) => { s.done = i === 0 && j === 0; })); L.render(); return document.querySelector('.ph .meta').textContent; });
-  ok(/^1 set done/.test(word), 'header reads "1 set done": ' + word.slice(0, 20));
+  // The count is the bar's since r69 (the header said "1 set done" until then): one set, said as one of the sets.
+  const word = await ev(() => { const L = window.__ironlog; L.state.draft.ex.forEach((b, i) => b.sets.forEach((s, j) => { s.done = i === 0 && j === 0; })); L.render(); const n = L.state.draft.ex.reduce((a, b) => a + b.sets.filter(s => !s.warm).length, 0); return { meta: document.querySelector('.ph .meta').textContent, of: document.getElementById('sessOf').textContent, vt: document.querySelector('.sprog .band').getAttribute('aria-valuetext'), n }; });
+  ok(!/sets? done/.test(word.meta) && word.of === `1 of ${word.n}` && word.vt === `1 of ${word.n} sets done`, 'one set done: the bar reads 1 of the sets, to a screen reader "1 of N sets done": ' + JSON.stringify(word));
   const order = await ev(() => { const a = document.querySelector('.sg input[data-f="w"][data-b="0"][data-s="0"]'); a.focus();
     const key = () => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
     const seq = []; for (let k = 0; k < 3; k++) { key(); const e = document.activeElement; seq.push(e.dataset.f + e.dataset.s); } return seq.join(','); });

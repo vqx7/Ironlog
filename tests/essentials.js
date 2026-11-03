@@ -1,5 +1,5 @@
 // r20 essentials: accent colour (blue by default, three choices, remembered),
-// the optional name greeting, ready-made routines (first run and Plan), the
+// no name asked and no greeting (r69; the optional name greeting until then), ready-made routines (first run and Plan), the
 // − Set safeguard for rows with reps typed, auto-mark accepting the grey
 // suggestion on Next, prefilled targets still in place, RIR blanks.
 const { open } = require('./h');
@@ -28,15 +28,12 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // Blue accent: "above target" turns violet so it never looks like "done".
   ok(await ev(() => getComputedStyle(document.documentElement).getPropertyValue('--blue').trim().toLowerCase() === '#b69cff'), 'with blue, the above-target colour is violet');
 
-  // ---- Name.
-  await A.page.fill('[data-bind="userName"]', '  Vee  '); await A.page.dispatchEvent('[data-bind="userName"]', 'change'); await A.page.waitForTimeout(100);
-  ok(await ev(() => window.__ironlog.state.settings.userName === 'Vee'), 'the name is saved, trimmed');
-  await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
-  ok(/Evening, Vee/.test(await ev(() => (document.querySelector('.hero .hello') || {}).textContent || '')), 'Today greets by name');
-  await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); });
-  await A.page.fill('[data-bind="userName"]', ''); await A.page.dispatchEvent('[data-bind="userName"]', 'change'); await A.page.waitForTimeout(100);
-  await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
-  ok(await ev(() => window.__ironlog.state.settings.userName === undefined && !document.querySelector('.hero .hello')), 'clearing it removes the greeting');
+  // ---- Name. Since r69 (V, 2026-11-03) no name is asked and Today has no greeting; a name an earlier build stored stays in the log.
+  ok(await ev(() => !document.querySelector('#view [data-bind="userName"]')), 'Settings, General asks no name');
+  await ev(() => { const L = window.__ironlog; L.state.settings.userName = 'Vee'; L.saveNow(); L.ui.tab = 'today'; L.render(); });
+  ok(await ev(() => !document.querySelector('.hero .hello') && !/Vee/.test(document.querySelector('.hero').innerText)), 'Today has no greeting, a name stored or not');
+  ok(await ev(() => JSON.parse(localStorage.getItem('ironlog.v1')).settings.userName === 'Vee' && window.__ironlog.normalize(JSON.parse(localStorage.getItem('ironlog.v1'))).settings.userName === 'Vee'), 'a name stored by an earlier build is kept in the log');
+  await ev(() => { const L = window.__ironlog; delete L.state.settings.userName; L.saveNow(); });
 
   // ---- − Set: a row with reps typed goes with Undo; an empty row goes quietly.
   await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); window.scrollTo(0, 0); });

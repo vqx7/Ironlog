@@ -26,6 +26,10 @@ async function engineRun(page, cases, gym) {
     for (const c of cases) {
       L.state.settings.onboarded = true; L.state.settings.unit = 'lb'; L.state.draft = null; L.state.sessions = c.hist;
       if (gym) L.state.settings.gym = gym; else delete L.state.settings.gym;
+      // With no gym set, the 5 lb step these cases were written on, set on the bar, machine and cable lifts (the default
+      // by equipment, 10 lb since r68, is tests/r68.js section 4; r32.1 reads the same step as its default). With a gym
+      // set, its plates and stack decide, as before.
+      if (!gym) for (const e of L.state.exercises) if (['barbell', 'smith', 'machine', 'cable'].includes(e.equip)) e.inc = 5 * 0.45359237;
       L.invalidate();
       const plan = { sets: 3, repMin: c.rr[0], repMax: c.rr[1], rir: 1, rest: 90, inc: 5 * 0.45359237 };
       for (const o of [{}, { light: true }, { deload: true }]) { const x = L.suggest(c.ex, plan, o); res.push([c.ex, JSON.stringify(o), x.w, x.text, x.target]); }

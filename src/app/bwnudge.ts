@@ -8,8 +8,9 @@
        routine in use (today.ts, bwDueCard), with Later;
      - a short note when a bodyweight lift is added to a plan or a session,
        or comes in a ready-made routine picked, once a visit, never blocking;
-     - a quiet line on each bodyweight lift in a session, until one is
-       logged, whose Set it opens a small sheet;
+     - a quiet line on the first bodyweight lift still open in a session
+       (on each one until r69, when V found it a wall of text), until one
+       is logged, whose Set it opens a small sheet;
      - a field in Settings, always there, beside the weigh-in reminder.
    A weigh-in saved here is the same weigh-in as Today's. */
 
@@ -45,7 +46,7 @@ export function bwNudge(exIds: readonly string[]): void {
   );
 }
 
-/** The line on a bodyweight lift in a session while no weigh-in is logged: what it counts, and a way to set it. */
+/** The line on a session's first bodyweight lift still open while no weigh-in is logged: what it counts, and a way to set it. */
 export function bwWarn(exId: string): TemplateResult | typeof nothing {
   if (!bwMissing(exId)) return nothing;
   return html`<p class="small bwwarn">No bodyweight set, so this counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId}>Set it</button></p>`;
@@ -54,7 +55,7 @@ export function bwWarn(exId: string): TemplateResult | typeof nothing {
 /** The bodyweight sheet: what it is for, the field, Save and Not now. */
 export function bwSheet(m: { ex?: string | undefined }): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Your bodyweight</h3>${closeX()}</div>
-    <p class="small">${m.ex ? `${m.ex} counts` : 'Pull-ups, dips, and push-ups count'} your bodyweight, plus any weight you add on a belt or vest; you type only what you add. Without it, they count only what you add.</p>
+    <p class="small">${m.ex ? `${m.ex} counts` : 'Pull-ups, dips, and push-ups count'} your bodyweight, plus any weight you add on a belt or vest; you type only what you add. Without a bodyweight, they count only the added load.</p>
     <label class="field">Bodyweight (${U()})<input type="text" inputmode="decimal" id="bwSheetVal" placeholder=${`Weight (${U()})`} enterkeyhint="done"></label>
     <p class="small muted">Optional. Saved as today's weigh-in; change it any time in Settings or on Today.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="addBW" data-in="bwSheetVal">Save</button><button class="btn" data-act="mClose">Not now</button></div></div>`;

@@ -7,7 +7,7 @@ import { IN, KM_MI, FT_IN } from './units';
 import { NIL, fmtDate, fmtDateFrom, fmtWith, missedTag } from './format';
 import { e1, fitE, trendE, RECENT_DAYS, BEST_WEEKS, TAPE_WEEKS } from './formulas';
 import { MK, ML, isCommon, loadMode, nameMatch } from './library';
-import { routineEmpty, routineSig, sessDayIdx } from './routines';
+import { dayParts, dayWorkout, partOf, routineEmpty, routineSig, sessDayIdx } from './routines';
 import { rec } from './records';
 import { REGION_WKS, REGION_WK_DEFAULT } from './layout';
 import {
@@ -463,6 +463,8 @@ interface RegionSrc {
   src: Readonly<Record<string, number>> & { readonly _mix?: Readonly<Record<string, boolean>>; readonly _ff?: boolean };
   n?: number;
   label: string;
+  /** The average's name on the card ("4-week average"), the label then in its tip; absent where the label is the name. */
+  short?: string;
   back?: boolean;
   week?: boolean;
   noFull?: boolean;
@@ -488,6 +490,7 @@ export function regionSrc(): RegionSrc {
       src: avg,
       n,
       back: avg._back,
+      short: `${avg._weeks}-week average`,
       label:
         avg._missed || avg._light || avg._rest
           ? `your average over ${avgWeeksTxt(avg)}`
@@ -638,6 +641,43 @@ export function weekPlan(R: Routine): Record<string, PlannedDay> {
     const di = pj[d];
     const day = di == null ? undefined : R.days[di];
     if (di != null && day) out[d] = { di, day };
+  }
+  return out;
+}
+
+/* A fixed-weekday routine's week, slot by slot (NEW-31 and 366 (c), V's rulings of 2026-11-02): each weekday's
+   workouts in order (a day's first, then its second), each with the date it was done on this week, or null. A
+   session fills the slot of the day and workout it was started from, whatever date it was done on, so Monday's
+   Push done on Tuesday fills Monday's slot; one session fills one slot, the earliest first. A rest week plans
+   none (weekPlan), and a cycle has no slots (it walks on instead, cycleState). */
+/** One planned workout of this week on a fixed-weekday routine, and when it was done. */
+interface WeekSlot {
+  di: number;
+  part: 1 | 2;
+  day: Day;
+  doneOn: string | null;
+}
+/** This week's slots on a fixed-weekday routine (above), up to today: none on a cycle or in a rest week. */
+export function weekSlots(R: Routine): WeekSlot[] {
+  if (R.schedule !== 'weekly') return [];
+  const cur = weekStart(today());
+  const plan = weekPlan(R);
+  const out: WeekSlot[] = [];
+  for (let i = 0; i < WEEK_DAYS; i++) {
+    const p = plan[addDays(cur, i)];
+    if (!p) continue;
+    for (const part of dayParts(p.day)) out.push({ di: i, part, day: dayWorkout(p.day, part), doneOn: null });
+  }
+  const end = addDays(cur, WEEK_DAYS - 1);
+  const mine = state.sessions
+    .filter(s => s.routineId === R.id && !s.free && s.date >= cur && s.date <= end)
+    .slice()
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.t || 0) - (b.t || 0)));
+  for (const s of mine) {
+    const di = sessDayIdx(R, s),
+      part = partOf(s);
+    const slot = out.find(x => x.di === di && x.part === part && !x.doneOn);
+    if (slot) slot.doneOn = s.date;
   }
   return out;
 }

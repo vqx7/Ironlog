@@ -27,10 +27,14 @@ const near = (a, b, e) => a != null && b != null && Math.abs(a - b) < (e || 1e-6
   const ev = (f, a) => page.evaluate(f, a);
   // A fresh state with the given sessions and exercise changes, in lb or kg.
   await ev(() => {
-    window.__reset = (unit, sessions, exMod, extra) => {
+    /* real: the app's default steps. Otherwise a bar, Smith, machine or cable lift with no step of its own gets the
+       one these cases were written on, 5 lb or 2.5 kg, set on it as the Plan editor sets it (the default by
+       equipment, 10 lb or 5 kg since r68, is section 4 here and tests/r68.js section 4). */
+    window.__reset = (unit, sessions, exMod, extra, real) => {
       const A = window.__ironlog; const s = A.normalize(null); s.settings.onboarded = true; s.settings.unit = unit || 'lb'; s.sessions = sessions || [];
       if (exMod) for (const e of s.exercises) if (exMod[e.id]) Object.assign(e, exMod[e.id]);
       if (extra) extra(s);
+      if (!real) for (const e of s.exercises) if (e.inc == null && ['barbell', 'smith', 'machine', 'cable'].includes(e.equip)) e.inc = (unit || 'lb') === 'kg' ? 2.5 : 5 * 0.45359237;
       A.state = A.normalize(s); A.invalidate();
     };
     window.__sess = (date, exId, wKg, reps, o) => ({ id: 's' + date + exId + Math.random().toString(36).slice(2, 6), date, dayName: 'x', routineId: (o && o.rid) || '', dayId: (o && o.did) || '', deload: !!(o && o.deload), ex: [{ exId, rr: (o && o.rr) || null, cut: o && o.cut ? true : undefined, sets: reps.map(r => ({ w: wKg, r, rir: o && o.rir != null ? o.rir : 1, warm: false, drop: false })) }] });
@@ -134,19 +138,19 @@ const near = (a, b, e) => a != null && b != null && Math.abs(a - b) < (e || 1e-6
   // ---- 15. Warm-ups climb.
   ok(r3.firstWarmBeforeWork && r3.wStack[0] < r3.wStack[1] && r3.wStack[1] < r3.wStack[2], '15. three warm-ups sit above the working sets, lightest first', r3.wStack);
 
-  // ---- 4. The default step in kg.
+  // ---- 4. The default step in kg, as the app gives it (a barbell's: 5 kg since r68, 367; 2.5 kg before).
   const r4 = await ev(([LB]) => {
     const A = window.__ironlog;
-    window.__reset('kg', [window.__sess('2026-09-28', 'bench', 60, [10, 10, 10], { rr: [6, 10] })]);
+    window.__reset('kg', [window.__sess('2026-09-28', 'bench', 60, [10, 10, 10], { rr: [6, 10] })], null, null, true);
     const tpl = A.routineFromTemplate('ul4'); const it = tpl.days[0].items.find(i => i.exId === 'bench') || tpl.days.flatMap(d => d.items).find(i => i.exId === 'bench');
     const sg = A.suggest('bench', { ...it, repMin: 6, repMax: 10 });
     const lbStep = A.incOf(A.EX('bench'), { inc: 5 * LB });
-    window.__reset('lb', []);
+    window.__reset('lb', [], null, null, true);
     const lbBack = A.incOf(A.EX('bench'), { inc: 2.5 }) / LB;
     return { item: it && it.inc, step: lbStep, w: sg.w, text: sg.text, lbBack };
   }, [LB]);
-  ok(near(r4.step, 2.5) && near(r4.w, 62.5) && /add 2\.5 kg/.test(r4.text), '4. in kg the default step reads 2.5 kg: 60 kg x 10 x 3 goes to 62.5 kg ("add 2.5 kg", was 2.3)', r4);
-  ok(near(r4.lbBack, 5), '4. and the kg default reads as 5 lb in lb', r4.lbBack);
+  ok(near(r4.step, 5) && near(r4.w, 65) && /add 5 kg/.test(r4.text), '4. in kg a barbell\'s default step reads 5 kg: 60 kg x 10 x 3 goes to 65 kg ("add 5 kg", never a step converted from lb)', r4);
+  ok(near(r4.lbBack, 10), '4. and in lb it reads as 10 lb', r4.lbBack);
   const r4b = await ev(([LB]) => { const A = window.__ironlog; window.__reset('kg', [], { bench: { inc: 5 * LB } }); A.ACT.exEdit({ dataset: { ex: 'bench' } }); const v = A.ui.modal.e.incRaw; A.ACT.mClose(); return v; }, [LB]);
   ok(r4b === '2.5', '4. the exercise editor shows the step in use (2.5 kg), so saving it never stores 2.3', r4b);
 

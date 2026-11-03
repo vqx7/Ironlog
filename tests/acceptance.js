@@ -27,15 +27,17 @@ const ev=(f,a)=>page.evaluate(f,a);
 // Auto-mark off: this suite ticks every set by hand (auto-mark is on for new installs since r28; essentials and journey cover it).
 await ev(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.state.settings.autoDone=false;L.makeDemo();/* r30: used here as history, so marked as the lifter's own (a real session would otherwise clear demo data) */for(const k of ['sessions','bodyweights','measurements'])for(const x of L.state[k])delete x.demo;L.render();});
 const startDay=async name=>{await ev(n=>{const L=window.__ironlog;L.state.draft=null;const R=L.state.routines[0];L.ui.todayDay=R.days.findIndex(d=>d.name===n);L.ui.tab='today';L.render();},name);await page.click('.hero [data-act="startSession"]:not([data-light])');};
-const labels=async()=>ev(()=>[...document.querySelectorAll('section.block')].map(b=>({n:b.querySelector('h3').childNodes[0].textContent.trim(),head:b.querySelector('.sg.head .lh').innerText,chips:[...b.querySelectorAll('.lm')].map(x=>x.innerText)})));
-await startDay('Arms');let lb=await labels();console.log(lb.map(x=>`${x.n}: [${x.head}] ${x.chips.join(' | ')}`).join('\n'));
+// The load words were a line of chips under each exercise until r69; since then they are the column headings' tips (V, 2026-11-03).
+const labels=async()=>ev(()=>[...document.querySelectorAll('section.block')].map(b=>{const hs=b.querySelectorAll('.sg.head > span');return {n:b.querySelector('h3').childNodes[0].textContent.trim(),head:b.querySelector('.sg.head .lh').innerText,chips:[...b.querySelectorAll('.lm')].map(x=>x.innerText),tip:b.querySelector('.sg.head .lh').getAttribute('data-tip')||'',side:(hs[3]&&hs[3].getAttribute('data-tip'))||''};}));
+await startDay('Arms');let lb=await labels();console.log(lb.map(x=>`${x.n}: [${x.head}] ${x.tip} | ${x.side}`).join('\n'));
 const f=n=>lb.find(x=>x.n.toUpperCase()===n.toUpperCase());
-ok(/each/i.test(f('Incline DB Curl').head)&&f('Incline DB Curl').chips[0]==='per dumbbell','DB curl: "LB each" column and per-dumbbell chip');
+ok(lb.every(x=>!x.chips.length),'no exercise has a line of load chips under it');
+ok(/each/i.test(f('Incline DB Curl').head)&&/^Load: per dumbbell\./.test(f('Incline DB Curl').tip),'DB curl: "LB each" column, per dumbbell in its tip');
 ok(/stack/i.test(f('Overhead Cable Triceps Extension').head),'cable: stack column');
-ok(f('JM Press').chips[0]==='total, bar included','barbell: total, bar included');
-ok(f('Cable Woodchop').chips.includes('reps per side'),'woodchop: reps per side');
+ok(/^Load: total, bar included\./.test(f('JM Press').tip),'barbell: total, bar included');
+ok(/^Reps per side:/.test(f('Cable Woodchop').side),'woodchop: reps per side');
 await startDay('Back');lb=await labels();
-ok(/\+lb/i.test(f('Pull-up').head)&&f('Pull-up').chips[0]==='added to bodyweight','pull-up: +LB and added to bodyweight');
+ok(/\+lb/i.test(f('Pull-up').head)&&/^Load: added to bodyweight\./.test(f('Pull-up').tip),'pull-up: +LB and added to bodyweight');
 // mix-up warning
 const w0=await ev(()=>{const b=window.__ironlog.state.draft.ex[0];return window.__ironlog.IDX().exStats[b.exId].last.topW;});
 await page.fill('[data-f="w"][data-b="1"][data-s="0"]','500');await page.locator('[data-f="w"][data-b="1"][data-s="0"]').blur();await page.waitForTimeout(150);

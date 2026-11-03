@@ -10,11 +10,11 @@ import { html, nothing, render } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { DAYS, dayLabel, weekFactor } from './routines';
 import { NIL, WD2, fmtDate } from './format';
-import { addDays, r1, today, weekStart, monthOf, dayOfMonth, WEEK_DAYS } from './util';
+import { addDays, r1, today, weekStart, monthOf, dayOfMonth, dayOfWeek, WEEK_DAYS } from './util';
 import { U, activeRoutine, dateIndex, freeMode, isRestWeek, weekStats, cycleState } from './live';
 import { state, ui } from './store';
 import { WKVIEW_KEY, log, prefGet } from './storage';
-import { fmtBig, noLog, sessionsOn, tonnageNow, weekPlan } from './display';
+import { fmtBig, noLog, sessionsOn, tonnageNow, weekPlan, weekSlots } from './display';
 import { helpButton, howText, section } from './view';
 import type { Part } from './view';
 import { calBody, calNow, monthPlanned, planWords } from './calendar';
@@ -40,6 +40,8 @@ function weekBar(): TemplateResult[] {
   // A rest week plans nothing, so no day in it reads planned or missed (r55, the audit: the bar said "Upper A, missed" under "Rest week. Nothing planned.").
   const rw = isRestWeek(cur);
   const plan = rw ? {} : weekPlan(R);
+  // Which planned workouts were done, and on which date, wherever in the week (NEW-31, r68).
+  const slots = weekly && !rw ? weekSlots(R) : [];
   // The + on empty past days appears once there is a log to add to; a brand-new week bar stays clean (the days still open the sheet).
   const hasLog = state.sessions.length > 0;
   const out: TemplateResult[] = [];
@@ -54,12 +56,17 @@ function weekBar(): TemplateResult[] {
     const isRest = !!pd && pd.rest;
     // The session in progress sits on its own date, which for a past workout is not today.
     const live = !!state.draft && !state.draft.editingId && d === state.draft.date;
+    /* A planned day whose every workout was done on another day this week: not missed, nor still planned when it
+       was done early (NEW-31; the review of r68: Tuesday's Pull done Monday read planned on Tuesday). */
+    const mine = slots.filter(x => x.di === i);
+    const movedTo = !trained && weekly && isPlan && mine.length && mine.every(x => x.doneOn) ? mine : null;
     const cls = [
       'w',
       trained ? 'on' : '',
       !trained && cd.length ? 'cardio' : '',
-      !trained && !cd.length && isPlan && d >= t ? 'plan' : '',
-      !trained && weekly && isPlan && d < t ? 'miss' : '',
+      !trained && !cd.length && isPlan && d >= t && !movedTo ? 'plan' : '',
+      !trained && weekly && isPlan && d < t && !movedTo ? 'miss' : '',
+      movedTo ? 'moved' : '',
       !trained && !cd.length && isRest && d >= t ? 'rest' : '',
       d === t ? 'today' : '',
       live ? 'live' : ''
@@ -82,17 +89,25 @@ function weekBar(): TemplateResult[] {
       ? `${ss.map(x => x.dayName).join(', ')}, logged`
       : live
         ? 'session in progress'
-        : pd && isPlan
-          ? d < t
-            ? weekly
-              ? `${pd.name}, missed`
-              : 'nothing logged'
-            : `${pd.name}, planned`
-          : isRest && d >= t
-            ? 'rest day'
-            : rw
-              ? 'rest week'
-              : 'nothing logged';
+        : pd && isPlan && weekly && mine.length
+          ? /* Each of the day's workouts in its own words: done on another day, missed, or planned (the review of
+               r68: Monday's Push done Tuesday and its second workout missed read "Push, missed"). */
+            mine
+              .map(
+                x => `${x.day.name}, ${x.doneOn ? `done ${DAYS[dayOfWeek(x.doneOn)]}` : d < t ? 'missed' : 'planned'}`
+              )
+              .join('; ')
+          : pd && isPlan
+            ? d < t
+              ? weekly
+                ? `${pd.name}, missed`
+                : 'nothing logged'
+              : `${pd.name}, planned`
+            : isRest && d >= t
+              ? 'rest day'
+              : rw
+                ? 'rest week'
+                : 'nothing logged';
     const label = `${DAYS[i]} ${fmtDate(d)}: ${what}${cd.length ? `, cardio ${cd.reduce((a, c) => a + c.min, 0)} min` : ''}`;
     const inner = html`<span class="wd">${WD2[i]}</span><span class="dn">${dayOfMonth(d)}</span><span class="nm">${name || ' '}</span>`;
     if (live && d < t)
@@ -214,7 +229,7 @@ ${howText('wk', 'A rest week you marked under More options on Today. It does not
 ${cardioLine(w)}
 <div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">${noLog() ? `${w.tgt} hard sets planned this week.` : `${w.got} hard sets logged of ${w.tgt} planned${w.tgt > 0 ? ` (${Math.round(w.pct)}%)` : ''}.`}</p>${helpButton('wk')}</div>
 ${liftedLine()}
-${howText('wk', `Each set counts once; a set at RIR 4 or more is not hard and does not count. The bar at the top of every tab is this calendar week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead${w.weekly ? ', a red ring is a planned workout that was missed' : ''}. Tap a filled day to open it in History; tap today or a day ahead to see its workout here; tap an empty past day (marked +) to log a workout for it.${w.weekly ? '' : ' The row above the bar is your cycle: green is done this round, outlined is next.'}`)}`;
+${howText('wk', `Each set counts once; a set at RIR 4 or more is not hard and does not count. The bar at the top of every tab is this calendar week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead${w.weekly ? ', a red ring is a planned workout that was missed, and a plain day is one done on another day' : ''}. Tap a filled day to open it in History; tap today or a day ahead to see its workout here; tap an empty past day (marked +) to log a workout for it.${w.weekly ? '' : ' The row above the bar is your cycle: green is done this round, outlined is next.'}`)}`;
 }
 
 /** This week on Today: the week (or the month) and what it holds. */

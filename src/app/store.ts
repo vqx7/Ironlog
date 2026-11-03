@@ -55,6 +55,8 @@ interface Ui {
   help: Set<unknown>;
   tab: string;
   todayDay: unknown;
+  /** Of the day Today shows (todayDay), its second workout (2) on a fixed-weekday routine; null for the first (r68). */
+  todayPart?: 1 | 2 | null | undefined;
   mapSel: unknown;
   mapSrc: unknown;
   prevOpen: boolean;

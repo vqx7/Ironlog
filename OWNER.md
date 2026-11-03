@@ -2,14 +2,16 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r66 live (2026-11-01; checked by Claude on GitHub: pull request #65 merged by you at 23:03 UTC, gh-pages "Publish c440eab" at 23:39 UTC, build 2026.11.01-r66). Before it: r65.2 live (2026-11-01, #64, "Publish 3e6b627").
+Last updated: r67 live (2026-11-02; checked by Claude on GitHub: pull request #66 merged by you at 01:23 UTC on 2026-11-03, 17:23 Los Angeles, gh-pages "Publish 9eee1ec" at 01:54 UTC, build 2026.11.02-r67). Before it: r66 live (2026-11-01, #65, "Publish c440eab").
 
 ## Now, in this order
 
 1. A28 (r64 and r65): done, merged by you on 2026-10-30 and live (see Done).
 1a. A29 (r65.1, the look): closed by you unmerged on 2026-10-31 ("lets not push anything into prod"); nothing to do. The live app stays r65.
 1b. A30 (r65.2): done, merged by you (#64, 2026-10-31 18:38 Los Angeles) and live.
-1c. A31 (r66): done, merged by you (#65, 2026-11-01 15:03 Los Angeles) and live (see Last updated).
+1c. A31 (r66): done, merged by you (#65, 2026-11-01 15:03 Los Angeles) and live.
+1d. A32 (r67): done, merged by you (#66, 2026-11-02 17:23 Los Angeles) and live (see Last updated).
+1e. A33 (r68): try the preview at https://ironapp.org/preview/ on your phone (pull request #67 lists what to try), then merge #67 on GitHub's website once its checks are green.
 2. Problem reports: done (2026-10-30, you). B4's r64 code is deployed, B1a has been run, and a test report from the preview became an issue in `ironlog-feedback`, which confirms B5. See Done.
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
 4. D6: delete the old branches and stop them piling up (2 minutes, below).

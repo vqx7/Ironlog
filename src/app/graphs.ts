@@ -19,11 +19,12 @@ import { fmtDateLong, fmtE, regionSrc } from './display';
 
 /** How Stats' charts are drawn (Chart.js settings, set by eye): the legend's
     boxes and gap, the most ticks on each axis, about how many ticks a day
-    axis gets, the radar's legend box, ring step and least reach, the fonts,
-    the tooltip, bars, lines and points, the dashes of a target band, the
-    radar's minimum and the RIR line, the room over the tallest bar and the
-    step its scale rounds to, and the days a lift's chart and the bodyweight
-    chart show at least. */
+    axis gets, the least gap between two axis labels, the radar's legend box,
+    ring step and least reach, the fonts, the room around a ring label and the
+    places along a side it tries (from the middle out), the tooltip, bars,
+    lines and points, the dashes of a target band, the radar's minimum and the
+    RIR line, the room over the tallest bar and the step its scale rounds to,
+    and the days a lift's chart and the bodyweight chart show at least. */
 const CS = {
   legendBox: 10,
   legendGap: 12,
@@ -39,6 +40,9 @@ const CS = {
   radarPoint: 3,
   font: 11,
   tickFont: 10,
+  tickPad: 2,
+  tickGap: 6,
+  ringLabelAt: [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8],
   tipPad: 9,
   tipRadius: 8,
   barRadius: 4,
@@ -120,6 +124,7 @@ interface Ticks {
   color?: string | ((c: TickCtx) => string) | undefined;
   maxRotation?: number | undefined;
   autoSkip?: boolean | undefined;
+  autoSkipPadding?: number | undefined;
   maxTicksLimit?: number | undefined;
   font?: { size: number } | undefined;
   stepSize?: number | undefined;
@@ -182,14 +187,41 @@ interface Opts {
     tooltip?: Tooltip;
   };
   scales: { x: Axis; y: Axis; y1?: Axis };
+  datasets?: { line: { clip: number } };
 }
 /** A chart made. */
 interface ChartObj {
   destroy(): void;
 }
+/** What a chart's settings hold: its kind, its data, its options and any plugin of its own. */
+interface ChartCfg {
+  type: string;
+  data: unknown;
+  options: unknown;
+  plugins?: readonly RadarPlugin[] | undefined;
+}
+/** The radar's scale, as the plugin that writes its ring labels reads it. */
+interface RadarScale {
+  ticks: readonly { value: number; label: string }[];
+  getDistanceFromCenterForValue(v: number): number;
+  getPointPosition(index: number, distance: number): { x: number; y: number };
+}
+/** A radar chart, as a plugin hook is handed it. */
+interface RadarDrawn {
+  ctx: CanvasRenderingContext2D;
+  scales: { r?: RadarScale | undefined };
+  data: { datasets: readonly unknown[] };
+  isDatasetVisible(i: number): boolean;
+  getDatasetMeta(i: number): { data: readonly { x: number; y: number; options?: { radius?: number } }[] };
+}
+/** A plugin of the radar's own (Chart.js calls its hook once the datasets are drawn). */
+interface RadarPlugin {
+  id: string;
+  afterDatasetsDraw(chart: RadarDrawn): void;
+}
 /** Chart.js's constructor and the defaults the page sets. */
 interface ChartLib {
-  new (el: HTMLCanvasElement, cfg: { type: string; data: unknown; options: unknown }): ChartObj;
+  new (el: HTMLCanvasElement, cfg: ChartCfg): ChartObj;
   /** The chart drawn in a canvas, if any. */
   getChart(el: HTMLCanvasElement): { resize(): void } | undefined;
   defaults: {
@@ -262,6 +294,10 @@ function baseOpts(): Opts {
     maintainAspectRatio: false,
     animation: false,
     interaction: { mode: 'index', intersect: false },
+    /* A dot on the first or last day, or at the top of the scale, is drawn whole: Chart.js cuts a line chart at its
+       plot's edge, which halved the first weigh-in's dot and a lift's first session (seen 2026-11-02). The room it
+       may take is the largest a dot gets, inside the gap the axis leaves before its labels. */
+    datasets: { line: { clip: CS.hoverRadius } },
     plugins: {
       legend: {
         position: 'bottom',
@@ -290,12 +326,14 @@ function dayAxis(base: string, win: { min: number; max: number }): Axis {
       stepSize: step,
       includeBounds: false,
       maxRotation: 0,
-      autoSkip: false,
+      // A label that would run into the one beside it is left out (a net: whole weeks rarely crowd).
+      autoSkip: true,
+      autoSkipPadding: CS.tickGap,
       callback: v => fmtDate(addDays(base, Math.round(v)))
     }
   };
 }
-function mkChart(id: string, cfg: { type: string; data: unknown; options: unknown }): void {
+function mkChart(id: string, cfg: ChartCfg): void {
   const c = document.getElementById(id);
   const C = window.Chart;
   if (!(c instanceof HTMLCanvasElement) || !C) return;
@@ -309,8 +347,7 @@ function mkChart(id: string, cfg: { type: string; data: unknown; options: unknow
    than baseOpts(). */
 function radarOpts(max: number): unknown {
   const ink = cssv('--muted'),
-    line = cssv('--line'),
-    surf = cssv('--surface');
+    line = cssv('--line');
   return {
     responsive: true,
     maintainAspectRatio: false,
@@ -329,21 +366,127 @@ function radarOpts(max: number): unknown {
         min: 0,
         max,
         beginAtZero: true,
-        // z:1 draws the tick labels above the datasets, so the 100% ring no longer
-        // runs through the "100" label.
-        ticks: {
-          color: ink,
-          stepSize: CS.radarStep,
-          showLabelBackdrop: true,
-          backdropColor: surf,
-          backdropPadding: 2,
-          font: { size: CS.tickFont },
-          z: 1
-        },
+        // The ring labels are written by ringLabels (below), not by Chart.js, which puts them on the first spoke.
+        ticks: { stepSize: CS.radarStep, display: false },
         grid: { color: line },
         angleLines: { color: line },
         pointLabels: { color: ink, font: { size: CS.font } }
       }
+    }
+  };
+}
+
+/** A box on the canvas: left, top, right and bottom. */
+interface Box {
+  l: number;
+  t: number;
+  r: number;
+  b: number;
+}
+/** Whether the segment from (x1, y1) to (x2, y2) passes through the box (Liang and Barsky's clipping test). */
+function segHits(x1: number, y1: number, x2: number, y2: number, q: Box): boolean {
+  const dx = x2 - x1,
+    dy = y2 - y1;
+  let lo = 0,
+    hi = 1;
+  const edges: [number, number][] = [
+    [-dx, x1 - q.l],
+    [dx, q.r - x1],
+    [-dy, y1 - q.t],
+    [dy, q.b - y1]
+  ];
+  for (const [p, d] of edges) {
+    if (p === 0) {
+      if (d < 0) return false;
+      continue;
+    }
+    const k = d / p;
+    if (p < 0) lo = Math.max(lo, k);
+    else hi = Math.min(hi, k);
+    if (lo > hi) return false;
+  }
+  return true;
+}
+/** Whether a circle at (x, y) of radius r touches the box. */
+function dotHits(x: number, y: number, r: number, q: Box): boolean {
+  const nx = Math.max(q.l, Math.min(x, q.r)),
+    ny = Math.max(q.t, Math.min(y, q.b));
+  return Math.hypot(x - nx, y - ny) < r;
+}
+/** Writes the radar's ring labels (50, 100, 150) where they touch nothing drawn. Chart.js writes them on the first spoke
+    (Chest), over any dot that lands near a ring (V, 2026-11-02, a photo of Chest at 50% under its "50"). Each
+    label goes just inside its ring, on one side between two spokes, clear of the ring's own line, and where it
+    meets no dot and no line of either dataset: in the middle of the side, else as near the middle as is clear.
+    The labels share the side that places the most of them, Chest's first side when it places them all. A label
+    with no clear place on that side is left out, its ring still drawn and the others named. */
+function ringLabels(): RadarPlugin {
+  return {
+    id: 'ringLabels',
+    afterDatasetsDraw: chart => {
+      const sc = chart.scales.r;
+      if (!sc) return;
+      const g = chart.ctx;
+      const size = CS.tickFont;
+      g.save();
+      g.font = `${size}px ${window.Chart?.defaults.font.family ?? 'sans-serif'}`;
+      // What is drawn: each shown dataset's dots (the Minimum ring's have no size) and the closed line through them.
+      const drawn = chart.data.datasets
+        .map((_, i) => i)
+        .filter(i => chart.isDatasetVisible(i))
+        .map(i => chart.getDatasetMeta(i).data.map(p => ({ x: p.x, y: p.y, r: p.options?.radius ?? 0 })));
+      const n = drawn[0]?.length ?? 0;
+      const o = sc.getPointPosition(0, 0);
+      // Whether a box meets a dot or a line of what is drawn.
+      const meets = (q: Box): boolean =>
+        drawn.some(pts =>
+          pts.some((p, i) => {
+            const nx = pts[(i + 1) % pts.length] ?? p;
+            return (p.r > 0 && dotHits(p.x, p.y, p.r + CS.tickPad, q)) || segHits(p.x, p.y, nx.x, nx.y, q);
+          })
+        );
+      /* Where a label for the ring at value v goes on side k, at fraction f of the way along it, as the point and the
+         box its text fills with room around it: in from the side by as far as the box reaches toward it, so the
+         ring's own line never touches the digits. */
+      const spot = (label: string, v: number, k: number, f: number): { x: number; y: number; q: Box } => {
+        const d = sc.getDistanceFromCenterForValue(v);
+        const a = sc.getPointPosition(k, d);
+        const b = sc.getPointPosition((k + 1) % n, d);
+        const mx = (a.x + b.x) / 2,
+          my = (a.y + b.y) / 2;
+        const len = Math.hypot(mx - o.x, my - o.y) || 1;
+        const ux = (mx - o.x) / len,
+          uy = (my - o.y) / len;
+        const hw = g.measureText(label).width / 2 + CS.tickPad,
+          hh = size / 2 + CS.tickPad;
+        const inset = hw * Math.abs(ux) + hh * Math.abs(uy);
+        const x = a.x + (b.x - a.x) * f - ux * inset,
+          y = a.y + (b.y - a.y) * f - uy * inset;
+        return { x, y, q: { l: x - hw, t: y - hh, r: x + hw, b: y + hh } };
+      };
+      const ticks = sc.ticks.filter(t => t.value > 0);
+      // Each label at the first clear place along side k, from the middle out, or nowhere.
+      const placed = (k: number): ({ x: number; y: number } | null)[] =>
+        ticks.map(t => {
+          for (const f of CS.ringLabelAt) {
+            const sp = spot(t.label, t.value, k, f);
+            if (!meets(sp.q)) return sp;
+          }
+          return null;
+        });
+      // The side that places the most labels clear, the first from Chest's on a tie.
+      let best = placed(0);
+      for (let k = 1; k < n && best.some(p => !p); k++) {
+        const here = placed(k);
+        if (here.filter(Boolean).length > best.filter(Boolean).length) best = here;
+      }
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillStyle = cssv('--muted');
+      best.forEach((p, i) => {
+        const t = ticks[i];
+        if (p && t) g.fillText(t.label, p.x, p.y);
+      });
+      g.restore();
     }
   };
 }
@@ -363,17 +506,29 @@ function weekAxis(win: readonly { wk: string; fut: boolean }[], o: Opts): string
 
   const ink = cssv('--muted');
   const faded = ink + '80';
+  /* Up to CHART_WEEKS weeks every week is named, the month only on the first and where it changes, so the labels
+     between are a day's number and all fit side by side on a 320 px phone (r67 wrote "Oct 26This wk" there). Past
+     that, about CS.xTicks are named, each with its month, and Chart.js leaves out any that would run into the next. */
+  const many = win.length > CHART_WEEKS;
   o.scales.x.ticks = {
     ...o.scales.x.ticks,
-    autoSkip: win.length > CHART_WEEKS,
-    maxTicksLimit: win.length > CHART_WEEKS ? CS.xTicks : undefined,
+    autoSkip: many,
+    autoSkipPadding: CS.tickGap,
+    maxTicksLimit: many ? CS.xTicks : undefined,
     font: { size: CS.tickFont },
     color: c => {
       const w = win[c.tick ? c.tick.value : c.index];
       return w && w.fut ? faded : ink;
     }
   };
-  return win.map(w => (w.wk === cur ? 'This wk' : fmtDate(w.wk)));
+  // A week's date (yyyy-mm-dd) as its month and its day of the month.
+  const ym = (d: string): string => d.split('-').slice(0, 2).join('-');
+  const dom = (d: string): string => String(+(d.split('-')[2] ?? ''));
+  return win.map((w, i) => {
+    if (w.wk === cur) return 'This wk';
+    const prev = win[i - 1];
+    return !many && prev && ym(prev.wk) === ym(w.wk) ? dom(w.wk) : fmtDate(w.wk);
+  });
 }
 
 /** Chart.js's defaults as the page draws them: its font, the muted ink, and the tooltip in the page's colours. */
@@ -531,7 +686,8 @@ function radarChart({ blue, green }: Pal): void {
         }
       ]
     },
-    options: radarOpts(rMax)
+    options: radarOpts(rMax),
+    plugins: [ringLabels()]
   });
 }
 
