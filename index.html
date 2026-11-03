@@ -6776,8 +6776,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function unitGridIn(M3, ex, plan, top, w2, down, whole) {
     if (ex.timed || gymRackIn(M3, ex, plan) || plateGridIn(M3, ex, plan)) return null;
-    const st = inUnitIn(M3, incOfIn(M3, ex, plan));
-    if (!(st > 0)) return null;
+    const sl = inUnitIn(M3, incOfIn(M3, ex, plan));
+    if (!(sl > 0)) return null;
+    const own2 = ex.inc != null || Math.abs(stepReadIn(M3, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M3)) >= EPS_SAME;
+    const st = own2 ? sl : Math.min(sl, DEFAULT_STEP[UIn(M3)]);
     const o3 = inUnitIn(M3, loadFloorIn(M3, ex));
     const at2 = (k2) => o3 + k2 * st;
     const off = (v3) => {
@@ -6799,7 +6801,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const tot = top + bwK;
       const most = Math.max(x2, inUnitIn(M3, tot * jumpCap(ex, tot) - bwK));
       const under = at2(Math.floor((most - o3) / st + EPS));
-      if (d3 > most + EPS && under > tp + EPS && !(whole && under < tp + st - EPS)) d3 = under;
+      if (d3 > most + EPS && under > tp + EPS && !(whole && under < tp + sl - EPS)) d3 = under;
     }
     const cp = capOfIn(M3, ex, plan, top);
     return cp != null && kgOfIn(M3, d3) > cp + EPS ? null : kgOfIn(M3, d3);

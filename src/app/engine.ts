@@ -285,8 +285,17 @@ function unitGridIn(
   whole?: boolean
 ): number | null {
   if (ex.timed || gymRackIn(M, ex, plan) || plateGridIn(M, ex, plan)) return null;
-  const st = inUnitIn(M, incOfIn(M, ex, plan));
-  if (!(st > 0)) return null;
+  const sl = inUnitIn(M, incOfIn(M, ex, plan));
+  if (!(sl > 0)) return null;
+  /* The loads that exist in the unit on screen: on the unit's default step (5 lb, 2.5 kg) when the lift has no step
+     of its own, the smallest plates most gyms keep in pairs. 367's 10 lb step is how far a load goes up, not which
+     loads exist (V, 2026-11-03, NEW-46: on its 10 lb grid 100 kg shown in lb, 220.5, was held at 225 and stepped
+     to 235, and 225 lb shown in kg held at 100). A step the lifter set, on the lift or its plan, is the grid, as
+     before (incOfIn reads a plan's step at the unit's default as none set). */
+  const own =
+    ex.inc != null ||
+    Math.abs(stepReadIn(M, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M)) >= EPS_SAME;
+  const st = own ? sl : Math.min(sl, DEFAULT_STEP[UIn(M)]);
   /* The loads the step makes are counted from the bar on a lift on the full
      bar typed as the total (loadFloorIn), from 0 on any other (r64, the r63
      audit's R-2): counted from 0, a 10 lb step made 40 and 50 around a 20 kg
@@ -339,7 +348,7 @@ function unitGridIn(
     const tot = top + bwK;
     const most = Math.max(x, inUnitIn(M, tot * jumpCap(ex, tot) - bwK));
     const under = at(Math.floor((most - o) / st + EPS));
-    if (d > most + EPS && under > tp + EPS && !(whole && under < tp + st - EPS)) d = under;
+    if (d > most + EPS && under > tp + EPS && !(whole && under < tp + sl - EPS)) d = under;
   }
   // Never past the heaviest load the lift has (capOfIn), which the engine's own load already keeps to: that load, then.
   const cp = capOfIn(M, ex, plan, top);

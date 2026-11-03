@@ -17,6 +17,9 @@
 //   9  Plan's "Heavy for one workout" reads each of a day's workouts on its own.
 //  10  The week bar names each of a day's workouts (done on another day, missed or planned), and a day whose
 //      workout was done early is no longer marked planned.
+//  11  NEW-46 (V, 2026-11-03, found after the review; fails on 326077f): a load logged in the other unit is held on
+//      the unit's own loads (5 lb, 2.5 kg), as r67 held it: 100 kg shown in lb was held at 225 and stepped to 235
+//      on 367's 10 lb grid, and 225 lb shown in kg was held at 100.
 // `node tests/r68b.js [page]`; R68B=1,3 runs some.
 const { open, engine } = require('./h');
 let browser;
@@ -254,6 +257,28 @@ async function finish(page) {
     ok(/^Tue Nov 3: Pull, done Mon/.test(b[1].label) && !/\bplan\b/.test(b[1].cls), '10. Tuesday, its Pull done Monday: done Mon, not planned', b[1]);
     ok(/^Wed Nov 4: Legs, planned/.test(b[2].label) && /\bplan\b/.test(b[2].cls), '10. (a guard) Wednesday still planned', b[2]);
     ok(!P.errors.length, '10. no page errors', P.errors);
+    await P.ctx.close();
+  }
+
+  // ---- 11. NEW-46 (V, 2026-11-03): a load logged in the other unit, held or stepped up, on the unit's own loads.
+  if (run(11)) {
+    const P = await open(FILE, { browser, clock: '2026-11-03T10:00:00' });
+    const r = await P.page.evaluate(() => {
+      const L = window.__ironlog; const LB = 0.45359237; const S = L.state; S.settings.onboarded = true; delete S.settings.gym;
+      const plan = { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 120, inc: 5 * LB };
+      const go = (u, kg, reps) => {
+        S.settings.unit = u; S.sessions = [{ id: 's1', date: '2026-10-27', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: reps.map(r => ({ w: kg, r, rir: 2 })) }] }];
+        L.state = L.normalize(S); delete L.state.exercises.find(e => e.id === 'bench').inc; L.invalidate();
+        const g = L.suggest('bench', plan, {});
+        return { w: u === 'lb' ? Math.round(g.w / LB * 10) / 10 : Math.round(g.w * 100) / 100, text: g.text };
+      };
+      return { holdLb: go('lb', 100, [8, 8, 8]), upLb: go('lb', 100, [10, 10, 10]), holdKg: go('kg', 225 * LB, [8, 8, 8]), upKg: go('kg', 225 * LB, [10, 10, 10]), control: go('lb', 225 * LB, [8, 8, 8]) };
+    });
+    ok(r.holdLb.w === 220, '11. 100 kg x 8 shown in lb (220.5) holds at 220, the nearest load, never 225, heavier than lifted', r.holdLb);
+    ok(r.upLb.w === 230, '11. 100 kg x 10 at the top of the range steps to 230 lb, about one 10 lb step, never 235', r.upLb);
+    ok(r.holdKg.w === 102.5, '11. 225 lb x 8 shown in kg (102.1) holds at 102.5, the nearest load, never 100', r.holdKg);
+    ok(r.upKg.w === 107.5, '11. 225 lb x 10 shown in kg steps to 107.5, about one 5 kg step', r.upKg);
+    ok(r.control.w === 225, '11. (a guard) 225 lb logged and shown in lb holds at 225', r.control);
     await P.ctx.close();
   }
 
