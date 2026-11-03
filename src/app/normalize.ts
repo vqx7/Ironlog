@@ -348,11 +348,8 @@ export function cleanSess(raw: unknown, si: number): Session {
       // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold (r56.1).
       t: isTime(Math.round(t)) ? Math.round(t) : undefined,
       // The sessions a week its routine planned when saved (r55, pwOf); absent unless recorded, so older records keep their hash.
-      // Up to two workouts a weekday since r68 (366 (c)).
-      pw:
-        typeof ss.pw === 'number' && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= 2 * WEEK_DAYS
-          ? ss.pw
-          : undefined,
+      // At most seven, as every build before reads it: a week of more is not recorded (pwOf, the review of r68).
+      pw: typeof ss.pw === 'number' && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= WEEK_DAYS ? ss.pw : undefined,
       // The pictures on the workout's notes (r66, 373), by id; absent unless there are any, so older records keep their shape and hash.
       ...picsField(ss.pics),
       // Its day's second workout (r68, 366 (c)): 2 or absent, last, where a build before r68 keeps it among its extras.

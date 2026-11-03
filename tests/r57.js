@@ -153,6 +153,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const { screenOf, screenDiff } = require('./h');
   // The spaces drawn between elements are read too (screenOf's spaces, since r59), so a space lost or added there shows.
   const shot = (file, seed, tab, env) => screenOf(file, { browser, seed, tab, env, spaces: true });
+  /* r68 changes the demo's loads on purpose (367: a bar, machine or cable lift steps 10 lb by default, and the demo is
+     built by the engine's steps), held by tests/r68.js section 4; both pages here build the demo on the 5 lb step it
+     was built on (a step set on those lifts, which r56.2 reads as its default), so History's numbers are still held
+     to r56.2. */
+  const PIN = "for(const e of L.state.exercises)if(['barbell','smith','machine','cable'].includes(e.equip))e.inc=5*0.45359237;";
   const SEEDS = [
     ['a new install', "L.state.settings.onboarded=true;L.saveNow();"],
     ['demo data, lb', "L.state.settings.onboarded=true;L.makeDemo();L.saveNow();"],
@@ -209,7 +214,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const ENVS = [null, 'preview'];
   for (const [name, seed] of SEEDS) for (const tab of ['settings', 'history']) for (const env of ENVS) {
     if (env && name !== 'demo data, lb') continue;
-    const a = heldOut(await shot(OLD, seed, tab, env)), b = heldOutR66(heldOutAccents(heldOut(await shot(FILE, seed, tab, env))));
+    const sd = seed.replace(/L\.makeDemo\(\);/g, PIN + 'L.makeDemo();');
+    const a = heldOut(await shot(OLD, sd, tab, env)), b = heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env))));
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     const firstDiff = d && { at: d.at, r56_2: d.before, now: d.now };
     ok(!firstDiff, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same elements, attributes and field values as r56.2`, firstDiff);

@@ -107,7 +107,10 @@ export function exTagParts(e: Pick<Exercise, 'id'> & Partial<Pick<Exercise, 'cus
 /** A day's flag for a muscle planned past SESSION_CAP sets in one workout, or nothing. */
 export function sessionCapNote(day: Day): Part {
   if (day.rest || !day.items.length) return nothing;
-  const ms = sessionMuscleSets(day);
+  // Each of the day's workouts on its own (r68, 366 (c); the review of r68: a morning and an evening were added up).
+  const ms: Record<string, number> = {};
+  for (const part of dayParts(day))
+    for (const [m, v] of Object.entries(sessionMuscleSets(dayWorkout(day, part)))) ms[m] = Math.max(ms[m] ?? 0, v);
   const over = Object.entries(ms)
     .filter(([, v]) => v > SESSION_CAP)
     .sort((a, b) => b[1] - a[1]);

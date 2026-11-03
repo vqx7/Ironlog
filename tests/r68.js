@@ -476,7 +476,7 @@ const vLog = mon => {
         return { guide, inc };
       }, unit);
       const g = r.guide.replace(/\s+/g, ' ');
-      const steps = unit === 'lb' ? /Load steps: with none set on the exercise, a barbell or Smith lift and a machine stack go up 10 lb, a dumbbell 5 lb, and anything else 5 lb/ : /Load steps: with none set on the exercise, a barbell or Smith lift and a machine stack go up 5 kg, a dumbbell 2 kg, and anything else 2\.5 kg/;
+      const steps = unit === 'lb' ? /Load steps, with none set on the exercise: 10 lb on a barbell, a Smith machine, or a machine stack; 5 lb on a dumbbell; 5 lb on anything else/ : /Load steps, with none set on the exercise: 5 kg on a barbell, a Smith machine, or a machine stack; 2 kg on a dumbbell; 2\.5 kg on anything else/;
       ok(steps.test(g), `8. the Guide gives the load steps by equipment, in ${unit}`, g.match(/Load steps[^.]*\./));
       if (unit === 'lb') {
         ok(/Fixed weekdays: a workout done on another day counts for its own day/.test(g) && /Add a second workout/.test(g), '8. the Guide says how fixed weekdays adapt and where the second workout is added', g.match(/Fixed weekdays[^<]{0,300}/));

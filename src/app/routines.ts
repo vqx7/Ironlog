@@ -340,12 +340,16 @@ export function plannedPerWeek(R: RoutineLike): number {
    a month was trained on, or adding a day to it, rescored those weeks against
    the routine as it is now, and a 5-week streak read 0). Absent for a
    Freestyle session or a routine that plans none, and on sessions saved
-   before r55, which read the routine as it is now. */
-/** The sessions a week the routine with this id plans, for a session to record; undefined when it plans none or is gone. */
+   before r55, which read the routine as it is now. A week of more than
+   seven (two workouts on some weekdays, r68) is not recorded either: a build
+   before r68 drops a count past seven when it loads the session and saves
+   it back to the account, so every phone would lose it (the review of r68);
+   such a week reads the routine as it is now. */
+/** The sessions a week the routine with this id plans, for a session to record; undefined when it plans none, more than seven, or is gone. */
 export function pwOf(routines: readonly (RoutineLike & { id: string })[], id: string): number | undefined {
   const R = routines.find(r => r.id === id);
   const n = R ? plannedPerWeek(R) : 0;
-  return n > 0 ? n : undefined;
+  return n > 0 && n <= WEEK_DAYS ? n : undefined;
 }
 
 /* The sets a routine's plan gives a lift, for a session saved on one of its
@@ -359,14 +363,15 @@ export function pwOf(routines: readonly (RoutineLike & { id: string })[], id: st
 export function planSetsOf(
   routines: readonly {
     id: string;
-    days: readonly { id: string; items: readonly { exId: string; sets: number }[] }[];
+    days: readonly { id: string; items: readonly { exId: string; sets: number; pm?: true | undefined }[] }[];
   }[],
   id: string,
   dayId: string | null | undefined,
-  exId: string
+  exId: string,
+  part?: 1 | 2
 ): number | undefined {
   const R = routines.find(r => r.id === id);
-  const it = R ? planItemOf(R, exId, dayId) : null;
+  const it = R ? planItemOf(R, exId, dayId, part) : null;
   return it && Number.isInteger(it.sets) && it.sets >= 1 ? it.sets : undefined;
 }
 
@@ -383,12 +388,13 @@ export function withPlanSets<B extends { exId: string; ps?: number | undefined }
     free?: boolean | undefined;
     dayId?: string | null | undefined;
     routineId: string;
+    part?: 2 | undefined;
   },
   routines: Parameters<typeof planSetsOf>[0]
 ): B[] {
   if (d.editingId || d.free || !d.dayId) return [...ex];
   return ex.map(b => {
-    const n = planSetsOf(routines, d.routineId, d.dayId, b.exId);
+    const n = planSetsOf(routines, d.routineId, d.dayId, b.exId, partOf(d));
     return n ? { ...b, ps: n } : b;
   });
 }
@@ -612,13 +618,19 @@ export function routinePlanIn(M: Model, exId: string, R?: Routine | null, dayId?
    the audit: a range changed in Plan never reached the same lift in a blank
    session, which took its plan from the first day with it). */
 /** The item a lift's plan in a routine comes from: on the day given first, else the first day with it; null on no day. */
-export function planItemOf<I extends { exId: string }>(
+export function planItemOf<I extends { exId: string; pm?: true | undefined }>(
   R: { days: readonly { id: string; items: readonly I[] }[] },
   exId: string,
-  dayId?: string | null
+  dayId?: string | null,
+  part?: 1 | 2
 ): I | null {
   const days = dayId ? [...R.days.filter(d => d.id === dayId), ...R.days.filter(d => d.id !== dayId)] : R.days;
-  for (const d of days) for (const it of d.items) if (it.exId === exId) return it;
+  // On the day, its workout first when one is named (r68, 366 (c): a lift in both of a day's workouts, the review of r68).
+  const mine = (it: I): boolean => !!it.pm === (part === 2);
+  for (const d of days) {
+    const its = part && d.id === dayId ? [...d.items.filter(mine), ...d.items.filter(it => !mine(it))] : d.items;
+    for (const it of its) if (it.exId === exId) return it;
+  }
   return null;
 }
 

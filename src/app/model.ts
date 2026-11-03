@@ -259,6 +259,8 @@ export interface Suggestion {
   capped?: boolean | undefined;
   buildTo?: number | undefined;
   back?: number | undefined;
+  /** Asked as done earlier the same day (NEW-18): the load stays as logged, never moved onto a grid. */
+  same?: true | undefined;
 }
 
 /** An exercise as EX() gives it: the log's own record, or, for an id the log

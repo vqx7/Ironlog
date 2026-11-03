@@ -2687,17 +2687,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function pwOf(routines, id) {
     const R2 = routines.find((r4) => r4.id === id);
     const n3 = R2 ? plannedPerWeek(R2) : 0;
-    return n3 > 0 ? n3 : void 0;
+    return n3 > 0 && n3 <= WEEK_DAYS ? n3 : void 0;
   }
-  function planSetsOf(routines, id, dayId, exId) {
+  function planSetsOf(routines, id, dayId, exId, part) {
     const R2 = routines.find((r4) => r4.id === id);
-    const it = R2 ? planItemOf(R2, exId, dayId) : null;
+    const it = R2 ? planItemOf(R2, exId, dayId, part) : null;
     return it && Number.isInteger(it.sets) && it.sets >= 1 ? it.sets : void 0;
   }
   function withPlanSets(ex, d3, routines) {
     if (d3.editingId || d3.free || !d3.dayId) return [...ex];
     return ex.map((b2) => {
-      const n3 = planSetsOf(routines, d3.routineId, d3.dayId, b2.exId);
+      const n3 = planSetsOf(routines, d3.routineId, d3.dayId, b2.exId, partOf(d3));
       return n3 ? { ...b2, ps: n3 } : b2;
     });
   }
@@ -2816,9 +2816,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const { uid: _u, ss: _s, ...p3 } = it;
     return { ...DEFAULT_PLAN, ...p3, ss: null };
   }
-  function planItemOf(R2, exId, dayId) {
+  function planItemOf(R2, exId, dayId, part) {
     const days = dayId ? [...R2.days.filter((d3) => d3.id === dayId), ...R2.days.filter((d3) => d3.id !== dayId)] : R2.days;
-    for (const d3 of days) for (const it of d3.items) if (it.exId === exId) return it;
+    const mine = (it) => !!it.pm === (part === 2);
+    for (const d3 of days) {
+      const its = part && d3.id === dayId ? [...d3.items.filter(mine), ...d3.items.filter((it) => !mine(it))] : d3.items;
+      for (const it of its) if (it.exId === exId) return it;
+    }
     return null;
   }
   function basePlanIn(M3, exId, R2, dayId, plain) {
@@ -3649,8 +3653,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold (r56.1).
         t: isTime(Math.round(t4)) ? Math.round(t4) : void 0,
         // The sessions a week its routine planned when saved (r55, pwOf); absent unless recorded, so older records keep their hash.
-        // Up to two workouts a weekday since r68 (366 (c)).
-        pw: typeof ss.pw === "number" && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= 2 * WEEK_DAYS ? ss.pw : void 0,
+        // At most seven, as every build before reads it: a week of more is not recorded (pwOf, the review of r68).
+        pw: typeof ss.pw === "number" && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= WEEK_DAYS ? ss.pw : void 0,
         // The pictures on the workout's notes (r66, 373), by id; absent unless there are any, so older records keep their shape and hash.
         ...picsField(ss.pics),
         // Its day's second workout (r68, 366 (c)): 2 or absent, last, where a build before r68 keeps it among its extras.
@@ -6604,8 +6608,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function routineUpdatesIn(M3, d3) {
     const R2 = M3.s.routines.find((r4) => r4.id === d3.routineId);
     if (!R2) return null;
-    const day = R2.days.find((x2) => x2.id === d3.dayId);
-    if (!day) return null;
+    const day0 = R2.days.find((x2) => x2.id === d3.dayId);
+    if (!day0) return null;
+    const day = dayWorkout(day0, d3.part === 2 ? 2 : 1);
     const have = new Set(day.items.map((i5) => i5.exId));
     const add = [], swap = [];
     const seen = /* @__PURE__ */ new Set();
@@ -6656,7 +6661,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       ...add.map((x2) => `add ${exNameIn(M3, x2.exId)}`),
       ...ss.map((u4) => `superset ${andList(u4.map((id) => exNameIn(M3, id)))}`)
     ];
-    return { rid: R2.id, dayId: day.id, dayName: day.name, add, swap, ss, text: bits.join(", ") };
+    return {
+      rid: R2.id,
+      dayId: day.id,
+      ...d3.part === 2 ? { part: 2 } : {},
+      dayName: day.name,
+      add,
+      swap,
+      ss,
+      text: bits.join(", ")
+    };
   }
 
   // src/app/loads.ts
@@ -6833,8 +6847,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const ex = EXIn(M3, exId);
     const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M3, exId, plan, opts) : 0;
     const back2 = off > BACK_DAYS;
-    if (!(opts.deload || opts.light || back2) || ex.timed)
-      return snapUnitIn(M3, ex, plan, suggestCoreIn(M3, exId, plan, opts));
+    if (!(opts.deload || opts.light || back2) || ex.timed) {
+      const core = suggestCoreIn(M3, exId, plan, opts);
+      return core.same ? core : snapUnitIn(M3, ex, plan, core);
+    }
     const base = suggestCoreIn(M3, exId, plan, { ...opts, deload: false, light: false });
     if (base.kin && base.w > 0) {
       const ks = !gymRackIn(M3, ex, plan) && rackKind(ex) && rackKind(EXIn(M3, base.kin)) ? rackStepIn(M3, EXIn(M3, base.kin)) : null;
@@ -6946,8 +6962,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return out;
   }
   function sgSameDayIn(M3, C2) {
-    const { ex, last, T: T2, top, planPts, lastR, lastS, basis, opts } = C2;
+    const { ex, last, T: T2, top, planPts, lastR, lastS, basis, opts, plan } = C2;
     if (!opts.before || last.date !== T2 || !(planPts.length > 0)) return null;
+    if (last.rr && !sameRR(last.rr, [+plan.repMin, +plan.repMax])) return null;
     const sets = last.pts.map((p3) => `${loadLabelIn(M3, ex, p3.w)}×${p3.r}`).join(", ");
     return {
       top,
@@ -6958,7 +6975,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       last: lastS,
       target: "",
       tgt: null,
-      easier: null
+      easier: null,
+      same: true
     };
   }
   function suggestCoreIn(M3, exId, plan, opts) {
@@ -7548,6 +7566,20 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         tgt: null,
         easier: null
       };
+    if (opts.before && last.date === opts.before && !(last.rr && !sameRR(last.rr, [+plan.repMin, +plan.repMax])))
+      return {
+        prev: L0.prev,
+        prevOff: L0.prevOff,
+        w: top,
+        text: `Earlier today: ${ws.map((p3) => `${loadLabelIn(M3, ex, p3.w)} for ${p3.r}s`).join(", ")}. The same again: no step up within one day.`,
+        lastR,
+        basis,
+        last: lastS,
+        target: "",
+        tgt: null,
+        easier: null,
+        same: true
+      };
     const off = backDaysIn(M3, ex.id, plan, opts);
     if (off > BACK_DAYS)
       return {
@@ -7643,11 +7675,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const kind = rackKind(ex);
     const all = RACK[kind][UIn(M3)];
     const pref = kind === "dumbbell" ? EQUIP_STEP.each[UIn(M3)] : null;
-    const order = pref != null && all.includes(pref) ? [pref, ...all.filter((g2) => g2 !== pref)] : all;
+    const fits = (ws, g2) => ws.every((w2) => Math.abs(w2 / g2 - Math.round(w2 / g2)) < RACK_FIT);
+    const fitD = (ws) => all.find((g2) => fits(ws, g2)) ?? null;
     const fit = (ws) => {
-      const fits = (g3) => ws.every((w2) => Math.abs(w2 / g3 - Math.round(w2 / g3)) < RACK_FIT);
-      const g2 = order.find(fits);
-      return g2 ? fromDIn(M3, g2) : null;
+      const g2 = pref != null && all.includes(pref) && fits(ws, pref) ? pref : fitD(ws);
+      return g2 != null ? fromDIn(M3, g2) : null;
     };
     if (I2._rack[key] === void 0) {
       const steps = (a2, b2) => Math.abs(a2 / b2 - Math.round(a2 / b2)) < RACK_FIT;
@@ -7656,15 +7688,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         const own2 = [];
         for (const p3 of x2.pts) if (p3.w > 0) own2.push(toDIn(M3, p3.w));
         if (!own2.length) continue;
-        const f3 = fit([...ws, ...own2]);
+        const f3 = fitD([...ws, ...own2]);
         if (ws.length && f3 !== g2) {
-          const h3 = fit(own2);
+          const h3 = fitD(own2);
           if (f3 == null || g2 == null || h3 == null || !(steps(g2, h3) || steps(h3, g2))) break;
         }
         ws = [...ws, ...own2];
         g2 = f3;
       }
-      I2._rack[key] = g2;
+      I2._rack[key] = ws.length ? fit(ws) : null;
     }
     const logged2 = xs.some((x2) => x2.pts.some((p3) => p3.w > 0));
     const d3 = logged2 || at2 == null || !(at2 > 0) ? null : toDIn(M3, at2);
@@ -15952,7 +15984,9 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   }
   function sessionCapNote(day) {
     if (day.rest || !day.items.length) return A;
-    const ms = sessionMuscleSets(day);
+    const ms = {};
+    for (const part of dayParts(day))
+      for (const [m3, v3] of Object.entries(sessionMuscleSets(dayWorkout(day, part)))) ms[m3] = Math.max(ms[m3] ?? 0, v3);
     const over = Object.entries(ms).filter(([, v3]) => v3 > SESSION_CAP).sort((a2, b2) => b2[1] - a2[1]);
     if (!over.length) return A;
     const who = andList(over.map(([m3, v3]) => `${ML[m3]} ${r1(v3)}`));
@@ -17501,12 +17535,12 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const isRest = !!pd && pd.rest;
       const live2 = !!state.draft && !state.draft.editingId && d3 === state.draft.date;
       const mine = slots.filter((x2) => x2.di === i5);
-      const movedTo = !trained && weekly && isPlan && d3 < t4 && mine.length && mine.every((x2) => x2.doneOn) ? mine : null;
+      const movedTo = !trained && weekly && isPlan && mine.length && mine.every((x2) => x2.doneOn) ? mine : null;
       const cls = [
         "w",
         trained ? "on" : "",
         !trained && cd.length ? "cardio" : "",
-        !trained && !cd.length && isPlan && d3 >= t4 ? "plan" : "",
+        !trained && !cd.length && isPlan && d3 >= t4 && !movedTo ? "plan" : "",
         !trained && weekly && isPlan && d3 < t4 && !movedTo ? "miss" : "",
         movedTo ? "moved" : "",
         !trained && !cd.length && isRest && d3 >= t4 ? "rest" : "",
@@ -17515,7 +17549,13 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       ].filter(Boolean).join(" ");
       const first = ss[0];
       const name = first ? first.dayName + (ss.length > 1 ? ` +${ss.length - 1}` : "") : cd.length ? "Cardio" : pd && d3 >= t4 ? isRest ? "Rest" : pd.name : pd && weekly && isPlan && d3 < t4 ? pd.name : "";
-      const what = trained ? `${ss.map((x2) => x2.dayName).join(", ")}, logged` : live2 ? "session in progress" : pd && isPlan ? d3 < t4 ? movedTo ? `${pd.name}, done ${movedTo.map((x2) => DAYS[dayOfWeek(x2.doneOn || d3)]).join(" and ")}` : weekly ? `${pd.name}, missed` : "nothing logged" : `${pd.name}, planned` : isRest && d3 >= t4 ? "rest day" : rw ? "rest week" : "nothing logged";
+      const what = trained ? `${ss.map((x2) => x2.dayName).join(", ")}, logged` : live2 ? "session in progress" : pd && isPlan && weekly && mine.length ? (
+        /* Each of the day's workouts in its own words: done on another day, missed, or planned (the review of
+           r68: Monday's Push done Tuesday and its second workout missed read "Push, missed"). */
+        mine.map(
+          (x2) => `${x2.day.name}, ${x2.doneOn ? `done ${DAYS[dayOfWeek(x2.doneOn)]}` : d3 < t4 ? "missed" : "planned"}`
+        ).join("; ")
+      ) : pd && isPlan ? d3 < t4 ? weekly ? `${pd.name}, missed` : "nothing logged" : `${pd.name}, planned` : isRest && d3 >= t4 ? "rest day" : rw ? "rest week" : "nothing logged";
       const label = `${DAYS[i5]} ${fmtDate(d3)}: ${what}${cd.length ? `, cardio ${cd.reduce((a2, c4) => a2 + c4.min, 0)} min` : ""}`;
       const inner = b`<span class="wd">${WD2[i5]}</span><span class="dn">${dayOfMonth(d3)}</span><span class="nm">${name || " "}</span>`;
       if (live2 && d3 < t4)
@@ -18610,12 +18650,12 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const offer = weekly && chosen == null && !isRestWeek(weekStart(today())) ? weekOffer(R2, wd) : null;
     const di = chosen == null ? offer ? offer.di : weekly ? wd : cs ? cs.next : 0 : chosen;
     const day0 = R2.days[di] || { id: "", name: "", rest: true, items: [] };
-    const parts = weekly ? dayParts(day0) : [];
-    const part = offer ? offer.part : chosen != null && ui.todayPart === 2 && parts.includes(2) ? 2 : (weekSlots(R2).find((x2) => x2.di === di && !x2.doneOn) || { part: parts[0] ?? 1 }).part;
-    const day = parts.length > 1 || part === 2 ? dayWorkout(day0, part) : day0;
     const t4 = today();
     const at2 = ui.todayAt;
     const ahead = chosen != null && at2 && typeof at2 === "object" && "d" in at2 && "di" in at2 && at2.di === chosen && typeof at2.d === "string" && at2.d > addDays(weekStart(t4), SUNDAY) ? at2.d : null;
+    const parts = weekly ? dayParts(day0) : [];
+    const part = offer ? offer.part : chosen != null && ui.todayPart === 2 && parts.includes(2) ? 2 : ahead ? parts[0] ?? 1 : (weekSlots(R2).find((x2) => x2.di === di && !x2.doneOn) || { part: parts[0] ?? 1 }).part;
+    const day = parts.length > 1 || part === 2 ? dayWorkout(day0, part) : day0;
     const eyebrow = ahead ? weekly ? `Viewing ${DAYS[di]}, ${fmtDateYr(ahead)}` : `Viewing ${fmtDateYr(ahead)} · ${dayLabel(R2, di)}` : weekly ? offer && offer.kind === "behind" ? `Planned ${DAYS[di]}` : offer && offer.kind === "ahead" ? `Next up · ${DAYS[di]}` : di === wd ? "Today" : `Viewing ${DAYS[di]}` : `${cs && cs.restToday && chosen == null ? "Next: " : ""}${dayLabel(R2, di)}`;
     let note = A;
     if (offer && offer.kind !== "today") note = offerNote(R2, wd, offer);
@@ -20018,9 +20058,9 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       let w2 = base > 0 ? lighterLoad(EX(b2.exId), b2.plan, base, base * frac) : null;
       const prev = at2 > 0 ? +(effW(b2, at2 - 1) ?? 0) || 0 : 0;
       const top = WARM_RAMP[WARM_RAMP.length - 1] ?? frac;
-      if (w2 != null && prev > 0 && w2 <= prev + EPS && base * top > prev) {
-        const up = heavierLoad(EX(b2.exId), b2.plan, prev, base * top);
-        if (up != null && up < base - EPS) w2 = up;
+      if (w2 != null && prev > 0 && w2 <= prev + EPS) {
+        const up = base * top > prev ? heavierLoad(EX(b2.exId), b2.plan, prev, base * top) : null;
+        w2 = up != null && up < base - EPS ? up : prev;
       }
       act(
         () => {
@@ -23502,10 +23542,12 @@ ${JSON.stringify(ctx, null, 1)}`;
         toast("That routine day no longer exists");
         return;
       }
+      const pm = u4.part === 2;
+      const mine = (i5) => !!i5.pm === pm;
       act(
         () => {
           for (const x2 of u4.swap) {
-            const it = day.items.find((i5) => i5.exId === x2.from);
+            const it = day.items.find((i5) => i5.exId === x2.from && mine(i5));
             if (it) {
               it.exId = x2.to;
               if (x2.plan) {
@@ -23515,10 +23557,17 @@ ${JSON.stringify(ctx, null, 1)}`;
             }
           }
           for (const x2 of u4.add)
-            if (!day.items.some((i5) => i5.exId === x2.exId))
-              day.items.push({ ...DEFAULT_PLAN, ...x2.plan, uid: uid(), exId: x2.exId, ss: null });
+            if (!day.items.some((i5) => i5.exId === x2.exId && mine(i5)))
+              day.items.push({
+                ...DEFAULT_PLAN,
+                ...x2.plan,
+                uid: uid(),
+                exId: x2.exId,
+                ss: null,
+                ...pm ? { pm: true } : {}
+              });
           for (const ids of u4.ss || []) {
-            const its = ids.flatMap((id) => day.items.filter((i5) => i5.exId === id).slice(0, 1));
+            const its = ids.flatMap((id) => day.items.filter((i5) => i5.exId === id && mine(i5)).slice(0, 1));
             if (its.length < 2) continue;
             const at2 = Math.min(...its.map((i5) => day.items.indexOf(i5)));
             day.items = day.items.filter((i5) => !its.includes(i5));
@@ -23532,7 +23581,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         { undo: true }
       );
       render();
-      toast(`${day.name} updated`, true);
+      toast(`${u4.dayName} updated`, true);
     }
   };
 
@@ -24016,16 +24065,18 @@ ${JSON.stringify(ctx, null, 1)}`;
     render();
     if (live2) wakeOn();
   }
-  function pastDraft(date, di) {
+  function pastDraft(date, di, part = 1) {
     const R2 = activeRoutine();
-    const day = di == null ? null : R2.days[di];
-    if (!day || di == null) return { ...freeDraft("Freestyle"), date, startedAt: null, past: true };
+    const day0 = di == null ? null : R2.days[di];
+    if (!day0 || di == null) return { ...freeDraft("Freestyle"), date, startedAt: null, past: true };
+    const day = R2.schedule === "weekly" ? dayWorkout(day0, part) : day0;
     return {
       id: uid(),
       startedAt: null,
       date,
       dayIdx: di,
       dayId: day.id,
+      ...part === 2 && R2.schedule === "weekly" ? { part: 2 } : {},
       dayName: day.name,
       routineId: R2.id,
       deload: false,
@@ -24266,7 +24317,9 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (!s3) return;
       const go = () => {
         const R2 = activeRoutine();
-        const day = !s3.free && s3.routineId === R2.id && s3.dayId ? R2.days.find((x2) => x2.id === s3.dayId) : void 0;
+        const day0 = !s3.free && s3.routineId === R2.id && s3.dayId ? R2.days.find((x2) => x2.id === s3.dayId) : void 0;
+        const part = R2.schedule === "weekly" && s3.part === 2 && day0 && day0.items.some((i5) => i5.pm) ? 2 : 1;
+        const day = day0 && R2.schedule === "weekly" ? dayWorkout(day0, part) : day0;
         const deload = isDeloadWeek();
         const plan = (b2) => {
           const it = day && day.items.find((i5) => i5.exId === b2.exId);
@@ -24292,8 +24345,9 @@ ${JSON.stringify(ctx, null, 1)}`;
             id: uid(),
             startedAt: Date.now(),
             date: today(),
-            dayIdx: R2.days.indexOf(day),
+            dayIdx: day0 ? R2.days.indexOf(day0) : -1,
             dayId: day.id,
+            ...part === 2 ? { part: 2 } : {},
             dayName: day.name + (deload ? " (deload)" : ""),
             routineId: R2.id,
             deload,
@@ -24433,12 +24487,13 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (!m3 || m3.kind !== "past") return;
       const date = m3.date;
       const di = t4.dataset.day === "free" ? null : Number(t4.dataset.day);
+      const part = t4.dataset.part === "2" ? 2 : 1;
       const go = () => {
         stopTimer();
         wakeOff();
         ui.tab = "today";
         ui.todayDay = null;
-        begin(pastDraft(date, di), false);
+        begin(pastDraft(date, di, part), false);
         if (di == null) openModal({ kind: "picker", mode: "addBlock", title: "Add exercise to session", q: "", m: "" });
       };
       closeModal();
@@ -25356,7 +25411,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Pick for me</b> ranks your routine's days by what each muscle got in the last ${PICK_DAYS} days against your targets, how recently it was trained hard, injuries, and your cycle. Starting one moves your cycle on from there.</p>
    <p><b>Blank session</b>: any exercises, not tied to a routine day, so your cycle stays put.</p>
    <p><b>More options</b>: Deload week, Limited equipment (each exercise your gym cannot do swapped for the closest match), Rest week (a week off on purpose: averages, the streak, and adherence skip it), Flag an injury, and Log cardio.</p>
-   <p><b>Two sessions in a day</b> are kept in the order you started them, and a calendar day with two asks which to open. A lift done again the same day asks what it did earlier that day, with no step up; the next day's target comes from the better of the two.</p>
+   <p><b>Two sessions in a day</b> are kept in the order you started them, and a calendar day with two asks which to open. A lift done again the same day in the same rep range asks what it did earlier that day, with no step up; in another range, that range's rules apply. The next day's target comes from the better of the two.</p>
    <p><b>Weigh-in</b>: a card asks for your bodyweight every ${BW_EVERY_DEFAULT / WEEK_DAYS} weeks once you have weighed in or log bodyweight lifts (Settings, General, Weigh-in reminder: every week, 2 weeks, month, or off). Pull-ups, dips, and push-ups are read at your latest weigh-in.</p>
    <p><b>This week</b> counts hard sets logged against hard sets planned; Month shows the calendar instead, and the title becomes This month. The bar at the top of every tab is this week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead, and with fixed weekdays a red ring is one missed and a plain day one done on another day. Tap an empty past day to log a workout for it. The calendar shows the workouts planned ahead the same way, for a year: tap one to see it on Today; a numbered cycle is counted on from where you are, one day at a time, and a rest week planned ahead plans nothing and holds the cycle where it is.</p>`
       ],
@@ -25391,7 +25446,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p>Each exercise progresses from its <b>last full session in the rep range you plan for it that day</b>, so the same lift on a heavy day and a light day progresses on each separately. A range not used within ${TREND_WEEKS} weeks of your latest session of the lift starts from that latest session instead.</p>
    <p><b>The working load</b> is the load you did the most sets with (the heavier on a tie), leaving out loads under ${pctOf(WORK_FLOOR)}% of your heaviest. A heavy top set, or two, before your back-off sets counts for bests and PRs, while targets, grey reps, and trends build on the back-off sets.</p>
    <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about ${pct1(JUMP_COMPOUND)}% of the load on compound lifts and ${pct1(JUMP_ISOLATION)}% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (it costs ${BIG_STEP_REPS} reps or more, as 5 lb on a 35 lb dumbbell does), on a range ${FIXED_RANGE} or more reps wide, you first build a few reps past the top at this load, up to ${shareWords(BUILD_PAST.share)} of the top of the range more (${numWord(BUILD_PAST.min)} at least), until your estimate says the new load allows the bottom of the range; then the load goes up. Past that, the load goes up anyway, with the reps your estimate allows there as the target. A fixed-rep plan (5 x 5, 3 x 3-5) goes up a step every time all its sets are done.</p>
-   <p><b>Load steps</b>: with none set on the exercise, a barbell or Smith lift and a machine stack go up ${stepWords(EQUIP_STEP.bar, kg2)}, a dumbbell ${stepWords(EQUIP_STEP.each, kg2)}, and anything else ${stepWords(DEFAULT_STEP, kg2)} (conventions: the smallest jumps most gyms can load). Your gym, in Settings, and the exercise's own load step come first.</p>
+   <p><b>Load steps</b>, with none set on the exercise: ${stepWords(EQUIP_STEP.bar, kg2)} on a barbell, a Smith machine, or a machine stack; ${stepWords(EQUIP_STEP.each, kg2)} on a dumbbell; ${stepWords(DEFAULT_STEP, kg2)} on anything else (conventions: the smallest jumps most gyms can load). Your gym, in Settings, and the exercise's own load step come first.</p>
    <p><b>Dumbbells and kettlebells</b> step by what your rack has: with no load step set on the exercise, the step fits every load you logged on it (12, 14, and 16 kg is a rack in 2 kg steps; 12.5 and 15, one in 2.5).</p>
    <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets, a set past the top of the range counting as the top. One set under the range among the others counts as the bottom of the range, so one bad set does not set the next target. A session clearly below your usual repeats the last target (One rule for every session, below); a second in a row is your usual, and then every set under the range at a load you did in it the time before asks for the bottom of the range in every set again.</p>
    <p><b>Well past the range</b> (every set ${CLEARLY_OFF} or more reps over the top, as after moving the range down): the load your estimated 1RM gives for the middle of the range, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg2)}), in whole steps.</p>
@@ -25835,11 +25890,14 @@ ${JSON.stringify(ctx, null, 1)}`;
     const R2 = activeRoutine();
     const due = pastDue(R2, m3.date);
     const on = sessionsOn(m3.date).map((x2) => x2.dayName || "Session");
-    const opts = R2.days.map((d3, i5) => ({ d: d3, i: i5 })).filter((x2) => !x2.d.rest && x2.d.items.length > 0).sort((a2, b2) => +(b2.i === due) - +(a2.i === due));
+    const weekly = R2.schedule === "weekly";
+    const opts = R2.days.flatMap(
+      (d0, i5) => (weekly ? dayParts(d0) : [1]).map((part) => ({ d: weekly ? dayWorkout(d0, part) : d0, i: i5, part }))
+    ).filter((x2) => !x2.d.rest && x2.d.items.length > 0).sort((a2, b2) => +(b2.i === due) - +(a2.i === due));
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pastH"><div class="sheet-h"><h3 id="pastH">Log a past workout</h3>${closeX()}</div>
   <label class="field">Date<input type="date" data-pbind="date" .value=${l3(m3.date)} max=${today()}></label>
   ${on.length ? b`<p class="small muted u-m6-0-0">Already logged that day: ${on.join(", ")}.</p>` : ""}
-  <div class="stack u-mt12">${opts.map(({ d: d3, i: i5 }) => b`<button class=${"btn fullw" + (i5 === due ? " primary" : "") + " pastday"} data-act="pastGo" data-day=${String(i5)}><span>${dayLabel(R2, i5)}: ${d3.name}</span>${i5 === due ? b`<small>due then</small>` : b`<small>${d3.items.length} exercises</small>`}</button>`)}<button class="btn fullw pastday" data-act="pastGo" data-day="free"><span>Freestyle</span><small>any exercises</small></button></div>
+  <div class="stack u-mt12">${opts.map(({ d: d3, i: i5, part }) => b`<button class=${"btn fullw" + (i5 === due && part === 1 ? " primary" : "") + " pastday"} data-act="pastGo" data-day=${String(i5)} data-part=${part === 2 ? "2" : A}><span>${dayLabel(R2, i5)}: ${d3.name}</span>${i5 === due && part === 1 ? b`<small>due then</small>` : b`<small>${d3.items.length} exercises</small>`}</button>`)}<button class="btn fullw pastday" data-act="pastGo" data-day="free"><span>Freestyle</span><small>any exercises</small></button></div>
   <p class="small muted u-m10-0-0">Quick entry: type each set. ${tipButton("No rest timer or clock. A set counts as done once its reps are typed. Last time, targets, and PRs are read as of that date.", "About quick entry")}</p></div>`;
   }
 

@@ -433,8 +433,11 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
   const ex = EXIn(M, exId);
   const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M, exId, plan, opts) : 0;
   const back = off > BACK_DAYS;
-  if (!(opts.deload || opts.light || back) || ex.timed)
-    return snapUnitIn(M, ex, plan, suggestCoreIn(M, exId, plan, opts));
+  if (!(opts.deload || opts.light || back) || ex.timed) {
+    const core = suggestCoreIn(M, exId, plan, opts);
+    // The load lifted earlier today is asked as it was, in the unit it was logged in (the review of r68: 60 kg read as 135 lb).
+    return core.same ? core : snapUnitIn(M, ex, plan, core);
+  }
   const base = suggestCoreIn(M, exId, plan, { ...opts, deload: false, light: false });
   /* A close variation's first session on a Lighter day or deload (r32.1): 90% of the start, like any lighter day. */
   if (base.kin && base.w! > 0) {
@@ -593,8 +596,10 @@ function oneADay(xs: Exposure[] | undefined, repMin: number): Exposure[] | undef
    its date (opts.before: one being started or logged, and Today's card for the session Start would begin); a
    lift's next session elsewhere (Stats) is a later day, so the day's best sets it there. */
 function sgSameDayIn(M: Model, C: SuggestCtx): Suggestion | null {
-  const { ex, last, T, top, planPts, lastR, lastS, basis, opts } = C;
+  const { ex, last, T, top, planPts, lastR, lastS, basis, opts, plan } = C;
   if (!opts.before || last.date !== T || !(planPts.length > 0)) return null;
+  // Earlier today in another rep range (a heavy morning, a light evening): that range's own rules read it (the review of r68).
+  if (last.rr && !sameRR(last.rr, [+plan.repMin, +plan.repMax])) return null;
   const sets = last.pts.map(p => `${loadLabelIn(M, ex, p.w)}×${p.r}`).join(', ');
   return {
     top,
@@ -605,7 +610,8 @@ function sgSameDayIn(M: Model, C: SuggestCtx): Suggestion | null {
     last: lastS,
     target: '',
     tgt: null,
-    easier: null
+    easier: null,
+    same: true
   };
 }
 
@@ -1542,6 +1548,21 @@ function suggestTimedIn(
       tgt: null,
       easier: null
     };
+  // Held again the same day (NEW-18, the review of r68): what it held earlier today, as any lift is (sgSameDayIn).
+  if (opts.before && last.date === opts.before && !(last.rr && !sameRR(last.rr, [+plan.repMin, +plan.repMax])))
+    return {
+      prev: L0.prev,
+      prevOff: L0.prevOff,
+      w: top,
+      text: `Earlier today: ${ws.map(p => `${loadLabelIn(M, ex, p.w)} for ${p.r}s`).join(', ')}. The same again: no step up within one day.`,
+      lastR,
+      basis,
+      last: lastS,
+      target: '',
+      tgt: null,
+      easier: null,
+      same: true
+    };
   /* Back after a break, as any lift is (r55, from the audit: a plank seven
      weeks off was asked to beat its last time): the same load, holds about
      90% as long (the lighter day's 90%, r32, a convention), nothing to beat,
@@ -1688,17 +1709,20 @@ export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): numb
   // Read since a new machine or gym (liftReadIn, r61), its rack another gym's before: kept by where that stretch starts.
   const xs = liftReadIn(M, ex.id);
   const key = UIn(M) + ex.id + '|' + (xs.length ? xs[0].sid : '');
-  /* The spacings tried, largest first, but for dumbbells the default step by equipment first (367, V's pick of
-     2026-11-02: 2 kg each), so loads both spacings fit (10, 20, 30 kg) read as 2 kg; loads only 2.5 kg fits
-     (12.5, 17.5) still read as 2.5. */
+  /* The spacings tried, largest first. For dumbbells the default step by equipment (367, V's pick of 2026-11-02:
+     2 kg each) is read once the rack is: when every load read fits it too (10, 20, 30 kg), the rack is in 2 kg
+     steps; a load only 2.5 kg fits (12.5, 17.5), in any session read, keeps 2.5. Read the other way round, the
+     newest loads alone (20 kg) read as 2 and an older 17.5 was then taken for another gym's, so 22 kg, which
+     that rack does not have, was asked (the review of r68). */
   const kind = rackKind(ex)!;
   const all = RACK[kind][UIn(M)];
   const pref = kind === 'dumbbell' ? EQUIP_STEP.each[UIn(M)] : null;
-  const order = pref != null && all.includes(pref) ? [pref, ...all.filter(g => g !== pref)] : all;
+  const fits = (ws: readonly number[], g: number): boolean =>
+    ws.every(w => Math.abs(w / g - Math.round(w / g)) < RACK_FIT);
+  const fitD = (ws: readonly number[]): number | null => all.find(g => fits(ws, g)) ?? null;
   const fit = (ws: readonly number[]): number | null => {
-    const fits = (g: number): boolean => ws.every(w => Math.abs(w / g - Math.round(w / g)) < RACK_FIT);
-    const g = order.find(fits);
-    return g ? fromDIn(M, g) : null;
+    const g = pref != null && all.includes(pref) && fits(ws, pref) ? pref : fitD(ws);
+    return g != null ? fromDIn(M, g) : null;
   };
   if (I._rack[key] === undefined) {
     const steps = (a: number, b: number): boolean => Math.abs(a / b - Math.round(a / b)) < RACK_FIT;
@@ -1708,15 +1732,15 @@ export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): numb
       const own: number[] = [];
       for (const p of x.pts) if (p.w > 0) own.push(toDIn(M, p.w)!);
       if (!own.length) continue;
-      const f = fit([...ws, ...own]);
+      const f = fitD([...ws, ...own]);
       if (ws.length && f !== g) {
-        const h = fit(own);
+        const h = fitD(own);
         if (f == null || g == null || h == null || !(steps(g, h) || steps(h, g))) break;
       }
       ws = [...ws, ...own];
       g = f;
     }
-    I._rack[key] = g;
+    I._rack[key] = ws.length ? fit(ws) : null;
   }
   const logged = xs.some(x => x.pts.some(p => p.w > 0));
   const d = logged || at == null || !(at > 0) ? null : toDIn(M, at);

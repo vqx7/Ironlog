@@ -74,16 +74,19 @@ function begin(d: DraftLike, live: boolean): void {
    it opened and saved as one. It is logged as what was done, and a lift done
    lighter reads lighter from its numbers. */
 /** A past workout's session: the routine day given, or a blank one, on its date. */
-function pastDraft(date: string, di: number | null): DraftLike {
+function pastDraft(date: string, di: number | null, part: 1 | 2 = 1): DraftLike {
   const R = activeRoutine();
-  const day = di == null ? null : R.days[di];
-  if (!day || di == null) return { ...freeDraft('Freestyle'), date, startedAt: null, past: true };
+  const day0 = di == null ? null : R.days[di];
+  if (!day0 || di == null) return { ...freeDraft('Freestyle'), date, startedAt: null, past: true };
+  // One of the day's two workouts on a fixed-weekday routine (r68, 366 (c); the review of r68: both in one).
+  const day = R.schedule === 'weekly' ? dayWorkout(day0, part) : day0;
   return {
     id: uid(),
     startedAt: null,
     date,
     dayIdx: di,
     dayId: day.id,
+    ...(part === 2 && R.schedule === 'weekly' ? { part: 2 as const } : {}),
     dayName: day.name,
     routineId: R.id,
     deload: false,
@@ -346,7 +349,10 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!s) return;
     const go = (): void => {
       const R = activeRoutine();
-      const day = !s.free && s.routineId === R.id && s.dayId ? R.days.find(x => x.id === s.dayId) : undefined;
+      const day0 = !s.free && s.routineId === R.id && s.dayId ? R.days.find(x => x.id === s.dayId) : undefined;
+      // A day's second workout done again is that workout again (r68, 366 (c); the review of r68: it started as the first).
+      const part = R.schedule === 'weekly' && s.part === 2 && day0 && day0.items.some(i => i.pm) ? 2 : 1;
+      const day = day0 && R.schedule === 'weekly' ? dayWorkout(day0, part) : day0;
       const deload = isDeloadWeek();
       const plan = (b: (typeof s.ex)[number]): DraftBlock['plan'] => {
         const it = day && day.items.find(i => i.exId === b.exId);
@@ -373,8 +379,9 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
               id: uid(),
               startedAt: Date.now(),
               date: today(),
-              dayIdx: R.days.indexOf(day),
+              dayIdx: day0 ? R.days.indexOf(day0) : -1,
               dayId: day.id,
+              ...(part === 2 ? { part: 2 as const } : {}),
               dayName: day.name + (deload ? ' (deload)' : ''),
               routineId: R.id,
               deload,
@@ -521,12 +528,13 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!m || m.kind !== 'past') return;
     const date = m.date;
     const di = t.dataset.day === 'free' ? null : Number(t.dataset.day);
+    const part = t.dataset.part === '2' ? 2 : 1;
     const go = (): void => {
       stopTimer();
       wakeOff();
       ui.tab = 'today';
       ui.todayDay = null;
-      begin(pastDraft(date, di), false);
+      begin(pastDraft(date, di, part), false);
       if (di == null) openModal({ kind: 'picker', mode: 'addBlock', title: 'Add exercise to session', q: '', m: '' });
     };
     closeModal();

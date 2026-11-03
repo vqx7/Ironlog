@@ -56,14 +56,15 @@ function weekBar(): TemplateResult[] {
     const isRest = !!pd && pd.rest;
     // The session in progress sits on its own date, which for a past workout is not today.
     const live = !!state.draft && !state.draft.editingId && d === state.draft.date;
-    // A past planned day whose every workout was done on another day this week: not missed (NEW-31).
+    /* A planned day whose every workout was done on another day this week: not missed, nor still planned when it
+       was done early (NEW-31; the review of r68: Tuesday's Pull done Monday read planned on Tuesday). */
     const mine = slots.filter(x => x.di === i);
-    const movedTo = !trained && weekly && isPlan && d < t && mine.length && mine.every(x => x.doneOn) ? mine : null;
+    const movedTo = !trained && weekly && isPlan && mine.length && mine.every(x => x.doneOn) ? mine : null;
     const cls = [
       'w',
       trained ? 'on' : '',
       !trained && cd.length ? 'cardio' : '',
-      !trained && !cd.length && isPlan && d >= t ? 'plan' : '',
+      !trained && !cd.length && isPlan && d >= t && !movedTo ? 'plan' : '',
       !trained && weekly && isPlan && d < t && !movedTo ? 'miss' : '',
       movedTo ? 'moved' : '',
       !trained && !cd.length && isRest && d >= t ? 'rest' : '',
@@ -88,19 +89,25 @@ function weekBar(): TemplateResult[] {
       ? `${ss.map(x => x.dayName).join(', ')}, logged`
       : live
         ? 'session in progress'
-        : pd && isPlan
-          ? d < t
-            ? movedTo
-              ? `${pd.name}, done ${movedTo.map(x => DAYS[dayOfWeek(x.doneOn || d)]).join(' and ')}`
-              : weekly
+        : pd && isPlan && weekly && mine.length
+          ? /* Each of the day's workouts in its own words: done on another day, missed, or planned (the review of
+               r68: Monday's Push done Tuesday and its second workout missed read "Push, missed"). */
+            mine
+              .map(
+                x => `${x.day.name}, ${x.doneOn ? `done ${DAYS[dayOfWeek(x.doneOn)]}` : d < t ? 'missed' : 'planned'}`
+              )
+              .join('; ')
+          : pd && isPlan
+            ? d < t
+              ? weekly
                 ? `${pd.name}, missed`
                 : 'nothing logged'
-            : `${pd.name}, planned`
-          : isRest && d >= t
-            ? 'rest day'
-            : rw
-              ? 'rest week'
-              : 'nothing logged';
+              : `${pd.name}, planned`
+            : isRest && d >= t
+              ? 'rest day'
+              : rw
+                ? 'rest week'
+                : 'nothing logged';
     const label = `${DAYS[i]} ${fmtDate(d)}: ${what}${cd.length ? `, cardio ${cd.reduce((a, c) => a + c.min, 0)} min` : ''}`;
     const inner = html`<span class="wd">${WD2[i]}</span><span class="dn">${dayOfMonth(d)}</span><span class="nm">${name || ' '}</span>`;
     if (live && d < t)

@@ -879,12 +879,13 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     let w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * frac) : null;
     /* Each warm-up a step heavier than the one before where the loads allow (r68): on a 10 lb step a 50 lb curl's
        third warm-up came out at 30 again, the second's load; it takes the next load up, at most the ramp's top share
-       of the working load, so a warm-up never reaches it. */
+       of the working load, so a warm-up never reaches it. Where no load fits there, it repeats the one before, never
+       a lighter one (the review of r68: a 30 kg bench on 5 kg steps warmed up at 20, 25, then 20). */
     const prev = at > 0 ? +(effW(b, at - 1) ?? 0) || 0 : 0;
     const top = WARM_RAMP[WARM_RAMP.length - 1] ?? frac;
-    if (w != null && prev > 0 && w <= prev + EPS && base * top > prev) {
-      const up = heavierLoad(EX(b.exId), b.plan, prev, base * top);
-      if (up != null && up < base - EPS) w = up;
+    if (w != null && prev > 0 && w <= prev + EPS) {
+      const up = base * top > prev ? heavierLoad(EX(b.exId), b.plan, prev, base * top) : null;
+      w = up != null && up < base - EPS ? up : prev;
     }
     act(
       () => {

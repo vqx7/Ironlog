@@ -629,14 +629,6 @@ export function viewToday(): TemplateResult {
   const offer = weekly && chosen == null && !isRestWeek(weekStart(today())) ? weekOffer(R, wd) : null;
   const di = chosen == null ? (offer ? offer.di : weekly ? wd : cs ? cs.next : 0) : chosen;
   const day0: Day = R.days[di] || { id: '', name: '', rest: true, items: [] };
-  // Which of the day's workouts (366 (c)): the one offered, the one picked, else the first not done this week.
-  const parts = weekly ? dayParts(day0) : [];
-  const part: 1 | 2 = offer
-    ? offer.part
-    : chosen != null && ui.todayPart === 2 && parts.includes(2)
-      ? 2
-      : (weekSlots(R).find(x => x.di === di && !x.doneOn) || { part: parts[0] ?? 1 }).part;
-  const day: Day = parts.length > 1 || part === 2 ? dayWorkout(day0, part) : day0;
   const t = today();
   // "Next up" is said once, in Change day below (r28): on the card it made the
   // date line wrap and leave "UP" on a line of its own on a phone.
@@ -655,6 +647,17 @@ export function viewToday(): TemplateResult {
     at.d > addDays(weekStart(t), SUNDAY)
       ? at.d
       : null;
+  // Which of the day's workouts (366 (c)): the one offered, the one picked, else the first not done this week; on a
+  // date past this week, its first (the review of r68: next Monday showed this week's second workout, still to do).
+  const parts = weekly ? dayParts(day0) : [];
+  const part: 1 | 2 = offer
+    ? offer.part
+    : chosen != null && ui.todayPart === 2 && parts.includes(2)
+      ? 2
+      : ahead
+        ? (parts[0] ?? 1)
+        : (weekSlots(R).find(x => x.di === di && !x.doneOn) || { part: parts[0] ?? 1 }).part;
+  const day: Day = parts.length > 1 || part === 2 ? dayWorkout(day0, part) : day0;
   const eyebrow = ahead
     ? weekly
       ? `Viewing ${DAYS[di]}, ${fmtDateYr(ahead)}`
