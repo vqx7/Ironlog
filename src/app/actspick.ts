@@ -8,7 +8,7 @@
 import { bwNudge } from './bwnudge';
 import { uid, numIn } from './util';
 import { BWF, MK, bwShare } from './library';
-import { dayLabel, fixSupersets, trainOn } from './routines';
+import { dayLabel, fixSupersets, partOf, trainOn } from './routines';
 import type { DraftBlock, Exercise, Plan, Routine } from './types';
 import { joinRows, joinable } from './session';
 import { platesMode } from './gym';
@@ -132,7 +132,7 @@ export function applyPick(m: PickerModal | null | undefined, id: string | undefi
     ...(d.deload || d.light ? { sets: Math.max(1, Math.ceil(p.sets / 2)) } : {})
   });
   if (m.mode === 'addBlock') {
-    const p0 = planFor(id, null, d.dayId, false, d.date);
+    const p0 = planFor(id, null, d.dayId, false, d.date, partOf(d));
     const nb = newBlock(id, half(p0), { deload: !!d.deload, light: !!d.light, before: d.date });
     if (d.deload || d.light) nb.full = +p0.sets;
     const li = d.ex.length - 1;
@@ -401,7 +401,7 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       closeModal();
       return;
     }
-    const p = planFor(id, null, d.dayId, false, d.date);
+    const p = planFor(id, null, d.dayId, false, d.date, partOf(d));
     const n = Math.round(+(t.dataset.sets ?? NaN)),
       full = Math.round(+(t.dataset.full ?? NaN));
     if (n >= 1 && n <= MAX_SETS) p.sets = n;

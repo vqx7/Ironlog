@@ -24,6 +24,9 @@
 //  12  From comparing r67 and r68 on the wide histories (fails on a97506c): a past workout on a date that has the
 //      lift says "Earlier that day"; an earlier session with no range on record is not "the same again"; a lift
 //      with no rack has no rack step (it threw).
+//  13  The second review of r68 (fails on 16d07ff): with only a day's second workout done, Today does not say the first
+//      was; Change day's first workout shows it; a Plan edit to the first workout's lift leaves the open second
+//      workout's own plan of it; Pick for me ranks and starts each workout on its own.
 // `node tests/r68b.js [page]`; R68B=1,3 runs some.
 const { open, engine } = require('./h');
 let browser;
@@ -317,6 +320,50 @@ async function finish(page) {
     ok(/^Earlier that day: 135×10/.test(r.past), '12. a past workout logged on a date that has the lift says "Earlier that day", not "Earlier today"', r.past);
     ok(!/Earlier/.test(r.noRange), '12. an earlier session that day with no range on record (an import) is read by the range\'s rules, not "the same again"', r.noRange);
     ok(r.rack === null, '12. a lift with no rack has no rack step, as on r67 (the rack read first made it throw)', r.rack);
+    await P.ctx.close();
+  }
+
+  // ---- 13. The second review of r68 (on 16d07ff): a day's two workouts through Today, Change day, Plan and Pick for me.
+  if (run(13)) {
+    const note = page => page.evaluate(() => { const n = document.querySelector('#view .hero .hero-note'); return n ? n.textContent.replace(/\s+/g, ' ').trim() : ''; });
+    // Monday: only the second workout (Arms) done; Today offers Push and must not say Push was done.
+    const arms = wkSess('w2', '2026-11-02', 0, 'Dmon', 'Arms', { part: 2, pw: 4, t: Date.parse('2026-11-02T10:00:00'), ex: [{ exId: 'dbCurl', rr: [8, 12], sets: [{ w: 10, r: 10, rir: 2 }] }] });
+    let P = await weekPage('2026-11-02T12:00:00', twoR(), [arms]);
+    let c = await card(P.page), n = await note(P.page);
+    ok(c && c.name === 'Push' && !/Push done today/.test(n), '13. Arms done, Push not: Today offers Push without "Push done today."', { c, n });
+    await P.ctx.close();
+    // Change day, Push done and Arms not: "Mon: Push" shows and starts Push.
+    P = await weekPage('2026-11-02T12:00:00', twoR(), [wkSess('w1', '2026-11-02', 0, 'Dmon', 'Push', { pw: 4 })]);
+    await P.page.click('#view .hero [data-act="startAltOpen"]'); await wait(150);
+    const btn = await P.page.$('#modal [data-act="dayPick"][data-i="0"]:not([data-part])');
+    if (btn) { await btn.click(); await wait(200); }
+    c = await card(P.page);
+    ok(btn && c && c.name === 'Push' && c.part === null, '13. Change day: "Mon: Push" shows Push, though Push is done and Arms is not', c);
+    await P.ctx.close();
+    // A Plan edit to Push's bench while Pump (the second workout, its own bench 2 x 15-20) is open leaves Pump's bench be.
+    const R = weekR([it('a3', 'bench', { pm: true, sets: 2, repMin: 15, repMax: 20 }), it('a4', 'dbCurl', { pm: true })]); R.days[0].pmName = 'Pump';
+    P = await weekPage('2026-11-02T19:00:00', R, [wkSess('p1', '2026-11-02', 0, 'Dmon', 'Push', { pw: 4 })]);
+    await P.page.click('#view .hero [data-act="startSession"]'); await wait(200);
+    await P.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'program'; L.ui.planView = 'routine'; L.ui.dayFocus = 'Dmon'; for (const k of ['routine', 'schedule', 'days']) L.ui.folds['program:' + k] = true; L.ui.openItem = 'a1'; L.render(); });
+    await wait(100);
+    const field = await P.page.$('#view input[data-it="repMin"][data-uid="a1"]');
+    if (field) { await P.page.fill('#view input[data-it="repMin"][data-uid="a1"]', '6'); await P.page.dispatchEvent('#view input[data-it="repMin"][data-uid="a1"]', 'change'); await wait(150); await P.page.fill('#view input[data-it="repMax"][data-uid="a1"]', '10'); await P.page.dispatchEvent('#view input[data-it="repMax"][data-uid="a1"]', 'change'); await wait(150); }
+    await P.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); }); await wait(100);
+    await finish(P.page);
+    const saved = await P.page.evaluate(() => { const L = window.__ironlog; const s = L.state.sessions[L.state.sessions.length - 1]; const b = s.ex.find(x => x.exId === 'bench'); return { name: s.dayName, part: s.part || null, rr: b && b.rr, ps: b && b.ps, push: L.state.routines[0].days[0].items[0].repMin }; });
+    ok(field && saved.push === 6 && saved.name === 'Pump' && saved.part === 2 && JSON.stringify(saved.rr) === '[15,20]' && saved.ps === 2, '13. Push\'s bench edited to 6-10 while Pump is open: Pump\'s bench saved at its own 15-20', saved);
+    await P.ctx.close();
+    // Pick for me ranks each workout on its own: Monday's second workout (squats) is its own card, and Start starts it.
+    const R2 = weekR([it('a3', 'backSquat', { pm: true, sets: 5 }), it('a4', 'legExt', { pm: true, sets: 4 })]); R2.days[0].pmName = 'Legs2';
+    P = await weekPage('2026-11-02T12:00:00', R2, []);
+    await P.page.evaluate(() => window.__ironlog.ACT.pickToday({ dataset: {} })); await wait(200);
+    const cards = await P.page.evaluate(() => [...document.querySelectorAll('#modal .pcard')].map(x => ({ title: ((x.querySelector('b') || {}).textContent || '').trim(), reasons: [...x.querySelectorAll('li')].map(l => l.textContent) })));
+    const sq = cards.find(x => /Legs2/.test(x.title)), push = cards.find(x => /Push/.test(x.title));
+    ok(sq && sq.reasons.some(r => /^Quads/.test(r)) && (!push || !push.reasons.some(r => /^Quads/.test(r))), '13. Pick for me: the second workout is its own card, argued from its quads; Push is not', cards);
+    const b2 = await P.page.$('#modal .pcard [data-act="startSession"][data-part="2"]');
+    if (b2) { await b2.click(); await wait(200); }
+    const d = await P.page.evaluate(() => { const d = window.__ironlog.state.draft; return d && { name: d.dayName, part: d.part || null, ex: d.ex.map(b => b.exId) }; });
+    ok(b2 && d && d.part === 2 && d.name === 'Legs2' && d.ex.join() === 'backSquat,legExt', '13. its Start starts the second workout', d);
     await P.ctx.close();
   }
 

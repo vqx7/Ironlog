@@ -606,8 +606,15 @@ export function defPlanIn(M: Model, exId: string, plain?: boolean): Plan {
    there, the day being trained first, since the same lift can sit on two
    days with different ranges; null on no day of it. */
 /** A lift's plan in a routine, the day given first, or null when it is on no day of it. */
-export function routinePlanIn(M: Model, exId: string, R?: Routine | null, dayId?: string | null): Plan | null {
-  const it = planItemOf(R || activeRoutineIn(M), exId, dayId);
+export function routinePlanIn(
+  M: Model,
+  exId: string,
+  R?: Routine | null,
+  dayId?: string | null,
+  part?: 1 | 2
+): Plan | null {
+  // The day's workout first when a session names it (r68, 366 (c); the second review of r68: a lift in both workouts).
+  const it = planItemOf(R || activeRoutineIn(M), exId, dayId, part);
   if (!it) return null;
   const { uid: _u, ss: _s, ...p } = it;
   return { ...DEFAULT_PLAN, ...p, ss: null };

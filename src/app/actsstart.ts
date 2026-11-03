@@ -418,7 +418,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   // Today's own workout on a fixed-weekday routine, when the card offered one from another day (NEW-31, r68).
   todayOwn(t) {
     ui.todayDay = Number(t.dataset.day);
-    ui.todayPart = t.dataset.part === '2' ? 2 : null;
+    ui.todayPart = t.dataset.part === '2' ? 2 : 1;
     ui.todayAt = null;
     window.scrollTo(0, 0);
     render();
@@ -428,7 +428,8 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const i = Number(t.dataset.i);
     closeModal();
     ui.todayDay = i;
-    ui.todayPart = t.dataset.part === '2' ? 2 : null;
+    // The workout picked, its first named as one (the second review of r68: tapping Push showed Arms once Push was done).
+    ui.todayPart = t.dataset.part === '2' ? 2 : 1;
     ui.todayAt = null;
     window.scrollTo(0, 0);
     render();
@@ -440,7 +441,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   pickView(t) {
     closeModal();
     ui.todayDay = Number(t.dataset.day);
-    ui.todayPart = null;
+    ui.todayPart = t.dataset.part === '2' ? 2 : 1;
     ui.todayAt = null;
     ui.tab = 'today';
     window.scrollTo(0, 0);

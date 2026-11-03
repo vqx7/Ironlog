@@ -34,9 +34,10 @@ export function planForIn(
   R?: Routine | null,
   dayId?: string | null,
   plain?: boolean,
-  before?: string | null
+  before?: string | null,
+  part?: 1 | 2
 ): Plan {
-  const inR = routinePlanIn(M, exId, R, dayId);
+  const inR = routinePlanIn(M, exId, R, dayId, part);
   if (inR) return inR;
   const base = defPlanIn(M, exId, plain);
   if (plain) return base;
@@ -123,7 +124,10 @@ export function routineUpdatesIn(M: Model, d: FinishedDraft): RoutineUpdate | nu
       swap.push({ from: b.swappedFrom, to: b.exId, plan });
     } else {
       const { ss: _s, ...p } = b.plan;
-      const sets = d.deload || d.light ? (b.full ?? planForIn(M, b.exId, R, d.dayId, false, d.date).sets) : p.sets;
+      const sets =
+        d.deload || d.light
+          ? (b.full ?? planForIn(M, b.exId, R, d.dayId, false, d.date, d.part === 2 ? 2 : 1).sets)
+          : p.sets;
       add.push({ exId: b.exId, plan: { ...p, sets: Math.max(1, +(sets || 0) || DEFAULT_PLAN.sets) } });
     }
   }

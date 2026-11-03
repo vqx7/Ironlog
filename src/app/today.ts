@@ -27,6 +27,7 @@ import {
   daySets,
   dayWorkout,
   dropStarter,
+  partOf,
   sessDayIdx,
   ssLetters,
   tplCountLine
@@ -652,8 +653,8 @@ export function viewToday(): TemplateResult {
   const parts = weekly ? dayParts(day0) : [];
   const part: 1 | 2 = offer
     ? offer.part
-    : chosen != null && ui.todayPart === 2 && parts.includes(2)
-      ? 2
+    : chosen != null && ui.todayPart && parts.includes(ui.todayPart)
+      ? ui.todayPart
       : ahead
         ? (parts[0] ?? 1)
         : (weekSlots(R).find(x => x.di === di && !x.doneOn) || { part: parts[0] ?? 1 }).part;
@@ -681,7 +682,7 @@ export function viewToday(): TemplateResult {
   } else if (
     weekly &&
     chosen == null &&
-    state.sessions.some(x => x.date === t && x.routineId === R.id && sessDayIdx(R, x) === wd)
+    state.sessions.some(x => x.date === t && x.routineId === R.id && sessDayIdx(R, x) === wd && partOf(x) === part)
   )
     /* A weekly routine offers today's day again once it is done (the day is
        the weekday), so it says so, as a cycle's card does (r64, the r63

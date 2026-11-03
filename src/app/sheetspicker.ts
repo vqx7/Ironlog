@@ -10,7 +10,7 @@
    actions by their data-act (r63). A search typed redraws the list in
    place, so the field keeps the focus and the keyboard. */
 
-import { html } from 'lit-html';
+import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { EQL, EQUIP, ML, MUSCLES, commonFirst, isCommon } from './library';
 import {
@@ -155,7 +155,7 @@ export function pickTodaySheet(): TemplateResult {
         k
       ) => html`<div class=${'pcard' + (k === 0 ? ' best' : '')}><div class="row spread"><b>${dayLabel(rk.R, x.i)}: ${x.day.name}</b>${k === 0 ? html`<span class="tag green">Best fit</span>` : ''}</div>
       <ul>${dayReasons(x, rk.r7).map(r => html`<li>${r}</li>`)}</ul>
-      <div class="row u-mt8"><button class=${'btn sm ' + (k === 0 ? 'primary' : '')} data-act="startSession" data-day=${String(x.i)}>Start</button>${!rk.deload && x.ready < READY.lighter ? html`<button class="btn sm" data-act="startSession" data-day=${String(x.i)} data-light="1">Start lighter</button>` : ''}<button class="btn sm" data-act="pickView" data-day=${String(x.i)}>Preview</button></div></div>`
+      <div class="row u-mt8"><button class=${'btn sm ' + (k === 0 ? 'primary' : '')} data-act="startSession" data-day=${String(x.i)} data-part=${x.part === 2 ? '2' : nothing}>Start</button>${!rk.deload && x.ready < READY.lighter ? html`<button class="btn sm" data-act="startSession" data-day=${String(x.i)} data-part=${x.part === 2 ? '2' : nothing} data-light="1">Start lighter</button>` : ''}<button class="btn sm" data-act="pickView" data-day=${String(x.i)} data-part=${x.part === 2 ? '2' : nothing}>Preview</button></div></div>`
     )}
     <p class="small muted hastip u-m10-0-0" data-tip="Ranked by what each muscle got in the last 7 days against your targets, how recently it was trained hard (about 1 to 3 days, more after failure sets, new lifts, or heavy hinges), injuries, and your cycle order. A ranking, not a rule: how you feel wins.">How this is ranked</p></div>`;
 }
