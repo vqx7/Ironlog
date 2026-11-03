@@ -463,6 +463,8 @@ interface RegionSrc {
   src: Readonly<Record<string, number>> & { readonly _mix?: Readonly<Record<string, boolean>>; readonly _ff?: boolean };
   n?: number;
   label: string;
+  /** The average's name on the card ("4-week average"), the label then in its tip; absent where the label is the name. */
+  short?: string;
   back?: boolean;
   week?: boolean;
   noFull?: boolean;
@@ -488,6 +490,7 @@ export function regionSrc(): RegionSrc {
       src: avg,
       n,
       back: avg._back,
+      short: `${avg._weeks}-week average`,
       label:
         avg._missed || avg._light || avg._rest
           ? `your average over ${avgWeeksTxt(avg)}`

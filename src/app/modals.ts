@@ -183,7 +183,7 @@ export type Modal =
   | ImpInputModal
   | ImpPreviewModal
   | (SheetBase & { kind: 'install'; how?: string | undefined })
-  | (SheetBase & { kind: 'icon' | 'restwk' | 'injury' | 'routineNew' | 'cardio' | 'pickToday' | 'pickEx' })
+  | (SheetBase & { kind: 'icon' | 'restwk' | 'injury' | 'routineNew' | 'cardio' | 'pickToday' | 'pickEx' | 'checkin' })
   /* first: opened from the first pages, where the app's tabs are not open yet (r64). */
   | (SheetBase & { kind: 'menu'; first?: true | undefined })
   | (SheetBase & { kind: 'guide'; open?: string | undefined })

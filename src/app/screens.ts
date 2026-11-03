@@ -24,7 +24,7 @@ import { viewHistory } from './history';
 import { viewSettings } from './settings';
 import { dayKey, dropDay, dropItem, dropLib, viewLibrary, viewProgram } from './plan';
 import { viewDash } from './stats';
-import { viewWorkout, workoutFullDraw } from './workout';
+import { checkinSheet, viewWorkout, workoutFullDraw } from './workout';
 import { blockDragStop, mountBlockDrag } from './workdrag';
 import { curRoutineB } from './display';
 import { calSheet } from './calendar';
@@ -378,6 +378,7 @@ export const SHEETS: Sheets = {
   note: { draw: noteSheet },
   pic: { draw: picSheet },
   bw: { draw: bwSheet },
+  checkin: { draw: checkinSheet },
   startAlt: { draw: startAltSheet },
   pickToday: { draw: pickTodaySheet },
   pickEx: { draw: pickExSheet },

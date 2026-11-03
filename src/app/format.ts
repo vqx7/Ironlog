@@ -3,8 +3,8 @@
    date words the engine uses in 3b, r52; moved unchanged from the legacy
    script). Durations are worded only by estMin, which
    tests/hygiene.js enforces. Layer 2 since r52, beside the engine whose
-   sentences use it; a few words here read the clock (fmtDateRow, todayEye,
-   greeting) and so may never be reached from the engine (tests/hygiene.js). */
+   sentences use it; a few words here read the clock (fmtDateRow and
+   todayEye) and so may never be reached from the engine (tests/hygiene.js). */
 
 import { parse, today, yearOf, r1, r3 } from './util';
 import { isMissed } from './formulas';
@@ -42,19 +42,6 @@ export function sessTm(x: { t?: number | null | undefined }): string {
     // did throw, the session shows no time rather than breaking History.
     return '';
   }
-}
-
-/** The greeting on Today by the hour each part of the day ends at; past the last, and before the first, Evening. */
-const GREETINGS: readonly { readonly until: number; readonly word: string }[] = [
-  { until: 5, word: 'Evening' },
-  { until: 12, word: 'Morning' },
-  { until: 17, word: 'Afternoon' }
-];
-
-/* The greeting on Today, when a name is set in Settings > General. */
-export function greeting(): string {
-  const h = new Date().getHours();
-  return (GREETINGS.find(g => h < g.until) || { word: 'Evening' }).word;
 }
 
 /** How long ago, in days: today, yesterday, or "N days ago". */

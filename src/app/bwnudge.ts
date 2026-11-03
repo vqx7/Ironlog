@@ -8,8 +8,9 @@
        routine in use (today.ts, bwDueCard), with Later;
      - a short note when a bodyweight lift is added to a plan or a session,
        or comes in a ready-made routine picked, once a visit, never blocking;
-     - a quiet line on each bodyweight lift in a session, until one is
-       logged, whose Set it opens a small sheet;
+     - a quiet line on the first bodyweight lift still open in a session
+       (on each one until r69, when V found it a wall of text), until one
+       is logged, whose Set it opens a small sheet;
      - a field in Settings, always there, beside the weigh-in reminder.
    A weigh-in saved here is the same weigh-in as Today's. */
 
@@ -45,7 +46,7 @@ export function bwNudge(exIds: readonly string[]): void {
   );
 }
 
-/** The line on a bodyweight lift in a session while no weigh-in is logged: what it counts, and a way to set it. */
+/** The line on a session's first bodyweight lift still open while no weigh-in is logged: what it counts, and a way to set it. */
 export function bwWarn(exId: string): TemplateResult | typeof nothing {
   if (!bwMissing(exId)) return nothing;
   return html`<p class="small bwwarn">No bodyweight set, so this counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId}>Set it</button></p>`;

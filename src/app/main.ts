@@ -269,7 +269,7 @@ import { ask, openModal, render, rerenderKeepScroll, setRoot, setSaveState, setS
 import { updateStart } from './update';
 import { bwEvery, profApplyList, profMoveBands, SAFETY_TXT } from './settings';
 import { planEvidenceNote, sessionCapNote } from './plan';
-import { bestsBoard, exHeadline, goalLine, whtrLine } from './stats';
+import { bestsBoard, exHeadline, goalLine, risingWords, whtrLine } from './stats';
 import { B3, B3_PARTS, exMusParts, map3dColors, map3dPick } from './map';
 import { bwDueCard, obActive, obGate, obTour, parseHeight } from './today';
 import {
@@ -780,7 +780,8 @@ function start(): void {
     templateRest,
     templateSigsBefore,
     bandOf,
-    picsTidy
+    picsTidy,
+    risingWords
   };
   render();
   wakeOn();

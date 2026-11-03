@@ -33,7 +33,7 @@ import {
   tplCountLine
 } from './routines';
 import { starterSigs } from './normalize';
-import { fmtDate, greeting, repSpan, todayEye, LIGHT_RIR } from './format';
+import { fmtDate, repSpan, todayEye, LIGHT_RIR } from './format';
 import { BW_MAX_KG, BW_MIN_KG, MEAS_MAX_CM, LIMITS } from './records';
 import {
   addDays,
@@ -399,7 +399,6 @@ ${ENV === 'preview' ? html`<button class="btn fullw" data-act="previewCopy">Copy
 ${acctStep && !acct.user ? html`<button class="linkbtn ob-back" data-act="obAcctBack">‹ Account</button>` : nothing}
 <p class="ob-logo sm">${markup(LOCKUP)}</p>
 <h2 class="ob-h">Set up</h2>
-<label class="field">Name <span class="muted">(optional)</span><input type="text" data-bind="userName" maxlength="40" autocomplete="given-name" .value=${fieldValue(state.settings.userName || '')}></label>
 <div><p class="small muted u-m0-0-6_fw600">Units</p><div class="ob-units" role="group" aria-label="Units">${(
     [
       ['lb', 'lb and inches'],
@@ -694,9 +693,6 @@ export function viewToday(): TemplateResult {
      Today opens on a blank session (Settings > Rest timer and logging). The
      plan's day stays one tap away, and Change day shows it as before. */
   const free = state.settings.todayStart === 'free' && chosen == null;
-  const hello = state.settings.userName
-    ? html`<p class="hello">${greeting()}, ${state.settings.userName}</p>`
-    : nothing;
   const above = html`${welcomeCard()}${acctBar()}${installBar()}${iconBar()}`;
   if (free) {
     const w = noLog()
@@ -707,7 +703,7 @@ export function viewToday(): TemplateResult {
             ? `${s.doneDays} session${s.doneDays === 1 ? '' : 's'}, ${r1(s.got)} hard sets this week`
             : 'Nothing yet this week.';
         })();
-    return html`${above}<section class="hero" data-day="free"><div class="hero-top"><div class="hero-t">${hello}<p class="eyebrow">${todayEye()} · Freestyle${deload ? ' · deload week' : ''}</p><h2>Blank session</h2>
+    return html`${above}<section class="hero" data-day="free"><div class="hero-top"><div class="hero-t"><p class="eyebrow">${todayEye()} · Freestyle${deload ? ' · deload week' : ''}</p><h2>Blank session</h2>
 <p class="muted small u-m0">${w}</p></div></div>
 <button class="btn primary fullw big" data-act="startFree">Start session</button>
 <div class="row u-mt8">${changeBtn(di, true)}${moreBtn(deload)}</div>${moreRow(deload, false, di)}</section>${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
@@ -724,7 +720,7 @@ export function viewToday(): TemplateResult {
      most, the rest trimmed to your minutes). Deload, equipment, injury and
      cardio are occasional, so they sit behind More. An active deload still
      shows in the eyebrow and on its button. */
-  return html`${above}<section class="hero" data-day=${di}><div class="hero-top"><div class="hero-t">${hello}<p class="eyebrow">${todayEye()} · ${eyebrow}${
+  return html`${above}<section class="hero" data-day=${di}><div class="hero-top"><div class="hero-t"><p class="eyebrow">${todayEye()} · ${eyebrow}${
     deload ? ' · deload week' : isRestWeek(weekStart(t)) ? ' · rest week' : ''
   }</p><h2>${day.name}</h2>
 <p class="muted small u-m0" data-tip=${'Routine: ' + R.name}>${
