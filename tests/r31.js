@@ -73,7 +73,10 @@ function strongCsv(weeks, name) {
       st.sessions = [mk('2026-09-21', [['backSquat', five(325)], ['bench', five(225)], ['bbRow', five(185)]]),
         mk('2026-09-25', [['backSquat', five(330)], ['bench', five(230)], ['bbRow', five(190)]]),
         mk('2026-09-30', [['backSquat', [[405, 1, 1], ...five(335)]], ['bench', [[275, 1, 0], [230, 5], [230, 5], [230, 5], [230, 4], [230, 4]]], ['bbRow', five(195)]])];
-      L.state = L.normalize(st); L.invalidate(); L.saveNow();
+      L.state = L.normalize(st);
+      // A 5 lb step set on the barbell lifts, as these cases were written (the default by equipment, 10 lb since r68, is tests/r68.js section 4).
+      for (const e of L.state.exercises) if (['backSquat', 'bench', 'bbRow'].includes(e.id)) e.inc = 5 * LB;
+      L.invalidate(); L.saveNow();
       const plan = { sets: 5, repMin: 5, repMax: 5, rir: 2, rest: 180, inc: 5 * LB };
       const sq = L.suggest('backSquat', plan), be = L.suggest('bench', plan);
       const I = L.IDX();

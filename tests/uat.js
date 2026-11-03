@@ -76,7 +76,10 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   const t1 = await ev(() => ({ head: document.querySelector('#blk-0 .bh .muted').textContent, text: document.querySelector('#blk-0 .hint b').textContent }));
   if (t0.tgt && t0.tgt.kind === 'reps' && t0.tgt.n === t0.n) {
     const want = t0.tgt.rs.slice(0, t0.n - 1).reduce((a, v) => a + v, 0) + 1;
-    ok(t1.head.includes(`${t0.n - 1}×`) && t1.text.includes(`${want}+`) && t1.text.includes(`first ${t0.n - 1} sets`), 'after − Set the header and target use the sets left (' + t1.text + ')');
+    /* With the set taken off, the plan is the sets left (the header says so), so the target is over all of them:
+       "over 3 sets" (overSets, session.ts). Until r68 the demo's first lift never had a target of reps here, so this
+       branch never ran, and its "first 3 sets" was never the app's wording (r67 says "27+ reps over 3 sets" too). */
+    ok(t1.head.includes(`${t0.n - 1}×`) && t1.text.includes(`${want}+ reps over ${t0.n - 1} sets`), 'after − Set the header and target use the sets left (' + t1.text + ')');
   } else ok(t1.head.includes(`${t0.n - 1}×`), 'after − Set the header shows the sets left');
 
   // Short on time from Today, cancelled: no session left behind.

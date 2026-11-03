@@ -24,7 +24,12 @@ const LB = 0.45359237;
       if (o.gym) s.settings.gym = o.gym; if (o.off) s.settings.autoAdj = false; if (o.fill) s.settings.loadFill = 'fill'; else delete s.settings.loadFill;
       const u = v => o.kg ? v : v * LB;
       s.sessions = [{ id: 'h1', date: '2026-10-03', dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: o.ex, rr: [o.lo, o.hi], sets: [0, 1, 2].map(i => ({ w: u(o.w), r: o.reps ? o.reps[i] : o.r0 || o.lo + 1, rir: 1, done: true })) }] }];
-      s.draft = null; L.state = L.normalize(s); L.invalidate();
+      s.draft = null; L.state = L.normalize(s);
+      /* The step these cases were written on, 5 lb or 2.5 kg, set on a bar, machine or cable lift as the Plan editor
+         sets it (the default by equipment, 10 lb or 5 kg since r68, is tests/r68.js section 4); Your gym's and a
+         dumbbell rack's steps are left to the app. */
+      for (const e of L.state.exercises) if (e.id === o.ex) { if (!o.gym && ['barbell', 'smith', 'machine', 'cable'].includes(e.equip)) e.inc = o.kg ? 2.5 : 5 * LB; else delete e.inc; }
+      L.invalidate();
       L.ACT.startFree(); if (L.ui.modal) L.ACT.mClose();
       const d = L.state.draft; const plan = { sets: o.sets || 3, repMin: o.lo, repMax: o.hi, rir: o.rir == null ? 1 : o.rir, rest: 90, inc: o.kg ? 2.5 : 5 * LB };
       const b = L.newBlock(o.ex, plan, o.light ? { light: true } : {}); if (o.light) b.light = true; d.ex.push(b);
@@ -313,6 +318,8 @@ const LB = 0.45359237;
     const ev = (f, a) => P.page.evaluate(f, a);
     await ev(() => { const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg'; s.bodyweights = [{ id: 'b', date: '2026-10-09', kg: 80 }];
       s.sessions = [{ id: 'f0', date: '2026-10-03', dayIdx: 0, dayId: null, dayName: 'Freestyle', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w: 60, r: 12, rir: 1, done: true })) }] }];
+      // 2.5 kg a step set on the bench, as these cases were written (the default by equipment is 5 kg since r68).
+      L.state.exercises.find(e => e.id === 'bench').inc = 2.5;
       L.invalidate(); L.saveNow(); });
     // Freestyle by default.
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:timer'] = true; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
@@ -347,7 +354,7 @@ const LB = 0.45359237;
       return o;
     });
     ok(two.order === 'am,a0', 'two sessions on one day are ordered by the time they started, not by id', two);
-    ok(two.w === 65 && /12, 12, 12|12×3|×12/.test(two.last), 'the next suggestion works from the evening session, the later one (62.5 x 12 all sets: 65)', two);
+    ok(two.w === 65 && /12, 12, 12|12×3|×12/.test(two.last), 'the next suggestion works from the evening session, the better of the two (62.5 x 12 all sets: 65)', two);
     await ev(() => { const L = window.__ironlog; L.ACT.calDay({ dataset: { date: '2026-10-09' } }); });
     await wait(80);
     const dp = await ev(() => ({ kind: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind, items: [...document.querySelectorAll('#modal [data-act="wkOpen"]')].map(b => b.innerText.replace(/\s+/g, ' ')) }));
@@ -419,7 +426,10 @@ const LB = 0.45359237;
       s.settings.onboarded = true; s.settings.unit = 'lb'; s.settings.autoDone = false; s.settings.timerMode = 'auto'; s.injuries = [];
       const set3 = (w, r) => [0, 1, 2].map(() => ({ w: w * LB, r, rir: 1, done: true }));
       s.sessions = [{ id: 'h1', date: '2026-10-03', dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: set3(185, 8) }, { exId: 'bbRow', rr: [6, 10], sets: set3(155, 8) }, { exId: 'dbCurl', rr: [10, 15], sets: set3(30, 12) }] }];
-      s.draft = null; L.state = L.normalize(s); L.invalidate();
+      s.draft = null; L.state = L.normalize(s);
+      // 5 lb a step set on the bar lifts, as written (the default by equipment is 10 lb since r68).
+      for (const e of L.state.exercises) if (e.id === 'bench' || e.id === 'bbRow') e.inc = 5 * LB;
+      L.invalidate();
       L.ACT.startFree(); if (L.ui.modal) L.ACT.mClose();
       const d = L.state.draft;
       for (const [id, lo, hi] of [['bench', 6, 10], ['bbRow', 6, 10], ['dbCurl', 10, 15]]) d.ex.push(L.newBlock(id, { sets: 3, repMin: lo, repMax: hi, rir: 1, rest: 120, inc: 5 * LB }, {}));

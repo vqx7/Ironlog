@@ -112,6 +112,9 @@ const PLAN = [
           // adjustment (r34) is off here: it is tested in tests/r34.js, and with it on, tests/realism.js's
           // 16-week lifter checks that it keeps progression on track.
           s.settings.autoAdj = false;
+          // Its copy of the rules is written on 5 lb steps (above): set on each bar, machine or cable lift, as the Plan
+          // editor sets one (the default by equipment, 10 lb since r68, is tests/r68.js section 4).
+          for (const e of s.exercises) if (EXS.some(x => x.id === e.id) && ['barbell', 'smith', 'machine', 'cable'].includes(e.equip)) e.inc = 5 * LB;
           L.invalidate(); L.saveNow(); localStorage.setItem('ironlog.v1.tipWake', '1'); }, [EXS, mode, LB]);
         state = await ev(() => JSON.parse(localStorage.getItem('ironlog.v1')));
         await P.ctx.close(); continue;
