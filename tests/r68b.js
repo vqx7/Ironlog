@@ -19,7 +19,8 @@
 //      workout was done early is no longer marked planned.
 //  11  NEW-46 (V, 2026-11-03, found after the review; fails on 326077f): a load logged in the other unit is held on
 //      the unit's own loads (5 lb, 2.5 kg), as r67 held it: 100 kg shown in lb was held at 225 and stepped to 235
-//      on 367's 10 lb grid, and 225 lb shown in kg was held at 100.
+//      on 367's 10 lb grid, and 225 lb shown in kg was held at 100. A variation's first start in a gym of kg plates,
+//      shown in lb, lands on those plates (the first fix took 5 lb over them: r67 against r68 on the wide histories).
 //  12  From comparing r67 and r68 on the wide histories (fails on a97506c): a past workout on a date that has the
 //      lift says "Earlier that day"; an earlier session with no range on record is not "the same again"; a lift
 //      with no rack has no rack step (it threw).
@@ -282,6 +283,18 @@ async function finish(page) {
     ok(r.holdKg.w === 102.5, '11. 225 lb x 8 shown in kg (102.1) holds at 102.5, the nearest load, never 100', r.holdKg);
     ok(r.upKg.w === 107.5, '11. 225 lb x 10 shown in kg steps to 107.5, about one 5 kg step', r.upKg);
     ok(r.control.w === 225, '11. (a guard) 225 lb logged and shown in lb holds at 225', r.control);
+    // One of the wide histories (tests/wide.js, seed 61034): shown in lb, with Your gym's plates in kg (1.25 kg the
+    // smallest), a first hip thrust starts from the sumo deadlift on those plates (r67: 220.5 lb, 100 kg).
+    const { wide } = require('./wide');
+    const LIB = await P.page.evaluate(() => window.__ironlog.libExercises());
+    const h = wide(61034, LIB);
+    await P.page.clock.setFixedTime(new Date(h.today + 'T12:00:00'));
+    const k = await P.page.evaluate(raw => {
+      const L = window.__ironlog; L.state = L.normalize(raw); L.invalidate();
+      const g = L.suggest('hipThrust', { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 5 * 0.45359237 }, {});
+      return { unit: L.U(), gym: L.state.settings.gym && L.state.settings.gym.u, kg: Math.round(g.w * 1000) / 1000, kin: g.kin || null, text: g.text };
+    }, h.raw);
+    ok(k.unit === 'lb' && k.gym === 'kg' && k.kin && k.kg === 100, `11. a first hip thrust in a gym of kg plates, shown in lb, starts at 100 kg on those plates, as r67 (the first fix: 97.5, rounded down on 5 lb)`, k);
     await P.ctx.close();
   }
 

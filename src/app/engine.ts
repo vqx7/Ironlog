@@ -269,18 +269,14 @@ function unitSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?
   return moveIn(M, ex, plan, res, nw, `the nearest load in ${UIn(M)}`);
 }
 
-/* The spacing of the loads that exist for a lift, in kg: its load step when the lifter set one (on the lift, or a
-   plan's step other than the unit's default, which incOfIn reads as none set), else the finer of its step and the
-   unit's default step (5 lb, 2.5 kg, the smallest plates most gyms keep in pairs). 367's step by equipment (10 lb on a
-   bar) is how far a load goes up, not which loads exist (V, 2026-11-03, NEW-46: on the 10 lb grid 100 kg shown in lb,
-   220.5, was held at 225 and stepped to 235, 225 lb shown in kg was held at 100, and a first front squat's 93.7 kg
-   start was rounded down to 90). */
+/* The spacing of the loads that exist for a lift, in kg: its load step as it was before 367 (its own, the plan's, Your
+   gym's rack, plates or stack, the rack read from its loads, else the unit's default, 5 lb or 2.5 kg). 367's step by
+   equipment (10 lb on a bar) is how far a load goes up, not which loads exist (V, 2026-11-03, NEW-46: on the 10 lb
+   grid 100 kg shown in lb, 220.5, was held at 225 and stepped to 235, 225 lb shown in kg was held at 100, and a first
+   front squat's 93.7 kg start was rounded down to 90). Taking the finer of 367's step and the unit's default, as
+   first fixed, also took 5 lb over a kg gym's 2.5 kg plates (r67 against r68 on the wide histories). */
 function loadGridIn(M: Model, ex: ExerciseLike, plan?: Pick<Plan, 'inc'> | null): number {
-  const step = incOfIn(M, ex, plan);
-  const own =
-    ex.inc != null ||
-    Math.abs(stepReadIn(M, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M)) >= EPS_SAME;
-  return own ? step : Math.min(step, unitStepIn(M));
+  return stepOfIn(M, ex, plan, undefined, false);
 }
 
 /* The load on the step in the unit on screen for a load `w` asked after
@@ -1641,6 +1637,17 @@ export function incOfIn(
   plan?: Pick<Plan, 'inc'> | null,
   at?: number | null
 ): number {
+  return stepOfIn(M, ex, plan, at, true);
+}
+
+/** A lift's load step in kg, with the step by equipment (367) or, for the loads that exist (loadGridIn), without it. */
+function stepOfIn(
+  M: Model,
+  ex: ExerciseLike | null | undefined,
+  plan: Pick<Plan, 'inc'> | null | undefined,
+  at: number | null | undefined,
+  byEquip: boolean
+): number {
   const v = stepReadIn(M, ex && ex.inc != null ? ex.inc : plan && isNum(+plan.inc) ? +plan.inc : STEP_LB);
   if (ex && ex.inc == null && Math.abs(v - unitStepIn(M)) < EPS_SAME) {
     const L = gymRackIn(M, ex, plan);
@@ -1653,7 +1660,7 @@ export function incOfIn(
     if (G && at != null && at > 0 && Math.abs(plateAt(G, at, -1, t) - at) > t) return plateAt(G, at, 1, t) - at;
     const gs = gymStepIn(M, ex);
     if (gs) return gs;
-    const es = equipStepIn(M, ex);
+    const es = byEquip ? equipStepIn(M, ex) : null;
     if (es) return es;
   }
   return v;

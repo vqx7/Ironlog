@@ -6775,9 +6775,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return moveIn(M3, ex, plan, res, nw, `the nearest load in ${UIn(M3)}`);
   }
   function loadGridIn(M3, ex, plan) {
-    const step = incOfIn(M3, ex, plan);
-    const own2 = ex.inc != null || Math.abs(stepReadIn(M3, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M3)) >= EPS_SAME;
-    return own2 ? step : Math.min(step, unitStepIn(M3));
+    return stepOfIn(M3, ex, plan, void 0, false);
   }
   function unitGridIn(M3, ex, plan, top, w2, down, whole) {
     if (ex.timed || gymRackIn(M3, ex, plan) || plateGridIn(M3, ex, plan)) return null;
@@ -7635,6 +7633,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     };
   }
   function incOfIn(M3, ex, plan, at2) {
+    return stepOfIn(M3, ex, plan, at2, true);
+  }
+  function stepOfIn(M3, ex, plan, at2, byEquip) {
     const v3 = stepReadIn(M3, ex && ex.inc != null ? ex.inc : plan && isNum(+plan.inc) ? +plan.inc : STEP_LB);
     if (ex && ex.inc == null && Math.abs(v3 - unitStepIn(M3)) < EPS_SAME) {
       const L2 = gymRackIn(M3, ex, plan);
@@ -7646,7 +7647,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (G && at2 != null && at2 > 0 && Math.abs(plateAt(G, at2, -1, t4) - at2) > t4) return plateAt(G, at2, 1, t4) - at2;
       const gs = gymStepIn(M3, ex);
       if (gs) return gs;
-      const es = equipStepIn(M3, ex);
+      const es = byEquip ? equipStepIn(M3, ex) : null;
       if (es) return es;
     }
     return v3;
