@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-8J704Md+H9dz/0p7JBG0kiFHpHvS5n/tIzCd9c4E7XI=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-w2a3h9hE0EXyu8LsIGaoeiyZ1x+3fa4t1VMOpu6dPMA=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.02-r68">
@@ -6789,10 +6789,16 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (nw == null || Math.abs(nw - res.w) < EPS) return res;
     return moveIn(M3, ex, plan, res, nw, `the nearest load in ${UIn(M3)}`);
   }
+  function loadGridIn(M3, ex, plan) {
+    const step = incOfIn(M3, ex, plan);
+    const own2 = ex.inc != null || Math.abs(stepReadIn(M3, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M3)) >= EPS_SAME;
+    return own2 ? step : Math.min(step, unitStepIn(M3));
+  }
   function unitGridIn(M3, ex, plan, top, w2, down, whole) {
     if (ex.timed || gymRackIn(M3, ex, plan) || plateGridIn(M3, ex, plan)) return null;
-    const st = inUnitIn(M3, incOfIn(M3, ex, plan));
-    if (!(st > 0)) return null;
+    const sl = inUnitIn(M3, incOfIn(M3, ex, plan));
+    if (!(sl > 0)) return null;
+    const st = inUnitIn(M3, loadGridIn(M3, ex, plan));
     const o3 = inUnitIn(M3, loadFloorIn(M3, ex));
     const at2 = (k2) => o3 + k2 * st;
     const off = (v3) => {
@@ -6814,7 +6820,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const tot = top + bwK;
       const most = Math.max(x2, inUnitIn(M3, tot * jumpCap(ex, tot) - bwK));
       const under = at2(Math.floor((most - o3) / st + EPS));
-      if (d3 > most + EPS && under > tp + EPS && !(whole && under < tp + st - EPS)) d3 = under;
+      if (d3 > most + EPS && under > tp + EPS && !(whole && under < tp + sl - EPS)) d3 = under;
     }
     const cp = capOfIn(M3, ex, plan, top);
     return cp != null && kgOfIn(M3, d3) > cp + EPS ? null : kgOfIn(M3, d3);
@@ -6979,12 +6985,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function sgSameDayIn(M3, C2) {
     const { ex, last, T: T2, top, planPts, lastR, lastS, basis, opts, plan } = C2;
     if (!opts.before || last.date !== T2 || !(planPts.length > 0)) return null;
-    if (last.rr && !sameRR(last.rr, [+plan.repMin, +plan.repMax])) return null;
+    if (!(last.rr && sameRR(last.rr, [+plan.repMin, +plan.repMax]))) return null;
     const sets = last.pts.map((p3) => `${loadLabelIn(M3, ex, p3.w)}×${p3.r}`).join(", ");
     return {
       top,
       w: top,
-      text: `Earlier today: ${sets}. The same again: no step up within one day.`,
+      text: `${T2 === M3.today() ? "Earlier today" : "Earlier that day"}: ${sets}. The same again: no step up within one day.`,
       lastR,
       basis,
       last: lastS,
@@ -7518,7 +7524,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       w2 = c4[c4.length - 1];
     } else {
       const rs = rackKind(ex) && rackKind(k2.ex) ? rackStepIn(M3, k2.ex) : null;
-      const st = toDIn(M3, rs || incOfIn(M3, ex, plan));
+      const st = toDIn(M3, rs || loadGridIn(M3, ex, plan));
       if (!(st > 0)) return null;
       w2 = fromDIn(M3, Math.floor(toDIn(M3, want) / st + EPS) * st);
     }
@@ -7581,12 +7587,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         tgt: null,
         easier: null
       };
-    if (opts.before && last.date === opts.before && !(last.rr && !sameRR(last.rr, [+plan.repMin, +plan.repMax])))
+    if (opts.before && last.date === opts.before && last.rr && sameRR(last.rr, [+plan.repMin, +plan.repMax]))
       return {
         prev: L0.prev,
         prevOff: L0.prevOff,
         w: top,
-        text: `Earlier today: ${ws.map((p3) => `${loadLabelIn(M3, ex, p3.w)} for ${p3.r}s`).join(", ")}. The same again: no step up within one day.`,
+        text: `${opts.before === M3.today() ? "Earlier today" : "Earlier that day"}: ${ws.map((p3) => `${loadLabelIn(M3, ex, p3.w)} for ${p3.r}s`).join(", ")}. The same again: no step up within one day.`,
         lastR,
         basis,
         last: lastS,
@@ -7688,6 +7694,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const xs = liftReadIn(M3, ex.id);
     const key = UIn(M3) + ex.id + "|" + (xs.length ? xs[0].sid : "");
     const kind = rackKind(ex);
+    if (!kind) return null;
     const all = RACK[kind][UIn(M3)];
     const pref = kind === "dumbbell" ? EQUIP_STEP.each[UIn(M3)] : null;
     const fits = (ws, g2) => ws.every((w2) => Math.abs(w2 / g2 - Math.round(w2 / g2)) < RACK_FIT);
