@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-klCX/Y5RrOuYoYvBRBqPyeab7Fz3aKmLbIZXRstmJ90=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-8J704Md+H9dz/0p7JBG0kiFHpHvS5n/tIzCd9c4E7XI=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.02-r67">
+<meta name="app-build" content="2026.11.02-r68">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -344,6 +344,8 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
 .wkbar .w.plan .dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
 .wkbar .w.miss .dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--red)}
 .wkbar .w.rest .dn{background:transparent;color:var(--muted)}
+/* A planned day whose workout was done on another day that week (NEW-31, r68): nothing left there, as a rest day reads. */
+.wkbar .w.moved .dn{background:transparent;color:var(--muted)}
 .wkbar .w.cardio .dn{background:transparent;box-shadow:inset 0 0 0 2px var(--volt-line)}
 .wkbar .w.today .wd{color:var(--ink)}
 .wkbar .w.today .dn{outline:2px solid var(--ink);outline-offset:2px}
@@ -1993,7 +1995,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var safeKey = (k2) => typeof k2 === "string" && !/["'<>&`]/.test(k2);
   var EXTRA_MAX = 2e3, EXTRA_KEYS = 20;
   var okExtraKey = (k2) => /^[A-Za-z][\w]{0,39}$/.test(k2) && !(k2 in Object.prototype);
-  var KNOWN_ITEM = /* @__PURE__ */ new Set(["jump"]), KNOWN_CARDIO = /* @__PURE__ */ new Set(["dist"]), KNOWN_MEAS = new Set(MEAS.map((x2) => x2[0])), KNOWN_SEX = /* @__PURE__ */ new Set(["inj", "ps", "nw", "pics"]), KNOWN_BLOCK = /* @__PURE__ */ new Set(["nw", "pics"]), KNOWN_SESS = /* @__PURE__ */ new Set(["pics"]);
+  var KNOWN_ITEM = /* @__PURE__ */ new Set(["jump", "pm"]), KNOWN_CARDIO = /* @__PURE__ */ new Set(["dist"]), KNOWN_MEAS = new Set(MEAS.map((x2) => x2[0])), KNOWN_SEX = /* @__PURE__ */ new Set(["inj", "ps", "nw", "pics"]), KNOWN_BLOCK = /* @__PURE__ */ new Set(["nw", "pics"]), KNOWN_SESS = /* @__PURE__ */ new Set(["pics", "part"]), KNOWN_DAY = /* @__PURE__ */ new Set(["pmName"]);
   function cleanCal(c4) {
     if (!c4 || typeof c4 !== "object") return null;
     const at2 = numOr(c4.at, NaN), pred = numOr(c4.pred, NaN);
@@ -2045,8 +2047,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.22";
-  var APP_VERSION = "2026.11.02-r67";
+  var DISPLAY_VERSION = "2.23";
+  var APP_VERSION = "2026.11.02-r68";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2230,6 +2232,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var BAR = { lb: 45, kg: 20 };
   var DEFAULT_STEP = { kg: 2.5, lb: 5 };
   var STEP_LB = DEFAULT_STEP.lb * LB;
+  var EQUIP_STEP = {
+    bar: { lb: 10, kg: 5 },
+    stack: { lb: 10, kg: 5 },
+    each: { lb: 5, kg: 2 }
+  };
   var onStep = (v3, step) => Math.abs(v3 / step - Math.round(v3 / step)) < EPS_SAME;
   var TYPED_STEP = 0.05;
   var PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
@@ -2468,6 +2475,23 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function dayLabel(R2, i5) {
     return R2 && R2.schedule === "weekly" ? DAYS[i5] : `Day ${i5 + 1}`;
   }
+  function dayParts(d3) {
+    if (d3.rest) return [];
+    const out = [];
+    if (d3.items.some((it) => !it.pm)) out.push(1);
+    if (d3.items.some((it) => it.pm)) out.push(2);
+    return out;
+  }
+  function pmNameOf(d3) {
+    return d3.pmName || `${d3.name} 2`;
+  }
+  function dayWorkout(d3, part) {
+    if (part === 2) return { id: d3.id, name: pmNameOf(d3), rest: false, items: d3.items.filter((it) => it.pm) };
+    return d3.items.some((it) => it.pm) ? { ...d3, items: d3.items.filter((it) => !it.pm) } : d3;
+  }
+  function partOf(s3) {
+    return s3.part === 2 ? 2 : 1;
+  }
   var DEFAULT_PLAN = { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: STEP_LB };
   var LEGACY_DAYS = [
     ["Chest", [["incBench", 4, 6, 10, 1, 180], ["bench", 3, 6, 10, 1, 180], ["dips", 3, 8, 12, 1, 120], ["lowHighFly", 3, 10, 15, 0, 90], ["pecDeck", 2, 12, 15, 0, 75], ["deficitPushup", 2, 10, 25, 0, 75], ["cableCrunch", 3, 10, 15, 1, 60]]],
@@ -2672,22 +2696,23 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   function plannedPerWeek(R2) {
     const n3 = trainDaysOf(R2);
-    return R2.schedule === "weekly" ? n3 : n3 ? Math.max(1, Math.floor(n3 * weekFactor(R2) + EPS)) : 0;
+    if (R2.schedule === "weekly") return R2.days.reduce((a2, d3) => a2 + dayParts(d3).length, 0);
+    return n3 ? Math.max(1, Math.floor(n3 * weekFactor(R2) + EPS)) : 0;
   }
   function pwOf(routines, id) {
     const R2 = routines.find((r4) => r4.id === id);
     const n3 = R2 ? plannedPerWeek(R2) : 0;
-    return n3 > 0 ? n3 : void 0;
+    return n3 > 0 && n3 <= WEEK_DAYS ? n3 : void 0;
   }
-  function planSetsOf(routines, id, dayId, exId) {
+  function planSetsOf(routines, id, dayId, exId, part) {
     const R2 = routines.find((r4) => r4.id === id);
-    const it = R2 ? planItemOf(R2, exId, dayId) : null;
+    const it = R2 ? planItemOf(R2, exId, dayId, part) : null;
     return it && Number.isInteger(it.sets) && it.sets >= 1 ? it.sets : void 0;
   }
   function withPlanSets(ex, d3, routines) {
     if (d3.editingId || d3.free || !d3.dayId) return [...ex];
     return ex.map((b2) => {
-      const n3 = planSetsOf(routines, d3.routineId, d3.dayId, b2.exId);
+      const n3 = planSetsOf(routines, d3.routineId, d3.dayId, b2.exId, partOf(d3));
       return n3 ? { ...b2, ps: n3 } : b2;
     });
   }
@@ -2806,9 +2831,13 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const { uid: _u, ss: _s, ...p3 } = it;
     return { ...DEFAULT_PLAN, ...p3, ss: null };
   }
-  function planItemOf(R2, exId, dayId) {
+  function planItemOf(R2, exId, dayId, part) {
     const days = dayId ? [...R2.days.filter((d3) => d3.id === dayId), ...R2.days.filter((d3) => d3.id !== dayId)] : R2.days;
-    for (const d3 of days) for (const it of d3.items) if (it.exId === exId) return it;
+    const mine = (it) => !!it.pm === (part === 2);
+    for (const d3 of days) {
+      const its = part && d3.id === dayId ? [...d3.items.filter(mine), ...d3.items.filter((it) => !mine(it))] : d3.items;
+      for (const it of its) if (it.exId === exId) return it;
+    }
     return null;
   }
   function basePlanIn(M3, exId, R2, dayId, plain) {
@@ -3639,9 +3668,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold (r56.1).
         t: isTime(Math.round(t4)) ? Math.round(t4) : void 0,
         // The sessions a week its routine planned when saved (r55, pwOf); absent unless recorded, so older records keep their hash.
+        // At most seven, as every build before reads it: a week of more is not recorded (pwOf, the review of r68).
         pw: typeof ss.pw === "number" && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= WEEK_DAYS ? ss.pw : void 0,
-        // The pictures on the workout's notes (r66, 373), by id, last; absent unless there are any, so older records keep their shape and hash.
-        ...picsField(ss.pics)
+        // The pictures on the workout's notes (r66, 373), by id; absent unless there are any, so older records keep their shape and hash.
+        ...picsField(ss.pics),
+        // Its day's second workout (r68, 366 (c)): 2 or absent, last, where a build before r68 keeps it among its extras.
+        ...ss.part === 2 ? { part: 2 } : {}
       },
       KNOWN_SESS
     );
@@ -3917,7 +3949,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
             exId: fixId(it.exId),
             ...planNums(it),
             ss: typeof it.ss === "string" && it.ss ? fixId(it.ss) : null,
-            ...jumpOf(it)
+            ...jumpOf(it),
+            // In the day's second workout (r68, 366 (c)): true or absent, last, so older items keep their hash.
+            ...it.pm === true && schedule === "weekly" ? { pm: true } : {}
           },
           KNOWN_ITEM
         );
@@ -3926,13 +3960,19 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       let id = dbase;
       if (seen.has(id)) id = id + "-" + i5;
       seen.add(id);
+      const pmName = typeof d3.pmName === "string" ? d3.pmName.trim().slice(0, LIMITS.name) : "";
       days.push(
-        keepExtra(d0, {
-          id,
-          name: typeof d3.name === "string" ? d3.name : schedule === "weekly" ? DAYS[i5] : `Day ${i5 + 1}`,
-          rest: !!d3.rest,
-          items
-        })
+        keepExtra(
+          d0,
+          {
+            id,
+            name: typeof d3.name === "string" ? d3.name : schedule === "weekly" ? DAYS[i5] : `Day ${i5 + 1}`,
+            rest: !!d3.rest,
+            items,
+            ...pmName && schedule === "weekly" ? { pmName } : {}
+          },
+          KNOWN_DAY
+        )
       );
     }
     return keepExtra(r0, { id: rid, name: typeof r4.name === "string" ? r4.name : "Routine", schedule, days });
@@ -3957,6 +3997,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       limited: d3.limited === true ? true : void 0,
       ...pics ? { pics } : {},
       free: d3.free === true ? true : void 0,
+      // Started as its day's second workout (r68, 366 (c)).
+      part: d3.part === 2 ? 2 : void 0,
       // A past workout typed in after the fact: no rest timer, no clock, no check-in.
       past: d3.past === true ? true : void 0,
       // The notes the app wrote when the session started, so Discard can tell them from yours.
@@ -5424,7 +5466,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       demo: false,
       ...chk ? { chk } : {},
       ...d3.startedAt && d3.startedAt > 0 ? { t: d3.startedAt } : {},
-      ...d3.pics && d3.pics.length ? { pics: [...d3.pics] } : {}
+      ...d3.pics && d3.pics.length ? { pics: [...d3.pics] } : {},
+      // The day's second workout (r68, 366 (c)), last, as normalize writes it.
+      ...d3.part === 2 ? { part: 2 } : {}
     };
   }
   function draftCardio(d3) {
@@ -5759,7 +5803,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return sinceNew(all);
   }
   function idxSessionsIn(M3, sessions) {
-    const byEx = {}, sessVol = [], weekSets = {}, weekConf = {}, dayMus = {}, dayMeta = {}, weekHard = {};
+    const byEx = {}, sessVol = [], weekSets = {}, weekConf = {}, dayMus = {}, dayMeta2 = {}, weekHard = {};
     const recentFrom = addDays(M3.today(), -RECENT_DAYS);
     const seenEx = /* @__PURE__ */ new Set();
     let rirLogged = 0, rirTotal = 0;
@@ -5769,7 +5813,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const ws = weekSets[wk] || (weekSets[wk] = {});
       const wc = weekConf[wk] || (weekConf[wk] = {});
       const dm = dayMus[ss.date] || (dayMus[ss.date] = {});
-      const dx = dayMeta[ss.date] || (dayMeta[ss.date] = {});
+      const dx = dayMeta2[ss.date] || (dayMeta2[ss.date] = {});
       for (const b2 of sameExOnce(ss.ex)) {
         const ex = EXIn(M3, b2.exId);
         const novel = !seenEx.has(b2.exId);
@@ -5887,7 +5931,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       }
       sessVol.push({ date: ss.date, vol, id: ss.id, day: ss.dayName });
     }
-    return { byEx, sessVol, weekSets, weekConf, dayMus, dayMeta, weekHard, rirLogged, rirTotal };
+    return { byEx, sessVol, weekSets, weekConf, dayMus, dayMeta: dayMeta2, weekHard, rirLogged, rirTotal };
   }
   function idxAutoLighter(byEx) {
     const wkAuto = {};
@@ -6579,8 +6623,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function routineUpdatesIn(M3, d3) {
     const R2 = M3.s.routines.find((r4) => r4.id === d3.routineId);
     if (!R2) return null;
-    const day = R2.days.find((x2) => x2.id === d3.dayId);
-    if (!day) return null;
+    const day0 = R2.days.find((x2) => x2.id === d3.dayId);
+    if (!day0) return null;
+    const day = dayWorkout(day0, d3.part === 2 ? 2 : 1);
     const have = new Set(day.items.map((i5) => i5.exId));
     const add = [], swap = [];
     const seen = /* @__PURE__ */ new Set();
@@ -6631,7 +6676,16 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       ...add.map((x2) => `add ${exNameIn(M3, x2.exId)}`),
       ...ss.map((u4) => `superset ${andList(u4.map((id) => exNameIn(M3, id)))}`)
     ];
-    return { rid: R2.id, dayId: day.id, dayName: day.name, add, swap, ss, text: bits.join(", ") };
+    return {
+      rid: R2.id,
+      dayId: day.id,
+      ...d3.part === 2 ? { part: 2 } : {},
+      dayName: day.name,
+      add,
+      swap,
+      ss,
+      text: bits.join(", ")
+    };
   }
 
   // src/app/loads.ts
@@ -6808,8 +6862,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const ex = EXIn(M3, exId);
     const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M3, exId, plan, opts) : 0;
     const back2 = off > BACK_DAYS;
-    if (!(opts.deload || opts.light || back2) || ex.timed)
-      return snapUnitIn(M3, ex, plan, suggestCoreIn(M3, exId, plan, opts));
+    if (!(opts.deload || opts.light || back2) || ex.timed) {
+      const core = suggestCoreIn(M3, exId, plan, opts);
+      return core.same ? core : snapUnitIn(M3, ex, plan, core);
+    }
     const base = suggestCoreIn(M3, exId, plan, { ...opts, deload: false, light: false });
     if (base.kin && base.w > 0) {
       const ks = !gymRackIn(M3, ex, plan) && rackKind(ex) && rackKind(EXIn(M3, base.kin)) ? rackStepIn(M3, EXIn(M3, base.kin)) : null;
@@ -6902,6 +6958,42 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     return span <= TREND_DAYS;
   }
+  function oneADay(xs, repMin) {
+    if (!xs || xs.length < 2) return xs;
+    const score = (x2) => {
+      const w2 = workLoad(x2.pts, repMin);
+      return [w2, triedAt(x2, w2).reduce((t4, p3) => t4 + p3.r, 0)];
+    };
+    const out = [];
+    for (const x2 of xs) {
+      const prev = out[out.length - 1];
+      if (!prev || prev.date !== x2.date) {
+        out.push(x2);
+        continue;
+      }
+      const [a0, a1] = score(prev), [b0, b1] = score(x2);
+      if (b0 > a0 + EPS_SAME || Math.abs(b0 - a0) <= EPS_SAME && b1 >= a1) out[out.length - 1] = x2;
+    }
+    return out;
+  }
+  function sgSameDayIn(M3, C2) {
+    const { ex, last, T: T2, top, planPts, lastR, lastS, basis, opts, plan } = C2;
+    if (!opts.before || last.date !== T2 || !(planPts.length > 0)) return null;
+    if (last.rr && !sameRR(last.rr, [+plan.repMin, +plan.repMax])) return null;
+    const sets = last.pts.map((p3) => `${loadLabelIn(M3, ex, p3.w)}×${p3.r}`).join(", ");
+    return {
+      top,
+      w: top,
+      text: `Earlier today: ${sets}. The same again: no step up within one day.`,
+      lastR,
+      basis,
+      last: lastS,
+      target: "",
+      tgt: null,
+      easier: null,
+      same: true
+    };
+  }
   function suggestCoreIn(M3, exId, plan, opts) {
     opts = opts || {};
     const T2 = opts.before && isDate(opts.before) ? opts.before : M3.today();
@@ -6913,9 +7005,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const want = [+plan.repMin, +plan.repMax];
     const inRR = rangeInUse(full, want);
     const fullRR = inRR ? full.filter((x2) => sameRR(x2.rr, want)) : [];
-    const exps = all && all.length ? fullRR.length ? fullRR : full.length ? full : all : all;
-    const done = all && all.length ? fullRR.length ? all.filter((x2) => !lighter(x2) && sameRR(x2.rr, want)) : full.length ? all.filter((x2) => !lighter(x2)) : all : [];
-    const seen = inRR ? all.filter((x2) => sameRR(x2.rr, want)) : all;
+    const exps = oneADay(all && all.length ? fullRR.length ? fullRR : full.length ? full : all : all, want[0]);
+    const done = oneADay(
+      all && all.length ? fullRR.length ? all.filter((x2) => !lighter(x2) && sameRR(x2.rr, want)) : full.length ? all.filter((x2) => !lighter(x2)) : all : [],
+      want[0]
+    ) ?? [];
+    const seen = oneADay(inRR ? all.filter((x2) => sameRR(x2.rr, want)) : all, want[0]);
     if (ex.timed) return suggestTimedIn(M3, ex, plan, exps, opts, injM, seen);
     if (!exps || !exps.length) return sgFirstIn(M3, ex, plan, T2, injM);
     const last = exps[exps.length - 1], ws = last.pts;
@@ -6995,7 +7090,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       fl,
       tp
     };
-    const res = sgAfterReturnIn(M3, C2) || sgEasyIn(M3, C2) || sgPastRangeIn(M3, C2) || sgBelowRangeIn(M3, C2) || sgNoStep(C2) || sgTopOfRangeIn(M3, C2) || sgBadDay(C2) || sgRepsIn(M3, C2);
+    const res = sgSameDayIn(M3, C2) || sgAfterReturnIn(M3, C2) || sgEasyIn(M3, C2) || sgPastRangeIn(M3, C2) || sgBelowRangeIn(M3, C2) || sgNoStep(C2) || sgTopOfRangeIn(M3, C2) || sgBadDay(C2) || sgRepsIn(M3, C2);
     return res && res.last ? { ...res, prev: L0.prev, prevOff: L0.prevOff } : res;
   }
   function sgAfterReturnIn(M3, C2) {
@@ -7486,6 +7581,20 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         tgt: null,
         easier: null
       };
+    if (opts.before && last.date === opts.before && !(last.rr && !sameRR(last.rr, [+plan.repMin, +plan.repMax])))
+      return {
+        prev: L0.prev,
+        prevOff: L0.prevOff,
+        w: top,
+        text: `Earlier today: ${ws.map((p3) => `${loadLabelIn(M3, ex, p3.w)} for ${p3.r}s`).join(", ")}. The same again: no step up within one day.`,
+        lastR,
+        basis,
+        last: lastS,
+        target: "",
+        tgt: null,
+        easier: null,
+        same: true
+      };
     const off = backDaysIn(M3, ex.id, plan, opts);
     if (off > BACK_DAYS)
       return {
@@ -7546,8 +7655,18 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (G && at2 != null && at2 > 0 && Math.abs(plateAt(G, at2, -1, t4) - at2) > t4) return plateAt(G, at2, 1, t4) - at2;
       const gs = gymStepIn(M3, ex);
       if (gs) return gs;
+      const es = equipStepIn(M3, ex);
+      if (es) return es;
     }
     return v3;
+  }
+  function equipStepIn(M3, ex) {
+    if (!ex || ex.bw || ex.timed) return null;
+    const m3 = loadMode(ex);
+    const kind = m3 === "stack" ? "stack" : m3 === "each" ? "each" : m3 === "total" && (ex.equip === "barbell" || ex.equip === "smith") ? "bar" : null;
+    if (!kind) return null;
+    const u4 = UIn(M3);
+    return u4 === "kg" ? EQUIP_STEP[kind].kg : EQUIP_STEP[kind].lb * LB;
   }
   function rackSnapIn(M3, ex, plan, res) {
     if (!res || res.w == null || ex.timed) return res;
@@ -7568,10 +7687,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     I2._rack = I2._rack || {};
     const xs = liftReadIn(M3, ex.id);
     const key = UIn(M3) + ex.id + "|" + (xs.length ? xs[0].sid : "");
+    const kind = rackKind(ex);
+    const all = RACK[kind][UIn(M3)];
+    const pref = kind === "dumbbell" ? EQUIP_STEP.each[UIn(M3)] : null;
+    const fits = (ws, g2) => ws.every((w2) => Math.abs(w2 / g2 - Math.round(w2 / g2)) < RACK_FIT);
+    const fitD = (ws) => all.find((g2) => fits(ws, g2)) ?? null;
     const fit = (ws) => {
-      const fits = (g3) => ws.every((w2) => Math.abs(w2 / g3 - Math.round(w2 / g3)) < RACK_FIT);
-      const g2 = RACK[rackKind(ex)][UIn(M3)].find(fits);
-      return g2 ? fromDIn(M3, g2) : null;
+      const g2 = pref != null && all.includes(pref) && fits(ws, pref) ? pref : fitD(ws);
+      return g2 != null ? fromDIn(M3, g2) : null;
     };
     if (I2._rack[key] === void 0) {
       const steps = (a2, b2) => Math.abs(a2 / b2 - Math.round(a2 / b2)) < RACK_FIT;
@@ -7580,15 +7703,15 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         const own2 = [];
         for (const p3 of x2.pts) if (p3.w > 0) own2.push(toDIn(M3, p3.w));
         if (!own2.length) continue;
-        const f3 = fit([...ws, ...own2]);
+        const f3 = fitD([...ws, ...own2]);
         if (ws.length && f3 !== g2) {
-          const h3 = fit(own2);
+          const h3 = fitD(own2);
           if (f3 == null || g2 == null || h3 == null || !(steps(g2, h3) || steps(h3, g2))) break;
         }
         ws = [...ws, ...own2];
         g2 = f3;
       }
-      I2._rack[key] = g2;
+      I2._rack[key] = ws.length ? fit(ws) : null;
     }
     const logged2 = xs.some((x2) => x2.pts.some((p3) => p3.w > 0));
     const d3 = logged2 || at2 == null || !(at2 > 0) ? null : toDIn(M3, at2);
@@ -9504,6 +9627,25 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     return out;
   }
+  function weekSlots(R2) {
+    if (R2.schedule !== "weekly") return [];
+    const cur = weekStart(today());
+    const plan = weekPlan(R2);
+    const out = [];
+    for (let i5 = 0; i5 < WEEK_DAYS; i5++) {
+      const p3 = plan[addDays(cur, i5)];
+      if (!p3) continue;
+      for (const part of dayParts(p3.day)) out.push({ di: i5, part, day: dayWorkout(p3.day, part), doneOn: null });
+    }
+    const end = addDays(cur, WEEK_DAYS - 1);
+    const mine = state.sessions.filter((s3) => s3.routineId === R2.id && !s3.free && s3.date >= cur && s3.date <= end).slice().sort((a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : (a2.t || 0) - (b2.t || 0));
+    for (const s3 of mine) {
+      const di = sessDayIdx(R2, s3), part = partOf(s3);
+      const slot = out.find((x2) => x2.di === di && x2.part === part && !x2.doneOn);
+      if (slot) slot.doneOn = s3.date;
+    }
+    return out;
+  }
   function planAhead(to) {
     const R2 = activeRoutine();
     const t4 = today();
@@ -10619,7 +10761,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
   function bwSheet(m3) {
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Your bodyweight</h3>${closeX()}</div>
-    <p class="small">${m3.ex ? `${m3.ex} counts` : "Pull-ups, dips, and push-ups count"} your bodyweight, plus any weight you add on a belt or vest; you type only what you add. Without it, they count only what you add.</p>
+    <p class="small">${m3.ex ? `${m3.ex} counts` : "Pull-ups, dips, and push-ups count"} your bodyweight, plus any weight you add on a belt or vest; you type only what you add. Without a bodyweight, they count only the added load.</p>
     <label class="field">Bodyweight (${U()})<input type="text" inputmode="decimal" id="bwSheetVal" placeholder=${`Weight (${U()})`} enterkeyhint="done"></label>
     <p class="small muted">Optional. Saved as today's weigh-in; change it any time in Settings or on Today.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="addBW" data-in="bwSheetVal">Save</button><button class="btn" data-act="mClose">Not now</button></div></div>`;
@@ -10651,6 +10793,9 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     radarPoint: 3,
     font: 11,
     tickFont: 10,
+    tickPad: 2,
+    tickGap: 6,
+    ringLabelAt: [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8],
     tipPad: 9,
     tipRadius: 8,
     barRadius: 4,
@@ -10726,6 +10871,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       maintainAspectRatio: false,
       animation: false,
       interaction: { mode: "index", intersect: false },
+      /* A dot on the first or last day, or at the top of the scale, is drawn whole: Chart.js cuts a line chart at its
+         plot's edge, which halved the first weigh-in's dot and a lift's first session (seen 2026-11-02). The room it
+         may take is the largest a dot gets, inside the gap the axis leaves before its labels. */
+      datasets: { line: { clip: CS.hoverRadius } },
       plugins: {
         legend: {
           position: "bottom",
@@ -10753,7 +10902,9 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         stepSize: step,
         includeBounds: false,
         maxRotation: 0,
-        autoSkip: false,
+        // A label that would run into the one beside it is left out (a net: whole weeks rarely crowd).
+        autoSkip: true,
+        autoSkipPadding: CS.tickGap,
         callback: (v3) => fmtDate(addDays(base, Math.round(v3)))
       }
     };
@@ -10769,7 +10920,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }
   }
   function radarOpts(max) {
-    const ink = cssv("--muted"), line = cssv("--line"), surf = cssv("--surface");
+    const ink = cssv("--muted"), line = cssv("--line");
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -10787,17 +10938,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
           min: 0,
           max,
           beginAtZero: true,
-          // z:1 draws the tick labels above the datasets, so the 100% ring no longer
-          // runs through the "100" label.
-          ticks: {
-            color: ink,
-            stepSize: CS.radarStep,
-            showLabelBackdrop: true,
-            backdropColor: surf,
-            backdropPadding: 2,
-            font: { size: CS.tickFont },
-            z: 1
-          },
+          // The ring labels are written by ringLabels (below), not by Chart.js, which puts them on the first spoke.
+          ticks: { stepSize: CS.radarStep, display: false },
           grid: { color: line },
           angleLines: { color: line },
           pointLabels: { color: ink, font: { size: CS.font } }
@@ -10805,21 +10947,109 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       }
     };
   }
+  function segHits(x1, y1, x2, y2, q) {
+    const dx = x2 - x1, dy = y2 - y1;
+    let lo = 0, hi = 1;
+    const edges = [
+      [-dx, x1 - q.l],
+      [dx, q.r - x1],
+      [-dy, y1 - q.t],
+      [dy, q.b - y1]
+    ];
+    for (const [p3, d3] of edges) {
+      if (p3 === 0) {
+        if (d3 < 0) return false;
+        continue;
+      }
+      const k2 = d3 / p3;
+      if (p3 < 0) lo = Math.max(lo, k2);
+      else hi = Math.min(hi, k2);
+      if (lo > hi) return false;
+    }
+    return true;
+  }
+  function dotHits(x2, y2, r4, q) {
+    const nx = Math.max(q.l, Math.min(x2, q.r)), ny = Math.max(q.t, Math.min(y2, q.b));
+    return Math.hypot(x2 - nx, y2 - ny) < r4;
+  }
+  function ringLabels() {
+    return {
+      id: "ringLabels",
+      afterDatasetsDraw: (chart) => {
+        const sc = chart.scales.r;
+        if (!sc) return;
+        const g2 = chart.ctx;
+        const size = CS.tickFont;
+        g2.save();
+        g2.font = `${size}px ${window.Chart?.defaults.font.family ?? "sans-serif"}`;
+        const drawn = chart.data.datasets.map((_2, i5) => i5).filter((i5) => chart.isDatasetVisible(i5)).map((i5) => chart.getDatasetMeta(i5).data.map((p3) => ({ x: p3.x, y: p3.y, r: p3.options?.radius ?? 0 })));
+        const n3 = drawn[0]?.length ?? 0;
+        const o3 = sc.getPointPosition(0, 0);
+        const meets = (q) => drawn.some(
+          (pts) => pts.some((p3, i5) => {
+            const nx = pts[(i5 + 1) % pts.length] ?? p3;
+            return p3.r > 0 && dotHits(p3.x, p3.y, p3.r + CS.tickPad, q) || segHits(p3.x, p3.y, nx.x, nx.y, q);
+          })
+        );
+        const spot = (label, v3, k2, f3) => {
+          const d3 = sc.getDistanceFromCenterForValue(v3);
+          const a2 = sc.getPointPosition(k2, d3);
+          const b2 = sc.getPointPosition((k2 + 1) % n3, d3);
+          const mx = (a2.x + b2.x) / 2, my = (a2.y + b2.y) / 2;
+          const len = Math.hypot(mx - o3.x, my - o3.y) || 1;
+          const ux = (mx - o3.x) / len, uy = (my - o3.y) / len;
+          const hw = g2.measureText(label).width / 2 + CS.tickPad, hh = size / 2 + CS.tickPad;
+          const inset = hw * Math.abs(ux) + hh * Math.abs(uy);
+          const x2 = a2.x + (b2.x - a2.x) * f3 - ux * inset, y2 = a2.y + (b2.y - a2.y) * f3 - uy * inset;
+          return { x: x2, y: y2, q: { l: x2 - hw, t: y2 - hh, r: x2 + hw, b: y2 + hh } };
+        };
+        const ticks = sc.ticks.filter((t4) => t4.value > 0);
+        const placed2 = (k2) => ticks.map((t4) => {
+          for (const f3 of CS.ringLabelAt) {
+            const sp = spot(t4.label, t4.value, k2, f3);
+            if (!meets(sp.q)) return sp;
+          }
+          return null;
+        });
+        let best = placed2(0);
+        for (let k2 = 1; k2 < n3 && best.some((p3) => !p3); k2++) {
+          const here = placed2(k2);
+          if (here.filter(Boolean).length > best.filter(Boolean).length) best = here;
+        }
+        g2.textAlign = "center";
+        g2.textBaseline = "middle";
+        g2.fillStyle = cssv("--muted");
+        best.forEach((p3, i5) => {
+          const t4 = ticks[i5];
+          if (p3 && t4) g2.fillText(t4.label, p3.x, p3.y);
+        });
+        g2.restore();
+      }
+    };
+  }
   function weekAxis(win, o3) {
     const cur = weekStart(today());
     const ink = cssv("--muted");
     const faded = ink + "80";
+    const many = win.length > CHART_WEEKS;
     o3.scales.x.ticks = {
       ...o3.scales.x.ticks,
-      autoSkip: win.length > CHART_WEEKS,
-      maxTicksLimit: win.length > CHART_WEEKS ? CS.xTicks : void 0,
+      autoSkip: many,
+      autoSkipPadding: CS.tickGap,
+      maxTicksLimit: many ? CS.xTicks : void 0,
       font: { size: CS.tickFont },
       color: (c4) => {
         const w2 = win[c4.tick ? c4.tick.value : c4.index];
         return w2 && w2.fut ? faded : ink;
       }
     };
-    return win.map((w2) => w2.wk === cur ? "This wk" : fmtDate(w2.wk));
+    const ym = (d3) => d3.split("-").slice(0, 2).join("-");
+    const dom = (d3) => String(+(d3.split("-")[2] ?? ""));
+    return win.map((w2, i5) => {
+      if (w2.wk === cur) return "This wk";
+      const prev = win[i5 - 1];
+      return !many && prev && ym(prev.wk) === ym(w2.wk) ? dom(w2.wk) : fmtDate(w2.wk);
+    });
   }
   function chartDefaults(C2, muted) {
     try {
@@ -10962,7 +11192,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
           }
         ]
       },
-      options: radarOpts(rMax)
+      options: radarOpts(rMax),
+      plugins: [ringLabels()]
     });
   }
   function liftChart(I2, { blue, green, yellow }) {
@@ -15768,7 +15999,9 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   }
   function sessionCapNote(day) {
     if (day.rest || !day.items.length) return A;
-    const ms = sessionMuscleSets(day);
+    const ms = {};
+    for (const part of dayParts(day))
+      for (const [m3, v3] of Object.entries(sessionMuscleSets(dayWorkout(day, part)))) ms[m3] = Math.max(ms[m3] ?? 0, v3);
     const over = Object.entries(ms).filter(([, v3]) => v3 > SESSION_CAP).sort((a2, b2) => b2[1] - a2[1]);
     if (!over.length) return A;
     const who = andList(over.map(([m3, v3]) => `${ML[m3]} ${r1(v3)}`));
@@ -15834,12 +16067,14 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     <label class="field">Rest (s)<input type="text" inputmode="numeric" data-it="rest" data-uid=${it.uid} .value=${fieldValue(String(it.rest))}></label>
     <label class="field">Load step (${U()})<input type="text" inputmode="decimal" data-it="inc" data-uid=${it.uid} .value=${fieldValue(fmtW(incOf(ex, it)))} data-tip="Applies to this exercise on every day and routine"></label>
     ${ex.timed ? A : b`<label class="field"><span class="hastip" data-tip=${JUMP_TIP}>Load jump %</span><input type="text" inputmode="decimal" data-it="jump" data-uid=${it.uid} .value=${fieldValue(it.jump != null ? String(it.jump) : "")} placeholder=${`auto ${isCompound(ex) ? "2.5" : "5"}`}></label>`}</div>
-    <div class="row u-mt8"><label class="field u-f1">Move to<select data-moveto=${it.uid} data-day=${String(di)}>${R2.days.map((d3, i5) => b`<option value=${String(i5)} .selected=${l3(i5 === di)}>${dayLabel(R2, i5)}: ${d3.name}</option>`)}</select></label>
+    <div class="row u-mt8"><label class="field u-f1">Move to<select data-moveto=${it.uid} data-day=${String(di)}>${R2.days.map(
+      (d3, i5) => b`<option value=${String(i5)} .selected=${l3(i5 === di && !it.pm)}>${dayLabel(R2, i5)}: ${d3.name}</option>${R2.schedule === "weekly" ? b`<option value=${`${i5}:2`} .selected=${l3(i5 === di && !!it.pm)}>${dayLabel(R2, i5)}: ${pmNameOf(d3)} (second workout)</option>` : A}`
+    )}</select></label>
     <button class="btn sm u-asflex-end" data-act="iSwap" data-uid=${it.uid}>Swap</button><button class="btn sm danger u-asflex-end" data-act="iDel" data-day=${String(di)} data-i=${String(ii)}>Remove</button></div>
     ${nx ? b`<div class="row u-mt8"><button class=${linked ? "btn sm noted" : "btn sm "} data-act="ssToggle" data-uid=${it.uid}>${linked ? "Unlink superset" : "Superset with next"}</button>${linked ? b`<span class="small muted">Paired with ${exName(nx.exId)}: alternate sets, rest once after the pair.</span>` : A}</div>` : A}
     ${ex.note ? b`<p class="small muted">${ex.note}</p>` : A}</div>` : A;
     const letter = it.ss ? letters[it.ss] : void 0;
-    return b`<li class=${it.ss ? "it ss" : "it"} data-uid=${it.uid}><div class="ir"><span class="grip" aria-hidden="true">⠿</span><button class="imain" data-act="toggleItem" data-uid=${it.uid}><b>${ex.name}</b><span>${it.sets} × ${repSpan(it.repMin, it.repMax, "-")}${ex.timed ? "s" : ""}, ${rirShow(ex) ? `${effTgt(it.rir)}, ` : ""}rest ${it.rest}s${it.ss ? ` · superset ${letter}` : ""}</span></button><button class="ib" aria-label=${`Move ${ex.name} up`} data-act="iUp" data-day=${String(di)} data-i=${String(ii)} ?disabled=${ii === 0}>↑</button><button class="ib" aria-label=${`Move ${ex.name} down`} data-act="iDown" data-day=${String(di)} data-i=${String(ii)} ?disabled=${ii === items.length - 1}>↓</button></div>
+    return b`<li class=${it.ss ? "it ss" : "it"} data-uid=${it.uid}><div class="ir"><span class="grip" aria-hidden="true">⠿</span><button class="imain" data-act="toggleItem" data-uid=${it.uid}><b>${ex.name}</b><span>${it.sets} × ${repSpan(it.repMin, it.repMax, "-")}${ex.timed ? "s" : ""}, ${rirShow(ex) ? `${effTgt(it.rir)}, ` : ""}rest ${it.rest}s${it.ss ? ` · superset ${letter}` : ""}${it.pm ? " · second workout" : ""}</span></button><button class="ib" aria-label=${`Move ${ex.name} up`} data-act="iUp" data-day=${String(di)} data-i=${String(ii)} ?disabled=${ii === 0}>↑</button><button class="ib" aria-label=${`Move ${ex.name} down`} data-act="iDown" data-day=${String(di)} data-i=${String(ii)} ?disabled=${ii === items.length - 1}>↓</button></div>
   ${editor}</li>`;
   }
   function bLibItems() {
@@ -15847,14 +16082,21 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       (e5) => b`<li class="it" data-ex=${e5.id}><div class="ir"><span class="grip" aria-hidden="true">⠿</span><div class="imain"><b>${e5.name}</b><span>${ML[e5.primary]}, ${EQL[e5.equip] || e5.equip}${isCommon(e5) ? ", common" : e5.rare ? ", less common" : ""}</span></div><button class="ib" aria-label=${`Add ${e5.name}`} data-act="libAdd" data-ex=${e5.id}>+</button></div></li>`
     );
   }
+  function dayMeta(d3) {
+    const parts = dayParts(d3);
+    if (parts.length < 2) return b`${d3.items.length} exercises, ${daySets(d3)} sets, ${minPart(dayMinutes(d3))}`;
+    const [a2, b2] = parts.map((p3) => dayWorkout(d3, p3));
+    return b`${a2 ? b`${a2.name}: ${a2.items.length} exercises, ${minPart(dayMinutes(a2))}` : A}${b2 ? b`; ${b2.name}: ${b2.items.length} exercises, ${minPart(dayMinutes(b2))}` : A}`;
+  }
   function dayPart(R2, d3, di, weekly, dnd, focus) {
     fixSupersets(d3.items);
     const dOpen = d3.id === focus;
     const label = dayLabel(R2, di);
     return b`<section class=${`day ${d3.rest ? "rest" : ""}`} data-did=${d3.id}><div class="dh">${weekly ? A : b`<span class="dgrip" role="button" tabindex="0" data-di=${String(di)} aria-label=${`Move ${label}: drag, or use the arrow keys`} data-tip="Drag to reorder days">⠿</span>`}<span class="dlabel">${label}</span><input type="text" aria-label="Day name" data-dayname=${String(di)} .value=${fieldValue(d3.name)}><button class="ib dfold" data-act="dFold" data-id=${d3.id} aria-expanded=${String(dOpen)} aria-label=${`${dOpen ? "Fold" : "Unfold"} ${label}`}></button></div>
-    <div class="dmeta row spread"><span>${d3.rest ? "" : b`${d3.items.length} exercises, ${daySets(d3)} sets, ${minPart(dayMinutes(d3))}`}</span><label class="check-inline"><input type="checkbox" data-dayrest=${String(di)} .checked=${l3(d3.rest)}>Rest day</label></div><div class="dbody" ?hidden=${!dOpen}>${sessionCapNote(d3)}
+    <div class="dmeta row spread"><span>${d3.rest ? "" : dayMeta(d3)}</span><label class="check-inline"><input type="checkbox" data-dayrest=${String(di)} .checked=${l3(d3.rest)}>Rest day</label></div><div class="dbody" ?hidden=${!dOpen}>${sessionCapNote(d3)}
     <ul class="items" data-day=${String(di)}>${d3.items.map((it, ii) => itemPart(R2, di, it, ii))}</ul>
-    <div class="row u-p0n10n12"><button class="btn sm" data-act="pickDay" data-day=${String(di)}>Add exercise</button>${weekly ? A : b`${dnd ? A : b`<button class="btn sm" data-act="dUp" data-day=${String(di)} ?disabled=${di === 0} aria-label=${`Move ${label} earlier`}>↑ Day</button><button class="btn sm" data-act="dDown" data-day=${String(di)} ?disabled=${di === R2.days.length - 1} aria-label=${`Move ${label} later`}>↓ Day</button>`}<button class="btn sm danger" data-act="dDel" data-day=${String(di)} ?disabled=${R2.days.length < 2}>Remove day</button>`}</div></div></section>`;
+    ${weekly && dayParts(d3).includes(2) ? b`<label class="field u-p0n10n12">Second workout's name<input type="text" data-daypm=${String(di)} .value=${fieldValue(d3.pmName || "")} placeholder=${pmNameOf({ name: d3.name })}></label>` : A}
+    <div class="row u-p0n10n12"><button class="btn sm" data-act="pickDay" data-day=${String(di)}>Add exercise</button>${weekly ? b`<button class="btn sm" data-act="pickDay" data-day=${String(di)} data-part="2">${dayParts(d3).includes(2) ? "Add to second workout" : "Add a second workout"}</button>` : A}${weekly ? A : b`${dnd ? A : b`<button class="btn sm" data-act="dUp" data-day=${String(di)} ?disabled=${di === 0} aria-label=${`Move ${label} earlier`}>↑ Day</button><button class="btn sm" data-act="dDown" data-day=${String(di)} ?disabled=${di === R2.days.length - 1} aria-label=${`Move ${label} later`}>↓ Day</button>`}<button class="btn sm danger" data-act="dDel" data-day=${String(di)} ?disabled=${R2.days.length < 2}>Remove day</button>`}</div></div></section>`;
   }
   function viewProgram() {
     if (!ui.bRoutine || !state.routines.find((r4) => r4.id === ui.bRoutine)) ui.bRoutine = state.activeRoutineId;
@@ -16293,6 +16535,19 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         );
       return true;
     }
+    if (t4.dataset.daypm != null) {
+      const d3 = curRoutineB().days[num(t4.dataset.daypm)];
+      const v3 = t4.value.trim().slice(0, LIMITS.name);
+      if (d3)
+        act(
+          () => {
+            if (v3) d3.pmName = v3;
+            else delete d3.pmName;
+          },
+          { soon: true }
+        );
+      return true;
+    }
     const b2 = t4.dataset.bind;
     if (b2 === "routineName") {
       const R2 = curRoutineB();
@@ -16325,6 +16580,10 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       rerenderKeepScroll();
       return true;
     }
+    if (t4.dataset.daypm != null) {
+      rerenderKeepScroll();
+      return true;
+    }
     if (t4.dataset.dayrest != null) {
       const d3 = curRoutineB().days[num(t4.dataset.dayrest)];
       if (!d3) return true;
@@ -16345,17 +16604,21 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     if (t4.dataset.moveto) {
       const f3 = findItem(t4.dataset.moveto);
       if (!f3) return true;
-      const to = +t4.value;
+      const [toS, partS] = t4.value.split(":");
+      const to = +(toS ?? "");
+      const pm = partS === "2" && f3.r.schedule === "weekly";
       const from = f3.r.days[f3.di];
       const dest = f3.r.days[to];
-      if (to === f3.di || !from || !dest) return true;
+      if (!from || !dest || to === f3.di && pm === !!f3.it.pm) return true;
       act(() => {
         from.items.splice(f3.i, 1);
+        if (pm) f3.it.pm = true;
+        else delete f3.it.pm;
         dest.items.push(f3.it);
         Object.assign(dest, trainOn(dest));
       });
       rerenderKeepScroll();
-      toast(`Moved to ${dayLabel(f3.r, to)}`);
+      toast(`Moved to ${dayLabel(f3.r, to)}${pm ? `, ${pmNameOf(dest)}` : ""}`);
       return true;
     }
     return false;
@@ -16388,6 +16651,11 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         () => {
           if (v3 === "weekly")
             while (R2.days.length < WEEK_DAYS) R2.days.push({ id: uid(), name: "Rest", rest: true, items: [] });
+          if (v3 === "cycle")
+            for (const d3 of R2.days) {
+              delete d3.pmName;
+              for (const it of d3.items) delete it.pm;
+            }
           R2.schedule = v3;
         },
         { undo: true }
@@ -17271,6 +17539,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     for (const c4 of state.cardio) (cByDate[c4.date] = cByDate[c4.date] || []).push(c4);
     const rw = isRestWeek(cur);
     const plan = rw ? {} : weekPlan(R2);
+    const slots = weekly && !rw ? weekSlots(R2) : [];
     const hasLog = state.sessions.length > 0;
     const out = [];
     for (let i5 = 0; i5 < WEEK_DAYS; i5++) {
@@ -17280,19 +17549,28 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const isPlan = !!pd && !pd.rest && pd.items.length > 0;
       const isRest = !!pd && pd.rest;
       const live2 = !!state.draft && !state.draft.editingId && d3 === state.draft.date;
+      const mine = slots.filter((x2) => x2.di === i5);
+      const movedTo = !trained && weekly && isPlan && mine.length && mine.every((x2) => x2.doneOn) ? mine : null;
       const cls = [
         "w",
         trained ? "on" : "",
         !trained && cd.length ? "cardio" : "",
-        !trained && !cd.length && isPlan && d3 >= t4 ? "plan" : "",
-        !trained && weekly && isPlan && d3 < t4 ? "miss" : "",
+        !trained && !cd.length && isPlan && d3 >= t4 && !movedTo ? "plan" : "",
+        !trained && weekly && isPlan && d3 < t4 && !movedTo ? "miss" : "",
+        movedTo ? "moved" : "",
         !trained && !cd.length && isRest && d3 >= t4 ? "rest" : "",
         d3 === t4 ? "today" : "",
         live2 ? "live" : ""
       ].filter(Boolean).join(" ");
       const first = ss[0];
       const name = first ? first.dayName + (ss.length > 1 ? ` +${ss.length - 1}` : "") : cd.length ? "Cardio" : pd && d3 >= t4 ? isRest ? "Rest" : pd.name : pd && weekly && isPlan && d3 < t4 ? pd.name : "";
-      const what = trained ? `${ss.map((x2) => x2.dayName).join(", ")}, logged` : live2 ? "session in progress" : pd && isPlan ? d3 < t4 ? weekly ? `${pd.name}, missed` : "nothing logged" : `${pd.name}, planned` : isRest && d3 >= t4 ? "rest day" : rw ? "rest week" : "nothing logged";
+      const what = trained ? `${ss.map((x2) => x2.dayName).join(", ")}, logged` : live2 ? "session in progress" : pd && isPlan && weekly && mine.length ? (
+        /* Each of the day's workouts in its own words: done on another day, missed, or planned (the review of
+           r68: Monday's Push done Tuesday and its second workout missed read "Push, missed"). */
+        mine.map(
+          (x2) => `${x2.day.name}, ${x2.doneOn ? `done ${DAYS[dayOfWeek(x2.doneOn)]}` : d3 < t4 ? "missed" : "planned"}`
+        ).join("; ")
+      ) : pd && isPlan ? d3 < t4 ? weekly ? `${pd.name}, missed` : "nothing logged" : `${pd.name}, planned` : isRest && d3 >= t4 ? "rest day" : rw ? "rest week" : "nothing logged";
       const label = `${DAYS[i5]} ${fmtDate(d3)}: ${what}${cd.length ? `, cardio ${cd.reduce((a2, c4) => a2 + c4.min, 0)} min` : ""}`;
       const inner = b`<span class="wd">${WD2[i5]}</span><span class="dn">${dayOfMonth(d3)}</span><span class="nm">${name || " "}</span>`;
       if (live2 && d3 < t4)
@@ -17373,7 +17651,7 @@ ${howText("wk", "A rest week you marked under More options on Today. It does not
 ${cardioLine(w2)}
 <div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">${noLog() ? `${w2.tgt} hard sets planned this week.` : `${w2.got} hard sets logged of ${w2.tgt} planned${w2.tgt > 0 ? ` (${Math.round(w2.pct)}%)` : ""}.`}</p>${helpButton("wk")}</div>
 ${liftedLine()}
-${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and does not count. The bar at the top of every tab is this calendar week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead${w2.weekly ? ", a red ring is a planned workout that was missed" : ""}. Tap a filled day to open it in History; tap today or a day ahead to see its workout here; tap an empty past day (marked +) to log a workout for it.${w2.weekly ? "" : " The row above the bar is your cycle: green is done this round, outlined is next."}`)}`;
+${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and does not count. The bar at the top of every tab is this calendar week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead${w2.weekly ? ", a red ring is a planned workout that was missed, and a plain day is one done on another day" : ""}. Tap a filled day to open it in History; tap today or a day ahead to see its workout here; tap an empty past day (marked +) to log a workout for it.${w2.weekly ? "" : " The row above the bar is your cycle: green is done this round, outlined is next."}`)}`;
   }
   function weekCard() {
     const w2 = weekStats();
@@ -18333,17 +18611,47 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
       b`<input type="text" inputmode="decimal" id="bwDueVal" placeholder=${last ? fmtW(last.kg) : `Weight (${U()})`} data-grey=${last ? fmtW(last.kg) : A} aria-label=${`Bodyweight (${U()})`} enterkeyhint="done">`
     )}</label><button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
   }
-  function changeBtn(di, free) {
-    return b`<button class="btn sm" data-act="startAltOpen" data-day=${di} data-free=${free ? "1" : A}>Change</button>`;
+  function changeBtn(di, free, part) {
+    return b`<button class="btn sm" data-act="startAltOpen" data-day=${di} data-free=${free ? "1" : A} data-part=${part === 2 ? "2" : A}>Change</button>`;
   }
   function moreBtn(deload) {
     return b`<button class="btn sm" data-act="heroMore" aria-expanded=${String(!!ui.heroMore)}>${ui.heroMore ? "Fewer options" : "More options"}</button>${deload && !ui.heroMore ? b`<span class="tag blue">Deload week on</span>` : A}`;
   }
-  function moreRow(deload, playable, di) {
+  function weekOffer(R2, wd) {
+    const slots = weekSlots(R2);
+    const todo = slots.filter((x2) => !x2.doneOn);
+    const behind = todo.find((x2) => x2.di < wd);
+    if (behind) return { di: behind.di, part: behind.part, kind: "behind" };
+    const mine = todo.find((x2) => x2.di === wd);
+    if (mine) return { di: wd, part: mine.part, kind: "today" };
+    if (!slots.some((x2) => x2.di === wd)) return null;
+    const next = todo.find((x2) => x2.di > wd);
+    return next ? { di: next.di, part: next.part, kind: "ahead" } : null;
+  }
+  function doneWhen(d3) {
+    const t4 = today();
+    return d3 === t4 ? "today" : d3 === addDays(t4, -1) ? "yesterday" : DAYS[dayOfWeek(d3)] || d3;
+  }
+  function offerNote(R2, wd, o3) {
+    const slots = weekSlots(R2);
+    const own2 = slots.filter((x2) => x2.di === wd);
+    const ownTodo = own2.find((x2) => !x2.doneOn);
+    const name = (slots.find((x2) => x2.di === o3.di && x2.part === o3.part) || { day: { name: "" } }).day.name;
+    if (o3.kind === "behind")
+      return b`${name}, planned ${DAYS[o3.di]}, is still to do this week.${ownTodo ? b` <button class="linkbtn" data-act="todayOwn" data-day=${String(wd)} data-part=${ownTodo.part === 2 ? "2" : A}>Do today's ${ownTodo.day.name} instead</button>` : A}`;
+    const last = own2.filter((x2) => x2.doneOn).map((x2) => x2.doneOn || "").sort().pop() || today();
+    const ownName = (own2[0] || { day: { name: "" } }).day.name;
+    return `${ownName} done ${doneWhen(last)}. Next up: ${name}, planned ${DAYS[o3.di]}.`;
+  }
+  function secondNote(R2, wd) {
+    const first = weekSlots(R2).find((x2) => x2.di === wd && x2.part === 1);
+    return first && first.doneOn ? `${first.day.name} done ${doneWhen(first.doneOn)}. Next: the day's second workout.` : "";
+  }
+  function moreRow(deload, playable, di, part) {
     if (!ui.heroMore) return A;
     const t4 = today();
     const rw = isRestWeek(weekStart(t4)) || isRestWeek(addDays(weekStart(t4), -WEEK_DAYS));
-    return b`<div class="row u-mt8"><button class=${`btn sm ${deload ? "noted" : ""}`} data-act="deloadToggle" aria-pressed=${String(deload)}>${deload ? "Deload week: on" : "Deload week"}</button>${playable ? b`<button class="btn sm" data-act="eqOpen" data-day=${di}>Limited equipment</button>` : A}<button class=${`btn sm ${rw ? "noted" : ""}`} data-act="restWkOpen">Rest week</button><button class="btn sm" data-act="injAdd">Flag an injury</button><button class="btn sm" data-act="cardioNew">Log cardio</button></div>`;
+    return b`<div class="row u-mt8"><button class=${`btn sm ${deload ? "noted" : ""}`} data-act="deloadToggle" aria-pressed=${String(deload)}>${deload ? "Deload week: on" : "Deload week"}</button>${playable ? b`<button class="btn sm" data-act="eqOpen" data-day=${di} data-part=${part === 2 ? "2" : A}>Limited equipment</button>` : A}<button class=${`btn sm ${rw ? "noted" : ""}`} data-act="restWkOpen">Rest week</button><button class="btn sm" data-act="injAdd">Flag an injury</button><button class="btn sm" data-act="cardioNew">Log cardio</button></div>`;
   }
   var STARTS_HELP = b`In <b>Change</b>: <b>Lighter day</b>: every exercise on the day, half the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the loads, ${LIGHT_RIR} or more reps in reserve, and no target to beat: a one-day deload. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine's days for today from what each muscle got in the last ${PICK_DAYS} days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Blank session</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of half sets at about ${pctOf(LIGHT_SHARE)}% loads. <b>Limited equipment</b> (More options): today's workout with each exercise your gym cannot do swapped for the closest match it can.`;
   function viewToday() {
@@ -18354,14 +18662,20 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const cs = weekly ? null : cycleState(R2);
     if (typeof ui.todayDay === "number" && ui.todayDay >= R2.days.length) ui.todayDay = null;
     const chosen = typeof ui.todayDay === "number" ? ui.todayDay : null;
-    const di = chosen == null ? weekly ? wd : cs ? cs.next : 0 : chosen;
-    const day = R2.days[di] || { id: "", name: "", rest: true, items: [] };
+    const offer = weekly && chosen == null && !isRestWeek(weekStart(today())) ? weekOffer(R2, wd) : null;
+    const di = chosen == null ? offer ? offer.di : weekly ? wd : cs ? cs.next : 0 : chosen;
+    const day0 = R2.days[di] || { id: "", name: "", rest: true, items: [] };
     const t4 = today();
     const at2 = ui.todayAt;
     const ahead = chosen != null && at2 && typeof at2 === "object" && "d" in at2 && "di" in at2 && at2.di === chosen && typeof at2.d === "string" && at2.d > addDays(weekStart(t4), SUNDAY) ? at2.d : null;
-    const eyebrow = ahead ? weekly ? `Viewing ${DAYS[di]}, ${fmtDateYr(ahead)}` : `Viewing ${fmtDateYr(ahead)} · ${dayLabel(R2, di)}` : weekly ? di === wd ? "Today" : `Viewing ${DAYS[di]}` : `${cs && cs.restToday && chosen == null ? "Next: " : ""}${dayLabel(R2, di)}`;
+    const parts = weekly ? dayParts(day0) : [];
+    const part = offer ? offer.part : chosen != null && ui.todayPart === 2 && parts.includes(2) ? 2 : ahead ? parts[0] ?? 1 : (weekSlots(R2).find((x2) => x2.di === di && !x2.doneOn) || { part: parts[0] ?? 1 }).part;
+    const day = parts.length > 1 || part === 2 ? dayWorkout(day0, part) : day0;
+    const eyebrow = ahead ? weekly ? `Viewing ${DAYS[di]}, ${fmtDateYr(ahead)}` : `Viewing ${fmtDateYr(ahead)} · ${dayLabel(R2, di)}` : weekly ? offer && offer.kind === "behind" ? `Planned ${DAYS[di]}` : offer && offer.kind === "ahead" ? `Next up · ${DAYS[di]}` : di === wd ? "Today" : `Viewing ${DAYS[di]}` : `${cs && cs.restToday && chosen == null ? "Next: " : ""}${dayLabel(R2, di)}`;
     let note = A;
-    if (cs && chosen == null) {
+    if (offer && offer.kind !== "today") note = offerNote(R2, wd, offer);
+    else if (offer && offer.part === 2) note = secondNote(R2, wd);
+    else if (cs && chosen == null) {
       if (cs.lastDate === t4) note = `${dayLabel(R2, cs.last)} done today.`;
       else if (cs.restToday)
         note = b`<b>Scheduled rest today</b> (${dayLabel(R2, cs.restIdx)} of your cycle). ${(R2.days[cs.next] || { name: "" }).name} is ready whenever you want it.`;
@@ -18385,8 +18699,8 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const sets = deload ? `${day.items.reduce((a2, it) => a2 + Math.max(1, Math.ceil(it.sets / 2)), 0)} sets (deload)` : `${daySets(day)} sets`;
     return b`${above}<section class="hero" data-day=${di}><div class="hero-top"><div class="hero-t">${hello}<p class="eyebrow">${todayEye()} · ${eyebrow}${deload ? " · deload week" : isRestWeek(weekStart(t4)) ? " · rest week" : ""}</p><h2>${day.name}</h2>
 <p class="muted small u-m0" data-tip=${"Routine: " + R2.name}>${playable ? b`${day.items.length} exercises · ${sets} · ${minPart(dayMinutes(day, deload))}` : day.rest ? "Rest day" : "No exercises planned"}</p></div>${heroRing(weekStats())}</div>
-${note !== A ? b`<p class="hero-note small">${note}</p>` : A}${playable ? b`<button class="btn primary fullw big" data-act="startSession" data-day=${di}>${deload ? "Start deload session" : "Start session"}</button>` : b`<p class="small u-m10-0-0">${day.rest ? "Rest day." : "Nothing planned for this day."}</p>`}<div class="row u-mt8">${changeBtn(di, false)}${moreBtn(deload)}<span class="u-mlauto"></span>${helpButton("starts")}</div>
-${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di)}</section>${bwDueCard()}${todayRest({ playable, di, day, deload, cs })}`;
+${note !== A ? b`<p class="hero-note small">${note}</p>` : A}${playable ? b`<button class="btn primary fullw big" data-act="startSession" data-day=${di} data-part=${part === 2 ? "2" : A}>${deload ? "Start deload session" : "Start session"}</button>` : b`<p class="small u-m10-0-0">${day.rest ? "Rest day." : "Nothing planned for this day."}</p>`}<div class="row u-mt8">${changeBtn(di, false, part)}${moreBtn(deload)}<span class="u-mlauto"></span>${helpButton("starts")}</div>
+${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di, part)}</section>${bwDueCard()}${todayRest({ playable, di, day, deload, cs })}`;
   }
   function homeTiles() {
     const sk = weekStreak();
@@ -18439,7 +18753,7 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di)}</section>${bwD
     let fresh = 0;
     const rows2 = day.items.map((it, k2) => {
       const ex = EX(it.exId);
-      const sg = suggest(it.exId, it, { deload });
+      const sg = suggest(it.exId, it, { deload, before: today() });
       const none = !sg.last && !sg.inj && !sg.target;
       if (none) fresh++;
       const text = String(sg.text || "");
@@ -19123,6 +19437,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       const pw = d3.editingId || d3.free ? void 0 : pwOf(state.routines, d3.routineId);
       if (pw) sess.pw = pw;
       if (sessPics) sess.pics = sessPics;
+      if (d3.part === 2) sess.part = 2;
       if (!d3.editingId) putById(state.cardio, cardio);
       if (!d3.editingId && calDueIdx(d3) >= 0 && !d3.ex.some((b2) => b2.sets.some((x2) => x2.cal && x2.done)))
         state.settings.calSnooze = today();
@@ -19755,7 +20070,13 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       const frac = WARM_RAMP[Math.min(n3, WARM_RAMP.length - 1)];
       let at2 = 0;
       while (at2 < b2.sets.length && b2.sets[at2].warm) at2++;
-      const w2 = base > 0 ? lighterLoad(EX(b2.exId), b2.plan, base, base * frac) : null;
+      let w2 = base > 0 ? lighterLoad(EX(b2.exId), b2.plan, base, base * frac) : null;
+      const prev = at2 > 0 ? +(effW(b2, at2 - 1) ?? 0) || 0 : 0;
+      const top = WARM_RAMP[WARM_RAMP.length - 1] ?? frac;
+      if (w2 != null && prev > 0 && w2 <= prev + EPS) {
+        const up = base * top > prev ? heavierLoad(EX(b2.exId), b2.plan, prev, base * top) : null;
+        w2 = up != null && up < base - EPS ? up : prev;
+      }
       act(
         () => {
           b2.sets.splice(at2, 0, newRow({ w: w2, warm: true }));
@@ -23236,10 +23557,12 @@ ${JSON.stringify(ctx, null, 1)}`;
         toast("That routine day no longer exists");
         return;
       }
+      const pm = u4.part === 2;
+      const mine = (i5) => !!i5.pm === pm;
       act(
         () => {
           for (const x2 of u4.swap) {
-            const it = day.items.find((i5) => i5.exId === x2.from);
+            const it = day.items.find((i5) => i5.exId === x2.from && mine(i5));
             if (it) {
               it.exId = x2.to;
               if (x2.plan) {
@@ -23249,10 +23572,17 @@ ${JSON.stringify(ctx, null, 1)}`;
             }
           }
           for (const x2 of u4.add)
-            if (!day.items.some((i5) => i5.exId === x2.exId))
-              day.items.push({ ...DEFAULT_PLAN, ...x2.plan, uid: uid(), exId: x2.exId, ss: null });
+            if (!day.items.some((i5) => i5.exId === x2.exId && mine(i5)))
+              day.items.push({
+                ...DEFAULT_PLAN,
+                ...x2.plan,
+                uid: uid(),
+                exId: x2.exId,
+                ss: null,
+                ...pm ? { pm: true } : {}
+              });
           for (const ids of u4.ss || []) {
-            const its = ids.flatMap((id) => day.items.filter((i5) => i5.exId === id).slice(0, 1));
+            const its = ids.flatMap((id) => day.items.filter((i5) => i5.exId === id && mine(i5)).slice(0, 1));
             if (its.length < 2) continue;
             const at2 = Math.min(...its.map((i5) => day.items.indexOf(i5)));
             day.items = day.items.filter((i5) => !its.includes(i5));
@@ -23266,7 +23596,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         { undo: true }
       );
       render();
-      toast(`${day.name} updated`, true);
+      toast(`${u4.dayName} updated`, true);
     }
   };
 
@@ -23315,11 +23645,11 @@ ${JSON.stringify(ctx, null, 1)}`;
         return;
       }
       act(() => {
-        d4.items.push(newItem(id));
+        d4.items.push(m3.pm && R2.schedule === "weekly" ? { ...newItem(id), pm: true } : newItem(id));
         Object.assign(d4, trainOn(d4));
       });
       rerenderKeepScroll();
-      toast(`${exName(id)} added to ${dayLabel(R2, di)}`);
+      toast(`${exName(id)} added to ${dayLabel(R2, di)}${m3.pm ? ", second workout" : ""}`);
       bwNudge([id]);
       return;
     }
@@ -23548,11 +23878,13 @@ ${JSON.stringify(ctx, null, 1)}`;
     },
     pickDay(t4) {
       const di = Number(t4.dataset.day);
+      const pm = t4.dataset.part === "2" && curRoutineB().schedule === "weekly";
       openModal({
         kind: "picker",
         mode: "addDay",
         day: di,
-        title: `Add to ${dayLabel(curRoutineB(), di)}`,
+        ...pm ? { pm: true } : {},
+        title: `Add to ${dayLabel(curRoutineB(), di)}${pm ? ", second workout" : ""}`,
         q: "",
         m: ""
       });
@@ -23748,16 +24080,18 @@ ${JSON.stringify(ctx, null, 1)}`;
     render();
     if (live2) wakeOn();
   }
-  function pastDraft(date, di) {
+  function pastDraft(date, di, part = 1) {
     const R2 = activeRoutine();
-    const day = di == null ? null : R2.days[di];
-    if (!day || di == null) return { ...freeDraft("Freestyle"), date, startedAt: null, past: true };
+    const day0 = di == null ? null : R2.days[di];
+    if (!day0 || di == null) return { ...freeDraft("Freestyle"), date, startedAt: null, past: true };
+    const day = R2.schedule === "weekly" ? dayWorkout(day0, part) : day0;
     return {
       id: uid(),
       startedAt: null,
       date,
       dayIdx: di,
       dayId: day.id,
+      ...part === 2 && R2.schedule === "weekly" ? { part: 2 } : {},
       dayName: day.name,
       routineId: R2.id,
       deload: false,
@@ -23786,8 +24120,10 @@ ${JSON.stringify(ctx, null, 1)}`;
     toastQuiet();
     const R2 = activeRoutine();
     const di = Number(t4.dataset.day);
-    const d3 = R2.days[di];
-    if (!d3) return;
+    const d0 = R2.days[di];
+    if (!d0) return;
+    const part = R2.schedule === "weekly" && t4.dataset.part === "2" ? 2 : 1;
+    const d3 = R2.schedule === "weekly" ? dayWorkout(d0, part) : d0;
     const light = t4.dataset.light === "1";
     const deload = !light && isDeloadWeek();
     const items = d3.rest ? [] : d3.items.map((it) => light || deload ? { ...it, sets: halfSets(it.sets) } : it);
@@ -23798,6 +24134,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         date: today(),
         dayIdx: di,
         dayId: d3.id,
+        ...part === 2 ? { part: 2 } : {},
         dayName: d3.name + (light ? " (lighter)" : deload ? " (deload)" : ""),
         routineId: R2.id,
         deload,
@@ -23805,7 +24142,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         cardio: [],
         notes: light ? LIGHTER_NOTE : deload ? DELOAD_NOTE : "",
         editingId: null,
-        ex: items.map((it) => newBlock(it.exId, it, { deload, light }))
+        ex: items.map((it) => newBlock(it.exId, it, { deload, light, before: today() }))
       },
       true
     );
@@ -23818,6 +24155,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const di = t4.dataset.day != null ? Number(t4.dataset.day) : null;
       const on = d3 === today() || di == null || !R2.days[di] ? null : di;
       ui.todayDay = on;
+      ui.todayPart = null;
       ui.todayAt = on == null ? null : { d: d3, di: on };
     }
     if (ui.modal) closeModal();
@@ -23994,7 +24332,9 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (!s3) return;
       const go = () => {
         const R2 = activeRoutine();
-        const day = !s3.free && s3.routineId === R2.id && s3.dayId ? R2.days.find((x2) => x2.id === s3.dayId) : void 0;
+        const day0 = !s3.free && s3.routineId === R2.id && s3.dayId ? R2.days.find((x2) => x2.id === s3.dayId) : void 0;
+        const part = R2.schedule === "weekly" && s3.part === 2 && day0 && day0.items.some((i5) => i5.pm) ? 2 : 1;
+        const day = day0 && R2.schedule === "weekly" ? dayWorkout(day0, part) : day0;
         const deload = isDeloadWeek();
         const plan = (b2) => {
           const it = day && day.items.find((i5) => i5.exId === b2.exId);
@@ -24009,7 +24349,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           return blockPlan(p3);
         };
         const ex = s3.ex.map((b2) => {
-          const nb = newBlock(b2.exId, plan(b2), { deload });
+          const nb = newBlock(b2.exId, plan(b2), { deload, before: today() });
           const n3 = b2.sets.filter(isWork).length;
           if (deload && n3 && !(day && day.items.some((i5) => i5.exId === b2.exId))) nb.full = Math.min(n3, MAX_FULL);
           return nb;
@@ -24020,8 +24360,9 @@ ${JSON.stringify(ctx, null, 1)}`;
             id: uid(),
             startedAt: Date.now(),
             date: today(),
-            dayIdx: R2.days.indexOf(day),
+            dayIdx: day0 ? R2.days.indexOf(day0) : -1,
             dayId: day.id,
+            ...part === 2 ? { part: 2 } : {},
             dayName: day.name + (deload ? " (deload)" : ""),
             routineId: R2.id,
             deload,
@@ -24047,13 +24388,27 @@ ${JSON.stringify(ctx, null, 1)}`;
     },
     startSession,
     startAltOpen(t4) {
-      openModal({ kind: "startAlt", di: Number(t4.dataset.day), free: t4.dataset.free === "1" });
+      openModal({
+        kind: "startAlt",
+        di: Number(t4.dataset.day),
+        free: t4.dataset.free === "1",
+        ...t4.dataset.part === "2" ? { part: 2 } : {}
+      });
+    },
+    // Today's own workout on a fixed-weekday routine, when the card offered one from another day (NEW-31, r68).
+    todayOwn(t4) {
+      ui.todayDay = Number(t4.dataset.day);
+      ui.todayPart = t4.dataset.part === "2" ? 2 : null;
+      ui.todayAt = null;
+      window.scrollTo(0, 0);
+      render();
     },
     // Another day of the plan on the card (the old Change day list); in a blank-session Today it shows that day's card.
     dayPick(t4) {
       const i5 = Number(t4.dataset.i);
       closeModal();
       ui.todayDay = i5;
+      ui.todayPart = t4.dataset.part === "2" ? 2 : null;
       ui.todayAt = null;
       window.scrollTo(0, 0);
       render();
@@ -24065,6 +24420,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     pickView(t4) {
       closeModal();
       ui.todayDay = Number(t4.dataset.day);
+      ui.todayPart = null;
       ui.todayAt = null;
       ui.tab = "today";
       window.scrollTo(0, 0);
@@ -24075,7 +24431,12 @@ ${JSON.stringify(ctx, null, 1)}`;
       const di = Number(t4.dataset.day);
       const R2 = activeRoutine();
       if (!R2.days[di]) return;
-      openModal({ kind: "eq", day: di, equip: (ui.eqLast || EQUIP.map((x2) => x2[0])).slice() });
+      openModal({
+        kind: "eq",
+        day: di,
+        equip: (ui.eqLast || EQUIP.map((x2) => x2[0])).slice(),
+        ...t4.dataset.part === "2" ? { part: 2 } : {}
+      });
     },
     eqToggle(t4) {
       const m3 = ui.modal;
@@ -24088,11 +24449,12 @@ ${JSON.stringify(ctx, null, 1)}`;
       const m3 = ui.modal;
       if (!m3 || m3.kind !== "eq") return;
       const R2 = activeRoutine();
-      const day = R2.days[m3.day];
-      if (!day) {
+      const day0 = R2.days[m3.day];
+      if (!day0) {
         closeModal();
         return;
       }
+      const day = R2.schedule === "weekly" ? dayWorkout(day0, m3.part === 2 ? 2 : 1) : day0;
       const eq = new Set(m3.equip);
       const pl = eqPlan(day, eq).filter((x2) => x2.to);
       if (!pl.length) {
@@ -24107,7 +24469,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         const it = deload ? { ...x2.it, sets: halfSets(x2.it.sets) } : x2.it;
         const sp = x2.from ? swapPlan(it, x2.from, x2.to, R2, day.id) : { ...it };
         if (x2.hard) Object.assign(sp, HARD_SWAP);
-        const b2 = newBlock(x2.to, sp, { deload });
+        const b2 = newBlock(x2.to, sp, { deload, before: today() });
         if (x2.from) b2.swappedFrom = x2.from;
         return [b2];
       });
@@ -24120,6 +24482,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           date: today(),
           dayIdx: m3.day,
           dayId: day.id,
+          ...m3.part === 2 ? { part: 2 } : {},
           dayName: day.name + (deload ? " (deload)" : ""),
           routineId: R2.id,
           deload,
@@ -24139,12 +24502,13 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (!m3 || m3.kind !== "past") return;
       const date = m3.date;
       const di = t4.dataset.day === "free" ? null : Number(t4.dataset.day);
+      const part = t4.dataset.part === "2" ? 2 : 1;
       const go = () => {
         stopTimer();
         wakeOff();
         ui.tab = "today";
         ui.todayDay = null;
-        begin(pastDraft(date, di), false);
+        begin(pastDraft(date, di, part), false);
         if (di == null) openModal({ kind: "picker", mode: "addBlock", title: "Add exercise to session", q: "", m: "" });
       };
       closeModal();
@@ -24183,6 +24547,8 @@ ${JSON.stringify(ctx, null, 1)}`;
           routineId: s3.routineId,
           notes: s3.notes || "",
           ...s3.pics && s3.pics.length ? { pics: [...s3.pics] } : {},
+          // An edit of a day's second workout stays one (r68, 366 (c)).
+          ...s3.part === 2 ? { part: 2 } : {},
           ex: s3.ex.map((b2) => {
             const it = dayItems.find((i5) => i5.exId === b2.exId);
             const plan = it ? { ...it } : blockPlan(planFor(b2.exId, null, null, false, s3.date));
@@ -25038,6 +25404,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   var S3 = PROFILE_PLAN.strength, B4 = PROFILE_PLAN.both, F2 = PROFILE_PLAN.first;
   var CAP = pctOf(JUMP_CAP - 1), CAP_LIGHT = pctOf(JUMP_CAP_LIGHT - 1), CAP_EARLY = pctOf(JUMP_CAP_EARLY - 1);
   var lightLift = (kg2) => kg2 ? `${LIGHT_LIFT_KG} kg` : `about ${Math.round(LIGHT_LIFT_KG / LB / DEFAULT_STEP.lb) * DEFAULT_STEP.lb} lb`;
+  var stepWords = (st, kg2) => kg2 ? `${st.kg} kg` : `${st.lb} lb`;
   var OTHER_WKS = orList(REGION_WKS.map(([n3]) => n3).filter((n3) => n3 !== REGION_WK_DEFAULT));
   function guideSheet(m3) {
     const off = state.settings.rirMode === "off";
@@ -25052,15 +25419,16 @@ ${JSON.stringify(ctx, null, 1)}`;
         "today",
         "Today",
         `<p><b>The card at the top</b> is the next day of your routine. Start begins it; <b>Change</b> has everything else: a lighter day, short on time, a blank session, Pick for me, and another day of your plan. With Settings, Rest timer and logging, <b>Today starts with</b> a blank session, the card starts an empty session instead, the plan's day in Change; your week is then measured by sessions and hard sets, not a plan.</p>
+   <p><b>Fixed weekdays</b>: a workout done on another day counts for its own day, so the week adapts to a day that slipped. The card offers the earliest workout this week still to do, with today's own a tap away; once today's is done, the next one this week. A day can hold a second workout (Plan, Add a second workout), and the card offers it once the first is done.</p>
    <p><b>Lighter day</b>: every exercise, ${shareWords(LIGHTER_SET_SHARE)} the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the loads, ${LIGHT_RIR} or more reps in reserve, and nothing to beat. For a day you are run down. A lift you still do at its usual load and reps, for as many sets, counts in full for that lift: its next target and its trend; a lift done lighter, or for fewer reps or sets, does not. A PR counts on any day.</p>
    <p><b>Short on time</b>: give your minutes. Sets come off down to ${SHORT_MIN_SETS} per exercise, then exercises not started drop out. Priority and lagging muscles, exercises you have started, and at least one exercise per muscle are kept longest. Done sets are never touched. Trimmed work does not count against trends. Undo puts it back.</p>
    <p><b>Minutes</b> (~75 min) are worked out from your sets, reps, and rest. Once you have finished ${PACE_MIN} sessions in the app in the last ${PACE_DAYS / WEEK_DAYS} weeks, they follow how long yours take against that estimate: the typical one of your newest ${PACE_N}, so one long day does not move it, and a clock left running is left out.</p>
    <p><b>Pick for me</b> ranks your routine's days by what each muscle got in the last ${PICK_DAYS} days against your targets, how recently it was trained hard, injuries, and your cycle. Starting one moves your cycle on from there.</p>
    <p><b>Blank session</b>: any exercises, not tied to a routine day, so your cycle stays put.</p>
    <p><b>More options</b>: Deload week, Limited equipment (each exercise your gym cannot do swapped for the closest match), Rest week (a week off on purpose: averages, the streak, and adherence skip it), Flag an injury, and Log cardio.</p>
-   <p><b>Two sessions in a day</b> are kept in the order you started them; the next targets come from the later one, and a calendar day with two asks which to open.</p>
+   <p><b>Two sessions in a day</b> are kept in the order you started them, and a calendar day with two asks which to open. A lift done again the same day in the same rep range asks what it did earlier that day, with no step up; in another range, that range's rules apply. The next day's target comes from the better of the two.</p>
    <p><b>Weigh-in</b>: a card asks for your bodyweight every ${BW_EVERY_DEFAULT / WEEK_DAYS} weeks once you have weighed in or log bodyweight lifts (Settings, General, Weigh-in reminder: every week, 2 weeks, month, or off). Pull-ups, dips, and push-ups are read at your latest weigh-in.</p>
-   <p><b>This week</b> counts hard sets logged against hard sets planned; Month shows the calendar instead, and the title becomes This month. The bar at the top of every tab is this week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead, and with fixed weekdays a red ring is one missed. Tap an empty past day to log a workout for it. The calendar shows the workouts planned ahead the same way, for a year: tap one to see it on Today; a numbered cycle is counted on from where you are, one day at a time, and a rest week planned ahead plans nothing and holds the cycle where it is.</p>`
+   <p><b>This week</b> counts hard sets logged against hard sets planned; Month shows the calendar instead, and the title becomes This month. The bar at the top of every tab is this week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead, and with fixed weekdays a red ring is one missed and a plain day one done on another day. Tap an empty past day to log a workout for it. The calendar shows the workouts planned ahead the same way, for a year: tap one to see it on Today; a numbered cycle is counted on from where you are, one day at a time, and a rest week planned ahead plans nothing and holds the cycle where it is.</p>`
       ],
       [
         "log",
@@ -25093,6 +25461,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p>Each exercise progresses from its <b>last full session in the rep range you plan for it that day</b>, so the same lift on a heavy day and a light day progresses on each separately. A range not used within ${TREND_WEEKS} weeks of your latest session of the lift starts from that latest session instead.</p>
    <p><b>The working load</b> is the load you did the most sets with (the heavier on a tie), leaving out loads under ${pctOf(WORK_FLOOR)}% of your heaviest. A heavy top set, or two, before your back-off sets counts for bests and PRs, while targets, grey reps, and trends build on the back-off sets.</p>
    <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about ${pct1(JUMP_COMPOUND)}% of the load on compound lifts and ${pct1(JUMP_ISOLATION)}% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (it costs ${BIG_STEP_REPS} reps or more, as 5 lb on a 35 lb dumbbell does), on a range ${FIXED_RANGE} or more reps wide, you first build a few reps past the top at this load, up to ${shareWords(BUILD_PAST.share)} of the top of the range more (${numWord(BUILD_PAST.min)} at least), until your estimate says the new load allows the bottom of the range; then the load goes up. Past that, the load goes up anyway, with the reps your estimate allows there as the target. A fixed-rep plan (5 x 5, 3 x 3-5) goes up a step every time all its sets are done.</p>
+   <p><b>Load steps</b>, with none set on the exercise: ${stepWords(EQUIP_STEP.bar, kg2)} on a barbell, a Smith machine, or a machine stack; ${stepWords(EQUIP_STEP.each, kg2)} on a dumbbell; ${stepWords(DEFAULT_STEP, kg2)} on anything else (conventions: the smallest jumps most gyms can load). Your gym, in Settings, and the exercise's own load step come first.</p>
    <p><b>Dumbbells and kettlebells</b> step by what your rack has: with no load step set on the exercise, the step fits every load you logged on it (12, 14, and 16 kg is a rack in 2 kg steps; 12.5 and 15, one in 2.5).</p>
    <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets, a set past the top of the range counting as the top. One set under the range among the others counts as the bottom of the range, so one bad set does not set the next target. A session clearly below your usual repeats the last target (One rule for every session, below); a second in a row is your usual, and then every set under the range at a load you did in it the time before asks for the bottom of the range in every set again.</p>
    <p><b>Well past the range</b> (every set ${CLEARLY_OFF} or more reps over the top, as after moving the range down): the load your estimated 1RM gives for the middle of the range, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg2)}), in whole steps.</p>
@@ -25146,7 +25515,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         "Sections",
         `<p>Tap a section's title to fold or open it. Drag its ⠿ to move it; the order is kept. Each time the app opens, every section starts folded, except Sessions on History.</p>
    <p><b>More sections</b>: when a tab has sections hidden, its bottom lists them; tap one to add it. The menu at the top right has Show, hide, or reorder sections. Settings, Layout shows or hides any section (nothing stops being tracked), and Default layout goes back to how a new install starts.</p>
-   <p><b>Your settings</b>: Settings has your training (goal, days, minutes, and focus), the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>`
+   <p><b>Your settings</b>: Settings has your training (goal, days, minutes, and focus), your gym's weights, the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>`
       ],
       [
         "data",
@@ -25301,7 +25670,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const e5 = EX(m3.exId);
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Load step: ${e5.name}</h3>${closeX()}</div>
     <label class="field">Step (${U()})<input type="text" inputmode="decimal" id="incVal" value=${fmtW(incOf(e5, m3.plan))}></label>
-    <p class="small muted">The smallest jump the machine or dumbbells allow. Earned increases are whole multiples of it.</p>
+    <p class="small muted">The smallest jump you can load on it. Earned increases are whole steps of it.</p>
     ${e5.inc == null && gymRack(e5, m3.plan) ? b`<p class="small u-m0">Following the ${rackKind(e5) === "dumbbell" ? "dumbbells" : "kettlebells"} in Settings > Your gym. A step saved here replaces them for this lift.</p>` : ""}
     <div class="row u-mt10"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
@@ -25309,7 +25678,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const e5 = EX(m3.exId);
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${e5.name}</h3>${closeX()}</div>
     <label class="field">Load (${U()}${e5.bw ? ", added to bodyweight" : ""})<input type="text" inputmode="decimal" id="maxVal" value=${e5.maxLoad != null ? fmtW(e5.maxLoad) : ""} placeholder="No limit"></label>
-    <p class="small muted">Top of the stack or biggest dumbbell. Blank for no limit.</p>
+    <p class="small muted">The most you can load on it, as the top of the stack or the biggest dumbbell. Blank for no limit.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
   function noteSheet(m3) {
@@ -25392,7 +25761,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     <label class="check-inline"><input type="checkbox" data-ebind="timed" aria-labelledby="lt-ex-timed" ?checked=${!!e5.timed}>${labelTip("lt-ex-timed", "Timed hold (log seconds)", has ? "This exercise has logged sets: switching changes how those numbers read." : "The reps column holds seconds.")}</label>
     <details class="more" ?open=${!m3.back || !!m3.moreOpen}><summary>More options<span class="small muted">less common, load step, plates, heaviest, notes</span></summary><div class="stack">
     <label class="check-inline"><input type="checkbox" data-ebind="rare" ?checked=${!!e5.rare}>Mark as less common</label>
-    <div class="grid2"><label class="field">${labelTip("lt-ex-incRaw", `Load step (${U()})`, "The smallest jump you can make on this exercise, everywhere it appears. Earned increases are whole multiples of it, about 2.5% of the load on compound lifts and 5% on isolation work. Blank uses each routine's setting.")}<input type="text" inputmode="decimal" data-ebind="incRaw" aria-labelledby="lt-ex-incRaw" value=${e5.incRaw} placeholder="Routine setting"></label>
+    <div class="grid2"><label class="field">${labelTip("lt-ex-incRaw", `Load step (${U()})`, "The smallest jump you can make on this exercise, everywhere it appears. Earned increases are whole multiples of it, about 2.5% of the load on compound lifts and 5% on isolation work. Blank uses Your gym's step, or the usual one for the equipment.")}<input type="text" inputmode="decimal" data-ebind="incRaw" aria-labelledby="lt-ex-incRaw" value=${e5.incRaw} placeholder="Usual step"></label>
     <label class="field">${labelTip("lt-ex-plates", "Plate helper", "What to load, shown under the sets in a session.")}<select data-ebind="plates" aria-labelledby="lt-ex-plates">${PLATE_MODES.map(([k2, l4]) => b`<option value=${k2} ?selected=${(e5.plates || "auto") === k2}>${l4}</option>`)}</select></label></div>
     ${platesMode(e5) === "bar" ? b`<label class="field">${labelTip("lt-ex-barRaw", `Bar for this lift (${U()})`, "A trap bar, EZ bar, or any bar other than the one in Settings. Used for the plates line and so a deload never goes under it.")}<input type="text" inputmode="decimal" data-ebind="barRaw" aria-labelledby="lt-ex-barRaw" value=${e5.barRaw || ""} placeholder=${`Settings bar, ${fmtW(barKg())}`}></label>` : ""}
     <label class="field">${labelTip("lt-ex-maxRaw", `Heaviest available (${U()}${e5.bw ? ", added" : ""})`, "The top of the stack or the biggest dumbbell. At that load, targets move to more reps and then harder reps, and the lift is not called stalled.")}<input type="text" inputmode="decimal" data-ebind="maxRaw" aria-labelledby="lt-ex-maxRaw" value=${e5.maxRaw || ""} placeholder="No limit"></label>
@@ -25536,11 +25905,14 @@ ${JSON.stringify(ctx, null, 1)}`;
     const R2 = activeRoutine();
     const due = pastDue(R2, m3.date);
     const on = sessionsOn(m3.date).map((x2) => x2.dayName || "Session");
-    const opts = R2.days.map((d3, i5) => ({ d: d3, i: i5 })).filter((x2) => !x2.d.rest && x2.d.items.length > 0).sort((a2, b2) => +(b2.i === due) - +(a2.i === due));
+    const weekly = R2.schedule === "weekly";
+    const opts = R2.days.flatMap(
+      (d0, i5) => (weekly ? dayParts(d0) : [1]).map((part) => ({ d: weekly ? dayWorkout(d0, part) : d0, i: i5, part }))
+    ).filter((x2) => !x2.d.rest && x2.d.items.length > 0).sort((a2, b2) => +(b2.i === due) - +(a2.i === due));
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pastH"><div class="sheet-h"><h3 id="pastH">Log a past workout</h3>${closeX()}</div>
   <label class="field">Date<input type="date" data-pbind="date" .value=${l3(m3.date)} max=${today()}></label>
   ${on.length ? b`<p class="small muted u-m6-0-0">Already logged that day: ${on.join(", ")}.</p>` : ""}
-  <div class="stack u-mt12">${opts.map(({ d: d3, i: i5 }) => b`<button class=${"btn fullw" + (i5 === due ? " primary" : "") + " pastday"} data-act="pastGo" data-day=${String(i5)}><span>${dayLabel(R2, i5)}: ${d3.name}</span>${i5 === due ? b`<small>due then</small>` : b`<small>${d3.items.length} exercises</small>`}</button>`)}<button class="btn fullw pastday" data-act="pastGo" data-day="free"><span>Freestyle</span><small>any exercises</small></button></div>
+  <div class="stack u-mt12">${opts.map(({ d: d3, i: i5, part }) => b`<button class=${"btn fullw" + (i5 === due && part === 1 ? " primary" : "") + " pastday"} data-act="pastGo" data-day=${String(i5)} data-part=${part === 2 ? "2" : A}><span>${dayLabel(R2, i5)}: ${d3.name}</span>${i5 === due && part === 1 ? b`<small>due then</small>` : b`<small>${d3.items.length} exercises</small>`}</button>`)}<button class="btn fullw pastday" data-act="pastGo" data-day="free"><span>Freestyle</span><small>any exercises</small></button></div>
   <p class="small muted u-m10-0-0">Quick entry: type each set. ${tipButton("No rest timer or clock. A set counts as done once its reps are typed. Last time, targets, and PRs are read as of that date.", "About quick entry")}</p></div>`;
   }
 
@@ -25662,8 +26034,9 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   function eqSheet(m3) {
     const R2 = activeRoutine();
-    const day = R2.days[m3.day];
-    if (!day) return null;
+    const day0 = R2.days[m3.day];
+    if (!day0) return null;
+    const day = R2.schedule === "weekly" ? dayWorkout(day0, m3.part === 2 ? 2 : 1) : day0;
     const eq = new Set(m3.equip);
     const pl = eqPlan(day, eq);
     const sw = pl.filter((x2) => x2.from);
@@ -25725,14 +26098,16 @@ ${JSON.stringify(ctx, null, 1)}`;
   function startAltSheet(m3) {
     const R2 = activeRoutine();
     const di = Math.min(+(m3.di || 0) || 0, R2.days.length - 1);
-    const day = R2.days[di];
+    const d0 = R2.days[di];
+    const part = m3.part === 2 && d0 && dayParts(d0).includes(2) ? 2 : 1;
+    const day = d0 ? R2.schedule === "weekly" ? dayWorkout(d0, part) : d0 : void 0;
     const playable = !!day && !day.rest && day.items.length > 0;
     const deload = isDeloadWeek();
     const weekly = R2.schedule === "weekly";
     const wd = ((/* @__PURE__ */ new Date()).getDay() + MONDAY_FIRST) % WEEK_DAYS;
     const cs = weekly ? null : cycleState(R2);
     const mark = (i5) => cs ? i5 === cs.next ? " · next" : i5 === cs.last ? " · last done" : "" : i5 === wd ? " · today" : "";
-    const opt = (go, title, what, d3) => b`<button class="ob-opt" data-act="altGo" data-go=${go} data-day=${d3 ? String(d3.day) : A} data-light=${d3 && d3.light ? "1" : A}><b>${title}</b><span>${what}</span></button>`;
+    const opt = (go, title, what, d3) => b`<button class="ob-opt" data-act="altGo" data-go=${go} data-day=${d3 ? String(d3.day) : A} data-part=${d3 && part === 2 ? "2" : A} data-light=${d3 && d3.light ? "1" : A}><b>${title}</b><span>${what}</span></button>`;
     const opts = [];
     if (day && m3.free && playable)
       opts.push(opt("startSession", `Plan: ${day.name}`, `${day.items.length} exercises from your plan`, { day: di }));
@@ -25744,10 +26119,13 @@ ${JSON.stringify(ctx, null, 1)}`;
       opts.push(opt("startShort", "Short on time", "Your minutes; the main work stays at full effort", { day: di }));
     if (!m3.free) opts.push(opt("startFree", "Blank session", "Add exercises as you go; your plan stays where it is"));
     opts.push(opt("pickToday", "Pick for me", "The day that fits today best, and why"));
-    const days = R2.days.map((d3, i5) => {
-      const on = i5 === di && !m3.free;
-      return b`<button type="button" class=${"btn fullw pastday" + (on ? " on" : "")} data-act="dayPick" data-i=${String(i5)} aria-current=${String(on)}><span>${dayLabel(R2, i5)}: ${d3.name}</span><small>${d3.rest ? "Rest day" : `${d3.items.length} exercises`}${mark(i5)}</small></button>`;
-    });
+    const days = R2.days.flatMap(
+      (d3, i5) => (weekly && dayParts(d3).length > 1 ? dayParts(d3) : [1]).map((p3) => {
+        const w2 = weekly && dayParts(d3).length > 1 ? dayWorkout(d3, p3) : d3;
+        const on = i5 === di && p3 === part && !m3.free;
+        return b`<button type="button" class=${"btn fullw pastday" + (on ? " on" : "")} data-act="dayPick" data-i=${String(i5)} data-part=${p3 === 2 ? "2" : A} aria-current=${String(on)}><span>${dayLabel(R2, i5)}: ${w2.name}</span><small>${w2.rest ? "Rest day" : `${w2.items.length} exercises`}${p3 === 1 ? mark(i5) : ""}</small></button>`;
+      })
+    );
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="saH"><div class="sheet-h"><h3 id="saH">Start something else</h3>${closeX()}</div>
   <div class="ob-opts">${opts}</div><p class="small muted u-m14-0-6">Another day</p><div class="stack">${days}</div></div>`;
   }
