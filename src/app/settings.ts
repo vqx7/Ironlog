@@ -449,10 +449,10 @@ function rirSettings(): TemplateResult {
       ? `${c.n} calibration set${c.n === 1 ? '' : 's'}, none in the last ${CAL_WEEKS} weeks.`
       : `${c.recent} recent calibration set${c.recent === 1 ? '' : 's'}: median miss ${raw > 0 ? '+' : ''}${r1(raw)} reps (${raw > 0 ? 'you stop with more left than you call' : raw < 0 ? 'closer to failure than you call' : 'accurate'}). Correction applied: ${c.bias > 0 ? '+' : ''}${c.bias}.`;
   const sc = rirScale();
-  /* What RIR is was a line above the setting from r27 (V: this is where it
-     is decided whether to use it); since r69 it is the setting's i, one tap
-     from its name (V, 2026-11-03, the text-heavy pass). */
-  return html`<label class="field">${labelTip('lt-rirMode', 'Reps in reserve', 'RIR, reps in reserve: reps you could still have done. RIR 3 or less is a hard set.')}<select data-bind="rirMode" aria-labelledby="lt-rirMode">
+  /* What RIR is stays on screen here (V, r27): this is where it is decided whether to use it. r69 kept it (V,
+     2026-11-03: the text cuts were to override nothing already agreed). */
+  return html`<p class="small u-m0"><b>RIR, reps in reserve:</b> reps you could still have done. RIR 3 or less is a hard set.</p>
+<label class="field">Reps in reserve<select data-bind="rirMode">
 <option value="on" .selected=${live(s.rirMode === 'on')}>On: log RIR and use it as logged</option>
 <option value="cal" .selected=${live(s.rirMode === 'cal')}>On, corrected by my calibration sets</option>
 <option value="off" .selected=${live(s.rirMode === 'off')}>Off: don't ask, count every working set as hard</option>

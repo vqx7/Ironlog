@@ -24,7 +24,7 @@
 //  10  Stats, By region: "Every region on target." with what that means in the card's tip.
 //  11  Settings, Your data: the privacy and suggestions notes one short line each, every word they said in the i,
 //      on this device and inside Claude.
-//  12  Settings, Effort: what RIR is, in the i of the Reps in reserve setting; the setting still works.
+//  12  (a guard) Settings, Effort: what RIR is stays on screen (V's r27 ruling, kept: V, 2026-11-03); the setting works.
 // `node tests/r69.js [page]`; R69=1,3 runs some.
 const { open, engine } = require('./h');
 let browser;
@@ -295,13 +295,13 @@ const guard = async f => { try { await f(); } catch (e) { ok(false, 'a section t
     await D.ctx.close();
   });
 
-  // ---- 12. Settings, Effort: what RIR is, in the setting's i.
+  // ---- 12. (a guard) Settings, Effort: what RIR is stays on screen, V's ruling of r27, kept by the cuts (V, 2026-11-03:
+  // "as long as we are not ... overriding what was already aligned").
   if (run(12)) await guard(async () => {
     const D = await demo('settings');
     await openAll(D.page);
-    const r = await D.page.evaluate(() => { const sel = document.querySelector('#view [data-bind="rirMode"]'); const lab = sel.closest('label'); const i = lab.querySelector('.tipi'); const sec = sel.closest('.sec-b'); return { line: /reps you could still have done/.test(sec.innerText), tip: i && i.getAttribute('data-tip'), name: lab.querySelector('span') && lab.querySelector('span').textContent }; });
-    ok(!r.line, '12. no line above the setting saying what RIR is', r);
-    ok(r.name === 'Reps in reserve' && r.tip === 'RIR, reps in reserve: reps you could still have done. RIR 3 or less is a hard set.', '12. the Reps in reserve setting says it in its i', r);
+    const r = await D.page.evaluate(() => { const sel = document.querySelector('#view [data-bind="rirMode"]'); const sec = sel.closest('.sec-b'); return /RIR, reps in reserve: reps you could still have done\. RIR 3 or less is a hard set\./.test(sec.innerText); });
+    ok(r, '12. (a guard) the line saying what RIR is stays above the setting (V, r27)', r);
     await D.page.selectOption('#view [data-bind="rirMode"]', 'off'); await wait(150);
     ok(await D.page.evaluate(() => window.__ironlog.state.settings.rirMode === 'off'), '12. the setting still sets RIR off');
     ok(!D.errors.length, '12. no page errors', D.errors);

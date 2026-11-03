@@ -2810,8 +2810,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const ex = EXIn(M3, exId);
     return ex.timed ? { ...DEFAULT_PLAN, ...TIMED_PLAN } : profPlanIn(M3, ex, plain);
   }
-  function routinePlanIn(M3, exId, R2, dayId) {
-    const it = planItemOf(R2 || activeRoutineIn(M3), exId, dayId);
+  function routinePlanIn(M3, exId, R2, dayId, part) {
+    const it = planItemOf(R2 || activeRoutineIn(M3), exId, dayId, part);
     if (!it) return null;
     const { uid: _u, ss: _s, ...p3 } = it;
     return { ...DEFAULT_PLAN, ...p3, ss: null };
@@ -6592,8 +6592,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
 
   // src/app/plans.ts
-  function planForIn(M3, exId, R2, dayId, plain, before) {
-    const inR = routinePlanIn(M3, exId, R2, dayId);
+  function planForIn(M3, exId, R2, dayId, plain, before, part) {
+    const inR = routinePlanIn(M3, exId, R2, dayId, part);
     if (inR) return inR;
     const base = defPlanIn(M3, exId, plain);
     if (plain) return base;
@@ -6627,7 +6627,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         swap.push({ from: b2.swappedFrom, to: b2.exId, plan });
       } else {
         const { ss: _s, ...p3 } = b2.plan;
-        const sets = d3.deload || d3.light ? b2.full ?? planForIn(M3, b2.exId, R2, d3.dayId, false, d3.date).sets : p3.sets;
+        const sets = d3.deload || d3.light ? b2.full ?? planForIn(M3, b2.exId, R2, d3.dayId, false, d3.date, d3.part === 2 ? 2 : 1).sets : p3.sets;
         add.push({ exId: b2.exId, plan: { ...p3, sets: Math.max(1, +(sets || 0) || DEFAULT_PLAN.sets) } });
       }
     }
@@ -8219,13 +8219,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const planIdx = weekly ? ((/* @__PURE__ */ new Date(t4 + "T12:00:00")).getDay() + WEEK_DAYS - 1) % WEEK_DAYS : cycleStateIn(M3, R2).next;
     const lastDone = {};
     for (const x2 of M3.s.sessions) {
-      const was = x2.dayId ? lastDone[x2.dayId] : void 0;
-      if (x2.routineId === R2.id && x2.dayId && (!was || x2.date > was)) lastDone[x2.dayId] = x2.date;
+      const k2 = x2.dayId ? `${x2.dayId}:${weekly ? partOf(x2) : 1}` : "";
+      const was = k2 ? lastDone[k2] : void 0;
+      if (x2.routineId === R2.id && k2 && (!was || x2.date > was)) lastDone[k2] = x2.date;
     }
     const r7 = {};
     for (const m3 of MK) r7[m3] = rolling7In(M3, m3);
     const rows2 = [];
-    R2.days.forEach((day, i5) => {
+    const workouts = R2.days.flatMap(
+      (d0, i5) => (weekly ? dayParts(d0) : d0.rest ? [] : [1]).map((part) => ({
+        i: i5,
+        part,
+        day: weekly ? dayWorkout(d0, part) : d0
+      }))
+    );
+    workouts.forEach(({ i: i5, part, day }) => {
       if (day.rest || !day.items.length) return;
       const ms = sessionMuscleSetsIn(M3, day);
       const dir = dayDirectIn(M3, day);
@@ -8254,7 +8262,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         return !!j3 && !!JL[j3];
       }) : [];
       for (const it of jHit) injS += (+it.sets || 0) * f3;
-      const last = lastDone[day.id];
+      const last = lastDone[`${day.id}:${part}`];
       const since = last ? daysBetween(last, t4) : null;
       const score = fill - DAY_RANK.fatigue * fat - injS - DAY_RANK.over * over + (i5 === planIdx ? DAY_RANK.plan : 0) + Math.min(since == null ? DAY_RANK.sinceCap : since, DAY_RANK.sinceCap) * DAY_RANK.sinceStep;
       const joints = [];
@@ -8262,9 +8270,22 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         const j3 = jointOf(it.exId);
         if (j3 && !joints.includes(j3)) joints.push(j3);
       }
-      rows2.push({ i: i5, day, score, fill, fat, injS, since, plan: i5 === planIdx, ready: wT ? wR / wT : 1, dir, joints });
+      rows2.push({
+        i: i5,
+        part,
+        day,
+        score,
+        fill,
+        fat,
+        injS,
+        since,
+        plan: i5 === planIdx,
+        ready: wT ? wR / wT : 1,
+        dir,
+        joints
+      });
     });
-    rows2.sort((a2, b2) => b2.score - a2.score || +b2.plan - +a2.plan || a2.i - b2.i);
+    rows2.sort((a2, b2) => b2.score - a2.score || +b2.plan - +a2.plan || a2.i - b2.i || a2.part - b2.part);
     return { R: R2, rows: rows2, planIdx, r7, deload };
   }
   function dayReasonsIn(M3, x2, r7) {
@@ -8370,7 +8391,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         best[m3] = { e: e5, s: s3, m: m3, def, inSess, st, n: n3, rec: recM, r7: r7m, sp };
     }
     return Object.values(best).sort((a2, b2) => b2.s - a2.s).slice(0, EX_RANK.picks).map((x2) => {
-      const plan = planForIn(M3, x2.e.id, null, d3.dayId, false, d3.date);
+      const plan = planForIn(M3, x2.e.id, null, d3.dayId, false, d3.date, d3.part === 2 ? 2 : 1);
       const cap = Math.max(1, SESSION_CAP - x2.inSess);
       let sets = Math.max(
         1,
@@ -14378,7 +14399,7 @@ ${more}`;
   function syncDraftPlan(f3) {
     const d3 = state.draft;
     if (!d3 || !f3 || d3.editingId) return;
-    if (f3.r !== (state.routines.find((r4) => r4.id === d3.routineId) || activeRoutine()) || planItemOf(f3.r, f3.it.exId, d3.dayId) !== f3.it)
+    if (f3.r !== (state.routines.find((r4) => r4.id === d3.routineId) || activeRoutine()) || planItemOf(f3.r, f3.it.exId, d3.dayId, partOf(d3)) !== f3.it)
       return;
     const it = f3.it;
     const todo = d3.ex.filter((b2) => b2.exId === it.exId && !b2.sets.some((x2) => x2.done));
@@ -18662,7 +18683,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const at2 = ui.todayAt;
     const ahead = chosen != null && at2 && typeof at2 === "object" && "d" in at2 && "di" in at2 && at2.di === chosen && typeof at2.d === "string" && at2.d > addDays(weekStart(t4), SUNDAY) ? at2.d : null;
     const parts = weekly ? dayParts(day0) : [];
-    const part = offer ? offer.part : chosen != null && ui.todayPart === 2 && parts.includes(2) ? 2 : ahead ? parts[0] ?? 1 : (weekSlots(R2).find((x2) => x2.di === di && !x2.doneOn) || { part: parts[0] ?? 1 }).part;
+    const part = offer ? offer.part : chosen != null && ui.todayPart && parts.includes(ui.todayPart) ? ui.todayPart : ahead ? parts[0] ?? 1 : (weekSlots(R2).find((x2) => x2.di === di && !x2.doneOn) || { part: parts[0] ?? 1 }).part;
     const day = parts.length > 1 || part === 2 ? dayWorkout(day0, part) : day0;
     const eyebrow = ahead ? weekly ? `Viewing ${DAYS[di]}, ${fmtDateYr(ahead)}` : `Viewing ${fmtDateYr(ahead)} · ${dayLabel(R2, di)}` : weekly ? offer && offer.kind === "behind" ? `Planned ${DAYS[di]}` : offer && offer.kind === "ahead" ? `Next up · ${DAYS[di]}` : di === wd ? "Today" : `Viewing ${DAYS[di]}` : `${cs && cs.restToday && chosen == null ? "Next: " : ""}${dayLabel(R2, di)}`;
     let note = A;
@@ -18672,7 +18693,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
       if (cs.lastDate === t4) note = `${dayLabel(R2, cs.last)} done today.`;
       else if (cs.restToday)
         note = b`<b>Scheduled rest today</b> (${dayLabel(R2, cs.restIdx)} of your cycle). ${(R2.days[cs.next] || { name: "" }).name} is ready whenever you want it.`;
-    } else if (weekly && chosen == null && state.sessions.some((x2) => x2.date === t4 && x2.routineId === R2.id && sessDayIdx(R2, x2) === wd))
+    } else if (weekly && chosen == null && state.sessions.some((x2) => x2.date === t4 && x2.routineId === R2.id && sessDayIdx(R2, x2) === wd && partOf(x2) === part))
       note = `${day.name || dayLabel(R2, wd)} done today.`;
     const playable = !day.rest && day.items.length > 0;
     const deload = isDeloadWeek();
@@ -23674,7 +23695,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       ...d3.deload || d3.light ? { sets: Math.max(1, Math.ceil(p3.sets / 2)) } : {}
     });
     if (m3.mode === "addBlock") {
-      const p0 = planFor(id, null, d3.dayId, false, d3.date);
+      const p0 = planFor(id, null, d3.dayId, false, d3.date, partOf(d3));
       const nb = newBlock(id, half(p0), { deload: !!d3.deload, light: !!d3.light, before: d3.date });
       if (d3.deload || d3.light) nb.full = +p0.sets;
       const li = d3.ex.length - 1;
@@ -23910,7 +23931,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         closeModal();
         return;
       }
-      const p3 = planFor(id, null, d3.dayId, false, d3.date);
+      const p3 = planFor(id, null, d3.dayId, false, d3.date, partOf(d3));
       const n3 = Math.round(+(t4.dataset.sets ?? NaN)), full = Math.round(+(t4.dataset.full ?? NaN));
       if (n3 >= 1 && n3 <= MAX_SETS) p3.sets = n3;
       const nb = newBlock(id, { ...p3, ss: p3.ss ?? null }, { deload: !!d3.deload, light: !!d3.light, before: d3.date });
@@ -24391,7 +24412,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     // Today's own workout on a fixed-weekday routine, when the card offered one from another day (NEW-31, r68).
     todayOwn(t4) {
       ui.todayDay = Number(t4.dataset.day);
-      ui.todayPart = t4.dataset.part === "2" ? 2 : null;
+      ui.todayPart = t4.dataset.part === "2" ? 2 : 1;
       ui.todayAt = null;
       window.scrollTo(0, 0);
       render();
@@ -24401,7 +24422,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const i5 = Number(t4.dataset.i);
       closeModal();
       ui.todayDay = i5;
-      ui.todayPart = t4.dataset.part === "2" ? 2 : null;
+      ui.todayPart = t4.dataset.part === "2" ? 2 : 1;
       ui.todayAt = null;
       window.scrollTo(0, 0);
       render();
@@ -24413,7 +24434,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     pickView(t4) {
       closeModal();
       ui.todayDay = Number(t4.dataset.day);
-      ui.todayPart = null;
+      ui.todayPart = t4.dataset.part === "2" ? 2 : 1;
       ui.todayAt = null;
       ui.tab = "today";
       window.scrollTo(0, 0);
@@ -26001,7 +26022,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     ${top.map(
       (x2, k2) => b`<div class=${"pcard" + (k2 === 0 ? " best" : "")}><div class="row spread"><b>${dayLabel(rk.R, x2.i)}: ${x2.day.name}</b>${k2 === 0 ? b`<span class="tag green">Best fit</span>` : ""}</div>
       <ul>${dayReasons(x2, rk.r7).map((r4) => b`<li>${r4}</li>`)}</ul>
-      <div class="row u-mt8"><button class=${"btn sm " + (k2 === 0 ? "primary" : "")} data-act="startSession" data-day=${String(x2.i)}>Start</button>${!rk.deload && x2.ready < READY.lighter ? b`<button class="btn sm" data-act="startSession" data-day=${String(x2.i)} data-light="1">Start lighter</button>` : ""}<button class="btn sm" data-act="pickView" data-day=${String(x2.i)}>Preview</button></div></div>`
+      <div class="row u-mt8"><button class=${"btn sm " + (k2 === 0 ? "primary" : "")} data-act="startSession" data-day=${String(x2.i)} data-part=${x2.part === 2 ? "2" : A}>Start</button>${!rk.deload && x2.ready < READY.lighter ? b`<button class="btn sm" data-act="startSession" data-day=${String(x2.i)} data-part=${x2.part === 2 ? "2" : A} data-light="1">Start lighter</button>` : ""}<button class="btn sm" data-act="pickView" data-day=${String(x2.i)} data-part=${x2.part === 2 ? "2" : A}>Preview</button></div></div>`
     )}
     <p class="small muted hastip u-m10-0-0" data-tip="Ranked by what each muscle got in the last 7 days against your targets, how recently it was trained hard (about 1 to 3 days, more after failure sets, new lifts, or heavy hinges), injuries, and your cycle order. A ranking, not a rule: how you feel wins.">How this is ranked</p></div>`;
   }
