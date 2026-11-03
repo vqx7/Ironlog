@@ -290,7 +290,7 @@ Not written here as each shipped; what each moved and changed, with its names, i
 
 - **The time of a workout logged afterwards (NEW-39):** `saveSession` (workfinish.ts) saves a session in progress untimed when its clock reads under `PACE_LO` of `sessModelMin` for its sets, and the recap says how to add the minutes; a past workout and an edit from History take the minutes typed in `draftMin` (workout.ts, `.minf`), one rule for Finish and the sync's saves (`typedMin`, session.ts, R67-1).
 - **The time model and drops (R67-2):** `sessModelMinIn` (time.ts) reads a drop with the set before it, adding no set and no rest.
-- **A finished exercise brings up only one below it (NEW-40):** `autoFold` (worksets.ts) no longer wraps round to an earlier exercise not done, which in a blank session took the screen back up after every lift.
+- **A finished exercise brings up only one below it (NEW-40):** `autoFold` (worksets.ts) brings up the next exercise not done below or, with none, the first one above not started (`blockUntouched`), never one started and left, which in a blank session took the screen back up after every lift (R67-3 kept the lift not started).
 - **A section's line (NEW-21):** drawn by `.sec>summary::before` over the section's clear border, so WebKit has no details element's border to leave in the old theme.
 - **Today's card shine (371, V approved the drawing):** `--hero-bg` and `--hero-rim` in each theme block (02-style.css); the drawing is `docs/design/today-card-shine.css`.
 - **Checks:** `tests/r67.js` sections 1 to 6; `tests/personas.js` persona 14; `tests/r63.js` section 4 leaves Chart.js's probe out (NEW-27); `tests/r66b.js` section 6 pinned to r66.

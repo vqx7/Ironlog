@@ -19,6 +19,9 @@
 //      up to the earlier one (it did after every lift once one had a set
 //      left, since a blank session has nothing below to bring up). A guard:
 //      in a routine, a lift finished still brings up the next one below it.
+//      From the follow-up review: a past workout typed in last lift first
+//      still brings up the first lift not started above it, as r66 did; only
+//      a lift started and left is passed over.
 //   4  The slight metal shine on Today's main card (V approved the drawing,
 //      2026-11-02): the app's card is, pixel for pixel, the card with the
 //      approved draft (docs/design/today-card-shine.css) laid over it, light
@@ -234,6 +237,19 @@ const tickAll = H => H.ev(() => { const L = window.__ironlog; for (const b of L.
     const top1 = await G.ev(() => { const e = document.getElementById('blk-1'); return e ? Math.round(e.getBoundingClientRect().top) : null; });
     ok(top1 != null && top1 >= -2 && top1 < 140, '3. (a guard) in a routine, the first lift finished brings the second up to the top of the screen', { top1 });
     await G.P.ctx.close();
+
+    // A past workout typed in last lift first (no first tick moves a lift up in one): the first lift, not started, comes up.
+    const Q = await phone(MON, { h: 664 });
+    const pItems = ['bench', 'ohp', 'cableRow'].map((exId, i) => ({ uid: 'q' + i, exId, sets: 2, repMin: 6, repMax: 10, rir: 2, rest: 90, inc: 5 * LB, ss: null }));
+    await seed(Q, { items: pItems });
+    await Q.ev(() => window.__ironlog.ACT.pastOpen({ dataset: {} })); await wait(250);
+    await Q.page.click('#modal [data-act="pastGo"]:not([data-day="free"])'); await wait(300);
+    await Q.ev(() => { const L = window.__ironlog; L.state.draft._rampAsked = true; L.saveNow(); });
+    for (let s = 0; s < 2; s++) { await typeSet(Q, 2, s, s === 0 ? 120 : null, 10); await closeSheet(Q); }
+    await wait(2600);
+    const up = await Q.ev(() => ({ first: Math.round(document.getElementById('blk-0').getBoundingClientRect().top), done: window.__ironlog.state.draft.ex.map(b => b.sets.filter(x => x.done).length) }));
+    ok(up.done.join() === '0,0,2' && up.first >= -2 && up.first < 140, '3. a past workout typed in last lift first: finishing it brings up the first lift, not started yet', up);
+    await Q.P.ctx.close();
   }
 
   // ---- 4. The shine on Today's main card is the drawing V approved, in every theme and accent.

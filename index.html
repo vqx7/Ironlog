@@ -14462,7 +14462,8 @@ ${more}`;
       W.foldT = setTimeout(() => autoFold(ref2), FOLD_MS.strip);
       return;
     }
-    const nx = d3.ex.findIndex((x2, i5) => i5 > bi && !blockDone(x2));
+    let nx = d3.ex.findIndex((x2, i5) => i5 > bi && !blockDone(x2));
+    if (nx < 0) nx = d3.ex.findIndex((x2) => blockUntouched(x2));
     const a0 = nx >= 0 ? document.getElementById("blk-" + nx) : null;
     const top0 = a0 ? a0.getBoundingClientRect().top : null;
     rerenderKeepScroll();
