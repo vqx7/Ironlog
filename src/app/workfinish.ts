@@ -6,7 +6,7 @@ import { act } from './act';
 import { isCompound, noE1 } from './library';
 import { withPlanSets, pwOf } from './routines';
 import { estMin } from './format';
-import { rtfAt, isMissed, isWork, RIR_CALL_TOP } from './formulas';
+import { rtfAt, isMissed, isWork, RIR_CALL_TOP, PACE_LO } from './formulas';
 import { putById, andList, today, iso, r1, EPS_SAME, MINUTE_S, SECOND_MS } from './util';
 import { cleanCardio, keepExtra } from './normalize';
 import { KNOWN_BLOCK, KNOWN_SESS, cleanChk } from './records';
@@ -28,10 +28,11 @@ import {
   hardCredit,
   rirHalfOn,
   U,
-  fmtW
+  fmtW,
+  sessModelMin
 } from './live';
 import { state, ui } from './store';
-import { joinAdjacent, savedEx, draftCardio, effTarget, withNew, picsLast } from './session';
+import { joinAdjacent, savedEx, draftCardio, effTarget, withNew, picsLast, typedMin } from './session';
 import type { DraftSet, CardioEntry, SessionEx, Session } from './types';
 import { setShort, fmtDateLong, fmtE, prSet, wasE } from './display';
 import { W, blkOpen, blkRef, redraw } from './workstate';
@@ -339,15 +340,17 @@ export function finishNow(): void {
 function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioEntry[]): void {
   /* Timed by the clock when the workout began on the day it is saved on, so one
      that runs past midnight keeps its minutes (r64, the r63 audit's F8); a past
-     workout logged later, or one moved to another date, is not timed. */
-  const durMin = d.editingId
-    ? d.durMin || null
-    : d.startedAt && !d.past && iso(new Date(d.startedAt)) === d.date
-      ? ((): number | null => {
+     workout logged later, or one moved to another date, is not timed by it.
+     A past workout and an edit from History take the minutes typed beside
+     the date (r67, NEW-39). */
+  const clockMin =
+    d.editingId || d.past || !d.startedAt || iso(new Date(d.startedAt)) !== d.date
+      ? null
+      : ((): number | null => {
           const m = Math.round((Date.now() - (d.startedAt || 0)) / (MINUTE_S * SECOND_MS));
           return m >= 1 && m <= TIMED_MAX_MIN ? m : null;
-        })()
-      : null;
+        })();
+  const durMin = d.editingId || d.past ? typedMin(d) : clockMin;
   // Records carrying fields a newer build stored (keepExtra) are plain objects of their fields, as normalize builds them.
   const exR: (SessionEx & Rec)[] = ex.map(b => ({ ...b }));
   const sess: Session & Rec = {
@@ -365,6 +368,20 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     free: d.free ? true : undefined,
     chk: cleanChk(d.chk) || undefined
   };
+  /* A session whose sets went in far faster than they can be lifted was
+     entered after the workout, so its clock timed the typing, not the
+     workout (V, 2026-11-02: 5 minutes for a whole session). It is saved
+     untimed, by the bound the pace already uses to leave out such a session
+     (under PACE_LO of what the time model gives its sets), and the recap says
+     how to add its minutes (r67, NEW-39). */
+  let untimed = false;
+  if (clockMin != null) {
+    const model = sessModelMin(sess);
+    if (model >= 1 && clockMin < PACE_LO * model) {
+      sess.durMin = null;
+      untimed = true;
+    }
+  }
   // The workout's pictures go last, after the start time and the plan's week Finish adds below, as normalize writes them (r66, 373).
   const sessPics = d.pics && d.pics.length ? [...d.pics] : undefined;
   let upd: RoutineUpdate | null = null,
@@ -455,7 +472,9 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
   ];
   // A session dated in the past says where it went, since it is not at the top of History.
   if (sess.date !== today()) lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
-  if (durMin) lines.push(`${durMin} minutes${pmDraft && !sess.free ? `, planned ${estMin(pmDraft)}` : ''}`);
+  if (sess.durMin) lines.push(`${sess.durMin} minutes${pmDraft && !sess.free ? `, planned ${estMin(pmDraft)}` : ''}`);
+  else if (untimed)
+    lines.push('Not timed: the sets went in faster than they can be lifted. Add its minutes by editing it in History.');
   if (targets) lines.push(`${beaten} of ${targets} exercise target${targets === 1 ? '' : 's'} beaten`);
   if (heavier.length) lines.push(`Heaviest yet: ${andList(heavier, HEAVIEST_SHOWN)}`);
   const prList = prs.map(pr => {

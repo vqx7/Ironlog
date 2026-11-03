@@ -1,0 +1,17 @@
+/* A slight metal shine on Today's main card (draft for V): one soft diagonal glint across the surface, a brighter rim along the top. */
+:root{
+  --hero-sheen:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.55) 40%,rgba(255,255,255,.85) 47%,rgba(255,255,255,.35) 55%,rgba(255,255,255,0) 72%);
+  --hero-metal:linear-gradient(165deg,#f6f7f9,#e7eaee 58%,#eef0f3);
+  --hero-rim:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(13,15,18,.06);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --hero-sheen:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.045) 38%,rgba(255,255,255,.095) 47%,rgba(255,255,255,.03) 56%,rgba(255,255,255,0) 72%);
+  --hero-metal:linear-gradient(165deg,#1d2025,#121417 62%,#16191d);
+  --hero-rim:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.4);
+}}
+:root[data-theme="dark"]{
+  --hero-sheen:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.045) 38%,rgba(255,255,255,.095) 47%,rgba(255,255,255,.03) 56%,rgba(255,255,255,0) 72%);
+  --hero-metal:linear-gradient(165deg,#1d2025,#121417 62%,#16191d);
+  --hero-rim:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.4);
+}
+.hero{background:var(--hero-sheen),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),var(--hero-metal),var(--hero);box-shadow:var(--hero-rim),var(--hero-shadow)}

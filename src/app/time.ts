@@ -43,8 +43,11 @@ export function dayMinutesIn(M: Model, day: { items: readonly TimedItem[] }, hal
    does not move it. A session at under a third or over three times its model
    is a clock left running or stopped early and is left out. Fewer than
    PACE_MIN usable sessions: the model as is (1). Conventions, not measured
-   numbers: the model itself is one. Past workouts and imports have no time,
-   so they never count. */
+   numbers: the model itself is one. A session with no minutes never counts;
+   a past workout counts by the minutes typed for it (r67). A drop set is read
+   with the set before it: it is done straight after that set, with no rest of
+   its own (r66), so it adds no set and no rest (the review of r67: read as a
+   full set and a full rest, an honest session of drops was saved untimed). */
 /** The minutes the time model gives for the sets a session logged, at its own ranges and the plan's rest. */
 export function sessModelMinIn(M: Model, ss: Session): number {
   const R = M.s.routines.find(r => r.id === ss.routineId) || activeRoutineIn(M);
@@ -68,7 +71,7 @@ export function sessModelMinIn(M: Model, ss: Session): number {
         repMin: rr[0],
         repMax: rr[1],
         rest: +p.rest || 0,
-        sets: b.sets.filter(x => !x.warm).length
+        sets: b.sets.filter(x => !x.warm && !x.drop).length
       };
     })
     .filter(it => it.sets > 0);

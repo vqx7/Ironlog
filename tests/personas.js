@@ -62,6 +62,17 @@
 //      two sets); the week counting the drop as half a set; and the next
 //      week the bench reading its three working sets, not the drop, and the
 //      rows repeating their target, two sets of three being short of usual.
+//  14  a lifter with no routine (r67, NEW-39 and NEW-40): a blank session
+//      started from Today, each lift added as it comes and typed set by set;
+//      the bench stopped a set short, and finishing the pulldown after it
+//      leaves the screen at the pulldown rather than taking it back up to the
+//      bench; Finish times it by the clock (50 minutes), keeps the two bench
+//      sets and History says 50 min; the next day, yesterday's second
+//      workout logged after the gym as a past workout with the 45 minutes it
+//      took typed beside its date, saved and shown as 45 min; and a session
+//      typed in on Today in 3 minutes after the gym, saved untimed with the
+//      recap saying so, since no minutes were given and the clock's are not
+//      how long it took.
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
 const { open, engine } = require('./h');
@@ -904,6 +915,70 @@ async function finish() {
     ok(Number(b0.w) === 225 && d.ex[0].tgt && d.ex[0].tgt.kind === 'reps' && d.ex[0].tgt.total === 26, '13. next week the bench asks 225 for 27 reps: its three sets (26), never the drop', { grey: b0.w, tgt: d.ex[0].tgt });
     ok(Number(r0.w) === 185 && d.ex[1].tgt && d.ex[1].tgt.total === 30, '13. the rows repeat 185 for 30+ over 3 sets: two sets of three are short of usual', { grey: r0.w, tgt: d.ex[1].tgt });
     ok(!H.P.errors.length, '13. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 14. A lifter with no routine (r67): blank sessions, added as they come; logged after the gym.
+  if (run(14)) {
+    const T0 = '2026-11-02';
+    const H = await phone(T0);
+    const { ev, page } = H;
+    await ev(() => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.autoDone = false; L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); });
+    // A lift added from the picker the session keeps open, or from + Add exercise once it is closed.
+    const add = async q => {
+      if ((await ev(() => { const m = window.__ironlog.ui.modal; return m && m.kind; })) !== 'picker') { await page.click('#view [data-act="pickSession"]'); await wait(200); }
+      await page.fill('#pickQ', q); await wait(200); await page.click('#modal [data-act="pickDo"]'); await wait(250);
+      await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); await wait(100);
+    };
+    // Today's card, Change, Blank session: as V starts one.
+    const blank = async () => { await page.click('#view .hero [data-act="startAltOpen"]'); await wait(200); await page.click('#modal [data-act="altGo"][data-go="startFree"]'); await wait(250); };
+    await blank();
+    await add('bench press');
+    await H.type('w', 0, 0, 185); await H.type('r', 0, 0, 8); await H.tick(0, 0);
+    await H.type('r', 0, 1, 7); await H.tick(0, 1);
+    await add('lat pulldown');
+    for (let k = 0; k < 3; k++) { if (k === 0) await H.type('w', 1, 0, 140); await H.type('r', 1, k, 10); await H.tick(1, k); }
+    const y0 = await ev(() => window.scrollY);
+    await wait(2600);
+    const y1 = await ev(() => window.scrollY);
+    const at = await ev(() => ({ benchTop: Math.round(document.getElementById('blk-0').getBoundingClientRect().top), end: Math.round(document.documentElement.scrollHeight - innerHeight) }));
+    // The pulldown folding shortens the page, so at its end the screen can only move up by what folded.
+    ok((y1 >= y0 - 40 || y1 >= at.end - 2) && !(at.benchTop >= -2 && at.benchTop < 140), '14. the pulldown done, the screen stays there and does not go back up to the bench', { y0, y1, ...at });
+    const t0 = await ev(() => window.__ironlog.state.draft.startedAt);
+    await ev(t => window.__setClock(t + 50 * 60000), t0);
+    let fin = await H.finish();
+    let sv = await ev(() => window.__ironlog.state.sessions.map(s => ({ date: s.date, durMin: s.durMin, ex: s.ex.map(b => [b.exId, b.sets.length]) })));
+    ok(fin.recap.kind === 'recap' && sv.length === 1 && sv[0].durMin === 50, '14. Finish times the blank session by the clock: 50 minutes', sv);
+    ok(sv[0] && JSON.stringify(sv[0].ex) === JSON.stringify([['bench', 2], ['latPulldown', 3]]), '14. ... with the two bench sets done, the row left empty not saved', sv[0] && sv[0].ex);
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); });
+    ok(/50 min/.test(await H.text()), '14. History says 50 min');
+
+    // The next day: the evening's second workout, logged after the gym as a past workout with its minutes.
+    await H.day(addD(T0, 1));
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); L.ACT.pastOpen({ dataset: {} }); }); await wait(200);
+    await page.click('#modal [data-act="pastGo"][data-day="free"]'); await wait(250);
+    await add('barbell curl');
+    const mf = '#view input[data-bind="draftMin"]';
+    ok(!!(await page.$(mf)), '14. the past workout has a Minutes field beside its date');
+    if (await page.$(mf)) { await page.click(mf); await page.keyboard.type('45'); await ev(() => document.activeElement && document.activeElement.blur()); await wait(100); }
+    for (let k = 0; k < 3; k++) { if (k === 0) await H.type('w', 0, 0, 65); await H.type('r', 0, k, 12); await H.tick(0, k); }
+    fin = await H.finish();
+    sv = await ev(() => window.__ironlog.state.sessions.map(s => ({ date: s.date, durMin: s.durMin })));
+    ok(sv.some(s => s.durMin === 45), '14. saved with the 45 minutes typed', sv);
+
+    // That evening, a session typed in on Today after the gym, all of it in 3 minutes: saved untimed.
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+    await blank();
+    const t1 = await ev(() => window.__ironlog.state.draft.startedAt);
+    await add('squat');
+    for (let k = 0; k < 3; k++) { if (k === 0) await H.type('w', 0, 0, 225); await H.type('r', 0, k, 5); await H.tick(0, k); }
+    await add('leg press');
+    for (let k = 0; k < 3; k++) { if (k === 0) await H.type('w', 1, 0, 360); await H.type('r', 1, k, 10); await H.tick(1, k); }
+    await ev(t => window.__setClock(t + 3 * 60000), t1);
+    fin = await H.finish();
+    const last = await ev(() => { const S = window.__ironlog.state.sessions; const s = S.find(x => x.ex.length === 2 && x.ex.every(b => b.sets.length === 3) && !x.ex.some(b => b.exId === 'bench')); return s && { durMin: s.durMin, ex: s.ex.map(b => b.exId) }; });
+    ok(last && last.durMin == null && /Not timed/.test(fin.recap.text || ''), '14. six sets typed in 3 minutes are saved untimed, and the recap says so', { last, recap: (fin.recap.text || '').slice(0, 300) });
+    ok(!H.P.errors.length, '14. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
 
