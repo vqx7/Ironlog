@@ -23,7 +23,7 @@
 //  10  384: a group of three (a tri-set) is one box and the rest starts only after a set of its third lift. A guard:
 //      it passes on r69.
 //  11  NEW-56 and NEW-58, run first on 9d6c82c (r70 before them), where both fail: with the rest ring in the top bar,
-//      a finger holding an exercise mid-screen leaves the page still (it scrolled 355 px) and one just above the tab
+//      a finger holding an exercise mid-screen leaves the page still (it scrolled 391 px) and one just above the tab
 //      bar scrolls it, as before the ring (with the compact pill, its top is the edge: a guard, passing there); and on
 //      a phone with a notch (the ring below a 47 px status bar) a tick's effort strip stays below the header (it went
 //      to -71 px, under it). NEW-57 (each handle 44 px beside the
@@ -399,16 +399,15 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
       await pg.click('.hero [data-act="startSession"]:not([data-light])'); await wait(200);
       return T;
     };
-    // Holds a finger on block 2's handle, moves it to y and keeps it there 1.2 s: how far the page scrolled meanwhile.
+    // Holds a finger on the first exercise's handle, the page at its top, moves it to y and keeps it there 1.6 s: how
+    // far the page scrolled. Driven as tests/r29.js drives its edge check, which a touch drag runs on in both browsers.
     const hold = async (pg, tp, y) => {
       await pg.evaluate(() => window.scrollTo(0, 0)); await wait(100);
-      await pg.locator('.bgrip[data-b="2"]').scrollIntoViewIfNeeded();
-      const gb = await pg.locator('.bgrip[data-b="2"]').boundingBox(); const x0 = gb.x + gb.width / 2, y0 = gb.y + gb.height / 2;
-      await tp('touchStart', x0, y0); await wait(60); await tp('touchMove', x0, y0 + 3); await wait(250);
-      // Measured once the drag has folded the list to one line each, which moves the page by itself.
+      const gb = await pg.locator('.bgrip[data-b="0"]').boundingBox(); const x0 = gb.x + gb.width / 2, y0 = gb.y + gb.height / 2;
       const sy0 = await pg.evaluate(() => window.scrollY);
-      for (let k = 1; k <= 8; k++) { await tp('touchMove', x0, y0 + (y - y0) * k / 8); await wait(30); }
-      for (let k = 0; k < 30; k++) { await tp('touchMove', x0, y + (k % 2)); await wait(40); }
+      await tp('touchStart', x0, y0); await wait(60);
+      for (let k = 1; k <= 10; k++) { await tp('touchMove', x0, y0 + (y - y0) * k / 10); await wait(30); }
+      for (let k = 0; k < 40; k++) { await tp('touchMove', x0, y + (k % 2)); await wait(40); }
       const sy1 = await pg.evaluate(() => window.scrollY);
       await tp('touchEnd', x0, y); await wait(400);
       return sy1 - sy0;
