@@ -3399,6 +3399,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ["body", "Body"]
   ];
   var DSEC_KEYS = DSECS.map((x2) => x2[0]);
+  var DSEC_FOLDED = ["consistency", "body"];
   var DSEC_ALIAS = {
     stalls: "exercise",
     prs: "exercise",
@@ -3513,6 +3514,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/normalize.ts
   var spread = (v3) => ({ ...v3 });
+  var oneOf = (v3, list) => typeof v3 === "string" && list.includes(v3);
   var MK_SET = new Set(MK);
   var JK_SET = new Set(JK);
   var isMuscle = (v3) => typeof v3 === "string" && MK_SET.has(v3);
@@ -3714,6 +3716,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         theme: "dark",
         bands: parseJson(JSON.stringify(BANDS)),
         priorities: [],
+        dashFolded: DSEC_FOLDED.slice(),
         lastExport: null,
         barKg: null,
         bwGoalPct: null,
@@ -3722,6 +3725,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         timerSound: true,
         timerCompact: false,
         autoDone: true,
+        homeFolded: [],
         wakeLock: false,
         timeBudget: null,
         rirMode: "on",
@@ -3789,7 +3793,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const o3 = arr(st.ownTargets);
       return o3 ? MK.filter((m3) => !TARGETED.has(m3) && o3.includes(m3)) : [];
     })();
-    const fl = arr(st.folds), h3 = arr(st.hidden), pr = arr(st.priorities);
+    const hf = arr(st.homeFolded), fl = arr(st.folds), h3 = arr(st.hidden), pr = arr(st.priorities), df = arr(sIn.dashFolded);
     const hc = numOr(st.heightCm, NaN), tb = numOr(st.timeBudget, NaN), bk = numOr(st.barKg, NaN), bg = numOr(st.bwGoalPct, NaN);
     const removedLib = (arr(sIn.removedLib) || []).filter((x2) => typeof x2 === "string").map(fixId);
     const inBands = spread(sIn.bands || {});
@@ -3827,6 +3831,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       // r25: suggested loads show grey until typed; 'fill' puts them in the rows as before. Unset means grey (V's choice).
       ...st.loadFill === "fill" ? { loadFill: "fill" } : {},
       ...userName ? { userName } : {},
+      homeFolded: hf ? strings(hf, (k2) => oneOf(k2, ["map", "body", "week", "tiles", "coach", "injuries"])) : [],
       // Section order per tab (drag the ⠿ in a section header): a new install starts in the default order (r28).
       secOrder,
       folds: fl ? strings(fl, (k2) => safeKey(k2) && k2.length < LIMITS.foldKey).slice(0, LIMITS.folds) : [],
@@ -3843,10 +3848,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       hidden: h3 ? [...new Set(strings(h3, (k2) => HIDEABLE_KEYS.has(k2)))] : [],
       onboarded: st.onboarded === true,
       calSnooze: typeof st.calSnooze === "string" && isDate(st.calSnooze) ? st.calSnooze : null,
+      // Legacy fold flag from older builds; unused, kept so old saves round-trip.
+      tidyV: numOr(st.tidyV, 0) >= 1 ? 1 : 0,
       // Height in cm for waist-to-height; the one body measure that does not change.
       heightCm: isNum(hc) && hc >= LIMITS.heightCm[0] && hc <= LIMITS.heightCm[1] ? r1(hc) : null,
       timeBudget: isNum(tb) && tb >= LIMITS.budgetMin[0] ? Math.min(Math.round(tb), LIMITS.budgetMin[1]) : null,
       priorities: pr ? muscles(pr) : [],
+      // Absent (older saves) means the defaults apply once; after that the user's folds win.
+      dashFolded: df ? strings(df, (k2) => oneOf(k2, DSEC_KEYS)) : DSEC_FOLDED.slice(),
       lastExport: typeof st.lastExport === "string" && isDate(st.lastExport) ? st.lastExport : null,
       removedLib,
       barKg: isNum(bk) && bk > 0 ? Math.min(bk, LIMITS.barKg) : null,
@@ -3854,10 +3863,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       bands
     };
     for (const k2 of OPTIONAL_SETTINGS) if (!(k2 in vals)) delete st[k2];
-    for (const k2 of RETIRED_SETTINGS) delete st[k2];
     return Object.assign(st, vals);
   }
-  var RETIRED_SETTINGS = ["homeFolded", "dashFolded", "tidyV"];
   var OPTIONAL_SETTINGS = [
     "accent",
     "rirAsk",
@@ -26655,8 +26662,6 @@ ${JSON.stringify(ctx, null, 1)}`;
       dateIndex,
       sessionsOn,
       bestLine,
-      // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it (r70).
-      setShortOf: (id, w2, r4) => setShort(EX(id), w2, r4),
       whyTarget,
       recent4w,
       weekSessions,
@@ -26989,7 +26994,9 @@ ${JSON.stringify(ctx, null, 1)}`;
       templateSigsBefore,
       bandOf,
       picsTidy,
-      risingWords
+      risingWords,
+      // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it (r70).
+      setShortOf: (id, w2, r4) => setShort(EX(id), w2, r4)
     };
     render();
     wakeOn();

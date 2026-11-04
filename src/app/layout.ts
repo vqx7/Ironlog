@@ -17,6 +17,10 @@ export const DSECS: readonly (readonly [string, string])[] = [
 /** The keys alone, in the same order: a saved fold list keeps only these, and the jump strip orders them. */
 export const DSEC_KEYS = DSECS.map(x => x[0]);
 
+// Legacy: older builds saved folds here. A fresh state still starts with these and normalize keeps the
+// list, so a save keeps its shape; nothing reads it.
+export const DSEC_FOLDED: readonly string[] = ['consistency', 'body'];
+
 // Old section keys still arrive from tiles, summary rows and the coach. They
 // land on the section that absorbed them, opening the matching fold inside it.
 export const DSEC_ALIAS: Readonly<Record<string, string>> = {

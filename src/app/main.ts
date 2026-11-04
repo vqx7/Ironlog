@@ -448,8 +448,6 @@ function start(): void {
     dateIndex,
     sessionsOn,
     bestLine,
-    // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it (r70).
-    setShortOf: (id: string, w: number, r: number): string => setShort(EX(id), w, r),
     whyTarget,
     recent4w,
     weekSessions,
@@ -784,7 +782,9 @@ function start(): void {
     templateSigsBefore,
     bandOf,
     picsTidy,
-    risingWords
+    risingWords,
+    // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it (r70).
+    setShortOf: (id: string, w: number, r: number): string => setShort(EX(id), w, r)
   };
   render();
   wakeOn();

@@ -4,8 +4,8 @@
 //      1-set lift; in Freestyle and for a lift on no day of the routine the lifter's own sets still lead (V's
 //      rule of 2026-10-18), a plan of one set progresses, and one set on the routine's day reads fewer sets.
 //   2  381: a new install shows Plan's Schedule (cycle or fixed weekdays); a phone whose layout hides it keeps it hidden.
-//   3  382: the three fold settings nothing reads (homeFolded, dashFolded, tidyV) are dropped from a save that
-//      carries them and never written; every other setting keeps its value and its order.
+//   3  382 (not built, so a guard): homeFolded, dashFolded and tidyV keep their place in the settings, since a phone on
+//      r69 and one on r70 must order settings alike or they rewrite them back and forth (tests/mixed.js; 339 n).
 //   4  364 b-2: Today's Lifts moving names the lifts Stats and the coach call rising, in their order, three at most,
 //      each line built from the lift's own sessions (lighter ones out) and rising, each set the latest session's
 //      heaviest; a tap opens the lift on Stats; no rising lift, no section and no chip; first on a phone's saved order.
@@ -103,17 +103,8 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
   }
 
   if (run(3)) {
-    // A save as r69 wrote it, with the three keys, read by this build.
-    const r = await ev(() => {
-      const L = window.__ironlog; const raw = JSON.parse(JSON.stringify(L.state));
-      Object.assign(raw.settings, { homeFolded: ['map'], dashFolded: ['consistency', 'body'], tidyV: 1 });
-      const n = L.normalize(raw); const keys = Object.keys(n.settings);
-      const before = Object.keys(raw.settings).filter(k => !['homeFolded', 'dashFolded', 'tidyV'].includes(k));
-      const fresh = Object.keys(L.normalize({}).settings);
-      return { gone: ['homeFolded', 'dashFolded', 'tidyV'].filter(k => k in n.settings), freshHas: ['homeFolded', 'dashFolded', 'tidyV'].filter(k => fresh.includes(k)), order: JSON.stringify(keys) === JSON.stringify(before), same: before.every(k => JSON.stringify(n.settings[k]) === JSON.stringify(L.normalize(JSON.parse(JSON.stringify(L.state))).settings[k])) };
-    });
-    ok(!r.gone.length && !r.freshHas.length, '3. 382: a save carrying homeFolded, dashFolded and tidyV loads without them, and a new log never writes them (r69 keeps all three)', r);
-    ok(r.order && r.same, '3. 382: every other setting keeps its value and its place in the order', r);
+    const r = await ev(() => { const keys = Object.keys(window.__ironlog.normalize({}).settings); return { at: ['homeFolded', 'dashFolded', 'tidyV'].map(k => keys.indexOf(k)) }; });
+    ok(r.at.every(x => x >= 0), '3. 382 not built: a new log still writes homeFolded, dashFolded and tidyV in their places, so two builds order settings alike (a guard)', r);
   }
 
   if (run(4)) {
