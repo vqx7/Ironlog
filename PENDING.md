@@ -1,4 +1,4 @@
-# Everything still open (as of 2026-11-03: r69 live, merged by V (#68, which took r68's #67 with it) at 21:38 UTC and published from a3219e1 at 22:15 UTC; r70 in pull request #69 (green on a15b3b2), r71 on branch r71 on top of it; the tracker of the r63 audit's findings, and of every item placed since, is below)
+# Everything still open (as of 2026-11-04: r71 live, version 2.26, merged by V as #70 with r70's #69 at 20:58 UTC and published from 995ab73 at 21:29 UTC; the tracker of the r63 audit's findings, and of every item placed since, is below)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 

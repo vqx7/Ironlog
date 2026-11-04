@@ -2,7 +2,7 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r69 live (2026-11-03; checked by Claude on GitHub: you changed pull request #68's base to main and merged it at 21:38 UTC on 2026-11-03, 13:38 Los Angeles, which also marked #67 (r68) merged; main's run on a3219e1 passed, gh-pages "Publish a3219e1" at 22:15 UTC, and the published page carries build 2026.11.03-r69). Before it: r67 live (2026-11-02, #66, "Publish 9eee1ec").
+Last updated: r71 live (2026-11-04; checked by Claude on GitHub: you changed pull request #70's base to main and merged it at 20:58 UTC, 12:58 Los Angeles, which also marked #69 (r70) merged; main's run passed and gh-pages shows "Publish 995ab73" at 21:29 UTC, the live page carrying build 2026.11.04-r71).
 
 ## Now, in this order
 
@@ -13,8 +13,8 @@ Last updated: r69 live (2026-11-03; checked by Claude on GitHub: you changed pul
 1d. A32 (r67): done, merged by you (#66, 2026-11-02 17:23 Los Angeles) and live (see Last updated).
 1e. A33 (r68): done, merged with r69 (#68 took #67's commits into main, 2026-11-03) and live.
 1f. A34 (r69): done, merged by you (#68, 2026-11-03 13:38 Los Angeles) and live (see Last updated).
-1g. A35 (r70): try the preview at https://ironapp.org/preview/ on your phone (its pull request lists what to try), then merge it on GitHub's website once its checks are green.
-1h. A36 (r71): after r70 is merged, its pull request opens; try its preview the same way, then merge it.
+1g. A35 (r70): done, merged with r71 (#70 took #69's commits into main, 2026-11-04 12:58 Los Angeles) and live.
+1h. A36 (r71): done, merged by you (#70) and live (see Last updated).
 2. Problem reports: done (2026-10-30, you). B4's r64 code is deployed, B1a has been run, and a test report from the preview became an issue in `ironlog-feedback`, which confirms B5. See Done.
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
 4. D6: delete the old branches and stop them piling up (2 minutes, below).
@@ -446,7 +446,7 @@ Paste the result into a chat with Claude if anything differs, or if you want it 
 
 ### D6. Old branches
 Status: to do (checked by Claude on 2026-11-03 through GitHub's compare API: the branches below are on GitHub, and Automatically delete head branches is still off). Claude's GitHub access cannot delete branches.
-These are wholly in `main` (GitHub shows each 0 commits ahead of it), so deleting them loses nothing: `modular`, `modular-2`, `r48`, `r51`, `r52`, `r53`, `r54`, `r55`, `r55.1`, `r56-wip`, `r56`, `r56.1`, `r56.2`, `r57`, `r58`, `r60`, `r61-on-r60`, `r62`, `r63`, `r64`, `r65`, `r65-2`, `r65-2-done`, `r65-2-next`, `r66-release`, `r67`, `r68` and `r69`. Five more hold only what is in `main` already: `r59` (one commit ahead, the merge of #56 into it, changing no file), `r61` (22ac59e, an earlier copy of r61's first commits, each in `r61-on-r60`, checked 2026-10-26), `r61-normalize-draft` (drafts r61 has since built), `r66` (13 commits of 2026-10-30 and 31, PENDING.md notes only, whose items, 364, 365, 366, 367, NEW-17 and 21, are all in main's PENDING.md; checked by item, 2026-11-03) and `r65-2-after` (one PENDING.md note of 2026-11-01 on 371, in main's PENDING.md). Keep `r70` until its pull request is merged.
+These are wholly in `main` (GitHub shows each 0 commits ahead of it), so deleting them loses nothing: `modular`, `modular-2`, `r48`, `r51`, `r52`, `r53`, `r54`, `r55`, `r55.1`, `r56-wip`, `r56`, `r56.1`, `r56.2`, `r57`, `r58`, `r60`, `r61-on-r60`, `r62`, `r63`, `r64`, `r65`, `r65-2`, `r65-2-done`, `r65-2-next`, `r66-release`, `r67`, `r68`, `r69`, `r70` and `r71`. Five more hold only what is in `main` already: `r59` (one commit ahead, the merge of #56 into it, changing no file), `r61` (22ac59e, an earlier copy of r61's first commits, each in `r61-on-r60`, checked 2026-10-26), `r61-normalize-draft` (drafts r61 has since built), `r66` (13 commits of 2026-10-30 and 31, PENDING.md notes only, whose items, 364, 365, 366, 367, NEW-17 and 21, are all in main's PENDING.md; checked by item, 2026-11-03) and `r65-2-after` (one PENDING.md note of 2026-11-01 on 371, in main's PENDING.md). Keep `r70` until its pull request is merged.
 1. github.com/vqx7/Ironlog/branches > tap the trash icon on every branch named above. These hold commits that are not in `main`, your call: `r42-look` (the restyle you turned down, pull request #32), `r31.2` (one commit pushed after its pull request #17 merged), `r65-1` and `r65-1-next` (r65.1, the look you closed unmerged, #63, 26 and 24 commits) and `r65-3` (the double-tap rule never shipped, NEW-29, one commit).
 2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged.
 
