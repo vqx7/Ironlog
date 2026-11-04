@@ -275,3 +275,24 @@ export function timerRefresh(): void {
   const el = bar();
   if (el && !el.hidden) tick();
 }
+
+/* Since r70 the rest timer is a ring in the top bar, unless Compact timer
+   puts it in a pill at the bottom, so a bar bounds the room below only when
+   it sits in the lower half of the screen. Read by its top alone, the ring
+   made the whole screen the bottom edge: an exercise dragged during a rest
+   scrolled the page (NEW-56), and on a phone with a notch, where the ring
+   starts below the status bar, a tick's effort strip scrolled up under the
+   header (NEW-58). Both bars are position:fixed, whose offsetParent is
+   always null, so getClientRects tells a shown bar from a hidden one. */
+/** The top of the bars along the bottom of the screen (the tab bar, and the rest timer when it is the compact pill), or the screen's bottom when none shows: what a dragged exercise and the effort strip stay above. */
+export function bottomBarsTop(): number {
+  const vh = window.innerHeight;
+  let bot = vh;
+  for (const id of ['tabs', 'timer']) {
+    const el = document.getElementById(id);
+    if (!el || el.hidden || !el.getClientRects().length) continue;
+    const r = el.getBoundingClientRect();
+    if (r.height && r.top > vh / 2) bot = Math.min(bot, r.top);
+  }
+  return bot;
+}

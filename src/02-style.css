@@ -1071,6 +1071,9 @@ button[data-tip],.lm[data-tip]{-webkit-user-select:none;user-select:none}
    an invisible pseudo-element, so a thumb at the gym does not miss them. */
 .tipi,.hb,.ssb,.ib.sm,.ir .ib,.chip,.wkbar .w,button.n{position:relative}
 .tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before,button.n::before,.bmus::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+/* A session card's muscle (r70, 172 b) sits beside the exercise's drag handle: its tap area grows to the right and up and down, not left over the handle, and the handle's 44 px sit above it (NEW-57). */
+.bmus::before{left:0;transform:translateY(-50%)}
+.bh .bgrip{z-index:1}
 /* Week days sit 3 px apart, so theirs only grows in height; wider would reach
    into the neighbouring day. */
 .wkbar .w::before{width:100%}

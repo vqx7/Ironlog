@@ -1013,7 +1013,7 @@ function movingCard(): TemplateResult | null {
     title: 'Lifts moving',
     sub: `${all.length} rising${one ? ` · ${all[0].wk} wks` : ''}`,
     help: 'moving',
-    helpBody: `The lifts whose trend is clearly rising, the ones Stats and the coach name, strongest first. Each line is its trend over ${one ? `the ${all[0].wk} weeks` : 'the weeks'} it covers, lighter and deload sessions left out; the set beside it is the heaviest of its latest session. Tap a lift to open it on Stats.`,
+    helpBody: `The lifts Stats and the coach call clearly rising, strongest first. Each line is the lift's trend over ${one ? `the ${all[0].wk} weeks` : 'the weeks'} it covers, without lighter or deload sessions; the set beside it is the heaviest of its latest session. Tap a lift to open it on Stats.`,
     body: html`${rows}`
   });
 }

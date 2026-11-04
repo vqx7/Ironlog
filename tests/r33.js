@@ -89,12 +89,16 @@ async function engineRun(page, cases, gym) {
         const tile = document.querySelector('.tile .tv'); const tileBox = tile ? [Math.round(tile.getBoundingClientRect().height), getComputedStyle(tile).fontSize, getComputedStyle(tile).backgroundColor] : null;
         L.ACT.startSession({ dataset: { day: '0' } }); L.ACT.tStart({ dataset: { b: '0' } }); await new Promise(r => setTimeout(r, 200));
         const t = document.getElementById('timer'), v = t.querySelector('.tv');
-        return { timer: Math.round(t.getBoundingClientRect().height), value: v ? [Math.round(v.getBoundingClientRect().height), getComputedStyle(v).fontSize, getComputedStyle(v).backgroundColor, getComputedStyle(v).padding] : null, tile: tileBox };
+        return { headH: Math.round(document.querySelector('header.top').getBoundingClientRect().height), timer: Math.round(t.getBoundingClientRect().height), value: v ? [Math.round(v.getBoundingClientRect().height), getComputedStyle(v).fontSize, getComputedStyle(v).backgroundColor, getComputedStyle(v).padding] : null, tile: tileBox };
       });
       await P.ctx.close(); return r;
     };
     const now = await measure(FILE), was = await measure('baselines/r32-1.html');
-    ok(JSON.stringify(now) === JSON.stringify(was) && now.value && now.tile, 'the rest timer and the At a glance numbers are the same size and look as in r32.1', { now, was });
+    // r70 draws the rest timer as a ring in the top bar on purpose (364 b-1, V's 2026-11-03 ask): from it the timer is
+    // held to that design, the top bar's height and a 26 px time with nothing around it, which a stray .tv style would
+    // still change; At a glance is still held to r32.1.
+    const ring = { timer: now.headH, value: [32, '26px', 'rgba(0, 0, 0, 0)', '0px'] };
+    ok(now.value && now.tile && now.timer === ring.timer && JSON.stringify(now.value) === JSON.stringify(ring.value) && JSON.stringify(now.tile) === JSON.stringify(was.tile), 'the At a glance numbers are the same size and look as in r32.1, and the rest timer is the ring r70 draws (the top bar\'s height, its time 26 px)', { now, was, ring });
   }
 
   // ---------- Part 1b: Your gym in the numbers ----------

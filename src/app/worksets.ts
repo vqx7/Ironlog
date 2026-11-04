@@ -95,7 +95,7 @@ import { readSets } from './importing';
 import type { TypedSet } from './importing';
 import { toast } from './toast';
 import { confirmBox, rerenderKeepScroll } from './page';
-import { startTimer } from './timer';
+import { bottomBarsTop, startTimer } from './timer';
 
 /* ---------- rows and blocks ---------- */
 
@@ -1058,18 +1058,11 @@ export function rirShowStrip(bi: number, si: number): void {
   if (!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`)) return;
   W.stripAt = { b: blkRef(bi), s: si };
   redraw();
-  // The rest bar appears on the same tap and can cover the strip; lift it into view above the bar and the tabs.
+  // The tab bar, and the rest timer as the compact pill, which appears on the same tap, can cover the strip: lift it into view above them.
   requestAnimationFrame(() => {
     const st = document.querySelector('.rirstrip');
     if (!st) return;
-    let lim = window.innerHeight;
-    for (const id of ['timer', 'tabs']) {
-      const el = document.getElementById(id);
-      if (el && !el.hidden) {
-        const t = el.getBoundingClientRect().top;
-        if (t > 0) lim = Math.min(lim, t);
-      }
-    }
+    const lim = bottomBarsTop();
     const r = st.getBoundingClientRect();
     if (r.bottom > lim - STRIP_ROOM_PX.edge)
       window.scrollBy({ top: r.bottom - lim + STRIP_ROOM_PX.gap, behavior: 'smooth' });

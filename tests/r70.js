@@ -22,6 +22,12 @@
 //      is saved on its date and shown in All-time bests. On r69 (b) fails only for Lifts moving, new in r70; (c) passes.
 //  10  384: a group of three (a tri-set) is one box and the rest starts only after a set of its third lift. A guard:
 //      it passes on r69.
+//  11  NEW-56 and NEW-58, run first on 9d6c82c (r70 before them), where both fail: with the rest ring in the top bar,
+//      a finger holding an exercise mid-screen leaves the page still (it scrolled 355 px) and one just above the tab
+//      bar scrolls it, as before the ring (with the compact pill, its top is the edge: a guard, passing there); and on
+//      a phone with a notch (the ring below a 47 px status bar) a tick's effort strip stays below the header (it went
+//      to -71 px, under it). NEW-57 (each handle 44 px beside the
+//      muscle's button) is tests/r29.js's handle check.
 // R70_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -379,6 +385,61 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
     }
     ok(tri.n === 3 && tri.box >= 1 && seq && !seq.a1 && !seq.a2 && seq.a3, '10. 384: a group of three lifts is one box, and the rest starts only after its third lift\'s set (a guard)', { tri, seq });
     await pg.close();
+  }
+
+  if (run(11)) {
+    const { touchDriver } = require('./h');
+    const wait = ms => new Promise(r2 => setTimeout(r2, ms));
+    // A session on demo data at 390 x 844 by touch, the first lift's sets ticked so the rest runs.
+    const session = async (o = {}) => {
+      const T = await open(FILE, { touch: true, w: 390, h: 844, clock: TODAY + 'T18:00:00' });
+      const pg = T.page;
+      if (o.css) await pg.addStyleTag({ content: o.css });
+      await pg.evaluate(c => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.timerCompact = c; L.state.settings.rirAsk = true; L.makeDemo(); localStorage.setItem('ironlog.v1.tipWake', '1'); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); }, !!o.compact);
+      await pg.click('.hero [data-act="startSession"]:not([data-light])'); await wait(200);
+      return T;
+    };
+    // Holds a finger on block 2's handle, moves it to y and keeps it there 1.2 s: how far the page scrolled meanwhile.
+    const hold = async (pg, tp, y) => {
+      await pg.evaluate(() => window.scrollTo(0, 0)); await wait(100);
+      await pg.locator('.bgrip[data-b="2"]').scrollIntoViewIfNeeded();
+      const gb = await pg.locator('.bgrip[data-b="2"]').boundingBox(); const x0 = gb.x + gb.width / 2, y0 = gb.y + gb.height / 2;
+      await tp('touchStart', x0, y0); await wait(60); await tp('touchMove', x0, y0 + 3); await wait(250);
+      // Measured once the drag has folded the list to one line each, which moves the page by itself.
+      const sy0 = await pg.evaluate(() => window.scrollY);
+      for (let k = 1; k <= 8; k++) { await tp('touchMove', x0, y0 + (y - y0) * k / 8); await wait(30); }
+      for (let k = 0; k < 30; k++) { await tp('touchMove', x0, y + (k % 2)); await wait(40); }
+      const sy1 = await pg.evaluate(() => window.scrollY);
+      await tp('touchEnd', x0, y); await wait(400);
+      return sy1 - sy0;
+    };
+    for (const compact of [false, true]) {
+      const T = await session({ compact });
+      const pg = T.page; const tp = await touchDriver(pg);
+      const n0 = await pg.evaluate(() => window.__ironlog.state.draft.ex[0].sets.length);
+      for (let i = 0; i < n0; i++) { const sel = `[data-act="sDone"][data-b="0"][data-s="${i}"]`; if (await pg.$(sel)) { await pg.tap(sel); await wait(80); await pg.evaluate(() => { const b = document.querySelector('.rirstrip [data-v="2"]'); if (b) b.click(); }); await wait(60); } }
+      await wait(2600);
+      const g = await pg.evaluate(() => { const t = document.getElementById('timer'), tb = document.getElementById('tabs'); return { on: !t.hidden, compact: t.classList.contains('compact'), timerTop: Math.round(t.getBoundingClientRect().top), tabsTop: Math.round(tb.getBoundingClientRect().top), vh: window.innerHeight }; });
+      const edge = compact ? g.timerTop : g.tabsTop;
+      const mid = await hold(pg, tp, Math.round(g.vh / 2));
+      const low = await hold(pg, tp, edge - 20);
+      ok(g.on && g.compact === compact && mid < 20 && low > 100, `11. NEW-56: ${compact ? 'with the compact pill' : 'with the rest ring in the top bar'}, an exercise held mid-screen leaves the page still and one just above ${compact ? 'the pill' : 'the tab bar'} scrolls it`, { g, mid, low });
+      ok(!T.errors.length, `11. no page errors (${compact ? 'pill' : 'ring'})`, T.errors);
+      await T.browser.close();
+    }
+    {
+      // A phone with a notch: env(safe-area-inset-top) is 0 in a desktop browser, so the 47 px it gives on such an
+      // iPhone's home-screen app is set on the two things it moves, the sticky top bar and the ring.
+      const T = await session({ css: 'header.top{top:47px !important}#timer:not(.compact){top:47px !important}' });
+      const pg = T.page;
+      await pg.evaluate(() => { const e = document.querySelector('[data-act="sDone"][data-b="1"][data-s="0"]'); e.scrollIntoView({ block: 'center' }); }); await wait(200);
+      const sy0 = await pg.evaluate(() => window.scrollY);
+      await pg.tap('[data-act="sDone"][data-b="1"][data-s="0"]'); await wait(900);
+      const r = await pg.evaluate(() => { const st = document.querySelector('.rirstrip'), h = document.querySelector('header.top'), t = document.getElementById('timer'); if (!st) return null; const a = st.getBoundingClientRect(); return { top: Math.round(a.top), bottom: Math.round(a.bottom), head: Math.round(h.getBoundingClientRect().bottom), ring: !t.hidden && !t.classList.contains('compact') ? Math.round(t.getBoundingClientRect().top) : null, tabs: Math.round(document.getElementById('tabs').getBoundingClientRect().top), sy: Math.round(window.scrollY) }; });
+      ok(r && r.ring === 47 && r.top >= r.head && r.bottom <= r.tabs, '11. NEW-58: on a phone with a notch, a tick\'s effort strip stays below the top bar and above the tabs, the ring shown below the status bar', { r, sy0 });
+      ok(!T.errors.length, '11. no page errors (notch)', T.errors);
+      await T.browser.close();
+    }
   }
 
   await P.page.close();

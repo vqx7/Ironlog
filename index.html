@@ -1083,6 +1083,9 @@ button[data-tip],.lm[data-tip]{-webkit-user-select:none;user-select:none}
    an invisible pseudo-element, so a thumb at the gym does not miss them. */
 .tipi,.hb,.ssb,.ib.sm,.ir .ib,.chip,.wkbar .w,button.n{position:relative}
 .tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before,button.n::before,.bmus::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+/* A session card's muscle (r70, 172 b) sits beside the exercise's drag handle: its tap area grows to the right and up and down, not left over the handle, and the handle's 44 px sit above it (NEW-57). */
+.bmus::before{left:0;transform:translateY(-50%)}
+.bh .bgrip{z-index:1}
 /* Week days sit 3 px apart, so theirs only grows in height; wider would reach
    into the neighbouring day. */
 .wkbar .w::before{width:100%}
@@ -10328,6 +10331,17 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const el = bar();
     if (el && !el.hidden) tick();
   }
+  function bottomBarsTop() {
+    const vh = window.innerHeight;
+    let bot = vh;
+    for (const id of ["tabs", "timer"]) {
+      const el = document.getElementById(id);
+      if (!el || el.hidden || !el.getClientRects().length) continue;
+      const r4 = el.getBoundingClientRect();
+      if (r4.height && r4.top > vh / 2) bot = Math.min(bot, r4.top);
+    }
+    return bot;
+  }
 
   // src/app/tips.ts
   var TIP_AT = { hoverMs: 350, holdMs: 480, movePx: 10, buzzMs: 8, gapPx: 8, edgePx: 12 };
@@ -14718,14 +14732,7 @@ ${more}`;
     requestAnimationFrame(() => {
       const st = document.querySelector(".rirstrip");
       if (!st) return;
-      let lim = window.innerHeight;
-      for (const id of ["timer", "tabs"]) {
-        const el = document.getElementById(id);
-        if (el && !el.hidden) {
-          const t4 = el.getBoundingClientRect().top;
-          if (t4 > 0) lim = Math.min(lim, t4);
-        }
-      }
+      const lim = bottomBarsTop();
       const r4 = st.getBoundingClientRect();
       if (r4.bottom > lim - STRIP_ROOM_PX.edge)
         window.scrollBy({ top: r4.bottom - lim + STRIP_ROOM_PX.gap, behavior: "smooth" });
@@ -18975,7 +18982,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       title: "Lifts moving",
       sub: `${all.length} rising${one ? ` · ${all[0].wk} wks` : ""}`,
       help: "moving",
-      helpBody: `The lifts whose trend is clearly rising, the ones Stats and the coach name, strongest first. Each line is its trend over ${one ? `the ${all[0].wk} weeks` : "the weeks"} it covers, lighter and deload sessions left out; the set beside it is the heaviest of its latest session. Tap a lift to open it on Stats.`,
+      helpBody: `The lifts Stats and the coach call clearly rising, strongest first. Each line is the lift's trend over ${one ? `the ${all[0].wk} weeks` : "the weeks"} it covers, without lighter or deload sessions; the set beside it is the heaviest of its latest session. Tap a lift to open it on Stats.`,
       body: b`${rows2}`
     });
   }
@@ -25367,14 +25374,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const zone = () => {
       const h3 = document.querySelector("header.top");
       const top = h3 ? h3.getBoundingClientRect().bottom : 0;
-      let bot = window.innerHeight;
-      for (const el of [document.getElementById("tabs"), document.getElementById("timer")]) {
-        if (el && !el.hidden && el.getClientRects().length) {
-          const r4 = el.getBoundingClientRect();
-          if (r4.height) bot = Math.min(bot, r4.top);
-        }
-      }
-      return [top, bot];
+      return [top, bottomBarsTop()];
     };
     const step = () => {
       raf = 0;
