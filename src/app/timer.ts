@@ -3,7 +3,7 @@
    session screen starts it on a tick and stops it with the session. */
 
 import { html, render } from 'lit-html';
-import { pad } from './util';
+import { pad, r1, PERCENT } from './util';
 import { KEY, log, prefDel, prefGet, prefSet } from './storage';
 import { state } from './store';
 import { toast } from './toast';
@@ -206,7 +206,7 @@ function timerBuild(): void {
   render(
     compact
       ? html`<span class="tv" data-t="v"></span><button data-act="tAdd" aria-label="Add 15 seconds">+15</button><button data-act="tStop" aria-label="Dismiss timer">✕</button>`
-      : html`<span data-t="l"></span><span class="tv" data-t="v"></span><span class="row"><button data-act="tAdd">+15s</button><button data-act="tStop">Dismiss</button></span>`,
+      : html`<svg class="tring" viewBox="0 0 44 44" aria-hidden="true"><circle class="trk" cx="22" cy="22" r="18"></circle><circle class="trp" data-t="p" cx="22" cy="22" r="18" pathLength="100" transform="rotate(-90 22 22)"></circle></svg><span class="tcol"><span class="tv" data-t="v"></span><span class="tlb" data-t="l"></span></span><span class="row"><button data-act="tSub" aria-label="Take 15 seconds off">−15</button><button data-act="tAdd" aria-label="Add 15 seconds">+15</button><button data-act="tStop" aria-label="Skip the rest">Skip</button></span>`,
     el
   );
 }
@@ -230,9 +230,12 @@ export function tick(): void {
     if (l.textContent !== lt) l.textContent = lt;
   }
   el.classList.toggle('done', !left);
-  // The bar along the top empties as the rest runs down; +15s lengthens it.
+  // The ring (and the compact pill's bar) empties as the rest runs down; +15 lengthens it, -15 shortens it.
   const tot = Math.max(timer.total || 0, left, 1);
-  el.style.setProperty('--tp', String(Math.max(0, Math.min(1, left / tot))));
+  const tp = Math.max(0, Math.min(1, left / tot));
+  el.style.setProperty('--tp', String(tp));
+  const ring = el.querySelector('[data-t="p"]');
+  if (ring) ring.setAttribute('stroke-dasharray', `${r1(tp * PERCENT)} ${PERCENT}`);
   if (!left) {
     if (timer.iv) clearInterval(timer.iv);
     timer.iv = null;
@@ -251,6 +254,12 @@ export function tick(): void {
 }
 /* Once the rest is over, +15 counts from now (not from the old end, which
    left it at 0:00) and the alert is armed again. */
+/** Takes 15 seconds off the rest (r70, 364 b-1); one taken to its end is done, as if it had run out. */
+export function timerSub(): void {
+  timer.end = Math.max(Date.now(), timer.end - ADD_S * TIMER_MS.second);
+  timerSave();
+  tick();
+}
 /** Adds 15 seconds to the rest. */
 export function timerAdd(): void {
   const was = Math.max(0, (timer.end - Date.now()) / TIMER_MS.second);

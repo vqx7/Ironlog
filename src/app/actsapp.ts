@@ -18,7 +18,7 @@ import { act, undoStep } from './act';
 import { isStandalone, installKind } from './env';
 import { distShow, distU } from './display';
 import { closeModal, confirmBox, openModal, render, rerenderKeepScroll } from './page';
-import { stopTimer, timerAdd } from './timer';
+import { stopTimer, timerAdd, timerSub } from './timer';
 import { toast, toastHide } from './toast';
 import { obActive } from './today';
 import type { Tap } from './workstate';
@@ -424,6 +424,9 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     document
       .querySelectorAll(`[data-act="help"][data-h="${k}"]`)
       .forEach(b => b.setAttribute('aria-expanded', String(on)));
+  },
+  tSub() {
+    timerSub();
   },
   tAdd() {
     timerAdd();

@@ -1125,6 +1125,21 @@ body.obmode #updbar{top:env(safe-area-inset-top,0px)}
 #timer.done{background:var(--volt);color:var(--on-volt)}
 #timer::before{content:"";position:absolute;left:0;top:0;height:3px;width:calc(var(--tp,1) * 100%);background:var(--on-dock);opacity:.85;transition:width .25s linear}
 #timer.done::before,#timer.compact::before{display:none}
+/* The rest as a ring in the top bar (r70, 364 b-1, V 2026-11-03: the ring without "that big horizontal block at the
+   bottom"): it takes the week bar's place while a rest runs, so it covers no row and stays as the page scrolls; the
+   account button stays beside it. Still the deep tint of the accent with white text (item 136), the full accent when done. */
+#timer:not(.compact){top:env(safe-area-inset-top,0px);bottom:auto;right:58px;height:var(--head-h);padding:0 6px 0 12px;gap:10px;justify-content:flex-start;border-radius:0 0 14px 0}
+#timer:not(.compact)::before{display:none}
+#timer .tring{flex:none;width:40px;height:40px}
+#timer .tring circle{fill:none;stroke-width:4.5}
+#timer .tring .trk{stroke:currentColor;opacity:.25}
+#timer .tring .trp{stroke:currentColor;stroke-linecap:round;transition:stroke-dasharray .25s linear}
+#timer.done .tring .trp{opacity:0}
+#timer .tcol{display:flex;flex-direction:column;min-width:0;flex:1 1 auto;line-height:1}
+#timer .tlb{font:600 12px var(--font);opacity:.85;margin-top:2px}
+#timer:not(.compact) .tv{font-size:26px}
+#timer:not(.compact) .row{display:flex;gap:6px;flex:none}
+#timer:not(.compact) button{min-width:44px;padding:0 8px}
 input.need{box-shadow:0 0 0 2px var(--yellow)}
 
 #timer.compact{left:auto;right:12px;bottom:calc(66px + env(safe-area-inset-bottom,0px));border-radius:999px;padding:4px 4px 4px 14px;gap:10px;box-shadow:0 0 0 2px color-mix(in srgb,var(--volt) 70%,transparent),0 4px 14px rgba(0,0,0,.25)}

@@ -9,6 +9,8 @@
 //   4  364 b-2: Today's Lifts moving names the lifts Stats and the coach call rising, in their order, three at most,
 //      each line built from the lift's own sessions (lighter ones out) and rising, each set the latest session's
 //      heaviest; a tap opens the lift on Stats; no rising lift, no section and no chip; first on a phone's saved order.
+//   5  364 b-1: the rest runs as a ring in the top bar, over the week bar and beside the account button, covering no
+//      row and staying as the page scrolls; -15, +15 and Skip work; done, it is the full accent; the compact pill stays.
 // R70_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -148,6 +150,46 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
     const none = await N.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); return { sec: !!document.querySelector('#view [data-sk="today:moving"]'), chip: [...document.querySelectorAll('#view .tabfoot button, #view [data-act="secShow"]')].some(b => /Lifts moving/.test(b.textContent)) }; });
     ok(!none.sec && !none.chip, '4. a new log, nothing rising: no Lifts moving and no chip for it (a guard)', none);
     await N.page.close(); await pg.close();
+  }
+
+  if (run(5)) {
+    const T = await open(FILE, { clock: TODAY + 'T18:00:00' });
+    const pg = T.page;
+    await pg.evaluate(() => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; L.makeDemo(); for (const x of L.state.sessions) delete x.demo; L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); });
+    await pg.click('#view .hero [data-act="startSession"]:not([data-light])'); await pg.waitForSelector('#view .cbtn');
+    await pg.click('#view .cbtn'); await pg.waitForSelector('#timer:not([hidden])');
+    const where = () => pg.evaluate(() => {
+      const t = document.getElementById('timer').getBoundingClientRect(), top = document.querySelector('.top').getBoundingClientRect(), wk = document.getElementById('wkbar').getBoundingClientRect();
+      const ss = document.getElementById('saveState').getBoundingClientRect();
+      const hit = document.elementFromPoint(ss.left + ss.width / 2, ss.top + ss.height / 2);
+      const ring = document.querySelector('#timer [data-t="p"]');
+      return { tTop: t.top, tBottom: t.bottom, headBottom: top.bottom, coversWk: t.left <= wk.left + 1 && t.right >= wk.left + wk.width * 0.6, acct: !!hit && !!hit.closest('#saveState'), dash: ring ? ring.getAttribute('stroke-dasharray') : null, tp: +document.getElementById('timer').style.getPropertyValue('--tp'), time: document.querySelector('#timer [data-t="v"]').textContent };
+    });
+    const a = await where();
+    ok(a.tTop <= 1 && a.tBottom <= a.headBottom + 1 && a.coversWk, '5. 364 b-1: the rest runs in the top bar, over the week bar, not across the screen\'s foot (r69: a bar at the bottom)', a);
+    ok(a.acct, '5. the account button beside it still takes a tap', a);
+    ok(!!a.dash && Math.abs(parseFloat(a.dash) - a.tp * 100) < 1.5, '5. the ring shows the share of the rest left', a);
+    await pg.evaluate(() => window.scrollTo(0, 700)); await new Promise(r => setTimeout(r, 200));
+    const b = await where();
+    ok(b.tTop <= 1 && b.tBottom <= b.headBottom + 1, '5. it stays in the top bar as the page scrolls', b);
+    const secs = t => { const [m, s2] = t.split(':').map(Number); return m * 60 + s2; };
+    const t0 = secs(b.time);
+    await pg.click('#timer [data-act="tSub"]'); await new Promise(r => setTimeout(r, 300));
+    const t1 = secs((await where()).time);
+    await pg.click('#timer [data-act="tAdd"]'); await new Promise(r => setTimeout(r, 300));
+    const t2 = secs((await where()).time);
+    ok(t0 - t1 >= 14 && t0 - t1 <= 16 && t2 - t1 >= 14 && t2 - t1 <= 16, '5. -15 takes 15 seconds off and +15 puts 15 back', { t0, t1, t2 });
+    await pg.evaluate(() => { window.__ironlog.timer.end = Date.now(); }); await new Promise(r => setTimeout(r, 600));
+    const d = await pg.evaluate(() => { const t = document.getElementById('timer'); return { done: t.classList.contains('done'), word: t.querySelector('[data-t="l"]').textContent }; });
+    ok(d.done && d.word === 'Rest done', '5. at the end it reads Rest done, in the full accent', d);
+    await pg.click('#timer [data-act="tStop"]');
+    ok(await pg.evaluate(() => document.getElementById('timer').hidden), '5. Skip ends the rest and the week bar shows again', null);
+    // The compact pill, chosen in Settings: still in the corner above the tabs (a guard).
+    await pg.evaluate(() => { window.__ironlog.state.settings.timerCompact = true; });
+    await pg.click('#view .cbtn:not(.on)'); await pg.waitForSelector('#timer:not([hidden])');
+    const c = await pg.evaluate(() => { const t = document.getElementById('timer').getBoundingClientRect(); return { compact: document.getElementById('timer').classList.contains('compact'), bottomGap: innerHeight - t.bottom, right: innerWidth - t.right }; });
+    ok(c.compact && c.bottomGap > 50 && c.right < 20, '5. the compact pill stays in the corner above the tabs (a guard)', c);
+    await pg.close();
   }
 
   await P.page.close();
