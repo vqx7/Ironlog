@@ -17,6 +17,11 @@
 //      set on that date, shown in All-time bests; as the lift's only history the next load starts from it, and with
 //      recent sessions they lead.
 //   8  172 b: a session card's muscle is one tap to the muscles worked on the body, its tap area 44 px.
+//   9  AUD-70 (b) and (c): Settings > Layout lists every section a lifter can hide, each drawn on its tab when shown,
+//      and every other section is a tab's core one; an old single set pasted into Import ("2024-03-01", "Bench 315x1")
+//      is saved on its date and shown in All-time bests. On r69 (b) fails only for Lifts moving, new in r70; (c) passes.
+//  10  384: a group of three (a tri-set) is one box and the rest starts only after a set of its third lift. A guard:
+//      it passes on r69.
 // R70_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -266,6 +271,65 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
       const m = await pg.evaluate(() => { const L = window.__ironlog; const m = L.ui.modal; return { kind: m && m.kind, ex: m && m.exId, first: L.state.draft.ex[0].exId, h: (document.getElementById('exMusH') || { textContent: '' }).textContent, figs: document.querySelectorAll('#modal .bm-wrap figure').length, main: document.querySelectorAll('#modal .ex-main').length }; });
       ok(m.kind === 'exMus' && m.ex === m.first && /^Muscles: /.test(m.h) && m.figs === 2 && m.main > 0, '8. the tap opens that lift\'s muscles on the body, front and back, its main muscle marked', m);
     }
+    await pg.close();
+  }
+
+  if (run(9)) {
+    const T = await open(FILE, { clock: TODAY + 'T18:00:00' });
+    const pg = T.page;
+    const r = await pg.evaluate(() => {
+      const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; L.makeDemo(); for (const x of L.state.sessions) delete x.demo;
+      L.state.settings.hidden = []; L.invalidate(); L.saveNow();
+      L.ui.tab = 'settings'; L.render(); for (let k = 0; k < 2; k++) { document.querySelectorAll('#view details').forEach(d => { d.open = true; }); L.render(); }
+      const listed = [...document.querySelectorAll('#view [data-act="hideToggle"]')].map(b => b.dataset.k);
+      const drawn = new Set(); const gripped = [];
+      for (const t of ['today', 'program', 'dash', 'history', 'settings']) { L.ui.tab = t; L.render(); document.querySelectorAll('#view [data-sk]').forEach(e => { drawn.add(e.dataset.sk); if (e.querySelector(':scope > summary > .sgrip')) gripped.push(e.dataset.sk); }); }
+      return { listed, drawn: [...drawn], gripped };
+    });
+    // Sections drawn only when there is something in them (an injury, cardio, something deleted).
+    const onlyWithContent = ['today:injuries', 'history:cardio', 'history:trash'];
+    // Each tab's core sections, never hidden by design: the routine and its days, the sessions, and Settings' own.
+    const core = ['program:routine', 'program:days', 'history:sessions', 'settings:profile', 'settings:general', 'settings:gym', 'settings:layout', 'settings:data', 'settings:help'];
+    const missingDrawn = r.listed.filter(k => !r.drawn.includes(k) && !onlyWithContent.includes(k));
+    const unlisted = r.gripped.filter(k => !r.listed.includes(k) && !core.includes(k));
+    ok(r.listed.length > 0 && !missingDrawn.length && !unlisted.length && r.listed.includes('today:moving'), '9. AUD-70 (b): Layout lists every section a lifter can hide, each drawn on its tab, Lifts moving among them; every other section is a core one', { missingDrawn, unlisted, listed: r.listed });
+    // (c) An old single set through Import.
+    await pg.evaluate(() => { const L = window.__ironlog; L.state.sessions = L.state.sessions.filter(x => !x.ex.some(e => e.exId === 'bench')); L.state.settings.unit = 'lb'; L.invalidate(); L.saveNow(); L.ACT.impOpen(); });
+    await pg.waitForSelector('#impText');
+    await pg.fill('#impText', '2024-03-01\nBench press 315x1'); await pg.click('[data-act="impRead"]'); await new Promise(r2 => setTimeout(r2, 300));
+    const unit = await pg.$('[data-act="impUnit"][data-v="lb"]'); if (unit) { await unit.click(); await new Promise(r2 => setTimeout(r2, 80)); }
+    await pg.click('[data-act="impGo"]'); await new Promise(r2 => setTimeout(r2, 400));
+    const got = await pg.evaluate(() => { const L = window.__ironlog; const s = L.state.sessions.find(x => x.date === '2024-03-01'); const b = s ? L.allTimeBests(s.ex[0].exId) : null; return { s: s ? s.ex.map(e => [e.exId, e.sets.map(z => [Math.round(z.w / 0.45359237), z.r])]) : null, best: b && b.heavy ? [Math.round(b.heavy.p.w / 0.45359237), b.heavy.p.r, b.heavy.date] : null }; });
+    ok(got.s && got.s.length === 1 && JSON.stringify(got.s[0][1]) === '[[315,1]]' && JSON.stringify(got.best) === JSON.stringify([315, 1, '2024-03-01']), '9. AUD-70 (c): "2024-03-01" then "Bench press 315x1" pasted into Import saves that one set on its date, and All-time bests shows it', got);
+    await pg.close();
+  }
+
+  if (run(10)) {
+    const T = await open(FILE, { clock: TODAY + 'T18:00:00' });
+    const pg = T.page;
+    // A blank session of three lifts linked as one group, each with three sets.
+    const r = await pg.evaluate(() => {
+      const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.autoDone = false; S.settings.timerMode = 'auto'; L.invalidate(); L.saveNow();
+      L.ACT.startSession({ dataset: { day: '0' } }); return !!L.state.draft;
+    });
+    const tri = await pg.evaluate(() => {
+      const L = window.__ironlog; const d = L.state.draft;
+      const mk = id => ({ ...L.newBlock(id, { sets: 3, repMin: 8, repMax: 12, rir: 2, rest: 90, ss: 'g1' }, {}) });
+      d.ex = ['bench', 'cableRow', 'dbLateral'].map(mk).filter(b => b && b.exId);
+      d.ex.forEach(b => { b.plan.ss = 'g1'; });
+      L.ui.tab = 'today'; L.render();
+      return { n: d.ex.length, letters: [...document.querySelectorAll('#view .block')].map(e => (e.querySelector('.ssl, .tag') || { textContent: '' }).textContent).slice(0, 3), box: document.querySelectorAll('#view .ssh').length };
+    });
+    const timerOn = () => pg.evaluate(() => !document.getElementById('timer').hidden);
+    const tick = async (b, sI) => { await pg.fill(`#view input[data-f="w"][data-b="${b}"][data-s="${sI}"]`, '50'); await pg.dispatchEvent(`#view input[data-f="w"][data-b="${b}"][data-s="${sI}"]`, 'change'); await pg.fill(`#view input[data-f="r"][data-b="${b}"][data-s="${sI}"]`, '10'); await pg.dispatchEvent(`#view input[data-f="r"][data-b="${b}"][data-s="${sI}"]`, 'change'); await pg.click(`#view [data-act="sDone"][data-b="${b}"][data-s="${sI}"]`); await new Promise(r2 => setTimeout(r2, 250)); };
+    let seq = null;
+    if (r && tri.n === 3) {
+      await tick(0, 0); const a1 = await timerOn();
+      await tick(1, 0); const a2 = await timerOn();
+      await tick(2, 0); const a3 = await timerOn();
+      seq = { a1, a2, a3 };
+    }
+    ok(tri.n === 3 && tri.box >= 1 && seq && !seq.a1 && !seq.a2 && seq.a3, '10. 384: a group of three lifts is one box, and the rest starts only after its third lift\'s set (a guard)', { tri, seq });
     await pg.close();
   }
 
