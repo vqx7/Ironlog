@@ -500,7 +500,7 @@ function layoutSettings(): TemplateResult {
     `Hidden sections are still tracked, and come back where they were. Each time ${APP_NAME} opens, every section starts folded except Sessions on History. Drag a section by its ⠿ to move it; each tab keeps its order.`,
     'About layout'
   )}</p>
-<div class="row"><button class=${dflt ? 'btn sm noted' : 'btn sm'} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Schedule and Weekly volume hidden on Plan, and the default order.">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
+<div class="row"><button class=${dflt ? 'btn sm noted' : 'btn sm'} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Weekly volume hidden on Plan, and the default order.">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
 ${HIDE_TABS.map(
   ([t, l]) =>
     html`<div class="hide-grp">

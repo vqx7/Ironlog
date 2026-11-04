@@ -391,8 +391,8 @@ const SCREENS = [
     const q = (f, a) => Q.page.evaluate(f, a);
     // A routine of one day, bench press planned at 4 sets of 6 to 10, and the sessions given (sets as [load, reps], then
     // the sets the plan gave it then, as Finish saves them on a day of the routine: 4 unless given).
-    const log = (planned, sets, freestyle) => q(([planned, sets, freestyle]) => {
-      const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg'; if (freestyle) s.settings.todayStart = 'free'; else delete s.settings.todayStart;
+    const log = (planned, sets) => q(([planned, sets]) => {
+      const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg';
       const R = { id: 'R58', name: 'R58', schedule: 'cycle', days: [{ id: 'D58', name: 'Push', rest: false, items: [{ uid: 'i58', exId: 'bench', sets: 4, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.5, ss: null }] }] };
       s.routines = [R]; s.activeRoutineId = 'R58'; s.draft = null; s.deloadWeek = null; s.injuries = [];
       // planned: bench on the routine's day; 'free': bench in Freestyle sessions; false: floor press, on no day of the routine, in Freestyle.
@@ -402,7 +402,7 @@ const SCREENS = [
       const I = L.IDX(); const xs = I.byEx[exId] || [];
       const g = L.suggest(exId, { sets: 4, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.5 }, {});
       return { short: xs.map(x => x.short || null), basis: g.basis || null, target: g.target, text: g.text, n: (I.exStats[exId] || {}).wN, prs: I.prs.filter(p => p.exId === exId && p.big).map(p => p.sid) };
-    }, [planned, sets, !!freestyle]);
+    }, [planned, sets]);
     const S = [['h1', '2026-10-01', 100, [8, 8, 8, 8]], ['h2', '2026-10-08', 100, [9, 9, 9]], ['h3', '2026-10-12', 100, [9, 9, 9]]];
     const pl = await log(true, S);
     ok(pl.short[1] === 'sets' && pl.short[2] === 'sets' && pl.basis === '2026-10-01' && /fewer sets/.test(pl.text || '') && pl.n === 3 && pl.prs.includes('h2'),
@@ -410,12 +410,8 @@ const SCREENS = [
     // Guards: a lift on no day of the routine reads its own sessions, as before, so two of 3 sets in a row are its usual; so does a planned lift done in Freestyle.
     const fr = await log(false, S);
     ok(fr.short[1] === 'sets' && !fr.short[2] && fr.basis == null, '7. a lift the routine does not plan (floor press, freestyle) reads its own sessions as before: two of 3 sets in a row are its usual, and the target comes from the last', fr);
-    // Since r70 (NEW-51, V 2026-11-03) a blank session of a planned lift is held to its plan's sets once a session did them,
-    // as a routine day's is; in Freestyle (Today opens blank, the routine not followed) the lifter's own sets still lead.
-    const fb = await log('free', S, true);
-    ok(fb.short[1] === 'sets' && !fb.short[2] && fb.basis == null, '7. bench, planned at 4, done in Freestyle the same way reads its own sessions too, as before', fb);
-    const fp = await log('free', S);
-    ok(fp.short[1] === 'sets' && fp.short[2] === 'sets' && fp.basis === '2026-10-01', '7. bench, planned at 4, done in blank sessions with the routine followed: both short of the plan, as on its day (NEW-51, r70)', fp);
+    const fb = await log('free', S);
+    ok(fb.short[1] === 'sets' && !fb.short[2] && fb.basis == null, '7. bench, planned at 4, done in Freestyle sessions the same way reads its own sessions too, as before', fb);
     // From the review of r58 (fails on 5eb8d03, passes on r57; the next case fails on both): six weeks of 3 sets, 100 to 112.5, done to a plan of 3,
     // then the plan raised to 4. Each session is read by its own plan, so none is short and the target comes from the last.
     const WK = ['2026-09-03', '2026-09-10', '2026-09-17', '2026-09-24', '2026-10-01', '2026-10-08'];

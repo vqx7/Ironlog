@@ -1,8 +1,8 @@
 // r70 (PENDING.md's tracker, rows NEW-51 and 379 to 384, 364 b-1, 364 b-2, 172 b and AUD-70), each written as
 // what a lifter expects and run first on r69 (`node tests/r70.js baselines/r69.html`), where each section fails:
-//   1  NEW-51: two blank sessions of one set in a row never turn a lift the routine plans at 3 sets into a
-//      1-set lift; in Freestyle and for a lift on no day of the routine the lifter's own sets still lead (V's
-//      rule of 2026-10-18), a plan of one set progresses, and one set on the routine's day reads fewer sets.
+//   1  NEW-51: Finish saves, with each lift of a blank session, the fewest sets the routine plans for it (none in
+//      Freestyle), so two blank one-set sessions in a row never make a 3-set lift a 1-set one; each session is read
+//      by what was saved with it, so a plan raised or Freestyle turned off later rereads nothing (R70-1, R70-2).
 //   2  381: a new install shows Plan's Schedule (cycle or fixed weekdays); a phone whose layout hides it keeps it hidden.
 //   3  382 (not built, so a guard): homeFolded, dashFolded and tidyV keep their place in the settings, since a phone on
 //      r69 and one on r70 must order settings alike or they rewrite them back and forth (tests/mixed.js; 339 n).
@@ -60,31 +60,58 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
   const base = [three(0, 205), three(1, 215), three(2, 225)];
 
   if (run(1)) {
-    // Bench planned at 3 sets: three sessions of 3 on the routine's day, then 225 x 8 alone in two blank sessions.
-    await log([...base, ses('b1', D(3), 'bench', [[225, 8, 2]]), ses('b2', add(D(3), 3), 'bench', [[225, 8, 2]])]);
+    // (a) Finish, by taps, on a blank session: the fewest sets the routine in use plans for the lift is saved with it
+    // (bench planned at 5 one day and 3 another: 3); in Freestyle nothing is saved, so the lifter's own sets lead.
+    const two = { id: 'Rb', name: 'Two days', schedule: 'weekly', days: [{ id: 'Da', name: 'A', wd: [1], items: [{ uid: 'a1', exId: 'bench', ...plan(5), ss: null }] }, { id: 'Db', name: 'B', wd: [4], items: [{ uid: 'b1', exId: 'bench', ...plan(3), ss: null }] }] };
+    const finishBlank = async free => {
+      const F = await open(FILE, { clock: TODAY + 'T18:00:00' });
+      const pg = F.page; const wait = ms => new Promise(r => setTimeout(r, ms));
+      await pg.evaluate(([R, free]) => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.autoDone = false; S.settings.todayStart = free ? 'free' : 'plan'; S.routines = [R]; S.activeRoutineId = R.id; S.sessions = []; L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); }, [two, free]);
+      if (free) await pg.click('#view [data-act="startFree"], #view .hero [data-act="startSession"]').catch(() => {});
+      else { await pg.click('#view .hero [data-act="startAltOpen"]'); await wait(200); await pg.click('#modal [data-act="altGo"][data-go="startFree"]'); }
+      await wait(300);
+      if ((await pg.evaluate(() => { const m = window.__ironlog.ui.modal; return m && m.kind; })) !== 'picker') await pg.click('#view [data-act="pickSession"]');
+      await wait(200); await pg.fill('#pickQ', 'bench press'); await wait(200); await pg.click('#modal [data-act="pickDo"][data-ex="bench"]'); await wait(300);
+      await pg.evaluate(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); await wait(100);
+      const sel = (f, k) => `#view input[data-f="${f}"][data-b="0"][data-s="${k}"]`;
+      await pg.fill(sel('w', 0), '255'); await pg.dispatchEvent(sel('w', 0), 'change'); await pg.fill(sel('r', 0), '4'); await pg.dispatchEvent(sel('r', 0), 'change');
+      await pg.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(250);
+      await pg.click('#view .fin-row .btn.primary'); await wait(400);
+      // Finish asks about the rows left; skipping them saves the one set.
+      for (const a of ['skip', 'mOk']) { const b = await pg.$(`#modal [data-act="${a}"], #modal .btn.primary`); if (b) { await b.click(); await wait(300); break; } }
+      const got = await pg.evaluate(() => { const L = window.__ironlog; const s = L.state.sessions[L.state.sessions.length - 1]; return s ? { free: s.free, ex: s.ex.map(e => ({ exId: e.exId, n: e.sets.length, ps: e.ps === undefined ? null : e.ps })) } : null; });
+      await pg.close();
+      return got;
+    };
+    const fin = await finishBlank(false);
+    ok(fin && fin.ex.length === 1 && fin.ex[0].ps === 3, '1. NEW-51: a blank session finished saves, with bench, the fewest sets the routine plans for it (5 one day, 3 another: 3) (r69: none)', fin);
+    const finFree = await finishBlank(true);
+    ok(finFree && finFree.ex.length === 1 && finFree.ex[0].ps === null, '1. in Freestyle (Today opens blank) nothing is saved, so the lifter\'s own sets lead (a guard)', finFree);
+
+    // (b) Read as saved: bench planned at 3 sets, three sessions of 3 on its day, then 225 x 8 alone in two blank sessions saved with 3.
+    await log([...base, ses('b1', D(3), 'bench', [[225, 8, 2]], { ps: 3 }), ses('b2', add(D(3), 3), 'bench', [[225, 8, 2]], { ps: 3 })]);
     const a = await read(3);
-    ok(a.short[3] === 'sets' && a.short[4] === 'sets', '1. NEW-51: two blank one-set sessions of a lift planned at 3 sets both read fewer sets (r69: the second read full)', a.short);
-    ok(Math.abs(lb(a.w) - 225) < 0.01 && /over 3 sets at 225 lb/.test(a.text) && !/in one set/.test(a.text), '1. NEW-51: the next target keeps the plan\'s 3 sets at 225 lb, never "Beat 8 reps in one set" (r69)', { lb: lb(a.w), text: a.text });
-    // The same two sessions on the routine's day (339 h, r58): fewer sets, as before.
-    await log([...base, ses('d1', D(3), 'bench', [[225, 8, 2]], { day: 1, ps: 3 }), ses('d2', add(D(3), 3), 'bench', [[225, 8, 2]], { day: 1, ps: 3 })]);
-    const b = await read(3);
-    ok(b.short[3] === 'sets' && b.short[4] === 'sets' && /over 3 sets at 225 lb/.test(b.text), '1. two one-set sessions on the routine\'s day read fewer sets, as since r58 (a guard)', b);
-    // Freestyle (Today opens blank, the routine not followed): the second one-set session in a row is the usual (V, 2026-10-18).
-    const fr = [0, 1, 2].map(i => ses('f' + i, D(i), 'bench', [[205 + 10 * i, 8, 2], [205 + 10 * i, 8, 2], [205 + 10 * i, 8, 2]]));
-    await log([...fr, ses('f3', D(3), 'bench', [[225, 8, 2]]), ses('f4', add(D(3), 3), 'bench', [[225, 8, 2]])], { free: true });
-    const c = await read(3);
-    ok(c.short[3] === 'sets' && c.short[4] === 'full', '1. in Freestyle, the second one-set session in a row is the usual, as V\'s rule says (a guard)', c.short);
-    // A lift on no day of the routine: the same.
-    const other = { id: 'Rb', name: 'Legs', schedule: 'weekly', days: [{ id: 'Db', name: 'Legs', wd: [2], items: [{ uid: 'u1', exId: 'squat', ...plan(3), ss: null }] }] };
-    await log([...fr, ses('f3', D(3), 'bench', [[225, 8, 2]]), ses('f4', add(D(3), 3), 'bench', [[225, 8, 2]])], { routine: other });
-    const c2 = await read(3);
-    ok(c2.short[3] === 'sets' && c2.short[4] === 'full', '1. a lift on no day of the routine: the second one-set session in a row is the usual (a guard)', c2.short);
-    // A plan of one hard set, by design: each session full, the target in one set.
-    await log([0, 1, 2].map(i => ses('o' + i, D(i), 'bench', [[205 + 10 * i, 8, 2]], { day: 1, ps: 1 })), { routine: routine(1) });
+    ok(a.short[3] === 'sets' && a.short[4] === 'sets' && Math.abs(lb(a.w) - 225) < 0.01 && /over 3 sets at 225 lb/.test(a.text) && !/in one set/.test(a.text), '1. two blank one-set sessions saved with 3 read fewer sets, and the target keeps 3 sets at 225 lb, never "Beat 8 reps in one set"', a);
+
+    // (c) The review of r70: each session read by what was saved with it, never by the plan or the mode as they are now.
+    // R70-1: blank sessions saved with 3, the plan raised to 4 later: none read short, the target from the last (245).
+    const rising = [ses('r0', D(0), 'bench', [[205, 8, 2], [205, 8, 2], [205, 8, 2], [205, 8, 2]], { ps: 3 }), ...[1, 2, 3, 4].map(k => ses('r' + k, add(D(0), 7 * k - 3), 'bench', [[205 + 10 * k, 8, 2], [205 + 10 * k, 8, 2], [205 + 10 * k, 8, 2]], { ps: 3 }))];
+    await log(rising, { routine: routine(4) });
+    const r1 = await read(4);
+    ok(r1.short.slice(1).every(x => x === 'full') && Math.abs(lb(r1.w) - 245) < 0.01, '1. R70-1: blank sessions saved with 3, the plan raised to 4 later: none read short, the target stays at 245 lb', r1);
+    // R70-2: Freestyle sessions (none saved), then Freestyle turned off: they still read their own sets.
+    const fr = [ses('f0', D(0), 'bench', [[205, 8, 2], [205, 8, 2], [205, 8, 2]]), ...[1, 2, 3, 4].map(k => ses('f' + k, add(D(0), 7 * k - 3), 'bench', [[205 + 10 * k, 8, 2], [205 + 10 * k, 8, 2]]))];
+    await log(fr, { free: true });
+    const f1 = await read(3);
+    await log(fr);
+    const f2 = await read(3);
+    ok(JSON.stringify(f1.short) === JSON.stringify(f2.short) && Math.abs(lb(f2.w) - lb(f1.w)) < 0.01 && Math.abs(lb(f2.w) - 245) < 0.01, '1. R70-2: Freestyle sessions read the same after Freestyle is turned off, the target at 245 lb', { f1, f2 });
+
+    // (d) Guards: a plan of one set progresses; one PR attempt on a blank day is a Weight PR and keeps the target.
+    await log([0, 1, 2].map(k => ses('o' + k, D(k), 'bench', [[205 + 10 * k, 8, 2]], { day: 1, ps: 1 })), { routine: routine(1) });
     const d = await read(1);
-    ok(d.short.every(s => s === 'full') && /in one set at 225 lb/.test(d.text), '1. a plan of one set: every session full, the target in one set (a guard)', d);
-    // One heavy set on a blank day after full sessions: a Weight PR, read fewer sets, the target from the last full session.
-    await log([...base, ses('p1', D(3), 'bench', [[255, 4, 0]])]);
+    ok(d.short.every(x => x === 'full') && /in one set at 225 lb/.test(d.text), '1. a plan of one set: every session full, the target in one set (a guard)', d);
+    await log([...base, ses('p1', D(3), 'bench', [[255, 4, 0]], { ps: 3 })]);
     const e = await ev(() => { const L = window.__ironlog; const I = L.IDX(); return { prs: I.prs.filter(p => p.exId === 'bench' && p.sid === 'p1').map(p => p.type), short: (I.byEx.bench || []).map(x => x.short || 'full') }; });
     const et = await read(3);
     ok(e.prs.includes('Weight PR') && e.short[3] === 'sets' && /over 3 sets at 225 lb/.test(et.text), '1. one PR attempt on a blank day: a Weight PR, fewer sets, the target kept at 225 lb for 3 sets (a guard)', { e, text: et.text });
@@ -96,6 +123,9 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
     const fresh = await F.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'program'; L.render(); return { hidden: L.state.settings.hidden.slice(), shown: !!document.querySelector('#view [data-sk="program:schedule"]'), select: !!document.querySelector('#view [data-bind="rSchedule"]') }; });
     ok(!fresh.hidden.includes('program:schedule') && fresh.shown && fresh.select, '2. 381: a new install shows Plan\'s Schedule section, its cycle or fixed weekdays choice on the page (r69: hidden)', fresh);
     ok(['today:tiles', 'today:coach', 'today:body', 'program:pvol'].every(k => fresh.hidden.includes(k)), '2. the other four sections a new install hides stay hidden (a guard)', fresh.hidden);
+    // R70-4, the review of r70: Layout's Default layout tip says what the button does now.
+    const tip = await F.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); const b = document.querySelector('[data-act="layoutDefault"]'); return b ? b.getAttribute('data-tip') : null; });
+    ok(!!tip && !/Schedule/.test(tip) && /Weekly volume hidden on Plan/.test(tip), '2. R70-4: the Default layout tip no longer says Schedule is hidden', tip);
     // A phone's own layout with Schedule hidden, saved and opened again: it stays hidden.
     const kept = await F.page.evaluate(() => { const L = window.__ironlog; const S = L.state; S.settings.hidden = ['program:schedule']; L.state = L.normalize(S); L.saveNow(); L.render(); return { hidden: L.state.settings.hidden.slice(), shown: !!document.querySelector('#view [data-sk="program:schedule"]') }; });
     ok(kept.hidden.includes('program:schedule') && !kept.shown, '2. a phone whose layout hides Schedule keeps it hidden (a guard)', kept);
@@ -147,6 +177,23 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
       const w320 = await pg.evaluate(() => { const L = window.__ironlog; L.state.settings.theme = 'light'; L.render(); return document.documentElement.scrollWidth; });
       ok(w320 <= 320, '4. no sideways scroll at 320 px', w320);
     }
+    // R70-3, the review of r70: a lift on a heavy day (3-5) and a light day (8-12), both rising. Its line is the trend's own
+    // readings (one range, the trend's weeks), so it rises and has as many points as the trend reads; r70 first drew every
+    // session in the weeks, both ranges, a zigzag ending lower than it began.
+    const two = await open(FILE, { clock: TODAY + 'T18:00:00' });
+    const tw = await two.page.evaluate(([T]) => {
+      const add = (d, n) => { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
+      const ses = (id, date, rr, w, r) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'backSquat', rr, sets: [0, 1, 2].map(() => ({ w, r, rir: 2, warm: false, drop: false })) }] });
+      const S = [];
+      for (let i = 0; i < 5; i++) { S.push(ses('h' + i, add(T, -35 + 7 * i), [3, 5], 140 + 2.5 * i, 5)); S.push(ses('l' + i, add(T, -32 + 7 * i), [8, 12], 100 + 2.5 * i, 10)); }
+      const L = window.__ironlog; const St = L.state; St.settings.onboarded = true; St.settings.unit = 'kg'; St.sessions = S; L.state = L.normalize(St); L.invalidate(); L.saveNow();
+      L.ui.tab = 'today'; L.ui.folds['today:moving'] = true; L.render();
+      const row = document.querySelector('#view .mvrow[data-ex="backSquat"]');
+      const ys = row && row.querySelector('polyline') ? row.querySelector('polyline').getAttribute('points').split(' ').map(q => +q.split(',')[1]) : null;
+      return { moving: L.movers().some(m => m.id === 'backSquat'), ys, wN: L.IDX().exStats.backSquat.wN };
+    }, [TODAY]);
+    ok(tw.moving && tw.ys && tw.ys.length === tw.wN && tw.ys.every((y, k) => k === 0 || y <= tw.ys[k - 1] + 0.01) && tw.ys[tw.ys.length - 1] < tw.ys[0], '4. R70-3: a lift rising on a heavy and a light day draws its trend\'s own sessions, one range, rising, as many points as the trend reads', tw);
+    await two.page.close();
     // A new log: nothing rising, so no section and no chip.
     const N = await open(FILE, { clock: TODAY + 'T18:00:00' });
     const none = await N.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); return { sec: !!document.querySelector('#view [data-sk="today:moving"]'), chip: [...document.querySelectorAll('#view .tabfoot button, #view [data-act="secShow"]')].some(b => /Lifts moving/.test(b.textContent)) }; });

@@ -375,12 +375,34 @@ export function planSetsOf(
   return it && Number.isInteger(it.sets) && it.sets >= 1 ? it.sets : undefined;
 }
 
+/* The fewest sets a routine plans for a lift on any of its days (NEW-51,
+   r70): what a blank session of the lift is held to. A lift planned at 5 sets
+   one day and 3 another is held to 3, so a blank session never asks more sets
+   than some day of the routine does (the review of r70, R70-1: held to the
+   first day's 5, a blank session of 3 read short). */
+/** The fewest sets any day of the routine with this id plans for a lift; undefined when it plans none or is gone. */
+function fewestPlanSets(routines: Parameters<typeof planSetsOf>[0], id: string, exId: string): number | undefined {
+  const R = routines.find(r => r.id === id);
+  let n: number | undefined;
+  for (const day of R ? R.days : [])
+    for (const it of day.items)
+      if (it.exId === exId && Number.isInteger(it.sets) && it.sets >= 1 && (n === undefined || it.sets < n))
+        n = it.sets;
+  return n;
+}
+
 /* A workout's exercises as Finish saves them, each lift on a day of a
    routine given the sets its plan gives it (planSetsOf), last, as normalize
-   writes it. None in Freestyle or with no day, and none on an edit, which
-   keeps the sets saved with the session (Finish carries them over with the
-   fields it does not rebuild, keepExtra). */
-/** The exercises given, each with its plan's sets where the workout is on a day of a routine, as new records (the ones given are not changed). */
+   writes it. Since r70 a blank session (no day) records them too, while the
+   routine is followed: each lift the routine in use plans is given the fewest
+   sets its days plan for it (fewestPlanSets), so two one-set sessions in a
+   row never make it a 1-set lift (NEW-51); none in Freestyle, where Today
+   opens blank and the lifter's own sets lead. Recorded once, at Finish, so a
+   plan or the mode changed later never rereads the sessions before it (the
+   r58 review, and R70-1 and R70-2 in r70's). None on an edit, which keeps the
+   sets saved with the session (Finish carries them over with the fields it
+   does not rebuild, keepExtra). */
+/** The exercises given, each with the sets its plan gives it (a day's, or the fewest for a blank session while the routine is followed), as new records (the ones given are not changed). */
 export function withPlanSets<B extends { exId: string; ps?: number | undefined }>(
   ex: readonly B[],
   d: {
@@ -390,9 +412,17 @@ export function withPlanSets<B extends { exId: string; ps?: number | undefined }
     routineId: string;
     part?: 2 | undefined;
   },
-  routines: Parameters<typeof planSetsOf>[0]
+  routines: Parameters<typeof planSetsOf>[0],
+  blank: { routineId: string; freestyle: boolean }
 ): B[] {
-  if (d.editingId || d.free || !d.dayId) return [...ex];
+  if (d.editingId) return [...ex];
+  if (d.free || !d.dayId) {
+    if (blank.freestyle) return [...ex];
+    return ex.map(b => {
+      const n = fewestPlanSets(routines, blank.routineId, b.exId);
+      return n ? { ...b, ps: n } : b;
+    });
+  }
   return ex.map(b => {
     const n = planSetsOf(routines, d.routineId, d.dayId, b.exId, partOf(d));
     return n ? { ...b, ps: n } : b;

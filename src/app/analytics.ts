@@ -23,16 +23,7 @@ import type {
 } from './model';
 import { MK, SLOW_RECOVERY, bwShare, isCompound, loadMode, noE1 } from './library';
 import { addDays, daysBetween, median, r1, weekStart, EPS, EPS_SAME, WEEK_DAYS, PERCENT } from './util';
-import {
-  EXIn,
-  activeRoutineIn,
-  exInjuryIn,
-  freeModeIn,
-  rirHalfOnIn,
-  sinceNew,
-  sortedSessionsIn,
-  stretchesOf
-} from './model';
+import { EXIn, activeRoutineIn, exInjuryIn, rirHalfOnIn, sinceNew, sortedSessionsIn, stretchesOf } from './model';
 import {
   BACK_DAYS,
   GROW_PCT,
@@ -351,15 +342,10 @@ export function IDXIn(M: Model): Idx {
   // Each session's day, for the plan of a lift on it (idxShort's cap on its usual sets).
   const dayOf: Record<string, string | null | undefined> = {};
   for (const x of sessions) dayOf[x.id] = x.dayId;
-  idxShort(
-    byEx,
-    (id, x) => {
-      const p = routinePlanIn(M, id, null, dayOf[x.sid]);
-      return p ? +p.sets : null;
-    },
-    // Held only while the routine is followed: in Freestyle (Today opens blank) the lifter's own sets lead.
-    x => !dayOf[x.sid] && !freeModeIn(M)
-  );
+  idxShort(byEx, (id, x) => {
+    const p = routinePlanIn(M, id, null, dayOf[x.sid]);
+    return p ? +p.sets : null;
+  });
   const lightWk = idxLightWeeks(sessions, byEx, M.s.deloadWeek);
   const prs: Pr[] = [];
   const exStats: Record<string, ExStat> = {};
@@ -902,15 +888,14 @@ function atUsualWork(x: Exposure, ref: readonly Exposure[]): boolean {
    later never rereads the sessions before it (the r58 review: read by the
    plan as it is now, a plan raised from 3 sets to 4 marked every session of
    3 short and took the target back to the first of them). A session with
-   none recorded on a day of the routine (one saved before r58) reads its
-   own sets, as before, so no saved history is read again. A blank session
-   (Freestyle, or one started blank) of a lift the routine plans is held to
-   the plan's sets the same way, once an earlier session did that many
-   (NEW-51, r70: two blank sessions of one set in a row made a lift planned
-   at 3 sets a 1-set lift, its target "Beat 8 reps in one set"); in
-   Freestyle, where Today opens blank and the routine is not followed, and for
-   a lift on no day of the routine, a session reads its own sets, so a lifter
-   who settles on fewer sets is followed. On a lift labelled
+   none recorded (Freestyle, a lift on no day of the routine, one saved
+   before r58, a blank session saved before r70) reads its own sets, as
+   before. Since r70 a blank session records them too (NEW-51): Finish saves,
+   on a lift the routine plans, the fewest sets any of its days plans for
+   it, unless Today opens blank (Freestyle), so two one-set PR attempts in a
+   row never make a 3-set lift a 1-set one, and, as on a routine's day, each
+   session is read by what was saved with it, never by the plan or the mode
+   as they are now (the review of r70, R70-1 and R70-2). On a lift labelled
    lighter or a deload but done at its usual load
    and reps (`tag`, step 2), the label cut the plan, so its usual sets are
    its own, and if it falls short it is not one of the sessions later ones
@@ -920,11 +905,7 @@ function atUsualWork(x: Exposure, ref: readonly Exposure[]): boolean {
    reading, as a trend reads it (r34.2, loadUp); a step too big is the
    engine's to read (sgBelowRange). The first session of a lift in a range,
    or back after a break (afterBreak), is its own usual. */
-function idxShort(
-  byEx: Record<string, Exposure[]>,
-  planSets: (id: string, x: Exposure) => number | null,
-  blank: (x: Exposure) => boolean
-): void {
+function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string, x: Exposure) => number | null): void {
   for (const id of Object.keys(byEx)) {
     const normal: Exposure[] = [];
     let last: Exposure | null = null;
@@ -936,9 +917,7 @@ function idxShort(
       const before = prior.slice(-USUAL_BEFORE);
       const cap = before.length && !x.tag ? planSets(id, x) : null;
       // The sets to reach (339 h, r58): those its plan gave it when saved (ps), once an earlier session did as many.
-      // A blank session of a planned lift is held to the plan's sets (NEW-51, r70).
-      const reach = x.ps ?? (cap != null && blank(x) ? cap : null);
-      const hold = !x.tag && reach != null && prior.some(q => setsAt(q, q.topW) >= reach) ? reach : null;
+      const hold = !x.tag && x.ps != null && prior.some(q => setsAt(q, q.topW) >= (x.ps || 0)) ? x.ps : null;
       const sh = before.length ? shortOf(x, before, cap, hold) : undefined;
       if (sh) x.short = sh;
       if (!(x.tag && x.short)) normal.push(x);
@@ -1716,6 +1695,7 @@ function idxLiftIn(
     fresh,
     byBand,
     wN: w.length,
+    trendTv: w.map(x => x.tv),
     wSpan: w.length ? daysBetween(w[0].date, w[w.length - 1].date) : 0,
     last: real.length ? real[real.length - 1] : cur[cur.length - 1],
     best: bestCur,

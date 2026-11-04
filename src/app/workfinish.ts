@@ -29,7 +29,9 @@ import {
   rirHalfOn,
   U,
   fmtW,
-  sessModelMin
+  sessModelMin,
+  activeRoutine,
+  freeMode
 } from './live';
 import { state, ui } from './store';
 import { joinAdjacent, savedEx, draftCardio, effTarget, withNew, picsLast, typedMin } from './session';
@@ -242,7 +244,13 @@ export function finishNow(): void {
   const d = state.draft;
   if (!d) return;
   const ex = picsLast(
-    withNew(withPlanSets(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d, state.routines), d)
+    withNew(
+      withPlanSets(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d, state.routines, {
+        routineId: activeRoutine().id,
+        freestyle: freeMode()
+      }),
+      d
+    )
   );
   const cardio = draftCardio(d).map(c => cleanCardio(c));
   if (!ex.length) {

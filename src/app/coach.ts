@@ -20,7 +20,7 @@ import { IDXIn, stallWordsIn } from './analytics';
 import { ON_PLAN_TIP, actualAvg4In, avgWaitIn, muscleStatusIn, recentLighterIn, AVG_WEEKS } from './weeks';
 import { GROW_PCT, atLoad, isWork, lighter, STALL, LIGHT_SHARE, DELOAD_GAP_DAYS, TREND_WEEKS } from './formulas';
 import { MK, ML, isCompound, noE1 } from './library';
-import { addDays, andList, r1, weekStart, PERCENT, pctOf, WEEK_DAYS } from './util';
+import { andList, r1, weekStart, PERCENT, pctOf, WEEK_DAYS } from './util';
 import { effScale, LIGHT_RIR } from './format';
 import { belowMin } from './volume';
 import { plannedPerWeek, plannedSetsIn } from './routines';
@@ -70,25 +70,21 @@ interface Mover {
 }
 /* Today's Lifts moving (364 b-2, r70, V 2026-11-03: "if they're accurate and
    not distracting"): the lifts Stats' summary and the coach call clearly
-   rising (moversIn), in their order. Each line is the trend's own reading
-   of each session (`tv`, what the rise is fitted to) over the weeks its
-   trend covers, lighter and deload sessions left out as the trend leaves
-   them out, so the line rises exactly where the reading does. A load alone
-   was tried first and drew a flat line with one step on a lift whose reps
-   rise between loads (seen on the built page, r70). The number beside it is a set the lifter did, never an estimate:
+   rising (moversIn), in their order. Each line is exactly what the trend is
+   fitted to (ExStat.trendTv: the current range's sessions within the
+   trend's weeks, each one's reading), so it rises where the reading does. A
+   load alone was tried first and drew a flat line with one step on a lift
+   whose reps rise between loads (seen on the built page); every session in
+   the trend's weeks mixed a heavy day's and a light day's readings into a
+   zigzag that fell while the lift rose (the review of r70, R70-3). The number beside it is a set the lifter did, never an estimate:
    the latest session's heaviest working set. */
 /** The rising lifts, each with its line and its latest heaviest set. */
 export function liftsMovingIn(M: Model): Mover[] {
   const I = IDXIn(M);
-  const today = M.today();
   return moversIn(M).map(({ id, wk }) => {
     const all = I.byEx[id] || [];
-    const from = addDays(today, -wk * WEEK_DAYS);
-    const line: number[] = [];
-    for (const x of all) {
-      if (x.date < from || lighter(x)) continue;
-      if (x.tv != null) line.push(x.tv);
-    }
+    const st = I.exStats[id];
+    const line = st ? st.trendTv.slice() : [];
     const last = all[all.length - 1];
     let top: Mover['top'] = null;
     for (const p of last ? last.pts : [])

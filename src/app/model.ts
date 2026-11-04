@@ -117,6 +117,8 @@ export interface ExStat {
   slope: number | null;
   slopeSe: number | null;
   moving: boolean;
+  /** The readings the trend is fitted to, oldest first: its sessions in the current range within the trend's weeks (trendW), each one's tv; Today's Lifts moving draws them (r70, R70-3). */
+  trendTv: number[];
   falling: boolean;
   rrIn: [number, number] | null;
   holdRR: [number, number][];
