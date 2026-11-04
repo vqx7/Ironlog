@@ -7,6 +7,8 @@
 //      compact pill stays (a guard).
 //   2  385: an exercise's ✓ Done stands out: the accent's outline and colour, at the right of its row, 44 px tall.
 //   3  364 b-5: Lifts moving's rows in a card of their own, each 54 px, its line 80 by 24 at 2.5 px, its set in bold.
+//   4  364 b-1: a reload mid-rest brings the card back with its time and what comes next; Skip forgets both, so the
+//      next session's rest names its own next.
 // R71_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -107,6 +109,21 @@ async function session(o = {}) {
       ok(r.h.every(x => x >= 54) && JSON.stringify(r.line) === '[80,24]' && r.stroke === 2.5 && r.setW >= 700, `3. (${theme}) each row 54 px, its line 80 by 24 drawn at 2.5 px, its set in bold`, r);
       await T.browser.close();
     }
+  }
+
+  if (run(4)) {
+    const T = await session();
+    const pg = T.page;
+    await pg.tap('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(500);
+    const before = await pg.evaluate(() => document.querySelector('#timer [data-t="l"]').textContent.replace(/\s/g, ' '));
+    await pg.reload(); await pg.waitForFunction(() => window.__ironlog); await wait(800);
+    const after = await pg.evaluate(() => { const t = document.getElementById('timer'); return { shown: !t.hidden, label: (t.querySelector('[data-t="l"]') || {}).textContent, time: (t.querySelector('[data-t="v"]') || {}).textContent }; });
+    ok(before === 'Rest · next set 2' && after.shown && (after.label || '').replace(/\s/g, ' ') === before && /^\d:\d\d$/.test(after.time || ''), '4. a reload mid-rest brings the card back with its time and "Rest · next set 2"', { before, after });
+    await pg.click('#timer [data-act="tStop"]'); await wait(200);
+    const gone = await pg.evaluate(() => Object.keys(localStorage).filter(k => /timer/i.test(k)));
+    ok(!gone.length, '4. Skip forgets the rest, its next included', gone);
+    ok(!T.errors.length, '4. no page errors', T.errors);
+    await T.browser.close();
   }
 
   console.log(fails.length ? `\n${fails.length} FAIL` : '\nALL PASS');
