@@ -2,7 +2,8 @@
 // what a lifter expects and run first on r69 (`node tests/r70.js baselines/r69.html`), where each section fails:
 //   1  NEW-51: Finish saves, with each lift of a blank session, the sets of the day nearest to what was done (none in
 //      Freestyle), so two blank one-set sessions in a row never make a 3-set lift a 1-set one; each session is read
-//      by what was saved with it, so a plan raised or Freestyle turned off later rereads nothing (R70-1, R70-2, R70-5).
+//      by what was saved with it, so a plan raised or Freestyle turned off later rereads nothing (R70-1, R70-2, R70-5);
+//      only days that plan it in the session's rep range count, all days when none does (R70-6).
 //   2  381: a new install shows Plan's Schedule (cycle or fixed weekdays); a phone whose layout hides it keeps it hidden.
 //   3  382 (not built, so a guard): homeFolded, dashFolded and tidyV keep their place in the settings, since a phone on
 //      r69 and one on r70 must order settings alike or they rewrite them back and forth (tests/mixed.js; 339 n).
@@ -99,6 +100,13 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
     const near = await ev(R => { const L = window.__ironlog; const d = { free: true, dayId: null, routineId: '' };
       return [1, 3, 4, 5].map(n => { const ex = [{ exId: 'bench', sets: Array.from({ length: n }, () => ({ w: 100, r: 8, warm: false, drop: false })) }]; const o = L.withPlanSets(ex, d, [R], { routineId: R.id, freestyle: false }); return o[0].ps === undefined ? null : o[0].ps; }); }, two);
     ok(JSON.stringify(near) === '[3,3,3,5]', '1. R70-5: a blank session of 1, 3, 4 or 5 bench sets (planned at 5 and 3) saves 3, 3, 3 and 5', near);
+    // R70-6, the review of ecd1d32: only the days that plan the lift in the session's own rep range count, all days when
+    // none does, as a session is read only against sessions of its range: 3 heavy sets (planned 5 x 4-6 on one day,
+    // 3 x 8-12 on another) were saved with the light day's 3, read in full, and the heavy day's load went up.
+    const ranged = { ...two, days: [{ ...two.days[0], items: [{ ...two.days[0].items[0], sets: 5, repMin: 4, repMax: 6 }] }, { ...two.days[1], items: [{ ...two.days[1].items[0], sets: 3, repMin: 8, repMax: 12 }] }] };
+    const byRange = await ev(R => { const L = window.__ironlog; const d = { free: true, dayId: null, routineId: '' };
+      return [[4, 6], [8, 12], [6, 10], null].map(rr => { const ex = [{ exId: 'bench', rr, sets: Array.from({ length: 3 }, () => ({ w: 225, r: 6, warm: false, drop: false })) }]; const o = L.withPlanSets(ex, d, [R], { routineId: R.id, freestyle: false }); return o[0].ps === undefined ? null : o[0].ps; }); }, ranged);
+    ok(JSON.stringify(byRange) === '[5,3,3,3]', '1. R70-6: 3 sets of a lift planned 5 x 4-6 and 3 x 8-12 save 5 when done at 4-6, 3 at 8-12, and the nearest of all (3) at a range no day plans or none', byRange);
     const five = [0, 1, 2].map(k => ses('v' + k, D(k), 'bench', [[225, 8, 2], [225, 8, 2], [225, 8, 2], [225, 8, 2], [225, 8, 2]], { ps: 5 }));
     await log([...five, ses('v3', D(3), 'bench', [[225, 8, 2], [225, 8, 2], [225, 8, 2], [225, 5, 2], [225, 4, 2]], { ps: 5 })], { routine: two });
     const v = await read(5);
@@ -279,6 +287,11 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
     if (btn) {
       await pg.evaluate(() => document.querySelector('#view [data-act="oldBestOpen"]').click()); await wait(200);
       const h = await pg.evaluate(() => (document.getElementById('pastH') || { textContent: '' }).textContent);
+      // R70-7, the review of ecd1d32: the tip says what the app does with it. An old best is a set like any other, so a
+      // later set is a PR only when it is stronger (a 315 x 1 from 2024 makes a later 255 x 5 no Weight PR); the tip had
+      // said an old best never stops a new set counting as one.
+      const otip = await pg.evaluate(() => { const b = document.querySelector('#modal [data-tip]'); return b ? b.getAttribute('data-tip') : ''; });
+      ok(!/never stops/.test(otip) && /a later set is a PR only when it is stronger/.test(otip), '7. R70-7: the sheet\'s tip says a later set is a PR only when it is stronger than the old best', otip);
       await pg.fill('#modal input[data-pbind="date"]', '2024-03-01'); await pg.dispatchEvent('#modal input[data-pbind="date"]', 'change'); await wait(150);
       await pg.click('#modal [data-act="pastGo"]'); await wait(300);
       const pk = await pg.evaluate(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'picker' ? m.title : null; });
