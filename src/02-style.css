@@ -1002,13 +1002,15 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .headline{font-size:15px;line-height:1.5;margin:0 0 8px;color:var(--ink)}
 .summary{padding:2px 0!important;background:var(--surface)!important;border:1px solid var(--card-b)!important;border-radius:var(--r-lg)!important;margin-top:12px!important}
 .srow{-webkit-appearance:none;appearance:none;display:grid;grid-template-columns:8px 64px minmax(0,1fr) 10px;gap:10px;align-items:start;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:13px 16px;font:inherit;color:var(--ink);cursor:pointer}
-/* Today's Lifts moving (364 b-2, r70): a row a rising lift, its name, its line and its latest heaviest set; the row opens it on Stats. */
-.mvrow{-webkit-appearance:none;appearance:none;display:grid;grid-template-columns:minmax(0,1fr) 96px minmax(64px,auto);gap:12px;align-items:center;width:100%;min-height:44px;padding:8px 0;background:none;border:0;border-top:1px solid var(--line);color:inherit;font:inherit;text-align:left;cursor:pointer}
+/* Today's Lifts moving (364 b-2, r70): a row a rising lift, its name, its line and its latest heaviest set; the row opens it on Stats.
+   Since r71 (364 b-5, the draft V approved on 2026-11-03) the rows sit in a card of their own, the line shorter and drawn heavier, the set in bold. */
+.mvcard{background:var(--surface);border:1px solid var(--line-soft);border-radius:20px;padding:4px 16px}
+.mvrow{-webkit-appearance:none;appearance:none;display:grid;grid-template-columns:minmax(0,1fr) 80px minmax(64px,auto);gap:14px;align-items:center;width:100%;min-height:54px;padding:8px 0;background:none;border:0;border-top:1px solid var(--line);color:inherit;font:inherit;text-align:left;cursor:pointer}
 .mvrow:first-of-type{border-top:0}
-.mvname{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mvname{font-weight:500;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mvline{display:block}
-.mvline polyline{fill:none;stroke:var(--volt);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.mvset{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mvline polyline{fill:none;stroke:var(--volt);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.mvset{text-align:right;font-weight:750;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .srow:last-child{border-bottom:0}
 .srow.static{cursor:default;grid-template-columns:8px 64px minmax(0,1fr)}
 .srow .sl{font:600 11px var(--font);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding-top:3px}
@@ -1137,6 +1139,26 @@ input.need{box-shadow:0 0 0 2px var(--yellow)}
 .btn.rest{font-variant-numeric:tabular-nums}
 #timer .tv{font:800 30px var(--display);font-variant-numeric:tabular-nums;letter-spacing:.03em}
 #timer button{background:color-mix(in srgb,currentColor 18%,transparent);border:0;color:inherit;border-radius:8px;min-height:44px;padding:0 11px;font-weight:650;cursor:pointer}
+/* The rest card (r71, 364 b-1, the draft V approved on 2026-11-03): a card floating above the tabs, inset from the
+   edges, with the ring, the time and what comes next, round -15 and +15, and Skip in the accent; done, the ring is
+   full and the time reads Go. The page keeps room at its foot so the last row scrolls clear of it. */
+#timer:not(.compact){left:12px;right:12px;bottom:calc(58px + 10px + env(safe-area-inset-bottom,0px));height:76px;border-radius:24px;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.28);justify-content:flex-start;gap:8px;padding:0 8px 0 10px}
+#timer.done:not(.compact){background:var(--surface);color:var(--ink)}
+#timer:not(.compact)::before{display:none}
+#timer .tdial{flex:none;width:56px;height:56px}
+#timer .tdial circle{fill:none;stroke-width:4}
+#timer .tdial .trk{stroke:var(--line)}
+#timer .tdial .trp{stroke:var(--volt);stroke-linecap:round;transition:stroke-dasharray .25s linear}
+#timer .tcol{flex:1;min-width:0;display:flex;flex-direction:column}
+#timer:not(.compact) .tv{font:800 28px/1 var(--display);letter-spacing:.02em}
+#timer.done:not(.compact) .tv{color:var(--volt-line)}
+#timer .tlb{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;line-height:1.25;color:var(--muted);font-weight:600;margin-top:4px}
+@media (max-width:359px){#timer:not(.compact){gap:6px;padding:0 6px 0 8px}#timer .tdial{width:46px;height:46px}#timer:not(.compact) .tv{font-size:24px}#timer .tpill{min-width:44px;padding:0 6px}#timer .tskip{padding:0 4px}}
+#timer .tpill{height:44px;min-width:50px;padding:0 10px;border-radius:999px;display:grid;place-items:center;font-weight:700;font-size:15px;color:var(--ink);background:color-mix(in srgb,var(--ink) 9%,transparent)}
+#timer .tskip{background:transparent;color:var(--volt-line);min-width:44px;padding:0 6px}
+body.timer-on main{padding-bottom:calc(168px + env(safe-area-inset-bottom,0px))}
+/* An exercise's ✓ Done (r71, 385, V 2026-11-03: easy to miss): the accent's outline and colour, at the right of its row. */
+.btn.sm.bdone{border:1.5px solid var(--volt);color:var(--volt-line);background:color-mix(in srgb,var(--volt) 12%,transparent);margin-left:auto}
 .overb{color:var(--yellow);font-weight:650}
 .cgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.8fr) minmax(0,.8fr);gap:8px;margin-top:8px}
 .clist{list-style:none;margin:0;padding:0}

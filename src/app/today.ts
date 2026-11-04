@@ -982,7 +982,7 @@ const TONE_WORDS: Readonly<Record<string, string>> = {
    rising, no section (its chip at the tab's foot waits until one is). */
 const MOVING_ROWS = 3;
 /** The line's box, in px: wide enough to read a direction, short enough to sit in a row. */
-const SPARK = { w: 96, h: 22, pad: 2 } as const;
+const SPARK = { w: 80, h: 24, pad: 2 } as const;
 function movingCard(): TemplateResult | null {
   const all = liftsMoving();
   if (!all.length) return null;
@@ -1014,7 +1014,7 @@ function movingCard(): TemplateResult | null {
     sub: `${all.length} rising${one ? ` · ${all[0].wk} wks` : ''}`,
     help: 'moving',
     helpBody: `The lifts Stats and the coach call clearly rising, strongest first. Each line is the lift's trend over ${one ? `the ${all[0].wk} weeks` : 'the weeks'} it covers, without lighter or deload sessions; the set beside it is the heaviest of its latest session. Tap a lift to open it on Stats.`,
-    body: html`${rows}`
+    body: html`<div class="mvcard">${rows}</div>`
   });
 }
 

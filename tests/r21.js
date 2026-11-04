@@ -195,8 +195,12 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(hexLum(hd.bg) < 0.02 && lum(hd.h2) > 0.8, 'dark theme: the Today card stays dark with light text', hd);
   ok((1.05) / (lum(hl.ring) + 0.05) >= 3, 'light theme: the week ring keeps 3:1 against the card', hl.ring);
   await ev(() => { const L = window.__ironlog; L.state.settings.theme = 'light'; L.render(); });
-  const dock = await ev(() => { const L = window.__ironlog; L.ACT.startSession({ dataset: { day: '0' } }); L.ACT.tStart({ dataset: { b: '0' } }); const t = document.getElementById('timer'); return { hidden: t.hidden, color: getComputedStyle(t).color }; });
-  ok(!dock.hidden && lum(dock.color) > 0.8, 'light theme: the rest timer bar is still dark with light text', dock);
+  // Since r71 the inked look is the compact pill's; the rest card V approved (364 b-1) follows the theme, light with dark
+  // text in the light theme.
+  const dock = await ev(() => { const L = window.__ironlog; L.state.settings.timerCompact = true; L.ACT.startSession({ dataset: { day: '0' } }); L.ACT.tStart({ dataset: { b: '0' } }); const t = document.getElementById('timer'); return { hidden: t.hidden, color: getComputedStyle(t).color }; });
+  ok(!dock.hidden && lum(dock.color) > 0.8, 'light theme: the compact rest timer is still dark with light text', dock);
+  const card = await ev(() => { const L = window.__ironlog; L.ACT.tStop(); L.state.settings.timerCompact = false; L.ACT.tStart({ dataset: { b: '0' } }); const t = document.getElementById('timer'); return { hidden: t.hidden, color: getComputedStyle(t).color, bg: getComputedStyle(t).backgroundColor }; });
+  ok(!card.hidden && lum(card.color) < 0.05 && lum(card.bg) > 0.8, 'light theme: the rest card is light with dark text (r71)', card);
   await ev(() => { const L = window.__ironlog; L.ACT.tStop(); L.state.draft = null; L.saveNow(); L.render(); });
 
   // ---- 62: less text for a new user.

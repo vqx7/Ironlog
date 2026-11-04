@@ -94,7 +94,11 @@ async function engineRun(page, cases, gym) {
       await P.ctx.close(); return r;
     };
     const now = await measure(FILE), was = await measure('baselines/r32-1.html');
-    ok(JSON.stringify(now) === JSON.stringify(was) && now.value && now.tile, 'the rest timer and the At a glance numbers are the same size and look as in r32.1', { now, was });
+    // r71 draws the rest as a card on purpose (364 b-1, the draft V approved on 2026-11-03): from it the timer is held to
+    // that design, 76 px tall with a 28 px time and nothing around the time, which a stray .tv style would still
+    // change; At a glance is still held to r32.1.
+    const card = { timer: 76, value: [28, '28px', 'rgba(0, 0, 0, 0)', '0px'] };
+    ok(now.value && now.tile && now.timer === card.timer && JSON.stringify(now.value) === JSON.stringify(card.value) && JSON.stringify(now.tile) === JSON.stringify(was.tile), 'the At a glance numbers are the same size and look as in r32.1, and the rest timer is the card r71 draws (76 px, its time 28 px)', { now, was, card });
   }
 
   // ---------- Part 1b: Your gym in the numbers ----------

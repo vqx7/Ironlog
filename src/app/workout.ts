@@ -108,6 +108,7 @@ import {
   rowPR,
   setDone,
   oddReps,
+  restNext,
   CAL_OFFER
 } from './worksets';
 import { finish, finishNow } from './workfinish';
@@ -485,7 +486,7 @@ function blockPart(
           : ''
       }${
         !d.editingId && b.sets.some(x => x.done && !x.warm) && b.sets.some(x => !x.done)
-          ? html`<button class="btn sm" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them.">✓ Done</button>`
+          ? html`<button class="btn sm bdone" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them.">✓ Done</button>`
           : ''
       }${
         state.settings.timerMode !== 'off' && +p.rest > 0 && !d.past
@@ -1302,7 +1303,8 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   },
   tStart(t) {
     const b = tapBlock(t);
-    if (b && +b.plan.rest > 0) startTimer(+b.plan.rest);
+    const d = state.draft;
+    if (b && d && +b.plan.rest > 0) startTimer(+b.plan.rest, restNext(d.ex.indexOf(b)));
   },
   /* A session with nothing in it goes at once; one with anything entered
      (sets, reps, cardio, a note) asks first. An edit always asks, since the

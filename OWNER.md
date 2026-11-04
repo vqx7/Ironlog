@@ -14,6 +14,7 @@ Last updated: r69 live (2026-11-03; checked by Claude on GitHub: you changed pul
 1e. A33 (r68): done, merged with r69 (#68 took #67's commits into main, 2026-11-03) and live.
 1f. A34 (r69): done, merged by you (#68, 2026-11-03 13:38 Los Angeles) and live (see Last updated).
 1g. A35 (r70): try the preview at https://ironapp.org/preview/ on your phone (its pull request lists what to try), then merge it on GitHub's website once its checks are green.
+1h. A36 (r71): after r70 is merged, its pull request opens; try its preview the same way, then merge it.
 2. Problem reports: done (2026-10-30, you). B4's r64 code is deployed, B1a has been run, and a test report from the preview became an issue in `ironlog-feedback`, which confirms B5. See Done.
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
 4. D6: delete the old branches and stop them piling up (2 minutes, below).
@@ -475,6 +476,10 @@ Status: to do whenever you are at the gym; tell Claude what you see.
   - Today: Lifts moving (once a lift is rising) with lines that rise, and a tap opens the lift on Stats; each lift on the Workout preview names its best;
   - Stats > Lifts > All-time bests > Add an old best: a date, a lift, one set, Finish, and it shows in All-time bests;
   - in a workout, tap the muscle under an exercise's name (Lats, Chest): the body figures open.
+- r71, in the preview, in Safari and in the home-screen app:
+  - tick a set: the rest is a card above the tabs, as in the picture you approved: the ring, the time, "Rest · next set 2" (the next lift's name once a lift is done), round -15 and +15, and Skip; time up, the ring fills, it reads Go and "Rest done"; scroll to the foot of the session: the last buttons sit above the card;
+  - an exercise's ✓ Done is in orange outline at the right of its row;
+  - Today: Lifts moving sits in its own card, the lines shorter and heavier, the set in bold.
 
 ## Reminders
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.

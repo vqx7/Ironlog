@@ -893,7 +893,17 @@ async function finish() {
       const seen = await ev(k => { const r = document.querySelector(`[data-act="sDone"][data-b="1"][data-s="${k}"]`).closest('.sg').getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }, k);
       ok(!(await timer()) && seen, `13. bench set ${k + 1}: no rest, the row's set ${k + 1} brought up`, { seen });
       await H.type('r', 1, k, 10); await H.effort(1, k, 2); await H.tick(1, k);
-      ok(await timer(), `13. row set ${k + 1}: the rest after the pair`); await stop();
+      ok(await timer(), `13. row set ${k + 1}: the rest after the pair`);
+      if (k === 0) {
+        // r71's rest card (364 b-1): after the pair it names the superset's first lift, as the screen brings it up;
+        // the lifter takes 15 seconds off and skips the rest from the card, by taps.
+        const c0 = await ev(() => ({ label: document.querySelector('#timer [data-t="l"]').textContent, bench: window.__ironlog.exName('bench'), t: document.querySelector('#timer [data-t="v"]').textContent }));
+        await page.click('#timer [data-act="tSub"]'); await wait(150);
+        const c1 = await ev(() => document.querySelector('#timer [data-t="v"]').textContent);
+        await page.click('#timer [data-act="tStop"]'); await wait(150);
+        const secs = t => { const [m, s2] = t.split(':').map(Number); return m * 60 + s2; };
+        ok(c0.label === 'Rest · next: ' + c0.bench && secs(c0.t) - secs(c1) >= 14 && !(await timer()), '13. the rest card names the bench next, -15 takes 15 off, and Skip ends the rest', { c0, c1 });
+      } else await stop();
     }
     // The last bench set, then a drop straight under it, done with no rest between.
     await H.type('r', 0, 2, 8); await H.effort(0, 2, 1); await H.tick(0, 2); await stop();

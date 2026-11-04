@@ -234,7 +234,10 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
       await T.browser.close();
       return r;
     };
-    for (const compact of [false, true]) {
+    // Since r71 the rest is a card on purpose (364 b-1, tests/r71.js section 1), so the bar was held to r69's on r70's
+    // own run (GitHub, a15b3b2, all 8 jobs) and is pinned there, as CLAUDE.md's Releasing says; the compact pill, which
+    // r71 does not change, is still held to r69's on every build.
+    for (const compact of [true]) {
       const now = await look(FILE, compact), was = await look('baselines/r69.html', compact);
       ok(JSON.stringify(now) === JSON.stringify(was), `5. 364 b-1 held back (V, NEW-60): the rest timer ${compact ? 'as the compact pill' : 'as a bar'} is r69's, in its place, size, look, and controls`, { now, was });
     }
