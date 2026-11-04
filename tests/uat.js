@@ -127,12 +127,13 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   await e2(() => document.querySelectorAll('.day [data-act="dFold"]')[3].click()); await X.page.waitForTimeout(900);
   const pos = await e2(() => { const d = document.querySelectorAll('.day')[3].getBoundingClientRect(); const top = document.querySelector('.top').getBoundingClientRect(); return { d: Math.round(d.top), bar: Math.round(top.bottom) }; });
   ok(pos.d >= pos.bar && pos.d < 200, `opened day starts just below the header (${pos.d} vs bar ${pos.bar})`);
-  // RIR strip is not left under the rest bar at 320 x 640.
+  // RIR strip is not left under the rest timer at 320 x 640: since r70 (364 b-1) the timer is a ring in the top bar, so
+  // the strip must sit below it and above the tabs, on screen.
   await e2(() => { const L = window.__ironlog; L.state.settings.rirAsk = true; L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); window.scrollTo(0, 0); });
   await X.page.click('.hero [data-act="startSession"]:not([data-light])'); await X.page.waitForTimeout(120);
   await X.page.click('[data-act="sDone"][data-b="0"][data-s="2"]'); await X.page.waitForTimeout(900);
-  const st = await e2(() => { const s = document.querySelector('.rirstrip').getBoundingClientRect(); const t = document.getElementById('timer').getBoundingClientRect(); return { s: Math.round(s.bottom), t: Math.round(t.top) }; });
-  ok(st.s <= st.t, `RIR strip sits above the rest bar (${st.s} ≤ ${st.t})`);
+  const st = await e2(() => { const s = document.querySelector('.rirstrip').getBoundingClientRect(); const t = document.getElementById('timer').getBoundingClientRect(); const tabs = document.getElementById('tabs').getBoundingClientRect(); return { top: Math.round(s.top), bottom: Math.round(s.bottom), timerBottom: Math.round(t.bottom), tabsTop: Math.round(tabs.top) }; });
+  ok(st.top >= st.timerBottom && st.bottom <= st.tabsTop, `RIR strip sits clear of the rest timer and the tabs (${JSON.stringify(st)})`);
   ok(errors.length === 0 && X.errors.length === 0, 'no console errors' + (errors.length || X.errors.length ? ': ' + [...errors, ...X.errors].join(' | ') : ''));
   console.log(fails.length ? `FAILURES ${fails.length}` : 'ALL PASS');
   await X.browser.close(); process.exit(fails.length ? 1 : 0);

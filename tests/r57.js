@@ -252,6 +252,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     ...shot,
     tree: shot.tree.map(t => t
       .replace('A small pill in the corner instead of the ring in the top bar.', 'A small pill in the corner instead of a bar across the screen.')
+      // Layout's Default layout tip, which no longer names Schedule (381, R70-4: tests/r70.js section 2).
+      .replace('At a glance, Coach, and Body hidden on Today, Weekly volume hidden on Plan, and the default order.', 'At a glance, Coach, and Body hidden on Today, Schedule and Weekly volume hidden on Plan, and the default order.')
       .replace(/<button [^>]*data-k="today:moving"[^>]*>"Lifts moving"<\/button>/, '')),
     text: shot.text.replace(/\nLifts moving(?=\n)/, '')
   });
