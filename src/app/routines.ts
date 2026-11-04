@@ -375,13 +375,71 @@ export function planSetsOf(
   return it && Number.isInteger(it.sets) && it.sets >= 1 ? it.sets : undefined;
 }
 
+/** The routines as the plan's sets are read from them: each day's items with their lift, planned sets, workout of the day (pm) and rep range. */
+type PlanRoutines = readonly {
+  id: string;
+  days: readonly {
+    id: string;
+    items: readonly { exId: string; sets: number; pm?: true | undefined; repMin?: number; repMax?: number }[];
+  }[];
+}[];
+
+/* The sets a routine plans for a lift on the day nearest to what a blank
+   session did (NEW-51, r70): what the session is held to. A lift planned at
+   one count is held to it. Planned at 5 sets one day and 3 another, a blank
+   session of 1 or 3 sets is held to 3 and one of 5 to 5, a tie going to the
+   fewer, so a blank session never asks more sets than the day it resembles
+   (the review of r70, R70-1: held to the first day's 5, a session of 3 read
+   short) and a 5-set session is judged on all five (R70-5: held to the
+   fewest, 3, its weaker fourth and fifth sets were not read and the next
+   target fell from 40 reps to 33). Only the days that plan the lift in the
+   session's rep range count, all days when none does, since a session is
+   read only against sessions of its own range (R70-6: 3 heavy sets of a lift
+   planned 5 x 4-6 and 3 x 8-12 were held to the light day's 3, read in full,
+   and the heavy day's load went up). */
+/** The planned sets nearest to the sets a session did, over the days of the routine with this id that plan the lift in the session's rep range, or every such day when none plans it in that range (fewer on a tie); undefined when it plans none or is gone. */
+function nearestPlanSets(
+  routines: PlanRoutines,
+  id: string,
+  exId: string,
+  done: number,
+  rr: readonly [number, number] | null | undefined
+): number | undefined {
+  const R = routines.find(r => r.id === id);
+  const all = (R ? R.days : []).flatMap(day =>
+    day.items.filter(it => it.exId === exId && Number.isInteger(it.sets) && it.sets >= 1)
+  );
+  const same = rr ? all.filter(it => it.repMin === rr[0] && it.repMax === rr[1]) : [];
+  let n: number | undefined;
+  for (const it of same.length ? same : all) {
+    const d = Math.abs(it.sets - done),
+      was = n === undefined ? Infinity : Math.abs(n - done);
+    if (d < was || (d === was && n !== undefined && it.sets < n)) n = it.sets;
+  }
+  return n;
+}
+
 /* A workout's exercises as Finish saves them, each lift on a day of a
    routine given the sets its plan gives it (planSetsOf), last, as normalize
-   writes it. None in Freestyle or with no day, and none on an edit, which
-   keeps the sets saved with the session (Finish carries them over with the
-   fields it does not rebuild, keepExtra). */
-/** The exercises given, each with its plan's sets where the workout is on a day of a routine, as new records (the ones given are not changed). */
-export function withPlanSets<B extends { exId: string; ps?: number | undefined }>(
+   writes it. Since r70 a blank session (no day) records them too, while the
+   routine is followed: each lift the routine in use plans is given the sets
+   of the day nearest to its working sets, among the days that plan it in the
+   session's rep range (nearestPlanSets), so two one-set
+   sessions in a row never make it a 1-set lift (NEW-51); none in Freestyle, where Today
+   opens blank and the lifter's own sets lead. Recorded once, at Finish, so a
+   plan or the mode changed later never rereads the sessions before it (the
+   r58 review, and R70-1 and R70-2 in r70's). None on an edit, which keeps the
+   sets saved with the session (Finish carries them over with the fields it
+   does not rebuild, keepExtra). */
+/** The exercises given, each with the sets its plan gives it (a day's, or for a blank session while the routine is followed the nearest day's), as new records (the ones given are not changed). */
+export function withPlanSets<
+  B extends {
+    exId: string;
+    ps?: number | undefined;
+    rr?: readonly [number, number] | null | undefined;
+    sets: readonly { warm?: boolean | undefined; drop?: boolean | undefined }[];
+  }
+>(
   ex: readonly B[],
   d: {
     editingId?: string | null | undefined;
@@ -390,9 +448,19 @@ export function withPlanSets<B extends { exId: string; ps?: number | undefined }
     routineId: string;
     part?: 2 | undefined;
   },
-  routines: Parameters<typeof planSetsOf>[0]
+  routines: PlanRoutines,
+  blank: { routineId: string; freestyle: boolean }
 ): B[] {
-  if (d.editingId || d.free || !d.dayId) return [...ex];
+  if (d.editingId) return [...ex];
+  if (d.free || !d.dayId) {
+    if (blank.freestyle) return [...ex];
+    return ex.map(b => {
+      // Working sets: warm-ups aside, and a drop counted with the set it drops from.
+      const done = b.sets.filter(x => !x.warm && !x.drop).length;
+      const n = nearestPlanSets(routines, blank.routineId, b.exId, done, b.rr);
+      return n ? { ...b, ps: n } : b;
+    });
+  }
   return ex.map(b => {
     const n = planSetsOf(routines, d.routineId, d.dayId, b.exId, partOf(d));
     return n ? { ...b, ps: n } : b;

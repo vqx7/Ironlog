@@ -120,7 +120,20 @@ function pastDue(R: Routine, date: string): number {
 }
 
 /** Log a past workout: its date, the sessions already on it, and the routine's days with the one due then first, or Freestyle. */
-export function pastSheet(m: { date: string }): TemplateResult {
+export function pastSheet(m: { date: string; old?: true | undefined }): TemplateResult {
+  /* Add an old best (380, r70, V 2026-11-03: "Why cant we add single old bests"): a date, then the lift, then its
+     one set typed and Finish, so it is saved as any past workout is and every screen reads it alike: All-time bests
+     shows it; as a lift's only history it is where the return after a break starts (V, r48: "targets then start
+     from them"); recent sessions lead once there are some, and it is a record like any set: a later set is a PR only when
+     stronger (A PR, CLAUDE.md; R70-7, the review of r70 and r71: the tip had said PRs start again after a break). */
+  if (m.old)
+    return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pastH"><div class="sheet-h"><h3 id="pastH">Add an old best</h3>${closeX()}</div>
+  <label class="field">When you lifted it<input type="date" data-pbind="date" .value=${live(m.date)} max=${today()}></label>
+  <button class="btn fullw primary u-mt12" data-act="pastGo" data-day="free">Choose the lift</button>
+  <p class="small muted u-m10-0-0">Then type the load and reps and tap Finish. ${tipButton(
+    "Saved as a past workout of one set on that date, and shown in All-time bests. If it is all you have logged for that lift, your next session's load starts from it, lighter for the time since; once you have recent sessions, they set your targets. It counts as a record like any set, so a later set is a PR only when it is stronger.",
+    'About old bests'
+  )}</p></div>`;
   const R = activeRoutine();
   const due = pastDue(R, m.date);
   const on = sessionsOn(m.date).map(x => x.dayName || 'Session');

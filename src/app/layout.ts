@@ -46,16 +46,12 @@ export const VOL_MODES: readonly (readonly [string, string])[] = [
    back in one tap. Existing logs keep their own layout: these only seed a
    fresh state, and Settings > Layout's "Default layout" and "Reset section
    order" go back to them. Today leads with what a session needs (the
-   workout, then the muscle map, then the week); Stats leads with Lifts. */
-export const DEFAULT_HIDDEN: readonly string[] = [
-  'today:tiles',
-  'today:coach',
-  'today:body',
-  'program:schedule',
-  'program:pvol'
-];
+   workout, then the muscle map, then the week); Stats leads with Lifts.
+   Plan's Schedule is shown since r70 (381, V 2026-11-03): it is the only
+   place to switch between a cycle and fixed weekdays. */
+export const DEFAULT_HIDDEN: readonly string[] = ['today:tiles', 'today:coach', 'today:body', 'program:pvol'];
 export const DEFAULT_ORDER: Readonly<Record<string, readonly string[]>> = {
-  today: ['session', 'map', 'week', 'injuries', 'coach', 'tiles', 'body'],
+  today: ['moving', 'session', 'map', 'week', 'injuries', 'coach', 'tiles', 'body'],
   dash: ['exercise', 'volume', 'weak', 'consistency', 'body']
 };
 
@@ -159,6 +155,7 @@ export const HIDEABLE: readonly (readonly [string, string, string])[] = [
   ['today', 'injuries', 'Injuries'],
   ['today', 'map', 'Muscle map'],
   ['today', 'session', 'Workout preview'],
+  ['today', 'moving', 'Lifts moving'],
   ['today', 'body', 'Body'],
   ['program', 'library', 'Add exercises'],
   ['program', 'schedule', 'Schedule'],

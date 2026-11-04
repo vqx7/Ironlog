@@ -889,7 +889,13 @@ function atUsualWork(x: Exposure, ref: readonly Exposure[]): boolean {
    plan as it is now, a plan raised from 3 sets to 4 marked every session of
    3 short and took the target back to the first of them). A session with
    none recorded (Freestyle, a lift on no day of the routine, one saved
-   before r58) reads its own sets, as before. On a lift labelled
+   before r58, a blank session saved before r70) reads its own sets, as
+   before. Since r70 a blank session records them too (NEW-51): Finish saves,
+   on a lift the routine plans, the sets of its day nearest to what the
+   session did, unless Today opens blank (Freestyle), so two one-set PR attempts in a
+   row never make a 3-set lift a 1-set one, and, as on a routine's day, each
+   session is read by what was saved with it, never by the plan or the mode
+   as they are now (the review of r70, R70-1 and R70-2). On a lift labelled
    lighter or a deload but done at its usual load
    and reps (`tag`, step 2), the label cut the plan, so its usual sets are
    its own, and if it falls short it is not one of the sessions later ones
@@ -1689,6 +1695,7 @@ function idxLiftIn(
     fresh,
     byBand,
     wN: w.length,
+    trendTv: w.map(x => x.tv),
     wSpan: w.length ? daysBetween(w[0].date, w[w.length - 1].date) : 0,
     last: real.length ? real[real.length - 1] : cur[cur.length - 1],
     best: bestCur,

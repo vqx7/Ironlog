@@ -2,7 +2,7 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r67 live (2026-11-02; checked by Claude on GitHub: pull request #66 merged by you at 01:23 UTC on 2026-11-03, 17:23 Los Angeles, gh-pages "Publish 9eee1ec" at 01:54 UTC, build 2026.11.02-r67). Before it: r66 live (2026-11-01, #65, "Publish c440eab").
+Last updated: r69 live (2026-11-03; checked by Claude on GitHub: you changed pull request #68's base to main and merged it at 21:38 UTC on 2026-11-03, 13:38 Los Angeles, which also marked #67 (r68) merged; main's run on a3219e1 passed, gh-pages "Publish a3219e1" at 22:15 UTC, and the published page carries build 2026.11.03-r69). Before it: r67 live (2026-11-02, #66, "Publish 9eee1ec").
 
 ## Now, in this order
 
@@ -11,7 +11,10 @@ Last updated: r67 live (2026-11-02; checked by Claude on GitHub: pull request #6
 1b. A30 (r65.2): done, merged by you (#64, 2026-10-31 18:38 Los Angeles) and live.
 1c. A31 (r66): done, merged by you (#65, 2026-11-01 15:03 Los Angeles) and live.
 1d. A32 (r67): done, merged by you (#66, 2026-11-02 17:23 Los Angeles) and live (see Last updated).
-1e. A33 (r68): try the preview at https://ironapp.org/preview/ on your phone (pull request #67 lists what to try), then merge #67 on GitHub's website once its checks are green.
+1e. A33 (r68): done, merged with r69 (#68 took #67's commits into main, 2026-11-03) and live.
+1f. A34 (r69): done, merged by you (#68, 2026-11-03 13:38 Los Angeles) and live (see Last updated).
+1g. A35 (r70): try the preview at https://ironapp.org/preview/ on your phone (its pull request lists what to try), then merge it on GitHub's website once its checks are green.
+1h. A36 (r71): after r70 is merged, its pull request opens; try its preview the same way, then merge it.
 2. Problem reports: done (2026-10-30, you). B4's r64 code is deployed, B1a has been run, and a test report from the preview became an issue in `ironlog-feedback`, which confirms B5. See Done.
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
 4. D6: delete the old branches and stop them piling up (2 minutes, below).
@@ -442,9 +445,9 @@ What the right answer looks like for this project:
 Paste the result into a chat with Claude if anything differs, or if you want it read for you.
 
 ### D6. Old branches
-Status: to do (checked by Claude on 2026-10-27 through GitHub's compare API: the branches below are on GitHub, and Automatically delete head branches is still off). Claude's GitHub access cannot delete branches.
-These are wholly in `main` (GitHub shows each 0 commits ahead of it), so deleting them loses nothing: `modular`, `modular-2`, `r48`, `r51`, `r52`, `r53`, `r54`, `r55`, `r55.1`, `r56-wip`, `r56`, `r56.1`, `r56.2`, `r57`, `r58`, `r60`, `r61-on-r60`, `r62` and `r63`. Three more hold only what is in `main` already: `r59` (one commit ahead, the merge of #56 into it, changing no file), `r61` (22ac59e, an earlier copy of r61's first commits, each in `r61-on-r60`, checked 2026-10-26) and `r61-normalize-draft` (drafts r61 has since built). Keep `r64` (and `r65` when it exists) until their pull requests are merged.
-1. github.com/vqx7/Ironlog/branches > tap the trash icon on `modular`, `modular-2`, `r48`, `r51`, `r52`, `r53`, `r54`, `r55`, `r55.1`, `r56-wip`, `r56`, `r56.1`, `r56.2`, `r57`, `r58`, `r59`, `r60`, `r61`, `r61-normalize-draft`, `r61-on-r60`, `r62` and `r63`. Two more hold commits that are not in `main`, your call: `r42-look` (the restyle you turned down, pull request #32) and `r31.2` (one commit pushed after its pull request #17 merged).
+Status: to do (checked by Claude on 2026-11-03 through GitHub's compare API: the branches below are on GitHub, and Automatically delete head branches is still off). Claude's GitHub access cannot delete branches.
+These are wholly in `main` (GitHub shows each 0 commits ahead of it), so deleting them loses nothing: `modular`, `modular-2`, `r48`, `r51`, `r52`, `r53`, `r54`, `r55`, `r55.1`, `r56-wip`, `r56`, `r56.1`, `r56.2`, `r57`, `r58`, `r60`, `r61-on-r60`, `r62`, `r63`, `r64`, `r65`, `r65-2`, `r65-2-done`, `r65-2-next`, `r66-release`, `r67`, `r68` and `r69`. Five more hold only what is in `main` already: `r59` (one commit ahead, the merge of #56 into it, changing no file), `r61` (22ac59e, an earlier copy of r61's first commits, each in `r61-on-r60`, checked 2026-10-26), `r61-normalize-draft` (drafts r61 has since built), `r66` (13 commits of 2026-10-30 and 31, PENDING.md notes only, whose items, 364, 365, 366, 367, NEW-17 and 21, are all in main's PENDING.md; checked by item, 2026-11-03) and `r65-2-after` (one PENDING.md note of 2026-11-01 on 371, in main's PENDING.md). Keep `r70` until its pull request is merged.
+1. github.com/vqx7/Ironlog/branches > tap the trash icon on every branch named above. These hold commits that are not in `main`, your call: `r42-look` (the restyle you turned down, pull request #32), `r31.2` (one commit pushed after its pull request #17 merged), `r65-1` and `r65-1-next` (r65.1, the look you closed unmerged, #63, 26 and 24 commits) and `r65-3` (the double-tap rule never shipped, NEW-29, one commit).
 2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged.
 
 ### D7. A size limit on each synced document (r45, item 286)
@@ -468,6 +471,16 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - r65.1: not shipped (closed unmerged 2026-10-31); nothing to check.
 - r65.2, in the preview, in Safari and in the home-screen app: a double tap anywhere does not zoom (pinch still does); a long press on a button, a tab or an exercise's name selects nothing and opens no Copy menu; a tap leaves no grey flash; you can still type and select a load in a set field. Settings > General offers Violet, Cyan and Red after Pink; pick each in light and dark and look at Today and a workout; with Red, Discard and a missed day on the week bar are magenta; with Cyan, an above-target muscle on Stats is violet; put your accent back after.
 - r63, in the preview (every action and the start moved, the legacy script gone; nothing meant to change but two time limits): a workout from start to Finish, Undo after a change, swap and add an exercise, the exercise editor's Save, Short on time and Limited equipment, a past workout, the calendar's days; in Settings, Import workouts (a pasted note) and Export; the menu's account sheet (sign in, a wrong password, Forgot password); Report a problem with the phone in airplane mode: after about 20 s it says No answer and keeps your text, and sent again with the connection back it goes once.
+- r70, in the preview, in Safari and in the home-screen app:
+  - tick a set: the rest timer is the same bar as r69's; drag an exercise during a rest: the page scrolls only with your finger near the bottom;
+  - Today: Lifts moving (once a lift is rising) with lines that rise, and a tap opens the lift on Stats; each lift on the Workout preview names its best;
+  - Stats > Lifts > All-time bests > Add an old best: a date, a lift, one set, Finish, and it shows in All-time bests;
+  - in a workout, tap the muscle under an exercise's name (Lats, Chest): the body figures open.
+- r71, in the preview, in Safari and in the home-screen app:
+  - tick a set: the rest is a card above the tabs, as in the picture you approved: the ring, the time, "Rest · next set 2" (the next lift's name once a lift is done), round -15 and +15, and Skip; time up, the ring fills, it reads Go and "Rest done"; scroll to the foot of the session: the last buttons sit above the card;
+  - an exercise's ✓ Done is in orange outline at the right of its row;
+  - Today: Lifts moving sits in its own card, the lines shorter and heavier, the set in bold.
+
 ## Reminders
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.
 

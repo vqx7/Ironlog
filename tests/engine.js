@@ -57,9 +57,12 @@ const EXTRA = {
   dropStarter: (s) => [[s.routines, s.sessions, s.routines.slice(0, 1).map(r => window.__ironlog.routineSig(r))], [s.routines, [], []]],
   trainOn: (s) => s.routines.flatMap(r => r.days.map(d => [d])),
   // r58 (339 h): the sets a routine plans for a lift, a day first, in the routine in use and one that is gone; and Finish's
-  // exercises given them on a day of the routine, and not in Freestyle, with no day, or on an edit.
+  // exercises given them on a day of the routine; since r70 (NEW-51, R70-5) a blank session given its nearest day's sets
+  // (1, 3, 4 and 5 sets, a warm-up aside), none in Freestyle or for a routine gone, and none on an edit.
   planSetsOf: (s, ids) => ids.slice(0, 4).flatMap(id => [[s.routines, s.activeRoutineId, null, id], [s.routines, s.activeRoutineId, ((s.routines.find(r => r.id === s.activeRoutineId) || { days: [] }).days[1] || {}).id || null, id], [s.routines, 'none', null, id]]),
-  withPlanSets: (s, ids) => { const day = ((s.routines.find(r => r.id === s.activeRoutineId) || { days: [] }).days[0] || {}).id || null; const ex = () => ids.slice(0, 4).map(id => ({ exId: id })); return [[ex(), { routineId: s.activeRoutineId, dayId: day }, s.routines], [ex(), { routineId: s.activeRoutineId, dayId: day, free: true }, s.routines], [ex(), { routineId: s.activeRoutineId, dayId: null }, s.routines], [ex(), { routineId: s.activeRoutineId, dayId: day, editingId: 'e1' }, s.routines]]; },
+  withPlanSets: (s, ids) => { const day = ((s.routines.find(r => r.id === s.activeRoutineId) || { days: [] }).days[0] || {}).id || null; const ex = () => ids.slice(0, 4).map((id, k) => ({ exId: id, sets: Array.from({ length: [1, 3, 4, 5][k] }, (_, j) => ({ w: 50, r: 8, warm: j === 0 && k === 3, drop: false })) })); const on = { routineId: s.activeRoutineId, freestyle: false }; return [[ex(), { routineId: s.activeRoutineId, dayId: day }, s.routines, on], [ex(), { routineId: s.activeRoutineId, dayId: day, free: true }, s.routines, on], [ex(), { routineId: s.activeRoutineId, dayId: null }, s.routines, on], [ex(), { routineId: '', dayId: null, free: true }, s.routines, { routineId: s.activeRoutineId, freestyle: true }], [ex(), { routineId: '', dayId: null, free: true }, s.routines, { routineId: 'none', freestyle: false }], [ex(), { routineId: s.activeRoutineId, dayId: day, editingId: 'e1' }, s.routines, on]]; },
+  // r70 (364 b-2): Today's Lifts moving, the rising lifts with their lines and latest heaviest sets.
+  liftsMoving: () => [[]],
   planItemOf: (s, ids) => s.routines.slice(0, 2).flatMap(r => ids.slice(0, 6).flatMap(id => [[r, id], [r, id, r.days.length > 1 ? r.days[1].id : null]])),
   // A lift's all-time bests, now and as of the log's middle session (a past workout's), and where the weeks are counted from.
   allTimeBests: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : '']]),

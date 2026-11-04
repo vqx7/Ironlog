@@ -61,6 +61,7 @@ import {
   exName,
   fmtW,
   freeMode,
+  liftsMoving,
   fromD,
   isDeloadWeek,
   isRestWeek,
@@ -104,7 +105,9 @@ import {
   noLog,
   nz,
   recent4w,
+  bestSetLine,
   rirShow,
+  setShort,
   weekSlots
 } from './display';
 import {
@@ -834,7 +837,8 @@ function previewCard(day: Day, deload: boolean): TemplateResult {
       rirShow(ex) ? `, ${effTgt(it.rir)}` : ''
     }</span>${it.ss ? html` <span class="tag blue">Superset ${letters[it.ss]}</span>` : nothing}${sg.inj ? html` <span class="tag red">Injury: ${injLabel(sg.inj)}</span>` : nothing}</span>${liftTags(
       it.exId
-    )}</div>${short ? html`<p class="small muted hastip u-mb0" data-tip=${text}>${short}</p>` : nothing}</div>`;
+    )}</div>${short ? html`<p class="small muted hastip u-mb0" data-tip=${text}>${short}</p>` : nothing}${(b =>
+      b ? html`<p class="small muted u-mb0 pvbest">${b}</p>` : nothing)(bestSetLine(it.exId))}</div>`;
   });
   const first = fresh
     ? html`<p class="small muted u-m0-0n10">${fresh === day.items.length ? 'First time' : `${fresh} new`}: start lighter than you think and stop while the reps still move well. Warm up on the first big lift. ${tipButton(
@@ -961,7 +965,8 @@ const TODAY_OFFER: Readonly<Record<string, () => boolean>> = {
     const d = R.days[di];
     return !!d && !d.rest && d.items.length > 0;
   },
-  'today:injuries': () => (state.injuries || []).length > 0
+  'today:injuries': () => (state.injuries || []).length > 0,
+  'today:moving': () => liftsMoving().length > 0
 };
 /** The coach's tone in words, beside its title. */
 const TONE_WORDS: Readonly<Record<string, string>> = {
@@ -970,6 +975,49 @@ const TONE_WORDS: Readonly<Record<string, string>> = {
   green: 'On track',
   blue: 'Note'
 };
+/* Lifts moving (364 b-2, r70): the lifts Stats and the coach call clearly
+   rising, each a row that opens it on Stats > Lifts, with its line (what
+   Stats > Lifts charts for it, the lighter sessions left out, liftsMovingIn)
+   and its latest heaviest set. Three at most, the count in the subtitle; none
+   rising, no section (its chip at the tab's foot waits until one is). */
+const MOVING_ROWS = 3;
+/** The line's box, in px: wide enough to read a direction, short enough to sit in a row. */
+const SPARK = { w: 80, h: 24, pad: 2 } as const;
+function movingCard(): TemplateResult | null {
+  const all = liftsMoving();
+  if (!all.length) return null;
+  const one = all.every(x => x.wk === all[0].wk);
+  const spark = (v: readonly number[]): TemplateResult => {
+    const lo = Math.min(...v),
+      hi = Math.max(...v);
+    const pts = v
+      .map((y, i) => {
+        const x = v.length > 1 ? (i / (v.length - 1)) * SPARK.w : SPARK.w / 2;
+        const yy =
+          SPARK.h -
+          SPARK.pad -
+          (hi > lo ? ((y - lo) / (hi - lo)) * (SPARK.h - 2 * SPARK.pad) : (SPARK.h - 2 * SPARK.pad) / 2);
+        return `${r1(x)},${r1(yy)}`;
+      })
+      .join(' ');
+    return html`<svg class="mvline" width=${SPARK.w} height=${SPARK.h} viewBox=${`0 0 ${SPARK.w} ${SPARK.h}`} aria-hidden="true"><polyline points=${pts}></polyline></svg>`;
+  };
+  const rows = all.slice(0, MOVING_ROWS).map(m => {
+    const ex = EX(m.id);
+    const set = m.top && ex ? setShort(ex, m.top.w, m.top.r) : '';
+    return html`<button type="button" class="mvrow" data-act="goDash" data-sec="exercise" data-ex=${m.id} aria-label=${`${exName(m.id)}, rising${set ? `, last best set ${set}` : ''}. Open on Stats`}><span class="mvname">${exName(m.id)}</span>${m.line.length > 1 ? spark(m.line) : nothing}<span class="mvset">${set}</span></button>`;
+  });
+  return section({
+    sk: 'today:moving',
+    key: 'moving',
+    title: 'Lifts moving',
+    sub: `${all.length} rising${one ? ` · ${all[0].wk} wks` : ''}`,
+    help: 'moving',
+    helpBody: `The lifts Stats and the coach call clearly rising, strongest first. Each line is the lift's trend over ${one ? `the ${all[0].wk} weeks` : 'the weeks'} it covers, without lighter or deload sessions; the set beside it is the heaviest of its latest session. Tap a lift to open it on Stats.`,
+    body: html`<div class="mvcard">${rows}</div>`
+  });
+}
+
 /* Everything on Today below the Start card, the same for both kinds of card;
    the Workout preview only with a plan's day on the card. Each section moves
    by its ⠿ handle into any order; a new install starts in DEFAULT_ORDER. */
@@ -1005,8 +1053,10 @@ function todayRest(o: {
     body: html`<p class="u-m0">${c.text}${c.why ? html` ${tipButton(c.why, 'Why')}` : nothing}</p>${coachButton(c)}`
   });
   const inj = injuryCard();
+  const mv = movingCard();
   const parts: (readonly [string | null, Part])[] = [
     [null, pre],
+    ...(mv ? [['moving', mv] as const] : []),
     ['week', weekCard()],
     ['tiles', tiles],
     ['coach', coachSec],

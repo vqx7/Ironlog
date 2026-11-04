@@ -9,6 +9,7 @@ import { W } from './workstate';
 import { moveBlock } from './worksets';
 import { rerenderKeepScroll } from './page';
 import { toast } from './toast';
+import { bottomBarsTop } from './timer';
 
 /** Dragging an exercise: the band at the top and bottom of the screen that scrolls it, how fast at the edge, the fastest step, in pixels a frame, and the slide of the others. */
 const DRAG = { edgePx: 56, speedPx: 14, maxPx: 20, animMs: 150 } as const;
@@ -16,12 +17,11 @@ const DRAG = { edgePx: 56, speedPx: 14, maxPx: 20, animMs: 150 } as const;
 /* ---------- an exercise dragged ---------- */
 
 /* While an exercise is dragged, a finger near the top or bottom of the space
-   between the header and the tab bar (or the rest timer) scrolls the page,
-   faster the closer it is. Sortable's own scrolling did not run for a touch
-   drag on the window. Sortable re-reads the target every 50 ms on its own, so
-   a finger held still keeps moving the exercise as the page scrolls. Both
-   bars are position:fixed, whose offsetParent is always null, so
-   getClientRects is what tells a shown bar from a hidden one. */
+   between the header and the bars along the bottom (bottomBarsTop) scrolls
+   the page, faster the closer it is. Sortable's own scrolling did not run
+   for a touch drag on the window. Sortable re-reads the target every 50 ms on
+   its own, so a finger held still keeps moving the exercise as the page
+   scrolls. */
 const edgeScroll = ((): { start(): void; stop(): void } => {
   let y: number | null = null,
     raf = 0;
@@ -32,14 +32,7 @@ const edgeScroll = ((): { start(): void; stop(): void } => {
   const zone = (): [number, number] => {
     const h = document.querySelector('header.top');
     const top = h ? h.getBoundingClientRect().bottom : 0;
-    let bot = window.innerHeight;
-    for (const el of [document.getElementById('tabs'), document.getElementById('timer')]) {
-      if (el && !el.hidden && el.getClientRects().length) {
-        const r = el.getBoundingClientRect();
-        if (r.height) bot = Math.min(bot, r.top);
-      }
-    }
-    return [top, bot];
+    return [top, bottomBarsTop()];
   };
   const step = (): void => {
     raf = 0;

@@ -55,6 +55,8 @@ export interface PickerSheet {
   uid?: string | undefined;
   /** The session's exercise swapped (swapBlock). */
   b?: number | undefined;
+  /** Added with one set row (addBlock from Add an old best, r70, 380). */
+  one?: true | undefined;
 }
 
 /** The picker, with the answer to "Every set is logged": move the sets to the new exercise, or add it after. */
@@ -188,7 +190,8 @@ export type Modal =
   | (SheetBase & { kind: 'menu'; first?: true | undefined })
   | (SheetBase & { kind: 'guide'; open?: string | undefined })
   | (SheetBase & { kind: 'calendar'; ym: string })
-  | (SheetBase & { kind: 'past' | 'daypick'; date: string })
+  /* old: Add an old best, a past Freestyle workout of one lift and one set (r70, 380). */
+  | (SheetBase & { kind: 'past' | 'daypick'; date: string; old?: true | undefined })
   | (SheetBase & { kind: 'fbInbox'; items: FbItem[] | null; err?: string | undefined })
   | (SheetBase & ExEditSheet & { kind: 'exEdit' })
   | (SheetBase & { kind: 'exhist' | 'exMus' | 'goal'; exId: string })

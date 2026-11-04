@@ -135,6 +135,8 @@ export function applyPick(m: PickerModal | null | undefined, id: string | undefi
     const p0 = planFor(id, null, d.dayId, false, d.date, partOf(d));
     const nb = newBlock(id, half(p0), { deload: !!d.deload, light: !!d.light, before: d.date });
     if (d.deload || d.light) nb.full = +p0.sets;
+    // An old best is one set (380, r70): the row left to type its load and reps, nothing more to skip at Finish.
+    if (m.one) nb.sets = nb.sets.slice(0, 1);
     const li = d.ex.length - 1;
     const last = d.ex[li];
     if (last && joinable(last, nb)) {

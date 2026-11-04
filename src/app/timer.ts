@@ -1,9 +1,10 @@
 /* The rest timer and the screen kept on (r63, from the legacy script's
-   18-ui.js). The bar is the page's (#timer), outside the screens; the
-   session screen starts it on a tick and stops it with the session. */
+   18-ui.js). The timer is the page's (#timer), outside the screens: since
+   r71 a card floating above the tabs, or the compact pill; the session
+   screen starts it on a tick and stops it with the session. */
 
 import { html, render } from 'lit-html';
-import { pad } from './util';
+import { pad, r1, PERCENT } from './util';
 import { KEY, log, prefDel, prefGet, prefSet } from './storage';
 import { state } from './store';
 import { toast } from './toast';
@@ -19,8 +20,14 @@ const BUZZ = [200, 100, 200] as const;
 /** The seconds in a minute. */
 const MINUTE_S = 60;
 
-/** The rest timer: when it ends (an absolute time, so a hidden tab comes back right), the interval drawing it, whether it has sounded, and its full length. */
-export const timer: { end: number; iv: ReturnType<typeof setInterval> | null; fired: boolean; total?: number } = {
+/** The rest timer: when it ends (an absolute time, so a hidden tab comes back right), the interval drawing it, whether it has sounded, its full length, and what comes after it (r71). */
+export const timer: {
+  end: number;
+  iv: ReturnType<typeof setInterval> | null;
+  fired: boolean;
+  total?: number;
+  next?: string;
+} = {
   end: 0,
   iv: null,
   fired: false
@@ -105,22 +112,28 @@ function wakeTip(): void {
    place after a reload. */
 const TIMER_KEY = KEY + '.timer';
 const bar = (): HTMLElement | null => document.getElementById('timer');
-/** Keeps the rest's end and length on this device while the bar shows, and forgets them once it is gone. */
+/** Keeps the rest's end, length and what comes next on this device while the timer shows, and forgets them once it is gone. */
 function timerSave(): void {
   const el = bar();
   if (timer.end && el && !el.hidden) {
-    if (!prefSet(TIMER_KEY, String(timer.end)) || !prefSet(TIMER_KEY + 'Len', String(timer.total || 0)))
+    if (
+      !prefSet(TIMER_KEY, String(timer.end)) ||
+      !prefSet(TIMER_KEY + 'Len', String(timer.total || 0)) ||
+      !prefSet(TIMER_KEY + 'Next', timer.next || '')
+    )
       log('timer', new Error('Storage refused the rest timer'));
   } else {
     prefDel(TIMER_KEY);
     prefDel(TIMER_KEY + 'Len');
+    prefDel(TIMER_KEY + 'Next');
   }
 }
-/** Starts the rest timer for so many seconds. */
-export function startTimer(sec: number): void {
+/** Starts the rest timer for so many seconds, naming what comes after it (restNext's words) when given. */
+export function startTimer(sec: number, next?: string): void {
   wakeTip();
   timer.end = Date.now() + sec * TIMER_MS.second;
   timer.total = sec;
+  timer.next = next || '';
   timer.fired = false;
   primeAudio();
   const el = bar();
@@ -140,6 +153,7 @@ export function timerResume(): void {
   const len = +(prefGet(TIMER_KEY + 'Len') || 0) || 0;
   timer.end = end;
   timer.total = len > 0 ? len : Math.round((end - Date.now()) / TIMER_MS.second);
+  timer.next = prefGet(TIMER_KEY + 'Next') || '';
   timer.fired = false;
   const el = bar();
   if (el) el.hidden = false;
@@ -206,7 +220,7 @@ function timerBuild(): void {
   render(
     compact
       ? html`<span class="tv" data-t="v"></span><button data-act="tAdd" aria-label="Add 15 seconds">+15</button><button data-act="tStop" aria-label="Dismiss timer">✕</button>`
-      : html`<span data-t="l"></span><span class="tv" data-t="v"></span><span class="row"><button data-act="tAdd">+15s</button><button data-act="tStop">Dismiss</button></span>`,
+      : html`<svg class="tdial" viewBox="0 0 44 44" aria-hidden="true"><circle class="trk" cx="22" cy="22" r="18"></circle><circle class="trp" data-t="p" cx="22" cy="22" r="18" pathLength="100" transform="rotate(-90 22 22)"></circle></svg><span class="tcol"><span class="tv" data-t="v"></span><span class="tlb" data-t="l"></span></span><button class="tpill" data-act="tSub" aria-label="Take 15 seconds off">−15</button><button class="tpill" data-act="tAdd" aria-label="Add 15 seconds">+15</button><button class="tpill tskip" data-act="tStop" aria-label="Skip the rest">Skip</button>`,
     el
   );
 }
@@ -225,14 +239,19 @@ export function tick(): void {
     if (v.textContent !== t) v.textContent = t;
     v.setAttribute('aria-label', left ? 'Rest remaining' : 'Rest done');
   } else if (v && l) {
-    if (v.textContent !== txt) v.textContent = txt;
-    const lt = left ? 'Rest' : 'Rest done';
+    const t = left ? txt : 'Go';
+    if (v.textContent !== t) v.textContent = t;
+    // Once the rest is over the line says only that (V, 2026-11-04: no next set on the time-up card).
+    const lt = left ? 'Rest' + (timer.next ? ' · ' + timer.next : '') : 'Rest done';
     if (l.textContent !== lt) l.textContent = lt;
   }
   el.classList.toggle('done', !left);
-  // The bar along the top empties as the rest runs down; +15s lengthens it.
+  // The ring (and the compact pill's bar) empties as the rest runs down; -15 shortens it, +15 lengthens it; done, it is full.
   const tot = Math.max(timer.total || 0, left, 1);
-  el.style.setProperty('--tp', String(Math.max(0, Math.min(1, left / tot))));
+  const tp = Math.max(0, Math.min(1, left / tot));
+  el.style.setProperty('--tp', String(tp));
+  const ring = el.querySelector('[data-t="p"]');
+  if (ring) ring.setAttribute('stroke-dasharray', `${left ? r1(tp * PERCENT) : PERCENT} ${PERCENT}`);
   if (!left) {
     if (timer.iv) clearInterval(timer.iv);
     timer.iv = null;
@@ -248,6 +267,12 @@ export function tick(): void {
       }
     }
   }
+}
+/** Takes 15 seconds off the rest (r71); one taken to its end is done, as if it had run out. */
+export function timerSub(): void {
+  timer.end = Math.max(Date.now(), timer.end - ADD_S * TIMER_MS.second);
+  timerSave();
+  tick();
 }
 /* Once the rest is over, +15 counts from now (not from the old end, which
    left it at 0:00) and the alert is armed again. */
@@ -265,4 +290,26 @@ export function timerAdd(): void {
 export function timerRefresh(): void {
   const el = bar();
   if (el && !el.hidden) tick();
+}
+
+/* A bar bounds the room below only when it sits in the lower half of the
+   screen. r70's first build drew the rest as a ring in the top bar, and read
+   by its top alone it made the whole screen the bottom edge: an exercise
+   dragged during a rest scrolled the page (NEW-56), and on a phone with a
+   notch, where the ring started below the status bar, a tick's effort strip
+   scrolled up under the header (NEW-58). The rest is a bar along the bottom
+   again (NEW-60), and the rule holds wherever a bar is put. Both bars are
+   position:fixed, whose offsetParent is always null, so getClientRects
+   tells a shown bar from a hidden one. */
+/** The top of the bars along the bottom of the screen (the tab bar and the rest timer), or the screen's bottom when none shows: what a dragged exercise and the effort strip stay above. */
+export function bottomBarsTop(): number {
+  const vh = window.innerHeight;
+  let bot = vh;
+  for (const id of ['tabs', 'timer']) {
+    const el = document.getElementById(id);
+    if (!el || el.hidden || !el.getClientRects().length) continue;
+    const r = el.getBoundingClientRect();
+    if (r.height && r.top > vh / 2) bot = Math.min(bot, r.top);
+  }
+  return bot;
 }

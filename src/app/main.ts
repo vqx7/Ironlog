@@ -143,6 +143,7 @@ import {
   isRestWeek,
   lastLighterWeek,
   liftRead,
+  liftsMoving,
   lighterLoad,
   lightZero,
   loadLabel,
@@ -259,6 +260,7 @@ import {
   routineClutter,
   sessionLength,
   sessionsOn,
+  setShort,
   setStr,
   sizeRows,
   tonnageNow,
@@ -781,7 +783,11 @@ function start(): void {
     templateSigsBefore,
     bandOf,
     picsTidy,
-    risingWords
+    risingWords,
+    // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it (r70).
+    setShortOf: (id: string, w: number, r: number): string => setShort(EX(id), w, r),
+    // Today's Lifts moving, so tests/engine.js compares the page's answer with the engine's in Node (r70).
+    liftsMoving
   };
   render();
   wakeOn();

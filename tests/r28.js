@@ -21,13 +21,13 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     const P = await open('index.html', { touch: true, dark: true, clock: '2026-10-02T12:00:00' });
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
     const fresh = await ev(() => { const s = window.__ironlog.state.settings; return { hidden: s.hidden, order: s.secOrder, auto: s.autoDone, ob: window.__ironlog.obActive() }; });
-    ok(fresh.ob && fresh.auto === true && JSON.stringify(fresh.hidden) === JSON.stringify(['today:tiles', 'today:coach', 'today:body', 'program:schedule', 'program:pvol']), 'a new install: auto-mark on; At a glance, Coach, Body, Schedule and Weekly volume hidden', fresh);
+    ok(fresh.ob && fresh.auto === true && JSON.stringify(fresh.hidden) === JSON.stringify(['today:tiles', 'today:coach', 'today:body', 'program:pvol']) /* Plan's Schedule shown since r70 (381) */, 'a new install: auto-mark on; At a glance, Coach, Body, Schedule and Weekly volume hidden', fresh);
     // Pick a ready-made routine the way the first-run page does.
     await ev(() => { const L = window.__ironlog; const t = L.TEMPLATES.find(x => /upper/i.test(x.name)); const r = L.routineFromTemplate(t.key); L.state.routines = [r]; L.state.activeRoutineId = r.id; L.state.settings.onboarded = true; localStorage.setItem('ironlog.v1.installLater', '1'); L.render(); });
     const tabState = t => ev(t => { const L = window.__ironlog; L.ui.tab = t; window.scrollTo(0, 0); L.render(); const kids = [...document.querySelectorAll('#view > [data-mkey]')]; return { keys: kids.map(e => e.dataset.mkey), open: kids.filter(e => e.open).map(e => e.dataset.mkey), hb: document.querySelectorAll('#view summary .hb').length, line: !!document.getElementById('moreLine') }; }, t);
     const st = {}; for (const t of TABS) st[t] = await tabState(t);
     ok(st.today.keys.join() === 'session,map,week', 'Today shows Workout preview, Muscle map, This week, in that order', st.today);
-    ok(st.program.keys.join() === 'routine,library,days', 'Plan shows Routine, Add exercises, Days', st.program);
+    ok(st.program.keys.join() === 'routine,library,schedule,days', 'Plan shows Routine, Add exercises, Schedule (shown since r70, 381), Days', st.program);
     ok(st.dash.keys.join() === 'exercise,volume,weak,consistency,body', 'Stats leads with Lifts, then Volume, Muscles, Consistency, Body', st.dash);
     ok(['today', 'program', 'dash', 'settings'].every(t => st[t].open.length === 0), 'Today, Plan, Stats and Settings open with every section folded', TABS.map(t => [t, st[t].open]));
     ok(st.settings.keys.includes('help') && st.settings.keys.indexOf('help') > st.settings.keys.indexOf('data') && st.settings.keys.indexOf('help') < st.settings.keys.indexOf('more'), 'Settings has Help near the bottom, after Your data', st.settings.keys);
@@ -56,9 +56,9 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     await ev(() => { const L = window.__ironlog; L.state.settings.secOrder.today = ['week', 'map', 'session']; L.render(); });
     await page.locator('[data-act="layoutDefault"]').click(); await wait(120);
     const back = await ev(() => { const s = window.__ironlog.state.settings; return { hidden: s.hidden.join(), order: s.secOrder.today.join(), pressed: document.querySelector('[data-act="layoutDefault"]').getAttribute('aria-pressed'), undo: !!document.querySelector('#toast [data-act="undo"]') }; });
-    ok(back.hidden === 'today:tiles,today:coach,today:body,program:schedule,program:pvol' && back.order.startsWith('session,map,week') && back.pressed === 'true' && back.undo, 'Default layout restores the hidden list and the order, with Undo', back);
+    ok(back.hidden === 'today:tiles,today:coach,today:body,program:pvol' /* Schedule shown since r70 (381) */ && back.order.startsWith('moving,session,map,week') /* Lifts moving first since r70 (364 b-2) */ && back.pressed === 'true' && back.undo, 'Default layout restores the hidden list and the order, with Undo', back);
     await ev(() => { const L = window.__ironlog; L.state.settings.secOrder.today = ['week', 'session', 'map']; L.ACT.layoutReset(); });
-    ok(await ev(() => window.__ironlog.state.settings.secOrder.today.join().startsWith('session,map,week')), 'Reset section order goes back to the default order, not the code order');
+    ok(await ev(() => window.__ironlog.state.settings.secOrder.today.join().startsWith('moving,session,map,week')), 'Reset section order goes back to the default order, not the code order');
 
     // The menu: a tinted button, and Show, hide or reorder sections in it.
     const btn = await ev(() => { const el = document.getElementById('saveState'); const cs = getComputedStyle(el); return { bg: cs.backgroundColor, ring: cs.boxShadow, color: cs.color, surface: getComputedStyle(document.documentElement).getPropertyValue('--surface-2') }; });
@@ -168,7 +168,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
     await page.locator('[data-act="demoStart"]').click(); await wait(200);
     const d2 = await ev(() => { const L = window.__ironlog; const s = L.state.settings; return { demo: L.state.sessions.length, hidden: s.hidden.join(), order: (s.secOrder.today || []).join(), auto: s.autoDone, rir: s.rirMode, ob: L.obActive(), kept: localStorage.getItem('ironlog.v1.demoSettings') }; });
-    ok(d2.demo === 0 && d2.ob && d2.hidden === 'today:tiles,today:coach,today:body,program:schedule,program:pvol' && d2.order.startsWith('session,map,week') && d2.auto === true && d2.rir === 'on' && d2.kept === null, 'Clear demo and set up puts every setting back to the new-install defaults', d2);
+    ok(d2.demo === 0 && d2.ob && d2.hidden === 'today:tiles,today:coach,today:body,program:pvol' /* Schedule shown since r70 (381) */ && d2.order.startsWith('moving,session,map,week') && d2.auto === true && d2.rir === 'on' && d2.kept === null, 'Clear demo and set up puts every setting back to the new-install defaults', d2);
     // Someone with their own log who loads the demo from Settings keeps their changes when clearing it.
     await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.sessions.push({ id: 'real1', date: '2026-10-01', dayName: 'Mine', ex: [] }); L.state = L.normalize(L.state); L.saveNow(); L.ui.tab = 'settings'; L.render(); });
     await ev(() => { const L = window.__ironlog; L.makeDemo(); L.ACT.layoutAll(); L.state.settings.autoDone = false; L.ACT.demoClear(); });
@@ -271,7 +271,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     const ru = await ev(() => ({ order: window.__ironlog.state.settings.secOrder.today.join(), undo: !!document.querySelector('#toast [data-act="undo"]') }));
     await page.click('#toast [data-act="undo"]'); await wait(150);
     const back = await ev(() => window.__ironlog.state.settings.secOrder.today.join());
-    ok(loc.inLayout && !loc.inGeneral && ru.order.startsWith('session,map,week') && ru.undo && back === 'week,map,session', 'Reset section order is in Layout, resets to the defaults, and Undo brings the old order back', { loc, ru, back });
+    ok(loc.inLayout && !loc.inGeneral && ru.order.startsWith('moving,session,map,week') && ru.undo && back === 'week,map,session', 'Reset section order is in Layout, resets to the defaults, and Undo brings the old order back', { loc, ru, back });
 
     // Plan: a lone ? stays at the top right, on the title's row.
     const q = await ev(() => { const L = window.__ironlog; L.ui.tab = 'program'; L.render(); const hb = document.querySelector('#view .ph .hb').getBoundingClientRect(); const h2 = document.querySelector('#view .ph h2').getBoundingClientRect(); return { hbTop: hb.top, h2Bottom: h2.bottom, right: document.documentElement.clientWidth - hb.right }; });
@@ -310,7 +310,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     await ev(() => { const L = window.__ironlog; L.state.settings.userName = 'New'; L.saveNow(); L.ACT.demoLoad(); }); await wait(60); await page.locator('#modal [data-act="mOk"]').click(); await wait(200);
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); }); await page.locator('[data-act="demoStart"]').click(); await wait(150);
     const b = await ev(() => { const s = window.__ironlog.state.settings; return { unit: s.unit, theme: s.theme, name: s.userName, hidden: s.hidden.length }; });
-    ok(b.unit === 'lb' && b.theme === 'dark' && b.name === 'New' && b.hidden === 5, 'a stale snapshot never comes back: the demo puts back the settings from when it was loaded', b);
+    ok(b.unit === 'lb' && b.theme === 'dark' && b.name === 'New' && b.hidden === 4 /* the new-install default since r70 (381) */, 'a stale snapshot never comes back: the demo puts back the settings from when it was loaded', b);
     ok(!P.errors.length, 'no page errors (demo guard)', P.errors);
     await P.browser.close();
   }

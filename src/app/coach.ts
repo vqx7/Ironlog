@@ -61,6 +61,38 @@ export function moversIn(M: Model): { id: string; pct: number | null; wk: number
     .map(([id, x]) => ({ id, pct: x!.pct, wk: x!.spanW || 2 }));
 }
 
+/** One row of Today's Lifts moving: the lift, the weeks its trend covers, its line, and its latest heaviest set (kg). */
+interface Mover {
+  id: string;
+  wk: number;
+  line: number[];
+  top: { w: number; r: number } | null;
+}
+/* Today's Lifts moving (364 b-2, r70, V 2026-11-03: "if they're accurate and
+   not distracting"): the lifts Stats' summary and the coach call clearly
+   rising (moversIn), in their order. Each line is exactly what the trend is
+   fitted to (ExStat.trendTv: the current range's sessions within the
+   trend's weeks, each one's reading), so it rises where the reading does. A
+   load alone was tried first and drew a flat line with one step on a lift
+   whose reps rise between loads (seen on the built page); every session in
+   the trend's weeks mixed a heavy day's and a light day's readings into a
+   zigzag that fell while the lift rose (the review of r70, R70-3). The number beside it is a set the lifter did, never an estimate:
+   the latest session's heaviest working set. */
+/** The rising lifts, each with its line and its latest heaviest set. */
+export function liftsMovingIn(M: Model): Mover[] {
+  const I = IDXIn(M);
+  return moversIn(M).map(({ id, wk }) => {
+    const all = I.byEx[id] || [];
+    const st = I.exStats[id];
+    const line = st ? st.trendTv.slice() : [];
+    const last = all[all.length - 1];
+    let top: Mover['top'] = null;
+    for (const p of last ? last.pts : [])
+      if (!top || p.w > top.w || (p.w === top.w && p.r > top.r)) top = { w: p.w, r: p.r };
+    return { id, wk, line, top };
+  });
+}
+
 /* The ids of the lifts that have stalled. Every entry of IDX's exStats is a
    lift's stats, as the ! says. */
 export function stalledIdsIn(M: Model): string[] {

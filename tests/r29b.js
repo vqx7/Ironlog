@@ -186,14 +186,16 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     await P.browser.close();
   }
 
-  // ---- The rest timer stands out, with white text at 4.5:1 on every accent, and a bar that empties.
+  // ---- The rest timer stands out, with white text at 4.5:1 on every accent, and a bar that empties. Since r71 that is
+  // the compact pill's look (the rule it was made for, r29); the rest card V approved on 2026-11-03 (364 b-1) is the
+  // page's surface, standing apart by its border, its shadow and the accent's ring, and is held to that below.
   {
     const lum = c => { const v = c.map(x => x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
     const parse = s => { let m = s.match(/color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)/); if (m) return m.slice(1, 4).map(Number); m = s.match(/rgba?\((\d+), (\d+), (\d+)/); return m ? m.slice(1, 4).map(x => x / 255) : null; };
     for (const [acc, dark] of [['blue', true], ['volt', true], ['ember', true], ['pink', true], ['pink', false], ['blue', false], ['violet', true], ['violet', false], ['cyan', true], ['cyan', false], ['red', true], ['red', false]]) {
       const P = await open('index.html', { touch: true, dark, clock: '2026-10-03T11:30:00' });
       const { page } = P; const ev = (f, a) => page.evaluate(f, a);
-      await ev(([acc, dark]) => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.accent = acc; L.state.settings.theme = dark ? 'dark' : 'light'; L.render(); L.timer && 0; }, [acc, dark]);
+      await ev(([acc, dark]) => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.timerCompact = true; L.state.settings.accent = acc; L.state.settings.theme = dark ? 'dark' : 'light'; L.render(); L.timer && 0; }, [acc, dark]);
       await ev(() => { document.documentElement.dataset.accent = window.__ironlog.state.settings.accent; });
       const r = await ev(async () => { const L = window.__ironlog; L.ACT.startFree(); await new Promise(r => setTimeout(r, 50));
         const t = document.getElementById('timer'); t.hidden = false; return null; });
@@ -205,10 +207,22 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       const c = await ev(() => { const t = document.getElementById('timer'); const cs = getComputedStyle(t); const stops = [...cs.backgroundImage.matchAll(/color\(srgb [\d. ]+\)|rgba?\([^)]+\)/g)].map(m => m[0]); return { stops, bg: getComputedStyle(document.body).backgroundColor, color: cs.color, tp: t.style.getPropertyValue('--tp'), done: t.classList.contains('done') }; });
       const fg = parse(c.color); const worst = Math.min(...c.stops.map(s => { const b = parse(s); return (Math.max(lum(fg), lum(b)) + 0.05) / (Math.min(lum(fg), lum(b)) + 0.05); }));
       const page_ = parse(c.bg); const dock = parse(c.stops[0]); const dist = Math.hypot(...dock.map((x, i) => x - page_[i]));
-      ok(c.stops.length >= 2 && worst >= 4.5 && dist > 0.15 && !c.done && +c.tp > 0.9, `${acc}${dark ? ' dark' : ' light'}: the running timer is a tint of the accent, apart from the page, white text at ${worst.toFixed(2)}:1, bar full at the start`, c);
+      ok(c.stops.length >= 2 && worst >= 4.5 && dist > 0.15 && !c.done && +c.tp > 0.9, `${acc}${dark ? ' dark' : ' light'}: the running compact timer is a tint of the accent, apart from the page, white text at ${worst.toFixed(2)}:1, bar full at the start`, c);
       await ev(() => { window.__ironlog.timer.end = Date.now() + 5000; }); await wait(400);
       const tp2 = await ev(() => +document.getElementById('timer').style.getPropertyValue('--tp'));
-      ok(tp2 < 0.5, `${acc}: the bar empties as the rest runs down`, tp2);
+      ok(tp2 < 0.5, `${acc}: the compact timer's bar empties as the rest runs down`, tp2);
+      // The rest card (r71): its time and the accent's Skip readable on it at 4.5:1, the accent's ring at 3:1, a border
+      // and a shadow setting it apart from the page, and the ring emptying as the rest runs down.
+      await ev(() => { const L = window.__ironlog; L.ACT.tStop(); L.state.settings.timerCompact = false; L.timer.end = 0; L.ACT.tAdd(); });
+      await wait(300);
+      const k = await ev(() => { const t = document.getElementById('timer'), cs = getComputedStyle(t), v = t.querySelector('[data-t="v"]'), sk = t.querySelector('[data-act="tStop"]'), rg = t.querySelector('[data-t="p"]'); const pr = document.createElement('i'); pr.style.color = 'var(--volt)'; document.body.appendChild(pr); const volt = getComputedStyle(pr).color; pr.remove(); return { bg: cs.backgroundColor, border: cs.borderTopColor, bw: parseFloat(cs.borderTopWidth), shadow: cs.boxShadow, time: getComputedStyle(v).color, skip: getComputedStyle(sk).color, ring: getComputedStyle(rg).stroke, volt, dash: rg.getAttribute('stroke-dasharray') }; });
+      const cr = (a, b) => { const x = lum(parse(a)), y = lum(parse(b)); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+      /* The ring is drawn in the accent, as approved; how faint some accents are on a light card (Cyan 1.96:1, Ember
+         2.8:1, as with every accent line on a light surface) is NEW-61, V's call, so it is not held to 3:1 here. */
+      ok(cr(k.time, k.bg) >= 4.5 && cr(k.skip, k.bg) >= 4.5 && k.ring === k.volt && k.bw >= 1 && k.shadow !== 'none' && parseFloat(k.dash) > 90, `${acc}${dark ? ' dark' : ' light'}: the rest card's time at ${cr(k.time, k.bg).toFixed(2)}:1, Skip at ${cr(k.skip, k.bg).toFixed(2)}:1, the ring in the accent (${cr(k.ring, k.bg).toFixed(2)}:1), a border and a shadow, full at the start`, k);
+      await ev(() => { window.__ironlog.timer.end = Date.now() + 5000; }); await wait(400);
+      const d2 = await ev(() => parseFloat(document.querySelector('#timer [data-t="p"]').getAttribute('stroke-dasharray')));
+      ok(d2 < 50, `${acc}: the card's ring empties as the rest runs down`, d2);
       await P.browser.close();
     }
   }

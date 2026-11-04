@@ -95,7 +95,7 @@ import { readSets } from './importing';
 import type { TypedSet } from './importing';
 import { toast } from './toast';
 import { confirmBox, rerenderKeepScroll } from './page';
-import { startTimer } from './timer';
+import { bottomBarsTop, startTimer } from './timer';
 
 /* ---------- rows and blocks ---------- */
 
@@ -986,7 +986,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
   // A drop set waiting under this set is done straight after it, with no rest between (r66, 375).
   const nx = b.sets[si + 1];
   if (autoRest && !s.drop && nx && nx.drop && !nx.done) autoRest = false;
-  if (autoRest) startTimer(+b.plan.rest);
+  if (autoRest) startTimer(+b.plan.rest, restNext(bi));
   if (W.foldT) clearTimeout(W.foldT);
   W.foldT = null;
   const askRir =
@@ -1004,6 +1004,27 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
     W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
   }
   if (val && b.sets.filter(x => x.done).length === 1 && orderAt(b) >= 0) orderSoon(b);
+}
+
+/* What the rest card names as next (r71, 364 b-1), by the rules the screen
+   already follows after a tick: the lift's next working set, numbered as its
+   rows are; in a superset, whose rest comes after the group's last lift, the
+   group's first lift with a set to do (ssNext); with the lift done, the one
+   the screen brings up next (autoFold). Nothing when nothing is left. */
+/** The words for what comes after the rest started on exercise bi: "next set N", "next: Lift", or empty. */
+export function restNext(bi: number): string {
+  const d = state.draft;
+  const b = d && d.ex[bi];
+  if (!d || !b) return '';
+  const left = (x: DraftBlock): boolean => x.sets.some(y => !y.done && !y.warm && !y.drop);
+  const to = b.plan.ss ? d.ex.find(x => x.plan && x.plan.ss === b.plan.ss && left(x)) || b : b;
+  const k = to.sets.filter(y => !y.warm && !y.drop).findIndex(y => !y.done);
+  // No-break spaces keep "next set 2" on one line when the card's line wraps on a narrow phone.
+  if (k >= 0) return to === b ? `next\u00a0set\u00a0${k + 1}` : `next: ${exName(to.exId)}`;
+  const i = d.ex.indexOf(to);
+  let nx = d.ex.findIndex((x, j) => j > i && !blockDone(x));
+  if (nx < 0) nx = d.ex.findIndex(x => blockUntouched(x));
+  return nx >= 0 && nx !== i ? `next: ${exName(d.ex[nx].exId)}` : '';
 }
 
 /* A superset's next set (r66, PENDING 375): after a set of one exercise in
@@ -1058,18 +1079,11 @@ export function rirShowStrip(bi: number, si: number): void {
   if (!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`)) return;
   W.stripAt = { b: blkRef(bi), s: si };
   redraw();
-  // The rest bar appears on the same tap and can cover the strip; lift it into view above the bar and the tabs.
+  // The tab bar, and the rest timer as the compact pill, which appears on the same tap, can cover the strip: lift it into view above them.
   requestAnimationFrame(() => {
     const st = document.querySelector('.rirstrip');
     if (!st) return;
-    let lim = window.innerHeight;
-    for (const id of ['timer', 'tabs']) {
-      const el = document.getElementById(id);
-      if (el && !el.hidden) {
-        const t = el.getBoundingClientRect().top;
-        if (t > 0) lim = Math.min(lim, t);
-      }
-    }
+    const lim = bottomBarsTop();
     const r = st.getBoundingClientRect();
     if (r.bottom > lim - STRIP_ROOM_PX.edge)
       window.scrollBy({ top: r.bottom - lim + STRIP_ROOM_PX.gap, behavior: 'smooth' });

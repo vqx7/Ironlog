@@ -441,7 +441,8 @@ const SCREENS = [
       const ed = s.sessions.find(x => x.id === sv.id); const edited = !s.draft && ed.ex[0].sets[0].r === 9;
       it.sets = was;
       L.ui.tab = 'today'; L.render(); await new Promise(r => setTimeout(r, 100));
-      // Freestyle: a lift the routine plans, added to a blank session, saved with no plan's sets.
+      // A blank session: a lift the routine plans, added to it; since r70 (NEW-51) it saves the sets of the routine's day
+      // nearest to what it did while the routine is followed (Freestyle mode saves none: tests/r70.js section 1).
       L.ACT.startFree(); await new Promise(r => setTimeout(r, 150));
       const f = s.draft; const exId = it.exId; f.ex.push(L.newBlock(exId, L.planFor(exId, null, null, false, f.date), {})); Object.assign(f.ex[f.ex.length - 1].sets[0], { w: 20, r: 8, done: true });
       f._rampAsked = true; f._leftAsked = true; L.ACT.finishNow(); await new Promise(r => setTimeout(r, 300));
@@ -450,7 +451,7 @@ const SCREENS = [
     });
     ok(fin.planned.length > 0 && fin.planned.every(([a, b]) => a === b) && fin.saved.every(x => typeof x === 'number'), '7. Finish on a day of the routine saves, with each lift, the sets its plan gives it', fin);
     ok(fin.edited && fin.kept[0] === fin.kept[1], '7. an edit from History keeps the sets saved with the session, after the plan changed', fin);
-    ok(fin.free.free && fin.free.ex.length === 1 && fin.free.ex[0][1] === false, '7. a Freestyle session saves no plan\'s sets, so it reads its own, as before', fin.free);
+    ok(fin.free.free && fin.free.ex.length === 1 && fin.free.ex[0][1] === true, '7. a blank session of a lift the routine plans saves its nearest day\'s sets while the routine is followed (r70, NEW-51)', fin.free);
     await Q.page.context().close();
   }
 

@@ -236,11 +236,33 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       .replace(/\nAdd to this tab(?=\n)/, '')
       .replace(/\n(Show, hide, or reorder sections|Edit sections)$/, '\n(Layout)')
   });
+  /* r70's and r71's changes that reach Settings on purpose: Layout's chip for Today's Lifts moving (364 b-2, tests/r70.js
+     section 9), its Default layout tip (381, R70-4) and the Compact timer's tip, the rest card where it was a bar (r71,
+     364 b-1, tests/r71.js section 1). On this build's page the chip is taken out and the tips read as before;
+     everything else is still held to r56.2. */
+  /* And Plan's Schedule shown on a new install (381, section 2): Layout's count of hidden sections and the Schedule
+     chip's state read as a placeholder on both pages. */
+  const heldOutSched = shot => ({
+    ...shot,
+    tree: shot.tree.map(t => t
+      .replace(/(<span class="sec-t">"Layout"<\/span><span class="sec-s">)"\d+ hidden"/, '$1(hidden)')
+      .replace(/<button aria-pressed="(true|false)" class="chip( on)?" data-act="hideToggle" data-k="program:schedule">/, '<button (schedule chip)>')),
+    text: shot.text.replace(/\nLayout\n\d+ hidden(?=\n)/, '\nLayout\n(hidden)')
+  });
+  const heldOutR70 = shot => ({
+    ...shot,
+    tree: shot.tree.map(t => t
+      .replace('A small pill in the corner instead of the rest card above the tabs.', 'A small pill in the corner instead of a bar across the screen.')
+      // Layout's Default layout tip, which no longer names Schedule (381, R70-4: tests/r70.js section 2).
+      .replace('At a glance, Coach, and Body hidden on Today, Weekly volume hidden on Plan, and the default order.', 'At a glance, Coach, and Body hidden on Today, Schedule and Weekly volume hidden on Plan, and the default order.')
+      .replace(/<button [^>]*data-k="today:moving"[^>]*>"Lifts moving"<\/button>/, '')),
+    text: shot.text.replace(/\nLifts moving(?=\n)/, '')
+  });
   const ENVS = [null, 'preview'];
   for (const [name, seed] of SEEDS) for (const tab of ['settings', 'history']) for (const env of ENVS) {
     if (env && name !== 'demo data, lb') continue;
     const sd = seed.replace(/L\.makeDemo\(\);/g, PIN + 'L.makeDemo();');
-    const a = heldOutR69(heldOut(await shot(OLD, sd, tab, env))), b = heldOutR69(heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env)))));
+    const a = heldOutSched(heldOutR69(heldOut(await shot(OLD, sd, tab, env)))), b = heldOutSched(heldOutR70(heldOutR69(heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env)))))));
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     const firstDiff = d && { at: d.at, r56_2: d.before, now: d.now };
     ok(!firstDiff, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same elements, attributes and field values as r56.2`, firstDiff);
