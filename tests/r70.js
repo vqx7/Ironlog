@@ -1,8 +1,8 @@
 // r70 (PENDING.md's tracker, rows NEW-51 and 379 to 384, 364 b-1, 364 b-2, 172 b and AUD-70), each written as
 // what a lifter expects and run first on r69 (`node tests/r70.js baselines/r69.html`), where each section fails:
-//   1  NEW-51: Finish saves, with each lift of a blank session, the fewest sets the routine plans for it (none in
+//   1  NEW-51: Finish saves, with each lift of a blank session, the sets of the day nearest to what was done (none in
 //      Freestyle), so two blank one-set sessions in a row never make a 3-set lift a 1-set one; each session is read
-//      by what was saved with it, so a plan raised or Freestyle turned off later rereads nothing (R70-1, R70-2).
+//      by what was saved with it, so a plan raised or Freestyle turned off later rereads nothing (R70-1, R70-2, R70-5).
 //   2  381: a new install shows Plan's Schedule (cycle or fixed weekdays); a phone whose layout hides it keeps it hidden.
 //   3  382 (not built, so a guard): homeFolded, dashFolded and tidyV keep their place in the settings, since a phone on
 //      r69 and one on r70 must order settings alike or they rewrite them back and forth (tests/mixed.js; 339 n).
@@ -84,9 +84,19 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
       return got;
     };
     const fin = await finishBlank(false);
-    ok(fin && fin.ex.length === 1 && fin.ex[0].ps === 3, '1. NEW-51: a blank session finished saves, with bench, the fewest sets the routine plans for it (5 one day, 3 another: 3) (r69: none)', fin);
+    ok(fin && fin.ex.length === 1 && fin.ex[0].ps === 3, '1. NEW-51: a blank session of one bench set finished saves the nearest day\'s plan (5 one day, 3 another: 3) (r69: none)', fin);
     const finFree = await finishBlank(true);
     ok(finFree && finFree.ex.length === 1 && finFree.ex[0].ps === null, '1. in Freestyle (Today opens blank) nothing is saved, so the lifter\'s own sets lead (a guard)', finFree);
+
+    // R70-5, the review of a101312: the sets saved are the nearest day's to what was done (fewer on a tie), so a 5-set
+    // session is judged on all five; held to the fewest (3), its weaker back sets were not read and the target fell.
+    const near = await ev(R => { const L = window.__ironlog; const d = { free: true, dayId: null, routineId: '' };
+      return [1, 3, 4, 5].map(n => { const ex = [{ exId: 'bench', sets: Array.from({ length: n }, () => ({ w: 100, r: 8, warm: false, drop: false })) }]; const o = L.withPlanSets(ex, d, [R], { routineId: R.id, freestyle: false }); return o[0].ps === undefined ? null : o[0].ps; }); }, two);
+    ok(JSON.stringify(near) === '[3,3,3,5]', '1. R70-5: a blank session of 1, 3, 4 or 5 bench sets (planned at 5 and 3) saves 3, 3, 3 and 5', near);
+    const five = [0, 1, 2].map(k => ses('v' + k, D(k), 'bench', [[225, 8, 2], [225, 8, 2], [225, 8, 2], [225, 8, 2], [225, 8, 2]], { ps: 5 }));
+    await log([...five, ses('v3', D(3), 'bench', [[225, 8, 2], [225, 8, 2], [225, 8, 2], [225, 5, 2], [225, 4, 2]], { ps: 5 })], { routine: two });
+    const v = await read(5);
+    ok(v.short[3] === 'reading' && /Beat 40 reps over 5 sets at 225 lb/.test(v.text), '1. R70-5: 8, 8, 8, 5, 4 after three sessions of 5 x 8, saved with 5, reads below usual and the target repeats 40 reps', v);
 
     // (b) Read as saved: bench planned at 3 sets, three sessions of 3 on its day, then 225 x 8 alone in two blank sessions saved with 3.
     await log([...base, ses('b1', D(3), 'bench', [[225, 8, 2]], { ps: 3 }), ses('b2', add(D(3), 3), 'bench', [[225, 8, 2]], { ps: 3 })]);

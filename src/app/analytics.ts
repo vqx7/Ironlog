@@ -891,8 +891,8 @@ function atUsualWork(x: Exposure, ref: readonly Exposure[]): boolean {
    none recorded (Freestyle, a lift on no day of the routine, one saved
    before r58, a blank session saved before r70) reads its own sets, as
    before. Since r70 a blank session records them too (NEW-51): Finish saves,
-   on a lift the routine plans, the fewest sets any of its days plans for
-   it, unless Today opens blank (Freestyle), so two one-set PR attempts in a
+   on a lift the routine plans, the sets of its day nearest to what the
+   session did, unless Today opens blank (Freestyle), so two one-set PR attempts in a
    row never make a 3-set lift a 1-set one, and, as on a routine's day, each
    session is read by what was saved with it, never by the plan or the mode
    as they are now (the review of r70, R70-1 and R70-2). On a lift labelled
