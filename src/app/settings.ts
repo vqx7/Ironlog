@@ -811,7 +811,7 @@ ${bwSettings()}
 </select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${live(!!s.timerSound)} ?disabled=${s.timerMode === 'off'}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${live(!!s.timerCompact)} ?disabled=${s.timerMode === 'off'}/>${labelTip(
         'lt-timerCompact',
         'Compact timer',
-        'A small pill in the corner instead of the ring in the top bar.'
+        'A small pill in the corner instead of a bar across the screen.'
       )}</label> <label class="check-inline"><input type="checkbox" data-bind="autoDone" aria-labelledby="lt-autoDone" .checked=${live(!!s.autoDone)}/>${labelTip(
         'lt-autoDone',
         'Auto-mark a set done after its reps',

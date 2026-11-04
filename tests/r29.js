@@ -207,10 +207,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await ev(() => { window.scrollTo(0, 0); });
     const tk = await ev(() => { const s = document.querySelector('[data-act="sDone"][data-b="1"][data-s="0"]'); s.scrollIntoView({ block: 'center' }); return true; });
     await page.tap('[data-act="sDone"][data-b="1"][data-s="0"]'); await wait(300);
-    // Since r70 (364 b-1) the rest is a ring in the top bar, so the bar along the bottom is the tab bar: the finger
-    // aims just above whichever bar is in the lower half of the screen, the timer's pill when it is compact.
-    const showing = await ev(() => { const t = document.getElementById('timer'); return !!t && !t.hidden; });
-    const tm = await ev(() => { let b = window.innerHeight; for (const id of ['tabs', 'timer']) { const e = document.getElementById(id); if (e && !e.hidden && e.getClientRects().length) { const r = e.getBoundingClientRect(); if (r.height && r.top > window.innerHeight / 2) b = Math.min(b, r.top); } } return Math.round(b); });
+    const tm = await ev(() => { const t = document.getElementById('timer'); return t && !t.hidden ? Math.round(t.getBoundingClientRect().top) : null; });
     await ev(() => { window.scrollTo(0, 0); }); await wait(100);
     gb = await page.locator('.bgrip[data-b="0"]').boundingBox(); x0 = gb.x + gb.width / 2; y0 = gb.y + gb.height / 2;
     const sy5 = await ev(() => window.scrollY);
@@ -219,7 +216,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     for (let k = 0; k < 40; k++) { await tp('touchMove', x0, tm - 20 + (k % 2)); await wait(40); }
     const sy6 = await ev(() => window.scrollY);
     await tp('touchEnd', x0, tm - 20); await wait(400);
-    ok(tk && showing && tm && sy6 > sy5 + 100, 'with the rest timer showing, a finger just above the bar along the bottom scrolls the page down', { showing, barTop: tm, sy5, sy6 });
+    ok(tk && tm && sy6 > sy5 + 100, 'with the rest timer showing, a finger just above it scrolls the page down', { timerTop: tm, sy5, sy6 });
     ok(!(await ev(() => document.body.classList.contains('blkdrag') || !!document.getElementById('view').style.paddingBottom)), 'nothing from the drag is left on the page', null);
     ok(!P.errors.length, 'no page errors (long drag)', P.errors);
     await P.browser.close();

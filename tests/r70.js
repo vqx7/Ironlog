@@ -9,8 +9,8 @@
 //   4  364 b-2: Today's Lifts moving names the lifts Stats and the coach call rising, in their order, three at most,
 //      each line built from the lift's own sessions (lighter ones out) and rising, each set the latest session's
 //      heaviest; a tap opens the lift on Stats; no rising lift, no section and no chip; first on a phone's saved order.
-//   5  364 b-1: the rest runs as a ring in the top bar, over the week bar and beside the account button, covering no
-//      row and staying as the page scrolls; -15, +15 and Skip work; done, it is the full accent; the compact pill stays.
+//   5  364 b-1 held back by V (NEW-60, 2026-11-03: "Keep r69's timer for now"): the rest timer, as a bar and as the
+//      compact pill, is r69's, read beside r69's page. Fails on b538c13 (the ring in the top bar); passes on r69.
 //   6  379: each lift on Today's Workout preview names its best: the set behind a compound lift's best estimate, else its
 //      heaviest set, with its date, the same set and date Stats' All-time bests names for it.
 //   7  380: Add an old best, from All-time bests: a date, the lift, its one set, Finish; saved as a past workout of one
@@ -25,7 +25,7 @@
 //  11  NEW-56 and NEW-58, run first on 9d6c82c (r70 before them), where both fail: with the rest ring in the top bar,
 //      a finger holding an exercise mid-screen leaves the page still (it scrolled 391 px) and one just above the tab
 //      bar scrolls it, as before the ring (with the compact pill, its top is the edge: a guard, passing there); and on
-//      a phone with a notch (the ring below a 47 px status bar) a tick's effort strip stays below the header (it went
+//      a phone with a notch (47 px of status bar, which put 9d6c82c's ring at 47) a tick's effort strip stays below the header (it went
 //      to -71 px, under it). NEW-57 (each handle 44 px beside the
 //      muscle's button) is tests/r29.js's handle check.
 // R70_ONLY=1,2 runs some sections.
@@ -218,43 +218,26 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
   }
 
   if (run(5)) {
-    const T = await open(FILE, { clock: TODAY + 'T18:00:00' });
-    const pg = T.page;
-    await pg.evaluate(() => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; L.makeDemo(); for (const x of L.state.sessions) delete x.demo; L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); });
-    await pg.click('#view .hero [data-act="startSession"]:not([data-light])'); await pg.waitForSelector('#view .cbtn');
-    await pg.click('#view .cbtn'); await pg.waitForSelector('#timer:not([hidden])');
-    const where = () => pg.evaluate(() => {
-      const t = document.getElementById('timer').getBoundingClientRect(), top = document.querySelector('.top').getBoundingClientRect(), wk = document.getElementById('wkbar').getBoundingClientRect();
-      const ss = document.getElementById('saveState').getBoundingClientRect();
-      const hit = document.elementFromPoint(ss.left + ss.width / 2, ss.top + ss.height / 2);
-      const ring = document.querySelector('#timer [data-t="p"]');
-      return { tTop: t.top, tBottom: t.bottom, headBottom: top.bottom, coversWk: t.left <= wk.left + 1 && t.right >= wk.left + wk.width * 0.6, acct: !!hit && !!hit.closest('#saveState'), dash: ring ? ring.getAttribute('stroke-dasharray') : null, tp: +document.getElementById('timer').style.getPropertyValue('--tp'), time: document.querySelector('#timer [data-t="v"]').textContent };
-    });
-    const a = await where();
-    ok(a.tTop <= 1 && a.tBottom <= a.headBottom + 1 && a.coversWk, '5. 364 b-1: the rest runs in the top bar, over the week bar, not across the screen\'s foot (r69: a bar at the bottom)', a);
-    ok(a.acct, '5. the account button beside it still takes a tap', a);
-    ok(!!a.dash && Math.abs(parseFloat(a.dash) - a.tp * 100) < 1.5, '5. the ring shows the share of the rest left', a);
-    await pg.evaluate(() => window.scrollTo(0, 700)); await new Promise(r => setTimeout(r, 200));
-    const b = await where();
-    ok(b.tTop <= 1 && b.tBottom <= b.headBottom + 1, '5. it stays in the top bar as the page scrolls', b);
-    const secs = t => { const [m, s2] = t.split(':').map(Number); return m * 60 + s2; };
-    const t0 = secs(b.time);
-    await pg.click('#timer [data-act="tSub"]'); await new Promise(r => setTimeout(r, 300));
-    const t1 = secs((await where()).time);
-    await pg.click('#timer [data-act="tAdd"]'); await new Promise(r => setTimeout(r, 300));
-    const t2 = secs((await where()).time);
-    ok(t0 - t1 >= 14 && t0 - t1 <= 16 && t2 - t1 >= 14 && t2 - t1 <= 16, '5. -15 takes 15 seconds off and +15 puts 15 back', { t0, t1, t2 });
-    await pg.evaluate(() => { window.__ironlog.timer.end = Date.now(); }); await new Promise(r => setTimeout(r, 600));
-    const d = await pg.evaluate(() => { const t = document.getElementById('timer'); return { done: t.classList.contains('done'), word: t.querySelector('[data-t="l"]').textContent }; });
-    ok(d.done && d.word === 'Rest done', '5. at the end it reads Rest done, in the full accent', d);
-    await pg.click('#timer [data-act="tStop"]');
-    ok(await pg.evaluate(() => document.getElementById('timer').hidden), '5. Skip ends the rest and the week bar shows again', null);
-    // The compact pill, chosen in Settings: still in the corner above the tabs (a guard).
-    await pg.evaluate(() => { window.__ironlog.state.settings.timerCompact = true; });
-    await pg.click('#view .cbtn:not(.on)'); await pg.waitForSelector('#timer:not([hidden])');
-    const c = await pg.evaluate(() => { const t = document.getElementById('timer').getBoundingClientRect(); return { compact: document.getElementById('timer').classList.contains('compact'), bottomGap: innerHeight - t.bottom, right: innerWidth - t.right }; });
-    ok(c.compact && c.bottomGap > 50 && c.right < 20, '5. the compact pill stays in the corner above the tabs (a guard)', c);
-    await pg.close();
+    // 364 b-1 held back by V (2026-11-03, NEW-60: "Keep r69's timer for now"): the rest timer is r69's, read beside
+    // r69's own page, as a bar and as the compact pill: its place, size, colours and controls.
+    const look = async (file, compact) => {
+      const T = await open(file, { touch: true, w: 390, h: 844, clock: TODAY + 'T18:00:00' });
+      const pg = T.page;
+      await pg.evaluate(c => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.timerCompact = c; L.makeDemo(); for (const x of L.state.sessions) delete x.demo; localStorage.setItem('ironlog.v1.tipWake', '1'); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); }, compact);
+      await pg.click('#view .hero [data-act="startSession"]:not([data-light])'); await pg.waitForSelector('#view .cbtn');
+      await pg.click('#view .cbtn'); await pg.waitForSelector('#timer:not([hidden])');
+      await pg.evaluate(() => { const L = window.__ironlog; L.timer.end = Date.now() + 90500; L.timer.total = 120; }); await new Promise(r => setTimeout(r, 600));
+      const r = await pg.evaluate(() => {
+        const t = document.getElementById('timer'), b = t.getBoundingClientRect(), cs = getComputedStyle(t);
+        return { box: [b.left, b.top, b.width, b.height].map(Math.round), bg: cs.backgroundImage + ' ' + cs.backgroundColor, color: cs.color, cls: t.className, acts: [...t.querySelectorAll('[data-act]')].map(e => e.dataset.act + ':' + e.textContent), time: (t.querySelector('.tv') || {}).textContent, tabs: getComputedStyle(document.querySelector('#tabs [data-tab="today"]')).visibility };
+      });
+      await T.browser.close();
+      return r;
+    };
+    for (const compact of [false, true]) {
+      const now = await look(FILE, compact), was = await look('baselines/r69.html', compact);
+      ok(JSON.stringify(now) === JSON.stringify(was), `5. 364 b-1 held back (V, NEW-60): the rest timer ${compact ? 'as the compact pill' : 'as a bar'} is r69's, in its place, size, look, and controls`, { now, was });
+    }
   }
 
   if (run(6)) {
@@ -394,7 +377,9 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
     const session = async (o = {}) => {
       const T = await open(FILE, { touch: true, w: 390, h: 844, clock: TODAY + 'T18:00:00' });
       const pg = T.page;
-      if (o.css) await pg.addStyleTag({ content: o.css });
+      // A phone with a notch: env(safe-area-inset-top) is 0 in a desktop browser, so every style rule that reads it is
+      // given the 47 px it gives in such an iPhone's home-screen app, moving whatever each build places below it.
+      if (o.notch) await pg.evaluate(() => { for (const sh of document.styleSheets) { let rules; try { rules = sh.cssRules; } catch (e) { continue; } for (const r of rules) { if (!r.style) continue; for (const k of [...r.style]) { const v = r.style.getPropertyValue(k); if (v.includes('safe-area-inset-top')) r.style.setProperty(k, v.replace(/env\(safe-area-inset-top[^)]*\)/g, '47px'), r.style.getPropertyPriority(k)); } } } });
       await pg.evaluate(c => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.timerCompact = c; L.state.settings.rirAsk = true; L.makeDemo(); localStorage.setItem('ironlog.v1.tipWake', '1'); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); }, !!o.compact);
       await pg.click('.hero [data-act="startSession"]:not([data-light])'); await wait(200);
       return T;
@@ -422,20 +407,18 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
       const edge = compact ? g.timerTop : g.tabsTop;
       const mid = await hold(pg, tp, Math.round(g.vh / 2));
       const low = await hold(pg, tp, edge - 20);
-      ok(g.on && g.compact === compact && mid < 20 && low > 100, `11. NEW-56: ${compact ? 'with the compact pill' : 'with the rest ring in the top bar'}, an exercise held mid-screen leaves the page still and one just above ${compact ? 'the pill' : 'the tab bar'} scrolls it`, { g, mid, low });
-      ok(!T.errors.length, `11. no page errors (${compact ? 'pill' : 'ring'})`, T.errors);
+      ok(g.on && g.compact === compact && mid < 20 && low > 100, `11. NEW-56: ${compact ? 'with the compact pill' : 'with the rest bar'}, an exercise held mid-screen leaves the page still and one just above ${compact ? 'the pill' : 'the tab bar'} scrolls it`, { g, mid, low });
+      ok(!T.errors.length, `11. no page errors (${compact ? 'pill' : 'bar'})`, T.errors);
       await T.browser.close();
     }
     {
-      // A phone with a notch: env(safe-area-inset-top) is 0 in a desktop browser, so the 47 px it gives on such an
-      // iPhone's home-screen app is set on the two things it moves, the sticky top bar and the ring.
-      const T = await session({ css: 'header.top{top:47px !important}#timer:not(.compact){top:47px !important}' });
+      const T = await session({ notch: true });
       const pg = T.page;
       await pg.evaluate(() => { const e = document.querySelector('[data-act="sDone"][data-b="1"][data-s="0"]'); e.scrollIntoView({ block: 'center' }); }); await wait(200);
       const sy0 = await pg.evaluate(() => window.scrollY);
       await pg.tap('[data-act="sDone"][data-b="1"][data-s="0"]'); await wait(900);
-      const r = await pg.evaluate(() => { const st = document.querySelector('.rirstrip'), h = document.querySelector('header.top'), t = document.getElementById('timer'); if (!st) return null; const a = st.getBoundingClientRect(); return { top: Math.round(a.top), bottom: Math.round(a.bottom), head: Math.round(h.getBoundingClientRect().bottom), ring: !t.hidden && !t.classList.contains('compact') ? Math.round(t.getBoundingClientRect().top) : null, tabs: Math.round(document.getElementById('tabs').getBoundingClientRect().top), sy: Math.round(window.scrollY) }; });
-      ok(r && r.ring === 47 && r.top >= r.head && r.bottom <= r.tabs, '11. NEW-58: on a phone with a notch, a tick\'s effort strip stays below the top bar and above the tabs, the ring shown below the status bar', { r, sy0 });
+      const r = await pg.evaluate(() => { const st = document.querySelector('.rirstrip'), h = document.querySelector('header.top'), t = document.getElementById('timer'); if (!st) return null; const a = st.getBoundingClientRect(); return { top: Math.round(a.top), bottom: Math.round(a.bottom), head: Math.round(h.getBoundingClientRect().bottom), ring: !t.hidden ? Math.round(t.getBoundingClientRect().top) : null, tabs: Math.round(document.getElementById('tabs').getBoundingClientRect().top), sy: Math.round(window.scrollY) }; });
+      ok(r && r.ring !== null && r.top >= r.head && r.bottom <= r.tabs && r.bottom <= r.ring, '11. NEW-58: on a phone with a notch, a tick\'s effort strip stays below the top bar and above the tabs and the rest timer', { r, sy0 });
       ok(!T.errors.length, '11. no page errors (notch)', T.errors);
       await T.browser.close();
     }

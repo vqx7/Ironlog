@@ -1142,21 +1142,6 @@ body.obmode #updbar{top:env(safe-area-inset-top,0px)}
 #timer.done{background:var(--volt);color:var(--on-volt)}
 #timer::before{content:"";position:absolute;left:0;top:0;height:3px;width:calc(var(--tp,1) * 100%);background:var(--on-dock);opacity:.85;transition:width .25s linear}
 #timer.done::before,#timer.compact::before{display:none}
-/* The rest as a ring in the top bar (r70, 364 b-1, V 2026-11-03: the ring without "that big horizontal block at the
-   bottom"): it takes the week bar's place while a rest runs, so it covers no row and stays as the page scrolls; the
-   account button stays beside it. Still the deep tint of the accent with white text (item 136), the full accent when done. */
-#timer:not(.compact){top:env(safe-area-inset-top,0px);bottom:auto;right:58px;height:var(--head-h);padding:0 6px 0 12px;gap:10px;justify-content:flex-start;border-radius:0 0 14px 0}
-#timer:not(.compact)::before{display:none}
-#timer .tring{flex:none;width:40px;height:40px}
-#timer .tring circle{fill:none;stroke-width:4.5}
-#timer .tring .trk{stroke:currentColor;opacity:.25}
-#timer .tring .trp{stroke:currentColor;stroke-linecap:round;transition:stroke-dasharray .25s linear}
-#timer.done .tring .trp{opacity:0}
-#timer .tcol{display:flex;flex-direction:column;min-width:0;flex:1 1 auto;line-height:1}
-#timer .tlb{font:600 12px var(--font);opacity:.85;margin-top:2px}
-#timer:not(.compact) .tv{font-size:26px}
-#timer:not(.compact) .row{display:flex;gap:6px;flex:none}
-#timer:not(.compact) button{min-width:44px;padding:0 8px}
 input.need{box-shadow:0 0 0 2px var(--yellow)}
 
 #timer.compact{left:auto;right:12px;bottom:calc(66px + env(safe-area-inset-bottom,0px));border-radius:999px;padding:4px 4px 4px 14px;gap:10px;box-shadow:0 0 0 2px color-mix(in srgb,var(--volt) 70%,transparent),0 4px 14px rgba(0,0,0,.25)}
@@ -10271,7 +10256,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     el.dataset.mode = compact ? "c" : "f";
     el.classList.toggle("compact", compact);
     D(
-      compact ? b`<span class="tv" data-t="v"></span><button data-act="tAdd" aria-label="Add 15 seconds">+15</button><button data-act="tStop" aria-label="Dismiss timer">✕</button>` : b`<svg class="tring" viewBox="0 0 44 44" aria-hidden="true"><circle class="trk" cx="22" cy="22" r="18"></circle><circle class="trp" data-t="p" cx="22" cy="22" r="18" pathLength="100" transform="rotate(-90 22 22)"></circle></svg><span class="tcol"><span class="tv" data-t="v"></span><span class="tlb" data-t="l"></span></span><span class="row"><button data-act="tSub" aria-label="Take 15 seconds off">−15</button><button data-act="tAdd" aria-label="Add 15 seconds">+15</button><button data-act="tStop" aria-label="Skip the rest">Skip</button></span>`,
+      compact ? b`<span class="tv" data-t="v"></span><button data-act="tAdd" aria-label="Add 15 seconds">+15</button><button data-act="tStop" aria-label="Dismiss timer">✕</button>` : b`<span data-t="l"></span><span class="tv" data-t="v"></span><span class="row"><button data-act="tAdd">+15s</button><button data-act="tStop">Dismiss</button></span>`,
       el
     );
   }
@@ -10294,10 +10279,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }
     el.classList.toggle("done", !left);
     const tot = Math.max(timer.total || 0, left, 1);
-    const tp = Math.max(0, Math.min(1, left / tot));
-    el.style.setProperty("--tp", String(tp));
-    const ring = el.querySelector('[data-t="p"]');
-    if (ring) ring.setAttribute("stroke-dasharray", `${r1(tp * PERCENT)} ${PERCENT}`);
+    el.style.setProperty("--tp", String(Math.max(0, Math.min(1, left / tot))));
     if (!left) {
       if (timer.iv) clearInterval(timer.iv);
       timer.iv = null;
@@ -10312,11 +10294,6 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         }
       }
     }
-  }
-  function timerSub() {
-    timer.end = Math.max(Date.now(), timer.end - ADD_S * TIMER_MS.second);
-    timerSave();
-    tick();
   }
   function timerAdd() {
     const was = Math.max(0, (timer.end - Date.now()) / TIMER_MS.second);
@@ -15437,7 +15414,7 @@ ${bwSettings()}
 </select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${l3(!!s3.timerSound)} ?disabled=${s3.timerMode === "off"}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${l3(!!s3.timerCompact)} ?disabled=${s3.timerMode === "off"}/>${labelTip(
           "lt-timerCompact",
           "Compact timer",
-          "A small pill in the corner instead of the ring in the top bar."
+          "A small pill in the corner instead of a bar across the screen."
         )}</label> <label class="check-inline"><input type="checkbox" data-bind="autoDone" aria-labelledby="lt-autoDone" .checked=${l3(!!s3.autoDone)}/>${labelTip(
           "lt-autoDone",
           "Auto-mark a set done after its reps",
@@ -23527,9 +23504,6 @@ ${JSON.stringify(ctx, null, 1)}`;
         if (d3 && !d3.open) d3.open = true;
       }
       document.querySelectorAll(`[data-act="help"][data-h="${k2}"]`).forEach((b2) => b2.setAttribute("aria-expanded", String(on)));
-    },
-    tSub() {
-      timerSub();
     },
     tAdd() {
       timerAdd();

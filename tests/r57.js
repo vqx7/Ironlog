@@ -236,9 +236,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       .replace(/\nAdd to this tab(?=\n)/, '')
       .replace(/\n(Show, hide, or reorder sections|Edit sections)$/, '\n(Layout)')
   });
-  /* Two of r70's changes reach Settings on purpose: the Compact timer's tip, the ring in the top bar where it was a bar
-     (364 b-1, held by tests/r70.js section 5), and Layout's chip for Today's Lifts moving (364 b-2, section 9). On this
-     build's page the tip reads as before and the chip is taken out; everything else is still held to r56.2. */
+  /* r70's changes that reach Settings on purpose: Layout's chip for Today's Lifts moving (364 b-2, tests/r70.js
+     section 9) and its Default layout tip (381, R70-4). On this build's page the chip is taken out and the tip reads as
+     before; everything else is still held to r56.2. */
   /* And Plan's Schedule shown on a new install (381, section 2): Layout's count of hidden sections and the Schedule
      chip's state read as a placeholder on both pages. */
   const heldOutSched = shot => ({
@@ -251,7 +251,6 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const heldOutR70 = shot => ({
     ...shot,
     tree: shot.tree.map(t => t
-      .replace('A small pill in the corner instead of the ring in the top bar.', 'A small pill in the corner instead of a bar across the screen.')
       // Layout's Default layout tip, which no longer names Schedule (381, R70-4: tests/r70.js section 2).
       .replace('At a glance, Coach, and Body hidden on Today, Weekly volume hidden on Plan, and the default order.', 'At a glance, Coach, and Body hidden on Today, Schedule and Weekly volume hidden on Plan, and the default order.')
       .replace(/<button [^>]*data-k="today:moving"[^>]*>"Lifts moving"<\/button>/, '')),

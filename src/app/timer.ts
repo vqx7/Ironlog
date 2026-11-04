@@ -3,7 +3,7 @@
    session screen starts it on a tick and stops it with the session. */
 
 import { html, render } from 'lit-html';
-import { pad, r1, PERCENT } from './util';
+import { pad } from './util';
 import { KEY, log, prefDel, prefGet, prefSet } from './storage';
 import { state } from './store';
 import { toast } from './toast';
@@ -206,7 +206,7 @@ function timerBuild(): void {
   render(
     compact
       ? html`<span class="tv" data-t="v"></span><button data-act="tAdd" aria-label="Add 15 seconds">+15</button><button data-act="tStop" aria-label="Dismiss timer">✕</button>`
-      : html`<svg class="tring" viewBox="0 0 44 44" aria-hidden="true"><circle class="trk" cx="22" cy="22" r="18"></circle><circle class="trp" data-t="p" cx="22" cy="22" r="18" pathLength="100" transform="rotate(-90 22 22)"></circle></svg><span class="tcol"><span class="tv" data-t="v"></span><span class="tlb" data-t="l"></span></span><span class="row"><button data-act="tSub" aria-label="Take 15 seconds off">−15</button><button data-act="tAdd" aria-label="Add 15 seconds">+15</button><button data-act="tStop" aria-label="Skip the rest">Skip</button></span>`,
+      : html`<span data-t="l"></span><span class="tv" data-t="v"></span><span class="row"><button data-act="tAdd">+15s</button><button data-act="tStop">Dismiss</button></span>`,
     el
   );
 }
@@ -230,12 +230,9 @@ export function tick(): void {
     if (l.textContent !== lt) l.textContent = lt;
   }
   el.classList.toggle('done', !left);
-  // The ring (and the compact pill's bar) empties as the rest runs down; +15 lengthens it, -15 shortens it.
+  // The bar along the top empties as the rest runs down; +15s lengthens it.
   const tot = Math.max(timer.total || 0, left, 1);
-  const tp = Math.max(0, Math.min(1, left / tot));
-  el.style.setProperty('--tp', String(tp));
-  const ring = el.querySelector('[data-t="p"]');
-  if (ring) ring.setAttribute('stroke-dasharray', `${r1(tp * PERCENT)} ${PERCENT}`);
+  el.style.setProperty('--tp', String(Math.max(0, Math.min(1, left / tot))));
   if (!left) {
     if (timer.iv) clearInterval(timer.iv);
     timer.iv = null;
@@ -254,12 +251,6 @@ export function tick(): void {
 }
 /* Once the rest is over, +15 counts from now (not from the old end, which
    left it at 0:00) and the alert is armed again. */
-/** Takes 15 seconds off the rest (r70, 364 b-1); one taken to its end is done, as if it had run out. */
-export function timerSub(): void {
-  timer.end = Math.max(Date.now(), timer.end - ADD_S * TIMER_MS.second);
-  timerSave();
-  tick();
-}
 /** Adds 15 seconds to the rest. */
 export function timerAdd(): void {
   const was = Math.max(0, (timer.end - Date.now()) / TIMER_MS.second);
@@ -276,15 +267,16 @@ export function timerRefresh(): void {
   if (el && !el.hidden) tick();
 }
 
-/* Since r70 the rest timer is a ring in the top bar, unless Compact timer
-   puts it in a pill at the bottom, so a bar bounds the room below only when
-   it sits in the lower half of the screen. Read by its top alone, the ring
-   made the whole screen the bottom edge: an exercise dragged during a rest
-   scrolled the page (NEW-56), and on a phone with a notch, where the ring
-   starts below the status bar, a tick's effort strip scrolled up under the
-   header (NEW-58). Both bars are position:fixed, whose offsetParent is
-   always null, so getClientRects tells a shown bar from a hidden one. */
-/** The top of the bars along the bottom of the screen (the tab bar, and the rest timer when it is the compact pill), or the screen's bottom when none shows: what a dragged exercise and the effort strip stay above. */
+/* A bar bounds the room below only when it sits in the lower half of the
+   screen. r70's first build drew the rest as a ring in the top bar, and read
+   by its top alone it made the whole screen the bottom edge: an exercise
+   dragged during a rest scrolled the page (NEW-56), and on a phone with a
+   notch, where the ring started below the status bar, a tick's effort strip
+   scrolled up under the header (NEW-58). The rest is a bar along the bottom
+   again (NEW-60), and the rule holds wherever a bar is put. Both bars are
+   position:fixed, whose offsetParent is always null, so getClientRects
+   tells a shown bar from a hidden one. */
+/** The top of the bars along the bottom of the screen (the tab bar and the rest timer), or the screen's bottom when none shows: what a dragged exercise and the effort strip stay above. */
 export function bottomBarsTop(): number {
   const vh = window.innerHeight;
   let bot = vh;
