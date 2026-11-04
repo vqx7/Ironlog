@@ -27011,7 +27011,9 @@ ${JSON.stringify(ctx, null, 1)}`;
       picsTidy,
       risingWords,
       // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it (r70).
-      setShortOf: (id, w2, r4) => setShort(EX(id), w2, r4)
+      setShortOf: (id, w2, r4) => setShort(EX(id), w2, r4),
+      // Today's Lifts moving, so tests/engine.js compares the page's answer with the engine's in Node (r70).
+      liftsMoving
     };
     render();
     wakeOn();
