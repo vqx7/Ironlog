@@ -6,7 +6,7 @@
 import { IN, KM_MI, FT_IN } from './units';
 import { NIL, fmtDate, fmtDateFrom, fmtWith, missedTag } from './format';
 import { e1, fitE, trendE, RECENT_DAYS, BEST_WEEKS, TAPE_WEEKS } from './formulas';
-import { MK, ML, isCommon, loadMode, nameMatch } from './library';
+import { MK, ML, isCommon, isCompound, loadMode, nameMatch } from './library';
 import { dayParts, dayWorkout, partOf, routineEmpty, routineSig, sessDayIdx } from './routines';
 import { rec } from './records';
 import { REGION_WKS, REGION_WK_DEFAULT } from './layout';
@@ -397,6 +397,25 @@ export function bestLine(exId: string, upTo?: string): string {
   const last = exps[exps.length - 1];
   const when = last && r.heavy.date === last.date ? '' : `, ${fmtDate(r.heavy.date)}`;
   return `Heaviest ${setShort(ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(ex)}${when}`;
+}
+
+/* Each lift's best on Today's Workout preview (379, r70, V 2026-11-03: "PR/best
+   should be more clearly called out on each exercise"): the set its best
+   estimate comes from, the one Stats' All-time bests names ("Best estimate
+   from 230×8") and the PR list last counted, with its date; a lift with no
+   estimate (a timed hold, a lift past the reps an estimate reads) its
+   heaviest set, as bestLine says it. As on the board (r30), the set behind
+   an estimate is named for a compound lift only, and any other lift names
+   its heaviest set. One function, allTimeBests, for both screens. */
+/** "Best 230×8, Oct 20": the set behind a compound lift's best estimate, else its heaviest set, or ''. */
+export function bestSetLine(exId: string): string {
+  const r = allTimeBests(exId);
+  if (!r) return '';
+  if (r.est && isCompound(r.ex))
+    return `Best ${setShort(r.ex, r.est.p.w, r.est.p.r)}${loadNote(r.ex)}, ${fmtDate(r.est.date)}`;
+  return r.heavy
+    ? `Heaviest ${setShort(r.ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(r.ex)}, ${fmtDate(r.heavy.date)}`
+    : '';
 }
 
 /* A goal is a load for a number of reps (225 x 5), as lifters say it. Where

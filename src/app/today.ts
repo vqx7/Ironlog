@@ -105,6 +105,7 @@ import {
   noLog,
   nz,
   recent4w,
+  bestSetLine,
   rirShow,
   setShort,
   weekSlots
@@ -836,7 +837,8 @@ function previewCard(day: Day, deload: boolean): TemplateResult {
       rirShow(ex) ? `, ${effTgt(it.rir)}` : ''
     }</span>${it.ss ? html` <span class="tag blue">Superset ${letters[it.ss]}</span>` : nothing}${sg.inj ? html` <span class="tag red">Injury: ${injLabel(sg.inj)}</span>` : nothing}</span>${liftTags(
       it.exId
-    )}</div>${short ? html`<p class="small muted hastip u-mb0" data-tip=${text}>${short}</p>` : nothing}</div>`;
+    )}</div>${short ? html`<p class="small muted hastip u-mb0" data-tip=${text}>${short}</p>` : nothing}${(b =>
+      b ? html`<p class="small muted u-mb0 pvbest">${b}</p>` : nothing)(bestSetLine(it.exId))}</div>`;
   });
   const first = fresh
     ? html`<p class="small muted u-m0-0n10">${fresh === day.items.length ? 'First time' : `${fresh} new`}: start lighter than you think and stop while the reps still move well. Warm up on the first big lift. ${tipButton(
@@ -991,7 +993,10 @@ function movingCard(): TemplateResult | null {
     const pts = v
       .map((y, i) => {
         const x = v.length > 1 ? (i / (v.length - 1)) * SPARK.w : SPARK.w / 2;
-        const yy = SPARK.h - SPARK.pad - (hi > lo ? ((y - lo) / (hi - lo)) * (SPARK.h - 2 * SPARK.pad) : (SPARK.h - 2 * SPARK.pad) / 2);
+        const yy =
+          SPARK.h -
+          SPARK.pad -
+          (hi > lo ? ((y - lo) / (hi - lo)) * (SPARK.h - 2 * SPARK.pad) : (SPARK.h - 2 * SPARK.pad) / 2);
         return `${r1(x)},${r1(yy)}`;
       })
       .join(' ');

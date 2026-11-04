@@ -11,6 +11,8 @@
 //      heaviest; a tap opens the lift on Stats; no rising lift, no section and no chip; first on a phone's saved order.
 //   5  364 b-1: the rest runs as a ring in the top bar, over the week bar and beside the account button, covering no
 //      row and staying as the page scrolls; -15, +15 and Skip work; done, it is the full accent; the compact pill stays.
+//   6  379: each lift on Today's Workout preview names its best: the set behind a compound lift's best estimate, else its
+//      heaviest set, with its date, the same set and date Stats' All-time bests names for it.
 // R70_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -189,6 +191,31 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
     await pg.click('#view .cbtn:not(.on)'); await pg.waitForSelector('#timer:not([hidden])');
     const c = await pg.evaluate(() => { const t = document.getElementById('timer').getBoundingClientRect(); return { compact: document.getElementById('timer').classList.contains('compact'), bottomGap: innerHeight - t.bottom, right: innerWidth - t.right }; });
     ok(c.compact && c.bottomGap > 50 && c.right < 20, '5. the compact pill stays in the corner above the tabs (a guard)', c);
+    await pg.close();
+  }
+
+  if (run(6)) {
+    const T = await open(FILE, { clock: TODAY + 'T18:00:00' });
+    const pg = T.page;
+    const r = await pg.evaluate(() => {
+      const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; L.makeDemo(); for (const x of L.state.sessions) delete x.demo; L.invalidate(); L.saveNow();
+      L.ui.tab = 'today'; L.ui.folds['today:session'] = true; L.render();
+      const rows = [...document.querySelectorAll('#view [data-sk="today:session"] .pvi')].map(e => ({ name: e.querySelector('b').textContent, best: (e.querySelector('.pvbest') || { textContent: '' }).textContent }));
+      // The board, every lift shown and open.
+      L.ui.tab = 'dash'; L.ui.bestsAll = true; L.render();
+      const board = {}; document.querySelectorAll('#view .bests .bx').forEach(b => { const name = b.querySelector('.bn').textContent; const from = b.querySelector('p'); board[name] = { s: b.querySelector('.bs').textContent, from: from ? from.textContent : '' }; });
+      return { rows, board };
+    });
+    const fmt = x => x.replace(/\s+/g, ' ').trim();
+    const agree = r.rows.map(x => {
+      const b = r.board[x.name]; if (!b) return { ...x, board: null, ok: false };
+      const m = x.best.match(/^(Best|Heaviest) (.+), (\w{3} \d{1,2}(?:, \d{4})?)$/);
+      if (!m) return { ...x, board: b, ok: false };
+      const okBest = m[1] === 'Best' ? fmt(b.from) === `Best estimate from ${m[2]}.` && new RegExp(`best est [^·]*, ${m[3]}`).test(b.s) : b.s.includes(`heaviest ${m[2]}, ${m[3]}`);
+      return { ...x, board: b, ok: okBest };
+    });
+    ok(r.rows.length > 0 && agree.every(x => x.ok), '6. 379: each lift on the Workout preview names its best set and date, the same as Stats\' All-time bests (r69: none)', agree.filter(x => !x.ok).slice(0, 3));
+    ok(agree.some(x => /^Best /.test(x.best)) && agree.some(x => /^Heaviest /.test(x.best)), '6. compound lifts name the set behind the best estimate, other lifts their heaviest set', agree.map(x => x.best));
     await pg.close();
   }
 

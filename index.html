@@ -9517,6 +9517,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const when = last && r4.heavy.date === last.date ? "" : `, ${fmtDate(r4.heavy.date)}`;
     return `Heaviest ${setShort(ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(ex)}${when}`;
   }
+  function bestSetLine(exId) {
+    const r4 = allTimeBests(exId);
+    if (!r4) return "";
+    if (r4.est && isCompound(r4.ex))
+      return `Best ${setShort(r4.ex, r4.est.p.w, r4.est.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.est.date)}`;
+    return r4.heavy ? `Heaviest ${setShort(r4.ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.heavy.date)}` : "";
+  }
   function goalState(exId) {
     const ex = EX(exId);
     const g2 = ex && ex.goal;
@@ -18831,7 +18838,7 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di, part)}</section
       const short = none ? "" : sg.target ? `Today: ${sg.target}` : sg.inj ? "Injury flagged: start light, stop on pain." : sg.last && text.startsWith(sg.last) ? text.slice(sg.last.length).trim() : text;
       return b`<div class="pvi" style=${k2 ? "border-top:1px solid var(--line-soft);padding-top:10px;margin-top:10px" : A}><div class="row spread"><span><b>${ex.name}</b> <span class="muted small">${it.sets} × ${repSpan(it.repMin, it.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? " per side" : ""}${rirShow(ex) ? `, ${effTgt(it.rir)}` : ""}</span>${it.ss ? b` <span class="tag blue">Superset ${letters[it.ss]}</span>` : A}${sg.inj ? b` <span class="tag red">Injury: ${injLabel(sg.inj)}</span>` : A}</span>${liftTags(
         it.exId
-      )}</div>${short ? b`<p class="small muted hastip u-mb0" data-tip=${text}>${short}</p>` : A}</div>`;
+      )}</div>${short ? b`<p class="small muted hastip u-mb0" data-tip=${text}>${short}</p>` : A}${((b2) => b2 ? b`<p class="small muted u-mb0 pvbest">${b2}</p>` : A)(bestSetLine(it.exId))}</div>`;
     });
     const first = fresh ? b`<p class="small muted u-m0-0n10">${fresh === day.items.length ? "First time" : `${fresh} new`}: start lighter than you think and stop while the reps still move well. Warm up on the first big lift. ${tipButton(
       "No history yet, so there is no target. Pick a load you think you could lift for the top of the rep range plus the reps in reserve shown, erring light, and stop when the reps start to slow. On a barbell or other big lift, do 1 or 2 lighter sets of 5 first. From the next session the app works the load out, catching up quickly over the first few.",
