@@ -5737,10 +5737,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     idxAutoLighter(byEx);
     const dayOf = {};
     for (const x2 of sessions) dayOf[x2.id] = x2.dayId;
-    idxShort(byEx, (id, x2) => {
-      const p3 = routinePlanIn(M3, id, null, dayOf[x2.sid]);
-      return p3 ? +p3.sets : null;
-    });
+    idxShort(
+      byEx,
+      (id, x2) => {
+        const p3 = routinePlanIn(M3, id, null, dayOf[x2.sid]);
+        return p3 ? +p3.sets : null;
+      },
+      // Held only while the routine is followed: in Freestyle (Today opens blank) the lifter's own sets lead.
+      (x2) => !dayOf[x2.sid] && !freeModeIn(M3)
+    );
     const lightWk = idxLightWeeks(sessions, byEx, M3.s.deloadWeek);
     const prs = [];
     const exStats = {};
@@ -6033,7 +6038,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const k2 = usualSets(ref2);
     return ref2.every((q) => x2.topW >= q.topW - EPS_SAME && repsOf(x2, k2) >= repsOf(q, k2) * USUAL_SHARE);
   }
-  function idxShort(byEx, planSets) {
+  function idxShort(byEx, planSets, blank) {
     for (const id of Object.keys(byEx)) {
       const normal = [];
       let last = null;
@@ -6044,7 +6049,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         const prior = normal.filter((q) => sameRR(q.rr, x2.rr));
         const before = prior.slice(-USUAL_BEFORE);
         const cap = before.length && !x2.tag ? planSets(id, x2) : null;
-        const hold = !x2.tag && x2.ps != null && prior.some((q) => setsAt(q, q.topW) >= (x2.ps || 0)) ? x2.ps : null;
+        const reach = x2.ps ?? (cap != null && blank(x2) ? cap : null);
+        const hold = !x2.tag && reach != null && prior.some((q) => setsAt(q, q.topW) >= reach) ? reach : null;
         const sh = before.length ? shortOf(x2, before, cap, hold) : void 0;
         if (sh) x2.short = sh;
         if (!(x2.tag && x2.short)) normal.push(x2);
