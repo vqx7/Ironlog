@@ -590,6 +590,8 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .padd{position:relative;min-height:44px}
 .pbig{display:block;max-width:100%;max-height:70vh;margin:0 auto;border-radius:var(--r-sm);object-fit:contain}
 .linkbtn{background:none;border:0;padding:4px 2px;margin:0;color:var(--ink);font:inherit;font-weight:650;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+/* A session card's muscle (172 b, r70): one tap to the muscles worked on the body, quiet in the line it sits in. */
+.linkbtn.bmus{position:relative;padding:0;color:inherit;font-weight:inherit;text-decoration-style:dotted}
 .linkbtn.alt-quiet{display:block;margin:12px auto 0;min-height:44px;padding:0 12px;color:var(--muted);font-weight:600;text-decoration-color:var(--line)}
 .flag{color:var(--yellow);font-weight:650}
 .tp{display:block;margin-top:3px;color:var(--muted)}
@@ -1068,7 +1070,7 @@ button[data-tip],.lm[data-tip]{-webkit-user-select:none;user-select:none}
 /* Small controls keep their look but get a touch area of at least 44 px from
    an invisible pseudo-element, so a thumb at the gym does not miss them. */
 .tipi,.hb,.ssb,.ib.sm,.ir .ib,.chip,.wkbar .w,button.n{position:relative}
-.tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before,button.n::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+.tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before,button.n::before,.bmus::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
 /* Week days sit 3 px apart, so theirs only grows in height; wider would reach
    into the neighbouring day. */
 .wkbar .w::before{width:100%}

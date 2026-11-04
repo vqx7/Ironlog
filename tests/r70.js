@@ -16,6 +16,7 @@
 //   7  380: Add an old best, from All-time bests: a date, the lift, its one set, Finish; saved as a past workout of one
 //      set on that date, shown in All-time bests; as the lift's only history the next load starts from it, and with
 //      recent sessions they lead.
+//   8  172 b: a session card's muscle is one tap to the muscles worked on the body, its tap area 44 px.
 // R70_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -247,6 +248,23 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
       // As the lift's only history, the next load starts from it (the return after a break); with recent sessions, they lead.
       const g = await pg.evaluate(() => { const L = window.__ironlog; const r = L.suggest('bench', { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150 }, {}); return { w: Math.round(r.w / 0.45359237), text: r.text }; });
       ok(/Back after \d+ weeks/.test(g.text) && g.w < 315 && g.w > 135, '7. as the only history, the next load is a return from it, lighter than 315 (V, r48)', g);
+    }
+    await pg.close();
+  }
+
+  if (run(8)) {
+    const T = await open(FILE, { clock: TODAY + 'T18:00:00' });
+    const pg = T.page;
+    await pg.evaluate(() => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; L.makeDemo(); for (const x of L.state.sessions) delete x.demo; L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); });
+    await pg.click('#view .hero [data-act="startSession"]:not([data-light])'); await pg.waitForSelector('#view .block');
+    const b = await pg.$('#view .block .bmus');
+    ok(!!b, '8. 172 b: a session card\'s muscle is a button (r69: words only)', null);
+    if (b) {
+      const tap = await pg.evaluate(() => { const e = document.querySelector('#view .block .bmus'); e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const at = dy => { const h = document.elementFromPoint(x, y + dy); return !!h && !!h.closest('.bmus'); }; return { up: at(-20), down: at(20) }; });
+      ok(tap.up && tap.down, '8. its tap area reaches 44 px, as every small control\'s does', tap);
+      await pg.click('#view .block .bmus'); await new Promise(r => setTimeout(r, 300));
+      const m = await pg.evaluate(() => { const L = window.__ironlog; const m = L.ui.modal; return { kind: m && m.kind, ex: m && m.exId, first: L.state.draft.ex[0].exId, h: (document.getElementById('exMusH') || { textContent: '' }).textContent, figs: document.querySelectorAll('#modal .bm-wrap figure').length, main: document.querySelectorAll('#modal .ex-main').length }; });
+      ok(m.kind === 'exMus' && m.ex === m.first && /^Muscles: /.test(m.h) && m.figs === 2 && m.main > 0, '8. the tap opens that lift\'s muscles on the body, front and back, its main muscle marked', m);
     }
     await pg.close();
   }
