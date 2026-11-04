@@ -62,7 +62,7 @@ export function moversIn(M: Model): { id: string; pct: number | null; wk: number
 }
 
 /** One row of Today's Lifts moving: the lift, the weeks its trend covers, its line, and its latest heaviest set (kg). */
-export interface Mover {
+interface Mover {
   id: string;
   wk: number;
   line: number[];

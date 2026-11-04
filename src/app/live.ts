@@ -96,7 +96,16 @@ import {
   weekStreakIn,
   weeksAvgIn
 } from './weeks';
-import { atRangeTopIn, coachIn, dropOnlyLiftIn, fatigueStallsIn, liftsMovingIn, moversIn, readinessIn, stalledIdsIn } from './coach';
+import {
+  atRangeTopIn,
+  coachIn,
+  dropOnlyLiftIn,
+  fatigueStallsIn,
+  liftsMovingIn,
+  moversIn,
+  readinessIn,
+  stalledIdsIn
+} from './coach';
 import {
   daysOffIn,
   easierTextIn,
