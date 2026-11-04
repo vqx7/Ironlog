@@ -20,7 +20,7 @@ import { IDXIn, stallWordsIn } from './analytics';
 import { ON_PLAN_TIP, actualAvg4In, avgWaitIn, muscleStatusIn, recentLighterIn, AVG_WEEKS } from './weeks';
 import { GROW_PCT, atLoad, isWork, lighter, STALL, LIGHT_SHARE, DELOAD_GAP_DAYS, TREND_WEEKS } from './formulas';
 import { MK, ML, isCompound, noE1 } from './library';
-import { andList, r1, weekStart, PERCENT, pctOf, WEEK_DAYS } from './util';
+import { addDays, andList, r1, weekStart, PERCENT, pctOf, WEEK_DAYS } from './util';
 import { effScale, LIGHT_RIR } from './format';
 import { belowMin } from './volume';
 import { plannedPerWeek, plannedSetsIn } from './routines';
@@ -59,6 +59,43 @@ export function moversIn(M: Model): { id: string; pct: number | null; wk: number
     .filter(([, x]) => x!.moving && !x!.stalled && x!.fresh)
     .sort((a, b) => b[1]!.pct! - a[1]!.pct!)
     .map(([id, x]) => ({ id, pct: x!.pct, wk: x!.spanW || 2 }));
+}
+
+/** One row of Today's Lifts moving: the lift, the weeks its trend covers, its line, and its latest heaviest set (kg). */
+export interface Mover {
+  id: string;
+  wk: number;
+  line: number[];
+  top: { w: number; r: number } | null;
+}
+/* Today's Lifts moving (364 b-2, r70, V 2026-11-03: "if they're accurate and
+   not distracting"): the lifts Stats' summary and the coach call clearly
+   rising (moversIn), in their order. Each line is what Stats > Lifts charts
+   for the lift (its best estimate on a compound with one, else its top-set
+   load) over the weeks its trend covers, lighter and deload sessions left
+   out as the trend leaves them out, so the line rises where the reading
+   does. The number beside it is a set the lifter did, never an estimate:
+   the latest session's heaviest working set. */
+/** The rising lifts, each with its line and its latest heaviest set. */
+export function liftsMovingIn(M: Model): Mover[] {
+  const I = IDXIn(M);
+  const today = M.today();
+  return moversIn(M).map(({ id, wk }) => {
+    const all = I.byEx[id] || [];
+    const e1 = isCompound(EXIn(M, id)) && all.some(x => x.best != null);
+    const from = addDays(today, -wk * WEEK_DAYS);
+    const line: number[] = [];
+    for (const x of all) {
+      if (x.date < from || lighter(x)) continue;
+      const v = e1 ? x.best : x.topW;
+      if (v != null) line.push(v);
+    }
+    const last = all[all.length - 1];
+    let top: Mover['top'] = null;
+    for (const p of last ? last.pts : [])
+      if (!top || p.w > top.w || (p.w === top.w && p.r > top.r)) top = { w: p.w, r: p.r };
+    return { id, wk, line, top };
+  });
 }
 
 /* The ids of the lifts that have stalled. Every entry of IDX's exStats is a

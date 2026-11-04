@@ -23,7 +23,16 @@ import type {
 } from './model';
 import { MK, SLOW_RECOVERY, bwShare, isCompound, loadMode, noE1 } from './library';
 import { addDays, daysBetween, median, r1, weekStart, EPS, EPS_SAME, WEEK_DAYS, PERCENT } from './util';
-import { EXIn, activeRoutineIn, exInjuryIn, freeModeIn, rirHalfOnIn, sinceNew, sortedSessionsIn, stretchesOf } from './model';
+import {
+  EXIn,
+  activeRoutineIn,
+  exInjuryIn,
+  freeModeIn,
+  rirHalfOnIn,
+  sinceNew,
+  sortedSessionsIn,
+  stretchesOf
+} from './model';
 import {
   BACK_DAYS,
   GROW_PCT,

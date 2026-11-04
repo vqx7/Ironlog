@@ -283,7 +283,6 @@ export interface Settings extends EngineSettings {
   bwEvery?: 0 | 7 | 30 | undefined;
   loadFill?: 'fill' | undefined;
   userName?: string | undefined;
-  homeFolded: string[];
   secOrder: Record<string, string[]>;
   folds: string[];
   wakeLock: boolean;
@@ -291,10 +290,8 @@ export interface Settings extends EngineSettings {
   hidden: string[];
   onboarded: boolean;
   calSnooze: string | null;
-  tidyV: 0 | 1;
   heightCm: number | null;
   timeBudget: number | null;
-  dashFolded: string[];
   lastExport: string | null;
   removedLib: string[];
   bwGoalPct: number | null;

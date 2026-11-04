@@ -3,6 +3,12 @@
 //   1  NEW-51: two blank sessions of one set in a row never turn a lift the routine plans at 3 sets into a
 //      1-set lift; in Freestyle and for a lift on no day of the routine the lifter's own sets still lead (V's
 //      rule of 2026-10-18), a plan of one set progresses, and one set on the routine's day reads fewer sets.
+//   2  381: a new install shows Plan's Schedule (cycle or fixed weekdays); a phone whose layout hides it keeps it hidden.
+//   3  382: the three fold settings nothing reads (homeFolded, dashFolded, tidyV) are dropped from a save that
+//      carries them and never written; every other setting keeps its value and its order.
+//   4  364 b-2: Today's Lifts moving names the lifts Stats and the coach call rising, in their order, three at most,
+//      each line built from the lift's own sessions (lighter ones out) and rising, each set the latest session's
+//      heaviest; a tap opens the lift on Stats; no rising lift, no section and no chip; first on a phone's saved order.
 // R70_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -69,6 +75,79 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
     const e = await ev(() => { const L = window.__ironlog; const I = L.IDX(); return { prs: I.prs.filter(p => p.exId === 'bench' && p.sid === 'p1').map(p => p.type), short: (I.byEx.bench || []).map(x => x.short || 'full') }; });
     const et = await read(3);
     ok(e.prs.includes('Weight PR') && e.short[3] === 'sets' && /over 3 sets at 225 lb/.test(et.text), '1. one PR attempt on a blank day: a Weight PR, fewer sets, the target kept at 225 lb for 3 sets (a guard)', { e, text: et.text });
+  }
+
+  if (run(2)) {
+    // A new install, as the first-run page leaves it, then Plan.
+    const F = await open(FILE, { clock: TODAY + 'T10:00:00' });
+    const fresh = await F.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'program'; L.render(); return { hidden: L.state.settings.hidden.slice(), shown: !!document.querySelector('#view [data-sk="program:schedule"]'), select: !!document.querySelector('#view [data-bind="rSchedule"]') }; });
+    ok(!fresh.hidden.includes('program:schedule') && fresh.shown && fresh.select, '2. 381: a new install shows Plan\'s Schedule section, its cycle or fixed weekdays choice on the page (r69: hidden)', fresh);
+    ok(['today:tiles', 'today:coach', 'today:body', 'program:pvol'].every(k => fresh.hidden.includes(k)), '2. the other four sections a new install hides stay hidden (a guard)', fresh.hidden);
+    // A phone's own layout with Schedule hidden, saved and opened again: it stays hidden.
+    const kept = await F.page.evaluate(() => { const L = window.__ironlog; const S = L.state; S.settings.hidden = ['program:schedule']; L.state = L.normalize(S); L.saveNow(); L.render(); return { hidden: L.state.settings.hidden.slice(), shown: !!document.querySelector('#view [data-sk="program:schedule"]') }; });
+    ok(kept.hidden.includes('program:schedule') && !kept.shown, '2. a phone whose layout hides Schedule keeps it hidden (a guard)', kept);
+    await F.page.close();
+  }
+
+  if (run(3)) {
+    // A save as r69 wrote it, with the three keys, read by this build.
+    const r = await ev(() => {
+      const L = window.__ironlog; const raw = JSON.parse(JSON.stringify(L.state));
+      Object.assign(raw.settings, { homeFolded: ['map'], dashFolded: ['consistency', 'body'], tidyV: 1 });
+      const n = L.normalize(raw); const keys = Object.keys(n.settings);
+      const before = Object.keys(raw.settings).filter(k => !['homeFolded', 'dashFolded', 'tidyV'].includes(k));
+      const fresh = Object.keys(L.normalize({}).settings);
+      return { gone: ['homeFolded', 'dashFolded', 'tidyV'].filter(k => k in n.settings), freshHas: ['homeFolded', 'dashFolded', 'tidyV'].filter(k => fresh.includes(k)), order: JSON.stringify(keys) === JSON.stringify(before), same: before.every(k => JSON.stringify(n.settings[k]) === JSON.stringify(L.normalize(JSON.parse(JSON.stringify(L.state))).settings[k])) };
+    });
+    ok(!r.gone.length && !r.freshHas.length, '3. 382: a save carrying homeFolded, dashFolded and tidyV loads without them, and a new log never writes them (r69 keeps all three)', r);
+    ok(r.order && r.same, '3. 382: every other setting keeps its value and its place in the order', r);
+  }
+
+  if (run(4)) {
+    // The demo log, as a lifter's own, at 390 px.
+    const T = await open(FILE, { clock: TODAY + 'T18:00:00' });
+    const pg = T.page;
+    const r = await pg.evaluate(() => {
+      const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; L.makeDemo();
+      for (const x of L.state.sessions) delete x.demo; L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
+      const sec = document.querySelector('#view [data-sk="today:moving"]');
+      if (!sec) return { sec: false };
+      sec.open = true; L.render();
+      const rows = [...document.querySelectorAll('#view [data-sk="today:moving"] .mvrow')].map(b => ({ id: b.dataset.ex, name: b.querySelector('.mvname').textContent, set: b.querySelector('.mvset').textContent, pts: b.querySelector('polyline') ? b.querySelector('polyline').getAttribute('points').split(' ').map(p => +p.split(',')[1]) : [] }));
+      const mv = L.movers().map(x => x.id);
+      // Each lift's latest heaviest set, read from the log itself.
+      const latest = id => { const ss = L.state.sessions.filter(s => s.ex.some(e => e.exId === id)).sort((a, b) => (a.date < b.date ? -1 : 1)); const last = ss[ss.length - 1]; const sets = last.ex.filter(e => e.exId === id).flatMap(e => e.sets).filter(z => !z.warm && +z.r > 0); const t = sets.reduce((a, z) => (!a || z.w > a.w || (z.w === a.w && +z.r > +a.r) ? z : a), null); return t; };
+      const want = rows.map(x => { const t = latest(x.id); return t ? { w: t.w, r: +t.r } : null; });
+      const sub = sec.querySelector('.sec-s').textContent;
+      const hidden = L.state.settings.hidden.includes('today:moving');
+      return { sec: true, rows, mv, want, sub, first: document.querySelector('#view details.sec').dataset.sk, hidden, wide: document.documentElement.scrollWidth };
+    });
+    ok(r.sec && r.rows.length === Math.min(3, r.mv.length) && r.rows.every((x, i) => x.id === r.mv[i]), '4. 364 b-2: Today shows Lifts moving, the lifts Stats\'s summary and the coach call rising, in their order, three at most (r69: no section)', r);
+    if (r.sec) {
+      ok(new RegExp(`^${r.mv.length} rising`).test(r.sub), '4. its subtitle counts every rising lift', r.sub);
+      ok(r.rows.every(x => x.pts.length >= 2 && x.pts[x.pts.length - 1] < x.pts[0]), '4. each line has its sessions and ends higher than it starts (y falls as the reading rises)', r.rows.map(x => x.pts));
+      // The set as the app writes a set (setShort through the hook), against the log's own latest heaviest set.
+      const sets = await pg.evaluate(w => { const L = window.__ironlog; return w.map((t, i) => { const id = [...document.querySelectorAll('#view .mvrow')][i].dataset.ex; return { shown: document.querySelectorAll('#view .mvrow')[i].querySelector('.mvset').textContent, want: t ? L.setShortOf(id, t.w, t.r) : null }; }); }, r.want);
+      ok(sets.every(x => x.want && x.shown === x.want), '4. each set is the latest session\'s heaviest working set, read from the log', sets);
+      ok(r.first === 'today:moving' && !r.hidden && r.wide <= 390, '4. first on Today, not hidden, no sideways scroll at 390 px', r);
+      // Opened as a thumb opens it, by its title; then a tap on a lift opens it on Stats.
+      await pg.click('#view [data-sk="today:moving"] summary'); await pg.waitForSelector('#view .mvrow', { state: 'visible' });
+      await pg.click('#view .mvrow');
+      const st = await pg.evaluate(() => ({ tab: window.__ironlog.ui.tab, ex: window.__ironlog.ui.dashEx }));
+      ok(st.tab === 'dash' && st.ex === r.rows[0].id, '4. a tap opens that lift on Stats > Lifts', st);
+      // A phone's own saved order from before r70: the new section comes first.
+      const kept = await pg.evaluate(() => { const L = window.__ironlog; L.state.settings.secOrder.today = ['map', 'session', 'week', 'injuries', 'coach', 'tiles', 'body']; L.ui.tab = 'today'; L.render(); return document.querySelector('#view details.sec').dataset.sk; });
+      ok(kept === 'today:moving', '4. on a phone with its own saved order, Lifts moving comes first', kept);
+      // At 320 px, light: no sideways scroll.
+      await pg.setViewportSize({ width: 320, height: 700 });
+      const w320 = await pg.evaluate(() => { const L = window.__ironlog; L.state.settings.theme = 'light'; L.render(); return document.documentElement.scrollWidth; });
+      ok(w320 <= 320, '4. no sideways scroll at 320 px', w320);
+    }
+    // A new log: nothing rising, so no section and no chip.
+    const N = await open(FILE, { clock: TODAY + 'T18:00:00' });
+    const none = await N.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); return { sec: !!document.querySelector('#view [data-sk="today:moving"]'), chip: [...document.querySelectorAll('#view .tabfoot button, #view [data-act="secShow"]')].some(b => /Lifts moving/.test(b.textContent)) }; });
+    ok(!none.sec && !none.chip, '4. a new log, nothing rising: no Lifts moving and no chip for it (a guard)', none);
+    await N.page.close(); await pg.close();
   }
 
   await P.page.close();

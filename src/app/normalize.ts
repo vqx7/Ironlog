@@ -94,7 +94,7 @@ import type { Rec, Trashed } from './records';
 import { gymClean } from './gym';
 import { profClean } from './profile';
 import { canon } from './merge';
-import { DEFAULT_HIDDEN, DSEC_FOLDED, DSEC_KEYS, HIDEABLE_KEYS, SEC_TABS, defaultOrder, bwEveryKept } from './layout';
+import { DEFAULT_HIDDEN, HIDEABLE_KEYS, SEC_TABS, defaultOrder, bwEveryKept } from './layout';
 
 declare global {
   interface Window {
@@ -114,9 +114,6 @@ declare global {
    Spreading is defined for every value; TypeScript asks for an object, hence
    the cast. */
 const spread = (v: unknown): Rec => ({ ...(v as Rec) });
-
-/** Whether a value is one of a list of words (`list.includes(v)` before the move: a non-string never matches). */
-const oneOf = (v: unknown, list: readonly string[]): boolean => typeof v === 'string' && list.includes(v);
 
 /** A muscle or a joint key: `MK.includes(v)` and `JK.includes(v)` before the move, which match a string alone. */
 const MK_SET: ReadonlySet<string> = new Set(MK);
@@ -444,7 +441,6 @@ function freshState(): Fresh {
       theme: 'dark',
       bands: parseJson(JSON.stringify(BANDS)),
       priorities: [],
-      dashFolded: DSEC_FOLDED.slice(),
       lastExport: null,
       barKg: null,
       bwGoalPct: null,
@@ -453,7 +449,6 @@ function freshState(): Fresh {
       timerSound: true,
       timerCompact: false,
       autoDone: true,
-      homeFolded: [],
       wakeLock: false,
       timeBudget: null,
       rirMode: 'on',
@@ -545,11 +540,9 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     const o = arr(st.ownTargets);
     return o ? MK.filter(m => !TARGETED.has(m) && o.includes(m)) : [];
   })();
-  const hf = arr(st.homeFolded),
-    fl = arr(st.folds),
+  const fl = arr(st.folds),
     h = arr(st.hidden),
-    pr = arr(st.priorities),
-    df = arr(sIn.dashFolded);
+    pr = arr(st.priorities);
   const hc = numOr(st.heightCm, NaN),
     tb = numOr(st.timeBudget, NaN),
     bk = numOr(st.barKg, NaN),
@@ -595,7 +588,6 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     // r25: suggested loads show grey until typed; 'fill' puts them in the rows as before. Unset means grey (V's choice).
     ...(st.loadFill === 'fill' ? { loadFill: 'fill' } : {}),
     ...(userName ? { userName } : {}),
-    homeFolded: hf ? strings(hf, k => oneOf(k, ['map', 'body', 'week', 'tiles', 'coach', 'injuries'])) : [],
     // Section order per tab (drag the ⠿ in a section header): a new install starts in the default order (r28).
     secOrder,
     folds: fl ? strings(fl, k => safeKey(k) && k.length < LIMITS.foldKey).slice(0, LIMITS.folds) : [],
@@ -612,14 +604,10 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     hidden: h ? [...new Set(strings(h, k => HIDEABLE_KEYS.has(k)))] : [],
     onboarded: st.onboarded === true,
     calSnooze: typeof st.calSnooze === 'string' && isDate(st.calSnooze) ? st.calSnooze : null,
-    // Legacy fold flag from older builds; unused, kept so old saves round-trip.
-    tidyV: numOr(st.tidyV, 0) >= 1 ? 1 : 0,
     // Height in cm for waist-to-height; the one body measure that does not change.
     heightCm: isNum(hc) && hc >= LIMITS.heightCm[0] && hc <= LIMITS.heightCm[1] ? r1(hc) : null,
     timeBudget: isNum(tb) && tb >= LIMITS.budgetMin[0] ? Math.min(Math.round(tb), LIMITS.budgetMin[1]) : null,
     priorities: pr ? muscles(pr) : [],
-    // Absent (older saves) means the defaults apply once; after that the user's folds win.
-    dashFolded: df ? strings(df, k => oneOf(k, DSEC_KEYS)) : DSEC_FOLDED.slice(),
     lastExport: typeof st.lastExport === 'string' && isDate(st.lastExport) ? st.lastExport : null,
     removedLib,
     barKg: isNum(bk) && bk > 0 ? Math.min(bk, LIMITS.barKg) : null,
@@ -627,8 +615,16 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     bands
   };
   for (const k of OPTIONAL_SETTINGS) if (!(k in vals)) delete st[k];
+  /* Three fold settings of older builds that nothing has read since r28 and
+     r57 (Today's and Stats' folds, and a fold flag): taken out in r70 (382,
+     V 2026-11-03), with every user on the current build. Older saves, backups
+     and cloud copies still carry them, so they are dropped on every load,
+     import and merge, as former bests are (Comeback, r19). */
+  for (const k of RETIRED_SETTINGS) delete st[k];
   return Object.assign(st, vals);
 }
+/** Settings keys older builds wrote that nothing reads; dropped from every settings read (r70, 382). */
+const RETIRED_SETTINGS = ['homeFolded', 'dashFolded', 'tidyV'] as const;
 /** The settings absent unless set: each is taken out of the merged copy when it is not (cleanSettings). */
 const OPTIONAL_SETTINGS = [
   'accent',

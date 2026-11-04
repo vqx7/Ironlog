@@ -1012,6 +1012,13 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .headline{font-size:15px;line-height:1.5;margin:0 0 8px;color:var(--ink)}
 .summary{padding:2px 0!important;background:var(--surface)!important;border:1px solid var(--card-b)!important;border-radius:var(--r-lg)!important;margin-top:12px!important}
 .srow{-webkit-appearance:none;appearance:none;display:grid;grid-template-columns:8px 64px minmax(0,1fr) 10px;gap:10px;align-items:start;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:13px 16px;font:inherit;color:var(--ink);cursor:pointer}
+/* Today's Lifts moving (364 b-2, r70): a row a rising lift, its name, its line and its latest heaviest set; the row opens it on Stats. */
+.mvrow{-webkit-appearance:none;appearance:none;display:grid;grid-template-columns:minmax(0,1fr) 96px minmax(64px,auto);gap:12px;align-items:center;width:100%;min-height:44px;padding:8px 0;background:none;border:0;border-top:1px solid var(--line);color:inherit;font:inherit;text-align:left;cursor:pointer}
+.mvrow:first-of-type{border-top:0}
+.mvname{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mvline{display:block}
+.mvline polyline{fill:none;stroke:var(--volt);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mvset{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .srow:last-child{border-bottom:0}
 .srow.static{cursor:default;grid-template-columns:8px 64px minmax(0,1fr)}
 .srow .sl{font:600 11px var(--font);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding-top:3px}
@@ -3375,7 +3382,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ["body", "Body"]
   ];
   var DSEC_KEYS = DSECS.map((x2) => x2[0]);
-  var DSEC_FOLDED = ["consistency", "body"];
   var DSEC_ALIAS = {
     stalls: "exercise",
     prs: "exercise",
@@ -3390,15 +3396,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ["trend", "Weekly trend"],
     ["load", "Load"]
   ];
-  var DEFAULT_HIDDEN = [
-    "today:tiles",
-    "today:coach",
-    "today:body",
-    "program:schedule",
-    "program:pvol"
-  ];
+  var DEFAULT_HIDDEN = ["today:tiles", "today:coach", "today:body", "program:pvol"];
   var DEFAULT_ORDER = {
-    today: ["session", "map", "week", "injuries", "coach", "tiles", "body"],
+    today: ["moving", "session", "map", "week", "injuries", "coach", "tiles", "body"],
     dash: ["exercise", "volume", "weak", "consistency", "body"]
   };
   var defaultOrder = () => parseJson(JSON.stringify(DEFAULT_ORDER));
@@ -3461,6 +3461,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ["today", "injuries", "Injuries"],
     ["today", "map", "Muscle map"],
     ["today", "session", "Workout preview"],
+    ["today", "moving", "Lifts moving"],
     ["today", "body", "Body"],
     ["program", "library", "Add exercises"],
     ["program", "schedule", "Schedule"],
@@ -3495,7 +3496,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/normalize.ts
   var spread = (v3) => ({ ...v3 });
-  var oneOf = (v3, list) => typeof v3 === "string" && list.includes(v3);
   var MK_SET = new Set(MK);
   var JK_SET = new Set(JK);
   var isMuscle = (v3) => typeof v3 === "string" && MK_SET.has(v3);
@@ -3697,7 +3697,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         theme: "dark",
         bands: parseJson(JSON.stringify(BANDS)),
         priorities: [],
-        dashFolded: DSEC_FOLDED.slice(),
         lastExport: null,
         barKg: null,
         bwGoalPct: null,
@@ -3706,7 +3705,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         timerSound: true,
         timerCompact: false,
         autoDone: true,
-        homeFolded: [],
         wakeLock: false,
         timeBudget: null,
         rirMode: "on",
@@ -3774,7 +3772,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const o3 = arr(st.ownTargets);
       return o3 ? MK.filter((m3) => !TARGETED.has(m3) && o3.includes(m3)) : [];
     })();
-    const hf = arr(st.homeFolded), fl = arr(st.folds), h3 = arr(st.hidden), pr = arr(st.priorities), df = arr(sIn.dashFolded);
+    const fl = arr(st.folds), h3 = arr(st.hidden), pr = arr(st.priorities);
     const hc = numOr(st.heightCm, NaN), tb = numOr(st.timeBudget, NaN), bk = numOr(st.barKg, NaN), bg = numOr(st.bwGoalPct, NaN);
     const removedLib = (arr(sIn.removedLib) || []).filter((x2) => typeof x2 === "string").map(fixId);
     const inBands = spread(sIn.bands || {});
@@ -3812,7 +3810,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       // r25: suggested loads show grey until typed; 'fill' puts them in the rows as before. Unset means grey (V's choice).
       ...st.loadFill === "fill" ? { loadFill: "fill" } : {},
       ...userName ? { userName } : {},
-      homeFolded: hf ? strings(hf, (k2) => oneOf(k2, ["map", "body", "week", "tiles", "coach", "injuries"])) : [],
       // Section order per tab (drag the ⠿ in a section header): a new install starts in the default order (r28).
       secOrder,
       folds: fl ? strings(fl, (k2) => safeKey(k2) && k2.length < LIMITS.foldKey).slice(0, LIMITS.folds) : [],
@@ -3829,14 +3826,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       hidden: h3 ? [...new Set(strings(h3, (k2) => HIDEABLE_KEYS.has(k2)))] : [],
       onboarded: st.onboarded === true,
       calSnooze: typeof st.calSnooze === "string" && isDate(st.calSnooze) ? st.calSnooze : null,
-      // Legacy fold flag from older builds; unused, kept so old saves round-trip.
-      tidyV: numOr(st.tidyV, 0) >= 1 ? 1 : 0,
       // Height in cm for waist-to-height; the one body measure that does not change.
       heightCm: isNum(hc) && hc >= LIMITS.heightCm[0] && hc <= LIMITS.heightCm[1] ? r1(hc) : null,
       timeBudget: isNum(tb) && tb >= LIMITS.budgetMin[0] ? Math.min(Math.round(tb), LIMITS.budgetMin[1]) : null,
       priorities: pr ? muscles(pr) : [],
-      // Absent (older saves) means the defaults apply once; after that the user's folds win.
-      dashFolded: df ? strings(df, (k2) => oneOf(k2, DSEC_KEYS)) : DSEC_FOLDED.slice(),
       lastExport: typeof st.lastExport === "string" && isDate(st.lastExport) ? st.lastExport : null,
       removedLib,
       barKg: isNum(bk) && bk > 0 ? Math.min(bk, LIMITS.barKg) : null,
@@ -3844,8 +3837,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       bands
     };
     for (const k2 of OPTIONAL_SETTINGS) if (!(k2 in vals)) delete st[k2];
+    for (const k2 of RETIRED_SETTINGS) delete st[k2];
     return Object.assign(st, vals);
   }
+  var RETIRED_SETTINGS = ["homeFolded", "dashFolded", "tidyV"];
   var OPTIONAL_SETTINGS = [
     "accent",
     "rirAsk",
@@ -8912,6 +8907,26 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function moversIn(M3) {
     return Object.entries(IDXIn(M3).exStats).filter(([, x2]) => x2.moving && !x2.stalled && x2.fresh).sort((a2, b2) => b2[1].pct - a2[1].pct).map(([id, x2]) => ({ id, pct: x2.pct, wk: x2.spanW || 2 }));
   }
+  function liftsMovingIn(M3) {
+    const I2 = IDXIn(M3);
+    const today2 = M3.today();
+    return moversIn(M3).map(({ id, wk }) => {
+      const all = I2.byEx[id] || [];
+      const e12 = isCompound(EXIn(M3, id)) && all.some((x2) => x2.best != null);
+      const from = addDays(today2, -wk * WEEK_DAYS);
+      const line = [];
+      for (const x2 of all) {
+        if (x2.date < from || lighter(x2)) continue;
+        const v3 = e12 ? x2.best : x2.topW;
+        if (v3 != null) line.push(v3);
+      }
+      const last = all[all.length - 1];
+      let top = null;
+      for (const p3 of last ? last.pts : [])
+        if (!top || p3.w > top.w || p3.w === top.w && p3.r > top.r) top = { w: p3.w, r: p3.r };
+      return { id, wk, line, top };
+    });
+  }
   function stalledIdsIn(M3) {
     return Object.entries(IDXIn(M3).exStats).filter(([, x2]) => x2.stalled).map(([id]) => id);
   }
@@ -9249,6 +9264,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var dropOnlyLift = live(dropOnlyLiftIn);
   var fatigueStalls = live(fatigueStallsIn);
   var movers = live(moversIn);
+  var liftsMoving = live(liftsMovingIn);
   var readiness = live(readinessIn);
   var stalledIds = live(stalledIdsIn);
   var daysOff = live(daysOffIn);
@@ -18876,7 +18892,8 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       const d3 = R2.days[di];
       return !!d3 && !d3.rest && d3.items.length > 0;
     },
-    "today:injuries": () => (state.injuries || []).length > 0
+    "today:injuries": () => (state.injuries || []).length > 0,
+    "today:moving": () => liftsMoving().length > 0
   };
   var TONE_WORDS = {
     red: "Act now",
@@ -18884,6 +18901,34 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     green: "On track",
     blue: "Note"
   };
+  var MOVING_ROWS = 3;
+  var SPARK = { w: 96, h: 22, pad: 2 };
+  function movingCard() {
+    const all = liftsMoving();
+    if (!all.length) return null;
+    const one = all.every((x2) => x2.wk === all[0].wk);
+    const spark = (v3) => {
+      const lo = Math.min(...v3), hi = Math.max(...v3);
+      const pts = v3.map((y2, i5) => {
+        const x2 = v3.length > 1 ? i5 / (v3.length - 1) * SPARK.w : SPARK.w / 2;
+        const yy = SPARK.h - SPARK.pad - (hi > lo ? (y2 - lo) / (hi - lo) * (SPARK.h - 2 * SPARK.pad) : (SPARK.h - 2 * SPARK.pad) / 2);
+        return `${r1(x2)},${r1(yy)}`;
+      }).join(" ");
+      return b`<svg class="mvline" width=${SPARK.w} height=${SPARK.h} viewBox=${`0 0 ${SPARK.w} ${SPARK.h}`} aria-hidden="true"><polyline points=${pts}></polyline></svg>`;
+    };
+    const rows2 = all.slice(0, MOVING_ROWS).map((m3) => {
+      const ex = EX(m3.id);
+      const set = m3.top && ex ? setShort(ex, m3.top.w, m3.top.r) : "";
+      return b`<button type="button" class="mvrow" data-act="goDash" data-sec="exercise" data-ex=${m3.id} aria-label=${`${exName(m3.id)}, rising${set ? `, last best set ${set}` : ""}. Open on Stats`}><span class="mvname">${exName(m3.id)}</span>${m3.line.length > 1 ? spark(m3.line) : A}<span class="mvset">${set}</span></button>`;
+    });
+    return section({
+      sk: "today:moving",
+      key: "moving",
+      title: "Lifts moving",
+      sub: `${all.length} rising${one ? ` · ${all[0].wk} wks` : ""}`,
+      body: b`${rows2}${tipButton(`Lifts whose trend is clearly rising, the same as Stats and the coach name, strongest first. The line is what Stats > Lifts charts for each over ${one ? `the ${all[0].wk} weeks` : "the weeks"} its trend covers, lighter and deload sessions left out; the set is the heaviest of its latest session. Tap a lift to open it on Stats.`, "About Lifts moving")}`
+    });
+  }
   function todayRest(o3) {
     const pre = noLog() && !state.draft ? b`<p class="small muted u-m0-0n10" id="preApp">Lifted before this app? <button class="linkbtn" data-act="pastOpen">Log a past workout</button> to bring your bests in; targets then start from them.</p>` : A;
     const tiles = section({
@@ -18903,8 +18948,10 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       body: b`<p class="u-m0">${c4.text}${c4.why ? b` ${tipButton(c4.why, "Why")}` : A}</p>${coachButton(c4)}`
     });
     const inj = injuryCard();
+    const mv = movingCard();
     const parts = [
       [null, pre],
+      ...mv ? [["moving", mv]] : [],
       ["week", weekCard()],
       ["tiles", tiles],
       ["coach", coachSec],
@@ -26555,6 +26602,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       dateIndex,
       sessionsOn,
       bestLine,
+      // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it (r70).
+      setShortOf: (id, w2, r4) => setShort(EX(id), w2, r4),
       whyTarget,
       recent4w,
       weekSessions,

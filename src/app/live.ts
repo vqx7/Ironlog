@@ -96,7 +96,7 @@ import {
   weekStreakIn,
   weeksAvgIn
 } from './weeks';
-import { atRangeTopIn, coachIn, dropOnlyLiftIn, fatigueStallsIn, moversIn, readinessIn, stalledIdsIn } from './coach';
+import { atRangeTopIn, coachIn, dropOnlyLiftIn, fatigueStallsIn, liftsMovingIn, moversIn, readinessIn, stalledIdsIn } from './coach';
 import {
   daysOffIn,
   easierTextIn,
@@ -253,6 +253,7 @@ export const coach = live(coachIn);
 export const dropOnlyLift = live(dropOnlyLiftIn);
 export const fatigueStalls = live(fatigueStallsIn);
 export const movers = live(moversIn);
+export const liftsMoving = live(liftsMovingIn);
 export const readiness = live(readinessIn);
 export const stalledIds = live(stalledIdsIn);
 export const daysOff = live(daysOffIn);
