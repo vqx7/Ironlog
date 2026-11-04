@@ -70,11 +70,12 @@ export interface Mover {
 }
 /* Today's Lifts moving (364 b-2, r70, V 2026-11-03: "if they're accurate and
    not distracting"): the lifts Stats' summary and the coach call clearly
-   rising (moversIn), in their order. Each line is what Stats > Lifts charts
-   for the lift (its best estimate on a compound with one, else its top-set
-   load) over the weeks its trend covers, lighter and deload sessions left
-   out as the trend leaves them out, so the line rises where the reading
-   does. The number beside it is a set the lifter did, never an estimate:
+   rising (moversIn), in their order. Each line is the trend's own reading
+   of each session (`tv`, what the rise is fitted to) over the weeks its
+   trend covers, lighter and deload sessions left out as the trend leaves
+   them out, so the line rises exactly where the reading does. A load alone
+   was tried first and drew a flat line with one step on a lift whose reps
+   rise between loads (seen on the built page, r70). The number beside it is a set the lifter did, never an estimate:
    the latest session's heaviest working set. */
 /** The rising lifts, each with its line and its latest heaviest set. */
 export function liftsMovingIn(M: Model): Mover[] {
@@ -82,13 +83,11 @@ export function liftsMovingIn(M: Model): Mover[] {
   const today = M.today();
   return moversIn(M).map(({ id, wk }) => {
     const all = I.byEx[id] || [];
-    const e1 = isCompound(EXIn(M, id)) && all.some(x => x.best != null);
     const from = addDays(today, -wk * WEEK_DAYS);
     const line: number[] = [];
     for (const x of all) {
       if (x.date < from || lighter(x)) continue;
-      const v = e1 ? x.best : x.topW;
-      if (v != null) line.push(v);
+      if (x.tv != null) line.push(x.tv);
     }
     const last = all[all.length - 1];
     let top: Mover['top'] = null;

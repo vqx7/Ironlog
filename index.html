@@ -8912,13 +8912,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const today2 = M3.today();
     return moversIn(M3).map(({ id, wk }) => {
       const all = I2.byEx[id] || [];
-      const e12 = isCompound(EXIn(M3, id)) && all.some((x2) => x2.best != null);
       const from = addDays(today2, -wk * WEEK_DAYS);
       const line = [];
       for (const x2 of all) {
         if (x2.date < from || lighter(x2)) continue;
-        const v3 = e12 ? x2.best : x2.topW;
-        if (v3 != null) line.push(v3);
+        if (x2.tv != null) line.push(x2.tv);
       }
       const last = all[all.length - 1];
       let top = null;
@@ -18926,7 +18924,9 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       key: "moving",
       title: "Lifts moving",
       sub: `${all.length} rising${one ? ` · ${all[0].wk} wks` : ""}`,
-      body: b`${rows2}${tipButton(`Lifts whose trend is clearly rising, the same as Stats and the coach name, strongest first. The line is what Stats > Lifts charts for each over ${one ? `the ${all[0].wk} weeks` : "the weeks"} its trend covers, lighter and deload sessions left out; the set is the heaviest of its latest session. Tap a lift to open it on Stats.`, "About Lifts moving")}`
+      help: "moving",
+      helpBody: `The lifts whose trend is clearly rising, the ones Stats and the coach name, strongest first. Each line is its trend over ${one ? `the ${all[0].wk} weeks` : "the weeks"} it covers, lighter and deload sessions left out; the set beside it is the heaviest of its latest session. Tap a lift to open it on Stats.`,
+      body: b`${rows2}`
     });
   }
   function todayRest(o3) {
