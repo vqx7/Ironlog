@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-iw2rqCEmo0DYCcAsafAP3cp60NnCBqFRCSsuuB8T32s=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-bxRJwcd7KuwZs0V7i2L1s3oVdwIe0qkZL7+46W1Dm3Y=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.03-r70">
+<meta name="app-build" content="2026.11.04-r71">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -1026,13 +1026,15 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .headline{font-size:15px;line-height:1.5;margin:0 0 8px;color:var(--ink)}
 .summary{padding:2px 0!important;background:var(--surface)!important;border:1px solid var(--card-b)!important;border-radius:var(--r-lg)!important;margin-top:12px!important}
 .srow{-webkit-appearance:none;appearance:none;display:grid;grid-template-columns:8px 64px minmax(0,1fr) 10px;gap:10px;align-items:start;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:13px 16px;font:inherit;color:var(--ink);cursor:pointer}
-/* Today's Lifts moving (364 b-2, r70): a row a rising lift, its name, its line and its latest heaviest set; the row opens it on Stats. */
-.mvrow{-webkit-appearance:none;appearance:none;display:grid;grid-template-columns:minmax(0,1fr) 96px minmax(64px,auto);gap:12px;align-items:center;width:100%;min-height:44px;padding:8px 0;background:none;border:0;border-top:1px solid var(--line);color:inherit;font:inherit;text-align:left;cursor:pointer}
+/* Today's Lifts moving (364 b-2, r70): a row a rising lift, its name, its line and its latest heaviest set; the row opens it on Stats.
+   Since r71 (364 b-5, the draft V approved on 2026-11-03) the rows sit in a card of their own, the line shorter and drawn heavier, the set in bold. */
+.mvcard{background:var(--surface);border:1px solid var(--line-soft);border-radius:20px;padding:4px 16px}
+.mvrow{-webkit-appearance:none;appearance:none;display:grid;grid-template-columns:minmax(0,1fr) 80px minmax(64px,auto);gap:14px;align-items:center;width:100%;min-height:54px;padding:8px 0;background:none;border:0;border-top:1px solid var(--line);color:inherit;font:inherit;text-align:left;cursor:pointer}
 .mvrow:first-of-type{border-top:0}
-.mvname{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mvname{font-weight:500;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mvline{display:block}
-.mvline polyline{fill:none;stroke:var(--volt);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.mvset{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mvline polyline{fill:none;stroke:var(--volt);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.mvset{text-align:right;font-weight:750;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .srow:last-child{border-bottom:0}
 .srow.static{cursor:default;grid-template-columns:8px 64px minmax(0,1fr)}
 .srow .sl{font:600 11px var(--font);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding-top:3px}
@@ -1161,6 +1163,26 @@ input.need{box-shadow:0 0 0 2px var(--yellow)}
 .btn.rest{font-variant-numeric:tabular-nums}
 #timer .tv{font:800 30px var(--display);font-variant-numeric:tabular-nums;letter-spacing:.03em}
 #timer button{background:color-mix(in srgb,currentColor 18%,transparent);border:0;color:inherit;border-radius:8px;min-height:44px;padding:0 11px;font-weight:650;cursor:pointer}
+/* The rest card (r71, 364 b-1, the draft V approved on 2026-11-03): a card floating above the tabs, inset from the
+   edges, with the ring, the time and what comes next, round -15 and +15, and Skip in the accent; done, the ring is
+   full and the time reads Go. The page keeps room at its foot so the last row scrolls clear of it. */
+#timer:not(.compact){left:12px;right:12px;bottom:calc(58px + 10px + env(safe-area-inset-bottom,0px));height:76px;border-radius:24px;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.28);justify-content:flex-start;gap:8px;padding:0 8px 0 10px}
+#timer.done:not(.compact){background:var(--surface);color:var(--ink)}
+#timer:not(.compact)::before{display:none}
+#timer .tdial{flex:none;width:56px;height:56px}
+#timer .tdial circle{fill:none;stroke-width:4}
+#timer .tdial .trk{stroke:var(--line)}
+#timer .tdial .trp{stroke:var(--volt);stroke-linecap:round;transition:stroke-dasharray .25s linear}
+#timer .tcol{flex:1;min-width:0;display:flex;flex-direction:column}
+#timer:not(.compact) .tv{font:800 28px/1 var(--display);letter-spacing:.02em}
+#timer.done:not(.compact) .tv{color:var(--volt-line)}
+#timer .tlb{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;line-height:1.25;color:var(--muted);font-weight:600;margin-top:4px}
+@media (max-width:359px){#timer:not(.compact){gap:6px;padding:0 6px 0 8px}#timer .tdial{width:46px;height:46px}#timer:not(.compact) .tv{font-size:24px}#timer .tpill{min-width:44px;padding:0 6px}#timer .tskip{padding:0 4px}}
+#timer .tpill{height:44px;min-width:50px;padding:0 10px;border-radius:999px;display:grid;place-items:center;font-weight:700;font-size:15px;color:var(--ink);background:color-mix(in srgb,var(--ink) 9%,transparent)}
+#timer .tskip{background:transparent;color:var(--volt-line);min-width:44px;padding:0 6px}
+body.timer-on main{padding-bottom:calc(168px + env(safe-area-inset-bottom,0px))}
+/* An exercise's ✓ Done (r71, 385, V 2026-11-03: easy to miss): the accent's outline and colour, at the right of its row. */
+.btn.sm.bdone{border:1.5px solid var(--volt);color:var(--volt-line);background:color-mix(in srgb,var(--volt) 12%,transparent);margin-left:auto}
 .overb{color:var(--yellow);font-weight:650}
 .cgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.8fr) minmax(0,.8fr);gap:8px;margin-top:8px}
 .clist{list-style:none;margin:0;padding:0}
@@ -2057,8 +2079,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.25";
-  var APP_VERSION = "2026.11.03-r70";
+  var DISPLAY_VERSION = "2.26";
+  var APP_VERSION = "2026.11.04-r71";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -10190,17 +10212,19 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   function timerSave() {
     const el = bar();
     if (timer.end && el && !el.hidden) {
-      if (!prefSet(TIMER_KEY, String(timer.end)) || !prefSet(TIMER_KEY + "Len", String(timer.total || 0)))
+      if (!prefSet(TIMER_KEY, String(timer.end)) || !prefSet(TIMER_KEY + "Len", String(timer.total || 0)) || !prefSet(TIMER_KEY + "Next", timer.next || ""))
         log("timer", new Error("Storage refused the rest timer"));
     } else {
       prefDel(TIMER_KEY);
       prefDel(TIMER_KEY + "Len");
+      prefDel(TIMER_KEY + "Next");
     }
   }
-  function startTimer(sec) {
+  function startTimer(sec, next) {
     wakeTip();
     timer.end = Date.now() + sec * TIMER_MS.second;
     timer.total = sec;
+    timer.next = next || "";
     timer.fired = false;
     primeAudio();
     const el = bar();
@@ -10219,6 +10243,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const len = +(prefGet(TIMER_KEY + "Len") || 0) || 0;
     timer.end = end;
     timer.total = len > 0 ? len : Math.round((end - Date.now()) / TIMER_MS.second);
+    timer.next = prefGet(TIMER_KEY + "Next") || "";
     timer.fired = false;
     const el = bar();
     if (el) el.hidden = false;
@@ -10271,7 +10296,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     el.dataset.mode = compact ? "c" : "f";
     el.classList.toggle("compact", compact);
     D(
-      compact ? b`<span class="tv" data-t="v"></span><button data-act="tAdd" aria-label="Add 15 seconds">+15</button><button data-act="tStop" aria-label="Dismiss timer">✕</button>` : b`<span data-t="l"></span><span class="tv" data-t="v"></span><span class="row"><button data-act="tAdd">+15s</button><button data-act="tStop">Dismiss</button></span>`,
+      compact ? b`<span class="tv" data-t="v"></span><button data-act="tAdd" aria-label="Add 15 seconds">+15</button><button data-act="tStop" aria-label="Dismiss timer">✕</button>` : b`<svg class="tdial" viewBox="0 0 44 44" aria-hidden="true"><circle class="trk" cx="22" cy="22" r="18"></circle><circle class="trp" data-t="p" cx="22" cy="22" r="18" pathLength="100" transform="rotate(-90 22 22)"></circle></svg><span class="tcol"><span class="tv" data-t="v"></span><span class="tlb" data-t="l"></span></span><button class="tpill" data-act="tSub" aria-label="Take 15 seconds off">−15</button><button class="tpill" data-act="tAdd" aria-label="Add 15 seconds">+15</button><button class="tpill tskip" data-act="tStop" aria-label="Skip the rest">Skip</button>`,
       el
     );
   }
@@ -10288,13 +10313,17 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       if (v3.textContent !== t4) v3.textContent = t4;
       v3.setAttribute("aria-label", left ? "Rest remaining" : "Rest done");
     } else if (v3 && l4) {
-      if (v3.textContent !== txt) v3.textContent = txt;
-      const lt = left ? "Rest" : "Rest done";
+      const t4 = left ? txt : "Go";
+      if (v3.textContent !== t4) v3.textContent = t4;
+      const lt = left ? "Rest" + (timer.next ? " · " + timer.next : "") : "Rest done";
       if (l4.textContent !== lt) l4.textContent = lt;
     }
     el.classList.toggle("done", !left);
     const tot = Math.max(timer.total || 0, left, 1);
-    el.style.setProperty("--tp", String(Math.max(0, Math.min(1, left / tot))));
+    const tp = Math.max(0, Math.min(1, left / tot));
+    el.style.setProperty("--tp", String(tp));
+    const ring = el.querySelector('[data-t="p"]');
+    if (ring) ring.setAttribute("stroke-dasharray", `${left ? r1(tp * PERCENT) : PERCENT} ${PERCENT}`);
     if (!left) {
       if (timer.iv) clearInterval(timer.iv);
       timer.iv = null;
@@ -10309,6 +10338,11 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         }
       }
     }
+  }
+  function timerSub() {
+    timer.end = Math.max(Date.now(), timer.end - ADD_S * TIMER_MS.second);
+    timerSave();
+    tick();
   }
   function timerAdd() {
     const was = Math.max(0, (timer.end - Date.now()) / TIMER_MS.second);
@@ -14669,7 +14703,7 @@ ${more}`;
     }
     const nx = b2.sets[si + 1];
     if (autoRest && !s3.drop && nx && nx.drop && !nx.done) autoRest = false;
-    if (autoRest) startTimer(+b2.plan.rest);
+    if (autoRest) startTimer(+b2.plan.rest, restNext(bi));
     if (W.foldT) clearTimeout(W.foldT);
     W.foldT = null;
     const askRir = val && state.settings.rirAsk === true && !s3.warm && s3.rir == null && rirShow(EX(b2.exId)) && !!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
@@ -14681,6 +14715,19 @@ ${more}`;
       W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
     }
     if (val && b2.sets.filter((x2) => x2.done).length === 1 && orderAt(b2) >= 0) orderSoon(b2);
+  }
+  function restNext(bi) {
+    const d3 = state.draft;
+    const b2 = d3 && d3.ex[bi];
+    if (!d3 || !b2) return "";
+    const left = (x2) => x2.sets.some((y2) => !y2.done && !y2.warm && !y2.drop);
+    const to = b2.plan.ss ? d3.ex.find((x2) => x2.plan && x2.plan.ss === b2.plan.ss && left(x2)) || b2 : b2;
+    const k2 = to.sets.filter((y2) => !y2.warm && !y2.drop).findIndex((y2) => !y2.done);
+    if (k2 >= 0) return to === b2 ? `next set ${k2 + 1}` : `next: ${exName(to.exId)}`;
+    const i5 = d3.ex.indexOf(to);
+    let nx = d3.ex.findIndex((x2, j3) => j3 > i5 && !blockDone(x2));
+    if (nx < 0) nx = d3.ex.findIndex((x2) => blockUntouched(x2));
+    return nx >= 0 && nx !== i5 ? `next: ${exName(d3.ex[nx].exId)}` : "";
   }
   function ssNext(b2) {
     const d3 = state.draft;
@@ -15429,7 +15476,7 @@ ${bwSettings()}
 </select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${l3(!!s3.timerSound)} ?disabled=${s3.timerMode === "off"}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${l3(!!s3.timerCompact)} ?disabled=${s3.timerMode === "off"}/>${labelTip(
           "lt-timerCompact",
           "Compact timer",
-          "A small pill in the corner instead of a bar across the screen."
+          "A small pill in the corner instead of the rest card above the tabs."
         )}</label> <label class="check-inline"><input type="checkbox" data-bind="autoDone" aria-labelledby="lt-autoDone" .checked=${l3(!!s3.autoDone)}/>${labelTip(
           "lt-autoDone",
           "Auto-mark a set done after its reps",
@@ -18949,7 +18996,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     blue: "Note"
   };
   var MOVING_ROWS = 3;
-  var SPARK = { w: 96, h: 22, pad: 2 };
+  var SPARK = { w: 80, h: 24, pad: 2 };
   function movingCard() {
     const all = liftsMoving();
     if (!all.length) return null;
@@ -18975,7 +19022,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       sub: `${all.length} rising${one ? ` · ${all[0].wk} wks` : ""}`,
       help: "moving",
       helpBody: `The lifts Stats and the coach call clearly rising, strongest first. Each line is the lift's trend over ${one ? `the ${all[0].wk} weeks` : "the weeks"} it covers, without lighter or deload sessions; the set beside it is the heaviest of its latest session. Tap a lift to open it on Stats.`,
-      body: b`${rows2}`
+      body: b`<div class="mvcard">${rows2}</div>`
     });
   }
   function todayRest(o3) {
@@ -19874,7 +19921,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       b2.sets,
       (x2) => x2.rid,
       (_2, si) => setRow(d3, b2, bi, si, ex, nr, dupB)
-    )}${adjLine(b2, bi)}${platesMode(ex) !== "none" ? b`<p class="small muted u-m6-0-0" id=${`pl-${bi}`}>${plateLine(b2, W.platesAt && blkIdx(W.platesAt.b) === bi ? W.platesAt.s : null)}</p>` : ""}<div class="row u-mt8">${canFill ? b`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>` : ""}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done." ?disabled=${!b2.sets.length}>− Set</button>${!ex.timed && b2.sets.some((x2) => x2.done && !x2.warm && !x2.drop) ? b`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working load, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>` : ""}${!d3.editingId && b2.sets.some((x2) => x2.done && !x2.warm) && b2.sets.some((x2) => !x2.done) ? b`<button class="btn sm" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them.">✓ Done</button>` : ""}${state.settings.timerMode !== "off" && +p3.rest > 0 && !d3.past ? b`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p3.rest} second rest`} data-tip="Start the rest timer.">⏱ ${p3.rest}s</button>` : ""}</div></section>`;
+    )}${adjLine(b2, bi)}${platesMode(ex) !== "none" ? b`<p class="small muted u-m6-0-0" id=${`pl-${bi}`}>${plateLine(b2, W.platesAt && blkIdx(W.platesAt.b) === bi ? W.platesAt.s : null)}</p>` : ""}<div class="row u-mt8">${canFill ? b`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>` : ""}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done." ?disabled=${!b2.sets.length}>− Set</button>${!ex.timed && b2.sets.some((x2) => x2.done && !x2.warm && !x2.drop) ? b`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working load, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>` : ""}${!d3.editingId && b2.sets.some((x2) => x2.done && !x2.warm) && b2.sets.some((x2) => !x2.done) ? b`<button class="btn sm bdone" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them.">✓ Done</button>` : ""}${state.settings.timerMode !== "off" && +p3.rest > 0 && !d3.past ? b`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p3.rest} second rest`} data-tip="Start the rest timer.">⏱ ${p3.rest}s</button>` : ""}</div></section>`;
   }
   var LOG_HELP_ON = "RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ";
   var LOG_HELP = "W marks a warm-up (kept, never analysed); tap it again for ↳, a drop set (counts as work and volume, never as a PR or target). + Drop adds one under the last set ticked, with no rest before it; a warm-up is added from the ⋯ menu. Drag an exercise by its ⠿ to change the order. A superset is one box, A1 and A2: after a set of A1 the screen moves to A2, and the rest timer starts after the last exercise of the group. Timed holds log seconds in the Sec column. The date can be changed to log a past session.";
@@ -20573,7 +20620,8 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     },
     tStart(t4) {
       const b2 = tapBlock(t4);
-      if (b2 && +b2.plan.rest > 0) startTimer(+b2.plan.rest);
+      const d3 = state.draft;
+      if (b2 && d3 && +b2.plan.rest > 0) startTimer(+b2.plan.rest, restNext(d3.ex.indexOf(b2)));
     },
     /* A session with nothing in it goes at once; one with anything entered
        (sets, reps, cardio, a note) asks first. An edit always asks, since the
@@ -23519,6 +23567,9 @@ ${JSON.stringify(ctx, null, 1)}`;
         if (d3 && !d3.open) d3.open = true;
       }
       document.querySelectorAll(`[data-act="help"][data-h="${k2}"]`).forEach((b2) => b2.setAttribute("aria-expanded", String(on)));
+    },
+    tSub() {
+      timerSub();
     },
     tAdd() {
       timerAdd();
