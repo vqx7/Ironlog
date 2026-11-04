@@ -470,6 +470,12 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - r65.1: not shipped (closed unmerged 2026-10-31); nothing to check.
 - r65.2, in the preview, in Safari and in the home-screen app: a double tap anywhere does not zoom (pinch still does); a long press on a button, a tab or an exercise's name selects nothing and opens no Copy menu; a tap leaves no grey flash; you can still type and select a load in a set field. Settings > General offers Violet, Cyan and Red after Pink; pick each in light and dark and look at Today and a workout; with Red, Discard and a missed day on the week bar are magenta; with Cyan, an above-target muscle on Stats is violet; put your accent back after.
 - r63, in the preview (every action and the start moved, the legacy script gone; nothing meant to change but two time limits): a workout from start to Finish, Undo after a change, swap and add an exercise, the exercise editor's Save, Short on time and Limited equipment, a past workout, the calendar's days; in Settings, Import workouts (a pasted note) and Export; the menu's account sheet (sign in, a wrong password, Forgot password); Report a problem with the phone in airplane mode: after about 20 s it says No answer and keeps your text, and sent again with the connection back it goes once.
+- r70, in the preview, in Safari and in the home-screen app:
+  - tick a set: the rest is a ring in the top bar (no bar at the bottom), it stays as you scroll, -15, +15 and Skip work, and your account button beside it still opens;
+  - Today: Lifts moving (once a lift is rising) with lines that rise, and a tap opens the lift on Stats; each lift on the Workout preview names its best;
+  - Stats > Lifts > All-time bests > Add an old best: a date, a lift, one set, Finish, and it shows in All-time bests;
+  - in a workout, tap the muscle under an exercise's name (Lats, Chest): the body figures open.
+
 ## Reminders
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.
 
