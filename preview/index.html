@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-bxRJwcd7KuwZs0V7i2L1s3oVdwIe0qkZL7+46W1Dm3Y=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-IsMQ0ruM3QgLT36dRnYa+bZWPAOxhNbjb51WCM+UKB0=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.04-r71">
@@ -2741,15 +2741,17 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const it = R2 ? planItemOf(R2, exId, dayId, part) : null;
     return it && Number.isInteger(it.sets) && it.sets >= 1 ? it.sets : void 0;
   }
-  function nearestPlanSets(routines, id, exId, done) {
+  function nearestPlanSets(routines, id, exId, done, rr) {
     const R2 = routines.find((r4) => r4.id === id);
+    const all = (R2 ? R2.days : []).flatMap(
+      (day) => day.items.filter((it) => it.exId === exId && Number.isInteger(it.sets) && it.sets >= 1)
+    );
+    const same = rr ? all.filter((it) => it.repMin === rr[0] && it.repMax === rr[1]) : [];
     let n3;
-    for (const day of R2 ? R2.days : [])
-      for (const it of day.items) {
-        if (it.exId !== exId || !Number.isInteger(it.sets) || it.sets < 1) continue;
-        const d3 = Math.abs(it.sets - done), was = n3 === void 0 ? Infinity : Math.abs(n3 - done);
-        if (d3 < was || d3 === was && n3 !== void 0 && it.sets < n3) n3 = it.sets;
-      }
+    for (const it of same.length ? same : all) {
+      const d3 = Math.abs(it.sets - done), was = n3 === void 0 ? Infinity : Math.abs(n3 - done);
+      if (d3 < was || d3 === was && n3 !== void 0 && it.sets < n3) n3 = it.sets;
+    }
     return n3;
   }
   function withPlanSets(ex, d3, routines, blank) {
@@ -2758,7 +2760,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (blank.freestyle) return [...ex];
       return ex.map((b2) => {
         const done = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
-        const n3 = nearestPlanSets(routines, blank.routineId, b2.exId, done);
+        const n3 = nearestPlanSets(routines, blank.routineId, b2.exId, done, b2.rr);
         return n3 ? { ...b2, ps: n3 } : b2;
       });
     }
@@ -25674,7 +25676,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Back after more than ${BACK_DAYS / WEEK_DAYS} weeks off a lift</b>: about ${pctOf(LIGHT_SHARE)}% of its last working load, with ${BACK_RIR} or more reps in reserve (a convention). The ${BACK_DAYS / WEEK_DAYS} weeks is the app's convention for where a break begins: strength falls the longer a lift is left (Bosquet 2013). That first session back is the lift's new start: its trend and stall test start again from it, never drawn across the break. Until the lift is back at its load from before the break, each full session sets the next load: what its sets say fits your usual reps, never lower than the load you did and never past that load (a convention). Back at it in fewer than your planned sets, the next session asks every set at it, for the fewest reps you did there. Then the usual rules. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about ${pctOf(LIGHT_SHARE)}% as long.</p>
    <p><b>Your gym</b> (Settings): the dumbbells, kettlebells, plates, and stack steps you have. Suggestions stay on them, and a weight you type for a dumbbell counts as the nearest one.</p>
    <p><b>New machine or gym</b> (in an exercise's ⋯ menu during a session): the lift starts over from that session, as from a first one, so another machine's loads give no target, PR, or best. Its trend, stalls, and dumbbell steps read from that session on; earlier sessions stay in History and its chart. Tap it again before Finish to take it off.</p>
-   <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the ${numWord(USUAL_BEFORE)} before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks, and in a session on a day of your routine they are the sets the plan gave the lift that day, once a session has done that many, so fewer sets than planned never become the usual there; a blank session saves, with each lift your routine plans, the sets of its day nearest to what you did (the fewer on a tie), and is held to them the same way; in Freestyle (Today opens blank) it saves none, and your own sets lead. Each session keeps the plan it was done to, so a plan changed later never rereads the sessions before it; sessions saved before version 2.12 read their own sets. A set counts toward them when its load is within ${shareWords(1 - LIGHTER_LOAD)} of the session's working load, or at the usual load (a convention): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set ${shareWords(1 - LIGHTER_LOAD)} or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than ${pctOf(1 - USUAL_SHARE)}% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the ${numWord(USUAL_BEFORE)} before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
+   <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the ${numWord(USUAL_BEFORE)} before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks, and in a session on a day of your routine they are the sets the plan gave the lift that day, once a session has done that many, so fewer sets than planned never become the usual there; a blank session saves, with each lift your routine plans, the sets of its day nearest to what you did, among the days that plan it in that session's rep range (the fewer on a tie), and is held to them the same way; in Freestyle (Today opens blank) it saves none, and your own sets lead. Each session keeps the plan it was done to, so a plan changed later never rereads the sessions before it; sessions saved before version 2.12 read their own sets. A set counts toward them when its load is within ${shareWords(1 - LIGHTER_LOAD)} of the session's working load, or at the usual load (a convention): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set ${shareWords(1 - LIGHTER_LOAD)} or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than ${pctOf(1 - USUAL_SHARE)}% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the ${numWord(USUAL_BEFORE)} before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled fewer sets, below usual, lighter, or deload when it was. When it did not set the target, the next target comes from the last full session, and the i beside the target names its date; grey reps come from that session too after one below usual or done lighter.</p>
    <p><b>Deload week</b>: ${shareWords(LIGHTER_SET_SHARE)} the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the load the normal day would ask for (or of last time's, if lower), in whole steps down (never under the empty bar on a full-bar lift), the bottom of the range, ${LIGHT_RIR} or more reps in reserve. A week with ${LIGHTER_WEEK_WORDS}, stays out of the weekly volume average (a lift done there at its usual load with fewer sets than usual counts as done lighter for this, the sets cut on purpose); each lift done lighter stays out of its trend. A <b>lighter day</b> is the same for one day.</p>
    <p><b>Lighter sessions nobody marked</b> (an imported deload, say) are read from the numbers: a lift's heaviest load at least ${pctOf(1 - LIGHTER_LOAD)}% under its previous ${numWord(LIGHTER_REF)} sessions and its strength reading at least ${pctOf(1 - LIGHTER_READING)}% under. They are kept in history and, like a deload, set no target or trend. A session with half or more of its lifts done lighter, marked or read, is a lighter session, and a week with more than half its sessions lighter is left out of the weekly averages. Lighter sessions in a row, ${numWord(NEW_LEVEL.sessions)} or more over ${NEW_LEVEL.days / WEEK_DAYS} weeks or more, are a new level, not a deload, and count again. A convention.</p>
@@ -26107,7 +26109,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   <label class="field">When you lifted it<input type="date" data-pbind="date" .value=${l3(m3.date)} max=${today()}></label>
   <button class="btn fullw primary u-mt12" data-act="pastGo" data-day="free">Choose the lift</button>
   <p class="small muted u-m10-0-0">Then type the load and reps and tap Finish. ${tipButton(
-        "Saved as a past workout of one set on that date, and shown in All-time bests. If it is all you have logged for that lift, your next session's load starts from it, lighter for the time since; once you have recent sessions, they set your targets. PRs start again after a break of more than four weeks, so an old best never stops a new set counting as one.",
+        "Saved as a past workout of one set on that date, and shown in All-time bests. If it is all you have logged for that lift, your next session's load starts from it, lighter for the time since; once you have recent sessions, they set your targets. It counts as a record like any set, so a later set is a PR only when it is stronger.",
         "About old bests"
       )}</p></div>`;
     const R2 = activeRoutine();
