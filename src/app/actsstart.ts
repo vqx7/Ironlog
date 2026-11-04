@@ -188,6 +188,10 @@ function wkOpen(t: Tap): void {
 }
 
 /** Log a past workout: from an empty past day in the top bar (that date), or from History (yesterday, changeable in the sheet). */
+/** Add an old best (380, r70): the past sheet for a date, then the lift, as a Freestyle past workout of one set. */
+function oldBestOpen(): void {
+  openModal({ kind: 'past', date: today(), old: true });
+}
 function pastOpen(t: Tap | null | undefined): void {
   const v = t && t.dataset.date;
   const d = v && isDate(v) && v <= today() ? v : addDays(today(), -1);
@@ -524,6 +528,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     );
   },
   pastOpen,
+  oldBestOpen,
   pastGo(t) {
     const m = ui.modal;
     if (!m || m.kind !== 'past') return;
@@ -536,7 +541,12 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       ui.tab = 'today';
       ui.todayDay = null;
       begin(pastDraft(date, di, part), false);
-      if (di == null) openModal({ kind: 'picker', mode: 'addBlock', title: 'Add exercise to session', q: '', m: '' });
+      if (di == null)
+        openModal(
+          m.old
+            ? { kind: 'picker', mode: 'addBlock', title: 'The lift of your old best', q: '', m: '', one: true }
+            : { kind: 'picker', mode: 'addBlock', title: 'Add exercise to session', q: '', m: '' }
+        );
     };
     closeModal();
     const d = state.draft;

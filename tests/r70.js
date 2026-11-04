@@ -13,6 +13,9 @@
 //      row and staying as the page scrolls; -15, +15 and Skip work; done, it is the full accent; the compact pill stays.
 //   6  379: each lift on Today's Workout preview names its best: the set behind a compound lift's best estimate, else its
 //      heaviest set, with its date, the same set and date Stats' All-time bests names for it.
+//   7  380: Add an old best, from All-time bests: a date, the lift, its one set, Finish; saved as a past workout of one
+//      set on that date, shown in All-time bests; as the lift's only history the next load starts from it, and with
+//      recent sessions they lead.
 // R70_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -216,6 +219,35 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
     });
     ok(r.rows.length > 0 && agree.every(x => x.ok), '6. 379: each lift on the Workout preview names its best set and date, the same as Stats\' All-time bests (r69: none)', agree.filter(x => !x.ok).slice(0, 3));
     ok(agree.some(x => /^Best /.test(x.best)) && agree.some(x => /^Heaviest /.test(x.best)), '6. compound lifts name the set behind the best estimate, other lifts their heaviest set', agree.map(x => x.best));
+    await pg.close();
+  }
+
+  if (run(7)) {
+    const T = await open(FILE, { clock: TODAY + 'T18:00:00' });
+    const pg = T.page;
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    // A lifter with a few sessions of other lifts, on Stats with every section open.
+    await pg.evaluate(() => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb'; L.makeDemo(); for (const x of L.state.sessions) delete x.demo; L.state.sessions = L.state.sessions.filter(x => !x.ex.some(e => e.exId === 'bench')); L.invalidate(); L.saveNow(); L.ui.tab = 'dash'; L.render(); for (let k = 0; k < 2; k++) { document.querySelectorAll('#view details').forEach(d => { d.open = true; }); L.render(); } });
+    const btn = await pg.$('#view [data-act="oldBestOpen"]');
+    ok(!!btn, '7. 380: All-time bests offers Add an old best (r69: none)', null);
+    if (btn) {
+      await pg.evaluate(() => document.querySelector('#view [data-act="oldBestOpen"]').click()); await wait(200);
+      const h = await pg.evaluate(() => (document.getElementById('pastH') || { textContent: '' }).textContent);
+      await pg.fill('#modal input[data-pbind="date"]', '2024-03-01'); await pg.dispatchEvent('#modal input[data-pbind="date"]', 'change'); await wait(150);
+      await pg.click('#modal [data-act="pastGo"]'); await wait(300);
+      const pk = await pg.evaluate(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'picker' ? m.title : null; });
+      await pg.click('#modal [data-act="pickDo"][data-ex="bench"]'); await wait(300);
+      const dr = await pg.evaluate(() => { const d = window.__ironlog.state.draft; return d ? { past: d.past, date: d.date, ex: d.ex.map(b => [b.exId, b.sets.length]) } : null; });
+      ok(h === 'Add an old best' && pk === 'The lift of your old best' && dr && dr.past && dr.date === '2024-03-01' && JSON.stringify(dr.ex) === JSON.stringify([['bench', 1]]), '7. the sheet takes the date, the picker the lift, and a past workout of that date opens with the lift and one set', { h, pk, dr });
+      await pg.fill('#view input[data-f="w"][data-b="0"][data-s="0"]', '315'); await pg.dispatchEvent('#view input[data-f="w"][data-b="0"][data-s="0"]', 'change');
+      await pg.fill('#view input[data-f="r"][data-b="0"][data-s="0"]', '1'); await pg.dispatchEvent('#view input[data-f="r"][data-b="0"][data-s="0"]', 'change'); await wait(150);
+      await pg.click('#view .fin-row .btn.primary'); await wait(500);
+      const saved = await pg.evaluate(() => { const L = window.__ironlog; const s = L.state.sessions.find(x => x.date === '2024-03-01'); const b = L.allTimeBests('bench'); return { s: s ? s.ex.map(e => [e.exId, e.sets.map(z => [Math.round(z.w / 0.45359237), z.r])]) : null, draft: !!L.state.draft, best: b && b.heavy ? [Math.round(b.heavy.p.w / 0.45359237), b.heavy.p.r, b.heavy.date] : null }; });
+      ok(saved.s && JSON.stringify(saved.s) === JSON.stringify([['bench', [[315, 1]]]]) && !saved.draft && JSON.stringify(saved.best) === JSON.stringify([315, 1, '2024-03-01']), '7. Finish saves one set of 315 x 1 on Mar 1, 2024, and All-time bests shows it', saved);
+      // As the lift's only history, the next load starts from it (the return after a break); with recent sessions, they lead.
+      const g = await pg.evaluate(() => { const L = window.__ironlog; const r = L.suggest('bench', { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150 }, {}); return { w: Math.round(r.w / 0.45359237), text: r.text }; });
+      ok(/Back after \d+ weeks/.test(g.text) && g.w < 315 && g.w > 135, '7. as the only history, the next load is a return from it, lighter than 315 (V, r48)', g);
+    }
     await pg.close();
   }
 

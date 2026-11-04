@@ -637,7 +637,10 @@ export function bestsBoard(): { n: number; html: TemplateResult } {
         y = b.last;
       return x != null && y != null && x !== y ? (x < y ? 1 : -1) : a.ex.name.localeCompare(b.ex.name);
     });
-  if (!rows.length) return { n: 0, html: html`<p class="muted">Your bests appear here after your first session.</p>` };
+  // Add an old best (380, r70): a best from before this app, or from a gap in the log, one set on its date.
+  const oldBest = html`<p class="u-m8-0-0"><button class="linkbtn u-minh44" data-act="oldBestOpen">Add an old best</button></p>`;
+  if (!rows.length)
+    return { n: 0, html: html`<p class="muted">Your bests appear here after your first session.</p>${oldBest}` };
   // A bodyweight lift's estimate includes the body, so it says total; its sets read BW+x.
   const u = (ex: { bw?: boolean | undefined }): string => ' ' + U() + (ex.bw ? ' total' : '');
   // The newest BESTS_SHOWN first; the rest one tap away, so the list stays short on a phone.
@@ -662,7 +665,7 @@ export function bestsBoard(): { n: number; html: TemplateResult } {
       f =>
         html`<tr><td class="num">${loadLabel(ex, f.p.w)}</td><td class="r num">${f.p.r}</td><td class="r">${fmtDate(f.date)}</td></tr>`
     )}</table></details>`;
-    })}</div>${rows.length > shown.length ? html`<button class="btn sm u-mt8" data-act="bestsAll">Show all ${rows.length} lifts</button>` : nothing}<p class="small muted hastip u-m8-0-0" data-tip="For each load, the most reps you have done, where no heavier set did as many. Beating a line at 90% or more of your strongest set is a rep PR. The best estimate (compound lifts) is the highest estimated 1RM from any set, in the frame you log in. Warm-ups and drop sets are left out.">How to read this</p>`
+    })}</div>${rows.length > shown.length ? html`<button class="btn sm u-mt8" data-act="bestsAll">Show all ${rows.length} lifts</button>` : nothing}<p class="small muted hastip u-m8-0-0" data-tip="For each load, the most reps you have done, where no heavier set did as many. Beating a line at 90% or more of your strongest set is a rep PR. The best estimate (compound lifts) is the highest estimated 1RM from any set, in the frame you log in. Warm-ups and drop sets are left out.">How to read this</p>${oldBest}`
   };
 }
 

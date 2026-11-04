@@ -17136,7 +17136,9 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       const x2 = a2.last, y2 = b2.last;
       return x2 != null && y2 != null && x2 !== y2 ? x2 < y2 ? 1 : -1 : a2.ex.name.localeCompare(b2.ex.name);
     });
-    if (!rows2.length) return { n: 0, html: b`<p class="muted">Your bests appear here after your first session.</p>` };
+    const oldBest = b`<p class="u-m8-0-0"><button class="linkbtn u-minh44" data-act="oldBestOpen">Add an old best</button></p>`;
+    if (!rows2.length)
+      return { n: 0, html: b`<p class="muted">Your bests appear here after your first session.</p>${oldBest}` };
     const u4 = (ex) => " " + U() + (ex.bw ? " total" : "");
     const shown2 = ui.bestsAll ? rows2 : rows2.slice(0, BESTS_SHOWN);
     return {
@@ -17153,7 +17155,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     <table class="t"><tr><th>${ex.assist ? "Load" : loadHead(ex)}</th><th class="r">${ex.timed ? "Seconds" : "Reps"}</th><th class="r">First done</th></tr>${r4.front.map(
           (f3) => b`<tr><td class="num">${loadLabel(ex, f3.p.w)}</td><td class="r num">${f3.p.r}</td><td class="r">${fmtDate(f3.date)}</td></tr>`
         )}</table></details>`;
-      })}</div>${rows2.length > shown2.length ? b`<button class="btn sm u-mt8" data-act="bestsAll">Show all ${rows2.length} lifts</button>` : A}<p class="small muted hastip u-m8-0-0" data-tip="For each load, the most reps you have done, where no heavier set did as many. Beating a line at 90% or more of your strongest set is a rep PR. The best estimate (compound lifts) is the highest estimated 1RM from any set, in the frame you log in. Warm-ups and drop sets are left out.">How to read this</p>`
+      })}</div>${rows2.length > shown2.length ? b`<button class="btn sm u-mt8" data-act="bestsAll">Show all ${rows2.length} lifts</button>` : A}<p class="small muted hastip u-m8-0-0" data-tip="For each load, the most reps you have done, where no heavier set did as many. Beating a line at 90% or more of your strongest set is a rep PR. The best estimate (compound lifts) is the highest estimated 1RM from any set, in the frame you log in. Warm-ups and drop sets are left out.">How to read this</p>${oldBest}`
     };
   }
   function readinessBody() {
@@ -23810,6 +23812,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const p0 = planFor(id, null, d3.dayId, false, d3.date, partOf(d3));
       const nb = newBlock(id, half(p0), { deload: !!d3.deload, light: !!d3.light, before: d3.date });
       if (d3.deload || d3.light) nb.full = +p0.sets;
+      if (m3.one) nb.sets = nb.sets.slice(0, 1);
       const li = d3.ex.length - 1;
       const last = d3.ex[li];
       if (last && joinable(last, nb)) {
@@ -24304,6 +24307,9 @@ ${JSON.stringify(ctx, null, 1)}`;
     } catch (e5) {
     }
   }
+  function oldBestOpen() {
+    openModal({ kind: "past", date: today(), old: true });
+  }
   function pastOpen(t4) {
     const v3 = t4 && t4.dataset.date;
     const d3 = v3 && isDate(v3) && v3 <= today() ? v3 : addDays(today(), -1);
@@ -24623,6 +24629,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       );
     },
     pastOpen,
+    oldBestOpen,
     pastGo(t4) {
       const m3 = ui.modal;
       if (!m3 || m3.kind !== "past") return;
@@ -24635,7 +24642,10 @@ ${JSON.stringify(ctx, null, 1)}`;
         ui.tab = "today";
         ui.todayDay = null;
         begin(pastDraft(date, di, part), false);
-        if (di == null) openModal({ kind: "picker", mode: "addBlock", title: "Add exercise to session", q: "", m: "" });
+        if (di == null)
+          openModal(
+            m3.old ? { kind: "picker", mode: "addBlock", title: "The lift of your old best", q: "", m: "", one: true } : { kind: "picker", mode: "addBlock", title: "Add exercise to session", q: "", m: "" }
+          );
       };
       closeModal();
       const d3 = state.draft;
@@ -26028,6 +26038,14 @@ ${JSON.stringify(ctx, null, 1)}`;
     return ok(cs.next) ? cs.next : -1;
   }
   function pastSheet(m3) {
+    if (m3.old)
+      return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pastH"><div class="sheet-h"><h3 id="pastH">Add an old best</h3>${closeX()}</div>
+  <label class="field">When you lifted it<input type="date" data-pbind="date" .value=${l3(m3.date)} max=${today()}></label>
+  <button class="btn fullw primary u-mt12" data-act="pastGo" data-day="free">Choose the lift</button>
+  <p class="small muted u-m10-0-0">Then type the load and reps and tap Finish. ${tipButton(
+        "Saved as a past workout of one set on that date, and shown in All-time bests. If it is all you have logged for that lift, your next session's load starts from it, lighter for the time since; once you have recent sessions, they set your targets. PRs start again after a break of more than four weeks, so an old best never stops a new set counting as one.",
+        "About old bests"
+      )}</p></div>`;
     const R2 = activeRoutine();
     const due = pastDue(R2, m3.date);
     const on = sessionsOn(m3.date).map((x2) => x2.dayName || "Session");
