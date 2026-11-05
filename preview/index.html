@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-+OIU6B+s0KH/NMm/UiUs8syYiFrwyUEinih2l2WOljE=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-Lg3H9qXth4lxC5UOKGjX1SDjLrdbgmXz3sm0YMZTuQc=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.04-r72">
@@ -2324,7 +2324,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const v3 = e1(load2, r4, rir);
     if (v3 != null) return v3;
     const q = rir == null || rir === "" || !isFinite(+rir) ? 0 : Math.min(Math.max(+rir, 0), E1_MAX_RIR);
-    return epley(load2, r4 + q);
+    return e1At(load2, Math.min(r4 + q, E1_MAX_REPS));
   }
   function e1inv(est, rtf) {
     return rtf <= BRZYCKI_TOP ? est * (BRZYCKI_B - rtf) / BRZYCKI_A : est / (1 + rtf / EPLEY_REPS);
@@ -3939,11 +3939,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const g2 = rec(e5.goal);
     const inc = numOr(e5.inc, NaN), bwf = numOr(e5.bwf, NaN), ml = numOr(e5.maxLoad, NaN), bar2 = numOr(e5.barKg, NaN);
     const gw = g2 ? numOr(g2.w, NaN) : NaN, gr = g2 ? Math.round(numOr(g2.r, NaN)) : NaN;
+    const primary = typeof e5.primary === "string" && isMuscle(e5.primary) ? e5.primary : "chest";
     return keepExtra(e0, {
       id: fixId(e5.id),
       name,
-      primary: typeof e5.primary === "string" && isMuscle(e5.primary) ? e5.primary : "chest",
-      secondary: sc ? strings(sc, (m3) => isMuscle(m3) && m3 !== e5.primary) : [],
+      primary,
+      secondary: sc ? strings(sc, (m3) => isMuscle(m3) && m3 !== primary) : [],
       equip: typeof e5.equip === "string" ? e5.equip : "other",
       bw: !!e5.bw,
       rare: !!e5.rare,
@@ -5990,6 +5991,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const exps = byEx[id];
       const prev = [];
       let run2 = [];
+      const readAgainst = /* @__PURE__ */ new Map();
       let before = null;
       for (const x2 of exps) {
         if (afterBreak(before, x2.date) || x2.nw) {
@@ -6016,16 +6018,18 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
             x2.auto = true;
             o3.l++;
             run2.push(x2);
-            const inRun = run2.filter((q) => sameRR(q.rr, x2.rr));
+            readAgainst.set(x2, ref2);
+            const mine = new Set(ref2);
+            const inRun = run2.filter((q) => (readAgainst.get(q) || []).some((r4) => mine.has(r4)));
             if (inRun.length >= NEW_LEVEL.sessions && daysBetween(inRun[0].date, inRun[inRun.length - 1].date) >= NEW_LEVEL.days) {
               for (const q of inRun) {
                 q.auto = false;
                 q.keep = true;
                 wkAuto[weekStart(q.date)].l--;
               }
-              removeWhere(prev, (q) => sameRR(q.rr, x2.rr));
+              removeWhere(prev, (q) => inRun.some((m3) => sameRR(q.rr, m3.rr)));
               prev.push(...inRun);
-              removeWhere(run2, (q) => sameRR(q.rr, x2.rr));
+              removeWhere(run2, (q) => inRun.includes(q));
             }
             continue;
           }
@@ -6098,7 +6102,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         n3++;
       }
     }
-    return n3 ? sum / (n3 + missed) : q.tRaw;
+    return n3 + missed ? sum / (n3 + missed) : q.tRaw;
   }
   function repsOf(q, k2) {
     const at2 = triedAt(q, q.topW).slice(0, k2);
@@ -6242,7 +6246,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const wJ = !ex.timed ? pts.filter((p3) => p3.r > 0 && p3.w > h3.prevMaxW + EPS_SAME).sort((a2, b2) => b2.w - a2.w || prScore(b2) - prScore(a2) || b2.r - a2.r)[0] : null;
     const wPR = wJ ? asLogged(wJ) : null;
     const progress = !!repPR || e1PR || !!wPR;
-    const big = noE1(ex) || !!ex.timed || !!ex.bw && !pts.some((q) => q.pl > 0) || pts.some((q) => prScore(q) > h3.topSc + EPS);
+    const big = noE1(ex) || !!ex.timed || !!ex.bw && !pts.some((q) => q.pl > 0) || pts.some((q) => prScore(q) > h3.topSc + EPS || prScore(q) >= h3.topSc - EPS && !prDominated(h3, q));
     if (wPR)
       return {
         pr: {
@@ -7073,13 +7077,13 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       want[0]
     ) ?? [];
     const seen = oneADay(inRR ? all.filter((x2) => sameRR(x2.rr, want)) : all, want[0]);
-    if (ex.timed) return suggestTimedIn(M3, ex, plan, exps, opts, injM, seen);
+    const noAdd = !!ex.bw && !ex.assist && !(all || []).some((x2) => x2.pts.some((p3) => p3.w > EPS_SAME));
+    if (ex.timed) return suggestTimedIn(M3, ex, plan, exps, opts, injM, seen, noAdd);
     if (!exps || !exps.length) return sgFirstIn(M3, ex, plan, T2, injM);
     const last = exps[exps.length - 1], ws = last.pts;
     const stx = all.length < every.length ? statsUpToIn(M3, exId, all) : IDXIn(M3).exStats[exId] || {};
     const top = workLoad(ws, +plan.repMin);
     const step = incOfIn(M3, ex, plan, top);
-    const noAdd = !!ex.bw && !ex.assist && !all.some((x2) => x2.pts.some((p3) => p3.w > EPS_SAME));
     const abW = ["abs", "obliques"].includes(ex.primary);
     const cap = capOfIn(M3, ex, plan, top);
     const noHelp = !!ex.assist && top >= -EPS;
@@ -7581,7 +7585,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (!(w2 > 0)) return null;
     return { ex: k2.ex, date: x2.date, w: w2, set: `${loadLabelIn(M3, k2.ex, set.w)}×${set.r}` };
   }
-  function suggestTimedIn(M3, ex, plan, exps, opts, injM, all) {
+  function suggestTimedIn(M3, ex, plan, exps, opts, injM, all, noAdd) {
     opts = opts || {};
     const side = ex.perSide ? " per side" : "";
     if (!exps || !exps.length) {
@@ -7668,7 +7672,6 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       };
     const step = incOfIn(M3, ex, plan, top);
     const cap = capOfIn(M3, ex, plan, top);
-    const noAdd = !!ex.bw && !ex.assist && ![...all || [], ...exps].some((x2) => x2.pts.some((p3) => p3.w > EPS_SAME));
     if (step > 0 && !noAdd && topPts.every((p3) => p3.r >= plan.repMax) && !atCapOfIn(M3, ex, plan, top, cap)) {
       const nw = cap != null ? Math.min(top + step, cap) : top + step;
       return {
@@ -14301,8 +14304,11 @@ ${more}`;
       const r4 = +(x2.r ?? 0);
       return prScoreOf(l4, r4, rirEst(x2, ex));
     };
-    const me = scq(s3);
-    return b2.sets.some((x2, i5) => i5 < si && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && scq(x2) >= me - EPS) ? null : pr;
+    const me = scq(s3), myLoad = prLoad(ex, s3, date), myR = +(s3.r ?? 0);
+    const asStrong = (x2) => scq(x2) > me + EPS || scq(x2) >= me - EPS && prLoad(ex, x2, date) >= myLoad - EPS && +(x2.r ?? 0) >= myR;
+    return b2.sets.some(
+      (x2, i5) => i5 < si && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && asStrong(x2) && livePR(b2.exId, x2, date)
+    ) ? null : pr;
   }
   function prBeat(exId, s3, date, pr) {
     const m3 = liveMade(exId, s3, date);
@@ -14884,7 +14890,8 @@ ${more}`;
       stopped = true;
       const r4 = a1.getBoundingClientRect().top;
       clear();
-      window.scrollBy(0, a1.getBoundingClientRect().top - r4);
+      const keep = window.scrollY + a1.getBoundingClientRect().top - r4;
+      window.scrollTo(0, keep < 0 ? y1 : keep);
       off();
     };
     const off = () => {
@@ -25752,7 +25759,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the ${numWord(USUAL_BEFORE)} before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks, and in a session on a day of your routine they are the sets the plan gave the lift that day, once a session has done that many, so fewer sets than planned never become the usual there; a blank session saves, with each lift your routine plans, the sets of its day nearest to what you did, among the days that plan it in that session's rep range (the fewer on a tie), and is held to them the same way; in Freestyle (Today opens blank) it saves none, and your own sets lead. Each session keeps the plan it was done to, so a plan changed later never rereads the sessions before it; sessions saved before version 2.12 read their own sets. A set counts toward them when its load is within ${shareWords(1 - LIGHTER_LOAD)} of the session's working load, or at the usual load (a convention): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set ${shareWords(1 - LIGHTER_LOAD)} or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than ${pctOf(1 - USUAL_SHARE)}% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the ${numWord(USUAL_BEFORE)} before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled fewer sets, below usual, lighter, or deload when it was. When it did not set the target, the next target comes from the last full session, and the i beside the target names its date; grey reps come from that session too after one below usual or done lighter.</p>
    <p><b>Deload week</b>: ${shareWords(LIGHTER_SET_SHARE)} the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the load the normal day would ask for (or of last time's, if lower), in whole steps down (never under the empty bar on a full-bar lift), the bottom of the range, ${LIGHT_RIR} or more reps in reserve. A week with ${LIGHTER_WEEK_WORDS}, stays out of the weekly volume average (a lift done there at its usual load with fewer sets than usual counts as done lighter for this, the sets cut on purpose); each lift done lighter stays out of its trend. A <b>lighter day</b> is the same for one day.</p>
-   <p><b>Lighter sessions nobody marked</b> (an imported deload, say) are read from the numbers: a lift's heaviest load at least ${pctOf(1 - LIGHTER_LOAD)}% under its previous ${numWord(LIGHTER_REF)} sessions and its strength reading at least ${pctOf(1 - LIGHTER_READING)}% under. They are kept in history and, like a deload, set no target or trend. A session with half or more of its lifts done lighter, marked or read, is a lighter session, and a week with more than half its sessions lighter is left out of the weekly averages. Lighter sessions in a row in one rep range, ${numWord(NEW_LEVEL.sessions)} or more over ${NEW_LEVEL.days / WEEK_DAYS} weeks or more, are a new level for that range, not a deload, and count again. A convention.</p>
+   <p><b>Lighter sessions nobody marked</b> (an imported deload, say) are read from the numbers: a lift's heaviest load at least ${pctOf(1 - LIGHTER_LOAD)}% under its previous ${numWord(LIGHTER_REF)} sessions and its strength reading at least ${pctOf(1 - LIGHTER_READING)}% under. They are kept in history and, like a deload, set no target or trend. A session with half or more of its lifts done lighter, marked or read, is a lighter session, and a week with more than half its sessions lighter is left out of the weekly averages. Lighter sessions in a row against the same earlier sessions, ${numWord(NEW_LEVEL.sessions)} or more over ${NEW_LEVEL.days / WEEK_DAYS} weeks or more, are a new level, not a deload, and count again. A convention.</p>
    <p><b>An exercise stopped early</b>, or cut by Short on time, is read by the rule above: with fewer sets than usual it sets no target, and still counts toward its trend. Finish asks first when sets are left.</p>
    <p><b>Make it lighter</b>, after a low check-in, changes only the exercises not started yet. What you already did at full effort still sets next time's target.</p>
    <p><b>An injury</b> flagged on a muscle or a joint (knee, hip, shoulder, elbow, wrist) pauses targets for exercises that load it and caps their load at last time.</p>
