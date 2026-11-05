@@ -109,7 +109,8 @@ const seed = (L, unit, exId, list, rr) => {
       return { ph, target: b.target, logged: L.state.draft.ex[0].sets[0].r };
     }, [seed.toString()]);
     ok(JSON.stringify(r.ph) === '["6","6","6"]', '195: squat 140 x 3, 6, 6 on 6-10: grey reps (6)(6)(6), not (3)(6)(6)', r.ph);
-    ok(/^19\+ reps over (your first )?3 sets at 140/.test(r.target), '195: the target is 19+ reps over 3 sets, not 16+', r.target);
+    // Since r72 (V, 2026-11-04, 387-B5) the total to beat is the reps done, 3 + 6 + 6; the grey reps above still show 6 for the bad set.
+    ok(/^16\+ reps over (your first )?3 sets at 140/.test(r.target), '195: the target is the 15 done to beat, 16+ reps over 3 sets (r32 to r71: 19+, the 3 counting as 6)', r.target);
     ok(r.logged === 6, '195: ticking set 1 untyped logs 6, not 3', r.logged);
     // Most sets under the range is a load that was too heavy: grey reps stay as done.
     const r2 = await P.page.evaluate(([seedS]) => {
@@ -411,12 +412,18 @@ const seed = (L, unit, exId, list, rr) => {
       // PR off lighter days; since r53 (V, 2026-10-18: a PR is a PR whatever
       // the day) a lighter day's sets are read like any day's, and only a set
       // stronger than every earlier one is counted and announced (big). This
-      // set is weaker (90 x 12 scores 126, 100 x 8 at 1 in reserve 129), so it
-      // is still no PR anywhere a lifter looks: the counted list, Recent PRs
-      // and the recap all read big ones only.
+      // set is weaker (90 x 12 to failure scores 126, 100 x 8 at 1 in reserve
+      // 129), so it is still no PR anywhere a lifter looks: the counted list,
+      // Recent PRs and the recap all read big ones only. Until r72 the set
+      // here was rated 3 in reserve, which the PR score ignored past 12 reps
+      // to failure; since r72 (387-B4, then V's R72-4: read no further than
+      // 12 to failure) it scores as 90 x 12 to failure either way, 126, under
+      // 100 x 8's 129: no PR rated 3 either (out.w4r3).
       seed(L, 'kg', 'bench', [['2026-09-26', [[100, 8, 1]]]], [6, 10]);
-      L.state.sessions.push({ id: 'lt', date: '2026-10-03', dayIdx: 0, dayId: null, dayName: 'A (lighter)', routineId: '', notes: '', light: true, ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w: 90, r: 12, rir: 3, warm: false, drop: false }] }] }); L.invalidate();
+      L.state.sessions.push({ id: 'lt', date: '2026-10-03', dayIdx: 0, dayId: null, dayName: 'A (lighter)', routineId: '', notes: '', light: true, ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w: 90, r: 12, rir: 0, warm: false, drop: false }] }] }); L.invalidate();
       out.w4 = L.IDX().prs.filter(x => x.date === '2026-10-03' && x.big).length;
+      L.state.sessions.find(x => x.id === 'lt').ex[0].sets[0].rir = 3; L.invalidate();
+      out.w4r3 = L.IDX().prs.filter(x => x.date === '2026-10-03' && x.big).length;
       return out;
     }, [seed.toString()]);
     ok(r.w1.w === 52.5 && r.w1.aim === 5, 'W1: 5 x 5 at 50 kg goes to 52.5 for 5s, never "building to 7"', r.w1);
@@ -426,10 +433,11 @@ const seed = (L, unit, exId, list, rr) => {
     ok(r.w6.w === 100 && r.w6.kind === 'reps' && /^27\+ reps over 4 sets at 100 kg$/.test(r.w6.target) && /^Last \(Oct 3, below usual\)/.test(r.w6.text || ''), 'W6: 7, 7, 6, 6 then 5, 5, 4, 4: stay at 100 with the target it had, 27+ reps over 4 sets, not "19+ reps"', r.w6);
     ok(r.w6b.w === 60 && r.w6b.kind === 'load' && r.w6b.aim === 15 && /15\+ reps in every set/.test(r.w6b.target), 'W6b: 15, 15, 15 then 14, 14, 14 on a 15 to 20 range, within 3% so it counts: stay at 60 and get back to 15+ in every set, not "43+ reps"', r.w6b);
     ok(r.run.w < 100 && /Drop to/.test(r.run.text), 'W6: four sessions in a row under the range at one load drop it', r.run);
-    ok(/a set under 6 counts as 6/.test(r.fl), 'W6: a target with one set read at the bottom of the range says so', r.fl);
+    ok(/Beat 24 reps over 4 sets at 100 kg\./.test(r.fl) && !/counts as/.test(r.fl), 'W6: a target with one set under the range beats the reps done, 24 (r32 to r71: "a set under 6 counts as 6"; since r72, V 2026-11-04, 387-B5)', r.fl);
     ok(!/·/.test(r.w7), 'W7: three sessions in 4 days get no trend word', r.w7);
     ok(Math.abs(r.w8.w / 5 - Math.round(r.w8.w / 5)) < 1e-6 && Math.abs(r.w8l / 5 - Math.round(r.w8l / 5)) < 1e-6 && !/225\.5|220\.5 lb for/.test(r.w8.text.split('.').slice(1).join('.')), 'W8: after kg to lb, the next load and the lighter day are on 5 lb steps', r);
-    ok(r.w4 === 0, 'W4: a Lighter day\'s 90 x 12 is not a PR', r.w4);
+    ok(r.w4 === 0, 'W4: a Lighter day\'s 90 x 12 to failure, weaker than 100 x 8, is not a PR', r.w4);
+    ok(r.w4r3 === 0, 'W4: the same 90 x 12 with 3 in reserve is no PR either, read no further than 12 to failure (r72, R72-4, V 2026-11-04)', r.w4r3);
     await P.ctx.close();
   }
   {

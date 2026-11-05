@@ -120,8 +120,10 @@ Casts: 49
 Non-null assertions: 23
 Open types: 9
 
-Marks in r52's moved code (from baselines/r51.html): 6 casts, 72 non-null assertions
+Marks in r52's moved code (from baselines/r51.html): 6 casts, 71 non-null assertions
 Marks in r56's moved code (from baselines/r55.html): 2 casts, 2 non-null assertions
+r72: 71 non-null assertions from 72 in r52's moved code: `all!` in suggestCoreIn's never-loaded test, read as `(all || [])` once it moved above the hold's case (R72-6).
+
 r66: 49 casts from 48: the rows of pictures' bytes read back from IndexedDB (`picRowsRead` in storage.ts, PENDING 373), whose request is typed any, read as unknown as Undo's and the kept-aside log's are.
 
 Restated in r56 (the move of storage and sync): 85 casts from 76, each explained where it stands: the four readers through which every raw value is read (`rec`, `arr` and `parseJson` in `records.ts`, `spread` in `normalize.ts`), the two error events' payloads (`storageStart`, typed any by the browser's own types), and the three fields of the sync notes read as they were saved (`notesIn` in `sync.ts`), which go when r56.1 checks every entry of the notes (PENDING 305); 26 non-null assertions from 25 (`fx`, set at start as `state` is); 16 open types from 18 (`cloud`'s three `Record<string, unknown>` and its index signature typed, `Rec` added). The 4 casts and 2 `!` in the code r56 moved: `normalize`'s result typed as the State it builds field by field and an exercise's muscles read as the list the build above made them, `plainTemplate`'s routine given to `routineSig` under its try, `undoRestore`'s IndexedDB result typed any by the browser, the starter routine's template that always exists, and the device id set before any sync. A `!` on a value typed any (an `IDBRequest`'s result) is read through a cast to unknown, as `JSON.parse` is.

@@ -643,7 +643,8 @@ export const noE1 = (ex: Pick<Exercise, 'id' | 'timed'> | null | undefined): boo
   !!ex && (!!ex.timed || NO_E1.has(ex.id));
 
 /* Lifts that add recovery time: heavy lengthened hamstring and hinge work,
-   walking lunges (Pareja-Blanco 2020; eccentric-heavy damage). */
+   walking lunges (eccentric-heavy damage; a rule of thumb, docs/EVIDENCE.md. Pareja-Blanco 2020, cited here until
+   r72, studies how sets are configured and velocity loss, not exercise choice: 387-B9). */
 export const SLOW_RECOVERY: ReadonlySet<string> = new Set([
   'deadlift',
   'sumoDl',

@@ -40,8 +40,8 @@ interface WorkState {
   // The load field just focused whose number the first key replaces (and backspace clears), until a key, a tap on it or leaving it.
   replaceNext: HTMLInputElement | null;
 }
-/** How long a block done this visit waits to fold, in milliseconds: after its last tick, after its effort is picked, and again while an effort strip is open. */
-export const FOLD_MS = { tick: 1200, effort: 900, strip: 1500 } as const;
+/** How long a block done this visit waits to fold, in milliseconds: after its last tick, after its effort is picked, and again while an effort strip is open; and how long the glide to the next exercise takes (r72). */
+export const FOLD_MS = { tick: 1200, effort: 900, strip: 1500, glide: 320 } as const;
 
 /** The session screen's state between draws (WorkState). */
 export const W: WorkState = {

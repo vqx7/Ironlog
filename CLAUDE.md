@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r71, version 2.26, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r72, version 2.27, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -154,7 +154,8 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   marked New machine or gym restarts them too, its PRs, bests and dumbbell steps with them, and keeps every session
   shown (`liftReadIn`, r61). A ticked set
   of 0 reps is a missed set: kept and shown, counted toward no volume, PR, estimate or trend, read by the next target
-  as a set short of the range (so sets missed never step a load up, r56.2), and asked about first when its load is well
+  as a set short of the range and as 0 reps, so its session reads below its usual and the target repeats (V, 2026-11-04,
+  387-B3), and sets missed never earn a step up (r56.2), and asked about first when its load is well
   under the session's working load (r55.1). With Your gym's plates set, a bar lift's loads are ones the bar and those
   plates make (r55.1). A past week is read against what its routine
   planned then (each session records it, `pw`), never the routine as it is now, and a lift's session by the sets its plan gave it then (`ps`, r58). A PR is a PR on any day, and a change of units or gyms is never one.

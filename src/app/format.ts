@@ -107,9 +107,11 @@ export const missedTag = (s: { r: number | string | null }): string => (isMissed
 export const DIRTY_SAID = 'Save or cancel first. Your changes are still here.';
 
 /* What a missed set does, as the next target reads it since r56.2 (a set short of the range) and R-1 (one of the
-   session's sets): r64, the r63 audit's NEW-4, where it said "or targets". */
+   session's sets): r64, the r63 audit's NEW-4, where it said "or targets". Since r72 (NEW-66) it never earns a step
+   up: under 387-B3 a step earned by a full session before it still stands, so "keeps the load from going up" read
+   false there. */
 /** Said once when a set is ticked as missed (r55). */
-export const MISSED_SAID = 'Logged as missed. It counts toward no volume or PRs, and keeps the load from going up.';
+export const MISSED_SAID = 'Logged as missed. It counts toward no volume or PRs, and never earns a step up.';
 
 /** A number to at most three decimals, without trailing zeros. */
 export const fmtG = (v: number): string => String(r3(v));

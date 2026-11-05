@@ -97,7 +97,7 @@ const FILE = process.argv[2] || 'index.html';
     const after = await ev(() => { const L = window.__ironlog; const I = L.IDX(); return I.byEx.bench.filter(x => !L.offTarget(x)).map(x => x.topW); });
     // A lighter day done at the usual load, 120 x 8 again: no PR, and a full session for the bench press all the same.
     const usual = await one(120);
-    // A lighter day at 100 for 18 and 18: stronger than ever by the rep score (100 x 18 scores 160, 120 x 8 at its usual 1 in reserve 154), so a PR, but done lighter, so the session stays lighter and the next target stays at 120.
+    // A lighter day at 100 for 18 and 18: until r72 stronger than ever by the rep score (100 x 18 scored 160, 120 x 8 at its usual 1 in reserve 154), so a PR; since r72 read no stronger than at 12 to failure (140), so none. Done lighter either way, so the session stays lighter and the next target stays at 120.
     const reps = await one([[100, 18], [100, 18]]);
     const next2 = await ev(() => { const L = window.__ironlog; const b = L.newBlock('bench', L.planFor('bench'), {}); return { last: b.last, sw: b.sw, target: b.target }; });
     const full2 = await ev(() => { const L = window.__ironlog; return L.IDX().byEx.bench.filter(x => !L.offTarget(x)).map(x => x.topW); });
@@ -115,7 +115,8 @@ const FILE = process.argv[2] || 'index.html';
   ok(pr.single.prs.length === 0 && pr.single.exp[0].light === true && (pr.single.lines || []).some(l => /^Heaviest yet: Barbell Bench Press /.test(l) && l.includes(w130)), 'a lighter day with a heavy single, 130 x 1, heavier than ever but not stronger: no PR, the recap says Heaviest yet, as on any day, and the session stays lighter', pr.single);
   ok(JSON.stringify(pr.after) === '[100,100,120]', 'the trend still reads 100, 100, and 120: the single does not move it', pr.after);
   ok(pr.usual.prs.length === 0 && pr.usual.exp[0].light === false, 'a lighter day done at the usual load, 120 x 8 again: no PR, and a full session for the lift all the same', pr.usual);
-  ok(JSON.stringify(pr.reps.prs) === '["Rep PR"]' && pr.reps.exp[0].light === true && /Bench/.test(pr.reps.recap || ''), 'a lighter day at 100 for 18 and 18: a PR (stronger than ever by the rep score), but done lighter, so the session stays lighter', pr.reps);
+  // Since r72 (V, 2026-11-04, R72-4 then "Strict: not counted"): 100 x 18 reads no stronger than at 12 to failure, 140 under 120 x 8's 154, so it is no counted PR; r53 to r71 counted it (160 by Epley at 18).
+  ok(pr.reps.prs.length === 0 && pr.reps.exp[0].light === true && !pr.reps.recap, 'a lighter day at 100 for 18 and 18: no counted PR, read no stronger than at 12 to failure (r72, V\'s rulings), and done lighter, so the session stays lighter', pr.reps);
   ok(JSON.stringify(pr.full2) === '[100,100,120,120]' && (pr.next2.target || '').includes(w120) && pr.next2.sw >= 120 - 1e-6 && (pr.next2.last || '').includes('lighter'), 'and the next bench press is still set from 120: its load and target, while its Last line shows that lighter day, marked lighter', pr);
   ok(pr.trend.lastFull === '2026-10-15 120' && JSON.stringify(pr.trend.full) === '[100,100,120]', 'the trend reads it: the bench press\'s full sessions are 100, 100, and 120, the lighter day at 90 left out', pr.trend);
   ok((pr.next.last || '').includes(w120) && !/lighter/i.test(pr.next.last || '') && pr.next.sw >= 120 - 1e-6 && (pr.next.target || '').includes(w120), 'the next bench press starts from it: its Last line (without "lighter"), its load and its target are 120 kg', pr.next);

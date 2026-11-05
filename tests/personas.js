@@ -83,6 +83,11 @@
 //      11 of the 12 the routine planned in the 4 full weeks before, with the
 //      percentage a tap away (92%), and By region's weeks named short, in
 //      full a tap away.
+//  16  a bad day on the bench and a small win on raises (r72, NEW-63, 387-B3 and 387-B4): after two weeks of 185 x
+//      10 x 3, the bench's third set missed (0 reps ticked); finishing it brings the raises up in one glide, never
+//      a jump to the session's title; 20 lb raises for 11 at 2 in reserve after 10 are a PR on the row, in the
+//      toast, in the recap and in the counted list alike; and the next week the bench repeats its target, 31+ reps
+//      at 185, as after any weaker session, and never asks more weight because of the miss.
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
 const { open, engine } = require('./h');
@@ -1049,6 +1054,50 @@ async function finish() {
     const reg = await ev(() => { const c = document.getElementById('chRadar') && document.getElementById('chRadar').closest('.card'); const p = c && [...c.querySelectorAll('p.small.muted')].find(x => x.querySelector('.tipi')); if (!p) return null; const q = p.cloneNode(true); q.querySelectorAll('.tipi').forEach(x => x.remove()); return { line: q.textContent.trim(), tip: p.querySelector('.tipi').getAttribute('data-tip') }; });
     ok(reg && reg.line === '4-week average' && reg.tip.startsWith('Using your 4-week average. '), '15. By region: "4-week average", every week of the four trained, said in full in its i', reg);
     ok(!H.P.errors.length, '15. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 16. A bad day on the bench and a small win on raises (r72): every step a tap or typing.
+  if (run(16)) {
+    const T0 = '2026-11-02';
+    const H = await phone(T0);
+    const { ev, page } = H;
+    const days = [{ id: 'Dp', name: 'Push', items: [['bench', 3, 8, 12, 2, 90, 5], ['dbLateral', 3, 10, 15, 2, 60, 5]] }];
+    const sessions = [-14, -7].map(k => ({ date: addD(T0, k), day: 'Dp', ex: [['bench', [[185, 10, 2], [185, 10, 2], [185, 10, 2]]], ['dbLateral', [[20, 10, 2], [20, 10, 2], [20, 10, 2]]]] }));
+    await seed(H, { unit: 'lb', days, sessions });
+    await H.start();
+    let d = await H.draft();
+    ok(d.ex[0].tgt && d.ex[0].tgt.kind === 'reps' && d.ex[0].tgt.total === 30 && Number((await H.row(0, 0)).w) === 185, '16. the bench asks 185 lb, last time\'s 30 reps to beat', d.ex[0].tgt);
+    for (const s of [0, 1]) { await H.type('w', 0, s, 185); await H.type('r', 0, s, 10); await H.effort(0, s, 2); await H.quiet(); await H.tick(0, s); }
+    // The third set missed: 0 reps typed and ticked. The fold that follows is read every frame.
+    await H.type('w', 0, 2, 185); await H.type('r', 0, 2, 0);
+    await ev(() => { window.__tr = []; const t0 = performance.now(); const f = () => { const a = document.getElementById('blk-1'); window.__tr.push({ y: Math.round(scrollY), a: a ? Math.round(a.getBoundingClientRect().top) : null }); if (performance.now() - t0 < 2800) requestAnimationFrame(f); }; requestAnimationFrame(f); });
+    await H.tick(0, 2);
+    const missToast = await H.toast();
+    for (let k = 0; k < 4; k++) { const m = await ev(() => { const m = window.__ironlog.ui.modal; return m ? m.kind : null; }); if (!m) break; await page.click('#modal [data-act="mOk"]'); await wait(120); }
+    await wait(2900);
+    const g = await ev(() => { const a = document.getElementById('blk-1'); const want = a ? parseFloat(getComputedStyle(a).scrollMarginTop) + parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) : null; return { tr: window.__tr, top: a ? Math.round(a.getBoundingClientRect().top) : null, want, folded: !!document.querySelector('#blk-0.folded'), missed: window.__ironlog.state.draft.ex[0].sets[2] }; });
+    ok(g.missed && g.missed.done && +g.missed.r === 0, '16. the third bench set is kept as missed, 0 reps ticked', g.missed);
+    // What the toast says is what the app then does (NEW-66): a missed set never earns a step, while a step earned before still stands (below).
+    ok(/Logged as missed/.test(missToast) && /never earns a step up/.test(missToast) && !/keeps the load from going up/.test(missToast), '16. the toast as the 0 is ticked: it counts toward no volume or PRs and never earns a step up (r71: "keeps the load from going up", which a step earned before contradicts)', missToast);
+    const y0 = g.tr[0].y, y1 = g.tr[g.tr.length - 1].y, lowest = Math.min(...g.tr.map(x => x.y));
+    let back = 0; for (let i = 1; i < g.tr.length; i++) if (g.tr[i].a != null && g.tr[i - 1].a != null) back = Math.max(back, g.tr[i].a - g.tr[i - 1].a);
+    ok(g.folded && lowest >= Math.min(y0, y1) - 2 && back <= 2 && Math.abs(g.top - g.want) <= 2, '16. finishing the bench brings the raises up in one glide to the top of the screen: never a jump to the session\'s title, never back down', { y0, y1, lowest, back, top: g.top, want: g.want });
+    // Raises: 20 lb for 11 at 2 in reserve, one rep more than ever at that load and effort.
+    await H.type('w', 1, 0, 20); await H.type('r', 1, 0, 11); await H.effort(1, 0, 2); await H.quiet(); await H.tick(1, 0);
+    const pr = await ev(() => { const b = document.querySelector('#view [data-act="sDone"][data-b="1"][data-s="0"]'); const row = b && b.closest('.sg'); return { pr: row && row.dataset.pr || null, toast: (document.getElementById('toast') || {}).innerText || '' }; });
+    ok(!!pr.pr && /PR/.test(pr.toast), '16. 20 lb x 11 at 2 in reserve after x 10: a PR on the row and in the toast', pr);
+    for (const s of [1, 2]) { await H.type('w', 1, s, 20); await H.type('r', 1, s, 11); await H.effort(1, s, 2); await H.quiet(); await H.tick(1, s); }
+    const fin = await H.finish();
+    const list = await ev(d => window.__ironlog.IDX().prs.filter(p => p.date === d && p.big).map(p => p.exId), T0);
+    ok(/PR/.test(fin.recap.text || '') && list.join() === 'dbLateral', '16. the recap names the raises\' PR, and the counted list holds it and nothing for the bench', { list, recap: (fin.recap.text || '').slice(0, 300) });
+    // A week on: the bench's bad day repeats its target, 185 lb and 31+, as after any weaker session.
+    await H.day(addD(T0, 7));
+    await H.start();
+    d = await H.draft();
+    const r0 = await H.row(0, 0);
+    ok(Number(r0.w) === 185 && d.ex[0].tgt && d.ex[0].tgt.kind === 'reps' && d.ex[0].tgt.total === 30, '16. a week on, the bench repeats its target: 185 lb, 30 reps to beat, never fewer for the miss, never more weight', { grey: r0.w, tgt: d.ex[0].tgt });
+    ok(!H.P.errors.length, '16. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
 

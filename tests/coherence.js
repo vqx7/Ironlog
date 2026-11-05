@@ -419,6 +419,50 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
     await P.ctx.close();
   }
 
+  // ---- One PR, every screen (r72, 387-B4 and NEW-65): a set's PR as the row and the toast say it as it is ticked
+  // (livePR, against the log as it stood before that day, as in a workout) is the PR the counted list holds for its
+  // session, which Today's tile, Stats' count, Recent PRs and the recap all read. On the demo, and on a log of lifts
+  // climbing a rep at a time past 12 reps to failure with reserve rated, where r71 scored one more rep below the one
+  // before it.
+  for (const which of ['demo', 'edge']) {
+    const P = await open(FILE, { browser, clock: '2026-11-04T10:00:00' });
+    const r = await P.page.evaluate(which => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true;
+      const LB = 0.45359237, add = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+      if (which === 'demo') { L.makeDemo(); for (const x of S.sessions) delete x.demo; }
+      else {
+        S.sessions = [];
+        const lifts = [['dbLateral', 20 * LB, [10, 11, 12, 13], 2], ['legPress', 100, [12, 13, 14, 15], 3]];
+        lifts.forEach(([exId, w, reps, rir], k) => reps.forEach((r, i) => S.sessions.push({ id: 'edge' + k + i, date: add('2026-11-04', -7 * (reps.length - i) - k), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId, rr: [10, 20], sets: [0, 1, 2].map(() => ({ w, r, rir, warm: false, drop: false })) }] })));
+      }
+      const all = L.normalize(S); all.draft = null;
+      // Effort as typed, every set rated: a blank is read with the whole log in the list and the log as it was in the toast.
+      for (const x of all.sessions) for (const b of x.ex) for (const t of b.sets) if (t.rir == null) t.rir = 2;
+      L.state = all; L.invalidate();
+      const kind = p => (p.type === 'e1RM' ? 'Best' : p.type);
+      const list = new Map(L.IDX().prs.filter(p => p.big).map(p => [p.sid + '|' + p.exId, kind(p)]));
+      const rank = { 'Weight PR': 3, Best: 2, 'Rep PR': 1, 'Time PR': 1 }, norm = k => (k === 'Time PR' ? 'Rep PR' : k);
+      const sess = [...all.sessions].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+      let n = 0, counted = 0; const off = [];
+      for (const x of sess) {
+        if (sess.some(y => y.date === x.date && y.id !== x.id)) continue;
+        L.state = { ...all, sessions: all.sessions.filter(y => y.date < x.date) }; L.invalidate();
+        for (const b of x.ex) {
+          if (x.ex.filter(c => c.exId === b.exId).length > 1 || b.nw) continue;
+          let best = null;
+          for (const t of b.sets) { if (t.warm || t.drop || !(t.r > 0)) continue; const k = L.livePR(b.exId, { ...t, done: true }, x.date); if (k && (!best || rank[k] > rank[best])) best = k; }
+          const want = list.get(x.id + '|' + b.exId) || null; n++; if (want) counted++;
+          if (norm(want) !== norm(best) && off.length < 4) off.push({ date: x.date, ex: b.exId, list: want, toast: best });
+        }
+      }
+      L.state = all; L.invalidate();
+      return { n, counted, off };
+    }, which);
+    ok(r.n > (which === 'demo' ? 50 : 6) && r.off.length === 0, `every session's PR in the counted list is the one its sets were announced with as they were ticked, and none is counted that no set announced (${which}: ${r.n} sessions, ${r.counted} with a PR)`, r.off);
+    if (which === 'edge') ok(r.counted === 6, 'a rep more at the same load and reserve is a PR past 12 reps to failure as below it: the raises\' 11, 12 and 13 and the leg press\'s 13, 14 and 15 (r71: 4 of the 6, not the raises\' 11 and 12, scored past 12 reps to failure on reps alone)', r);
+    ok(!P.errors.length, `no page errors (one PR, every screen, ${which})`, P.errors);
+    await P.ctx.close();
+  }
+
   await browser.close();
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.log('FAIL crashed:', e && e.stack || e); process.exit(1); });

@@ -60,7 +60,7 @@ import {
   NEW_LEVEL,
   RIR_TREND,
   DRIFT_N,
-  epley
+  prScoreOf
 } from './formulas';
 import { sameExOnce } from './session';
 import { trendEnds, trendScope, trendW } from './trend';
@@ -595,6 +595,11 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
 /* Step 2: sessions lighter than their lift's usual that nobody tagged. Marks
    each such exposure (auto, or keep for a new level) and returns the count per
    week. */
+/* Removes in place the items of a list that match (the lighter reading's lists are read by reference). */
+function removeWhere<T>(a: T[], f: (x: T) => boolean): void {
+  for (let i = a.length - 1; i >= 0; i--) if (f(a[i])) a.splice(i, 1);
+}
+
 function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCount> {
   /* Lighter sessions nobody tagged (r30, from an independent review): an
      imported deload week, or one logged without the Deload or Lighter
@@ -631,6 +636,8 @@ function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCo
     const exps = byEx[id];
     const prev: Exposure[] = [];
     let run: Exposure[] = [];
+    // The earlier sessions each lighter session in the run was read against.
+    const readAgainst = new Map<Exposure, readonly Exposure[]>();
     let before: Exposure | null = null;
     for (const x of exps) {
       // A new machine or gym starts the lift over as a break does (r61).
@@ -668,29 +675,42 @@ function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCo
           x.auto = true;
           o.l++;
           run.push(x);
+          readAgainst.set(x, ref);
           /* Lighter sessions in a row for two weeks or more is a new level
              (a layoff, an injury, a new technique), not a deload: they count
              again, and what follows is compared with them. Counting sessions
              alone (three in a row) read a deload week on a lift trained three
              times a week as a new level, then as a 16% fall and a stall
-             (r31, from the review). */
+             (r31, from the review). In a row against the same usual: the
+             lighter sessions read against any of the same earlier sessions
+             (r72, the 387 audit's 387-C1, and the review's R72-1). Counted
+             across every range, one lighter session on a light day's 16 to 23
+             made two lighter sessions on 10 to 15 a new level, and the 10 to
+             15 target fell from 100 kg to 85; counted within one range, a
+             lifter back weaker in two ranges under an imported history (no
+             range, the usual of every range) was lighter for good, the target
+             50% over a month at 20 lb. A break (more than BACK_DAYS) still
+             restarts everything. */
+          const mine = new Set(ref);
+          const inRun = run.filter(q => (readAgainst.get(q) || []).some(r => mine.has(r)));
           if (
-            run.length >= NEW_LEVEL.sessions &&
-            daysBetween(run[0].date, run[run.length - 1].date) >= NEW_LEVEL.days
+            inRun.length >= NEW_LEVEL.sessions &&
+            daysBetween(inRun[0].date, inRun[inRun.length - 1].date) >= NEW_LEVEL.days
           ) {
-            for (const q of run) {
+            for (const q of inRun) {
               q.auto = false;
               q.keep = true;
               wkAuto[weekStart(q.date)].l--;
             }
-            prev.length = 0;
-            prev.push(...run);
-            run = [];
+            // What follows in their ranges is read against them now.
+            removeWhere(prev, q => inRun.some(m => sameRR(q.rr, m.rr)));
+            prev.push(...inRun);
+            removeWhere(run, q => inRun.includes(q));
           }
           continue;
         }
       }
-      run = [];
+      removeWhere(run, q => sameRR(q.rr, x.rr));
       prev.push(x);
     }
   }
@@ -800,21 +820,31 @@ const usualSets = (ref: readonly Exposure[]): number => {
    never counts against a session (from the independent review of r54: a
    fourth set of 5 after 11, 10 and 10 brought the average under the usual
    and held back a target the three planned sets beat). */
+/* A set missed at the working load is one of those sets, read as 0 (r72, the 387 audit's 387-B3, V 2026-11-04: "count
+   as 0 reps"): left out, 185 x 10, 10 and a missed set read as full and asked 21+ reps, where 185 x 10, 10, 2 read
+   below its usual and repeated 31+, so failing a set outright set an easier target than two reps of it. Read as 0,
+   it is below its usual too and the target repeats; the load still never steps up on it (setsAt, r56.2). */
 function readingOf(q: Exposure, k: number): number | null {
   if (q.tRaw == null) return null;
   let sum = 0,
-    n = 0;
-  for (const p of atLoad(q.pts, q.topW).slice(0, k)) {
+    n = 0,
+    missed = 0;
+  for (const p of triedAt(q, q.topW).slice(0, k)) {
+    if (p.missed) {
+      missed++;
+      continue;
+    }
     const t = trendE(p.load, p.r, 0);
     if (t != null) {
       sum += t;
       n++;
     }
   }
-  return n ? sum / n : q.tRaw;
+  // Every one of them missed reads 0 (the review's R72-8: on a one-set plan it fell back to the session's other sets and read as full).
+  return n + missed ? sum / (n + missed) : q.tRaw;
 }
 function repsOf(q: Exposure, k: number): number {
-  const at = atLoad(q.pts, q.topW).slice(0, k);
+  const at = triedAt(q, q.topW).slice(0, k);
   return at.length ? at.reduce((a, p) => a + p.r, 0) / at.length : q.topReps / q.topN;
 }
 
@@ -1066,7 +1096,7 @@ export function prSoFar(): PrSoFar {
 
 /* The rep PR score: the estimate, or Epley where the estimate gives none
    (past 12 reps to failure). */
-const prScore = (q: ExPoint): number => e1(q.pl, q.r, q.rq) || epley(q.pl, q.r);
+const prScore = (q: ExPoint): number => prScoreOf(q.pl, q.r, q.rq);
 const prDominated = (h: PrSoFar, p: ExPoint): boolean => h.front.some(q => q.pl >= p.pl - EPS_SAME && q.r >= p.r);
 
 /** Adds a session's sets to what later sets are judged against. */
@@ -1204,8 +1234,13 @@ export function prJudge(
      stronger than ever, as the r32 rule says. A PR is a PR whatever the
      day is called (r53, V 2026-10-18); a heavier set without one is said
      once, quietly (Heaviest yet), so the day's label decides nothing here. */
+  /* Stronger than ever: a higher score, or the same score with more reps than any earlier set at its load or
+     heavier, a rep more past 12 to failure where the score reads no further (R72-4, V 2026-11-04). */
   const big =
-    noE1(ex) || !!ex.timed || (!!ex.bw && !pts.some(q => q.pl > 0)) || pts.some(q => prScore(q) > h.topSc + EPS);
+    noE1(ex) ||
+    !!ex.timed ||
+    (!!ex.bw && !pts.some(q => q.pl > 0)) ||
+    pts.some(q => prScore(q) > h.topSc + EPS || (prScore(q) >= h.topSc - EPS && !prDominated(h, q)));
   // What it beat: the old heaviest, the old best (in its band, else in any), or the most reps at this load or heavier.
   if (wPR)
     return {
@@ -1246,7 +1281,7 @@ export function prJudge(
    as a whole, a session named a best estimate from one set and counted it
    by another set's strength, so the recap said Best estimate where the
    toast had said Rep PR. Null when no set counts one: the session's own
-   judgement then names what it did (Heaviest yet), counted or not. */
+   judgement then names what it did (Heaviest yet), not counted (r72). */
 function prCounted(ex: ExerciseLike, h: PrSoFar, x: Pick<Exposure, 'pts'>): PrMade | null {
   // The kinds, the smallest news first.
   const ORDER: readonly PrMade['type'][] = ['Rep PR', 'e1RM', 'Weight PR'];
@@ -1277,8 +1312,12 @@ function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): number | n
     if (x.dropOnly) continue;
     const j = prJudge(ex, h, x);
     x.progress = j.progress;
-    // Its date, session and lift first, as every PR has kept them in that order.
-    const pr = prCounted(ex, h, x) ?? j.pr;
+    /* Its date, session and lift first, as every PR has kept them in that order. With no set counting one, the
+       session's own judgement names what it did and is not counted (r72, from building 387-B4): judged as a
+       whole it was counted when any set was stronger than ever, so 100 x 7 at 2 in reserve was a counted best
+       estimate because 100 x 12 at 4 in the same session scored more, a set no toast announces, being no
+       heavier and no more reps than one before. A PR is a set stronger than every earlier one (CLAUDE.md). */
+    const pr = prCounted(ex, h, x) ?? (j.pr ? { ...j.pr, big: false } : null);
     if (pr) prs.push({ date: x.date, sid: x.sid, exId: id, ...pr });
     prAdd(h, x);
     if (x.best != null) maxBest = maxBest == null ? x.best : Math.max(maxBest, x.best);

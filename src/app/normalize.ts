@@ -660,11 +660,13 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     bar = numOr(e.barKg, NaN);
   const gw = g ? numOr(g.w, NaN) : NaN,
     gr = g ? Math.round(numOr(g.r, NaN)) : NaN;
+  // The main muscle as read (an unknown one as chest), and the helpers without it, so a second read changes nothing (r72, the review's R72-7).
+  const primary = typeof e.primary === 'string' && isMuscle(e.primary) ? e.primary : 'chest';
   return keepExtra(e0, {
     id: fixId(e.id),
     name,
-    primary: typeof e.primary === 'string' && isMuscle(e.primary) ? e.primary : 'chest',
-    secondary: sc ? strings(sc, m => isMuscle(m) && m !== e.primary) : [],
+    primary,
+    secondary: sc ? strings(sc, m => isMuscle(m) && m !== primary) : [],
     equip: typeof e.equip === 'string' ? e.equip : 'other',
     bw: !!e.bw,
     rare: !!e.rare,
@@ -963,7 +965,13 @@ export function normalize(input: unknown): State {
   const have = new Set(exercises.map(e => e.id));
   const gone = new Set(removedLib);
   const lib = libExercises();
-  for (const e of lib) if (!have.has(e.id) && !gone.has(e.id)) exercises.push(e);
+  /* Through the same cleaning as every other record (r72, the 387 audit's 387-B7): appended as the library gives
+     them, without inc and plates, the next load added both as null, so normalize twice differed from once and the
+     record's sync hash changed on every phone when the library gained a lift. */
+  for (const e of lib) {
+    const r = rec(e);
+    if (r && !have.has(e.id) && !gone.has(e.id)) exercises.push(cleanExercise(e, r, e.name));
+  }
   // A built-in the library has renamed reads by its name now where the log holds one the library gave it before; a name the lifter gave it stays (NEW-37).
   const libName = new Map(lib.map(e => [e.id, e.name]));
   for (const e of exercises) {
