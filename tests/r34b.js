@@ -72,8 +72,11 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     // 1g. PRs: a weaker set at a heavier load is not a PR; a band's best is named as that, not as the best estimate.
     await seed({ ss: [['2026-10-01', 'bench', [[75, 15, 0]], [8, 15]], ['2026-10-08', 'bench', [[80, 10, 0]], [8, 15]]] });
     const pr = await ev(() => { const L = window.__ironlog; return { big: L.prsWithin(30).filter(p => p.date === '2026-10-08').map(p => p.type), names: [L.prName({ value: 30, prevAll: 31, bb: 2 }), L.prName({ value: 32, prevAll: 31, bb: 2 }), L.prName({ value: 30, prevAll: null, bb: 1 })] }; });
-    // 80 x 10 is about 107 by the estimate; 75 x 15 about 112: weaker, so nothing to announce.
-    ok(pr.big.length === 0, '80 x 10 after 75 x 15 (weaker by the estimate) is not a PR in Recent PRs', pr.big);
+    /* 80 x 10 is about 107 by the estimate. r34.2 read 75 x 15 at 15 to failure, about 112, so 80 x 10 was weaker and
+       nothing was announced. Since r72 (V, 2026-11-04, R72-4: "Count heavier as PR") a set past 12 reps to failure
+       reads no stronger than at 12, where the estimates are trusted: 75 x 15 reads 105, so 80 x 10, heavier, is a
+       Weight PR. */
+    ok(JSON.stringify(pr.big) === '["Weight PR"]', '80 x 10 after 75 x 15 to failure is a Weight PR in Recent PRs, 75 x 15 read at 12 to failure (r72, R72-4; r34.2 to r71: no PR)', pr.big);
     ok(pr.names[0] === 'Best for 6 to 10 reps to failure' && pr.names[1] === 'Best estimate' && pr.names[2] === 'Best estimate', 'a best only for its reps is "Best for 6 to 10 reps"; "Best estimate" only when it beats every earlier estimate', pr.names);
 
     // 1h. A heavier load with the reps in range is never read as down.
