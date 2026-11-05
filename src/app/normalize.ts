@@ -963,7 +963,13 @@ export function normalize(input: unknown): State {
   const have = new Set(exercises.map(e => e.id));
   const gone = new Set(removedLib);
   const lib = libExercises();
-  for (const e of lib) if (!have.has(e.id) && !gone.has(e.id)) exercises.push(e);
+  /* Through the same cleaning as every other record (r72, the 387 audit's 387-B7): appended as the library gives
+     them, without inc and plates, the next load added both as null, so normalize twice differed from once and the
+     record's sync hash changed on every phone when the library gained a lift. */
+  for (const e of lib) {
+    const r = rec(e);
+    if (r && !have.has(e.id) && !gone.has(e.id)) exercises.push(cleanExercise(e, r, e.name));
+  }
   // A built-in the library has renamed reads by its name now where the log holds one the library gave it before; a name the lifter gave it stays (NEW-37).
   const libName = new Map(lib.map(e => [e.id, e.name]));
   for (const e of exercises) {

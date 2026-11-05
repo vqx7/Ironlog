@@ -110,7 +110,7 @@ const FILE = process.argv[2] || 'index.html';
     ok(r && r.short === 'reading' && after.target === before.target && JSON.stringify(after.lastR) === '[8,8,8]' && /^Last \(Oct 12, below usual\): /.test(after.text), 'floor press 100 x 8 x 3 twice, then 6, 6 and 5: a bad day, so the target repeats (' + before.target + '), Last says below usual, and the grey reps are the 8s of the session before', { r, before, after });
     await log([...base, ses('ba3', '2026-10-12', 'floorPress', [6, 10], x(100, [6, 6, 5])), ses('ba4', '2026-10-14', 'floorPress', [6, 10], x(100, [6, 6, 5]))]);
     const two = await next('floorPress', P3); const r4 = await read('floorPress', 'ba4');
-    ok(r4 && !r4.short && !two.basis && /^19\+ reps over 3 sets at 100 kg$/.test(two.target || '') && /^Last \(Oct 14\): /.test(two.text), 'the same again two days later: two in a row, so the app follows it, and the next target is 19+ reps over 3 sets (the 5 counting as 6)', { r4, two });
+    ok(r4 && !r4.short && !two.basis && /^18\+ reps over 3 sets at 100 kg$/.test(two.target || '') && /^Last \(Oct 14\): /.test(two.text), 'the same again two days later: two in a row, so the app follows it, and the next target is the 17 done to beat, 18+ reps over 3 sets (r54 to r71: 19+, the 5 counting as 6; since r72, V 2026-11-04, 387-B5)', { r4, two });
   }
 
   // ---- A session r53 saved as trimmed is read by the one rule: short of its usual sets, its trend counting, the target repeating.

@@ -10,7 +10,7 @@ import { act } from './act';
 import { isCompound } from './library';
 import { planItemOf, move, fixSupersets, partOf, DEFAULT_PLAN } from './routines';
 import { min5, rangeWords, MISSED_SAID } from './format';
-import { e1, prSameLoad, setupSecs, setSecs, BACK_DAYS, isMissed, epley } from './formulas';
+import { e1, prSameLoad, setupSecs, setSecs, BACK_DAYS, isMissed, prScoreOf } from './formulas';
 import { PLATES_LB, PLATES_KG, LB, KM_MI, SMALL_PLATE } from './units';
 import { r1, addDays, today, uid, numIn, EPS, EPS_SAME, HUNDREDTHS, MINUTE_S, WEEK_DAYS, r3 } from './util';
 import { platesPerSide } from './gym';
@@ -335,7 +335,7 @@ export function rowPR(b: DraftBlock, si: number, date: string): string | null {
   const scq = (x: DraftSet): number => {
     const l = prLoad(ex, x, date);
     const r = +(x.r ?? 0);
-    return e1(l, r, rirEst(x, ex)) || epley(l, r);
+    return prScoreOf(l, r, rirEst(x, ex));
   };
   const me = scq(s);
   return b.sets.some((x, i) => i < si && x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && scq(x) >= me - EPS)
@@ -1165,16 +1165,89 @@ export function autoFold(ref: BlkRef | null): void {
   const top0 = a0 ? a0.getBoundingClientRect().top : null;
   rerenderKeepScroll();
   const a1 = nx >= 0 ? document.getElementById('blk-' + nx) : null;
-  if (a1 && top0 != null) {
-    window.scrollBy(0, a1.getBoundingClientRect().top - top0);
-    const ae = document.activeElement;
-    if (!(ae && a1.contains(ae)))
-      try {
-        a1.scrollIntoView({ block: 'start', behavior: 'smooth' });
-      } catch (e) {
-        // Scrolling is best effort; the fold has happened either way.
-      }
+  if (!a1 || top0 == null) return;
+  const ae = document.activeElement;
+  // The thumb in it already (a field focused): it stays where it is.
+  if (ae && a1.contains(ae)) window.scrollBy(0, a1.getBoundingClientRect().top - top0);
+  else foldGlide(a1, top0);
+}
+
+/* The next exercise comes up in one glide from where it was to the top of the screen under the bar (r72, NEW-63, V
+   2026-11-04: "ensure scrolling is seamless"). The fold above it takes the done exercise's sets away at once; until
+   r71 the page was scrolled to keep the next one where it was and then scrolled smoothly to it, but where the fold
+   took away more than the page was scrolled (the first exercise of a session, always) that scroll stopped at the
+   top, so the screen jumped to the session's title and glided back down. Here the space the fold took away is held
+   above the next exercise and given back over the glide while the page scrolls, so the next exercise moves only up
+   the screen, from where it was to its place. The margin is worked out as the page moves, and taken off at the end;
+   a touch or a wheel stops the glide where it is. */
+/** The glide's ease out: the share of the way left falls as the cube of the time left (a curve's shape, not a measure). */
+const GLIDE_EASE = 3;
+
+function foldGlide(a1: HTMLElement, top0: number): void {
+  const y0 = window.scrollY,
+    a = a1.getBoundingClientRect().top;
+  const cs = getComputedStyle(a1);
+  const m0 = parseFloat(cs.marginTop) || 0,
+    sm = parseFloat(cs.scrollMarginTop) || 0;
+  const se = document.scrollingElement;
+  // Where scrolling it into view put it (r71): under the page's scroll padding (the bar) and its own scroll margin.
+  const sp = se ? parseFloat(getComputedStyle(se).scrollPaddingTop) || 0 : 0;
+  const most = se ? se.scrollHeight - window.innerHeight : y0;
+  const y1 = Math.max(0, Math.min(most, y0 + a - sm - sp));
+  const vEnd = y0 + a - y1;
+  const held = Math.max(0, top0 - a);
+  let calm = false;
+  try {
+    calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch (e) {
+    // A browser without matchMedia glides.
   }
+  const clear = (): void => {
+    a1.style.removeProperty('margin-top');
+    if (!a1.getAttribute('style')) a1.removeAttribute('style');
+  };
+  if (calm) {
+    window.scrollTo(0, y1);
+    return;
+  }
+  const t0 = performance.now();
+  let stopped = false;
+  const stop = (): void => {
+    if (stopped) return;
+    stopped = true;
+    const r = a1.getBoundingClientRect().top;
+    clear();
+    window.scrollBy(0, a1.getBoundingClientRect().top - r);
+    off();
+  };
+  const off = (): void => {
+    window.removeEventListener('touchstart', stop);
+    window.removeEventListener('wheel', stop);
+  };
+  window.addEventListener('touchstart', stop, { passive: true });
+  window.addEventListener('wheel', stop, { passive: true });
+  const frame = (now: number): void => {
+    if (stopped) return;
+    if (!a1.isConnected) {
+      stopped = true;
+      off();
+      return;
+    }
+    const k = Math.min(1, (now - t0) / FOLD_MS.glide);
+    const e = 1 - (1 - k) ** GLIDE_EASE;
+    a1.style.marginTop = `${m0 + held * (1 - e)}px`;
+    const v = top0 + (vEnd - top0) * e;
+    window.scrollTo(0, Math.max(0, window.scrollY + a1.getBoundingClientRect().top - v));
+    if (k < 1) {
+      requestAnimationFrame(frame);
+      return;
+    }
+    stopped = true;
+    clear();
+    window.scrollTo(0, y1);
+    off();
+  };
+  frame(t0);
 }
 
 /* One way to move an exercise in a session: the drag, the arrow keys on its

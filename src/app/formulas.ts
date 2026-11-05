@@ -46,8 +46,8 @@ export const FIT_MAX_RTF = 30;
 /* The two formulas, each way: the 1RM a load allows at some reps to failure,
    and the load that leaves them at a 1RM. */
 const brzycki = (load: number, rtf: number): number => (load * BRZYCKI_A) / (BRZYCKI_B - rtf);
-/** Epley's 1RM of a load at some reps to failure, with no limit on the reps: for the load-finding and rep-PR readings past the estimate's range, never shown. */
-export const epley = (load: number, rtf: number): number => load * (1 + rtf / EPLEY_REPS);
+/* Epley's 1RM of a load at some reps to failure, with no limit on the reps: for the load-finding, trend and PR readings past the estimate's range, never shown. */
+const epley = (load: number, rtf: number): number => load * (1 + rtf / EPLEY_REPS);
 /** The 1RM a load allows at some reps to failure by the formula for those reps, with no limit on them: for load-finding only, never shown. */
 export const e1At = (load: number, rtf: number): number => (rtf <= BRZYCKI_TOP ? brzycki(load, rtf) : epley(load, rtf));
 
@@ -90,6 +90,18 @@ export function fitE(load: number, r: number, rir?: Rir): number | null {
   const q = rir == null || rir === '' ? 0 : Math.min(Math.max(+rir, 0), E1_MAX_RIR);
   const t = +r + q;
   return t <= FIT_MAX_RTF ? epley(load, t) : null;
+}
+
+/* A set's score for PRs, never shown (r72, the 387 audit's 387-B4): the estimate to 12 reps to failure, then Epley
+   on the reps to failure past it, as the trend and load-finding read them. Past 12 it read Epley on the reps alone,
+   leaving out the reserve, so one more rep at the same load and effort scored lower (20 lb x 11 at RIR 2 under x 10)
+   and was no PR; at RIR 0 the same sets were each one. A reserve past E1_MAX_RIR reads as it, as fitE reads it. */
+/** A set's score for PRs (prJudge's "stronger than every earlier set"), in kg: one more rep or more load never scores less. */
+export function prScoreOf(load: number, r: number, rir?: Rir): number {
+  const v = e1(load, r, rir);
+  if (v != null) return v;
+  const q = rir == null || rir === '' || !isFinite(+rir) ? 0 : Math.min(Math.max(+rir, 0), E1_MAX_RIR);
+  return epley(load, r + q);
 }
 
 /* The load that leaves a given number of reps to failure at an estimated 1RM:

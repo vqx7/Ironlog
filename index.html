@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.04-r71">
+<meta name="app-build" content="2026.11.04-r72">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2064,8 +2064,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.26";
-  var APP_VERSION = "2026.11.04-r71";
+  var DISPLAY_VERSION = "2.27";
+  var APP_VERSION = "2026.11.04-r72";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2304,6 +2304,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const q = rir == null || rir === "" ? 0 : Math.min(Math.max(+rir, 0), E1_MAX_RIR);
     const t4 = +r4 + q;
     return t4 <= FIT_MAX_RTF ? epley(load2, t4) : null;
+  }
+  function prScoreOf(load2, r4, rir) {
+    const v3 = e1(load2, r4, rir);
+    if (v3 != null) return v3;
+    const q = rir == null || rir === "" || !isFinite(+rir) ? 0 : Math.min(Math.max(+rir, 0), E1_MAX_RIR);
+    return epley(load2, r4 + q);
   }
   function e1inv(est, rtf) {
     return rtf <= BRZYCKI_TOP ? est * (BRZYCKI_B - rtf) / BRZYCKI_A : est / (1 + rtf / EPLEY_REPS);
@@ -4143,7 +4149,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const have = new Set(exercises.map((e5) => e5.id));
     const gone = new Set(removedLib);
     const lib = libExercises();
-    for (const e5 of lib) if (!have.has(e5.id) && !gone.has(e5.id)) exercises.push(e5);
+    for (const e5 of lib) {
+      const r4 = rec(e5);
+      if (r4 && !have.has(e5.id) && !gone.has(e5.id)) exercises.push(cleanExercise(e5, r4, e5.name));
+    }
     const libName = new Map(lib.map((e5) => [e5.id, e5.name]));
     for (const e5 of exercises) {
       const now = libName.get(e5.id);
@@ -5957,6 +5966,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return { byEx, sessVol, weekSets, weekConf, dayMus, dayMeta: dayMeta2, weekHard, rirLogged, rirTotal };
   }
+  function removeWhere(a2, f3) {
+    for (let i5 = a2.length - 1; i5 >= 0; i5--) if (f3(a2[i5])) a2.splice(i5, 1);
+  }
   function idxAutoLighter(byEx) {
     const wkAuto = {};
     for (const id of Object.keys(byEx)) {
@@ -5989,20 +6001,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
             x2.auto = true;
             o3.l++;
             run2.push(x2);
-            if (run2.length >= NEW_LEVEL.sessions && daysBetween(run2[0].date, run2[run2.length - 1].date) >= NEW_LEVEL.days) {
-              for (const q of run2) {
+            const inRun = run2.filter((q) => sameRR(q.rr, x2.rr));
+            if (inRun.length >= NEW_LEVEL.sessions && daysBetween(inRun[0].date, inRun[inRun.length - 1].date) >= NEW_LEVEL.days) {
+              for (const q of inRun) {
                 q.auto = false;
                 q.keep = true;
                 wkAuto[weekStart(q.date)].l--;
               }
-              prev.length = 0;
-              prev.push(...run2);
-              run2 = [];
+              removeWhere(prev, (q) => sameRR(q.rr, x2.rr));
+              prev.push(...inRun);
+              removeWhere(run2, (q) => sameRR(q.rr, x2.rr));
             }
             continue;
           }
         }
-        run2 = [];
+        removeWhere(run2, (q) => sameRR(q.rr, x2.rr));
         prev.push(x2);
       }
     }
@@ -6058,18 +6071,22 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   };
   function readingOf(q, k2) {
     if (q.tRaw == null) return null;
-    let sum = 0, n3 = 0;
-    for (const p3 of atLoad(q.pts, q.topW).slice(0, k2)) {
+    let sum = 0, n3 = 0, missed = 0;
+    for (const p3 of triedAt(q, q.topW).slice(0, k2)) {
+      if (p3.missed) {
+        missed++;
+        continue;
+      }
       const t4 = trendE(p3.load, p3.r, 0);
       if (t4 != null) {
         sum += t4;
         n3++;
       }
     }
-    return n3 ? sum / n3 : q.tRaw;
+    return n3 ? sum / (n3 + missed) : q.tRaw;
   }
   function repsOf(q, k2) {
-    const at2 = atLoad(q.pts, q.topW).slice(0, k2);
+    const at2 = triedAt(q, q.topW).slice(0, k2);
     return at2.length ? at2.reduce((a2, p3) => a2 + p3.r, 0) / at2.length : q.topReps / q.topN;
   }
   function atUsualLoad(x2, ref2) {
@@ -6152,7 +6169,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function prSoFar() {
     return { front: [], topSc: 0, prevMaxW: -Infinity, byBand: {}, maxPb: null, seen: /* @__PURE__ */ new Set(), none: true };
   }
-  var prScore = (q) => e1(q.pl, q.r, q.rq) || epley(q.pl, q.r);
+  var prScore = (q) => prScoreOf(q.pl, q.r, q.rq);
   var prDominated = (h3, p3) => h3.front.some((q) => q.pl >= p3.pl - EPS_SAME && q.r >= p3.r);
   function prAdd(h3, x2) {
     if (x2.pb != null) h3.maxPb = h3.maxPb == null ? x2.pb : Math.max(h3.maxPb, x2.pb);
@@ -6263,7 +6280,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (x2.dropOnly) continue;
       const j3 = prJudge(ex, h3, x2);
       x2.progress = j3.progress;
-      const pr = prCounted(ex, h3, x2) ?? j3.pr;
+      const pr = prCounted(ex, h3, x2) ?? (j3.pr ? { ...j3.pr, big: false } : null);
       if (pr) prs.push({ date: x2.date, sid: x2.sid, exId: id, ...pr });
       prAdd(h3, x2);
       if (x2.best != null) maxBest = maxBest == null ? x2.best : Math.max(maxBest, x2.best);
@@ -6822,6 +6839,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const sl = inUnitIn(M3, incOfIn(M3, ex, plan));
     if (!(sl > 0)) return null;
     const st = inUnitIn(M3, loadGridIn(M3, ex, plan));
+    if (!onStep(st, TYPED_STEP)) return null;
     const o3 = inUnitIn(M3, loadFloorIn(M3, ex));
     const at2 = (k2) => o3 + k2 * st;
     const off = (v3) => {
@@ -7078,11 +7096,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     let since = xs.length - 1;
     while (since > 0 && !afterBreak(xs[since - 1], xs[since].date)) since--;
     const early = xs.length - since <= EARLY_SESSIONS;
-    const fl = repFloor(
-      topPts.filter((p3) => !p3.missed),
-      plan.repMin
-    );
-    const tp = topPts.slice(0, Math.max(1, +plan.sets || topPts.length)).map((p3) => p3.missed ? p3 : { ...p3, r: fl(p3.r) });
+    const tp = topPts.slice(0, Math.max(1, +plan.sets || topPts.length));
     const C2 = {
       ex,
       exId,
@@ -7116,7 +7130,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       prevBest,
       tgtRir,
       early,
-      fl,
       tp
     };
     const res = sgSameDayIn(M3, C2) || sgAfterReturnIn(M3, C2) || sgEasyIn(M3, C2) || sgPastRangeIn(M3, C2) || sgBelowRangeIn(M3, C2) || sgNoStep(C2) || sgTopOfRangeIn(M3, C2) || sgBadDay(C2) || sgRepsIn(M3, C2);
@@ -7328,7 +7341,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (gap >= CLEARLY_OFF && !(justUp && gap <= JUST_UP.short) || repeat || !inRR || shortRun >= SHORT_RUN) {
         let est = null;
         for (const p3 of topPts) {
-          const v3 = e1(p3.load, p3.r, p3.rq);
+          const v3 = fitE(p3.load, p3.r, p3.rq);
           if (v3 != null && (est == null || v3 > est)) est = v3;
         }
         const bwNow = bwRefLoadIn(M3, ex);
@@ -7481,18 +7494,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return null;
   }
   function sgRepsIn(M3, C2) {
-    const { ex, plan, stx, top, topPts, lastR, lastS, basis, lbl, prevBest, tp } = C2;
+    const { ex, plan, stx, top, lastR, lastS, basis, lbl, prevBest, tp } = C2;
     const hi = +plan.repMax;
     const tc = tp.map((p3) => ({ ...p3, r: Math.min(p3.r, hi) }));
     const total = tc.reduce((a2, p3) => a2 + p3.r, 0);
     const nT = tc.length;
     const over = overSets(nT, plan);
-    const floored = tp.some((p3, i5) => topPts[i5] && topPts[i5].r < p3.r) ? ` (a set under ${plan.repMin} counts as ${plan.repMin})` : "";
     const topped = tp.some((p3) => p3.r > hi) ? ` (a set past ${hi} counts as ${hi})` : "";
     return {
       top,
       w: top,
-      text: `${lastS} Beat ${total} reps ${over} at ${lbl(top)}${floored}${topped}. When every set at that load reaches ${plan.repMax}, ${ex.assist ? "take some help off" : "add load"}.`,
+      text: `${lastS} Beat ${total} reps ${over} at ${lbl(top)}${topped}. When every set at that load reaches ${plan.repMax}, ${ex.assist ? "take some help off" : "add load"}.`,
       lastR,
       basis,
       last: lastS,
@@ -7641,7 +7653,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       };
     const step = incOfIn(M3, ex, plan, top);
     const cap = capOfIn(M3, ex, plan, top);
-    if (step > 0 && topPts.every((p3) => p3.r >= plan.repMax) && !atCapOfIn(M3, ex, plan, top, cap)) {
+    const noAdd = !!ex.bw && !ex.assist && ![...all || [], ...exps].some((x2) => x2.pts.some((p3) => p3.w > EPS_SAME));
+    if (step > 0 && !noAdd && topPts.every((p3) => p3.r >= plan.repMax) && !atCapOfIn(M3, ex, plan, top, cap)) {
       const nw = cap != null ? Math.min(top + step, cap) : top + step;
       return {
         prev: L0.prev,
@@ -7659,11 +7672,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const total = topPts.reduce((a2, p3) => a2 + p3.r, 0);
     const nT = topPts.length;
     const over = overSets(nT, plan, "hold");
+    const ext = +plan.repMax + Math.max(REPS_MAXED.min, Math.round(+plan.repMax * REPS_MAXED.share));
+    const then = !noAdd ? ` When every hold reaches ${plan.repMax}s, add load.` : topPts.every((p3) => p3.r >= ext) ? ` Every hold reached ${ext}s+ on bodyweight alone. Add a little load (a plate or a vest) by typing it, or make each hold harder with a harder version.` : topPts.every((p3) => p3.r < +plan.repMin) ? ` That is your bodyweight, so build the holds up to ${plan.repMin}s or more.` : ` That is your bodyweight, so keep adding time past ${plan.repMax}s.`;
     return {
       prev: L0.prev,
       prevOff: L0.prevOff,
       w: top,
-      text: `${lastS} Beat ${total}s ${over} at ${lbl(top)}. When every hold reaches ${plan.repMax}s, add load.`,
+      text: `${lastS} Beat ${total}s ${over} at ${lbl(top)}.${then}`,
       lastR,
       basis,
       last: lastS,
@@ -14054,7 +14069,7 @@ ${more}`;
   }
 
   // src/app/workstate.ts
-  var FOLD_MS = { tick: 1200, effort: 900, strip: 1500 };
+  var FOLD_MS = { tick: 1200, effort: 900, strip: 1500, glide: 320 };
   var W = {
     foldT: null,
     blockDrag: false,
@@ -14269,7 +14284,7 @@ ${more}`;
     const scq = (x2) => {
       const l4 = prLoad(ex, x2, date);
       const r4 = +(x2.r ?? 0);
-      return e1(l4, r4, rirEst(x2, ex)) || epley(l4, r4);
+      return prScoreOf(l4, r4, rirEst(x2, ex));
     };
     const me = scq(s3);
     return b2.sets.some((x2, i5) => i5 < si && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && scq(x2) >= me - EPS) ? null : pr;
@@ -14818,15 +14833,73 @@ ${more}`;
     const top0 = a0 ? a0.getBoundingClientRect().top : null;
     rerenderKeepScroll();
     const a1 = nx >= 0 ? document.getElementById("blk-" + nx) : null;
-    if (a1 && top0 != null) {
-      window.scrollBy(0, a1.getBoundingClientRect().top - top0);
-      const ae = document.activeElement;
-      if (!(ae && a1.contains(ae)))
-        try {
-          a1.scrollIntoView({ block: "start", behavior: "smooth" });
-        } catch (e5) {
-        }
+    if (!a1 || top0 == null) return;
+    const ae = document.activeElement;
+    if (ae && a1.contains(ae)) window.scrollBy(0, a1.getBoundingClientRect().top - top0);
+    else foldGlide(a1, top0);
+  }
+  var GLIDE_EASE = 3;
+  function foldGlide(a1, top0) {
+    const y0 = window.scrollY, a2 = a1.getBoundingClientRect().top;
+    const cs = getComputedStyle(a1);
+    const m0 = parseFloat(cs.marginTop) || 0, sm = parseFloat(cs.scrollMarginTop) || 0;
+    const se = document.scrollingElement;
+    const sp = se ? parseFloat(getComputedStyle(se).scrollPaddingTop) || 0 : 0;
+    const most = se ? se.scrollHeight - window.innerHeight : y0;
+    const y1 = Math.max(0, Math.min(most, y0 + a2 - sm - sp));
+    const vEnd = y0 + a2 - y1;
+    const held2 = Math.max(0, top0 - a2);
+    let calm = false;
+    try {
+      calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch (e5) {
     }
+    const clear = () => {
+      a1.style.removeProperty("margin-top");
+      if (!a1.getAttribute("style")) a1.removeAttribute("style");
+    };
+    if (calm) {
+      window.scrollTo(0, y1);
+      return;
+    }
+    const t0 = performance.now();
+    let stopped = false;
+    const stop = () => {
+      if (stopped) return;
+      stopped = true;
+      const r4 = a1.getBoundingClientRect().top;
+      clear();
+      window.scrollBy(0, a1.getBoundingClientRect().top - r4);
+      off();
+    };
+    const off = () => {
+      window.removeEventListener("touchstart", stop);
+      window.removeEventListener("wheel", stop);
+    };
+    window.addEventListener("touchstart", stop, { passive: true });
+    window.addEventListener("wheel", stop, { passive: true });
+    const frame2 = (now) => {
+      if (stopped) return;
+      if (!a1.isConnected) {
+        stopped = true;
+        off();
+        return;
+      }
+      const k2 = Math.min(1, (now - t0) / FOLD_MS.glide);
+      const e5 = 1 - (1 - k2) ** GLIDE_EASE;
+      a1.style.marginTop = `${m0 + held2 * (1 - e5)}px`;
+      const v3 = top0 + (vEnd - top0) * e5;
+      window.scrollTo(0, Math.max(0, window.scrollY + a1.getBoundingClientRect().top - v3));
+      if (k2 < 1) {
+        requestAnimationFrame(frame2);
+        return;
+      }
+      stopped = true;
+      clear();
+      window.scrollTo(0, y1);
+      off();
+    };
+    frame2(t0);
   }
   function moveBlock(a2, b2) {
     const d3 = state.draft;
@@ -25624,7 +25697,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Grey reps</b> are last time's reps for that set, at today's load, and one set under the bottom of the range among the others shows the bottom of the range. When today's target is a new load, last time's reps were at the old load, so they are the reps of the set above instead, or the bottom of the range. On a lighter day or in a deload, they are the bottom of the range.</p>
    <p><b>Grey loads</b> are the set above, or today's suggested load. To have loads typed in for you: Settings, Rest timer and logging, Fill in suggested loads.</p>
    <p><b>Auto-mark</b> (Settings): a set ticks itself when you leave its reps field.</p>
-   <p><b>A missed set</b>: type 0 reps and tick it (auto-mark ticks it too). It is kept and shown as missed, and counts toward no volume, PR, or estimate. The next target reads it as a set short of the range, so it keeps the load from going up. The next set's grey numbers come from the last set you completed.</p>
+   <p><b>A missed set</b>: type 0 reps and tick it (auto-mark ticks it too). It is kept and shown as missed, and counts toward no volume, PR, or estimate. The next target reads it as a set short of the range, so it keeps the load from going up, and as 0 reps, so the last target repeats. The next set's grey numbers come from the last set you completed.</p>
    <p><b>A number far off</b> asks before the set is logged, Log it or Fix it: reps over ${ODD_REPS} and more than ${timesWord(ODD_REPS_TIMES)} the top of your range or your most ever, whichever is more, or a load more than ${timesWord(ODD_SESSION)}, or under ${shareWords(1 / ODD_SESSION)} of, the heaviest set you ticked today, or more than ${timesWord(ODD_BEST)} the heaviest you have logged on the exercise (conventions, to catch a slipped digit or the other unit). On a bodyweight lift, so does added load of ${pctOf(ODD_ADDED_BW)}% or more of your bodyweight, or more than ${timesWord(ODD_ADDED_BEST)} the most you have added (conventions too). So does a load under the empty bar, on any set of a lift on the full bar typed as the total (the bar in Settings, or the exercise's own).</p>
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to ${RIR_CALL_TOP} (Settings can switch it to half reps or RPE; RPE ${effAt("rpe", 2)} is RIR 2). ${off ? "RIR is off in Settings, so every working set counts as hard." : `It is optional: a blank reads as your usual RIR on that lift once you have rated ${RIR_USUAL_MIN} of its sets in ${CAL_WEEKS} weeks, and until then as hard.`}</p>
    <p><b>RIR check</b>: once you have ${CAL_OFFER.sessions} sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits ${CAL_OFFER.weeks} weeks.</p>
@@ -25650,21 +25723,21 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about ${pct1(JUMP_COMPOUND)}% of the load on compound lifts and ${pct1(JUMP_ISOLATION)}% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (it costs ${BIG_STEP_REPS} reps or more, as 5 lb on a 35 lb dumbbell does), on a range ${FIXED_RANGE} or more reps wide, you first build a few reps past the top at this load, up to ${shareWords(BUILD_PAST.share)} of the top of the range more (${numWord(BUILD_PAST.min)} at least), until your estimate says the new load allows the bottom of the range; then the load goes up. Past that, the load goes up anyway, with the reps your estimate allows there as the target. A fixed-rep plan (5 x 5, 3 x 3-5) goes up a step every time all its sets are done.</p>
    <p><b>Load steps</b>, with none set on the exercise: ${stepWords(EQUIP_STEP.bar, kg2)} on a barbell, a Smith machine, or a machine stack; ${stepWords(EQUIP_STEP.each, kg2)} on a dumbbell; ${stepWords(DEFAULT_STEP, kg2)} on anything else (conventions: the smallest jumps most gyms can load). Your gym, in Settings, and the exercise's own load step come first.</p>
    <p><b>Dumbbells and kettlebells</b> step by what your rack has: with no load step set on the exercise, the step fits every load you logged on it (12, 14, and 16 kg is a rack in 2 kg steps; 12.5 and 15, one in 2.5).</p>
-   <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets, a set past the top of the range counting as the top. One set under the range among the others counts as the bottom of the range, so one bad set does not set the next target. A session clearly below your usual repeats the last target (One rule for every session, below); a second in a row is your usual, and then every set under the range at a load you did in it the time before asks for the bottom of the range in every set again.</p>
+   <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets, a set past the top of the range counting as the top. One set under the range among the others shows the bottom of the range as its grey reps, so one bad set is not the next plan. A session clearly below your usual repeats the last target (One rule for every session, below); a second in a row is your usual, and then every set under the range at a load you did in it the time before asks for the bottom of the range in every set again.</p>
    <p><b>Well past the range</b> (every set ${CLEARLY_OFF} or more reps over the top, as after moving the range down): the load your estimated 1RM gives for the middle of the range, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg2)}), in whole steps.</p>
    <p><b>Below the range</b> (every set ${CLEARLY_OFF} or more reps short, or short two sessions running at the same load, or ${numWord(SHORT_RUN)} running even with the reps creeping up, or the first time in a range you have not trained, as after an import): down to what your estimate says fits the range, in whole steps. Not just after one step up while you are ${JUST_UP.short} or fewer reps short, and not while your reps at that load are rising. The rep target counts as many sets as the plan has. A single session clearly below your usual is not read this way: it repeats the last target, and a second in a row becomes your usual.</p>
    <p><b>Too easy</b> (every top set logged ${CLEARLY_OFF} or more RIR above the target): the same estimate sets a heavier load, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg2)}), and at least one step when every set was rated ${RIR_CALL_TOP} or more in reserve, where the estimate is only a floor.</p>
    <p><b>The first ${EARLY_SESSIONS} sessions</b> of a lift, counted again after a break or a New machine or gym, find its load: there the most these two can add is ${CAP_EARLY}%, so a first guess well under what you can do moves up by what your reps and reps in reserve allow, not a step at a time. A set rated ${RIR_CALL_TOP} or more in reserve is read as ${E1_MAX_RIR}, so from such sets the load moves about a step a session: rate the reps left as closely as you can. For picking a load only, sets past ${E1_MAX_REPS} reps to failure are read with Epley up to ${FIT_MAX_RTF}, so a set of 25 still moves the load the right amount (never shown as a 1RM). A convention.</p>
    <p><b>The first session of a close variation</b> (a hammer curl after DB curls, a front squat after back squats) starts from the related lift's last full session in the last ${KIN.days} days, when both use the same equipment, load, main muscle, and movement, with both arms or both legs at once. About ${pctOf(KIN.isolation)}% of its estimate (${pctOf(KIN.compound)}% on a compound lift), for the middle of the range with ${numWord(FATIGUE_RIR)} more rep in reserve, rounded down. Machines and cables start fresh, since two machines' numbers do not compare.</p>
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
-   <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load. <b>Bodyweight lifts never done with added load</b> (push-ups, pull-ups, a hanging leg raise): more reps, then harder reps or a little added load when you type it; the app never adds load you did not use.</p>
+   <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load. <b>Bodyweight lifts and holds never done with added load</b> (push-ups, pull-ups, a hanging leg raise, a plank): more reps or seconds, then harder ones or a little added load when you type it; the app never adds load you did not use.</p>
    <p><b>Back after more than ${BACK_DAYS / WEEK_DAYS} weeks off a lift</b>: about ${pctOf(LIGHT_SHARE)}% of its last working load, with ${BACK_RIR} or more reps in reserve (a convention). The ${BACK_DAYS / WEEK_DAYS} weeks is the app's convention for where a break begins: strength falls the longer a lift is left (Bosquet 2013). That first session back is the lift's new start: its trend and stall test start again from it, never drawn across the break. Until the lift is back at its load from before the break, each full session sets the next load: what its sets say fits your usual reps, never lower than the load you did and never past that load (a convention). Back at it in fewer than your planned sets, the next session asks every set at it, for the fewest reps you did there. Then the usual rules. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about ${pctOf(LIGHT_SHARE)}% as long.</p>
    <p><b>Your gym</b> (Settings): the dumbbells, kettlebells, plates, and stack steps you have. Suggestions stay on them, and a weight you type for a dumbbell counts as the nearest one.</p>
    <p><b>New machine or gym</b> (in an exercise's ⋯ menu during a session): the lift starts over from that session, as from a first one, so another machine's loads give no target, PR, or best. Its trend, stalls, and dumbbell steps read from that session on; earlier sessions stay in History and its chart. Tap it again before Finish to take it off.</p>
    <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the ${numWord(USUAL_BEFORE)} before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks, and in a session on a day of your routine they are the sets the plan gave the lift that day, once a session has done that many, so fewer sets than planned never become the usual there; a blank session saves, with each lift your routine plans, the sets of its day nearest to what you did, among the days that plan it in that session's rep range (the fewer on a tie), and is held to them the same way; in Freestyle (Today opens blank) it saves none, and your own sets lead. Each session keeps the plan it was done to, so a plan changed later never rereads the sessions before it; sessions saved before version 2.12 read their own sets. A set counts toward them when its load is within ${shareWords(1 - LIGHTER_LOAD)} of the session's working load, or at the usual load (a convention): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set ${shareWords(1 - LIGHTER_LOAD)} or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than ${pctOf(1 - USUAL_SHARE)}% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the ${numWord(USUAL_BEFORE)} before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled fewer sets, below usual, lighter, or deload when it was. When it did not set the target, the next target comes from the last full session, and the i beside the target names its date; grey reps come from that session too after one below usual or done lighter.</p>
    <p><b>Deload week</b>: ${shareWords(LIGHTER_SET_SHARE)} the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the load the normal day would ask for (or of last time's, if lower), in whole steps down (never under the empty bar on a full-bar lift), the bottom of the range, ${LIGHT_RIR} or more reps in reserve. A week with ${LIGHTER_WEEK_WORDS}, stays out of the weekly volume average (a lift done there at its usual load with fewer sets than usual counts as done lighter for this, the sets cut on purpose); each lift done lighter stays out of its trend. A <b>lighter day</b> is the same for one day.</p>
-   <p><b>Lighter sessions nobody marked</b> (an imported deload, say) are read from the numbers: a lift's heaviest load at least ${pctOf(1 - LIGHTER_LOAD)}% under its previous ${numWord(LIGHTER_REF)} sessions and its strength reading at least ${pctOf(1 - LIGHTER_READING)}% under. They are kept in history and, like a deload, set no target or trend. A session with half or more of its lifts done lighter, marked or read, is a lighter session, and a week with more than half its sessions lighter is left out of the weekly averages. Lighter sessions in a row, ${numWord(NEW_LEVEL.sessions)} or more over ${NEW_LEVEL.days / WEEK_DAYS} weeks or more, are a new level, not a deload, and count again. A convention.</p>
+   <p><b>Lighter sessions nobody marked</b> (an imported deload, say) are read from the numbers: a lift's heaviest load at least ${pctOf(1 - LIGHTER_LOAD)}% under its previous ${numWord(LIGHTER_REF)} sessions and its strength reading at least ${pctOf(1 - LIGHTER_READING)}% under. They are kept in history and, like a deload, set no target or trend. A session with half or more of its lifts done lighter, marked or read, is a lighter session, and a week with more than half its sessions lighter is left out of the weekly averages. Lighter sessions in a row in one rep range, ${numWord(NEW_LEVEL.sessions)} or more over ${NEW_LEVEL.days / WEEK_DAYS} weeks or more, are a new level for that range, not a deload, and count again. A convention.</p>
    <p><b>An exercise stopped early</b>, or cut by Short on time, is read by the rule above: with fewer sets than usual it sets no target, and still counts toward its trend. Finish asks first when sets are left.</p>
    <p><b>Make it lighter</b>, after a low check-in, changes only the exercises not started yet. What you already did at full effort still sets next time's target.</p>
    <p><b>An injury</b> flagged on a muscle or a joint (knee, hip, shoulder, elbow, wrist) pauses targets for exercises that load it and caps their load at last time.</p>

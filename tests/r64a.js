@@ -56,20 +56,30 @@ const TODAY = '2026-10-26';
     for (const [id, v] of Object.entries(o.steps || {})) { const e = L.state.exercises.find(x => x.id === id); if (e) e.inc = v * 0.45359237; }
     L.invalidate(); L.saveNow();
   }, [sessions, o || {}]);
-  const suggest = (exId, plan, opts) => ev(([exId, plan, opts]) => { const r = window.__ironlog.suggest(exId, plan, opts || {}); return { w: r.w, text: r.text, inj: r.inj || null }; }, [exId, plan, opts || null]);
+  const suggest = (exId, plan, opts) => ev(([exId, plan, opts]) => { const r = window.__ironlog.suggest(exId, plan, opts || {}); return { w: r.w, text: r.text, inj: r.inj || null, basis: r.basis || null }; }, [exId, plan, opts || null]);
 
   // ---- R-1: 185 x 10 x 3, then 185 x 10, 0, 0 (two sets tried and missed at the working load).
   if (run('R-1')) {
     const plan = { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 5 * LB };
     await log([ses('a', '2026-10-19', 'bench', [6, 10], [[185, 10, 1], [185, 10, 1], [185, 10, 1]]), ses('b', '2026-10-22', 'bench', [6, 10], [[185, 10, 1], [185, 0, null], [185, 0, null]])]);
     const s = await suggest('bench', plan);
-    // Expected by hand: the missed sets are two of the session's three sets, each short of the range, so the load holds at 185 and the target is the reps done, 10 + 0 + 0, to beat.
-    ok(Math.abs(lb(s.w) - 185) < EPS && !/Every set at 185 lb hit 10/.test(s.text) && /Beat 10 reps over 3 sets at 185 lb/.test(s.text), 'R-1. 185 x 10, then 185 x 10, 0, 0: the next target holds 185 lb, "Beat 10 reps over 3 sets at 185 lb", never "Every set at 185 lb hit 10" (r63: 190, the words false)', { lb: lb(s.w), text: s.text });
-    ok(/^Last \(Oct 22\): 185×10, 185×0 missed, 185×0 missed\./.test(s.text), 'R-1. its Last line lists the two missed sets, and calls it no session of fewer sets: three sets were tried', s.text);
-    // One set missed of three: the same, the load held.
+    /* Since r72 (V, 2026-11-04, 387-B3: "count as 0 reps", then "do whatever is not slapping on confusing workaround
+       rules") a missed set is 0 reps in the session's reading, so the session reads below its usual and the target
+       repeats, as after a near miss (185 x 10, 10, 2) or a set not done: here the step 185 x 10 x 3 earned, 195.
+       r63's fault was the missed session read as full ("Every set at 185 lb hit 10" said of it); now the words are
+       the full session's, Oct 19, which the target names as its basis, and a missed set never earns a step itself
+       (the last check). r64 to r71 held 185 and asked the reps done, 10 + 0 + 0, which a near miss never asked. */
+    ok(Math.abs(lb(s.w) - 195) < EPS && /^Last \(Oct 22, below usual\): 185×10, 185×0 missed, 185×0 missed\./.test(s.text) && s.basis === '2026-10-19', 'R-1. 185 x 10 x 3, then 185 x 10, 0, 0: below usual, so the target the full session set repeats, 195 lb, from Oct 19, as after a near miss (r63: the missed session read as full)', { lb: lb(s.w), text: s.text, basis: s.basis });
+    const near = await (async () => { await log([ses('a', '2026-10-19', 'bench', [6, 10], [[185, 10, 1], [185, 10, 1], [185, 10, 1]]), ses('b', '2026-10-22', 'bench', [6, 10], [[185, 10, 1], [185, 10, 1], [185, 2, 0]])]); return suggest('bench', plan); })();
+    ok(Math.abs(lb(near.w) - lb(s.w)) < EPS, 'R-1. the same as after a near miss, 185 x 10, 10, 2', { missed: lb(s.w), near: lb(near.w) });
+    // One set missed of three: the same.
     await log([ses('a', '2026-10-19', 'bench', [6, 10], [[185, 10, 1], [185, 10, 1], [185, 10, 1]]), ses('b', '2026-10-22', 'bench', [6, 10], [[185, 10, 1], [185, 10, 1], [185, 0, null]])]);
     const one = await suggest('bench', plan);
-    ok(Math.abs(lb(one.w) - 185) < EPS && /Beat 20 reps over 3 sets at 185 lb/.test(one.text), 'R-1. 185 x 10, 10, 0: holds 185, "Beat 20 reps over 3 sets" (r63: 190)', { lb: lb(one.w), text: one.text });
+    ok(Math.abs(lb(one.w) - 195) < EPS && /^Last \(Oct 22, below usual\)/.test(one.text), 'R-1. 185 x 10, 10, 0: below usual, the 195 repeats', { lb: lb(one.w), text: one.text });
+    // A missed set never earns a step: a session with one, read alone, holds its load.
+    await log([ses('b', '2026-10-22', 'bench', [6, 10], [[185, 10, 1], [185, 10, 1], [185, 0, null]])]);
+    const alone = await suggest('bench', plan);
+    ok(Math.abs(lb(alone.w) - 185) < EPS && !/hit 10/.test(alone.text), 'R-1. 185 x 10, 10, 0 as the only session holds 185 lb: a missed set never steps a load up', { lb: lb(alone.w), text: alone.text });
   }
 
   // ---- R-2: a log kept in kg, shown in lb.

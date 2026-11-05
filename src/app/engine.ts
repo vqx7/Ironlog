@@ -46,7 +46,6 @@ import {
   LIGHTER_LOAD,
   LIGHT_SHARE,
   atLoad,
-  e1,
   e1inv,
   fitE,
   isMissed,
@@ -55,7 +54,6 @@ import {
   jumpPct,
   lighter,
   offTarget,
-  repFloor,
   rtfAt,
   sameRR,
   workLoad,
@@ -141,7 +139,6 @@ interface SuggestCtx {
   prevBest: number | null;
   tgtRir: number;
   early: boolean;
-  fl: (r: number) => number;
   tp: ExPoint[];
 }
 
@@ -297,7 +294,14 @@ function unitGridIn(
   if (ex.timed || gymRackIn(M, ex, plan) || plateGridIn(M, ex, plan)) return null;
   const sl = inUnitIn(M, incOfIn(M, ex, plan));
   if (!(sl > 0)) return null;
+  /* Only a step set in the unit on screen makes loads that exist in it (r72, the 387 audit's 387-B1): the unit's own,
+     or one typed in it (10 lb on a lb plan, whose loads around a 20 kg bar are the 45 lb bar and 10 lb steps, r64's
+     R-2). A step set in the other unit (5 kg dumbbells seen in lb, a 10 lb curl bar seen in kg) makes its loads from
+     the last one, so they are shown converted: counted on that step from 0 in the unit on screen, 37.5 kg dumbbells
+     on a 5 kg step were "88.2 lb ... the nearest load in lb", which no rack has, and a 65 lb curl on a 10 lb step
+     read 27.2 kg, which is 60 lb. */
   const st = inUnitIn(M, loadGridIn(M, ex, plan));
+  if (!onStep(st, TYPED_STEP)) return null;
   /* The loads the step makes are counted from the bar on a lift on the full
      bar typed as the total (loadFloorIn), from 0 on any other (r64, the r63
      audit's R-2): counted from 0, a 10 lb step made 40 and 50 around a 20 kg
@@ -758,12 +762,12 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   let since = xs.length - 1;
   while (since > 0 && !afterBreak(xs[since - 1], xs[since].date)) since--;
   const early = xs.length - since <= EARLY_SESSIONS;
-  // One set under the range among sets made reads as the bottom of it (repFloor); a missed set never does.
-  const fl = repFloor(
-    topPts.filter(p => !p.missed),
-    plan.repMin
-  );
-  const tp = topPts.slice(0, Math.max(1, +plan.sets || topPts.length)).map(p => (p.missed ? p : { ...p, r: fl(p.r) }));
+  /* The reps a target is set from: last time's sets at the working load over the plan's sets, as done (r72, the 387
+     audit's 387-B5, V 2026-11-04: "practical, realistic, helpful, not confusing"). One set under the range read as
+     the bottom of it (r32) made 185 x 10, 10, 5 (25 reps) ask more than 185 x 10, 9, 8 (27), "Beat 28 ... (a set
+     under 8 counts as 8)". The grey reps of the next session still show the bottom of the range for that one set
+     (repFloor in analytics.ts), so one bad set is not next time's plan. */
+  const tp = topPts.slice(0, Math.max(1, +plan.sets || topPts.length));
   const C: SuggestCtx = {
     ex,
     exId,
@@ -797,7 +801,6 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
     prevBest,
     tgtRir,
     early,
-    fl,
     tp
   };
   // The sets of the session shown as Last, for the Last column in the session (r44): each case's result carries them.
@@ -1140,9 +1143,12 @@ function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
       shortRun++;
     }
     if ((gap >= CLEARLY_OFF && !(justUp && gap <= JUST_UP.short)) || repeat || !inRR || shortRun >= SHORT_RUN) {
+      /* The estimate every other load is found with (fitE, r72, the 387 audit's 387-B2): read with e1, which gives
+         none past 12 reps to failure, 100 x 12 x 3 at RIR 2 on 15 to 20 had no estimate and held at 100 where the
+         same sets at RIR 0 dropped, so rating more in reserve on a set three reps short kept the load. */
       let est: number | null = null;
       for (const p of topPts) {
-        const v = e1(p.load, p.r, p.rq);
+        const v = fitE(p.load, p.r, p.rq);
         if (v != null && (est == null || v > est)) est = v;
       }
       const bwNow = bwRefLoadIn(M, ex);
@@ -1362,10 +1368,9 @@ function sgBadDay(C: SuggestCtx): Suggestion | null {
 
 /* Otherwise: beat last time's reps at the same load. */
 function sgRepsIn(M: Model, C: SuggestCtx): Suggestion {
-  const { ex, plan, stx, top, topPts, lastR, lastS, basis, lbl, prevBest, tp } = C;
+  const { ex, plan, stx, top, lastR, lastS, basis, lbl, prevBest, tp } = C;
   /* The rep target covers the same number of sets as last time, so an extra
-     set can never count as progress on its own. A set under the range that
-     counts as the bottom of it (repFloor) is said. A set past the top counts
+     set can never count as progress on its own. A set past the top counts
      as the top (r55, a convention, from the audit: 70 x 11, 11, 9 and 10 on
      6 to 10 asked 42+ reps over 4 sets, more than 10 a set can make, and 10
      x 4 then read as missed while it moved the load up): every set at the
@@ -1375,14 +1380,11 @@ function sgRepsIn(M: Model, C: SuggestCtx): Suggestion {
   const total = tc.reduce((a, p) => a + p.r, 0);
   const nT = tc.length;
   const over = overSets(nT, plan);
-  const floored = tp.some((p, i) => topPts[i] && topPts[i].r < p.r)
-    ? ` (a set under ${plan.repMin} counts as ${plan.repMin})`
-    : '';
   const topped = tp.some(p => p.r > hi) ? ` (a set past ${hi} counts as ${hi})` : '';
   return {
     top,
     w: top,
-    text: `${lastS} Beat ${total} reps ${over} at ${lbl(top)}${floored}${topped}. When every set at that load reaches ${plan.repMax}, ${ex.assist ? 'take some help off' : 'add load'}.`,
+    text: `${lastS} Beat ${total} reps ${over} at ${lbl(top)}${topped}. When every set at that load reaches ${plan.repMax}, ${ex.assist ? 'take some help off' : 'add load'}.`,
     lastR,
     basis,
     last: lastS,
@@ -1596,7 +1598,10 @@ function suggestTimedIn(
     };
   const step = incOfIn(M, ex, plan, top);
   const cap = capOfIn(M, ex, plan, top);
-  if (step > 0 && topPts.every(p => p.r >= plan.repMax) && !atCapOfIn(M, ex, plan, top, cap)) {
+  /* A hold at bodyweight, never loaded, builds time as a bodyweight lift builds reps (r72, the 387 audit's 387-B6):
+     asked to add a plate at the top of its range, a plank held at bodyweight missed its target every session. */
+  const noAdd = !!ex.bw && !ex.assist && ![...(all || []), ...exps].some(x => x.pts.some(p => p.w > EPS_SAME));
+  if (step > 0 && !noAdd && topPts.every(p => p.r >= plan.repMax) && !atCapOfIn(M, ex, plan, top, cap)) {
     const nw = cap != null ? Math.min(top + step, cap) : top + step;
     return {
       prev: L0.prev,
@@ -1614,11 +1619,20 @@ function suggestTimedIn(
   const total = topPts.reduce((a, p) => a + p.r, 0);
   const nT = topPts.length;
   const over = overSets(nT, plan, 'hold');
+  // As the reps on bodyweight read (sgNoStep): build to the range, past its top, then a harder hold once well past it.
+  const ext = +plan.repMax + Math.max(REPS_MAXED.min, Math.round(+plan.repMax * REPS_MAXED.share));
+  const then = !noAdd
+    ? ` When every hold reaches ${plan.repMax}s, add load.`
+    : topPts.every(p => p.r >= ext)
+      ? ` Every hold reached ${ext}s+ on bodyweight alone. Add a little load (a plate or a vest) by typing it, or make each hold harder with a harder version.`
+      : topPts.every(p => p.r < +plan.repMin)
+        ? ` That is your bodyweight, so build the holds up to ${plan.repMin}s or more.`
+        : ` That is your bodyweight, so keep adding time past ${plan.repMax}s.`;
   return {
     prev: L0.prev,
     prevOff: L0.prevOff,
     w: top,
-    text: `${lastS} Beat ${total}s ${over} at ${lbl(top)}. When every hold reaches ${plan.repMax}s, add load.`,
+    text: `${lastS} Beat ${total}s ${over} at ${lbl(top)}.${then}`,
     lastR,
     basis,
     last: lastS,

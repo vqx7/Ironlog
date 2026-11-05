@@ -177,7 +177,7 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
     // Reps built past the top before a large step: a quarter of the top of the range, two at least (BUILD_PAST, r32).
     ok(text.includes('up to a quarter of the top of the range more (two at least), until your estimate says the new load allows the bottom of the range; then the load goes up. Past that, the load goes up anyway'), '2. the Guide: reps built past the top are a quarter of the top of the range, two at least', text.match(/you first build[^.]*\.[^.]*\./));
     // A new level needs three lighter sessions in a row as well as two weeks (NEW_LEVEL, r31).
-    ok(text.includes('Lighter sessions in a row, three or more over 2 weeks or more, are a new level, not a deload'), '2. the Guide: a new level is three or more lighter sessions in a row over 2 weeks or more', text.match(/Lighter sessions in a row[^.]*\./));
+    ok(text.includes('Lighter sessions in a row in one rep range, three or more over 2 weeks or more, are a new level for that range, not a deload'), '2. the Guide: a new level is three or more lighter sessions in a row in one rep range over 2 weeks or more (the range since r72, 387-C1)', text.match(/Lighter sessions in a row[^.]*\./));
     ok(!P.errors.length, '2. no page errors', P.errors);
     await P.ctx.close();
   }
@@ -276,7 +276,7 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
     // Whether a raw log's workout in progress is falsy other than null (r60 kept it as it came).
     const falsyDraft = s => !!s && typeof s === 'object' && !Array.isArray(s) && s.draft !== null && s.draft !== undefined && !s.draft;
     const N4 = +process.env.R61_N4 || 240;
-    let n = 0, same = 0, routineCases = 0, draftCases = 0, renameCases = 0; const off = [];
+    let n = 0, same = 0, routineCases = 0, draftCases = 0, renameCases = 0, libCases = 0; const off = [];
     for (let seed = 1; seed <= N4; seed++) {
       const h = wide(seed, LIB);
       const raws = [h.raw, damage(h.raw, seed * 31 + 1), damage(h.raw, seed * 31 + 2), damage(h.raw, seed * 31 + 3)];
@@ -299,11 +299,16 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
         // reads by its new name where r60 gave it the library's old one; a lift of the lifter's own keeps its name, and nothing else changes.
         { const w = want[0] === '{' ? JSON.parse(want) : null; const e = w && Array.isArray(w.exercises) ? w.exercises.find(x => x && x.id === 'reversePecDeck' && x.custom === false && x.name === 'Reverse Pec Deck') : null;
           if (e) { renameCases++; e.name = 'Reverse Pec Deck (Rear Delt Fly)'; want = JSON.stringify(w); } }
+        // A library lift the save lacks is appended through the same cleaning as every record since r72 (387-B7): with
+        // inc and plates as null after archived, as r60's own next load gave it; nothing else in it changes.
+        { const w = want[0] === '{' ? JSON.parse(want) : null; let k = 0;
+          if (w && Array.isArray(w.exercises)) { w.exercises = w.exercises.map(e => { if (!e || typeof e !== 'object' || 'inc' in e || e.custom !== false) return e; k++; const o = {}; for (const [key, v] of Object.entries(e)) { o[key] = v; if (key === 'archived') { o.inc = null; o.plates = null; } } return o; }); }
+          if (k) { libCases += k; want = JSON.stringify(w); } }
         if (b.j === want && a.d === b.d && a.k === b.k) same++;
         else if (off.length < 5) { let at = 0; while (at < want.length && want[at] === b.j[at]) at++; off.push({ seed, i, none, want: want.slice(Math.max(0, at - 150), at + 150), b: b.j.slice(Math.max(0, at - 150), at + 150), d: [a.d, b.d], k: [a.k, b.k] }); }
       });
     }
-    ok(same === n && n > N4 * 6, `4. normalize gives r60's answer, key order included, with the records dropped and the fields kept, on ${n} raw logs (${N4} wide histories, each damaged three ways, and the sync's documents), but for the two inputs below (${routineCases} with no routine, ${draftCases} with a falsy workout), and r66's name for the rear delt machine (${renameCases})`, off);
+    ok(same === n && n > N4 * 6, `4. normalize gives r60's answer, key order included, with the records dropped and the fields kept, on ${n} raw logs (${N4} wide histories, each damaged three ways, and the sync's documents), but for the two inputs below (${routineCases} with no routine, ${draftCases} with a falsy workout), r66's name for the rear delt machine (${renameCases}), and r72's library lifts appended with inc and plates (${libCases})`, off);
     // The two inputs no build writes, read as any other (each fails on r60).
     const named = await B.page.evaluate(() => {
       const L = window.__ironlog;
