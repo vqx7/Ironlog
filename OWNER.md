@@ -2,7 +2,7 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r71 live (2026-11-04; checked by Claude on GitHub: you changed pull request #70's base to main and merged it at 20:58 UTC, 12:58 Los Angeles, which also marked #69 (r70) merged; main's run passed and gh-pages shows "Publish 995ab73" at 21:29 UTC, the live page carrying build 2026.11.04-r71).
+Last updated: r72 live, version 2.27 (2026-11-05; checked by Claude on GitHub: you merged pull request #71 at 16:36 UTC, 08:36 Los Angeles; main's run failed one WebKit check of the update after a first install (NEW-14, which has failed this way before and passed on the pull request's run of the same code), Claude reran that job, it passed, and gh-pages shows "Publish 805ea63" at 17:55 UTC, the published page carrying build 2026.11.04-r72).
 
 ## Now, in this order
 
