@@ -81,7 +81,7 @@ async function page() {
       let back = 0; for (let i = 1; i < r.tr.length; i++) if (r.tr[i].a != null && r.tr[i - 1].a != null) back = Math.max(back, r.tr[i].a - r.tr[i - 1].a);
       const tag = compact ? ' (the compact pill)' : ' (the card)';
       ok(r.folded && lowest >= Math.min(y0, y1) - 2, '1. NEW-63: the fold never scrolls above where it starts and ends' + tag + ' (r71: to 0, the session\'s title on screen)', { y0, y1, lowest, trace: r.tr.filter((x, i) => i % 6 === 0).map(x => `${x.t}:${x.y}/${x.a}`) });
-      ok(back <= 2, '1. NEW-63: the next exercise moves only up the screen to its place, never back down' + tag, { back });
+      ok(back <= 2, '1. NEW-63: the next exercise moves only up the screen to its place, never back down' + tag, { back, trace: r.tr.slice(55, 110).map(x => x.t + ':' + x.y + '/' + x.a) });
       ok(r.endTop != null && Math.abs(r.endTop - r.margin) <= 2 && !r.style, '1. NEW-63: it ends where it did before, under the bar at the top of the screen, with no style left on it' + tag, r);
       ok(!D.errors.length, '1. no page errors' + tag, D.errors);
       await D.browser.close();

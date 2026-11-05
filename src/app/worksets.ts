@@ -1233,7 +1233,8 @@ function foldGlide(a1: HTMLElement, top0: number): void {
       off();
       return;
     }
-    const k = Math.min(1, (now - t0) / FOLD_MS.glide);
+    // A frame's time can be a little before the glide began (it is when the frame started): never under 0, or the first frame moved it down.
+    const k = Math.max(0, Math.min(1, (now - t0) / FOLD_MS.glide));
     const e = 1 - (1 - k) ** GLIDE_EASE;
     a1.style.marginTop = `${m0 + held * (1 - e)}px`;
     const v = top0 + (vEnd - top0) * e;
@@ -1244,7 +1245,8 @@ function foldGlide(a1: HTMLElement, top0: number): void {
     }
     stopped = true;
     clear();
-    window.scrollTo(0, y1);
+    // Where it is now, so a draw during the glide (the timer, a tick) leaves no step at the end.
+    window.scrollTo(0, Math.max(0, window.scrollY + a1.getBoundingClientRect().top - vEnd));
     off();
   };
   frame(t0);
