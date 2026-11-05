@@ -430,8 +430,9 @@ const run = n => !ONLY || ONLY.includes(n);
       const t = document.getElementById('toast');
       return { guide, toast: t ? t.textContent : '', missed: !!d.ex[0].sets[0].done };
     });
-    ok(r.guide && !/target/.test(r.guide.replace(/next target[^.]*/, '')) && /never (goes|go) up|keeps the load from going up|short of the range/.test(r.guide), '12. the Guide says a missed set counts toward no volume or PR and keeps the load from going up (r63: "no ... target")', r.guide);
-    ok(r.missed && /Logged as missed/.test(r.toast) && !/targets/.test(r.toast) && /load from going up/.test(r.toast), '12. the toast as a 0 is ticked says the same (r63: "no volume, PRs, or targets")', r.toast);
+    ok(r.guide && !/target/.test(r.guide.replace(/next target[^.]*/, '')) && /never (goes|go) up|never earns a step up|short of the range/.test(r.guide), '12. the Guide says a missed set counts toward no volume or PR and keeps the load from going up (r63: "no ... target")', r.guide);
+    // Since r72 (NEW-66) "never earns a step up": under 387-B3 a step earned before a missed set still stands, so "keeps the load from going up" read false there.
+    ok(r.missed && /Logged as missed/.test(r.toast) && !/targets/.test(r.toast) && /never earns a step up/.test(r.toast), '12. the toast as a 0 is ticked says the same (r63: "no volume, PRs, or targets"; r64 to r71: "keeps the load from going up")', r.toast);
   }
 
   // ---- 13. R-6: bench 200 x 3 (estimate 211.8), then 185 x 8 (229.7): the board's best estimate is 185 x 8's, the PR list
