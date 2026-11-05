@@ -177,7 +177,7 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
     // Reps built past the top before a large step: a quarter of the top of the range, two at least (BUILD_PAST, r32).
     ok(text.includes('up to a quarter of the top of the range more (two at least), until your estimate says the new load allows the bottom of the range; then the load goes up. Past that, the load goes up anyway'), '2. the Guide: reps built past the top are a quarter of the top of the range, two at least', text.match(/you first build[^.]*\.[^.]*\./));
     // A new level needs three lighter sessions in a row as well as two weeks (NEW_LEVEL, r31).
-    ok(text.includes('Lighter sessions in a row in one rep range, three or more over 2 weeks or more, are a new level for that range, not a deload'), '2. the Guide: a new level is three or more lighter sessions in a row in one rep range over 2 weeks or more (the range since r72, 387-C1)', text.match(/Lighter sessions in a row[^.]*\./));
+    ok(text.includes('Lighter sessions in a row against the same earlier sessions, three or more over 2 weeks or more, are a new level, not a deload'), '2. the Guide: a new level is three or more lighter sessions in a row against the same earlier sessions over 2 weeks or more (since r72, 387-C1 and R72-1)', text.match(/Lighter sessions in a row[^.]*\./));
     ok(!P.errors.length, '2. no page errors', P.errors);
     await P.ctx.close();
   }

@@ -92,16 +92,20 @@ export function fitE(load: number, r: number, rir?: Rir): number | null {
   return t <= FIT_MAX_RTF ? epley(load, t) : null;
 }
 
-/* A set's score for PRs, never shown (r72, the 387 audit's 387-B4): the estimate to 12 reps to failure, then Epley
-   on the reps to failure past it, as the trend and load-finding read them. Past 12 it read Epley on the reps alone,
-   leaving out the reserve, so one more rep at the same load and effort scored lower (20 lb x 11 at RIR 2 under x 10)
-   and was no PR; at RIR 0 the same sets were each one. A reserve past E1_MAX_RIR reads as it, as fitE reads it. */
+/* A set's score for PRs, never shown (r72, the 387 audit's 387-B4): the estimate, read no further than 12 reps to
+   failure. Past 12 it read Epley on the reps alone, leaving out the reserve, so one more rep at the same load and
+   effort scored lower (20 lb x 11 at RIR 2 under x 10) and was no PR; at RIR 0 the same sets were each one. A reserve
+   past E1_MAX_RIR reads as it, as the Guide says. */
 /** A set's score for PRs (prJudge's "stronger than every earlier set"), in kg: one more rep or more load never scores less. */
 export function prScoreOf(load: number, r: number, rir?: Rir): number {
   const v = e1(load, r, rir);
   if (v != null) return v;
   const q = rir == null || rir === '' || !isFinite(+rir) ? 0 : Math.min(Math.max(+rir, 0), E1_MAX_RIR);
-  return epley(load, r + q);
+  /* By the formula for those reps to failure, as e1 reads them (the review's R72-3: Epley at 7 made 105 x 3 rated 5
+     a PR over 100 x 5 at 4), and no further than E1_MAX_REPS (V, 2026-11-04, R72-4: "Count heavier as PR"): read
+     past it, 60 x 12 at 3 in reserve outscored 65 x 9 at 1, the board's new best estimate, which was then no PR. A
+     rep more at a load past it ties, and counts by its reps (prJudge's big, rowPR). */
+  return e1At(load, Math.min(r + q, E1_MAX_REPS));
 }
 
 /* The load that leaves a given number of reps to failure at an estimated 1RM:

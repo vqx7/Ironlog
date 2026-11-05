@@ -636,6 +636,8 @@ function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCo
     const exps = byEx[id];
     const prev: Exposure[] = [];
     let run: Exposure[] = [];
+    // The earlier sessions each lighter session in the run was read against.
+    const readAgainst = new Map<Exposure, readonly Exposure[]>();
     let before: Exposure | null = null;
     for (const x of exps) {
       // A new machine or gym starts the lift over as a break does (r61).
@@ -673,18 +675,24 @@ function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCo
           x.auto = true;
           o.l++;
           run.push(x);
+          readAgainst.set(x, ref);
           /* Lighter sessions in a row for two weeks or more is a new level
              (a layoff, an injury, a new technique), not a deload: they count
              again, and what follows is compared with them. Counting sessions
              alone (three in a row) read a deload week on a lift trained three
              times a week as a new level, then as a 16% fall and a stall
-             (r31, from the review). In a row within the range, as a session
-             reads lighter against its own range (r72, the 387 audit's
-             387-C1): counted across ranges, one lighter session on a light
-             day's 16 to 23 made two lighter sessions on 10 to 15 a new level,
-             and the 10 to 15 target fell from 100 kg to 85. A real layoff is
-             a break (more than BACK_DAYS), which restarts every range. */
-          const inRun = run.filter(q => sameRR(q.rr, x.rr));
+             (r31, from the review). In a row against the same usual: the
+             lighter sessions read against any of the same earlier sessions
+             (r72, the 387 audit's 387-C1, and the review's R72-1). Counted
+             across every range, one lighter session on a light day's 16 to 23
+             made two lighter sessions on 10 to 15 a new level, and the 10 to
+             15 target fell from 100 kg to 85; counted within one range, a
+             lifter back weaker in two ranges under an imported history (no
+             range, the usual of every range) was lighter for good, the target
+             50% over a month at 20 lb. A break (more than BACK_DAYS) still
+             restarts everything. */
+          const mine = new Set(ref);
+          const inRun = run.filter(q => (readAgainst.get(q) || []).some(r => mine.has(r)));
           if (
             inRun.length >= NEW_LEVEL.sessions &&
             daysBetween(inRun[0].date, inRun[inRun.length - 1].date) >= NEW_LEVEL.days
@@ -694,9 +702,10 @@ function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCo
               q.keep = true;
               wkAuto[weekStart(q.date)].l--;
             }
-            removeWhere(prev, q => sameRR(q.rr, x.rr));
+            // What follows in their ranges is read against them now.
+            removeWhere(prev, q => inRun.some(m => sameRR(q.rr, m.rr)));
             prev.push(...inRun);
-            removeWhere(run, q => sameRR(q.rr, x.rr));
+            removeWhere(run, q => inRun.includes(q));
           }
           continue;
         }
@@ -831,7 +840,8 @@ function readingOf(q: Exposure, k: number): number | null {
       n++;
     }
   }
-  return n ? sum / (n + missed) : q.tRaw;
+  // Every one of them missed reads 0 (the review's R72-8: on a one-set plan it fell back to the session's other sets and read as full).
+  return n + missed ? sum / (n + missed) : q.tRaw;
 }
 function repsOf(q: Exposure, k: number): number {
   const at = triedAt(q, q.topW).slice(0, k);
@@ -1224,8 +1234,13 @@ export function prJudge(
      stronger than ever, as the r32 rule says. A PR is a PR whatever the
      day is called (r53, V 2026-10-18); a heavier set without one is said
      once, quietly (Heaviest yet), so the day's label decides nothing here. */
+  /* Stronger than ever: a higher score, or the same score with more reps than any earlier set at its load or
+     heavier, a rep more past 12 to failure where the score reads no further (R72-4, V 2026-11-04). */
   const big =
-    noE1(ex) || !!ex.timed || (!!ex.bw && !pts.some(q => q.pl > 0)) || pts.some(q => prScore(q) > h.topSc + EPS);
+    noE1(ex) ||
+    !!ex.timed ||
+    (!!ex.bw && !pts.some(q => q.pl > 0)) ||
+    pts.some(q => prScore(q) > h.topSc + EPS || (prScore(q) >= h.topSc - EPS && !prDominated(h, q)));
   // What it beat: the old heaviest, the old best (in its band, else in any), or the most reps at this load or heavier.
   if (wPR)
     return {

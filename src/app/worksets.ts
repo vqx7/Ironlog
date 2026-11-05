@@ -319,13 +319,16 @@ export function livePR(exId: string, s: DraftSet | null | undefined, date: strin
   return m.ex.timed ? 'Time PR' : 'Rep PR';
 }
 
-/* Not a PR when an earlier set in this session was as strong (r32, second
+/* Not a PR when an earlier PR in this session was as strong (r32, second
    check: 100 x 10, then 100 x 9 announced as a new best). On any day since
    r54, as the list counts it since r53 (PENDING 311 a). Until r60 the screen
    applied this only when a set was ticked, and drew every row of a redraw by
    livePR alone, so a redraw marked 100 x 9 a PR again after 100 x 10: the row
-   and the folded line are now read by this one rule every draw. */
-/** The PR row si of a block shows: livePR, unless an earlier set of this session was as strong. */
+   and the folded line are now read by this one rule every draw. Only an
+   earlier set that was itself a PR counts here (r72, the review's R72-2): the
+   list judges each set against the sessions before, so 145 x 12 after 135 x 15
+   at 3 in reserve, no PR, was a counted Weight PR with no label or toast. */
+/** The PR row si of a block shows: livePR, unless an earlier PR of this session was as strong. */
 export function rowPR(b: DraftBlock, si: number, date: string): string | null {
   const s = b.sets[si];
   if (!s || !s.done) return null;
@@ -337,8 +340,15 @@ export function rowPR(b: DraftBlock, si: number, date: string): string | null {
     const r = +(x.r ?? 0);
     return prScoreOf(l, r, rirEst(x, ex));
   };
-  const me = scq(s);
-  return b.sets.some((x, i) => i < si && x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && scq(x) >= me - EPS)
+  const me = scq(s),
+    myLoad = prLoad(ex, s, date),
+    myR = +(s.r ?? 0);
+  // As strong: a higher score, or the same with as many reps at as much load (prJudge's big, R72-4).
+  const asStrong = (x: DraftSet): boolean =>
+    scq(x) > me + EPS || (scq(x) >= me - EPS && prLoad(ex, x, date) >= myLoad - EPS && +(x.r ?? 0) >= myR);
+  return b.sets.some(
+    (x, i) => i < si && x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && asStrong(x) && livePR(b.exId, x, date)
+  )
     ? null
     : pr;
 }
@@ -1212,12 +1222,15 @@ function foldGlide(a1: HTMLElement, top0: number): void {
   }
   const t0 = performance.now();
   let stopped = false;
+  /* A touch or a wheel stops it, the next exercise left where it is on the screen; where the page cannot leave it
+     there without scrolling above its top (the glide's first frames: r72, the review's R72-5), where the glide ends. */
   const stop = (): void => {
     if (stopped) return;
     stopped = true;
     const r = a1.getBoundingClientRect().top;
     clear();
-    window.scrollBy(0, a1.getBoundingClientRect().top - r);
+    const keep = window.scrollY + a1.getBoundingClientRect().top - r;
+    window.scrollTo(0, keep < 0 ? y1 : keep);
     off();
   };
   const off = (): void => {

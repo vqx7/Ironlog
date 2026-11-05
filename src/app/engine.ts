@@ -680,14 +680,6 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
       want[0]
     ) ?? [];
   const seen = oneADay(inRR ? all!.filter(x => sameRR(x.rr, want)) : all, want[0]);
-  if (ex.timed) return suggestTimedIn(M, ex, plan, exps, opts, injM, seen);
-  if (!exps || !exps.length) return sgFirstIn(M, ex, plan, T, injM);
-  const last = exps[exps.length - 1],
-    ws = last.pts;
-  const stx: Partial<LiftBests> =
-    all!.length < every!.length ? statsUpToIn(M, exId, all!) : IDXIn(M).exStats[exId] || {};
-  const top = workLoad(ws, +plan.repMin);
-  const step = incOfIn(M, ex, plan, top);
   /* Ab work on bodyweight with no load ever added (a hanging leg raise, a
      crunch) progresses by reps, then harder reps (r32, from the third
      review: a leg raise at 15 reps was told "BW+2.5 for 10+"). Once a load
@@ -695,8 +687,19 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   /* Since r34.2 every bodyweight lift never done with added load, not only
      ab work (from the review: push-ups done on bodyweight for 6 weeks were
      asked for BW+10 every session and counted as missed targets). A load
-     typed once makes it a loaded lift. */
-  const noAdd = !!ex.bw && !ex.assist && !all!.some(x => x.pts.some(p => p.w > EPS_SAME));
+     typed once makes it a loaded lift. Read from the whole log in any range,
+     and so for a hold too (r72: 387-B6, and the review's R72-6, where a hold
+     read only its range's sessions and took a plank loaded on its heavy day
+     for one never loaded). */
+  const noAdd = !!ex.bw && !ex.assist && !(all || []).some(x => x.pts.some(p => p.w > EPS_SAME));
+  if (ex.timed) return suggestTimedIn(M, ex, plan, exps, opts, injM, seen, noAdd);
+  if (!exps || !exps.length) return sgFirstIn(M, ex, plan, T, injM);
+  const last = exps[exps.length - 1],
+    ws = last.pts;
+  const stx: Partial<LiftBests> =
+    all!.length < every!.length ? statsUpToIn(M, exId, all!) : IDXIn(M).exStats[exId] || {};
+  const top = workLoad(ws, +plan.repMin);
+  const step = incOfIn(M, ex, plan, top);
   const abW = ['abs', 'obliques'].includes(ex.primary);
   // Heaviest available load (top of the stack or rack), if set.
   const cap = capOfIn(M, ex, plan, top);
@@ -1502,7 +1505,8 @@ function suggestTimedIn(
   exps: Exposure[] | null | undefined,
   opts: SuggestOpts | null | undefined,
   injM: string | null,
-  all: Exposure[] | null | undefined
+  all: Exposure[] | null | undefined,
+  noAdd: boolean
 ): Suggestion {
   opts = opts || {};
   const side = ex.perSide ? ' per side' : '';
@@ -1598,9 +1602,9 @@ function suggestTimedIn(
     };
   const step = incOfIn(M, ex, plan, top);
   const cap = capOfIn(M, ex, plan, top);
-  /* A hold at bodyweight, never loaded, builds time as a bodyweight lift builds reps (r72, the 387 audit's 387-B6):
-     asked to add a plate at the top of its range, a plank held at bodyweight missed its target every session. */
-  const noAdd = !!ex.bw && !ex.assist && ![...(all || []), ...exps].some(x => x.pts.some(p => p.w > EPS_SAME));
+  /* A hold at bodyweight, never loaded (noAdd, read by the caller from the whole log), builds time as a bodyweight
+     lift builds reps (r72, the 387 audit's 387-B6): asked to add a plate at the top of its range, a plank held at
+     bodyweight missed its target every session. */
   if (step > 0 && !noAdd && topPts.every(p => p.r >= plan.repMax) && !atCapOfIn(M, ex, plan, top, cap)) {
     const nw = cap != null ? Math.min(top + step, cap) : top + step;
     return {

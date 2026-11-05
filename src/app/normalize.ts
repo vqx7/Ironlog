@@ -660,11 +660,13 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     bar = numOr(e.barKg, NaN);
   const gw = g ? numOr(g.w, NaN) : NaN,
     gr = g ? Math.round(numOr(g.r, NaN)) : NaN;
+  // The main muscle as read (an unknown one as chest), and the helpers without it, so a second read changes nothing (r72, the review's R72-7).
+  const primary = typeof e.primary === 'string' && isMuscle(e.primary) ? e.primary : 'chest';
   return keepExtra(e0, {
     id: fixId(e.id),
     name,
-    primary: typeof e.primary === 'string' && isMuscle(e.primary) ? e.primary : 'chest',
-    secondary: sc ? strings(sc, m => isMuscle(m) && m !== e.primary) : [],
+    primary,
+    secondary: sc ? strings(sc, m => isMuscle(m) && m !== primary) : [],
     equip: typeof e.equip === 'string' ? e.equip : 'other',
     bw: !!e.bw,
     rare: !!e.rare,

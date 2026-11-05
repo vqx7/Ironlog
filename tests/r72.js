@@ -22,6 +22,21 @@
 //      same on the next load (r71: inc and plates added the second time).
 //   9  387-C1: lighter sessions in one rep range never make another range's lighter sessions a new level (r71:
 //      one lighter session in range B made range A's target 85 kg).
+//  From the independent review of r72 (each run first on d230f03, r72 before the review, where each fails):
+//  10  R72-1: an imported history (no rep range) and two ranges since: three lighter sessions in a row against the
+//      same earlier sessions are a new level, so the target and the injury cap follow the lifter's own 20 lb.
+//  11  R72-2: a PR the list counts is labelled on its row and in the toast as it is ticked, after an earlier set of
+//      the session that was no PR (135 x 15 at 3 in reserve, then 145 x 12; 225 x 5 rated 5, then 235 x 5).
+//  12  R72-3: a set rated 5 or more in reserve is read as 4 by the same formula as any set: 105 x 3 is no PR after
+//      100 x 5 at 4 (126 against 128.6).
+//  13  R72-5: a touch or a wheel as the glide begins leaves the page where it can, never at the session's title.
+//  14  R72-6: a hold once done with load is never "bodyweight never loaded", whichever range that was in.
+//  15  R72-7: normalize twice is once for a lift whose main muscle this build does not know, chest among its helpers.
+//  17  R72-4 (V, 2026-11-04: "Count heavier as PR"): past 12 reps to failure a set reads no stronger than at 12, so 65 x 9
+//      at 1 after 60 x 12 at 3 in reserve is a PR on every screen, as All-time bests' new best estimate says; one more
+//      rep at a load is still one (20 lb x 11 and 12 at 2 in reserve).
+//  16  R72-8: on a one-set plan, a missed first set reads as 0, so the session reads below its usual and the target
+//      repeats, never "Beat 0 reps".
 // R72_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -84,6 +99,30 @@ async function page() {
       ok(back <= 2, '1. NEW-63: the next exercise moves only up the screen to its place, never back down' + tag, { back, trace: r.tr.slice(55, 110).map(x => x.t + ':' + x.y + '/' + x.a) });
       ok(r.endTop != null && Math.abs(r.endTop - r.margin) <= 2 && !r.style, '1. NEW-63: it ends where it did before, under the bar at the top of the screen, with no style left on it' + tag, r);
       ok(!D.errors.length, '1. no page errors' + tag, D.errors);
+      await D.browser.close();
+    }
+  }
+
+  if (run(13)) {
+    // A touch and a wheel the moment the glide begins (its first frame), as a thumb landing on the screen then.
+    for (const kind of ['touchstart', 'wheel']) {
+      const D = await open(FILE, { touch: true, w: 390, h: 664, clock: T + 'T18:00:00', dark: true });
+      const pg = D.page;
+      await pg.evaluate(() => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; L.makeDemo(); for (const x of S.sessions) delete x.demo; localStorage.setItem('ironlog.v1.tipWake', '1'); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
+      await pg.click('.hero [data-act="startSession"]:not([data-light])'); await wait(500);
+      const n = await pg.evaluate(() => window.__ironlog.state.draft.ex[0].sets.length);
+      for (let si = 0; si < n; si++) {
+        const sel = `[data-act="sDone"][data-b="0"][data-s="${si}"]`;
+        const p = await pg.evaluate(sel => { const e = document.querySelector(sel); let r = e.getBoundingClientRect(); if (r.bottom > innerHeight - 200 || r.top < 80) window.scrollBy(0, r.top - innerHeight * 0.45); r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, sel);
+        await wait(300);
+        if (si === n - 1) await pg.evaluate(kind => { window.__tr = []; let fired = false; const t0 = performance.now(); const f = () => { const a = document.getElementById('blk-1'); if (!fired && a && a.getAttribute('style')) { fired = true; window.dispatchEvent(kind === 'wheel' ? new WheelEvent('wheel', { deltaY: 1 }) : new Event('touchstart')); } window.__tr.push(Math.round(scrollY)); if (performance.now() - t0 < 2600) requestAnimationFrame(f); }; requestAnimationFrame(f); }, kind);
+        await pg.touchscreen.tap(p.x, p.y); await wait(si === n - 1 ? 2800 : 400);
+      }
+      const r = await pg.evaluate(() => ({ tr: window.__tr, y: Math.round(scrollY), style: (document.getElementById('blk-1') || {}).getAttribute ? document.getElementById('blk-1').getAttribute('style') : 'gone' }));
+      const y0 = r.tr[0];
+      // 269 is where this demo session's glide ends (section 1).
+      ok(r.y >= Math.min(y0, 269) - 2 && !r.style, `13. R72-5: a ${kind} as the glide begins leaves the page at or below where it was, never at the session's title, and no style on the block (d230f03: left at 0)`, { y0, end: r.y, style: r.style });
+      ok(!D.errors.length, `13. no page errors (${kind})`, D.errors);
       await D.browser.close();
     }
   }
@@ -201,6 +240,98 @@ async function page() {
       res.push(await ev(pA => { const L = window.__ironlog; const xs = L.IDX().byEx.dbFrontRaise; return { reads: xs.filter(x => Math.abs(x.topW - 85) < 1e-6).map(x => (x.keep ? 'keep' : x.auto ? 'lighter' : 'full')), w: L.suggest('dbFrontRaise', pA, {}).w }; }, pA));
     }
     ok(res[0].w === 100 && res[1].w === 100 && res[1].reads.join() === 'lighter,lighter', '9. 387-C1: a lighter session in range B leaves range A\'s two lighter sessions lighter and A\'s target 100 kg (r71: both read as a new level, 85 kg)', res);
+  }
+
+  if (run(10)) {
+    const L = set('lb');
+    const plan = { sets: 3, repMin: 12, repMax: 20, rir: 1, rest: 60, inc: 5 * LB };
+    const imp = (id, date) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Imported', routineId: '', notes: '', ex: [{ exId: 'dbLateral', note: '', rr: null, sets: [[30, 12], [30, 12], [30, 12]].map(L) }] });
+    const imported = ['2026-08-05', '2026-08-12', '2026-08-19', '2026-08-26', '2026-09-02', '2026-09-09', '2026-09-16', '2026-09-23', '2026-09-30'].map((d, i) => imp('i' + i, d));
+    const mine = [ses('a1', '2026-10-10', 'dbLateral', [8, 12], [[20, 12, 1], [20, 11, 1], [20, 10, 1]].map(L)), ses('a2', '2026-10-17', 'dbLateral', [8, 12], [[20, 12, 1], [20, 12, 1], [20, 11, 1]].map(L)), ses('b1', '2026-10-24', 'dbLateral', [12, 20], [[20, 15, 1], [20, 14, 1], [20, 13, 1]].map(L)), ses('b2', '2026-10-31', 'dbLateral', [12, 20], [[20, 16, 1], [20, 15, 1], [20, 14, 1]].map(L))];
+    await seed({ unit: 'lb', exId: 'dbLateral', plan, sessions: [...imported, ...mine] });
+    const g = await sug('dbLateral', plan);
+    const inj = await ev(plan => { const L = window.__ironlog; L.state.injuries = [{ id: 'j1', m: 'sideDelts', note: '', date: '2026-11-04' }]; L.invalidate(); const g = L.suggest('dbLateral', plan, {}); L.state.injuries = []; L.invalidate(); return g.text; }, plan);
+    ok(Math.abs(lb(g.w) - 20) < 0.05 && !/lighter\)/.test(g.text), '10. R72-1: after a month at 20 lb in two ranges, under an import at 30, the target is at 20 lb, the lifter\'s level (d230f03: 30 lb, every session read lighter)', g);
+    ok(/at or below 20 lb/.test(inj), '10. R72-1: and an injury caps it at 20 lb, never the import\'s 30', inj);
+    // 387-C1's own case, lighter sessions against different earlier sessions (each range its own), is section 9.
+  }
+
+  if (run(11)) {
+    // Ticked on the screen by the check, as a lifter does: the row's label and the toast after each tick, then Finish.
+    for (const [name, rr, hist, today, prAt] of [['bench', [12, 20], [[135, 15, 0], [135, 15, 0], [135, 15, 0]], [[135, 15, 3], [145, 12, 0], [145, 12, 0]], 1], ['rir5', [5, 8], [[225, 5, 1], [225, 5, 1], [225, 5, 1]], [[225, 5, 5], [235, 5, 1], [235, 5, 1]], 1]]) {
+      const D = await open(FILE, { clock: T + 'T18:00:00', w: 390, h: 844 });
+      const pg = D.page;
+      await pg.evaluate(([rr, hist, today, LB]) => {
+        const L = window.__ironlog; const S = L.state;
+        S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.autoDone = false; S.settings.rirMode = 'on'; S.settings.timerMode = 'off';
+        delete S.settings.gym; S.injuries = []; S.draft = null; S.deloadWeek = null;
+        const item = { uid: 'u1', exId: 'bench', sets: 3, repMin: rr[0], repMax: rr[1], rir: 1, rest: 0, inc: 5 * LB, ss: null };
+        S.routines = [{ id: 'R1', name: 'Routine', schedule: 'cycle', days: [{ id: 'D1', name: 'Day 1', rest: false, items: [item] }] }]; S.activeRoutineId = 'R1';
+        const st = ([w, r, rir]) => ({ w: w * LB, r, rir, warm: false, drop: false });
+        S.sessions = ['2026-10-21', '2026-10-28'].map((date, i) => ({ id: 'h' + i, date, dayIdx: 0, dayId: 'D1', dayName: 'Day 1', routineId: 'R1', notes: '', ex: [{ exId: 'bench', rr, sets: hist.map(st), ps: 3 }] }));
+        L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render();
+      }, [rr, hist, today, LB]);
+      await pg.click('.hero [data-act="startSession"]:not([data-light])'); await wait(300);
+      await pg.evaluate(([today, LB]) => { const L = window.__ironlog; const b = L.state.draft.ex[0]; while (b.sets.length < today.length) b.sets.push({ ...b.sets[0] }); today.forEach(([w, r, rir], i) => Object.assign(b.sets[i], { w: w * LB, r, rir, done: false, warm: false, drop: false })); L.render(); }, [today, LB]);
+      const seen = [];
+      for (let si = 0; si < today.length; si++) {
+        await pg.evaluate(() => { const t = document.getElementById('toast'); if (t) { t.hidden = true; t.textContent = ''; } });
+        await pg.click(`[data-act="sDone"][data-b="0"][data-s="${si}"]`); await wait(220);
+        seen.push(await pg.evaluate(si => { const b = document.querySelector(`[data-act="sDone"][data-b="0"][data-s="${si}"]`); const row = b && b.closest('.sg'); const t = document.getElementById('toast'); return { row: row && row.getAttribute('data-pr') || null, toast: t && !t.hidden ? t.textContent : '' }; }, si));
+      }
+      ok(seen[prAt].row === 'Weight PR' && /Weight PR/.test(seen[prAt].toast), `11. R72-2 (${name}): set ${prAt + 1}, a Weight PR the list counts, is labelled on its row and in the toast as it is ticked, after an earlier set that was no PR (d230f03: neither)`, seen);
+      ok(seen[0].row === null, `11. R72-2 (${name}): the earlier set, no PR itself, has no label`, seen[0]);
+      ok(!D.errors.length, `11. no page errors (${name})`, D.errors);
+      await D.browser.close();
+    }
+  }
+
+  if (run(12)) {
+    const K = set('kg');
+    await seed({ unit: 'kg', exId: 'bench', plan: { sets: 3, repMin: 3, repMax: 6, rir: 1, rest: 120, inc: 2.5 }, sessions: [ses('a', add(T, -14), 'bench', [3, 6], [[100, 5, 4], [100, 5, 4], [100, 5, 4]].map(K))] });
+    const r = await ev(d => { const L = window.__ironlog; const s = (rir) => L.livePR('bench', { w: 105, r: 3, rir, done: true, warm: false, drop: false }, d); return { at5: s(5), at4: s(4) }; }, add(T, -7));
+    ok(r.at5 === null && r.at4 === null, '12. R72-3: 105 x 3 after 100 x 5 at 4 in reserve is no PR, rated 5 or 4 (read as 4: 126 against 128.6; d230f03: a Weight PR rated 5)', r);
+  }
+
+  if (run(14)) {
+    const L = set('lb');
+    const heavy = { sets: 3, repMin: 20, repMax: 40, rir: 1, rest: 60, inc: 5 * LB }, long = { sets: 3, repMin: 30, repMax: 60, rir: 1, rest: 60, inc: 5 * LB };
+    const hold = (id, k, day, rr, w, s2) => ses(id, add(T, -k), 'plank', rr, [[w, s2], [w, s2], [w, s2]].map(L), { dayId: day, dayName: day });
+    await seed({ unit: 'lb', exId: 'plank', plan: long, bw: 80, days: [{ id: 'D2', name: 'Heavy', rest: false, items: [{ uid: 'u2', exId: 'plank', ...heavy, ss: null }] }], sessions: [hold('a', 15, 'D2', [20, 40], 10, 40), hold('b', 13, 'D1', [30, 60], 0, 60), hold('c', 8, 'D2', [20, 40], 10, 40), hold('d', 6, 'D1', [30, 60], 0, 60)] });
+    const g = await sug('plank', long);
+    ok(g.w > 0 && /add 5 lb/.test(g.text) && !/keep adding time/.test(g.text), '14. R72-6: a plank held with 10 lb on its heavy day, at bodyweight for 60 s x 3 on the long day, adds load there (it has been loaded; d230f03: "keep adding time")', g);
+  }
+
+  if (run(15)) {
+    const r = await ev(() => { const L = window.__ironlog; const raw = JSON.parse(JSON.stringify(L.state));
+      raw.exercises.push({ id: 'c_new', name: 'Landmine Thing', primary: 'futureMuscle', secondary: ['chest', 'triceps'], equip: 'landmine', bw: false, rare: false, perSide: false, note: '', custom: true, archived: false });
+      const one = L.normalize(JSON.parse(JSON.stringify(raw))), two = L.normalize(JSON.parse(JSON.stringify(one)));
+      return { once: JSON.stringify(one.exercises.find(e => e.id === 'c_new')), twice: JSON.stringify(two.exercises.find(e => e.id === 'c_new')), all: JSON.stringify(one) === JSON.stringify(two) }; });
+    ok(r.once === r.twice && r.all && !/"secondary":\["chest"/.test(r.once), '15. R72-7: normalize twice is once for a lift whose main muscle this build does not know (read as chest), chest dropped from its helpers the first time (r71 and d230f03: the second time)', r);
+  }
+
+  if (run(16)) {
+    const L = set('lb');
+    const p1 = { sets: 1, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 5 * LB };
+    await seed({ unit: 'lb', exId: 'bench', plan: p1, sessions: [ses('a', add(T, -15), 'bench', [6, 10], [[185, 9]].map(L), { ps: 1 }), ses('b', add(T, -8), 'bench', [6, 10], [[185, 0, null, 'miss'], [185, 10]].map(L), { ps: 1 })] });
+    const g = await sug('bench', p1);
+    ok(Math.abs(lb(g.w) - 185) < 0.05 && g.target === '10+ reps in one set at 185 lb' && /below usual/.test(g.text), '16. R72-8: a one-set plan with its set missed reads below usual and repeats its target, 10+ reps at 185 (r71 and d230f03: "Beat 0 reps in one set")', g);
+  }
+
+  if (run(17)) {
+    const K = set('kg');
+    const plan = { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 2.5 };
+    const first = ses('a', add(T, -14), 'bench', [8, 12], [[60, 12, 3], [60, 12, 3], [60, 12, 3]].map(K));
+    // As it is ticked: against the log before that day, as in a workout.
+    await seed({ unit: 'kg', exId: 'bench', plan, sessions: [first] });
+    const live = await ev(d => window.__ironlog.livePR('bench', { w: 65, r: 9, rir: 1, done: true, warm: false, drop: false }, d), add(T, -7));
+    await seed({ unit: 'kg', exId: 'bench', plan, sessions: [first, ses('b', add(T, -7), 'bench', [8, 12], [[65, 9, 1], [65, 9, 1], [65, 9, 1]].map(K))] });
+    const r = { live, list: await ev(d => window.__ironlog.IDX().prs.filter(p => p.exId === 'bench' && p.date === d).map(p => p.type + (p.big ? ' counted' : '')), add(T, -7)) };
+    ok(r.live === 'Weight PR' && r.list.join() === 'Weight PR counted', '17. R72-4: 65 x 9 at 1 after 60 x 12 at 3 in reserve is a Weight PR as it is ticked and in the counted list (d230f03: Heaviest yet, no PR)', r);
+    // A rep more at a load past 12 to failure is still a PR: section 5 holds the raises; here the leg press read at its ceiling.
+    await seed({ unit: 'kg', exId: 'legPress', plan: { sets: 3, repMin: 10, repMax: 20, rir: 1, rest: 120, inc: 5 }, sessions: [12, 13, 14].map((n, i) => ses('l' + i, add(T, -7 * (3 - i)), 'legPress', [10, 20], [[100, n, 3], [100, n, 3], [100, n, 3]].map(K))) });
+    const lp = await ev(() => window.__ironlog.IDX().prs.filter(p => p.exId === 'legPress' && p.big).map(p => p.date));
+    ok(lp.length === 2, '17. R72-4: the leg press at 100 kg for 13 and then 14 at 3 in reserve, each a rep more at that load, are each a PR', lp);
   }
 
   ok(!G.P.errors.length, 'no page errors', G.P.errors);

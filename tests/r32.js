@@ -416,8 +416,9 @@ const seed = (L, unit, exId, list, rr) => {
       // 129), so it is still no PR anywhere a lifter looks: the counted list,
       // Recent PRs and the recap all read big ones only. Until r72 the set
       // here was rated 3 in reserve, which the PR score ignored past 12 reps
-      // to failure; since r72 (387-B4) it reads 15 reps to failure, 135, as
-      // the trend reads it, stronger than 100 x 8, and a PR (out.w4r3).
+      // to failure; since r72 (387-B4, then V's R72-4: read no further than
+      // 12 to failure) it scores as 90 x 12 to failure either way, 126, under
+      // 100 x 8's 129: no PR rated 3 either (out.w4r3).
       seed(L, 'kg', 'bench', [['2026-09-26', [[100, 8, 1]]]], [6, 10]);
       L.state.sessions.push({ id: 'lt', date: '2026-10-03', dayIdx: 0, dayId: null, dayName: 'A (lighter)', routineId: '', notes: '', light: true, ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w: 90, r: 12, rir: 0, warm: false, drop: false }] }] }); L.invalidate();
       out.w4 = L.IDX().prs.filter(x => x.date === '2026-10-03' && x.big).length;
@@ -436,7 +437,7 @@ const seed = (L, unit, exId, list, rr) => {
     ok(!/·/.test(r.w7), 'W7: three sessions in 4 days get no trend word', r.w7);
     ok(Math.abs(r.w8.w / 5 - Math.round(r.w8.w / 5)) < 1e-6 && Math.abs(r.w8l / 5 - Math.round(r.w8l / 5)) < 1e-6 && !/225\.5|220\.5 lb for/.test(r.w8.text.split('.').slice(1).join('.')), 'W8: after kg to lb, the next load and the lighter day are on 5 lb steps', r);
     ok(r.w4 === 0, 'W4: a Lighter day\'s 90 x 12 to failure, weaker than 100 x 8, is not a PR', r.w4);
-    ok(r.w4r3 === 1, 'W4: the same 90 x 12 with 3 in reserve (15 to failure, stronger) is one, on a lighter day as on any (r72, 387-B4)', r.w4r3);
+    ok(r.w4r3 === 0, 'W4: the same 90 x 12 with 3 in reserve is no PR either, read no further than 12 to failure (r72, R72-4, V 2026-11-04)', r.w4r3);
     await P.ctx.close();
   }
   {
