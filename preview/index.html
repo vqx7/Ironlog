@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-awcqZWZ/gSI86edZTH69RInf/RRH4RgjHvER8Zx6aKQ=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-+OIU6B+s0KH/NMm/UiUs8syYiFrwyUEinih2l2WOljE=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.04-r72">
@@ -5352,7 +5352,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var NIL = "–";
   var missedTag = (s3) => isMissed(s3) ? " missed" : "";
   var DIRTY_SAID = "Save or cancel first. Your changes are still here.";
-  var MISSED_SAID = "Logged as missed. It counts toward no volume or PRs, and keeps the load from going up.";
+  var MISSED_SAID = "Logged as missed. It counts toward no volume or PRs, and never earns a step up.";
   var fmtG = (v3) => String(r3(v3));
   var repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
   var rangeWords = (p3) => +p3.repMin === +p3.repMax ? `target of ${+p3.repMin}` : `${+p3.repMin}-${+p3.repMax} range`;
@@ -25712,7 +25712,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Grey reps</b> are last time's reps for that set, at today's load, and one set under the bottom of the range among the others shows the bottom of the range. When today's target is a new load, last time's reps were at the old load, so they are the reps of the set above instead, or the bottom of the range. On a lighter day or in a deload, they are the bottom of the range.</p>
    <p><b>Grey loads</b> are the set above, or today's suggested load. To have loads typed in for you: Settings, Rest timer and logging, Fill in suggested loads.</p>
    <p><b>Auto-mark</b> (Settings): a set ticks itself when you leave its reps field.</p>
-   <p><b>A missed set</b>: type 0 reps and tick it (auto-mark ticks it too). It is kept and shown as missed, and counts toward no volume, PR, or estimate. The next target reads it as a set short of the range, so it keeps the load from going up, and as 0 reps, so the last target repeats. The next set's grey numbers come from the last set you completed.</p>
+   <p><b>A missed set</b>: type 0 reps and tick it (auto-mark ticks it too). It is kept and shown as missed, and counts toward no volume, PR, or estimate. The next target reads it as a set short of the range, so it never earns a step up, and as 0 reps, so the last target repeats. The next set's grey numbers come from the last set you completed.</p>
    <p><b>A number far off</b> asks before the set is logged, Log it or Fix it: reps over ${ODD_REPS} and more than ${timesWord(ODD_REPS_TIMES)} the top of your range or your most ever, whichever is more, or a load more than ${timesWord(ODD_SESSION)}, or under ${shareWords(1 / ODD_SESSION)} of, the heaviest set you ticked today, or more than ${timesWord(ODD_BEST)} the heaviest you have logged on the exercise (conventions, to catch a slipped digit or the other unit). On a bodyweight lift, so does added load of ${pctOf(ODD_ADDED_BW)}% or more of your bodyweight, or more than ${timesWord(ODD_ADDED_BEST)} the most you have added (conventions too). So does a load under the empty bar, on any set of a lift on the full bar typed as the total (the bar in Settings, or the exercise's own).</p>
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to ${RIR_CALL_TOP} (Settings can switch it to half reps or RPE; RPE ${effAt("rpe", 2)} is RIR 2). ${off ? "RIR is off in Settings, so every working set counts as hard." : `It is optional: a blank reads as your usual RIR on that lift once you have rated ${RIR_USUAL_MIN} of its sets in ${CAL_WEEKS} weeks, and until then as hard.`}</p>
    <p><b>RIR check</b>: once you have ${CAL_OFFER.sessions} sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits ${CAL_OFFER.weeks} weeks.</p>
