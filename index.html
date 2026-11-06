@@ -5751,6 +5751,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           }
         }
       }
+      for (const k2 in rated) rated[k2].sort((a2, b2) => a2[0] < b2[0] ? -1 : a2[0] > b2[0] ? 1 : 0);
       M3.c._rirUse = { rated, at: /* @__PURE__ */ Object.create(null) };
     }
     const C2 = M3.c._rirUse;
@@ -5758,8 +5759,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const had = C2.at[key];
     if (had !== void 0) return had;
     const cut = addDays(date || M3.today(), -WEEK_DAYS * CAL_WEEKS);
-    const qs = (C2.rated[exId] || []).filter(([d3]) => d3 >= cut && (date == null || d3 <= date)).map(([, q]) => q);
-    const v3 = qs.length >= RIR_USUAL_MIN ? median(qs) : null;
+    const all = C2.rated[exId] || [];
+    const qs = all.filter(([d3]) => d3 >= cut && (date == null || d3 <= date)).map(([, q]) => q);
+    const first = date != null && qs.length < RIR_USUAL_MIN && all.length >= RIR_USUAL_MIN ? all.slice(0, RIR_USUAL_MIN).map(([, q]) => q) : null;
+    const pick2 = first || (qs.length >= RIR_USUAL_MIN ? qs : null);
+    const v3 = pick2 ? median(pick2) : null;
     C2.at[key] = v3;
     return v3;
   }

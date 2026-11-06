@@ -208,9 +208,11 @@ export const RIR_USUAL_MIN = 3;
    what you said about effort. RIR off: no ratings are read at all.
    Read as of a date (387-C6, 2.29): a past session's blank sets take the usual of the 12 weeks up to its own date,
    so rating later sessions never changes an old workout's estimate or PRs (2.28: Sep 15's 102.5 x 8, blank, read
-   136.7 kg, then 127.2 once three October sessions were rated 0). With no date, today's: every rated set from 12
-   weeks ago on, as before 2.29. Object.create(null) is typed any, so the casts name the maps it makes; the median
-   of three or more numbers is a number, as the ! says. */
+   136.7 kg, then 127.2 once three October sessions were rated 0). Before the lift has RIR_USUAL_MIN rated sets by
+   that date, its first usual (the median of its first RIR_USUAL_MIN rated sets), which never moves once they exist,
+   so an early blank between rated sets reads as they do instead of as 0 (r20, tests/unit-analytics.js: no dips).
+   With no date, today's: every rated set from 12 weeks ago on, as before 2.29. Object.create(null) is typed any,
+   so the casts name the maps it makes; the median of three or more numbers is a number, as the ! says. */
 export function rirUsualIn(M: Model, exId: string, date?: string): number | null {
   if (M.s.settings.rirMode === 'off') return null;
   if (!M.c._rirUse) {
@@ -226,6 +228,7 @@ export function rirUsualIn(M: Model, exId: string, date?: string): number | null
         }
       }
     }
+    for (const k in rated) rated[k].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
     M.c._rirUse = { rated, at: Object.create(null) as Record<string, number | null> };
   }
   const C = M.c._rirUse;
@@ -233,8 +236,14 @@ export function rirUsualIn(M: Model, exId: string, date?: string): number | null
   const had = C.at[key];
   if (had !== undefined) return had;
   const cut = addDays(date || M.today(), -WEEK_DAYS * CAL_WEEKS);
-  const qs = (C.rated[exId] || []).filter(([d]) => d >= cut && (date == null || d <= date)).map(([, q]) => q);
-  const v = qs.length >= RIR_USUAL_MIN ? median(qs)! : null;
+  const all = C.rated[exId] || [];
+  const qs = all.filter(([d]) => d >= cut && (date == null || d <= date)).map(([, q]) => q);
+  const first =
+    date != null && qs.length < RIR_USUAL_MIN && all.length >= RIR_USUAL_MIN
+      ? all.slice(0, RIR_USUAL_MIN).map(([, q]) => q)
+      : null;
+  const pick = first || (qs.length >= RIR_USUAL_MIN ? qs : null);
+  const v = pick ? median(pick)! : null;
   C.at[key] = v;
   return v;
 }
