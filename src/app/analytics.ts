@@ -216,15 +216,18 @@ export const RIR_USUAL_MIN = 3;
 export function rirUsualIn(M: Model, exId: string, date?: string): number | null {
   if (M.s.settings.rirMode === 'off') return null;
   if (!M.c._rirUse) {
-    const rated = Object.create(null) as Record<string, [string, number][]>;
+    /* The rated sets themselves, read when asked: with Corrected RIR on, a date's usual reads every one of them with
+       the correction known on that date (R74-3, the independent review of 2.29: each read at its own date's, today's
+       usual mixed uncorrected ratings from before the first check, so a blank read a rep harder than a set rated at
+       the usual). Today's is then 2.28's exactly, and a past date's still reads no later check. */
+    const rated = Object.create(null) as Record<string, [string, Effort, ExerciseLike][]>;
     for (const ss of M.s.sessions) {
       for (const b of ss.ex) {
         const ex = EXIn(M, b.exId);
         if (ex.timed) continue;
         for (const x of b.sets) {
           if (!isWork(x) || x.drop || x.cal) continue;
-          const q = rirEffIn(M, x, ex, ss.date);
-          if (q != null) (rated[b.exId] || (rated[b.exId] = [])).push([ss.date, q]);
+          if (rirEffIn(M, x, ex, ss.date) != null) (rated[b.exId] || (rated[b.exId] = [])).push([ss.date, x, ex]);
         }
       }
     }
@@ -238,9 +241,11 @@ export function rirUsualIn(M: Model, exId: string, date?: string): number | null
   if (had !== undefined) return had;
   const cut = addDays(D, -WEEK_DAYS * CAL_WEEKS);
   const all = C.rated[exId] || [];
-  const qs = all.filter(([d]) => d >= cut && d <= D).map(([, q]) => q);
+  // A rated set reads as a number (it was kept for that above), so the 0 is never read.
+  const read = (e: [string, Effort, ExerciseLike]): number => rirEffIn(M, e[1], e[2], D) ?? 0;
+  const qs = all.filter(([d]) => d >= cut && d <= D).map(read);
   const first =
-    all.length >= RIR_USUAL_MIN && D < all[RIR_USUAL_MIN - 1][0] ? all.slice(0, RIR_USUAL_MIN).map(([, q]) => q) : null;
+    all.length >= RIR_USUAL_MIN && D < all[RIR_USUAL_MIN - 1][0] ? all.slice(0, RIR_USUAL_MIN).map(read) : null;
   const pick = first || (qs.length >= RIR_USUAL_MIN ? qs : null);
   const v = pick ? median(pick)! : null;
   C.at[key] = v;

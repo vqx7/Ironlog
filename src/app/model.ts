@@ -6,7 +6,7 @@
    model (live.ts). The accessors here moved unchanged from the legacy script
    but for that parameter. */
 
-import type { EngineState, Exercise, Gym, Profile, Routine, Session, Target } from './types';
+import type { EngineState, Exercise, Gym, Profile, Rir, Routine, Session, Target } from './types';
 import { weekStart } from './util';
 import { MK, exJoints } from './library';
 import { sessCmp } from './records';
@@ -287,7 +287,10 @@ interface Caches {
   /** The RIR checks by date, the calibration to today (`now`) and to each date asked (calStatsIn). */
   _cal: { now: CalStats; pts: CalPt[]; at: Partial<Record<string, CalStats>> } | null;
   /** Each lift's rated working sets by date, and the usual read from them, by lift and date (rirUsualIn). */
-  _rirUse: { rated: Partial<Record<string, [string, number][]>>; at: Partial<Record<string, number | null>> } | null;
+  _rirUse: {
+    rated: Partial<Record<string, [string, { rir?: Rir; cal?: unknown }, ExerciseLike][]>>;
+    at: Partial<Record<string, number | null>>;
+  } | null;
   _bwRef: number | undefined;
   _pace: number | null;
 }

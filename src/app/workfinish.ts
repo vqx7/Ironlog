@@ -469,7 +469,8 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     hard = r1(
       ex.reduce((a, b) => {
         const e = EX(b.exId);
-        return a + b.sets.reduce((c, q) => c + hardCredit(q, e), 0);
+        // As of the session's date, as the week's hard sets read it (R74-2's family: a past-dated workout).
+        return a + b.sets.reduce((c, q) => c + hardCredit(q, e, d.date), 0);
       }, 0)
     );
   ui.todayDay = null;

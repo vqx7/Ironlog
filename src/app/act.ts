@@ -175,13 +175,20 @@ export function undoStep(): 'none' | 'failed' | 'unchanged' | number {
       const side = (o: Rec): Record<string, Rec> => {
         const out: Record<string, Rec> = {};
         for (const id in o) {
+          /* A document absent on this side (one the action made, or removed) still carries every field it did not
+             change as it is now, as the other side does (R74-1, the independent review of 2.29): left out, cardio logged
+             after an import in its half-month, or a weigh-in after the year's first tape entry, stood in the base and
+             now but not here, and the merge read it as deleted. With nothing of it now either, it stays absent. */
           const v = rec(o[id]);
-          if (!v) continue;
           const changed = new Set(strs(cutK && cutK[id]));
           const lists = new Set(strs(cutL && cutL[id]));
           const doc: Rec = {};
           const now = C[id];
           if (now) for (const f in now) if (!changed.has(f)) doc[f] = now[f];
+          if (!v) {
+            if (Object.keys(doc).length) out[id] = doc;
+            continue;
+          }
           for (const f in v) {
             const cut = lists.has(f) ? rec(v[f]) : null;
             if (!cut) {

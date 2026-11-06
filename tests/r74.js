@@ -35,6 +35,14 @@
 //      PR (2.28: +20 kg pull-ups read "Best estimate ≈ 28.9 kg" and "best est 28.9 kg total", the added load alone);
 //      its reps, weight PRs and next target are as before (a guard), and once a weigh-in is logged its estimates
 //      appear, read at that weigh-in (a guard); the Guide says the rule once (394).
+//   7  R74-1 (the independent review of 2.29): Undo of an action that made a sync document keeps what was logged in it
+//      afterwards: an import, then cardio in its half-month, then Undo keeps the cardio; the year's first tape entry,
+//      then a weigh-in that year, then Undo keeps the weigh-in (2.29 before this fix lost both; 2.28 kept them).
+//   8  R74-2 (the review): a workout dated in the past says the same PR on the session screen as in its recap and the
+//      PR list (2.29 before this fix: "New best estimate ... 136.5 kg", then "No PRs this time").
+//   9  R74-3 (the review): with Corrected RIR on, today's usual reads every rating with today's correction, as 2.28
+//      did (2.29 before this fix: usual 1, a blank set 1, a set rated 1 read at 2; 2.28: 2, 2, 2); a past date's
+//      usual reads the correction known on that date, so a later check still changes no old workout (2.29's own rule, kept).
 // R74_ONLY=1,2 runs some sections.
 const { open, tab } = require('./h');
 const fails = [];
@@ -253,6 +261,97 @@ const T = '2026-11-05';
     const guide = await D.page.evaluate(() => { const L = window.__ironlog; L.ACT.guideOpen({ dataset: {} }); return document.documentElement.innerHTML; });
     ok(/With no weigh-in they count only the weight you add\. Estimates and trends wait for one\./.test(guide), '6. 394: the Guide says once what a bodyweight lift reads with no weigh-in', null);
     ok(!D.errors.length, '6. no page errors', D.errors);
+    await D.browser.close();
+  }
+
+  if (run(7)) {
+    // Import, then cardio in the same half-month from the cardio sheet, then Settings' Undo.
+    {
+      const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00' });
+      const ev = (f, a) => D.page.evaluate(f, a), wait = ms => D.page.waitForTimeout(ms);
+      await ev(() => { const L = window.__ironlog, S = L.state; S.settings.onboarded = true; S.settings.unit = 'kg';
+        const ses = (i, d) => ({ id: 'own' + i, date: d, dayIdx: 0, dayName: 'A', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [0, 1, 2].map(() => ({ w: 100, r: 8, rir: 2, warm: false, drop: false })) }] });
+        S.sessions = [ses(1, '2026-10-06'), ses(2, '2026-10-13'), ses(3, '2026-10-20')]; L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.undoForget(); });
+      await wait(300);
+      await ev(t => window.__ironlog.impStart({ text: t }), 'Nov 3\nSquat 120kg x 5, 120kg x 5'); await wait(300);
+      await ev(() => window.__ironlog.ACT.impGo()); await wait(300);
+      await ev(() => { const L = window.__ironlog; L.ACT.mClose && L.ACT.mClose(); L.ACT.cardioNew(); }); await wait(200);
+      await D.page.fill('#cMin', '30'); await D.page.click('#modal [data-act="cardioSave"]'); await wait(300);
+      await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); L.ACT.undo(); }); await wait(300);
+      const r = await ev(() => { const L = window.__ironlog; const saved = JSON.parse(localStorage.getItem(L.KEY));
+        return { sessions: L.state.sessions.map(s => s.date), cardio: L.state.cardio.map(c => c.date + ' ' + c.min), saved: (saved.cardio || []).length }; });
+      ok(r.cardio.length === 1 && r.saved === 1 && !r.sessions.includes('2026-11-03'), '7. R74-1: an import, then 30 min of cardio, then Undo: the import goes and the cardio stays, saved (2.29 before: the cardio deleted too)', r);
+      ok(!D.errors.length, '7. no page errors (import)', D.errors);
+      await D.browser.close();
+    }
+    // The year's first tape entry, then a weigh-in that year, then Undo.
+    {
+      const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00' });
+      const ev = (f, a) => D.page.evaluate(f, a), wait = ms => D.page.waitForTimeout(ms);
+      await ev(() => { const L = window.__ironlog, S = L.state; S.settings.onboarded = true; S.settings.unit = 'kg';
+        S.bodyweights = [{ id: 'old1', date: '2025-12-20', kg: 82, demo: false }]; S.measurements = []; S.settings.hidden = [];
+        L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.undoForget(); L.ui.tab = 'today'; L.render(); });
+      await wait(300);
+      await ev(() => { document.getElementById('ms_waist').value = '84'; window.__ironlog.ACT.addMeas(); }); await wait(200);
+      await ev(() => { document.getElementById('bwVal').value = '81'; window.__ironlog.ACT.addBW({ dataset: {} }); }); await wait(200);
+      await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); L.ACT.undo(); }); await wait(300);
+      const r = await ev(() => { const L = window.__ironlog; const saved = JSON.parse(localStorage.getItem(L.KEY));
+        return { bw: L.state.bodyweights.map(b => b.date + ' ' + b.kg), meas: L.state.measurements.length, saved: saved.bodyweights.map(b => b.date) }; });
+      ok(r.bw.includes('2026-11-05 81') && r.saved.includes('2026-11-05') && r.meas === 0, '7. R74-1: the year\'s first tape entry, then a weigh-in, then Undo: the tape entry goes and the weigh-in stays, saved (2.29 before: the weigh-in deleted too)', r);
+      ok(!D.errors.length, '7. no page errors (tape)', D.errors);
+      await D.browser.close();
+    }
+  }
+
+  if (run(8)) {
+    // History's Add an old best on Sep 15: the session screen's PR and the recap's are one.
+    const D = await open(FILE, { touch: true, w: 390, h: 844, clock: T + 'T10:00:00' });
+    const { page } = D; const ev = (f, a) => page.evaluate(f, a); const wait = ms => page.waitForTimeout(ms);
+    await ev(() => { const L = window.__ironlog, S = L.state; S.settings.onboarded = true; S.settings.unit = 'kg';
+      const ses = (i, d, w, rir) => ({ id: 'h' + i, date: d, dayIdx: 0, dayName: 'A', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [0, 1, 2].map(() => ({ w, r: 8, rir, warm: false, drop: false })) }] });
+      S.sessions = [ses(1, '2026-08-25', 100, 0), ses(2, '2026-09-01', 100, 0), ses(3, '2026-09-08', 100, 0), ses(4, '2026-10-06', 85, 3), ses(5, '2026-10-13', 85, 3), ses(6, '2026-10-20', 85, 3), ses(7, '2026-10-27', 85, 3)];
+      L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'history'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
+    await ev(() => window.__ironlog.ACT.oldBestOpen()); await wait(200);
+    await ev(() => { window.__ironlog.ui.modal.date = '2026-09-15'; });
+    const go = await page.$('#modal [data-act="pastGo"][data-day="free"]');
+    if (go) await go.click(); else await ev(() => window.__ironlog.ACT.pastGo({ dataset: { day: 'free' } }));
+    await wait(300);
+    const pick = await page.$('#modal .pick[data-ex="bench"]');
+    if (pick) await pick.click(); else await ev(() => { const el = document.querySelector('#modal [data-ex="bench"]'); if (el) el.click(); });
+    await wait(300);
+    const bi = await ev(() => window.__ironlog.state.draft.ex.findIndex(b => b.exId === 'bench'));
+    await page.fill(`input[data-b="${bi}"][data-s="0"][data-f="w"]`, '100');
+    await page.fill(`input[data-b="${bi}"][data-s="0"][data-f="r"]`, '8');
+    await page.press(`input[data-b="${bi}"][data-s="0"][data-f="r"]`, 'Tab'); await wait(400);
+    const done = await ev(bi => window.__ironlog.state.draft.ex[bi].sets[0].done, bi);
+    if (!done) { await page.click(`[data-act="sDone"][data-b="${bi}"][data-s="0"]`); await wait(300); }
+    const toast = await ev(() => { const t = document.getElementById('toast'); return t && !t.hidden ? t.innerText : ''; });
+    await ev(() => window.__ironlog.ACT.finish()); await wait(300);
+    const okBtn = await page.$('#modal [data-act="mOk"]'); if (okBtn) { await okBtn.click(); await wait(300); }
+    const after = await ev(() => { const L = window.__ironlog; const s = L.state.sessions.find(x => x.date === '2026-09-15'); const m = document.getElementById('modal');
+      return { recap: m && !m.hidden ? m.innerText.replace(/\s+/g, ' ') : '', prs: s ? L.IDX().prs.filter(p => p.sid === s.id && p.big).map(p => p.type) : null }; });
+    const toastPR = /New best estimate|PR/.test(toast), recapPR = /NEW PR/.test(after.recap), listPR = !!(after.prs && after.prs.length);
+    ok(toastPR === recapPR && recapPR === listPR, '8. R74-2: a workout dated Sep 15 says one PR on the session screen, in the recap and in the PR list (2.29 before: a best estimate announced, then "No PRs this time")', { toast, recap: after.recap.slice(0, 200), prs: after.prs });
+    ok(!D.errors.length, '8. no page errors', D.errors);
+    await D.browser.close();
+  }
+
+  if (run(9)) {
+    const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00' });
+    const r = await D.page.evaluate(() => {
+      const L = window.__ironlog, S = L.state; S.settings.onboarded = true; S.settings.unit = 'kg'; S.settings.rirMode = 'cal';
+      const set = (w, r, rir, cal) => ({ w, r, rir, warm: false, drop: false, ...(cal ? { cal } : {}) });
+      const ses = (i, d, sets) => ({ id: 'k' + i, date: d, dayIdx: 0, dayName: 'A', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets }] });
+      S.sessions = [ses(1, '2026-08-20', [set(100, 8, 1), set(100, 8, 1), set(100, 8, 1)]), ses(2, '2026-09-03', [set(100, 8, 1), set(100, 8, 1), set(100, 8, 1)]), ses(3, '2026-09-17', [set(100, 8, 1), set(100, 8, 1), set(100, 8, 1)]),
+        ses(4, '2026-10-06', [set(95, 8, 1), set(95, 12, null, { at: 8, pred: 2 })]), ses(5, '2026-10-13', [set(95, 8, 1), set(95, 12, null, { at: 8, pred: 2 })])];
+      L.state = L.normalize(S); L.invalidate();
+      const ex = L.EX('bench');
+      return { usual: L.rirUsual('bench'), blank: L.rirEst({ w: 105, r: 8, rir: null, done: true }, ex), rated: L.rirEst({ w: 105, r: 8, rir: 1, done: true }, ex),
+        sepUsual: L.rirUsual('bench', '2026-09-20') };
+    });
+    ok(r.usual === 2 && r.blank === 2 && r.rated === 2, '9. R74-3: Corrected RIR on, today: the usual, a blank set and a set rated at the usual all read 2, as on 2.28 (2.29 before: 1, 1, 2)', r);
+    ok(r.sepUsual === 1, '9. NEW-71 kept (2.29\'s own rule, so it fails on 2.28): Sep 20\'s usual reads the correction known then (none), so October\'s checks change no September workout', r);
+    ok(!D.errors.length, '9. no page errors', D.errors);
     await D.browser.close();
   }
 
