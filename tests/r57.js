@@ -258,11 +258,15 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       .replace(/<button [^>]*data-k="today:moving"[^>]*>"Lifts moving"<\/button>/, '')),
     text: shot.text.replace(/\nLifts moving(?=\n)/, '')
   });
+  /* 2.28 shortens History's line on a new install on purpose (393, V 2026-11-05: less text on screen), held by
+     tests/r73.js section 8: the line reads as a placeholder on both pages; everything else is still held to r56.2. */
+  const EMPTY_LINE = /"No sessions yet\.( Start one on Today, or log one you did without the app with Log a past workout\.)?"/;
+  const heldOutR73 = shot => ({ ...shot, tree: shot.tree.map(t => t.replace(EMPTY_LINE, '(no sessions)')), text: shot.text.replace(/\nNo sessions yet\.( Start one on Today, or log one you did without the app with Log a past workout\.)?(?=\n)/, '\n(no sessions)') });
   const ENVS = [null, 'preview'];
   for (const [name, seed] of SEEDS) for (const tab of ['settings', 'history']) for (const env of ENVS) {
     if (env && name !== 'demo data, lb') continue;
     const sd = seed.replace(/L\.makeDemo\(\);/g, PIN + 'L.makeDemo();');
-    const a = heldOutSched(heldOutR69(heldOut(await shot(OLD, sd, tab, env)))), b = heldOutSched(heldOutR70(heldOutR69(heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env)))))));
+    const a = heldOutR73(heldOutSched(heldOutR69(heldOut(await shot(OLD, sd, tab, env))))), b = heldOutR73(heldOutSched(heldOutR70(heldOutR69(heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env))))))));
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     const firstDiff = d && { at: d.at, r56_2: d.before, now: d.now };
     ok(!firstDiff, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same elements, attributes and field values as r56.2`, firstDiff);

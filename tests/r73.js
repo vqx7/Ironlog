@@ -235,6 +235,8 @@ async function started() {
     const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00', realStarter: true });
     const pg = D.page;
     await wait(600);
+    // The standalone build, with an account service, opens on the account page first: past it, as a lifter goes.
+    if (await pg.$('[data-act="obAcctLater"]')) { await pg.click('[data-act="obAcctLater"]'); await wait(500); }
     const r = await pg.evaluate(() => { const f = document.getElementById('obBw'); return { ph: f ? f.getAttribute('placeholder') : 'no field', tags: [...document.querySelectorAll('.ob-opt span')].map(x => x.textContent) }; });
     ok(r.ph === null || r.ph === '', '8. 393: the first page\'s bodyweight field has no sentence in it (2.27: "lb, for pull-ups, dips, and push-ups")', r);
     ok(!r.tags.some(t => /as you go|your exercises/.test(t)), '8. the start options carry no taglines (2.27: "Add exercises as you go", "Your days, your exercises")', r.tags);
