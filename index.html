@@ -6885,6 +6885,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function moveIn(M3, ex, plan, res, nw, why) {
     if (res.w == null || Math.abs(nw - res.w) < EPS) return res;
     const out = swapWIn(M3, ex, res, nw);
+    if (nw > res.w + EPS && res.tgt && res.tgt.kind === "reps" && smallMoveIn(M3, ex, res.w, nw, res.tgt.rs || [])) {
+      return {
+        ...out,
+        // The target alone: the rest of the words were said of the load done, and swapped they would say it was done here.
+        text: `${res.last ? res.last + " " : ""}${loadLabelIn(M3, ex, nw)}${ex.bw ? "" : " " + UIn(M3)}${loadNote(ex)} is ${why} to what you did: aim for ${out.target}.`
+      };
+    }
     if (nw > res.w + EPS && res.tgt && res.tgt.kind === "reps") {
       const lbl = `${loadLabelIn(M3, ex, nw)}${ex.bw ? "" : " " + UIn(M3)}${loadNote(ex)}`;
       return {
@@ -6899,6 +6906,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const say = (t4) => t4.replace(`add ${was} ${UIn(M3)}`, `add ${now} ${UIn(M3)}`).replace(`take ${was} ${UIn(M3)} of help off`, `take ${now} ${UIn(M3)} of help off`);
     out.text = out.last && out.text.startsWith(out.last) ? out.last + say(out.text.slice(out.last.length)) : say(out.text);
     return out;
+  }
+  function smallMoveIn(M3, ex, w2, nw, rs) {
+    const bwK = bwRefLoadIn(M3, ex);
+    if (noE1(ex) || ex.bw && !(bwK > 0) || !rs.length) return false;
+    const r4 = Math.max(...rs);
+    if (!(r4 > 0) || !(w2 + bwK > 0)) return false;
+    const at2 = rtfAt(e1At(w2 + bwK, r4), nw + bwK);
+    return at2 != null && r4 - at2 < BIG_STEP_REPS;
   }
   function daysOffIn(M3, exId, opts) {
     const T2 = opts && opts.before && isDate(opts.before) ? opts.before : M3.today();
@@ -7824,7 +7839,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (at2 != null) {
       const gr = offGrid(M3, ex, plan, at2);
       if (gr)
-        return Math.max(gridStep(M3, gr, at2, 1), gridFloor(M3, gr, at2 + jumpPct(ex, plan) * Math.max(0, loadKg), EPS_SAME)) - at2;
+        return Math.max(
+          gridStep(M3, gr, at2 + gr / 2 - 2 * rackTolIn(M3), 1),
+          gridFloor(M3, gr, at2 + jumpPct(ex, plan) * Math.max(0, loadKg), EPS_SAME)
+        ) - at2;
     }
     const inc = incOfIn(M3, ex, plan, at2);
     if (!(inc > 0)) return inc;

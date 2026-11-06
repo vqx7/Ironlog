@@ -119,7 +119,9 @@ const FILE = process.argv[2] || 'index.html';
       await log([ses('k' + kg, '2026-10-08', exId, rr, [[kg, rr[0] + 2], [kg, rr[0] + 2], [kg, rr[0] + 2]])], { unit: 'lb' });
       snaps.push(await ev(([exId, rr]) => { const L = window.__ironlog; const p = { ...L.planFor(exId), repMin: rr[0], repMax: rr[1] }; const n = L.suggest(exId, p, {}), l = L.suggest(exId, p, { light: true }); const LB = 0.45359237; return { exId, lb: Math.round(n.w / LB * 100) / 100, kind: n.tgt && n.tgt.kind, light: Math.round(l.w / LB * 100) / 100 }; }, [exId, rr]));
     }
-    ok(JSON.stringify(snaps.map(x => [x.lb, x.kind])) === '[[5,"load"],[10,"load"],[45,"load"]]' && snaps[2].light === 45, 'logged in kg, read in lb: 2 kg dumbbells go to 5 lb and 4 kg to 10 lb, the nearest, each for the bottom of the range; the empty 20 kg bar goes to the 45 lb bar, a Lighter day too, never under it (r53: the same reps at 5, 10 and 45 lb, and 40 lb on a Lighter day)', snaps);
+    // The bar's kind changed on purpose in 2.29 (NEW-69, tests/r74.js section 2): 45 lb is the 20 kg bar 2% heavier,
+    // under 1.5 reps by the rep formula, so the reps to beat stand there; until 2.29 they went back to the bottom.
+    ok(JSON.stringify(snaps.map(x => [x.lb, x.kind])) === '[[5,"load"],[10,"load"],[45,"reps"]]' && snaps[2].light === 45, 'logged in kg, read in lb: 2 kg dumbbells go to 5 lb and 4 kg to 10 lb, the nearest, each for the bottom of the range (13% heavier); the empty 20 kg bar goes to the 45 lb bar, the reps to beat kept (2% heavier, NEW-69), a Lighter day too, never under it (r53: the same reps at 5, 10 and 45 lb, and 40 lb on a Lighter day)', snaps);
     await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); });
   }
 
