@@ -43,6 +43,10 @@
 //   9  R74-3 (the review): with Corrected RIR on, today's usual reads every rating with today's correction, as 2.28
 //      did (2.29 before this fix: usual 1, a blank set 1, a set rated 1 read at 2; 2.28: 2, 2, 2); a past date's
 //      usual reads the correction known on that date, so a later check still changes no old workout (2.29's own rule, kept).
+//   10 R75-1 (the second independent review): a workout dated in the past with ratings or an RIR check of its own
+//      says one PR on the session screen, its row, the recap and the PR list (r75 before this fix: a best announced
+//      then not counted, or counted and never announced), since a set is read against ratings and checks from
+//      before its own day, which an open workout and a saved one share.
 // R74_ONLY=1,2 runs some sections.
 const { open, tab } = require('./h');
 const fails = [];
@@ -51,6 +55,147 @@ const FILE = process.argv[2] || 'index.html';
 const ONLY = process.env.R74_ONLY ? process.env.R74_ONLY.split(',') : null;
 const run = n => !ONLY || ONLY.includes(String(n));
 const T = '2026-11-05';
+
+// Section 10's helpers, from the second independent review of 2.29 (its scratch lib.js): a log seeded, a workout
+// logged through the session screen (sets set as typed, each ticked with its own button), Finish and the recap.
+// The log: settings merged in, sessions as given (each {id, date, exId, sets:[[w, r, rir, cal?], ...]} or ex: [...]).
+async function seed(D, { settings = {}, sessions = [], bodyweights = [], cardio = [] } = {}) {
+  await D.ev(
+    ({ settings, sessions, bodyweights, cardio }) => {
+      const L = window.__ironlog, S = L.state;
+      S.settings.onboarded = true;
+      S.settings.unit = 'kg';
+      Object.assign(S.settings, settings);
+      const mk = ([w, r, rir, cal, warm]) => ({ w, r, rir: rir == null ? null : rir, warm: !!warm, drop: false, ...(cal ? { cal } : {}) });
+      S.sessions = sessions.map(s => ({
+        id: s.id, date: s.date, dayIdx: 0, dayName: s.dayName || 'A', notes: '', ...(s.free ? { free: true } : {}),
+        ex: (s.ex || [{ exId: s.exId, sets: s.sets }]).map(b => ({ exId: b.exId, rr: b.rr || [6, 10], sets: b.sets.map(mk) }))
+      }));
+      S.bodyweights = bodyweights;
+      S.cardio = cardio;
+      L.state = L.normalize(S);
+      L.invalidate();
+      L.saveNow();
+      L.undoForget && L.undoForget();
+      localStorage.setItem('ironlog.v1.tipWake', '1');
+    },
+    { settings, sessions, bodyweights, cardio }
+  );
+  await D.wait(150);
+}
+
+// Clears a confirm or question sheet in the way (its primary button), up to n times; returns their titles.
+async function clearAsks(D, n = 4) {
+  const seen = [];
+  for (let i = 0; i < n; i++) {
+    const k = await D.ev(() => { const L = window.__ironlog; return L.ui.modal ? L.ui.modal.kind : null; });
+    if (!k || k === 'recap') break;
+    const t = await D.ev(() => { const m = document.getElementById('modal'); return m ? m.innerText.replace(/\s+/g, ' ').slice(0, 140) : ''; });
+    seen.push(k + ': ' + t);
+    const ok = await D.page.$('#modal [data-act="mOk"]');
+    if (ok) await ok.click(); else await D.ev(() => window.__ironlog.ACT.mClose && window.__ironlog.ACT.mClose());
+    await D.wait(250);
+  }
+  return seen;
+}
+
+// A past workout from History's Log a past workout (or Add an old best with old: true), Freestyle, one lift added
+// with the picker. Returns the block index.
+async function startPast(D, date, exId, { old = false } = {}) {
+  await D.ev(({ date, old }) => {
+    const L = window.__ironlog; L.ui.tab = 'history'; L.render();
+    if (old) { L.ACT.oldBestOpen(); L.ui.modal.date = date; } else L.ACT.pastOpen({ dataset: { date } });
+    L.render();
+  }, { date, old });
+  await D.wait(200);
+  const go = await D.page.$('#modal [data-act="pastGo"][data-day="free"]');
+  if (go) await go.click(); else await D.ev(() => window.__ironlog.ACT.pastGo({ dataset: { day: 'free' } }));
+  await D.wait(250);
+  await addLift(D, exId);
+  return D.ev(exId => window.__ironlog.state.draft.ex.findIndex(b => b.exId === exId), exId);
+}
+
+// Adds a lift from the open picker (or opens the picker first), then closes it.
+async function addLift(D, exId) {
+  let pick = await D.page.$(`#modal .pick[data-ex="${exId}"]`);
+  if (!pick) {
+    await D.ev(() => { const L = window.__ironlog; if (L.ui.modal && L.ui.modal.kind === 'picker') { L.ui.modal.q = ''; L.render(); } });
+    pick = await D.page.$(`#modal [data-ex="${exId}"]`);
+  }
+  if (pick) await pick.click();
+  else throw new Error('no picker row for ' + exId);
+  await D.wait(250);
+  await D.ev(() => { const L = window.__ironlog; if (L.ui.modal && L.ui.modal.kind === 'picker') { L.ACT.mClose ? L.ACT.mClose() : null; } });
+  await D.wait(150);
+}
+
+// Today's workout, Freestyle, with one lift.
+async function startTodayUnused(D, exId) {
+  await D.ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+  await D.wait(150);
+  const r = await D.ev(() => { const L = window.__ironlog; if (L.ACT.startFree) { L.ACT.startFree({ dataset: {} }); return 'free'; } return 'none'; });
+  await D.wait(250);
+  await D.ev(() => { const L = window.__ironlog; if (!(L.ui.modal && L.ui.modal.kind === 'picker')) L.openModal({ kind: 'picker', mode: 'addBlock', title: 'Add exercise to session', q: '', m: '' }); L.render(); });
+  await D.wait(200);
+  await addLift(D, exId);
+  return D.ev(exId => window.__ironlog.state.draft.ex.findIndex(b => b.exId === exId), exId);
+}
+
+// The block's sets replaced by those given ([w, r, rir]), none ticked, as typed into their fields.
+async function setRows(D, bi, rows) {
+  await D.ev(({ bi, rows }) => {
+    const L = window.__ironlog; const b = L.state.draft.ex[bi];
+    const t = b.sets.find(x => !x.warm) || b.sets[0];
+    b.sets = rows.map(([w, r, rir], i) => ({ ...JSON.parse(JSON.stringify(t)), rid: 'q' + i + Math.random().toString(36).slice(2, 6), w, r, rir: rir == null ? null : rir, warm: false, drop: false, done: false }));
+    L.saveNow(); L.render();
+  }, { bi, rows });
+  await D.wait(150);
+}
+
+// Ticks each set with its button in order; after each, the toast shown and the rows marked PR.
+async function tickAll(D, bi) {
+  const n = await D.ev(bi => window.__ironlog.state.draft.ex[bi].sets.length, bi);
+  const out = [];
+  for (let si = 0; si < n; si++) {
+    await D.ev(() => { const t = document.getElementById('toast'); if (t) { t.hidden = true; t.innerText = ''; } });
+    // A folded block or a hidden button: open the block first.
+    let btn = await D.page.$(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
+    if (!btn) { await D.ev(bi => { const o = document.querySelector(`[data-act="bOpen"][data-b="${bi}"]`); if (o) o.click(); }, bi); await D.wait(150); btn = await D.page.$(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`); }
+    await btn.click();
+    await D.wait(250);
+    const asked = await clearAsks(D, 2);
+    const r = await D.ev(bi => {
+      const L = window.__ironlog; const t = document.getElementById('toast');
+      const d = L.state.draft; const b = d.ex[bi];
+      return {
+        toast: t && !t.hidden ? t.innerText.replace(/\s+/g, ' ') : '',
+        rows: [...document.querySelectorAll(`.sg [data-act="sDone"][data-b="${bi}"]`)].map(x => x.closest('.sg').getAttribute('data-pr') || '-').join(','),
+        done: b.sets.map(x => (x.done ? 1 : 0)).join(''),
+        progress: (L.blockProgress(b) || {}).text || ''
+      };
+    }, bi);
+    out.push({ si, ...r, asked });
+  }
+  return out;
+}
+
+// Finish, its questions answered with their primary button, then the recap and the saved session's PRs.
+async function finish(D, date) {
+  await D.ev(() => window.__ironlog.ACT.finish());
+  await D.wait(300);
+  const asked = await clearAsks(D, 5);
+  return D.ev(date => {
+    const L = window.__ironlog; const m = document.getElementById('modal');
+    const s = [...L.state.sessions].reverse().find(x => x.date === date);
+    const I = L.IDX();
+    return {
+      recap: m && !m.hidden ? m.innerText.replace(/\s+/g, ' ').slice(0, 400) : '',
+      saved: !!s,
+      prs: s ? I.prs.filter(p => p.sid === s.id).map(p => `${p.type}${p.big ? ' counted' : ''}${p.value != null ? ' ' + Math.round(p.value * 10) / 10 : ''}`) : null
+    };
+  }, date).then(r => ({ ...r, asked }));
+}
+
 
 (async () => {
   if (run(1)) {
@@ -353,6 +498,29 @@ const T = '2026-11-05';
     ok(r.sepUsual === 1, '9. NEW-71 kept (2.29\'s own rule, so it fails on 2.28): Sep 20\'s usual reads the correction known then (none), so October\'s checks change no September workout', r);
     ok(!D.errors.length, '9. no page errors', D.errors);
     await D.browser.close();
+  }
+
+  if (run(10)) {
+    const cases = [
+      ['its own two ratings of 0', 'on', [{ id: 'h1', date: '2026-09-01', exId: 'bench', sets: [[100, 8, 2]] }, { id: 'h2', date: '2026-10-06', exId: 'bench', sets: [[85, 8, 3], [85, 8, 3], [85, 8, 3]] }], '2026-09-15', [[100, 8, 0], [100, 8, 0], [100, 8, null]], false],
+      ['its own two ratings of 4', 'on', [{ id: 'h1', date: '2026-09-01', exId: 'bench', sets: [[100, 8, 2]] }, { id: 'h2', date: '2026-10-06', exId: 'bench', sets: [[85, 8, 0], [85, 8, 0], [85, 8, 0]] }], '2026-09-15', [[90, 8, 4], [90, 8, 4], [100, 8, null]], false],
+      ['its own RIR check, Corrected RIR on', 'cal', [{ id: 'h1', date: '2026-06-01', exId: 'bench', sets: [[100, 8, 2]] }, { id: 'h2', date: '2026-06-03', exId: 'bench', sets: [[80, 12, null, { at: 8, pred: 2 }]] }], '2026-06-10', [[100, 8, 2], [80, 12, null]], true]
+    ];
+    for (const [name, mode, sessions, date, rows, check] of cases) {
+      const D = await open(FILE, { touch: true, w: 390, h: 844, clock: T + 'T10:00:00' });
+      D.ev = (f, a) => D.page.evaluate(f, a); D.wait = ms => D.page.waitForTimeout(ms);
+      await seed(D, { settings: { rirMode: mode }, sessions });
+      const bi = await startPast(D, date, 'bench');
+      await setRows(D, bi, rows);
+      if (check) await D.ev(bi => { const X = window.__ironlog; X.state.draft.ex[bi].sets[1].cal = { at: 8, pred: 2 }; X.saveNow(); X.render(); }, bi);
+      const ticks = await tickAll(D, bi);
+      const fin = await finish(D, date);
+      const toastPR = ticks.some(t => /New best estimate|PR:/.test(t.toast)), rowPR = /Best|PR/.test(ticks[ticks.length - 1].rows);
+      const recapPR = /No PRs this time/.test(fin.recap) ? false : /NEW PR/.test(fin.recap), listPR = !!(fin.prs && fin.prs.some(p => /counted/.test(p)));
+      ok(toastPR === rowPR && rowPR === recapPR && recapPR === listPR && fin.saved, `10. R75-1: a past workout with ${name}: the toast, its row, the recap and the PR list say one thing (r75 before: they disagreed)`, { toastPR, rowPR, recapPR, listPR, toasts: ticks.map(t => t.toast).filter(Boolean), recap: fin.recap.slice(0, 160), prs: fin.prs });
+      ok(!D.errors.length, `10. no page errors (${name})`, D.errors);
+      await D.browser.close();
+    }
   }
 
   console.log(fails.length ? `\n${fails.length} FAIL` : '\nALL PASS');

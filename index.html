@@ -5748,13 +5748,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (s3.rir == null || s3.rir === "") return null;
     const v3 = +s3.rir;
     if (!isFinite(v3)) return null;
-    if (m3 === "cal" && !s3.cal && v3 <= E1_MAX_RIR) {
-      const c4 = calStatsIn(M3, date);
-      const k2 = ex ? isCompound(ex) ? "c" : "i" : null;
-      const src = k2 && c4.cls[k2].recent >= CAL_MIN ? c4.cls[k2] : c4;
-      if (src.recent >= CAL_MIN && src.bias) return Math.min(EFFORT_TOP, Math.max(0, v3 + src.bias));
-    }
+    if (m3 === "cal" && !s3.cal) return calReadIn(M3, v3, ex ? isCompound(ex) ? "c" : "i" : null, date || M3.today());
     return v3;
+  }
+  function calReadIn(M3, v3, k2, day) {
+    if (v3 > E1_MAX_RIR) return v3;
+    const c4 = calStatsIn(M3, day);
+    const src = k2 && c4.cls[k2].recent >= CAL_MIN ? c4.cls[k2] : c4;
+    return src.recent >= CAL_MIN && src.bias ? Math.min(EFFORT_TOP, Math.max(0, v3 + src.bias)) : v3;
   }
   var CAL_WEEKS = 12, CAL_N = 8, CAL_SHRINK = 3, CAL_CAP = 2, CAL_MIN = 2;
   function calSummary(list) {
@@ -5788,7 +5789,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return C2.at[date] || (C2.at[date] = calOf(C2.pts, addDays(date, -WEEK_DAYS * CAL_WEEKS), date));
   }
   function calOf(pts, cut, to) {
-    const upTo = to == null ? pts : pts.filter((p3) => p3.date <= to);
+    const upTo = to == null ? pts : pts.filter((p3) => p3.date < to);
     const rec2 = upTo.filter((p3) => p3.date >= cut);
     return {
       ...calSummary(rec2),
@@ -5806,9 +5807,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         for (const b2 of ss.ex) {
           const ex = EXIn(M3, b2.exId);
           if (ex.timed) continue;
+          const k2 = isCompound(ex) ? "c" : "i";
           for (const x2 of b2.sets) {
-            if (!isWork(x2) || x2.drop || x2.cal) continue;
-            if (rirEffIn(M3, x2, ex, ss.date) != null) (rated[b2.exId] || (rated[b2.exId] = [])).push([ss.date, x2, ex]);
+            if (!isWork(x2) || x2.drop || x2.cal || x2.rir == null || String(x2.rir) === "") continue;
+            const v4 = +x2.rir;
+            if (isFinite(v4)) (rated[b2.exId] || (rated[b2.exId] = [])).push([ss.date, v4, k2]);
           }
         }
       }
@@ -5821,9 +5824,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const had = C2.at[key];
     if (had !== void 0) return had;
     const cut = addDays(D2, -WEEK_DAYS * CAL_WEEKS);
-    const all = C2.rated[exId] || [];
-    const read = (e5) => rirEffIn(M3, e5[1], e5[2], D2) ?? 0;
-    const qs = all.filter(([d3]) => d3 >= cut && d3 <= D2).map(read);
+    const all = (C2.rated[exId] || []).filter(([d3]) => d3 !== D2);
+    const cal = M3.s.settings.rirMode === "cal";
+    const read = (e5) => cal ? calReadIn(M3, e5[1], e5[2], D2) : e5[1];
+    const qs = all.filter(([d3]) => d3 >= cut && d3 < D2).map(read);
     const first = all.length >= RIR_USUAL_MIN && D2 < all[RIR_USUAL_MIN - 1][0] ? all.slice(0, RIR_USUAL_MIN).map(read) : null;
     const pick2 = first || (qs.length >= RIR_USUAL_MIN ? qs : null);
     const v3 = pick2 ? median(pick2) : null;
