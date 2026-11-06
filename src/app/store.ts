@@ -151,15 +151,31 @@ interface CloudSnap {
   exists: boolean;
   data(): unknown;
 }
-/** One document in the account, by path: read whole, written whole, and (where the backend offers it) leased. */
+/** What a write expects a document to hold, read just before it (2.28, the 2.27 review's 227-F1): nothing (the
+    document is new), its write mark (`w`, which every write since 2.28 carries), or, for a document a build before
+    2.28 wrote, which carries no mark, its write time (`at`, null when it has none). */
+export type CloudSeen = null | { w: string } | { at: number | null };
+/** One document in the account, by path: read whole, and written whole only while it still holds what was read. */
 export interface CloudRef {
   get(): Promise<CloudSnap>;
-  set(doc: Record<string, unknown>): Promise<unknown>;
-  acquire?(lease: { holder: string; ttlMs: number }): Promise<unknown>;
+  /** Writes the document if it still holds what `seen` says, in one step on the server: true when written, false
+      when another device wrote it first (the caller reads it again, merges and tries again). */
+  setIf(doc: Record<string, unknown>, seen: CloudSeen): Promise<boolean>;
 }
-/** The account's document store, as scripts/cloud-supabase.js provides it (and the suites' stand-in): documents by path, and a listing of a collection's documents. */
+/** The account's document store the sync uses: documents by path, and a listing of a collection's documents. */
 export interface CloudDb {
   doc(path: string): CloudRef;
+  collection(path: string): { get(): Promise<{ docs: (CloudSnap & { id: string })[] }> };
+}
+/** A document store as a backend hands it over: scripts/cloud-supabase.js writes conditionally (`setIf`); the
+    suites' stand-in, Claude's db (`cloudProvider`, sync.ts), writes plainly (`set`), and the sync gives it a
+    read-and-compare `setIf` of its own. */
+export interface CloudDbIn {
+  doc(path: string): {
+    get(): Promise<CloudSnap>;
+    set?(doc: Record<string, unknown>): Promise<unknown>;
+    setIf?(doc: Record<string, unknown>, seen: CloudSeen): Promise<boolean>;
+  };
   collection(path: string): { get(): Promise<{ docs: (CloudSnap & { id: string })[] }> };
 }
 

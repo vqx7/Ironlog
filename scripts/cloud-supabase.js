@@ -8,8 +8,8 @@
    window.ironlogAuth   sign up, sign in, sign out, password reset, and what an
                         emailed link just did (landing)
    window.ironlogCloud  the database handle cloud sync uses: {db, userId},
-                        where db offers doc(path).get()/.set(obj) and
-                        collection(path).get(), the same calls as Claude's db.
+                        where db offers doc(path).get()/.setIf(obj, seen) and
+                        collection(path).get().
 
    Data lives in one table, public.docs (user_id, path, data), with row level
    security so a signed-in person reads and writes only their own rows. The
@@ -363,10 +363,30 @@
           if (error) throw friendly(error);
           return { id: last(path), exists: !!data, data: () => (data ? data.data : undefined) };
         },
-        async set(obj) {
+        /* Writes the document only while the row still holds what the phone read (2.28, the 2.27 review's 227-F1),
+           in one request the database applies as one step: a new document is inserted, and refused when another
+           device made it first (the primary key); an existing one is updated only where its write mark (data's w),
+           or for a row a build before 2.28 wrote, its time (data's at) with no mark, is the one read. True when
+           written; false when another device wrote first, and the app reads it again, merges and tries again.
+           Before 2.28 every write was an upsert, and of two devices writing one month at once, the later write
+           replaced the other's, its sets gone from every phone. */
+        async setIf(obj, seen) {
           const user_id = await uid();
-          const { error } = await authed(() => sb.from(DOCS).upsert({ user_id, path, data: obj, updated_at: new Date().toISOString() }, { onConflict: 'user_id,path' }));
+          const updated_at = new Date().toISOString();
+          if (!seen) {
+            const { data, error } = await authed(() => sb.from(DOCS).insert({ user_id, path, data: obj, updated_at }).select('path'));
+            if (error && String(error.code) === '23505') return false;
+            if (error) throw friendly(error);
+            return Array.isArray(data) && data.length === 1;
+          }
+          const { data, error } = await authed(() => {
+            const q = sb.from(DOCS).update({ data: obj, updated_at }).eq('path', path);
+            const held = typeof seen.w === 'string' ? q.eq('data->>w', seen.w)
+              : (seen.at === null ? q.is('data->>at', null) : q.eq('data->>at', String(seen.at))).is('data->>w', null);
+            return held.select('path');
+          });
           if (error) throw friendly(error);
+          return Array.isArray(data) && data.length === 1;
         }
       };
     },

@@ -265,5 +265,30 @@ const V = '11111111-1111-1111-1111-111111111111', F = '22222222-2222-2222-2222-2
     ok(quoted.length >= 2 && quoted.every(x => printed.includes(x)), 'each rule OWNER.md E2 quotes is one Postgres printed for these tables', { quoted, printed });
   }
 }
+{ // 2.28 (the 2.27 review's 227-F1): the conditional write scripts/cloud-supabase.js makes, as the statements the
+  // Data API runs for it (an insert, and an update filtered on the row's JSON fields), on the tables as SUPABASE.md
+  // makes them, signed in as the account: no new SQL is needed, and the filters read the JSON as the app writes it.
+  const db = new PGlite(); await db.exec(stub);
+  await db.exec(pick('create table public.docs ('));
+  await db.exec(pick('create table public.docs_preview'));
+  for (const t of ['docs', 'docs_preview']) {
+    await as(db, V);
+    const upd = async (data, where, args) => (await db.query(`update public.${t} set data = $1::jsonb, updated_at = now() where path = 'p' and ${where} returning path`, [JSON.stringify(data), ...args])).rows.length;
+    const at0 = 1730812345678;
+    // A row as 2.27 writes it: no mark.
+    await db.query(`insert into public.${t}(path, data) values ('p', $1::jsonb)`, [JSON.stringify({ v: 1, at: at0, et: at0, json: '{}' })]);
+    const dup = await tryq(db, `insert into public.${t}(path, data) values ('p', '{"v":1}'::jsonb)`);
+    ok(/duplicate key/.test(dup), `${t}: a second device making the same new document is refused by the primary key (the app reads that as written first)`);
+    ok(await upd({ v: 1, at: at0 + 9, w: 'devA.x1', json: '{"a":1}' }, `data->>'at' = $2 and data->>'w' is null`, [String(at0 + 1)]) === 0, `${t}: a 2.27 row is not updated when its time is not the one read`);
+    ok(await upd({ v: 1, at: at0 + 9, w: 'devA.x1', json: '{"a":1}' }, `data->>'at' = $2 and data->>'w' is null`, [String(at0)]) === 1, `${t}: a 2.27 row is updated when its time is the one read (a 13-digit time read back as the same text)`);
+    ok(await upd({ v: 1, at: at0 + 20, w: 'devB.y1', json: '{"b":1}' }, `data->>'at' = $2 and data->>'w' is null`, [String(at0)]) === 0, `${t}: once marked, the old time no longer matches: a write that read the 2.27 row finds it changed`);
+    ok(await upd({ v: 1, at: at0 + 20, w: 'devB.y1', json: '{"b":1}' }, `data->>'w' = $2`, ['devB.zz']) === 0, `${t}: a write that read another mark finds it changed`);
+    ok(await upd({ v: 1, at: at0 + 20, w: 'devB.y1', json: '{"b":1}' }, `data->>'w' = $2`, ['devA.x1']) === 1, `${t}: a write that read this mark is made`);
+    await as(db, F);
+    ok(await upd({ v: 1, w: 'devF.q', json: '{}' }, `data->>'w' = $2`, ['devB.y1']) === 0, `${t}: another account's conditional write reaches no row (row level security)`);
+    await as(db, V);
+    ok((await db.query(`select data->>'w' w from public.${t} where path = 'p'`)).rows[0].w === 'devB.y1', `${t}: the row holds the last write made`);
+  }
+}
 console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.log('FAIL crash', e); process.exit(1); });

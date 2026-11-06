@@ -11546,9 +11546,6 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     save: 400,
     track: 800,
     flush: 1200,
-    leaseBusy: 2500,
-    lease: 3e4,
-    leaseWait: 1e4,
     net: NET_MS,
     errToast: 8e3,
     pullAfter: 2e4
@@ -11560,6 +11557,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
   var offline = () => navigator.onLine === false;
   var DOC_MAX = 25e4;
+  var WRITE_TRIES = 3;
   var KEEP_TRIES = 10;
   var saveT = null;
   function writeLocal(j3) {
@@ -12100,22 +12098,13 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       );
     }
   }
-  async function takeLease() {
-    try {
-      const r4 = ref("lock");
-      if (typeof r4.acquire !== "function") return true;
-      const res = await withTimeout(
-        r4.acquire({ holder: cloud.devId, ttlMs: SYNC_MS.lease }),
-        SYNC_MS.leaseWait,
-        "sync-lease"
-      );
-      const R2 = rec(res);
-      return !(R2 && R2.acquired === false);
-    } catch (e5) {
-      log("sync-lease", e5);
-      return true;
-    }
+  function seenOf(d3) {
+    if (!d3) return null;
+    if (typeof d3.w === "string") return { w: d3.w };
+    const at2 = Number(d3.at);
+    return { at: d3.at === void 0 || d3.at === null || !Number.isFinite(at2) ? null : at2 };
   }
+  var writeMark = () => `${cloud.devId || "dev"}.${uid()}`;
   function hasUnsent() {
     if (!cloud.on) return false;
     if (cloud.status !== "synced") return true;
@@ -12177,64 +12166,83 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }
     setCloud("saving");
     try {
-      if (!await takeLease()) {
-        clearTimer(cloud.t);
-        cloud.t = setTimeout(() => cq(cloudFlush), SYNC_MS.leaseBusy);
-        return;
-      }
       let adopted = false, moreBody = false, again = false;
       const stat = { conflicts: 0 };
       let dn = null;
       const tooBig = [];
+      const raced = [];
       const legB = legacyBodyBase();
       for (const x2 of todo) {
-        const m3 = cloud.meta[x2.id];
-        const snap = await withTimeout(ref(x2.id).get(), SYNC_MS.net, "sync-read");
-        let json = JSON.stringify(chunksOf(state)[x2.id] || emptyChunk(x2.id));
-        const b2 = snap && snap.exists ? rec(snap.data()) : null;
-        if (b2 && typeof b2.json === "string" && (!m3 || hashStr(b2.json) !== m3.h)) {
-          let rd = null;
-          try {
-            rd = parseJson(b2.json);
-          } catch (e5) {
-            log("sync-parse", e5);
-          }
-          if (rd) {
-            const ret = Number(b2.et) || Number(b2.at);
-            const remoteWins = ret > (cloud.editAt[x2.id] || 0);
-            const merged = mergeChunk(x2.id, baseFor(x2.id, m3, legB), parseJson(json), rd, remoteWins, stat);
-            cloud.editAt[x2.id] = Math.max(cloud.editAt[x2.id] || 0, ret);
-            if (x2.id === "draft") dn = { prev: state.draft, sessions0: state.sessions, kept: null, lost: null };
-            const agreed = x2.id === "draft" && m3 && m3.b ? m3.b.draft : null;
-            const mergedDraft = x2.id === "draft" ? draftOf(merged) : null;
-            if (dn && dn.prev && (!mergedDraft || mergedDraft.id !== dn.prev.id)) await sessionFromCloud(dn.prev, legB);
-            applyChunk(x2.id, merged);
-            adopted = true;
-            writeTakenIn();
-            if (x2.id === "draft" && dn) {
-              const prev = dn.prev, remoteDraft = draftOf(rec(rd));
-              dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins);
-              dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins);
-              if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
+        let done = false;
+        for (let tries = 0; tries < WRITE_TRIES && !done; tries++) {
+          const m3 = cloud.meta[x2.id];
+          const snap = await withTimeout(ref(x2.id).get(), SYNC_MS.net, "sync-read");
+          let json = JSON.stringify(chunksOf(state)[x2.id] || emptyChunk(x2.id));
+          const b2 = snap && snap.exists ? rec(snap.data()) : null;
+          const seen = seenOf(b2);
+          let took = null;
+          if (b2 && typeof b2.json === "string" && (!m3 || hashStr(b2.json) !== m3.h)) {
+            let rd = null;
+            try {
+              rd = parseJson(b2.json);
+            } catch (e5) {
+              log("sync-parse", e5);
             }
-            if (x2.id === "core" && absorbLegacy(legacyBody(rec(rd)))) moreBody = true;
-            json = JSON.stringify(chunksOf(state)[x2.id] || emptyChunk(x2.id));
-            if (hashStr(json) === hashStr(b2.json)) {
-              cloud.meta[x2.id] = { h: hashStr(b2.json), at: Number(b2.at), b: baseOf(x2.id, rd) };
+            if (rd) {
+              const ret = Number(b2.et) || Number(b2.at);
+              const remoteWins = ret > (cloud.editAt[x2.id] || 0);
+              const merged = mergeChunk(x2.id, baseFor(x2.id, m3, legB), parseJson(json), rd, remoteWins, stat);
+              cloud.editAt[x2.id] = Math.max(cloud.editAt[x2.id] || 0, ret);
+              const prev = x2.id === "draft" ? state.draft : null;
+              if (x2.id === "draft" && !dn) dn = { prev, sessions0: state.sessions, kept: null, lost: null };
+              const agreed = x2.id === "draft" && m3 && m3.b ? m3.b.draft : null;
+              const mergedDraft = x2.id === "draft" ? draftOf(merged) : null;
+              if (prev && (!mergedDraft || mergedDraft.id !== prev.id)) await sessionFromCloud(prev, legB);
+              applyChunk(x2.id, merged);
+              adopted = true;
+              writeTakenIn();
+              took = { h: hashStr(b2.json), at: Number(b2.at), b: baseOf(x2.id, rd) };
+              if (x2.id === "draft" && dn) {
+                const remoteDraft = draftOf(rec(rd));
+                dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
+                dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
+                if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
+              }
+              if (x2.id === "core" && absorbLegacy(legacyBody(rec(rd)))) moreBody = true;
+              json = JSON.stringify(chunksOf(state)[x2.id] || emptyChunk(x2.id));
+              if (hashStr(json) === hashStr(b2.json)) {
+                cloud.meta[x2.id] = took;
+                saveMeta();
+                done = true;
+                continue;
+              }
+            }
+          }
+          if (json.length > DOC_MAX) {
+            tooBig.push(x2.id);
+            log("sync-flush", { code: "too_big", id: x2.id, len: json.length });
+            done = true;
+            continue;
+          }
+          const at2 = Date.now();
+          const wrote = await withTimeout(
+            ref(x2.id).setIf({ v: 1, at: at2, et: cloud.editAt[x2.id] || at2, w: writeMark(), json }, seen),
+            SYNC_MS.net,
+            "sync-write"
+          );
+          if (wrote) {
+            cloud.meta[x2.id] = { h: hashStr(json), at: at2, b: baseOf(x2.id, parseJson(json)) };
+            saveMeta();
+            done = true;
+          } else {
+            log("sync-race", { id: x2.id, tries: tries + 1 });
+            if (took) {
+              cloud.meta[x2.id] = took;
               saveMeta();
-              continue;
             }
           }
         }
-        if (json.length > DOC_MAX) {
-          tooBig.push(x2.id);
-          log("sync-flush", { code: "too_big", id: x2.id, len: json.length });
-          continue;
-        }
-        const at2 = Date.now();
-        await withTimeout(ref(x2.id).set({ v: 1, at: at2, et: cloud.editAt[x2.id] || at2, json }), SYNC_MS.net, "sync-write");
-        cloud.meta[x2.id] = { h: hashStr(json), at: at2, b: baseOf(x2.id, parseJson(json)) };
-        saveMeta();
+        if (!done) raced.push(x2.id);
       }
       if (adopted) {
         invalidate();
@@ -12247,13 +12255,18 @@ ${actions ? b`<div class="ph-a">${actions}</div>
           lostNote(dn.lost);
         }
       }
+      if (raced.length) {
+        log("sync-flush", { code: "raced", ids: raced });
+        cloudFail({ code: "raced", message: "Another device was saving at the same moment." });
+        return;
+      }
       cloud.retry = 0;
       if (moreBody || again) cloudSoon();
       if (tooBig.length) {
         saveMeta();
         setCloud(
           "offline",
-          tooBig.includes("core") ? "Routines and settings are too large to sync. Export a backup." : tooBig.some((i5) => i5.startsWith("b-")) ? "A year of body data is too large to sync. Export a backup." : "One month of sessions is too large to sync. Export a backup."
+          tooBig.includes("core") ? "Routines and settings are too large to sync. Export a backup." : tooBig.some((i5) => i5.startsWith("b-")) ? "A year of body data is too large to sync. Export a backup." : tooBig.includes("draft") ? "The workout in progress is too large to sync. Export a backup." : "One month of sessions is too large to sync. Export a backup."
         );
         return;
       }
@@ -12429,16 +12442,41 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     await cloudFlush();
   }
   var cloudChecked = false;
+  function stillSeen(d3, seen) {
+    if (!seen) return !d3;
+    if (!d3) return false;
+    if ("w" in seen) return d3.w === seen.w;
+    return d3.w === void 0 && (d3.at === void 0 ? null : Number(d3.at)) === seen.at;
+  }
+  function storeOf(raw) {
+    return {
+      collection: (p3) => raw.collection(p3),
+      doc(path) {
+        const d3 = raw.doc(path);
+        return {
+          get: () => d3.get(),
+          async setIf(doc, seen) {
+            if (typeof d3.setIf === "function") return d3.setIf(doc, seen);
+            if (typeof d3.set !== "function") throw new Error("The cloud store cannot write.");
+            const now = await d3.get();
+            if (!stillSeen(now && now.exists ? rec(now.data()) : null, seen)) return false;
+            await d3.set(doc);
+            return true;
+          }
+        };
+      }
+    };
+  }
   async function cloudProvider() {
     if (window.claude && typeof window.claude.use === "function") {
       const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
       if (!db || !user) return null;
       const id = await user.id();
-      return id ? { db, userId: String(id) } : null;
+      return id ? { db: storeOf(db), userId: String(id) } : null;
     }
     if (typeof window.ironlogCloud === "function") {
       const p3 = await window.ironlogCloud();
-      return p3 && p3.db && p3.userId ? { db: p3.db, userId: String(p3.userId) } : null;
+      return p3 && p3.db && p3.userId ? { db: storeOf(p3.db), userId: String(p3.userId) } : null;
     }
     return null;
   }
