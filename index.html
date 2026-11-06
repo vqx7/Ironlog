@@ -5755,13 +5755,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       M3.c._rirUse = { rated, at: /* @__PURE__ */ Object.create(null) };
     }
     const C2 = M3.c._rirUse;
-    const key = exId + " " + (date || "");
+    const D2 = date || M3.today();
+    const key = exId + " " + D2;
     const had = C2.at[key];
     if (had !== void 0) return had;
-    const cut = addDays(date || M3.today(), -WEEK_DAYS * CAL_WEEKS);
+    const cut = addDays(D2, -WEEK_DAYS * CAL_WEEKS);
     const all = C2.rated[exId] || [];
-    const qs = all.filter(([d3]) => d3 >= cut && (date == null || d3 <= date)).map(([, q]) => q);
-    const first = date != null && qs.length < RIR_USUAL_MIN && all.length >= RIR_USUAL_MIN ? all.slice(0, RIR_USUAL_MIN).map(([, q]) => q) : null;
+    const qs = all.filter(([d3]) => d3 >= cut && d3 <= D2).map(([, q]) => q);
+    const first = all.length >= RIR_USUAL_MIN && D2 < all[RIR_USUAL_MIN - 1][0] ? all.slice(0, RIR_USUAL_MIN).map(([, q]) => q) : null;
     const pick2 = first || (qs.length >= RIR_USUAL_MIN ? qs : null);
     const v3 = pick2 ? median(pick2) : null;
     C2.at[key] = v3;
