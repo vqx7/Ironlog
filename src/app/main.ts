@@ -432,7 +432,6 @@ function start(): void {
     liftRead,
     nextSets,
     bwNoLoad,
-    noBody,
     withTimeout,
     B3_PARTS,
     THREE_URLS,
@@ -789,7 +788,9 @@ function start(): void {
     // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it (r70).
     setShortOf: (id: string, w: number, r: number): string => setShort(EX(id), w, r),
     // Today's Lifts moving, so tests/engine.js compares the page's answer with the engine's in Node (r70).
-    liftsMoving
+    liftsMoving,
+    // Whether a bodyweight lift has no weigh-in to read, so tests/engine.js compares it with Node's (2.29, NEW-72).
+    noBody
   };
   render();
   wakeOn();
