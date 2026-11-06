@@ -58,6 +58,7 @@ import {
   bwAtIn,
   bwLoadIn,
   bwRefIn,
+  noBodyIn,
   bwRefLoadIn,
   calStatsIn,
   dateIndexIn,
@@ -205,6 +206,8 @@ export const allTimeBests = live(allTimeBestsIn);
 export const bwAt = live(bwAtIn);
 export const bwLoad = live(bwLoadIn);
 export const bwRef = live(bwRefIn);
+/** Whether a bodyweight lift has no weigh-in to read (noBodyIn). */
+export const noBody = live(noBodyIn);
 export const bwRefLoad = live(bwRefLoadIn);
 export const calStats = live(calStatsIn);
 export const dateIndex = live(dateIndexIn);

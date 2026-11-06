@@ -373,6 +373,16 @@ function moveIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, nw: num
      beat unchanged, and the lifter fell short): those reps were done lighter,
      so the target is that load for the bottom of the range in every set, as
      after any step up. */
+  /* Unless the move costs under BIG_STEP_REPS by the rep formula (NEW-69, 2.29): a load the unit on screen cannot
+     make, rounded to one it can, is the same load, so the reps to beat stand there. A lb lifter's 185 lb for 8s read
+     in kg was 85 kg for 6+, reps back to the bottom for 1.3% more; a 60 lb pressdown done for 15s, 27.5 kg for 10+. */
+  if (nw > res.w + EPS && res.tgt && res.tgt.kind === 'reps' && smallMoveIn(M, ex, res.w, nw, res.tgt.rs || [])) {
+    return {
+      ...out,
+      // The target alone: the rest of the words were said of the load done, and swapped they would say it was done here.
+      text: `${res.last ? res.last + ' ' : ''}${loadLabelIn(M, ex, nw)}${ex.bw ? '' : ' ' + UIn(M)}${loadNote(ex)} is ${why} to what you did: aim for ${out.target}.`
+    };
+  }
   if (nw > res.w + EPS && res.tgt && res.tgt.kind === 'reps') {
     const lbl = `${loadLabelIn(M, ex, nw)}${ex.bw ? '' : ' ' + UIn(M)}${loadNote(ex)}`;
     return {
@@ -396,6 +406,19 @@ function moveIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, nw: num
   out.text =
     out.last && out.text.startsWith(out.last) ? out.last + say(out.text.slice(out.last.length)) : say(out.text);
   return out;
+}
+
+/* Whether a load moved up from `w` to `nw` costs under BIG_STEP_REPS at the most reps a set did, by the rep formula
+   (fitE's, reps read to failure): what makes it the same load for a target of reps. Never on a lift with no estimate,
+   or a bodyweight lift with no weigh-in, which have no total load to read it against: those keep the bottom of the
+   range, as before 2.29. */
+function smallMoveIn(M: Model, ex: ExerciseLike, w: number, nw: number, rs: readonly number[]): boolean {
+  const bwK = bwRefLoadIn(M, ex);
+  if (noE1(ex) || (ex.bw && !(bwK > 0)) || !rs.length) return false;
+  const r = Math.max(...rs);
+  if (!(r > 0) || !(w + bwK > 0)) return false;
+  const at = rtfAt(e1At(w + bwK, r), nw + bwK);
+  return at != null && r - at < BIG_STEP_REPS;
 }
 
 /* Days since a lift was last done, by its newest session of any kind up to
@@ -1887,9 +1910,16 @@ export function progStepIn(M: Model, ex: ExerciseLike, plan: Plan, loadKg: numbe
   // From a load off a rack read from its spacing (offGrid, r54): the same, its weights the spacing's multiples.
   if (at != null) {
     const gr = offGrid(M, ex, plan, at);
+    /* Half the spacing at least (NEW-70, 2.29): from a load off it (22.5 kg dumbbells read in lb, 49.6), the next
+       weight on it, 50, is a sliver, "add 0.4 lb" with the reps back at the bottom; NEW-6's rule (V, 2026-10-27) is
+       that a sliver of a step is none. From 12 lb on 5 lb dumbbells, 15 is a step (r54). A load on the spacing is not
+       read here (offGrid). */
     if (gr)
       return (
-        Math.max(gridStep(M, gr, at, 1), gridFloor(M, gr, at + jumpPct(ex, plan) * Math.max(0, loadKg), EPS_SAME)) - at
+        Math.max(
+          gridStep(M, gr, at + gr / 2 - 2 * rackTolIn(M), 1),
+          gridFloor(M, gr, at + jumpPct(ex, plan) * Math.max(0, loadKg), EPS_SAME)
+        ) - at
       );
   }
   const inc = incOfIn(M, ex, plan, at);

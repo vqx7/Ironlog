@@ -7,6 +7,7 @@
 
 import type { Bodyweight, Rir, Session } from './types';
 import type {
+  CalPt,
   CalStats,
   CalSummary,
   DateIndex,
@@ -110,14 +111,14 @@ export function bwAtIn(M: Model, date: string): number | null {
    calibration sets measure the error close to failure, and a compound lift
    uses compound calibration sets when there are two or more (isolation
    likewise), else all of them. */
-export function rirEffIn(M: Model, s: Effort, ex?: ExerciseLike | null): number | null {
+export function rirEffIn(M: Model, s: Effort, ex?: ExerciseLike | null, date?: string): number | null {
   const m = M.s.settings.rirMode;
   if (m === 'off') return null;
   if (s.rir == null || s.rir === '') return null;
   const v = +s.rir;
   if (!isFinite(v)) return null;
   if (m === 'cal' && !s.cal && v <= E1_MAX_RIR) {
-    const c = calStatsIn(M);
+    const c = calStatsIn(M, date);
     const k = ex ? (isCompound(ex) ? 'c' : 'i') : null;
     const src = k && c.cls[k].recent >= CAL_MIN ? c.cls[k] : c;
     if (src.recent >= CAL_MIN && src.bias) return Math.min(EFFORT_TOP, Math.max(0, v + src.bias));
@@ -156,28 +157,39 @@ function calSummary(list: readonly { err: number }[]): CalSummary {
   };
 }
 
-/** Every RIR check in the log, and those of compound and isolation lifts apart, built once per change. */
-export function calStatsIn(M: Model): CalStats {
-  if (M.c._cal) return M.c._cal;
-  const pts: { date: string; err: number; c: 'c' | 'i' }[] = [];
-  for (const s of M.s.sessions) {
-    if (s.demo) continue;
-    for (const b of s.ex) {
-      const c = isCompound(EXIn(M, b.exId)) ? 'c' : 'i';
-      for (const x of b.sets)
-        if (x.cal && +x.r >= x.cal.at) pts.push({ date: s.date, err: +x.r - x.cal.at - x.cal.pred, c });
+/** Every RIR check in the log, and those of compound and isolation lifts apart, built once per change: the 12 weeks to
+    today with no date, or to a date given (NEW-71, 2.29: a past set is corrected by the checks up to its own date,
+    so a check logged later never changes an old workout's estimate; 2.28 read Sep 15's 100 x 8 at 2 in reserve as
+    133.3 kg, then 136.7 once two October checks were in). */
+export function calStatsIn(M: Model, date?: string): CalStats {
+  if (!M.c._cal) {
+    const pts: CalPt[] = [];
+    for (const s of M.s.sessions) {
+      if (s.demo) continue;
+      for (const b of s.ex) {
+        const c = isCompound(EXIn(M, b.exId)) ? 'c' : 'i';
+        for (const x of b.sets)
+          if (x.cal && +x.r >= x.cal.at) pts.push({ date: s.date, err: +x.r - x.cal.at - x.cal.pred, c });
+      }
     }
+    pts.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    M.c._cal = { now: calOf(pts, addDays(M.today(), -WEEK_DAYS * CAL_WEEKS), null), pts, at: {} };
   }
-  pts.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  const cut = addDays(M.today(), -WEEK_DAYS * CAL_WEEKS);
-  const rec = pts.filter(p => p.date >= cut);
-  M.c._cal = {
+  const C = M.c._cal;
+  if (date == null) return C.now;
+  return C.at[date] || (C.at[date] = calOf(C.pts, addDays(date, -WEEK_DAYS * CAL_WEEKS), date));
+}
+
+/** The calibration from the checks dated from `cut` to `to` (no end when null), over all of them for n and lastDate as before 2.29. */
+function calOf(pts: readonly CalPt[], cut: string, to: string | null): CalStats {
+  const upTo = to == null ? pts : pts.filter(p => p.date <= to);
+  const rec = upTo.filter(p => p.date >= cut);
+  return {
     ...calSummary(rec),
-    n: pts.length,
-    lastDate: pts.length ? pts[pts.length - 1].date : null,
+    n: upTo.length,
+    lastDate: upTo.length ? upTo[upTo.length - 1].date : null,
     cls: { c: calSummary(rec.filter(p => p.c === 'c')), i: calSummary(rec.filter(p => p.c === 'i')) }
   };
-  return M.c._cal;
 }
 
 /** A lift's usual RIR is read once it has RIR_USUAL_MIN rated working sets in the last CAL_WEEKS weeks (r20, a convention). */
@@ -194,45 +206,60 @@ export const RIR_USUAL_MIN = 3;
    for estimates, which errs low and never inflates a PR. Recovery and the
    "that load was light" step read only the RIR you entered, since both act on
    what you said about effort. RIR off: no ratings are read at all.
-   Object.create(null) is typed any, so the two casts name the maps it makes;
-   the median of three or more numbers is a number, as the ! says. */
-export function rirUsualIn(M: Model, exId: string): number | null {
+   Read as of a date (387-C6, 2.29): a past session's blank sets take the usual of the 12 weeks up to its own date,
+   so rating later sessions never changes an old workout's estimate or PRs (2.28: Sep 15's 102.5 x 8, blank, read
+   136.7 kg, then 127.2 once three October sessions were rated 0). Dated before the lift's RIR_USUAL_MIN-th rated
+   set, when it had no usual yet, its first usual (the median of those first sets), which never moves once they
+   exist, so an early blank between rated sets reads as they do instead of as 0 (r20, tests/unit-analytics.js: no
+   dips). With no date, today's, so today's workout and its session in the log read one way. Object.create(null) is
+   typed any, so the casts name the maps it makes; the median of three or more numbers is a number, as the ! says. */
+export function rirUsualIn(M: Model, exId: string, date?: string): number | null {
   if (M.s.settings.rirMode === 'off') return null;
   if (!M.c._rirUse) {
-    M.c._rirUse = Object.create(null) as Record<string, number>;
-    const cut = addDays(M.today(), -WEEK_DAYS * CAL_WEEKS);
-    const by = Object.create(null) as Record<string, number[]>;
+    const rated = Object.create(null) as Record<string, [string, number][]>;
     for (const ss of M.s.sessions) {
-      if (ss.date < cut) continue;
       for (const b of ss.ex) {
         const ex = EXIn(M, b.exId);
         if (ex.timed) continue;
         for (const x of b.sets) {
           if (!isWork(x) || x.drop || x.cal) continue;
-          const q = rirEffIn(M, x, ex);
-          if (q != null) (by[b.exId] || (by[b.exId] = [])).push(q);
+          const q = rirEffIn(M, x, ex, ss.date);
+          if (q != null) (rated[b.exId] || (rated[b.exId] = [])).push([ss.date, q]);
         }
       }
     }
-    for (const k in by) if (by[k].length >= RIR_USUAL_MIN) M.c._rirUse[k] = median(by[k])!;
+    for (const k in rated) rated[k].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    M.c._rirUse = { rated, at: Object.create(null) as Record<string, number | null> };
   }
-  const v = M.c._rirUse[exId];
-  return v == null ? null : v;
+  const C = M.c._rirUse;
+  const D = date || M.today();
+  const key = exId + ' ' + D;
+  const had = C.at[key];
+  if (had !== undefined) return had;
+  const cut = addDays(D, -WEEK_DAYS * CAL_WEEKS);
+  const all = C.rated[exId] || [];
+  const qs = all.filter(([d]) => d >= cut && d <= D).map(([, q]) => q);
+  const first =
+    all.length >= RIR_USUAL_MIN && D < all[RIR_USUAL_MIN - 1][0] ? all.slice(0, RIR_USUAL_MIN).map(([, q]) => q) : null;
+  const pick = first || (qs.length >= RIR_USUAL_MIN ? qs : null);
+  const v = pick ? median(pick)! : null;
+  C.at[key] = v;
+  return v;
 }
 
 /** A set's RIR as read, else the lift's usual RIR for a blank, else null. */
-export const rirEstIn = (M: Model, s: Effort, ex?: ExerciseLike | null): number | null => {
-  const q = rirEffIn(M, s, ex);
-  return q != null ? q : ex ? rirUsualIn(M, ex.id) : null;
+export const rirEstIn = (M: Model, s: Effort, ex?: ExerciseLike | null, date?: string): number | null => {
+  const q = rirEffIn(M, s, ex, date);
+  return q != null ? q : ex ? rirUsualIn(M, ex.id, date) : null;
 };
 
 /* Hard set: RIR HARD_RIR or less (Robinson 2024, Refalo 2023: growth rises as sets
    end closer to failure; the exact cut-off is a convention). A blank RIR is
    read as above and shown as assumed. A drop set is half a set: one heavy
    set with three drops is not four sets of work. */
-export const isHardIn = (M: Model, s: CountedSet, ex?: ExerciseLike | null): boolean => {
+export const isHardIn = (M: Model, s: CountedSet, ex?: ExerciseLike | null, date?: string): boolean => {
   if (!isWork(s)) return false;
-  const q = rirEstIn(M, s, ex);
+  const q = rirEstIn(M, s, ex, date);
   return q == null || q <= HARD_RIR;
 };
 
@@ -247,10 +274,10 @@ export const isHardIn = (M: Model, s: CountedSet, ex?: ExerciseLike | null): boo
    per-session flag keep counting hard sets only. With RIR off every working
    set is hard already, so the setting has nothing to do. */
 /** A set's weekly credit: a hard set's (a drop set half), or with RIR 4 to 5 as half a set on, half of it. */
-export function hardCreditIn(M: Model, s: CountedSet, ex?: ExerciseLike | null): number {
-  if (isHardIn(M, s, ex)) return setCredit(s);
+export function hardCreditIn(M: Model, s: CountedSet, ex?: ExerciseLike | null, date?: string): number {
+  if (isHardIn(M, s, ex, date)) return setCredit(s);
   if (!rirHalfOnIn(M) || !isWork(s)) return 0;
-  const q = rirEstIn(M, s, ex);
+  const q = rirEstIn(M, s, ex, date);
   return q != null && q > HARD_RIR ? setCredit(s) * HALF_SET : 0;
 }
 
@@ -280,6 +307,12 @@ export const bwRefIn = (M: Model): number =>
 // The bodyweight part of a bodyweight lift's load at the latest weigh-in: what the engine and every reading use (r34).
 export const bwRefLoadIn = (M: Model, ex: ExerciseLike | null | undefined): number =>
   ex && ex.bw ? bwRefIn(M) * bwShare(ex) : 0;
+
+/** Whether a lift reads bodyweight while none is logged: its estimates would be of the added load alone, so it has
+    none until a weigh-in (NEW-72, 2.29: +20 kg pull-ups read "Best estimate ≈ 28.9 kg ... total"), as its trend
+    already waits (394; the Guide's Trends). Its reps, weight PRs and targets read as before. */
+export const noBodyIn = (M: Model, ex: ExerciseLike | null | undefined): boolean =>
+  !!ex && !!ex.bw && !(bwRefIn(M) > 0);
 
 /** The load a set's PRs are judged at: on a bodyweight lift at the latest weigh-in, else loadOf. */
 export function prLoadIn(M: Model, ex: ExerciseLike | null | undefined, s: LoadedSet, date: string): number {
@@ -442,10 +475,10 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
           rirTotal++;
           if (logged) rirLogged++;
         }
-        const hard = isHardIn(M, s, ex);
-        const cr = hard ? setCredit(s) : hardCreditIn(M, s, ex);
+        const hard = isHardIn(M, s, ex, ss.date);
+        const cr = hard ? setCredit(s) : hardCreditIn(M, s, ex, ss.date);
         if (!cr) continue;
-        const q = rirEffIn(M, s, ex);
+        const q = rirEffIn(M, s, ex, ss.date);
         weekHard[wk] = (weekHard[wk] || 0) + cr;
         for (const [m, f] of mus) {
           ws[m] = (ws[m] || 0) + f * cr;
@@ -484,8 +517,8 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
           pl,
           r: +s.r,
           w: +s.w || 0,
-          rir: rirEffIn(M, s, ex),
-          rq: rirEstIn(M, s, ex)
+          rir: rirEffIn(M, s, ex, ss.date),
+          rq: rirEstIn(M, s, ex, ss.date)
         };
       };
       const pts = ptsSrc.map(point);
@@ -514,7 +547,8 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
       // seconds times load is not tonnage. bb: rep band of the best set.
       let best: number | null = null,
         bb: number | null = null;
-      if (!noE1(ex))
+      const nb = noBodyIn(M, ex);
+      if (!noE1(ex) && !nb)
         for (const p of pts) {
           const v = e1(p.load, p.r, p.rq);
           if (v != null && (best == null || v > best)) {
@@ -524,7 +558,7 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
           }
         }
       // The same at the PR load (prLoad): identical to best except on a bodyweight lift; the PR scorer's one reading (r64).
-      const { pb, pbb } = prBestOf(ex, pts);
+      const { pb, pbb } = prBestOf(ex, pts, nb);
       /* r30: the trend reads its own value per session, two ways. tAdj uses
          RIR as read everywhere else; tRaw ignores RIR (reps alone). Which one
          a lift's trend uses is decided per lift once its sessions are known
@@ -1122,10 +1156,15 @@ export function prAdd(h: PrSoFar, x: Pick<Exposure, 'pts' | 'pb' | 'pbb'>): void
 }
 
 /** A session's best estimate at the PR load and its band of reps to failure (an exposure's pb and pbb), none on a lift with no estimate. */
-export function prBestOf(ex: ExerciseLike, pts: readonly ExPoint[]): { pb: number | null; pbb: number | null } {
+export function prBestOf(
+  ex: ExerciseLike,
+  pts: readonly ExPoint[],
+  noBody = false
+): { pb: number | null; pbb: number | null } {
   let pb: number | null = null,
     pbb: number | null = null;
-  if (noE1(ex)) return { pb, pbb };
+  // No estimate without one, nor on a bodyweight lift with no weigh-in (noBodyIn, NEW-72).
+  if (noE1(ex) || noBody) return { pb, pbb };
   // At the PR load: the load itself, but on a bodyweight lift its share of bodyweight at the latest weigh-in.
   for (const p of pts) {
     const v = e1(ex.bw ? p.pl : p.load, p.r, p.rq),
@@ -1282,13 +1321,13 @@ export function prJudge(
    by another set's strength, so the recap said Best estimate where the
    toast had said Rep PR. Null when no set counts one: the session's own
    judgement then names what it did (Heaviest yet), not counted (r72). */
-function prCounted(ex: ExerciseLike, h: PrSoFar, x: Pick<Exposure, 'pts'>): PrMade | null {
+function prCounted(ex: ExerciseLike, h: PrSoFar, x: Pick<Exposure, 'pts'>, noBody: boolean): PrMade | null {
   // The kinds, the smallest news first.
   const ORDER: readonly PrMade['type'][] = ['Rep PR', 'e1RM', 'Weight PR'];
   const rank = (t: PrMade['type']): number => ORDER.indexOf(t);
   let top: { pr: PrMade; key: number } | null = null;
   for (const p of x.pts) {
-    const { pr } = prJudge(ex, h, { pts: [p], ...prBestOf(ex, [p]) });
+    const { pr } = prJudge(ex, h, { pts: [p], ...prBestOf(ex, [p], noBody) });
     if (!pr || !pr.big) continue;
     // Within a kind: the heaviest weight PR, the highest estimate, the strongest rep PR.
     const key = pr.type === 'Weight PR' ? pr.w : pr.type === 'e1RM' ? (pr.value ?? 0) : prScore(p);
@@ -1317,7 +1356,7 @@ function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): number | n
        whole it was counted when any set was stronger than ever, so 100 x 7 at 2 in reserve was a counted best
        estimate because 100 x 12 at 4 in the same session scored more, a set no toast announces, being no
        heavier and no more reps than one before. A PR is a set stronger than every earlier one (CLAUDE.md). */
-    const pr = prCounted(ex, h, x) ?? (j.pr ? { ...j.pr, big: false } : null);
+    const pr = prCounted(ex, h, x, noBodyIn(M, ex)) ?? (j.pr ? { ...j.pr, big: false } : null);
     if (pr) prs.push({ date: x.date, sid: x.sid, exId: id, ...pr });
     prAdd(h, x);
     if (x.best != null) maxBest = maxBest == null ? x.best : Math.max(maxBest, x.best);
@@ -2052,7 +2091,7 @@ export function allTimeBestsIn(
       // Judged at the load it stands for: the same weight in the other unit is no heavier.
       const d = prSameLoad(p.w, seen) - p.w,
         j = p.pl + d;
-      const v = noE1(ex) ? null : e1(p.load + d, p.r, p.rq);
+      const v = noE1(ex) || noBodyIn(M, ex) ? null : e1(p.load + d, p.r, p.rq);
       if (v != null && (!est || v > est.v + EPS_SAME)) est = { v, p, date: x.date };
       // Heaviest and rep records at the PR load (prLoad, r32.1): on a bodyweight lift, by added load and reps, dated when first done.
       if (!heavy || j > heavy.j + EPS_SAME || (Math.abs(j - heavy.j) < EPS_SAME && p.r > heavy.p.r))

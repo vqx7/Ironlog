@@ -11,7 +11,7 @@ import { DSEC_ALIAS, HIDEABLE, HIDEABLE_KEYS } from './layout';
 import { loadWords } from './loads';
 import { log } from './storage';
 import { plainTemplate } from './normalize';
-import { EX, U, fmtW, loadOf, rirEst, sortedSessions } from './live';
+import { EX, U, fmtW, loadOf, noBody, rirEst, sortedSessions } from './live';
 import { e1 } from './formulas';
 import { state, ui } from './store';
 import { act, undoStep } from './act';
@@ -200,7 +200,7 @@ export function exportCSV(): Promise<void> | undefined {
       const ex = EX(b.exId);
       b.sets.forEach((s, i) => {
         const total = loadOf(ex, s, ss.date);
-        const est = s.warm || s.drop || noE1(ex) ? null : e1(total, +s.r, rirEst(s, ex));
+        const est = s.warm || s.drop || noE1(ex) || noBody(ex) ? null : e1(total, +s.r, rirEst(s, ex, ss.date));
         rows.push([
           ss.date,
           ss.dayName,

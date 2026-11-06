@@ -18,6 +18,7 @@ import { loadWords } from './loads';
 import { BAND_WORDS } from './prs';
 import {
   prFrame,
+  noBody,
   rirEst,
   rirEff,
   loadOf,
@@ -305,7 +306,7 @@ function liveMade(
     rir: rirEff(s, ex),
     rq: rirEst(s, ex)
   };
-  const { pb, pbb } = prBestOf(ex, [p]);
+  const { pb, pbb } = prBestOf(ex, [p], noBody(ex));
   return { ex, pr: prJudge(ex, h, { pts: [p], pb, pbb }).pr };
 }
 

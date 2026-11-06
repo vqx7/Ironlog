@@ -2,7 +2,7 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: 2.28 in pull request #72, waiting on you (2026-11-05). Live: r72, version 2.27 (you merged pull request #71 at 16:36 UTC, 08:36 Los Angeles; gh-pages "Publish 805ea63" at 17:55 UTC after one WebKit check of the update after a first install, NEW-14, was rerun).
+Last updated: 2.29 on branch r74, its pull request next (2026-11-06). Live: r73, version 2.28 (you merged pull request #72 at 07:04 UTC on 2026-11-06, 23:04 Los Angeles on 2026-11-05). Due now: step 1j's two Supabase pastes.
 
 ## Now, in this order
 
@@ -16,10 +16,11 @@ Last updated: 2.28 in pull request #72, waiting on you (2026-11-05). Live: r72, 
 1g. A35 (r70): done, merged with r71 (#70 took #69's commits into main, 2026-11-04 12:58 Los Angeles) and live.
 1h. A36 (r71): done, merged by you (#70) and live (see Last updated).
 1i. A37 (r72, 2.27): done, merged by you (#71) and live.
-1j. A38 (2.28, pull request #72): try the preview on your phone (Checks on your phone, 2.28, below), then merge on GitHub. After it is merged, two steps in Supabase, in either order, about 5 minutes; nothing in 2.28 waits for them:
+1j. A38 (2.28, pull request #72): merged by you and live (2026-11-06). Due now, two steps in Supabase, in either order, about 5 minutes; nothing in 2.28 waits for them:
    - B1a again: paste the block below and Run. It now takes each account's report count and document count one write at a time (2.27-F14: two writes at the same moment could each pass the limit). Safe to run more than once.
    - B4 again: paste the function below over the old one and Deploy. Its webhook secret is now compared in a way a caller cannot time (2.27-F14).
    - Then E2 (2 minutes, read-only) if you have not run it yet: it shows what your live project actually has.
+1k. A39 (2.29, its pull request next): try the preview on your phone, then merge on GitHub. Nothing to paste in Supabase for 2.29.
 2. Problem reports: done (2026-10-30, you). B4's r64 code is deployed, B1a has been run, and a test report from the preview became an issue in `ironlog-feedback`, which confirms B5. See Done.
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
 4. D6: delete the old branches and stop them piling up (2 minutes, below).

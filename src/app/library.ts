@@ -623,24 +623,18 @@ export function isCompound(ex: Kinded | null | undefined): boolean {
    sissy squats): the share of bodyweight is kept for display, but torque, not
    mass moved, sets how hard they are, so they get no 1RM estimate and no
    tonnage. Progress on them reads from reps and added load. */
-export const NO_E1: ReadonlySet<string> = new Set([
-  'hangingLegRaise',
-  'kneeRaise',
-  'reverseCrunch',
-  'crunch',
-  'dragonFlag',
-  'abWheel',
-  'russianTwist',
-  'neckBridge',
-  'nordic',
-  'ghr',
-  'revNordic',
-  'sissy'
-]);
+export const NO_E1: ReadonlySet<string> = new Set(['nordic', 'ghr', 'revNordic', 'sissy']);
 
-/** No 1RM estimate for this exercise: a timed hold, or a lift in NO_E1. */
-export const noE1 = (ex: Pick<Exercise, 'id' | 'timed'> | null | undefined): boolean =>
-  !!ex && (!!ex.timed || NO_E1.has(ex.id));
+/* Bodyweight core and neck work is done for reps, with a share of bodyweight no rep formula reads well, so it gets no
+   estimate. Read from the exercise's own fields since 2.29 (387-B8, NEW-62; V, 2026-11-05: a lifter's own exercise
+   counts as the library's does), so one made in the editor reads the same as its library twin. Until 2.28 these
+   were named by id here, and a lifter's own knee raise got a best estimate the library's never did. */
+const NO_E1_MUSCLES: ReadonlySet<string> = new Set(['abs', 'obliques', 'neck']);
+
+/** No 1RM estimate for this exercise: a timed hold, bodyweight core or neck work, or a lift in NO_E1 (eccentric
+    bodyweight lifts the muscle cannot tell from a pull-up or a dip). */
+export const noE1 = (ex: Pick<Exercise, 'id' | 'timed' | 'bw' | 'primary'> | null | undefined): boolean =>
+  !!ex && (!!ex.timed || NO_E1.has(ex.id) || (!!ex.bw && NO_E1_MUSCLES.has(ex.primary)));
 
 /* Lifts that add recovery time: heavy lengthened hamstring and hinge work,
    walking lunges (eccentric-heavy damage; a rule of thumb, docs/EVIDENCE.md. Pareja-Blanco 2020, cited here until
