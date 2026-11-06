@@ -191,7 +191,7 @@ const V = '11111111-1111-1111-1111-111111111111', F = '22222222-2222-2222-2222-2
   await as(db, V);
   ok(await tryq(db, `insert into public.feedback(category,message,screenshot) values ('bug','old rules let this in','data:image/jpeg;base64,AAAA" onerror="x')`) === 'ok', 'before: the r25 rules let a hostile screenshot in (what the fix is for)');
   await db.exec('reset role');
-  await run(db, pick("new.issue_url := null;\n  if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then\n    raise exception 'feedback_rate_limited' using errcode = 'P0001';\n  end if;\n  return new;\nend $$;\nrevoke"), 'the r29 block runs on a table made between r25 and r28');
+  await run(db, pick("revoke all on function public.feedback_limit() from public, anon, authenticated;\nalter table public.feedback drop constraint if exists feedback_screenshot_check"), 'the r29 block runs on a table made between r25 and r28');
   await as(db, V);
   ok(/check/i.test(await tryq(db, `insert into public.feedback(category,message,screenshot) values ('bug','new rules stop this','data:image/jpeg;base64,AAAA" onerror="x')`)), 'after: a hostile screenshot is refused');
   let back = 0; for (let i = 0; i < 6; i++) if (await tryq(db, `insert into public.feedback(category,message,created_at) values ('bug','back-dated report ${i}','2001-01-01')`) === 'ok') back++;
@@ -288,6 +288,18 @@ const V = '11111111-1111-1111-1111-111111111111', F = '22222222-2222-2222-2222-2
     ok(await upd({ v: 1, w: 'devF.q', json: '{}' }, `data->>'w' = $2`, ['devB.y1']) === 0, `${t}: another account's conditional write reaches no row (row level security)`);
     await as(db, V);
     ok((await db.query(`select data->>'w' w from public.${t} where path = 'p'`)).rows[0].w === 'devB.y1', `${t}: the row holds the last write made`);
+  }
+}
+{ // 2.28 (the 2.27 review's 2.27-F14): each account's count is taken one write at a time, under a lock held to the end
+  // of the write, so two reports or documents sent at the same moment cannot each be counted without the other.
+  // PGlite has one connection, so the race itself is not run here: it was run on Postgres 16 with two connections
+  // (PENDING.md's 2.27-F14 row: 6 reports and 2,001 documents kept on 2.27's SQL, 5 and 2,000 on this). Here: the
+  // lock is in both functions, as set up fresh and as the r64 block run again brings a project set up before.
+  for (const [label, sql] of [['set up fresh', [pick('create table public.feedback ('), pick('create table public.docs (')]], ['a project set up before 2.28, the r64 block run again', [pick('create table public.feedback ('), pick('create table public.docs ('), pick('-- r64: run once')]]]) {
+    const db = new PGlite(); await db.exec(stub);
+    for (const b of sql) await db.exec(b);
+    const src = (await db.query(`select proname, prosrc from pg_proc where proname in ('feedback_limit', 'docs_limit')`)).rows;
+    ok(src.length === 2 && src.every(r => /pg_advisory_xact_lock\(hashtextextended\(/.test(r.prosrc)), `${label}: both counts take the account's lock before counting`);
   }
 }
 console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);
