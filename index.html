@@ -1803,21 +1803,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (ex && ex.kind === "iso") return false;
     return autoCompound(ex);
   }
-  var NO_E1 = /* @__PURE__ */ new Set([
-    "hangingLegRaise",
-    "kneeRaise",
-    "reverseCrunch",
-    "crunch",
-    "dragonFlag",
-    "abWheel",
-    "russianTwist",
-    "neckBridge",
-    "nordic",
-    "ghr",
-    "revNordic",
-    "sissy"
-  ]);
-  var noE1 = (ex) => !!ex && (!!ex.timed || NO_E1.has(ex.id));
+  var NO_E1 = /* @__PURE__ */ new Set(["nordic", "ghr", "revNordic", "sissy"]);
+  var NO_E1_MUSCLES = /* @__PURE__ */ new Set(["abs", "obliques", "neck"]);
+  var noE1 = (ex) => !!ex && (!!ex.timed || NO_E1.has(ex.id) || !!ex.bw && NO_E1_MUSCLES.has(ex.primary));
   var SLOW_RECOVERY = /* @__PURE__ */ new Set([
     "deadlift",
     "sumoDl",
