@@ -200,14 +200,16 @@ export function finish(): void {
       'Some sets are not marked done',
       `${total} set${total > 1 ? 's have' : ' has'} reps entered but no checkmark, so ${total > 1 ? 'they' : 'it'} will not be saved: ${list}.`,
       `Mark ${total > 1 ? 'them' : 'it'} done and save`,
-      () => {
+      /* Each set is ticked in turn; one far off asks first, and once it is logged the rest are ticked and the
+         session saved, with no second tap on Finish (2.28, 2.27-F13). Fix it leaves the workout open there. */
+      function markAll(): void {
         const dd = state.draft;
         if (!dd) return;
         for (const [bi, b] of dd.ex.entries())
           for (const [si, s] of b.sets.entries())
             if (!s.done && (+(s.r ?? 0) > 0 || isMissed(s))) {
               if (oddReps(b, s) || oddLoad(b, si, dd.date) || lightZero(b, si, dd.date)) {
-                setDone(bi, si, true);
+                setDone(bi, si, true, false, markAll);
                 if (!s.done) return;
               } else
                 act(

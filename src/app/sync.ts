@@ -13,7 +13,7 @@
    rewrites only the small draft doc. Each document stores its chunk as a JSON
    string with a timestamp and a write mark. Only chunks whose content changed
    are written, one at a time, in order, and each only while the account still
-   holds the copy this device read (2.28, 227-F1): two devices writing one
+   holds the copy this device read (2.28, 2.27-F1): two devices writing one
    document at once each keep their own changes. The three-way merge of a document edited on two
    devices, the sync notes each device keeps, and the merge of another tab's
    save are here too. Nothing runs on import: syncStart() runs what the parts
@@ -48,7 +48,7 @@ import { cleanCardio, normalize, plainTemplate } from './normalize';
 import { invalidate } from './live';
 import { AUTH, codeOf } from './providers';
 import { acct, cloud, fx, setState, state, ui } from './store';
-import type { Base, CloudDb, CloudDbIn, CloudRef, CloudSeen, CloudStatus, State, SyncNote } from './store';
+import type { Base, CloudDb, CloudDbIn, CloudDoc, CloudRef, CloudSeen, CloudStatus, State, SyncNote } from './store';
 import {
   KEY,
   capturePost,
@@ -867,7 +867,7 @@ function conflictNote(stat: { conflicts: number }): void {
   }
 }
 /** What a write of a document expects it to hold, from the document as read (its record, or null when there is none). */
-function seenOf(d: Record<string, unknown> | null): CloudSeen {
+function seenOf(d: Rec | null): CloudSeen {
   if (!d) return null;
   if (typeof d.w === 'string') return { w: d.w };
   const at = Number(d.at);
@@ -978,7 +978,7 @@ export async function cloudFlush(): Promise<void> {
            below would write the older copy back and lose them. */
         let json = JSON.stringify(chunksOf(state)[x.id] || emptyChunk(x.id));
         const b = snap && snap.exists ? rec(snap.data()) : null;
-        // The write below goes through only while the account's copy is still this one (227-F1).
+        // The write below goes through only while the account's copy is still this one (2.27-F1).
         const seen = seenOf(b);
         // The account's copy as taken in here, when it was: the base of the next merge if the write finds it changed.
         let took: SyncNote | null = null;
@@ -1035,17 +1035,14 @@ export async function cloudFlush(): Promise<void> {
           continue;
         }
         const at = Date.now();
-        const wrote = await withTimeout(
-          ref(x.id).setIf({ v: 1, at, et: cloud.editAt[x.id] || at, w: writeMark(), json }, seen),
-          SYNC_MS.net,
-          'sync-write'
-        );
+        const doc: CloudDoc = { v: 1, at, et: cloud.editAt[x.id] || at, w: writeMark(), json };
+        const wrote = await withTimeout(ref(x.id).setIf(doc, seen), SYNC_MS.net, 'sync-write');
         if (wrote) {
           cloud.meta[x.id] = { h: hashStr(json), at, b: baseOf(x.id, parseJson(json)) };
           saveMeta();
           done = true;
         } else {
-          /* Another device wrote it between the read and this write (227-F1: before 2.28 this write landed over
+          /* Another device wrote it between the read and this write (2.27-F1: before 2.28 this write landed over
              that one, and its sets were gone from every phone, unsaid). What was taken in from the copy read is
              merged here now, so that copy is the base the next read is merged against. */
           log('sync-race', { id: x.id, tries: tries + 1 });
@@ -1305,13 +1302,13 @@ export async function cloudPull(): Promise<void> {
 /** Whether the first cloud check has finished, either way. */
 export let cloudChecked = false;
 /** Whether a document as read (its record, or null when there is none) still holds what a write expects (`seen`). */
-function stillSeen(d: Record<string, unknown> | null, seen: CloudSeen): boolean {
+function stillSeen(d: Rec | null, seen: CloudSeen): boolean {
   if (!seen) return !d;
   if (!d) return false;
   if ('w' in seen) return d.w === seen.w;
   return d.w === undefined && (d.at === undefined ? null : Number(d.at)) === seen.at;
 }
-/* The document store the sync writes through (2.28, 227-F1). The account backend (scripts/cloud-supabase.js) writes
+/* The document store the sync writes through (2.28, 2.27-F1). The account backend (scripts/cloud-supabase.js) writes
    conditionally on the server, in one step. Claude's db, which only the suites still inject as their stand-in cloud
    (CLAUDE.md), writes plainly, so its conditional write here reads, compares and writes: exact for the stand-in,
    whose documents live in one test's page or are written one request at a time. */

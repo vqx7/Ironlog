@@ -6,6 +6,7 @@
    r63. */
 
 import { html } from 'lit-html';
+import { LIMITS } from './records';
 import type { TemplateResult } from 'lit-html';
 import { addDays, today, weekStart, WEEK_DAYS } from './util';
 import { fmtDate, sessTm } from './format';
@@ -64,7 +65,7 @@ export function cardioSheet(): TemplateResult {
     <div class="grid2"><label class="field">Date<input type="date" id="cDate" .value=${today()} max=${today()}></label><label class="field">Type<select id="cKind">${CARDIO.map(([k, l]) => html`<option value=${k}>${l}</option>`)}</select></label></div>
     <div class="grid2 u-mt8"><label class="field">Minutes<input type="text" inputmode="numeric" id="cMin"></label><label class="field">Avg heart rate<input type="text" inputmode="numeric" id="cHr" placeholder="optional"></label></div>
     <label class="field u-mt8">Distance (${distU()})<input type="text" inputmode="decimal" id="cDist" placeholder="optional"></label>
-    <label class="field u-mt8">Note<input type="text" id="cNote" placeholder="e.g. 3.2 mph, 12% incline"></label>
+    <label class="field u-mt8">Note<input type="text" id="cNote" maxlength=${LIMITS.cardioNote} placeholder="e.g. 3.2 mph, 12% incline"></label>
     <p class="small muted hastip" data-tip="For cardio before or after lifting, add it inside the session. Cardio never counts as a lifting session or toward your streak.">Logged on its own.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="cardioSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }

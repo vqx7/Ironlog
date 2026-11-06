@@ -204,20 +204,21 @@ export function keepExtra<O extends object>(src: unknown, out: O, known?: Readon
     Object.assign(out, { [k]: parseJson(j) });
     keepExtra.n++;
   }
-  if (n) {
-    /* The record's fields read once, then each taken out and written back,
-       those the source has in its order first: a field written again stays
-       where it stood, so taking it out first is what moves it. */
-    const was: Rec = { ...rec(out) };
-    const ks = Object.keys(S).filter(k => Object.prototype.hasOwnProperty.call(was, k));
-    for (const k of [...ks, ...Object.keys(was).filter(k => !ks.includes(k))]) {
-      Reflect.deleteProperty(out, k);
-      Object.assign(out, { [k]: was[k] });
-    }
-  }
+  if (n) orderLike(S, out);
   return out;
 }
 keepExtra.n = 0;
+/** Puts a rebuilt record's fields in the order its source had them, the rest after in their own order: the record's
+    fields read once, then each taken out and written back, those the source has first (a field written again stays
+    where it stood, so taking it out first is what moves it). */
+function orderLike(S: Rec, out: object): void {
+  const was: Rec = { ...rec(out) };
+  const ks = Object.keys(S).filter(k => Object.prototype.hasOwnProperty.call(was, k));
+  for (const k of [...ks, ...Object.keys(was).filter(k => !ks.includes(k))]) {
+    Reflect.deleteProperty(out, k);
+    Object.assign(out, { [k]: was[k] });
+  }
+}
 
 /* ---------- records ---------- */
 
@@ -781,153 +782,168 @@ function cleanRoutine(r0: unknown, ri: number): Routine {
    one it has (a field a newer build saved among them) stays where it
    stands: the draft keeps the key order and the very object it came as. */
 /** A workout in progress, cleaned field by field (above). */
+/** A draft field this build writes only when valid (its pictures): an invalid one is dropped, not kept as unknown. */
+const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics']);
 function cleanDraft(d: Rec, date: string): DraftLike {
   const startedAt = Number(d.startedAt),
     durMin = Number(d.durMin);
   // The workout's pictures (r66, 373): kept when valid, else the field goes, so a draft without any keeps its shape.
   const pics = picIds(d.pics);
-  if (!pics) delete d.pics;
-  return Object.assign(d, {
-    date,
-    id: typeof d.id === 'string' ? fixId(d.id) : did('x', { date: d.date, dayName: d.dayName }, 0),
-    dayIdx: clampN(d.dayIdx, 0, MAX_DAYS - 1, 0),
-    dayId: typeof d.dayId === 'string' ? fixId(d.dayId) : null,
-    startedAt: isTime(startedAt) ? startedAt : null,
-    durMin: Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null,
-    dayName: typeof d.dayName === 'string' ? d.dayName : 'Session',
-    routineId: typeof d.routineId === 'string' && d.routineId ? fixId(d.routineId) : '',
-    notes: typeof d.notes === 'string' ? d.notes : '',
-    editingId: typeof d.editingId === 'string' ? fixId(d.editingId) : null,
-    deload: !!d.deload,
-    light: !!d.light,
-    limited: d.limited === true ? true : undefined,
-    ...(pics ? { pics } : {}),
-    free: d.free === true ? true : undefined,
-    // Started as its day's second workout (r68, 366 (c)).
-    part: d.part === 2 ? (2 as const) : undefined,
-    // A past workout typed in after the fact: no rest timer, no clock, no check-in.
-    past: d.past === true ? true : undefined,
-    // The notes the app wrote when the session started, so Discard can tell them from yours.
-    note0: typeof d.note0 === 'string' ? d.note0.slice(0, LIMITS.startNote) : undefined,
-    chk: cleanChk(rec(d.chk)) || undefined,
-    cardio: (arr(d.cardio) || []).filter(c => !!c && typeof c === 'object').map((c, ci) => cleanDraftCardio(c, ci)),
-    ex: (arr(d.ex) || []).flatMap((b0): DraftBlock[] => {
-      const b = rec(b0);
-      if (!b || typeof b.exId !== 'string' || !arr(b.sets)) return [];
-      const pl = rec(b.plan) || {};
-      const plan: DraftBlock['plan'] = {
-        ...planNums(pl),
-        ss: typeof pl.ss === 'string' && pl.ss ? fixId(pl.ss) : null,
-        ...jumpOf(pl)
-      };
-      if (plan.repMax < plan.repMin) plan.repMax = plan.repMin;
-      const adj = rec(b.adj);
-      const adjW = adj ? Number(adj.w) : NaN,
-        adjFrom = adj ? Number(adj.from) : NaN,
-        sw = Number(b.sw);
-      const prev = arr(b.prev),
-        lastR = arr(b.lastR),
-        keepRR = arr(b.keepRR),
-        ln = rec(b.lastNote);
-      return [
-        keepExtra(
-          b0,
-          {
-            ...(typeof b.bid === 'string' && b.bid ? { bid: fixId(b.bid) } : {}),
-            exId: fixId(b.exId),
-            plan,
-            note: typeof b.note === 'string' ? b.note : '',
-            inj: typeof b.inj === 'string' && isMuscleOrJoint(b.inj) ? b.inj : null,
-            hint: typeof b.hint === 'string' ? b.hint : '',
-            last: typeof b.last === 'string' ? b.last : '',
-            // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
-            prev: prev
-              ? strings(prev, () => true)
-                  .slice(0, LIMITS.sets)
-                  .map(x => x.slice(0, LIMITS.lastText))
-              : undefined,
-            prevOff: b.prevOff === true ? true : undefined,
-            target: typeof b.target === 'string' ? b.target : '',
-            easier: typeof b.easier === 'string' ? b.easier : null,
-            tgt: cleanTgt(rec(b.tgt)),
-            // Last time's reps per set: shown as placeholders, so numbers only.
-            lastR: lastR
-              ? lastR.slice(0, LIMITS.sets).map(v => {
-                  const n = numOr(v, NaN);
-                  return isNum(n) && n >= 0 ? Math.min(n, LIMITS.reps) : null;
-                })
-              : [],
-            swappedFrom: typeof b.swappedFrom === 'string' ? fixId(b.swappedFrom) : null,
-            cut: b.cut === true ? true : undefined,
-            // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
-            full:
-              typeof b.full === 'number' && Number.isInteger(b.full) && b.full >= 1 && b.full <= LIMITS.sets
-                ? b.full
+  /* Rebuilt from the fields this build knows, with any it does not know kept within a record's limits (2.28,
+     2.27-F2: assigned onto the draft as it came, every unknown field was kept at any size, and a damaged backup
+     could fill the draft past what a sync document holds). An invalid pictures field goes, not kept as unknown. */
+  const out = keepExtra(
+    d,
+    {
+      date,
+      id: typeof d.id === 'string' ? fixId(d.id) : did('x', { date: d.date, dayName: d.dayName }, 0),
+      dayIdx: clampN(d.dayIdx, 0, MAX_DAYS - 1, 0),
+      dayId: typeof d.dayId === 'string' ? fixId(d.dayId) : null,
+      startedAt: isTime(startedAt) ? startedAt : null,
+      durMin: Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null,
+      dayName: typeof d.dayName === 'string' ? d.dayName : 'Session',
+      routineId: typeof d.routineId === 'string' && d.routineId ? fixId(d.routineId) : '',
+      notes: typeof d.notes === 'string' ? d.notes : '',
+      editingId: typeof d.editingId === 'string' ? fixId(d.editingId) : null,
+      deload: !!d.deload,
+      light: !!d.light,
+      limited: d.limited === true ? true : undefined,
+      ...(pics ? { pics } : {}),
+      free: d.free === true ? true : undefined,
+      // Started as its day's second workout (r68, 366 (c)).
+      part: d.part === 2 ? (2 as const) : undefined,
+      // A past workout typed in after the fact: no rest timer, no clock, no check-in.
+      past: d.past === true ? true : undefined,
+      // The notes the app wrote when the session started, so Discard can tell them from yours.
+      note0: typeof d.note0 === 'string' ? d.note0.slice(0, LIMITS.startNote) : undefined,
+      chk: cleanChk(rec(d.chk)) || undefined,
+      cardio: (arr(d.cardio) || []).filter(c => !!c && typeof c === 'object').map((c, ci) => cleanDraftCardio(c, ci)),
+      ex: (arr(d.ex) || []).flatMap((b0): DraftBlock[] => {
+        const b = rec(b0);
+        if (!b || typeof b.exId !== 'string' || !arr(b.sets)) return [];
+        const pl = rec(b.plan) || {};
+        const plan: DraftBlock['plan'] = {
+          ...planNums(pl),
+          ss: typeof pl.ss === 'string' && pl.ss ? fixId(pl.ss) : null,
+          ...jumpOf(pl)
+        };
+        if (plan.repMax < plan.repMin) plan.repMax = plan.repMin;
+        const adj = rec(b.adj);
+        const adjW = adj ? Number(adj.w) : NaN,
+          adjFrom = adj ? Number(adj.from) : NaN,
+          sw = Number(b.sw);
+        const prev = arr(b.prev),
+          lastR = arr(b.lastR),
+          keepRR = arr(b.keepRR),
+          ln = rec(b.lastNote);
+        return [
+          keepExtra(
+            b0,
+            {
+              ...(typeof b.bid === 'string' && b.bid ? { bid: fixId(b.bid) } : {}),
+              exId: fixId(b.exId),
+              plan,
+              note: typeof b.note === 'string' ? b.note : '',
+              inj: typeof b.inj === 'string' && isMuscleOrJoint(b.inj) ? b.inj : null,
+              hint: typeof b.hint === 'string' ? b.hint : '',
+              last: typeof b.last === 'string' ? b.last : '',
+              // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
+              prev: prev
+                ? strings(prev, () => true)
+                    .slice(0, LIMITS.sets)
+                    .map(x => x.slice(0, LIMITS.lastText))
                 : undefined,
-            light: b.light === true ? true : undefined,
-            // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
-            basis: typeof b.basis === 'string' && isDate(b.basis) ? b.basis : undefined,
-            // The suggested load the rows started from (r24); absent in older drafts.
-            sw:
-              b.sw === null ? null : b.sw === undefined || !isNum(sw) ? undefined : clampN(b.sw, LOAD_MIN, LOAD_MAX, 0),
-            // The next sets adjusted from a set (r34), and Keep for the rest of the session.
-            adj:
-              adj &&
-              typeof adj.at === 'number' &&
-              Number.isInteger(adj.at) &&
-              adj.at >= 0 &&
-              isNum(adjW) &&
-              isNum(adjFrom)
-                ? {
-                    at: adj.at,
-                    w: clampN(adj.w, 0, LOAD_MAX, 0),
-                    from: clampN(adj.from, 0, LOAD_MAX, 0),
-                    r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
-                    up: adj.up === true,
-                    why: typeof adj.why === 'string' ? adj.why.slice(0, LIMITS.why) : '',
-                    // The row it came from (PENDING 333), last, where a build before it kept no such field.
-                    ...(typeof adj.rid === 'string' ? { rid: fixId(adj.rid) } : {})
-                  }
-                : undefined,
-            adjOff: b.adjOff === true ? true : undefined,
-            // Editing a saved session keeps the rep range it was logged under.
-            keepRR:
-              b.keepRR === undefined
-                ? undefined
-                : keepRR && keepRR.length === 2
-                  ? pair(Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1)
+              prevOff: b.prevOff === true ? true : undefined,
+              target: typeof b.target === 'string' ? b.target : '',
+              easier: typeof b.easier === 'string' ? b.easier : null,
+              tgt: cleanTgt(rec(b.tgt)),
+              // Last time's reps per set: shown as placeholders, so numbers only.
+              lastR: lastR
+                ? lastR.slice(0, LIMITS.sets).map(v => {
+                    const n = numOr(v, NaN);
+                    return isNum(n) && n >= 0 ? Math.min(n, LIMITS.reps) : null;
+                  })
+                : [],
+              swappedFrom: typeof b.swappedFrom === 'string' ? fixId(b.swappedFrom) : null,
+              cut: b.cut === true ? true : undefined,
+              // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
+              full:
+                typeof b.full === 'number' && Number.isInteger(b.full) && b.full >= 1 && b.full <= LIMITS.sets
+                  ? b.full
+                  : undefined,
+              light: b.light === true ? true : undefined,
+              // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
+              basis: typeof b.basis === 'string' && isDate(b.basis) ? b.basis : undefined,
+              // The suggested load the rows started from (r24); absent in older drafts.
+              sw:
+                b.sw === null
+                  ? null
+                  : b.sw === undefined || !isNum(sw)
+                    ? undefined
+                    : clampN(b.sw, LOAD_MIN, LOAD_MAX, 0),
+              // The next sets adjusted from a set (r34), and Keep for the rest of the session.
+              adj:
+                adj &&
+                typeof adj.at === 'number' &&
+                Number.isInteger(adj.at) &&
+                adj.at >= 0 &&
+                isNum(adjW) &&
+                isNum(adjFrom)
+                  ? {
+                      at: adj.at,
+                      w: clampN(adj.w, 0, LOAD_MAX, 0),
+                      from: clampN(adj.from, 0, LOAD_MAX, 0),
+                      r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
+                      up: adj.up === true,
+                      why: typeof adj.why === 'string' ? adj.why.slice(0, LIMITS.why) : '',
+                      // The row it came from (PENDING 333), last, where a build before it kept no such field.
+                      ...(typeof adj.rid === 'string' ? { rid: fixId(adj.rid) } : {})
+                    }
+                  : undefined,
+              adjOff: b.adjOff === true ? true : undefined,
+              // Editing a saved session keeps the rep range it was logged under.
+              keepRR:
+                b.keepRR === undefined
+                  ? undefined
+                  : keepRR && keepRR.length === 2
+                    ? pair(Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1)
+                    : null,
+              lastNote:
+                ln && typeof ln.text === 'string' && typeof ln.date === 'string' && isDate(ln.date)
+                  ? { date: ln.date, text: ln.text }
                   : null,
-            lastNote:
-              ln && typeof ln.text === 'string' && typeof ln.date === 'string' && isDate(ln.date)
-                ? { date: ln.date, text: ln.text }
-                : null,
-            sets: (arr(b.sets) || []).flatMap((x0): DraftSet[] => {
-              const x = rec(x0);
-              if (!x) return [];
-              return [
-                keepExtra(x0, {
-                  w: x.w == null ? null : clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
-                  r: x.r == null || x.r === '' ? null : Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
-                  rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
-                  warm: !!x.warm,
-                  drop: !!x.drop && !x.warm,
-                  done: !!x.done,
-                  cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
-                  // The row's own id (r56.1), last, where a build before it kept the unknown field.
-                  ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
-                })
-              ];
-            }),
-            // Done at a new machine or gym (r61, 343 7), last, where the menu adds it; absent unless marked.
-            ...(b.nw === true ? { nw: true as const } : {}),
-            // The pictures on its note (r66, 373), by id, last; absent unless there are any.
-            ...picsField(b.pics)
-          } satisfies DraftBlock,
-          KNOWN_BLOCK
-        )
-      ];
-    })
-  });
+              sets: (arr(b.sets) || []).flatMap((x0): DraftSet[] => {
+                const x = rec(x0);
+                if (!x) return [];
+                return [
+                  keepExtra(x0, {
+                    w: x.w == null ? null : clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
+                    r: x.r == null || x.r === '' ? null : Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
+                    rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
+                    warm: !!x.warm,
+                    drop: !!x.drop && !x.warm,
+                    done: !!x.done,
+                    cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
+                    // The row's own id (r56.1), last, where a build before it kept the unknown field.
+                    ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
+                  })
+                ];
+              }),
+              // Done at a new machine or gym (r61, 343 7), last, where the menu adds it; absent unless marked.
+              ...(b.nw === true ? { nw: true as const } : {}),
+              // The pictures on its note (r66, 373), by id, last; absent unless there are any.
+              ...picsField(b.pics)
+            } satisfies DraftBlock,
+            KNOWN_BLOCK
+          )
+        ];
+      })
+    },
+    DRAFT_KNOWN
+  );
+  // In the order the draft came, as assigning onto it kept it: a 2.27 phone and this one write one workout alike.
+  orderLike(d, out);
+  return out;
 }
 
 /* Every field below is validated rather than trusted. The old version only
@@ -1215,9 +1231,11 @@ export function normalize(input: unknown): State {
      together with any that were saved. Older saves, backups and cloud copies
      still carry them, so they are dropped here on every load, import and
      merge. */
-  const extra: Rec = { ...s };
-  for (const k of Object.keys(f)) delete extra[k];
-  delete extra.priors;
+  const rest: Rec = { ...s };
+  for (const k of Object.keys(f)) delete rest[k];
+  delete rest.priors;
+  // Kept within the limits a record's unknown fields have (2.28, 2.27-F2: at any size before).
+  const extra = keepExtra(rest, {});
   return {
     version: STATE_VERSION,
     settings,

@@ -542,7 +542,7 @@ export function viewWorkout(d: Draft): TemplateResult {
   ${howText('log', (state.settings.rirMode === 'off' ? 'RIR is switched off in Settings, so every working set counts as hard. ' : LOG_HELP_ON) + LOG_HELP + (d.past ? ' Quick entry: no rest timer, and a set counts as done once its reps are typed.' : state.settings.autoDone ? ' Auto-mark is on: sets tick themselves when you leave the reps field.' : ''))}
   ${
     d.free
-      ? html`<label class="field u-mt8">Name<input type="text" data-bind="draftName" maxlength="40" .value=${fieldValue(d.dayName || '')}></label><p class="small muted u-m4-0-0">Not tied to a routine day, so your cycle stays put.</p>`
+      ? html`<label class="field u-mt8">Name<input type="text" data-bind="draftName" maxlength=${LIMITS.name} .value=${fieldValue(d.dayName || '')}></label><p class="small muted u-m4-0-0">Not tied to a routine day, so your cycle stays put.</p>`
       : ''
   }
   ${d.past ? '' : readyCard(d, chkLow(d))}${bwAskCard(d)}${
@@ -553,7 +553,7 @@ export function viewWorkout(d: Draft): TemplateResult {
     d.ex,
     b => b.bid,
     (b, bi) => blockPart(d, b, bi, letters, hintSeen, calIdx, bwAt)
-  )}<div class="row"><button class="btn u-f1" data-act="pickSession">+ Add exercise</button>${d.editingId ? '' : html`<button class="btn" data-act="pickEx">Pick for me</button>`}</div>${d.editingId ? '' : cardioDraftCard(d)}<label class="field u-mt12">Notes<textarea data-bind="draftNotes" .defaultValue=${d.notes || ''} .value=${fieldValue(d.notes || '')}></textarea></label>${picStrip(null)}
+  )}<div class="row"><button class="btn u-f1" data-act="pickSession">+ Add exercise</button>${d.editingId ? '' : html`<button class="btn" data-act="pickEx">Pick for me</button>`}</div>${d.editingId ? '' : cardioDraftCard(d)}<label class="field u-mt12">Notes<textarea data-bind="draftNotes" maxlength=${LIMITS.note} .defaultValue=${d.notes || ''} .value=${fieldValue(d.notes || '')}></textarea></label>${picStrip(null)}
   <div class="row fin-row u-mt12"><button class="btn danger" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button><button class="btn primary u-f1" data-act="finish" data-tip="Only sets marked done are saved; you are asked about any with reps but no checkmark.">${d.editingId ? 'Save changes' : 'Finish and save'}</button></div>`;
 }
 
@@ -1434,7 +1434,7 @@ export function workoutInput(t: Field): boolean {
   if (b === 'draftNotes') {
     act(
       () => {
-        d.notes = t.value;
+        d.notes = t.value.slice(0, LIMITS.note);
       },
       { inProgress: true, soon: true }
     );

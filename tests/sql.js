@@ -265,7 +265,7 @@ const V = '11111111-1111-1111-1111-111111111111', F = '22222222-2222-2222-2222-2
     ok(quoted.length >= 2 && quoted.every(x => printed.includes(x)), 'each rule OWNER.md E2 quotes is one Postgres printed for these tables', { quoted, printed });
   }
 }
-{ // 2.28 (the 2.27 review's 227-F1): the conditional write scripts/cloud-supabase.js makes, as the statements the
+{ // 2.28 (the 2.27 review's 2.27-F1): the conditional write scripts/cloud-supabase.js makes, as the statements the
   // Data API runs for it (an insert, and an update filtered on the row's JSON fields), on the tables as SUPABASE.md
   // makes them, signed in as the account: no new SQL is needed, and the filters read the JSON as the app writes it.
   const db = new PGlite(); await db.exec(stub);

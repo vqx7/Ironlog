@@ -117,7 +117,9 @@ const LOG_LIMITS = { stackLines: 4, stackChars: 400, messageChars: 300, kept: 60
 export function log(area: string, err: unknown): void {
   try {
     const E = rec(err);
-    const m = E && E.message ? E.message : E ? JSON.stringify(err) : String(err);
+    // What an account server said that the app does not show (serverSaid, scripts/cloud-supabase.js, 2.28) is kept here.
+    const said = E && typeof E.serverSaid === 'string' ? ` (server: ${E.serverSaid})` : '';
+    const m = (E && E.message ? E.message : E ? JSON.stringify(err) : String(err)) + said;
     // Where it broke, not only what it said (r47): the first lines of the stack travel with a problem report, so a crash can be found in the code without the phone.
     const st =
       E && typeof E.stack === 'string'

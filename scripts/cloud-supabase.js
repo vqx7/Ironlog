@@ -149,7 +149,10 @@
     const msg = String((e && (e.message || e.error_description)) || e || '');
     const code = String((e && (e.code || e.error_code)) || '');
     const status = +(e && e.status) || 0;
-    let text = msg || 'Something went wrong. Try again.';
+    /* What the server said, when the app has no words of its own for it, is kept for the error log (serverSaid) and
+       never shown (2.28, the 2.27 review's 2.27-F7: a Postgres or sign-in service sentence reached the screen). */
+    const OTHER = 'Something went wrong with your account just now. Try again; if it keeps happening, report a problem.';
+    let text = OTHER;
     // A setup step still to do, shown in Your data like a table without
     // permissions ('denied'), while sync keeps retrying.
     if (PREVIEW && /docs_preview/.test(msg) && /PGRST205|42P01|does not exist|schema cache/i.test(msg + code)) return Object.assign(new Error('Preview sync is not set up yet. The preview keeps its log on this phone meanwhile.'), { code: 'denied' });
@@ -166,6 +169,7 @@
     else if (/captcha/i.test(msg + code)) text = 'The security check did not pass. Close this and try again.';
     else if (/email not confirmed|email_not_confirmed/i.test(msg + code)) text = 'Confirm your email first: type the code from the email below, or open its link.';
     else if (/already registered|user_already_exists/i.test(msg + code)) text = 'An account with this email already exists. Sign in instead.';
+    else if (/email_address_invalid|unable to validate email|email address .* is invalid/i.test(msg + code)) text = 'That email address does not look right. Check it and try again.';
     // A confirmation code that is wrong, used or expired: Supabase answers all three the same way, so one message (r45 review).
     else if (/otp_expired|token has expired or is invalid/i.test(msg + code)) return Object.assign(new Error('That code is wrong or has expired. Use the newest email, or send a new one.'), { code: 'bad_code' });
     // One email per address a minute: "you can only request this after 42 seconds".
@@ -176,6 +180,7 @@
     else if (/send a request to the edge function/i.test(msg)) text = 'Could not delete the account just now. Check you have signal and try again; if it keeps failing, report a problem.';
     else if (/failed to fetch|network|load failed|fetch/i.test(msg) || e instanceof TypeError) text = 'No connection. Try again when you have signal.';
     const out = new Error(text);
+    if (text === OTHER && msg) out.serverSaid = msg.slice(0, 300);
     // 401/403 from the database means the sign-in is no longer valid: sync
     // switches itself off (cloudFail treats 'revoked' that way).
     // A table without permissions for signed-in users is a setup problem, not
@@ -363,7 +368,7 @@
           if (error) throw friendly(error);
           return { id: last(path), exists: !!data, data: () => (data ? data.data : undefined) };
         },
-        /* Writes the document only while the row still holds what the phone read (2.28, the 2.27 review's 227-F1),
+        /* Writes the document only while the row still holds what the phone read (2.28, the 2.27 review's 2.27-F1),
            in one request the database applies as one step: a new document is inserted, and refused when another
            device made it first (the primary key); an existing one is updated only where its write mark (data's w),
            or for a row a build before 2.28 wrote, its time (data's at) with no mark, is the one read. True when

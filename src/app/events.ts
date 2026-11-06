@@ -6,6 +6,7 @@
    added them: each document listener runs in the order it was added, so the
    order is part of what a tap does. */
 
+import { LIMITS } from './records';
 import { BW_ACTS } from './bwnudge';
 import { isDate, today } from './util';
 import { bwShare } from './library';
@@ -105,8 +106,9 @@ function editorSet(e: ExEdit, k: string, v: string | boolean): void {
     else if (k === 'assist') e.assist = v;
     return;
   }
-  if (k === 'name') e.name = v;
-  else if (k === 'note') e.note = v;
+  // Within the fields' own limits whatever reaches them (2.28, 2.27-F3).
+  if (k === 'name') e.name = v.slice(0, LIMITS.exName);
+  else if (k === 'note') e.note = v.slice(0, LIMITS.note);
   else if (k === 'primary') e.primary = v;
   else if (k === 'equip') e.equip = v;
   else if (k === 'incRaw') e.incRaw = v;
@@ -330,8 +332,10 @@ export function eventListeners(): void {
     }
     // The session screen's (r60): Next through a set's fields, Escape on the effort strip, the arrows on an exercise's handle.
     if (workoutKey(e)) return;
+    // Escape closes a sheet as a tap outside it does: one with something typed in it stays (2.28, 2.27-F6).
     if (e.key === 'Escape' && ui.modal) {
-      closeModal();
+      if (ui.modal.dirty) toast(DIRTY_SAID);
+      else closeModal();
       return;
     }
     if (e.key !== 'Tab' || !ui.modal) return;

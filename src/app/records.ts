@@ -56,8 +56,13 @@ export const LIMITS = {
   startNote: 2000,
   /** Why the next sets were adjusted, in characters. */
   why: 160,
-  /** The lifter's name, and a session's, in characters. */
+  /** The lifter's name, a session's, a routine's and a day's, in characters. */
   name: 40,
+  /** An exercise's name, in characters: the library's longest is 36 (2.28, 2.27-F3). */
+  exName: 60,
+  /** A note, in characters: a session's, an exercise's, an injury's (2.28, 2.27-F3: any length before, and one
+      long paste could make a month too large to sync). */
+  note: 5000,
   /** A section key, in characters, and how many a tab's order keeps. */
   secKey: 40,
   /** A folded section's key, in characters, and how many are kept. */

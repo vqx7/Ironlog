@@ -177,7 +177,9 @@ export async function impStart(input: { file?: File | undefined; text?: string |
           inputStep(
             e instanceof Error && e.message === 'old'
               ? 'This phone cannot open .xlsx files. Save the sheet as CSV and try again.'
-              : 'That spreadsheet could not be read. Save it as CSV and try again.'
+              : e instanceof Error && e.message === 'big'
+                ? 'That spreadsheet is too large to read here. Save the sheet you need as CSV and try again.'
+                : 'That spreadsheet could not be read. Save it as CSV and try again.'
           );
           return;
         }

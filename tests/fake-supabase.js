@@ -4,7 +4,7 @@
 // rows, signed-out requests see nothing). It also serves a folder of static
 // files, so the app and its "cloud" share one origin like in production.
 //
-// start(root) -> {base, users, rows, feedback, confirm(email), addReader(email), feedbackTables(on), feedbackKey(on), loseReplies(n), expireTokens(email?), captchaSeen, captcha(on), raceAlways(on), log, close()}
+// start(root) -> {base, users, rows, feedback, confirm(email), addReader(email), feedbackTables(on), feedbackKey(on), loseReplies(n), expireTokens(email?), captchaSeen, captcha(on), raceAlways(on), failOnce(path, status, body), log, close()}
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -32,7 +32,8 @@ function start(root) {
   const captchaSeen = [];       // {path, grant, token} for every POST to signup, token, recover, resend, otp and verify
   let captchaOn = false; const captchaUsed = new Set();
   const log = [];
-  let raceAlways = false;       // true: every conditional write of a docs row finds it changed (2.28, 227-F1)
+  let failOnce = null;          // {path, status, body}: the next auth request to that path answered with that error, once (2.28, 2.27-F7)
+  let raceAlways = false;       // true: every conditional write of a docs row finds it changed (2.28, 2.27-F1)
   let tokenLife = 3600; let deny = false; let fnDeployed = false; const gone = new Set(); const codeLife = 3600 * 1000;
   const now = () => Math.floor(Date.now() / 1000);
   const userJson = u => ({ id: u.id, aud: 'authenticated', role: 'authenticated', email: u.email,
@@ -87,6 +88,7 @@ function start(root) {
       const json = () => { try { return body ? JSON.parse(body) : {}; } catch (e) { return {}; } };
       if (p.startsWith('/auth/v1/') || p.startsWith('/rest/v1/')) log.push(`${req.method} ${p}${u.search}`);
       if (p.startsWith('/auth/v1/') && !req.headers.apikey) return authErr(res, 401, 'no_api_key', 'No API key found in request');
+      if (failOnce && p === failOnce.path) { const f = failOnce; failOnce = null; return send(res, f.status, f.body); }
       // ---- Auth ----
       if (req.method === 'POST' && /^\/auth\/v1\/(signup|token|recover|resend|otp|verify)$/.test(p)) {
         const b = json(); const tok = b.gotrue_meta_security && b.gotrue_meta_security.captcha_token;
@@ -221,7 +223,7 @@ function start(root) {
           }
           return send(res, 200, out);
         }
-        /* A write the row's write mark no longer matches (2.28, 227-F1): raceAlways makes every conditional write find
+        /* A write the row's write mark no longer matches (2.28, 2.27-F1): raceAlways makes every conditional write find
            the row changed, as a device writing first would, until it is turned off. */
         const answer = (code, list) => (/return=representation/.test(prefer) ? send(res, code, shape(list)) : send(res, code === 200 ? 204 : code));
         if (req.method === 'POST') {
@@ -271,6 +273,7 @@ function start(root) {
       setTokenLife(s) { tokenLife = s; },
       setDeny(v) { deny = !!v; },
       raceAlways(v) { raceAlways = !!v; },
+      failOnce(path, status, body) { failOnce = { path, status, body }; },
       deployDelete(v) { fnDeployed = !!v; },
       captchaSeen, captcha(v) { captchaOn = !!v; },
       feedback, addReader(email) { const x = users.get(email); if (x) readers.add(x.id); }, feedbackTables(v) { fbOn = !!v; }, feedbackKey(v) { fbKey = !!v; }, loseReplies(n) { fbLose = n; },

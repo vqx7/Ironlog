@@ -1,4 +1,4 @@
-// Two devices writing the same sync document at the same moment (2.28, the 2.27 review's 227-F1): the real build
+// Two devices writing the same sync document at the same moment (2.28, the 2.27 review's 2.27-F1): the real build
 // (supabase-js plus scripts/cloud-supabase.js) against the stand-in Supabase server, two browser contexts as two
 // phones on one account. One device's write is held on its way to the server while the other device writes the same
 // document; when it is let go it must not replace the other device's write. Before 2.28 every write was an upsert
@@ -7,6 +7,9 @@
 // Cases: a month document both devices already have; a document neither has yet (both create it); a row last
 // written by a 2.27 phone (no write mark), changed between the read and the write; a server that refuses every
 // conditional write for a while (the sync says it is not synced, keeps both logs, and syncs once it can).
+// With them, two more of the 2.27 review's findings on the same stand-in server: a workout in progress too large to
+// sync is named as that, not as a month of sessions (2.27-F2, case 5), and an account error the app has no words
+// for is shown in plain words, the server's own sentence kept only in the error log (2.27-F7, case 6).
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -150,6 +153,34 @@ fs.cpSync(DIST, tmp, { recursive: true });
     ok(await A.page.waitForFunction(() => window.__ironlog.cloudState().status === 'synced', null, { timeout: 30000 }).then(() => true, () => false), '4: once writes go through, the phone syncs on its own and says synced');
     ok(serverIds(user.id) === 'c0,cA', '4: the account then holds both sessions', serverIds(user.id));
     ok(!A.errors.length, '4: no page errors', A.errors);
+    await A.ctx.close();
+  }
+
+  // ---- 5. A workout in progress too large to sync: said as that ----
+  {
+    fake.addUser('five@example.com', 'correct horse 1');
+    const A = await device('A');
+    ok(await signIn(A, 'five@example.com'), '5: A signs in and syncs');
+    await A.ev(() => { const L = window.__ironlog; const R = L.state.routines[0]; L.state.draft = L.normalize({ draft: { date: '2026-11-05', id: 'big', dayIdx: 0, dayName: 'Chest', routineId: R.id, notes: 'n'.repeat(260000), ex: [], cardio: [] } }).draft; L.saveNow(); });
+    await A.ev(() => window.__ironlog.flush()); await wait(1200);
+    const c = await A.ev(() => window.__ironlog.cloudState());
+    ok(c.status !== 'synced' && /workout in progress is too large/.test(String(c.err)), '5: 2.27-F2: a workout in progress over the size cap is said to be the workout, not a month of sessions (2.27: "One month of sessions is too large")', { status: c.status, err: c.err });
+    await A.ctx.close();
+  }
+
+  // ---- 6. An account error the app has no words for ----
+  {
+    fake.addUser('six@example.com', 'correct horse 1');
+    const A = await device('A');
+    await A.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); });
+    await A.page.click('#acctPanel [data-act="acctOpen"][data-mode="signin"]'); await wait(100);
+    fake.failOnce('/auth/v1/token', 500, { code: 500, error_code: 'unexpected_failure', msg: 'pq: relation "auth.refresh_tokens" does not exist' });
+    await A.page.fill('#modal [data-abind="email"]', 'six@example.com'); await A.page.fill('#modal [data-abind="pw"]', 'correct horse 1');
+    await A.page.click('#modal [data-act="acctSubmit"]');
+    await A.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return !m || !m.busy; }, null, { timeout: 10000 });
+    const r = await A.ev(() => ({ sheet: (document.querySelector('#modal') || {}).innerText || '', log: JSON.stringify(window.__ironlog.logBuf) }));
+    ok(!/pq:|relation|refresh_tokens/.test(r.sheet) && /Something went wrong with your account/.test(r.sheet), '6: 2.27-F7: an account error with no words of its own is shown in plain words, not the server\'s sentence (2.27: "pq: relation ...")', r.sheet.slice(0, 300));
+    ok(/server: pq: relation/.test(r.log), '6: 2.27-F7: the server\'s sentence is kept in the error log, for a problem report', r.log.slice(-400));
     await A.ctx.close();
   }
 

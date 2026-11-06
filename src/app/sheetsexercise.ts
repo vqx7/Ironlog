@@ -10,6 +10,7 @@
    leave a redrawn label's tip as it first was. */
 
 import { html, svg } from 'lit-html';
+import { LIMITS } from './records';
 import type { TemplateResult } from 'lit-html';
 import { EQUIP, ML, MUSCLES, autoCompound, isCompound } from './library';
 import { EX, IDX, U, allTimeBests, barKg, fmtW, liftRead } from './live';
@@ -58,7 +59,7 @@ export function exEditSheet(m: ExEditSheet): TemplateResult {
   const save =
     m.isNew && m.back && m.back.kind === 'picker' ? SAVE_INTO[m.back.mode || ''] || 'Save exercise' : 'Save exercise';
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.isNew ? 'New exercise' : 'Edit exercise'}</h3>${closeX()}</div><div class="stack">
-    <label class="field">Name<input type="text" data-ebind="name" value=${e.name}></label>
+    <label class="field">Name<input type="text" data-ebind="name" maxlength=${LIMITS.exName} value=${e.name}></label>
     <div class="grid2"><label class="field">Primary muscle<select data-ebind="primary">${e.primary ? '' : html`<option value="" selected disabled>Pick one</option>`}${MUSCLES.map(([k, l]) => html`<option value=${k} ?selected=${e.primary === k}>${l}</option>`)}</select></label>
     <label class="field">Equipment<select data-ebind="equip">${EQUIP.map(([k, l]) => html`<option value=${k} ?selected=${e.equip === k}>${l}</option>`)}</select></label></div>
     <label class="field"><span>Movement</span> ${tipButton('Compound: a press, row, pull-up, squat, or hinge. Isolation: one joint, like a curl or a raise. It sets the size of load increases (about 2.5% of the load on compound lifts, 5% on isolation), the setup time in estimates, which RIR calibration group the lift joins, and what Short on time keeps.', 'About movement')}<select data-ebind="kind"><option value="" ?selected=${!e.kind}>Automatic (${autoCompound({ name: e.name, primary: e.primary, timed: e.timed || undefined }) ? 'compound' : 'isolation'})</option><option value="compound" ?selected=${e.kind === 'compound'}>Compound</option><option value="iso" ?selected=${e.kind === 'iso'}>Isolation</option></select></label>
@@ -76,7 +77,7 @@ export function exEditSheet(m: ExEditSheet): TemplateResult {
     <label class="field">${labelTip('lt-ex-plates', 'Plate helper', 'What to load, shown under the sets in a session.')}<select data-ebind="plates" aria-labelledby="lt-ex-plates">${PLATE_MODES.map(([k, l]) => html`<option value=${k} ?selected=${(e.plates || 'auto') === k}>${l}</option>`)}</select></label></div>
     ${platesMode(e) === 'bar' ? html`<label class="field">${labelTip('lt-ex-barRaw', `Bar for this lift (${U()})`, 'A trap bar, EZ bar, or any bar other than the one in Settings. Used for the plates line and so a deload never goes under it.')}<input type="text" inputmode="decimal" data-ebind="barRaw" aria-labelledby="lt-ex-barRaw" value=${e.barRaw || ''} placeholder=${`Settings bar, ${fmtW(barKg())}`}></label>` : ''}
     <label class="field">${labelTip('lt-ex-maxRaw', `Heaviest available (${U()}${e.bw ? ', added' : ''})`, 'The top of the stack or the biggest dumbbell. At that load, targets move to more reps and then harder reps, and the lift is not called stalled.')}<input type="text" inputmode="decimal" data-ebind="maxRaw" aria-labelledby="lt-ex-maxRaw" value=${e.maxRaw || ''} placeholder="No limit"></label>
-    <label class="field">Notes and cues<textarea data-ebind="note">${e.note || ''}</textarea></label></div></details>
+    <label class="field">Notes and cues<textarea data-ebind="note" maxlength=${LIMITS.note}>${e.note || ''}</textarea></label></div></details>
     <div class="row"><button class="btn primary" data-act="exSave">${save}</button><button class="btn" data-act=${m.back ? 'exBack' : 'mClose'}>${m.back ? 'Back' : 'Cancel'}</button></div>${m.isNew ? '' : howToLink(e)}${!m.isNew && e.custom && !window.claude ? html`<button class="linkbtn u-minh44" data-act="exSuggest" data-tip="Your exercises are only in your log. This sends it to the app's owner, who can add it to the library for everyone.">Suggest for the library</button>` : ''}</div></div>`;
 }
 

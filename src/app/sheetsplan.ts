@@ -6,6 +6,7 @@
    their data-act (r63). */
 
 import { html, nothing } from 'lit-html';
+import { LIMITS } from './records';
 import type { TemplateResult } from 'lit-html';
 import { TEMPLATES, dayLabel, dayParts, dayWorkout, routineFromTemplate } from './routines';
 import { activeRoutine, dayMinutes, isDeloadWeek, prof, cycleState } from './live';
@@ -47,7 +48,7 @@ export function templatesSheet(m: { from?: string | undefined; imported?: boolea
 /** A new routine: its name, three empty training days with rest days between. */
 export function routineNewSheet(): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3>${closeX()}</div>
-    <label class="field">Name<input type="text" id="rNewName" placeholder="e.g. Upper focus, 6 days"></label>
+    <label class="field">Name<input type="text" id="rNewName" maxlength=${LIMITS.name} placeholder="e.g. Upper focus, 6 days"></label>
     <p class="small muted">Three empty training days with rest days between. It is not active until you tap Make active.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }

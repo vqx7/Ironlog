@@ -8,6 +8,7 @@
 
 import { picStrip } from './notepics';
 import { html } from 'lit-html';
+import { LIMITS } from './records';
 import type { TemplateResult } from 'lit-html';
 import { JOINTS, MUSCLES, rackKind } from './library';
 import { EX, U, exName, fmtW, gymRack, incOf } from './live';
@@ -60,7 +61,7 @@ export function injurySheet(): TemplateResult {
     <p class="small muted hastip" data-tip="Every exercise that loads this muscle (directly or as a helper) or this joint is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Training aid, not medical advice: sharp, worsening, or lasting pain needs a clinician.</p>
     <div class="stack"><label class="field">Area<select id="injM"><optgroup label="Joints">${JOINTS.map(([k, l]) => html`<option value=${k}>${l}</option>`)}</optgroup><optgroup label="Muscles">${MUSCLES.map(([k, l]) => html`<option value=${k}>${l}</option>`)}</optgroup></select></label>
     <p class="small muted hastip u-m0" data-tip="Knee: squats, lunges, leg press, leg extensions, and curls. Hip: squats, hinges, hip thrusts, adductors, and abductors. Shoulder: presses, flyes, raises, pull-downs, pull-ups, dips. Elbow: curls, extensions, rows, pull-downs, dips. Wrist: curls, barbell and dumbbell presses, push-ups, front squats. A judgment from the movement, not a measurement.">Which exercises a joint flag marks</p>
-    <label class="field">Note (optional)<input type="text" id="injNote" placeholder="e.g. left elbow, pressing only"></label>
+    <label class="field">Note (optional)<input type="text" id="injNote" maxlength=${LIMITS.note} placeholder="e.g. left elbow, pressing only"></label>
     <div class="row"><button class="btn primary" data-act="injSave">Flag it</button><button class="btn" data-act="mClose">Cancel</button></div></div></div>`;
 }
 
@@ -97,7 +98,7 @@ export function maxSheet(m: { exId: string }): TemplateResult {
 export function noteSheet(m: { bi: number; title: string; text?: string | undefined }): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.title}</h3>${closeX()}</div>
     <p class="small muted">Saved with this session and shown next time: a cue, a niggle, which machine. Pictures stay on this phone.</p>
-    <textarea id="mNote" aria-label="Note" class="u-minh110">${m.text || ''}</textarea>${picStrip(m.bi)}
+    <textarea id="mNote" aria-label="Note" maxlength=${LIMITS.note} class="u-minh110">${m.text || ''}</textarea>${picStrip(m.bi)}
     <div class="row u-mt10"><button class="btn primary" data-act="noteSave">Save note</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 

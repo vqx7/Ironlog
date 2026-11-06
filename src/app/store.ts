@@ -151,16 +151,25 @@ interface CloudSnap {
   exists: boolean;
   data(): unknown;
 }
-/** What a write expects a document to hold, read just before it (2.28, the 2.27 review's 227-F1): nothing (the
+/** What a write expects a document to hold, read just before it (2.28, the 2.27 review's 2.27-F1): nothing (the
     document is new), its write mark (`w`, which every write since 2.28 carries), or, for a document a build before
     2.28 wrote, which carries no mark, its write time (`at`, null when it has none). */
 export type CloudSeen = null | { w: string } | { at: number | null };
+/** A sync document as written: its format (1), when it was written and when its content was last edited (each by
+    the writing device's clock), its write mark (2.28, 2.27-F1), and its content as JSON. */
+export interface CloudDoc {
+  v: 1;
+  at: number;
+  et: number;
+  w: string;
+  json: string;
+}
 /** One document in the account, by path: read whole, and written whole only while it still holds what was read. */
 export interface CloudRef {
   get(): Promise<CloudSnap>;
   /** Writes the document if it still holds what `seen` says, in one step on the server: true when written, false
       when another device wrote it first (the caller reads it again, merges and tries again). */
-  setIf(doc: Record<string, unknown>, seen: CloudSeen): Promise<boolean>;
+  setIf(doc: CloudDoc, seen: CloudSeen): Promise<boolean>;
 }
 /** The account's document store the sync uses: documents by path, and a listing of a collection's documents. */
 export interface CloudDb {
@@ -173,8 +182,8 @@ export interface CloudDb {
 export interface CloudDbIn {
   doc(path: string): {
     get(): Promise<CloudSnap>;
-    set?(doc: Record<string, unknown>): Promise<unknown>;
-    setIf?(doc: Record<string, unknown>, seen: CloudSeen): Promise<boolean>;
+    set?(doc: CloudDoc): Promise<unknown>;
+    setIf?(doc: CloudDoc, seen: CloudSeen): Promise<boolean>;
   };
   collection(path: string): { get(): Promise<{ docs: (CloudSnap & { id: string })[] }> };
 }

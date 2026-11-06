@@ -269,6 +269,8 @@ const ZIP = {
   localHead: 30
 } as const;
 
+/** The most one part of an .xlsx file may inflate to, in bytes: a sheet of IMP_MAX_ROWS rows is tens of megabytes. */
+const XLSX_MAX_BYTES = 64 * 1024 * 1024;
 /* An .xlsx file is a zip of XML. Read the first sheet with the browser's own
    decompressor (Safari 16.4 and later), so no library is needed. */
 export async function impXlsx(buf: ArrayBuffer): Promise<string[][]> {
@@ -304,9 +306,27 @@ export async function impXlsx(buf: ArrayBuffer): Promise<string[][]> {
     const at = f.lo + ZIP.localHead + ln + le;
     const data = u.subarray(at, at + f.cs);
     if (f.meth === 0) return new TextDecoder().decode(data);
-    const out = await new Response(
-      new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))
-    ).arrayBuffer();
+    /* Read in pieces and stopped past XLSX_MAX_BYTES (2.28, 2.27-F10): a file of a megabyte or two can inflate to
+       gigabytes, and read whole it took that much of the phone's memory before anything was checked. */
+    const rd = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+    const parts: Uint8Array[] = [];
+    let size = 0;
+    for (;;) {
+      const { done, value } = await rd.read();
+      if (done) break;
+      size += value.length;
+      if (size > XLSX_MAX_BYTES) {
+        await rd.cancel();
+        throw new Error('big');
+      }
+      parts.push(value);
+    }
+    const out = new Uint8Array(size);
+    let pos = 0;
+    for (const x of parts) {
+      out.set(x, pos);
+      pos += x.length;
+    }
     return new TextDecoder().decode(out);
   };
   const X = (t: string) => new DOMParser().parseFromString(t, 'application/xml');

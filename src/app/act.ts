@@ -2,7 +2,8 @@
    design, item 2). An action on a moved screen hands its change to `act`,
    which does every step a change needs, always in this order: the check,
    the Undo step, the change, the caches dropped, the save on this device and
-   the edit noted for the sync (the save does both, saveNow). Before r57 each
+   the edit noted for the sync (the save does both, saveNow). A change that
+   fails halfway is put back whole, with no save and no Undo step (2.28). Before r57 each
    action placed these by hand, about 170 saves and 41 Undo steps, and one
    left out was found only when it lost something. The legacy script's
    direct writes are replaced screen by screen as each moves; tests/hygiene.js
@@ -62,12 +63,31 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
      the toast goes; a change that keeps a step shows its own after this.
      Settings' Undo last delete or reset still takes back the steps kept. */
   fx.undoToastHide();
+  const top0 = undoStack[undoStack.length - 1];
   if (opts.undo) snapshot(typeof opts.undo === 'function' ? opts.undo : null);
+  // The step this change keeps: a new entry on top, none when the snapshot could not be taken.
+  const top = undoStack[undoStack.length - 1];
+  const step = opts.undo && top !== top0 ? top : undefined;
+  /* What a change that fails halfway is put back to (2.28, 2.27-F5): an exact copy of the workout in progress for a
+     change to it alone, else of the whole log. Before 2.28 the half-changed log stayed, and the next change saved
+     it. */
+  const draftWas = opts.inProgress ? structuredClone(state.draft) : null;
+  const logWas = opts.inProgress ? null : structuredClone(state);
   outerUndo = !!opts.undo;
   depth++;
   let inside = false;
   try {
     change();
+  } catch (e) {
+    if (logWas) setState(logWas);
+    else state.draft = draftWas;
+    // The step kept for a change that was not made is taken back with it.
+    if (step && undoStack[undoStack.length - 1] === step) {
+      undoStack.pop();
+      undoPersist();
+    }
+    invalidate();
+    throw e;
   } finally {
     // Read and cleared whether or not the change threw, so the next change starts clean.
     depth--;
