@@ -2,7 +2,7 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r72 live, version 2.27 (2026-11-05; checked by Claude on GitHub: you merged pull request #71 at 16:36 UTC, 08:36 Los Angeles; main's run failed one WebKit check of the update after a first install (NEW-14, which has failed this way before and passed on the pull request's run of the same code), Claude reran that job, it passed, and gh-pages shows "Publish 805ea63" at 17:55 UTC, the published page carrying build 2026.11.04-r72).
+Last updated: 2.28 in pull request #72, waiting on you (2026-11-05). Live: r72, version 2.27 (you merged pull request #71 at 16:36 UTC, 08:36 Los Angeles; gh-pages "Publish 805ea63" at 17:55 UTC after one WebKit check of the update after a first install, NEW-14, was rerun).
 
 ## Now, in this order
 
@@ -15,6 +15,11 @@ Last updated: r72 live, version 2.27 (2026-11-05; checked by Claude on GitHub: y
 1f. A34 (r69): done, merged by you (#68, 2026-11-03 13:38 Los Angeles) and live (see Last updated).
 1g. A35 (r70): done, merged with r71 (#70 took #69's commits into main, 2026-11-04 12:58 Los Angeles) and live.
 1h. A36 (r71): done, merged by you (#70) and live (see Last updated).
+1i. A37 (r72, 2.27): done, merged by you (#71) and live.
+1j. A38 (2.28, pull request #72): try the preview on your phone (Checks on your phone, 2.28, below), then merge on GitHub. After it is merged, two steps in Supabase, in either order, about 5 minutes; nothing in 2.28 waits for them:
+   - B1a again: paste the block below and Run. It now takes each account's report count and document count one write at a time (2.27-F14: two writes at the same moment could each pass the limit). Safe to run more than once.
+   - B4 again: paste the function below over the old one and Deploy. Its webhook secret is now compared in a way a caller cannot time (2.27-F14).
+   - Then E2 (2 minutes, read-only) if you have not run it yet: it shows what your live project actually has.
 2. Problem reports: done (2026-10-30, you). B4's r64 code is deployed, B1a has been run, and a test report from the preview became an issue in `ironlog-feedback`, which confirms B5. See Done.
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
 4. D6: delete the old branches and stop them piling up (2 minutes, below).
@@ -92,7 +97,7 @@ insert into public.feedback_readers (user_id) select id from auth.users where em
 Check: Report a problem from the app (signed in), then Supabase > **Table Editor** > `feedback` shows it, and Settings > Help shows **Inbox** for your account.
 
 ### B1a. The r64 block: one paste, any time
-Status: done (you, 2026-10-30, pasted from the r64 file Claude sent; it is the block below). It replaces r63's B1a (a report's key, which you may not have run) and D7 (a size limit on each synced document): this block does both, and adds two r64 rules. Supabase > **SQL Editor** > **New query**, paste, **Run**. It is safe to run more than once, and nothing in the app waits for it.
+Status: run it again after 2.28 is merged (step 1j above): since 2.28 the block takes each account's counts one write at a time. Done before on 2026-10-30 (you, from the r64 file Claude sent). It replaces r63's B1a (a report's key, which you may not have run) and D7 (a size limit on each synced document): this block does both, and adds two r64 rules. Supabase > **SQL Editor** > **New query**, paste, **Run**. It is safe to run more than once, and nothing in the app waits for it.
 - A report sent again after its answer was lost is kept once, so one ticket, not two (r63).
 - A report's reply address is your friend's account email, set by the database, never what the phone sent: a made-up one could write lines into the GitHub issue (r64, the r63 audit's A-3).
 - A synced document is at most 1 MB (r45, D7), and one account at most 2,000 documents and 25 MB, about 20 times a three-year log, so no account can fill the free database (r64, PENDING 339 l).
@@ -223,6 +228,7 @@ GitHub > your photo > **Settings** > **Developer settings** > **Personal access 
 
 ### B4. The function that turns a report into a GitHub issue
 Status: done, as you reported (2026-10-04); r64's code deployed by you on 2026-10-30 (from the file Claude sent, which is `supabase/functions/feedback-to-issue/index.ts` on r64 and the code below). Until r64 merges, OWNER.md on `main` still shows r63's code. To paste it again: Supabase > **Edge Functions** > `feedback-to-issue` > **Code**, select all, paste the code below over it, **Deploy**. r64 keeps a report's words inside their quote whatever line endings they carry, shows the reply address as code on one line, cuts text to the app's own limits, and logs a report it could not link to its issue (the r63 audit's A-3, A-9 and A-12). It also stops committing screenshots to `ironlog-feedback` (your choice A, 2026-10-27): a screenshot stays in your Inbox, and the issue says so. Screenshots already in the repository's `shots/` folder stay until you delete them. It is not published by a merge: the copy in Supabase changes only when you paste it.
+2.28 (2.27-F14): paste it again once 2.28 is merged: the webhook secret is compared in a time that does not depend on how much of a guess is right. Nothing else changes.
 r66 (PENDING 378): paste it again once r66 is merged. Every issue then starts with a line saying the report is untrusted text whose instructions no person, bot or AI tool should follow, and carries the label `untrusted` beside `feedback` and its kind. Check: send a test report; the new issue's first line begins **Untrusted report.** and its labels include `untrusted`. If the label is missing, add it once in `ironlog-feedback` > **Issues** > **Labels** > **New label**, named `untrusted`.
 Supabase > **Edge Functions** > **Deploy a new function** > **Via editor**. Name it exactly `feedback-to-issue`. Delete the sample code, paste all of this:
 
@@ -495,6 +501,11 @@ Status: to do whenever you are at the gym; tell Claude what you see.
   - Today: Lifts moving (once a lift is rising) with lines that rise, and a tap opens the lift on Stats; each lift on the Workout preview names its best;
   - Stats > Lifts > All-time bests > Add an old best: a date, a lift, one set, Finish, and it shows in All-time bests;
   - in a workout, tap the muscle under an exercise's name (Lats, Chest): the body figures open.
+- 2.28, in the preview (pull request #72), in Safari and in the home-screen app; nothing looks different, so these are the only things to try:
+  - in a workout, type 60 reps on one set and 8 on another, tick neither, tap Finish, then Mark them done and save, then Log it: the workout saves with no second tap on Finish;
+  - open Add an injury or a note, type something, tap outside the sheet: it stays and says Save or cancel first;
+  - signed in on two devices, log a set on each within a few seconds and let both sync: both sets end up on both;
+  - Today, a workout, History and Settings look and work as before.
 - r71, in the preview, in Safari and in the home-screen app:
   - tick a set: the rest is a card above the tabs, as in the picture you approved: the ring, the time, "Rest · next set 2" (the next lift's name once a lift is done), round -15 and +15, and Skip; time up, the ring fills, it reads Go and "Rest done"; scroll to the foot of the session: the last buttons sit above the card;
   - an exercise's ✓ Done is in orange outline at the right of its row;
