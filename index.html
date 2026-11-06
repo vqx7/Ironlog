@@ -3589,8 +3589,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return p3.jump != null && p3.jump !== "" && isNum(jump) ? { jump: Math.min(Math.max(jump, 0), LIMITS.jumpPct) } : {};
   }
   function keepExtra(src, out, known) {
+    keepExtra.n += extraInto(src, out, known);
+    return out;
+  }
+  keepExtra.n = 0;
+  function extraInto(src, out, known) {
     const S4 = rec(src);
-    if (!S4 || Array.isArray(src)) return out;
+    if (!S4 || Array.isArray(src)) return 0;
     let room = EXTRA_MAX, n3 = 0;
     for (const k2 of Object.keys(S4)) {
       if (n3 >= EXTRA_KEYS) break;
@@ -3608,12 +3613,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       room -= cost;
       n3++;
       Object.assign(out, { [k2]: parseJson(j3) });
-      keepExtra.n++;
     }
     if (n3) orderLike(S4, out);
-    return out;
+    return n3;
   }
-  keepExtra.n = 0;
   function orderLike(S4, out) {
     const was = { ...rec(out) };
     const ks = Object.keys(S4).filter((k2) => Object.prototype.hasOwnProperty.call(was, k2));
@@ -4031,126 +4034,123 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function cleanDraft(d3, date) {
     const startedAt = Number(d3.startedAt), durMin = Number(d3.durMin);
     const pics = picIds(d3.pics);
-    const out = keepExtra(
-      d3,
-      {
-        date,
-        id: typeof d3.id === "string" ? fixId(d3.id) : did("x", { date: d3.date, dayName: d3.dayName }, 0),
-        dayIdx: clampN(d3.dayIdx, 0, MAX_DAYS - 1, 0),
-        dayId: typeof d3.dayId === "string" ? fixId(d3.dayId) : null,
-        startedAt: isTime(startedAt) ? startedAt : null,
-        durMin: Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null,
-        dayName: typeof d3.dayName === "string" ? d3.dayName : "Session",
-        routineId: typeof d3.routineId === "string" && d3.routineId ? fixId(d3.routineId) : "",
-        notes: typeof d3.notes === "string" ? d3.notes : "",
-        editingId: typeof d3.editingId === "string" ? fixId(d3.editingId) : null,
-        deload: !!d3.deload,
-        light: !!d3.light,
-        limited: d3.limited === true ? true : void 0,
-        ...pics ? { pics } : {},
-        free: d3.free === true ? true : void 0,
-        // Started as its day's second workout (r68, 366 (c)).
-        part: d3.part === 2 ? 2 : void 0,
-        // Finish's two questions once answered (sets left, ramp-ups), kept as they came: until 2.28 they passed through
-        // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (the r56-1c suite).
-        _leftAsked: typeof d3._leftAsked === "boolean" ? d3._leftAsked : void 0,
-        _rampAsked: typeof d3._rampAsked === "boolean" ? d3._rampAsked : void 0,
-        // A past workout typed in after the fact: no rest timer, no clock, no check-in.
-        past: d3.past === true ? true : void 0,
-        // The notes the app wrote when the session started, so Discard can tell them from yours.
-        note0: typeof d3.note0 === "string" ? d3.note0.slice(0, LIMITS.startNote) : void 0,
-        chk: cleanChk(rec(d3.chk)) || void 0,
-        cardio: (arr(d3.cardio) || []).filter((c4) => !!c4 && typeof c4 === "object").map((c4, ci) => cleanDraftCardio(c4, ci)),
-        ex: (arr(d3.ex) || []).flatMap((b0) => {
-          const b2 = rec(b0);
-          if (!b2 || typeof b2.exId !== "string" || !arr(b2.sets)) return [];
-          const pl = rec(b2.plan) || {};
-          const plan = {
-            ...planNums(pl),
-            ss: typeof pl.ss === "string" && pl.ss ? fixId(pl.ss) : null,
-            ...jumpOf(pl)
-          };
-          if (plan.repMax < plan.repMin) plan.repMax = plan.repMin;
-          const adj = rec(b2.adj);
-          const adjW = adj ? Number(adj.w) : NaN, adjFrom = adj ? Number(adj.from) : NaN, sw = Number(b2.sw);
-          const prev = arr(b2.prev), lastR = arr(b2.lastR), keepRR = arr(b2.keepRR), ln = rec(b2.lastNote);
-          return [
-            keepExtra(
-              b0,
-              {
-                ...typeof b2.bid === "string" && b2.bid ? { bid: fixId(b2.bid) } : {},
-                exId: fixId(b2.exId),
-                plan,
-                note: typeof b2.note === "string" ? b2.note : "",
-                inj: typeof b2.inj === "string" && isMuscleOrJoint(b2.inj) ? b2.inj : null,
-                hint: typeof b2.hint === "string" ? b2.hint : "",
-                last: typeof b2.last === "string" ? b2.last : "",
-                // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
-                prev: prev ? strings(prev, () => true).slice(0, LIMITS.sets).map((x2) => x2.slice(0, LIMITS.lastText)) : void 0,
-                prevOff: b2.prevOff === true ? true : void 0,
-                target: typeof b2.target === "string" ? b2.target : "",
-                easier: typeof b2.easier === "string" ? b2.easier : null,
-                tgt: cleanTgt(rec(b2.tgt)),
-                // Last time's reps per set: shown as placeholders, so numbers only.
-                lastR: lastR ? lastR.slice(0, LIMITS.sets).map((v3) => {
-                  const n3 = numOr(v3, NaN);
-                  return isNum(n3) && n3 >= 0 ? Math.min(n3, LIMITS.reps) : null;
-                }) : [],
-                swappedFrom: typeof b2.swappedFrom === "string" ? fixId(b2.swappedFrom) : null,
-                cut: b2.cut === true ? true : void 0,
-                // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
-                full: typeof b2.full === "number" && Number.isInteger(b2.full) && b2.full >= 1 && b2.full <= LIMITS.sets ? b2.full : void 0,
-                light: b2.light === true ? true : void 0,
-                // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
-                basis: typeof b2.basis === "string" && isDate(b2.basis) ? b2.basis : void 0,
-                // The suggested load the rows started from (r24); absent in older drafts.
-                sw: b2.sw === null ? null : b2.sw === void 0 || !isNum(sw) ? void 0 : clampN(b2.sw, LOAD_MIN, LOAD_MAX, 0),
-                // The next sets adjusted from a set (r34), and Keep for the rest of the session.
-                adj: adj && typeof adj.at === "number" && Number.isInteger(adj.at) && adj.at >= 0 && isNum(adjW) && isNum(adjFrom) ? {
-                  at: adj.at,
-                  w: clampN(adj.w, 0, LOAD_MAX, 0),
-                  from: clampN(adj.from, 0, LOAD_MAX, 0),
-                  r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
-                  up: adj.up === true,
-                  why: typeof adj.why === "string" ? adj.why.slice(0, LIMITS.why) : "",
-                  // The row it came from (PENDING 333), last, where a build before it kept no such field.
-                  ...typeof adj.rid === "string" ? { rid: fixId(adj.rid) } : {}
-                } : void 0,
-                adjOff: b2.adjOff === true ? true : void 0,
-                // Editing a saved session keeps the rep range it was logged under.
-                keepRR: b2.keepRR === void 0 ? void 0 : keepRR && keepRR.length === 2 ? pair(Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1) : null,
-                lastNote: ln && typeof ln.text === "string" && typeof ln.date === "string" && isDate(ln.date) ? { date: ln.date, text: ln.text } : null,
-                sets: (arr(b2.sets) || []).flatMap((x0) => {
-                  const x2 = rec(x0);
-                  if (!x2) return [];
-                  return [
-                    keepExtra(x0, {
-                      w: x2.w == null ? null : clampN(x2.w, LOAD_MIN, LOAD_MAX, 0),
-                      r: x2.r == null || x2.r === "" ? null : Math.round(clampN(x2.r, 0, LIMITS.reps, 0)),
-                      rir: x2.rir == null || x2.rir === "" ? null : clampN(x2.rir, 0, EFFORT_TOP, null),
-                      warm: !!x2.warm,
-                      drop: !!x2.drop && !x2.warm,
-                      done: !!x2.done,
-                      cal: x2.warm ? void 0 : cleanCal(rec(x2.cal)) || void 0,
-                      // The row's own id (r56.1), last, where a build before it kept the unknown field.
-                      ...typeof x2.rid === "string" ? { rid: fixId(x2.rid) } : {}
-                    })
-                  ];
-                }),
-                // Done at a new machine or gym (r61, 343 7), last, where the menu adds it; absent unless marked.
-                ...b2.nw === true ? { nw: true } : {},
-                // The pictures on its note (r66, 373), by id, last; absent unless there are any.
-                ...picsField(b2.pics)
-              },
-              KNOWN_BLOCK
-            )
-          ];
-        })
-      },
-      DRAFT_KNOWN
-    );
-    orderLike(d3, out);
-    return out;
+    const out = {
+      date,
+      id: typeof d3.id === "string" ? fixId(d3.id) : did("x", { date: d3.date, dayName: d3.dayName }, 0),
+      dayIdx: clampN(d3.dayIdx, 0, MAX_DAYS - 1, 0),
+      dayId: typeof d3.dayId === "string" ? fixId(d3.dayId) : null,
+      startedAt: isTime(startedAt) ? startedAt : null,
+      durMin: Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null,
+      dayName: typeof d3.dayName === "string" ? d3.dayName : "Session",
+      routineId: typeof d3.routineId === "string" && d3.routineId ? fixId(d3.routineId) : "",
+      notes: typeof d3.notes === "string" ? d3.notes : "",
+      editingId: typeof d3.editingId === "string" ? fixId(d3.editingId) : null,
+      deload: !!d3.deload,
+      light: !!d3.light,
+      limited: d3.limited === true ? true : void 0,
+      ...pics ? { pics } : {},
+      free: d3.free === true ? true : void 0,
+      // Started as its day's second workout (r68, 366 (c)).
+      part: d3.part === 2 ? 2 : void 0,
+      // Finish's two questions once answered (sets left, ramp-ups), kept as they came: until 2.28 they passed through
+      // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (the r56-1c suite).
+      _leftAsked: typeof d3._leftAsked === "boolean" ? d3._leftAsked : void 0,
+      _rampAsked: typeof d3._rampAsked === "boolean" ? d3._rampAsked : void 0,
+      // A past workout typed in after the fact: no rest timer, no clock, no check-in.
+      past: d3.past === true ? true : void 0,
+      // The notes the app wrote when the session started, so Discard can tell them from yours.
+      note0: typeof d3.note0 === "string" ? d3.note0.slice(0, LIMITS.startNote) : void 0,
+      chk: cleanChk(rec(d3.chk)) || void 0,
+      cardio: (arr(d3.cardio) || []).filter((c4) => !!c4 && typeof c4 === "object").map((c4, ci) => cleanDraftCardio(c4, ci)),
+      ex: (arr(d3.ex) || []).flatMap((b0) => {
+        const b2 = rec(b0);
+        if (!b2 || typeof b2.exId !== "string" || !arr(b2.sets)) return [];
+        const pl = rec(b2.plan) || {};
+        const plan = {
+          ...planNums(pl),
+          ss: typeof pl.ss === "string" && pl.ss ? fixId(pl.ss) : null,
+          ...jumpOf(pl)
+        };
+        if (plan.repMax < plan.repMin) plan.repMax = plan.repMin;
+        const adj = rec(b2.adj);
+        const adjW = adj ? Number(adj.w) : NaN, adjFrom = adj ? Number(adj.from) : NaN, sw = Number(b2.sw);
+        const prev = arr(b2.prev), lastR = arr(b2.lastR), keepRR = arr(b2.keepRR), ln = rec(b2.lastNote);
+        return [
+          keepExtra(
+            b0,
+            {
+              ...typeof b2.bid === "string" && b2.bid ? { bid: fixId(b2.bid) } : {},
+              exId: fixId(b2.exId),
+              plan,
+              note: typeof b2.note === "string" ? b2.note : "",
+              inj: typeof b2.inj === "string" && isMuscleOrJoint(b2.inj) ? b2.inj : null,
+              hint: typeof b2.hint === "string" ? b2.hint : "",
+              last: typeof b2.last === "string" ? b2.last : "",
+              // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
+              prev: prev ? strings(prev, () => true).slice(0, LIMITS.sets).map((x2) => x2.slice(0, LIMITS.lastText)) : void 0,
+              prevOff: b2.prevOff === true ? true : void 0,
+              target: typeof b2.target === "string" ? b2.target : "",
+              easier: typeof b2.easier === "string" ? b2.easier : null,
+              tgt: cleanTgt(rec(b2.tgt)),
+              // Last time's reps per set: shown as placeholders, so numbers only.
+              lastR: lastR ? lastR.slice(0, LIMITS.sets).map((v3) => {
+                const n3 = numOr(v3, NaN);
+                return isNum(n3) && n3 >= 0 ? Math.min(n3, LIMITS.reps) : null;
+              }) : [],
+              swappedFrom: typeof b2.swappedFrom === "string" ? fixId(b2.swappedFrom) : null,
+              cut: b2.cut === true ? true : void 0,
+              // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
+              full: typeof b2.full === "number" && Number.isInteger(b2.full) && b2.full >= 1 && b2.full <= LIMITS.sets ? b2.full : void 0,
+              light: b2.light === true ? true : void 0,
+              // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
+              basis: typeof b2.basis === "string" && isDate(b2.basis) ? b2.basis : void 0,
+              // The suggested load the rows started from (r24); absent in older drafts.
+              sw: b2.sw === null ? null : b2.sw === void 0 || !isNum(sw) ? void 0 : clampN(b2.sw, LOAD_MIN, LOAD_MAX, 0),
+              // The next sets adjusted from a set (r34), and Keep for the rest of the session.
+              adj: adj && typeof adj.at === "number" && Number.isInteger(adj.at) && adj.at >= 0 && isNum(adjW) && isNum(adjFrom) ? {
+                at: adj.at,
+                w: clampN(adj.w, 0, LOAD_MAX, 0),
+                from: clampN(adj.from, 0, LOAD_MAX, 0),
+                r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
+                up: adj.up === true,
+                why: typeof adj.why === "string" ? adj.why.slice(0, LIMITS.why) : "",
+                // The row it came from (PENDING 333), last, where a build before it kept no such field.
+                ...typeof adj.rid === "string" ? { rid: fixId(adj.rid) } : {}
+              } : void 0,
+              adjOff: b2.adjOff === true ? true : void 0,
+              // Editing a saved session keeps the rep range it was logged under.
+              keepRR: b2.keepRR === void 0 ? void 0 : keepRR && keepRR.length === 2 ? pair(Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1) : null,
+              lastNote: ln && typeof ln.text === "string" && typeof ln.date === "string" && isDate(ln.date) ? { date: ln.date, text: ln.text } : null,
+              sets: (arr(b2.sets) || []).flatMap((x0) => {
+                const x2 = rec(x0);
+                if (!x2) return [];
+                return [
+                  keepExtra(x0, {
+                    w: x2.w == null ? null : clampN(x2.w, LOAD_MIN, LOAD_MAX, 0),
+                    r: x2.r == null || x2.r === "" ? null : Math.round(clampN(x2.r, 0, LIMITS.reps, 0)),
+                    rir: x2.rir == null || x2.rir === "" ? null : clampN(x2.rir, 0, EFFORT_TOP, null),
+                    warm: !!x2.warm,
+                    drop: !!x2.drop && !x2.warm,
+                    done: !!x2.done,
+                    cal: x2.warm ? void 0 : cleanCal(rec(x2.cal)) || void 0,
+                    // The row's own id (r56.1), last, where a build before it kept the unknown field.
+                    ...typeof x2.rid === "string" ? { rid: fixId(x2.rid) } : {}
+                  })
+                ];
+              }),
+              // Done at a new machine or gym (r61, 343 7), last, where the menu adds it; absent unless marked.
+              ...b2.nw === true ? { nw: true } : {},
+              // The pictures on its note (r66, 373), by id, last; absent unless there are any.
+              ...picsField(b2.pics)
+            },
+            KNOWN_BLOCK
+          )
+        ];
+      })
+    };
+    extraInto(d3, out, DRAFT_KNOWN);
+    for (const k2 of Object.keys(d3)) if (!(k2 in out)) Reflect.deleteProperty(d3, k2);
+    return Object.assign(d3, out);
   }
   function normalize(input) {
     const f3 = freshState();
@@ -4338,7 +4338,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const rest = { ...s3 };
     for (const k2 of Object.keys(f3)) delete rest[k2];
     delete rest.priors;
-    const extra = keepExtra(rest, {});
+    const extra = {};
+    extraInto(rest, extra);
     return {
       version: STATE_VERSION,
       settings,
