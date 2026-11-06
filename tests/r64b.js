@@ -367,7 +367,10 @@ const MENU = () => { const el = document.getElementById('saveState'); return el 
     await page.goto(base); await ready();
     await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
     await wait(800);
-    ok(navs === 1 && (await ver()) === v1 && !(await bar()), 'a first install: no reload of its own and no update prompt', { navs });
+    // NEW-14 (intermittent in WebKit on GitHub, twice by 2026-11-05, always reading navs 1): each of the three
+    // conditions is read once and named in the failure, so the next failure says which one it was.
+    const first = { navs, ver: await ver(), v1, bar: await bar(), sw: await page.evaluate(() => { const r = navigator.serviceWorker; return { controller: !!r.controller, script: r.controller ? r.controller.scriptURL.replace(/^.*\//, '') : null }; }) };
+    ok(first.navs === 1 && first.ver === v1 && !first.bar, 'a first install: no reload of its own and no update prompt', first);
     await page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.bodyweights.push({ id: 'wU1', date: L.today(), kg: 77 }); L.saveNow(); L.render(); });
     root = V2;
     await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
