@@ -42,7 +42,7 @@ export function restWeekSheet(): TemplateResult {
     [addDays(cur, -WEEK_DAYS), 'Last week']
   ];
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rwH"><div class="sheet-h"><h3 id="rwH">Rest week</h3>${closeX()}</div>
-    <p class="small muted u-m0-0n10">A week off on purpose. It is not counted as missed: averages, streak, and adherence skip it.</p>
+    <p class="small muted u-m0-0n10">A planned week off. Not counted as missed.</p>
     <div class="stack">${weeks.map(([w, l]) => {
       const on = isRestWeek(w);
       return html`<button class=${'btn fullw ' + (on ? 'primary' : '')} data-act="restWk" data-w=${w} aria-pressed=${String(on)}>${l}, ${fmtDate(w)} to ${fmtDate(addDays(w, WEEK_DAYS - 1))}${on ? ': rest week' : ''}</button>`;

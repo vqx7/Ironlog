@@ -290,7 +290,7 @@ export const DEMO_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
      is not offered. */
   demoLoad() {
     if (acct.user) {
-      toast('Demo data is for looking around before you sign in, so it stays off your account.', null, DEMO_SAID);
+      toast('Demo data stays off your account.', null, DEMO_SAID);
       return;
     }
     confirmBox(

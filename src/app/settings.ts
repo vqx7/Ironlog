@@ -698,7 +698,7 @@ function dataBody(): TemplateResult {
   }${
     device.ok
       ? nothing
-      : html`<p class="small u-cred">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>
+      : html`<p class="small u-cred">This browser blocks storage: nothing is kept after a reload unless you sync.</p>
 `
   }${
     unreadableRaw()

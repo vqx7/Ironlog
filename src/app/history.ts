@@ -75,7 +75,7 @@ export function viewHistory(): TemplateResult {
   if (!ss.length)
     return html`${head}${sections(keyed)}
 <div class="card">
-<p class="u-m0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p>
+<p class="u-m0">No sessions yet.</p>
 </div>
 ${impLine}${tabFoot('history')}`;
   keyed.push(['sessions', sessionsSec(ss, perDay)]);

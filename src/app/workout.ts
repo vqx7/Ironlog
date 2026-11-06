@@ -334,7 +334,7 @@ export function readyCard(d: Draft, low: number): Part {
   if (low >= 2 && !open && d.ex.some(b => b.light))
     return html`<p class="callout u-m8-0-0" id="readyCard">Made lighter: the exercises not started are half the sets at about ${pctOf(LIGHT_SHARE)}% loads.</p>`;
   if (low < 2)
-    return html`<p class="callout u-m8-0-0" id="readyCard">One low answer: keep the loads and leave a rep more in reserve than planned if it feels heavy.</p>`;
+    return html`<p class="callout u-m8-0-0" id="readyCard">Keep the loads. Leave an extra rep in reserve if it feels heavy.</p>`;
   return html`<div class="callout yellow u-m8-0-0" id="readyCard"><p class="u-m0">Low readiness today. ${tipButton(`A lighter or shorter session fits a low day better than pushing. Make it lighter changes only the exercises not started: half the sets, about ${pctOf(LIGHT_SHARE)}% loads, nothing to beat.`)}</p><div class="row u-mt8">${open ? html`<button class="btn sm" data-act="makeLight">Make it lighter</button>` : ''}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div>`;
 }
 

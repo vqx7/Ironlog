@@ -392,7 +392,7 @@ function obView(): TemplateResult {
 <div class="ob-top"><h1 class="ob-logo">${markup(LOCKUP)}</h1></div>
 ${obTourPart()}
 <div class="ob-card"><h2>Save your log</h2>
-<p class="ob-why">Back up your log and use it on any device</p>
+<p class="ob-why">Backed up, on every device</p>
 <button class="btn primary fullw" data-act="acctOpen" data-mode="signup">Create account</button>
 <button class="btn fullw" data-act="acctOpen" data-mode="signin">I have an account</button></div>
 ${ENV === 'preview' ? html`<button class="btn fullw" data-act="previewCopy">Copy my log in</button>` : nothing}
@@ -411,12 +411,12 @@ ${acctStep && !acct.user ? html`<button class="linkbtn ob-back" data-act="obAcct
     ([k, l]) =>
       html`<button class=${`chip ${U() === k ? 'on' : ''}`} data-act="obUnit" data-v=${k} aria-pressed=${String(U() === k)}>${l}</button>`
   )}</div></div>
-<label class="field">Bodyweight <span class="muted">(optional)</span><input type="text" inputmode="decimal" id="obBw" .value=${fieldValue(todayBw ? fmtW(todayBw.kg) : '')} placeholder=${`${U()}, for pull-ups, dips, and push-ups`} enterkeyhint="done"></label>
+<label class="field">Bodyweight <span class="muted">(optional)</span><input type="text" inputmode="decimal" id="obBw" .value=${fieldValue(todayBw ? fmtW(todayBw.kg) : '')} enterkeyhint="done"></label>
 <h3 class="u-font700n20-display_m6-0-0">How do you want to start?</h3>
 <div class="ob-opts">
 <button class="ob-opt primary" data-act="obSample"><b>Pick a ready-made routine</b><span>${tplCountLine()}</span></button>
-<button class="ob-opt" data-act="obFree"><b>Log a workout now</b><span>Add exercises as you go</span></button>
-<button class="ob-opt" data-act="obOwn"><b>Build my own routine</b><span>Your days, your exercises</span></button>
+<button class="ob-opt" data-act="obFree"><b>Log a workout now</b></button>
+<button class="ob-opt" data-act="obOwn"><b>Build my own routine</b></button>
 <button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, another app, a backup</span></button>${
     ENV === 'preview'
       ? html`<button class="ob-opt" data-act="previewCopy"><b>Copy my log in</b><span>Try this test version on your own log</span></button>`
@@ -1315,7 +1315,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     ui.planView = 'routine';
     window.scrollTo(0, 0);
     render();
-    toast('Name your days, then add exercises with + or by dragging.', false, BUILD_TOAST_MS);
+    toast('Name your days, then add exercises.', false, BUILD_TOAST_MS);
   },
   // Clear demo and set up: the demo goes, and the settings it changed come back.
   demoStart() {

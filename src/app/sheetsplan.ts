@@ -49,7 +49,7 @@ export function templatesSheet(m: { from?: string | undefined; imported?: boolea
 export function routineNewSheet(): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3>${closeX()}</div>
     <label class="field">Name<input type="text" id="rNewName" maxlength=${LIMITS.name} placeholder="e.g. Upper focus, 6 days"></label>
-    <p class="small muted">Three empty training days with rest days between. It is not active until you tap Make active.</p>
+    <p class="small muted">Three empty training days. Tap Make active to use it.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 

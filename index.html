@@ -9799,7 +9799,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       [addDays(cur, -WEEK_DAYS), "Last week"]
     ];
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rwH"><div class="sheet-h"><h3 id="rwH">Rest week</h3>${closeX()}</div>
-    <p class="small muted u-m0-0n10">A week off on purpose. It is not counted as missed: averages, streak, and adherence skip it.</p>
+    <p class="small muted u-m0-0n10">A planned week off. Not counted as missed.</p>
     <div class="stack">${weeks.map(([w2, l4]) => {
       const on = isRestWeek(w2);
       return b`<button class=${"btn fullw " + (on ? "primary" : "")} data-act="restWk" data-w=${w2} aria-pressed=${String(on)}>${l4}, ${fmtDate(w2)} to ${fmtDate(addDays(w2, WEEK_DAYS - 1))}${on ? ": rest week" : ""}</button>`;
@@ -10597,7 +10597,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const said2 = e5 && typeof e5 === "object" && "message" in e5 && e5.message || String(e5);
     drawScreen(
       v3,
-      b`<div class="card"><h2>Something broke on this screen</h2><p class="small">Your data is saved and was not changed. Tap Try again to go back to Today. Report this sends the error to the app owner. If it keeps happening, copy the backup text below and keep it somewhere safe.</p>
+      b`<div class="card"><h2>Something broke on this screen</h2><p class="small">Your data is safe. If this keeps happening, copy the backup below and keep it.</p>
   <p class="small muted">Error: ${String(said2)} · version ${VERSION_LINE}</p>
   <div class="row"><button class="btn primary" data-act="crashRetry">Try again</button><button class="btn" data-act="fbOpen" data-cat="bug" data-crash="1">Report this</button></div>
   <label class="field u-mt10">Backup text<textarea readonly class="u-minh160_fs12">${txt}</textarea></label></div>`
@@ -10903,7 +10903,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Your bodyweight</h3>${closeX()}</div>
     <p class="small">${m3.ex ? `${m3.ex} counts` : "Pull-ups, dips, and push-ups count"} your bodyweight, plus any weight you add on a belt or vest; you type only what you add. Without a bodyweight, they count only the added load.</p>
     <label class="field">Bodyweight (${U()})<input type="text" inputmode="decimal" id="bwSheetVal" placeholder=${`Weight (${U()})`} enterkeyhint="done"></label>
-    <p class="small muted">Optional. Saved as today's weigh-in; change it any time in Settings or on Today.</p>
+    <p class="small muted">Optional. Saved as today's weigh-in.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="addBW" data-in="bwSheetVal">Save</button><button class="btn" data-act="mClose">Not now</button></div></div>`;
   }
   function bwSettings() {
@@ -13184,7 +13184,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!ss.length)
       return b`${head}${sections(keyed)}
 <div class="card">
-<p class="u-m0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p>
+<p class="u-m0">No sessions yet.</p>
 </div>
 ${impLine}${tabFoot("history")}`;
     keyed.push(["sessions", sessionsSec(ss, perDay)]);
@@ -15593,7 +15593,7 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
 <p class="small u-m0_f1n1n180"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in ${APP_NAME} stays as it is.</p>
 <button class="btn sm primary" data-act="previewCopy">Copy my log in</button></div>
 ` : A}${asideLine()}${privacyLine()}${safetyLine()}${backupDue() ? b`<p class="callout yellow u-m10-0-0"><b>Backup due.</b> ${s3.lastExport ? `Last backup file ${fmtDate(s3.lastExport)}.` : "No backup file yet."}${cloud.on ? "Your account has not synced this week. Export one below." : ""}</p>
-` : A}${device.ok ? A : b`<p class="small u-cred">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>
+` : A}${device.ok ? A : b`<p class="small u-cred">This browser blocks storage: nothing is kept after a reload unless you sync.</p>
 `}${unreadableRaw() ? b`<div class="panel u-mt8" id="unreadPanel">
 <p class="small u-m0-0-6"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p>
 <div class="row"><button class="btn sm primary" data-act="unreadRestore">Restore it</button><button class="btn sm" data-act="unreadShow">Show its text</button><button class="btn sm" data-act="unreadForget">Forget it</button></div>
@@ -17120,7 +17120,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   function chartFallback() {
     if (window.__libs && window.__libs.chart || chartNoticeUsed) return A;
     chartNoticeUsed = true;
-    return b`<p class="small muted">Charts are still loading. If they never appear, your connection blocked the chart library. Every number on this page works without them.</p>`;
+    return b`<p class="small muted">Charts are loading. Every number here works without them.</p>`;
   }
   function rangeChips(id, n3, base, def) {
     const b2 = base || CHART_WEEKS;
@@ -17327,7 +17327,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   function regionBody() {
     const rs = regionSrc();
     if (rs.empty)
-      return b`<div class="card"><p class="headline">Nothing logged yet.</p><p class="small muted u-m0-0-4">Each region fills in with your own hard sets as you log them. The dashed ring is your weekly minimum.</p>${ENV === "preview" ? b`<p class="small u-m6-0">This test version keeps a separate log. <button class="btn sm primary" data-act="previewCopy">Copy my log in</button></p>` : A}<div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}</div>`;
+      return b`<div class="card"><p class="headline">Nothing logged yet.</p><p class="small muted u-m0-0-4">Fills in with your hard sets. The dashed ring is your weekly minimum.</p>${ENV === "preview" ? b`<p class="small u-m6-0">This test version keeps a separate log. <button class="btn sm primary" data-act="previewCopy">Copy my log in</button></p>` : A}<div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}</div>`;
     const regs = regionBalance(rs.src);
     const low = regs.filter((x2) => x2.low), high = regs.filter((x2) => x2.high), plan = regs.filter((x2) => x2.plan);
     const on = regs.length - low.length - plan.length;
@@ -17351,7 +17351,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   }
   function trendBody() {
     const f3 = firstDate(state.sessions);
-    return b`<div class="card"><p class="small muted u-m0-0-4">Hard sets a week for one muscle, from your first logged week. Solid is sets with RIR logged; faded is sets counted as hard because RIR was blank. Weeks ahead are empty until you get there.</p><select data-bind="dashMuscle">${MUSCLES.map(
+    return b`<div class="card"><p class="small muted u-m0-0-4">Hard sets a week. Solid: RIR logged. Faded: RIR blank, counted as hard.</p><select data-bind="dashMuscle">${MUSCLES.map(
       ([k2, l4]) => b`<option value=${k2} .selected=${l3(ui.dashMuscle === k2)}>${l4}</option>`
     )}</select>${muscleHeadline(ui.dashMuscle)}${f3 ? b`${rangeChips("muscle", weeksSpan(f3), CHART_WEEKS)}<div class="chartbox"><canvas id="chMuscle"></canvas></div>${chartFallback()}` : b`<p class="small muted">Log a session to start this chart.</p>`}</div>`;
   }
@@ -17471,8 +17471,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   function bwRateText() {
     const r4 = bwRate();
     const g2 = state.settings.bwGoalPct;
-    if (!r4)
-      return b`<p class="small muted u-mt6">Log bodyweight for at least two weeks to see your weekly rate of change.</p>`;
+    if (!r4) return b`<p class="small muted u-mt6">Two weeks of weigh-ins show your weekly change.</p>`;
     const sign = (v3) => (v3 >= 0 ? "+" : "") + r1(v3);
     const goal = g2 != null ? (() => {
       const d3 = r4.pct - g2;
@@ -17722,8 +17721,8 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     ${n0 || !f0 ? "" : b`${rangeChips("ex", weeksSpan(f0.date), CHART_WEEKS, "all")}<div class="chartbox"><canvas id="chEx"></canvas></div>${chartFallback()}
     <p class="small muted hastip u-m4-0-0" data-tip="Filled diamond: a new best estimate (a weight PR that also set one is filled too). Hollow diamond: a rep PR or a weight PR that did not raise the estimate, which can sit below an earlier best. The thin dotted line is your RIR at the working load.">Reading the chart</p>`}
     ${st && st.easier ? b`<p class="small u-cblue_mt6"><b>${easierText(ex, st.easier)}</b></p>` : ""}
-    ${st && st.fade ? b`<p class="small u-cyellow_mt6"><b>Set-to-set drop-off is widening at ${loadLabel(ex, st.fade.w)}${ex.bw ? "" : " " + U()}: ${st.fade.from} → ${st.fade.to} reps lost from first set to last across your last three sessions.</b> That usually means fatigue or shorter rest rather than lost strength.</p>` : ""}
-    ${ex.bw && !state.bodyweights.length ? b`<p class="small u-cyellow">Log your bodyweight on the Today tab so this bodyweight exercise can be trended.</p>` : bwBackfillNote(exId)}
+    ${st && st.fade ? b`<p class="small u-cyellow_mt6"><b>Drop-off growing at ${loadLabel(ex, st.fade.w)}${ex.bw ? "" : " " + U()}: ${st.fade.from} → ${st.fade.to} reps lost first set to last, last three sessions.</b> Likely fatigue or short rest, not lost strength.</p>` : ""}
+    ${ex.bw && !state.bodyweights.length ? b`<p class="small u-cyellow">Log your bodyweight to see a trend here.</p>` : bwBackfillNote(exId)}
     <div class="scroll-x"><table class="t u-mt8"><tr><th>Date</th><th>Sets</th>${e1Mode ? b`<th class="r">Best estimate</th>` : A}</tr>${exps.slice(-EX_ROWS).reverse().map((x2) => {
       const tag = sessionWord(x2);
       return b`<tr><td>${fmtDate(x2.date)}${I2.prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === exId) ? b` <span class="tag green">PR</span>` : A}${tag ? b` <span class="tag">${tag}</span>` : A}</td><td>${x2.pts.map((p3) => setShort(ex, p3.w, p3.r)).join(", ")}</td>${e1Mode ? b`<td class="r num">${x2.best ? (ex.bw ? "≈" : "") + fmtE(x2.best) : ""}</td>` : A}</tr>`;
@@ -18880,7 +18879,7 @@ ${detail}`
 <div class="ob-top"><h1 class="ob-logo">${markup(LOCKUP)}</h1></div>
 ${obTourPart()}
 <div class="ob-card"><h2>Save your log</h2>
-<p class="ob-why">Back up your log and use it on any device</p>
+<p class="ob-why">Backed up, on every device</p>
 <button class="btn primary fullw" data-act="acctOpen" data-mode="signup">Create account</button>
 <button class="btn fullw" data-act="acctOpen" data-mode="signin">I have an account</button></div>
 ${ENV === "preview" ? b`<button class="btn fullw" data-act="previewCopy">Copy my log in</button>` : A}
@@ -18896,12 +18895,12 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     ].map(
       ([k2, l4]) => b`<button class=${`chip ${U() === k2 ? "on" : ""}`} data-act="obUnit" data-v=${k2} aria-pressed=${String(U() === k2)}>${l4}</button>`
     )}</div></div>
-<label class="field">Bodyweight <span class="muted">(optional)</span><input type="text" inputmode="decimal" id="obBw" .value=${fieldValue(todayBw ? fmtW(todayBw.kg) : "")} placeholder=${`${U()}, for pull-ups, dips, and push-ups`} enterkeyhint="done"></label>
+<label class="field">Bodyweight <span class="muted">(optional)</span><input type="text" inputmode="decimal" id="obBw" .value=${fieldValue(todayBw ? fmtW(todayBw.kg) : "")} enterkeyhint="done"></label>
 <h3 class="u-font700n20-display_m6-0-0">How do you want to start?</h3>
 <div class="ob-opts">
 <button class="ob-opt primary" data-act="obSample"><b>Pick a ready-made routine</b><span>${tplCountLine()}</span></button>
-<button class="ob-opt" data-act="obFree"><b>Log a workout now</b><span>Add exercises as you go</span></button>
-<button class="ob-opt" data-act="obOwn"><b>Build my own routine</b><span>Your days, your exercises</span></button>
+<button class="ob-opt" data-act="obFree"><b>Log a workout now</b></button>
+<button class="ob-opt" data-act="obOwn"><b>Build my own routine</b></button>
 <button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, another app, a backup</span></button>${ENV === "preview" ? b`<button class="ob-opt" data-act="previewCopy"><b>Copy my log in</b><span>Try this test version on your own log</span></button>` : A}</div>
 <button class="linkbtn ob-skip" data-act="demoLoad">Look around with sample data first</button>${undo}
 <p class="small muted u-m10-0-0_tacenter" id="obSafety"><span class="hastip" data-tip=${SAFETY_TXT}>Suggestions are estimates, not advice.</span></p>
@@ -19504,7 +19503,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       ui.planView = "routine";
       window.scrollTo(0, 0);
       render();
-      toast("Name your days, then add exercises with + or by dragging.", false, BUILD_TOAST_MS);
+      toast("Name your days, then add exercises.", false, BUILD_TOAST_MS);
     },
     // Clear demo and set up: the demo goes, and the settings it changed come back.
     demoStart() {
@@ -20044,7 +20043,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     if (low >= 2 && !open && d3.ex.some((b2) => b2.light))
       return b`<p class="callout u-m8-0-0" id="readyCard">Made lighter: the exercises not started are half the sets at about ${pctOf(LIGHT_SHARE)}% loads.</p>`;
     if (low < 2)
-      return b`<p class="callout u-m8-0-0" id="readyCard">One low answer: keep the loads and leave a rep more in reserve than planned if it feels heavy.</p>`;
+      return b`<p class="callout u-m8-0-0" id="readyCard">Keep the loads. Leave an extra rep in reserve if it feels heavy.</p>`;
     return b`<div class="callout yellow u-m8-0-0" id="readyCard"><p class="u-m0">Low readiness today. ${tipButton(`A lighter or shorter session fits a low day better than pushing. Make it lighter changes only the exercises not started: half the sets, about ${pctOf(LIGHT_SHARE)}% loads, nothing to beat.`)}</p><div class="row u-mt8">${open ? b`<button class="btn sm" data-act="makeLight">Make it lighter</button>` : ""}${left > 0 ? b`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ""}</div></div>`;
   }
   function bwAskCard(d3) {
@@ -23397,7 +23396,7 @@ ${JSON.stringify(ctx, null, 1)}`;
        is not offered. */
     demoLoad() {
       if (acct.user) {
-        toast("Demo data is for looking around before you sign in, so it stays off your account.", null, DEMO_SAID);
+        toast("Demo data stays off your account.", null, DEMO_SAID);
         return;
       }
       confirmBox(
@@ -23710,7 +23709,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const raw = el0 ? el0.getAttribute("data-sec") : t4.dataset.sec || null, m3 = el0 ? el0.getAttribute("data-m") : t4.dataset.m || null, ex = el0 ? el0.getAttribute("data-ex") : t4.dataset.ex || null;
       const sec = raw && DSEC_ALIAS[raw] ? DSEC_ALIAS[raw] : raw;
       if (sec && state.settings.hidden.includes("dash:" + sec)) {
-        toast("That section is hidden. Turn it back on in Settings under Layout.");
+        toast("Hidden. Settings, Layout brings it back.");
         return;
       }
       if (raw === "svol") ui.volMode = "load";
@@ -25801,7 +25800,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       wait: "Check your email",
       where: m3.title || "Email confirmed"
     };
-    const b2 = m3.mode === "signin" ? b`${email}${pw("Password", "current-password", false)}${err}${m3.needCode ? codeField(m3) : A}${check}${go("Sign in")}<div class="row spread">${link("forgot", "Forgot password?")}${link("signup", "Create an account")}</div>` : m3.mode === "signup" ? b`${email}${pw("Password (8 or more characters)", "new-password", true)}${err}${check}${go("Create account")}<p class="small muted u-m0">We email you a link and a code to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link("signin", "I have an account")}</div>` : m3.mode === "forgot" ? b`${email}${err}${check}${go("Email me a reset link")}<p class="small muted u-m0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link("signin", "Back to sign in")}</div>` : m3.mode === "newpw" ? b`${pw("New password (8 or more characters)", "new-password", true)}${err}${go("Save new password")}` : m3.mode === "wait" ? b`<p class="u-m0">We sent a confirmation email to <b>${m3.email || ""}</b>. Type its code here, or tap its link and come back: ${APP_NAME} signs you in by itself.</p>${codeField(m3)}<p class="small muted waitline u-m0" aria-live="polite">${m3.busy ? "Checking" : "Waiting for the confirmation"}</p>${err}${check}<button type="button" class="btn fullw" data-act="acctWaitNow" ?disabled=${!!m3.busy}>I have confirmed</button><div class="row">${link("signup", "Use a different email")}</div>` : m3.mode === "where" ? b`<p class="u-m0">Where do you use ${APP_NAME}?</p><button type="button" class="btn primary fullw" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn fullw" data-act="acctWhere" data-v="here">Here in this browser</button>` : b`<p class="u-m0">${m3.msg || ""}</p><button type="button" class="btn primary fullw" data-act="mClose">OK</button>`;
+    const b2 = m3.mode === "signin" ? b`${email}${pw("Password", "current-password", false)}${err}${m3.needCode ? codeField(m3) : A}${check}${go("Sign in")}<div class="row spread">${link("forgot", "Forgot password?")}${link("signup", "Create an account")}</div>` : m3.mode === "signup" ? b`${email}${pw("Password (8 or more characters)", "new-password", true)}${err}${check}${go("Create account")}<p class="small muted u-m0">An email confirms the address. It is only used for signing in.</p><div class="row">${link("signin", "I have an account")}</div>` : m3.mode === "forgot" ? b`${email}${err}${check}${go("Email me a reset link")}<p class="small muted u-m0">Set the new password from the email's link, then sign in here.</p><div class="row">${link("signin", "Back to sign in")}</div>` : m3.mode === "newpw" ? b`${pw("New password (8 or more characters)", "new-password", true)}${err}${go("Save new password")}` : m3.mode === "wait" ? b`<p class="u-m0">We sent a confirmation email to <b>${m3.email || ""}</b>. Type its code here, or tap its link and come back: ${APP_NAME} signs you in by itself.</p>${codeField(m3)}<p class="small muted waitline u-m0" aria-live="polite">${m3.busy ? "Checking" : "Waiting for the confirmation"}</p>${err}${check}<button type="button" class="btn fullw" data-act="acctWaitNow" ?disabled=${!!m3.busy}>I have confirmed</button><div class="row">${link("signup", "Use a different email")}</div>` : m3.mode === "where" ? b`<p class="u-m0">Where do you use ${APP_NAME}?</p><button type="button" class="btn primary fullw" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn fullw" data-act="acctWhere" data-v="here">Here in this browser</button>` : b`<p class="u-m0">${m3.msg || ""}</p><button type="button" class="btn primary fullw" data-act="mClose">OK</button>`;
     const title = T2[m3.mode] || "Account";
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-label=${title}><div class="sheet-h"><h3>${title}</h3>${closeX()}</div><form class="stack" id="acctForm" novalidate>${b2}</form></div>`;
   }
@@ -25952,7 +25951,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   function inputStep2(m3) {
     return frame(
       "Import workouts",
-      b`<p class="small muted u-m0-0-8">Notes, a spreadsheet, or an export from another app. Nothing is saved until you check it.</p>
+      b`<p class="small muted u-m0-0-8">Notes, a spreadsheet or another app's export. You check it before it is saved.</p>
     <label class="btn primary fullw u-posrel">Choose a file<input type="file" id="impFile" accept=".csv,.tsv,.txt,.xlsx,.json,text/csv,text/plain,application/json" class="u-posabs_w1_h1_o0"></label>
     <p class="small muted u-m10-0-4">or paste it</p>
     <textarea id="impText" aria-label="Paste your log" class="u-minh160_fs14" placeholder=${"Sep 20\nBench press 185x8, 185x7, 185x6\nLat pulldown 3x10 @ 120"}>${m3.text || ""}</textarea>
@@ -26062,7 +26061,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   function injurySheet() {
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3>${closeX()}</div>
-    <p class="small muted hastip" data-tip="Every exercise that loads this muscle (directly or as a helper) or this joint is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Training aid, not medical advice: sharp, worsening, or lasting pain needs a clinician.</p>
+    <p class="small muted hastip" data-tip="Every exercise that loads this muscle (directly or as a helper) or this joint is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Not medical advice. Sharp or lasting pain: see a clinician.</p>
     <div class="stack"><label class="field">Area<select id="injM"><optgroup label="Joints">${JOINTS.map(([k2, l4]) => b`<option value=${k2}>${l4}</option>`)}</optgroup><optgroup label="Muscles">${MUSCLES.map(([k2, l4]) => b`<option value=${k2}>${l4}</option>`)}</optgroup></select></label>
     <p class="small muted hastip u-m0" data-tip="Knee: squats, lunges, leg press, leg extensions, and curls. Hip: squats, hinges, hip thrusts, adductors, and abductors. Shoulder: presses, flyes, raises, pull-downs, pull-ups, dips. Elbow: curls, extensions, rows, pull-downs, dips. Wrist: curls, barbell and dumbbell presses, push-ups, front squats. A judgment from the movement, not a measurement.">Which exercises a joint flag marks</p>
     <label class="field">Note (optional)<input type="text" id="injNote" maxlength=${LIMITS.note} placeholder="e.g. left elbow, pressing only"></label>
@@ -26080,7 +26079,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const e5 = EX(m3.exId);
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Load step: ${e5.name}</h3>${closeX()}</div>
     <label class="field">Step (${U()})<input type="text" inputmode="decimal" id="incVal" value=${fmtW(incOf(e5, m3.plan))}></label>
-    <p class="small muted">The smallest jump you can load on it. Earned increases are whole steps of it.</p>
+    <p class="small muted">The smallest jump you can load.</p>
     ${e5.inc == null && gymRack(e5, m3.plan) ? b`<p class="small u-m0">Following the ${rackKind(e5) === "dumbbell" ? "dumbbells" : "kettlebells"} in Settings > Your gym. A step saved here replaces them for this lift.</p>` : ""}
     <div class="row u-mt10"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
@@ -26088,12 +26087,12 @@ ${JSON.stringify(ctx, null, 1)}`;
     const e5 = EX(m3.exId);
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${e5.name}</h3>${closeX()}</div>
     <label class="field">Load (${U()}${e5.bw ? ", added to bodyweight" : ""})<input type="text" inputmode="decimal" id="maxVal" value=${e5.maxLoad != null ? fmtW(e5.maxLoad) : ""} placeholder="No limit"></label>
-    <p class="small muted">The most you can load on it, as the top of the stack or the biggest dumbbell. Blank for no limit.</p>
+    <p class="small muted">Top of the stack or biggest dumbbell. Blank for no limit.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
   function noteSheet(m3) {
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m3.title}</h3>${closeX()}</div>
-    <p class="small muted">Saved with this session and shown next time: a cue, a niggle, which machine. Pictures stay on this phone.</p>
+    <p class="small muted">Shown next time. Pictures stay on this phone.</p>
     <textarea id="mNote" aria-label="Note" maxlength=${LIMITS.note} class="u-minh110">${m3.text || ""}</textarea>${picStrip(m3.bi)}
     <div class="row u-mt10"><button class="btn primary" data-act="noteSave">Save note</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
@@ -26119,7 +26118,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (!b2) return null;
     const ex = EX(b2.exId);
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Calibration set: ${ex.name}</h3>${closeX()}</div>
-    <p class="small muted u-m0">Checks how well you call reps in reserve. Only take a set to failure where it is safe: a machine or cable, or with a spotter.</p>
+    <p class="small muted u-m0">Checks how well you judge reps in reserve. Go to failure only where it is safe: a machine, a cable or a spotter.</p>
     <ol class="steps"><li>Use your normal working load.</li><li>At the rep where you would usually stop, note that rep and how many you think are left.</li><li>Keep going until you cannot complete a rep with good form.</li></ol>
     <div class="grid2"><label class="field">Load (${ex.bw ? "+" + U() : U()})<input type="text" inputmode="decimal" id="calW" value=${m3.w != null ? String(m3.w) : ""}></label>
     <label class="field">Usual stop rep<input type="text" inputmode="numeric" id="calAt" value=${m3.at || ""}></label>
@@ -26127,7 +26126,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     <label class="field">Reps to failure<input type="text" inputmode="numeric" id="calTot" value=${m3.total || ""}></label></div>
     ${m3.err ? b`<p class="small u-cred_m8-0-0">${m3.err}</p>` : ""}
     <div class="row u-mt10"><button class="btn primary" data-act="calSave">Save set</button><button class="btn" data-act="mClose">Cancel</button></div>
-    <p class="small muted u-m8-0-0">It is saved as a done set at 0 RIR, marked as a check. With RIR set to Corrected in Settings, your typical miss is applied to the RIR you log.</p></div>`;
+    <p class="small muted u-m8-0-0">Saved as a set at 0 RIR, marked as a check.</p></div>`;
   }
 
   // src/app/sheetsexercise.ts
@@ -26414,9 +26413,9 @@ ${JSON.stringify(ctx, null, 1)}`;
     const best = top[0];
     let lead = "";
     if (!best)
-      lead = b`<p class="small">Your active routine has no training days with exercises. Start a freestyle session and use Pick for me inside it.</p>`;
+      lead = b`<p class="small">Your routine has no exercises yet. Start a freestyle session and use Pick for me there.</p>`;
     else if (best.ready < READY.rest)
-      lead = b`<p class="callout yellow u-m0">Everything your routine has left leans on muscles still recovering from the last few days. A rest day, or easy cardio and mobility, is the better call. If you train anyway, the first option is the least fatigued.</p>`;
+      lead = b`<p class="callout yellow u-m0">Everything left works muscles still recovering. Rest, or do easy cardio. If you train anyway, the first option is the freshest.</p>`;
     else if (best.plan) lead = b`<p class="small u-m0">Stick with the plan: it is also the best fit for today.</p>`;
     else if (plan)
       lead = b`<p class="small u-m0">${best.day.name} fits today better than ${plan.day.name}, next in your plan: ${plan.ready < 1 ? `${plan.day.name} leans on muscles that may still be recovering.` : "it trains what is furthest behind this week."} ${tipButton("Starting it moves your cycle on from there, the same as choosing it under Change day.", "About the cycle")}</p>`;
@@ -26437,7 +26436,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const allMet = picks.length && picks.every((x2) => x2.def <= 0);
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3>${closeX()}</div>
     <p class="small muted hastip u-m0" data-tip="From this session so far, your last 7 days against your targets, recovery, injuries, and your trends.">What to add next.</p>
-    ${allMet ? b`<p class="callout green u-m8-0-0">Every muscle is at or above target for the last 7 days. Anything more is optional.</p>` : ""}
+    ${allMet ? b`<p class="callout green u-m8-0-0">Every muscle is at target for the last 7 days.</p>` : ""}
     ${picks.length ? picks.map((x2, k2) => {
       const p3 = x2.plan;
       const ex = x2.e;
@@ -26459,11 +26458,11 @@ ${JSON.stringify(ctx, null, 1)}`;
     const pl = eqPlan(day, eq);
     const sw = pl.filter((x2) => x2.from);
     return b`<div class="sheet fixed" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Limited equipment</h3>${closeX()}</div>
-    <p class="small muted u-m0-0-8">Turn off what this gym lacks. Each affected exercise is swapped for the closest same-muscle match.</p>
+    <p class="small muted u-m0-0-8">Turn off what this gym lacks. Those exercises are swapped for the closest match.</p>
     <div class="chips">${EQUIP.map(([k2, l4]) => b`<button class=${"chip " + (eq.has(k2) ? "on" : "")} data-act="eqToggle" data-k=${k2} aria-pressed=${String(eq.has(k2))}>${l4}</button>`)}</div>
-    <div class="sheet-scroll">${sw.length ? b`<ul class="eqsw">${sw.map((x2) => b`<li>${exName(x2.from || "")} → ${x2.to ? b`<b>${exName(x2.to)}</b>${x2.hard ? b`<br><span class="small u-cyellow">Much harder than what it replaces: aim for 3 to 6 reps, use a band or a shorter range, and stop 2 reps short.</span>` : ""}` : b`<span class="muted">no match with this equipment, left out</span>`}</li>`)}</ul>` : b`<p class="small u-m10-0-0">Everything in this workout fits the equipment on.</p>`}
+    <div class="sheet-scroll">${sw.length ? b`<ul class="eqsw">${sw.map((x2) => b`<li>${exName(x2.from || "")} → ${x2.to ? b`<b>${exName(x2.to)}</b>${x2.hard ? b`<br><span class="small u-cyellow">Much harder: 3 to 6 reps, stopping 2 short. A band helps.</span>` : ""}` : b`<span class="muted">no match with this equipment, left out</span>`}</li>`)}</ul>` : b`<p class="small u-m10-0-0">Everything in this workout fits the equipment on.</p>`}
     <div class="row u-mt12"><button class="btn primary" data-act="eqStart" ?disabled=${!pl.some((x2) => x2.to)}>Start ${day.name}</button><button class="btn" data-act="mClose">Cancel</button></div>
-    <p class="small muted u-m8-0-0">Sets, reps, and rest as planned (a much harder swap gets 3 to 6 reps); swaps are for this session only.</p></div></div>`;
+    <p class="small muted u-m8-0-0">Swaps are for this session only.</p></div></div>`;
   }
   function shortSheet(m3) {
     const d3 = state.draft;
@@ -26502,7 +26501,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   function routineNewSheet() {
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3>${closeX()}</div>
     <label class="field">Name<input type="text" id="rNewName" maxlength=${LIMITS.name} placeholder="e.g. Upper focus, 6 days"></label>
-    <p class="small muted">Three empty training days with rest days between. It is not active until you tap Make active.</p>
+    <p class="small muted">Three empty training days. Tap Make active to use it.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
   function recapSheet(m3) {

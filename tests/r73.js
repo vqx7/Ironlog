@@ -16,6 +16,9 @@
 //   7  2.27-F10, a guard (no failure reproduced in Chromium on 2.27): a 20,000 by 20,000 px picture and one the
 //      size of an iPhone 14 Pro's 48 MP photo are each kept or refused with words, never a crashed page. Its
 //      evidence for an iPhone is GitHub's WebKit run.
+//   8  393 and V's ask of 2026-11-05 (less explaining on screen): the first page's bodyweight field says only that it
+//      is optional, with no sentence in it, and its start options carry no taglines; a sheet's standing text is one
+//      short line (the injury sheet and the import sheet, as read).
 // R73_ONLY=1,2 runs some sections.
 const { open, sourceTexts } = require('./h');
 const fails = [];
@@ -226,6 +229,23 @@ async function started() {
       ok(crashed || !D.errors.length, `7. no page errors (${w} px)`, D.errors);
       await D.browser.close().catch(() => {});
     }
+  }
+
+  if (run(8)) {
+    const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00', realStarter: true });
+    const pg = D.page;
+    await wait(600);
+    const r = await pg.evaluate(() => { const f = document.getElementById('obBw'); return { ph: f ? f.getAttribute('placeholder') : 'no field', tags: [...document.querySelectorAll('.ob-opt span')].map(x => x.textContent) }; });
+    ok(r.ph === null || r.ph === '', '8. 393: the first page\'s bodyweight field has no sentence in it (2.27: "lb, for pull-ups, dips, and push-ups")', r);
+    ok(!r.tags.some(t => /as you go|your exercises/.test(t)), '8. the start options carry no taglines (2.27: "Add exercises as you go", "Your days, your exercises")', r.tags);
+    await pg.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); L.render(); L.openModal({ kind: 'injury' }); }); await wait(300);
+    const inj = await pg.evaluate(() => [...document.querySelectorAll('#modal p')].map(p => p.textContent.trim()).filter(Boolean));
+    await pg.evaluate(() => { const L = window.__ironlog; L.ACT.mClose(); L.openModal({ kind: 'imp', step: 'input', text: '', err: '' }); }); await wait(300);
+    const imp = await pg.evaluate(() => [...document.querySelectorAll('#modal p')].map(p => p.textContent.trim()).filter(Boolean));
+    const longest = Math.max(...[...inj, ...imp].map(t => t.length));
+    ok(longest <= 80, `8. the injury and import sheets' standing lines are short (the longest ${longest} characters; 2.27: 89)`, { inj, imp });
+    ok(!D.errors.length, '8. no page errors', D.errors);
+    await D.browser.close();
   }
 
   console.log(fails.length ? `\n${fails.length} FAIL` : '\nALL PASS');

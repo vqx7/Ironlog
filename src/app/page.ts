@@ -49,7 +49,7 @@ function renderCrash(e: unknown): void {
   const said = (e && typeof e === 'object' && 'message' in e && e.message) || String(e);
   drawScreen(
     v,
-    html`<div class="card"><h2>Something broke on this screen</h2><p class="small">Your data is saved and was not changed. Tap Try again to go back to Today. Report this sends the error to the app owner. If it keeps happening, copy the backup text below and keep it somewhere safe.</p>
+    html`<div class="card"><h2>Something broke on this screen</h2><p class="small">Your data is safe. If this keeps happening, copy the backup below and keep it.</p>
   <p class="small muted">Error: ${String(said)} · version ${VERSION_LINE}</p>
   <div class="row"><button class="btn primary" data-act="crashRetry">Try again</button><button class="btn" data-act="fbOpen" data-cat="bug" data-crash="1">Report this</button></div>
   <label class="field u-mt10">Backup text<textarea readonly class="u-minh160_fs12">${txt}</textarea></label></div>`

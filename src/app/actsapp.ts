@@ -354,7 +354,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       ex = el0 ? el0.getAttribute('data-ex') : t.dataset.ex || null;
     const sec = raw && DSEC_ALIAS[raw] ? DSEC_ALIAS[raw] : raw;
     if (sec && state.settings.hidden.includes('dash:' + sec)) {
-      toast('That section is hidden. Turn it back on in Settings under Layout.');
+      toast('Hidden. Settings, Layout brings it back.');
       return;
     }
     if (raw === 'svol') ui.volMode = 'load';

@@ -40,7 +40,7 @@ const WHAT_TIP = `Notes: a date on its own line, then one exercise per line with
 function inputStep(m: ImpInputModal): TemplateResult {
   return frame(
     'Import workouts',
-    html`<p class="small muted u-m0-0-8">Notes, a spreadsheet, or an export from another app. Nothing is saved until you check it.</p>
+    html`<p class="small muted u-m0-0-8">Notes, a spreadsheet or another app's export. You check it before it is saved.</p>
     <label class="btn primary fullw u-posrel">Choose a file<input type="file" id="impFile" accept=".csv,.tsv,.txt,.xlsx,.json,text/csv,text/plain,application/json" class="u-posabs_w1_h1_o0"></label>
     <p class="small muted u-m10-0-4">or paste it</p>
     <textarea id="impText" aria-label="Paste your log" class="u-minh160_fs14" placeholder=${'Sep 20\nBench press 185x8, 185x7, 185x6\nLat pulldown 3x10 @ 120'}>${m.text || ''}</textarea>
