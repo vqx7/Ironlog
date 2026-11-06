@@ -251,7 +251,7 @@ const T = '2026-11-05';
     ok(r.none.prs.includes('2026-10-29 Weight PR') && /BW\+22\.5/.test(r.none.next), '6. guard: their weight PR and next target are as before', r.none);
     ok(r.weighed.bests.filter((v, i) => i !== 2).every(v => v != null && v > 100) && r.weighed.atb > 100, '6. guard: once a weigh-in is logged, estimates read the body and the load (over 100 kg at 80 kg; the session of 12 with none added is past the estimate\'s reps either way)', r.weighed);
     const guide = await D.page.evaluate(() => { const L = window.__ironlog; L.ACT.guideOpen({ dataset: {} }); return document.documentElement.innerHTML; });
-    ok(/With no weigh-in they count only the weight you add, and estimates and trends wait for one\./.test(guide), '6. 394: the Guide says once what a bodyweight lift reads with no weigh-in', null);
+    ok(/With no weigh-in they count only the weight you add\. Estimates and trends wait for one\./.test(guide), '6. 394: the Guide says once what a bodyweight lift reads with no weigh-in', null);
     ok(!D.errors.length, '6. no page errors', D.errors);
     await D.browser.close();
   }
