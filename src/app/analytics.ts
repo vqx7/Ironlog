@@ -308,6 +308,12 @@ export const bwRefIn = (M: Model): number =>
 export const bwRefLoadIn = (M: Model, ex: ExerciseLike | null | undefined): number =>
   ex && ex.bw ? bwRefIn(M) * bwShare(ex) : 0;
 
+/** Whether a lift reads bodyweight while none is logged: its estimates would be of the added load alone, so it has
+    none until a weigh-in (NEW-72, 2.29: +20 kg pull-ups read "Best estimate ≈ 28.9 kg ... total"), as its trend
+    already waits (394; the Guide's Trends). Its reps, weight PRs and targets read as before. */
+export const noBodyIn = (M: Model, ex: ExerciseLike | null | undefined): boolean =>
+  !!ex && !!ex.bw && !(bwRefIn(M) > 0);
+
 /** The load a set's PRs are judged at: on a bodyweight lift at the latest weigh-in, else loadOf. */
 export function prLoadIn(M: Model, ex: ExerciseLike | null | undefined, s: LoadedSet, date: string): number {
   // A row with no load reads as 0, as in loadOfIn.
@@ -541,7 +547,8 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
       // seconds times load is not tonnage. bb: rep band of the best set.
       let best: number | null = null,
         bb: number | null = null;
-      if (!noE1(ex))
+      const nb = noBodyIn(M, ex);
+      if (!noE1(ex) && !nb)
         for (const p of pts) {
           const v = e1(p.load, p.r, p.rq);
           if (v != null && (best == null || v > best)) {
@@ -551,7 +558,7 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
           }
         }
       // The same at the PR load (prLoad): identical to best except on a bodyweight lift; the PR scorer's one reading (r64).
-      const { pb, pbb } = prBestOf(ex, pts);
+      const { pb, pbb } = prBestOf(ex, pts, nb);
       /* r30: the trend reads its own value per session, two ways. tAdj uses
          RIR as read everywhere else; tRaw ignores RIR (reps alone). Which one
          a lift's trend uses is decided per lift once its sessions are known
@@ -1149,10 +1156,15 @@ export function prAdd(h: PrSoFar, x: Pick<Exposure, 'pts' | 'pb' | 'pbb'>): void
 }
 
 /** A session's best estimate at the PR load and its band of reps to failure (an exposure's pb and pbb), none on a lift with no estimate. */
-export function prBestOf(ex: ExerciseLike, pts: readonly ExPoint[]): { pb: number | null; pbb: number | null } {
+export function prBestOf(
+  ex: ExerciseLike,
+  pts: readonly ExPoint[],
+  noBody = false
+): { pb: number | null; pbb: number | null } {
   let pb: number | null = null,
     pbb: number | null = null;
-  if (noE1(ex)) return { pb, pbb };
+  // No estimate without one, nor on a bodyweight lift with no weigh-in (noBodyIn, NEW-72).
+  if (noE1(ex) || noBody) return { pb, pbb };
   // At the PR load: the load itself, but on a bodyweight lift its share of bodyweight at the latest weigh-in.
   for (const p of pts) {
     const v = e1(ex.bw ? p.pl : p.load, p.r, p.rq),
@@ -1309,13 +1321,13 @@ export function prJudge(
    by another set's strength, so the recap said Best estimate where the
    toast had said Rep PR. Null when no set counts one: the session's own
    judgement then names what it did (Heaviest yet), not counted (r72). */
-function prCounted(ex: ExerciseLike, h: PrSoFar, x: Pick<Exposure, 'pts'>): PrMade | null {
+function prCounted(ex: ExerciseLike, h: PrSoFar, x: Pick<Exposure, 'pts'>, noBody: boolean): PrMade | null {
   // The kinds, the smallest news first.
   const ORDER: readonly PrMade['type'][] = ['Rep PR', 'e1RM', 'Weight PR'];
   const rank = (t: PrMade['type']): number => ORDER.indexOf(t);
   let top: { pr: PrMade; key: number } | null = null;
   for (const p of x.pts) {
-    const { pr } = prJudge(ex, h, { pts: [p], ...prBestOf(ex, [p]) });
+    const { pr } = prJudge(ex, h, { pts: [p], ...prBestOf(ex, [p], noBody) });
     if (!pr || !pr.big) continue;
     // Within a kind: the heaviest weight PR, the highest estimate, the strongest rep PR.
     const key = pr.type === 'Weight PR' ? pr.w : pr.type === 'e1RM' ? (pr.value ?? 0) : prScore(p);
@@ -1344,7 +1356,7 @@ function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): number | n
        whole it was counted when any set was stronger than ever, so 100 x 7 at 2 in reserve was a counted best
        estimate because 100 x 12 at 4 in the same session scored more, a set no toast announces, being no
        heavier and no more reps than one before. A PR is a set stronger than every earlier one (CLAUDE.md). */
-    const pr = prCounted(ex, h, x) ?? (j.pr ? { ...j.pr, big: false } : null);
+    const pr = prCounted(ex, h, x, noBodyIn(M, ex)) ?? (j.pr ? { ...j.pr, big: false } : null);
     if (pr) prs.push({ date: x.date, sid: x.sid, exId: id, ...pr });
     prAdd(h, x);
     if (x.best != null) maxBest = maxBest == null ? x.best : Math.max(maxBest, x.best);
@@ -2079,7 +2091,7 @@ export function allTimeBestsIn(
       // Judged at the load it stands for: the same weight in the other unit is no heavier.
       const d = prSameLoad(p.w, seen) - p.w,
         j = p.pl + d;
-      const v = noE1(ex) ? null : e1(p.load + d, p.r, p.rq);
+      const v = noE1(ex) || noBodyIn(M, ex) ? null : e1(p.load + d, p.r, p.rq);
       if (v != null && (!est || v > est.v + EPS_SAME)) est = { v, p, date: x.date };
       // Heaviest and rep records at the PR load (prLoad, r32.1): on a bodyweight lift, by added load and reps, dated when first done.
       if (!heavy || j > heavy.j + EPS_SAME || (Math.abs(j - heavy.j) < EPS_SAME && p.r > heavy.p.r))

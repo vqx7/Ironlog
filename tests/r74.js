@@ -31,6 +31,10 @@
 //      session back exactly, newest first, and a set logged after a delete is kept; a step 2.28 saved (whole copies)
 //      still undoes after the update; and a 2.28 tab reading 2.29's steps takes none (it would read a part as the
 //      whole log), so it cannot undo anything wrongly.
+//   6  NEW-72 (394): with no weigh-in, a bodyweight lift done with load added gets no best estimate and no estimate
+//      PR (2.28: +20 kg pull-ups read "Best estimate ≈ 28.9 kg" and "best est 28.9 kg total", the added load alone);
+//      its reps, weight PRs and next target are as before (a guard), and once a weigh-in is logged its estimates
+//      appear, read at that weigh-in (a guard); the Guide says the rule once (394).
 // R74_ONLY=1,2 runs some sections.
 const { open, tab } = require('./h');
 const fails = [];
@@ -227,6 +231,28 @@ const T = '2026-11-05';
       ok(n28 === 0, '5. 2.27-F4: a tab on 2.28 takes none of 2.29\'s Undo steps', n28);
     } else console.log('note 5: no 2.28 build here yet (baselines/r73.html is added once 2.28 is published; R74_OLD names one), the 2.28 tab check skipped');
     ok(!D.errors.length, '5. no page errors', D.errors);
+    await D.browser.close();
+  }
+
+  if (run(6)) {
+    const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00' });
+    const r = await D.page.evaluate(() => {
+      const L = window.__ironlog, S = L.state; S.settings.onboarded = true; S.settings.unit = 'kg';
+      const ses = (i, d, w, r) => ({ id: 'w' + i, date: d, dayIdx: 0, dayName: 'A', notes: '', ex: [{ exId: 'pullup', rr: [6, 10], sets: [0, 1, 2].map(() => ({ w, r, rir: 1, warm: false, drop: false })) }] });
+      S.sessions = [ses(1, '2026-10-08', 20, 8), ses(2, '2026-10-15', 20, 9), ses(3, '2026-10-22', 0, 12), ses(4, '2026-10-29', 22.5, 8)];
+      const read = () => { L.state = L.normalize(S); L.invalidate(); const I = L.IDX(); const b = L.allTimeBests('pullup');
+        return { bests: I.byEx.pullup.map(x => x.best == null ? null : Math.round(x.best)), prs: I.prs.filter(p => p.exId === 'pullup').map(p => p.date + ' ' + p.type), atb: b && b.est ? Math.round(b.est.v) : null,
+          next: L.suggest('pullup', { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120 }, {}).target }; };
+      S.bodyweights = []; const none = read();
+      S.bodyweights = [{ id: 'b1', date: '2026-11-01', kg: 80, demo: false }]; const weighed = read();
+      return { none, weighed };
+    });
+    ok(r.none.bests.every(v => v == null) && r.none.atb == null && !r.none.prs.some(p => /e1RM/.test(p)), '6. NEW-72: no weigh-in, weighted pull-ups get no best estimate and no estimate PR (2.28: 26 to 29 kg, the added load alone)', r.none);
+    ok(r.none.prs.includes('2026-10-29 Weight PR') && /BW\+22\.5/.test(r.none.next), '6. guard: their weight PR and next target are as before', r.none);
+    ok(r.weighed.bests.filter((v, i) => i !== 2).every(v => v != null && v > 100) && r.weighed.atb > 100, '6. guard: once a weigh-in is logged, estimates read the body and the load (over 100 kg at 80 kg; the session of 12 with none added is past the estimate\'s reps either way)', r.weighed);
+    const guide = await D.page.evaluate(() => { const L = window.__ironlog; L.ACT.guideOpen({ dataset: {} }); return document.documentElement.innerHTML; });
+    ok(/With no weigh-in they count only the weight you add, and estimates and trends wait for one\./.test(guide), '6. 394: the Guide says once what a bodyweight lift reads with no weigh-in', null);
+    ok(!D.errors.length, '6. no page errors', D.errors);
     await D.browser.close();
   }
 
