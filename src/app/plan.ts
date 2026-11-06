@@ -49,7 +49,7 @@ import { repSpan } from './format';
 import { belowMin } from './volume';
 import { ON_PLAN_TIP } from './weeks';
 import { loadWords } from './loads';
-import { TRASH_DAYS, LIMITS, EFFORT_TOP } from './records';
+import { TRASH_DAYS, LIMITS, EFFORT_TOP, within } from './records';
 import { andList, numIn, r1, uid, PERCENT, WEEK_DAYS } from './util';
 import { plainTemplate } from './normalize';
 import { effIn, effName, effShow } from './effort';
@@ -749,7 +749,7 @@ export function planInput(t: Field): boolean {
     if (d)
       act(
         () => {
-          d.name = t.value.slice(0, LIMITS.name);
+          d.name = within(t.value, d.name, LIMITS.name);
         },
         { soon: true }
       );
@@ -774,7 +774,7 @@ export function planInput(t: Field): boolean {
     const R = curRoutineB();
     act(
       () => {
-        R.name = t.value.slice(0, LIMITS.name);
+        R.name = within(t.value, R.name, LIMITS.name);
       },
       { soon: true }
     );
@@ -799,7 +799,7 @@ export function planChange(t: Field): boolean {
     const d = curRoutineB().days[num(t.dataset.dayname)];
     if (d)
       act(() => {
-        d.name = t.value.slice(0, LIMITS.name);
+        d.name = within(t.value, d.name, LIMITS.name);
       });
     rerenderKeepScroll();
     return true;
@@ -862,7 +862,7 @@ export const PLAN_BINDS: Readonly<Record<string, (t: Field) => void>> = {
   routineName(t) {
     const R = curRoutineB();
     act(() => {
-      R.name = t.value.slice(0, LIMITS.name);
+      R.name = within(t.value, R.name, LIMITS.name);
       if (!R.name.trim()) R.name = 'Routine';
     });
     if (nameTaken(R.name, R.id)) toast('Another routine has the same name');

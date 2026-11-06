@@ -6,7 +6,7 @@
    added them: each document listener runs in the order it was added, so the
    order is part of what a tap does. */
 
-import { LIMITS } from './records';
+import { LIMITS, within } from './records';
 import { BW_ACTS } from './bwnudge';
 import { isDate, today } from './util';
 import { bwShare } from './library';
@@ -107,8 +107,8 @@ function editorSet(e: ExEdit, k: string, v: string | boolean): void {
     return;
   }
   // Within the fields' own limits whatever reaches them (2.28, 2.27-F3).
-  if (k === 'name') e.name = v.slice(0, LIMITS.exName);
-  else if (k === 'note') e.note = v.slice(0, LIMITS.note);
+  if (k === 'name') e.name = within(v, e.name || '', LIMITS.exName);
+  else if (k === 'note') e.note = within(v, e.note || '', LIMITS.note);
   else if (k === 'primary') e.primary = v;
   else if (k === 'equip') e.equip = v;
   else if (k === 'incRaw') e.incRaw = v;

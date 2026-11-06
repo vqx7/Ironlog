@@ -212,6 +212,16 @@ export interface SyncNote {
   b?: Base | null | undefined;
 }
 
+/** A write of a document this device sent and has not heard back about (2.28, NEW-67): its write mark, the account
+    and the note it was sent from, and the note it makes once the account is found holding it. A write the server
+    applies can lose its answer on the way back; read later with this mark, it is known as this device's own. */
+export interface CloudSent {
+  w: string;
+  uid: string;
+  from: string;
+  note: SyncNote;
+}
+
 /* Where the sync is: on or not, the provider (db, uid), its status, each
    document's last sync note (meta: its hash, when, and the merge base) and
    this device's hashes (localH), when each document was last edited here
@@ -225,6 +235,8 @@ interface Cloud {
   status: CloudStatus;
   last: number | null;
   meta: Record<string, SyncNote>;
+  /** Writes sent and not yet answered, by document (CloudSent). */
+  sent: Record<string, CloudSent>;
   editAt: Record<string, number>;
   localH: Record<string, string>;
   devId: string | null;
@@ -246,6 +258,7 @@ export const cloud: Cloud = {
   status: 'local',
   last: null,
   meta: {},
+  sent: {},
   editAt: {},
   localH: {},
   devId: null,

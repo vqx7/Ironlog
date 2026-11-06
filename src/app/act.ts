@@ -19,6 +19,7 @@ import { invalidate } from './live';
 import { normalize, plainTemplate } from './normalize';
 import { TRASH_BYTES, TRASH_MAX, parseJson, rec } from './records';
 import type { Trashed } from './records';
+import type { State } from './store';
 import { fx, setState, state } from './store';
 import { today } from './util';
 
@@ -44,6 +45,11 @@ interface ActOpts {
    inside drops the caches is kept for the outer one. */
 let depth = 0;
 let dropInside = false;
+/* The log as it was before the first change to the whole log made inside an outer change to the workout alone: the
+   outer change copied the workout only, so a failure puts the rest back from this (2.28, the review of 2.28). */
+let logBefore: State | null = null;
+// Whether the outer change being made copied the workout alone (inProgress).
+let outerDraftOnly = false;
 // Whether the change being made keeps an Undo step: one asked for inside a change that keeps none cannot be taken (the log is half changed by then), so it is said in the error log rather than lost unsaid.
 let outerUndo = false;
 
@@ -51,6 +57,8 @@ let outerUndo = false;
 export function act(change: () => void, opts: ActOpts = {}): boolean {
   if (opts.check && !opts.check()) return false;
   if (depth > 0) {
+    // A change to the whole log inside one to the workout alone: the log as it was before it is kept for the outer change to put back if it fails (2.28).
+    if (!opts.inProgress && outerDraftOnly && !logBefore) logBefore = structuredClone(state);
     if (!opts.inProgress) dropInside = true;
     if (opts.undo && !outerUndo) log('act', 'an Undo step was asked inside a change that keeps none');
     change();
@@ -74,13 +82,17 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   const draftWas = opts.inProgress ? structuredClone(state.draft) : null;
   const logWas = opts.inProgress ? null : structuredClone(state);
   outerUndo = !!opts.undo;
+  outerDraftOnly = !!opts.inProgress;
   depth++;
   let inside = false;
   try {
     change();
   } catch (e) {
     if (logWas) setState(logWas);
-    else state.draft = draftWas;
+    else {
+      if (logBefore) setState(logBefore);
+      state.draft = draftWas;
+    }
     // The step kept for a change that was not made is taken back with it.
     if (step && undoStack[undoStack.length - 1] === step) {
       undoStack.pop();
@@ -93,6 +105,7 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
     depth--;
     inside = dropInside;
     dropInside = false;
+    logBefore = null;
   }
   if (!opts.inProgress || inside) invalidate();
   if (opts.soon) saveSoon();

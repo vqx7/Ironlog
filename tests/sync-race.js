@@ -10,6 +10,10 @@
 // With them, two more of the 2.27 review's findings on the same stand-in server: a workout in progress too large to
 // sync is named as that, not as a month of sessions (2.27-F2, case 5), and an account error the app has no words
 // for is shown in plain words, the server's own sentence kept only in the error log (2.27-F7, case 6).
+// And two found by the independent review of 2.28, the same on 2.27 (rows NEW-67 and NEW-68): a write the server
+// applied whose answer was lost on the way back, then a session deleted on the phone before the retry, which came
+// back (case 7); and the same lost answer on the workout in progress, after which one phone alone said a record was
+// "edited on two devices" (case 8).
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -41,6 +45,14 @@ fs.cpSync(DIST, tmp, { recursive: true });
     return { name, ctx, page, errors, ev: (f, a) => page.evaluate(f, a) };
   }
   const status = D => D.ev(() => window.__ironlog.cloudState().status);
+  /* The next write of a document whose path matches `re` reaches the server and is applied, and its answer is lost on
+     the way back, as when the connection drops just after the server saved it (the review's reproduction). */
+  async function loseAnswer(D, re) {
+    const st = { lost: 0 };
+    const h = async r => { const q = r.request(); const blob = q.url() + ' ' + (q.postData() || ''); if (q.method() !== 'GET' && st.lost === 0 && re.test(decodeURIComponent(blob))) { st.lost++; await r.fetch(); return r.abort('failed'); } return r.continue(); };
+    await D.ctx.route('**/rest/v1/docs**', h);
+    return { st, off: () => D.ctx.unroute('**/rest/v1/docs**', h) };
+  }
   const synced = D => D.page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 15000 }).then(() => true, () => false);
   async function signIn(D, email) {
     await D.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); });
@@ -162,7 +174,9 @@ fs.cpSync(DIST, tmp, { recursive: true });
     const A = await device('A');
     ok(await signIn(A, 'five@example.com'), '5: A signs in and syncs');
     await A.ev(() => { const L = window.__ironlog; const R = L.state.routines[0]; L.state.draft = L.normalize({ draft: { date: '2026-11-05', id: 'big', dayIdx: 0, dayName: 'Chest', routineId: R.id, notes: 'n'.repeat(260000), ex: [], cardio: [] } }).draft; L.saveNow(); });
-    await A.ev(() => window.__ironlog.flush()); await wait(1200);
+    await A.ev(() => window.__ironlog.flush());
+    // Waited for, not timed: the flush ends either way (the review of 2.28 saw a fixed wait end before it under load).
+    await A.page.waitForFunction(() => window.__ironlog.cloudState().status !== 'saving', null, { timeout: 20000 }).catch(() => {});
     const c = await A.ev(() => window.__ironlog.cloudState());
     ok(c.status !== 'synced' && /workout in progress is too large/.test(String(c.err)), '5: 2.27-F2: a workout in progress over the size cap is said to be the workout, not a month of sessions (2.27: "One month of sessions is too large")', { status: c.status, err: c.err });
     await A.ctx.close();
@@ -181,6 +195,47 @@ fs.cpSync(DIST, tmp, { recursive: true });
     const r = await A.ev(() => ({ sheet: (document.querySelector('#modal') || {}).innerText || '', log: JSON.stringify(window.__ironlog.logBuf) }));
     ok(!/pq:|relation|refresh_tokens/.test(r.sheet) && /Something went wrong with your account/.test(r.sheet), '6: 2.27-F7: an account error with no words of its own is shown in plain words, not the server\'s sentence (2.27: "pq: relation ...")', r.sheet.slice(0, 300));
     ok(/server: pq: relation/.test(r.log), '6: 2.27-F7: the server\'s sentence is kept in the error log, for a problem report', r.log.slice(-400));
+    await A.ctx.close();
+  }
+
+  // ---- 7. A write applied, its answer lost, then the session just logged deleted on the phone before the retry ----
+  {
+    const user = fake.addUser('seven@example.com', 'correct horse 1');
+    const A = await device('A');
+    ok(await signIn(A, 'seven@example.com'), '7: A signs in and syncs');
+    await logOn(A, 'u0', '2026-08-03', 100); await A.ev(() => window.__ironlog.flush()); await wait(700);
+    const L = await loseAnswer(A, /s-2026-08-1/);
+    await logOn(A, 'u1', '2026-08-04', 105); await A.ev(() => window.__ironlog.flush()); await wait(900);
+    await L.off();
+    ok(L.st.lost === 1 && serverIds(user.id) === 'u0,u1', '7: the write with u1 reached the account, its answer lost', { lost: L.st.lost, server: serverIds(user.id) });
+    await A.ev(() => { const L = window.__ironlog; L.state.sessions = L.state.sessions.filter(s => s.id !== 'u1'); L.invalidate(); L.saveNow(); });
+    await A.page.waitForFunction(() => window.__ironlog.cloudState().status === 'synced', null, { timeout: 30000 }).catch(() => {});
+    await A.ev(() => window.__ironlog.sync()); await wait(900);
+    ok(await ids(A) === 'u0' && serverIds(user.id) === 'u0', '7: NEW-67: the session deleted on the phone stays deleted, on the phone and in the account (2.27 and the 2.28 reviewed: it came back)', { phone: await ids(A), server: serverIds(user.id) });
+    ok(!A.errors.length, '7: no page errors', A.errors);
+    await A.ctx.close();
+  }
+
+  // ---- 8. The workout's write applied, its answer lost, a new workout started before the retry: one phone only ----
+  {
+    const user = fake.addUser('eight@example.com', 'correct horse 1');
+    const A = await device('A');
+    ok(await signIn(A, 'eight@example.com'), '8: A signs in and syncs');
+    await A.ev(() => { window.__toasts = []; const t = document.getElementById('toast'); if (t) new MutationObserver(() => { const s = t.innerText.trim(); if (s && window.__toasts[window.__toasts.length - 1] !== s) window.__toasts.push(s); }).observe(t, { childList: true, subtree: true, characterData: true }); });
+    const draft = (id, date, w) => ({ date, id, dayIdx: 0, dayName: 'Chest', notes: '', cardio: [], ex: [{ exId: 'bench', plan: { sets: 1, repMin: 6, repMax: 10 }, sets: [{ w, r: 8, rir: 2, done: true, rid: 'r' + id }] }] });
+    await A.ev(d => { const L = window.__ironlog; L.state.draft = L.normalize({ draft: Object.assign(d, { routineId: L.state.routines[0].id }) }).draft; L.saveNow(); }, draft('w1', '2026-08-06', 100));
+    await A.ev(() => window.__ironlog.flush()); await wait(900);
+    const L = await loseAnswer(A, /\/draft/);
+    await A.ev(() => { const L = window.__ironlog; const R = L.state.routines[0]; L.state.sessions.push({ id: 'w1', date: '2026-08-06', dayIdx: 0, dayId: R.days[0].id, dayName: 'Chest', routineId: R.id, notes: '', ex: [{ exId: 'bench', sets: [{ w: 100, r: 8, rir: 2 }] }] }); L.state.draft = null; L.invalidate(); L.saveNow(); });
+    await A.ev(() => window.__ironlog.flush()); await wait(1200);
+    await L.off();
+    await A.ev(d => { const L = window.__ironlog; L.state.draft = L.normalize({ draft: Object.assign(d, { routineId: L.state.routines[0].id }) }).draft; L.saveNow(); }, draft('w2', '2026-08-07', 60));
+    await A.page.waitForFunction(() => window.__ironlog.cloudState().status === 'synced', null, { timeout: 30000 }).catch(() => {});
+    await A.ev(() => window.__ironlog.sync()); await wait(900);
+    const r = await A.ev(() => ({ draft: window.__ironlog.state.draft && window.__ironlog.state.draft.id, toasts: window.__toasts }));
+    ok(r.draft === 'w2' && has(await ids(A), 'w1') && has(serverIds(user.id), 'w1'), '8: the new workout is open and the finished one saved, here and in the account', { r, server: serverIds(user.id) });
+    ok(!r.toasts.some(t => /edited on two devices/.test(t)), '8: NEW-68: one phone alone is never told a record was edited on two devices (2.27 and the 2.28 reviewed: it was)', r.toasts);
+    ok(!A.errors.length, '8: no page errors', A.errors);
     await A.ctx.close();
   }
 

@@ -812,6 +812,10 @@ function cleanDraft(d: Rec, date: string): DraftLike {
       free: d.free === true ? true : undefined,
       // Started as its day's second workout (r68, 366 (c)).
       part: d.part === 2 ? (2 as const) : undefined,
+      // Finish's two questions once answered (sets left, ramp-ups), kept as they came: until 2.28 they passed through
+      // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (the r56-1c suite).
+      _leftAsked: typeof d._leftAsked === 'boolean' ? d._leftAsked : undefined,
+      _rampAsked: typeof d._rampAsked === 'boolean' ? d._rampAsked : undefined,
       // A past workout typed in after the fact: no rest timer, no clock, no check-in.
       past: d.past === true ? true : undefined,
       // The notes the app wrote when the session started, so Discard can tell them from yours.

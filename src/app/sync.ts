@@ -48,7 +48,18 @@ import { cleanCardio, normalize, plainTemplate } from './normalize';
 import { invalidate } from './live';
 import { AUTH, codeOf } from './providers';
 import { acct, cloud, fx, setState, state, ui } from './store';
-import type { Base, CloudDb, CloudDbIn, CloudDoc, CloudRef, CloudSeen, CloudStatus, State, SyncNote } from './store';
+import type {
+  Base,
+  CloudDb,
+  CloudDbIn,
+  CloudDoc,
+  CloudRef,
+  CloudSeen,
+  CloudSent,
+  CloudStatus,
+  State,
+  SyncNote
+} from './store';
 import {
   KEY,
   capturePost,
@@ -254,6 +265,26 @@ const noteIn = (v: unknown): SyncNote | null => {
   if (!N || typeof N.h !== 'string' || typeof N.at !== 'number') return null;
   return { h: N.h, at: N.at, b: N.b == null ? null : baseIn(N.b) };
 };
+/** The unanswered writes as saved (2.28, NEW-67): each entry checked, its note through noteIn; anything else dropped. */
+function sentIn(v: unknown): Record<string, CloudSent> {
+  const S = rec(v);
+  const out: Record<string, CloudSent> = {};
+  if (!S) return out;
+  for (const id of Object.keys(S)) {
+    const e = rec(S[id]);
+    const note = e ? noteIn(e.note) : null;
+    if (
+      e &&
+      note &&
+      isChunkId(id) &&
+      typeof e.w === 'string' &&
+      typeof e.uid === 'string' &&
+      typeof e.from === 'string'
+    )
+      out[id] = { w: e.w, uid: e.uid, from: e.from, note };
+  }
+  return out;
+}
 /** The notes as saved: each document's note checked (noteIn), each edit time a number, the last sync a number. */
 const notesIn = (
   m: Rec,
@@ -318,6 +349,8 @@ function saveMeta(): boolean {
       SYNC_KEY,
       JSON.stringify({
         meta: cloud.meta,
+        // Writes sent and not yet answered (2.28, NEW-67), so a reload before the answer still knows its own.
+        sent: Object.keys(cloud.sent).length ? cloud.sent : undefined,
         last: cloud.last,
         editAt: cloud.editAt,
         devId: cloud.devId,
@@ -840,6 +873,7 @@ async function sessionFromCloud(d: DraftLike, legB: Base | null): Promise<void> 
   const id = chunkOf(d.date);
   const sn = await withTimeout(ref(id).get(), SYNC_MS.net, 'sync-read');
   const sb = sn && sn.exists ? rec(sn.data()) : null;
+  ownWrite(id, sb);
   if (!sb || typeof sb.json !== 'string') return;
   const data = parseJson(sb.json);
   const m = cloud.meta[id],
@@ -872,6 +906,18 @@ function seenOf(d: Rec | null): CloudSeen {
   if (typeof d.w === 'string') return { w: d.w };
   const at = Number(d.at);
   return { at: d.at === undefined || d.at === null || !Number.isFinite(at) ? null : at };
+}
+/** Whether the account holds this device's own unanswered write of a document, read as `d` (2.28, NEW-67): then its
+    note is the copy written, as if the answer had come, so what was deleted here since is read as deleted, not as
+    added on the account (2.27 and before: a session deleted after a lost answer came back, and one phone alone was
+    told a record was edited on two devices). Taken only for the account and the note it was sent from. */
+function ownWrite(id: string, d: Rec | null): void {
+  const s = cloud.sent[id];
+  if (!s) return;
+  const m = cloud.meta[id];
+  if (d && d.w === s.w && s.uid === cloud.uid && (m ? m.h : '') === s.from) cloud.meta[id] = s.note;
+  delete cloud.sent[id];
+  saveMeta();
 }
 /** A new write mark: this device's id and a fresh id, so no two writes of a document, on any device, carry the same one. */
 const writeMark = (): string => `${cloud.devId || 'dev'}.${uid()}`;
@@ -971,8 +1017,9 @@ export async function cloudFlush(): Promise<void> {
       for (let tries = 0; tries < WRITE_TRIES && !done; tries++) {
         /* Read before write. If another device changed this document since we
            last agreed on it, merge record by record instead of overwriting. */
-        const m = cloud.meta[x.id];
         const snap = await withTimeout(ref(x.id).get(), SYNC_MS.net, 'sync-read');
+        ownWrite(x.id, snap && snap.exists ? rec(snap.data()) : null);
+        const m = cloud.meta[x.id];
         /* Sets logged while that read was in flight are in state, not in the
            copy taken before it. Work from the current document, or the merge
            below would write the older copy back and lose them. */
@@ -1036,7 +1083,16 @@ export async function cloudFlush(): Promise<void> {
         }
         const at = Date.now();
         const doc: CloudDoc = { v: 1, at, et: cloud.editAt[x.id] || at, w: writeMark(), json };
+        // Kept until the answer comes, so a write applied whose answer is lost is known as this device's own (ownWrite).
+        cloud.sent[x.id] = {
+          w: doc.w,
+          uid: cloud.uid || '',
+          from: m ? m.h : '',
+          note: { h: hashStr(json), at, b: baseOf(x.id, parseJson(json)) }
+        };
+        saveMeta();
         const wrote = await withTimeout(ref(x.id).setIf(doc, seen), SYNC_MS.net, 'sync-write');
+        delete cloud.sent[x.id];
         if (wrote) {
           cloud.meta[x.id] = { h: hashStr(json), at, b: baseOf(x.id, parseJson(json)) };
           saveMeta();
@@ -1126,6 +1182,7 @@ export async function cloudPull(): Promise<void> {
   for (const d of snap.docs) {
     if (!d.exists || !isChunkId(d.id)) continue;
     const b = rec(d.data());
+    ownWrite(d.id, b);
     if (!b || typeof b.json !== 'string') continue;
     try {
       remote[d.id] = {
@@ -1422,6 +1479,7 @@ function readStored(): void {
   if (now === cloud.acct) return;
   const n = notesIn(m, 'tabs');
   cloud.meta = n.meta || {};
+  cloud.sent = {};
   cloud.editAt = n.editAt || {};
   cloud.last = n.last;
   cloud.acct = now;
@@ -1495,6 +1553,7 @@ async function takeAccount(id: string): Promise<boolean> {
      make an empty log read as deletions (the review of the fix). */
   if (!from && !aside) {
     cloud.meta = {};
+    cloud.sent = {};
     cloud.editAt = {};
     cloud.last = null;
     return true;
@@ -1550,6 +1609,7 @@ async function takeAccount(id: string): Promise<boolean> {
   const both =
     !use && !!aside && mine && !!state.draft && !!aside.state.draft && aside.state.draft.id !== state.draft.id;
   cloud.meta = (n && n.meta) || {};
+  cloud.sent = {};
   cloud.editAt = (n && n.editAt) || {};
   cloud.last = n ? n.last : null;
   if (next) {
@@ -1563,6 +1623,7 @@ async function takeAccount(id: string): Promise<boolean> {
   if (!written) {
     setState(before.state);
     cloud.meta = before.meta;
+    cloud.sent = {};
     cloud.editAt = before.editAt;
     cloud.last = before.last;
     cloud.acct = before.acct;
@@ -1665,6 +1726,7 @@ export function cloudStop(forget?: boolean): void {
   if (forget) {
     cloud.acct = null;
     cloud.meta = {};
+    cloud.sent = {};
     cloud.editAt = {};
     cloud.last = null;
     newEp();
@@ -1695,6 +1757,7 @@ function onStorage(ev: StorageEvent): void {
       } else if (m) {
         const { meta, editAt, last } = notesIn(m, 'tabs');
         if (meta) cloud.meta = meta;
+        cloud.sent = sentIn(m.sent);
         if (editAt) cloud.editAt = editAt;
         cloud.last = last;
         // The notes' account with them (PENDING 333, F2): a tab that kept the account it read before acted for it on another's log.
@@ -1803,6 +1866,7 @@ export function syncStart(): void {
       cloud.editAt = editAt || {};
       cloud.devId = typeof m.devId === 'string' ? m.devId : null;
       cloud.acct = typeof m.acct === 'string' ? m.acct : null;
+      cloud.sent = sentIn(m.sent);
       notesEp = epOf(m);
     }
   } catch (e) {
@@ -1814,7 +1878,9 @@ export function syncStart(): void {
      was last agreed with the cloud, so the first pull adopts the cloud copy
      instead of the first flush writing an empty state over it. */
   if (!device.hadLocal) {
+    // Writes sent from a log no longer here are not this log's: forgotten with the notes.
     cloud.meta = {};
+    cloud.sent = {};
     cloud.editAt = {};
   }
   resyncLocalH();

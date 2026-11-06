@@ -112,7 +112,7 @@ import {
   CAL_OFFER
 } from './worksets';
 import { finish, finishNow } from './workfinish';
-import { LIMITS, EFFORT_TOP } from './records';
+import { LIMITS, EFFORT_TOP, within } from './records';
 import { PICK_DAYS } from './analytics';
 import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScroll } from './page';
 import { closeX } from './sheetsmisc';
@@ -1434,7 +1434,7 @@ export function workoutInput(t: Field): boolean {
   if (b === 'draftNotes') {
     act(
       () => {
-        d.notes = t.value.slice(0, LIMITS.note);
+        d.notes = within(t.value, d.notes || '', LIMITS.note);
       },
       { inProgress: true, soon: true }
     );

@@ -9,7 +9,8 @@
 //   4  2.27-F2: unknown fields in a workout in progress and in the log are kept within the limits every record's
 //      unknown fields have, and a workout with none comes out key for key as it went in (2.27: kept at any size).
 //   5  2.27-F3: every text field a lifter types a name or a note into has a length limit, the same one the save
-//      keeps to (2.27: none, so a long paste could make a month too large to sync).
+//      keeps to (2.27: none, so a long paste could make a month too large to sync); text saved longer before the
+//      limit existed is edited, never cut (the review of 2.28).
 //   6  2.27-F10: an .xlsx file of a megabyte or two that inflates to 200 MB is refused with words, read in pieces
 //      and stopped at the limit (2.27: inflated whole first; a 1.5 GB one took 4.5 s here and returned no rows).
 //   7  2.27-F10, a guard (no failure reproduced in Chromium on 2.27): a 20,000 by 20,000 px picture and one the
@@ -101,6 +102,16 @@ async function started() {
       return JSON.stringify(L.state.draft) === d0;
     });
     ok(w, '3. 2.27-F5: a change to the workout in progress that fails halfway leaves the workout as it was');
+    // A change to the whole log made inside one to the workout alone, then a failure (the review of 2.28).
+    const nest = await D2.page.evaluate(() => {
+      const L = window.__ironlog; const n0 = L.state.sessions.length, name0 = L.state.settings.userName, notes0 = L.state.draft.notes;
+      try { L.act(() => { L.state.draft.notes = 'half'; L.act(() => { L.state.sessions.pop(); L.state.settings.userName = 'half'; }); throw new Error('x'); }, { inProgress: true }); } catch (e) { /* thrown on */ }
+      const mem = { sessions: L.state.sessions.length === n0, name: L.state.settings.userName === name0, notes: L.state.draft.notes === notes0 };
+      L.act(() => { L.state.settings.weekStart = L.state.settings.weekStart; });
+      const saved = JSON.parse(localStorage.getItem(L.KEY)); const st = saved.state || saved;
+      return { mem, savedSessions: st.sessions.length === n0, savedName: st.settings.userName === name0 };
+    });
+    ok(nest.mem.sessions && nest.mem.name && nest.mem.notes && nest.savedSessions && nest.savedName, '3. 2.27-F5: a whole-log change made inside a workout change that then fails is put back too, and the next change saves none of it (the 2.28 reviewed: the inner change stayed)', nest);
     ok(!D.errors.length && !D2.errors.filter(e => !/fails halfway|^x$/.test(e)).length, '3. no page errors but the planted ones', [...D.errors, ...D2.errors]);
     await D.browser.close(); await D2.browser.close();
   }
@@ -109,7 +120,8 @@ async function started() {
     const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00' });
     const r = await D.page.evaluate(() => {
       const L = window.__ironlog;
-      const draft = { date: '2026-11-05', id: 'd1', dayIdx: 0, dayId: null, startedAt: null, durMin: null, dayName: 'Session', routineId: '', notes: '', editingId: null, deload: false, light: false, cardio: [], ex: [] };
+      // Finish's two flags, as 2.27 writes them once answered (the review of 2.28: dropped, so Finish asked again).
+      const draft = { date: '2026-11-05', id: 'd1', dayIdx: 0, dayId: null, startedAt: null, durMin: null, dayName: 'Session', routineId: '', notes: '', editingId: null, deload: false, light: false, cardio: [], ex: [], _leftAsked: true, _rampAsked: true };
       const plain = L.normalize({ draft: JSON.parse(JSON.stringify(draft)) }).draft;
       const big = Object.assign(JSON.parse(JSON.stringify(draft)), { huge: 'x'.repeat(300000) });
       for (let i = 0; i < 30; i++) big['k' + i] = i;
@@ -124,7 +136,7 @@ async function started() {
         stLen: JSON.stringify(stExtra.map(k => st[k])).length, stHuge: 'huge' in st, stKeys: stExtra.length
       };
     });
-    ok(r.plainOrder && r.plainSame, '4. 2.27-F2: a workout with no unknown fields comes out key for key as it went in (so 2.27 and 2.28 phones agree on it; a guard)', r);
+    ok(r.plainOrder && r.plainSame, '4. 2.27-F2: a workout with no unknown fields comes out key for key as it went in, Finish\'s answered questions kept (so 2.27 and 2.28 phones agree on it; a guard, and the review of 2.28)', r);
     ok(!r.draftHuge && r.draftLen < 20000 && r.draftKeys <= 20 && r.draftId === 'd1', '4. 2.27-F2: a workout\'s unknown fields are kept within the limits a record\'s are, its own fields intact (2.27: 300,000 characters kept)', r);
     ok(!r.stHuge && r.stLen < 20000 && r.stKeys <= 20, '4. 2.27-F2: the log\'s own unknown fields the same', r);
     ok(!D.errors.length, '4. no page errors', D.errors);
@@ -150,6 +162,13 @@ async function started() {
     const n = await pg.evaluate(() => window.__ironlog.state.draft.ex[0].note.length);
     const lim = await pg.evaluate(() => Number(document.querySelector('[data-bind="draftNotes"]').getAttribute('maxlength')));
     ok(lim >= 2000 && n === lim, '5. 2.27-F3: a note longer than the limit is saved at the limit, the field\'s own (2.27: 9,000 characters kept)', { n, lim });
+    // A note saved longer than the limit before it existed is edited, never cut: one character deleted, one gone.
+    await pg.evaluate(() => { const L = window.__ironlog; L.act(() => { L.state.draft.notes = 'w'.repeat(6000); }, { inProgress: true }); L.render(); });
+    await wait(200);
+    await pg.focus('[data-bind="draftNotes"]'); await pg.evaluate(() => { const t = document.querySelector('[data-bind="draftNotes"]'); t.setSelectionRange(t.value.length, t.value.length); });
+    await pg.keyboard.press('Backspace'); await wait(700);
+    const kept = await pg.evaluate(() => window.__ironlog.state.draft.notes.length);
+    ok(kept === 5999, '5. 2.27-F3: a note saved longer than the limit before 2.28 loses one character when one is deleted, never cut to the limit (the 2.28 reviewed: cut to 5,000)', kept);
     ok(!D.errors.length, '5. no page errors', D.errors);
     await D.browser.close();
   }

@@ -1994,6 +1994,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     /** The heaviest load, in pounds. */
     loadLb: 2e4
   };
+  function within(next, was, max) {
+    if (was.length <= max) return next.slice(0, max);
+    return next.length <= was.length ? next : was;
+  }
   var CHECKIN_TOP = 3;
   var TRASH_DAYS = 30, TRASH_MAX = 20, TRASH_BYTES = 6e4;
   var BW_MAX_KG = 400, BW_MIN_KG = 20, MEAS_MAX_CM = 300;
@@ -4047,6 +4051,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         free: d3.free === true ? true : void 0,
         // Started as its day's second workout (r68, 366 (c)).
         part: d3.part === 2 ? 2 : void 0,
+        // Finish's two questions once answered (sets left, ramp-ups), kept as they came: until 2.28 they passed through
+        // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (the r56-1c suite).
+        _leftAsked: typeof d3._leftAsked === "boolean" ? d3._leftAsked : void 0,
+        _rampAsked: typeof d3._rampAsked === "boolean" ? d3._rampAsked : void 0,
         // A past workout typed in after the fact: no rest timer, no clock, no check-in.
         past: d3.past === true ? true : void 0,
         // The notes the app wrote when the session started, so Discard can tell them from yours.
@@ -4395,6 +4403,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     status: "local",
     last: null,
     meta: {},
+    sent: {},
     editAt: {},
     localH: {},
     devId: null,
@@ -11683,6 +11692,18 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!N2 || typeof N2.h !== "string" || typeof N2.at !== "number") return null;
     return { h: N2.h, at: N2.at, b: N2.b == null ? null : baseIn(N2.b) };
   };
+  function sentIn(v3) {
+    const S4 = rec(v3);
+    const out = {};
+    if (!S4) return out;
+    for (const id of Object.keys(S4)) {
+      const e5 = rec(S4[id]);
+      const note = e5 ? noteIn(e5.note) : null;
+      if (e5 && note && isChunkId(id) && typeof e5.w === "string" && typeof e5.uid === "string" && typeof e5.from === "string")
+        out[id] = { w: e5.w, uid: e5.uid, from: e5.from, note };
+    }
+    return out;
+  }
   var notesIn = (m3, from) => {
     const M3 = rec(m3.meta), E2 = rec(m3.editAt);
     let meta = null, editAt = null;
@@ -11719,6 +11740,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         SYNC_KEY,
         JSON.stringify({
           meta: cloud.meta,
+          // Writes sent and not yet answered (2.28, NEW-67), so a reload before the answer still knows its own.
+          sent: Object.keys(cloud.sent).length ? cloud.sent : void 0,
           last: cloud.last,
           editAt: cloud.editAt,
           devId: cloud.devId,
@@ -12089,6 +12112,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const id = chunkOf(d3.date);
     const sn = await withTimeout(ref(id).get(), SYNC_MS.net, "sync-read");
     const sb = sn && sn.exists ? rec(sn.data()) : null;
+    ownWrite(id, sb);
     if (!sb || typeof sb.json !== "string") return;
     const data = parseJson(sb.json);
     const m3 = cloud.meta[id], h3 = hashStr(sb.json);
@@ -12117,6 +12141,14 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (typeof d3.w === "string") return { w: d3.w };
     const at2 = Number(d3.at);
     return { at: d3.at === void 0 || d3.at === null || !Number.isFinite(at2) ? null : at2 };
+  }
+  function ownWrite(id, d3) {
+    const s3 = cloud.sent[id];
+    if (!s3) return;
+    const m3 = cloud.meta[id];
+    if (d3 && d3.w === s3.w && s3.uid === cloud.uid && (m3 ? m3.h : "") === s3.from) cloud.meta[id] = s3.note;
+    delete cloud.sent[id];
+    saveMeta();
   }
   var writeMark = () => `${cloud.devId || "dev"}.${uid()}`;
   function hasUnsent() {
@@ -12189,8 +12221,9 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       for (const x2 of todo) {
         let done = false;
         for (let tries = 0; tries < WRITE_TRIES && !done; tries++) {
-          const m3 = cloud.meta[x2.id];
           const snap = await withTimeout(ref(x2.id).get(), SYNC_MS.net, "sync-read");
+          ownWrite(x2.id, snap && snap.exists ? rec(snap.data()) : null);
+          const m3 = cloud.meta[x2.id];
           let json = JSON.stringify(chunksOf(state)[x2.id] || emptyChunk(x2.id));
           const b2 = snap && snap.exists ? rec(snap.data()) : null;
           const seen = seenOf(b2);
@@ -12240,7 +12273,15 @@ ${actions ? b`<div class="ph-a">${actions}</div>
           }
           const at2 = Date.now();
           const doc = { v: 1, at: at2, et: cloud.editAt[x2.id] || at2, w: writeMark(), json };
+          cloud.sent[x2.id] = {
+            w: doc.w,
+            uid: cloud.uid || "",
+            from: m3 ? m3.h : "",
+            note: { h: hashStr(json), at: at2, b: baseOf(x2.id, parseJson(json)) }
+          };
+          saveMeta();
           const wrote = await withTimeout(ref(x2.id).setIf(doc, seen), SYNC_MS.net, "sync-write");
+          delete cloud.sent[x2.id];
           if (wrote) {
             cloud.meta[x2.id] = { h: hashStr(json), at: at2, b: baseOf(x2.id, parseJson(json)) };
             saveMeta();
@@ -12311,6 +12352,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     for (const d3 of snap.docs) {
       if (!d3.exists || !isChunkId(d3.id)) continue;
       const b2 = rec(d3.data());
+      ownWrite(d3.id, b2);
       if (!b2 || typeof b2.json !== "string") continue;
       try {
         remote[d3.id] = {
@@ -12517,6 +12559,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (now === cloud.acct) return;
     const n3 = notesIn(m3, "tabs");
     cloud.meta = n3.meta || {};
+    cloud.sent = {};
     cloud.editAt = n3.editAt || {};
     cloud.last = n3.last;
     cloud.acct = now;
@@ -12571,6 +12614,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const aside = await asideOf(id);
     if (!from && !aside) {
       cloud.meta = {};
+      cloud.sent = {};
       cloud.editAt = {};
       cloud.last = null;
       return true;
@@ -12609,6 +12653,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const next = use ? aside ? aside.state : normalize(null) : aside ? mine ? joinLogs(aside.state, own2()) : aside.state : null;
     const both = !use && !!aside && mine && !!state.draft && !!aside.state.draft && aside.state.draft.id !== state.draft.id;
     cloud.meta = n3 && n3.meta || {};
+    cloud.sent = {};
     cloud.editAt = n3 && n3.editAt || {};
     cloud.last = n3 ? n3.last : null;
     if (next) {
@@ -12621,6 +12666,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!written) {
       setState(before.state);
       cloud.meta = before.meta;
+      cloud.sent = {};
       cloud.editAt = before.editAt;
       cloud.last = before.last;
       cloud.acct = before.acct;
@@ -12701,6 +12747,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (forget) {
       cloud.acct = null;
       cloud.meta = {};
+      cloud.sent = {};
       cloud.editAt = {};
       cloud.last = null;
       newEp();
@@ -12720,6 +12767,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         } else if (m3) {
           const { meta, editAt, last } = notesIn(m3, "tabs");
           if (meta) cloud.meta = meta;
+          cloud.sent = sentIn(m3.sent);
           if (editAt) cloud.editAt = editAt;
           cloud.last = last;
           cloud.acct = typeof m3.acct === "string" ? m3.acct : null;
@@ -12806,6 +12854,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         cloud.editAt = editAt || {};
         cloud.devId = typeof m3.devId === "string" ? m3.devId : null;
         cloud.acct = typeof m3.acct === "string" ? m3.acct : null;
+        cloud.sent = sentIn(m3.sent);
         notesEp = epOf(m3);
       }
     } catch (e5) {
@@ -12814,6 +12863,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!cloud.devId) cloud.devId = "dev-" + uid();
     if (!device.hadLocal) {
       cloud.meta = {};
+      cloud.sent = {};
       cloud.editAt = {};
     }
     resyncLocalH();
@@ -12825,10 +12875,13 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   // src/app/act.ts
   var depth = 0;
   var dropInside = false;
+  var logBefore = null;
+  var outerDraftOnly = false;
   var outerUndo = false;
   function act(change, opts = {}) {
     if (opts.check && !opts.check()) return false;
     if (depth > 0) {
+      if (!opts.inProgress && outerDraftOnly && !logBefore) logBefore = structuredClone(state);
       if (!opts.inProgress) dropInside = true;
       if (opts.undo && !outerUndo) log("act", "an Undo step was asked inside a change that keeps none");
       change();
@@ -12842,13 +12895,17 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const draftWas = opts.inProgress ? structuredClone(state.draft) : null;
     const logWas = opts.inProgress ? null : structuredClone(state);
     outerUndo = !!opts.undo;
+    outerDraftOnly = !!opts.inProgress;
     depth++;
     let inside = false;
     try {
       change();
     } catch (e5) {
       if (logWas) setState(logWas);
-      else state.draft = draftWas;
+      else {
+        if (logBefore) setState(logBefore);
+        state.draft = draftWas;
+      }
       if (step && undoStack[undoStack.length - 1] === step) {
         undoStack.pop();
         undoPersist();
@@ -12859,6 +12916,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       depth--;
       inside = dropInside;
       dropInside = false;
+      logBefore = null;
     }
     if (!opts.inProgress || inside) invalidate();
     if (opts.soon) saveSoon();
@@ -16811,7 +16869,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       if (d3)
         act(
           () => {
-            d3.name = t4.value.slice(0, LIMITS.name);
+            d3.name = within(t4.value, d3.name, LIMITS.name);
           },
           { soon: true }
         );
@@ -16835,7 +16893,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       const R2 = curRoutineB();
       act(
         () => {
-          R2.name = t4.value.slice(0, LIMITS.name);
+          R2.name = within(t4.value, R2.name, LIMITS.name);
         },
         { soon: true }
       );
@@ -16857,7 +16915,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       const d3 = curRoutineB().days[num(t4.dataset.dayname)];
       if (d3)
         act(() => {
-          d3.name = t4.value.slice(0, LIMITS.name);
+          d3.name = within(t4.value, d3.name, LIMITS.name);
         });
       rerenderKeepScroll();
       return true;
@@ -16914,7 +16972,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     routineName(t4) {
       const R2 = curRoutineB();
       act(() => {
-        R2.name = t4.value.slice(0, LIMITS.name);
+        R2.name = within(t4.value, R2.name, LIMITS.name);
         if (!R2.name.trim()) R2.name = "Routine";
       });
       if (nameTaken(R2.name, R2.id)) toast("Another routine has the same name");
@@ -20872,7 +20930,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     if (b2 === "draftNotes") {
       act(
         () => {
-          d3.notes = t4.value.slice(0, LIMITS.note);
+          d3.notes = within(t4.value, d3.notes || "", LIMITS.note);
         },
         { inProgress: true, soon: true }
       );
@@ -25281,7 +25339,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const b2 = d3.ex[m3.bi];
       act(
         () => {
-          if (b2) b2.note = ta.value.slice(0, LIMITS.note).trim();
+          if (b2) b2.note = within(ta.value, b2.note || "", LIMITS.note).trim();
         },
         { inProgress: true }
       );
@@ -25339,8 +25397,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       else if (k2 === "assist") e5.assist = v3;
       return;
     }
-    if (k2 === "name") e5.name = v3.slice(0, LIMITS.exName);
-    else if (k2 === "note") e5.note = v3.slice(0, LIMITS.note);
+    if (k2 === "name") e5.name = within(v3, e5.name || "", LIMITS.exName);
+    else if (k2 === "note") e5.note = within(v3, e5.note || "", LIMITS.note);
     else if (k2 === "primary") e5.primary = v3;
     else if (k2 === "equip") e5.equip = v3;
     else if (k2 === "incRaw") e5.incRaw = v3;

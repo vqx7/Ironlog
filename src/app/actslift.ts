@@ -7,7 +7,7 @@
 
 import { isDate, isNum, numIn, today, uid } from './util';
 import { JK, MK, injLabel } from './library';
-import { LIMITS } from './records';
+import { LIMITS, within } from './records';
 import { cleanCardio } from './normalize';
 import { effW, greyW } from './session';
 import { rirScale } from './effort';
@@ -374,7 +374,7 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const b = d.ex[m.bi];
     act(
       () => {
-        if (b) b.note = ta.value.slice(0, LIMITS.note).trim();
+        if (b) b.note = within(ta.value, b.note || '', LIMITS.note).trim();
       },
       { inProgress: true }
     );

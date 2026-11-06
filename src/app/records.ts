@@ -91,6 +91,13 @@ export const LIMITS = {
   /** The heaviest load, in pounds. */
   loadLb: 20000
 } as const;
+/** Text as typed, kept within `max` characters (2.28, 2.27-F3). A name or a note saved longer before its limit existed
+    is edited, never cut: it may get shorter, and a change that would make it longer still is not taken (the field's
+    maxlength already stops typing there; this holds a paste or a script to the same). */
+export function within(next: string, was: string, max: number): string {
+  if (was.length <= max) return next.slice(0, max);
+  return next.length <= was.length ? next : was;
+}
 
 /** A check-in answer: 1 poor, 2 OK, CHECKIN_TOP good. */
 export const CHECKIN_TOP = 3;
