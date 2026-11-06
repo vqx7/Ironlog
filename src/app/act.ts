@@ -17,7 +17,7 @@ import { chunksOf, emptyChunk } from './chunks';
 import type { Rec } from './records';
 import { invalidate } from './live';
 import { normalize, plainTemplate } from './normalize';
-import { TRASH_BYTES, TRASH_MAX, parseJson, rec } from './records';
+import { TRASH_BYTES, TRASH_MAX, arr, parseJson, rec } from './records';
 import type { Trashed } from './records';
 import type { State } from './store';
 import { fx, setState, state } from './store';
@@ -132,6 +132,12 @@ export function toTrash(kind: Trashed['kind'], data: { id: string }): void {
    right after the action as the base, what is here now as one side and the
    state before the action as the other. Records changed since the action
    keep their newer version. */
+/** A step's whole log, which every step not cut to its documents has; one with neither is not read as an empty log. */
+function wholeOf(pre: string | null): string {
+  if (pre == null) throw new Error('an Undo step with neither its log nor its documents');
+  return pre;
+}
+
 /** Takes back the newest Undo step: 'none' when there is none, 'failed' when it could not be read, 'unchanged' when nothing it changed is left to undo, else how many steps are left. */
 export function undoStep(): 'none' | 'failed' | 'unchanged' | number {
   const e = undoStack.pop();
@@ -150,14 +156,59 @@ export function undoStep(): 'none' | 'failed' | 'unchanged' | number {
   }
   if (!done)
     try {
-      const pre = normalize(parseJson(e.pre));
-      const post = e.post ? normalize(parseJson(e.post)) : state;
-      const P = chunksOf(pre),
-        Q = chunksOf(post),
-        C = chunksOf(state);
+      /* A step cut to the documents its action changed (2.27-F4): only those are merged, every other document is
+         as it is now, which is what the merge gives a document the action left alone. A whole step (2.28's, or one
+         not yet saved) reads every document. */
+      const D = e.d != null ? rec(parseJson(e.d)) : null;
+      const cutP = D ? rec(D.p) || {} : null,
+        cutQ = D ? rec(D.q) || {} : null,
+        cutK = D ? rec(D.k) || {} : null,
+        cutL = D ? rec(D.l) || {} : null;
+      const strs = (v: unknown): string[] => {
+        const out: string[] = [];
+        for (const f of arr(v) || []) if (typeof f === 'string') out.push(f);
+        return out;
+      };
+      const C = chunksOf(state);
+      /* One side of a cut document: its changed fields as they were on that side, every other field as it is now
+         (both sides alike, so the merge keeps it as it is now); a document absent on that side stays absent. */
+      const side = (o: Rec): Record<string, Rec> => {
+        const out: Record<string, Rec> = {};
+        for (const id in o) {
+          const v = rec(o[id]);
+          if (!v) continue;
+          const changed = new Set(strs(cutK && cutK[id]));
+          const lists = new Set(strs(cutL && cutL[id]));
+          const doc: Rec = {};
+          const now = C[id];
+          if (now) for (const f in now) if (!changed.has(f)) doc[f] = now[f];
+          for (const f in v) {
+            const cut = lists.has(f) ? rec(v[f]) : null;
+            if (!cut) {
+              doc[f] = v[f];
+              continue;
+            }
+            // A list cut to its ids: each record as kept on this side, else as it is now; one gone since stays gone.
+            const recs = rec(cut.recs) || {};
+            const here = new Map((arr(now && now[f]) || []).map(r => [rec(r)?.id, r]));
+            const list: unknown[] = [];
+            for (const rid of strs(cut.ids)) {
+              const r = rid in recs ? recs[rid] : here.get(rid);
+              if (r !== undefined) list.push(r);
+            }
+            doc[f] = list;
+          }
+          out[id] = doc;
+        }
+        return out;
+      };
+      const P = cutP ? side(cutP) : chunksOf(normalize(parseJson(wholeOf(e.pre)))),
+        Q = cutQ ? side(cutQ) : chunksOf(e.post ? normalize(parseJson(e.post)) : state);
       const stat = { conflicts: 0 };
       const parts: Record<string, Rec | null> = {};
-      for (const id of new Set([...Object.keys(P), ...Object.keys(Q), ...Object.keys(C)])) {
+      const ids = cutP && cutQ ? new Set([...Object.keys(cutP), ...Object.keys(cutQ)]) : null;
+      if (ids) for (const id in C) if (!ids.has(id)) parts[id] = C[id];
+      for (const id of ids || new Set([...Object.keys(P), ...Object.keys(Q), ...Object.keys(C)])) {
         const q = Q[id] || emptyChunk(id);
         /* The session in progress compared in one form, all three normalized,
            as a reload leaves it: the live one compared raw read every exercise
@@ -176,7 +227,15 @@ export function undoStep(): 'none' | 'failed' | 'unchanged' | number {
               }
             : mergeChunk(id, q ? baseOf(id, q) : null, C[id] || emptyChunk(id), P[id] || emptyChunk(id), false, stat);
       }
-      setState(assemble(parts));
+      /* The documents in the order chunksOf makes them (core, the workout in progress, weigh-ins by year, sessions by
+         half-month), which a date in the id sorts: assemble puts sessions back in the order of their documents, and
+         a cut step's were added after the rest. */
+      const rank = (id: string): string =>
+        (id === 'core' ? '0' : id === 'draft' ? '1' : id.startsWith('b-') ? '2' : '3') + id;
+      const sorted: Record<string, Rec | null> = {};
+      for (const id of Object.keys(parts).sort((a, b) => (rank(a) < rank(b) ? -1 : rank(a) > rank(b) ? 1 : 0)))
+        sorted[id] = parts[id];
+      setState(assemble(ids ? sorted : parts));
     } catch (x) {
       log('undo', x);
       return 'failed';
@@ -184,7 +243,7 @@ export function undoStep(): 'none' | 'failed' | 'unchanged' | number {
   // If the step below never saw a save of its own, its result is the state
   // before the step just undone, not what this undo is about to save.
   const below = undoStack[undoStack.length - 1];
-  if (below && below.post == null) below.post = e.pre;
+  if (below && below.post == null && below.d == null && e.pre != null) below.post = e.pre;
   if (canon(state) === before) return 'unchanged';
   invalidate();
   saveNow();

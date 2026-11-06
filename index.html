@@ -4487,7 +4487,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       try {
         const tx = db.transaction("kv", "readwrite");
         tx.objectStore("kv").put(
-          undoStack.map((e5) => ({ pre: e5.pre, post: e5.post, t: e5.t || Date.now() })),
+          undoStack.map(
+            (e5) => e5.d != null ? { d: e5.d, t: e5.t || Date.now() } : { pre: e5.pre, post: e5.post, t: e5.t || Date.now() }
+          ),
           "stack"
         );
       } catch (e5) {
@@ -4512,8 +4514,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const now = Date.now();
     for (const e5 of arr(list) || []) {
       const E2 = rec(e5);
-      if (E2 && typeof E2.pre === "string" && now - (Number(E2.t) || 0) < UNDO_TTL)
-        undoStack.push({ pre: E2.pre, post: typeof E2.post === "string" ? E2.post : null, inv: null, t: Number(E2.t) });
+      if (!E2 || !(now - (Number(E2.t) || 0) < UNDO_TTL)) continue;
+      if (typeof E2.d === "string") undoStack.push({ pre: null, post: null, d: E2.d, inv: null, t: Number(E2.t) });
+      else if (typeof E2.pre === "string")
+        undoStack.push({
+          pre: E2.pre,
+          post: typeof E2.post === "string" ? E2.post : null,
+          d: null,
+          inv: null,
+          t: Number(E2.t)
+        });
     }
     if (undoStack.length && ui.tab === "settings" && !ui.modal) fx.rerenderKeepScroll();
   }
@@ -4534,6 +4544,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       undoStack.push({
         pre: JSON.stringify(state),
         post: null,
+        d: null,
         inv: typeof inv === "function" ? inv : null,
         t: Date.now()
       });
@@ -4546,14 +4557,65 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function capturePost() {
     const e5 = undoStack[undoStack.length - 1];
-    if (e5 && e5.post == null) {
+    if (e5 && e5.post == null && e5.d == null) {
       try {
         e5.post = JSON.stringify(state);
+        for (let i5 = undoStack.length - 1; i5 > 0; i5--) {
+          const lo = undoStack[i5 - 1], hi = undoStack[i5];
+          if (lo.post != null || lo.d != null || hi.pre == null) break;
+          lo.post = hi.pre;
+        }
+        for (const x2 of undoStack) cutStep(x2);
         undoPersist();
       } catch (x2) {
         log("undo", x2);
       }
     }
+  }
+  function cutStep(e5) {
+    if (e5.d != null || e5.pre == null || e5.post == null) return;
+    const P2 = chunksOf(normalize(parseJson(e5.pre))), Q = chunksOf(normalize(parseJson(e5.post)));
+    const p3 = {}, q = {}, k2 = {}, l4 = {};
+    for (const id of /* @__PURE__ */ new Set([...Object.keys(P2), ...Object.keys(Q)])) {
+      const a2 = P2[id], b2 = Q[id];
+      if (JSON.stringify(a2 ?? null) === JSON.stringify(b2 ?? null)) continue;
+      const keys = [.../* @__PURE__ */ new Set([...Object.keys(a2 || {}), ...Object.keys(b2 || {})])].filter(
+        (f3) => JSON.stringify(a2 ? a2[f3] : void 0) !== JSON.stringify(b2 ? b2[f3] : void 0)
+      );
+      const listed = (v3) => {
+        const L2 = arr(v3);
+        if (!L2) return null;
+        const out = [];
+        for (const r4 of L2) {
+          const R2 = rec(r4);
+          if (!R2 || typeof R2.id !== "string") return null;
+          out.push(R2);
+        }
+        return out;
+      };
+      const pick2 = (x2, y2) => {
+        if (!x2) return null;
+        const o3 = {};
+        for (const f3 of keys) {
+          if (!(f3 in x2)) continue;
+          const a3 = listed(x2[f3]), b3 = y2 ? listed(y2[f3]) : null;
+          if (a3 && b3) {
+            const other = new Map(b3.map((r4) => [r4.id, JSON.stringify(r4)]));
+            const recs = {};
+            for (const r4 of a3) if (other.get(r4.id) !== JSON.stringify(r4)) recs[String(r4.id)] = r4;
+            o3[f3] = { ids: a3.map((r4) => r4.id), recs };
+          } else o3[f3] = x2[f3];
+        }
+        return o3;
+      };
+      p3[id] = pick2(a2, b2);
+      q[id] = pick2(b2, a2);
+      k2[id] = keys;
+      l4[id] = keys.filter((f3) => a2 && b2 && listed(a2[f3]) && listed(b2[f3]));
+    }
+    e5.d = JSON.stringify({ p: p3, q, k: k2, l: l4 });
+    e5.pre = null;
+    e5.post = null;
   }
   function prefGet(key) {
     try {
@@ -12954,6 +13016,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     ].slice(0, TRASH_MAX);
     while (state.trash.length > 1 && JSON.stringify(state.trash).length > TRASH_BYTES) state.trash.pop();
   }
+  function wholeOf(pre) {
+    if (pre == null) throw new Error("an Undo step with neither its log nor its documents");
+    return pre;
+  }
   function undoStep() {
     const e5 = undoStack.pop();
     if (!e5) return "none";
@@ -12971,12 +13037,53 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }
     if (!done)
       try {
-        const pre = normalize(parseJson(e5.pre));
-        const post = e5.post ? normalize(parseJson(e5.post)) : state;
-        const P2 = chunksOf(pre), Q = chunksOf(post), C2 = chunksOf(state);
+        const D2 = e5.d != null ? rec(parseJson(e5.d)) : null;
+        const cutP = D2 ? rec(D2.p) || {} : null, cutQ = D2 ? rec(D2.q) || {} : null, cutK = D2 ? rec(D2.k) || {} : null, cutL = D2 ? rec(D2.l) || {} : null;
+        const strs = (v3) => {
+          const out = [];
+          for (const f3 of arr(v3) || []) if (typeof f3 === "string") out.push(f3);
+          return out;
+        };
+        const C2 = chunksOf(state);
+        const side = (o3) => {
+          const out = {};
+          for (const id in o3) {
+            const v3 = rec(o3[id]);
+            if (!v3) continue;
+            const changed = new Set(strs(cutK && cutK[id]));
+            const lists = new Set(strs(cutL && cutL[id]));
+            const doc = {};
+            const now = C2[id];
+            if (now) {
+              for (const f3 in now) if (!changed.has(f3)) doc[f3] = now[f3];
+            }
+            for (const f3 in v3) {
+              const cut = lists.has(f3) ? rec(v3[f3]) : null;
+              if (!cut) {
+                doc[f3] = v3[f3];
+                continue;
+              }
+              const recs = rec(cut.recs) || {};
+              const here = new Map((arr(now && now[f3]) || []).map((r4) => [rec(r4)?.id, r4]));
+              const list = [];
+              for (const rid of strs(cut.ids)) {
+                const r4 = rid in recs ? recs[rid] : here.get(rid);
+                if (r4 !== void 0) list.push(r4);
+              }
+              doc[f3] = list;
+            }
+            out[id] = doc;
+          }
+          return out;
+        };
+        const P2 = cutP ? side(cutP) : chunksOf(normalize(parseJson(wholeOf(e5.pre)))), Q = cutQ ? side(cutQ) : chunksOf(e5.post ? normalize(parseJson(e5.post)) : state);
         const stat = { conflicts: 0 };
         const parts = {};
-        for (const id of /* @__PURE__ */ new Set([...Object.keys(P2), ...Object.keys(Q), ...Object.keys(C2)])) {
+        const ids = cutP && cutQ ? /* @__PURE__ */ new Set([...Object.keys(cutP), ...Object.keys(cutQ)]) : null;
+        if (ids) {
+          for (const id in C2) if (!ids.has(id)) parts[id] = C2[id];
+        }
+        for (const id of ids || /* @__PURE__ */ new Set([...Object.keys(P2), ...Object.keys(Q), ...Object.keys(C2)])) {
           const q = Q[id] || emptyChunk(id);
           const qd = Q["draft"], pd = P2["draft"];
           parts[id] = id === "draft" ? {
@@ -12987,13 +13094,17 @@ ${actions ? b`<div class="ph-a">${actions}</div>
             )
           } : mergeChunk(id, q ? baseOf(id, q) : null, C2[id] || emptyChunk(id), P2[id] || emptyChunk(id), false, stat);
         }
-        setState(assemble(parts));
+        const rank = (id) => (id === "core" ? "0" : id === "draft" ? "1" : id.startsWith("b-") ? "2" : "3") + id;
+        const sorted = {};
+        for (const id of Object.keys(parts).sort((a2, b2) => rank(a2) < rank(b2) ? -1 : rank(a2) > rank(b2) ? 1 : 0))
+          sorted[id] = parts[id];
+        setState(assemble(ids ? sorted : parts));
       } catch (x2) {
         log("undo", x2);
         return "failed";
       }
     const below = undoStack[undoStack.length - 1];
-    if (below && below.post == null) below.post = e5.pre;
+    if (below && below.post == null && below.d == null && e5.pre != null) below.post = e5.pre;
     if (canon(state) === before) return "unchanged";
     invalidate();
     saveNow();

@@ -25,8 +25,14 @@
 //   4  NEW-71: with Corrected RIR on, a rated set is corrected by the RIR checks up to its own date, so a check logged
 //      later never changes an old workout's estimate (2.28: Sep 15's 100 x 8 at 2 in reserve, 133.3 kg, then 136.7 once
 //      two October checks were in), while Settings still shows the correction from every check to today (a guard).
+//   5  2.27-F4: Undo keeps what an action changed, not two whole copies of the log. On two years of training (416
+//      sessions, a 728 kB log), deleting a session keeps a step a small share of the log, and 20 deletes stay far
+//      under two copies each (2.28: 35 MB for 20 steps, all of it rewritten to IndexedDB on each); Undo still puts each
+//      session back exactly, newest first, and a set logged after a delete is kept; a step 2.28 saved (whole copies)
+//      still undoes after the update; and a 2.28 tab reading 2.29's steps takes none (it would read a part as the
+//      whole log), so it cannot undo anything wrongly.
 // R74_ONLY=1,2 runs some sections.
-const { open } = require('./h');
+const { open, tab } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
 const FILE = process.argv[2] || 'index.html';
@@ -164,6 +170,63 @@ const T = '2026-11-05';
     ok(r.a.best === 133.3 && r.b.best === r.a.best, '4. NEW-71: Sep 15 keeps its estimate once later RIR checks are in (2.28: 133.3 kg, then 136.7)', r);
     ok(r.a.n === 0 && r.b.n === 2 && r.b.bias > 0, '4. guard: Settings\' correction reads every check to today', r);
     ok(!D.errors.length, '4. no page errors', D.errors);
+    await D.browser.close();
+  }
+
+  if (run(5)) {
+    const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00' });
+    const ev = (f, a) => D.page.evaluate(f, a);
+    const wait = ms => D.page.waitForTimeout(ms);
+    await ev(() => {
+      const L = window.__ironlog, S = L.state; S.settings.onboarded = true;
+      const ids = ['bench', 'backSquat', 'dbBench', 'pressdown', 'incDb', 'skull', 'rdl', 'hackSquat']; const ss = [];
+      let d = new Date('2024-11-05T12:00:00'), i = 0;
+      while (d < new Date('2026-11-01T12:00:00')) {
+        for (const k of [0, 2, 4, 5]) { const x = new Date(d); x.setDate(x.getDate() + k); const ds = x.toISOString().slice(0, 10);
+          ss.push({ id: 'p' + i, date: ds, dayIdx: 0, dayName: 'Push', notes: 'felt good', ex: ids.slice(i % 3, (i % 3) + 6).map(e => ({ exId: e, rr: [8, 12], sets: [0, 1, 2, 3].map(j => ({ w: 60 + j, r: 10, rir: 2, warm: false, drop: false })) })) }); i++; }
+        d.setDate(d.getDate() + 7);
+      }
+      S.sessions = ss; L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.undoForget();
+    });
+    await wait(500);
+    const logKB = await ev(() => JSON.stringify(window.__ironlog.state).length / 1024);
+    const canon = () => ev(() => JSON.stringify(window.__ironlog.normalize(JSON.parse(JSON.stringify(window.__ironlog.state)))));
+    const before = await canon();
+    const del = async id => { await ev(id => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); L.ACT.histDel({ dataset: { id } }); }, id); await D.page.click('[data-act="mOk"]'); await wait(60); };
+    await del('p100');
+    const one = await ev(() => { const L = window.__ironlog; const e = L.undoStack[L.undoStack.length - 1]; return JSON.stringify({ ...e, inv: undefined }).length / 1024; });
+    ok(one < logKB * 0.1, `5. 2.27-F4: a session deleted on a ${Math.round(logKB)} kB log keeps an Undo step of ${Math.round(one)} kB, under a tenth of the log (2.28: two whole copies)`, { one, logKB });
+    for (let k = 0; k < 19; k++) await del('p' + (200 + k * 7));
+    await wait(700);
+    const all = await ev(() => window.__ironlog.undoStack.reduce((a, e) => a + JSON.stringify({ ...e, inv: undefined }).length, 0) / 1024);
+    const saved = await ev(() => new Promise(r => { const q = indexedDB.open('ironlog-undo', 1); q.onsuccess = () => { const g = q.result.transaction('kv').objectStore('kv').get('stack'); g.onsuccess = () => r(JSON.stringify(g.result || []).length / 1024); }; }));
+    ok(all < logKB * 2 && saved < logKB * 2, `5. 2.27-F4: 20 deletes keep ${Math.round(all)} kB of Undo steps, ${Math.round(saved)} kB in IndexedDB, under two copies of the log in all (2.28: about 40 copies)`, { all, saved, logKB });
+    // A set logged after the deletes: Undo takes the deletes back and keeps it.
+    await ev(() => { const L = window.__ironlog; L.act(() => { L.state.bodyweights.push({ id: 'after', date: '2026-11-05', kg: 81 }); }); });
+    for (let k = 0; k < 20; k++) await ev(() => window.__ironlog.ACT.undo());
+    const back = await ev(() => { const L = window.__ironlog; const S = JSON.parse(JSON.stringify(L.state)); const kept = S.bodyweights.some(b => b.id === 'after'); S.bodyweights = S.bodyweights.filter(b => b.id !== 'after'); S.trash = []; return { kept, now: JSON.stringify(L.normalize(S)), n: L.state.sessions.length }; });
+    const want = JSON.parse(before); want.trash = [];
+    const diffKeys = (() => { const a = JSON.parse(back.now), b = want; const out = []; for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) { if (Array.isArray(a[k]) && Array.isArray(b[k])) { const n = Math.max(a[k].length, b[k].length); for (let i = 0; i < n && out.length < 4; i++) if (JSON.stringify(a[k][i]) !== JSON.stringify(b[k][i])) out.push({ k, i, now: JSON.stringify(a[k][i]).slice(0, 300), want: JSON.stringify(b[k][i]).slice(0, 300) }); } else out.push({ k, now: JSON.stringify(a[k]).slice(0, 300), want: JSON.stringify(b[k]).slice(0, 300) }); } return out; })();
+    ok(back.kept && back.n === want.sessions.length && back.now === JSON.stringify(want), '5. 2.27-F4: Undo puts all 20 sessions back exactly, and keeps a weigh-in logged after them', { kept: back.kept, n: back.n, diff: diffKeys });
+    // A step 2.28 saved, whole copies of the log, read after the update: it still undoes.
+    await ev(() => { const L = window.__ironlog; L.undoForget(); });
+    await wait(300);
+    await ev(async () => { const L = window.__ironlog; const pre = JSON.stringify(L.state); const S = JSON.parse(pre); S.sessions = S.sessions.filter(x => x.id !== 'p300'); const post = JSON.stringify(L.normalize(S));
+      L.state = L.normalize(S); L.invalidate(); L.saveNow();
+      await new Promise(r => { const q = indexedDB.open('ironlog-undo', 1); q.onsuccess = () => { const tx = q.result.transaction('kv', 'readwrite'); tx.objectStore('kv').put([{ pre, post, t: Date.now() }], 'stack'); tx.oncomplete = r; }; }); });
+    await D.page.reload(); await wait(800);
+    const old = await ev(() => { const L = window.__ironlog; const n0 = L.undoStack.length; L.ACT.undo(); return { n0, back: L.state.sessions.some(x => x.id === 'p300') }; });
+    ok(old.n0 === 1 && old.back, '5. 2.27-F4: a step saved by 2.28 (whole copies) still undoes after the update', old);
+    // 2.29 saves a step; a tab still on 2.28 reading it takes none (2.28 reads pre as the whole log).
+    // 2.28's build: R74_OLD, else baselines/r73.html once 2.28 is published (CLAUDE.md, Releasing).
+    const OLD = process.env.R74_OLD || (require('fs').existsSync('baselines/r73.html') ? 'baselines/r73.html' : null);
+    if (OLD) {
+      await del('p310'); await wait(700);
+      const T2 = await tab(D, OLD); await T2.page.waitForTimeout(800);
+      const n28 = await T2.page.evaluate(() => window.__ironlog.undoStack.length);
+      ok(n28 === 0, '5. 2.27-F4: a tab on 2.28 takes none of 2.29\'s Undo steps', n28);
+    } else console.log('note 5: no 2.28 build here yet (baselines/r73.html is added once 2.28 is published; R74_OLD names one), the 2.28 tab check skipped');
+    ok(!D.errors.length, '5. no page errors', D.errors);
     await D.browser.close();
   }
 
