@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-G7rsGjb4lu5G/23ZEMCx3g8mB2NAW2vnxFfF6ZJhMy0=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-+fAuj8CmGIakWNaQBx3we4xxbVbWEapgjsgfZ1z72nc=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.06-r74">
+<meta name="app-build" content="2026.11.06-r75">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2077,7 +2077,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
   var DISPLAY_VERSION = "2.29";
-  var APP_VERSION = "2026.11.06-r74";
+  var APP_VERSION = "2026.11.06-r75";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -5823,8 +5823,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           if (ex.timed) continue;
           for (const x2 of b2.sets) {
             if (!isWork(x2) || x2.drop || x2.cal) continue;
-            const q = rirEffIn(M3, x2, ex, ss.date);
-            if (q != null) (rated[b2.exId] || (rated[b2.exId] = [])).push([ss.date, q]);
+            if (rirEffIn(M3, x2, ex, ss.date) != null) (rated[b2.exId] || (rated[b2.exId] = [])).push([ss.date, x2, ex]);
           }
         }
       }
@@ -5838,8 +5837,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (had !== void 0) return had;
     const cut = addDays(D2, -WEEK_DAYS * CAL_WEEKS);
     const all = C2.rated[exId] || [];
-    const qs = all.filter(([d3]) => d3 >= cut && d3 <= D2).map(([, q]) => q);
-    const first = all.length >= RIR_USUAL_MIN && D2 < all[RIR_USUAL_MIN - 1][0] ? all.slice(0, RIR_USUAL_MIN).map(([, q]) => q) : null;
+    const read = (e5) => rirEffIn(M3, e5[1], e5[2], D2) ?? 0;
+    const qs = all.filter(([d3]) => d3 >= cut && d3 <= D2).map(read);
+    const first = all.length >= RIR_USUAL_MIN && D2 < all[RIR_USUAL_MIN - 1][0] ? all.slice(0, RIR_USUAL_MIN).map(read) : null;
     const pick2 = first || (qs.length >= RIR_USUAL_MIN ? qs : null);
     const v3 = pick2 ? median(pick2) : null;
     C2.at[key] = v3;
@@ -13067,13 +13067,16 @@ ${actions ? b`<div class="ph-a">${actions}</div>
           const out = {};
           for (const id in o3) {
             const v3 = rec(o3[id]);
-            if (!v3) continue;
             const changed = new Set(strs(cutK && cutK[id]));
             const lists = new Set(strs(cutL && cutL[id]));
             const doc = {};
             const now = C2[id];
             if (now) {
               for (const f3 in now) if (!changed.has(f3)) doc[f3] = now[f3];
+            }
+            if (!v3) {
+              if (Object.keys(doc).length) out[id] = doc;
+              continue;
             }
             for (const f3 in v3) {
               const cut = lists.has(f3) ? rec(v3[f3]) : null;
@@ -14553,8 +14556,9 @@ ${more}`;
       pl: f3.own,
       r: +(s3.r ?? 0),
       w: Number(s3.w) || 0,
-      rir: rirEff(s3, ex),
-      rq: rirEst(s3, ex)
+      // As of the set's date, as the index reads a logged one (R74-2: a past-dated workout announced a best the recap and the list did not count).
+      rir: rirEff(s3, ex, date),
+      rq: rirEst(s3, ex, date)
     };
     const { pb, pbb } = prBestOf(ex, [p3], noBody(ex));
     return { ex, pr: prJudge(ex, h3, { pts: [p3], pb, pbb }).pr };
@@ -14576,7 +14580,7 @@ ${more}`;
     const scq = (x2) => {
       const l4 = prLoad(ex, x2, date);
       const r4 = +(x2.r ?? 0);
-      return prScoreOf(l4, r4, rirEst(x2, ex));
+      return prScoreOf(l4, r4, rirEst(x2, ex, date));
     };
     const me = scq(s3), myLoad = prLoad(ex, s3, date), myR = +(s3.r ?? 0);
     const asStrong = (x2) => scq(x2) > me + EPS || scq(x2) >= me - EPS && prLoad(ex, x2, date) >= myLoad - EPS && +(x2.r ?? 0) >= myR;
@@ -14647,7 +14651,11 @@ ${more}`;
       const seen = /* @__PURE__ */ new Set();
       for (const x2 of liftRead(b2.exId)) for (const p3 of x2.pts) seen.add(p3.w);
       for (const s3 of heavier) {
-        const v3 = e1(bw + prSameLoad(+(s3.w ?? 0) || 0, seen), +(s3.r ?? 0), rirEst(s3, ex));
+        const v3 = e1(
+          bw + prSameLoad(+(s3.w ?? 0) || 0, seen),
+          +(s3.r ?? 0),
+          rirEst(s3, ex, state.draft ? state.draft.date : void 0)
+        );
         if (v3 != null && (best == null || v3 > best)) {
           best = v3;
           bs = s3;
@@ -20031,7 +20039,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const work = ex.reduce((a2, b2) => a2 + b2.sets.filter(isWork).length, 0), miss = ex.reduce((a2, b2) => a2 + b2.sets.filter((q) => !q.warm && !q.drop && isMissed(q)).length, 0), hard = r1(
       ex.reduce((a2, b2) => {
         const e5 = EX(b2.exId);
-        return a2 + b2.sets.reduce((c4, q) => c4 + hardCredit(q, e5), 0);
+        return a2 + b2.sets.reduce((c4, q) => c4 + hardCredit(q, e5, d3.date), 0);
       }, 0)
     );
     ui.todayDay = null;
