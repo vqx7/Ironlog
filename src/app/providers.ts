@@ -3,7 +3,7 @@
    (window.ironlogFeedback). Moved unchanged from the legacy script in r53,
    with the Guide that reads them. */
 
-import type { AcctUser, CloudDb } from './store';
+import type { AcctUser, CloudDbIn } from './store';
 import type { FbItem } from './modals';
 
 /** The account service (window.ironlogAuth, scripts/cloud-supabase.js): who is signed in, the ways to sign in or out, the confirmation code, the password, deleting the account, and what an emailed link opened the page with. A request the account server checks for bots takes the bot check's token last (captcha.ts, r66), absent when the check is off. */
@@ -92,7 +92,7 @@ export function said(e: unknown, or: string): string {
 
 /** `window.claude.use`, where the page runs inside Claude (retired): the artifact's database, and the viewer. The sync suites inject a stand-in db through it. */
 interface ClaudeUse {
-  (what: 'db'): Promise<CloudDb | null | undefined>;
+  (what: 'db'): Promise<CloudDbIn | null | undefined>;
   (what: 'user'): Promise<{ id(): Promise<unknown> } | null | undefined>;
   /** The artifact's downloads: a saved file, confirmed (the export's). */
   (what: 'downloads'): Promise<{ save(o: { filename: string; data: string }): Promise<unknown> } | null | undefined>;
@@ -108,7 +108,7 @@ declare global {
     claude?: { use?: ClaudeUse | undefined } | undefined;
     /** The account backend's handle for the sync (scripts/cloud-supabase.js): the document store and who is signed in. */
     ironlogCloud?:
-      | (() => Promise<{ db?: CloudDb | null | undefined; userId?: unknown } | null | undefined>)
+      | (() => Promise<{ db?: CloudDbIn | null | undefined; userId?: unknown } | null | undefined>)
       | undefined;
   }
 }

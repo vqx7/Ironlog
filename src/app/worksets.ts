@@ -894,7 +894,9 @@ export function settleLoad(b: DraftBlock | null | undefined, si: number): void {
    checkmark, auto-mark, the grey reps): its load field is focused and marked,
    and the tick is made when a weight is typed there (workoutChange). */
 /** Marks a set done or not done, with every effect a tick has. */
-export function setDone(bi: number, si: number, val: boolean, again?: boolean): void {
+/** Ticks or unticks a set. A set far off is asked about first (Log it or Fix it); `then` runs once it is logged
+    after that question, so Finish carries on from where the question stopped it (2.28, 2.27-F13). */
+export function setDone(bi: number, si: number, val: boolean, again?: boolean, then?: () => void): void {
   const d = state.draft;
   const b = d && d.ex[bi];
   const s = b && b.sets[si];
@@ -928,6 +930,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
         W.oddOk = okKey;
         setDone(bi, si, true, again);
         rerenderKeepScroll();
+        if (then && s.done) then();
       },
       false,
       {

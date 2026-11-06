@@ -127,5 +127,19 @@ const linesOf = s => s.split(/\r\n|\r|\n/);
     const cat = await send(record({ category: 'evil", "labels": ["x' }));
     ok(cat.issue && cat.issue.labels.join() === 'feedback,bug,untrusted', '5. an unknown kind is read as a problem (a guard)', cat.issue && cat.issue.labels);
   }
+  // 8. 2.28 (the 2.27 review's 2.27-F14): the webhook's secret is compared in a time that does not depend on how
+  //    much of it a guess got right, so it cannot be found a character at a time. The timing itself is not
+  //    measured here (a few nanoseconds on a shared runner); the comparison is read in the source, and its answers
+  //    are held: the secret, a guess as long with its last character wrong, one shorter, one longer, none.
+  {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'functions', 'feedback-to-issue', 'index.ts'), 'utf8');
+    ok(!/x-webhook-secret'\) !== secret/.test(src) && /sameSecret\(req\.headers\.get\('x-webhook-secret'\)/.test(src), '8. 2.27-F14: the secret is compared by sameSecret, not by !== (2.27: a plain compare, which stops at the first wrong character)');
+    for (const [got, want, label] of [[SECRET, 200, 'the secret'], [SECRET.slice(0, -1) + 'x', 401, 'its last character wrong'], [SECRET.slice(0, -1), 401, 'one character short'], [SECRET + 'x', 401, 'one character long'], [null, 401, 'no secret']]) {
+      const F = load();
+      const headers = { 'Content-Type': 'application/json' }; if (got != null) headers['x-webhook-secret'] = got;
+      const res = await F.handler(new Request('https://x/f', { method: 'POST', headers, body: JSON.stringify({ type: 'UPDATE', table: 'feedback', record: {} }) }));
+      ok(res.status === want, `8. 2.27-F14: ${label}: ${want === 200 ? 'let in' : 'refused'}`, res.status);
+    }
+  }
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.log('FAIL crash', e); process.exit(1); });

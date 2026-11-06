@@ -11,8 +11,10 @@
    for the in-progress session, one per half-month of sessions, and one per
    year of body data, so no document nears the 256 KB cap and logging a set
    rewrites only the small draft doc. Each document stores its chunk as a JSON
-   string with a timestamp. Only chunks whose content changed are written, one
-   at a time, in order. The three-way merge of a document edited on two
+   string with a timestamp and a write mark. Only chunks whose content changed
+   are written, one at a time, in order, and each only while the account still
+   holds the copy this device read (2.28, 2.27-F1): two devices writing one
+   document at once each keep their own changes. The three-way merge of a document edited on two
    devices, the sync notes each device keeps, and the merge of another tab's
    save are here too. Nothing runs on import: syncStart() runs what the parts
    ran as the page loaded, called from main.ts at start (r63). */
@@ -46,7 +48,18 @@ import { cleanCardio, normalize, plainTemplate } from './normalize';
 import { invalidate } from './live';
 import { AUTH, codeOf } from './providers';
 import { acct, cloud, fx, setState, state, ui } from './store';
-import type { Base, CloudDb, CloudRef, CloudStatus, State, SyncNote } from './store';
+import type {
+  Base,
+  CloudDb,
+  CloudDbIn,
+  CloudDoc,
+  CloudRef,
+  CloudSeen,
+  CloudSent,
+  CloudStatus,
+  State,
+  SyncNote
+} from './store';
 import {
   KEY,
   capturePost,
@@ -62,17 +75,13 @@ import {
 } from './storage';
 
 /** Sync's timings, in milliseconds: a save and the edit notes once the taps
-    pause, a flush once they pause (and again when another device holds the
-    lease), the lease and the wait for it, the wait for any answer from the
-    account, an account error's toast, and how long after the last pull a
-    return to the app pulls again. */
+    pause, a flush once they pause, the wait for any answer from the account,
+    an account error's toast, and how long after the last pull a return to the
+    app pulls again. */
 const SYNC_MS = {
   save: 400,
   track: 800,
   flush: 1200,
-  leaseBusy: 2500,
-  lease: 30000,
-  leaseWait: 10000,
   net: NET_MS,
   errToast: 8000,
   pullAfter: 20000
@@ -89,6 +98,9 @@ export function signInAgain(): void {
 const offline = (): boolean => navigator.onLine === false;
 /** A sync document over this many characters of JSON is left unwritten (the account's size cap), so it cannot stop the others. */
 const DOC_MAX = 250000;
+/** Tries at writing one document in a flush when another device keeps writing it first (each read, merged and
+    written again): past them the flush stops for that document and tries later, as after a dropped connection. */
+const WRITE_TRIES = 3;
 /** Tries at keeping the log aside before giving up (a set ticked while the copy is written makes another). */
 const KEEP_TRIES = 10;
 
@@ -96,7 +108,7 @@ declare global {
   interface Window {
     /** The account backend's handle for the sync (scripts/cloud-supabase.js): the document store and who is signed in. */
     ironlogCloud?:
-      | (() => Promise<{ db?: CloudDb | null | undefined; userId?: unknown } | null | undefined>)
+      | (() => Promise<{ db?: CloudDbIn | null | undefined; userId?: unknown } | null | undefined>)
       | undefined;
   }
 }
@@ -253,6 +265,26 @@ const noteIn = (v: unknown): SyncNote | null => {
   if (!N || typeof N.h !== 'string' || typeof N.at !== 'number') return null;
   return { h: N.h, at: N.at, b: N.b == null ? null : baseIn(N.b) };
 };
+/** The unanswered writes as saved (2.28, NEW-67): each entry checked, its note through noteIn; anything else dropped. */
+function sentIn(v: unknown): Record<string, CloudSent> {
+  const S = rec(v);
+  const out: Record<string, CloudSent> = {};
+  if (!S) return out;
+  for (const id of Object.keys(S)) {
+    const e = rec(S[id]);
+    const note = e ? noteIn(e.note) : null;
+    if (
+      e &&
+      note &&
+      isChunkId(id) &&
+      typeof e.w === 'string' &&
+      typeof e.uid === 'string' &&
+      typeof e.from === 'string'
+    )
+      out[id] = { w: e.w, uid: e.uid, from: e.from, note };
+  }
+  return out;
+}
 /** The notes as saved: each document's note checked (noteIn), each edit time a number, the last sync a number. */
 const notesIn = (
   m: Rec,
@@ -317,6 +349,8 @@ function saveMeta(): boolean {
       SYNC_KEY,
       JSON.stringify({
         meta: cloud.meta,
+        // Writes sent and not yet answered (2.28, NEW-67), so a reload before the answer still knows its own.
+        sent: Object.keys(cloud.sent).length ? cloud.sent : undefined,
         last: cloud.last,
         editAt: cloud.editAt,
         devId: cloud.devId,
@@ -839,6 +873,7 @@ async function sessionFromCloud(d: DraftLike, legB: Base | null): Promise<void> 
   const id = chunkOf(d.date);
   const sn = await withTimeout(ref(id).get(), SYNC_MS.net, 'sync-read');
   const sb = sn && sn.exists ? rec(sn.data()) : null;
+  ownWrite(id, sb);
   if (!sb || typeof sb.json !== 'string') return;
   const data = parseJson(sb.json);
   const m = cloud.meta[id],
@@ -865,27 +900,27 @@ function conflictNote(stat: { conflicts: number }): void {
     );
   }
 }
-/* A short lease on a lock document so two devices do not interleave their
-   read-then-write of the same documents. If the lease is unavailable the
-   write goes ahead, exactly as before; if another device holds it, this one
-   waits and retries. */
-async function takeLease(): Promise<boolean> {
-  try {
-    const r = ref('lock');
-    if (typeof r.acquire !== 'function') return true;
-    // The device id is set before any sync starts (syncStart), the !.
-    const res = await withTimeout(
-      r.acquire({ holder: cloud.devId!, ttlMs: SYNC_MS.lease }),
-      SYNC_MS.leaseWait,
-      'sync-lease'
-    );
-    const R = rec(res);
-    return !(R && R.acquired === false);
-  } catch (e) {
-    log('sync-lease', e);
-    return true;
-  }
+/** What a write of a document expects it to hold, from the document as read (its record, or null when there is none). */
+function seenOf(d: Rec | null): CloudSeen {
+  if (!d) return null;
+  if (typeof d.w === 'string') return { w: d.w };
+  const at = Number(d.at);
+  return { at: d.at === undefined || d.at === null || !Number.isFinite(at) ? null : at };
 }
+/** Whether the account holds this device's own unanswered write of a document, read as `d` (2.28, NEW-67): then its
+    note is the copy written, as if the answer had come, so what was deleted here since is read as deleted, not as
+    added on the account (2.27 and before: a session deleted after a lost answer came back, and one phone alone was
+    told a record was edited on two devices). Taken only for the account and the note it was sent from. */
+function ownWrite(id: string, d: Rec | null): void {
+  const s = cloud.sent[id];
+  if (!s) return;
+  const m = cloud.meta[id];
+  if (d && d.w === s.w && s.uid === cloud.uid && (m ? m.h : '') === s.from) cloud.meta[id] = s.note;
+  delete cloud.sent[id];
+  saveMeta();
+}
+/** A new write mark: this device's id and a fresh id, so no two writes of a document, on any device, carry the same one. */
+const writeMark = (): string => `${cloud.devId || 'dev'}.${uid()}`;
 /* Whether this device holds a change the account does not have yet, by the
    same test a sync uses, without sending anything: the status still reads
    synced for the second or so before the next sync starts (r34.2). */
@@ -964,11 +999,6 @@ export async function cloudFlush(): Promise<void> {
   }
   setCloud('saving');
   try {
-    if (!(await takeLease())) {
-      clearTimer(cloud.t);
-      cloud.t = setTimeout(() => cq(cloudFlush), SYNC_MS.leaseBusy);
-      return;
-    }
     let adopted = false,
       moreBody = false,
       again = false;
@@ -980,69 +1010,105 @@ export async function cloudFlush(): Promise<void> {
       lost: Kept;
     } | null = null;
     const tooBig: string[] = [];
+    const raced: string[] = [];
     const legB = legacyBodyBase();
     for (const x of todo) {
-      /* Read before write. If another device changed this document since we
-         last agreed on it, merge record by record instead of overwriting. */
-      const m = cloud.meta[x.id];
-      const snap = await withTimeout(ref(x.id).get(), SYNC_MS.net, 'sync-read');
-      /* Sets logged while that read was in flight are in state, not in the
-         copy taken before it. Work from the current document, or the merge
-         below would write the older copy back and lose them. */
-      let json = JSON.stringify(chunksOf(state)[x.id] || emptyChunk(x.id));
-      const b = snap && snap.exists ? rec(snap.data()) : null;
-      /* Changed in the cloud means its content differs from what we last
-         agreed on. Timestamps are not compared: they come from each device's
-         own clock, and one running behind made a newer write look older. */
-      if (b && typeof b.json === 'string' && (!m || hashStr(b.json) !== m.h)) {
-        let rd: unknown = null;
-        try {
-          rd = parseJson(b.json);
-        } catch (e) {
-          log('sync-parse', e);
-        }
-        if (rd) {
-          const ret = Number(b.et) || Number(b.at);
-          const remoteWins = ret > (cloud.editAt[x.id] || 0);
-          const merged = mergeChunk(x.id, baseFor(x.id, m, legB), parseJson(json), rd, remoteWins, stat);
-          cloud.editAt[x.id] = Math.max(cloud.editAt[x.id] || 0, ret);
-          if (x.id === 'draft') dn = { prev: state.draft, sessions0: state.sessions, kept: null, lost: null };
-          const agreed = x.id === 'draft' && m && m.b ? m.b.draft : null;
-          const mergedDraft = x.id === 'draft' ? draftOf(merged) : null;
-          // This copy lost (closed or replaced): the session it may have become on the other phone is read first,
-          // before anything here changes, so its sets join that session rather than making a second one of its id,
-          // and a read that fails (the connection gone mid-flush) leaves the workout here as it was, for the retry.
-          if (dn && dn.prev && (!mergedDraft || mergedDraft.id !== dn.prev.id)) await sessionFromCloud(dn.prev, legB);
-          applyChunk(x.id, merged);
-          adopted = true;
-          writeTakenIn();
-          if (x.id === 'draft' && dn) {
-            // The copy that lost (this device's, dirty here, or the account's, which a later edit here replaced) keeps its sets.
-            const prev = dn.prev,
-              remoteDraft = draftOf(rec(rd));
-            dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins);
-            dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins);
-            if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
+      let done = false;
+      for (let tries = 0; tries < WRITE_TRIES && !done; tries++) {
+        /* Read before write. If another device changed this document since we
+           last agreed on it, merge record by record instead of overwriting. */
+        const snap = await withTimeout(ref(x.id).get(), SYNC_MS.net, 'sync-read');
+        ownWrite(x.id, snap && snap.exists ? rec(snap.data()) : null);
+        const m = cloud.meta[x.id];
+        /* Sets logged while that read was in flight are in state, not in the
+           copy taken before it. Work from the current document, or the merge
+           below would write the older copy back and lose them. */
+        let json = JSON.stringify(chunksOf(state)[x.id] || emptyChunk(x.id));
+        const b = snap && snap.exists ? rec(snap.data()) : null;
+        // The write below goes through only while the account's copy is still this one (2.27-F1).
+        const seen = seenOf(b);
+        // The account's copy as taken in here, when it was: the base of the next merge if the write finds it changed.
+        let took: SyncNote | null = null;
+        /* Changed in the cloud means its content differs from what we last
+           agreed on. Timestamps are not compared: they come from each device's
+           own clock, and one running behind made a newer write look older. */
+        if (b && typeof b.json === 'string' && (!m || hashStr(b.json) !== m.h)) {
+          let rd: unknown = null;
+          try {
+            rd = parseJson(b.json);
+          } catch (e) {
+            log('sync-parse', e);
           }
-          if (x.id === 'core' && absorbLegacy(legacyBody(rec(rd)))) moreBody = true;
-          json = JSON.stringify(chunksOf(state)[x.id] || emptyChunk(x.id));
-          if (hashStr(json) === hashStr(b.json)) {
-            cloud.meta[x.id] = { h: hashStr(b.json), at: Number(b.at), b: baseOf(x.id, rd) };
+          if (rd) {
+            const ret = Number(b.et) || Number(b.at);
+            const remoteWins = ret > (cloud.editAt[x.id] || 0);
+            const merged = mergeChunk(x.id, baseFor(x.id, m, legB), parseJson(json), rd, remoteWins, stat);
+            cloud.editAt[x.id] = Math.max(cloud.editAt[x.id] || 0, ret);
+            // The workout here before this flush took anything in, for what is said after it; each merge reads the one here now.
+            const prev = x.id === 'draft' ? state.draft : null;
+            if (x.id === 'draft' && !dn) dn = { prev, sessions0: state.sessions, kept: null, lost: null };
+            const agreed = x.id === 'draft' && m && m.b ? m.b.draft : null;
+            const mergedDraft = x.id === 'draft' ? draftOf(merged) : null;
+            // This copy lost (closed or replaced): the session it may have become on the other phone is read first,
+            // before anything here changes, so its sets join that session rather than making a second one of its id,
+            // and a read that fails (the connection gone mid-flush) leaves the workout here as it was, for the retry.
+            if (prev && (!mergedDraft || mergedDraft.id !== prev.id)) await sessionFromCloud(prev, legB);
+            applyChunk(x.id, merged);
+            adopted = true;
+            writeTakenIn();
+            took = { h: hashStr(b.json), at: Number(b.at), b: baseOf(x.id, rd) };
+            if (x.id === 'draft' && dn) {
+              // The copy that lost (this device's, dirty here, or the account's, which a later edit here replaced) keeps its sets.
+              const remoteDraft = draftOf(rec(rd));
+              dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
+              dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
+              if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
+            }
+            if (x.id === 'core' && absorbLegacy(legacyBody(rec(rd)))) moreBody = true;
+            json = JSON.stringify(chunksOf(state)[x.id] || emptyChunk(x.id));
+            if (hashStr(json) === hashStr(b.json)) {
+              cloud.meta[x.id] = took;
+              saveMeta();
+              done = true;
+              continue;
+            }
+          }
+        }
+        // One document over the size cap must not stop the others from syncing.
+        if (json.length > DOC_MAX) {
+          tooBig.push(x.id);
+          log('sync-flush', { code: 'too_big', id: x.id, len: json.length });
+          done = true;
+          continue;
+        }
+        const at = Date.now();
+        const doc: CloudDoc = { v: 1, at, et: cloud.editAt[x.id] || at, w: writeMark(), json };
+        // Kept until the answer comes, so a write applied whose answer is lost is known as this device's own (ownWrite).
+        cloud.sent[x.id] = {
+          w: doc.w,
+          uid: cloud.uid || '',
+          from: m ? m.h : '',
+          note: { h: hashStr(json), at, b: baseOf(x.id, parseJson(json)) }
+        };
+        saveMeta();
+        const wrote = await withTimeout(ref(x.id).setIf(doc, seen), SYNC_MS.net, 'sync-write');
+        delete cloud.sent[x.id];
+        if (wrote) {
+          cloud.meta[x.id] = { h: hashStr(json), at, b: baseOf(x.id, parseJson(json)) };
+          saveMeta();
+          done = true;
+        } else {
+          /* Another device wrote it between the read and this write (2.27-F1: before 2.28 this write landed over
+             that one, and its sets were gone from every phone, unsaid). What was taken in from the copy read is
+             merged here now, so that copy is the base the next read is merged against. */
+          log('sync-race', { id: x.id, tries: tries + 1 });
+          if (took) {
+            cloud.meta[x.id] = took;
             saveMeta();
-            continue;
           }
         }
       }
-      // One document over the size cap must not stop the others from syncing.
-      if (json.length > DOC_MAX) {
-        tooBig.push(x.id);
-        log('sync-flush', { code: 'too_big', id: x.id, len: json.length });
-        continue;
-      }
-      const at = Date.now();
-      await withTimeout(ref(x.id).set({ v: 1, at, et: cloud.editAt[x.id] || at, json }), SYNC_MS.net, 'sync-write');
-      cloud.meta[x.id] = { h: hashStr(json), at, b: baseOf(x.id, parseJson(json)) };
-      saveMeta();
+      if (!done) raced.push(x.id);
     }
     if (adopted) {
       invalidate();
@@ -1055,6 +1121,13 @@ export async function cloudFlush(): Promise<void> {
         lostNote(dn.lost);
       }
     }
+    /* Written first by another device every time it was tried: not synced, and tried again later, as after a
+       dropped connection (cloudFail's waits), with nothing here lost. */
+    if (raced.length) {
+      log('sync-flush', { code: 'raced', ids: raced });
+      cloudFail({ code: 'raced', message: 'Another device was saving at the same moment.' });
+      return;
+    }
     cloud.retry = 0;
     // Weigh-ins found in an older core go to their body documents on the next pass, as do the sets a losing copy kept.
     if (moreBody || again) cloudSoon();
@@ -1066,7 +1139,9 @@ export async function cloudFlush(): Promise<void> {
           ? 'Routines and settings are too large to sync. Export a backup.'
           : tooBig.some(i => i.startsWith('b-'))
             ? 'A year of body data is too large to sync. Export a backup.'
-            : 'One month of sessions is too large to sync. Export a backup.'
+            : tooBig.includes('draft')
+              ? 'The workout in progress is too large to sync. Export a backup.'
+              : 'One month of sessions is too large to sync. Export a backup.'
       );
       return;
     }
@@ -1107,6 +1182,7 @@ export async function cloudPull(): Promise<void> {
   for (const d of snap.docs) {
     if (!d.exists || !isChunkId(d.id)) continue;
     const b = rec(d.data());
+    ownWrite(d.id, b);
     if (!b || typeof b.json !== 'string') continue;
     try {
       remote[d.id] = {
@@ -1282,23 +1358,52 @@ export async function cloudPull(): Promise<void> {
    card never flashes on a device that is about to load your cloud copy. */
 /** Whether the first cloud check has finished, either way. */
 export let cloudChecked = false;
-/* Where the cloud copy lives. Inside Claude it is the artifact's database.
-   The standalone app's backend (scripts/cloud-supabase.js) plugs in by
-   defining window.ironlogCloud as an async function returning {db, userId},
-   where db offers the same calls the code here uses: doc(path).get() /
-   .set(obj) / optional .acquire(), and collection(path).get() listing {id,
-   exists, data()}. Nothing else changes: merging, chunking and conflict
-   handling stay as they are. */
+/** Whether a document as read (its record, or null when there is none) still holds what a write expects (`seen`). */
+function stillSeen(d: Rec | null, seen: CloudSeen): boolean {
+  if (!seen) return !d;
+  if (!d) return false;
+  if ('w' in seen) return d.w === seen.w;
+  return d.w === undefined && (d.at === undefined ? null : Number(d.at)) === seen.at;
+}
+/* The document store the sync writes through (2.28, 2.27-F1). The account backend (scripts/cloud-supabase.js) writes
+   conditionally on the server, in one step. Claude's db, which only the suites still inject as their stand-in cloud
+   (CLAUDE.md), writes plainly, so its conditional write here reads, compares and writes: exact for the stand-in,
+   whose documents live in one test's page or are written one request at a time. */
+function storeOf(raw: CloudDbIn): CloudDb {
+  return {
+    collection: p => raw.collection(p),
+    doc(path) {
+      const d = raw.doc(path);
+      return {
+        get: () => d.get(),
+        async setIf(doc, seen) {
+          if (typeof d.setIf === 'function') return d.setIf(doc, seen);
+          if (typeof d.set !== 'function') throw new Error('The cloud store cannot write.');
+          const now = await d.get();
+          if (!stillSeen(now && now.exists ? rec(now.data()) : null, seen)) return false;
+          await d.set(doc);
+          return true;
+        }
+      };
+    }
+  };
+}
+/* Where the cloud copy lives. The standalone app's backend
+   (scripts/cloud-supabase.js) plugs in by defining window.ironlogCloud as an
+   async function returning {db, userId}, where db offers doc(path).get() /
+   .setIf(obj, seen) and collection(path).get() listing {id, exists, data()}.
+   Claude's db (retired; the suites' stand-in) is taken first when the page
+   has one. */
 async function cloudProvider(): Promise<{ db: CloudDb; userId: string } | null> {
   if (window.claude && typeof window.claude.use === 'function') {
     const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
     if (!db || !user) return null;
     const id = await user.id();
-    return id ? { db, userId: String(id) } : null;
+    return id ? { db: storeOf(db), userId: String(id) } : null;
   }
   if (typeof window.ironlogCloud === 'function') {
     const p = await window.ironlogCloud();
-    return p && p.db && p.userId ? { db: p.db, userId: String(p.userId) } : null;
+    return p && p.db && p.userId ? { db: storeOf(p.db), userId: String(p.userId) } : null;
   }
   return null;
 }
@@ -1374,6 +1479,7 @@ function readStored(): void {
   if (now === cloud.acct) return;
   const n = notesIn(m, 'tabs');
   cloud.meta = n.meta || {};
+  cloud.sent = {};
   cloud.editAt = n.editAt || {};
   cloud.last = n.last;
   cloud.acct = now;
@@ -1447,6 +1553,7 @@ async function takeAccount(id: string): Promise<boolean> {
      make an empty log read as deletions (the review of the fix). */
   if (!from && !aside) {
     cloud.meta = {};
+    cloud.sent = {};
     cloud.editAt = {};
     cloud.last = null;
     return true;
@@ -1502,6 +1609,7 @@ async function takeAccount(id: string): Promise<boolean> {
   const both =
     !use && !!aside && mine && !!state.draft && !!aside.state.draft && aside.state.draft.id !== state.draft.id;
   cloud.meta = (n && n.meta) || {};
+  cloud.sent = {};
   cloud.editAt = (n && n.editAt) || {};
   cloud.last = n ? n.last : null;
   if (next) {
@@ -1515,6 +1623,7 @@ async function takeAccount(id: string): Promise<boolean> {
   if (!written) {
     setState(before.state);
     cloud.meta = before.meta;
+    cloud.sent = {};
     cloud.editAt = before.editAt;
     cloud.last = before.last;
     cloud.acct = before.acct;
@@ -1617,6 +1726,7 @@ export function cloudStop(forget?: boolean): void {
   if (forget) {
     cloud.acct = null;
     cloud.meta = {};
+    cloud.sent = {};
     cloud.editAt = {};
     cloud.last = null;
     newEp();
@@ -1647,6 +1757,7 @@ function onStorage(ev: StorageEvent): void {
       } else if (m) {
         const { meta, editAt, last } = notesIn(m, 'tabs');
         if (meta) cloud.meta = meta;
+        cloud.sent = sentIn(m.sent);
         if (editAt) cloud.editAt = editAt;
         cloud.last = last;
         // The notes' account with them (PENDING 333, F2): a tab that kept the account it read before acted for it on another's log.
@@ -1755,6 +1866,7 @@ export function syncStart(): void {
       cloud.editAt = editAt || {};
       cloud.devId = typeof m.devId === 'string' ? m.devId : null;
       cloud.acct = typeof m.acct === 'string' ? m.acct : null;
+      cloud.sent = sentIn(m.sent);
       notesEp = epOf(m);
     }
   } catch (e) {
@@ -1766,7 +1878,9 @@ export function syncStart(): void {
      was last agreed with the cloud, so the first pull adopts the cloud copy
      instead of the first flush writing an empty state over it. */
   if (!device.hadLocal) {
+    // Writes sent from a log no longer here are not this log's: forgotten with the notes.
     cloud.meta = {};
+    cloud.sent = {};
     cloud.editAt = {};
   }
   resyncLocalH();

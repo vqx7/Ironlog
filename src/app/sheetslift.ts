@@ -8,6 +8,7 @@
 
 import { picStrip } from './notepics';
 import { html } from 'lit-html';
+import { LIMITS } from './records';
 import type { TemplateResult } from 'lit-html';
 import { JOINTS, MUSCLES, rackKind } from './library';
 import { EX, U, exName, fmtW, gymRack, incOf } from './live';
@@ -57,10 +58,10 @@ export function bmenuSheet(m: { b: number }): TemplateResult | null {
 /** Flag an injury: a joint or a muscle, and a note. */
 export function injurySheet(): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3>${closeX()}</div>
-    <p class="small muted hastip" data-tip="Every exercise that loads this muscle (directly or as a helper) or this joint is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Training aid, not medical advice: sharp, worsening, or lasting pain needs a clinician.</p>
+    <p class="small muted hastip" data-tip="Every exercise that loads this muscle (directly or as a helper) or this joint is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Not medical advice. Sharp or lasting pain: see a clinician.</p>
     <div class="stack"><label class="field">Area<select id="injM"><optgroup label="Joints">${JOINTS.map(([k, l]) => html`<option value=${k}>${l}</option>`)}</optgroup><optgroup label="Muscles">${MUSCLES.map(([k, l]) => html`<option value=${k}>${l}</option>`)}</optgroup></select></label>
     <p class="small muted hastip u-m0" data-tip="Knee: squats, lunges, leg press, leg extensions, and curls. Hip: squats, hinges, hip thrusts, adductors, and abductors. Shoulder: presses, flyes, raises, pull-downs, pull-ups, dips. Elbow: curls, extensions, rows, pull-downs, dips. Wrist: curls, barbell and dumbbell presses, push-ups, front squats. A judgment from the movement, not a measurement.">Which exercises a joint flag marks</p>
-    <label class="field">Note (optional)<input type="text" id="injNote" placeholder="e.g. left elbow, pressing only"></label>
+    <label class="field">Note (optional)<input type="text" id="injNote" maxlength=${LIMITS.note} placeholder="e.g. left elbow, pressing only"></label>
     <div class="row"><button class="btn primary" data-act="injSave">Flag it</button><button class="btn" data-act="mClose">Cancel</button></div></div></div>`;
 }
 
@@ -79,7 +80,7 @@ export function incSheet(m: { exId: string; plan?: DraftBlock['plan'] | undefine
   const e = EX(m.exId);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Load step: ${e.name}</h3>${closeX()}</div>
     <label class="field">Step (${U()})<input type="text" inputmode="decimal" id="incVal" value=${fmtW(incOf(e, m.plan))}></label>
-    <p class="small muted">The smallest jump you can load on it. Earned increases are whole steps of it.</p>
+    <p class="small muted">The smallest jump you can load.</p>
     ${e.inc == null && gymRack(e, m.plan) ? html`<p class="small u-m0">Following the ${rackKind(e) === 'dumbbell' ? 'dumbbells' : 'kettlebells'} in Settings > Your gym. A step saved here replaces them for this lift.</p>` : ''}
     <div class="row u-mt10"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
@@ -89,15 +90,15 @@ export function maxSheet(m: { exId: string }): TemplateResult {
   const e = EX(m.exId);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${e.name}</h3>${closeX()}</div>
     <label class="field">Load (${U()}${e.bw ? ', added to bodyweight' : ''})<input type="text" inputmode="decimal" id="maxVal" value=${e.maxLoad != null ? fmtW(e.maxLoad) : ''} placeholder="No limit"></label>
-    <p class="small muted">The most you can load on it, as the top of the stack or the biggest dumbbell. Blank for no limit.</p>
+    <p class="small muted">Top of the stack or biggest dumbbell. Blank for no limit.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 
 /** A note on a lift in a session, saved with it and shown next time, with its pictures (r66, 373). */
 export function noteSheet(m: { bi: number; title: string; text?: string | undefined }): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.title}</h3>${closeX()}</div>
-    <p class="small muted">Saved with this session and shown next time: a cue, a niggle, which machine. Pictures stay on this phone.</p>
-    <textarea id="mNote" aria-label="Note" class="u-minh110">${m.text || ''}</textarea>${picStrip(m.bi)}
+    <p class="small muted">Shown next time. Pictures stay on this phone.</p>
+    <textarea id="mNote" aria-label="Note" maxlength=${LIMITS.note} class="u-minh110">${m.text || ''}</textarea>${picStrip(m.bi)}
     <div class="row u-mt10"><button class="btn primary" data-act="noteSave">Save note</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 
@@ -139,7 +140,7 @@ export function calibrationSheet(m: {
   if (!b) return null;
   const ex = EX(b.exId);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Calibration set: ${ex.name}</h3>${closeX()}</div>
-    <p class="small muted u-m0">Checks how well you call reps in reserve. Only take a set to failure where it is safe: a machine or cable, or with a spotter.</p>
+    <p class="small muted u-m0">Checks how well you judge reps in reserve. Go to failure only where it is safe: a machine, a cable or a spotter.</p>
     <ol class="steps"><li>Use your normal working load.</li><li>At the rep where you would usually stop, note that rep and how many you think are left.</li><li>Keep going until you cannot complete a rep with good form.</li></ol>
     <div class="grid2"><label class="field">Load (${ex.bw ? '+' + U() : U()})<input type="text" inputmode="decimal" id="calW" value=${m.w != null ? String(m.w) : ''}></label>
     <label class="field">Usual stop rep<input type="text" inputmode="numeric" id="calAt" value=${m.at || ''}></label>
@@ -147,5 +148,5 @@ export function calibrationSheet(m: {
     <label class="field">Reps to failure<input type="text" inputmode="numeric" id="calTot" value=${m.total || ''}></label></div>
     ${m.err ? html`<p class="small u-cred_m8-0-0">${m.err}</p>` : ''}
     <div class="row u-mt10"><button class="btn primary" data-act="calSave">Save set</button><button class="btn" data-act="mClose">Cancel</button></div>
-    <p class="small muted u-m8-0-0">It is saved as a done set at 0 RIR, marked as a check. With RIR set to Corrected in Settings, your typical miss is applied to the RIR you log.</p></div>`;
+    <p class="small muted u-m8-0-0">Saved as a set at 0 RIR, marked as a check.</p></div>`;
 }

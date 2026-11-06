@@ -172,7 +172,7 @@ let chartNoticeUsed = false;
 function chartFallback(): Part {
   if ((window.__libs && window.__libs.chart) || chartNoticeUsed) return nothing;
   chartNoticeUsed = true;
-  return html`<p class="small muted">Charts are still loading. If they never appear, your connection blocked the chart library. Every number on this page works without them.</p>`;
+  return html`<p class="small muted">Charts are loading. Every number here works without them.</p>`;
 }
 
 /* Range chips, shown only once there is more history than the first window. */
@@ -496,7 +496,7 @@ function dashSummary(): TemplateResult {
 function regionBody(): TemplateResult {
   const rs = regionSrc();
   if (rs.empty)
-    return html`<div class="card"><p class="headline">Nothing logged yet.</p><p class="small muted u-m0-0-4">Each region fills in with your own hard sets as you log them. The dashed ring is your weekly minimum.</p>${ENV === 'preview' ? html`<p class="small u-m6-0">This test version keeps a separate log. <button class="btn sm primary" data-act="previewCopy">Copy my log in</button></p>` : nothing}<div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}</div>`;
+    return html`<div class="card"><p class="headline">Nothing logged yet.</p><p class="small muted u-m0-0-4">Fills in with your hard sets. The dashed ring is your weekly minimum.</p>${ENV === 'preview' ? html`<p class="small u-m6-0">This test version keeps a separate log. <button class="btn sm primary" data-act="previewCopy">Copy my log in</button></p>` : nothing}<div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}</div>`;
   const regs = regionBalance(rs.src);
   const low = regs.filter(x => x.low),
     high = regs.filter(x => x.high),
@@ -540,7 +540,7 @@ function regionBody(): TemplateResult {
 /* Volume section, "Weekly trend" mode: one muscle over time against its band. */
 function trendBody(): TemplateResult {
   const f = firstDate(state.sessions);
-  return html`<div class="card"><p class="small muted u-m0-0-4">Hard sets a week for one muscle, from your first logged week. Solid is sets with RIR logged; faded is sets counted as hard because RIR was blank. Weeks ahead are empty until you get there.</p><select data-bind="dashMuscle">${MUSCLES.map(
+  return html`<div class="card"><p class="small muted u-m0-0-4">Hard sets a week. Solid: RIR logged. Faded: RIR blank, counted as hard.</p><select data-bind="dashMuscle">${MUSCLES.map(
     ([k, l]) => html`<option value=${k} .selected=${live(ui.dashMuscle === k)}>${l}</option>`
   )}</select>${muscleHeadline(ui.dashMuscle)}${f ? html`${rangeChips('muscle', weeksSpan(f), CHART_WEEKS)}<div class="chartbox"><canvas id="chMuscle"></canvas></div>${chartFallback()}` : html`<p class="small muted">Log a session to start this chart.</p>`}</div>`;
 }
@@ -737,8 +737,7 @@ function sizeBody(): TemplateResult {
 function bwRateText(): TemplateResult {
   const r = bwRate();
   const g = state.settings.bwGoalPct;
-  if (!r)
-    return html`<p class="small muted u-mt6">Log bodyweight for at least two weeks to see your weekly rate of change.</p>`;
+  if (!r) return html`<p class="small muted u-mt6">Two weeks of weigh-ins show your weekly change.</p>`;
   const sign = (v: number): string => (v >= 0 ? '+' : '') + r1(v);
   // The dates it covers, not "the last N days", which read as up to today (r34.2: said 43 days after the last weigh-in).
   const goal =
@@ -1168,10 +1167,10 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
     ${st && st.easier ? html`<p class="small u-cblue_mt6"><b>${easierText(ex, st.easier)}</b></p>` : ''}
     ${
       st && st.fade
-        ? html`<p class="small u-cyellow_mt6"><b>Set-to-set drop-off is widening at ${loadLabel(ex, st.fade.w)}${ex.bw ? '' : ' ' + U()}: ${st.fade.from} → ${st.fade.to} reps lost from first set to last across your last three sessions.</b> That usually means fatigue or shorter rest rather than lost strength.</p>`
+        ? html`<p class="small u-cyellow_mt6"><b>Drop-off growing at ${loadLabel(ex, st.fade.w)}${ex.bw ? '' : ' ' + U()}: ${st.fade.from} → ${st.fade.to} reps lost first set to last, last three sessions.</b> Likely fatigue or short rest, not lost strength.</p>`
         : ''
     }
-    ${ex.bw && !state.bodyweights.length ? html`<p class="small u-cyellow">Log your bodyweight on the Today tab so this bodyweight exercise can be trended.</p>` : bwBackfillNote(exId)}
+    ${ex.bw && !state.bodyweights.length ? html`<p class="small u-cyellow">Log your bodyweight to see a trend here.</p>` : bwBackfillNote(exId)}
     <div class="scroll-x"><table class="t u-mt8"><tr><th>Date</th><th>Sets</th>${e1Mode ? html`<th class="r">Best estimate</th>` : nothing}</tr>${exps
       .slice(-EX_ROWS)
       .reverse()

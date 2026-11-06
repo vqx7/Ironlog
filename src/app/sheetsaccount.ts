@@ -173,9 +173,9 @@ export function acctSheet(m: AccountModal): TemplateResult {
     m.mode === 'signin'
       ? html`${email}${pw('Password', 'current-password', false)}${err}${m.needCode ? codeField(m) : nothing}${check}${go('Sign in')}<div class="row spread">${link('forgot', 'Forgot password?')}${link('signup', 'Create an account')}</div>`
       : m.mode === 'signup'
-        ? html`${email}${pw('Password (8 or more characters)', 'new-password', true)}${err}${check}${go('Create account')}<p class="small muted u-m0">We email you a link and a code to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link('signin', 'I have an account')}</div>`
+        ? html`${email}${pw('Password (8 or more characters)', 'new-password', true)}${err}${check}${go('Create account')}<p class="small muted u-m0">An email confirms the address. It is only used for signing in.</p><div class="row">${link('signin', 'I have an account')}</div>`
         : m.mode === 'forgot'
-          ? html`${email}${err}${check}${go('Email me a reset link')}<p class="small muted u-m0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link('signin', 'Back to sign in')}</div>`
+          ? html`${email}${err}${check}${go('Email me a reset link')}<p class="small muted u-m0">Set the new password from the email's link, then sign in here.</p><div class="row">${link('signin', 'Back to sign in')}</div>`
           : m.mode === 'newpw'
             ? html`${pw('New password (8 or more characters)', 'new-password', true)}${err}${go('Save new password')}`
             : m.mode === 'wait'

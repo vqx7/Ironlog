@@ -56,8 +56,13 @@ export const LIMITS = {
   startNote: 2000,
   /** Why the next sets were adjusted, in characters. */
   why: 160,
-  /** The lifter's name, and a session's, in characters. */
+  /** The lifter's name, a session's, a routine's and a day's, in characters. */
   name: 40,
+  /** An exercise's name, in characters: the library's longest is 36 (2.28, 2.27-F3). */
+  exName: 60,
+  /** A note, in characters: a session's, an exercise's, an injury's (2.28, 2.27-F3: any length before, and one
+      long paste could make a month too large to sync). */
+  note: 5000,
   /** A section key, in characters, and how many a tab's order keeps. */
   secKey: 40,
   /** A folded section's key, in characters, and how many are kept. */
@@ -86,6 +91,13 @@ export const LIMITS = {
   /** The heaviest load, in pounds. */
   loadLb: 20000
 } as const;
+/** Text as typed, kept within `max` characters (2.28, 2.27-F3). A name or a note saved longer before its limit existed
+    is edited, never cut: it may get shorter, and a change that would make it longer still is not taken (the field's
+    maxlength already stops typing there; this holds a paste or a script to the same). */
+export function within(next: string, was: string, max: number): string {
+  if (was.length <= max) return next.slice(0, max);
+  return next.length <= was.length ? next : was;
+}
 
 /** A check-in answer: 1 poor, 2 OK, CHECKIN_TOP good. */
 export const CHECKIN_TOP = 3;

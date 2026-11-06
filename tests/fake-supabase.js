@@ -4,7 +4,7 @@
 // rows, signed-out requests see nothing). It also serves a folder of static
 // files, so the app and its "cloud" share one origin like in production.
 //
-// start(root) -> {base, users, rows, feedback, confirm(email), addReader(email), feedbackTables(on), feedbackKey(on), loseReplies(n), expireTokens(email?), captchaSeen, captcha(on), log, close()}
+// start(root) -> {base, users, rows, feedback, confirm(email), addReader(email), feedbackTables(on), feedbackKey(on), loseReplies(n), expireTokens(email?), captchaSeen, captcha(on), raceAlways(on), failOnce(path, status, body), log, close()}
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -32,6 +32,8 @@ function start(root) {
   const captchaSeen = [];       // {path, grant, token} for every POST to signup, token, recover, resend, otp and verify
   let captchaOn = false; const captchaUsed = new Set();
   const log = [];
+  let failOnce = null;          // {path, status, body}: the next auth request to that path answered with that error, once (2.28, 2.27-F7)
+  let raceAlways = false;       // true: every conditional write of a docs row finds it changed (2.28, 2.27-F1)
   let tokenLife = 3600; let deny = false; let fnDeployed = false; const gone = new Set(); const codeLife = 3600 * 1000;
   const now = () => Math.floor(Date.now() / 1000);
   const userJson = u => ({ id: u.id, aud: 'authenticated', role: 'authenticated', email: u.email,
@@ -86,6 +88,7 @@ function start(root) {
       const json = () => { try { return body ? JSON.parse(body) : {}; } catch (e) { return {}; } };
       if (p.startsWith('/auth/v1/') || p.startsWith('/rest/v1/')) log.push(`${req.method} ${p}${u.search}`);
       if (p.startsWith('/auth/v1/') && !req.headers.apikey) return authErr(res, 401, 'no_api_key', 'No API key found in request');
+      if (failOnce && p === failOnce.path) { const f = failOnce; failOnce = null; return send(res, f.status, f.body); }
       // ---- Auth ----
       if (req.method === 'POST' && /^\/auth\/v1\/(signup|token|recover|resend|otp|verify)$/.test(p)) {
         const b = json(); const tok = b.gotrue_meta_security && b.gotrue_meta_security.captcha_token;
@@ -193,31 +196,60 @@ function start(root) {
         if (!c) return send(res, 401, { code: '42501', message: 'permission denied for table docs' });
         if (c.gone && req.method !== 'GET') return send(res, 409, { code: '23503', message: 'insert or update on table "docs" violates foreign key constraint "docs_user_id_fkey"', details: 'Key is not present in table "users".' });
         if (deny) return send(res, 401, { code: '42501', message: 'permission denied for table docs' });
-        if (req.method === 'GET') {
+        const prefer = String(req.headers.prefer || '');
+        const cols = (u.searchParams.get('select') || '*').split(',');
+        const shape = list => list.map(r => cols[0] === '*' ? r : Object.fromEntries(cols.map(k => [k, r[k]])));
+        /* The rows of the caller a request's filters pick, as PostgREST reads them: eq, is.null and like on a column or
+           on a field of a JSON column (data->>w reads data's field w as text, null when absent, 2.28). */
+        const picked = () => {
           let list = [...rows.values()].filter(r => r.user_id === c.id);
           for (const [k, v] of u.searchParams) {
-            if (['select', 'limit', 'order', 'offset'].includes(k)) continue;
+            if (['select', 'limit', 'order', 'offset', 'on_conflict', 'columns'].includes(k)) continue;
             const [op, ...rest] = v.split('.'); const val = rest.join('.');
-            if (op === 'eq') list = list.filter(r => String(r[k]) === val);
-            else if (op === 'like') { const re = likeRe(val); list = list.filter(r => re.test(String(r[k]))); }
-            else return send(res, 400, { code: 'PGRST100', message: 'unsupported filter ' + op });
+            const at = r => { if (k.indexOf('->>') < 0) return r[k] === undefined ? null : r[k]; const [col, key] = k.split('->>'); const x = r[col] && r[col][key]; return x === undefined || x === null ? null : typeof x === 'object' ? JSON.stringify(x) : String(x); };
+            if (op === 'eq') list = list.filter(r => at(r) !== null && String(at(r)) === val);
+            else if (op === 'is' && val === 'null') list = list.filter(r => at(r) === null);
+            else if (op === 'like') { const re = likeRe(val); list = list.filter(r => re.test(String(at(r)))); }
+            else return { bad: op };
           }
-          const cols = (u.searchParams.get('select') || '*').split(',');
-          const out = list.map(r => cols[0] === '*' ? r : Object.fromEntries(cols.map(k => [k, r[k]])));
+          return { list };
+        };
+        if (req.method === 'GET') {
+          const p0 = picked(); if (p0.bad) return send(res, 400, { code: 'PGRST100', message: 'unsupported filter ' + p0.bad });
+          const out = shape(p0.list);
           if (/vnd\.pgrst\.object/.test(req.headers.accept || '')) {
             if (out.length !== 1) return send(res, 406, { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned', details: `The result contains ${out.length} rows` });
             return send(res, 200, out[0]);
           }
           return send(res, 200, out);
         }
+        /* A write the row's write mark no longer matches (2.28, 2.27-F1): raceAlways makes every conditional write find
+           the row changed, as a device writing first would, until it is turned off. */
+        const answer = (code, list) => (/return=representation/.test(prefer) ? send(res, code, shape(list)) : send(res, code === 200 ? 204 : code));
         if (req.method === 'POST') {
           const b = json(); const arr = Array.isArray(b) ? b : [b];
+          // An upsert (2.27 and before: merge-duplicates) overwrites; a plain insert is refused when the row exists, as the primary key refuses it.
+          const upsert = /resolution=merge-duplicates/.test(prefer);
+          const made = [];
           for (const r of arr) {
             const user_id = r.user_id || c.id;
             if (user_id !== c.id) return send(res, 403, { code: '42501', message: 'new row violates row-level security policy for table "docs"' });
-            rows.set(`${user_id} ${r.path}`, { user_id, path: r.path, data: r.data, updated_at: r.updated_at || new Date().toISOString() });
+            const k = `${user_id} ${r.path}`;
+            if (!upsert && (rows.has(k) || raceAlways)) return send(res, 409, { code: '23505', message: 'duplicate key value violates unique constraint "docs_pkey"', details: `Key (user_id, path)=(${user_id}, ${r.path}) already exists.` });
+            const row = { user_id, path: r.path, data: r.data, updated_at: r.updated_at || new Date().toISOString() };
+            rows.set(k, row); made.push(row);
           }
-          return send(res, 201);
+          return answer(201, made);
+        }
+        if (req.method === 'PATCH') {
+          const p0 = picked(); if (p0.bad) return send(res, 400, { code: 'PGRST100', message: 'unsupported filter ' + p0.bad });
+          const b = json();
+          const changed = [];
+          for (const r of raceAlways ? [] : p0.list) {
+            const row = Object.assign({}, r, b.data !== undefined ? { data: b.data } : {}, { updated_at: b.updated_at || new Date().toISOString() });
+            rows.set(`${r.user_id} ${r.path}`, row); changed.push(row);
+          }
+          return answer(200, changed);
         }
         return send(res, 405, { message: 'method' });
       }
@@ -240,6 +272,8 @@ function start(root) {
       expireTokens(email) { const u = email ? users.get(email) : null; for (const v of tokens.values()) if (!email || (u && v.uid === u.id)) v.exp = now() - 10; },
       setTokenLife(s) { tokenLife = s; },
       setDeny(v) { deny = !!v; },
+      raceAlways(v) { raceAlways = !!v; },
+      failOnce(path, status, body) { failOnce = { path, status, body }; },
       deployDelete(v) { fnDeployed = !!v; },
       captchaSeen, captcha(v) { captchaOn = !!v; },
       feedback, addReader(email) { const x = users.get(email); if (x) readers.add(x.id); }, feedbackTables(v) { fbOn = !!v; }, feedbackKey(v) { fbKey = !!v; }, loseReplies(n) { fbLose = n; },

@@ -49,7 +49,7 @@ import { repSpan } from './format';
 import { belowMin } from './volume';
 import { ON_PLAN_TIP } from './weeks';
 import { loadWords } from './loads';
-import { TRASH_DAYS, LIMITS, EFFORT_TOP } from './records';
+import { TRASH_DAYS, LIMITS, EFFORT_TOP, within } from './records';
 import { andList, numIn, r1, uid, PERCENT, WEEK_DAYS } from './util';
 import { plainTemplate } from './normalize';
 import { effIn, effName, effShow } from './effort';
@@ -253,10 +253,10 @@ function dayPart(R: Routine, d: Day, di: number, weekly: boolean, dnd: boolean, 
   fixSupersets(d.items);
   const dOpen = d.id === focus;
   const label = dayLabel(R, di);
-  return html`<section class=${`day ${d.rest ? 'rest' : ''}`} data-did=${d.id}><div class="dh">${weekly ? nothing : html`<span class="dgrip" role="button" tabindex="0" data-di=${String(di)} aria-label=${`Move ${label}: drag, or use the arrow keys`} data-tip="Drag to reorder days">⠿</span>`}<span class="dlabel">${label}</span><input type="text" aria-label="Day name" data-dayname=${String(di)} .value=${fieldValue(d.name)}><button class="ib dfold" data-act="dFold" data-id=${d.id} aria-expanded=${String(dOpen)} aria-label=${`${dOpen ? 'Fold' : 'Unfold'} ${label}`}></button></div>
+  return html`<section class=${`day ${d.rest ? 'rest' : ''}`} data-did=${d.id}><div class="dh">${weekly ? nothing : html`<span class="dgrip" role="button" tabindex="0" data-di=${String(di)} aria-label=${`Move ${label}: drag, or use the arrow keys`} data-tip="Drag to reorder days">⠿</span>`}<span class="dlabel">${label}</span><input type="text" aria-label="Day name" data-dayname=${String(di)} maxlength=${LIMITS.name} .value=${fieldValue(d.name)}><button class="ib dfold" data-act="dFold" data-id=${d.id} aria-expanded=${String(dOpen)} aria-label=${`${dOpen ? 'Fold' : 'Unfold'} ${label}`}></button></div>
     <div class="dmeta row spread"><span>${d.rest ? '' : dayMeta(d)}</span><label class="check-inline"><input type="checkbox" data-dayrest=${String(di)} .checked=${live(d.rest)}>Rest day</label></div><div class="dbody" ?hidden=${!dOpen}>${sessionCapNote(d)}
     <ul class="items" data-day=${String(di)}>${d.items.map((it, ii) => itemPart(R, di, it, ii))}</ul>
-    ${weekly && dayParts(d).includes(2) ? html`<label class="field u-p0n10n12">Second workout's name<input type="text" data-daypm=${String(di)} .value=${fieldValue(d.pmName || '')} placeholder=${pmNameOf({ name: d.name })}></label>` : nothing}
+    ${weekly && dayParts(d).includes(2) ? html`<label class="field u-p0n10n12">Second workout's name<input type="text" data-daypm=${String(di)} maxlength=${LIMITS.name} .value=${fieldValue(d.pmName || '')} placeholder=${pmNameOf({ name: d.name })}></label>` : nothing}
     <div class="row u-p0n10n12"><button class="btn sm" data-act="pickDay" data-day=${String(di)}>Add exercise</button>${weekly ? html`<button class="btn sm" data-act="pickDay" data-day=${String(di)} data-part="2">${dayParts(d).includes(2) ? 'Add to second workout' : 'Add a second workout'}</button>` : nothing}${weekly ? nothing : html`${dnd ? nothing : html`<button class="btn sm" data-act="dUp" data-day=${String(di)} ?disabled=${di === 0} aria-label=${`Move ${label} earlier`}>↑ Day</button><button class="btn sm" data-act="dDown" data-day=${String(di)} ?disabled=${di === R.days.length - 1} aria-label=${`Move ${label} later`}>↓ Day</button>`}<button class="btn sm danger" data-act="dDel" data-day=${String(di)} ?disabled=${R.days.length < 2}>Remove day</button>`}</div></div></section>`;
 }
 
@@ -283,7 +283,7 @@ export function viewProgram(): TemplateResult {
     sub: R.name,
     body: html`<div class="stack">
     <label class="field">Routine<select data-bind="bRoutine">${state.routines.map(r => html`<option value=${r.id} .selected=${live(r.id === R.id)}>${r.name}${r.id === state.activeRoutineId ? ' (active)' : ''}${routineEmpty(r) ? ' (empty)' : ''}</option>`)}</select></label>
-    <label class="field">Name<input type="text" data-bind="routineName" .value=${fieldValue(R.name)}></label>
+    <label class="field">Name<input type="text" data-bind="routineName" maxlength=${LIMITS.name} .value=${fieldValue(R.name)}></label>
     <div class="row">${isActive ? html`<span class="pill green">Active routine</span>` : html`<button class="btn sm primary" data-act="rActive">Make active</button>`}
       <button class="btn sm" data-act="rNew">New blank</button><button class="btn sm" data-act="rTemplate">New from a template</button><button class="btn sm" data-act="rDup">Duplicate</button><button class="btn sm danger" data-act="rDel" ?disabled=${state.routines.length < 2}>Delete</button></div></div>`
   });
@@ -749,7 +749,7 @@ export function planInput(t: Field): boolean {
     if (d)
       act(
         () => {
-          d.name = t.value;
+          d.name = within(t.value, d.name, LIMITS.name);
         },
         { soon: true }
       );
@@ -774,7 +774,7 @@ export function planInput(t: Field): boolean {
     const R = curRoutineB();
     act(
       () => {
-        R.name = t.value;
+        R.name = within(t.value, R.name, LIMITS.name);
       },
       { soon: true }
     );
@@ -799,7 +799,7 @@ export function planChange(t: Field): boolean {
     const d = curRoutineB().days[num(t.dataset.dayname)];
     if (d)
       act(() => {
-        d.name = t.value;
+        d.name = within(t.value, d.name, LIMITS.name);
       });
     rerenderKeepScroll();
     return true;
@@ -862,7 +862,7 @@ export const PLAN_BINDS: Readonly<Record<string, (t: Field) => void>> = {
   routineName(t) {
     const R = curRoutineB();
     act(() => {
-      R.name = t.value;
+      R.name = within(t.value, R.name, LIMITS.name);
       if (!R.name.trim()) R.name = 'Routine';
     });
     if (nameTaken(R.name, R.id)) toast('Another routine has the same name');

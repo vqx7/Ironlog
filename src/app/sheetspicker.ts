@@ -140,9 +140,9 @@ export function pickTodaySheet(): TemplateResult {
   const best = top[0];
   let lead: TemplateResult | string = '';
   if (!best)
-    lead = html`<p class="small">Your active routine has no training days with exercises. Start a freestyle session and use Pick for me inside it.</p>`;
+    lead = html`<p class="small">Your routine has no exercises yet. Start a freestyle session and use Pick for me there.</p>`;
   else if (best.ready < READY.rest)
-    lead = html`<p class="callout yellow u-m0">Everything your routine has left leans on muscles still recovering from the last few days. A rest day, or easy cardio and mobility, is the better call. If you train anyway, the first option is the least fatigued.</p>`;
+    lead = html`<p class="callout yellow u-m0">Everything left works muscles still recovering. Rest, or do easy cardio. If you train anyway, the first option is the freshest.</p>`;
   else if (best.plan) lead = html`<p class="small u-m0">Stick with the plan: it is also the best fit for today.</p>`;
   else if (plan)
     lead = html`<p class="small u-m0">${best.day.name} fits today better than ${plan.day.name}, next in your plan: ${plan.ready < 1 ? `${plan.day.name} leans on muscles that may still be recovering.` : 'it trains what is furthest behind this week.'} ${tipButton('Starting it moves your cycle on from there, the same as choosing it under Change day.', 'About the cycle')}</p>`;
@@ -170,7 +170,7 @@ export function pickExSheet(): TemplateResult | null {
   const allMet = picks.length && picks.every(x => x.def <= 0);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3>${closeX()}</div>
     <p class="small muted hastip u-m0" data-tip="From this session so far, your last 7 days against your targets, recovery, injuries, and your trends.">What to add next.</p>
-    ${allMet ? html`<p class="callout green u-m8-0-0">Every muscle is at or above target for the last 7 days. Anything more is optional.</p>` : ''}
+    ${allMet ? html`<p class="callout green u-m8-0-0">Every muscle is at target for the last 7 days.</p>` : ''}
     ${
       picks.length
         ? picks.map((x, k) => {
@@ -203,11 +203,11 @@ export function eqSheet(m: { day: number; equip: readonly string[]; part?: 2 | u
   const pl = eqPlan(day, eq);
   const sw = pl.filter(x => x.from);
   return html`<div class="sheet fixed" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Limited equipment</h3>${closeX()}</div>
-    <p class="small muted u-m0-0-8">Turn off what this gym lacks. Each affected exercise is swapped for the closest same-muscle match.</p>
+    <p class="small muted u-m0-0-8">Turn off what this gym lacks. Those exercises are swapped for the closest match.</p>
     <div class="chips">${EQUIP.map(([k, l]) => html`<button class=${'chip ' + (eq.has(k) ? 'on' : '')} data-act="eqToggle" data-k=${k} aria-pressed=${String(eq.has(k))}>${l}</button>`)}</div>
-    <div class="sheet-scroll">${sw.length ? html`<ul class="eqsw">${sw.map(x => html`<li>${exName(x.from || '')} → ${x.to ? html`<b>${exName(x.to)}</b>${x.hard ? html`<br><span class="small u-cyellow">Much harder than what it replaces: aim for 3 to 6 reps, use a band or a shorter range, and stop 2 reps short.</span>` : ''}` : html`<span class="muted">no match with this equipment, left out</span>`}</li>`)}</ul>` : html`<p class="small u-m10-0-0">Everything in this workout fits the equipment on.</p>`}
+    <div class="sheet-scroll">${sw.length ? html`<ul class="eqsw">${sw.map(x => html`<li>${exName(x.from || '')} → ${x.to ? html`<b>${exName(x.to)}</b>${x.hard ? html`<br><span class="small u-cyellow">Much harder: 3 to 6 reps, stopping 2 short. A band helps.</span>` : ''}` : html`<span class="muted">no match with this equipment, left out</span>`}</li>`)}</ul>` : html`<p class="small u-m10-0-0">Everything in this workout fits the equipment on.</p>`}
     <div class="row u-mt12"><button class="btn primary" data-act="eqStart" ?disabled=${!pl.some(x => x.to)}>Start ${day.name}</button><button class="btn" data-act="mClose">Cancel</button></div>
-    <p class="small muted u-m8-0-0">Sets, reps, and rest as planned (a much harder swap gets 3 to 6 reps); swaps are for this session only.</p></div></div>`;
+    <p class="small muted u-m8-0-0">Swaps are for this session only.</p></div></div>`;
 }
 
 /* ---------- Short on time ---------- */

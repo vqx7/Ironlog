@@ -180,8 +180,16 @@ function jumpOf(p: Rec): { jump?: number } {
    before, so its fingerprint and the sync are unchanged. */
 /** A record with the unknown fields its source carried kept (above); `keepExtra.n` counts the fields kept, for the suites. */
 export function keepExtra<O extends object>(src: unknown, out: O, known?: ReadonlySet<string>): O {
+  keepExtra.n += extraInto(src, out, known);
+  return out;
+}
+keepExtra.n = 0;
+/** The work of keepExtra, counted for its caller: the unknown fields of `src` written into `out` within the limits,
+    and how many were kept. The workout in progress and the log itself use it uncounted (2.28, 2.27-F2): before 2.28
+    their unknown fields passed through whole, and the count the suites read is of records' fields. */
+function extraInto(src: unknown, out: object, known?: ReadonlySet<string>): number {
   const S = rec(src);
-  if (!S || Array.isArray(src)) return out;
+  if (!S || Array.isArray(src)) return 0;
   let room = EXTRA_MAX,
     n = 0;
   for (const k of Object.keys(S)) {
@@ -202,22 +210,21 @@ export function keepExtra<O extends object>(src: unknown, out: O, known?: Readon
     n++;
     // Written as an assignment writes it, under a name okExtraKey allowed.
     Object.assign(out, { [k]: parseJson(j) });
-    keepExtra.n++;
   }
-  if (n) {
-    /* The record's fields read once, then each taken out and written back,
-       those the source has in its order first: a field written again stays
-       where it stood, so taking it out first is what moves it. */
-    const was: Rec = { ...rec(out) };
-    const ks = Object.keys(S).filter(k => Object.prototype.hasOwnProperty.call(was, k));
-    for (const k of [...ks, ...Object.keys(was).filter(k => !ks.includes(k))]) {
-      Reflect.deleteProperty(out, k);
-      Object.assign(out, { [k]: was[k] });
-    }
-  }
-  return out;
+  if (n) orderLike(S, out);
+  return n;
 }
-keepExtra.n = 0;
+/** Puts a rebuilt record's fields in the order its source had them, the rest after in their own order: the record's
+    fields read once, then each taken out and written back, those the source has first (a field written again stays
+    where it stood, so taking it out first is what moves it). */
+function orderLike(S: Rec, out: object): void {
+  const was: Rec = { ...rec(out) };
+  const ks = Object.keys(S).filter(k => Object.prototype.hasOwnProperty.call(was, k));
+  for (const k of [...ks, ...Object.keys(was).filter(k => !ks.includes(k))]) {
+    Reflect.deleteProperty(out, k);
+    Object.assign(out, { [k]: was[k] });
+  }
+}
 
 /* ---------- records ---------- */
 
@@ -781,13 +788,18 @@ function cleanRoutine(r0: unknown, ri: number): Routine {
    one it has (a field a newer build saved among them) stays where it
    stands: the draft keeps the key order and the very object it came as. */
 /** A workout in progress, cleaned field by field (above). */
+/** A draft field this build writes only when valid (its pictures): an invalid one is dropped, not kept as unknown. */
+const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics']);
 function cleanDraft(d: Rec, date: string): DraftLike {
   const startedAt = Number(d.startedAt),
     durMin = Number(d.durMin);
   // The workout's pictures (r66, 373): kept when valid, else the field goes, so a draft without any keeps its shape.
   const pics = picIds(d.pics);
-  if (!pics) delete d.pics;
-  return Object.assign(d, {
+  /* The fields this build knows, worked out first; then the draft is cleaned in place, as before 2.28 (its own fields
+     keep their order and the object stays the one given), but a field it does not know is kept only within a
+     record's limits (2.28, 2.27-F2: every unknown field was kept at any size, and a damaged backup could fill the
+     draft past what a sync document holds). An invalid pictures field goes, not kept as unknown. */
+  const out = {
     date,
     id: typeof d.id === 'string' ? fixId(d.id) : did('x', { date: d.date, dayName: d.dayName }, 0),
     dayIdx: clampN(d.dayIdx, 0, MAX_DAYS - 1, 0),
@@ -805,6 +817,10 @@ function cleanDraft(d: Rec, date: string): DraftLike {
     free: d.free === true ? true : undefined,
     // Started as its day's second workout (r68, 366 (c)).
     part: d.part === 2 ? (2 as const) : undefined,
+    // Finish's two questions once answered (sets left, ramp-ups), kept as they came: until 2.28 they passed through
+    // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (the r56-1c suite).
+    _leftAsked: typeof d._leftAsked === 'boolean' ? d._leftAsked : undefined,
+    _rampAsked: typeof d._rampAsked === 'boolean' ? d._rampAsked : undefined,
     // A past workout typed in after the fact: no rest timer, no clock, no check-in.
     past: d.past === true ? true : undefined,
     // The notes the app wrote when the session started, so Discard can tell them from yours.
@@ -927,7 +943,11 @@ function cleanDraft(d: Rec, date: string): DraftLike {
         )
       ];
     })
-  });
+  };
+  // The unknown fields kept: copied into the known ones, then every field of the draft not among them taken off it.
+  extraInto(d, out, DRAFT_KNOWN);
+  for (const k of Object.keys(d)) if (!(k in out)) Reflect.deleteProperty(d, k);
+  return Object.assign(d, out);
 }
 
 /* Every field below is validated rather than trusted. The old version only
@@ -1215,9 +1235,12 @@ export function normalize(input: unknown): State {
      together with any that were saved. Older saves, backups and cloud copies
      still carry them, so they are dropped here on every load, import and
      merge. */
-  const extra: Rec = { ...s };
-  for (const k of Object.keys(f)) delete extra[k];
-  delete extra.priors;
+  const rest: Rec = { ...s };
+  for (const k of Object.keys(f)) delete rest[k];
+  delete rest.priors;
+  // Kept within the limits a record's unknown fields have (2.28, 2.27-F2: at any size before).
+  const extra: Rec = {};
+  extraInto(rest, extra);
   return {
     version: STATE_VERSION,
     settings,

@@ -3,6 +3,7 @@
    and the update a finished session offers its routine day. Each change to
    the log goes through `act`. */
 
+import { LIMITS } from './records';
 import { bwNudge } from './bwnudge';
 import { uid } from './util';
 import {
@@ -136,7 +137,7 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   },
   rNewSave() {
     const el = document.getElementById('rNewName');
-    const nm = (el instanceof HTMLInputElement ? el.value : '').trim();
+    const nm = (el instanceof HTMLInputElement ? el.value : '').slice(0, LIMITS.name).trim();
     if (!nm) {
       toast('Give the routine a name');
       return;

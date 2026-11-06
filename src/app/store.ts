@@ -151,15 +151,40 @@ interface CloudSnap {
   exists: boolean;
   data(): unknown;
 }
-/** One document in the account, by path: read whole, written whole, and (where the backend offers it) leased. */
+/** What a write expects a document to hold, read just before it (2.28, the 2.27 review's 2.27-F1): nothing (the
+    document is new), its write mark (`w`, which every write since 2.28 carries), or, for a document a build before
+    2.28 wrote, which carries no mark, its write time (`at`, null when it has none). */
+export type CloudSeen = null | { w: string } | { at: number | null };
+/** A sync document as written: its format (1), when it was written and when its content was last edited (each by
+    the writing device's clock), its write mark (2.28, 2.27-F1), and its content as JSON. */
+export interface CloudDoc {
+  v: 1;
+  at: number;
+  et: number;
+  w: string;
+  json: string;
+}
+/** One document in the account, by path: read whole, and written whole only while it still holds what was read. */
 export interface CloudRef {
   get(): Promise<CloudSnap>;
-  set(doc: Record<string, unknown>): Promise<unknown>;
-  acquire?(lease: { holder: string; ttlMs: number }): Promise<unknown>;
+  /** Writes the document if it still holds what `seen` says, in one step on the server: true when written, false
+      when another device wrote it first (the caller reads it again, merges and tries again). */
+  setIf(doc: CloudDoc, seen: CloudSeen): Promise<boolean>;
 }
-/** The account's document store, as scripts/cloud-supabase.js provides it (and the suites' stand-in): documents by path, and a listing of a collection's documents. */
+/** The account's document store the sync uses: documents by path, and a listing of a collection's documents. */
 export interface CloudDb {
   doc(path: string): CloudRef;
+  collection(path: string): { get(): Promise<{ docs: (CloudSnap & { id: string })[] }> };
+}
+/** A document store as a backend hands it over: scripts/cloud-supabase.js writes conditionally (`setIf`); the
+    suites' stand-in, Claude's db (`cloudProvider`, sync.ts), writes plainly (`set`), and the sync gives it a
+    read-and-compare `setIf` of its own. */
+export interface CloudDbIn {
+  doc(path: string): {
+    get(): Promise<CloudSnap>;
+    set?(doc: CloudDoc): Promise<unknown>;
+    setIf?(doc: CloudDoc, seen: CloudSeen): Promise<boolean>;
+  };
   collection(path: string): { get(): Promise<{ docs: (CloudSnap & { id: string })[] }> };
 }
 
@@ -187,6 +212,16 @@ export interface SyncNote {
   b?: Base | null | undefined;
 }
 
+/** A write of a document this device sent and has not heard back about (2.28, NEW-67): its write mark, the account
+    and the note it was sent from, and the note it makes once the account is found holding it. A write the server
+    applies can lose its answer on the way back; read later with this mark, it is known as this device's own. */
+export interface CloudSent {
+  w: string;
+  uid: string;
+  from: string;
+  note: SyncNote;
+}
+
 /* Where the sync is: on or not, the provider (db, uid), its status, each
    document's last sync note (meta: its hash, when, and the merge base) and
    this device's hashes (localH), when each document was last edited here
@@ -200,6 +235,8 @@ interface Cloud {
   status: CloudStatus;
   last: number | null;
   meta: Record<string, SyncNote>;
+  /** Writes sent and not yet answered, by document (CloudSent). */
+  sent: Record<string, CloudSent>;
   editAt: Record<string, number>;
   localH: Record<string, string>;
   devId: string | null;
@@ -221,6 +258,7 @@ export const cloud: Cloud = {
   status: 'local',
   last: null,
   meta: {},
+  sent: {},
   editAt: {},
   localH: {},
   devId: null,

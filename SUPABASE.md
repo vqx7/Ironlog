@@ -37,6 +37,8 @@ revoke all on public.docs from anon;
 create or replace function public.docs_limit() returns trigger language plpgsql security definer set search_path = '' as $$
 declare n bigint; b bigint;
 begin
+  -- One account's documents are counted one write at a time (2.28): two written at once each counted without the other, and both passed the limit.
+  perform pg_advisory_xact_lock(hashtextextended(tg_table_name || ' ' || new.user_id::text, 0));
   execute format('select count(*), coalesce(sum(pg_column_size(data)), 0) from %I.%I where user_id = $1 and path <> $2', tg_table_schema, tg_table_name)
     into n, b using new.user_id, new.path;
   if n >= 2000 or b + pg_column_size(new.data) > 26214400 then
@@ -138,6 +140,8 @@ begin
   if new.client_id is not null and exists (select 1 from public.feedback where user_id = new.user_id and client_id = new.client_id) then
     return null;
   end if;
+  -- One account's reports are counted one at a time (2.28): two sent at once each counted without the other, and both were kept.
+  perform pg_advisory_xact_lock(hashtextextended('feedback_limit ' || new.user_id::text, 0));
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
   end if;
@@ -180,6 +184,8 @@ begin
   -- report would slip past the daily limit, and a made-up link would show in your Inbox.
   new.created_at := now();
   new.issue_url := null;
+  -- One account's reports are counted one at a time (2.28): two sent at once each counted without the other, and both were kept.
+  perform pg_advisory_xact_lock(hashtextextended('feedback_limit ' || new.user_id::text, 0));
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
   end if;
@@ -201,6 +207,8 @@ begin
   -- report would slip past the daily limit, and a made-up link would show in your Inbox.
   new.created_at := now();
   new.issue_url := null;
+  -- One account's reports are counted one at a time (2.28): two sent at once each counted without the other, and both were kept.
+  perform pg_advisory_xact_lock(hashtextextended('feedback_limit ' || new.user_id::text, 0));
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
   end if;
@@ -229,6 +237,8 @@ begin
   if new.client_id is not null and exists (select 1 from public.feedback where user_id = new.user_id and client_id = new.client_id) then
     return null;
   end if;
+  -- One account's reports are counted one at a time (2.28): two sent at once each counted without the other, and both were kept.
+  perform pg_advisory_xact_lock(hashtextextended('feedback_limit ' || new.user_id::text, 0));
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
   end if;
@@ -241,6 +251,8 @@ revoke all on function public.feedback_limit() from public, anon, authenticated;
 create or replace function public.docs_limit() returns trigger language plpgsql security definer set search_path = '' as $$
 declare n bigint; b bigint;
 begin
+  -- One account's documents are counted one write at a time (2.28): two written at once each counted without the other, and both passed the limit.
+  perform pg_advisory_xact_lock(hashtextextended(tg_table_name || ' ' || new.user_id::text, 0));
   execute format('select count(*), coalesce(sum(pg_column_size(data)), 0) from %I.%I where user_id = $1 and path <> $2', tg_table_schema, tg_table_name)
     into n, b using new.user_id, new.path;
   if n >= 2000 or b + pg_column_size(new.data) > 26214400 then

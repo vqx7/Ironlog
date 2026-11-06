@@ -112,7 +112,7 @@ import {
   CAL_OFFER
 } from './worksets';
 import { finish, finishNow } from './workfinish';
-import { LIMITS, EFFORT_TOP } from './records';
+import { LIMITS, EFFORT_TOP, within } from './records';
 import { PICK_DAYS } from './analytics';
 import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScroll } from './page';
 import { closeX } from './sheetsmisc';
@@ -334,7 +334,7 @@ export function readyCard(d: Draft, low: number): Part {
   if (low >= 2 && !open && d.ex.some(b => b.light))
     return html`<p class="callout u-m8-0-0" id="readyCard">Made lighter: the exercises not started are half the sets at about ${pctOf(LIGHT_SHARE)}% loads.</p>`;
   if (low < 2)
-    return html`<p class="callout u-m8-0-0" id="readyCard">One low answer: keep the loads and leave a rep more in reserve than planned if it feels heavy.</p>`;
+    return html`<p class="callout u-m8-0-0" id="readyCard">Keep the loads. Leave an extra rep in reserve if it feels heavy.</p>`;
   return html`<div class="callout yellow u-m8-0-0" id="readyCard"><p class="u-m0">Low readiness today. ${tipButton(`A lighter or shorter session fits a low day better than pushing. Make it lighter changes only the exercises not started: half the sets, about ${pctOf(LIGHT_SHARE)}% loads, nothing to beat.`)}</p><div class="row u-mt8">${open ? html`<button class="btn sm" data-act="makeLight">Make it lighter</button>` : ''}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div>`;
 }
 
@@ -542,7 +542,7 @@ export function viewWorkout(d: Draft): TemplateResult {
   ${howText('log', (state.settings.rirMode === 'off' ? 'RIR is switched off in Settings, so every working set counts as hard. ' : LOG_HELP_ON) + LOG_HELP + (d.past ? ' Quick entry: no rest timer, and a set counts as done once its reps are typed.' : state.settings.autoDone ? ' Auto-mark is on: sets tick themselves when you leave the reps field.' : ''))}
   ${
     d.free
-      ? html`<label class="field u-mt8">Name<input type="text" data-bind="draftName" maxlength="40" .value=${fieldValue(d.dayName || '')}></label><p class="small muted u-m4-0-0">Not tied to a routine day, so your cycle stays put.</p>`
+      ? html`<label class="field u-mt8">Name<input type="text" data-bind="draftName" maxlength=${LIMITS.name} .value=${fieldValue(d.dayName || '')}></label><p class="small muted u-m4-0-0">Not tied to a routine day, so your cycle stays put.</p>`
       : ''
   }
   ${d.past ? '' : readyCard(d, chkLow(d))}${bwAskCard(d)}${
@@ -553,7 +553,7 @@ export function viewWorkout(d: Draft): TemplateResult {
     d.ex,
     b => b.bid,
     (b, bi) => blockPart(d, b, bi, letters, hintSeen, calIdx, bwAt)
-  )}<div class="row"><button class="btn u-f1" data-act="pickSession">+ Add exercise</button>${d.editingId ? '' : html`<button class="btn" data-act="pickEx">Pick for me</button>`}</div>${d.editingId ? '' : cardioDraftCard(d)}<label class="field u-mt12">Notes<textarea data-bind="draftNotes" .defaultValue=${d.notes || ''} .value=${fieldValue(d.notes || '')}></textarea></label>${picStrip(null)}
+  )}<div class="row"><button class="btn u-f1" data-act="pickSession">+ Add exercise</button>${d.editingId ? '' : html`<button class="btn" data-act="pickEx">Pick for me</button>`}</div>${d.editingId ? '' : cardioDraftCard(d)}<label class="field u-mt12">Notes<textarea data-bind="draftNotes" maxlength=${LIMITS.note} .defaultValue=${d.notes || ''} .value=${fieldValue(d.notes || '')}></textarea></label>${picStrip(null)}
   <div class="row fin-row u-mt12"><button class="btn danger" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button><button class="btn primary u-f1" data-act="finish" data-tip="Only sets marked done are saved; you are asked about any with reps but no checkmark.">${d.editingId ? 'Save changes' : 'Finish and save'}</button></div>`;
 }
 
@@ -1434,7 +1434,7 @@ export function workoutInput(t: Field): boolean {
   if (b === 'draftNotes') {
     act(
       () => {
-        d.notes = t.value;
+        d.notes = within(t.value, d.notes || '', LIMITS.note);
       },
       { inProgress: true, soon: true }
     );

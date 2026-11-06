@@ -191,7 +191,7 @@ const V = '11111111-1111-1111-1111-111111111111', F = '22222222-2222-2222-2222-2
   await as(db, V);
   ok(await tryq(db, `insert into public.feedback(category,message,screenshot) values ('bug','old rules let this in','data:image/jpeg;base64,AAAA" onerror="x')`) === 'ok', 'before: the r25 rules let a hostile screenshot in (what the fix is for)');
   await db.exec('reset role');
-  await run(db, pick("new.issue_url := null;\n  if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then\n    raise exception 'feedback_rate_limited' using errcode = 'P0001';\n  end if;\n  return new;\nend $$;\nrevoke"), 'the r29 block runs on a table made between r25 and r28');
+  await run(db, pick("revoke all on function public.feedback_limit() from public, anon, authenticated;\nalter table public.feedback drop constraint if exists feedback_screenshot_check"), 'the r29 block runs on a table made between r25 and r28');
   await as(db, V);
   ok(/check/i.test(await tryq(db, `insert into public.feedback(category,message,screenshot) values ('bug','new rules stop this','data:image/jpeg;base64,AAAA" onerror="x')`)), 'after: a hostile screenshot is refused');
   let back = 0; for (let i = 0; i < 6; i++) if (await tryq(db, `insert into public.feedback(category,message,created_at) values ('bug','back-dated report ${i}','2001-01-01')`) === 'ok') back++;
@@ -263,6 +263,43 @@ const V = '11111111-1111-1111-1111-111111111111', F = '22222222-2222-2222-2222-2
     const printed = [...new Set(pub.flatMap(r => [r.using_rule, r.with_check]).filter(Boolean).map(norm))];
     const quoted = [...doc.slice(doc.indexOf('### E2.')).split('### D6.')[0].matchAll(/`(\(+[^`]*\))`/g)].map(m => m[1]);
     ok(quoted.length >= 2 && quoted.every(x => printed.includes(x)), 'each rule OWNER.md E2 quotes is one Postgres printed for these tables', { quoted, printed });
+  }
+}
+{ // 2.28 (the 2.27 review's 2.27-F1): the conditional write scripts/cloud-supabase.js makes, as the statements the
+  // Data API runs for it (an insert, and an update filtered on the row's JSON fields), on the tables as SUPABASE.md
+  // makes them, signed in as the account: no new SQL is needed, and the filters read the JSON as the app writes it.
+  const db = new PGlite(); await db.exec(stub);
+  await db.exec(pick('create table public.docs ('));
+  await db.exec(pick('create table public.docs_preview'));
+  for (const t of ['docs', 'docs_preview']) {
+    await as(db, V);
+    const upd = async (data, where, args) => (await db.query(`update public.${t} set data = $1::jsonb, updated_at = now() where path = 'p' and ${where} returning path`, [JSON.stringify(data), ...args])).rows.length;
+    const at0 = 1730812345678;
+    // A row as 2.27 writes it: no mark.
+    await db.query(`insert into public.${t}(path, data) values ('p', $1::jsonb)`, [JSON.stringify({ v: 1, at: at0, et: at0, json: '{}' })]);
+    const dup = await tryq(db, `insert into public.${t}(path, data) values ('p', '{"v":1}'::jsonb)`);
+    ok(/duplicate key/.test(dup), `${t}: a second device making the same new document is refused by the primary key (the app reads that as written first)`);
+    ok(await upd({ v: 1, at: at0 + 9, w: 'devA.x1', json: '{"a":1}' }, `data->>'at' = $2 and data->>'w' is null`, [String(at0 + 1)]) === 0, `${t}: a 2.27 row is not updated when its time is not the one read`);
+    ok(await upd({ v: 1, at: at0 + 9, w: 'devA.x1', json: '{"a":1}' }, `data->>'at' = $2 and data->>'w' is null`, [String(at0)]) === 1, `${t}: a 2.27 row is updated when its time is the one read (a 13-digit time read back as the same text)`);
+    ok(await upd({ v: 1, at: at0 + 20, w: 'devB.y1', json: '{"b":1}' }, `data->>'at' = $2 and data->>'w' is null`, [String(at0)]) === 0, `${t}: once marked, the old time no longer matches: a write that read the 2.27 row finds it changed`);
+    ok(await upd({ v: 1, at: at0 + 20, w: 'devB.y1', json: '{"b":1}' }, `data->>'w' = $2`, ['devB.zz']) === 0, `${t}: a write that read another mark finds it changed`);
+    ok(await upd({ v: 1, at: at0 + 20, w: 'devB.y1', json: '{"b":1}' }, `data->>'w' = $2`, ['devA.x1']) === 1, `${t}: a write that read this mark is made`);
+    await as(db, F);
+    ok(await upd({ v: 1, w: 'devF.q', json: '{}' }, `data->>'w' = $2`, ['devB.y1']) === 0, `${t}: another account's conditional write reaches no row (row level security)`);
+    await as(db, V);
+    ok((await db.query(`select data->>'w' w from public.${t} where path = 'p'`)).rows[0].w === 'devB.y1', `${t}: the row holds the last write made`);
+  }
+}
+{ // 2.28 (the 2.27 review's 2.27-F14): each account's count is taken one write at a time, under a lock held to the end
+  // of the write, so two reports or documents sent at the same moment cannot each be counted without the other.
+  // PGlite has one connection, so the race itself is not run here: it was run on Postgres 16 with two connections
+  // (PENDING.md's 2.27-F14 row: 6 reports and 2,001 documents kept on 2.27's SQL, 5 and 2,000 on this). Here: the
+  // lock is in both functions, as set up fresh and as the r64 block run again brings a project set up before.
+  for (const [label, sql] of [['set up fresh', [pick('create table public.feedback ('), pick('create table public.docs (')]], ['a project set up before 2.28, the r64 block run again', [pick('create table public.feedback ('), pick('create table public.docs ('), pick('-- r64: run once')]]]) {
+    const db = new PGlite(); await db.exec(stub);
+    for (const b of sql) await db.exec(b);
+    const src = (await db.query(`select proname, prosrc from pg_proc where proname in ('feedback_limit', 'docs_limit')`)).rows;
+    ok(src.length === 2 && src.every(r => /pg_advisory_xact_lock\(hashtextextended\(/.test(r.prosrc)), `${label}: both counts take the account's lock before counting`);
   }
 }
 console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);

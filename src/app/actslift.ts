@@ -7,7 +7,7 @@
 
 import { isDate, isNum, numIn, today, uid } from './util';
 import { JK, MK, injLabel } from './library';
-import { LIMITS } from './records';
+import { LIMITS, within } from './records';
 import { cleanCardio } from './normalize';
 import { effW, greyW } from './session';
 import { rirScale } from './effort';
@@ -267,7 +267,7 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       min,
       hr: numIn(fieldText('cHr')),
       when: 'solo',
-      note: fieldText('cNote').trim(),
+      note: fieldText('cNote').slice(0, LIMITS.cardioNote).trim(),
       dist: distIn(fieldText('cDist'))
     });
     closeModal();
@@ -302,7 +302,7 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   },
   injSave() {
     const m = fieldText('injM');
-    const note = fieldText('injNote').trim();
+    const note = fieldText('injNote').slice(0, LIMITS.note).trim();
     if (!MK.some(k => k === m) && !JK.some(k => k === m)) return;
     closeModal();
     act(() => {
@@ -374,7 +374,7 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const b = d.ex[m.bi];
     act(
       () => {
-        if (b) b.note = ta.value.trim();
+        if (b) b.note = within(ta.value, b.note || '', LIMITS.note).trim();
       },
       { inProgress: true }
     );
