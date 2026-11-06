@@ -200,7 +200,7 @@ export function exportCSV(): Promise<void> | undefined {
       const ex = EX(b.exId);
       b.sets.forEach((s, i) => {
         const total = loadOf(ex, s, ss.date);
-        const est = s.warm || s.drop || noE1(ex) ? null : e1(total, +s.r, rirEst(s, ex));
+        const est = s.warm || s.drop || noE1(ex) ? null : e1(total, +s.r, rirEst(s, ex, ss.date));
         rows.push([
           ss.date,
           ss.dayName,

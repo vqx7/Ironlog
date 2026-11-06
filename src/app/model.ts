@@ -226,6 +226,13 @@ export interface CalSummary {
   mae: number | null;
 }
 
+/** One RIR check: its date, reps left minus reps called, and whether its lift is compound or isolation. */
+export interface CalPt {
+  date: string;
+  err: number;
+  c: 'c' | 'i';
+}
+
 /** All RIR checks, and each kind of lift's (calStats). */
 export interface CalStats extends CalSummary {
   n: number;
@@ -277,8 +284,10 @@ interface Caches {
   EXMAP: Partial<Record<string, Exercise>> | null;
   _idx: Idx | null;
   _dix: DateIndex | null;
-  _cal: CalStats | null;
-  _rirUse: Partial<Record<string, number>> | null;
+  /** The RIR checks by date, the calibration to today (`now`) and to each date asked (calStatsIn). */
+  _cal: { now: CalStats; pts: CalPt[]; at: Partial<Record<string, CalStats>> } | null;
+  /** Each lift's rated working sets by date, and the usual read from them, by lift and date (rirUsualIn). */
+  _rirUse: { rated: Partial<Record<string, [string, number][]>>; at: Partial<Record<string, number | null>> } | null;
   _bwRef: number | undefined;
   _pace: number | null;
 }
