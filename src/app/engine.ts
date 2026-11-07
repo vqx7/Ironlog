@@ -47,6 +47,7 @@ import {
   LIGHT_SHARE,
   atLoad,
   e1inv,
+  bestFit,
   fitE,
   isMissed,
   isWork,
@@ -908,12 +909,11 @@ function sgAfterReturnIn(M: Model, C: SuggestCtx): Suggestion | null {
   if (triedAt(last, top).some(p => p.missed || p.r < +plan.repMin)) return null;
   const bw = bwRefLoadIn(M, ex);
   if (ex.bw && !(bw > 0)) return null;
-  let est = 0;
-  for (const p of planPts) {
-    const q = p.rir != null ? p.rir : i === j ? BACK_RIR : p.rq;
-    const v = fitE(p.load, p.r, q == null ? q : Math.min(q, E1_MAX_RIR));
-    if (v != null && v > est) est = v;
-  }
+  const est =
+    bestFit(planPts, p => {
+      const q = p.rir != null ? p.rir : i === j ? BACK_RIR : p.rq;
+      return q == null ? q : Math.min(q, E1_MAX_RIR);
+    })?.est ?? 0;
   if (!(est > 0)) return null;
   // The reps the lift was done for before the break: the middle of its sets at that session's load.
   const rs = pre.pts
@@ -1024,11 +1024,8 @@ function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
     planPts.length &&
     planPts.every(p => p.rir != null && p.rir >= tgtRir + CLEARLY_OFF && p.r >= plan.repMin)
   ) {
-    let est: number | null = null;
-    for (const p of topPts) {
-      const v = fitE(p.load, p.r, Math.min(p.rir!, E1_MAX_RIR));
-      if (v != null && (est == null || v > est)) est = v;
-    }
+    // Every point here has a rating: the condition above reads p.rir != null for each.
+    const est = bestFit(topPts, p => Math.min(p.rir!, E1_MAX_RIR))?.est ?? null;
     const bwNow = bwRefLoadIn(M, ex);
     const topLoad = top + bwNow;
     if (est != null && topLoad > 0) {
@@ -1092,11 +1089,7 @@ function sgPastRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
     topPts.length &&
     topPts.every(p => p.r >= +plan.repMax + CLEARLY_OFF)
   ) {
-    let est: number | null = null;
-    for (const p of topPts) {
-      const v = fitE(p.load, p.r, p.rq);
-      if (v != null && (est == null || v > est)) est = v;
-    }
+    const est = bestFit(topPts, p => p.rq)?.est ?? null;
     const bwNow = bwRefLoadIn(M, ex);
     const topLoad = top + bwNow;
     if (est != null && topLoad > 0) {
@@ -1172,11 +1165,7 @@ function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
       /* The estimate every other load is found with (fitE, r72, the 387 audit's 387-B2): read with e1, which gives
          none past 12 reps to failure, 100 x 12 x 3 at RIR 2 on 15 to 20 had no estimate and held at 100 where the
          same sets at RIR 0 dropped, so rating more in reserve on a set three reps short kept the load. */
-      let est: number | null = null;
-      for (const p of topPts) {
-        const v = fitE(p.load, p.r, p.rq);
-        if (v != null && (est == null || v > est)) est = v;
-      }
+      const est = bestFit(topPts, p => p.rq)?.est ?? null;
       const bwNow = bwRefLoadIn(M, ex);
       if (est != null) {
         const want = e1inv(est, +plan.repMin + Math.min(tgtRir, E1_MAX_RIR)) - bwNow;
@@ -1294,11 +1283,7 @@ function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
     const bwT = bwRefLoadIn(M, ex);
     // Not on a bodyweight lift with no weigh-in, which has no total load to read the step against (r55, as sgEasyIn).
     if (!noE1(ex) && !(ex.bw && !(bwT > 0))) {
-      let est: number | null = null;
-      for (const p of topPts) {
-        const v = fitE(p.load, p.r, p.rq);
-        if (v != null && (est == null || v > est)) est = v;
-      }
+      const est = bestFit(topPts, p => p.rq)?.est ?? null;
       /* Only a step that costs 1.5 reps or more is large for the load (about
          5% or more, r32): a 5 lb step on a 5 x 5 at 225 costs under one, and
          a fixed-rep plan goes up and repeats the reps, the drop below the
@@ -1490,16 +1475,9 @@ function kinStartIn(
   const x = k.x;
   const wl = workLoad(x.pts, +plan.repMin || 0);
   const at = atLoad(x.pts, wl);
-  let est: number | null = null,
-    set: ExPoint | null = null;
-  for (const p of at) {
-    const v = fitE(p.load, p.r, p.rq);
-    if (v != null && (est == null || v > est)) {
-      est = v;
-      set = p;
-    }
-  }
-  if (est == null) return null;
+  const best = bestFit(at, p => p.rq);
+  if (best == null) return null;
+  const { est, set } = best;
   const mid = Math.round((+plan.repMin + +plan.repMax) / 2);
   const q = Math.min((+plan.rir || 0) + FATIGUE_RIR, E1_MAX_RIR);
   const want = e1inv(est * (isCompound(ex) ? KIN.compound : KIN.isolation), mid + q);

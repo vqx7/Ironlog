@@ -78,6 +78,21 @@ export function trendE(load: number, r: number, rir?: Rir): number | null {
   return rtf <= E1_MAX_REPS ? e1(load, r, rir) : rtf <= TREND_MAX_RTF ? epley(load, rtf) : null;
 }
 
+/** The best estimate among sets, and the set it came from: the highest fitE of each set's load and reps at the effort
+    `q` reads for it; null when no set gives one (2.31, RC-2: the same loop was written out in the engine six times
+    and once on the goal card, 387-C5, so a fix to how a set is read reached some screens and not others, NEW-72). */
+export function bestFit<P extends { load: number; r: number }>(
+  pts: readonly P[],
+  q: (p: P) => Rir
+): { est: number; set: P } | null {
+  let best: { est: number; set: P } | null = null;
+  for (const p of pts) {
+    const v = fitE(p.load, p.r, q(p));
+    if (v != null && (best == null || v > best.est)) best = { est: v, set: p };
+  }
+  return best;
+}
+
 /* For picking a load only, never shown (r31): the estimate up to 12 reps to
    failure, then Epley to 30. With the 12-rep limit, a set of 25 or a set of
    12 with 5 in reserve had no estimate, so a beginner who started light got

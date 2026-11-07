@@ -2295,6 +2295,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (rtf == null) return null;
     return rtf <= E1_MAX_REPS ? e1(load2, r4, rir) : rtf <= TREND_MAX_RTF ? epley(load2, rtf) : null;
   }
+  function bestFit(pts, q) {
+    let best = null;
+    for (const p3 of pts) {
+      const v3 = fitE(p3.load, p3.r, q(p3));
+      if (v3 != null && (best == null || v3 > best.est)) best = { est: v3, set: p3 };
+    }
+    return best;
+  }
   function fitE(load2, r4, rir) {
     const v3 = e1(load2, r4, rir);
     if (v3 != null) return v3;
@@ -7208,12 +7216,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (triedAt(last, top).some((p3) => p3.missed || p3.r < +plan.repMin)) return null;
     const bw = bwRefLoadIn(M3, ex);
     if (ex.bw && !(bw > 0)) return null;
-    let est = 0;
-    for (const p3 of planPts) {
+    const est = bestFit(planPts, (p3) => {
       const q = p3.rir != null ? p3.rir : i5 === j3 ? BACK_RIR : p3.rq;
-      const v3 = fitE(p3.load, p3.r, q == null ? q : Math.min(q, E1_MAX_RIR));
-      if (v3 != null && v3 > est) est = v3;
-    }
+      return q == null ? q : Math.min(q, E1_MAX_RIR);
+    })?.est ?? 0;
     if (!(est > 0)) return null;
     const rs = pre.pts.filter((p3) => Math.abs(p3.w - preTop) < EPS_SAME).map((p3) => p3.r).sort((a2, b2) => a2 - b2);
     if (!rs.length) return null;
@@ -7286,11 +7292,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       early
     } = C2;
     if (step > 0 && !atCap && !noAdd && !noE1(ex) && !(ex.bw && !(bwRefLoadIn(M3, ex) > 0)) && planPts.length && planPts.every((p3) => p3.rir != null && p3.rir >= tgtRir + CLEARLY_OFF && p3.r >= plan.repMin)) {
-      let est = null;
-      for (const p3 of topPts) {
-        const v3 = fitE(p3.load, p3.r, Math.min(p3.rir, E1_MAX_RIR));
-        if (v3 != null && (est == null || v3 > est)) est = v3;
-      }
+      const est = bestFit(topPts, (p3) => Math.min(p3.rir, E1_MAX_RIR))?.est ?? null;
       const bwNow = bwRefLoadIn(M3, ex);
       const topLoad = top + bwNow;
       if (est != null && topLoad > 0) {
@@ -7326,11 +7328,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function sgPastRangeIn(M3, C2) {
     const { ex, plan, top, step, noAdd, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early } = C2;
     if (step > 0 && !atCap && !noAdd && !noE1(ex) && topPts.length && topPts.every((p3) => p3.r >= +plan.repMax + CLEARLY_OFF)) {
-      let est = null;
-      for (const p3 of topPts) {
-        const v3 = fitE(p3.load, p3.r, p3.rq);
-        if (v3 != null && (est == null || v3 > est)) est = v3;
-      }
+      const est = bestFit(topPts, (p3) => p3.rq)?.est ?? null;
       const bwNow = bwRefLoadIn(M3, ex);
       const topLoad = top + bwNow;
       if (est != null && topLoad > 0) {
@@ -7381,11 +7379,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         shortRun++;
       }
       if (gap >= CLEARLY_OFF && !(justUp && gap <= JUST_UP.short) || repeat || !inRR || shortRun >= SHORT_RUN) {
-        let est = null;
-        for (const p3 of topPts) {
-          const v3 = fitE(p3.load, p3.r, p3.rq);
-          if (v3 != null && (est == null || v3 > est)) est = v3;
-        }
+        const est = bestFit(topPts, (p3) => p3.rq)?.est ?? null;
         const bwNow = bwRefLoadIn(M3, ex);
         if (est != null) {
           const want = e1inv(est, +plan.repMin + Math.min(tgtRir, E1_MAX_RIR)) - bwNow;
@@ -7462,11 +7456,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const q = Math.min(tgtRir, E1_MAX_RIR);
       const bwT = bwRefLoadIn(M3, ex);
       if (!noE1(ex) && !(ex.bw && !(bwT > 0))) {
-        let est = null;
-        for (const p3 of topPts) {
-          const v3 = fitE(p3.load, p3.r, p3.rq);
-          if (v3 != null && (est == null || v3 > est)) est = v3;
-        }
+        const est = bestFit(topPts, (p3) => p3.rq)?.est ?? null;
         const f3 = est ? rtfAt(est, nw + bwT) : null;
         const cost = f3 != null ? rtfAt(est, top + bwT) - f3 : 0;
         if (f3 != null && cost >= BIG_STEP_REPS && wide) {
@@ -7581,15 +7571,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const x2 = k2.x;
     const wl = workLoad(x2.pts, +plan.repMin || 0);
     const at2 = atLoad(x2.pts, wl);
-    let est = null, set = null;
-    for (const p3 of at2) {
-      const v3 = fitE(p3.load, p3.r, p3.rq);
-      if (v3 != null && (est == null || v3 > est)) {
-        est = v3;
-        set = p3;
-      }
-    }
-    if (est == null) return null;
+    const best = bestFit(at2, (p3) => p3.rq);
+    if (best == null) return null;
+    const { est, set } = best;
     const mid2 = Math.round((+plan.repMin + +plan.repMax) / 2);
     const q = Math.min((+plan.rir || 0) + FATIGUE_RIR, E1_MAX_RIR);
     const want = e1inv(est * (isCompound(ex) ? KIN.compound : KIN.isolation), mid2 + q);
@@ -11124,14 +11108,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     const need = fitE(g2.w + bw, g2.r, 0);
     const from = addDays(today(), -WEEK_DAYS * BEST_WEEKS);
-    let cur = null;
-    for (const x2 of exps) {
-      if (x2.date < from) continue;
-      for (const p3 of x2.pts) {
-        const v3 = fitE(p3.load, p3.r, p3.rq);
-        if (v3 != null && (cur == null || v3 > cur)) cur = v3;
-      }
-    }
+    const cur = bestFit(
+      exps.filter((x2) => x2.date >= from).flatMap((x2) => x2.pts),
+      (p3) => p3.rq
+    )?.est ?? null;
     const pct = !noBw && need && cur ? Math.min(PERCENT, cur / need * PERCENT) : null;
     return { g: g2, hit, pct, cur, need, noBw };
   }
