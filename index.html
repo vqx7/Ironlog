@@ -5848,9 +5848,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return M3.c._idx;
   }
   function liftReadIn(M3, exId, T2) {
-    const every = IDXIn(M3).byEx[exId] || [];
-    const all = T2 === void 0 ? every : every.filter((x2) => x2.date <= T2);
     const d3 = M3.s.draft;
+    const ed = d3 && d3.editingId;
+    const every = (IDXIn(M3).byEx[exId] || []).filter((x2) => !ed || x2.sid !== ed);
+    const all = T2 === void 0 ? every : every.filter((x2) => x2.date <= T2);
     if (d3 && (T2 === void 0 || d3.date <= T2) && d3.ex.some((b2) => b2.exId === exId && b2.nw))
       return sinceNew(all.filter((x2) => x2.date > d3.date));
     return sinceNew(all);

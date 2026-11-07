@@ -391,9 +391,14 @@ export function IDXIn(M: Model): Idx {
    spacing, a load far off and the live PR read a lift through this. */
 /** A lift's sessions up to a date (all of them with none) as its rules read them: since a new machine or gym. */
 export function liftReadIn(M: Model, exId: string, T?: string): Exposure[] {
-  const every = IDXIn(M).byEx[exId] || [];
-  const all = T === undefined ? every : every.filter(x => x.date <= T);
   const d = M.s.draft;
+  /* A saved workout open for editing (History's Edit) is the open copy, so its saved version is no earlier session
+     of itself (2.30, R75-6, RC-2): read with it, its 100 x 8 was judged against the same 100 x 8 "before" it and lost
+     the Weight PR the list counts, and its targets were read from itself. Every reader of a lift's past sessions
+     comes through here, so they all read the log as it will be once the edit is saved. */
+  const ed = d && d.editingId;
+  const every = (IDXIn(M).byEx[exId] || []).filter(x => !ed || x.sid !== ed);
+  const all = T === undefined ? every : every.filter(x => x.date <= T);
   if (d && (T === undefined || d.date <= T) && d.ex.some(b => b.exId === exId && b.nw))
     return sinceNew(all.filter(x => x.date > d.date));
   return sinceNew(all);

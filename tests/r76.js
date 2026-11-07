@@ -14,6 +14,11 @@
 //      sliver, 0.4 lb, the class NEW-70 fixed only for the step at the top of the range) and nothing on Your gym's
 //      rack. Expected: nothing on both, since the next real weight, 55, is past 54. Guards: toward 56 both offer 55;
 //      the step at the top of the range is still 55 on both (NEW-70); a load on the rack (50 lb) answers as before.
+//   3  R75-6 (RC-2): a saved workout opened from History's Edit is judged against the sessions before it, as the PR
+//      list judges it, never against its own saved version. Bench at 95 x 8 on Oct 23, then 100 x 8 on Oct 30, a Weight
+//      PR in the list; opened for editing, its 100 x 8 row read as no PR on 2.29 (it was judged against itself, the
+//      same 100 x 8 one day "earlier"). Guards: the list says Weight PR before and during the edit; a new workout today
+//      at 100 x 8 is still no PR (it ties Oct 30).
 // R76_ONLY=1 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -100,6 +105,32 @@ const T = '2026-11-06';
     ok(r.spacing.step === 55 && r.rack.step === 55, '2. (a guard, NEW-70) the step at the top of the range is 55 on both', r);
     ok(r.onRack.to54 === null && r.onRack.to56 === 55 && r.onRackGym.to56 === 55, '2. (a guard) from 50 lb on the rack, as before', r);
     ok(!D.errors.length, '2. no page errors', D.errors);
+    await D.browser.close();
+  }
+
+  if (run(3)) {
+    const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00' });
+    const ev = (f, a) => D.page.evaluate(f, a), wait = ms => D.page.waitForTimeout(ms);
+    await ev(() => {
+      const L = window.__ironlog, S = L.state;
+      S.settings.onboarded = true; S.settings.unit = 'kg'; S.draft = null;
+      const ses = (id, date, w) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Push', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [0, 1].map(() => ({ w, r: 8, rir: null, warm: false, drop: false })) }] });
+      S.sessions = [ses('e1', '2026-10-23', 95), ses('e2', '2026-10-30', 100)];
+      L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.render();
+    });
+    const listPR = () => ev(() => window.__ironlog.IDX().prs.filter(p => p.sid === 'e2' && p.big).map(p => p.type));
+    const before = await listPR();
+    await ev(() => window.__ironlog.ACT.histEdit({ dataset: { id: 'e2' } })); await wait(200);
+    const mOk = await ev(() => !!document.querySelector('#modal [data-act="mOk"]'));
+    if (mOk) { await D.page.click('#modal [data-act="mOk"]'); await wait(200); }
+    const edit = await ev(() => { const L = window.__ironlog, d = L.state.draft; return d ? { editing: d.editingId, live: L.livePR('bench', d.ex[0].sets[0], d.date) } : null; });
+    const during = await listPR();
+    ok(before.join() === 'Weight PR' && during.join() === 'Weight PR', '3. (a guard) the PR list counts Oct 30\'s 100 x 8 as a Weight PR, before and during the edit', { before, during });
+    ok(edit && edit.editing === 'e2' && edit.live === 'Weight PR', '3. R75-6: opened from History\'s Edit, its 100 x 8 reads as the Weight PR the list counts (2.29: no PR, judged against its own saved version)', edit);
+    await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); });
+    const today = await ev(() => window.__ironlog.livePR('bench', { w: 100, r: 8, rir: null, warm: false, drop: false, done: true }, '2026-11-06'));
+    ok(today === null, '3. (a guard) a new workout today at 100 x 8 ties Oct 30: no PR', today);
+    ok(!D.errors.length, '3. no page errors', D.errors);
     await D.browser.close();
   }
 
