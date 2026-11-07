@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-5JrJ2530qVe4VL1hmOR4UhaZ4Dd64zIoLz4GzPWuK9c=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-UIlWRGcSKi6E9/idX5clH4dOf1zcX9VCJ+Xhc9Ejw6c=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.06-r75">
@@ -4502,9 +4502,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       try {
         const tx = db.transaction("kv", "readwrite");
         tx.objectStore("kv").put(
-          undoStack.map(
-            (e5) => e5.d != null ? { d: e5.d, t: e5.t || Date.now() } : { pre: e5.pre, post: e5.post, t: e5.t || Date.now() }
-          ),
+          undoStack.map((e5) => ({ pre: e5.pre, post: e5.post, t: e5.t || Date.now() })),
           "stack"
         );
       } catch (e5) {
@@ -4529,16 +4527,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const now = Date.now();
     for (const e5 of arr(list) || []) {
       const E2 = rec(e5);
-      if (!E2 || !(now - (Number(E2.t) || 0) < UNDO_TTL)) continue;
-      if (typeof E2.d === "string") undoStack.push({ pre: null, post: null, d: E2.d, inv: null, t: Number(E2.t) });
-      else if (typeof E2.pre === "string")
-        undoStack.push({
-          pre: E2.pre,
-          post: typeof E2.post === "string" ? E2.post : null,
-          d: null,
-          inv: null,
-          t: Number(E2.t)
-        });
+      if (E2 && typeof E2.pre === "string" && now - (Number(E2.t) || 0) < UNDO_TTL)
+        undoStack.push({ pre: E2.pre, post: typeof E2.post === "string" ? E2.post : null, inv: null, t: Number(E2.t) });
     }
     if (undoStack.length && ui.tab === "settings" && !ui.modal) fx.rerenderKeepScroll();
   }
@@ -4559,7 +4549,6 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       undoStack.push({
         pre: JSON.stringify(state),
         post: null,
-        d: null,
         inv: typeof inv === "function" ? inv : null,
         t: Date.now()
       });
@@ -4572,65 +4561,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   function capturePost() {
     const e5 = undoStack[undoStack.length - 1];
-    if (e5 && e5.post == null && e5.d == null) {
+    if (e5 && e5.post == null) {
       try {
         e5.post = JSON.stringify(state);
-        for (let i5 = undoStack.length - 1; i5 > 0; i5--) {
-          const lo = undoStack[i5 - 1], hi = undoStack[i5];
-          if (lo.post != null || lo.d != null || hi.pre == null) break;
-          lo.post = hi.pre;
-        }
-        for (const x2 of undoStack) cutStep(x2);
         undoPersist();
       } catch (x2) {
         log("undo", x2);
       }
     }
-  }
-  function cutStep(e5) {
-    if (e5.d != null || e5.pre == null || e5.post == null) return;
-    const P2 = chunksOf(normalize(parseJson(e5.pre))), Q = chunksOf(normalize(parseJson(e5.post)));
-    const p3 = {}, q = {}, k2 = {}, l4 = {};
-    for (const id of /* @__PURE__ */ new Set([...Object.keys(P2), ...Object.keys(Q)])) {
-      const a2 = P2[id], b2 = Q[id];
-      if (JSON.stringify(a2 ?? null) === JSON.stringify(b2 ?? null)) continue;
-      const keys = [.../* @__PURE__ */ new Set([...Object.keys(a2 || {}), ...Object.keys(b2 || {})])].filter(
-        (f3) => JSON.stringify(a2 ? a2[f3] : void 0) !== JSON.stringify(b2 ? b2[f3] : void 0)
-      );
-      const listed = (v3) => {
-        const L2 = arr(v3);
-        if (!L2) return null;
-        const out = [];
-        for (const r4 of L2) {
-          const R2 = rec(r4);
-          if (!R2 || typeof R2.id !== "string") return null;
-          out.push(R2);
-        }
-        return out;
-      };
-      const pick2 = (x2, y2) => {
-        if (!x2) return null;
-        const o3 = {};
-        for (const f3 of keys) {
-          if (!(f3 in x2)) continue;
-          const a3 = listed(x2[f3]), b3 = y2 ? listed(y2[f3]) : null;
-          if (a3 && b3) {
-            const other = new Map(b3.map((r4) => [r4.id, JSON.stringify(r4)]));
-            const recs = {};
-            for (const r4 of a3) if (other.get(r4.id) !== JSON.stringify(r4)) recs[String(r4.id)] = r4;
-            o3[f3] = { ids: a3.map((r4) => r4.id), recs };
-          } else o3[f3] = x2[f3];
-        }
-        return o3;
-      };
-      p3[id] = pick2(a2, b2);
-      q[id] = pick2(b2, a2);
-      k2[id] = keys;
-      l4[id] = keys.filter((f3) => a2 && b2 && listed(a2[f3]) && listed(b2[f3]));
-    }
-    e5.d = JSON.stringify({ p: p3, q, k: k2, l: l4 });
-    e5.pre = null;
-    e5.post = null;
   }
   function prefGet(key) {
     try {
@@ -5757,20 +5695,19 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     return best || earliest ? (best || earliest).kg : null;
   }
-  function rirEffIn(M3, s3, ex, date) {
+  function rirEffIn(M3, s3, ex) {
     const m3 = M3.s.settings.rirMode;
     if (m3 === "off") return null;
     if (s3.rir == null || s3.rir === "") return null;
     const v3 = +s3.rir;
     if (!isFinite(v3)) return null;
-    if (m3 === "cal" && !s3.cal) return calReadIn(M3, v3, ex ? isCompound(ex) ? "c" : "i" : null, date || M3.today());
+    if (m3 === "cal" && !s3.cal && v3 <= E1_MAX_RIR) {
+      const c4 = calStatsIn(M3);
+      const k2 = ex ? isCompound(ex) ? "c" : "i" : null;
+      const src = k2 && c4.cls[k2].recent >= CAL_MIN ? c4.cls[k2] : c4;
+      if (src.recent >= CAL_MIN && src.bias) return Math.min(EFFORT_TOP, Math.max(0, v3 + src.bias));
+    }
     return v3;
-  }
-  function calReadIn(M3, v3, k2, day) {
-    if (v3 > E1_MAX_RIR) return v3;
-    const c4 = calStatsIn(M3, day);
-    const src = k2 && c4.cls[k2].recent >= CAL_MIN ? c4.cls[k2] : c4;
-    return src.recent >= CAL_MIN && src.bias ? Math.min(EFFORT_TOP, Math.max(0, v3 + src.bias)) : v3;
   }
   var CAL_WEEKS = 12, CAL_N = 8, CAL_SHRINK = 3, CAL_CAP = 2, CAL_MIN = 2;
   function calSummary(list) {
@@ -5785,83 +5722,65 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       mae: n3 ? last.reduce((a2, p3) => a2 + Math.abs(p3.err), 0) / n3 : null
     };
   }
-  function calStatsIn(M3, date) {
-    if (!M3.c._cal) {
-      const pts = [];
-      for (const s3 of M3.s.sessions) {
-        if (s3.demo) continue;
-        for (const b2 of s3.ex) {
-          const c4 = isCompound(EXIn(M3, b2.exId)) ? "c" : "i";
-          for (const x2 of b2.sets)
-            if (x2.cal && +x2.r >= x2.cal.at) pts.push({ date: s3.date, err: +x2.r - x2.cal.at - x2.cal.pred, c: c4 });
-        }
+  function calStatsIn(M3) {
+    if (M3.c._cal) return M3.c._cal;
+    const pts = [];
+    for (const s3 of M3.s.sessions) {
+      if (s3.demo) continue;
+      for (const b2 of s3.ex) {
+        const c4 = isCompound(EXIn(M3, b2.exId)) ? "c" : "i";
+        for (const x2 of b2.sets)
+          if (x2.cal && +x2.r >= x2.cal.at) pts.push({ date: s3.date, err: +x2.r - x2.cal.at - x2.cal.pred, c: c4 });
       }
-      pts.sort((a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0);
-      M3.c._cal = { now: calOf(pts, addDays(M3.today(), -WEEK_DAYS * CAL_WEEKS), null), pts, at: {} };
     }
-    const C2 = M3.c._cal;
-    if (date == null) return C2.now;
-    return C2.at[date] || (C2.at[date] = calOf(C2.pts, addDays(date, -WEEK_DAYS * CAL_WEEKS), date));
-  }
-  function calOf(pts, cut, to) {
-    const upTo = to == null ? pts : pts.filter((p3) => p3.date < to);
-    const rec2 = upTo.filter((p3) => p3.date >= cut);
-    return {
+    pts.sort((a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0);
+    const cut = addDays(M3.today(), -WEEK_DAYS * CAL_WEEKS);
+    const rec2 = pts.filter((p3) => p3.date >= cut);
+    M3.c._cal = {
       ...calSummary(rec2),
-      n: upTo.length,
-      lastDate: upTo.length ? upTo[upTo.length - 1].date : null,
+      n: pts.length,
+      lastDate: pts.length ? pts[pts.length - 1].date : null,
       cls: { c: calSummary(rec2.filter((p3) => p3.c === "c")), i: calSummary(rec2.filter((p3) => p3.c === "i")) }
     };
+    return M3.c._cal;
   }
   var RIR_USUAL_MIN = 3;
-  function rirUsualIn(M3, exId, date) {
+  function rirUsualIn(M3, exId) {
     if (M3.s.settings.rirMode === "off") return null;
     if (!M3.c._rirUse) {
-      const rated = /* @__PURE__ */ Object.create(null);
+      M3.c._rirUse = /* @__PURE__ */ Object.create(null);
+      const cut = addDays(M3.today(), -WEEK_DAYS * CAL_WEEKS);
+      const by = /* @__PURE__ */ Object.create(null);
       for (const ss of M3.s.sessions) {
+        if (ss.date < cut) continue;
         for (const b2 of ss.ex) {
           const ex = EXIn(M3, b2.exId);
           if (ex.timed) continue;
-          const k2 = isCompound(ex) ? "c" : "i";
           for (const x2 of b2.sets) {
-            if (!isWork(x2) || x2.drop || x2.cal || x2.rir == null || String(x2.rir) === "") continue;
-            const v4 = +x2.rir;
-            if (isFinite(v4)) (rated[b2.exId] || (rated[b2.exId] = [])).push([ss.date, v4, k2]);
+            if (!isWork(x2) || x2.drop || x2.cal) continue;
+            const q = rirEffIn(M3, x2, ex);
+            if (q != null) (by[b2.exId] || (by[b2.exId] = [])).push(q);
           }
         }
       }
-      for (const k2 in rated) rated[k2].sort((a2, b2) => a2[0] < b2[0] ? -1 : a2[0] > b2[0] ? 1 : 0);
-      M3.c._rirUse = { rated, at: /* @__PURE__ */ Object.create(null) };
+      for (const k2 in by) if (by[k2].length >= RIR_USUAL_MIN) M3.c._rirUse[k2] = median(by[k2]);
     }
-    const C2 = M3.c._rirUse;
-    const D2 = date || M3.today();
-    const key = exId + " " + D2;
-    const had = C2.at[key];
-    if (had !== void 0) return had;
-    const cut = addDays(D2, -WEEK_DAYS * CAL_WEEKS);
-    const all = (C2.rated[exId] || []).filter(([d3]) => d3 !== D2);
-    const cal = M3.s.settings.rirMode === "cal";
-    const read = (e5) => cal ? calReadIn(M3, e5[1], e5[2], D2) : e5[1];
-    const qs = all.filter(([d3]) => d3 >= cut && d3 < D2).map(read);
-    const first = all.length >= RIR_USUAL_MIN && D2 < all[RIR_USUAL_MIN - 1][0] ? all.slice(0, RIR_USUAL_MIN).map(read) : null;
-    const pick2 = first || (qs.length >= RIR_USUAL_MIN ? qs : null);
-    const v3 = pick2 ? median(pick2) : null;
-    C2.at[key] = v3;
-    return v3;
+    const v3 = M3.c._rirUse[exId];
+    return v3 == null ? null : v3;
   }
-  var rirEstIn = (M3, s3, ex, date) => {
-    const q = rirEffIn(M3, s3, ex, date);
-    return q != null ? q : ex ? rirUsualIn(M3, ex.id, date) : null;
+  var rirEstIn = (M3, s3, ex) => {
+    const q = rirEffIn(M3, s3, ex);
+    return q != null ? q : ex ? rirUsualIn(M3, ex.id) : null;
   };
-  var isHardIn = (M3, s3, ex, date) => {
+  var isHardIn = (M3, s3, ex) => {
     if (!isWork(s3)) return false;
-    const q = rirEstIn(M3, s3, ex, date);
+    const q = rirEstIn(M3, s3, ex);
     return q == null || q <= HARD_RIR;
   };
-  function hardCreditIn(M3, s3, ex, date) {
-    if (isHardIn(M3, s3, ex, date)) return setCredit(s3);
+  function hardCreditIn(M3, s3, ex) {
+    if (isHardIn(M3, s3, ex)) return setCredit(s3);
     if (!rirHalfOnIn(M3) || !isWork(s3)) return 0;
-    const q = rirEstIn(M3, s3, ex, date);
+    const q = rirEstIn(M3, s3, ex);
     return q != null && q > HARD_RIR ? setCredit(s3) * HALF_SET : 0;
   }
   function bwLoadIn(M3, ex, date) {
@@ -5971,10 +5890,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
             rirTotal++;
             if (logged2) rirLogged++;
           }
-          const hard = isHardIn(M3, s3, ex, ss.date);
-          const cr = hard ? setCredit(s3) : hardCreditIn(M3, s3, ex, ss.date);
+          const hard = isHardIn(M3, s3, ex);
+          const cr = hard ? setCredit(s3) : hardCreditIn(M3, s3, ex);
           if (!cr) continue;
-          const q = rirEffIn(M3, s3, ex, ss.date);
+          const q = rirEffIn(M3, s3, ex);
           weekHard[wk] = (weekHard[wk] || 0) + cr;
           for (const [m3, f3] of mus) {
             ws[m3] = (ws[m3] || 0) + f3 * cr;
@@ -6001,8 +5920,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
             pl,
             r: +s3.r,
             w: +s3.w || 0,
-            rir: rirEffIn(M3, s3, ex, ss.date),
-            rq: rirEstIn(M3, s3, ex, ss.date)
+            rir: rirEffIn(M3, s3, ex),
+            rq: rirEstIn(M3, s3, ex)
           };
         };
         const pts = ptsSrc.map(point);
@@ -6299,7 +6218,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     for (const p3 of x2.pts) h3.seen.add(p3.w);
     h3.none = false;
   }
-  function prBestOf(ex, pts, noBody2 = false) {
+  function prBestOf(ex, pts, noBody2) {
     let pb = null, pbb = null;
     if (noE1(ex) || noBody2) return { pb, pbb };
     for (const p3 of pts) {
@@ -13038,10 +12957,6 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     ].slice(0, TRASH_MAX);
     while (state.trash.length > 1 && JSON.stringify(state.trash).length > TRASH_BYTES) state.trash.pop();
   }
-  function wholeOf(pre) {
-    if (pre == null) throw new Error("an Undo step with neither its log nor its documents");
-    return pre;
-  }
   function undoStep() {
     const e5 = undoStack.pop();
     if (!e5) return "none";
@@ -13059,56 +12974,12 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }
     if (!done)
       try {
-        const D2 = e5.d != null ? rec(parseJson(e5.d)) : null;
-        const cutP = D2 ? rec(D2.p) || {} : null, cutQ = D2 ? rec(D2.q) || {} : null, cutK = D2 ? rec(D2.k) || {} : null, cutL = D2 ? rec(D2.l) || {} : null;
-        const strs = (v3) => {
-          const out = [];
-          for (const f3 of arr(v3) || []) if (typeof f3 === "string") out.push(f3);
-          return out;
-        };
-        const C2 = chunksOf(state);
-        const side = (o3) => {
-          const out = {};
-          for (const id in o3) {
-            const v3 = rec(o3[id]);
-            const changed = new Set(strs(cutK && cutK[id]));
-            const lists = new Set(strs(cutL && cutL[id]));
-            const doc = {};
-            const now = C2[id];
-            if (now) {
-              for (const f3 in now) if (!changed.has(f3)) doc[f3] = now[f3];
-            }
-            if (!v3) {
-              if (Object.keys(doc).length) out[id] = doc;
-              continue;
-            }
-            for (const f3 in v3) {
-              const cut = lists.has(f3) ? rec(v3[f3]) : null;
-              if (!cut) {
-                doc[f3] = v3[f3];
-                continue;
-              }
-              const recs = rec(cut.recs) || {};
-              const here = new Map((arr(now && now[f3]) || []).map((r4) => [rec(r4)?.id, r4]));
-              const list = [];
-              for (const rid of strs(cut.ids)) {
-                const r4 = rid in recs ? recs[rid] : here.get(rid);
-                if (r4 !== void 0) list.push(r4);
-              }
-              doc[f3] = list;
-            }
-            out[id] = doc;
-          }
-          return out;
-        };
-        const P2 = cutP ? side(cutP) : chunksOf(normalize(parseJson(wholeOf(e5.pre)))), Q = cutQ ? side(cutQ) : chunksOf(e5.post ? normalize(parseJson(e5.post)) : state);
+        const pre = normalize(parseJson(e5.pre));
+        const post = e5.post ? normalize(parseJson(e5.post)) : state;
+        const P2 = chunksOf(pre), Q = chunksOf(post), C2 = chunksOf(state);
         const stat = { conflicts: 0 };
         const parts = {};
-        const ids = cutP && cutQ ? /* @__PURE__ */ new Set([...Object.keys(cutP), ...Object.keys(cutQ)]) : null;
-        if (ids) {
-          for (const id in C2) if (!ids.has(id)) parts[id] = C2[id];
-        }
-        for (const id of ids || /* @__PURE__ */ new Set([...Object.keys(P2), ...Object.keys(Q), ...Object.keys(C2)])) {
+        for (const id of /* @__PURE__ */ new Set([...Object.keys(P2), ...Object.keys(Q), ...Object.keys(C2)])) {
           const q = Q[id] || emptyChunk(id);
           const qd = Q["draft"], pd = P2["draft"];
           parts[id] = id === "draft" ? {
@@ -13119,17 +12990,13 @@ ${actions ? b`<div class="ph-a">${actions}</div>
             )
           } : mergeChunk(id, q ? baseOf(id, q) : null, C2[id] || emptyChunk(id), P2[id] || emptyChunk(id), false, stat);
         }
-        const rank = (id) => (id === "core" ? "0" : id === "draft" ? "1" : id.startsWith("b-") ? "2" : "3") + id;
-        const sorted = {};
-        for (const id of Object.keys(parts).sort((a2, b2) => rank(a2) < rank(b2) ? -1 : rank(a2) > rank(b2) ? 1 : 0))
-          sorted[id] = parts[id];
-        setState(assemble(ids ? sorted : parts));
+        setState(assemble(parts));
       } catch (x2) {
         log("undo", x2);
         return "failed";
       }
     const below = undoStack[undoStack.length - 1];
-    if (below && below.post == null && below.d == null && e5.pre != null) below.post = e5.pre;
+    if (below && below.post == null) below.post = e5.pre;
     if (canon(state) === before) return "unchanged";
     invalidate();
     saveNow();
@@ -14560,9 +14427,8 @@ ${more}`;
       pl: f3.own,
       r: +(s3.r ?? 0),
       w: Number(s3.w) || 0,
-      // As of the set's date, as the index reads a logged one (R74-2: a past-dated workout announced a best the recap and the list did not count).
-      rir: rirEff(s3, ex, date),
-      rq: rirEst(s3, ex, date)
+      rir: rirEff(s3, ex),
+      rq: rirEst(s3, ex)
     };
     const { pb, pbb } = prBestOf(ex, [p3], noBody(ex));
     return { ex, pr: prJudge(ex, h3, { pts: [p3], pb, pbb }).pr };
@@ -14584,7 +14450,7 @@ ${more}`;
     const scq = (x2) => {
       const l4 = prLoad(ex, x2, date);
       const r4 = +(x2.r ?? 0);
-      return prScoreOf(l4, r4, rirEst(x2, ex, date));
+      return prScoreOf(l4, r4, rirEst(x2, ex));
     };
     const me = scq(s3), myLoad = prLoad(ex, s3, date), myR = +(s3.r ?? 0);
     const asStrong = (x2) => scq(x2) > me + EPS || scq(x2) >= me - EPS && prLoad(ex, x2, date) >= myLoad - EPS && +(x2.r ?? 0) >= myR;
@@ -14655,11 +14521,7 @@ ${more}`;
       const seen = /* @__PURE__ */ new Set();
       for (const x2 of liftRead(b2.exId)) for (const p3 of x2.pts) seen.add(p3.w);
       for (const s3 of heavier) {
-        const v3 = e1(
-          bw + prSameLoad(+(s3.w ?? 0) || 0, seen),
-          +(s3.r ?? 0),
-          rirEst(s3, ex, state.draft ? state.draft.date : void 0)
-        );
+        const v3 = e1(bw + prSameLoad(+(s3.w ?? 0) || 0, seen), +(s3.r ?? 0), rirEst(s3, ex));
         if (v3 != null && (best == null || v3 > best)) {
           best = v3;
           bs = s3;
@@ -20043,7 +19905,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const work = ex.reduce((a2, b2) => a2 + b2.sets.filter(isWork).length, 0), miss = ex.reduce((a2, b2) => a2 + b2.sets.filter((q) => !q.warm && !q.drop && isMissed(q)).length, 0), hard = r1(
       ex.reduce((a2, b2) => {
         const e5 = EX(b2.exId);
-        return a2 + b2.sets.reduce((c4, q) => c4 + hardCredit(q, e5, d3.date), 0);
+        return a2 + b2.sets.reduce((c4, q) => c4 + hardCredit(q, e5), 0);
       }, 0)
     );
     ui.todayDay = null;
@@ -23724,7 +23586,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         const ex = EX(b2.exId);
         b2.sets.forEach((s3, i5) => {
           const total = loadOf(ex, s3, ss.date);
-          const est = s3.warm || s3.drop || noE1(ex) || noBody(ex) ? null : e1(total, +s3.r, rirEst(s3, ex, ss.date));
+          const est = s3.warm || s3.drop || noE1(ex) || noBody(ex) ? null : e1(total, +s3.r, rirEst(s3, ex));
           rows2.push([
             ss.date,
             ss.dayName,
