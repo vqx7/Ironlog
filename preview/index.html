@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-keVqJCQMb6ktF9vfplDUpD2KLn9ZoxXja/Ipgcv2oLw=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-crEsLloAlFerKaTQkEP2eFQI/FO2qsNAlMvn0PIcazw=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.06-r76">
@@ -7770,17 +7770,20 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return u4 === "kg" ? EQUIP_STEP[kind].kg : EQUIP_STEP[kind].lb * LB;
   }
   function rackSnapIn(M3, ex, plan, res) {
-    if (!res || res.w == null || ex.timed) return res;
-    const L2 = gymRackIn(M3, ex, plan);
-    if (!L2) return gridSnap(M3, ex, plan, res);
-    const w2 = res.w, top = res.top, tl = rackTolIn(M3), tt = rackTolIn(M3, L2, top);
-    if (L2.some((x2) => Math.abs(x2 - w2) < EPS_SAME) || top != null && Math.abs(w2 - top) < EPS_SAME) return res;
-    const dn = L2.filter((x2) => x2 <= w2 + tl);
+    return listSnapIn(M3, ex, plan, res);
+  }
+  function listSnapIn(M3, ex, plan, res) {
+    const w2 = res.w, top = res.top;
+    if (w2 == null || ex.timed) return res;
+    const Ls = loadsForIn(M3, ex, plan, top ?? null);
+    if (Ls.kind !== "rack" && Ls.kind !== "grid") return res;
+    if (Ls.has(w2) || top != null && Math.abs(w2 - top) < EPS_SAME) return res;
+    const f3 = Ls.floor(w2);
     let nw;
     if (top != null && w2 > top) {
-      const c4 = dn.filter((x2) => x2 > top + tt);
-      nw = c4.length ? c4[c4.length - 1] : L2.find((x2) => x2 > top + tt);
-    } else nw = dn.length ? dn[dn.length - 1] : L2[0];
+      const u4 = Ls.above(top);
+      nw = f3 != null && u4 != null && f3 >= u4 - EPS_SAME ? f3 : u4;
+    } else nw = f3 ?? Ls.first;
     return nw == null || Math.abs(nw - w2) < EPS ? res : swapWIn(M3, ex, res, nw);
   }
   function rackStepIn(M3, ex, at2) {
@@ -7840,14 +7843,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return Math.abs(ad - Math.round(ad / gd) * gd) > inUnitIn(M3, rackTolIn(M3)) ? g2 : null;
   }
   function gridSnap(M3, ex, plan, res) {
-    const w2 = res.w, top = res.top;
-    const g2 = w2 == null || ex.timed ? null : rackGridIn(M3, ex, plan, top);
-    if (w2 == null || g2 == null) return res;
-    const t4 = rackTolIn(M3);
-    const dn = gridFloor(M3, g2, w2, t4);
-    if (Math.abs(dn - w2) <= t4 || top != null && Math.abs(w2 - top) < EPS_SAME) return res;
-    const nw = top != null && w2 > top ? Math.max(dn, gridStep(M3, g2, top, 1)) : Math.max(dn, gridStep(M3, g2, 0, 1));
-    return Math.abs(nw - w2) < EPS ? res : swapWIn(M3, ex, res, nw);
+    return listSnapIn(M3, ex, plan, res);
   }
   function progStepIn(M3, ex, plan, loadKg, at2) {
     if (at2 != null) {
@@ -7879,12 +7875,13 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       return {
         kind: "rack",
         first: L2[0] ?? null,
-        below: (w2) => [...L2].reverse().find((x2) => x2 < w2 - (Math.abs(w2 - at2) < EPS_SAME ? tf : tl)) ?? null,
+        below: (w2) => [...L2].reverse().find((x2) => x2 < w2 - (at2 != null && Math.abs(w2 - at2) < EPS_SAME ? tf : tl)) ?? null,
         floor: (w2, tol = tl) => [...L2].reverse().find((x2) => x2 <= w2 + tol) ?? null,
-        above: (w2) => L2.find((x2) => x2 > w2 + (Math.abs(w2 - at2) < EPS_SAME ? tf : tl)) ?? null
+        above: (w2) => L2.find((x2) => x2 > w2 + (at2 != null && Math.abs(w2 - at2) < EPS_SAME ? tf : tl)) ?? null,
+        has: (w2) => L2.some((x2) => Math.abs(x2 - w2) < EPS_SAME)
       };
     }
-    const og = offGrid(M3, ex, plan, at2);
+    const og = rackGridIn(M3, ex, plan, at2);
     if (og) {
       const t4 = rackTolIn(M3), first = gridStep(M3, og, 0, 1), gd = gridD(M3, og);
       const near = (w2) => onStep(inUnitIn(M3, w2), TYPED_STEP) ? w2 : kgOfIn(M3, Math.round(inUnitIn(M3, w2) / gd) * gd);
@@ -7899,7 +7896,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           const c4 = gridFloor(M3, og, w2, tol);
           return c4 < first - EPS_SAME ? null : c4;
         },
-        above: (w2) => gridStep(M3, og, near(w2), 1)
+        above: (w2) => gridStep(M3, og, near(w2), 1),
+        has: (w2) => Math.abs(gridFloor(M3, og, w2, t4) - w2) <= t4
       };
     }
     const G = plateGridIn(M3, ex, plan);
@@ -7910,17 +7908,22 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         first: G.bar,
         below: (w2) => w2 <= G.bar + t4 ? null : plateAt(G, w2 - G.step / 2, -1, t4),
         floor: (w2) => plateAt(G, w2, -1, t4),
-        above: (w2) => G.bar + Math.max(0, Math.floor((w2 + t4 - G.bar) / G.step + EPS_SAME) + 1) * G.step
+        above: (w2) => G.bar + Math.max(0, Math.floor((w2 + t4 - G.bar) / G.step + EPS_SAME) + 1) * G.step,
+        has: (w2) => Math.abs(plateAt(G, w2, -1, t4) - w2) <= t4
       };
     }
-    const step = incOfIn(M3, ex, plan, at2);
-    const k2 = (w2) => (w2 - at2) / step;
+    if (at2 == null)
+      return { kind: "step", first: null, below: () => null, floor: () => null, above: () => null, has: () => false };
+    const from = at2;
+    const step = incOfIn(M3, ex, plan, from);
+    const k2 = (w2) => (w2 - from) / step;
     return {
       kind: "step",
       first: null,
-      below: (w2) => step > 0 ? at2 + (Math.ceil(k2(w2) - EPS_SAME) - 1) * step : null,
-      floor: (w2) => step > 0 ? at2 + Math.floor(k2(w2) + EPS_SAME) * step : null,
-      above: (w2) => step > 0 ? at2 + (Math.floor(k2(w2) + EPS_SAME) + 1) * step : null
+      below: (w2) => step > 0 ? from + (Math.ceil(k2(w2) - EPS_SAME) - 1) * step : null,
+      floor: (w2) => step > 0 ? from + Math.floor(k2(w2) + EPS_SAME) * step : null,
+      above: (w2) => step > 0 ? from + (Math.floor(k2(w2) + EPS_SAME) + 1) * step : null,
+      has: (w2) => step > 0 && Math.abs(k2(w2) - Math.round(k2(w2))) < EPS_SAME
     };
   }
   function lighterLoadIn(M3, ex, plan, from, to) {
