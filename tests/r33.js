@@ -66,7 +66,13 @@ async function engineRun(page, cases, gym) {
         const y = b1[i], word = sh === 'sets' ? 'fewer sets' : 'below usual';
         const okShort = x[0] === y[0] && x[1] === y[1] && Math.abs(x[2] - y[2]) < 1e-9 && same(x[4]) === same(y[4]) && same(tail(x[3])) === same(tail(y[3])) && (x[3] || '').startsWith(`Last (Sep 25, ${word}): `);
         if (!okShort) diff.push([x, y, 'short']);
-      } else if (same(x) !== same(b[i])) diff.push([x, b[i]]);
+      } else {
+        /* The load to a billionth of a kilogram, as the short branch above reads it, and every word exactly: since 2.30
+           a dumbbell's rack weight is worked out directly (55 lb is 24.94758035 kg), where r32.1 added steps and kept
+           the last digits of the sum (24.947580350000003), the same 55 lb on screen (RC-1). */
+        const y = b[i];
+        if (!(x[0] === y[0] && x[1] === y[1] && Math.abs(x[2] - y[2]) < 1e-9 && same(x.slice(3)) === same(y.slice(3)))) diff.push([x, y]);
+      }
     });
     ok(a.length === CASES.length * 3 && !diff.length && shortSeen.length > 0, `with no gym set, all ${a.length} suggestions (normal, lighter day, deload) match r32.1 word for word (but for "your first", r34.2), and the ${shortSeen.length} with a second session short of its usual match it on the first session alone, as V's one rule asks (r54)`, diff.slice(0, 3));
     // An older build keeps Your gym when it loads and saves a log (its settings spread unknown keys).
