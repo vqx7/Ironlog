@@ -3060,11 +3060,28 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (m3 === "stack" && g2.stack !== void 0 && g2.stack > 0) return gymK(g2, g2.stack);
     return null;
   }
+  function loadFloorIn(M3, ex) {
+    return platesMode(ex) === "bar" && loadMode(ex) === "total" && (isCompound(ex) || (ex.barKg ?? 0) > 0) ? exBarKgIn(M3, ex) : 0;
+  }
+  function plateGridIn(M3, ex, plan) {
+    const g2 = gymOfIn(M3);
+    if (!ex || ex.inc != null || ex.timed || !g2 || !Array.isArray(g2.plates) || !g2.plates.length) return null;
+    if (platesMode(ex) !== "bar" || loadMode(ex) !== "total") return null;
+    if (Math.abs(stepReadIn(M3, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M3)) > EPS_SAME) return null;
+    const bar2 = loadFloorIn(M3, ex);
+    if (!(bar2 > 0)) return null;
+    const mn = Math.min(...g2.plates);
+    if (!g2.plates.every((x2) => Math.abs(x2 / mn - Math.round(x2 / mn)) < EPS_SAME)) return null;
+    return { bar: bar2, step: gymK(g2, 2 * mn) };
+  }
   function capOfIn(M3, ex, plan, top) {
     const L2 = gymRackIn(M3, ex, plan);
     let r4 = L2 ? L2[L2.length - 1] : null;
     if (r4 != null && top != null && top > r4 + rackTolIn(M3, L2, top)) r4 = null;
-    return ex.maxLoad != null ? r4 != null ? Math.min(ex.maxLoad, r4) : ex.maxLoad : r4;
+    const c4 = ex.maxLoad != null ? r4 != null ? Math.min(ex.maxLoad, r4) : ex.maxLoad : r4;
+    const G = c4 != null ? plateGridIn(M3, ex, plan) : null;
+    if (G && c4 != null && c4 > G.bar) return G.bar + Math.floor((c4 - G.bar) / G.step + EPS_SAME) * G.step;
+    return c4;
   }
   function atCapOfIn(M3, ex, plan, top, cap) {
     const L2 = gymRackIn(M3, ex, plan);
@@ -6834,17 +6851,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return out;
     return Math.abs(res.w - res.top) < EPS ? res : swapWIn(M3, ex, res, res.top);
   }
-  function plateGridIn(M3, ex, plan) {
-    const g2 = gymOfIn(M3);
-    if (!ex || ex.inc != null || ex.timed || !g2 || !Array.isArray(g2.plates) || !g2.plates.length) return null;
-    if (platesMode(ex) !== "bar" || loadMode(ex) !== "total") return null;
-    if (Math.abs(stepReadIn(M3, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M3)) > EPS_SAME) return null;
-    const bar2 = loadFloorIn(M3, ex);
-    if (!(bar2 > 0)) return null;
-    const mn = Math.min(...g2.plates);
-    if (!g2.plates.every((x2) => Math.abs(x2 / mn - Math.round(x2 / mn)) < EPS_SAME)) return null;
-    return { bar: bar2, step: gymK(g2, 2 * mn) };
-  }
   function plateAt(G, w2, dir, tol) {
     const k2 = (w2 - G.bar) / G.step, e5 = Math.max(PLATE_TOL_MIN, tol / G.step);
     const n3 = dir > 0 ? Math.ceil(k2 - e5) : Math.floor(k2 + e5);
@@ -7843,9 +7849,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function easierTextIn(M3, ex, e5) {
     const sc = effScale(M3.s.settings.rirScale);
     return `Getting easier at ${loadLabelIn(M3, ex, e5.w)}${ex.bw ? "" : " " + UIn(M3)}: ${sc === "rpe" ? "RPE" : "RIR"} ${effAt(sc, e5.from)} → ${effAt(sc, e5.to)} at the same reps. Adding load today is reasonable.`;
-  }
-  function loadFloorIn(M3, ex) {
-    return platesMode(ex) === "bar" && loadMode(ex) === "total" && (isCompound(ex) || (ex.barKg ?? 0) > 0) ? exBarKgIn(M3, ex) : 0;
   }
   function loadsForIn(M3, ex, plan, at2) {
     const L2 = gymRackIn(M3, ex, plan);

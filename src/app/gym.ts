@@ -6,8 +6,8 @@
 import type { DbRack, Exercise, Gym, Plan } from './types';
 import type { ExerciseLike, Model } from './model';
 import { isNum, r3, EPS_SAME } from './util';
-import { LB, PLATES_KG, PLATES_LB, stepReadIn, unitStepIn, BAR, TYPED_STEP } from './units';
-import { ONE_DB, PLATE_SIDE_IDS, loadMode, rackKind } from './library';
+import { LB, PLATES_KG, PLATES_LB, STEP_LB, stepReadIn, unitStepIn, BAR, TYPED_STEP } from './units';
+import { ONE_DB, PLATE_SIDE_IDS, isCompound, loadMode, rackKind } from './library';
 import { UIn, gymOfIn } from './model';
 import { arr } from './records';
 
@@ -103,7 +103,7 @@ export function gymClean(g: Raw): Gym | null {
 }
 
 /** A gym number in kilograms. */
-export const gymK = (g: Pick<Gym, 'u'>, v: number): number => (g.u === 'kg' ? v : v * LB);
+const gymK = (g: Pick<Gym, 'u'>, v: number): number => (g.u === 'kg' ? v : v * LB);
 
 /* Dumbbells as typed in Settings: from, to, a step, and optionally a
    smaller step up to some weight (5 to 25 by 2.5, then 5s to 120). Returns
@@ -221,7 +221,47 @@ export function gymStepIn(M: Model, ex: ExerciseLike | null | undefined): number
   return null;
 }
 
-/* The heaviest available: the exercise's own, else the top of the rack. A
+/* The lightest load a lift can be given (r27): the empty bar on a lift on the
+   full bar (bench, squat, rows) typed as the total. Curls and skull crushers
+   are often on an EZ or fixed bar lighter than the bar weight setting, and a
+   per-side number has no bar in it, so neither has one. An exercise with no
+   bar of its own set reads as none. */
+/** The lightest load a lift can be given: the empty bar where one applies, else 0. */
+export function loadFloorIn(M: Model, ex: ExerciseLike): number {
+  return platesMode(ex) === 'bar' && loadMode(ex) === 'total' && (isCompound(ex) || (ex.barKg ?? 0) > 0)
+    ? exBarKgIn(M, ex)
+    : 0;
+}
+
+/* Your gym's plates on a bar lift (r55.1, from the audit of r55: with no 2.5
+   lb plates, bench logged at 230 lb was asked for 240, 230 or 200 and warmed
+   up at 90 and 140, none of them loadable, beside a plate line saying 2.5 lb
+   was not). A lift on the full bar typed as the total (loadFloorIn, so not a
+   curl on a lighter bar) with no step of its own, in a gym whose plates are
+   all whole multiples of the smallest, is loaded at the bar plus pairs of
+   plates: the bar and every step of a pair of the smallest plate above it.
+   Its suggestions, steps, lighter and heavier loads and warm-ups land on
+   those loads. Plates that are not all multiples of the smallest (10 and 25
+   lb without 5s) make other sums, so the lift keeps its step as before. */
+/** A bar lift's loads as Your gym's plates make them, in kg (the bar, and a pair of the smallest plate), or null. */
+export function plateGridIn(
+  M: Model,
+  ex: ExerciseLike | null | undefined,
+  plan?: Pick<Plan, 'inc'> | null
+): { bar: number; step: number } | null {
+  const g = gymOfIn(M);
+  if (!ex || ex.inc != null || ex.timed || !g || !Array.isArray(g.plates) || !g.plates.length) return null;
+  if (platesMode(ex) !== 'bar' || loadMode(ex) !== 'total') return null;
+  if (Math.abs(stepReadIn(M, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M)) > EPS_SAME) return null;
+  const bar = loadFloorIn(M, ex);
+  if (!(bar > 0)) return null;
+  const mn = Math.min(...g.plates);
+  if (!g.plates.every(x => Math.abs(x / mn - Math.round(x / mn)) < EPS_SAME)) return null;
+  return { bar, step: gymK(g, 2 * mn) };
+}
+
+/* The heaviest available: the exercise's own, else the top of the rack, on Your gym's plates the heaviest they make
+   under it. A
    lift logged above the top of the rack is on bells the rack does not list
    (another gym, a rack set wrong), so the rack is no cap for it (review). */
 export function capOfIn(
@@ -233,7 +273,13 @@ export function capOfIn(
   const L = gymRackIn(M, ex, plan);
   let r = L ? L[L.length - 1] : null;
   if (r != null && top != null && top > r + rackTolIn(M, L, top)) r = null;
-  return ex.maxLoad != null ? (r != null ? Math.min(ex.maxLoad, r) : ex.maxLoad) : r;
+  const c = ex.maxLoad != null ? (r != null ? Math.min(ex.maxLoad, r) : ex.maxLoad) : r;
+  /* With Your gym's plates, the heaviest the lift can be given is the heaviest load the plates make not past it (2.31,
+     R77-2): with 102 kg set and plates that make 100 and 105, the engine aimed at 102, the plates brought it back to
+     100, and the step read "add 0 kg, which is the heaviest available". Read here, every rule and screen sees 100. */
+  const G = c != null ? plateGridIn(M, ex, plan) : null;
+  if (G && c != null && c > G.bar) return G.bar + Math.floor((c - G.bar) / G.step + EPS_SAME) * G.step;
+  return c;
 }
 
 // At the cap: within the rack's tolerance when the cap is the rack's.

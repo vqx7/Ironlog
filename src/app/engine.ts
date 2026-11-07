@@ -8,9 +8,9 @@
 import type { DraftBlock, NextSetsAdj, Plan } from './types';
 import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from './model';
 import type { LiftBests } from './analytics';
-import { EXIn, UIn, exInjuryIn, gymOfIn } from './model';
+import { EXIn, UIn, exInjuryIn } from './model';
 import { IDXIn, bwAtIn, bwLoadIn, bwRefLoadIn, lastOf, liftReadIn, rirEstIn, statsUpToIn, triedAt } from './analytics';
-import { atCapOfIn, capOfIn, exBarKgIn, gymK, gymRackIn, gymStepIn, platesMode, rackGapIn, rackTolIn } from './gym';
+import { atCapOfIn, capOfIn, gymRackIn, gymStepIn, loadFloorIn, plateGridIn, rackGapIn, rackTolIn } from './gym';
 import {
   DEFAULT_STEP,
   EQUIP_STEP,
@@ -185,33 +185,6 @@ function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, dow
   )
     return out;
   return Math.abs(res.w - res.top) < EPS ? res : swapWIn(M, ex, res, res.top);
-}
-
-/* Your gym's plates on a bar lift (r55.1, from the audit of r55: with no 2.5
-   lb plates, bench logged at 230 lb was asked for 240, 230 or 200 and warmed
-   up at 90 and 140, none of them loadable, beside a plate line saying 2.5 lb
-   was not). A lift on the full bar typed as the total (loadFloorIn, so not a
-   curl on a lighter bar) with no step of its own, in a gym whose plates are
-   all whole multiples of the smallest, is loaded at the bar plus pairs of
-   plates: the bar and every step of a pair of the smallest plate above it.
-   Its suggestions, steps, lighter and heavier loads and warm-ups land on
-   those loads. Plates that are not all multiples of the smallest (10 and 25
-   lb without 5s) make other sums, so the lift keeps its step as before. */
-/** A bar lift's loads as Your gym's plates make them, in kg (the bar, and a pair of the smallest plate), or null. */
-function plateGridIn(
-  M: Model,
-  ex: ExerciseLike | null | undefined,
-  plan?: Pick<Plan, 'inc'> | null
-): { bar: number; step: number } | null {
-  const g = gymOfIn(M);
-  if (!ex || ex.inc != null || ex.timed || !g || !Array.isArray(g.plates) || !g.plates.length) return null;
-  if (platesMode(ex) !== 'bar' || loadMode(ex) !== 'total') return null;
-  if (Math.abs(stepReadIn(M, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M)) > EPS_SAME) return null;
-  const bar = loadFloorIn(M, ex);
-  if (!(bar > 0)) return null;
-  const mn = Math.min(...g.plates);
-  if (!g.plates.every(x => Math.abs(x / mn - Math.round(x / mn)) < EPS_SAME)) return null;
-  return { bar, step: gymK(g, 2 * mn) };
 }
 
 /* The load the plates make at or under a load (dir -1) or at or over it (dir
@@ -1905,18 +1878,6 @@ export function easierTextIn(M: Model, ex: ExerciseLike, e: Drift): string {
   // In the lifter's effort scale (r54, from the audit V asked for).
   const sc = effScale(M.s.settings.rirScale);
   return `Getting easier at ${loadLabelIn(M, ex, e.w)}${ex.bw ? '' : ' ' + UIn(M)}: ${sc === 'rpe' ? 'RPE' : 'RIR'} ${effAt(sc, e.from)} → ${effAt(sc, e.to)} at the same reps. Adding load today is reasonable.`;
-}
-
-/* The lightest load a lift can be given (r27): the empty bar on a lift on the
-   full bar (bench, squat, rows) typed as the total. Curls and skull crushers
-   are often on an EZ or fixed bar lighter than the bar weight setting, and a
-   per-side number has no bar in it, so neither has one. An exercise with no
-   bar of its own set reads as none. */
-/** The lightest load a lift can be given: the empty bar where one applies, else 0. */
-function loadFloorIn(M: Model, ex: ExerciseLike): number {
-  return platesMode(ex) === 'bar' && loadMode(ex) === 'total' && (isCompound(ex) || (ex.barKg ?? 0) > 0)
-    ? exBarKgIn(M, ex)
-    : 0;
 }
 
 /* The loads a lift can use (2.31, RC-1). Before 2.31 every rule that moved a load (lighter, heavier, the snap, the
