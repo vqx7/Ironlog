@@ -249,7 +249,13 @@ function plateSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down
      short and the next step was taken from it, so it never reached the next
      plates. The number on screen is the same, so nothing more is said. */
   if (Math.abs(dn - w) <= t) return Math.abs(dn - w) < EPS ? res : swapWIn(M, ex, res, dn);
-  const nw = !down && top != null && w > top + t ? (dn > top + t ? dn : (Ls.above(top) ?? dn)) : dn;
+  /* Up from last time: the heaviest load the plates make not past what was asked, else the next one above last time,
+     but never past the heaviest load the lift has (capOfIn; the review of 2.31: with 102 kg the most there is, 100
+     kg stepped to 105 and was called the heaviest available; 2.30 did the same at 145 lb with 150 the most). */
+  const cap = capOfIn(M, ex, plan, top),
+    up = top != null ? Ls.above(top) : null,
+    upOk = up != null && (cap == null || up <= cap + t);
+  const nw = !down && top != null && w > top + t ? (dn > top + t ? dn : upOk ? up : dn) : dn;
   return moveIn(M, ex, plan, res, nw, 'the nearest load your plates make');
 }
 
