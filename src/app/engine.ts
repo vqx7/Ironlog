@@ -171,8 +171,8 @@ interface SuggestCtx {
    lighter is loadable, last time's own load, which was lifted, is the one
    asked. */
 function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
-  const G = res && res.w != null && !ex.timed ? plateGridIn(M, ex, plan) : null;
-  const out = G ? plateSnap(M, ex, plan, res, G, down) : gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
+  const plates = res && res.w != null && !ex.timed && !!plateGridIn(M, ex, plan);
+  const out = plates ? plateSnap(M, ex, plan, res, down) : gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
   /* A lighter day, a deload or a return is never above last time's load (r64,
      R-2), but never under the bar either (CLAUDE.md, Numbers): the empty 20 kg
      bar shown in lb is the 45 lb bar, a Lighter day too (r54). */
@@ -235,26 +235,21 @@ function plateAt(G: { bar: number; step: number }, w: number, dir: 1 | -1, tol: 
    rounding onto the step in the unit on screen (unitSnap), which counted the
    step from 0 and so missed the bar's (100 kg read in lb as 220, off 45 +
    10n). The words and a reps target follow the load as there (moveIn). */
-function plateSnap(
-  M: Model,
-  ex: ExerciseLike,
-  plan: Plan,
-  res: Suggestion,
-  G: { bar: number; step: number },
-  down?: boolean
-): Suggestion {
+function plateSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
   const w = res.w,
-    top = res.top,
-    t = rackTolIn(M);
+    top = res.top;
   if (w == null) return res;
-  const dn = plateAt(G, w, -1, t);
+  // The loads Your gym's plates make, from the one list (loadsForIn, 2.31, RC-1), as every other rule reads them.
+  const Ls = loadsForIn(M, ex, plan, top ?? null),
+    t = rackTolIn(M);
+  const dn = Ls.floor(w) ?? w;
   /* Within the shown digit of a load the plates make, the suggestion is that
      load itself (PENDING 333, the review of the fix): kept as the number
      typed (52.486 kg for 52.5), the plate line under it came out a plate
      short and the next step was taken from it, so it never reached the next
      plates. The number on screen is the same, so nothing more is said. */
   if (Math.abs(dn - w) <= t) return Math.abs(dn - w) < EPS ? res : swapWIn(M, ex, res, dn);
-  const nw = !down && top != null && w > top + t ? (dn > top + t ? dn : plateAt(G, top + t, 1, t)) : dn;
+  const nw = !down && top != null && w > top + t ? (dn > top + t ? dn : (Ls.above(top) ?? dn)) : dn;
   return moveIn(M, ex, plan, res, nw, 'the nearest load your plates make');
 }
 
@@ -1671,9 +1666,9 @@ function stepOfIn(
   if (ex && ex.inc == null && Math.abs(v - unitStepIn(M)) < EPS_SAME) {
     const L = gymRackIn(M, ex, plan);
     if (L) return rackGapIn(M, L, at);
-    // On a rack read from its spacing (rackGridIn): the spacing, or from a load off its weights the way to the next one up.
+    /* On a rack read from its spacing (rackGridIn) or Your gym's plates: the spacing, or from a load off them the way to
+       the next one up, as every rule that moves a load reads it (loadsForIn, 2.31, RC-1). */
     const gr = rackGridIn(M, ex, plan, at);
-    // From a load off its weights, the way to the next one up, as every rule that moves a load reads it (loadsForIn).
     if (gr) {
       if (at != null && at > 0 && offGrid(M, ex, plan, at)) {
         const up = loadsForIn(M, ex, plan, at).above(at);
@@ -1681,9 +1676,10 @@ function stepOfIn(
       }
       return gr;
     }
-    const G = plateGridIn(M, ex, plan);
-    const t = rackTolIn(M);
-    if (G && at != null && at > 0 && Math.abs(plateAt(G, at, -1, t) - at) > t) return plateAt(G, at, 1, t) - at;
+    if (plateGridIn(M, ex, plan) && at != null && at > 0) {
+      const Ls = loadsForIn(M, ex, plan, at);
+      if (!Ls.has(at)) return (Ls.above(at) ?? at) - at;
+    }
     const gs = gymStepIn(M, ex);
     if (gs) return gs;
     const es = byEquip ? equipStepIn(M, ex) : null;
