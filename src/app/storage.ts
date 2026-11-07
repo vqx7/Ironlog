@@ -14,7 +14,7 @@ import { daysBetween, today, DAY_MS } from './util';
 import { arr, fixId, parseJson, rec } from './records';
 import type { Rec } from './records';
 import type { LogEntry } from './types';
-import { chunksOf, realCount } from './chunks';
+import { realCount } from './chunks';
 import { normalize } from './normalize';
 import { cloud, fx, setState, state, ui } from './store';
 import type { State } from './store';
@@ -144,17 +144,10 @@ export function log(area: string, err: unknown): void {
 
 /* ---------- Undo's steps ---------- */
 
-/** One step Undo can take back: the log before the action and right after it (captured at the next save), or once
-    that save is made the documents the action changed (`d`), a direct reversal while the session is open, and when. */
+/** One step Undo can take back: the log before the action and right after it (captured at the next save), a direct reversal while the session is open, and when. */
 interface UndoStep {
-  /** The whole log before the action, until the step is cut to `d` (and in a step 2.28 saved). */
-  pre: string | null;
-  /** The whole log right after the action, until the step is cut to `d`. */
+  pre: string;
   post: string | null;
-  /** Since 2.29 (2.27-F4): the sync documents the action changed, before (`p`) and after (`q`), a document the
-      action made or removed as null on that side, as JSON. A step is cut to these at the save after its action, so
-      Undo keeps what changed, not two copies of the log: 35 MB for 20 deletes on two years of training before. */
-  d: string | null;
   inv: (() => boolean) | null;
   t: number;
 }
@@ -202,12 +195,8 @@ export function undoPersist(): void {
     if (!db) return;
     try {
       const tx = db.transaction('kv', 'readwrite');
-      /* A cut step is stored without `pre`: a tab still on 2.28 takes only steps with `pre`, and it would read the
-         documents as the whole log (2.29, 2.27-F4). */
       tx.objectStore('kv').put(
-        undoStack.map(e =>
-          e.d != null ? { d: e.d, t: e.t || Date.now() } : { pre: e.pre, post: e.post, t: e.t || Date.now() }
-        ),
+        undoStack.map(e => ({ pre: e.pre, post: e.post, t: e.t || Date.now() })),
         'stack'
       );
     } catch (e) {
@@ -235,16 +224,8 @@ export async function undoRestore(): Promise<void> {
   const now = Date.now();
   for (const e of arr(list) || []) {
     const E = rec(e);
-    if (!E || !(now - (Number(E.t) || 0) < UNDO_TTL)) continue;
-    if (typeof E.d === 'string') undoStack.push({ pre: null, post: null, d: E.d, inv: null, t: Number(E.t) });
-    else if (typeof E.pre === 'string')
-      undoStack.push({
-        pre: E.pre,
-        post: typeof E.post === 'string' ? E.post : null,
-        d: null,
-        inv: null,
-        t: Number(E.t)
-      });
+    if (E && typeof E.pre === 'string' && now - (Number(E.t) || 0) < UNDO_TTL)
+      undoStack.push({ pre: E.pre, post: typeof E.post === 'string' ? E.post : null, inv: null, t: Number(E.t) });
   }
   if (undoStack.length && ui.tab === 'settings' && !ui.modal) fx.rerenderKeepScroll();
 }
@@ -271,7 +252,6 @@ export function snapshot(inv?: (() => boolean) | null): void {
     undoStack.push({
       pre: JSON.stringify(state),
       post: null,
-      d: null,
       inv: typeof inv === 'function' ? inv : null,
       t: Date.now()
     });
@@ -288,82 +268,14 @@ export function snapshot(inv?: (() => boolean) | null): void {
 /** Records the log right after the last snapshotted action, at its first save. */
 export function capturePost(): void {
   const e = undoStack[undoStack.length - 1];
-  if (e && e.post == null && e.d == null) {
+  if (e && e.post == null) {
     try {
       e.post = JSON.stringify(state);
-      /* A step below with no save of its own ends where the one above it starts (undoStep did this as each was
-         undone, before the steps were cut). */
-      for (let i = undoStack.length - 1; i > 0; i--) {
-        const lo = undoStack[i - 1],
-          hi = undoStack[i];
-        if (lo.post != null || lo.d != null || hi.pre == null) break;
-        lo.post = hi.pre;
-      }
-      for (const x of undoStack) cutStep(x);
       undoPersist();
     } catch (x) {
       log('undo', x);
     }
   }
-}
-
-/** Cuts a step whose log before and after are both known to what its action changed (2.27-F4): of each sync
-    document it changed, the fields that differ (`k`) and their values before (`p`) and after (`q`), a field the
-    action added or removed left out on that side, and a document it made or removed as null there. Each side is
-    read as normalize reads it, which is how undoStep reads a whole step. A step with only one side is left whole. */
-function cutStep(e: UndoStep): void {
-  if (e.d != null || e.pre == null || e.post == null) return;
-  const P = chunksOf(normalize(parseJson(e.pre))),
-    Q = chunksOf(normalize(parseJson(e.post)));
-  const p: Record<string, Rec | null> = {},
-    q: Record<string, Rec | null> = {},
-    k: Record<string, string[]> = {},
-    l: Record<string, string[]> = {};
-  for (const id of new Set([...Object.keys(P), ...Object.keys(Q)])) {
-    const a = P[id],
-      b = Q[id];
-    if (JSON.stringify(a ?? null) === JSON.stringify(b ?? null)) continue;
-    const keys = [...new Set([...Object.keys(a || {}), ...Object.keys(b || {})])].filter(
-      f => JSON.stringify(a ? a[f] : undefined) !== JSON.stringify(b ? b[f] : undefined)
-    );
-    /* A list of records with ids (sessions, Recently deleted, weigh-ins, exercises) is kept as the order of its
-       ids and the records that differ on the two sides; a record alike on both is read as it is now at Undo. */
-    const listed = (v: unknown): Rec[] | null => {
-      const L = arr(v);
-      if (!L) return null;
-      const out: Rec[] = [];
-      for (const r of L) {
-        const R = rec(r);
-        if (!R || typeof R.id !== 'string') return null;
-        out.push(R);
-      }
-      return out;
-    };
-    const pick = (x: Rec | undefined, y: Rec | undefined): Rec | null => {
-      if (!x) return null;
-      const o: Rec = {};
-      for (const f of keys) {
-        if (!(f in x)) continue;
-        const a = listed(x[f]),
-          b = y ? listed(y[f]) : null;
-        if (a && b) {
-          const other = new Map(b.map(r => [r.id, JSON.stringify(r)]));
-          const recs: Rec = {};
-          for (const r of a) if (other.get(r.id) !== JSON.stringify(r)) recs[String(r.id)] = r;
-          o[f] = { ids: a.map(r => r.id), recs };
-        } else o[f] = x[f];
-      }
-      return o;
-    };
-    p[id] = pick(a, b);
-    q[id] = pick(b, a);
-    k[id] = keys;
-    // Which of those fields were cut to ids (both sides lists of records), so Undo rebuilds them.
-    l[id] = keys.filter(f => a && b && listed(a[f]) && listed(b[f]));
-  }
-  e.d = JSON.stringify({ p, q, k, l });
-  e.pre = null;
-  e.post = null;
 }
 
 /* ---------- reading the save ---------- */

@@ -48,9 +48,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       const seen = [];
       out.done = L.act(() => { seen.push(L.undoStack.length); L.state.settings.userName = 'Actor'; }, { check: () => { seen.push('check'); return true; }, undo: true });
       out.order = seen;
-      // The log before the change, whole or, once the save has cut the step to what changed (2.29, 2.27-F4), its settings as they were.
-      const st = L.undoStack[L.undoStack.length - 1]; const was = st.pre ? JSON.parse(st.pre).settings : JSON.parse(st.d).p.core.settings;
-      out.undoKept = L.undoStack.length === u0 + 1 && was.userName !== 'Actor' && (st.pre != null || JSON.parse(st.d).q.core.settings.userName === 'Actor');
+      out.undoKept = L.undoStack.length === u0 + 1 && JSON.parse(L.undoStack[L.undoStack.length - 1].pre).settings.userName !== 'Actor';
       out.dropped = L.IDX() !== idx0;
       out.saved = JSON.parse(localStorage.getItem(KEY)).settings.userName === 'Actor';
       await new Promise(r => setTimeout(r, 1000));
