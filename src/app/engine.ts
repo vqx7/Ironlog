@@ -10,18 +10,7 @@ import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from '
 import type { LiftBests } from './analytics';
 import { EXIn, UIn, exInjuryIn, gymOfIn } from './model';
 import { IDXIn, bwAtIn, bwLoadIn, bwRefLoadIn, lastOf, liftReadIn, rirEstIn, statsUpToIn, triedAt } from './analytics';
-import {
-  BELL_TOL,
-  atCapOfIn,
-  capOfIn,
-  exBarKgIn,
-  gymK,
-  gymRackIn,
-  gymStepIn,
-  platesMode,
-  rackGapIn,
-  rackTolIn
-} from './gym';
+import { atCapOfIn, capOfIn, exBarKgIn, gymK, gymRackIn, gymStepIn, platesMode, rackGapIn, rackTolIn } from './gym';
 import {
   DEFAULT_STEP,
   EQUIP_STEP,
@@ -1908,7 +1897,7 @@ function gridSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Sugg
    to step from (at), as the ! say. */
 export function progStepIn(M: Model, ex: ExerciseLike, plan: Plan, loadKg: number, at?: number | null): number {
   /* On a rack, from Your gym or read from its spacing when the load is off its weights: the heaviest weight within
-     the jump, at least the next one up (a load near a weight is that weight, BELL_TOL, so the next one up is a whole
+     the jump, at least the next one up (a load near a weight is that weight, so the next one up is a whole
      step: NEW-6's rule, V 2026-10-27). */
   if (at != null) {
     const Ls = loadsForIn(M, ex, plan, at);
@@ -1985,14 +1974,15 @@ function loadsForIn(M: Model, ex: ExerciseLike, plan: Pick<Plan, 'inc'> | null |
     const t = rackTolIn(M),
       first = gridStep(M, og, 0, 1),
       gd = gridD(M, og);
-    /* A load nearer than BELL_TOL of the spacing to one of the rack's weights is that weight, as on Your gym's rack
-       (rackTolIn, r34.2): from 22.5 kg dumbbells read in lb, 49.6, the next weight up is 55, not 50, a sliver of a
-       step, "add 0.4 lb" (NEW-70); and down from it, 45. Before 2.31 this rack took half the spacing, and only on the
-       way up (2.29), while Your gym's rack took 45% both ways: one rule written twice with two answers (RC-1). */
-    const near = (w: number): number => {
-      const r = kgOfIn(M, Math.round(inUnitIn(M, w) / gd) * gd);
-      return Math.abs(inUnitIn(M, w - r)) <= Math.max(inUnitIn(M, t), BELL_TOL * gd) ? r : w;
-    };
+    /* A load converted from the other unit is the rack's nearest weight (2.30, NEW-74, RC-1): 22.5 kg dumbbells
+       shown in lb are 49.6, which no lb rack has; read as they are, the next weight up was 50, a sliver of a step,
+       "add 0.4 lb" (NEW-70, fixed in 2.29 for the step at the top of the range alone) and "going heavier" offered the
+       same 50. As the 50 they stand for, the next weight up is 55 and the next down 45, in every rule that moves a
+       load. A load typed in the unit on screen is a weight the lifter has, on this rack or not (12 lb dumbbells read
+       on a 5 lb spacing step to 15 and down to 10: V's call of 2026-10-18, r54), so it stays as it is. Your gym's
+       rack, a list of the weights there, reads a load near one as that one instead (BELL_TOL, rackTolIn). */
+    const near = (w: number): number =>
+      onStep(inUnitIn(M, w), TYPED_STEP) ? w : kgOfIn(M, Math.round(inUnitIn(M, w) / gd) * gd);
     return {
       kind: 'grid',
       first,
