@@ -18,13 +18,9 @@
 //         rack in lb too;
 //      c. guards: in one unit throughout every answer is as before, and a rounding that does cost reps (12.5 kg
 //         dumbbells read as 30 lb, 9% heavier, r54) still starts at the bottom of the range.
-//   3  387-C6: a set left without an effort rating is read at the lift's usual rating as of its own date, so rating
-//      later sessions never changes an old workout's numbers (2.28: Sep 15's 102.5 x 8 x 3, blank, had a best
-//      estimate of 136.7 kg, and 127.2 kg once three October sessions were rated 0; the CSV export with it), and
-//      today's blank set still reads the usual up to today (a guard).
-//   4  NEW-71: with Corrected RIR on, a rated set is corrected by the RIR checks up to its own date, so a check logged
-//      later never changes an old workout's estimate (2.28: Sep 15's 100 x 8 at 2 in reserve, 133.3 kg, then 136.7 once
-//      two October checks were in), while Settings still shows the correction from every check to today (a guard).
+//   3, 4 (387-C6, NEW-71: an old workout's effort read as of its date) were taken out of 2.29 by V on 2026-11-06,
+//      with their code, after reviews found four rounds of problems in them; their reproductions stay with the
+//      tracker rows (DEFERRED). Sections 8 to 10 hold the screens agreeing on 2.28's rules.
 //   5  2.27-F4: Undo keeps what an action changed, not two whole copies of the log. On two years of training (416
 //      sessions, a 728 kB log), deleting a session keeps a step a small share of the log, and 20 deletes stay far
 //      under two copies each (2.28: 35 MB for 20 steps, all of it rewritten to IndexedDB on each); Undo still puts each
@@ -41,8 +37,7 @@
 //   8  R74-2 (the review): a workout dated in the past says the same PR on the session screen as in its recap and the
 //      PR list (2.29 before this fix: "New best estimate ... 136.5 kg", then "No PRs this time").
 //   9  R74-3 (the review): with Corrected RIR on, today's usual reads every rating with today's correction, as 2.28
-//      did (2.29 before this fix: usual 1, a blank set 1, a set rated 1 read at 2; 2.28: 2, 2, 2); a past date's
-//      usual reads the correction known on that date, so a later check still changes no old workout (2.29's own rule, kept).
+//      did (2.29 before this fix: usual 1, a blank set 1, a set rated 1 read at 2; 2.28: 2, 2, 2).
 //   10 R75-1 (the second independent review): a workout dated in the past with ratings or an RIR check of its own
 //      says one PR on the session screen, its row, the recap and the PR list (r75 before this fix: a best announced
 //      then not counted, or counted and never announced), since a set is read against ratings and checks from
@@ -284,52 +279,6 @@ async function finish(D, date) {
     await D.browser.close();
   }
 
-  if (run(3)) {
-    const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00' });
-    const fs = require('fs');
-    const setUp = withLater => D.page.evaluate(withLater => {
-      const L = window.__ironlog, S = L.state; S.settings.onboarded = true; S.settings.unit = 'kg';
-      const ses = (i, d, w, reps, rir) => ({ id: 'q' + i, date: d, dayIdx: 0, dayName: 'A', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: reps.map(r => ({ w, r, rir, warm: false, drop: false })) }] });
-      const base = [ses(1, '2026-09-01', 100, [8, 8, 8], 2), ses(2, '2026-09-08', 100, [8, 8, 8], 2), ses(3, '2026-09-15', 102.5, [8, 8, 8], null)];
-      const later = [ses(4, '2026-10-06', 102.5, [8, 8, 8], 0), ses(5, '2026-10-13', 102.5, [8, 8, 8], 0), ses(6, '2026-10-20', 102.5, [8, 8, 8], 0)];
-      S.sessions = withLater ? [...base, ...later] : base;
-      L.state = L.normalize(S); L.invalidate(); L.saveNow();
-      const x = L.IDX().byEx.bench.find(e => e.sid === 'q3');
-      return { best: Math.round(x.best * 10) / 10, prs: L.IDX().prs.filter(p => p.date === '2026-09-15').map(p => p.type).join(','), today: L.rirEst({ w: 102.5, r: 8, rir: null }, L.EX('bench')) };
-    }, withLater);
-    const csvRows = async () => {
-      const [dl] = await Promise.all([D.page.waitForEvent('download'), D.page.evaluate(() => window.__ironlog.exportCSV())]);
-      return fs.readFileSync(await dl.path(), 'utf8').split(/\r?\n/).filter(l => l.startsWith('2026-09-15')).join('|');
-    };
-    const before = await setUp(false); before.csv = await csvRows();
-    const after = await setUp(true); after.csv = await csvRows();
-    const r = { before, after };
-    ok(r.before.best === 136.7 && r.after.best === r.before.best && r.after.prs === r.before.prs, '3. 387-C6: Sep 15, left unrated, keeps its best estimate and PRs once later sessions are rated (2.28: 136.7 kg, then 127.2)', r);
-    ok(r.before.csv && r.after.csv === r.before.csv, '3. 387-C6: the CSV export\'s Sep 15 rows are the same before and after', { before: r.before.csv, after: r.after.csv });
-    ok(r.before.today === 2 && r.after.today === 0, '3. guard: a blank set today reads the usual up to today, 2 before October and 0 after', [r.before.today, r.after.today]);
-    ok(!D.errors.length, '3. no page errors', D.errors);
-    await D.browser.close();
-  }
-
-  if (run(4)) {
-    const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00' });
-    const r = await D.page.evaluate(() => {
-      const L = window.__ironlog, S = L.state; S.settings.onboarded = true; S.settings.unit = 'kg'; S.settings.rirMode = 'cal';
-      const set = (w, r, rir, cal) => ({ w, r, rir, warm: false, drop: false, ...(cal ? { cal } : {}) });
-      const ses = (i, d, sets) => ({ id: 'k' + i, date: d, dayIdx: 0, dayName: 'A', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets }] });
-      const base = [ses(1, '2026-09-15', [set(100, 8, 2), set(100, 8, 2), set(100, 8, 2)])];
-      // Two RIR checks in October: called 2 in reserve at 8, then 12 done, 2 more than called.
-      const later = [ses(2, '2026-10-06', [set(100, 8, 2), set(100, 12, null, { at: 8, pred: 2 })]), ses(3, '2026-10-13', [set(100, 8, 2), set(100, 12, null, { at: 8, pred: 2 })])];
-      const read = () => { L.state = L.normalize(S); L.invalidate(); const x = L.IDX().byEx.bench.find(e => e.sid === 'k1'); return { best: Math.round(x.best * 10) / 10, bias: L.calStats().bias, n: L.calStats().recent }; };
-      S.sessions = [...base]; const a = read(); S.sessions = [...base, ...later]; const b = read();
-      return { a, b };
-    });
-    ok(r.a.best === 133.3 && r.b.best === r.a.best, '4. NEW-71: Sep 15 keeps its estimate once later RIR checks are in (2.28: 133.3 kg, then 136.7)', r);
-    ok(r.a.n === 0 && r.b.n === 2 && r.b.bias > 0, '4. guard: Settings\' correction reads every check to today', r);
-    ok(!D.errors.length, '4. no page errors', D.errors);
-    await D.browser.close();
-  }
-
   if (run(5)) {
     const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00' });
     const ev = (f, a) => D.page.evaluate(f, a);
@@ -491,11 +440,9 @@ async function finish(D, date) {
         ses(4, '2026-10-06', [set(95, 8, 1), set(95, 12, null, { at: 8, pred: 2 })]), ses(5, '2026-10-13', [set(95, 8, 1), set(95, 12, null, { at: 8, pred: 2 })])];
       L.state = L.normalize(S); L.invalidate();
       const ex = L.EX('bench');
-      return { usual: L.rirUsual('bench'), blank: L.rirEst({ w: 105, r: 8, rir: null, done: true }, ex), rated: L.rirEst({ w: 105, r: 8, rir: 1, done: true }, ex),
-        sepUsual: L.rirUsual('bench', '2026-09-20') };
+      return { usual: L.rirUsual('bench'), blank: L.rirEst({ w: 105, r: 8, rir: null, done: true }, ex), rated: L.rirEst({ w: 105, r: 8, rir: 1, done: true }, ex) };
     });
     ok(r.usual === 2 && r.blank === 2 && r.rated === 2, '9. R74-3: Corrected RIR on, today: the usual, a blank set and a set rated at the usual all read 2, as on 2.28 (2.29 before: 1, 1, 2)', r);
-    ok(r.sepUsual === 1, '9. NEW-71 kept (2.29\'s own rule, so it fails on 2.28): Sep 20\'s usual reads the correction known then (none), so October\'s checks change no September workout', r);
     ok(!D.errors.length, '9. no page errors', D.errors);
     await D.browser.close();
   }

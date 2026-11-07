@@ -7,7 +7,6 @@
 
 import type { Bodyweight, Rir, Session } from './types';
 import type {
-  CalPt,
   CalStats,
   CalSummary,
   DateIndex,
@@ -111,25 +110,19 @@ export function bwAtIn(M: Model, date: string): number | null {
    calibration sets measure the error close to failure, and a compound lift
    uses compound calibration sets when there are two or more (isolation
    likewise), else all of them. */
-/* A set is read as of its day (387-C6, NEW-71; R75-1, the second independent review of 2.29): against the checks
-   from before that day, never its own workout's, so a workout open and the same workout saved read alike, today's or
-   a past one's. With no date, today's. */
-export function rirEffIn(M: Model, s: Effort, ex?: ExerciseLike | null, date?: string): number | null {
+export function rirEffIn(M: Model, s: Effort, ex?: ExerciseLike | null): number | null {
   const m = M.s.settings.rirMode;
   if (m === 'off') return null;
   if (s.rir == null || s.rir === '') return null;
   const v = +s.rir;
   if (!isFinite(v)) return null;
-  if (m === 'cal' && !s.cal) return calReadIn(M, v, ex ? (isCompound(ex) ? 'c' : 'i') : null, date || M.today());
+  if (m === 'cal' && !s.cal && v <= E1_MAX_RIR) {
+    const c = calStatsIn(M);
+    const k = ex ? (isCompound(ex) ? 'c' : 'i') : null;
+    const src = k && c.cls[k].recent >= CAL_MIN ? c.cls[k] : c;
+    if (src.recent >= CAL_MIN && src.bias) return Math.min(EFFORT_TOP, Math.max(0, v + src.bias));
+  }
   return v;
-}
-
-/** A rating corrected by the checks from before a day (rirEffIn), on a set that is no check itself. */
-function calReadIn(M: Model, v: number, k: 'c' | 'i' | null, day: string): number {
-  if (v > E1_MAX_RIR) return v;
-  const c = calStatsIn(M, day);
-  const src = k && c.cls[k].recent >= CAL_MIN ? c.cls[k] : c;
-  return src.recent >= CAL_MIN && src.bias ? Math.min(EFFORT_TOP, Math.max(0, v + src.bias)) : v;
 }
 
 /* Calibration sets across your real sessions. err is reps actually left at the
@@ -163,40 +156,28 @@ function calSummary(list: readonly { err: number }[]): CalSummary {
   };
 }
 
-/** Every RIR check in the log, and those of compound and isolation lifts apart, built once per change: the 12 weeks to
-    today with no date, or to a date given (NEW-71, 2.29: a past set is corrected by the checks up to its own date,
-    so a check logged later never changes an old workout's estimate; 2.28 read Sep 15's 100 x 8 at 2 in reserve as
-    133.3 kg, then 136.7 once two October checks were in). */
-export function calStatsIn(M: Model, date?: string): CalStats {
-  if (!M.c._cal) {
-    const pts: CalPt[] = [];
-    for (const s of M.s.sessions) {
-      if (s.demo) continue;
-      for (const b of s.ex) {
-        const c = isCompound(EXIn(M, b.exId)) ? 'c' : 'i';
-        for (const x of b.sets)
-          if (x.cal && +x.r >= x.cal.at) pts.push({ date: s.date, err: +x.r - x.cal.at - x.cal.pred, c });
-      }
+/** Every RIR check in the log, and those of compound and isolation lifts apart, built once per change. */
+export function calStatsIn(M: Model): CalStats {
+  if (M.c._cal) return M.c._cal;
+  const pts: { date: string; err: number; c: 'c' | 'i' }[] = [];
+  for (const s of M.s.sessions) {
+    if (s.demo) continue;
+    for (const b of s.ex) {
+      const c = isCompound(EXIn(M, b.exId)) ? 'c' : 'i';
+      for (const x of b.sets)
+        if (x.cal && +x.r >= x.cal.at) pts.push({ date: s.date, err: +x.r - x.cal.at - x.cal.pred, c });
     }
-    pts.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-    M.c._cal = { now: calOf(pts, addDays(M.today(), -WEEK_DAYS * CAL_WEEKS), null), pts, at: {} };
   }
-  const C = M.c._cal;
-  if (date == null) return C.now;
-  return C.at[date] || (C.at[date] = calOf(C.pts, addDays(date, -WEEK_DAYS * CAL_WEEKS), date));
-}
-
-/** The calibration from the checks dated from `cut` to `to` (no end when null), over all of them for n and lastDate as before 2.29. */
-function calOf(pts: readonly CalPt[], cut: string, to: string | null): CalStats {
-  // Dated: the checks from before that day (rirEffIn). Undated, every check, for Settings.
-  const upTo = to == null ? pts : pts.filter(p => p.date < to);
-  const rec = upTo.filter(p => p.date >= cut);
-  return {
+  pts.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const cut = addDays(M.today(), -WEEK_DAYS * CAL_WEEKS);
+  const rec = pts.filter(p => p.date >= cut);
+  M.c._cal = {
     ...calSummary(rec),
-    n: upTo.length,
-    lastDate: upTo.length ? upTo[upTo.length - 1].date : null,
+    n: pts.length,
+    lastDate: pts.length ? pts[pts.length - 1].date : null,
     cls: { c: calSummary(rec.filter(p => p.c === 'c')), i: calSummary(rec.filter(p => p.c === 'i')) }
   };
+  return M.c._cal;
 }
 
 /** A lift's usual RIR is read once it has RIR_USUAL_MIN rated working sets in the last CAL_WEEKS weeks (r20, a convention). */
@@ -213,66 +194,45 @@ export const RIR_USUAL_MIN = 3;
    for estimates, which errs low and never inflates a PR. Recovery and the
    "that load was light" step read only the RIR you entered, since both act on
    what you said about effort. RIR off: no ratings are read at all.
-   Read as of a date (387-C6, 2.29): a past session's blank sets take the usual of the 12 weeks before its own day
-   (never that day's sets, R75-1, so a workout open and saved read alike), each rating with that day's correction,
-   so rating later sessions never changes an old workout's estimate or PRs (2.28: Sep 15's 102.5 x 8, blank, read
-   136.7 kg, then 127.2 once three October sessions were rated 0). Dated before the lift's RIR_USUAL_MIN-th rated
-   set, when it had no usual yet, its first usual (the median of those first sets), which never moves once they
-   exist, so an early blank between rated sets reads as they do instead of as 0 (r20, tests/unit-analytics.js: no
-   dips). With no date, today's, so today's workout and its session in the log read one way. Object.create(null) is
-   typed any, so the casts name the maps it makes; the median of three or more numbers is a number, as the ! says. */
-export function rirUsualIn(M: Model, exId: string, date?: string): number | null {
+   Object.create(null) is typed any, so the two casts name the maps it makes;
+   the median of three or more numbers is a number, as the ! says. */
+export function rirUsualIn(M: Model, exId: string): number | null {
   if (M.s.settings.rirMode === 'off') return null;
   if (!M.c._rirUse) {
-    // Each rated working set as typed, with its date and its lift's kind, read with a day's correction when asked.
-    const rated = Object.create(null) as Record<string, [string, number, 'c' | 'i'][]>;
+    M.c._rirUse = Object.create(null) as Record<string, number>;
+    const cut = addDays(M.today(), -WEEK_DAYS * CAL_WEEKS);
+    const by = Object.create(null) as Record<string, number[]>;
     for (const ss of M.s.sessions) {
+      if (ss.date < cut) continue;
       for (const b of ss.ex) {
         const ex = EXIn(M, b.exId);
         if (ex.timed) continue;
-        const k = isCompound(ex) ? 'c' : 'i';
         for (const x of b.sets) {
-          if (!isWork(x) || x.drop || x.cal || x.rir == null || String(x.rir) === '') continue;
-          const v = +x.rir;
-          if (isFinite(v)) (rated[b.exId] || (rated[b.exId] = [])).push([ss.date, v, k]);
+          if (!isWork(x) || x.drop || x.cal) continue;
+          const q = rirEffIn(M, x, ex);
+          if (q != null) (by[b.exId] || (by[b.exId] = [])).push(q);
         }
       }
     }
-    for (const k in rated) rated[k].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-    M.c._rirUse = { rated, at: Object.create(null) as Record<string, number | null> };
+    for (const k in by) if (by[k].length >= RIR_USUAL_MIN) M.c._rirUse[k] = median(by[k])!;
   }
-  const C = M.c._rirUse;
-  const D = date || M.today();
-  const key = exId + ' ' + D;
-  const had = C.at[key];
-  if (had !== undefined) return had;
-  const cut = addDays(D, -WEEK_DAYS * CAL_WEEKS);
-  // Never a set of that day (R75-1): an open workout is not in the log yet, and once saved it must read the same.
-  const all = (C.rated[exId] || []).filter(([d]) => d !== D);
-  const cal = M.s.settings.rirMode === 'cal';
-  const read = (e: [string, number, 'c' | 'i']): number => (cal ? calReadIn(M, e[1], e[2], D) : e[1]);
-  const qs = all.filter(([d]) => d >= cut && d < D).map(read);
-  const first =
-    all.length >= RIR_USUAL_MIN && D < all[RIR_USUAL_MIN - 1][0] ? all.slice(0, RIR_USUAL_MIN).map(read) : null;
-  const pick = first || (qs.length >= RIR_USUAL_MIN ? qs : null);
-  const v = pick ? median(pick)! : null;
-  C.at[key] = v;
-  return v;
+  const v = M.c._rirUse[exId];
+  return v == null ? null : v;
 }
 
 /** A set's RIR as read, else the lift's usual RIR for a blank, else null. */
-export const rirEstIn = (M: Model, s: Effort, ex?: ExerciseLike | null, date?: string): number | null => {
-  const q = rirEffIn(M, s, ex, date);
-  return q != null ? q : ex ? rirUsualIn(M, ex.id, date) : null;
+export const rirEstIn = (M: Model, s: Effort, ex?: ExerciseLike | null): number | null => {
+  const q = rirEffIn(M, s, ex);
+  return q != null ? q : ex ? rirUsualIn(M, ex.id) : null;
 };
 
 /* Hard set: RIR HARD_RIR or less (Robinson 2024, Refalo 2023: growth rises as sets
    end closer to failure; the exact cut-off is a convention). A blank RIR is
    read as above and shown as assumed. A drop set is half a set: one heavy
    set with three drops is not four sets of work. */
-export const isHardIn = (M: Model, s: CountedSet, ex?: ExerciseLike | null, date?: string): boolean => {
+export const isHardIn = (M: Model, s: CountedSet, ex?: ExerciseLike | null): boolean => {
   if (!isWork(s)) return false;
-  const q = rirEstIn(M, s, ex, date);
+  const q = rirEstIn(M, s, ex);
   return q == null || q <= HARD_RIR;
 };
 
@@ -287,10 +247,10 @@ export const isHardIn = (M: Model, s: CountedSet, ex?: ExerciseLike | null, date
    per-session flag keep counting hard sets only. With RIR off every working
    set is hard already, so the setting has nothing to do. */
 /** A set's weekly credit: a hard set's (a drop set half), or with RIR 4 to 5 as half a set on, half of it. */
-export function hardCreditIn(M: Model, s: CountedSet, ex?: ExerciseLike | null, date?: string): number {
-  if (isHardIn(M, s, ex, date)) return setCredit(s);
+export function hardCreditIn(M: Model, s: CountedSet, ex?: ExerciseLike | null): number {
+  if (isHardIn(M, s, ex)) return setCredit(s);
   if (!rirHalfOnIn(M) || !isWork(s)) return 0;
-  const q = rirEstIn(M, s, ex, date);
+  const q = rirEstIn(M, s, ex);
   return q != null && q > HARD_RIR ? setCredit(s) * HALF_SET : 0;
 }
 
@@ -488,10 +448,10 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
           rirTotal++;
           if (logged) rirLogged++;
         }
-        const hard = isHardIn(M, s, ex, ss.date);
-        const cr = hard ? setCredit(s) : hardCreditIn(M, s, ex, ss.date);
+        const hard = isHardIn(M, s, ex);
+        const cr = hard ? setCredit(s) : hardCreditIn(M, s, ex);
         if (!cr) continue;
-        const q = rirEffIn(M, s, ex, ss.date);
+        const q = rirEffIn(M, s, ex);
         weekHard[wk] = (weekHard[wk] || 0) + cr;
         for (const [m, f] of mus) {
           ws[m] = (ws[m] || 0) + f * cr;
@@ -530,8 +490,8 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
           pl,
           r: +s.r,
           w: +s.w || 0,
-          rir: rirEffIn(M, s, ex, ss.date),
-          rq: rirEstIn(M, s, ex, ss.date)
+          rir: rirEffIn(M, s, ex),
+          rq: rirEstIn(M, s, ex)
         };
       };
       const pts = ptsSrc.map(point);

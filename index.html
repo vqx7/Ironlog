@@ -5742,20 +5742,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return best || earliest ? (best || earliest).kg : null;
   }
-  function rirEffIn(M3, s3, ex, date) {
+  function rirEffIn(M3, s3, ex) {
     const m3 = M3.s.settings.rirMode;
     if (m3 === "off") return null;
     if (s3.rir == null || s3.rir === "") return null;
     const v3 = +s3.rir;
     if (!isFinite(v3)) return null;
-    if (m3 === "cal" && !s3.cal) return calReadIn(M3, v3, ex ? isCompound(ex) ? "c" : "i" : null, date || M3.today());
+    if (m3 === "cal" && !s3.cal && v3 <= E1_MAX_RIR) {
+      const c4 = calStatsIn(M3);
+      const k2 = ex ? isCompound(ex) ? "c" : "i" : null;
+      const src = k2 && c4.cls[k2].recent >= CAL_MIN ? c4.cls[k2] : c4;
+      if (src.recent >= CAL_MIN && src.bias) return Math.min(EFFORT_TOP, Math.max(0, v3 + src.bias));
+    }
     return v3;
-  }
-  function calReadIn(M3, v3, k2, day) {
-    if (v3 > E1_MAX_RIR) return v3;
-    const c4 = calStatsIn(M3, day);
-    const src = k2 && c4.cls[k2].recent >= CAL_MIN ? c4.cls[k2] : c4;
-    return src.recent >= CAL_MIN && src.bias ? Math.min(EFFORT_TOP, Math.max(0, v3 + src.bias)) : v3;
   }
   var CAL_WEEKS = 12, CAL_N = 8, CAL_SHRINK = 3, CAL_CAP = 2, CAL_MIN = 2;
   function calSummary(list) {
@@ -5770,83 +5769,65 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       mae: n3 ? last.reduce((a2, p3) => a2 + Math.abs(p3.err), 0) / n3 : null
     };
   }
-  function calStatsIn(M3, date) {
-    if (!M3.c._cal) {
-      const pts = [];
-      for (const s3 of M3.s.sessions) {
-        if (s3.demo) continue;
-        for (const b2 of s3.ex) {
-          const c4 = isCompound(EXIn(M3, b2.exId)) ? "c" : "i";
-          for (const x2 of b2.sets)
-            if (x2.cal && +x2.r >= x2.cal.at) pts.push({ date: s3.date, err: +x2.r - x2.cal.at - x2.cal.pred, c: c4 });
-        }
+  function calStatsIn(M3) {
+    if (M3.c._cal) return M3.c._cal;
+    const pts = [];
+    for (const s3 of M3.s.sessions) {
+      if (s3.demo) continue;
+      for (const b2 of s3.ex) {
+        const c4 = isCompound(EXIn(M3, b2.exId)) ? "c" : "i";
+        for (const x2 of b2.sets)
+          if (x2.cal && +x2.r >= x2.cal.at) pts.push({ date: s3.date, err: +x2.r - x2.cal.at - x2.cal.pred, c: c4 });
       }
-      pts.sort((a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0);
-      M3.c._cal = { now: calOf(pts, addDays(M3.today(), -WEEK_DAYS * CAL_WEEKS), null), pts, at: {} };
     }
-    const C2 = M3.c._cal;
-    if (date == null) return C2.now;
-    return C2.at[date] || (C2.at[date] = calOf(C2.pts, addDays(date, -WEEK_DAYS * CAL_WEEKS), date));
-  }
-  function calOf(pts, cut, to) {
-    const upTo = to == null ? pts : pts.filter((p3) => p3.date < to);
-    const rec2 = upTo.filter((p3) => p3.date >= cut);
-    return {
+    pts.sort((a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0);
+    const cut = addDays(M3.today(), -WEEK_DAYS * CAL_WEEKS);
+    const rec2 = pts.filter((p3) => p3.date >= cut);
+    M3.c._cal = {
       ...calSummary(rec2),
-      n: upTo.length,
-      lastDate: upTo.length ? upTo[upTo.length - 1].date : null,
+      n: pts.length,
+      lastDate: pts.length ? pts[pts.length - 1].date : null,
       cls: { c: calSummary(rec2.filter((p3) => p3.c === "c")), i: calSummary(rec2.filter((p3) => p3.c === "i")) }
     };
+    return M3.c._cal;
   }
   var RIR_USUAL_MIN = 3;
-  function rirUsualIn(M3, exId, date) {
+  function rirUsualIn(M3, exId) {
     if (M3.s.settings.rirMode === "off") return null;
     if (!M3.c._rirUse) {
-      const rated = /* @__PURE__ */ Object.create(null);
+      M3.c._rirUse = /* @__PURE__ */ Object.create(null);
+      const cut = addDays(M3.today(), -WEEK_DAYS * CAL_WEEKS);
+      const by = /* @__PURE__ */ Object.create(null);
       for (const ss of M3.s.sessions) {
+        if (ss.date < cut) continue;
         for (const b2 of ss.ex) {
           const ex = EXIn(M3, b2.exId);
           if (ex.timed) continue;
-          const k2 = isCompound(ex) ? "c" : "i";
           for (const x2 of b2.sets) {
-            if (!isWork(x2) || x2.drop || x2.cal || x2.rir == null || String(x2.rir) === "") continue;
-            const v4 = +x2.rir;
-            if (isFinite(v4)) (rated[b2.exId] || (rated[b2.exId] = [])).push([ss.date, v4, k2]);
+            if (!isWork(x2) || x2.drop || x2.cal) continue;
+            const q = rirEffIn(M3, x2, ex);
+            if (q != null) (by[b2.exId] || (by[b2.exId] = [])).push(q);
           }
         }
       }
-      for (const k2 in rated) rated[k2].sort((a2, b2) => a2[0] < b2[0] ? -1 : a2[0] > b2[0] ? 1 : 0);
-      M3.c._rirUse = { rated, at: /* @__PURE__ */ Object.create(null) };
+      for (const k2 in by) if (by[k2].length >= RIR_USUAL_MIN) M3.c._rirUse[k2] = median(by[k2]);
     }
-    const C2 = M3.c._rirUse;
-    const D2 = date || M3.today();
-    const key = exId + " " + D2;
-    const had = C2.at[key];
-    if (had !== void 0) return had;
-    const cut = addDays(D2, -WEEK_DAYS * CAL_WEEKS);
-    const all = (C2.rated[exId] || []).filter(([d3]) => d3 !== D2);
-    const cal = M3.s.settings.rirMode === "cal";
-    const read = (e5) => cal ? calReadIn(M3, e5[1], e5[2], D2) : e5[1];
-    const qs = all.filter(([d3]) => d3 >= cut && d3 < D2).map(read);
-    const first = all.length >= RIR_USUAL_MIN && D2 < all[RIR_USUAL_MIN - 1][0] ? all.slice(0, RIR_USUAL_MIN).map(read) : null;
-    const pick2 = first || (qs.length >= RIR_USUAL_MIN ? qs : null);
-    const v3 = pick2 ? median(pick2) : null;
-    C2.at[key] = v3;
-    return v3;
+    const v3 = M3.c._rirUse[exId];
+    return v3 == null ? null : v3;
   }
-  var rirEstIn = (M3, s3, ex, date) => {
-    const q = rirEffIn(M3, s3, ex, date);
-    return q != null ? q : ex ? rirUsualIn(M3, ex.id, date) : null;
+  var rirEstIn = (M3, s3, ex) => {
+    const q = rirEffIn(M3, s3, ex);
+    return q != null ? q : ex ? rirUsualIn(M3, ex.id) : null;
   };
-  var isHardIn = (M3, s3, ex, date) => {
+  var isHardIn = (M3, s3, ex) => {
     if (!isWork(s3)) return false;
-    const q = rirEstIn(M3, s3, ex, date);
+    const q = rirEstIn(M3, s3, ex);
     return q == null || q <= HARD_RIR;
   };
-  function hardCreditIn(M3, s3, ex, date) {
-    if (isHardIn(M3, s3, ex, date)) return setCredit(s3);
+  function hardCreditIn(M3, s3, ex) {
+    if (isHardIn(M3, s3, ex)) return setCredit(s3);
     if (!rirHalfOnIn(M3) || !isWork(s3)) return 0;
-    const q = rirEstIn(M3, s3, ex, date);
+    const q = rirEstIn(M3, s3, ex);
     return q != null && q > HARD_RIR ? setCredit(s3) * HALF_SET : 0;
   }
   function bwLoadIn(M3, ex, date) {
@@ -5956,10 +5937,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
             rirTotal++;
             if (logged2) rirLogged++;
           }
-          const hard = isHardIn(M3, s3, ex, ss.date);
-          const cr = hard ? setCredit(s3) : hardCreditIn(M3, s3, ex, ss.date);
+          const hard = isHardIn(M3, s3, ex);
+          const cr = hard ? setCredit(s3) : hardCreditIn(M3, s3, ex);
           if (!cr) continue;
-          const q = rirEffIn(M3, s3, ex, ss.date);
+          const q = rirEffIn(M3, s3, ex);
           weekHard[wk] = (weekHard[wk] || 0) + cr;
           for (const [m3, f3] of mus) {
             ws[m3] = (ws[m3] || 0) + f3 * cr;
@@ -5986,8 +5967,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
             pl,
             r: +s3.r,
             w: +s3.w || 0,
-            rir: rirEffIn(M3, s3, ex, ss.date),
-            rq: rirEstIn(M3, s3, ex, ss.date)
+            rir: rirEffIn(M3, s3, ex),
+            rq: rirEstIn(M3, s3, ex)
           };
         };
         const pts = ptsSrc.map(point);
@@ -14545,9 +14526,8 @@ ${more}`;
       pl: f3.own,
       r: +(s3.r ?? 0),
       w: Number(s3.w) || 0,
-      // As of the set's date, as the index reads a logged one (R74-2: a past-dated workout announced a best the recap and the list did not count).
-      rir: rirEff(s3, ex, date),
-      rq: rirEst(s3, ex, date)
+      rir: rirEff(s3, ex),
+      rq: rirEst(s3, ex)
     };
     const { pb, pbb } = prBestOf(ex, [p3], noBody(ex));
     return { ex, pr: prJudge(ex, h3, { pts: [p3], pb, pbb }).pr };
@@ -14569,7 +14549,7 @@ ${more}`;
     const scq = (x2) => {
       const l4 = prLoad(ex, x2, date);
       const r4 = +(x2.r ?? 0);
-      return prScoreOf(l4, r4, rirEst(x2, ex, date));
+      return prScoreOf(l4, r4, rirEst(x2, ex));
     };
     const me = scq(s3), myLoad = prLoad(ex, s3, date), myR = +(s3.r ?? 0);
     const asStrong = (x2) => scq(x2) > me + EPS || scq(x2) >= me - EPS && prLoad(ex, x2, date) >= myLoad - EPS && +(x2.r ?? 0) >= myR;
@@ -14640,11 +14620,7 @@ ${more}`;
       const seen = /* @__PURE__ */ new Set();
       for (const x2 of liftRead(b2.exId)) for (const p3 of x2.pts) seen.add(p3.w);
       for (const s3 of heavier) {
-        const v3 = e1(
-          bw + prSameLoad(+(s3.w ?? 0) || 0, seen),
-          +(s3.r ?? 0),
-          rirEst(s3, ex, state.draft ? state.draft.date : void 0)
-        );
+        const v3 = e1(bw + prSameLoad(+(s3.w ?? 0) || 0, seen), +(s3.r ?? 0), rirEst(s3, ex));
         if (v3 != null && (best == null || v3 > best)) {
           best = v3;
           bs = s3;
@@ -20028,7 +20004,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const work = ex.reduce((a2, b2) => a2 + b2.sets.filter(isWork).length, 0), miss = ex.reduce((a2, b2) => a2 + b2.sets.filter((q) => !q.warm && !q.drop && isMissed(q)).length, 0), hard = r1(
       ex.reduce((a2, b2) => {
         const e5 = EX(b2.exId);
-        return a2 + b2.sets.reduce((c4, q) => c4 + hardCredit(q, e5, d3.date), 0);
+        return a2 + b2.sets.reduce((c4, q) => c4 + hardCredit(q, e5), 0);
       }, 0)
     );
     ui.todayDay = null;
@@ -23709,7 +23685,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         const ex = EX(b2.exId);
         b2.sets.forEach((s3, i5) => {
           const total = loadOf(ex, s3, ss.date);
-          const est = s3.warm || s3.drop || noE1(ex) || noBody(ex) ? null : e1(total, +s3.r, rirEst(s3, ex, ss.date));
+          const est = s3.warm || s3.drop || noE1(ex) || noBody(ex) ? null : e1(total, +s3.r, rirEst(s3, ex));
           rows2.push([
             ss.date,
             ss.dayName,

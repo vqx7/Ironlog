@@ -303,9 +303,8 @@ function liveMade(
     pl: f.own,
     r: +(s.r ?? 0),
     w: Number(s.w) || 0,
-    // As of the set's date, as the index reads a logged one (R74-2: a past-dated workout announced a best the recap and the list did not count).
-    rir: rirEff(s, ex, date),
-    rq: rirEst(s, ex, date)
+    rir: rirEff(s, ex),
+    rq: rirEst(s, ex)
   };
   const { pb, pbb } = prBestOf(ex, [p], noBody(ex));
   return { ex, pr: prJudge(ex, h, { pts: [p], pb, pbb }).pr };
@@ -340,7 +339,7 @@ export function rowPR(b: DraftBlock, si: number, date: string): string | null {
   const scq = (x: DraftSet): number => {
     const l = prLoad(ex, x, date);
     const r = +(x.r ?? 0);
-    return prScoreOf(l, r, rirEst(x, ex, date));
+    return prScoreOf(l, r, rirEst(x, ex));
   };
   const me = scq(s),
     myLoad = prLoad(ex, s, date),
@@ -481,11 +480,7 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
     const seen = new Set<number>();
     for (const x of liftRead(b.exId)) for (const p of x.pts) seen.add(p.w);
     for (const s of heavier) {
-      const v = e1(
-        bw + prSameLoad(+(s.w ?? 0) || 0, seen),
-        +(s.r ?? 0),
-        rirEst(s, ex, state.draft ? state.draft.date : undefined)
-      );
+      const v = e1(bw + prSameLoad(+(s.w ?? 0) || 0, seen), +(s.r ?? 0), rirEst(s, ex));
       if (v != null && (best == null || v > best)) {
         best = v;
         bs = s;
