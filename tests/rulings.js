@@ -4,7 +4,8 @@
 // the rulings, never from a build: a case that fails on the current build is a finding, reproduced and reported,
 // never an expectation edited to match. claude/ironlog-rulings-register.md (the project) lists every ruling and
 // where it is enforced; this suite holds the corners no other suite held (NEW-75: r54's 8 lb was pinned at 12 lb only).
-// `node tests/rulings.js [file]`; RULINGS_ONLY=A,B runs some sections.
+// `node tests/rulings.js [file]`; RULINGS_ONLY=A,B,C runs some sections (A loads and steps, B PRs, C readings and
+// weekly targets).
 const { open } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1200) : ''); } else console.log('ok  ', m); return !!c; };
@@ -70,6 +71,62 @@ const A = [
     ok(!D.errors.length, 'A. no page errors', D.errors);
     await D.browser.close();
   }
+  // Section B: PRs, as the PR list counts them (IDX().prs, big: counted and announced). Each case: earlier sessions
+  // and the session judged (its own flags), all in kg; the ruling says whether that session counts a PR.
+  if (run('B')) {
+    const B = [
+      { rule: 'A PR is a PR on any day (V, 2026-10-18): a heavier, stronger set on a Lighter day counts', ex: 'bench', prev: [[100, 8]], set: [110, 8], flags: { light: true }, want: true },
+      { rule: 'A PR is a PR on any day (V, 2026-10-18): on a deload day too', ex: 'bench', prev: [[100, 8]], set: [110, 8], flags: { deload: true }, want: true },
+      { rule: 'r58: a heavier set that is not stronger is no counted PR (Heaviest yet)', ex: 'bench', prev: [[100, 10]], set: [105, 3], want: false },
+      { rule: 'r58: the same load and reps again is no PR', ex: 'bench', prev: [[100, 8]], set: [100, 8], want: false },
+      { rule: 'R72-4 (V, 2026-11-04): a rep more past 12 at the same load counts', ex: 'bench', prev: [[60, 13]], set: [60, 14], want: true },
+      { rule: '387-B3 (V, 2026-11-04): a missed set (0 reps) is never a PR, however heavy', ex: 'bench', prev: [[100, 8]], set: [140, 0], want: false },
+      { rule: 'A change of units is never a PR: the same load shown in lb', ex: 'bench', prev: [[100, 8]], set: [100, 8], unit: 'lb', want: false }
+    ];
+    const D = await open(FILE, { w: 390, h: 844, clock: '2026-11-06T10:00:00' });
+    const got = await D.page.evaluate(B => {
+      const L = window.__ironlog;
+      return B.map((c, n) => {
+        const S = L.state;
+        S.settings.onboarded = true; S.settings.unit = 'kg'; delete S.settings.gym; S.draft = null;
+        const day = i => ['2026-10-02', '2026-10-09', '2026-10-16', '2026-10-23'][i];
+        const mk = (id, date, [w, r], flags) => ({ id, date, dayIdx: 0, dayName: 'A', notes: '', ...(flags || {}), ex: [{ exId: c.ex, rr: [6, 12], sets: [{ w, r, rir: null, warm: false, drop: false }] }] });
+        S.sessions = [...c.prev.map((x, i) => mk(`b${n}_${i}`, day(i), x)), mk(`b${n}_x`, '2026-10-30', c.set, c.flags)];
+        if (c.unit) S.settings.unit = c.unit;
+        L.state = L.normalize(S); L.invalidate();
+        return L.IDX().prs.filter(p => p.sid === `b${n}_x` && p.big).map(p => p.type);
+      });
+    }, B);
+    B.forEach((c, i) => ok(got[i].length > 0 === c.want, `B. ${c.rule}`, { counted: got[i] }));
+    ok(!D.errors.length, 'B. no page errors', D.errors);
+    await D.browser.close();
+  }
+
+  // Section C: readings and targets over time, and D: weekly targets.
+  if (run('C')) {
+    const D = await open(FILE, { w: 390, h: 844, clock: '2026-11-06T10:00:00' });
+    const r = await D.page.evaluate(() => {
+      const L = window.__ironlog, S = L.state, PLAN = { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 120 };
+      S.settings.onboarded = true; S.settings.unit = 'kg'; delete S.settings.gym; S.draft = null;
+      const ses = (id, date, w, r) => ({ id, date, dayIdx: 0, dayName: 'A', notes: '', ex: [{ exId: 'bench', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r, rir: null, warm: false, drop: false })) }] });
+      // At the top of the range, then more than four weeks off (Sep 4 to Nov 6).
+      S.sessions = [ses('c1', '2026-08-28', 100, 12), ses('c2', '2026-09-04', 100, 12)];
+      L.state = L.normalize(S); L.invalidate();
+      const back = L.suggest('bench', PLAN, {});
+      // The same, trained last week: the step up.
+      S.sessions = [ses('c3', '2026-10-23', 100, 12), ses('c4', '2026-10-30', 100, 12)];
+      L.state = L.normalize(S); L.invalidate();
+      const on = L.suggest('bench', PLAN, {});
+      return { back: back.w, backText: back.text, on: on.w, chest: L.hasTarget('chest'), calves: L.hasTarget('calves'), forearms: L.hasTarget('forearms'), serratus: L.hasTarget('serratus') };
+    });
+    ok(r.back != null && r.back <= 100 + 1e-6, 'C. A break of more than four weeks restarts the readings: no step up from the sets before it (CLAUDE.md, Numbers)', r);
+    ok(r.on > 100 + 1e-6, 'C. (control) the same sets last week step up', r);
+    ok(r.chest === true && r.calves === true, 'D. r58: chest and calves, trained directly for size, have a weekly target by default (TARGETED)', r);
+    ok(r.forearms === false && r.serratus === false, 'D. r58: forearms and serratus are tracked only until the lifter gives them a target', r);
+    ok(!D.errors.length, 'C. no page errors', D.errors);
+    await D.browser.close();
+  }
+
   console.log(fails.length ? `\n${fails.length} FAIL` : '\nALL PASS');
   process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

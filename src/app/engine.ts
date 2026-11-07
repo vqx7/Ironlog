@@ -8,9 +8,9 @@
 import type { DraftBlock, NextSetsAdj, Plan } from './types';
 import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from './model';
 import type { LiftBests } from './analytics';
-import { EXIn, UIn, exInjuryIn, gymOfIn } from './model';
+import { EXIn, UIn, exInjuryIn } from './model';
 import { IDXIn, bwAtIn, bwLoadIn, bwRefLoadIn, lastOf, liftReadIn, rirEstIn, statsUpToIn, triedAt } from './analytics';
-import { atCapOfIn, capOfIn, exBarKgIn, gymK, gymRackIn, gymStepIn, platesMode, rackGapIn, rackTolIn } from './gym';
+import { atCapOfIn, capOfIn, gymRackIn, gymStepIn, loadFloorIn, plateGridIn, rackGapIn, rackTolIn } from './gym';
 import {
   DEFAULT_STEP,
   EQUIP_STEP,
@@ -47,6 +47,7 @@ import {
   LIGHT_SHARE,
   atLoad,
   e1inv,
+  bestFit,
   fitE,
   isMissed,
   isWork,
@@ -170,8 +171,8 @@ interface SuggestCtx {
    lighter is loadable, last time's own load, which was lifted, is the one
    asked. */
 function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
-  const G = res && res.w != null && !ex.timed ? plateGridIn(M, ex, plan) : null;
-  const out = G ? plateSnap(M, ex, plan, res, G, down) : gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
+  const plates = res && res.w != null && !ex.timed && !!plateGridIn(M, ex, plan);
+  const out = plates ? plateSnap(M, ex, plan, res, down) : gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
   /* A lighter day, a deload or a return is never above last time's load (r64,
      R-2), but never under the bar either (CLAUDE.md, Numbers): the empty 20 kg
      bar shown in lb is the 45 lb bar, a Lighter day too (r54). */
@@ -184,33 +185,6 @@ function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, dow
   )
     return out;
   return Math.abs(res.w - res.top) < EPS ? res : swapWIn(M, ex, res, res.top);
-}
-
-/* Your gym's plates on a bar lift (r55.1, from the audit of r55: with no 2.5
-   lb plates, bench logged at 230 lb was asked for 240, 230 or 200 and warmed
-   up at 90 and 140, none of them loadable, beside a plate line saying 2.5 lb
-   was not). A lift on the full bar typed as the total (loadFloorIn, so not a
-   curl on a lighter bar) with no step of its own, in a gym whose plates are
-   all whole multiples of the smallest, is loaded at the bar plus pairs of
-   plates: the bar and every step of a pair of the smallest plate above it.
-   Its suggestions, steps, lighter and heavier loads and warm-ups land on
-   those loads. Plates that are not all multiples of the smallest (10 and 25
-   lb without 5s) make other sums, so the lift keeps its step as before. */
-/** A bar lift's loads as Your gym's plates make them, in kg (the bar, and a pair of the smallest plate), or null. */
-function plateGridIn(
-  M: Model,
-  ex: ExerciseLike | null | undefined,
-  plan?: Pick<Plan, 'inc'> | null
-): { bar: number; step: number } | null {
-  const g = gymOfIn(M);
-  if (!ex || ex.inc != null || ex.timed || !g || !Array.isArray(g.plates) || !g.plates.length) return null;
-  if (platesMode(ex) !== 'bar' || loadMode(ex) !== 'total') return null;
-  if (Math.abs(stepReadIn(M, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M)) > EPS_SAME) return null;
-  const bar = loadFloorIn(M, ex);
-  if (!(bar > 0)) return null;
-  const mn = Math.min(...g.plates);
-  if (!g.plates.every(x => Math.abs(x / mn - Math.round(x / mn)) < EPS_SAME)) return null;
-  return { bar, step: gymK(g, 2 * mn) };
 }
 
 /* The load the plates make at or under a load (dir -1) or at or over it (dir
@@ -234,26 +208,27 @@ function plateAt(G: { bar: number; step: number }, w: number, dir: 1 | -1, tol: 
    rounding onto the step in the unit on screen (unitSnap), which counted the
    step from 0 and so missed the bar's (100 kg read in lb as 220, off 45 +
    10n). The words and a reps target follow the load as there (moveIn). */
-function plateSnap(
-  M: Model,
-  ex: ExerciseLike,
-  plan: Plan,
-  res: Suggestion,
-  G: { bar: number; step: number },
-  down?: boolean
-): Suggestion {
+function plateSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
   const w = res.w,
-    top = res.top,
-    t = rackTolIn(M);
+    top = res.top;
   if (w == null) return res;
-  const dn = plateAt(G, w, -1, t);
+  // The loads Your gym's plates make, from the one list (loadsForIn, 2.31, RC-1), as every other rule reads them.
+  const Ls = loadsForIn(M, ex, plan, top ?? null),
+    t = rackTolIn(M);
+  const dn = Ls.floor(w) ?? w;
   /* Within the shown digit of a load the plates make, the suggestion is that
      load itself (PENDING 333, the review of the fix): kept as the number
      typed (52.486 kg for 52.5), the plate line under it came out a plate
      short and the next step was taken from it, so it never reached the next
      plates. The number on screen is the same, so nothing more is said. */
   if (Math.abs(dn - w) <= t) return Math.abs(dn - w) < EPS ? res : swapWIn(M, ex, res, dn);
-  const nw = !down && top != null && w > top + t ? (dn > top + t ? dn : plateAt(G, top + t, 1, t)) : dn;
+  /* Up from last time: the heaviest load the plates make not past what was asked, else the next one above last time,
+     but never past the heaviest load the lift has (capOfIn; the review of 2.31: with 102 kg the most there is, 100
+     kg stepped to 105 and was called the heaviest available; 2.30 did the same at 145 lb with 150 the most). */
+  const cap = capOfIn(M, ex, plan, top),
+    up = top != null ? Ls.above(top) : null,
+    upOk = up != null && (cap == null || up <= cap + t);
+  const nw = !down && top != null && w > top + t ? (dn > top + t ? dn : upOk ? up : dn) : dn;
   return moveIn(M, ex, plan, res, nw, 'the nearest load your plates make');
 }
 
@@ -908,12 +883,11 @@ function sgAfterReturnIn(M: Model, C: SuggestCtx): Suggestion | null {
   if (triedAt(last, top).some(p => p.missed || p.r < +plan.repMin)) return null;
   const bw = bwRefLoadIn(M, ex);
   if (ex.bw && !(bw > 0)) return null;
-  let est = 0;
-  for (const p of planPts) {
-    const q = p.rir != null ? p.rir : i === j ? BACK_RIR : p.rq;
-    const v = fitE(p.load, p.r, q == null ? q : Math.min(q, E1_MAX_RIR));
-    if (v != null && v > est) est = v;
-  }
+  const est =
+    bestFit(planPts, p => {
+      const q = p.rir != null ? p.rir : i === j ? BACK_RIR : p.rq;
+      return q == null ? q : Math.min(q, E1_MAX_RIR);
+    })?.est ?? 0;
   if (!(est > 0)) return null;
   // The reps the lift was done for before the break: the middle of its sets at that session's load.
   const rs = pre.pts
@@ -1024,11 +998,8 @@ function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
     planPts.length &&
     planPts.every(p => p.rir != null && p.rir >= tgtRir + CLEARLY_OFF && p.r >= plan.repMin)
   ) {
-    let est: number | null = null;
-    for (const p of topPts) {
-      const v = fitE(p.load, p.r, Math.min(p.rir!, E1_MAX_RIR));
-      if (v != null && (est == null || v > est)) est = v;
-    }
+    // Every point here has a rating: the condition above reads p.rir != null for each.
+    const est = bestFit(topPts, p => Math.min(p.rir!, E1_MAX_RIR))?.est ?? null;
     const bwNow = bwRefLoadIn(M, ex);
     const topLoad = top + bwNow;
     if (est != null && topLoad > 0) {
@@ -1092,11 +1063,7 @@ function sgPastRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
     topPts.length &&
     topPts.every(p => p.r >= +plan.repMax + CLEARLY_OFF)
   ) {
-    let est: number | null = null;
-    for (const p of topPts) {
-      const v = fitE(p.load, p.r, p.rq);
-      if (v != null && (est == null || v > est)) est = v;
-    }
+    const est = bestFit(topPts, p => p.rq)?.est ?? null;
     const bwNow = bwRefLoadIn(M, ex);
     const topLoad = top + bwNow;
     if (est != null && topLoad > 0) {
@@ -1172,11 +1139,7 @@ function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
       /* The estimate every other load is found with (fitE, r72, the 387 audit's 387-B2): read with e1, which gives
          none past 12 reps to failure, 100 x 12 x 3 at RIR 2 on 15 to 20 had no estimate and held at 100 where the
          same sets at RIR 0 dropped, so rating more in reserve on a set three reps short kept the load. */
-      let est: number | null = null;
-      for (const p of topPts) {
-        const v = fitE(p.load, p.r, p.rq);
-        if (v != null && (est == null || v > est)) est = v;
-      }
+      const est = bestFit(topPts, p => p.rq)?.est ?? null;
       const bwNow = bwRefLoadIn(M, ex);
       if (est != null) {
         const want = e1inv(est, +plan.repMin + Math.min(tgtRir, E1_MAX_RIR)) - bwNow;
@@ -1294,11 +1257,7 @@ function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
     const bwT = bwRefLoadIn(M, ex);
     // Not on a bodyweight lift with no weigh-in, which has no total load to read the step against (r55, as sgEasyIn).
     if (!noE1(ex) && !(ex.bw && !(bwT > 0))) {
-      let est: number | null = null;
-      for (const p of topPts) {
-        const v = fitE(p.load, p.r, p.rq);
-        if (v != null && (est == null || v > est)) est = v;
-      }
+      const est = bestFit(topPts, p => p.rq)?.est ?? null;
       /* Only a step that costs 1.5 reps or more is large for the load (about
          5% or more, r32): a 5 lb step on a 5 x 5 at 225 costs under one, and
          a fixed-rep plan goes up and repeats the reps, the drop below the
@@ -1490,16 +1449,9 @@ function kinStartIn(
   const x = k.x;
   const wl = workLoad(x.pts, +plan.repMin || 0);
   const at = atLoad(x.pts, wl);
-  let est: number | null = null,
-    set: ExPoint | null = null;
-  for (const p of at) {
-    const v = fitE(p.load, p.r, p.rq);
-    if (v != null && (est == null || v > est)) {
-      est = v;
-      set = p;
-    }
-  }
-  if (est == null) return null;
+  const best = bestFit(at, p => p.rq);
+  if (best == null) return null;
+  const { est, set } = best;
   const mid = Math.round((+plan.repMin + +plan.repMax) / 2);
   const q = Math.min((+plan.rir || 0) + FATIGUE_RIR, E1_MAX_RIR);
   const want = e1inv(est * (isCompound(ex) ? KIN.compound : KIN.isolation), mid + q);
@@ -1693,9 +1645,9 @@ function stepOfIn(
   if (ex && ex.inc == null && Math.abs(v - unitStepIn(M)) < EPS_SAME) {
     const L = gymRackIn(M, ex, plan);
     if (L) return rackGapIn(M, L, at);
-    // On a rack read from its spacing (rackGridIn): the spacing, or from a load off its weights the way to the next one up.
+    /* On a rack read from its spacing (rackGridIn) or Your gym's plates: the spacing, or from a load off them the way to
+       the next one up, as every rule that moves a load reads it (loadsForIn, 2.31, RC-1). */
     const gr = rackGridIn(M, ex, plan, at);
-    // From a load off its weights, the way to the next one up, as every rule that moves a load reads it (loadsForIn).
     if (gr) {
       if (at != null && at > 0 && offGrid(M, ex, plan, at)) {
         const up = loadsForIn(M, ex, plan, at).above(at);
@@ -1703,9 +1655,10 @@ function stepOfIn(
       }
       return gr;
     }
-    const G = plateGridIn(M, ex, plan);
-    const t = rackTolIn(M);
-    if (G && at != null && at > 0 && Math.abs(plateAt(G, at, -1, t) - at) > t) return plateAt(G, at, 1, t) - at;
+    if (plateGridIn(M, ex, plan) && at != null && at > 0) {
+      const Ls = loadsForIn(M, ex, plan, at);
+      if (!Ls.has(at)) return (Ls.above(at) ?? at) - at;
+    }
     const gs = gymStepIn(M, ex);
     if (gs) return gs;
     const es = byEquip ? equipStepIn(M, ex) : null;
@@ -1925,18 +1878,6 @@ export function easierTextIn(M: Model, ex: ExerciseLike, e: Drift): string {
   // In the lifter's effort scale (r54, from the audit V asked for).
   const sc = effScale(M.s.settings.rirScale);
   return `Getting easier at ${loadLabelIn(M, ex, e.w)}${ex.bw ? '' : ' ' + UIn(M)}: ${sc === 'rpe' ? 'RPE' : 'RIR'} ${effAt(sc, e.from)} → ${effAt(sc, e.to)} at the same reps. Adding load today is reasonable.`;
-}
-
-/* The lightest load a lift can be given (r27): the empty bar on a lift on the
-   full bar (bench, squat, rows) typed as the total. Curls and skull crushers
-   are often on an EZ or fixed bar lighter than the bar weight setting, and a
-   per-side number has no bar in it, so neither has one. An exercise with no
-   bar of its own set reads as none. */
-/** The lightest load a lift can be given: the empty bar where one applies, else 0. */
-function loadFloorIn(M: Model, ex: ExerciseLike): number {
-  return platesMode(ex) === 'bar' && loadMode(ex) === 'total' && (isCompound(ex) || (ex.barKg ?? 0) > 0)
-    ? exBarKgIn(M, ex)
-    : 0;
 }
 
 /* The loads a lift can use (2.31, RC-1). Before 2.31 every rule that moved a load (lighter, heavier, the snap, the

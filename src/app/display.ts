@@ -5,7 +5,7 @@
 
 import { IN, KM_MI, FT_IN } from './units';
 import { NIL, fmtDate, fmtDateFrom, fmtWith, missedTag } from './format';
-import { e1, fitE, trendE, RECENT_DAYS, BEST_WEEKS, TAPE_WEEKS } from './formulas';
+import { bestFit, e1, fitE, trendE, RECENT_DAYS, BEST_WEEKS, TAPE_WEEKS } from './formulas';
 import { MK, ML, isCommon, isCompound, loadMode, nameMatch } from './library';
 import { dayParts, dayWorkout, partOf, routineEmpty, routineSig, sessDayIdx } from './routines';
 import { rec } from './records';
@@ -459,14 +459,11 @@ export function goalState(exId: string): {
   const need = fitE(g.w + bw, g.r, 0);
   const from = addDays(today(), -WEEK_DAYS * BEST_WEEKS);
   // Every set of the last BEST_WEEKS weeks, a lighter day's and a deload's too, as the bests read them (r54, PENDING 311 e).
-  let cur: number | null = null;
-  for (const x of exps) {
-    if (x.date < from) continue;
-    for (const p of x.pts) {
-      const v = fitE(p.load, p.r, p.rq);
-      if (v != null && (cur == null || v > cur)) cur = v;
-    }
-  }
+  const cur =
+    bestFit(
+      exps.filter(x => x.date >= from).flatMap(x => x.pts),
+      p => p.rq
+    )?.est ?? null;
   const pct = !noBw && need && cur ? Math.min(PERCENT, (cur / need) * PERCENT) : null;
   return { g, hit, pct, cur, need, noBw };
 }
