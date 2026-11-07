@@ -7869,7 +7869,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         above: (w2) => L2.find((x2) => x2 > w2 + (Math.abs(w2 - at2) < EPS_SAME ? tf : tl)) ?? null
       };
     }
-    const og = offGrid(M3, ex, plan, at2);
+    const og = rackGridIn(M3, ex, plan, at2);
     if (og) {
       const t4 = rackTolIn(M3), first = gridStep(M3, og, 0, 1), gd = gridD(M3, og);
       const near = (w2) => onStep(inUnitIn(M3, w2), TYPED_STEP) ? w2 : kgOfIn(M3, Math.round(inUnitIn(M3, w2) / gd) * gd);

@@ -1969,7 +1969,9 @@ function loadsForIn(M: Model, ex: ExerciseLike, plan: Pick<Plan, 'inc'> | null |
       above: w => L.find(x => x > w + (Math.abs(w - at) < EPS_SAME ? tf : tl)) ?? null
     };
   }
-  const og = offGrid(M, ex, plan, at);
+  /* A dumbbell or kettlebell rack read from its spacing (rackGridIn) is the list whatever the load: before 2.30 it was
+     taken only when the load was off its weights, so the kind of list depended on the rule asking (RC-1). */
+  const og = rackGridIn(M, ex, plan, at);
   if (og) {
     const t = rackTolIn(M),
       first = gridStep(M, og, 0, 1),
