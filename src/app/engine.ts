@@ -1730,20 +1730,26 @@ function equipStepIn(M: Model, ex: ExerciseLike | null | undefined): number | nu
    lifted. Engine steps are taken from the rack already, so this is the net
    for multi-step jumps on a rack whose spacing changes. */
 function rackSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Suggestion {
-  if (!res || res.w == null || ex.timed) return res;
-  const L = gymRackIn(M, ex, plan);
-  if (!L) return gridSnap(M, ex, plan, res);
+  return listSnapIn(M, ex, plan, res);
+}
+
+/* One rounding onto a rack, Your gym's or one read from its spacing (2.30, RC-1; before, rackSnapIn and gridSnap, the
+   same rule written twice): a load on the rack, or last time's load (it was lifted), is left; up from last time, the
+   heaviest weight not past what was asked that is still above last time, else the next one above last time; anything
+   else, the heaviest not past it, at least the lightest. */
+function listSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Suggestion {
   const w = res.w,
-    top = res.top,
-    tl = rackTolIn(M),
-    tt = rackTolIn(M, L, top);
-  if (L.some(x => Math.abs(x - w) < EPS_SAME) || (top != null && Math.abs(w - top) < EPS_SAME)) return res;
-  const dn = L.filter(x => x <= w + tl);
-  let nw: number | undefined;
+    top = res.top;
+  if (w == null || ex.timed) return res;
+  const Ls = loadsForIn(M, ex, plan, top ?? null);
+  if (Ls.kind !== 'rack' && Ls.kind !== 'grid') return res;
+  if (Ls.has(w) || (top != null && Math.abs(w - top) < EPS_SAME)) return res;
+  const f = Ls.floor(w);
+  let nw: number | null;
   if (top != null && w > top) {
-    const c = dn.filter(x => x > top + tt);
-    nw = c.length ? c[c.length - 1] : L.find(x => x > top + tt);
-  } else nw = dn.length ? dn[dn.length - 1] : L[0];
+    const u = Ls.above(top);
+    nw = f != null && u != null && f >= u - EPS_SAME ? f : u;
+  } else nw = f ?? Ls.first;
   return nw == null || Math.abs(nw - w) < EPS ? res : swapWIn(M, ex, res, nw);
 }
 
@@ -1879,15 +1885,7 @@ function offGrid(M: Model, ex: ExerciseLike, plan: Pick<Plan, 'inc'> | null | un
    least the lightest. A load equal to last time's is left, since it was
    lifted. */
 function gridSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Suggestion {
-  const w = res.w,
-    top = res.top;
-  const g = w == null || ex.timed ? null : rackGridIn(M, ex, plan, top);
-  if (w == null || g == null) return res;
-  const t = rackTolIn(M);
-  const dn = gridFloor(M, g, w, t);
-  if (Math.abs(dn - w) <= t || (top != null && Math.abs(w - top) < EPS_SAME)) return res;
-  const nw = top != null && w > top ? Math.max(dn, gridStep(M, g, top, 1)) : Math.max(dn, gridStep(M, g, 0, 1));
-  return Math.abs(nw - w) < EPS ? res : swapWIn(M, ex, res, nw);
+  return listSnapIn(M, ex, plan, res);
 }
 
 /* When every set reaches the top of the range, the load goes up by whole
@@ -1953,10 +1951,12 @@ interface Loads {
   floor(w: number, tol?: number): number | null;
   /** The lightest load on the list strictly above `w`, or null when there is none. */
   above(w: number): number | null;
+  /** Whether `w` is a load on the list, within the tolerance its kind reads (a rack's weight exactly, a spacing's or the plates' within the shown digit). */
+  has(w: number): boolean;
 }
 
 /** The loads a lift can use, chosen once in the order every rule used (Your gym's rack, a rack read from its spacing when `at` is off its weights, Your gym's plates, else whole steps of the lift's step from `at`). */
-function loadsForIn(M: Model, ex: ExerciseLike, plan: Pick<Plan, 'inc'> | null | undefined, at: number): Loads {
+function loadsForIn(M: Model, ex: ExerciseLike, plan: Pick<Plan, 'inc'> | null | undefined, at: number | null): Loads {
   const L = gymRackIn(M, ex, plan);
   if (L) {
     const tl = rackTolIn(M),
@@ -1964,9 +1964,10 @@ function loadsForIn(M: Model, ex: ExerciseLike, plan: Pick<Plan, 'inc'> | null |
     return {
       kind: 'rack',
       first: L[0] ?? null,
-      below: w => [...L].reverse().find(x => x < w - (Math.abs(w - at) < EPS_SAME ? tf : tl)) ?? null,
+      below: w => [...L].reverse().find(x => x < w - (at != null && Math.abs(w - at) < EPS_SAME ? tf : tl)) ?? null,
       floor: (w, tol = tl) => [...L].reverse().find(x => x <= w + tol) ?? null,
-      above: w => L.find(x => x > w + (Math.abs(w - at) < EPS_SAME ? tf : tl)) ?? null
+      above: w => L.find(x => x > w + (at != null && Math.abs(w - at) < EPS_SAME ? tf : tl)) ?? null,
+      has: w => L.some(x => Math.abs(x - w) < EPS_SAME)
     };
   }
   /* A dumbbell or kettlebell rack read from its spacing (rackGridIn) is the list whatever the load: before 2.30 it was
@@ -1996,7 +1997,8 @@ function loadsForIn(M: Model, ex: ExerciseLike, plan: Pick<Plan, 'inc'> | null |
         const c = gridFloor(M, og, w, tol);
         return c < first - EPS_SAME ? null : c;
       },
-      above: w => gridStep(M, og, near(w), 1)
+      above: w => gridStep(M, og, near(w), 1),
+      has: w => Math.abs(gridFloor(M, og, w, t) - w) <= t
     };
   }
   const G = plateGridIn(M, ex, plan);
@@ -2007,17 +2009,23 @@ function loadsForIn(M: Model, ex: ExerciseLike, plan: Pick<Plan, 'inc'> | null |
       first: G.bar,
       below: w => (w <= G.bar + t ? null : plateAt(G, w - G.step / 2, -1, t)),
       floor: w => plateAt(G, w, -1, t),
-      above: w => G.bar + Math.max(0, Math.floor((w + t - G.bar) / G.step + EPS_SAME) + 1) * G.step
+      above: w => G.bar + Math.max(0, Math.floor((w + t - G.bar) / G.step + EPS_SAME) + 1) * G.step,
+      has: w => Math.abs(plateAt(G, w, -1, t) - w) <= t
     };
   }
-  const step = incOfIn(M, ex, plan, at);
-  const k = (w: number): number => (w - at) / step;
+  // Whole steps of the lift's step from the load it is at; with no load to count from there is no list of its own.
+  if (at == null)
+    return { kind: 'step', first: null, below: () => null, floor: () => null, above: () => null, has: () => false };
+  const from = at;
+  const step = incOfIn(M, ex, plan, from);
+  const k = (w: number): number => (w - from) / step;
   return {
     kind: 'step',
     first: null,
-    below: w => (step > 0 ? at + (Math.ceil(k(w) - EPS_SAME) - 1) * step : null),
-    floor: w => (step > 0 ? at + Math.floor(k(w) + EPS_SAME) * step : null),
-    above: w => (step > 0 ? at + (Math.floor(k(w) + EPS_SAME) + 1) * step : null)
+    below: w => (step > 0 ? from + (Math.ceil(k(w) - EPS_SAME) - 1) * step : null),
+    floor: w => (step > 0 ? from + Math.floor(k(w) + EPS_SAME) * step : null),
+    above: w => (step > 0 ? from + (Math.floor(k(w) + EPS_SAME) + 1) * step : null),
+    has: w => step > 0 && Math.abs(k(w) - Math.round(k(w))) < EPS_SAME
   };
 }
 
