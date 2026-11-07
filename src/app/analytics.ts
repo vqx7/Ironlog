@@ -1132,7 +1132,8 @@ export function prAdd(h: PrSoFar, x: Pick<Exposure, 'pts' | 'pb' | 'pbb'>): void
 export function prBestOf(
   ex: ExerciseLike,
   pts: readonly ExPoint[],
-  noBody = false
+  // Required, so no caller can leave a lift with no weigh-in its estimate by forgetting it (noBodyIn, NEW-72).
+  noBody: boolean
 ): { pb: number | null; pbb: number | null } {
   let pb: number | null = null,
     pbb: number | null = null;
