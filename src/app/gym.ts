@@ -157,8 +157,8 @@ export function gymRackIn(
   return L && L.length ? L.map(v => gymK(g, v)) : null;
 }
 
-/** A load is the bell it is nearer than this share of the gap to its neighbours (r34.2, a convention). */
-const BELL_TOL = 0.45;
+/** A load is the bell it is nearer than this share of the gap to its neighbours (r34.2, a convention in docs/EVIDENCE.md); since 2.31 on a rack read from its spacing too (RC-1). */
+export const BELL_TOL = 0.45;
 
 /* A load typed as shown on screen is within half the last shown digit of
    the bell it means: an 8 kg dumbbell is shown as 17.6 lb, which is 7.983 kg

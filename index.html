@@ -7834,23 +7834,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return Math.abs(nw - w2) < EPS ? res : swapWIn(M3, ex, res, nw);
   }
   function progStepIn(M3, ex, plan, loadKg, at2) {
-    const L2 = at2 != null ? gymRackIn(M3, ex, plan) : null;
-    if (L2) {
-      const ta = rackTolIn(M3, L2, at2);
-      const up = L2.filter((x2) => x2 > at2 + ta);
-      if (!up.length) return rackGapIn(M3, L2, at2);
-      const want = at2 + jumpPct(ex, plan) * Math.max(0, loadKg);
-      let nw = up[0];
-      for (const x2 of up) if (x2 <= want + EPS_SAME) nw = x2;
-      return nw - at2;
-    }
     if (at2 != null) {
-      const gr = offGrid(M3, ex, plan, at2);
-      if (gr)
-        return Math.max(
-          gridStep(M3, gr, at2 + gr / 2 - 2 * rackTolIn(M3), 1),
-          gridFloor(M3, gr, at2 + jumpPct(ex, plan) * Math.max(0, loadKg), EPS_SAME)
-        ) - at2;
+      const Ls = loadsForIn(M3, ex, plan, at2);
+      if (Ls.kind === "rack" || Ls.kind === "grid") {
+        const up = Ls.above(at2);
+        const L2 = gymRackIn(M3, ex, plan);
+        if (up == null) return L2 ? rackGapIn(M3, L2, at2) : 0;
+        const c4 = Ls.floor(at2 + jumpPct(ex, plan) * Math.max(0, loadKg), EPS_SAME);
+        return Math.max(up, c4 ?? up) - at2;
+      }
     }
     const inc = incOfIn(M3, ex, plan, at2);
     if (!(inc > 0)) return inc;
@@ -7872,25 +7864,29 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         kind: "rack",
         first: L2[0] ?? null,
         below: (w2) => [...L2].reverse().find((x2) => x2 < w2 - (Math.abs(w2 - at2) < EPS_SAME ? tf : tl)) ?? null,
-        floor: (w2) => [...L2].reverse().find((x2) => x2 <= w2 + tl) ?? null,
+        floor: (w2, tol = tl) => [...L2].reverse().find((x2) => x2 <= w2 + tol) ?? null,
         above: (w2) => L2.find((x2) => x2 > w2 + (Math.abs(w2 - at2) < EPS_SAME ? tf : tl)) ?? null
       };
     }
     const og = offGrid(M3, ex, plan, at2);
     if (og) {
-      const t4 = rackTolIn(M3), first = gridStep(M3, og, 0, 1);
+      const t4 = rackTolIn(M3), first = gridStep(M3, og, 0, 1), gd = gridD(M3, og);
+      const near = (w2) => {
+        const r4 = kgOfIn(M3, Math.round(inUnitIn(M3, w2) / gd) * gd);
+        return Math.abs(inUnitIn(M3, w2 - r4)) <= Math.max(inUnitIn(M3, t4), BELL_TOL * gd) ? r4 : w2;
+      };
       return {
         kind: "grid",
         first,
         below: (w2) => {
-          const d3 = gridStep(M3, og, w2, -1);
+          const d3 = gridStep(M3, og, near(w2), -1);
           return d3 < first - EPS_SAME ? null : d3;
         },
-        floor: (w2) => {
-          const c4 = gridFloor(M3, og, w2, t4);
+        floor: (w2, tol = t4) => {
+          const c4 = gridFloor(M3, og, w2, tol);
           return c4 < first - EPS_SAME ? null : c4;
         },
-        above: (w2) => gridStep(M3, og, w2, 1)
+        above: (w2) => gridStep(M3, og, near(w2), 1)
       };
     }
     const G = plateGridIn(M3, ex, plan);

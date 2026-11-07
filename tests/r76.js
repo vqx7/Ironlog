@@ -8,6 +8,12 @@
 //      a count; Settings' button names the change it will take back; and the message for a step with nothing left to
 //      take back reads as a sentence. Guards: the delete's Undo still brings the session back, and Undo with nothing
 //      kept still says so.
+//   2  RC-1 (one list of the loads a lift can use): a load close to a weight the rack has is that weight, by one rule
+//      on Your gym's rack and on a rack read from its spacing (BELL_TOL, 45% of the gap). 22.5 kg dumbbells read in lb
+//      are 49.6 lb; going heavier mid-workout toward 54 lb, 2.29 offered 50 lb on the rack read from its spacing (a
+//      sliver, 0.4 lb, the class NEW-70 fixed only for the step at the top of the range) and nothing on Your gym's
+//      rack. Expected: nothing on both, since the next real weight, 55, is past 54. Guards: toward 56 both offer 55;
+//      the step at the top of the range is still 55 on both (NEW-70); a load on the rack (50 lb) answers as before.
 // R76_ONLY=1 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -68,6 +74,32 @@ const T = '2026-11-06';
     });
     ok(/^Nothing to undo: /.test(stale) && !/there:/.test(stale), '1. a step with nothing left to take back says why in a plain sentence (2.29: "Nothing to undo there: it has changed since.")', stale);
     ok(!D.errors.length, '1. no page errors', D.errors);
+    await D.browser.close();
+  }
+
+  if (run(2)) {
+    const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00' });
+    const r = await D.page.evaluate(() => {
+      const L = window.__ironlog, LB = 0.45359237, S = L.state;
+      S.settings.onboarded = true; S.settings.unit = 'lb';
+      const at = (kg, gym) => {
+        if (gym) S.settings.gym = gym; else delete S.settings.gym;
+        S.sessions = [0, 1, 2].map(i => ({ id: 'h' + i, date: ['2026-10-16', '2026-10-23', '2026-10-30'][i], dayIdx: 0, dayName: 'A', notes: '', ex: [{ exId: 'dbBench', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w: kg, r: 12, rir: 1, warm: false, drop: false })) }] }));
+        L.state = L.normalize(S); L.invalidate();
+        const ex = L.state.exercises.find(e => e.id === 'dbBench');
+        const plan = { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 120 };
+        const lb = v => (v == null ? null : Math.round((v / LB) * 10) / 10);
+        return { to54: lb(L.heavierLoad(ex, plan, kg, 54 * LB)), to56: lb(L.heavierLoad(ex, plan, kg, 56 * LB)), step: lb(kg + L.progStep(ex, plan, kg, kg)) };
+      };
+      const rack = { u: 'lb', db: { lo: 5, hi: 120, st: 5 } };
+      return { spacing: at(22.5), rack: at(22.5, rack), onRack: at(50 * LB), onRackGym: at(50 * LB, rack) };
+    });
+    ok(r.spacing.to54 === null, '2. RC-1: 49.6 lb (22.5 kg) dumbbells, going heavier toward 54 lb, read from the rack\'s spacing: nothing, the next real weight is 55 (2.29: 50 lb, a sliver)', r.spacing);
+    ok(r.rack.to54 === null, '2. (a guard) the same on Your gym\'s rack in lb: nothing', r.rack);
+    ok(r.spacing.to56 === 55 && r.rack.to56 === 55, '2. (a guard) toward 56 lb both offer 55', r);
+    ok(r.spacing.step === 55 && r.rack.step === 55, '2. (a guard, NEW-70) the step at the top of the range is 55 on both', r);
+    ok(r.onRack.to54 === null && r.onRack.to56 === 55 && r.onRackGym.to56 === 55, '2. (a guard) from 50 lb on the rack, as before', r);
+    ok(!D.errors.length, '2. no page errors', D.errors);
     await D.browser.close();
   }
 

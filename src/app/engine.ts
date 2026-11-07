@@ -10,7 +10,18 @@ import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from '
 import type { LiftBests } from './analytics';
 import { EXIn, UIn, exInjuryIn, gymOfIn } from './model';
 import { IDXIn, bwAtIn, bwLoadIn, bwRefLoadIn, lastOf, liftReadIn, rirEstIn, statsUpToIn, triedAt } from './analytics';
-import { atCapOfIn, capOfIn, exBarKgIn, gymK, gymRackIn, gymStepIn, platesMode, rackGapIn, rackTolIn } from './gym';
+import {
+  BELL_TOL,
+  atCapOfIn,
+  capOfIn,
+  exBarKgIn,
+  gymK,
+  gymRackIn,
+  gymStepIn,
+  platesMode,
+  rackGapIn,
+  rackTolIn
+} from './gym';
 import {
   DEFAULT_STEP,
   EQUIP_STEP,
@@ -1896,31 +1907,18 @@ function gridSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Sugg
    25 lb raise and 1% on a 500 lb leg press. A rack is read only with a load
    to step from (at), as the ! say. */
 export function progStepIn(M: Model, ex: ExerciseLike, plan: Plan, loadKg: number, at?: number | null): number {
-  const L = at != null ? gymRackIn(M, ex, plan) : null;
-  /* On a rack: the heaviest rack weight within the jump, at least the next one up. */
-  if (L) {
-    const ta = rackTolIn(M, L, at);
-    const up = L.filter(x => x > at! + ta);
-    if (!up.length) return rackGapIn(M, L, at);
-    const want = at! + jumpPct(ex, plan) * Math.max(0, loadKg);
-    let nw = up[0];
-    for (const x of up) if (x <= want + EPS_SAME) nw = x;
-    return nw - at!;
-  }
-  // From a load off a rack read from its spacing (offGrid, r54): the same, its weights the spacing's multiples.
+  /* On a rack, from Your gym or read from its spacing when the load is off its weights: the heaviest weight within
+     the jump, at least the next one up (a load near a weight is that weight, BELL_TOL, so the next one up is a whole
+     step: NEW-6's rule, V 2026-10-27). */
   if (at != null) {
-    const gr = offGrid(M, ex, plan, at);
-    /* Half the spacing at least (NEW-70, 2.29): from a load off it (22.5 kg dumbbells read in lb, 49.6), the next
-       weight on it, 50, is a sliver, "add 0.4 lb" with the reps back at the bottom; NEW-6's rule (V, 2026-10-27) is
-       that a sliver of a step is none. From 12 lb on 5 lb dumbbells, 15 is a step (r54). A load on the spacing is not
-       read here (offGrid). */
-    if (gr)
-      return (
-        Math.max(
-          gridStep(M, gr, at + gr / 2 - 2 * rackTolIn(M), 1),
-          gridFloor(M, gr, at + jumpPct(ex, plan) * Math.max(0, loadKg), EPS_SAME)
-        ) - at
-      );
+    const Ls = loadsForIn(M, ex, plan, at);
+    if (Ls.kind === 'rack' || Ls.kind === 'grid') {
+      const up = Ls.above(at);
+      const L = gymRackIn(M, ex, plan);
+      if (up == null) return L ? rackGapIn(M, L, at) : 0;
+      const c = Ls.floor(at + jumpPct(ex, plan) * Math.max(0, loadKg), EPS_SAME);
+      return Math.max(up, c ?? up) - at;
+    }
   }
   const inc = incOfIn(M, ex, plan, at);
   if (!(inc > 0)) return inc;
@@ -1962,8 +1960,8 @@ interface Loads {
   first: number | null;
   /** The heaviest load on the list strictly under `w`, or null when there is none. */
   below(w: number): number | null;
-  /** The heaviest load on the list not past `w`, or null when every load on it is past `w`. */
-  floor(w: number): number | null;
+  /** The heaviest load on the list not past `w` by more than `tol` (the shown digit when not given), or null when every load on it is past `w`. */
+  floor(w: number, tol?: number): number | null;
   /** The lightest load on the list strictly above `w`, or null when there is none. */
   above(w: number): number | null;
 }
@@ -1978,26 +1976,35 @@ function loadsForIn(M: Model, ex: ExerciseLike, plan: Pick<Plan, 'inc'> | null |
       kind: 'rack',
       first: L[0] ?? null,
       below: w => [...L].reverse().find(x => x < w - (Math.abs(w - at) < EPS_SAME ? tf : tl)) ?? null,
-      floor: w => [...L].reverse().find(x => x <= w + tl) ?? null,
+      floor: (w, tol = tl) => [...L].reverse().find(x => x <= w + tol) ?? null,
       above: w => L.find(x => x > w + (Math.abs(w - at) < EPS_SAME ? tf : tl)) ?? null
     };
   }
   const og = offGrid(M, ex, plan, at);
   if (og) {
     const t = rackTolIn(M),
-      first = gridStep(M, og, 0, 1);
+      first = gridStep(M, og, 0, 1),
+      gd = gridD(M, og);
+    /* A load nearer than BELL_TOL of the spacing to one of the rack's weights is that weight, as on Your gym's rack
+       (rackTolIn, r34.2): from 22.5 kg dumbbells read in lb, 49.6, the next weight up is 55, not 50, a sliver of a
+       step, "add 0.4 lb" (NEW-70); and down from it, 45. Before 2.31 this rack took half the spacing, and only on the
+       way up (2.29), while Your gym's rack took 45% both ways: one rule written twice with two answers (RC-1). */
+    const near = (w: number): number => {
+      const r = kgOfIn(M, Math.round(inUnitIn(M, w) / gd) * gd);
+      return Math.abs(inUnitIn(M, w - r)) <= Math.max(inUnitIn(M, t), BELL_TOL * gd) ? r : w;
+    };
     return {
       kind: 'grid',
       first,
       below: w => {
-        const d = gridStep(M, og, w, -1);
+        const d = gridStep(M, og, near(w), -1);
         return d < first - EPS_SAME ? null : d;
       },
-      floor: w => {
-        const c = gridFloor(M, og, w, t);
+      floor: (w, tol = t) => {
+        const c = gridFloor(M, og, w, tol);
         return c < first - EPS_SAME ? null : c;
       },
-      above: w => gridStep(M, og, w, 1)
+      above: w => gridStep(M, og, near(w), 1)
     };
   }
   const G = plateGridIn(M, ex, plan);
