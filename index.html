@@ -7864,33 +7864,68 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function loadFloorIn(M3, ex) {
     return platesMode(ex) === "bar" && loadMode(ex) === "total" && (isCompound(ex) || (ex.barKg ?? 0) > 0) ? exBarKgIn(M3, ex) : 0;
   }
-  function lighterLoadIn(M3, ex, plan, from, to) {
+  function loadsForIn(M3, ex, plan, at2) {
     const L2 = gymRackIn(M3, ex, plan);
     if (L2) {
-      const tl = rackTolIn(M3), tf = rackTolIn(M3, L2, from);
-      const lo = L2.filter((x2) => x2 < from - tf);
-      if (!lo.length) return Math.max(0, from);
-      const c4 = lo.filter((x2) => x2 <= to + tl);
-      return c4.length ? c4[c4.length - 1] : lo[0];
+      const tl = rackTolIn(M3), tf = rackTolIn(M3, L2, at2);
+      return {
+        kind: "rack",
+        first: L2[0] ?? null,
+        below: (w2) => [...L2].reverse().find((x2) => x2 < w2 - (Math.abs(w2 - at2) < EPS_SAME ? tf : tl)) ?? null,
+        floor: (w2) => [...L2].reverse().find((x2) => x2 <= w2 + tl) ?? null,
+        above: (w2) => L2.find((x2) => x2 > w2 + (Math.abs(w2 - at2) < EPS_SAME ? tf : tl)) ?? null
+      };
     }
-    const og = offGrid(M3, ex, plan, from);
+    const og = offGrid(M3, ex, plan, at2);
     if (og) {
-      const dn = gridStep(M3, og, from, -1), first = gridStep(M3, og, 0, 1);
-      if (dn < first - EPS_SAME) return Math.max(0, from);
-      const c4 = gridFloor(M3, og, to, rackTolIn(M3));
-      return c4 >= first - EPS_SAME ? Math.min(dn, c4) : first;
+      const t4 = rackTolIn(M3), first = gridStep(M3, og, 0, 1);
+      return {
+        kind: "grid",
+        first,
+        below: (w2) => {
+          const d3 = gridStep(M3, og, w2, -1);
+          return d3 < first - EPS_SAME ? null : d3;
+        },
+        floor: (w2) => {
+          const c4 = gridFloor(M3, og, w2, t4);
+          return c4 < first - EPS_SAME ? null : c4;
+        },
+        above: (w2) => gridStep(M3, og, w2, 1)
+      };
     }
     const G = plateGridIn(M3, ex, plan);
     if (G) {
       const t4 = rackTolIn(M3);
-      return from <= G.bar + t4 ? Math.max(0, from) : Math.min(plateAt(G, to, -1, t4), plateAt(G, from - G.step / 2, -1, t4));
+      return {
+        kind: "plates",
+        first: G.bar,
+        below: (w2) => w2 <= G.bar + t4 ? null : plateAt(G, w2 - G.step / 2, -1, t4),
+        floor: (w2) => plateAt(G, w2, -1, t4),
+        above: (w2) => G.bar + Math.max(0, Math.floor((w2 + t4 - G.bar) / G.step + EPS_SAME) + 1) * G.step
+      };
     }
-    const step = incOfIn(M3, ex, plan, from);
+    const step = incOfIn(M3, ex, plan, at2);
+    const k2 = (w2) => (w2 - at2) / step;
+    return {
+      kind: "step",
+      first: null,
+      below: (w2) => step > 0 ? at2 + (Math.ceil(k2(w2) - EPS_SAME) - 1) * step : null,
+      floor: (w2) => step > 0 ? at2 + Math.floor(k2(w2) + EPS_SAME) * step : null,
+      above: (w2) => step > 0 ? at2 + (Math.floor(k2(w2) + EPS_SAME) + 1) * step : null
+    };
+  }
+  function lighterLoadIn(M3, ex, plan, from, to) {
+    const Ls = loadsForIn(M3, ex, plan, from);
+    if (Ls.kind !== "step") {
+      const dn2 = Ls.below(from);
+      if (dn2 == null) return Math.max(0, from);
+      const c4 = Ls.floor(to);
+      return c4 == null ? Ls.first ?? dn2 : Math.min(dn2, c4);
+    }
+    const dn = Ls.below(from);
     let w2;
-    if (step > 0) {
-      const k2 = Math.max(1, Math.ceil((from - to) / step - EPS_SAME));
-      w2 = from - k2 * step;
-    } else w2 = roundLoadIn(M3, to, true);
+    if (dn != null) w2 = Math.min(dn, Ls.floor(to) ?? dn);
+    else w2 = roundLoadIn(M3, to, true);
     const floor = loadFloorIn(M3, ex);
     if (w2 < floor - EPS_SAME) w2 = Math.min(floor, from);
     const gr = rackGridIn(M3, ex, plan, from);
@@ -7898,26 +7933,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return Math.max(0, w2);
   }
   function heavierLoadIn(M3, ex, plan, from, to) {
-    const L2 = gymRackIn(M3, ex, plan);
-    if (L2) {
-      const tl = rackTolIn(M3), tf = rackTolIn(M3, L2, from);
-      const c4 = L2.filter((x2) => x2 > from + tf && x2 <= to + tl);
-      return c4.length ? c4[c4.length - 1] : null;
-    }
-    const og = offGrid(M3, ex, plan, from);
-    if (og) {
-      const c4 = gridFloor(M3, og, to, rackTolIn(M3));
-      return c4 >= gridStep(M3, og, from, 1) - EPS_SAME ? c4 : null;
-    }
-    const G = plateGridIn(M3, ex, plan);
-    if (G) {
-      const t4 = rackTolIn(M3), c4 = plateAt(G, to, -1, t4);
-      return c4 > from + t4 ? c4 : null;
-    }
-    const step = incOfIn(M3, ex, plan, from);
-    if (!(step > 0)) return null;
-    const k2 = Math.floor((to - from) / step + EPS_SAME);
-    return k2 >= 1 ? from + k2 * step : null;
+    const Ls = loadsForIn(M3, ex, plan, from);
+    const up = Ls.above(from), c4 = Ls.floor(to);
+    return up != null && c4 != null && c4 >= up - EPS_SAME ? c4 : null;
   }
   var ODD_SESSION = 3;
   var ODD_BEST = 2;

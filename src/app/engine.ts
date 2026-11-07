@@ -1947,6 +1947,81 @@ function loadFloorIn(M: Model, ex: ExerciseLike): number {
     : 0;
 }
 
+/* The loads a lift can use (2.31, RC-1). Before 2.31 every rule that moved a load (lighter, heavier, the snap, the
+   step) chose for itself among four kinds of load list, each with its own lookup: Your gym's rack (the bells it
+   lists), a rack read from its spacing (dumbbells and kettlebells, when the load is off its weights, offGrid), Your
+   gym's plates on a bar lift (the bar and pairs of the smallest plate, plateGridIn) and, for everything else, whole
+   steps of the lift's own step from the load it is at. The same choice, in the same order, was written out in each
+   rule, so a fix to one kind in one rule missed the others (NEW-46, R-2, NEW-9, 387-B1, NEW-69, NEW-70). The choice is
+   made here once; each rule asks the list it gets. */
+/** The loads a lift can use around a load `at` (kg): the lightest (null when there is no floor of its own), the rung below and above a load, and the heaviest rung not past a load. */
+interface Loads {
+  /** Which kind of list this is, for the few rules whose policy still differs by kind (each says why). */
+  kind: 'rack' | 'grid' | 'plates' | 'step';
+  /** The lightest load on the list, or null when the list has no lightest of its own (whole steps from a load). */
+  first: number | null;
+  /** The heaviest load on the list strictly under `w`, or null when there is none. */
+  below(w: number): number | null;
+  /** The heaviest load on the list not past `w`, or null when every load on it is past `w`. */
+  floor(w: number): number | null;
+  /** The lightest load on the list strictly above `w`, or null when there is none. */
+  above(w: number): number | null;
+}
+
+/** The loads a lift can use, chosen once in the order every rule used (Your gym's rack, a rack read from its spacing when `at` is off its weights, Your gym's plates, else whole steps of the lift's step from `at`). */
+function loadsForIn(M: Model, ex: ExerciseLike, plan: Pick<Plan, 'inc'> | null | undefined, at: number): Loads {
+  const L = gymRackIn(M, ex, plan);
+  if (L) {
+    const tl = rackTolIn(M),
+      tf = rackTolIn(M, L, at);
+    return {
+      kind: 'rack',
+      first: L[0] ?? null,
+      below: w => [...L].reverse().find(x => x < w - (Math.abs(w - at) < EPS_SAME ? tf : tl)) ?? null,
+      floor: w => [...L].reverse().find(x => x <= w + tl) ?? null,
+      above: w => L.find(x => x > w + (Math.abs(w - at) < EPS_SAME ? tf : tl)) ?? null
+    };
+  }
+  const og = offGrid(M, ex, plan, at);
+  if (og) {
+    const t = rackTolIn(M),
+      first = gridStep(M, og, 0, 1);
+    return {
+      kind: 'grid',
+      first,
+      below: w => {
+        const d = gridStep(M, og, w, -1);
+        return d < first - EPS_SAME ? null : d;
+      },
+      floor: w => {
+        const c = gridFloor(M, og, w, t);
+        return c < first - EPS_SAME ? null : c;
+      },
+      above: w => gridStep(M, og, w, 1)
+    };
+  }
+  const G = plateGridIn(M, ex, plan);
+  if (G) {
+    const t = rackTolIn(M);
+    return {
+      kind: 'plates',
+      first: G.bar,
+      below: w => (w <= G.bar + t ? null : plateAt(G, w - G.step / 2, -1, t)),
+      floor: w => plateAt(G, w, -1, t),
+      above: w => G.bar + Math.max(0, Math.floor((w + t - G.bar) / G.step + EPS_SAME) + 1) * G.step
+    };
+  }
+  const step = incOfIn(M, ex, plan, at);
+  const k = (w: number): number => (w - at) / step;
+  return {
+    kind: 'step',
+    first: null,
+    below: w => (step > 0 ? at + (Math.ceil(k(w) - EPS_SAME) - 1) * step : null),
+    floor: w => (step > 0 ? at + Math.floor(k(w) + EPS_SAME) * step : null),
+    above: w => (step > 0 ? at + (Math.floor(k(w) + EPS_SAME) + 1) * step : null)
+  };
+}
+
 /* A load at or below `to`, reached from `from` in whole steps of the
    exercise's own load step, so a stack stays on its pins and a dumbbell rack
    on its dumbbells, and never below the empty bar on a barbell lift (r27).
@@ -1954,7 +2029,8 @@ function loadFloorIn(M: Model, ex: ExerciseLike): number {
    15 lb cable raise deloaded to 10, a 150 lb stack with 10 lb pins to 135, a
    95 lb bench warmed up at 40, under the bar. With no step set, it rounds
    down to 5 lb or 2.5 kg as before. May return `from` when nothing lighter
-   exists (the bar itself). */
+   exists (the bar itself). On a list with a lightest load of its own (a rack or the plates): the heaviest load not
+   past `to` and under `from`, at least the lightest, or `from` itself when nothing on the list is under it. */
 export function lighterLoadIn(
   M: Model,
   ex: ExerciseLike,
@@ -1962,39 +2038,18 @@ export function lighterLoadIn(
   from: number,
   to: number
 ): number {
-  // On a rack from Your gym: the heaviest bell not past `to` and under `from`, else the lightest under `from`.
-  const L = gymRackIn(M, ex, plan);
-  if (L) {
-    const tl = rackTolIn(M),
-      tf = rackTolIn(M, L, from);
-    const lo = L.filter(x => x < from - tf);
-    if (!lo.length) return Math.max(0, from);
-    const c = lo.filter(x => x <= to + tl);
-    return c.length ? c[c.length - 1] : lo[0];
+  const Ls = loadsForIn(M, ex, plan, from);
+  if (Ls.kind !== 'step') {
+    const dn = Ls.below(from);
+    if (dn == null) return Math.max(0, from);
+    const c = Ls.floor(to);
+    return c == null ? (Ls.first ?? dn) : Math.min(dn, c);
   }
-  // From a load off a rack read from its spacing (offGrid, r54): the same, its weights the spacing's multiples.
-  const og = offGrid(M, ex, plan, from);
-  if (og) {
-    const dn = gridStep(M, og, from, -1),
-      first = gridStep(M, og, 0, 1);
-    if (dn < first - EPS_SAME) return Math.max(0, from);
-    const c = gridFloor(M, og, to, rackTolIn(M));
-    return c >= first - EPS_SAME ? Math.min(dn, c) : first;
-  }
-  // On Your gym's plates (plateGridIn, r55.1): the heaviest load they make not past `to` and under `from`; the bar keeps the bar.
-  const G = plateGridIn(M, ex, plan);
-  if (G) {
-    const t = rackTolIn(M);
-    return from <= G.bar + t
-      ? Math.max(0, from)
-      : Math.min(plateAt(G, to, -1, t), plateAt(G, from - G.step / 2, -1, t));
-  }
-  const step = incOfIn(M, ex, plan, from);
+  // Whole steps from `from`: at least one, as many as reach `to`; with no step, rounded down to the unit's.
+  const dn = Ls.below(from);
   let w: number;
-  if (step > 0) {
-    const k = Math.max(1, Math.ceil((from - to) / step - EPS_SAME));
-    w = from - k * step;
-  } else w = roundLoadIn(M, to, true);
+  if (dn != null) w = Math.min(dn, Ls.floor(to) ?? dn);
+  else w = roundLoadIn(M, to, true);
   // At the bar itself nothing lighter exists, so `from` comes back and a deload keeps the bar.
   const floor = loadFloorIn(M, ex);
   if (w < floor - EPS_SAME) w = Math.min(floor, from);
@@ -2008,9 +2063,8 @@ export function lighterLoadIn(
 
 /* A load above `from` and not past `to`, or null when the next one is past
    it (r34, for adjusting the next sets; moved from the legacy script in r54
-   to read the rack from its spacing): on a rack from Your gym, the heaviest
-   bell between them; on a rack read from its spacing, the heaviest of its
-   weights between them; else whole steps of the lift's step from `from`. */
+   to read the rack from its spacing): the heaviest load on the lift's list
+   between them. */
 /** The heaviest load above `from` and not past `to` on the lift's rack or steps, or null. */
 export function heavierLoadIn(
   M: Model,
@@ -2019,28 +2073,10 @@ export function heavierLoadIn(
   from: number,
   to: number
 ): number | null {
-  const L = gymRackIn(M, ex, plan);
-  if (L) {
-    const tl = rackTolIn(M),
-      tf = rackTolIn(M, L, from);
-    const c = L.filter(x => x > from + tf && x <= to + tl);
-    return c.length ? c[c.length - 1] : null;
-  }
-  const og = offGrid(M, ex, plan, from);
-  if (og) {
-    const c = gridFloor(M, og, to, rackTolIn(M));
-    return c >= gridStep(M, og, from, 1) - EPS_SAME ? c : null;
-  }
-  const G = plateGridIn(M, ex, plan);
-  if (G) {
-    const t = rackTolIn(M),
-      c = plateAt(G, to, -1, t);
-    return c > from + t ? c : null;
-  }
-  const step = incOfIn(M, ex, plan, from);
-  if (!(step > 0)) return null;
-  const k = Math.floor((to - from) / step + EPS_SAME);
-  return k >= 1 ? from + k * step : null;
+  const Ls = loadsForIn(M, ex, plan, from);
+  const up = Ls.above(from),
+    c = Ls.floor(to);
+  return up != null && c != null && c >= up - EPS_SAME ? c : null;
 }
 
 /* A load far off (r55, V 2026-10-19: 300 typed after two sets of 50, logged
