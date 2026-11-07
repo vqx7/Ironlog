@@ -331,23 +331,27 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   restore(t) {
     const x = state.trash.find(y => y.id === t.dataset.id && y.kind === t.dataset.k);
     if (!x) return;
-    act(() => {
-      /* The copy goes back as it was saved, into a log normalize reads as it
+    act(
+      () => {
+        /* The copy goes back as it was saved, into a log normalize reads as it
          reads any log that comes in, so it is checked as an import is. */
-      const id = x.id;
-      const base = { ...state, trash: state.trash.filter(y => y !== x) };
-      const next =
-        x.kind === 'session' && !state.sessions.some(s => s.id === id)
-          ? { ...base, sessions: [...state.sessions, x.data] }
-          : x.kind === 'cardio' && !state.cardio.some(c => c.id === id)
-            ? { ...base, cardio: [...state.cardio, x.data] }
-            : x.kind === 'routine' && !state.routines.some(r => r.id === id)
-              ? { ...base, routines: [...state.routines, x.data] }
-              : base;
-      setState(normalize(next));
-    });
+        const id = x.id;
+        const base = { ...state, trash: state.trash.filter(y => y !== x) };
+        const next =
+          x.kind === 'session' && !state.sessions.some(s => s.id === id)
+            ? { ...base, sessions: [...state.sessions, x.data] }
+            : x.kind === 'cardio' && !state.cardio.some(c => c.id === id)
+              ? { ...base, cardio: [...state.cardio, x.data] }
+              : x.kind === 'routine' && !state.routines.some(r => r.id === id)
+                ? { ...base, routines: [...state.routines, x.data] }
+                : base;
+        setState(normalize(next));
+      },
+      { undo: true }
+    );
     render();
-    toast('Restored');
+    // Its own Undo step, like every change (2.30, RC-4): before, Restore kept none, so the delete's step stayed on top and Undo read "Nothing to undo there" (NEW-73).
+    toast(`${x.kind === 'session' ? 'Session' : x.kind === 'cardio' ? 'Cardio entry' : 'Routine'} restored`, true);
   },
   histDel(t) {
     const id = t.dataset.id;
