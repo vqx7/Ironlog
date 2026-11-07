@@ -2,7 +2,7 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: 2.29 (build r75, the review's fixes) on branch r75, a draft pull request next (2026-11-06). Live: r73, version 2.28 (pull request #72). Pull request #73 (build r74) is merged but its publish was cancelled before it went live. Due now: step 1j's two Supabase pastes.
+Last updated: 2026-11-07. Live: version 2.30 (build 2026.11.06-r76, pull request #75, merged 2026-11-07). Next: 2.31 on branch r78 (text size and the language pass).
 
 ## Now, in this order
 
@@ -20,7 +20,7 @@ Last updated: 2.29 (build r75, the review's fixes) on branch r75, a draft pull r
    - B1a again: paste the block below and Run. It now takes each account's report count and document count one write at a time (2.27-F14: two writes at the same moment could each pass the limit). Safe to run more than once.
    - B4 again: paste the function below over the old one and Deploy. Its webhook secret is now compared in a way a caller cannot time (2.27-F14).
    - Then E2 (2 minutes, read-only) if you have not run it yet: it shows what your live project actually has.
-1k. A39 (2.29): pull request #73 (build r74) was merged by you on 2026-11-06 and its publish cancelled at your word before it went live (the review's R74-1 to R74-3). The fixes, build r75, come as a draft pull request; when it is marked ready, try the preview and merge it: that publishes 2.29 with the fixes. Nothing to paste in Supabase for 2.29.
+1k. A39 (2.29) and A40 (2.30): 2.29 (#74) was closed unmerged; everything in it shipped in 2.30, pull request #75, merged by you on 2026-11-07 11:25 Los Angeles and live (build 2026.11.06-r76). Nothing to do.
 2. Problem reports: done (2026-10-30, you). B4's r64 code is deployed, B1a has been run, and a test report from the preview became an issue in `ironlog-feedback`, which confirms B5. See Done.
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
 4. D6: delete the old branches and stop them piling up (2 minutes, below).
