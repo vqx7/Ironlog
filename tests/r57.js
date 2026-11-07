@@ -48,9 +48,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       const seen = [];
       out.done = L.act(() => { seen.push(L.undoStack.length); L.state.settings.userName = 'Actor'; }, { check: () => { seen.push('check'); return true; }, undo: true });
       out.order = seen;
-      // The log before the change, whole or, once the save has cut the step to what changed (2.29, 2.27-F4), its settings as they were.
-      const st = L.undoStack[L.undoStack.length - 1]; const was = st.pre ? JSON.parse(st.pre).settings : JSON.parse(st.d).p.core.settings;
-      out.undoKept = L.undoStack.length === u0 + 1 && was.userName !== 'Actor' && (st.pre != null || JSON.parse(st.d).q.core.settings.userName === 'Actor');
+      out.undoKept = L.undoStack.length === u0 + 1 && JSON.parse(L.undoStack[L.undoStack.length - 1].pre).settings.userName !== 'Actor';
       out.dropped = L.IDX() !== idx0;
       out.saved = JSON.parse(localStorage.getItem(KEY)).settings.userName === 'Actor';
       await new Promise(r => setTimeout(r, 1000));
@@ -99,7 +97,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     ['gymClear', 'settings', '[data-act="gymClear"]', 1],
     ['trashDel', 'history', '[data-act="trashDel"]', 1, "L.state.trash=[{id:'tx1',kind:'cardio',date:'2026-10-23',data:{id:'tx1',date:'2026-10-20',kind:'walk',min:30,when:'solo'}}];"],
     ['trashEmpty', 'history', '[data-act="trashEmpty"]', 1, "L.state.trash=[{id:'tx2',kind:'cardio',date:'2026-10-23',data:{id:'tx2',date:'2026-10-20',kind:'walk',min:30,when:'solo'}}];"],
-    ['restore', 'history', '[data-act="restore"]', 0, "L.state.trash=[{id:'tx3',kind:'cardio',date:'2026-10-23',data:{id:'tx3',date:'2026-10-20',kind:'walk',min:30,when:'solo',hr:null,dist:null,note:''}}];"],
+    // Restore keeps an Undo step since 2.30 (RC-4, NEW-73: Undo and Recently deleted are one history; r57 to 2.29 kept none).
+    ['restore', 'history', '[data-act="restore"]', 1, "L.state.trash=[{id:'tx3',kind:'cardio',date:'2026-10-23',data:{id:'tx3',date:'2026-10-20',kind:'walk',min:30,when:'solo',hr:null,dist:null,note:''}}];"],
     ['cardioDel', 'history', '[data-act="cardioDel"]', 0, "L.state.cardio.push({id:'cx1',date:'2026-10-22',kind:'walk',min:20,when:'solo',hr:null,dist:null,note:''});"],
     ['histDel', 'history', '[data-act="histDel"]', 1, "L.ui.histOpen=[...L.state.sessions].sort((a,b)=>a.date<b.date?1:-1)[0].id;"],
     ['demoClear', 'settings', '[data-act="demoClear"]', 1]
@@ -264,11 +263,16 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
      tests/r73.js section 8: the line reads as a placeholder on both pages; everything else is still held to r56.2. */
   const EMPTY_LINE = /"No sessions yet\.( Start one on Today, or log one you did without the app with Log a past workout\.)?"/;
   const heldOutR73 = shot => ({ ...shot, tree: shot.tree.map(t => t.replace(EMPTY_LINE, '(no sessions)')), text: shot.text.replace(/\nNo sessions yet\.( Start one on Today, or log one you did without the app with Log a past workout\.)?(?=\n)/, '\n(no sessions)') });
+  /* 2.30 names the change Settings' Undo button takes back, and rewrites its tip, on purpose (RC-4, NEW-73: before,
+     "Undo last delete or reset (N available)" and a tip saying edits cannot be undone, which was wrong), held by
+     tests/r76.js section 1: the button reads as a placeholder on both pages; everything else is still held to r56.2. */
+  const UNDO_BTN = /(<button class="btn" data-act="undo"[^>]*?) data-tip="[^"]*"([^>]*>)"[^"]*"/;
+  const heldOutR76 = shot => ({ ...shot, tree: shot.tree.map(t => t.replace(UNDO_BTN, '$1$2(Undo)')), text: shot.text.replace(/\n(Undo last delete or reset( \(\d+ available\))?|Nothing to undo|Undo: [^\n]*|Undo the last change)(?=\n)/, '\n(Undo)') });
   const ENVS = [null, 'preview'];
   for (const [name, seed] of SEEDS) for (const tab of ['settings', 'history']) for (const env of ENVS) {
     if (env && name !== 'demo data, lb') continue;
     const sd = seed.replace(/L\.makeDemo\(\);/g, PIN + 'L.makeDemo();');
-    const a = heldOutR73(heldOutSched(heldOutR69(heldOut(await shot(OLD, sd, tab, env))))), b = heldOutR73(heldOutSched(heldOutR70(heldOutR69(heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env))))))));
+    const a = heldOutR76(heldOutR73(heldOutSched(heldOutR69(heldOut(await shot(OLD, sd, tab, env)))))), b = heldOutR76(heldOutR73(heldOutSched(heldOutR70(heldOutR69(heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env)))))))));
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     const firstDiff = d && { at: d.at, r56_2: d.before, now: d.now };
     ok(!firstDiff, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same elements, attributes and field values as r56.2`, firstDiff);

@@ -312,8 +312,11 @@ export interface EngineState {
   injuries: Injury[];
   deloadWeek: string | null;
   settings: EngineSettings;
-  /** The session in progress as the rules read it: its day, and the lifts it marks as done at a new machine or gym (r61, liftReadIn); absent or null with none. */
-  draft?: { date: string; ex: readonly { exId: string; nw?: true | undefined }[] } | null | undefined;
+  /** The session in progress as the rules read it: its day, the lifts it marks as done at a new machine or gym (r61, liftReadIn), and the saved session it is an edit of (2.30, R75-6: its saved version is no earlier session of itself); absent or null with none. */
+  draft?:
+    | { date: string; editingId?: string | null | undefined; ex: readonly { exId: string; nw?: true | undefined }[] }
+    | null
+    | undefined;
 }
 
 /** One set as the analytics read it (a point in IDX's byEx): the load as typed,

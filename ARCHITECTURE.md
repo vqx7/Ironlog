@@ -120,9 +120,10 @@ Casts: 49
 Non-null assertions: 23
 Open types: 8
 
-Marks in r52's moved code (from baselines/r51.html): 6 casts, 71 non-null assertions
+Marks in r52's moved code (from baselines/r51.html): 6 casts, 68 non-null assertions
 Marks in r56's moved code (from baselines/r55.html): 2 casts, 1 non-null assertions
 r73 (2.28): 8 open types from 9: a sync document's write typed as the document it is (`CloudDoc`, store.ts) where the store's `set` took any record. 1 non-null assertion from 2 in r56's moved code: the device id `takeLease` asserted, gone with the lease the backend never had (2.27-F1).
+r76 (2.30): 68 non-null assertions from 71 in r52's moved code: the three `at!` of progStepIn's rack branch, gone when the rack and the rack read from its spacing are asked through one list of loads (`loadsForIn`, RC-1).
 r72: 71 non-null assertions from 72 in r52's moved code: `all!` in suggestCoreIn's never-loaded test, read as `(all || [])` once it moved above the hold's case (R72-6).
 
 r66: 49 casts from 48: the rows of pictures' bytes read back from IndexedDB (`picRowsRead` in storage.ts, PENDING 373), whose request is typed any, read as unknown as Undo's and the kept-aside log's are.

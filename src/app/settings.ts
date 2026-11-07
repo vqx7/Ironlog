@@ -104,6 +104,7 @@ import { DEMO_WEEKS } from './importing';
 import { adjOn, refreshEx, syncDraftPlan, unitWords } from './worksets';
 import { confirmBox, render, rerenderKeepScroll } from './page';
 import { toast } from './toast';
+import { undoLabel } from './display';
 import { primeAudio, stopTimer, timerRefresh, wakeOff, wakeOn } from './timer';
 
 /* ---------- settings other screens read ---------- */
@@ -712,7 +713,7 @@ function dataBody(): TemplateResult {
 <div class="card stack">
 <div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
 <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button> <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"/></label> <button class="btn" data-act="pasteImport">Paste backup text instead</button>
-<div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Deletes, resets, and imports from the last ${UNDO_DAYS} days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.`}>Undo last delete or reset${undoStack.length ? ` (${undoStack.length} available)` : ''}</button></div>
+<div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Takes back the changes that offered Undo when you made them, one at a time, newest first, from the last ${UNDO_DAYS} days, even after the app is closed. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.`}>${undoLabel()}</button></div>
 </div>
 `;
 }

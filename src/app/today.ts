@@ -108,6 +108,7 @@ import {
   bestSetLine,
   rirShow,
   setShort,
+  undoLabel,
   weekSlots
 } from './display';
 import {
@@ -377,7 +378,7 @@ function obView(): TemplateResult {
     return html`<div class="ob"><div class="ob-splash"><p class="ob-logo">${markup(LOCKUP)}</p></div></div>`;
   const acctStep = !!AUTH() && !window.claude;
   const undo = undoStack.length
-    ? html`<button class="linkbtn ob-skip" data-act="undo">Undo last delete or reset</button>`
+    ? html`<button class="linkbtn ob-skip" data-act="undo">${undoLabel()}</button>`
     : nothing;
   /* The first page (r31.2, V): what the app does, in three lines, before
      anything is asked; then the account, said to be optional and what it is
