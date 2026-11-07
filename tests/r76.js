@@ -97,13 +97,14 @@ const T = '2026-11-06';
         return { to54: lb(L.heavierLoad(ex, plan, kg, 54 * LB)), to56: lb(L.heavierLoad(ex, plan, kg, 56 * LB)), step: lb(kg + L.progStep(ex, plan, kg, kg)) };
       };
       const rack = { u: 'lb', db: { lo: 5, hi: 120, st: 5 } };
-      return { spacing: at(22.5), rack: at(22.5, rack), onRack: at(50 * LB), onRackGym: at(50 * LB, rack) };
+      return { spacing: at(22.5), rack: at(22.5, rack), onRack: at(50 * LB), onRackGym: at(50 * LB, rack), eight: at(8 * LB), twelve: at(12 * LB) };
     });
     ok(r.spacing.to54 === null, '2. RC-1: 49.6 lb (22.5 kg) dumbbells, going heavier toward 54 lb, read from the rack\'s spacing: nothing, the next real weight is 55 (2.29: 50 lb, a sliver)', r.spacing);
     ok(r.rack.to54 === null, '2. (a guard) the same on Your gym\'s rack in lb: nothing', r.rack);
     ok(r.spacing.to56 === 55 && r.rack.to56 === 55, '2. (a guard) toward 56 lb both offer 55', r);
     ok(r.spacing.step === 55 && r.rack.step === 55, '2. (a guard, NEW-70) the step at the top of the range is 55 on both', r);
     ok(r.onRack.to54 === null && r.onRack.to56 === 55 && r.onRackGym.to56 === 55, '2. (a guard) from 50 lb on the rack, as before', r);
+    ok(r.eight.step === 10 && r.twelve.step === 15, '2. V\'s call of 2026-10-18 (r54): lb dumbbells typed at 8 and 12, off a 5 lb rack, step to the rack\'s next weight, 10 and 15 (2.29\'s half-step patch made 8 go to 15, with no test to say so)', { eight: r.eight, twelve: r.twelve });
     ok(!D.errors.length, '2. no page errors', D.errors);
     await D.browser.close();
   }
