@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-crEsLloAlFerKaTQkEP2eFQI/FO2qsNAlMvn0PIcazw=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-YRtaQePT124r5i5YUBxWf0QIv5Bf9dN5yFomktYHF8w=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.06-r76">
@@ -5863,10 +5863,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return M3.c._idx;
   }
   function liftReadIn(M3, exId, T2) {
-    const d3 = M3.s.draft;
-    const ed = d3 && d3.editingId;
-    const every = (IDXIn(M3).byEx[exId] || []).filter((x2) => !ed || x2.sid !== ed);
+    const every = IDXIn(M3).byEx[exId] || [];
     const all = T2 === void 0 ? every : every.filter((x2) => x2.date <= T2);
+    const d3 = M3.s.draft;
     if (d3 && (T2 === void 0 || d3.date <= T2) && d3.ex.some((b2) => b2.exId === exId && b2.nw))
       return sinceNew(all.filter((x2) => x2.date > d3.date));
     return sinceNew(all);
@@ -6631,7 +6630,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const I2 = IDXIn(M3);
     const every = I2.byEx[exId];
     if (!every || !every.length) return null;
-    const exps = date ? liftReadIn(M3, exId, date) : sinceNew(every);
+    const ed = M3.s.draft && M3.s.draft.editingId;
+    const read = date ? liftReadIn(M3, exId, date) : sinceNew(every);
+    const exps = ed ? read.filter((x2) => x2.sid !== ed) : read;
     if (!exps.length) return null;
     const ex = EXIn(M3, exId);
     const seen = /* @__PURE__ */ new Set();
@@ -7750,7 +7751,13 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const L2 = gymRackIn(M3, ex, plan);
       if (L2) return rackGapIn(M3, L2, at2);
       const gr = rackGridIn(M3, ex, plan, at2);
-      if (gr) return at2 != null && at2 > 0 && offGrid(M3, ex, plan, at2) ? gridStep(M3, gr, at2, 1) - at2 : gr;
+      if (gr) {
+        if (at2 != null && at2 > 0 && offGrid(M3, ex, plan, at2)) {
+          const up = loadsForIn(M3, ex, plan, at2).above(at2);
+          return up == null ? gr : up - at2;
+        }
+        return gr;
+      }
       const G = plateGridIn(M3, ex, plan);
       const t4 = rackTolIn(M3);
       if (G && at2 != null && at2 > 0 && Math.abs(plateAt(G, at2, -1, t4) - at2) > t4) return plateAt(G, at2, 1, t4) - at2;
@@ -7883,20 +7890,24 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     const og = rackGridIn(M3, ex, plan, at2);
     if (og) {
-      const t4 = rackTolIn(M3), first = gridStep(M3, og, 0, 1), gd = gridD(M3, og);
-      const near = (w2) => onStep(inUnitIn(M3, w2), TYPED_STEP) ? w2 : kgOfIn(M3, Math.round(inUnitIn(M3, w2) / gd) * gd);
+      const t4 = rackTolIn(M3), first = gridStep(M3, og, 0, 1);
+      const typed = (w2) => onStep(inUnitIn(M3, w2), TYPED_STEP);
+      const jump = jumpPct(ex, plan);
       return {
         kind: "grid",
         first,
         below: (w2) => {
-          const d3 = gridStep(M3, og, near(w2), -1);
+          const d3 = gridStep(M3, og, w2, -1);
           return d3 < first - EPS_SAME ? null : d3;
         },
         floor: (w2, tol = t4) => {
           const c4 = gridFloor(M3, og, w2, tol);
           return c4 < first - EPS_SAME ? null : c4;
         },
-        above: (w2) => gridStep(M3, og, near(w2), 1),
+        above: (w2) => {
+          const u4 = gridStep(M3, og, w2, 1);
+          return !typed(w2) && u4 - w2 < jump * w2 ? gridStep(M3, og, u4, 1) : u4;
+        },
         has: (w2) => Math.abs(gridFloor(M3, og, w2, t4) - w2) <= t4
       };
     }
@@ -10784,6 +10795,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const top = undoStack[undoStack.length - 1];
     const step = opts.undo && top !== top0 ? top : void 0;
     lastStep = step;
+    if (step)
+      queueMicrotask(() => {
+        if (lastStep === step) lastStep = void 0;
+      });
     const draftWas = opts.inProgress ? structuredClone(state.draft) : null;
     const logWas = opts.inProgress ? null : structuredClone(state);
     outerUndo = !!opts.undo;
