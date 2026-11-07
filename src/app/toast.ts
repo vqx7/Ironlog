@@ -4,6 +4,8 @@
    the steps are kept in storage.ts since r30, and the toast only offers the
    newest. */
 
+import { nameLastStep } from './act';
+
 /** How long a toast stays, in milliseconds: one that offers Undo, and one that does not. */
 const TOAST_MS = { undo: 6000, plain: 2600 } as const;
 
@@ -22,6 +24,8 @@ export function toast(msg: string, undo?: boolean | null, ms?: number | null, ki
   say.textContent = msg;
   const parts: Node[] = [say];
   if (undo) {
+    // The message names the change's Undo step, so Undo can later say what it took back (2.30, RC-4).
+    nameLastStep(msg);
     const b = document.createElement('button');
     b.dataset.act = 'undo';
     b.textContent = 'Undo';

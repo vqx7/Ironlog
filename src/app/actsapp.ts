@@ -402,11 +402,12 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const r = undoStep();
     if (r === 'none') toast('Nothing left to undo');
     else if (r === 'failed') toast('Could not undo that');
-    else if (r === 'unchanged') toast('Nothing to undo there: it has changed since.');
+    else if (r === 'unchanged') toast('Nothing to undo: that change was already reversed or edited since.');
     else {
       toastHide();
       render();
-      toast(`Undone. ${r} step${r === 1 ? '' : 's'} left`);
+      // What was taken back, in the words its own message used (2.30, RC-4); never a count of the steps kept.
+      toast(r.said ? `Undone: ${r.said}` : 'Undone');
     }
   },
   help(t) {

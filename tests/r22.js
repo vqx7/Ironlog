@@ -127,7 +127,8 @@ const ids = list => (list || []).map(x => x.id).sort().join();
     await A.page.reload(); await A.page.waitForFunction(() => window.__ironlog); await wait(800);
     ok(await ev(() => window.__ironlog.undoStack.length === 1), 'a delete can still be undone after the app is reopened');
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
-    ok(/1 available/.test(await ev(() => document.querySelector('#view [data-act="undo"]').textContent)) && /last 7 days/.test(await ev(() => document.querySelector('#view [data-act="undo"]').dataset.tip)), 'Settings offers it and says it keeps a week');
+    // Since 2.30 the button names the change it takes back (RC-4; before, "1 available"), and the words come back with the step after the app is reopened.
+    ok(/Undo: Session deleted/.test(await ev(() => document.querySelector('#view [data-act="undo"]').textContent)) && /last 7 days/.test(await ev(() => document.querySelector('#view [data-act="undo"]').dataset.tip)), 'Settings offers it, names the delete it takes back after a reopen, and says it keeps a week');
     await ev(() => document.querySelector('#view [data-act="undo"]').click()); await wait(300);
     ok(await ev(([id, n]) => window.__ironlog.state.sessions.some(s => s.id === id) && window.__ironlog.state.sessions.length === n, [sid, n0]), 'Undo after the reload brings the session back');
     await ev(() => window.__ironlog.ACT.histDel({ dataset: { id: window.__ironlog.state.sessions[3].id } })); await wait(100);

@@ -52,6 +52,10 @@ let logBefore: State | null = null;
 let outerDraftOnly = false;
 // Whether the change being made keeps an Undo step: one asked for inside a change that keeps none cannot be taken (the log is half changed by then), so it is said in the error log rather than lost unsaid.
 let outerUndo = false;
+/* The Undo step the newest change kept, until its message names it (2.30, RC-4): the toast that reports a change is
+   shown just after it, and its words are what Undo says it took back. A change that keeps no step clears it, so a
+   message never names an older change's step. */
+let lastStep: (typeof undoStack)[number] | undefined;
 
 /** Changes the log with every step a change needs, in order; false when its check refused it. Inside another change it is part of that one. */
 export function act(change: () => void, opts: ActOpts = {}): boolean {
@@ -76,6 +80,7 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   // The step this change keeps: a new entry on top, none when the snapshot could not be taken.
   const top = undoStack[undoStack.length - 1];
   const step = opts.undo && top !== top0 ? top : undefined;
+  lastStep = step;
   /* What a change that fails halfway is put back to (2.28, 2.27-F5): an exact copy of the workout in progress for a
      change to it alone, else of the whole log. Before 2.28 the half-changed log stayed, and the next change saved
      it. */
@@ -132,10 +137,25 @@ export function toTrash(kind: Trashed['kind'], data: { id: string }): void {
    right after the action as the base, what is here now as one side and the
    state before the action as the other. Records changed since the action
    keep their newer version. */
-/** Takes back the newest Undo step: 'none' when there is none, 'failed' when it could not be read, 'unchanged' when nothing it changed is left to undo, else how many steps are left. */
-export function undoStep(): 'none' | 'failed' | 'unchanged' | number {
+/** Names the Undo step the newest change kept with the words of the message reporting it; nothing when that change kept none or it was named already. */
+export function nameLastStep(said: string): void {
+  if (!lastStep || lastStep.said || !undoStack.includes(lastStep)) return;
+  lastStep.said = said;
+  lastStep = undefined;
+  undoPersist();
+}
+
+/** What the next Undo would take back, in the words of the message that reported it: null when nothing is kept, '' when the step was kept unnamed (by a build before 2.30). */
+export function undoNext(): string | null {
+  const e = undoStack[undoStack.length - 1];
+  return e ? e.said || '' : null;
+}
+
+/** Takes back the newest Undo step: 'none' when there is none, 'failed' when it could not be read, 'unchanged' when nothing it changed is left to undo, else what it took back, in the words of the message that reported the change ('' for a step kept unnamed). */
+export function undoStep(): 'none' | 'failed' | 'unchanged' | { said: string } {
   const e = undoStack.pop();
   if (!e) return 'none';
+  lastStep = undefined;
   undoPersist();
   const before = canon(state);
   let done = false;
@@ -188,5 +208,5 @@ export function undoStep(): 'none' | 'failed' | 'unchanged' | number {
   if (canon(state) === before) return 'unchanged';
   invalidate();
   saveNow();
-  return undoStack.length;
+  return { said: e.said || '' };
 }

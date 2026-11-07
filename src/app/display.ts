@@ -28,6 +28,7 @@ import {
 import { loadNote } from './loads';
 import { goalOk } from './goals';
 import { avgWeeksTxt } from './weeks';
+import { undoNext } from './act';
 import { SIZE_MAP } from './coach';
 import { REGION_KEY, prefGet } from './storage';
 import { effShow, rirScale } from './effort';
@@ -56,6 +57,12 @@ import {
 import { state, ui } from './store';
 import type { ExPoint, Exposure, ExerciseLike, Pr } from './model';
 import type { Day, Exercise, LoggedSet, Measurement, PlanItem, Routine, Session } from './types';
+
+/** The words on an Undo button (Settings, and the first page after Erase everything): the change it takes back, named as its message named it (2.30, RC-4; before, "Undo last delete or reset (N available)"). */
+export function undoLabel(): string {
+  const said = undoNext();
+  return said === null ? 'Nothing to undo' : said ? `Undo: ${said}` : 'Undo the last change';
+}
 
 /** Whether nothing is logged yet. */
 export function noLog(): boolean {

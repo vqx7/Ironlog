@@ -150,6 +150,8 @@ interface UndoStep {
   post: string | null;
   inv: (() => boolean) | null;
   t: number;
+  /** The words of the message that reported the change (2.30, RC-4), so Undo can say what it takes back; absent on a step kept by a build before 2.30 or by a change that reported nothing. */
+  said?: string;
 }
 /** Undo's steps are kept this many days; the Settings line says so. */
 export const UNDO_DAYS = 7;
@@ -196,7 +198,7 @@ export function undoPersist(): void {
     try {
       const tx = db.transaction('kv', 'readwrite');
       tx.objectStore('kv').put(
-        undoStack.map(e => ({ pre: e.pre, post: e.post, t: e.t || Date.now() })),
+        undoStack.map(e => ({ pre: e.pre, post: e.post, t: e.t || Date.now(), ...(e.said ? { said: e.said } : {}) })),
         'stack'
       );
     } catch (e) {
@@ -225,7 +227,13 @@ export async function undoRestore(): Promise<void> {
   for (const e of arr(list) || []) {
     const E = rec(e);
     if (E && typeof E.pre === 'string' && now - (Number(E.t) || 0) < UNDO_TTL)
-      undoStack.push({ pre: E.pre, post: typeof E.post === 'string' ? E.post : null, inv: null, t: Number(E.t) });
+      undoStack.push({
+        pre: E.pre,
+        post: typeof E.post === 'string' ? E.post : null,
+        inv: null,
+        t: Number(E.t),
+        ...(typeof E.said === 'string' ? { said: E.said } : {})
+      });
   }
   if (undoStack.length && ui.tab === 'settings' && !ui.modal) fx.rerenderKeepScroll();
 }
