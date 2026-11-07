@@ -1685,7 +1685,7 @@ export function incOfIn(
 function stepOfIn(
   M: Model,
   ex: ExerciseLike | null | undefined,
-  plan: Pick<Plan, 'inc'> | null | undefined,
+  plan: Pick<Plan, 'inc' | 'jump'> | null | undefined,
   at: number | null | undefined,
   byEquip: boolean
 ): number {
@@ -1695,7 +1695,14 @@ function stepOfIn(
     if (L) return rackGapIn(M, L, at);
     // On a rack read from its spacing (rackGridIn): the spacing, or from a load off its weights the way to the next one up.
     const gr = rackGridIn(M, ex, plan, at);
-    if (gr) return at != null && at > 0 && offGrid(M, ex, plan, at) ? gridStep(M, gr, at, 1) - at : gr;
+    // From a load off its weights, the way to the next one up, as every rule that moves a load reads it (loadsForIn).
+    if (gr) {
+      if (at != null && at > 0 && offGrid(M, ex, plan, at)) {
+        const up = loadsForIn(M, ex, plan, at).above(at);
+        return up == null ? gr : up - at;
+      }
+      return gr;
+    }
     const G = plateGridIn(M, ex, plan);
     const t = rackTolIn(M);
     if (G && at != null && at > 0 && Math.abs(plateAt(G, at, -1, t) - at) > t) return plateAt(G, at, 1, t) - at;
@@ -1955,8 +1962,13 @@ interface Loads {
   has(w: number): boolean;
 }
 
-/** The loads a lift can use, chosen once in the order every rule used (Your gym's rack, a rack read from its spacing when `at` is off its weights, Your gym's plates, else whole steps of the lift's step from `at`). */
-function loadsForIn(M: Model, ex: ExerciseLike, plan: Pick<Plan, 'inc'> | null | undefined, at: number | null): Loads {
+/** The loads a lift can use, chosen once in the order every rule used (Your gym's rack, a rack read from its spacing whatever the load, Your gym's plates, else whole steps of the lift's step from `at`). */
+function loadsForIn(
+  M: Model,
+  ex: ExerciseLike,
+  plan: Pick<Plan, 'inc' | 'jump'> | null | undefined,
+  at: number | null
+): Loads {
   const L = gymRackIn(M, ex, plan);
   if (L) {
     const tl = rackTolIn(M),
@@ -1975,29 +1987,31 @@ function loadsForIn(M: Model, ex: ExerciseLike, plan: Pick<Plan, 'inc'> | null |
   const og = rackGridIn(M, ex, plan, at);
   if (og) {
     const t = rackTolIn(M),
-      first = gridStep(M, og, 0, 1),
-      gd = gridD(M, og);
-    /* A load converted from the other unit is the rack's nearest weight (2.30, NEW-74, RC-1): 22.5 kg dumbbells
-       shown in lb are 49.6, which no lb rack has; read as they are, the next weight up was 50, a sliver of a step,
-       "add 0.4 lb" (NEW-70, fixed in 2.29 for the step at the top of the range alone) and "going heavier" offered the
-       same 50. As the 50 they stand for, the next weight up is 55 and the next down 45, in every rule that moves a
-       load. A load typed in the unit on screen is a weight the lifter has, on this rack or not (12 lb dumbbells read
-       on a 5 lb spacing step to 15 and down to 10: V's call of 2026-10-18, r54), so it stays as it is. Your gym's
-       rack, a list of the weights there, reads a load near one as that one instead (BELL_TOL, rackTolIn). */
-    const near = (w: number): number =>
-      onStep(inUnitIn(M, w), TYPED_STEP) ? w : kgOfIn(M, Math.round(inUnitIn(M, w) / gd) * gd);
+      first = gridStep(M, og, 0, 1);
+    /* Every step is worked out from the weight lifted, converted exactly (V, 2026-11-07 08:58: "it should convert
+       based on the weight", then the closest real weight, "prioritizing progression rather than trying to match 0.4
+       pounds"). Going up, the next weight on the rack is skipped only when it is a sliver: a load converted from the
+       other unit (22.5 kg is 49.6 lb) that is less than the lift's own jump (jumpPct: 2.5% compound, 5% isolation, or
+       the plan's) under that weight, so 49.6 goes to 55, never 50 (NEW-74), while 17.6 (8 kg) goes to 20 and 8.8 (4 kg)
+       to 10. A load typed in the unit on screen is a weight the lifter has, so its next weight is never skipped (r54:
+       8 lb to 10). Going down is always from the weight lifted: a Lighter day from 12.1 lb (5.5 kg) is 10, never 5. */
+    const typed = (w: number): boolean => onStep(inUnitIn(M, w), TYPED_STEP);
+    const jump = jumpPct(ex, plan);
     return {
       kind: 'grid',
       first,
       below: w => {
-        const d = gridStep(M, og, near(w), -1);
+        const d = gridStep(M, og, w, -1);
         return d < first - EPS_SAME ? null : d;
       },
       floor: (w, tol = t) => {
         const c = gridFloor(M, og, w, tol);
         return c < first - EPS_SAME ? null : c;
       },
-      above: w => gridStep(M, og, near(w), 1),
+      above: w => {
+        const u = gridStep(M, og, w, 1);
+        return !typed(w) && u - w < jump * w ? gridStep(M, og, u, 1) : u;
+      },
       has: w => Math.abs(gridFloor(M, og, w, t) - w) <= t
     };
   }
@@ -2041,7 +2055,7 @@ function loadsForIn(M: Model, ex: ExerciseLike, plan: Pick<Plan, 'inc'> | null |
 export function lighterLoadIn(
   M: Model,
   ex: ExerciseLike,
-  plan: Pick<Plan, 'inc'> | null | undefined,
+  plan: Pick<Plan, 'inc' | 'jump'> | null | undefined,
   from: number,
   to: number
 ): number {
@@ -2076,7 +2090,7 @@ export function lighterLoadIn(
 export function heavierLoadIn(
   M: Model,
   ex: ExerciseLike,
-  plan: Pick<Plan, 'inc'> | null | undefined,
+  plan: Pick<Plan, 'inc' | 'jump'> | null | undefined,
   from: number,
   to: number
 ): number | null {

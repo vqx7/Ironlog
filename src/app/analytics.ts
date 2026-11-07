@@ -391,14 +391,9 @@ export function IDXIn(M: Model): Idx {
    spacing, a load far off and the live PR read a lift through this. */
 /** A lift's sessions up to a date (all of them with none) as its rules read them: since a new machine or gym. */
 export function liftReadIn(M: Model, exId: string, T?: string): Exposure[] {
-  const d = M.s.draft;
-  /* A saved workout open for editing (History's Edit) is the open copy, so its saved version is no earlier session
-     of itself (2.30, R75-6, RC-2): read with it, its 100 x 8 was judged against the same 100 x 8 "before" it and lost
-     the Weight PR the list counts, and its targets were read from itself. Every reader of a lift's past sessions
-     comes through here, so they all read the log as it will be once the edit is saved. */
-  const ed = d && d.editingId;
-  const every = (IDXIn(M).byEx[exId] || []).filter(x => !ed || x.sid !== ed);
+  const every = IDXIn(M).byEx[exId] || [];
   const all = T === undefined ? every : every.filter(x => x.date <= T);
+  const d = M.s.draft;
   if (d && (T === undefined || d.date <= T) && d.ex.some(b => b.exId === exId && b.nw))
     return sinceNew(all.filter(x => x.date > d.date));
   return sinceNew(all);
@@ -2010,7 +2005,14 @@ export function prFrameIn(M: Model, exId: string, s: LoadedSet, date: string): P
   const I = IDXIn(M);
   const every = I.byEx[exId];
   if (!every || !every.length) return null;
-  const exps = date ? liftReadIn(M, exId, date) : sinceNew(every);
+  /* A set in a saved workout open for editing (History's Edit) is judged against the sessions before it, as the PR
+     list judges it once saved, never against its own saved copy (2.30, R75-6: its 100 x 8 lost the Weight PR the list
+     counts). Only this judgement leaves the copy out; the lift's history, bests and trend still show the workout as
+     saved until the edit is (the review of 2.30: leaving it out of every reader made the history sheet's best set
+     disagree with the PR list during an edit). */
+  const ed = M.s.draft && M.s.draft.editingId;
+  const read = date ? liftReadIn(M, exId, date) : sinceNew(every);
+  const exps = ed ? read.filter(x => x.sid !== ed) : read;
   if (!exps.length) return null;
   const ex = EXIn(M, exId);
   const seen = new Set<number>();

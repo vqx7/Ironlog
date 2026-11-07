@@ -19,6 +19,14 @@
 //      PR in the list; opened for editing, its 100 x 8 row read as no PR on 2.29 (it was judged against itself, the
 //      same 100 x 8 one day "earlier"). Guards: the list says Weight PR before and during the edit; a new workout today
 //      at 100 x 8 is still no PR (it ties Oct 30).
+//   4  The review of 2.30 on kg dumbbells seen in lb (no gym set), held to V's rule of 2026-11-07 08:58 (convert from
+//      the weight, the closest real weight, progression over matching a sliver): the step up is the next real weight,
+//      skipped only when it is a sliver under the lift's own jump; a Lighter day and a deload come down from the weight
+//      lifted; the step mid-workout at 5 or more in reserve is the same step. r76 at a0fe230 gave 17.6 lb a step to 25,
+//      a Lighter day from 12.1 lb of 5, and no mid-workout step at all; 2.28 gave the slivers (19.8 to 20, 49.6 to 50).
+//   5  The review of 2.30: during an edit, the lift's history sheet still shows the workout as saved (best set
+//      16 x 10, as the PR list counts it); and a message with Undo shown for a change that kept no step names no
+//      older step (Undo reads "Undone", never another change's words).
 // R76_ONLY=1 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -132,6 +140,64 @@ const T = '2026-11-06';
     const today = await ev(() => window.__ironlog.livePR('bench', { w: 100, r: 8, rir: null, warm: false, drop: false, done: true }, '2026-11-06'));
     ok(today === null, '3. (a guard) a new workout today at 100 x 8 ties Oct 30: no PR', today);
     ok(!D.errors.length, '3. no page errors', D.errors);
+    await D.browser.close();
+  }
+
+  if (run(4)) {
+    const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00' });
+    const got = await D.page.evaluate(() => {
+      const L = window.__ironlog, LB = 0.45359237, S = L.state, PLAN = { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 120 };
+      const lb = v => (v == null ? null : Math.round((v / LB) * 10) / 10);
+      const out = {};
+      [3.5, 4, 5.5, 6, 8, 9, 11, 22.5].forEach((kg, n) => {
+        S.settings.onboarded = true; S.settings.unit = 'lb'; delete S.settings.gym; S.draft = null;
+        S.sessions = ['2026-10-16', '2026-10-23', '2026-10-30'].map((date, i) => ({ id: `k${n}_${i}`, date, dayIdx: 0, dayName: 'A', notes: '', ex: [{ exId: 'dbCurl', rr: [8, 12], sets: [12, 12, 12].map(r => ({ w: kg, r, rir: 1, warm: false, drop: false })) }] }));
+        L.state = L.normalize(S); L.invalidate();
+        const ex = L.state.exercises.find(e => e.id === 'dbCurl');
+        const b = { exId: 'dbCurl', plan: { ...PLAN }, sets: [{ w: kg, r: 12, rir: 5, done: true, warm: false, drop: false }, { w: kg, r: null, rir: null, warm: false, drop: false }, { w: kg, r: null, rir: null, warm: false, drop: false }] };
+        const ns = L.nextSets(b, 0, 12);
+        out[kg] = { lb: lb(kg), up: lb(kg + L.progStep(ex, PLAN, kg, kg)), light: lb(L.suggest('dbCurl', PLAN, { light: true }).w), deload: lb(L.suggest('dbCurl', PLAN, { deload: true }).w), five: ns && typeof ns === 'object' ? lb(ns.w) : null };
+      });
+      return out;
+    });
+    // V's rule: the next real weight from what was lifted, a sliver (under the lift's 5% jump on a curl) skipped.
+    const want = { 3.5: [10, 5], 4: [10, 5], 5.5: [15, 10], 6: [15, 10], 8: [20, 15], 9: [25, 15], 11: [30, 20], 22.5: [55, 40] };
+    for (const kg of Object.keys(want)) {
+      const g = got[kg], [up, light] = want[kg];
+      ok(g.up === up && g.five === up, `4. ${kg} kg dumbbells (${g.lb} lb): the step up and the step mid-workout at 5 in reserve are ${up} lb`, g);
+      ok(g.light === light && g.deload === light, `4. ${kg} kg dumbbells (${g.lb} lb): a Lighter day and a deload come down from the weight lifted, ${light} lb`, g);
+    }
+    ok(!D.errors.length, '4. no page errors', D.errors);
+    await D.browser.close();
+  }
+
+  if (run(5)) {
+    const D = await open(FILE, { w: 390, h: 844, clock: T + 'T10:00:00' });
+    const ev = (f, a) => D.page.evaluate(f, a), wait = ms => D.page.waitForTimeout(ms);
+    await ev(() => {
+      const L = window.__ironlog, S = L.state;
+      S.settings.onboarded = true; S.settings.unit = 'kg'; S.draft = null;
+      const ses = (id, date, w) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Arms', routineId: '', free: true, notes: '', ex: [{ exId: 'dbCurl', rr: [8, 12], sets: [0, 1].map(() => ({ w, r: 10, rir: null, warm: false, drop: false })) }] });
+      S.sessions = [ses('g1', '2026-10-23', 14), ses('g2', '2026-10-30', 16)];
+      L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.render();
+    });
+    const best = () => ev(() => { const r = window.__ironlog.liftRead('dbCurl'); return r.map(x => x.date).join(); });
+    const before = await best();
+    await ev(() => window.__ironlog.ACT.histEdit({ dataset: { id: 'g2' } })); await wait(200);
+    if (await ev(() => !!document.querySelector('#modal [data-act="mOk"]'))) { await D.page.click('#modal [data-act="mOk"]'); await wait(200); }
+    const during = await best();
+    ok(before === '2026-10-23,2026-10-30' && during === before, '5. during an edit, the lift\'s history still holds the workout as saved (r76 at a0fe230 dropped Oct 30, and the sheet\'s best set read 14 x 10 while the PR list counted 16 x 10)', { before, during });
+    await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); });
+    const named = await ev(async () => {
+      const L = window.__ironlog;
+      L.undoForget();
+      L.act(() => { L.state.settings.timeBudget = 50; }, { undo: true });
+      await new Promise(q => setTimeout(q, 20));
+      L.toast('Something else', true);
+      return L.undoStack.map(e => e.said || '');
+    });
+    ok(named.length === 1 && named[0] === '', '5. a message with Undo shown after its turn names no older step (r76 at a0fe230 named it, as Settings\' Your gym in kg did)', named);
+    ok(!D.errors.length, '5. no page errors', D.errors);
     await D.browser.close();
   }
 

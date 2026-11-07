@@ -81,6 +81,13 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   const top = undoStack[undoStack.length - 1];
   const step = opts.undo && top !== top0 ? top : undefined;
   lastStep = step;
+  /* A step is named only by the message shown with its own change, in the same turn (the review of 2.30: Settings'
+     Your gym in kg showed its message with Undo after making no change, and named an older change's step, which kept
+     no message). A message shown later leaves its step unnamed, which reads "Undone", never wrong words. */
+  if (step)
+    queueMicrotask(() => {
+      if (lastStep === step) lastStep = undefined;
+    });
   /* What a change that fails halfway is put back to (2.28, 2.27-F5): an exact copy of the workout in progress for a
      change to it alone, else of the whole log. Before 2.28 the half-changed log stayed, and the next change saved
      it. */
