@@ -95,7 +95,11 @@ const button = page => page.evaluate(() => new Promise(res => {
     await D.browser.close();
   } catch (e) { ok(false, '1. the section stopped', String(e).slice(0, 300)); }
 
-  if (run(2)) try {
+  // The built app brings its own account script, which replaces the stand-in signed-in service these sections
+  // use: on it, the line is read signed in by tests/accounts.js, against a stand-in Supabase.
+  const STUB_OK = !process.env.IRONLOG_FILE;
+  if (!STUB_OK) console.log('note r79 sections 2 and 5 need a stand-in account service; on the built app tests/accounts.js reads the photo line signed in');
+  if (run(2) && STUB_OK) try {
     const line = page => page.evaluate(() => { const b = document.getElementById('photoBar'); return b ? b.innerText.replace(/\s+/g, ' ').trim() : null; });
     const D = await app({ auth: SIGNED_IN });
     await D.page.waitForFunction(() => !!window.__ironlog.acctUser(), null, { timeout: 5000 }).catch(() => {});
@@ -237,7 +241,7 @@ const button = page => page.evaluate(() => new Promise(res => {
     await D.browser.close();
   } catch (e) { ok(false, '4. the section stopped', String(e).slice(0, 300)); }
 
-  if (run(5)) try {
+  if (run(5) && STUB_OK) try {
     for (const dark of [false, true]) {
       const D = await app({ w: 320, auth: SIGNED_IN, dark, theme: dark ? 'dark' : 'light' });
       const pg = D.page, th = dark ? 'dark' : 'light';
