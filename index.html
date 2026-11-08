@@ -26727,7 +26727,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (!d3) return null;
     const left = remainMin(d3);
     const pl = m3.mins ? shortPlan(d3, m3.mins) : null;
-    const body = !left ? b`<p class="small">Nothing is left to trim: every planned set is done.</p>` : !pl ? "" : pl.changes.length ? b`<ul class="short-list">${pl.changes.map((c4) => b`<li>${c4}</li>`)}</ul><p class="small muted u-m6-0-0">${estMin(min5(pl.est))} after the change.${pl.over ? " Still over, because exercises you have started are kept." : ""} Done sets are never touched.</p>` : b`<p class="small">Everything left fits in ${m3.mins} minutes as planned.</p>`;
+    const body = !left ? b`<p class="small">Nothing is left to trim: every planned set is done.</p>` : !pl ? "" : pl.changes.length ? b`<ul class="short-list">${pl.changes.map((c4) => b`<li>${c4}</li>`)}</ul><p class="small muted u-m6-0-0">${estMin(min5(pl.est))} after the change.${pl.over ? " Still over, because sets you typed in are kept." : ""} Done sets are never touched.</p>` : pl.over ? b`<p class="small">Nothing can come off: every set left has something you typed in it, and Short on time only takes sets you haven't touched. ${estMin(min5(pl.est))} left.</p>` : b`<p class="small">Everything left fits in ${m3.mins} minutes as planned.</p>`;
     const trims = !!pl && pl.changes.length > 0;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Short on time</h3>${closeX()}</div>
     ${left ? b`<p class="small muted u-m0-0-8">How long do you have? Planned: ${estMin(min5(left))}.</p>

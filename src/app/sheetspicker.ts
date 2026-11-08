@@ -213,6 +213,9 @@ export function eqSheet(m: { day: number; equip: readonly string[]; part?: 2 | u
 
 /* ---------- Short on time ---------- */
 
+/* What is left over after a trim is only rows the lifter typed into: its last pass takes the blank rows of exercises
+   already started too (trimPlanIn), so a session still over, or with nothing to take, is over because of those rows
+   (R79-2: the sheet said everything fitted, and named started exercises as the reason). */
 /** Short on time: the minutes there are, what the trim changes, and the minutes after; null once the session is gone. */
 export function shortSheet(m: { mins?: number | null | undefined }): TemplateResult | null {
   const d = state.draft;
@@ -224,8 +227,10 @@ export function shortSheet(m: { mins?: number | null | undefined }): TemplateRes
     : !pl
       ? ''
       : pl.changes.length
-        ? html`<ul class="short-list">${pl.changes.map(c => html`<li>${c}</li>`)}</ul><p class="small muted u-m6-0-0">${estMin(min5(pl.est))} after the change.${pl.over ? ' Still over, because exercises you have started are kept.' : ''} Done sets are never touched.</p>`
-        : html`<p class="small">Everything left fits in ${m.mins} minutes as planned.</p>`;
+        ? html`<ul class="short-list">${pl.changes.map(c => html`<li>${c}</li>`)}</ul><p class="small muted u-m6-0-0">${estMin(min5(pl.est))} after the change.${pl.over ? ' Still over, because sets you typed in are kept.' : ''} Done sets are never touched.</p>`
+        : pl.over
+          ? html`<p class="small">Nothing can come off: every set left has something you typed in it, and Short on time only takes sets you haven't touched. ${estMin(min5(pl.est))} left.</p>`
+          : html`<p class="small">Everything left fits in ${m.mins} minutes as planned.</p>`;
   const trims = !!pl && pl.changes.length > 0;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Short on time</h3>${closeX()}</div>
     ${
