@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-YRtaQePT124r5i5YUBxWf0QIv5Bf9dN5yFomktYHF8w=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-mvdN65bKh+Sf0KwtWgRZC4bLcPMrdAtfIjduLPSj7H0=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.06-r76">
+<meta name="app-build" content="2026.11.07-r77">
 <title>Ironlog</title>
 <script>window.IRONLOG_APP=true;window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2076,8 +2076,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.30";
-  var APP_VERSION = "2026.11.06-r76";
+  var DISPLAY_VERSION = "2.31";
+  var APP_VERSION = "2026.11.07-r77";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2308,6 +2308,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const rtf = rtfOf(r4, rir);
     if (rtf == null) return null;
     return rtf <= E1_MAX_REPS ? e1(load2, r4, rir) : rtf <= TREND_MAX_RTF ? epley(load2, rtf) : null;
+  }
+  function bestFit(pts, q) {
+    let best = null;
+    for (const p3 of pts) {
+      const v3 = fitE(p3.load, p3.r, q(p3));
+      if (v3 != null && (best == null || v3 > best.est)) best = { est: v3, set: p3 };
+    }
+    return best;
   }
   function fitE(load2, r4, rir) {
     const v3 = e1(load2, r4, rir);
@@ -3067,11 +3075,28 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (m3 === "stack" && g2.stack !== void 0 && g2.stack > 0) return gymK(g2, g2.stack);
     return null;
   }
+  function loadFloorIn(M3, ex) {
+    return platesMode(ex) === "bar" && loadMode(ex) === "total" && (isCompound(ex) || (ex.barKg ?? 0) > 0) ? exBarKgIn(M3, ex) : 0;
+  }
+  function plateGridIn(M3, ex, plan) {
+    const g2 = gymOfIn(M3);
+    if (!ex || ex.inc != null || ex.timed || !g2 || !Array.isArray(g2.plates) || !g2.plates.length) return null;
+    if (platesMode(ex) !== "bar" || loadMode(ex) !== "total") return null;
+    if (Math.abs(stepReadIn(M3, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M3)) > EPS_SAME) return null;
+    const bar2 = loadFloorIn(M3, ex);
+    if (!(bar2 > 0)) return null;
+    const mn = Math.min(...g2.plates);
+    if (!g2.plates.every((x2) => Math.abs(x2 / mn - Math.round(x2 / mn)) < EPS_SAME)) return null;
+    return { bar: bar2, step: gymK(g2, 2 * mn) };
+  }
   function capOfIn(M3, ex, plan, top) {
     const L2 = gymRackIn(M3, ex, plan);
     let r4 = L2 ? L2[L2.length - 1] : null;
     if (r4 != null && top != null && top > r4 + rackTolIn(M3, L2, top)) r4 = null;
-    return ex.maxLoad != null ? r4 != null ? Math.min(ex.maxLoad, r4) : ex.maxLoad : r4;
+    const c4 = ex.maxLoad != null ? r4 != null ? Math.min(ex.maxLoad, r4) : ex.maxLoad : r4;
+    const G = c4 != null ? plateGridIn(M3, ex, plan) : null;
+    if (G && c4 != null && c4 > G.bar) return G.bar + Math.floor((c4 - G.bar) / G.step + EPS_SAME) * G.step;
+    return c4;
   }
   function atCapOfIn(M3, ex, plan, top, cap) {
     const L2 = gymRackIn(M3, ex, plan);
@@ -6835,34 +6860,25 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var RACK_FIT = 0.01;
   var RACK_READ_N = 12;
   function snapUnitIn(M3, ex, plan, res, down) {
-    const G = res && res.w != null && !ex.timed ? plateGridIn(M3, ex, plan) : null;
-    const out = G ? plateSnap(M3, ex, plan, res, G, down) : gridSnap(M3, ex, plan, unitSnap(M3, ex, plan, res, down));
+    const plates = res && res.w != null && !ex.timed && !!plateGridIn(M3, ex, plan);
+    const out = plates ? plateSnap(M3, ex, plan, res, down) : gridSnap(M3, ex, plan, unitSnap(M3, ex, plan, res, down));
     if (!down || res.top == null || res.w == null || out.w == null || out.w <= Math.max(res.top, loadFloorIn(M3, ex)) + EPS)
       return out;
     return Math.abs(res.w - res.top) < EPS ? res : swapWIn(M3, ex, res, res.top);
-  }
-  function plateGridIn(M3, ex, plan) {
-    const g2 = gymOfIn(M3);
-    if (!ex || ex.inc != null || ex.timed || !g2 || !Array.isArray(g2.plates) || !g2.plates.length) return null;
-    if (platesMode(ex) !== "bar" || loadMode(ex) !== "total") return null;
-    if (Math.abs(stepReadIn(M3, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M3)) > EPS_SAME) return null;
-    const bar2 = loadFloorIn(M3, ex);
-    if (!(bar2 > 0)) return null;
-    const mn = Math.min(...g2.plates);
-    if (!g2.plates.every((x2) => Math.abs(x2 / mn - Math.round(x2 / mn)) < EPS_SAME)) return null;
-    return { bar: bar2, step: gymK(g2, 2 * mn) };
   }
   function plateAt(G, w2, dir, tol) {
     const k2 = (w2 - G.bar) / G.step, e5 = Math.max(PLATE_TOL_MIN, tol / G.step);
     const n3 = dir > 0 ? Math.ceil(k2 - e5) : Math.floor(k2 + e5);
     return G.bar + Math.max(0, n3) * G.step;
   }
-  function plateSnap(M3, ex, plan, res, G, down) {
-    const w2 = res.w, top = res.top, t4 = rackTolIn(M3);
+  function plateSnap(M3, ex, plan, res, down) {
+    const w2 = res.w, top = res.top;
     if (w2 == null) return res;
-    const dn = plateAt(G, w2, -1, t4);
+    const Ls = loadsForIn(M3, ex, plan, top ?? null), t4 = rackTolIn(M3);
+    const dn = Ls.floor(w2) ?? w2;
     if (Math.abs(dn - w2) <= t4) return Math.abs(dn - w2) < EPS ? res : swapWIn(M3, ex, res, dn);
-    const nw = !down && top != null && w2 > top + t4 ? dn > top + t4 ? dn : plateAt(G, top + t4, 1, t4) : dn;
+    const cap = capOfIn(M3, ex, plan, top), up = top != null ? Ls.above(top) : null, upOk = up != null && (cap == null || up <= cap + t4);
+    const nw = !down && top != null && w2 > top + t4 ? dn > top + t4 ? dn : upOk ? up : dn : dn;
     return moveIn(M3, ex, plan, res, nw, "the nearest load your plates make");
   }
   function unitSnap(M3, ex, plan, res, down) {
@@ -7222,12 +7238,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (triedAt(last, top).some((p3) => p3.missed || p3.r < +plan.repMin)) return null;
     const bw = bwRefLoadIn(M3, ex);
     if (ex.bw && !(bw > 0)) return null;
-    let est = 0;
-    for (const p3 of planPts) {
+    const est = bestFit(planPts, (p3) => {
       const q = p3.rir != null ? p3.rir : i5 === j3 ? BACK_RIR : p3.rq;
-      const v3 = fitE(p3.load, p3.r, q == null ? q : Math.min(q, E1_MAX_RIR));
-      if (v3 != null && v3 > est) est = v3;
-    }
+      return q == null ? q : Math.min(q, E1_MAX_RIR);
+    })?.est ?? 0;
     if (!(est > 0)) return null;
     const rs = pre.pts.filter((p3) => Math.abs(p3.w - preTop) < EPS_SAME).map((p3) => p3.r).sort((a2, b2) => a2 - b2);
     if (!rs.length) return null;
@@ -7300,11 +7314,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       early
     } = C2;
     if (step > 0 && !atCap && !noAdd && !noE1(ex) && !(ex.bw && !(bwRefLoadIn(M3, ex) > 0)) && planPts.length && planPts.every((p3) => p3.rir != null && p3.rir >= tgtRir + CLEARLY_OFF && p3.r >= plan.repMin)) {
-      let est = null;
-      for (const p3 of topPts) {
-        const v3 = fitE(p3.load, p3.r, Math.min(p3.rir, E1_MAX_RIR));
-        if (v3 != null && (est == null || v3 > est)) est = v3;
-      }
+      const est = bestFit(topPts, (p3) => Math.min(p3.rir, E1_MAX_RIR))?.est ?? null;
       const bwNow = bwRefLoadIn(M3, ex);
       const topLoad = top + bwNow;
       if (est != null && topLoad > 0) {
@@ -7340,11 +7350,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function sgPastRangeIn(M3, C2) {
     const { ex, plan, top, step, noAdd, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early } = C2;
     if (step > 0 && !atCap && !noAdd && !noE1(ex) && topPts.length && topPts.every((p3) => p3.r >= +plan.repMax + CLEARLY_OFF)) {
-      let est = null;
-      for (const p3 of topPts) {
-        const v3 = fitE(p3.load, p3.r, p3.rq);
-        if (v3 != null && (est == null || v3 > est)) est = v3;
-      }
+      const est = bestFit(topPts, (p3) => p3.rq)?.est ?? null;
       const bwNow = bwRefLoadIn(M3, ex);
       const topLoad = top + bwNow;
       if (est != null && topLoad > 0) {
@@ -7395,11 +7401,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         shortRun++;
       }
       if (gap >= CLEARLY_OFF && !(justUp && gap <= JUST_UP.short) || repeat || !inRR || shortRun >= SHORT_RUN) {
-        let est = null;
-        for (const p3 of topPts) {
-          const v3 = fitE(p3.load, p3.r, p3.rq);
-          if (v3 != null && (est == null || v3 > est)) est = v3;
-        }
+        const est = bestFit(topPts, (p3) => p3.rq)?.est ?? null;
         const bwNow = bwRefLoadIn(M3, ex);
         if (est != null) {
           const want = e1inv(est, +plan.repMin + Math.min(tgtRir, E1_MAX_RIR)) - bwNow;
@@ -7476,11 +7478,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const q = Math.min(tgtRir, E1_MAX_RIR);
       const bwT = bwRefLoadIn(M3, ex);
       if (!noE1(ex) && !(ex.bw && !(bwT > 0))) {
-        let est = null;
-        for (const p3 of topPts) {
-          const v3 = fitE(p3.load, p3.r, p3.rq);
-          if (v3 != null && (est == null || v3 > est)) est = v3;
-        }
+        const est = bestFit(topPts, (p3) => p3.rq)?.est ?? null;
         const f3 = est ? rtfAt(est, nw + bwT) : null;
         const cost = f3 != null ? rtfAt(est, top + bwT) - f3 : 0;
         if (f3 != null && cost >= BIG_STEP_REPS && wide) {
@@ -7595,15 +7593,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const x2 = k2.x;
     const wl = workLoad(x2.pts, +plan.repMin || 0);
     const at2 = atLoad(x2.pts, wl);
-    let est = null, set = null;
-    for (const p3 of at2) {
-      const v3 = fitE(p3.load, p3.r, p3.rq);
-      if (v3 != null && (est == null || v3 > est)) {
-        est = v3;
-        set = p3;
-      }
-    }
-    if (est == null) return null;
+    const best = bestFit(at2, (p3) => p3.rq);
+    if (best == null) return null;
+    const { est, set } = best;
     const mid2 = Math.round((+plan.repMin + +plan.repMax) / 2);
     const q = Math.min((+plan.rir || 0) + FATIGUE_RIR, E1_MAX_RIR);
     const want = e1inv(est * (isCompound(ex) ? KIN.compound : KIN.isolation), mid2 + q);
@@ -7758,9 +7750,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         }
         return gr;
       }
-      const G = plateGridIn(M3, ex, plan);
-      const t4 = rackTolIn(M3);
-      if (G && at2 != null && at2 > 0 && Math.abs(plateAt(G, at2, -1, t4) - at2) > t4) return plateAt(G, at2, 1, t4) - at2;
+      if (plateGridIn(M3, ex, plan) && at2 != null && at2 > 0) {
+        const Ls = loadsForIn(M3, ex, plan, at2);
+        if (!Ls.has(at2)) return (Ls.above(at2) ?? at2) - at2;
+      }
       const gs = gymStepIn(M3, ex);
       if (gs) return gs;
       const es = byEquip ? equipStepIn(M3, ex) : null;
@@ -7871,9 +7864,6 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function easierTextIn(M3, ex, e5) {
     const sc = effScale(M3.s.settings.rirScale);
     return `Getting easier at ${loadLabelIn(M3, ex, e5.w)}${ex.bw ? "" : " " + UIn(M3)}: ${sc === "rpe" ? "RPE" : "RIR"} ${effAt(sc, e5.from)} → ${effAt(sc, e5.to)} at the same reps. Adding load today is reasonable.`;
-  }
-  function loadFloorIn(M3, ex) {
-    return platesMode(ex) === "bar" && loadMode(ex) === "total" && (isCompound(ex) || (ex.barKg ?? 0) > 0) ? exBarKgIn(M3, ex) : 0;
   }
   function loadsForIn(M3, ex, plan, at2) {
     const L2 = gymRackIn(M3, ex, plan);
@@ -11138,14 +11128,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     const need = fitE(g2.w + bw, g2.r, 0);
     const from = addDays(today(), -WEEK_DAYS * BEST_WEEKS);
-    let cur = null;
-    for (const x2 of exps) {
-      if (x2.date < from) continue;
-      for (const p3 of x2.pts) {
-        const v3 = fitE(p3.load, p3.r, p3.rq);
-        if (v3 != null && (cur == null || v3 > cur)) cur = v3;
-      }
-    }
+    const cur = bestFit(
+      exps.filter((x2) => x2.date >= from).flatMap((x2) => x2.pts),
+      (p3) => p3.rq
+    )?.est ?? null;
     const pct = !noBw && need && cur ? Math.min(PERCENT, cur / need * PERCENT) : null;
     return { g: g2, hit, pct, cur, need, noBw };
   }
