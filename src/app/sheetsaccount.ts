@@ -34,11 +34,13 @@ const menuAuth = () => (AUTH() && !(window.claude && typeof window.claude.use ==
    the menu keeps its height on a small phone (tests/r54b.js). The photo, or
    an empty circle with a camera, is the button that adds or changes it;
    Remove photo sits beside it once there is one, and asks first (V: nothing
-   kept goes on a single tap). */
-/** The menu header's profile photo: the button that picks one, and Remove photo when there is one. */
-function photoHead(): TemplateResult {
+   kept goes on a single tap). Since 2.34 the photo is the account's, so the
+   header offers it only while signed in (V, 2026-11-08: no account, no photo). */
+/** The menu header's profile photo: the button that picks one, and Remove photo when there is one; nothing signed out. */
+function photoHead(): TemplateResult | typeof nothing {
+  if (!acct.user) return nothing;
   const u = photoUrl();
-  return html`<label class="mph" id="menuPhoto" aria-label=${u ? 'Change your profile photo' : 'Add a profile photo'} data-tip="Your profile photo, kept on this phone only">${
+  return html`<label class="mph" id="menuPhoto" aria-label=${u ? 'Change your profile photo' : 'Add a profile photo'} data-tip="Your profile photo, kept in your account">${
     u
       ? html`\x3cimg class="mph-i" src=${u} alt="">`
       : html`<span class="mph-i mph-none" aria-hidden="true">${markup(MENU_ICON)}</span>`

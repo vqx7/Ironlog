@@ -10,7 +10,8 @@ import { CARDIOL, CWHENL, MK, ML, noE1 } from './library';
 import { DSEC_ALIAS, HIDEABLE, HIDEABLE_KEYS } from './layout';
 import { loadWords } from './loads';
 import { PHOTO_ASKED, log, prefSet } from './storage';
-import { photoClear, photoSet } from './photo';
+import { photoRemove, photoSet } from './photo';
+import { photoSyncSoon } from './sync';
 import { plainTemplate } from './normalize';
 import { EX, U, fmtW, loadOf, noBody, rirEst, sortedSessions } from './live';
 import { e1 } from './formulas';
@@ -269,9 +270,10 @@ export function exportCSV(): Promise<void> | undefined {
   );
 }
 
-/* The profile photo (2.33): what shows it is redrawn once it is kept or
-   removed, the menu button, an open menu and Today's line. Once a photo is
-   added, Today's line is answered for good on this phone. */
+/* The profile photo (2.33; the account's since 2.34): what shows it is
+   redrawn once it is kept or removed, the menu button, an open menu and
+   Today's line, and the change is sent to the account. Once a photo is added,
+   Today's line is answered on this phone until it signs out. */
 /** Redraws what shows the profile photo. */
 function photoShown(): void {
   setSaveState();
@@ -291,6 +293,7 @@ export function photoChange(t: EventTarget | null): boolean {
         return;
       }
       prefSet(PHOTO_ASKED, '1');
+      photoSyncSoon();
       photoShown();
       toast('Photo added');
     },
@@ -307,10 +310,11 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   photoDel() {
     confirmBox(
       'Remove your profile photo?',
-      'It is kept on this phone only, so it cannot be brought back. You can add a new one any time.',
+      'It goes from your account and every phone you sign in on. You can add a new one any time.',
       'Remove',
       () => {
-        photoClear();
+        photoRemove();
+        photoSyncSoon();
         photoShown();
         toast('Photo removed');
       },

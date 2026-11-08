@@ -35,7 +35,7 @@ src/app/            TypeScript modules, the whole app when this is done
   normalize.ts      the log as every build reads it: every field checked, the fresh state, the starter routine (r56)
   storage.ts        the keys, the save on this device, the error log, Undo's steps, the settings kept aside for the demo (r56), a log kept aside for another account (r56.1, in IndexedDB), pictures' bytes (r66, in IndexedDB)
   pics.ts           pictures on notes (r66): drawn again as JPEGs on the phone, their ids in the log, kept until 45 days after their own log last named them
-  photo.ts          the profile photo in the menu button (2.33): this phone only, through the same JPEG redraw as pics.ts, never in the log
+  photo.ts          the profile photo in the menu button (2.33): the account's since 2.34, a document of its own beside the log's (sync.ts), through the same JPEG redraw as pics.ts, never in the log
   sync.ts           saving (this device, then the account), the documents merged, the sync notes, another tab (r56)
   act.ts            the one way to change the log: check, Undo step, change, caches, save, sync (r57)
   view.ts           the host that draws every tab into #view with lit-html, and the parts moved screens share (r57)

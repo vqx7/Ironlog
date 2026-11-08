@@ -128,7 +128,7 @@ export function guideSheet(m: { open?: string | undefined }): TemplateResult {
     ? `<p><b>Your log</b> is saved with your Claude account and in this browser.</p>`
     : accts
       ? `<p><b>Without an account</b> your log is on this phone only: deleting the app deletes it. Export a backup in Settings, Your data, and keep it in Files.</p>
-   <p><b>With an account</b> it syncs, and signing in on any device brings it back. Only you and the app owner can see it. Your email is used only to sign in and reset your password; nothing is shared or sold. Continue without an account on the first page keeps everything on the phone, and the account can be added any time from the menu.</p>`
+   <p><b>With an account</b> it syncs, and signing in on any device brings it back, with your profile photo if you add one. Only you and the app owner can see them. Your email is used only to sign in and reset your password; nothing is shared or sold. Continue without an account on the first page keeps everything on the phone, and the account can be added any time from the menu.</p>`
       : `<p><b>Your log</b> is saved in this browser only: clearing its data deletes it. Export a backup in Settings, Your data.</p>`;
   const report = FB()
     ? '<p><b>Report a problem</b> is in the menu at the top right and in Settings, Help. It needs an account, and never includes your workouts.</p>'

@@ -27,13 +27,14 @@ import {
   signInAgain,
   withTimeout
 } from './sync';
+import { photoForget } from './photo';
 import { normalize } from './normalize';
 import { acct, cloud, setState, state, ui } from './store';
 import type { AccountModal, AcctMode } from './modals';
 import { AUTH, codeOf, said } from './providers';
 import { isStandalone } from './env';
 import { act } from './act';
-import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScroll } from './page';
+import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScroll, setSaveState } from './page';
 import { toast } from './toast';
 import { settingsSyncLine } from './settings';
 import { obOutClear } from './today';
@@ -678,6 +679,9 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         }
         acct.user = null;
         cloudStop(true);
+        // The photo went with the account's documents; the phone's copy goes too (R79-1).
+        photoForget();
+        setSaveState();
         rerenderKeepScroll();
         toast('Account deleted. Your log is still on this phone.');
       },
@@ -718,6 +722,8 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
       acct.user = null;
       cloudStop(remove);
+      // The profile photo is the account's: it goes from the phone with the sign-out, whichever copy of the log stays (R79-1).
+      photoForget();
       /* A session in progress kept on the phone carries on where it was, and
          the app stays as it is after it: sending someone mid-workout to the
          first page would read as the session lost. */

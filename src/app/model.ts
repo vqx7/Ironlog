@@ -281,6 +281,8 @@ interface Caches {
   _rirUse: Partial<Record<string, number>> | null;
   _bwRef: number | undefined;
   _pace: number | null;
+  /** The loads Your gym's plates make on a bar (gym.ts, plateGridIn), by plates, unit and bar (NEW-76, 2.34). */
+  _plates: Map<string, readonly number[]> | null;
 }
 
 /** The model: the log, the date the engine reads as today, and the caches. */
@@ -294,7 +296,16 @@ export interface Model {
     bwRef tests for undefined (a null there would leave every bodyweight lift
     without its bodyweight). */
 export function freshCaches(): Caches {
-  return { EXMAP: null, _idx: null, _dix: null, _cal: null, _rirUse: null, _bwRef: undefined, _pace: null };
+  return {
+    EXMAP: null,
+    _idx: null,
+    _dix: null,
+    _cal: null,
+    _rirUse: null,
+    _bwRef: undefined,
+    _pace: null,
+    _plates: null
+  };
 }
 
 /** A model of a given log and date, for a test or any use outside the app. */
@@ -383,6 +394,7 @@ export function invalidateIn(M: Model): void {
   M.c._rirUse = null;
   M.c._bwRef = undefined;
   M.c._pace = null;
+  M.c._plates = null;
 }
 
 /** Whether sets at RIR 4 to 5 count as half a set (r40): the setting, and RIR in use. */

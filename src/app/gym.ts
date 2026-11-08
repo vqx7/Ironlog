@@ -34,6 +34,11 @@ export function gymPlates(u: string): number[] {
    15 kg a side, where a strict count gave 10, 2.5 and 1.25 kg with 1.24 kg
    not loadable. The caller's tol is half the last shown digit, split across
    the two sides. */
+/* Greedy, heaviest plate first, is how lifters load a bar and gives the line every lifter knows (45, 10, 5 for 60
+   a side), so it stays whenever it loads the side. It misses only with plates that are not all whole multiples of the
+   smallest (NEW-76, 2.34: 2.5 and 1 kg make 3 kg a side as 1, 1, 1, where greedy takes 2.5 and leaves 0.5), and
+   then the side takes the closest load the plates do make, by the same order: as many of each plate, heaviest first,
+   as still leave a load the lighter plates can finish. */
 /** The plates one side takes, heaviest first from list (sorted heaviest first), and the weight left over. */
 export function platesPerSide(list: readonly number[], side: number, tol: number): { plates: number[]; rest: number } {
   const plates: number[] = [];
@@ -43,7 +48,68 @@ export function platesPerSide(list: readonly number[], side: number, tol: number
       plates.push(pl);
       rest -= pl;
     }
-  return { plates, rest };
+  if (rest <= tol || !list.length) return { plates, rest };
+  const exact = sidePlates(list, side, tol);
+  return exact && exact.rest < rest - EPS_SAME ? exact : { plates, rest };
+}
+
+/** A hair under the shown digit's edge, so floating error never moves a load onto a total greedy would not take it to. */
+const EDGE = 1e-6;
+/** Floating error on a whole count of plate units. */
+const COUNT_EPS = 1e-9;
+/** Plates' weights counted in hundredths of their unit, so sums are exact (a plate is a whole number of hundredths, gymClean). */
+const PLATE_CENTS = 100;
+/** The greatest common divisor of two whole numbers. */
+function gcd(a: number, b: number): number {
+  while (b) [a, b] = [b, a % b];
+  return a;
+}
+
+/* Which per-side loads a set of plates makes, any number of each: the sums, counted in units of the plates' greatest
+   common divisor up to `most` (both in the plates' unit), as a list of which unit counts are reachable. Each list is
+   at most `most` over that divisor long, and gymClean keeps plates to whole hundredths, so it stays a few thousand
+   entries for any gym. */
+function sideSums(list: readonly number[], most: number): { unit: number; ok: boolean[]; ps: number[] } | null {
+  const cents = list.map(x => Math.round(x * PLATE_CENTS)).filter(x => x > 0);
+  if (!cents.length) return null;
+  const g = cents.reduce(gcd);
+  const ps = cents.map(x => x / g);
+  // Exact counts come out of the division a hair off a whole number; far less than EDGE is, so EDGE still holds.
+  const n = Math.floor((most * PLATE_CENTS) / g + COUNT_EPS);
+  const ok = new Array<boolean>(n + 1).fill(false);
+  ok[0] = true;
+  for (const p of ps) for (let i = p; i <= n; i++) if (!ok[i] && ok[i - p]) ok[i] = true;
+  return { unit: g / PLATE_CENTS, ok, ps };
+}
+
+/** The closest load one side can take at or under `side` (within `tol`), as plates heaviest first, and the weight left over; null with no plates. */
+function sidePlates(list: readonly number[], side: number, tol: number): { plates: number[]; rest: number } | null {
+  // No more lenient than greedy at the edge of the shown digit: a load exactly that far off a total stays off it.
+  const S = sideSums(list, Math.max(0, side + tol - EDGE));
+  if (!S) return null;
+  let i = S.ok.length - 1;
+  while (i > 0 && !S.ok[i]) i--;
+  // Heaviest first: as many of each plate as still leave a remainder the lighter plates make (with `ok` built over
+  // every plate, a remainder reachable at all is reachable by the plates after it, since each is taken in turn).
+  const order = S.ps.map((p, k) => ({ p, w: list[k] ?? 0 })).sort((a, b) => b.p - a.p);
+  const plates: number[] = [];
+  let left = i;
+  order.forEach((o, k) => {
+    const rest = order.slice(k + 1).map(x => x.p);
+    const can = (x: number): boolean => {
+      if (x === 0) return true;
+      if (!rest.length) return false;
+      const ok = new Array<boolean>(x + 1).fill(false);
+      ok[0] = true;
+      for (const p of rest) for (let j = p; j <= x; j++) if (!ok[j] && ok[j - p]) ok[j] = true;
+      return ok[x] === true;
+    };
+    let c = Math.floor(left / o.p);
+    while (c > 0 && !can(left - c * o.p)) c--;
+    for (let j = 0; j < c; j++) plates.push(o.w);
+    left -= c * o.p;
+  });
+  return { plates, rest: side - i * S.unit };
 }
 
 /** A gym or a rack as it arrives, from a save, a backup, another device, or
@@ -51,7 +117,24 @@ export function platesPerSide(list: readonly number[], side: number, tol: number
 type Raw = Partial<Record<string, unknown>> | null | undefined;
 
 /** The bounds Your gym's numbers are kept within, in its unit: a dumbbell and its step, a kettlebell, how many bells, a stack's step, and how many weights a dumbbell rack may make. Past them a number is a typo. */
-const GYM_LIMITS = { dumbbell: 500, dumbbellStep: 50, bell: 300, bells: 40, stackStep: 100, rack: 300 } as const;
+const GYM_LIMITS = {
+  dumbbell: 500,
+  dumbbellStep: 50,
+  bell: 300,
+  bells: 40,
+  stackStep: 100,
+  rack: 300,
+  plates: 15
+} as const;
+
+/** The heaviest plate made, in each unit (50 kg and 100 lb plates exist; past them a number is a typo). */
+export const PLATE_MAX: Readonly<Record<'kg' | 'lb', number>> = { kg: 50, lb: 100 };
+/** How many plates Your gym can list (the usual sets have 6 and 7; past this a list is a mistake). */
+export const PLATES_MOST = GYM_LIMITS.plates;
+/** Whether a number is a plate a gym can list in its unit: above 0, at most the heaviest made, in whole hundredths. */
+export function plateOk(u: 'kg' | 'lb', x: number): boolean {
+  return x > 0 && x <= PLATE_MAX[u] && Math.abs(x * PLATE_CENTS - Math.round(x * PLATE_CENTS)) < EPS_SAME * PLATE_CENTS;
+}
 
 /* A gym cleaned for normalize() and the Settings form. Every field checked;
    anything out of range is dropped, never guessed. A gym with nothing left
@@ -89,10 +172,14 @@ export function gymClean(g: Raw): Gym | null {
       .slice(0, GYM_LIMITS.bells);
     if (kb.length) out.kb = kb;
   }
+  /* Any plate the gym has (NEW-76, 2.34), not only the usual ones (gymPlates): a weight above 0, no heavier than the
+     heaviest plate made, in whole hundredths of the unit (every plate label is), heaviest first, each once. A saved
+     list of usual plates comes out as it went in, so its hash is unchanged. */
   const plates = arr(g.plates);
   if (plates) {
-    const all = gymPlates(g.u);
-    const pl = all.filter(x => plates.map(n).includes(x));
+    const pl = [...new Set(plates.map(n).filter(x => plateOk(g.u === 'kg' ? 'kg' : 'lb', x)))]
+      .sort((a, b) => b - a)
+      .slice(0, GYM_LIMITS.plates);
     if (pl.length) out.plates = pl;
   }
   {
@@ -237,27 +324,53 @@ export function loadFloorIn(M: Model, ex: ExerciseLike): number {
    lb plates, bench logged at 230 lb was asked for 240, 230 or 200 and warmed
    up at 90 and 140, none of them loadable, beside a plate line saying 2.5 lb
    was not). A lift on the full bar typed as the total (loadFloorIn, so not a
-   curl on a lighter bar) with no step of its own, in a gym whose plates are
-   all whole multiples of the smallest, is loaded at the bar plus pairs of
-   plates: the bar and every step of a pair of the smallest plate above it.
-   Its suggestions, steps, lighter and heavier loads and warm-ups land on
-   those loads. Plates that are not all multiples of the smallest (10 and 25
-   lb without 5s) make other sums, so the lift keeps its step as before. */
-/** A bar lift's loads as Your gym's plates make them, in kg (the bar, and a pair of the smallest plate), or null. */
+   curl on a lighter bar) with no step of its own is loaded at the bar plus a
+   pair of each side's load, and its suggestions, steps, lighter and heavier
+   loads and warm-ups land on those loads. Before 2.34 this was the bar and every pair of the smallest plate, which
+   holds only when every plate is a whole multiple of the smallest; any other gym (10 and 25 lb without 5s, or 1 kg
+   plates beside 1.25 and 2.5) kept the lift's step, off the plates (NEW-76). The list is now every load the plates
+   make, any number of each, up to PLATE_SIDE_MAX a side: with plates that are whole multiples of the smallest it is
+   the same as before, the bar and every pair of the smallest. */
+/** Per side, the most a bar's plates are counted to, in each unit: past any lift's load (a convention: 250 kg a side is a 520 kg bar). */
+const PLATE_SIDE_MAX: Readonly<Record<'kg' | 'lb', number>> = { kg: 250, lb: 550 };
+/** A bar lift's loads as Your gym's plates make them, in kg: the bar, and the bar with every pair the plates make, lightest first; or null. */
 export function plateGridIn(
   M: Model,
   ex: ExerciseLike | null | undefined,
   plan?: Pick<Plan, 'inc'> | null
-): { bar: number; step: number } | null {
+): { bar: number; loads: readonly number[] } | null {
   const g = gymOfIn(M);
   if (!ex || ex.inc != null || ex.timed || !g || !Array.isArray(g.plates) || !g.plates.length) return null;
   if (platesMode(ex) !== 'bar' || loadMode(ex) !== 'total') return null;
   if (Math.abs(stepReadIn(M, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M)) > EPS_SAME) return null;
   const bar = loadFloorIn(M, ex);
   if (!(bar > 0)) return null;
-  const mn = Math.min(...g.plates);
-  if (!g.plates.every(x => Math.abs(x / mn - Math.round(x / mn)) < EPS_SAME)) return null;
-  return { bar, step: gymK(g, 2 * mn) };
+  const key = `${g.u}|${g.plates.join(',')}|${bar}`;
+  const memo = M.c._plates || (M.c._plates = new Map<string, readonly number[]>());
+  let loads = memo.get(key);
+  if (!loads) {
+    const S = sideSums(g.plates, PLATE_SIDE_MAX[g.u]);
+    const out: number[] = [];
+    if (S) S.ok.forEach((y, i) => y && out.push(bar + gymK(g, 2 * i * S.unit)));
+    loads = out.length ? out : [bar];
+    memo.set(key, loads);
+  }
+  return { bar, loads };
+}
+
+/** The index of the heaviest load on a list (lightest first) not past `w`, or -1 when every load is past it. */
+export function loadsFloorAt(L: readonly number[], w: number): number {
+  let lo = 0,
+    hi = L.length - 1,
+    k = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if ((L[mid] ?? Infinity) <= w) {
+      k = mid;
+      lo = mid + 1;
+    } else hi = mid - 1;
+  }
+  return k;
 }
 
 /* The heaviest available: the exercise's own, else the top of the rack, on Your gym's plates the heaviest they make
@@ -278,7 +391,7 @@ export function capOfIn(
      R77-2): with 102 kg set and plates that make 100 and 105, the engine aimed at 102, the plates brought it back to
      100, and the step read "add 0 kg, which is the heaviest available". Read here, every rule and screen sees 100. */
   const G = c != null ? plateGridIn(M, ex, plan) : null;
-  if (G && c != null && c > G.bar) return G.bar + Math.floor((c - G.bar) / G.step + EPS_SAME) * G.step;
+  if (G && c != null && c > G.bar) return G.loads[Math.max(0, loadsFloorAt(G.loads, c + EPS_SAME))] ?? c;
   return c;
 }
 

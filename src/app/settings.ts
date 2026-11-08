@@ -10,7 +10,7 @@
 
 import { bwSettings } from './bwnudge';
 import { picsClear } from './pics';
-import { photoClear } from './photo';
+import { photoForget, photoRemove } from './photo';
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { live } from 'lit-html/directives/live.js';
@@ -40,11 +40,11 @@ import {
   PROF_GOAL_TIP,
   profClean
 } from './profile';
-import { dbListOf, gymClean, gymPlates } from './gym';
+import { PLATE_MAX, PLATES_MOST, dbListOf, gymClean, gymPlates, plateOk } from './gym';
 import { fmtDate, fmtG, stampShort } from './format';
 import { CAL_WEEKS, CAL_MIN } from './analytics';
 import { TRASH_DAYS, rec, LIMITS } from './records';
-import { iso, numIn, numWord, r1, upFirst, MINUTE_S, SECOND_MS, HOUR_MIN, DAY_MIN } from './util';
+import { EPS_SAME, iso, numIn, numWord, r1, upFirst, MINUTE_S, SECOND_MS, HOUR_MIN, DAY_MIN } from './util';
 import { stripDemo } from './chunks';
 import { normalize } from './normalize';
 import {
@@ -62,7 +62,7 @@ import {
   unreadableRaw,
   UNDO_DAYS
 } from './storage';
-import { cloudPull, cloudStop, cq, setCloud } from './sync';
+import { cloudPull, cloudStop, cq, photoSyncSoon, setCloud } from './sync';
 import { AUTH, FB } from './providers';
 import {
   EX,
@@ -330,11 +330,17 @@ ${
     : nothing
 } <label class="field">${labelTip('lt-barKg', `Bar weight (${U()})`, 'Used by the plates-per-side line in the logger.')}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
 <div>
-<p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="A barbell or a plate-loaded machine steps by two of the smallest plate you have, one a side; a landmine by one. Tap a plate your gym does not have.">Plates on hand (${u})</span></p>
-<div class="chips" role="group" aria-label="Plates on hand">${plates.map(
-    p =>
-      html`<button class=${on.includes(p) ? 'chip on' : 'chip'} data-act="gymPlate" data-v=${String(p)} aria-pressed=${String(on.includes(p))}>${fmtG(p)}</button>`
-  )}</div>
+<p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="A barbell is loaded with these plates, a pair at a time, so its suggested loads are ones they make. A plate-loaded machine steps by two of the smallest, one a side; a landmine by one. Tap a plate your gym does not have, or add one it has that is not here.">Plates on hand (${u})</span></p>
+<div class="chips" role="group" aria-label="Plates on hand">${[...plates, ...on.filter(p => !plates.includes(p))]
+    .sort((a, b) => b - a)
+    .map(
+      p =>
+        html`<button class=${on.includes(p) ? 'chip on' : 'chip'} data-act="gymPlate" data-v=${String(p)} aria-pressed=${String(on.includes(p))}>${fmtG(p)}</button>`
+    )}</div>
+<div class="grid2 u-mt6_aiend">
+<label class="field">Another plate (${u})<input type="text" inputmode="decimal" id="gymPlateNew" placeholder=${lb ? '1.25' : '1'} /></label>
+<button class="btn" data-act="gymPlateAdd">Add plate</button>
+</div>
 </div>
 <label class="check-inline"><input type="checkbox" data-bind="smallPlates" aria-labelledby="lt-smallPlates" .checked=${live(!!state.settings.smallPlates)}/>${labelTip(
     'lt-smallPlates',
@@ -1090,18 +1096,43 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       );
     else go();
   },
+  /* A plate tapped: a usual one turns on or off; one the lifter added goes (NEW-76, 2.34: an added plate has no off
+     state to keep, and adding it again is one tap). Every usual plate and nothing else is the default, stored as no
+     list, as before. */
   gymPlate(t) {
     const g = gymNext();
     const all = gymPlates(g.u);
     const v = +(t.dataset.v || '');
-    let on = Array.isArray(g.plates) ? g.plates.slice() : all.slice();
-    on = on.includes(v) ? on.filter(x => x !== v) : [...on, v];
+    const had = Array.isArray(g.plates) ? g.plates.slice() : all.slice();
+    const on = had.includes(v) ? had.filter(x => x !== v) : [...had, v];
     if (!on.length) {
       toast('Keep at least one plate');
       return;
     }
-    if (on.length === all.length) delete g.plates;
-    else g.plates = all.filter(x => on.includes(x));
+    if (on.length === all.length && all.every(x => on.includes(x))) delete g.plates;
+    else g.plates = on.sort((a, b) => b - a);
+    gymSave(g);
+  },
+  /* A plate the usual list does not have (NEW-76, V 2026-11-07: "at other gyms there might be just standard one KG
+     plates"), typed as it is labelled, in the gym's unit. */
+  gymPlateAdd() {
+    const el = document.getElementById('gymPlateNew');
+    const v = el instanceof HTMLInputElement ? numIn(el.value.trim()) : null;
+    const g = gymNext();
+    if (v == null || !plateOk(g.u, v)) {
+      toast(`Type the weight printed on the plate, up to ${fmtG(PLATE_MAX[g.u])} ${g.u}`);
+      return;
+    }
+    const had = Array.isArray(g.plates) ? g.plates.slice() : gymPlates(g.u);
+    if (had.some(x => Math.abs(x - v) < EPS_SAME)) {
+      toast('That plate is already on the list');
+      return;
+    }
+    if (had.length >= PLATES_MOST) {
+      toast(`${PLATES_MOST} plates at most. Tap one to take it off.`);
+      return;
+    }
+    g.plates = [...had, v].sort((a, b) => b - a);
     gymSave(g);
   },
   gymClear() {
@@ -1326,11 +1357,15 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           },
           { undo: true }
         );
-        // Pictures are not part of the log Undo keeps, so they go at once, as the question says (r66, 373); the profile photo with them (2.33).
+        // Pictures are not part of the log Undo keeps, so they go at once, as the question says (r66, 373). The profile photo
+        // with them (2.33): from the account too while it syncs, as the cloud copy of the log goes (2.34), else from this phone.
         picsClear().catch((e: unknown) => {
           log('pics-clear', e);
         });
-        photoClear();
+        if (cloud.on) {
+          photoRemove();
+          photoSyncSoon();
+        } else photoForget();
         setSaveState();
         ui.tab = 'today';
         render();

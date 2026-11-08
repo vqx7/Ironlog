@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.07-r79">
+<meta name="app-build" content="2026.11.08-r80">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2097,8 +2097,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.33";
-  var APP_VERSION = "2026.11.07-r79";
+  var DISPLAY_VERSION = "2.34";
+  var APP_VERSION = "2026.11.08-r80";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2187,6 +2187,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var hasDemo = (s3) => [s3.sessions, s3.bodyweights, s3.measurements, s3.cardio || []].some((a2) => a2.some((x2) => x2.demo));
   var CORE_ARR = ["routines", "exercises", "injuries", "trash"];
   var CORE_FIELDS = ["version", "activeRoutineId", "deloadWeek"];
+  var PHOTO_DOC = "photo";
   var isChunkId = (id) => id === "core" || id === "draft" || /^s-\d{4}-\d{2}-[12]$/.test(id) || /^b-\d{4}$/.test(id);
 
   // src/app/model.ts
@@ -2203,7 +2204,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return out;
   }
   function freshCaches() {
-    return { EXMAP: null, _idx: null, _dix: null, _cal: null, _rirUse: null, _bwRef: void 0, _pace: null };
+    return {
+      EXMAP: null,
+      _idx: null,
+      _dix: null,
+      _cal: null,
+      _rirUse: null,
+      _bwRef: void 0,
+      _pace: null,
+      _plates: null
+    };
   }
   function modelOf(s3, today2) {
     return { s: s3, today: today2, c: freshCaches() };
@@ -2257,6 +2267,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     M3.c._rirUse = null;
     M3.c._bwRef = void 0;
     M3.c._pace = null;
+    M3.c._plates = null;
   }
   var rirHalfOnIn = (M3) => M3.s.settings.rirHalf === true && M3.s.settings.rirMode !== "off";
   function sortedSessionsIn(M3) {
@@ -2986,9 +2997,67 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         plates.push(pl);
         rest -= pl;
       }
-    return { plates, rest };
+    if (rest <= tol || !list.length) return { plates, rest };
+    const exact = sidePlates(list, side, tol);
+    return exact && exact.rest < rest - EPS_SAME ? exact : { plates, rest };
   }
-  var GYM_LIMITS = { dumbbell: 500, dumbbellStep: 50, bell: 300, bells: 40, stackStep: 100, rack: 300 };
+  var EDGE = 1e-6;
+  var COUNT_EPS = 1e-9;
+  var PLATE_CENTS = 100;
+  function gcd(a2, b2) {
+    while (b2) [a2, b2] = [b2, a2 % b2];
+    return a2;
+  }
+  function sideSums(list, most) {
+    const cents = list.map((x2) => Math.round(x2 * PLATE_CENTS)).filter((x2) => x2 > 0);
+    if (!cents.length) return null;
+    const g2 = cents.reduce(gcd);
+    const ps = cents.map((x2) => x2 / g2);
+    const n3 = Math.floor(most * PLATE_CENTS / g2 + COUNT_EPS);
+    const ok = new Array(n3 + 1).fill(false);
+    ok[0] = true;
+    for (const p3 of ps) for (let i5 = p3; i5 <= n3; i5++) if (!ok[i5] && ok[i5 - p3]) ok[i5] = true;
+    return { unit: g2 / PLATE_CENTS, ok, ps };
+  }
+  function sidePlates(list, side, tol) {
+    const S4 = sideSums(list, Math.max(0, side + tol - EDGE));
+    if (!S4) return null;
+    let i5 = S4.ok.length - 1;
+    while (i5 > 0 && !S4.ok[i5]) i5--;
+    const order = S4.ps.map((p3, k2) => ({ p: p3, w: list[k2] ?? 0 })).sort((a2, b2) => b2.p - a2.p);
+    const plates = [];
+    let left = i5;
+    order.forEach((o3, k2) => {
+      const rest = order.slice(k2 + 1).map((x2) => x2.p);
+      const can = (x2) => {
+        if (x2 === 0) return true;
+        if (!rest.length) return false;
+        const ok = new Array(x2 + 1).fill(false);
+        ok[0] = true;
+        for (const p3 of rest) for (let j3 = p3; j3 <= x2; j3++) if (!ok[j3] && ok[j3 - p3]) ok[j3] = true;
+        return ok[x2] === true;
+      };
+      let c4 = Math.floor(left / o3.p);
+      while (c4 > 0 && !can(left - c4 * o3.p)) c4--;
+      for (let j3 = 0; j3 < c4; j3++) plates.push(o3.w);
+      left -= c4 * o3.p;
+    });
+    return { plates, rest: side - i5 * S4.unit };
+  }
+  var GYM_LIMITS = {
+    dumbbell: 500,
+    dumbbellStep: 50,
+    bell: 300,
+    bells: 40,
+    stackStep: 100,
+    rack: 300,
+    plates: 15
+  };
+  var PLATE_MAX = { kg: 50, lb: 100 };
+  var PLATES_MOST = GYM_LIMITS.plates;
+  function plateOk(u4, x2) {
+    return x2 > 0 && x2 <= PLATE_MAX[u4] && Math.abs(x2 * PLATE_CENTS - Math.round(x2 * PLATE_CENTS)) < EPS_SAME * PLATE_CENTS;
+  }
   function gymClean(g2) {
     if (!g2 || typeof g2 !== "object" || g2.u !== "lb" && g2.u !== "kg") return null;
     const out = { u: g2.u };
@@ -3015,8 +3084,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     const plates = arr(g2.plates);
     if (plates) {
-      const all = gymPlates(g2.u);
-      const pl = all.filter((x2) => plates.map(n3).includes(x2));
+      const pl = [...new Set(plates.map(n3).filter((x2) => plateOk(g2.u === "kg" ? "kg" : "lb", x2)))].sort((a2, b2) => b2 - a2).slice(0, GYM_LIMITS.plates);
       if (pl.length) out.plates = pl;
     }
     {
@@ -3099,6 +3167,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function loadFloorIn(M3, ex) {
     return platesMode(ex) === "bar" && loadMode(ex) === "total" && (isCompound(ex) || (ex.barKg ?? 0) > 0) ? exBarKgIn(M3, ex) : 0;
   }
+  var PLATE_SIDE_MAX = { kg: 250, lb: 550 };
   function plateGridIn(M3, ex, plan) {
     const g2 = gymOfIn(M3);
     if (!ex || ex.inc != null || ex.timed || !g2 || !Array.isArray(g2.plates) || !g2.plates.length) return null;
@@ -3106,9 +3175,28 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (Math.abs(stepReadIn(M3, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M3)) > EPS_SAME) return null;
     const bar2 = loadFloorIn(M3, ex);
     if (!(bar2 > 0)) return null;
-    const mn = Math.min(...g2.plates);
-    if (!g2.plates.every((x2) => Math.abs(x2 / mn - Math.round(x2 / mn)) < EPS_SAME)) return null;
-    return { bar: bar2, step: gymK(g2, 2 * mn) };
+    const key = `${g2.u}|${g2.plates.join(",")}|${bar2}`;
+    const memo = M3.c._plates || (M3.c._plates = /* @__PURE__ */ new Map());
+    let loads = memo.get(key);
+    if (!loads) {
+      const S4 = sideSums(g2.plates, PLATE_SIDE_MAX[g2.u]);
+      const out = [];
+      if (S4) S4.ok.forEach((y2, i5) => y2 && out.push(bar2 + gymK(g2, 2 * i5 * S4.unit)));
+      loads = out.length ? out : [bar2];
+      memo.set(key, loads);
+    }
+    return { bar: bar2, loads };
+  }
+  function loadsFloorAt(L2, w2) {
+    let lo = 0, hi = L2.length - 1, k2 = -1;
+    while (lo <= hi) {
+      const mid2 = lo + hi >> 1;
+      if ((L2[mid2] ?? Infinity) <= w2) {
+        k2 = mid2;
+        lo = mid2 + 1;
+      } else hi = mid2 - 1;
+    }
+    return k2;
   }
   function capOfIn(M3, ex, plan, top) {
     const L2 = gymRackIn(M3, ex, plan);
@@ -3116,7 +3204,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (r4 != null && top != null && top > r4 + rackTolIn(M3, L2, top)) r4 = null;
     const c4 = ex.maxLoad != null ? r4 != null ? Math.min(ex.maxLoad, r4) : ex.maxLoad : r4;
     const G = c4 != null ? plateGridIn(M3, ex, plan) : null;
-    if (G && c4 != null && c4 > G.bar) return G.bar + Math.floor((c4 - G.bar) / G.step + EPS_SAME) * G.step;
+    if (G && c4 != null && c4 > G.bar) return G.loads[Math.max(0, loadsFloorAt(G.loads, c4 + EPS_SAME))] ?? c4;
     return c4;
   }
   function atCapOfIn(M3, ex, plan, top, cap) {
@@ -4491,7 +4579,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var ACCT_LATER = KEY + ".acctLater", INSTALL_LATER = KEY + ".installLater", ICON_NOTE = KEY + ".icon25";
   var OB_ACCT = KEY + ".obAcct", OB_OUT = KEY + ".signedOut";
   var BWSNOOZE_KEY = KEY + ".bwSnooze", BWASK_KEY = KEY + ".bwAsk";
-  var PHOTO_KEY = KEY + ".photo", PHOTO_ASKED = KEY + ".photoAsked";
+  var PHOTO_KEY = KEY + ".photo", PHOTO_SYNC = KEY + ".photoSync", PHOTO_ASKED = KEY + ".photoAsked";
   var DEMOSET_KEY = KEY + ".demoSettings";
   var ASIDE_KEY = KEY + ".aside.";
   var device = { ok: true, boot: true, hadLocal: false, hadLog: false, lastSaved: null };
@@ -6901,11 +6989,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return out;
     return Math.abs(res.w - res.top) < EPS ? res : swapWIn(M3, ex, res, res.top);
   }
-  function plateAt(G, w2, dir, tol) {
-    const k2 = (w2 - G.bar) / G.step, e5 = Math.max(PLATE_TOL_MIN, tol / G.step);
-    const n3 = dir > 0 ? Math.ceil(k2 - e5) : Math.floor(k2 + e5);
-    return G.bar + Math.max(0, n3) * G.step;
-  }
   function plateSnap(M3, ex, plan, res, down) {
     const w2 = res.w, top = res.top;
     if (w2 == null) return res;
@@ -7938,14 +8021,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     const G = plateGridIn(M3, ex, plan);
     if (G) {
-      const t4 = rackTolIn(M3);
+      const t4 = rackTolIn(M3), P2 = G.loads, tf = Math.max(t4, PLATE_TOL_MIN);
+      const fl = (w2) => P2[Math.max(0, loadsFloorAt(P2, w2 + tf))] ?? G.bar;
       return {
         kind: "plates",
         first: G.bar,
-        below: (w2) => w2 <= G.bar + t4 ? null : plateAt(G, w2 - G.step / 2, -1, t4),
-        floor: (w2) => plateAt(G, w2, -1, t4),
-        above: (w2) => G.bar + Math.max(0, Math.floor((w2 + t4 - G.bar) / G.step + EPS_SAME) + 1) * G.step,
-        has: (w2) => Math.abs(plateAt(G, w2, -1, t4) - w2) <= t4
+        below: (w2) => {
+          if (w2 <= G.bar + t4) return null;
+          const k3 = loadsFloorAt(P2, w2);
+          const lo = P2[k3], hi = P2[k3 + 1];
+          const near = lo == null ? 0 : hi != null && hi - w2 <= w2 - lo + 2 * tf ? k3 + 1 : k3;
+          return P2[Math.max(0, near - 1)] ?? null;
+        },
+        floor: (w2) => fl(w2),
+        above: (w2) => P2[loadsFloorAt(P2, w2 + t4 + EPS_SAME) + 1] ?? null,
+        has: (w2) => Math.abs(fl(w2) - w2) <= t4
       };
     }
     if (at2 == null)
@@ -9525,6 +9615,82 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var AUTH = () => window.ironlogAuth && typeof window.ironlogAuth.user === "function" ? window.ironlogAuth : null;
   var FB = () => window.ironlogFeedback && typeof window.ironlogFeedback.send === "function" ? window.ironlogFeedback : null;
 
+  // src/app/photo.ts
+  var PHOTO_EDGE = 256;
+  var PHOTO_QUALITY = 0.85;
+  var PHOTO_SHAPE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
+  function photoOf(v3) {
+    return typeof v3 === "string" && PHOTO_SHAPE.test(v3) ? v3 : null;
+  }
+  function photoHeld() {
+    return photoOf(prefGet(PHOTO_KEY));
+  }
+  function photoUrl() {
+    return acct.user ? photoHeld() : null;
+  }
+  function photoNote() {
+    const t4 = prefGet(PHOTO_SYNC);
+    if (!t4) return null;
+    try {
+      const r4 = rec(parseJson(t4));
+      if (!r4 || typeof r4.uid !== "string" || typeof r4.et !== "number" || !Number.isFinite(r4.et) || typeof r4.up !== "boolean")
+        return null;
+      return { uid: r4.uid, et: r4.et, up: r4.up };
+    } catch (e5) {
+      log("photo-note", e5);
+      return null;
+    }
+  }
+  function noteSet(n3) {
+    prefSet(PHOTO_SYNC, JSON.stringify(n3));
+  }
+  function changedHere() {
+    noteSet({ uid: cloud.uid || "", et: Date.now(), up: true });
+  }
+  function photoPending() {
+    const n3 = photoNote();
+    return !!n3 && n3.up && (n3.uid === "" || n3.uid === cloud.uid);
+  }
+  function dataUrl(b2) {
+    return new Promise((res) => {
+      const r4 = new FileReader();
+      r4.onload = () => res(typeof r4.result === "string" ? r4.result : null);
+      r4.onerror = () => {
+        log("photo-read", r4.error);
+        res(null);
+      };
+      r4.readAsDataURL(b2);
+    });
+  }
+  async function photoSet(f3) {
+    const j3 = await jpegOf(f3, PHOTO_EDGE, PHOTO_QUALITY, true);
+    if ("why" in j3) return j3.why;
+    const u4 = photoOf(await dataUrl(j3.blob));
+    if (!u4) return "This phone could not prepare the photo.";
+    if (!prefSet(PHOTO_KEY, u4)) return "The photo could not be kept on this phone (storage full or blocked).";
+    changedHere();
+    return null;
+  }
+  function photoRemove() {
+    prefDel(PHOTO_KEY);
+    changedHere();
+  }
+  function photoTake(url, et, uid2) {
+    if (url) prefSet(PHOTO_KEY, url);
+    else prefDel(PHOTO_KEY);
+    noteSet({ uid: uid2, et, up: false });
+  }
+  function photoSent(et, uid2) {
+    const n3 = photoNote();
+    if (n3 && n3.et !== et) return;
+    noteSet({ uid: uid2, et, up: false });
+  }
+  function photoForget() {
+    prefDel(PHOTO_KEY);
+    prefDel(PHOTO_SYNC);
+    prefDel(PHOTO_ASKED);
+  }
+
   // src/app/sync.ts
   var SYNC_MS = {
     save: 400,
@@ -10112,9 +10278,66 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     saveMeta();
   }
   var writeMark = () => `${cloud.devId || "dev"}.${uid()}`;
+  async function photoReconcile(d3) {
+    const me = cloud.uid;
+    if (!me) return;
+    let remote = null;
+    if (d3 && typeof d3.json === "string") {
+      try {
+        remote = { et: Number(d3.et) || Number(d3.at) || 0, url: photoOf(parseJson(d3.json)) };
+      } catch (e5) {
+        log("photo-parse", e5);
+      }
+    }
+    const n3 = photoNote();
+    if (n3 && n3.uid !== "" && n3.uid !== me) {
+      photoTook(remote ? remote.url : null, remote ? remote.et : 0, me);
+      return;
+    }
+    const held2 = photoHeld();
+    if (n3 && n3.up) {
+      if (remote && remote.et > n3.et) photoTook(remote.url, remote.et, me);
+      else await photoSend(held2, n3.et, d3, me);
+      return;
+    }
+    if (remote) {
+      if (remote.url !== held2 || !n3 || n3.et !== remote.et) photoTook(remote.url, remote.et, me);
+      return;
+    }
+    if (held2) await photoSend(held2, n3 ? n3.et : Date.now(), null, me);
+  }
+  function photoTook(url, et, me) {
+    const was = photoHeld();
+    photoTake(url, et, me);
+    if (was !== url) {
+      fx.setSaveState();
+      fx.rerenderKeepScroll();
+    }
+  }
+  async function photoSend(url, et, d3, me) {
+    const doc = { v: 1, at: Date.now(), et, w: writeMark(), json: JSON.stringify(url) };
+    try {
+      if (await withTimeout(ref(PHOTO_DOC).setIf(doc, seenOf(d3)), SYNC_MS.net, "photo-write")) photoSent(et, me);
+      else log("photo-race", { et });
+    } catch (e5) {
+      log("photo-write", e5);
+    }
+  }
+  function photoSyncSoon() {
+    if (!cloud.on || !cloud.db) return;
+    void cq(async () => {
+      if (!cloud.on || !cloud.db) return;
+      try {
+        const s3 = await withTimeout(ref(PHOTO_DOC).get(), SYNC_MS.net, "photo-read");
+        await photoReconcile(s3.exists ? rec(s3.data()) : null);
+      } catch (e5) {
+        log("photo-read", e5);
+      }
+    });
+  }
   function hasUnsent() {
     if (!cloud.on) return false;
-    if (cloud.status !== "synced") return true;
+    if (cloud.status !== "synced" || photoPending()) return true;
     try {
       const ch = chunksOf(state);
       for (const id of /* @__PURE__ */ new Set([...Object.keys(ch), ...Object.keys(cloud.meta)])) {
@@ -10309,6 +10532,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     cloud.lastPull = Date.now();
     pulled = true;
+    const ph = snap.docs.find((x2) => x2.id === PHOTO_DOC && x2.exists);
+    await photoReconcile(ph ? rec(ph.data()) : null);
     const remote = {};
     for (const d3 of snap.docs) {
       if (!d3.exists || !isChunkId(d3.id)) continue;
@@ -11418,37 +11643,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var MENU_ICON = '<svg class="mi" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8.4" r="3.7"/><path d="M4.8 19.6c1.3-3.7 4.1-5.4 7.2-5.4s5.9 1.7 7.2 5.4"/></svg>';
   var SHARE_ICON = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
   var ADD_ICON = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
-
-  // src/app/photo.ts
-  var PHOTO_EDGE = 256;
-  var PHOTO_QUALITY = 0.85;
-  var PHOTO_SHAPE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
-  function photoUrl() {
-    const v3 = prefGet(PHOTO_KEY);
-    return v3 && PHOTO_SHAPE.test(v3) ? v3 : null;
-  }
-  function dataUrl(b2) {
-    return new Promise((res) => {
-      const r4 = new FileReader();
-      r4.onload = () => res(typeof r4.result === "string" ? r4.result : null);
-      r4.onerror = () => {
-        log("photo-read", r4.error);
-        res(null);
-      };
-      r4.readAsDataURL(b2);
-    });
-  }
-  async function photoSet(f3) {
-    const j3 = await jpegOf(f3, PHOTO_EDGE, PHOTO_QUALITY, true);
-    if ("why" in j3) return j3.why;
-    const u4 = await dataUrl(j3.blob);
-    if (!u4 || !PHOTO_SHAPE.test(u4)) return "This phone could not prepare the photo.";
-    if (!prefSet(PHOTO_KEY, u4)) return "The photo could not be kept on this phone (storage full or blocked).";
-    return null;
-  }
-  function photoClear() {
-    prefDel(PHOTO_KEY);
-  }
 
   // src/app/env.ts
   function isStandalone() {
@@ -15542,10 +15736,14 @@ ${ap.length ? b`<div class="panel row spread" id="profApply">
 ${u4 !== U() ? b`<p class="small u-m0">Suggestions show in ${U()}, on the ${u4} weights below.</p>
 ` : A} <label class="field">${labelTip("lt-barKg", `Bar weight (${U()})`, "Used by the plates-per-side line in the logger.")}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
 <div>
-<p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="A barbell or a plate-loaded machine steps by two of the smallest plate you have, one a side; a landmine by one. Tap a plate your gym does not have.">Plates on hand (${u4})</span></p>
-<div class="chips" role="group" aria-label="Plates on hand">${plates.map(
+<p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="A barbell is loaded with these plates, a pair at a time, so its suggested loads are ones they make. A plate-loaded machine steps by two of the smallest, one a side; a landmine by one. Tap a plate your gym does not have, or add one it has that is not here.">Plates on hand (${u4})</span></p>
+<div class="chips" role="group" aria-label="Plates on hand">${[...plates, ...on.filter((p3) => !plates.includes(p3))].sort((a2, b2) => b2 - a2).map(
       (p3) => b`<button class=${on.includes(p3) ? "chip on" : "chip"} data-act="gymPlate" data-v=${String(p3)} aria-pressed=${String(on.includes(p3))}>${fmtG(p3)}</button>`
     )}</div>
+<div class="grid2 u-mt6_aiend">
+<label class="field">Another plate (${u4})<input type="text" inputmode="decimal" id="gymPlateNew" placeholder=${lb ? "1.25" : "1"} /></label>
+<button class="btn" data-act="gymPlateAdd">Add plate</button>
+</div>
 </div>
 <label class="check-inline"><input type="checkbox" data-bind="smallPlates" aria-labelledby="lt-smallPlates" .checked=${l3(!!state.settings.smallPlates)}/>${labelTip(
       "lt-smallPlates",
@@ -16118,18 +16316,43 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         );
       else go();
     },
+    /* A plate tapped: a usual one turns on or off; one the lifter added goes (NEW-76, 2.34: an added plate has no off
+       state to keep, and adding it again is one tap). Every usual plate and nothing else is the default, stored as no
+       list, as before. */
     gymPlate(t4) {
       const g2 = gymNext();
       const all = gymPlates(g2.u);
       const v3 = +(t4.dataset.v || "");
-      let on = Array.isArray(g2.plates) ? g2.plates.slice() : all.slice();
-      on = on.includes(v3) ? on.filter((x2) => x2 !== v3) : [...on, v3];
+      const had = Array.isArray(g2.plates) ? g2.plates.slice() : all.slice();
+      const on = had.includes(v3) ? had.filter((x2) => x2 !== v3) : [...had, v3];
       if (!on.length) {
         toast("Keep at least one plate");
         return;
       }
-      if (on.length === all.length) delete g2.plates;
-      else g2.plates = all.filter((x2) => on.includes(x2));
+      if (on.length === all.length && all.every((x2) => on.includes(x2))) delete g2.plates;
+      else g2.plates = on.sort((a2, b2) => b2 - a2);
+      gymSave(g2);
+    },
+    /* A plate the usual list does not have (NEW-76, V 2026-11-07: "at other gyms there might be just standard one KG
+       plates"), typed as it is labelled, in the gym's unit. */
+    gymPlateAdd() {
+      const el = document.getElementById("gymPlateNew");
+      const v3 = el instanceof HTMLInputElement ? numIn(el.value.trim()) : null;
+      const g2 = gymNext();
+      if (v3 == null || !plateOk(g2.u, v3)) {
+        toast(`Type the weight printed on the plate, up to ${fmtG(PLATE_MAX[g2.u])} ${g2.u}`);
+        return;
+      }
+      const had = Array.isArray(g2.plates) ? g2.plates.slice() : gymPlates(g2.u);
+      if (had.some((x2) => Math.abs(x2 - v3) < EPS_SAME)) {
+        toast("That plate is already on the list");
+        return;
+      }
+      if (had.length >= PLATES_MOST) {
+        toast(`${PLATES_MOST} plates at most. Tap one to take it off.`);
+        return;
+      }
+      g2.plates = [...had, v3].sort((a2, b2) => b2 - a2);
       gymSave(g2);
     },
     gymClear() {
@@ -16352,7 +16575,10 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
           picsClear().catch((e5) => {
             log("pics-clear", e5);
           });
-          photoClear();
+          if (cloud.on) {
+            photoRemove();
+            photoSyncSoon();
+          } else photoForget();
           setSaveState();
           ui.tab = "today";
           render();
@@ -19141,7 +19367,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
   function photoBar() {
     if (!AUTH() || window.claude || !acct.checked || !acct.user || !state.settings.onboarded) return A;
     if (prefGet(PHOTO_ASKED) || photoUrl() || state.sessions.some((x2) => x2.demo)) return A;
-    return b`<div class="acctbar" id="photoBar"><span class="small"><b>Add a profile photo.</b><span class="ab-more"> It shows at the top right, on this phone only.</span></span><label class="btn sm primary">Add photo<input type="file" accept="image/*" data-photo hidden></label><button class="ib" aria-label="Not now" data-act="photoLater">✕</button></div>`;
+    return b`<div class="acctbar" id="photoBar"><span class="small"><b>Add a profile photo.</b><span class="ab-more"> It shows at the top right on any phone you sign in on.</span></span><label class="btn sm primary">Add photo<input type="file" accept="image/*" data-photo hidden></label><button class="ib" aria-label="Not now" data-act="photoLater">✕</button></div>`;
   }
   var inUnit = (u4, field2) => i4(u4, field2);
   function bwDueCard() {
@@ -22419,6 +22645,8 @@ ${JSON.stringify(ctx, null, 1)}`;
           }
           acct.user = null;
           cloudStop(true);
+          photoForget();
+          setSaveState();
           rerenderKeepScroll();
           toast("Account deleted. Your log is still on this phone.");
         },
@@ -22456,6 +22684,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         }
         acct.user = null;
         cloudStop(remove);
+        photoForget();
         const mid2 = !remove && !!state.draft;
         if (!mid2) {
           prefSet(OB_OUT, "1");
@@ -23852,6 +24081,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           return;
         }
         prefSet(PHOTO_ASKED, "1");
+        photoSyncSoon();
         photoShown();
         toast("Photo added");
       },
@@ -23866,10 +24096,11 @@ ${JSON.stringify(ctx, null, 1)}`;
     photoDel() {
       confirmBox(
         "Remove your profile photo?",
-        "It is kept on this phone only, so it cannot be brought back. You can add a new one any time.",
+        "It goes from your account and every phone you sign in on. You can add a new one any time.",
         "Remove",
         () => {
-          photoClear();
+          photoRemove();
+          photoSyncSoon();
           photoShown();
           toast("Photo removed");
         },
@@ -25976,8 +26207,9 @@ ${JSON.stringify(ctx, null, 1)}`;
   // src/app/sheetsaccount.ts
   var menuAuth = () => AUTH() && !(window.claude && typeof window.claude.use === "function") ? AUTH() : null;
   function photoHead() {
+    if (!acct.user) return A;
     const u4 = photoUrl();
-    return b`<label class="mph" id="menuPhoto" aria-label=${u4 ? "Change your profile photo" : "Add a profile photo"} data-tip="Your profile photo, kept on this phone only">${u4 ? b`\x3cimg class="mph-i" src=${u4} alt="">` : b`<span class="mph-i mph-none" aria-hidden="true">${markup(MENU_ICON)}</span>`}<span class="mph-cam" aria-hidden="true">${markup(CAMERA_ICON)}</span><input type="file" accept="image/*" data-photo hidden></label>`;
+    return b`<label class="mph" id="menuPhoto" aria-label=${u4 ? "Change your profile photo" : "Add a profile photo"} data-tip="Your profile photo, kept in your account">${u4 ? b`\x3cimg class="mph-i" src=${u4} alt="">` : b`<span class="mph-i mph-none" aria-hidden="true">${markup(MENU_ICON)}</span>`}<span class="mph-cam" aria-hidden="true">${markup(CAMERA_ICON)}</span><input type="file" accept="image/*" data-photo hidden></label>`;
   }
   function menuSheet(m3) {
     const A2 = menuAuth();
@@ -26079,7 +26311,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const inClaude2 = !!(window.claude && typeof window.claude.use === "function");
     const accts = !inClaude2 && !!AUTH();
     const where = inClaude2 ? `<p><b>Your log</b> is saved with your Claude account and in this browser.</p>` : accts ? `<p><b>Without an account</b> your log is on this phone only: deleting the app deletes it. Export a backup in Settings, Your data, and keep it in Files.</p>
-   <p><b>With an account</b> it syncs, and signing in on any device brings it back. Only you and the app owner can see it. Your email is used only to sign in and reset your password; nothing is shared or sold. Continue without an account on the first page keeps everything on the phone, and the account can be added any time from the menu.</p>` : `<p><b>Your log</b> is saved in this browser only: clearing its data deletes it. Export a backup in Settings, Your data.</p>`;
+   <p><b>With an account</b> it syncs, and signing in on any device brings it back, with your profile photo if you add one. Only you and the app owner can see them. Your email is used only to sign in and reset your password; nothing is shared or sold. Continue without an account on the first page keeps everything on the phone, and the account can be added any time from the menu.</p>` : `<p><b>Your log</b> is saved in this browser only: clearing its data deletes it. Export a backup in Settings, Your data.</p>`;
     const report = FB() ? "<p><b>Report a problem</b> is in the menu at the top right and in Settings, Help. It needs an account, and never includes your workouts.</p>" : "<p><b>Report a problem</b> is in the menu at the top right and in Settings, Help. Here it copies the details for a message instead of sending them, and never includes your workouts.</p>";
     const T2 = [
       [

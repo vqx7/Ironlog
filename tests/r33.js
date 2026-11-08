@@ -226,9 +226,11 @@ async function engineRun(page, cases, gym) {
     ok(await ev(() => window.__ironlog.state.settings.gym.plates === undefined), 'all plates back on is the same as not set');
     await typeIn('[data-gym="stack"]', '10');
     ok(await ev(() => window.__ironlog.state.settings.gym.stack) === 10, 'the stack step is saved');
-    // Junk from an import or a hand-edited backup is dropped, never guessed.
-    const junk = await ev(() => window.__ironlog.gymClean({ u: 'stone', db: { lo: 5, hi: 10, st: 5 } }) === null && JSON.stringify(window.__ironlog.gymClean({ u: 'kg', db: { lo: -2, hi: 10, st: 2 }, kb: ['x', 0, 16, 1e9], plates: [20, 7, 25], stack: 0 })));
-    ok(junk === '{"u":"kg","kb":[16],"plates":[25,20]}', 'bad values are dropped: an unknown unit, a negative dumbbell, non-numbers, plates that do not exist, a 0 step', junk);
+    // Junk from an import or a hand-edited backup is dropped, never guessed. Since 2.34 (NEW-76, V 2026-11-07) a gym
+    // keeps any plate it has, not only the usual ones, so a 7 kg plate stays; what is no plate (past the heaviest made,
+    // 0 or under, not a number, finer than a hundredth) still goes.
+    const junk = await ev(() => window.__ironlog.gymClean({ u: 'stone', db: { lo: 5, hi: 10, st: 5 } }) === null && JSON.stringify(window.__ironlog.gymClean({ u: 'kg', db: { lo: -2, hi: 10, st: 2 }, kb: ['x', 0, 16, 1e9], plates: [20, 7, 25, 60, -5, 0, 'x', 1.234], stack: 0 })));
+    ok(junk === '{"u":"kg","kb":[16],"plates":[25,20,7]}', 'bad values are dropped: an unknown unit, a negative dumbbell, non-numbers, plates that are no plate, a 0 step', junk);
     // A session in progress takes the rack on exercises with nothing ticked.
     const live = await ev(() => {
       const L = window.__ironlog; const LB = 0.45359237; delete L.state.settings.gym;

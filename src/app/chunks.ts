@@ -169,6 +169,9 @@ export const hasDemo = (s: {
 export const CORE_ARR: readonly string[] = ['routines', 'exercises', 'injuries', 'trash'];
 export const CORE_FIELDS: readonly string[] = ['version', 'activeRoutineId', 'deloadWeek'];
 
+/** The account's profile photo's document (2.34, photo.ts): written beside the log's, never one of them (isChunkId). */
+export const PHOTO_DOC = 'photo';
+
 /** A document id the app writes: core, draft, a half-month session document or a year's body document. */
 export const isChunkId = (id: string): boolean =>
   id === 'core' || id === 'draft' || /^s-\d{4}-\d{2}-[12]$/.test(id) || /^b-\d{4}$/.test(id);

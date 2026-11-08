@@ -495,13 +495,14 @@ function installBar(): Part {
 /* The profile photo (2.33, V 2026-11-07): once a lifter has an account,
    whether new or signed in for months, one slim line asks for a photo for
    the menu button. Add photo picks one there and then; Not now hides the
-   line on this phone for good, as does a photo added from the menu. It
+   line on this phone until it signs out, as does a photo added from the menu
+   or one the account already has (2.34). It
    waits behind the install and new-icon lines, so Today never stacks two,
    and stays out of the first run and the demo. */
 function photoBar(): Part {
   if (!AUTH() || window.claude || !acct.checked || !acct.user || !state.settings.onboarded) return nothing;
   if (prefGet(PHOTO_ASKED) || photoUrl() || state.sessions.some(x => x.demo)) return nothing;
-  return html`<div class="acctbar" id="photoBar"><span class="small"><b>Add a profile photo.</b><span class="ab-more"> It shows at the top right, on this phone only.</span></span><label class="btn sm primary">Add photo<input type="file" accept="image/*" data-photo hidden></label><button class="ib" aria-label="Not now" data-act="photoLater">✕</button></div>`;
+  return html`<div class="acctbar" id="photoBar"><span class="small"><b>Add a profile photo.</b><span class="ab-more"> It shows at the top right on any phone you sign in on.</span></span><label class="btn sm primary">Add photo<input type="file" accept="image/*" data-photo hidden></label><button class="ib" aria-label="Not now" data-act="photoLater">✕</button></div>`;
 }
 /* A field for a new weigh-in or tape measurement, made again when the unit
    changes: these fields keep what is typed through a draw (r59), and a number
