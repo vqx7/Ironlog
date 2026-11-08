@@ -270,7 +270,8 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const cp = await ev(() => { const L = window.__ironlog; L.ACT.guideOpen({ dataset: {} }); const g = document.querySelector('.sheet').textContent; L.ACT.mClose(); L.ui.tab = 'settings'; L.ui.folds['settings:profile'] = true; L.render();
     const tips = [...document.querySelectorAll('[data-mkey="profile"] [data-tip]')].map(e => e.dataset.tip).join(' '); return { g, tips }; });
   ok(/Your training/.test(cp.g) && /Schoenfeld 2017/.test(cp.g) && /Bickel 2011/.test(cp.g) && !/—/.test(cp.g + cp.tips), 'the Guide says what the profile does and where each number comes from; no em dashes', cp.g.length);
-  ok(/Schoenfeld 2016/.test(cp.tips) && /Spiering 2021/.test(cp.tips) && /convention/.test(cp.tips), 'the tips in Your training name the sources and the conventions', cp.tips.length);
+  // Since 2.34 (99, V 2026-11-08) the tips point to the Guide for sources (held above: the Guide names them) and say rule of thumb.
+  ok(/sources in the Guide/.test(cp.tips) && /Schoenfeld 2016/.test(cp.g) && /Spiering 2021/.test(cp.g) && /rules? of thumb/.test(cp.tips), 'the tips in Your training say rule of thumb and point to the Guide, which names the sources', cp.tips.length);
   ok(!P.errors.length, 'no page errors', P.errors);
   await P.ctx.close();
 

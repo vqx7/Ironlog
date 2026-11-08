@@ -527,7 +527,7 @@ function regionBody(): TemplateResult {
      V, 2026-11-03: the sentence ran two lines under the headline). */
   const inside = !rs.week && !worst && !plan.length && !high.length;
   return html`<div class="card">${rs.week ? nothing : chips}${rh}<p class="small muted u-m0-0-4">${rs.short || rs.label.charAt(0).toUpperCase() + rs.label.slice(1)} ${tipButton(
-    `Using ${rs.label}. ${inside ? 'Every region at or above its minimum, inside its target. ' : ''}Hard sets per region against the minimum of your weekly targets. On or past the dashed ring is on target.${plan.length ? ' On plan: ' + ON_PLAN_TIP : ''}${rs.first || rs.src._ff ? ' ' + (rs.back ? BACK_WEEK_WHY : FIRST_WEEK_WHY) : ''}`,
+    `Using ${rs.label}. ${inside ? 'Every region at or past its minimum, inside its target. ' : ''}Hard sets per region. Dashed ring: the minimum of your weekly targets; on or past it is on target.${plan.length ? ' On plan: ' + ON_PLAN_TIP : ''}${rs.first || rs.src._ff ? ' ' + (rs.back ? BACK_WEEK_WHY : FIRST_WEEK_WHY) : ''}`,
     'Reading the chart'
   )}</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
   <table class="t u-mt8"><tr><th>Region</th><th class="r">Sets</th><th class="r">Minimum</th><th class="r">Of minimum</th></tr>
@@ -666,7 +666,7 @@ export function bestsBoard(): { n: number; html: TemplateResult } {
       f =>
         html`<tr><td class="num">${loadLabel(ex, f.p.w)}</td><td class="r num">${f.p.r}</td><td class="r">${fmtDate(f.date)}</td></tr>`
     )}</table></details>`;
-    })}</div>${rows.length > shown.length ? html`<button class="btn sm u-mt8" data-act="bestsAll">Show all ${rows.length} lifts</button>` : nothing}<p class="small muted hastip u-m8-0-0" data-tip="For each load, the most reps you have done, where no heavier set did as many. Beating a line at 90% or more of your strongest set is a rep PR. The best estimate (compound lifts) is the highest estimated 1RM from any set, in the frame you log in. Warm-ups and drop sets are left out.">How to read this</p>${oldBest}`
+    })}</div>${rows.length > shown.length ? html`<button class="btn sm u-mt8" data-act="bestsAll">Show all ${rows.length} lifts</button>` : nothing}<p class="small muted hastip u-m8-0-0" data-tip="Most reps at each weight, unless a heavier set matched it. Beat a line with a set at least 90% as strong as your best: a rep PR. Best estimate (compound lifts): the highest one-rep max any set gives, in the terms you log it (total, per side or per dumbbell). Warm-ups and drop sets left out.">How to read this</p>${oldBest}`
   };
 }
 
@@ -773,7 +773,7 @@ export function whtrLine(prompt?: boolean): Part {
   const r = Math.round((w.waist / hc) * HUNDREDTHS) / HUNDREDTHS;
   const band =
     r < WHTR[0] ? ['green', 'healthy range'] : r < WHTR[1] ? ['yellow', 'increased risk'] : ['red', 'high risk'];
-  return html`<p class="small whtr"><b>Waist to height ${r.toFixed(2)}</b> <span class=${`tag ${band[0]}`}>${band[1]}</span> <span class="muted hastip" data-tip=${`Waist ${lenD(w.waist)} ${LU()} on ${fmtDate(w.date)}, height ${heightTxt(hc)}. ${whtrBands(x => x.toFixed(2), 'Under')} (NICE 2022). A screening number: measure midway between the lowest rib and the top of the hip bone. Unlike BMI it does not count muscle against you.`}>how it reads</span></p>`;
+  return html`<p class="small whtr"><b>Waist to height ${r.toFixed(2)}</b> <span class=${`tag ${band[0]}`}>${band[1]}</span> <span class="muted hastip" data-tip=${`Waist ${lenD(w.waist)} ${LU()} on ${fmtDate(w.date)}, height ${heightTxt(hc)}. ${whtrBands(x => x.toFixed(2), 'Under')}. A screening number: measure midway between the lowest rib and the top of the hip bone. Unlike BMI it does not count muscle against you.`}>how it reads</span></p>`;
 }
 
 function measTable(): TemplateResult {
@@ -1125,7 +1125,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
 /* "e1RM" is a lifter's word few new lifters know, so Stats says "Best
    estimate" and the tip names it (339 i, r58). */
 const BEST_EST_TIP =
-  'Your best estimated one-rep max (e1RM): the most that one of your sets says you could lift for a single rep, worked out from its load, its reps, and its RIR. An estimate, not a tested max.';
+  'Best estimated one-rep max (e1RM): the most your strongest set says you could lift once, from its weight, reps, and RIR. An estimate, not a tested max.';
 
 /* The lift picked in Lifts: its headline, next target, goal, tiles, chart,
    notes and its last sessions. 1RM figures only where a 1RM is stated (r30):
@@ -1159,7 +1159,7 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
       n0 || !f0
         ? ''
         : html`${rangeChips('ex', weeksSpan(f0.date), CHART_WEEKS, 'all')}<div class="chartbox"><canvas id="chEx"></canvas></div>${chartFallback()}
-    <p class="small muted hastip u-m4-0-0" data-tip="Filled diamond: a new best estimate (a weight PR that also set one is filled too). Hollow diamond: a rep PR or a weight PR that did not raise the estimate, which can sit below an earlier best. The thin dotted line is your RIR at the working load.">Reading the chart</p>`
+    <p class="small muted hastip u-m4-0-0" data-tip="Filled diamond: a new best estimate (a weight PR that also set one is filled too). Hollow diamond: a rep PR or a weight PR that did not raise the estimate, which can sit below an earlier best. The thin dotted line is your RIR at the working weight.">Reading the chart</p>`
     }
     ${st && st.easier ? html`<p class="small u-cblue_mt6"><b>${easierText(ex, st.easier)}</b></p>` : ''}
     ${
@@ -1190,7 +1190,7 @@ export function risingWords(names: readonly string[]): { line: string; tip: stri
   const one = names.length === 1;
   return {
     line: `${names.length} muscle${one ? '' : 's'} rising: keep the sets.`,
-    tip: `Rising at ${one ? 'its' : 'their'} volume: ${andList(names)}. Keep the sets as they are.`
+    tip: `Getting stronger on current sets: ${andList(names)}. Keep the sets.`
   };
 }
 

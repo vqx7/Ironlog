@@ -1,8 +1,8 @@
 // 2.33 (build r79; PENDING.md's tracker, ST-1 to ST-5): the elements V picked from the Stitch drafts (2026-11-07), on the
 // app's own screens, each section written as what a lifter expects and run first on 2.32
 // (`node tests/r79.js <2.32's index.html>`), where each section fails unless it says it guards:
-//   1  ST-1: a profile photo picked in the menu shows in the menu button at the top right, kept on this phone only: a
-//      small square JPEG under its own key, never in the log, a backup or the account. Remove asks first. A value in
+//   1  ST-1: a profile photo picked in the menu shows in the menu button at the top right: a small square JPEG under
+//      its own key, never in the log or a backup (since 2.34 the account's, signed in only: tests/r80b.js). Remove asks first. A value in
 //      storage that is not a JPEG data address is never shown, an SVG is refused, and Erase everything removes it.
 //   2  ST-2: once a lifter has an account, one line on Today offers a photo, once per phone: Not now hides it for
 //      good, and so does a photo added. Guards: never signed out, in the demo, with a photo, or beside another line.
@@ -56,8 +56,14 @@ const button = page => page.evaluate(() => new Promise(res => {
 }));
 
 (async () => {
-  if (run(1)) try {
-    const D = await app();
+  // The built app brings its own account script, which replaces the stand-in signed-in service these sections
+  // use: on it, the photo is read signed in by tests/r80b.js and the line by tests/accounts.js, against a stand-in
+  // Supabase (since 2.34 section 1 is signed in too, as the photo is the account's).
+  const STUB_OK = !process.env.IRONLOG_FILE;
+  if (!STUB_OK) console.log('note r79 sections 1, 2 and 5 need a stand-in account service; on the built app tests/r80b.js and tests/accounts.js read the photo signed in');
+  if (run(1) && STUB_OK) try {
+    // Signed in since 2.34 (R79-1, V 2026-11-08): the photo is the account's, offered only with an account (tests/r80b.js).
+    const D = await app({ auth: SIGNED_IN });
     const pg = D.page;
     await pg.click('#saveState'); await wait(200);
     ok(await pg.evaluate(() => !!document.querySelector('#modal .sheet-h #menuPhoto input[type="file"][data-photo]') && document.querySelector('#modal #menuPhoto').getAttribute('aria-label') === 'Add a profile photo'), '1. the menu offers a profile photo in its header');
@@ -67,7 +73,7 @@ const button = page => page.evaluate(() => new Promise(res => {
     ok(/^Menu\. /.test(b.label || ''), '1. the button is still named the menu, with the save state', b.label);
     ok(await pg.evaluate(() => !!document.querySelector('#modal .sheet-h #menuPhoto img') && document.querySelector('#modal #menuPhoto').getAttribute('aria-label') === 'Change your profile photo' && !!document.querySelector('#modal .sheet-h [data-act="photoDel"]')), '1. the open menu shows it at once in its header, tapped to change it, with Remove photo beside it');
     const kept = await pg.evaluate(() => { const L = window.__ironlog; const v = localStorage.getItem(L.KEY + '.photo') || ''; return { key: v.startsWith('data:image/jpeg;base64,'), size: v.length, inLog: /data:image|"photo"/.test(JSON.stringify(L.state)), inSave: /data:image/.test(localStorage.getItem(L.KEY) || '') }; });
-    ok(kept.key && kept.size < 120000 && !kept.inLog && !kept.inSave, '1. it is kept under its own key on this phone, small, and nowhere in the log or its save (so never in a backup or the account)', kept);
+    ok(kept.key && kept.size < 120000 && !kept.inLog && !kept.inSave, '1. it is kept under its own key on this phone, small, and nowhere in the log or its save (so never in a backup; since 2.34 the account keeps it as a document of its own, tests/r80b.js)', kept);
     // Remove asks first, and takes it away only on the answer.
     await pg.click('#modal [data-act="photoDel"]'); await wait(200);
     const asked = await pg.evaluate(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'confirm' ? m.title : null; });
@@ -95,17 +101,13 @@ const button = page => page.evaluate(() => new Promise(res => {
     await D.browser.close();
   } catch (e) { ok(false, '1. the section stopped', String(e).slice(0, 300)); }
 
-  // The built app brings its own account script, which replaces the stand-in signed-in service these sections
-  // use: on it, the line is read signed in by tests/accounts.js, against a stand-in Supabase.
-  const STUB_OK = !process.env.IRONLOG_FILE;
-  if (!STUB_OK) console.log('note r79 sections 2 and 5 need a stand-in account service; on the built app tests/accounts.js reads the photo line signed in');
   if (run(2) && STUB_OK) try {
     const line = page => page.evaluate(() => { const b = document.getElementById('photoBar'); return b ? b.innerText.replace(/\s+/g, ' ').trim() : null; });
     const D = await app({ auth: SIGNED_IN });
     await D.page.waitForFunction(() => !!window.__ironlog.acctUser(), null, { timeout: 5000 }).catch(() => {});
     await D.page.evaluate(() => window.__ironlog.render()); await wait(200);
     const t = await line(D.page);
-    ok(t === 'Add a profile photo. Add photo ✕' || t === 'Add a profile photo. It shows at the top right, on this phone only. Add photo ✕', '2. signed in with no photo, Today offers one in a slim line', t);
+    ok(t === 'Add a profile photo. Add photo ✕' || t === 'Add a profile photo. It shows at the top right on any phone you sign in on. Add photo ✕', '2. signed in with no photo, Today offers one in a slim line', t);
     ok(!/optional/i.test(t || ''), '2. the line does not say optional', t);
     await D.page.click('#photoBar [data-act="photoLater"]'); await wait(200);
     ok((await line(D.page)) === null, '2. Not now hides it');

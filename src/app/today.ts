@@ -495,13 +495,14 @@ function installBar(): Part {
 /* The profile photo (2.33, V 2026-11-07): once a lifter has an account,
    whether new or signed in for months, one slim line asks for a photo for
    the menu button. Add photo picks one there and then; Not now hides the
-   line on this phone for good, as does a photo added from the menu. It
+   line on this phone until it signs out, as does a photo added from the menu
+   or one the account already has (2.34). It
    waits behind the install and new-icon lines, so Today never stacks two,
    and stays out of the first run and the demo. */
 function photoBar(): Part {
   if (!AUTH() || window.claude || !acct.checked || !acct.user || !state.settings.onboarded) return nothing;
   if (prefGet(PHOTO_ASKED) || photoUrl() || state.sessions.some(x => x.demo)) return nothing;
-  return html`<div class="acctbar" id="photoBar"><span class="small"><b>Add a profile photo.</b><span class="ab-more"> It shows at the top right, on this phone only.</span></span><label class="btn sm primary">Add photo<input type="file" accept="image/*" data-photo hidden></label><button class="ib" aria-label="Not now" data-act="photoLater">✕</button></div>`;
+  return html`<div class="acctbar" id="photoBar"><span class="small"><b>Add a profile photo.</b><span class="ab-more"> It shows at the top right on any phone you sign in on.</span></span><label class="btn sm primary">Add photo<input type="file" accept="image/*" data-photo hidden></label><button class="ib" aria-label="Not now" data-act="photoLater">✕</button></div>`;
 }
 /* A field for a new weigh-in or tape measurement, made again when the unit
    changes: these fields keep what is typed through a draw (r59), and a number
@@ -515,7 +516,7 @@ const inUnit = (u: string, field: TemplateResult): DirectiveResult => keyed(u, f
    morning weigh-in went over the evening's (the second review of r59). Within
    a day it keeps the date chosen through a draw. */
 
-/* A weigh-in due (Settings > General, how often): the last one and Save,
+/* A weigh-in due (Settings > Measurements, how often): the last one and Save,
    or Later for two days. Never weighed in: only for someone who logs
    bodyweight lifts, where it changes the numbers (r34.2, from the review: it
    asked every 2 days of a lifter who skipped the optional weigh-in and does
@@ -553,7 +554,7 @@ export function bwDueCard(): Part {
     last
       ? `Last ${fmtW(last.kg)} ${U()}, ${ago} days ago.`
       : 'Pull-ups, dips, and push-ups count it, plus any weight you add; without it they count only what you add. Optional.'
-  } ${tipButton('Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > General.', 'About weigh-ins')}</p>
+  } ${tipButton('Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > Measurements.', 'About weigh-ins')}</p>
 <div class="row"><label class="field u-f1_m0"><span class="vh">Bodyweight (${U()})</span>${inUnit(
     U(),
     html`<input type="text" inputmode="decimal" id="bwDueVal" placeholder=${last ? fmtW(last.kg) : `Weight (${U()})`} data-grey=${last ? fmtW(last.kg) : nothing} aria-label=${`Bodyweight (${U()})`} enterkeyhint="done">`
@@ -1046,10 +1047,12 @@ function todayRest(o: {
 }): Part {
   /* Nothing logged yet: say where lifts done before this app go, since that
      is how a new lifter's bests and targets start from what they can already
-     do (r48, V). History's empty state says the same; Today said nothing. */
+     do (r48, V). History's empty state says the same; Today said nothing. Led
+     by the action since 2.34 (V, 2026-11-08: "Lifted before this app?" read
+     badly). */
   const pre =
     noLog() && !state.draft
-      ? html`<p class="small muted u-m0-0n10" id="preApp">Lifted before this app? <button class="linkbtn" data-act="pastOpen">Log a past workout</button> to bring your bests in; targets then start from them.</p>`
+      ? html`<p class="small muted u-m0-0n10" id="preApp"><button class="linkbtn" data-act="pastOpen">Log a past workout</button> so your targets start from your bests.</p>`
       : nothing;
   // Item 62: a section's subtitle states a number, not what the section is about.
   const tiles = section({

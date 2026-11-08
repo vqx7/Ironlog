@@ -10,7 +10,17 @@ import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from '
 import type { LiftBests } from './analytics';
 import { EXIn, UIn, exInjuryIn } from './model';
 import { IDXIn, bwAtIn, bwLoadIn, bwRefLoadIn, lastOf, liftReadIn, rirEstIn, statsUpToIn, triedAt } from './analytics';
-import { atCapOfIn, capOfIn, gymRackIn, gymStepIn, loadFloorIn, plateGridIn, rackGapIn, rackTolIn } from './gym';
+import {
+  atCapOfIn,
+  capOfIn,
+  gymRackIn,
+  gymStepIn,
+  loadFloorIn,
+  loadsFloorAt,
+  plateGridIn,
+  rackGapIn,
+  rackTolIn
+} from './gym';
 import {
   DEFAULT_STEP,
   EQUIP_STEP,
@@ -74,7 +84,7 @@ import { effW, overSets } from './session';
    Each is a convention (docs/EVIDENCE.md), named once here and read by the
    rule it belongs to, below. */
 
-/** Plates: a load within this many steps of a plate total is that total, at the least. */
+/** Plates: a load within this many kilograms of a load the plates make is that load, at the least (2.34; a thousandth of a step before). */
 const PLATE_TOL_MIN = 1e-3;
 /** A load is off the unit's step when its distance from the nearest step is more than this share of one (r54): 220.462 from 100 kg is, 185 on a 10 lb step is not. */
 const OFF_STEP = 0.02;
@@ -185,19 +195,6 @@ function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, dow
   )
     return out;
   return Math.abs(res.w - res.top) < EPS ? res : swapWIn(M, ex, res, res.top);
-}
-
-/* The load the plates make at or under a load (dir -1) or at or over it (dir
-   1), never under the bar. A load within `tol` of one is that load: half the
-   last digit the screens show (rackTolIn), so a load typed as shown is the
-   load it shows, as a bell typed as shown is that bell (PENDING 333: with Your
-   gym in kg and the app in lb, 50 kg is shown as 110.2 lb, and 110.2 typed is
-   49.986 kg, which a thousandth of a step read as off the plates). */
-function plateAt(G: { bar: number; step: number }, w: number, dir: 1 | -1, tol: number): number {
-  const k = (w - G.bar) / G.step,
-    e = Math.max(PLATE_TOL_MIN, tol / G.step);
-  const n = dir > 0 ? Math.ceil(k - e) : Math.floor(k + e);
-  return G.bar + Math.max(0, n) * G.step;
 }
 
 /* A suggestion off the plates' loads moves onto them, as one off a rack does
@@ -1956,16 +1953,35 @@ function loadsForIn(
       has: w => Math.abs(gridFloor(M, og, w, t) - w) <= t
     };
   }
+  /* The loads Your gym's plates make (plateGridIn), a list lightest first like a rack's, read by the rules the plates'
+     arithmetic steps were read by before 2.34 (NEW-76), so on plates that are whole multiples of the smallest every
+     answer is the one it was: floor, the heaviest not past a load by the shown digit, else the bar; below, the load
+     under the one nearest (a tie going up), so a load a little over a rung steps down past it; above, the lightest
+     past a load by the shown digit, the bar from under it, and none past the heaviest the plates are counted to. A load
+     within the shown digit (half the last digit the screens show, rackTolIn) of one is that load, as a bell typed as
+     shown is that bell (PENDING 333: with Your gym in kg and the app in lb, 50 kg is shown as 110.2 lb, and 110.2
+     typed is 49.986 kg). */
   const G = plateGridIn(M, ex, plan);
   if (G) {
-    const t = rackTolIn(M);
+    const t = rackTolIn(M),
+      P = G.loads,
+      tf = Math.max(t, PLATE_TOL_MIN);
+    const fl = (w: number): number => P[Math.max(0, loadsFloorAt(P, w + tf))] ?? G.bar;
     return {
       kind: 'plates',
       first: G.bar,
-      below: w => (w <= G.bar + t ? null : plateAt(G, w - G.step / 2, -1, t)),
-      floor: w => plateAt(G, w, -1, t),
-      above: w => G.bar + Math.max(0, Math.floor((w + t - G.bar) / G.step + EPS_SAME) + 1) * G.step,
-      has: w => Math.abs(plateAt(G, w, -1, t) - w) <= t
+      below: w => {
+        if (w <= G.bar + t) return null;
+        const k = loadsFloorAt(P, w);
+        const lo = P[k],
+          hi = P[k + 1];
+        const near = lo == null ? 0 : hi != null && hi - w <= w - lo + 2 * tf ? k + 1 : k;
+        // Never under the bar: a load a little over the bar steps down to the bar, as the arithmetic gave before.
+        return P[Math.max(0, near - 1)] ?? null;
+      },
+      floor: w => fl(w),
+      above: w => P[loadsFloorAt(P, w + t + EPS_SAME) + 1] ?? null,
+      has: w => Math.abs(fl(w) - w) <= t
     };
   }
   // Whole steps of the lift's step from the load it is at; with no load to count from there is no list of its own.

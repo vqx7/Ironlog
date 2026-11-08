@@ -141,7 +141,7 @@ export function calibrationSheet(m: {
   const ex = EX(b.exId);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Calibration set: ${ex.name}</h3>${closeX()}</div>
     <p class="small muted u-m0">Checks how well you judge reps in reserve. Go to failure only where it is safe: a machine, a cable or a spotter.</p>
-    <ol class="steps"><li>Use your normal working load.</li><li>At the rep where you would usually stop, note that rep and how many you think are left.</li><li>Keep going until you cannot complete a rep with good form.</li></ol>
+    <ol class="steps"><li>Use your normal working weight.</li><li>At the rep where you would usually stop, note that rep and how many you think are left.</li><li>Keep going until you cannot complete a rep with good form.</li></ol>
     <div class="grid2"><label class="field">Load (${ex.bw ? '+' + U() : U()})<input type="text" inputmode="decimal" id="calW" value=${m.w != null ? String(m.w) : ''}></label>
     <label class="field">Usual stop rep<input type="text" inputmode="numeric" id="calAt" value=${m.at || ''}></label>
     <label class="field">Reps left, your call<select id="calPred">${CAL_CALLS.map(v => html`<option value=${String(v)} ?selected=${Number(m.pred) === v}>${v}</option>`)}</select></label>

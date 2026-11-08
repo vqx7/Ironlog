@@ -45,14 +45,18 @@ export const MAPVIEW_KEY = KEY + '.mapView';
 export const ACCT_LATER = KEY + '.acctLater',
   INSTALL_LATER = KEY + '.installLater',
   ICON_NOTE = KEY + '.icon25';
+/** This browser has installed the app (its appinstalled event, 2.34): its tabs no longer offer Get the app. */
+export const APP_INSTALLED = KEY + '.appInstalled';
 /** The first pages on this device: the account page passed (Continue without an account), and held open after a sign-out (r33). */
 export const OB_ACCT = KEY + '.obAcct',
   OB_OUT = KEY + '.signedOut';
 /** A weigh-in asked about on this device: snoozed until a date (Later), and the session's first ask answered (Not now). */
 export const BWSNOOZE_KEY = KEY + '.bwSnooze',
   BWASK_KEY = KEY + '.bwAsk';
-/** The profile photo, kept on this phone only (2.33), and its one-time line on Today answered (Add photo or Not now). */
+/** The account's profile photo as this phone holds it (2.34; kept on this phone only in 2.33), the note of where that
+    copy stands against the account (photo.ts), and its one-time line on Today answered (Add photo or Not now). */
 export const PHOTO_KEY = KEY + '.photo',
+  PHOTO_SYNC = KEY + '.photoSync',
   PHOTO_ASKED = KEY + '.photoAsked';
 /** The settings kept aside while the demo is loaded (demoKeep). */
 const DEMOSET_KEY = KEY + '.demoSettings';

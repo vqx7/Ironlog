@@ -35,6 +35,7 @@ import {
   hasDemo,
   isChunkId,
   legacyBody,
+  PHOTO_DOC,
   realCount,
   stripDemo,
   unionById
@@ -47,6 +48,7 @@ import { routineEmpty } from './routines';
 import { cleanCardio, normalize, plainTemplate } from './normalize';
 import { invalidate } from './live';
 import { AUTH, codeOf } from './providers';
+import { photoHeld, photoNote, photoOf, photoPending, photoSent, photoTake } from './photo';
 import { acct, cloud, fx, setState, state, ui } from './store';
 import type {
   Base,
@@ -921,13 +923,95 @@ function ownWrite(id: string, d: Rec | null): void {
 }
 /** A new write mark: this device's id and a fresh id, so no two writes of a document, on any device, carry the same one. */
 const writeMark = (): string => `${cloud.devId || 'dev'}.${uid()}`;
+/* ---------- the profile photo in the account (2.34, V 2026-11-08) ----------
+   One document of its own (`photo`), beside the log's and never one of them
+   (isChunkId), so no merge reads it and builds before 2.34 leave it alone. It
+   holds the photo as a JPEG data address, or null once removed, so a removal
+   reaches every phone as a change of its own. Of the phone's copy and the
+   account's, the later change is kept, by the time each was made (`et`): a
+   change here still to be sent is never replaced by an older one, and a write
+   lands only over the copy read (setIf), as the log's do. A photo kept by 2.33,
+   with no note of an account, goes up to the account this phone syncs with
+   when that account has none. Every step is caught here: a failure leaves the
+   change marked to be sent, and the next sync tries again. */
+/** Settles the phone's photo against the account's document as read (`d`, null when the account has none). */
+async function photoReconcile(d: Rec | null): Promise<void> {
+  const me = cloud.uid;
+  if (!me) return;
+  let remote: { et: number; url: string | null } | null = null;
+  if (d && typeof d.json === 'string') {
+    try {
+      remote = { et: Number(d.et) || Number(d.at) || 0, url: photoOf(parseJson(d.json)) };
+    } catch (e) {
+      // A document that is not JSON is read as none: the phone's photo, if it has one, replaces it.
+      log('photo-parse', e);
+    }
+  }
+  const n = photoNote();
+  // A copy noted for another account: kept by "Keep on this phone and sign out" with a change that account had not
+  // taken (account.ts), or left by a sign-out stopped half way. This account's photo replaces it.
+  if (n && n.uid !== '' && n.uid !== me) {
+    photoTook(remote ? remote.url : null, remote ? remote.et : 0, me);
+    return;
+  }
+  const held = photoHeld();
+  if (n && n.up) {
+    if (remote && remote.et > n.et) photoTook(remote.url, remote.et, me);
+    else await photoSend(held, n.et, d, me);
+    return;
+  }
+  if (remote) {
+    if (remote.url !== held || !n || n.et !== remote.et) photoTook(remote.url, remote.et, me);
+    return;
+  }
+  if (held) await photoSend(held, n ? n.et : Date.now(), null, me);
+}
+/** Takes the account's photo here, and redraws what shows it. */
+function photoTook(url: string | null, et: number, me: string): void {
+  const was = photoHeld();
+  photoTake(url, et, me);
+  if (was !== url) {
+    fx.setSaveState();
+    fx.rerenderKeepScroll();
+  }
+}
+/** Writes the phone's photo (or its removal), changed at `et`, over the account's copy as read (`d`). */
+async function photoSend(url: string | null, et: number, d: Rec | null, me: string): Promise<void> {
+  const doc: CloudDoc = { v: 1, at: Date.now(), et, w: writeMark(), json: JSON.stringify(url) };
+  try {
+    if (await withTimeout(ref(PHOTO_DOC).setIf(doc, seenOf(d)), SYNC_MS.net, 'photo-write')) photoSent(et, me);
+    // Another phone wrote it first: the next sync reads that copy and keeps the later change.
+    else log('photo-race', { et });
+  } catch (e) {
+    // Offline or refused: the change stays marked to be sent.
+    log('photo-write', e);
+  }
+}
+/** Settles the photo with the account now: the account's copy read, then the later change kept or sent. Run in the
+    sync's queue (cq); Sign out awaits it, so a change made here is sent before the phone lets go of it (the review's F2). */
+export async function photoFlush(): Promise<void> {
+  if (!cloud.on || !cloud.db) return;
+  try {
+    const s = await withTimeout(ref(PHOTO_DOC).get(), SYNC_MS.net, 'photo-read');
+    await photoReconcile(s.exists ? rec(s.data()) : null);
+  } catch (e) {
+    // Offline or refused: the change stays marked to be sent, and the next sync sends it.
+    log('photo-read', e);
+  }
+}
+/** Sends a change to the photo made here, read against the account's copy first; nothing while not syncing. */
+export function photoSyncSoon(): void {
+  if (!cloud.on || !cloud.db) return;
+  void cq(photoFlush);
+}
+
 /* Whether this device holds a change the account does not have yet, by the
    same test a sync uses, without sending anything: the status still reads
    synced for the second or so before the next sync starts (r34.2). */
 /** Whether anything here has not reached the account yet. */
 export function hasUnsent(): boolean {
   if (!cloud.on) return false;
-  if (cloud.status !== 'synced') return true;
+  if (cloud.status !== 'synced' || photoPending()) return true;
   try {
     const ch = chunksOf(state);
     for (const id of new Set([...Object.keys(ch), ...Object.keys(cloud.meta)])) {
@@ -1178,6 +1262,9 @@ export async function cloudPull(): Promise<void> {
   }
   cloud.lastPull = Date.now();
   pulled = true;
+  // The profile photo, from the same listing: a document of its own, so nothing below reads it (2.34).
+  const ph = snap.docs.find(x => x.id === PHOTO_DOC && x.exists);
+  await photoReconcile(ph ? rec(ph.data()) : null);
   const remote: Record<string, { at: number; et: number; data: unknown; h: string }> = {};
   for (const d of snap.docs) {
     if (!d.exists || !isChunkId(d.id)) continue;

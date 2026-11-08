@@ -3,6 +3,8 @@
    the legacy script with Settings, which reads them; the other screens and
    the account flow import them from here. */
 
+import { APP_INSTALLED, prefGet } from './storage';
+
 declare global {
   interface Window {
     /** The install prompt the browser offered, kept until the lifter taps Install (Chrome and Edge's beforeinstallprompt event): its prompt, and the choice it resolves to. */
@@ -14,10 +16,21 @@ declare global {
   }
 }
 
+/* Running as the installed app, read only from what the browser says of this page itself, because the account flow
+   (account.ts: where a sign-in link lands, Sign out's wording), sharing, Settings and problem reports all read it.
+   Ironlog's manifest opens standalone; a browser that cannot do that falls back to minimal-ui, and an installed copy
+   on a computer can draw its own title bar (window-controls-overlay). None of those is ever a browser tab. Two
+   signals are not used (the review of 2.34, F1): fullscreen, which a browser tab also reports in full screen, and an
+   android-app:// referrer, which Chrome on Android gives any page another app opens (a link in Gmail), so a tab
+   opened from an email read as the app and signed itself in. Safari has its own flag. Get the app has one more
+   reason to stay away (canInstallHere, below): this browser has installed the app (appinstalled, main.ts). */
+/** The display modes only an installed copy of Ironlog opens in. */
+const INSTALLED_MODES = ['standalone', 'minimal-ui', 'window-controls-overlay'] as const;
 /** Running as an installed app (home screen), not in a browser tab or inside Claude. */
 export function isStandalone(): boolean {
   try {
-    return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    if (navigator.standalone === true) return true;
+    return INSTALLED_MODES.some(m => window.matchMedia(`(display-mode: ${m})`).matches);
   } catch (e) {
     // A browser without matchMedia: read as a tab, as before the move.
     return false;
@@ -36,7 +49,12 @@ export const coarse = (): boolean => {
 
 /** Whether this page can be installed from here: the built app, in a browser tab, not inside Claude. */
 export function canInstallHere(): boolean {
-  return !!window.IRONLOG_APP && !isStandalone() && !(window.claude && typeof window.claude.use === 'function');
+  return (
+    !!window.IRONLOG_APP &&
+    !isStandalone() &&
+    !prefGet(APP_INSTALLED) &&
+    !(window.claude && typeof window.claude.use === 'function')
+  );
 }
 
 /** The Safari version from which iOS shows its compact bar, where Share sits in the ⋯ menu. */

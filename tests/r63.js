@@ -361,14 +361,16 @@ const CASES = [
        r66 reads the pictures another tab kept when that tab's change arrives or the page comes back to the front
        (373, R66-3: events.ts, pageListeners). Taken out of this build's list where the run sits; the rest is r62's. */
     const LATER_ADDS = [['window storage false', 'document visibilitychange false']];
-    const bAdds = [...b.adds];
+    // 2.34 notes an install from this browser (appinstalled, main.ts; L-2), one listener of its own, wherever it sits.
+    const LATER_ONE = ['window appinstalled false'];
+    const bAdds = b.adds.filter(x => !LATER_ONE.includes(x));
     const runsFound = LATER_ADDS.map(run => {
       const i = bAdds.findIndex((_, k) => run.every((x, j) => bAdds[k + j] === x) && k > 0 && bAdds[k - 1] === 'interval 30000');
       if (i >= 0) bAdds.splice(i, run.length);
       return i >= 0;
     });
     const da = firstDiff(a.adds, bAdds);
-    ok(a.adds.length > 20 && !da && runsFound.every(Boolean), `4. the page adds r62's ${a.adds.length} listeners and intervals, in r62's order, and after r62's 30-second interval the run later builds list (r66: another tab's pictures)`, da || runsFound);
+    ok(a.adds.length > 20 && !da && runsFound.every(Boolean), `4. the page adds r62's ${a.adds.length} listeners and intervals, in r62's order, and after r62's 30-second interval the run later builds list (r66: another tab's pictures; 2.34: appinstalled)`, da || runsFound);
     // Names a later build adds to the hook go after r62's, each listed here with the release that added it.
     const LATER = ['templateBefore function', 'templateRest function', 'templateSigsBefore function', 'bandOf function', 'picsTidy function', 'risingWords function', 'setShortOf function', 'liftsMoving function', 'noBody function', 'sizeWhat function', 'sessLeftMin function'];
     const dh = firstDiff(a.hook, b.hook.slice(0, a.hook.length));
@@ -376,11 +378,11 @@ const CASES = [
     ok(a.hook.length > 300 && !dh && !unlisted.length, `4. window.__ironlog holds r62's ${a.hook.length} names in r62's order, each the same kind of value, and after them only the names later builds list (r64: templateBefore, templateRest, templateSigsBefore; r65: bandOf; r66: picsTidy; r69: risingWords; r70: setShortOf, liftsMoving; r74: noBody; r78: sizeWhat, sessLeftMin)`, dh || unlisted);
     // rNewDo sat in r62's table as the helper New routine's Save called by name (ACT.rNewDo(name)): no element named it, and a tap would have handed it the element as the name. It is a function of actsroutine.ts since r63.
     const NOT_TAPS = ['rNewDo'];
-    // Actions a later build adds go beside r62's, each listed here with the release that added it: r66's Done with sets left (374), the bodyweight sheet (372), and a note's pictures (373); r68's Do today's workout instead (NEW-31); r69's check-in sheet.
-    const LATER_ACTS = ['bDoneAll', 'bwOpen', 'picOpen', 'picRemove', 'todayOwn', 'chkOpen', 'oldBestOpen', 'tSub', 'photoDel', 'photoLater'];
+    // Actions a later build adds go beside r62's, each listed here with the release that added it: r66's Done with sets left (374), the bodyweight sheet (372), and a note's pictures (373); r68's Do today's workout instead (NEW-31); r69's check-in sheet; 2.34's another plate in Your gym (NEW-76).
+    const LATER_ACTS = ['bDoneAll', 'bwOpen', 'picOpen', 'picRemove', 'todayOwn', 'chkOpen', 'oldBestOpen', 'tSub', 'photoDel', 'photoLater', 'gymPlateAdd'];
     const gone = a.acts.filter(k => !b.acts.includes(k) && !NOT_TAPS.includes(k)), extra = b.acts.filter(k => !a.acts.includes(k) && !LATER_ACTS.includes(k));
     ok(NOT_TAPS.every(k => a.acts.includes(k) && !b.acts.includes(k)), '4. r62\'s one helper in the table (rNewDo) is a function now, not an action');
-    ok(a.acts.length > 200 && !gone.length && !extra.length && LATER_ACTS.every(k => b.acts.includes(k)), `4. every other one of r62's ${a.acts.length} actions by data-act, and no new one but those later builds list (r66: bDoneAll, bwOpen, picOpen, picRemove; r68: todayOwn, NEW-31; r69: chkOpen; r70: oldBestOpen; r71: tSub; 2.33: photoDel, photoLater, ST-1 and ST-2)`, { gone, extra });
+    ok(a.acts.length > 200 && !gone.length && !extra.length && LATER_ACTS.every(k => b.acts.includes(k)), `4. every other one of r62's ${a.acts.length} actions by data-act, and no new one but those later builds list (r66: bDoneAll, bwOpen, picOpen, picRemove; r68: todayOwn, NEW-31; r69: chkOpen; r70: oldBestOpen; r71: tSub; 2.33: photoDel, photoLater, ST-1 and ST-2; 2.34: gymPlateAdd, NEW-76)`, { gone, extra });
     ok(!b.errors.length, '4. no page errors', b.errors);
   }
 

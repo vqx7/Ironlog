@@ -279,11 +279,34 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     tree: shot.tree.map(t => t.replace(PR_CUP, '').replace(PR_TAG, '').replace(/(<p class=")hpr ([^"]*")/g, '$1$2').replace(/(<p class="[^"]*) hpr(")/g, '$1$2')),
     text: shot.text.replace(/ PR(?=:)/g, '')
   });
+  /* 2.34 changes two parts of Settings on purpose, each held by tests/r80.js: General is split into Measurements and
+     Appearance (section 3, from an Android user via V), and Your gym takes another plate (section 2, NEW-76), so its
+     plates' tip says so and a field and Add plate sit under the chips. On both pages General (and Appearance) read as one
+     placeholder; on this build's page the plate field is taken out; every tip's words read as a placeholder (below);
+     everything else is still held to r56.2. */
+  const GYM_FIELD = /<div class="grid2" style="[^"]*"><label class="field">"Another plate \((lb|kg)\)"<input [^>]*><\/input><\/label><button [^>]*data-act="gymPlateAdd"[^>]*>"Add plate"<\/button><\/div>/;
+  const NEW_PLATE_TIP = 'A barbell is loaded with these plates, a pair at a time, so its suggested loads are ones they make. A plate-loaded machine steps by two of the smallest, one a side; a landmine by one. Tap a plate your gym does not have, or add one it has that is not here.';
+  const OLD_PLATE_TIP = 'A barbell or a plate-loaded machine steps by two of the smallest plate you have, one a side; a landmine by one. Tap a plate your gym does not have.';
+  // 2.34's wording pass (99, V 2026-11-08) rewrites tips on purpose, each held by the suite that reads it (r29c, r34,
+  // r41, r44, r58, r64a, r69): a tip's words read as a placeholder on both pages; the elements that carry them do not.
+  const TIP_ATTR = /data-tip="(?:[^"\\]|\\.)*"/g;
+  const heldOutR80 = shot => {
+    const tree = shot.tree.map(t => t.replace(GYM_FIELD, '').replace(NEW_PLATE_TIP, OLD_PLATE_TIP).replace(TIP_ATTR, 'data-tip="(tip)"'));
+    const gi = tree.findIndex(t => t.includes('data-mkey="general"'));
+    if (gi < 0) return { ...shot, tree };
+    const li = tree.findIndex(t => t.includes('data-mkey="look"'));
+    const last = li > gi ? li : gi;
+    const next = (tree[last + 1] || '').match(/<span class="sec-t">"([^"]*)"/);
+    const head = shot.text.indexOf('⠿\nGeneral\n') >= 0 ? '⠿\nGeneral\n' : '⠿\nMeasurements\n';
+    const from = shot.text.indexOf(head), to = next ? shot.text.indexOf('⠿\n' + next[1] + '\n', from) : -1;
+    const text = (from < 0 ? shot.text : shot.text.slice(0, from) + '(General)\n' + (to < 0 ? '' : shot.text.slice(to))).replace(/\nAnother plate \((lb|kg)\)\nAdd plate(?=\n)/, '');
+    return { ...shot, tree: tree.flatMap((t, j) => (j === gi ? ['(General)'] : j === li ? [] : [t])), text };
+  };
   const ENVS = [null, 'preview'];
   for (const [name, seed] of SEEDS) for (const tab of ['settings', 'history']) for (const env of ENVS) {
     if (env && name !== 'demo data, lb') continue;
     const sd = seed.replace(/L\.makeDemo\(\);/g, PIN + 'L.makeDemo();');
-    const a = heldOutR76(heldOutR73(heldOutSched(heldOutR69(heldOut(await shot(OLD, sd, tab, env)))))), b = heldOutR79(heldOutR76(heldOutR73(heldOutSched(heldOutR70(heldOutR69(heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env))))))))));
+    const a = heldOutR80(heldOutR76(heldOutR73(heldOutSched(heldOutR69(heldOut(await shot(OLD, sd, tab, env))))))), b = heldOutR80(heldOutR79(heldOutR76(heldOutR73(heldOutSched(heldOutR70(heldOutR69(heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env)))))))))));
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     const firstDiff = d && { at: d.at, r56_2: d.before, now: d.now };
     ok(!firstDiff, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same elements, attributes and field values as r56.2`, firstDiff);
@@ -335,7 +358,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const dom = await Q.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo();
       L.state.settings.secOrder.settings = ['general', 'profile', 'rir', 'timer', 'rir', 'gym', 'rir', 'layout', 'prio', 'bands', 'data', 'help', 'more'];
       L.saveNow(); L.ui.tab = 'settings'; L.render(); return [...document.querySelectorAll('#view > [data-mkey]')].map(e => e.dataset.mkey); });
-    ok(dom.join() === 'general,profile,rir,timer,gym,layout,prio,bands,data,help,more', '5b. a saved order with a section twice shows it once, at its first place', dom);
+    // Appearance (2.34, tests/r80.js section 3) is new, so it takes its place after General, as orderKeys places a new key.
+    ok(dom.join() === 'general,look,profile,rir,timer,gym,layout,prio,bands,data,help,more', '5b. a saved order with a section twice shows it once, at its first place', dom);
     await Q.page.context().close();
   }
   // 5c. A number typed out of range and confirmed with Enter shows the number saved, at once and after

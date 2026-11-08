@@ -12,6 +12,9 @@ that changes any of it.
   (Table Editor).
 - **Problem reports** go to the `feedback` table: anyone signed in can add one, only accounts in `feedback_readers`
   (V) can read them. A server function turns each into an issue in V's private `ironlog-feedback` repository.
+- **The profile photo** (2.33; the account's since 2.34, R79-1) is one small JPEG, synced as a document of its own
+  beside the log's, under the same row level security and visible to V in the Table Editor as the log is. It leaves a
+  phone that signs out and is deleted with the account. Signed out there is none.
 - **Pictures on notes** (r66, PENDING 373) stay on the phone. They are never sent anywhere, and are not in backups
   or the account yet (373 b).
 - **The code** is public on GitHub (vqx7/Ironlog), and the site is published from it by GitHub Actions to GitHub
@@ -42,7 +45,9 @@ Now:
   is pixels only, and the database accepts nothing else (the `feedback` table's check, `SUPABASE.md` Part 4;
   `tests/sql.js`). The Inbox shows only such a picture (`FB_SHOT_RE`). Screenshots never go to GitHub.
 - Pictures on notes are re-encoded on the phone, with location and other hidden data dropped, no SVG, and capped in
-  size (PENDING 373, built in r66 alongside this).
+  size (PENDING 373, built in r66 alongside this). The profile photo goes through the same redraw, and is shown, from
+  the phone or from the account, only when it is a JPEG data address (`photoOf`, `src/app/photo.ts`), so a document
+  changed by hand can never become an outside address or markup (`tests/r80b.js`).
 - An exported CSV quotes a field that holds a comma, a quote or a line break (`exportCSV`, `src/app/actsapp.ts`).
 
 Since r66 (NEW-35) a CSV cell that starts with `=`, `+`, `-` or `@` (or a tab or a carriage return) is written with a

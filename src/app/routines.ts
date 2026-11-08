@@ -614,7 +614,7 @@ export function tplCountLine(): string {
 }
 
 /** The Plan editor's tip on target RIR (r29.5): why the default is 1, a convention. */
-export const RIR_TGT_TIP = `Target RIR is ${DEFAULT_PLAN.rir} unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.`;
+export const RIR_TGT_TIP = `Target RIR is ${DEFAULT_PLAN.rir} unless you change it, a rule of thumb: muscle growth improves as sets end closer to failure, but going all the way to failure grew muscle no more than stopping 1 to 2 reps short and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.`;
 
 /* ---------- the plan a lift is trained at (phase 3b, r52; moved from the legacy script) ---------- */
 

@@ -24,16 +24,18 @@ import {
   cloudStop,
   cq,
   hasUnsent,
+  photoFlush,
   signInAgain,
   withTimeout
 } from './sync';
+import { photoForget, photoPending, photoSignOut } from './photo';
 import { normalize } from './normalize';
 import { acct, cloud, setState, state, ui } from './store';
 import type { AccountModal, AcctMode } from './modals';
 import { AUTH, codeOf, said } from './providers';
 import { isStandalone } from './env';
 import { act } from './act';
-import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScroll } from './page';
+import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScroll, setSaveState } from './page';
 import { toast } from './toast';
 import { settingsSyncLine } from './settings';
 import { obOutClear } from './today';
@@ -678,6 +680,9 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         }
         acct.user = null;
         cloudStop(true);
+        // The photo went with the account's documents; the phone's copy goes too (R79-1).
+        photoForget();
+        setSaveState();
         rerenderKeepScroll();
         toast('Account deleted. Your log is still on this phone.');
       },
@@ -701,14 +706,20 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         try {
           if (cloud.t) clearTimeout(cloud.t);
           await withTimeout(cq(cloudFlush), OUT_FLUSH_MS);
+          // The profile photo is the account's too (2.34): a change made here goes up before the phone lets go of it (the review's F2).
+          if (photoPending()) await withTimeout(cq(photoFlush), OUT_FLUSH_MS);
         } catch (e) {
           log('auth', e);
         }
       }
-      if (remove && !(cloud.on && cloud.status === 'synced')) {
+      /* Nothing is removed until everything has reached the account, by the one test of that (hasUnsent): the log's
+         state, its documents and the photo. The log's state alone let a photo the account had refused go with it (F2). */
+      if (remove && (!cloud.on || hasUnsent())) {
         confirmBox('Not in your account yet', NOT_IN, 'Keep on this phone and sign out', () => out(false));
         return;
       }
+      // Read while the account is still this phone's (signing out ends it): a photo change it has not taken, kept with "Keep on this phone".
+      const keepPhoto = !remove && photoPending();
       try {
         await A.signOut();
       } catch (e) {
@@ -718,6 +729,9 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
       acct.user = null;
       cloudStop(remove);
+      // The profile photo is the account's: it goes from the phone with the sign-out (R79-1), but for a change not yet
+      // in the account that the lifter kept on this phone, sent when that account signs in here again (F2).
+      photoSignOut(keepPhoto);
       /* A session in progress kept on the phone carries on where it was, and
          the app stays as it is after it: sending someone mid-workout to the
          first page would read as the session lost. */

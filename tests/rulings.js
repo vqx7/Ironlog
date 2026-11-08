@@ -5,7 +5,7 @@
 // never an expectation edited to match. claude/ironlog-rulings-register.md (the project) lists every ruling and
 // where it is enforced; this suite holds the corners no other suite held (NEW-75: r54's 8 lb was pinned at 12 lb only).
 // `node tests/rulings.js [file]`; RULINGS_ONLY=A,B,C runs some sections (A loads and steps, B PRs, C readings and
-// weekly targets).
+// weekly targets; since 2.34, 387: E stalls, F trends, G weekly hard sets, H bodyweight lifts, I the coach).
 const { open } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1200) : ''); } else console.log('ok  ', m); return !!c; };
@@ -127,6 +127,140 @@ const A = [
     await D.browser.close();
   }
 
+
+  // Sections E to I (2.34, 387): the written rules for stalls (E), trends (F), weekly hard sets (G), bodyweight lifts
+  // (H) and the coach (I), from the Guide and CLAUDE.md's Numbers, each as cases on both sides of its cut-off. The
+  // 11-04 audit checked these on 400 generated lifters; these cases keep its answers from moving.
+  if (run('E') || run('F') || run('G') || run('H') || run('I')) {
+    const D = await open(FILE, { w: 390, h: 844, clock: '2026-11-06T10:00:00' });
+    const r = await D.page.evaluate(() => {
+      const L = window.__ironlog, out = {};
+      // One lift's sessions, weekly, ending 2026-11-05: each [load, reps of every set] (or [load, reps, range]).
+      const wk = (n, i) => { const d = new Date(Date.UTC(2026, 10, 5) - 7 * 86400000 * (n - 1 - i)); return d.toISOString().slice(0, 10); };
+      const ses = (id, date, items) => ({ id, date, dayIdx: 0, dayName: 'A', notes: '', ex: items.map(([exId, w, reps, rr, extra]) => ({ exId, rr: rr || [8, 12], sets: reps.map(r => ({ w, r, rir: null, warm: false, drop: false, ...(extra || {}) })) })) });
+      const lift = (exId, rows, rr, start) => rows.map(([w, reps, r2], i) => ses(`${exId}${start || ''}${i}`, wk(rows.length, i), [[exId, w, reps, r2 || rr]]));
+      const put = (sessions, more) => {
+        const S = L.state;
+        S.settings.onboarded = true; S.settings.unit = 'kg'; delete S.settings.gym; delete S.settings.rirHalf; S.draft = null;
+        S.injuries = []; S.bodyweights = []; S.deloadWeek = null;
+        S.sessions = sessions;
+        if (more) more(S);
+        L.state = L.normalize(S); L.invalidate();
+        return L.IDX();
+      };
+      const st = (I, id) => I.exStats[id] || {};
+      const flat = [[100, [10, 10, 10]], [100, [10, 10, 10]], [100, [10, 10, 10]], [100, [10, 10, 10]], [100, [10, 10, 10]], [100, [10, 10, 10]]];
+      // E. Stalls.
+      out.E1 = st(put(lift('bench', flat)), 'bench').stalled;
+      out.E2 = st(put(lift('bench', [7, 8, 9, 10, 11, 12].map(r => [100, [r, r, r]]))), 'bench').stalled;
+      out.E3 = st(put(lift('bench', [[100, [12, 12, 12]], [105, [8, 8, 8]], [105, [9, 9, 9]], [105, [10, 10, 10]], [105, [11, 11, 11]], [105, [12, 12, 12]]])), 'bench').stalled;
+      out.E4 = st(put(lift('bench', flat.slice(0, 3))), 'bench').stalled;
+      out.E5 = st(put(lift('bench', flat), S => { S.injuries = [{ id: 'j1', m: 'chest', note: '', date: '2026-10-20' }]; }), 'bench').stalled;
+      // Three main lifts stalled together suggest a deload; two do not.
+      const three = ['bench', 'backSquat', 'bbRow'].flatMap(id => lift(id, flat, null, id));
+      put(three);
+      const c3 = L.coach();
+      out.E6 = { three: !!(c3.act && c3.act.deload), stalled: L.stalledIds(), text: c3.text };
+      put(['bench', 'backSquat'].flatMap(id => lift(id, flat, null, id)));
+      const c2 = L.coach();
+      out.E7 = { two: !!(c2.act && c2.act.deload), text: c2.text };
+      // F. Trends.
+      const up = [100, 102.5, 105, 107.5, 110, 112.5].map(w => [w, [10, 10, 10]]);
+      let s = st(put(lift('bench', up)), 'bench');
+      out.F1 = { moving: s.moving, pct: s.pct };
+      s = st(put(lift('bench', up.slice(0, 2))), 'bench');
+      out.F2 = { pct: s.pct, moving: s.moving };
+      s = st(put(lift('bench', up.slice().reverse())), 'bench');
+      out.F3 = { falling: s.falling, pct: s.pct };
+      // A heavy day falling, a light day flat: not falling (falls only when it falls in both ranges).
+      const heavy = [120, 117.5, 115, 112.5, 110, 107.5].map((w, i) => ses('h' + i, wk(6, i), [['bench', w, [5, 5, 5], [4, 6]]]));
+      const light = [80, 80, 80, 80, 80, 80].map((w, i) => ses('l' + i, (() => { const d = new Date(Date.UTC(2026, 10, 3) - 7 * 86400000 * (5 - i)); return d.toISOString().slice(0, 10); })(), [['bench', w, [12, 12, 12], [10, 12]]]));
+      // The ranges in use are the ones the active routine plans the lift in (a heavy day and a light day).
+      const hl = S => {
+        const item = (uid, lo, hi) => ({ uid, exId: 'bench', sets: 3, repMin: lo, repMax: hi, rir: 1, rest: 150 });
+        S.routines = [{ id: 'rHL', name: 'Heavy and light', days: [{ id: 'dH', name: 'Heavy', items: [item('iH', 4, 6)] }, { id: 'dL', name: 'Light', items: [item('iL', 10, 12)] }] }];
+        S.activeRoutineId = 'rHL';
+      };
+      s = st(put([...heavy, ...light], hl), 'bench');
+      out.F4 = { falling: s.falling, holdRR: s.holdRR };
+      const lightDown = [80, 78, 76, 74, 72, 70].map((w, i) => ses('m' + i, (() => { const d = new Date(Date.UTC(2026, 10, 3) - 7 * 86400000 * (5 - i)); return d.toISOString().slice(0, 10); })(), [['bench', w, [12, 12, 12], [10, 12]]]));
+      s = st(put([...heavy, ...lightDown], hl), 'bench');
+      out.F4c = { falling: s.falling };
+      // A break of more than four weeks: the strong sessions before it are not drawn into the trend after it.
+      const before = [130, 130, 130, 130].map((w, i) => ses('p' + i, `2026-07-0${1 + i * 2}`, [['bench', w, [10, 10, 10]]]));
+      const after = [110, 110, 112.5, 112.5].map((w, i) => ses('q' + i, wk(4, i), [['bench', w, [10, 10, 10]]]));
+      s = st(put([...before, ...after]), 'bench');
+      out.F5 = { falling: s.falling };
+      // High-rep work has a trend too, up to 20 reps to failure.
+      s = st(put(lift('legExt', [40, 42.5, 45, 47.5, 50, 52.5].map(w => [w, [18, 18, 18], [15, 20]]), [15, 20])), 'legExt');
+      out.F6 = { pct: s.pct };
+      // G. Weekly hard sets: a working set at RIR 3 or less counts 1 for the main muscle, half for each helper.
+      const wkStart = '2026-11-02';
+      const g = rir => [ses('g1', '2026-11-03', [['bench', 100, [10, 10, 10], [8, 12], { rir }]])];
+      let I = put(g(2));
+      const ex = L.EX('bench');
+      out.G1 = { main: (I.weekSets[wkStart] || {})[ex.primary], helpers: ex.secondary.map(m => (I.weekSets[wkStart] || {})[m]) };
+      I = put(g(4));
+      out.G2 = { main: (I.weekSets[wkStart] || {})[ex.primary] || 0 };
+      I = put(g(4), S => { S.settings.rirHalf = true; });
+      out.G3 = { main: (I.weekSets[wkStart] || {})[ex.primary] || 0 };
+      I = put([{ ...ses('g2', '2026-11-03', [['bench', 100, [10, 10, 10], [8, 12], { rir: 2 }]]) }], S => {
+        const b = S.sessions[0].ex[0];
+        b.sets.push({ w: 60, r: 10, rir: null, warm: true, drop: false });
+        b.sets.push({ w: 100, r: 0, rir: null, warm: false, drop: false });
+      });
+      out.G4 = { main: (I.weekSets[wkStart] || {})[ex.primary] };
+      // H. Bodyweight lifts are read at the latest weigh-in on or before the session, and give no estimate without one.
+      put([], S => { S.bodyweights = [{ id: 'w1', date: '2026-10-01', kg: 80, demo: false }, { id: 'w2', date: '2026-10-20', kg: 90, demo: false }]; });
+      out.H1 = { oct10: L.bwAt('2026-10-10'), oct25: L.bwAt('2026-10-25'), sep: L.bwAt('2026-09-20') };
+      s = st(put(lift('pullup', [[0, [8, 8, 8]], [0, [9, 9, 9]], [0, [10, 10, 10]], [0, [10, 10, 10]]])), 'pullup');
+      out.H2 = { best: s.best ?? null, pct: s.pct ?? null };
+      // I. The coach: a first line with no sessions, and missed weeks said first.
+      put([]);
+      out.I1 = L.coach().text;
+      // Trained the four weeks from Sep 14, then only once in the four weeks before this one (Oct 5 to Nov 1).
+      put(['2026-09-15', '2026-09-22', '2026-09-29', '2026-10-06', '2026-11-03'].map((d, i) => ses('i' + i, d, [['bench', 100, [10, 10, 10]]])));
+      out.I2 = L.coach().text;
+      put(lift('bench', flat.slice(0, 4).map(([w], i) => [w + 2.5 * i, [10, 10, 10]])));
+      out.I3 = L.coach().text;
+      return out;
+    });
+    if (run('E')) {
+      ok(r.E1 === true, 'E. Stalled: flat over the last 6 sessions, no PR, no heavier load and no more reps (Guide, Stalled)', r.E1);
+      ok(r.E2 === false, 'E. reps rising at the same load are no stall', r.E2);
+      ok(r.E3 === false, 'E. adding load and dropping reps, then building them (double progression), is no stall', r.E3);
+      ok(r.E4 === false, 'E. three sessions are too few to call a stall (at least 4)', r.E4);
+      ok(r.E5 === false, 'E. a lift that loads a flagged injury is never called stalled (the app holds its load)', r.E5);
+      ok(r.E6.three === true, 'E. three main lifts stalled together suggest a deload week', r.E6);
+      ok(r.E7.two === false, 'E. two main lifts stalled do not', r.E7);
+    }
+    if (run('F')) {
+      ok(r.F1.moving === true && r.F1.pct >= 3, 'F. Moving: up 3% or more with a clear trend', r.F1);
+      ok(r.F2.pct == null && !r.F2.moving, 'F. a trend needs 3 sessions over 2 weeks or more: none from 2', r.F2);
+      ok(r.F3.falling === true && r.F3.pct <= -3, 'F. Falling: down 3% or more with a clear trend', r.F3);
+      ok(r.F4.falling === false, 'F. a lift falling on its heavy day but flat on its light day is not falling (falls only when it falls in both)', r.F4);
+      ok(r.F4c.falling === true, 'F. (control) falling on both days is falling', r.F4c);
+      ok(r.F5.falling === false, 'F. stronger sessions before a break of more than four weeks are not drawn into the trend after it', r.F5);
+      ok(r.F6.pct != null && r.F6.pct > 0, 'F. sets of 18 reps have a trend (up to 20 reps to failure)', r.F6);
+    }
+    if (run('G')) {
+      ok(r.G1.main === 3 && r.G1.helpers.every(x => x === 1.5), 'G. three sets at RIR 2: 3 hard sets for the main muscle, 1.5 for each helper', r.G1);
+      ok(r.G2.main === 0, 'G. sets at RIR 4 are not hard sets (Count RIR 4 to 5 as half a set off)', r.G2);
+      ok(r.G3.main === 1.5, 'G. with Count RIR 4 to 5 as half a set on, three of them count 1.5', r.G3);
+      ok(r.G4.main === 3, 'G. a warm-up and a missed set (0 reps) add nothing', r.G4);
+    }
+    if (run('H')) {
+      ok(r.H1.oct10 === 80 && r.H1.oct25 === 90, 'H. a bodyweight lift is read at the latest weigh-in on or before its day', r.H1);
+      ok(r.H2.best == null, 'H. with no weigh-in a bodyweight lift has no estimate (NEW-72)', r.H2);
+    }
+    if (run('I')) {
+      ok(/first session/.test(r.I1), 'I. with no sessions the coach asks for a first session', r.I1);
+      ok(/trained in \d of the last \d weeks/.test(r.I2), 'I. two or more of the last 4 weeks missed are said first', r.I2);
+      ok(!/trained in \d of the last/.test(r.I3), 'I. (control) training every week says nothing about missed weeks', r.I3);
+    }
+    ok(!D.errors.length, 'E to I. no page errors', D.errors);
+    await D.browser.close();
+  }
   console.log(fails.length ? `\n${fails.length} FAIL` : '\nALL PASS');
   process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

@@ -211,6 +211,7 @@ import {
 } from './live';
 import { keepExtra, normalize, plainTemplate, starterRoutine, starterSigs } from './normalize';
 import {
+  APP_INSTALLED,
   asideList,
   backupDue,
   ENV,
@@ -218,6 +219,7 @@ import {
   log,
   logBuf,
   logCut,
+  prefSet,
   snapshot,
   storageStart,
   undoForget,
@@ -388,6 +390,10 @@ function start(): void {
   window.ironlogInstallReady = () => {
     if (ui.tab === 'today' || ui.tab === 'settings') rerenderKeepScroll();
   };
+  // Installed from this browser: noted, so its tabs stop offering Get the app (canInstallHere, 2.34).
+  window.addEventListener('appinstalled', () => {
+    prefSet(APP_INSTALLED, '1');
+  });
   // The installed app's start script keeps its errors in the error log (r65, the r63 audit's A-12: it dropped them).
   window.ironlogLog = (area, e) => log(area, e);
   // The tips' listeners, before the page's own.
