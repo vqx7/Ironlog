@@ -10,7 +10,7 @@
    (the legacy copies went with the last screen drawn from it, r60;
    tests/r57.js compares the two screens with r56.2's). */
 
-import { html, nothing, render, noChange } from 'lit-html';
+import { html, nothing, render, noChange, svg } from 'lit-html';
 import type { TemplateResult, AttributePart } from 'lit-html';
 import { Directive, directive, PartType } from 'lit-html/directive.js';
 import type { DirectiveResult, PartInfo } from 'lit-html/directive.js';
@@ -380,4 +380,13 @@ export function tabFoot(tab: string, offer?: Readonly<Record<string, () => boole
   )}</div>
 <button type="button" class="linkbtn ml-c" data-act="goLayout">Edit sections</button></div>
 `;
+}
+
+/* The progress gradient on a line chart (2.33): defined inside the chart's
+   own drawing, across its width in its own units, so a flat line is drawn
+   with it too (a gradient laid over a line's own box needs the box to have a
+   height). Its stops take their colours from the stylesheet's tokens. */
+/** A line chart's gradient, `id` unique on the page, spanning 0 to `w` of the chart's own units; the line strokes url(#id). */
+export function holoLine(id: string, w: number): TemplateResult {
+  return svg`<defs><linearGradient id=${id} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2=${String(w)} y2="0"><stop class="hs1" offset="0"></stop><stop class="hs2" offset=".4"></stop><stop class="hs3" offset=".7"></stop><stop class="hs4" offset="1"></stop></linearGradient></defs>`;
 }

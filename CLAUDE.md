@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r78, version 2.32, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r79, version 2.33, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -218,4 +218,4 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   `tests/r61.js` section 1 (r60 and r61), `tests/r62.js` sections 1 and 2 (r61 and r62) and `tests/r63.js` section 1
   (r62 and r63); since r66, which changes the session screen, Today and a lift's name on purpose, `tests/r60.js` section 1 (r59
   and r60), `tests/r59.js` section 1 (r58 and r59), `tests/r58.js` section 1 (r57 and r58) and `tests/r63.js` section 2
-  (r62 and r63); since r67, which gives Today's main card its shine on purpose, `tests/r66b.js` section 6 (r65.2 and r66); since r71, which draws the rest as a card on purpose, `tests/r70.js` section 5's bar (r69 and r70; the compact pill still held to r69's) and `tests/r33.js` part 1a2's timer (held to the card since).
+  (r62 and r63); since r67, which gives Today's main card its shine on purpose, `tests/r66b.js` section 6 (r65.2 and r66); since r71, which draws the rest as a card on purpose, `tests/r70.js` section 5's bar (r69 and r70; the compact pill still held to r69's) and `tests/r33.js` part 1a2's timer (held to the card since). Since 2.33 (r79), which marks History's PRs in gold on purpose, `tests/r57.js` section 4 takes those marks out of the new page (`heldOutR79`) and holds the rest to r56.2.

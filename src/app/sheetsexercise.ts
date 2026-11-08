@@ -22,7 +22,7 @@ import { sessionWord } from './analytics';
 import { PLATE_MODES, platesMode } from './gym';
 import { B3, exBodyFlat, exMusLegend, exMusParts, exMusWords, mapView } from './map';
 import { state, ui } from './store';
-import { labelTip, tipButton } from './view';
+import { holoLine, labelTip, tipButton } from './view';
 import { closeX } from './sheetsmisc';
 import { howToLink } from './sheetslift';
 import type { ExEditSheet } from './modals';
@@ -180,7 +180,7 @@ export function exHistSheet(m: { exId: string }): TemplateResult {
       H - P - (((x.tv || 0) - lo) / span) * (H - 2 * P)
     ]);
     const f = (n: number | undefined): string => (n || 0).toFixed(1);
-    chart = html`<figure class="exh-chart u-m4-0-0"><svg viewBox=${`0 0 ${W} ${H}`} width="100%" height=${String(H)} role="img" aria-label=${`Strength reading over the last ${pts.length} full sessions`}><polyline fill="none" stroke="var(--volt)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points=${xy.map(p => p.map(f).join(',')).join(' ')}></polyline>${xy.map(p => svg`<circle cx=${f(p[0])} cy=${f(p[1])} r=${String(HIST_CHART.dot)} fill="var(--volt)"></circle>`)}</svg>
+    chart = html`<figure class="exh-chart u-m4-0-0"><svg viewBox=${`0 0 ${W} ${H}`} width="100%" height=${String(H)} role="img" aria-label=${`Strength reading over the last ${pts.length} full sessions`}>${holoLine('exhg', W)}<polyline class="exh-ln" stroke="url(#exhg)" points=${xy.map(p => p.map(f).join(',')).join(' ')}></polyline>${xy.map(p => svg`<circle cx=${f(p[0])} cy=${f(p[1])} r=${String(HIST_CHART.dot)} fill="var(--volt)"></circle>`)}</svg>
       <figcaption class="small muted row spread"><span>${fmtDate(pts[0].date)}</span><span class="hastip" data-tip="Each full session's working sets read as one number from loads, reps, and RIR when it is rated on most sets. It shows direction only and is not a 1RM. Sessions where the lift was done lighter are left out.">Strength reading</span><span>${fmtDate(pts[pts.length - 1].date)}</span></figcaption></figure>`;
   }
   const bs = bestSet(exId);

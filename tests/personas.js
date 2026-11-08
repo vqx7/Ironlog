@@ -87,7 +87,8 @@
 //      10 x 3, the bench's third set missed (0 reps ticked); finishing it brings the raises up in one glide, never
 //      a jump to the session's title; 20 lb raises for 11 at 2 in reserve after 10 are a PR on the row, in the
 //      toast, in the recap and in the counted list alike; and the next week the bench repeats its target, 31+ reps
-//      at 185, as after any weaker session, and never asks more weight because of the miss.
+//      at 185, as after any weaker session, and never asks more weight because of the miss; History then says the
+//      session's one PR in gold and marks the raises, not the bench (2.33, ST-4).
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
 const { open, engine } = require('./h');
@@ -1093,6 +1094,12 @@ async function finish() {
     const fin = await H.finish();
     const list = await ev(d => window.__ironlog.IDX().prs.filter(p => p.date === d && p.big).map(p => p.exId), T0);
     ok(/PR/.test(fin.recap.text || '') && list.join() === 'dbLateral', '16. the recap names the raises\' PR, and the counted list holds it and nothing for the bench', { list, recap: (fin.recap.text || '').slice(0, 300) });
+    // 2.33 (ST-4): History, opened by its tab, says the session's one PR in gold and marks the raises, not the bench.
+    await page.click('#tabs [data-tab="history"]'); await wait(200);
+    await page.click('#view .hitem [data-act="histToggle"]'); await wait(200);
+    const hist = await ev(() => { const it = document.querySelector('#view .hitem'); const cup = it.querySelector('.prb'); return { tag: cup ? cup.getAttribute('aria-label') : null, marked: [...it.querySelectorAll('.panel p.hpr b')].map(b => b.innerText.trim()) }; });
+    ok(hist.tag === '1 PR smashed' && hist.marked.length === 1 && /Lateral/.test(hist.marked[0]), '16. History says the session\'s one PR in gold, beside the raises and not the bench (2.33)', hist);
+    await page.click('#tabs [data-tab="today"]'); await wait(150);
     // A week on: the bench's bad day repeats its target, 185 lb and 31+, as after any weaker session.
     await H.day(addD(T0, 7));
     await H.start();

@@ -51,6 +51,9 @@ export const OB_ACCT = KEY + '.obAcct',
 /** A weigh-in asked about on this device: snoozed until a date (Later), and the session's first ask answered (Not now). */
 export const BWSNOOZE_KEY = KEY + '.bwSnooze',
   BWASK_KEY = KEY + '.bwAsk';
+/** The profile photo, kept on this phone only (2.33), and its one-time line on Today answered (Add photo or Not now). */
+export const PHOTO_KEY = KEY + '.photo',
+  PHOTO_ASKED = KEY + '.photoAsked';
 /** The settings kept aside while the demo is loaded (demoKeep). */
 const DEMOSET_KEY = KEY + '.demoSettings';
 /** The start of the keys a preview of r56.1 kept a log aside under, before it moved to IndexedDB (asideStart). */

@@ -34,7 +34,7 @@ import { ACCOUNT_ACTS, accountInput, accountSubmit } from './account';
 import { REPORT_ACTS, reportChange, reportInput } from './report';
 import { IMPORT_ACTS, importChange } from './importflow';
 import { DEMO_ACTS } from './demo';
-import { APP_ACTS } from './actsapp';
+import { APP_ACTS, photoChange } from './actsapp';
 import { ROUTINE_ACTS } from './actsroutine';
 import { PICK_ACTS } from './actspick';
 import { START_ACTS } from './actsstart';
@@ -256,6 +256,8 @@ export function eventListeners(): void {
     if (reportChange(t)) return;
     // A picture added to a note (r66, src/app/notepics.ts).
     if (picChange(t)) return;
+    // The profile photo, from the menu or Today's line (2.33, src/app/actsapp.ts).
+    if (photoChange(t)) return;
     // A file to import or restore, and the import preview's choices (src/app/importflow.ts).
     if (importChange(t)) return;
     // Plan's fields (r58): an exercise's numbers, a day's name and rest day, Move to.

@@ -80,6 +80,7 @@ import {
   WKVIEW_KEY,
   OB_ACCT,
   OB_OUT,
+  PHOTO_ASKED,
   demoRestore,
   device,
   prefDel,
@@ -89,6 +90,7 @@ import {
 } from './storage';
 import { cloudChecked, cloudFirstPull } from './sync';
 import { AUTH } from './providers';
+import { photoUrl } from './photo';
 import { canInstallHere, installKind, isStandalone } from './env';
 import { SAFETY_TXT, bwEvery } from './settings';
 import { whtrLine } from './stats';
@@ -114,6 +116,7 @@ import {
 import {
   fieldValue,
   helpButton,
+  holoLine,
   howText,
   markup,
   minPart,
@@ -489,6 +492,17 @@ function installBar(): Part {
     ios ? nothing : html`<span class="ab-more"> Install ${APP_NAME} on your home screen.</span>`
   }</span><button class="btn sm primary" data-act="install">${ios ? 'Add to Home Screen' : 'Install'}</button><button class="ib" aria-label="Not now" data-act="installLater">✕</button></div>`;
 }
+/* The profile photo (2.33, V 2026-11-07): once a lifter has an account,
+   whether new or signed in for months, one slim line asks for a photo for
+   the menu button. Add photo picks one there and then; Not now hides the
+   line on this phone for good, as does a photo added from the menu. It
+   waits behind the install and new-icon lines, so Today never stacks two,
+   and stays out of the first run and the demo. */
+function photoBar(): Part {
+  if (!AUTH() || window.claude || !acct.checked || !acct.user || !state.settings.onboarded) return nothing;
+  if (prefGet(PHOTO_ASKED) || photoUrl() || state.sessions.some(x => x.demo)) return nothing;
+  return html`<div class="acctbar" id="photoBar"><span class="small"><b>Add a profile photo.</b><span class="ab-more"> It shows at the top right, on this phone only.</span></span><label class="btn sm primary">Add photo<input type="file" accept="image/*" data-photo hidden></label><button class="ib" aria-label="Not now" data-act="photoLater">✕</button></div>`;
+}
 /* A field for a new weigh-in or tape measurement, made again when the unit
    changes: these fields keep what is typed through a draw (r59), and a number
    typed in pounds or inches left in place under kilograms or centimetres
@@ -697,7 +711,8 @@ export function viewToday(): TemplateResult {
      Today opens on a blank session (Settings > Rest timer and logging). The
      plan's day stays one tap away, and Change day shows it as before. */
   const free = state.settings.todayStart === 'free' && chosen == null;
-  const above = html`${welcomeCard()}${acctBar()}${installBar()}${iconBar()}`;
+  const lines = [acctBar(), installBar(), iconBar()];
+  const above = html`${welcomeCard()}${lines}${lines.every(l => l === nothing) ? photoBar() : nothing}`;
   if (free) {
     const w = noLog()
       ? 'Add exercises as you go.'
@@ -798,7 +813,7 @@ function liftTags(exId: string): Part {
   if (!st) return nothing;
   const t: TemplateResult[] = [];
   if (st.last && st.fresh && I.prs.some(p => p.big && p.sid === st.last.sid && p.exId === exId))
-    t.push(html`<span class="tag green">PR last time</span>`);
+    t.push(html`<span class="tag gold">PR last time</span>`);
   if (st.easier) t.push(html`<span class="tag blue">Load due</span>`);
   if (st.stalled) t.push(html`<span class="tag yellow">Stalled</span>`);
   if (st.capped) t.push(html`<span class="tag blue">At max load</span>`);
@@ -988,7 +1003,7 @@ function movingCard(): TemplateResult | null {
   const all = liftsMoving();
   if (!all.length) return null;
   const one = all.every(x => x.wk === all[0].wk);
-  const spark = (v: readonly number[]): TemplateResult => {
+  const spark = (v: readonly number[], k: number): TemplateResult => {
     const lo = Math.min(...v),
       hi = Math.max(...v);
     const pts = v
@@ -1001,12 +1016,12 @@ function movingCard(): TemplateResult | null {
         return `${r1(x)},${r1(yy)}`;
       })
       .join(' ');
-    return html`<svg class="mvline" width=${SPARK.w} height=${SPARK.h} viewBox=${`0 0 ${SPARK.w} ${SPARK.h}`} aria-hidden="true"><polyline points=${pts}></polyline></svg>`;
+    return html`<svg class="mvline" width=${SPARK.w} height=${SPARK.h} viewBox=${`0 0 ${SPARK.w} ${SPARK.h}`} aria-hidden="true">${holoLine(`mvg${k}`, SPARK.w)}<polyline points=${pts} stroke=${`url(#mvg${k})`}></polyline></svg>`;
   };
-  const rows = all.slice(0, MOVING_ROWS).map(m => {
+  const rows = all.slice(0, MOVING_ROWS).map((m, k) => {
     const ex = EX(m.id);
     const set = m.top && ex ? setShort(ex, m.top.w, m.top.r) : '';
-    return html`<button type="button" class="mvrow" data-act="goDash" data-sec="exercise" data-ex=${m.id} aria-label=${`${exName(m.id)}, rising${set ? `, last best set ${set}` : ''}. Open on Stats`}><span class="mvname">${exName(m.id)}</span>${m.line.length > 1 ? spark(m.line) : nothing}<span class="mvset">${set}</span></button>`;
+    return html`<button type="button" class="mvrow" data-act="goDash" data-sec="exercise" data-ex=${m.id} aria-label=${`${exName(m.id)}, rising${set ? `, last best set ${set}` : ''}. Open on Stats`}><span class="mvname">${exName(m.id)}</span>${m.line.length > 1 ? spark(m.line, k) : nothing}<span class="mvset">${set}</span></button>`;
   });
   return section({
     sk: 'today:moving',

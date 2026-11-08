@@ -22,10 +22,11 @@ import { loadNote } from './loads';
 import { normalize } from './normalize';
 import { HIST_PAGE, setState, state, ui } from './store';
 import { distShow, distU, fmtK, noLog, setStr } from './display';
-import { pageTitle, placed, section, tabFoot } from './view';
+import { markup, pageTitle, placed, section, tabFoot } from './view';
+import { PR_ICON } from './icons';
 import type { Field } from './view';
 import type { CardioEntry, Session } from './types';
-import type { ExerciseLike } from './model';
+import type { ExerciseLike, Pr } from './model';
 import { UNDO_DAYS } from './storage';
 import { confirmBox, render, rerenderKeepScroll } from './page';
 import { toast } from './toast';
@@ -145,6 +146,9 @@ function sessionsSec(ss: readonly Session[], perDay: Record<string, number>): Te
       : nothing;
   };
   const vol = new Map(I.sessVol.map(v => [v.id, v.vol]));
+  // A session's counted PRs (2.33): the same PRs, counted the same way, as Today's and Stats' "PRs, last 4 weeks".
+  const prs = new Map<string, Pr[]>();
+  for (const p of I.prs) if (p.big) prs.set(p.sid, [...(prs.get(p.sid) || []), p]);
   const nWork = (s: Session): number => s.ex.reduce((a, b) => a + b.sets.filter(isWork).length, 0);
   /* Sessions sit under their week (Monday start), with the week's totals on
      the header; the totals cover every session of that week in the filter,
@@ -172,7 +176,7 @@ function sessionsSec(ss: readonly Session[], perDay: Record<string, number>): Te
 `
       );
     }
-    rows.push(sessionRow(s, perDay, nWork(s), vol.get(s.id) || 0, wd, wTag));
+    rows.push(sessionRow(s, perDay, nWork(s), vol.get(s.id) || 0, wd, wTag, prs.get(s.id) || []));
   }
   const more =
     shown.length > page.length
@@ -202,13 +206,24 @@ ${more}`;
   });
 }
 
+/* A session's counted PRs (2.33, V 2026-11-07): a gold cup beside its name,
+   the count and the words in its name and its tip, so History reads no more
+   text than before (tests/acceptance.js holds its text to r12's); an opened
+   session marks each lift that had one. */
+/** The gold cup on a History row with `n` counted PRs. */
+function prBadge(n: number): TemplateResult {
+  const said = `${n} ${n === 1 ? 'PR' : 'PRs'} smashed`;
+  return html` <span class="prb" role="img" aria-label=${said} data-tip=${said}>${markup(PR_ICON)}</span>`;
+}
+
 function sessionRow(
   s: Session,
   perDay: Record<string, number>,
   nSets: number,
   vol: number,
   wd: Record<string, Record<string, string>>,
-  wTag: (s: Session, exId: string) => TemplateResult | typeof nothing
+  wTag: (s: Session, exId: string) => TemplateResult | typeof nothing,
+  prs: readonly Pr[]
 ): TemplateResult {
   const open = ui.histOpen === s.id;
   // A deload's name ends " (deload)", so beside its tag it read "(deload) deload" (r54, the audit): the tag says it once.
@@ -220,16 +235,22 @@ function sessionRow(
     s.free && !/freestyle/i.test(s.dayName || '') ? html` <span class="tag">freestyle</span>` : nothing
   }${
     Object.values(wd[s.id] || {}).includes('fewer sets') ? html` <span class="tag">fewer sets</span>` : nothing
-  }${s.demo ? html` <span class="tag">demo</span>` : nothing}<br /><span class="small muted">${fmtDateRow(s.date)}${tm}</span></span><span class="num small u-taright_fnone">${nSets} sets<br /><span class="muted">${Math.round(toD(vol) ?? 0).toLocaleString()} ${U()}${s.durMin ? ` · ${s.durMin} min` : ''}</span></span></button>${
+  }${s.demo ? html` <span class="tag">demo</span>` : nothing}${
+    prs.length ? prBadge(prs.length) : nothing
+  }<br /><span class="small muted">${fmtDateRow(s.date)}${tm}</span></span><span class="num small u-taright_fnone">${nSets} sets<br /><span class="muted">${Math.round(toD(vol) ?? 0).toLocaleString()} ${U()}${s.durMin ? ` · ${s.durMin} min` : ''}</span></span></button>${
     filtered && fex
       ? html`<p class="small u-m6-0-0">${filtered.sets.map(x => setStr(fex, x)).join(', ')}${histUnits(fex)}</p>
 `
       : nothing
-  }${open ? sessionPanel(s, wTag) : nothing}</div>
+  }${open ? sessionPanel(s, wTag, prs) : nothing}</div>
 `;
 }
 
-function sessionPanel(s: Session, wTag: (s: Session, exId: string) => TemplateResult | typeof nothing): TemplateResult {
+function sessionPanel(
+  s: Session,
+  wTag: (s: Session, exId: string) => TemplateResult | typeof nothing,
+  prs: readonly Pr[]
+): TemplateResult {
   const chk = s.chk;
   return html`<div class="panel u-mt10">${
     chk
@@ -240,7 +261,8 @@ function sessionPanel(s: Session, wTag: (s: Session, exId: string) => TemplateRe
       : nothing
   }${s.ex.map(b => {
     const ex = EX(b.exId);
-    return html`<p class="small u-m0-0-6"><b>${ex.name}</b>${wTag(s, b.exId)}: ${b.sets.map(x => setStr(ex, x)).join(', ')}${histUnits(ex)}${
+    const pr = prs.some(p => p.exId === b.exId);
+    return html`<p class=${pr ? 'small u-m0-0-6 hpr' : 'small u-m0-0-6'}><b>${ex.name}</b>${pr ? html` <span class="tag gold">PR</span>` : nothing}${wTag(s, b.exId)}: ${b.sets.map(x => setStr(ex, x)).join(', ')}${histUnits(ex)}${
       b.note ? html`<br /><span class="muted">${b.note}</span>` : nothing
     }</p>${picStripSaved(b.pics)}
 `;

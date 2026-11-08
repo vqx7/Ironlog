@@ -1173,7 +1173,7 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
       .reverse()
       .map(x => {
         const tag = sessionWord(x);
-        return html`<tr><td>${fmtDate(x.date)}${I.prs.some(p => p.big && p.sid === x.sid && p.exId === exId) ? html` <span class="tag green">PR</span>` : nothing}${tag ? html` <span class="tag">${tag}</span>` : nothing}</td><td>${x.pts.map(p => setShort(ex, p.w, p.r)).join(', ')}</td>${e1Mode ? html`<td class="r num">${x.best ? (ex.bw ? '≈' : '') + fmtE(x.best) : ''}</td>` : nothing}</tr>`;
+        return html`<tr><td>${fmtDate(x.date)}${I.prs.some(p => p.big && p.sid === x.sid && p.exId === exId) ? html` <span class="tag gold">PR</span>` : nothing}${tag ? html` <span class="tag">${tag}</span>` : nothing}</td><td>${x.pts.map(p => setShort(ex, p.w, p.r)).join(', ')}</td>${e1Mode ? html`<td class="r num">${x.best ? (ex.bw ? '≈' : '') + fmtE(x.best) : ''}</td>` : nothing}</tr>`;
       })}</table></div>`;
 }
 

@@ -14,7 +14,9 @@ import { ENV, backupDue, saveStateNow } from './storage';
 import { acct, cloud } from './store';
 import type { AccountModal, AcctMode, FeedbackModal, FbItem } from './modals';
 import { AUTH, FB } from './providers';
-import { tipButton } from './view';
+import { markup, tipButton } from './view';
+import { MENU_ICON } from './icons';
+import { photoUrl } from './photo';
 import { closeX } from './sheetsmisc';
 import { captchaOn } from './captcha';
 
@@ -28,6 +30,20 @@ const menuAuth = () => (AUTH() && !(window.claude && typeof window.claude.use ==
    Opened from the first pages (their Help, r64, the r63 audit's P-S4-6), it
    leaves out the sections and Your data: both open a tab, and the tabs open
    only once Set up is done, so a tap there would do nothing. */
+/* The profile photo (2.33): shown, added, changed or removed here, the
+   one place the menu button opens. Remove asks first (V: nothing kept goes
+   on a single tap). */
+/** The menu's profile photo row: the photo or an empty circle, Add or Change, and Remove when there is one. */
+function photoRow(): TemplateResult {
+  const u = photoUrl();
+  return html`<div class="panel phrow" id="menuPhoto">
+    ${u ? html`\x3cimg class="phrow-i" src=${u} alt="Your profile photo">` : html`<span class="phrow-i phrow-none" aria-hidden="true">${markup(MENU_ICON)}</span>`}
+    <div class="u-minw0_f1"><p class="u-m0"><b>Profile photo</b></p><p class="small muted u-m2-0-0">Kept on this phone only.</p></div>
+    <label class="btn sm">${u ? 'Change' : 'Add photo'}<input type="file" accept="image/*" data-photo hidden></label>${
+      u ? html`<button type="button" class="btn sm" data-act="photoDel">Remove</button>` : nothing
+    }</div>`;
+}
+
 /** The menu; `first` when it is opened from the first pages. */
 export function menuSheet(m: { first?: true | undefined }): TemplateResult {
   const A = menuAuth();
@@ -46,7 +62,7 @@ export function menuSheet(m: { first?: true | undefined }): TemplateResult {
   const item = (act: string, label: string, cat?: string) =>
     html`<button type="button" class="mnu" data-act=${act} data-cat=${cat || nothing}><span>${label}</span><span aria-hidden="true">›</span></button>`;
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h"><h3 id="menuH">${ENV === 'preview' ? PREVIEW_NAME : APP_NAME}</h3>${closeX()}</div>
-  <div class="panel" id="menuAcct">${acc}</div>${due}
+  <div class="panel" id="menuAcct">${acc}</div>${photoRow()}${due}
   <div class="mnus">${item('fbOpen', 'Report a problem', 'bug')}${acct.reader && FB() ? item('fbInbox', 'Reports inbox') : nothing}${item('guideOpen', 'Guide')}${m.first ? nothing : html`${item('goLayout', 'Show, hide, or reorder sections')}${item('goBackup', 'Your data and backups')}`}</div>
   <p class="small muted u-m12-0-0">Version ${DISPLAY_VERSION}</p></div>`;
 }

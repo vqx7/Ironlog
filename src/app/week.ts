@@ -225,7 +225,7 @@ ${howText('wk', 'Each set counts once; a set at RIR 4 or more is not hard and do
 ${cardioLine(w)}${liftedLine()}
 ${howText('wk', 'A rest week you marked under More options on Today. It does not count as missed: your averages, streak, and adherence skip it.')}`;
   return html`${tog}${w.weekly ? nothing : cycleStrip(w.R)}
-<div class="band" data-tip=${noLog() ? `${w.tgt} hard sets planned` : `${w.got} hard sets logged of ${w.tgt} planned`}><div class="fill prog" style=${`width:${w.pct}%`}></div></div>
+<div class="band" data-tip=${noLog() ? `${w.tgt} hard sets planned` : `${w.got} hard sets logged of ${w.tgt} planned`}><div class="fill prog" style=${`width:${w.pct}%;--pct:${w.pct}`}></div></div>
 ${cardioLine(w)}
 <div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">${noLog() ? `${w.tgt} hard sets planned this week.` : `${w.got} hard sets logged of ${w.tgt} planned${w.tgt > 0 ? ` (${Math.round(w.pct)}%)` : ''}.`}</p>${helpButton('wk')}</div>
 ${liftedLine()}
