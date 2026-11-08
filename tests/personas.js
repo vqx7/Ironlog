@@ -839,9 +839,9 @@ async function finish() {
     const H = await phone(T0);
     const { ev, page } = H;
     await seed(H, { unit: 'lb', days: [{ id: 'A', name: 'Push', items: [['bench', 3, 6, 10, 1, 180, 5]] }], sessions: [{ day: 'A', date: '2026-09-28', ex: [['bench', [[185, 8, 1], [185, 8, 1], [185, 7, 1]]]] }] });
-    // Settings > General, the Red chip, as a thumb taps it.
+    // Settings > Appearance (General until 2.34), the Red chip, as a thumb taps it.
     await page.click('#tabs [data-tab="settings"]'); await wait(150);
-    await ev(() => { const L = window.__ironlog; L.ui.folds['settings:general'] = true; L.render(); });
+    await ev(() => { const L = window.__ironlog; L.ui.folds['settings:general'] = true; L.ui.folds['settings:look'] = true; L.render(); });
     await page.click('#view [data-act="accent"][data-v="red"]'); await wait(150);
     // The magenta is a deeper one in light and a brighter one in dark, as each theme's red was.
     const col = () => ev(() => { const g = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim().toLowerCase(); return { volt: g('--volt'), red: g('--red'), dark: getComputedStyle(document.body).backgroundColor === 'rgb(8, 9, 11)' }; });

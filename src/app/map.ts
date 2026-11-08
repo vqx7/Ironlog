@@ -859,7 +859,7 @@ ${stage}
         : html`<span><i class="st-under"></i>Below target ${counts['under']}</span>${counts['plan'] ? html`<span class="hastip" data-tip=${ON_PLAN_TIP}><i class="st-plan"></i>On plan ${counts['plan']}</span>` : nothing}`
     }<span><i class="st-in"></i>On target ${counts['in']}</span><span><i class="st-over"></i>Above ${counts['over']}</span><span><i class="st-none"></i>${src === 'week' ? 'Not yet' : 'None'} ${counts['none']}</span>${
       counts['track']
-        ? html`<span class="hastip" data-tip="Counted, with no weekly target, so never called under or over. Give one a target in Settings, Weekly set targets."><i class="st-track"></i>Tracked only ${counts['track']}</span>`
+        ? html`<span class="hastip" data-tip="Counted, no weekly target, so never marked under or over. Set one in Settings, Weekly set targets."><i class="st-track"></i>Tracked only ${counts['track']}</span>`
         : nothing
     }</div>
 ${detail}`
@@ -927,7 +927,7 @@ export function exMusWords(e: { primary: string; secondary?: readonly string[] |
   return html`<p class="small u-m0"><b>Main</b>: ${ML[main] || main}${
     help.length
       ? html`. <b>Helpers</b>: ${andList(help.map(k => ML[k] || k))} ${tipButton(
-          "A helper muscle counts half a set toward its weekly total (Pelland 2025). Which muscles are helpers on a lift is the library's own call, including grip and holding muscles such as the forearms and traps on a deadlift, which the study behind the half credit did not measure.",
+          "A helper muscle counts half a set toward its weekly total. Which muscles are helpers on a lift is the library's own call, including grip and holding muscles such as the forearms and traps on a deadlift, which the study behind the half credit did not measure.",
           'About helper muscles'
         )}`
       : nothing

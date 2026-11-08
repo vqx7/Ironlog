@@ -40,7 +40,7 @@ import {
   PROF_GOAL_TIP,
   profClean
 } from './profile';
-import { PLATE_MAX, PLATES_MOST, dbListOf, gymClean, gymPlates, plateOk } from './gym';
+import { PLATE_MAX, PLATES_MOST, dbListOf, gymClean, plateOk } from './gym';
 import { fmtDate, fmtG, stampShort } from './format';
 import { CAL_WEEKS, CAL_MIN } from './analytics';
 import { TRASH_DAYS, rec, LIMITS } from './records';
@@ -100,7 +100,7 @@ const LOG_SHOWN = 5;
 const KEPT_TOAST_MS = 8000;
 import { HARD_RIR } from './formulas';
 import { PROFILE_PLAN } from './routines';
-import { SMALL_PLATE, DEFAULT_STEP } from './units';
+import { SMALL_PLATE, DEFAULT_STEP, PLATES_KG, PLATES_LB } from './units';
 import { DEMO_WEEKS } from './importing';
 import { adjOn, refreshEx, syncDraftPlan, unitWords } from './worksets';
 import { confirmBox, render, rerenderKeepScroll, setSaveState } from './page';
@@ -117,7 +117,7 @@ export function bwEvery(): 0 | 7 | 14 | 30 {
 }
 
 /** What the suggestions are and are not, in full: the tip on Your data's line, and the first page's. */
-export const SAFETY_TXT = `${APP_NAME} works out suggested loads and reps from your own log with published formulas and the conventions stated in the Guide. They are estimates, not medical, physical therapy, or coaching advice, and they can be wrong. Use good technique, and safety bars or a spotter on heavy lifts. Stop on pain. Check with a doctor before starting or changing training, especially with an injury, a health condition, or a pregnancy. You train at your own risk.`;
+export const SAFETY_TXT = `${APP_NAME} works out suggested loads and reps from your own log with published formulas and the rules of thumb in the Guide. They are estimates, not medical, physical therapy, or coaching advice, and they can be wrong. Use good technique, and safety bars or a spotter on heavy lifts. Stop on pain. Check with a doctor before starting or changing training, especially with an injury, a health condition, or a pregnancy. You train at your own risk.`;
 
 /* ---------- Your training (r44) ---------- */
 
@@ -291,6 +291,12 @@ function gymNext(): Gym {
       }
     : { u: gymUnit() };
 }
+/* The usual plates of a unit, heaviest first, as Your gym's chips offer them: a new list on each call, so no caller
+   can change the table (units.ts). In gym.ts until 2.34, when a saved gym stopped being limited to them (NEW-76) and
+   Settings became their only reader. */
+function usualPlates(u: string): number[] {
+  return [...(u === 'kg' ? PLATES_KG : PLATES_LB)];
+}
 function gymSettings(): TemplateResult {
   const g = gymOf();
   const u = gymUnit();
@@ -302,7 +308,7 @@ function gymSettings(): TemplateResult {
   };
   const lb = u === 'lb';
   const L = dbListOf(g && g.db);
-  const plates = gymPlates(u);
+  const plates = usualPlates(u);
   const on = g && g.plates ? g.plates : plates;
   const listTxt = (a: number[]): string =>
     a.length > RACK_LIST.whole
@@ -487,9 +493,9 @@ function rirSettings(): TemplateResult {
         )}</label> <label class="check-inline"><input type="checkbox" data-bind="rirHalf" aria-labelledby="lt-rirHalf" .checked=${live(s.rirHalf === true)}/>${labelTip(
           'lt-rirHalf',
           `Count ${halfLbl()} as half a set`,
-          "Off: a set counts toward your weekly sets at RIR 3 or less. On: a set past RIR 3 counts as half a set too, in your weekly sets, targets, and the plan's weekly sets. Growth rises as sets end closer to failure (Robinson 2024), so sets further away still do something; half is a convention. Estimates, PRs, and recovery are unchanged."
+          "Off: a set counts toward your weekly sets at RIR 3 or less. On: a set past RIR 3 counts as half a set too, in your weekly sets, targets, and the plan's weekly sets. Growth rises as sets end closer to failure, so sets further away still do something; half is a rule of thumb. Estimates, PRs, and recovery are unchanged."
         )}</label>
-<p class="small muted hastip u-m4-0-0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration, and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>
+<p class="small muted hastip u-m4-0-0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. A rule of thumb, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration, and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>
 `
   }${
     s.rirMode === 'cal' && c.recent < 2
@@ -497,7 +503,7 @@ function rirSettings(): TemplateResult {
 `
       : nothing
   }
-<p class="small hastip u-m4-0-0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure (Halperin 2022). Your log never changes, so switching is reversible.">${sum}</p>
+<p class="small hastip u-m4-0-0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure. Your log never changes, so switching is reversible.">${sum}</p>
 `;
 }
 
@@ -755,28 +761,18 @@ export function viewSettings(): TemplateResult {
       html`<div class="card stack">${profSettings()}</div>
 `
     ),
+    /* Measurements and Appearance (2.34, from an Android user via V: "Split general settings into measurements v
+       appearance"): what was one General section, its key kept for Measurements so a saved order and fold stay
+       with the units, and Appearance new beside it (orderKeys slots a new key after the one before it in code). */
     G(
       'general',
-      'General',
-      `${s.unit === 'kg' ? 'kg, cm' : 'lb, in'} · ${s.theme === 'system' ? 'device theme' : s.theme}`,
+      'Measurements',
+      `${s.unit === 'kg' ? 'kg, cm' : 'lb, in'}`,
       html`<div class="card stack">
-<div class="grid2">
 <label class="field">Units<select data-bind="unit">
 <option value="lb" .selected=${live(s.unit === 'lb')}>lb and inches</option>
 <option value="kg" .selected=${live(s.unit === 'kg')}>kg and cm</option>
-</select></label> <label class="field">Theme<select data-bind="theme">
-<option value="system" .selected=${live(s.theme === 'system')}>Match device</option>
-<option value="dark" .selected=${live(s.theme === 'dark')}>Dark</option>
-<option value="light" .selected=${live(s.theme === 'light')}>Light</option>
 </select></label>
-</div>
-<div>
-<p class="small muted u-m0-0-6_fw600">Accent colour</p>
-<div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
-        ([k, l]) =>
-          html`<button class=${(s.accent || ACCENT0) === k ? 'chip acc on' : 'chip acc'} data-act="accent" data-v=${k} aria-pressed=${String((s.accent || ACCENT0) === k)}><i class=${`sw sw-${k}`} aria-hidden="true"></i>${l}</button>`
-      )}</div>
-</div>
 <div class="grid2 one-narrow">
 <label class="field">${labelTip(
         'lt-bwGoalPct',
@@ -792,6 +788,26 @@ export function viewSettings(): TemplateResult {
       )}</select></label>
 </div>
 ${bwSettings()}
+</div>
+`
+    ),
+    G(
+      'look',
+      'Appearance',
+      `${s.theme === 'system' ? 'device theme' : s.theme} · ${(ACCENTS.find(([k]) => k === (s.accent || ACCENT0)) || ['', ''])[1].toLowerCase()}`,
+      html`<div class="card stack">
+<label class="field">Theme<select data-bind="theme">
+<option value="system" .selected=${live(s.theme === 'system')}>Match device</option>
+<option value="dark" .selected=${live(s.theme === 'dark')}>Dark</option>
+<option value="light" .selected=${live(s.theme === 'light')}>Light</option>
+</select></label>
+<div>
+<p class="small muted u-m0-0-6_fw600">Accent colour</p>
+<div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
+        ([k, l]) =>
+          html`<button class=${(s.accent || ACCENT0) === k ? 'chip acc on' : 'chip acc'} data-act="accent" data-v=${k} aria-pressed=${String((s.accent || ACCENT0) === k)}><i class=${`sw sw-${k}`} aria-hidden="true"></i>${l}</button>`
+      )}</div>
+</div>
 </div>
 `
     ),
@@ -838,7 +854,7 @@ ${bwSettings()}
 </select></label> <label class="check-inline"><input type="checkbox" data-bind="autoAdj" aria-labelledby="lt-autoAdj" .checked=${live(adjOn())}/>${labelTip(
         'lt-autoAdj',
         'Adjust the next sets from the last one',
-        'After a set that was clearly easier or harder than planned, the sets after it that you have not typed a load for move up or down. A line says why, with Keep to undo it. Two reps or more in reserve over your target, or two past the top of the range, moves up; two or more under the range moves down. A rep or two lost per set is normal and changes nothing.'
+        "After a set clearly easier or harder than planned, the rest of that exercise's sets move up or down, unless you typed their weight. A line says why; Keep puts it back. Up: 2+ reps in reserve over your target, or 2+ past the top of the range. Down: 2+ under the range. A rep or two lost per set is normal."
       )}</label> <label class="check-inline"><input type="checkbox" data-bind="wakeLock" aria-labelledby="lt-wakeLock" .checked=${live(!!s.wakeLock)}/>${labelTip(
         'lt-wakeLock',
         'Keep the screen on during a session',
@@ -879,7 +895,7 @@ ${bwSettings()}
       '',
       html`${howText(
         'bands',
-        'Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a convention, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back.'
+        'Fractional hard sets per week: direct work 1, helper muscles 0.5. 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a rule of thumb, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back.'
       )}
 <div class="card">
 <table class="t">
@@ -1101,7 +1117,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
      list, as before. */
   gymPlate(t) {
     const g = gymNext();
-    const all = gymPlates(g.u);
+    const all = usualPlates(g.u);
     const v = +(t.dataset.v || '');
     const had = Array.isArray(g.plates) ? g.plates.slice() : all.slice();
     const on = had.includes(v) ? had.filter(x => x !== v) : [...had, v];
@@ -1123,7 +1139,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       toast(`Type the weight printed on the plate, up to ${fmtG(PLATE_MAX[g.u])} ${g.u}`);
       return;
     }
-    const had = Array.isArray(g.plates) ? g.plates.slice() : gymPlates(g.u);
+    const had = Array.isArray(g.plates) ? g.plates.slice() : usualPlates(g.u);
     if (had.some(x => Math.abs(x - v) < EPS_SAME)) {
       toast('That plate is already on the list');
       return;

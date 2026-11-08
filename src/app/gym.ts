@@ -6,7 +6,7 @@
 import type { DbRack, Exercise, Gym, Plan } from './types';
 import type { ExerciseLike, Model } from './model';
 import { isNum, r3, EPS_SAME } from './util';
-import { LB, PLATES_KG, PLATES_LB, STEP_LB, stepReadIn, unitStepIn, BAR, TYPED_STEP } from './units';
+import { LB, STEP_LB, stepReadIn, unitStepIn, BAR, TYPED_STEP } from './units';
 import { ONE_DB, PLATE_SIDE_IDS, isCompound, loadMode, rackKind } from './library';
 import { UIn, gymOfIn } from './model';
 import { arr } from './records';
@@ -19,15 +19,6 @@ export const PLATE_MODES: readonly (readonly [string, string])[] = [
   ['sleeve', 'One sleeve (landmine)'],
   ['none', 'None']
 ];
-
-/* The plates a gym may have, heaviest first, in its unit: the usual plates
-   (units.ts), as a new list on each call, as it always was, so no caller can
-   change the table. A function since r33, when normalize() ran on the first
-   load before the constants of its part existed; until r54 it typed the
-   lists a second time. */
-export function gymPlates(u: string): number[] {
-  return [...(u === 'kg' ? PLATES_KG : PLATES_LB)];
-}
 
 /* A load typed as shown is the load it shows (PENDING 333): within tol of a
    plate, the side takes that plate. 110.2 lb typed is 49.986 kg, the 50 kg of
@@ -172,7 +163,7 @@ export function gymClean(g: Raw): Gym | null {
       .slice(0, GYM_LIMITS.bells);
     if (kb.length) out.kb = kb;
   }
-  /* Any plate the gym has (NEW-76, 2.34), not only the usual ones (gymPlates): a weight above 0, no heavier than the
+  /* Any plate the gym has (NEW-76, 2.34), not only the usual ones (Settings' chips, settings.ts usualPlates): a weight above 0, no heavier than the
      heaviest plate made, in whole hundredths of the unit (every plate label is), heaviest first, each once. A saved
      list of usual plates comes out as it went in, so its hash is unchanged. */
   const plates = arr(g.plates);

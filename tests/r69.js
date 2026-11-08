@@ -222,12 +222,12 @@ const guard = async f => { try { await f(); } catch (e) { ok(false, 'a section t
     const card = await D.page.evaluate(() => { const c = document.getElementById('chRadar').closest('.card'); const p = [...c.querySelectorAll('p.small.muted')].find(x => x.querySelector('.tipi')); const q = p.cloneNode(true); q.querySelectorAll('.tipi').forEach(x => x.remove()); return { head: c.querySelector('.headline').textContent.trim(), line: q.textContent.trim(), tip: p.querySelector('.tipi').getAttribute('data-tip'), label: window.__ironlog.regionSrc().label }; });
     if (run(7)) {
       ok(card.line === '4-week average', '7. the weeks read are named short: "4-week average"', card.line);
-      ok(card.tip.startsWith('Using your average over the 4 weeks you trained of the last 5, a lighter week left out. ') && /Hard sets per region against the minimum of your weekly targets/.test(card.tip), '7. its i says the sentence in full, then how to read the chart', card.tip);
+      ok(card.tip.startsWith('Using your average over the 4 weeks you trained of the last 5, a lighter week left out. ') && /Hard sets per region\. Dashed ring: the minimum of your weekly targets/.test(card.tip), '7. its i says the sentence in full, then how to read the chart', card.tip);
       ok(card.label === 'your average over the 4 weeks you trained of the last 5, a lighter week left out', '7. (a guard) the weeks read are the same', card.label);
     }
     if (run(10)) {
       ok(card.head === 'Every region on target.', '10. every region inside its target: "Every region on target."', card.head);
-      ok(/Every region at or above its minimum, inside its target\./.test(card.tip), '10. its meaning in the card\'s i', card.tip);
+      ok(/Every region at or past its minimum, inside its target\./.test(card.tip), '10. its meaning in the card\'s i', card.tip);
     }
     ok(!D.errors.length, '7. no page errors', D.errors);
     await D.ctx.close();
@@ -237,14 +237,14 @@ const guard = async f => { try { await f(); } catch (e) { ok(false, 'a section t
   if (run(8)) await guard(async () => {
     const D = await demo('dash');
     await openAll(D.page);
-    const r = await D.page.evaluate(() => { const p = [...document.querySelectorAll('#view p')].find(x => /rising/i.test(x.textContent) && x.querySelector('.tipi') || /Rising at (its|their) volume/.test(x.textContent)); if (!p) return null; const q = p.cloneNode(true); q.querySelectorAll('.tipi').forEach(x => x.remove()); const i = p.querySelector('.tipi'); return { line: q.textContent.replace(/\s+/g, ' ').trim(), tip: i ? i.getAttribute('data-tip') : null }; });
+    const r = await D.page.evaluate(() => { const p = [...document.querySelectorAll('#view p')].find(x => /rising/i.test(x.textContent) && x.querySelector('.tipi') || /Getting stronger on current sets/.test(x.textContent)); if (!p) return null; const q = p.cloneNode(true); q.querySelectorAll('.tipi').forEach(x => x.remove()); const i = p.querySelector('.tipi'); return { line: q.textContent.replace(/\s+/g, ' ').trim(), tip: i ? i.getAttribute('data-tip') : null }; });
     const m = r && /^(\d+) muscles rising: keep the sets\.$/.exec(r.line);
-    const names = r && r.tip && /^Rising at their volume: (.+)\. Keep the sets as they are\.$/.exec(r.tip);
+    const names = r && r.tip && /^Getting stronger on current sets: (.+)\. Keep the sets\.$/.exec(r.tip);
     const list = names ? names[1].replace(/, and /, ', ').split(', ') : [];
     ok(m && +m[1] === 22, '8. one line: "22 muscles rising: keep the sets."', r);
     ok(names && m && list.length === +m[1] && ['Biceps', 'Obliques', 'Neck', 'Side delts'].every(n => list.includes(n)), '8. its i names every one of them, and says to keep the sets as they are', { tip: r && r.tip, n: list.length });
     const w = await D.page.evaluate(() => { const L = window.__ironlog; return L.risingWords ? [L.risingWords(['Chest']), L.risingWords(['Chest', 'Lats', 'Biceps'])] : null; });
-    ok(w && w[0].line === '1 muscle rising: keep the sets.' && w[0].tip === 'Rising at its volume: Chest. Keep the sets as they are.' && w[1].line === '3 muscles rising: keep the sets.' && w[1].tip === 'Rising at their volume: Chest, Lats, and Biceps. Keep the sets as they are.', '8. one muscle is said in the singular, and the names take the serial comma', w);
+    ok(w && w[0].line === '1 muscle rising: keep the sets.' && w[0].tip === 'Getting stronger on current sets: Chest. Keep the sets.' && w[1].line === '3 muscles rising: keep the sets.' && w[1].tip === 'Getting stronger on current sets: Chest, Lats, and Biceps. Keep the sets.', '8. one muscle is said in the singular, and the names take the serial comma', w);
     ok(!D.errors.length, '8. no page errors', D.errors);
     await D.ctx.close();
   });

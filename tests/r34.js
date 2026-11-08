@@ -199,7 +199,7 @@ const LB = 0.45359237;
     // Settings has the switch, with the rule in its tip.
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:timer'] = true; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
     const sw = await ev(() => { const c = document.querySelector('[data-bind="autoAdj"]'); return c ? { on: c.checked, tip: c.closest('label').querySelector('[data-tip]').dataset.tip } : null; });
-    ok(sw && sw.on && /two or more under the range/i.test(sw.tip), 'Settings > Rest timer and logging has it on by default, its rule in the tip', sw);
+    ok(sw && sw.on && /(two or more|2\+) under the range/i.test(sw.tip), 'Settings > Rest timer and logging has it on by default, its rule in the tip', sw);
     await P.page.click('[data-bind="autoAdj"]'); await wait(80);
     ok(await ev(() => window.__ironlog.state.settings.autoAdj === false && !window.__ironlog.adjOn()), 'turning it off is saved');
     await P.page.click('[data-bind="autoAdj"]'); await wait(80);
@@ -500,7 +500,7 @@ const LB = 0.45359237;
       // The weeks it uses: named short on the line since r69, in full in its i (V, 2026-11-03).
       const radarP = [...view.querySelectorAll('p.small.muted')].find(p => { const i = p.querySelector('.tipi'); return i && /^Using /.test(i.dataset.tip); });
       const radar = radarP ? { line: radarP.innerText.replace(/\s*i$/, '').trim(), tip: radarP.querySelector('.tipi').dataset.tip } : null;
-      const radarTip = [...view.querySelectorAll('.tipi')].some(b => /dashed ring/.test(b.dataset.tip));
+      const radarTip = [...view.querySelectorAll('.tipi')].some(b => /dashed ring/i.test(b.dataset.tip));
       const et = [...view.querySelectorAll('table.t')].find(tb => [...tb.querySelectorAll('th')].some(th => /best estimate/i.test(th.innerText)));
       const e1 = et ? [...et.querySelectorAll('tr')].slice(1).map(tr => tr.lastElementChild.innerText.trim()) : [];
       L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true);

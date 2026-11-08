@@ -45,6 +45,8 @@ export const MAPVIEW_KEY = KEY + '.mapView';
 export const ACCT_LATER = KEY + '.acctLater',
   INSTALL_LATER = KEY + '.installLater',
   ICON_NOTE = KEY + '.icon25';
+/** This browser has installed the app (its appinstalled event, 2.34): its tabs no longer offer Get the app. */
+export const APP_INSTALLED = KEY + '.appInstalled';
 /** The first pages on this device: the account page passed (Continue without an account), and held open after a sign-out (r33). */
 export const OB_ACCT = KEY + '.obAcct',
   OB_OUT = KEY + '.signedOut';

@@ -96,7 +96,7 @@ export const FORM_SHEETS: ReadonlySet<string> = new Set([
   'walk'
 ]);
 
-/* The accents Settings > General offers, as a key and a label.
+/* The accents Settings > Appearance offers, as a key and a label.
    Violet, Cyan and Red since r65.2 (V). Ember is the default since r37 (V: "default to the orange ember one for now"): no accent stored reads as Ember. */
 export const ACCENTS: readonly (readonly [string, string])[] = [
   ['ember', 'Ember'],
@@ -122,7 +122,7 @@ export const REGION_WK_DEFAULT = 4;
 /* Weigh-ins on a cadence (r34, V: at the start, then every two weeks or so,
    the time frame the lifter's to set). Bodyweight lifts use the latest
    weigh-in, so an old one keeps counting until a new one comes in. Every 7,
-   14 (the default) or 30 days, or off (Settings > General); Later waits 2
+   14 (the default) or 30 days, or off (Settings > Measurements); Later waits 2
    days on this device. A new install is asked on the Set up page instead. */
 /** The weigh-in reminder's choices, in days, with their names; the default, BW_EVERY_DEFAULT, is kept absent, so saves from before r34 hash as before. */
 export const BW_EVERY: readonly (readonly [0 | 7 | 14 | 30, string])[] = [

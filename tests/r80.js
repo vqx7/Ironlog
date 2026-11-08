@@ -14,6 +14,13 @@
 //      whole hundredths up to the heaviest made, heaviest first, each once; a usual list is unchanged. (e) Settings:
 //      another plate is added from the field, shows as a chip, and goes with a tap; a bad entry or a repeat says why
 //      and changes nothing.
+//   3  Settings' General is two sections (an Android user via V): Measurements (units, bodyweight goal, weigh-in
+//      reminder, height) and Appearance (theme, accent) right after it; a saved order that had General keeps
+//      Measurements where General was. Guard: no sideways scroll at 320 px.
+//   4  "Get the app" never shows inside the installed app (an Android user via V): opened in minimal-ui, fullscreen
+//      or standalone, from an Android app (android-app:// referrer), or in a browser that has installed it. Guard: a
+//      plain browser tab still offers it.
+//   5  With nothing logged, Today's line leads with Log a past workout, without "Lifted before this app?" (V).
 // R80_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -200,6 +207,59 @@ async function shortAt(page, v) {
       ok(w, '2e. no sideways scroll at 390 px');
     }
     await E.browser.close();
+  }
+
+  if (run(3)) {
+    const D = await open(FILE, { w: 320, h: 700, clock: DAY + 'T10:00:00' });
+    const pg = D.page;
+    const read = () => pg.evaluate(() => [...document.querySelectorAll('#view > [data-mkey]')].map(x => x.dataset.mkey));
+    await pg.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); L.ui.tab = 'settings'; L.ui.folds['settings:general'] = true; L.ui.folds['settings:look'] = true; L.render(); });
+    await pg.waitForTimeout(300);
+    const r = await pg.evaluate(() => {
+      const sec = k => document.querySelector(`#view > [data-mkey="${k}"]`);
+      const title = k => (sec(k) && (sec(k).querySelector('h2, h3, .sec-t') || {}).textContent || '').trim();
+      const has = (k, sel) => !!(sec(k) && sec(k).querySelector(sel));
+      return {
+        mTitle: title('general'), aTitle: title('look'),
+        m: ['[data-bind="unit"]', '[data-bind="bwGoalPct"]', '[data-bind="bwEvery"]'].every(q => has('general', q)) && !has('general', '[data-bind="theme"]') && !has('general', '[data-act="accent"]'),
+        a: has('look', '[data-bind="theme"]') && has('look', '[data-act="accent"]') && !has('look', '[data-bind="unit"]'),
+        wide: document.documentElement.scrollWidth <= innerWidth
+      };
+    });
+    ok(/Measurements/.test(r.mTitle) && r.m, '3. Measurements holds units, the bodyweight goal and the weigh-in reminder', r);
+    ok(/Appearance/.test(r.aTitle) && r.a, '3. Appearance holds the theme and the accent', r);
+    const order = await read();
+    ok(order.indexOf('look') === order.indexOf('general') + 1, '3. Appearance sits right after Measurements', order);
+    await pg.evaluate(() => { const L = window.__ironlog; L.state.settings.secOrder.settings = ['data', 'general', 'profile']; L.render(); });
+    await pg.waitForTimeout(200);
+    const saved = await read();
+    ok(saved.indexOf('data') < saved.indexOf('general') && saved.indexOf('general') < saved.indexOf('profile') && saved.indexOf('look') === saved.indexOf('general') + 1, '3. a saved order with General keeps Measurements where General was against the others, Appearance right after it', saved);
+    ok(r.wide, '3. guard: no sideways scroll at 320 px', r);
+    await D.browser.close();
+  }
+
+  if (run(4)) {
+    // The installable build (IRONLOG_APP) in each way it can open; the source file stands in for it with the flag set.
+    const bar = async (mode, extra) => {
+      const init = `window.IRONLOG_APP=true;${mode ? `(()=>{const m=window.matchMedia.bind(window);window.matchMedia=q=>q==='(display-mode: ${mode})'?{matches:true,media:q,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}}:m(q);})();` : ''}${extra || ''}`;
+      const D = await open(FILE, { w: 390, h: 844, clock: DAY + 'T10:00:00', setup: ctx => ctx.addInitScript(init) });
+      await D.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); L.ui.tab = 'today'; L.render(); });
+      await D.page.waitForTimeout(300);
+      const shown = await D.page.evaluate(() => !!document.getElementById('installBar'));
+      await D.browser.close();
+      return shown;
+    };
+    ok(await bar(null), '4. guard: a plain browser tab offers Get the app');
+    for (const m of ['standalone', 'minimal-ui', 'fullscreen']) ok(!(await bar(m)), `4. opened as the installed app (${m}), no Get the app`);
+    ok(!(await bar(null, "Object.defineProperty(document,'referrer',{get:()=>'android-app://com.example.twa'});")), '4. opened from an Android app (android-app:// referrer), no Get the app');
+    ok(!(await bar(null, "localStorage.setItem('ironlog.v1.appInstalled','1');")), '4. a browser that has installed the app no longer offers it');
+  }
+
+  if (run(5)) {
+    const D = await open(FILE, { w: 390, h: 844, clock: DAY + 'T10:00:00' });
+    const t = await D.page.evaluate(() => { const L = window.__ironlog; L.state = L.normalize(null); L.state.settings.onboarded = true; L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); const p = document.getElementById('preApp'); return p ? { text: p.innerText.replace(/\s+/g, ' ').trim(), btn: !!p.querySelector('[data-act="pastOpen"]') } : null; });
+    ok(t && t.btn && /^Log a past workout/.test(t.text) && !/Lifted before|before this app/.test(t.text), '5. Today leads with Log a past workout, no "Lifted before this app?"', t);
+    await D.browser.close();
   }
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
   process.exit(fails.length ? 1 : 0);

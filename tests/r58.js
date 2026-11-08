@@ -577,7 +577,8 @@ const SCREENS = [
       const L = window.__ironlog; L.ui.tab = 'today'; L.render(); await new Promise(r => setTimeout(r, 150));
       const i = document.querySelector('#view .bm-legend .st-track'); return i && i.parentElement.dataset.tip;
     });
-    ok(tip === 'Counted, with no weekly target, so never called under or over. Give one a target in Settings, Weekly set targets.', '9. the map\'s Tracked only tip covers every muscle with no target and says how to give one', tip);
+    // Reworded in 2.34 (99, V 2026-11-08: plainer, not longer); the same two things said.
+    ok(tip === 'Counted, no weekly target, so never marked under or over. Set one in Settings, Weekly set targets.', '9. the map\'s Tracked only tip covers every muscle with no target and says how to give one', tip);
     ok(!Q.errors.length, '9. no page errors', Q.errors);
     await Q.page.context().close();
   }

@@ -116,7 +116,7 @@ export function sessionCapNote(day: Day): Part {
     .sort((a, b) => b[1] - a[1]);
   if (!over.length) return nothing;
   const who = andList(over.map(([m, v]) => `${ML[m]} ${r1(v)}`));
-  return html`<p class="small u-m4n12-0"><span class="flag hastip" data-tip=${`More than ${SESSION_CAP} sets for one muscle in one workout. That line is a convention from one study not yet peer reviewed (Remmert 2025), which found no extra growth past it. Consider moving some to another day. Helper-muscle sets count as half.`}>Heavy for one workout: ${who} sets</span></p>`;
+  return html`<p class="small u-m4n12-0"><span class="flag hastip" data-tip=${`Over ${SESSION_CAP} sets for one muscle in one workout. One early study saw no extra growth past that (a rule of thumb; sources in the Guide). Move some to another day? Helper sets count half.`}>Heavy for one workout: ${who} sets</span></p>`;
 }
 
 /* Plan against the usual ranges (r30, V's choice). Picking a routine on a

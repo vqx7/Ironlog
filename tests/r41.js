@@ -178,7 +178,7 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     // Chest's minimum at 3: rising at its volume, so it joins the one line and has no row of its own.
     // The rising line names its muscles in its i since r69 (V, 2026-11-03), read with the line.
     const mu2 = await ev(() => { const L = window.__ironlog; const b = L.state.settings.bands; const keep = b.chest.slice(); b.chest = [3, 30]; L.invalidate(); L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const sub = [...document.querySelectorAll('#view .subsec')].find(x => /Strength return on volume/.test(x.innerText)); b.chest = keep; L.invalidate(); return sub ? (sub.innerText + '\n' + [...sub.querySelectorAll('.tipi')].map(i => i.getAttribute('data-tip')).join('\n')) : ''; });
-    ok(/Rising at (its|their) volume: [^\n]*Chest[^\n]*\. Keep the sets as they are\./.test(mu2) && !/\nChest\n/.test(mu2), 'a muscle rising at its target joins the one line instead of a row', mu2.slice(0, 400));
+    ok(/Getting stronger on current sets: [^\n]*Chest[^\n]*\. Keep the sets\./.test(mu2) && !/\nChest\n/.test(mu2), 'a muscle rising at its target joins the one line instead of a row', mu2.slice(0, 400));
     const mt = await ev(() => { const L = window.__ironlog; const sc = L.IDX().scores[0]; return sc ? L.musTrend(sc) : ''; });
     ok(mt && !/%/.test(mt), 'a muscle\'s strength trend in words: ' + mt, mt);
 

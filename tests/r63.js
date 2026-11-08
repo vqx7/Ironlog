@@ -361,14 +361,16 @@ const CASES = [
        r66 reads the pictures another tab kept when that tab's change arrives or the page comes back to the front
        (373, R66-3: events.ts, pageListeners). Taken out of this build's list where the run sits; the rest is r62's. */
     const LATER_ADDS = [['window storage false', 'document visibilitychange false']];
-    const bAdds = [...b.adds];
+    // 2.34 notes an install from this browser (appinstalled, main.ts; L-2), one listener of its own, wherever it sits.
+    const LATER_ONE = ['window appinstalled false'];
+    const bAdds = b.adds.filter(x => !LATER_ONE.includes(x));
     const runsFound = LATER_ADDS.map(run => {
       const i = bAdds.findIndex((_, k) => run.every((x, j) => bAdds[k + j] === x) && k > 0 && bAdds[k - 1] === 'interval 30000');
       if (i >= 0) bAdds.splice(i, run.length);
       return i >= 0;
     });
     const da = firstDiff(a.adds, bAdds);
-    ok(a.adds.length > 20 && !da && runsFound.every(Boolean), `4. the page adds r62's ${a.adds.length} listeners and intervals, in r62's order, and after r62's 30-second interval the run later builds list (r66: another tab's pictures)`, da || runsFound);
+    ok(a.adds.length > 20 && !da && runsFound.every(Boolean), `4. the page adds r62's ${a.adds.length} listeners and intervals, in r62's order, and after r62's 30-second interval the run later builds list (r66: another tab's pictures; 2.34: appinstalled)`, da || runsFound);
     // Names a later build adds to the hook go after r62's, each listed here with the release that added it.
     const LATER = ['templateBefore function', 'templateRest function', 'templateSigsBefore function', 'bandOf function', 'picsTidy function', 'risingWords function', 'setShortOf function', 'liftsMoving function', 'noBody function', 'sizeWhat function', 'sessLeftMin function'];
     const dh = firstDiff(a.hook, b.hook.slice(0, a.hook.length));

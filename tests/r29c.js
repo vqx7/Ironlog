@@ -64,9 +64,10 @@ const DIST = !!process.env.IRONLOG_FILE;
 
   // ---- The target RIR of 1, explained.
   const tip = await ev(async () => { const L = window.__ironlog; L.ui.tab = 'program'; L.ui.planView = 'routine'; L.ui.bLibOpen = false; L.render(); const it = document.querySelector('[data-act="toggleItem"]'); if (it) it.click(); await new Promise(r => setTimeout(r, 100)); const s = document.querySelector(`label.field button.tipi[aria-label="About Target RIR"]`); return s ? { tip: s.dataset.tip, i: true } : null; });
-  ok(tip && /Robinson 2024/.test(tip.tip) && /Refalo 2024/.test(tip.tip) && /convention/.test(tip.tip) && !/—/.test(tip.tip), 'the Plan editor says why the target RIR is 1, with its sources, as a convention', tip);
+  // Since 2.34 (99, V 2026-11-08) a tip says "rule of thumb" and the sources are in the Guide's Sources section.
+  ok(tip && /rule of thumb/.test(tip.tip) && !/Robinson 2024|Refalo 2024/.test(tip.tip) && !/—/.test(tip.tip), 'the Plan editor says why the target RIR is 1, as a rule of thumb, its sources in the Guide', tip);
   const guide = await ev(() => { const L = window.__ironlog; L.ACT.guideOpen({ dataset: { g: 'plan' } }); document.querySelectorAll('#modal details').forEach(d => d.open = true); return document.getElementById('modal').innerText; });
-  ok(/target RIR is 1 unless you change it/i.test(guide) && /Refalo 2024/.test(guide), 'the Guide says the same under Plan');
+  ok(/target RIR is 1 unless you change it/i.test(guide) && /Robinson 2024/.test(guide) && /Refalo 2024/.test(guide), 'the Guide says the same under Plan, and names the sources');
   await ev(() => window.__ironlog.ACT.mClose());
 
   // ---- The Claude artifact was retired on 2026-09-27 (OWNER.md), and in r46 its

@@ -908,7 +908,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
     confirmBox(
       `${setShort(ex, effW(b, si), s.r)}${ex.bw ? '' : ' ' + U()}?`,
       lz
-        ? `0 ${ex.timed ? 'seconds' : 'reps'} at a weight well under today's working load. Log it as missed, or go back and fix it.`
+        ? `0 ${ex.timed ? 'seconds' : 'reps'} at a weight well under today's working weight. Log it as missed, or go back and fix it.`
         : `${far || `${s.r} ${ex.timed ? 'seconds' : 'reps'} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`,
       lz ? 'Log it as missed' : 'Log it',
       () => {

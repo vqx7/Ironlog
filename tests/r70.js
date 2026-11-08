@@ -341,8 +341,9 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
     });
     // Sections drawn only when there is something in them (an injury, cardio, something deleted).
     const onlyWithContent = ['today:injuries', 'history:cardio', 'history:trash'];
-    // Each tab's core sections, never hidden by design: the routine and its days, the sessions, and Settings' own.
-    const core = ['program:routine', 'program:days', 'history:sessions', 'settings:profile', 'settings:general', 'settings:gym', 'settings:layout', 'settings:data', 'settings:help'];
+    // Each tab's core sections, never hidden by design: the routine and its days, the sessions, and Settings' own
+    // (Appearance since 2.34, split from General, L-3).
+    const core = ['program:routine', 'program:days', 'history:sessions', 'settings:profile', 'settings:general', 'settings:look', 'settings:gym', 'settings:layout', 'settings:data', 'settings:help'];
     const missingDrawn = r.listed.filter(k => !r.drawn.includes(k) && !onlyWithContent.includes(k));
     const unlisted = r.gripped.filter(k => !r.listed.includes(k) && !core.includes(k));
     ok(r.listed.length > 0 && !missingDrawn.length && !unlisted.length && r.listed.includes('today:moving'), '9. AUD-70 (b): Layout lists every section a lifter can hide, each drawn on its tab, Lifts moving among them; every other section is a core one', { missingDrawn, unlisted, listed: r.listed });

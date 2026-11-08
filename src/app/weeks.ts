@@ -555,7 +555,7 @@ export const LIGHTER_WEEK_WORDS =
   'more than half its sessions done lighter, or two or more deload sessions done lighter at its end';
 
 /** The tip beside Stats' line on the last lighter week: what counts, and what reads it. */
-export const LIGHTER_WEEK_TIP = `A lighter week has ${LIGHTER_WEEK_WORDS}. A rest week or a week with nothing trained counts too. Your weekly averages leave these weeks out, and a deload is not suggested within ${DELOAD_GAP_DAYS / WEEK_DAYS} weeks of one.`;
+export const LIGHTER_WEEK_TIP = `Lighter week: ${LIGHTER_WEEK_WORDS}. Rest weeks and weeks with nothing trained count too. Left out of weekly averages; no deload suggested within ${DELOAD_GAP_DAYS / WEEK_DAYS} weeks of one.`;
 
 /* The last lighter week, said under Stalls on Stats (r30). Until r54 it was
    read by hard sets, a week at 65% or less of the usual, and named weeks the
