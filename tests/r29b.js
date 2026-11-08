@@ -217,9 +217,10 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       await wait(300);
       const k = await ev(() => { const t = document.getElementById('timer'), cs = getComputedStyle(t), v = t.querySelector('[data-t="v"]'), sk = t.querySelector('[data-act="tStop"]'), rg = t.querySelector('[data-t="p"]'); const pr = document.createElement('i'); pr.style.color = 'var(--volt)'; document.body.appendChild(pr); const volt = getComputedStyle(pr).color; pr.remove(); return { bg: cs.backgroundColor, border: cs.borderTopColor, bw: parseFloat(cs.borderTopWidth), shadow: cs.boxShadow, time: getComputedStyle(v).color, skip: getComputedStyle(sk).color, ring: getComputedStyle(rg).stroke, volt, dash: rg.getAttribute('stroke-dasharray') }; });
       const cr = (a, b) => { const x = lum(parse(a)), y = lum(parse(b)); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
-      /* The ring is drawn in the accent, as approved; how faint some accents are on a light card (Cyan 1.96:1, Ember
-         2.8:1, as with every accent line on a light surface) is NEW-61, V's call, so it is not held to 3:1 here. */
-      ok(cr(k.time, k.bg) >= 4.5 && cr(k.skip, k.bg) >= 4.5 && k.ring === k.volt && k.bw >= 1 && k.shadow !== 'none' && parseFloat(k.dash) > 90, `${acc}${dark ? ' dark' : ' light'}: the rest card's time at ${cr(k.time, k.bg).toFixed(2)}:1, Skip at ${cr(k.skip, k.bg).toFixed(2)}:1, the ring in the accent (${cr(k.ring, k.bg).toFixed(2)}:1), a border and a shadow, full at the start`, k);
+      /* The ring was drawn in the accent, as approved on 2026-11-03; since 2.33 it is drawn with the progress gradient
+         (V, 2026-11-07, ST-3: the gradient on the rest timer), the same in every accent, held by tests/r79.js section 3.
+         A ring's faintness on a light card is NEW-61, V's call, so it is not held to 3:1 here. */
+      ok(cr(k.time, k.bg) >= 4.5 && cr(k.skip, k.bg) >= 4.5 && /url\(.*#holoG.*\)/.test(k.ring) && k.bw >= 1 && k.shadow !== 'none' && parseFloat(k.dash) > 90, `${acc}${dark ? ' dark' : ' light'}: the rest card's time at ${cr(k.time, k.bg).toFixed(2)}:1, Skip at ${cr(k.skip, k.bg).toFixed(2)}:1, the ring drawn with the progress gradient, a border and a shadow, full at the start`, k);
       await ev(() => { window.__ironlog.timer.end = Date.now() + 5000; }); await wait(400);
       const d2 = await ev(() => parseFloat(document.querySelector('#timer [data-t="p"]').getAttribute('stroke-dasharray')));
       ok(d2 < 50, `${acc}: the card's ring empties as the rest runs down`, d2);
