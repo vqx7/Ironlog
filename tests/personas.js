@@ -705,7 +705,7 @@ async function finish() {
     await page.click('#modal [data-act="shortPick"][data-v="15"]'); await wait(150);
     const st = await ev(() => document.getElementById('modal').innerText.replace(/\s+/g, ' '));
     const est = +((st.match(/~(\d+) min after the change/) || [])[1] || NaN);
-    ok(/→ \d+ sets?/.test(st) && /Done sets are never touched/.test(st) && (est <= 15 || /Still over/.test(st)), '10. Short on time at 15 minutes lists the sets it takes off and fits 15 minutes', st.slice(0, 300));
+    ok(/→ \d+ sets?|Skip [A-Z]/.test(st) && /Done sets are never touched/.test(st) && (est <= 15 || /Still over/.test(st)), '10. Short on time at 15 minutes lists the sets or exercises it takes off (from "Planned: ~25 min", 2.32 skips Lat Pulldown and keeps the row whole) and fits 15 minutes', st.slice(0, 300));
     await page.click('#modal [data-act="shortApply"]'); await wait(200);
     await H.type('w', 0, 0, 135); await H.type('r', 0, 0, 10); if (!(await H.draft()).ex[0].sets[0].done) await H.tick(0, 0);
     const dt = await H.draft();
