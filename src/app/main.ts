@@ -264,6 +264,7 @@ import {
   setShort,
   setStr,
   sizeRows,
+  sizeWhat,
   tonnageNow,
   weekPlan
 } from './display';
@@ -677,6 +678,7 @@ function start(): void {
     fillSets,
     lastNoteOf,
     sizeRows,
+    sizeWhat,
     sessionMuscleSets,
     sessionCapNote: (d: Parameters<typeof sessionCapNote>[0]) => markupOf(sessionCapNote(d)),
     routineClutter,

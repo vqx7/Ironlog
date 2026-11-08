@@ -125,6 +125,7 @@ import {
   sessionLength,
   setShort,
   sizeRows,
+  sizeWhat,
   tonnageNow,
   topSetPt
 } from './display';
@@ -722,13 +723,9 @@ function sizeBody(): TemplateResult {
     one && r0
       ? html`<p class="small muted u-m0-0-4">${span(r0)}${c0 ? c0.replace(/^ Same stretch: /, ': ') : '.'}</p>`
       : nothing;
-  const what = (r: { weeks: number; sets: number; mus: readonly string[] }): string =>
-    r.weeks
-      ? `${r1(r.sets)} hard sets a week for ${andList(r.mus.map(m => ML[m] || m))}`
-      : 'no logged training in between';
   return html`${top}${rows.map(
     r =>
-      html`<div class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${ML2[r.k]}</b><span class="num">${Math.abs(r.d) < mdc(r.k) ? html`<span class="tag">within tape error</span> ` : nothing}${sgn(r.d)} ${LU()}</span></div><p class="small muted u-m2-0-0">${one ? '' : `${span(r)}, `}${what(r)}.${one ? '' : ctx(r)}</p></div>`
+      html`<div class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${ML2[r.k]}</b><span class="num">${Math.abs(r.d) < mdc(r.k) ? html`<span class="tag">within tape error</span> ` : nothing}${sgn(r.d)} ${LU()}</span></div><p class="small muted u-m2-0-0">${one ? '' : `${span(r)}, `}${sizeWhat(r)}.${one ? '' : ctx(r)}</p></div>`
   )}<p class="small muted hastip u-mt8" data-tip="Same spot, same time of day, before training, relaxed or flexed the same way each time. Under about 1 cm on arms, thighs, calves, and neck (1.5 cm on the chest) is within what a tape repeats to.">How to measure</p>`;
 }
 

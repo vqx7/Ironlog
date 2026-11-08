@@ -12,6 +12,7 @@ import { rec } from './records';
 import { REGION_WKS, REGION_WK_DEFAULT } from './layout';
 import {
   addDays,
+  andList,
   daysBetween,
   r1,
   today,
@@ -557,8 +558,9 @@ export function regionSrc(): RegionSrc {
 
 /* ---------- size check ---------- */
 
-/** Each tape site measured TAPE_WEEKS.from to TAPE_WEEKS.to weeks apart: the change, the stretch, and the hard sets a week its muscles got in between. */
-export function sizeRows(): {
+/** A tape site's row: its muscles, the two measurements' dates and change, and the hard sets a week its muscles got
+    in the weeks trained between them (`weeks`) of the weeks between them (`span`). */
+interface SizeRow {
   k: string;
   mus: readonly string[];
   from: string;
@@ -566,11 +568,14 @@ export function sizeRows(): {
   d: number;
   sets: number;
   weeks: number;
-}[] {
+  span: number;
+}
+
+/** Each tape site measured TAPE_WEEKS.from to TAPE_WEEKS.to weeks apart: the change, the stretch, and the hard sets a week its muscles got in between. */
+export function sizeRows(): SizeRow[] {
   const ms = [...state.measurements].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   const I = IDX();
-  const out: { k: string; mus: readonly string[]; from: string; to: string; d: number; sets: number; weeks: number }[] =
-    [];
+  const out: SizeRow[] = [];
   const at = (m: Measurement, k: string): number => {
     const v = rec(m)?.[k];
     return typeof v === 'number' ? v : 0;
@@ -591,17 +596,31 @@ export function sizeRows(): {
     if (!pr) continue;
     const { b, L } = pr;
     let weeks = 0,
+      span = 0,
       sum = 0;
     for (let wk = weekStart(b.date); wk <= weekStart(L.date); wk = addDays(wk, WEEK_DAYS)) {
+      span++;
       const ws = I.weekSets[wk];
       if (!ws) continue;
       const v = mus.reduce((a, m) => a + (ws[m] || 0), 0);
       weeks++;
       sum += v;
     }
-    out.push({ k, mus, from: b.date, to: L.date, d: at(L, k) - at(b, k), sets: weeks ? sum / weeks : 0, weeks });
+    out.push({ k, mus, from: b.date, to: L.date, d: at(L, k) - at(b, k), sets: weeks ? sum / weeks : 0, weeks, span });
   }
   return out;
+}
+
+/* What a tape row's muscles got between its two measurements. Like every weekly average (r31, avgWeeksIn), it is
+   per week trained, and when weeks went untrained it says so (NEW-81: "10 hard sets a week" over three weeks
+   trained of seven read as seven weeks of it). */
+/** The hard sets a week a tape row's muscles got, with the weeks trained of the weeks between when any went untrained. */
+export function sizeWhat(r: Pick<SizeRow, 'weeks' | 'span' | 'sets' | 'mus'>): string {
+  if (!r.weeks) return 'no logged training in between';
+  const base = `${r1(r.sets)} hard sets a week for ${andList(r.mus.map(m => ML[m] || m))}`;
+  return r.weeks < r.span
+    ? `${base}, in the ${r.weeks} week${r.weeks === 1 ? '' : 's'} you trained of ${r.span}`
+    : base;
 }
 
 /* ---------- what is planned on a date (Today, the week bar and the calendar, r59) ---------- */

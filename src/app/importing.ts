@@ -132,13 +132,44 @@ const MONTHS = 12,
 /** Spreadsheet day numbers count days since 30 Dec 1899 (day 0 in Excel and Sheets), read only between SERIAL.min (1954) and SERIAL.max (2119). */
 const SERIAL = { epoch: Date.UTC(1899, 11, 30), min: 20000, max: 80000 } as const;
 
-/* A date written any common way. Without a year it is the latest such day not
-   after today. Numbers are month first unless the first is over 12. */
-export function impDate(str: unknown, ref?: string): string | null {
-  const s = String(str || '')
+/** A date cell or line as impDate reads it: lower case, ordinals taken off ("3rd" is 3), trimmed. */
+function dateText(str: unknown): string {
+  return String(str || '')
     .toLowerCase()
     .replace(/(\d)(st|nd|rd|th)\b/g, '$1')
     .trim();
+}
+/** A date written in numbers alone, day and month in either order, with or without the year (10/2, 16.10.2026). */
+const NUM_DATE = /\b(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b/;
+/** A date with the year first (2026-10-16), which is never read day first. */
+const YEAR_FIRST = /(?<!\d)(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)/;
+
+/* One file, one way of writing dates (NEW-80): 02/10/2026 is 10 February in a month-first file and 2 October in a
+   day-first one, and read alone it is taken month first. A file whose dates include one that can only be day
+   first (16/10) and none that can only be month first (10/16) is day first throughout; any other file is read
+   date by date, as before. */
+/** 'dm' when a file's dates show it is written day first, else undefined. */
+function impDateOrder(strs: readonly unknown[]): 'dm' | undefined {
+  let dm = 0,
+    md = 0;
+  for (const x of strs) {
+    const s = dateText(x);
+    if (YEAR_FIRST.test(s)) continue;
+    const g = s.match(NUM_DATE);
+    if (!g) continue;
+    const a = +(g[1] || 0),
+      b = +(g[2] || 0);
+    if (a > MONTHS && b <= MONTHS) dm++;
+    else if (b > MONTHS && a <= MONTHS) md++;
+  }
+  return dm > 0 && md === 0 ? 'dm' : undefined;
+}
+
+/* A date written any common way. Without a year it is the latest such day not
+   after today. Numbers are month first unless the first is over 12, or the
+   file they come from is day first (order, from impDateOrder). */
+export function impDate(str: unknown, ref?: string, order?: 'dm'): string | null {
+  const s = dateText(str);
   if (!s) return null;
   const t = ref || today();
   const ty = +yearOf(t);
@@ -153,23 +184,21 @@ export function impDate(str: unknown, ref?: string): string | null {
     return x;
   };
   const yy = (y: number) => (y < CENTURY ? Y2K + y : y);
-  let g = s.match(/(?<!\d)(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)/);
+  let g = s.match(YEAR_FIRST);
   if (g) {
     const [, y, mo, d] = g;
     return mk(+y, +mo, +d);
   }
-  g = s.match(/\b(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b/);
+  g = s.match(NUM_DATE);
   // A date more than IMPORT_YEARS back is not a training log (10/10/10 is three sets of 10).
   if (g) {
     const [, ga, gb, gy] = g;
-    let a = +ga,
+    const a = +ga,
       b = +gb;
-    let m = a,
-      d = b;
-    if (a > MONTHS && b <= MONTHS) {
-      m = b;
-      d = a;
-    }
+    // Month first, unless the first number can only be a day, or the file is read day first (impDateOrder).
+    const dayFirst = (a > MONTHS && b <= MONTHS) || (order === 'dm' && b <= MONTHS);
+    const m = dayFirst ? b : a,
+      d = dayFirst ? a : b;
     const x = gy ? mk(yy(+gy), m, d) : noYear(m, d);
     return x && +yearOf(x) >= ty - IMPORT_YEARS ? x : null;
   }
@@ -530,13 +559,13 @@ export function impGuess(name: unknown): { primary: string; equip: string; assis
    17:29"), across midnight too. A bare number says no unit, so it is left
    out rather than guessed. Null when nothing reads. */
 /** A workout's minutes from a duration cell, or from its start and end cells, or null. */
-function impSpan(dur: string, start: string, end: string): number | null {
+function impSpan(dur: string, start: string, end: string, order?: 'dm'): number | null {
   const d = String(dur || '').toLowerCase();
   const h = d.match(/(\d+(?:\.\d+)?)\s*h/),
     m = d.match(/(\d+)\s*m(?!s)/);
   if (h || m) return (h ? +h[1] * HOUR_MIN : 0) + (m ? +m[1] : 0);
   const at = (x: string): number | null => {
-    const day = impDate(x),
+    const day = impDate(x, undefined, order),
       t = String(x || '').match(/(\d{1,2}):(\d{2})(?!.*\d:\d)/);
     if (!day || !t) return null;
     const [, hh, mm] = t;
@@ -718,13 +747,16 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     const n = parseFloat(String(v == null ? '' : v).replace(',', '.'));
     return isFinite(n) ? n : null;
   };
+  // The file's way of writing dates, from its date column (NEW-80).
+  const dc = map.date;
+  const order = dc == null ? undefined : impDateOrder(rows.slice(1).map(r => r[dc]));
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
     // Ironlog's own export guards a cell a spreadsheet would read as a formula (csvGuard); read back, the guard comes off.
     const raw = (f: string) => (map[f] == null ? '' : String(r[map[f]] == null ? '' : r[map[f]]).trim());
     const cell = (f: string) => (ours ? csvUnguard(raw(f)) : raw(f));
     let date: string | null = cell('date');
-    date = date ? impDate(date) || impSerial(num(date)) : lastDate;
+    date = date ? impDate(date, undefined, order) || impSerial(num(date)) : lastDate;
     const ex: string | null = cell('ex') || lastEx;
     if (!date || !ex) {
       skipped++;
@@ -811,7 +843,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     const ss = S.get(k)!;
     const sn = ours ? at(r, cNote) : cell('snote');
     if (!ss.note && sn) ss.note = sn;
-    const dm = ours ? num(at(r, cMin)) : impSpan(strong ? cell('dur') : '', cell('date'), cell('end'));
+    const dm = ours ? num(at(r, cMin)) : impSpan(strong ? cell('dur') : '', cell('date'), cell('end'), order);
     if (ss.durMin == null && dm != null && dm >= 1 && dm <= LIMITS.minutes) ss.durMin = Math.round(dm);
     if (/^(yes|true|1|y)$/i.test(String(cell('deload') || '').trim())) ss.deload = true;
     if (!ss.items.has(ex))
@@ -1016,7 +1048,7 @@ interface TextItem {
 /** Notes read as sessions: a date line starts a day, an exercise's sets kept as text until its exercise is known. */
 export function impFromText(text: unknown): ImpRead {
   const lines = String(text).split(/\r?\n/);
-  const S: { date: string | null; name: string; items: TextItem[] }[] = [];
+  const S: { date: string | null; name: string; items: TextItem[]; line?: string }[] = [];
   let cur: (typeof S)[number] | null = null,
     ex: TextItem | null = null,
     pend: { name: string; raw: string } | null = null,
@@ -1028,9 +1060,13 @@ export function impFromText(text: unknown): ImpRead {
      asks. */
   const named = { kg: false, lb: false };
   const unread: string[] = [];
-  const day = (date: string | null, name: string): { date: string | null; name: string; items: TextItem[] } => {
+  const day = (
+    date: string | null,
+    name: string,
+    line?: string
+  ): { date: string | null; name: string; items: TextItem[]; line?: string } => {
     if (pend) unread.push(pend.raw);
-    const d = { date, name: name || '', items: [] };
+    const d = { date, name: name || '', items: [], ...(line ? { line } : {}) };
     cur = d;
     S.push(d);
     ex = null;
@@ -1082,7 +1118,7 @@ export function impFromText(text: unknown): ImpRead {
         .replace(/[,:;\-–|]+/g, ' ')
         .trim();
       if (!/\d/.test(rest)) {
-        day(dt, rest);
+        day(dt, rest, L);
         continue;
       }
     }
@@ -1165,6 +1201,9 @@ export function impFromText(text: unknown): ImpRead {
   }
   const last: { name: string; raw: string } | null = pend;
   if (last) unread.push(last.raw);
+  // The notes' way of writing dates, from the lines read as dates (NEW-80): a day-first file is read again day first.
+  const order = impDateOrder(S.flatMap(x => (x.line ? [x.line] : [])));
+  if (order) for (const x of S) if (x.line) x.date = impDate(x.line, undefined, order) || x.date;
   return {
     sessions: S.filter(x => x.items.length).map(x => ({ date: x.date, name: x.name, items: x.items })),
     unit: named.kg && named.lb ? null : hint,

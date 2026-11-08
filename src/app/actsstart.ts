@@ -519,6 +519,8 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         deload,
         light: false,
         limited: true,
+        // What this gym has, for Pick for me and Swap in this session (NEW-79); all of it on limits nothing.
+        ...(eq.size < EQUIP.length ? { equip: EQUIP.map(([k]) => k).filter(k => eq.has(k)) } : {}),
         cardio: [],
         notes: [deload ? DELOAD_NOTE : '', note].filter(Boolean).join(' '),
         editingId: null,

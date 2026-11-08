@@ -35,6 +35,7 @@ import {
   BANDS,
   CARDIO,
   CWHEN,
+  EQUIP,
   JK,
   MEAS,
   MK,
@@ -788,13 +789,21 @@ function cleanRoutine(r0: unknown, ri: number): Routine {
    one it has (a field a newer build saved among them) stays where it
    stands: the draft keeps the key order and the very object it came as. */
 /** A workout in progress, cleaned field by field (above). */
-/** A draft field this build writes only when valid (its pictures): an invalid one is dropped, not kept as unknown. */
-const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics']);
+/** A Limited equipment session's equipment: the library's kinds it names, in the library's order, or absent. */
+function equipList(v: unknown): string[] | undefined {
+  const a = arr(v);
+  if (!a) return undefined;
+  const out = EQUIP.map(([k]) => k).filter(k => a.includes(k));
+  return out.length ? out : undefined;
+}
+/** The draft fields this build writes only when valid (its pictures, its equipment): an invalid one is dropped, not kept as unknown. */
+const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics', 'equip']);
 function cleanDraft(d: Rec, date: string): DraftLike {
   const startedAt = Number(d.startedAt),
     durMin = Number(d.durMin);
   // The workout's pictures (r66, 373): kept when valid, else the field goes, so a draft without any keeps its shape.
   const pics = picIds(d.pics);
+  const equip = equipList(d.equip);
   /* The fields this build knows, worked out first; then the draft is cleaned in place, as before 2.28 (its own fields
      keep their order and the object stays the one given), but a field it does not know is kept only within a
      record's limits (2.28, 2.27-F2: every unknown field was kept at any size, and a damaged backup could fill the
@@ -813,6 +822,8 @@ function cleanDraft(d: Rec, date: string): DraftLike {
     deload: !!d.deload,
     light: !!d.light,
     limited: d.limited === true ? true : undefined,
+    // The equipment a Limited equipment session keeps to (NEW-79), as the library names it; absent when there is none.
+    ...(equip ? { equip } : {}),
     ...(pics ? { pics } : {}),
     free: d.free === true ? true : undefined,
     // Started as its day's second workout (r68, 366 (c)).
