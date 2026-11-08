@@ -70,7 +70,9 @@
   /* The progress gradient (2.33, V's pick from the Stitch drafts): only on progress (the week ring, a session's bar, the
      rest timer, a lift's chart line) and the profile photo's ring, never on a button or a card. The same in every theme
      and accent, so it reads as progress rather than as the accent. */
-  --holo-1:#ff6a2b; --holo-2:#ec4899; --holo-3:#7c4dff; --holo-4:#00c8ff;
+  /* On a light page the gradient takes the accents' deeper line shades, each 3:1 or more against a light card (tests/r21.js);
+     the dark theme takes the bright ones. */
+  --holo-1:#c2410c; --holo-2:#be185d; --holo-3:#5b2fe0; --holo-4:#0071a1;
   --holo:linear-gradient(90deg,var(--holo-1),var(--holo-2) 40%,var(--holo-3) 70%,var(--holo-4));
   --r-lg:22px; --r-md:14px; --r-sm:12px;
   --head-h:52px;
@@ -93,6 +95,7 @@
     --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.045) 38%,rgba(255,255,255,.095) 47%,rgba(255,255,255,.03) 56%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1d2025,#121417 62%,#16191d);
     --hero-rim:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.4);
     --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+    --holo-1:#ff6a2b; --holo-2:#ec4899; --holo-3:#7c4dff; --holo-4:#00c8ff;
 
     --shadow:none;
     color-scheme:dark;
@@ -111,6 +114,7 @@
   --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.045) 38%,rgba(255,255,255,.095) 47%,rgba(255,255,255,.03) 56%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1d2025,#121417 62%,#16191d);
   --hero-rim:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.4);
   --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+  --holo-1:#ff6a2b; --holo-2:#ec4899; --holo-3:#7c4dff; --holo-4:#00c8ff;
 
   --shadow:none;
   color-scheme:dark;

@@ -193,7 +193,9 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const hexLum = h => lum('rgb(' + [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)).join(',') + ')');
   ok(hexLum(hl.bg) > 0.9 && lum(hl.h2) < 0.05, 'light theme: the Today card is light with dark text', hl);
   ok(hexLum(hd.bg) < 0.02 && lum(hd.h2) > 0.8, 'dark theme: the Today card stays dark with light text', hd);
-  ok((1.05) / (lum(hl.ring) + 0.05) >= 3, 'light theme: the week ring keeps 3:1 against the card', hl.ring);
+  // Since 2.33 the ring is drawn with the progress gradient (ST-3): each of its colours keeps 3:1 against the card.
+  const stops = await ev(() => { const L = window.__ironlog; L.state.settings.theme = 'light'; L.render(); return [...document.querySelectorAll('#holoG stop')].map(s => getComputedStyle(s).stopColor); });
+  ok(/url\(.*#holoG.*\)/.test(hl.ring) && stops.length === 4 && stops.every(c => (1.05) / (lum(c) + 0.05) >= 3), 'light theme: the week ring keeps 3:1 against the card, every colour of its gradient', { ring: hl.ring, stops });
   await ev(() => { const L = window.__ironlog; L.state.settings.theme = 'light'; L.render(); });
   // Since r71 the inked look is the compact pill's; the rest card V approved (364 b-1) follows the theme, light with dark
   // text in the light theme.
