@@ -2,7 +2,7 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: 2026-11-07. Live: version 2.30 (build 2026.11.06-r76, pull request #75, merged 2026-11-07). Next: 2.31 on branch r78 (text size and the language pass).
+Last updated: 2026-11-07. Live: version 2.31 (build 2026.11.07-r77, pull request #76, merged 2026-11-07). Next: 2.32, scope waiting for your go.
 
 ## Now, in this order
 
@@ -21,6 +21,7 @@ Last updated: 2026-11-07. Live: version 2.30 (build 2026.11.06-r76, pull request
    - B4 again: paste the function below over the old one and Deploy. Its webhook secret is now compared in a way a caller cannot time (2.27-F14).
    - Then E2 (2 minutes, read-only) if you have not run it yet: it shows what your live project actually has.
 1k. A39 (2.29) and A40 (2.30): 2.29 (#74) was closed unmerged; everything in it shipped in 2.30, pull request #75, merged by you on 2026-11-07 11:25 Los Angeles and live (build 2026.11.06-r76). Nothing to do.
+1l. A41 (2.31): pull request #76, merged by you on 2026-11-07. Nothing to do.
 2. Problem reports: done (2026-10-30, you). B4's r64 code is deployed, B1a has been run, and a test report from the preview became an issue in `ironlog-feedback`, which confirms B5. See Done.
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
 4. D6: delete the old branches and stop them piling up (2 minutes, below).
