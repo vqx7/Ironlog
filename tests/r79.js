@@ -60,12 +60,12 @@ const button = page => page.evaluate(() => new Promise(res => {
     const D = await app();
     const pg = D.page;
     await pg.click('#saveState'); await wait(200);
-    ok(await pg.evaluate(() => !!document.querySelector('#modal #menuPhoto input[type="file"][data-photo]')), '1. the menu offers a profile photo');
+    ok(await pg.evaluate(() => !!document.querySelector('#modal .sheet-h #menuPhoto input[type="file"][data-photo]') && document.querySelector('#modal #menuPhoto').getAttribute('aria-label') === 'Add a profile photo'), '1. the menu offers a profile photo in its header');
     await pg.setInputFiles('#modal #menuPhoto input[data-photo]', await pngFile(pg, 900, 600)); await photoIn(pg); await wait(150);
     const b = await button(pg);
     ok(b.photo && b.ph && b.src === 'data:image/jpeg;base64,' && b.w === 256 && b.h === 256, '1. the photo shows in the menu button, drawn again as a 256 px square JPEG', b);
     ok(/^Menu\. /.test(b.label || ''), '1. the button is still named the menu, with the save state', b.label);
-    ok(await pg.evaluate(() => !!document.querySelector('#modal #menuPhoto img') && /Change/.test(document.querySelector('#modal #menuPhoto').innerText)), '1. the open menu shows it at once, with Change');
+    ok(await pg.evaluate(() => !!document.querySelector('#modal .sheet-h #menuPhoto img') && document.querySelector('#modal #menuPhoto').getAttribute('aria-label') === 'Change your profile photo' && !!document.querySelector('#modal .sheet-h [data-act="photoDel"]')), '1. the open menu shows it at once in its header, tapped to change it, with Remove photo beside it');
     const kept = await pg.evaluate(() => { const L = window.__ironlog; const v = localStorage.getItem(L.KEY + '.photo') || ''; return { key: v.startsWith('data:image/jpeg;base64,'), size: v.length, inLog: /data:image|"photo"/.test(JSON.stringify(L.state)), inSave: /data:image/.test(localStorage.getItem(L.KEY) || '') }; });
     ok(kept.key && kept.size < 120000 && !kept.inLog && !kept.inSave, '1. it is kept under its own key on this phone, small, and nowhere in the log or its save (so never in a backup or the account)', kept);
     // Remove asks first, and takes it away only on the answer.
@@ -249,9 +249,11 @@ const button = page => page.evaluate(() => new Promise(res => {
       ok(bar.length === 2 && (await fit()), `5. (${th}) at 320 px Today's photo line fits, with no sideways scroll`, bar);
       ok(bar.length === 2 && bar.every(([w, h]) => w >= 44 && h >= 44), `5. (${th}) its Add photo and Not now are 44 px targets`, bar);
       await pg.click('#saveState'); await wait(200);
-      const menu = await tgt('#modal #menuPhoto .btn');
-      ok(menu.length >= 1 && menu.every(([w, h]) => w >= 44 && h >= 44) && (await fit()), `5. (${th}) the menu's photo row fits at 320 px, its buttons 44 px targets`, menu);
+      const menu = await tgt('#modal #menuPhoto');
+      ok(menu.length >= 1 && menu.every(([w, h]) => w >= 44 && h >= 44) && (await fit()), `5. (${th}) the menu's photo fits its header at 320 px, a 44 px target`, menu);
       await pg.setInputFiles('#modal #menuPhoto input[data-photo]', await pngFile(pg, 500, 500)); await photoIn(pg);
+      const head = await pg.evaluate(() => { const h = document.querySelector('#modal .sheet-h'), d = h && h.querySelector('[data-act="photoDel"]'); return { fits: h ? h.scrollWidth <= h.clientWidth + 1 : false, del: d ? Math.round(d.getBoundingClientRect().height) : 0 }; });
+      ok(head.fits && head.del >= 44, `5. (${th}) with a photo, the menu's header fits Remove photo at 320 px, a 44 px target`, head);
       const btn = await tgt('#saveState');
       ok(btn[0] && btn[0][0] >= 34 && (await fit()), `5. (${th}) with a photo, the header still fits at 320 px`, btn);
       ok(!D.errors.length, `5. (${th}) no page errors`, D.errors);
