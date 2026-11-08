@@ -87,7 +87,8 @@
 //      10 x 3, the bench's third set missed (0 reps ticked); finishing it brings the raises up in one glide, never
 //      a jump to the session's title; 20 lb raises for 11 at 2 in reserve after 10 are a PR on the row, in the
 //      toast, in the recap and in the counted list alike; and the next week the bench repeats its target, 31+ reps
-//      at 185, as after any weaker session, and never asks more weight because of the miss.
+//      at 185, as after any weaker session, and never asks more weight because of the miss; History then says the
+//      session's one PR in gold and marks the raises, not the bench (2.33, ST-4).
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
 const { open, engine } = require('./h');
@@ -698,16 +699,18 @@ async function finish() {
     await page.click('#modal .pcard.best [data-act="startSession"]:not([data-light])'); await wait(250);
     const d = await H.draft();
     ok(d && d.dayName === 'Pull' && d.ex.map(b => b.exId).join() === 'bbRow,latPulldown', '10. Start on the best fit begins the Pull day', d && { day: d.dayName, ex: d.ex.map(b => b.exId) });
-    // Short on time at 15 minutes with one set done: the trim keeps that set, and what is left fits or says it is still over.
-    await H.type('w', 0, 0, 135); await H.type('r', 0, 0, 10); if (!(await H.draft()).ex[0].sets[0].done) await H.tick(0, 0);
+    /* Short on time at 15 minutes, as the session starts: what is left fits or says it is still over. (Until 2.32 it
+       was opened with one set done, at "Planned: ~15 min", where 15 trimmed only because the trim counted minutes
+       its own way, NEW-77; 2.32 says everything fits there. Done sets are kept by every trim, tests/r78.js section 2.) */
     await page.click('#view [data-act="shortOpen"]'); await wait(150);
     await page.click('#modal [data-act="shortPick"][data-v="15"]'); await wait(150);
     const st = await ev(() => document.getElementById('modal').innerText.replace(/\s+/g, ' '));
     const est = +((st.match(/~(\d+) min after the change/) || [])[1] || NaN);
-    ok(/→ \d+ sets?/.test(st) && /Done sets are never touched/.test(st) && (est <= 15 || /Still over/.test(st)), '10. Short on time at 15 minutes lists the sets it takes off and fits 15 minutes', st.slice(0, 300));
+    ok(/→ \d+ sets?|Skip [A-Z]/.test(st) && /Done sets are never touched/.test(st) && (est <= 15 || /Still over/.test(st)), '10. Short on time at 15 minutes lists the sets or exercises it takes off (from "Planned: ~25 min", 2.32 skips Lat Pulldown and keeps the row whole) and fits 15 minutes', st.slice(0, 300));
     await page.click('#modal [data-act="shortApply"]'); await wait(200);
+    await H.type('w', 0, 0, 135); await H.type('r', 0, 0, 10); if (!(await H.draft()).ex[0].sets[0].done) await H.tick(0, 0);
     const dt = await H.draft();
-    ok(dt.ex[0].sets[0].done && dt.ex[0].sets[0].r === 10 && dt.ex.every(b => b.sets.filter(x => !x.warm).length >= 2), '10. Trim the session keeps the set done and at least 2 sets of each lift (SHORT_MIN_SETS)', dt.ex.map(b => [b.exId, b.sets.length, b.sets[0].done]));
+    ok(dt.ex[0].sets[0].done && dt.ex[0].sets[0].r === 10 && dt.ex.every(b => b.sets.filter(x => !x.warm).length >= 2), '10. Trim the session keeps at least 2 sets of each lift (SHORT_MIN_SETS), and the first set is then logged', dt.ex.map(b => [b.exId, b.sets.length, b.sets[0].done]));
     // Every set left done, then Pick for me inside the session: never a chest lift (recovering, and already at its target this week).
     for (let b = 0; b < dt.ex.length; b++) for (let s = 0; s < dt.ex[b].sets.length; s++) { if (dt.ex[b].sets[s].done) continue; await H.type('w', b, s, b === 0 ? 135 : 120); await H.type('r', b, s, 10); const now = await H.draft(); if (!now.ex[b].sets[s].done) await H.tick(b, s); }
     await ev(() => window.__ironlog.ACT.pickEx({ dataset: {} })); await wait(200);
@@ -1091,6 +1094,12 @@ async function finish() {
     const fin = await H.finish();
     const list = await ev(d => window.__ironlog.IDX().prs.filter(p => p.date === d && p.big).map(p => p.exId), T0);
     ok(/PR/.test(fin.recap.text || '') && list.join() === 'dbLateral', '16. the recap names the raises\' PR, and the counted list holds it and nothing for the bench', { list, recap: (fin.recap.text || '').slice(0, 300) });
+    // 2.33 (ST-4): History, opened by its tab, says the session's one PR in gold and marks the raises, not the bench.
+    await page.click('#tabs [data-tab="history"]'); await wait(200);
+    await page.click('#view .hitem [data-act="histToggle"]'); await wait(200);
+    const hist = await ev(() => { const it = document.querySelector('#view .hitem'); const cup = it.querySelector('.prb'); return { tag: cup ? cup.getAttribute('aria-label') : null, marked: [...it.querySelectorAll('.panel p.hpr b')].map(b => b.innerText.trim()) }; });
+    ok(hist.tag === '1 PR smashed' && hist.marked.length === 1 && /Lateral/.test(hist.marked[0]), '16. History says the session\'s one PR in gold, beside the raises and not the bench (2.33)', hist);
+    await page.click('#tabs [data-tab="today"]'); await wait(150);
     // A week on: the bench's bad day repeats its target, 185 lb and 31+, as after any weaker session.
     await H.day(addD(T0, 7));
     await H.start();

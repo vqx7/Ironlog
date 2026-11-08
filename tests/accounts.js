@@ -180,6 +180,10 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(/Synced to your account and saved on this device/i.test(await A.ev(() => document.getElementById('view').innerText)) && !/Claude account/i.test(await A.ev(() => document.getElementById('view').innerText)), 'Settings says "your account", never "Claude account", in the installed app');
   await A.ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
   ok(!(await A.ev(() => document.getElementById('acctBar'))), 'signed in: no prompt on Today');
+  // 2.33 (ST-2): signed in on the built app, with its own account script, Today offers a profile photo once; Not now ends it.
+  ok(/^Add a profile photo\./.test((await text(A, '#photoBar')) || ''), 'signed in: one line on Today offers a profile photo (2.33)', await text(A, '#photoBar'));
+  await A.page.click('#photoBar [data-act="photoLater"]'); await wait(150);
+  ok(!(await A.ev(() => document.getElementById('photoBar'))), 'and Not now hides it');
 
   // ---- 5. A second phone signs in and gets the log; changes flow both ways.
   const B = await device();

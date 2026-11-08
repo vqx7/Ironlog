@@ -9,7 +9,8 @@ import { today } from './util';
 import { CARDIOL, CWHENL, MK, ML, noE1 } from './library';
 import { DSEC_ALIAS, HIDEABLE, HIDEABLE_KEYS } from './layout';
 import { loadWords } from './loads';
-import { log } from './storage';
+import { PHOTO_ASKED, log, prefSet } from './storage';
+import { photoClear, photoSet } from './photo';
 import { plainTemplate } from './normalize';
 import { EX, U, fmtW, loadOf, noBody, rirEst, sortedSessions } from './live';
 import { e1 } from './formulas';
@@ -17,7 +18,7 @@ import { state, ui } from './store';
 import { act, undoStep } from './act';
 import { isStandalone, installKind } from './env';
 import { distShow, distU } from './display';
-import { closeModal, confirmBox, openModal, render, rerenderKeepScroll } from './page';
+import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScroll, setSaveState } from './page';
 import { stopTimer, timerAdd, timerSub } from './timer';
 import { toast, toastHide } from './toast';
 import { obActive } from './today';
@@ -268,8 +269,58 @@ export function exportCSV(): Promise<void> | undefined {
   );
 }
 
+/* The profile photo (2.33): what shows it is redrawn once it is kept or
+   removed, the menu button, an open menu and Today's line. Once a photo is
+   added, Today's line is answered for good on this phone. */
+/** Redraws what shows the profile photo. */
+function photoShown(): void {
+  setSaveState();
+  if (ui.modal && ui.modal.kind === 'menu') renderModal();
+  rerenderKeepScroll();
+}
+/** A photo picked in a profile photo field (the menu or Today's line): kept and shown; true when the field was one. */
+export function photoChange(t: EventTarget | null): boolean {
+  if (!(t instanceof HTMLInputElement) || t.type !== 'file' || t.dataset.photo === undefined) return false;
+  const f = t.files && t.files[0];
+  t.value = '';
+  if (!f) return true;
+  photoSet(f).then(
+    why => {
+      if (why) {
+        toast(why);
+        return;
+      }
+      prefSet(PHOTO_ASKED, '1');
+      photoShown();
+      toast('Photo added');
+    },
+    (e: unknown) => {
+      log('photo-set', e);
+      toast('This phone could not prepare the photo.');
+    }
+  );
+  return true;
+}
+
 /** The app's own taps, by data-act. */
 export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
+  photoDel() {
+    confirmBox(
+      'Remove your profile photo?',
+      'It is kept on this phone only, so it cannot be brought back. You can add a new one any time.',
+      'Remove',
+      () => {
+        photoClear();
+        photoShown();
+        toast('Photo removed');
+      },
+      true
+    );
+  },
+  photoLater() {
+    prefSet(PHOTO_ASKED, '1');
+    rerenderKeepScroll();
+  },
   iconHow() {
     openModal({ kind: 'icon' });
   },

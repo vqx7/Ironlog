@@ -10,9 +10,9 @@ import { act } from './act';
 import { isCompound } from './library';
 import { planItemOf, move, fixSupersets, partOf, DEFAULT_PLAN } from './routines';
 import { min5, rangeWords, MISSED_SAID } from './format';
-import { e1, prSameLoad, setupSecs, setSecs, BACK_DAYS, isMissed, prScoreOf } from './formulas';
+import { e1, prSameLoad, BACK_DAYS, isMissed, prScoreOf } from './formulas';
 import { PLATES_LB, PLATES_KG, LB, KM_MI, SMALL_PLATE } from './units';
-import { r1, addDays, today, uid, numIn, EPS, EPS_SAME, HUNDREDTHS, MINUTE_S, WEEK_DAYS, r3 } from './util';
+import { r1, addDays, today, uid, numIn, EPS, EPS_SAME, HUNDREDTHS, WEEK_DAYS, r3 } from './util';
 import { platesPerSide } from './gym';
 import { loadWords } from './loads';
 import { BAND_WORDS } from './prs';
@@ -33,7 +33,6 @@ import {
   bwRefLoad,
   IDX,
   liftRead,
-  pace,
   dayMinutes,
   calStats,
   daysOff,
@@ -46,10 +45,11 @@ import {
   lightZero,
   exName,
   trimPlan,
+  sessLeftMin,
   fromD
 } from './live';
 import { state, ui } from './store';
-import { lastDup, effTarget, blockRest, newRow, greyW, effW, blockDone } from './session';
+import { lastDup, effTarget, newRow, greyW, effW, blockDone } from './session';
 import type { BlkRef } from './session';
 import type { DraftBlock, DraftSet, Routine, PlanItem, NextSetsAdj, Session } from './types';
 import type { ExPoint, ExerciseLike } from './model';
@@ -542,26 +542,10 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
   return { text: heavyTxt ? `${base}. ${heavyTxt}` : base, beat: (planned > 0 && hit >= planned) || heavyBeat };
 }
 
-/* Short on time: minutes of lifting left in the session, counted like the
-   plan estimate: 40 seconds a set plus its rest (none inside a superset),
-   and 3 minutes of setup for an exercise not started yet. No rest is taken
-   after the very last set, the same as the plan's estimate. */
+/* Minutes of lifting left in the session: the one count Short on time trims against (sessLeftMinIn, pick.ts). */
 /** Minutes of lifting left in a session, at the lifter's pace. */
 export function remainMin(d: Draft): number {
-  let s = 0,
-    cN = 0,
-    lastRest = 0;
-  d.ex.forEach((b, bi) => {
-    const ex = EX(b.exId);
-    const su = setupSecs(ex, cN);
-    if (isCompound(ex)) cN++;
-    const n = b.sets.filter(x => !x.done && !x.warm).length;
-    if (!n) return;
-    const r = blockRest(d, bi);
-    s += n * (setSecs(ex, b.plan) + r) + (b.sets.some(x => x.done) ? 0 : su);
-    lastRest = r;
-  });
-  return Math.round((Math.max(0, s - lastRest) * pace()) / MINUTE_S);
+  return sessLeftMin(d);
 }
 
 /* Minutes left for the header: none once every set is done (min5 shows at least 1, so 0 left read "about 1 min left"). */

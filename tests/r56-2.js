@@ -90,7 +90,8 @@ const ses = (id, date, exId, rr, sets, x, bx) => Object.assign({ id, date, dayId
       L.ACT.mClose(); L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.render(); await pause();
       const view = document.getElementById('view');
       const tile = [...view.querySelectorAll('.kpi')].find(k => /Best estimate/.test(k.textContent));
-      const rows = [...view.querySelectorAll('table.t tr')].filter(tr => tr.querySelector('.tag.green') && /PR/.test(tr.querySelector('.tag.green').textContent)).map(tr => tr.cells[0].textContent.replace(/\s*PR.*$/s, '').trim());
+      // A PR's tag is gold since 2.33 (green before), the colour kept for PRs on every screen.
+      const rows = [...view.querySelectorAll('table.t tr')].filter(tr => tr.querySelector('.tag.gold') && /PR/.test(tr.querySelector('.tag.gold').textContent)).map(tr => tr.cells[0].textContent.replace(/\s*PR.*$/s, '').trim());
       const listed = L.IDX().prs.filter(p => p.big && p.exId === 'bench').map(p => L.fmtDate(p.date));
       return { sheet: (sheet.match(/Best estimate ([\d.]+)/) || [])[1] || null, tile: tile ? tile.querySelector('.v').textContent.replace(/[^\d.]/g, '') : null, board: (view.textContent.match(/best est ([\d.]+)/) || [])[1] || null, rows, listed };
     });

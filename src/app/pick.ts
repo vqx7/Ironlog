@@ -32,7 +32,6 @@ import {
 } from './model';
 import type { Day, DraftBlock, Exercise, Plan, Routine } from './types';
 import type { DraftLike } from './session';
-import { blockRest } from './session';
 import { IDXIn, PICK_DAYS, isHardIn } from './analytics';
 import { daysOffIn } from './engine';
 import { planForIn } from './plans';
@@ -52,7 +51,7 @@ import {
 import { dayParts, dayWorkout, nextTrainIdx, partOf, sessDayIdx } from './routines';
 import { sessCmp } from './records';
 import { addDays, andList, daysBetween, r1, MINUTE_S, PERCENT, WEEK_DAYS } from './util';
-import { agoTxt } from './format';
+import { agoTxt, min5 } from './format';
 
 /** Recovery after a dose (Recovery tiers, docs/EVIDENCE.md): the hard sets a
     dose needs, the days each tier needs, what adds to them, and how far back
@@ -492,7 +491,7 @@ interface ExPick {
 /** The exercises to add next to a session, best first, each with the plan and sets it would be added with (and `full`, the sets before a deload or lighter day halved them, for Finish's offer to the routine, r54). */
 export function rankExercisesIn(
   M: Model,
-  d: Pick<DraftLike, 'ex' | 'date' | 'dayId' | 'deload' | 'light' | 'part'>
+  d: Pick<DraftLike, 'ex' | 'date' | 'dayId' | 'deload' | 'light' | 'part' | 'equip'>
 ): (ExPick & { plan: Plan; full: number })[] {
   const I = IDXIn(M);
   // Focus muscles in the profile (r44) count as priorities here.
@@ -511,7 +510,8 @@ export function rankExercisesIn(
   const best: Record<string, ExPick> = {};
   const need = (m: string): number => (!hasTargetIn(M, m) ? 0 : Math.max(0, bandOfIn(M, m)[0] - (r7[m] || 0)));
   for (const e of M.s.exercises) {
-    if (e.archived || inS.has(e.id) || exInjuryIn(M, e)) continue;
+    // A Limited equipment session offers only what the gym has (NEW-79).
+    if (e.archived || inS.has(e.id) || exInjuryIn(M, e) || (d.equip && !d.equip.includes(e.equip))) continue;
     const m = e.primary;
     const hi = bandOfIn(M, m)[1];
     const r7m = r7[m] || 0;
@@ -733,32 +733,65 @@ export function recentExIdsIn(M: Model, n: number): string[] {
 
 /* ---------- Short on time ---------- */
 
-/** One exercise of a session as Short on time weighs it: its sets left and done, the sets it keeps, its seconds a set, its rest, its setup, and its rank. */
+/* Minutes of lifting left in a session, at the lifter's pace: each exercise's sets still to do with its seconds a set
+   and its rest, and its setup while none of its rows is ticked (the long one for the first two compounds done or
+   to do). No rest is counted after the very last set, nor between two exercises of one superset while the next of
+   them still has a set to do (a partner done or left out rests like any lift). The session's minutes left and Short on time both read this, so the time a trim fits to is
+   the time the session shows (NEW-77: two counts of one number disagreed by up to 3 minutes). setsOf gives each
+   exercise's sets to count; by default the work rows not yet ticked. */
+/** Minutes of lifting left in a session, with each exercise's sets to do given or read from its unticked work rows. */
+export function sessLeftMinIn(M: Model, d: { ex: readonly DraftBlock[] }, setsOf?: (bi: number) => number): number {
+  const n = (bi: number): number => {
+    const b = d.ex[bi];
+    return setsOf ? setsOf(bi) : b ? b.sets.filter(x => !x.done && !x.warm).length : 0;
+  };
+  let s = 0,
+    cN = 0,
+    lastRest = 0;
+  d.ex.forEach((b, bi) => {
+    const ex = EXIn(M, b.exId);
+    const su = setupSecs(ex, cN);
+    const k = n(bi);
+    const done = b.sets.some(x => x.done);
+    // A compound done or still to do warms the lifter up for the next; one skipped does not.
+    if (isCompound(ex) && (k > 0 || done)) cN++;
+    if (!k) return;
+    let nx = -1;
+    for (let j = bi + 1; j < d.ex.length && nx < 0; j++) if (n(j) > 0) nx = j;
+    const next = nx >= 0 ? d.ex[nx] : undefined;
+    const r = b.plan.ss && next && next.plan.ss === b.plan.ss ? 0 : +b.plan.rest || 0;
+    s += k * (setSecs(ex, b.plan) + r) + (done ? 0 : su);
+    lastRest = r;
+  });
+  return Math.round((Math.max(0, s - lastRest) * paceIn(M)) / MINUTE_S);
+}
+
+/** One exercise of a session as Short on time weighs it: its blank work rows (the ones a trim may take), the rows
+    of the lifter's (`done`, typed or ticked), of those the ones still to do (`typed`), whether it is under way, the
+    blank rows it keeps, and its rank. */
 interface TrimRow {
   bi: number;
   ex: ExerciseLike;
   undone: number;
   done: number;
+  typed: number;
   started: boolean;
   keep: number;
-  rest: number;
-  per: number;
-  su: number;
   score: number;
 }
 
-/* Trim to fit. Lowest priority first: sets come off down to SHORT_MIN_SETS
-   per exercise, then whole exercises not started yet drop out, then
-   exercises in progress finish with what is done. An exercise whose muscle
-   another kept exercise already trains goes before one that is the only
-   work for its muscle, so every muscle keeps at least one movement for as
-   long as possible (a fly does not cover a bench press: only a compound
-   covers a compound). Priority and lagging muscles are kept longest, then
-   main lifts, as the Short on time help promises, then the earlier
-   exercise, since a routine usually puts its main lifts first. Done sets are
-   never touched; a row typed but not ticked counts as done here, since
-   trimming takes only blank rows (`blank`, each block's rows as the session
-   screen's rowBlank reads them, handed in as data). */
+/* Trim to fit, then fill. A session fits when its minutes left, rounded as the sheet shows them (min5), are no more
+   than the time given, so "Planned: ~60 min" fits 60 (NEW-77). Lowest priority first: sets come off down to
+   SHORT_MIN_SETS per exercise, then whole exercises not started yet drop out, then exercises in progress finish
+   with what is done. An exercise whose muscle another kept exercise already trains goes before one that is the
+   only work for its muscle, so every muscle keeps at least one movement for as long as possible (a fly does not
+   cover a bench press: only a compound covers a compound). Priority and lagging muscles are kept longest, then
+   main lifts, as the Short on time help promises, then the earlier exercise, since a routine usually puts its
+   main lifts first. Dropping a whole exercise can free more time than was needed, so work cut then goes back
+   while the session still fits, in the reverse of the cuts (NEW-78, V: "should not be irrational"): an exercise
+   left out first, with SHORT_MIN_SETS sets, then single sets, the most important first. Done sets are never
+   touched; a row typed but not ticked stays and its time counts, since trimming takes only blank rows (`blank`,
+   each block's rows as the session screen's rowBlank reads them, handed in as data). */
 /** Short on time's trim of a session to so many minutes: each exercise's rows kept, the changes in words, the minutes after, and whether it is still over. */
 export function trimPlanIn(
   M: Model,
@@ -772,29 +805,26 @@ export function trimPlanIn(
       .scores.filter(x => x.label === 'lagging')
       .map(x => x.m)
   );
-  let cN = 0;
   const bl: TrimRow[] = d.ex.map((b, bi) => {
     const ex = EXIn(M, b.exId);
     const isBlank = (k: number): boolean => !!(blank[bi] && blank[bi][k]);
     const undone = b.sets.filter((x, k) => !x.warm && isBlank(k)).length;
     const done = b.sets.filter((x, k) => !x.warm && !isBlank(k)).length;
+    const typed = b.sets.filter((x, k) => !x.warm && !x.done && !isBlank(k)).length;
     // Any row of the lifter's, a warm-up included, means the exercise is under way.
     const started = b.sets.some((_, k) => !isBlank(k));
-    const su = setupSecs(ex, cN);
-    if (isCompound(ex)) cN++;
     const score =
       (pri.has(ex.primary) ? TRIM.priority : 0) +
       (lag.has(ex.primary) ? TRIM.lagging : 0) +
       (isCompound(ex) ? TRIM.compound : 0) -
       bi * TRIM.order;
-    return { bi, ex, undone, done, started, keep: undone, rest: blockRest(d, bi), per: setSecs(ex, b.plan), su, score };
+    return { bi, ex, undone, done, typed, started, keep: undone, score };
   });
-  const pc = paceIn(M);
-  const cost = (): number =>
-    (bl.reduce((a, x) => a + (x.keep ? x.keep * (x.per + x.rest) + (x.started ? 0 : x.su) : 0), 0) * pc) / MINUTE_S;
+  const cost = (): number => sessLeftMinIn(M, d, bi => (bl[bi] ? bl[bi].typed + bl[bi].keep : 0));
+  const fits = (): boolean => min5(cost()) <= mins;
   const byLow = (arr: TrimRow[]): TrimRow[] => arr.slice().sort((a, b) => a.score - b.score);
   let guard = 0;
-  while (cost() > mins && guard++ < TRIM.stops[0]) {
+  while (!fits() && guard++ < TRIM.stops[0]) {
     const c = byLow(bl.filter(x => x.keep > 0 && x.done + x.keep > SHORT_MIN_SETS))[0];
     if (!c) break;
     c.keep--;
@@ -802,17 +832,34 @@ export function trimPlanIn(
   const kept = (x: TrimRow): boolean => x.keep > 0 || x.done > 0;
   const covered = (x: TrimRow): boolean =>
     bl.some(y => y !== x && kept(y) && y.ex.primary === x.ex.primary && (isCompound(y.ex) || !isCompound(x.ex)));
-  while (cost() > mins && guard++ < TRIM.stops[1]) {
+  while (!fits() && guard++ < TRIM.stops[1]) {
     const c = bl.filter(x => x.keep > 0 && !x.started);
     if (!c.length) break;
     const red = c.filter(covered);
     const low = byLow(red.length ? red : c)[0];
     if (low) low.keep = 0;
   }
-  while (cost() > mins && guard++ < TRIM.stops[2]) {
+  while (!fits() && guard++ < TRIM.stops[2]) {
     const c = byLow(bl.filter(x => x.keep > 0 && x.started))[0];
     if (!c) break;
     c.keep--;
+  }
+  /* Then back, in the reverse of the cuts while the session still fits: first an exercise left out, with
+     SHORT_MIN_SETS sets, then a set at a time, the most important first each time. Each pass puts back one
+     exercise or one set, so there are at most as many passes as blank rows. */
+  const byHigh = (): TrimRow[] => byLow(bl).reverse();
+  const tryBack = (x: TrimRow, to: number): boolean => {
+    const was = x.keep;
+    x.keep = to;
+    if (fits()) return true;
+    x.keep = was;
+    return false;
+  };
+  if (fits()) {
+    for (const x of byHigh())
+      if (x.keep === 0 && !x.started && x.undone) tryBack(x, Math.min(SHORT_MIN_SETS, x.undone));
+    for (let room = true, n = bl.reduce((a, x) => a + x.undone, 0); room && n > 0; n--)
+      room = byHigh().some(x => (x.keep > 0 || x.started) && x.keep < x.undone && tryBack(x, x.keep + 1));
   }
   const changes: string[] = [];
   for (const x of bl) {
@@ -823,5 +870,5 @@ export function trimPlanIn(
         `${x.ex.name}: ${x.done + x.undone} → ${x.done + x.keep} set${x.done + x.keep === 1 ? '' : 's'}${x.done ? ` (${x.done} done)` : ''}`
       );
   }
-  return { bl, changes, est: Math.round(cost()), over: cost() > mins };
+  return { bl, changes, est: cost(), over: !fits() };
 }

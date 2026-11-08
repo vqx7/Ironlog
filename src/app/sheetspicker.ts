@@ -88,7 +88,8 @@ function pickerBody(m: PickerSheet): TemplateResult {
     const list = commonFirst(libFiltered(m.q, m.m || '', '', false));
     const parts: (TemplateResult | TemplateResult[])[] = [];
     if (!q && swapId && m.m === EX(swapId).primary) {
-      const best = swapCands(swapId, null, used.set)
+      // In a Limited equipment session, only what the gym has (NEW-79).
+      const best = swapCands(swapId, sb && d && d.equip ? new Set(d.equip) : null, used.set)
         .slice(0, SWAP_PICKS)
         .map(x => x.e);
       if (best.length) parts.push(grp('Closest matches'), best.map(row), grp(`All ${ML[m.m]}`));

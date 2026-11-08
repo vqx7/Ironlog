@@ -10,6 +10,7 @@
 
 import { bwSettings } from './bwnudge';
 import { picsClear } from './pics';
+import { photoClear } from './photo';
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { live } from 'lit-html/directives/live.js';
@@ -102,7 +103,7 @@ import { PROFILE_PLAN } from './routines';
 import { SMALL_PLATE, DEFAULT_STEP } from './units';
 import { DEMO_WEEKS } from './importing';
 import { adjOn, refreshEx, syncDraftPlan, unitWords } from './worksets';
-import { confirmBox, render, rerenderKeepScroll } from './page';
+import { confirmBox, render, rerenderKeepScroll, setSaveState } from './page';
 import { toast } from './toast';
 import { undoLabel } from './display';
 import { primeAudio, stopTimer, timerRefresh, wakeOff, wakeOn } from './timer';
@@ -1325,10 +1326,12 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           },
           { undo: true }
         );
-        // Pictures are not part of the log Undo keeps, so they go at once, as the question says (r66, 373).
+        // Pictures are not part of the log Undo keeps, so they go at once, as the question says (r66, 373); the profile photo with them (2.33).
         picsClear().catch((e: unknown) => {
           log('pics-clear', e);
         });
+        photoClear();
+        setSaveState();
         ui.tab = 'today';
         render();
         toast('Everything erased', true);

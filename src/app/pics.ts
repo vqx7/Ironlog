@@ -181,15 +181,27 @@ async function decode(f: Blob): Promise<{ img: CanvasImageSource; w: number; h: 
   }
 }
 
-/** Keeps a photo on this phone, drawn again as a JPEG no larger than PIC_EDGE: its new id, or why it was not kept. */
-export async function picAdd(f: Blob): Promise<{ id: string } | { why: string }> {
+/* Every photo the app keeps, a note's picture or the profile photo (2.33),
+   goes through this one redraw, so the refusals and the stripping of a
+   photo's hidden data are the same for both. `square` crops the middle of
+   the photo to a square first, as a profile photo is shown in a circle. */
+/** A photo decoded and drawn again as a JPEG whose longest side is at most `edge`, or why it could not be. */
+export async function jpegOf(
+  f: Blob,
+  edge: number,
+  quality: number,
+  square = false
+): Promise<{ blob: Blob; w: number; h: number } | { why: string }> {
   const no = picRefusal(f);
   if (no) return { why: no };
   const d = await decode(f);
   if (!d || !(d.w > 0 && d.h > 0)) return { why: 'That file could not be read as a photo.' };
-  const k = Math.min(1, PIC_EDGE / Math.max(d.w, d.h));
-  const w = Math.max(1, Math.round(d.w * k)),
-    h = Math.max(1, Math.round(d.h * k));
+  const side = Math.min(d.w, d.h);
+  const sw = square ? side : d.w,
+    sh = square ? side : d.h;
+  const k = Math.min(1, edge / Math.max(sw, sh));
+  const w = Math.max(1, Math.round(sw * k)),
+    h = Math.max(1, Math.round(sh * k));
   const cv = document.createElement('canvas');
   cv.width = w;
   cv.height = h;
@@ -198,10 +210,18 @@ export async function picAdd(f: Blob): Promise<{ id: string } | { why: string }>
     d.done();
     return { why: 'This phone could not prepare the photo.' };
   }
-  cx.drawImage(d.img, 0, 0, w, h);
+  cx.drawImage(d.img, (d.w - sw) / 2, (d.h - sh) / 2, sw, sh, 0, 0, w, h);
   d.done();
-  const blob = await new Promise<Blob | null>(res => cv.toBlob(res, 'image/jpeg', PIC_QUALITY));
+  const blob = await new Promise<Blob | null>(res => cv.toBlob(res, 'image/jpeg', quality));
   if (!blob) return { why: 'This phone could not prepare the photo.' };
+  return { blob, w, h };
+}
+
+/** Keeps a photo on this phone, drawn again as a JPEG no larger than PIC_EDGE: its new id, or why it was not kept. */
+export async function picAdd(f: Blob): Promise<{ id: string } | { why: string }> {
+  const j = await jpegOf(f, PIC_EDGE, PIC_QUALITY);
+  if ('why' in j) return j;
+  const { blob, w, h } = j;
   const now = Date.now();
   const row: PicRow = { id: 'p' + uid(), blob, w, h, t: now, seen: now, own: owner() };
   if (asBytes) row.bytes = await blob.arrayBuffer();

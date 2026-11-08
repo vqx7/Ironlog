@@ -268,11 +268,22 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
      tests/r76.js section 1: the button reads as a placeholder on both pages; everything else is still held to r56.2. */
   const UNDO_BTN = /(<button class="btn" data-act="undo"[^>]*?) data-tip="[^"]*"([^>]*>)"[^"]*"/;
   const heldOutR76 = shot => ({ ...shot, tree: shot.tree.map(t => t.replace(UNDO_BTN, '$1$2(Undo)')), text: shot.text.replace(/\n(Undo last delete or reset( \(\d+ available\))?|Nothing to undo|Undo: [^\n]*|Undo the last change)(?=\n)/, '\n(Undo)') });
+  /* 2.33 marks each History row's counted PRs in gold on purpose ("4 PRs smashed", V 2026-11-07, ST-4), and each
+     lift that had one in an opened session, held by tests/r79.js section 4 and tests/coherence.js 1b: the marks are
+     taken out of this build's page; everything else is still held to r56.2. */
+  // The page is read with its class names sorted, and the tag's text may come as more than one text node.
+  const PR_TAG = /(?:" ")?<span class="(?:tag gold|gold tag)">(?:"[^"<]*")+<\/span>/g, PR_CUP = /(?:" ")?<span [^>]*class="prb"[^>]*>.*?<\/span>/g;
+  // An opened session marks each lift that had one too (its line's hpr class and a PR tag beside its name).
+  const heldOutR79 = shot => ({
+    ...shot,
+    tree: shot.tree.map(t => t.replace(PR_CUP, '').replace(PR_TAG, '').replace(/(<p class=")hpr ([^"]*")/g, '$1$2').replace(/(<p class="[^"]*) hpr(")/g, '$1$2')),
+    text: shot.text.replace(/ PR(?=:)/g, '')
+  });
   const ENVS = [null, 'preview'];
   for (const [name, seed] of SEEDS) for (const tab of ['settings', 'history']) for (const env of ENVS) {
     if (env && name !== 'demo data, lb') continue;
     const sd = seed.replace(/L\.makeDemo\(\);/g, PIN + 'L.makeDemo();');
-    const a = heldOutR76(heldOutR73(heldOutSched(heldOutR69(heldOut(await shot(OLD, sd, tab, env)))))), b = heldOutR76(heldOutR73(heldOutSched(heldOutR70(heldOutR69(heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env)))))))));
+    const a = heldOutR76(heldOutR73(heldOutSched(heldOutR69(heldOut(await shot(OLD, sd, tab, env)))))), b = heldOutR79(heldOutR76(heldOutR73(heldOutSched(heldOutR70(heldOutR69(heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env))))))))));
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     const firstDiff = d && { at: d.at, r56_2: d.before, now: d.now };
     ok(!firstDiff, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same elements, attributes and field values as r56.2`, firstDiff);

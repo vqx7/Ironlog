@@ -78,6 +78,21 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
     const recent = /Recent PRs[^0-9]{0,30}(\d+) in 4 weeks/.exec(r.dashText);
     ok(!recent || +recent[1] === r.r4.prs, 'Recent PRs counts that same window too', { recent: recent && recent[0], r4: r.r4.prs });
 
+    // 1b. History's "N PRs smashed" on each session (2.33): over the same 4 weeks they add up to Today's and Stats' count.
+    const histPR = await P.page.evaluate(async () => {
+      const L = window.__ironlog; L.ui.tab = 'history'; L.ui.histLimit = 1000; L.render(); await new Promise(r => setTimeout(r, 200));
+      const from = L.addDays(L.today(), -27);
+      let n = 0;
+      for (const it of document.querySelectorAll('#view .hitem')) {
+        const id = it.querySelector('[data-act="histToggle"]').dataset.id, s = L.state.sessions.find(x => x.id === id);
+        const t = it.querySelector('.prb'), m = t && /^(\d+) PRs? smashed$/.exec(t.getAttribute('aria-label') || '');
+        if (s && s.date >= from && m) n += +m[1];
+      }
+      L.ui.tab = 'today'; L.render();
+      return n;
+    });
+    ok(histPR === r.r4.prs, 'the PRs History says on each session in the last 4 weeks add up to Today\'s and Stats\' count', { history: histPR, r4: r.r4.prs });
+
     // 2. Sessions in the last 4 weeks, said once.
     const seKpi = r.kpis.find(k => /^Sessions, last 4 weeks/.test(k.l));
     ok(seKpi && +seKpi.v === r.r4.sess, 'the session count on Stats is the window it names', { kpi: seKpi, r4: r.r4.sess });

@@ -49,6 +49,7 @@ import {
   sessionMuscleSetsIn,
   sessionMusclesIn,
   trimPlanIn,
+  sessLeftMinIn,
   strengthPickIn,
   swapCandsIn
 } from './pick';
@@ -228,6 +229,7 @@ export const swapCands = live(swapCandsIn);
 export const eqPlan = live(eqPlanIn);
 export const recentExIds = live(recentExIdsIn);
 export const trimPlan = live(trimPlanIn);
+export const sessLeftMin = live(sessLeftMinIn);
 export const loadOf = live(loadOfIn);
 export const prFrame = live(prFrameIn);
 export const prLoad = live(prLoadIn);

@@ -132,14 +132,6 @@ export function sessProgress(d: { ex: DraftBlock[] }): { n: number; k: number; p
   return { n, k, pct: n ? (k / n) * PERCENT : 0 };
 }
 
-/** The rest after an exercise: none before the next one of the same superset, else its plan's.
-    A plan with no rest reads as 0. */
-export function blockRest(d: { ex: DraftBlock[] }, bi: number): number {
-  const b = d.ex[bi],
-    nx = d.ex[bi + 1];
-  return b.plan.ss && nx && nx.plan.ss === b.plan.ss ? 0 : +b.plan.rest || 0;
-}
-
 /* ---------- the Last column ---------- */
 
 /* The Last column (r44, V: "what I did last time next to what I'm about to
@@ -287,6 +279,9 @@ export interface DraftLike {
   note0?: string | undefined;
   /** Started with Limited equipment. */
   limited?: boolean | undefined;
+  /** The equipment it was started with under Limited equipment, which Pick for me and Swap keep to (NEW-79); absent
+      otherwise. */
+  equip?: string[] | undefined;
   /** The pictures on the workout's notes (r66, PENDING 373), by id; absent when none. */
   pics?: string[] | undefined;
   /** Started as its day's second workout (366 (c), r68); absent for the first. */

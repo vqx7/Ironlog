@@ -15,6 +15,7 @@ import { DIRTY_SAID } from './format';
 import { numIn } from './util';
 import { MENU_ICON } from './icons';
 import { log, saveStateNow } from './storage';
+import { photoUrl } from './photo';
 import { acct, state, ui } from './store';
 import type { Modal, ModalKind, ModalOf } from './modals';
 import { coarse } from './env';
@@ -429,8 +430,13 @@ export function setSaveState(): void {
   const el = document.getElementById('saveState');
   if (!el) return;
   const { cls, txt } = saveStateNow();
-  el.className = 'ssb' + (cls ? ' ' + cls : '');
-  draw(html`${markup(MENU_ICON)}<span class="sd" aria-hidden="true"></span><span class="sst">${txt}</span>`, el);
+  // The profile photo, where this phone keeps one (2.33), takes the menu icon's place; the save state's dot stays on it.
+  const ph = photoUrl();
+  el.className = 'ssb' + (ph ? ' ph' : '') + (cls ? ' ' + cls : '');
+  draw(
+    html`${ph ? html`\x3cimg class="ssb-ph" src=${ph} alt="">` : markup(MENU_ICON)}<span class="sd" aria-hidden="true"></span><span class="sst">${txt}</span>`,
+    el
+  );
   el.setAttribute('aria-label', 'Menu. ' + txt);
   el.setAttribute('data-tip', txt);
   const who = acct.user ? acct.user.email : '';

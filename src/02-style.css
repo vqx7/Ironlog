@@ -46,7 +46,7 @@
      edge (--hero-rim). Dark keeps the same shape with a far fainter glint, so neither theme reads as a sticker. */
   --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.55) 40%,rgba(255,255,255,.85) 47%,rgba(255,255,255,.35) 55%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#f6f7f9,#e7eaee 58%,#eef0f3);
   --hero-rim:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(13,15,18,.06);
-  --hero-ring:var(--volt-line); --hero-shadow:0 0 0 1px var(--card-b),0 1px 2px rgba(13,15,18,.05),0 12px 32px rgba(13,15,18,.08);
+  --hero-shadow:0 0 0 1px var(--card-b),0 1px 2px rgba(13,15,18,.05),0 12px 32px rgba(13,15,18,.08);
   /* The rest timer (r29, V: it blended into the screen): a deep tint of the
      accent, the same in both themes, with white text and a bar along its top
      that empties as the rest runs down. Done is the full accent. */
@@ -55,6 +55,13 @@
   --dock-bg:linear-gradient(165deg,color-mix(in srgb,var(--volt) 46%,#0b0d10),color-mix(in srgb,var(--volt) 32%,#0b0d10));
   --font:'{{FONT_BODY}}',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   --display:'{{FONT_DISPLAY}}','Arial Narrow','Roboto Condensed','Helvetica Neue',system-ui,sans-serif;
+  /* The progress gradient (2.33, V's pick from the Stitch drafts): only on progress (the week ring, a session's bar, the
+     rest timer, a lift's chart line) and the profile photo's ring, never on a button or a card. The same in every theme
+     and accent, so it reads as progress rather than as the accent. */
+  /* On a light page the gradient takes the accents' deeper line shades, each 3:1 or more against a light card (tests/r21.js);
+     the dark theme takes the bright ones. */
+  --holo-1:#c2410c; --holo-2:#be185d; --holo-3:#5b2fe0; --holo-4:#0071a1;
+  --holo:linear-gradient(90deg,var(--holo-1),var(--holo-2) 40%,var(--holo-3) 70%,var(--holo-4));
   --r-lg:22px; --r-md:14px; --r-sm:12px;
   --head-h:52px;
   color-scheme:light;
@@ -75,7 +82,8 @@
     --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
     --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.045) 38%,rgba(255,255,255,.095) 47%,rgba(255,255,255,.03) 56%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1d2025,#121417 62%,#16191d);
     --hero-rim:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.4);
-    --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+    --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+    --holo-1:#ff6a2b; --holo-2:#ec4899; --holo-3:#7c4dff; --holo-4:#00c8ff;
 
     --shadow:none;
     color-scheme:dark;
@@ -93,7 +101,8 @@
   --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
   --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.045) 38%,rgba(255,255,255,.095) 47%,rgba(255,255,255,.03) 56%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1d2025,#121417 62%,#16191d);
   --hero-rim:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.4);
-  --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+  --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+  --holo-1:#ff6a2b; --holo-2:#ec4899; --holo-3:#7c4dff; --holo-4:#00c8ff;
 
   --shadow:none;
   color-scheme:dark;
@@ -338,6 +347,9 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
 .ssb.warn .sd{display:block;background:var(--yellow)}
 .ssb.bad .sd{display:block;background:var(--red)}
 .ssb .sst{display:none;font:600 12.5px var(--font)}
+/* The profile photo (2.33): it fills the button inside a thin ring of the progress gradient, the dot kept on top. */
+.ssb.ph{background:transparent;box-shadow:none}
+.ssb-ph{width:100%;height:100%;flex:none;box-sizing:border-box;padding:2px;border-radius:50%;background:var(--holo);object-fit:cover;display:block}
 @media (min-width:620px){
   :root{--head-h:62px}
   .wkbar{gap:5px}
@@ -345,6 +357,8 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
   .ssb{width:auto;border-radius:999px;padding:0 10px}
   .ssb .sst{display:inline}
   .ssb .sd{position:static;border:0;width:8px;height:8px}
+  .ssb.ph{background:var(--volt-soft);box-shadow:inset 0 0 0 1.5px var(--volt-line);padding:0 10px 0 3px}
+  .ssb-ph{width:28px;height:28px}
 }
 .sync-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 main{max-width:760px;margin:0 auto;padding:6px 16px 150px}
@@ -440,6 +454,13 @@ details[open]>summary .chev::before{transform:translateY(2px) rotate(-135deg)}
 .gsec>summary::after{content:"›";color:var(--muted);font-size:20px;transition:transform .15s}
 .gsec[open]>summary::after{transform:rotate(90deg)}
 .gbody{padding:0 0 12px}.gbody p{margin:0 0 8px;font-size:14.5px;line-height:1.45}
+/* The menu's profile photo (2.33): in its header, the photo in the progress gradient's ring, a camera on it. */
+.mph{position:relative;flex:none;width:44px;height:44px;cursor:pointer}
+.mph-i{width:44px;height:44px;box-sizing:border-box;padding:2px;border-radius:50%;background:var(--holo);object-fit:cover;display:block}
+.mph-none{display:inline-flex;align-items:center;justify-content:center;padding:0;background:var(--volt-soft);color:var(--volt-line);box-shadow:inset 0 0 0 1.5px var(--volt-line)}
+.mph-none svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round}
+.mph-cam{position:absolute;right:-3px;bottom:-3px;width:20px;height:20px;border-radius:50%;background:var(--surface-2);border:2px solid var(--surface);display:flex;align-items:center;justify-content:center;color:var(--ink)}
+.mph-cam svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .mnus{margin-top:12px;border-radius:var(--r-md);background:var(--surface);overflow:hidden}
 .mnu{display:flex;width:100%;min-height:48px;align-items:center;justify-content:space-between;gap:10px;padding:0 14px;border:0;border-bottom:1px solid var(--line-soft);background:none;color:var(--ink);font:600 15.5px var(--font);text-align:left;cursor:pointer}
 .mnu:last-child{border-bottom:0}
@@ -498,6 +519,12 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .tag.common{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
 .tag.red{background:var(--red-bg);color:var(--red)}
 .tag.blue{background:var(--blue-bg);color:var(--blue)}
+/* A personal record (2.33): gold, the colour kept for PRs only. */
+.tag.gold{background:var(--gold);color:var(--on-gold)}
+.prb{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--on-gold);vertical-align:-5px}
+.prb svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.hpr{position:relative;padding-left:10px}
+.hpr::before{content:'';position:absolute;left:0;top:2px;bottom:2px;width:3px;border-radius:2px;background:var(--gold)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{min-height:40px;position:relative;padding:0 14px;border-radius:999px;border:1px solid var(--btn-b);background:var(--btn);cursor:pointer;font-size:14px;font-weight:600;color:var(--ink)}
 .chip.on{background:var(--ink);color:var(--on-ink);border-color:transparent}
@@ -620,6 +647,7 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg .n.warm{color:var(--yellow);font-size:15px}
 .cbtn{height:44px;width:44px;border-radius:50%;border:1px solid var(--field-b);background:var(--surface-2);cursor:pointer;font-weight:700;font-size:17px;color:var(--muted)}
 .cbtn.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
+.sg.pr::before{content:'';position:absolute;left:-7px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--gold);pointer-events:none}
 .sg.pr::after{content:attr(data-pr);position:absolute;right:0;top:-9px;background:var(--gold);color:var(--on-gold);font:700 10px/1 var(--font);letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:6px;pointer-events:none}
 .ci-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;flex-wrap:wrap}
 .ci-row>span{min-width:58px;font-weight:600}
@@ -791,7 +819,8 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .sec .band{background:var(--surface-2)}
 .band .zone{position:absolute;top:0;bottom:0;background:var(--green-bg)}
 .band .fill{position:absolute;top:0;bottom:0;left:0;border-radius:6px}
-.band .fill.prog{background:var(--volt);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--volt-line) 40%,transparent)}
+/* The gradient is sized to the whole track (--pct, the fill's share), so a part-full bar shows the part of it it has reached. */
+.band .fill.prog{background:var(--holo);background-size:calc(100% * 100 / max(var(--pct,100),1)) 100%;box-shadow:none}
 .band .fill.under{background:var(--yellow)} .band .fill.in{background:var(--green)} .band .fill.over{background:var(--blue)} .band .fill.part,.band .fill.plan{background:var(--part)}
 .band .fill.down{background:var(--red)}
 .band .fill.track{background:var(--muted)}
@@ -925,8 +954,13 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .hero-t{min-width:0;flex:1 1 auto}
 .ring{flex:none;position:relative;width:78px;height:78px;margin:2px -2px 0 0;padding:0;border:0;background:none;color:var(--on-hero);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .ring svg{position:absolute;inset:0;width:100%;height:100%}
+/* The progress gradient for SVG strokes (2.33), its stops from the tokens above. A ring or the rest dial takes #holoG
+   from the page's markup, laid over the circle's own box. A line chart draws its own across its width (holoLine in
+   view.ts), since a flat line's own box has no height, and a gradient laid over such a box is not drawn at all. */
+.holo-defs{position:absolute;width:0;height:0;overflow:hidden}
+.hs1{stop-color:var(--holo-1)}.hs2{stop-color:var(--holo-2)}.hs3{stop-color:var(--holo-3)}.hs4{stop-color:var(--holo-4)}
 .ring .rt{fill:none;stroke:color-mix(in srgb,var(--volt) 16%,transparent);stroke-width:7}
-.ring .rp{fill:none;stroke:var(--hero-ring);stroke-width:7;stroke-linecap:round;transition:stroke-dasharray .6s ease;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--volt) 45%,transparent))}
+.ring .rp{fill:none;stroke:url(#holoG);stroke-width:7;stroke-linecap:round;transition:stroke-dasharray .6s ease;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--holo-2) 40%,transparent))}
 .ring .rv{position:relative;font:800 25px/1 var(--display);font-variant-numeric:tabular-nums}
 .ring .rv small{font-size:12px;margin-left:1px}
 .ring .rl{position:relative;font:600 9.5px/1.2 var(--font);letter-spacing:.1em;text-transform:uppercase;opacity:.7}
@@ -1009,7 +1043,8 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .mvrow:first-of-type{border-top:0}
 .mvname{font-weight:500;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mvline{display:block}
-.mvline polyline{fill:none;stroke:var(--volt);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.exh-ln{fill:none;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.mvline polyline{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .mvset{text-align:right;font-weight:750;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .srow:last-child{border-bottom:0}
 .srow.static{cursor:default;grid-template-columns:8px 64px minmax(0,1fr)}
@@ -1148,7 +1183,7 @@ input.need{box-shadow:0 0 0 2px var(--yellow)}
 #timer .tdial{flex:none;width:56px;height:56px}
 #timer .tdial circle{fill:none;stroke-width:4}
 #timer .tdial .trk{stroke:var(--line)}
-#timer .tdial .trp{stroke:var(--volt);stroke-linecap:round;transition:stroke-dasharray .25s linear}
+#timer .tdial .trp{stroke:url(#holoG);stroke-linecap:round;transition:stroke-dasharray .25s linear}
 #timer .tcol{flex:1;min-width:0;display:flex;flex-direction:column}
 #timer:not(.compact) .tv{font:800 28px/1 var(--display);letter-spacing:.02em}
 #timer.done:not(.compact) .tv{color:var(--volt-line)}
