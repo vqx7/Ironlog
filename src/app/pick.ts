@@ -734,9 +734,9 @@ export function recentExIdsIn(M: Model, n: number): string[] {
 /* ---------- Short on time ---------- */
 
 /* Minutes of lifting left in a session, at the lifter's pace: each exercise's sets still to do with its seconds a set
-   and its rest, and its setup while none of its rows is ticked. No rest is counted after the very last set, nor
-   between two exercises of one superset while the next of them still has a set to do (a partner done or left out
-   rests like any lift). The session's minutes left and Short on time both read this, so the time a trim fits to is
+   and its rest, and its setup while none of its rows is ticked (the long one for the first two compounds done or
+   to do). No rest is counted after the very last set, nor between two exercises of one superset while the next of
+   them still has a set to do (a partner done or left out rests like any lift). The session's minutes left and Short on time both read this, so the time a trim fits to is
    the time the session shows (NEW-77: two counts of one number disagreed by up to 3 minutes). setsOf gives each
    exercise's sets to count; by default the work rows not yet ticked. */
 /** Minutes of lifting left in a session, with each exercise's sets to do given or read from its unticked work rows. */
@@ -751,14 +751,16 @@ export function sessLeftMinIn(M: Model, d: { ex: readonly DraftBlock[] }, setsOf
   d.ex.forEach((b, bi) => {
     const ex = EXIn(M, b.exId);
     const su = setupSecs(ex, cN);
-    if (isCompound(ex)) cN++;
     const k = n(bi);
+    const done = b.sets.some(x => x.done);
+    // A compound done or still to do warms the lifter up for the next; one skipped does not.
+    if (isCompound(ex) && (k > 0 || done)) cN++;
     if (!k) return;
     let nx = -1;
     for (let j = bi + 1; j < d.ex.length && nx < 0; j++) if (n(j) > 0) nx = j;
     const next = nx >= 0 ? d.ex[nx] : undefined;
     const r = b.plan.ss && next && next.plan.ss === b.plan.ss ? 0 : +b.plan.rest || 0;
-    s += k * (setSecs(ex, b.plan) + r) + (b.sets.some(x => x.done) ? 0 : su);
+    s += k * (setSecs(ex, b.plan) + r) + (done ? 0 : su);
     lastRest = r;
   });
   return Math.round((Math.max(0, s - lastRest) * paceIn(M)) / MINUTE_S);
@@ -785,11 +787,11 @@ interface TrimRow {
    only work for its muscle, so every muscle keeps at least one movement for as long as possible (a fly does not
    cover a bench press: only a compound covers a compound). Priority and lagging muscles are kept longest, then
    main lifts, as the Short on time help promises, then the earlier exercise, since a routine usually puts its
-   main lifts first. Dropping a whole exercise can free more time than was needed, so the most important work cut
-   then goes back while the session still fits (NEW-78, V: "should not be irrational"): an exercise left out
-   returns with SHORT_MIN_SETS sets, one cut short gets a set back. Done sets are never touched; a row typed but
-   not ticked stays and its time counts, since trimming takes only blank rows (`blank`, each block's rows as the
-   session screen's rowBlank reads them, handed in as data). */
+   main lifts first. Dropping a whole exercise can free more time than was needed, so work cut then goes back
+   while the session still fits, in the reverse of the cuts (NEW-78, V: "should not be irrational"): an exercise
+   left out first, with SHORT_MIN_SETS sets, then single sets, the most important first. Done sets are never
+   touched; a row typed but not ticked stays and its time counts, since trimming takes only blank rows (`blank`,
+   each block's rows as the session screen's rowBlank reads them, handed in as data). */
 /** Short on time's trim of a session to so many minutes: each exercise's rows kept, the changes in words, the minutes after, and whether it is still over. */
 export function trimPlanIn(
   M: Model,
@@ -842,19 +844,22 @@ export function trimPlanIn(
     if (!c) break;
     c.keep--;
   }
-  // Each pass puts back one set or one exercise, so there are at most as many passes as blank rows.
-  for (let room = fits(), n = bl.reduce((a, x) => a + x.undone, 0); room && n > 0; n--) {
-    room = false;
-    for (const x of byLow(bl).reverse()) {
-      if (x.keep >= x.undone) continue;
-      const was = x.keep;
-      x.keep = was === 0 && !x.started ? Math.min(SHORT_MIN_SETS, x.undone) : was + 1;
-      if (fits()) {
-        room = true;
-        break;
-      }
-      x.keep = was;
-    }
+  /* Then back, in the reverse of the cuts while the session still fits: first an exercise left out, with
+     SHORT_MIN_SETS sets, then a set at a time, the most important first each time. Each pass puts back one
+     exercise or one set, so there are at most as many passes as blank rows. */
+  const byHigh = (): TrimRow[] => byLow(bl).reverse();
+  const tryBack = (x: TrimRow, to: number): boolean => {
+    const was = x.keep;
+    x.keep = to;
+    if (fits()) return true;
+    x.keep = was;
+    return false;
+  };
+  if (fits()) {
+    for (const x of byHigh())
+      if (x.keep === 0 && !x.started && x.undone) tryBack(x, Math.min(SHORT_MIN_SETS, x.undone));
+    for (let room = true, n = bl.reduce((a, x) => a + x.undone, 0); room && n > 0; n--)
+      room = byHigh().some(x => (x.keep > 0 || x.started) && x.keep < x.undone && tryBack(x, x.keep + 1));
   }
   const changes: string[] = [];
   for (const x of bl) {

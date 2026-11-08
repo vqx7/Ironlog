@@ -200,6 +200,7 @@ import {
   toD,
   tonnage,
   trimPlan,
+  sessLeftMin,
   U,
   weekNeed,
   weekRoutine,
@@ -678,7 +679,6 @@ function start(): void {
     fillSets,
     lastNoteOf,
     sizeRows,
-    sizeWhat,
     sessionMuscleSets,
     sessionCapNote: (d: Parameters<typeof sessionCapNote>[0]) => markupOf(sessionCapNote(d)),
     routineClutter,
@@ -792,7 +792,10 @@ function start(): void {
     // Today's Lifts moving, so tests/engine.js compares the page's answer with the engine's in Node (r70).
     liftsMoving,
     // Whether a bodyweight lift has no weigh-in to read, so tests/engine.js compares it with Node's (2.29, NEW-72).
-    noBody
+    noBody,
+    // 2.32 (r78): the tape row's sentence and the one count of minutes left.
+    sizeWhat,
+    sessLeftMin
   };
   render();
   wakeOn();

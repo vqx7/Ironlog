@@ -370,10 +370,10 @@ const CASES = [
     const da = firstDiff(a.adds, bAdds);
     ok(a.adds.length > 20 && !da && runsFound.every(Boolean), `4. the page adds r62's ${a.adds.length} listeners and intervals, in r62's order, and after r62's 30-second interval the run later builds list (r66: another tab's pictures)`, da || runsFound);
     // Names a later build adds to the hook go after r62's, each listed here with the release that added it.
-    const LATER = ['templateBefore function', 'templateRest function', 'templateSigsBefore function', 'bandOf function', 'picsTidy function', 'risingWords function', 'setShortOf function', 'liftsMoving function', 'noBody function'];
+    const LATER = ['templateBefore function', 'templateRest function', 'templateSigsBefore function', 'bandOf function', 'picsTidy function', 'risingWords function', 'setShortOf function', 'liftsMoving function', 'noBody function', 'sizeWhat function', 'sessLeftMin function'];
     const dh = firstDiff(a.hook, b.hook.slice(0, a.hook.length));
     const unlisted = b.hook.slice(a.hook.length).filter(k => !LATER.includes(k));
-    ok(a.hook.length > 300 && !dh && !unlisted.length, `4. window.__ironlog holds r62's ${a.hook.length} names in r62's order, each the same kind of value, and after them only the names later builds list (r64: templateBefore, templateRest, templateSigsBefore; r65: bandOf; r66: picsTidy; r69: risingWords; r70: setShortOf, liftsMoving; r74: noBody)`, dh || unlisted);
+    ok(a.hook.length > 300 && !dh && !unlisted.length, `4. window.__ironlog holds r62's ${a.hook.length} names in r62's order, each the same kind of value, and after them only the names later builds list (r64: templateBefore, templateRest, templateSigsBefore; r65: bandOf; r66: picsTidy; r69: risingWords; r70: setShortOf, liftsMoving; r74: noBody; r78: sizeWhat, sessLeftMin)`, dh || unlisted);
     // rNewDo sat in r62's table as the helper New routine's Save called by name (ACT.rNewDo(name)): no element named it, and a tap would have handed it the element as the name. It is a function of actsroutine.ts since r63.
     const NOT_TAPS = ['rNewDo'];
     // Actions a later build adds go beside r62's, each listed here with the release that added it: r66's Done with sets left (374), the bodyweight sheet (372), and a note's pictures (373); r68's Do today's workout instead (NEW-31); r69's check-in sheet.

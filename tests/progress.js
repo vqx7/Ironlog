@@ -175,10 +175,11 @@ const PLAN = [
           ok(JSON.stringify(rph) === JSON.stringify(want.slice(0, s.rows.length)), T + W + e.id + ' grey reps are ' + want.join(',') + ' (' + (repsFrom !== recent ? 'last full session' : 'Last') + ')', rph);
         }
       }
-      // Short on time this week: trim first, then log what is left.
+      // Short on time this week: trim first, then log what is left. 9 minutes keeps bench whole and the curl at 2 sets
+      // (from 2.32, NEW-78, a trim puts back what still fits, so 12 minutes keeps bench and the curl whole).
       let cut = {};
       if (step.trim) {
-        cut = await ev((EXS) => { const L = window.__ironlog; L.ACT.shortOpen(); L.ui.modal.mins = 12; L.ACT.shortApply(); const d = L.state.draft; return Object.fromEntries(d.ex.filter(b => b.sets.length < EXS.find(e => e.id === b.exId).sets).map(b => [b.exId, b.sets.length])); }, EXS);
+        cut = await ev((EXS) => { const L = window.__ironlog; L.ACT.shortOpen(); L.ui.modal.mins = 9; L.ACT.shortApply(); const d = L.state.draft; return Object.fromEntries(d.ex.filter(b => b.sets.length < EXS.find(e => e.id === b.exId).sets).map(b => [b.exId, b.sets.length])); }, EXS);
         ok(Object.keys(cut).length >= 1, T + W + 'Short on time trims at least one lift', cut);
         ok(await ev(() => !window.__ironlog.state.draft.ex.some(b => b.cut)), T + W + 'and marks none (r54: the log says it)');
       }
