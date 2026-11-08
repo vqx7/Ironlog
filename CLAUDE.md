@@ -203,7 +203,7 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
 - Bump `APP_VERSION` in `src/app/config.ts` for every published build, and `DISPLAY_VERSION` with it (the minor
   number up one per release, the major for a large change); `STATE_VERSION` only when the stored shape changes.
   The build named at the top of this file is the one in config (`tests/hygiene.js` checks).
-- Work on a branch and open a pull request. `.github/workflows/publish.yml` runs every suite in Chromium and in
+- Work on a branch named after the build it carries (`r80` for build r80; V, 2026-11-07: branches named a build ahead of their own read as a skipped build), and open a pull request. `.github/workflows/publish.yml` runs every suite in Chromium and in
   WebKit and, if they pass, publishes the preview to `gh-pages` under `preview/` (one slot: the latest pull request
   wins). A merge into `main` runs them again and publishes `dist/` to `gh-pages`. Open apps show "Update ready" with
   Update (r60; "New version ready" with Reload before) the next time they come to the foreground.
