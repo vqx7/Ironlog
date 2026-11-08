@@ -49,7 +49,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     // The Guide.
     await page.click('#saveState'); await wait(60); await page.click('#modal .mnu[data-act="guideOpen"]'); await wait(80);
     const g = await ev(() => { const m = document.getElementById('modal'); return { kind: window.__ironlog.ui.modal.kind, topics: [...m.querySelectorAll('.gsec>summary')].map(s => s.textContent), open: m.querySelectorAll('.gsec[open]').length, text: m.innerText }; });
-    ok(g.kind === 'guide' && g.topics.join('|') === 'Today|Logging a session|How targets are set|Volume and Stats|Plan and your own exercises|Sections|Your data' && g.open === 0, 'the Guide has seven topics, all folded', g.topics);
+    ok(g.kind === 'guide' && g.topics.join('|') === 'Today|Logging a session|How targets are set|Volume and Stats|Plan and your own exercises|Sections|Your data|Sources' && g.open === 0, 'the Guide has eight topics, all folded (Sources since 2.34: studies are named there, not in tips, V 2026-11-08)', g.topics);
     await page.click('#modal .gsec[data-g="rules"]>summary'); await wait(60);
     const rules = await ev(() => document.querySelector('#modal .gsec[data-g="rules"]').innerText);
     // Last's labels are r54's (V's one rule): fewer sets and below usual where r27 to r53 said trimmed.
