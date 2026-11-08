@@ -276,7 +276,7 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
     // Whether a raw log's workout in progress is falsy other than null (r60 kept it as it came).
     const falsyDraft = s => !!s && typeof s === 'object' && !Array.isArray(s) && s.draft !== null && s.draft !== undefined && !s.draft;
     const N4 = +process.env.R61_N4 || 240;
-    let n = 0, same = 0, routineCases = 0, draftCases = 0, renameCases = 0, libCases = 0; const off = [];
+    let n = 0, same = 0, routineCases = 0, draftCases = 0, renameCases = 0, libCases = 0, plateCases = 0; const off = [];
     for (let seed = 1; seed <= N4; seed++) {
       const h = wide(seed, LIB);
       const raws = [h.raw, damage(h.raw, seed * 31 + 1), damage(h.raw, seed * 31 + 2), damage(h.raw, seed * 31 + 3)];
@@ -304,11 +304,27 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
         { const w = want[0] === '{' ? JSON.parse(want) : null; let k = 0;
           if (w && Array.isArray(w.exercises)) { w.exercises = w.exercises.map(e => { if (!e || typeof e !== 'object' || 'inc' in e || e.custom !== false) return e; k++; const o = {}; for (const [key, v] of Object.entries(e)) { o[key] = v; if (key === 'archived') { o.inc = null; o.plates = null; } } return o; }); }
           if (k) { libCases += k; want = JSON.stringify(w); } }
+        // Your gym keeps any plate since 2.34 (NEW-76), where r60 kept only the unit's usual ones: the raw list cleaned by
+        // the new rule (a number above 0, no heavier than 50 kg or 100 lb, in whole hundredths, heaviest first, each once,
+        // at most 15), placed where r60 puts plates (after db and kb, before stack); a gym r60 dropped for holding nothing
+        // but such plates comes back as its unit and those plates. Only gyms whose raw list holds a plate r60 dropped are held out.
+        { const w = want[0] === '{' ? JSON.parse(want) : null, g0 = s && s.settings && s.settings.gym;
+          if (w && w.settings && g0 && typeof g0 === 'object' && (g0.u === 'lb' || g0.u === 'kg') && Array.isArray(g0.plates)) {
+            const MAXP = { kg: 50, lb: 100 }[g0.u], num = v => { const x = Number(v); return isFinite(x) ? Math.round(x * 1000) / 1000 : NaN; };
+            const okP = x => x > 0 && x <= MAXP && Math.abs(x * 100 - Math.round(x * 100)) < 1e-4;
+            const pl = [...new Set(g0.plates.map(num).filter(okP))].sort((x, y) => y - x).slice(0, 15);
+            const g = w.settings.gym, had = g && Array.isArray(g.plates) ? g.plates : [];
+            if (pl.length && JSON.stringify(pl) !== JSON.stringify(had)) {
+              plateCases++;
+              if (!g) w.settings.gym = { u: g0.u, plates: pl };
+              else { const o = {}; let put = false; for (const [key, v] of Object.entries(g)) { if (key === 'stack' && !put) { o.plates = pl; put = true; } if (key !== 'plates') o[key] = v; else if (!put) { o.plates = pl; put = true; } } if (!put) o.plates = pl; w.settings.gym = o; }
+              want = JSON.stringify(w);
+            } } }
         if (b.j === want && a.d === b.d && a.k === b.k) same++;
         else if (off.length < 5) { let at = 0; while (at < want.length && want[at] === b.j[at]) at++; off.push({ seed, i, none, want: want.slice(Math.max(0, at - 150), at + 150), b: b.j.slice(Math.max(0, at - 150), at + 150), d: [a.d, b.d], k: [a.k, b.k] }); }
       });
     }
-    ok(same === n && n > N4 * 6, `4. normalize gives r60's answer, key order included, with the records dropped and the fields kept, on ${n} raw logs (${N4} wide histories, each damaged three ways, and the sync's documents), but for the two inputs below (${routineCases} with no routine, ${draftCases} with a falsy workout), r66's name for the rear delt machine (${renameCases}), and r72's library lifts appended with inc and plates (${libCases})`, off);
+    ok(same === n && n > N4 * 6, `4. normalize gives r60's answer, key order included, with the records dropped and the fields kept, on ${n} raw logs (${N4} wide histories, each damaged three ways, and the sync's documents), but for the two inputs below (${routineCases} with no routine, ${draftCases} with a falsy workout), r66's name for the rear delt machine (${renameCases}), r72's library lifts appended with inc and plates (${libCases}), and 2.34's gyms keeping any plate (${plateCases}, NEW-76)`, off);
     // The two inputs no build writes, read as any other (each fails on r60).
     const named = await B.page.evaluate(() => {
       const L = window.__ironlog;
