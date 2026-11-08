@@ -948,7 +948,8 @@ async function photoReconcile(d: Rec | null): Promise<void> {
     }
   }
   const n = photoNote();
-  // A copy noted for another account (signing out takes the photo away, so only a sign-out stopped half way leaves one).
+  // A copy noted for another account: kept by "Keep on this phone and sign out" with a change that account had not
+  // taken (account.ts), or left by a sign-out stopped half way. This account's photo replaces it.
   if (n && n.uid !== '' && n.uid !== me) {
     photoTook(remote ? remote.url : null, remote ? remote.et : 0, me);
     return;
@@ -986,19 +987,22 @@ async function photoSend(url: string | null, et: number, d: Rec | null, me: stri
     log('photo-write', e);
   }
 }
+/** Settles the photo with the account now: the account's copy read, then the later change kept or sent. Run in the
+    sync's queue (cq); Sign out awaits it, so a change made here is sent before the phone lets go of it (the review's F2). */
+export async function photoFlush(): Promise<void> {
+  if (!cloud.on || !cloud.db) return;
+  try {
+    const s = await withTimeout(ref(PHOTO_DOC).get(), SYNC_MS.net, 'photo-read');
+    await photoReconcile(s.exists ? rec(s.data()) : null);
+  } catch (e) {
+    // Offline or refused: the change stays marked to be sent, and the next sync sends it.
+    log('photo-read', e);
+  }
+}
 /** Sends a change to the photo made here, read against the account's copy first; nothing while not syncing. */
 export function photoSyncSoon(): void {
   if (!cloud.on || !cloud.db) return;
-  void cq(async () => {
-    if (!cloud.on || !cloud.db) return;
-    try {
-      const s = await withTimeout(ref(PHOTO_DOC).get(), SYNC_MS.net, 'photo-read');
-      await photoReconcile(s.exists ? rec(s.data()) : null);
-    } catch (e) {
-      // Offline or refused: the change stays marked to be sent, and the next sync sends it.
-      log('photo-read', e);
-    }
-  });
+  void cq(photoFlush);
 }
 
 /* Whether this device holds a change the account does not have yet, by the

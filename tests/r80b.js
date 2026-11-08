@@ -14,6 +14,12 @@
 //   5  Of two phones' changes, the later is kept: a photo added on a phone while another phone's older one is in the
 //      account replaces it, and an older change waiting to be sent never replaces a newer one in the account.
 //   6  Delete my account takes the photo off the phone; Erase everything while syncing removes it from the account.
+//   8  (The review of 2.34, F2) A photo change not yet in the account is never lost at sign-out: Sign out sends it
+//      first; one the account refuses stops Sign out with "Not in your account yet"; "Keep on this phone and sign
+//      out" keeps it, and signing back in sends it. Fails on ba0eb22 (the new photo lost) as on 2.33 (phone-only).
+//   9  (The review of 2.34, F1) A confirmation or reset link opened from Gmail on Android, in a browser tab (referrer
+//      android-app://com.google.android.gm/), is a tab: it asks "Where do you use Ironlog?", and after a new
+//      password says to sign in from the home-screen app, leaving the tab signed out. Fails on ba0eb22; 2.33 passes.
 //   7  Guards: no page errors on either phone, and the log's documents are as before (the photo is never in them).
 const fs = require('fs');
 const os = require('os');
@@ -182,6 +188,77 @@ const JPEG = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
     ok(!fake.users.has('c@example.com'), '6. (the account is deleted)');
     ok(!pd.held && !pd.note && !pd.shown, '6. Delete my account takes the photo off the phone', pd);
   } else ok(false, '6. Delete my account is reachable in Your data');
+
+  // 8. A photo change not yet in the account, at sign-out (the review's F2).
+  // A step that cannot be taken (a build that signed out where it should not) is a failure of the section, not a crash, so 9 still runs.
+  try {
+  fake.addUser('f2@example.com', PW);
+  const F = await device();
+  await F.signIn('f2@example.com');
+  await F.pick('#c33');
+  const red = photoIn('f2@example.com');
+  const refuse = async on => {
+    if (!on) return F.page.unroute('**/rest/v1/docs**');
+    await F.page.route('**/rest/v1/docs**', async r => {
+      const q = r.request(), body = q.postData() || '';
+      if (q.method() !== 'GET' && (/photo/.test(q.url()) || /\/photo"/.test(body))) return r.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"refused"}' });
+      return r.continue();
+    });
+  };
+  await refuse(true);
+  await F.pick('#36a');
+  const blue = (await F.photo()).held;
+  ok(blue && blue !== red && photoIn('f2@example.com') === red, '8. (setting up) a new photo the account refused stays on the phone, the account keeps the old', { phoneNew: blue !== red, acctOld: photoIn('f2@example.com') === red });
+  // Still refused at sign-out: Sign out must say it has not reached the account, and remove nothing.
+  await F.page.click('#saveState'); await wait(250);
+  await F.page.click('#modal [data-act="acctSignOut"]'); await wait(300);
+  await F.page.click('#modal [data-act="mOk"]').catch(() => {}); await wait(2500);
+  const box = await F.ev(() => { const m = document.getElementById('modal'); return m && !m.hidden ? m.innerText.replace(/\s+/g, ' ') : ''; });
+  const still = await F.ev(() => !!window.__ironlog.acctUser());
+  ok(/Not in your account yet/.test(box) && still && (await F.photo()).held === blue, '8. a photo the account still refuses stops Sign out with "Not in your account yet", signed in, the photo kept', { box: box.slice(0, 120), signedIn: still });
+  await F.ev(() => { const b = document.querySelector('#modal [data-act="mClose"], #modal .sheet-h [aria-label="Close"], #modal [data-act="mCancel"]'); if (b) b.click(); });
+  await wait(300);
+  // Accepted again: Sign out sends it first, so the account holds the new photo.
+  await refuse(false);
+  await F.signOut(false);
+  ok(photoIn('f2@example.com') === blue, '8. once the account takes it, Sign out sends the new photo before taking it off the phone', { acctIsNew: photoIn('f2@example.com') === blue, acctIsOld: photoIn('f2@example.com') === red });
+  await F.signIn('f2@example.com');
+  ok((await F.photo()).held === blue, '8. signed back in, the phone shows the new photo');
+  // Changed offline, then "Keep on this phone and sign out": kept, and sent when signed back in.
+  await F.ctx.setOffline(true); await wait(300);
+  await F.pick('#3a3');
+  const green = (await F.photo()).held;
+  await F.page.click('#saveState'); await wait(250);
+  await F.page.click('#modal [data-act="acctSignOut"]'); await wait(300);
+  const offBox = await F.ev(() => document.getElementById('modal').innerText.replace(/\s+/g, ' '));
+  await F.page.click('#modal [data-act="mOk"]'); await wait(1500);
+  ok(/Not in your account yet/.test(offBox) && (await F.photo()).held === green, '8. offline, "Keep on this phone and sign out" keeps the photo changed offline', { box: offBox.slice(0, 80), kept: (await F.photo()).held === green });
+  await F.ctx.setOffline(false); await wait(500);
+  await F.signIn('f2@example.com');
+  ok(photoIn('f2@example.com') === green && (await F.photo()).held === green, '8. signed back in online, the photo changed offline reaches the account and stays on the phone', { acct: photoIn('f2@example.com') === green, phone: (await F.photo()).held === green });
+  // Another account on that phone never takes a photo kept for the first.
+  await F.signOut(false);
+  fake.addUser('f3@example.com', PW);
+  await F.signIn('f3@example.com');
+  ok(photoIn('f3@example.com') === undefined && !(await F.photo()).held, '8. guard: another account signed in on that phone gets no photo of the first', { acct: photoIn('f3@example.com'), phone: !!(await F.photo()).held });
+  } catch (e) { ok(false, '8. the section ran to its end', String(e).slice(0, 200)); }
+
+  // 9. A link from Gmail on Android opens in a browser tab (the review's F1).
+  fake.addUser('g@example.com', PW);
+  const tok = async email => (await (await fetch(fake.base + '/auth/v1/token?grant_type=password', { method: 'POST', headers: { apikey: 'x', 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: PW }) })).json());
+  const link = (t, type) => `${APP}index.html#access_token=${t.access_token}&expires_at=${t.expires_at}&expires_in=3600&refresh_token=${t.refresh_token}&token_type=bearer&type=${type}`;
+  const fromGmail = `if (/access_token/.test(location.hash)) Object.defineProperty(Document.prototype, 'referrer', { get() { return 'android-app://com.google.android.gm/'; }, configurable: true });`;
+  const sheetOf = D => D.ev(() => { const m = window.__ironlog.ui.modal; return m ? { kind: m.kind, mode: m.mode } : null; });
+  const G = await device(fromGmail);
+  await G.page.goto(link(await tok('g@example.com'), 'signup')); await G.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(2500);
+  const gs = await sheetOf(G);
+  ok(gs && gs.mode === 'where', '9. a confirmation link from Gmail, in a browser tab, asks "Where do you use Ironlog?"', gs);
+  const Rr = await device(fromGmail);
+  await Rr.page.goto(link(await tok('g@example.com'), 'recovery')); await Rr.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(2000);
+  await Rr.page.fill('#modal [data-abind="pw"]', 'brand new horse 7').catch(() => {});
+  await Rr.page.click('#modal [data-act="acctSubmit"]').catch(() => {}); await wait(2500);
+  const rs = await sheetOf(Rr), rIn = await Rr.ev(() => !!window.__ironlog.acctUser());
+  ok(rs && rs.mode === 'sent' && !rIn, '9. after a new password from a Gmail link, the tab says to sign in from the home-screen app and stays signed out', { sheet: rs, signedIn: rIn });
 
   // 7. Guards.
   ok(!errors.length, '7. guard: no page errors on any phone', errors.slice(0, 5));

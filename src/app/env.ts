@@ -16,19 +16,21 @@ declare global {
   }
 }
 
-/* Every way an installed copy opens is the app, never a tab (2.34: V's Android friend saw "Get the app" inside the
-   installed app). Chrome and Safari report display-mode standalone, but an installed web app can also open
-   fullscreen or in minimal-ui, or on a computer as window-controls-overlay; Safari has its own flag; and an Android
-   app wrapping the site opens it with an android-app:// referrer. Once this browser has installed the app
-   (appinstalled, main.ts), its tabs stop offering it too (APP_INSTALLED). */
-/** The display modes an installed web app opens in. */
-const INSTALLED_MODES = ['standalone', 'fullscreen', 'minimal-ui', 'window-controls-overlay'] as const;
+/* Running as the installed app, read only from what the browser says of this page itself, because the account flow
+   (account.ts: where a sign-in link lands, Sign out's wording), sharing, Settings and problem reports all read it.
+   Ironlog's manifest opens standalone; a browser that cannot do that falls back to minimal-ui, and an installed copy
+   on a computer can draw its own title bar (window-controls-overlay). None of those is ever a browser tab. Two
+   signals are not used (the review of 2.34, F1): fullscreen, which a browser tab also reports in full screen, and an
+   android-app:// referrer, which Chrome on Android gives any page another app opens (a link in Gmail), so a tab
+   opened from an email read as the app and signed itself in. Safari has its own flag. Get the app has one more
+   reason to stay away (canInstallHere, below): this browser has installed the app (appinstalled, main.ts). */
+/** The display modes only an installed copy of Ironlog opens in. */
+const INSTALLED_MODES = ['standalone', 'minimal-ui', 'window-controls-overlay'] as const;
 /** Running as an installed app (home screen), not in a browser tab or inside Claude. */
 export function isStandalone(): boolean {
   try {
     if (navigator.standalone === true) return true;
-    if (INSTALLED_MODES.some(m => window.matchMedia(`(display-mode: ${m})`).matches)) return true;
-    return typeof document.referrer === 'string' && document.referrer.startsWith('android-app://');
+    return INSTALLED_MODES.some(m => window.matchMedia(`(display-mode: ${m})`).matches);
   } catch (e) {
     // A browser without matchMedia: read as a tab, as before the move.
     return false;

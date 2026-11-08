@@ -140,6 +140,15 @@ export function photoSent(et: number, uid: string): void {
   noteSet({ uid, et, up: false });
 }
 
+/** Signing out: the photo goes from the phone (R79-1), unless it holds a change the account has not taken and the
+    lifter chose to keep this phone's copy (the review of 2.34, F2). That change stays, with its note of the account,
+    and is sent when that account signs in here again; another account signed in here takes its own instead
+    (photoReconcile). Signed out, the menu shows no photo (photoUrl), and Today's line is offered again either way. */
+export function photoSignOut(keepUnsent: boolean): void {
+  if (keepUnsent) prefDel(PHOTO_ASKED);
+  else photoForget();
+}
+
 /** Takes the photo off this phone, with its line on Today answered, as signing out and deleting the account do
     (R79-1): the account keeps its photo, and the next account signed in here shows its own or is offered the line. */
 export function photoForget(): void {

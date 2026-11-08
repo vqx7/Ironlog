@@ -17,11 +17,15 @@
 //   3  Settings' General is two sections (an Android user via V): Measurements (units, bodyweight goal, weigh-in
 //      reminder, height) and Appearance (theme, accent) right after it; a saved order that had General keeps
 //      Measurements where General was. Guard: no sideways scroll at 320 px.
-//   4  "Get the app" never shows inside the installed app (an Android user via V): opened in minimal-ui, fullscreen
-//      or standalone, from an Android app (android-app:// referrer), or in a browser that has installed it. Guard: a
+//   4  "Get the app" never shows inside the installed app (an Android user via V): opened standalone, in minimal-ui
+//      or with its own title bar, or in a browser that has installed it; a tab in full screen or opened from Gmail is
+//      a tab (the review's F1). Guard: a
 //      plain browser tab still offers it.
 //   5  With nothing logged, Today's line leads with Log a past workout, without "Lifted before this app?" (V).
+//   6  (The review of 2.34, F4) The Guide's Sources names every study docs/EVIDENCE.md puts behind one of the app's numbers.
 // R80_ONLY=1,2 runs some sections.
+const fs = require('fs');
+const path = require('path');
 const { open } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
@@ -250,8 +254,11 @@ async function shortAt(page, v) {
       return shown;
     };
     ok(await bar(null), '4. guard: a plain browser tab offers Get the app');
-    for (const m of ['standalone', 'minimal-ui', 'fullscreen']) ok(!(await bar(m)), `4. opened as the installed app (${m}), no Get the app`);
-    ok(!(await bar(null, "Object.defineProperty(document,'referrer',{get:()=>'android-app://com.example.twa'});")), '4. opened from an Android app (android-app:// referrer), no Get the app');
+    for (const m of ['standalone', 'minimal-ui', 'window-controls-overlay']) ok(!(await bar(m)), `4. opened as the installed app (${m}), no Get the app`);
+    // The review of 2.34 (F1): a browser tab in full screen, or one another Android app opened (a link in Gmail), is a
+    // tab, as the account flow must read it; 2.34 at ba0eb22 took both for the installed app.
+    ok(await bar('fullscreen'), '4. a browser tab in full screen is still a tab (it offers Get the app)');
+    ok(await bar(null, "Object.defineProperty(document,'referrer',{get:()=>'android-app://com.google.android.gm/'});"), '4. a tab opened from Gmail on Android is still a tab (it offers Get the app)');
     ok(!(await bar(null, "localStorage.setItem('ironlog.v1.appInstalled','1');")), '4. a browser that has installed the app no longer offers it');
   }
 
@@ -260,6 +267,23 @@ async function shortAt(page, v) {
     const t = await D.page.evaluate(() => { const L = window.__ironlog; L.state = L.normalize(null); L.state.settings.onboarded = true; L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); const p = document.getElementById('preApp'); return p ? { text: p.innerText.replace(/\s+/g, ' ').trim(), btn: !!p.querySelector('[data-act="pastOpen"]') } : null; });
     ok(t && t.btn && /^Log a past workout/.test(t.text) && !/Lifted before|before this app/.test(t.text), '5. Today leads with Log a past workout, no "Lifted before this app?"', t);
     await D.browser.close();
+  }
+  if (run(6)) {
+    // The review of 2.34 (F4): Sources says the app's numbers come from these studies, so every study docs/EVIDENCE.md
+    // names behind one of the app's numbers (its lines for each constant) is named there.
+    const ev = fs.readFileSync(path.join(__dirname, '..', 'docs', 'EVIDENCE.md'), 'utf8');
+    const named = new Map();
+    for (const l of ev.split('\n').filter(x => /^- `[A-Z_0-9]+`/.test(x)))
+      for (const m of l.matchAll(/\b([A-Z][a-z]+) ((?:19|20)\d\d)\b/g)) {
+        if (/^(V|The|Since|Before|After|From|Until)$/.test(m[1])) continue;
+        const k = `${m[1]} ${m[2]}`; if (!named.has(k)) named.set(k, new Set()); named.get(k).add(l.match(/^- `([A-Z_0-9]+)`/)[1]);
+      }
+    const D = await open(FILE, { w: 390, h: 844, clock: DAY + 'T10:00:00' });
+    const src = await D.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.modal = { kind: 'guide', open: 'sources' }; L.render(); const d = document.querySelector('#modal .gsec[data-g="sources"] .gbody'); return d ? d.innerText.replace(/\s+/g, ' ') : ''; });
+    await D.browser.close();
+    const missing = [...named].filter(([k]) => !src.includes(k)).map(([k, v]) => `${k} (${[...v].join(', ')})`);
+    ok(named.size >= 15, `6. (a guard) EVIDENCE.md names ${named.size} studies behind the app's numbers`);
+    ok(/Numbers come from these studies/.test(src) && !missing.length, "6. the Guide's Sources names every study behind one of the app's numbers", missing);
   }
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
   process.exit(fails.length ? 1 : 0);

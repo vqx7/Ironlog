@@ -251,11 +251,11 @@ export function guideSheet(m: { open?: string | undefined }): TemplateResult {
       'sources',
       'Sources',
       `<p>Numbers come from these studies. Anything else the app calls a rule of thumb.</p>
-   <p><b>Loads and rep ranges</b>: ACSM 2009; Schoenfeld 2017 (heavier loads, more strength, similar growth). <b>Rest</b>: Schoenfeld 2016 (3 minutes beat 1).</p>
-   <p><b>Effort</b>: Robinson 2024 (growth rises as sets end closer to failure); Refalo 2024 (going to failure adds little); Halperin 2022 (estimates and effort calls at higher reps).</p>
-   <p><b>Weekly sets</b>: Pelland 2025 (helper muscles count half). Remmert 2025, a preprint (no extra growth past about 11 sets in one workout). <b>Maintenance</b>: Bickel 2011 and Spiering 2021 (size and strength held on a third of the volume).</p>
+   <p><b>Loads and rep ranges</b>: ACSM 2009; Schoenfeld 2017 (heavier loads, more strength, similar growth). <b>Rest</b>: Schoenfeld 2016 (3 minutes beat 1); Singer 2024 (no difference found past 90 seconds).</p>
+   <p><b>Effort</b>: Robinson 2024 and Refalo 2023 (growth rises as sets end closer to failure; a hard set is one within ${HARD_RIR} reps of it, a rule of thumb); Refalo 2024 (going to failure adds little); Halperin 2022 (estimates and effort calls at higher reps).</p>
+   <p><b>Weekly sets</b>: Pelland 2025 and Currier 2026, the 2026 ACSM position stand (${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets a week is typical for a major muscle); Pelland 2025 (helper muscles count half). Remmert 2025, a preprint (no extra growth past about 11 sets in one workout). <b>Maintenance</b>: Bickel 2011 and Spiering 2021 (size and strength held on a third of the volume).</p>
    <p><b>Breaks</b>: Bosquet 2013 (strength falls the longer a lift is left). <b>Day-to-day swings</b>: Sigvaldsen 2023 (estimated strength varies 2 to 8%).</p>
-   <p><b>One-rep max</b>: Brzycki 1993, Epley 1985. <b>Push-ups</b>: Ebben 2011 (about 64% of bodyweight). <b>Waist to height</b>: NICE 2022.</p>`
+   <p><b>One-rep max</b>: Brzycki 1993, Epley 1985; Nuzzo 2024 (estimates spread too far past ${E1_MAX_REPS} reps, so none is made there). <b>Push-ups</b>: Ebben 2011 (about 64% of bodyweight). <b>Waist to height</b>: NICE 2022.</p>`
     ]
   ];
   const open = m.open || '';
