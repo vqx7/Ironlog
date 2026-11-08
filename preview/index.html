@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-bD/v6C1GYSlZk03529Inmbx5lQBJmqwb5ANTdbEcEyA=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-ory3prL51hXYNNe9E1qWJWzrT94P4cBVo0i0osK+u80=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.08-r80">
@@ -9698,6 +9698,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (n3 && n3.et !== et) return;
     noteSet({ uid: uid2, et, up: false });
   }
+  function photoSignOut(keepUnsent) {
+    if (keepUnsent) prefDel(PHOTO_ASKED);
+    else photoForget();
+  }
   function photoForget() {
     prefDel(PHOTO_KEY);
     prefDel(PHOTO_SYNC);
@@ -10336,17 +10340,18 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       log("photo-write", e5);
     }
   }
+  async function photoFlush() {
+    if (!cloud.on || !cloud.db) return;
+    try {
+      const s3 = await withTimeout(ref(PHOTO_DOC).get(), SYNC_MS.net, "photo-read");
+      await photoReconcile(s3.exists ? rec(s3.data()) : null);
+    } catch (e5) {
+      log("photo-read", e5);
+    }
+  }
   function photoSyncSoon() {
     if (!cloud.on || !cloud.db) return;
-    void cq(async () => {
-      if (!cloud.on || !cloud.db) return;
-      try {
-        const s3 = await withTimeout(ref(PHOTO_DOC).get(), SYNC_MS.net, "photo-read");
-        await photoReconcile(s3.exists ? rec(s3.data()) : null);
-      } catch (e5) {
-        log("photo-read", e5);
-      }
-    });
+    void cq(photoFlush);
   }
   function hasUnsent() {
     if (!cloud.on) return false;
@@ -11658,12 +11663,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var ADD_ICON = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
 
   // src/app/env.ts
-  var INSTALLED_MODES = ["standalone", "fullscreen", "minimal-ui", "window-controls-overlay"];
+  var INSTALLED_MODES = ["standalone", "minimal-ui", "window-controls-overlay"];
   function isStandalone() {
     try {
       if (navigator.standalone === true) return true;
-      if (INSTALLED_MODES.some((m3) => window.matchMedia(`(display-mode: ${m3})`).matches)) return true;
-      return typeof document.referrer === "string" && document.referrer.startsWith("android-app://");
+      return INSTALLED_MODES.some((m3) => window.matchMedia(`(display-mode: ${m3})`).matches);
     } catch (e5) {
       return false;
     }
@@ -22696,14 +22700,16 @@ ${JSON.stringify(ctx, null, 1)}`;
           try {
             if (cloud.t) clearTimeout(cloud.t);
             await withTimeout(cq(cloudFlush), OUT_FLUSH_MS);
+            if (photoPending()) await withTimeout(cq(photoFlush), OUT_FLUSH_MS);
           } catch (e5) {
             log("auth", e5);
           }
         }
-        if (remove && !(cloud.on && cloud.status === "synced")) {
+        if (remove && (!cloud.on || hasUnsent())) {
           confirmBox("Not in your account yet", NOT_IN, "Keep on this phone and sign out", () => out(false));
           return;
         }
+        const keepPhoto = !remove && photoPending();
         try {
           await A2.signOut();
         } catch (e5) {
@@ -22713,7 +22719,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         }
         acct.user = null;
         cloudStop(remove);
-        photoForget();
+        photoSignOut(keepPhoto);
         const mid2 = !remove && !!state.draft;
         if (!mid2) {
           prefSet(OB_OUT, "1");
@@ -26460,11 +26466,11 @@ ${JSON.stringify(ctx, null, 1)}`;
         "sources",
         "Sources",
         `<p>Numbers come from these studies. Anything else the app calls a rule of thumb.</p>
-   <p><b>Loads and rep ranges</b>: ACSM 2009; Schoenfeld 2017 (heavier loads, more strength, similar growth). <b>Rest</b>: Schoenfeld 2016 (3 minutes beat 1).</p>
-   <p><b>Effort</b>: Robinson 2024 (growth rises as sets end closer to failure); Refalo 2024 (going to failure adds little); Halperin 2022 (estimates and effort calls at higher reps).</p>
-   <p><b>Weekly sets</b>: Pelland 2025 (helper muscles count half). Remmert 2025, a preprint (no extra growth past about 11 sets in one workout). <b>Maintenance</b>: Bickel 2011 and Spiering 2021 (size and strength held on a third of the volume).</p>
+   <p><b>Loads and rep ranges</b>: ACSM 2009; Schoenfeld 2017 (heavier loads, more strength, similar growth). <b>Rest</b>: Schoenfeld 2016 (3 minutes beat 1); Singer 2024 (no difference found past 90 seconds).</p>
+   <p><b>Effort</b>: Robinson 2024 and Refalo 2023 (growth rises as sets end closer to failure; a hard set is one within ${HARD_RIR} reps of it, a rule of thumb); Refalo 2024 (going to failure adds little); Halperin 2022 (estimates and effort calls at higher reps).</p>
+   <p><b>Weekly sets</b>: Pelland 2025 and Currier 2026, the 2026 ACSM position stand (${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets a week is typical for a major muscle); Pelland 2025 (helper muscles count half). Remmert 2025, a preprint (no extra growth past about 11 sets in one workout). <b>Maintenance</b>: Bickel 2011 and Spiering 2021 (size and strength held on a third of the volume).</p>
    <p><b>Breaks</b>: Bosquet 2013 (strength falls the longer a lift is left). <b>Day-to-day swings</b>: Sigvaldsen 2023 (estimated strength varies 2 to 8%).</p>
-   <p><b>One-rep max</b>: Brzycki 1993, Epley 1985. <b>Push-ups</b>: Ebben 2011 (about 64% of bodyweight). <b>Waist to height</b>: NICE 2022.</p>`
+   <p><b>One-rep max</b>: Brzycki 1993, Epley 1985; Nuzzo 2024 (estimates spread too far past ${E1_MAX_REPS} reps, so none is made there). <b>Push-ups</b>: Ebben 2011 (about 64% of bodyweight). <b>Waist to height</b>: NICE 2022.</p>`
       ]
     ];
     const open = m3.open || "";
