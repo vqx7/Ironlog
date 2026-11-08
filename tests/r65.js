@@ -169,8 +169,11 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
     const declared = k => new RegExp(`\\bvar ${k} =`).test(page);
     ok(buildOnly.length >= 10 && buildOnly.every(k => !declared(k)), `5. none of the ${buildOnly.length} values config.ts defines for the build and the markup alone is in the page's script (r64: all of them)`, buildOnly.filter(declared));
     ok(pageRead.length >= 10 && pageRead.every(declared), `5. (a guard) each of the ${pageRead.length} the page's modules read is in it`, pageRead.filter(k => !declared(k)));
-    const gym = fs.readFileSync(path.join(app, 'gym.ts'), 'utf8');
-    ok(/return \[\.\.\.\(u === 'kg' \? PLATES_KG : PLATES_LB\)\];/.test(gym) && !/\[45, 35, 25/.test(gym) && !/\[25, 20, 15/.test(gym), '5. (a guard) the gym\'s plate lists are the unit\'s own, PLATES_KG and PLATES_LB, typed once in units.ts (since r54)');
+    // The usual plates moved from gym.ts to settings.ts in 2.34 (NEW-76: the gym now takes any plate, and only Settings' chips read the usual list),
+    // so the guard reads the file the list is built in, and still holds both files to no list of plates typed in place.
+    const gym = fs.readFileSync(path.join(app, 'gym.ts'), 'utf8'), setSrc = fs.readFileSync(path.join(app, 'settings.ts'), 'utf8');
+    const typedHere = t => /\[45, 35, 25/.test(t) || /\[25, 20, 15/.test(t);
+    ok(/return \[\.\.\.\(u === 'kg' \? PLATES_KG : PLATES_LB\)\];/.test(setSrc) && !typedHere(gym) && !typedHere(setSrc), '5. (a guard) the gym\'s plate lists are the unit\'s own, PLATES_KG and PLATES_LB, typed once in units.ts (since r54)');
   }
 
   await browser.close(); server.close();
