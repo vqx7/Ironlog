@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-mvdN65bKh+Sf0KwtWgRZC4bLcPMrdAtfIjduLPSj7H0=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-2oCVvG/z/+YQqx9OSe2Nr58x4sRSU7g+f1coiF3EZKs=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.07-r77">
+<meta name="app-build" content="2026.11.07-r79">
 <title>Ironlog</title>
 <script>window.IRONLOG_APP=true;window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -70,7 +70,7 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
      edge (--hero-rim). Dark keeps the same shape with a far fainter glint, so neither theme reads as a sticker. */
   --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.55) 40%,rgba(255,255,255,.85) 47%,rgba(255,255,255,.35) 55%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#f6f7f9,#e7eaee 58%,#eef0f3);
   --hero-rim:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(13,15,18,.06);
-  --hero-ring:var(--volt-line); --hero-shadow:0 0 0 1px var(--card-b),0 1px 2px rgba(13,15,18,.05),0 12px 32px rgba(13,15,18,.08);
+  --hero-shadow:0 0 0 1px var(--card-b),0 1px 2px rgba(13,15,18,.05),0 12px 32px rgba(13,15,18,.08);
   /* The rest timer (r29, V: it blended into the screen): a deep tint of the
      accent, the same in both themes, with white text and a bar along its top
      that empties as the rest runs down. Done is the full accent. */
@@ -79,6 +79,13 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
   --dock-bg:linear-gradient(165deg,color-mix(in srgb,var(--volt) 46%,#0b0d10),color-mix(in srgb,var(--volt) 32%,#0b0d10));
   --font:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   --display:'Big Shoulders Display','Arial Narrow','Roboto Condensed','Helvetica Neue',system-ui,sans-serif;
+  /* The progress gradient (2.33, V's pick from the Stitch drafts): only on progress (the week ring, a session's bar, the
+     rest timer, a lift's chart line) and the profile photo's ring, never on a button or a card. The same in every theme
+     and accent, so it reads as progress rather than as the accent. */
+  /* On a light page the gradient takes the accents' deeper line shades, each 3:1 or more against a light card (tests/r21.js);
+     the dark theme takes the bright ones. */
+  --holo-1:#c2410c; --holo-2:#be185d; --holo-3:#5b2fe0; --holo-4:#0071a1;
+  --holo:linear-gradient(90deg,var(--holo-1),var(--holo-2) 40%,var(--holo-3) 70%,var(--holo-4));
   --r-lg:22px; --r-md:14px; --r-sm:12px;
   --head-h:52px;
   color-scheme:light;
@@ -99,7 +106,8 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
     --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
     --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.045) 38%,rgba(255,255,255,.095) 47%,rgba(255,255,255,.03) 56%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1d2025,#121417 62%,#16191d);
     --hero-rim:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.4);
-    --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+    --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+    --holo-1:#ff6a2b; --holo-2:#ec4899; --holo-3:#7c4dff; --holo-4:#00c8ff;
 
     --shadow:none;
     color-scheme:dark;
@@ -117,7 +125,8 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
   --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
   --hero-bg:linear-gradient(112deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.045) 38%,rgba(255,255,255,.095) 47%,rgba(255,255,255,.03) 56%,rgba(255,255,255,0) 72%),radial-gradient(150px 150px at 90% 11%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1d2025,#121417 62%,#16191d);
   --hero-rim:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.4);
-  --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+  --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+  --holo-1:#ff6a2b; --holo-2:#ec4899; --holo-3:#7c4dff; --holo-4:#00c8ff;
 
   --shadow:none;
   color-scheme:dark;
@@ -362,6 +371,9 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
 .ssb.warn .sd{display:block;background:var(--yellow)}
 .ssb.bad .sd{display:block;background:var(--red)}
 .ssb .sst{display:none;font:600 12.5px var(--font)}
+/* The profile photo (2.33): it fills the button inside a thin ring of the progress gradient, the dot kept on top. */
+.ssb.ph{background:transparent;box-shadow:none}
+.ssb-ph{width:100%;height:100%;flex:none;box-sizing:border-box;padding:2px;border-radius:50%;background:var(--holo);object-fit:cover;display:block}
 @media (min-width:620px){
   :root{--head-h:62px}
   .wkbar{gap:5px}
@@ -369,6 +381,8 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
   .ssb{width:auto;border-radius:999px;padding:0 10px}
   .ssb .sst{display:inline}
   .ssb .sd{position:static;border:0;width:8px;height:8px}
+  .ssb.ph{background:var(--volt-soft);box-shadow:inset 0 0 0 1.5px var(--volt-line);padding:0 10px 0 3px}
+  .ssb-ph{width:28px;height:28px}
 }
 .sync-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 main{max-width:760px;margin:0 auto;padding:6px 16px 150px}
@@ -464,6 +478,13 @@ details[open]>summary .chev::before{transform:translateY(2px) rotate(-135deg)}
 .gsec>summary::after{content:"›";color:var(--muted);font-size:20px;transition:transform .15s}
 .gsec[open]>summary::after{transform:rotate(90deg)}
 .gbody{padding:0 0 12px}.gbody p{margin:0 0 8px;font-size:14.5px;line-height:1.45}
+/* The menu's profile photo (2.33): in its header, the photo in the progress gradient's ring, a camera on it. */
+.mph{position:relative;flex:none;width:44px;height:44px;cursor:pointer}
+.mph-i{width:44px;height:44px;box-sizing:border-box;padding:2px;border-radius:50%;background:var(--holo);object-fit:cover;display:block}
+.mph-none{display:inline-flex;align-items:center;justify-content:center;padding:0;background:var(--volt-soft);color:var(--volt-line);box-shadow:inset 0 0 0 1.5px var(--volt-line)}
+.mph-none svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round}
+.mph-cam{position:absolute;right:-3px;bottom:-3px;width:20px;height:20px;border-radius:50%;background:var(--surface-2);border:2px solid var(--surface);display:flex;align-items:center;justify-content:center;color:var(--ink)}
+.mph-cam svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .mnus{margin-top:12px;border-radius:var(--r-md);background:var(--surface);overflow:hidden}
 .mnu{display:flex;width:100%;min-height:48px;align-items:center;justify-content:space-between;gap:10px;padding:0 14px;border:0;border-bottom:1px solid var(--line-soft);background:none;color:var(--ink);font:600 15.5px var(--font);text-align:left;cursor:pointer}
 .mnu:last-child{border-bottom:0}
@@ -522,6 +543,12 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .tag.common{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
 .tag.red{background:var(--red-bg);color:var(--red)}
 .tag.blue{background:var(--blue-bg);color:var(--blue)}
+/* A personal record (2.33): gold, the colour kept for PRs only. */
+.tag.gold{background:var(--gold);color:var(--on-gold)}
+.prb{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--on-gold);vertical-align:-5px}
+.prb svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.hpr{position:relative;padding-left:10px}
+.hpr::before{content:'';position:absolute;left:0;top:2px;bottom:2px;width:3px;border-radius:2px;background:var(--gold)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{min-height:40px;position:relative;padding:0 14px;border-radius:999px;border:1px solid var(--btn-b);background:var(--btn);cursor:pointer;font-size:14px;font-weight:600;color:var(--ink)}
 .chip.on{background:var(--ink);color:var(--on-ink);border-color:transparent}
@@ -644,6 +671,7 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg .n.warm{color:var(--yellow);font-size:15px}
 .cbtn{height:44px;width:44px;border-radius:50%;border:1px solid var(--field-b);background:var(--surface-2);cursor:pointer;font-weight:700;font-size:17px;color:var(--muted)}
 .cbtn.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
+.sg.pr::before{content:'';position:absolute;left:-7px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--gold);pointer-events:none}
 .sg.pr::after{content:attr(data-pr);position:absolute;right:0;top:-9px;background:var(--gold);color:var(--on-gold);font:700 10px/1 var(--font);letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:6px;pointer-events:none}
 .ci-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;flex-wrap:wrap}
 .ci-row>span{min-width:58px;font-weight:600}
@@ -815,7 +843,8 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .sec .band{background:var(--surface-2)}
 .band .zone{position:absolute;top:0;bottom:0;background:var(--green-bg)}
 .band .fill{position:absolute;top:0;bottom:0;left:0;border-radius:6px}
-.band .fill.prog{background:var(--volt);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--volt-line) 40%,transparent)}
+/* The gradient is sized to the whole track (--pct, the fill's share), so a part-full bar shows the part of it it has reached. */
+.band .fill.prog{background:var(--holo);background-size:calc(100% * 100 / max(var(--pct,100),1)) 100%;box-shadow:none}
 .band .fill.under{background:var(--yellow)} .band .fill.in{background:var(--green)} .band .fill.over{background:var(--blue)} .band .fill.part,.band .fill.plan{background:var(--part)}
 .band .fill.down{background:var(--red)}
 .band .fill.track{background:var(--muted)}
@@ -949,8 +978,13 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .hero-t{min-width:0;flex:1 1 auto}
 .ring{flex:none;position:relative;width:78px;height:78px;margin:2px -2px 0 0;padding:0;border:0;background:none;color:var(--on-hero);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .ring svg{position:absolute;inset:0;width:100%;height:100%}
+/* The progress gradient for SVG strokes (2.33), its stops from the tokens above. A ring or the rest dial takes #holoG
+   from the page's markup, laid over the circle's own box. A line chart draws its own across its width (holoLine in
+   view.ts), since a flat line's own box has no height, and a gradient laid over such a box is not drawn at all. */
+.holo-defs{position:absolute;width:0;height:0;overflow:hidden}
+.hs1{stop-color:var(--holo-1)}.hs2{stop-color:var(--holo-2)}.hs3{stop-color:var(--holo-3)}.hs4{stop-color:var(--holo-4)}
 .ring .rt{fill:none;stroke:color-mix(in srgb,var(--volt) 16%,transparent);stroke-width:7}
-.ring .rp{fill:none;stroke:var(--hero-ring);stroke-width:7;stroke-linecap:round;transition:stroke-dasharray .6s ease;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--volt) 45%,transparent))}
+.ring .rp{fill:none;stroke:url(#holoG);stroke-width:7;stroke-linecap:round;transition:stroke-dasharray .6s ease;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--holo-2) 40%,transparent))}
 .ring .rv{position:relative;font:800 25px/1 var(--display);font-variant-numeric:tabular-nums}
 .ring .rv small{font-size:12px;margin-left:1px}
 .ring .rl{position:relative;font:600 9.5px/1.2 var(--font);letter-spacing:.1em;text-transform:uppercase;opacity:.7}
@@ -1033,7 +1067,8 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .mvrow:first-of-type{border-top:0}
 .mvname{font-weight:500;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mvline{display:block}
-.mvline polyline{fill:none;stroke:var(--volt);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.exh-ln{fill:none;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.mvline polyline{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .mvset{text-align:right;font-weight:750;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .srow:last-child{border-bottom:0}
 .srow.static{cursor:default;grid-template-columns:8px 64px minmax(0,1fr)}
@@ -1172,7 +1207,7 @@ input.need{box-shadow:0 0 0 2px var(--yellow)}
 #timer .tdial{flex:none;width:56px;height:56px}
 #timer .tdial circle{fill:none;stroke-width:4}
 #timer .tdial .trk{stroke:var(--line)}
-#timer .tdial .trp{stroke:var(--volt);stroke-linecap:round;transition:stroke-dasharray .25s linear}
+#timer .tdial .trp{stroke:url(#holoG);stroke-linecap:round;transition:stroke-dasharray .25s linear}
 #timer .tcol{flex:1;min-width:0;display:flex;flex-direction:column}
 #timer:not(.compact) .tv{font:800 28px/1 var(--display);letter-spacing:.02em}
 #timer.done:not(.compact) .tv{color:var(--volt-line)}
@@ -1200,6 +1235,7 @@ body.timer-on main{padding-bottom:calc(168px + env(safe-area-inset-bottom,0px))}
 </head>
 <body>
 <header class="top"><h1 class="vh">Ironlog</h1><nav class="wkbar" id="wkbar" aria-label="This week"></nav><button type="button" class="ssb" id="saveState" data-act="menuOpen" aria-haspopup="dialog"></button></header>
+<svg class="holo-defs" aria-hidden="true" focusable="false"><defs><linearGradient id="holoG" x1="0" y1="0" x2="1" y2="1"><stop class="hs1" offset="0"/><stop class="hs2" offset=".4"/><stop class="hs3" offset=".7"/><stop class="hs4" offset="1"/></linearGradient></defs></svg>
 <div id="updbar" role="status" aria-live="polite" hidden></div>
 <main id="view"></main>
 <div id="timer" hidden></div>
@@ -2076,8 +2112,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.31";
-  var APP_VERSION = "2026.11.07-r77";
+  var DISPLAY_VERSION = "2.33";
+  var APP_VERSION = "2026.11.07-r79";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -4058,10 +4094,17 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     return keepExtra(r0, { id: rid, name: typeof r4.name === "string" ? r4.name : "Routine", schedule, days });
   }
-  var DRAFT_KNOWN = /* @__PURE__ */ new Set(["pics"]);
+  function equipList(v3) {
+    const a2 = arr(v3);
+    if (!a2) return void 0;
+    const out = EQUIP.map(([k2]) => k2).filter((k2) => a2.includes(k2));
+    return out.length ? out : void 0;
+  }
+  var DRAFT_KNOWN = /* @__PURE__ */ new Set(["pics", "equip"]);
   function cleanDraft(d3, date) {
     const startedAt = Number(d3.startedAt), durMin = Number(d3.durMin);
     const pics = picIds(d3.pics);
+    const equip = equipList(d3.equip);
     const out = {
       date,
       id: typeof d3.id === "string" ? fixId(d3.id) : did("x", { date: d3.date, dayName: d3.dayName }, 0),
@@ -4076,6 +4119,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       deload: !!d3.deload,
       light: !!d3.light,
       limited: d3.limited === true ? true : void 0,
+      // The equipment a Limited equipment session keeps to (NEW-79), as the library names it; absent when there is none.
+      ...equip ? { equip } : {},
       ...pics ? { pics } : {},
       free: d3.free === true ? true : void 0,
       // Started as its day's second workout (r68, 366 (c)).
@@ -4461,6 +4506,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var ACCT_LATER = KEY + ".acctLater", INSTALL_LATER = KEY + ".installLater", ICON_NOTE = KEY + ".icon25";
   var OB_ACCT = KEY + ".obAcct", OB_OUT = KEY + ".signedOut";
   var BWSNOOZE_KEY = KEY + ".bwSnooze", BWASK_KEY = KEY + ".bwAsk";
+  var PHOTO_KEY = KEY + ".photo", PHOTO_ASKED = KEY + ".photoAsked";
   var DEMOSET_KEY = KEY + ".demoSettings";
   var ASIDE_KEY = KEY + ".aside.";
   var device = { ok: true, boot: true, hadLocal: false, hadLog: false, lastSaved: null };
@@ -5050,13 +5096,15 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       return null;
     }
   }
-  async function picAdd(f3) {
+  async function jpegOf(f3, edge, quality, square = false) {
     const no = picRefusal(f3);
     if (no) return { why: no };
     const d3 = await decode(f3);
     if (!d3 || !(d3.w > 0 && d3.h > 0)) return { why: "That file could not be read as a photo." };
-    const k2 = Math.min(1, PIC_EDGE / Math.max(d3.w, d3.h));
-    const w2 = Math.max(1, Math.round(d3.w * k2)), h3 = Math.max(1, Math.round(d3.h * k2));
+    const side = Math.min(d3.w, d3.h);
+    const sw = square ? side : d3.w, sh = square ? side : d3.h;
+    const k2 = Math.min(1, edge / Math.max(sw, sh));
+    const w2 = Math.max(1, Math.round(sw * k2)), h3 = Math.max(1, Math.round(sh * k2));
     const cv = document.createElement("canvas");
     cv.width = w2;
     cv.height = h3;
@@ -5065,10 +5113,16 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       d3.done();
       return { why: "This phone could not prepare the photo." };
     }
-    cx.drawImage(d3.img, 0, 0, w2, h3);
+    cx.drawImage(d3.img, (d3.w - sw) / 2, (d3.h - sh) / 2, sw, sh, 0, 0, w2, h3);
     d3.done();
-    const blob = await new Promise((res) => cv.toBlob(res, "image/jpeg", PIC_QUALITY));
+    const blob = await new Promise((res) => cv.toBlob(res, "image/jpeg", quality));
     if (!blob) return { why: "This phone could not prepare the photo." };
+    return { blob, w: w2, h: h3 };
+  }
+  async function picAdd(f3) {
+    const j3 = await jpegOf(f3, PIC_EDGE, PIC_QUALITY);
+    if ("why" in j3) return j3;
+    const { blob, w: w2, h: h3 } = j3;
     const now = Date.now();
     const row = { id: "p" + uid(), blob, w: w2, h: h3, t: now, seen: now, own: owner() };
     if (asBytes) row.bytes = await blob.arrayBuffer();
@@ -5477,10 +5531,6 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           if (x2.done) k2++;
         }
     return { n: n3, k: k2, pct: n3 ? k2 / n3 * PERCENT : 0 };
-  }
-  function blockRest(d3, bi) {
-    const b2 = d3.ex[bi], nx = d3.ex[bi + 1];
-    return b2.plan.ss && nx && nx.plan.ss === b2.plan.ss ? 0 : +b2.plan.rest || 0;
   }
   function lastDup(d3, bi) {
     const b2 = d3.ex[bi];
@@ -8471,7 +8521,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const best = {};
     const need = (m3) => !hasTargetIn(M3, m3) ? 0 : Math.max(0, bandOfIn(M3, m3)[0] - (r7[m3] || 0));
     for (const e5 of M3.s.exercises) {
-      if (e5.archived || inS.has(e5.id) || exInjuryIn(M3, e5)) continue;
+      if (e5.archived || inS.has(e5.id) || exInjuryIn(M3, e5) || d3.equip && !d3.equip.includes(e5.equip)) continue;
       const m3 = e5.primary;
       const hi = bandOfIn(M3, m3)[1];
       const r7m = r7[m3] || 0;
@@ -8628,45 +8678,79 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     return out;
   }
+  function sessLeftMinIn(M3, d3, setsOf) {
+    const n3 = (bi) => {
+      const b2 = d3.ex[bi];
+      return setsOf ? setsOf(bi) : b2 ? b2.sets.filter((x2) => !x2.done && !x2.warm).length : 0;
+    };
+    let s3 = 0, cN = 0, lastRest = 0;
+    d3.ex.forEach((b2, bi) => {
+      const ex = EXIn(M3, b2.exId);
+      const su = setupSecs(ex, cN);
+      const k2 = n3(bi);
+      const done = b2.sets.some((x2) => x2.done);
+      if (isCompound(ex) && (k2 > 0 || done)) cN++;
+      if (!k2) return;
+      let nx = -1;
+      for (let j3 = bi + 1; j3 < d3.ex.length && nx < 0; j3++) if (n3(j3) > 0) nx = j3;
+      const next = nx >= 0 ? d3.ex[nx] : void 0;
+      const r4 = b2.plan.ss && next && next.plan.ss === b2.plan.ss ? 0 : +b2.plan.rest || 0;
+      s3 += k2 * (setSecs(ex, b2.plan) + r4) + (done ? 0 : su);
+      lastRest = r4;
+    });
+    return Math.round(Math.max(0, s3 - lastRest) * paceIn(M3) / MINUTE_S);
+  }
   function trimPlanIn(M3, d3, mins, blank) {
     const pri = new Set(M3.s.settings.priorities);
     const lag = new Set(
       IDXIn(M3).scores.filter((x2) => x2.label === "lagging").map((x2) => x2.m)
     );
-    let cN = 0;
     const bl = d3.ex.map((b2, bi) => {
       const ex = EXIn(M3, b2.exId);
       const isBlank = (k2) => !!(blank[bi] && blank[bi][k2]);
       const undone = b2.sets.filter((x2, k2) => !x2.warm && isBlank(k2)).length;
       const done = b2.sets.filter((x2, k2) => !x2.warm && !isBlank(k2)).length;
+      const typed = b2.sets.filter((x2, k2) => !x2.warm && !x2.done && !isBlank(k2)).length;
       const started = b2.sets.some((_2, k2) => !isBlank(k2));
-      const su = setupSecs(ex, cN);
-      if (isCompound(ex)) cN++;
       const score = (pri.has(ex.primary) ? TRIM.priority : 0) + (lag.has(ex.primary) ? TRIM.lagging : 0) + (isCompound(ex) ? TRIM.compound : 0) - bi * TRIM.order;
-      return { bi, ex, undone, done, started, keep: undone, rest: blockRest(d3, bi), per: setSecs(ex, b2.plan), su, score };
+      return { bi, ex, undone, done, typed, started, keep: undone, score };
     });
-    const pc = paceIn(M3);
-    const cost = () => bl.reduce((a2, x2) => a2 + (x2.keep ? x2.keep * (x2.per + x2.rest) + (x2.started ? 0 : x2.su) : 0), 0) * pc / MINUTE_S;
+    const cost = () => sessLeftMinIn(M3, d3, (bi) => bl[bi] ? bl[bi].typed + bl[bi].keep : 0);
+    const fits = () => min5(cost()) <= mins;
     const byLow = (arr2) => arr2.slice().sort((a2, b2) => a2.score - b2.score);
     let guard = 0;
-    while (cost() > mins && guard++ < TRIM.stops[0]) {
+    while (!fits() && guard++ < TRIM.stops[0]) {
       const c4 = byLow(bl.filter((x2) => x2.keep > 0 && x2.done + x2.keep > SHORT_MIN_SETS))[0];
       if (!c4) break;
       c4.keep--;
     }
     const kept = (x2) => x2.keep > 0 || x2.done > 0;
     const covered = (x2) => bl.some((y2) => y2 !== x2 && kept(y2) && y2.ex.primary === x2.ex.primary && (isCompound(y2.ex) || !isCompound(x2.ex)));
-    while (cost() > mins && guard++ < TRIM.stops[1]) {
+    while (!fits() && guard++ < TRIM.stops[1]) {
       const c4 = bl.filter((x2) => x2.keep > 0 && !x2.started);
       if (!c4.length) break;
       const red = c4.filter(covered);
       const low = byLow(red.length ? red : c4)[0];
       if (low) low.keep = 0;
     }
-    while (cost() > mins && guard++ < TRIM.stops[2]) {
+    while (!fits() && guard++ < TRIM.stops[2]) {
       const c4 = byLow(bl.filter((x2) => x2.keep > 0 && x2.started))[0];
       if (!c4) break;
       c4.keep--;
+    }
+    const byHigh = () => byLow(bl).reverse();
+    const tryBack = (x2, to) => {
+      const was = x2.keep;
+      x2.keep = to;
+      if (fits()) return true;
+      x2.keep = was;
+      return false;
+    };
+    if (fits()) {
+      for (const x2 of byHigh())
+        if (x2.keep === 0 && !x2.started && x2.undone) tryBack(x2, Math.min(SHORT_MIN_SETS, x2.undone));
+      for (let room = true, n3 = bl.reduce((a2, x2) => a2 + x2.undone, 0); room && n3 > 0; n3--)
+        room = byHigh().some((x2) => (x2.keep > 0 || x2.started) && x2.keep < x2.undone && tryBack(x2, x2.keep + 1));
     }
     const changes = [];
     for (const x2 of bl) {
@@ -8677,7 +8761,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           `${x2.ex.name}: ${x2.done + x2.undone} → ${x2.done + x2.keep} set${x2.done + x2.keep === 1 ? "" : "s"}${x2.done ? ` (${x2.done} done)` : ""}`
         );
     }
-    return { bl, changes, est: Math.round(cost()), over: cost() > mins };
+    return { bl, changes, est: cost(), over: !fits() };
   }
 
   // src/app/charts.ts
@@ -9358,6 +9442,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var eqPlan = live(eqPlanIn);
   var recentExIds = live(recentExIdsIn);
   var trimPlan = live(trimPlanIn);
+  var sessLeftMin = live(sessLeftMinIn);
   var loadOf = live(loadOfIn);
   var prFrame = live(prFrameIn);
   var prLoad = live(prLoadIn);
@@ -11202,17 +11287,23 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const pr = pair2(k2);
       if (!pr) continue;
       const { b: b2, L: L2 } = pr;
-      let weeks = 0, sum = 0;
+      let weeks = 0, span = 0, sum = 0;
       for (let wk = weekStart(b2.date); wk <= weekStart(L2.date); wk = addDays(wk, WEEK_DAYS)) {
+        span++;
         const ws = I2.weekSets[wk];
         if (!ws) continue;
         const v3 = mus.reduce((a2, m3) => a2 + (ws[m3] || 0), 0);
         weeks++;
         sum += v3;
       }
-      out.push({ k: k2, mus, from: b2.date, to: L2.date, d: at2(L2, k2) - at2(b2, k2), sets: weeks ? sum / weeks : 0, weeks });
+      out.push({ k: k2, mus, from: b2.date, to: L2.date, d: at2(L2, k2) - at2(b2, k2), sets: weeks ? sum / weeks : 0, weeks, span });
     }
     return out;
+  }
+  function sizeWhat(r4) {
+    if (!r4.weeks) return "no logged training in between";
+    const base = `${r1(r4.sets)} hard sets a week for ${andList(r4.mus.map((m3) => ML[m3] || m3))}`;
+    return r4.weeks < r4.span ? `${base}, in the ${r4.weeks} week${r4.weeks === 1 ? "" : "s"} you trained of ${r4.span}` : base;
   }
   function cycleProjection(R2, days, restWeeks) {
     const n3 = R2.days.length;
@@ -11337,9 +11428,42 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   // src/app/icons.ts
   var MARK_SVG = '<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
   var LOCKUP = `<span class="vh">${APP_NAME}</span>${MARK_SVG}<span class="rn" aria-hidden="true">${WORDMARK.strong}</span><span aria-hidden="true">${WORDMARK.light}</span>`;
+  var PR_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg>';
+  var CAMERA_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
   var MENU_ICON = '<svg class="mi" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8.4" r="3.7"/><path d="M4.8 19.6c1.3-3.7 4.1-5.4 7.2-5.4s5.9 1.7 7.2 5.4"/></svg>';
   var SHARE_ICON = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
   var ADD_ICON = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+
+  // src/app/photo.ts
+  var PHOTO_EDGE = 256;
+  var PHOTO_QUALITY = 0.85;
+  var PHOTO_SHAPE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
+  function photoUrl() {
+    const v3 = prefGet(PHOTO_KEY);
+    return v3 && PHOTO_SHAPE.test(v3) ? v3 : null;
+  }
+  function dataUrl(b2) {
+    return new Promise((res) => {
+      const r4 = new FileReader();
+      r4.onload = () => res(typeof r4.result === "string" ? r4.result : null);
+      r4.onerror = () => {
+        log("photo-read", r4.error);
+        res(null);
+      };
+      r4.readAsDataURL(b2);
+    });
+  }
+  async function photoSet(f3) {
+    const j3 = await jpegOf(f3, PHOTO_EDGE, PHOTO_QUALITY, true);
+    if ("why" in j3) return j3.why;
+    const u4 = await dataUrl(j3.blob);
+    if (!u4 || !PHOTO_SHAPE.test(u4)) return "This phone could not prepare the photo.";
+    if (!prefSet(PHOTO_KEY, u4)) return "The photo could not be kept on this phone (storage full or blocked).";
+    return null;
+  }
+  function photoClear() {
+    prefDel(PHOTO_KEY);
+  }
 
   // src/app/env.ts
   function isStandalone() {
@@ -11635,6 +11759,9 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     )}</div>
 <button type="button" class="linkbtn ml-c" data-act="goLayout">Edit sections</button></div>
 `;
+  }
+  function holoLine(id, w2) {
+    return w`<defs><linearGradient id=${id} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2=${String(w2)} y2="0"><stop class="hs1" offset="0"></stop><stop class="hs2" offset=".4"></stop><stop class="hs3" offset=".7"></stop><stop class="hs4" offset="1"></stop></linearGradient></defs>`;
   }
 
   // src/app/toast.ts
@@ -12379,8 +12506,12 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const el = document.getElementById("saveState");
     if (!el) return;
     const { cls, txt } = saveStateNow();
-    el.className = "ssb" + (cls ? " " + cls : "");
-    D(b`${markup(MENU_ICON)}<span class="sd" aria-hidden="true"></span><span class="sst">${txt}</span>`, el);
+    const ph = photoUrl();
+    el.className = "ssb" + (ph ? " ph" : "") + (cls ? " " + cls : "");
+    D(
+      b`${ph ? b`\x3cimg class="ssb-ph" src=${ph} alt="">` : markup(MENU_ICON)}<span class="sd" aria-hidden="true"></span><span class="sst">${txt}</span>`,
+      el
+    );
     el.setAttribute("aria-label", "Menu. " + txt);
     el.setAttribute("data-tip", txt);
     const who = acct.user ? acct.user.email : "";
@@ -13303,6 +13434,8 @@ ${cs.length > CARDIO_SHOWN ? b`<p class="small muted">${cs.length - CARDIO_SHOWN
       return w2 && !(w2 === "deload" && s3.deload) && !(w2 === "lighter" && s3.light) ? b` <span class="tag">${w2}</span>` : A;
     };
     const vol = new Map(I2.sessVol.map((v3) => [v3.id, v3.vol]));
+    const prs = /* @__PURE__ */ new Map();
+    for (const p3 of I2.prs) if (p3.big) prs.set(p3.sid, [...prs.get(p3.sid) || [], p3]);
     const nWork = (s3) => s3.ex.reduce((a2, b2) => a2 + b2.sets.filter(isWork).length, 0);
     const wkTot = {};
     for (const s3 of shown2) {
@@ -13326,7 +13459,7 @@ ${cs.length > CARDIO_SHOWN ? b`<p class="small muted">${cs.length - CARDIO_SHOWN
 `
         );
       }
-      rows2.push(sessionRow(s3, perDay, nWork(s3), vol.get(s3.id) || 0, wd, wTag));
+      rows2.push(sessionRow(s3, perDay, nWork(s3), vol.get(s3.id) || 0, wd, wTag, prs.get(s3.id) || []));
     }
     const more = shown2.length > page.length ? b`<button class="btn fullw u-mt10" data-act="histMore">Show ${Math.min(HIST_PAGE, shown2.length - page.length)} more (${page.length} of ${shown2.length})</button>` : A;
     const body = b`<label class="field">Show sessions with<select data-bind="histEx">
@@ -13348,22 +13481,27 @@ ${more}`;
       def: true
     });
   }
-  function sessionRow(s3, perDay, nSets, vol, wd, wTag) {
+  function prBadge(n3) {
+    const said2 = `${n3} ${n3 === 1 ? "PR" : "PRs"} smashed`;
+    return b` <span class="prb" role="img" aria-label=${said2} data-tip=${said2}>${markup(PR_ICON)}</span>`;
+  }
+  function sessionRow(s3, perDay, nSets, vol, wd, wTag, prs) {
     const open = ui.histOpen === s3.id;
     const name = s3.deload ? String(s3.dayName || "Session").replace(/ \(deload\)$/, "") : s3.dayName || "Session";
     const tm = (perDay[s3.date] || 0) > 1 && sessTm(s3) ? `, ${sessTm(s3)}` : "";
     const filtered = ui.histEx && !open ? s3.ex.find((x2) => x2.exId === ui.histEx) : void 0;
     const fex = filtered ? EX(filtered.exId) : null;
-    return b`<div class=${open ? "hitem open" : "hitem"}><button class="pick u-b0_p0" data-act="histToggle" data-id=${s3.id} aria-expanded=${String(open)}><span class="u-minw0"><b>${name}</b>${s3.deload ? b` <span class="tag blue">deload</span>` : A}${s3.free && !/freestyle/i.test(s3.dayName || "") ? b` <span class="tag">freestyle</span>` : A}${Object.values(wd[s3.id] || {}).includes("fewer sets") ? b` <span class="tag">fewer sets</span>` : A}${s3.demo ? b` <span class="tag">demo</span>` : A}<br /><span class="small muted">${fmtDateRow(s3.date)}${tm}</span></span><span class="num small u-taright_fnone">${nSets} sets<br /><span class="muted">${Math.round(toD(vol) ?? 0).toLocaleString()} ${U()}${s3.durMin ? ` · ${s3.durMin} min` : ""}</span></span></button>${filtered && fex ? b`<p class="small u-m6-0-0">${filtered.sets.map((x2) => setStr(fex, x2)).join(", ")}${histUnits(fex)}</p>
-` : A}${open ? sessionPanel(s3, wTag) : A}</div>
+    return b`<div class=${open ? "hitem open" : "hitem"}><button class="pick u-b0_p0" data-act="histToggle" data-id=${s3.id} aria-expanded=${String(open)}><span class="u-minw0"><b>${name}</b>${s3.deload ? b` <span class="tag blue">deload</span>` : A}${s3.free && !/freestyle/i.test(s3.dayName || "") ? b` <span class="tag">freestyle</span>` : A}${Object.values(wd[s3.id] || {}).includes("fewer sets") ? b` <span class="tag">fewer sets</span>` : A}${s3.demo ? b` <span class="tag">demo</span>` : A}${prs.length ? prBadge(prs.length) : A}<br /><span class="small muted">${fmtDateRow(s3.date)}${tm}</span></span><span class="num small u-taright_fnone">${nSets} sets<br /><span class="muted">${Math.round(toD(vol) ?? 0).toLocaleString()} ${U()}${s3.durMin ? ` · ${s3.durMin} min` : ""}</span></span></button>${filtered && fex ? b`<p class="small u-m6-0-0">${filtered.sets.map((x2) => setStr(fex, x2)).join(", ")}${histUnits(fex)}</p>
+` : A}${open ? sessionPanel(s3, wTag, prs) : A}</div>
 `;
   }
-  function sessionPanel(s3, wTag) {
+  function sessionPanel(s3, wTag, prs) {
     const chk = s3.chk;
     return b`<div class="panel u-mt10">${chk ? b`<p class="small muted u-m0-0-6">Check-in: ${CHK_Q.filter(([k2]) => chk[k2]).map(([k2, l4, n3]) => `${l4.toLowerCase()} ${chkWord(n3[(chk[k2] || 1) - 1] || "")}`).join(", ")}</p>
 ` : A}${s3.ex.map((b2) => {
       const ex = EX(b2.exId);
-      return b`<p class="small u-m0-0-6"><b>${ex.name}</b>${wTag(s3, b2.exId)}: ${b2.sets.map((x2) => setStr(ex, x2)).join(", ")}${histUnits(ex)}${b2.note ? b`<br /><span class="muted">${b2.note}</span>` : A}</p>${picStripSaved(b2.pics)}
+      const pr = prs.some((p3) => p3.exId === b2.exId);
+      return b`<p class=${pr ? "small u-m0-0-6 hpr" : "small u-m0-0-6"}><b>${ex.name}</b>${pr ? b` <span class="tag gold">PR</span>` : A}${wTag(s3, b2.exId)}: ${b2.sets.map((x2) => setStr(ex, x2)).join(", ")}${histUnits(ex)}${b2.note ? b`<br /><span class="muted">${b2.note}</span>` : A}</p>${picStripSaved(b2.pics)}
 `;
     })}${s3.notes ? b`<p class="small muted u-m0-0-6">${s3.notes}</p>
 ` : A}${picStripSaved(s3.pics)}
@@ -13511,8 +13649,26 @@ ${more}`;
   var monthNum = (w2) => MON[w2.slice(0, MON_LONG)] || MON[w2.slice(0, MON_SHORT)];
   var MONTHS2 = 12, MONTH_DAYS = 31, CENTURY = 100, Y2K = 2e3, IMPORT_YEARS = 20;
   var SERIAL = { epoch: Date.UTC(1899, 11, 30), min: 2e4, max: 8e4 };
-  function impDate(str, ref2) {
-    const s3 = String(str || "").toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, "$1").trim();
+  function dateText(str) {
+    return String(str || "").toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, "$1").trim();
+  }
+  var NUM_DATE = /\b(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b/;
+  var YEAR_FIRST = /(?<!\d)(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)/;
+  function impDateOrder(strs) {
+    let dm = 0, md = 0;
+    for (const x2 of strs) {
+      const s3 = dateText(x2);
+      if (YEAR_FIRST.test(s3)) continue;
+      const g2 = s3.match(NUM_DATE);
+      if (!g2) continue;
+      const a2 = +(g2[1] || 0), b2 = +(g2[2] || 0);
+      if (a2 > MONTHS2 && b2 <= MONTHS2) dm++;
+      else if (b2 > MONTHS2 && a2 <= MONTHS2) md++;
+    }
+    return dm > 0 && md === 0 ? "dm" : void 0;
+  }
+  function impDate(str, ref2, order) {
+    const s3 = dateText(str);
     if (!s3) return null;
     const t4 = ref2 || today();
     const ty = +yearOf(t4);
@@ -13527,20 +13683,17 @@ ${more}`;
       return x2;
     };
     const yy = (y2) => y2 < CENTURY ? Y2K + y2 : y2;
-    let g2 = s3.match(/(?<!\d)(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)/);
+    let g2 = s3.match(YEAR_FIRST);
     if (g2) {
       const [, y2, mo, d3] = g2;
       return mk(+y2, +mo, +d3);
     }
-    g2 = s3.match(/\b(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b/);
+    g2 = s3.match(NUM_DATE);
     if (g2) {
       const [, ga, gb, gy] = g2;
-      let a2 = +ga, b2 = +gb;
-      let m3 = a2, d3 = b2;
-      if (a2 > MONTHS2 && b2 <= MONTHS2) {
-        m3 = b2;
-        d3 = a2;
-      }
+      const a2 = +ga, b2 = +gb;
+      const dayFirst = a2 > MONTHS2 && b2 <= MONTHS2 || order === "dm" && b2 <= MONTHS2;
+      const m3 = dayFirst ? b2 : a2, d3 = dayFirst ? a2 : b2;
       const x2 = gy ? mk(yy(+gy), m3, d3) : noYear(m3, d3);
       return x2 && +yearOf(x2) >= ty - IMPORT_YEARS ? x2 : null;
     }
@@ -13803,12 +13956,12 @@ ${more}`;
     const equip = has(/\bdb\b/) ? "dumbbell" : has(/\bbb\b/) ? "barbell" : has(/cable/) ? "cable" : has(/smith/) ? "smith" : has(/machine/) ? "machine" : has(/pullup|chinup|pushup|dip|plank|situp/) ? "bodyweight" : "other";
     return { primary, equip };
   }
-  function impSpan(dur, start2, end) {
+  function impSpan(dur, start2, end, order) {
     const d3 = String(dur || "").toLowerCase();
     const h3 = d3.match(/(\d+(?:\.\d+)?)\s*h/), m3 = d3.match(/(\d+)\s*m(?!s)/);
     if (h3 || m3) return (h3 ? +h3[1] * HOUR_MIN : 0) + (m3 ? +m3[1] : 0);
     const at2 = (x2) => {
-      const day = impDate(x2), t4 = String(x2 || "").match(/(\d{1,2}):(\d{2})(?!.*\d:\d)/);
+      const day = impDate(x2, void 0, order), t4 = String(x2 || "").match(/(\d{1,2}):(\d{2})(?!.*\d:\d)/);
       if (!day || !t4) return null;
       const [, hh, mm] = t4;
       return Date.parse(`${day}T00:00:00Z`) / (MINUTE_S * SECOND_MS) + +hh * HOUR_MIN + +mm;
@@ -13911,12 +14064,14 @@ ${more}`;
       const n3 = parseFloat(String(v3 == null ? "" : v3).replace(",", "."));
       return isFinite(n3) ? n3 : null;
     };
+    const dc = map.date;
+    const order = dc == null ? void 0 : impDateOrder(rows2.slice(1).map((r4) => r4[dc]));
     for (let i5 = 1; i5 < rows2.length; i5++) {
       const r4 = rows2[i5];
       const raw = (f3) => map[f3] == null ? "" : String(r4[map[f3]] == null ? "" : r4[map[f3]]).trim();
       const cell = (f3) => ours ? csvUnguard(raw(f3)) : raw(f3);
       let date = cell("date");
-      date = date ? impDate(date) || impSerial(num2(date)) : lastDate;
+      date = date ? impDate(date, void 0, order) || impSerial(num2(date)) : lastDate;
       const ex = cell("ex") || lastEx;
       if (!date || !ex) {
         skipped++;
@@ -13989,7 +14144,7 @@ ${more}`;
       const ss = S4.get(k2);
       const sn = ours ? at2(r4, cNote) : cell("snote");
       if (!ss.note && sn) ss.note = sn;
-      const dm = ours ? num2(at2(r4, cMin)) : impSpan(strong ? cell("dur") : "", cell("date"), cell("end"));
+      const dm = ours ? num2(at2(r4, cMin)) : impSpan(strong ? cell("dur") : "", cell("date"), cell("end"), order);
       if (ss.durMin == null && dm != null && dm >= 1 && dm <= LIMITS.minutes) ss.durMin = Math.round(dm);
       if (/^(yes|true|1|y)$/i.test(String(cell("deload") || "").trim())) ss.deload = true;
       if (!ss.items.has(ex))
@@ -14108,9 +14263,9 @@ ${more}`;
     let cur = null, ex = null, pend = null, hint = null;
     const named2 = { kg: false, lb: false };
     const unread = [];
-    const day = (date, name) => {
+    const day = (date, name, line) => {
       if (pend) unread.push(pend.raw);
-      const d3 = { date, name: name || "", items: [] };
+      const d3 = { date, name: name || "", items: [], ...line ? { line } : {} };
       cur = d3;
       S4.push(d3);
       ex = null;
@@ -14154,7 +14309,7 @@ ${more}`;
           ""
         ).replace(/[,:;\-–|]+/g, " ").trim();
         if (!/\d/.test(rest)) {
-          day(dt, rest);
+          day(dt, rest, L2);
           continue;
         }
       }
@@ -14224,6 +14379,10 @@ ${more}`;
     }
     const last = pend;
     if (last) unread.push(last.raw);
+    const order = impDateOrder(S4.flatMap((x2) => x2.line ? [x2.line] : []));
+    if (order) {
+      for (const x2 of S4) if (x2.line) x2.date = impDate(x2.line, void 0, order) || x2.date;
+    }
     return {
       sessions: S4.filter((x2) => x2.items.length).map((x2) => ({ date: x2.date, name: x2.name, items: x2.items })),
       unit: named2.kg && named2.lb ? null : hint,
@@ -14598,18 +14757,7 @@ ${more}`;
     return { text: heavyTxt ? `${base}. ${heavyTxt}` : base, beat: planned > 0 && hit >= planned || heavyBeat };
   }
   function remainMin(d3) {
-    let s3 = 0, cN = 0, lastRest = 0;
-    d3.ex.forEach((b2, bi) => {
-      const ex = EX(b2.exId);
-      const su = setupSecs(ex, cN);
-      if (isCompound(ex)) cN++;
-      const n3 = b2.sets.filter((x2) => !x2.done && !x2.warm).length;
-      if (!n3) return;
-      const r4 = blockRest(d3, bi);
-      s3 += n3 * (setSecs(ex, b2.plan) + r4) + (b2.sets.some((x2) => x2.done) ? 0 : su);
-      lastRest = r4;
-    });
-    return Math.round(Math.max(0, s3 - lastRest) * pace() / MINUTE_S);
+    return sessLeftMin(d3);
   }
   function leftMin(d3) {
     if (!d3 || d3.editingId || d3.free || d3.past) return 0;
@@ -16219,6 +16367,8 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
           picsClear().catch((e5) => {
             log("pics-clear", e5);
           });
+          photoClear();
+          setSaveState();
           ui.tab = "today";
           render();
           toast("Everything erased", true);
@@ -17530,9 +17680,8 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     const one = !!r0 && rows2.every((r4) => span(r4) === span(r0) && ctx(r4) === ctx(r0));
     const c0 = r0 ? ctx(r0) : "";
     const top = one && r0 ? b`<p class="small muted u-m0-0-4">${span(r0)}${c0 ? c0.replace(/^ Same stretch: /, ": ") : "."}</p>` : A;
-    const what = (r4) => r4.weeks ? `${r1(r4.sets)} hard sets a week for ${andList(r4.mus.map((m3) => ML[m3] || m3))}` : "no logged training in between";
     return b`${top}${rows2.map(
-      (r4) => b`<div class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${ML2[r4.k]}</b><span class="num">${Math.abs(r4.d) < mdc(r4.k) ? b`<span class="tag">within tape error</span> ` : A}${sgn(r4.d)} ${LU()}</span></div><p class="small muted u-m2-0-0">${one ? "" : `${span(r4)}, `}${what(r4)}.${one ? "" : ctx(r4)}</p></div>`
+      (r4) => b`<div class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${ML2[r4.k]}</b><span class="num">${Math.abs(r4.d) < mdc(r4.k) ? b`<span class="tag">within tape error</span> ` : A}${sgn(r4.d)} ${LU()}</span></div><p class="small muted u-m2-0-0">${one ? "" : `${span(r4)}, `}${sizeWhat(r4)}.${one ? "" : ctx(r4)}</p></div>`
     )}<p class="small muted hastip u-mt8" data-tip="Same spot, same time of day, before training, relaxed or flexed the same way each time. Under about 1 cm on arms, thighs, calves, and neck (1.5 cm on the chest) is within what a tape repeats to.">How to measure</p>`;
   }
   function bwRateText() {
@@ -17792,7 +17941,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     ${ex.bw && !state.bodyweights.length ? b`<p class="small u-cyellow">Log your bodyweight to see a trend here.</p>` : bwBackfillNote(exId)}
     <div class="scroll-x"><table class="t u-mt8"><tr><th>Date</th><th>Sets</th>${e1Mode ? b`<th class="r">Best estimate</th>` : A}</tr>${exps.slice(-EX_ROWS).reverse().map((x2) => {
       const tag = sessionWord(x2);
-      return b`<tr><td>${fmtDate(x2.date)}${I2.prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === exId) ? b` <span class="tag green">PR</span>` : A}${tag ? b` <span class="tag">${tag}</span>` : A}</td><td>${x2.pts.map((p3) => setShort(ex, p3.w, p3.r)).join(", ")}</td>${e1Mode ? b`<td class="r num">${x2.best ? (ex.bw ? "≈" : "") + fmtE(x2.best) : ""}</td>` : A}</tr>`;
+      return b`<tr><td>${fmtDate(x2.date)}${I2.prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === exId) ? b` <span class="tag gold">PR</span>` : A}${tag ? b` <span class="tag">${tag}</span>` : A}</td><td>${x2.pts.map((p3) => setShort(ex, p3.w, p3.r)).join(", ")}</td>${e1Mode ? b`<td class="r num">${x2.best ? (ex.bw ? "≈" : "") + fmtE(x2.best) : ""}</td>` : A}</tr>`;
     })}</table></div>`;
   }
   function risingWords(names) {
@@ -18066,7 +18215,7 @@ ${howText("wk", "Each set counts once; a set at RIR 4 or more is not hard and do
 ${cardioLine(w2)}${liftedLine()}
 ${howText("wk", "A rest week you marked under More options on Today. It does not count as missed: your averages, streak, and adherence skip it.")}`;
     return b`${tog}${w2.weekly ? A : cycleStrip(w2.R)}
-<div class="band" data-tip=${noLog() ? `${w2.tgt} hard sets planned` : `${w2.got} hard sets logged of ${w2.tgt} planned`}><div class="fill prog" style=${`width:${w2.pct}%`}></div></div>
+<div class="band" data-tip=${noLog() ? `${w2.tgt} hard sets planned` : `${w2.got} hard sets logged of ${w2.tgt} planned`}><div class="fill prog" style=${`width:${w2.pct}%;--pct:${w2.pct}`}></div></div>
 ${cardioLine(w2)}
 <div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">${noLog() ? `${w2.tgt} hard sets planned this week.` : `${w2.got} hard sets logged of ${w2.tgt} planned${w2.tgt > 0 ? ` (${Math.round(w2.pct)}%)` : ""}.`}</p>${helpButton("wk")}</div>
 ${liftedLine()}
@@ -19004,6 +19153,11 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const ios = /^ios/.test(installKind());
     return b`<div class="acctbar" id="installBar"><span class="small"><b>Get the app.</b>${ios ? A : b`<span class="ab-more"> Install ${APP_NAME} on your home screen.</span>`}</span><button class="btn sm primary" data-act="install">${ios ? "Add to Home Screen" : "Install"}</button><button class="ib" aria-label="Not now" data-act="installLater">✕</button></div>`;
   }
+  function photoBar() {
+    if (!AUTH() || window.claude || !acct.checked || !acct.user || !state.settings.onboarded) return A;
+    if (prefGet(PHOTO_ASKED) || photoUrl() || state.sessions.some((x2) => x2.demo)) return A;
+    return b`<div class="acctbar" id="photoBar"><span class="small"><b>Add a profile photo.</b><span class="ab-more"> It shows at the top right, on this phone only.</span></span><label class="btn sm primary">Add photo<input type="file" accept="image/*" data-photo hidden></label><button class="ib" aria-label="Not now" data-act="photoLater">✕</button></div>`;
+  }
   var inUnit = (u4, field2) => i4(u4, field2);
   function bwDueCard() {
     const n3 = bwEvery();
@@ -19102,7 +19256,8 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const playable = !day.rest && day.items.length > 0;
     const deload = isDeloadWeek();
     const free = state.settings.todayStart === "free" && chosen == null;
-    const above = b`${welcomeCard()}${acctBar()}${installBar()}${iconBar()}`;
+    const lines = [acctBar(), installBar(), iconBar()];
+    const above = b`${welcomeCard()}${lines}${lines.every((l4) => l4 === A) ? photoBar() : A}`;
     if (free) {
       const w2 = noLog() ? "Add exercises as you go." : (() => {
         const s3 = weekStats();
@@ -19154,7 +19309,7 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di, part)}</section
     if (!st) return A;
     const t4 = [];
     if (st.last && st.fresh && I2.prs.some((p3) => p3.big && p3.sid === st.last.sid && p3.exId === exId))
-      t4.push(b`<span class="tag green">PR last time</span>`);
+      t4.push(b`<span class="tag gold">PR last time</span>`);
     if (st.easier) t4.push(b`<span class="tag blue">Load due</span>`);
     if (st.stalled) t4.push(b`<span class="tag yellow">Stalled</span>`);
     if (st.capped) t4.push(b`<span class="tag blue">At max load</span>`);
@@ -19274,19 +19429,19 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const all = liftsMoving();
     if (!all.length) return null;
     const one = all.every((x2) => x2.wk === all[0].wk);
-    const spark = (v3) => {
+    const spark = (v3, k2) => {
       const lo = Math.min(...v3), hi = Math.max(...v3);
       const pts = v3.map((y2, i5) => {
         const x2 = v3.length > 1 ? i5 / (v3.length - 1) * SPARK.w : SPARK.w / 2;
         const yy = SPARK.h - SPARK.pad - (hi > lo ? (y2 - lo) / (hi - lo) * (SPARK.h - 2 * SPARK.pad) : (SPARK.h - 2 * SPARK.pad) / 2);
         return `${r1(x2)},${r1(yy)}`;
       }).join(" ");
-      return b`<svg class="mvline" width=${SPARK.w} height=${SPARK.h} viewBox=${`0 0 ${SPARK.w} ${SPARK.h}`} aria-hidden="true"><polyline points=${pts}></polyline></svg>`;
+      return b`<svg class="mvline" width=${SPARK.w} height=${SPARK.h} viewBox=${`0 0 ${SPARK.w} ${SPARK.h}`} aria-hidden="true">${holoLine(`mvg${k2}`, SPARK.w)}<polyline points=${pts} stroke=${`url(#mvg${k2})`}></polyline></svg>`;
     };
-    const rows2 = all.slice(0, MOVING_ROWS).map((m3) => {
+    const rows2 = all.slice(0, MOVING_ROWS).map((m3, k2) => {
       const ex = EX(m3.id);
       const set = m3.top && ex ? setShort(ex, m3.top.w, m3.top.r) : "";
-      return b`<button type="button" class="mvrow" data-act="goDash" data-sec="exercise" data-ex=${m3.id} aria-label=${`${exName(m3.id)}, rising${set ? `, last best set ${set}` : ""}. Open on Stats`}><span class="mvname">${exName(m3.id)}</span>${m3.line.length > 1 ? spark(m3.line) : A}<span class="mvset">${set}</span></button>`;
+      return b`<button type="button" class="mvrow" data-act="goDash" data-sec="exercise" data-ex=${m3.id} aria-label=${`${exName(m3.id)}, rising${set ? `, last best set ${set}` : ""}. Open on Stats`}><span class="mvname">${exName(m3.id)}</span>${m3.line.length > 1 ? spark(m3.line, k2) : A}<span class="mvset">${set}</span></button>`;
     });
     return section({
       sk: "today:moving",
@@ -20215,7 +20370,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const letters = ssLetters(d3.ex.map((b2) => b2.plan));
     const when = d3.past ? `for ${fmtDateLong(d3.date)}` : d3.startedAt ? `started ${startedWords(d3.startedAt)}` : "";
     const meta = sp.n ? b`${when ? when.charAt(0).toUpperCase() + when.slice(1) : ""}<span id="sessLeft">${left > 0 ? `${when ? " · " : ""}${estMin(left)} left` : ""}</span>` : b`<span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? "set" : "sets"}</span> done${when ? `, ${when}` : ""}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ""}</span>`;
-    return b`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d3.editingId ? "Editing a saved session" : d3.past ? "Past workout" : "Session in progress"}</p><div class="hrow"><h2 class="u-owany_minw0">${d3.dayName}</h2>${helpButton("log")}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d3.editingId ? "Cancel edit" : "Discard"}</button></div><p class="meta">${meta}</p>${sp.n ? b`<div class="sprog"><div class="band" role="progressbar" aria-label="Sets done" aria-valuemin="0" aria-valuemax=${sp.n} aria-valuenow=${sp.k} aria-valuetext=${`${sp.k} of ${sp.n} sets done`}><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%`}></div></div><span id="sessOf" aria-hidden="true">${sp.k} of ${sp.n}</span></div>` : ""}
+    return b`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d3.editingId ? "Editing a saved session" : d3.past ? "Past workout" : "Session in progress"}</p><div class="hrow"><h2 class="u-owany_minw0">${d3.dayName}</h2>${helpButton("log")}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d3.editingId ? "Cancel edit" : "Discard"}</button></div><p class="meta">${meta}</p>${sp.n ? b`<div class="sprog"><div class="band" role="progressbar" aria-label="Sets done" aria-valuemin="0" aria-valuemax=${sp.n} aria-valuenow=${sp.k} aria-valuetext=${`${sp.k} of ${sp.n} sets done`}><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%;--pct:${sp.pct}`}></div></div><span id="sessOf" aria-hidden="true">${sp.k} of ${sp.n}</span></div>` : ""}
   <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d3.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d3.past || d3.editingId ? b`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d3.durMin ? String(d3.durMin) : "")} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : A}${d3.past ? "" : b`<button class="btn sm" data-act="chkOpen" aria-label=${chkSum(d3) ? `Check-in: ${chkSum(d3)}` : "Check-in, optional"}>Check-in</button>`}${left > 0 ? b`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ""}</div></div></div>
   ${howText("log", (state.settings.rirMode === "off" ? "RIR is switched off in Settings, so every working set counts as hard. " : LOG_HELP_ON) + LOG_HELP + (d3.past ? " Quick entry: no rest timer, and a set counts as done once its reps are typed." : state.settings.autoDone ? " Auto-mark is on: sets tick themselves when you leave the reps field." : ""))}
   ${d3.free ? b`<label class="field u-mt8">Name<input type="text" data-bind="draftName" maxlength=${LIMITS.name} .value=${fieldValue(d3.dayName || "")}></label><p class="small muted u-m4-0-0">Not tied to a routine day, so your cycle stays put.</p>` : ""}
@@ -23695,7 +23850,51 @@ ${JSON.stringify(ctx, null, 1)}`;
       "Copy all of this and paste it into a spreadsheet. This is not a backup."
     );
   }
+  function photoShown() {
+    setSaveState();
+    if (ui.modal && ui.modal.kind === "menu") renderModal();
+    rerenderKeepScroll();
+  }
+  function photoChange(t4) {
+    if (!(t4 instanceof HTMLInputElement) || t4.type !== "file" || t4.dataset.photo === void 0) return false;
+    const f3 = t4.files && t4.files[0];
+    t4.value = "";
+    if (!f3) return true;
+    photoSet(f3).then(
+      (why) => {
+        if (why) {
+          toast(why);
+          return;
+        }
+        prefSet(PHOTO_ASKED, "1");
+        photoShown();
+        toast("Photo added");
+      },
+      (e5) => {
+        log("photo-set", e5);
+        toast("This phone could not prepare the photo.");
+      }
+    );
+    return true;
+  }
   var APP_ACTS = {
+    photoDel() {
+      confirmBox(
+        "Remove your profile photo?",
+        "It is kept on this phone only, so it cannot be brought back. You can add a new one any time.",
+        "Remove",
+        () => {
+          photoClear();
+          photoShown();
+          toast("Photo removed");
+        },
+        true
+      );
+    },
+    photoLater() {
+      prefSet(PHOTO_ASKED, "1");
+      rerenderKeepScroll();
+    },
     iconHow() {
       openModal({ kind: "icon" });
     },
@@ -24966,6 +25165,8 @@ ${JSON.stringify(ctx, null, 1)}`;
           deload,
           light: false,
           limited: true,
+          // What this gym has, for Pick for me and Swap in this session (NEW-79); all of it on limits nothing.
+          ...eq.size < EQUIP.length ? { equip: EQUIP.map(([k2]) => k2).filter((k2) => eq.has(k2)) } : {},
           cardio: [],
           notes: [deload ? DELOAD_NOTE : "", note].filter(Boolean).join(" "),
           editingId: null,
@@ -25589,6 +25790,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (m3 && FORM_SHEETS.has(m3.kind) && t4.closest("#modal")) m3.dirty = true;
       if (reportChange(t4)) return;
       if (picChange(t4)) return;
+      if (photoChange(t4)) return;
       if (importChange(t4)) return;
       if (planChange(t4)) return;
       if (t4.dataset.gym) {
@@ -25788,6 +25990,10 @@ ${JSON.stringify(ctx, null, 1)}`;
 
   // src/app/sheetsaccount.ts
   var menuAuth = () => AUTH() && !(window.claude && typeof window.claude.use === "function") ? AUTH() : null;
+  function photoHead() {
+    const u4 = photoUrl();
+    return b`<label class="mph" id="menuPhoto" aria-label=${u4 ? "Change your profile photo" : "Add a profile photo"} data-tip="Your profile photo, kept on this phone only">${u4 ? b`\x3cimg class="mph-i" src=${u4} alt="">` : b`<span class="mph-i mph-none" aria-hidden="true">${markup(MENU_ICON)}</span>`}<span class="mph-cam" aria-hidden="true">${markup(CAMERA_ICON)}</span><input type="file" accept="image/*" data-photo hidden></label>`;
+  }
   function menuSheet(m3) {
     const A2 = menuAuth();
     const u4 = A2 && acct.user;
@@ -25797,7 +26003,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     <p class="small u-m8-0-0">${dot}${cloud.on ? st.txt : "Not syncing right now."}${cloud.on ? A : b` <button class="linkbtn" data-act="acctRetry">Try again</button>`}</p>` : A2 ? b`<p class="u-m0"><b>Not signed in.</b> Your log is on this phone only.</p><div class="row u-mt10"><button class="btn primary" data-act="acctOpen" data-mode="signin">Sign in</button><button class="btn" data-act="acctOpen" data-mode="signup">Create account</button></div>` : b`<p class="small u-m0">${dot}${st.txt}</p>`;
     const due = backupDue() ? b`<div class="callout yellow row spread u-m10-0-0"><span class="small"><b>Backup due.</b></span><button class="btn sm" data-act="export">Export backup</button></div>` : A;
     const item = (act2, label, cat) => b`<button type="button" class="mnu" data-act=${act2} data-cat=${cat || A}><span>${label}</span><span aria-hidden="true">›</span></button>`;
-    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h"><h3 id="menuH">${ENV === "preview" ? PREVIEW_NAME : APP_NAME}</h3>${closeX()}</div>
+    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h">${photoHead()}<h3 id="menuH" class="u-f1">${ENV === "preview" ? PREVIEW_NAME : APP_NAME}</h3>${photoUrl() ? b`<button type="button" class="linkbtn u-minh44" data-act="photoDel">Remove photo</button>` : A}${closeX()}</div>
   <div class="panel" id="menuAcct">${acc}</div>${due}
   <div class="mnus">${item("fbOpen", "Report a problem", "bug")}${acct.reader && FB() ? item("fbInbox", "Reports inbox") : A}${item("guideOpen", "Guide")}${m3.first ? A : b`${item("goLayout", "Show, hide, or reorder sections")}${item("goBackup", "Your data and backups")}`}</div>
   <p class="small muted u-m12-0-0">Version ${DISPLAY_VERSION}</p></div>`;
@@ -26294,7 +26500,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         H2 - P2 - ((x2.tv || 0) - lo) / span * (H2 - 2 * P2)
       ]);
       const f3 = (n3) => (n3 || 0).toFixed(1);
-      chart = b`<figure class="exh-chart u-m4-0-0"><svg viewBox=${`0 0 ${W2} ${H2}`} width="100%" height=${String(H2)} role="img" aria-label=${`Strength reading over the last ${pts.length} full sessions`}><polyline fill="none" stroke="var(--volt)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points=${xy.map((p3) => p3.map(f3).join(",")).join(" ")}></polyline>${xy.map((p3) => w`<circle cx=${f3(p3[0])} cy=${f3(p3[1])} r=${String(HIST_CHART.dot)} fill="var(--volt)"></circle>`)}</svg>
+      chart = b`<figure class="exh-chart u-m4-0-0"><svg viewBox=${`0 0 ${W2} ${H2}`} width="100%" height=${String(H2)} role="img" aria-label=${`Strength reading over the last ${pts.length} full sessions`}>${holoLine("exhg", W2)}<polyline class="exh-ln" stroke="url(#exhg)" points=${xy.map((p3) => p3.map(f3).join(",")).join(" ")}></polyline>${xy.map((p3) => w`<circle cx=${f3(p3[0])} cy=${f3(p3[1])} r=${String(HIST_CHART.dot)} fill="var(--volt)"></circle>`)}</svg>
       <figcaption class="small muted row spread"><span>${fmtDate(pts[0].date)}</span><span class="hastip" data-tip="Each full session's working sets read as one number from loads, reps, and RIR when it is rated on most sets. It shows direction only and is not a 1RM. Sessions where the lift was done lighter are left out.">Strength reading</span><span>${fmtDate(pts[pts.length - 1].date)}</span></figcaption></figure>`;
     }
     const bs = bestSet(exId);
@@ -26437,7 +26643,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const list = commonFirst(libFiltered(m3.q, m3.m || "", "", false));
       const parts2 = [];
       if (!q && swapId && m3.m === EX(swapId).primary) {
-        const best = swapCands(swapId, null, used.set).slice(0, SWAP_PICKS).map((x2) => x2.e);
+        const best = swapCands(swapId, sb && d3 && d3.equip ? new Set(d3.equip) : null, used.set).slice(0, SWAP_PICKS).map((x2) => x2.e);
         if (best.length) parts2.push(grp("Closest matches"), best.map(row), grp(`All ${ML[m3.m]}`));
       }
       parts2.push(list.length ? list.map(row) : b`<p class="muted">No matches.</p>`);
@@ -27331,7 +27537,10 @@ ${JSON.stringify(ctx, null, 1)}`;
       // Today's Lifts moving, so tests/engine.js compares the page's answer with the engine's in Node (r70).
       liftsMoving,
       // Whether a bodyweight lift has no weigh-in to read, so tests/engine.js compares it with Node's (2.29, NEW-72).
-      noBody
+      noBody,
+      // 2.32 (r78): the tape row's sentence and the one count of minutes left.
+      sizeWhat,
+      sessLeftMin
     };
     render();
     wakeOn();
