@@ -93,6 +93,7 @@ import {
   activeRoutine,
   actualAvg4,
   blocks,
+  stepLoad,
   allTimeBests,
   appBand,
   atRangeTop,
@@ -803,8 +804,10 @@ function start(): void {
     // 2.32 (r78): the tape row's sentence and the one count of minutes left.
     sizeWhat,
     sessLeftMin,
-    // 2.37 (ST-6): This block vs last, so tests/r83.js reads the blocks against a log worked out by hand.
-    blocks
+    // 2.37 (ST-6): This block vs last, so tests/r83.js reads the blocks against a log worked out by hand, and the next
+    // load minus and plus step to, so tests/engine.js compares the page's answer with Node's.
+    blocks,
+    stepLoad
   };
   render();
   wakeOn();

@@ -641,7 +641,7 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg.done input,.sg.done select{border-color:color-mix(in srgb,var(--volt-line) 55%,transparent);background:var(--volt-soft)}
 .blkt{width:100%;border-collapse:collapse;font-size:14px}
 .blkt th,.blkt td{padding:7px 4px;border-bottom:1px solid var(--line);text-align:right}
-.blkt th[scope=row],.blkt thead th:first-child{text-align:left;font-weight:600}
+.blkt tbody th,.blkt thead th:first-child{text-align:left;font-weight:600}
 .blkt thead th{font-size:12px;color:var(--muted);font-weight:650}
 .stepr{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:8px}
 .stepr-l{margin-right:auto;white-space:nowrap}

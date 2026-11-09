@@ -198,6 +198,9 @@ const heavyLight = (h, { LIB, BANDS }, heavy, light, heavyLast) => {
     sessions } };
 };
 const SCENARIOS = [
+  // 2.37 (ST-6): This block vs last by Auto and by 4 weeks, on a wide history with its own lighter and missed weeks.
+  h => ({ ...h, raw: { ...h.raw, settings: { ...h.raw.settings, blockWeeks: 'auto' } } }),
+  h => ({ ...h, raw: { ...h.raw, settings: { ...h.raw.settings, blockWeeks: 4 } } }),
   h => ({ ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] },
     sessions: [[-77, 60], [-73, 62.5], [-70, 65], [0, 67.5]].map(([n, w], i) => ({ id: 'back' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
       ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w, r: 8, rir: 1, done: true }, { w, r: 8, rir: 1, done: true }] }] })) } }),

@@ -653,7 +653,7 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg.done input,.sg.done select{border-color:color-mix(in srgb,var(--volt-line) 55%,transparent);background:var(--volt-soft)}
 .blkt{width:100%;border-collapse:collapse;font-size:14px}
 .blkt th,.blkt td{padding:7px 4px;border-bottom:1px solid var(--line);text-align:right}
-.blkt th[scope=row],.blkt thead th:first-child{text-align:left;font-weight:600}
+.blkt tbody th,.blkt thead th:first-child{text-align:left;font-weight:600}
 .blkt thead th{font-size:12px;color:var(--muted);font-weight:650}
 .stepr{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:8px}
 .stepr-l{margin-right:auto;white-space:nowrap}
@@ -18180,7 +18180,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   var LIFTS_HELP = `Estimated 1RM uses reps to failure, which is reps plus RIR: Brzycki up to ${BRZYCKI_TOP}, Epley at ${BRZYCKI_TOP + 1} and ${E1_MAX_REPS}, none above ${E1_MAX_REPS} or for a set called above RIR ${E1_MAX_RIR}. A blank RIR reads as your usual RIR on that lift once you have rated ${RIR_USUAL_MIN} of its sets in ${CAL_WEEKS} weeks; until then it counts as 0, so the estimate errs low. Numbers stay in the frame you log in, per dumbbell or per side where that applies. Bodyweight lifts add the share of your bodyweight they move: all of it for pull-ups and dips, ${pctOf(BWF.pushup)}% for push-ups. Lifts that turn about one joint (leg raises, crunches, Nordics) get no estimate; their progress is reps and load. Trends read the average of each session's working sets and need ${TREND_MIN.sessions} sessions over ${TREND_MIN.days / WEEK_DAYS} weeks or more within ${TREND_WEEKS} weeks. A heavy single before back-off sets counts toward bests only. Moving or falling means past ${GROW_PCT}% with a clear trend, since estimates swing ${DAY_SWING_PCT[0]} to ${DAY_SWING_PCT[1]}% day to day. A PR is a weight PR (more weight than any earlier set), a new best estimate within its range of reps to failure (${BAND_RANGES.join(", ")}), or a rep PR (more reps at a load than any earlier set); a set that is more than one shows the first. Stalled: flat or falling over your last ${STALL.sessions} sessions, or ${STALL.days / WEEK_DAYS} weeks if that covers more (at least ${STALL.min} sessions), with no PR in the last ${STALL.noProgress}, no heavier load, and no more reps at the same load, not counting sessions done lighter; a lift on two rep ranges is stalled only when it is in both.`;
   var MUSCLES_HELP = `Muscles are flagged because the trend is falling, or flat with one of its lifts stalled, or the hard sets you logged average below your target, or you named it a priority, or you flagged an injury. A muscle is never flagged for what the routine plans, only for what you log. A muscle whose strength is rising is never flagged. Strength return on volume: the median change in estimated 1RM across a muscle's main exercises over up to ${TREND_WEEKS} weeks (each lift with ${MUSCLE_TREND_MIN.sessions} sessions over ${MUSCLE_TREND_MIN.days / WEEK_DAYS} weeks or more), in the current rep range, next to the hard sets a week that produced it. This measures strength, not size: early gains are largely neural, and high-rep estimates are noisy. Size check reads your tape measurements, which are the closer signal for size.`;
   var CONSISTENCY_HELP = `${HEAT_WEEKS} weeks from your first logged session; once you have more, the latest ${HEAT_WEEKS}, with All for the rest. Faded squares are days still ahead. Filled squares are days with a logged lifting session. The streak counts weeks that hit the sessions your routine plans. Cardio minutes are shown under the grid and never count as lifting sessions. Adherence is the planned sessions done over the previous ${AVG_WEEKS} full weeks, each week counted up to its plan.`;
-  var BLOCK_TIP = `A block runs ${BLOCK_WEEKS_DEFAULT} weeks unless you pick another length, about how often lifters take a lighter week (see Sources in the Guide). Auto ends a block at a lighter, rest or missed week, and runs ${BLOCK_WEEKS_DEFAULT} weeks when there is none. Averages are over full weeks trained, lighter and rest weeks left out, as every weekly average is; this week counts toward PRs only.`;
+  var BLOCK_TIP = `A block runs ${BLOCK_WEEKS_DEFAULT} weeks unless you pick another length, about how often lifters take a lighter week (see Sources in the Guide). Auto ends a block at a lighter, rest, or missed week, and runs ${BLOCK_WEEKS_DEFAULT} weeks when there is none. Averages count full weeks trained and leave out lighter weeks and rest weeks, as every weekly average does; this week counts toward PRs only.`;
   function blockBody() {
     const b2 = blocks();
     const pick2 = state.settings.blockWeeks ?? BLOCK_WEEKS_DEFAULT;
@@ -18198,9 +18198,9 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     };
     const span = (x2) => `${fmtDate(x2.from)} to ${x2.to === today() ? "now" : fmtDate(x2.to)}${out(x2)}`;
     const L2 = b2.last;
-    const row = (label, a2, c4) => b`<tr><th scope="row">${label}</th><td class="num">${a2}</td><td class="num">${L2 ? c4 : "–"}</td></tr>`;
+    const row = (label, a2, c4) => b`<tr><th>${label}</th><td class="num">${a2}</td><td class="num">${L2 ? c4 : "–"}</td></tr>`;
     return b`<div class="card"><p class="small muted u-m0-0-6">This block: ${span(b2.now)}${b2.now.counted ? "" : ", no full week yet"}. ${L2 ? `Last: ${span(L2)}.` : logBack() ? "None before it since your break." : "No block before it yet."} ${tipButton(BLOCK_TIP, "About blocks")}</p>
-  <table class="blkt"><thead><tr><th></th><th scope="col">This block</th><th scope="col">Last block</th></tr></thead><tbody>
+  <table class="blkt"><thead><tr><th></th><th>This block</th><th>Last block</th></tr></thead><tbody>
   ${row("Sessions a week", avg(b2.now.sess), L2 ? avg(L2.sess) : "–")}${row("Hard sets a week", avg(b2.now.hard), L2 ? avg(L2.hard) : "–")}${row("PRs", String(b2.now.prs), L2 ? String(L2.prs) : "–")}</tbody></table>
   <div class="u-mt8">${sel}</div></div>`;
   }
@@ -20830,7 +20830,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const name = s3.warm ? "Warm-up" : s3.drop ? "Drop set" : `Set ${wn}`;
     const w2 = effW(b2, si) ?? 0;
     const r4 = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
-    const btn = (f3, dir, off, label, txt) => b`<button type="button" class="ib" data-act="sStep" data-b=${bi} data-s=${si} data-f=${f3} data-d=${dir} aria-label=${`${name}: ${label}`} ?disabled=${off}>${txt}</button>`;
+    const btn = (f3, dir, off, label, txt) => b`<button type="button" class="ib" data-act="sStep" data-b=${bi} data-s=${si} data-sf=${f3} data-d=${dir} aria-label=${`${name}: ${label}`} ?disabled=${off}>${txt}</button>`;
     return b`<div class="stepr" role="group" aria-label=${`${name}: load and ${ex.timed ? "seconds" : "reps"}`}><span class="stepr-l small muted">${name}</span>${ex.assist ? "" : b`<span class="stepr-g">${btn("w", "-1", stepLoad(ex, b2.plan, w2, -1) == null, "lighter", "−")}<span class="small muted">${U()}</span>${btn("w", "1", stepLoad(ex, b2.plan, w2, 1) == null, "heavier", "+")}</span>`}<span class="stepr-g">${btn("r", "-1", r4 <= 0, ex.timed ? "fewer seconds" : "one rep fewer", "−")}<span class="small muted">${ex.timed ? "sec" : "reps"}</span>${btn("r", "1", r4 >= LIMITS.reps, ex.timed ? "more seconds" : "one rep more", "+")}</span></div>`;
   }
   function progressLine(b2, bi) {
@@ -21194,7 +21194,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       if (!b2 || !s3 || s3.done) return;
       const ex = EX(b2.exId);
       const dir = t4.dataset.d === "-1" ? -1 : 1;
-      if (t4.dataset.f === "w") {
+      if (t4.dataset.sf === "w") {
         if (ex.assist) return;
         const to = stepLoad(ex, b2.plan, effW(b2, si) ?? 0, dir);
         const v3 = to == null ? null : toD(to);
@@ -26836,7 +26836,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Loads and rep ranges</b>: ACSM 2009; Schoenfeld 2017 (heavier loads, more strength, similar growth). <b>Rest</b>: Schoenfeld 2016 (3 minutes beat 1); Singer 2024 (no difference found past 90 seconds).</p>
    <p><b>Effort</b>: Robinson 2024 and Refalo 2023 (growth rises as sets end closer to failure; a hard set is one within ${HARD_RIR} reps of it, a rule of thumb); Refalo 2024 (going to failure adds little); Halperin 2022 (estimates and effort calls at higher reps).</p>
    <p><b>Weekly sets</b>: Pelland 2025 and Currier 2026, the 2026 ACSM position stand (${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets a week is typical for a major muscle); Pelland 2025 (helper muscles count half). Remmert 2025, a preprint (no extra growth past about 11 sets in one workout). <b>Maintenance</b>: Bickel 2011 and Spiering 2021 (size and strength held on a third of the volume).</p>
-   <p><b>Breaks</b>: Bosquet 2013 (strength falls the longer a lift is left). <b>Blocks</b>: Rogerson 2024, a survey of 246 strength and physique athletes (a lighter week about every 5.6 weeks, so a block on Stats is 6 weeks unless you pick another length). <b>Day-to-day swings</b>: Sigvaldsen 2023 (estimated strength varies 2 to 8%).</p>
+   <p><b>Breaks</b>: Bosquet 2013 (strength falls the longer a lift is left). <b>Blocks</b>: Rogerson 2024 (a survey of 246 strength and physique athletes: a lighter week about every 5.6 weeks, so a block on Stats runs 6 weeks unless you pick another length). <b>Day-to-day swings</b>: Sigvaldsen 2023 (estimated strength varies 2 to 8%).</p>
    <p><b>One-rep max</b>: Brzycki 1993, Epley 1985; Nuzzo 2024 (estimates spread too far past ${E1_MAX_REPS} reps, so none is made there). <b>Push-ups</b>: Ebben 2011 (about 64% of bodyweight). <b>Long-length lifts</b>: Maeo 2021 (seated over lying leg curls), Maeo 2023 (overhead over pushdown triceps work), Kinoshita 2023 (standing over seated calf raises). <b>Waist to height</b>: NICE 2022.</p>`
       ]
     ];
@@ -28180,8 +28180,10 @@ ${JSON.stringify(ctx, null, 1)}`;
       // 2.32 (r78): the tape row's sentence and the one count of minutes left.
       sizeWhat,
       sessLeftMin,
-      // 2.37 (ST-6): This block vs last, so tests/r83.js reads the blocks against a log worked out by hand.
-      blocks
+      // 2.37 (ST-6): This block vs last, so tests/r83.js reads the blocks against a log worked out by hand, and the next
+      // load minus and plus step to, so tests/engine.js compares the page's answer with Node's.
+      blocks,
+      stepLoad
     };
     render();
     wakeOn();

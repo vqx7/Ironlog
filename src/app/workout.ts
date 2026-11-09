@@ -445,7 +445,7 @@ function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part 
   const w = effW(b, si) ?? 0;
   const r = +(s.r ?? greyR(b, si) ?? 0) || 0;
   const btn = (f: 'w' | 'r', dir: '1' | '-1', off: boolean, label: string, txt: string): TemplateResult =>
-    html`<button type="button" class="ib" data-act="sStep" data-b=${bi} data-s=${si} data-f=${f} data-d=${dir} aria-label=${`${name}: ${label}`} ?disabled=${off}>${txt}</button>`;
+    html`<button type="button" class="ib" data-act="sStep" data-b=${bi} data-s=${si} data-sf=${f} data-d=${dir} aria-label=${`${name}: ${label}`} ?disabled=${off}>${txt}</button>`;
   return html`<div class="stepr" role="group" aria-label=${`${name}: load and ${ex.timed ? 'seconds' : 'reps'}`}><span class="stepr-l small muted">${name}</span>${
     ex.assist
       ? ''
@@ -944,7 +944,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!b || !s || s.done) return;
     const ex = EX(b.exId);
     const dir = t.dataset.d === '-1' ? -1 : 1;
-    if (t.dataset.f === 'w') {
+    if (t.dataset.sf === 'w') {
       if (ex.assist) return;
       const to = stepLoad(ex, b.plan, effW(b, si) ?? 0, dir);
       /* As the number typed in the unit on screen, to the hundredth a field takes: the field's own text is rounded to a

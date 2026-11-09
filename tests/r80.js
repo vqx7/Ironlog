@@ -205,7 +205,9 @@ async function shortAt(page, v) {
       const bad = await add('70');
       ok(/printed on the plate/.test(bad.toast) && bad.plates.length === 8, '2e. 70 kg says what to type and adds nothing', bad);
       await gymOpen(); await pg.evaluate(() => document.querySelector('[data-act="gymPlate"][data-v="1"]').click()); await wait(350);
-      const off = await pg.evaluate(() => ({ plates: (window.__ironlog.state.settings.gym || {}).plates || null, chip: !!document.querySelector('[data-act="gymPlate"][data-v="1"]') }));
+      // Since 2.37 (NEW-87) 1 kg is one of the change plates Your gym always offers as a button, off until tapped, so
+      // the plate going reads as its button off; a plate outside the usual and change plates goes from the list too.
+      const off = await pg.evaluate(() => { const c = document.querySelector('[data-act="gymPlate"][data-v="1"]'); return { plates: (window.__ironlog.state.settings.gym || {}).plates || null, chip: !!c && c.getAttribute('aria-pressed') !== 'false' }; });
       ok(off.plates === null && !off.chip, '2e. tapped, the added plate goes, and the usual plates are the default again', off);
       const w = await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
       ok(w, '2e. no sideways scroll at 390 px');

@@ -827,7 +827,7 @@ const CONSISTENCY_HELP = `${HEAT_WEEKS} weeks from your first logged session; on
 /* This block vs last (2.37, ST-6): sessions and hard sets a week, and PRs, in the block under way and the one before
    it, by the block length picked here (blocksIn). Read side by side, never as a percentage. */
 /** The tip beside This block vs last: what a block is and what its averages count. */
-const BLOCK_TIP = `A block runs ${BLOCK_WEEKS_DEFAULT} weeks unless you pick another length, about how often lifters take a lighter week (see Sources in the Guide). Auto ends a block at a lighter, rest or missed week, and runs ${BLOCK_WEEKS_DEFAULT} weeks when there is none. Averages are over full weeks trained, lighter and rest weeks left out, as every weekly average is; this week counts toward PRs only.`;
+const BLOCK_TIP = `A block runs ${BLOCK_WEEKS_DEFAULT} weeks unless you pick another length, about how often lifters take a lighter week (see Sources in the Guide). Auto ends a block at a lighter, rest, or missed week, and runs ${BLOCK_WEEKS_DEFAULT} weeks when there is none. Averages count full weeks trained and leave out lighter weeks and rest weeks, as every weekly average does; this week counts toward PRs only.`;
 /** This block vs last: its dates, the table (a dash for an average with no full week in it) and the length chooser. */
 function blockBody(): TemplateResult {
   const b = blocks();
@@ -848,9 +848,9 @@ function blockBody(): TemplateResult {
   const span = (x: Block): string => `${fmtDate(x.from)} to ${x.to === today() ? 'now' : fmtDate(x.to)}${out(x)}`;
   const L = b.last;
   const row = (label: string, a: string, c: string): TemplateResult =>
-    html`<tr><th scope="row">${label}</th><td class="num">${a}</td><td class="num">${L ? c : '–'}</td></tr>`;
+    html`<tr><th>${label}</th><td class="num">${a}</td><td class="num">${L ? c : '–'}</td></tr>`;
   return html`<div class="card"><p class="small muted u-m0-0-6">This block: ${span(b.now)}${b.now.counted ? '' : ', no full week yet'}. ${L ? `Last: ${span(L)}.` : logBack() ? 'None before it since your break.' : 'No block before it yet.'} ${tipButton(BLOCK_TIP, 'About blocks')}</p>
-  <table class="blkt"><thead><tr><th></th><th scope="col">This block</th><th scope="col">Last block</th></tr></thead><tbody>
+  <table class="blkt"><thead><tr><th></th><th>This block</th><th>Last block</th></tr></thead><tbody>
   ${row('Sessions a week', avg(b.now.sess), L ? avg(L.sess) : '–')}${row('Hard sets a week', avg(b.now.hard), L ? avg(L.hard) : '–')}${row('PRs', String(b.now.prs), L ? String(L.prs) : '–')}</tbody></table>
   <div class="u-mt8">${sel}</div></div>`;
 }
