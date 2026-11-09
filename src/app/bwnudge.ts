@@ -65,7 +65,7 @@ export function bwSheet(m: { ex?: string | undefined; date?: string | undefined 
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Your bodyweight</h3>${closeX()}</div>
     <p class="small">${m.ex ? `${m.ex} counts` : 'Pull-ups, dips, and push-ups count'} your bodyweight, plus any weight you add on a belt or vest; you type only what you add. Without a bodyweight, they count only the added load.</p>
     <label class="field">Bodyweight (${U()})<input type="text" inputmode="decimal" id="bwSheetVal" placeholder=${last ? fmtW(last.kg) : `Weight (${U()})`} enterkeyhint="done"></label>
-    <p class="small muted">${last ? `Latest ${fmtW(last.kg)} ${U()}, ${fmtDate(last.date)}. ` : ''}Saved as ${on}.</p>
+    <p class="small muted">Optional. ${last ? `Latest ${fmtW(last.kg)} ${U()}, ${fmtDate(last.date)}. ` : ''}Saved as ${on}.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="addBW" data-in="bwSheetVal" data-date=${m.date || nothing}>Save</button><button class="btn" data-act="mClose">Not now</button></div></div>`;
 }
 

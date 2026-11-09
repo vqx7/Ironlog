@@ -163,7 +163,10 @@ const setsOf = d => (d ? d.sets.filter(s => s.done).map(s => `${s.w}x${s.r}`).jo
     const N = await phone(browser, cloud, 'u1', { state: { settings: { onboarded: true }, sessions: [], draft: null } }); pages.push(N);
     await wait(300);
     // N holds its own workout in progress, ticked, before it first syncs with the account.
-    await N.ev(() => window.__ironlog.cloudStop(true));
+    // N's first pull, in the 300 ms above, may already have brought the account's workout; before 2.35, starting a
+    // workout replaced it unasked, and since 2.35 a start opens a workout in progress instead (NEW-89), so the setup
+    // takes that pulled copy off N itself, leaving N with only its own workout, as the section means.
+    await N.ev(() => { const L = window.__ironlog; L.cloudStop(true); L.state.draft = null; L.saveNow(); });
     await N.start(); await N.tick(0, 40, 15);
     const nid = (await N.draft()).id, aid = (await A.draft()).id;
     await N.ev(() => window.__ironlog.cloudInit()); await wait(1500);
