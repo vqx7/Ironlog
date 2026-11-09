@@ -198,9 +198,6 @@ const heavyLight = (h, { LIB, BANDS }, heavy, light, heavyLast) => {
     sessions } };
 };
 const SCENARIOS = [
-  // 2.37 (ST-6): This block vs last by Auto and by 4 weeks, on a wide history with its own lighter and missed weeks.
-  h => ({ ...h, raw: { ...h.raw, settings: { ...h.raw.settings, blockWeeks: 'auto' } } }),
-  h => ({ ...h, raw: { ...h.raw, settings: { ...h.raw.settings, blockWeeks: 4 } } }),
   h => ({ ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] },
     sessions: [[-77, 60], [-73, 62.5], [-70, 65], [0, 67.5]].map(([n, w], i) => ({ id: 'back' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
       ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w, r: 8, rir: 1, done: true }, { w, r: 8, rir: 1, done: true }] }] })) } }),
@@ -254,6 +251,10 @@ const SCENARIOS = [
     sessions: [[-28, 'legPress', 160, false], [-21, 'legPress', 165, false], [-14, 'legPress', 230, true], [-7, 'legPress', 235, false], [-7, 'bench', 80, false]].map(([n, exId, w, nw], i) => ({ id: 'nw' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
       ex: [{ exId, rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r: 10, rir: 2, done: true })), ...(nw ? { nw: true } : {}) }] })),
     draft: { id: 'nwd', date: h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: null, r: null }], nw: true }] } } }),
+  // 2.37 (ST-6): This block vs last by Auto and by 4 weeks, on a wide history with its own lighter and missed weeks;
+  // before the last, whose coach line the check below reads as the last.
+  h => ({ ...h, raw: { ...h.raw, settings: { ...h.raw.settings, blockWeeks: 'auto' } } }),
+  h => ({ ...h, raw: { ...h.raw, settings: { ...h.raw.settings, blockWeeks: 4 } } }),
   // Bench on the heavy and light days flat a rep under the top of the heavy range, 100 x 4 x 5 and 70 x 10 x 4, the heavy day
   // last: stalled in both and not at the top of its range (the coach's stalled line). Until r64 wide histories reached it through
   // lifts read as stalled across a break of more than four weeks, which since r64 (the r63 audit's P-S2-2) are not stalled.
