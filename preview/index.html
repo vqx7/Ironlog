@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-SN6MKxFFZhHeC6wUoBiGX8EMRJOMrWjI2xETrpZowzc=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-1VD0rsflhMwGPTKh0QjdRUwzICpiUBMsZqNfJBf74SY=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.09-r84">
+<meta name="app-build" content="2026.11.08-r83">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2132,8 +2132,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.38";
-  var APP_VERSION = "2026.11.09-r84";
+  var DISPLAY_VERSION = "2.37";
+  var APP_VERSION = "2026.11.08-r83";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -14847,7 +14847,6 @@ ${more}`;
     lastDown: { el: null, t: 0 },
     stripAt: null,
     platesAt: null,
-    onLift: null,
     foldWait: /* @__PURE__ */ new WeakSet(),
     selAgain: null,
     replaceNext: null
@@ -15447,7 +15446,7 @@ ${more}`;
     if (val && isMissed(s3) && !s3.warm && !s3.drop) toast(MISSED_SAID);
     W.platesAt = null;
     if (val && !d3.editingId && blockDone(b2) && !blkIsOpen(bi, b2)) W.foldWait.add(b2);
-    onLiftDraw(bi, redraw);
+    redraw();
     const pr = rowPR(b2, si, d3.date);
     if (pr && !wasPR) {
       const ex = EX(b2.exId);
@@ -15491,34 +15490,6 @@ ${more}`;
     }
     if (val && b2.sets.filter((x2) => x2.done).length === 1 && orderAt(b2) >= 0) orderSoon(b2);
   }
-  function nextLift(d3, i5) {
-    const nx = d3.ex.findIndex((x2, j3) => j3 > i5 && !blockDone(x2));
-    return nx >= 0 ? nx : d3.ex.findIndex((x2) => blockUntouched(x2));
-  }
-  function liftsOn(d3) {
-    const left = (x2) => !blockDone(x2);
-    const i5 = blkIdx(W.onLift);
-    const at2 = i5 >= 0 ? d3.ex[i5] : void 0;
-    const nx = at2 && !left(at2) ? nextLift(d3, i5) : -1;
-    const b2 = at2 && left(at2) ? at2 : nx >= 0 ? d3.ex[nx] : d3.ex.find(left);
-    if (!b2) return /* @__PURE__ */ new Set();
-    const ss = b2.plan && b2.plan.ss;
-    return new Set(ss ? d3.ex.filter((x2) => x2.plan && x2.plan.ss === ss && left(x2)) : [b2]);
-  }
-  function onLiftDraw(bi, draw) {
-    const d3 = state.draft;
-    const was = d3 ? liftsOn(d3) : null;
-    W.onLift = blkRef(bi);
-    const ref2 = W.onLift;
-    const el = document.getElementById("blk-" + bi);
-    const top = el ? el.getBoundingClientRect().top : null;
-    draw();
-    const now = state.draft ? liftsOn(state.draft) : null;
-    if (top == null || !was || !now || was.size === now.size && [...was].every((x2) => now.has(x2))) return;
-    const j3 = blkIdx(ref2);
-    const el2 = j3 >= 0 ? document.getElementById("blk-" + j3) : null;
-    if (el2) window.scrollBy(0, el2.getBoundingClientRect().top - top);
-  }
   function restNext(bi) {
     const d3 = state.draft;
     const b2 = d3 && d3.ex[bi];
@@ -15528,7 +15499,8 @@ ${more}`;
     const k2 = to.sets.filter((y2) => !y2.warm && !y2.drop).findIndex((y2) => !y2.done);
     if (k2 >= 0) return to === b2 ? `next set ${k2 + 1}` : `next: ${exName(to.exId)}`;
     const i5 = d3.ex.indexOf(to);
-    const nx = nextLift(d3, i5);
+    let nx = d3.ex.findIndex((x2, j3) => j3 > i5 && !blockDone(x2));
+    if (nx < 0) nx = d3.ex.findIndex((x2) => blockUntouched(x2));
     return nx >= 0 && nx !== i5 ? `next: ${exName(d3.ex[nx].exId)}` : "";
   }
   function ssNext(b2) {
@@ -15627,7 +15599,8 @@ ${more}`;
       W.foldT = setTimeout(() => autoFold(ref2), FOLD_MS.strip);
       return;
     }
-    const nx = nextLift(d3, bi);
+    let nx = d3.ex.findIndex((x2, i5) => i5 > bi && !blockDone(x2));
+    if (nx < 0) nx = d3.ex.findIndex((x2) => blockUntouched(x2));
     const a0 = nx >= 0 ? document.getElementById("blk-" + nx) : null;
     const top0 = a0 ? a0.getBoundingClientRect().top : null;
     rerenderKeepScroll();
@@ -20859,7 +20832,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   function stepStrip(d3, b2, bi, ex) {
     const si = b2.sets.findIndex((x2) => !x2.done);
     const s3 = b2.sets[si];
-    if (!s3 || d3.editingId || !liftsOn(d3).has(b2)) return "";
+    if (!s3 || d3.editingId) return "";
     const wn = b2.sets.slice(0, si + 1).filter((x2) => !x2.warm && !x2.drop).length;
     const name = s3.warm ? "Warm-up" : s3.drop ? "Drop set" : `Set ${wn}`;
     const w2 = effW(b2, si) ?? 0;
@@ -21253,7 +21226,6 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
           { inProgress: true }
         );
         W.platesAt = { b: blkRef(bi), s: si };
-        W.onLift = blkRef(bi);
         mixCheck(bi, si);
       } else {
         const r4 = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
@@ -21265,7 +21237,6 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
           },
           { inProgress: true }
         );
-        W.onLift = blkRef(bi);
       }
       rerenderKeepScroll();
     },
@@ -21779,7 +21750,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         { inProgress: true, soon: true }
       );
       if (t4.dataset.f === "w") W.platesAt = { b: blkRef(bi), s: si };
-      onLiftDraw(bi, redraw);
+      redraw();
       return true;
     }
     const b2 = t4.dataset.bind;
