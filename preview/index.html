@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-UiK5z2ijKgsnaEpsYLcw58zyDC09mfRvuZibo7dsPdg=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-qLj7HfjehmkheCX/k8AHnCEkTM3N37gx/q2dJMW7G8A=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.08-r81">
+<meta name="app-build" content="2026.11.08-r82">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2112,8 +2112,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.35";
-  var APP_VERSION = "2026.11.08-r81";
+  var DISPLAY_VERSION = "2.36";
+  var APP_VERSION = "2026.11.08-r82";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -3543,6 +3543,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   function mergeDraft(base0, cur0, pre0) {
     const base = undoDraftOf(base0), cur = undoDraftOf(cur0), pre = undoDraftOf(pre0);
+    if (pre && !base && !cur && cur0 == null && base0 == null) return pre0;
     if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur0 === void 0 ? null : cur0;
     const keyed = (list) => {
       const seen = {};
@@ -4595,7 +4596,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var APP_INSTALLED = KEY + ".appInstalled";
   var OB_ACCT = KEY + ".obAcct", OB_OUT = KEY + ".signedOut";
   var BWSNOOZE_KEY = KEY + ".bwSnooze", BWASK_KEY = KEY + ".bwAsk";
+  var PARKED_KEY = KEY + ".parked";
   var PHOTO_KEY = KEY + ".photo", PHOTO_SYNC = KEY + ".photoSync", PHOTO_ASKED = KEY + ".photoAsked";
+  function parkedRetag(from, to) {
+    const r4 = rec(parseJson(prefGet(PARKED_KEY) || "null"));
+    if (r4 && r4["uid"] === from) prefSet(PARKED_KEY, JSON.stringify({ ...r4, uid: to }));
+  }
   var DEMOSET_KEY = KEY + ".demoSettings";
   var ASIDE_KEY = KEY + ".aside.";
   var device = { ok: true, boot: true, hadLocal: false, hadLog: false, lastSaved: null };
@@ -10336,17 +10342,17 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       photoTook(remote ? remote.url : null, remote ? remote.et : 0, me);
       return;
     }
-    const held2 = photoHeld();
+    const held3 = photoHeld();
     if (n3 && n3.up) {
       if (remote && remote.et > n3.et) photoTook(remote.url, remote.et, me);
-      else await photoSend(held2, n3.et, d3, me);
+      else await photoSend(held3, n3.et, d3, me);
       return;
     }
     if (remote) {
-      if (remote.url !== held2 || !n3 || n3.et !== remote.et) photoTook(remote.url, remote.et, me);
+      if (remote.url !== held3 || !n3 || n3.et !== remote.et) photoTook(remote.url, remote.et, me);
       return;
     }
-    if (held2) await photoSend(held2, n3 ? n3.et : Date.now(), null, me);
+    if (held3) await photoSend(held3, n3 ? n3.et : Date.now(), null, me);
   }
   function photoTook(url, et, me) {
     const was = photoHeld();
@@ -10846,6 +10852,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       cloud.sent = {};
       cloud.editAt = {};
       cloud.last = null;
+      parkedRetag("", id);
       return true;
     }
     const mine = holdsLog();
@@ -10913,6 +10920,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       resyncLocalH();
       fx.render();
     }
+    if (!use) parkedRetag(from || "", id);
     if (both)
       fx.toast("The workout in progress on this phone stays open. The one kept for this account is saved in History.");
     if (aside) await dropAside(id);
@@ -12739,8 +12747,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     );
     el.setAttribute("aria-label", "Menu. " + txt);
     el.setAttribute("data-tip", txt);
-    const who = acct.user ? acct.user.email : "";
-    const key = cls + "|" + txt + "|" + who;
+    const who2 = acct.user ? acct.user.email : "";
+    const key = cls + "|" + txt + "|" + who2;
     if (saveShown !== key) {
       saveShown = key;
       const modal = document.getElementById("modal");
@@ -13850,6 +13858,58 @@ ${more}`;
       rerenderKeepScroll();
     }
   };
+
+  // src/app/park.ts
+  var who = () => cloud.acct || "";
+  function held2() {
+    const r4 = rec(parseJson(prefGet(PARKED_KEY) || "null"));
+    return r4 && typeof r4["uid"] === "string" ? { uid: r4["uid"], draft: r4["draft"] } : null;
+  }
+  var parkedHeld = () => held2() != null;
+  var parkedHere = () => {
+    const h3 = held2();
+    return !!h3 && h3.uid === who();
+  };
+  function parkDraft() {
+    const d3 = state.draft;
+    if (!d3 || parkedHeld()) return false;
+    return prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: d3 }));
+  }
+  function unpark() {
+    if (state.draft || !parkedHere()) return false;
+    const h3 = held2();
+    const d3 = h3 ? normalize({ draft: h3.draft }).draft : null;
+    if (!d3) {
+      log("park", "a set-aside workout could not be read");
+      prefDel(PARKED_KEY);
+      return false;
+    }
+    act(
+      () => {
+        state.draft = d3;
+      },
+      { inProgress: true }
+    );
+    prefDel(PARKED_KEY);
+    ui.away = d3.id;
+    return true;
+  }
+  function parkSettle() {
+    if (!parkedHere()) return true;
+    if (state.draft) {
+      fx.toast("Your workout in progress is set aside. Save or discard the one open first, and it comes back.");
+      return false;
+    }
+    return unpark();
+  }
+  function parkTake() {
+    const v3 = prefGet(PARKED_KEY);
+    prefDel(PARKED_KEY);
+    return v3;
+  }
+  function parkPut(v3) {
+    if (v3 && !prefGet(PARKED_KEY)) prefSet(PARKED_KEY, v3);
+  }
 
   // src/app/importing.ts
   var DEMO_WEEKS = 8;
@@ -15457,7 +15517,7 @@ ${more}`;
     const most = se ? se.scrollHeight - window.innerHeight : y0;
     const y1 = Math.max(0, Math.min(most, y0 + a2 - sm - sp));
     const vEnd = y0 + a2 - y1;
-    const held2 = Math.max(0, top0 - a2);
+    const held3 = Math.max(0, top0 - a2);
     let calm = false;
     try {
       calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -15497,7 +15557,7 @@ ${more}`;
       }
       const k2 = Math.max(0, Math.min(1, (now - t0) / FOLD_MS.glide));
       const e5 = 1 - (1 - k2) ** GLIDE_EASE;
-      a1.style.marginTop = `${m0 + held2 * (1 - e5)}px`;
+      a1.style.marginTop = `${m0 + held3 * (1 - e5)}px`;
       const v3 = top0 + (vEnd - top0) * e5;
       window.scrollTo(0, Math.max(0, window.scrollY + a1.getBoundingClientRect().top - v3));
       if (k2 < 1) {
@@ -16646,13 +16706,20 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? " on this device and in your cloud copy" : " on this device"}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first if you might want it.`,
         "Erase everything",
         () => {
+          let parked = null;
           act(
             () => {
               setState(normalize(null));
               if (!cloud.on) cloudStop(true);
               asideClear();
+              parked = parkTake();
             },
-            { undo: true }
+            {
+              undo: () => {
+                parkPut(parked);
+                return false;
+              }
+            }
           );
           picsClear().catch((e5) => {
             log("pics-clear", e5);
@@ -16855,8 +16922,8 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       for (const [m3, v3] of Object.entries(sessionMuscleSets(dayWorkout(day, part)))) ms[m3] = Math.max(ms[m3] ?? 0, v3);
     const over = Object.entries(ms).filter(([, v3]) => v3 > SESSION_CAP).sort((a2, b2) => b2[1] - a2[1]);
     if (!over.length) return A;
-    const who = andList(over.map(([m3, v3]) => `${ML[m3]} ${r1(v3)}`));
-    return b`<p class="small u-m4n12-0"><span class="flag hastip" data-tip=${`Over ${SESSION_CAP} sets for one muscle in one workout. One early study saw no extra growth past that (a rule of thumb; sources in the Guide). Move some to another day? Helper sets count half.`}>Heavy for one workout: ${who} sets</span></p>`;
+    const who2 = andList(over.map(([m3, v3]) => `${ML[m3]} ${r1(v3)}`));
+    return b`<p class="small u-m4n12-0"><span class="flag hastip" data-tip=${`Over ${SESSION_CAP} sets for one muscle in one workout. One early study saw no extra growth past that (a rule of thumb; sources in the Guide). Move some to another day? Helper sets count half.`}>Heavy for one workout: ${who2} sets</span></p>`;
   }
   function planEvidenceNote(pv) {
     const b2 = state.settings.bands;
@@ -19554,6 +19621,10 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const open = state.draft && awayFrom() ? state.draft : null;
     if (open)
       return b`${above}${resumeCard(open)}${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
+    if (!state.draft && parkedHere())
+      return b`${above}<section class="hero" id="parkedCard"><div class="hero-top"><div class="hero-t"><p class="eyebrow">Workout set aside</p><h2>Your workout in progress</h2>
+<p class="muted small u-m0">Set aside while you fixed an earlier one.</p></div></div>
+<button class="btn primary fullw big" data-act="parkBack">Bring it back</button></section>${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
     if (free) {
       const w2 = noLog() ? "Add exercises as you go." : (() => {
         const s3 = weekStats();
@@ -20087,6 +20158,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   // src/app/workfinish.ts
   var WARM_SHARE = { compound: 0.75, isolation: 0.8 };
   var TIMED_MAX_MIN = 360;
+  var BACK_SAID = " Your workout in progress is back: Resume it on Today.";
   var HEAVIEST_SHOWN = 4;
   function finish() {
     const d3 = state.draft;
@@ -20256,10 +20328,11 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         });
         stopTimer();
         wakeOff();
+        const back2 = unpark();
         ui.todayDay = null;
         window.scrollTo(0, 0);
         render();
-        toast("Cardio saved. No lifting session was recorded.");
+        toast(`Cardio saved. No lifting session was recorded.${back2 ? BACK_SAID : ""}`);
         return;
       }
       toast("Mark at least one set done");
@@ -20395,6 +20468,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     stopTimer();
     wakeOff();
     undoToastHide();
+    const back2 = unpark();
     const prAll = IDX().prs.filter(
       (p3) => (p3.sid ? p3.sid === sess.id : p3.date === sess.date) && ex.some((b2) => b2.exId === p3.exId)
     );
@@ -20414,9 +20488,10 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     window.scrollTo(0, 0);
     render();
     if (editing) {
-      toast("Session updated");
+      toast(`Session updated.${back2 ? BACK_SAID : ""}`);
       return;
     }
+    if (back2) toast(BACK_SAID.trim());
     const lines = [
       `${work} working set${work === 1 ? "" : "s"}, ${hard} ${rirHalfOn() ? "counted toward the week" : "counted as hard"}${miss ? `, and ${miss} missed` : ""}`
     ];
@@ -20674,7 +20749,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const letters = ssLetters(d3.ex.map((b2) => b2.plan));
     const when = d3.past ? `for ${fmtDateLong(d3.date)}` : d3.startedAt ? `started ${startedWords(d3.startedAt)}` : "";
     const meta = sp.n ? b`${when ? when.charAt(0).toUpperCase() + when.slice(1) : ""}<span id="sessLeft">${left > 0 ? `${when ? " · " : ""}${estMin(left)} left` : ""}</span>` : b`<span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? "set" : "sets"}</span> done${when ? `, ${when}` : ""}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ""}</span>`;
-    return b`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d3.editingId ? "Editing a saved session" : d3.past ? "Past workout" : "Session in progress"}</p><div class="hrow"><h2 class="u-owany_minw0">${d3.dayName}</h2>${helpButton("log")}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d3.editingId ? "Cancel edit" : "Discard"}</button></div><p class="meta">${meta}</p>${sp.n ? b`<div class="sprog"><div class="band" role="progressbar" aria-label="Sets done" aria-valuemin="0" aria-valuemax=${sp.n} aria-valuenow=${sp.k} aria-valuetext=${`${sp.k} of ${sp.n} sets done`}><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%;--pct:${sp.pct}`}></div></div><span id="sessOf" aria-hidden="true">${sp.k} of ${sp.n}</span></div>` : ""}
+    return b`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d3.editingId ? "Editing a saved session" : d3.past ? "Past workout" : "Session in progress"}</p><div class="hrow"><h2 class="u-owany_minw0">${d3.dayName}</h2>${helpButton("log")}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d3.editingId ? "Cancel edit" : "Discard"}</button></div><p class="meta">${meta}</p>${parkedHeld() ? b`<p class="small muted u-m4-0-0" id="parkedLine">Your workout in progress is set aside. It comes back when you save or discard this one.</p>` : ""}${sp.n ? b`<div class="sprog"><div class="band" role="progressbar" aria-label="Sets done" aria-valuemin="0" aria-valuemax=${sp.n} aria-valuenow=${sp.k} aria-valuetext=${`${sp.k} of ${sp.n} sets done`}><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%;--pct:${sp.pct}`}></div></div><span id="sessOf" aria-hidden="true">${sp.k} of ${sp.n}</span></div>` : ""}
   <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d3.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d3.past || d3.editingId ? b`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d3.durMin ? String(d3.durMin) : "")} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : A}${d3.past ? "" : b`<button class="btn sm" data-act="chkOpen" aria-label=${chkSum(d3) ? `Check-in: ${chkSum(d3)}` : "Check-in, optional"}>Check-in</button>`}${left > 0 ? b`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ""}<button class="btn sm" data-act="bwOpen" data-date=${d3.date} data-tip="Log or update your weigh-in without leaving the workout.">Bodyweight</button><button class="btn sm" data-act="wkAway" data-tip="Everything is saved as you go. Today shows the workout to resume.">Save and leave</button></div></div></div>
   ${howText("log", (state.settings.rirMode === "off" ? "RIR is switched off in Settings, so every working set counts as hard. " : LOG_HELP_ON) + LOG_HELP + (d3.past ? " Quick entry: no rest timer, and a set counts as done once its reps are typed." : state.settings.autoDone ? " Auto-mark is on: sets tick themselves when you leave the reps field." : ""))}
   ${d3.free ? b`<label class="field u-mt8">Name<input type="text" data-bind="draftName" maxlength=${LIMITS.name} .value=${fieldValue(d3.dayName || "")}></label><p class="small muted u-m4-0-0">Not tied to a routine day, so your cycle stays put.</p>` : ""}
@@ -21205,6 +21280,14 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       window.scrollTo(0, 0);
       render();
     },
+    // Today's card for a workout set aside that did not come back by itself (R81-2): it comes back and opens.
+    parkBack() {
+      if (!unpark()) return;
+      ui.away = null;
+      ui.tab = "today";
+      window.scrollTo(0, 0);
+      render();
+    },
     // Every place this exercise was opened at, so a move and a fold leave nothing behind.
     bFold(t4) {
       const b2 = tapBlock(t4);
@@ -21394,6 +21477,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         );
         stopTimer();
         wakeOff();
+        if (unpark()) setTimeout(() => toast(BACK_SAID.trim()), 0);
         window.scrollTo(0, 0);
         render();
       };
@@ -22743,6 +22827,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     acctDelete() {
       const A2 = AUTH();
       if (!A2 || typeof A2.deleteAccount !== "function") return;
+      if (!parkSettle()) return;
       const del = A2.deleteAccount;
       confirmBox(
         "Delete your account?",
@@ -22776,6 +22861,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     acctSignOut() {
       const A2 = AUTH();
       if (!A2) return;
+      if (!parkSettle()) return;
       const NOT_IN = "Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.";
       const out = async (remove) => {
         if (cloud.on && navigator.onLine !== false) {
@@ -25119,6 +25205,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       ex: day.items.map((it) => newBlock(it.exId, it, { before: date }))
     };
   }
+  var PARKED_SAID = "Your workout in progress is set aside. It comes back when you save or discard this one.";
   function resumeOpen() {
     if (!state.draft) return false;
     ui.away = null;
@@ -25401,15 +25488,8 @@ ${JSON.stringify(ctx, null, 1)}`;
         );
         toast(day ? `${day.name} started with the same exercises` : "Started as a freestyle session");
       };
-      if (state.draft)
-        confirmBox(
-          "Replace the session in progress?",
-          "You have an unsaved session open. Starting this one discards it.",
-          "Discard and start",
-          go,
-          true
-        );
-      else go();
+      if (resumeOpen()) return;
+      go();
     },
     startSession,
     startAltOpen(t4) {
@@ -25549,7 +25629,10 @@ ${JSON.stringify(ctx, null, 1)}`;
       };
       closeModal();
       const d3 = state.draft;
-      if (d3 && (d3.editingId || draftEntered(d3)))
+      if (d3 && parkDraft()) {
+        go();
+        toast(PARKED_SAID);
+      } else if (d3 && (d3.editingId || draftEntered(d3)))
         confirmBox(
           "Replace the session in progress?",
           d3.editingId ? "You are editing a saved session. Your edits will be lost." : "You have an unsaved session open. Starting this one discards it.",
@@ -25618,7 +25701,10 @@ ${JSON.stringify(ctx, null, 1)}`;
         ui.tab = "today";
         begin(d3, false);
       };
-      if (state.draft)
+      if (state.draft && parkDraft()) {
+        go();
+        toast(PARKED_SAID);
+      } else if (state.draft)
         confirmBox(
           "Replace the session in progress?",
           "You have an unsaved session open. Editing this one will discard it.",
@@ -27451,6 +27537,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           );
           stopTimer();
           wakeOff();
+          unpark();
           setTimeout(render, 0);
         }
       }
