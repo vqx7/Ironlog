@@ -338,7 +338,9 @@ const tickAll = H => H.ev(() => { const L = window.__ironlog; for (const b of L.
       await A.tick(0, 100, 8); await A.flush();
       const id = (await A.draft()).id;
       const N = await acct(cloud, { state: { settings: { onboarded: true }, sessions: [], draft: null } }); await wait(300);
-      await N.ev(() => window.__ironlog.cloudStop(true));
+      // N's first pull above may already hold the account's workout; since 2.35 a start opens one in progress instead
+      // of replacing it unasked (NEW-89), so the setup takes that pulled copy off N first, as before 2.35 the start did.
+      await N.ev(() => { const L = window.__ironlog; L.cloudStop(true); L.state.draft = null; L.saveNow(); });
       await N.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ACT.startSession({ dataset: { day: '0', light: '0' } }); const d = L.state.draft; d.ex = d.ex.slice(0, 1); d._rampAsked = true; L.saveNow(); });
       await N.tick(0, 40, 15);
       await N.ev(() => window.__ironlog.cloudInit()); await wait(1500);
