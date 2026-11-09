@@ -946,6 +946,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
   );
   if (val && isMissed(s) && !s.warm && !s.drop) toast(MISSED_SAID);
   W.platesAt = null;
+  W.onLift = blkRef(bi);
   if (val && !d.editingId && blockDone(b) && !blkIsOpen(bi, b)) W.foldWait.add(b);
   redraw();
   const pr = rowPR(b, si, d.date);
@@ -1002,6 +1003,22 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
     W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
   }
   if (val && b.sets.filter(x => x.done).length === 1 && orderAt(b) >= 0) orderSoon(b);
+}
+
+/* The lift you are on (NEW-98, V 2026-11-09: "It will help reduce and avoid the overwhelm"), where minus and plus
+   show: the one you last ticked a set of, typed a load or reps in, or stepped, while it has a set left; else the first
+   lift with a set left, the one the screen brings up next (autoFold). A superset's lifts are done together, so each
+   lift of its group with a set left is on with it. Held for this visit only (W.onLift): after a reload, the first lift
+   with a set left. */
+/** The lifts of the session that minus and plus show on now: the one you are on, or its superset's lifts with a set left. */
+export function liftsOn(d: Draft): Set<DraftBlock> {
+  const left = (x: DraftBlock): boolean => x.sets.some(y => !y.done);
+  const i = blkIdx(W.onLift);
+  const at = i >= 0 ? d.ex[i] : undefined;
+  const b = at && left(at) ? at : d.ex.find(left);
+  if (!b) return new Set();
+  const ss = b.plan && b.plan.ss;
+  return new Set(ss ? d.ex.filter(x => x.plan && x.plan.ss === ss && left(x)) : [b]);
 }
 
 /* What the rest card names as next (r71, 364 b-1), by the rules the screen

@@ -31,6 +31,8 @@ interface WorkState {
   stripAt: StripAt | null;
   // The row whose load is being typed, whose plates the line under the exercise shows (r29), until the next tick or full draw.
   platesAt: { b: BlkRef | null; s: number } | null;
+  /** The lift you last ticked, typed in or stepped (NEW-98): minus and plus show on it while it has a set left (liftsOn). */
+  onLift: BlkRef | null;
   /* A block done this visit folds a moment after its last tick (FOLD_MS.tick,
      or FOLD_MS.effort once its effort is picked), not on the tick: the lifter
      sees the tick and the effort strip first. Until then it is drawn open. */
@@ -55,6 +57,7 @@ export const W: WorkState = {
   lastDown: { el: null, t: 0 },
   stripAt: null,
   platesAt: null,
+  onLift: null,
   foldWait: new WeakSet<DraftBlock>(),
   selAgain: null,
   replaceNext: null

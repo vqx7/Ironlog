@@ -125,7 +125,8 @@ import {
   setDone,
   oddReps,
   restNext,
-  CAL_OFFER
+  CAL_OFFER,
+  liftsOn
 } from './worksets';
 import { BACK_SAID, finish, finishNow } from './workfinish';
 import { LIMITS, EFFORT_TOP, within } from './records';
@@ -435,12 +436,12 @@ const STEP_SECONDS = 5;
 /* Minus and plus for the next set not yet done (2.37, ST-6; V, 2026-11-08: "stepping by the lift's load step and one
    rep"). The set row has no room for four more 44 px buttons (254 px wide at 320, its load field 48), so they sit in
    one strip under the sets, where a tick moves nothing above them, and act on the first set not ticked; it names that
-   set. Drawn as two accent pills side by side, each with the number it changes (V, 2026-11-09, after the Stitch drafts'
+   set, on the lift you are on only (liftsOn, NEW-98), not under every lift. Drawn as two accent pills side by side, each with the number it changes (V, 2026-11-09, after the Stitch drafts'
    steppers: the whole pill in the one accent, ends included). An assisted lift's field takes the help, so only its reps step. Not in an edit, where every set is done. */
 function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part {
   const si = b.sets.findIndex(x => !x.done);
   const s = b.sets[si];
-  if (!s || d.editingId) return '';
+  if (!s || d.editingId || !liftsOn(d).has(b)) return '';
   const wn = b.sets.slice(0, si + 1).filter(x => !x.warm && !x.drop).length;
   const name = s.warm ? 'Warm-up' : s.drop ? 'Drop set' : `Set ${wn}`;
   const w = effW(b, si) ?? 0;
@@ -982,6 +983,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         { inProgress: true }
       );
       W.platesAt = { b: blkRef(bi), s: si };
+      W.onLift = blkRef(bi);
       mixCheck(bi, si);
     } else {
       const r = +(s.r ?? greyR(b, si) ?? 0) || 0;
@@ -993,6 +995,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         },
         { inProgress: true }
       );
+      W.onLift = blkRef(bi);
     }
     rerenderKeepScroll();
   },
@@ -1566,6 +1569,7 @@ export function workoutInput(t: Field): boolean {
       { inProgress: true, soon: true }
     );
     if (t.dataset.f === 'w') W.platesAt = { b: blkRef(bi), s: si };
+    W.onLift = blkRef(bi);
     redraw();
     return true;
   }

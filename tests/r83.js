@@ -177,12 +177,16 @@ async function app(o = {}) {
       const bb = await add('bench'), pa = await add('assistPullup'), pl = await add('plank');
       const strip = bi => document.querySelector(`#blk-${bi} .stepr`);
       const lbl = bi => [...strip(bi).querySelectorAll('button')].map(x => x.getAttribute('aria-label'));
-      L.state.draft.ex[bb].sets[0].w = L.fromD(135); L.render(); await wait(100);
+      // Typed as a lifter types, which also makes the lift the one minus and plus show on (2.38, NEW-98).
+      const type = async (bi, f, v) => { const el = document.querySelector(`#view input[data-f="${f}"][data-b="${bi}"][data-s="0"]`); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); await wait(150); };
+      await type(bb, 'w', '135');
       strip(bb).querySelector('[aria-label="Set 1: heavier"]').click(); await wait(200);
       const benchLb = L.state.draft.ex[bb].sets[0].w;
-      L.state.draft.ex[pl].sets[0].r = 30; L.render(); await wait(100);
+      await type(pl, 'r', '30');
       strip(pl).querySelector('[aria-label="Set 1: more seconds"]').click(); await wait(200);
-      return { bench: document.querySelector(`#view input[data-f="w"][data-b="${bb}"][data-s="0"]`).value, benchLb, typed: L.fromD(145), assist: lbl(pa), plank: L.state.draft.ex[pl].sets[0].r };
+      const plank = L.state.draft.ex[pl].sets[0].r;
+      await type(pa, 'r', '6');
+      return { bench: document.querySelector(`#view input[data-f="w"][data-b="${bb}"][data-s="0"]`).value, benchLb, typed: L.fromD(145), assist: lbl(pa), plank };
     });
     ok(o.bench === '145' && o.benchLb === o.typed, '5. in lb, plus on a 135 lb bench is its step up, 145 (10 lb on a bar with no step of its own), stored as 145 typed', o);
     ok(o.assist.length === 2 && o.assist.every(x => /rep/.test(x)), '5. an assisted lift steps only its reps (its field takes the help)', o.assist);
