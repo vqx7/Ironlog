@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-TVg3kNdHu2rf2RDi3ii12r4KqHzRpwprATT9zz+20/4=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-KlNFu74Tg+N0E5aUHR4ZDOy7us65Z2bthz7+K4TvX38=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.08-r81">
@@ -4556,7 +4556,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     eqLast: null,
     refix: null
   };
-  var sessionShown = () => ui.tab === "today" && !!state.draft && !ui.away;
+  var sessionShown = () => ui.tab === "today" && !!state.draft && !awayFrom();
+  var awayFrom = () => !!state.draft && !!ui.away && ui.away === state.draft.id;
   var cloud = {
     on: false,
     db: null,
@@ -12546,7 +12547,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (t4 && t4 !== ui.tab && TABS_OK.has(t4)) {
       navFromPop = true;
       ui.tab = t4;
-      ui.away = false;
+      ui.away = null;
       if (t4 === "program") ui.planView = "routine";
       window.scrollTo(0, 0);
       render();
@@ -14354,10 +14355,15 @@ ${more}`;
       const dm = ours ? num2(at2(r4, cMin)) : impSpan(strong ? cell("dur") : "", cell("date"), cell("end"), order);
       if (ss.durMin == null && dm != null && dm >= 1 && dm <= LIMITS.minutes) ss.durMin = Math.round(dm);
       if (/^(yes|true|1|y)$/i.test(String(cell("deload") || "").trim())) ss.deload = true;
-      if (!ss.items.has(ex))
-        ss.items.set(ex, { name: ex, sets: [], note: cell("note"), ...cell("ss") ? { ss: cell("ss") } : {} });
+      let it = ss.items.get(ex);
+      if (!it) {
+        it = { name: ex, sets: [], note: "", ...cell("ss") ? { ss: cell("ss") } : {} };
+        ss.items.set(ex, it);
+      }
+      const en = String(cell("note") || "").trim();
+      if (en && !it.note.split("; ").includes(en)) it.note = (it.note ? it.note + "; " + en : en).slice(0, LIMITS.note);
       const n3 = Math.min(Math.max(Math.round(num2(cell("sets")) || 1), 1), ROW_SETS);
-      for (let j3 = 0; j3 < n3; j3++) ss.items.get(ex).sets.push({ ...set });
+      for (let j3 = 0; j3 < n3; j3++) it.sets.push({ ...set });
     }
     return {
       sessions: [...S4.values()].map((x2) => ({
@@ -19523,7 +19529,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const free = state.settings.todayStart === "free" && chosen == null;
     const lines = [acctBar(), installBar(), iconBar()];
     const above = b`${welcomeCard()}${lines}${lines.every((l4) => l4 === A) ? photoBar() : A}`;
-    const open = state.draft && ui.away ? state.draft : null;
+    const open = state.draft && awayFrom() ? state.draft : null;
     if (open)
       return b`${above}${resumeCard(open)}${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
     if (free) {
@@ -21166,13 +21172,13 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
        steps away to Today, which offers it back; the tab, Back and opening the
        app again all open the workout. */
     wkAway() {
-      ui.away = true;
+      ui.away = state.draft ? state.draft.id : null;
       window.scrollTo(0, 0);
       render();
       toast("Saved. Resume it from Today.");
     },
     wkResume() {
-      ui.away = false;
+      ui.away = null;
       ui.tab = "today";
       window.scrollTo(0, 0);
       render();
@@ -25048,7 +25054,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   var halfSets = (n3) => Math.max(1, Math.ceil(n3 / 2));
   var blockPlan = (p3) => ({ ...p3, ss: p3.ss ?? null });
   function begin(d3, live2) {
-    ui.away = false;
+    ui.away = null;
     act(
       () => {
         state.draft = d3;
@@ -25086,7 +25092,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   function resumeOpen() {
     if (!state.draft) return false;
-    ui.away = false;
+    ui.away = null;
     ui.tab = "today";
     window.scrollTo(0, 0);
     render();
@@ -25136,7 +25142,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   function wkGo(t4) {
     const d3 = t4.dataset.date;
     ui.tab = "today";
-    ui.away = false;
+    ui.away = null;
     if (!state.draft) {
       const R2 = activeRoutine();
       const di = t4.dataset.day != null ? Number(t4.dataset.day) : null;
@@ -26038,7 +26044,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const tab = el.closest("#tabs button");
       if (tab instanceof HTMLElement) {
         ui.tab = tab.dataset.tab || "";
-        ui.away = false;
+        ui.away = null;
         if (ui.tab === "program") ui.planView = "routine";
         window.scrollTo(0, 0);
         render();
@@ -27172,7 +27178,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     sortables = [];
   }
   var TABS = {
-    today: () => state.draft && !ui.away ? viewWorkout(state.draft) : viewToday(),
+    today: () => state.draft && !awayFrom() ? viewWorkout(state.draft) : viewToday(),
     history: viewHistory,
     settings: viewSettings,
     program: () => ui.planView === "library" ? viewLibrary() : viewProgram(),
