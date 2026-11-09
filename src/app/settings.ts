@@ -16,7 +16,7 @@ import type { TemplateResult } from 'lit-html';
 import { live } from 'lit-html/directives/live.js';
 import { repeat } from 'lit-html/directives/repeat.js';
 import { APP_NAME, PREVIEW_NAME, VERSION_LINE } from './config';
-import { parkPut, parkTake } from './park';
+import { parkSettle } from './park';
 import { act } from './act';
 import { MK, ML, MUSCLES, TARGETED, TRACK_ONLY } from './library';
 import {
@@ -1361,27 +1361,19 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     toast('Demo data cleared', true);
   },
   resetAll() {
+    if (!parkSettle()) return;
     confirmBox(
       'Erase everything?',
       `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? ' on this device and in your cloud copy' : ' on this device'}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first if you might want it.`,
       'Erase everything',
       () => {
-        // A workout set aside for an edit goes with the log (R81-2), and comes back with it on Undo (REV6-2).
-        let parked: string | null = null;
         act(
           () => {
             setState(normalize(null));
             if (!cloud.on) cloudStop(true);
             asideClear();
-            parked = parkTake();
           },
-          {
-            undo: () => {
-              parkPut(parked);
-              // Put back beside the log, which Undo merges back as for any step.
-              return false;
-            }
-          }
+          { undo: true }
         );
         // Pictures are not part of the log Undo keeps, so they go at once, as the question says (r66, 373). The profile photo
         // with them (2.33): from the account too while it syncs, as the cloud copy of the log goes (2.34), else from this phone.

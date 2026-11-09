@@ -405,14 +405,15 @@ function undoDraftOf(v: unknown): UndoDraft | null {
    action, local = now, other = before it. Exercises changed only by the
    action go back; ones changed since keep the newer version. As a whole
    record, any set logged after the action used to block the undo. */
-export function mergeDraft(base0: unknown, cur0: unknown, pre0: unknown): unknown {
+export function mergeDraft(base0: unknown, cur0: unknown, pre0: unknown, saved: (id: string) => boolean): unknown {
   const base = undoDraftOf(base0),
     cur = undoDraftOf(cur0),
     pre = undoDraftOf(pre0);
-  /* A workout the step itself took away (Erase everything, a backup restored), with none open since: it comes back, as
-     everything else the step took does (the review of 2.36, REV6-2: Undo after Erase everything left it gone). One
-     ended or started since the step stays as it is now. */
-  if (pre && !base && !cur && cur0 == null && base0 == null) return pre0;
+  /* A workout the step itself took away (Erase everything, a backup restored), with none open now and not saved since:
+     it comes back, as everything else the step took does (the review of 2.36, REV6-2: Undo after Erase everything left
+     it gone). Saved since, it is a session in the log (Finish gives the session its id) and stays one: reopened, a
+     second Finish wrote it over an edit made to it (the review of 2.38, REV7-4). One open now stays as it is. */
+  if (pre && !base && !cur && cur0 == null && base0 == null && !saved(pre.id)) return pre0;
   if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur0 === undefined ? null : cur0;
   type B = UndoDraft['ex'][number];
   const keyed = (list: readonly B[] | null | undefined): [string, B][] => {

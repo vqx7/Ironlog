@@ -19,8 +19,12 @@
 //      in again finds it in progress.
 //   10 (REV6-3) Set aside before the sync had started: it comes back once the edit is saved with the sync on.
 //   11 (REV6-4, S-1) Set aside on a phone not signed in, then the first sign-in: it comes back in the account it joined.
-//   12 (REV6-2) Undo after Erase everything brings back the workout in progress, and with an edit open the edit and
-//      then the workout set aside.
+//   13 (the review of 2.38, REV7-2, REV7-3) With an edit open and a workout set aside, Erase everything, Load demo data
+//      and Replace my data change nothing and say why; with nothing open, Erase everything brings it back first, so
+//      Undo after a reload does.
+//   14 (REV7-4) Undo never reopens a workout saved since; its session keeps an edit made after.
+//   12 (REV6-2) Undo after Erase everything brings back the workout in progress; with an edit open and a workout set
+//      aside, Erase everything erases nothing and says why (2.38, REV7-2), and saving the edit brings the workout back.
 // R82_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -225,8 +229,10 @@ const modalKind = D => D.page.evaluate(() => (window.__ironlog.ui.modal || {}).k
     await wait(300);
     await answer(D);
     await wait(500);
-    const kept = await D.page.evaluate(() => { const L = window.__ironlog; return Object.keys(localStorage).filter(k => k.startsWith(L.KEY + '.parked')).length; });
-    ok(kept === 0, '7. Erase everything forgets a workout set aside', { kept });
+    // Since 2.38 (the review's REV7-2) Erase everything waits while a workout is set aside and another is open, and
+    // keeps the copy; with nothing open it brings the workout back first and erases it with the log (tests/r84.js 4).
+    const kept = await D.page.evaluate(() => { const L = window.__ironlog; return { n: Object.keys(localStorage).filter(k => k.startsWith(L.KEY + '.parked')).length, said: (document.querySelector('#toast') || {}).textContent || '' }; });
+    ok(kept.n === 1 && /set aside/.test(kept.said), '7. Erase everything with an edit open keeps a workout set aside and says why', kept);
     await D.browser.close();
   }
 
@@ -310,15 +316,74 @@ const modalKind = D => D.page.evaluate(() => (window.__ironlog.ui.modal || {}).k
     await D.page.evaluate(() => window.__ironlog.ACT.undo()); await wait(600);
     const back = await live(D);
     ok(back && back.id === w0.id && back.ex === w0.ex, '12. Undo after Erase everything brings back the workout in progress', { w0, back });
-    // The same with an edit open and the workout set aside: Undo brings the edit back, and saving it the workout.
+    /* With an edit open and the workout set aside, Erase everything waits until the edit is saved or discarded and
+       says why (2.38, the review's REV7-2: its Undo could not bring the set-aside copy back after a reload); saving the
+       edit brings the workout back. */
     await D.page.evaluate(id => window.__ironlog.ACT.histEdit({ dataset: { id } }), await oldId(D));
     await wait(400);
+    const n0 = await D.page.evaluate(() => window.__ironlog.state.sessions.length);
     await D.page.evaluate(() => window.__ironlog.ACT.resetAll()); await wait(300); await answer(D); await wait(400);
-    await D.page.evaluate(() => window.__ironlog.ACT.undo()); await wait(600);
-    const e = await live(D);
+    const e = await D.page.evaluate(() => { const L = window.__ironlog; return { n: L.state.sessions.length, editing: !!(L.state.draft && L.state.draft.editingId), said: (document.querySelector('#toast') || {}).textContent || '' }; });
     await D.page.evaluate(() => window.__ironlog.ACT.finishNow()); await wait(600);
     const back2 = await live(D);
-    ok(e && e.editing && back2 && back2.id === w0.id && back2.ex === w0.ex, '12. with an edit open, Undo after Erase everything brings the edit back and, once it is saved, the workout set aside', { e: e && e.editing, w0, back2 });
+    ok(e.n === n0 && e.editing && /set aside/.test(e.said) && back2 && back2.id === w0.id && back2.ex === w0.ex, '12. with an edit open and the workout set aside, Erase everything erases nothing and says why; saving the edit brings the workout back', { e, w0, back2 });
+    await D.browser.close();
+  }
+
+  if (run(13)) {
+    // REV7-2, REV7-3: the phone never lets go of a log while a workout is set aside for it. With an edit open and the
+    // workout set aside, Erase everything, Load demo data and Replace my data each do nothing and say why (as Sign
+    // out does); with nothing open, Erase everything first brings it back, so its Undo, even after a reload, does too.
+    const D = await withWorkout();
+    const w0 = await live(D);
+    const old = await D.page.evaluate(() => window.__ironlog.state.sessions.filter(x => x.ex && x.ex.length >= 2 && x.date < '2026-11-08').slice(-1)[0].id);
+    // Signed out keeping a copy of account u1 (REV7-3's start): the log is u1's.
+    await D.page.evaluate(() => { window.__ironlog.cloud.acct = 'u1'; });
+    await D.page.evaluate(id => window.__ironlog.ACT.histEdit({ dataset: { id } }), old); await wait(400);
+    const backup = await D.page.evaluate(() => JSON.stringify({ ...window.__ironlog.state, draft: null }));
+    const n0 = await D.page.evaluate(() => window.__ironlog.state.sessions.length);
+    for (const [name, go] of [['Erase everything', L => L.ACT.resetAll()], ['Load demo data', L => L.ACT.demoLoad()], ['Replace my data', (L, t) => L.importData(t)]]) {
+      await D.page.evaluate(([g, t]) => { const L = window.__ironlog; (0, eval)(g)(L, t); }, [go.toString(), backup]); await wait(300);
+      await D.page.click('#modal [data-act="mOk"]').catch(() => {}); await wait(600);
+      const st = await D.page.evaluate(() => { const L = window.__ironlog, v = localStorage.getItem(L.KEY + '.parked'); return { n: L.state.sessions.length, editing: !!(L.state.draft && L.state.draft.editingId), parked: v ? JSON.parse(v).uid : null, acct: L.cloud.acct, said: (document.querySelector('#toast') || {}).textContent || '' }; });
+      ok(st.n === n0 && st.editing && st.parked === 'u1' && st.acct === 'u1' && /set aside/.test(st.said), `13. with an edit open and a workout set aside, ${name} changes nothing and says why`, st);
+      await D.page.evaluate(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    }
+    // Cancel the edit: the workout comes back. Then signed out of no account, set it aside with nothing open (as
+    // Today's Bring it back finds it).
+    await D.page.evaluate(() => window.__ironlog.ACT.discard()); await wait(300);
+    await D.page.click('#modal [data-act="mOk"]').catch(() => {}); await wait(400);
+    const back0 = await live(D);
+    ok(back0 && back0.id === w0.id && back0.ex === w0.ex, '13. (setting up) Cancel edit brings the workout back', { w0, back0 });
+    await D.page.evaluate(() => { window.__ironlog.cloud.acct = null; });
+    await D.page.evaluate(() => { const L = window.__ironlog, d = L.state.draft; localStorage.setItem(L.KEY + '.parked', JSON.stringify({ uid: '', draft: d })); L.state.draft = null; L.saveNow(); L.ui.tab = 'today'; L.render(); });
+    await wait(300);
+    await D.page.evaluate(() => window.__ironlog.ACT.resetAll()); await wait(300);
+    await D.page.click('#modal [data-act="mOk"]').catch(() => {}); await wait(1500);
+    await D.page.reload(); await D.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(800);
+    await D.page.evaluate(() => window.__ironlog.ACT.undo()); await wait(800);
+    const back = await live(D);
+    ok(back && back.id === w0.id && back.ex === w0.ex, '13. with nothing open, Erase everything brings the set-aside workout back first, so Undo after a reload brings it back with every set', { w0, back });
+    await D.browser.close();
+  }
+
+  if (run(14)) {
+    // REV7-4: Undo never reopens a workout that has been saved since. A backup made mid-workout, Erase everything, the
+    // backup restored, the workout finished and its session edited (6 to 20 reps), then Undo twice.
+    const D = await withWorkout();
+    const w0 = await live(D);
+    const backup = await D.page.evaluate(() => JSON.stringify(window.__ironlog.state));
+    await D.page.evaluate(() => window.__ironlog.ACT.resetAll()); await wait(300); await D.page.click('#modal [data-act="mOk"]').catch(() => {}); await wait(600);
+    await D.page.evaluate(t => window.__ironlog.importData(t), backup); await wait(300); await D.page.click('#modal [data-act="mOk"]').catch(() => {}); await wait(800);
+    await D.page.evaluate(() => window.__ironlog.ACT.finishNow()); await wait(1200);
+    await D.page.evaluate(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    await D.page.evaluate(id => window.__ironlog.ACT.histEdit({ dataset: { id } }), w0.id); await wait(500);
+    await D.page.fill('#view input[data-f="r"][data-b="0"][data-s="0"]', '20'); await wait(600);
+    await D.page.evaluate(() => window.__ironlog.ACT.finishNow()); await wait(1200);
+    await D.page.evaluate(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    for (const k of [1, 2]) { await D.page.evaluate(() => window.__ironlog.ACT.undo()); await wait(800); }
+    const o = await D.page.evaluate(id => { const L = window.__ironlog, x = L.state.sessions.find(s => s.id === id); return { open: L.state.draft && L.state.draft.id, reps: x && x.ex[0].sets.map(s => s.r), n: L.state.sessions.filter(s => s.id === id).length }; }, w0.id);
+    ok(o.open !== w0.id && o.n === 1 && o.reps && o.reps[0] === 20, '14. Undo does not reopen a workout saved since, and its saved session keeps its edit', o);
     await D.browser.close();
   }
 
