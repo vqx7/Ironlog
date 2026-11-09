@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-8MQs4jlhX5m9NUcEdLcU+Ly45K9AczeU2CfevslTZIE=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-SN6MKxFFZhHeC6wUoBiGX8EMRJOMrWjI2xETrpZowzc=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.08-r82">
+<meta name="app-build" content="2026.11.09-r84">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -663,6 +663,21 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg select{text-align:center;padding:6px 2px;min-height:44px}
 .sg select.unset{color:var(--muted)}
 .sg.done input,.sg.done select{border-color:color-mix(in srgb,var(--volt-line) 55%,transparent);background:var(--volt-soft)}
+.blkt{width:100%;border-collapse:collapse;font-size:14px}
+.blkt th,.blkt td{padding:7px 4px;border-bottom:1px solid var(--line);text-align:right}
+.blkt tbody th,.blkt thead th:first-child{text-align:left;font-weight:600}
+.blkt thead th{font-size:12px;color:var(--muted);font-weight:650}
+.stepr{margin-top:10px;padding-top:10px;border-top:1px solid var(--line-soft)}
+.stepr-h{font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.stepr-row{display:flex;gap:8px}
+.stepr-g{flex:1 1 0;min-width:0;display:flex;align-items:center;height:48px;border-radius:24px;color:var(--on-volt);background:var(--volt)}
+.stepr-b{position:relative;z-index:1;width:44px;height:48px;flex:none;border:0;padding:0;background:none;color:inherit;font-size:24px;font-weight:700;line-height:1;cursor:pointer;border-radius:24px}
+.stepr-b:active{background:rgba(0,0,0,.14)}
+.stepr-b:disabled{opacity:.35;cursor:default}
+.stepr-v{flex:1 1 auto;min-width:0;margin:0 -4px;display:flex;align-items:baseline;justify-content:center;gap:3px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.stepr-v b{font-size:18px;font-weight:800;letter-spacing:-.01em}
+.stepr-v small{font-size:12px;font-weight:600;opacity:.75}
+@media (max-width:379px){.stepr-v small{display:none}.stepr-v b{font-size:17px}}
 .sg.norir{grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) 44px}
 .sg .n.drop{color:var(--blue)}
 /* A drop set sits under its set (r66, 375): set in on a quiet band, its Last column naming it. */
@@ -1593,7 +1608,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     ["dbFly", "DB Fly", "chest", "frontDelts", "dumbbell", "", ""],
     ["pushup", "Push-up", "chest", "triceps frontDelts serratus", "bodyweight", "b", ""],
     ["deficitPushup", "Deficit Push-up", "chest", "triceps frontDelts serratus", "bodyweight", "br", "Hands on handles or plates so the chest drops below hand level."],
-    ["declinePushup", "Decline Push-up (feet raised)", "chest", "frontDelts triceps serratus", "bodyweight", "b", `Feet on a bench: about ${pctOf(BWF.declinePushup)}% of bodyweight, against ${pctOf(BWF.pushup)}% for a floor push-up (Ebben 2011).`],
+    ["declinePushup", "Decline Push-up (feet raised)", "chest", "frontDelts triceps serratus", "bodyweight", "b", `Feet on a bench: about ${pctOf(BWF.declinePushup)}% of bodyweight, against ${pctOf(BWF.pushup)}% for a floor push-up.`],
     ["pullup", "Pull-up", "lats", "biceps upperBack", "bodyweight", "b", "Log added load only. Bodyweight is added automatically for trends."],
     ["chinup", "Chin-up", "lats", "biceps upperBack", "bodyweight", "b", ""],
     ["assistPullup", "Assisted Pull-up (machine)", "lats", "biceps upperBack", "machine", "ba", "Type the help the machine gives. Less help is progress."],
@@ -1633,7 +1648,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     ["reversePecDeck", "Reverse Pec Deck (Rear Delt Fly)", "rearDelts", "upperBack rotatorCuff", "machine", "", ""],
     ["facePull", "Face Pull", "rearDelts", "upperBack traps rotatorCuff", "cable", "", ""],
     ["cableRearFly", "Cross-Body Cable Rear Delt Fly", "rearDelts", "upperBack rotatorCuff", "cable", "s", ""],
-    ["ohCableExt", "Overhead Cable Triceps Extension", "triceps", "", "cable", "", "Long head at long length. Grew the triceps more than pushdowns in a 2023 study (Maeo et al.)."],
+    ["ohCableExt", "Overhead Cable Triceps Extension", "triceps", "", "cable", "", "Long head at long length. In a trial it grew the triceps more than pushdowns."],
     ["pressdown", "Triceps Pressdown", "triceps", "", "cable", "", ""],
     ["skull", "EZ-Bar Skull Crusher", "triceps", "", "barbell", "", ""],
     ["jmPress", "JM Press", "triceps", "chest", "barbell", "r", "Hybrid of close-grip bench and skull crusher. The Smith version is easier to learn."],
@@ -1688,7 +1703,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     ["sumoDl", "Sumo Deadlift", "glutes", "quads adductors hamstrings lowerBack traps forearms", "barbell", "", "Wide stance, hands inside the knees."],
     ["powerClean", "Power Clean", "glutes", "hamstrings quads traps upperBack", "barbell", "r", "The bar from the floor to the shoulders in one fast pull. Add load only while the bar stays fast."],
     ["kbSwing", "Kettlebell Swing", "glutes", "hamstrings lowerBack", "other", "", "A hip snap, not a squat: the arms only guide the bell. Enter the bell's weight."],
-    ["seatedCurl", "Seated Leg Curl", "hamstrings", "", "machine", "", "Grew the hamstrings more than lying curls in a 2021 study (Maeo et al.)."],
+    ["seatedCurl", "Seated Leg Curl", "hamstrings", "", "machine", "", "In a trial it grew the hamstrings more than lying curls."],
     ["lyingCurl", "Lying Leg Curl", "hamstrings", "", "machine", "", ""],
     ["nordic", "Nordic Hamstring Curl", "hamstrings", "", "bodyweight", "br", "Very demanding eccentric. Use a band or partial range until full reps are possible."],
     ["ghr", "Glute-Ham Raise", "hamstrings", "glutes", "bodyweight", "br", ""],
@@ -1792,6 +1807,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var isCommon = (e5) => !!e5 && !e5.custom && !e5.rare && COMMON.has(e5.id);
   var LIB_NAMES_BEFORE = {
     reversePecDeck: ["Reverse Pec Deck"]
+  };
+  var LIB_NOTES_BEFORE = {
+    declinePushup: ["Feet on a bench: about 70% of bodyweight, against 64% for a floor push-up (Ebben 2011)."],
+    ohCableExt: ["Long head at long length. Grew the triceps more than pushdowns in a 2023 study (Maeo et al.)."],
+    seatedCurl: ["Grew the hamstrings more than lying curls in a 2021 study (Maeo et al.)."]
   };
   function libExercises() {
     return LIB.map(([id, name, primary, sec, equip, flags, note]) => {
@@ -2112,8 +2132,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.36";
-  var APP_VERSION = "2026.11.08-r82";
+  var DISPLAY_VERSION = "2.38";
+  var APP_VERSION = "2026.11.09-r84";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2316,6 +2336,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var onStep = (v3, step) => Math.abs(v3 / step - Math.round(v3 / step)) < EPS_SAME;
   var TYPED_STEP = 0.05;
   var PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
+  var CHANGE_PLATES = { kg: [2, 1.5, 1, 0.5], lb: [1.25] };
   var SMALL_PLATE = { lb: 1.25, kg: 0.5 };
   var inUnitIn = (M3, kg2) => UIn(M3) === "lb" ? kg2 / LB : kg2;
   var kgOfIn = (M3, v3) => UIn(M3) === "lb" ? v3 * LB : v3;
@@ -3533,13 +3554,13 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const d3 = rec(v3);
     const ex = d3 && arr(d3["ex"]);
     if (!d3 || typeof d3["id"] !== "string" || !ex) return null;
-    const blocks = [];
+    const blocks2 = [];
     for (const b0 of ex) {
       const b2 = rec(b0);
       if (!b2 || typeof b2["exId"] !== "string") return null;
-      blocks.push({ ...b2, exId: b2["exId"] });
+      blocks2.push({ ...b2, exId: b2["exId"] });
     }
-    return { ...d3, id: d3["id"], ex: blocks };
+    return { ...d3, id: d3["id"], ex: blocks2 };
   }
   function mergeDraft(base0, cur0, pre0, saved) {
     const base = undoDraftOf(base0), cur = undoDraftOf(cur0), pre = undoDraftOf(pre0);
@@ -3707,6 +3728,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     ["history", "History"],
     ["settings", "Settings"]
   ];
+  var BLOCK_WEEKS_DEFAULT = 6;
+  var BLOCK_WEEKS = ["auto", 4, 5, 6, 8];
+  function blockWeeksKept(v3) {
+    const c4 = BLOCK_WEEKS.find((x2) => x2 === v3);
+    return c4 === void 0 || c4 === BLOCK_WEEKS_DEFAULT ? void 0 : c4;
+  }
 
   // src/app/normalize.ts
   var spread = (v3) => ({ ...v3 });
@@ -3959,6 +3986,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const sIn = rec(s3.settings) || {};
     const accent = pick(st.accent, ["blue", "volt", "ember", "pink", "violet", "cyan", "red"]);
     const bwEvery2 = bwEveryKept(st.bwEvery);
+    const blockWeeks = blockWeeksKept(st.blockWeeks);
     const restWeeks = (() => {
       const rw = arr(st.restWeeks);
       return rw ? [...new Set(strings(rw, isDate))].sort().slice(-LIMITS.restWeeks) : [];
@@ -4022,6 +4050,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       ...st.autoAdj === false ? { autoAdj: false } : {},
       // r34: weigh-in reminder in days (0 off); absent is every BW_EVERY_DEFAULT days.
       ...bwEvery2 !== void 0 ? { bwEvery: bwEvery2 } : {},
+      // 2.37 (ST-6): This block vs last's length; absent is BLOCK_WEEKS_DEFAULT, so saves without it hash as before.
+      ...blockWeeks !== void 0 ? { blockWeeks } : {},
       // r34: Today opens on a blank session; absent is the plan's day.
       ...st.todayStart === "free" ? { todayStart: "free" } : {},
       // r34: rest weeks, week-start dates; the last two years kept.
@@ -4071,6 +4101,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     "rirHalf",
     "autoAdj",
     "bwEvery",
+    "blockWeeks",
     "todayStart",
     "restWeeks",
     "rirScale",
@@ -4334,9 +4365,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (r4 && !have.has(e5.id) && !gone.has(e5.id)) exercises.push(cleanExercise(e5, r4, e5.name));
     }
     const libName = new Map(lib.map((e5) => [e5.id, e5.name]));
+    const libNote = new Map(lib.map((e5) => [e5.id, e5.note]));
     for (const e5 of exercises) {
       const now = libName.get(e5.id);
       if (now && !e5.custom && (LIB_NAMES_BEFORE[e5.id] || []).includes(e5.name)) e5.name = now;
+      const note = libNote.get(e5.id);
+      if (note !== void 0 && !e5.custom && (LIB_NOTES_BEFORE[e5.id] || []).includes(e5.note)) e5.note = note;
     }
     if (numOr(s3.version, 1) < V_PER_SIDE) {
       const libMap = new Map(lib.map((e5) => [e5.id, e5]));
@@ -8099,6 +8133,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const up = Ls.above(from), c4 = Ls.floor(to);
     return up != null && c4 != null && c4 >= up - EPS_SAME ? c4 : null;
   }
+  function stepLoadIn(M3, ex, plan, from, dir) {
+    if (dir > 0) return loadsForIn(M3, ex, plan, from).above(from);
+    const w2 = lighterLoadIn(M3, ex, plan, from, from - EPS_SAME);
+    return w2 < from - EPS_SAME ? w2 : null;
+  }
   var ODD_SESSION = 3;
   var ODD_BEST = 2;
   var ODD_ADDED_BW = 0.9;
@@ -9228,6 +9267,75 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       rest
     };
   }
+  var BLOCK_AUTO_LOOK = 2 * BLOCK_WEEKS_DEFAULT;
+  function blocksIn(M3) {
+    const f3 = logStartIn(M3), c0 = avgFirstWeekIn(M3);
+    if (!f3 || !c0) return null;
+    const I2 = IDXIn(M3);
+    const cur = weekStart(M3.today());
+    const first = weekStart(f3);
+    const wk = (k2) => addDays(cur, -WEEK_DAYS * k2);
+    const ends = (w2) => w2 < cur && (isRestWeekIn(M3, w2) || !weekSessionsIn(M3, w2) || !!I2.lightWk[w2]);
+    const pick2 = M3.s.settings.blockWeeks;
+    let spans = null;
+    if (pick2 === "auto") {
+      const sep = [];
+      for (let k2 = 1; k2 <= 2 * BLOCK_AUTO_LOOK && wk(k2) >= first; k2++) if (ends(wk(k2))) sep.push(k2);
+      const a2 = sep[0];
+      if (a2 !== void 0 && a2 <= BLOCK_AUTO_LOOK) {
+        let b2 = a2;
+        while (sep.includes(b2 + 1)) b2++;
+        const c4 = sep.find((k2) => k2 > b2 + 1);
+        const lastTo = b2 + 1;
+        const lastFrom = c4 !== void 0 ? c4 - 1 : b2 + BLOCK_WEEKS_DEFAULT;
+        const before = lastFrom >= lastTo ? [[lastFrom, lastTo]] : [];
+        spans = [[a2 - 1, 0], ...before];
+      }
+    }
+    const len = typeof pick2 === "number" ? pick2 : BLOCK_WEEKS_DEFAULT;
+    const auto = !!spans;
+    if (!spans)
+      spans = [
+        [len - 1, 0],
+        [2 * len - 1, len]
+      ];
+    const block = ([fk, tk]) => {
+      const from = wk(fk) < first ? first : wk(fk);
+      if (wk(tk) < first) return null;
+      const to = tk === 0 ? M3.today() : addDays(wk(tk), SUNDAY);
+      let counted = 0, sess = 0, hard = 0, missed = 0, light = 0;
+      for (let w2 = from; w2 <= wk(tk); w2 = addDays(w2, WEEK_DAYS)) {
+        const n3 = weekSessionsIn(M3, w2);
+        if (w2 >= cur || w2 < c0 || isRestWeekIn(M3, w2)) continue;
+        if (!n3) {
+          missed++;
+          continue;
+        }
+        if (I2.lightWk[w2]) {
+          light++;
+          continue;
+        }
+        counted++;
+        sess += n3;
+        hard += I2.weekHard[w2] || 0;
+      }
+      const prs = I2.prs.filter((p3) => p3.big && p3.date >= from && p3.date <= to).length;
+      return {
+        from,
+        to,
+        weeks: Math.round(daysBetween(from, wk(tk)) / WEEK_DAYS) + 1,
+        counted,
+        sess: counted ? sess / counted : null,
+        hard: counted ? hard / counted : null,
+        prs,
+        missed,
+        light
+      };
+    };
+    const now = block(spans[0]);
+    if (!now) return null;
+    return { auto, len: auto ? null : len, now, last: spans[1] ? block(spans[1]) : null };
+  }
 
   // src/app/coach.ts
   var SIZE_MAP = [
@@ -9579,6 +9687,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var paceRatios = live(paceRatiosIn);
   var sessModelMin = live(sessModelMinIn);
   var actualAvg4 = live(actualAvg4In);
+  var blocks = live(blocksIn);
   var avgFirstWeek = live(avgFirstWeekIn);
   var avgWait = live(avgWaitIn);
   var avgWeeks = live(avgWeeksIn);
@@ -9606,6 +9715,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var easierText = live(easierTextIn);
   var incOf = live(incOfIn);
   var heavierLoad = live(heavierLoadIn);
+  var stepLoad = live(stepLoadIn);
   var oddLoad = live(oddLoadIn);
   var lightZero = live(lightZeroIn);
   var nextSets = live(nextSetsIn);
@@ -14737,6 +14847,7 @@ ${more}`;
     lastDown: { el: null, t: 0 },
     stripAt: null,
     platesAt: null,
+    onLift: null,
     foldWait: /* @__PURE__ */ new WeakSet(),
     selAgain: null,
     replaceNext: null
@@ -15336,7 +15447,7 @@ ${more}`;
     if (val && isMissed(s3) && !s3.warm && !s3.drop) toast(MISSED_SAID);
     W.platesAt = null;
     if (val && !d3.editingId && blockDone(b2) && !blkIsOpen(bi, b2)) W.foldWait.add(b2);
-    redraw();
+    onLiftDraw(bi, redraw);
     const pr = rowPR(b2, si, d3.date);
     if (pr && !wasPR) {
       const ex = EX(b2.exId);
@@ -15380,6 +15491,34 @@ ${more}`;
     }
     if (val && b2.sets.filter((x2) => x2.done).length === 1 && orderAt(b2) >= 0) orderSoon(b2);
   }
+  function nextLift(d3, i5) {
+    const nx = d3.ex.findIndex((x2, j3) => j3 > i5 && !blockDone(x2));
+    return nx >= 0 ? nx : d3.ex.findIndex((x2) => blockUntouched(x2));
+  }
+  function liftsOn(d3) {
+    const left = (x2) => !blockDone(x2);
+    const i5 = blkIdx(W.onLift);
+    const at2 = i5 >= 0 ? d3.ex[i5] : void 0;
+    const nx = at2 && !left(at2) ? nextLift(d3, i5) : -1;
+    const b2 = at2 && left(at2) ? at2 : nx >= 0 ? d3.ex[nx] : d3.ex.find(left);
+    if (!b2) return /* @__PURE__ */ new Set();
+    const ss = b2.plan && b2.plan.ss;
+    return new Set(ss ? d3.ex.filter((x2) => x2.plan && x2.plan.ss === ss && left(x2)) : [b2]);
+  }
+  function onLiftDraw(bi, draw) {
+    const d3 = state.draft;
+    const was = d3 ? liftsOn(d3) : null;
+    W.onLift = blkRef(bi);
+    const ref2 = W.onLift;
+    const el = document.getElementById("blk-" + bi);
+    const top = el ? el.getBoundingClientRect().top : null;
+    draw();
+    const now = state.draft ? liftsOn(state.draft) : null;
+    if (top == null || !was || !now || was.size === now.size && [...was].every((x2) => now.has(x2))) return;
+    const j3 = blkIdx(ref2);
+    const el2 = j3 >= 0 ? document.getElementById("blk-" + j3) : null;
+    if (el2) window.scrollBy(0, el2.getBoundingClientRect().top - top);
+  }
   function restNext(bi) {
     const d3 = state.draft;
     const b2 = d3 && d3.ex[bi];
@@ -15389,8 +15528,7 @@ ${more}`;
     const k2 = to.sets.filter((y2) => !y2.warm && !y2.drop).findIndex((y2) => !y2.done);
     if (k2 >= 0) return to === b2 ? `next set ${k2 + 1}` : `next: ${exName(to.exId)}`;
     const i5 = d3.ex.indexOf(to);
-    let nx = d3.ex.findIndex((x2, j3) => j3 > i5 && !blockDone(x2));
-    if (nx < 0) nx = d3.ex.findIndex((x2) => blockUntouched(x2));
+    const nx = nextLift(d3, i5);
     return nx >= 0 && nx !== i5 ? `next: ${exName(d3.ex[nx].exId)}` : "";
   }
   function ssNext(b2) {
@@ -15489,8 +15627,7 @@ ${more}`;
       W.foldT = setTimeout(() => autoFold(ref2), FOLD_MS.strip);
       return;
     }
-    let nx = d3.ex.findIndex((x2, i5) => i5 > bi && !blockDone(x2));
-    if (nx < 0) nx = d3.ex.findIndex((x2) => blockUntouched(x2));
+    const nx = nextLift(d3, bi);
     const a0 = nx >= 0 ? document.getElementById("blk-" + nx) : null;
     const top0 = a0 ? a0.getBoundingClientRect().top : null;
     rerenderKeepScroll();
@@ -15862,7 +15999,11 @@ ${u4 !== U() ? b`<p class="small u-m0">Suggestions show in ${U()}, on the ${u4} 
 ` : A} <label class="field">${labelTip("lt-barKg", `Bar weight (${U()})`, "Used by the plates-per-side line in the logger.")}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
 <div>
 <p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="A barbell is loaded with these plates, a pair at a time, so its suggested loads are ones they make. A plate-loaded machine steps by two of the smallest, one a side; a landmine by one. Tap a plate your gym does not have, or add one it has that is not here.">Plates on hand (${u4})</span></p>
-<div class="chips" role="group" aria-label="Plates on hand">${[...plates, ...on.filter((p3) => !plates.includes(p3))].sort((a2, b2) => b2 - a2).map(
+<div class="chips" role="group" aria-label="Plates on hand">${[
+      ...plates,
+      ...CHANGE_PLATES[u4 === "kg" ? "kg" : "lb"].filter((p3) => !plates.includes(p3)),
+      ...on.filter((p3) => !plates.includes(p3) && !CHANGE_PLATES[u4 === "kg" ? "kg" : "lb"].includes(p3))
+    ].sort((a2, b2) => b2 - a2).map(
       (p3) => b`<button class=${on.includes(p3) ? "chip on" : "chip"} data-act="gymPlate" data-v=${String(p3)} aria-pressed=${String(on.includes(p3))}>${fmtG(p3)}</button>`
     )}</div>
 <div class="grid2 u-mt6_aiend">
@@ -18073,6 +18214,30 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   var LIFTS_HELP = `Estimated 1RM uses reps to failure, which is reps plus RIR: Brzycki up to ${BRZYCKI_TOP}, Epley at ${BRZYCKI_TOP + 1} and ${E1_MAX_REPS}, none above ${E1_MAX_REPS} or for a set called above RIR ${E1_MAX_RIR}. A blank RIR reads as your usual RIR on that lift once you have rated ${RIR_USUAL_MIN} of its sets in ${CAL_WEEKS} weeks; until then it counts as 0, so the estimate errs low. Numbers stay in the frame you log in, per dumbbell or per side where that applies. Bodyweight lifts add the share of your bodyweight they move: all of it for pull-ups and dips, ${pctOf(BWF.pushup)}% for push-ups. Lifts that turn about one joint (leg raises, crunches, Nordics) get no estimate; their progress is reps and load. Trends read the average of each session's working sets and need ${TREND_MIN.sessions} sessions over ${TREND_MIN.days / WEEK_DAYS} weeks or more within ${TREND_WEEKS} weeks. A heavy single before back-off sets counts toward bests only. Moving or falling means past ${GROW_PCT}% with a clear trend, since estimates swing ${DAY_SWING_PCT[0]} to ${DAY_SWING_PCT[1]}% day to day. A PR is a weight PR (more weight than any earlier set), a new best estimate within its range of reps to failure (${BAND_RANGES.join(", ")}), or a rep PR (more reps at a load than any earlier set); a set that is more than one shows the first. Stalled: flat or falling over your last ${STALL.sessions} sessions, or ${STALL.days / WEEK_DAYS} weeks if that covers more (at least ${STALL.min} sessions), with no PR in the last ${STALL.noProgress}, no heavier load, and no more reps at the same load, not counting sessions done lighter; a lift on two rep ranges is stalled only when it is in both.`;
   var MUSCLES_HELP = `Muscles are flagged because the trend is falling, or flat with one of its lifts stalled, or the hard sets you logged average below your target, or you named it a priority, or you flagged an injury. A muscle is never flagged for what the routine plans, only for what you log. A muscle whose strength is rising is never flagged. Strength return on volume: the median change in estimated 1RM across a muscle's main exercises over up to ${TREND_WEEKS} weeks (each lift with ${MUSCLE_TREND_MIN.sessions} sessions over ${MUSCLE_TREND_MIN.days / WEEK_DAYS} weeks or more), in the current rep range, next to the hard sets a week that produced it. This measures strength, not size: early gains are largely neural, and high-rep estimates are noisy. Size check reads your tape measurements, which are the closer signal for size.`;
   var CONSISTENCY_HELP = `${HEAT_WEEKS} weeks from your first logged session; once you have more, the latest ${HEAT_WEEKS}, with All for the rest. Faded squares are days still ahead. Filled squares are days with a logged lifting session. The streak counts weeks that hit the sessions your routine plans. Cardio minutes are shown under the grid and never count as lifting sessions. Adherence is the planned sessions done over the previous ${AVG_WEEKS} full weeks, each week counted up to its plan.`;
+  var BLOCK_TIP = `A block runs ${BLOCK_WEEKS_DEFAULT} weeks unless you pick another length, about how often lifters take a lighter week (see Sources in the Guide). Auto ends a block at a lighter, rest, or missed week, and runs ${BLOCK_WEEKS_DEFAULT} weeks when there is none. Averages count full weeks trained and leave out lighter weeks and rest weeks, as every weekly average does; this week counts toward PRs only.`;
+  function blockBody() {
+    const b2 = blocks();
+    const pick2 = state.settings.blockWeeks ?? BLOCK_WEEKS_DEFAULT;
+    const sel = b`<label class="small muted" id="lt-blockWeeks">Block length</label> <select data-bind="blockWeeks" aria-labelledby="lt-blockWeeks">${BLOCK_WEEKS.map(
+      (v3) => b`<option value=${String(v3)} .selected=${l3(v3 === pick2)}>${v3 === "auto" ? "Auto" : `${v3} weeks`}</option>`
+    )}</select>`;
+    if (!b2) return b`<div class="card"><p class="small muted u-m0">Log a session to start this.</p>${sel}</div>`;
+    const avg = (v3) => v3 == null ? "–" : String(r1(v3));
+    const out = (x2) => {
+      const o3 = [
+        x2.missed ? `${x2.missed} week${x2.missed === 1 ? "" : "s"} missed` : "",
+        x2.light ? `${x2.light === 1 ? "a lighter week" : `${x2.light} lighter weeks`} left out` : ""
+      ].filter(Boolean);
+      return o3.length ? `, ${o3.join(" and ")}` : "";
+    };
+    const span = (x2) => `${fmtDate(x2.from)} to ${x2.to === today() ? "now" : fmtDate(x2.to)}${out(x2)}`;
+    const L2 = b2.last;
+    const row = (label, a2, c4) => b`<tr><th>${label}</th><td class="num">${a2}</td><td class="num">${L2 ? c4 : "–"}</td></tr>`;
+    return b`<div class="card"><p class="small muted u-m0-0-6">This block: ${span(b2.now)}${b2.now.counted ? "" : ", no full week yet"}. ${L2 ? `Last: ${span(L2)}.` : logBack() ? "None before it since your break." : "No block before it yet."} ${tipButton(BLOCK_TIP, "About blocks")}</p>
+  <table class="blkt"><thead><tr><th></th><th>This block</th><th>Last block</th></tr></thead><tbody>
+  ${row("Sessions a week", avg(b2.now.sess), L2 ? avg(L2.sess) : "–")}${row("Hard sets a week", avg(b2.now.hard), L2 ? avg(L2.hard) : "–")}${row("PRs", String(b2.now.prs), L2 ? String(L2.prs) : "–")}</tbody></table>
+  <div class="u-mt8">${sel}</div></div>`;
+  }
   function consistencySec(R2, cur) {
     const sessDates = new Set(Object.keys(dateIndex().byDate));
     const planned = freeMode() ? 0 : trainDaysOf(R2) * weekFactor(R2);
@@ -18124,7 +18289,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       "consistency",
       "Consistency",
       CONSISTENCY_HELP,
-      noLog() ? heat : b`${adhLine}${heat}`,
+      noLog() ? heat : b`${adhLine}${dashSub("block", "This block vs last", blockBody())}${heat}`,
       noLog() ? "Nothing logged yet" : `${sk.weeks}-week streak${adher != null ? ` · ${adher}% adherence` : ""}`
     );
   }
@@ -18354,6 +18519,15 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     },
     dashMuscle(t4) {
       ui.dashMuscle = t4.value;
+      rerenderKeepScroll();
+    },
+    // The block length (ST-6): a setting, so it is kept and synced; the default is kept absent.
+    blockWeeks(t4) {
+      const k2 = blockWeeksKept(t4.value === "auto" ? "auto" : +t4.value);
+      act(() => {
+        if (k2 !== void 0) state.settings.blockWeeks = k2;
+        else delete state.settings.blockWeeks;
+      });
       rerenderKeepScroll();
     }
   };
@@ -20681,9 +20855,31 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         ${nr ? "" : rirButton(s3.rir, bi, si, p3.rir)}
         <button class=${"cbtn " + (s3.done ? "on" : "")} aria-label=${`Set ${si + 1} ${s3.done && isMissed(s3) ? "missed" : "done"}`} aria-pressed=${s3.done ? "true" : "false"} data-act="sDone" data-b=${bi} data-s=${si}>✓</button></div>${stripIs(bi, si) ? rirStrip(bi, si, s3.rir == null ? "" : String(s3.rir)) : A}`;
   }
+  var STEP_SECONDS = 5;
+  function stepStrip(d3, b2, bi, ex) {
+    const si = b2.sets.findIndex((x2) => !x2.done);
+    const s3 = b2.sets[si];
+    if (!s3 || d3.editingId || !liftsOn(d3).has(b2)) return "";
+    const wn = b2.sets.slice(0, si + 1).filter((x2) => !x2.warm && !x2.drop).length;
+    const name = s3.warm ? "Warm-up" : s3.drop ? "Drop set" : `Set ${wn}`;
+    const w2 = effW(b2, si) ?? 0;
+    const r4 = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
+    const btn = (f3, dir, off, label, txt) => b`<button type="button" class="stepr-b" data-act="sStep" data-b=${bi} data-s=${si} data-sf=${f3} data-d=${dir} aria-label=${`${name}: ${label}`} ?disabled=${off}>${txt}</button>`;
+    const lw = s3.w != null ? s3.w : effW(b2, si);
+    const pill = (f3, v3, unit, dn, up, less, more) => b`<span class="stepr-g">${btn(f3, "-1", dn, less, "−")}<span class="stepr-v" aria-hidden="true"><b>${v3}</b><small>${unit}</small></span>${btn(f3, "1", up, more, "+")}</span>`;
+    return b`<div class="stepr" role="group" aria-label=${`${name}: load and ${ex.timed ? "seconds" : "reps"}`}><div class="stepr-h">Next: <span class="stepr-l">${name}</span></div><div class="stepr-row">${ex.assist ? "" : pill(
+      "w",
+      lw == null ? "–" : loadIn(ex, lw),
+      U(),
+      stepLoad(ex, b2.plan, w2, -1) == null,
+      stepLoad(ex, b2.plan, w2, 1) == null,
+      "lighter",
+      "heavier"
+    )}${pill("r", r4 ? String(r4) : "–", ex.timed ? "sec" : "reps", r4 <= 0, r4 >= LIMITS.reps, ex.timed ? "fewer seconds" : "one rep fewer", ex.timed ? "more seconds" : "one rep more")}</div></div>`;
+  }
   function progressLine(b2, bi) {
     const p3 = blockProgress(b2);
-    return p3 ? b`<span class=${"tp" + (p3.beat ? " beat" : "")} id=${`tp-${bi}`}>${p3.text}</span>` : "";
+    return p3 ? b`<span class=${"tp" + (p3.beat ? " beat" : "")} id=${`tp-${bi}`} aria-hidden=${p3.text ? A : "true"}>${p3.text || " "}</span>` : "";
   }
   var isFolded = (d3, b2, bi) => blockDone(b2) && (d3.editingId ? blkIsShut(bi, b2) : !blkIsOpen(bi, b2) && !W.foldWait.has(b2));
   function blockPart(d3, b2, bi, letters, hintSeen, calIdx, bwAt2) {
@@ -20717,7 +20913,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       b2.sets,
       (x2) => x2.rid,
       (_2, si) => setRow(d3, b2, bi, si, ex, nr, dupB)
-    )}${adjLine(b2, bi)}${platesMode(ex) !== "none" ? b`<p class="small muted u-m6-0-0" id=${`pl-${bi}`}>${plateLine(b2, W.platesAt && blkIdx(W.platesAt.b) === bi ? W.platesAt.s : null)}</p>` : ""}<div class="row u-mt8">${canFill ? b`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>` : ""}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done." ?disabled=${!b2.sets.length}>− Set</button>${!ex.timed && b2.sets.some((x2) => x2.done && !x2.warm && !x2.drop) ? b`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working weight, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>` : ""}${!d3.editingId && b2.sets.some((x2) => x2.done && !x2.warm) && b2.sets.some((x2) => !x2.done) ? b`<button class="btn sm bdone" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them.">✓ Done</button>` : ""}${state.settings.timerMode !== "off" && +p3.rest > 0 && !d3.past ? b`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p3.rest} second rest`} data-tip="Start the rest timer.">⏱ ${p3.rest}s</button>` : ""}</div></section>`;
+    )}${stepStrip(d3, b2, bi, ex)}${adjLine(b2, bi)}${platesMode(ex) !== "none" ? b`<p class="small muted u-m6-0-0" id=${`pl-${bi}`}>${plateLine(b2, W.platesAt && blkIdx(W.platesAt.b) === bi ? W.platesAt.s : null)}</p>` : ""}<div class="row u-mt8">${canFill ? b`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>` : ""}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done." ?disabled=${!b2.sets.length}>− Set</button>${!ex.timed && b2.sets.some((x2) => x2.done && !x2.warm && !x2.drop) ? b`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working weight, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>` : ""}${!d3.editingId && b2.sets.some((x2) => x2.done && !x2.warm) && b2.sets.some((x2) => !x2.done) ? b`<button class="btn sm bdone" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them.">✓ Done</button>` : ""}${state.settings.timerMode !== "off" && +p3.rest > 0 && !d3.past ? b`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p3.rest} second rest`} data-tip="Start the rest timer.">⏱ ${p3.rest}s</button>` : ""}</div></section>`;
   }
   var LOG_HELP_ON = "RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ";
   var LOG_HELP = "W marks a warm-up (kept, never analysed); tap it again for ↳, a drop set (counts as work and volume, never as a PR or target). + Drop adds one under the last set ticked, with no rest before it; a warm-up is added from the ⋯ menu. Drag an exercise by its ⠿ to change the order. A superset is one box, A1 and A2: after a set of A1 the screen moves to A2, and the rest timer starts after the last exercise of the group. Timed holds log seconds in the Sec column. The date can be changed to log a past session.";
@@ -21030,6 +21226,47 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         },
         { inProgress: true }
       );
+      rerenderKeepScroll();
+    },
+    /* Minus and plus (ST-6): from what the row holds, else what it shows in grey, to the next load on the lift's list
+       or one rep (five seconds on a hold) either way, written as the number typed in the field would be, with the same
+       carry to the rows below. The set is not ticked. */
+    sStep(t4) {
+      const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
+      const b2 = tapBlock(t4);
+      const s3 = b2 && b2.sets[si];
+      if (!b2 || !s3 || s3.done) return;
+      const ex = EX(b2.exId);
+      const dir = t4.dataset.d === "-1" ? -1 : 1;
+      if (t4.dataset.sf === "w") {
+        if (ex.assist) return;
+        const to = stepLoad(ex, b2.plan, effW(b2, si) ?? 0, dir);
+        const v3 = to == null ? null : toD(to);
+        if (v3 == null) return;
+        const n3 = Math.round(v3 * HUNDREDTHS) / HUNDREDTHS;
+        act(
+          () => {
+            s3.w = Math.min(fromD(Math.max(n3, 0)) ?? 0, LOAD_MAX);
+            carried.delete(s3);
+            if (fillLoads()) carryLoad(b2, si);
+          },
+          { inProgress: true }
+        );
+        W.platesAt = { b: blkRef(bi), s: si };
+        W.onLift = blkRef(bi);
+        mixCheck(bi, si);
+      } else {
+        const r4 = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
+        const n3 = Math.min(Math.max(r4 + dir * (ex.timed ? STEP_SECONDS : 1), 0), LIMITS.reps);
+        if (n3 === s3.r) return;
+        act(
+          () => {
+            s3.r = n3;
+          },
+          { inProgress: true }
+        );
+        W.onLift = blkRef(bi);
+      }
       rerenderKeepScroll();
     },
     sDel: setRemove,
@@ -21542,7 +21779,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         { inProgress: true, soon: true }
       );
       if (t4.dataset.f === "w") W.platesAt = { b: blkRef(bi), s: si };
-      redraw();
+      onLiftDraw(bi, redraw);
       return true;
     }
     const b2 = t4.dataset.bind;
@@ -21603,7 +21840,9 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       } else if ((state.settings.autoDone || d3.past) && !s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3))) {
         const toRir = near(`.rirb[data-b="${bi}"][data-s="${si}"]`);
         const toW = !toRir && near(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
-        if (toW) W.pendAuto = { b: blkRef(bi), s: si };
+        const toStep = !toRir && !toW && near(`.stepr-b[data-b="${bi}"][data-s="${si}"]`);
+        if (toStep) W.pendAuto = null;
+        else if (toW) W.pendAuto = { b: blkRef(bi), s: si };
         else if (toRir) {
           const p3 = { b: blkRef(bi), s: si };
           W.pendAuto = p3;
@@ -26648,8 +26887,8 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Loads and rep ranges</b>: ACSM 2009; Schoenfeld 2017 (heavier loads, more strength, similar growth). <b>Rest</b>: Schoenfeld 2016 (3 minutes beat 1); Singer 2024 (no difference found past 90 seconds).</p>
    <p><b>Effort</b>: Robinson 2024 and Refalo 2023 (growth rises as sets end closer to failure; a hard set is one within ${HARD_RIR} reps of it, a rule of thumb); Refalo 2024 (going to failure adds little); Halperin 2022 (estimates and effort calls at higher reps).</p>
    <p><b>Weekly sets</b>: Pelland 2025 and Currier 2026, the 2026 ACSM position stand (${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets a week is typical for a major muscle); Pelland 2025 (helper muscles count half). Remmert 2025, a preprint (no extra growth past about 11 sets in one workout). <b>Maintenance</b>: Bickel 2011 and Spiering 2021 (size and strength held on a third of the volume).</p>
-   <p><b>Breaks</b>: Bosquet 2013 (strength falls the longer a lift is left). <b>Day-to-day swings</b>: Sigvaldsen 2023 (estimated strength varies 2 to 8%).</p>
-   <p><b>One-rep max</b>: Brzycki 1993, Epley 1985; Nuzzo 2024 (estimates spread too far past ${E1_MAX_REPS} reps, so none is made there). <b>Push-ups</b>: Ebben 2011 (about 64% of bodyweight). <b>Waist to height</b>: NICE 2022.</p>`
+   <p><b>Breaks</b>: Bosquet 2013 (strength falls the longer a lift is left). <b>Blocks</b>: Rogerson 2024 (a survey of 246 strength and physique athletes: a lighter week about every 5.6 weeks, so a block on Stats runs 6 weeks unless you pick another length). <b>Day-to-day swings</b>: Sigvaldsen 2023 (estimated strength varies 2 to 8%).</p>
+   <p><b>One-rep max</b>: Brzycki 1993, Epley 1985; Nuzzo 2024 (estimates spread too far past ${E1_MAX_REPS} reps, so none is made there). <b>Push-ups</b>: Ebben 2011 (about 64% of bodyweight). <b>Long-length lifts</b>: Maeo 2021 (seated over lying leg curls), Maeo 2023 (overhead over pushdown triceps work), Kinoshita 2023 (standing over seated calf raises). <b>Waist to height</b>: NICE 2022.</p>`
       ]
     ];
     const open = m3.open || "";
@@ -27070,8 +27309,12 @@ ${JSON.stringify(ctx, null, 1)}`;
     }
     return { set: /* @__PURE__ */ new Set(), label: "" };
   }
+  function injTagFor(e5) {
+    const k2 = exInjury(e5);
+    return k2 ? b`<span class="tag red">Injury: ${injLabel(k2)}</span>` : A;
+  }
   function pickRow(e5, used, grouped) {
-    return b`<button class="pick" data-act="pickDo" data-ex=${e5.id}><span class="u-minw0"><b>${e5.name}</b><br><span class="small muted">${ML[e5.primary]}, ${EQL[e5.equip] || e5.equip}</span></span><span class="tags">${used.set.has(e5.id) ? b`<span class="tag blue">${used.label}</span>` : ""}${grouped ? e5.rare ? b`<span class="tag rare">Less common</span>` : "" : exTagParts(e5)}</span></button>`;
+    return b`<button class="pick" data-act="pickDo" data-ex=${e5.id}><span class="u-minw0"><b>${e5.name}</b><br><span class="small muted">${ML[e5.primary]}, ${EQL[e5.equip] || e5.equip}</span></span><span class="tags">${injTagFor(e5)}${used.set.has(e5.id) ? b`<span class="tag blue">${used.label}</span>` : ""}${grouped ? e5.rare ? b`<span class="tag rare">Less common</span>` : "" : exTagParts(e5)}</span></button>`;
   }
   function pickerBody(m3) {
     const used = pickerUsed(m3);
@@ -27987,7 +28230,11 @@ ${JSON.stringify(ctx, null, 1)}`;
       noBody,
       // 2.32 (r78): the tape row's sentence and the one count of minutes left.
       sizeWhat,
-      sessLeftMin
+      sessLeftMin,
+      // 2.37 (ST-6): This block vs last, so tests/r83.js reads the blocks against a log worked out by hand, and the next
+      // load minus and plus step to, so tests/engine.js compares the page's answer with Node's.
+      blocks,
+      stepLoad
     };
     render();
     wakeOn();
