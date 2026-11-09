@@ -1004,6 +1004,30 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
   if (val && b.sets.filter(x => x.done).length === 1 && orderAt(b) >= 0) orderSoon(b);
 }
 
+/* A ticked set's load or reps changed, typed in its field or stepped (NEW-100: one rule for both): a load far off or a
+   0 is asked about again, as at its tick (the set unticked and ticked again, `again`), else the set is scored again.
+   A lift waiting to fold starts its moment over, so it does not fold away while its sets are being changed. True when
+   it asked again. */
+/** After a ticked set's load or reps change, typed or stepped: true when it asked about the set again, else it was scored again. */
+export function doneChanged(bi: number, si: number, f: 'w' | 'r'): boolean {
+  const d = state.draft;
+  const b = d && d.ex[bi];
+  const s = b && b.sets[si];
+  if (!d || !b || !s || !s.done) return false;
+  if (W.foldT && W.foldWait.has(b)) {
+    clearTimeout(W.foldT);
+    const rf = blkRef(bi);
+    W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
+  }
+  if (f === 'w' ? !!oddLoad(b, si, d.date) : isMissed(s)) {
+    setDone(bi, si, false);
+    setDone(bi, si, true, true);
+    return true;
+  }
+  act(() => assessSet(bi, si), { inProgress: true });
+  return false;
+}
+
 /* The lift the screen brings up after lift i: the next one below it not done, else the first not yet started (a lift
    skipped above is gone back to only when nothing below is left). One answer for the fold's glide (autoFold), the rest
    card's "next:" (restNext) and the pills (liftsOn), so the three never point at different lifts. */

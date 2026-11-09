@@ -28,7 +28,7 @@ import { PLAN_ACTS, PLAN_BINDS, planChange, planInput } from './plan';
 import { DASH_ACTS, DASH_BINDS } from './stats';
 import { TODAY_ACTS, TODAY_BINDS, todayChange } from './today';
 import { MAP_ACTS } from './map';
-import { WORKOUT_ACTS, workoutChange, workoutInput, workoutKey } from './workout';
+import { workoutChange, workoutInput, workoutKey } from './workfields';
 import { UPDATE_ACTS } from './update';
 import { ACCOUNT_ACTS, accountInput, accountSubmit } from './account';
 import { REPORT_ACTS, reportChange, reportInput } from './report';
@@ -40,6 +40,7 @@ import { PICK_ACTS } from './actspick';
 import { START_ACTS } from './actsstart';
 import { LIFT_ACTS } from './actslift';
 import { PIC_ACTS, picChange } from './notepics';
+import { WORKOUT_ACTS } from './worktaps';
 
 /** How often a page on the screen checks whether the day has turned, in milliseconds. */
 const NEW_DAY_MS = 30000;

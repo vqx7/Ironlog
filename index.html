@@ -15503,6 +15503,24 @@ ${more}`;
     }
     if (val && b2.sets.filter((x2) => x2.done).length === 1 && orderAt(b2) >= 0) orderSoon(b2);
   }
+  function doneChanged(bi, si, f3) {
+    const d3 = state.draft;
+    const b2 = d3 && d3.ex[bi];
+    const s3 = b2 && b2.sets[si];
+    if (!d3 || !b2 || !s3 || !s3.done) return false;
+    if (W.foldT && W.foldWait.has(b2)) {
+      clearTimeout(W.foldT);
+      const rf = blkRef(bi);
+      W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
+    }
+    if (f3 === "w" ? !!oddLoad(b2, si, d3.date) : isMissed(s3)) {
+      setDone(bi, si, false);
+      setDone(bi, si, true, true);
+      return true;
+    }
+    act(() => assessSet(bi, si), { inProgress: true });
+    return false;
+  }
   function nextLift(d3, i5) {
     const nx = d3.ex.findIndex((x2, j3) => j3 > i5 && !blockDone(x2));
     return nx >= 0 ? nx : d3.ex.findIndex((x2) => blockUntouched(x2));
@@ -20337,392 +20355,9 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     return true;
   }
 
-  // src/app/workfinish.ts
-  var WARM_SHARE = { compound: 0.75, isolation: 0.8 };
-  var TIMED_MAX_MIN = 360;
-  var BACK_SAID = " Your workout in progress is back: Resume it on Today.";
-  var HEAVIEST_SHOWN = 4;
-  function finish() {
-    const d3 = state.draft;
-    if (!d3) return;
-    if (!d3._leftAsked && !d3.editingId && !d3.past) {
-      let n3 = 0, left = 0;
-      for (const b2 of d3.ex)
-        for (const x2 of b2.sets) {
-          if (x2.warm) continue;
-          n3++;
-          if (!x2.done && rowBlank(b2, x2)) left++;
-        }
-      const any = d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !x2.warm));
-      if (any && left > 0) {
-        confirmBox(
-          `${left} of ${n3} sets not done`,
-          `Finish now and they are left out. An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.`,
-          "Finish now",
-          () => {
-            const dd = state.draft;
-            if (!dd) return;
-            dd._leftAsked = true;
-            finish();
-          },
-          false,
-          { label: "Keep going", fn: () => {
-          } }
-        );
-        return;
-      }
-    }
-    if (!d3._rampAsked) {
-      const ramps = [];
-      for (const b2 of d3.ex) {
-        const e5 = EX(b2.exId);
-        const wk = b2.sets.filter((x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0);
-        if (wk.length < 2) continue;
-        const L2 = (x2) => bwLoad(e5, d3.date) + (+(x2.w ?? 0) || 0);
-        const top = Math.max(...wk.map(L2));
-        if (!(top > 0)) continue;
-        const firstTop = b2.sets.findIndex(
-          (x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && Math.abs(L2(x2) - top) < EPS_SAME
-        );
-        const bi = d3.ex.indexOf(b2);
-        const st = IDX().exStats[b2.exId];
-        const est = st ? st.bestAll : void 0;
-        const thr = isCompound(e5) ? WARM_SHARE.compound : WARM_SHARE.isolation;
-        const easy = (x2) => {
-          if (!(L2(x2) < top - EPS_SAME)) return false;
-          const q = rirEff(x2, e5);
-          if (q != null) return q >= RIR_CALL_TOP;
-          if (est && !noE1(e5)) {
-            const rtf = rtfAt(est, L2(x2));
-            if (rtf != null) return rtf - +(x2.r ?? 0) >= RIR_CALL_TOP;
-          }
-          return L2(x2) < top * thr;
-        };
-        const appSet = (x2, si) => b2.sw != null && Math.abs((+(x2.w ?? 0) || 0) - b2.sw) < EPS_SAME || !!b2.adj && b2.adj.up && si <= b2.adj.at;
-        b2.sets.forEach((x2, si) => {
-          if (si < firstTop && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && (e5.bw || +(x2.w ?? 0) > 0) && !appSet(x2, si) && easy(x2))
-            ramps.push({ bi, si, name: e5.name, txt: `${loadLabel(e5, +(x2.w ?? 0) || 0)}×${x2.r}` });
-        });
-      }
-      if (ramps.length) {
-        const done = () => {
-          const dd = state.draft;
-          if (!dd) return;
-          act(
-            () => {
-              dd._rampAsked = true;
-            },
-            { inProgress: true }
-          );
-          finish();
-        };
-        confirmBox(
-          "These look like ramp-up sets",
-          `${[...new Set(ramps.map((r4) => r4.bi))].map((bi) => {
-            const rs = ramps.filter((r4) => r4.bi === bi);
-            return `${rs[0].name}: ${rs.map((r4) => r4.txt).join(", ")}`;
-          }).join(
-            "; "
-          )}. Lighter and easy, before your top set. Mark ${ramps.length > 1 ? "them" : "it"} as warm-up${ramps.length > 1 ? "s" : ""}?`,
-          `Mark as warm-up${ramps.length > 1 ? "s" : ""}`,
-          () => {
-            const dd = state.draft;
-            if (!dd) return;
-            act(
-              () => {
-                for (const r4 of ramps) {
-                  const x2 = dd.ex[r4.bi] && dd.ex[r4.bi].sets[r4.si];
-                  if (x2) {
-                    x2.warm = true;
-                    x2.drop = false;
-                  }
-                }
-              },
-              { inProgress: true }
-            );
-            done();
-          },
-          false,
-          { label: "Keep as working sets", fn: done }
-        );
-        return;
-      }
-    }
-    const unchecked = [];
-    for (const b2 of d3.ex) {
-      const n3 = b2.sets.filter((s3) => !s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3))).length;
-      if (n3) unchecked.push({ n: n3, name: EX(b2.exId).name });
-    }
-    if (unchecked.length) {
-      const list = unchecked.map((u4) => `${u4.name} (${u4.n} set${u4.n > 1 ? "s" : ""})`).join(", ");
-      const total = unchecked.reduce((a2, u4) => a2 + u4.n, 0);
-      confirmBox(
-        "Some sets are not marked done",
-        `${total} set${total > 1 ? "s have" : " has"} reps entered but no checkmark, so ${total > 1 ? "they" : "it"} will not be saved: ${list}.`,
-        `Mark ${total > 1 ? "them" : "it"} done and save`,
-        /* Each set is ticked in turn; one far off asks first, and once it is logged the rest are ticked and the
-           session saved, with no second tap on Finish (2.28, 2.27-F13). Fix it leaves the workout open there. */
-        function markAll() {
-          const dd = state.draft;
-          if (!dd) return;
-          for (const [bi, b2] of dd.ex.entries())
-            for (const [si, s3] of b2.sets.entries())
-              if (!s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3))) {
-                if (oddReps(b2, s3) || oddLoad(b2, si, dd.date) || lightZero(b2, si, dd.date)) {
-                  setDone(bi, si, true, false, markAll);
-                  if (!s3.done) return;
-                } else
-                  act(
-                    () => {
-                      settleLoad(b2, si);
-                      s3.done = true;
-                    },
-                    { inProgress: true }
-                  );
-              }
-          finishNow();
-        },
-        false,
-        { label: "Save without them", fn: () => finishNow() }
-      );
-      return;
-    }
-    finishNow();
-  }
-  function finishNow() {
-    const d3 = state.draft;
-    if (!d3) return;
-    const ex = picsLast(
-      withNew(
-        withPlanSets(joinAdjacent(d3.ex.map(savedEx).filter((b2) => b2.sets.length)), d3, state.routines, {
-          routineId: activeRoutine().id,
-          freestyle: freeMode()
-        }),
-        d3
-      )
-    );
-    const cardio = draftCardio(d3).map((c4) => cleanCardio(c4));
-    if (!ex.length) {
-      if (cardio.length && !d3.editingId) {
-        act(() => {
-          putById(state.cardio, cardio);
-          state.draft = null;
-        });
-        stopTimer();
-        wakeOff();
-        const back2 = unpark();
-        ui.todayDay = null;
-        window.scrollTo(0, 0);
-        render();
-        toast(`Cardio saved. No lifting session was recorded.${back2 ? BACK_SAID : ""}`);
-        return;
-      }
-      toast("Mark at least one set done");
-      return;
-    }
-    const blanks = [];
-    for (const b2 of ex) {
-      const e5 = EX(b2.exId);
-      if (e5.bw) continue;
-      const n3 = b2.sets.filter((s3) => !(+s3.w > 0) && isWork(s3)).length;
-      if (n3) blanks.push(`${e5.name} (${n3} set${n3 > 1 ? "s" : ""})`);
-    }
-    const help = [];
-    for (const b2 of d3.ex) {
-      const e5 = EX(b2.exId);
-      if (!e5.assist) continue;
-      const n3 = b2.sets.filter((s3) => s3.done && !s3.warm && s3.w == null).length;
-      if (n3) help.push(`${e5.name} (${n3} set${n3 > 1 ? "s" : ""})`);
-    }
-    const save = () => saveSession(d3, ex, cardio);
-    if (blanks.length || help.length)
-      confirmBox(
-        blanks.length ? "Add the missing loads?" : "Add the help you used?",
-        [
-          blanks.length ? `${andList(blanks)} ${blanks.length > 1 ? "have" : "has"} reps but no weight. Saved like this, they count as hard sets but give no estimate, PR, or weight lifted.` : "",
-          help.length ? `${andList(help)} ${help.length > 1 ? "have" : "has"} no help typed, so saved like this ${help.length > 1 ? "they read" : "it reads"} as no help, your full bodyweight.` : ""
-        ].filter(Boolean).join(" "),
-        blanks.length ? "Add loads" : "Add the help",
-        () => {
-          const dr = state.draft;
-          if (!dr) return;
-          for (let bi = 0; bi < dr.ex.length; bi++) {
-            const b2 = dr.ex[bi];
-            const e5 = EX(b2.exId);
-            if (e5.bw && !e5.assist) continue;
-            const si = b2.sets.findIndex((x2) => x2.done && (e5.assist ? x2.w == null : !(+(x2.w ?? 0) > 0)));
-            if (si < 0) continue;
-            blkOpen(bi, b2);
-            render();
-            W.needAt = { b: blkRef(bi), s: si };
-            redraw();
-            const f3 = document.querySelector(`[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
-            if (f3) {
-              f3.scrollIntoView({ block: "center" });
-              f3.focus();
-            }
-            return;
-          }
-        },
-        false,
-        { label: "Save anyway", fn: save }
-      );
-    else save();
-  }
-  function saveSession(d3, ex, cardio) {
-    const clockMin = d3.editingId || d3.past || !d3.startedAt || iso(new Date(d3.startedAt)) !== d3.date ? null : (() => {
-      const m3 = Math.round((Date.now() - (d3.startedAt || 0)) / (MINUTE_S * SECOND_MS));
-      return m3 >= 1 && m3 <= TIMED_MAX_MIN ? m3 : null;
-    })();
-    const durMin = d3.editingId || d3.past ? typedMin(d3) : clockMin;
-    const exR = ex.map((b2) => ({ ...b2 }));
-    const sess = {
-      id: d3.editingId || d3.id,
-      date: d3.date,
-      dayIdx: d3.dayIdx,
-      dayId: d3.dayId || null,
-      dayName: (d3.dayName || "").trim() || "Session",
-      routineId: d3.routineId,
-      ex: exR,
-      notes: d3.notes || "",
-      durMin,
-      deload: !!d3.deload,
-      light: !!d3.light,
-      free: d3.free ? true : void 0,
-      chk: cleanChk(d3.chk) || void 0
-    };
-    let untimed = false;
-    if (clockMin != null) {
-      const model = sessModelMin(sess);
-      if (model >= 1 && clockMin < PACE_LO * model) {
-        sess.durMin = null;
-        untimed = true;
-      }
-    }
-    const sessPics = d3.pics && d3.pics.length ? [...d3.pics] : void 0;
-    let upd2 = null, demoGone = false, targets = 0, beaten = 0, pmDraft = 0;
-    const editing = !!d3.editingId;
-    act(() => {
-      const was = d3.editingId ? state.sessions.find((x2) => x2.id === d3.editingId) : null;
-      const t0 = was ? was.t : d3.startedAt || Date.now();
-      if (t0) sess.t = t0;
-      const pw = d3.editingId || d3.free ? void 0 : pwOf(state.routines, d3.routineId);
-      if (pw) sess.pw = pw;
-      if (sessPics) sess.pics = sessPics;
-      if (d3.part === 2) sess.part = 2;
-      if (!d3.editingId) putById(state.cardio, cardio);
-      if (!d3.editingId && calDueIdx(d3) >= 0 && !d3.ex.some((b2) => b2.sets.some((x2) => x2.cal && x2.done)))
-        state.settings.calSnooze = today();
-      upd2 = d3.editingId ? null : routineUpdates(d3);
-      if (d3.editingId) {
-        const i5 = state.sessions.findIndex((s3) => s3.id === d3.editingId);
-        if (i5 >= 0) {
-          const o3 = state.sessions[i5];
-          if (o3.demo !== void 0) sess.demo = o3.demo;
-          keepExtra(o3, sess, KNOWN_SESS);
-          const used = /* @__PURE__ */ new Set();
-          exR.forEach((b2) => {
-            const ob = o3.ex.find((x2) => x2.exId === b2.exId && !used.has(x2));
-            if (ob) {
-              used.add(ob);
-              keepExtra(ob, b2, KNOWN_BLOCK);
-            }
-          });
-          state.sessions[i5] = sess;
-        } else state.sessions.push(sess);
-      } else putById(state.sessions, [sess]);
-      demoGone = !d3.editingId && (state.sessions.some((x2) => x2.demo) || state.bodyweights.some((x2) => x2.demo) || state.measurements.some((x2) => x2.demo));
-      if (demoGone) {
-        stripDemo(state);
-        demoRestore();
-        invalidate();
-      }
-      state.trash = state.trash.filter((t4) => !(t4.kind === "session" && t4.id === sess.id));
-      const tried = d3.ex.filter((b2) => b2.tgt && b2.sets.some((x2) => x2.done && !x2.warm) && effTarget(b2) === b2.tgt);
-      targets = tried.length;
-      beaten = tried.filter((b2) => {
-        const pr = blockProgress(b2);
-        return pr && pr.beat;
-      }).length;
-      pmDraft = draftPlanMin(d3);
-      state.draft = null;
-    });
-    stopTimer();
-    wakeOff();
-    undoToastHide();
-    const back2 = unpark();
-    const prAll = IDX().prs.filter(
-      (p3) => (p3.sid ? p3.sid === sess.id : p3.date === sess.date) && ex.some((b2) => b2.exId === p3.exId)
-    );
-    const prs = prAll.filter((p3) => p3.big);
-    const heavier = prAll.flatMap((p3) => {
-      if (p3.big || p3.type !== "Weight PR") return [];
-      const e5 = EX(p3.exId);
-      return [`${e5.name} ${setShort(e5, p3.w, p3.r)}`];
-    });
-    const work = ex.reduce((a2, b2) => a2 + b2.sets.filter(isWork).length, 0), miss = ex.reduce((a2, b2) => a2 + b2.sets.filter((q) => !q.warm && !q.drop && isMissed(q)).length, 0), hard = r1(
-      ex.reduce((a2, b2) => {
-        const e5 = EX(b2.exId);
-        return a2 + b2.sets.reduce((c4, q) => c4 + hardCredit(q, e5), 0);
-      }, 0)
-    );
-    ui.todayDay = null;
-    window.scrollTo(0, 0);
-    render();
-    if (editing) {
-      toast(`Session updated.${back2 ? BACK_SAID : ""}`);
-      return;
-    }
-    if (back2) toast(BACK_SAID.trim());
-    const lines = [
-      `${work} working set${work === 1 ? "" : "s"}, ${hard} ${rirHalfOn() ? "counted toward the week" : "counted as hard"}${miss ? `, and ${miss} missed` : ""}`
-    ];
-    if (sess.date !== today()) lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
-    if (sess.durMin) lines.push(`${sess.durMin} minutes${pmDraft && !sess.free ? `, planned ${estMin(pmDraft)}` : ""}`);
-    else if (untimed)
-      lines.push("Not timed: the sets went in faster than they can be lifted. Add its minutes by editing it in History.");
-    if (targets) lines.push(`${beaten} of ${targets} exercise target${targets === 1 ? "" : "s"} beaten`);
-    if (heavier.length) lines.push(`Heaviest yet: ${andList(heavier, HEAVIEST_SHOWN)}`);
-    const prList = prs.map((pr) => {
-      const e5 = EX(pr.exId);
-      if (pr.type === "Weight PR")
-        return {
-          name: e5.name,
-          what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${pr.value != null && isCompound(e5) ? `, best estimate ${fmtE(pr.value)} ${U()}${loadNote(e5)}` : ""}`,
-          was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${e5.bw ? loadLabel(e5, pr.prevW ?? 0) : fmtW(pr.prevW) + " " + U()}` : ""
-        };
-      const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.date) : null;
-      if (ps) return { name: e5.name, what: `PR, ${setShort(e5, ps.w, ps.r)}`, was: "your best for that number of reps" };
-      return pr.type === "e1RM" ? {
-        name: e5.name,
-        what: `${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e5)}`,
-        was: prOverall(pr) ? wasE(pr.value, pr.prevAll) ? `was ${wasE(pr.value, pr.prevAll)}` : "" : wasE(pr.value, pr.prev) ? `was ${wasE(pr.value, pr.prev)} at those reps` : ""
-      } : {
-        name: e5.name,
-        what: `${e5.timed ? "Time" : "Rep"} PR, ${setShort(e5, pr.w, pr.r)}`,
-        was: pr.prevR ? `was ${pr.prevR} ${e5.timed ? "s" : "reps"} at this load or heavier` : "heaviest yet"
-      };
-    });
-    if (cardio.length) lines.push(`Cardio and mobility: ${cardio.reduce((a2, c4) => a2 + c4.min, 0)} min`);
-    if (demoGone) lines.push("Demo data removed, so your stats show only your own sessions");
-    openModal({
-      kind: "recap",
-      title: "Session saved",
-      lines,
-      prs: prList,
-      note: prs.length ? "" : state.sessions.filter((x2) => !x2.demo).length <= 1 ? "Your first session: these are your starting numbers." : "No PRs this time.",
-      upd: upd2,
-      sid: sess.id
-    });
-  }
-
   // src/app/workout.ts
   var NEW_TIP = "A new machine or gym: its targets, trend, stalls, PRs and bests start over from this session. Earlier sessions stay in History. Take it off in the ⋯ menu.";
   var CARDIO_ADD_GAP_PX = 10;
-  var AUTO_CONFIRM_MS = 15e3;
-  var REORDER_BACK_MS = 3e4;
-  var TOUCH_MS = 700;
-  var STRIP_WAIT_MS = 2e3;
   var visitKeys = /* @__PURE__ */ new WeakMap();
   function repeatKeyed(xs, id, part) {
     const ks = keysOf(xs, id);
@@ -20877,7 +20512,6 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         ${nr ? "" : rirButton(s3.rir, bi, si, p3.rir)}
         <button class=${"cbtn " + (s3.done ? "on" : "")} aria-label=${`Set ${si + 1} ${s3.done && isMissed(s3) ? "missed" : "done"}`} aria-pressed=${s3.done ? "true" : "false"} data-act="sDone" data-b=${bi} data-s=${si}>✓</button></div>${stripIs(bi, si) ? rirStrip(bi, si, s3.rir == null ? "" : String(s3.rir)) : A}`;
   }
-  var STEP_SECONDS = 5;
   function stepStrip(d3, b2, bi, ex) {
     const si = stepAt(b2, bi);
     const s3 = b2.sets[si];
@@ -20982,795 +20616,10 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     }
     drawScreen(v3, viewWorkout(d3));
   }
-  var tapBlock = (t4) => state.draft && state.draft.ex[Number(t4.dataset.b)] || null;
-  function doneChanged(bi, si, f3) {
-    const d3 = state.draft;
-    const b2 = d3 && d3.ex[bi];
-    const s3 = b2 && b2.sets[si];
-    if (!d3 || !b2 || !s3 || !s3.done) return false;
-    if (W.foldT && W.foldWait.has(b2)) {
-      clearTimeout(W.foldT);
-      const rf = blkRef(bi);
-      W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
-    }
-    if (f3 === "w" ? !!oddLoad(b2, si, d3.date) : isMissed(s3)) {
-      setDone(bi, si, false);
-      setDone(bi, si, true, true);
-      return true;
-    }
-    act(() => assessSet(bi, si), { inProgress: true });
-    return false;
-  }
-  function setRemove(t4) {
-    const d3 = state.draft;
-    const bi = Number(t4.dataset.b);
-    const b2 = d3 && d3.ex[bi];
-    if (!d3 || !b2 || !b2.sets.length) return;
-    let i5 = -1;
-    for (let k2 = b2.sets.length - 1; k2 >= 0; k2--)
-      if (rowBlank(b2, b2.sets[k2])) {
-        i5 = k2;
-        break;
-      }
-    if (i5 >= 0) {
-      const at3 = i5;
-      act(
-        () => {
-          b2.sets.splice(at3, 1);
-          adjSync(b2);
-        },
-        { inProgress: true }
-      );
-      rerenderKeepScroll();
-      return;
-    }
-    for (let k2 = b2.sets.length - 1; k2 >= 0; k2--)
-      if (!b2.sets[k2].done) {
-        i5 = k2;
-        break;
-      }
-    if (i5 < 0) i5 = b2.sets.length - 1;
-    const x2 = b2.sets[i5], ex = EX(b2.exId), did2 = d3.id, exId = b2.exId, n3 = b2.sets.slice(0, i5 + 1).filter((y2) => !y2.warm && !y2.drop).length;
-    const what = `${x2.warm ? "Warm-up" : x2.drop ? "Drop set" : "Set " + n3}`;
-    const val = +(x2.r ?? 0) > 0 ? setShort(ex, x2.w == null ? 0 : x2.w, x2.r) : x2.w != null ? loadLabel(ex, x2.w) + (ex.bw ? "" : " " + U()) : "";
-    const at2 = i5;
-    confirmBox(
-      `Remove ${what.toLowerCase()}?`,
-      `${ex.name}${val ? `: ${val}` : ""}, ${x2.done ? "logged" : "typed, not ticked"}. Undo is offered right after.`,
-      "Remove set",
-      () => {
-        const dd = state.draft;
-        const bb = dd && dd.id === did2 ? dd.ex[bi] : null;
-        const xx = bb && bb.exId === exId ? bb.sets[at2] : null;
-        if (!bb || !xx || xx.done !== x2.done || xx.r !== x2.r || xx.w !== x2.w) {
-          toast("That set changed. Nothing was removed.");
-          rerenderKeepScroll();
-          return;
-        }
-        act(
-          () => {
-            bb.sets.splice(at2, 1);
-            adjSync(bb);
-          },
-          {
-            inProgress: true,
-            undo: () => {
-              const d32 = state.draft;
-              if (!d32 || d32.id !== did2 || !d32.ex.includes(bb)) return false;
-              bb.sets.splice(Math.min(at2, bb.sets.length), 0, xx);
-              adjSync(bb);
-              return true;
-            }
-          }
-        );
-        rerenderKeepScroll();
-        toast(xx.done ? "Logged set removed" : "Set removed", true);
-      },
-      true
-    );
-  }
-  function blockRemove(t4) {
-    const d3 = state.draft;
-    const bi = Number(t4.dataset.b);
-    const blk = d3 && d3.ex[bi];
-    if (!d3 || !blk) return;
-    const did2 = d3.id;
-    const go = () => {
-      const dd = state.draft;
-      if (!dd || dd.id !== did2 || dd.ex[bi] !== blk) {
-        if (ui.modal) closeModal();
-        toast("That exercise changed. Nothing was removed.");
-        rerenderKeepScroll();
-        return;
-      }
-      const prevBlk = bi > 0 ? dd.ex[bi - 1] : null;
-      act(() => keepOpen(() => dd.ex.splice(bi, 1)), {
-        inProgress: true,
-        undo: () => {
-          const d32 = state.draft;
-          if (!d32 || d32.id !== did2) return false;
-          const k2 = prevBlk ? d32.ex.indexOf(prevBlk) : -1;
-          d32.ex.splice(prevBlk == null ? 0 : k2 >= 0 ? k2 + 1 : Math.min(bi, d32.ex.length), 0, blk);
-          fixSupersets(d32.ex.map((x2) => x2.plan));
-          return true;
-        }
-      });
-      rerenderKeepScroll();
-      toast("Exercise removed", true);
-    };
-    const logged2 = blk.sets.filter((x2) => x2.done).length, typed = blk.sets.filter((x2) => !x2.done && (+(x2.r ?? 0) > 0 || x2.rir != null)).length;
-    if (logged2 || typed) {
-      if (ui.modal) closeModal();
-      confirmBox(
-        `Remove ${EX(blk.exId).name}?`,
-        `${logged2 ? `${logged2} logged set${logged2 === 1 ? "" : "s"}` : ""}${logged2 && typed ? " and " : ""}${typed ? `${typed} typed set${typed === 1 ? "" : "s"}` : ""} go with it. Undo is offered right after.`,
-        "Remove exercise",
-        go,
-        true
-      );
-      return;
-    }
-    go();
-  }
-  function cardioRemove(t4) {
-    const d3 = state.draft;
-    const list = d3 && d3.cardio;
-    const i5 = Number(t4.dataset.c);
-    const c4 = list && list[i5];
-    if (!d3 || !list || !c4) return;
-    if ((c4.min || 0) > 0 || (c4.hr || 0) > 0 || (c4.note || "").trim()) {
-      const did2 = d3.id;
-      confirmBox(
-        `Remove ${(CARDIOL[c4.kind || ""] || "entry").toLowerCase()}?`,
-        `${c4.min ? c4.min + " min" : "An entry with your notes"}. Undo is offered right after.`,
-        "Remove",
-        () => {
-          const dd = state.draft;
-          const l22 = dd && dd.id === did2 ? dd.cardio : null;
-          const j3 = l22 ? l22.indexOf(c4) : -1;
-          if (!l22 || j3 < 0) {
-            toast("That entry changed. Nothing was removed.");
-            rerenderKeepScroll();
-            return;
-          }
-          act(
-            () => {
-              l22.splice(j3, 1);
-            },
-            {
-              inProgress: true,
-              undo: () => {
-                const d32 = state.draft;
-                if (!d32 || d32.id !== did2) return false;
-                const l32 = d32.cardio || (d32.cardio = []);
-                l32.splice(Math.min(j3, l32.length), 0, c4);
-                return true;
-              }
-            }
-          );
-          rerenderKeepScroll();
-          toast(`${CARDIOL[c4.kind || ""] || "Entry"} removed`, true);
-        },
-        true
-      );
-      return;
-    }
-    act(
-      () => {
-        list.splice(i5, 1);
-      },
-      { inProgress: true }
-    );
-    rerenderKeepScroll();
-  }
-  var WORKOUT_ACTS = {
-    /* With auto-done on, leaving the reps field marks the set done, and on a
-       phone that blur happens a moment before the tap on the checkmark lands.
-       Without this guard the tap would immediately undo the auto-mark. Since
-       r28 (auto-mark on for new installs) the first tap on that set's
-       checkmark confirms it for AUTO_CONFIRM_MS, until another set is touched: typing
-       reps, picking RIR and then tapping the checkmark is the natural order,
-       and it used to untick the set. A second tap undoes it. Tapping done on
-       an empty reps field logs the grey number in it (see greyR), like the
-       paper log you copy from; warm-ups and drops have theirs since r64; a typed
-       0 is a missed set (r55, V), ticked as typed. Unticked (r55, the audit):
-       numbers that are what the row shows in grey go back to grey, so a tap by
-       mistake leaves nothing typed for Finish to offer to save, and an
-       exercise the tick moved up goes back if it has no set left ticked,
-       within REORDER_BACK_MS. */
-    sDone(t4) {
-      const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
-      const s3 = draftSet(t4);
-      const d3 = state.draft;
-      if (!s3 || !d3) return;
-      if (W.lastAuto && (blkIdx(W.lastAuto.b) !== bi || W.lastAuto.s !== si)) W.lastAuto = null;
-      if (W.lastAuto && Date.now() - W.lastAuto.t < AUTO_CONFIRM_MS && s3.done) {
-        W.lastAuto = null;
-        W.onSet = null;
-        onLiftDraw(bi, redraw);
-        return;
-      }
-      const b2 = d3.ex[bi];
-      const noReps = !s3.done && !(+(s3.r ?? 0) > 0) && !isMissed(s3);
-      const lr = noReps && b2 ? greyR(b2, si) : null;
-      if (noReps && (lr == null || !(lr > 0))) {
-        toast("Enter reps first");
-        return;
-      }
-      const was = !!s3.done;
-      W.onSet = was ? setRef(bi, si) : null;
-      act(
-        () => {
-          if (lr != null) s3.r = Math.round(lr);
-          setDone(bi, si, !was);
-          if (!was || !b2) return;
-          if (s3.r != null && +s3.r === greyR(b2, si)) s3.r = null;
-          const gw = greyW(b2, si);
-          if (!fillLoads() && s3.w != null && gw != null && Math.abs(s3.w - gw) < EPS) s3.w = null;
-          const o3 = ordBack.get(b2);
-          if (o3 && !b2.sets.some((x2) => x2.done) && Date.now() - o3.t < REORDER_BACK_MS) {
-            ordBack.delete(b2);
-            moveBlock(bi, Math.min(o3.i, d3.ex.length - 1));
-          }
-        },
-        { inProgress: true }
-      );
-      if (was) rerenderKeepScroll();
-    },
-    // Numbers, placeholders and the progress bar all depend on which rows are working sets, so the block is drawn again.
-    sWarm(t4) {
-      const s3 = draftSet(t4);
-      const b2 = tapBlock(t4);
-      if (!s3 || !b2) return;
-      act(
-        () => {
-          if (!s3.warm && !s3.drop) s3.warm = true;
-          else if (s3.warm) {
-            s3.warm = false;
-            s3.drop = true;
-          } else s3.drop = false;
-          adjSync(b2);
-        },
-        { inProgress: true }
-      );
-      rerenderKeepScroll();
-    },
-    fillLast(t4) {
-      const b2 = tapBlock(t4);
-      if (!b2) return;
-      const todo = b2.sets.map((s3, i5) => [s3, lastRFor(b2, i5)]).filter(([s3, lr]) => !s3.done && !s3.warm && !s3.drop && s3.r == null && lr != null);
-      if (!todo.length) {
-        toast("Nothing to fill");
-        return;
-      }
-      act(
-        () => {
-          for (const [s3, lr] of todo) s3.r = lr;
-        },
-        { inProgress: true }
-      );
-      rerenderKeepScroll();
-      toast(`${todo.length} set${todo.length === 1 ? "" : "s"} filled with last time's reps`);
-    },
-    /* The new working set copies the last working set's load, not a drop set's
-       (DROP_START) or a warm-up's. Grey by default: the new row shows the load above
-       it, or what the last set ticked asks for, as a planned row under it would
-       have (r55, V: after 300 x 1, + Set copied 300). Filled in, it takes that load. */
-    sAdd(t4) {
-      const bi = Number(t4.dataset.b);
-      const b2 = tapBlock(t4);
-      if (!b2) return;
-      act(
-        () => {
-          const ld = b2.sets.reduce((k2, x2, i5) => x2.done && isWork(x2) && !x2.drop ? i5 : k2, -1);
-          const row = newRow();
-          b2.sets.push(row);
-          if (ld >= 0) assessSet(bi, ld);
-          if (fillLoads()) row.w = effW(b2, b2.sets.length - 1);
-        },
-        { inProgress: true }
-      );
-      rerenderKeepScroll();
-    },
-    /* Minus and plus (ST-6): from what the row holds, else what it shows in grey, to the next load on the lift's list
-       or one rep (five seconds on a hold) either way, written as the number typed in the field would be: the same carry
-       to the rows below, and on a set ticked the same checks as a number typed there (doneChanged). They never tick or
-       untick a set, and the set stepped is the one you are on (NEW-100). One change, saved once. */
-    sStep(t4) {
-      const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
-      const b2 = tapBlock(t4);
-      const s3 = b2 && b2.sets[si];
-      if (!b2 || !s3) return;
-      const ex = EX(b2.exId);
-      const dir = t4.dataset.d === "-1" ? -1 : 1;
-      const f3 = t4.dataset.sf === "w" ? "w" : "r";
-      let w2 = null, r4 = null;
-      if (f3 === "w") {
-        if (ex.assist) return;
-        const to = stepLoad(ex, b2.plan, effW(b2, si) ?? 0, dir);
-        const v3 = to == null ? null : toD(to);
-        if (v3 == null) return;
-        w2 = Math.min(fromD(Math.max(Math.round(v3 * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
-      } else {
-        const was = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
-        r4 = Math.min(Math.max(was + dir * (ex.timed ? STEP_SECONDS : 1), 0), LIMITS.reps);
-        if (r4 === s3.r) return;
-      }
-      W.onSet = setRef(bi, si);
-      act(
-        () => {
-          if (w2 != null) {
-            s3.w = w2;
-            carried.delete(s3);
-          } else s3.r = r4;
-          if (s3.done && doneChanged(bi, si, f3)) return;
-          if (f3 === "w" && fillLoads()) carryLoad(b2, si);
-        },
-        { inProgress: true }
-      );
-      if (f3 === "w") {
-        W.platesAt = { b: blkRef(bi), s: si };
-        mixCheck(bi, si);
-      }
-      onLiftDraw(bi, redraw);
-    },
-    sDel: setRemove,
-    /* Warm-ups go in at the top, already flagged, so they stay out of every
-       analytic, and are seeded from the working load; each new one goes after
-       the ones already there, so they climb to the working load (r27). */
-    wAdd(t4) {
-      const b2 = tapBlock(t4);
-      if (!b2) return;
-      let base = 0;
-      for (let i5 = 0; i5 < b2.sets.length; i5++) {
-        const s3 = b2.sets[i5];
-        if (s3.warm || s3.drop) continue;
-        const w3 = +(effW(b2, i5) ?? 0) || 0;
-        if (w3 > 0) {
-          base = w3;
-          break;
-        }
-      }
-      if (!base) base = Math.max(0, ...b2.sets.map((_2, i5) => +(effW(b2, i5) ?? 0) || 0));
-      const n3 = b2.sets.filter((s3) => s3.warm).length;
-      const frac = WARM_RAMP[Math.min(n3, WARM_RAMP.length - 1)];
-      let at2 = 0;
-      while (at2 < b2.sets.length && b2.sets[at2].warm) at2++;
-      let w2 = base > 0 ? lighterLoad(EX(b2.exId), b2.plan, base, base * frac) : null;
-      const prev = at2 > 0 ? +(effW(b2, at2 - 1) ?? 0) || 0 : 0;
-      const top = WARM_RAMP[WARM_RAMP.length - 1] ?? frac;
-      if (w2 != null && prev > 0 && w2 <= prev + EPS) {
-        const up = base * top > prev ? heavierLoad(EX(b2.exId), b2.plan, prev, base * top) : null;
-        w2 = up != null && up < base - EPS ? up : prev;
-      }
-      act(
-        () => {
-          b2.sets.splice(at2, 0, newRow({ w: w2, warm: true }));
-          adjSync(b2);
-        },
-        { inProgress: true }
-      );
-      rerenderKeepScroll();
-      toast("Warm-up set added");
-    },
-    // The load the last working set was, or will be (a grey load counts); a missed set's is passed over (r55).
-    /* Done with an exercise that has sets left (r66, PENDING 374; V: "Ask:
-       log or skip"): one question, then every set left ticked as it shows (its
-       load and reps, typed or grey; a 0 typed is a missed set, as a tick logs
-       it), or every set left taken off. Either is one change with one Undo. A
-       warm-up or a drop set left is a set left like any other, logged as it
-       is; the target repeats only when a working set is skipped (V's one
-       rule), so the question says so only then (the review of r66: a warm-up alone was
-       counted as a set whose skip repeats the target, and Log took it off).
-       Logging stops before anything is ticked when a set left has no weight
-       or reps to take, looks far off, or is a 0 at a weight well under the
-       working load (each is ticked on its own, where it is asked about). */
-    bDoneAll(t4) {
-      const bi = Number(t4.dataset.b);
-      const d3 = state.draft;
-      const b2 = d3 && d3.ex[bi];
-      if (!d3 || !b2) return;
-      const left = b2.sets.map((s3, si) => ({ s: s3, si })).filter((x2) => !x2.s.done);
-      if (!left.length) return;
-      const ex = EX(b2.exId);
-      const n3 = left.length;
-      const sets = `${n3} set${n3 === 1 ? "" : "s"}`;
-      const repeats = left.some((x2) => !x2.s.warm && !x2.s.drop) ? " Skipped sets are fewer than usual, so the target repeats next time." : "";
-      const blocked = left.find(
-        ({ s: s3, si }) => !ex.bw && !ex.timed && s3.w == null && greyW(b2, si) == null || !(+(s3.r ?? 0) > 0) && !isMissed(s3) && !((greyR(b2, si) ?? 0) > 0) || isMissed(s3) && !s3.warm && !s3.drop && lightZero(b2, si, d3.date) || s3.w != null && !s3.warm && !s3.drop && oddLoad(b2, si, d3.date) || oddReps(b2, s3)
-      );
-      const ref2 = blkRef(bi);
-      const after2 = () => {
-        rerenderKeepScroll();
-        if (W.foldT) clearTimeout(W.foldT);
-        W.foldT = setTimeout(() => autoFold(ref2), FOLD_MS.tick);
-      };
-      const skip = () => {
-        act(
-          () => {
-            b2.sets = b2.sets.filter((x2) => x2.done);
-          },
-          { inProgress: true, undo: true }
-        );
-        after2();
-        toast(`${sets} skipped`, true);
-      };
-      const log2 = () => {
-        const shown2 = left.map(({ s: s3, si }) => ({
-          s: s3,
-          si,
-          w: s3.w ?? greyW(b2, si),
-          r: isMissed(s3) || +(s3.r ?? 0) > 0 ? s3.r : Math.round(greyR(b2, si) ?? 0)
-        }));
-        act(
-          () => {
-            for (const x2 of shown2) {
-              x2.s.w = x2.w;
-              x2.s.r = x2.r;
-              x2.s.done = true;
-              assessSet(bi, x2.si);
-            }
-            b2.sets = b2.sets.filter((x2) => x2.done);
-          },
-          { inProgress: true, undo: true }
-        );
-        after2();
-        toast(`${sets} logged as shown`, true);
-      };
-      if (blocked)
-        confirmBox(
-          `${exName(b2.exId)}: ${sets} left`,
-          `Set ${blocked.si + 1} has no weight or reps to take, or looks far off, so tick it on its own. Or skip the sets left.${repeats}`,
-          "Skip them",
-          skip
-        );
-      else
-        confirmBox(
-          `${exName(b2.exId)}: ${sets} left`,
-          `Log them as shown, or skip them.${repeats}`,
-          "Log them as shown",
-          log2,
-          false,
-          { label: "Skip them", fn: skip }
-        );
-    },
-    dropAdd(t4) {
-      const b2 = tapBlock(t4);
-      if (!b2) return;
-      let base = 0;
-      for (let i5 = b2.sets.length - 1; i5 >= 0; i5--) {
-        const s3 = b2.sets[i5];
-        if (s3.warm || s3.drop || isMissed(s3)) continue;
-        const w3 = +(effW(b2, i5) ?? 0) || 0;
-        if (w3 > 0) {
-          base = w3;
-          break;
-        }
-      }
-      const w2 = base > 0 ? lighterLoad(EX(b2.exId), b2.plan, base, base * DROP_START) : null;
-      let at2 = -1;
-      b2.sets.forEach((x2, i5) => {
-        if (x2.done && !x2.warm && !x2.drop) at2 = i5;
-      });
-      if (at2 < 0) at2 = b2.sets.length - 1;
-      while (at2 + 1 < b2.sets.length && b2.sets[at2 + 1].drop) at2++;
-      act(
-        () => {
-          b2.sets.splice(at2 + 1, 0, newRow({ w: w2, drop: true }));
-        },
-        { inProgress: true }
-      );
-      rerenderKeepScroll();
-      toast("Drop set added");
-    },
-    // Keep: no adjustment for this exercise for the rest of the session.
-    adjKeep(t4) {
-      const b2 = tapBlock(t4);
-      if (!b2 || !b2.adj) return;
-      const prev = b2.adj;
-      act(
-        () => {
-          delete b2.adj;
-          b2.adjOff = true;
-          adjRows(b2, prev, null);
-        },
-        { inProgress: true }
-      );
-      redraw();
-    },
-    rirOpen(t4) {
-      const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
-      if (stripIs(bi, si)) {
-        rirClose();
-        return;
-      }
-      rirShowStrip(bi, si);
-      const f3 = document.querySelector(".rirstrip button.on") || document.querySelector(".rirstrip button");
-      if (f3 && !coarse())
-        try {
-          f3.focus({ preventScroll: true });
-        } catch (e5) {
-        }
-    },
-    // The fold waits for the effort of the last set, then goes.
-    rirPick(t4) {
-      const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
-      const d3 = state.draft;
-      const b2 = d3 && d3.ex[bi];
-      const s3 = b2 && b2.sets[si];
-      if (!d3 || !b2 || !s3) return;
-      const n3 = numIn(t4.dataset.v || "");
-      act(
-        () => {
-          s3.rir = n3 == null ? null : Math.min(Math.max(n3, 0), EFFORT_TOP);
-          if (s3.done) assessSet(bi, si);
-        },
-        { inProgress: true, soon: true }
-      );
-      rirClose();
-      redraw();
-      const btn = document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
-      if (btn)
-        try {
-          btn.focus({ preventScroll: true });
-        } catch (e5) {
-        }
-      if (!d3.editingId && blockDone(b2)) {
-        if (W.foldT) clearTimeout(W.foldT);
-        const rf = blkRef(bi);
-        W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.effort);
-      }
-    },
-    bOpen(t4) {
-      const bi = Number(t4.dataset.b);
-      const b2 = tapBlock(t4);
-      if (!b2) return;
-      blkOpen(bi, b2);
-      rerenderKeepScroll();
-      const el = document.getElementById("blk-" + bi);
-      if (el)
-        try {
-          el.scrollIntoView({ block: "nearest" });
-        } catch (e5) {
-        }
-    },
-    /* Save and leave (NEW-89): the workout is saved as it goes, so this only
-       steps away to Today, which offers it back; the tab, Back and opening the
-       app again all open the workout. */
-    wkAway() {
-      ui.away = state.draft ? state.draft.id : null;
-      window.scrollTo(0, 0);
-      render();
-      toast("Saved. Resume it from Today.");
-    },
-    wkResume() {
-      ui.away = null;
-      ui.tab = "today";
-      window.scrollTo(0, 0);
-      render();
-    },
-    // Today's card for a workout set aside that did not come back by itself (R81-2): it comes back and opens.
-    parkBack() {
-      if (!unpark()) return;
-      ui.away = null;
-      ui.tab = "today";
-      window.scrollTo(0, 0);
-      render();
-    },
-    // Every place this exercise was opened at, so a move and a fold leave nothing behind.
-    bFold(t4) {
-      const b2 = tapBlock(t4);
-      if (!b2) return;
-      const d3 = state.draft;
-      if (d3 && d3.editingId) {
-        blkShut(Number(t4.dataset.b), b2);
-        rerenderKeepScroll();
-        return;
-      }
-      const pre = (state.draft && state.draft.id || "") + ":";
-      for (const k2 of [...ui.blkOpen])
-        if (typeof k2 === "string" && k2.startsWith(pre) && k2.endsWith(":" + b2.exId)) ui.blkOpen.delete(k2);
-      blkOpenObj.delete(b2);
-      rerenderKeepScroll();
-    },
-    bUp(t4) {
-      if (moveBlock(Number(t4.dataset.b), Number(t4.dataset.b) - 1)) rerenderKeepScroll();
-    },
-    bDown(t4) {
-      if (moveBlock(Number(t4.dataset.b), Number(t4.dataset.b) + 1)) rerenderKeepScroll();
-    },
-    bDel: blockRemove,
-    /* New machine or gym (r61, PENDING 343 7, V's decision of 2026-10-24): the
-       lift starts over from this session, every block of it marked and its
-       suggestion read again as a first session's; tapped again, it reads its
-       history again. Rows typed are kept; rows still on the suggestion take
-       the new one (refreshBlock). In an edit from History it marks the saved
-       session, or takes the mark off, when the edit is saved. */
-    bNew(t4) {
-      const d3 = state.draft;
-      const b0 = d3 && d3.ex[Number(t4.dataset.b)];
-      if (!d3 || !b0) return;
-      const on = !markedNew(d3, b0.exId);
-      act(
-        () => {
-          for (const b2 of d3.ex)
-            if (b2.exId === b0.exId) {
-              if (on) b2.nw = true;
-              else delete b2.nw;
-            }
-          if (!d3.editingId) {
-            for (const b2 of d3.ex) if (b2.exId === b0.exId) refreshBlock(b2);
-          }
-        },
-        { inProgress: true }
-      );
-      rerenderKeepScroll();
-      toast(
-        on ? `${exName(b0.exId)} starts over from this session. Its history stays.` : `${exName(b0.exId)} reads its history again.`
-      );
-    },
-    // A superset made here is this session's; Finish offers to keep it in the plan (r34.2, from the review: it was gone next time without a word).
-    bSs(t4) {
-      const d3 = state.draft;
-      const bi = Number(t4.dataset.b);
-      if (!d3 || !d3.ex[bi]) return;
-      if (!act(
-        () => {
-          linkToggle(d3.ex, bi, (x2) => x2.plan);
-        },
-        { inProgress: true, check: () => !!d3.ex[bi] && !!d3.ex[bi + 1] }
-      ))
-        return;
-      rerenderKeepScroll();
-      const b2 = d3.ex[bi];
-      if (b2 && b2.plan.ss)
-        toast(d3.dayId ? "Superset. Finish offers to keep it in your plan." : "Superset for this session.");
-    },
-    noteReuse(t4) {
-      const b2 = tapBlock(t4);
-      const ln = b2 && b2.lastNote;
-      if (!b2 || !ln) return;
-      act(
-        () => {
-          b2.note = ln.text;
-        },
-        { inProgress: true }
-      );
-      rerenderKeepScroll();
-      toast("Note carried into this session");
-    },
-    cDraftAdd(t4) {
-      const d3 = state.draft;
-      if (!d3) return;
-      act(
-        () => {
-          (d3.cardio || (d3.cardio = [])).push(cleanDraftCardio({ id: uid(), kind: "walk", when: t4.dataset.when }));
-        },
-        { inProgress: true }
-      );
-      rerenderKeepScroll();
-    },
-    cDraftDel: cardioRemove,
-    // The check-in's sheet, from its button beside the date.
-    chkOpen() {
-      if (state.draft) openModal({ kind: "checkin" });
-    },
-    /* The check-in: answering the last of the three closes its sheet, as it
-       folded the check-in away when it was on the session. */
-    chk(t4) {
-      const d3 = state.draft;
-      if (!d3) return;
-      const k2 = t4.dataset.k || "", v3 = Number(t4.dataset.v);
-      const c4 = Object.assign({}, d3.chk || {});
-      const was = CHK_Q.every(([q]) => c4[q]);
-      if (c4[k2] === v3) delete c4[k2];
-      else c4[k2] = v3;
-      act(
-        () => {
-          d3.chk = Object.keys(c4).length ? c4 : void 0;
-        },
-        { inProgress: true }
-      );
-      if (ui.modal && ui.modal.kind === "checkin") {
-        if (!was && CHK_Q.every(([q]) => c4[q])) closeModal();
-        else renderModal();
-      }
-      rerenderKeepScroll();
-    },
-    /* The check-in's lighter session (r30, r31): only the exercises not
-       started become lighter (b.light: half their sets, about 90% loads, 3+
-       RIR, no target); the session itself is not marked, so work already done
-       at full effort still sets next time's target and counts in trends.
-       Anything already logged or typed stays exactly as it is. Undo puts it back. */
-    makeLight() {
-      const d3 = state.draft;
-      if (!d3 || d3.light || d3.deload) return;
-      const todo = d3.ex.filter((b2) => !b2.light && !b2.sets.some((x2) => !x2.warm && !rowBlank(b2, x2)));
-      if (!todo.length) {
-        toast("Every exercise is started, so nothing changed");
-        return;
-      }
-      act(
-        () => {
-          if ((d3.notes || "") === (d3.note0 || ""))
-            d3.notes = d3.note0 = `Made lighter after the check-in: exercises not started, half sets at about ${pctOf(LIGHT_SHARE)}% loads.`;
-          for (const b2 of todo) {
-            b2.light = true;
-            const work = b2.sets.filter((x2) => !x2.warm);
-            const keep = Math.max(1, Math.ceil(work.length / 2));
-            let cut = work.length - keep;
-            for (let i5 = b2.sets.length - 1; i5 >= 0 && cut > 0; i5--)
-              if (!b2.sets[i5].warm) {
-                b2.sets.splice(i5, 1);
-                cut--;
-              }
-            refreshBlock(b2);
-          }
-        },
-        { inProgress: true, undo: true }
-      );
-      rerenderKeepScroll();
-      toast(
-        `Lighter: ${todo.length} exercise${todo.length === 1 ? "" : "s"} not started now half the sets at about ${pctOf(LIGHT_SHARE)}% loads`,
-        true
-      );
-    },
-    calSnooze() {
-      act(() => {
-        state.settings.calSnooze = today();
-      });
-      rerenderKeepScroll();
-      toast(`The RIR check will come back in ${CAL_OFFER.weeks} weeks`);
-    },
-    bwAskNo() {
-      prefSet(BWASK_KEY, "1");
-      rerenderKeepScroll();
-    },
-    tStart(t4) {
-      const b2 = tapBlock(t4);
-      const d3 = state.draft;
-      if (b2 && d3 && +b2.plan.rest > 0) startTimer(+b2.plan.rest, restNext(d3.ex.indexOf(b2)));
-    },
-    /* A session with nothing in it goes at once; one with anything entered
-       (sets, reps, cardio, a note) asks first. An edit always asks, since the
-       saved sets are already in it. */
-    discard() {
-      const d3 = state.draft;
-      if (!d3) return;
-      const out = () => {
-        act(
-          () => {
-            state.draft = null;
-          },
-          { inProgress: true }
-        );
-        stopTimer();
-        wakeOff();
-        if (unpark()) setTimeout(() => toast(BACK_SAID.trim()), 0);
-        window.scrollTo(0, 0);
-        render();
-      };
-      if (!d3.editingId && !draftEntered(d3)) {
-        out();
-        toast("Session discarded");
-        return;
-      }
-      if (d3.editingId && editFp0.get(d3.id) === editFp(d3)) {
-        out();
-        toast("No changes made");
-        return;
-      }
-      confirmBox(
-        "Discard this session?",
-        d3.editingId ? "Your edits will be lost. The saved session stays as it was." : "Sets and cardio logged in this session will not be saved.",
-        "Discard",
-        out,
-        true
-      );
-    },
-    finish: () => finish(),
-    finishNow: () => finishNow()
-  };
+
+  // src/app/workfields.ts
+  var TOUCH_MS = 700;
+  var STRIP_WAIT_MS = 2e3;
   function noteDown(e5) {
     W.lastDown = { el: e5.target instanceof Element ? e5.target : null, t: Date.now() };
     W.selAgain = null;
@@ -26330,6 +25179,1161 @@ ${JSON.stringify(ctx, null, 1)}`;
       closeModal();
       rerenderKeepScroll();
     }
+  };
+
+  // src/app/workfinish.ts
+  var WARM_SHARE = { compound: 0.75, isolation: 0.8 };
+  var TIMED_MAX_MIN = 360;
+  var BACK_SAID = " Your workout in progress is back: Resume it on Today.";
+  var HEAVIEST_SHOWN = 4;
+  function finish() {
+    const d3 = state.draft;
+    if (!d3) return;
+    if (!d3._leftAsked && !d3.editingId && !d3.past) {
+      let n3 = 0, left = 0;
+      for (const b2 of d3.ex)
+        for (const x2 of b2.sets) {
+          if (x2.warm) continue;
+          n3++;
+          if (!x2.done && rowBlank(b2, x2)) left++;
+        }
+      const any = d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !x2.warm));
+      if (any && left > 0) {
+        confirmBox(
+          `${left} of ${n3} sets not done`,
+          `Finish now and they are left out. An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.`,
+          "Finish now",
+          () => {
+            const dd = state.draft;
+            if (!dd) return;
+            dd._leftAsked = true;
+            finish();
+          },
+          false,
+          { label: "Keep going", fn: () => {
+          } }
+        );
+        return;
+      }
+    }
+    if (!d3._rampAsked) {
+      const ramps = [];
+      for (const b2 of d3.ex) {
+        const e5 = EX(b2.exId);
+        const wk = b2.sets.filter((x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0);
+        if (wk.length < 2) continue;
+        const L2 = (x2) => bwLoad(e5, d3.date) + (+(x2.w ?? 0) || 0);
+        const top = Math.max(...wk.map(L2));
+        if (!(top > 0)) continue;
+        const firstTop = b2.sets.findIndex(
+          (x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && Math.abs(L2(x2) - top) < EPS_SAME
+        );
+        const bi = d3.ex.indexOf(b2);
+        const st = IDX().exStats[b2.exId];
+        const est = st ? st.bestAll : void 0;
+        const thr = isCompound(e5) ? WARM_SHARE.compound : WARM_SHARE.isolation;
+        const easy = (x2) => {
+          if (!(L2(x2) < top - EPS_SAME)) return false;
+          const q = rirEff(x2, e5);
+          if (q != null) return q >= RIR_CALL_TOP;
+          if (est && !noE1(e5)) {
+            const rtf = rtfAt(est, L2(x2));
+            if (rtf != null) return rtf - +(x2.r ?? 0) >= RIR_CALL_TOP;
+          }
+          return L2(x2) < top * thr;
+        };
+        const appSet = (x2, si) => b2.sw != null && Math.abs((+(x2.w ?? 0) || 0) - b2.sw) < EPS_SAME || !!b2.adj && b2.adj.up && si <= b2.adj.at;
+        b2.sets.forEach((x2, si) => {
+          if (si < firstTop && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && (e5.bw || +(x2.w ?? 0) > 0) && !appSet(x2, si) && easy(x2))
+            ramps.push({ bi, si, name: e5.name, txt: `${loadLabel(e5, +(x2.w ?? 0) || 0)}×${x2.r}` });
+        });
+      }
+      if (ramps.length) {
+        const done = () => {
+          const dd = state.draft;
+          if (!dd) return;
+          act(
+            () => {
+              dd._rampAsked = true;
+            },
+            { inProgress: true }
+          );
+          finish();
+        };
+        confirmBox(
+          "These look like ramp-up sets",
+          `${[...new Set(ramps.map((r4) => r4.bi))].map((bi) => {
+            const rs = ramps.filter((r4) => r4.bi === bi);
+            return `${rs[0].name}: ${rs.map((r4) => r4.txt).join(", ")}`;
+          }).join(
+            "; "
+          )}. Lighter and easy, before your top set. Mark ${ramps.length > 1 ? "them" : "it"} as warm-up${ramps.length > 1 ? "s" : ""}?`,
+          `Mark as warm-up${ramps.length > 1 ? "s" : ""}`,
+          () => {
+            const dd = state.draft;
+            if (!dd) return;
+            act(
+              () => {
+                for (const r4 of ramps) {
+                  const x2 = dd.ex[r4.bi] && dd.ex[r4.bi].sets[r4.si];
+                  if (x2) {
+                    x2.warm = true;
+                    x2.drop = false;
+                  }
+                }
+              },
+              { inProgress: true }
+            );
+            done();
+          },
+          false,
+          { label: "Keep as working sets", fn: done }
+        );
+        return;
+      }
+    }
+    const unchecked = [];
+    for (const b2 of d3.ex) {
+      const n3 = b2.sets.filter((s3) => !s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3))).length;
+      if (n3) unchecked.push({ n: n3, name: EX(b2.exId).name });
+    }
+    if (unchecked.length) {
+      const list = unchecked.map((u4) => `${u4.name} (${u4.n} set${u4.n > 1 ? "s" : ""})`).join(", ");
+      const total = unchecked.reduce((a2, u4) => a2 + u4.n, 0);
+      confirmBox(
+        "Some sets are not marked done",
+        `${total} set${total > 1 ? "s have" : " has"} reps entered but no checkmark, so ${total > 1 ? "they" : "it"} will not be saved: ${list}.`,
+        `Mark ${total > 1 ? "them" : "it"} done and save`,
+        /* Each set is ticked in turn; one far off asks first, and once it is logged the rest are ticked and the
+           session saved, with no second tap on Finish (2.28, 2.27-F13). Fix it leaves the workout open there. */
+        function markAll() {
+          const dd = state.draft;
+          if (!dd) return;
+          for (const [bi, b2] of dd.ex.entries())
+            for (const [si, s3] of b2.sets.entries())
+              if (!s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3))) {
+                if (oddReps(b2, s3) || oddLoad(b2, si, dd.date) || lightZero(b2, si, dd.date)) {
+                  setDone(bi, si, true, false, markAll);
+                  if (!s3.done) return;
+                } else
+                  act(
+                    () => {
+                      settleLoad(b2, si);
+                      s3.done = true;
+                    },
+                    { inProgress: true }
+                  );
+              }
+          finishNow();
+        },
+        false,
+        { label: "Save without them", fn: () => finishNow() }
+      );
+      return;
+    }
+    finishNow();
+  }
+  function finishNow() {
+    const d3 = state.draft;
+    if (!d3) return;
+    const ex = picsLast(
+      withNew(
+        withPlanSets(joinAdjacent(d3.ex.map(savedEx).filter((b2) => b2.sets.length)), d3, state.routines, {
+          routineId: activeRoutine().id,
+          freestyle: freeMode()
+        }),
+        d3
+      )
+    );
+    const cardio = draftCardio(d3).map((c4) => cleanCardio(c4));
+    if (!ex.length) {
+      if (cardio.length && !d3.editingId) {
+        act(() => {
+          putById(state.cardio, cardio);
+          state.draft = null;
+        });
+        stopTimer();
+        wakeOff();
+        const back2 = unpark();
+        ui.todayDay = null;
+        window.scrollTo(0, 0);
+        render();
+        toast(`Cardio saved. No lifting session was recorded.${back2 ? BACK_SAID : ""}`);
+        return;
+      }
+      toast("Mark at least one set done");
+      return;
+    }
+    const blanks = [];
+    for (const b2 of ex) {
+      const e5 = EX(b2.exId);
+      if (e5.bw) continue;
+      const n3 = b2.sets.filter((s3) => !(+s3.w > 0) && isWork(s3)).length;
+      if (n3) blanks.push(`${e5.name} (${n3} set${n3 > 1 ? "s" : ""})`);
+    }
+    const help = [];
+    for (const b2 of d3.ex) {
+      const e5 = EX(b2.exId);
+      if (!e5.assist) continue;
+      const n3 = b2.sets.filter((s3) => s3.done && !s3.warm && s3.w == null).length;
+      if (n3) help.push(`${e5.name} (${n3} set${n3 > 1 ? "s" : ""})`);
+    }
+    const save = () => saveSession(d3, ex, cardio);
+    if (blanks.length || help.length)
+      confirmBox(
+        blanks.length ? "Add the missing loads?" : "Add the help you used?",
+        [
+          blanks.length ? `${andList(blanks)} ${blanks.length > 1 ? "have" : "has"} reps but no weight. Saved like this, they count as hard sets but give no estimate, PR, or weight lifted.` : "",
+          help.length ? `${andList(help)} ${help.length > 1 ? "have" : "has"} no help typed, so saved like this ${help.length > 1 ? "they read" : "it reads"} as no help, your full bodyweight.` : ""
+        ].filter(Boolean).join(" "),
+        blanks.length ? "Add loads" : "Add the help",
+        () => {
+          const dr = state.draft;
+          if (!dr) return;
+          for (let bi = 0; bi < dr.ex.length; bi++) {
+            const b2 = dr.ex[bi];
+            const e5 = EX(b2.exId);
+            if (e5.bw && !e5.assist) continue;
+            const si = b2.sets.findIndex((x2) => x2.done && (e5.assist ? x2.w == null : !(+(x2.w ?? 0) > 0)));
+            if (si < 0) continue;
+            blkOpen(bi, b2);
+            render();
+            W.needAt = { b: blkRef(bi), s: si };
+            redraw();
+            const f3 = document.querySelector(`[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
+            if (f3) {
+              f3.scrollIntoView({ block: "center" });
+              f3.focus();
+            }
+            return;
+          }
+        },
+        false,
+        { label: "Save anyway", fn: save }
+      );
+    else save();
+  }
+  function saveSession(d3, ex, cardio) {
+    const clockMin = d3.editingId || d3.past || !d3.startedAt || iso(new Date(d3.startedAt)) !== d3.date ? null : (() => {
+      const m3 = Math.round((Date.now() - (d3.startedAt || 0)) / (MINUTE_S * SECOND_MS));
+      return m3 >= 1 && m3 <= TIMED_MAX_MIN ? m3 : null;
+    })();
+    const durMin = d3.editingId || d3.past ? typedMin(d3) : clockMin;
+    const exR = ex.map((b2) => ({ ...b2 }));
+    const sess = {
+      id: d3.editingId || d3.id,
+      date: d3.date,
+      dayIdx: d3.dayIdx,
+      dayId: d3.dayId || null,
+      dayName: (d3.dayName || "").trim() || "Session",
+      routineId: d3.routineId,
+      ex: exR,
+      notes: d3.notes || "",
+      durMin,
+      deload: !!d3.deload,
+      light: !!d3.light,
+      free: d3.free ? true : void 0,
+      chk: cleanChk(d3.chk) || void 0
+    };
+    let untimed = false;
+    if (clockMin != null) {
+      const model = sessModelMin(sess);
+      if (model >= 1 && clockMin < PACE_LO * model) {
+        sess.durMin = null;
+        untimed = true;
+      }
+    }
+    const sessPics = d3.pics && d3.pics.length ? [...d3.pics] : void 0;
+    let upd2 = null, demoGone = false, targets = 0, beaten = 0, pmDraft = 0;
+    const editing = !!d3.editingId;
+    act(() => {
+      const was = d3.editingId ? state.sessions.find((x2) => x2.id === d3.editingId) : null;
+      const t0 = was ? was.t : d3.startedAt || Date.now();
+      if (t0) sess.t = t0;
+      const pw = d3.editingId || d3.free ? void 0 : pwOf(state.routines, d3.routineId);
+      if (pw) sess.pw = pw;
+      if (sessPics) sess.pics = sessPics;
+      if (d3.part === 2) sess.part = 2;
+      if (!d3.editingId) putById(state.cardio, cardio);
+      if (!d3.editingId && calDueIdx(d3) >= 0 && !d3.ex.some((b2) => b2.sets.some((x2) => x2.cal && x2.done)))
+        state.settings.calSnooze = today();
+      upd2 = d3.editingId ? null : routineUpdates(d3);
+      if (d3.editingId) {
+        const i5 = state.sessions.findIndex((s3) => s3.id === d3.editingId);
+        if (i5 >= 0) {
+          const o3 = state.sessions[i5];
+          if (o3.demo !== void 0) sess.demo = o3.demo;
+          keepExtra(o3, sess, KNOWN_SESS);
+          const used = /* @__PURE__ */ new Set();
+          exR.forEach((b2) => {
+            const ob = o3.ex.find((x2) => x2.exId === b2.exId && !used.has(x2));
+            if (ob) {
+              used.add(ob);
+              keepExtra(ob, b2, KNOWN_BLOCK);
+            }
+          });
+          state.sessions[i5] = sess;
+        } else state.sessions.push(sess);
+      } else putById(state.sessions, [sess]);
+      demoGone = !d3.editingId && (state.sessions.some((x2) => x2.demo) || state.bodyweights.some((x2) => x2.demo) || state.measurements.some((x2) => x2.demo));
+      if (demoGone) {
+        stripDemo(state);
+        demoRestore();
+        invalidate();
+      }
+      state.trash = state.trash.filter((t4) => !(t4.kind === "session" && t4.id === sess.id));
+      const tried = d3.ex.filter((b2) => b2.tgt && b2.sets.some((x2) => x2.done && !x2.warm) && effTarget(b2) === b2.tgt);
+      targets = tried.length;
+      beaten = tried.filter((b2) => {
+        const pr = blockProgress(b2);
+        return pr && pr.beat;
+      }).length;
+      pmDraft = draftPlanMin(d3);
+      state.draft = null;
+    });
+    stopTimer();
+    wakeOff();
+    undoToastHide();
+    const back2 = unpark();
+    const prAll = IDX().prs.filter(
+      (p3) => (p3.sid ? p3.sid === sess.id : p3.date === sess.date) && ex.some((b2) => b2.exId === p3.exId)
+    );
+    const prs = prAll.filter((p3) => p3.big);
+    const heavier = prAll.flatMap((p3) => {
+      if (p3.big || p3.type !== "Weight PR") return [];
+      const e5 = EX(p3.exId);
+      return [`${e5.name} ${setShort(e5, p3.w, p3.r)}`];
+    });
+    const work = ex.reduce((a2, b2) => a2 + b2.sets.filter(isWork).length, 0), miss = ex.reduce((a2, b2) => a2 + b2.sets.filter((q) => !q.warm && !q.drop && isMissed(q)).length, 0), hard = r1(
+      ex.reduce((a2, b2) => {
+        const e5 = EX(b2.exId);
+        return a2 + b2.sets.reduce((c4, q) => c4 + hardCredit(q, e5), 0);
+      }, 0)
+    );
+    ui.todayDay = null;
+    window.scrollTo(0, 0);
+    render();
+    if (editing) {
+      toast(`Session updated.${back2 ? BACK_SAID : ""}`);
+      return;
+    }
+    if (back2) toast(BACK_SAID.trim());
+    const lines = [
+      `${work} working set${work === 1 ? "" : "s"}, ${hard} ${rirHalfOn() ? "counted toward the week" : "counted as hard"}${miss ? `, and ${miss} missed` : ""}`
+    ];
+    if (sess.date !== today()) lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
+    if (sess.durMin) lines.push(`${sess.durMin} minutes${pmDraft && !sess.free ? `, planned ${estMin(pmDraft)}` : ""}`);
+    else if (untimed)
+      lines.push("Not timed: the sets went in faster than they can be lifted. Add its minutes by editing it in History.");
+    if (targets) lines.push(`${beaten} of ${targets} exercise target${targets === 1 ? "" : "s"} beaten`);
+    if (heavier.length) lines.push(`Heaviest yet: ${andList(heavier, HEAVIEST_SHOWN)}`);
+    const prList = prs.map((pr) => {
+      const e5 = EX(pr.exId);
+      if (pr.type === "Weight PR")
+        return {
+          name: e5.name,
+          what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${pr.value != null && isCompound(e5) ? `, best estimate ${fmtE(pr.value)} ${U()}${loadNote(e5)}` : ""}`,
+          was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${e5.bw ? loadLabel(e5, pr.prevW ?? 0) : fmtW(pr.prevW) + " " + U()}` : ""
+        };
+      const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.date) : null;
+      if (ps) return { name: e5.name, what: `PR, ${setShort(e5, ps.w, ps.r)}`, was: "your best for that number of reps" };
+      return pr.type === "e1RM" ? {
+        name: e5.name,
+        what: `${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e5)}`,
+        was: prOverall(pr) ? wasE(pr.value, pr.prevAll) ? `was ${wasE(pr.value, pr.prevAll)}` : "" : wasE(pr.value, pr.prev) ? `was ${wasE(pr.value, pr.prev)} at those reps` : ""
+      } : {
+        name: e5.name,
+        what: `${e5.timed ? "Time" : "Rep"} PR, ${setShort(e5, pr.w, pr.r)}`,
+        was: pr.prevR ? `was ${pr.prevR} ${e5.timed ? "s" : "reps"} at this load or heavier` : "heaviest yet"
+      };
+    });
+    if (cardio.length) lines.push(`Cardio and mobility: ${cardio.reduce((a2, c4) => a2 + c4.min, 0)} min`);
+    if (demoGone) lines.push("Demo data removed, so your stats show only your own sessions");
+    openModal({
+      kind: "recap",
+      title: "Session saved",
+      lines,
+      prs: prList,
+      note: prs.length ? "" : state.sessions.filter((x2) => !x2.demo).length <= 1 ? "Your first session: these are your starting numbers." : "No PRs this time.",
+      upd: upd2,
+      sid: sess.id
+    });
+  }
+
+  // src/app/worktaps.ts
+  var AUTO_CONFIRM_MS = 15e3;
+  var REORDER_BACK_MS = 3e4;
+  var STEP_SECONDS = 5;
+  var tapBlock = (t4) => state.draft && state.draft.ex[Number(t4.dataset.b)] || null;
+  function setRemove(t4) {
+    const d3 = state.draft;
+    const bi = Number(t4.dataset.b);
+    const b2 = d3 && d3.ex[bi];
+    if (!d3 || !b2 || !b2.sets.length) return;
+    let i5 = -1;
+    for (let k2 = b2.sets.length - 1; k2 >= 0; k2--)
+      if (rowBlank(b2, b2.sets[k2])) {
+        i5 = k2;
+        break;
+      }
+    if (i5 >= 0) {
+      const at3 = i5;
+      act(
+        () => {
+          b2.sets.splice(at3, 1);
+          adjSync(b2);
+        },
+        { inProgress: true }
+      );
+      rerenderKeepScroll();
+      return;
+    }
+    for (let k2 = b2.sets.length - 1; k2 >= 0; k2--)
+      if (!b2.sets[k2].done) {
+        i5 = k2;
+        break;
+      }
+    if (i5 < 0) i5 = b2.sets.length - 1;
+    const x2 = b2.sets[i5], ex = EX(b2.exId), did2 = d3.id, exId = b2.exId, n3 = b2.sets.slice(0, i5 + 1).filter((y2) => !y2.warm && !y2.drop).length;
+    const what = `${x2.warm ? "Warm-up" : x2.drop ? "Drop set" : "Set " + n3}`;
+    const val = +(x2.r ?? 0) > 0 ? setShort(ex, x2.w == null ? 0 : x2.w, x2.r) : x2.w != null ? loadLabel(ex, x2.w) + (ex.bw ? "" : " " + U()) : "";
+    const at2 = i5;
+    confirmBox(
+      `Remove ${what.toLowerCase()}?`,
+      `${ex.name}${val ? `: ${val}` : ""}, ${x2.done ? "logged" : "typed, not ticked"}. Undo is offered right after.`,
+      "Remove set",
+      () => {
+        const dd = state.draft;
+        const bb = dd && dd.id === did2 ? dd.ex[bi] : null;
+        const xx = bb && bb.exId === exId ? bb.sets[at2] : null;
+        if (!bb || !xx || xx.done !== x2.done || xx.r !== x2.r || xx.w !== x2.w) {
+          toast("That set changed. Nothing was removed.");
+          rerenderKeepScroll();
+          return;
+        }
+        act(
+          () => {
+            bb.sets.splice(at2, 1);
+            adjSync(bb);
+          },
+          {
+            inProgress: true,
+            undo: () => {
+              const d32 = state.draft;
+              if (!d32 || d32.id !== did2 || !d32.ex.includes(bb)) return false;
+              bb.sets.splice(Math.min(at2, bb.sets.length), 0, xx);
+              adjSync(bb);
+              return true;
+            }
+          }
+        );
+        rerenderKeepScroll();
+        toast(xx.done ? "Logged set removed" : "Set removed", true);
+      },
+      true
+    );
+  }
+  function blockRemove(t4) {
+    const d3 = state.draft;
+    const bi = Number(t4.dataset.b);
+    const blk = d3 && d3.ex[bi];
+    if (!d3 || !blk) return;
+    const did2 = d3.id;
+    const go = () => {
+      const dd = state.draft;
+      if (!dd || dd.id !== did2 || dd.ex[bi] !== blk) {
+        if (ui.modal) closeModal();
+        toast("That exercise changed. Nothing was removed.");
+        rerenderKeepScroll();
+        return;
+      }
+      const prevBlk = bi > 0 ? dd.ex[bi - 1] : null;
+      act(() => keepOpen(() => dd.ex.splice(bi, 1)), {
+        inProgress: true,
+        undo: () => {
+          const d32 = state.draft;
+          if (!d32 || d32.id !== did2) return false;
+          const k2 = prevBlk ? d32.ex.indexOf(prevBlk) : -1;
+          d32.ex.splice(prevBlk == null ? 0 : k2 >= 0 ? k2 + 1 : Math.min(bi, d32.ex.length), 0, blk);
+          fixSupersets(d32.ex.map((x2) => x2.plan));
+          return true;
+        }
+      });
+      rerenderKeepScroll();
+      toast("Exercise removed", true);
+    };
+    const logged2 = blk.sets.filter((x2) => x2.done).length, typed = blk.sets.filter((x2) => !x2.done && (+(x2.r ?? 0) > 0 || x2.rir != null)).length;
+    if (logged2 || typed) {
+      if (ui.modal) closeModal();
+      confirmBox(
+        `Remove ${EX(blk.exId).name}?`,
+        `${logged2 ? `${logged2} logged set${logged2 === 1 ? "" : "s"}` : ""}${logged2 && typed ? " and " : ""}${typed ? `${typed} typed set${typed === 1 ? "" : "s"}` : ""} go with it. Undo is offered right after.`,
+        "Remove exercise",
+        go,
+        true
+      );
+      return;
+    }
+    go();
+  }
+  function cardioRemove(t4) {
+    const d3 = state.draft;
+    const list = d3 && d3.cardio;
+    const i5 = Number(t4.dataset.c);
+    const c4 = list && list[i5];
+    if (!d3 || !list || !c4) return;
+    if ((c4.min || 0) > 0 || (c4.hr || 0) > 0 || (c4.note || "").trim()) {
+      const did2 = d3.id;
+      confirmBox(
+        `Remove ${(CARDIOL[c4.kind || ""] || "entry").toLowerCase()}?`,
+        `${c4.min ? c4.min + " min" : "An entry with your notes"}. Undo is offered right after.`,
+        "Remove",
+        () => {
+          const dd = state.draft;
+          const l22 = dd && dd.id === did2 ? dd.cardio : null;
+          const j3 = l22 ? l22.indexOf(c4) : -1;
+          if (!l22 || j3 < 0) {
+            toast("That entry changed. Nothing was removed.");
+            rerenderKeepScroll();
+            return;
+          }
+          act(
+            () => {
+              l22.splice(j3, 1);
+            },
+            {
+              inProgress: true,
+              undo: () => {
+                const d32 = state.draft;
+                if (!d32 || d32.id !== did2) return false;
+                const l32 = d32.cardio || (d32.cardio = []);
+                l32.splice(Math.min(j3, l32.length), 0, c4);
+                return true;
+              }
+            }
+          );
+          rerenderKeepScroll();
+          toast(`${CARDIOL[c4.kind || ""] || "Entry"} removed`, true);
+        },
+        true
+      );
+      return;
+    }
+    act(
+      () => {
+        list.splice(i5, 1);
+      },
+      { inProgress: true }
+    );
+    rerenderKeepScroll();
+  }
+  var WORKOUT_ACTS = {
+    /* With auto-done on, leaving the reps field marks the set done, and on a
+       phone that blur happens a moment before the tap on the checkmark lands.
+       Without this guard the tap would immediately undo the auto-mark. Since
+       r28 (auto-mark on for new installs) the first tap on that set's
+       checkmark confirms it for AUTO_CONFIRM_MS, until another set is touched: typing
+       reps, picking RIR and then tapping the checkmark is the natural order,
+       and it used to untick the set. A second tap undoes it. Tapping done on
+       an empty reps field logs the grey number in it (see greyR), like the
+       paper log you copy from; warm-ups and drops have theirs since r64; a typed
+       0 is a missed set (r55, V), ticked as typed. Unticked (r55, the audit):
+       numbers that are what the row shows in grey go back to grey, so a tap by
+       mistake leaves nothing typed for Finish to offer to save, and an
+       exercise the tick moved up goes back if it has no set left ticked,
+       within REORDER_BACK_MS. */
+    sDone(t4) {
+      const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
+      const s3 = draftSet(t4);
+      const d3 = state.draft;
+      if (!s3 || !d3) return;
+      if (W.lastAuto && (blkIdx(W.lastAuto.b) !== bi || W.lastAuto.s !== si)) W.lastAuto = null;
+      if (W.lastAuto && Date.now() - W.lastAuto.t < AUTO_CONFIRM_MS && s3.done) {
+        W.lastAuto = null;
+        W.onSet = null;
+        onLiftDraw(bi, redraw);
+        return;
+      }
+      const b2 = d3.ex[bi];
+      const noReps = !s3.done && !(+(s3.r ?? 0) > 0) && !isMissed(s3);
+      const lr = noReps && b2 ? greyR(b2, si) : null;
+      if (noReps && (lr == null || !(lr > 0))) {
+        toast("Enter reps first");
+        return;
+      }
+      const was = !!s3.done;
+      W.onSet = was ? setRef(bi, si) : null;
+      act(
+        () => {
+          if (lr != null) s3.r = Math.round(lr);
+          setDone(bi, si, !was);
+          if (!was || !b2) return;
+          if (s3.r != null && +s3.r === greyR(b2, si)) s3.r = null;
+          const gw = greyW(b2, si);
+          if (!fillLoads() && s3.w != null && gw != null && Math.abs(s3.w - gw) < EPS) s3.w = null;
+          const o3 = ordBack.get(b2);
+          if (o3 && !b2.sets.some((x2) => x2.done) && Date.now() - o3.t < REORDER_BACK_MS) {
+            ordBack.delete(b2);
+            moveBlock(bi, Math.min(o3.i, d3.ex.length - 1));
+          }
+        },
+        { inProgress: true }
+      );
+      if (was) rerenderKeepScroll();
+    },
+    // Numbers, placeholders and the progress bar all depend on which rows are working sets, so the block is drawn again.
+    sWarm(t4) {
+      const s3 = draftSet(t4);
+      const b2 = tapBlock(t4);
+      if (!s3 || !b2) return;
+      act(
+        () => {
+          if (!s3.warm && !s3.drop) s3.warm = true;
+          else if (s3.warm) {
+            s3.warm = false;
+            s3.drop = true;
+          } else s3.drop = false;
+          adjSync(b2);
+        },
+        { inProgress: true }
+      );
+      rerenderKeepScroll();
+    },
+    fillLast(t4) {
+      const b2 = tapBlock(t4);
+      if (!b2) return;
+      const todo = b2.sets.map((s3, i5) => [s3, lastRFor(b2, i5)]).filter(([s3, lr]) => !s3.done && !s3.warm && !s3.drop && s3.r == null && lr != null);
+      if (!todo.length) {
+        toast("Nothing to fill");
+        return;
+      }
+      act(
+        () => {
+          for (const [s3, lr] of todo) s3.r = lr;
+        },
+        { inProgress: true }
+      );
+      rerenderKeepScroll();
+      toast(`${todo.length} set${todo.length === 1 ? "" : "s"} filled with last time's reps`);
+    },
+    /* The new working set copies the last working set's load, not a drop set's
+       (DROP_START) or a warm-up's. Grey by default: the new row shows the load above
+       it, or what the last set ticked asks for, as a planned row under it would
+       have (r55, V: after 300 x 1, + Set copied 300). Filled in, it takes that load. */
+    sAdd(t4) {
+      const bi = Number(t4.dataset.b);
+      const b2 = tapBlock(t4);
+      if (!b2) return;
+      act(
+        () => {
+          const ld = b2.sets.reduce((k2, x2, i5) => x2.done && isWork(x2) && !x2.drop ? i5 : k2, -1);
+          const row = newRow();
+          b2.sets.push(row);
+          if (ld >= 0) assessSet(bi, ld);
+          if (fillLoads()) row.w = effW(b2, b2.sets.length - 1);
+        },
+        { inProgress: true }
+      );
+      rerenderKeepScroll();
+    },
+    /* Minus and plus (ST-6): from what the row holds, else what it shows in grey, to the next load on the lift's list
+       or one rep (five seconds on a hold) either way, written as the number typed in the field would be: the same carry
+       to the rows below, and on a set ticked the same checks as a number typed there (doneChanged). They never tick or
+       untick a set, and the set stepped is the one you are on (NEW-100). One change, saved once. */
+    sStep(t4) {
+      const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
+      const b2 = tapBlock(t4);
+      const s3 = b2 && b2.sets[si];
+      if (!b2 || !s3) return;
+      const ex = EX(b2.exId);
+      const dir = t4.dataset.d === "-1" ? -1 : 1;
+      const f3 = t4.dataset.sf === "w" ? "w" : "r";
+      let w2 = null, r4 = null;
+      if (f3 === "w") {
+        if (ex.assist) return;
+        const to = stepLoad(ex, b2.plan, effW(b2, si) ?? 0, dir);
+        const v3 = to == null ? null : toD(to);
+        if (v3 == null) return;
+        w2 = Math.min(fromD(Math.max(Math.round(v3 * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
+      } else {
+        const was = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
+        r4 = Math.min(Math.max(was + dir * (ex.timed ? STEP_SECONDS : 1), 0), LIMITS.reps);
+        if (r4 === s3.r) return;
+      }
+      W.onSet = setRef(bi, si);
+      act(
+        () => {
+          if (w2 != null) {
+            s3.w = w2;
+            carried.delete(s3);
+          } else s3.r = r4;
+          if (s3.done && doneChanged(bi, si, f3)) return;
+          if (f3 === "w" && fillLoads()) carryLoad(b2, si);
+        },
+        { inProgress: true }
+      );
+      if (f3 === "w") {
+        W.platesAt = { b: blkRef(bi), s: si };
+        mixCheck(bi, si);
+      }
+      onLiftDraw(bi, redraw);
+    },
+    sDel: setRemove,
+    /* Warm-ups go in at the top, already flagged, so they stay out of every
+       analytic, and are seeded from the working load; each new one goes after
+       the ones already there, so they climb to the working load (r27). */
+    wAdd(t4) {
+      const b2 = tapBlock(t4);
+      if (!b2) return;
+      let base = 0;
+      for (let i5 = 0; i5 < b2.sets.length; i5++) {
+        const s3 = b2.sets[i5];
+        if (s3.warm || s3.drop) continue;
+        const w3 = +(effW(b2, i5) ?? 0) || 0;
+        if (w3 > 0) {
+          base = w3;
+          break;
+        }
+      }
+      if (!base) base = Math.max(0, ...b2.sets.map((_2, i5) => +(effW(b2, i5) ?? 0) || 0));
+      const n3 = b2.sets.filter((s3) => s3.warm).length;
+      const frac = WARM_RAMP[Math.min(n3, WARM_RAMP.length - 1)];
+      let at2 = 0;
+      while (at2 < b2.sets.length && b2.sets[at2].warm) at2++;
+      let w2 = base > 0 ? lighterLoad(EX(b2.exId), b2.plan, base, base * frac) : null;
+      const prev = at2 > 0 ? +(effW(b2, at2 - 1) ?? 0) || 0 : 0;
+      const top = WARM_RAMP[WARM_RAMP.length - 1] ?? frac;
+      if (w2 != null && prev > 0 && w2 <= prev + EPS) {
+        const up = base * top > prev ? heavierLoad(EX(b2.exId), b2.plan, prev, base * top) : null;
+        w2 = up != null && up < base - EPS ? up : prev;
+      }
+      act(
+        () => {
+          b2.sets.splice(at2, 0, newRow({ w: w2, warm: true }));
+          adjSync(b2);
+        },
+        { inProgress: true }
+      );
+      rerenderKeepScroll();
+      toast("Warm-up set added");
+    },
+    // The load the last working set was, or will be (a grey load counts); a missed set's is passed over (r55).
+    /* Done with an exercise that has sets left (r66, PENDING 374; V: "Ask:
+       log or skip"): one question, then every set left ticked as it shows (its
+       load and reps, typed or grey; a 0 typed is a missed set, as a tick logs
+       it), or every set left taken off. Either is one change with one Undo. A
+       warm-up or a drop set left is a set left like any other, logged as it
+       is; the target repeats only when a working set is skipped (V's one
+       rule), so the question says so only then (the review of r66: a warm-up alone was
+       counted as a set whose skip repeats the target, and Log took it off).
+       Logging stops before anything is ticked when a set left has no weight
+       or reps to take, looks far off, or is a 0 at a weight well under the
+       working load (each is ticked on its own, where it is asked about). */
+    bDoneAll(t4) {
+      const bi = Number(t4.dataset.b);
+      const d3 = state.draft;
+      const b2 = d3 && d3.ex[bi];
+      if (!d3 || !b2) return;
+      const left = b2.sets.map((s3, si) => ({ s: s3, si })).filter((x2) => !x2.s.done);
+      if (!left.length) return;
+      const ex = EX(b2.exId);
+      const n3 = left.length;
+      const sets = `${n3} set${n3 === 1 ? "" : "s"}`;
+      const repeats = left.some((x2) => !x2.s.warm && !x2.s.drop) ? " Skipped sets are fewer than usual, so the target repeats next time." : "";
+      const blocked = left.find(
+        ({ s: s3, si }) => !ex.bw && !ex.timed && s3.w == null && greyW(b2, si) == null || !(+(s3.r ?? 0) > 0) && !isMissed(s3) && !((greyR(b2, si) ?? 0) > 0) || isMissed(s3) && !s3.warm && !s3.drop && lightZero(b2, si, d3.date) || s3.w != null && !s3.warm && !s3.drop && oddLoad(b2, si, d3.date) || oddReps(b2, s3)
+      );
+      const ref2 = blkRef(bi);
+      const after2 = () => {
+        rerenderKeepScroll();
+        if (W.foldT) clearTimeout(W.foldT);
+        W.foldT = setTimeout(() => autoFold(ref2), FOLD_MS.tick);
+      };
+      const skip = () => {
+        act(
+          () => {
+            b2.sets = b2.sets.filter((x2) => x2.done);
+          },
+          { inProgress: true, undo: true }
+        );
+        after2();
+        toast(`${sets} skipped`, true);
+      };
+      const log2 = () => {
+        const shown2 = left.map(({ s: s3, si }) => ({
+          s: s3,
+          si,
+          w: s3.w ?? greyW(b2, si),
+          r: isMissed(s3) || +(s3.r ?? 0) > 0 ? s3.r : Math.round(greyR(b2, si) ?? 0)
+        }));
+        act(
+          () => {
+            for (const x2 of shown2) {
+              x2.s.w = x2.w;
+              x2.s.r = x2.r;
+              x2.s.done = true;
+              assessSet(bi, x2.si);
+            }
+            b2.sets = b2.sets.filter((x2) => x2.done);
+          },
+          { inProgress: true, undo: true }
+        );
+        after2();
+        toast(`${sets} logged as shown`, true);
+      };
+      if (blocked)
+        confirmBox(
+          `${exName(b2.exId)}: ${sets} left`,
+          `Set ${blocked.si + 1} has no weight or reps to take, or looks far off, so tick it on its own. Or skip the sets left.${repeats}`,
+          "Skip them",
+          skip
+        );
+      else
+        confirmBox(
+          `${exName(b2.exId)}: ${sets} left`,
+          `Log them as shown, or skip them.${repeats}`,
+          "Log them as shown",
+          log2,
+          false,
+          { label: "Skip them", fn: skip }
+        );
+    },
+    dropAdd(t4) {
+      const b2 = tapBlock(t4);
+      if (!b2) return;
+      let base = 0;
+      for (let i5 = b2.sets.length - 1; i5 >= 0; i5--) {
+        const s3 = b2.sets[i5];
+        if (s3.warm || s3.drop || isMissed(s3)) continue;
+        const w3 = +(effW(b2, i5) ?? 0) || 0;
+        if (w3 > 0) {
+          base = w3;
+          break;
+        }
+      }
+      const w2 = base > 0 ? lighterLoad(EX(b2.exId), b2.plan, base, base * DROP_START) : null;
+      let at2 = -1;
+      b2.sets.forEach((x2, i5) => {
+        if (x2.done && !x2.warm && !x2.drop) at2 = i5;
+      });
+      if (at2 < 0) at2 = b2.sets.length - 1;
+      while (at2 + 1 < b2.sets.length && b2.sets[at2 + 1].drop) at2++;
+      act(
+        () => {
+          b2.sets.splice(at2 + 1, 0, newRow({ w: w2, drop: true }));
+        },
+        { inProgress: true }
+      );
+      rerenderKeepScroll();
+      toast("Drop set added");
+    },
+    // Keep: no adjustment for this exercise for the rest of the session.
+    adjKeep(t4) {
+      const b2 = tapBlock(t4);
+      if (!b2 || !b2.adj) return;
+      const prev = b2.adj;
+      act(
+        () => {
+          delete b2.adj;
+          b2.adjOff = true;
+          adjRows(b2, prev, null);
+        },
+        { inProgress: true }
+      );
+      redraw();
+    },
+    rirOpen(t4) {
+      const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
+      if (stripIs(bi, si)) {
+        rirClose();
+        return;
+      }
+      rirShowStrip(bi, si);
+      const f3 = document.querySelector(".rirstrip button.on") || document.querySelector(".rirstrip button");
+      if (f3 && !coarse())
+        try {
+          f3.focus({ preventScroll: true });
+        } catch (e5) {
+        }
+    },
+    // The fold waits for the effort of the last set, then goes.
+    rirPick(t4) {
+      const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
+      const d3 = state.draft;
+      const b2 = d3 && d3.ex[bi];
+      const s3 = b2 && b2.sets[si];
+      if (!d3 || !b2 || !s3) return;
+      const n3 = numIn(t4.dataset.v || "");
+      act(
+        () => {
+          s3.rir = n3 == null ? null : Math.min(Math.max(n3, 0), EFFORT_TOP);
+          if (s3.done) assessSet(bi, si);
+        },
+        { inProgress: true, soon: true }
+      );
+      rirClose();
+      redraw();
+      const btn = document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
+      if (btn)
+        try {
+          btn.focus({ preventScroll: true });
+        } catch (e5) {
+        }
+      if (!d3.editingId && blockDone(b2)) {
+        if (W.foldT) clearTimeout(W.foldT);
+        const rf = blkRef(bi);
+        W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.effort);
+      }
+    },
+    bOpen(t4) {
+      const bi = Number(t4.dataset.b);
+      const b2 = tapBlock(t4);
+      if (!b2) return;
+      blkOpen(bi, b2);
+      rerenderKeepScroll();
+      const el = document.getElementById("blk-" + bi);
+      if (el)
+        try {
+          el.scrollIntoView({ block: "nearest" });
+        } catch (e5) {
+        }
+    },
+    /* Save and leave (NEW-89): the workout is saved as it goes, so this only
+       steps away to Today, which offers it back; the tab, Back and opening the
+       app again all open the workout. */
+    wkAway() {
+      ui.away = state.draft ? state.draft.id : null;
+      window.scrollTo(0, 0);
+      render();
+      toast("Saved. Resume it from Today.");
+    },
+    wkResume() {
+      ui.away = null;
+      ui.tab = "today";
+      window.scrollTo(0, 0);
+      render();
+    },
+    // Today's card for a workout set aside that did not come back by itself (R81-2): it comes back and opens.
+    parkBack() {
+      if (!unpark()) return;
+      ui.away = null;
+      ui.tab = "today";
+      window.scrollTo(0, 0);
+      render();
+    },
+    // Every place this exercise was opened at, so a move and a fold leave nothing behind.
+    bFold(t4) {
+      const b2 = tapBlock(t4);
+      if (!b2) return;
+      const d3 = state.draft;
+      if (d3 && d3.editingId) {
+        blkShut(Number(t4.dataset.b), b2);
+        rerenderKeepScroll();
+        return;
+      }
+      const pre = (state.draft && state.draft.id || "") + ":";
+      for (const k2 of [...ui.blkOpen])
+        if (typeof k2 === "string" && k2.startsWith(pre) && k2.endsWith(":" + b2.exId)) ui.blkOpen.delete(k2);
+      blkOpenObj.delete(b2);
+      rerenderKeepScroll();
+    },
+    bUp(t4) {
+      if (moveBlock(Number(t4.dataset.b), Number(t4.dataset.b) - 1)) rerenderKeepScroll();
+    },
+    bDown(t4) {
+      if (moveBlock(Number(t4.dataset.b), Number(t4.dataset.b) + 1)) rerenderKeepScroll();
+    },
+    bDel: blockRemove,
+    /* New machine or gym (r61, PENDING 343 7, V's decision of 2026-10-24): the
+       lift starts over from this session, every block of it marked and its
+       suggestion read again as a first session's; tapped again, it reads its
+       history again. Rows typed are kept; rows still on the suggestion take
+       the new one (refreshBlock). In an edit from History it marks the saved
+       session, or takes the mark off, when the edit is saved. */
+    bNew(t4) {
+      const d3 = state.draft;
+      const b0 = d3 && d3.ex[Number(t4.dataset.b)];
+      if (!d3 || !b0) return;
+      const on = !markedNew(d3, b0.exId);
+      act(
+        () => {
+          for (const b2 of d3.ex)
+            if (b2.exId === b0.exId) {
+              if (on) b2.nw = true;
+              else delete b2.nw;
+            }
+          if (!d3.editingId) {
+            for (const b2 of d3.ex) if (b2.exId === b0.exId) refreshBlock(b2);
+          }
+        },
+        { inProgress: true }
+      );
+      rerenderKeepScroll();
+      toast(
+        on ? `${exName(b0.exId)} starts over from this session. Its history stays.` : `${exName(b0.exId)} reads its history again.`
+      );
+    },
+    // A superset made here is this session's; Finish offers to keep it in the plan (r34.2, from the review: it was gone next time without a word).
+    bSs(t4) {
+      const d3 = state.draft;
+      const bi = Number(t4.dataset.b);
+      if (!d3 || !d3.ex[bi]) return;
+      if (!act(
+        () => {
+          linkToggle(d3.ex, bi, (x2) => x2.plan);
+        },
+        { inProgress: true, check: () => !!d3.ex[bi] && !!d3.ex[bi + 1] }
+      ))
+        return;
+      rerenderKeepScroll();
+      const b2 = d3.ex[bi];
+      if (b2 && b2.plan.ss)
+        toast(d3.dayId ? "Superset. Finish offers to keep it in your plan." : "Superset for this session.");
+    },
+    noteReuse(t4) {
+      const b2 = tapBlock(t4);
+      const ln = b2 && b2.lastNote;
+      if (!b2 || !ln) return;
+      act(
+        () => {
+          b2.note = ln.text;
+        },
+        { inProgress: true }
+      );
+      rerenderKeepScroll();
+      toast("Note carried into this session");
+    },
+    cDraftAdd(t4) {
+      const d3 = state.draft;
+      if (!d3) return;
+      act(
+        () => {
+          (d3.cardio || (d3.cardio = [])).push(cleanDraftCardio({ id: uid(), kind: "walk", when: t4.dataset.when }));
+        },
+        { inProgress: true }
+      );
+      rerenderKeepScroll();
+    },
+    cDraftDel: cardioRemove,
+    // The check-in's sheet, from its button beside the date.
+    chkOpen() {
+      if (state.draft) openModal({ kind: "checkin" });
+    },
+    /* The check-in: answering the last of the three closes its sheet, as it
+       folded the check-in away when it was on the session. */
+    chk(t4) {
+      const d3 = state.draft;
+      if (!d3) return;
+      const k2 = t4.dataset.k || "", v3 = Number(t4.dataset.v);
+      const c4 = Object.assign({}, d3.chk || {});
+      const was = CHK_Q.every(([q]) => c4[q]);
+      if (c4[k2] === v3) delete c4[k2];
+      else c4[k2] = v3;
+      act(
+        () => {
+          d3.chk = Object.keys(c4).length ? c4 : void 0;
+        },
+        { inProgress: true }
+      );
+      if (ui.modal && ui.modal.kind === "checkin") {
+        if (!was && CHK_Q.every(([q]) => c4[q])) closeModal();
+        else renderModal();
+      }
+      rerenderKeepScroll();
+    },
+    /* The check-in's lighter session (r30, r31): only the exercises not
+       started become lighter (b.light: half their sets, about 90% loads, 3+
+       RIR, no target); the session itself is not marked, so work already done
+       at full effort still sets next time's target and counts in trends.
+       Anything already logged or typed stays exactly as it is. Undo puts it back. */
+    makeLight() {
+      const d3 = state.draft;
+      if (!d3 || d3.light || d3.deload) return;
+      const todo = d3.ex.filter((b2) => !b2.light && !b2.sets.some((x2) => !x2.warm && !rowBlank(b2, x2)));
+      if (!todo.length) {
+        toast("Every exercise is started, so nothing changed");
+        return;
+      }
+      act(
+        () => {
+          if ((d3.notes || "") === (d3.note0 || ""))
+            d3.notes = d3.note0 = `Made lighter after the check-in: exercises not started, half sets at about ${pctOf(LIGHT_SHARE)}% loads.`;
+          for (const b2 of todo) {
+            b2.light = true;
+            const work = b2.sets.filter((x2) => !x2.warm);
+            const keep = Math.max(1, Math.ceil(work.length / 2));
+            let cut = work.length - keep;
+            for (let i5 = b2.sets.length - 1; i5 >= 0 && cut > 0; i5--)
+              if (!b2.sets[i5].warm) {
+                b2.sets.splice(i5, 1);
+                cut--;
+              }
+            refreshBlock(b2);
+          }
+        },
+        { inProgress: true, undo: true }
+      );
+      rerenderKeepScroll();
+      toast(
+        `Lighter: ${todo.length} exercise${todo.length === 1 ? "" : "s"} not started now half the sets at about ${pctOf(LIGHT_SHARE)}% loads`,
+        true
+      );
+    },
+    calSnooze() {
+      act(() => {
+        state.settings.calSnooze = today();
+      });
+      rerenderKeepScroll();
+      toast(`The RIR check will come back in ${CAL_OFFER.weeks} weeks`);
+    },
+    bwAskNo() {
+      prefSet(BWASK_KEY, "1");
+      rerenderKeepScroll();
+    },
+    tStart(t4) {
+      const b2 = tapBlock(t4);
+      const d3 = state.draft;
+      if (b2 && d3 && +b2.plan.rest > 0) startTimer(+b2.plan.rest, restNext(d3.ex.indexOf(b2)));
+    },
+    /* A session with nothing in it goes at once; one with anything entered
+       (sets, reps, cardio, a note) asks first. An edit always asks, since the
+       saved sets are already in it. */
+    discard() {
+      const d3 = state.draft;
+      if (!d3) return;
+      const out = () => {
+        act(
+          () => {
+            state.draft = null;
+          },
+          { inProgress: true }
+        );
+        stopTimer();
+        wakeOff();
+        if (unpark()) setTimeout(() => toast(BACK_SAID.trim()), 0);
+        window.scrollTo(0, 0);
+        render();
+      };
+      if (!d3.editingId && !draftEntered(d3)) {
+        out();
+        toast("Session discarded");
+        return;
+      }
+      if (d3.editingId && editFp0.get(d3.id) === editFp(d3)) {
+        out();
+        toast("No changes made");
+        return;
+      }
+      confirmBox(
+        "Discard this session?",
+        d3.editingId ? "Your edits will be lost. The saved session stays as it was." : "Sets and cardio logged in this session will not be saved.",
+        "Discard",
+        out,
+        true
+      );
+    },
+    finish: () => finish(),
+    finishNow: () => finishNow()
   };
 
   // src/app/events.ts

@@ -306,7 +306,7 @@ import {
   rowBlank,
   shortPlan
 } from './worksets';
-import { readyCard, workoutStart } from './workout';
+import { readyCard } from './workout';
 import { fbContext, fbShrink } from './report';
 import { accountStart, acctInit, syncLine, waiting } from './account';
 import { impBuild, impMatch, importData, impStart, liveLogFetch, routineFromLog } from './importflow';
@@ -314,6 +314,7 @@ import { makeDemo } from './demo';
 import { exportCSV, trashTidy } from './actsapp';
 import { applyPick, swapPlan } from './actspick';
 import type { State } from './store';
+import { workoutStart } from './workfields';
 
 declare global {
   interface Window {
