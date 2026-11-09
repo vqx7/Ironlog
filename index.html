@@ -9283,10 +9283,18 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const from = wk(fk) < first ? first : wk(fk);
       if (wk(tk) < first) return null;
       const to = tk === 0 ? M3.today() : addDays(wk(tk), SUNDAY);
-      let counted = 0, sess = 0, hard = 0;
+      let counted = 0, sess = 0, hard = 0, missed = 0, light = 0;
       for (let w2 = from; w2 <= wk(tk); w2 = addDays(w2, WEEK_DAYS)) {
         const n3 = weekSessionsIn(M3, w2);
-        if (w2 >= cur || w2 < c0 || !n3 || isRestWeekIn(M3, w2) || I2.lightWk[w2]) continue;
+        if (w2 >= cur || w2 < c0 || isRestWeekIn(M3, w2)) continue;
+        if (!n3) {
+          missed++;
+          continue;
+        }
+        if (I2.lightWk[w2]) {
+          light++;
+          continue;
+        }
         counted++;
         sess += n3;
         hard += I2.weekHard[w2] || 0;
@@ -9299,7 +9307,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         counted,
         sess: counted ? sess / counted : null,
         hard: counted ? hard / counted : null,
-        prs
+        prs,
+        missed,
+        light
       };
     };
     const now = block(spans[0]);
@@ -18179,7 +18189,14 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     )}</select>`;
     if (!b2) return b`<div class="card"><p class="small muted u-m0">Log a session to start this.</p>${sel}</div>`;
     const avg = (v3) => v3 == null ? "–" : String(r1(v3));
-    const span = (x2) => `${fmtDate(x2.from)} to ${x2.to === today() ? "now" : fmtDate(x2.to)}`;
+    const out = (x2) => {
+      const o3 = [
+        x2.missed ? `${x2.missed} week${x2.missed === 1 ? "" : "s"} missed` : "",
+        x2.light ? `${x2.light === 1 ? "a lighter week" : `${x2.light} lighter weeks`} left out` : ""
+      ].filter(Boolean);
+      return o3.length ? `, ${o3.join(" and ")}` : "";
+    };
+    const span = (x2) => `${fmtDate(x2.from)} to ${x2.to === today() ? "now" : fmtDate(x2.to)}${out(x2)}`;
     const L2 = b2.last;
     const row = (label, a2, c4) => b`<tr><th scope="row">${label}</th><td class="num">${a2}</td><td class="num">${L2 ? c4 : "–"}</td></tr>`;
     return b`<div class="card"><p class="small muted u-m0-0-6">This block: ${span(b2.now)}${b2.now.counted ? "" : ", no full week yet"}. ${L2 ? `Last: ${span(L2)}.` : logBack() ? "None before it since your break." : "No block before it yet."} ${tipButton(BLOCK_TIP, "About blocks")}</p>
@@ -21180,8 +21197,9 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       if (t4.dataset.f === "w") {
         if (ex.assist) return;
         const to = stepLoad(ex, b2.plan, effW(b2, si) ?? 0, dir);
-        const n3 = to == null ? null : numIn(loadIn(ex, to));
-        if (n3 == null) return;
+        const v3 = to == null ? null : toD(to);
+        if (v3 == null) return;
+        const n3 = Math.round(v3 * HUNDREDTHS) / HUNDREDTHS;
         act(
           () => {
             s3.w = Math.min(fromD(Math.max(n3, 0)) ?? 0, LOAD_MAX);

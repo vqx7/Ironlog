@@ -656,6 +656,10 @@ export interface Block {
   hard: number | null;
   /** Counted PRs (the ones marked big) on any day of it. */
   prs: number;
+  /** Full weeks in it with nothing trained (not rest weeks): said beside the averages, which leave them out (r31, REV6-6). */
+  missed: number;
+  /** Full weeks in it read as lighter, left out of the averages and said. */
+  light: number;
 }
 
 /** This block and the one before it, by the lifter's block length, or null before anything is logged. */
@@ -701,10 +705,20 @@ export function blocksIn(M: Model): { auto: boolean; len: number | null; now: Bl
     const to = tk === 0 ? M.today() : addDays(wk(tk), SUNDAY);
     let counted = 0,
       sess = 0,
-      hard = 0;
+      hard = 0,
+      missed = 0,
+      light = 0;
     for (let w = from; w <= wk(tk); w = addDays(w, WEEK_DAYS)) {
       const n = weekSessionsIn(M, w);
-      if (w >= cur || w < c0 || !n || isRestWeekIn(M, w) || I.lightWk[w]) continue;
+      if (w >= cur || w < c0 || isRestWeekIn(M, w)) continue;
+      if (!n) {
+        missed++;
+        continue;
+      }
+      if (I.lightWk[w]) {
+        light++;
+        continue;
+      }
       counted++;
       sess += n;
       hard += I.weekHard[w] || 0;
@@ -717,7 +731,9 @@ export function blocksIn(M: Model): { auto: boolean; len: number | null; now: Bl
       counted,
       sess: counted ? sess / counted : null,
       hard: counted ? hard / counted : null,
-      prs
+      prs,
+      missed,
+      light
     };
   };
   const now = block(spans[0]);

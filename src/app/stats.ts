@@ -837,7 +837,15 @@ function blockBody(): TemplateResult {
   )}</select>`;
   if (!b) return html`<div class="card"><p class="small muted u-m0">Log a session to start this.</p>${sel}</div>`;
   const avg = (v: number | null): string => (v == null ? '–' : String(r1(v)));
-  const span = (x: Block): string => `${fmtDate(x.from)} to ${x.to === today() ? 'now' : fmtDate(x.to)}`;
+  // Weeks the averages leave out are said beside the dates, as every weekly average says them (avgWeeksTxt; REV6-6).
+  const out = (x: Block): string => {
+    const o = [
+      x.missed ? `${x.missed} week${x.missed === 1 ? '' : 's'} missed` : '',
+      x.light ? `${x.light === 1 ? 'a lighter week' : `${x.light} lighter weeks`} left out` : ''
+    ].filter(Boolean);
+    return o.length ? `, ${o.join(' and ')}` : '';
+  };
+  const span = (x: Block): string => `${fmtDate(x.from)} to ${x.to === today() ? 'now' : fmtDate(x.to)}${out(x)}`;
   const L = b.last;
   const row = (label: string, a: string, c: string): TemplateResult =>
     html`<tr><th scope="row">${label}</th><td class="num">${a}</td><td class="num">${L ? c : '–'}</td></tr>`;

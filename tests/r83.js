@@ -184,6 +184,19 @@ async function app(o = {}) {
     ok(o.bench === '145' && o.benchLb === o.typed, '5. in lb, plus on a 135 lb bench is its step up, 145 (10 lb on a bar with no step of its own), stored as 145 typed', o);
     ok(o.assist.length === 2 && o.assist.every(x => /rep/.test(x)), '5. an assisted lift steps only its reps (its field takes the help)', o.assist);
     ok(o.plank === 35, '5. a timed hold steps by 5 seconds (30 to 35)', o.plank);
+    // A lift with a load step of its own finer than a tenth (the review, REV6-5): each load the step makes, exactly.
+    const f = await D.page.evaluate(async () => {
+      const L = window.__ironlog, wait = ms => new Promise(r => setTimeout(r, ms));
+      L.state.settings.unit = 'kg'; L.state.draft = null; L.ACT.startFree(); await wait(200); if (L.ui.modal) L.ACT.mClose();
+      L.state.exercises.find(e => e.id === 'latPulldown').inc = 1.25;
+      L.applyPick({ kind: 'picker', mode: 'addBlock', title: '', q: '', m: '' }, 'latPulldown'); await wait(200);
+      const bi = L.state.draft.ex.findIndex(x => x.exId === 'latPulldown');
+      L.state.draft.ex[bi].sets[0].w = 40; L.invalidate(); L.render(); await wait(100);
+      const out = [];
+      for (const k of ['heavier', 'heavier', 'heavier', 'lighter']) { document.querySelector(`#blk-${bi} .stepr [aria-label="Set 1: ${k}"]`).click(); await wait(150); out.push(L.state.draft.ex[bi].sets[0].w); }
+      return out;
+    });
+    ok(JSON.stringify(f) === JSON.stringify([41.25, 42.5, 43.75, 42.5]), '5. a 1.25 kg step from 40: 41.25, 42.5 and 43.75 up, 42.5 down, each kept exactly (never rounded to a tenth)', f);
     const e = await D.page.evaluate(async () => {
       const L = window.__ironlog, wait = ms => new Promise(r => setTimeout(r, ms));
       L.state.draft = null; L.render(); await wait(100);
@@ -229,7 +242,12 @@ async function app(o = {}) {
       const S2 = JSON.parse(JSON.stringify(L.state)); S2.sessions = S2.sessions.filter(x => x.date < '2026-09-01' || x.date >= '2026-10-19');
       L.state = L.normalize(S2); L.invalidate(); L.closeModal && L.closeModal();
       const brk = JSON.parse(JSON.stringify(L.blocks()));
-      return { six, auto, four, cells, kept4, kept6, guide, brk };
+      // Weeks 2 and 3 back missed in the 6-week default: this block's 4 full weeks are 2 trained, 1 lighter, 2 missed.
+      const S3 = JSON.parse(JSON.stringify(S)); S3.sessions = S3.sessions.filter(x => !(x.date >= mon(3) && x.date < mon(1)));
+      L.state = L.normalize(S3); L.invalidate(); L.ui.tab = 'dash'; L.render(); await wait(200);
+      const p3 = document.querySelector('#sub-block p');
+      const missed = { now: JSON.parse(JSON.stringify(L.blocks().now)), line: p3 ? p3.textContent : '', lastLine: p3 ? (p3.textContent.split('Last:')[1] || '') : '' };
+      return { six, auto, four, cells, kept4, kept6, guide, brk, missed };
     });
     const pick = b => b && { from: b.from, counted: b.counted, sess: b.sess, hard: b.hard, prs: b.prs };
     ok(JSON.stringify(pick(r.six.now)) === JSON.stringify({ from: '2026-09-28', counted: 4, sess: 3, hard: 9, prs: 2 }) && JSON.stringify(pick(r.six.last)) === JSON.stringify({ from: '2026-08-17', counted: 6, sess: 3, hard: 9, prs: 1 }),
@@ -241,6 +259,7 @@ async function app(o = {}) {
     ok(JSON.stringify(r.cells) === JSON.stringify([['Sessions a week', '3', '3'], ['Hard sets a week', '9', '9'], ['PRs', '2', '1']]), "6. Stats' Consistency shows the two blocks side by side", r.cells);
     ok(r.kept4 === 4 && r.kept6 === false, '6. picking 4 weeks there keeps it; back to 6, the setting is absent again (older saves hash as before)', { kept4: r.kept4, kept6: r.kept6 });
     ok(/Rogerson 2024/.test(r.guide), "6. the Guide's Sources name the survey behind 6 weeks", r.guide.slice(-400));
+    ok(r.missed && r.missed.now.missed === 2 && r.missed.now.counted === 2 && /2 weeks missed and a lighter week left out/.test(r.missed.line) && !/missed/.test(r.missed.lastLine), '6. a block with weeks missed says so beside its dates, as every weekly average does (the review, REV6-6); one with none says nothing', r.missed);
     ok(r.brk && r.brk.last === null && r.brk.now.from === '2026-10-19', '6. after a break of more than 4 weeks the block starts with the first week back and nothing before the break is compared', r.brk && { now: r.brk.now.from, last: r.brk.last });
     await D.browser.close();
   }

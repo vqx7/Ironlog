@@ -28,7 +28,7 @@ import { loadMode, CARDIO, CWHEN, ML, injLabel, CARDIOL, CWHENL } from './librar
 import { ssLetters, fixSupersets, linkToggle } from './routines';
 import { missedTag, repSpan, effLeastShort, LIGHT_RIR, fmtDate, estMin } from './format';
 import { isMissed, isWork, DROP_START, WARM_RAMP, LIGHT_SHARE } from './formulas';
-import { today, numIn, uid, isDate, EPS, pctOf, iso, addDays } from './util';
+import { today, numIn, uid, isDate, EPS, pctOf, iso, addDays, HUNDREDTHS } from './util';
 import { cleanDraftCardio, LOAD_MAX, LOAD_MIN } from './normalize';
 import { platesMode } from './gym';
 import { loadWords, loadNote, emptyLoad } from './loads';
@@ -46,7 +46,8 @@ import {
   fromD,
   oddLoad,
   lightZero,
-  stepLoad
+  stepLoad,
+  toD
 } from './live';
 import { sessionShown, state, ui } from './store';
 import {
@@ -946,8 +947,11 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (t.dataset.f === 'w') {
       if (ex.assist) return;
       const to = stepLoad(ex, b.plan, effW(b, si) ?? 0, dir);
-      const n = to == null ? null : numIn(loadIn(ex, to));
-      if (n == null) return;
+      /* As the number typed in the unit on screen, to the hundredth a field takes: the field's own text is rounded to a
+         tenth, and stored from it a 1.25 kg step went 41.3, 42.6, 43.9, off every load the lift has (the review, REV6-5). */
+      const v = to == null ? null : toD(to);
+      if (v == null) return;
+      const n = Math.round(v * HUNDREDTHS) / HUNDREDTHS;
       act(
         () => {
           s.w = Math.min(fromD(Math.max(n, 0)) ?? 0, LOAD_MAX);

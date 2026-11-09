@@ -90,6 +90,10 @@ const EXTRA = {
   // Each tagged lift a step up from loads on and off its rack, to a little above and well above (moved from the legacy script in r54).
   // A set being logged, as its PRs judge it (r54): each lift's newest set, the same weight typed in the other unit on its usual step, a blank load, and no date.
   prFrame: (s, ids) => ids.flatMap(id => { const ss = s.sessions.filter(x => x.ex.some(b => b.exId === id)); const last = ss[ss.length - 1]; if (!last) return [[id, { w: 20, r: 8 }, '']]; const set = last.ex.find(b => b.exId === id).sets[0], w = +set.w || 0; const other = Math.abs(w / 0.05 - Math.round(w / 0.05)) < 1e-6 ? Math.round(w / 0.45359237 / 5) * 5 * 0.45359237 : Math.round(w / 2.5) * 2.5; return [[id, set, last.date], [id, { ...set, w: other }, last.date], [id, { ...set, w: other, r: (+set.r || 0) + 1 }, last.date], [id, { w: '', r: 5 }, last.date], [id, set, '']]; }),
+  // 2.37 (ST-6): minus and plus, the next load down and up from on and off a lift's loads, with a step of its own, and from none.
+  stepLoad: (s, ids) => ids.map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e, null, 20, 1], [e, null, 20, -1], [e, null, 5.443, 1], [e, { inc: 2.5 }, 50, -1], [e, null, 0, -1], [e, null, 0, 1]]),
+  // 2.37 (ST-6): This block vs last, by the log's own block length.
+  blocks: () => [[]],
   heavierLoad: (s, ids) => ids.map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e, null, 20, 21], [e, null, 20, 40], [e, null, 5.443, 9], [e, { inc: 2.5 }, 50, 60]]),
   // A set about to be logged, its load far off or not (r55): 300 after two 50s, 30 after 300, a first set at ten times the lift's best,
   // one at its best, a blank load, no load, a row under a ticked set with its load grey, and a warm-up; on every lift, with the log's newest date.
