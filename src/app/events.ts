@@ -175,7 +175,7 @@ export function eventListeners(): void {
     if (tab instanceof HTMLElement) {
       ui.tab = tab.dataset.tab || '';
       // Back to the tab from anywhere opens the workout in progress (NEW-89, V: Today defaults to it).
-      ui.away = false;
+      ui.away = null;
       if (ui.tab === 'program') ui.planView = 'routine';
       window.scrollTo(0, 0);
       render();

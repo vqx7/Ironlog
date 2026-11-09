@@ -111,8 +111,8 @@ interface Ui {
   bestsAll?: boolean | undefined;
   /** More options opened on Today's start card. */
   heroMore?: boolean | undefined;
-  /** Stepped away from the workout in progress to Today with Save and leave (NEW-89); any other way back to the tab opens the workout. */
-  away?: boolean | undefined;
+  /** The workout stepped away from to Today with Save and leave (NEW-89), by its id, so a workout that replaces it (finished and another started elsewhere) opens as any does (R81-1); any other way back to the tab clears it. */
+  away?: string | null | undefined;
 }
 /** What the screens are showing (the type above). */
 export const ui: Ui = {
@@ -150,7 +150,10 @@ export const ui: Ui = {
 };
 
 /** Whether the screen shows the workout in progress: Today's tab with a workout open, unless the lifter stepped away with Save and leave (NEW-89). */
-export const sessionShown = (): boolean => ui.tab === 'today' && !!state.draft && !ui.away;
+export const sessionShown = (): boolean => ui.tab === 'today' && !!state.draft && !awayFrom();
+
+/** Whether the workout in progress is the one the lifter stepped away from with Save and leave. */
+export const awayFrom = (): boolean => !!state.draft && !!ui.away && ui.away === state.draft.id;
 
 /* ---------- the account's documents ---------- */
 

@@ -1139,13 +1139,13 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
      steps away to Today, which offers it back; the tab, Back and opening the
      app again all open the workout. */
   wkAway() {
-    ui.away = true;
+    ui.away = state.draft ? state.draft.id : null;
     window.scrollTo(0, 0);
     render();
     toast('Saved. Resume it from Today.');
   },
   wkResume() {
-    ui.away = false;
+    ui.away = null;
     ui.tab = 'today';
     window.scrollTo(0, 0);
     render();

@@ -9,7 +9,7 @@
 import { bwSheet } from './bwnudge';
 import { picSheet } from './notepics';
 import type { TemplateResult } from 'lit-html';
-import { sessionShown, state, ui } from './store';
+import { awayFrom, sessionShown, state, ui } from './store';
 import { act } from './act';
 import { drawScreen, drawing, dragDrop, dragStart } from './view';
 import { applyTheme, render, renderModal, rerenderKeepScroll, setSaveState } from './page';
@@ -78,7 +78,7 @@ function killDynamic(): void {
 
 /** The tabs drawn by their modules (phase 5, r57 to r60): each a template of the log and ui. Today with a session in progress is the session screen (workout.ts, r60). */
 const TABS: Readonly<Record<string, () => TemplateResult>> = {
-  today: () => (state.draft && !ui.away ? viewWorkout(state.draft) : viewToday()),
+  today: () => (state.draft && !awayFrom() ? viewWorkout(state.draft) : viewToday()),
   history: viewHistory,
   settings: viewSettings,
   program: () => (ui.planView === 'library' ? viewLibrary() : viewProgram()),

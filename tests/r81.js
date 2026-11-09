@@ -12,8 +12,12 @@
 //      without a workout; Resume opens the workout; leaving and then coming back to the tab from another one, or opening
 //      the app again, opens the workout.
 //   4  The new parts fit a 320 px phone with no sideways scroll, with 44 px targets, in light and dark.
+//   5  R81-1 (the review of 2.35): stepped away from one workout, a new one that arrives from elsewhere (another tab
+//      finished it and started the next) opens on Today; the Resume card is only ever for the workout left.
+//   6  R81-3 (the review of 2.35; older): an import keeps an exercise's note on any of its rows, not only its first
+//      (a Strong-style file with a warm-up row first), and the workout's note as before.
 // R81_ONLY=1,2 runs some sections.
-const { open } = require('./h');
+const { open, tab } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
 const FILE = process.argv[2] || 'index.html';
@@ -168,6 +172,43 @@ const draftOf = D => D.page.evaluate(() => { const d = window.__ironlog.state.dr
       ok(!m2.sw && m2.h >= 44, `4. the resume card fits 320 px with a 44 px button (${dark ? 'dark' : 'light'})`, m2);
       await D.browser.close();
     }
+  }
+  if (run(5)) {
+    const D = await app();
+    await startToday(D);
+    await D.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]').catch(() => {});
+    await wait(400);
+    const left = await D.page.evaluate(() => window.__ironlog.state.draft.id);
+    await D.page.click('#view [data-act="wkAway"]').catch(() => {});
+    await wait(300);
+    const T = await tab(D, FILE);
+    await wait(800);
+    await T.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); L.state.draft._leftAsked = true; L.ACT.finishNow(); });
+    await wait(500);
+    await T.page.evaluate(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ACT.startSession({ dataset: { day: '1' } }); });
+    await wait(1000);
+    const s = await D.page.evaluate(() => ({ draft: window.__ironlog.state.draft && window.__ironlog.state.draft.id, session: !!document.querySelector('#view section.block'), resume: !!document.getElementById('resumeCard') }));
+    ok(s.draft && s.draft !== left && s.session && !s.resume, '5. a new workout that arrives after stepping away from another opens on Today, with no Resume card', s);
+    await T.page.close();
+    await D.browser.close();
+  }
+
+  if (run(6)) {
+    const D = await app();
+    const CSV = 'Date,Workout Name,Exercise Name,Set Order,Weight,Reps,Notes,Workout Notes\n' +
+      '2026-10-01 18:00:00,Push,Bench Press (Barbell),W,40,10,,\n' +
+      '2026-10-01 18:00:00,Push,Bench Press (Barbell),1,80,8,seat 4,\n' +
+      '2026-10-01 18:00:00,Push,Bench Press (Barbell),2,80,7,left shoulder twinge,slept badly\n' +
+      '2026-10-01 18:00:00,Push,Bench Press (Barbell),3,80,6,seat 4,\n';
+    await D.page.evaluate(() => { const L = window.__ironlog; L.state.sessions = []; L.saveNow(); });
+    await D.page.evaluate(t => window.__ironlog.impStart({ text: t }), CSV);
+    await wait(500);
+    await D.page.click('#modal [data-act="impGo"]').catch(() => {});
+    await wait(600);
+    const s = await D.page.evaluate(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); const x = L.state.sessions[0]; return x ? { notes: x.notes, note: x.ex[0].note, sets: x.ex[0].sets.length } : null; });
+    ok(s && /seat 4/.test(s.note || '') && /left shoulder twinge/.test(s.note || '') && (s.note.match(/seat 4/g) || []).length === 1, "6. an import keeps an exercise's notes from every row, each once", s);
+    ok(s && s.notes === 'slept badly', "6. (a guard) and the workout's note as before", s);
+    await D.browser.close();
   }
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
   process.exit(fails.length ? 1 : 0);

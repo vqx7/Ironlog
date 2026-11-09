@@ -71,7 +71,7 @@ import {
   weekStreak,
   cycleState
 } from './live';
-import { acct, cloud, state, ui } from './store';
+import { acct, awayFrom, cloud, state, ui } from './store';
 import {
   ACCT_LATER,
   BWSNOOZE_KEY,
@@ -716,7 +716,7 @@ export function viewToday(): TemplateResult {
   const lines = [acctBar(), installBar(), iconBar()];
   const above = html`${welcomeCard()}${lines}${lines.every(l => l === nothing) ? photoBar() : nothing}`;
   // Stepped away from a workout with Save and leave (NEW-89): its card takes the start card's place, so Today offers no second start.
-  const open = state.draft && ui.away ? state.draft : null;
+  const open = state.draft && awayFrom() ? state.draft : null;
   if (open)
     return html`${above}${resumeCard(open)}${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
   if (free) {

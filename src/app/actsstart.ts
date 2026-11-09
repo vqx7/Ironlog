@@ -48,7 +48,7 @@ const blockPlan = (p: Plan): DraftBlock['plan'] => ({ ...p, ss: p.ss ?? null });
    neither, as before r63. */
 /** Opens the session screen on a new session in progress: one started now (live), or a past workout or an edit. */
 function begin(d: DraftLike, live: boolean): void {
-  ui.away = false;
+  ui.away = null;
   act(
     () => {
       state.draft = d;
@@ -106,7 +106,7 @@ function pastDraft(date: string, di: number | null, part: 1 | 2 = 1): DraftLike 
    never discards one unasked. */
 function resumeOpen(): boolean {
   if (!state.draft) return false;
-  ui.away = false;
+  ui.away = null;
   ui.tab = 'today';
   window.scrollTo(0, 0);
   render();
@@ -164,7 +164,7 @@ function startSession(t: Tap): void {
 function wkGo(t: Tap): void {
   const d = t.dataset.date;
   ui.tab = 'today';
-  ui.away = false;
+  ui.away = null;
   if (!state.draft) {
     const R = activeRoutine();
     const di = t.dataset.day != null ? Number(t.dataset.day) : null;
