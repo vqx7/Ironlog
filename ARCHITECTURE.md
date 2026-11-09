@@ -36,6 +36,7 @@ src/app/            TypeScript modules, the whole app when this is done
   storage.ts        the keys, the save on this device, the error log, Undo's steps, the settings kept aside for the demo (r56), a log kept aside for another account (r56.1, in IndexedDB), pictures' bytes (r66, in IndexedDB)
   pics.ts           pictures on notes (r66): drawn again as JPEGs on the phone, their ids in the log, kept until 45 days after their own log last named them
   photo.ts          the profile photo in the menu button (2.33): the account's since 2.34, a document of its own beside the log's (sync.ts), through the same JPEG redraw as pics.ts, never in the log
+  park.ts           a workout in progress set aside while an earlier one is edited or logged (2.36, R81-2): this phone's own, with its account, never synced; it comes back when that one ends
   sync.ts           saving (this device, then the account), the documents merged, the sync notes, another tab (r56)
   act.ts            the one way to change the log: check, Undo step, change, caches, save, sync (r57)
   view.ts           the host that draws every tab into #view with lit-html, and the parts moved screens share (r57)
@@ -51,7 +52,7 @@ src/01-03, 99       the page's markup and styles
 Layer 0, config and record shapes: config, types
 Layer 1, data: util, units, library, routines, formulas, records, gym, profile, model, layout
 Layer 2, engine and analytics: session, loads, prs, trend, volume, goals, importing, format, charts, analytics, time, weeks, coach, engine, plans, pick
-Layer 3, storage and sync: chunks, merge, modals, store, live, providers, normalize, storage, sync, act, targets, pics, photo
+Layer 3, storage and sync: chunks, merge, modals, store, live, providers, normalize, storage, sync, act, targets, pics, photo, park
 Layer 4, screens: icons, feedback, effort, toast, timer, tips, guide, sheets, sheetsmisc, notepics, bwnudge, sheetslift, sheetsplan, sheetsexercise, sheetspicker, sheetsapp, captcha, sheetsaccount, sheetsimport, env, outside, display, view, page, update, history, settings, graphs, plan, stats, calendar, week, map, today, workstate, worksets, workfinish, workdrag, workout, report, account, importflow, demo, actsapp, actsroutine, actspick, actsstart, actslift, screens, events
 Layer 5, the page's start: main
 

@@ -55,6 +55,8 @@ export const BWSNOOZE_KEY = KEY + '.bwSnooze',
   BWASK_KEY = KEY + '.bwAsk';
 /** The account's profile photo as this phone holds it (2.34; kept on this phone only in 2.33), the note of where that
     copy stands against the account (photo.ts), and its one-time line on Today answered (Add photo or Not now). */
+/** A workout in progress set aside while an earlier one is edited or logged (R81-2): this phone's, with its account. */
+export const PARKED_KEY = KEY + '.parked';
 export const PHOTO_KEY = KEY + '.photo',
   PHOTO_SYNC = KEY + '.photoSync',
   PHOTO_ASKED = KEY + '.photoAsked';

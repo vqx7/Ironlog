@@ -72,6 +72,7 @@ import {
   cycleState
 } from './live';
 import { acct, awayFrom, cloud, state, ui } from './store';
+import { parkedHere } from './park';
 import {
   ACCT_LATER,
   BWSNOOZE_KEY,
@@ -719,6 +720,13 @@ export function viewToday(): TemplateResult {
   const open = state.draft && awayFrom() ? state.draft : null;
   if (open)
     return html`${above}${resumeCard(open)}${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
+  /* A workout set aside for an edit that has not come back by itself (the app
+     closed halfway, or the account was away when the edit ended) is offered in
+     the start card's place until it does (R81-2). */
+  if (!state.draft && parkedHere())
+    return html`${above}<section class="hero" id="parkedCard"><div class="hero-top"><div class="hero-t"><p class="eyebrow">Workout set aside</p><h2>Your workout in progress</h2>
+<p class="muted small u-m0">Set aside while you fixed an earlier one.</p></div></div>
+<button class="btn primary fullw big" data-act="parkBack">Bring it back</button></section>${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
   if (free) {
     const w = noLog()
       ? 'Add exercises as you go.'

@@ -16,6 +16,7 @@ import type { TemplateResult } from 'lit-html';
 import { live } from 'lit-html/directives/live.js';
 import { repeat } from 'lit-html/directives/repeat.js';
 import { APP_NAME, PREVIEW_NAME, VERSION_LINE } from './config';
+import { parkForget } from './park';
 import { act } from './act';
 import { MK, ML, MUSCLES, TARGETED, TRACK_ONLY } from './library';
 import {
@@ -1370,6 +1371,8 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
             setState(normalize(null));
             if (!cloud.on) cloudStop(true);
             asideClear();
+            // A workout set aside for an edit goes with the log (R81-2).
+            parkForget();
           },
           { undo: true }
         );

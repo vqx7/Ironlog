@@ -23,6 +23,7 @@ import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { repeat } from 'lit-html/directives/repeat.js';
 import { act } from './act';
+import { parkedHeld, unpark } from './park';
 import { loadMode, CARDIO, CWHEN, ML, injLabel, CARDIOL, CWHENL } from './library';
 import { ssLetters, fixSupersets, linkToggle } from './routines';
 import { missedTag, repSpan, effLeastShort, LIGHT_RIR, fmtDate, estMin } from './format';
@@ -113,7 +114,7 @@ import {
   restNext,
   CAL_OFFER
 } from './worksets';
-import { finish, finishNow } from './workfinish';
+import { BACK_SAID, finish, finishNow } from './workfinish';
 import { LIMITS, EFFORT_TOP, within } from './records';
 import { PICK_DAYS } from './analytics';
 import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScroll } from './page';
@@ -535,7 +536,7 @@ export function viewWorkout(d: Draft): TemplateResult {
   const meta = sp.n
     ? html`${when ? when.charAt(0).toUpperCase() + when.slice(1) : ''}<span id="sessLeft">${left > 0 ? `${when ? ' · ' : ''}${estMin(left)} left` : ''}</span>`
     : html`<span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? 'set' : 'sets'}</span> done${when ? `, ${when}` : ''}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ''}</span>`;
-  return html`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d.editingId ? 'Editing a saved session' : d.past ? 'Past workout' : 'Session in progress'}</p><div class="hrow"><h2 class="u-owany_minw0">${d.dayName}</h2>${helpButton('log')}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button></div><p class="meta">${meta}</p>${
+  return html`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d.editingId ? 'Editing a saved session' : d.past ? 'Past workout' : 'Session in progress'}</p><div class="hrow"><h2 class="u-owany_minw0">${d.dayName}</h2>${helpButton('log')}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button></div><p class="meta">${meta}</p>${parkedHeld() ? html`<p class="small muted u-m4-0-0" id="parkedLine">Your workout in progress is set aside. It comes back when you save or discard this one.</p>` : ''}${
     sp.n
       ? html`<div class="sprog"><div class="band" role="progressbar" aria-label="Sets done" aria-valuemin="0" aria-valuemax=${sp.n} aria-valuenow=${sp.k} aria-valuetext=${`${sp.k} of ${sp.n} sets done`}><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%;--pct:${sp.pct}`}></div></div><span id="sessOf" aria-hidden="true">${sp.k} of ${sp.n}</span></div>`
       : ''
@@ -1150,6 +1151,14 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     window.scrollTo(0, 0);
     render();
   },
+  // Today's card for a workout set aside that did not come back by itself (R81-2): it comes back and opens.
+  parkBack() {
+    if (!unpark()) return;
+    ui.away = null;
+    ui.tab = 'today';
+    window.scrollTo(0, 0);
+    render();
+  },
   // Every place this exercise was opened at, so a move and a fold leave nothing behind.
   bFold(t) {
     const b = tapBlock(t);
@@ -1345,6 +1354,8 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       );
       stopTimer();
       wakeOff();
+      // A workout set aside for this one comes back, offered on Today (R81-2).
+      if (unpark()) setTimeout(() => toast(BACK_SAID.trim()), 0);
       window.scrollTo(0, 0);
       render();
     };

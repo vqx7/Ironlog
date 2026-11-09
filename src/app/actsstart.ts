@@ -18,6 +18,7 @@ import { estMin, min5 } from './format';
 import { activeRoutine, eqPlan, exName, isDeloadWeek, planFor } from './live';
 import { HIST_PAGE, state, ui } from './store';
 import { act } from './act';
+import { parkDraft } from './park';
 import { sessionsOn } from './display';
 import { calBounds } from './calendar';
 import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScroll } from './page';
@@ -100,6 +101,9 @@ function pastDraft(date: string, di: number | null, part: 1 | 2 = 1): DraftLike 
     ex: day.items.map(it => newBlock(it.exId, it, { before: date }))
   };
 }
+
+/** What is said when the workout open is set aside for an edit or a past workout (R81-2). */
+const PARKED_SAID = 'Your workout in progress is set aside. It comes back when you save or discard this one.';
 
 /* A start with a workout already open opens that one instead (NEW-89): Today
    offers starts while the lifter has stepped away from a workout, and a start
@@ -412,15 +416,9 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       );
       toast(day ? `${day.name} started with the same exercises` : 'Started as a freestyle session');
     };
-    if (state.draft)
-      confirmBox(
-        'Replace the session in progress?',
-        'You have an unsaved session open. Starting this one discards it.',
-        'Discard and start',
-        go,
-        true
-      );
-    else go();
+    // A start with a workout open opens it, as every start does since 2.35 (R81-2: this one offered to throw it away).
+    if (resumeOpen()) return;
+    go();
   },
   startSession,
   startAltOpen(t) {
@@ -569,7 +567,11 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     };
     closeModal();
     const d = state.draft;
-    if (d && (d.editingId || draftEntered(d)))
+    // The workout open is set aside and comes back when this one is saved or discarded (R81-2); else asked, as before.
+    if (d && parkDraft()) {
+      go();
+      toast(PARKED_SAID);
+    } else if (d && (d.editingId || draftEntered(d)))
       confirmBox(
         'Replace the session in progress?',
         d.editingId
@@ -640,7 +642,11 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       ui.tab = 'today';
       begin(d, false);
     };
-    if (state.draft)
+    // The workout open is set aside and comes back when the edit is saved or cancelled (R81-2); else asked, as before.
+    if (state.draft && parkDraft()) {
+      go();
+      toast(PARKED_SAID);
+    } else if (state.draft)
       confirmBox(
         'Replace the session in progress?',
         'You have an unsaved session open. Editing this one will discard it.',
