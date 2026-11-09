@@ -134,10 +134,11 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   await ev(() => { const L = window.__ironlog; L.ACT.pastOpen({ dataset: { date: '2026-09-21' } }); });
   await page.waitForTimeout(60);
   await page.click('#modal [data-act="pastGo"][data-day="1"]'); await page.waitForTimeout(80);
-  ok(await ev(() => window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind === 'confirm' && !window.__ironlog.state.draft.past), 'a session with reps typed is not replaced without asking');
-  await page.click('#modal [data-act="mOk"]'); await page.waitForTimeout(100);
-  ok(await ev(() => window.__ironlog.state.draft.past && window.__ironlog.state.draft.dayName === 'Back'), 'confirming starts the past Back session');
-  await ev(() => { window.__ironlog.state.draft = null; window.__ironlog.saveNow(); window.__ironlog.render(); });
+  /* Since 2.36 (R81-2) a session with reps typed is never replaced: it is set aside, with its reps, while the past
+     workout is logged, and comes back after it, so there is nothing to ask (tests/r82.js holds the coming back). */
+  ok(await ev(() => { const L = window.__ironlog, v = localStorage.getItem(L.KEY + '.parked'), p = v && JSON.parse(v).draft; return !L.ui.modal && !!p && p.ex[0].sets[0].r === 9; }), 'a session with reps typed is not replaced: it is set aside with its reps');
+  ok(await ev(() => window.__ironlog.state.draft.past && window.__ironlog.state.draft.dayName === 'Back'), 'the past Back session starts');
+  await ev(() => { const L = window.__ironlog; L.state.draft = null; localStorage.removeItem(L.KEY + '.parked'); L.saveNow(); L.render(); });
 
   // ---- 59: after a swap to a lift with no history, the grey number still works.
   await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); window.scrollTo(0, 0); });
