@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-KlNFu74Tg+N0E5aUHR4ZDOy7us65Z2bthz7+K4TvX38=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-UiK5z2ijKgsnaEpsYLcw58zyDC09mfRvuZibo7dsPdg=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.08-r81">
@@ -7745,6 +7745,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (!(st > 0)) return null;
       w2 = fromDIn(M3, Math.floor(toDIn(M3, want) / st + EPS) * st);
     }
+    const floor = loadFloorIn(M3, ex);
+    if (floor > 0 && w2 < floor - EPS) w2 = floor;
     if (!(w2 > 0)) return null;
     return { ex: k2.ex, date: x2.date, w: w2, set: `${loadLabelIn(M3, k2.ex, set.w)}×${set.r}` };
   }
@@ -8462,9 +8464,18 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (!recent || !worst) return { r: 1, days: null, sets: 0, need: 0 };
     return { r: worst.r, days: recent.days, sets: recent.sets, need: worst.need };
   }
+  function lastAnyHardIn(M3, m3) {
+    const dm = IDXIn(M3).dayMus;
+    for (let k2 = 0; k2 <= RECOVERY.window; k2++) {
+      const day = dm[addDays(M3.today(), -k2)];
+      if (day && (day[m3] || 0) > 0) return k2;
+    }
+    return null;
+  }
   function lastHitTxtIn(M3, m3) {
     const rc = recoveryIn(M3, m3);
-    return rc.days == null ? `not trained hard in ${RECOVERY.window / WEEK_DAYS} weeks` : `last hard ${agoTxt(rc.days)}`;
+    const k2 = rc.days ?? lastAnyHardIn(M3, m3);
+    return k2 == null ? `not trained hard in ${RECOVERY.window / WEEK_DAYS} weeks` : `last hard ${agoTxt(k2)}`;
   }
   function dayDirectIn(M3, day) {
     const out = {};
@@ -8506,11 +8517,13 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const ms = sessionMuscleSetsIn(M3, day);
       const dir = dayDirectIn(M3, day);
       let fill = 0, fat = 0, over = 0, injS = 0, wR = 0, wT = 0;
+      const injM = [];
       for (const [m3, w0] of Object.entries(ms)) {
         const w2 = w0 * f3;
         const rc = recoveryIn(M3, m3);
         if (inj.has(m3)) {
           injS += w2;
+          if (w2 > 0) injM.push(m3);
           continue;
         }
         const has = hasTargetIn(M3, m3);
@@ -8550,6 +8563,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         plan: i5 === planIdx,
         ready: wT ? wR / wT : 1,
         dir,
+        injM: injM.sort((a2, b2) => (ms[b2] || 0) - (ms[a2] || 0)),
         joints
       });
     });
@@ -8563,6 +8577,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (x2.plan) out.push(activeRoutineIn(M3).schedule === "weekly" ? "Planned for today." : "Next in your cycle.");
     if (x2.joints && x2.joints.length)
       out.push(`Loads your ${andList(x2.joints.map((j3) => (JL[j3] || j3).toLowerCase()))}, which you flagged.`);
+    const injOther = x2.injM.filter((m3) => !main.includes(m3));
+    if (injOther.length) out.push(`Loads ${andList(injOther.map((m3) => ML[m3] || m3))}, which you flagged as injured.`);
     for (const m3 of main) {
       if (inj.has(m3)) {
         out.push(`Loads ${ML[m3]}, which you flagged as injured.`);
@@ -8678,7 +8694,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       !hasTargetIn(M3, x2.m) ? `${name}: ${r1(x2.r7)} hard sets in the last 7 days, counting this session (tracked only, no target).` : `${name}: ${r1(x2.r7)} of ${lo}-${hi} hard sets in the last 7 days, counting this session${x2.def > 0 ? `, ${r1(x2.def)} short of target` : ", at or above target"}.`
     );
     out.push(
-      x2.rec.days == null ? `Not trained hard in the last ${RECOVERY.window / WEEK_DAYS} weeks.` : x2.rec.r < 1 ? `Last trained hard ${agoTxt(x2.rec.days)} (${r1(x2.rec.sets)} sets), so it may still be recovering.` : `Last trained hard ${agoTxt(x2.rec.days)}, recovered.`
+      x2.rec.days == null ? lastAnyHardIn(M3, x2.m) == null ? `Not trained hard in the last ${RECOVERY.window / WEEK_DAYS} weeks.` : `Last trained hard ${agoTxt(lastAnyHardIn(M3, x2.m) ?? 0)}, recovered.` : x2.rec.r < 1 ? `Last trained hard ${agoTxt(x2.rec.days)} (${r1(x2.rec.sets)} sets), so it may still be recovering.` : `Last trained hard ${agoTxt(x2.rec.days)}, recovered.`
     );
     if (x2.inSess > 0)
       out.push(
@@ -9315,7 +9331,21 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const mst = avg ? muscleStatusIn(M3, avg) : null;
     if (avg && mst) {
       const lagSet = new Set(I2.scores.filter((x2) => x2.label === "lagging").map((x2) => x2.m));
-      const under = MK.filter((m3) => !inj.has(m3) && mst[m3].st === "under").map((m3) => ({
+      const usable = (id) => M3.s.exercises.some((e5) => e5.id === id && !e5.archived) && !exInjuryIn(M3, EXIn(M3, id));
+      const liftFor = (m3) => {
+        const done = (id2) => (I2.byEx[id2] || []).length > 0;
+        const forM = (id2) => {
+          const e5 = EXIn(M3, id2);
+          return !!e5 && e5.primary === m3;
+        };
+        const inR = [];
+        for (const d3 of R2.days) for (const it of d3.items) if (forM(it.exId) && !inR.includes(it.exId)) inR.push(it.exId);
+        const logged2 = Object.keys(I2.byEx).filter((id2) => forM(id2) && M3.s.exercises.some((e5) => e5.id === id2 && !e5.archived)).sort((x2, y2) => I2.byEx[y2][I2.byEx[y2].length - 1].date.localeCompare(I2.byEx[x2][I2.byEx[x2].length - 1].date));
+        const id = inR.filter(usable).find(done) || logged2.filter(usable)[0] || inR.filter(usable)[0] || null;
+        const blocked = !id && [...inR, ...logged2].some((x2) => !!exInjuryIn(M3, EXIn(M3, x2)));
+        return { id, blocked };
+      };
+      const under = MK.filter((m3) => !inj.has(m3) && mst[m3].st === "under" && !liftFor(m3).blocked).map((m3) => ({
         m: m3,
         got: avg[m3] || 0,
         lo: bands[m3][0],
@@ -9334,15 +9364,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (under.length) {
         const u4 = under[0];
         const gap = Math.max(1, Math.ceil(u4.lo - u4.got));
-        const done = (id) => (I2.byEx[id] || []).length > 0;
-        const forM = (id) => {
-          const e5 = EXIn(M3, id);
-          return !!e5 && e5.primary === u4.m;
-        };
-        const inR = [];
-        for (const d3 of R2.days) for (const it of d3.items) if (forM(it.exId) && !inR.includes(it.exId)) inR.push(it.exId);
-        const logged2 = Object.keys(I2.byEx).filter((id) => forM(id) && M3.s.exercises.some((e5) => e5.id === id && !e5.archived)).sort((x2, y2) => I2.byEx[y2][I2.byEx[y2].length - 1].date.localeCompare(I2.byEx[x2][I2.byEx[x2].length - 1].date));
-        const exId = inR.find(done) || logged2[0] || inR[0] || null;
+        const exId = liftFor(u4.m).id;
         const planned = plannedSetsIn(M3, R2)[u4.m] || 0;
         const rpe = effScale(M3.s.settings.rirScale) === "rpe";
         const hard = rpe ? "RPE 7 or harder" : "3 or fewer reps in reserve", easy = rpe ? "at RPE 6 or easier" : "with 4 or more in reserve";
@@ -11878,7 +11900,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function minPart(m3) {
     const b2 = state.settings.timeBudget;
     const r4 = min5(m3);
-    return b2 && m3 > b2 ? b`<span class="overb">${estMin(r4)}, over your ${b2} min budget</span>` : estMin(r4);
+    return b2 && r4 > b2 ? b`<span class="overb">${estMin(r4)}, over your ${b2} min budget</span>` : estMin(r4);
   }
   function grip(label) {
     return b`<span class="sgrip" role="button" tabindex="0" aria-label=${`Move ${label}: drag, or use the arrow keys`} title="Drag to move">⠿</span>`;
@@ -24591,7 +24613,14 @@ ${JSON.stringify(ctx, null, 1)}`;
   function swapPlan(p3, fromId, toId, R0, dayId) {
     const R2 = R0 || activeRoutine();
     const inR = R2.days.some((d3) => d3.items.some((it) => it.exId === toId));
-    if (!inR && !!EX(fromId).timed === !!EX(toId).timed) return { ...p3 };
+    if (!inR && !!EX(fromId).timed === !!EX(toId).timed) {
+      if (EX(fromId).equip === EX(toId).equip) return { ...p3 };
+      const q2 = defPlan(toId);
+      const o4 = { ...p3, inc: q2.inc };
+      if (q2.jump != null) o4.jump = q2.jump;
+      else delete o4.jump;
+      return o4;
+    }
     const q = inR ? planFor(toId, R2, dayId) : defPlan(toId);
     const o3 = { ...p3, repMin: q.repMin, repMax: q.repMax, rir: q.rir, rest: q.rest, inc: q.inc };
     if (q.jump != null) o3.jump = q.jump;
