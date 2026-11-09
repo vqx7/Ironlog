@@ -9,6 +9,7 @@ import {
   EXIn,
   UIn,
   activeRoutineIn,
+  exInjuryIn,
   exNameIn,
   freeModeIn,
   injuredSetIn,
@@ -236,7 +237,32 @@ export function coachIn(M: Model): CoachLine {
     /* Largest shortfall in sets first. Sorting by the fraction of target put
        a small muscle at 0 of 2 sets ahead of a major one at 5 of 10, which is
        backwards for a hypertrophy-first plan. The fraction still breaks ties. */
-    const under = MK.filter(m => !inj.has(m) && mst[m].st === 'under')
+    /* The lift the coach names for a muscle: one the lifter actually does
+       (r31), one in the routine that has been logged first, then any logged
+       lift for the muscle, then the routine's. Never one the lifter deleted
+       (R81-10) or one that loads a flagged injury, a joint or a helper muscle
+       as well as the muscle itself (R81-4, the review of 2.35: with the knee
+       flagged it asked for back squats). A muscle whose every lift the lifter
+       has loads an injury is not pushed at all. */
+    const usable = (id: string): boolean =>
+      M.s.exercises.some(e => e.id === id && !e.archived) && !exInjuryIn(M, EXIn(M, id));
+    const liftFor = (m: string): { id: string | null; blocked: boolean } => {
+      const done = (id: string): boolean => (I.byEx[id] || []).length > 0;
+      const forM = (id: string): boolean => {
+        const e = EXIn(M, id);
+        return !!e && e.primary === m;
+      };
+      const inR: string[] = [];
+      for (const d of R.days) for (const it of d.items) if (forM(it.exId) && !inR.includes(it.exId)) inR.push(it.exId);
+      // The ids come from byEx's own keys, so each is there, as the ! say.
+      const logged = Object.keys(I.byEx)
+        .filter(id => forM(id) && M.s.exercises.some(e => e.id === id && !e.archived))
+        .sort((x, y) => I.byEx[y]![I.byEx[y]!.length - 1].date.localeCompare(I.byEx[x]![I.byEx[x]!.length - 1].date));
+      const id = inR.filter(usable).find(done) || logged.filter(usable)[0] || inR.filter(usable)[0] || null;
+      const blocked = !id && [...inR, ...logged].some(x => !!exInjuryIn(M, EXIn(M, x)));
+      return { id, blocked };
+    };
+    const under = MK.filter(m => !inj.has(m) && mst[m].st === 'under' && !liftFor(m).blocked)
       .map(m => ({
         m,
         got: avg[m] || 0,
@@ -262,22 +288,7 @@ export function coachIn(M: Model): CoachLine {
     if (under.length) {
       const u = under[0];
       const gap = Math.max(1, Math.ceil(u.lo - u.got));
-      /* An exercise the lifter actually does (r31): one in the routine that
-         has been logged first, then any logged lift for the muscle, then the
-         routine's. The review saw "Add 5 sets to Lat Pulldown" for someone
-         who had never done one. */
-      const done = (id: string): boolean => (I.byEx[id] || []).length > 0;
-      const forM = (id: string): boolean => {
-        const e = EXIn(M, id);
-        return !!e && e.primary === u.m;
-      };
-      const inR: string[] = [];
-      for (const d of R.days) for (const it of d.items) if (forM(it.exId) && !inR.includes(it.exId)) inR.push(it.exId);
-      // The ids come from byEx's own keys, so each is there, as the ! say.
-      const logged = Object.keys(I.byEx)
-        .filter(id => forM(id) && M.s.exercises.some(e => e.id === id && !e.archived))
-        .sort((x, y) => I.byEx[y]![I.byEx[y]!.length - 1].date.localeCompare(I.byEx[x]![I.byEx[x]!.length - 1].date));
-      const exId = inR.find(done) || logged[0] || inR[0] || null;
+      const exId = liftFor(u.m).id;
       /* The plan already reaches the target (r54, from the audit V asked
          for: a lifter doing every planned set was told for weeks to add
          sets). The shortfall is then sets skipped, or ended 4 or more in

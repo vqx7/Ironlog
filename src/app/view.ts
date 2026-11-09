@@ -235,7 +235,8 @@ function isOpen(sk: string, def?: boolean): boolean {
 export function minPart(m: number): Part {
   const b = state.settings.timeBudget;
   const r = min5(m);
-  return b && m > b ? html`<span class="overb">${estMin(r)}, over your ${b} min budget</span>` : estMin(r);
+  // Over by the minutes shown (R81-9, the review of 2.35: 61 minutes showed "~60 min, over your 60 min budget").
+  return b && r > b ? html`<span class="overb">${estMin(r)}, over your ${b} min budget</span>` : estMin(r);
 }
 
 /** The ⠿ handle a section moves by. */
