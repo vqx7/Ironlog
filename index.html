@@ -1578,7 +1578,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ["dbFly", "DB Fly", "chest", "frontDelts", "dumbbell", "", ""],
     ["pushup", "Push-up", "chest", "triceps frontDelts serratus", "bodyweight", "b", ""],
     ["deficitPushup", "Deficit Push-up", "chest", "triceps frontDelts serratus", "bodyweight", "br", "Hands on handles or plates so the chest drops below hand level."],
-    ["declinePushup", "Decline Push-up (feet raised)", "chest", "frontDelts triceps serratus", "bodyweight", "b", `Feet on a bench: about ${pctOf(BWF.declinePushup)}% of bodyweight, against ${pctOf(BWF.pushup)}% for a floor push-up (Ebben 2011).`],
+    ["declinePushup", "Decline Push-up (feet raised)", "chest", "frontDelts triceps serratus", "bodyweight", "b", `Feet on a bench: about ${pctOf(BWF.declinePushup)}% of bodyweight, against ${pctOf(BWF.pushup)}% for a floor push-up.`],
     ["pullup", "Pull-up", "lats", "biceps upperBack", "bodyweight", "b", "Log added load only. Bodyweight is added automatically for trends."],
     ["chinup", "Chin-up", "lats", "biceps upperBack", "bodyweight", "b", ""],
     ["assistPullup", "Assisted Pull-up (machine)", "lats", "biceps upperBack", "machine", "ba", "Type the help the machine gives. Less help is progress."],
@@ -1618,7 +1618,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ["reversePecDeck", "Reverse Pec Deck (Rear Delt Fly)", "rearDelts", "upperBack rotatorCuff", "machine", "", ""],
     ["facePull", "Face Pull", "rearDelts", "upperBack traps rotatorCuff", "cable", "", ""],
     ["cableRearFly", "Cross-Body Cable Rear Delt Fly", "rearDelts", "upperBack rotatorCuff", "cable", "s", ""],
-    ["ohCableExt", "Overhead Cable Triceps Extension", "triceps", "", "cable", "", "Long head at long length. Grew the triceps more than pushdowns in a 2023 study (Maeo et al.)."],
+    ["ohCableExt", "Overhead Cable Triceps Extension", "triceps", "", "cable", "", "Long head at long length. In a trial it grew the triceps more than pushdowns."],
     ["pressdown", "Triceps Pressdown", "triceps", "", "cable", "", ""],
     ["skull", "EZ-Bar Skull Crusher", "triceps", "", "barbell", "", ""],
     ["jmPress", "JM Press", "triceps", "chest", "barbell", "r", "Hybrid of close-grip bench and skull crusher. The Smith version is easier to learn."],
@@ -1673,7 +1673,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ["sumoDl", "Sumo Deadlift", "glutes", "quads adductors hamstrings lowerBack traps forearms", "barbell", "", "Wide stance, hands inside the knees."],
     ["powerClean", "Power Clean", "glutes", "hamstrings quads traps upperBack", "barbell", "r", "The bar from the floor to the shoulders in one fast pull. Add load only while the bar stays fast."],
     ["kbSwing", "Kettlebell Swing", "glutes", "hamstrings lowerBack", "other", "", "A hip snap, not a squat: the arms only guide the bell. Enter the bell's weight."],
-    ["seatedCurl", "Seated Leg Curl", "hamstrings", "", "machine", "", "Grew the hamstrings more than lying curls in a 2021 study (Maeo et al.)."],
+    ["seatedCurl", "Seated Leg Curl", "hamstrings", "", "machine", "", "In a trial it grew the hamstrings more than lying curls."],
     ["lyingCurl", "Lying Leg Curl", "hamstrings", "", "machine", "", ""],
     ["nordic", "Nordic Hamstring Curl", "hamstrings", "", "bodyweight", "br", "Very demanding eccentric. Use a band or partial range until full reps are possible."],
     ["ghr", "Glute-Ham Raise", "hamstrings", "glutes", "bodyweight", "br", ""],
@@ -1777,6 +1777,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var isCommon = (e5) => !!e5 && !e5.custom && !e5.rare && COMMON.has(e5.id);
   var LIB_NAMES_BEFORE = {
     reversePecDeck: ["Reverse Pec Deck"]
+  };
+  var LIB_NOTES_BEFORE = {
+    declinePushup: ["Feet on a bench: about 70% of bodyweight, against 64% for a floor push-up (Ebben 2011)."],
+    ohCableExt: ["Long head at long length. Grew the triceps more than pushdowns in a 2023 study (Maeo et al.)."],
+    seatedCurl: ["Grew the hamstrings more than lying curls in a 2021 study (Maeo et al.)."]
   };
   function libExercises() {
     return LIB.map(([id, name, primary, sec, equip, flags, note]) => {
@@ -4319,9 +4324,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (r4 && !have.has(e5.id) && !gone.has(e5.id)) exercises.push(cleanExercise(e5, r4, e5.name));
     }
     const libName = new Map(lib.map((e5) => [e5.id, e5.name]));
+    const libNote = new Map(lib.map((e5) => [e5.id, e5.note]));
     for (const e5 of exercises) {
       const now = libName.get(e5.id);
       if (now && !e5.custom && (LIB_NAMES_BEFORE[e5.id] || []).includes(e5.name)) e5.name = now;
+      const note = libNote.get(e5.id);
+      if (note !== void 0 && !e5.custom && (LIB_NOTES_BEFORE[e5.id] || []).includes(e5.note)) e5.note = note;
     }
     if (numOr(s3.version, 1) < V_PER_SIDE) {
       const libMap = new Map(lib.map((e5) => [e5.id, e5]));
@@ -26628,7 +26636,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Effort</b>: Robinson 2024 and Refalo 2023 (growth rises as sets end closer to failure; a hard set is one within ${HARD_RIR} reps of it, a rule of thumb); Refalo 2024 (going to failure adds little); Halperin 2022 (estimates and effort calls at higher reps).</p>
    <p><b>Weekly sets</b>: Pelland 2025 and Currier 2026, the 2026 ACSM position stand (${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets a week is typical for a major muscle); Pelland 2025 (helper muscles count half). Remmert 2025, a preprint (no extra growth past about 11 sets in one workout). <b>Maintenance</b>: Bickel 2011 and Spiering 2021 (size and strength held on a third of the volume).</p>
    <p><b>Breaks</b>: Bosquet 2013 (strength falls the longer a lift is left). <b>Day-to-day swings</b>: Sigvaldsen 2023 (estimated strength varies 2 to 8%).</p>
-   <p><b>One-rep max</b>: Brzycki 1993, Epley 1985; Nuzzo 2024 (estimates spread too far past ${E1_MAX_REPS} reps, so none is made there). <b>Push-ups</b>: Ebben 2011 (about 64% of bodyweight). <b>Waist to height</b>: NICE 2022.</p>`
+   <p><b>One-rep max</b>: Brzycki 1993, Epley 1985; Nuzzo 2024 (estimates spread too far past ${E1_MAX_REPS} reps, so none is made there). <b>Push-ups</b>: Ebben 2011 (about 64% of bodyweight). <b>Long-length lifts</b>: Maeo 2021 (seated over lying leg curls), Maeo 2023 (overhead over pushdown triceps work), Kinoshita 2023 (standing over seated calf raises). <b>Waist to height</b>: NICE 2022.</p>`
       ]
     ];
     const open = m3.open || "";

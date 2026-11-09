@@ -4,8 +4,10 @@
 //   1  NEW-83: in Swap's list, a lift that loads a flagged injury says so (Injury: Knee), the closest matches included;
 //      guard: a lift that loads nothing flagged says nothing.
 //   2  NEW-87: Your gym offers the change plates as buttons, off until tapped (kg 2, 1.5, 1 and 0.5; lb 1.25); tapped,
-//      one is on the gym's list and its loads use it, tapped again it is off; guard: with none tapped, no load moves.
-// R83_ONLY=1,2 runs some sections.
+//      one is on the gym's list and the plates loads are made from, tapped again it is off; guard: with none tapped, no load moves.
+//   3  NEW-85: no lift's note names a study; a log saved before reads the three that did in the new words, the Guide's
+//      Sources name them; guard: a note the lifter edited stays as typed.
+// R83_ONLY=1,2,3 runs some sections.
 const { open } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
@@ -62,6 +64,8 @@ async function app(o = {}) {
     await D.page.waitForTimeout(200);
     const g1 = await D.page.evaluate(() => (window.__ironlog.state.settings.gym || {}).plates || null);
     ok(Array.isArray(g1) && g1.includes(1) && g1.includes(20), "2. tapping 1 kg puts it on the gym's list with the usual plates", g1);
+    const pl = await D.page.evaluate(() => window.__ironlog.plateList('kg'));
+    ok(pl.includes(1), "2. with 1 kg tapped, the gym's plates for every load include it", pl);
     await D.page.evaluate(() => window.__ironlog.ACT.gymPlate({ dataset: { v: '1' } })); // the section may be folded; its tap's own handler
     await D.page.waitForTimeout(200);
     const g2 = await D.page.evaluate(() => (window.__ironlog.state.settings.gym || {}).plates || null);
@@ -71,6 +75,39 @@ async function app(o = {}) {
     await D.page.evaluate(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; L.invalidate(); L.render(); });
     const lb = await chips();
     ok(lb.some(c => c[0] === '1.25' && c[1] === 'false'), '2. in lb, Your gym offers 1.25 lb as a button, off', lb);
+    await D.browser.close();
+  }
+
+  if (run(3)) {
+    // A log saved before 2.37 holds the three notes as the library gave them then; one the lifter edited stays as typed.
+    const OLD = {
+      declinePushup: 'Feet on a bench: about 70% of bodyweight, against 64% for a floor push-up (Ebben 2011).',
+      ohCableExt: 'Long head at long length. Grew the triceps more than pushdowns in a 2023 study (Maeo et al.).',
+      seatedCurl: 'Grew the hamstrings more than lying curls in a 2021 study (Maeo et al.).'
+    };
+    const MINE = 'Grew the hamstrings more than lying curls in a 2021 study (Maeo et al.). Seat on 4.';
+    const D = await app();
+    await D.page.evaluate(([OLD, MINE]) => {
+      const L = window.__ironlog;
+      for (const e of L.state.exercises) if (OLD[e.id]) e.note = OLD[e.id];
+      L.state.exercises.find(e => e.id === 'lyingCurl').note = MINE;
+      L.saveNow();
+    }, [OLD, MINE]);
+    await D.page.reload(); await wait(500);
+    const o = await D.page.evaluate(() => {
+      const L = window.__ironlog;
+      const by = id => L.state.exercises.find(e => e.id === id).note;
+      const lib = L.state.exercises.filter(e => !e.custom && e.id !== 'lyingCurl').map(e => [e.id, e.note]);
+      L.openModal({ kind: 'guide', open: 'sources' });
+      const guide = (document.querySelector('#modal') || document.body).textContent;
+      return { d: by('declinePushup'), o: by('ohCableExt'), s: by('seatedCurl'), mine: by('lyingCurl'), lib, guide };
+    });
+    const study = /\b(19|20)\d\d\b|et al/;
+    ok(!study.test(o.d) && /about 70% of bodyweight, against 64%/.test(o.d), "3. a log saved before reads the decline push-up's note without the study's name, its numbers kept", o.d);
+    ok(!study.test(o.o) && /triceps/.test(o.o) && !study.test(o.s) && /hamstrings/.test(o.s), '3. the overhead triceps extension and seated leg curl notes name no study', [o.o, o.s]);
+    ok(o.lib.every(([, n]) => !study.test(n)), "3. no library lift's note names a study", o.lib.filter(([, n]) => study.test(n)));
+    ok(o.mine === MINE, '3. (a guard) a note the lifter edited stays as typed, study name and all', o.mine);
+    ok(['Maeo 2021', 'Maeo 2023', 'Kinoshita 2023', 'Ebben 2011'].every(x => o.guide.includes(x)), "3. the Guide's Sources name the studies the notes leave out", o.guide.slice(-600));
     await D.browser.close();
   }
 

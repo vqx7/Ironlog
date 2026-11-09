@@ -309,7 +309,7 @@ export const LIB: readonly LibRow[] = [
 ['dbFly','DB Fly','chest','frontDelts','dumbbell','',''],
 ['pushup','Push-up','chest','triceps frontDelts serratus','bodyweight','b',''],
 ['deficitPushup','Deficit Push-up','chest','triceps frontDelts serratus','bodyweight','br','Hands on handles or plates so the chest drops below hand level.'],
-['declinePushup','Decline Push-up (feet raised)','chest','frontDelts triceps serratus','bodyweight','b',`Feet on a bench: about ${pctOf(BWF.declinePushup)}% of bodyweight, against ${pctOf(BWF.pushup)}% for a floor push-up (Ebben 2011).`],
+['declinePushup','Decline Push-up (feet raised)','chest','frontDelts triceps serratus','bodyweight','b',`Feet on a bench: about ${pctOf(BWF.declinePushup)}% of bodyweight, against ${pctOf(BWF.pushup)}% for a floor push-up.`],
 ['pullup','Pull-up','lats','biceps upperBack','bodyweight','b','Log added load only. Bodyweight is added automatically for trends.'],
 ['chinup','Chin-up','lats','biceps upperBack','bodyweight','b',''],
 ['assistPullup','Assisted Pull-up (machine)','lats','biceps upperBack','machine','ba','Type the help the machine gives. Less help is progress.'],
@@ -349,7 +349,7 @@ export const LIB: readonly LibRow[] = [
 ['reversePecDeck','Reverse Pec Deck (Rear Delt Fly)','rearDelts','upperBack rotatorCuff','machine','',''],
 ['facePull','Face Pull','rearDelts','upperBack traps rotatorCuff','cable','',''],
 ['cableRearFly','Cross-Body Cable Rear Delt Fly','rearDelts','upperBack rotatorCuff','cable','s',''],
-['ohCableExt','Overhead Cable Triceps Extension','triceps','','cable','','Long head at long length. Grew the triceps more than pushdowns in a 2023 study (Maeo et al.).'],
+['ohCableExt','Overhead Cable Triceps Extension','triceps','','cable','','Long head at long length. In a trial it grew the triceps more than pushdowns.'],
 ['pressdown','Triceps Pressdown','triceps','','cable','',''],
 ['skull','EZ-Bar Skull Crusher','triceps','','barbell','',''],
 ['jmPress','JM Press','triceps','chest','barbell','r','Hybrid of close-grip bench and skull crusher. The Smith version is easier to learn.'],
@@ -404,7 +404,7 @@ export const LIB: readonly LibRow[] = [
 ['sumoDl','Sumo Deadlift','glutes','quads adductors hamstrings lowerBack traps forearms','barbell','','Wide stance, hands inside the knees.'],
 ['powerClean','Power Clean','glutes','hamstrings quads traps upperBack','barbell','r','The bar from the floor to the shoulders in one fast pull. Add load only while the bar stays fast.'],
 ['kbSwing','Kettlebell Swing','glutes','hamstrings lowerBack','other','','A hip snap, not a squat: the arms only guide the bell. Enter the bell\'s weight.'],
-['seatedCurl','Seated Leg Curl','hamstrings','','machine','','Grew the hamstrings more than lying curls in a 2021 study (Maeo et al.).'],
+['seatedCurl','Seated Leg Curl','hamstrings','','machine','','In a trial it grew the hamstrings more than lying curls.'],
 ['lyingCurl','Lying Leg Curl','hamstrings','','machine','',''],
 ['nordic','Nordic Hamstring Curl','hamstrings','','bodyweight','br','Very demanding eccentric. Use a band or partial range until full reps are possible.'],
 ['ghr','Glute-Ham Raise','hamstrings','glutes','bodyweight','br',''],
@@ -529,6 +529,16 @@ export const isCommon = (
 /** The names the library gave a built-in lift before it renamed it, by id: Reverse Pec Deck until r66 (377). */
 export const LIB_NAMES_BEFORE: Readonly<Record<string, readonly string[]>> = {
   reversePecDeck: ['Reverse Pec Deck']
+};
+
+/* The same for a lift's note (2.37, NEW-85): a log holds the note the library gave when it was saved, and shows it as
+   the lift's tip. Since 2.34 the Guide's Sources name the studies and tips do not (V, 2026-11-08), so a note that is
+   word for word one the library gave before reads as the library's note now; a note the lifter edited stays. */
+/** The notes the library gave a built-in lift before it reworded them, by id, word for word: the three that named a study until 2.37 (NEW-85). */
+export const LIB_NOTES_BEFORE: Readonly<Record<string, readonly string[]>> = {
+  declinePushup: ['Feet on a bench: about 70% of bodyweight, against 64% for a floor push-up (Ebben 2011).'],
+  ohCableExt: ['Long head at long length. Grew the triceps more than pushdowns in a 2023 study (Maeo et al.).'],
+  seatedCurl: ['Grew the hamstrings more than lying curls in a 2021 study (Maeo et al.).']
 };
 
 /** The library as exercise records, fresh objects on every call. */

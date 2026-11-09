@@ -276,7 +276,13 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
     // Whether a raw log's workout in progress is falsy other than null (r60 kept it as it came).
     const falsyDraft = s => !!s && typeof s === 'object' && !Array.isArray(s) && s.draft !== null && s.draft !== undefined && !s.draft;
     const N4 = +process.env.R61_N4 || 240;
-    let n = 0, same = 0, routineCases = 0, draftCases = 0, renameCases = 0, libCases = 0, plateCases = 0; const off = [];
+    // 2.37's three library notes (NEW-85): r60's words, then the words since.
+    const NOTES_2_37 = {
+      declinePushup: ['Feet on a bench: about 70% of bodyweight, against 64% for a floor push-up (Ebben 2011).', 'Feet on a bench: about 70% of bodyweight, against 64% for a floor push-up.'],
+      ohCableExt: ['Long head at long length. Grew the triceps more than pushdowns in a 2023 study (Maeo et al.).', 'Long head at long length. In a trial it grew the triceps more than pushdowns.'],
+      seatedCurl: ['Grew the hamstrings more than lying curls in a 2021 study (Maeo et al.).', 'In a trial it grew the hamstrings more than lying curls.']
+    };
+    let n = 0, same = 0, routineCases = 0, draftCases = 0, renameCases = 0, libCases = 0, plateCases = 0, noteCases = 0; const off = [];
     for (let seed = 1; seed <= N4; seed++) {
       const h = wide(seed, LIB);
       const raws = [h.raw, damage(h.raw, seed * 31 + 1), damage(h.raw, seed * 31 + 2), damage(h.raw, seed * 31 + 3)];
@@ -299,6 +305,12 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
         // reads by its new name where r60 gave it the library's old one; a lift of the lifter's own keeps its name, and nothing else changes.
         { const w = want[0] === '{' ? JSON.parse(want) : null; const e = w && Array.isArray(w.exercises) ? w.exercises.find(x => x && x.id === 'reversePecDeck' && x.custom === false && x.name === 'Reverse Pec Deck') : null;
           if (e) { renameCases++; e.name = 'Reverse Pec Deck (Rear Delt Fly)'; want = JSON.stringify(w); } }
+        // The three library notes 2.37 rewords (NEW-85; V, 2026-11-08: studies are named in the Guide's Sources, not in tips)
+        // read in the new words where r60 gave the library's old ones word for word; a lift of the lifter's own, or a note
+        // edited, keeps its text, and nothing else changes. The new words are written here, not read from the app.
+        { const w = want[0] === '{' ? JSON.parse(want) : null; let k = 0;
+          if (w && Array.isArray(w.exercises)) for (const e of w.exercises) { const to = e && e.custom === false && NOTES_2_37[e.id]; if (to && e.note === to[0]) { e.note = to[1]; k++; } }
+          if (k) { noteCases += k; want = JSON.stringify(w); } }
         // A library lift the save lacks is appended through the same cleaning as every record since r72 (387-B7): with
         // inc and plates as null after archived, as r60's own next load gave it; nothing else in it changes.
         { const w = want[0] === '{' ? JSON.parse(want) : null; let k = 0;
@@ -324,7 +336,7 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
         else if (off.length < 5) { let at = 0; while (at < want.length && want[at] === b.j[at]) at++; off.push({ seed, i, none, want: want.slice(Math.max(0, at - 150), at + 150), b: b.j.slice(Math.max(0, at - 150), at + 150), d: [a.d, b.d], k: [a.k, b.k] }); }
       });
     }
-    ok(same === n && n > N4 * 6, `4. normalize gives r60's answer, key order included, with the records dropped and the fields kept, on ${n} raw logs (${N4} wide histories, each damaged three ways, and the sync's documents), but for the two inputs below (${routineCases} with no routine, ${draftCases} with a falsy workout), r66's name for the rear delt machine (${renameCases}), r72's library lifts appended with inc and plates (${libCases}), and 2.34's gyms keeping any plate (${plateCases}, NEW-76)`, off);
+    ok(same === n && n > N4 * 6, `4. normalize gives r60's answer, key order included, with the records dropped and the fields kept, on ${n} raw logs (${N4} wide histories, each damaged three ways, and the sync's documents), but for the two inputs below (${routineCases} with no routine, ${draftCases} with a falsy workout), r66's name for the rear delt machine (${renameCases}), r72's library lifts appended with inc and plates (${libCases}), 2.34's gyms keeping any plate (${plateCases}, NEW-76), and 2.37's three notes without a study's name (${noteCases}, NEW-85)`, off);
     // The two inputs no build writes, read as any other (each fails on r60).
     const named = await B.page.evaluate(() => {
       const L = window.__ironlog;

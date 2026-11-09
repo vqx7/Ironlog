@@ -43,6 +43,7 @@ import {
   TARGETED,
   TRACK_ONLY,
   LIB_NAMES_BEFORE,
+  LIB_NOTES_BEFORE,
   libExercises
 } from './library';
 import {
@@ -1005,9 +1006,13 @@ export function normalize(input: unknown): State {
   }
   // A built-in the library has renamed reads by its name now where the log holds one the library gave it before; a name the lifter gave it stays (NEW-37).
   const libName = new Map(lib.map(e => [e.id, e.name]));
+  // The same for a note the library has reworded: the old text word for word reads as the library's now; an edited note stays (NEW-85).
+  const libNote = new Map(lib.map(e => [e.id, e.note]));
   for (const e of exercises) {
     const now = libName.get(e.id);
     if (now && !e.custom && (LIB_NAMES_BEFORE[e.id] || []).includes(e.name)) e.name = now;
+    const note = libNote.get(e.id);
+    if (note !== undefined && !e.custom && (LIB_NOTES_BEFORE[e.id] || []).includes(e.note)) e.note = note;
   }
   // v1 saves predate the per-side flag, so the built-ins in them all carry
   // perSide:false. Backfill it from the library by id, and only that one
