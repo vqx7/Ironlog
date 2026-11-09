@@ -20672,7 +20672,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   }
   function progressLine(b2, bi) {
     const p3 = blockProgress(b2);
-    return p3 ? b`<span class=${"tp" + (p3.beat ? " beat" : "")} id=${`tp-${bi}`}>${p3.text}</span>` : "";
+    return p3 ? b`<span class=${"tp" + (p3.beat ? " beat" : "")} id=${`tp-${bi}`} aria-hidden=${p3.text ? A : "true"}>${p3.text || " "}</span>` : "";
   }
   var isFolded = (d3, b2, bi) => blockDone(b2) && (d3.editingId ? blkIsShut(bi, b2) : !blkIsOpen(bi, b2) && !W.foldWait.has(b2));
   function blockPart(d3, b2, bi, letters, hintSeen, calIdx, bwAt2) {

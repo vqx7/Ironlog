@@ -416,9 +416,13 @@ function setRow(
         <button class=${'cbtn ' + (s.done ? 'on' : '')} aria-label=${`Set ${si + 1} ${s.done && isMissed(s) ? 'missed' : 'done'}`} aria-pressed=${s.done ? 'true' : 'false'} data-act="sDone" data-b=${bi} data-s=${si}>✓</button></div>${stripIs(bi, si) ? rirStrip(bi, si, s.rir == null ? '' : String(s.rir)) : nothing}`;
 }
 
+/* Before the first tick the line keeps its space, blank (NEW-64, picture A of 2026-11-06): it appeared on that tick and
+   pushed the sets 23 px down under the finger, so the next tap could land on the row above the one meant. */
 function progressLine(b: DraftBlock, bi: number): Part {
   const p = blockProgress(b);
-  return p ? html`<span class=${'tp' + (p.beat ? ' beat' : '')} id=${`tp-${bi}`}>${p.text}</span>` : '';
+  return p
+    ? html`<span class=${'tp' + (p.beat ? ' beat' : '')} id=${`tp-${bi}`} aria-hidden=${p.text ? nothing : 'true'}>${p.text || '\u00a0'}</span>`
+    : '';
 }
 
 /** Whether an exercise is drawn folded: done, and either folded by hand in an edit or, in a session, not opened again with no fold waiting for its moment. */

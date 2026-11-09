@@ -7,7 +7,9 @@
 //      one is on the gym's list and the plates loads are made from, tapped again it is off; guard: with none tapped, no load moves.
 //   3  NEW-85: no lift's note names a study; a log saved before reads the three that did in the new words, the Guide's
 //      Sources name them; guard: a note the lifter edited stays as typed.
-// R83_ONLY=1,2,3 runs some sections.
+//   4  NEW-64: the first tick of a lift moves its sets by nothing, at 390 and 320 px: the line on its target ("N of M
+//      reps so far") keeps its space from the start, blank until then (picture A of 2026-11-06).
+// R83_ONLY=1,2,3,4 runs some sections.
 const { open } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
@@ -109,6 +111,24 @@ async function app(o = {}) {
     ok(o.mine === MINE, '3. (a guard) a note the lifter edited stays as typed, study name and all', o.mine);
     ok(['Maeo 2021', 'Maeo 2023', 'Kinoshita 2023', 'Ebben 2011'].every(x => o.guide.includes(x)), "3. the Guide's Sources name the studies the notes leave out", o.guide.slice(-600));
     await D.browser.close();
+  }
+
+  if (run(4)) {
+    for (const w of [390, 320]) {
+      const D = await app({ w });
+      await D.page.click('[data-act="startSession"]'); await wait(400);
+      const top = () => D.page.evaluate(() => {
+        const r = document.querySelector('#view [data-act="sDone"][data-b="0"][data-s="1"]');
+        const tp = document.getElementById('tp-0');
+        return { y: r ? Math.round(r.getBoundingClientRect().top + window.scrollY) : null, sy: Math.round(window.scrollY), text: tp ? tp.textContent.trim() : null };
+      });
+      const a = await top();
+      await D.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(400);
+      const b = await top();
+      ok(a.y != null && b.text, `4. (setting up, ${w} px) the first lift has a second set and, after the first tick, a line on its target`, { a, b });
+      ok(a.y === b.y, `4. at ${w} px the first tick moves the sets under the finger by nothing (the line's space is kept from the start)`, { before: a.y, after: b.y, line: b.text });
+      await D.browser.close();
+    }
   }
 
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
