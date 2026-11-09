@@ -15438,9 +15438,8 @@ ${more}`;
     );
     if (val && isMissed(s3) && !s3.warm && !s3.drop) toast(MISSED_SAID);
     W.platesAt = null;
-    W.onLift = blkRef(bi);
     if (val && !d3.editingId && blockDone(b2) && !blkIsOpen(bi, b2)) W.foldWait.add(b2);
-    redraw();
+    onLiftDraw(bi, redraw);
     const pr = rowPR(b2, si, d3.date);
     if (pr && !wasPR) {
       const ex = EX(b2.exId);
@@ -15492,6 +15491,20 @@ ${more}`;
     if (!b2) return /* @__PURE__ */ new Set();
     const ss = b2.plan && b2.plan.ss;
     return new Set(ss ? d3.ex.filter((x2) => x2.plan && x2.plan.ss === ss && left(x2)) : [b2]);
+  }
+  function onLiftDraw(bi, draw) {
+    const d3 = state.draft;
+    const was = d3 ? liftsOn(d3) : null;
+    W.onLift = blkRef(bi);
+    const ref2 = W.onLift;
+    const el = document.getElementById("blk-" + bi);
+    const top = el ? el.getBoundingClientRect().top : null;
+    draw();
+    const now = state.draft ? liftsOn(state.draft) : null;
+    if (top == null || !was || !now || was.size === now.size && [...was].every((x2) => now.has(x2))) return;
+    const j3 = blkIdx(ref2);
+    const el2 = j3 >= 0 ? document.getElementById("blk-" + j3) : null;
+    if (el2) window.scrollBy(0, el2.getBoundingClientRect().top - top);
   }
   function restNext(bi) {
     const d3 = state.draft;
@@ -21761,8 +21774,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         { inProgress: true, soon: true }
       );
       if (t4.dataset.f === "w") W.platesAt = { b: blkRef(bi), s: si };
-      W.onLift = blkRef(bi);
-      redraw();
+      onLiftDraw(bi, redraw);
       return true;
     }
     const b2 = t4.dataset.bind;

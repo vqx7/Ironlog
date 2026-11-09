@@ -126,7 +126,8 @@ import {
   oddReps,
   restNext,
   CAL_OFFER,
-  liftsOn
+  liftsOn,
+  onLiftDraw
 } from './worksets';
 import { BACK_SAID, finish, finishNow } from './workfinish';
 import { LIMITS, EFFORT_TOP, within } from './records';
@@ -1569,8 +1570,7 @@ export function workoutInput(t: Field): boolean {
       { inProgress: true, soon: true }
     );
     if (t.dataset.f === 'w') W.platesAt = { b: blkRef(bi), s: si };
-    W.onLift = blkRef(bi);
-    redraw();
+    onLiftDraw(bi, redraw);
     return true;
   }
   const b = t.dataset.bind;

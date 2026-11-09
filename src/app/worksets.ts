@@ -946,9 +946,8 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
   );
   if (val && isMissed(s) && !s.warm && !s.drop) toast(MISSED_SAID);
   W.platesAt = null;
-  W.onLift = blkRef(bi);
   if (val && !d.editingId && blockDone(b) && !blkIsOpen(bi, b)) W.foldWait.add(b);
-  redraw();
+  onLiftDraw(bi, redraw);
   const pr = rowPR(b, si, d.date);
   if (pr && !wasPR) {
     const ex = EX(b.exId);
@@ -1019,6 +1018,26 @@ export function liftsOn(d: Draft): Set<DraftBlock> {
   if (!b) return new Set();
   const ss = b.plan && b.plan.ss;
   return new Set(ss ? d.ex.filter(x => x.plan && x.plan.ss === ss && left(x)) : [b]);
+}
+
+/* Making a lift the one you are on moves the pills to it, which takes their space from one lift and gives it to
+   another; a tick or a load typed there must move nothing under the finger (NEW-64's rule; GitHub's run of 2.38 saw a
+   lift jump 93 px when the pills left the lift above it). So the lift tapped is held where it was on screen across
+   the draw, by scrolling the page the height the pills took or gave above it. */
+/** Makes lift bi the one you are on and draws the session with `draw`, keeping that lift where it was on screen when the pills move. */
+export function onLiftDraw(bi: number, draw: () => void): void {
+  const d = state.draft;
+  const was = d ? liftsOn(d) : null;
+  W.onLift = blkRef(bi);
+  const ref = W.onLift;
+  const el = document.getElementById('blk-' + bi);
+  const top = el ? el.getBoundingClientRect().top : null;
+  draw();
+  const now = state.draft ? liftsOn(state.draft) : null;
+  if (top == null || !was || !now || (was.size === now.size && [...was].every(x => now.has(x)))) return;
+  const j = blkIdx(ref);
+  const el2 = j >= 0 ? document.getElementById('blk-' + j) : null;
+  if (el2) window.scrollBy(0, el2.getBoundingClientRect().top - top);
 }
 
 /* What the rest card names as next (r71, 364 b-1), by the rules the screen
