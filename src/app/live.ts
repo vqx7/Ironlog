@@ -55,28 +55,11 @@ import {
 } from './pick';
 import {
   IDXIn,
-  allTimeBestsIn,
-  bwAtIn,
-  bwLoadIn,
-  bwRefIn,
-  noBodyIn,
-  bwRefLoadIn,
-  calStatsIn,
   dateIndexIn,
-  hardCreditIn,
-  isHardIn,
   liftReadIn,
-  loadOfIn,
-  prFrameIn,
-  prLoadIn,
-  rirEffIn,
-  rirEstIn,
-  rirUsualIn,
   sessionWordsIn,
   stallWeeksIn,
   stallWordsIn,
-  statsUpToIn,
-  tonnageIn,
   weekSessionsIn
 } from './analytics';
 import { dayMinutesIn, paceIn, paceRatiosIn, sessModelMinIn } from './time';
@@ -109,22 +92,27 @@ import {
   readinessIn,
   stalledIdsIn
 } from './coach';
+import { daysOffIn, easierTextIn, suggestCoreIn, suggestIn } from './engine';
+import { heavierLoadIn, stepLoadIn, incOfIn, lighterLoadIn, progStepIn, rackStepIn } from './loadsteps';
+import { oddLoadIn, lightZeroIn } from './oddloads';
+import { nextSetsIn, bwNoLoadIn } from './adjust';
 import {
-  daysOffIn,
-  easierTextIn,
-  heavierLoadIn,
-  stepLoadIn,
-  incOfIn,
-  lighterLoadIn,
-  oddLoadIn,
-  lightZeroIn,
-  nextSetsIn,
-  bwNoLoadIn,
-  progStepIn,
-  rackStepIn,
-  suggestCoreIn,
-  suggestIn
-} from './engine';
+  bwAtIn,
+  bwLoadIn,
+  bwRefIn,
+  noBodyIn,
+  bwRefLoadIn,
+  calStatsIn,
+  hardCreditIn,
+  isHardIn,
+  loadOfIn,
+  prLoadIn,
+  rirEffIn,
+  rirEstIn,
+  rirUsualIn,
+  tonnageIn
+} from './setread';
+import { allTimeBestsIn, prFrameIn, statsUpToIn } from './bests';
 
 /** The one model the app runs on: the store's log, the phone's date, and the caches. */
 export const LIVE: Model = {

@@ -15,7 +15,7 @@ import { PLATES_LB, PLATES_KG, LB, KM_MI, SMALL_PLATE } from './units';
 import { r1, addDays, today, uid, numIn, EPS, EPS_SAME, HUNDREDTHS, WEEK_DAYS, r3 } from './util';
 import { platesPerSide } from './gym';
 import { loadWords } from './loads';
-import { BAND_WORDS } from './prs';
+import { BAND_WORDS, prAdd, prBestOf, prJudge, prSoFar } from './prs';
 import {
   prFrame,
   noBody,
@@ -92,7 +92,6 @@ const MIX_TOAST_MS = 7000;
 /** A ticked exercise moves up this many milliseconds after the tick, and tries again after ORDER_MS.again while something is being typed or open. */
 const ORDER_MS = { soon: 900, again: 1500 } as const;
 import { LIMITS, sessCmp } from './records';
-import { prAdd, prBestOf, prJudge, prSoFar } from './analytics';
 import { readSets } from './importing';
 import type { TypedSet } from './importing';
 import { toast } from './toast';

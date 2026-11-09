@@ -60,21 +60,10 @@ import { TRASH_DAYS, TRASH_MAX } from './records';
 import { BAND_RANGES } from './prs';
 import { IMPORT_REPEATS, IMPORT_WEEKS } from './importing';
 import { LIGHT_RIR, effAt } from './format';
-import { CAL_WEEKS, PICK_DAYS, RIR_USUAL_MIN, USUAL_SHARE } from './analytics';
+import { PICK_DAYS } from './analytics';
 import { FATIGUE_STALLS, MISSED_WEEKS_SAID } from './coach';
 import { AVG_WEEKS, FIRST_WEEK_REASON, LIGHTER_WEEK_WORDS } from './weeks';
-import {
-  BIG_STEP_REPS,
-  BUILD_PAST,
-  FIXED_RANGE,
-  JUST_UP,
-  KIN,
-  ODD_ADDED_BEST,
-  ODD_ADDED_BW,
-  ODD_BEST,
-  ODD_SESSION,
-  SHORT_RUN
-} from './engine';
+import { BUILD_PAST, FIXED_RANGE, JUST_UP, KIN, SHORT_RUN } from './engine';
 import { state } from './store';
 import { U } from './live';
 import { UNDO_DAYS } from './storage';
@@ -85,6 +74,10 @@ import { CAL_OFFER, ODD_REPS, ODD_REPS_TIMES } from './worksets';
 import { html } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { markup } from './view';
+import { BIG_STEP_REPS } from './loadsteps';
+import { ODD_ADDED_BEST, ODD_ADDED_BW, ODD_BEST, ODD_SESSION } from './oddloads';
+import { CAL_WEEKS, RIR_USUAL_MIN } from './setread';
+import { USUAL_SHARE } from './usual';
 
 /* The muscles the Guide names, read from the tables that decide them (r65,
    the r63 audit's A-9: the lists were typed in, so a muscle added to a table

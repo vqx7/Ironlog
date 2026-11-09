@@ -49,7 +49,7 @@ import { goalGap, goalOk } from './goals';
 import { trendEnds, trendScope, trendW, ENDS_PAIRED_FROM } from './trend';
 import { estInLoad, loadNote } from './loads';
 import { prName, BAND_RANGES } from './prs';
-import { sessionWord, RIR_USUAL_MIN, CAL_WEEKS } from './analytics';
+import { sessionWord } from './analytics';
 import { BACK_WEEK_WHY, FIRST_WEEK_WHY, LIGHTER_WEEK_TIP, ON_PLAN_TIP, avgWeeksTxt, AVG_WEEKS } from './weeks';
 import { FALL_WHY, STALL_WHY, chkWord, musTrend, FATIGUE_STALLS, READINESS_MIN } from './coach';
 import { whyTarget } from './session';
@@ -150,6 +150,7 @@ import type { Routine } from './types';
 import type { Block } from './weeks';
 import { rangeKey, weekWindow } from './graphs';
 import { rerenderKeepScroll } from './page';
+import { RIR_USUAL_MIN, CAL_WEEKS } from './setread';
 
 /** The smallest change the percentages show (one decimal): a likely range narrower than it is not said. */
 const PCT_SHOWN = 0.1;

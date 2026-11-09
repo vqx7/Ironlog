@@ -43,7 +43,7 @@ import {
 } from './profile';
 import { PLATE_MAX, PLATES_MOST, dbListOf, gymClean, plateOk } from './gym';
 import { fmtDate, fmtG, stampShort } from './format';
-import { CAL_WEEKS, CAL_MIN } from './analytics';
+import { CAL_WEEKS, CAL_MIN } from './setread';
 import { TRASH_DAYS, rec, LIMITS } from './records';
 import { EPS_SAME, iso, numIn, numWord, r1, upFirst, MINUTE_S, SECOND_MS, HOUR_MIN, DAY_MIN } from './util';
 import { stripDemo } from './chunks';
