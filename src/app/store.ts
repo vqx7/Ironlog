@@ -52,6 +52,8 @@ interface Ui {
   /** The tab shown before this one (Back's entry, and where a report from Settings says it came from). */
   prevTab?: string | null | undefined;
   blkOpen: Set<unknown>;
+  /** Exercises folded by hand in an edit of a saved session, which opens on every exercise (NEW-91). */
+  blkShut: Set<unknown>;
   help: Set<unknown>;
   tab: string;
   todayDay: unknown;
@@ -109,10 +111,13 @@ interface Ui {
   bestsAll?: boolean | undefined;
   /** More options opened on Today's start card. */
   heroMore?: boolean | undefined;
+  /** Stepped away from the workout in progress to Today with Save and leave (NEW-89); any other way back to the tab opens the workout. */
+  away?: boolean | undefined;
 }
 /** What the screens are showing (the type above). */
 export const ui: Ui = {
   blkOpen: new Set(),
+  blkShut: new Set(),
   tab: 'today',
   todayDay: null,
   mapSel: null,
@@ -143,6 +148,9 @@ export const ui: Ui = {
   eqLast: null,
   refix: null
 };
+
+/** Whether the screen shows the workout in progress: Today's tab with a workout open, unless the lifter stepped away with Save and leave (NEW-89). */
+export const sessionShown = (): boolean => ui.tab === 'today' && !!state.draft && !ui.away;
 
 /* ---------- the account's documents ---------- */
 

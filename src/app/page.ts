@@ -197,6 +197,7 @@ export function pageBack(): void {
   if (t && t !== ui.tab && TABS_OK.has(t)) {
     navFromPop = true;
     ui.tab = t;
+    ui.away = false;
     if (t === 'program') ui.planView = 'routine';
     window.scrollTo(0, 0);
     render();

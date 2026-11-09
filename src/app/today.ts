@@ -40,6 +40,7 @@ import {
   daysBetween,
   numIn,
   r1,
+  isDate,
   today,
   uid,
   weekStart,
@@ -714,6 +715,10 @@ export function viewToday(): TemplateResult {
   const free = state.settings.todayStart === 'free' && chosen == null;
   const lines = [acctBar(), installBar(), iconBar()];
   const above = html`${welcomeCard()}${lines}${lines.every(l => l === nothing) ? photoBar() : nothing}`;
+  // Stepped away from a workout with Save and leave (NEW-89): its card takes the start card's place, so Today offers no second start.
+  const open = state.draft && ui.away ? state.draft : null;
+  if (open)
+    return html`${above}${resumeCard(open)}${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
   if (free) {
     const w = noLog()
       ? 'Add exercises as you go.'
@@ -756,6 +761,15 @@ ${note !== nothing ? html`<p class="hero-note small">${note}</p>` : nothing}${
       : html`<p class="small u-m10-0-0">${day.rest ? 'Rest day.' : 'Nothing planned for this day.'}</p>`
   }<div class="row u-mt8">${changeBtn(di, false, part)}${moreBtn(deload)}<span class="u-mlauto"></span>${helpButton('starts')}</div>
 ${howText('starts', STARTS_HELP)}${moreRow(deload, playable, di, part)}</section>${bwDueCard()}${todayRest({ playable, di, day, deload, cs })}`;
+}
+
+/** The card for a workout in progress the lifter stepped away from: what it is, the sets done, and Resume. */
+function resumeCard(d: NonNullable<typeof state.draft>): TemplateResult {
+  const done = d.ex.reduce((a, b) => a + b.sets.filter(s => s.done && !s.warm).length, 0);
+  const kind = d.editingId ? 'Editing a saved session' : d.past ? 'Past workout' : 'Workout in progress';
+  return html`<section class="hero" id="resumeCard"><div class="hero-top"><div class="hero-t"><p class="eyebrow">${kind}</p><h2>${d.dayName}</h2>
+<p class="muted small u-m0">${done} ${done === 1 ? 'set' : 'sets'} done · saved as you go</p></div></div>
+<button class="btn primary fullw big" data-act="wkResume">Resume</button></section>`;
 }
 
 /* ---------- under the start card ---------- */
@@ -1151,7 +1165,9 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const inp = field(own || 'bwVal');
     const v = numIn(inp ? inp.value || inp.dataset['grey'] || '' : '');
     const de = own ? null : field('bwDate');
-    const date = (de && de.value) || today();
+    // The sheet opened from a session names the session's day (NEW-90); else the date field, else today.
+    const at = t && t.dataset && t.dataset['date'];
+    const date = (at && isDate(at) && at <= today() ? at : null) || (de && de.value) || today();
     if (v == null || v <= 0) {
       toast('Enter a bodyweight');
       return;

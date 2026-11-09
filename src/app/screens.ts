@@ -9,7 +9,7 @@
 import { bwSheet } from './bwnudge';
 import { picSheet } from './notepics';
 import type { TemplateResult } from 'lit-html';
-import { state, ui } from './store';
+import { sessionShown, state, ui } from './store';
 import { act } from './act';
 import { drawScreen, drawing, dragDrop, dragStart } from './view';
 import { applyTheme, render, renderModal, rerenderKeepScroll, setSaveState } from './page';
@@ -78,7 +78,7 @@ function killDynamic(): void {
 
 /** The tabs drawn by their modules (phase 5, r57 to r60): each a template of the log and ui. Today with a session in progress is the session screen (workout.ts, r60). */
 const TABS: Readonly<Record<string, () => TemplateResult>> = {
-  today: () => (state.draft ? viewWorkout(state.draft) : viewToday()),
+  today: () => (state.draft && !ui.away ? viewWorkout(state.draft) : viewToday()),
   history: viewHistory,
   settings: viewSettings,
   program: () => (ui.planView === 'library' ? viewLibrary() : viewProgram()),
@@ -121,18 +121,18 @@ export function renderInner(): void {
      one, and a draw inside that would find them gone. The session screen
      puts back first what the legacy page's fresh markup reset (the effort
      strip, the plates line, a fold waiting its moment). */
-  if (ui.tab === 'today' && state.draft) workoutFullDraw();
+  if (sessionShown()) workoutFullDraw();
   const v = document.getElementById('view');
   const tab = TABS[ui.tab] || TABS['today'];
   if (v && tab) drawScreen(v, tab());
-  if (!(ui.tab === 'today' && state.draft) && !(ui.tab === 'program' && ui.planView === 'library')) mountSecSortable();
-  if (ui.tab === 'today' && state.draft) {
+  if (!sessionShown() && !(ui.tab === 'program' && ui.planView === 'library')) mountSecSortable();
+  if (sessionShown()) {
     const s = mountBlockDrag();
     if (s) sortables.push(s);
   }
   if (ui.tab === 'program' && ui.planView !== 'library') mountSortable();
   if (ui.tab === 'dash') mountCharts();
-  if (ui.tab === 'today' && !state.draft) mount3D();
+  if (ui.tab === 'today' && !sessionShown()) mount3D();
   if (obActive()) mountObTour();
   if (ui.modal) renderModal();
 }

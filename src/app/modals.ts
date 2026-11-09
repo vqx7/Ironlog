@@ -220,7 +220,7 @@ export type Modal =
   // A picture on a note, shown large (r66, 373): its id, and the exercise it is on, or null for the workout's notes.
   | (SheetBase & { kind: 'pic'; id: string; at: number | null; ro?: true | undefined })
   // Your bodyweight, asked for where a bodyweight lift reads it (r66, 372): the lift that asked, when one did.
-  | (SheetBase & { kind: 'bw'; ex?: string | undefined })
+  | (SheetBase & { kind: 'bw'; ex?: string | undefined; date?: string | undefined })
   | (SheetBase & { kind: 'startAlt'; di?: number | undefined; free?: boolean | undefined; part?: 2 | undefined })
   | (SheetBase & { kind: 'eq'; day: number; equip: string[]; part?: 2 | undefined })
   | (SheetBase & TextSheet & { kind: 'text' });

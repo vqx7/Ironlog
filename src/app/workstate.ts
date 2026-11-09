@@ -129,10 +129,26 @@ const blkKey = (bi: number, b: DraftBlock): string => ((state.draft && state.dra
 /** Whether a block was opened again after it folded, by its place or itself. */
 export const blkIsOpen = (bi: number, b: DraftBlock): boolean => ui.blkOpen.has(blkKey(bi, b)) || blkOpenObj.has(b);
 
+/* An edit of a saved session opens on every exercise: all are done, and the
+   lifter came to change them, so nothing folds on its own there. One folds
+   only by hand (NEW-91, V 2026-11-08: an edit had no fold button at all),
+   held by its place and itself as an opened one is. */
+const blkShutObj = new WeakSet<DraftBlock>();
+/** Whether an exercise in an edit of a saved session was folded by hand. */
+export const blkIsShut = (bi: number, b: DraftBlock): boolean => ui.blkShut.has(blkKey(bi, b)) || blkShutObj.has(b);
+
+/** Folds an exercise in an edit of a saved session by hand. */
+export function blkShut(bi: number, b: DraftBlock): void {
+  ui.blkShut.add(blkKey(bi, b));
+  blkShutObj.add(b);
+}
+
 /** Opens a block again after it folded, by its place and the block itself (r25). */
 export function blkOpen(bi: number, b: DraftBlock): void {
   ui.blkOpen.add(blkKey(bi, b));
   blkOpenObj.add(b);
+  ui.blkShut.delete(blkKey(bi, b));
+  blkShutObj.delete(b);
 }
 
 /** Runs a change to the session's exercise order and carries each block's open state to its new place. */
@@ -140,6 +156,7 @@ export function keepOpen<T>(fn: () => T): T {
   const d = state.draft;
   if (!d) return fn();
   const was = new Set(d.ex.filter((b, i) => blkIsOpen(i, b)));
+  const shut = new Set(d.ex.filter((b, i) => blkIsShut(i, b)));
   const r = fn();
   const dd = state.draft;
   if (dd)
@@ -149,6 +166,10 @@ export function keepOpen<T>(fn: () => T): T {
         ui.blkOpen.add(k);
         blkOpenObj.add(b);
       } else ui.blkOpen.delete(k);
+      if (shut.has(b)) {
+        ui.blkShut.add(k);
+        blkShutObj.add(b);
+      } else ui.blkShut.delete(k);
     });
   return r;
 }

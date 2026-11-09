@@ -48,7 +48,7 @@ import {
   sessLeftMin,
   fromD
 } from './live';
-import { state, ui } from './store';
+import { sessionShown, state, ui } from './store';
 import { lastDup, effTarget, newRow, greyW, effW, blockDone } from './session';
 import type { BlkRef } from './session';
 import type { DraftBlock, DraftSet, Routine, PlanItem, NextSetsAdj, Session } from './types';
@@ -1148,7 +1148,7 @@ export function autoFold(ref: BlkRef | null): void {
   W.foldT = null;
   if (W.blockDrag) return;
   const d = state.draft;
-  if (!d || d.editingId || ui.modal || ui.tab !== 'today') return;
+  if (!d || d.editingId || ui.modal || !sessionShown()) return;
   const bi = blkIdx(ref);
   const b = bi < 0 ? null : d.ex[bi];
   if (!b || !blockDone(b) || blkIsOpen(bi, b)) return;
@@ -1326,7 +1326,7 @@ export function orderRun(): void {
   const typing =
     !!ae && (/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) || (ae instanceof HTMLElement && ae.isContentEditable));
   if (
-    ui.tab === 'today' &&
+    sessionShown() &&
     (typing || W.blockDrag || drawing() || ui.modal || W.foldT != null || document.querySelector('.rirstrip'))
   ) {
     W.orderT = setTimeout(orderRun, ORDER_MS.again);
@@ -1336,7 +1336,7 @@ export function orderRun(): void {
   if (!q.length) return;
   const anchor = q[q.length - 1];
   const el0 = document.getElementById('blk-' + d.ex.indexOf(anchor));
-  const top0 = ui.tab === 'today' && el0 ? el0.getBoundingClientRect().top : null;
+  const top0 = sessionShown() && el0 ? el0.getBoundingClientRect().top : null;
   let moved = false;
   for (const b of q) {
     const bi = d.ex.indexOf(b),
@@ -1349,7 +1349,7 @@ export function orderRun(): void {
     moved = true;
     ordBack.set(b, { i: bi, t: Date.now() });
   }
-  if (!moved || ui.tab !== 'today') return;
+  if (!moved || !sessionShown()) return;
   rerenderKeepScroll();
   const el1 = document.getElementById('blk-' + d.ex.indexOf(anchor));
   if (el1 && top0 != null) window.scrollBy(0, el1.getBoundingClientRect().top - top0);

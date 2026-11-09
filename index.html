@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.08-r80">
+<meta name="app-build" content="2026.11.08-r81">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2097,8 +2097,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.34";
-  var APP_VERSION = "2026.11.08-r80";
+  var DISPLAY_VERSION = "2.35";
+  var APP_VERSION = "2026.11.08-r81";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -4510,6 +4510,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var HIST_PAGE = 25;
   var ui = {
     blkOpen: /* @__PURE__ */ new Set(),
+    blkShut: /* @__PURE__ */ new Set(),
     tab: "today",
     todayDay: null,
     mapSel: null,
@@ -4540,6 +4541,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     eqLast: null,
     refix: null
   };
+  var sessionShown = () => ui.tab === "today" && !!state.draft && !ui.away;
   var cloud = {
     on: false,
     db: null,
@@ -12529,6 +12531,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (t4 && t4 !== ui.tab && TABS_OK.has(t4)) {
       navFromPop = true;
       ui.tab = t4;
+      ui.away = false;
       if (t4 === "program") ui.planView = "routine";
       window.scrollTo(0, 0);
       render();
@@ -12727,21 +12730,26 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!bwMissing(exId)) return A;
     return b`<p class="small bwwarn">No bodyweight set, so this counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId}>Set it</button></p>`;
   }
+  var latestBw = () => state.bodyweights.filter((b2) => !b2.demo).sort((a2, b2) => a2.date < b2.date ? 1 : -1)[0];
   function bwSheet(m3) {
+    const last = latestBw();
+    const on = m3.date && m3.date !== today() ? `the weigh-in for ${fmtDate(m3.date)}` : "today's weigh-in";
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Your bodyweight</h3>${closeX()}</div>
     <p class="small">${m3.ex ? `${m3.ex} counts` : "Pull-ups, dips, and push-ups count"} your bodyweight, plus any weight you add on a belt or vest; you type only what you add. Without a bodyweight, they count only the added load.</p>
-    <label class="field">Bodyweight (${U()})<input type="text" inputmode="decimal" id="bwSheetVal" placeholder=${`Weight (${U()})`} enterkeyhint="done"></label>
-    <p class="small muted">Optional. Saved as today's weigh-in.</p>
-    <div class="row u-mt10"><button class="btn primary" data-act="addBW" data-in="bwSheetVal">Save</button><button class="btn" data-act="mClose">Not now</button></div></div>`;
+    <label class="field">Bodyweight (${U()})<input type="text" inputmode="decimal" id="bwSheetVal" placeholder=${last ? fmtW(last.kg) : `Weight (${U()})`} enterkeyhint="done"></label>
+    <p class="small muted">${last ? `Latest ${fmtW(last.kg)} ${U()}, ${fmtDate(last.date)}. ` : ""}Saved as ${on}.</p>
+    <div class="row u-mt10"><button class="btn primary" data-act="addBW" data-in="bwSheetVal" data-date=${m3.date || A}>Save</button><button class="btn" data-act="mClose">Not now</button></div></div>`;
   }
   function bwSettings() {
-    const last = state.bodyweights.filter((b2) => !b2.demo).sort((a2, b2) => a2.date < b2.date ? 1 : -1)[0];
+    const last = latestBw();
     return b`<div class="row u-mt8" id="bwSet"><label class="field u-f1_m0">Bodyweight (${U()})<input type="text" inputmode="decimal" id="bwSetVal" placeholder=${last ? fmtW(last.kg) : "Not set"} data-grey=${last ? fmtW(last.kg) : A} enterkeyhint="done"></label><button class="btn sm primary" data-act="addBW" data-in="bwSetVal">${last ? "Log" : "Set"}</button></div><p class="small muted u-m4-0-0">${last ? `Latest ${fmtW(last.kg)} ${U()}. ` : "Not set: bodyweight lifts count only the weight you add. "}Optional.</p>`;
   }
   var BW_ACTS = {
+    // From a session's header (NEW-90) the sheet carries the session's date, so a past workout's weigh-in is dated that day.
     bwOpen(t4) {
       const id = t4.dataset.ex;
-      openModal({ kind: "bw", ex: id ? EX(id).name : void 0 });
+      const d3 = t4.dataset.date;
+      openModal({ kind: "bw", ex: id ? EX(id).name : void 0, date: d3 && isDate(d3) && d3 <= today() ? d3 : void 0 });
     }
   };
 
@@ -14654,14 +14662,23 @@ ${more}`;
   var ordBack = /* @__PURE__ */ new WeakMap();
   var blkKey = (bi, b2) => (state.draft && state.draft.id || "") + ":" + bi + ":" + b2.exId;
   var blkIsOpen = (bi, b2) => ui.blkOpen.has(blkKey(bi, b2)) || blkOpenObj.has(b2);
+  var blkShutObj = /* @__PURE__ */ new WeakSet();
+  var blkIsShut = (bi, b2) => ui.blkShut.has(blkKey(bi, b2)) || blkShutObj.has(b2);
+  function blkShut(bi, b2) {
+    ui.blkShut.add(blkKey(bi, b2));
+    blkShutObj.add(b2);
+  }
   function blkOpen(bi, b2) {
     ui.blkOpen.add(blkKey(bi, b2));
     blkOpenObj.add(b2);
+    ui.blkShut.delete(blkKey(bi, b2));
+    blkShutObj.delete(b2);
   }
   function keepOpen(fn) {
     const d3 = state.draft;
     if (!d3) return fn();
     const was = new Set(d3.ex.filter((b2, i5) => blkIsOpen(i5, b2)));
+    const shut = new Set(d3.ex.filter((b2, i5) => blkIsShut(i5, b2)));
     const r4 = fn();
     const dd = state.draft;
     if (dd)
@@ -14671,6 +14688,10 @@ ${more}`;
           ui.blkOpen.add(k2);
           blkOpenObj.add(b2);
         } else ui.blkOpen.delete(k2);
+        if (shut.has(b2)) {
+          ui.blkShut.add(k2);
+          blkShutObj.add(b2);
+        } else ui.blkShut.delete(k2);
       });
     return r4;
   }
@@ -15364,7 +15385,7 @@ ${more}`;
     W.foldT = null;
     if (W.blockDrag) return;
     const d3 = state.draft;
-    if (!d3 || d3.editingId || ui.modal || ui.tab !== "today") return;
+    if (!d3 || d3.editingId || ui.modal || !sessionShown()) return;
     const bi = blkIdx(ref2);
     const b2 = bi < 0 ? null : d3.ex[bi];
     if (!b2 || !blockDone(b2) || blkIsOpen(bi, b2)) return;
@@ -15487,7 +15508,7 @@ ${more}`;
     }
     const ae = document.activeElement;
     const typing = !!ae && (/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) || ae instanceof HTMLElement && ae.isContentEditable);
-    if (ui.tab === "today" && (typing || W.blockDrag || drawing() || ui.modal || W.foldT != null || document.querySelector(".rirstrip"))) {
+    if (sessionShown() && (typing || W.blockDrag || drawing() || ui.modal || W.foldT != null || document.querySelector(".rirstrip"))) {
       W.orderT = setTimeout(orderRun, ORDER_MS.again);
       return;
     }
@@ -15495,7 +15516,7 @@ ${more}`;
     if (!q.length) return;
     const anchor = q[q.length - 1];
     const el0 = document.getElementById("blk-" + d3.ex.indexOf(anchor));
-    const top0 = ui.tab === "today" && el0 ? el0.getBoundingClientRect().top : null;
+    const top0 = sessionShown() && el0 ? el0.getBoundingClientRect().top : null;
     let moved = false;
     for (const b2 of q) {
       const bi = d3.ex.indexOf(b2), j3 = orderAt(b2);
@@ -15506,7 +15527,7 @@ ${more}`;
       moved = true;
       ordBack.set(b2, { i: bi, t: Date.now() });
     }
-    if (!moved || ui.tab !== "today") return;
+    if (!moved || !sessionShown()) return;
     rerenderKeepScroll();
     const el1 = document.getElementById("blk-" + d3.ex.indexOf(anchor));
     if (el1 && top0 != null) window.scrollBy(0, el1.getBoundingClientRect().top - top0);
@@ -19487,6 +19508,9 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const free = state.settings.todayStart === "free" && chosen == null;
     const lines = [acctBar(), installBar(), iconBar()];
     const above = b`${welcomeCard()}${lines}${lines.every((l4) => l4 === A) ? photoBar() : A}`;
+    const open = state.draft && ui.away ? state.draft : null;
+    if (open)
+      return b`${above}${resumeCard(open)}${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
     if (free) {
       const w2 = noLog() ? "Add exercises as you go." : (() => {
         const s3 = weekStats();
@@ -19502,6 +19526,13 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
 <p class="muted small u-m0" data-tip=${"Routine: " + R2.name}>${playable ? b`${day.items.length} exercises · ${sets} · ${minPart(dayMinutes(day, deload))}` : day.rest ? "Rest day" : "No exercises planned"}</p></div>${heroRing(weekStats())}</div>
 ${note !== A ? b`<p class="hero-note small">${note}</p>` : A}${playable ? b`<button class="btn primary fullw big" data-act="startSession" data-day=${di} data-part=${part === 2 ? "2" : A}>${deload ? "Start deload session" : "Start session"}</button>` : b`<p class="small u-m10-0-0">${day.rest ? "Rest day." : "Nothing planned for this day."}</p>`}<div class="row u-mt8">${changeBtn(di, false, part)}${moreBtn(deload)}<span class="u-mlauto"></span>${helpButton("starts")}</div>
 ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di, part)}</section>${bwDueCard()}${todayRest({ playable, di, day, deload, cs })}`;
+  }
+  function resumeCard(d3) {
+    const done = d3.ex.reduce((a2, b2) => a2 + b2.sets.filter((s3) => s3.done && !s3.warm).length, 0);
+    const kind = d3.editingId ? "Editing a saved session" : d3.past ? "Past workout" : "Workout in progress";
+    return b`<section class="hero" id="resumeCard"><div class="hero-top"><div class="hero-t"><p class="eyebrow">${kind}</p><h2>${d3.dayName}</h2>
+<p class="muted small u-m0">${done} ${done === 1 ? "set" : "sets"} done · saved as you go</p></div></div>
+<button class="btn primary fullw big" data-act="wkResume">Resume</button></section>`;
   }
   function homeTiles() {
     const sk = weekStreak();
@@ -19773,7 +19804,8 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       const inp = field(own2 || "bwVal");
       const v3 = numIn(inp ? inp.value || inp.dataset["grey"] || "" : "");
       const de = own2 ? null : field("bwDate");
-      const date = de && de.value || today();
+      const at2 = t4 && t4.dataset && t4.dataset["date"];
+      const date = (at2 && isDate(at2) && at2 <= today() ? at2 : null) || de && de.value || today();
       if (v3 == null || v3 <= 0) {
         toast("Enter a bodyweight");
         return;
@@ -20548,7 +20580,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const p3 = blockProgress(b2);
     return p3 ? b`<span class=${"tp" + (p3.beat ? " beat" : "")} id=${`tp-${bi}`}>${p3.text}</span>` : "";
   }
-  var isFolded = (d3, b2, bi) => !d3.editingId && blockDone(b2) && !blkIsOpen(bi, b2) && !W.foldWait.has(b2);
+  var isFolded = (d3, b2, bi) => blockDone(b2) && (d3.editingId ? blkIsShut(bi, b2) : !blkIsOpen(bi, b2) && !W.foldWait.has(b2));
   function blockPart(d3, b2, bi, letters, hintSeen, calIdx, bwAt2) {
     const ex = EX(b2.exId);
     const p3 = b2.plan;
@@ -20571,7 +20603,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const work = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
     const canFill = !!b2.lastR && b2.lastR.some((r4) => r4 != null) && b2.sets.some((s3, i5) => !s3.done && !s3.warm && !s3.drop && s3.r == null && lastRFor(b2, i5) != null);
     return b`<section class=${"block" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? b`<p class="ssh">Superset ${ss}</p>` : ""}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : A}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? b` ${tipButton(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · ${work || p3.sets}×${repSpan(p3.repMin, p3.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}${nr ? "" : ` @${b2.inj || (d3.light || d3.deload || b2.light) && b2.last ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p3.rir)}`} · ${p3.rest}s${b2.inj ? b` · <span class="tag red">Injury: ${injLabel(b2.inj)}</span>` : ""}${markedNew(d3, b2.exId) ? b` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ""}</p></div>
-      <div class="bh-acts">${!d3.editingId && blockDone(b2) ? b`<button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button>` : ""}<button class=${"ib" + (b2.note || b2.pics && b2.pics.length ? " noted" : "")} aria-label=${b2.note || b2.pics && b2.pics.length ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle.">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
+      <div class="bh-acts">${blockDone(b2) ? b`<button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button>` : ""}<button class=${"ib" + (b2.note || b2.pics && b2.pics.length ? " noted" : "")} aria-label=${b2.note || b2.pics && b2.pics.length ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle.">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
       ${b2.target ? b`<p class="hint"><b>Today: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
       ${ss && partner && gk === 0 ? b`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? "pair" : "group"}.</p>` : ""}
       ${b2.lastNote && !b2.note ? b`<p class="small lnote">Your note, ${fmtDate(b2.lastNote.date)}: ${b2.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ""}
@@ -20600,7 +20632,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const when = d3.past ? `for ${fmtDateLong(d3.date)}` : d3.startedAt ? `started ${startedWords(d3.startedAt)}` : "";
     const meta = sp.n ? b`${when ? when.charAt(0).toUpperCase() + when.slice(1) : ""}<span id="sessLeft">${left > 0 ? `${when ? " · " : ""}${estMin(left)} left` : ""}</span>` : b`<span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? "set" : "sets"}</span> done${when ? `, ${when}` : ""}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ""}</span>`;
     return b`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d3.editingId ? "Editing a saved session" : d3.past ? "Past workout" : "Session in progress"}</p><div class="hrow"><h2 class="u-owany_minw0">${d3.dayName}</h2>${helpButton("log")}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d3.editingId ? "Cancel edit" : "Discard"}</button></div><p class="meta">${meta}</p>${sp.n ? b`<div class="sprog"><div class="band" role="progressbar" aria-label="Sets done" aria-valuemin="0" aria-valuemax=${sp.n} aria-valuenow=${sp.k} aria-valuetext=${`${sp.k} of ${sp.n} sets done`}><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%;--pct:${sp.pct}`}></div></div><span id="sessOf" aria-hidden="true">${sp.k} of ${sp.n}</span></div>` : ""}
-  <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d3.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d3.past || d3.editingId ? b`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d3.durMin ? String(d3.durMin) : "")} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : A}${d3.past ? "" : b`<button class="btn sm" data-act="chkOpen" aria-label=${chkSum(d3) ? `Check-in: ${chkSum(d3)}` : "Check-in, optional"}>Check-in</button>`}${left > 0 ? b`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ""}</div></div></div>
+  <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d3.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d3.past || d3.editingId ? b`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d3.durMin ? String(d3.durMin) : "")} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : A}${d3.past ? "" : b`<button class="btn sm" data-act="chkOpen" aria-label=${chkSum(d3) ? `Check-in: ${chkSum(d3)}` : "Check-in, optional"}>Check-in</button>`}${left > 0 ? b`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ""}<button class="btn sm" data-act="bwOpen" data-date=${d3.date} data-tip="Log or update your weigh-in without leaving the workout.">Bodyweight</button><button class="btn sm" data-act="wkAway" data-tip="Everything is saved as you go. Today shows the workout to resume.">Save and leave</button></div></div></div>
   ${howText("log", (state.settings.rirMode === "off" ? "RIR is switched off in Settings, so every working set counts as hard. " : LOG_HELP_ON) + LOG_HELP + (d3.past ? " Quick entry: no rest timer, and a set counts as done once its reps are typed." : state.settings.autoDone ? " Auto-mark is on: sets tick themselves when you leave the reps field." : ""))}
   ${d3.free ? b`<label class="field u-mt8">Name<input type="text" data-bind="draftName" maxlength=${LIMITS.name} .value=${fieldValue(d3.dayName || "")}></label><p class="small muted u-m4-0-0">Not tied to a routine day, so your cycle stays put.</p>` : ""}
   ${d3.past ? "" : readyCard(d3, chkLow(d3))}${bwAskCard(d3)}${!d3.ex.length ? b`<div class="card"><p class="small u-m0">No exercises yet. Tap + Add exercise below${d3.editingId ? "" : `, or Pick for me for a suggestion based on your last ${PICK_DAYS} days,`} and log as you go.</p></div>` : ""}${repeatKeyed(
@@ -20618,12 +20650,13 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   }
   function drawNow() {
     const v3 = document.getElementById("view");
-    if (!v3 || ui.tab !== "today" || !state.draft) return;
+    const d3 = state.draft;
+    if (!v3 || !d3 || !sessionShown()) return;
     if (drawing()) {
       queueMicrotask(drawNow);
       return;
     }
-    drawScreen(v3, viewWorkout(state.draft));
+    drawScreen(v3, viewWorkout(d3));
   }
   var tapBlock = (t4) => state.draft && state.draft.ex[Number(t4.dataset.b)] || null;
   function setRemove(t4) {
@@ -21114,10 +21147,31 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         } catch (e5) {
         }
     },
+    /* Save and leave (NEW-89): the workout is saved as it goes, so this only
+       steps away to Today, which offers it back; the tab, Back and opening the
+       app again all open the workout. */
+    wkAway() {
+      ui.away = true;
+      window.scrollTo(0, 0);
+      render();
+      toast("Saved. Resume it from Today.");
+    },
+    wkResume() {
+      ui.away = false;
+      ui.tab = "today";
+      window.scrollTo(0, 0);
+      render();
+    },
     // Every place this exercise was opened at, so a move and a fold leave nothing behind.
     bFold(t4) {
       const b2 = tapBlock(t4);
       if (!b2) return;
+      const d3 = state.draft;
+      if (d3 && d3.editingId) {
+        blkShut(Number(t4.dataset.b), b2);
+        rerenderKeepScroll();
+        return;
+      }
       const pre = (state.draft && state.draft.id || "") + ":";
       for (const k2 of [...ui.blkOpen])
         if (typeof k2 === "string" && k2.startsWith(pre) && k2.endsWith(":" + b2.exId)) ui.blkOpen.delete(k2);
@@ -21858,7 +21912,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         cat,
         msg,
         shot: null,
-        from: crash ? "crash" : ui.tab === "today" && d3 ? "session" : from,
+        from: crash ? "crash" : sessionShown() && d3 ? "session" : from,
         ex: b2 ? exName(b2.exId) : null,
         crash: crash || void 0
       });
@@ -24979,6 +25033,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   var halfSets = (n3) => Math.max(1, Math.ceil(n3 / 2));
   var blockPlan = (p3) => ({ ...p3, ss: p3.ss ?? null });
   function begin(d3, live2) {
+    ui.away = false;
     act(
       () => {
         state.draft = d3;
@@ -25014,12 +25069,17 @@ ${JSON.stringify(ctx, null, 1)}`;
       ex: day.items.map((it) => newBlock(it.exId, it, { before: date }))
     };
   }
+  function resumeOpen() {
+    if (!state.draft) return false;
+    ui.away = false;
+    ui.tab = "today";
+    window.scrollTo(0, 0);
+    render();
+    toast("Your workout in progress is open. Finish or discard it first.");
+    return true;
+  }
   function startFree() {
-    if (state.draft) {
-      ui.tab = "today";
-      render();
-      return;
-    }
+    if (resumeOpen()) return;
     const dl = isDeloadWeek();
     ui.tab = "today";
     begin({ ...freeDraft(dl ? "Freestyle (deload)" : "Freestyle"), deload: dl, notes: dl ? DELOAD_NOTE : "" }, true);
@@ -25027,6 +25087,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   function startSession(t4) {
     if (ui.modal) closeModal();
+    if (resumeOpen()) return;
     toastQuiet();
     const R2 = activeRoutine();
     const di = Number(t4.dataset.day);
@@ -25060,6 +25121,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   function wkGo(t4) {
     const d3 = t4.dataset.date;
     ui.tab = "today";
+    ui.away = false;
     if (!state.draft) {
       const R2 = activeRoutine();
       const di = t4.dataset.day != null ? Number(t4.dataset.day) : null;
@@ -25361,6 +25423,11 @@ ${JSON.stringify(ctx, null, 1)}`;
     eqStart() {
       const m3 = ui.modal;
       if (!m3 || m3.kind !== "eq") return;
+      if (state.draft) {
+        closeModal();
+        resumeOpen();
+        return;
+      }
       const R2 = activeRoutine();
       const day0 = R2.days[m3.day];
       if (!day0) {
@@ -25956,6 +26023,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const tab = el.closest("#tabs button");
       if (tab instanceof HTMLElement) {
         ui.tab = tab.dataset.tab || "";
+        ui.away = false;
         if (ui.tab === "program") ui.planView = "routine";
         window.scrollTo(0, 0);
         render();
@@ -27089,7 +27157,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     sortables = [];
   }
   var TABS = {
-    today: () => state.draft ? viewWorkout(state.draft) : viewToday(),
+    today: () => state.draft && !ui.away ? viewWorkout(state.draft) : viewToday(),
     history: viewHistory,
     settings: viewSettings,
     program: () => ui.planView === "library" ? viewLibrary() : viewProgram(),
@@ -27121,18 +27189,18 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (ui.tab === "library") ui.tab = "program";
     if (obActive() && ui.tab !== "today") ui.tab = "today";
     document.body.classList.toggle("obmode", obActive());
-    if (ui.tab === "today" && state.draft) workoutFullDraw();
+    if (sessionShown()) workoutFullDraw();
     const v3 = document.getElementById("view");
     const tab = TABS[ui.tab] || TABS["today"];
     if (v3 && tab) drawScreen(v3, tab());
-    if (!(ui.tab === "today" && state.draft) && !(ui.tab === "program" && ui.planView === "library")) mountSecSortable();
-    if (ui.tab === "today" && state.draft) {
+    if (!sessionShown() && !(ui.tab === "program" && ui.planView === "library")) mountSecSortable();
+    if (sessionShown()) {
       const s3 = mountBlockDrag();
       if (s3) sortables.push(s3);
     }
     if (ui.tab === "program" && ui.planView !== "library") mountSortable();
     if (ui.tab === "dash") mountCharts();
-    if (ui.tab === "today" && !state.draft) mount3D();
+    if (ui.tab === "today" && !sessionShown()) mount3D();
     if (obActive()) mountObTour();
     if (ui.modal) renderModal();
   }
