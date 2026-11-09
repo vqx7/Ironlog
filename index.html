@@ -651,6 +651,12 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg select{text-align:center;padding:6px 2px;min-height:44px}
 .sg select.unset{color:var(--muted)}
 .sg.done input,.sg.done select{border-color:color-mix(in srgb,var(--volt-line) 55%,transparent);background:var(--volt-soft)}
+.stepr{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:8px}
+.stepr-l{margin-right:auto;white-space:nowrap}
+.stepr-g{display:inline-flex;align-items:center;gap:4px}
+.stepr .ib{font-size:20px;font-weight:700}
+.stepr .ib:disabled{opacity:.4;cursor:default}
+@media (max-width:359px){.stepr{gap:8px}.stepr-l{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}}
 .sg.norir{grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) 44px}
 .sg .n.drop{color:var(--blue)}
 /* A drop set sits under its set (r66, 375): set in on a quiet band, its Last column naming it. */
@@ -8088,6 +8094,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const up = Ls.above(from), c4 = Ls.floor(to);
     return up != null && c4 != null && c4 >= up - EPS_SAME ? c4 : null;
   }
+  function stepLoadIn(M3, ex, plan, from, dir) {
+    if (dir > 0) return loadsForIn(M3, ex, plan, from).above(from);
+    const w2 = lighterLoadIn(M3, ex, plan, from, from - EPS_SAME);
+    return w2 < from - EPS_SAME ? w2 : null;
+  }
   var ODD_SESSION = 3;
   var ODD_BEST = 2;
   var ODD_ADDED_BW = 0.9;
@@ -9595,6 +9606,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var easierText = live(easierTextIn);
   var incOf = live(incOfIn);
   var heavierLoad = live(heavierLoadIn);
+  var stepLoad = live(stepLoadIn);
   var oddLoad = live(oddLoadIn);
   var lightZero = live(lightZeroIn);
   var nextSets = live(nextSetsIn);
@@ -20670,6 +20682,18 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         ${nr ? "" : rirButton(s3.rir, bi, si, p3.rir)}
         <button class=${"cbtn " + (s3.done ? "on" : "")} aria-label=${`Set ${si + 1} ${s3.done && isMissed(s3) ? "missed" : "done"}`} aria-pressed=${s3.done ? "true" : "false"} data-act="sDone" data-b=${bi} data-s=${si}>✓</button></div>${stripIs(bi, si) ? rirStrip(bi, si, s3.rir == null ? "" : String(s3.rir)) : A}`;
   }
+  var STEP_SECONDS = 5;
+  function stepStrip(d3, b2, bi, ex) {
+    const si = b2.sets.findIndex((x2) => !x2.done);
+    const s3 = b2.sets[si];
+    if (!s3 || d3.editingId) return "";
+    const wn = b2.sets.slice(0, si + 1).filter((x2) => !x2.warm && !x2.drop).length;
+    const name = s3.warm ? "Warm-up" : s3.drop ? "Drop set" : `Set ${wn}`;
+    const w2 = effW(b2, si) ?? 0;
+    const r4 = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
+    const btn = (f3, dir, off, label, txt) => b`<button type="button" class="ib" data-act="sStep" data-b=${bi} data-s=${si} data-f=${f3} data-d=${dir} aria-label=${`${name}: ${label}`} ?disabled=${off}>${txt}</button>`;
+    return b`<div class="stepr" role="group" aria-label=${`${name}: load and ${ex.timed ? "seconds" : "reps"}`}><span class="stepr-l small muted">${name}</span>${ex.assist ? "" : b`<span class="stepr-g">${btn("w", "-1", stepLoad(ex, b2.plan, w2, -1) == null, "lighter", "−")}<span class="small muted">${U()}</span>${btn("w", "1", stepLoad(ex, b2.plan, w2, 1) == null, "heavier", "+")}</span>`}<span class="stepr-g">${btn("r", "-1", r4 <= 0, ex.timed ? "fewer seconds" : "one rep fewer", "−")}<span class="small muted">${ex.timed ? "sec" : "reps"}</span>${btn("r", "1", r4 >= LIMITS.reps, ex.timed ? "more seconds" : "one rep more", "+")}</span></div>`;
+  }
   function progressLine(b2, bi) {
     const p3 = blockProgress(b2);
     return p3 ? b`<span class=${"tp" + (p3.beat ? " beat" : "")} id=${`tp-${bi}`} aria-hidden=${p3.text ? A : "true"}>${p3.text || " "}</span>` : "";
@@ -20706,7 +20730,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       b2.sets,
       (x2) => x2.rid,
       (_2, si) => setRow(d3, b2, bi, si, ex, nr, dupB)
-    )}${adjLine(b2, bi)}${platesMode(ex) !== "none" ? b`<p class="small muted u-m6-0-0" id=${`pl-${bi}`}>${plateLine(b2, W.platesAt && blkIdx(W.platesAt.b) === bi ? W.platesAt.s : null)}</p>` : ""}<div class="row u-mt8">${canFill ? b`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>` : ""}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done." ?disabled=${!b2.sets.length}>− Set</button>${!ex.timed && b2.sets.some((x2) => x2.done && !x2.warm && !x2.drop) ? b`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working weight, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>` : ""}${!d3.editingId && b2.sets.some((x2) => x2.done && !x2.warm) && b2.sets.some((x2) => !x2.done) ? b`<button class="btn sm bdone" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them.">✓ Done</button>` : ""}${state.settings.timerMode !== "off" && +p3.rest > 0 && !d3.past ? b`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p3.rest} second rest`} data-tip="Start the rest timer.">⏱ ${p3.rest}s</button>` : ""}</div></section>`;
+    )}${stepStrip(d3, b2, bi, ex)}${adjLine(b2, bi)}${platesMode(ex) !== "none" ? b`<p class="small muted u-m6-0-0" id=${`pl-${bi}`}>${plateLine(b2, W.platesAt && blkIdx(W.platesAt.b) === bi ? W.platesAt.s : null)}</p>` : ""}<div class="row u-mt8">${canFill ? b`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>` : ""}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done." ?disabled=${!b2.sets.length}>− Set</button>${!ex.timed && b2.sets.some((x2) => x2.done && !x2.warm && !x2.drop) ? b`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working weight, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>` : ""}${!d3.editingId && b2.sets.some((x2) => x2.done && !x2.warm) && b2.sets.some((x2) => !x2.done) ? b`<button class="btn sm bdone" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them.">✓ Done</button>` : ""}${state.settings.timerMode !== "off" && +p3.rest > 0 && !d3.past ? b`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p3.rest} second rest`} data-tip="Start the rest timer.">⏱ ${p3.rest}s</button>` : ""}</div></section>`;
   }
   var LOG_HELP_ON = "RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ";
   var LOG_HELP = "W marks a warm-up (kept, never analysed); tap it again for ↳, a drop set (counts as work and volume, never as a PR or target). + Drop adds one under the last set ticked, with no rest before it; a warm-up is added from the ⋯ menu. Drag an exercise by its ⠿ to change the order. A superset is one box, A1 and A2: after a set of A1 the screen moves to A2, and the rest timer starts after the last exercise of the group. Timed holds log seconds in the Sec column. The date can be changed to log a past session.";
@@ -21019,6 +21043,44 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         },
         { inProgress: true }
       );
+      rerenderKeepScroll();
+    },
+    /* Minus and plus (ST-6): from what the row holds, else what it shows in grey, to the next load on the lift's list
+       or one rep (five seconds on a hold) either way, written as the number typed in the field would be, with the same
+       carry to the rows below. The set is not ticked. */
+    sStep(t4) {
+      const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
+      const b2 = tapBlock(t4);
+      const s3 = b2 && b2.sets[si];
+      if (!b2 || !s3 || s3.done) return;
+      const ex = EX(b2.exId);
+      const dir = t4.dataset.d === "-1" ? -1 : 1;
+      if (t4.dataset.f === "w") {
+        if (ex.assist) return;
+        const to = stepLoad(ex, b2.plan, effW(b2, si) ?? 0, dir);
+        const n3 = to == null ? null : numIn(loadIn(ex, to));
+        if (n3 == null) return;
+        act(
+          () => {
+            s3.w = Math.min(fromD(Math.max(n3, 0)) ?? 0, LOAD_MAX);
+            carried.delete(s3);
+            if (fillLoads()) carryLoad(b2, si);
+          },
+          { inProgress: true }
+        );
+        W.platesAt = { b: blkRef(bi), s: si };
+        mixCheck(bi, si);
+      } else {
+        const r4 = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
+        const n3 = Math.min(Math.max(r4 + dir * (ex.timed ? STEP_SECONDS : 1), 0), LIMITS.reps);
+        if (n3 === s3.r) return;
+        act(
+          () => {
+            s3.r = n3;
+          },
+          { inProgress: true }
+        );
+      }
       rerenderKeepScroll();
     },
     sDel: setRemove,

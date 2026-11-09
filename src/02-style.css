@@ -639,6 +639,12 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg select{text-align:center;padding:6px 2px;min-height:44px}
 .sg select.unset{color:var(--muted)}
 .sg.done input,.sg.done select{border-color:color-mix(in srgb,var(--volt-line) 55%,transparent);background:var(--volt-soft)}
+.stepr{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:8px}
+.stepr-l{margin-right:auto;white-space:nowrap}
+.stepr-g{display:inline-flex;align-items:center;gap:4px}
+.stepr .ib{font-size:20px;font-weight:700}
+.stepr .ib:disabled{opacity:.4;cursor:default}
+@media (max-width:359px){.stepr{gap:8px}.stepr-l{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}}
 .sg.norir{grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) 44px}
 .sg .n.drop{color:var(--blue)}
 /* A drop set sits under its set (r66, 375): set in on a quiet band, its Last column naming it. */

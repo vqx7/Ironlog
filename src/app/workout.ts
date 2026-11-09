@@ -35,7 +35,19 @@ import { loadWords, loadNote, emptyLoad } from './loads';
 import { CHK_Q, chkWord } from './coach';
 import { rirScale, effShow, effName } from './effort';
 import { prefGet, BWASK_KEY, prefSet, log } from './storage';
-import { EX, exBarKg, loadLabel, U, exName, lighterLoad, heavierLoad, fromD, oddLoad, lightZero } from './live';
+import {
+  EX,
+  exBarKg,
+  loadLabel,
+  U,
+  exName,
+  lighterLoad,
+  heavierLoad,
+  fromD,
+  oddLoad,
+  lightZero,
+  stepLoad
+} from './live';
 import { sessionShown, state, ui } from './store';
 import {
   effW,
@@ -416,6 +428,30 @@ function setRow(
         <button class=${'cbtn ' + (s.done ? 'on' : '')} aria-label=${`Set ${si + 1} ${s.done && isMissed(s) ? 'missed' : 'done'}`} aria-pressed=${s.done ? 'true' : 'false'} data-act="sDone" data-b=${bi} data-s=${si}>✓</button></div>${stripIs(bi, si) ? rirStrip(bi, si, s.rir == null ? '' : String(s.rir)) : nothing}`;
 }
 
+/** Seconds a timed hold's minus and plus step by (ST-6): one second is too fine a step to tap toward a 30 to 60 s hold. */
+const STEP_SECONDS = 5;
+
+/* Minus and plus for the next set not yet done (2.37, ST-6; V, 2026-11-08: "stepping by the lift's load step and one
+   rep"). The set row has no room for four more 44 px buttons (254 px wide at 320, its load field 48), so they sit in
+   one strip under the sets, where a tick moves nothing above them, and act on the first set not ticked; it names that
+   set. An assisted lift's field takes the help, so only its reps step. Not in an edit, where every set is done. */
+function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part {
+  const si = b.sets.findIndex(x => !x.done);
+  const s = b.sets[si];
+  if (!s || d.editingId) return '';
+  const wn = b.sets.slice(0, si + 1).filter(x => !x.warm && !x.drop).length;
+  const name = s.warm ? 'Warm-up' : s.drop ? 'Drop set' : `Set ${wn}`;
+  const w = effW(b, si) ?? 0;
+  const r = +(s.r ?? greyR(b, si) ?? 0) || 0;
+  const btn = (f: 'w' | 'r', dir: '1' | '-1', off: boolean, label: string, txt: string): TemplateResult =>
+    html`<button type="button" class="ib" data-act="sStep" data-b=${bi} data-s=${si} data-f=${f} data-d=${dir} aria-label=${`${name}: ${label}`} ?disabled=${off}>${txt}</button>`;
+  return html`<div class="stepr" role="group" aria-label=${`${name}: load and ${ex.timed ? 'seconds' : 'reps'}`}><span class="stepr-l small muted">${name}</span>${
+    ex.assist
+      ? ''
+      : html`<span class="stepr-g">${btn('w', '-1', stepLoad(ex, b.plan, w, -1) == null, 'lighter', '−')}<span class="small muted">${U()}</span>${btn('w', '1', stepLoad(ex, b.plan, w, 1) == null, 'heavier', '+')}</span>`
+  }<span class="stepr-g">${btn('r', '-1', r <= 0, ex.timed ? 'fewer seconds' : 'one rep fewer', '−')}<span class="small muted">${ex.timed ? 'sec' : 'reps'}</span>${btn('r', '1', r >= LIMITS.reps, ex.timed ? 'more seconds' : 'one rep more', '+')}</span></div>`;
+}
+
 /* Before the first tick the line keeps its space, blank (NEW-64, picture A of 2026-11-06): it appeared on that tick and
    pushed the sets 23 px down under the finger, so the next tap could land on the row above the one meant. */
 function progressLine(b: DraftBlock, bi: number): Part {
@@ -483,7 +519,7 @@ function blockPart(
         b.sets,
         x => x.rid,
         (_, si) => setRow(d, b, bi, si, ex, nr, dupB)
-      )}${adjLine(b, bi)}${
+      )}${stepStrip(d, b, bi, ex)}${adjLine(b, bi)}${
         platesMode(ex) !== 'none'
           ? html`<p class="small muted u-m6-0-0" id=${`pl-${bi}`}>${plateLine(b, W.platesAt && blkIdx(W.platesAt.b) === bi ? W.platesAt.s : null)}</p>`
           : ''
@@ -894,6 +930,45 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { inProgress: true }
     );
+    rerenderKeepScroll();
+  },
+  /* Minus and plus (ST-6): from what the row holds, else what it shows in grey, to the next load on the lift's list
+     or one rep (five seconds on a hold) either way, written as the number typed in the field would be, with the same
+     carry to the rows below. The set is not ticked. */
+  sStep(t) {
+    const bi = Number(t.dataset.b),
+      si = Number(t.dataset.s);
+    const b = tapBlock(t);
+    const s = b && b.sets[si];
+    if (!b || !s || s.done) return;
+    const ex = EX(b.exId);
+    const dir = t.dataset.d === '-1' ? -1 : 1;
+    if (t.dataset.f === 'w') {
+      if (ex.assist) return;
+      const to = stepLoad(ex, b.plan, effW(b, si) ?? 0, dir);
+      const n = to == null ? null : numIn(loadIn(ex, to));
+      if (n == null) return;
+      act(
+        () => {
+          s.w = Math.min(fromD(Math.max(n, 0)) ?? 0, LOAD_MAX);
+          carried.delete(s);
+          if (fillLoads()) carryLoad(b, si);
+        },
+        { inProgress: true }
+      );
+      W.platesAt = { b: blkRef(bi), s: si };
+      mixCheck(bi, si);
+    } else {
+      const r = +(s.r ?? greyR(b, si) ?? 0) || 0;
+      const n = Math.min(Math.max(r + dir * (ex.timed ? STEP_SECONDS : 1), 0), LIMITS.reps);
+      if (n === s.r) return;
+      act(
+        () => {
+          s.r = n;
+        },
+        { inProgress: true }
+      );
+    }
     rerenderKeepScroll();
   },
   sDel: setRemove,

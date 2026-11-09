@@ -112,6 +112,7 @@ import {
   daysOffIn,
   easierTextIn,
   heavierLoadIn,
+  stepLoadIn,
   incOfIn,
   lighterLoadIn,
   oddLoadIn,
@@ -274,6 +275,8 @@ export const daysOff = live(daysOffIn);
 export const easierText = live(easierTextIn);
 export const incOf = live(incOfIn);
 export const heavierLoad = live(heavierLoadIn);
+/** The next load down or up on a lift's list, for minus and plus on a set (ST-6). */
+export const stepLoad = live(stepLoadIn);
 export const oddLoad = live(oddLoadIn);
 export const lightZero = live(lightZeroIn);
 export const nextSets = live(nextSetsIn);

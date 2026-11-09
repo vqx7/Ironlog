@@ -2062,6 +2062,22 @@ export function heavierLoadIn(
   return up != null && c != null && c >= up - EPS_SAME ? c : null;
 }
 
+/* Minus and plus on a set (2.37, ST-6): the next load down or up on the lift's own list (loadsForIn), so a tap lands on
+   a load the lift can use, as every rule that moves a load reads it. Down never goes under the bar or the lightest
+   bell (lighterLoadIn); null when there is nothing further that way. */
+/** The next load on the lift's list below (`dir` -1) or above (1) `from`, or null when there is none. */
+export function stepLoadIn(
+  M: Model,
+  ex: ExerciseLike,
+  plan: Pick<Plan, 'inc' | 'jump'> | null | undefined,
+  from: number,
+  dir: 1 | -1
+): number | null {
+  if (dir > 0) return loadsForIn(M, ex, plan, from).above(from);
+  const w = lighterLoadIn(M, ex, plan, from, from - EPS_SAME);
+  return w < from - EPS_SAME ? w : null;
+}
+
 /* A load far off (r55, V 2026-10-19: 300 typed after two sets of 50, logged
    without a word). Before a working set is logged the app asks, Log it or
    Fix it, when its load is more than three times the heaviest set ticked in

@@ -9,7 +9,11 @@
 //      Sources name them; guard: a note the lifter edited stays as typed.
 //   4  NEW-64: the first tick of a lift moves its sets by nothing, at 390 and 320 px: the line on its target ("N of M
 //      reps so far") keeps its space from the start, blank until then (picture A of 2026-11-06).
-// R83_ONLY=1,2,3,4 runs some sections.
+//   5  ST-6: minus and plus under a lift's sets act on its first set not ticked: the load to the next one on the lift's
+//      list (its load step: 5 kg and 10 lb on a bar with none of its own), stored as that number typed; the reps by one, a hold's seconds by five; 44 px each,
+//      no sideways scroll at 320; the set never ticked by them; after a tick they name the next set and nothing above
+//      moves; an assisted lift steps its reps only; guard: none in an edit, where every set is done.
+// R83_ONLY=1,2,3,4,5 runs some sections.
 const { open } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
@@ -129,6 +133,63 @@ async function app(o = {}) {
       ok(a.y === b.y, `4. at ${w} px the first tick moves the sets under the finger by nothing (the line's space is kept from the start)`, { before: a.y, after: b.y, line: b.text });
       await D.browser.close();
     }
+  }
+
+  if (run(5)) {
+    for (const w of [390, 320]) {
+      const D = await app({ w });
+      await D.page.click('[data-act="startSession"]'); await wait(400);
+      const look = () => D.page.evaluate(() => {
+        const L = window.__ironlog, b = L.state.draft.ex[0], st = document.querySelector('#blk-0 .stepr');
+        const f = k => document.querySelector(`#view input[data-f="${k}"][data-b="0"][data-s="0"]`);
+        const btns = st ? [...st.querySelectorAll('button')].map(x => { const r = x.getBoundingClientRect(); return { l: x.getAttribute('aria-label'), w: Math.round(r.width), h: Math.round(r.height), off: x.disabled }; }) : [];
+        return { name: st ? st.querySelector('.stepr-l').textContent : null, btns, w: f('w').value || f('w').placeholder, r: f('r').value || f('r').placeholder, sw: b.sets[0].w, sr: b.sets[0].r, done: b.sets[0].done, ex: b.exId, unit: L.U(), wide: document.documentElement.scrollWidth, y: Math.round(document.querySelector('#view [data-act="sDone"][data-b="0"][data-s="1"]').getBoundingClientRect().top + scrollY) };
+      });
+      const a = await look();
+      ok(a.name === 'Set 1' && a.btns.length === 4 && a.btns.every(x => x.w >= 44 && x.h >= 44 && !x.off), `5. (${w} px) under the first lift's sets: minus and plus for the load and the reps of Set 1, each 44 px`, a);
+      ok(a.wide <= w, `5. (${w} px) no sideways scroll`, a.wide);
+      await D.page.click('#blk-0 .stepr button[aria-label="Set 1: heavier"]'); await wait(300);
+      const b = await look();
+      ok(+b.w === +a.w + 5 && b.sw === +b.w && !b.done, `5. (${w} px) plus on a barbell lift in kg: the lift's load step up, 5 kg with none of its own (EQUIP_STEP, V 2026-11-02; ${a.w} to ${+a.w + 5}), stored as that number typed, the set not ticked`, { a: a.w, b: b.w, sw: b.sw, done: b.done });
+      await D.page.click('#blk-0 .stepr button[aria-label="Set 1: lighter"]'); await wait(300);
+      await D.page.click('#blk-0 .stepr button[aria-label="Set 1: lighter"]'); await wait(300);
+      const c = await look();
+      ok(+c.w === +a.w - 5, `5. (${w} px) minus twice: one step under where it started`, { a: a.w, c: c.w });
+      await D.page.click('#blk-0 .stepr button[aria-label="Set 1: one rep fewer"]'); await wait(300);
+      const r = await look();
+      ok(r.sr === +a.r - 1 && !r.done, `5. (${w} px) minus on reps: one fewer than shown (${a.r} to ${+a.r - 1}), not ticked`, { a: a.r, sr: r.sr });
+      await D.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(400);
+      const t = await look();
+      ok(t.name === 'Set 2' && t.y === a.y, `5. (${w} px) after Set 1 is ticked the buttons act on Set 2, and the rows above them stay put`, { name: t.name, y: [a.y, t.y] });
+      await D.browser.close();
+    }
+    const D = await app();
+    const o = await D.page.evaluate(async () => {
+      const L = window.__ironlog, wait = ms => new Promise(r => setTimeout(r, ms));
+      L.state.settings.unit = 'lb'; L.state.draft = null; L.ACT.startFree(); await wait(200); if (L.ui.modal) L.ACT.mClose();
+      const add = async id => { L.applyPick({ kind: 'picker', mode: 'addBlock', title: '', q: '', m: '' }, id); await wait(200); return L.state.draft.ex.findIndex(x => x.exId === id); };
+      const bb = await add('bench'), pa = await add('assistPullup'), pl = await add('plank');
+      const strip = bi => document.querySelector(`#blk-${bi} .stepr`);
+      const lbl = bi => [...strip(bi).querySelectorAll('button')].map(x => x.getAttribute('aria-label'));
+      L.state.draft.ex[bb].sets[0].w = L.fromD(135); L.render(); await wait(100);
+      strip(bb).querySelector('[aria-label="Set 1: heavier"]').click(); await wait(200);
+      const benchLb = L.state.draft.ex[bb].sets[0].w;
+      L.state.draft.ex[pl].sets[0].r = 30; L.render(); await wait(100);
+      strip(pl).querySelector('[aria-label="Set 1: more seconds"]').click(); await wait(200);
+      return { bench: document.querySelector(`#view input[data-f="w"][data-b="${bb}"][data-s="0"]`).value, benchLb, typed: L.fromD(145), assist: lbl(pa), plank: L.state.draft.ex[pl].sets[0].r };
+    });
+    ok(o.bench === '145' && o.benchLb === o.typed, '5. in lb, plus on a 135 lb bench is its step up, 145 (10 lb on a bar with no step of its own), stored as 145 typed', o);
+    ok(o.assist.length === 2 && o.assist.every(x => /rep/.test(x)), '5. an assisted lift steps only its reps (its field takes the help)', o.assist);
+    ok(o.plank === 35, '5. a timed hold steps by 5 seconds (30 to 35)', o.plank);
+    const e = await D.page.evaluate(async () => {
+      const L = window.__ironlog, wait = ms => new Promise(r => setTimeout(r, ms));
+      L.state.draft = null; L.render(); await wait(100);
+      const id = L.state.sessions.filter(x => x.ex && x.ex.length).slice(-1)[0].id;
+      L.ACT.histEdit({ dataset: { id } }); await wait(300);
+      return { editing: !!(L.state.draft && L.state.draft.editingId), strips: document.querySelectorAll('#view .stepr').length };
+    });
+    ok(e.editing && e.strips === 0, '5. (a guard) editing a saved session, every set done, shows no minus and plus', e);
+    await D.browser.close();
   }
 
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
