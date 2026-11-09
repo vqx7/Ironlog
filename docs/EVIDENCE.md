@@ -75,6 +75,7 @@ Since r61 every number a rule uses is a named constant in `src/app/`, declared o
 - `BAR` lb: 45, kg: 20 (units): the standard bar in the unit a gym is labelled in, used until the lifter sets their own. The standard bars, not a study.
 - `DEFAULT_STEP` kg: 2.5, lb: 5 and `STEP_LB` (units): the load step when none is set, the lightest pair of standard plates. A convention (5 lb read as 2.5 kg in kilograms since r27).
 - `PLATES_LB` [45, 35, 25, 10, 5, 2.5] and `PLATES_KG` [25, 20, 15, 10, 5, 2.5, 1.25] (units): the plates counted for a barbell load unless Your gym lists its own. The standard plate sets, not a study.
+- `CHANGE_PLATES` kg [2, 1.5, 1, 0.5], lb [1.25] (units, 2.37, NEW-87): change plates offered as buttons in Your gym, off until tapped. What makers sell as change plates, checked 2026-11-09: kg pairs of 0.5, 1, 1.5, 2, 2.5 and 5 (Rogue's IWF change plates, REP Fitness, Bells of Steel); lb pairs of 1.25, 2.5, 5 and 10 (Bells of Steel). Not a study: the plates gyms stock.
 - `SMALL_PLATE` lb: 1.25, kg: 0.5 (units): the change plate added with Small change plates on. A convention (r29, item 98).
 - `LB` 0.45359237, `IN` 2.54, `KM_MI` 1.609344 and `FT_IN` 12 (units): unit conversions, exact by definition.
 

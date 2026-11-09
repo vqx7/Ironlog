@@ -101,7 +101,7 @@ const LOG_SHOWN = 5;
 const KEPT_TOAST_MS = 8000;
 import { HARD_RIR } from './formulas';
 import { PROFILE_PLAN } from './routines';
-import { SMALL_PLATE, DEFAULT_STEP, PLATES_KG, PLATES_LB } from './units';
+import { CHANGE_PLATES, SMALL_PLATE, DEFAULT_STEP, PLATES_KG, PLATES_LB } from './units';
 import { DEMO_WEEKS } from './importing';
 import { adjOn, refreshEx, syncDraftPlan, unitWords } from './worksets';
 import { confirmBox, render, rerenderKeepScroll, setSaveState } from './page';
@@ -338,7 +338,11 @@ ${
 } <label class="field">${labelTip('lt-barKg', `Bar weight (${U()})`, 'Used by the plates-per-side line in the logger.')}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
 <div>
 <p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="A barbell is loaded with these plates, a pair at a time, so its suggested loads are ones they make. A plate-loaded machine steps by two of the smallest, one a side; a landmine by one. Tap a plate your gym does not have, or add one it has that is not here.">Plates on hand (${u})</span></p>
-<div class="chips" role="group" aria-label="Plates on hand">${[...plates, ...on.filter(p => !plates.includes(p))]
+<div class="chips" role="group" aria-label="Plates on hand">${[
+    ...plates,
+    ...CHANGE_PLATES[u === 'kg' ? 'kg' : 'lb'].filter(p => !plates.includes(p)),
+    ...on.filter(p => !plates.includes(p) && !CHANGE_PLATES[u === 'kg' ? 'kg' : 'lb'].includes(p))
+  ]
     .sort((a, b) => b - a)
     .map(
       p =>

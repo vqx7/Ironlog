@@ -12,12 +12,14 @@
 
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
-import { EQL, EQUIP, ML, MUSCLES, commonFirst, isCommon } from './library';
+import type { Part } from './view';
+import { EQL, EQUIP, ML, MUSCLES, commonFirst, injLabel, isCommon } from './library';
 import {
   EX,
   activeRoutine,
   dayReasons,
   eqPlan,
+  exInjury,
   exName,
   exReasons,
   pace,
@@ -67,11 +69,20 @@ function pickerUsed(m: PickerSheet): { set: Set<string>; label: string } {
   return { set: new Set(), label: '' };
 }
 
+/* A lift that loads a flagged injury says so in the picker, as the session's
+   own exercise line does (NEW-83, V 2026-11-08): Swap's closest matches
+   could all load the injured knee and none said it. */
+/** The tag for a lift that loads a flagged injury, or nothing. */
+function injTagFor(e: ExerciseLike): Part {
+  const k = exInjury(e);
+  return k ? html`<span class="tag red">Injury: ${injLabel(k)}</span>` : nothing;
+}
+
 /* One lift in the list: its name, muscle and equipment, and its tags: where
    it is already, and Most common and Less common (under the Most common
    heading the tag on every row would only repeat it, so only Less common). */
 function pickRow(e: ExerciseLike, used: { set: Set<string>; label: string }, grouped?: boolean): TemplateResult {
-  return html`<button class="pick" data-act="pickDo" data-ex=${e.id}><span class="u-minw0"><b>${e.name}</b><br><span class="small muted">${ML[e.primary]}, ${EQL[e.equip] || e.equip}</span></span><span class="tags">${used.set.has(e.id) ? html`<span class="tag blue">${used.label}</span>` : ''}${grouped ? (e.rare ? html`<span class="tag rare">Less common</span>` : '') : exTagParts(e)}</span></button>`;
+  return html`<button class="pick" data-act="pickDo" data-ex=${e.id}><span class="u-minw0"><b>${e.name}</b><br><span class="small muted">${ML[e.primary]}, ${EQL[e.equip] || e.equip}</span></span><span class="tags">${injTagFor(e)}${used.set.has(e.id) ? html`<span class="tag blue">${used.label}</span>` : ''}${grouped ? (e.rare ? html`<span class="tag rare">Less common</span>` : '') : exTagParts(e)}</span></button>`;
 }
 
 /** The picker's list for its search and muscle. */

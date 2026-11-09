@@ -302,11 +302,28 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const text = (from < 0 ? shot.text : shot.text.slice(0, from) + '(General)\n' + (to < 0 ? '' : shot.text.slice(to))).replace(/\nAnother plate \((lb|kg)\)\nAdd plate(?=\n)/, '');
     return { ...shot, tree: tree.flatMap((t, j) => (j === gi ? ['(General)'] : j === li ? [] : [t])), text };
   };
+  /* 2.37 offers the change plates as buttons in Your gym, off until tapped (NEW-87, held by tests/r83.js section 2):
+     on this build's page each such button of the gym's unit, not pressed, is taken out, with its label in the text;
+     everything else is still held to r56.2. */
+  const CHANGE = { kg: ['2', '1.5', '1', '0.5'], lb: ['1.25'] };
+  const chipRe = vs => new RegExp(`<button aria-pressed="false" class="chip" data-act="gymPlate" data-v="(?:${vs.map(v => v.replace('.', '\\.')).join('|')})">"(?:${vs.map(v => v.replace('.', '\\.')).join('|')})"<\\/button>`, 'g');
+  const heldOutR83 = shot => {
+    const m = shot.text.match(/Plates on hand \((kg|lb)\)\n/) || shot.tree.join('').match(/Plates on hand \((kg|lb)\)/);
+    if (!m) return shot;
+    const re = chipRe(CHANGE[m[1]]);
+    const tree = shot.tree.map(t => t.replace(re, ''));
+    if (m.index == null || !shot.text.includes(m[0])) return { ...shot, tree };
+    // The chips' labels are the lines of numbers right after the label; the first line that is not one ends them.
+    const from = m.index + m[0].length, rest = shot.text.slice(from).split('\n');
+    const k = rest.findIndex(l => !/^\d+(\.\d+)?$/.test(l));
+    const chips = rest.slice(0, k < 0 ? rest.length : k).filter(l => !CHANGE[m[1]].includes(l));
+    return { ...shot, tree, text: shot.text.slice(0, from) + [...chips, ...rest.slice(k < 0 ? rest.length : k)].join('\n') };
+  };
   const ENVS = [null, 'preview'];
   for (const [name, seed] of SEEDS) for (const tab of ['settings', 'history']) for (const env of ENVS) {
     if (env && name !== 'demo data, lb') continue;
     const sd = seed.replace(/L\.makeDemo\(\);/g, PIN + 'L.makeDemo();');
-    const a = heldOutR80(heldOutR76(heldOutR73(heldOutSched(heldOutR69(heldOut(await shot(OLD, sd, tab, env))))))), b = heldOutR80(heldOutR79(heldOutR76(heldOutR73(heldOutSched(heldOutR70(heldOutR69(heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env)))))))))));
+    const a = heldOutR80(heldOutR76(heldOutR73(heldOutSched(heldOutR69(heldOut(await shot(OLD, sd, tab, env))))))), b = heldOutR83(heldOutR80(heldOutR79(heldOutR76(heldOutR73(heldOutSched(heldOutR70(heldOutR69(heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env))))))))))));
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     const firstDiff = d && { at: d.at, r56_2: d.before, now: d.now };
     ok(!firstDiff, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same elements, attributes and field values as r56.2`, firstDiff);

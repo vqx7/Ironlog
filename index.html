@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.08-r82">
+<meta name="app-build" content="2026.11.08-r83">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2097,8 +2097,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.36";
-  var APP_VERSION = "2026.11.08-r82";
+  var DISPLAY_VERSION = "2.37";
+  var APP_VERSION = "2026.11.08-r83";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2301,6 +2301,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var onStep = (v3, step) => Math.abs(v3 / step - Math.round(v3 / step)) < EPS_SAME;
   var TYPED_STEP = 0.05;
   var PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
+  var CHANGE_PLATES = { kg: [2, 1.5, 1, 0.5], lb: [1.25] };
   var SMALL_PLATE = { lb: 1.25, kg: 0.5 };
   var inUnitIn = (M3, kg2) => UIn(M3) === "lb" ? kg2 / LB : kg2;
   var kgOfIn = (M3, v3) => UIn(M3) === "lb" ? v3 * LB : v3;
@@ -15838,7 +15839,11 @@ ${u4 !== U() ? b`<p class="small u-m0">Suggestions show in ${U()}, on the ${u4} 
 ` : A} <label class="field">${labelTip("lt-barKg", `Bar weight (${U()})`, "Used by the plates-per-side line in the logger.")}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
 <div>
 <p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="A barbell is loaded with these plates, a pair at a time, so its suggested loads are ones they make. A plate-loaded machine steps by two of the smallest, one a side; a landmine by one. Tap a plate your gym does not have, or add one it has that is not here.">Plates on hand (${u4})</span></p>
-<div class="chips" role="group" aria-label="Plates on hand">${[...plates, ...on.filter((p3) => !plates.includes(p3))].sort((a2, b2) => b2 - a2).map(
+<div class="chips" role="group" aria-label="Plates on hand">${[
+      ...plates,
+      ...CHANGE_PLATES[u4 === "kg" ? "kg" : "lb"].filter((p3) => !plates.includes(p3)),
+      ...on.filter((p3) => !plates.includes(p3) && !CHANGE_PLATES[u4 === "kg" ? "kg" : "lb"].includes(p3))
+    ].sort((a2, b2) => b2 - a2).map(
       (p3) => b`<button class=${on.includes(p3) ? "chip on" : "chip"} data-act="gymPlate" data-v=${String(p3)} aria-pressed=${String(on.includes(p3))}>${fmtG(p3)}</button>`
     )}</div>
 <div class="grid2 u-mt6_aiend">
@@ -27044,8 +27049,12 @@ ${JSON.stringify(ctx, null, 1)}`;
     }
     return { set: /* @__PURE__ */ new Set(), label: "" };
   }
+  function injTagFor(e5) {
+    const k2 = exInjury(e5);
+    return k2 ? b`<span class="tag red">Injury: ${injLabel(k2)}</span>` : A;
+  }
   function pickRow(e5, used, grouped) {
-    return b`<button class="pick" data-act="pickDo" data-ex=${e5.id}><span class="u-minw0"><b>${e5.name}</b><br><span class="small muted">${ML[e5.primary]}, ${EQL[e5.equip] || e5.equip}</span></span><span class="tags">${used.set.has(e5.id) ? b`<span class="tag blue">${used.label}</span>` : ""}${grouped ? e5.rare ? b`<span class="tag rare">Less common</span>` : "" : exTagParts(e5)}</span></button>`;
+    return b`<button class="pick" data-act="pickDo" data-ex=${e5.id}><span class="u-minw0"><b>${e5.name}</b><br><span class="small muted">${ML[e5.primary]}, ${EQL[e5.equip] || e5.equip}</span></span><span class="tags">${injTagFor(e5)}${used.set.has(e5.id) ? b`<span class="tag blue">${used.label}</span>` : ""}${grouped ? e5.rare ? b`<span class="tag rare">Less common</span>` : "" : exTagParts(e5)}</span></button>`;
   }
   function pickerBody(m3) {
     const used = pickerUsed(m3);
