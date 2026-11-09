@@ -660,6 +660,8 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg.sgdrop{margin-left:14px;padding-left:6px;border-left:2px solid var(--blue);border-radius:0 var(--r-sm) var(--r-sm) 0}
 .sg.sgdrop .ls{color:var(--blue)}
 .sg .n.warm{color:var(--yellow);font-size:15px}
+/* The set minus and plus change (NEW-100): its number on a dot of their accent, drawn inside the button's own box, so nothing moves. */
+.sg .n.stepat{color:var(--on-volt);background:radial-gradient(circle 12px at center,var(--volt) 11.5px,transparent 12px)}
 .cbtn{height:44px;width:44px;border-radius:50%;border:1px solid var(--field-b);background:var(--surface-2);cursor:pointer;font-weight:700;font-size:17px;color:var(--muted)}
 .cbtn.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .sg.pr::before{content:'';position:absolute;left:-7px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--gold);pointer-events:none}

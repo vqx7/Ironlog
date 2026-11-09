@@ -64,6 +64,7 @@ import {
   carried,
   keepOpen,
   mixSeen,
+  setIdx,
   ordBack,
   orderQ,
   redraw,
@@ -1022,7 +1023,13 @@ function nextLift(d: Draft, i: number): number {
 export function liftsOn(d: Draft): Set<DraftBlock> {
   // A lift is left while it is not done by the rule the screen folds it by (blockDone: a warm-up left unticked does
   // not keep it open), so the pills never go to a folded lift (the review of 2.38, REV7-1).
-  const left = (x: DraftBlock): boolean => !blockDone(x);
+  const held = (x: DraftBlock): boolean => {
+    const j = d.ex.indexOf(x);
+    return j >= 0 && setIdx(W.onSet, j) >= 0 && (W.foldWait.has(x) || blkIsOpen(j, x));
+  };
+  /* Or while it holds the set you are on and is drawn open, done or not (NEW-100): reps typed in its last set tick it
+     and finish it, and a minus or plus straight after is for that set, until the lift folds. */
+  const left = (x: DraftBlock): boolean => !blockDone(x) || held(x);
   const i = blkIdx(W.onLift);
   const at = i >= 0 ? d.ex[i] : undefined;
   // Once it is done, the lift the screen brings up after it (nextLift, as the fold glides to it and the rest card
@@ -1034,6 +1041,16 @@ export function liftsOn(d: Draft): Set<DraftBlock> {
   return new Set(ss ? d.ex.filter(x => x.plan && x.plan.ss === ss && left(x)) : [b]);
 }
 
+/* The set minus and plus change (NEW-100, V on the 2.38 preview, 2026-11-09: a minus or plus meant for the set just
+   done changed the next one, as reps typed in it ticked it and the pills moved on): the set you are on, the one you
+   last typed in, touched, stepped or unticked, ticked or not; only a tick of yours with the checkmark moves them on, to
+   the first set not ticked. Held for this visit only (W.onSet). */
+/** The set of lift bi that minus and plus change: the set you are on when it is in this lift, else its first set not ticked, or -1. */
+export function stepAt(b: DraftBlock, bi: number): number {
+  const i = setIdx(W.onSet, bi);
+  return i >= 0 ? i : b.sets.findIndex(x => !x.done);
+}
+
 /* Making a lift the one you are on moves the pills to it, which takes their space from one lift and gives it to
    another; a tick or a load typed there must move nothing under the finger (NEW-64's rule; GitHub's run of 2.38 saw a
    lift jump 93 px when the pills left the lift above it). So the lift tapped is held where it was on screen across
@@ -1043,6 +1060,8 @@ export function onLiftDraw(bi: number, draw: () => void): void {
   const d = state.draft;
   const was = d ? liftsOn(d) : null;
   W.onLift = blkRef(bi);
+  // The set you are on is on the lift you are on (NEW-100).
+  if (W.onSet && blkIdx(W.onSet.b) !== bi) W.onSet = null;
   const ref = W.onLift;
   const el = document.getElementById('blk-' + bi);
   const top = el ? el.getBoundingClientRect().top : null;

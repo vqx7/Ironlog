@@ -33,6 +33,8 @@ interface WorkState {
   platesAt: { b: BlkRef | null; s: number } | null;
   /** The lift you last ticked, typed in or stepped (NEW-98): minus and plus show on it while it has a set left (liftsOn). */
   onLift: BlkRef | null;
+  /** The set you are on (NEW-100): the one you last typed in, touched, stepped or unticked, which minus and plus change; null after a tick of yours, when they change the first set not ticked (stepAt). */
+  onSet: SetRef | null;
   /* A block done this visit folds a moment after its last tick (FOLD_MS.tick,
      or FOLD_MS.effort once its effort is picked), not on the tick: the lifter
      sees the tick and the effort strip first. Until then it is drawn open. */
@@ -58,6 +60,7 @@ export const W: WorkState = {
   stripAt: null,
   platesAt: null,
   onLift: null,
+  onSet: null,
   foldWait: new WeakSet<DraftBlock>(),
   selAgain: null,
   replaceNext: null
@@ -204,6 +207,31 @@ export function blkIdx(r: BlkRef | null | undefined): number {
 /* Null when the row is gone. A field still focused when its row goes (− Set,
    Swap, Undo, another phone's change) fires its pending change for a set that
    is no longer there. */
+/* A set held between draws (NEW-100): by its row id, which keeps it when rows are added above (a warm-up goes in at
+   the top), else by its place, for a session started before rows had ids (r56.1). */
+/** A set of a held block, by its row id and its place. */
+interface SetRef {
+  b: BlkRef | null;
+  rid: string | null;
+  s: number;
+}
+
+/** Set si of block bi held so a redraw finds it again, or null. */
+export function setRef(bi: number, si: number): SetRef | null {
+  const d = state.draft;
+  const s = d && d.ex[bi] && d.ex[bi].sets[si];
+  return s ? { b: blkRef(bi), rid: typeof s.rid === 'string' ? s.rid : null, s: si } : null;
+}
+
+/** Where a held set is now in block bi, or -1 when it is not in that block. */
+export function setIdx(r: SetRef | null | undefined, bi: number): number {
+  const d = state.draft;
+  const b = d && d.ex[bi];
+  if (!r || !b || blkIdx(r.b) !== bi) return -1;
+  if (r.rid) return b.sets.findIndex(x => x.rid === r.rid);
+  return r.s < b.sets.length ? r.s : -1;
+}
+
 /** The set a field or button stands for, by its data-b and data-s, or null. */
 export function draftSet(t: Tap): DraftSet | null {
   const b = state.draft && state.draft.ex[Number(t.dataset.b)];

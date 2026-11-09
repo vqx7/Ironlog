@@ -8,7 +8,14 @@
 //   2  NEW-98 with NEW-64's rule (GitHub's run of 2.38: tests/r45.js saw a lift move 93 px when the pills left the lift
 //      above it): a tick or a load typed on another lift moves that lift's row by nothing on screen.
 //   3  REV7-1 (the review of 2.38): a lift done but for an unticked warm-up hands the pills to the next lift.
-// R84_ONLY=1,2,3 runs some sections. (The review's REV7-2 to REV7-5 are held in tests/r82.js 13 and 14 and tests/r83.js 7.)
+//   4  NEW-100 (V on the 2.38 preview, 2026-11-09: minus and plus "ticking a set done and moving the next one's weight
+//      when you +- on the original set"; V's ruling of 12:57, the recommended rule): they change the set you are on,
+//      the one you last typed in, touched, stepped or unticked, and only a tick of yours with the checkmark moves them
+//      on. Reps typed in set 1 tick it (auto-mark) and the pills stay on set 1, marked on its number, so a minus or
+//      plus straight after changes set 1, ticked, and nothing else stored; the checkmark tapped moves them to set 2; a
+//      touch on set 2's field moves them there; on the last set they stay on its lift until it folds; guard: a minus
+//      or plus never ticks or unticks a set.
+// R84_ONLY=1,2,3,4 runs some sections. (The review's REV7-2 to REV7-5 are held in tests/r82.js 13 and 14 and tests/r83.js 7.)
 const { open } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
@@ -20,7 +27,7 @@ const DAY = '2026-11-08';
 
 /** The app with the demo log as the lifter's own, in kg, on Today. */
 async function app(o = {}) {
-  const D = await open(FILE, { w: o.w || 390, h: 844, dark: !!o.dark, clock: DAY + 'T10:00:00' });
+  const D = await open(FILE, { w: o.w || 390, h: 844, dark: !!o.dark, touch: !!o.touch, clock: DAY + 'T10:00:00' });
   await D.page.evaluate(() => {
     const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.unit = 'kg';
     L.makeDemo(); for (const x of L.state.sessions) delete x.demo; for (const x of L.state.bodyweights) delete x.demo;
@@ -110,6 +117,66 @@ const tick = async (D, bi, si) => { await D.page.click(`#view [data-act="sDone"]
     ok(JSON.stringify(await pillsOn(D)) === '[1]', '3. a lift done but for a warm-up: minus and plus go to the next lift with a set left', await pillsOn(D));
     await D.page.reload(); await D.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(800);
     ok(JSON.stringify(await pillsOn(D)) === '[1]', '3. and the same after a reload', await pillsOn(D));
+    await D.browser.close();
+  }
+
+  if (run(4)) {
+    // As on a phone: a finger, and the keyboard closed by leaving the field (Done, or a tap on the page).
+    const sets = D => D.page.evaluate(() => window.__ironlog.state.draft.ex[0].sets.map(s => ({ w: s.w, r: s.r, done: !!s.done })));
+    const strip = D => D.page.evaluate(() => {
+      const e = document.querySelector('#blk-0 .stepr .stepr-l');
+      const marked = [...document.querySelectorAll('#blk-0 .sg')].filter(r => r.querySelector('.stepat')).map(r => +r.querySelector('[data-act="sDone"]').dataset.s);
+      return { name: e ? e.textContent : null, marked };
+    });
+    const step = async (D, sf, d) => { await D.page.tap(`#blk-0 .stepr-b[data-sf="${sf}"][data-d="${d}"]`); await wait(450); };
+    const typeReps = async (D, si, v) => { await D.page.tap(`#view input[data-f="r"][data-b="0"][data-s="${si}"]`); await D.page.keyboard.type(v); await wait(100); await D.page.evaluate(() => document.activeElement.blur()); await wait(450); };
+    const D = await app({ touch: true });
+    await D.page.tap('[data-act="startSession"]'); await wait(600);
+    const s0 = await sets(D);
+    await typeReps(D, 0, '8');
+    const a = await sets(D);
+    ok(a[0].done && a[0].r === 8, '4. (setting up) reps typed in set 1 tick it, auto-mark being on', a[0]);
+    const st = await strip(D);
+    ok(st.name === 'Set 1, done' && JSON.stringify(st.marked) === '[0]', '4. after reps typed in set 1, minus and plus stay on set 1, named and marked on its number', st);
+    const w0 = await D.page.evaluate(() => { const L = window.__ironlog, b = L.state.draft.ex[0]; return L.effW(b, 0); });
+    await step(D, 'w', '1');
+    const b1 = await sets(D);
+    ok(b1[0].w != null && b1[0].w > w0 && b1[0].done, '4. plus then raises set 1, the set just done, which stays ticked', { w0, s: b1[0] });
+    ok(b1.slice(1).every((x, i) => x.w === s0[i + 1].w && x.r === s0[i + 1].r && !x.done), '4. and stores nothing on the sets after it', b1);
+    await step(D, 'r', '-1');
+    const b2 = await sets(D);
+    ok(b2[0].r === 7 && b2[0].done, '4. minus on reps lowers set 1 to 7, still ticked', b2[0]);
+    // The checkmark of yours moves them on.
+    await D.page.tap('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(450);
+    const c = await sets(D);
+    ok(c[0].done, '4. (setting up) the checkmark tapped straight after auto-mark keeps set 1 ticked', c[0]);
+    const st2 = await strip(D);
+    ok(st2.name === 'Set 2' && JSON.stringify(st2.marked) === '[1]', '4. the checkmark tapped moves minus and plus on to set 2', st2);
+    await step(D, 'w', '1');
+    const c2 = await sets(D);
+    ok(c2[1].w != null && !c2[1].done && c2[0].w === b2[0].w, '4. plus then changes set 2, unticked, and leaves set 1', c2);
+    // A touch on another set's field moves them there.
+    await D.page.tap('#view input[data-f="w"][data-b="0"][data-s="2"]'); await wait(450);
+    await D.page.evaluate(() => document.activeElement.blur()); await wait(300);
+    const st3 = await strip(D);
+    ok(st3.name === 'Set 3' && JSON.stringify(st3.marked) === '[2]', '4. a touch on set 3\'s load moves them to set 3', st3);
+    // Guard: no minus or plus ticks or unticks a set.
+    const before = (await sets(D)).map(x => x.done);
+    for (const [f, d] of [['w', '1'], ['w', '-1'], ['r', '1'], ['r', '-1']]) await step(D, f, d);
+    const after = (await sets(D)).map(x => x.done);
+    ok(JSON.stringify(before) === JSON.stringify(after), '4. (a guard) minus and plus never tick or untick a set', { before, after });
+    // The last set: reps typed tick it and the lift is done; the pills stay on it until the lift folds.
+    const n = (await sets(D)).length;
+    for (let si = 1; si < n - 1; si++) if (!(await sets(D))[si].done) { await D.page.tap(`#view [data-act="sDone"][data-b="0"][data-s="${si}"]`); await wait(450); }
+    await typeReps(D, n - 1, '9');
+    const l = await sets(D);
+    ok(l.every(x => x.done), '4. (setting up) reps typed in the last set tick it and the lift is done', l);
+    const st4 = await strip(D);
+    ok(st4.name === `Set ${n}, done` && JSON.stringify(st4.marked) === `[${n - 1}]`, '4. on the last set they stay on it while the lift waits to fold', st4);
+    await step(D, 'r', '1');
+    ok((await sets(D))[n - 1].r === 10, '4. and plus then changes the last set', (await sets(D))[n - 1]);
+    await wait(2600);
+    ok(JSON.stringify(await pillsOn(D)) === '[1]', '4. once the lift folds, they go to the next lift', await pillsOn(D));
     await D.browser.close();
   }
 

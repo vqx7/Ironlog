@@ -83,6 +83,7 @@ import {
   blkShut,
   blkOpenObj,
   blkRef,
+  setRef,
   carried,
   draftSet,
   editFp0,
@@ -127,6 +128,7 @@ import {
   restNext,
   CAL_OFFER,
   liftsOn,
+  stepAt,
   onLiftDraw
 } from './worksets';
 import { BACK_SAID, finish, finishNow } from './workfinish';
@@ -422,9 +424,11 @@ function setRow(
   // Last time's set for this row, beside this time's (r44, V): working sets only, by their order.
   const lt = s.warm || s.drop ? '' : lastCell(b, wn - 1, dupB);
   const gw = s.w == null ? greyW(b, si) : null;
+  // The set minus and plus change, marked on its number (NEW-100).
+  const at = !d.editingId && stepAt(b, bi) === si && liftsOn(d).has(b);
   /* A drop set sits under the set it drops from (r66, 375): set in, marked ↳
      and named in the Last column, where it has no set of its own last time. */
-  return html`<div class=${`sg${nr ? ' norir' : ''} ${s.done ? 'done' : ''}${pr ? ' pr' : ''}${s.drop ? ' sgdrop' : ''}`} data-pr=${pr || nothing}><button class=${'n wbtn' + (s.drop ? ' drop' : s.warm ? ' warm' : '')} aria-label=${`Set ${si + 1} type: ${s.warm ? 'warm-up' : s.drop ? 'drop set' : 'working set'}. Tap to change`} data-act="sWarm" data-b=${bi} data-s=${si}>${s.drop ? '↳' : s.warm ? 'W' : wn}</button><span class="ls" aria-label=${lt ? 'Last time ' + lt : s.drop ? 'Drop set' : 'No set last time'}>${lt ? lastText(lt) : s.drop ? 'Drop' : '–'}</span>
+  return html`<div class=${`sg${nr ? ' norir' : ''} ${s.done ? 'done' : ''}${pr ? ' pr' : ''}${s.drop ? ' sgdrop' : ''}`} data-pr=${pr || nothing}><button class=${'n wbtn' + (s.drop ? ' drop' : s.warm ? ' warm' : '') + (at ? ' stepat' : '')} aria-label=${`Set ${si + 1} type: ${s.warm ? 'warm-up' : s.drop ? 'drop set' : 'working set'}. Tap to change`} data-act="sWarm" data-b=${bi} data-s=${si}>${s.drop ? '↳' : s.warm ? 'W' : wn}</button><span class="ls" aria-label=${lt ? 'Last time ' + lt : s.drop ? 'Drop set' : 'No set last time'}>${lt ? lastText(lt) : s.drop ? 'Drop' : '–'}</span>
         <input type="text" inputmode="decimal" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} load`} data-f="w" data-b=${bi} data-s=${si} class=${needHere(bi, si) ? 'need' : nothing} .value=${fieldValue(loadIn(ex, s.w))} placeholder=${gw != null ? loadIn(ex, gw) : emptyLoad(ex)}>
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} ${ex.timed ? 'seconds' : 'reps'}${ex.perSide ? ' per side' : ''}`} data-f="r" data-b=${bi} data-s=${si} .value=${fieldValue(s.r == null ? '' : String(s.r))} placeholder=${ph}>
         ${nr ? '' : rirButton(s.rir, bi, si, p.rir)}
@@ -434,17 +438,19 @@ function setRow(
 /** Seconds a timed hold's minus and plus step by (ST-6): one second is too fine a step to tap toward a 30 to 60 s hold. */
 const STEP_SECONDS = 5;
 
-/* Minus and plus for the next set not yet done (2.37, ST-6; V, 2026-11-08: "stepping by the lift's load step and one
-   rep"). The set row has no room for four more 44 px buttons (254 px wide at 320, its load field 48), so they sit in
-   one strip under the sets, where a tick moves nothing above them, and act on the first set not ticked; it names that
-   set, on the lift you are on only (liftsOn, NEW-98), not under every lift. Drawn as two accent pills side by side, each with the number it changes (V, 2026-11-09, after the Stitch drafts'
+/* Minus and plus (2.37, ST-6; V, 2026-11-08: "stepping by the lift's load step and one rep"). The set row has no room
+   for four more 44 px buttons (254 px wide at 320, its load field 48), so they sit in one strip under the sets, where a
+   tick moves nothing above them, and change the set you are on (stepAt, NEW-100): the strip names it, and its number
+   in the rows is marked in the pills' accent, on the lift you are on only (liftsOn, NEW-98), not under every lift. Drawn as two accent pills side by side, each with the number it changes (V, 2026-11-09, after the Stitch drafts'
    steppers: the whole pill in the one accent, ends included). An assisted lift's field takes the help, so only its reps step. Not in an edit, where every set is done. */
 function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part {
-  const si = b.sets.findIndex(x => !x.done);
+  const si = stepAt(b, bi);
   const s = b.sets[si];
   if (!s || d.editingId || !liftsOn(d).has(b)) return '';
   const wn = b.sets.slice(0, si + 1).filter(x => !x.warm && !x.drop).length;
   const name = s.warm ? 'Warm-up' : s.drop ? 'Drop set' : `Set ${wn}`;
+  // A set ticked is said to be, as minus and plus then change a set already logged.
+  const said = s.done ? `${name}, done` : name;
   const w = effW(b, si) ?? 0;
   const r = +(s.r ?? greyR(b, si) ?? 0) || 0;
   const btn = (f: 'w' | 'r', dir: '1' | '-1', off: boolean, label: string, txt: string): TemplateResult =>
@@ -461,7 +467,7 @@ function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part 
     more: string
   ): TemplateResult =>
     html`<span class="stepr-g">${btn(f, '-1', dn, less, '−')}<span class="stepr-v" aria-hidden="true"><b>${v}</b><small>${unit}</small></span>${btn(f, '1', up, more, '+')}</span>`;
-  return html`<div class="stepr" role="group" aria-label=${`${name}: load and ${ex.timed ? 'seconds' : 'reps'}`}><div class="stepr-h">Next: <span class="stepr-l">${name}</span></div><div class="stepr-row">${
+  return html`<div class="stepr" role="group" aria-label=${`${name}: load and ${ex.timed ? 'seconds' : 'reps'}`}><div class="stepr-h"><span class="stepr-l">${said}</span></div><div class="stepr-row">${
     ex.assist
       ? ''
       : pill(
@@ -661,6 +667,29 @@ const tapBlock = (t: Tap): DraftBlock | null => (state.draft && state.draft.ex[N
    Undo still follows; the last row not ticked goes first, a logged set only
    after. Found again when confirmed: a cloud refresh may have replaced the
    session while the question was open. */
+/* A ticked set's load or reps changed, typed in its field or stepped (NEW-100: one rule for both): a load far off or a
+   0 is asked about again, as at its tick (the set unticked and ticked again, `again`), else the set is scored again.
+   A lift waiting to fold starts its moment over, so it does not fold away while its sets are being changed. True when
+   it asked again. */
+function doneChanged(bi: number, si: number, f: 'w' | 'r'): boolean {
+  const d = state.draft;
+  const b = d && d.ex[bi];
+  const s = b && b.sets[si];
+  if (!d || !b || !s || !s.done) return false;
+  if (W.foldT && W.foldWait.has(b)) {
+    clearTimeout(W.foldT);
+    const rf = blkRef(bi);
+    W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
+  }
+  if (f === 'w' ? !!oddLoad(b, si, d.date) : isMissed(s)) {
+    setDone(bi, si, false);
+    setDone(bi, si, true, true);
+    return true;
+  }
+  act(() => assessSet(bi, si), { inProgress: true });
+  return false;
+}
+
 function setRemove(t: Tap): void {
   const d = state.draft;
   const bi = Number(t.dataset.b);
@@ -864,8 +893,12 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const d = state.draft;
     if (!s || !d) return;
     if (W.lastAuto && (blkIdx(W.lastAuto.b) !== bi || W.lastAuto.s !== si)) W.lastAuto = null;
+    /* A tick of yours moves minus and plus on, to the first set not ticked; an untick keeps them on the set unticked
+       (NEW-100). The checkmark tapped after auto-mark keeps the tick and is a tick of yours too. */
     if (W.lastAuto && Date.now() - W.lastAuto.t < AUTO_CONFIRM_MS && s.done) {
       W.lastAuto = null;
+      W.onSet = null;
+      onLiftDraw(bi, redraw);
       return;
     }
     const b = d.ex[bi];
@@ -876,6 +909,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       return;
     }
     const was = !!s.done;
+    W.onSet = was ? setRef(bi, si) : null;
     /* The whole tap is one change, saved once (act runs the changes made
        inside it as its own): the grey reps taken, the tick, and on an untick
        the numbers put back to grey and the exercise moved back. From the
@@ -957,48 +991,50 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
   },
   /* Minus and plus (ST-6): from what the row holds, else what it shows in grey, to the next load on the lift's list
-     or one rep (five seconds on a hold) either way, written as the number typed in the field would be, with the same
-     carry to the rows below. The set is not ticked. */
+     or one rep (five seconds on a hold) either way, written as the number typed in the field would be: the same carry
+     to the rows below, and on a set ticked the same checks as a number typed there (doneChanged). They never tick or
+     untick a set, and the set stepped is the one you are on (NEW-100). One change, saved once. */
   sStep(t) {
     const bi = Number(t.dataset.b),
       si = Number(t.dataset.s);
     const b = tapBlock(t);
     const s = b && b.sets[si];
-    if (!b || !s || s.done) return;
+    if (!b || !s) return;
     const ex = EX(b.exId);
     const dir = t.dataset.d === '-1' ? -1 : 1;
-    if (t.dataset.sf === 'w') {
+    const f = t.dataset.sf === 'w' ? 'w' : 'r';
+    let w: number | null = null,
+      r: number | null = null;
+    if (f === 'w') {
       if (ex.assist) return;
       const to = stepLoad(ex, b.plan, effW(b, si) ?? 0, dir);
       /* As the number typed in the unit on screen, to the hundredth a field takes: the field's own text is rounded to a
          tenth, and stored from it a 1.25 kg step went 41.3, 42.6, 43.9, off every load the lift has (the review, REV6-5). */
       const v = to == null ? null : toD(to);
       if (v == null) return;
-      const n = Math.round(v * HUNDREDTHS) / HUNDREDTHS;
-      act(
-        () => {
-          s.w = Math.min(fromD(Math.max(n, 0)) ?? 0, LOAD_MAX);
-          carried.delete(s);
-          if (fillLoads()) carryLoad(b, si);
-        },
-        { inProgress: true }
-      );
-      W.platesAt = { b: blkRef(bi), s: si };
-      W.onLift = blkRef(bi);
-      mixCheck(bi, si);
+      w = Math.min(fromD(Math.max(Math.round(v * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
     } else {
-      const r = +(s.r ?? greyR(b, si) ?? 0) || 0;
-      const n = Math.min(Math.max(r + dir * (ex.timed ? STEP_SECONDS : 1), 0), LIMITS.reps);
-      if (n === s.r) return;
-      act(
-        () => {
-          s.r = n;
-        },
-        { inProgress: true }
-      );
-      W.onLift = blkRef(bi);
+      const was = +(s.r ?? greyR(b, si) ?? 0) || 0;
+      r = Math.min(Math.max(was + dir * (ex.timed ? STEP_SECONDS : 1), 0), LIMITS.reps);
+      if (r === s.r) return;
     }
-    rerenderKeepScroll();
+    W.onSet = setRef(bi, si);
+    act(
+      () => {
+        if (w != null) {
+          s.w = w;
+          carried.delete(s);
+        } else s.r = r;
+        if (s.done && doneChanged(bi, si, f)) return;
+        if (f === 'w' && fillLoads()) carryLoad(b, si);
+      },
+      { inProgress: true }
+    );
+    if (f === 'w') {
+      W.platesAt = { b: blkRef(bi), s: si };
+      mixCheck(bi, si);
+    }
+    onLiftDraw(bi, redraw);
   },
   sDel: setRemove,
   /* Warm-ups go in at the top, already flagged, so they stay out of every
@@ -1570,6 +1606,7 @@ export function workoutInput(t: Field): boolean {
       { inProgress: true, soon: true }
     );
     if (t.dataset.f === 'w') W.platesAt = { b: blkRef(bi), s: si };
+    W.onSet = setRef(bi, si);
     onLiftDraw(bi, redraw);
     return true;
   }
@@ -1665,12 +1702,7 @@ export function workoutChange(t: Field): boolean {
         W.lastAuto = { b: blkRef(bi), s: si, t: Date.now() };
         setDone(bi, si, true);
       }
-    } else if (s.done && isMissed(s)) {
-      setDone(bi, si, false);
-      setDone(bi, si, true, true);
-    } else if (s.done) {
-      act(() => assessSet(bi, si), { inProgress: true });
-    }
+    } else if (s.done) doneChanged(bi, si, 'r');
     redraw();
     return true;
   }
@@ -1709,16 +1741,13 @@ export function workoutChange(t: Field): boolean {
     const typed = needHere(bi, si) && s.w != null;
     if (typed) W.needAt = null;
     const need = typed && (+(s.r ?? 0) > 0 || isMissed(s));
-    if (s.done && oddLoad(d.ex[bi], si, d.date)) {
-      setDone(bi, si, false);
-      setDone(bi, si, true, true);
-      return true;
-    }
-    if (rf && !s.done) setDone(bi, si, true, true);
-    else if (need && !s.done) {
+    if (s.done) {
+      if (doneChanged(bi, si, 'w')) return true;
+    } else if (rf) setDone(bi, si, true, true);
+    else if (need) {
       W.lastAuto = { b: blkRef(bi), s: si, t: Date.now() };
       setDone(bi, si, true);
-    } else if (s.done) act(() => assessSet(bi, si), { inProgress: true });
+    }
     mixCheck(bi, si);
     if (fillLoads()) act(() => carryLoad(d.ex[bi], si), { inProgress: true });
     redraw();
@@ -1838,11 +1867,27 @@ export function workoutKey(e: KeyboardEvent): boolean {
 // A field of the session screen focused (focusin): on a tap, a load field's number selected, a grey one put in to be typed over.
 function workoutFocus(e: FocusEvent): void {
   const t = e.target;
-  if (!(t instanceof HTMLInputElement) || !t.matches('.sg input[data-f="w"]')) return;
+  if (!(t instanceof HTMLInputElement)) return;
+  if (t.matches('.sg input[data-f]')) onSetFocus(t);
+  if (!t.matches('.sg input[data-f="w"]')) return;
   // Focused by a touch on it just now (noteDown ran first): its release is still to come.
   if (W.lastDown.el !== t || Date.now() - W.lastDown.t > TOUCH_MS) return;
   armLoad(t);
   W.selAgain = t;
+}
+
+/* A set's field focused on the lift minus and plus are on makes it the set you are on (NEW-100), drawn at once so the
+   strip and the mark follow; the strip stays where it is, so nothing moves. A field on another lift waits for a number
+   typed, which moves the pills there (NEW-98), keeping the lift tapped in place. Drawn before the load field is made
+   ready to be typed over (armLoad), whose grey number a draw would take back out. */
+function onSetFocus(t: HTMLInputElement): void {
+  const d = state.draft;
+  const bi = Number(t.dataset.b),
+    si = Number(t.dataset.s);
+  const b = d && d.ex[bi];
+  if (!d || !b || !b.sets[si] || d.editingId || !liftsOn(d).has(b) || stepAt(b, bi) === si) return;
+  W.onSet = setRef(bi, si);
+  redraw();
 }
 
 // A load field made ready to be typed over, on a tap or Next: a grey load put in, the number selected, and the first key replacing it.

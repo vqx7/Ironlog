@@ -672,6 +672,8 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg.sgdrop{margin-left:14px;padding-left:6px;border-left:2px solid var(--blue);border-radius:0 var(--r-sm) var(--r-sm) 0}
 .sg.sgdrop .ls{color:var(--blue)}
 .sg .n.warm{color:var(--yellow);font-size:15px}
+/* The set minus and plus change (NEW-100): its number on a dot of their accent, drawn inside the button's own box, so nothing moves. */
+.sg .n.stepat{color:var(--on-volt);background:radial-gradient(circle 12px at center,var(--volt) 11.5px,transparent 12px)}
 .cbtn{height:44px;width:44px;border-radius:50%;border:1px solid var(--field-b);background:var(--surface-2);cursor:pointer;font-weight:700;font-size:17px;color:var(--muted)}
 .cbtn.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .sg.pr::before{content:'';position:absolute;left:-7px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--gold);pointer-events:none}
@@ -14833,6 +14835,7 @@ ${more}`;
     stripAt: null,
     platesAt: null,
     onLift: null,
+    onSet: null,
     foldWait: /* @__PURE__ */ new WeakSet(),
     selAgain: null,
     replaceNext: null
@@ -14900,6 +14903,18 @@ ${more}`;
     if (j3 >= 0) return j3;
     const k2 = d3.ex[r4.i];
     return k2 && k2.exId === r4.b.exId ? r4.i : -1;
+  }
+  function setRef(bi, si) {
+    const d3 = state.draft;
+    const s3 = d3 && d3.ex[bi] && d3.ex[bi].sets[si];
+    return s3 ? { b: blkRef(bi), rid: typeof s3.rid === "string" ? s3.rid : null, s: si } : null;
+  }
+  function setIdx(r4, bi) {
+    const d3 = state.draft;
+    const b2 = d3 && d3.ex[bi];
+    if (!r4 || !b2 || blkIdx(r4.b) !== bi) return -1;
+    if (r4.rid) return b2.sets.findIndex((x2) => x2.rid === r4.rid);
+    return r4.s < b2.sets.length ? r4.s : -1;
   }
   function draftSet(t4) {
     const b2 = state.draft && state.draft.ex[Number(t4.dataset.b)];
@@ -15481,7 +15496,11 @@ ${more}`;
     return nx >= 0 ? nx : d3.ex.findIndex((x2) => blockUntouched(x2));
   }
   function liftsOn(d3) {
-    const left = (x2) => !blockDone(x2);
+    const held3 = (x2) => {
+      const j3 = d3.ex.indexOf(x2);
+      return j3 >= 0 && setIdx(W.onSet, j3) >= 0 && (W.foldWait.has(x2) || blkIsOpen(j3, x2));
+    };
+    const left = (x2) => !blockDone(x2) || held3(x2);
     const i5 = blkIdx(W.onLift);
     const at2 = i5 >= 0 ? d3.ex[i5] : void 0;
     const nx = at2 && !left(at2) ? nextLift(d3, i5) : -1;
@@ -15490,10 +15509,15 @@ ${more}`;
     const ss = b2.plan && b2.plan.ss;
     return new Set(ss ? d3.ex.filter((x2) => x2.plan && x2.plan.ss === ss && left(x2)) : [b2]);
   }
+  function stepAt(b2, bi) {
+    const i5 = setIdx(W.onSet, bi);
+    return i5 >= 0 ? i5 : b2.sets.findIndex((x2) => !x2.done);
+  }
   function onLiftDraw(bi, draw) {
     const d3 = state.draft;
     const was = d3 ? liftsOn(d3) : null;
     W.onLift = blkRef(bi);
+    if (W.onSet && blkIdx(W.onSet.b) !== bi) W.onSet = null;
     const ref2 = W.onLift;
     const el = document.getElementById("blk-" + bi);
     const top = el ? el.getBoundingClientRect().top : null;
@@ -20834,7 +20858,8 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const wn = b2.sets.slice(0, si + 1).filter((x2) => !x2.warm && !x2.drop).length;
     const lt = s3.warm || s3.drop ? "" : lastCell(b2, wn - 1, dupB);
     const gw = s3.w == null ? greyW(b2, si) : null;
-    return b`<div class=${`sg${nr ? " norir" : ""} ${s3.done ? "done" : ""}${pr ? " pr" : ""}${s3.drop ? " sgdrop" : ""}`} data-pr=${pr || A}><button class=${"n wbtn" + (s3.drop ? " drop" : s3.warm ? " warm" : "")} aria-label=${`Set ${si + 1} type: ${s3.warm ? "warm-up" : s3.drop ? "drop set" : "working set"}. Tap to change`} data-act="sWarm" data-b=${bi} data-s=${si}>${s3.drop ? "↳" : s3.warm ? "W" : wn}</button><span class="ls" aria-label=${lt ? "Last time " + lt : s3.drop ? "Drop set" : "No set last time"}>${lt ? lastText(lt) : s3.drop ? "Drop" : "–"}</span>
+    const at2 = !d3.editingId && stepAt(b2, bi) === si && liftsOn(d3).has(b2);
+    return b`<div class=${`sg${nr ? " norir" : ""} ${s3.done ? "done" : ""}${pr ? " pr" : ""}${s3.drop ? " sgdrop" : ""}`} data-pr=${pr || A}><button class=${"n wbtn" + (s3.drop ? " drop" : s3.warm ? " warm" : "") + (at2 ? " stepat" : "")} aria-label=${`Set ${si + 1} type: ${s3.warm ? "warm-up" : s3.drop ? "drop set" : "working set"}. Tap to change`} data-act="sWarm" data-b=${bi} data-s=${si}>${s3.drop ? "↳" : s3.warm ? "W" : wn}</button><span class="ls" aria-label=${lt ? "Last time " + lt : s3.drop ? "Drop set" : "No set last time"}>${lt ? lastText(lt) : s3.drop ? "Drop" : "–"}</span>
         <input type="text" inputmode="decimal" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} load`} data-f="w" data-b=${bi} data-s=${si} class=${needHere(bi, si) ? "need" : A} .value=${fieldValue(loadIn(ex, s3.w))} placeholder=${gw != null ? loadIn(ex, gw) : emptyLoad(ex)}>
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} ${ex.timed ? "seconds" : "reps"}${ex.perSide ? " per side" : ""}`} data-f="r" data-b=${bi} data-s=${si} .value=${fieldValue(s3.r == null ? "" : String(s3.r))} placeholder=${ph}>
         ${nr ? "" : rirButton(s3.rir, bi, si, p3.rir)}
@@ -20842,17 +20867,18 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   }
   var STEP_SECONDS = 5;
   function stepStrip(d3, b2, bi, ex) {
-    const si = b2.sets.findIndex((x2) => !x2.done);
+    const si = stepAt(b2, bi);
     const s3 = b2.sets[si];
     if (!s3 || d3.editingId || !liftsOn(d3).has(b2)) return "";
     const wn = b2.sets.slice(0, si + 1).filter((x2) => !x2.warm && !x2.drop).length;
     const name = s3.warm ? "Warm-up" : s3.drop ? "Drop set" : `Set ${wn}`;
+    const said2 = s3.done ? `${name}, done` : name;
     const w2 = effW(b2, si) ?? 0;
     const r4 = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
     const btn = (f3, dir, off, label, txt) => b`<button type="button" class="stepr-b" data-act="sStep" data-b=${bi} data-s=${si} data-sf=${f3} data-d=${dir} aria-label=${`${name}: ${label}`} ?disabled=${off}>${txt}</button>`;
     const lw = s3.w != null ? s3.w : effW(b2, si);
     const pill = (f3, v3, unit, dn, up, less, more) => b`<span class="stepr-g">${btn(f3, "-1", dn, less, "−")}<span class="stepr-v" aria-hidden="true"><b>${v3}</b><small>${unit}</small></span>${btn(f3, "1", up, more, "+")}</span>`;
-    return b`<div class="stepr" role="group" aria-label=${`${name}: load and ${ex.timed ? "seconds" : "reps"}`}><div class="stepr-h">Next: <span class="stepr-l">${name}</span></div><div class="stepr-row">${ex.assist ? "" : pill(
+    return b`<div class="stepr" role="group" aria-label=${`${name}: load and ${ex.timed ? "seconds" : "reps"}`}><div class="stepr-h"><span class="stepr-l">${said2}</span></div><div class="stepr-row">${ex.assist ? "" : pill(
       "w",
       lw == null ? "–" : loadIn(ex, lw),
       U(),
@@ -20945,6 +20971,24 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     drawScreen(v3, viewWorkout(d3));
   }
   var tapBlock = (t4) => state.draft && state.draft.ex[Number(t4.dataset.b)] || null;
+  function doneChanged(bi, si, f3) {
+    const d3 = state.draft;
+    const b2 = d3 && d3.ex[bi];
+    const s3 = b2 && b2.sets[si];
+    if (!d3 || !b2 || !s3 || !s3.done) return false;
+    if (W.foldT && W.foldWait.has(b2)) {
+      clearTimeout(W.foldT);
+      const rf = blkRef(bi);
+      W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
+    }
+    if (f3 === "w" ? !!oddLoad(b2, si, d3.date) : isMissed(s3)) {
+      setDone(bi, si, false);
+      setDone(bi, si, true, true);
+      return true;
+    }
+    act(() => assessSet(bi, si), { inProgress: true });
+    return false;
+  }
   function setRemove(t4) {
     const d3 = state.draft;
     const bi = Number(t4.dataset.b);
@@ -21130,6 +21174,8 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       if (W.lastAuto && (blkIdx(W.lastAuto.b) !== bi || W.lastAuto.s !== si)) W.lastAuto = null;
       if (W.lastAuto && Date.now() - W.lastAuto.t < AUTO_CONFIRM_MS && s3.done) {
         W.lastAuto = null;
+        W.onSet = null;
+        onLiftDraw(bi, redraw);
         return;
       }
       const b2 = d3.ex[bi];
@@ -21140,6 +21186,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         return;
       }
       const was = !!s3.done;
+      W.onSet = was ? setRef(bi, si) : null;
       act(
         () => {
           if (lr != null) s3.r = Math.round(lr);
@@ -21214,45 +21261,46 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       rerenderKeepScroll();
     },
     /* Minus and plus (ST-6): from what the row holds, else what it shows in grey, to the next load on the lift's list
-       or one rep (five seconds on a hold) either way, written as the number typed in the field would be, with the same
-       carry to the rows below. The set is not ticked. */
+       or one rep (five seconds on a hold) either way, written as the number typed in the field would be: the same carry
+       to the rows below, and on a set ticked the same checks as a number typed there (doneChanged). They never tick or
+       untick a set, and the set stepped is the one you are on (NEW-100). One change, saved once. */
     sStep(t4) {
       const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
       const b2 = tapBlock(t4);
       const s3 = b2 && b2.sets[si];
-      if (!b2 || !s3 || s3.done) return;
+      if (!b2 || !s3) return;
       const ex = EX(b2.exId);
       const dir = t4.dataset.d === "-1" ? -1 : 1;
-      if (t4.dataset.sf === "w") {
+      const f3 = t4.dataset.sf === "w" ? "w" : "r";
+      let w2 = null, r4 = null;
+      if (f3 === "w") {
         if (ex.assist) return;
         const to = stepLoad(ex, b2.plan, effW(b2, si) ?? 0, dir);
         const v3 = to == null ? null : toD(to);
         if (v3 == null) return;
-        const n3 = Math.round(v3 * HUNDREDTHS) / HUNDREDTHS;
-        act(
-          () => {
-            s3.w = Math.min(fromD(Math.max(n3, 0)) ?? 0, LOAD_MAX);
-            carried.delete(s3);
-            if (fillLoads()) carryLoad(b2, si);
-          },
-          { inProgress: true }
-        );
-        W.platesAt = { b: blkRef(bi), s: si };
-        W.onLift = blkRef(bi);
-        mixCheck(bi, si);
+        w2 = Math.min(fromD(Math.max(Math.round(v3 * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
       } else {
-        const r4 = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
-        const n3 = Math.min(Math.max(r4 + dir * (ex.timed ? STEP_SECONDS : 1), 0), LIMITS.reps);
-        if (n3 === s3.r) return;
-        act(
-          () => {
-            s3.r = n3;
-          },
-          { inProgress: true }
-        );
-        W.onLift = blkRef(bi);
+        const was = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
+        r4 = Math.min(Math.max(was + dir * (ex.timed ? STEP_SECONDS : 1), 0), LIMITS.reps);
+        if (r4 === s3.r) return;
       }
-      rerenderKeepScroll();
+      W.onSet = setRef(bi, si);
+      act(
+        () => {
+          if (w2 != null) {
+            s3.w = w2;
+            carried.delete(s3);
+          } else s3.r = r4;
+          if (s3.done && doneChanged(bi, si, f3)) return;
+          if (f3 === "w" && fillLoads()) carryLoad(b2, si);
+        },
+        { inProgress: true }
+      );
+      if (f3 === "w") {
+        W.platesAt = { b: blkRef(bi), s: si };
+        mixCheck(bi, si);
+      }
+      onLiftDraw(bi, redraw);
     },
     sDel: setRemove,
     /* Warm-ups go in at the top, already flagged, so they stay out of every
@@ -21764,6 +21812,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         { inProgress: true, soon: true }
       );
       if (t4.dataset.f === "w") W.platesAt = { b: blkRef(bi), s: si };
+      W.onSet = setRef(bi, si);
       onLiftDraw(bi, redraw);
       return true;
     }
@@ -21838,12 +21887,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
           W.lastAuto = { b: blkRef(bi), s: si, t: Date.now() };
           setDone(bi, si, true);
         }
-      } else if (s3.done && isMissed(s3)) {
-        setDone(bi, si, false);
-        setDone(bi, si, true, true);
-      } else if (s3.done) {
-        act(() => assessSet(bi, si), { inProgress: true });
-      }
+      } else if (s3.done) doneChanged(bi, si, "r");
       redraw();
       return true;
     }
@@ -21865,16 +21909,13 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       const typed = needHere(bi, si) && s3.w != null;
       if (typed) W.needAt = null;
       const need = typed && (+(s3.r ?? 0) > 0 || isMissed(s3));
-      if (s3.done && oddLoad(d3.ex[bi], si, d3.date)) {
-        setDone(bi, si, false);
-        setDone(bi, si, true, true);
-        return true;
-      }
-      if (rf && !s3.done) setDone(bi, si, true, true);
-      else if (need && !s3.done) {
+      if (s3.done) {
+        if (doneChanged(bi, si, "w")) return true;
+      } else if (rf) setDone(bi, si, true, true);
+      else if (need) {
         W.lastAuto = { b: blkRef(bi), s: si, t: Date.now() };
         setDone(bi, si, true);
-      } else if (s3.done) act(() => assessSet(bi, si), { inProgress: true });
+      }
       mixCheck(bi, si);
       if (fillLoads()) act(() => carryLoad(d3.ex[bi], si), { inProgress: true });
       redraw();
@@ -21958,10 +21999,20 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   }
   function workoutFocus(e5) {
     const t4 = e5.target;
-    if (!(t4 instanceof HTMLInputElement) || !t4.matches('.sg input[data-f="w"]')) return;
+    if (!(t4 instanceof HTMLInputElement)) return;
+    if (t4.matches(".sg input[data-f]")) onSetFocus(t4);
+    if (!t4.matches('.sg input[data-f="w"]')) return;
     if (W.lastDown.el !== t4 || Date.now() - W.lastDown.t > TOUCH_MS) return;
     armLoad(t4);
     W.selAgain = t4;
+  }
+  function onSetFocus(t4) {
+    const d3 = state.draft;
+    const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
+    const b2 = d3 && d3.ex[bi];
+    if (!d3 || !b2 || !b2.sets[si] || d3.editingId || !liftsOn(d3).has(b2) || stepAt(b2, bi) === si) return;
+    W.onSet = setRef(bi, si);
+    redraw();
   }
   function armLoad(t4) {
     if (!t4.value && /\d/.test(t4.placeholder)) {
