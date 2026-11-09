@@ -379,10 +379,10 @@ const CASES = [
     // rNewDo sat in r62's table as the helper New routine's Save called by name (ACT.rNewDo(name)): no element named it, and a tap would have handed it the element as the name. It is a function of actsroutine.ts since r63.
     const NOT_TAPS = ['rNewDo'];
     // Actions a later build adds go beside r62's, each listed here with the release that added it: r66's Done with sets left (374), the bodyweight sheet (372), and a note's pictures (373); r68's Do today's workout instead (NEW-31); r69's check-in sheet; 2.34's another plate in Your gym (NEW-76).
-    const LATER_ACTS = ['bDoneAll', 'bwOpen', 'picOpen', 'picRemove', 'todayOwn', 'chkOpen', 'oldBestOpen', 'tSub', 'photoDel', 'photoLater', 'gymPlateAdd', 'wkAway', 'wkResume'];
+    const LATER_ACTS = ['bDoneAll', 'bwOpen', 'picOpen', 'picRemove', 'todayOwn', 'chkOpen', 'oldBestOpen', 'tSub', 'photoDel', 'photoLater', 'gymPlateAdd', 'wkAway', 'wkResume', 'parkBack'];
     const gone = a.acts.filter(k => !b.acts.includes(k) && !NOT_TAPS.includes(k)), extra = b.acts.filter(k => !a.acts.includes(k) && !LATER_ACTS.includes(k));
     ok(NOT_TAPS.every(k => a.acts.includes(k) && !b.acts.includes(k)), '4. r62\'s one helper in the table (rNewDo) is a function now, not an action');
-    ok(a.acts.length > 200 && !gone.length && !extra.length && LATER_ACTS.every(k => b.acts.includes(k)), `4. every other one of r62's ${a.acts.length} actions by data-act, and no new one but those later builds list (r66: bDoneAll, bwOpen, picOpen, picRemove; r68: todayOwn, NEW-31; r69: chkOpen; r70: oldBestOpen; r71: tSub; 2.33: photoDel, photoLater, ST-1 and ST-2; 2.34: gymPlateAdd, NEW-76; 2.35: wkAway, wkResume, NEW-89)`, { gone, extra });
+    ok(a.acts.length > 200 && !gone.length && !extra.length && LATER_ACTS.every(k => b.acts.includes(k)), `4. every other one of r62's ${a.acts.length} actions by data-act, and no new one but those later builds list (r66: bDoneAll, bwOpen, picOpen, picRemove; r68: todayOwn, NEW-31; r69: chkOpen; r70: oldBestOpen; r71: tSub; 2.33: photoDel, photoLater, ST-1 and ST-2; 2.34: gymPlateAdd, NEW-76; 2.35: wkAway, wkResume, NEW-89; 2.36: parkBack, R81-2)`, { gone, extra });
     ok(!b.errors.length, '4. no page errors', b.errors);
   }
 
