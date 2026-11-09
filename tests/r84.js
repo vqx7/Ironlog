@@ -3,11 +3,12 @@
 // says it guards:
 //   1  NEW-98 (V, 2026-11-09: "It will help reduce and avoid the overwhelm"): minus and plus show on the lift you are on,
 //      not under every lift: at the start, the first lift; after a tick or a load typed on another lift, that lift; once
-//      it is done, the first lift with a set left; in a superset, every lift of the group with a set left (they are done
+//      it is done, the lift the screen brings up next (the next one below not done); in a superset, every lift of the group with a set left (they are done
 //      together); after a reload, the first lift with a set left; guard: a lift done shows none.
 //   2  NEW-98 with NEW-64's rule (GitHub's run of 2.38: tests/r45.js saw a lift move 93 px when the pills left the lift
 //      above it): a tick or a load typed on another lift moves that lift's row by nothing on screen.
-// R84_ONLY=1,2 runs some sections.
+//   3  REV7-1 (the review of 2.38): a lift done but for an unticked warm-up hands the pills to the next lift.
+// R84_ONLY=1,2,3 runs some sections. (The review's REV7-2 to REV7-5 are held in tests/r82.js 13 and 14 and tests/r83.js 7.)
 const { open } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
@@ -33,6 +34,8 @@ async function app(o = {}) {
 /** The lifts (by place) that show minus and plus now. */
 const pillsOn = D => D.page.evaluate(() => [...document.querySelectorAll('#view .stepr')].map(e => +e.closest('[id^="blk-"]').id.slice(4)));
 /** Ticks set si of lift bi as a lifter does. */
+/** The workout in progress: its id, whether an edit, and every lift's sets. */
+const live = D => D.page.evaluate(() => { const d = window.__ironlog.state.draft; return d ? { id: d.id, editing: !!d.editingId, ex: JSON.stringify(d.ex.map(b => [b.exId, b.sets.map(s => [s.w, s.r, !!s.done])])) } : null; });
 const tick = async (D, bi, si) => { await D.page.click(`#view [data-act="sDone"][data-b="${bi}"][data-s="${si}"]`); await wait(350); };
 
 (async () => {
@@ -52,7 +55,9 @@ const tick = async (D, bi, si) => { await D.page.click(`#view [data-act="sDone"]
     for (let si = 0; si < sets1; si++) await tick(D, 1, si);
     await wait(1200);
     const after = await pillsOn(D);
-    ok(JSON.stringify(after) === '[0]', '1. with the second lift done, they go to the first lift with a set left', after);
+    // The lift the screen brings up after it: the next one below not done (the review of 2.38, REV7-7, corrected this
+    // section's first draft, which sent them to the first lift with a set left, above and off screen).
+    ok(JSON.stringify(after) === '[2]', '1. with the second lift done, they go to the lift the screen brings up next, the third', after);
     ok(!after.includes(1), '1. (a guard) a lift done shows none', after);
     await D.page.reload(); await D.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(600);
     ok(JSON.stringify(await pillsOn(D)) === '[0]', '1. after a reload, the first lift with a set left', await pillsOn(D));
@@ -93,6 +98,21 @@ const tick = async (D, bi, si) => { await D.page.click(`#view [data-act="sDone"]
     ok(f0 != null && Math.abs(f1 - f0) <= 1, '2. a load typed on another lift moves its field by nothing on screen', { f0, f1, on: await pillsOn(D) });
     await D.browser.close();
   }
+  if (run(3)) {
+    // REV7-1: a warm-up left unticked on a lift whose working sets are all ticked: the lift is done (it folds), so the
+    // pills go to the next lift with a set left.
+    const D = await app();
+    await D.page.click('[data-act="startSession"]'); await wait(500);
+    await D.page.evaluate(() => window.__ironlog.ACT.wAdd({ dataset: { b: '0' } })); await wait(400);
+    const n = await D.page.evaluate(() => window.__ironlog.state.draft.ex[0].sets.length);
+    for (let si = 1; si < n; si++) await tick(D, 0, si);
+    await wait(1500);
+    ok(JSON.stringify(await pillsOn(D)) === '[1]', '3. a lift done but for a warm-up: minus and plus go to the next lift with a set left', await pillsOn(D));
+    await D.page.reload(); await D.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(800);
+    ok(JSON.stringify(await pillsOn(D)) === '[1]', '3. and the same after a reload', await pillsOn(D));
+    await D.browser.close();
+  }
+
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
   process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

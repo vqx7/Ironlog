@@ -1004,17 +1004,31 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
   if (val && b.sets.filter(x => x.done).length === 1 && orderAt(b) >= 0) orderSoon(b);
 }
 
+/* The lift the screen brings up after lift i: the next one below it not done, else the first not yet started (a lift
+   skipped above is gone back to only when nothing below is left). One answer for the fold's glide (autoFold), the rest
+   card's "next:" (restNext) and the pills (liftsOn), so the three never point at different lifts. */
+/** The place of the lift that comes up after lift i, or -1 when none does. */
+function nextLift(d: Draft, i: number): number {
+  const nx = d.ex.findIndex((x, j) => j > i && !blockDone(x));
+  return nx >= 0 ? nx : d.ex.findIndex(x => blockUntouched(x));
+}
+
 /* The lift you are on (NEW-98, V 2026-11-09: "It will help reduce and avoid the overwhelm"), where minus and plus
-   show: the one you last ticked a set of, typed a load or reps in, or stepped, while it has a set left; else the first
-   lift with a set left, the one the screen brings up next (autoFold). A superset's lifts are done together, so each
+   show: the one you last ticked a set of, typed a load or reps in, or stepped, while it is not done; once it is done,
+   the lift the screen brings up after it (nextLift); with none, the first lift not done. A superset's lifts are done together, so each
    lift of its group with a set left is on with it. Held for this visit only (W.onLift): after a reload, the first lift
    with a set left. */
 /** The lifts of the session that minus and plus show on now: the one you are on, or its superset's lifts with a set left. */
 export function liftsOn(d: Draft): Set<DraftBlock> {
-  const left = (x: DraftBlock): boolean => x.sets.some(y => !y.done);
+  // A lift is left while it is not done by the rule the screen folds it by (blockDone: a warm-up left unticked does
+  // not keep it open), so the pills never go to a folded lift (the review of 2.38, REV7-1).
+  const left = (x: DraftBlock): boolean => !blockDone(x);
   const i = blkIdx(W.onLift);
   const at = i >= 0 ? d.ex[i] : undefined;
-  const b = at && left(at) ? at : d.ex.find(left);
+  // Once it is done, the lift the screen brings up after it (nextLift, as the fold glides to it and the rest card
+  // names it; the review of 2.38, REV7-7: the first lift with a set left was above and off screen), else the first.
+  const nx = at && !left(at) ? nextLift(d, i) : -1;
+  const b = at && left(at) ? at : nx >= 0 ? d.ex[nx] : d.ex.find(left);
   if (!b) return new Set();
   const ss = b.plan && b.plan.ss;
   return new Set(ss ? d.ex.filter(x => x.plan && x.plan.ss === ss && left(x)) : [b]);
@@ -1056,8 +1070,7 @@ export function restNext(bi: number): string {
   // No-break spaces keep "next set 2" on one line when the card's line wraps on a narrow phone.
   if (k >= 0) return to === b ? `next\u00a0set\u00a0${k + 1}` : `next: ${exName(to.exId)}`;
   const i = d.ex.indexOf(to);
-  let nx = d.ex.findIndex((x, j) => j > i && !blockDone(x));
-  if (nx < 0) nx = d.ex.findIndex(x => blockUntouched(x));
+  const nx = nextLift(d, i);
   return nx >= 0 && nx !== i ? `next: ${exName(d.ex[nx].exId)}` : '';
 }
 
@@ -1193,8 +1206,7 @@ export function autoFold(ref: BlkRef | null): void {
     W.foldT = setTimeout(() => autoFold(ref), FOLD_MS.strip);
     return;
   }
-  let nx = d.ex.findIndex((x, i) => i > bi && !blockDone(x));
-  if (nx < 0) nx = d.ex.findIndex(x => blockUntouched(x));
+  const nx = nextLift(d, bi);
   const a0 = nx >= 0 ? document.getElementById('blk-' + nx) : null;
   const top0 = a0 ? a0.getBoundingClientRect().top : null;
   rerenderKeepScroll();

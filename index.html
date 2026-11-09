@@ -15476,11 +15476,16 @@ ${more}`;
     }
     if (val && b2.sets.filter((x2) => x2.done).length === 1 && orderAt(b2) >= 0) orderSoon(b2);
   }
+  function nextLift(d3, i5) {
+    const nx = d3.ex.findIndex((x2, j3) => j3 > i5 && !blockDone(x2));
+    return nx >= 0 ? nx : d3.ex.findIndex((x2) => blockUntouched(x2));
+  }
   function liftsOn(d3) {
-    const left = (x2) => x2.sets.some((y2) => !y2.done);
+    const left = (x2) => !blockDone(x2);
     const i5 = blkIdx(W.onLift);
     const at2 = i5 >= 0 ? d3.ex[i5] : void 0;
-    const b2 = at2 && left(at2) ? at2 : d3.ex.find(left);
+    const nx = at2 && !left(at2) ? nextLift(d3, i5) : -1;
+    const b2 = at2 && left(at2) ? at2 : nx >= 0 ? d3.ex[nx] : d3.ex.find(left);
     if (!b2) return /* @__PURE__ */ new Set();
     const ss = b2.plan && b2.plan.ss;
     return new Set(ss ? d3.ex.filter((x2) => x2.plan && x2.plan.ss === ss && left(x2)) : [b2]);
@@ -15508,8 +15513,7 @@ ${more}`;
     const k2 = to.sets.filter((y2) => !y2.warm && !y2.drop).findIndex((y2) => !y2.done);
     if (k2 >= 0) return to === b2 ? `next set ${k2 + 1}` : `next: ${exName(to.exId)}`;
     const i5 = d3.ex.indexOf(to);
-    let nx = d3.ex.findIndex((x2, j3) => j3 > i5 && !blockDone(x2));
-    if (nx < 0) nx = d3.ex.findIndex((x2) => blockUntouched(x2));
+    const nx = nextLift(d3, i5);
     return nx >= 0 && nx !== i5 ? `next: ${exName(d3.ex[nx].exId)}` : "";
   }
   function ssNext(b2) {
@@ -15608,8 +15612,7 @@ ${more}`;
       W.foldT = setTimeout(() => autoFold(ref2), FOLD_MS.strip);
       return;
     }
-    let nx = d3.ex.findIndex((x2, i5) => i5 > bi && !blockDone(x2));
-    if (nx < 0) nx = d3.ex.findIndex((x2) => blockUntouched(x2));
+    const nx = nextLift(d3, bi);
     const a0 = nx >= 0 ? document.getElementById("blk-" + nx) : null;
     const top0 = a0 ? a0.getBoundingClientRect().top : null;
     rerenderKeepScroll();
