@@ -16,7 +16,9 @@
 //   6  ST-6: This block vs last on Stats, against a log worked out by hand: 6 weeks by default, Auto from a lighter week,
 //      4 weeks; full weeks trained averaged with lighter weeks left out, PRs on any day; nothing before a break of more
 //      than 4 weeks; the length kept as a setting only when not the default; the survey behind 6 in the Guide.
-// R83_ONLY=1,2,3,4,5,6 runs some sections.
+//   7  REV7-5 (the review of the stack's later changes): with Auto-mark on, plus on a set's pill after its reps are
+//      typed steps that set, unticked, and leaves the next set alone.
+// R83_ONLY=1,2,3,4,5,6,7 runs some sections.
 const { open } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
@@ -268,6 +270,20 @@ async function app(o = {}) {
     ok(/Rogerson 2024/.test(r.guide), "6. the Guide's Sources name the survey behind 6 weeks", r.guide.slice(-400));
     ok(r.missed && r.missed.now.missed === 2 && r.missed.now.counted === 2 && /2 weeks missed and a lighter week left out/.test(r.missed.line) && !/missed/.test(r.missed.lastLine), '6. a block with weeks missed says so beside its dates, as every weekly average does (the review, REV6-6); one with none says nothing', r.missed);
     ok(r.brk && r.brk.last === null && r.brk.now.from === '2026-10-19', '6. after a break of more than 4 weeks the block starts with the first week back and nothing before the break is compared', r.brk && { now: r.brk.now.from, last: r.brk.last });
+    await D.browser.close();
+  }
+
+  if (run(7)) {
+    // REV7-5: with Auto-mark on, reps typed for Set 1 and then plus tapped on its pill: the tap is not leaving the
+    // set, so Set 1 is not ticked and its load steps up; Set 2 is left alone.
+    const D = await app();
+    await D.page.evaluate(() => { const L = window.__ironlog; L.state.settings.autoDone = true; L.saveNow(); L.render(); });
+    await D.page.click('[data-act="startSession"]'); await wait(500);
+    const g = await D.page.evaluate(() => +document.querySelector('#view input[data-f="w"][data-b="0"][data-s="0"]').placeholder);
+    await D.page.fill('#view input[data-f="r"][data-b="0"][data-s="0"]', '8'); await wait(300);
+    await D.page.click('#blk-0 [data-act="sStep"][aria-label="Set 1: heavier"]'); await wait(800);
+    const o = await D.page.evaluate(() => { const b = window.__ironlog.state.draft.ex[0]; return b.sets.slice(0, 2).map(s => ({ w: s.w, r: s.r, done: !!s.done })); });
+    ok(!o[0].done && o[0].w === g + 5 && o[0].r === 8 && o[1].w == null, `7. Auto-mark on: reps typed, then plus on that set's pill steps it (${g} to ${g + 5}) and does not tick it or touch Set 2`, { g, o });
     await D.browser.close();
   }
 

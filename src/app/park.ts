@@ -67,12 +67,14 @@ export function unpark(): boolean {
   return true;
 }
 
-/* Before the phone lets go of an account (Sign out, either way, or Delete my account), a workout set aside for its log
-   comes back into that log, so it goes where the log goes, as any workout in progress does (the review of 2.36,
-   REV6-1: a sign-out that took the log off the phone took the set-aside copy with it, the only one, and REV6-4: one
-   kept with a copy was tagged as no account's). With another workout open (the edit), nothing signs out until that one
-   is saved or discarded. */
-/** Whether the phone may let go of the account now: a set-aside workout of this log brought back first; false, said, while another workout is open. */
+/* The phone never lets go of a log while a workout is set aside for it (the reviews of 2.36 and 2.38): before an
+   action that takes the log off the phone or replaces it (Sign out, either way; Delete my account; Erase everything;
+   Load demo data; Replace my data; Copy my log in), a workout set aside for this log comes back into it, so it goes
+   where the log goes and an Undo of the action brings it back with the rest, as any workout in progress. With another
+   workout open (the edit), the action waits until that one is saved or discarded. Without this, a sign-out took the
+   only copy off the phone (REV6-1), an Undo after a reload could not bring it back (REV7-2), and a log replaced while
+   signed out left it tagged for an account the phone no longer named (REV7-3). */
+/** Whether the phone may let go of or replace its log now: a set-aside workout of this log brought back first; false, said, while another workout is open. */
 export function parkSettle(): boolean {
   if (!parkedHere()) return true;
   if (state.draft) {
@@ -80,16 +82,4 @@ export function parkSettle(): boolean {
     return false;
   }
   return unpark();
-}
-
-/** Takes a set-aside workout off the phone, as Erase everything does, and returns what was stored, so its Undo can put it back. */
-export function parkTake(): string | null {
-  const v = prefGet(PARKED_KEY);
-  prefDel(PARKED_KEY);
-  return v;
-}
-
-/** Puts back what parkTake took (the Undo of Erase everything), unless a workout was set aside since. */
-export function parkPut(v: string | null): void {
-  if (v && !prefGet(PARKED_KEY)) prefSet(PARKED_KEY, v);
 }
