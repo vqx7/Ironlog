@@ -151,54 +151,28 @@ export function atUsualWork(x: Exposure, ref: readonly Exposure[]): boolean {
   return ref.every(q => x.topW >= q.topW - EPS_SAME && repsOf(x, k) >= repsOf(q, k) * USUAL_SHARE);
 }
 
-/* Step 2b (r54, V's one rule for every session, PENDING 312 E: "a lift
-   counts toward its next target only at its usual load and reps for its
-   usual sets; fewer sets still count for its trend and PRs, and the target
-   repeats", replacing the trimmed mark and r30's half rule; with V's
-   answers of 2026-10-18 evening, a bad day falls short too, and a lift's
-   usual sets are what it did in most of its last three sessions, never
-   more than the plan). A lift's session not done lighter is short of its
-   usual by its sets when it has fewer sets near its working load (setsAt)
-   than its usual, and by its reading when, at a working load no heavier
-   than the two sessions before it, its reading is more than USUAL_SHARE
-   under its usual: the strength reading, reps alone, where it and those it
-   is read with have one, else its reps a set at its working load, and that
-   load, each over as many sets at the working load as the usual
-   (readingOf), so a set beyond the usual never counts against it. Its
-   usual is the middle of it and the two sessions of the lift before it in
-   the range not done lighter (the higher of two with only one before it),
-   so one session under it repeats the target and a second in a row is the
-   usual, which the app then follows.
-   On a lift the routine plans (`planSets`, the day it was done on first;
-   null for a lift on no day of the routine, which reads its own sessions),
-   its usual sets are never more than the plan's, so a lifter who does more
-   sets than planned is not short when doing the plan. A session saved on a
-   day of a routine keeps the sets its plan gave the lift then (`ps`, r58,
-   339 h); once a session of the lift in the range since its last break did
-   that many near its working load, those are the sets it must reach, so
-   fewer sets than planned never become the usual (a 5 x 5 done as 4 x 5
-   twice read as a 4-set lift, and its target asked for 4 sets the plan
-   never set). Each session is read by its own plan, so a plan changed
-   later never rereads the sessions before it (the r58 review: read by the
-   plan as it is now, a plan raised from 3 sets to 4 marked every session of
-   3 short and took the target back to the first of them). A session with
-   none recorded (Freestyle, a lift on no day of the routine, one saved
-   before r58, a blank session saved before r70) reads its own sets, as
-   before. Since r70 a blank session records them too (NEW-51): Finish saves,
-   on a lift the routine plans, the sets of its day nearest to what the
-   session did, unless Today opens blank (Freestyle), so two one-set PR attempts in a
-   row never make a 3-set lift a 1-set one, and, as on a routine's day, each
-   session is read by what was saved with it, never by the plan or the mode
-   as they are now (the review of r70, R70-1 and R70-2). On a lift labelled
-   lighter or a deload but done at its usual load
-   and reps (`tag`, step 2), the label cut the plan, so its usual sets are
-   its own, and if it falls short it is not one of the sessions later ones
-   are read against, so half the sets of a deload twice running never
-   become the usual. A heavier working load than both before it is a step
-   up, whose reps fall as a step costs them: never under its usual by its
-   reading, as a trend reads it (r34.2, loadUp); a step too big is the
-   engine's to read (sgBelowRange). The first session of a lift in a range,
-   or back after a break (afterBreak), is its own usual. */
+/* The sets a lift's session is held to: the sets its plan gave it when saved (`ps`, Finish's withPlanSets), once a
+   session of the lift in this stretch has done that many; else its usual sets, never more than the plan's (`plan`,
+   the routine's sets for the lift on that day as it is now; null off the routine). So a plan is never asked of a lift
+   that has not yet done it, and once done, fewer sets never become the usual. */
+/** The sets a lift's session must do for its next target to build on it, by V's one rule (above). */
+function setsHeldTo(usualSets: number, plan: number | null, saved: number | null, reached: boolean): number {
+  if (saved != null && reached) return saved;
+  return plan != null && plan > 0 ? Math.min(usualSets, plan) : usualSets;
+}
+
+/* V's one rule for every session (r54): a lift's session sets its next target only when it did its usual load and
+   reps for the sets it is held to (setsHeldTo); a session short of either still counts for the trend, stalls and PRs,
+   and the target repeats. Short by its sets: fewer near its working load (setsAt) than it is held to. Short by its
+   reading: at a working load no heavier than the sessions before it, its strength reading (else its reps a set) over
+   those sets is more than USUAL_SHARE under the usual (readingOf), so a set beyond them never counts against it. The
+   usual is the middle of it and the two sessions before it in the range not done lighter, so one session under it
+   repeats the target and a second in a row becomes the usual. A heavier working load than both before it is a step
+   up, never short by its reading. A session labelled lighter or a deload but done at its usual load and reps (`tag`)
+   is read against the sessions before it alone, and if short is not one later sessions are read against. The first
+   session in a range, or back after a break or on a new machine, is its own usual. Each case, with the release and
+   the bug that made it, is a row of tests/usual.js; the history is in docs/ARCHIVE.md (CL-2). */
+/** Marks each of a lift's sessions short of its usual by its sets or its reading, by V's one rule (above). */
 export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string, x: Exposure) => number | null): void {
   for (const id of Object.keys(byEx)) {
     const normal: Exposure[] = [];
@@ -209,25 +183,22 @@ export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string
       if (lighter(x)) continue;
       const prior = normal.filter(q => sameRR(q.rr, x.rr));
       const before = prior.slice(-USUAL_BEFORE);
-      const cap = before.length && !x.tag ? planSets(id, x) : null;
-      // The sets to reach (339 h, r58): those its plan gave it when saved (ps), once an earlier session did as many.
-      const hold = !x.tag && x.ps != null && prior.some(q => setsAt(q, q.topW) >= (x.ps || 0)) ? x.ps : null;
-      const sh = before.length ? shortOf(x, before, cap, hold) : undefined;
+      // A label cut the plan, so a labelled session is held to its own sets (above).
+      const plan = before.length && !x.tag ? planSets(id, x) : null;
+      const saved = !x.tag && x.ps != null ? x.ps : null;
+      const reached = saved != null && prior.some(q => setsAt(q, q.topW) >= saved);
+      const sh = before.length ? shortOf(x, before, plan, saved, reached) : undefined;
       if (sh) x.short = sh;
       if (!(x.tag && x.short)) normal.push(x);
     }
   }
-  /* Short of its usual by its sets, or by its reading, against the two
-     sessions before it in the range (see above), or not. A lift with a
-     label (`tag`) is read against those two alone: its own sets were cut by
-     the label, so they are no sign of a new usual (the second review of
-     r53: after a session stopped at two sets of four, a lighter day of two
-     sets of 10 read as the usual and let half the work set the target). */
+  // Short of its usual by its sets, or by its reading, against the two sessions before it in the range, or not.
   function shortOf(
     x: Exposure,
     before: readonly Exposure[],
-    cap: number | null,
-    hold: number | null
+    plan: number | null,
+    saved: number | null,
+    reached: boolean
   ): Exposure['short'] {
     const usual = (v: readonly number[], own: number): number => mid(x.tag ? v : [...v, own]);
     /* Its sets near its working load (setsAt). At a heavier working load
@@ -244,9 +215,8 @@ export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string
       before.map(q => setsAt(q, usualW)),
       n
     );
-    // Its usual sets, never more than the plan's; the sets its plan gave it to reach once held (see above: 339 h, r58).
-    const usualN = cap != null && cap > 0 ? Math.min(sets, cap) : sets;
-    const want = hold != null ? hold : usualN;
+    const usualN = setsHeldTo(sets, plan, null, false);
+    const want = setsHeldTo(sets, plan, saved, reached);
     if (n < want) return 'sets';
     if (up) return undefined;
     /* Read over as many sets at the working load as the usual, and no more

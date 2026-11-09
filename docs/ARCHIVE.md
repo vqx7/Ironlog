@@ -808,6 +808,102 @@ What r30 changes (each with a test in tests/r30.js, reproduced the way the revie
 
 The detail of each finished phase of the move into typed modules, as ARCHITECTURE.md held it until r56.2: what moved, how it was proved, and what each review found. The design, the rules and the ratchet numbers stay in ARCHITECTURE.md.
 
+### The session rule's history (CL-2, 2.39)
+
+In 2.39 V's one rule for every session was stated once (`setsHeldTo` and the comment above `idxShort` in usual.ts,
+two lines in CLAUDE.md) and each case became a row of `tests/usual.js`. The comments it replaced carried the history
+of how each case was found; they are kept here as they were.
+
+The comment on `idxShort` (analytics.ts until CL-1):
+
+```
+/* Step 2b (r54, V's one rule for every session, PENDING 312 E: "a lift
+   counts toward its next target only at its usual load and reps for its
+   usual sets; fewer sets still count for its trend and PRs, and the target
+   repeats", replacing the trimmed mark and r30's half rule; with V's
+   answers of 2026-10-18 evening, a bad day falls short too, and a lift's
+   usual sets are what it did in most of its last three sessions, never
+   more than the plan). A lift's session not done lighter is short of its
+   usual by its sets when it has fewer sets near its working load (setsAt)
+   than its usual, and by its reading when, at a working load no heavier
+   than the two sessions before it, its reading is more than USUAL_SHARE
+   under its usual: the strength reading, reps alone, where it and those it
+   is read with have one, else its reps a set at its working load, and that
+   load, each over as many sets at the working load as the usual
+   (readingOf), so a set beyond the usual never counts against it. Its
+   usual is the middle of it and the two sessions of the lift before it in
+   the range not done lighter (the higher of two with only one before it),
+   so one session under it repeats the target and a second in a row is the
+   usual, which the app then follows.
+   On a lift the routine plans (`planSets`, the day it was done on first;
+   null for a lift on no day of the routine, which reads its own sessions),
+   its usual sets are never more than the plan's, so a lifter who does more
+   sets than planned is not short when doing the plan. A session saved on a
+   day of a routine keeps the sets its plan gave the lift then (`ps`, r58,
+   339 h); once a session of the lift in the range since its last break did
+   that many near its working load, those are the sets it must reach, so
+   fewer sets than planned never become the usual (a 5 x 5 done as 4 x 5
+   twice read as a 4-set lift, and its target asked for 4 sets the plan
+   never set). Each session is read by its own plan, so a plan changed
+   later never rereads the sessions before it (the r58 review: read by the
+   plan as it is now, a plan raised from 3 sets to 4 marked every session of
+   3 short and took the target back to the first of them). A session with
+   none recorded (Freestyle, a lift on no day of the routine, one saved
+   before r58, a blank session saved before r70) reads its own sets, as
+   before. Since r70 a blank session records them too (NEW-51): Finish saves,
+   on a lift the routine plans, the sets of its day nearest to what the
+   session did, unless Today opens blank (Freestyle), so two one-set PR attempts in a
+   row never make a 3-set lift a 1-set one, and, as on a routine's day, each
+   session is read by what was saved with it, never by the plan or the mode
+   as they are now (the review of r70, R70-1 and R70-2). On a lift labelled
+   lighter or a deload but done at its usual load
+   and reps (`tag`, step 2), the label cut the plan, so its usual sets are
+   its own, and if it falls short it is not one of the sessions later ones
+   are read against, so half the sets of a deload twice running never
+   become the usual. A heavier working load than both before it is a step
+   up, whose reps fall as a step costs them: never under its usual by its
+   reading, as a trend reads it (r34.2, loadUp); a step too big is the
+   engine's to read (sgBelowRange). The first session of a lift in a range,
+   or back after a break (afterBreak), is its own usual. */
+```
+
+The comments on `nearestPlanSets` and `withPlanSets` (routines.ts):
+
+```
+/* The sets a routine plans for a lift on the day nearest to what a blank
+   session did (NEW-51, r70): what the session is held to. A lift planned at
+   one count is held to it. Planned at 5 sets one day and 3 another, a blank
+   session of 1 or 3 sets is held to 3 and one of 5 to 5, a tie going to the
+   fewer, so a blank session never asks more sets than the day it resembles
+   (the review of r70, R70-1: held to the first day's 5, a session of 3 read
+   short) and a 5-set session is judged on all five (R70-5: held to the
+   fewest, 3, its weaker fourth and fifth sets were not read and the next
+   target fell from 40 reps to 33). Only the days that plan the lift in the
+   session's rep range count, all days when none does, since a session is
+   read only against sessions of its own range (R70-6: 3 heavy sets of a lift
+   planned 5 x 4-6 and 3 x 8-12 were held to the light day's 3, read in full,
+   and the heavy day's load went up). */
+
+
+/* A workout's exercises as Finish saves them, each lift on a day of a
+   routine given the sets its plan gives it (planSetsOf), last, as normalize
+   writes it. Since r70 a blank session (no day) records them too, while the
+   routine is followed: each lift the routine in use plans is given the sets
+   of the day nearest to its working sets, among the days that plan it in the
+   session's rep range (nearestPlanSets), so two one-set
+   sessions in a row never make it a 1-set lift (NEW-51); none in Freestyle, where Today
+   opens blank and the lifter's own sets lead. Recorded once, at Finish, so a
+   plan or the mode changed later never rereads the sessions before it (the
+   r58 review, and R70-1 and R70-2 in r70's). None on an edit, which keeps the
+   sets saved with the session (Finish carries them over with the fields it
+   does not rebuild, keepExtra). */
+```
+
+CLAUDE.md's sentence before 2.39: a lift sets its next target only at its usual load and reps for its usual sets (in a
+session on a day of the routine, the sets its plan gave it that day, saved with it, once a session did them: r58; in a
+blank session, the sets of the routine's day nearest to what it did among the days that plan it in its rep range,
+saved with it the same way, none in Freestyle: r70, NEW-51, R70-6).
+
 ### Phase 4 in detail (r56 and r56.1)
 
 **Two releases, so a fault across devices has one suspect.** r56 moves storage and sync out of the legacy script into typed modules and changes nothing they do: the same storage keys, the same sync documents byte for byte, key order included, the same merge. r56.1 then makes the sync changes V placed there (PENDING 328 a to c, 305, 307, 308) on the typed code, each with a test that fails on r56.
