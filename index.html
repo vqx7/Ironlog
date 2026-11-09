@@ -3544,6 +3544,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function mergeDraft(base0, cur0, pre0) {
     const base = undoDraftOf(base0), cur = undoDraftOf(cur0), pre = undoDraftOf(pre0);
+    if (pre && !base && !cur && cur0 == null && base0 == null) return pre0;
     if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur0 === void 0 ? null : cur0;
     const keyed = (list) => {
       const seen = {};
@@ -4611,6 +4612,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var BWSNOOZE_KEY = KEY + ".bwSnooze", BWASK_KEY = KEY + ".bwAsk";
   var PARKED_KEY = KEY + ".parked";
   var PHOTO_KEY = KEY + ".photo", PHOTO_SYNC = KEY + ".photoSync", PHOTO_ASKED = KEY + ".photoAsked";
+  function parkedRetag(from, to) {
+    const r4 = rec(parseJson(prefGet(PARKED_KEY) || "null"));
+    if (r4 && r4["uid"] === from) prefSet(PARKED_KEY, JSON.stringify({ ...r4, uid: to }));
+  }
   var DEMOSET_KEY = KEY + ".demoSettings";
   var ASIDE_KEY = KEY + ".aside.";
   var device = { ok: true, boot: true, hadLocal: false, hadLog: false, lastSaved: null };
@@ -10927,6 +10932,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       cloud.sent = {};
       cloud.editAt = {};
       cloud.last = null;
+      parkedRetag("", id);
       return true;
     }
     const mine = holdsLog();
@@ -10994,6 +11000,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       resyncLocalH();
       fx.render();
     }
+    if (!use) parkedRetag(from || "", id);
     if (both)
       fx.toast("The workout in progress on this phone stays open. The one kept for this account is saved in History.");
     if (aside) await dropAside(id);
@@ -13933,7 +13940,7 @@ ${more}`;
   };
 
   // src/app/park.ts
-  var who = () => cloud.on && cloud.uid || "";
+  var who = () => cloud.acct || "";
   function held2() {
     const r4 = rec(parseJson(prefGet(PARKED_KEY) || "null"));
     return r4 && typeof r4["uid"] === "string" ? { uid: r4["uid"], draft: r4["draft"] } : null;
@@ -13967,12 +13974,21 @@ ${more}`;
     ui.away = d3.id;
     return true;
   }
-  function parkKeepHere() {
-    const h3 = held2();
-    if (h3) prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: h3.draft }));
+  function parkSettle() {
+    if (!parkedHere()) return true;
+    if (state.draft) {
+      fx.toast("Your workout in progress is set aside. Save or discard the one open first, and it comes back.");
+      return false;
+    }
+    return unpark();
   }
-  function parkForget() {
+  function parkTake() {
+    const v3 = prefGet(PARKED_KEY);
     prefDel(PARKED_KEY);
+    return v3;
+  }
+  function parkPut(v3) {
+    if (v3 && !prefGet(PARKED_KEY)) prefSet(PARKED_KEY, v3);
   }
 
   // src/app/importing.ts
@@ -16774,14 +16790,20 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? " on this device and in your cloud copy" : " on this device"}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first if you might want it.`,
         "Erase everything",
         () => {
+          let parked = null;
           act(
             () => {
               setState(normalize(null));
               if (!cloud.on) cloudStop(true);
               asideClear();
-              parkForget();
+              parked = parkTake();
             },
-            { undo: true }
+            {
+              undo: () => {
+                parkPut(parked);
+                return false;
+              }
+            }
           );
           picsClear().catch((e5) => {
             log("pics-clear", e5);
@@ -22965,6 +22987,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     acctDelete() {
       const A2 = AUTH();
       if (!A2 || typeof A2.deleteAccount !== "function") return;
+      if (!parkSettle()) return;
       const del = A2.deleteAccount;
       confirmBox(
         "Delete your account?",
@@ -22983,7 +23006,6 @@ ${JSON.stringify(ctx, null, 1)}`;
           acct.user = null;
           cloudStop(true);
           photoForget();
-          parkKeepHere();
           setSaveState();
           rerenderKeepScroll();
           toast("Account deleted. Your log is still on this phone.");
@@ -22999,6 +23021,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     acctSignOut() {
       const A2 = AUTH();
       if (!A2) return;
+      if (!parkSettle()) return;
       const NOT_IN = "Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.";
       const out = async (remove) => {
         if (cloud.on && navigator.onLine !== false) {
@@ -23025,8 +23048,6 @@ ${JSON.stringify(ctx, null, 1)}`;
         acct.user = null;
         cloudStop(remove);
         photoSignOut(keepPhoto);
-        if (remove) parkForget();
-        else parkKeepHere();
         const mid2 = !remove && !!state.draft;
         if (!mid2) {
           prefSet(OB_OUT, "1");

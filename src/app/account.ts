@@ -29,7 +29,7 @@ import {
   withTimeout
 } from './sync';
 import { photoForget, photoPending, photoSignOut } from './photo';
-import { parkForget, parkKeepHere } from './park';
+import { parkSettle } from './park';
 import { normalize } from './normalize';
 import { acct, cloud, setState, state, ui } from './store';
 import type { AccountModal, AcctMode } from './modals';
@@ -664,6 +664,8 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   acctDelete() {
     const A = AUTH();
     if (!A || typeof A.deleteAccount !== 'function') return;
+    // A workout set aside for an edit comes back into the log first, which stays on this phone (REV6-1, parkSettle).
+    if (!parkSettle()) return;
     const del = A.deleteAccount;
     confirmBox(
       'Delete your account?',
@@ -683,8 +685,6 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         cloudStop(true);
         // The photo went with the account's documents; the phone's copy goes too (R79-1).
         photoForget();
-        // The log stays on this phone, and a workout set aside for an edit with it (R81-2).
-        parkKeepHere();
         setSaveState();
         rerenderKeepScroll();
         toast('Account deleted. Your log is still on this phone.');
@@ -700,6 +700,8 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   acctSignOut() {
     const A = AUTH();
     if (!A) return;
+    // A workout set aside for an edit comes back into the log first, so it goes where the log goes (REV6-1, parkSettle).
+    if (!parkSettle()) return;
     const NOT_IN =
       'Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.';
     const out = async (remove: boolean): Promise<void> => {
@@ -735,9 +737,6 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       // The profile photo is the account's: it goes from the phone with the sign-out (R79-1), but for a change not yet
       // in the account that the lifter kept on this phone, sent when that account signs in here again (F2).
       photoSignOut(keepPhoto);
-      // A workout set aside for an edit goes where the log goes: off the phone with it, or kept with the copy (R81-2).
-      if (remove) parkForget();
-      else parkKeepHere();
       /* A session in progress kept on the phone carries on where it was, and
          the app stays as it is after it: sending someone mid-workout to the
          first page would read as the session lost. */
