@@ -41,7 +41,7 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.64.0-noble
       options: --ipc=host
-    timeout-minutes: 80
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -60,7 +60,9 @@ jobs:
       - name: The proof suite on its own, so a runner that dropped it could not hide it
         run: node tests/hygiene.js
       - name: Every suite in shard ${{ matrix.shard }} of 4, source and standalone build
-        timeout-minutes: 40
+        # 55 since 2.36 (NEW-94): every suite passed in shard 4 of 2.36's run (a7b9424), which reached the 40 that stood
+        # before with one suite left; the shard's suites add up to about 40 minutes, so 40 stopped a passing run.
+        timeout-minutes: 55
         run: node tests/run.js --shard ${{ matrix.shard }}/4 --jobs 1
       - name: Screenshots from the run
         if: always()
@@ -79,7 +81,7 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.64.0-noble
       options: --ipc=host
-    timeout-minutes: 80
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -95,7 +97,9 @@ jobs:
           t=$SECONDS; npm install --no-audit --no-fund; n=$((SECONDS-t))
           t=$SECONDS; npx playwright install webkit; echo "::notice title=install::npm $n s, webkit $((SECONDS-t)) s"
       - name: Every suite in shard ${{ matrix.shard }} of 4 in WebKit, source and standalone build
-        timeout-minutes: 40
+        # 55 since 2.36 (NEW-94): every suite passed in shard 4 of 2.36's run (a7b9424), which reached the 40 that stood
+        # before with one suite left; the shard's suites add up to about 40 minutes, so 40 stopped a passing run.
+        timeout-minutes: 55
         run: node tests/run.js --browser webkit --shard ${{ matrix.shard }}/4 --jobs 1
       - name: Screenshots from the run
         if: always()
