@@ -436,7 +436,7 @@ const STEP_SECONDS = 5;
    rep"). The set row has no room for four more 44 px buttons (254 px wide at 320, its load field 48), so they sit in
    one strip under the sets, where a tick moves nothing above them, and act on the first set not ticked; it names that
    set. Drawn as two accent pills side by side, each with the number it changes (V, 2026-11-09, after the Stitch drafts'
-   steppers: the whole pill in the accent, its ends raised). An assisted lift's field takes the help, so only its reps step. Not in an edit, where every set is done. */
+   steppers: the whole pill in the one accent, ends included). An assisted lift's field takes the help, so only its reps step. Not in an edit, where every set is done. */
 function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part {
   const si = b.sets.findIndex(x => !x.done);
   const s = b.sets[si];
