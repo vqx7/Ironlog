@@ -26,7 +26,8 @@ if (process.argv[2] !== '--child') process.env.TZ = 'UTC';
 const fs = require('fs'); const path = require('path'); const os = require('os');
 const { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..'); const APP = path.join(ROOT, 'src', 'app');
-const MODULES = ['model', 'units', 'routines', 'gym', 'format', 'loads', 'analytics', 'time', 'weeks', 'coach', 'engine', 'plans', 'pick'];
+// CL-1 (2.39) split engine.ts and analytics.ts by job; the modules split out are measured as the ones they left were.
+const MODULES = ['model', 'units', 'routines', 'gym', 'format', 'loads', 'analytics', 'time', 'weeks', 'coach', 'engine', 'plans', 'pick', 'setread', 'usual', 'prs', 'trend', 'bests', 'loadsteps', 'oddloads', 'adjust'];
 // The histories of tests/r52.js, all of them, in batches of 100 (each batch's calls are about 100 MB as text).
 const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 // The engine's functions that take no model and that the digest calls (tests/wide.js), run in Node beside the adapters,
