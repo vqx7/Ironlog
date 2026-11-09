@@ -1647,7 +1647,10 @@ export function workoutChange(t: Field): boolean {
     } else if ((state.settings.autoDone || d.past) && !s.done && (+(s.r ?? 0) > 0 || isMissed(s))) {
       const toRir = near(`.rirb[data-b="${bi}"][data-s="${si}"]`);
       const toW = !toRir && near(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
-      if (toW) W.pendAuto = { b: blkRef(bi), s: si };
+      // The set's own minus and plus are not leaving it: they change it, unticked (the review of 2.38, REV7-5).
+      const toStep = !toRir && !toW && near(`.stepr-b[data-b="${bi}"][data-s="${si}"]`);
+      if (toStep) W.pendAuto = null;
+      else if (toW) W.pendAuto = { b: blkRef(bi), s: si };
       else if (toRir) {
         const p = { b: blkRef(bi), s: si };
         W.pendAuto = p;

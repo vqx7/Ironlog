@@ -21796,7 +21796,9 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       } else if ((state.settings.autoDone || d3.past) && !s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3))) {
         const toRir = near(`.rirb[data-b="${bi}"][data-s="${si}"]`);
         const toW = !toRir && near(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
-        if (toW) W.pendAuto = { b: blkRef(bi), s: si };
+        const toStep = !toRir && !toW && near(`.stepr-b[data-b="${bi}"][data-s="${si}"]`);
+        if (toStep) W.pendAuto = null;
+        else if (toW) W.pendAuto = { b: blkRef(bi), s: si };
         else if (toRir) {
           const p3 = { b: blkRef(bi), s: si };
           W.pendAuto = p3;
