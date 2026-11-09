@@ -643,12 +643,17 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .blkt th,.blkt td{padding:7px 4px;border-bottom:1px solid var(--line);text-align:right}
 .blkt tbody th,.blkt thead th:first-child{text-align:left;font-weight:600}
 .blkt thead th{font-size:12px;color:var(--muted);font-weight:650}
-.stepr{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:8px}
-.stepr-l{margin-right:auto;white-space:nowrap}
-.stepr-g{display:inline-flex;align-items:center;gap:4px}
-.stepr .ib{font-size:20px;font-weight:700}
-.stepr .ib:disabled{opacity:.4;cursor:default}
-@media (max-width:359px){.stepr{gap:8px}.stepr-l{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}}
+.stepr{margin-top:10px;padding-top:10px;border-top:1px solid var(--line-soft)}
+.stepr-h{font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.stepr-row{display:flex;gap:8px}
+.stepr-g{flex:1 1 0;min-width:0;display:flex;align-items:center;height:48px;border-radius:24px;color:var(--on-volt);background:linear-gradient(90deg,var(--stepr-cap) 0 40px,var(--volt) 40px calc(100% - 40px),var(--stepr-cap) calc(100% - 40px));box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -2px 0 rgba(0,0,0,.18),0 1px 2px rgba(0,0,0,.25);--stepr-cap:color-mix(in srgb,var(--volt) 82%,#000)}
+.stepr-b{position:relative;z-index:1;width:44px;height:48px;flex:none;border:0;padding:0;background:none;color:inherit;font-size:24px;font-weight:700;line-height:1;cursor:pointer;border-radius:24px}
+.stepr-b:active{background:rgba(0,0,0,.14)}
+.stepr-b:disabled{opacity:.35;cursor:default}
+.stepr-v{flex:1 1 auto;min-width:0;margin:0 -4px;display:flex;align-items:baseline;justify-content:center;gap:3px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.stepr-v b{font-size:18px;font-weight:800;letter-spacing:-.01em}
+.stepr-v small{font-size:12px;font-weight:600;opacity:.75}
+@media (max-width:379px){.stepr-v small{display:none}.stepr-v b{font-size:17px}}
 .sg.norir{grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) 44px}
 .sg .n.drop{color:var(--blue)}
 /* A drop set sits under its set (r66, 375): set in on a quiet band, its Last column naming it. */

@@ -435,7 +435,8 @@ const STEP_SECONDS = 5;
 /* Minus and plus for the next set not yet done (2.37, ST-6; V, 2026-11-08: "stepping by the lift's load step and one
    rep"). The set row has no room for four more 44 px buttons (254 px wide at 320, its load field 48), so they sit in
    one strip under the sets, where a tick moves nothing above them, and act on the first set not ticked; it names that
-   set. An assisted lift's field takes the help, so only its reps step. Not in an edit, where every set is done. */
+   set. Drawn as two accent pills side by side, each with the number it changes (V, 2026-11-09, after the Stitch drafts'
+   steppers: the whole pill in the accent, its ends raised). An assisted lift's field takes the help, so only its reps step. Not in an edit, where every set is done. */
 function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part {
   const si = b.sets.findIndex(x => !x.done);
   const s = b.sets[si];
@@ -445,12 +446,32 @@ function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part 
   const w = effW(b, si) ?? 0;
   const r = +(s.r ?? greyR(b, si) ?? 0) || 0;
   const btn = (f: 'w' | 'r', dir: '1' | '-1', off: boolean, label: string, txt: string): TemplateResult =>
-    html`<button type="button" class="ib" data-act="sStep" data-b=${bi} data-s=${si} data-sf=${f} data-d=${dir} aria-label=${`${name}: ${label}`} ?disabled=${off}>${txt}</button>`;
-  return html`<div class="stepr" role="group" aria-label=${`${name}: load and ${ex.timed ? 'seconds' : 'reps'}`}><span class="stepr-l small muted">${name}</span>${
+    html`<button type="button" class="stepr-b" data-act="sStep" data-b=${bi} data-s=${si} data-sf=${f} data-d=${dir} aria-label=${`${name}: ${label}`} ?disabled=${off}>${txt}</button>`;
+  // The value the set will save, as its row shows it (typed, else grey), so the pill reads as the set's own number.
+  const lw = s.w != null ? s.w : effW(b, si);
+  const pill = (
+    f: 'w' | 'r',
+    v: string,
+    unit: string,
+    dn: boolean,
+    up: boolean,
+    less: string,
+    more: string
+  ): TemplateResult =>
+    html`<span class="stepr-g">${btn(f, '-1', dn, less, '−')}<span class="stepr-v" aria-hidden="true"><b>${v}</b><small>${unit}</small></span>${btn(f, '1', up, more, '+')}</span>`;
+  return html`<div class="stepr" role="group" aria-label=${`${name}: load and ${ex.timed ? 'seconds' : 'reps'}`}><div class="stepr-h">Next: <span class="stepr-l">${name}</span></div><div class="stepr-row">${
     ex.assist
       ? ''
-      : html`<span class="stepr-g">${btn('w', '-1', stepLoad(ex, b.plan, w, -1) == null, 'lighter', '−')}<span class="small muted">${U()}</span>${btn('w', '1', stepLoad(ex, b.plan, w, 1) == null, 'heavier', '+')}</span>`
-  }<span class="stepr-g">${btn('r', '-1', r <= 0, ex.timed ? 'fewer seconds' : 'one rep fewer', '−')}<span class="small muted">${ex.timed ? 'sec' : 'reps'}</span>${btn('r', '1', r >= LIMITS.reps, ex.timed ? 'more seconds' : 'one rep more', '+')}</span></div>`;
+      : pill(
+          'w',
+          lw == null ? '–' : loadIn(ex, lw),
+          U(),
+          stepLoad(ex, b.plan, w, -1) == null,
+          stepLoad(ex, b.plan, w, 1) == null,
+          'lighter',
+          'heavier'
+        )
+  }${pill('r', r ? String(r) : '–', ex.timed ? 'sec' : 'reps', r <= 0, r >= LIMITS.reps, ex.timed ? 'fewer seconds' : 'one rep fewer', ex.timed ? 'more seconds' : 'one rep more')}</div></div>`;
 }
 
 /* Before the first tick the line keeps its space, blank (NEW-64, picture A of 2026-11-06): it appeared on that tick and

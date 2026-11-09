@@ -151,6 +151,9 @@ async function app(o = {}) {
       const a = await look();
       ok(a.name === 'Set 1' && a.btns.length === 4 && a.btns.every(x => x.w >= 44 && x.h >= 44 && !x.off), `5. (${w} px) under the first lift's sets: minus and plus for the load and the reps of Set 1, each 44 px`, a);
       ok(a.wide <= w, `5. (${w} px) no sideways scroll`, a.wide);
+      // V, 2026-11-09: two pills side by side, each wholly in the accent with the number it changes between its ends.
+      const pills = await D.page.evaluate(() => [...document.querySelectorAll('#blk-0 .stepr-g')].map(g => { const r = g.getBoundingClientRect(), t = g.querySelector('.stepr-v b'), tr = t && t.getBoundingClientRect(), bs = [...g.querySelectorAll('button')].map(x => x.getBoundingClientRect()); return { top: Math.round(r.top), v: t ? t.textContent : null, inside: !!tr && tr.left >= bs[0].right - 6 && tr.right <= bs[1].left + 6, accent: getComputedStyle(g).backgroundImage.includes('gradient') }; }));
+      ok(pills.length === 2 && pills[0].top === pills[1].top && pills[0].v === a.w && pills[1].v === a.r && pills.every(p => p.inside && p.accent), `5. (${w} px) two accent pills side by side, the load and the reps shown between minus and plus`, pills);
       await D.page.click('#blk-0 .stepr button[aria-label="Set 1: heavier"]'); await wait(300);
       const b = await look();
       ok(+b.w === +a.w + 5 && b.sw === +b.w && !b.done, `5. (${w} px) plus on a barbell lift in kg: the lift's load step up, 5 kg with none of its own (EQUIP_STEP, V 2026-11-02; ${a.w} to ${+a.w + 5}), stored as that number typed, the set not ticked`, { a: a.w, b: b.w, sw: b.sw, done: b.done });
