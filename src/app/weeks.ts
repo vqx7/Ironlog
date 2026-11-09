@@ -13,6 +13,7 @@ import { sessCmp } from './records';
 import { firstDate } from './charts';
 import { IDXIn, dateIndexIn, lighterTally, weekSessionsIn } from './analytics';
 import { MK, REGIONS } from './library';
+import { BLOCK_WEEKS_DEFAULT } from './layout';
 import { hasTargetIn } from './profile';
 import { aboveMax, belowMin } from './volume';
 import { dayCreditIn, nextTrainIdx, planSetsPerWeekIn, plannedPerWeek, plannedSetsIn, sessDayIdx } from './routines';
@@ -628,4 +629,98 @@ export function weekStatsIn(M: Model) {
     cardioN,
     rest
   };
+}
+
+/* This block vs last on Stats (2.37, ST-6; V, 2026-11-08: "backed up based on what people actually do in the real
+   world"). Strength and physique athletes deload about every 5.6 weeks (Rogerson 2024, a survey of 246), so a block is
+   6 weeks unless the lifter picks 4, 5 or 8, or Auto, which ends a block where a lighter, rest or missed week ends it,
+   as a deload ends one in practice, and falls back to 6 weeks when there is none in BLOCK_AUTO_LOOK weeks. Averages
+   are read as every weekly average is: over full weeks trained, lighter and rest weeks left out (avgWeeksIn); the week
+   in progress counts toward PRs only. Hard sets are weekHard, the count This week on Today reads. */
+/** How far back Auto looks for the lighter, rest or missed week that ends a block, in weeks (twice the default). */
+const BLOCK_AUTO_LOOK = 2 * BLOCK_WEEKS_DEFAULT;
+
+/** One block on Stats: its first week, its last day shown, the full weeks averaged, and what was done. */
+export interface Block {
+  /** The block's first Monday. */
+  from: string;
+  /** Its last day: today for the block in progress, else the Sunday it ends on. */
+  to: string;
+  /** Calendar weeks it spans. */
+  weeks: number;
+  /** Full weeks trained in it, lighter and rest weeks left out: what the averages divide by. */
+  counted: number;
+  /** Sessions a week over those weeks, or null with none. */
+  sess: number | null;
+  /** Hard sets a week over those weeks, or null with none. */
+  hard: number | null;
+  /** Counted PRs (the ones marked big) on any day of it. */
+  prs: number;
+}
+
+/** This block and the one before it, by the lifter's block length, or null before anything is logged. */
+export function blocksIn(M: Model): { auto: boolean; len: number | null; now: Block; last: Block | null } | null {
+  // From the log's start, or its first session after a break of more than 4 weeks; averages from the week after (avgFirstWeekIn).
+  const f = logStartIn(M),
+    c0 = avgFirstWeekIn(M);
+  if (!f || !c0) return null;
+  const I = IDXIn(M);
+  const cur = weekStart(M.today());
+  const first = weekStart(f);
+  const wk = (k: number): string => addDays(cur, -WEEK_DAYS * k);
+  const ends = (w: string): boolean => w < cur && (isRestWeekIn(M, w) || !weekSessionsIn(M, w) || !!I.lightWk[w]);
+  const pick = M.s.settings.blockWeeks;
+  // Each block as the number of weeks back its first and last weeks are (0 is this week).
+  let spans: [number, number][] | null = null;
+  if (pick === 'auto') {
+    const sep: number[] = [];
+    for (let k = 1; k <= 2 * BLOCK_AUTO_LOOK && wk(k) >= first; k++) if (ends(wk(k))) sep.push(k);
+    const a = sep[0];
+    if (a !== undefined && a <= BLOCK_AUTO_LOOK) {
+      // The block before runs back to the next week that ends one, past any that follow each other.
+      let b = a;
+      while (sep.includes(b + 1)) b++;
+      const c = sep.find(k => k > b + 1);
+      const lastTo = b + 1;
+      // With no week ending it in reach, the block before runs the default length, as a block with none does.
+      const lastFrom = c !== undefined ? c - 1 : b + BLOCK_WEEKS_DEFAULT;
+      const before: [number, number][] = lastFrom >= lastTo ? [[lastFrom, lastTo]] : [];
+      spans = [[a - 1, 0], ...before];
+    }
+  }
+  const len = typeof pick === 'number' ? pick : BLOCK_WEEKS_DEFAULT;
+  const auto = !!spans;
+  if (!spans)
+    spans = [
+      [len - 1, 0],
+      [2 * len - 1, len]
+    ];
+  const block = ([fk, tk]: [number, number]): Block | null => {
+    const from = wk(fk) < first ? first : wk(fk);
+    if (wk(tk) < first) return null;
+    const to = tk === 0 ? M.today() : addDays(wk(tk), SUNDAY);
+    let counted = 0,
+      sess = 0,
+      hard = 0;
+    for (let w = from; w <= wk(tk); w = addDays(w, WEEK_DAYS)) {
+      const n = weekSessionsIn(M, w);
+      if (w >= cur || w < c0 || !n || isRestWeekIn(M, w) || I.lightWk[w]) continue;
+      counted++;
+      sess += n;
+      hard += I.weekHard[w] || 0;
+    }
+    const prs = I.prs.filter(p => p.big && p.date >= from && p.date <= to).length;
+    return {
+      from,
+      to,
+      weeks: Math.round(daysBetween(from, wk(tk)) / WEEK_DAYS) + 1,
+      counted,
+      sess: counted ? sess / counted : null,
+      hard: counted ? hard / counted : null,
+      prs
+    };
+  };
+  const now = block(spans[0]);
+  if (!now) return null;
+  return { auto, len: auto ? null : len, now, last: spans[1] ? block(spans[1]) : null };
 }

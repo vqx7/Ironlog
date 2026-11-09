@@ -96,7 +96,16 @@ import type { Rec, Trashed } from './records';
 import { gymClean } from './gym';
 import { profClean } from './profile';
 import { canon } from './merge';
-import { DEFAULT_HIDDEN, DSEC_FOLDED, DSEC_KEYS, HIDEABLE_KEYS, SEC_TABS, defaultOrder, bwEveryKept } from './layout';
+import {
+  DEFAULT_HIDDEN,
+  DSEC_FOLDED,
+  DSEC_KEYS,
+  HIDEABLE_KEYS,
+  SEC_TABS,
+  defaultOrder,
+  bwEveryKept,
+  blockWeeksKept
+} from './layout';
 
 declare global {
   interface Window {
@@ -518,6 +527,7 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
   const sIn = rec(s.settings) || {};
   const accent = pick(st.accent, ['blue', 'volt', 'ember', 'pink', 'violet', 'cyan', 'red'] as const);
   const bwEvery = bwEveryKept(st.bwEvery);
+  const blockWeeks = blockWeeksKept(st.blockWeeks);
   const restWeeks = (() => {
     const rw = arr(st.restWeeks);
     return rw ? [...new Set(strings(rw, isDate))].sort().slice(-LIMITS.restWeeks) : [];
@@ -595,6 +605,8 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     ...(st.autoAdj === false ? { autoAdj: false } : {}),
     // r34: weigh-in reminder in days (0 off); absent is every BW_EVERY_DEFAULT days.
     ...(bwEvery !== undefined ? { bwEvery } : {}),
+    // 2.37 (ST-6): This block vs last's length; absent is BLOCK_WEEKS_DEFAULT, so saves without it hash as before.
+    ...(blockWeeks !== undefined ? { blockWeeks } : {}),
     // r34: Today opens on a blank session; absent is the plan's day.
     ...(st.todayStart === 'free' ? { todayStart: 'free' } : {}),
     // r34: rest weeks, week-start dates; the last two years kept.
@@ -645,6 +657,7 @@ const OPTIONAL_SETTINGS = [
   'rirHalf',
   'autoAdj',
   'bwEvery',
+  'blockWeeks',
   'todayStart',
   'restWeeks',
   'rirScale',

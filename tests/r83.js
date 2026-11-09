@@ -13,7 +13,10 @@
 //      list (its load step: 5 kg and 10 lb on a bar with none of its own), stored as that number typed; the reps by one, a hold's seconds by five; 44 px each,
 //      no sideways scroll at 320; the set never ticked by them; after a tick they name the next set and nothing above
 //      moves; an assisted lift steps its reps only; guard: none in an edit, where every set is done.
-// R83_ONLY=1,2,3,4,5 runs some sections.
+//   6  ST-6: This block vs last on Stats, against a log worked out by hand: 6 weeks by default, Auto from a lighter week,
+//      4 weeks; full weeks trained averaged with lighter weeks left out, PRs on any day; nothing before a break of more
+//      than 4 weeks; the length kept as a setting only when not the default; the survey behind 6 in the Guide.
+// R83_ONLY=1,2,3,4,5,6 runs some sections.
 const { open } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
@@ -189,6 +192,56 @@ async function app(o = {}) {
       return { editing: !!(L.state.draft && L.state.draft.editingId), strips: document.querySelectorAll('#view .stepr').length };
     });
     ok(e.editing && e.strips === 0, '5. (a guard) editing a saved session, every set done, shows no minus and plus', e);
+    await D.browser.close();
+  }
+
+  if (run(6)) {
+    // Thirteen full weeks of bench, Monday, Wednesday and Friday, 3 sets of 8 at RIR 2 (3 hard sets a session), and this
+    // week's three: 60 kg, 65 from 9 weeks back (a PR), the week 4 back done at 52 (a lighter week), 70 from 3 weeks back
+    // (a PR) and 72.5 from last Wednesday (a PR). Today is Sunday 2026-11-08; this week began Monday 2026-11-02.
+    const D = await app();
+    const r = await D.page.evaluate(async () => {
+      const L = window.__ironlog, wait = ms => new Promise(r => setTimeout(r, ms));
+      const mon = k => { const d = new Date(Date.UTC(2026, 10, 2) - 7 * 86400000 * k); return d.toISOString().slice(0, 10); };
+      const day = (k, i) => { const d = new Date(Date.parse(mon(k)) + 2 * i * 86400000); return d.toISOString().slice(0, 10); };
+      const S = JSON.parse(JSON.stringify(L.state)); S.sessions = []; S.draft = null; delete S.settings.blockWeeks;
+      for (let k = 13; k >= 0; k--) for (let i = 0; i < 3; i++) {
+        const w = k === 4 ? 52 : k <= 1 && (k < 1 || i >= 1) ? 72.5 : k <= 3 ? 70 : k <= 9 ? 65 : 60;
+        S.sessions.push({ id: `b${k}-${i}`, date: day(k, i), dayIdx: 0, dayName: 'A', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [0, 1, 2].map(() => ({ w, r: 8, rir: 2, warm: false, drop: false })) }] });
+      }
+      L.state = L.normalize(S); L.invalidate();
+      const pick = async v => { if (v == null) delete L.state.settings.blockWeeks; else L.state.settings.blockWeeks = v; L.invalidate(); return JSON.parse(JSON.stringify(L.blocks())); };
+      const six = await pick(null), auto = await pick('auto'), four = await pick(4);
+      // The screen: Consistency's This block vs last, and its length chosen there.
+      await pick(null); L.ui.tab = 'dash'; L.render(); await wait(200);
+      const sub = document.getElementById('sub-block');
+      if (sub && sub.tagName === 'DETAILS') sub.open = true;
+      const cells = sub ? [...sub.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(c => c.textContent.trim())) : null;
+      const sel = sub && sub.querySelector('select[data-bind="blockWeeks"]');
+      if (sel) { sel.value = '4'; sel.dispatchEvent(new Event('change', { bubbles: true })); await wait(200); }
+      const kept4 = L.state.settings.blockWeeks;
+      const sel2 = document.querySelector('#sub-block select[data-bind="blockWeeks"]');
+      if (sel2) { sel2.value = '6'; sel2.dispatchEvent(new Event('change', { bubbles: true })); await wait(200); }
+      const kept6 = 'blockWeeks' in L.state.settings;
+      L.openModal({ kind: 'guide', open: 'sources' }); await wait(100);
+      const guide = document.querySelector('#modal').textContent;
+      // After a break of more than 4 weeks: nothing before it is compared.
+      const S2 = JSON.parse(JSON.stringify(L.state)); S2.sessions = S2.sessions.filter(x => x.date < '2026-09-01' || x.date >= '2026-10-19');
+      L.state = L.normalize(S2); L.invalidate(); L.closeModal && L.closeModal();
+      const brk = JSON.parse(JSON.stringify(L.blocks()));
+      return { six, auto, four, cells, kept4, kept6, guide, brk };
+    });
+    const pick = b => b && { from: b.from, counted: b.counted, sess: b.sess, hard: b.hard, prs: b.prs };
+    ok(JSON.stringify(pick(r.six.now)) === JSON.stringify({ from: '2026-09-28', counted: 4, sess: 3, hard: 9, prs: 2 }) && JSON.stringify(pick(r.six.last)) === JSON.stringify({ from: '2026-08-17', counted: 6, sess: 3, hard: 9, prs: 1 }),
+      '6. 6 weeks by default: this block from Sep 28, 4 full weeks counted (the lighter week left out), 3 sessions and 9 hard sets a week, 2 PRs; the last from Aug 17, 6 weeks, 1 PR', { now: pick(r.six.now), last: pick(r.six.last) });
+    ok(r.auto.auto && JSON.stringify(pick(r.auto.now)) === JSON.stringify({ from: '2026-10-12', counted: 3, sess: 3, hard: 9, prs: 2 }) && JSON.stringify(pick(r.auto.last)) === JSON.stringify({ from: '2026-08-24', counted: 6, sess: 3, hard: 9, prs: 1 }),
+      '6. Auto: this block starts after the lighter week (Oct 12); with no week ending the one before in reach, it runs 6 weeks to that week (Aug 24 to Oct 4, 6 full weeks and the PR 9 weeks back)', { now: pick(r.auto.now), last: pick(r.auto.last) });
+    ok(JSON.stringify(pick(r.four.now)) === JSON.stringify({ from: '2026-10-12', counted: 3, sess: 3, hard: 9, prs: 2 }) && JSON.stringify(pick(r.four.last)) === JSON.stringify({ from: '2026-09-14', counted: 3, sess: 3, hard: 9, prs: 0 }),
+      '6. 4 weeks: Oct 12 on, and Sep 14 to Oct 11 with its lighter week left out and no PR', { now: pick(r.four.now), last: pick(r.four.last) });
+    ok(JSON.stringify(r.cells) === JSON.stringify([['Sessions a week', '3', '3'], ['Hard sets a week', '9', '9'], ['PRs', '2', '1']]), "6. Stats' Consistency shows the two blocks side by side", r.cells);
+    ok(r.kept4 === 4 && r.kept6 === false, '6. picking 4 weeks there keeps it; back to 6, the setting is absent again (older saves hash as before)', { kept4: r.kept4, kept6: r.kept6 });
+    ok(/Rogerson 2024/.test(r.guide), "6. the Guide's Sources name the survey behind 6 weeks", r.guide.slice(-400));
+    ok(r.brk && r.brk.last === null && r.brk.now.from === '2026-10-19', '6. after a break of more than 4 weeks the block starts with the first week back and nothing before the break is compared', r.brk && { now: r.brk.now.from, last: r.brk.last });
     await D.browser.close();
   }
 

@@ -92,6 +92,7 @@ import { acct, cloud, setFx, setState, state, ui } from './store';
 import {
   activeRoutine,
   actualAvg4,
+  blocks,
   allTimeBests,
   appBand,
   atRangeTop,
@@ -681,6 +682,7 @@ function start(): void {
     stalledIds,
     muscleStatus,
     actualAvg4,
+    blocks,
     plannedPerWeek,
     fillSets,
     lastNoteOf,

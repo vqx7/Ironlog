@@ -85,6 +85,7 @@ import {
   avgFirstWeekIn,
   avgWaitIn,
   avgWeeksIn,
+  blocksIn,
   firstFullWeekIn,
   lastLighterWeekIn,
   logBackIn,
@@ -248,6 +249,8 @@ export const pace = live(paceIn);
 export const paceRatios = live(paceRatiosIn);
 export const sessModelMin = live(sessModelMinIn);
 export const actualAvg4 = live(actualAvg4In);
+/** This block and the one before it on Stats (ST-6). */
+export const blocks = live(blocksIn);
 export const avgFirstWeek = live(avgFirstWeekIn);
 export const avgWait = live(avgWaitIn);
 export const avgWeeks = live(avgWeeksIn);
