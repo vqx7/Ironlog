@@ -846,11 +846,19 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     const dm = ours ? num(at(r, cMin)) : impSpan(strong ? cell('dur') : '', cell('date'), cell('end'), order);
     if (ss.durMin == null && dm != null && dm >= 1 && dm <= LIMITS.minutes) ss.durMin = Math.round(dm);
     if (/^(yes|true|1|y)$/i.test(String(cell('deload') || '').trim())) ss.deload = true;
-    if (!ss.items.has(ex))
-      ss.items.set(ex, { name: ex, sets: [], note: cell('note'), ...(cell('ss') ? { ss: cell('ss') } : {}) });
+    let it = ss.items.get(ex);
+    if (!it) {
+      it = { name: ex, sets: [], note: '', ...(cell('ss') ? { ss: cell('ss') } : {}) };
+      ss.items.set(ex, it);
+    }
+    /* An exercise's note may sit on any of its rows (a set's note in another
+       app's file, its warm-up row first and blank): every distinct one is
+       kept, each once, up to a note's room (R81-3, the review of 2.35: only
+       the first row's was read, so a note after a blank row was lost). */
+    const en = String(cell('note') || '').trim();
+    if (en && !it.note.split('; ').includes(en)) it.note = (it.note ? it.note + '; ' + en : en).slice(0, LIMITS.note);
     const n = Math.min(Math.max(Math.round(num(cell('sets')) || 1), 1), ROW_SETS);
-    // The item was added above when it was missing (the !).
-    for (let j = 0; j < n; j++) ss.items.get(ex)!.sets.push({ ...set });
+    for (let j = 0; j < n; j++) it.sets.push({ ...set });
   }
   return {
     sessions: [...S.values()].map(x => ({

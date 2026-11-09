@@ -1464,6 +1464,11 @@ function kinStartIn(
     if (!(st > 0)) return null;
     w = fromDIn(M, Math.floor(toDIn(M, want)! / st + EPS) * st)!;
   }
+  /* Never under the empty bar (R81-7, the review of 2.35: bench borrowed
+     from an incline bench at the bar opened at 15 kg on a 20 kg bar): the
+     bar is the lightest a lift on it can start at. */
+  const floor = loadFloorIn(M, ex);
+  if (floor > 0 && w < floor - EPS) w = floor;
   if (!(w > 0)) return null;
   return { ex: k.ex, date: x.date, w, set: `${loadLabelIn(M, k.ex, set!.w)}×${set!.r}` };
 }

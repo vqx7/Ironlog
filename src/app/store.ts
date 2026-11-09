@@ -52,6 +52,8 @@ interface Ui {
   /** The tab shown before this one (Back's entry, and where a report from Settings says it came from). */
   prevTab?: string | null | undefined;
   blkOpen: Set<unknown>;
+  /** Exercises folded by hand in an edit of a saved session, which opens on every exercise (NEW-91). */
+  blkShut: Set<unknown>;
   help: Set<unknown>;
   tab: string;
   todayDay: unknown;
@@ -109,10 +111,13 @@ interface Ui {
   bestsAll?: boolean | undefined;
   /** More options opened on Today's start card. */
   heroMore?: boolean | undefined;
+  /** The workout stepped away from to Today with Save and leave (NEW-89), by its id, so a workout that replaces it (finished and another started elsewhere) opens as any does (R81-1); any other way back to the tab clears it. */
+  away?: string | null | undefined;
 }
 /** What the screens are showing (the type above). */
 export const ui: Ui = {
   blkOpen: new Set(),
+  blkShut: new Set(),
   tab: 'today',
   todayDay: null,
   mapSel: null,
@@ -143,6 +148,12 @@ export const ui: Ui = {
   eqLast: null,
   refix: null
 };
+
+/** Whether the screen shows the workout in progress: Today's tab with a workout open, unless the lifter stepped away with Save and leave (NEW-89). */
+export const sessionShown = (): boolean => ui.tab === 'today' && !!state.draft && !awayFrom();
+
+/** Whether the workout in progress is the one the lifter stepped away from with Save and leave. */
+export const awayFrom = (): boolean => !!state.draft && !!ui.away && ui.away === state.draft.id;
 
 /* ---------- the account's documents ---------- */
 

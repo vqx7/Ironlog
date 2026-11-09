@@ -48,6 +48,7 @@ const blockPlan = (p: Plan): DraftBlock['plan'] => ({ ...p, ss: p.ss ?? null });
    neither, as before r63. */
 /** Opens the session screen on a new session in progress: one started now (live), or a past workout or an edit. */
 function begin(d: DraftLike, live: boolean): void {
+  ui.away = null;
   act(
     () => {
       state.draft = d;
@@ -100,13 +101,22 @@ function pastDraft(date: string, di: number | null, part: 1 | 2 = 1): DraftLike 
   };
 }
 
+/* A start with a workout already open opens that one instead (NEW-89): Today
+   offers starts while the lifter has stepped away from a workout, and a start
+   never discards one unasked. */
+function resumeOpen(): boolean {
+  if (!state.draft) return false;
+  ui.away = null;
+  ui.tab = 'today';
+  window.scrollTo(0, 0);
+  render();
+  toast('Your workout in progress is open. Finish or discard it first.');
+  return true;
+}
+
 /** A blank session, with the picker open on it; in a week marked as a deload, a deload one. */
 function startFree(): void {
-  if (state.draft) {
-    ui.tab = 'today';
-    render();
-    return;
-  }
+  if (resumeOpen()) return;
   // In a week marked as a deload, a blank session is one too, as a routine day and Do again are (r54, PENDING 311 c: it started at full sets).
   const dl = isDeloadWeek();
   ui.tab = 'today';
@@ -117,6 +127,7 @@ function startFree(): void {
 /** A routine day started: lighter (half the sets at about 90% loads, one easy day, r30), or in a deload week (the same for the whole week, and flagged so it never counts against a lift's trend or stall read). */
 function startSession(t: Tap): void {
   if (ui.modal) closeModal();
+  if (resumeOpen()) return;
   toastQuiet();
   const R = activeRoutine();
   const di = Number(t.dataset.day);
@@ -153,6 +164,7 @@ function startSession(t: Tap): void {
 function wkGo(t: Tap): void {
   const d = t.dataset.date;
   ui.tab = 'today';
+  ui.away = null;
   if (!state.draft) {
     const R = activeRoutine();
     const di = t.dataset.day != null ? Number(t.dataset.day) : null;
@@ -473,6 +485,11 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   eqStart() {
     const m = ui.modal;
     if (!m || m.kind !== 'eq') return;
+    if (state.draft) {
+      closeModal();
+      resumeOpen();
+      return;
+    }
     const R = activeRoutine();
     const day0 = R.days[m.day];
     if (!day0) {

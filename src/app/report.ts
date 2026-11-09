@@ -25,7 +25,7 @@ import type { LogEntry } from './types';
 import { arr, parseJson } from './records';
 import { withTimeout } from './sync';
 import { U, exName } from './live';
-import { acct, cloud, state, ui } from './store';
+import { acct, cloud, sessionShown, state, ui } from './store';
 import type { FeedbackModal, Modal } from './modals';
 import { FB, codeOf, said } from './providers';
 import type { Report } from './providers';
@@ -248,7 +248,7 @@ export const REPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       cat,
       msg,
       shot: null,
-      from: crash ? 'crash' : ui.tab === 'today' && d ? 'session' : from,
+      from: crash ? 'crash' : sessionShown() && d ? 'session' : from,
       ex: b ? exName(b.exId) : null,
       crash: crash || undefined
     });

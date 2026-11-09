@@ -47,7 +47,17 @@ export function swapPlan<P extends Partial<Plan>>(
 ): P & Partial<Plan> {
   const R = R0 || activeRoutine();
   const inR = R.days.some(d => d.items.some(it => it.exId === toId));
-  if (!inR && !!EX(fromId).timed === !!EX(toId).timed) return { ...p };
+  /* A step is the equipment's (R81-8, the review of 2.35: a 10 lb barbell
+     slot gave dumbbell bench a 10 lb step): a lift on other equipment takes
+     its own, the slot's range, effort and rest kept. */
+  if (!inR && !!EX(fromId).timed === !!EX(toId).timed) {
+    if (EX(fromId).equip === EX(toId).equip) return { ...p };
+    const q = defPlan(toId);
+    const o: P & Partial<Plan> = { ...p, inc: q.inc };
+    if (q.jump != null) o.jump = q.jump;
+    else delete o.jump;
+    return o;
+  }
   const q = inR ? planFor(toId, R, dayId) : defPlan(toId);
   const o: P & Partial<Plan> = { ...p, repMin: q.repMin, repMax: q.repMax, rir: q.rir, rest: q.rest, inc: q.inc };
   if (q.jump != null) o.jump = q.jump;

@@ -271,10 +271,24 @@ export function recoveryIn(M: Model, m: string, at?: string): Recovery {
   return { r: worst.r, days: recent.days, sets: recent.sets, need: worst.need };
 }
 
+/* The days since a muscle's last hard set in the recovery window, any
+   number of them: recovery reads only days of RECOVERY.dose or more, so a
+   muscle with a single hard set a day read as "not trained hard" beside its
+   hard sets this week (R81-6, the review of 2.35). */
+function lastAnyHardIn(M: Model, m: string): number | null {
+  const dm = IDXIn(M).dayMus;
+  for (let k = 0; k <= RECOVERY.window; k++) {
+    const day = dm[addDays(M.today(), -k)];
+    if (day && (day[m] || 0) > 0) return k;
+  }
+  return null;
+}
+
 /** When a muscle was last trained hard, in words. */
 function lastHitTxtIn(M: Model, m: string): string {
   const rc = recoveryIn(M, m);
-  return rc.days == null ? `not trained hard in ${RECOVERY.window / WEEK_DAYS} weeks` : `last hard ${agoTxt(rc.days)}`;
+  const k = rc.days ?? lastAnyHardIn(M, m);
+  return k == null ? `not trained hard in ${RECOVERY.window / WEEK_DAYS} weeks` : `last hard ${agoTxt(k)}`;
 }
 
 /* ---------- Pick for me, before a session ---------- */
@@ -304,6 +318,8 @@ interface DayRow {
   ready: number;
   dir: Record<string, number>;
   joints: string[];
+  /** The flagged muscles the day loads, helpers included, heaviest first (R81-5). */
+  injM: string[];
 }
 
 /** The active routine's training days ranked for today, with the plan's next day, the week's hard sets per muscle, and a deload week. */
@@ -352,11 +368,13 @@ export function rankDaysIn(M: Model): {
       injS = 0,
       wR = 0,
       wT = 0;
+    const injM: string[] = [];
     for (const [m, w0] of Object.entries(ms)) {
       const w = w0 * f;
       const rc = recoveryIn(M, m);
       if (inj.has(m)) {
         injS += w;
+        if (w > 0) injM.push(m);
         continue;
       }
       const has = hasTargetIn(M, m);
@@ -406,6 +424,7 @@ export function rankDaysIn(M: Model): {
       plan: i === planIdx,
       ready: wT ? wR / wT : 1,
       dir,
+      injM: injM.sort((a, b) => (ms[b] || 0) - (ms[a] || 0)),
       joints
     });
   });
@@ -424,6 +443,11 @@ export function dayReasonsIn(M: Model, x: DayRow, r7: Readonly<Record<string, nu
   if (x.plan) out.push(activeRoutineIn(M).schedule === 'weekly' ? 'Planned for today.' : 'Next in your cycle.');
   if (x.joints && x.joints.length)
     out.push(`Loads your ${andList(x.joints.map(j => (JL[j] || j).toLowerCase()))}, which you flagged.`);
+  /* A flagged muscle the day loads, as a helper or past its two largest, is
+     said as a flagged joint is (R81-5, the review of 2.35: front delts
+     flagged, Push said nothing though its presses load them). */
+  const injOther = x.injM.filter(m => !main.includes(m));
+  if (injOther.length) out.push(`Loads ${andList(injOther.map(m => ML[m] || m))}, which you flagged as injured.`);
   for (const m of main) {
     if (inj.has(m)) {
       out.push(`Loads ${ML[m]}, which you flagged as injured.`);
@@ -589,7 +613,9 @@ export function exReasonsIn(M: Model, x: ExPick): string[] {
   );
   out.push(
     x.rec.days == null
-      ? `Not trained hard in the last ${RECOVERY.window / WEEK_DAYS} weeks.`
+      ? lastAnyHardIn(M, x.m) == null
+        ? `Not trained hard in the last ${RECOVERY.window / WEEK_DAYS} weeks.`
+        : `Last trained hard ${agoTxt(lastAnyHardIn(M, x.m) ?? 0)}, recovered.`
       : x.rec.r < 1
         ? `Last trained hard ${agoTxt(x.rec.days)} (${r1(x.rec.sets)} sets), so it may still be recovering.`
         : `Last trained hard ${agoTxt(x.rec.days)}, recovered.`

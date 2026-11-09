@@ -35,7 +35,7 @@ import { CHK_Q, chkWord } from './coach';
 import { rirScale, effShow, effName } from './effort';
 import { prefGet, BWASK_KEY, prefSet, log } from './storage';
 import { EX, exBarKg, loadLabel, U, exName, lighterLoad, heavierLoad, fromD, oddLoad, lightZero } from './live';
-import { state, ui } from './store';
+import { sessionShown, state, ui } from './store';
 import {
   effW,
   RIR_OPTS,
@@ -64,7 +64,9 @@ import {
   W,
   blkIdx,
   blkIsOpen,
+  blkIsShut,
   blkOpen,
+  blkShut,
   blkOpenObj,
   blkRef,
   carried,
@@ -418,9 +420,9 @@ function progressLine(b: DraftBlock, bi: number): Part {
   return p ? html`<span class=${'tp' + (p.beat ? ' beat' : '')} id=${`tp-${bi}`}>${p.text}</span>` : '';
 }
 
-/** Whether an exercise is drawn folded: done, not opened again, and with no fold waiting for its moment. */
+/** Whether an exercise is drawn folded: done, and either folded by hand in an edit or, in a session, not opened again with no fold waiting for its moment. */
 const isFolded = (d: Draft, b: DraftBlock, bi: number): boolean =>
-  !d.editingId && blockDone(b) && !blkIsOpen(bi, b) && !W.foldWait.has(b);
+  blockDone(b) && (d.editingId ? blkIsShut(bi, b) : !blkIsOpen(bi, b) && !W.foldWait.has(b));
 
 function blockPart(
   d: Draft,
@@ -463,7 +465,7 @@ function blockPart(
     b.lastR.some(r => r != null) &&
     b.sets.some((s, i) => !s.done && !s.warm && !s.drop && s.r == null && lastRFor(b, i) != null);
   return html`<section class=${'block' + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? html`<p class="ssh">Superset ${ss}</p>` : ''}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : nothing}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? html` ${tipButton(ex.note, 'About ' + ex.name)}` : ''}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · ${work || p.sets}×${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? '/side' : ''}${nr ? '' : ` @${b.inj || ((d.light || d.deload || b.light) && b.last) ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}`} · ${p.rest}s${b.inj ? html` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ''}${markedNew(d, b.exId) ? html` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ''}</p></div>
-      <div class="bh-acts">${!d.editingId && blockDone(b) ? html`<button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button>` : ''}<button class=${'ib' + (b.note || (b.pics && b.pics.length) ? ' noted' : '')} aria-label=${b.note || (b.pics && b.pics.length) ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle.">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
+      <div class="bh-acts">${blockDone(b) ? html`<button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button>` : ''}<button class=${'ib' + (b.note || (b.pics && b.pics.length) ? ' noted' : '')} aria-label=${b.note || (b.pics && b.pics.length) ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle.">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
       ${
         b.target
           ? html`<p class="hint"><b>Today: ${targetText(b)}</b>${why ? html` ${tipButton(why, 'Why this target')}` : ''}<span class="tp muted u-dblock">${lastHead(b, dupB)}</span>${bl ? html`<span class="tp muted u-dblock">${bl}</span>` : ''}${b.easier ? html`<span class="tp ez">${b.easier}</span>` : ''}${progressLine(b, bi)}</p>`
@@ -538,7 +540,7 @@ export function viewWorkout(d: Draft): TemplateResult {
       ? html`<div class="sprog"><div class="band" role="progressbar" aria-label="Sets done" aria-valuemin="0" aria-valuemax=${sp.n} aria-valuenow=${sp.k} aria-valuetext=${`${sp.k} of ${sp.n} sets done`}><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%;--pct:${sp.pct}`}></div></div><span id="sessOf" aria-hidden="true">${sp.k} of ${sp.n}</span></div>`
       : ''
   }
-  <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d.past || d.editingId ? html`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d.durMin ? String(d.durMin) : '')} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : nothing}${d.past ? '' : html`<button class="btn sm" data-act="chkOpen" aria-label=${chkSum(d) ? `Check-in: ${chkSum(d)}` : 'Check-in, optional'}>Check-in</button>`}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div></div>
+  <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d.past || d.editingId ? html`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d.durMin ? String(d.durMin) : '')} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : nothing}${d.past ? '' : html`<button class="btn sm" data-act="chkOpen" aria-label=${chkSum(d) ? `Check-in: ${chkSum(d)}` : 'Check-in, optional'}>Check-in</button>`}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}<button class="btn sm" data-act="bwOpen" data-date=${d.date} data-tip="Log or update your weigh-in without leaving the workout.">Bodyweight</button><button class="btn sm" data-act="wkAway" data-tip="Everything is saved as you go. Today shows the workout to resume.">Save and leave</button></div></div></div>
   ${howText('log', (state.settings.rirMode === 'off' ? 'RIR is switched off in Settings, so every working set counts as hard. ' : LOG_HELP_ON) + LOG_HELP + (d.past ? ' Quick entry: no rest timer, and a set counts as done once its reps are typed.' : state.settings.autoDone ? ' Auto-mark is on: sets tick themselves when you leave the reps field.' : ''))}
   ${
     d.free
@@ -575,12 +577,13 @@ export function workoutFullDraw(): void {
 // Draws the session screen again in place, where it is on screen: lit-html changes only what differs, so the field being typed in and its caret stay.
 function drawNow(): void {
   const v = document.getElementById('view');
-  if (!v || ui.tab !== 'today' || !state.draft) return;
+  const d = state.draft;
+  if (!v || !d || !sessionShown()) return;
   if (drawing()) {
     queueMicrotask(drawNow);
     return;
   }
-  drawScreen(v, viewWorkout(state.draft));
+  drawScreen(v, viewWorkout(d));
 }
 
 // The block a tap names by its data-b, or null.
@@ -1132,10 +1135,31 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         // Scrolling is best effort; the exercise is open either way.
       }
   },
+  /* Save and leave (NEW-89): the workout is saved as it goes, so this only
+     steps away to Today, which offers it back; the tab, Back and opening the
+     app again all open the workout. */
+  wkAway() {
+    ui.away = state.draft ? state.draft.id : null;
+    window.scrollTo(0, 0);
+    render();
+    toast('Saved. Resume it from Today.');
+  },
+  wkResume() {
+    ui.away = null;
+    ui.tab = 'today';
+    window.scrollTo(0, 0);
+    render();
+  },
   // Every place this exercise was opened at, so a move and a fold leave nothing behind.
   bFold(t) {
     const b = tapBlock(t);
     if (!b) return;
+    const d = state.draft;
+    if (d && d.editingId) {
+      blkShut(Number(t.dataset.b), b);
+      rerenderKeepScroll();
+      return;
+    }
     const pre = ((state.draft && state.draft.id) || '') + ':';
     for (const k of [...ui.blkOpen])
       if (typeof k === 'string' && k.startsWith(pre) && k.endsWith(':' + b.exId)) ui.blkOpen.delete(k);
