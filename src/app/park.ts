@@ -14,10 +14,14 @@ import { act } from './act';
 import { normalize } from './normalize';
 import { parseJson, rec } from './records';
 import { PARKED_KEY, log, prefDel, prefGet, prefSet } from './storage';
-import { cloud, state, ui } from './store';
+import { cloud, fx, state, ui } from './store';
 
-/** The account a set-aside workout belongs to: its id when syncing, '' when not. */
-const who = (): string => (cloud.on && cloud.uid) || '';
+/* The account whose log this phone holds, as the sync notes name it (cloud.acct): known from the start, before the
+   sync is on (the review of 2.36, REV6-3: tagged by the sync, a workout set aside in the seconds before it started was
+   tagged as no account's and never came back), and kept by a sign-out that keeps a copy, as the log is. A sign-in that
+   takes the phone's log into an account takes the set-aside workout with it (parkedRetag, in takeAccount). */
+/** The account a set-aside workout belongs to: the one whose log this phone holds, '' for a log of no account. */
+const who = (): string => cloud.acct || '';
 
 /** The set-aside workout's record, if one is held: the account it was for and the workout as saved. */
 function held(): { uid: string; draft: unknown } | null {
@@ -63,13 +67,29 @@ export function unpark(): boolean {
   return true;
 }
 
-/** Keeps a set-aside workout with the log left on this phone when the account goes from it (signed out keeping a copy, or the account deleted): it is then the phone's own, as that log is. */
-export function parkKeepHere(): void {
-  const h = held();
-  if (h) prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: h.draft }));
+/* Before the phone lets go of an account (Sign out, either way, or Delete my account), a workout set aside for its log
+   comes back into that log, so it goes where the log goes, as any workout in progress does (the review of 2.36,
+   REV6-1: a sign-out that took the log off the phone took the set-aside copy with it, the only one, and REV6-4: one
+   kept with a copy was tagged as no account's). With another workout open (the edit), nothing signs out until that one
+   is saved or discarded. */
+/** Whether the phone may let go of the account now: a set-aside workout of this log brought back first; false, said, while another workout is open. */
+export function parkSettle(): boolean {
+  if (!parkedHere()) return true;
+  if (state.draft) {
+    fx.toast('Your workout in progress is set aside. Save or discard the one open first, and it comes back.');
+    return false;
+  }
+  return unpark();
 }
 
-/** Forgets a set-aside workout, as Erase everything forgets the log and a sign-out that takes the log off the phone does. */
-export function parkForget(): void {
+/** Takes a set-aside workout off the phone, as Erase everything does, and returns what was stored, so its Undo can put it back. */
+export function parkTake(): string | null {
+  const v = prefGet(PARKED_KEY);
   prefDel(PARKED_KEY);
+  return v;
+}
+
+/** Puts back what parkTake took (the Undo of Erase everything), unless a workout was set aside since. */
+export function parkPut(v: string | null): void {
+  if (v && !prefGet(PARKED_KEY)) prefSet(PARKED_KEY, v);
 }

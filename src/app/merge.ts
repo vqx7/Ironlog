@@ -409,6 +409,10 @@ export function mergeDraft(base0: unknown, cur0: unknown, pre0: unknown): unknow
   const base = undoDraftOf(base0),
     cur = undoDraftOf(cur0),
     pre = undoDraftOf(pre0);
+  /* A workout the step itself took away (Erase everything, a backup restored), with none open since: it comes back, as
+     everything else the step took does (the review of 2.36, REV6-2: Undo after Erase everything left it gone). One
+     ended or started since the step stays as it is now. */
+  if (pre && !base && !cur && cur0 == null && base0 == null) return pre0;
   if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur0 === undefined ? null : cur0;
   type B = UndoDraft['ex'][number];
   const keyed = (list: readonly B[] | null | undefined): [string, B][] => {
