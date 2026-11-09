@@ -682,7 +682,6 @@ function start(): void {
     stalledIds,
     muscleStatus,
     actualAvg4,
-    blocks,
     plannedPerWeek,
     fillSets,
     lastNoteOf,
@@ -803,7 +802,9 @@ function start(): void {
     noBody,
     // 2.32 (r78): the tape row's sentence and the one count of minutes left.
     sizeWhat,
-    sessLeftMin
+    sessLeftMin,
+    // 2.37 (ST-6): This block vs last, so tests/r83.js reads the blocks against a log worked out by hand.
+    blocks
   };
   render();
   wakeOn();
