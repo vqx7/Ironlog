@@ -3,7 +3,8 @@
 // says it guards:
 //   1  NEW-98 (V, 2026-11-09: "It will help reduce and avoid the overwhelm"): minus and plus show on the lift you are on,
 //      not under every lift: at the start, the first lift; after a tick or a load typed on another lift, that lift; once
-//      it is done, the lift the screen brings up next (the next one below not done); in a superset, every lift of the group with a set left (they are done
+//      it is done, the lift the screen brings up next (the next one below not done; lifts found by their exercise, as a
+//      first tick moves a lift up on a timer, NEW-102); in a superset, every lift of the group with a set left (they are done
 //      together); after a reload, the first lift with a set left; guard: a lift done shows none.
 //   2  NEW-98 with NEW-64's rule (GitHub's run of 2.38: tests/r45.js saw a lift move 93 px when the pills left the lift
 //      above it): a tick or a load typed on another lift moves that lift's row by nothing on screen.
@@ -52,22 +53,29 @@ const tick = async (D, bi, si) => { await D.page.click(`#view [data-act="sDone"]
     const n = await D.page.evaluate(() => window.__ironlog.state.draft.ex.length);
     ok(n >= 4, '1. (setting up) a session of 4 or more lifts', n);
     ok(JSON.stringify(await pillsOn(D)) === '[0]', '1. at the start, minus and plus show on the first lift only', await pillsOn(D));
-    await tick(D, 2, 0);
-    ok(JSON.stringify(await pillsOn(D)) === '[2]', '1. after a set of the third lift is ticked, they show on it only', await pillsOn(D));
+    /* Lifts are found by their exercise, not their place: a lift's first tick moves it up the session (r45) a moment
+       later, on a timer, so its place depends on how fast the machine runs (NEW-102: on a loaded machine this section read
+       the places before the move as after it, on 2.38's own page too). */
+    const [X2, X3] = await D.page.evaluate(() => window.__ironlog.state.draft.ex.slice(1, 3).map(b => b.exId));
+    const at = id => D.page.evaluate(id => window.__ironlog.state.draft.ex.findIndex(b => b.exId === id), id);
+    await tick(D, await at(X3), 0);
+    ok(JSON.stringify(await pillsOn(D)) === `[${await at(X3)}]`, '1. after a set of the third lift is ticked, they show on it only', { on: await pillsOn(D), at: await at(X3) });
     // A load typed on the second lift makes it the one you are on.
-    await D.page.fill('#view input[data-f="w"][data-b="1"][data-s="0"]', '40'); await wait(350);
-    ok(JSON.stringify(await pillsOn(D)) === '[1]', '1. a load typed on the second lift moves them there', await pillsOn(D));
-    // Every set of the second lift done: the first lift with a set left.
-    const sets1 = await D.page.evaluate(() => window.__ironlog.state.draft.ex[1].sets.length);
-    for (let si = 0; si < sets1; si++) await tick(D, 1, si);
+    await D.page.fill(`#view input[data-f="w"][data-b="${await at(X2)}"][data-s="0"]`, '40'); await wait(350);
+    ok(JSON.stringify(await pillsOn(D)) === `[${await at(X2)}]`, '1. a load typed on the second lift moves them there', { on: await pillsOn(D), at: await at(X2) });
+    // Every set of the second lift done.
+    const sets1 = await D.page.evaluate(id => window.__ironlog.state.draft.ex.find(b => b.exId === id).sets.length, X2);
+    for (let si = 0; si < sets1; si++) await tick(D, await at(X2), si);
     await wait(1200);
     const after = await pillsOn(D);
     // The lift the screen brings up after it: the next one below not done (the review of 2.38, REV7-7, corrected this
     // section's first draft, which sent them to the first lift with a set left, above and off screen).
-    ok(JSON.stringify(after) === '[2]', '1. with the second lift done, they go to the lift the screen brings up next, the third', after);
-    ok(!after.includes(1), '1. (a guard) a lift done shows none', after);
+    const next = await D.page.evaluate(id => { const ex = window.__ironlog.state.draft.ex, i = ex.findIndex(b => b.exId === id); return ex.findIndex((b, j) => j > i && b.sets.some(s => !s.done && !s.warm)); }, X2);
+    ok(next > 0 && JSON.stringify(after) === `[${next}]`, '1. with the second lift done, they go to the lift the screen brings up next, the one below it not done', { after, next });
+    ok(!after.includes(await at(X2)), '1. (a guard) a lift done shows none', after);
     await D.page.reload(); await D.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(600);
-    ok(JSON.stringify(await pillsOn(D)) === '[0]', '1. after a reload, the first lift with a set left', await pillsOn(D));
+    const first = await D.page.evaluate(() => window.__ironlog.state.draft.ex.findIndex(b => b.sets.some(s => !s.done && !s.warm)));
+    ok(JSON.stringify(await pillsOn(D)) === `[${first}]`, '1. after a reload, the first lift with a set left', { on: await pillsOn(D), first });
     await D.browser.close();
   }
   if (run(1)) {
