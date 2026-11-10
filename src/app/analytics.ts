@@ -144,6 +144,88 @@ export function liftReadIn(M: Model, exId: string, T?: string): Exposure[] {
   return sinceNew(all);
 }
 
+/** Where idxSessionsIn adds up a session's hard sets: its week's (ws, wc and weekHard), its day's (dm, dx), and the start of the recent weeks RIR is counted over. */
+type Tally = {
+  ws: Record<string, number>;
+  wc: Record<string, number>;
+  dm: Record<string, number>;
+  dx: Record<string, DayMeta>;
+  weekHard: Record<string, number>;
+  wk: string;
+  recentFrom: string;
+};
+
+/** One block's hard sets added to its week, day and muscles (idxSessionsIn), and how many of its recent working sets have an RIR logged. */
+function tallyIn(
+  M: Model,
+  ss: Session,
+  b: Session['ex'][number],
+  ex: ReturnType<typeof EXIn>,
+  novel: boolean,
+  T: Tally
+): { logged: number; total: number } {
+  const { ws, wc, dm, dx, weekHard, wk, recentFrom } = T;
+  const mus: [string, number][] = [[ex.primary, 1], ...ex.secondary.map((m): [string, number] => [m, HELPER_CREDIT])];
+  let n = 0,
+    total = 0;
+  for (const s of b.sets) {
+    if (!isWork(s)) continue;
+    // A saved set's RIR is a number or null, never '' (normalize), so the
+    // test for '' never passes here; it is the test written for rows of a
+    // session too, read through String so it holds for any value.
+    const logged = M.s.settings.rirMode === 'off' || !(s.rir == null || String(s.rir) === '');
+    if (ss.date >= recentFrom) {
+      total++;
+      if (logged) n++;
+    }
+    const hard = isHardIn(M, s, ex);
+    const cr = hard ? setCredit(s) : hardCreditIn(M, s, ex);
+    if (!cr) continue;
+    const q = rirEffIn(M, s, ex);
+    weekHard[wk] = (weekHard[wk] || 0) + cr;
+    for (const [m, f] of mus) {
+      ws[m] = (ws[m] || 0) + f * cr;
+      if (logged) wc[m] = (wc[m] || 0) + f * cr;
+      // A half set from RIR 4 to 5 counts toward the week only; recovery and Pick for me read hard sets.
+      if (!hard) continue;
+      dm[m] = (dm[m] || 0) + f * cr;
+      const o = dx[m] || (dx[m] = { fail: 0, easy: 0, hard: 0, slow: false, novel: false });
+      o.hard++;
+      if (q === 0) o.fail++;
+      if (q != null && q >= RECOVERY_EASY_RIR) o.easy++;
+      if (SLOW_RECOVERY.has(ex.id)) o.slow = true;
+      if (novel) o.novel = true;
+    }
+  }
+
+  return { logged: n, total };
+}
+
+/** A session's trend readings of a lift (idxSessionsIn): the average over the working sets at its top load with RIR and with reps alone, its heaviest load, and how many sets carry an RIR. */
+function trendReads(
+  ex: ReturnType<typeof EXIn>,
+  atTop: readonly ExPoint[],
+  pts: readonly ExPoint[]
+): { tAdj: number | null; tRaw: number | null; topL: number; rated: number } {
+  let tAdj: number | null = null,
+    tRaw: number | null = null,
+    topL = 0,
+    rated = 0;
+  if (!noE1(ex)) {
+    const avg = (f: (p: ExPoint) => number | null): number | null => {
+      const v = atTop.map(f).filter(x => x != null);
+      return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+    };
+    tAdj = avg(p => trendE(p.load, p.r, p.rq));
+    tRaw = avg(p => trendE(p.load, p.r, 0));
+  }
+  for (const p of pts) {
+    if (p.load > topL) topL = p.load;
+    if (p.rir != null) rated++;
+  }
+  return { tAdj, tRaw, topL, rated };
+}
+
 /* Step 1: every session in date order. Hard sets per week, per day and per
    muscle, and each lift's exposure (its working sets read as loads, the
    working load, the best estimate, the trend readings, weight lifted). */
@@ -179,39 +261,9 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
     for (const b of sameExOnce(ss.ex)) {
       const ex = EXIn(M, b.exId);
       const novel = !seenEx.has(b.exId);
-      const mus: [string, number][] = [
-        [ex.primary, 1],
-        ...ex.secondary.map((m): [string, number] => [m, HELPER_CREDIT])
-      ];
-      for (const s of b.sets) {
-        if (!isWork(s)) continue;
-        // A saved set's RIR is a number or null, never '' (normalize), so the
-        // test for '' never passes here; it is the test written for rows of a
-        // session too, read through String so it holds for any value.
-        const logged = M.s.settings.rirMode === 'off' || !(s.rir == null || String(s.rir) === '');
-        if (ss.date >= recentFrom) {
-          rirTotal++;
-          if (logged) rirLogged++;
-        }
-        const hard = isHardIn(M, s, ex);
-        const cr = hard ? setCredit(s) : hardCreditIn(M, s, ex);
-        if (!cr) continue;
-        const q = rirEffIn(M, s, ex);
-        weekHard[wk] = (weekHard[wk] || 0) + cr;
-        for (const [m, f] of mus) {
-          ws[m] = (ws[m] || 0) + f * cr;
-          if (logged) wc[m] = (wc[m] || 0) + f * cr;
-          // A half set from RIR 4 to 5 counts toward the week only; recovery and Pick for me read hard sets.
-          if (!hard) continue;
-          dm[m] = (dm[m] || 0) + f * cr;
-          const o = dx[m] || (dx[m] = { fail: 0, easy: 0, hard: 0, slow: false, novel: false });
-          o.hard++;
-          if (q === 0) o.fail++;
-          if (q != null && q >= RECOVERY_EASY_RIR) o.easy++;
-          if (SLOW_RECOVERY.has(ex.id)) o.slow = true;
-          if (novel) o.novel = true;
-        }
-      }
+      const rc = tallyIn(M, ss, b, ex, novel, { ws, wc, dm, dx, weekHard, wk, recentFrom });
+      rirLogged += rc.logged;
+      rirTotal += rc.total;
       seenEx.add(b.exId);
       const work = b.sets.filter(isWork);
       if (!work.length) continue;
@@ -287,22 +339,7 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
          had set 1 at the top of the range and kept adding reps to sets 2 to
          4 read as flat, then stalled (the review: bench 36 to 39 total reps
          at 185, called stalled). A top single is left out, as above. */
-      let tAdj: number | null = null,
-        tRaw: number | null = null,
-        topL = 0,
-        rated = 0;
-      if (!noE1(ex)) {
-        const avg = (f: (p: ExPoint) => number | null): number | null => {
-          const v = atTop.map(f).filter(x => x != null);
-          return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
-        };
-        tAdj = avg(p => trendE(p.load, p.r, p.rq));
-        tRaw = avg(p => trendE(p.load, p.r, 0));
-      }
-      for (const p of pts) {
-        if (p.load > topL) topL = p.load;
-        if (p.rir != null) rated++;
-      }
+      const { tAdj, tRaw, topL, rated } = trendReads(ex, atTop, pts);
       /* Timed holds count no weight lifted (their reps are seconds). Lifts with
          no 1RM estimate but real reps (leg raises, Nordics, sissy squats) count
          at their bodyweight share, as push-ups do (r34.2: they were left out
@@ -597,6 +634,70 @@ export function stallWordsIn(M: Model, id: string): string {
   return q.last ? `over the last ${q.weeks} weeks` : `over ${q.weeks} weeks`;
 }
 
+/** Whether a lift's trend reads RIR: only where it is logged on most of its recent working sets in range (idxLiftIn). */
+function rirInTrendIn(M: Model, inRange: readonly Exposure[]): boolean {
+  const recent = inRange.slice(-RIR_TREND.sessions);
+  const nPts = recent.reduce((a, x) => a + x.pts.length, 0),
+    nRated = recent.reduce((a, x) => a + x.rated, 0);
+  const useAdj = M.s.settings.rirMode !== 'off' && nPts > 0 && nRated / nPts >= RIR_TREND.share;
+  return useAdj;
+}
+
+/** Whether a lift can be stalled: still trained (in the window, not on a break today), kept, and not held for a flagged injury (idxLiftIn). */
+function stillTrainedIn(
+  M: Model,
+  id: string,
+  exI: ReturnType<typeof EXIn>,
+  lastReal: Exposure | null | undefined,
+  winStart: string
+): boolean {
+  return (
+    !!lastReal &&
+    lastReal.date >= winStart &&
+    !afterBreak(lastReal, M.today()) &&
+    !exI.archived &&
+    M.s.exercises.some(e => e.id === id) &&
+    !exInjuryIn(M, exI)
+  );
+}
+
+/** Whether a lift moved over its stall stretch (idxLiftIn): a record in its last sessions, a PR Recent PRs lists in a session left out since, a heavier load or reading, or more reps than every earlier session at the same working load over no more sets. */
+function stretchMoved(
+  l: readonly Exposure[],
+  offSince: (from: string) => Exposure[],
+  listed: (x: Exposure) => boolean
+): boolean {
+  const z = l[l.length - 1],
+    a0 = l[0];
+  const same = l.slice(0, -1).filter(x => Math.abs(x.topW - z.topW) < EPS_SAME && x.topN >= z.topN);
+  return (
+    l.slice(-STALL.noProgress).some(x => x.progress) ||
+    offSince(l[l.length - STALL.noProgress].date).some(listed) ||
+    z.topL > a0.topL + EPS_SAME ||
+    z.topW > a0.topW + EPS_SAME ||
+    (same.length > 0 && z.topReps > Math.max(...same.map(x => x.topReps)))
+  );
+}
+
+/** A falling lift's other rep ranges in use: those where it does not fall (holdRR) and those with too few sessions for a trend (quietRR); none when it is not falling (idxLiftIn). */
+function otherRangesIn(
+  M: Model,
+  exI: ReturnType<typeof EXIn>,
+  scopes: ReturnType<typeof stallScopesIn>,
+  sc: ReturnType<typeof trendScope>,
+  falling: boolean
+): { holdRR: [number, number][]; quietRR: [number, number][] } {
+  const holdRR: [number, number][] = [],
+    quietRR: [number, number][] = [];
+  if (falling)
+    for (const q of scopes.slice(1)) {
+      const o = q.rr ? liftTrendIn(M, exI, trendW({ inRange: q.inR, exWin: sc.exWin })) : null;
+      if (q.rr && o && o.pct == null) quietRR.push(q.rr);
+      else if (q.rr && o && !o.falling) holdRR.push(q.rr);
+    }
+  return { holdRR, quietRR };
+}
+
 /* Step 5: one lift's trend, stall, signals and bests. */
 function idxLiftIn(
   M: Model,
@@ -631,10 +732,7 @@ function idxLiftIn(
      RIR 3 read as strong as 270 x 5 called RIR 1, so the load going up
      15 lb showed as a stall. Otherwise the trend reads reps alone, the same
      way for every session. Bests, PRs and targets keep RIR as before. */
-  const recent = inRange.slice(-RIR_TREND.sessions);
-  const nPts = recent.reduce((a, x) => a + x.pts.length, 0),
-    nRated = recent.reduce((a, x) => a + x.rated, 0);
-  const useAdj = M.s.settings.rirMode !== 'off' && nPts > 0 && nRated / nPts >= RIR_TREND.share;
+  const useAdj = rirInTrendIn(M, inRange);
   for (const x of exps) x.tv = useAdj ? x.tAdj : x.tRaw;
   /* Stalled: the fitted strength line over the last 6 real sessions (4 at
      least, widened to cover 21 days when 6 do not) in the current rep range,
@@ -655,13 +753,7 @@ function idxLiftIn(
      (r53, from the audit V asked for): the engine keeps it at last time's
      load on purpose, and three weeks of doing as told read as a stall to
      change the range. */
-  const current =
-    !!lastReal &&
-    lastReal.date >= winStart &&
-    !afterBreak(lastReal, M.today()) &&
-    !exI.archived &&
-    M.s.exercises.some(e => e.id === id) &&
-    !exInjuryIn(M, exI);
+  const current = stillTrainedIn(M, id, exI, lastReal, winStart);
   /* A PR is movement whatever the day (r53, V 2026-10-18: a PR is a PR
      whenever it happens). A session where the lift was done lighter is left
      out of the stretch (and until r54 a trimmed one), and its PR went with it, so a lift
@@ -693,15 +785,7 @@ function idxLiftIn(
            it has to beat every earlier session at that load in the
            stretch, not only the first: a press alternating 6, 6, 6 and 5,
            5, 4 at one load for 7 weeks "moved" every other week. */
-      const z = l[l.length - 1],
-        a0 = l[0];
-      const same = l.slice(0, -1).filter(x => Math.abs(x.topW - z.topW) < EPS_SAME && x.topN >= z.topN);
-      const moved =
-        l.slice(-STALL.noProgress).some(x => x.progress) ||
-        offSince(l[l.length - STALL.noProgress].date).some(listed) ||
-        z.topL > a0.topL + EPS_SAME ||
-        z.topW > a0.topW + EPS_SAME ||
-        (same.length > 0 && z.topReps > Math.max(...same.map(x => x.topReps)));
+      const moved = stretchMoved(l, offSince, listed);
       /* Flat is under 0.1% a week (r31): averaging working sets leaves
            rounding dust, and identical sessions came out at +1e-32 a
            week, so a perfectly flat lift was not called stalled. */
@@ -748,14 +832,7 @@ function idxLiftIn(
      as a range in use with too few sessions keeps it from reading stalled. */
   const scopes = stallScopesIn(M, id, sc);
   const rrIn = scopes.length > 1 ? curRR : null;
-  const holdRR: [number, number][] = [],
-    quietRR: [number, number][] = [];
-  if (t.falling)
-    for (const q of scopes.slice(1)) {
-      const o = q.rr ? liftTrendIn(M, exI, trendW({ inRange: q.inR, exWin: sc.exWin })) : null;
-      if (q.rr && o && o.pct == null) quietRR.push(q.rr);
-      else if (q.rr && o && !o.falling) holdRR.push(q.rr);
-    }
+  const { holdRR, quietRR } = otherRangesIn(M, exI, scopes, sc, t.falling);
   const falling = t.falling && !holdRR.length && !quietRR.length;
   /* RIR drift: the same load and at least the same reps across the last three
      exposures while logged RIR climbed by a full rep or more. e1RM cannot see

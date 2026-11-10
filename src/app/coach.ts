@@ -175,11 +175,8 @@ export function atRangeTopIn(M: Model, id: string): boolean {
   return lw.length > 0 && lw.every(q => q.r >= top);
 }
 
-/* The single most useful thing to change this week, in priority order. Each
-   branch states the number it is based on, so the advice can be checked. */
-export function coachIn(M: Model): CoachLine {
-  const I = IDXIn(M);
-  const R = activeRoutineIn(M);
+/** Before any advice: no sessions yet, a rest week or a deload week, each said with nothing to do; null otherwise. */
+function quietWeekIn(M: Model): CoachLine | null {
   if (!M.s.sessions.length)
     return { tone: 'blue', text: 'Log your first session. Advice starts after a few sessions.', act: null };
   if (isRestWeekIn(M, weekStart(M.today())))
@@ -196,6 +193,118 @@ export function coachIn(M: Model): CoachLine {
       why: `Half the sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR} or more reps in reserve. Your targets pick up where they were.`,
       act: null
     };
+  return null;
+}
+
+/** A muscle below target as the coach ranks it: its average, its target, and whether it is a priority or lagging. */
+type Under = { m: string; got: number; lo: number; hi: number; pri: number; lag: number };
+
+/** The coach on a muscle below target (coachIn): sessions missed against the plan first, then a plan that reaches the target done short of hard, then sets to add, the largest shortfall first; null when none is below. */
+function shortfallLineIn(
+  M: Model,
+  R: ReturnType<typeof activeRoutineIn>,
+  avg: NonNullable<ReturnType<typeof actualAvg4In>>,
+  under: readonly Under[],
+  liftFor: (m: string) => { id: string | null; blocked: boolean }
+): CoachLine | null {
+  const per = plannedPerWeek(R);
+  if (under.length && !freeModeIn(M) && per > 0 && Math.round(avg._sess) < per)
+    return {
+      tone: 'yellow',
+      text: `You made ${r1(avg._sess)} of ${per} planned sessions a week. Getting them in matters more than adding sets.`,
+      why: `Your plan's sets assume every planned session is done; over your recent full weeks you made ${r1(avg._sess)} a week of the ${per} it plans. A routine with fewer days fits fewer sessions.`,
+      act: null
+    };
+  if (under.length) {
+    const u = under[0];
+    const gap = Math.max(1, Math.ceil(u.lo - u.got));
+    const exId = liftFor(u.m).id;
+    /* The plan already reaches the target (r54, from the audit V asked
+       for: a lifter doing every planned set was told for weeks to add
+       sets). The shortfall is then sets skipped, or ended 4 or more in
+       reserve, as a lift's first sessions are while its load is found, so
+       adding sets is not the fix. Not in Freestyle mode, where the plan is
+       not what the lifter follows. */
+    const planned = plannedSetsIn(M, R)[u.m] || 0;
+    // Hard and not, in the lifter's effort scale, as the engine's sentences say effort (format.ts, effScale).
+    const rpe = effScale(M.s.settings.rirScale) === 'rpe';
+    const hard = rpe ? 'RPE 7 or harder' : '3 or fewer reps in reserve',
+      easy = rpe ? 'at RPE 6 or easier' : 'with 4 or more in reserve';
+    if (!freeModeIn(M) && !belowMin(planned, u.lo))
+      return {
+        tone: 'yellow',
+        text: `${ML[u.m]}: ${r1(u.got)} hard set${r1(u.got) === 1 ? '' : 's'} a week, target ${u.lo}-${u.hi}. Your plan has ${r1(planned)}: do every planned set${M.s.settings.rirMode === 'off' ? '' : `, to ${hard}`}.${under.length > 1 ? ` ${under.length - 1} more below target.` : ''}`,
+        why: `Your average of hard sets per week over your recent full weeks. Your plan already reaches the target, so the gap is in how the sets are done, not how many are planned: ${M.s.settings.rirMode === 'off' ? 'a planned set skipped does not count.' : `a set counts as hard at ${hard}, so a planned set skipped, or ended ${easy} (as a lift's first sessions are while its load is found), does not.`}`,
+        act: { label: `See ${ML[u.m]}`, sec: 'volume', m: u.m }
+      };
+    const how = exId
+      ? `Add ${gap} set${gap > 1 ? 's' : ''} a week to ${exNameIn(M, exId)}.`
+      : 'Add an exercise for it.';
+    return {
+      tone: 'yellow',
+      text: `${ML[u.m]}: ${r1(u.got)} hard set${r1(u.got) === 1 ? '' : 's'} a week, target ${u.lo}-${u.hi}. ${how}${under.length > 1 ? ` ${under.length - 1} more below target.` : ''}`,
+      why: `Your average of hard sets per week over your recent full weeks. The largest shortfall comes first, and priority muscles before the rest.${exId ? '' : ' Nothing in your routine trains it directly.'}`,
+      act: { label: `See ${ML[u.m]}`, sec: 'volume', m: u.m }
+    };
+  }
+  return null;
+}
+
+/** The coach with no shortfall and no stall (coachIn): a muscle whose strength falls, the wait for a first average, every muscle on plan, or every muscle at target. */
+function lastWordIn(
+  M: Model,
+  I: ReturnType<typeof IDXIn>,
+  avg: ReturnType<typeof actualAvg4In>,
+  mst: ReturnType<typeof muscleStatusIn> | null,
+  inj: ReturnType<typeof injuredSetIn>
+): CoachLine {
+  // Missing RIR is not coached: it is optional by design and blanks are read as your usual RIR.
+  // Scores are sorted high to low, so the steepest fall is the last one.
+  const lag = I.scores.filter(x => x.clear && x.score <= -GROW_PCT);
+  if (lag.length) {
+    const x = lag[lag.length - 1];
+    return {
+      tone: 'yellow',
+      text: `${ML[x.m]} strength is falling over ${x.wk || TREND_WEEKS} weeks. Check sleep and recovery before adding sets.`,
+      act: { label: `See ${ML[x.m]}`, sec: 'rank', m: x.m }
+    };
+  }
+  // Someone back from a break (nothing since before the last 4 weeks) has
+  // history but no recent weeks; "first full week" was wrong for them.
+  /* Since r54 the averages start the week after the log's first
+     (avgFirstWeekIn), so until that week is over the advice waits for the
+     second week; any other time a full week of training brings it, which
+     r53 also called the first full week to a lifter months in. */
+  if (!avg) {
+    const w = avgWaitIn(M);
+    const text = `${w.lead}Volume advice ${w.kind === 'back' ? 'comes back' : 'appears here'} after ${w.after}.`;
+    return w.kind === 'second'
+      ? { tone: 'blue', text, why: w.why, wait: true, act: null }
+      : { tone: 'blue', text, wait: true, act: null };
+  }
+  /* Under the minimum only by which days of a cycle fell in the weeks
+     averaged (r54): on plan, so the line says that rather than at target. */
+  const onPlan = mst ? MK.filter(m => !inj.has(m) && mst[m].st === 'plan') : [];
+  if (onPlan.length)
+    return {
+      tone: 'green',
+      text: 'Every muscle on plan, nothing stalled.',
+      why: `Under the minimum over these weeks, on plan: ${andList(
+        onPlan.map(m => ML[m]),
+        ON_PLAN_SHOWN
+      )}. ${ON_PLAN_TIP}`,
+      act: null
+    };
+  return { tone: 'green', text: 'Every muscle at target, nothing stalled.', act: null };
+}
+
+/* The single most useful thing to change this week, in priority order. Each
+   branch states the number it is based on, so the advice can be checked. */
+export function coachIn(M: Model): CoachLine {
+  const I = IDXIn(M);
+  const R = activeRoutineIn(M);
+  const quiet = quietWeekIn(M);
+  if (quiet) return quiet;
   const stalled = stalledIdsIn(M);
   /* A deload is not suggested within DELOAD_GAP_DAYS of a lighter week (r30): the
      review saw "6 lifts stalled, a deload week may help" three weeks after
@@ -277,46 +386,8 @@ export function coachIn(M: Model): CoachLine {
        every set done hard, the lifter was told to do every planned set, the
        reason "how the sets are done". Rounded to a whole session, over the
        weeks the average reads; not in Freestyle mode, which plans none. */
-    const per = plannedPerWeek(R);
-    if (under.length && !freeModeIn(M) && per > 0 && Math.round(avg._sess) < per)
-      return {
-        tone: 'yellow',
-        text: `You made ${r1(avg._sess)} of ${per} planned sessions a week. Getting them in matters more than adding sets.`,
-        why: `Your plan's sets assume every planned session is done; over your recent full weeks you made ${r1(avg._sess)} a week of the ${per} it plans. A routine with fewer days fits fewer sessions.`,
-        act: null
-      };
-    if (under.length) {
-      const u = under[0];
-      const gap = Math.max(1, Math.ceil(u.lo - u.got));
-      const exId = liftFor(u.m).id;
-      /* The plan already reaches the target (r54, from the audit V asked
-         for: a lifter doing every planned set was told for weeks to add
-         sets). The shortfall is then sets skipped, or ended 4 or more in
-         reserve, as a lift's first sessions are while its load is found, so
-         adding sets is not the fix. Not in Freestyle mode, where the plan is
-         not what the lifter follows. */
-      const planned = plannedSetsIn(M, R)[u.m] || 0;
-      // Hard and not, in the lifter's effort scale, as the engine's sentences say effort (format.ts, effScale).
-      const rpe = effScale(M.s.settings.rirScale) === 'rpe';
-      const hard = rpe ? 'RPE 7 or harder' : '3 or fewer reps in reserve',
-        easy = rpe ? 'at RPE 6 or easier' : 'with 4 or more in reserve';
-      if (!freeModeIn(M) && !belowMin(planned, u.lo))
-        return {
-          tone: 'yellow',
-          text: `${ML[u.m]}: ${r1(u.got)} hard set${r1(u.got) === 1 ? '' : 's'} a week, target ${u.lo}-${u.hi}. Your plan has ${r1(planned)}: do every planned set${M.s.settings.rirMode === 'off' ? '' : `, to ${hard}`}.${under.length > 1 ? ` ${under.length - 1} more below target.` : ''}`,
-          why: `Your average of hard sets per week over your recent full weeks. Your plan already reaches the target, so the gap is in how the sets are done, not how many are planned: ${M.s.settings.rirMode === 'off' ? 'a planned set skipped does not count.' : `a set counts as hard at ${hard}, so a planned set skipped, or ended ${easy} (as a lift's first sessions are while its load is found), does not.`}`,
-          act: { label: `See ${ML[u.m]}`, sec: 'volume', m: u.m }
-        };
-      const how = exId
-        ? `Add ${gap} set${gap > 1 ? 's' : ''} a week to ${exNameIn(M, exId)}.`
-        : 'Add an exercise for it.';
-      return {
-        tone: 'yellow',
-        text: `${ML[u.m]}: ${r1(u.got)} hard set${r1(u.got) === 1 ? '' : 's'} a week, target ${u.lo}-${u.hi}. ${how}${under.length > 1 ? ` ${under.length - 1} more below target.` : ''}`,
-        why: `Your average of hard sets per week over your recent full weeks. The largest shortfall comes first, and priority muscles before the rest.${exId ? '' : ' Nothing in your routine trains it directly.'}`,
-        act: { label: `See ${ML[u.m]}`, sec: 'volume', m: u.m }
-      };
-    }
+    const line = shortfallLineIn(M, R, avg, under, liftFor);
+    if (line) return line;
   }
   /* A lift stuck at the top of its range has not run out of progress; the
      load has not gone up (r32, from the third review: lateral raises at 15
@@ -343,44 +414,7 @@ export function coachIn(M: Model): CoachLine {
       act: { label: 'See the lift', sec: 'exercise', ex: id }
     };
   }
-  // Missing RIR is not coached: it is optional by design and blanks are read as your usual RIR.
-  // Scores are sorted high to low, so the steepest fall is the last one.
-  const lag = I.scores.filter(x => x.clear && x.score <= -GROW_PCT);
-  if (lag.length) {
-    const x = lag[lag.length - 1];
-    return {
-      tone: 'yellow',
-      text: `${ML[x.m]} strength is falling over ${x.wk || TREND_WEEKS} weeks. Check sleep and recovery before adding sets.`,
-      act: { label: `See ${ML[x.m]}`, sec: 'rank', m: x.m }
-    };
-  }
-  // Someone back from a break (nothing since before the last 4 weeks) has
-  // history but no recent weeks; "first full week" was wrong for them.
-  /* Since r54 the averages start the week after the log's first
-     (avgFirstWeekIn), so until that week is over the advice waits for the
-     second week; any other time a full week of training brings it, which
-     r53 also called the first full week to a lifter months in. */
-  if (!avg) {
-    const w = avgWaitIn(M);
-    const text = `${w.lead}Volume advice ${w.kind === 'back' ? 'comes back' : 'appears here'} after ${w.after}.`;
-    return w.kind === 'second'
-      ? { tone: 'blue', text, why: w.why, wait: true, act: null }
-      : { tone: 'blue', text, wait: true, act: null };
-  }
-  /* Under the minimum only by which days of a cycle fell in the weeks
-     averaged (r54): on plan, so the line says that rather than at target. */
-  const onPlan = mst ? MK.filter(m => !inj.has(m) && mst[m].st === 'plan') : [];
-  if (onPlan.length)
-    return {
-      tone: 'green',
-      text: 'Every muscle on plan, nothing stalled.',
-      why: `Under the minimum over these weeks, on plan: ${andList(
-        onPlan.map(m => ML[m]),
-        ON_PLAN_SHOWN
-      )}. ${ON_PLAN_TIP}`,
-      act: null
-    };
-  return { tone: 'green', text: 'Every muscle at target, nothing stalled.', act: null };
+  return lastWordIn(M, I, avg, mst, inj);
 }
 
 /* A muscle's strength trend in words (r30): unclear when none of its lifts
