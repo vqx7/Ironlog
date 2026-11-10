@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-+l/ccCw7hXwVKmca3X8TAwJ1S/qCiu6AVzDsrE1rXD0=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-2vh8L7Wo5EbGPXxNEdQrlZHfF13/OygZ43l/c+bYA5A=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.09-r88">
+<meta name="app-build" content="2026.11.09-r89">
 <title>Ironlog</title>
 <script>window.IRONLOG_APP=true;window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -628,10 +628,7 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .bh>div:first-child{min-width:0}
 .hint{font-size:14px;background:var(--surface-2);padding:10px 12px;border-radius:var(--r-md);margin:12px 0 6px;line-height:1.45}
 .hint b{font-weight:650}
-.lmrow{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0 0}
-.lm{display:inline-block;font:650 12px/1 var(--font);letter-spacing:.02em;padding:4px 8px;border-radius:999px;border:1px solid var(--ink);color:var(--ink);white-space:nowrap}
 .bnote{margin:6px 0 0;padding:6px 9px;background:var(--surface-2);border-radius:var(--r-sm);color:var(--ink)}
-.aiout{white-space:pre-wrap;margin-top:10px;min-height:1.4em;line-height:1.55}
 .bwwarn{margin:6px 0 0;color:var(--muted)}
 .lnote{margin:6px 0 0;padding:6px 9px;border:1px dashed var(--line);border-radius:var(--r-sm);color:var(--muted)}
 /* Pictures on a note (r66, 373): square thumbs at the touch size, in a row that wraps; Add picture beside them; one large in its sheet. */
@@ -668,8 +665,7 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .blkt tbody th,.blkt thead th:first-child{text-align:left;font-weight:600}
 .blkt thead th{font-size:12px;color:var(--muted);font-weight:650}
 .stepr{display:flex;flex-wrap:wrap;align-items:center;column-gap:10px;margin-top:10px;padding-top:4px;border-top:1px solid var(--line-soft)}
-.stepr-h{flex:0 1 0;line-height:1.25;font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
-.stepr-n{white-space:nowrap}
+.stepr-h{flex:none;font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .stepr-row{flex:1 1 0;display:flex;justify-content:flex-end;gap:8px}
 .stepr-g{flex:1 1 0;max-width:150px;position:relative;display:flex;align-items:center;height:44px;color:var(--on-volt)}
 .stepr-g::before{content:"";position:absolute;inset:6px 0;border-radius:16px;background:var(--volt)}
@@ -689,7 +685,6 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg.sgdrop .ls{color:var(--blue)}
 .sg .n.warm{color:var(--yellow);font-size:15px}
 /* The set minus and plus change (NEW-100): its number on a dot of their accent, drawn inside the button's own box, so nothing moves. */
-.sg .n.stepat{color:var(--on-volt);background:radial-gradient(circle 12px at center,var(--volt) 11.5px,transparent 12px)}
 .cbtn{height:44px;width:44px;border-radius:50%;border:1px solid var(--field-b);background:var(--surface-2);cursor:pointer;font-weight:700;font-size:17px;color:var(--muted)}
 .cbtn.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .sg.pr::before{content:'';position:absolute;left:-7px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--gold);pointer-events:none}
@@ -1148,7 +1143,7 @@ body.modal-open{overflow:hidden}
    press-and-hold on touch, so the screen itself stays short. */
 #tip{position:fixed;z-index:80;max-width:min(300px,calc(100vw - 24px));background:var(--ink);color:var(--on-ink);font:500 13.5px/1.4 var(--font);padding:9px 11px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);pointer-events:none;white-space:normal;text-align:left;text-transform:none;letter-spacing:0}
 [data-tip]{-webkit-touch-callout:none}
-button[data-tip],.lm[data-tip]{-webkit-user-select:none;user-select:none}
+button[data-tip]{-webkit-user-select:none;user-select:none}
 .hastip{text-decoration:underline dotted;text-underline-offset:3px;text-decoration-color:var(--muted);cursor:help}
 /* Small controls keep their look but get a touch area of at least 44 px from
    an invisible pseudo-element, so a thumb at the gym does not miss them. */
@@ -2139,8 +2134,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.42";
-  var APP_VERSION = "2026.11.09-r88";
+  var DISPLAY_VERSION = "2.43";
+  var APP_VERSION = "2026.11.09-r89";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -20476,8 +20471,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const wn = b2.sets.slice(0, si + 1).filter((x2) => !x2.warm && !x2.drop).length;
     const lt = s3.warm || s3.drop ? "" : lastCell(b2, wn - 1, dupB);
     const gw = s3.w == null ? greyW(b2, si) : null;
-    const at2 = !d3.editingId && stepAt(b2, bi) === si && liftsOn(d3).has(b2);
-    return b`<div class=${`sg${nr ? " norir" : ""} ${s3.done ? "done" : ""}${pr ? " pr" : ""}${s3.drop ? " sgdrop" : ""}`} data-pr=${pr || A}><button class=${"n wbtn" + (s3.drop ? " drop" : s3.warm ? " warm" : "") + (at2 ? " stepat" : "")} aria-label=${`Set ${si + 1} type: ${s3.warm ? "warm-up" : s3.drop ? "drop set" : "working set"}. Tap to change`} data-act="sWarm" data-b=${bi} data-s=${si}>${s3.drop ? "↳" : s3.warm ? "W" : wn}</button><span class="ls" aria-label=${lt ? "Last time " + lt : s3.drop ? "Drop set" : "No set last time"}>${lt ? lastText(lt) : s3.drop ? "Drop" : "–"}</span>
+    return b`<div class=${`sg${nr ? " norir" : ""} ${s3.done ? "done" : ""}${pr ? " pr" : ""}${s3.drop ? " sgdrop" : ""}`} data-pr=${pr || A}><button class=${"n wbtn" + (s3.drop ? " drop" : s3.warm ? " warm" : "")} aria-label=${`Set ${si + 1} type: ${s3.warm ? "warm-up" : s3.drop ? "drop set" : "working set"}. Tap to change`} data-act="sWarm" data-b=${bi} data-s=${si}>${s3.drop ? "↳" : s3.warm ? "W" : wn}</button><span class="ls" aria-label=${lt ? "Last time " + lt : s3.drop ? "Drop set" : "No set last time"}>${lt ? lastText(lt) : s3.drop ? "Drop" : "–"}</span>
         <input type="text" inputmode="decimal" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} load`} data-f="w" data-b=${bi} data-s=${si} class=${needHere(bi, si) ? "need" : A} .value=${fieldValue(loadIn(ex, s3.w))} placeholder=${gw != null ? loadIn(ex, gw) : emptyLoad(ex)}>
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} ${ex.timed ? "seconds" : "reps"}${ex.perSide ? " per side" : ""}`} data-f="r" data-b=${bi} data-s=${si} .value=${fieldValue(s3.r == null ? "" : String(s3.r))} placeholder=${ph}>
         ${nr ? "" : rirButton(s3.rir, bi, si, p3.rir)}
@@ -20489,7 +20483,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     if (!s3 || d3.editingId || !liftsOn(d3).has(b2)) return "";
     const wn = b2.sets.slice(0, si + 1).filter((x2) => !x2.warm && !x2.drop).length;
     const name = s3.warm ? "Warm-up" : s3.drop ? "Drop set" : `Set ${wn}`;
-    const said2 = b`<span class="stepr-n">${name}</span>`;
+    const said2 = name;
     const w2 = effW(b2, si) ?? 0;
     const r4 = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
     const btn = (f3, dir, off, label, txt) => b`<button type="button" class="stepr-b" data-act="sStep" data-b=${bi} data-s=${si} data-sf=${f3} data-d=${dir} aria-label=${`${name}: ${label}`} ?disabled=${off}>${txt}</button>`;
