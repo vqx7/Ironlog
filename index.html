@@ -6347,13 +6347,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   // src/app/analytics.ts
   function dateIndexIn(M3) {
     if (M3.c._dix) return M3.c._dix;
-    const byDate = {}, weekN = {};
+    const byDate2 = {}, weekN = {};
     for (const x2 of sortedSessionsIn(M3)) {
-      (byDate[x2.date] = byDate[x2.date] || []).push(x2);
+      (byDate2[x2.date] = byDate2[x2.date] || []).push(x2);
       const w2 = weekStart(x2.date);
       weekN[w2] = (weekN[w2] || 0) + 1;
     }
-    return M3.c._dix = { byDate, weekN };
+    return M3.c._dix = { byDate: byDate2, weekN };
   }
   var PICK_DAYS = 7;
   var RECOVERY_EASY_RIR = 3;
@@ -22254,13 +22254,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       showAll: false
     });
   }
-  function impBuild(m3) {
-    const conv = m3.unit === "kg" ? (v3) => v3 : (v3) => v3 * LB;
-    const out = [];
-    const ssOf = {};
-    const bad = [];
-    const odd = [];
-    let timedOff = 0;
+  function newExercises(m3) {
     const allTimed = (n3) => m3.res.sessions.every(
       (x2) => x2.items.every((i5) => i5.name !== n3 || i5.sets && i5.sets.length && i5.sets.every((q) => q.timed))
     );
@@ -22284,7 +22278,61 @@ ${JSON.stringify(ctx, null, 1)}`;
         if (!m3.res.text && allTimed(n3)) e5.timed = true;
         newExE.push([n3, e5]);
       }
-    const newEx2 = Object.fromEntries(newExE);
+    return Object.fromEntries(newExE);
+  }
+  function notInLog(out) {
+    const fp = (ss) => ss.date + "|" + ss.ex.map((b2) => b2.exId + ":" + b2.sets.map((q) => q.r).join(",")).sort().join(";");
+    const have = new Set(state.sessions.map(fp));
+    const seen = /* @__PURE__ */ new Set();
+    const fresh = [];
+    let dup = 0;
+    for (const ss of out) {
+      const k2 = fp(ss);
+      if (have.has(k2) || seen.has(k2)) {
+        dup++;
+        continue;
+      }
+      seen.add(k2);
+      fresh.push(ss);
+    }
+    return { fresh, dup };
+  }
+  function fileCardio(m3) {
+    const cardio = [];
+    let cardioNoTime = 0, dup = 0;
+    for (const c4 of m3.res.cardioRows || []) {
+      const min = c4.min || Math.round(c4.secs / MINUTE_S3);
+      if (!(min > 0)) {
+        cardioNoTime++;
+        continue;
+      }
+      if (state.cardio.some((x2) => x2.date === c4.date && x2.kind === c4.kind && x2.min === min)) {
+        dup++;
+        continue;
+      }
+      cardio.push(
+        cleanCardio({
+          id: uid(),
+          date: c4.date,
+          kind: c4.kind,
+          min,
+          hr: c4.hr || null,
+          when: c4.when || "solo",
+          note: c4.note || "",
+          dist: c4.km != null ? c4.km : c4.dist > 0 ? m3.unit === "kg" ? c4.dist : c4.dist * KM_MI : null
+        })
+      );
+    }
+    return { cardio, cardioNoTime, dup };
+  }
+  function impBuild(m3) {
+    const conv = m3.unit === "kg" ? (v3) => v3 : (v3) => v3 * LB;
+    const out = [];
+    const ssOf = {};
+    const bad = [];
+    const odd = [];
+    let timedOff = 0;
+    const newEx2 = newExercises(m3);
     for (const x2 of m3.res.sessions) {
       const date = x2.date || m3.date;
       const ex = [];
@@ -22337,45 +22385,9 @@ ${JSON.stringify(ctx, null, 1)}`;
           light: false
         });
     }
-    const fp = (ss) => ss.date + "|" + ss.ex.map((b2) => b2.exId + ":" + b2.sets.map((q) => q.r).join(",")).sort().join(";");
-    const have = new Set(state.sessions.map(fp));
-    const seen = /* @__PURE__ */ new Set();
-    const fresh = [];
-    let dup = 0;
-    for (const ss of out) {
-      const k2 = fp(ss);
-      if (have.has(k2) || seen.has(k2)) {
-        dup++;
-        continue;
-      }
-      seen.add(k2);
-      fresh.push(ss);
-    }
-    const cardio = [];
-    let cardioNoTime = 0;
-    for (const c4 of m3.res.cardioRows || []) {
-      const min = c4.min || Math.round(c4.secs / MINUTE_S3);
-      if (!(min > 0)) {
-        cardioNoTime++;
-        continue;
-      }
-      if (state.cardio.some((x2) => x2.date === c4.date && x2.kind === c4.kind && x2.min === min)) {
-        dup++;
-        continue;
-      }
-      cardio.push(
-        cleanCardio({
-          id: uid(),
-          date: c4.date,
-          kind: c4.kind,
-          min,
-          hr: c4.hr || null,
-          when: c4.when || "solo",
-          note: c4.note || "",
-          dist: c4.km != null ? c4.km : c4.dist > 0 ? m3.unit === "kg" ? c4.dist : c4.dist * KM_MI : null
-        })
-      );
-    }
+    const { fresh, dup: dupSessions } = notInLog(out);
+    const { cardio, cardioNoTime, dup: dupCardio } = fileCardio(m3);
+    const dup = dupSessions + dupCardio;
     return {
       sessions: fresh,
       ssOf,
@@ -22410,13 +22422,22 @@ ${JSON.stringify(ctx, null, 1)}`;
   ];
   var HIGH_RANGE = [15, 20];
   var LETTER_A = 65;
-  function routineFromLog(sessions, ssOf) {
-    const all = sessions.filter((x2) => !x2.demo && x2.ex && x2.ex.length);
-    const first = all[0];
-    if (!first) return null;
-    const byDate = (a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0;
-    const newest = all.reduce((m3, x2) => x2.date > m3 ? x2.date : m3, first.date);
-    const rec2 = all.filter((x2) => x2.date >= addDays(newest, 1 - IMPORT_DAYS)).sort(byDate);
+  var byDate = (a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0;
+  var liftsOf = (x2) => new Set(x2.ex.filter((b2) => b2.sets.some((q) => !q.warm)).map((b2) => b2.exId));
+  var jac = (a2, b2) => {
+    let n3 = 0;
+    for (const v3 of a2) if (b2.has(v3)) n3++;
+    const u4 = a2.size + b2.size - n3;
+    return u4 ? n3 / u4 : 0;
+  };
+  var nameOf = (x2) => String(x2.dayName || "").trim();
+  var medianOf = (a2) => median(a2.filter((v3) => v3 != null && isFinite(v3)));
+  var usualRange = (r4) => {
+    for (const [top, range] of USUAL_RANGES) if (r4 <= top) return range;
+    return HIGH_RANGE;
+  };
+  var workSets = (b2) => b2.sets.filter((q) => !q.warm && !q.drop);
+  function offSessions() {
     const I2 = IDX();
     const tot = {}, off = {};
     for (const id in I2.byEx)
@@ -22424,26 +22445,19 @@ ${JSON.stringify(ctx, null, 1)}`;
         tot[x2.sid] = (tot[x2.sid] || 0) + 1;
         if (offTarget(x2)) off[x2.sid] = (off[x2.sid] || 0) + 1;
       }
-    const offS = (x2) => x2.deload || x2.light || (tot[x2.id] || 0) > 0 && (off[x2.id] || 0) * 2 >= (tot[x2.id] || 0);
-    const lifts = (x2) => new Set(x2.ex.filter((b2) => b2.sets.some((q) => !q.warm)).map((b2) => b2.exId));
-    const jac = (a2, b2) => {
-      let n3 = 0;
-      for (const v3 of a2) if (b2.has(v3)) n3++;
-      const u4 = a2.size + b2.size - n3;
-      return u4 ? n3 / u4 : 0;
-    };
-    const nm = (x2) => String(x2.dayName || "").trim();
-    const named2 = !rec2.some((x2) => GENERIC_WORKOUT.test(nm(x2)));
-    let groups = [];
+    return (x2) => x2.deload || x2.light || (tot[x2.id] || 0) > 0 && (off[x2.id] || 0) * 2 >= (tot[x2.id] || 0);
+  }
+  function groupSessions(rec2, named2, offS) {
+    const groups = [];
     let pop;
     if (named2) {
       pop = rec2;
       const by = /* @__PURE__ */ new Map();
       for (const x2 of rec2) {
-        const k2 = nm(x2).slice(0, FROM_LOG.name).toLowerCase();
+        const k2 = nameOf(x2).slice(0, FROM_LOG.name).toLowerCase();
         let g2 = by.get(k2);
         if (!g2) {
-          g2 = { name: nm(x2).slice(0, FROM_LOG.name), list: [], ids: /* @__PURE__ */ new Set() };
+          g2 = { name: nameOf(x2).slice(0, FROM_LOG.name), list: [], ids: /* @__PURE__ */ new Set() };
           by.set(k2, g2);
           groups.push(g2);
         }
@@ -22452,87 +22466,71 @@ ${JSON.stringify(ctx, null, 1)}`;
     } else {
       pop = rec2.filter((x2) => !offS(x2));
       for (const x2 of pop) {
-        const L3 = lifts(x2);
+        const L2 = liftsOf(x2);
         let g2 = null, bj = 0;
         for (const q of groups) {
-          const j3 = jac(L3, q.ids);
+          const j3 = jac(L2, q.ids);
           if (j3 >= FROM_LOG.sameAt && j3 > bj) {
             g2 = q;
             bj = j3;
           }
         }
         if (!g2) {
-          g2 = { name: "", list: [], ids: L3 };
+          g2 = { name: "", list: [], ids: L2 };
           groups.push(g2);
         }
         g2.list.push(x2);
-        g2.ids = L3;
+        g2.ids = L2;
       }
     }
-    groups = groups.filter((g2) => g2.list.length >= IMPORT_REPEATS);
-    if (!groups.length || groups.length > FROM_LOG.days || groups.reduce((a2, g2) => a2 + g2.list.length, 0) < pop.length * FROM_LOG.cover)
-      return null;
-    const lastOf2 = (g2) => g2.list[g2.list.length - 1] || first;
-    groups.sort((a2, b2) => byDate(lastOf2(a2), lastOf2(b2)));
-    if (!named2)
-      groups.forEach((g2, i5) => {
-        g2.name = "Day " + String.fromCharCode(LETTER_A + i5);
-      });
-    const med = (a2) => median(a2.filter((v3) => v3 != null && isFinite(v3)));
-    const band = (r4) => {
-      for (const [top, range] of USUAL_RANGES) if (r4 <= top) return range;
-      return HIGH_RANGE;
-    };
-    const work = (b2) => b2.sets.filter((q) => !q.warm && !q.drop);
-    const days = groups.map((g2) => {
-      const full = g2.list.filter((x2) => !offS(x2));
-      const recent = (full.length ? full : g2.list).slice(-FROM_LOG.latest);
-      const latest = recent[recent.length - 1] || first;
-      const cnt = /* @__PURE__ */ new Map();
-      for (const x2 of recent) for (const id of lifts(x2)) cnt.set(id, (cnt.get(id) || 0) + 1);
-      const order = (id) => {
-        for (let k2 = recent.length - 1; k2 >= 0; k2--) {
-          const s3 = recent[k2];
-          const i5 = s3 ? s3.ex.findIndex((b2) => b2.exId === id) : -1;
-          if (i5 >= 0) return k2 === recent.length - 1 ? i5 : ORDER.older + i5;
-        }
-        return ORDER.none;
-      };
-      const ids = [...cnt.keys()].filter((id) => (cnt.get(id) || 0) * 2 >= recent.length && state.exercises.some((e5) => e5.id === id && !e5.archived)).sort((a2, b2) => order(a2) - order(b2));
-      const items = ids.map((id) => {
-        const ex = EX(id);
-        const it = newItem(id);
-        let b2 = null;
-        for (let k2 = recent.length - 1; k2 >= 0 && !b2; k2--) {
-          const s3 = recent[k2];
-          b2 = s3 && s3.ex.find((q2) => q2.exId === id && work(q2).length) || null;
-        }
-        if (!b2) return it;
-        const ws = work(b2);
-        it.sets = Math.min(FROM_LOG.sets, Math.max(1, ws.length));
-        if (!ex.timed) {
-          const r4 = med(ws.map((q2) => Number(q2.r)));
-          if (r4 != null && r4 > 0) [it.repMin, it.repMax] = band(r4);
-        }
-        const rt = ws.filter((x2) => x2.rir != null);
-        const q = rt.length * 2 > ws.length ? med(rt.map((x2) => Number(x2.rir))) : null;
-        if (q != null) it.rir = Math.min(FROM_LOG.rir, Math.max(0, Math.round(q)));
-        return it;
-      });
-      {
-        const sg = ssOf && ssOf[latest.id] || {};
-        const gid = {};
-        for (const it of items) {
-          const k2 = sg[it.exId];
-          if (k2 && items.filter((o3) => sg[o3.exId] === k2).length > 1) it.ss = gid[k2] || (gid[k2] = uid());
-        }
+    return { groups, pop };
+  }
+  function logDay(g2, offS, ssOf, first) {
+    const full = g2.list.filter((x2) => !offS(x2));
+    const recent = (full.length ? full : g2.list).slice(-FROM_LOG.latest);
+    const latest = recent[recent.length - 1] || first;
+    const cnt = /* @__PURE__ */ new Map();
+    for (const x2 of recent) for (const id of liftsOf(x2)) cnt.set(id, (cnt.get(id) || 0) + 1);
+    const order = (id) => {
+      for (let k2 = recent.length - 1; k2 >= 0; k2--) {
+        const s3 = recent[k2];
+        const i5 = s3 ? s3.ex.findIndex((b2) => b2.exId === id) : -1;
+        if (i5 >= 0) return k2 === recent.length - 1 ? i5 : ORDER.older + i5;
       }
-      return { g: g2, day: { id: uid(), name: g2.name, rest: false, items }, ids: lifts(latest) };
-    }).filter((d3) => d3.day.items.length);
-    const r0 = rec2[0];
-    if (!days.length || !r0) return null;
-    const span = Math.max(WEEK_DAYS, daysBetween(r0.date, newest) + 1);
-    const perWeek = Math.min(WEEK_DAYS, Math.max(1, Math.round(rec2.length / (span / WEEK_DAYS))));
+      return ORDER.none;
+    };
+    const ids = [...cnt.keys()].filter((id) => (cnt.get(id) || 0) * 2 >= recent.length && state.exercises.some((e5) => e5.id === id && !e5.archived)).sort((a2, b2) => order(a2) - order(b2));
+    const items = ids.map((id) => {
+      const ex = EX(id);
+      const it = newItem(id);
+      let b2 = null;
+      for (let k2 = recent.length - 1; k2 >= 0 && !b2; k2--) {
+        const s3 = recent[k2];
+        b2 = s3 && s3.ex.find((q2) => q2.exId === id && workSets(q2).length) || null;
+      }
+      if (!b2) return it;
+      const ws = workSets(b2);
+      it.sets = Math.min(FROM_LOG.sets, Math.max(1, ws.length));
+      if (!ex.timed) {
+        const r4 = medianOf(ws.map((q2) => Number(q2.r)));
+        if (r4 != null && r4 > 0) [it.repMin, it.repMax] = usualRange(r4);
+      }
+      const rt = ws.filter((x2) => x2.rir != null);
+      const q = rt.length * 2 > ws.length ? medianOf(rt.map((x2) => Number(x2.rir))) : null;
+      if (q != null) it.rir = Math.min(FROM_LOG.rir, Math.max(0, Math.round(q)));
+      return it;
+    });
+    {
+      const sg = ssOf && ssOf[latest.id] || {};
+      const gid = {};
+      for (const it of items) {
+        const k2 = sg[it.exId];
+        if (k2 && items.filter((o3) => sg[o3.exId] === k2).length > 1) it.ss = gid[k2] || (gid[k2] = uid());
+      }
+    }
+    return { g: g2, day: { id: uid(), name: g2.name, rest: false, items }, ids: liftsOf(latest) };
+  }
+  function cycleOf(days, perWeek) {
     const reps = perWeek >= days.length * 2 ? Math.min(FROM_LOG.rounds, Math.floor(perWeek / days.length)) : 1;
     const seq = [];
     for (let r4 = 0; r4 < reps; r4++)
@@ -22560,16 +22558,19 @@ ${JSON.stringify(ctx, null, 1)}`;
       for (let j3 = 0; j3 < k2; j3++) cyc.push(restDay());
       rest -= k2;
     });
-    const dayFor = (x2) => {
+    return cyc;
+  }
+  function dayFinder(named2, days) {
+    return (x2) => {
       if (named2) {
-        const k2 = nm(x2).slice(0, FROM_LOG.name).toLowerCase();
+        const k2 = nameOf(x2).slice(0, FROM_LOG.name).toLowerCase();
         const d3 = days.find((q) => q.g.name.toLowerCase() === k2);
         return d3 ? d3.day : null;
       }
-      const L22 = lifts(x2);
+      const L2 = liftsOf(x2);
       let best = null, bj = 0;
       for (const d3 of days) {
-        const j3 = jac(L22, d3.ids);
+        const j3 = jac(L2, d3.ids);
         if (j3 >= FROM_LOG.sameAt && j3 > bj) {
           best = d3.day;
           bj = j3;
@@ -22577,7 +22578,38 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
       return best;
     };
-    return { routine: { id: uid(), name: "From your log", schedule: "cycle", days: cyc }, perWeek, dayFor };
+  }
+  function routineFromLog(sessions, ssOf) {
+    const all = sessions.filter((x2) => !x2.demo && x2.ex && x2.ex.length);
+    const first = all[0];
+    if (!first) return null;
+    const newest = all.reduce((m3, x2) => x2.date > m3 ? x2.date : m3, first.date);
+    const rec2 = all.filter((x2) => x2.date >= addDays(newest, 1 - IMPORT_DAYS)).sort(byDate);
+    const offS = offSessions();
+    const named2 = !rec2.some((x2) => GENERIC_WORKOUT.test(nameOf(x2)));
+    const grouped = groupSessions(rec2, named2, offS);
+    let groups = grouped.groups;
+    const pop = grouped.pop;
+    groups = groups.filter((g2) => g2.list.length >= IMPORT_REPEATS);
+    if (!groups.length || groups.length > FROM_LOG.days || groups.reduce((a2, g2) => a2 + g2.list.length, 0) < pop.length * FROM_LOG.cover)
+      return null;
+    const lastOf2 = (g2) => g2.list[g2.list.length - 1] || first;
+    groups.sort((a2, b2) => byDate(lastOf2(a2), lastOf2(b2)));
+    if (!named2)
+      groups.forEach((g2, i5) => {
+        g2.name = "Day " + String.fromCharCode(LETTER_A + i5);
+      });
+    const days = groups.map((g2) => logDay(g2, offS, ssOf, first)).filter((d3) => d3.day.items.length);
+    const r0 = rec2[0];
+    if (!days.length || !r0) return null;
+    const span = Math.max(WEEK_DAYS, daysBetween(r0.date, newest) + 1);
+    const perWeek = Math.min(WEEK_DAYS, Math.max(1, Math.round(rec2.length / (span / WEEK_DAYS))));
+    const cyc = cycleOf(days, perWeek);
+    return {
+      routine: { id: uid(), name: "From your log", schedule: "cycle", days: cyc },
+      perWeek,
+      dayFor: dayFinder(named2, days)
+    };
   }
   async function liveLogFetch() {
     let local = null;
