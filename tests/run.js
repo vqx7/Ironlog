@@ -8,7 +8,7 @@
 //   node tests/run.js --browser webkit   the same suites in WebKit, the engine of every iPhone browser
 const {execFile,execFileSync}=require('child_process');const fs=require('fs');const os=require('os');const path=require('path');
 fs.mkdirSync('screenshots',{recursive:true});
-const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','flows','charts-layout','cycle-create','fuzz','integrity','gym-ux','design','uat','essentials','comeback-removed','map3d','cleanup','ios-bar','pwa','update','accounts','install','r21','r22','r23','r24','r25','preview','owner-doc','sql','report-fn','journey','progress','breach','custom','r27','r28','r29','r29b','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r36','r38','r39','r40','r41','realism','r42','r43','r44','r45','r46','r47','r49','r52','r53','r53w','r54','r54b','r55','r55b','r55-1','r55-1b','lifter','engine','usual','bests','coherence','seams','r56','r56-1','r56-1b','r56-1c','r56-2','mixed','wayback','inflight','personas','loadrules','room','r57','r58','r59','r60','r61','r62','r63','r64','r64a','r64b','r65','r65b','r65-2','r66b','r66s','uat-experienced','r67','r68','r68b','r69','r70','r71','r72','r73','r74','r76','r77','r78','r79','r80','r80b','r81','r81b','r82','r83','r84','rulings','sync-race','security','hygiene','perf'];
+const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','flows','charts-layout','cycle-create','fuzz','integrity','gym-ux','design','uat','essentials','comeback-removed','map3d','cleanup','ios-bar','pwa','update','accounts','install','r21','r22','r23','r24','r25','preview','owner-doc','sql','report-fn','journey','progress','breach','custom','r27','r28','r29','r29b','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r38','r39','r40','r41','realism','r42','r43','r44','r45','r46','r47','r49','r53','r54','r54b','r55','r55b','r55-1','r55-1b','lifter','engine','usual','bests','coherence','seams','r56','r56-1','r56-1b','r56-1c','r56-2','mixed','wayback','inflight','personas','loadrules','room','r57','r58','r59','r60','r61','r62','r63','r64','r64a','r64b','r65','r65b','r65-2','r66b','r66s','uat-experienced','r67','r68','r68b','r69','r70','r71','r72','r73','r74','r76','r77','r78','r79','r80','r80b','r81','r81b','r82','r83','r84','rulings','sync-race','security','hygiene','perf'];
 // The standalone build (dist/) runs the user-facing suites again.
 // map3d is not among them: a file:// page cannot import a module, and pwa checks the 3D body in dist/ over http.
 // r39 is not either, for the same reason: most of it is the 3D body in a sheet.
@@ -33,7 +33,7 @@ const WEBKIT_SKIP={
   'report-fn':'runs the report function in Node, no browser',
   sql:'runs the SQL in PGlite, no browser',
   perf:'times the app, and one engine\'s milliseconds on a shared runner say nothing about another\'s',
-  engine:'runs the engine in Node against Chromium\'s answers; tests/r52.js and tests/r53w.js compare the builds in WebKit',
+  engine:'runs the engine in Node against Chromium\'s answers; the suites that drive the page run in WebKit',
   usual:'runs the session rule\'s modules in Node, no browser',
 };
 

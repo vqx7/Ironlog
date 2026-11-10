@@ -240,4 +240,15 @@ function screenDiff(a, b) {
   for (let i = 0; i < n; i++) if (a.tree[i] !== b.tree[i]) { const x = a.tree[i] || '', y = b.tree[i] || ''; let j = 0; while (j < x.length && x[j] === y[j]) j++; return { at: i, before: x.slice(Math.max(0, j - 160), j + 200), now: y.slice(Math.max(0, j - 160), j + 200) }; }
   return a.text === b.text ? null : { text: true, before: a.text.slice(0, 400), now: b.text.slice(0, 400) };
 }
-module.exports = { open, tab, cspFix, build, engine, ENGINE, touchDriver, offlineLoad, settle, sourceFiles, sourceTexts, screenOf, screenDiff };
+/* What a screen drawn on the current build must never show (CL-3, 2.40: the screen comparisons with old builds became
+   this check on every state they drew): a value that leaked from code into the page as text or an attribute, read
+   from screenOf's reading. Returns each place found, with some text around it. */
+function screenLeaks(shot) {
+  const bad = /\bundefined\b|\bNaN\b|\[object Object\]|\bInfinity\b|\bnull\b(?=["<\s])/;
+  const out = [];
+  // An error's own message, which the crash screen and the error log show on purpose, is not a leak.
+  const shown = t => t.replace(/\b\w*Error: [^"\n<]*/g, '');
+  for (const t0 of [...shot.tree, shot.text]) { const t = shown(t0); const m = bad.exec(t); if (m) out.push(t.slice(Math.max(0, m.index - 80), m.index + 80)); }
+  return out;
+}
+module.exports = { open, tab, cspFix, build, engine, ENGINE, touchDriver, offlineLoad, settle, sourceFiles, sourceTexts, screenOf, screenDiff, screenLeaks };

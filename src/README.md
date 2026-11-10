@@ -2,7 +2,7 @@
 
 The app's source. `npm run join` (`scripts/join.js`) builds `index.html` from
 it, the one page `scripts/build.js` and every test use. Edit here, then join;
-`tests/r36.js` fails if `index.html` and `src/` disagree. Read
+`tests/hygiene.js` fails if `index.html` and `src/` disagree. Read
 `ARCHITECTURE.md` for the module layers; `tests/hygiene.js` enforces the rules.
 
 - `app/`: the whole app, as typed modules (TypeScript, strict), in the layers

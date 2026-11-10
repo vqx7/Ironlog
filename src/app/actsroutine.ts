@@ -44,7 +44,7 @@ const fullRoutine = (r: NewRoutine): Routine => ({
 });
 
 /** Makes a new routine named nm, or names an existing empty one (other than the one in use), rather than stacking another blank one. */
-export function rNewDo(nm: string): void {
+function rNewDo(nm: string): void {
   const blank = state.routines.find(r => routineEmpty(r) && r.id !== state.activeRoutineId);
   if (blank) {
     act(() => {

@@ -808,6 +808,58 @@ What r30 changes (each with a test in tests/r30.js, reproduced the way the revie
 
 The detail of each finished phase of the move into typed modules, as ARCHITECTURE.md held it until r56.2: what moved, how it was proved, and what each review found. The design, the rules and the ratchet numbers stay in ARCHITECTURE.md.
 
+### The comparisons with old builds retired or replaced (CL-3, 2.40)
+
+V, 2026-11-09: comparisons that hold a new build to an old one and take each deliberate change out by hand are "poor
+testing practices". In 2.40 each was retired or replaced by a check of the build under test against its rules. Every
+file and section named here is in the repo as it was at 5b04fdc (branch r85) for anyone who needs to read or rerun it.
+
+Retired whole, because by then they compared old builds only and read no code of the build under test:
+- `tests/r36.js`: r35 and r52 on 2,000 seeded histories, proving the r36 split. Its one check on the build under test,
+  that index.html is what src/ builds to (the only place GitHub's run checked it), moved to `tests/hygiene.js` (rule 8).
+- `tests/r52.js`: r51 and r52 on the 1,000 wide histories, past midnight, with stale caches and on the demo (phase 3b).
+- `tests/r53w.js`: r52 and r53 the same way, each difference held to the r53 rule that made it.
+- `tests/r66b.js` section 6: Today's main card on r65.2 and r66 (held since by `tests/r67.js` section 4).
+- `tests/wide.js`: the helpers only those used (staleRun, demoRun, r53Touches, honestTags and the rest).
+
+Turned from a comparison of two old builds into a check of the build under test, every state they drew kept: each is
+drawn with no page error and nothing undefined, NaN or [object Object] on screen (`screenLeaks`, `tests/h.js`):
+- `tests/r58.js` section 1 (Plan, the library and Stats in 36 states; was r57 and r58),
+- `tests/r59.js` section 1 (Today, the week bar and the calendar; was r58 and r59),
+- `tests/r60.js` section 1 (the session screen; was r59 and r60),
+- `tests/r61.js` section 1 (every tab and the session in three settings, and the Guide in each unit with RIR on and
+  off; was r60 and r61, with the wide histories call for call),
+- `tests/r62.js` section 1 (every sheet; was r61 and r62) and section 2 (Pick for me, the swaps, Limited equipment and
+  Short on time on 1,000 wide histories: every call answers with no crash; was r61 and r62 call for call),
+- `tests/r63.js` section 1 (every part r63 moved; was r62 and r63) and section 2 (import, the backup check and the demo
+  on generated input: no crash; was r62 and r63 call for call).
+
+Replaced, because they compared the build under test with an old one and carried hand-written exclusions:
+- `tests/r57.js` section 4: History and Settings against r56.2 with eleven exclusions (heldOut, heldOutAccents,
+  heldOutR66, heldOutR69, heldOutSched, heldOutR70, heldOutR73, heldOutR76, heldOutR79, heldOutR80, heldOutR83). Now:
+  both screens in the same six states drawn with no page error and no leaked value, Settings showing the log's values
+  and History its sessions newest first.
+- `tests/r61.js` section 4: normalize against r60 on 1,680 raw logs with six exclusions (the starter's rests, a falsy
+  workout, r66's name, r72's library lifts, 2.34's plates, 2.37's notes). Now normalize's own rules on the same logs:
+  it never throws; read again it gives the same answer and drops nothing more; a log keeps every record and every set
+  a build could have saved; an unknown field is kept and the record keeps its key order (keepExtra). Shown to fail
+  when keepExtra keeps nothing.
+- `tests/r63.js` section 4: the start against r62's with every later listener, hook name and action listed by hand.
+  Now: drawing every tab four times round leaves the page with the same listeners (none piling up), and every action
+  the source names by data-act is in the table.
+
+Kept, as V's rulings name an old build's look: `tests/r70.js` section 5 (r69's compact rest pill, NEW-60), `tests/r66b.js`
+section 5 (r65.2's full-width buttons, 368) and `tests/r33.js` part 1a2 (r32.1's At a glance). None carries an exclusion.
+
+CLAUDE.md's Releasing paragraph before 2.40:
+
+> - The comparisons of old builds stay pinned to what they proved: `tests/r36.js` (r35 and r52), `tests/r52.js`
+>   (r51 and r52), `tests/r53w.js` (r52 and r53), and since r64, which changes those numbers and sentences on purpose,
+>   `tests/r61.js` section 1 (r60 and r61), `tests/r62.js` sections 1 and 2 (r61 and r62) and `tests/r63.js` section 1
+>   (r62 and r63); since r66, which changes the session screen, Today and a lift's name on purpose, `tests/r60.js` section 1 (r59
+>   and r60), `tests/r59.js` section 1 (r58 and r59), `tests/r58.js` section 1 (r57 and r58) and `tests/r63.js` section 2
+>   (r62 and r63); since r67, which gives Today's main card its shine on purpose, `tests/r66b.js` section 6 (r65.2 and r66); since r71, which draws the rest as a card on purpose, `tests/r70.js` section 5's bar (r69 and r70; the compact pill still held to r69's) and `tests/r33.js` part 1a2's timer (held to the card since). Since 2.33 (r79), which marks History's PRs in gold on purpose, `tests/r57.js` section 4 takes those marks out of the new page (`heldOutR79`) and holds the rest to r56.2. Since 2.34 (r80), which makes the profile photo the account's on purpose (R79-1), `tests/r79.js` section 1 runs signed in, on the source build (`tests/r80b.js` holds the photo on the built app), and `tests/r33.js` keeps any plate a gym has (NEW-76); its wording pass (99) reworded tips that `tests/r29c.js`, `r41.js`, `r44.js`, `r58.js` section 9, `r64a.js` and `r69.js` read, and split Settings' General (`tests/r57.js` section 4 reads Measurements and Appearance as one placeholder); and since its plates change on purpose (NEW-76), `tests/r61.js` section 4 holds out the gyms whose saved list has a plate r60 dropped and `tests/r65.js` section 5 reads the usual plates in settings.ts, and `tests/r27.js` counts the Guide's eight topics (Sources). Since 2.37 (r83), which adds the change plates to Your gym and rewords three lifts' notes on purpose, `tests/r57.js` section 4 takes the change-plate chips out of the new page (`heldOutR83`) and `tests/r61.js` section 4 holds the three notes out (`NOTES_2_37`, NEW-85).
+
 ### The session rule's history (CL-2, 2.39)
 
 In 2.39 V's one rule for every session was stated once (`setsHeldTo` and the comment above `idxShort` in usual.ts,

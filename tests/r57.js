@@ -11,11 +11,9 @@
 //   3  both screens draw from their modules: the page's #view holds the
 //      screen lit-html drew, kept between draws, so a field being typed in
 //      keeps its focus and its text when the screen draws again;
-//   4  (a guard, run on both builds) they look as they did: History and
-//      Settings in a range of logs and settings, every section open, give the
-//      same elements, attributes, field values and visible text on this build
-//      as on r56.2 (baselines/r56-2.html), read after the page's tip pass, with
-//      lit-html's markers and the label ids it draws left out.
+//   4  (a guard) History and Settings in a range of logs and settings, every section open, drawn with no page error
+//      and nothing undefined, NaN or [object Object] on screen; Settings shows the log's values and History its
+//      sessions, newest first (CL-3, 2.40; until then held to r56.2 with eleven changes taken out by hand).
 //   5  from the review of r57, each a guard that also passes on r56.2 (5b
 //      fails there too: r56.2 lost two sections from such an order) and failed
 //      on r57 as first built: a draw mid-drag drops the drag, an order with a
@@ -146,20 +144,13 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
   ok(P.errors.length === 0, 'no page errors', P.errors);
 
-  // ---- 4. The two screens against r56.2's. A comparison of two pages built from src/: the standalone
-  // build (IRONLOG_FILE) is the built app, which shows what r56.2's source page never does (Install, the
-  // licenses), and no built copy of r56.2 is kept, so the standalone run leaves this section to the source run.
-  const OLD = 'baselines/r56-2.html';
-  if (process.env.IRONLOG_FILE) console.log('note r57 section 4 compares source pages; it runs on the source build');
+  // ---- 4. History and Settings in a range of logs and settings, every section open, drawn on this build with no page
+  // error and nothing undefined, NaN or [object Object] on screen; Settings shows the values the log holds, and History
+  // lists the log's sessions, newest first (CL-3, 2.40). Until 2.40 this section held both screens to r56.2's with every
+  // change made on purpose since taken out by hand, eleven of them (docs/ARCHIVE.md).
+  if (process.env.IRONLOG_FILE) console.log('note r57 section 4 reads the source build');
   else {
-  // Each tab read by the harness's screenOf (tests/h.js), the same reading for both builds.
-  const { screenOf, screenDiff } = require('./h');
-  // The spaces drawn between elements are read too (screenOf's spaces, since r59), so a space lost or added there shows.
-  const shot = (file, seed, tab, env) => screenOf(file, { browser, seed, tab, env, spaces: true });
-  /* r68 changes the demo's loads on purpose (367: a bar, machine or cable lift steps 10 lb by default, and the demo is
-     built by the engine's steps), held by tests/r68.js section 4; both pages here build the demo on the 5 lb step it
-     was built on (a step set on those lifts, which r56.2 reads as its default), so History's numbers are still held
-     to r56.2. */
+  const { screenOf, screenLeaks } = require('./h');
   const PIN = "for(const e of L.state.exercises)if(['barbell','smith','machine','cable'].includes(e.equip))e.inc=5*0.45359237;";
   const SEEDS = [
     ['a new install', "L.state.settings.onboarded=true;L.saveNow();"],
@@ -186,149 +177,28 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       window.ironlogAuth={user(){return null;},signOut(){return Promise.resolve();},deleteAccount(){return Promise.resolve();}};
       L.cloud.on=true;L.cloud.status='synced';L.cloud.last=Date.now()-5*60000;L.saveNow();`]
   ];
-  /* Settings' Weekly set targets changed on purpose in r58 (339 e: a muscle tracked only offers Set a
-     target, one given a target can go back, and the section's how-text says so), held by tests/r58.js
-     section 9; that section is left out of both pages here, its elements and its text, and the rest of
-     Settings is still held to r56.2. */
-  const heldOut = shot => {
-    const i = shot.tree.findIndex(t => t.includes('data-mkey="bands"'));
-    if (i < 0) return shot;
-    const next = (shot.tree[i + 1] || '').match(/<span class="sec-t">"([^"]*)"/);
-    // A section's text starts with its grip and its title, as the tree orders them.
-    const from = shot.text.indexOf('⠿\nWeekly set targets\n'), to = next ? shot.text.indexOf('⠿\n' + next[1] + '\n', from) : -1;
-    return { ...shot, tree: shot.tree.map((t, j) => (j === i ? '(Weekly set targets)' : t)), text: from < 0 ? shot.text : shot.text.slice(0, from) + '(Weekly set targets)\n' + (to < 0 ? '' : shot.text.slice(to)) };
-  };
-  /* Settings > General's accent chips grew on purpose in r65.2 (370: Violet, Cyan and Red after Pink), held by
-     tests/r65-2.js section 4 and tests/essentials.js; those three chips, their elements and their names, are taken
-     out of this build's page, and everything else in Settings, the four chips r56.2 has among it, is still held to
-     r56.2. */
-  const NEW_ACCENTS = /<button [^>]*data-v="(violet|cyan|red)"[^>]*><i [^>]*><\/i>"(Violet|Cyan|Red)"<\/button>/g;
-  const heldOutAccents = shot => ({ ...shot, tree: shot.tree.map(t => t.replace(NEW_ACCENTS, '')), text: shot.text.replace(/\nPink\nViolet\nCyan\nRed\n/, '\nPink\n') });
-  /* Three of r66's changes reach these screens on purpose: Settings' bodyweight field under the weigh-in reminder (372,
-     held by tests/r66b.js section 4), the library's name for the rear delt machine, Reverse Pec Deck (Rear Delt Fly),
-     in History's list of lifts (377 and NEW-37, section 10), and the class of a full-width button, fullw where it was
-     block, with the same look (368, section 5). The field, its element and its text, is taken out of this build's
-     page, the machine read by its old name and fullw as block; everything else is still held to r56.2. */
-  const BW_FIELD = /<div class="row" id="bwSet"[^>]*>.*?<\/div><p [^>]*>"[^"]*"<\/p>/;
-  const BW_TEXT = /\nBodyweight \((lb|kg)\)\n(Set|Log)\n(Not set: bodyweight lifts count only the weight you add\. |Latest [0-9.,]+ (lb|kg)\. )Optional\./;
-  const MACHINE = /Reverse Pec Deck \(Rear Delt Fly\)/g;
-  const asBlock = t => t.replace(/class="([^"]*)"/g, (m, c) => { const k = c.split(' '); return k.includes('btn') && k.includes('fullw') ? `class="${k.map(x => (x === 'fullw' ? 'block' : x)).sort().join(' ')}"` : m; });
-  const heldOutR66 = shot => ({ ...shot, tree: shot.tree.map(t => asBlock(t.replace(BW_FIELD, '').replace(MACHINE, 'Reverse Pec Deck'))), text: shot.text.replace(BW_TEXT, '').replace(MACHINE, 'Reverse Pec Deck') });
-  /* r69 cuts text on these screens on purpose (V, 2026-11-03), each held by tests/r69.js: Settings' Name field
-     (section 1), the line on what RIR is, now the i of Reps in reserve (12), the privacy and suggestions notes, one
-     short line each with every word in the i (11), and a tab's foot without its heading and with "Edit sections"
-     (2). On both pages the Name field and the RIR line are taken out, the two notes and the foot's link read as a
-     placeholder each, and the setting's label read without its i; everything else is still held to r56.2. */
-  const NOTE = /<p class="muted small" id="(privacy|safety)" [^>]*>.*?<\/p>/g;
-  const heldOutR69 = shot => ({
-    ...shot,
-    tree: shot.tree.map(t => t
-      .replace(/<label class="field">"Name \(optional\)"<input [^>]*data-bind="userName"[^>]*><\/input><\/label>/, '')
-      .replace(/<p class="small" style="margin:0"><b>"RIR, reps in reserve:"<\/b>" reps you could still have done\. RIR 3 or less is a hard set\."<\/p><label class="field">"Reps in reserve"<select data-bind="rirMode"/, '<label class="field">(Reps in reserve)<select data-bind="rirMode"')
-      .replace(/<label class="field"><span>"Reps in reserve"<\/span>" "<button aria-label="About Reps in reserve" class="tipi" data-tip="RIR, reps in reserve: reps you could still have done\. RIR 3 or less is a hard set\." type="button">"i"<\/button><select aria-labelledby=>Reps in reserve data-bind="rirMode"/, '<label class="field">(Reps in reserve)<select data-bind="rirMode"')
-      .replace(NOTE, '($1)')
-      .replace('<p class="ml-h muted small">"Add to this tab"</p>', '')
-      .replace(/(data-act="goLayout" type="button">)"(Show, hide, or reorder sections|Edit sections)"/, '$1(Layout)')),
-    text: shot.text
-      .replace(/\nName \(optional\)(?=\n)/, '')
-      .replace(/\nRIR, reps in reserve: reps you could still have done\. RIR 3 or less is a hard set\.(?=\n)/, '')
-      .replace(/\nReps in reserve( i)?(?=\n)/, '\nReps in reserve')
-      .replace(/\n(Privacy|Suggestions): [^\n]*/g, '\n($1)')
-      .replace(/\nAdd to this tab(?=\n)/, '')
-      .replace(/\n(Show, hide, or reorder sections|Edit sections)$/, '\n(Layout)')
-  });
-  /* r70's and r71's changes that reach Settings on purpose: Layout's chip for Today's Lifts moving (364 b-2, tests/r70.js
-     section 9), its Default layout tip (381, R70-4) and the Compact timer's tip, the rest card where it was a bar (r71,
-     364 b-1, tests/r71.js section 1). On this build's page the chip is taken out and the tips read as before;
-     everything else is still held to r56.2. */
-  /* And Plan's Schedule shown on a new install (381, section 2): Layout's count of hidden sections and the Schedule
-     chip's state read as a placeholder on both pages. */
-  const heldOutSched = shot => ({
-    ...shot,
-    tree: shot.tree.map(t => t
-      .replace(/(<span class="sec-t">"Layout"<\/span><span class="sec-s">)"\d+ hidden"/, '$1(hidden)')
-      .replace(/<button aria-pressed="(true|false)" class="chip( on)?" data-act="hideToggle" data-k="program:schedule">/, '<button (schedule chip)>')),
-    text: shot.text.replace(/\nLayout\n\d+ hidden(?=\n)/, '\nLayout\n(hidden)')
-  });
-  const heldOutR70 = shot => ({
-    ...shot,
-    tree: shot.tree.map(t => t
-      .replace('A small pill in the corner instead of the rest card above the tabs.', 'A small pill in the corner instead of a bar across the screen.')
-      // Layout's Default layout tip, which no longer names Schedule (381, R70-4: tests/r70.js section 2).
-      .replace('At a glance, Coach, and Body hidden on Today, Weekly volume hidden on Plan, and the default order.', 'At a glance, Coach, and Body hidden on Today, Schedule and Weekly volume hidden on Plan, and the default order.')
-      .replace(/<button [^>]*data-k="today:moving"[^>]*>"Lifts moving"<\/button>/, '')),
-    text: shot.text.replace(/\nLifts moving(?=\n)/, '')
-  });
-  /* 2.28 shortens History's line on a new install on purpose (393, V 2026-11-05: less text on screen), held by
-     tests/r73.js section 8: the line reads as a placeholder on both pages; everything else is still held to r56.2. */
-  const EMPTY_LINE = /"No sessions yet\.( Start one on Today, or log one you did without the app with Log a past workout\.)?"/;
-  const heldOutR73 = shot => ({ ...shot, tree: shot.tree.map(t => t.replace(EMPTY_LINE, '(no sessions)')), text: shot.text.replace(/\nNo sessions yet\.( Start one on Today, or log one you did without the app with Log a past workout\.)?(?=\n)/, '\n(no sessions)') });
-  /* 2.30 names the change Settings' Undo button takes back, and rewrites its tip, on purpose (RC-4, NEW-73: before,
-     "Undo last delete or reset (N available)" and a tip saying edits cannot be undone, which was wrong), held by
-     tests/r76.js section 1: the button reads as a placeholder on both pages; everything else is still held to r56.2. */
-  const UNDO_BTN = /(<button class="btn" data-act="undo"[^>]*?) data-tip="[^"]*"([^>]*>)"[^"]*"/;
-  const heldOutR76 = shot => ({ ...shot, tree: shot.tree.map(t => t.replace(UNDO_BTN, '$1$2(Undo)')), text: shot.text.replace(/\n(Undo last delete or reset( \(\d+ available\))?|Nothing to undo|Undo: [^\n]*|Undo the last change)(?=\n)/, '\n(Undo)') });
-  /* 2.33 marks each History row's counted PRs in gold on purpose ("4 PRs smashed", V 2026-11-07, ST-4), and each
-     lift that had one in an opened session, held by tests/r79.js section 4 and tests/coherence.js 1b: the marks are
-     taken out of this build's page; everything else is still held to r56.2. */
-  // The page is read with its class names sorted, and the tag's text may come as more than one text node.
-  const PR_TAG = /(?:" ")?<span class="(?:tag gold|gold tag)">(?:"[^"<]*")+<\/span>/g, PR_CUP = /(?:" ")?<span [^>]*class="prb"[^>]*>.*?<\/span>/g;
-  // An opened session marks each lift that had one too (its line's hpr class and a PR tag beside its name).
-  const heldOutR79 = shot => ({
-    ...shot,
-    tree: shot.tree.map(t => t.replace(PR_CUP, '').replace(PR_TAG, '').replace(/(<p class=")hpr ([^"]*")/g, '$1$2').replace(/(<p class="[^"]*) hpr(")/g, '$1$2')),
-    text: shot.text.replace(/ PR(?=:)/g, '')
-  });
-  /* 2.34 changes two parts of Settings on purpose, each held by tests/r80.js: General is split into Measurements and
-     Appearance (section 3, from an Android user via V), and Your gym takes another plate (section 2, NEW-76), so its
-     plates' tip says so and a field and Add plate sit under the chips. On both pages General (and Appearance) read as one
-     placeholder; on this build's page the plate field is taken out; every tip's words read as a placeholder (below);
-     everything else is still held to r56.2. */
-  const GYM_FIELD = /<div class="grid2" style="[^"]*"><label class="field">"Another plate \((lb|kg)\)"<input [^>]*><\/input><\/label><button [^>]*data-act="gymPlateAdd"[^>]*>"Add plate"<\/button><\/div>/;
-  const NEW_PLATE_TIP = 'A barbell is loaded with these plates, a pair at a time, so its suggested loads are ones they make. A plate-loaded machine steps by two of the smallest, one a side; a landmine by one. Tap a plate your gym does not have, or add one it has that is not here.';
-  const OLD_PLATE_TIP = 'A barbell or a plate-loaded machine steps by two of the smallest plate you have, one a side; a landmine by one. Tap a plate your gym does not have.';
-  // 2.34's wording pass (99, V 2026-11-08) rewrites tips on purpose, each held by the suite that reads it (r29c, r34,
-  // r41, r44, r58, r64a, r69): a tip's words read as a placeholder on both pages; the elements that carry them do not.
-  const TIP_ATTR = /data-tip="(?:[^"\\]|\\.)*"/g;
-  const heldOutR80 = shot => {
-    const tree = shot.tree.map(t => t.replace(GYM_FIELD, '').replace(NEW_PLATE_TIP, OLD_PLATE_TIP).replace(TIP_ATTR, 'data-tip="(tip)"'));
-    const gi = tree.findIndex(t => t.includes('data-mkey="general"'));
-    if (gi < 0) return { ...shot, tree };
-    const li = tree.findIndex(t => t.includes('data-mkey="look"'));
-    const last = li > gi ? li : gi;
-    const next = (tree[last + 1] || '').match(/<span class="sec-t">"([^"]*)"/);
-    const head = shot.text.indexOf('⠿\nGeneral\n') >= 0 ? '⠿\nGeneral\n' : '⠿\nMeasurements\n';
-    const from = shot.text.indexOf(head), to = next ? shot.text.indexOf('⠿\n' + next[1] + '\n', from) : -1;
-    const text = (from < 0 ? shot.text : shot.text.slice(0, from) + '(General)\n' + (to < 0 ? '' : shot.text.slice(to))).replace(/\nAnother plate \((lb|kg)\)\nAdd plate(?=\n)/, '');
-    return { ...shot, tree: tree.flatMap((t, j) => (j === gi ? ['(General)'] : j === li ? [] : [t])), text };
-  };
-  /* 2.37 offers the change plates as buttons in Your gym, off until tapped (NEW-87, held by tests/r83.js section 2):
-     on this build's page each such button of the gym's unit, not pressed, is taken out, with its label in the text;
-     everything else is still held to r56.2. */
-  const CHANGE = { kg: ['2', '1.5', '1', '0.5'], lb: ['1.25'] };
-  const chipRe = vs => new RegExp(`<button aria-pressed="false" class="chip" data-act="gymPlate" data-v="(?:${vs.map(v => v.replace('.', '\\.')).join('|')})">"(?:${vs.map(v => v.replace('.', '\\.')).join('|')})"<\\/button>`, 'g');
-  const heldOutR83 = shot => {
-    const m = shot.text.match(/Plates on hand \((kg|lb)\)\n/) || shot.tree.join('').match(/Plates on hand \((kg|lb)\)/);
-    if (!m) return shot;
-    const re = chipRe(CHANGE[m[1]]);
-    const tree = shot.tree.map(t => t.replace(re, ''));
-    if (m.index == null || !shot.text.includes(m[0])) return { ...shot, tree };
-    // The chips' labels are the lines of numbers right after the label; the first line that is not one ends them.
-    const from = m.index + m[0].length, rest = shot.text.slice(from).split('\n');
-    const k = rest.findIndex(l => !/^\d+(\.\d+)?$/.test(l));
-    const chips = rest.slice(0, k < 0 ? rest.length : k).filter(l => !CHANGE[m[1]].includes(l));
-    return { ...shot, tree, text: shot.text.slice(0, from) + [...chips, ...rest.slice(k < 0 ? rest.length : k)].join('\n') };
-  };
   const ENVS = [null, 'preview'];
   for (const [name, seed] of SEEDS) for (const tab of ['settings', 'history']) for (const env of ENVS) {
     if (env && name !== 'demo data, lb') continue;
-    const sd = seed.replace(/L\.makeDemo\(\);/g, PIN + 'L.makeDemo();');
-    const a = heldOutR80(heldOutR76(heldOutR73(heldOutSched(heldOutR69(heldOut(await shot(OLD, sd, tab, env))))))), b = heldOutR83(heldOutR80(heldOutR79(heldOutR76(heldOutR73(heldOutSched(heldOutR70(heldOutR69(heldOutR66(heldOutAccents(heldOut(await shot(FILE, sd, tab, env))))))))))));
-    const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
-    const firstDiff = d && { at: d.at, r56_2: d.before, now: d.now };
-    ok(!firstDiff, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same elements, attributes and field values as r56.2`, firstDiff);
-    ok(a.text === b.text, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same visible text as r56.2`, a.text === b.text ? '' : { r56_2: a.text.slice(0, 400), now: b.text.slice(0, 400) });
-    ok(!b.errors.length, `4. ${tab}, ${name}${env ? ', the preview' : ''}: no page errors`, b.errors);
+    const b = await screenOf(FILE, { browser, seed, tab, env, spaces: true });
+    const leaks = screenLeaks(b);
+    ok(!b.errors.length && b.tree.length > 0 && !leaks.length, `4. ${tab}, ${name}${env ? ', the preview' : ''}: drawn, with no page error and no undefined, NaN or [object Object] on screen`, { errors: b.errors, leaks });
+  }
+  // What the screens say is what the log holds: Settings' fields read the log's values, and History lists its sessions newest first.
+  {
+    const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const r = await Q.page.evaluate(seed => {
+      const L = window.__ironlog; new Function('L', seed)(L); L.ui.tab = 'settings'; L.render();
+      const val = b => { const e = document.querySelector(`#view [data-bind="${b}"]`); return e ? e.value : null; };
+      const set = { timeBudget: val('timeBudget'), barKg: val('barKg') };
+      L.ui.tab = 'history'; L.ui.histOpen = null; L.render();
+      const shown = [...document.querySelectorAll('#view [data-act="histToggle"]')].map(e => e.dataset.id);
+      const want = [...L.state.sessions].sort((a, b) => (a.date === b.date ? (b.t || 0) - (a.t || 0) : a.date < b.date ? 1 : -1)).map(x => x.id);
+      return { set, shown, want, unit: L.state.settings.unit };
+    }, SEEDS[2][1]);
+    await Q.ctx.close();
+    ok(r.set.timeBudget === '75' && r.set.barKg === '15' && r.unit === 'kg', '4. Settings shows the log\'s values: a 75 min time budget and a 15 kg bar', r.set);
+    ok(r.shown.length >= 5 && r.shown.every((id, k) => id === r.want[k]), `4. History lists the log's sessions newest first (${r.shown.length} shown of ${r.want.length})`, { shown: r.shown.slice(0, 6), want: r.want.slice(0, 6) });
   }
   }
 

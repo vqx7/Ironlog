@@ -1,18 +1,14 @@
 // r62: the sheets and the exercise picker moved into typed modules (PENDING
 // 355; ARCHITECTURE.md, What is left). Run on r61 (`node tests/r62.js
 // baselines/r61.html`, R62_ONLY=n for one section):
-//   1  (a guard, pinned since r64 to the build it proved, baselines/r62.html) every sheet, opened as the app opens it,
-//      in the states a lifter meets it in, has the same elements,
-//      attributes, field values and visible text as r61's
-//      (baselines/r61.html), in light and dark, pounds and kilograms.
-//   2  (a guard, pinned since r64 to baselines/r62.html) Pick for me, Swap's closest matches,
-//      Limited equipment and Short on time, moved from the legacy script
-//      into src/app/pick.ts as functions of the model, give r61's answers
-//      on N wide histories (R62_N, 1,000 by default): the cycle, a day's
-//      sets, each muscle's week and recovery, the days ranked and why, the
-//      session's sets, the exercises ranked to add, the swaps, a day under
-//      three sets of equipment, the trim to four budgets, and the Pick for
-//      me sheets' words, call for call.
+//   1  (a guard) every sheet, opened as the app opens it, in the states a lifter meets it in, light and dark, pounds
+//      and kilograms, drawn with no page error and nothing undefined, NaN or [object Object] on screen (CL-3, 2.40;
+//      until then r61 and r62 compared, docs/ARCHIVE.md).
+//   2  (a guard) Pick for me, Swap's closest matches, Limited equipment and Short on time on N wide histories
+//      (R62_N, 1,000 by default): the cycle, a day's sets, each muscle's week and recovery, the days ranked and why,
+//      the session's sets, the exercises ranked to add, the swaps, a day under three sets of equipment, the trim to
+//      four budgets and the Pick for me sheets: every call answers with no crash, no sheet shows undefined or NaN,
+//      and the page logs no error (CL-3, 2.40; until then r61 and r62 compared call for call).
 //   3  a ticked set's load cleared (V on r61's preview, 2026-10-26: set 2
 //      ticked on its grey 225, its load then cleared, stayed ticked with no
 //      weight, and the recap read it as 0 x 8): the set is unticked, as a
@@ -20,23 +16,16 @@
 //      the grey load; Finish saves 225 x 8 on every set and the recap has
 //      no 0. A bodyweight lift's added load cleared keeps its tick (its load
 //      may be none). Fails on r61.
-const { engine, screenOf, screenDiff, open } = require('./h');
+const { engine, screenOf, screenLeaks, open } = require('./h');
 const { wide, specOf } = require('./wide');
 const FILE = process.argv[2] || 'index.html';
-const OLD = 'baselines/r61.html';
-/* Sections 1 and 2 are pinned to the build they proved, r62 (baselines/r62.html), as CLAUDE.md's rule for the comparisons
-   of old builds says: r64 changes on purpose the Guide's sentences on the next sets, a break and a load far off (the r63
-   audit's R-4, R-5 and P-S2-3), which section 1 opens, and which lifts read as stalled (P-S2-2: none across a break; R-1:
-   missed sets count as a session's sets), which Pick for me and the swaps rank by: 22 of the 1,000 histories of section 2
-   differ, every one with a lift's stall reading changed. tests/r64a.js holds r64's changes. */
-const PROVED = 'baselines/r62.html';
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
 const ONLY = process.env.R62_ONLY ? process.env.R62_ONLY.split(',') : null;
 const run = n => !ONLY || ONLY.includes(String(n));
 const N = +process.env.R62_N || 1000;
 
-// The starter routine's ids are made at random, so both builds are given the same ones (as tests/r60.js does).
+// The starter routine's ids are made at random, so they are fixed: a failure names the same routine on every run.
 const FIX = "const m={};L.state.routines.forEach((r,i)=>{m[r.id]='R'+i;r.id='R'+i;});L.state.activeRoutineId=m[L.state.activeRoutineId]||L.state.activeRoutineId;L.state.sessions.forEach(s=>{if(m[s.routineId])s.routineId=m[s.routineId];});L.saveNow();";
 const DEMO = 'L.state.settings.onboarded=true;L.makeDemo();' + FIX;
 const KG = "L.state.settings.unit='kg';L.saveNow();";
@@ -141,27 +130,24 @@ const SHEETS = [
 (async () => {
   const browser = await engine.launch();
 
-  // ---- 1. Every sheet against r61's (both pages built from src/).
-  // The page's own address shows in a sheet (Install, the app icon): each build's file, read as one.
-  const page = t => t.replace(/Open \S+ in Safari/g, 'Open PAGE in Safari');
-  const flat = s => ({ ...s, tree: s.tree.map(page), text: page(s.text).replace(/\s+/g, ' ') });
-  const textDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return { at: i, r61: a.slice(Math.max(0, i - 80), i + 160), now: b.slice(Math.max(0, i - 80), i + 160) }; };
+  // ---- 1. Every sheet, opened as the app opens it, drawn on this build with no page error and nothing
+  // undefined, NaN or [object Object] on screen (CL-3, 2.40). Until 2.40 this section compared r61 and r62 as published, so it read
+  // no code of the build under test (docs/ARCHIVE.md).
   if (!run(1));
-  else if (process.env.IRONLOG_FILE) console.log('note r62 section 1 compares source pages; it runs on the source build');
+  else if (process.env.IRONLOG_FILE) console.log('note r62 section 1 reads the source build');
   else for (const [name, seed, prep, want] of SHEETS) {
-    const o = { browser, seed, tab: 'today', prep, root: 'modal', spaces: true };
-    const a = flat(await screenOf(OLD, o)), b0 = await screenOf(PROVED, o), b = flat(b0);
-    const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
-    ok(!d, `1. ${name}: the same elements, attributes and field values as r61`, d && { at: d.at, r61: d.before, now: d.now });
-    ok(a.text === b.text, `1. ${name}: the same visible text as r61`, a.text === b.text ? '' : textDiff(a.text, b.text));
-    ok(!b0.errors.length, `1. ${name}: no page errors`, b0.errors);
-    // The case is the sheet it names (a prep that missed it would compare two empty sheets).
+    const b = await screenOf(FILE, { browser, seed, tab: 'today', prep, root: 'modal', spaces: true });
+    const leaks = screenLeaks(b);
+    ok(!b.errors.length && !leaks.length, `1. ${name}: drawn, with no page error and no undefined, NaN or [object Object] on screen`, { errors: b.errors, leaks });
+    // The case is the sheet it names (a prep that missed it would read an empty sheet).
     ok(want.test(b.text), `1. ${name}: the sheet is open and in that state`, b.text.slice(0, 160));
-    // and of a lift in the log (an id not in it reads as a deleted exercise in both builds alike).
+    // and of a lift in the log (an id not in it reads as a deleted exercise).
     ok(!/Deleted exercise/.test(b.text), `1. ${name}: of a lift in the log`, b.text.slice(0, 160));
   }
 
-  // ---- 2. The ranking and the trim, moved into pick.ts, against r61's, call for call.
+  // ---- 2. Pick for me, the swaps, Limited equipment and Short on time on the wide histories, on this build: every call
+  // answers without a crash, its sheet shows nothing undefined or NaN, and the page logs no error (CL-3, 2.40). Until 2.40
+  // this section compared r61 and r62 as published, call for call, so it read no code of the build under test.
   if (run(2) && !process.env.IRONLOG_FILE) {
     const digest = spec => {
       const L = window.__ironlog;
@@ -213,24 +199,22 @@ const SHEETS = [
     };
     const T0 = new Date('2026-10-11T12:00:00');
     const setup = async (ctx, page) => { await page.clock.setFixedTime(T0); };
-    const A = await open(OLD, { browser, setup });
-    const B = await open(PROVED, { browser, setup });
+    const B = await open(FILE, { browser, setup });
     const LIB = await B.page.evaluate(() => window.__ironlog.libExercises());
-    let same = 0, first = null, calls = 0;
+    let calls = 0; const crashed = [], leaked = [];
     const t0 = Date.now();
     for (let i = 0; i < N; i++) {
       const h = wide(62000 + i, LIB);
-      const when = new Date(h.today + 'T12:00:00');
-      await Promise.all([A.page.clock.setFixedTime(when), B.page.clock.setFixedTime(when)]);
-      const spec = specOf(h);
-      const [a, b] = await Promise.all([A.page.evaluate(digest, spec), B.page.evaluate(digest, spec)]);
-      calls += b.split('\n').length;
-      if (a === b) same++;
-      else if (!first) { const la = a.split('\n'), lb = b.split('\n'); let k = 0; while (k < la.length && la[k] === lb[k]) k++; first = { seed: 62000 + i, line: k, r61: (la[k] || '').slice(0, 900), now: (lb[k] || '').slice(0, 900) }; }
+      await B.page.clock.setFixedTime(new Date(h.today + 'T12:00:00'));
+      const lines = (await B.page.evaluate(digest, specOf(h))).split('\n');
+      calls += lines.length;
+      // A refusal is an answer; a TypeError or a ReferenceError is a crash in the code.
+      for (const l of lines) if (/"ERR (TypeError|ReferenceError|RangeError)/.test(l) && crashed.length < 5) crashed.push({ seed: 62000 + i, l: l.slice(0, 400) });
+      for (const l of lines) if (/sheet\t/.test(l) && /\bundefined\b|\bNaN\b|\[object Object\]/.test(l) && leaked.length < 5) leaked.push({ seed: 62000 + i, l: l.slice(0, 400) });
     }
-    ok(same === N, `2. Pick for me, the swaps, Limited equipment and Short on time give r61's answers on all ${N} wide histories (${same} identical, ${calls} calls and sheets, ${Math.round((Date.now() - t0) / 1000)} s)`, first);
-    ok(!A.errors.length && !B.errors.length, '2. no page errors', { r61: A.errors.slice(0, 3), now: B.errors.slice(0, 3) });
-    await A.ctx.close(); await B.ctx.close();
+    ok(!crashed.length && !leaked.length, `2. Pick for me, the swaps, Limited equipment and Short on time answer every call on all ${N} wide histories with no crash and nothing undefined or NaN in a sheet (${calls} calls and sheets, ${Math.round((Date.now() - t0) / 1000)} s)`, { crashed, leaked });
+    ok(!B.errors.length, '2. no page errors', B.errors.slice(0, 3));
+    await B.ctx.close();
   }
 
   // ---- 3. A ticked set's load cleared is unticked (V on r61's preview, 2026-10-26).

@@ -4,12 +4,8 @@
 // four decisions of V's (339 e, h, i and the PR notions). Run on r57 (`node
 // tests/r58.js baselines/r57.html`, R58_ONLY=n for one section), sections 3
 // (Stats) and 5 to 9 fail there; the rest are guards that pass on both builds:
-//   1  (a guard, the source build) they look as they did: Plan, the library
-//      and Stats in 36 logs, settings and modes, every section open, give the
-//      same elements, attributes, field values and visible text as r57
-//      (baselines/r57.html), but for the changes below held on purpose (the
-//      muscles with a target on r57 given one, r57's e1RM read as Best
-//      estimate);
+//   1  (a guard) Plan, the library and Stats in 36 logs, settings and modes, every section open, drawn with no
+//      page error and nothing undefined, NaN or [object Object] on screen (CL-3, 2.40; until then compared with r57);
 //   2  (a guard: r57 placed these steps by hand) every Plan action and field
 //      that changes the log does act's steps, read on the page after a tap or
 //      a typed value (changed, saved, the caches dropped, the edit noted for
@@ -39,20 +35,15 @@
 //      a focus), which then counts on Stats, Plan and the map; Weekly set
 //      targets offers Set a target and Track only; Default targets takes them
 //      off, with Undo.
-const { open, engine, screenOf, screenDiff, touchDriver } = require('./h');
+const { open, engine, screenOf, screenLeaks, touchDriver } = require('./h');
 const FILE = process.argv[2] || 'index.html';
-const OLD = 'baselines/r57.html';
-/* Section 1 is pinned to the build it proved, r58 (baselines/r58.html), as CLAUDE.md's rule for the comparisons of old builds
-   says: r66 renames a lift in the library on purpose (PENDING 377: Reverse Pec Deck is Reverse Pec Deck (Rear Delt Fly), so
-   it is found by both names), and the library is one of the screens section 1 draws. tests/r66b.js holds r66's changes. */
-const PROVED = 'baselines/r58.html';
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 700) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 // R58_ONLY=5,6 runs those sections alone (to show a case failing on r57 without the rest).
 const ONLY = process.env.R58_ONLY ? process.env.R58_ONLY.split(',') : null;
 const run = n => !ONLY || ONLY.includes(String(n));
 
-// The starter routine's ids are made at random, so both builds are given the same ones.
+// The starter routine's ids are made at random, so they are fixed: a failure names the same routine on every run.
 const FIX = "const m={};L.state.routines.forEach((r,i)=>{m[r.id]='R'+i;r.id='R'+i;});L.state.activeRoutineId=m[L.state.activeRoutineId]||L.state.activeRoutineId;L.state.sessions.forEach(s=>{if(m[s.routineId])s.routineId=m[s.routineId];});L.saveNow();";
 const DEMO = 'L.state.settings.onboarded=true;L.makeDemo();';
 const ACTIVE = 'const R=L.state.routines.find(r=>r.id===L.state.activeRoutineId);';
@@ -104,39 +95,15 @@ const SCREENS = [
 (async () => {
   const browser = await engine.launch();
 
-  // ---- 1. The screens against r57's (both pages built from src/; the standalone build is left to the source run, as r57's section 4 is).
-  /* The release's changes on purpose are held here, so the comparison reads the move alone: every
-     muscle that has a target on r57 is given one (KEEP, 339 e: the field is unknown to r57), a muscle
-     tracked only says how to give it a target, and r57's "e1RM" reads as section 6 says (339 i). The
-     rest of a difference fails. */
-  const KEEP = "L.state.settings.ownTargets=['traps','lowerBack','frontDelts','forearms','obliques','adductors','abductors'];L.saveNow();";
-  const TIP = 'Your best estimated one-rep max (e1RM): the most that one of your sets says you could lift for a single rep, worked out from its load, its reps, and its RIR. An estimate, not a tested max.';
-  const asNow = shot => ({
-    ...shot,
-    tree: shot.tree.map(t => t.replace(/Tracked only: no study sets a weekly dose for it\./g, 'Tracked only: counted, with no target. Give it one in Settings, Weekly set targets.').replace(/<div class="l">"Best e1RM \(([^)]*)\)"<\/div>/g, (_, u) => `<div class="l">"Best estimate (${u})"<button aria-label="About the best estimate" class="tipi" data-tip=${JSON.stringify(TIP)} type="button">"i"</button></div>`).replace(/<th class="r">"e1RM"<\/th>/g, '<th class="r">"Best estimate"</th>')),
-    // A table's heading is in capitals on screen (its style), so its words are too.
-    text: tipless(shot.text.replace(/Best e1RM \(([^)]*)\)/g, 'Best estimate ($1)').replace(/\bE1RM\b/g, 'BEST ESTIMATE').replace(/\be1RM\b/g, 'Best estimate'))
-  });
-  /* The visible text is read with its spaces and line breaks left out, on both pages, and the tile's new tip
-     button (held in the elements above) with them: the words of every text node are held by the elements (each
-     run trimmed, so not a space at its ends: tests/r59.js reads those), and how text reads at a line wrap
-     differs by engine. WebKit's CI run (2026-10-25) read "Oct 23PR" where a date
-     and its PR tag wrap in Lifts' table, whose first column the longer "Best estimate" heading narrows
-     (98 to 88 px at 390 wide), and where r57's fit on one line. */
-  /* The spaces drawn between elements are read too (screenOf's spaces, since r59), but for the one r58 adds on
-     purpose: before the tile's new tip button, after "Best estimate (lb)". */
-  function tipSpace(t) { return t.replace(/("Best estimate \([a-z]+\)) "(<button aria-label="About the best estimate")/g, '$1"$2'); }
-  function tipless(t) { return t.replace(/(Best estimate \([^)]*\))\s*i(?![\w])/g, '$1').replace(/\s+/g, ''); }
-  // Where two texts first differ, with some of each around it.
-  const textDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return { at: i, r57: a.slice(Math.max(0, i - 80), i + 160), now: b.slice(Math.max(0, i - 80), i + 160) }; };
+  // ---- 1. Plan, the library and Stats in each of these states, drawn on this build with no page error and nothing
+  // undefined, NaN or [object Object] on screen (CL-3, 2.40). Until 2.40 this section held each screen to r57's,
+  // pinned since r66 to r57 and r58 as published, so it read no code of the build under test (docs/ARCHIVE.md).
   if (!run(1));
-  else if (process.env.IRONLOG_FILE) console.log('note r58 section 1 compares source pages; it runs on the source build');
+  else if (process.env.IRONLOG_FILE) console.log('note r58 section 1 reads the source build');
   else for (const [tab, name, seed, prep, env] of SCREENS) {
-    const a = asNow(await screenOf(OLD, { browser, seed: seed + FIX + KEEP, tab, prep, env, spaces: true })), b1 = await screenOf(PROVED, { browser, seed: seed + FIX + KEEP, tab, prep, env, spaces: true }), b0 = { ...b1, tree: b1.tree.map(tipSpace) }, b = { ...b0, text: tipless(b0.text) };
-    const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
-    ok(!d, `1. ${name}: the same elements, attributes and field values as r57`, d && { at: d.at, r57: d.before, now: d.now });
-    ok(a.text === b.text, `1. ${name}: the same visible text as r57`, a.text === b.text ? '' : textDiff(a.text, b.text));
-    ok(!b.errors.length, `1. ${name}: no page errors`, b.errors);
+    const b = await screenOf(FILE, { browser, seed: seed + FIX, tab, prep, env, spaces: true });
+    const leaks = screenLeaks(b);
+    ok(!b.errors.length && b.tree.length > 0 && !leaks.length, `1. ${name}: drawn, with no page error and no undefined, NaN or [object Object] on screen`, { errors: b.errors, leaks });
   }
 
   // Plan with a day of three or more exercises open, and Add exercises aimed at it (sections 2 and 4).

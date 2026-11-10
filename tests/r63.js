@@ -1,27 +1,14 @@
 // r63: the actions, the events, import and the account flow moved into typed
 // modules and the legacy script deleted (PENDING 358). Run on r62 (`node
 // tests/r63.js baselines/r62.html`, R63_ONLY=n for one section):
-//   1  (a guard, pinned since r64 to baselines/r63.html) every sheet and part of the page r63
-//      moves (the menu, the account sheet in each of its pages, a problem
-//      report and its inbox, import, the Guide, the toast, the rest timer's
-//      bar, the menu button and the crash screen), opened as the app opens
-//      it, in the states a lifter meets it in, has the same elements,
-//      attributes, field values and visible text as r62's
-//      (baselines/r62.html).
-//   2  (a guard, the source build) the import reader, the backup check and
-//      the demo, moved from the legacy script into src/app/ (importing.ts,
-//      importflow.ts, demo.ts, worksets.ts), give r62's answers call for
-//      call on R63_N generated notes and tables (300 by default), with the
-//      same random numbers and the same clock in both pages, so even the
-//      ids they make are the same: notes read (impFromText), names matched
-//      (impMatch), typed sets read (parseSets, every unit, RPE and kind of
-//      lift), a notes exercise's sets read as each kind of lift
-//      (impTextSets), each preview built in both units (impBuild), the
-//      import confirmed on a first run (the routine made from it, the
-//      targets fitted), a backup restored, and the demo made from every
-//      ready-made routine (made only since r64: the loop read the list's
-//      indexes until then). Notes naming both kg and lb read their unit as
-//      one (r64, F2, held by tests/r64.js section 10).
+//   1  (a guard) every sheet and part of the page r63 moved (the menu, the account sheet in each of its pages, a
+//      problem report and its inbox, import, the Guide, the toast, the rest timer, the menu button and the crash
+//      screen), opened as the app opens it in the states a lifter meets it in, drawn with no page error and nothing
+//      undefined, NaN or [object Object] on screen (CL-3, 2.40; until then r62 and r63 compared, docs/ARCHIVE.md).
+//   2  (a guard) the import reader, the backup check and the demo on generated notes, tables and typed sets
+//      (impMatch, parseSets in every unit and kind of lift, impFromText, impTextSets, impBuild in both units, the
+//      import confirmed on a first run, a backup restored, the demo from every ready-made routine): every call
+//      answers without a crash and the page logs no error (CL-3, 2.40; until then r62 and r63 compared call for call).
 //   3  the time limits and the report's key (PENDING 306 and 309), each
 //      failing on r62: a problem report whose send never answers leaves
 //      Sending after the sync's limit (20 s) with words that say so, its
@@ -30,31 +17,23 @@
 //      new code each leave their busy state the same way, with the fields as
 //      typed; a check of the wait for the email that never answers ends, and
 //      the wait goes on.
-//   4  (a guard, the source build) the start in typed modules (main.ts,
-//      events.ts, screens.ts) does what r62's legacy start did, in its order:
-//      every listener and interval the page adds as it opens, on the same
-//      target, type and phase, one for one; window.__ironlog with r62's names
-//      in r62's order, each the same kind of value; every action r62 had by
-//      data-act; and no page errors.
+//   4  (a guard) drawing every tab round after round leaves the page (window and document) with the same
+//      listeners, none piling up, and every action the source names by data-act is in the table (CL-3, 2.40; until
+//      then the start was compared with r62's, with every later listener, name and action listed by hand).
 //   5  (the independent review) a phone whose sync stands offline that comes
 //      back online pulls the account at once, so a session another phone
 //      sent meanwhile comes in, as r62's did (r63's move had it only send
 //      this phone's; fails on the build before the fix, passes on r62).
-const { engine, screenOf, screenDiff, open } = require('./h');
+const { engine, screenOf, screenLeaks, open } = require('./h');
 const cfg = require('../scripts/config');
 const FILE = process.argv[2] || 'index.html';
-const OLD = 'baselines/r62.html';
-/* Section 1 is pinned to the build it proved, r63 (baselines/r63.html), as CLAUDE.md's rule for the comparisons of old
-   builds says: r64 changes on purpose the Guide's sentences on the next sets, a break and a load far off (the r63 audit's
-   R-4, R-5 and P-S2-3), and the Guide is one of the sheets section 1 opens. tests/r64a.js holds r64's changes. */
-const PROVED = 'baselines/r63.html';
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
 const ONLY = process.env.R63_ONLY ? process.env.R63_ONLY.split(',') : null;
 const run = n => !ONLY || ONLY.includes(String(n));
 const N = +process.env.R63_N || 300;
 
-// The starter routine's ids are made at random, so both builds are given the same ones (as tests/r62.js does).
+// The starter routine's ids are made at random, so they are fixed: a failure names the same routine on every run.
 const FIX = "const m={};L.state.routines.forEach((r,i)=>{m[r.id]='R'+i;r.id='R'+i;});L.state.activeRoutineId=m[L.state.activeRoutineId]||L.state.activeRoutineId;L.state.sessions.forEach(s=>{if(m[s.routineId])s.routineId=m[s.routineId];});L.saveNow();";
 const DEMO = 'L.state.settings.onboarded=true;L.makeDemo();' + FIX;
 const KG = "L.state.settings.unit='kg';L.saveNow();";
@@ -122,7 +101,7 @@ const CASES = [
   ['a toast', '', DEMO, "L.toast('Saved <it> & more');", /Saved <it> & more/, 'toast'],
   ['a toast with Undo', '', DEMO, "L.toast('Set removed',true);", /Undo/, 'toast'],
   ['the rest timer', '', DEMO, "L.ui.tab='today';L.render();L.ACT.startSession({dataset:{day:String(L.state.routines.find(r=>r.id===L.state.activeRoutineId).days.findIndex(x=>!x.rest&&x.items.length))}});L.timer.end=Date.now()+90500;L.timer.total=90;document.getElementById('timer').hidden=false;L.ACT.tAdd();", /Rest/, 'timer'],
-  ['the rest timer, compact', '', DEMO + 'L.state.settings.timerCompact=true;L.saveNow();', "L.ui.tab='today';L.render();L.ACT.startSession({dataset:{day:String(L.state.routines.find(r=>r.id===L.state.activeRoutineId).days.findIndex(x=>!x.rest&&x.items.length))}});L.timer.end=Date.now()+60500;L.timer.total=60;document.getElementById('timer').hidden=false;L.ACT.tAdd();", /M:SS/, 'timer'],
+  ['the rest timer, compact', '', DEMO + 'L.state.settings.timerCompact=true;L.saveNow();', "L.ui.tab='today';L.render();L.ACT.startSession({dataset:{day:String(L.state.routines.find(r=>r.id===L.state.activeRoutineId).days.findIndex(x=>!x.rest&&x.items.length))}});L.timer.end=Date.now()+60500;L.timer.total=60;document.getElementById('timer').hidden=false;L.ACT.tAdd();", /\b\d:\d\d\b/, 'timer'],
   ['the menu button', '', DEMO, 'L.render();', /Saved on this device/, 'saveState'],
   // The backup text holds the log's random ids, so it is read as a backup of this app and then emptied in both builds.
   ['the crash screen', '', DEMO, "L.state.draft={ex:null};L.ui.tab='today';L.render();{const t=document.querySelector('#view textarea');const ok=JSON.parse(t.value).app==='ironlog';t.value='';t.textContent=ok?'a backup of this log':'not a backup';}", /something broke on this screen[\s\S]*a backup of this log/i, 'view']
@@ -131,26 +110,22 @@ const CASES = [
 (async () => {
   const browser = await engine.launch();
 
-  // ---- 1. Every moved sheet and part against r62's (both pages built from src/).
-  const textDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return { at: i, r62: a.slice(Math.max(0, i - 80), i + 160), now: b.slice(Math.max(0, i - 80), i + 160) }; };
-  // The rest timer's seconds tick between the two pages' reads.
-  // A new exercise's id is made at random, as is the time a backup is written, and the build's own name differs by design.
-  const steady = t => t.replace(/\b\d:\d\d\b/g, 'M:SS').replace(/--tp: [\d.]+/g, '--tp: N').replace(/\bc_[a-z0-9]{6,}/g, 'c_ID').replace(/\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+Z/g, 'TIME').replace(/\d{4}\.\d\d\.\d\d-r[\d.]+/g, 'BUILD');
-  const flat = s => ({ ...s, tree: s.tree.map(steady), text: steady(s.text).replace(/\s+/g, ' ') });
+  // ---- 1. Every sheet and part of the page r63 moved, drawn on this build with no page error and nothing
+  // undefined, NaN or [object Object] on screen (CL-3, 2.40). Until 2.40 this section compared r62 and r63 as published, so it read
+  // no code of the build under test (docs/ARCHIVE.md).
   if (!run(1));
-  else if (process.env.IRONLOG_FILE) console.log('note r63 section 1 compares source pages; it runs on the source build');
+  else if (process.env.IRONLOG_FILE) console.log('note r63 section 1 reads the source build');
   else for (const [name, init, seed, prep, want, root] of CASES.filter(c => !process.env.R63_CASE || c[0].includes(process.env.R63_CASE))) {
-    const o = { browser, seed, tab: 'today', prep, root: root || 'modal', spaces: true, init: init || undefined };
-    const a = flat(await screenOf(OLD, o)), b0 = await screenOf(PROVED, o), b = flat(b0);
-    const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
-    ok(!d, `1. ${name}: the same elements, attributes and field values as r62`, d && { at: d.at, r62: d.before, now: d.now });
-    ok(a.text === b.text, `1. ${name}: the same visible text as r62`, a.text === b.text ? '' : textDiff(a.text, b.text));
-    ok(!b0.errors.length, `1. ${name}: no page errors`, b0.errors);
-    // The case is the part it names (a prep that missed it would compare two empty sheets).
+    const b = await screenOf(FILE, { browser, seed, tab: 'today', prep, root: root || 'modal', spaces: true, init: init || undefined });
+    const leaks = screenLeaks(b);
+    ok(!b.errors.length && !leaks.length, `1. ${name}: drawn, with no page error and no undefined, NaN or [object Object] on screen`, { errors: b.errors, leaks });
+    // The case is the part it names (a prep that missed it would read an empty sheet).
     ok(want.test(b.text) || want.test(b.tree.join('')), `1. ${name}: shown, in that state`, b.text.slice(0, 200));
   }
 
-  // ---- 2. Import, the backup check and the demo against r62's, call for call.
+  // ---- 2. Import, the backup check and the demo on generated notes, tables and typed sets, on this build: every call
+  // answers without a crash and the page logs no error (CL-3, 2.40). Until 2.40 this section compared r62 and r63 as
+  // published, call for call, so it read no code of the build under test (docs/ARCHIVE.md).
   if (run(2) && !process.env.IRONLOG_FILE) {
     // A small seeded generator, so a failure is the same input on every run.
     const rng = seed => { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; };
@@ -232,19 +207,14 @@ const CASES = [
     const G = { texts: [], tables: [] };
     for (let i = 0; i < N; i++) G.texts.push(note(r));
     for (let i = 0; i < Math.ceil(N / 3); i++) G.tables.push(table(r));
-    const both = [];
-    // Pinned since r66 to the build it proved (r63): r66 renames a lift in the library on purpose (PENDING 377), and the log's exercises are among these answers.
-    for (const file of [OLD, PROVED]) {
-      const Q = await open(file, { browser });
-      await Q.page.clock.setFixedTime(new Date('2026-10-24T10:00:00'));
-      both.push({ out: await digest(Q, 6300), errors: Q.errors.slice() });
-      await Q.ctx.close();
-    }
-    const [a, b] = both.map(x => x.out);
-    let first = -1; for (let i = 0; i < Math.max(a.length, b.length); i++) if (a[i] !== b[i]) { first = i; break; }
-    const where = i => ({ at: i, r62: (a[i] || '').slice(0, 900), now: (b[i] || '').slice(0, 900) });
-    ok(a.length > 1000 && first < 0, `2. import, the backup check and the demo: ${b.length} answers the same as r62's (${a.length})`, first < 0 ? '' : where(first));
-    ok(!both[1].errors.length, '2. no page errors', both[1].errors.slice(0, 5));
+    const Q = await open(FILE, { browser });
+    await Q.page.clock.setFixedTime(new Date('2026-10-24T10:00:00'));
+    const out = await digest(Q, 6300), errors = Q.errors.slice();
+    await Q.ctx.close();
+    // A call that threw is recorded as its message; a TypeError or ReferenceError is a crash in the code, not an input refused.
+    const crashed = out.filter(l => /\t\{"threw":"[^"]*(is not a function|of undefined|of null|is not defined|is not iterable|Cannot read|Cannot set)/.test(l));
+    ok(out.length > 1000 && !crashed.length, `2. import, the backup check and the demo: ${out.length} answers, none a crash`, crashed.slice(0, 5));
+    ok(!errors.length, '2. no page errors', errors.slice(0, 5));
   }
 
   // ---- 3. The time limits and the report's key (fail on r62).
@@ -334,56 +304,33 @@ const CASES = [
     }
   }
 
-  // ---- 4. The start against r62's: the listeners in their order, the suites' hook and the actions.
+  // ---- 4. The start and the draws, held to their own rules (CL-3, 2.40; until 2.40 the start was compared with r62's, with
+  // every listener, hook name and action added since listed by hand, docs/ARCHIVE.md): drawing every tab again and again
+  // leaves the page itself (window and document) with the same listeners, none piling up, and every button the source
+  // names by its data-act has an action in the one table (no dead button).
   if (run(4) && !process.env.IRONLOG_FILE) {
-    // Every listener and interval added while the page opens, in order: its target, type and phase, or the interval's period.
-    const SPY = `(()=>{const L=window.__adds=[];const at=t=>t===window?'window':t===document?'document':t&&t.nodeName?(t.nodeName+(t.id?'#'+t.id:'')):String(t);
-      const add=EventTarget.prototype.addEventListener;EventTarget.prototype.addEventListener=function(type,fn,o){L.push([at(this),type,!!(o===true||(o&&o.capture))].join(' '));return add.call(this,type,fn,o);};
-      const si=window.setInterval;window.setInterval=function(f,ms,...a){L.push('interval '+ms);return si.call(this,f,ms,...a);};})();`;
-    const seen = [];
-    for (const file of [OLD, FILE]) {
-      const Q = await open(file, { browser, setup: async ctx => { await ctx.addInitScript(SPY); } });
-      await Q.page.waitForTimeout(300);
-      seen.push(await Q.page.evaluate(() => {
-        const L = window.__ironlog;
-        return { adds: window.__adds.slice(), hook: Object.keys(Object.getOwnPropertyDescriptors(L)).map(k => { const d = Object.getOwnPropertyDescriptor(L, k); return k + ' ' + (d.get || d.set ? 'accessor' : typeof d.value); }), acts: Object.keys(L.ACT).sort() };
-      }));
-      seen[seen.length - 1].errors = Q.errors.slice();
-      await Q.ctx.close();
-    }
-    /* Chart.js checks once for passive listeners as its script loads ("window test", chart.umd.js), and that script
-       loads beside the app's start, so its place among the app's listeners depends on timing under load (NEW-27:
-       one place early once, on r65.2, in a full run). It is the library's, not the app's, so it is left out of both lists. */
-    for (const x of seen) x.adds = x.adds.filter(e => !/^window test /.test(e));
-    const [a, b] = seen;
-    const firstDiff = (x, y) => { for (let i = 0; i < Math.max(x.length, y.length); i++) if (x[i] !== y[i]) return { at: i, r62: x.slice(Math.max(0, i - 3), i + 4), now: y.slice(Math.max(0, i - 3), i + 4) }; return null; };
-    /* Listeners a later build adds, as one run in its place, each run listed here with the release that added it:
-       r66 reads the pictures another tab kept when that tab's change arrives or the page comes back to the front
-       (373, R66-3: events.ts, pageListeners). Taken out of this build's list where the run sits; the rest is r62's. */
-    const LATER_ADDS = [['window storage false', 'document visibilitychange false']];
-    // 2.34 notes an install from this browser (appinstalled, main.ts; L-2), one listener of its own, wherever it sits.
-    const LATER_ONE = ['window appinstalled false'];
-    const bAdds = b.adds.filter(x => !LATER_ONE.includes(x));
-    const runsFound = LATER_ADDS.map(run => {
-      const i = bAdds.findIndex((_, k) => run.every((x, j) => bAdds[k + j] === x) && k > 0 && bAdds[k - 1] === 'interval 30000');
-      if (i >= 0) bAdds.splice(i, run.length);
-      return i >= 0;
-    });
-    const da = firstDiff(a.adds, bAdds);
-    ok(a.adds.length > 20 && !da && runsFound.every(Boolean), `4. the page adds r62's ${a.adds.length} listeners and intervals, in r62's order, and after r62's 30-second interval the run later builds list (r66: another tab's pictures; 2.34: appinstalled)`, da || runsFound);
-    // Names a later build adds to the hook go after r62's, each listed here with the release that added it.
-    const LATER = ['templateBefore function', 'templateRest function', 'templateSigsBefore function', 'bandOf function', 'picsTidy function', 'risingWords function', 'setShortOf function', 'liftsMoving function', 'noBody function', 'sizeWhat function', 'sessLeftMin function', 'blocks function', 'stepLoad function'];
-    const dh = firstDiff(a.hook, b.hook.slice(0, a.hook.length));
-    const unlisted = b.hook.slice(a.hook.length).filter(k => !LATER.includes(k));
-    ok(a.hook.length > 300 && !dh && !unlisted.length, `4. window.__ironlog holds r62's ${a.hook.length} names in r62's order, each the same kind of value, and after them only the names later builds list (r64: templateBefore, templateRest, templateSigsBefore; r65: bandOf; r66: picsTidy; r69: risingWords; r70: setShortOf, liftsMoving; r74: noBody; r78: sizeWhat, sessLeftMin; 2.37: blocks, stepLoad, ST-6)`, dh || unlisted);
-    // rNewDo sat in r62's table as the helper New routine's Save called by name (ACT.rNewDo(name)): no element named it, and a tap would have handed it the element as the name. It is a function of actsroutine.ts since r63.
-    const NOT_TAPS = ['rNewDo'];
-    // Actions a later build adds go beside r62's, each listed here with the release that added it: r66's Done with sets left (374), the bodyweight sheet (372), and a note's pictures (373); r68's Do today's workout instead (NEW-31); r69's check-in sheet; 2.34's another plate in Your gym (NEW-76).
-    const LATER_ACTS = ['bDoneAll', 'bwOpen', 'picOpen', 'picRemove', 'todayOwn', 'chkOpen', 'oldBestOpen', 'tSub', 'photoDel', 'photoLater', 'gymPlateAdd', 'wkAway', 'wkResume', 'parkBack', 'sStep'];
-    const gone = a.acts.filter(k => !b.acts.includes(k) && !NOT_TAPS.includes(k)), extra = b.acts.filter(k => !a.acts.includes(k) && !LATER_ACTS.includes(k));
-    ok(NOT_TAPS.every(k => a.acts.includes(k) && !b.acts.includes(k)), '4. r62\'s one helper in the table (rNewDo) is a function now, not an action');
-    ok(a.acts.length > 200 && !gone.length && !extra.length && LATER_ACTS.every(k => b.acts.includes(k)), `4. every other one of r62's ${a.acts.length} actions by data-act, and no new one but those later builds list (r66: bDoneAll, bwOpen, picOpen, picRemove; r68: todayOwn, NEW-31; r69: chkOpen; r70: oldBestOpen; r71: tSub; 2.33: photoDel, photoLater, ST-1 and ST-2; 2.34: gymPlateAdd, NEW-76; 2.35: wkAway, wkResume, NEW-89; 2.36: parkBack, R81-2; 2.37: sStep, ST-6)`, { gone, extra });
-    ok(!b.errors.length, '4. no page errors', b.errors);
+    // The listeners on window and document, each by its event, phase and handler: added, and taken off when removed.
+    const SPY = `(()=>{const live=window.__live=new Set();const ids=new WeakMap();let n=0;const idOf=f=>{if(!f||typeof f!=='object'&&typeof f!=='function')return 0;if(!ids.has(f))ids.set(f,++n);return ids.get(f);};
+      const key=(t,type,fn,o)=>(t===window?'window':'document')+' '+type+' '+!!(o===true||(o&&o.capture))+' fn'+idOf(fn);
+      const add=EventTarget.prototype.addEventListener,rem=EventTarget.prototype.removeEventListener;
+      EventTarget.prototype.addEventListener=function(type,fn,o){if(this===window||this===document)live.add(key(this,type,fn,o));return add.call(this,type,fn,o);};
+      EventTarget.prototype.removeEventListener=function(type,fn,o){if(this===window||this===document)live.delete(key(this,type,fn,o));return rem.call(this,type,fn,o);};})();`;
+    const Q = await open(FILE, { browser, setup: async ctx => { await ctx.addInitScript(SPY); } });
+    await Q.page.waitForTimeout(300);
+    // Every data-act the source writes as a word (a name made at run time is read where it is made).
+    const named = [...new Set(require('./h').sourceTexts().join('\n').match(/data-act="[a-zA-Z0-9]+"/g).map(x => x.slice(10, -1)))];
+    const r = await Q.page.evaluate(async named => {
+      const L = window.__ironlog;
+      L.state.settings.onboarded = true; L.makeDemo(); L.saveNow();
+      // Every tab drawn, round after round, the demo's log in it.
+      const counts = [];
+      for (let k = 0; k < 4; k++) { for (const tab of ['today', 'program', 'dash', 'history', 'settings']) { L.ui.tab = tab; L.render(); await new Promise(r => setTimeout(r, 30)); } counts.push(window.__live.size); }
+      return { counts, missing: named.filter(n => typeof L.ACT[n] !== 'function') };
+    }, named);
+    ok(r.counts[0] > 20 && r.counts.every(c => c === r.counts[0]), `4. drawing every tab four times round leaves the page with the same ${r.counts[0]} listeners each round, none piling up`, r.counts);
+    ok(named.length > 200 && !r.missing.length, `4. every one of the ${named.length} actions the source names by data-act is in the table`, r.missing);
+    ok(!Q.errors.length, '4. no page errors', Q.errors);
+    await Q.ctx.close();
   }
 
   // ---- 5. Back online, the sync pulls (the independent review of r63).

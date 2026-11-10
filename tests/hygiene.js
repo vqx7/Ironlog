@@ -26,6 +26,10 @@
 //    through the model they are given, all the way down.
 // 7. One name for every number (r61): in src/app/, a number past 0, 1 and 2
 //    is part of a named constant declared at the top of a module.
+// 8. index.html is what src/ builds to, byte for byte (moved here from
+//    tests/r36.js in 2.40, CL-3, when that comparison of old builds retired):
+//    every suite reads index.html, so one edited by hand, or src/ edited
+//    without npm run join, would be tested in place of the source.
 const fs = require('fs'); const path = require('path');
 const ROOT = path.join(__dirname, '..');
 // Every script file under src/: the typed modules in src/app/ (and any script beside the page parts, which section 5 refuses).
@@ -1020,6 +1024,14 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(!/ships two ways|as a Claude artifact \(a hosted/.test(cm), 'CLAUDE.md does not call the retired artifact a shipping channel');
   const ver = (cfg.APP_VERSION.match(/-r([0-9.]+)$/) || [])[1];
   ok(ver && cm.includes(`Build r${ver},`), `CLAUDE.md says the build it is (r${ver})`, (cm.match(/Build r[0-9.]+/) || [])[0]);
+}
+
+// 8. index.html is what src/ builds to (CL-3, from tests/r36.js).
+{
+  const { execFileSync } = require('child_process');
+  const joined = execFileSync('node', [path.join(ROOT, 'scripts', 'join.js'), '--stdout'], { encoding: 'utf8', maxBuffer: 64 << 20 });
+  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  ok(joined === html, 'index.html is what src/ builds to, byte for byte (edit src/, then npm run join)', joined.length + ' vs ' + html.length);
 }
 
 console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);

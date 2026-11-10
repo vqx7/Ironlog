@@ -1,7 +1,6 @@
 // The engine runs alone (phase 3b, r52; ARCHITECTURE.md). The modules of
 // the engine and the analytics, bundled for Node with no page, are given the
-// wide histories of tests/r52.js as the page normalized them (normalize()
-// stays in the legacy script until phase 4), deep-frozen, with the page's
+// wide histories of tests/wide.js as the page normalized them, deep-frozen, with the page's
 // language and time zone. Each of the names live.ts gives the legacy
 // script (r52's 74, routineUpdates since r53, and since r54 plannedSets,
 // stallWeeks, stallWords, atRangeTop, avgFirstWeek, lastLighterWeek, muscleStatus,
@@ -28,7 +27,7 @@ const { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..'); const APP = path.join(ROOT, 'src', 'app');
 // CL-1 (2.39) split engine.ts and analytics.ts by job; the modules split out are measured as the ones they left were.
 const MODULES = ['model', 'units', 'routines', 'gym', 'format', 'loads', 'analytics', 'time', 'weeks', 'coach', 'engine', 'plans', 'pick', 'setread', 'usual', 'prs', 'trend', 'bests', 'loadsteps', 'oddloads', 'adjust'];
-// The histories of tests/r52.js, all of them, in batches of 100 (each batch's calls are about 100 MB as text).
+// The wide histories (tests/wide.js), in batches of 100 (each batch's calls are about 100 MB as text).
 const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 // The engine's functions that take no model and that the digest calls (tests/wide.js), run in Node beside the adapters,
 // and since r54 the routine helpers the legacy script reads from routines.ts (EXTRA below calls them): when Finish's
@@ -40,8 +39,8 @@ const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'platesPerSide', 'planSetsOf', 'withPlanSets', 'templateRest', 'templateSigsBefore', 'gymClean'];
 // Every adapter live.ts gives the legacy script, read from live.ts itself, so a new one cannot go uncalled.
 const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
-// The adapters added since r53, and the plain functions above the digest does not call: tests/wide.js is shared with
-// the comparisons pinned to r52 and r53 (tests/r52.js, tests/r53w.js), so their calls are made here, after it, with these arguments.
+// The adapters added since r53, and the plain functions above the digest does not call (tests/wide.js's digest is kept
+// as r52 wrote it): their calls are made here, after it, with these arguments.
 const EXTRA = {
   // Each routine's day labels (a cycle's Day N, a weekly one's weekday), planned sets a day, superset letters and signature, and the templates' line.
   // r65 (A-6): a muscle's band by any key, one of none.
