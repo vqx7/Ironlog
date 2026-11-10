@@ -58,8 +58,6 @@ export const PLATES_LB = [45, 35, 25, 10, 5, 2.5],
    (2.5 and up are usual already); lb as 1.25, 2.5, 5 and 10 (docs/EVIDENCE.md). */
 /** The change plates Your gym offers as buttons beside the usual ones, heaviest first, in each unit. */
 export const CHANGE_PLATES: Readonly<Record<'kg' | 'lb', readonly number[]>> = { kg: [2, 1.5, 1, 0.5], lb: [1.25] };
-/** The small change plate added with Small change plates on (r29, item 98), per unit. */
-export const SMALL_PLATE: Readonly<Record<'kg' | 'lb', number>> = { lb: 1.25, kg: 0.5 };
 
 /** A load in kilograms, a number, in the unit on screen. */
 export const inUnitIn = (M: Model, kg: number): number => (UIn(M) === 'lb' ? kg / LB : kg);

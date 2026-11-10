@@ -139,7 +139,7 @@ async function engineRun(page, cases, gym) {
       x = L.suggest('dbLateral', { ...P(12, 15), inc: 1 * LB }, { deload: true }); o.planStep = lb(x.w);
       // Plates: no 2.5s on hand makes a bar step 10 lb.
       set([mk('a', '2026-10-02', 'bench', [[135, 10, 1], [135, 10, 1], [135, 10, 1]], [6, 10])], { u: 'lb', plates: [45, 35, 25, 10, 5] });
-      x = L.suggest('bench', P(6, 10), {}); o.bench = [lb(x.w), x.text]; o.plates = L.plateText(140 * LB, 'bar', L.EX('bench'));
+      x = L.suggest('bench', P(6, 10), {}); o.bench = [lb(x.w), x.text];
       // Stacks: a 10 lb pin step.
       set([mk('a', '2026-10-02', 'cableRow', [[100, 12, 1], [100, 12, 1], [100, 12, 1]], [8, 12])], { u: 'lb', stack: 10 });
       x = L.suggest('cableRow', P(8, 12), {}); o.stack = lb(x.w);
@@ -165,7 +165,7 @@ async function engineRun(page, cases, gym) {
     ok(R.own === 15, 'a step set on the exercise wins over the rack (5 lb steps: the deload from 20 is 15)', R.own);
     ok(R.planStep === 18, 'a step set in the plan wins over the rack too (1 lb steps: 18)', R.planStep);
     ok(R.bench[0] === 145 && /add 10 lb/.test(R.bench[1]), 'with no 2.5 lb plates on hand a bar steps by 10: 135 to 145', R.bench);
-    ok(/^Per side at 140: 45 \(2\.5 lb not loadable\)$/.test(R.plates), 'the plates line uses only the plates on hand (140 needs a 2.5 the gym does not have)', R.plates);
+    // The plates line it checked here is gone (2.42, NEW-103: V removed the plates line and its Small plates toggle; tests/r88.js holds that neither is drawn); the step above holds the plates on hand.
     ok(R.stack === 110, 'a 10 lb stack step: 100 to 110', R.stack);
     ok(R.kbRack.join() === '18,26,35,44,53' && R.kbDown === 26, 'kettlebells are the bells listed: a deload from 35 is 26', [R.kbRack, R.kbDown]);
     ok(R.kg[1], 'a rack in lb with the app in kg still suggests a dumbbell the gym has', R.kg);
@@ -204,7 +204,7 @@ async function engineRun(page, cases, gym) {
     // Settings > Your gym, as typed.
     await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; delete L.state.settings.gym; L.saveNow(); L.ui.tab = 'settings'; L.ui.folds['settings:gym'] = true; L.render(); document.querySelectorAll('#view details[data-sk="settings:gym"]').forEach(d => { d.open = true; }); });
     const typeIn = async (sel, v) => { await P.page.fill(sel, v); await P.page.dispatchEvent(sel, 'change'); await wait(80); await ev(() => document.querySelectorAll('#view details[data-sk="settings:gym"]').forEach(d => { d.open = true; })); };
-    ok(await ev(() => /usual steps/.test(document.querySelector('[data-sk="settings:gym"] .sec-s').textContent) && !!document.querySelector('[data-bind="barKg"]') && !!document.querySelector('[data-bind="smallPlates"]')), 'Your gym starts on the usual steps, with the bar weight and small plates moved into it');
+    ok(await ev(() => /usual steps/.test(document.querySelector('[data-sk="settings:gym"] .sec-s').textContent) && !!document.querySelector('[data-bind="barKg"]')), 'Your gym starts on the usual steps, with the bar weight moved into it (small plates went in 2.42, NEW-103)');
     const help = await ev(() => { const b = document.querySelector('[data-sk="settings:gym"] .sec-b [data-act="help"]'); if (!b) return null; b.click(); const h = document.getElementById('help-gym'); return h && !h.hidden ? h.textContent : null; });
     ok(help && /What your gym has/.test(help), 'Your gym has its How this works line', help);
     await ev(() => document.querySelectorAll('#view details[data-sk="settings:gym"]').forEach(d => { d.open = true; }));

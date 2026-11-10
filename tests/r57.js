@@ -120,8 +120,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const s1 = JSON.stringify(L.state);
     return { key, changed: s1 !== s0, saved: localStorage.getItem(KEY) === s1, dropped: L.IDX() !== idx0, noted: JSON.stringify(L.cloud.editAt) !== e0 };
   }, [key, value, tab, prep || '']);
+  // smallPlates is not here: its toggle is gone (2.42, NEW-103: V removed the plates line and its Small plates toggle; tests/r88.js holds that neither is drawn).
   // The Name field is gone since r69 (V, 2026-11-03: it drove only Today's greeting, also gone), so userName is not here (tests/r69.js section 1).
-  for (const [key, value] of [['unit', 'kg'], ['theme', 'light'], ['bwGoalPct', '0.3'], ['bwEvery', '7'], ['barKg', '20'], ['timeBudget', '70'], ['timerMode', 'manual'], ['timerSound', null], ['timerCompact', null], ['autoDone', null], ['todayStart', 'free'], ['autoAdj', null], ['wakeLock', null], ['rirMode', 'cal'], ['rirScale', 'rpe'], ['rirAsk', null], ['rirHalf', null], ['smallPlates', null]]) {
+  for (const [key, value] of [['unit', 'kg'], ['theme', 'light'], ['bwGoalPct', '0.3'], ['bwEvery', '7'], ['barKg', '20'], ['timeBudget', '70'], ['timerMode', 'manual'], ['timerSound', null], ['timerCompact', null], ['autoDone', null], ['todayStart', 'free'], ['autoAdj', null], ['wakeLock', null], ['rirMode', 'cal'], ['rirScale', 'rpe'], ['rirAsk', null], ['rirHalf', null]]) {
     const r = await bind(key, value);
     if (r.missing) { ok(false, `2. the ${key} field is on Settings`, r); continue; }
     ok(r.changed && r.saved && r.dropped && r.noted, `2. ${key}: the setting is changed, saved, the caches dropped and the edit noted for the sync`, r);

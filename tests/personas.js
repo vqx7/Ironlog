@@ -421,10 +421,8 @@ async function finish() {
     d = await H.draft();
     ok(v === '2' && d.ex[0].sets[0].rir === 2, '4. RPE 8 tapped is stored as 2 in reserve', { v, rir: d.ex[0].sets[0].rir });
     await H.tick(0, 0);
-    // The plates for 102.5 kg on the 20 kg bar: 41.25 a side, 25, 15 and 1.25 from the kilogram plates.
+    // 102.5 kg typed on the 20 kg bar. The plates line read here is gone (2.42, NEW-103: V removed the plates line and its Small plates toggle; tests/r88.js holds that neither is drawn).
     await H.type('w', 0, 1, 102.5);
-    const pl = await H.ev(() => { const m = document.getElementById('view').innerText.match(/Per side at [^\n]*/); return m && m[0]; });
-    ok(pl === 'Per side at 102.5: 25, 15, 1.25', '4. per side at 102.5 kg: 25, 15, 1.25', pl);
     await H.type('r', 0, 1, 9); await effortByLabel(H, 0, 1, 8); await H.quiet(); await H.tick(0, 1);
     const t = await H.toast();
     ok(/kg/.test(t) && /PR|best/i.test(t), '4. 102.5 x 9 at RPE 8 is a new best, said in kilograms', t);

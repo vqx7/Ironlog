@@ -428,7 +428,6 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       { inProgress: true }
     );
     if (f === 'w') {
-      W.platesAt = { b: blkRef(bi), s: si };
       mixCheck(bi, si);
     }
     onLiftDraw(bi, redraw);

@@ -145,7 +145,7 @@ const tick = async (D, bi, si) => { await D.page.click(`#view [data-act="sDone"]
     const a = await sets(D);
     ok(a[0].done && a[0].r === 8, '4. (setting up) reps typed in set 1 tick it, auto-mark being on', a[0]);
     const st = await strip(D);
-    ok(st.name === 'Set 1, done' && JSON.stringify(st.marked) === '[0]', '4. after reps typed in set 1, minus and plus stay on set 1, named and marked on its number', st);
+    ok(st.name === 'Set 1' && JSON.stringify(st.marked) === '[0]', '4. after reps typed in set 1, minus and plus stay on set 1, named ("Set 1", no ", done" since 2.42, NEW-105) and marked on its number', st);
     const w0 = await D.page.evaluate(() => { const L = window.__ironlog, b = L.state.draft.ex[0]; return L.effW(b, 0); });
     await step(D, 'w', '1');
     const b1 = await sets(D);
@@ -180,7 +180,7 @@ const tick = async (D, bi, si) => { await D.page.click(`#view [data-act="sDone"]
     const l = await sets(D);
     ok(l.every(x => x.done), '4. (setting up) reps typed in the last set tick it and the lift is done', l);
     const st4 = await strip(D);
-    ok(st4.name === `Set ${n}, done` && JSON.stringify(st4.marked) === `[${n - 1}]`, '4. on the last set they stay on it while the lift waits to fold', st4);
+    ok(st4.name === `Set ${n}` && JSON.stringify(st4.marked) === `[${n - 1}]`, '4. on the last set they stay on it while the lift waits to fold', st4);
     await step(D, 'r', '1');
     ok((await sets(D))[n - 1].r === 10, '4. and plus then changes the last set', (await sets(D))[n - 1]);
     await wait(2600);

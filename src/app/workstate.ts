@@ -1,6 +1,6 @@
 /* The session screen's state between draws (r60, from workout.ts): which
    exercise is open, the set an auto-mark waits on, the row whose load is
-   marked, the effort strip open, the plates line, the folds waiting, an
+   marked, the effort strip open, the folds waiting, an
    exercise being dragged, and the hook the screen draws itself again
    through, with the handles that find a block again after a move or a
    normalize (BlkRef). One object (W) holds what more than one module of the
@@ -29,8 +29,6 @@ interface WorkState {
   lastDown: { el: Element | null; t: number };
   // The effort strip open under a set (StripAt).
   stripAt: StripAt | null;
-  // The row whose load is being typed, whose plates the line under the exercise shows (r29), until the next tick or full draw.
-  platesAt: { b: BlkRef | null; s: number } | null;
   /** The lift you last ticked, typed in or stepped (NEW-98): minus and plus show on it while it has a set left (liftsOn). */
   onLift: BlkRef | null;
   /** The set you are on (NEW-100): the one you last typed in, touched, stepped or unticked, which minus and plus change; null after a tick of yours, when they change the first set not ticked (stepAt). */
@@ -58,7 +56,6 @@ export const W: WorkState = {
   needAt: null,
   lastDown: { el: null, t: 0 },
   stripAt: null,
-  platesAt: null,
   onLift: null,
   onSet: null,
   foldWait: new WeakSet<DraftBlock>(),

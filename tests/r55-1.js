@@ -317,16 +317,15 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
         const w = Number(L.fmtW(kg)) * 0.45359237;
         const one = (id, date) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: reps.map(r => ({ w, r, rir: 2, warm: false, drop: false })) }] });
         s.sessions = [one('g1', '2026-10-01'), one('g2', '2026-10-08')]; s.draft = null; L.state = L.normalize(s); L.invalidate();
-        const g = L.suggest('bench', plan, {}); const line = L.plateText(g.w, 'bar', L.EX('bench'));
-        const m = /:\s*([\d., ]+?)\s*kg/.exec(line || ''); const side = m ? m[1].split(',').map(Number).reduce((a, b) => a + b, 0) : 0;
-        out.push({ typed: L.fmtW(w), reps: reps.join(','), next: g.w, shown: L.fmtW(g.w), line, onPlates: Math.abs((g.w - 20) / 2.5 - Math.round((g.w - 20) / 2.5)) < 1e-9, lineRight: Math.abs(20 + 2 * side - g.w) < 1e-6 && !/not loadable/.test(line) });
+        const g = L.suggest('bench', plan, {});
+        out.push({ typed: L.fmtW(w), reps: reps.join(','), next: g.w, shown: L.fmtW(g.w), onPlates: Math.abs((g.w - 20) / 2.5 - Math.round((g.w - 20) / 2.5)) < 1e-9 });
       }
       return out;
     });
-    const off = lines.filter(x => !x.onPlates || !x.lineRight);
-    ok(!off.length, 'Your gym in kg, the app in lb, 20 loads typed as shown: every suggestion is a load the plates make, and the plate line under it lists exactly its plates (d04ec3b: 12 of 20 lines a plate short, "1.24 kg not loadable")', off.slice(0, 4));
-    const typedLine = await ev(() => { const L = window.__ironlog; return [110.2, 115.7].map(v => L.plateText(v * 0.45359237, 'bar', L.EX('bench'))); });
-    ok(typedLine[0] === 'Per side at 110.2: 15 kg' && typedLine[1] === 'Per side at 115.7: 15, 1.25 kg', 'a row typed as shown (110.2 and 115.7 lb) gets the plate line of the load it shows: 15 kg, then 15 and 1.25 kg a side (r55 and r55.1: 10, 2.5, 1.25 kg with 1.24 kg not loadable)', typedLine);
+    const off = lines.filter(x => !x.onPlates);
+    ok(!off.length, 'Your gym in kg, the app in lb, 20 loads typed as shown: every suggestion is a load the plates make (d04ec3b: 12 of 20 a plate short; the plate line under it, also checked here, went in 2.42, NEW-103)', off.slice(0, 4));
+    // The plate line under a row typed as shown, checked here since r55.1, is gone (2.42, NEW-103: V removed the plates line;
+    // tests/r88.js holds that it is not drawn). The loads it named are held above and below.
     const run = await ev(() => {
       const L = window.__ironlog; const s = L.state; const p = { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150 };
       const back = kg => Number(L.fmtW(kg)) * 0.45359237; let w = back(52.5); const out = []; s.sessions = []; s.draft = null;

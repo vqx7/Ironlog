@@ -60,8 +60,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(wu.warm && wu.w > 0 && wu.w < wu.sw, 'a warm-up added before any load is typed is seeded from the grey load', wu);
   const dr = await ev(() => { const L = window.__ironlog; L.ACT.dropAdd({ dataset: { b: '0' } }); const b = L.state.draft.ex[0]; const x = b.sets[b.sets.length - 1]; return { w: x.w, drop: x.drop, sw: b.sw }; });
   ok(dr.drop && dr.w > 0 && dr.w < dr.sw, 'a drop set is seeded from the grey load', dr);
-  const pl = await ev(() => { const L = window.__ironlog; const d = L.state.draft; const bi = d.ex.findIndex(b => { const e = L.EX(b.exId); return e.equip === 'barbell'; }); if (bi < 0) return null; L.render(); const el = document.getElementById('pl-' + bi); return el ? el.textContent : ''; });
-  ok(pl === null || (pl && !/^0|nothing|empty bar only/i.test(pl) && /\d/.test(pl)), 'the plate helper works from the grey load', pl);
+  // The plate helper read here, under a barbell lift, is gone (2.42, NEW-103: V removed the plates line; tests/r88.js holds that it is not drawn).
 
   // ---- 6. Changing the session date: typed loads stay, grey loads follow the new suggestion.
   await start();

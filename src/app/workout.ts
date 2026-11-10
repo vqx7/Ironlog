@@ -8,7 +8,7 @@
    is read from it). The screen is drawn again after each change and lit-html
    changes only what differs, where the legacy code patched the page by hand
    (afterSet, the checkmark's classes, the progress bar, the grey numbers, the
-   PR mark, the plates line, the effort strip put in after a row); the
+   PR mark, the effort strip put in after a row); the
    numbers a row shows are read from the session each draw, so the screen
    cannot say what the log does not. */
 
@@ -24,12 +24,11 @@ import { ssLetters } from './routines';
 import { missedTag, repSpan, effLeastShort, LIGHT_RIR, fmtDate, estMin } from './format';
 import { isMissed, DROP_START, LIGHT_SHARE } from './formulas';
 import { today, EPS, pctOf, iso, addDays } from './util';
-import { platesMode } from './gym';
 import { loadWords, loadNote, emptyLoad } from './loads';
 import { CHK_Q, chkWord } from './coach';
 import { rirScale, effShow, effName } from './effort';
 import { prefGet, BWASK_KEY } from './storage';
-import { EX, exBarKg, loadLabel, U, exName, stepLoad } from './live';
+import { EX, loadLabel, U, exName, stepLoad } from './live';
 import { sessionShown, state } from './store';
 import {
   effW,
@@ -62,7 +61,6 @@ import {
   lastRFor,
   leftMin,
   loadIn,
-  plateText,
   remainMin,
   rowBlank,
   rowPR,
@@ -157,25 +155,6 @@ function sideTip(ex: ExerciseLike): string | null {
   return ex.timed
     ? 'Seconds per side: seconds for one side; do the same on the other.'
     : 'Reps per side: reps for one side; do the same on the other. One set still counts as one set.';
-}
-
-/* Which load to show: the set just edited, else the next set not yet done,
-   else the heaviest set in the block. Grey loads count: the plates are for
-   the load the row is going to be. Logged per side: the helper works from
-   the total that makes. */
-function plateLine(b: DraftBlock, si?: number | null): string {
-  let at = si != null && b.sets[si] ? si : -1;
-  if (at < 0) at = b.sets.findIndex((x, i) => !x.done && !x.warm && +(effW(b, i) ?? 0) > 0);
-  const kg =
-    at >= 0 ? +(effW(b, at) ?? 0) || 0 : Math.max(0, ...b.sets.map((x, i) => (x.warm ? 0 : +(effW(b, i) ?? 0) || 0)));
-  const ex = EX(b.exId);
-  const pm = platesMode(ex);
-  if (loadMode(ex) === 'side')
-    return plateText(kg * 2 + (pm === 'bar' ? exBarKg(ex) : 0), pm, ex).replace(
-      /^Per side at [^:]+:/,
-      'Plates a side:'
-    );
-  return plateText(kg, pm, ex);
 }
 
 // Effort as the lifter reads it: RIR, or RPE when effort is entered as RPE. Same load, more reps: said as reps (r35).
@@ -373,8 +352,9 @@ function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part 
   if (!s || d.editingId || !liftsOn(d).has(b)) return '';
   const wn = b.sets.slice(0, si + 1).filter(x => !x.warm && !x.drop).length;
   const name = s.warm ? 'Warm-up' : s.drop ? 'Drop set' : `Set ${wn}`;
-  // A set ticked is said to be, as minus and plus then change a set already logged.
-  const said = s.done ? `${name}, done` : name;
+  // The set's name only: its row's tick already says it is done (V, 2026-11-09 21:41, NEW-105: no ", done"). Kept on one
+  // line, never broken between "Set" and its number.
+  const said = html`<span class="stepr-n">${name}</span>`;
   const w = effW(b, si) ?? 0;
   const r = +(s.r ?? greyR(b, si) ?? 0) || 0;
   const btn = (f: 'w' | 'r', dir: '1' | '-1', off: boolean, label: string, txt: string): TemplateResult =>
@@ -479,11 +459,7 @@ function blockPart(
         b.sets,
         x => x.rid,
         (_, si) => setRow(d, b, bi, si, ex, nr, dupB)
-      )}${stepStrip(d, b, bi, ex)}${adjLine(b, bi)}${
-        platesMode(ex) !== 'none'
-          ? html`<p class="small muted u-m6-0-0" id=${`pl-${bi}`}>${plateLine(b, W.platesAt && blkIdx(W.platesAt.b) === bi ? W.platesAt.s : null)}</p>`
-          : ''
-      }<div class="row u-mt8">${canFill ? html`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>` : ''}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done." ?disabled=${!b.sets.length}>− Set</button>${
+      )}${stepStrip(d, b, bi, ex)}${adjLine(b, bi)}<div class="row u-mt8">${canFill ? html`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>` : ''}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done." ?disabled=${!b.sets.length}>− Set</button>${
         !ex.timed && b.sets.some(x => x.done && !x.warm && !x.drop)
           ? html`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working weight, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>`
           : ''
@@ -564,14 +540,13 @@ export function viewWorkout(d: Draft): TemplateResult {
 
 /* What a full draw of the page puts back as the legacy page's fresh markup
    did (the host calls this before it draws the session): the effort strip
-   closed, the plates line on the next set again, and a fold waiting for its
+   closed and a fold waiting for its
    moment done now. A draw of the session in place (redraw, below) keeps
    them, as the legacy page's patches did. */
 /** Puts back what a full draw of the page resets on the session screen. */
 export function workoutFullDraw(): void {
   W.needAt = null;
   W.stripAt = null;
-  W.platesAt = null;
   W.foldWait = new WeakSet();
 }
 

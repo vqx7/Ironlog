@@ -621,7 +621,8 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     secOrder,
     folds: fl ? strings(fl, k => safeKey(k) && k.length < LIMITS.foldKey).slice(0, LIMITS.folds) : [],
     wakeLock: st.wakeLock === true,
-    // Small change plates (r29, item 98): absent unless on, so saves without it hash as before.
+    // Small change plates (r29, item 98): absent unless on, so saves without it hash as before. Its toggle went with the
+    // plates line in 2.42 (NEW-103); a log that has it keeps it, and a build before reads it as it did.
     ...(st.smallPlates === true ? { smallPlates: true } : {}),
     // Your gym (r33, item 207) and the profile (r44, item 271): absent unless set, rebuilt in one key order.
     ...(gym ? { gym } : {}),

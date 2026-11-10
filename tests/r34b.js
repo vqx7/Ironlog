@@ -60,10 +60,7 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     const step = await ev(() => { const L = window.__ironlog; const LB = 0.45359237; const ex = L.EX('dbRow'); const plan = { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90 }; const at = 35 * LB; return { inc: L.incOf(ex, plan, at), tol: L.rackTol(L.gymRack(ex, plan), at) }; });
     ok(Math.abs(step.inc - (18 - 35 * LB)) < 0.01, '35 lb (15.88 kg) on a 2 kg rack steps to the 18 kg bell (+2.12 kg), not a 0.12 kg "step" to the same bell', step);
 
-    // 1e. Plates in the gym's unit: a kg gym with the app in lb gets one 20 kg plate a side for 60 kg.
-    await seed({ ss: [], gym: { u: 'kg', plates: [25, 20, 15, 10, 5, 2.5] } });
-    const pl = await ev(() => { const L = window.__ironlog; const ex = L.EX('bench'); return L.plateText(60, L.platesMode(ex), ex); });
-    ok(/20 kg/.test(pl) && !/not loadable/.test(pl) && !/35|2\.5,|1\.14/.test(pl), 'a kg gym, app in lb, 60 kg on the bar: "20 kg" a side, no lb plates, no "not loadable"', pl);
+    // 1e. The plates line in the gym's unit, checked here since r34.2, is gone (2.42, NEW-103: V removed the plates line; tests/r88.js holds that it is not drawn).
 
     // 1f. "Over your first 3 sets" only when the plan has more sets than that.
     const os1 = await ev(() => { const L = window.__ironlog; return [L.overSets(3, { sets: 3 }), L.overSets(3, { sets: 4 }), L.overSets(1, { sets: 3 }), L.overSets(2, { sets: 2 }, 'hold')]; });
