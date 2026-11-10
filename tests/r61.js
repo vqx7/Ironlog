@@ -20,7 +20,9 @@
 //      to r60's answer with six later changes taken out by hand): on 240 wide histories, each damaged three ways,
 //      and the sync's documents, it never throws; read again it gives the same answer, key order included, and
 //      drops nothing more; a log keeps every record and every set's load and reps a build could have saved; a
-//      field it does not know is kept, and the record keeps the key order it came in. And two inputs no build writes read as any other (both
+//      log the build before saved keeps every value it wrote, whatever the field (a migration only adds; REV8-O5,
+//      shown to fail on a planted change to how a set's RIR is read); a field it does not know is kept, and the
+//      record keeps the key order it came in. And two inputs no build writes read as any other (both
 //      fail on r60): a workout in progress saved as false, 0 or an empty string reads as none, and a log with no
 //      routine gets the starter read as any routine is; and the workout in progress is cleaned in place, the very
 //      object given, its own fields first in their order.
@@ -235,6 +237,37 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     ok(n > N4 * 6 && !threw.length, `4. normalize never throws, on ${n} raw logs (${N4} wide histories, each damaged three ways, and the sync's documents)`, threw);
     ok(!unstable.length, '4. read again, its answer is the same, key order included, and it drops nothing more', unstable);
     ok(!lost.length, `4. a log keeps every session, weigh-in, cardio entry and measurement, and every set's load and reps a build could have saved (${N4} histories)`, lost);
+    /* A migration only adds (CLAUDE.md, Data): a log the build before this one saved, read by this build, keeps every
+       value it wrote, at the same place, whatever the field (the review of 2.36 to 2.41, REV8-O5: the checks above hold
+       records, loads and reps, and a field read differently elsewhere was caught only where a feature suite read it).
+       The build before is the newest page in baselines/ (tests/migration.js loads every one). A release that changes
+       how a stored value is read on purpose says so here, for that one build. */
+    {
+      const fs = require('fs');
+      const before = fs.readdirSync('baselines').filter(f => /^r\d+(-\d+)?\.html$/.test(f)).sort((a, b) => { const n = f => f.slice(1, -5).split('-').map(Number); const [x, y] = [n(a), n(b)]; return x[0] - y[0] || (x[1] || 0) - (y[1] || 0); }).pop();
+      const P = await open('baselines/' + before, { browser, clock: '2026-10-20T10:00:00', realStarter: true });
+      const N5 = +process.env.R61_N5 || 120;
+      const changed = [];
+      let leaves = 0;
+      const walk = (a, b, p) => {
+        if (a !== null && typeof a === 'object') {
+          if (b === null || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b)) { if (changed.length < 6) changed.push({ p, was: JSON.stringify(a).slice(0, 120), now: JSON.stringify(b).slice(0, 120) }); return; }
+          for (const k of Object.keys(a)) walk(a[k], b[k], p + '.' + k);
+          return;
+        }
+        leaves++;
+        if (a !== b && changed.length < 6) changed.push({ p, was: a, now: b });
+      };
+      for (let seed = 1; seed <= N5; seed++) {
+        const raw = JSON.stringify(wide(seed, LIB).raw);
+        // The build before's save, as it would sit on the phone; then this build's reading of it.
+        const saved = await P.page.evaluate(r => JSON.stringify(window.__ironlog.normalize(JSON.parse(r))), raw);
+        const read = await B.page.evaluate(r => JSON.stringify(window.__ironlog.normalize(JSON.parse(r))), saved);
+        walk(JSON.parse(saved), JSON.parse(read), 'log');
+      }
+      ok(leaves > N5 * 1000 && !changed.length, `4. a log the build before (${before}) saved keeps every value it wrote, read by this build (${N5} wide histories, ${leaves} values): a migration only adds`, changed);
+      await P.ctx.close();
+    }
     // A field normalize does not know is kept where it was (keepExtra): after the record's own fields, in the order it came, its value as it was.
     const extra = await B.page.evaluate(() => {
       const L = window.__ironlog;

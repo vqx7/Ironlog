@@ -17,7 +17,8 @@
 //      4 weeks; full weeks trained averaged with lighter weeks left out, PRs on any day; nothing before a break of more
 //      than 4 weeks; the length kept as a setting only when not the default; the survey behind 6 in the Guide.
 //   7  REV7-5 (the review of the stack's later changes): with Auto-mark on, plus on a set's pill after its reps are
-//      typed steps that set, unticked, and leaves the next set alone.
+//      typed steps that set and leaves the next set alone; since 2.41 (REV8-O1, the review of 2.36 to 2.41) it ticks
+//      the set too, as leaving the field any other way does (the pills stay on it, NEW-100).
 // R83_ONLY=1,2,3,4,5,6,7 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -274,8 +275,8 @@ async function app(o = {}) {
   }
 
   if (run(7)) {
-    // REV7-5: with Auto-mark on, reps typed for Set 1 and then plus tapped on its pill: the tap is not leaving the
-    // set, so Set 1 is not ticked and its load steps up; Set 2 is left alone.
+    // REV7-5: with Auto-mark on, reps typed for Set 1 and then plus tapped on its pill: Set 1's load steps up and Set 2
+    // is left alone. Since 2.41 (REV8-O1) Set 1 is ticked by leaving its field, as by any other way of leaving it.
     const D = await app();
     await D.page.evaluate(() => { const L = window.__ironlog; L.state.settings.autoDone = true; L.saveNow(); L.render(); });
     await D.page.click('[data-act="startSession"]'); await wait(500);
@@ -283,7 +284,7 @@ async function app(o = {}) {
     await D.page.fill('#view input[data-f="r"][data-b="0"][data-s="0"]', '8'); await wait(300);
     await D.page.click('#blk-0 [data-act="sStep"][aria-label="Set 1: heavier"]'); await wait(800);
     const o = await D.page.evaluate(() => { const b = window.__ironlog.state.draft.ex[0]; return b.sets.slice(0, 2).map(s => ({ w: s.w, r: s.r, done: !!s.done })); });
-    ok(!o[0].done && o[0].w === g + 5 && o[0].r === 8 && o[1].w == null, `7. Auto-mark on: reps typed, then plus on that set's pill steps it (${g} to ${g + 5}) and does not tick it or touch Set 2`, { g, o });
+    ok(o[0].done && o[0].w === g + 5 && o[0].r === 8 && o[1].w == null, `7. Auto-mark on: reps typed, then plus on that set's pill steps it (${g} to ${g + 5}), ticked as leaving its field ticks it, and does not touch Set 2`, { g, o });
     await D.browser.close();
   }
 

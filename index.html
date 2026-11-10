@@ -3552,7 +3552,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function mergeDraft(base0, cur0, pre0, saved) {
     const base = undoDraftOf(base0), cur = undoDraftOf(cur0), pre = undoDraftOf(pre0);
-    if (pre && !base && !cur && cur0 == null && base0 == null && !saved(pre.id)) return pre0;
+    if (pre && (!base || base.id !== pre.id) && canon(cur0) === canon(base0) && !saved(pre.id)) return pre0;
     if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur0 === void 0 ? null : cur0;
     const keyed = (list) => {
       const seen = {};
@@ -14000,7 +14000,7 @@ ${more}`;
   };
   function parkDraft() {
     const d3 = state.draft;
-    if (!d3 || parkedHeld()) return false;
+    if (!d3 || d3.editingId || parkedHeld()) return false;
     return prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: d3 }));
   }
   function unpark() {
@@ -15530,8 +15530,9 @@ ${more}`;
     return false;
   }
   function nextLift(d3, i5) {
-    const nx = d3.ex.findIndex((x2, j3) => j3 > i5 && !blockDone(x2));
-    return nx >= 0 ? nx : d3.ex.findIndex((x2) => blockUntouched(x2));
+    const open = (x2, j3) => !blkIsShut(j3, x2);
+    const nx = d3.ex.findIndex((x2, j3) => j3 > i5 && !blockDone(x2) && open(x2, j3));
+    return nx >= 0 ? nx : d3.ex.findIndex((x2, j3) => blockUntouched(x2) && open(x2, j3));
   }
   function liftsOn(d3) {
     const held3 = (x2) => {
@@ -20746,9 +20747,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       } else if ((state.settings.autoDone || d3.past) && !s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3))) {
         const toRir = near(`.rirb[data-b="${bi}"][data-s="${si}"]`);
         const toW = !toRir && near(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
-        const toStep = !toRir && !toW && near(`.stepr-b[data-b="${bi}"][data-s="${si}"]`);
-        if (toStep) W.pendAuto = null;
-        else if (toW) W.pendAuto = { b: blkRef(bi), s: si };
+        if (toW) W.pendAuto = { b: blkRef(bi), s: si };
         else if (toRir) {
           const p3 = { b: blkRef(bi), s: si };
           W.pendAuto = p3;
@@ -24844,7 +24843,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       } else if (state.draft)
         confirmBox(
           "Replace the session in progress?",
-          "You have an unsaved session open. Editing this one will discard it.",
+          state.draft.editingId ? "You are editing a saved session. Your edits will be lost." : "You have an unsaved session open. Editing this one will discard it.",
           "Discard and edit",
           go,
           true

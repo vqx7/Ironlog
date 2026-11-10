@@ -649,7 +649,9 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     } else if (state.draft)
       confirmBox(
         'Replace the session in progress?',
-        'You have an unsaved session open. Editing this one will discard it.',
+        state.draft.editingId
+          ? 'You are editing a saved session. Your edits will be lost.'
+          : 'You have an unsaved session open. Editing this one will discard it.',
         'Discard and edit',
         go,
         true

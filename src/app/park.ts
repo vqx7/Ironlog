@@ -38,10 +38,14 @@ export const parkedHere = (): boolean => {
   return !!h && h.uid === who();
 };
 
-/** Sets the workout in progress aside; false when there is none, one is held already, or the phone refused the write (the caller then asks, as before 2.36). */
+/* Only a workout, or a past workout being logged, is set aside: what is typed there is in the log nowhere else. An edit
+   of a saved session is a copy of the log, stale the moment the log changes, so it is never set aside (the review of
+   2.36 to 2.41, REV8-1: set aside, an edit came back after a newer edit of the same session was saved and wrote over
+   it, and after its session was deleted, put it back). Opening another over an edit asks first, as before 2.36. */
+/** Sets the workout in progress aside; false when there is none, it is an edit of a saved session, one is held already, or the phone refused the write (the caller then asks, as before 2.36). */
 export function parkDraft(): boolean {
   const d = state.draft;
-  if (!d || parkedHeld()) return false;
+  if (!d || d.editingId || parkedHeld()) return false;
   return prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: d }));
 }
 

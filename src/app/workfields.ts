@@ -214,10 +214,11 @@ export function workoutChange(t: Field): boolean {
     } else if ((state.settings.autoDone || d.past) && !s.done && (+(s.r ?? 0) > 0 || isMissed(s))) {
       const toRir = near(`.rirb[data-b="${bi}"][data-s="${si}"]`);
       const toW = !toRir && near(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
-      // The set's own minus and plus are not leaving it: they change it, unticked (the review of 2.38, REV7-5).
-      const toStep = !toRir && !toW && near(`.stepr-b[data-b="${bi}"][data-s="${si}"]`);
-      if (toStep) W.pendAuto = null;
-      else if (toW) W.pendAuto = { b: blkRef(bi), s: si };
+      /* Leaving the field for the set's own minus or plus ticks it, as leaving it any other way does: the pills stay on
+         the set you are on (NEW-100), so the step changes the set just ticked (the review of 2.36 to 2.41, REV8-O1:
+         until then the step there left it unticked, where the keyboard closed first ticked it; REV7-5 had made that
+         exception while a tick still moved the pills on). */
+      if (toW) W.pendAuto = { b: blkRef(bi), s: si };
       else if (toRir) {
         const p = { b: blkRef(bi), s: si };
         W.pendAuto = p;

@@ -1034,8 +1034,10 @@ export function doneChanged(bi: number, si: number, f: 'w' | 'r'): boolean {
    card's "next:" (restNext) and the pills (liftsOn), so the three never point at different lifts. */
 /** The place of the lift that comes up after lift i, or -1 when none does. */
 function nextLift(d: Draft, i: number): number {
-  const nx = d.ex.findIndex((x, j) => j > i && !blockDone(x));
-  return nx >= 0 ? nx : d.ex.findIndex(x => blockUntouched(x));
+  // A lift folded by hand is put away (NEW-101), so none of the three names it (the review, REV8-2).
+  const open = (x: DraftBlock, j: number): boolean => !blkIsShut(j, x);
+  const nx = d.ex.findIndex((x, j) => j > i && !blockDone(x) && open(x, j));
+  return nx >= 0 ? nx : d.ex.findIndex((x, j) => blockUntouched(x) && open(x, j));
 }
 
 /* The lift you are on (NEW-98, V 2026-11-09: "It will help reduce and avoid the overwhelm"), where minus and plus

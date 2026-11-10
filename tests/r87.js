@@ -9,6 +9,16 @@
 //   2  (a guard) a done exercise folds as before: by itself after its last tick, and by its fold button once opened.
 //   3  REV7-C (the review of 2.38): the pills' unit label is drawn at full strength, as the number beside it is (it was
 //      at 0.75 opacity, 3.4 to 4.1 to 1 on blue, violet, red and pink, under the 4.5 to 1 the stylesheet states).
+//   4  REV8-1 (the independent review of 2.36 to 2.41, F1): an edit of a saved session is never set aside, as it is a
+//      copy of the log that goes stale: Edit tapped again on the session being edited asks first, as 2.35 did, and an
+//      edit open when a past workout is logged asks too; the change saved in the second edit stays.
+//   5  REV8-2 (the same review, F2): a lift folded by hand is skipped by everything that says what comes next: after the
+//      lift above it is done, the rest card names the one after it, the screen brings that one up, and the pills are on
+//      it.
+//   6  REV8-3 (the same review, F3; on 2.35 too): Undo after Replace my data, with a backup holding a workout in
+//      progress of its own, brings back the workout that was open, its ticked sets with it.
+//   7  REV8-O1 (the same review): reps typed in a set and then a minus or plus on its pill with the keyboard still open
+//      tick the set, as the same reps typed with the keyboard closed first do (one rule; before, the set stayed unticked).
 // R87_ONLY=1,2,3 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -98,6 +108,79 @@ const pillsOn = D => D.page.evaluate(() => [...document.querySelectorAll('#view 
       await D.browser.close();
     }
     ok(!out.length, '3. REV7-C: the pills\' unit label is at full strength, the colour of the number beside it, in six accents light and dark', out);
+  }
+
+  if (run(4)) {
+    const D = await app();
+    const sid = await D.page.evaluate(() => window.__ironlog.state.sessions.filter(x => x.ex && x.ex.length >= 2 && x.date < '2026-11-09').slice(-1)[0].id);
+    const sets = () => D.page.evaluate(id => JSON.stringify(window.__ironlog.state.sessions.find(x => x.id === id).ex.map(b => b.sets.map(x => [x.w, x.r]))), sid);
+    const parked = () => D.page.evaluate(() => !!localStorage.getItem(window.__ironlog.KEY + '.parked'));
+    await D.page.evaluate(id => window.__ironlog.ACT.histEdit({ dataset: { id } }), sid); await wait(400);
+    const e1 = await D.page.evaluate(() => window.__ironlog.state.draft.id);
+    await D.page.evaluate(id => window.__ironlog.ACT.histEdit({ dataset: { id } }), sid); await wait(400);
+    const asked = await D.page.evaluate(() => (window.__ironlog.ui.modal || {}).kind || null);
+    ok(asked === 'confirm' && !(await parked()), '4. Edit tapped again on the session being edited asks first, and sets nothing aside', { asked, parked: await parked() });
+    await D.page.click('#modal [data-act="mOk"]', { timeout: 3000 }).catch(() => {}); await wait(400);
+    const e2 = await D.page.evaluate(() => window.__ironlog.state.draft.id);
+    const r0 = await D.page.evaluate(() => window.__ironlog.state.draft.ex[0].sets[0].r);
+    await D.page.fill('#view input[data-f="r"][data-b="0"][data-s="0"]', String(Number(r0) + 3)); await wait(200);
+    await D.page.evaluate(() => document.activeElement.blur()); await wait(400);
+    await D.page.evaluate(() => window.__ironlog.ACT.finishNow()); await wait(500);
+    if (await D.page.evaluate(() => !!window.__ironlog.ui.modal)) { await D.page.click('#modal [data-act="mOk"]').catch(() => {}); await wait(300); }
+    const saved = await sets();
+    const back = await D.page.evaluate(() => window.__ironlog.state.draft);
+    ok(e2 !== e1 && JSON.parse(saved)[0][0][1] === Number(r0) + 3 && !back && !(await parked()), '4. the change saved in the second edit stays, and no stale edit comes back', { saved: saved.slice(0, 80), back: !!back });
+    // An edit open, then Log a past workout: asked first, nothing set aside.
+    await D.page.evaluate(id => window.__ironlog.ACT.histEdit({ dataset: { id } }), sid); await wait(400);
+    await D.page.evaluate(() => window.__ironlog.ACT.pastOpen({ dataset: { date: '2026-11-05' } })); await wait(300);
+    await D.page.click('#modal [data-act="pastGo"][data-day="0"]', { timeout: 3000 }).catch(() => {}); await wait(500);
+    const asked2 = await D.page.evaluate(() => (window.__ironlog.ui.modal || {}).kind || null);
+    ok(asked2 === 'confirm' && !(await parked()), '4. an edit open when a past workout is logged: asked first, nothing set aside', { asked2, parked: await parked() });
+    ok(!D.errors.length, '4. no page errors', D.errors);
+    await D.browser.close();
+  }
+  if (run(5)) {
+    const D = await open(FILE, { w: 390, h: 844, clock: DAY + 'T10:00:00' });
+    await D.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.unit = 'kg'; L.state.settings.timerMode = 'auto'; L.makeDemo(); for (const x of L.state.sessions) delete x.demo; for (const x of L.state.bodyweights) delete x.demo; localStorage.setItem(L.KEY + '.installLater', '1'); localStorage.setItem(L.KEY + '.tipWake', '1'); L.saveNow(); L.invalidate(); L.ui.tab = 'today'; L.render(); });
+    await wait(300); await D.page.click('[data-act="startSession"]'); await wait(500);
+    const names = await D.page.evaluate(() => window.__ironlog.state.draft.ex.slice(0, 3).map(b => window.__ironlog.exName(b.exId)));
+    await D.page.click('#blk-1 [data-act="bFold"]'); await wait(300);
+    const n = await D.page.evaluate(() => window.__ironlog.state.draft.ex[0].sets.length);
+    for (let si = 0; si < n; si++) { await D.page.click(`#view [data-act="sDone"][data-b="0"][data-s="${si}"]`); await wait(250); }
+    const rest = await D.page.evaluate(() => ((document.getElementById('timer') || {}).textContent || '').replace(/\s+/g, ' '));
+    ok(rest.includes('next: ' + names[2]) && !rest.includes(names[1] + ' '), `5. after the lift above a lift folded by hand is done, the rest card names the one after it (${names[2]})`, rest.slice(0, 120));
+    await wait(1800);
+    const r = await D.page.evaluate(() => ({ pills: [...document.querySelectorAll('#view .stepr')].map(e => +e.closest('[id^="blk-"]').id.slice(4)), top2: Math.round(document.getElementById('blk-2').getBoundingClientRect().top), bar: Math.round((document.querySelector('.wkbar, #wkbar') || document.body).getBoundingClientRect().bottom) }));
+    ok(JSON.stringify(r.pills) === '[2]' && r.top2 < 150, '5. the screen brings that lift up and the pills are on it', r);
+    ok(!D.errors.length, '5. no page errors', D.errors);
+    await D.browser.close();
+  }
+  if (run(6)) {
+    const D = await app();
+    await D.page.click('[data-act="startSession"]'); await wait(400);
+    for (const si of [0, 1]) { await D.page.click(`#view [data-act="sDone"][data-b="0"][data-s="${si}"]`); await wait(300); }
+    const w0 = await D.page.evaluate(() => { const d = window.__ironlog.state.draft; return JSON.stringify([d.id, d.ex.map(b => b.sets.map(s => [s.w, s.r, !!s.done]))]); });
+    const backup = await D.page.evaluate(() => { const L = window.__ironlog; const s = JSON.parse(JSON.stringify(L.state)); s.sessions = s.sessions.slice(2); s.draft = { ...s.draft, id: 'other-workout-id', ex: s.draft.ex.map(b => ({ ...b, sets: b.sets.map(x => ({ ...x, done: false })) })) }; return JSON.stringify(s); });
+    await D.page.evaluate(t => window.__ironlog.importData(t), backup); await wait(300);
+    await D.page.click('#modal [data-act="mOk"]').catch(() => {}); await wait(500);
+    const imported = await D.page.evaluate(() => window.__ironlog.state.draft && window.__ironlog.state.draft.id);
+    await D.page.evaluate(() => window.__ironlog.ACT.undo()); await wait(600);
+    const w1 = await D.page.evaluate(() => { const d = window.__ironlog.state.draft; return d && JSON.stringify([d.id, d.ex.map(b => b.sets.map(s => [s.w, s.r, !!s.done]))]); });
+    ok(imported === 'other-workout-id' && w1 === w0, '6. Undo after Replace my data, the backup holding a workout of its own, brings back the workout that was open, ticked sets and all', { imported, back: (w1 || '').slice(0, 80), was: w0.slice(0, 80) });
+    ok(!D.errors.length, '6. no page errors', D.errors);
+    await D.browser.close();
+  }
+  if (run(7)) {
+    const D = await open(FILE, { w: 390, h: 844, touch: true, clock: DAY + 'T10:00:00' });
+    await D.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.unit = 'kg'; L.makeDemo(); for (const x of L.state.sessions) delete x.demo; localStorage.setItem(L.KEY + '.installLater', '1'); localStorage.setItem(L.KEY + '.tipWake', '1'); L.saveNow(); L.invalidate(); L.ui.tab = 'today'; L.render(); });
+    await wait(300); await D.page.tap('[data-act="startSession"]'); await wait(600);
+    await D.page.tap('#view input[data-f="r"][data-b="0"][data-s="0"]'); await D.page.keyboard.type('8'); await wait(100);
+    // The keyboard still open: the pill's plus on set 1, straight after the reps.
+    await D.page.tap('#blk-0 .stepr-b[data-sf="w"][data-d="1"]'); await wait(600);
+    const s0 = await D.page.evaluate(() => { const s = window.__ironlog.state.draft.ex[0].sets[0]; return { r: s.r, done: !!s.done, w: s.w }; });
+    ok(s0.r === 8 && s0.done && s0.w != null, '7. reps typed and plus tapped with the keyboard still open: set 1 ticked, with the reps and the load stepped', s0);
+    ok(!D.errors.length, '7. no page errors', D.errors);
+    await D.browser.close();
   }
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
   process.exit(fails.length ? 1 : 0);
