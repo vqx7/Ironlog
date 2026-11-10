@@ -330,11 +330,9 @@ function setRow(
   // Last time's set for this row, beside this time's (r44, V): working sets only, by their order.
   const lt = s.warm || s.drop ? '' : lastCell(b, wn - 1, dupB);
   const gw = s.w == null ? greyW(b, si) : null;
-  // The set minus and plus change, marked on its number (NEW-100).
-  const at = !d.editingId && stepAt(b, bi) === si && liftsOn(d).has(b);
   /* A drop set sits under the set it drops from (r66, 375): set in, marked ↳
      and named in the Last column, where it has no set of its own last time. */
-  return html`<div class=${`sg${nr ? ' norir' : ''} ${s.done ? 'done' : ''}${pr ? ' pr' : ''}${s.drop ? ' sgdrop' : ''}`} data-pr=${pr || nothing}><button class=${'n wbtn' + (s.drop ? ' drop' : s.warm ? ' warm' : '') + (at ? ' stepat' : '')} aria-label=${`Set ${si + 1} type: ${s.warm ? 'warm-up' : s.drop ? 'drop set' : 'working set'}. Tap to change`} data-act="sWarm" data-b=${bi} data-s=${si}>${s.drop ? '↳' : s.warm ? 'W' : wn}</button><span class="ls" aria-label=${lt ? 'Last time ' + lt : s.drop ? 'Drop set' : 'No set last time'}>${lt ? lastText(lt) : s.drop ? 'Drop' : '–'}</span>
+  return html`<div class=${`sg${nr ? ' norir' : ''} ${s.done ? 'done' : ''}${pr ? ' pr' : ''}${s.drop ? ' sgdrop' : ''}`} data-pr=${pr || nothing}><button class=${'n wbtn' + (s.drop ? ' drop' : s.warm ? ' warm' : '')} aria-label=${`Set ${si + 1} type: ${s.warm ? 'warm-up' : s.drop ? 'drop set' : 'working set'}. Tap to change`} data-act="sWarm" data-b=${bi} data-s=${si}>${s.drop ? '↳' : s.warm ? 'W' : wn}</button><span class="ls" aria-label=${lt ? 'Last time ' + lt : s.drop ? 'Drop set' : 'No set last time'}>${lt ? lastText(lt) : s.drop ? 'Drop' : '–'}</span>
         <input type="text" inputmode="decimal" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} load`} data-f="w" data-b=${bi} data-s=${si} class=${needHere(bi, si) ? 'need' : nothing} .value=${fieldValue(loadIn(ex, s.w))} placeholder=${gw != null ? loadIn(ex, gw) : emptyLoad(ex)}>
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} ${ex.timed ? 'seconds' : 'reps'}${ex.perSide ? ' per side' : ''}`} data-f="r" data-b=${bi} data-s=${si} .value=${fieldValue(s.r == null ? '' : String(s.r))} placeholder=${ph}>
         ${nr ? '' : rirButton(s.rir, bi, si, p.rir)}
@@ -343,18 +341,20 @@ function setRow(
 
 /* Minus and plus (2.37, ST-6; V, 2026-11-08: "stepping by the lift's load step and one rep"). The set row has no room
    for four more 44 px buttons (254 px wide at 320, its load field 48), so they sit in one strip under the sets, where a
-   tick moves nothing above them, and change the set you are on (stepAt, NEW-100): the strip names it, and its number
-   in the rows is marked in the pills' accent, on the lift you are on only (liftsOn, NEW-98), not under every lift. Drawn as two accent pills side by side, each with the number it changes (V, 2026-11-09, after the Stitch drafts'
-   steppers: the whole pill in the one accent, ends included). An assisted lift's field takes the help, so only its reps step. Not in an edit, where every set is done. */
+   tick moves nothing above them, and change the set you are on (stepAt, NEW-100), which the strip names, on the lift
+   you are on only (liftsOn, NEW-98), not under every lift. Drawn as two accent pills side by side, each with the number
+   it changes (V, 2026-11-09, after the Stitch drafts' steppers: the whole pill in the one accent, ends included),
+   compact beside the set's name (NEW-104). An assisted lift's field takes the help, so only its reps step. Not in an
+   edit, where every set is done. */
 function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part {
   const si = stepAt(b, bi);
   const s = b.sets[si];
   if (!s || d.editingId || !liftsOn(d).has(b)) return '';
   const wn = b.sets.slice(0, si + 1).filter(x => !x.warm && !x.drop).length;
   const name = s.warm ? 'Warm-up' : s.drop ? 'Drop set' : `Set ${wn}`;
-  // The set's name only: its row's tick already says it is done (V, 2026-11-09 21:41, NEW-105: no ", done"). Kept on one
-  // line, never broken between "Set" and its number.
-  const said = html`<span class="stepr-n">${name}</span>`;
+  /* The set's name only: its row's tick already says it is done (V, 2026-11-09 21:41, NEW-105: no ", done"). It is the
+     one mark of the set minus and plus change; its number is not also drawn in the accent (V, 22:32, NEW-106). */
+  const said = name;
   const w = effW(b, si) ?? 0;
   const r = +(s.r ?? greyR(b, si) ?? 0) || 0;
   const btn = (f: 'w' | 'r', dir: '1' | '-1', off: boolean, label: string, txt: string): TemplateResult =>
