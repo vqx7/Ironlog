@@ -80,7 +80,7 @@ export function incSheet(m: { exId: string; plan?: DraftBlock['plan'] | undefine
   const e = EX(m.exId);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Load step: ${e.name}</h3>${closeX()}</div>
     <label class="field">Step (${U()})<input type="text" inputmode="decimal" id="incVal" value=${fmtW(incOf(e, m.plan))}></label>
-    <p class="small muted">The smallest jump you can load.</p>
+    <p class="small muted">The smallest jump the equipment allows.</p>
     ${e.inc == null && gymRack(e, m.plan) ? html`<p class="small u-m0">Following the ${rackKind(e) === 'dumbbell' ? 'dumbbells' : 'kettlebells'} in Settings > Your gym. A step saved here replaces them for this lift.</p>` : ''}
     <div class="row u-mt10"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }

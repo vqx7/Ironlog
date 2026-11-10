@@ -481,7 +481,7 @@ const vLog = mon => {
       if (unit === 'lb') {
         ok(/Fixed weekdays: a workout done on another day counts for its own day/.test(g) && /Add a second workout/.test(g), '8. the Guide says how fixed weekdays adapt and where the second workout is added', g.match(/Fixed weekdays[^<]{0,300}/));
         ok(/a plain day one done on another day/.test(g), '8. the Guide names the week bar\'s plain day, a workout done on another day', g.match(/a red ring[^.]*\./));
-        ok(/smallest jump you can load/.test(r.inc) && !/machine or dumbbells/.test(r.inc), '8. the load step sheet fits a barbell lift, not only a machine or dumbbells', r.inc.replace(/\s+/g, ' '));
+        ok(/smallest jump the equipment allows/.test(r.inc) && !/machine or dumbbells/.test(r.inc), '8. the load step sheet fits a barbell lift, not only a machine or dumbbells', r.inc.replace(/\s+/g, ' '));
       }
       await P.ctx.close();
     }

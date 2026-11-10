@@ -764,7 +764,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
     const b = d.ex[bi];
     if (b && b.plan.ss)
-      toast(d.dayId ? 'Superset. Finish offers to keep it in your plan.' : 'Superset for this session.');
+      toast(d.dayId ? 'Superset. Finish offers to keep it in your plan.' : 'Superset for this session');
   },
   noteReuse(t) {
     const b = tapBlock(t);

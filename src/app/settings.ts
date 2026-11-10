@@ -374,7 +374,7 @@ ${
         : 'Not set: dumbbell steps come from your log.'
   }</p>
 </div>
-<label class="field">${labelTip('lt-kb', `Kettlebells (${u})`, 'The weights you have, any order, separated by commas.')}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g && g.kb ? g.kb.map(fmtG).join(', ') : '')} placeholder=${lb ? '18, 26, 35, 44, 53' : '8, 12, 16, 20, 24'}/></label> <label class="field">${labelTip(
+<label class="field">${labelTip('lt-kb', `Kettlebells (${u})`, 'The weights you have, any order, separated by commas')}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g && g.kb ? g.kb.map(fmtG).join(', ') : '')} placeholder=${lb ? '18, 26, 35, 44, 53' : '8, 12, 16, 20, 24'}/></label> <label class="field">${labelTip(
     'lt-stack',
     `Cable and machine stacks step by (${u})`,
     'The usual step between pins on your cable and machine stacks. A machine that differs gets its own step in its exercise.'
@@ -487,7 +487,7 @@ function rirSettings(): TemplateResult {
       : html`<label class="check-inline"><input type="checkbox" data-bind="rirAsk" aria-labelledby="lt-rirAsk" .checked=${live(s.rirAsk === true)}/>${labelTip(
           'lt-rirAsk',
           `Open the ${effName()} picker after each set`,
-          "Off: tap a set's RIR box when you want to rate it. On: the picker opens by itself after each set you tick."
+          "Off: tap a set's RIR box to rate it. On: the picker opens by itself after each ticked set."
         )}</label> <label class="check-inline"><input type="checkbox" data-bind="rirHalf" aria-labelledby="lt-rirHalf" .checked=${live(s.rirHalf === true)}/>${labelTip(
           'lt-rirHalf',
           `Count ${halfLbl()} as half a set`,
@@ -512,7 +512,7 @@ function layoutSettings(): TemplateResult {
     `Hidden sections are still tracked, and come back where they were. Each time ${APP_NAME} opens, every section starts folded except Sessions on History. Drag a section by its ⠿ to move it; each tab keeps its order.`,
     'About layout'
   )}</p>
-<div class="row"><button class=${dflt ? 'btn sm noted' : 'btn sm'} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Weekly volume hidden on Plan, and the default order.">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
+<div class="row"><button class=${dflt ? 'btn sm noted' : 'btn sm'} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Weekly volume hidden on Plan, and the default order">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
 ${HIDE_TABS.map(
   ([t, l]) =>
     html`<div class="hide-grp">
@@ -722,7 +722,7 @@ function dataBody(): TemplateResult {
       : nothing
   }
 <div class="card stack">
-<div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
+<div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
 <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button> <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"/></label> <button class="btn" data-act="pasteImport">Paste backup text instead</button>
 <div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Takes back the changes that offered Undo when you made them, one at a time, newest first, from the last ${UNDO_DAYS} days, even after the app is closed. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.`}>${undoLabel()}</button></div>
 </div>
@@ -790,7 +790,7 @@ function timerBody(s: Settings): TemplateResult {
 </select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${live(!!s.timerSound)} ?disabled=${s.timerMode === 'off'}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${live(!!s.timerCompact)} ?disabled=${s.timerMode === 'off'}/>${labelTip(
     'lt-timerCompact',
     'Compact timer',
-    'A small pill in the corner instead of the rest card above the tabs.'
+    'A small pill in the corner instead of the rest card above the tabs'
   )}</label> <label class="check-inline"><input type="checkbox" data-bind="autoDone" aria-labelledby="lt-autoDone" .checked=${live(!!s.autoDone)}/>${labelTip(
     'lt-autoDone',
     'Auto-mark a set done after its reps',
@@ -798,7 +798,7 @@ function timerBody(s: Settings): TemplateResult {
   )}</label> <label class="check-inline"><input type="checkbox" data-bind="loadFill" aria-labelledby="lt-loadFill" .checked=${live(s.loadFill === 'fill')}/>${labelTip(
     'lt-loadFill',
     'Fill in suggested loads',
-    "Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row for you. Either way, a load you type is never changed."
+    "Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row. Either way, a typed load is never changed."
   )}</label> <label class="field">${labelTip(
     'lt-todayStart',
     'Today starts with',
@@ -876,7 +876,7 @@ ${MUSCLES.map(([k, l]) =>
 /** Help: the Guide, Report a problem and, for the reader of reports, their inbox. */
 function helpBody(): TemplateResult {
   return html`<div class="card stack">
-<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? html`<button class="btn" data-act="fbInbox">Reports inbox</button>` : nothing}</div>
+<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which">Report a problem</button>${acct.reader && FB() ? html`<button class="btn" data-act="fbInbox">Reports inbox</button>` : nothing}</div>
 </div>
 `;
 }

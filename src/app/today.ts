@@ -959,7 +959,7 @@ function bodyCard(): TemplateResult {
 <div class="bw-entry"><label class="field">Date${keyed(t, html`<input type="date" id="bwDate" value=${t} max=${t}>`)}</label><label class="field">Weight (${U()})${inUnit(
       U(),
       html`<input type="text" inputmode="decimal" id="bwVal" placeholder=${last ? fmtW(last.kg) : ''} enterkeyhint="done">`
-    )}</label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday ? 'Update' : 'Log'}</button></div>
+    )}</label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts">${loggedToday ? 'Update' : 'Log'}</button></div>
 ${
   bws.length
     ? html`<ul class="bw-list" aria-label="Recent bodyweights">${bws

@@ -55,7 +55,7 @@ export function picStrip(at: At, add = true): TemplateResult | typeof nothing {
       html`<button class="pthumb" data-act="picOpen" data-id=${id} data-at=${atKey(at)} aria-label=${`Picture ${i + 1}: open`}>\x3cimg src=${picUrl(id) || ''} alt="" loading="lazy" decoding="async"></button>`
   )}${
     room
-      ? html`<label class="btn sm padd" data-tip="Kept on this phone only: not in backups or your account yet.">+ Picture<input type="file" accept="image/*" data-pic=${atKey(at)} hidden></label>`
+      ? html`<label class="btn sm padd" data-tip="Kept on this phone only: not in backups or your account yet">+ Picture<input type="file" accept="image/*" data-pic=${atKey(at)} hidden></label>`
       : nothing
   }</div>`;
 }

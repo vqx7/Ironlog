@@ -181,7 +181,7 @@ export function pickExSheet(): TemplateResult | null {
   const picks = rankExercises(d);
   const allMet = picks.length && picks.every(x => x.def <= 0);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3>${closeX()}</div>
-    <p class="small muted hastip u-m0" data-tip="From this session so far, your last 7 days against your targets, recovery, injuries, and your trends.">What to add next.</p>
+    <p class="small muted hastip u-m0" data-tip="From this session so far, your last 7 days against your targets, recovery, injuries, and your trends">What to add next.</p>
     ${allMet ? html`<p class="callout green u-m8-0-0">Every muscle is at target for the last 7 days.</p>` : ''}
     ${
       picks.length
@@ -240,7 +240,7 @@ export function shortSheet(m: { mins?: number | null | undefined }): TemplateRes
       : pl.changes.length
         ? html`<ul class="short-list">${pl.changes.map(c => html`<li>${c}</li>`)}</ul><p class="small muted u-m6-0-0">${estMin(min5(pl.est))} after the change.${pl.over ? ' Still over: typed sets are kept.' : ''} Done sets are never touched.</p>`
         : pl.over
-          ? html`<p class="small">Nothing can come off: every set left has something you typed in it, and Short on time only takes sets you haven't touched. ${estMin(min5(pl.est))} left.</p>`
+          ? html`<p class="small">Nothing can come off: every set left has something typed in it, and Short on time only takes untouched sets. ${estMin(min5(pl.est))} left.</p>`
           : html`<p class="small">Everything left fits in ${m.mins} minutes as planned.</p>`;
   const trims = !!pl && pl.changes.length > 0;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Short on time</h3>${closeX()}</div>
@@ -252,5 +252,5 @@ export function shortSheet(m: { mins?: number | null | undefined }): TemplateRes
     }
     ${body}
     <div class="row u-mt12">${trims ? html`<button class="btn primary" data-act="shortApply">Trim the session</button>` : ''}<button class="btn" data-act="mClose">${trims ? 'Cancel' : 'Close'}</button></div>
-    <p class="small muted hastip u-m8-0-0" data-tip="Kept longest: priority and lagging muscles, exercises you have started, and at least one exercise per muscle. The rest lose sets down to 2, then drop out, later exercises first. Trimmed work does not count against trends. Undo is in the message after.">What gets cut first</p></div>`;
+    <p class="small muted hastip u-m8-0-0" data-tip="Kept longest: priority and lagging muscles, exercises already started, and at least one exercise per muscle. The rest lose sets down to 2, then drop out, later exercises first. Trimmed work does not count against trends. Undo is in the message after.">What gets cut first</p></div>`;
 }
