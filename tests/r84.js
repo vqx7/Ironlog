@@ -12,7 +12,7 @@
 //   4  NEW-100 (V on the 2.38 preview, 2026-11-09: minus and plus "ticking a set done and moving the next one's weight
 //      when you +- on the original set"; V's ruling of 12:57, the recommended rule): they change the set you are on,
 //      the one you last typed in, touched, stepped or unticked, and only a tick of yours with the checkmark moves them
-//      on. Reps typed in set 1 tick it (auto-mark) and the pills stay on set 1, marked on its number, so a minus or
+//      on. Reps typed in set 1 tick it (auto-mark) and the pills stay on set 1, named beside them, so a minus or
 //      plus straight after changes set 1, ticked, and nothing else stored; the checkmark tapped moves them to set 2; a
 //      touch on set 2's field moves them there; on the last set they stay on its lift until it folds; guard: a minus
 //      or plus never ticks or unticks a set.
@@ -133,7 +133,8 @@ const tick = async (D, bi, si) => { await D.page.click(`#view [data-act="sDone"]
     const sets = D => D.page.evaluate(() => window.__ironlog.state.draft.ex[0].sets.map(s => ({ w: s.w, r: s.r, done: !!s.done })));
     const strip = D => D.page.evaluate(() => {
       const e = document.querySelector('#blk-0 .stepr .stepr-l');
-      const marked = [...document.querySelectorAll('#blk-0 .sg')].filter(r => r.querySelector('.stepat')).map(r => +r.querySelector('[data-act="sDone"]').dataset.s);
+      // The set the buttons change (its number was marked in the accent until 2.43, NEW-106; the label names it now).
+      const marked = [...new Set([...document.querySelectorAll('#blk-0 .stepr .stepr-b')].map(x => +x.dataset.s))];
       return { name: e ? e.textContent : null, marked };
     });
     const step = async (D, sf, d) => { await D.page.tap(`#blk-0 .stepr-b[data-sf="${sf}"][data-d="${d}"]`); await wait(450); };
@@ -145,7 +146,7 @@ const tick = async (D, bi, si) => { await D.page.click(`#view [data-act="sDone"]
     const a = await sets(D);
     ok(a[0].done && a[0].r === 8, '4. (setting up) reps typed in set 1 tick it, auto-mark being on', a[0]);
     const st = await strip(D);
-    ok(st.name === 'Set 1' && JSON.stringify(st.marked) === '[0]', '4. after reps typed in set 1, minus and plus stay on set 1, named ("Set 1", no ", done" since 2.42, NEW-105) and marked on its number', st);
+    ok(st.name === 'Set 1' && JSON.stringify(st.marked) === '[0]', '4. after reps typed in set 1, minus and plus stay on set 1, named ("Set 1", no ", done" since 2.42, NEW-105), and the set they change', st);
     const w0 = await D.page.evaluate(() => { const L = window.__ironlog, b = L.state.draft.ex[0]; return L.effW(b, 0); });
     await step(D, 'w', '1');
     const b1 = await sets(D);
