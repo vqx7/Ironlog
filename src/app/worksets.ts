@@ -60,6 +60,7 @@ import {
   adjSrc,
   blkIdx,
   blkIsOpen,
+  blkIsShut,
   blkRef,
   carried,
   keepOpen,
@@ -1052,13 +1053,14 @@ export function liftsOn(d: Draft): Set<DraftBlock> {
   };
   /* Or while it holds the set you are on and is drawn open, done or not (NEW-100): reps typed in its last set tick it
      and finish it, and a minus or plus straight after is for that set, until the lift folds. */
-  const left = (x: DraftBlock): boolean => !blockDone(x) || held(x);
+  // A lift folded by hand is put away (NEW-101): the pills go on to the next one.
+  const left = (x: DraftBlock): boolean => (!blockDone(x) || held(x)) && !blkIsShut(d.ex.indexOf(x), x);
   const i = blkIdx(W.onLift);
   const at = i >= 0 ? d.ex[i] : undefined;
   // Once it is done, the lift the screen brings up after it (nextLift, as the fold glides to it and the rest card
   // names it; the review of 2.38, REV7-7: the first lift with a set left was above and off screen), else the first.
   const nx = at && !left(at) ? nextLift(d, i) : -1;
-  const b = at && left(at) ? at : nx >= 0 ? d.ex[nx] : d.ex.find(left);
+  const b = at && left(at) ? at : nx >= 0 && left(d.ex[nx]) ? d.ex[nx] : d.ex.find(left);
   if (!b) return new Set();
   const ss = b.plan && b.plan.ss;
   return new Set(ss ? d.ex.filter(x => x.plan && x.plan.ss === ss && left(x)) : [b]);

@@ -415,9 +415,9 @@ function progressLine(b: DraftBlock, bi: number): Part {
     : '';
 }
 
-/** Whether an exercise is drawn folded: done, and either folded by hand in an edit or, in a session, not opened again with no fold waiting for its moment. */
+/** Whether an exercise is drawn folded: folded by hand, or, in a session, done and not opened again with no fold waiting for its moment. */
 const isFolded = (d: Draft, b: DraftBlock, bi: number): boolean =>
-  blockDone(b) && (d.editingId ? blkIsShut(bi, b) : !blkIsOpen(bi, b) && !W.foldWait.has(b));
+  blkIsShut(bi, b) || (!d.editingId && blockDone(b) && !blkIsOpen(bi, b) && !W.foldWait.has(b));
 
 function blockPart(
   d: Draft,
@@ -444,7 +444,13 @@ function blockPart(
   if (isFolded(d, b, bi)) {
     const ws = b.sets.filter(x => !x.warm);
     const prs = b.sets.filter((x, si) => !x.warm && rowPR(b, si, d.date)).length;
-    return html`<section class=${'block folded' + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${bgrip(bi, ex.name)}<button class="bfold" data-act="bOpen" data-b=${bi} aria-expanded="false" aria-label=${`${ex.name}, done. Open to edit`}><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${ssLbl}${ex.name}</b><span>${ws.map(x => setShort(ex, x.w, x.r) + missedTag(x)).join(', ')}</span></span>${prs ? html`<span class="bf-pr">PR</span>` : ''}<span class="chev" aria-hidden="true"></span></button></section>`;
+    const done = blockDone(b);
+    // Not done (folded by hand, NEW-101): the sets it has done of its sets, and an empty ring where the tick goes.
+    const work = b.sets.filter(x => !x.warm && !x.drop);
+    const line = done
+      ? ws.map(x => setShort(ex, x.w, x.r) + missedTag(x)).join(', ')
+      : `${work.filter(x => x.done).length} of ${work.length} sets`;
+    return html`<section class=${'block folded' + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${bgrip(bi, ex.name)}<button class="bfold" data-act="bOpen" data-b=${bi} aria-expanded="false" aria-label=${done ? `${ex.name}, done. Open to edit` : `${ex.name}, ${line} done. Open`}><span class=${done ? 'bf-ck' : 'bf-ck bf-todo'} aria-hidden="true">${done ? '✓' : ''}</span><span class="bf-t"><b>${ssLbl}${ex.name}</b><span>${line}</span></span>${prs ? html`<span class="bf-pr">PR</span>` : ''}<span class="chev" aria-hidden="true"></span></button></section>`;
   }
   const partner = ss
     ? d.ex
@@ -460,7 +466,7 @@ function blockPart(
     b.lastR.some(r => r != null) &&
     b.sets.some((s, i) => !s.done && !s.warm && !s.drop && s.r == null && lastRFor(b, i) != null);
   return html`<section class=${'block' + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? html`<p class="ssh">Superset ${ss}</p>` : ''}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : nothing}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? html` ${tipButton(ex.note, 'About ' + ex.name)}` : ''}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · ${work || p.sets}×${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? '/side' : ''}${nr ? '' : ` @${b.inj || ((d.light || d.deload || b.light) && b.last) ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}`} · ${p.rest}s${b.inj ? html` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ''}${markedNew(d, b.exId) ? html` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ''}</p></div>
-      <div class="bh-acts">${blockDone(b) ? html`<button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button>` : ''}<button class=${'ib' + (b.note || (b.pics && b.pics.length) ? ' noted' : '')} aria-label=${b.note || (b.pics && b.pics.length) ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle.">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
+      <div class="bh-acts"><button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button><button class=${'ib' + (b.note || (b.pics && b.pics.length) ? ' noted' : '')} aria-label=${b.note || (b.pics && b.pics.length) ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle.">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
       ${
         b.target
           ? html`<p class="hint"><b>Today: ${targetText(b)}</b>${why ? html` ${tipButton(why, 'Why this target')}` : ''}<span class="tp muted u-dblock">${lastHead(b, dupB)}</span>${bl ? html`<span class="tp muted u-dblock">${bl}</span>` : ''}${b.easier ? html`<span class="tp ez">${b.easier}</span>` : ''}${progressLine(b, bi)}</p>`

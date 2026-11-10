@@ -135,18 +135,20 @@ const blkKey = (bi: number, b: DraftBlock): string => ((state.draft && state.dra
 /** Whether a block was opened again after it folded, by its place or itself. */
 export const blkIsOpen = (bi: number, b: DraftBlock): boolean => ui.blkOpen.has(blkKey(bi, b)) || blkOpenObj.has(b);
 
-/* An edit of a saved session opens on every exercise: all are done, and the
-   lifter came to change them, so nothing folds on its own there. One folds
-   only by hand (NEW-91, V 2026-11-08: an edit had no fold button at all),
-   held by its place and itself as an opened one is. */
+/* Any exercise folds by hand, done or not (NEW-101, V 2026-11-09: in a blank session every exercise added stayed open;
+   NEW-91 gave an edit its button first): held by its place and itself, as an opened one is. A done exercise also folds
+   by itself a moment after its last tick in a session, not in an edit, where all are done and the lifter came to
+   change them. */
 const blkShutObj = new WeakSet<DraftBlock>();
-/** Whether an exercise in an edit of a saved session was folded by hand. */
+/** Whether an exercise was folded by hand. */
 export const blkIsShut = (bi: number, b: DraftBlock): boolean => ui.blkShut.has(blkKey(bi, b)) || blkShutObj.has(b);
 
-/** Folds an exercise in an edit of a saved session by hand. */
+/** Folds an exercise by hand, and forgets that it was opened again. */
 export function blkShut(bi: number, b: DraftBlock): void {
   ui.blkShut.add(blkKey(bi, b));
   blkShutObj.add(b);
+  ui.blkOpen.delete(blkKey(bi, b));
+  blkOpenObj.delete(b);
 }
 
 /** Opens a block again after it folded, by its place and the block itself (r25). */

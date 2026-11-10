@@ -28,7 +28,6 @@ import {
   blkIdx,
   blkOpen,
   blkShut,
-  blkOpenObj,
   blkRef,
   setRef,
   carried,
@@ -701,20 +700,14 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     window.scrollTo(0, 0);
     render();
   },
-  // Every place this exercise was opened at, so a move and a fold leave nothing behind.
+  // Folded by hand, done or not (NEW-101), and every place it was opened at forgotten, so a move leaves nothing behind.
   bFold(t) {
     const b = tapBlock(t);
     if (!b) return;
-    const d = state.draft;
-    if (d && d.editingId) {
-      blkShut(Number(t.dataset.b), b);
-      rerenderKeepScroll();
-      return;
-    }
     const pre = ((state.draft && state.draft.id) || '') + ':';
     for (const k of [...ui.blkOpen])
       if (typeof k === 'string' && k.startsWith(pre) && k.endsWith(':' + b.exId)) ui.blkOpen.delete(k);
-    blkOpenObj.delete(b);
+    blkShut(Number(t.dataset.b), b);
     rerenderKeepScroll();
   },
   bUp(t) {

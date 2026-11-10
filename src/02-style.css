@@ -652,7 +652,7 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .stepr-b:disabled{opacity:.35;cursor:default}
 .stepr-v{flex:1 1 auto;min-width:0;margin:0 -4px;display:flex;align-items:baseline;justify-content:center;gap:3px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .stepr-v b{font-size:18px;font-weight:800;letter-spacing:-.01em}
-.stepr-v small{font-size:12px;font-weight:600;opacity:.75}
+.stepr-v small{font-size:12px;font-weight:600}
 @media (max-width:379px){.stepr-v small{display:none}.stepr-v b{font-size:17px}}
 .sg.norir{grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) 44px}
 .sg .n.drop{color:var(--blue)}
@@ -962,6 +962,7 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .sprog span{font:700 13px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
 .bfold{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:10px 14px;background:none;border:0;color:var(--ink);text-align:left;cursor:pointer;font:inherit}
 .bf-ck{flex:none;width:30px;height:30px;border-radius:50%;background:var(--volt);color:var(--on-volt);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
+.bf-ck.bf-todo{background:none;box-shadow:inset 0 0 0 2px var(--line)}
 .bf-t{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:2px}
 .bf-t b{font:700 18px/1.1 var(--display);text-transform:uppercase;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bf-t span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
