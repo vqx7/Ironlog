@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-oL5XtE207D3vjLaaJRtwfcNZUVCIo67t6KONYr0hDNI=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-I5UcH5cQlx6ZK1tcCWk+Njz3/pY6/Lox2UeU6y9Wwe4=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.10-r90">
+<meta name="app-build" content="2026.11.10-r91">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2022,7 +2022,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     why: 160,
     /** The lifter's name, a session's, a routine's and a day's, in characters. */
     name: 40,
-    /** An exercise's name, in characters: the library's longest is 36 (2.28, 2.27-F3). */
+    /** An exercise's name, in characters: the library's longest is 36. */
     exName: 60,
     /** A note, in characters: a session's, an exercise's, an injury's (2.28, 2.27-F3: any length before, and one
         long paste could make a month too large to sync). */
@@ -2134,8 +2134,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.44";
-  var APP_VERSION = "2026.11.10-r90";
+  var DISPLAY_VERSION = "2.45";
+  var APP_VERSION = "2026.11.10-r91";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2674,7 +2674,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         R2(),
         R2()
       ] }),
-      /* Two days a week (r30): the whole body each day, about an hour. */
+      /* Two days a week: the whole body each day, about an hour. */
       tpl({ key: "full2", name: "Full body, 2 days", who: "Two sessions a week: the whole body each time", days: [
         D2("Full body A", [I2("backSquat", 3, 6, 10, 2, 180), I2("bench", 3, 6, 10, 2, 150), I2("cableRow", 3, 8, 12, 2, 120), I2("seatedCurl", 3, 10, 15, 1, 75), I2("dbLateral", 3, 10, 20, 1, 60), I2("inclineCurl", 2, 10, 15, 1, 60)]),
         R2(),
@@ -2706,7 +2706,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         D2("Chest", [I2("bench", 3, 6, 10, 2, 150), I2("incDb", 3, 8, 12, 1, 120), I2("cableFly", 3, 10, 15, 1, 75), I2("dips", 2, 8, 12, 1, 120), I2("cableCrunch", 3, 10, 15, 1, 60)]),
         D2("Back", [I2("pullup", 4, 6, 10, 1, 150), I2("bbRow", 3, 6, 10, 2, 150), I2("cableRow", 3, 8, 12, 1, 120), I2("latPulldown", 3, 8, 12, 1, 120), I2("reversePecDeck", 3, 12, 20, 0, 60)]),
         D2("Legs", [I2("backSquat", 3, 6, 10, 2, 180), I2("rdl", 3, 6, 10, 2, 150), I2("legPress", 3, 10, 15, 1, 120), I2("legExt", 3, 10, 15, 1, 75), I2("seatedCurl", 4, 10, 15, 1, 75), I2("hipThrust", 3, 8, 12, 1, 120), I2("standCalf", 4, 10, 15, 1, 60)]),
-        // Lateral raises split over two days (r30): nine sets in one session added little past the first five or six.
+        // Lateral raises split over two days: nine sets in one session added little past the first five or six.
         D2("Shoulders", [I2("ohp", 3, 6, 10, 2, 150), I2("cableLateral", 5, 10, 20, 1, 60), I2("facePull", 3, 12, 20, 1, 60), I2("dbShrug", 3, 10, 15, 1, 60), I2("seatedCalf", 4, 10, 15, 1, 60), I2("hangingLegRaise", 3, 10, 15, 1, 60)]),
         D2("Arms and legs", [I2("inclineCurl", 4, 8, 12, 1, 75), I2("ohCableExt", 4, 8, 12, 1, 75), I2("hammer", 3, 10, 12, 1, 60), I2("pressdown", 3, 10, 15, 1, 60), I2("dbLateral", 4, 12, 20, 1, 60), I2("bss", 3, 8, 12, 1, 90), I2("lyingCurl", 3, 10, 15, 1, 75)]),
         R2(),
@@ -3865,7 +3865,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
                 cut: b2.cut === true ? true : void 0,
                 // One exercise made lighter mid-session (r31, Make it lighter): out of trends and targets, the rest of the session counts.
                 light: b2.light === true ? true : void 0,
-                // Held for a flagged injury, its key (r54): left out of the stall test. Absent unless held, so earlier records keep their hash.
+                // Held for a flagged injury, its key: left out of the stall test. Absent unless held, so earlier records keep their hash.
                 ...typeof b2.inj === "string" && isMuscleOrJoint(b2.inj) ? { inj: b2.inj } : {},
                 sets: (arr(b2.sets) || []).flatMap((x0) => {
                   const x2 = rec(x0);
@@ -3879,30 +3879,30 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
                       warm: !!x2.warm,
                       drop: !!x2.drop && !x2.warm,
                       cal: x2.warm ? void 0 : cleanCal(rec(x2.cal)) || void 0,
-                      // The row's own id (r56.1), last, where a build before it kept the unknown field.
+                      // The row's own id, last, where a build before it kept the unknown field.
                       ...typeof x2.rid === "string" ? { rid: fixId(x2.rid) } : {}
                     })
                   ];
                 }),
-                // The sets its routine's plan gave it when saved (r58, 339 h), last, as Finish writes it; absent unless recorded, so older records keep their hash.
+                // The sets its routine's plan gave it when saved, last, as Finish writes it; absent unless recorded, so older records keep their hash.
                 ...typeof b2.ps === "number" && Number.isInteger(b2.ps) && b2.ps >= 1 && b2.ps <= LIMITS.sets ? { ps: b2.ps } : {},
                 // Done at a new machine or gym (r61, 343 7), last, as Finish writes it; absent unless marked, so older records keep their hash.
                 ...b2.nw === true ? { nw: true } : {},
-                // The pictures on its note (r66, 373), by id, last; absent unless there are any, so older records keep their hash.
+                // The pictures on its note, by id, last; absent unless there are any, so older records keep their hash.
                 ...picsField(b2.pics)
               },
               KNOWN_SEX
             )
           ];
         }).filter((b2) => b2.sets.length),
-        // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold (r56.1).
+        // When the session started: orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold.
         t: isTime(Math.round(t4)) ? Math.round(t4) : void 0,
         // The sessions a week its routine planned when saved (r55, pwOf); absent unless recorded, so older records keep their hash.
         // At most seven, as every build before reads it: a week of more is not recorded (pwOf, the review of r68).
         pw: typeof ss.pw === "number" && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= WEEK_DAYS ? ss.pw : void 0,
-        // The pictures on the workout's notes (r66, 373), by id; absent unless there are any, so older records keep their shape and hash.
+        // The pictures on the workout's notes, by id; absent unless there are any, so older records keep their shape and hash.
         ...picsField(ss.pics),
-        // Its day's second workout (r68, 366 (c)): 2 or absent, last, where a build before r68 keeps it among its extras.
+        // Its day's second workout: 2 or absent, last, where a build before r68 keeps it among its extras.
         ...ss.part === 2 ? { part: 2 } : {}
       },
       KNOWN_SESS
@@ -4045,32 +4045,32 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       // Optional settings added in r20 stay undefined unless set.
       ...accent ? { accent } : {},
       ...st.rirAsk === true ? { rirAsk: true } : {},
-      // Count RIR 4 to 5 as half a set (r40): absent unless on.
+      // Count RIR 4 to 5 as half a set: absent unless on.
       ...st.rirHalf === true ? { rirHalf: true } : {},
       // r34: adjusting the next sets is on unless turned off; only false is stored, so older saves hash as before.
       ...st.autoAdj === false ? { autoAdj: false } : {},
       // r34: weigh-in reminder in days (0 off); absent is every BW_EVERY_DEFAULT days.
       ...bwEvery2 !== void 0 ? { bwEvery: bwEvery2 } : {},
-      // 2.37 (ST-6): This block vs last's length; absent is BLOCK_WEEKS_DEFAULT, so saves without it hash as before.
+      // 2.37: This block vs last's length; absent is BLOCK_WEEKS_DEFAULT, so saves without it hash as before.
       ...blockWeeks !== void 0 ? { blockWeeks } : {},
       // r34: Today opens on a blank session; absent is the plan's day.
       ...st.todayStart === "free" ? { todayStart: "free" } : {},
       // r34: rest weeks, week-start dates; the last two years kept.
       ...restWeeks.length ? { restWeeks } : {},
-      // r33 (item 206): effort in half points or RPE; absent is whole RIR, so older saves hash as before.
+      // r33: effort in half points or RPE; absent is whole RIR, so older saves hash as before.
       ...rirScale2 ? { rirScale: rirScale2 } : {},
       // r25: suggested loads show grey until typed; 'fill' puts them in the rows as before. Unset means grey (V's choice).
       ...st.loadFill === "fill" ? { loadFill: "fill" } : {},
       ...userName ? { userName } : {},
       homeFolded: hf ? strings(hf, (k2) => oneOf(k2, ["map", "body", "week", "tiles", "coach", "injuries"])) : [],
-      // Section order per tab (drag the ⠿ in a section header): a new install starts in the default order (r28).
+      // Section order per tab (drag the ⠿ in a section header): a new install starts in the default order.
       secOrder,
       folds: fl ? strings(fl, (k2) => safeKey(k2) && k2.length < LIMITS.foldKey).slice(0, LIMITS.folds) : [],
       wakeLock: st.wakeLock === true,
-      // Small change plates (r29, item 98): absent unless on, so saves without it hash as before. Its toggle went with the
-      // plates line in 2.42 (NEW-103); a log that has it keeps it, and a build before reads it as it did.
+      // Small change plates: absent unless on, so saves without it hash as before. Its toggle went with the
+      // plates line in 2.42; a log that has it keeps it, and a build before reads it as it did.
       ...st.smallPlates === true ? { smallPlates: true } : {},
-      // Your gym (r33, item 207) and the profile (r44, item 271): absent unless set, rebuilt in one key order.
+      // Your gym and the profile: absent unless set, rebuilt in one key order.
       ...gym ? { gym } : {},
       ...profile ? { profile } : {},
       ...Object.keys(bandsFit).length ? { bandsFit } : {},
@@ -4142,15 +4142,15 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       // stack or rack, past which progression moves to reps. Absent when unset,
       // so records saved before these existed hash exactly as before.
       timed: e5.timed === true ? true : void 0,
-      // Compound or isolation, when set in the editor (r27); absent reads it from the name.
+      // Compound or isolation, when set in the editor; absent reads it from the name.
       kind: e5.kind === "compound" || e5.kind === "iso" ? e5.kind : void 0,
-      // Assisted (item 45): the load number is the machine's help, stored below 0.
+      // Assisted: the load number is the machine's help, stored below 0.
       assist: e5.assist === true && !!e5.bw ? true : void 0,
       bwf: isNum(bwf) && bwf > 0 && bwf <= LIMITS.bwShare ? Math.round(bwf * HUNDREDTHS) / HUNDREDTHS : void 0,
       maxLoad: isNum(ml) && ml > 0 ? Math.min(ml, LOAD_MAX) : void 0,
-      // This lift's own bar (r29, item 98): a trap or EZ bar instead of the bar in Settings. Absent when unset.
+      // This lift's own bar: a trap or EZ bar instead of the bar in Settings. Absent when unset.
       barKg: isNum(bar2) && bar2 > 0 ? Math.min(bar2, LIMITS.barKg) : void 0,
-      // A lift goal (r38, item 188): a load (added load on a bodyweight lift) for a number of reps. Absent when unset.
+      // A lift goal: a load (added load on a bodyweight lift) for a number of reps. Absent when unset.
       goal: g2 && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e5.timed && !e5.assist ? { w: gw, r: gr } : void 0
     });
   }
@@ -4186,7 +4186,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
             ...planNums(it),
             ss: typeof it.ss === "string" && it.ss ? fixId(it.ss) : null,
             ...jumpOf(it),
-            // In the day's second workout (r68, 366 (c)): true or absent, last, so older items keep their hash.
+            // In the day's second workout: true or absent, last, so older items keep their hash.
             ...it.pm === true && schedule === "weekly" ? { pm: true } : {}
           },
           KNOWN_ITEM
@@ -4225,7 +4225,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         drop: !!x2.drop && !x2.warm,
         done: !!x2.done,
         cal: x2.warm ? void 0 : cleanCal(rec(x2.cal)) || void 0,
-        // The row's own id (r56.1), last, where a build before it kept the unknown field.
+        // The row's own id, last, where a build before it kept the unknown field.
         ...typeof x2.rid === "string" ? { rid: fixId(x2.rid) } : {}
       })
     ];
@@ -4254,7 +4254,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           inj: typeof b2.inj === "string" && isMuscleOrJoint(b2.inj) ? b2.inj : null,
           hint: typeof b2.hint === "string" ? b2.hint : "",
           last: typeof b2.last === "string" ? b2.last : "",
-          // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
+          // Last time's sets as shown in the Last column: short strings, absent in older drafts.
           prev: prev ? strings(prev, () => true).slice(0, LIMITS.sets).map((x2) => x2.slice(0, LIMITS.lastText)) : void 0,
           prevOff: b2.prevOff === true ? true : void 0,
           target: typeof b2.target === "string" ? b2.target : "",
@@ -4267,14 +4267,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           }) : [],
           swappedFrom: typeof b2.swappedFrom === "string" ? fixId(b2.swappedFrom) : null,
           cut: b2.cut === true ? true : void 0,
-          // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
+          // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine; absent otherwise.
           full: typeof b2.full === "number" && Number.isInteger(b2.full) && b2.full >= 1 && b2.full <= LIMITS.sets ? b2.full : void 0,
           light: b2.light === true ? true : void 0,
-          // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
+          // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload.
           basis: typeof b2.basis === "string" && isDate(b2.basis) ? b2.basis : void 0,
-          // The suggested load the rows started from (r24); absent in older drafts.
+          // The suggested load the rows started from; absent in older drafts.
           sw: b2.sw === null ? null : b2.sw === void 0 || !isNum(sw) ? void 0 : clampN(b2.sw, LOAD_MIN, LOAD_MAX, 0),
-          // The next sets adjusted from a set (r34), and Keep for the rest of the session.
+          // The next sets adjusted from a set, and Keep for the rest of the session.
           adj: adj && typeof adj.at === "number" && Number.isInteger(adj.at) && adj.at >= 0 && isNum(adjW) && isNum(adjFrom) ? {
             at: adj.at,
             w: clampN(adj.w, 0, LOAD_MAX, 0),
@@ -4282,7 +4282,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
             r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
             up: adj.up === true,
             why: typeof adj.why === "string" ? adj.why.slice(0, LIMITS.why) : "",
-            // The row it came from (PENDING 333), last, where a build before it kept no such field.
+            // The row it came from, last, where a build before it kept no such field.
             ...typeof adj.rid === "string" ? { rid: fixId(adj.rid) } : {}
           } : void 0,
           adjOff: b2.adjOff === true ? true : void 0,
@@ -4292,7 +4292,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           sets: (arr(b2.sets) || []).flatMap(cleanDraftSet),
           // Done at a new machine or gym (r61, 343 7), last, where the menu adds it; absent unless marked.
           ...b2.nw === true ? { nw: true } : {},
-          // The pictures on its note (r66, 373), by id, last; absent unless there are any.
+          // The pictures on its note, by id, last; absent unless there are any.
           ...picsField(b2.pics)
         },
         KNOWN_BLOCK
@@ -4324,11 +4324,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       deload: !!d3.deload,
       light: !!d3.light,
       limited: d3.limited === true ? true : void 0,
-      // The equipment a Limited equipment session keeps to (NEW-79), as the library names it; absent when there is none.
+      // The equipment a Limited equipment session keeps to, as the library names it; absent when there is none.
       ...equip ? { equip } : {},
       ...pics ? { pics } : {},
       free: d3.free === true ? true : void 0,
-      // Started as its day's second workout (r68, 366 (c)).
+      // Started as its day's second workout.
       part: d3.part === 2 ? 2 : void 0,
       // Finish's two questions once answered (sets left, ramp-ups), kept as they came: until 2.28 they passed through
       // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (the r56-1c suite).
@@ -5728,10 +5728,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         warm: !!s3.warm,
         drop: !!s3.drop && !s3.warm,
         cal: s3.cal && !s3.warm ? s3.cal : void 0,
-        // The row's own id (r56.1), last, where a build before it keeps the unknown field.
+        // The row's own id, last, where a build before it keeps the unknown field.
         ...typeof s3.rid === "string" ? { rid: s3.rid } : {}
       })),
-      // The note's pictures (r66, 373); put last by picsLast once the plan's sets and a new-machine mark are on.
+      // The note's pictures; put last by picsLast once the plan's sets and a new-machine mark are on.
       ...b2.pics && b2.pics.length ? { pics: [...b2.pics] } : {}
     };
   }
@@ -5768,7 +5768,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       ...chk ? { chk } : {},
       ...d3.startedAt && d3.startedAt > 0 ? { t: d3.startedAt } : {},
       ...d3.pics && d3.pics.length ? { pics: [...d3.pics] } : {},
-      // The day's second workout (r68, 366 (c)), last, as normalize writes it.
+      // The day's second workout, last, as normalize writes it.
       ...d3.part === 2 ? { part: 2 } : {}
     };
   }
@@ -5854,9 +5854,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       ex: d3.ex.map((b2) => [
         b2.exId,
         (b2.note || "").trim(),
-        // A new machine or gym marked or taken off is an edit too (r61).
+        // A new machine or gym marked or taken off is an edit too.
         !!b2.nw,
-        // So is a picture added or taken off (r66, 373).
+        // So is a picture added or taken off.
         (b2.pics || []).join(),
         b2.sets.map((x2) => [
           x2.w == null ? null : +x2.w,
@@ -5883,7 +5883,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function hintOnce(t4, seen) {
     if (!t4) return "";
     const m3 = t4.match(
-      /^First time: pick a load you think you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/
+      /^First time: pick a load you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/
     );
     if (m3) {
       if (seen.has("first")) return `First time: a load you could lift about ${m3[1]} times; do ${m3[2]}.`;
@@ -6548,7 +6548,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           rr: b2.rr || null,
           ...b2.ps ? { ps: b2.ps } : {},
           ...b2.nw ? { nw: true } : {},
-          // Read from its drop sets alone (r64): neither the PR list nor the bests board reads it, as no drop set feeds a PR.
+          // Read from its drop sets alone: neither the PR list nor the bests board reads it, as no drop set feeds a PR.
           ...main.length ? {} : { dropOnly: true },
           topN: atTop.length,
           tAdj,
@@ -7767,7 +7767,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         tgt: null,
         kin: kin.ex.id
       };
-    const text = ex.assist ? `First time: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.` : ex.bw ? `First time: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.` : `First time: pick a load you think you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
+    const text = ex.assist ? `First time: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.` : ex.bw ? `First time: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.` : `First time: pick a load you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
     return { w: w0, text, lastR: [], last: "", target: "", tgt: null };
   }
   function sgEasyIn(M3, C2) {
@@ -8333,7 +8333,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     /** Priority, lagging and focus muscles: 1.2 on while short of target, 0.3 once at it. */
     focusShort: 1.2,
     focusMet: 0.3,
-    /** Strength focus (r44, item 44): stalled lifts lose 0.8 above, so 1.6 nets 0.8; near-best ones gain 1.2. */
+    /** Strength focus: stalled lifts lose 0.8 above, so 1.6 nets 0.8; near-best ones gain 1.2. */
     strStalled: 1.6,
     strNear: 1.2,
     /** The picks shown, and the sets one takes when its plan has none. */
@@ -8663,7 +8663,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       !hasTargetIn(M3, x2.m) ? `${name}: ${r1(x2.r7)} hard sets in the last 7 days, counting this session (tracked only, no target).` : `${name}: ${r1(x2.r7)} of ${lo}-${hi} hard sets in the last 7 days, counting this session${x2.def > 0 ? `, ${r1(x2.def)} short of target` : ", at or above target"}.`
     );
     out.push(
-      x2.rec.days == null ? lastAnyHardIn(M3, x2.m) == null ? `Not trained hard in the last ${RECOVERY.window / WEEK_DAYS} weeks.` : `Last trained hard ${agoTxt(lastAnyHardIn(M3, x2.m) ?? 0)}, recovered.` : x2.rec.r < 1 ? `Last trained hard ${agoTxt(x2.rec.days)} (${r1(x2.rec.sets)} sets), so it may still be recovering.` : `Last trained hard ${agoTxt(x2.rec.days)}, recovered.`
+      x2.rec.days == null ? lastAnyHardIn(M3, x2.m) == null ? `Not trained hard in the last ${RECOVERY.window / WEEK_DAYS} weeks.` : `Last trained hard ${agoTxt(lastAnyHardIn(M3, x2.m) ?? 0)}, recovered.` : x2.rec.r < 1 ? `Last trained hard ${agoTxt(x2.rec.days)} (${r1(x2.rec.sets)} sets), may still be recovering.` : `Last trained hard ${agoTxt(x2.rec.days)}, recovered.`
     );
     if (x2.inSess > 0)
       out.push(
@@ -8671,9 +8671,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       );
     if (x2.n) {
       const p3 = x2.st && x2.st.pct != null ? `, ${x2.st.pct >= 0 ? "+" : ""}${r1(x2.st.pct)}% over ${x2.st.spanW || TREND_WEEKS_SAID} weeks` : "";
-      out.push(
-        `You have logged it ${x2.n} time${x2.n === 1 ? "" : "s"}${p3}${x2.st && x2.st.stalled ? ", stalled lately" : ""}.`
-      );
+      out.push(`Logged ${x2.n} time${x2.n === 1 ? "" : "s"}${p3}${x2.st && x2.st.stalled ? ", stalled lately" : ""}.`);
     } else out.push("New to you: the first session sets its baseline.");
     if (LONG_IDS.has(x2.e.id))
       out.push(
@@ -8683,7 +8681,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     else if ((profIn(M3).focus || []).some((f3) => f3 === x2.m)) out.push("One of your focus muscles.");
     if (x2.sp)
       out.push(
-        x2.sp === "stalled" ? `Strength focus: stalled lately, and ${STR_REST} days or more since you did it.` : `Strength focus: within ${Math.round((1 - STR_NEAR) * PERCENT)}% of your best, and ${STR_REST} days or more since you did it.`
+        x2.sp === "stalled" ? `Strength focus: stalled lately, and ${STR_REST} days or more since last done.` : `Strength focus: within ${Math.round((1 - STR_NEAR) * PERCENT)}% of your best, and ${STR_REST} days or more since last done.`
       );
     return out;
   }
@@ -9573,7 +9571,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           bestW = p3.w;
         }
     if (best > 0 && load2 > Math.max(best, top) * ODD_BEST + EPS)
-      return `${say(w2)} is more than twice the heaviest you have logged on this exercise, ${say(bestW)}.`;
+      return `${say(w2)} is more than twice the heaviest logged on this exercise, ${say(bestW)}.`;
     if (ex.bw && w2 > 0) {
       const kg2 = bwAtIn(M3, date);
       if (kg2 != null && kg2 > 0 && w2 >= kg2 * ODD_ADDED_BW - EPS)
@@ -9584,7 +9582,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         if (i5 !== si && x2.done && isWork(x2) && !x2.drop && x2.w != null) most = Math.max(most, x2.w);
       });
       if (most > 0 && w2 > most * ODD_ADDED_BEST + EPS)
-        return `${say(w2)} is more than ${timesWord(ODD_ADDED_BEST)} the most you have added on this exercise, ${say(most)}.`;
+        return `${say(w2)} is more than ${timesWord(ODD_ADDED_BEST)} the most added on this exercise, ${say(most)}.`;
     }
     return under;
   }
@@ -10120,7 +10118,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         SYNC_KEY,
         JSON.stringify({
           meta: cloud.meta,
-          // Writes sent and not yet answered (2.28, NEW-67), so a reload before the answer still knows its own.
+          // Writes sent and not yet answered, so a reload before the answer still knows its own.
           sent: Object.keys(cloud.sent).length ? cloud.sent : void 0,
           last: cloud.last,
           editAt: cloud.editAt,
@@ -12994,14 +12992,14 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!id) return;
     saidThisVisit = true;
     toast(
-      `${EX(id).name} counts your bodyweight, plus any weight you add. Set it on Today or in Settings; it is optional.`,
+      `${EX(id).name} counts your bodyweight, plus any weight you add. Set it on Today or in Settings (optional).`,
       null,
       NUDGE_MS
     );
   }
   function bwWarn(exId) {
     if (!bwMissing(exId)) return A;
-    return b`<p class="small bwwarn">No bodyweight set, so this counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId}>Set it</button></p>`;
+    return b`<p class="small bwwarn">No bodyweight set: counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId}>Add bodyweight</button></p>`;
   }
   var latestBw = () => state.bodyweights.filter((b2) => !b2.demo).sort((a2, b2) => a2.date < b2.date ? 1 : -1)[0];
   function bwSheet(m3) {
@@ -13018,7 +13016,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return b`<div class="row u-mt8" id="bwSet"><label class="field u-f1_m0">Bodyweight (${U()})<input type="text" inputmode="decimal" id="bwSetVal" placeholder=${last ? fmtW(last.kg) : "Not set"} data-grey=${last ? fmtW(last.kg) : A} enterkeyhint="done"></label><button class="btn sm primary" data-act="addBW" data-in="bwSetVal">${last ? "Log" : "Set"}</button></div><p class="small muted u-m4-0-0">${last ? `Latest ${fmtW(last.kg)} ${U()}. ` : "Not set: bodyweight lifts count only the weight you add. "}Optional.</p>`;
   }
   var BW_ACTS = {
-    // From a session's header (NEW-90) the sheet carries the session's date, so a past workout's weigh-in is dated that day.
+    // From a session's header the sheet carries the session's date, so a past workout's weigh-in is dated that day.
     bwOpen(t4) {
       const id = t4.dataset.ex;
       const d3 = t4.dataset.date;
@@ -13036,7 +13034,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     radarLegendBox: 12,
     radarStep: 50,
     radarMin: 150,
-    /* The radar is drawn up to 200% (r29): a minimum brought down to 2 sets read 8 sets as 400%, and the ring and every
+    /* The radar is drawn up to 200%: a minimum brought down to 2 sets read 8 sets as 400%, and the ring and every
        other spoke shrank to a quarter. The real share is in the table and the tooltip. */
     radarMax: 200,
     radarPoint: 3,
@@ -13663,7 +13661,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!ids.length && !room) return A;
     return b`<div class="pstrip">${ids.map(
       (id, i5) => b`<button class="pthumb" data-act="picOpen" data-id=${id} data-at=${atKey(at2)} aria-label=${`Picture ${i5 + 1}: open`}>\x3cimg src=${picUrl(id) || ""} alt="" loading="lazy" decoding="async"></button>`
-    )}${room ? b`<label class="btn sm padd" data-tip="Kept on this phone only: not in backups or your account yet.">+ Picture<input type="file" accept="image/*" data-pic=${atKey(at2)} hidden></label>` : A}</div>`;
+    )}${room ? b`<label class="btn sm padd" data-tip="Kept on this phone only: not in backups or your account yet">+ Picture<input type="file" accept="image/*" data-pic=${atKey(at2)} hidden></label>` : A}</div>`;
   }
   function picStripSaved(ids) {
     const shown2 = picsShown(ids ? [...ids] : []);
@@ -16153,9 +16151,9 @@ ${u4 !== U() ? b`<p class="small u-m0">Suggestions show in ${U()}, on the ${u4} 
     )}<input type="text" inputmode="decimal" data-gym="db.fine" aria-labelledby="lt-dbFine" .value=${fieldValue(v3("fine"))} placeholder=${String(DB_EXAMPLE[u4].fine)} /></label>
 <label class="field">Up to<input type="text" inputmode="decimal" data-gym="db.fineTo" .value=${fieldValue(v3("fineTo"))} placeholder=${String(DB_EXAMPLE[u4].fineTo)}/></label>
 </div>
-<p class=${half ? "small u-m6-0-0" : "small muted u-m6-0-0"} id="gymDbList">${half ? "Add From, To, and Step to use these." : L2 ? `${L2.length} pairs: ${listTxt(L2)} ${u4}${pair2 ? ". Add both smaller-step fields to use them." : ""}` : "Not set: dumbbell steps are read from what you log."}</p>
+<p class=${half ? "small u-m6-0-0" : "small muted u-m6-0-0"} id="gymDbList">${half ? "Add From, To, and Step to use these." : L2 ? `${L2.length} pairs: ${listTxt(L2)} ${u4}${pair2 ? ". Add both smaller-step fields to use them." : ""}` : "Not set: dumbbell steps come from your log."}</p>
 </div>
-<label class="field">${labelTip("lt-kb", `Kettlebells (${u4})`, "The weights you have, any order, separated by commas.")}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g2 && g2.kb ? g2.kb.map(fmtG).join(", ") : "")} placeholder=${lb ? "18, 26, 35, 44, 53" : "8, 12, 16, 20, 24"}/></label> <label class="field">${labelTip(
+<label class="field">${labelTip("lt-kb", `Kettlebells (${u4})`, "The weights you have, any order, separated by commas")}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g2 && g2.kb ? g2.kb.map(fmtG).join(", ") : "")} placeholder=${lb ? "18, 26, 35, 44, 53" : "8, 12, 16, 20, 24"}/></label> <label class="field">${labelTip(
       "lt-stack",
       `Cable and machine stacks step by (${u4})`,
       "The usual step between pins on your cable and machine stacks. A machine that differs gets its own step in its exercise."
@@ -16246,7 +16244,7 @@ ${u4 !== U() ? b`<p class="small u-m0">Suggestions show in ${U()}, on the ${u4} 
 `}${s3.rirMode === "off" ? A : b`<label class="check-inline"><input type="checkbox" data-bind="rirAsk" aria-labelledby="lt-rirAsk" .checked=${l3(s3.rirAsk === true)}/>${labelTip(
       "lt-rirAsk",
       `Open the ${effName()} picker after each set`,
-      "Off: tap a set's RIR box when you want to rate it. On: the picker opens by itself after each set you tick."
+      "Off: tap a set's RIR box to rate it. On: the picker opens by itself after each ticked set."
     )}</label> <label class="check-inline"><input type="checkbox" data-bind="rirHalf" aria-labelledby="lt-rirHalf" .checked=${l3(s3.rirHalf === true)}/>${labelTip(
       "lt-rirHalf",
       `Count ${halfLbl()} as half a set`,
@@ -16265,7 +16263,7 @@ ${u4 !== U() ? b`<p class="small u-m0">Suggestions show in ${U()}, on the ${u4} 
       `Hidden sections are still tracked, and come back where they were. Each time ${APP_NAME} opens, every section starts folded except Sessions on History. Drag a section by its ⠿ to move it; each tab keeps its order.`,
       "About layout"
     )}</p>
-<div class="row"><button class=${dflt ? "btn sm noted" : "btn sm"} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Weekly volume hidden on Plan, and the default order.">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h3.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
+<div class="row"><button class=${dflt ? "btn sm noted" : "btn sm"} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Weekly volume hidden on Plan, and the default order">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h3.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
 ${HIDE_TABS.map(
       ([t4, l4]) => b`<div class="hide-grp">
 <p class="small"><b>${l4}</b></p>
@@ -16307,7 +16305,7 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
     const when = ago == null ? "not yet" : ago < 1 ? "just now" : ago < HOUR_MIN ? `${ago} min ago` : ago < DAY_MIN ? `${Math.round(ago / HOUR_MIN)} h ago` : fmtDate(iso(new Date(cloud.last ?? 0)));
     const st = cloud.status === "synced" ? b`<span class="tag green">Synced</span>` : cloud.status === "offline" ? b`<span class="tag yellow">Waiting to sync</span>` : b`<span class="tag blue">Syncing</span>`;
     return b`<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
-<p class="small hastip u-m6-0-0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last ${UNDO_DAYS} days.`}>${cloud.status !== "synced" ? "Saved on this device. It reaches your account when you are back online." : window.claude ? "Saved to your Claude account and this device." : "Saved to your account and this device."}${cloud.err ? b` <b class="u-cred">${cloud.err}</b>` : A}</p>
+<p class="small hastip u-m6-0-0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last ${UNDO_DAYS} days.`}>${cloud.status !== "synced" ? "Saved on this device. It reaches your account once back online." : window.claude ? "Saved to your Claude account and this device." : "Saved to your account and this device."}${cloud.err ? b` <b class="u-cred">${cloud.err}</b>` : A}</p>
 `;
   }
   function noteLine(id, label, words, full, more, about) {
@@ -16386,7 +16384,7 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
 </div>
 ` : A}
 <div class="card stack">
-<div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
+<div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
 <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button> <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"/></label> <button class="btn" data-act="pasteImport">Paste backup text instead</button>
 <div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Takes back the changes that offered Undo when you made them, one at a time, newest first, from the last ${UNDO_DAYS} days, even after the app is closed. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.`}>${undoLabel()}</button></div>
 </div>
@@ -16445,7 +16443,7 @@ ${bwSettings()}
 </select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${l3(!!s3.timerSound)} ?disabled=${s3.timerMode === "off"}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${l3(!!s3.timerCompact)} ?disabled=${s3.timerMode === "off"}/>${labelTip(
       "lt-timerCompact",
       "Compact timer",
-      "A small pill in the corner instead of the rest card above the tabs."
+      "A small pill in the corner instead of the rest card above the tabs"
     )}</label> <label class="check-inline"><input type="checkbox" data-bind="autoDone" aria-labelledby="lt-autoDone" .checked=${l3(!!s3.autoDone)}/>${labelTip(
       "lt-autoDone",
       "Auto-mark a set done after its reps",
@@ -16453,7 +16451,7 @@ ${bwSettings()}
     )}</label> <label class="check-inline"><input type="checkbox" data-bind="loadFill" aria-labelledby="lt-loadFill" .checked=${l3(s3.loadFill === "fill")}/>${labelTip(
       "lt-loadFill",
       "Fill in suggested loads",
-      "Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row for you. Either way, a load you type is never changed."
+      "Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row. Either way, a typed load is never changed."
     )}</label> <label class="field">${labelTip(
       "lt-todayStart",
       "Today starts with",
@@ -16495,7 +16493,7 @@ ${bwSettings()}
 </tr>
 ${MUSCLES.map(
       ([k2, l4]) => (
-        /* A muscle with no target (339 e, r58) offers one; one the lifter gave a
+        /* A muscle with no target offers one; one the lifter gave a
            target (not by default and not a focus, which Your training sets) can go
            back to tracked only. */
         !hasTarget(k2) ? b`<tr>
@@ -16520,7 +16518,7 @@ ${MUSCLES.map(
   }
   function helpBody() {
     return b`<div class="card stack">
-<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? b`<button class="btn" data-act="fbInbox">Reports inbox</button>` : A}</div>
+<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which">Report a problem</button>${acct.reader && FB() ? b`<button class="btn" data-act="fbInbox">Reports inbox</button>` : A}</div>
 </div>
 `;
   }
@@ -16760,7 +16758,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       rerenderKeepScroll();
       toast("Your gym cleared: the usual steps apply", true);
     },
-    /* Your training (r44): a tap on a choice sets it, a tap on the one set
+    /* Your training: a tap on a choice sets it, a tap on the one set
        clears it. Focus moves only the app's own weekly targets, with Undo. */
     profSet(t4) {
       const k2 = t4.dataset.k;
@@ -16814,11 +16812,11 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       const kept = k2 === "focus" && !!np && (np.focus || []).includes(raw) && !!fm && !moved[fm];
       if (kept)
         toast(
-          `Your ${ML[raw]} target is one you set, so it stays. Default targets in Weekly set targets puts the app's back.`,
+          `Your ${ML[raw]} target is your own and stays. Default targets in Weekly set targets puts the app's back.`,
           n3 > 0,
           KEPT_TOAST_MS
         );
-      else if (n3) toast(`Weekly targets moved for ${n3} muscle${n3 === 1 ? "" : "s"}. Ones you typed stay.`, true);
+      else if (n3) toast(`Weekly targets moved for ${n3} muscle${n3 === 1 ? "" : "s"}. Typed ones stay.`, true);
     },
     profApply() {
       const R2 = activeRoutine();
@@ -16848,7 +16846,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         }
       );
     },
-    // Weekly set targets back to the defaults (r44), with Your training's focus; typed ones, those given with Set a target (r58) and a first-run fit go.
+    // Weekly set targets back to the defaults, with Your training's focus; typed ones, those given with Set a target and a first-run fit go.
     bandsDefault() {
       const b2 = state.settings.bands;
       const fit = state.settings.bandsFit ? { ...state.settings.bandsFit } : null;
@@ -16887,7 +16885,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       rerenderKeepScroll();
       toast("Weekly set targets back to the defaults", true);
     },
-    // A muscle with no target given one (339 e, r58): its numbers as they stand, now counted.
+    // A muscle with no target given one: its numbers as they stand, now counted.
     tgtSet(t4) {
       const m3 = MK.find((x2) => x2 === t4.dataset.m);
       if (!m3 || hasTarget(m3)) return;
@@ -16917,7 +16915,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     unreadForget() {
       confirmBox(
         "Forget the save kept aside?",
-        "It is deleted for good. Export or copy it first if you might want it.",
+        "It is deleted for good. Export or copy it first to keep a copy.",
         "Forget it",
         () => {
           unreadableForget();
@@ -16955,7 +16953,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       if (!parkSettle()) return;
       confirmBox(
         "Erase everything?",
-        `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? " on this device and in your cloud copy" : " on this device"}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first if you might want it.`,
+        `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? " on this device and in your cloud copy" : " on this device"}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first to keep a copy.`,
         "Erase everything",
         () => {
           act(
@@ -18097,7 +18095,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     if (!IDX().sessVol.length) return "";
     const tn = tonnageNow();
     const cmp = `. By this point last week: ${fmtBig(tn.prev)} ${U()}`;
-    return b`<p class="headline">${tn.now ? `${fmtBig(tn.now)} ${U()} lifted this week so far` : "Nothing lifted yet this week"}${cmp}. Last week finished at ${fmtBig(tn.prevFull)} ${U()}. ${tipButton("Weight lifted is load times reps. It drops when the load goes up and reps come down, which is progress, so it is not a measure of progress on its own.", "About weight lifted")}</p>`;
+    return b`<p class="headline">${tn.now ? `${fmtBig(tn.now)} ${U()} lifted this week so far` : "Nothing lifted yet this week"}${cmp}. Last week finished at ${fmtBig(tn.prevFull)} ${U()}. ${tipButton("Weight lifted is load times reps. It drops when the load goes up and reps come down, which is progress: on its own it is not a measure of progress.", "About weight lifted")}</p>`;
   }
   function extraKpis() {
     const sd = sessionLength();
@@ -18148,7 +18146,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     const on = regs.length - low.length - plan.length;
     const worst = [...low].sort((a2, b2) => a2.pct - b2.pct)[0];
     const rh = rs.week ? b`<p class="headline">This week so far: ${on} of ${regs.length} regions at their minimum.</p>` : !worst ? plan.length ? b`<p class="headline">Every region on plan.</p>` : b`<p class="headline">${high.length ? "Every region at or above its minimum." : "Every region on target."}</p>` : b`<p class="headline">${on} of ${regs.length} regions on target. Furthest short: ${worst.label}, ${r1(worst.got)} of ${r1(worst.lo)} sets.</p>`;
-    const note = (rs.old ? `Nothing logged in the last ${rs.n || REGION_WK_DEFAULT} weeks, so this shows ${rs.label}. ` : "") + (rs.noFull ? "No full week to average yet, so this is this week so far. " : "") + (rs.week && low.length ? "The week is still going, so this fills in as you train." : "");
+    const note = (rs.old ? `Nothing logged in the last ${rs.n || REGION_WK_DEFAULT} weeks: showing ${rs.label}. ` : "") + (rs.noFull ? "No full week to average yet: this week so far. " : "") + (rs.week && low.length ? "The week is still going: it fills in with each session." : "");
     const chips = b`<div class="wkpick"><span class="small muted" id="wkpickL">Average of the last</span><div class="chips" role="group" aria-labelledby="wkpickL">${REGION_WKS.map(
       ([k2, l4]) => b`<button class=${rs.n === k2 ? "chip on" : "chip "} data-act="regionWk" data-v=${String(k2)} aria-pressed=${String(rs.n === k2)}>${l4}</button>`
     )}</div></div>`;
@@ -18472,7 +18470,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const bits = avg ? [`${hs(avg[m3] || 0)} a week on average, target ${lo}-${hi}`, `this week ${r1(thisWeek[m3] || 0)}`] : [`this week ${hs(thisWeek[m3] || 0)} of ${lo}-${hi}`];
       if (belowMin(plan[m3], lo)) bits.push(`your routine plans ${r1(plan[m3] || 0)}`);
       return b`<div class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${ML[m3]}</b><div class="chips">${tags}</div></div><p class="small muted u-m2-0-0">${bits.join(" · ")}</p></div>`;
-    }) : b`<p class="muted u-m0">${nS ? "Nothing flagged." : "Flags start once you have logged a few sessions."}</p>`}</div>`;
+    }) : b`<p class="muted u-m0">${nS ? "Nothing flagged." : "Flags start after a few sessions."}</p>`}</div>`;
     return { body, n: wp.length };
   }
   function stallsBody(stalled) {
@@ -18661,7 +18659,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       ui.dashMuscle = t4.value;
       rerenderKeepScroll();
     },
-    // The block length (ST-6): a setting, so it is kept and synced; the default is kept absent.
+    // The block length: a setting, so it is kept and synced; the default is kept absent.
     blockWeeks(t4) {
       const k2 = blockWeeksKept(t4.value === "auto" ? "auto" : +t4.value);
       act(() => {
@@ -19786,7 +19784,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
   function welcomeCard() {
     if (state.settings.onboarded || !cloudChecked || state.draft || state.sessions.some((s3) => !s3.demo)) return A;
     if (state.sessions.some((s3) => s3.demo))
-      return b`<div class="card welcome" id="demoNote"><p class="small u-m0-0-8"><b>You are looking at demo data.</b> ${DEMO_WEEKS} weeks of generated sessions to look around; none of it is yours.</p><button class="btn sm primary" data-act="demoStart">Clear demo and set up</button></div>`;
+      return b`<div class="card welcome" id="demoNote"><p class="small u-m0-0-8"><b>This is demo data.</b> ${DEMO_WEEKS} weeks of generated sessions to look around; none of it is yours.</p><button class="btn sm primary" data-act="demoStart">Clear demo and set up</button></div>`;
     return A;
   }
   function acctBar() {
@@ -19911,7 +19909,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     else if (cs && chosen == null) {
       if (cs.lastDate === t4) note = `${dayLabel(R2, cs.last)} done today.`;
       else if (cs.restToday)
-        note = b`<b>Scheduled rest today</b> (${dayLabel(R2, cs.restIdx)} of your cycle). ${(R2.days[cs.next] || { name: "" }).name} is ready whenever you want it.`;
+        note = b`<b>Scheduled rest today</b> (${dayLabel(R2, cs.restIdx)} of your cycle). ${(R2.days[cs.next] || { name: "" }).name} is ready any time.`;
     } else if (weekly && chosen == null && state.sessions.some((x2) => x2.date === t4 && x2.routineId === R2.id && sessDayIdx(R2, x2) === wd && partOf(x2) === part))
       note = `${day.name || dayLabel(R2, wd)} done today.`;
     const playable = !day.rest && day.items.length > 0;
@@ -20064,7 +20062,7 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di, part)}</section
 <div class="bw-entry"><label class="field">Date${i4(t4, b`<input type="date" id="bwDate" value=${t4} max=${t4}>`)}</label><label class="field">Weight (${U()})${inUnit(
         U(),
         b`<input type="text" inputmode="decimal" id="bwVal" placeholder=${last ? fmtW(last.kg) : ""} enterkeyhint="done">`
-      )}</label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday ? "Update" : "Log"}</button></div>
+      )}</label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts">${loggedToday ? "Update" : "Log"}</button></div>
 ${bws.length ? b`<ul class="bw-list" aria-label="Recent bodyweights">${bws.slice(0, BODY_SHOWN.weights).map(
         (b2) => b`<li><span class="d">${fmtDate(b2.date)}</span><span class="num">${fmtW(b2.kg)} ${U()}</span><button class="ib sm" data-act="delBW" data-id=${b2.id} aria-label=${`Delete ${fmtDate(b2.date)} entry`}>✕</button></li>`
       )}</ul>${bws.length > BODY_SHOWN.weights ? b`<p class="small muted u-m4-0-0">${bws.length - BODY_SHOWN.weights} older on Stats.</p>` : A}` : A}
@@ -20651,16 +20649,16 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const work = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
     const canFill = !!b2.lastR && b2.lastR.some((r4) => r4 != null) && b2.sets.some((s3, i5) => !s3.done && !s3.warm && !s3.drop && s3.r == null && lastRFor(b2, i5) != null);
     return b`<section class=${"block" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? b`<p class="ssh">Superset ${ss}</p>` : ""}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : A}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? b` ${tipButton(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · ${work || p3.sets}×${repSpan(p3.repMin, p3.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}${nr ? "" : ` @${b2.inj || (d3.light || d3.deload || b2.light) && b2.last ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p3.rir)}`} · ${p3.rest}s${b2.inj ? b` · <span class="tag red">Injury: ${injLabel(b2.inj)}</span>` : ""}${markedNew(d3, b2.exId) ? b` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ""}</p></div>
-      <div class="bh-acts"><button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button><button class=${"ib" + (b2.note || b2.pics && b2.pics.length ? " noted" : "")} aria-label=${b2.note || b2.pics && b2.pics.length ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle.">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
+      <div class="bh-acts"><button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button><button class=${"ib" + (b2.note || b2.pics && b2.pics.length ? " noted" : "")} aria-label=${b2.note || b2.pics && b2.pics.length ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
       ${b2.target ? b`<p class="hint"><b>Today: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
       ${ss && partner && gk === 0 ? b`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? "pair" : "group"}.</p>` : ""}
       ${b2.lastNote && !b2.note ? b`<p class="small lnote">Your note, ${fmtDate(b2.lastNote.date)}: ${b2.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ""}
       ${b2.note ? b`<p class="small bnote" id=${`bn-${bi}`}>${b2.note}</p>` : b`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}${picStrip(bi, false)}
-      <div class=${"sg head" + (nr ? " norir" : "")}><span data-tip="Tap a set's number to mark it a warm-up or a drop set.">#</span><span class="lsh">Last</span><span class="lh hastip" data-tip=${loadTip(ex)}>${loadHead(ex)}</span><span class=${side ? "hastip" : A} data-tip=${side ?? A}>${ex.timed ? ex.perSide ? "Sec/side" : "Sec" : ex.perSide ? "Reps/side" : "Reps"}</span>${nr ? "" : b`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
+      <div class=${"sg head" + (nr ? " norir" : "")}><span data-tip="Tap a set's number to mark it a warm-up or a drop set">#</span><span class="lsh">Last</span><span class="lh hastip" data-tip=${loadTip(ex)}>${loadHead(ex)}</span><span class=${side ? "hastip" : A} data-tip=${side ?? A}>${ex.timed ? ex.perSide ? "Sec/side" : "Sec" : ex.perSide ? "Reps/side" : "Reps"}</span>${nr ? "" : b`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
       b2.sets,
       (x2) => x2.rid,
       (_2, si) => setRow(d3, b2, bi, si, ex, nr, dupB)
-    )}${stepStrip(d3, b2, bi, ex)}${adjLine(b2, bi)}<div class="row u-mt8">${canFill ? b`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>` : ""}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done." ?disabled=${!b2.sets.length}>− Set</button>${!ex.timed && b2.sets.some((x2) => x2.done && !x2.warm && !x2.drop) ? b`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working weight, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>` : ""}${!d3.editingId && b2.sets.some((x2) => x2.done && !x2.warm) && b2.sets.some((x2) => !x2.done) ? b`<button class="btn sm bdone" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them.">✓ Done</button>` : ""}${state.settings.timerMode !== "off" && +p3.rest > 0 && !d3.past ? b`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p3.rest} second rest`} data-tip="Start the rest timer.">⏱ ${p3.rest}s</button>` : ""}</div></section>`;
+    )}${stepStrip(d3, b2, bi, ex)}${adjLine(b2, bi)}<div class="row u-mt8">${canFill ? b`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps">Copy last</button>` : ""}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done" ?disabled=${!b2.sets.length}>− Set</button>${!ex.timed && b2.sets.some((x2) => x2.done && !x2.warm && !x2.drop) ? b`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working weight, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>` : ""}${!d3.editingId && b2.sets.some((x2) => x2.done && !x2.warm) && b2.sets.some((x2) => !x2.done) ? b`<button class="btn sm bdone" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them">✓ Done</button>` : ""}${state.settings.timerMode !== "off" && +p3.rest > 0 && !d3.past ? b`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p3.rest} second rest`} data-tip="Start the rest timer">⏱ ${p3.rest}s</button>` : ""}</div></section>`;
   }
   var LOG_HELP_ON = "RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ";
   var LOG_HELP = "W marks a warm-up (kept, never analysed); tap it again for ↳, a drop set (counts as work and volume, never as a PR or target). + Drop adds one under the last set ticked, with no rest before it; a warm-up is added from the ⋯ menu. Drag an exercise by its ⠿ to change the order. A superset is one box, A1 and A2: after a set of A1 the screen moves to A2, and the rest timer starts after the last exercise of the group. Timed holds log seconds in the Sec column. The date can be changed to log a past session.";
@@ -20680,7 +20678,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const when = d3.past ? `for ${fmtDateLong(d3.date)}` : d3.startedAt ? `started ${startedWords(d3.startedAt)}` : "";
     const meta = sp.n ? b`${when ? when.charAt(0).toUpperCase() + when.slice(1) : ""}<span id="sessLeft">${left > 0 ? `${when ? " · " : ""}${estMin(left)} left` : ""}</span>` : b`<span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? "set" : "sets"}</span> done${when ? `, ${when}` : ""}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ""}</span>`;
     return b`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d3.editingId ? "Editing a saved session" : d3.past ? "Past workout" : "Session in progress"}</p><div class="hrow"><h2 class="u-owany_minw0">${d3.dayName}</h2>${helpButton("log")}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d3.editingId ? "Cancel edit" : "Discard"}</button></div><p class="meta">${meta}</p>${parkedHeld() ? b`<p class="small muted u-m4-0-0" id="parkedLine">Your workout in progress is set aside. It comes back when you save or discard this one.</p>` : ""}${sp.n ? b`<div class="sprog"><div class="band" role="progressbar" aria-label="Sets done" aria-valuemin="0" aria-valuemax=${sp.n} aria-valuenow=${sp.k} aria-valuetext=${`${sp.k} of ${sp.n} sets done`}><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%;--pct:${sp.pct}`}></div></div><span id="sessOf" aria-hidden="true">${sp.k} of ${sp.n}</span></div>` : ""}
-  <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d3.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d3.past || d3.editingId ? b`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d3.durMin ? String(d3.durMin) : "")} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : A}${d3.past ? "" : b`<button class="btn sm" data-act="chkOpen" aria-label=${chkSum(d3) ? `Check-in: ${chkSum(d3)}` : "Check-in, optional"}>Check-in</button>`}${left > 0 ? b`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ""}<button class="btn sm" data-act="bwOpen" data-date=${d3.date} data-tip="Log or update your weigh-in without leaving the workout.">Bodyweight</button><button class="btn sm" data-act="wkAway" data-tip="Everything is saved as you go. Today shows the workout to resume.">Save and leave</button></div></div></div>
+  <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d3.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d3.past || d3.editingId ? b`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d3.durMin ? String(d3.durMin) : "")} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : A}${d3.past ? "" : b`<button class="btn sm" data-act="chkOpen" aria-label=${chkSum(d3) ? `Check-in: ${chkSum(d3)}` : "Check-in, optional"}>Check-in</button>`}${left > 0 ? b`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ""}<button class="btn sm" data-act="bwOpen" data-date=${d3.date} data-tip="Log or update your weigh-in without leaving the workout">Bodyweight</button><button class="btn sm" data-act="wkAway" data-tip="Everything is saved as you go. Today shows the workout to resume.">Save and leave</button></div></div></div>
   ${howText("log", (state.settings.rirMode === "off" ? "RIR is switched off in Settings, so every working set counts as hard. " : LOG_HELP_ON) + LOG_HELP + (d3.past ? " Quick entry: no rest timer, and a set counts as done once its reps are typed." : state.settings.autoDone ? " Auto-mark is on: sets tick themselves when you leave the reps field." : ""))}
   ${d3.free ? b`<label class="field u-mt8">Name<input type="text" data-bind="draftName" maxlength=${LIMITS.name} .value=${fieldValue(d3.dayName || "")}></label><p class="small muted u-m4-0-0">Not tied to a routine day, so your cycle stays put.</p>` : ""}
   ${d3.past ? "" : readyCard(d3, chkLow(d3))}${bwAskCard(d3)}${!d3.ex.length ? b`<div class="card"><p class="small u-m0">No exercises yet. Tap + Add exercise below${d3.editingId ? "" : `, or Pick for me for a suggestion based on your last ${PICK_DAYS} days,`} and log as you go.</p></div>` : ""}${repeatKeyed(
@@ -20688,7 +20686,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       (b2) => b2.bid,
       (b2, bi) => blockPart(d3, b2, bi, letters, hintSeen, calIdx, bwAt2)
     )}<div class="row"><button class="btn u-f1" data-act="pickSession">+ Add exercise</button>${d3.editingId ? "" : b`<button class="btn" data-act="pickEx">Pick for me</button>`}</div>${d3.editingId ? "" : cardioDraftCard(d3)}<label class="field u-mt12">Notes<textarea data-bind="draftNotes" maxlength=${LIMITS.note} .defaultValue=${d3.notes || ""} .value=${fieldValue(d3.notes || "")}></textarea></label>${picStrip(null)}
-  <div class="row fin-row u-mt12"><button class="btn danger" data-act="discard">${d3.editingId ? "Cancel edit" : "Discard"}</button><button class="btn primary u-f1" data-act="finish" data-tip="Only sets marked done are saved; you are asked about any with reps but no checkmark.">${d3.editingId ? "Save changes" : "Finish and save"}</button></div>`;
+  <div class="row fin-row u-mt12"><button class="btn danger" data-act="discard">${d3.editingId ? "Cancel edit" : "Discard"}</button><button class="btn primary u-f1" data-act="finish" data-tip="Only sets marked done are saved; Finish asks about any with reps but no checkmark.">${d3.editingId ? "Save changes" : "Finish and save"}</button></div>`;
   }
   function workoutFullDraw() {
     W.needAt = null;
@@ -21100,7 +21098,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
 
   // src/app/report.ts
   var NO_ANSWER = "No answer. Check your connection and try again.";
-  var LIMIT_SAID = `You have sent ${FB_DAY} reports today. Try again tomorrow.`;
+  var LIMIT_SAID = `${FB_DAY} reports sent today. Try again tomorrow.`;
   var CTX = { device: 300, errors: 10, words: 100 };
   var DAY_MS2 = 864e5;
   var SHOT = { sides: [1280, 960, 720], q0: 0.72, qStep: 0.14, qMin: 0.3, chars: 5e5 };
@@ -21253,7 +21251,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         crash: crash || void 0
       });
     },
-    /* A lifter's own exercise stays in their log (r34). Suggesting it sends
+    /* A lifter's own exercise stays in their log. Suggesting it sends
        it to the owner as a report; the library changes only when the owner
        adds it in a build. */
     exSuggest() {
@@ -21709,7 +21707,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           kind: "account",
           mode: "sent",
           title: "Email confirmed",
-          msg: "You are signed in. Your log syncs to your account."
+          msg: "Signed in. Your log syncs to your account."
         });
         cloudInit();
       } else openModal({ kind: "account", mode: "where", title: "Email confirmed" });
@@ -22040,7 +22038,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const del = A2.deleteAccount;
       confirmBox(
         "Delete your account?",
-        "Your account and the synced copy of your log are deleted for good. The copy on this phone stays; export a backup first if you want one elsewhere.",
+        "Your account and the synced copy of your log are deleted for good. The copy on this phone stays; export a backup first to keep one elsewhere.",
         "Delete account",
         async () => {
           toast("Deleting your account");
@@ -22772,7 +22770,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       toast("No readable sessions in that backup");
       return;
     }
-    const body = `This backup has ${clean.sessions.length} session${clean.sessions.length === 1 ? "" : "s"} and ${clean.routines.length} routine${clean.routines.length === 1 ? "" : "s"}.` + (dropped ? ` ${dropped} damaged record${dropped === 1 ? " was" : "s were"} skipped.` : "") + " It will replace everything currently in the app. You can step this back with Undo.";
+    const body = `This backup has ${clean.sessions.length} session${clean.sessions.length === 1 ? "" : "s"} and ${clean.routines.length} routine${clean.routines.length === 1 ? "" : "s"}.` + (dropped ? ` ${dropped} damaged record${dropped === 1 ? " was" : "s were"} skipped.` : "") + " It replaces everything in the app. Undo can step it back.";
     confirmBox(
       "Replace all data?",
       body,
@@ -22952,7 +22950,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         );
       else go();
     },
-    // The save kept aside at start (r45): restored through the import's checks, or shown as text (Forget it is Settings', settings.ts).
+    // The save kept aside at start: restored through the import's checks, or shown as text (Forget it is Settings', settings.ts).
     unreadRestore() {
       const raw = unreadableRaw();
       if (!raw) return;
@@ -23393,7 +23391,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     }
     confirmBox(
       "Did the file download?",
-      `Look for ${filename}. If nothing appeared, this browser blocked the download and you should copy the text instead.`,
+      `Look for ${filename}. If nothing appeared, the browser blocked the download. Copy the text instead.`,
       "Yes, I have the file",
       () => {
         if (onSaved) onSaved();
@@ -23555,7 +23553,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     photoDel() {
       confirmBox(
         "Remove your profile photo?",
-        "It goes from your account and every phone you sign in on. You can add a new one any time.",
+        "It goes from your account and every phone signed in to it. Add a new one any time.",
         "Remove",
         () => {
           photoRemove();
@@ -23680,7 +23678,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         }
       }
     },
-    // The sheet closed first (r56.1): a question left open reads as Cancel, so the sync waiting on it does not wait forever.
+    // The sheet closed first: a question left open reads as Cancel, so the sync waiting on it does not wait forever.
     crashRetry() {
       ui.tab = "today";
       ui.planView = "routine";
@@ -23819,7 +23817,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     obSample() {
       openModal({ kind: "templates", from: "welcome" });
     },
-    // The fold in the first-run routine picker (r44): its own state, so a re-render keeps it open.
+    // The fold in the first-run routine picker: its own state, so a re-render keeps it open.
     obProfTog() {
       ui.obProf = !ui.obProf;
       rerenderKeepScroll();
@@ -24322,7 +24320,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (!back2 || back2.kind !== "picker") return;
       openModal({ kind: "exEdit", isNew: true, back: back2, e: { ...newEx((back2.q || "").trim(), back2.m || ""), incRaw: "" } });
     },
-    // Back to the sheet this one was opened from, else closed: the exercise editor's, and an account sheet's opened from a problem report (r55).
+    // Back to the sheet this one was opened from, else closed: the exercise editor's, and an account sheet's opened from a problem report.
     exBack() {
       const m3 = ui.modal;
       const back2 = m3 && (m3.kind === "exEdit" || m3.kind === "account") ? m3.back : null;
@@ -24693,7 +24691,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         },
         {
           inProgress: true,
-          /* Undo puts back exactly what the trim took (r25): the blank rows, at
+          /* Undo puts back exactly what the trim took: the blank rows, at
              the end of their exercise, and the skipped exercises in their
              places. Sets logged since stay (the merge Undo used before brought
              back skipped exercises but not removed rows). Nothing is marked
@@ -24787,7 +24785,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         ...t4.dataset.part === "2" ? { part: 2 } : {}
       });
     },
-    // Today's own workout on a fixed-weekday routine, when the card offered one from another day (NEW-31, r68).
+    // Today's own workout on a fixed-weekday routine, when the card offered one from another day.
     todayOwn(t4) {
       ui.todayDay = Number(t4.dataset.day);
       ui.todayPart = t4.dataset.part === "2" ? 2 : 1;
@@ -24885,7 +24883,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           deload,
           light: false,
           limited: true,
-          // What this gym has, for Pick for me and Swap in this session (NEW-79); all of it on limits nothing.
+          // What this gym has, for Pick for me and Swap in this session; all of it on limits nothing.
           ...eq.size < EQUIP.length ? { equip: EQUIP.map(([k2]) => k2).filter((k2) => eq.has(k2)) } : {},
           cardio: [],
           notes: [deload ? DELOAD_NOTE : "", note].filter(Boolean).join(" "),
@@ -24922,7 +24920,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       } else if (d3 && (d3.editingId || draftEntered(d3)))
         confirmBox(
           "Replace the session in progress?",
-          d3.editingId ? "You are editing a saved session. Your edits will be lost." : "You have an unsaved session open. Starting this one discards it.",
+          d3.editingId ? "Editing a saved session. The edits will be lost." : "An unsaved session is open. Starting this one discards it.",
           "Discard and start",
           go,
           true
@@ -24953,7 +24951,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           routineId: s3.routineId,
           notes: s3.notes || "",
           ...s3.pics && s3.pics.length ? { pics: [...s3.pics] } : {},
-          // An edit of a day's second workout stays one (r68, 366 (c)).
+          // An edit of a day's second workout stays one.
           ...s3.part === 2 ? { part: 2 } : {},
           ex: s3.ex.map((b2) => {
             const it = dayItems.find((i5) => i5.exId === b2.exId);
@@ -24994,7 +24992,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       } else if (state.draft)
         confirmBox(
           "Replace the session in progress?",
-          state.draft.editingId ? "You are editing a saved session. Your edits will be lost." : "You have an unsaved session open. Editing this one will discard it.",
+          state.draft.editingId ? "Editing a saved session. The edits will be lost." : "An unsaved session is open. Editing this one discards it.",
           "Discard and edit",
           go,
           true
@@ -25466,7 +25464,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         `${total} set${total > 1 ? "s have" : " has"} reps entered but no checkmark, so ${total > 1 ? "they" : "it"} will not be saved: ${list}.`,
         `Mark ${total > 1 ? "them" : "it"} done and save`,
         /* Each set is ticked in turn; one far off asks first, and once it is logged the rest are ticked and the
-           session saved, with no second tap on Finish (2.28, 2.27-F13). Fix it leaves the workout open there. */
+           session saved, with no second tap on Finish. Fix it leaves the workout open there. */
         function markAll() {
           const dd = state.draft;
           if (!dd) return;
@@ -26010,10 +26008,10 @@ ${JSON.stringify(ctx, null, 1)}`;
       );
       rerenderKeepScroll();
     },
-    /* Minus and plus (ST-6): from what the row holds, else what it shows in grey, to the next load on the lift's list
+    /* Minus and plus: from what the row holds, else what it shows in grey, to the next load on the lift's list
        or one rep (five seconds on a hold) either way, written as the number typed in the field would be: the same carry
        to the rows below, and on a set ticked the same checks as a number typed there (doneChanged). They never tick or
-       untick a set, and the set stepped is the one you are on (NEW-100). One change, saved once. */
+       untick a set, and the set stepped is the one you are on. One change, saved once. */
     sStep(t4) {
       const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
       const b2 = tapBlock(t4);
@@ -26054,7 +26052,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     sDel: setRemove,
     /* Warm-ups go in at the top, already flagged, so they stay out of every
        analytic, and are seeded from the working load; each new one goes after
-       the ones already there, so they climb to the working load (r27). */
+       the ones already there, so they climb to the working load. */
     wAdd(t4) {
       const b2 = tapBlock(t4);
       if (!b2) return;
@@ -26090,7 +26088,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       rerenderKeepScroll();
       toast("Warm-up set added");
     },
-    // The load the last working set was, or will be (a grey load counts); a missed set's is passed over (r55).
+    // The load the last working set was, or will be (a grey load counts); a missed set's is passed over.
     /* Done with an exercise that has sets left (r66, PENDING 374; V: "Ask:
        log or skip"): one question, then every set left ticked as it shows (its
        load and reps, typed or grey; a 0 typed is a missed set, as a tick logs
@@ -26271,7 +26269,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         } catch (e5) {
         }
     },
-    /* Save and leave (NEW-89): the workout is saved as it goes, so this only
+    /* Save and leave: the workout is saved as it goes, so this only
        steps away to Today, which offers it back; the tab, Back and opening the
        app again all open the workout. */
     wkAway() {
@@ -26286,7 +26284,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       window.scrollTo(0, 0);
       render();
     },
-    // Today's card for a workout set aside that did not come back by itself (R81-2): it comes back and opens.
+    // Today's card for a workout set aside that did not come back by itself: it comes back and opens.
     parkBack() {
       if (!unpark()) return;
       ui.away = null;
@@ -26294,7 +26292,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       window.scrollTo(0, 0);
       render();
     },
-    // Folded by hand, done or not (NEW-101), and every place it was opened at forgotten, so a move leaves nothing behind.
+    // Folded by hand, done or not, and every place it was opened at forgotten, so a move leaves nothing behind.
     bFold(t4) {
       const b2 = tapBlock(t4);
       if (!b2) return;
@@ -26355,7 +26353,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       rerenderKeepScroll();
       const b2 = d3.ex[bi];
       if (b2 && b2.plan.ss)
-        toast(d3.dayId ? "Superset. Finish offers to keep it in your plan." : "Superset for this session.");
+        toast(d3.dayId ? "Superset. Finish offers to keep it in your plan." : "Superset for this session");
     },
     noteReuse(t4) {
       const b2 = tapBlock(t4);
@@ -26408,7 +26406,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
       rerenderKeepScroll();
     },
-    /* The check-in's lighter session (r30, r31): only the exercises not
+    /* The check-in's lighter session: only the exercises not
        started become lighter (b.light: half their sets, about 90% loads, 3+
        RIR, no target); the session itself is not marked, so work already done
        at full effort still sets next time's target and counts in trends.
@@ -27255,7 +27253,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const e5 = EX(m3.exId);
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Load step: ${e5.name}</h3>${closeX()}</div>
     <label class="field">Step (${U()})<input type="text" inputmode="decimal" id="incVal" value=${fmtW(incOf(e5, m3.plan))}></label>
-    <p class="small muted">The smallest jump you can load.</p>
+    <p class="small muted">The smallest jump the equipment allows.</p>
     ${e5.inc == null && gymRack(e5, m3.plan) ? b`<p class="small u-m0">Following the ${rackKind(e5) === "dumbbell" ? "dumbbells" : "kettlebells"} in Settings > Your gym. A step saved here replaces them for this lift.</p>` : ""}
     <div class="row u-mt10"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
@@ -27340,14 +27338,14 @@ ${JSON.stringify(ctx, null, 1)}`;
     <div><p class="small muted">Helper muscles (count as half a set)</p><div class="chips">${MUSCLES.filter(([k2]) => k2 !== e5.primary).map(([k2, l4]) => b`<button class=${"chip " + (e5.secondary.includes(k2) ? "on" : "")} data-act="secToggle" data-m=${k2}>${l4}</button>`)}</div></div>
     ${MUSCLES.some(([k2]) => k2 === e5.primary) ? b`<div class="exbody"><button type="button" class="linkbtn tall" data-act="exBodyTog" aria-expanded=${String(!!ui.exBody)}>${ui.exBody ? "Hide body" : "Show on body"}</button>${ui.exBody ? b`${exBodyFlat(e5, true)}${exMusLegend(e5)}` : ""}</div>` : ""}
     <label class="check-inline"><input type="checkbox" data-ebind="bw" aria-labelledby="lt-ex-bw" ?checked=${!!e5.bw}>${labelTip("lt-ex-bw", "Bodyweight exercise", "Log only what you add (0 for bodyweight). Your logged bodyweight is added for estimates and weight lifted.")}</label>
-    ${e5.bw ? b`<label class="check-inline"><input type="checkbox" data-ebind="assist" aria-labelledby="lt-ex-assist" ?checked=${!!e5.assist}>${labelTip("lt-ex-assist", "Assisted (a machine takes weight off)", "For an assisted machine: you type the help it gives, and less help is progress.")}</label>` : ""}
+    ${e5.bw ? b`<label class="check-inline"><input type="checkbox" data-ebind="assist" aria-labelledby="lt-ex-assist" ?checked=${!!e5.assist}>${labelTip("lt-ex-assist", "Assisted (a machine takes weight off)", "For an assisted machine: type the help it gives; less help is progress.")}</label>` : ""}
     ${e5.bw ? b`<label class="field">${labelTip("lt-ex-bwfRaw", "Share of bodyweight moved (%)", "Measured only for push-ups (64%, force plates). Pull-ups and dips count all of it; the rest are segment-mass estimates.")}<input type="text" inputmode="numeric" data-ebind="bwfRaw" aria-labelledby="lt-ex-bwfRaw" value=${e5.bwfRaw || ""}></label>` : ""}
     <label class="check-inline"><input type="checkbox" data-ebind="perSide" aria-labelledby="lt-ex-perSide" ?checked=${!!e5.perSide}>${labelTip("lt-ex-perSide", "One side at a time (reps per side)", "Reps are logged for one side. One set still counts as one set; weight lifted counts both sides.")}</label>
     <label class="check-inline"><input type="checkbox" data-ebind="timed" aria-labelledby="lt-ex-timed" ?checked=${!!e5.timed}>${labelTip("lt-ex-timed", "Timed hold (log seconds)", has ? "This exercise has logged sets: switching changes how those numbers read." : "The reps column holds seconds.")}</label>
     <details class="more" ?open=${!m3.back || !!m3.moreOpen}><summary>More options<span class="small muted">less common, load step, plates, heaviest, notes</span></summary><div class="stack">
     <label class="check-inline"><input type="checkbox" data-ebind="rare" ?checked=${!!e5.rare}>Mark as less common</label>
-    <div class="grid2"><label class="field">${labelTip("lt-ex-incRaw", `Load step (${U()})`, "The smallest jump you can make on this exercise, everywhere it appears. Earned increases are whole multiples of it, about 2.5% of the load on compound lifts and 5% on isolation work. Blank uses Your gym's step, or the usual one for the equipment.")}<input type="text" inputmode="decimal" data-ebind="incRaw" aria-labelledby="lt-ex-incRaw" value=${e5.incRaw} placeholder="Usual step"></label>
-    <label class="field">${labelTip("lt-ex-plates", "Plate helper", "What to load, shown under the sets in a session.")}<select data-ebind="plates" aria-labelledby="lt-ex-plates">${PLATE_MODES.map(([k2, l4]) => b`<option value=${k2} ?selected=${(e5.plates || "auto") === k2}>${l4}</option>`)}</select></label></div>
+    <div class="grid2"><label class="field">${labelTip("lt-ex-incRaw", `Load step (${U()})`, "The smallest jump on this exercise, everywhere it appears. Earned increases are whole multiples of it, about 2.5% of the load on compound lifts and 5% on isolation work. Blank uses Your gym's step, or the usual one for the equipment.")}<input type="text" inputmode="decimal" data-ebind="incRaw" aria-labelledby="lt-ex-incRaw" value=${e5.incRaw} placeholder="Usual step"></label>
+    <label class="field">${labelTip("lt-ex-plates", "Plate helper", "What to load, shown under the sets in a session")}<select data-ebind="plates" aria-labelledby="lt-ex-plates">${PLATE_MODES.map(([k2, l4]) => b`<option value=${k2} ?selected=${(e5.plates || "auto") === k2}>${l4}</option>`)}</select></label></div>
     ${platesMode(e5) === "bar" ? b`<label class="field">${labelTip("lt-ex-barRaw", `Bar for this lift (${U()})`, "A trap bar, EZ bar, or any bar other than the one in Settings. Suggested loads on this lift are this bar and the plates on hand, and a deload never goes under it.")}<input type="text" inputmode="decimal" data-ebind="barRaw" aria-labelledby="lt-ex-barRaw" value=${e5.barRaw || ""} placeholder=${`Settings bar, ${fmtW(barKg())}`}></label>` : ""}
     <label class="field">${labelTip("lt-ex-maxRaw", `Heaviest available (${U()}${e5.bw ? ", added" : ""})`, "The top of the stack or the biggest dumbbell. At that load, targets move to more reps and then harder reps, and the lift is not called stalled.")}<input type="text" inputmode="decimal" data-ebind="maxRaw" aria-labelledby="lt-ex-maxRaw" value=${e5.maxRaw || ""} placeholder="No limit"></label>
     <label class="field">Notes and cues<textarea data-ebind="note" maxlength=${LIMITS.note}>${e5.note || ""}</textarea></label></div></details>
@@ -27595,13 +27593,13 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (!best)
       lead = b`<p class="small">Your routine has no exercises yet. Start a freestyle session and use Pick for me there.</p>`;
     else if (best.ready < READY.rest)
-      lead = b`<p class="callout yellow u-m0">Everything left works muscles still recovering. Rest, or do easy cardio. If you train anyway, the first option is the freshest.</p>`;
+      lead = b`<p class="callout yellow u-m0">Everything left works muscles still recovering. Rest, or do easy cardio. To train anyway, the first option is the freshest.</p>`;
     else if (best.plan) lead = b`<p class="small u-m0">Stick with the plan: it is also the best fit for today.</p>`;
     else if (plan)
       lead = b`<p class="small u-m0">${best.day.name} fits today better than ${plan.day.name}, next in your plan: ${plan.ready < 1 ? `${plan.day.name} leans on muscles that may still be recovering.` : "it trains what is furthest behind this week."} ${tipButton("Starting it moves your cycle on from there, the same as choosing it under Change day.", "About the cycle")}</p>`;
     const sameDay = sessionsOn(today()).length > 0;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3>${closeX()}</div>
-    ${lead}${sameDay ? b`<p class="small muted u-m8-0-0">Includes the session you logged today.</p>` : ""}${rk.deload ? b`<p class="small muted u-m8-0-0">Deload week: counted at half the sets.</p>` : ""}
+    ${lead}${sameDay ? b`<p class="small muted u-m8-0-0">Includes the session logged today.</p>` : ""}${rk.deload ? b`<p class="small muted u-m8-0-0">Deload week: counted at half the sets.</p>` : ""}
     ${top.map(
       (x2, k2) => b`<div class=${"pcard" + (k2 === 0 ? " best" : "")}><div class="row spread"><b>${dayLabel(rk.R, x2.i)}: ${x2.day.name}</b>${k2 === 0 ? b`<span class="tag green">Best fit</span>` : ""}</div>
       <ul>${dayReasons(x2, rk.r7).map((r4) => b`<li>${r4}</li>`)}</ul>
@@ -27615,7 +27613,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const picks = rankExercises(d3);
     const allMet = picks.length && picks.every((x2) => x2.def <= 0);
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3>${closeX()}</div>
-    <p class="small muted hastip u-m0" data-tip="From this session so far, your last 7 days against your targets, recovery, injuries, and your trends.">What to add next.</p>
+    <p class="small muted hastip u-m0" data-tip="From this session so far, your last 7 days against your targets, recovery, injuries, and your trends">What to add next.</p>
     ${allMet ? b`<p class="callout green u-m8-0-0">Every muscle is at target for the last 7 days.</p>` : ""}
     ${picks.length ? picks.map((x2, k2) => {
       const p3 = x2.plan;
@@ -27649,14 +27647,14 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (!d3) return null;
     const left = remainMin(d3);
     const pl = m3.mins ? shortPlan(d3, m3.mins) : null;
-    const body = !left ? b`<p class="small">Nothing is left to trim: every planned set is done.</p>` : !pl ? "" : pl.changes.length ? b`<ul class="short-list">${pl.changes.map((c4) => b`<li>${c4}</li>`)}</ul><p class="small muted u-m6-0-0">${estMin(min5(pl.est))} after the change.${pl.over ? " Still over, because sets you typed in are kept." : ""} Done sets are never touched.</p>` : pl.over ? b`<p class="small">Nothing can come off: every set left has something you typed in it, and Short on time only takes sets you haven't touched. ${estMin(min5(pl.est))} left.</p>` : b`<p class="small">Everything left fits in ${m3.mins} minutes as planned.</p>`;
+    const body = !left ? b`<p class="small">Nothing is left to trim: every planned set is done.</p>` : !pl ? "" : pl.changes.length ? b`<ul class="short-list">${pl.changes.map((c4) => b`<li>${c4}</li>`)}</ul><p class="small muted u-m6-0-0">${estMin(min5(pl.est))} after the change.${pl.over ? " Still over: typed sets are kept." : ""} Done sets are never touched.</p>` : pl.over ? b`<p class="small">Nothing can come off: every set left has something typed in it, and Short on time only takes untouched sets. ${estMin(min5(pl.est))} left.</p>` : b`<p class="small">Everything left fits in ${m3.mins} minutes as planned.</p>`;
     const trims = !!pl && pl.changes.length > 0;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Short on time</h3>${closeX()}</div>
     ${left ? b`<p class="small muted u-m0-0-8">How long do you have? Planned: ${estMin(min5(left))}.</p>
     <div class="chips">${SHORT_CHOICES.map((v3) => b`<button class=${"chip " + (m3.mins === v3 ? "on" : "")} data-act="shortPick" data-v=${String(v3)} aria-pressed=${String(m3.mins === v3)}>${v3} min</button>`)}</div>` : ""}
     ${body}
     <div class="row u-mt12">${trims ? b`<button class="btn primary" data-act="shortApply">Trim the session</button>` : ""}<button class="btn" data-act="mClose">${trims ? "Cancel" : "Close"}</button></div>
-    <p class="small muted hastip u-m8-0-0" data-tip="Kept longest: priority and lagging muscles, exercises you have started, and at least one exercise per muscle. The rest lose sets down to 2, then drop out, later exercises first. Trimmed work does not count against trends. Undo is in the message after.">What gets cut first</p></div>`;
+    <p class="small muted hastip u-m8-0-0" data-tip="Kept longest: priority and lagging muscles, exercises already started, and at least one exercise per muscle. The rest lose sets down to 2, then drop out, later exercises first. Trimmed work does not count against trends. Undo is in the message after.">What gets cut first</p></div>`;
   }
 
   // src/app/sheetsplan.ts
@@ -28418,16 +28416,16 @@ ${JSON.stringify(ctx, null, 1)}`;
       bandOf,
       picsTidy,
       risingWords,
-      // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it (r70).
+      // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it.
       setShortOf: (id, w2, r4) => setShort(EX(id), w2, r4),
-      // Today's Lifts moving, so tests/engine.js compares the page's answer with the engine's in Node (r70).
+      // Today's Lifts moving, so tests/engine.js compares the page's answer with the engine's in Node.
       liftsMoving,
-      // Whether a bodyweight lift has no weigh-in to read, so tests/engine.js compares it with Node's (2.29, NEW-72).
+      // Whether a bodyweight lift has no weigh-in to read, so tests/engine.js compares it with Node's.
       noBody,
-      // 2.32 (r78): the tape row's sentence and the one count of minutes left.
+      // 2.32: the tape row's sentence and the one count of minutes left.
       sizeWhat,
       sessLeftMin,
-      // 2.37 (ST-6): This block vs last, so tests/r83.js reads the blocks against a log worked out by hand, and the next
+      // 2.37: This block vs last, so tests/r83.js reads the blocks against a log worked out by hand, and the next
       // load minus and plus step to, so tests/engine.js compares the page's answer with Node's.
       blocks,
       stepLoad
