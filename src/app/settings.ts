@@ -16,6 +16,7 @@ import type { TemplateResult } from 'lit-html';
 import { live } from 'lit-html/directives/live.js';
 import { repeat } from 'lit-html/directives/repeat.js';
 import { APP_NAME, PREVIEW_NAME, VERSION_LINE } from './config';
+import { parkSettle } from './park';
 import { act } from './act';
 import { MK, ML, MUSCLES, TARGETED, TRACK_ONLY } from './library';
 import {
@@ -42,7 +43,7 @@ import {
 } from './profile';
 import { PLATE_MAX, PLATES_MOST, dbListOf, gymClean, plateOk } from './gym';
 import { fmtDate, fmtG, stampShort } from './format';
-import { CAL_WEEKS, CAL_MIN } from './analytics';
+import { CAL_WEEKS, CAL_MIN } from './setread';
 import { TRASH_DAYS, rec, LIMITS } from './records';
 import { EPS_SAME, iso, numIn, numWord, r1, upFirst, MINUTE_S, SECOND_MS, HOUR_MIN, DAY_MIN } from './util';
 import { stripDemo } from './chunks';
@@ -100,7 +101,7 @@ const LOG_SHOWN = 5;
 const KEPT_TOAST_MS = 8000;
 import { HARD_RIR } from './formulas';
 import { PROFILE_PLAN } from './routines';
-import { SMALL_PLATE, DEFAULT_STEP, PLATES_KG, PLATES_LB } from './units';
+import { CHANGE_PLATES, SMALL_PLATE, DEFAULT_STEP, PLATES_KG, PLATES_LB } from './units';
 import { DEMO_WEEKS } from './importing';
 import { adjOn, refreshEx, syncDraftPlan, unitWords } from './worksets';
 import { confirmBox, render, rerenderKeepScroll, setSaveState } from './page';
@@ -337,7 +338,11 @@ ${
 } <label class="field">${labelTip('lt-barKg', `Bar weight (${U()})`, 'Used by the plates-per-side line in the logger.')}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
 <div>
 <p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="A barbell is loaded with these plates, a pair at a time, so its suggested loads are ones they make. A plate-loaded machine steps by two of the smallest, one a side; a landmine by one. Tap a plate your gym does not have, or add one it has that is not here.">Plates on hand (${u})</span></p>
-<div class="chips" role="group" aria-label="Plates on hand">${[...plates, ...on.filter(p => !plates.includes(p))]
+<div class="chips" role="group" aria-label="Plates on hand">${[
+    ...plates,
+    ...CHANGE_PLATES[u === 'kg' ? 'kg' : 'lb'].filter(p => !plates.includes(p)),
+    ...on.filter(p => !plates.includes(p) && !CHANGE_PLATES[u === 'kg' ? 'kg' : 'lb'].includes(p))
+  ]
     .sort((a, b) => b - a)
     .map(
       p =>
@@ -1360,6 +1365,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     toast('Demo data cleared', true);
   },
   resetAll() {
+    if (!parkSettle()) return;
     confirmBox(
       'Erase everything?',
       `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? ' on this device and in your cloud copy' : ' on this device'}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first if you might want it.`,

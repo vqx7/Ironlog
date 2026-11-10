@@ -60,21 +60,10 @@ import { TRASH_DAYS, TRASH_MAX } from './records';
 import { BAND_RANGES } from './prs';
 import { IMPORT_REPEATS, IMPORT_WEEKS } from './importing';
 import { LIGHT_RIR, effAt } from './format';
-import { CAL_WEEKS, PICK_DAYS, RIR_USUAL_MIN, USUAL_SHARE } from './analytics';
+import { PICK_DAYS } from './analytics';
 import { FATIGUE_STALLS, MISSED_WEEKS_SAID } from './coach';
 import { AVG_WEEKS, FIRST_WEEK_REASON, LIGHTER_WEEK_WORDS } from './weeks';
-import {
-  BIG_STEP_REPS,
-  BUILD_PAST,
-  FIXED_RANGE,
-  JUST_UP,
-  KIN,
-  ODD_ADDED_BEST,
-  ODD_ADDED_BW,
-  ODD_BEST,
-  ODD_SESSION,
-  SHORT_RUN
-} from './engine';
+import { BUILD_PAST, FIXED_RANGE, JUST_UP, KIN, SHORT_RUN } from './engine';
 import { state } from './store';
 import { U } from './live';
 import { UNDO_DAYS } from './storage';
@@ -85,6 +74,10 @@ import { CAL_OFFER, ODD_REPS, ODD_REPS_TIMES } from './worksets';
 import { html } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { markup } from './view';
+import { BIG_STEP_REPS } from './loadsteps';
+import { ODD_ADDED_BEST, ODD_ADDED_BW, ODD_BEST, ODD_SESSION } from './oddloads';
+import { CAL_WEEKS, RIR_USUAL_MIN } from './setread';
+import { USUAL_SHARE } from './usual';
 
 /* The muscles the Guide names, read from the tables that decide them (r65,
    the r63 audit's A-9: the lists were typed in, so a muscle added to a table
@@ -254,8 +247,8 @@ export function guideSheet(m: { open?: string | undefined }): TemplateResult {
    <p><b>Loads and rep ranges</b>: ACSM 2009; Schoenfeld 2017 (heavier loads, more strength, similar growth). <b>Rest</b>: Schoenfeld 2016 (3 minutes beat 1); Singer 2024 (no difference found past 90 seconds).</p>
    <p><b>Effort</b>: Robinson 2024 and Refalo 2023 (growth rises as sets end closer to failure; a hard set is one within ${HARD_RIR} reps of it, a rule of thumb); Refalo 2024 (going to failure adds little); Halperin 2022 (estimates and effort calls at higher reps).</p>
    <p><b>Weekly sets</b>: Pelland 2025 and Currier 2026, the 2026 ACSM position stand (${USUAL_RANGE[0]} to ${USUAL_RANGE[1]} hard sets a week is typical for a major muscle); Pelland 2025 (helper muscles count half). Remmert 2025, a preprint (no extra growth past about 11 sets in one workout). <b>Maintenance</b>: Bickel 2011 and Spiering 2021 (size and strength held on a third of the volume).</p>
-   <p><b>Breaks</b>: Bosquet 2013 (strength falls the longer a lift is left). <b>Day-to-day swings</b>: Sigvaldsen 2023 (estimated strength varies 2 to 8%).</p>
-   <p><b>One-rep max</b>: Brzycki 1993, Epley 1985; Nuzzo 2024 (estimates spread too far past ${E1_MAX_REPS} reps, so none is made there). <b>Push-ups</b>: Ebben 2011 (about 64% of bodyweight). <b>Waist to height</b>: NICE 2022.</p>`
+   <p><b>Breaks</b>: Bosquet 2013 (strength falls the longer a lift is left). <b>Blocks</b>: Rogerson 2024 (a survey of 246 strength and physique athletes: a lighter week about every 5.6 weeks, so a block on Stats runs 6 weeks unless you pick another length). <b>Day-to-day swings</b>: Sigvaldsen 2023 (estimated strength varies 2 to 8%).</p>
+   <p><b>One-rep max</b>: Brzycki 1993, Epley 1985; Nuzzo 2024 (estimates spread too far past ${E1_MAX_REPS} reps, so none is made there). <b>Push-ups</b>: Ebben 2011 (about 64% of bodyweight). <b>Long-length lifts</b>: Maeo 2021 (seated over lying leg curls), Maeo 2023 (overhead over pushdown triceps work), Kinoshita 2023 (standing over seated calf raises). <b>Waist to height</b>: NICE 2022.</p>`
     ]
   ];
   const open = m.open || '';

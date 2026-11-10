@@ -55,9 +55,16 @@ export const BWSNOOZE_KEY = KEY + '.bwSnooze',
   BWASK_KEY = KEY + '.bwAsk';
 /** The account's profile photo as this phone holds it (2.34; kept on this phone only in 2.33), the note of where that
     copy stands against the account (photo.ts), and its one-time line on Today answered (Add photo or Not now). */
+/** A workout in progress set aside while an earlier one is edited or logged (R81-2): this phone's, with its account. */
+export const PARKED_KEY = KEY + '.parked';
 export const PHOTO_KEY = KEY + '.photo',
   PHOTO_SYNC = KEY + '.photoSync',
   PHOTO_ASKED = KEY + '.photoAsked';
+/** Moves a set-aside workout from the log of account `from` ('' for none) to `to`, when a sign-in takes the phone's log into that account (takeAccount): it goes where the log goes (the review of 2.36, REV6-4). */
+export function parkedRetag(from: string, to: string): void {
+  const r = rec(parseJson(prefGet(PARKED_KEY) || 'null'));
+  if (r && r['uid'] === from) prefSet(PARKED_KEY, JSON.stringify({ ...r, uid: to }));
+}
 /** The settings kept aside while the demo is loaded (demoKeep). */
 const DEMOSET_KEY = KEY + '.demoSettings';
 /** The start of the keys a preview of r56.1 kept a log aside under, before it moved to IndexedDB (asideStart). */

@@ -4,10 +4,9 @@
 // the model (nextSetsIn); with the decisions placed in r60 (PENDING 347).
 // Run on r59 (`node tests/r60.js baselines/r59.html`, R60_ONLY=n for one
 // section); the guards pass on both builds:
-//   1  (a guard, the source build) it looks as it did: the session screen in
-//      its sessions, settings and modes gives the same elements, attributes,
-//      field values and visible text as r59 (baselines/r59.html), but for the
-//      changes held on purpose by the sections after it.
+//   1  (a guard) the session screen in its sessions, settings and modes, drawn with no page error and nothing
+//      undefined, NaN or [object Object] on screen, in the state each names (CL-3, 2.40; until then r59 and r60
+//      compared, docs/ARCHIVE.md).
 //   2  a number typed into a field the log saves when it is left (Settings'
 //      time budget, the Set up page's bodyweight) and not yet left keeps
 //      its text when the page draws meanwhile; once confirmed, the field
@@ -49,21 +48,15 @@
 //      Chart.js, as its policy allows no other address (PENDING 346 c; read
 //      from the standalone build, IRONLOG_FILE=dist/index.html; fails on a
 //      build made before r60).
-const { open, tab, engine, screenOf, screenDiff } = require('./h');
+const { open, tab, engine, screenOf, screenLeaks } = require('./h');
 const FILE = process.argv[2] || 'index.html';
-const OLD = 'baselines/r59.html';
-/* Section 1 is pinned to the build it proved, r60 (baselines/r60.html), as CLAUDE.md's rule for the comparisons of old builds
-   says: r66 changes the session screen on purpose (PENDING 372 to 376: a note button and pictures on each exercise, Done
-   with sets left, supersets drawn as one group, drop sets under their set, a bodyweight line, and the help's words for
-   them), so the source build no longer draws r59's session screen, and should not. tests/r66b.js holds r66's changes. */
-const PROVED = 'baselines/r60.html';
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 900) : ''); } else console.log('ok  ', m); return !!c; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 // R60_ONLY=2,3 runs those sections alone (to show a case failing on r59 without the rest).
 const ONLY = process.env.R60_ONLY ? process.env.R60_ONLY.split(',') : null;
 const run = n => !ONLY || ONLY.includes(String(n));
 
-// The starter routine's ids are made at random, so both builds are given the same ones.
+// The starter routine's ids are made at random, so they are fixed: a failure names the same routine on every run.
 const FIX = "const m={};L.state.routines.forEach((r,i)=>{m[r.id]='R'+i;r.id='R'+i;});L.state.activeRoutineId=m[L.state.activeRoutineId]||L.state.activeRoutineId;L.state.sessions.forEach(s=>{if(m[s.routineId])s.routineId=m[s.routineId];});L.saveNow();";
 const DEMO = 'L.state.settings.onboarded=true;L.makeDemo();';
 // Demo sessions read as the lifter's own (a calibration set is offered only after three of those).
@@ -120,27 +113,17 @@ const SCREENS = [
 (async () => {
   const browser = await engine.launch();
 
-  // ---- 1. The session screen against r59's (both pages built from src/).
-  /* The PR pulse on a row ticked as a PR (prflash, 2 s) is the page's effect, not part of the screen: r59's next draw
-     made the row afresh without it, r60 keeps the row and takes the mark off when the pulse ends. It is left out of both. */
-  const noPulse = t => t.replace(/class="([^"]*)"/g, (m, c) => `class="${c.split(' ').filter(x => x !== 'prflash').join(' ')}"`);
-  /* Since r64 (V's decision 3, the r63 audit's P-S4-5) a warm-up or drop row has grey reps, held by tests/r64.js
-     section 7; r59 had none. The grey number in a warm-up or drop row's reps field is read as none in both, every
-     other placeholder exactly: a row's type is its number button's label, read before its fields. */
-  const warmGrey = tree => { let cur = null; return tree.map(t => t.replace(/aria-label="Set (\d+) type: (warm-up|drop set|working set)\.|(, set (\d+) (?:reps|seconds)(?: per side)?"[^>]*?placeholder=")(\d*)(")/g, (m, n, kind, pre, sn, g, post) => { if (kind) { cur = { n, wd: kind !== 'working set' }; return m; } return cur && cur.wd && cur.n === sn ? pre + post : m; })); };
-  const flat = s => ({ ...s, tree: warmGrey(s.tree.map(noPulse)), text: s.text.replace(/\s+/g, ' ') });
-  const textDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return { at: i, r59: a.slice(Math.max(0, i - 80), i + 160), now: b.slice(Math.max(0, i - 80), i + 160) }; };
+  // ---- 1. The session screen in each of these states, drawn on this build with no page error and nothing
+  // undefined, NaN or [object Object] on screen (CL-3, 2.40). Until 2.40 this section compared r59 and r60 as published, so it read
+  // no code of the build under test (docs/ARCHIVE.md).
   if (!run(1));
-  else if (process.env.IRONLOG_FILE) console.log('note r60 section 1 compares source pages; it runs on the source build');
+  else if (process.env.IRONLOG_FILE) console.log('note r60 section 1 reads the source build');
   else for (const [name, seed, prep, want] of SCREENS) {
-    const o = { browser, seed, tab: 'today', prep, spaces: true };
-    const a = flat(await screenOf(OLD, o)), b0 = await screenOf(PROVED, o), b = flat(b0);
-    const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
-    ok(!d, `1. ${name}: the same elements, attributes and field values as r59`, d && { at: d.at, r59: d.before, now: d.now });
-    ok(a.text === b.text, `1. ${name}: the same visible text as r59`, a.text === b.text ? '' : textDiff(a.text, b.text));
-    ok(!b0.errors.length, `1. ${name}: no page errors`, b0.errors);
+    const b = await screenOf(FILE, { browser, seed, tab: 'today', prep, spaces: true });
+    const leaks = screenLeaks(b);
+    ok(!b.errors.length && !leaks.length, `1. ${name}: drawn, with no page error and no undefined, NaN or [object Object] on screen`, { errors: b.errors, leaks });
     ok(/Finish and save|Save changes/.test(b.text), `1. ${name}: the session screen drawn`, b.text.slice(0, 120));
-    // The case is the state it names (a seed that missed it would compare two screens of something else).
+    // The case is the state it names (a seed that missed it would read a screen of something else).
     if (want) ok(want.test(b.tree.join('') + b.text), `1. ${name}: the screen is in that state`, String(want));
   }
 

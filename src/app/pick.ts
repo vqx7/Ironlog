@@ -32,7 +32,7 @@ import {
 } from './model';
 import type { Day, DraftBlock, Exercise, Plan, Routine } from './types';
 import type { DraftLike } from './session';
-import { IDXIn, PICK_DAYS, isHardIn } from './analytics';
+import { IDXIn, PICK_DAYS } from './analytics';
 import { daysOffIn } from './engine';
 import { planForIn } from './plans';
 import { paceIn } from './time';
@@ -52,6 +52,7 @@ import { dayParts, dayWorkout, nextTrainIdx, partOf, sessDayIdx } from './routin
 import { sessCmp } from './records';
 import { addDays, andList, daysBetween, r1, MINUTE_S, PERCENT, WEEK_DAYS } from './util';
 import { agoTxt, min5 } from './format';
+import { isHardIn } from './setread';
 
 /** Recovery after a dose (Recovery tiers, docs/EVIDENCE.md): the hard sets a
     dose needs, the days each tier needs, what adds to them, and how far back

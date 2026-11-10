@@ -15,7 +15,7 @@ import { PLATES_LB, PLATES_KG, LB, KM_MI, SMALL_PLATE } from './units';
 import { r1, addDays, today, uid, numIn, EPS, EPS_SAME, HUNDREDTHS, WEEK_DAYS, r3 } from './util';
 import { platesPerSide } from './gym';
 import { loadWords } from './loads';
-import { BAND_WORDS } from './prs';
+import { BAND_WORDS, prAdd, prBestOf, prJudge, prSoFar } from './prs';
 import {
   prFrame,
   noBody,
@@ -60,10 +60,12 @@ import {
   adjSrc,
   blkIdx,
   blkIsOpen,
+  blkIsShut,
   blkRef,
   carried,
   keepOpen,
   mixSeen,
+  setIdx,
   ordBack,
   orderQ,
   redraw,
@@ -91,7 +93,6 @@ const MIX_TOAST_MS = 7000;
 /** A ticked exercise moves up this many milliseconds after the tick, and tries again after ORDER_MS.again while something is being typed or open. */
 const ORDER_MS = { soon: 900, again: 1500 } as const;
 import { LIMITS, sessCmp } from './records';
-import { prAdd, prBestOf, prJudge, prSoFar } from './analytics';
 import { readSets } from './importing';
 import type { TypedSet } from './importing';
 import { toast } from './toast';
@@ -947,7 +948,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
   if (val && isMissed(s) && !s.warm && !s.drop) toast(MISSED_SAID);
   W.platesAt = null;
   if (val && !d.editingId && blockDone(b) && !blkIsOpen(bi, b)) W.foldWait.add(b);
-  redraw();
+  onLiftDraw(bi, redraw);
   const pr = rowPR(b, si, d.date);
   if (pr && !wasPR) {
     const ex = EX(b.exId);
@@ -1004,6 +1005,101 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
   if (val && b.sets.filter(x => x.done).length === 1 && orderAt(b) >= 0) orderSoon(b);
 }
 
+/* A ticked set's load or reps changed, typed in its field or stepped (NEW-100: one rule for both): a load far off or a
+   0 is asked about again, as at its tick (the set unticked and ticked again, `again`), else the set is scored again.
+   A lift waiting to fold starts its moment over, so it does not fold away while its sets are being changed. True when
+   it asked again. */
+/** After a ticked set's load or reps change, typed or stepped: true when it asked about the set again, else it was scored again. */
+export function doneChanged(bi: number, si: number, f: 'w' | 'r'): boolean {
+  const d = state.draft;
+  const b = d && d.ex[bi];
+  const s = b && b.sets[si];
+  if (!d || !b || !s || !s.done) return false;
+  if (W.foldT && W.foldWait.has(b)) {
+    clearTimeout(W.foldT);
+    const rf = blkRef(bi);
+    W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
+  }
+  if (f === 'w' ? !!oddLoad(b, si, d.date) : isMissed(s)) {
+    setDone(bi, si, false);
+    setDone(bi, si, true, true);
+    return true;
+  }
+  act(() => assessSet(bi, si), { inProgress: true });
+  return false;
+}
+
+/* The lift the screen brings up after lift i: the next one below it not done, else the first not yet started (a lift
+   skipped above is gone back to only when nothing below is left). One answer for the fold's glide (autoFold), the rest
+   card's "next:" (restNext) and the pills (liftsOn), so the three never point at different lifts. */
+/** The place of the lift that comes up after lift i, or -1 when none does. */
+function nextLift(d: Draft, i: number): number {
+  // A lift folded by hand is put away (NEW-101), so none of the three names it (the review, REV8-2).
+  const open = (x: DraftBlock, j: number): boolean => !blkIsShut(j, x);
+  const nx = d.ex.findIndex((x, j) => j > i && !blockDone(x) && open(x, j));
+  return nx >= 0 ? nx : d.ex.findIndex((x, j) => blockUntouched(x) && open(x, j));
+}
+
+/* The lift you are on (NEW-98, V 2026-11-09: "It will help reduce and avoid the overwhelm"), where minus and plus
+   show: the one you last ticked a set of, typed a load or reps in, or stepped, while it is not done; once it is done,
+   the lift the screen brings up after it (nextLift); with none, the first lift not done. A superset's lifts are done together, so each
+   lift of its group with a set left is on with it. Held for this visit only (W.onLift): after a reload, the first lift
+   with a set left. */
+/** The lifts of the session that minus and plus show on now: the one you are on, or its superset's lifts with a set left. */
+export function liftsOn(d: Draft): Set<DraftBlock> {
+  // A lift is left while it is not done by the rule the screen folds it by (blockDone: a warm-up left unticked does
+  // not keep it open), so the pills never go to a folded lift (the review of 2.38, REV7-1).
+  const held = (x: DraftBlock): boolean => {
+    const j = d.ex.indexOf(x);
+    return j >= 0 && setIdx(W.onSet, j) >= 0 && (W.foldWait.has(x) || blkIsOpen(j, x));
+  };
+  /* Or while it holds the set you are on and is drawn open, done or not (NEW-100): reps typed in its last set tick it
+     and finish it, and a minus or plus straight after is for that set, until the lift folds. */
+  // A lift folded by hand is put away (NEW-101): the pills go on to the next one.
+  const left = (x: DraftBlock): boolean => (!blockDone(x) || held(x)) && !blkIsShut(d.ex.indexOf(x), x);
+  const i = blkIdx(W.onLift);
+  const at = i >= 0 ? d.ex[i] : undefined;
+  // Once it is done, the lift the screen brings up after it (nextLift, as the fold glides to it and the rest card
+  // names it; the review of 2.38, REV7-7: the first lift with a set left was above and off screen), else the first.
+  const nx = at && !left(at) ? nextLift(d, i) : -1;
+  const b = at && left(at) ? at : nx >= 0 && left(d.ex[nx]) ? d.ex[nx] : d.ex.find(left);
+  if (!b) return new Set();
+  const ss = b.plan && b.plan.ss;
+  return new Set(ss ? d.ex.filter(x => x.plan && x.plan.ss === ss && left(x)) : [b]);
+}
+
+/* The set minus and plus change (NEW-100, V on the 2.38 preview, 2026-11-09: a minus or plus meant for the set just
+   done changed the next one, as reps typed in it ticked it and the pills moved on): the set you are on, the one you
+   last typed in, touched, stepped or unticked, ticked or not; only a tick of yours with the checkmark moves them on, to
+   the first set not ticked. Held for this visit only (W.onSet). */
+/** The set of lift bi that minus and plus change: the set you are on when it is in this lift, else its first set not ticked, or -1. */
+export function stepAt(b: DraftBlock, bi: number): number {
+  const i = setIdx(W.onSet, bi);
+  return i >= 0 ? i : b.sets.findIndex(x => !x.done);
+}
+
+/* Making a lift the one you are on moves the pills to it, which takes their space from one lift and gives it to
+   another; a tick or a load typed there must move nothing under the finger (NEW-64's rule; GitHub's run of 2.38 saw a
+   lift jump 93 px when the pills left the lift above it). So the lift tapped is held where it was on screen across
+   the draw, by scrolling the page the height the pills took or gave above it. */
+/** Makes lift bi the one you are on and draws the session with `draw`, keeping that lift where it was on screen when the pills move. */
+export function onLiftDraw(bi: number, draw: () => void): void {
+  const d = state.draft;
+  const was = d ? liftsOn(d) : null;
+  W.onLift = blkRef(bi);
+  // The set you are on is on the lift you are on (NEW-100).
+  if (W.onSet && blkIdx(W.onSet.b) !== bi) W.onSet = null;
+  const ref = W.onLift;
+  const el = document.getElementById('blk-' + bi);
+  const top = el ? el.getBoundingClientRect().top : null;
+  draw();
+  const now = state.draft ? liftsOn(state.draft) : null;
+  if (top == null || !was || !now || (was.size === now.size && [...was].every(x => now.has(x)))) return;
+  const j = blkIdx(ref);
+  const el2 = j >= 0 ? document.getElementById('blk-' + j) : null;
+  if (el2) window.scrollBy(0, el2.getBoundingClientRect().top - top);
+}
+
 /* What the rest card names as next (r71, 364 b-1), by the rules the screen
    already follows after a tick: the lift's next working set, numbered as its
    rows are; in a superset, whose rest comes after the group's last lift, the
@@ -1020,8 +1116,7 @@ export function restNext(bi: number): string {
   // No-break spaces keep "next set 2" on one line when the card's line wraps on a narrow phone.
   if (k >= 0) return to === b ? `next\u00a0set\u00a0${k + 1}` : `next: ${exName(to.exId)}`;
   const i = d.ex.indexOf(to);
-  let nx = d.ex.findIndex((x, j) => j > i && !blockDone(x));
-  if (nx < 0) nx = d.ex.findIndex(x => blockUntouched(x));
+  const nx = nextLift(d, i);
   return nx >= 0 && nx !== i ? `next: ${exName(d.ex[nx].exId)}` : '';
 }
 
@@ -1157,8 +1252,7 @@ export function autoFold(ref: BlkRef | null): void {
     W.foldT = setTimeout(() => autoFold(ref), FOLD_MS.strip);
     return;
   }
-  let nx = d.ex.findIndex((x, i) => i > bi && !blockDone(x));
-  if (nx < 0) nx = d.ex.findIndex(x => blockUntouched(x));
+  const nx = nextLift(d, bi);
   const a0 = nx >= 0 ? document.getElementById('blk-' + nx) : null;
   const top0 = a0 ? a0.getBoundingClientRect().top : null;
   rerenderKeepScroll();

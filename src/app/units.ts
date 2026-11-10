@@ -50,6 +50,14 @@ export const TYPED_STEP = 0.05;
     count for a barbell load is made from unless Your gym lists its own. */
 export const PLATES_LB = [45, 35, 25, 10, 5, 2.5],
   PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
+
+/* The change plates gyms and makers stock (NEW-87, V 2026-11-08: "1 KG and
+   half KG plates ... should've been there for ease"): offered as buttons in
+   Your gym, off until tapped, never counted unless the gym lists them, so no
+   lifter's loads move. kg change plates are sold as 0.5, 1, 1.5, 2 and 2.5
+   (2.5 and up are usual already); lb as 1.25, 2.5, 5 and 10 (docs/EVIDENCE.md). */
+/** The change plates Your gym offers as buttons beside the usual ones, heaviest first, in each unit. */
+export const CHANGE_PLATES: Readonly<Record<'kg' | 'lb', readonly number[]>> = { kg: [2, 1.5, 1, 0.5], lb: [1.25] };
 /** The small change plate added with Small change plates on (r29, item 98), per unit. */
 export const SMALL_PLATE: Readonly<Record<'kg' | 'lb', number>> = { lb: 1.25, kg: 0.5 };
 

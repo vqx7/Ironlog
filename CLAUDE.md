@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r81, version 2.35, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r87, version 2.41, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -146,7 +146,9 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   Trends are never shown as a 1RM; a muscle with no clear lift reads unclear, never 0%; weight lifted is never a
   percentage against last week; no projections. Deloads and lighter loads are whole steps, never under the bar on a
   barbell lift typed as the total. One rule for every session (V, 2026-10-18): a lift sets its next target only at
-  its usual load and reps for its usual sets (in a session on a day of the routine, the sets its plan gave it that day, saved with it, once a session did them: r58; in a blank session, the sets of the routine's day nearest to what it did among the days that plan it in its rep range, saved with it the same way, none in Freestyle: r70, NEW-51, R70-6); with fewer sets or a
+  its usual load and reps for the sets it is held to: its plan's, saved with the session, once it has done them, else
+  its usual, never more than the plan (`setsHeldTo` in usual.ts; each case a row of `tests/usual.js`, the history in
+  docs/ARCHIVE.md, CL-2); with fewer sets or a
   clearly weaker reading the target repeats and the session still counts for the trend, stalls and PRs; done
   lighter it sets no target or trend, and done in full on a
   lighter or deload day it is a full session (a day's label never overrides what a lift did). A break of more than
@@ -213,9 +215,8 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   last check it passed; teardown goes through `settle` (`tests/h.js`), which names a step that stalls.
 - By hand, if the workflow cannot run: `npm test`, then `git worktree add ../pages gh-pages`, copy dist/* in,
   commit, push.
-- The comparisons of old builds stay pinned to what they proved: `tests/r36.js` (r35 and r52), `tests/r52.js`
-  (r51 and r52), `tests/r53w.js` (r52 and r53), and since r64, which changes those numbers and sentences on purpose,
-  `tests/r61.js` section 1 (r60 and r61), `tests/r62.js` sections 1 and 2 (r61 and r62) and `tests/r63.js` section 1
-  (r62 and r63); since r66, which changes the session screen, Today and a lift's name on purpose, `tests/r60.js` section 1 (r59
-  and r60), `tests/r59.js` section 1 (r58 and r59), `tests/r58.js` section 1 (r57 and r58) and `tests/r63.js` section 2
-  (r62 and r63); since r67, which gives Today's main card its shine on purpose, `tests/r66b.js` section 6 (r65.2 and r66); since r71, which draws the rest as a card on purpose, `tests/r70.js` section 5's bar (r69 and r70; the compact pill still held to r69's) and `tests/r33.js` part 1a2's timer (held to the card since). Since 2.33 (r79), which marks History's PRs in gold on purpose, `tests/r57.js` section 4 takes those marks out of the new page (`heldOutR79`) and holds the rest to r56.2. Since 2.34 (r80), which makes the profile photo the account's on purpose (R79-1), `tests/r79.js` section 1 runs signed in, on the source build (`tests/r80b.js` holds the photo on the built app), and `tests/r33.js` keeps any plate a gym has (NEW-76); its wording pass (99) reworded tips that `tests/r29c.js`, `r41.js`, `r44.js`, `r58.js` section 9, `r64a.js` and `r69.js` read, and split Settings' General (`tests/r57.js` section 4 reads Measurements and Appearance as one placeholder); and since its plates change on purpose (NEW-76), `tests/r61.js` section 4 holds out the gyms whose saved list has a plate r60 dropped and `tests/r65.js` section 5 reads the usual plates in settings.ts, and `tests/r27.js` counts the Guide's eight topics (Sources).
+- A suite holds the build under test to its rules. An old build is opened only to show a new test fails on it (the build
+  before), to load its saves (`tests/migration.js`, `tests/wayback.js`, `tests/mixed.js`), or where V's ruling names an old
+  build's look (`tests/r70.js` section 5, r69's compact rest pill; `tests/r66b.js` section 5, r65.2's buttons;
+  `tests/r33.js` part 1a2, r32.1's At a glance). A deliberate change never adds an exclusion to a comparison: the
+  comparisons that had them were retired or replaced by rule checks in 2.40 (CL-3; docs/ARCHIVE.md lists each).

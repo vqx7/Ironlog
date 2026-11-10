@@ -3,6 +3,7 @@
    missing), the session saved as the log keeps it, and the recap. */
 
 import { act } from './act';
+import { unpark } from './park';
 import { isCompound, noE1 } from './library';
 import { withPlanSets, pwOf } from './routines';
 import { estMin } from './format';
@@ -49,6 +50,9 @@ import type { RoutineUpdate } from './plans';
 const WARM_SHARE = { compound: 0.75, isolation: 0.8 } as const;
 /** A session open longer than this many minutes was left open, so it is not timed. */
 const TIMED_MAX_MIN = 360;
+/** Said when a workout set aside for an edit or a past workout comes back (R81-2). */
+export const BACK_SAID = ' Your workout in progress is back: Resume it on Today.';
+
 /** The lifts the recap's Heaviest yet line names before "and N more". */
 const HEAVIEST_SHOWN = 4;
 
@@ -263,10 +267,11 @@ export function finishNow(): void {
       });
       stopTimer();
       wakeOff();
+      const back = unpark();
       ui.todayDay = null;
       window.scrollTo(0, 0);
       render();
-      toast('Cardio saved. No lifting session was recorded.');
+      toast(`Cardio saved. No lifting session was recorded.${back ? BACK_SAID : ''}`);
       return;
     }
     toast('Mark at least one set done');
@@ -455,6 +460,8 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
   wakeOff();
   // An Undo offered during the session (a trim, a removed set) has nothing left to undo once it is saved.
   undoToastHide();
+  // A workout set aside for this one comes back now, offered on Today (R81-2).
+  const back = unpark();
   const prAll = IDX().prs.filter(
     p => (p.sid ? p.sid === sess.id : p.date === sess.date) && ex.some(b => b.exId === p.exId)
   );
@@ -476,9 +483,10 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
   window.scrollTo(0, 0);
   render();
   if (editing) {
-    toast('Session updated');
+    toast(`Session updated.${back ? BACK_SAID : ''}`);
     return;
   }
+  if (back) toast(BACK_SAID.trim());
   const lines = [
     `${work} working set${work === 1 ? '' : 's'}, ${hard} ${rirHalfOn() ? 'counted toward the week' : 'counted as hard'}${miss ? `, and ${miss} missed` : ''}`
   ];

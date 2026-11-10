@@ -43,6 +43,7 @@ import {
   TARGETED,
   TRACK_ONLY,
   LIB_NAMES_BEFORE,
+  LIB_NOTES_BEFORE,
   libExercises
 } from './library';
 import {
@@ -95,7 +96,16 @@ import type { Rec, Trashed } from './records';
 import { gymClean } from './gym';
 import { profClean } from './profile';
 import { canon } from './merge';
-import { DEFAULT_HIDDEN, DSEC_FOLDED, DSEC_KEYS, HIDEABLE_KEYS, SEC_TABS, defaultOrder, bwEveryKept } from './layout';
+import {
+  DEFAULT_HIDDEN,
+  DSEC_FOLDED,
+  DSEC_KEYS,
+  HIDEABLE_KEYS,
+  SEC_TABS,
+  defaultOrder,
+  bwEveryKept,
+  blockWeeksKept
+} from './layout';
 
 declare global {
   interface Window {
@@ -517,6 +527,7 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
   const sIn = rec(s.settings) || {};
   const accent = pick(st.accent, ['blue', 'volt', 'ember', 'pink', 'violet', 'cyan', 'red'] as const);
   const bwEvery = bwEveryKept(st.bwEvery);
+  const blockWeeks = blockWeeksKept(st.blockWeeks);
   const restWeeks = (() => {
     const rw = arr(st.restWeeks);
     return rw ? [...new Set(strings(rw, isDate))].sort().slice(-LIMITS.restWeeks) : [];
@@ -594,6 +605,8 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     ...(st.autoAdj === false ? { autoAdj: false } : {}),
     // r34: weigh-in reminder in days (0 off); absent is every BW_EVERY_DEFAULT days.
     ...(bwEvery !== undefined ? { bwEvery } : {}),
+    // 2.37 (ST-6): This block vs last's length; absent is BLOCK_WEEKS_DEFAULT, so saves without it hash as before.
+    ...(blockWeeks !== undefined ? { blockWeeks } : {}),
     // r34: Today opens on a blank session; absent is the plan's day.
     ...(st.todayStart === 'free' ? { todayStart: 'free' } : {}),
     // r34: rest weeks, week-start dates; the last two years kept.
@@ -644,6 +657,7 @@ const OPTIONAL_SETTINGS = [
   'rirHalf',
   'autoAdj',
   'bwEvery',
+  'blockWeeks',
   'todayStart',
   'restWeeks',
   'rirScale',
@@ -1005,9 +1019,13 @@ export function normalize(input: unknown): State {
   }
   // A built-in the library has renamed reads by its name now where the log holds one the library gave it before; a name the lifter gave it stays (NEW-37).
   const libName = new Map(lib.map(e => [e.id, e.name]));
+  // The same for a note the library has reworded: the old text word for word reads as the library's now; an edited note stays (NEW-85).
+  const libNote = new Map(lib.map(e => [e.id, e.note]));
   for (const e of exercises) {
     const now = libName.get(e.id);
     if (now && !e.custom && (LIB_NAMES_BEFORE[e.id] || []).includes(e.name)) e.name = now;
+    const note = libNote.get(e.id);
+    if (note !== undefined && !e.custom && (LIB_NOTES_BEFORE[e.id] || []).includes(e.note)) e.note = note;
   }
   // v1 saves predate the per-side flag, so the built-ins in them all carry
   // perSide:false. Backfill it from the library by id, and only that one

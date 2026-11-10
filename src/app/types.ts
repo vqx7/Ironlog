@@ -264,6 +264,8 @@ interface EngineSettings {
   priorities: MuscleKey[];
   restWeeks?: string[] | undefined;
   todayStart?: 'free' | undefined;
+  /** Weeks a block runs on Stats' This block vs last (2.37, ST-6): 'auto' ends one at a lighter, rest or missed week; absent is BLOCK_WEEKS_DEFAULT. */
+  blockWeeks?: 'auto' | 4 | 5 | 8 | undefined;
 }
 
 /** Every setting as normalize() keeps it (r56): the engine's, and the rest

@@ -384,19 +384,10 @@ type PlanRoutines = readonly {
   }[];
 }[];
 
-/* The sets a routine plans for a lift on the day nearest to what a blank
-   session did (NEW-51, r70): what the session is held to. A lift planned at
-   one count is held to it. Planned at 5 sets one day and 3 another, a blank
-   session of 1 or 3 sets is held to 3 and one of 5 to 5, a tie going to the
-   fewer, so a blank session never asks more sets than the day it resembles
-   (the review of r70, R70-1: held to the first day's 5, a session of 3 read
-   short) and a 5-set session is judged on all five (R70-5: held to the
-   fewest, 3, its weaker fourth and fifth sets were not read and the next
-   target fell from 40 reps to 33). Only the days that plan the lift in the
-   session's rep range count, all days when none does, since a session is
-   read only against sessions of its own range (R70-6: 3 heavy sets of a lift
-   planned 5 x 4-6 and 3 x 8-12 were held to the light day's 3, read in full,
-   and the heavy day's load went up). */
+/* A blank session is held to the day of the routine it most resembles: among the days that plan the lift in the
+   session's rep range (every day that plans it when none does), the one whose sets are nearest to the working sets
+   it did, the fewer on a tie, so it is never asked more than the day it resembles and a longer session is judged on
+   all it did. Its cases are rows of tests/usual.js (NEW-51, R70-1, R70-5, R70-6; docs/ARCHIVE.md). */
 /** The planned sets nearest to the sets a session did, over the days of the routine with this id that plan the lift in the session's rep range, or every such day when none plans it in that range (fewer on a tie); undefined when it plans none or is gone. */
 function nearestPlanSets(
   routines: PlanRoutines,
@@ -419,18 +410,11 @@ function nearestPlanSets(
   return n;
 }
 
-/* A workout's exercises as Finish saves them, each lift on a day of a
-   routine given the sets its plan gives it (planSetsOf), last, as normalize
-   writes it. Since r70 a blank session (no day) records them too, while the
-   routine is followed: each lift the routine in use plans is given the sets
-   of the day nearest to its working sets, among the days that plan it in the
-   session's rep range (nearestPlanSets), so two one-set
-   sessions in a row never make it a 1-set lift (NEW-51); none in Freestyle, where Today
-   opens blank and the lifter's own sets lead. Recorded once, at Finish, so a
-   plan or the mode changed later never rereads the sessions before it (the
-   r58 review, and R70-1 and R70-2 in r70's). None on an edit, which keeps the
-   sets saved with the session (Finish carries them over with the fields it
-   does not rebuild, keepExtra). */
+/* The sets each lift of a workout is held to, recorded once at Finish (`ps`), so a plan or the mode changed later
+   never rereads the sessions before it: on a day of a routine, the sets that day plans (planSetsOf); in a blank
+   session while the routine is followed, the sets of the day it most resembles (nearestPlanSets); none in Freestyle,
+   where the lifter's own sets lead, and none on an edit, which keeps the sets saved with the session (keepExtra).
+   What the analytics do with them is setsHeldTo's (usual.ts). Cases: tests/usual.js; history: docs/ARCHIVE.md. */
 /** The exercises given, each with the sets its plan gives it (a day's, or for a blank session while the routine is followed the nearest day's), as new records (the ones given are not changed). */
 export function withPlanSets<
   B extends {

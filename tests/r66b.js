@@ -28,10 +28,7 @@
 //      fullw, and every one of them, in light and dark, in Today, the first
 //      page and five sheets, has r65.2's computed look (padding, margins,
 //      corners, colours, height), read beside r65.2 itself.
-//   6  (a guard) Today's main card, light and dark in every accent, looks
-//      exactly as on r65.2: 371's steel edge was tried and taken out of r66
-//      on V's word (2026-11-01). Pinned to r66 since r67, which adds the
-//      shine V approved (tests/r67.js section 4).
+//   6  retired in 2.40 (CL-3): compared r65.2 and r66 as published (docs/ARCHIVE.md).
 //   7  pictures over time (373): a note whose four ids came from a backup
 //      restored (no bytes on this phone) shows nothing, still offers
 //      + Picture, and keeps the new one; the bytes of a picture taken off are
@@ -520,29 +517,8 @@ const stored = H => H.ev(async secret => {
     ok(n > 50 && !off.length, `5. all ${n} full-width buttons, light and dark, look exactly as on r65.2`, off.slice(0, 3));
   }
 
-  // ---- 6. Today's main card looks exactly as on r65.2 (a guard: 371's steel edge was taken out of r66 on V's word, 2026-11-01).
-  /* Pinned to the build it proved, r66 (baselines/r66.html), as CLAUDE.md's rule for the comparisons of old builds says:
-     r67 gives the card the slight metal shine V approved on 2026-11-02, on purpose; tests/r67.js section 4 holds it. */
-  if (run(6)) {
-    const PROVED6 = /(^|\/)baselines\//.test(FILE) ? FILE : 'baselines/r66.html';
-    const PROPS = ['background-image', 'background-color', 'box-shadow', 'border-top-width', 'border-top-left-radius', 'padding-top', 'margin-top', 'color', 'width', 'height'];
-    const look = async (file, theme, accent) => {
-      const P = await open(file, { browser, w: 390, h: 844, dark: theme === 'dark', clock: '2026-11-02T09:00:00' });
-      const r = await P.page.evaluate(([t, a, PROPS]) => {
-        const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.theme = t; L.state.settings.accent = a; L.ui.tab = 'today'; L.render();
-        const h = document.querySelector('.hero'); const cs = getComputedStyle(h);
-        return PROPS.map(p => p + '=' + cs.getPropertyValue(p)).join(';') + ';before=' + getComputedStyle(h, '::before').content + ';after=' + getComputedStyle(h, '::after').content;
-      }, [theme, accent, PROPS]);
-      await P.ctx.close();
-      return r;
-    };
-    const off = [];
-    for (const theme of ['light', 'dark']) for (const a of ['ember', 'blue', 'volt', 'pink', 'violet', 'cyan', 'red']) {
-      const was = await look('baselines/r65-2.html', theme, a), now = await look(PROVED6, theme, a);
-      if (was !== now) off.push({ theme, a, was, now });
-    }
-    ok(!off.length, '6. Today\'s main card, light and dark in all 7 accents, looks exactly as on r65.2 (no edge added)', off.slice(0, 2));
-  }
+  // ---- 6. Retired in 2.40 (CL-3): it compared Today's main card on r65.2 and r66 as published, so it read no code of the
+  // build under test; the card's look since is held by tests/r67.js section 4 (docs/ARCHIVE.md).
 
   // ---- 7. Pictures over time.
   if (run(7)) {

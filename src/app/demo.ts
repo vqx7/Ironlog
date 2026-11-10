@@ -28,6 +28,7 @@ import type { PlanItem } from './types';
 import { act } from './act';
 import { confirmBox, render } from './page';
 import { toast } from './toast';
+import { parkSettle } from './park';
 import { fitTargets } from './targets';
 import type { Tap } from './workstate';
 
@@ -293,6 +294,7 @@ export const DEMO_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       toast('Demo data stays off your account.', null, DEMO_SAID);
       return;
     }
+    if (!parkSettle()) return;
     confirmBox(
       'Load demo data?',
       'Adds 8 weeks of generated sessions tagged as demo, based on your active routine. Your own logs are not changed.',

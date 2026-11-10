@@ -71,6 +71,7 @@ import {
   clearTimer,
   keepAside,
   asideOf,
+  parkedRetag,
   dropAside,
   load,
   undoForget
@@ -1643,6 +1644,8 @@ async function takeAccount(id: string): Promise<boolean> {
     cloud.sent = {};
     cloud.editAt = {};
     cloud.last = null;
+    // The phone's log goes into the account, and a workout set aside for an edit with it (REV6-4).
+    parkedRetag('', id);
     return true;
   }
   // Whether the log here holds anything of the lifter's, read before anything changes.
@@ -1729,6 +1732,8 @@ async function takeAccount(id: string): Promise<boolean> {
     resyncLocalH();
     fx.render();
   }
+  // The log here taken into the account (added, or the account's first): a workout set aside for it goes too (REV6-4).
+  if (!use) parkedRetag(from || '', id);
   if (both)
     fx.toast('The workout in progress on this phone stays open. The one kept for this account is saved in History.');
   // The copy kept for this account is the log in use now, saved here with its notes.

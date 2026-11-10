@@ -31,14 +31,25 @@ import {
   MUSCLE_TREND_MIN
 } from './formulas';
 import { estMin, fmtDate, repSpan } from './format';
-import { DSECS, DSEC_KEYS, REGION_WKS, VOL_MODES, orderKeys, REGION_WK_DEFAULT } from './layout';
+import {
+  DSECS,
+  DSEC_KEYS,
+  REGION_WKS,
+  VOL_MODES,
+  orderKeys,
+  REGION_WK_DEFAULT,
+  BLOCK_WEEKS,
+  BLOCK_WEEKS_DEFAULT,
+  blockWeeksKept
+} from './layout';
+import { act } from './act';
 import { RANGES, firstDate, weeksSpan, CHART_WEEKS, HALF_YEAR_WEEKS } from './charts';
 import { belowMin } from './volume';
 import { goalGap, goalOk } from './goals';
 import { trendEnds, trendScope, trendW, ENDS_PAIRED_FROM } from './trend';
 import { estInLoad, loadNote } from './loads';
 import { prName, BAND_RANGES } from './prs';
-import { sessionWord, RIR_USUAL_MIN, CAL_WEEKS } from './analytics';
+import { sessionWord } from './analytics';
 import { BACK_WEEK_WHY, FIRST_WEEK_WHY, LIGHTER_WEEK_TIP, ON_PLAN_TIP, avgWeeksTxt, AVG_WEEKS } from './weeks';
 import { FALL_WHY, STALL_WHY, chkWord, musTrend, FATIGUE_STALLS, READINESS_MIN } from './coach';
 import { whyTarget } from './session';
@@ -61,6 +72,8 @@ import {
 import {
   EX,
   IDX,
+  blocks,
+  logBack,
   liftRead,
   U,
   activeRoutine,
@@ -134,8 +147,10 @@ import { pageTitle, helpButton, howText, section, slotted, subsection, tabFoot, 
 import type { Field } from './view';
 import type { Part } from './view';
 import type { Routine } from './types';
+import type { Block } from './weeks';
 import { rangeKey, weekWindow } from './graphs';
 import { rerenderKeepScroll } from './page';
+import { RIR_USUAL_MIN, CAL_WEEKS } from './setread';
 
 /** The smallest change the percentages show (one decimal): a likely range narrower than it is not said. */
 const PCT_SHOWN = 0.1;
@@ -810,6 +825,37 @@ const CONSISTENCY_HELP = `${HEAT_WEEKS} weeks from your first logged session; on
 
 /** Consistency: adherence to the routine over the full weeks before this one, the heat map of days lifted,
     cardio minutes a week and readiness (out of viewDash since r65, the r63 audit's A-7). */
+/* This block vs last (2.37, ST-6): sessions and hard sets a week, and PRs, in the block under way and the one before
+   it, by the block length picked here (blocksIn). Read side by side, never as a percentage. */
+/** The tip beside This block vs last: what a block is and what its averages count. */
+const BLOCK_TIP = `A block runs ${BLOCK_WEEKS_DEFAULT} weeks unless you pick another length, about how often lifters take a lighter week (see Sources in the Guide). Auto ends a block at a lighter, rest, or missed week, and runs ${BLOCK_WEEKS_DEFAULT} weeks when there is none. Averages count full weeks trained and leave out lighter weeks and rest weeks, as every weekly average does; this week counts toward PRs only.`;
+/** This block vs last: its dates, the table (a dash for an average with no full week in it) and the length chooser. */
+function blockBody(): TemplateResult {
+  const b = blocks();
+  const pick = state.settings.blockWeeks ?? BLOCK_WEEKS_DEFAULT;
+  const sel = html`<label class="small muted" id="lt-blockWeeks">Block length</label> <select data-bind="blockWeeks" aria-labelledby="lt-blockWeeks">${BLOCK_WEEKS.map(
+    v => html`<option value=${String(v)} .selected=${live(v === pick)}>${v === 'auto' ? 'Auto' : `${v} weeks`}</option>`
+  )}</select>`;
+  if (!b) return html`<div class="card"><p class="small muted u-m0">Log a session to start this.</p>${sel}</div>`;
+  const avg = (v: number | null): string => (v == null ? '–' : String(r1(v)));
+  // Weeks the averages leave out are said beside the dates, as every weekly average says them (avgWeeksTxt; REV6-6).
+  const out = (x: Block): string => {
+    const o = [
+      x.missed ? `${x.missed} week${x.missed === 1 ? '' : 's'} missed` : '',
+      x.light ? `${x.light === 1 ? 'a lighter week' : `${x.light} lighter weeks`} left out` : ''
+    ].filter(Boolean);
+    return o.length ? `, ${o.join(' and ')}` : '';
+  };
+  const span = (x: Block): string => `${fmtDate(x.from)} to ${x.to === today() ? 'now' : fmtDate(x.to)}${out(x)}`;
+  const L = b.last;
+  const row = (label: string, a: string, c: string): TemplateResult =>
+    html`<tr><th>${label}</th><td class="num">${a}</td><td class="num">${L ? c : '–'}</td></tr>`;
+  return html`<div class="card"><p class="small muted u-m0-0-6">This block: ${span(b.now)}${b.now.counted ? '' : ', no full week yet'}. ${L ? `Last: ${span(L)}.` : logBack() ? 'None before it since your break.' : 'No block before it yet.'} ${tipButton(BLOCK_TIP, 'About blocks')}</p>
+  <table class="blkt"><thead><tr><th></th><th>This block</th><th>Last block</th></tr></thead><tbody>
+  ${row('Sessions a week', avg(b.now.sess), L ? avg(L.sess) : '–')}${row('Hard sets a week', avg(b.now.hard), L ? avg(L.hard) : '–')}${row('PRs', String(b.now.prs), L ? String(L.prs) : '–')}</tbody></table>
+  <div class="u-mt8">${sel}</div></div>`;
+}
+
 function consistencySec(R: ReturnType<typeof activeRoutine>, cur: string): TemplateResult {
   const sessDates = new Set(Object.keys(dateIndex().byDate));
   /* Adherence counts only days the routine actually plans work on: a non-rest
@@ -893,7 +939,7 @@ function consistencySec(R: ReturnType<typeof activeRoutine>, cur: string): Templ
     'consistency',
     'Consistency',
     CONSISTENCY_HELP,
-    noLog() ? heat : html`${adhLine}${heat}`,
+    noLog() ? heat : html`${adhLine}${dashSub('block', 'This block vs last', blockBody())}${heat}`,
     noLog() ? 'Nothing logged yet' : `${sk.weeks}-week streak${adher != null ? ` · ${adher}% adherence` : ''}`
   );
 }
@@ -1289,6 +1335,15 @@ export const DASH_BINDS: Readonly<Record<string, (t: Field) => void>> = {
   },
   dashMuscle(t) {
     ui.dashMuscle = t.value;
+    rerenderKeepScroll();
+  },
+  // The block length (ST-6): a setting, so it is kept and synced; the default is kept absent.
+  blockWeeks(t) {
+    const k = blockWeeksKept(t.value === 'auto' ? 'auto' : +t.value);
+    act(() => {
+      if (k !== undefined) state.settings.blockWeeks = k;
+      else delete state.settings.blockWeeks;
+    });
     rerenderKeepScroll();
   }
 };

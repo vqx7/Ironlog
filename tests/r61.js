@@ -2,16 +2,9 @@
 // read through its types end to end (351), and the sheets moved (r61's
 // own sections, added as each is built). Run on r60 (`node tests/r61.js
 // baselines/r60.html`, R61_ONLY=n for one section):
-//   1  (a guard, pinned since r64 to the build it proved, baselines/r61.html)
-//      r61 gives every number r60 gave: the wide
-//      histories of tests/wide.js (1,000, every day of the week as today)
-//      through every function the screens call, the same answers as r60
-//      (baselines/r60.html), call for call; and every tab, in light and dark,
-//      in pounds and kilograms, with effort as RIR and as RPE, the same
-//      elements, attributes, field values and visible text as r60's; and the
-//      Guide, every topic open, in pounds and kilograms with RIR on and off,
-//      the same markup and text as r60's (its numbers now read from the
-//      constants their rules apply), but for the sentences section 2 corrects.
+//   1  (a guard) every tab and the session screen, in lb with RIR, kg with RPE in dark, and lb with half points and RIR
+//      off, and the Guide in each unit with RIR on and off, drawn with no page error and nothing undefined, NaN or
+//      [object Object] on screen (CL-3, 2.40; until then r60 and r61 compared, docs/ARCHIVE.md).
 //   2  the Guide says what the code does where it did not: a set rated 5 or
 //      more in reserve is read as 4, reps built past the top before a large
 //      step are a quarter of the top of the range with two at least, and a new
@@ -23,19 +16,16 @@
 //      and the log opened again holds what the fields showed (fails on r60:
 //      the bar and the step were bounded in the unit typed, 110 and 500 lb,
 //      and 20000 kg typed showed 20000 until the app was opened again).
-//   4  the log read through its types end to end (351): normalize gives
-//      r60's answer, key order included, with the same records dropped and
-//      unknown fields kept, on 240 wide histories, each damaged three ways,
-//      and the sync's documents, but for two inputs no build writes, each
-//      read now as any other (both fail on r60): a workout in progress saved
-//      as false, 0 or an empty string reads as none, where r60 kept it as it
-//      came, and a log with no routine gets the starter read as any routine
-//      is (its items with their superset field), where r60 gave it unread
-//      until the next load; and the workout in progress is still cleaned in
-//      place, the very object given, its own fields first in their order.
-//      (The starter a log with no routine gets rests its isolation lifts 90 s
-//      since r64, 302: r60's starter is read so, tests/r64.js section 11.)
-//      (On r60 the first check fails too, by exactly those two inputs.)
+//   4  the log read through its types end to end (351), held to normalize's own rules (CL-3, 2.40; until then
+//      to r60's answer with six later changes taken out by hand): on 240 wide histories, each damaged three ways,
+//      and the sync's documents, it never throws; read again it gives the same answer, key order included, and
+//      drops nothing more; a log keeps every record and every set's load and reps a build could have saved; a
+//      log the build before saved keeps every value it wrote, whatever the field (a migration only adds; REV8-O5,
+//      shown to fail on a planted change to how a set's RIR is read); a field it does not know is kept, and the
+//      record keeps the key order it came in. And two inputs no build writes read as any other (both
+//      fail on r60): a workout in progress saved as false, 0 or an empty string reads as none, and a log with no
+//      routine gets the starter read as any routine is; and the workout in progress is cleaned in place, the very
+//      object given, its own fields first in their order.
 //   5  New machine or gym (343 7, 339 g, 338 B): the exercise menu marks a
 //      lift as done at a new machine or gym, and tapped again takes it off;
 //      marked, the lift reads as a first session (no target or grey load
@@ -46,85 +36,42 @@
 //      session kept and counted; the log reopens as the same bytes, r60 keeps
 //      the mark it does not know, an edit from History can take it off, and
 //      normalize keeps it only as true (fails on r60: no such choice).
-const { open, engine, screenOf, screenDiff } = require('./h');
-const { wide, digest, specOf } = require('./wide');
+const { open, engine, screenOf, screenLeaks } = require('./h');
+const { wide } = require('./wide');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r60.html';
-/* Section 1 is pinned to the build it proved, r61 (baselines/r61.html), as CLAUDE.md's rule for the comparisons of old builds
-   says: r64 changes numbers r60 gave on purpose (the r63 audit's R-1 to R-4, P-S2-1 and P-S2-2: about 580 of the 1,000 wide
-   histories differ, each in a suggestion or a stall those findings change) and the Guide's sentences on them (R-4, R-5,
-   P-S2-3), so the source build no longer gives r60's every number, and should not. tests/r64a.js holds r64's changes. */
-const PROVED = 'baselines/r61.html';
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
 const ONLY = process.env.R61_ONLY ? process.env.R61_ONLY.split(',') : null;
 const run = n => !ONLY || ONLY.includes(String(n));
-const N = +process.env.R61_N || 1000;
 
-// The starter routine's ids are made at random, so both builds are given the same ones (as tests/r60.js does).
+// The starter routine's ids are made at random, so they are fixed: a failure names the same routine on every run.
 const FIX = "const m={};L.state.routines.forEach((r,i)=>{m[r.id]='R'+i;r.id='R'+i;});L.state.activeRoutineId=m[L.state.activeRoutineId]||L.state.activeRoutineId;L.state.sessions.forEach(s=>{if(m[s.routineId])s.routineId=m[s.routineId];});L.saveNow();";
 const DEMO = 'L.state.settings.onboarded=true;L.makeDemo();' + FIX;
 const SET = o => `Object.assign(L.state.settings,${JSON.stringify(o)});L.saveNow();`;
 const START = "{const R=L.state.routines.find(r=>r.id===L.state.activeRoutineId);const di=String(R.days.findIndex(x=>!x.rest&&x.items.length));L.ACT.startSession({dataset:{day:di}});}";
 const VARIANTS = [['lb, RIR, light', {}], ['kg, RPE, dark', { unit: 'kg', rirScale: 'rpe', theme: 'dark' }], ['lb, half points, RIR off', { rirScale: 'half', rirMode: 'off' }]];
 const TABS = ['today', 'program', 'dash', 'history', 'settings'];
-// The Guide's sentences r61 corrects to say what the code does (section 2): r60's words, then r61's.
-const GUIDE_FIXED = [
-  ['in reserve is read as 5, so from such sets', 'in reserve is read as 4, so from such sets'],
-  ['of the top of the range more, until your estimate', 'of the top of the range more (two at least), until your estimate'],
-  ['Past a quarter, the load goes up anyway', 'Past that, the load goes up anyway'],
-  ['Lighter sessions in a row for 2 weeks or more are a new level', 'Lighter sessions in a row, three or more over 2 weeks or more, are a new level']
-];
-
-// The Guide's paragraph r61 adds (343 7): its markup, and its text as the page shows it.
-const GUIDE_ADDED = ["\n   <p><b>New machine or gym</b> (in an exercise's ⋯ menu during a session): the lift starts over from that session, as from a first one, so another machine's loads give no target, PR, or best. Its trend, stalls, and dumbbell steps read from that session on; earlier sessions stay in History and its chart. Tap it again before Finish to take it off.</p>"];
-const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during a session): the lift starts over from that session, as from a first one, so another machine's loads give no target, PR, or best. Its trend, stalls, and dumbbell steps read from that session on; earlier sessions stay in History and its chart. Tap it again before Finish to take it off."];
-
 (async () => {
   const browser = await engine.launch();
 
-  // ---- 1. Every number r60 gave, and every tab as r60 drew it.
+  // ---- 1. Every tab and the session screen in three settings, and the Guide in each unit with RIR on and off, drawn on
+  // this build with no page error and nothing undefined, NaN or [object Object] on screen (CL-3, 2.40). Until 2.40 this
+  // section held r61 to r60 call for call on the wide histories, and every tab and the Guide to r60's, pinned since r64 to
+  // r60 and r61 as published, so it read no code of the build under test (docs/ARCHIVE.md).
   if (run(1) && !process.env.IRONLOG_FILE) {
     const T0 = new Date('2026-10-11T12:00:00');
     const setup = async (ctx, page) => { await page.clock.setFixedTime(T0); };
-    const A = await open(OLD, { browser, setup });
-    const B = await open(PROVED, { browser, setup });
-    const LIB = await B.page.evaluate(() => window.__ironlog.libExercises());
-    let same = 0, first = null, calls = 0;
-    const t0 = Date.now();
-    for (let i = 0; i < N; i++) {
-      const h = wide(61000 + i, LIB);
-      const when = new Date(h.today + 'T12:00:00');
-      await Promise.all([A.page.clock.setFixedTime(when), B.page.clock.setFixedTime(when)]);
-      const spec = specOf(h);
-      const [a, b] = await Promise.all([A.page.evaluate(digest, spec), B.page.evaluate(digest, spec)]);
-      calls += b.split('\n').length;
-      /* A call tagged ~ (an id such as "constructor", which finds Object's
-         own field in the index) throws in both builds (wide.js): the two
-         must both throw, whatever words the error is put in, since those
-         name the expression that failed and r61 reads a lift's sessions
-         through one function (liftReadIn, 343 7). Every other line is
-         compared whole. */
-      const la = a.split('\n'), lb = b.split('\n');
-      const thrown = l => /\t"ERR [^"]*"$/.test(l);
-      const alike = (x, y) => x === y || (x[0] === '~' && y[0] === '~' && x.split('\t').slice(0, 2).join('\t') === y.split('\t').slice(0, 2).join('\t') && thrown(x) && thrown(y));
-      if (la.length === lb.length && la.every((l, k) => alike(l, lb[k]))) same++;
-      else if (!first) { let k = 0; while (k < la.length && alike(la[k], lb[k] || '')) k++; first = { seed: 61000 + i, line: k, r60: (la[k] || '').slice(0, 700), now: (lb[k] || '').slice(0, 700) }; }
-    }
-    ok(same === N, `1. the same answers as r60 on all ${N} wide histories (${same} identical, ${calls} calls, ${Math.round((Date.now() - t0) / 1000)} s)`, first);
-    await A.ctx.close(); await B.ctx.close();
-    const flat = s => ({ ...s, tree: s.tree.map(t => t.replace(/class="([^"]*)"/g, (m, c) => `class="${c.split(' ').filter(x => x !== 'prflash').join(' ')}"`)), text: s.text.replace(/\s+/g, ' ') });
     for (const [vn, v] of VARIANTS) for (const tab of [...TABS, 'session']) {
       const seed = DEMO + SET(v) + (tab === 'session' ? START : '');
       const o = { browser, seed, tab: tab === 'session' ? 'today' : tab, spaces: true, prep: "document.querySelectorAll('#view details').forEach(d=>{d.open=true;});" };
-      const a = flat(await screenOf(OLD, o)), b0 = await screenOf(PROVED, o), b = flat(b0);
-      const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
-      ok(!d && a.text === b.text, `1. ${tab}, ${vn}: the same elements, attributes, field values and text as r60`, d ? { at: d.at, r60: d.before, now: d.now } : a.text === b.text ? '' : { r60: a.text.slice(0, 300), now: b.text.slice(0, 300) });
-      ok(!b0.errors.length, `1. ${tab}, ${vn}: no page errors`, b0.errors);
+      const b = await screenOf(FILE, o);
+      const leaks = screenLeaks(b);
+      ok(!b.errors.length && b.tree.length > 0 && !leaks.length, `1. ${tab}, ${vn}: drawn, with no page error and no undefined, NaN or [object Object] on screen`, { errors: b.errors, leaks });
     }
-    // The Guide, every topic open, as each build draws it in each unit with RIR on and off.
-    const guideOf = async (file, unit, rir) => {
-      const P = await open(file, { browser, setup });
+    // The Guide, every topic open, in each unit with RIR on and off.
+    for (const unit of ['lb', 'kg']) for (const rir of ['on', 'off']) {
+      const P = await open(FILE, { browser, setup });
       const g = await P.page.evaluate(([unit, rir]) => {
         const L = window.__ironlog, S = L.state.settings;
         S.onboarded = true; S.unit = unit;
@@ -133,33 +80,16 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
         L.openModal({ kind: 'guide', open: '' });
         const m = document.getElementById('modal');
         m.querySelectorAll('details').forEach(d => { d.open = true; });
-        // lit-html's markers taken out, as markupOf does: since r62 every sheet is drawn by lit-html into the sheet layer, and a marker is no part of the Guide.
         const out = { html: m.innerHTML.replace(/<!--[^]*?-->/g, ''), text: m.innerText };
         L.ACT.mClose();
         return out;
       }, [unit, rir]);
       const errors = P.errors.slice();
       await P.ctx.close();
-      return { ...g, errors };
-    };
-    for (const unit of ['lb', 'kg']) for (const rir of ['on', 'off']) {
-      const [a0, b] = [await guideOf(OLD, unit, rir), await guideOf(PROVED, unit, rir)];
-      // r60's Guide with the sentences section 2 corrects on purpose put as r61 words them; each must be there to correct.
-      const missing = GUIDE_FIXED.filter(([was]) => !a0.html.includes(was) || !a0.text.includes(was)).map(([was]) => was);
-      ok(!missing.length, `1. the Guide in ${unit} with RIR ${rir}: r60 has each sentence section 2 corrects`, missing);
-      const fix = t => GUIDE_FIXED.reduce((x, [was, now]) => x.replace(was, now), t);
-      const a = { html: fix(a0.html), text: fix(a0.text) };
-      // The paragraph r61 adds (343 7, section 5), each there once, then left out so the rest is compared with r60's.
-      const added = GUIDE_ADDED.filter(p => b.html.split(p).length !== 2);
-      ok(!added.length, `1. the Guide in ${unit} with RIR ${rir}: the New machine or gym paragraph, once`, added);
-      b.html = GUIDE_ADDED.reduce((x, p) => x.replace(p, ''), b.html);
-      b.text = GUIDE_ADDED_TEXT.reduce((x, p) => x.replace(p, ''), b.text).replace(/\n{3,}/g, '\n\n');
-      a.text = a.text.replace(/\n{3,}/g, '\n\n');
-      let k = 0; while (k < a.html.length && a.html[k] === b.html[k]) k++;
-      ok(a.html === b.html && a.text === b.text, `1. the Guide in ${unit} with RIR ${rir}: the same markup and text as r60 (${b.text.length} characters)`, a.html === b.html ? { r60: a.text.slice(0, 300), now: b.text.slice(0, 300) } : { at: k, r60: a.html.slice(Math.max(0, k - 120), k + 200), now: b.html.slice(Math.max(0, k - 120), k + 200) });
-      ok(!b.errors.length, `1. the Guide in ${unit} with RIR ${rir}: no page errors`, b.errors);
+      const leaks = screenLeaks({ tree: [g.html], text: g.text });
+      ok(g.text.length > 5000 && !errors.length && !leaks.length, `1. the Guide in ${unit} with RIR ${rir}: drawn whole (${g.text.length} characters), with no page error and no undefined, NaN or [object Object]`, { errors, leaks });
     }
-  } else if (run(1)) console.log('note r61 section 1 compares source pages; it runs on the source build');
+  } else if (run(1)) console.log('note r61 section 1 reads the source build');
 
   // ---- 2. The Guide says what the code does (found by the numbers pass: three sentences r56.2 and r32 wrote did not).
   if (run(2)) {
@@ -225,13 +155,13 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
     }
   }
 
-  // ---- 4. The log read through its types (351): r60's answer for every raw log, but for the two inputs no build writes.
+  // ---- 4. The log read through its types (351), held to normalize's own rules on every raw log (CL-3, 2.40; until 2.40
+  // held to r60's answer with every change made since taken out by hand, six of them, docs/ARCHIVE.md): it never throws;
+  // read again, its answer is the same, key order included, and drops nothing more; a log a build saved keeps every
+  // record and every set's load and reps as they were; a field it does not know is kept, in its place.
   if (run(4)) {
-    const A = await open(OLD, { browser, clock: '2026-10-20T10:00:00', realStarter: true });
     const B = await open(FILE, { browser, clock: '2026-10-20T10:00:00', realStarter: true });
     const LIB = await B.page.evaluate(() => window.__ironlog.libExercises());
-    // The isolation lifts, whose rest in a ready-made routine r64 raises to 90 s at least (302, held by tests/r64.js section 11).
-    const ISO = await B.page.evaluate(() => Object.fromEntries(window.__ironlog.libExercises().map(e => [e.id, !window.__ironlog.isCompound(e)])));
     // Each raw log normalized with the same ids for a new routine in both pages (the clock and Math.random held), and,
     // where asked, the answer read once more; with the damaged records dropped and the unknown fields kept.
     const norm = (P, list) => P.page.evaluate(list => {
@@ -244,7 +174,7 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
           L.keepExtra.n = 0;
           const out = L.normalize(raw === undefined ? undefined : JSON.parse(raw));
           const res = { j: JSON.stringify(out), d: L.normalize.dropped, k: L.keepExtra.n };
-          if (again) { s = 1; res.j2 = JSON.stringify(L.normalize(JSON.parse(res.j))); }
+          if (again && res.j[0] === '{') { s = 1; res.j2 = JSON.stringify(L.normalize(JSON.parse(res.j))); res.d2 = L.normalize.dropped; }
           return res;
         } catch (e) { return { j: 'throws ' + e.message }; } finally { Math.random = R; Date.now = N; }
       };
@@ -271,60 +201,86 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
       if (r() < 0.1) s.routines = pick([[], null, [{ days: 'x' }], [{ id: 'q', days: [null, { items: 'x' }, { items: [null, { exId: 'bench', sets: 'x' }] }] }]]);
       return s;
     };
-    // Whether a raw log keeps no routine (r60 then adds the starter as made, read as any routine on the next load).
-    const noRoutine = s => !(s && Array.isArray(s.routines) && s.routines.some(r => r && typeof r === 'object' && !Array.isArray(r) && Array.isArray(r.days)));
-    // Whether a raw log's workout in progress is falsy other than null (r60 kept it as it came).
-    const falsyDraft = s => !!s && typeof s === 'object' && !Array.isArray(s) && s.draft !== null && s.draft !== undefined && !s.draft;
     const N4 = +process.env.R61_N4 || 240;
-    let n = 0, same = 0, routineCases = 0, draftCases = 0, renameCases = 0, libCases = 0, plateCases = 0; const off = [];
+    let n = 0; const threw = [], unstable = [], lost = [];
     for (let seed = 1; seed <= N4; seed++) {
       const h = wide(seed, LIB);
       const raws = [h.raw, damage(h.raw, seed * 31 + 1), damage(h.raw, seed * 31 + 2), damage(h.raw, seed * 31 + 3)];
       const docs = [{ draft: h.raw.draft || null }, { sessions: h.raw.sessions, cardio: h.raw.cardio }, { bodyweights: h.raw.bodyweights || [], measurements: h.raw.measurements || [] }];
-      const list = [...raws, ...docs].map(s => [JSON.stringify(s), noRoutine(s)]);
-      const [ra, rb] = await Promise.all([norm(A, list), norm(B, list)]);
-      list.forEach(([raw, none], i) => {
+      const list = [...raws, ...docs].map(s => [JSON.stringify(s), true]);
+      const rb = await norm(B, list);
+      list.forEach(([raw], i) => {
         n++;
-        const s = JSON.parse(raw), a = ra[i], b = rb[i];
-        // Where no routine is kept, r60's starter as its next load reads it; a falsy workout as none; the rest as r60 gave it.
-        let want = a.j;
-        if (none && a.j2) {
-          routineCases++; const w = JSON.parse(a.j); w.routines = JSON.parse(a.j2).routines;
-          // The starter as r64 makes it: each isolation lift under 90 s rests 90 s (302); nothing else in it changes.
-          for (const R of w.routines) for (const d of R.days || []) for (const it of d.items || []) if (ISO[it.exId] && it.rest < 90) it.rest = 90;
-          want = JSON.stringify(w);
+        const b = rb[i];
+        if (/^throws /.test(b.j)) { if (threw.length < 5) threw.push({ seed, i, err: b.j.slice(0, 200) }); return; }
+        if (b.j2 !== undefined && (b.j2 !== b.j || b.d2)) { if (unstable.length < 5) { let at = 0; while (at < b.j.length && b.j[at] === b.j2[at]) at++; unstable.push({ seed, i, dropped: b.d2, once: b.j.slice(Math.max(0, at - 120), at + 120), twice: b.j2.slice(Math.max(0, at - 120), at + 120) }); } }
+        // The log as a build saved it (the history itself, undamaged): every record, and every set's load and reps.
+        if (i === 0) {
+          const o = JSON.parse(b.j), r0 = JSON.parse(raw);
+          for (const k of ['sessions', 'bodyweights', 'cardio', 'measurements']) {
+            const ids = new Set((o[k] || []).map(x => x.id));
+            for (const x of r0[k] || []) if (!ids.has(x.id) && lost.length < 5) lost.push({ seed, k, id: x.id });
+          }
+          const byId = Object.fromEntries((o.sessions || []).map(x => [x.id, x]));
+          for (const x of r0.sessions || []) {
+            const y = byId[x.id]; if (!y) continue;
+            // Each set a build could have saved (a load, and reps of 0 or more) is the set in its place, as it was; the
+            // histories hold impossible ones too (-1 reps), which normalize mends in place.
+            x.ex.forEach((e, k) => e.sets.forEach((t, m) => {
+              const u = y.ex[k] && y.ex[k].sets[m];
+              if (+t.r >= 0 && isFinite(+t.w) && !(u && +u.w === +t.w && +u.r === +t.r) && lost.length < 5) lost.push({ seed, id: x.id, ex: e.exId, set: m, was: [t.w, t.r], now: u && [u.w, u.r] });
+            }));
+          }
         }
-        if (falsyDraft(s)) { draftCases++; const w = JSON.parse(want); w.draft = null; want = JSON.stringify(w); }
-        // The machine the library renamed in r66 (377; NEW-37 for a log holding the old name, held by tests/r66b.js section 10)
-        // reads by its new name where r60 gave it the library's old one; a lift of the lifter's own keeps its name, and nothing else changes.
-        { const w = want[0] === '{' ? JSON.parse(want) : null; const e = w && Array.isArray(w.exercises) ? w.exercises.find(x => x && x.id === 'reversePecDeck' && x.custom === false && x.name === 'Reverse Pec Deck') : null;
-          if (e) { renameCases++; e.name = 'Reverse Pec Deck (Rear Delt Fly)'; want = JSON.stringify(w); } }
-        // A library lift the save lacks is appended through the same cleaning as every record since r72 (387-B7): with
-        // inc and plates as null after archived, as r60's own next load gave it; nothing else in it changes.
-        { const w = want[0] === '{' ? JSON.parse(want) : null; let k = 0;
-          if (w && Array.isArray(w.exercises)) { w.exercises = w.exercises.map(e => { if (!e || typeof e !== 'object' || 'inc' in e || e.custom !== false) return e; k++; const o = {}; for (const [key, v] of Object.entries(e)) { o[key] = v; if (key === 'archived') { o.inc = null; o.plates = null; } } return o; }); }
-          if (k) { libCases += k; want = JSON.stringify(w); } }
-        // Your gym keeps any plate since 2.34 (NEW-76), where r60 kept only the unit's usual ones: the raw list cleaned by
-        // the new rule (a number above 0, no heavier than 50 kg or 100 lb, in whole hundredths, heaviest first, each once,
-        // at most 15), placed where r60 puts plates (after db and kb, before stack); a gym r60 dropped for holding nothing
-        // but such plates comes back as its unit and those plates. Only gyms whose raw list holds a plate r60 dropped are held out.
-        { const w = want[0] === '{' ? JSON.parse(want) : null, g0 = s && s.settings && s.settings.gym;
-          if (w && w.settings && g0 && typeof g0 === 'object' && (g0.u === 'lb' || g0.u === 'kg') && Array.isArray(g0.plates)) {
-            const MAXP = { kg: 50, lb: 100 }[g0.u], num = v => { const x = Number(v); return isFinite(x) ? Math.round(x * 1000) / 1000 : NaN; };
-            const okP = x => x > 0 && x <= MAXP && Math.abs(x * 100 - Math.round(x * 100)) < 1e-4;
-            const pl = [...new Set(g0.plates.map(num).filter(okP))].sort((x, y) => y - x).slice(0, 15);
-            const g = w.settings.gym, had = g && Array.isArray(g.plates) ? g.plates : [];
-            if (pl.length && JSON.stringify(pl) !== JSON.stringify(had)) {
-              plateCases++;
-              if (!g) w.settings.gym = { u: g0.u, plates: pl };
-              else { const o = {}; let put = false; for (const [key, v] of Object.entries(g)) { if (key === 'stack' && !put) { o.plates = pl; put = true; } if (key !== 'plates') o[key] = v; else if (!put) { o.plates = pl; put = true; } } if (!put) o.plates = pl; w.settings.gym = o; }
-              want = JSON.stringify(w);
-            } } }
-        if (b.j === want && a.d === b.d && a.k === b.k) same++;
-        else if (off.length < 5) { let at = 0; while (at < want.length && want[at] === b.j[at]) at++; off.push({ seed, i, none, want: want.slice(Math.max(0, at - 150), at + 150), b: b.j.slice(Math.max(0, at - 150), at + 150), d: [a.d, b.d], k: [a.k, b.k] }); }
       });
     }
-    ok(same === n && n > N4 * 6, `4. normalize gives r60's answer, key order included, with the records dropped and the fields kept, on ${n} raw logs (${N4} wide histories, each damaged three ways, and the sync's documents), but for the two inputs below (${routineCases} with no routine, ${draftCases} with a falsy workout), r66's name for the rear delt machine (${renameCases}), r72's library lifts appended with inc and plates (${libCases}), and 2.34's gyms keeping any plate (${plateCases}, NEW-76)`, off);
+    ok(n > N4 * 6 && !threw.length, `4. normalize never throws, on ${n} raw logs (${N4} wide histories, each damaged three ways, and the sync's documents)`, threw);
+    ok(!unstable.length, '4. read again, its answer is the same, key order included, and it drops nothing more', unstable);
+    ok(!lost.length, `4. a log keeps every session, weigh-in, cardio entry and measurement, and every set's load and reps a build could have saved (${N4} histories)`, lost);
+    /* A migration only adds (CLAUDE.md, Data): a log the build before this one saved, read by this build, keeps every
+       value it wrote, at the same place, whatever the field (the review of 2.36 to 2.41, REV8-O5: the checks above hold
+       records, loads and reps, and a field read differently elsewhere was caught only where a feature suite read it).
+       The build before is the newest page in baselines/ (tests/migration.js loads every one). A release that changes
+       how a stored value is read on purpose says so here, for that one build. */
+    {
+      const fs = require('fs');
+      const before = fs.readdirSync('baselines').filter(f => /^r\d+(-\d+)?\.html$/.test(f)).sort((a, b) => { const n = f => f.slice(1, -5).split('-').map(Number); const [x, y] = [n(a), n(b)]; return x[0] - y[0] || (x[1] || 0) - (y[1] || 0); }).pop();
+      const P = await open('baselines/' + before, { browser, clock: '2026-10-20T10:00:00', realStarter: true });
+      const N5 = +process.env.R61_N5 || 120;
+      const changed = [];
+      let leaves = 0;
+      const walk = (a, b, p) => {
+        if (a !== null && typeof a === 'object') {
+          if (b === null || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b)) { if (changed.length < 6) changed.push({ p, was: JSON.stringify(a).slice(0, 120), now: JSON.stringify(b).slice(0, 120) }); return; }
+          for (const k of Object.keys(a)) walk(a[k], b[k], p + '.' + k);
+          return;
+        }
+        leaves++;
+        if (a !== b && changed.length < 6) changed.push({ p, was: a, now: b });
+      };
+      for (let seed = 1; seed <= N5; seed++) {
+        const raw = JSON.stringify(wide(seed, LIB).raw);
+        // The build before's save, as it would sit on the phone; then this build's reading of it.
+        const saved = await P.page.evaluate(r => JSON.stringify(window.__ironlog.normalize(JSON.parse(r))), raw);
+        const read = await B.page.evaluate(r => JSON.stringify(window.__ironlog.normalize(JSON.parse(r))), saved);
+        walk(JSON.parse(saved), JSON.parse(read), 'log');
+      }
+      ok(leaves > N5 * 1000 && !changed.length, `4. a log the build before (${before}) saved keeps every value it wrote, read by this build (${N5} wide histories, ${leaves} values): a migration only adds`, changed);
+      await P.ctx.close();
+    }
+    // A field normalize does not know is kept where it was (keepExtra): after the record's own fields, in the order it came, its value as it was.
+    const extra = await B.page.evaluate(() => {
+      const L = window.__ironlog;
+      const base = L.normalize(null); base.settings.onboarded = true; L.state = base; L.makeDemo();
+      const raw = JSON.parse(JSON.stringify(L.state));
+      raw.sessions[0].zz1 = { a: 1 }; raw.sessions[0].zz2 = 'two';
+      raw.sessions[0].ex[0].sets[0].zz3 = [3];
+      raw.settings.zz4 = 4;
+      const out = L.normalize(JSON.parse(JSON.stringify(raw)));
+      const s0 = out.sessions.find(x => x.id === raw.sessions[0].id), had = Object.keys(raw.sessions[0]);
+      return { order: Object.keys(s0).filter(k => had.includes(k)).join() === had.join(), v: [s0.zz1, s0.zz2, s0.ex[0].sets[0].zz3, out.settings.zz4] };
+    });
+    ok(extra.order && JSON.stringify(extra.v) === JSON.stringify([{ a: 1 }, 'two', [3], 4]), '4. a field it does not know is kept with its value, and the record keeps the key order it came in (keepExtra)', extra);
     // The two inputs no build writes, read as any other (each fails on r60).
     const named = await B.page.evaluate(() => {
       const L = window.__ironlog;
@@ -344,8 +300,8 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
       return { same: out.draft === d, keys: Object.keys(out.draft).slice(0, 4) };
     });
     ok(kept.same && kept.keys.join() === 'zz,date,ex,dayName', '4. the workout in progress comes back as the object given, cleaned in place, its own fields first in their order', kept);
-    ok(!A.errors.length && !B.errors.length, '4. no page errors', [A.errors, B.errors]);
-    await A.ctx.close(); await B.ctx.close();
+    ok(!B.errors.length, '4. no page errors', B.errors);
+    await B.ctx.close();
   }
 
   // ---- 5. New machine or gym (343 7, 339 g, 338 B): a lift starts over from a session the menu marks, its history kept.

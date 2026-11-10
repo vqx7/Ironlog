@@ -336,6 +336,9 @@ Not written here as each shipped; what each moved and changed, with its names, i
 - **The Stitch elements (2.33, V 2026-11-07, PENDING.md's ST rows):** V picked parts of Google Stitch drafts to bring onto the app's own screens, layouts and flow unchanged. The profile photo is `src/app/photo.ts`: one 256 px square JPEG under `KEY + '.photo'` (`PHOTO_KEY`), through the same redraw as a note's picture (`jpegOf` in pics.ts), read back only when it is a JPEG data address, shown in the menu button (`setSaveState`, page.ts) and in the menu's header, beside its title, with Remove photo (`photoHead`, sheetsaccount.ts; a row of its own made the menu too tall for a 320 x 568 phone, tests/r54b.js), never in the log; Erase everything removes it. Today's one-time line is `photoBar` (today.ts), signed in only, behind the install and new-icon lines, answered for good by Not now or a photo (`PHOTO_ASKED`). The progress gradient is `--holo` and `--holo-1` to `--holo-4` in the style sheet: `#holoG` in the page's markup for the week ring and the rest dial (laid over a circle's box), the bars' `--pct` sizing it to the track, and `holoLine` (view.ts) for line charts, drawn inside each chart across its width because a gradient laid over a flat line's box (no height) is not drawn. PRs are gold (`.tag.gold`, the set row's bar, History's `hpr`); History's count per session is the counted PRs (`p.big`), the same list Today and Stats count (tests/coherence.js 1b). "Rep hunt" and "Hold weight" were not added: the engine has no such states (its tags are Load due, Stalled, At max load and PR last time).
 - **2.34 (build r80):** the profile photo is the account's (R79-1, V 2026-11-08: "we should be treating it like an account"): `photo.ts` keeps the phone's copy (`PHOTO_KEY`) and a note of where it stands against the account (`PHOTO_SYNC`: the account, when it changed, whether a change is to be sent); `sync.ts` (`photoReconcile`, `photoSend`, `photoSyncSoon`) settles it with the account's own `photo` document (`PHOTO_DOC`, chunks.ts, never a log id) on every pull and after a change here, the later change kept, a write landing only over the copy read (setIf); sign out and Delete my account take it off the phone (`photoForget`), Erase everything while syncing removes it from the account, and the menu offers it only signed in (tests/r80b.js). Your gym takes any plate (NEW-76): `gymClean` keeps any weight in whole hundredths up to 50 kg or 100 lb (`plateOk`), and `plateGridIn` gives every load the plates make, any number of each, up to 250 kg or 550 lb a side, as a list the engine's plates kind reads (`loadsForIn`) by the rules the arithmetic grid was read by, so on plates that are whole multiples of the smallest every answer is 2.33's (tests/r80.js section 2a, 4,566 cases); the plates line keeps greedy's order and finds the combination greedy misses (`platesPerSide`). Short on time says when nothing can come off and why (R79-2). The independent review of 2.34 (R80-1 to R80-5): `isStandalone` (env.ts) reads only what the browser says of the page itself (standalone, minimal-ui, window-controls-overlay, Safari's flag), because the account flow reads it and L-2's android-app:// referrer and fullscreen signals took a tab opened from Gmail, or in full screen, for the app (R80-1); Sign out sends a pending photo (`photoFlush`), removes nothing while `hasUnsent` says something is unsent (the log's state, its documents and the photo), and keeping this phone's copy keeps an unsent photo change (`photoSignOut`; R80-2); the Guide's Sources names every study behind a constant (R80-4). A 2.33 phone dropping an added plate (R80-3) and exercise order with one workout on two phones (R80-5) are deferred on V's word.
 - **2.35 (build r81):** a workout in progress can be left and come back to (NEW-89, V 2026-11-08): Save and leave sets `ui.away`, Today draws a Resume card in the start card's place (`resumeCard`, today.ts), and `sessionShown()` (store.ts) is the one test of whether the session screen is on screen, read by the draw, the drags, the session's timers and problem reports; the tab, Back and a new page load clear it, and a start with a workout open opens it (`resumeOpen`, actsstart.ts). The session's header has Bodyweight (NEW-90): the bodyweight sheet shows the latest weigh-in and saves that day's, a past workout's date carried on the button (`addBW` reads `data-date`). An edit of a saved session opens on every exercise and folds one only by hand (`blkShut`, workstate.ts; NEW-91). The independent review of 2.35: `ui.away` holds the id of the workout left and `awayFrom()` reads it, so a workout that arrives in its place opens (R81-1); an import keeps every distinct note on an exercise's rows (R81-3); editing an earlier workout while one is open still replaces it after asking (R81-2, V's decision). The review of NEW-88's areas (all older than 2.35): the coach names only a lift the lifter keeps that loads nothing flagged and does not push a muscle whose every lift loads an injury (`liftFor`, coach.ts; R81-4, R81-10); Pick for me says every flagged muscle a day loads (`injM`; R81-5) and reads "last hard" from any hard set (`lastAnyHardIn`; R81-6); a borrowed first load is floored at the bar (`kinStartIn`; R81-7); a swap to other equipment takes the lift's own step (`swapPlan`; R81-8); the budget is compared with the minutes shown (`minPart`; R81-9).
+- **2.36 (build r82):** fixing an earlier workout never costs the one in progress (R81-2, V 2026-11-08): Edit in History and Log a past workout set the open workout aside (`parkDraft`, park.ts, under `PARKED_KEY` in this phone's storage with the account it was for, never synced, so no other build meets it and the log's shape is unchanged) and open at once; when that one ends (saved, discarded, an emptied Short on time trial or a cardio-only save) it comes back (`unpark`) and Today offers it with the Resume card. One is held at a time: a second edit asks, as before. Do again opens a workout in progress, as every start has since 2.35 (`resumeOpen`). A copy that did not come back by itself (another account signed in, the app closed halfway) is offered on Today as Bring it back (`parkedHere`, `parkBack`); Erase everything and a sign-out that removes the log forget it, and a sign-out keeping a copy or Delete my account keep it with the log (`parkKeepHere`). Undo merges around it: the workout brought back is never overwritten (tests/r82.js section 5).
+- **2.37 (build r83):** the rest of V's list of 2026-11-08 (23:01, "proceed"). Swap tags a lift that loads a flagged injury (NEW-83, `injTagFor`). Your gym offers the change plates as buttons, off until tapped (NEW-87, `CHANGE_PLATES`). No lift's note names a study: a log's note that is the library's old text word for word reads the new one, as NEW-37 does for names (NEW-85, `LIB_NOTES_BEFORE`), the studies in the Guide's Sources. The line on a lift's target keeps its space from the start, so the first tick moves no set (NEW-64, `progressLine`). Minus and plus for the load and reps of a lift's next set, in a strip under its sets (ST-6, `stepStrip`, `sStep`, `stepLoadIn`). This block vs last in Consistency on Stats (ST-6, `blocksIn`, `blockBody`; `blockWeeks`, absent at the default 6, `blockWeeksKept` in layout.ts; Rogerson 2024).
+- **2.38 (build r84):** minus and plus on the lift you are on only (NEW-98, `liftsOn`, `W.onLift`), and on the set you are on (NEW-100, V on the preview: reps typed in a set ticked it and a plus meant for it changed the next set; `stepAt`, `W.onSet`, `doneChanged`). The tracker's next work: the clean-up (CL-1 split the large modules by job, CL-2 the session rule as one function, CL-3 old-build comparisons replaced by rule tests), then the Stitch elements V picked (ST-8); those kept for later in ST-7 and not built in ST-9; 364 b superseded by the Stitch direction.
 - **Done with sets left (374, V: "Ask: log or skip"):** `bDoneAll` (workout.ts): Log them as shown (each set at what it showed when Done was tapped, NEW-32; a 0 typed logged as missed, R66-4; a warm-up as a warm-up, R66-9) or Skip them, one Undo either way; a set with nothing to take, far off, or a 0 well under the working load is ticked on its own.
 - **Supersets and drops (375, V: "Grouped and attached"):** a superset is one box (`ss`, `ss-first`, `ss-last`, Superset A on top, A1 and A2 in the meta line, not the title, which acceptance reads first); after A1's set `ssNext` brings up A2's (no focus, so no keyboard); + Drop goes under the last done working set and its drops, `sgdrop`, ↳ and "Drop" in the Last column; ticking a set with a drop waiting under it starts no rest (`setDone`).
 - **Notes (376):** ✎ on each exercise card (`bNote`).
@@ -804,6 +807,154 @@ What r30 changes (each with a test in tests/r30.js, reproduced the way the revie
 ## Architecture history (moved from ARCHITECTURE.md in r56.2)
 
 The detail of each finished phase of the move into typed modules, as ARCHITECTURE.md held it until r56.2: what moved, how it was proved, and what each review found. The design, the rules and the ratchet numbers stay in ARCHITECTURE.md.
+
+### The comparisons with old builds retired or replaced (CL-3, 2.40)
+
+V, 2026-11-09: comparisons that hold a new build to an old one and take each deliberate change out by hand are "poor
+testing practices". In 2.40 each was retired or replaced by a check of the build under test against its rules. Every
+file and section named here is in the repo as it was at 5b04fdc (branch r85) for anyone who needs to read or rerun it.
+
+Retired whole, because by then they compared old builds only and read no code of the build under test:
+- `tests/r36.js`: r35 and r52 on 2,000 seeded histories, proving the r36 split. Its one check on the build under test,
+  that index.html is what src/ builds to (the only place GitHub's run checked it), moved to `tests/hygiene.js` (rule 8).
+- `tests/r52.js`: r51 and r52 on the 1,000 wide histories, past midnight, with stale caches and on the demo (phase 3b).
+- `tests/r53w.js`: r52 and r53 the same way, each difference held to the r53 rule that made it.
+- `tests/r66b.js` section 6: Today's main card on r65.2 and r66 (held since by `tests/r67.js` section 4).
+- `tests/wide.js`: the helpers only those used (staleRun, demoRun, r53Touches, honestTags and the rest).
+
+Turned from a comparison of two old builds into a check of the build under test, every state they drew kept: each is
+drawn with no page error and nothing undefined, NaN or [object Object] on screen (`screenLeaks`, `tests/h.js`):
+- `tests/r58.js` section 1 (Plan, the library and Stats in 36 states; was r57 and r58),
+- `tests/r59.js` section 1 (Today, the week bar and the calendar; was r58 and r59),
+- `tests/r60.js` section 1 (the session screen; was r59 and r60),
+- `tests/r61.js` section 1 (every tab and the session in three settings, and the Guide in each unit with RIR on and
+  off; was r60 and r61, with the wide histories call for call),
+- `tests/r62.js` section 1 (every sheet; was r61 and r62) and section 2 (Pick for me, the swaps, Limited equipment and
+  Short on time on 1,000 wide histories: every call answers with no crash; was r61 and r62 call for call),
+- `tests/r63.js` section 1 (every part r63 moved; was r62 and r63) and section 2 (import, the backup check and the demo
+  on generated input: no crash; was r62 and r63 call for call).
+
+Replaced, because they compared the build under test with an old one and carried hand-written exclusions:
+- `tests/r57.js` section 4: History and Settings against r56.2 with eleven exclusions (heldOut, heldOutAccents,
+  heldOutR66, heldOutR69, heldOutSched, heldOutR70, heldOutR73, heldOutR76, heldOutR79, heldOutR80, heldOutR83). Now:
+  both screens in the same six states drawn with no page error and no leaked value, Settings showing the log's values
+  and History its sessions newest first.
+- `tests/r61.js` section 4: normalize against r60 on 1,680 raw logs with six exclusions (the starter's rests, a falsy
+  workout, r66's name, r72's library lifts, 2.34's plates, 2.37's notes). Now normalize's own rules on the same logs:
+  it never throws; read again it gives the same answer and drops nothing more; a log keeps every record and every set
+  a build could have saved; an unknown field is kept and the record keeps its key order (keepExtra). Shown to fail
+  when keepExtra keeps nothing.
+- `tests/r63.js` section 4: the start against r62's with every later listener, hook name and action listed by hand.
+  Now: drawing every tab four times round leaves the page with the same listeners (none piling up), and every action
+  the source names by data-act is in the table.
+
+Kept, as V's rulings name an old build's look: `tests/r70.js` section 5 (r69's compact rest pill, NEW-60), `tests/r66b.js`
+section 5 (r65.2's full-width buttons, 368) and `tests/r33.js` part 1a2 (r32.1's At a glance). None carries an exclusion.
+
+CLAUDE.md's Releasing paragraph before 2.40:
+
+> - The comparisons of old builds stay pinned to what they proved: `tests/r36.js` (r35 and r52), `tests/r52.js`
+>   (r51 and r52), `tests/r53w.js` (r52 and r53), and since r64, which changes those numbers and sentences on purpose,
+>   `tests/r61.js` section 1 (r60 and r61), `tests/r62.js` sections 1 and 2 (r61 and r62) and `tests/r63.js` section 1
+>   (r62 and r63); since r66, which changes the session screen, Today and a lift's name on purpose, `tests/r60.js` section 1 (r59
+>   and r60), `tests/r59.js` section 1 (r58 and r59), `tests/r58.js` section 1 (r57 and r58) and `tests/r63.js` section 2
+>   (r62 and r63); since r67, which gives Today's main card its shine on purpose, `tests/r66b.js` section 6 (r65.2 and r66); since r71, which draws the rest as a card on purpose, `tests/r70.js` section 5's bar (r69 and r70; the compact pill still held to r69's) and `tests/r33.js` part 1a2's timer (held to the card since). Since 2.33 (r79), which marks History's PRs in gold on purpose, `tests/r57.js` section 4 takes those marks out of the new page (`heldOutR79`) and holds the rest to r56.2. Since 2.34 (r80), which makes the profile photo the account's on purpose (R79-1), `tests/r79.js` section 1 runs signed in, on the source build (`tests/r80b.js` holds the photo on the built app), and `tests/r33.js` keeps any plate a gym has (NEW-76); its wording pass (99) reworded tips that `tests/r29c.js`, `r41.js`, `r44.js`, `r58.js` section 9, `r64a.js` and `r69.js` read, and split Settings' General (`tests/r57.js` section 4 reads Measurements and Appearance as one placeholder); and since its plates change on purpose (NEW-76), `tests/r61.js` section 4 holds out the gyms whose saved list has a plate r60 dropped and `tests/r65.js` section 5 reads the usual plates in settings.ts, and `tests/r27.js` counts the Guide's eight topics (Sources). Since 2.37 (r83), which adds the change plates to Your gym and rewords three lifts' notes on purpose, `tests/r57.js` section 4 takes the change-plate chips out of the new page (`heldOutR83`) and `tests/r61.js` section 4 holds the three notes out (`NOTES_2_37`, NEW-85).
+
+### The session rule's history (CL-2, 2.39)
+
+In 2.39 V's one rule for every session was stated once (`setsHeldTo` and the comment above `idxShort` in usual.ts,
+two lines in CLAUDE.md) and each case became a row of `tests/usual.js`. The comments it replaced carried the history
+of how each case was found; they are kept here as they were.
+
+The comment on `idxShort` (analytics.ts until CL-1):
+
+```
+/* Step 2b (r54, V's one rule for every session, PENDING 312 E: "a lift
+   counts toward its next target only at its usual load and reps for its
+   usual sets; fewer sets still count for its trend and PRs, and the target
+   repeats", replacing the trimmed mark and r30's half rule; with V's
+   answers of 2026-10-18 evening, a bad day falls short too, and a lift's
+   usual sets are what it did in most of its last three sessions, never
+   more than the plan). A lift's session not done lighter is short of its
+   usual by its sets when it has fewer sets near its working load (setsAt)
+   than its usual, and by its reading when, at a working load no heavier
+   than the two sessions before it, its reading is more than USUAL_SHARE
+   under its usual: the strength reading, reps alone, where it and those it
+   is read with have one, else its reps a set at its working load, and that
+   load, each over as many sets at the working load as the usual
+   (readingOf), so a set beyond the usual never counts against it. Its
+   usual is the middle of it and the two sessions of the lift before it in
+   the range not done lighter (the higher of two with only one before it),
+   so one session under it repeats the target and a second in a row is the
+   usual, which the app then follows.
+   On a lift the routine plans (`planSets`, the day it was done on first;
+   null for a lift on no day of the routine, which reads its own sessions),
+   its usual sets are never more than the plan's, so a lifter who does more
+   sets than planned is not short when doing the plan. A session saved on a
+   day of a routine keeps the sets its plan gave the lift then (`ps`, r58,
+   339 h); once a session of the lift in the range since its last break did
+   that many near its working load, those are the sets it must reach, so
+   fewer sets than planned never become the usual (a 5 x 5 done as 4 x 5
+   twice read as a 4-set lift, and its target asked for 4 sets the plan
+   never set). Each session is read by its own plan, so a plan changed
+   later never rereads the sessions before it (the r58 review: read by the
+   plan as it is now, a plan raised from 3 sets to 4 marked every session of
+   3 short and took the target back to the first of them). A session with
+   none recorded (Freestyle, a lift on no day of the routine, one saved
+   before r58, a blank session saved before r70) reads its own sets, as
+   before. Since r70 a blank session records them too (NEW-51): Finish saves,
+   on a lift the routine plans, the sets of its day nearest to what the
+   session did, unless Today opens blank (Freestyle), so two one-set PR attempts in a
+   row never make a 3-set lift a 1-set one, and, as on a routine's day, each
+   session is read by what was saved with it, never by the plan or the mode
+   as they are now (the review of r70, R70-1 and R70-2). On a lift labelled
+   lighter or a deload but done at its usual load
+   and reps (`tag`, step 2), the label cut the plan, so its usual sets are
+   its own, and if it falls short it is not one of the sessions later ones
+   are read against, so half the sets of a deload twice running never
+   become the usual. A heavier working load than both before it is a step
+   up, whose reps fall as a step costs them: never under its usual by its
+   reading, as a trend reads it (r34.2, loadUp); a step too big is the
+   engine's to read (sgBelowRange). The first session of a lift in a range,
+   or back after a break (afterBreak), is its own usual. */
+```
+
+The comments on `nearestPlanSets` and `withPlanSets` (routines.ts):
+
+```
+/* The sets a routine plans for a lift on the day nearest to what a blank
+   session did (NEW-51, r70): what the session is held to. A lift planned at
+   one count is held to it. Planned at 5 sets one day and 3 another, a blank
+   session of 1 or 3 sets is held to 3 and one of 5 to 5, a tie going to the
+   fewer, so a blank session never asks more sets than the day it resembles
+   (the review of r70, R70-1: held to the first day's 5, a session of 3 read
+   short) and a 5-set session is judged on all five (R70-5: held to the
+   fewest, 3, its weaker fourth and fifth sets were not read and the next
+   target fell from 40 reps to 33). Only the days that plan the lift in the
+   session's rep range count, all days when none does, since a session is
+   read only against sessions of its own range (R70-6: 3 heavy sets of a lift
+   planned 5 x 4-6 and 3 x 8-12 were held to the light day's 3, read in full,
+   and the heavy day's load went up). */
+
+
+/* A workout's exercises as Finish saves them, each lift on a day of a
+   routine given the sets its plan gives it (planSetsOf), last, as normalize
+   writes it. Since r70 a blank session (no day) records them too, while the
+   routine is followed: each lift the routine in use plans is given the sets
+   of the day nearest to its working sets, among the days that plan it in the
+   session's rep range (nearestPlanSets), so two one-set
+   sessions in a row never make it a 1-set lift (NEW-51); none in Freestyle, where Today
+   opens blank and the lifter's own sets lead. Recorded once, at Finish, so a
+   plan or the mode changed later never rereads the sessions before it (the
+   r58 review, and R70-1 and R70-2 in r70's). None on an edit, which keeps the
+   sets saved with the session (Finish carries them over with the fields it
+   does not rebuild, keepExtra). */
+```
+
+CLAUDE.md's sentence before 2.39: a lift sets its next target only at its usual load and reps for its usual sets (in a
+session on a day of the routine, the sets its plan gave it that day, saved with it, once a session did them: r58; in a
+blank session, the sets of the routine's day nearest to what it did among the days that plan it in its rep range,
+saved with it the same way, none in Freestyle: r70, NEW-51, R70-6).
 
 ### Phase 4 in detail (r56 and r56.1)
 

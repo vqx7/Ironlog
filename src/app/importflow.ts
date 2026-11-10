@@ -53,6 +53,7 @@ import { act } from './act';
 import { newItem } from './display';
 import { closeModal, confirmBox, openModal, render, renderModal } from './page';
 import { toast } from './toast';
+import { parkSettle } from './park';
 import { fitTargets } from './targets';
 import type { Tap } from './workstate';
 
@@ -766,6 +767,8 @@ export async function liveLogFetch(): Promise<{ st: State | null; err: unknown }
 
 /** A backup's text checked and, once confirmed, put in place of the whole log (Undo steps it back); `after` runs once it is in. */
 export function importData(text: string, after?: () => void): void {
+  // Replacing the log waits for a workout set aside for it (parkSettle, REV7-3).
+  if (!parkSettle()) return;
   let obj: unknown;
   try {
     obj = parseJson(text);
@@ -952,6 +955,7 @@ export const IMPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   },
   async previewCopy() {
     if (ENV !== 'preview') return;
+    if (!parkSettle()) return;
     toast(`Looking for your ${APP_NAME} log`);
     const { st, err } = await liveLogFetch();
     if (!st) {

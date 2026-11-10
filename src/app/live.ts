@@ -55,28 +55,11 @@ import {
 } from './pick';
 import {
   IDXIn,
-  allTimeBestsIn,
-  bwAtIn,
-  bwLoadIn,
-  bwRefIn,
-  noBodyIn,
-  bwRefLoadIn,
-  calStatsIn,
   dateIndexIn,
-  hardCreditIn,
-  isHardIn,
   liftReadIn,
-  loadOfIn,
-  prFrameIn,
-  prLoadIn,
-  rirEffIn,
-  rirEstIn,
-  rirUsualIn,
   sessionWordsIn,
   stallWeeksIn,
   stallWordsIn,
-  statsUpToIn,
-  tonnageIn,
   weekSessionsIn
 } from './analytics';
 import { dayMinutesIn, paceIn, paceRatiosIn, sessModelMinIn } from './time';
@@ -85,6 +68,7 @@ import {
   avgFirstWeekIn,
   avgWaitIn,
   avgWeeksIn,
+  blocksIn,
   firstFullWeekIn,
   lastLighterWeekIn,
   logBackIn,
@@ -108,21 +92,27 @@ import {
   readinessIn,
   stalledIdsIn
 } from './coach';
+import { daysOffIn, easierTextIn, suggestCoreIn, suggestIn } from './engine';
+import { heavierLoadIn, stepLoadIn, incOfIn, lighterLoadIn, progStepIn, rackStepIn } from './loadsteps';
+import { oddLoadIn, lightZeroIn } from './oddloads';
+import { nextSetsIn, bwNoLoadIn } from './adjust';
 import {
-  daysOffIn,
-  easierTextIn,
-  heavierLoadIn,
-  incOfIn,
-  lighterLoadIn,
-  oddLoadIn,
-  lightZeroIn,
-  nextSetsIn,
-  bwNoLoadIn,
-  progStepIn,
-  rackStepIn,
-  suggestCoreIn,
-  suggestIn
-} from './engine';
+  bwAtIn,
+  bwLoadIn,
+  bwRefIn,
+  noBodyIn,
+  bwRefLoadIn,
+  calStatsIn,
+  hardCreditIn,
+  isHardIn,
+  loadOfIn,
+  prLoadIn,
+  rirEffIn,
+  rirEstIn,
+  rirUsualIn,
+  tonnageIn
+} from './setread';
+import { allTimeBestsIn, prFrameIn, statsUpToIn } from './bests';
 
 /** The one model the app runs on: the store's log, the phone's date, and the caches. */
 export const LIVE: Model = {
@@ -247,6 +237,8 @@ export const pace = live(paceIn);
 export const paceRatios = live(paceRatiosIn);
 export const sessModelMin = live(sessModelMinIn);
 export const actualAvg4 = live(actualAvg4In);
+/** This block and the one before it on Stats (ST-6). */
+export const blocks = live(blocksIn);
 export const avgFirstWeek = live(avgFirstWeekIn);
 export const avgWait = live(avgWaitIn);
 export const avgWeeks = live(avgWeeksIn);
@@ -274,6 +266,8 @@ export const daysOff = live(daysOffIn);
 export const easierText = live(easierTextIn);
 export const incOf = live(incOfIn);
 export const heavierLoad = live(heavierLoadIn);
+/** The next load down or up on a lift's list, for minus and plus on a set (ST-6). */
+export const stepLoad = live(stepLoadIn);
 export const oddLoad = live(oddLoadIn);
 export const lightZero = live(lightZeroIn);
 export const nextSets = live(nextSetsIn);

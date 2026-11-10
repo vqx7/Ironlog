@@ -29,6 +29,7 @@ import {
   withTimeout
 } from './sync';
 import { photoForget, photoPending, photoSignOut } from './photo';
+import { parkSettle } from './park';
 import { normalize } from './normalize';
 import { acct, cloud, setState, state, ui } from './store';
 import type { AccountModal, AcctMode } from './modals';
@@ -663,6 +664,8 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   acctDelete() {
     const A = AUTH();
     if (!A || typeof A.deleteAccount !== 'function') return;
+    // A workout set aside for an edit comes back into the log first, which stays on this phone (REV6-1, parkSettle).
+    if (!parkSettle()) return;
     const del = A.deleteAccount;
     confirmBox(
       'Delete your account?',
@@ -697,6 +700,8 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   acctSignOut() {
     const A = AUTH();
     if (!A) return;
+    // A workout set aside for an edit comes back into the log first, so it goes where the log goes (REV6-1, parkSettle).
+    if (!parkSettle()) return;
     const NOT_IN =
       'Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.';
     const out = async (remove: boolean): Promise<void> => {

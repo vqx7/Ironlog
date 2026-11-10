@@ -194,3 +194,15 @@ export const HIDE_TABS: readonly (readonly [string, string])[] = [
   ['history', 'History'],
   ['settings', 'Settings']
 ];
+
+/* This block vs last on Stats (2.37, ST-6): its lengths, here beside the other kept choices (bwEveryKept) so normalize
+   reads them; the blocks themselves are blocksIn (weeks.ts). */
+/** Weeks a block runs when the lifter has not picked (Rogerson 2024: a deload about every 5.6 weeks). */
+export const BLOCK_WEEKS_DEFAULT = 6;
+/** The block lengths a lifter can pick on Stats, with Auto. */
+export const BLOCK_WEEKS: readonly ('auto' | 4 | 5 | 6 | 8)[] = ['auto', 4, 5, 6, 8];
+/** A block length as kept in settings: one of the choices, the default kept absent so older saves hash as before. */
+export function blockWeeksKept(v: unknown): 'auto' | 4 | 5 | 8 | undefined {
+  const c = BLOCK_WEEKS.find(x => x === v);
+  return c === undefined || c === BLOCK_WEEKS_DEFAULT ? undefined : c;
+}

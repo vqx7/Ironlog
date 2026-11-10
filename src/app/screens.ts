@@ -11,6 +11,7 @@ import { picSheet } from './notepics';
 import type { TemplateResult } from 'lit-html';
 import { awayFrom, sessionShown, state, ui } from './store';
 import { act } from './act';
+import { unpark } from './park';
 import { drawScreen, drawing, dragDrop, dragStart } from './view';
 import { applyTheme, render, renderModal, rerenderKeepScroll, setSaveState } from './page';
 import type { Sheets } from './page';
@@ -371,6 +372,8 @@ export const SHEETS: Sheets = {
         );
         stopTimer();
         wakeOff();
+        // A workout set aside comes back once this trial goes (R81-2).
+        unpark();
         setTimeout(render, 0);
       }
     }

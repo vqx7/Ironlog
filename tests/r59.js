@@ -3,13 +3,9 @@
 // change Today makes to the log through `act`; and looking ahead (PENDING
 // 329). Run on r58 (`node tests/r59.js baselines/r58.html`, R59_ONLY=n for
 // one section); the guards pass on both builds:
-//   1  (a guard, the source build) they look as they did: Today in its logs,
-//      settings and modes (the first pages, the start card, every section
-//      open), the week bar on three tabs, and the calendar, give the same
-//      elements, attributes, field values and visible text as r58
-//      (baselines/r58.html), but for the changes held on purpose below (the
-//      calendar's days ahead and its Next month, section 4; Set up's Help,
-//      r64, held by tests/r64.js section 4);
+//   1  (a guard) Today in its logs, settings and modes (the first pages, the start card, every section open), the
+//      week bar on three tabs, and the calendar, drawn with no page error and nothing undefined, NaN or [object
+//      Object] on screen (CL-3, 2.40; until then r58 and r59 compared, docs/ARCHIVE.md);
 //   2  (a guard: r58 placed these steps by hand) every Today action and field
 //      that changes the log does act's steps, read on the page after a tap or
 //      a typed value (changed, saved, the caches dropped, the edit noted for
@@ -57,21 +53,15 @@
 //      without an action draws Today for the new day;
 //  20  a screen kept on across midnight is drawn for the new day within a
 //      minute (both fail on r58 and every r59 commit to 531b458).
-const { open, engine, screenOf, screenDiff } = require('./h');
+const { open, engine, screenOf, screenLeaks } = require('./h');
 const FILE = process.argv[2] || 'index.html';
-const OLD = 'baselines/r58.html';
-/* Section 1 is pinned to the build it proved, r59 (baselines/r59.html), as CLAUDE.md's rule for the comparisons of old builds
-   says: r66 changes Today on purpose (PENDING 372: the bodyweight card from the first day a bodyweight lift is in the
-   routine; 368: full-width buttons are fullw, not block), so the source build no longer draws r58's Today, and should not.
-   tests/r66b.js holds r66's changes. */
-const PROVED = 'baselines/r59.html';
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 700) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 // R59_ONLY=2,3 runs those sections alone (to show a case failing on r58 without the rest).
 const ONLY = process.env.R59_ONLY ? process.env.R59_ONLY.split(',') : null;
 const run = n => !ONLY || ONLY.includes(String(n));
 
-// The starter routine's ids are made at random, so both builds are given the same ones.
+// The starter routine's ids are made at random, so they are fixed: a failure names the same routine on every run.
 const FIX = "const m={};L.state.routines.forEach((r,i)=>{m[r.id]='R'+i;r.id='R'+i;});L.state.activeRoutineId=m[L.state.activeRoutineId]||L.state.activeRoutineId;L.state.sessions.forEach(s=>{if(m[s.routineId])s.routineId=m[s.routineId];});L.saveNow();";
 const DEMO = 'L.state.settings.onboarded=true;L.makeDemo();';
 const ALL = 'L.state.settings.hidden=[];';
@@ -130,31 +120,15 @@ const SCREENS = [
 (async () => {
   const browser = await engine.launch();
 
-  // ---- 1. The screens against r58's (both pages built from src/; the standalone build is left to the source run, as r58's section 1 is).
-  /* The elements are read with the spaces at the ends of each run of text (screenOf's spaces), so a space lost
-     or added between a date and a tag reads as a difference. The visible text has each run of spaces and line
-     breaks read as one space: how text breaks at a wrap differs by engine (r58's WebKit run), not whether it is
-     there. */
-  /* The 3D body's loading line, hidden once it has loaded, is left out of both: r58 drew the card fresh, so
-     its hidden line kept "Loading the 3D body" until the next draw, and r59 keeps the card and clears it. */
-  /* The calendar's days ahead and its Next month (329, held by section 4) are left out of both: r58 left days
-     ahead blank and stopped at this month. The days before them are held exactly. */
-  const ahead = t => t.replace(/<(span|button)[^>]*class="cd fut[^"]*"[^>]*><span class="n">"\d+"<\/span><span class="x"><\/span><\/\1>/g, '(a day ahead)').replace(/(aria-label="Next month"[^>]*) p-disabled="(true|false)"/g, '$1');
-  /* Set up's Help at its foot (r64, the r63 audit's P-S4-6, held by tests/r64.js section 4) is left out of the
-     page now: r58 had no way to the menu there. Everything else on the page is held exactly. */
-  const help = t => t.replace(/<button class="linkbtn ob-skip" data-act="menuOpen">"Help"<\/button>/g, '');
-  const flat = s => ({ ...s, tree: s.tree.map(t => help(ahead(t.replace(/(<p class="bm3d-msg muted small" hidden="">)"Loading the 3D body"(<\/p>)/g, '$1$2')))), text: s.text.replace(/\s+/g, ' ').replace(/ Help$/, '') });
-  const textDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return { at: i, r58: a.slice(Math.max(0, i - 80), i + 160), now: b.slice(Math.max(0, i - 80), i + 160) }; };
+  // ---- 1. Today and the week bar in each of these logs and states, drawn on this build with no page error and nothing
+  // undefined, NaN or [object Object] on screen (CL-3, 2.40). Until 2.40 this section compared r58 and r59 as published, so it read
+  // no code of the build under test (docs/ARCHIVE.md).
   if (!run(1));
-  else if (process.env.IRONLOG_FILE) console.log('note r59 section 1 compares source pages; it runs on the source build');
+  else if (process.env.IRONLOG_FILE) console.log('note r59 section 1 reads the source build');
   else for (const [tab, name, seed, prep, env, init, root] of SCREENS) {
-    const o = { browser, seed: seed + FIX, tab, prep, env, init, root, spaces: true };
-    const a = flat(await screenOf(OLD, o)), b0 = await screenOf(PROVED, o), b = flat(b0);
-    const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
-    ok(!d, `1. ${name}: the same elements, attributes and field values as r58`, d && { at: d.at, r58: d.before, now: d.now });
-    ok(a.text === b.text, `1. ${name}: the same visible text as r58`, a.text === b.text ? '' : textDiff(a.text, b.text));
-    ok(!b0.errors.length, `1. ${name}: no page errors`, b0.errors);
-    ok(b.tree.length > 0, `1. ${name}: something drawn`, b.tree.length);
+    const b = await screenOf(FILE, { browser, seed: seed + FIX, tab, prep, env, init, root, spaces: true });
+    const leaks = screenLeaks(b);
+    ok(!b.errors.length && b.tree.length > 0 && !leaks.length, `1. ${name}: drawn, with no page error and no undefined, NaN or [object Object] on screen`, { errors: b.errors, leaks });
   }
 
   if (run(2) || run(3) || run(6)) {

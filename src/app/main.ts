@@ -92,6 +92,8 @@ import { acct, cloud, setFx, setState, state, ui } from './store';
 import {
   activeRoutine,
   actualAvg4,
+  blocks,
+  stepLoad,
   allTimeBests,
   appBand,
   atRangeTop,
@@ -304,7 +306,7 @@ import {
   rowBlank,
   shortPlan
 } from './worksets';
-import { readyCard, workoutStart } from './workout';
+import { readyCard } from './workout';
 import { fbContext, fbShrink } from './report';
 import { accountStart, acctInit, syncLine, waiting } from './account';
 import { impBuild, impMatch, importData, impStart, liveLogFetch, routineFromLog } from './importflow';
@@ -312,6 +314,7 @@ import { makeDemo } from './demo';
 import { exportCSV, trashTidy } from './actsapp';
 import { applyPick, swapPlan } from './actspick';
 import type { State } from './store';
+import { workoutStart } from './workfields';
 
 declare global {
   interface Window {
@@ -801,7 +804,11 @@ function start(): void {
     noBody,
     // 2.32 (r78): the tape row's sentence and the one count of minutes left.
     sizeWhat,
-    sessLeftMin
+    sessLeftMin,
+    // 2.37 (ST-6): This block vs last, so tests/r83.js reads the blocks against a log worked out by hand, and the next
+    // load minus and plus step to, so tests/engine.js compares the page's answer with Node's.
+    blocks,
+    stepLoad
   };
   render();
   wakeOn();

@@ -198,7 +198,8 @@ export function undoStep(): 'none' | 'failed' | 'unchanged' | { said: string } {
                 draft: mergeDraft(
                   qd && qd['draft'],
                   normalize(parseJson(JSON.stringify(state))).draft,
-                  pd && pd['draft']
+                  pd && pd['draft'],
+                  id => state.sessions.some(x => x.id === id)
                 )
               }
             : mergeChunk(id, q ? baseOf(id, q) : null, C[id] || emptyChunk(id), P[id] || emptyChunk(id), false, stat);
