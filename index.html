@@ -10599,7 +10599,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     setCloud("saving");
     try {
-      let adopted = false, moreBody = false, again = false;
+      let adopted = false, moreBody2 = false, again = false;
       const stat = { conflicts: 0 };
       let dn = null;
       const tooBig = [];
@@ -10642,7 +10642,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
                 dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
                 if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
               }
-              if (x2.id === "core" && absorbLegacy(legacyBody(rec(rd)))) moreBody = true;
+              if (x2.id === "core" && absorbLegacy(legacyBody(rec(rd)))) moreBody2 = true;
               json = JSON.stringify(chunksOf(state)[x2.id] || emptyChunk(x2.id));
               if (hashStr(json) === hashStr(b2.json)) {
                 cloud.meta[x2.id] = took;
@@ -10700,7 +10700,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         return;
       }
       cloud.retry = 0;
-      if (moreBody || again) cloudSoon();
+      if (moreBody2 || again) cloudSoon();
       if (tooBig.length) {
         saveMeta();
         setCloud(
@@ -16320,6 +16320,160 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
 </div>
 `;
   }
+  function measurementsBody(s3) {
+    return b`<div class="card stack">
+<label class="field">Units<select data-bind="unit">
+<option value="lb" .selected=${l3(s3.unit === "lb")}>lb and inches</option>
+<option value="kg" .selected=${l3(s3.unit === "kg")}>kg and cm</option>
+</select></label>
+<div class="grid2 one-narrow">
+<label class="field">${labelTip(
+      "lt-bwGoalPct",
+      "Bodyweight goal (%/wk)",
+      "Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target."
+    )}<input type="text" inputmode="decimal" data-bind="bwGoalPct" aria-labelledby="lt-bwGoalPct" .value=${fieldValue(s3.bwGoalPct == null ? "" : String(s3.bwGoalPct))} placeholder="e.g. 0.3 or -0.5"/></label> <label class="field">${labelTip(
+      "lt-bwEvery",
+      "Weigh-in reminder",
+      "A card on Today asks for your bodyweight when the last weigh-in is this old. Pull-ups, dips, and other bodyweight lifts use your latest weigh-in."
+    )}<select data-bind="bwEvery" aria-labelledby="lt-bwEvery">${BW_EVERY.map(
+      ([v3, l4]) => b`<option value=${String(v3)} .selected=${l3(bwEvery() === v3)}>${l4}</option>
+`
+    )}</select></label>
+</div>
+${bwSettings()}
+</div>
+`;
+  }
+  function appearanceBody(s3) {
+    return b`<div class="card stack">
+<label class="field">Theme<select data-bind="theme">
+<option value="system" .selected=${l3(s3.theme === "system")}>Match device</option>
+<option value="dark" .selected=${l3(s3.theme === "dark")}>Dark</option>
+<option value="light" .selected=${l3(s3.theme === "light")}>Light</option>
+</select></label>
+<div>
+<p class="small muted u-m0-0-6_fw600">Accent colour</p>
+<div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
+      ([k2, l4]) => b`<button class=${(s3.accent || ACCENT0) === k2 ? "chip acc on" : "chip acc"} data-act="accent" data-v=${k2} aria-pressed=${String((s3.accent || ACCENT0) === k2)}><i class=${`sw sw-${k2}`} aria-hidden="true"></i>${l4}</button>`
+    )}</div>
+</div>
+</div>
+`;
+  }
+  function timerBody(s3) {
+    return b` <div class="card stack">
+<label class="field">${labelTip(
+      "lt-timerMode",
+      "Rest timer",
+      "Auto starts the timer when a set is marked done. Manual starts it from Rest on the exercise."
+    )}<select data-bind="timerMode" aria-labelledby="lt-timerMode">
+<option value="auto" .selected=${l3(s3.timerMode === "auto")}>Auto, after each set</option>
+<option value="manual" .selected=${l3(s3.timerMode === "manual")}>Manual, from Rest</option>
+<option value="off" .selected=${l3(s3.timerMode === "off")}>Off</option>
+</select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${l3(!!s3.timerSound)} ?disabled=${s3.timerMode === "off"}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${l3(!!s3.timerCompact)} ?disabled=${s3.timerMode === "off"}/>${labelTip(
+      "lt-timerCompact",
+      "Compact timer",
+      "A small pill in the corner instead of the rest card above the tabs."
+    )}</label> <label class="check-inline"><input type="checkbox" data-bind="autoDone" aria-labelledby="lt-autoDone" .checked=${l3(!!s3.autoDone)}/>${labelTip(
+      "lt-autoDone",
+      "Auto-mark a set done after its reps",
+      "A mistyped rep count is then saved without a tap to confirm, so check the row. A tap on the checkmark right after only confirms it; tap again to undo."
+    )}</label> <label class="check-inline"><input type="checkbox" data-bind="loadFill" aria-labelledby="lt-loadFill" .checked=${l3(s3.loadFill === "fill")}/>${labelTip(
+      "lt-loadFill",
+      "Fill in suggested loads",
+      "Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row for you. Either way, a load you type is never changed."
+    )}</label> <label class="field">${labelTip(
+      "lt-todayStart",
+      "Today starts with",
+      "Blank: Today opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history."
+    )}<select data-bind="todayStart" aria-labelledby="lt-todayStart">
+<option value="plan" .selected=${l3(s3.todayStart !== "free")}>My plan's day</option>
+<option value="free" .selected=${l3(s3.todayStart === "free")}>A blank session (freestyle)</option>
+</select></label> <label class="check-inline"><input type="checkbox" data-bind="autoAdj" aria-labelledby="lt-autoAdj" .checked=${l3(adjOn())}/>${labelTip(
+      "lt-autoAdj",
+      "Adjust the next sets from the last one",
+      "After a set clearly easier or harder than planned, the rest of that exercise's sets move up or down, unless you typed their weight. A line says why; Keep puts it back. Up: 2+ reps in reserve over your target, or 2+ past the top of the range. Down: 2+ under the range. A rep or two lost per set is normal."
+    )}</label> <label class="check-inline"><input type="checkbox" data-bind="wakeLock" aria-labelledby="lt-wakeLock" .checked=${l3(!!s3.wakeLock)}/>${labelTip(
+      "lt-wakeLock",
+      "Keep the screen on during a session",
+      "A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost."
+    )}</label>
+</div>
+`;
+  }
+  function priorityBody(s3) {
+    return b`${howText("prio", "Flagged as Your priority under Muscles in Stats, and favoured by Pick for me.")}
+<div class="card chips">${MUSCLES.map(
+      ([k2, l4]) => b`<button class=${s3.priorities.includes(k2) ? "chip on" : "chip"} data-act="prio" data-m=${k2}>${l4}</button>`
+    )}</div>
+`;
+  }
+  function bandsBody(s3) {
+    return b`${howText(
+      "bands",
+      "Fractional hard sets per week: direct work 1, helper muscles 0.5. 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a rule of thumb, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back."
+    )}
+<div class="card">
+<table class="t">
+<tbody>
+<tr>
+<th>Muscle</th>
+<th class="r">Min</th>
+<th class="r">Max</th>
+</tr>
+${MUSCLES.map(
+      ([k2, l4]) => (
+        /* A muscle with no target (339 e, r58) offers one; one the lifter gave a
+           target (not by default and not a focus, which Your training sets) can go
+           back to tracked only. */
+        !hasTarget(k2) ? b`<tr>
+<td>${l4}</td>
+<td class="r" colspan="2"><span class="small muted">Tracked only</span> <button type="button" class="btn sm" data-act="tgtSet" data-m=${k2}>Set a target</button></td>
+</tr>
+` : b`<tr>
+<td>${l4}${TARGETED.has(k2) || (prof().focus || []).includes(k2) ? A : b`<br><button type="button" class="linkbtn tall" data-act="tgtOff" data-m=${k2}>Track only</button>`}</td>
+<td class="r"><input class="u-w70" type="text" inputmode="numeric" aria-label=${`${l4} minimum hard sets a week`} data-band=${k2} data-bi="0" .value=${fieldValue(String(s3.bands[k2][0]))}/></td>
+<td class="r"><input class="u-w70" type="text" inputmode="numeric" aria-label=${`${l4} maximum hard sets a week`} data-band=${k2} data-bi="1" .value=${fieldValue(String(s3.bands[k2][1]))}/></td>
+</tr>
+`
+      )
+    )}</tbody>
+</table>
+<div class="row u-mt8"><button class="btn sm" data-act="bandsDefault" ?disabled=${MK.every((m3) => {
+      const d3 = defBand(m3);
+      return s3.bands[m3][0] === d3[0] && s3.bands[m3][1] === d3[1];
+    }) && !s3.bandsFit && !s3.ownTargets}>Default targets</button></div>
+</div>
+`;
+  }
+  function helpBody() {
+    return b`<div class="card stack">
+<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? b`<button class="btn" data-act="fbInbox">Reports inbox</button>` : A}</div>
+</div>
+`;
+  }
+  function moreBody(hasDemo2) {
+    return b`<div class="card stack">
+<div>
+<p class="small u-m0-0-6"><b>Demo data</b> ${tipButton(
+      `${DEMO_WEEKS} weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.`,
+      "About demo data"
+    )}</p>
+<div class="row">${hasDemo2 ? b`<button class="btn" data-act="demoClear">Clear demo data</button>` : b`<button class="btn" data-act="demoLoad">Load demo data</button>`}</div>
+</div>
+<div>
+<p class="small u-m0-0-6"><b>Version</b> ${VERSION_LINE}${logBuf.length ? b` <span class="muted">· cloud ${cloud.on ? cloud.status : "off"} · ${logBuf.length} logged error${logBuf.length === 1 ? "" : "s"}</span>` : A}</p>
+${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
+      (x2) => b`<li><span class="small"><b>${x2.a}</b> ${x2.m}${x2.n ? ` (${x2.n} times)` : ""}</span><span class="small muted">${stampShort(x2.t)}</span></li>
+`
+    )}</ul>
+` : A}${logBuf.length ? b`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>
+` : A}${window.IRONLOG_APP ? b`<p class="small u-m8-0-0"><a href="LICENSES.txt" target="_blank" rel="noopener" class="u-diflex_aicenter_minh44">Open-source licenses</a></p>
+` : A}</div>
+<div><button class="btn danger" data-act="resetAll">Erase everything</button></div>
+</div>
+`;
+  }
   function viewSettings() {
     const s3 = state.settings;
     const hasDemo2 = state.sessions.some((x2) => x2.demo) || state.bodyweights.some((x2) => x2.demo);
@@ -16337,51 +16491,12 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
       /* Measurements and Appearance (2.34, from an Android user via V: "Split general settings into measurements v
          appearance"): what was one General section, its key kept for Measurements so a saved order and fold stay
          with the units, and Appearance new beside it (orderKeys slots a new key after the one before it in code). */
-      G(
-        "general",
-        "Measurements",
-        `${s3.unit === "kg" ? "kg, cm" : "lb, in"}`,
-        b`<div class="card stack">
-<label class="field">Units<select data-bind="unit">
-<option value="lb" .selected=${l3(s3.unit === "lb")}>lb and inches</option>
-<option value="kg" .selected=${l3(s3.unit === "kg")}>kg and cm</option>
-</select></label>
-<div class="grid2 one-narrow">
-<label class="field">${labelTip(
-          "lt-bwGoalPct",
-          "Bodyweight goal (%/wk)",
-          "Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target."
-        )}<input type="text" inputmode="decimal" data-bind="bwGoalPct" aria-labelledby="lt-bwGoalPct" .value=${fieldValue(s3.bwGoalPct == null ? "" : String(s3.bwGoalPct))} placeholder="e.g. 0.3 or -0.5"/></label> <label class="field">${labelTip(
-          "lt-bwEvery",
-          "Weigh-in reminder",
-          "A card on Today asks for your bodyweight when the last weigh-in is this old. Pull-ups, dips, and other bodyweight lifts use your latest weigh-in."
-        )}<select data-bind="bwEvery" aria-labelledby="lt-bwEvery">${BW_EVERY.map(
-          ([v3, l4]) => b`<option value=${String(v3)} .selected=${l3(bwEvery() === v3)}>${l4}</option>
-`
-        )}</select></label>
-</div>
-${bwSettings()}
-</div>
-`
-      ),
+      G("general", "Measurements", `${s3.unit === "kg" ? "kg, cm" : "lb, in"}`, measurementsBody(s3)),
       G(
         "look",
         "Appearance",
         `${s3.theme === "system" ? "device theme" : s3.theme} · ${(ACCENTS.find(([k2]) => k2 === (s3.accent || ACCENT0)) || ["", ""])[1].toLowerCase()}`,
-        b`<div class="card stack">
-<label class="field">Theme<select data-bind="theme">
-<option value="system" .selected=${l3(s3.theme === "system")}>Match device</option>
-<option value="dark" .selected=${l3(s3.theme === "dark")}>Dark</option>
-<option value="light" .selected=${l3(s3.theme === "light")}>Light</option>
-</select></label>
-<div>
-<p class="small muted u-m0-0-6_fw600">Accent colour</p>
-<div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
-          ([k2, l4]) => b`<button class=${(s3.accent || ACCENT0) === k2 ? "chip acc on" : "chip acc"} data-act="accent" data-v=${k2} aria-pressed=${String((s3.accent || ACCENT0) === k2)}><i class=${`sw sw-${k2}`} aria-hidden="true"></i>${l4}</button>`
-        )}</div>
-</div>
-</div>
-`
+        appearanceBody(s3)
       ),
       G(
         "gym",
@@ -16391,50 +16506,7 @@ ${bwSettings()}
 `,
         "gym"
       ),
-      G(
-        "timer",
-        "Rest timer and logging",
-        s3.timerMode === "off" ? "timer off" : s3.timerMode + " timer",
-        b` <div class="card stack">
-<label class="field">${labelTip(
-          "lt-timerMode",
-          "Rest timer",
-          "Auto starts the timer when a set is marked done. Manual starts it from Rest on the exercise."
-        )}<select data-bind="timerMode" aria-labelledby="lt-timerMode">
-<option value="auto" .selected=${l3(s3.timerMode === "auto")}>Auto, after each set</option>
-<option value="manual" .selected=${l3(s3.timerMode === "manual")}>Manual, from Rest</option>
-<option value="off" .selected=${l3(s3.timerMode === "off")}>Off</option>
-</select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${l3(!!s3.timerSound)} ?disabled=${s3.timerMode === "off"}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${l3(!!s3.timerCompact)} ?disabled=${s3.timerMode === "off"}/>${labelTip(
-          "lt-timerCompact",
-          "Compact timer",
-          "A small pill in the corner instead of the rest card above the tabs."
-        )}</label> <label class="check-inline"><input type="checkbox" data-bind="autoDone" aria-labelledby="lt-autoDone" .checked=${l3(!!s3.autoDone)}/>${labelTip(
-          "lt-autoDone",
-          "Auto-mark a set done after its reps",
-          "A mistyped rep count is then saved without a tap to confirm, so check the row. A tap on the checkmark right after only confirms it; tap again to undo."
-        )}</label> <label class="check-inline"><input type="checkbox" data-bind="loadFill" aria-labelledby="lt-loadFill" .checked=${l3(s3.loadFill === "fill")}/>${labelTip(
-          "lt-loadFill",
-          "Fill in suggested loads",
-          "Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row for you. Either way, a load you type is never changed."
-        )}</label> <label class="field">${labelTip(
-          "lt-todayStart",
-          "Today starts with",
-          "Blank: Today opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history."
-        )}<select data-bind="todayStart" aria-labelledby="lt-todayStart">
-<option value="plan" .selected=${l3(s3.todayStart !== "free")}>My plan's day</option>
-<option value="free" .selected=${l3(s3.todayStart === "free")}>A blank session (freestyle)</option>
-</select></label> <label class="check-inline"><input type="checkbox" data-bind="autoAdj" aria-labelledby="lt-autoAdj" .checked=${l3(adjOn())}/>${labelTip(
-          "lt-autoAdj",
-          "Adjust the next sets from the last one",
-          "After a set clearly easier or harder than planned, the rest of that exercise's sets move up or down, unless you typed their weight. A line says why; Keep puts it back. Up: 2+ reps in reserve over your target, or 2+ past the top of the range. Down: 2+ under the range. A rep or two lost per set is normal."
-        )}</label> <label class="check-inline"><input type="checkbox" data-bind="wakeLock" aria-labelledby="lt-wakeLock" .checked=${l3(!!s3.wakeLock)}/>${labelTip(
-          "lt-wakeLock",
-          "Keep the screen on during a session",
-          "A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost."
-        )}</label>
-</div>
-`
-      ),
+      G("timer", "Rest timer and logging", s3.timerMode === "off" ? "timer off" : s3.timerMode + " timer", timerBody(s3)),
       G(
         "rir",
         "Effort (RIR)",
@@ -16453,55 +16525,10 @@ ${bwSettings()}
         "prio",
         "Priority muscles",
         s3.priorities.length ? s3.priorities.map((m3) => ML[m3]).join(", ") : "none",
-        b`${howText("prio", "Flagged as Your priority under Muscles in Stats, and favoured by Pick for me.")}
-<div class="card chips">${MUSCLES.map(
-          ([k2, l4]) => b`<button class=${s3.priorities.includes(k2) ? "chip on" : "chip"} data-act="prio" data-m=${k2}>${l4}</button>`
-        )}</div>
-`,
+        priorityBody(s3),
         "prio"
       ),
-      G(
-        "bands",
-        "Weekly set targets",
-        "",
-        b`${howText(
-          "bands",
-          "Fractional hard sets per week: direct work 1, helper muscles 0.5. 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a rule of thumb, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back."
-        )}
-<div class="card">
-<table class="t">
-<tbody>
-<tr>
-<th>Muscle</th>
-<th class="r">Min</th>
-<th class="r">Max</th>
-</tr>
-${MUSCLES.map(
-          ([k2, l4]) => (
-            /* A muscle with no target (339 e, r58) offers one; one the lifter gave a
-               target (not by default and not a focus, which Your training sets) can go
-               back to tracked only. */
-            !hasTarget(k2) ? b`<tr>
-<td>${l4}</td>
-<td class="r" colspan="2"><span class="small muted">Tracked only</span> <button type="button" class="btn sm" data-act="tgtSet" data-m=${k2}>Set a target</button></td>
-</tr>
-` : b`<tr>
-<td>${l4}${TARGETED.has(k2) || (prof().focus || []).includes(k2) ? A : b`<br><button type="button" class="linkbtn tall" data-act="tgtOff" data-m=${k2}>Track only</button>`}</td>
-<td class="r"><input class="u-w70" type="text" inputmode="numeric" aria-label=${`${l4} minimum hard sets a week`} data-band=${k2} data-bi="0" .value=${fieldValue(String(s3.bands[k2][0]))}/></td>
-<td class="r"><input class="u-w70" type="text" inputmode="numeric" aria-label=${`${l4} maximum hard sets a week`} data-band=${k2} data-bi="1" .value=${fieldValue(String(s3.bands[k2][1]))}/></td>
-</tr>
-`
-          )
-        )}</tbody>
-</table>
-<div class="row u-mt8"><button class="btn sm" data-act="bandsDefault" ?disabled=${MK.every((m3) => {
-          const d3 = defBand(m3);
-          return s3.bands[m3][0] === d3[0] && s3.bands[m3][1] === d3[1];
-        }) && !s3.bandsFit && !s3.ownTargets}>Default targets</button></div>
-</div>
-`,
-        "bands"
-      ),
+      G("bands", "Weekly set targets", "", bandsBody(s3), "bands"),
       G(
         "data",
         "Your data",
@@ -16510,41 +16537,9 @@ ${MUSCLES.map(
         "",
         "dataSec"
       ),
-      G(
-        "help",
-        "Help",
-        "Guide, report a problem",
-        b`<div class="card stack">
-<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? b`<button class="btn" data-act="fbInbox">Reports inbox</button>` : A}</div>
-</div>
-`
-      ),
+      G("help", "Help", "Guide, report a problem", helpBody()),
       // Demo data, Diagnostics and Erase everything (r35, V): one group at the bottom, not three in front of everyday settings.
-      G(
-        "more",
-        "More",
-        hasDemo2 ? "demo data loaded" : "demo data, version, erase",
-        b`<div class="card stack">
-<div>
-<p class="small u-m0-0-6"><b>Demo data</b> ${tipButton(
-          `${DEMO_WEEKS} weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.`,
-          "About demo data"
-        )}</p>
-<div class="row">${hasDemo2 ? b`<button class="btn" data-act="demoClear">Clear demo data</button>` : b`<button class="btn" data-act="demoLoad">Load demo data</button>`}</div>
-</div>
-<div>
-<p class="small u-m0-0-6"><b>Version</b> ${VERSION_LINE}${logBuf.length ? b` <span class="muted">· cloud ${cloud.on ? cloud.status : "off"} · ${logBuf.length} logged error${logBuf.length === 1 ? "" : "s"}</span>` : A}</p>
-${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
-          (x2) => b`<li><span class="small"><b>${x2.a}</b> ${x2.m}${x2.n ? ` (${x2.n} times)` : ""}</span><span class="small muted">${stampShort(x2.t)}</span></li>
-`
-        )}</ul>
-` : A}${logBuf.length ? b`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>
-` : A}${window.IRONLOG_APP ? b`<p class="small u-m8-0-0"><a href="LICENSES.txt" target="_blank" rel="noopener" class="u-diflex_aicenter_minh44">Open-source licenses</a></p>
-` : A}</div>
-<div><button class="btn danger" data-act="resetAll">Erase everything</button></div>
-</div>
-`
-      )
+      G("more", "More", hasDemo2 ? "demo data loaded" : "demo data, version, erase", moreBody(hasDemo2))
     ];
     return b`${pageTitle(kick, "Settings", meta)}${c3(
       placed("settings", list),
@@ -23063,6 +23058,92 @@ ${JSON.stringify(ctx, null, 1)}`;
   var PCT = 100;
   var REPS_DEF = 8;
   var inches = (o3) => Object.fromEntries(Object.entries(o3).map(([k2, v3]) => [k2, v3 * IN]));
+  var eqBase = (e5) => {
+    const c4 = isCompound(e5);
+    const t4 = EQ_LB[e5.equip] || EQ_LB["other"] || [0, 0];
+    return t4[c4 ? 0 : 1];
+  };
+  function startOf(e5, it) {
+    const known = BASE_LB[it.exId];
+    const lb = known != null && known > 0 || e5.bw && known === 0 ? known || 0 : eqBase(e5);
+    if (e5.assist) return { w: -LIFTER.help * LB, reps: null };
+    const step = progStep(e5, it, lb * LB) || LIFTER.step * LB;
+    let w2 = lb > 0 ? Math.max(step, Math.round(lb * LB * LIFTER.near / step) * step) : 0;
+    if (w2 > 0 && platesMode(e5) === "bar" && loadMode(e5) === "total") {
+      const bar2 = exBarKg(e5);
+      if (w2 < bar2 - BAR_EPS) w2 = bar2;
+    }
+    return { w: w2, reps: null };
+  }
+  function demoSlots(R2, cur, t4) {
+    const slots = [];
+    if (R2.schedule === "weekly") {
+      for (let k2 = 0; k2 < DEMO_WEEKS; k2++) {
+        const ws = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1 - k2));
+        R2.days.forEach((_2, di) => slots.push({ date: addDays(ws, di), di }));
+      }
+    } else {
+      const start2 = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1));
+      for (let p3 = 0; ; p3++) {
+        const date = addDays(start2, p3);
+        if (date > t4) break;
+        slots.push({ date, di: p3 % R2.days.length });
+      }
+    }
+    return slots;
+  }
+  function deloadBlocks(items, prog) {
+    const BW = LIFTER.bw;
+    return items.map((it) => {
+      const e5 = EX(it.exId);
+      const key = it.exId + "|" + it.repMin + "-" + it.repMax;
+      const g2 = prog[key] || (prog[key] = Object.assign(startOf(e5, it), {
+        lv: Math.round(((+it.repMin || REPS_DEF) + Math.max(+it.repMin || REPS_DEF, +it.repMax || REPS_DEF)) / 2),
+        n: 0
+      }));
+      const n3 = Math.max(1, Math.ceil(it.sets / 2));
+      const lo = +it.repMin || REPS_DEF;
+      const w2 = e5.assist ? g2.w - (progStep(e5, it, BW * LB) || LIFTER.step * LB) : g2.w > 0 ? lighterLoad(e5, it, g2.w, g2.w * LIFTER.near) : g2.w;
+      return { exId: it.exId, sets: Array.from({ length: n3 }, () => ({ w: w2, r: lo, rir: DELOAD_RIR, warm: false })) };
+    });
+  }
+  function demoBlocks(items, prog, rnd) {
+    const BW = LIFTER.bw;
+    return items.map((it) => {
+      const e5 = EX(it.exId);
+      const key = it.exId + "|" + it.repMin + "-" + it.repMax;
+      let g2 = prog[key];
+      const lo = +it.repMin || REPS_DEF, hi = Math.max(lo, +it.repMax || lo);
+      const repsAt = (lv, n3) => Array.from({ length: n3 }, (_2, j3) => Math.max(lo, Math.min(hi, lv - (j3 >= 2 && lv < hi ? 1 : 0))));
+      const known = BASE_LB[it.exId];
+      const pureBw = e5.bw && !e5.assist && !(known != null && known > 0);
+      if (!g2) {
+        g2 = prog[key] = Object.assign(startOf(e5, it), { lv: pureBw ? lo : Math.round((lo + hi) / 2), n: 0 });
+      } else if (pureBw) {
+        g2.n++;
+        if (g2.n % 2 === 1) g2.lv = Math.min(hi, g2.lv + 1);
+      } else if (repsAt(g2.lv, it.sets).every((r4) => r4 >= hi) && (e5.assist || g2.w > 0 || !e5.bw)) {
+        const was = (e5.bw ? BW * LB : 0) + g2.w;
+        const step = progStep(e5, it, e5.assist ? BW * LB : was) || LIFTER.step * LB;
+        if (e5.assist) g2.w = Math.min(0, g2.w + step);
+        else g2.w = g2.w + step;
+        g2.lv = Math.max(lo, hi - Math.max(1, Math.round(step / Math.max(was, step) * PCT / LIFTER.repPct)));
+      } else g2.lv++;
+      const reps = repsAt(g2.lv, it.sets);
+      g2.reps = reps;
+      const lastR = reps[reps.length - 1];
+      if (reps.length > 2 && lastR != null && rnd() < LIFTER.short) reps[reps.length - 1] = Math.max(lo, lastR - 1);
+      const rir = Math.max(0, Math.min(LIFTER.rirTop, isNum(+it.rir) ? +it.rir : LIFTER.rir));
+      const w2 = g2.w;
+      const sets = reps.map((r4, j3) => ({
+        w: w2,
+        r: r4,
+        rir: j3 === reps.length - 1 ? Math.max(0, rir - 1) : rir,
+        warm: false
+      }));
+      return { exId: it.exId, sets };
+    });
+  }
   function makeDemo() {
     act(() => {
       state.sessions = state.sessions.filter((s3) => !s3.demo);
@@ -23070,43 +23151,13 @@ ${JSON.stringify(ctx, null, 1)}`;
       state.measurements = state.measurements.filter((m3) => !m3.demo);
       const R2 = activeRoutine();
       const rnd = mulberry(LIFTER.seed);
-      const eqBase = (e5) => {
-        const c4 = isCompound(e5);
-        const t5 = EQ_LB[e5.equip] || EQ_LB["other"] || [0, 0];
-        return t5[c4 ? 0 : 1];
-      };
       const BW = LIFTER.bw;
       const cur = weekStart(today());
       const t4 = today();
       const realDates = new Set(state.sessions.map((x2) => x2.date));
       const realBW = new Set(state.bodyweights.map((x2) => x2.date)), realMeas = new Set(state.measurements.map((x2) => x2.date));
-      const slots = [];
-      if (R2.schedule === "weekly") {
-        for (let k2 = 0; k2 < DEMO_WEEKS; k2++) {
-          const ws = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1 - k2));
-          R2.days.forEach((_2, di) => slots.push({ date: addDays(ws, di), di }));
-        }
-      } else {
-        const start2 = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1));
-        for (let p3 = 0; ; p3++) {
-          const date = addDays(start2, p3);
-          if (date > t4) break;
-          slots.push({ date, di: p3 % R2.days.length });
-        }
-      }
+      const slots = demoSlots(R2, cur, t4);
       const prog = {};
-      const startOf = (e5, it) => {
-        const known = BASE_LB[it.exId];
-        const lb = known != null && known > 0 || e5.bw && known === 0 ? known || 0 : eqBase(e5);
-        if (e5.assist) return { w: -LIFTER.help * LB, reps: null };
-        const step = progStep(e5, it, lb * LB) || LIFTER.step * LB;
-        let w2 = lb > 0 ? Math.max(step, Math.round(lb * LB * LIFTER.near / step) * step) : 0;
-        if (w2 > 0 && platesMode(e5) === "bar" && loadMode(e5) === "total") {
-          const bar2 = exBarKg(e5);
-          if (w2 < bar2 - BAR_EPS) w2 = bar2;
-        }
-        return { w: w2, reps: null };
-      };
       const dlw = addDays(weekStart(t4), -BACK.deload), msw = addDays(weekStart(t4), -BACK.missed);
       let msn = 0;
       for (const sl of slots) {
@@ -23115,18 +23166,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         if (realDates.has(date)) continue;
         if (weekStart(date) === msw && msn++ === 1) continue;
         if (weekStart(date) === dlw) {
-          const ex2 = d3.items.map((it) => {
-            const e5 = EX(it.exId);
-            const key = it.exId + "|" + it.repMin + "-" + it.repMax;
-            const g2 = prog[key] || (prog[key] = Object.assign(startOf(e5, it), {
-              lv: Math.round(((+it.repMin || REPS_DEF) + Math.max(+it.repMin || REPS_DEF, +it.repMax || REPS_DEF)) / 2),
-              n: 0
-            }));
-            const n3 = Math.max(1, Math.ceil(it.sets / 2));
-            const lo = +it.repMin || REPS_DEF;
-            const w2 = e5.assist ? g2.w - (progStep(e5, it, BW * LB) || LIFTER.step * LB) : g2.w > 0 ? lighterLoad(e5, it, g2.w, g2.w * LIFTER.near) : g2.w;
-            return { exId: it.exId, sets: Array.from({ length: n3 }, () => ({ w: w2, r: lo, rir: DELOAD_RIR, warm: false })) };
-          });
+          const ex2 = deloadBlocks(d3.items, prog);
           state.sessions.push(
             cleanSess(
               {
@@ -23146,40 +23186,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           );
           continue;
         }
-        const ex = d3.items.map((it) => {
-          const e5 = EX(it.exId);
-          const key = it.exId + "|" + it.repMin + "-" + it.repMax;
-          let g2 = prog[key];
-          const lo = +it.repMin || REPS_DEF, hi = Math.max(lo, +it.repMax || lo);
-          const repsAt = (lv, n3) => Array.from({ length: n3 }, (_2, j3) => Math.max(lo, Math.min(hi, lv - (j3 >= 2 && lv < hi ? 1 : 0))));
-          const known = BASE_LB[it.exId];
-          const pureBw = e5.bw && !e5.assist && !(known != null && known > 0);
-          if (!g2) {
-            g2 = prog[key] = Object.assign(startOf(e5, it), { lv: pureBw ? lo : Math.round((lo + hi) / 2), n: 0 });
-          } else if (pureBw) {
-            g2.n++;
-            if (g2.n % 2 === 1) g2.lv = Math.min(hi, g2.lv + 1);
-          } else if (repsAt(g2.lv, it.sets).every((r4) => r4 >= hi) && (e5.assist || g2.w > 0 || !e5.bw)) {
-            const was = (e5.bw ? BW * LB : 0) + g2.w;
-            const step = progStep(e5, it, e5.assist ? BW * LB : was) || LIFTER.step * LB;
-            if (e5.assist) g2.w = Math.min(0, g2.w + step);
-            else g2.w = g2.w + step;
-            g2.lv = Math.max(lo, hi - Math.max(1, Math.round(step / Math.max(was, step) * PCT / LIFTER.repPct)));
-          } else g2.lv++;
-          const reps = repsAt(g2.lv, it.sets);
-          g2.reps = reps;
-          const lastR = reps[reps.length - 1];
-          if (reps.length > 2 && lastR != null && rnd() < LIFTER.short) reps[reps.length - 1] = Math.max(lo, lastR - 1);
-          const rir = Math.max(0, Math.min(LIFTER.rirTop, isNum(+it.rir) ? +it.rir : LIFTER.rir));
-          const w2 = g2.w;
-          const sets = reps.map((r4, j3) => ({
-            w: w2,
-            r: r4,
-            rir: j3 === reps.length - 1 ? Math.max(0, rir - 1) : rir,
-            warm: false
-          }));
-          return { exId: it.exId, sets };
-        });
+        const ex = demoBlocks(d3.items, prog, rnd);
         state.sessions.push(
           cleanSess(
             { id: uid(), date, dayIdx: di, dayId: d3.id, dayName: d3.name, routineId: R2.id, ex, notes: "", demo: true },
@@ -23909,40 +23916,235 @@ ${JSON.stringify(ctx, null, 1)}`;
     el.classList.add("flash");
     el.addEventListener("animationend", () => el.classList.remove("flash"), { once: true });
   }
+  function pickAddDay(m3, id) {
+    const R2 = curRoutineB();
+    const di = m3.day ?? -1;
+    const d3 = R2.days[di];
+    closeModal();
+    if (!d3) {
+      rerenderKeepScroll();
+      return;
+    }
+    act(() => {
+      d3.items.push(m3.pm && R2.schedule === "weekly" ? { ...newItem(id), pm: true } : newItem(id));
+      Object.assign(d3, trainOn(d3));
+    });
+    rerenderKeepScroll();
+    toast(`${exName(id)} added to ${dayLabel(R2, di)}${m3.pm ? ", second workout" : ""}`);
+    bwNudge([id]);
+    return;
+  }
+  function pickSwapItem(m3, id) {
+    const f3 = findItem(m3.uid);
+    if (f3) {
+      const day = f3.r.days[f3.di];
+      const q = swapPlan(f3.it, f3.it.exId, id, f3.r, day ? day.id : void 0);
+      act(() => {
+        Object.assign(f3.it, { repMin: q.repMin, repMax: q.repMax, rir: q.rir, rest: q.rest, inc: q.inc });
+        if (q.jump != null) f3.it.jump = q.jump;
+        else delete f3.it.jump;
+        f3.it.exId = id;
+      });
+    }
+    closeModal();
+    rerenderKeepScroll();
+    return;
+  }
+  function pickAddBlock(m3, id, d3) {
+    const half = (p3) => ({
+      ...p3,
+      ss: p3.ss ?? null,
+      ...d3.deload || d3.light ? { sets: Math.max(1, Math.ceil(p3.sets / 2)) } : {}
+    });
+    const p0 = planFor(id, null, d3.dayId, false, d3.date, partOf(d3));
+    const nb = newBlock(id, half(p0), { deload: !!d3.deload, light: !!d3.light, before: d3.date });
+    if (d3.deload || d3.light) nb.full = +p0.sets;
+    if (m3.one) nb.sets = nb.sets.slice(0, 1);
+    const li = d3.ex.length - 1;
+    const last = d3.ex[li];
+    if (last && joinable(last, nb)) {
+      const had = last.sets.length;
+      const plan = { ...last.plan }, did2 = d3.id;
+      let added = [];
+      act(
+        () => {
+          added = joinRows(last, nb);
+        },
+        {
+          inProgress: true,
+          undo: () => {
+            const dd = state.draft;
+            if (!dd || dd.id !== did2) return false;
+            const y2 = dd.ex.find((x2) => x2 === last);
+            if (!y2 || added.some((x2) => x2.done)) return false;
+            y2.sets = y2.sets.filter((x2) => !added.includes(x2));
+            y2.plan = plan;
+            return y2.sets.length === had;
+          }
+        }
+      );
+      afterAdd(li);
+      toast(`${EX(id).name}: ${added.length} more set${added.length === 1 ? "" : "s"}, with the ones above`, true);
+      return;
+    }
+    act(() => d3.ex.push(nb), { inProgress: true });
+    afterAdd(d3.ex.length - 1);
+    bwNudge([id]);
+    return;
+  }
+  function swapMoveSets(sw) {
+    const { d: d3, bi, b: b2, nb, orig, did: did2, id } = sw;
+    nb.sets = b2.sets;
+    if (b2.bid) nb.bid = b2.bid;
+    act(
+      () => {
+        d3.ex[bi] = nb;
+        fixSupersets(d3.ex.map((x2) => x2.plan));
+      },
+      {
+        inProgress: true,
+        undo: () => {
+          const dd = state.draft;
+          if (!dd || dd.id !== did2) return false;
+          const i5 = dd.ex.indexOf(nb);
+          if (i5 < 0) return false;
+          dd.ex[i5] = orig;
+          return true;
+        }
+      }
+    );
+    rerenderKeepScroll();
+    toast(`Your sets are on ${EX(id).name} now`, true);
+    return;
+  }
+  function swapJoin(sw, ni, y2) {
+    const { d: d3, bi, b: b2, nb, orig, did: did2, done, id } = sw;
+    const plan = { ...y2.plan };
+    let added = [];
+    act(
+      () => {
+        added = joinRows(y2, nb);
+        if (done.length) {
+          b2.sets = done;
+          b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
+        } else keepOpen(() => d3.ex.splice(bi, 1));
+        fixSupersets(d3.ex.map((x2) => x2.plan));
+      },
+      {
+        inProgress: true,
+        undo: () => {
+          const dd = state.draft;
+          if (!dd || dd.id !== did2) return false;
+          const yy = dd.ex.find((x2) => x2 === y2);
+          if (!yy || added.some((x2) => x2.done)) return false;
+          yy.sets = yy.sets.filter((x2) => !added.includes(x2));
+          yy.plan = plan;
+          if (done.length) {
+            const i5 = dd.ex.findIndex((x2) => x2 === b2);
+            if (i5 < 0) return false;
+            dd.ex[i5] = orig;
+          } else dd.ex.splice(dd.ex.indexOf(yy) + (ni < bi ? 1 : 0), 0, orig);
+          return true;
+        }
+      }
+    );
+    rerenderKeepScroll();
+    toast(
+      done.length ? `${EX(id).name}: the sets left join the ones below. Your sets so far stay with ${EX(orig.exId).name}.` : `Swapped to ${EX(id).name}: its sets are together now`,
+      true
+    );
+    return;
+  }
+  function swapInPlace(sw) {
+    const { d: d3, bi, b: b2, nb, orig, did: did2, done, left, id } = sw;
+    act(
+      () => {
+        if (done.length) {
+          b2.sets = done;
+          b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
+          keepOpen(() => d3.ex.splice(bi + 1, 0, nb));
+        } else d3.ex[bi] = nb;
+        fixSupersets(d3.ex.map((x2) => x2.plan));
+      },
+      {
+        inProgress: true,
+        undo: () => {
+          const dd = state.draft;
+          if (!dd || dd.id !== did2) return false;
+          const at2 = dd.ex.findIndex((x2) => x2 === nb);
+          if (at2 < 0 || nb.sets.some((x2) => x2.done)) return false;
+          if (done.length) {
+            dd.ex.splice(at2, 1);
+            const i5 = dd.ex.findIndex((x2) => x2 === b2);
+            if (i5 >= 0) dd.ex[i5] = orig;
+            else return false;
+          } else dd.ex[at2] = orig;
+          return true;
+        }
+      }
+    );
+    rerenderKeepScroll();
+    toast(
+      done.length && left ? `${EX(id).name} added for the sets left. Your sets so far stay with ${EX(orig.exId).name}.` : done.length ? `${EX(id).name} added after ${EX(orig.exId).name}` : `Swapped to ${EX(id).name}`,
+      true
+    );
+    return;
+  }
+  function pickSwapBlock(m3, id, d3) {
+    const bi = m3.b ?? -1;
+    const b2 = d3.ex[bi];
+    if (!b2) {
+      rerenderKeepScroll();
+      return;
+    }
+    const orig = structuredClone(b2);
+    const did2 = d3.id;
+    const done = b2.sets.filter((x2) => !rowBlank(b2, x2));
+    const left = b2.sets.filter((x2) => !x2.warm && !x2.drop && rowBlank(b2, x2)).length;
+    const rows2 = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
+    if (done.length && !left && !m3.all) {
+      const nn = EX(id).name;
+      confirmBox(
+        `Every set of ${EX(b2.exId).name} is logged`,
+        `Logged on the wrong exercise? Move the sets to ${nn}. Or add ${nn} after it.`,
+        "Move the sets",
+        () => applyPick({ ...m3, all: "move" }, id),
+        false,
+        { label: `Add ${nn}`, fn: () => applyPick({ ...m3, all: "add" }, id) }
+      );
+      return;
+    }
+    const nb = newBlock(
+      id,
+      {
+        ...swapPlan(b2.plan, b2.exId, id, null, d3.dayId),
+        sets: done.length && left ? left : Math.max(1, rows2 || +b2.plan.sets || 1)
+      },
+      { deload: !!d3.deload, light: !!d3.light, before: d3.date }
+    );
+    const sw = { d: d3, bi, b: b2, nb, orig, did: did2, done, left, id };
+    if (m3.all === "move") {
+      swapMoveSets(sw);
+      return;
+    }
+    nb.swappedFrom = b2.swappedFrom || b2.exId;
+    if (nb.swappedFrom === id) nb.swappedFrom = null;
+    const ni = done.length ? joinable(d3.ex[bi + 1], nb) ? bi + 1 : -1 : joinable(d3.ex[bi - 1], nb) ? bi - 1 : joinable(d3.ex[bi + 1], nb) ? bi + 1 : -1;
+    const y2 = ni >= 0 ? d3.ex[ni] : void 0;
+    if (y2) {
+      swapJoin(sw, ni, y2);
+      return;
+    }
+    swapInPlace(sw);
+  }
   function applyPick(m3, id) {
     if (!m3 || !id) return;
     if (m3.mode === "addDay") {
-      const R2 = curRoutineB();
-      const di = m3.day ?? -1;
-      const d4 = R2.days[di];
-      closeModal();
-      if (!d4) {
-        rerenderKeepScroll();
-        return;
-      }
-      act(() => {
-        d4.items.push(m3.pm && R2.schedule === "weekly" ? { ...newItem(id), pm: true } : newItem(id));
-        Object.assign(d4, trainOn(d4));
-      });
-      rerenderKeepScroll();
-      toast(`${exName(id)} added to ${dayLabel(R2, di)}${m3.pm ? ", second workout" : ""}`);
-      bwNudge([id]);
+      pickAddDay(m3, id);
       return;
     }
     if (m3.mode === "swapItem") {
-      const f3 = findItem(m3.uid);
-      if (f3) {
-        const day = f3.r.days[f3.di];
-        const q = swapPlan(f3.it, f3.it.exId, id, f3.r, day ? day.id : void 0);
-        act(() => {
-          Object.assign(f3.it, { repMin: q.repMin, repMax: q.repMax, rir: q.rir, rest: q.rest, inc: q.inc });
-          if (q.jump != null) f3.it.jump = q.jump;
-          else delete f3.it.jump;
-          f3.it.exId = id;
-        });
-      }
-      closeModal();
-      rerenderKeepScroll();
+      pickSwapItem(m3, id);
       return;
     }
     const d3 = state.draft;
@@ -23951,176 +24153,12 @@ ${JSON.stringify(ctx, null, 1)}`;
       rerenderKeepScroll();
       return;
     }
-    const half = (p3) => ({
-      ...p3,
-      ss: p3.ss ?? null,
-      ...d3.deload || d3.light ? { sets: Math.max(1, Math.ceil(p3.sets / 2)) } : {}
-    });
     if (m3.mode === "addBlock") {
-      const p0 = planFor(id, null, d3.dayId, false, d3.date, partOf(d3));
-      const nb = newBlock(id, half(p0), { deload: !!d3.deload, light: !!d3.light, before: d3.date });
-      if (d3.deload || d3.light) nb.full = +p0.sets;
-      if (m3.one) nb.sets = nb.sets.slice(0, 1);
-      const li = d3.ex.length - 1;
-      const last = d3.ex[li];
-      if (last && joinable(last, nb)) {
-        const had = last.sets.length;
-        const plan = { ...last.plan }, did2 = d3.id;
-        let added = [];
-        act(
-          () => {
-            added = joinRows(last, nb);
-          },
-          {
-            inProgress: true,
-            undo: () => {
-              const dd = state.draft;
-              if (!dd || dd.id !== did2) return false;
-              const y2 = dd.ex.find((x2) => x2 === last);
-              if (!y2 || added.some((x2) => x2.done)) return false;
-              y2.sets = y2.sets.filter((x2) => !added.includes(x2));
-              y2.plan = plan;
-              return y2.sets.length === had;
-            }
-          }
-        );
-        afterAdd(li);
-        toast(`${EX(id).name}: ${added.length} more set${added.length === 1 ? "" : "s"}, with the ones above`, true);
-        return;
-      }
-      act(() => d3.ex.push(nb), { inProgress: true });
-      afterAdd(d3.ex.length - 1);
-      bwNudge([id]);
+      pickAddBlock(m3, id, d3);
       return;
     }
     if (m3.mode === "swapBlock") {
-      const bi = m3.b ?? -1;
-      const b2 = d3.ex[bi];
-      if (!b2) {
-        rerenderKeepScroll();
-        return;
-      }
-      const orig = structuredClone(b2);
-      const did2 = d3.id;
-      const done = b2.sets.filter((x2) => !rowBlank(b2, x2));
-      const left = b2.sets.filter((x2) => !x2.warm && !x2.drop && rowBlank(b2, x2)).length;
-      const rows2 = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
-      if (done.length && !left && !m3.all) {
-        const nn = EX(id).name;
-        confirmBox(
-          `Every set of ${EX(b2.exId).name} is logged`,
-          `Logged on the wrong exercise? Move the sets to ${nn}. Or add ${nn} after it.`,
-          "Move the sets",
-          () => applyPick({ ...m3, all: "move" }, id),
-          false,
-          { label: `Add ${nn}`, fn: () => applyPick({ ...m3, all: "add" }, id) }
-        );
-        return;
-      }
-      const nb = newBlock(
-        id,
-        {
-          ...swapPlan(b2.plan, b2.exId, id, null, d3.dayId),
-          sets: done.length && left ? left : Math.max(1, rows2 || +b2.plan.sets || 1)
-        },
-        { deload: !!d3.deload, light: !!d3.light, before: d3.date }
-      );
-      if (m3.all === "move") {
-        nb.sets = b2.sets;
-        if (b2.bid) nb.bid = b2.bid;
-        act(
-          () => {
-            d3.ex[bi] = nb;
-            fixSupersets(d3.ex.map((x2) => x2.plan));
-          },
-          {
-            inProgress: true,
-            undo: () => {
-              const dd = state.draft;
-              if (!dd || dd.id !== did2) return false;
-              const i5 = dd.ex.indexOf(nb);
-              if (i5 < 0) return false;
-              dd.ex[i5] = orig;
-              return true;
-            }
-          }
-        );
-        rerenderKeepScroll();
-        toast(`Your sets are on ${EX(id).name} now`, true);
-        return;
-      }
-      nb.swappedFrom = b2.swappedFrom || b2.exId;
-      if (nb.swappedFrom === id) nb.swappedFrom = null;
-      const ni = done.length ? joinable(d3.ex[bi + 1], nb) ? bi + 1 : -1 : joinable(d3.ex[bi - 1], nb) ? bi - 1 : joinable(d3.ex[bi + 1], nb) ? bi + 1 : -1;
-      const y2 = ni >= 0 ? d3.ex[ni] : void 0;
-      if (y2) {
-        const plan = { ...y2.plan };
-        let added = [];
-        act(
-          () => {
-            added = joinRows(y2, nb);
-            if (done.length) {
-              b2.sets = done;
-              b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
-            } else keepOpen(() => d3.ex.splice(bi, 1));
-            fixSupersets(d3.ex.map((x2) => x2.plan));
-          },
-          {
-            inProgress: true,
-            undo: () => {
-              const dd = state.draft;
-              if (!dd || dd.id !== did2) return false;
-              const yy = dd.ex.find((x2) => x2 === y2);
-              if (!yy || added.some((x2) => x2.done)) return false;
-              yy.sets = yy.sets.filter((x2) => !added.includes(x2));
-              yy.plan = plan;
-              if (done.length) {
-                const i5 = dd.ex.findIndex((x2) => x2 === b2);
-                if (i5 < 0) return false;
-                dd.ex[i5] = orig;
-              } else dd.ex.splice(dd.ex.indexOf(yy) + (ni < bi ? 1 : 0), 0, orig);
-              return true;
-            }
-          }
-        );
-        rerenderKeepScroll();
-        toast(
-          done.length ? `${EX(id).name}: the sets left join the ones below. Your sets so far stay with ${EX(orig.exId).name}.` : `Swapped to ${EX(id).name}: its sets are together now`,
-          true
-        );
-        return;
-      }
-      act(
-        () => {
-          if (done.length) {
-            b2.sets = done;
-            b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
-            keepOpen(() => d3.ex.splice(bi + 1, 0, nb));
-          } else d3.ex[bi] = nb;
-          fixSupersets(d3.ex.map((x2) => x2.plan));
-        },
-        {
-          inProgress: true,
-          undo: () => {
-            const dd = state.draft;
-            if (!dd || dd.id !== did2) return false;
-            const at2 = dd.ex.findIndex((x2) => x2 === nb);
-            if (at2 < 0 || nb.sets.some((x2) => x2.done)) return false;
-            if (done.length) {
-              dd.ex.splice(at2, 1);
-              const i5 = dd.ex.findIndex((x2) => x2 === b2);
-              if (i5 >= 0) dd.ex[i5] = orig;
-              else return false;
-            } else dd.ex[at2] = orig;
-            return true;
-          }
-        }
-      );
-      rerenderKeepScroll();
-      toast(
-        done.length && left ? `${EX(id).name} added for the sets left. Your sets so far stay with ${EX(orig.exId).name}.` : done.length ? `${EX(id).name} added after ${EX(orig.exId).name}` : `Swapped to ${EX(id).name}`,
-        true
-      );
+      pickSwapBlock(m3, id, d3);
       return;
     }
     rerenderKeepScroll();
@@ -25237,112 +25275,112 @@ ${JSON.stringify(ctx, null, 1)}`;
   var TIMED_MAX_MIN = 360;
   var BACK_SAID = " Your workout in progress is back: Resume it on Today.";
   var HEAVIEST_SHOWN = 4;
-  function finish() {
-    const d3 = state.draft;
-    if (!d3) return;
-    if (!d3._leftAsked && !d3.editingId && !d3.past) {
-      let n3 = 0, left = 0;
-      for (const b2 of d3.ex)
-        for (const x2 of b2.sets) {
-          if (x2.warm) continue;
-          n3++;
-          if (!x2.done && rowBlank(b2, x2)) left++;
-        }
-      const any = d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !x2.warm));
-      if (any && left > 0) {
-        confirmBox(
-          `${left} of ${n3} sets not done`,
-          `Finish now and they are left out. An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.`,
-          "Finish now",
-          () => {
-            const dd = state.draft;
-            if (!dd) return;
-            dd._leftAsked = true;
-            finish();
-          },
-          false,
-          { label: "Keep going", fn: () => {
-          } }
-        );
-        return;
+  function askSetsLeft(d3) {
+    let n3 = 0, left = 0;
+    for (const b2 of d3.ex)
+      for (const x2 of b2.sets) {
+        if (x2.warm) continue;
+        n3++;
+        if (!x2.done && rowBlank(b2, x2)) left++;
       }
+    const any = d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !x2.warm));
+    if (any && left > 0) {
+      confirmBox(
+        `${left} of ${n3} sets not done`,
+        `Finish now and they are left out. An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.`,
+        "Finish now",
+        () => {
+          const dd = state.draft;
+          if (!dd) return;
+          dd._leftAsked = true;
+          finish();
+        },
+        false,
+        { label: "Keep going", fn: () => {
+        } }
+      );
+      return true;
     }
-    if (!d3._rampAsked) {
-      const ramps = [];
-      for (const b2 of d3.ex) {
-        const e5 = EX(b2.exId);
-        const wk = b2.sets.filter((x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0);
-        if (wk.length < 2) continue;
-        const L2 = (x2) => bwLoad(e5, d3.date) + (+(x2.w ?? 0) || 0);
-        const top = Math.max(...wk.map(L2));
-        if (!(top > 0)) continue;
-        const firstTop = b2.sets.findIndex(
-          (x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && Math.abs(L2(x2) - top) < EPS_SAME
+    return false;
+  }
+  function askRamps(d3) {
+    const ramps = [];
+    for (const b2 of d3.ex) {
+      const e5 = EX(b2.exId);
+      const wk = b2.sets.filter((x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0);
+      if (wk.length < 2) continue;
+      const L2 = (x2) => bwLoad(e5, d3.date) + (+(x2.w ?? 0) || 0);
+      const top = Math.max(...wk.map(L2));
+      if (!(top > 0)) continue;
+      const firstTop = b2.sets.findIndex(
+        (x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && Math.abs(L2(x2) - top) < EPS_SAME
+      );
+      const bi = d3.ex.indexOf(b2);
+      const st = IDX().exStats[b2.exId];
+      const est = st ? st.bestAll : void 0;
+      const thr = isCompound(e5) ? WARM_SHARE.compound : WARM_SHARE.isolation;
+      const easy = (x2) => {
+        if (!(L2(x2) < top - EPS_SAME)) return false;
+        const q = rirEff(x2, e5);
+        if (q != null) return q >= RIR_CALL_TOP;
+        if (est && !noE1(e5)) {
+          const rtf = rtfAt(est, L2(x2));
+          if (rtf != null) return rtf - +(x2.r ?? 0) >= RIR_CALL_TOP;
+        }
+        return L2(x2) < top * thr;
+      };
+      const appSet = (x2, si) => b2.sw != null && Math.abs((+(x2.w ?? 0) || 0) - b2.sw) < EPS_SAME || !!b2.adj && b2.adj.up && si <= b2.adj.at;
+      b2.sets.forEach((x2, si) => {
+        if (si < firstTop && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && (e5.bw || +(x2.w ?? 0) > 0) && !appSet(x2, si) && easy(x2))
+          ramps.push({ bi, si, name: e5.name, txt: `${loadLabel(e5, +(x2.w ?? 0) || 0)}×${x2.r}` });
+      });
+    }
+    if (ramps.length) {
+      const done = () => {
+        const dd = state.draft;
+        if (!dd) return;
+        act(
+          () => {
+            dd._rampAsked = true;
+          },
+          { inProgress: true }
         );
-        const bi = d3.ex.indexOf(b2);
-        const st = IDX().exStats[b2.exId];
-        const est = st ? st.bestAll : void 0;
-        const thr = isCompound(e5) ? WARM_SHARE.compound : WARM_SHARE.isolation;
-        const easy = (x2) => {
-          if (!(L2(x2) < top - EPS_SAME)) return false;
-          const q = rirEff(x2, e5);
-          if (q != null) return q >= RIR_CALL_TOP;
-          if (est && !noE1(e5)) {
-            const rtf = rtfAt(est, L2(x2));
-            if (rtf != null) return rtf - +(x2.r ?? 0) >= RIR_CALL_TOP;
-          }
-          return L2(x2) < top * thr;
-        };
-        const appSet = (x2, si) => b2.sw != null && Math.abs((+(x2.w ?? 0) || 0) - b2.sw) < EPS_SAME || !!b2.adj && b2.adj.up && si <= b2.adj.at;
-        b2.sets.forEach((x2, si) => {
-          if (si < firstTop && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && (e5.bw || +(x2.w ?? 0) > 0) && !appSet(x2, si) && easy(x2))
-            ramps.push({ bi, si, name: e5.name, txt: `${loadLabel(e5, +(x2.w ?? 0) || 0)}×${x2.r}` });
-        });
-      }
-      if (ramps.length) {
-        const done = () => {
+        finish();
+      };
+      confirmBox(
+        "These look like ramp-up sets",
+        `${[...new Set(ramps.map((r4) => r4.bi))].map((bi) => {
+          const rs = ramps.filter((r4) => r4.bi === bi);
+          return `${rs[0].name}: ${rs.map((r4) => r4.txt).join(", ")}`;
+        }).join(
+          "; "
+        )}. Lighter and easy, before your top set. Mark ${ramps.length > 1 ? "them" : "it"} as warm-up${ramps.length > 1 ? "s" : ""}?`,
+        `Mark as warm-up${ramps.length > 1 ? "s" : ""}`,
+        () => {
           const dd = state.draft;
           if (!dd) return;
           act(
             () => {
-              dd._rampAsked = true;
+              for (const r4 of ramps) {
+                const x2 = dd.ex[r4.bi] && dd.ex[r4.bi].sets[r4.si];
+                if (x2) {
+                  x2.warm = true;
+                  x2.drop = false;
+                }
+              }
             },
             { inProgress: true }
           );
-          finish();
-        };
-        confirmBox(
-          "These look like ramp-up sets",
-          `${[...new Set(ramps.map((r4) => r4.bi))].map((bi) => {
-            const rs = ramps.filter((r4) => r4.bi === bi);
-            return `${rs[0].name}: ${rs.map((r4) => r4.txt).join(", ")}`;
-          }).join(
-            "; "
-          )}. Lighter and easy, before your top set. Mark ${ramps.length > 1 ? "them" : "it"} as warm-up${ramps.length > 1 ? "s" : ""}?`,
-          `Mark as warm-up${ramps.length > 1 ? "s" : ""}`,
-          () => {
-            const dd = state.draft;
-            if (!dd) return;
-            act(
-              () => {
-                for (const r4 of ramps) {
-                  const x2 = dd.ex[r4.bi] && dd.ex[r4.bi].sets[r4.si];
-                  if (x2) {
-                    x2.warm = true;
-                    x2.drop = false;
-                  }
-                }
-              },
-              { inProgress: true }
-            );
-            done();
-          },
-          false,
-          { label: "Keep as working sets", fn: done }
-        );
-        return;
-      }
+          done();
+        },
+        false,
+        { label: "Keep as working sets", fn: done }
+      );
+      return true;
     }
+    return false;
+  }
+  function askUnchecked(d3) {
     const unchecked = [];
     for (const b2 of d3.ex) {
       const n3 = b2.sets.filter((s3) => !s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3))).length;
@@ -25380,8 +25418,16 @@ ${JSON.stringify(ctx, null, 1)}`;
         false,
         { label: "Save without them", fn: () => finishNow() }
       );
-      return;
+      return true;
     }
+    return false;
+  }
+  function finish() {
+    const d3 = state.draft;
+    if (!d3) return;
+    if (!d3._leftAsked && !d3.editingId && !d3.past && askSetsLeft(d3)) return;
+    if (!d3._rampAsked && askRamps(d3)) return;
+    if (askUnchecked(d3)) return;
     finishNow();
   }
   function finishNow() {
@@ -25463,6 +25509,35 @@ ${JSON.stringify(ctx, null, 1)}`;
         { label: "Save anyway", fn: save }
       );
     else save();
+  }
+  function setCounts(ex) {
+    const work = ex.reduce((a2, b2) => a2 + b2.sets.filter(isWork).length, 0), miss = ex.reduce((a2, b2) => a2 + b2.sets.filter((q) => !q.warm && !q.drop && isMissed(q)).length, 0), hard = r1(
+      ex.reduce((a2, b2) => {
+        const e5 = EX(b2.exId);
+        return a2 + b2.sets.reduce((c4, q) => c4 + hardCredit(q, e5), 0);
+      }, 0)
+    );
+    return { work, miss, hard };
+  }
+  function recapPr(pr) {
+    const e5 = EX(pr.exId);
+    if (pr.type === "Weight PR")
+      return {
+        name: e5.name,
+        what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${pr.value != null && isCompound(e5) ? `, best estimate ${fmtE(pr.value)} ${U()}${loadNote(e5)}` : ""}`,
+        was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${e5.bw ? loadLabel(e5, pr.prevW ?? 0) : fmtW(pr.prevW) + " " + U()}` : ""
+      };
+    const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.date) : null;
+    if (ps) return { name: e5.name, what: `PR, ${setShort(e5, ps.w, ps.r)}`, was: "your best for that number of reps" };
+    return pr.type === "e1RM" ? {
+      name: e5.name,
+      what: `${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e5)}`,
+      was: prOverall(pr) ? wasE(pr.value, pr.prevAll) ? `was ${wasE(pr.value, pr.prevAll)}` : "" : wasE(pr.value, pr.prev) ? `was ${wasE(pr.value, pr.prev)} at those reps` : ""
+    } : {
+      name: e5.name,
+      what: `${e5.timed ? "Time" : "Rep"} PR, ${setShort(e5, pr.w, pr.r)}`,
+      was: pr.prevR ? `was ${pr.prevR} ${e5.timed ? "s" : "reps"} at this load or heavier` : "heaviest yet"
+    };
   }
   function saveSession(d3, ex, cardio) {
     const clockMin = d3.editingId || d3.past || !d3.startedAt || iso(new Date(d3.startedAt)) !== d3.date ? null : (() => {
@@ -25555,12 +25630,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const e5 = EX(p3.exId);
       return [`${e5.name} ${setShort(e5, p3.w, p3.r)}`];
     });
-    const work = ex.reduce((a2, b2) => a2 + b2.sets.filter(isWork).length, 0), miss = ex.reduce((a2, b2) => a2 + b2.sets.filter((q) => !q.warm && !q.drop && isMissed(q)).length, 0), hard = r1(
-      ex.reduce((a2, b2) => {
-        const e5 = EX(b2.exId);
-        return a2 + b2.sets.reduce((c4, q) => c4 + hardCredit(q, e5), 0);
-      }, 0)
-    );
+    const { work, miss, hard } = setCounts(ex);
     ui.todayDay = null;
     window.scrollTo(0, 0);
     render();
@@ -25578,26 +25648,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       lines.push("Not timed: the sets went in faster than they can be lifted. Add its minutes by editing it in History.");
     if (targets) lines.push(`${beaten} of ${targets} exercise target${targets === 1 ? "" : "s"} beaten`);
     if (heavier.length) lines.push(`Heaviest yet: ${andList(heavier, HEAVIEST_SHOWN)}`);
-    const prList = prs.map((pr) => {
-      const e5 = EX(pr.exId);
-      if (pr.type === "Weight PR")
-        return {
-          name: e5.name,
-          what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${pr.value != null && isCompound(e5) ? `, best estimate ${fmtE(pr.value)} ${U()}${loadNote(e5)}` : ""}`,
-          was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${e5.bw ? loadLabel(e5, pr.prevW ?? 0) : fmtW(pr.prevW) + " " + U()}` : ""
-        };
-      const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.date) : null;
-      if (ps) return { name: e5.name, what: `PR, ${setShort(e5, ps.w, ps.r)}`, was: "your best for that number of reps" };
-      return pr.type === "e1RM" ? {
-        name: e5.name,
-        what: `${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e5)}`,
-        was: prOverall(pr) ? wasE(pr.value, pr.prevAll) ? `was ${wasE(pr.value, pr.prevAll)}` : "" : wasE(pr.value, pr.prev) ? `was ${wasE(pr.value, pr.prev)} at those reps` : ""
-      } : {
-        name: e5.name,
-        what: `${e5.timed ? "Time" : "Rep"} PR, ${setShort(e5, pr.w, pr.r)}`,
-        was: pr.prevR ? `was ${pr.prevR} ${e5.timed ? "s" : "reps"} at this load or heavier` : "heaviest yet"
-      };
-    });
+    const prList = prs.map(recapPr);
     if (cardio.length) lines.push(`Cardio and mobility: ${cardio.reduce((a2, c4) => a2 + c4.min, 0)} min`);
     if (demoGone) lines.push("Demo data removed, so your stats show only your own sessions");
     openModal({
@@ -26476,174 +26527,176 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (document.visibilityState === "visible" && tm && !tm.hidden) tick();
     });
   }
+  function onClick(e5) {
+    const el = e5.target;
+    if (!(el instanceof Element)) return;
+    const tab = el.closest("#tabs button");
+    if (tab instanceof HTMLElement) {
+      ui.tab = tab.dataset.tab || "";
+      ui.away = null;
+      if (ui.tab === "program") ui.planView = "routine";
+      window.scrollTo(0, 0);
+      render();
+      return;
+    }
+    if (el.id === "modal") {
+      if (ui.modal && ui.modal.dirty) {
+        toast(DIRTY_SAID);
+        return;
+      }
+      closeModal();
+      return;
+    }
+    const t4 = el.closest("[data-act]");
+    if (!(t4 instanceof HTMLElement || t4 instanceof SVGElement)) return;
+    const fn = ACT[t4.getAttribute("data-act") || ""];
+    if (fn) {
+      e5.preventDefault();
+      fn(t4);
+    }
+  }
+  function onActivateKey(e5) {
+    const el = e5.target;
+    if (e5.key === "Enter" && el instanceof Element && el.id === "qTxt") {
+      e5.preventDefault();
+      run("qFill");
+      return;
+    }
+    const g2 = el instanceof Element ? el.closest("g[data-act]") : null;
+    if (g2 && (e5.key === "Enter" || e5.key === " ")) {
+      e5.preventDefault();
+      g2.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    }
+  }
+  function onInput(e5) {
+    const t4 = fieldOf(e5.target);
+    if (!t4) return;
+    const m3 = ui.modal;
+    if (m3 && FORM_SHEETS.has(m3.kind) && t4.closest("#modal")) m3.dirty = true;
+    if (t4.id === "incVal" && m3 && m3.kind === "inc") m3.typed = true;
+    if (workoutInput(t4)) return;
+    if (planInput(t4)) return;
+    if (t4.dataset.band) {
+      bandInput(t4);
+      return;
+    }
+    if (reportInput(t4)) return;
+    if (accountInput(t4)) return;
+    if (t4.dataset.ebind && m3 && m3.kind === "exEdit") {
+      if (t4 instanceof HTMLInputElement && t4.type === "checkbox") return;
+      editorSet(m3.e, t4.dataset.ebind, t4.value);
+      return;
+    }
+    const mb = t4.dataset.mbind;
+    if (mb && m3 && m3.kind === "picker") {
+      if (mb === "q") m3.q = t4.value;
+      else if (mb === "m") m3.m = t4.value;
+      renderModal();
+      const pl = document.getElementById("pickList");
+      if (pl) pl.scrollTop = 0;
+      return;
+    }
+  }
+  function onChange(e5) {
+    const t4 = fieldOf(e5.target);
+    if (!t4) return;
+    const m3 = ui.modal;
+    if (m3 && FORM_SHEETS.has(m3.kind) && t4.closest("#modal")) m3.dirty = true;
+    if (reportChange(t4)) return;
+    if (picChange(t4)) return;
+    if (photoChange(t4)) return;
+    if (importChange(t4)) return;
+    if (planChange(t4)) return;
+    if (t4.dataset.gym) {
+      gymField(t4);
+      return;
+    }
+    if (todayChange(t4)) return;
+    if (t4.dataset.band) {
+      bandChange(t4);
+      return;
+    }
+    const k2 = t4.dataset.ebind;
+    if (k2 && m3 && m3.kind === "exEdit") {
+      const ed = m3.e;
+      const box3 = t4 instanceof HTMLInputElement && t4.type === "checkbox";
+      editorSet(ed, k2, box3 ? t4.checked : t4.value);
+      if (k2 === "primary") {
+        ed.secondary = ed.secondary.filter((x2) => x2 !== t4.value);
+        renderModal();
+      }
+      if (k2 === "bw") {
+        if (box3 && t4.checked && !ed.bwfRaw) ed.bwfRaw = String(Math.round(bwShare(ed) * PERCENT2));
+        renderModal();
+      }
+      if (k2 === "timed" || k2 === "equip" || k2 === "plates") renderModal();
+      return;
+    }
+    if (t4.dataset.mbind) return;
+    if (t4.dataset.pbind === "date" && m3 && m3.kind === "past") {
+      if (isDate(t4.value) && t4.value <= today()) m3.date = t4.value;
+      else toast("Pick today or an earlier date");
+      renderModal();
+      return;
+    }
+    if (workoutChange(t4)) return;
+    const b2 = t4.dataset.bind;
+    if (!b2) return;
+    const own2 = HISTORY_BINDS[b2] || SETTINGS_BINDS[b2] || PLAN_BINDS[b2] || DASH_BINDS[b2] || TODAY_BINDS[b2];
+    if (own2) {
+      own2(t4);
+      return;
+    }
+    if (b2 === "loadFill") run("loadAsk", { v: t4 instanceof HTMLInputElement && t4.checked ? "fill" : "grey" });
+  }
+  function onToggle(e5) {
+    const el = e5.target;
+    if (!(el instanceof HTMLElement)) return;
+    if (el.classList.contains("more") && el instanceof HTMLDetailsElement && ui.modal) {
+      ui.modal.moreOpen = el.open;
+      return;
+    }
+    if (!(el instanceof HTMLDetailsElement) || !el.dataset.sk) return;
+    if (el.dataset.auto) delete el.dataset.auto;
+    else ui.folds[el.dataset.sk] = el.open;
+    if (el.open) chartsResize(el);
+  }
+  function onKey(e5) {
+    const el = e5.target;
+    if (e5.key === "Enter" && el instanceof Element && el.id === "bwVal") {
+      e5.preventDefault();
+      run("addBW");
+      return;
+    }
+    if (workoutKey(e5)) return;
+    if (e5.key === "Escape" && ui.modal) {
+      if (ui.modal.dirty) toast(DIRTY_SAID);
+      else closeModal();
+      return;
+    }
+    if (e5.key !== "Tab" || !ui.modal) return;
+    const f3 = modalFocusables();
+    const first = f3[0], last = f3[f3.length - 1];
+    if (!first || !last) return;
+    const a2 = document.activeElement;
+    const box3 = document.getElementById("modal");
+    const outside = !box3 || !box3.contains(a2);
+    if (e5.shiftKey && (a2 === first || outside)) {
+      e5.preventDefault();
+      last.focus();
+    } else if (!e5.shiftKey && (a2 === last || outside)) {
+      e5.preventDefault();
+      first.focus();
+    }
+  }
   function eventListeners() {
     document.addEventListener("submit", accountSubmit);
-    document.addEventListener("click", (e5) => {
-      const el = e5.target;
-      if (!(el instanceof Element)) return;
-      const tab = el.closest("#tabs button");
-      if (tab instanceof HTMLElement) {
-        ui.tab = tab.dataset.tab || "";
-        ui.away = null;
-        if (ui.tab === "program") ui.planView = "routine";
-        window.scrollTo(0, 0);
-        render();
-        return;
-      }
-      if (el.id === "modal") {
-        if (ui.modal && ui.modal.dirty) {
-          toast(DIRTY_SAID);
-          return;
-        }
-        closeModal();
-        return;
-      }
-      const t4 = el.closest("[data-act]");
-      if (!(t4 instanceof HTMLElement || t4 instanceof SVGElement)) return;
-      const fn = ACT[t4.getAttribute("data-act") || ""];
-      if (fn) {
-        e5.preventDefault();
-        fn(t4);
-      }
-    });
-    document.addEventListener("keydown", (e5) => {
-      const el = e5.target;
-      if (e5.key === "Enter" && el instanceof Element && el.id === "qTxt") {
-        e5.preventDefault();
-        run("qFill");
-        return;
-      }
-      const g2 = el instanceof Element ? el.closest("g[data-act]") : null;
-      if (g2 && (e5.key === "Enter" || e5.key === " ")) {
-        e5.preventDefault();
-        g2.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      }
-    });
-    document.addEventListener("input", (e5) => {
-      const t4 = fieldOf(e5.target);
-      if (!t4) return;
-      const m3 = ui.modal;
-      if (m3 && FORM_SHEETS.has(m3.kind) && t4.closest("#modal")) m3.dirty = true;
-      if (t4.id === "incVal" && m3 && m3.kind === "inc") m3.typed = true;
-      if (workoutInput(t4)) return;
-      if (planInput(t4)) return;
-      if (t4.dataset.band) {
-        bandInput(t4);
-        return;
-      }
-      if (reportInput(t4)) return;
-      if (accountInput(t4)) return;
-      if (t4.dataset.ebind && m3 && m3.kind === "exEdit") {
-        if (t4 instanceof HTMLInputElement && t4.type === "checkbox") return;
-        editorSet(m3.e, t4.dataset.ebind, t4.value);
-        return;
-      }
-      const mb = t4.dataset.mbind;
-      if (mb && m3 && m3.kind === "picker") {
-        if (mb === "q") m3.q = t4.value;
-        else if (mb === "m") m3.m = t4.value;
-        renderModal();
-        const pl = document.getElementById("pickList");
-        if (pl) pl.scrollTop = 0;
-        return;
-      }
-    });
-    document.addEventListener("change", (e5) => {
-      const t4 = fieldOf(e5.target);
-      if (!t4) return;
-      const m3 = ui.modal;
-      if (m3 && FORM_SHEETS.has(m3.kind) && t4.closest("#modal")) m3.dirty = true;
-      if (reportChange(t4)) return;
-      if (picChange(t4)) return;
-      if (photoChange(t4)) return;
-      if (importChange(t4)) return;
-      if (planChange(t4)) return;
-      if (t4.dataset.gym) {
-        gymField(t4);
-        return;
-      }
-      if (todayChange(t4)) return;
-      if (t4.dataset.band) {
-        bandChange(t4);
-        return;
-      }
-      const k2 = t4.dataset.ebind;
-      if (k2 && m3 && m3.kind === "exEdit") {
-        const ed = m3.e;
-        const box3 = t4 instanceof HTMLInputElement && t4.type === "checkbox";
-        editorSet(ed, k2, box3 ? t4.checked : t4.value);
-        if (k2 === "primary") {
-          ed.secondary = ed.secondary.filter((x2) => x2 !== t4.value);
-          renderModal();
-        }
-        if (k2 === "bw") {
-          if (box3 && t4.checked && !ed.bwfRaw) ed.bwfRaw = String(Math.round(bwShare(ed) * PERCENT2));
-          renderModal();
-        }
-        if (k2 === "timed" || k2 === "equip" || k2 === "plates") renderModal();
-        return;
-      }
-      if (t4.dataset.mbind) return;
-      if (t4.dataset.pbind === "date" && m3 && m3.kind === "past") {
-        if (isDate(t4.value) && t4.value <= today()) m3.date = t4.value;
-        else toast("Pick today or an earlier date");
-        renderModal();
-        return;
-      }
-      if (workoutChange(t4)) return;
-      const b2 = t4.dataset.bind;
-      if (!b2) return;
-      const own2 = HISTORY_BINDS[b2] || SETTINGS_BINDS[b2] || PLAN_BINDS[b2] || DASH_BINDS[b2] || TODAY_BINDS[b2];
-      if (own2) {
-        own2(t4);
-        return;
-      }
-      if (b2 === "loadFill") run("loadAsk", { v: t4 instanceof HTMLInputElement && t4.checked ? "fill" : "grey" });
-    });
-    document.addEventListener(
-      "toggle",
-      (e5) => {
-        const el = e5.target;
-        if (!(el instanceof HTMLElement)) return;
-        if (el.classList.contains("more") && el instanceof HTMLDetailsElement && ui.modal) {
-          ui.modal.moreOpen = el.open;
-          return;
-        }
-        if (!(el instanceof HTMLDetailsElement) || !el.dataset.sk) return;
-        if (el.dataset.auto) delete el.dataset.auto;
-        else ui.folds[el.dataset.sk] = el.open;
-        if (el.open) chartsResize(el);
-      },
-      true
-    );
-    document.addEventListener("keydown", (e5) => {
-      const el = e5.target;
-      if (e5.key === "Enter" && el instanceof Element && el.id === "bwVal") {
-        e5.preventDefault();
-        run("addBW");
-        return;
-      }
-      if (workoutKey(e5)) return;
-      if (e5.key === "Escape" && ui.modal) {
-        if (ui.modal.dirty) toast(DIRTY_SAID);
-        else closeModal();
-        return;
-      }
-      if (e5.key !== "Tab" || !ui.modal) return;
-      const f3 = modalFocusables();
-      const first = f3[0], last = f3[f3.length - 1];
-      if (!first || !last) return;
-      const a2 = document.activeElement;
-      const box3 = document.getElementById("modal");
-      const outside = !box3 || !box3.contains(a2);
-      if (e5.shiftKey && (a2 === first || outside)) {
-        e5.preventDefault();
-        last.focus();
-      } else if (!e5.shiftKey && (a2 === last || outside)) {
-        e5.preventDefault();
-        first.focus();
-      }
-    });
+    document.addEventListener("click", onClick);
+    document.addEventListener("keydown", onActivateKey);
+    document.addEventListener("input", onInput);
+    document.addEventListener("change", onChange);
+    document.addEventListener("toggle", onToggle, true);
+    document.addEventListener("keydown", onKey);
   }
 
   // src/app/workdrag.ts
@@ -27916,32 +27969,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         view
       );
   }
-  function start() {
-    setRoot(renderInner);
-    setSheets(SHEETS, afterSheet2);
-    setFx({ render, rerenderKeepScroll, toast, undoToastHide, setSaveState, syncLine, obGate, ask });
-    storageStart();
-    syncStart();
-    viewStart();
-    updateStart();
-    accountStart();
-    pageListeners();
-    window.ironlogInstallReady = () => {
-      if (ui.tab === "today" || ui.tab === "settings") rerenderKeepScroll();
-    };
-    window.addEventListener("appinstalled", () => {
-      prefSet(APP_INSTALLED, "1");
-    });
-    window.ironlogLog = (area, e5) => log(area, e5);
-    tipsStart();
-    eventListeners();
-    workoutStart();
-    sectionsStart();
-    window.__onLib = (which) => {
-      if (which === "chart" && ui.tab === "dash" || which === "sortable" && ui.tab === "program")
-        rerenderKeepScroll();
-    };
-    trashTidy();
+  function oldLogFixes() {
     try {
       recordOldFloors();
     } catch (e5) {
@@ -27962,6 +27990,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     } catch (e5) {
       log("refit", e5);
     }
+  }
+  function exposeForTests() {
     window.__ironlog = {
       act,
       liftRead,
@@ -28330,6 +28360,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       blocks,
       stepLoad
     };
+  }
+  function firstDraw() {
     render();
     wakeOn();
     timerResume();
@@ -28349,6 +28381,36 @@ ${JSON.stringify(ctx, null, 1)}`;
         log("pics-read", e5);
       }
     );
+  }
+  function start() {
+    setRoot(renderInner);
+    setSheets(SHEETS, afterSheet2);
+    setFx({ render, rerenderKeepScroll, toast, undoToastHide, setSaveState, syncLine, obGate, ask });
+    storageStart();
+    syncStart();
+    viewStart();
+    updateStart();
+    accountStart();
+    pageListeners();
+    window.ironlogInstallReady = () => {
+      if (ui.tab === "today" || ui.tab === "settings") rerenderKeepScroll();
+    };
+    window.addEventListener("appinstalled", () => {
+      prefSet(APP_INSTALLED, "1");
+    });
+    window.ironlogLog = (area, e5) => log(area, e5);
+    tipsStart();
+    eventListeners();
+    workoutStart();
+    sectionsStart();
+    window.__onLib = (which) => {
+      if (which === "chart" && ui.tab === "dash" || which === "sortable" && ui.tab === "program")
+        rerenderKeepScroll();
+    };
+    trashTidy();
+    oldLogFixes();
+    exposeForTests();
+    firstDraw();
   }
   if (framed()) refuseFramed();
   else start();
