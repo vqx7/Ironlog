@@ -6406,6 +6406,53 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return sinceNew(all.filter((x2) => x2.date > d3.date));
     return sinceNew(all);
   }
+  function tallyIn(M3, ss, b2, ex, novel, T2) {
+    const { ws, wc, dm, dx, weekHard, wk, recentFrom } = T2;
+    const mus = [[ex.primary, 1], ...ex.secondary.map((m3) => [m3, HELPER_CREDIT])];
+    let n3 = 0, total = 0;
+    for (const s3 of b2.sets) {
+      if (!isWork(s3)) continue;
+      const logged2 = M3.s.settings.rirMode === "off" || !(s3.rir == null || String(s3.rir) === "");
+      if (ss.date >= recentFrom) {
+        total++;
+        if (logged2) n3++;
+      }
+      const hard = isHardIn(M3, s3, ex);
+      const cr = hard ? setCredit(s3) : hardCreditIn(M3, s3, ex);
+      if (!cr) continue;
+      const q = rirEffIn(M3, s3, ex);
+      weekHard[wk] = (weekHard[wk] || 0) + cr;
+      for (const [m3, f3] of mus) {
+        ws[m3] = (ws[m3] || 0) + f3 * cr;
+        if (logged2) wc[m3] = (wc[m3] || 0) + f3 * cr;
+        if (!hard) continue;
+        dm[m3] = (dm[m3] || 0) + f3 * cr;
+        const o3 = dx[m3] || (dx[m3] = { fail: 0, easy: 0, hard: 0, slow: false, novel: false });
+        o3.hard++;
+        if (q === 0) o3.fail++;
+        if (q != null && q >= RECOVERY_EASY_RIR) o3.easy++;
+        if (SLOW_RECOVERY.has(ex.id)) o3.slow = true;
+        if (novel) o3.novel = true;
+      }
+    }
+    return { logged: n3, total };
+  }
+  function trendReads(ex, atTop, pts) {
+    let tAdj = null, tRaw = null, topL = 0, rated = 0;
+    if (!noE1(ex)) {
+      const avg = (f3) => {
+        const v3 = atTop.map(f3).filter((x2) => x2 != null);
+        return v3.length ? v3.reduce((a2, b2) => a2 + b2, 0) / v3.length : null;
+      };
+      tAdj = avg((p3) => trendE(p3.load, p3.r, p3.rq));
+      tRaw = avg((p3) => trendE(p3.load, p3.r, 0));
+    }
+    for (const p3 of pts) {
+      if (p3.load > topL) topL = p3.load;
+      if (p3.rir != null) rated++;
+    }
+    return { tAdj, tRaw, topL, rated };
+  }
   function idxSessionsIn(M3, sessions) {
     const byEx = {}, sessVol = [], weekSets = {}, weekConf = {}, dayMus = {}, dayMeta2 = {}, weekHard = {};
     const recentFrom = addDays(M3.today(), -RECENT_DAYS);
@@ -6421,35 +6468,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       for (const b2 of sameExOnce(ss.ex)) {
         const ex = EXIn(M3, b2.exId);
         const novel = !seenEx.has(b2.exId);
-        const mus = [
-          [ex.primary, 1],
-          ...ex.secondary.map((m3) => [m3, HELPER_CREDIT])
-        ];
-        for (const s3 of b2.sets) {
-          if (!isWork(s3)) continue;
-          const logged2 = M3.s.settings.rirMode === "off" || !(s3.rir == null || String(s3.rir) === "");
-          if (ss.date >= recentFrom) {
-            rirTotal++;
-            if (logged2) rirLogged++;
-          }
-          const hard = isHardIn(M3, s3, ex);
-          const cr = hard ? setCredit(s3) : hardCreditIn(M3, s3, ex);
-          if (!cr) continue;
-          const q = rirEffIn(M3, s3, ex);
-          weekHard[wk] = (weekHard[wk] || 0) + cr;
-          for (const [m3, f3] of mus) {
-            ws[m3] = (ws[m3] || 0) + f3 * cr;
-            if (logged2) wc[m3] = (wc[m3] || 0) + f3 * cr;
-            if (!hard) continue;
-            dm[m3] = (dm[m3] || 0) + f3 * cr;
-            const o3 = dx[m3] || (dx[m3] = { fail: 0, easy: 0, hard: 0, slow: false, novel: false });
-            o3.hard++;
-            if (q === 0) o3.fail++;
-            if (q != null && q >= RECOVERY_EASY_RIR) o3.easy++;
-            if (SLOW_RECOVERY.has(ex.id)) o3.slow = true;
-            if (novel) o3.novel = true;
-          }
-        }
+        const rc = tallyIn(M3, ss, b2, ex, novel, { ws, wc, dm, dx, weekHard, wk, recentFrom });
+        rirLogged += rc.logged;
+        rirTotal += rc.total;
         seenEx.add(b2.exId);
         const work = b2.sets.filter(isWork);
         if (!work.length) continue;
@@ -6489,19 +6510,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
             }
           }
         const { pb, pbb } = prBestOf(ex, pts, nb);
-        let tAdj = null, tRaw = null, topL = 0, rated = 0;
-        if (!noE1(ex)) {
-          const avg = (f3) => {
-            const v4 = atTop.map(f3).filter((x2) => x2 != null);
-            return v4.length ? v4.reduce((a2, b3) => a2 + b3, 0) / v4.length : null;
-          };
-          tAdj = avg((p3) => trendE(p3.load, p3.r, p3.rq));
-          tRaw = avg((p3) => trendE(p3.load, p3.r, 0));
-        }
-        for (const p3 of pts) {
-          if (p3.load > topL) topL = p3.load;
-          if (p3.rir != null) rated++;
-        }
+        const { tAdj, tRaw, topL, rated } = trendReads(ex, atTop, pts);
         const v3 = ex && ex.timed ? 0 : work.reduce((a2, s3) => a2 + tonnageIn(M3, ex, s3, ss.date), 0);
         vol += v3;
         (byEx[b2.exId] || (byEx[b2.exId] = [])).push({
@@ -6665,6 +6674,30 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const q = s3.reduce((a2, b2) => b2.weeks < a2.weeks ? b2 : a2);
     return q.last ? `over the last ${q.weeks} weeks` : `over ${q.weeks} weeks`;
   }
+  function rirInTrendIn(M3, inRange) {
+    const recent = inRange.slice(-RIR_TREND.sessions);
+    const nPts = recent.reduce((a2, x2) => a2 + x2.pts.length, 0), nRated = recent.reduce((a2, x2) => a2 + x2.rated, 0);
+    const useAdj = M3.s.settings.rirMode !== "off" && nPts > 0 && nRated / nPts >= RIR_TREND.share;
+    return useAdj;
+  }
+  function stillTrainedIn(M3, id, exI, lastReal, winStart) {
+    return !!lastReal && lastReal.date >= winStart && !afterBreak(lastReal, M3.today()) && !exI.archived && M3.s.exercises.some((e5) => e5.id === id) && !exInjuryIn(M3, exI);
+  }
+  function stretchMoved(l4, offSince, listed) {
+    const z2 = l4[l4.length - 1], a0 = l4[0];
+    const same = l4.slice(0, -1).filter((x2) => Math.abs(x2.topW - z2.topW) < EPS_SAME && x2.topN >= z2.topN);
+    return l4.slice(-STALL.noProgress).some((x2) => x2.progress) || offSince(l4[l4.length - STALL.noProgress].date).some(listed) || z2.topL > a0.topL + EPS_SAME || z2.topW > a0.topW + EPS_SAME || same.length > 0 && z2.topReps > Math.max(...same.map((x2) => x2.topReps));
+  }
+  function otherRangesIn(M3, exI, scopes, sc, falling) {
+    const holdRR = [], quietRR = [];
+    if (falling)
+      for (const q of scopes.slice(1)) {
+        const o3 = q.rr ? liftTrendIn(M3, exI, trendW({ inRange: q.inR, exWin: sc.exWin })) : null;
+        if (q.rr && o3 && o3.pct == null) quietRR.push(q.rr);
+        else if (q.rr && o3 && !o3.falling) holdRR.push(q.rr);
+      }
+    return { holdRR, quietRR };
+  }
   function idxLiftIn(M3, id, exps, maxBest, anchor, winStart, prs) {
     const sc = trendScope(exps, anchor);
     const { real, curRR, inRange, lastReal } = sc;
@@ -6673,12 +6706,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const plC = basePlanIn(M3, id);
     const capL = lastReal ? capOfIn(M3, exI, plC, lastReal.topW) : null;
     const capped = !!lastReal && atCapOfIn(M3, exI, plC, lastReal.topW, capL);
-    const recent = inRange.slice(-RIR_TREND.sessions);
-    const nPts = recent.reduce((a2, x2) => a2 + x2.pts.length, 0), nRated = recent.reduce((a2, x2) => a2 + x2.rated, 0);
-    const useAdj = M3.s.settings.rirMode !== "off" && nPts > 0 && nRated / nPts >= RIR_TREND.share;
+    const useAdj = rirInTrendIn(M3, inRange);
     for (const x2 of exps) x2.tv = useAdj ? x2.tAdj : x2.tRaw;
     let stalled = false;
-    const current = !!lastReal && lastReal.date >= winStart && !afterBreak(lastReal, M3.today()) && !exI.archived && M3.s.exercises.some((e5) => e5.id === id) && !exInjuryIn(M3, exI);
+    const current = stillTrainedIn(M3, id, exI, lastReal, winStart);
     const listed = (x2) => prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === id);
     const stalledIn = (rr, all) => {
       const inR = all.filter((x2) => !x2.held);
@@ -6686,9 +6717,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const offSince = (from) => cur.filter((x2) => (lighter(x2) || x2.held) && sameRR(x2.rr, rr) && x2.date >= from);
       const l4 = stallStretch(withE1);
       if (l4) {
-        const z2 = l4[l4.length - 1], a0 = l4[0];
-        const same = l4.slice(0, -1).filter((x2) => Math.abs(x2.topW - z2.topW) < EPS_SAME && x2.topN >= z2.topN);
-        const moved = l4.slice(-STALL.noProgress).some((x2) => x2.progress) || offSince(l4[l4.length - STALL.noProgress].date).some(listed) || z2.topL > a0.topL + EPS_SAME || z2.topW > a0.topW + EPS_SAME || same.length > 0 && z2.topReps > Math.max(...same.map((x2) => x2.topReps));
+        const moved = stretchMoved(l4, offSince, listed);
         const sen = (() => {
           const a2 = [];
           for (let i5 = 0; i5 < l4.length; i5++)
@@ -6709,13 +6738,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const { pct, slope, slopeSe, moving, pLo, pHi, spanW, loadUp } = t4;
     const scopes = stallScopesIn(M3, id, sc);
     const rrIn = scopes.length > 1 ? curRR : null;
-    const holdRR = [], quietRR = [];
-    if (t4.falling)
-      for (const q of scopes.slice(1)) {
-        const o3 = q.rr ? liftTrendIn(M3, exI, trendW({ inRange: q.inR, exWin: sc.exWin })) : null;
-        if (q.rr && o3 && o3.pct == null) quietRR.push(q.rr);
-        else if (q.rr && o3 && !o3.falling) holdRR.push(q.rr);
-      }
+    const { holdRR, quietRR } = otherRangesIn(M3, exI, scopes, sc, t4.falling);
     const falling = t4.falling && !holdRR.length && !quietRR.length;
     let easier = null;
     if (inRange.length >= DRIFT_N) {
@@ -9284,9 +9307,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const lw = atLoad(x2.pts, x2.topW);
     return lw.length > 0 && lw.every((q) => q.r >= top);
   }
-  function coachIn(M3) {
-    const I2 = IDXIn(M3);
-    const R2 = activeRoutineIn(M3);
+  function quietWeekIn(M3) {
     if (!M3.s.sessions.length)
       return { tone: "blue", text: "Log your first session. Advice starts after a few sessions.", act: null };
     if (isRestWeekIn(M3, weekStart(M3.today())))
@@ -9303,6 +9324,74 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         why: `Half the sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR} or more reps in reserve. Your targets pick up where they were.`,
         act: null
       };
+    return null;
+  }
+  function shortfallLineIn(M3, R2, avg, under, liftFor) {
+    const per = plannedPerWeek(R2);
+    if (under.length && !freeModeIn(M3) && per > 0 && Math.round(avg._sess) < per)
+      return {
+        tone: "yellow",
+        text: `You made ${r1(avg._sess)} of ${per} planned sessions a week. Getting them in matters more than adding sets.`,
+        why: `Your plan's sets assume every planned session is done; over your recent full weeks you made ${r1(avg._sess)} a week of the ${per} it plans. A routine with fewer days fits fewer sessions.`,
+        act: null
+      };
+    if (under.length) {
+      const u4 = under[0];
+      const gap = Math.max(1, Math.ceil(u4.lo - u4.got));
+      const exId = liftFor(u4.m).id;
+      const planned = plannedSetsIn(M3, R2)[u4.m] || 0;
+      const rpe = effScale(M3.s.settings.rirScale) === "rpe";
+      const hard = rpe ? "RPE 7 or harder" : "3 or fewer reps in reserve", easy = rpe ? "at RPE 6 or easier" : "with 4 or more in reserve";
+      if (!freeModeIn(M3) && !belowMin(planned, u4.lo))
+        return {
+          tone: "yellow",
+          text: `${ML[u4.m]}: ${r1(u4.got)} hard set${r1(u4.got) === 1 ? "" : "s"} a week, target ${u4.lo}-${u4.hi}. Your plan has ${r1(planned)}: do every planned set${M3.s.settings.rirMode === "off" ? "" : `, to ${hard}`}.${under.length > 1 ? ` ${under.length - 1} more below target.` : ""}`,
+          why: `Your average of hard sets per week over your recent full weeks. Your plan already reaches the target, so the gap is in how the sets are done, not how many are planned: ${M3.s.settings.rirMode === "off" ? "a planned set skipped does not count." : `a set counts as hard at ${hard}, so a planned set skipped, or ended ${easy} (as a lift's first sessions are while its load is found), does not.`}`,
+          act: { label: `See ${ML[u4.m]}`, sec: "volume", m: u4.m }
+        };
+      const how = exId ? `Add ${gap} set${gap > 1 ? "s" : ""} a week to ${exNameIn(M3, exId)}.` : "Add an exercise for it.";
+      return {
+        tone: "yellow",
+        text: `${ML[u4.m]}: ${r1(u4.got)} hard set${r1(u4.got) === 1 ? "" : "s"} a week, target ${u4.lo}-${u4.hi}. ${how}${under.length > 1 ? ` ${under.length - 1} more below target.` : ""}`,
+        why: `Your average of hard sets per week over your recent full weeks. The largest shortfall comes first, and priority muscles before the rest.${exId ? "" : " Nothing in your routine trains it directly."}`,
+        act: { label: `See ${ML[u4.m]}`, sec: "volume", m: u4.m }
+      };
+    }
+    return null;
+  }
+  function lastWordIn(M3, I2, avg, mst, inj) {
+    const lag = I2.scores.filter((x2) => x2.clear && x2.score <= -GROW_PCT);
+    if (lag.length) {
+      const x2 = lag[lag.length - 1];
+      return {
+        tone: "yellow",
+        text: `${ML[x2.m]} strength is falling over ${x2.wk || TREND_WEEKS} weeks. Check sleep and recovery before adding sets.`,
+        act: { label: `See ${ML[x2.m]}`, sec: "rank", m: x2.m }
+      };
+    }
+    if (!avg) {
+      const w2 = avgWaitIn(M3);
+      const text = `${w2.lead}Volume advice ${w2.kind === "back" ? "comes back" : "appears here"} after ${w2.after}.`;
+      return w2.kind === "second" ? { tone: "blue", text, why: w2.why, wait: true, act: null } : { tone: "blue", text, wait: true, act: null };
+    }
+    const onPlan = mst ? MK.filter((m3) => !inj.has(m3) && mst[m3].st === "plan") : [];
+    if (onPlan.length)
+      return {
+        tone: "green",
+        text: "Every muscle on plan, nothing stalled.",
+        why: `Under the minimum over these weeks, on plan: ${andList(
+          onPlan.map((m3) => ML[m3]),
+          ON_PLAN_SHOWN
+        )}. ${ON_PLAN_TIP}`,
+        act: null
+      };
+    return { tone: "green", text: "Every muscle at target, nothing stalled.", act: null };
+  }
+  function coachIn(M3) {
+    const I2 = IDXIn(M3);
+    const R2 = activeRoutineIn(M3);
+    const quiet = quietWeekIn(M3);
+    if (quiet) return quiet;
     const stalled = stalledIdsIn(M3);
     const rl = recentLighterIn(M3, DELOAD_GAP_DAYS);
     const big = fatigueStallsIn(M3, stalled);
@@ -9353,36 +9442,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         pri: M3.s.settings.priorities.includes(m3) ? 1 : 0,
         lag: lagSet.has(m3) ? 1 : 0
       })).sort((a2, b2) => b2.pri - a2.pri || b2.lag - a2.lag || b2.lo - b2.got - (a2.lo - a2.got) || a2.got / a2.lo - b2.got / b2.lo);
-      const per = plannedPerWeek(R2);
-      if (under.length && !freeModeIn(M3) && per > 0 && Math.round(avg._sess) < per)
-        return {
-          tone: "yellow",
-          text: `You made ${r1(avg._sess)} of ${per} planned sessions a week. Getting them in matters more than adding sets.`,
-          why: `Your plan's sets assume every planned session is done; over your recent full weeks you made ${r1(avg._sess)} a week of the ${per} it plans. A routine with fewer days fits fewer sessions.`,
-          act: null
-        };
-      if (under.length) {
-        const u4 = under[0];
-        const gap = Math.max(1, Math.ceil(u4.lo - u4.got));
-        const exId = liftFor(u4.m).id;
-        const planned = plannedSetsIn(M3, R2)[u4.m] || 0;
-        const rpe = effScale(M3.s.settings.rirScale) === "rpe";
-        const hard = rpe ? "RPE 7 or harder" : "3 or fewer reps in reserve", easy = rpe ? "at RPE 6 or easier" : "with 4 or more in reserve";
-        if (!freeModeIn(M3) && !belowMin(planned, u4.lo))
-          return {
-            tone: "yellow",
-            text: `${ML[u4.m]}: ${r1(u4.got)} hard set${r1(u4.got) === 1 ? "" : "s"} a week, target ${u4.lo}-${u4.hi}. Your plan has ${r1(planned)}: do every planned set${M3.s.settings.rirMode === "off" ? "" : `, to ${hard}`}.${under.length > 1 ? ` ${under.length - 1} more below target.` : ""}`,
-            why: `Your average of hard sets per week over your recent full weeks. Your plan already reaches the target, so the gap is in how the sets are done, not how many are planned: ${M3.s.settings.rirMode === "off" ? "a planned set skipped does not count." : `a set counts as hard at ${hard}, so a planned set skipped, or ended ${easy} (as a lift's first sessions are while its load is found), does not.`}`,
-            act: { label: `See ${ML[u4.m]}`, sec: "volume", m: u4.m }
-          };
-        const how = exId ? `Add ${gap} set${gap > 1 ? "s" : ""} a week to ${exNameIn(M3, exId)}.` : "Add an exercise for it.";
-        return {
-          tone: "yellow",
-          text: `${ML[u4.m]}: ${r1(u4.got)} hard set${r1(u4.got) === 1 ? "" : "s"} a week, target ${u4.lo}-${u4.hi}. ${how}${under.length > 1 ? ` ${under.length - 1} more below target.` : ""}`,
-          why: `Your average of hard sets per week over your recent full weeks. The largest shortfall comes first, and priority muscles before the rest.${exId ? "" : " Nothing in your routine trains it directly."}`,
-          act: { label: `See ${ML[u4.m]}`, sec: "volume", m: u4.m }
-        };
-      }
+      const line = shortfallLineIn(M3, R2, avg, under, liftFor);
+      if (line) return line;
     }
     if (stalled.length) {
       const id = stalled[0];
@@ -9402,32 +9463,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         act: { label: "See the lift", sec: "exercise", ex: id }
       };
     }
-    const lag = I2.scores.filter((x2) => x2.clear && x2.score <= -GROW_PCT);
-    if (lag.length) {
-      const x2 = lag[lag.length - 1];
-      return {
-        tone: "yellow",
-        text: `${ML[x2.m]} strength is falling over ${x2.wk || TREND_WEEKS} weeks. Check sleep and recovery before adding sets.`,
-        act: { label: `See ${ML[x2.m]}`, sec: "rank", m: x2.m }
-      };
-    }
-    if (!avg) {
-      const w2 = avgWaitIn(M3);
-      const text = `${w2.lead}Volume advice ${w2.kind === "back" ? "comes back" : "appears here"} after ${w2.after}.`;
-      return w2.kind === "second" ? { tone: "blue", text, why: w2.why, wait: true, act: null } : { tone: "blue", text, wait: true, act: null };
-    }
-    const onPlan = mst ? MK.filter((m3) => !inj.has(m3) && mst[m3].st === "plan") : [];
-    if (onPlan.length)
-      return {
-        tone: "green",
-        text: "Every muscle on plan, nothing stalled.",
-        why: `Under the minimum over these weeks, on plan: ${andList(
-          onPlan.map((m3) => ML[m3]),
-          ON_PLAN_SHOWN
-        )}. ${ON_PLAN_TIP}`,
-        act: null
-      };
-    return { tone: "green", text: "Every muscle at target, nothing stalled.", act: null };
+    return lastWordIn(M3, I2, avg, mst, inj);
   }
   function musTrend(sc) {
     if (!sc.clear)
@@ -10562,10 +10598,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     clearTimer(cloud.t);
     cloud.t = setTimeout(() => cq(cloudFlush), SYNC_MS.flush);
   }
-  async function cloudFlush() {
-    if (!cloud.on) return;
-    if (!pulled) return cloudPull();
-    if (trackT || cloud.pendAt) trackEdits();
+  function changedDocs() {
     const ch = chunksOf(state);
     const ids = /* @__PURE__ */ new Set([...Object.keys(ch), ...Object.keys(cloud.meta)]);
     const todo = [];
@@ -10584,6 +10617,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!m3 || m3.h !== h3) todo.push({ id, json, h: h3 });
     }
     if (backfilled) saveMeta();
+    return todo;
+  }
+  function tooBigSaid(tooBig) {
+    return tooBig.includes("core") ? "Routines and settings are too large to sync. Export a backup." : tooBig.some((i5) => i5.startsWith("b-")) ? "A year of body data is too large to sync. Export a backup." : tooBig.includes("draft") ? "The workout in progress is too large to sync. Export a backup." : "One month of sessions is too large to sync. Export a backup.";
+  }
+  async function cloudFlush() {
+    if (!cloud.on) return;
+    if (!pulled) return cloudPull();
+    if (trackT || cloud.pendAt) trackEdits();
+    const todo = changedDocs();
     todo.sort((a2, b2) => +(a2.id === "draft") - +(b2.id === "draft"));
     if (!todo.length) {
       if (cloud.status !== "synced") {
@@ -10703,10 +10746,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (moreBody2 || again) cloudSoon();
       if (tooBig.length) {
         saveMeta();
-        setCloud(
-          "offline",
-          tooBig.includes("core") ? "Routines and settings are too large to sync. Export a backup." : tooBig.some((i5) => i5.startsWith("b-")) ? "A year of body data is too large to sync. Export a backup." : tooBig.includes("draft") ? "The workout in progress is too large to sync. Export a backup." : "One month of sessions is too large to sync. Export a backup."
-        );
+        setCloud("offline", tooBigSaid(tooBig));
         return;
       }
       cloud.last = Date.now();
@@ -10716,6 +10756,90 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       log("sync-flush", e5);
       cloudFail(e5);
     }
+  }
+  function remoteDocs(docs) {
+    const remote = {};
+    for (const d3 of docs) {
+      if (!d3.exists || !isChunkId(d3.id)) continue;
+      const b2 = rec(d3.data());
+      ownWrite(d3.id, b2);
+      if (!b2 || typeof b2.json !== "string") continue;
+      try {
+        remote[d3.id] = {
+          at: Number(b2.at) || 0,
+          et: Number(b2.et) || Number(b2.at) || 0,
+          data: parseJson(b2.json),
+          h: hashStr(b2.json)
+        };
+      } catch (e5) {
+        log("sync-parse", e5);
+      }
+    }
+    return remote;
+  }
+  function mergeFirstLink(mine, rState, rids, remote) {
+    const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
+    const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
+    const kept = aside ? draftSession(aside) : null;
+    const keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some((x2) => x2.id === kept.id);
+    setState(
+      normalize({
+        ...base,
+        exercises: unionById(base.exercises, other.exercises),
+        routines: unionById(base.routines, other.routines),
+        sessions: unionById(mine.sessions, keptDraft && kept ? [...rState.sessions, kept] : rState.sessions),
+        bodyweights: unionById(mine.bodyweights, rState.bodyweights),
+        measurements: unionById(mine.measurements, rState.measurements),
+        cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio),
+        trash: unionById(arr(state.trash) || [], arr(rState.trash) || []),
+        draft: state.draft || rState.draft
+      })
+    );
+    for (const id of rids) {
+      cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
+      cloud.editAt[id] = Date.now();
+    }
+    return keptDraft;
+  }
+  function mergeChanged(local, remote, rids, legB, stat, adoptedIds, leg) {
+    let parts = { ...local };
+    let draftIn = false, draftMerged = false, draftRemoteWins = false;
+    let any = false;
+    for (const id of rids) {
+      const r4 = remote[id], m3 = cloud.meta[id];
+      if (m3 && r4.h === m3.h) continue;
+      if (id === "draft") draftIn = true;
+      const lJson = JSON.stringify(local[id] || emptyChunk(id));
+      const localDirty = !m3 || hashStr(lJson) !== m3.h;
+      if (!localDirty) {
+        parts[id] = rec(r4.data);
+        adoptedIds.add(id);
+        any = true;
+        continue;
+      }
+      if (id === "draft") {
+        draftMerged = true;
+        draftRemoteWins = r4.et > (cloud.editAt[id] || 0);
+      }
+      if (id === "core") {
+        const L2 = legacyBody(rec(r4.data));
+        leg.bodyweights.push(...L2.bodyweights);
+        leg.measurements.push(...L2.measurements);
+      }
+      parts[id] = mergeChunk(
+        id,
+        baseFor(id, m3, legB),
+        local[id] || emptyChunk(id),
+        r4.data,
+        r4.et > (cloud.editAt[id] || 0),
+        stat
+      );
+      cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, r4.et);
+      cloud.meta[id] = { h: r4.h, at: r4.at, b: baseOf(id, r4.data) };
+      any = true;
+    }
+    if (!any) parts = null;
+    return { parts, draftIn, draftMerged, draftRemoteWins };
   }
   async function cloudPull() {
     if (!cloud.on || !cloud.db) return;
@@ -10737,23 +10861,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     pulled = true;
     const ph = snap.docs.find((x2) => x2.id === PHOTO_DOC && x2.exists);
     await photoReconcile(ph ? rec(ph.data()) : null);
-    const remote = {};
-    for (const d3 of snap.docs) {
-      if (!d3.exists || !isChunkId(d3.id)) continue;
-      const b2 = rec(d3.data());
-      ownWrite(d3.id, b2);
-      if (!b2 || typeof b2.json !== "string") continue;
-      try {
-        remote[d3.id] = {
-          at: Number(b2.at) || 0,
-          et: Number(b2.et) || Number(b2.at) || 0,
-          data: parseJson(b2.json),
-          h: hashStr(b2.json)
-        };
-      } catch (e5) {
-        log("sync-parse", e5);
-      }
-    }
+    const remote = remoteDocs(snap.docs);
     const rids = Object.keys(remote);
     if (!rids.length) {
       if (!Object.keys(cloud.meta).length && hasDemo(state)) {
@@ -10785,65 +10893,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         rids.forEach((k2) => adoptedIds.add(k2));
       } else {
         merged = true;
-        const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
-        const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
-        const kept2 = aside ? draftSession(aside) : null;
-        keptDraft = !!kept2 && ![...mine.sessions, ...rState.sessions].some((x2) => x2.id === kept2.id);
-        setState(
-          normalize({
-            ...base,
-            exercises: unionById(base.exercises, other.exercises),
-            routines: unionById(base.routines, other.routines),
-            sessions: unionById(mine.sessions, keptDraft && kept2 ? [...rState.sessions, kept2] : rState.sessions),
-            bodyweights: unionById(mine.bodyweights, rState.bodyweights),
-            measurements: unionById(mine.measurements, rState.measurements),
-            cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio),
-            trash: unionById(arr(state.trash) || [], arr(rState.trash) || []),
-            draft: state.draft || rState.draft
-          })
-        );
-        for (const id of rids) {
-          cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
-          cloud.editAt[id] = Date.now();
-        }
+        keptDraft = mergeFirstLink(mine, rState, rids, remote);
       }
     } else {
-      parts = { ...local };
-      let any = false;
-      for (const id of rids) {
-        const r4 = remote[id], m3 = cloud.meta[id];
-        if (m3 && r4.h === m3.h) continue;
-        if (id === "draft") draftIn = true;
-        const lJson = JSON.stringify(local[id] || emptyChunk(id));
-        const localDirty = !m3 || hashStr(lJson) !== m3.h;
-        if (!localDirty) {
-          parts[id] = rec(r4.data);
-          adoptedIds.add(id);
-          any = true;
-          continue;
-        }
-        if (id === "draft") {
-          draftMerged = true;
-          draftRemoteWins = r4.et > (cloud.editAt[id] || 0);
-        }
-        if (id === "core") {
-          const L2 = legacyBody(rec(r4.data));
-          leg.bodyweights.push(...L2.bodyweights);
-          leg.measurements.push(...L2.measurements);
-        }
-        parts[id] = mergeChunk(
-          id,
-          baseFor(id, m3, legB),
-          local[id] || emptyChunk(id),
-          r4.data,
-          r4.et > (cloud.editAt[id] || 0),
-          stat
-        );
-        cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, r4.et);
-        cloud.meta[id] = { h: r4.h, at: r4.at, b: baseOf(id, r4.data) };
-        any = true;
-      }
-      if (!any) parts = null;
+      const got = mergeChanged(local, remote, rids, legB, stat, adoptedIds, leg);
+      parts = got.parts;
+      draftIn = got.draftIn;
+      draftMerged = got.draftMerged;
+      draftRemoteWins = got.draftRemoteWins;
     }
     const dr0 = state.draft;
     let kept = null, lost = null;
