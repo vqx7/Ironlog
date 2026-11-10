@@ -86,7 +86,7 @@ import { effName, effShow, halfLbl, rirScale } from './effort';
 import { canInstallHere, coarse, installKind, isStandalone } from './env';
 import { drawScreen, fieldValue, howText, labelTip, pageTitle, placed, section, tabFoot, tipButton } from './view';
 import type { Field } from './view';
-import type { DbRack, Gym, MuscleKey, PlanItem, Profile, Routine } from './types';
+import type { DbRack, Gym, MuscleKey, PlanItem, Profile, Routine, Settings } from './types';
 
 /** The example dumbbell rack Your gym's fields show, per unit: from, to, a step, and a finer step up to a weight. */
 const DB_EXAMPLE = {
@@ -731,6 +731,204 @@ function dataBody(): TemplateResult {
 
 /* ---------- the screen ---------- */
 
+/** Measurements: units, the bodyweight goal and the weigh-in reminder. */
+function measurementsBody(s: Settings): TemplateResult {
+  return html`<div class="card stack">
+<label class="field">Units<select data-bind="unit">
+<option value="lb" .selected=${live(s.unit === 'lb')}>lb and inches</option>
+<option value="kg" .selected=${live(s.unit === 'kg')}>kg and cm</option>
+</select></label>
+<div class="grid2 one-narrow">
+<label class="field">${labelTip(
+    'lt-bwGoalPct',
+    'Bodyweight goal (%/wk)',
+    'Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target.'
+  )}<input type="text" inputmode="decimal" data-bind="bwGoalPct" aria-labelledby="lt-bwGoalPct" .value=${fieldValue(s.bwGoalPct == null ? '' : String(s.bwGoalPct))} placeholder="e.g. 0.3 or -0.5"/></label> <label class="field">${labelTip(
+    'lt-bwEvery',
+    'Weigh-in reminder',
+    'A card on Today asks for your bodyweight when the last weigh-in is this old. Pull-ups, dips, and other bodyweight lifts use your latest weigh-in.'
+  )}<select data-bind="bwEvery" aria-labelledby="lt-bwEvery">${BW_EVERY.map(
+    ([v, l]) => html`<option value=${String(v)} .selected=${live(bwEvery() === v)}>${l}</option>
+`
+  )}</select></label>
+</div>
+${bwSettings()}
+</div>
+`;
+}
+
+/** Appearance: the theme and the accent colour. */
+function appearanceBody(s: Settings): TemplateResult {
+  return html`<div class="card stack">
+<label class="field">Theme<select data-bind="theme">
+<option value="system" .selected=${live(s.theme === 'system')}>Match device</option>
+<option value="dark" .selected=${live(s.theme === 'dark')}>Dark</option>
+<option value="light" .selected=${live(s.theme === 'light')}>Light</option>
+</select></label>
+<div>
+<p class="small muted u-m0-0-6_fw600">Accent colour</p>
+<div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
+    ([k, l]) =>
+      html`<button class=${(s.accent || ACCENT0) === k ? 'chip acc on' : 'chip acc'} data-act="accent" data-v=${k} aria-pressed=${String((s.accent || ACCENT0) === k)}><i class=${`sw sw-${k}`} aria-hidden="true"></i>${l}</button>`
+  )}</div>
+</div>
+</div>
+`;
+}
+
+/** Rest timer and logging: the timer, auto-mark, loads filled in, how Today starts, adjusting the next sets and keeping the screen on. */
+function timerBody(s: Settings): TemplateResult {
+  return html` <div class="card stack">
+<label class="field">${labelTip(
+    'lt-timerMode',
+    'Rest timer',
+    'Auto starts the timer when a set is marked done. Manual starts it from Rest on the exercise.'
+  )}<select data-bind="timerMode" aria-labelledby="lt-timerMode">
+<option value="auto" .selected=${live(s.timerMode === 'auto')}>Auto, after each set</option>
+<option value="manual" .selected=${live(s.timerMode === 'manual')}>Manual, from Rest</option>
+<option value="off" .selected=${live(s.timerMode === 'off')}>Off</option>
+</select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${live(!!s.timerSound)} ?disabled=${s.timerMode === 'off'}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${live(!!s.timerCompact)} ?disabled=${s.timerMode === 'off'}/>${labelTip(
+    'lt-timerCompact',
+    'Compact timer',
+    'A small pill in the corner instead of the rest card above the tabs.'
+  )}</label> <label class="check-inline"><input type="checkbox" data-bind="autoDone" aria-labelledby="lt-autoDone" .checked=${live(!!s.autoDone)}/>${labelTip(
+    'lt-autoDone',
+    'Auto-mark a set done after its reps',
+    'A mistyped rep count is then saved without a tap to confirm, so check the row. A tap on the checkmark right after only confirms it; tap again to undo.'
+  )}</label> <label class="check-inline"><input type="checkbox" data-bind="loadFill" aria-labelledby="lt-loadFill" .checked=${live(s.loadFill === 'fill')}/>${labelTip(
+    'lt-loadFill',
+    'Fill in suggested loads',
+    "Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row for you. Either way, a load you type is never changed."
+  )}</label> <label class="field">${labelTip(
+    'lt-todayStart',
+    'Today starts with',
+    "Blank: Today opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history."
+  )}<select data-bind="todayStart" aria-labelledby="lt-todayStart">
+<option value="plan" .selected=${live(s.todayStart !== 'free')}>My plan's day</option>
+<option value="free" .selected=${live(s.todayStart === 'free')}>A blank session (freestyle)</option>
+</select></label> <label class="check-inline"><input type="checkbox" data-bind="autoAdj" aria-labelledby="lt-autoAdj" .checked=${live(adjOn())}/>${labelTip(
+    'lt-autoAdj',
+    'Adjust the next sets from the last one',
+    "After a set clearly easier or harder than planned, the rest of that exercise's sets move up or down, unless you typed their weight. A line says why; Keep puts it back. Up: 2+ reps in reserve over your target, or 2+ past the top of the range. Down: 2+ under the range. A rep or two lost per set is normal."
+  )}</label> <label class="check-inline"><input type="checkbox" data-bind="wakeLock" aria-labelledby="lt-wakeLock" .checked=${live(!!s.wakeLock)}/>${labelTip(
+    'lt-wakeLock',
+    'Keep the screen on during a session',
+    'A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost.'
+  )}</label>
+</div>
+`;
+}
+
+/** Priority muscles: a chip for each muscle. */
+function priorityBody(s: Settings): TemplateResult {
+  return html`${howText('prio', 'Flagged as Your priority under Muscles in Stats, and favoured by Pick for me.')}
+<div class="card chips">${MUSCLES.map(
+    ([k, l]) =>
+      html`<button class=${s.priorities.includes(k) ? 'chip on' : 'chip'} data-act="prio" data-m=${k}>${l}</button>`
+  )}</div>
+`;
+}
+
+/** Weekly set targets: each muscle's minimum and maximum, or tracked only, and Default targets. */
+function bandsBody(s: Settings): TemplateResult {
+  return html`${howText(
+    'bands',
+    'Fractional hard sets per week: direct work 1, helper muscles 0.5. 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a rule of thumb, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back.'
+  )}
+<div class="card">
+<table class="t">
+<tbody>
+<tr>
+<th>Muscle</th>
+<th class="r">Min</th>
+<th class="r">Max</th>
+</tr>
+${MUSCLES.map(([k, l]) =>
+  /* A muscle with no target (339 e, r58) offers one; one the lifter gave a
+     target (not by default and not a focus, which Your training sets) can go
+     back to tracked only. */
+  !hasTarget(k)
+    ? html`<tr>
+<td>${l}</td>
+<td class="r" colspan="2"><span class="small muted">Tracked only</span> <button type="button" class="btn sm" data-act="tgtSet" data-m=${k}>Set a target</button></td>
+</tr>
+`
+    : html`<tr>
+<td>${l}${TARGETED.has(k) || (prof().focus || []).includes(k) ? nothing : html`<br><button type="button" class="linkbtn tall" data-act="tgtOff" data-m=${k}>Track only</button>`}</td>
+<td class="r"><input class="u-w70" type="text" inputmode="numeric" aria-label=${`${l} minimum hard sets a week`} data-band=${k} data-bi="0" .value=${fieldValue(String(s.bands[k][0]))}/></td>
+<td class="r"><input class="u-w70" type="text" inputmode="numeric" aria-label=${`${l} maximum hard sets a week`} data-band=${k} data-bi="1" .value=${fieldValue(String(s.bands[k][1]))}/></td>
+</tr>
+`
+)}</tbody>
+</table>
+<div class="row u-mt8"><button class="btn sm" data-act="bandsDefault" ?disabled=${
+    MK.every(m => {
+      const d = defBand(m);
+      return s.bands[m][0] === d[0] && s.bands[m][1] === d[1];
+    }) &&
+    !s.bandsFit &&
+    !s.ownTargets
+  }>Default targets</button></div>
+</div>
+`;
+}
+
+/** Help: the Guide, Report a problem and, for the reader of reports, their inbox. */
+function helpBody(): TemplateResult {
+  return html`<div class="card stack">
+<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? html`<button class="btn" data-act="fbInbox">Reports inbox</button>` : nothing}</div>
+</div>
+`;
+}
+
+/** More: demo data, the version with the error log, the licenses in the installed app, and Erase everything. */
+function moreBody(hasDemo: boolean): TemplateResult {
+  return html`<div class="card stack">
+<div>
+<p class="small u-m0-0-6"><b>Demo data</b> ${tipButton(
+    `${DEMO_WEEKS} weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.`,
+    'About demo data'
+  )}</p>
+<div class="row">${
+    hasDemo
+      ? html`<button class="btn" data-act="demoClear">Clear demo data</button>`
+      : html`<button class="btn" data-act="demoLoad">Load demo data</button>`
+  }</div>
+</div>
+<div>
+<p class="small u-m0-0-6"><b>Version</b> ${VERSION_LINE}${
+    logBuf.length
+      ? html` <span class="muted">· cloud ${cloud.on ? cloud.status : 'off'} · ${logBuf.length} logged error${logBuf.length === 1 ? '' : 's'}</span>`
+      : nothing
+  }</p>
+${
+  logBuf.length
+    ? html`<ul class="clist">${logBuf
+        .slice(-LOG_SHOWN)
+        .reverse()
+        .map(
+          x =>
+            html`<li><span class="small"><b>${x.a}</b> ${x.m}${x.n ? ` (${x.n} times)` : ''}</span><span class="small muted">${stampShort(x.t)}</span></li>
+`
+        )}</ul>
+`
+    : nothing
+}${
+    logBuf.length
+      ? html`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>
+`
+      : nothing
+  }${
+    window.IRONLOG_APP
+      ? html`<p class="small u-m8-0-0"><a href="LICENSES.txt" target="_blank" rel="noopener" class="u-diflex_aicenter_minh44">Open-source licenses</a></p>
+`
+      : nothing
+  }</div>
+<div><button class="btn danger" data-act="resetAll">Erase everything</button></div>
+</div>
+`;
+}
+
 /** Settings, as a template of the log and `ui`. */
 export function viewSettings(): TemplateResult {
   const s = state.settings;
@@ -762,52 +960,12 @@ export function viewSettings(): TemplateResult {
     /* Measurements and Appearance (2.34, from an Android user via V: "Split general settings into measurements v
        appearance"): what was one General section, its key kept for Measurements so a saved order and fold stay
        with the units, and Appearance new beside it (orderKeys slots a new key after the one before it in code). */
-    G(
-      'general',
-      'Measurements',
-      `${s.unit === 'kg' ? 'kg, cm' : 'lb, in'}`,
-      html`<div class="card stack">
-<label class="field">Units<select data-bind="unit">
-<option value="lb" .selected=${live(s.unit === 'lb')}>lb and inches</option>
-<option value="kg" .selected=${live(s.unit === 'kg')}>kg and cm</option>
-</select></label>
-<div class="grid2 one-narrow">
-<label class="field">${labelTip(
-        'lt-bwGoalPct',
-        'Bodyweight goal (%/wk)',
-        'Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target.'
-      )}<input type="text" inputmode="decimal" data-bind="bwGoalPct" aria-labelledby="lt-bwGoalPct" .value=${fieldValue(s.bwGoalPct == null ? '' : String(s.bwGoalPct))} placeholder="e.g. 0.3 or -0.5"/></label> <label class="field">${labelTip(
-        'lt-bwEvery',
-        'Weigh-in reminder',
-        'A card on Today asks for your bodyweight when the last weigh-in is this old. Pull-ups, dips, and other bodyweight lifts use your latest weigh-in.'
-      )}<select data-bind="bwEvery" aria-labelledby="lt-bwEvery">${BW_EVERY.map(
-        ([v, l]) => html`<option value=${String(v)} .selected=${live(bwEvery() === v)}>${l}</option>
-`
-      )}</select></label>
-</div>
-${bwSettings()}
-</div>
-`
-    ),
+    G('general', 'Measurements', `${s.unit === 'kg' ? 'kg, cm' : 'lb, in'}`, measurementsBody(s)),
     G(
       'look',
       'Appearance',
       `${s.theme === 'system' ? 'device theme' : s.theme} · ${(ACCENTS.find(([k]) => k === (s.accent || ACCENT0)) || ['', ''])[1].toLowerCase()}`,
-      html`<div class="card stack">
-<label class="field">Theme<select data-bind="theme">
-<option value="system" .selected=${live(s.theme === 'system')}>Match device</option>
-<option value="dark" .selected=${live(s.theme === 'dark')}>Dark</option>
-<option value="light" .selected=${live(s.theme === 'light')}>Light</option>
-</select></label>
-<div>
-<p class="small muted u-m0-0-6_fw600">Accent colour</p>
-<div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
-        ([k, l]) =>
-          html`<button class=${(s.accent || ACCENT0) === k ? 'chip acc on' : 'chip acc'} data-act="accent" data-v=${k} aria-pressed=${String((s.accent || ACCENT0) === k)}><i class=${`sw sw-${k}`} aria-hidden="true"></i>${l}</button>`
-      )}</div>
-</div>
-</div>
-`
+      appearanceBody(s)
     ),
     G(
       'gym',
@@ -817,50 +975,7 @@ ${bwSettings()}
 `,
       'gym'
     ),
-    G(
-      'timer',
-      'Rest timer and logging',
-      s.timerMode === 'off' ? 'timer off' : s.timerMode + ' timer',
-      html` <div class="card stack">
-<label class="field">${labelTip(
-        'lt-timerMode',
-        'Rest timer',
-        'Auto starts the timer when a set is marked done. Manual starts it from Rest on the exercise.'
-      )}<select data-bind="timerMode" aria-labelledby="lt-timerMode">
-<option value="auto" .selected=${live(s.timerMode === 'auto')}>Auto, after each set</option>
-<option value="manual" .selected=${live(s.timerMode === 'manual')}>Manual, from Rest</option>
-<option value="off" .selected=${live(s.timerMode === 'off')}>Off</option>
-</select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${live(!!s.timerSound)} ?disabled=${s.timerMode === 'off'}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${live(!!s.timerCompact)} ?disabled=${s.timerMode === 'off'}/>${labelTip(
-        'lt-timerCompact',
-        'Compact timer',
-        'A small pill in the corner instead of the rest card above the tabs.'
-      )}</label> <label class="check-inline"><input type="checkbox" data-bind="autoDone" aria-labelledby="lt-autoDone" .checked=${live(!!s.autoDone)}/>${labelTip(
-        'lt-autoDone',
-        'Auto-mark a set done after its reps',
-        'A mistyped rep count is then saved without a tap to confirm, so check the row. A tap on the checkmark right after only confirms it; tap again to undo.'
-      )}</label> <label class="check-inline"><input type="checkbox" data-bind="loadFill" aria-labelledby="lt-loadFill" .checked=${live(s.loadFill === 'fill')}/>${labelTip(
-        'lt-loadFill',
-        'Fill in suggested loads',
-        "Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row for you. Either way, a load you type is never changed."
-      )}</label> <label class="field">${labelTip(
-        'lt-todayStart',
-        'Today starts with',
-        "Blank: Today opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history."
-      )}<select data-bind="todayStart" aria-labelledby="lt-todayStart">
-<option value="plan" .selected=${live(s.todayStart !== 'free')}>My plan's day</option>
-<option value="free" .selected=${live(s.todayStart === 'free')}>A blank session (freestyle)</option>
-</select></label> <label class="check-inline"><input type="checkbox" data-bind="autoAdj" aria-labelledby="lt-autoAdj" .checked=${live(adjOn())}/>${labelTip(
-        'lt-autoAdj',
-        'Adjust the next sets from the last one',
-        "After a set clearly easier or harder than planned, the rest of that exercise's sets move up or down, unless you typed their weight. A line says why; Keep puts it back. Up: 2+ reps in reserve over your target, or 2+ past the top of the range. Down: 2+ under the range. A rep or two lost per set is normal."
-      )}</label> <label class="check-inline"><input type="checkbox" data-bind="wakeLock" aria-labelledby="lt-wakeLock" .checked=${live(!!s.wakeLock)}/>${labelTip(
-        'lt-wakeLock',
-        'Keep the screen on during a session',
-        'A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost.'
-      )}</label>
-</div>
-`
-    ),
+    G('timer', 'Rest timer and logging', s.timerMode === 'off' ? 'timer off' : s.timerMode + ' timer', timerBody(s)),
     G(
       'rir',
       'Effort (RIR)',
@@ -879,60 +994,10 @@ ${bwSettings()}
       'prio',
       'Priority muscles',
       s.priorities.length ? s.priorities.map(m => ML[m]).join(', ') : 'none',
-      html`${howText('prio', 'Flagged as Your priority under Muscles in Stats, and favoured by Pick for me.')}
-<div class="card chips">${MUSCLES.map(
-        ([k, l]) =>
-          html`<button class=${s.priorities.includes(k) ? 'chip on' : 'chip'} data-act="prio" data-m=${k}>${l}</button>`
-      )}</div>
-`,
+      priorityBody(s),
       'prio'
     ),
-    G(
-      'bands',
-      'Weekly set targets',
-      '',
-      html`${howText(
-        'bands',
-        'Fractional hard sets per week: direct work 1, helper muscles 0.5. 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a rule of thumb, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back.'
-      )}
-<div class="card">
-<table class="t">
-<tbody>
-<tr>
-<th>Muscle</th>
-<th class="r">Min</th>
-<th class="r">Max</th>
-</tr>
-${MUSCLES.map(([k, l]) =>
-  /* A muscle with no target (339 e, r58) offers one; one the lifter gave a
-     target (not by default and not a focus, which Your training sets) can go
-     back to tracked only. */
-  !hasTarget(k)
-    ? html`<tr>
-<td>${l}</td>
-<td class="r" colspan="2"><span class="small muted">Tracked only</span> <button type="button" class="btn sm" data-act="tgtSet" data-m=${k}>Set a target</button></td>
-</tr>
-`
-    : html`<tr>
-<td>${l}${TARGETED.has(k) || (prof().focus || []).includes(k) ? nothing : html`<br><button type="button" class="linkbtn tall" data-act="tgtOff" data-m=${k}>Track only</button>`}</td>
-<td class="r"><input class="u-w70" type="text" inputmode="numeric" aria-label=${`${l} minimum hard sets a week`} data-band=${k} data-bi="0" .value=${fieldValue(String(s.bands[k][0]))}/></td>
-<td class="r"><input class="u-w70" type="text" inputmode="numeric" aria-label=${`${l} maximum hard sets a week`} data-band=${k} data-bi="1" .value=${fieldValue(String(s.bands[k][1]))}/></td>
-</tr>
-`
-)}</tbody>
-</table>
-<div class="row u-mt8"><button class="btn sm" data-act="bandsDefault" ?disabled=${
-        MK.every(m => {
-          const d = defBand(m);
-          return s.bands[m][0] === d[0] && s.bands[m][1] === d[1];
-        }) &&
-        !s.bandsFit &&
-        !s.ownTargets
-      }>Default targets</button></div>
-</div>
-`,
-      'bands'
-    ),
+    G('bands', 'Weekly set targets', '', bandsBody(s), 'bands'),
     G(
       'data',
       'Your data',
@@ -941,65 +1006,9 @@ ${MUSCLES.map(([k, l]) =>
       '',
       'dataSec'
     ),
-    G(
-      'help',
-      'Help',
-      'Guide, report a problem',
-      html`<div class="card stack">
-<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? html`<button class="btn" data-act="fbInbox">Reports inbox</button>` : nothing}</div>
-</div>
-`
-    ),
+    G('help', 'Help', 'Guide, report a problem', helpBody()),
     // Demo data, Diagnostics and Erase everything (r35, V): one group at the bottom, not three in front of everyday settings.
-    G(
-      'more',
-      'More',
-      hasDemo ? 'demo data loaded' : 'demo data, version, erase',
-      html`<div class="card stack">
-<div>
-<p class="small u-m0-0-6"><b>Demo data</b> ${tipButton(
-        `${DEMO_WEEKS} weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.`,
-        'About demo data'
-      )}</p>
-<div class="row">${
-        hasDemo
-          ? html`<button class="btn" data-act="demoClear">Clear demo data</button>`
-          : html`<button class="btn" data-act="demoLoad">Load demo data</button>`
-      }</div>
-</div>
-<div>
-<p class="small u-m0-0-6"><b>Version</b> ${VERSION_LINE}${
-        logBuf.length
-          ? html` <span class="muted">· cloud ${cloud.on ? cloud.status : 'off'} · ${logBuf.length} logged error${logBuf.length === 1 ? '' : 's'}</span>`
-          : nothing
-      }</p>
-${
-  logBuf.length
-    ? html`<ul class="clist">${logBuf
-        .slice(-LOG_SHOWN)
-        .reverse()
-        .map(
-          x =>
-            html`<li><span class="small"><b>${x.a}</b> ${x.m}${x.n ? ` (${x.n} times)` : ''}</span><span class="small muted">${stampShort(x.t)}</span></li>
-`
-        )}</ul>
-`
-    : nothing
-}${
-        logBuf.length
-          ? html`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>
-`
-          : nothing
-      }${
-        window.IRONLOG_APP
-          ? html`<p class="small u-m8-0-0"><a href="LICENSES.txt" target="_blank" rel="noopener" class="u-diflex_aicenter_minh44">Open-source licenses</a></p>
-`
-          : nothing
-      }</div>
-<div><button class="btn danger" data-act="resetAll">Erase everything</button></div>
-</div>
-`
-    )
+    G('more', 'More', hasDemo ? 'demo data loaded' : 'demo data, version, erase', moreBody(hasDemo))
   ];
   return html`${pageTitle(kick, 'Settings', meta)}${repeat(
     placed('settings', list),
