@@ -365,49 +365,8 @@ function refuseFramed(): void {
       view
     );
 }
-/** The page's start, in its order (above); run only when the page is not inside another page's frame. */
-function start(): void {
-  /* The page (page.ts) draws the tabs and the sheets from these two tables,
-     which know every screen and sheet; given first, before anything can
-     draw. */
-  setRoot(renderInner);
-  setSheets(SHEETS, afterSheet);
-  /* The storage and sync modules (phase 4, r56) reach the page through this
-     one object (fx, store.ts): filled before anything that could call an
-     effect runs. Then what the storage and sync parts ran as the page loaded,
-     in their order: the save read into the store, the sync notes, the device
-     id, the listeners. */
-  setFx({ render, rerenderKeepScroll, toast, undoToastHide, setSaveState, syncLine, obGate, ask });
-  storageStart();
-  syncStart();
-  // Fields typed in, and the update bar (r60): started before the page's handlers are added below.
-  viewStart();
-  updateStart();
-  /* The account's listeners (a return to the front or online tries the wait
-     for a new account's email, or the sync, again), before the page's own. */
-  accountStart();
-  pageListeners();
-  // The build's install offer, once the browser makes one, redraws the tab that shows Install.
-  window.ironlogInstallReady = () => {
-    if (ui.tab === 'today' || ui.tab === 'settings') rerenderKeepScroll();
-  };
-  // Installed from this browser: noted, so its tabs stop offering Get the app (canInstallHere, 2.34).
-  window.addEventListener('appinstalled', () => {
-    prefSet(APP_INSTALLED, '1');
-  });
-  // The installed app's start script keeps its errors in the error log (r65, the r63 audit's A-12: it dropped them).
-  window.ironlogLog = (area, e) => log(area, e);
-  // The tips' listeners, before the page's own.
-  tipsStart();
-  eventListeners();
-  // The session screen's own listeners (workout.ts, r60): after the page's, in the order they ran before.
-  workoutStart();
-  sectionsStart();
-  window.__onLib = which => {
-    if ((which === 'chart' && ui.tab === 'dash') || (which === 'sortable' && ui.tab === 'program'))
-      rerenderKeepScroll();
-  };
-  trashTidy();
+/** Fixes of a log an older build saved, made once at start (below). */
+function oldLogFixes(): void {
   /* Fixes of a log an older build saved, once, on this device's state, each
      made only when it changes something (a save is also a sync, so one at
      every start would send the log each time), and inside `act`, as every
@@ -436,6 +395,10 @@ function start(): void {
   } catch (e) {
     log('refit', e);
   }
+}
+
+/** How the suites reach in (CLAUDE.md, Code: keep it): the functions and values they call and read, by name. */
+function exposeForTests(): void {
   window.__ironlog = {
     act,
     liftRead,
@@ -806,6 +769,10 @@ function start(): void {
     blocks,
     stepLoad
   };
+}
+
+/** The first draw, then what waits on the page being up: the screen kept on, the rest timer, the account, Undo's steps and the pictures. */
+function firstDraw(): void {
   render();
   wakeOn();
   timerResume();
@@ -827,6 +794,54 @@ function start(): void {
       log('pics-read', e);
     }
   );
+}
+
+/** The page's start, in its order (above); run only when the page is not inside another page's frame. */
+function start(): void {
+  /* The page (page.ts) draws the tabs and the sheets from these two tables,
+     which know every screen and sheet; given first, before anything can
+     draw. */
+  setRoot(renderInner);
+  setSheets(SHEETS, afterSheet);
+  /* The storage and sync modules (phase 4, r56) reach the page through this
+     one object (fx, store.ts): filled before anything that could call an
+     effect runs. Then what the storage and sync parts ran as the page loaded,
+     in their order: the save read into the store, the sync notes, the device
+     id, the listeners. */
+  setFx({ render, rerenderKeepScroll, toast, undoToastHide, setSaveState, syncLine, obGate, ask });
+  storageStart();
+  syncStart();
+  // Fields typed in, and the update bar (r60): started before the page's handlers are added below.
+  viewStart();
+  updateStart();
+  /* The account's listeners (a return to the front or online tries the wait
+     for a new account's email, or the sync, again), before the page's own. */
+  accountStart();
+  pageListeners();
+  // The build's install offer, once the browser makes one, redraws the tab that shows Install.
+  window.ironlogInstallReady = () => {
+    if (ui.tab === 'today' || ui.tab === 'settings') rerenderKeepScroll();
+  };
+  // Installed from this browser: noted, so its tabs stop offering Get the app (canInstallHere, 2.34).
+  window.addEventListener('appinstalled', () => {
+    prefSet(APP_INSTALLED, '1');
+  });
+  // The installed app's start script keeps its errors in the error log (r65, the r63 audit's A-12: it dropped them).
+  window.ironlogLog = (area, e) => log(area, e);
+  // The tips' listeners, before the page's own.
+  tipsStart();
+  eventListeners();
+  // The session screen's own listeners (workout.ts, r60): after the page's, in the order they ran before.
+  workoutStart();
+  sectionsStart();
+  window.__onLib = which => {
+    if ((which === 'chart' && ui.tab === 'dash') || (which === 'sortable' && ui.tab === 'program'))
+      rerenderKeepScroll();
+  };
+  trashTidy();
+  oldLogFixes();
+  exposeForTests();
+  firstDraw();
 }
 if (framed()) refuseFramed();
 else start();
