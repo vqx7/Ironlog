@@ -400,7 +400,7 @@ export async function impXlsx(buf: ArrayBuffer): Promise<string[][]> {
 /* Exercise names from other apps and from people: "Bench Press (Barbell)",
    "DB curls", "lat pull down". Words are reduced to one spelling, then the
    closest library exercise is found by shared words. */
-export const IMP_SYN: readonly (readonly [RegExp, string])[] = [
+const IMP_SYN: readonly (readonly [RegExp, string])[] = [
   [/\bdumb ?bells?\b|\bdbs?\b/g, 'db'],
   [/\bbar ?bells?\b|\bbb\b/g, 'bb'],
   [/\bpull[ -]?downs?\b/g, 'pulldown'],
@@ -579,7 +579,7 @@ function impSpan(dur: string, start: string, end: string, order?: 'dm'): number 
 /* Header words for each field, across Strong, Hevy and hand-made sheets. */
 /* Each field lists header names best first, so a sheet with both Date and Day
    takes Date, and a total-load column never passes for the weight. */
-export const IMP_COLS: Readonly<Record<string, readonly RegExp[]>> = {
+const IMP_COLS: Readonly<Record<string, readonly RegExp[]>> = {
   date: [/^date$/, /^(workout date|start_?time|date ?time|when)$/, /^day$/],
   name: [/^(workout name|workout|title|session|routine)$/],
   ex: [/^(exercise( name)?|exercise_title|movement|lift)$/, /^name$/],

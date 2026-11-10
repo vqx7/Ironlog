@@ -362,7 +362,7 @@ export function slotted(tab: string, parts: readonly (readonly [string | null, P
 }
 
 /** Whether a hidden section of History has something to show (the legacy MORE_LIVE takes these): cardio logged, or something recently deleted. */
-export const MORE_OFFER: Readonly<Record<string, () => boolean>> = {
+const MORE_OFFER: Readonly<Record<string, () => boolean>> = {
   'history:cardio': () => state.cardio.length > 0,
   'history:trash': () => state.trash.length > 0
 };

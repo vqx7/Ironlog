@@ -522,7 +522,7 @@ export const RIR_HALF_OPTS: readonly string[] = Array.from({ length: 2 * RIR_CAL
    first-time paragraph on all 8 exercises, "Half the usual sets, nothing to
    beat." on each of a lighter day's). Later exercises keep what is theirs:
    the load and the reps. */
-export const HINT_ONCE: readonly string[] = [
+const HINT_ONCE: readonly string[] = [
   'Half the usual sets, nothing to beat.',
   "Next time's load is worked out from this.",
   'If the first set is off, change the load.',

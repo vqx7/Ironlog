@@ -466,7 +466,7 @@ export const DRIFT_N = 3;
    before; with 3 to 6 sessions the interval came out up to 2.4 times too
    narrow, so noise was called a trend. Past the table's 30 degrees of
    freedom, T90_INF + T90_SLOPE / df is within 0.001 of the exact value. */
-export const T90: readonly number[] = [
+const T90: readonly number[] = [
   NaN,
   3.078,
   1.886,
@@ -525,7 +525,7 @@ export function t90(df: number): number {
     dayMinutes in the analytics.) Every figure here is a convention, not a
     measurement; your own pace (pace(), r43) scales the total to how long
     your sessions take. */
-export const TIME_MODEL = {
+const TIME_MODEL = {
   set: 40,
   setReps: 12,
   rep: 3,

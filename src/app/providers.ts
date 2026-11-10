@@ -54,7 +54,7 @@ interface ReportService {
    list, so a code the app compares against is one a service gives (r63,
    PENDING 307). */
 /** Every error code the app reads. */
-export const SERVICE_CODES = [
+const SERVICE_CODES = [
   'bad_code',
   'breached',
   'capability_disabled',

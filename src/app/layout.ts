@@ -50,7 +50,7 @@ export const VOL_MODES: readonly (readonly [string, string])[] = [
    Plan's Schedule is shown since r70 (381, V 2026-11-03): it is the only
    place to switch between a cycle and fixed weekdays. */
 export const DEFAULT_HIDDEN: readonly string[] = ['today:tiles', 'today:coach', 'today:body', 'program:pvol'];
-export const DEFAULT_ORDER: Readonly<Record<string, readonly string[]>> = {
+const DEFAULT_ORDER: Readonly<Record<string, readonly string[]>> = {
   today: ['moving', 'session', 'map', 'week', 'injuries', 'coach', 'tiles', 'body'],
   dash: ['exercise', 'volume', 'weak', 'consistency', 'body']
 };

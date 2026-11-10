@@ -567,7 +567,7 @@ export function libExercises(): Exercise[] {
 
 /* Movement pattern from the name, so a fly is replaced by a fly rather than a
    press that happens to share helper muscles. Checked in order. */
-export const PATTERNS: readonly (readonly [string, RegExp])[] = [
+const PATTERNS: readonly (readonly [string, RegExp])[] = [
   ['calf', /calf raise/],
   ['hinge', /hyperextension/],
   ['squat', /leg press|hack squat|pendulum/],
@@ -595,7 +595,7 @@ export function patternOf(e: { name?: string } | null | undefined): string | nul
 
 /* Compound: a press, row, pull, squat or hinge for a main muscle. Used to
    split RIR calibration, size load steps, spot warm-ups and budget time. */
-export const NON_COMPOUND_PRIMARY: ReadonlySet<string> = new Set([
+const NON_COMPOUND_PRIMARY: ReadonlySet<string> = new Set([
   'abs',
   'obliques',
   'neck',
@@ -633,7 +633,7 @@ export function isCompound(ex: Kinded | null | undefined): boolean {
    sissy squats): the share of bodyweight is kept for display, but torque, not
    mass moved, sets how hard they are, so they get no 1RM estimate and no
    tonnage. Progress on them reads from reps and added load. */
-export const NO_E1: ReadonlySet<string> = new Set(['nordic', 'ghr', 'revNordic', 'sissy']);
+const NO_E1: ReadonlySet<string> = new Set(['nordic', 'ghr', 'revNordic', 'sissy']);
 
 /* Bodyweight core and neck work is done for reps, with a share of bodyweight no rep formula reads well, so it gets no
    estimate. Read from the exercise's own fields since 2.29 (387-B8, NEW-62; V, 2026-11-05: a lifter's own exercise
@@ -771,9 +771,9 @@ export const HARD_EX: ReadonlySet<string> = new Set([
    machine compounds with a strength estimate, as the copy says (the r44
    review: `estInLoad` took goblet squats and single-dumbbell rows and left
    out selectorized machine presses and rows). */
-export const PROF_EQUIP: ReadonlySet<string> = new Set(['barbell', 'smith', 'machine']);
+const PROF_EQUIP: ReadonlySet<string> = new Set(['barbell', 'smith', 'machine']);
 // Hip and back accessories on a bar or a machine, not lifts trained heavy for strength (a judgment, the r44 review).
-export const PROF_NOT_HEAVY: ReadonlySet<string> = new Set(['reverseHyper', 'goodMorning', 'gluteBridge']);
+const PROF_NOT_HEAVY: ReadonlySet<string> = new Set(['reverseHyper', 'goodMorning', 'gluteBridge']);
 
 /** A heavy compound for Your training (profRule, r44): a compound with a 1RM
     estimate, not timed or bodyweight, on a barbell, a Smith machine, or a

@@ -93,7 +93,7 @@ export const adjSrc = new WeakMap<DraftBlock, DraftSet>();
 
 /* An exercise opened again after it folded stays open when exercises around
    it move (r25): the block itself is remembered as well as its place. */
-export const blkOpenObj = new WeakSet<DraftBlock>();
+const blkOpenObj = new WeakSet<DraftBlock>();
 
 /* What an edit of a saved session holds, to tell whether anything changed
    (r30: Cancel on an untouched edit asked "Discard this session?"). Kept in

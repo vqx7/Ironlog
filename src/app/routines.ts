@@ -614,7 +614,7 @@ export const PROFILE_PLAN = {
   both: { repMin: 5, repMax: 8, rir: 2, rest: 180 }
 } as const;
 /** A timed hold's plan until one is set: 30 to 60 seconds, 60 s rest. */
-export const TIMED_PLAN = { repMin: 30, repMax: 60, rest: 60 } as const;
+const TIMED_PLAN = { repMin: 30, repMax: 60, rest: 60 } as const;
 
 /* What a profile changes in a plan item (the rules Apply and new items share):
    - Strength or Both, past the first year: heavy compounds (`profHeavy`) at
