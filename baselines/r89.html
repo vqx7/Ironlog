@@ -2,25 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-2vh8L7Wo5EbGPXxNEdQrlZHfF13/OygZ43l/c+bYA5A=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.09-r89">
 <title>Ironlog</title>
-<script>window.IRONLOG_APP=true;window.__installEvt=null;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
-window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.ironlogInstallReady)window.ironlogInstallReady();});</script>
-<meta name="theme-color" content="#08090b">
-<meta name="color-scheme" content="dark light">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Ironlog">
-<meta name="description" content="Log lifting sessions, track progress and plan training. Works offline.">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" href="icons/favicon-64.png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
    IRONLOG visual system (r20)
@@ -1246,9 +1234,6 @@ body.timer-on main{padding-bottom:calc(168px + env(safe-area-inset-bottom,0px))}
 /* The minutes a past workout took, beside its date (r67, NEW-39). */
 .lh-row input.minf{width:auto;flex:0 1 104px;min-height:44px;padding:4px 10px;font-size:16px}
 </style>
-<script>window.IRONLOG_SUPABASE={"url":"https://fqvupierxrvpoidtwlon.supabase.co","key":"sb_publishable_XbUAlSYE8AzrnYqk-0dTmQ_sG-e6J9i"};</script>
-<script src="vendor/supabase.js"></script>
-<script src="cloud.js"></script>
 </head>
 <body>
 <header class="top"><h1 class="vh">Ironlog</h1><nav class="wkbar" id="wkbar" aria-label="This week"></nav><button type="button" class="ssb" id="saveState" data-act="menuOpen" aria-haspopup="dialog"></button></header>
@@ -1280,8 +1265,8 @@ function loadScript(urls,done){
   document.head.appendChild(s);
 }
 window.__libs={sortable:false,chart:false};
-loadScript(['vendor/Sortable.min.js'],ok=>{window.__libs.sortable=ok&&!!window.Sortable;if(window.__onLib)window.__onLib('sortable');});
-loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;if(window.__onLib)window.__onLib('chart');});
+loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js','https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js'],ok=>{window.__libs.sortable=ok&&!!window.Sortable;if(window.__onLib)window.__onLib('sortable');});
+loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js','https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;if(window.__onLib)window.__onLib('chart');});
 })();
 </script>
 <script>
@@ -28266,21 +28251,6 @@ ${JSON.stringify(ctx, null, 1)}`;
   if (framed()) refuseFramed();
   else start();
 })();
-</script>
-<script>
-/* Standalone build only. */
-if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
-  let tapped=false,reloading=false;
-  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(tapped&&!reloading){reloading=true;location.reload();}});
-  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').then(reg=>{
-    const offer=()=>{if(reg.waiting&&navigator.serviceWorker.controller&&window.ironlogUpdateReady)window.ironlogUpdateReady();};
-    window.ironlogApplyUpdate=()=>{tapped=true;if(reg.waiting)reg.waiting.postMessage('skipWaiting');else location.reload();};
-    reg.addEventListener('updatefound',()=>{const w=reg.installing;if(w)w.addEventListener('statechange',()=>{if(w.state==='installed')offer();});});
-    offer();
-    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{/* Offline or the site not answering: expected, and the check runs again when the app comes back. */});});
-  }).catch(e=>{if(window.ironlogLog)window.ironlogLog('sw-register',e);});});
-}
-try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).catch(e=>{if(window.ironlogLog)window.ironlogLog('storage-persist',e);});}catch(e){if(window.ironlogLog)window.ironlogLog('storage-persist',e);}
 </script>
 </body>
 </html>
