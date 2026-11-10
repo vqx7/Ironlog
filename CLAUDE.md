@@ -197,7 +197,7 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   a value worked out as the page is drawn; a fixed one is a `u-` class in the stylesheet (r65). Image tags in the
   script are written `\x3cimg`. Any new inline script, outside host or `eval` needs the Content Security Policy in
   `scripts/build.js` changed with it. Keep `window.__ironlog`: it is how the tests reach in.
-- **Tests:** never weaken or delete an assertion to make it pass. Suites reach no outside service. A suite left out
+- **Tests:** a new check goes in the suite of the feature it checks, never in a suite named for a release (V, 2026-11-10, CA-1; `tests/hygiene.js` refuses a new one). Never weaken or delete an assertion to make it pass. Suites reach no outside service. A suite left out
   of the WebKit run is in `WEBKIT_SKIP` in `tests/run.js`, with the reason.
 
 ## Releasing
