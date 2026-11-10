@@ -699,6 +699,61 @@ export const csvGuard = (s: string): string => (needsMark(s) ? "'" + s : s);
 /** A cell of Ironlog's own export read back: the ' csvGuard put before it taken off, and only that one. */
 const csvUnguard = (s: string): string => (s.startsWith("'") && needsMark(s.slice(1)) ? s.slice(1) : s);
 
+/** A table cell read as a number (a comma taken as the decimal point), or null when it holds none. */
+const num = (v: unknown): number | null => {
+  const n = parseFloat(String(v == null ? '' : v).replace(',', '.'));
+  return isFinite(n) ? n : null;
+};
+
+/** A cardio row of the app's own file: the kind by its name, the minutes and heart rate from the session's columns, and when, the distance and the note from the exercise note. */
+function ownCardio(date: string, ex: string, minCell: string, hrCell: string, note: string): ImpCardio {
+  const kind = (CARDIO.find(([, l]) => l === ex) || ['other'])[0];
+  const min = num(minCell),
+    hr = num(hrCell);
+  const o: ImpCardio = { date, kind, secs: min != null && min > 0 ? min * MINUTE_S : 0, dist: 0, name: ex };
+  if (min != null && min > 0) o.min = Math.round(min);
+  if (hr != null && hr > 0) o.hr = Math.round(hr);
+  const rest: string[] = [];
+  for (const part of note.split('; ').filter(Boolean)) {
+    const wh = CWHEN.find(([, l]) => l === part);
+    const d = /^(\d+(?:\.\d+)?) (km|mi)$/.exec(part);
+    if (wh) o.when = wh[0];
+    else if (d) o.km = d[2] === 'km' ? +d[1] : +d[1] * KM_MI;
+    else rest.push(part);
+  }
+  if (rest.length) o.note = rest.join('; ');
+  return o;
+}
+
+/** The set a table row holds: its load and reps (or seconds), its RIR (from RPE when only that is given) and its kind. A blank reps or seconds cell is null, read as 0 (impFromTable). */
+function rowSet(
+  cell: (f: string) => string,
+  w: number,
+  reps: number,
+  secs: number,
+  missed: boolean,
+  numTypes: boolean,
+  u: 'kg' | 'lb' | null
+): ImpSet {
+  const ty = cell('type').toLowerCase();
+  const yes = (v: string) => /^(1|true|yes|y|x)$/i.test(v);
+  const rpe = num(cell('rpe'));
+  let rir = num(cell('rir'));
+  // RPE 10 is no reps left, so RIR is taken as EFFORT_TOP minus RPE (the usual RIR-based RPE scale).
+  if (rir == null && rpe != null && rpe >= RPE_LOW && rpe <= EFFORT_TOP) rir = Math.max(0, EFFORT_TOP - rpe);
+  const code = numTypes ? ty : '';
+  if (ty === 'f' || ty === 'failure' || code === '4') rir = 0;
+  return {
+    w,
+    r: reps > 0 ? Math.round(reps) : Math.round(secs),
+    rir: rir != null && rir >= 0 && rir <= EFFORT_TOP ? rir : null,
+    warm: ty === 'w' || ty === 'warmup' || ty === 'warm-up' || code === '2' || yes(cell('warm')),
+    drop: ty === 'd' || ty === 'dropset' || ty === 'drop' || code === '3' || yes(cell('drop')),
+    timed: !(reps > 0) && !missed,
+    u
+  };
+}
+
 /* Table rows to sessions: grouped by date and workout name, exercises in
    order of first appearance. A row with no date or exercise continues the
    one above (sheets often write the date once). Rest timer rows, and rows
@@ -743,10 +798,6 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     cardio = 0;
   const bad: string[] = [];
   const C = new Map<string, ImpCardio>();
-  const num = (v: unknown): number | null => {
-    const n = parseFloat(String(v == null ? '' : v).replace(',', '.'));
-    return isFinite(n) ? n : null;
-  };
   // The file's way of writing dates, from its date column (NEW-80).
   const dc = map.date;
   const order = dc == null ? undefined : impDateOrder(rows.slice(1).map(r => r[dc]));
@@ -784,22 +835,8 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
        when, the distance and the note in the exercise note. */
     if (ours && at(r, cUnit) === 'minutes') {
       cardio++;
-      const kind = (CARDIO.find(([, l]) => l === ex) || ['other'])[0];
-      const min = num(at(r, cMin)),
-        hr = num(at(r, cHr));
-      const o: ImpCardio = { date, kind, secs: min != null && min > 0 ? min * MINUTE_S : 0, dist: 0, name: ex };
-      if (min != null && min > 0) o.min = Math.round(min);
-      if (hr != null && hr > 0) o.hr = Math.round(hr);
-      const rest: string[] = [];
-      for (const part of cell('note').split('; ').filter(Boolean)) {
-        const wh = CWHEN.find(([, l]) => l === part);
-        const d = /^(\d+(?:\.\d+)?) (km|mi)$/.exec(part);
-        if (wh) o.when = wh[0];
-        else if (d) o.km = d[2] === 'km' ? +d[1] : +d[1] * KM_MI;
-        else rest.push(part);
-      }
-      if (rest.length) o.note = rest.join('; ');
-      C.set(date + '|' + kind + '|' + C.size, o);
+      const o = ownCardio(date, ex, at(r, cMin), at(r, cHr), cell('note'));
+      C.set(date + '|' + o.kind + '|' + C.size, o);
       continue;
     }
     const ck = impCardioKind(ex);
@@ -820,23 +857,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       skipped++;
       continue;
     }
-    const ty = cell('type').toLowerCase();
-    const yes = (v: string) => /^(1|true|yes|y|x)$/i.test(v);
-    const rpe = num(cell('rpe'));
-    let rir = num(cell('rir'));
-    // RPE 10 is no reps left, so RIR is taken as EFFORT_TOP minus RPE (the usual RIR-based RPE scale).
-    if (rir == null && rpe != null && rpe >= RPE_LOW && rpe <= EFFORT_TOP) rir = Math.max(0, EFFORT_TOP - rpe);
-    const code = numTypes ? ty : '';
-    if (ty === 'f' || ty === 'failure' || code === '4') rir = 0;
-    const set = {
-      w,
-      r: reps > 0 ? Math.round(reps) : Math.round(secs),
-      rir: rir != null && rir >= 0 && rir <= EFFORT_TOP ? rir : null,
-      warm: ty === 'w' || ty === 'warmup' || ty === 'warm-up' || code === '2' || yes(cell('warm')),
-      drop: ty === 'd' || ty === 'dropset' || ty === 'drop' || code === '3' || yes(cell('drop')),
-      timed: !(reps > 0) && !missed,
-      u: rowUnit(r)
-    };
+    const set = rowSet(cell, w, reps, secs, missed, numTypes, rowUnit(r));
     const k = date + '|' + name;
     if (!S.has(k)) S.set(k, { date, name, items: new Map<string, ImpItem>(), note: '' });
     // Made just above when it was missing, so it is there (the !).
@@ -1042,6 +1063,41 @@ export function readSets(
   return out.length && out.length <= TYPED.sets ? out : null;
 }
 
+/** A load as typed, for reading sets before the exercise and its unit are known. */
+const asTyped = (v: number): number => v;
+/** A line of reps alone, as "10/10/8" or "10, 10, 8". */
+const REPS = /^\d{1,2}(\s*[/,]\s*\d{1,2})+$/;
+/** What is left of a date line once its weekdays and dates are taken out: the workout's name, or numbers when it is no date line. */
+function dateLineRest(L: string): string {
+  return L.replace(/\b(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?\b/gi, '')
+    .replace(
+      /\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{1,2}(st|nd|rd|th)?\s+[a-z]{3,9}\.?,?(\s*\d{4})?\b|\b[a-z]{3,9}\.?\s+\d{1,2}(st|nd|rd|th)?(,?\s*\d{4})?\b/gi,
+      ''
+    )
+    .replace(/[,:;\-–|]+/g, ' ')
+    .trim();
+}
+/** A line read as an exercise's name then its sets: the shortest name whose remainder reads as sets, so no set is read as part of the name; null when none does. */
+function nameThenSets(words: readonly string[]): { name: string; rest: string } | null {
+  for (let i = 1; i < words.length; i++) {
+    const name = words
+      .slice(0, i)
+      .join(' ')
+      .replace(/[:\-–]+$/, '')
+      .trim();
+    const rest = words.slice(i).join(' ');
+    if (!/[a-z]/i.test(name)) continue;
+    const got = readSets(impSetsText(rest), { bw: true }, null, asTyped);
+    if (got) return { name, rest };
+  }
+  return null;
+}
+/** A name then a load ("Bench press 185") with its reps on the next line ("10/10/10"): the name and the sets as one text; null when the lines are not that. */
+function nameLoadThenReps(L: string, next: string): { name: string; setsText: string } | null {
+  const g = L.match(/^(.*?[a-z].*?)\s+(\d{2,}(?:\.\d+)?\s*(?:lbs?|kgs?|#)?)$/i);
+  if (!g || !REPS.test(next)) return null;
+  return { name: (g[1] || '').replace(/[:\-–]+$/, '').trim(), setsText: g[2] + ' ' + next };
+}
 /** The lines of notes not understood that the preview lists. */
 const UNREAD_SHOWN = 50;
 /** A loose exercise of notes, its sets as text until the exercise is known. */
@@ -1081,7 +1137,6 @@ export function impFromText(text: unknown): ImpRead {
     pend = null;
     return d;
   };
-  const raw = (v: number) => v;
   const nextIsName = (i: number) => {
     for (let j = i + 1; j < lines.length; j++) {
       const t = (lines[j] || '').trim();
@@ -1089,7 +1144,6 @@ export function impFromText(text: unknown): ImpRead {
     }
     return true;
   };
-  const REPS = /^\d{1,2}(\s*[/,]\s*\d{1,2})+$/;
   for (let li = 0; li < lines.length; li++) {
     const L0 = lines[li] || '';
     const L = L0.replace(/^[\s\-•*–]+/, '').trim();
@@ -1118,13 +1172,7 @@ export function impFromText(text: unknown): ImpRead {
     // Numbers directly under a lift still waiting for its sets (no blank line between) are its reps.
     if (dt && pend && under && REPS.test(L)) dt = null;
     if (dt) {
-      const rest = L.replace(/\b(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?\b/gi, '')
-        .replace(
-          /\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{1,2}(st|nd|rd|th)?\s+[a-z]{3,9}\.?,?(\s*\d{4})?\b|\b[a-z]{3,9}\.?\s+\d{1,2}(st|nd|rd|th)?(,?\s*\d{4})?\b/gi,
-          ''
-        )
-        .replace(/[,:;\-–|]+/g, ' ')
-        .trim();
+      const rest = dateLineRest(L);
       if (!/\d/.test(rest)) {
         day(dt, rest, L);
         continue;
@@ -1132,7 +1180,7 @@ export function impFromText(text: unknown): ImpRead {
     }
     // Sets alone continue the exercise above, or the name waiting on the line before.
     const target: TextItem | { name: string; raw: string } | null = ex || pend;
-    const alone = readSets(impSetsText(L), { bw: true }, null, raw);
+    const alone = readSets(impSetsText(L), { bw: true }, null, asTyped);
     if (
       alone &&
       target &&
@@ -1156,41 +1204,24 @@ export function impFromText(text: unknown): ImpRead {
       continue;
     }
     // Name then sets: the shortest name whose remainder reads as sets, so no set is read as part of the name.
-    let done = false;
-    for (let i = 1; i < words.length; i++) {
-      const name = words
-        .slice(0, i)
-        .join(' ')
-        .replace(/[:\-–]+$/, '')
-        .trim();
-      const rest = words.slice(i).join(' ');
-      if (!/[a-z]/i.test(name)) continue;
-      const got = readSets(impSetsText(rest), { bw: true }, null, raw);
-      if (got) {
-        const into = cur || day(null, '');
-        const e: TextItem = { name, sets: [], setsText: [rest] };
-        into.items.push(e);
-        ex = e;
-        pend = null;
-        done = true;
-        break;
-      }
+    const ns = nameThenSets(words);
+    if (ns) {
+      const into = cur || day(null, '');
+      const e: TextItem = { name: ns.name, sets: [], setsText: [ns.rest] };
+      into.items.push(e);
+      ex = e;
+      pend = null;
+      continue;
     }
-    if (done) continue;
     // A name then a load, with the reps on the line right under it: "Bench press 185" then "10/10/10".
     {
-      const g = L.match(/^(.*?[a-z].*?)\s+(\d{2,}(?:\.\d+)?\s*(?:lbs?|kgs?|#)?)$/i);
-      const nx = (lines[li + 1] || '').replace(/^[\s\-•*–]+/, '').trim();
-      if (g && REPS.test(nx)) {
+      const nl = nameLoadThenReps(L, (lines[li + 1] || '').replace(/^[\s\-•*–]+/, '').trim());
+      if (nl) {
         const into = cur || day(null, '');
         const pw: { name: string; raw: string } | null = pend;
         if (pw) unread.push(pw.raw);
         pend = null;
-        const e: TextItem = {
-          name: (g[1] || '').replace(/[:\-–]+$/, '').trim(),
-          sets: [],
-          setsText: [g[2] + ' ' + nx]
-        };
+        const e: TextItem = { name: nl.name, sets: [], setsText: [nl.setsText] };
         into.items.push(e);
         ex = e;
         li++;

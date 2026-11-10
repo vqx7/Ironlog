@@ -14474,6 +14474,45 @@ ${more}`;
   };
   var csvGuard = (s3) => needsMark(s3) ? "'" + s3 : s3;
   var csvUnguard = (s3) => s3.startsWith("'") && needsMark(s3.slice(1)) ? s3.slice(1) : s3;
+  var num = (v3) => {
+    const n3 = parseFloat(String(v3 == null ? "" : v3).replace(",", "."));
+    return isFinite(n3) ? n3 : null;
+  };
+  function ownCardio(date, ex, minCell, hrCell, note) {
+    const kind = (CARDIO.find(([, l4]) => l4 === ex) || ["other"])[0];
+    const min = num(minCell), hr = num(hrCell);
+    const o3 = { date, kind, secs: min != null && min > 0 ? min * MINUTE_S : 0, dist: 0, name: ex };
+    if (min != null && min > 0) o3.min = Math.round(min);
+    if (hr != null && hr > 0) o3.hr = Math.round(hr);
+    const rest = [];
+    for (const part of note.split("; ").filter(Boolean)) {
+      const wh = CWHEN.find(([, l4]) => l4 === part);
+      const d3 = /^(\d+(?:\.\d+)?) (km|mi)$/.exec(part);
+      if (wh) o3.when = wh[0];
+      else if (d3) o3.km = d3[2] === "km" ? +d3[1] : +d3[1] * KM_MI;
+      else rest.push(part);
+    }
+    if (rest.length) o3.note = rest.join("; ");
+    return o3;
+  }
+  function rowSet(cell, w2, reps, secs, missed, numTypes, u4) {
+    const ty = cell("type").toLowerCase();
+    const yes = (v3) => /^(1|true|yes|y|x)$/i.test(v3);
+    const rpe = num(cell("rpe"));
+    let rir = num(cell("rir"));
+    if (rir == null && rpe != null && rpe >= RPE_LOW && rpe <= EFFORT_TOP) rir = Math.max(0, EFFORT_TOP - rpe);
+    const code = numTypes ? ty : "";
+    if (ty === "f" || ty === "failure" || code === "4") rir = 0;
+    return {
+      w: w2,
+      r: reps > 0 ? Math.round(reps) : Math.round(secs),
+      rir: rir != null && rir >= 0 && rir <= EFFORT_TOP ? rir : null,
+      warm: ty === "w" || ty === "warmup" || ty === "warm-up" || code === "2" || yes(cell("warm")),
+      drop: ty === "d" || ty === "dropset" || ty === "drop" || code === "3" || yes(cell("drop")),
+      timed: !(reps > 0) && !missed,
+      u: u4
+    };
+  }
   function impFromTable(rows2, map) {
     const head = rows2[0];
     let unit = impUnitOf(head, map);
@@ -14497,10 +14536,6 @@ ${more}`;
     let skipped = 0, cardio = 0;
     const bad = [];
     const C2 = /* @__PURE__ */ new Map();
-    const num2 = (v3) => {
-      const n3 = parseFloat(String(v3 == null ? "" : v3).replace(",", "."));
-      return isFinite(n3) ? n3 : null;
-    };
     const dc = map.date;
     const order = dc == null ? void 0 : impDateOrder(rows2.slice(1).map((r4) => r4[dc]));
     for (let i5 = 1; i5 < rows2.length; i5++) {
@@ -14508,7 +14543,7 @@ ${more}`;
       const raw = (f3) => map[f3] == null ? "" : String(r4[map[f3]] == null ? "" : r4[map[f3]]).trim();
       const cell = (f3) => ours ? csvUnguard(raw(f3)) : raw(f3);
       let date = cell("date");
-      date = date ? impDate(date, void 0, order) || impSerial(num2(date)) : lastDate;
+      date = date ? impDate(date, void 0, order) || impSerial(num(date)) : lastDate;
       const ex = cell("ex") || lastEx;
       if (!date || !ex) {
         skipped++;
@@ -14519,33 +14554,20 @@ ${more}`;
       lastEx = ex;
       const name = cell("name") || (cell("date") ? "" : lastName);
       lastName = name;
-      const reps = num2(cell("r")), secs = num2(cell("secs"));
-      const w2 = num2(cell("w")) || 0;
+      const reps = num(cell("r")), secs = num(cell("secs"));
+      const w2 = num(cell("w")) || 0;
       if (/^rest timer$/i.test(ex) || /rest/i.test(cell("type"))) {
         skipped++;
         continue;
       }
       if (ours && at2(r4, cUnit) === "minutes") {
         cardio++;
-        const kind = (CARDIO.find(([, l4]) => l4 === ex) || ["other"])[0];
-        const min = num2(at2(r4, cMin)), hr = num2(at2(r4, cHr));
-        const o3 = { date, kind, secs: min != null && min > 0 ? min * MINUTE_S : 0, dist: 0, name: ex };
-        if (min != null && min > 0) o3.min = Math.round(min);
-        if (hr != null && hr > 0) o3.hr = Math.round(hr);
-        const rest = [];
-        for (const part of cell("note").split("; ").filter(Boolean)) {
-          const wh = CWHEN.find(([, l4]) => l4 === part);
-          const d3 = /^(\d+(?:\.\d+)?) (km|mi)$/.exec(part);
-          if (wh) o3.when = wh[0];
-          else if (d3) o3.km = d3[2] === "km" ? +d3[1] : +d3[1] * KM_MI;
-          else rest.push(part);
-        }
-        if (rest.length) o3.note = rest.join("; ");
-        C2.set(date + "|" + kind + "|" + C2.size, o3);
+        const o3 = ownCardio(date, ex, at2(r4, cMin), at2(r4, cHr), cell("note"));
+        C2.set(date + "|" + o3.kind + "|" + C2.size, o3);
         continue;
       }
       const ck = impCardioKind(ex);
-      const dist = num2(cell("dist"));
+      const dist = num(cell("dist"));
       if (dist > 0 || ck && !(reps > 0)) {
         cardio++;
         const k3 = date + "|" + (ck || "other");
@@ -14560,28 +14582,13 @@ ${more}`;
         skipped++;
         continue;
       }
-      const ty = cell("type").toLowerCase();
-      const yes = (v3) => /^(1|true|yes|y|x)$/i.test(v3);
-      const rpe = num2(cell("rpe"));
-      let rir = num2(cell("rir"));
-      if (rir == null && rpe != null && rpe >= RPE_LOW && rpe <= EFFORT_TOP) rir = Math.max(0, EFFORT_TOP - rpe);
-      const code = numTypes ? ty : "";
-      if (ty === "f" || ty === "failure" || code === "4") rir = 0;
-      const set = {
-        w: w2,
-        r: reps > 0 ? Math.round(reps) : Math.round(secs),
-        rir: rir != null && rir >= 0 && rir <= EFFORT_TOP ? rir : null,
-        warm: ty === "w" || ty === "warmup" || ty === "warm-up" || code === "2" || yes(cell("warm")),
-        drop: ty === "d" || ty === "dropset" || ty === "drop" || code === "3" || yes(cell("drop")),
-        timed: !(reps > 0) && !missed,
-        u: rowUnit(r4)
-      };
+      const set = rowSet(cell, w2, reps, secs, missed, numTypes, rowUnit(r4));
       const k2 = date + "|" + name;
       if (!S4.has(k2)) S4.set(k2, { date, name, items: /* @__PURE__ */ new Map(), note: "" });
       const ss = S4.get(k2);
       const sn = ours ? at2(r4, cNote) : cell("snote");
       if (!ss.note && sn) ss.note = sn;
-      const dm = ours ? num2(at2(r4, cMin)) : impSpan(strong ? cell("dur") : "", cell("date"), cell("end"), order);
+      const dm = ours ? num(at2(r4, cMin)) : impSpan(strong ? cell("dur") : "", cell("date"), cell("end"), order);
       if (ss.durMin == null && dm != null && dm >= 1 && dm <= LIMITS.minutes) ss.durMin = Math.round(dm);
       if (/^(yes|true|1|y)$/i.test(String(cell("deload") || "").trim())) ss.deload = true;
       let it = ss.items.get(ex);
@@ -14591,7 +14598,7 @@ ${more}`;
       }
       const en = String(cell("note") || "").trim();
       if (en && !it.note.split("; ").includes(en)) it.note = (it.note ? it.note + "; " + en : en).slice(0, LIMITS.note);
-      const n3 = Math.min(Math.max(Math.round(num2(cell("sets")) || 1), 1), ROW_SETS);
+      const n3 = Math.min(Math.max(Math.round(num(cell("sets")) || 1), 1), ROW_SETS);
       for (let j3 = 0; j3 < n3; j3++) it.sets.push({ ...set });
     }
     return {
@@ -14698,6 +14705,29 @@ ${more}`;
     }
     return out.length && out.length <= TYPED.sets ? out : null;
   }
+  var asTyped = (v3) => v3;
+  var REPS = /^\d{1,2}(\s*[/,]\s*\d{1,2})+$/;
+  function dateLineRest(L2) {
+    return L2.replace(/\b(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?\b/gi, "").replace(
+      /\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{1,2}(st|nd|rd|th)?\s+[a-z]{3,9}\.?,?(\s*\d{4})?\b|\b[a-z]{3,9}\.?\s+\d{1,2}(st|nd|rd|th)?(,?\s*\d{4})?\b/gi,
+      ""
+    ).replace(/[,:;\-–|]+/g, " ").trim();
+  }
+  function nameThenSets(words) {
+    for (let i5 = 1; i5 < words.length; i5++) {
+      const name = words.slice(0, i5).join(" ").replace(/[:\-–]+$/, "").trim();
+      const rest = words.slice(i5).join(" ");
+      if (!/[a-z]/i.test(name)) continue;
+      const got = readSets(impSetsText(rest), { bw: true }, null, asTyped);
+      if (got) return { name, rest };
+    }
+    return null;
+  }
+  function nameLoadThenReps(L2, next) {
+    const g2 = L2.match(/^(.*?[a-z].*?)\s+(\d{2,}(?:\.\d+)?\s*(?:lbs?|kgs?|#)?)$/i);
+    if (!g2 || !REPS.test(next)) return null;
+    return { name: (g2[1] || "").replace(/[:\-–]+$/, "").trim(), setsText: g2[2] + " " + next };
+  }
   var UNREAD_SHOWN = 50;
   function impFromText(text) {
     const lines = String(text).split(/\r?\n/);
@@ -14714,7 +14744,6 @@ ${more}`;
       pend = null;
       return d3;
     };
-    const raw = (v3) => v3;
     const nextIsName = (i5) => {
       for (let j3 = i5 + 1; j3 < lines.length; j3++) {
         const t4 = (lines[j3] || "").trim();
@@ -14722,7 +14751,6 @@ ${more}`;
       }
       return true;
     };
-    const REPS = /^\d{1,2}(\s*[/,]\s*\d{1,2})+$/;
     for (let li = 0; li < lines.length; li++) {
       const L0 = lines[li] || "";
       const L2 = L0.replace(/^[\s\-•*–]+/, "").trim();
@@ -14746,17 +14774,14 @@ ${more}`;
       }
       if (dt && pend && under && REPS.test(L2)) dt = null;
       if (dt) {
-        const rest = L2.replace(/\b(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?\b/gi, "").replace(
-          /\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{1,2}(st|nd|rd|th)?\s+[a-z]{3,9}\.?,?(\s*\d{4})?\b|\b[a-z]{3,9}\.?\s+\d{1,2}(st|nd|rd|th)?(,?\s*\d{4})?\b/gi,
-          ""
-        ).replace(/[,:;\-–|]+/g, " ").trim();
+        const rest = dateLineRest(L2);
         if (!/\d/.test(rest)) {
           day(dt, rest, L2);
           continue;
         }
       }
       const target = ex || pend;
-      const alone = readSets(impSetsText(L2), { bw: true }, null, raw);
+      const alone = readSets(impSetsText(L2), { bw: true }, null, asTyped);
       if (alone && target && !/[a-z]{3,}/i.test(L2.replace(/\b(bw|x|at|for|rir|reps?|sets?|of|lbs?|kgs?|sec|secs|seconds)\b/gi, ""))) {
         const p3 = pend;
         let into = cur;
@@ -14774,36 +14799,23 @@ ${more}`;
         if (e5) e5.setsText.push(L2);
         continue;
       }
-      let done = false;
-      for (let i5 = 1; i5 < words.length; i5++) {
-        const name = words.slice(0, i5).join(" ").replace(/[:\-–]+$/, "").trim();
-        const rest = words.slice(i5).join(" ");
-        if (!/[a-z]/i.test(name)) continue;
-        const got = readSets(impSetsText(rest), { bw: true }, null, raw);
-        if (got) {
-          const into = cur || day(null, "");
-          const e5 = { name, sets: [], setsText: [rest] };
-          into.items.push(e5);
-          ex = e5;
-          pend = null;
-          done = true;
-          break;
-        }
+      const ns = nameThenSets(words);
+      if (ns) {
+        const into = cur || day(null, "");
+        const e5 = { name: ns.name, sets: [], setsText: [ns.rest] };
+        into.items.push(e5);
+        ex = e5;
+        pend = null;
+        continue;
       }
-      if (done) continue;
       {
-        const g2 = L2.match(/^(.*?[a-z].*?)\s+(\d{2,}(?:\.\d+)?\s*(?:lbs?|kgs?|#)?)$/i);
-        const nx = (lines[li + 1] || "").replace(/^[\s\-•*–]+/, "").trim();
-        if (g2 && REPS.test(nx)) {
+        const nl = nameLoadThenReps(L2, (lines[li + 1] || "").replace(/^[\s\-•*–]+/, "").trim());
+        if (nl) {
           const into = cur || day(null, "");
           const pw = pend;
           if (pw) unread.push(pw.raw);
           pend = null;
-          const e5 = {
-            name: (g2[1] || "").replace(/[:\-–]+$/, "").trim(),
-            sets: [],
-            setsText: [g2[2] + " " + nx]
-          };
+          const e5 = { name: nl.name, sets: [], setsText: [nl.setsText] };
           into.items.push(e5);
           ex = e5;
           li++;
@@ -17274,31 +17286,31 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     )}</div>${tipButton(COMMON_TIP, "About Most common and Less common")}</div></div>
   <div id="libList">${libCards()}</div>`;
   }
-  var num = (v3) => +(v3 ?? NaN);
+  var num2 = (v3) => +(v3 ?? NaN);
   var PLAN_ACTS = {
     toggleItem(t4) {
       ui.openItem = ui.openItem === t4.dataset.uid ? null : t4.dataset.uid;
       rerenderKeepScroll();
     },
     iUp(t4) {
-      const d3 = curRoutineB().days[num(t4.dataset.day)];
+      const d3 = curRoutineB().days[num2(t4.dataset.day)];
       if (!d3) return;
-      act(() => move(d3.items, num(t4.dataset.i), num(t4.dataset.i) - 1));
+      act(() => move(d3.items, num2(t4.dataset.i), num2(t4.dataset.i) - 1));
       rerenderKeepScroll();
     },
     iDown(t4) {
-      const d3 = curRoutineB().days[num(t4.dataset.day)];
+      const d3 = curRoutineB().days[num2(t4.dataset.day)];
       if (!d3) return;
-      act(() => move(d3.items, num(t4.dataset.i), num(t4.dataset.i) + 1));
+      act(() => move(d3.items, num2(t4.dataset.i), num2(t4.dataset.i) + 1));
       rerenderKeepScroll();
     },
     iDel(t4) {
-      const d3 = curRoutineB().days[num(t4.dataset.day)];
+      const d3 = curRoutineB().days[num2(t4.dataset.day)];
       if (!d3) return;
       let gone;
       act(
         () => {
-          [gone] = d3.items.splice(num(t4.dataset.i), 1);
+          [gone] = d3.items.splice(num2(t4.dataset.i), 1);
         },
         { undo: true }
       );
@@ -17439,7 +17451,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     },
     dUp(t4) {
       const R2 = curRoutineB();
-      const i5 = num(t4.dataset.day);
+      const i5 = num2(t4.dataset.day);
       if (!(i5 >= 1)) return;
       act(() => move(R2.days, i5, i5 - 1));
       ui.todayDay = null;
@@ -17447,7 +17459,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     },
     dDown(t4) {
       const R2 = curRoutineB();
-      const i5 = num(t4.dataset.day);
+      const i5 = num2(t4.dataset.day);
       if (!(i5 < R2.days.length - 1)) return;
       act(() => move(R2.days, i5, i5 + 1));
       ui.todayDay = null;
@@ -17455,7 +17467,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     },
     dDel(t4) {
       const R2 = curRoutineB();
-      const i5 = num(t4.dataset.day);
+      const i5 = num2(t4.dataset.day);
       if (R2.schedule === "weekly") return;
       if (R2.days.length < 2) {
         toast("A cycle needs at least one day");
@@ -17602,7 +17614,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return true;
     }
     if (t4.dataset.dayname != null) {
-      const d3 = curRoutineB().days[num(t4.dataset.dayname)];
+      const d3 = curRoutineB().days[num2(t4.dataset.dayname)];
       if (d3)
         act(
           () => {
@@ -17613,7 +17625,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return true;
     }
     if (t4.dataset.daypm != null) {
-      const d3 = curRoutineB().days[num(t4.dataset.daypm)];
+      const d3 = curRoutineB().days[num2(t4.dataset.daypm)];
       const v3 = t4.value.trim().slice(0, LIMITS.name);
       if (d3)
         act(
@@ -17649,7 +17661,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return true;
     }
     if (t4.dataset.dayname != null) {
-      const d3 = curRoutineB().days[num(t4.dataset.dayname)];
+      const d3 = curRoutineB().days[num2(t4.dataset.dayname)];
       if (d3)
         act(() => {
           d3.name = within(t4.value, d3.name, LIMITS.name);
@@ -17662,7 +17674,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return true;
     }
     if (t4.dataset.dayrest != null) {
-      const d3 = curRoutineB().days[num(t4.dataset.dayrest)];
+      const d3 = curRoutineB().days[num2(t4.dataset.dayrest)];
       if (!d3) return true;
       const on = t4 instanceof HTMLInputElement && t4.checked;
       act(
@@ -17767,7 +17779,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     }, 0);
   };
   function dropItem(evt) {
-    const from = num(evt.from.dataset.day), to = num(evt.to.dataset.day);
+    const from = num2(evt.from.dataset.day), to = num2(evt.to.dataset.day);
     const oi = evt.oldIndex ?? -1, ni = evt.newIndex ?? -1;
     if (from === to && oi === ni) {
       dragDrop();
@@ -17809,7 +17821,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return;
     }
     if (evt.clone && evt.clone !== evt.item) evt.clone.remove();
-    const to = num(evt.to.dataset.day);
+    const to = num2(evt.to.dataset.day);
     const exId = evt.item.dataset.ex;
     const ni = evt.newIndex ?? 0;
     after(() => {
@@ -17825,7 +17837,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   }
   function dayKey(dg, up) {
     const R2 = curRoutineB();
-    const i5 = num(dg.dataset.di);
+    const i5 = num2(dg.dataset.di);
     const j3 = i5 + (up ? -1 : 1);
     if (R2.schedule === "weekly" || !R2.days[i5] || j3 < 0 || j3 >= R2.days.length) return;
     act(() => move(R2.days, i5, j3));
