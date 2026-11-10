@@ -56,7 +56,7 @@ Layer 3, storage and sync: chunks, merge, modals, store, live, providers, normal
 Layer 4, screens: icons, feedback, effort, toast, timer, tips, guide, sheets, sheetsmisc, notepics, bwnudge, sheetslift, sheetsplan, sheetsexercise, sheetspicker, sheetsapp, captcha, sheetsaccount, sheetsimport, env, outside, display, view, page, update, history, settings, graphs, plan, stats, calendar, week, map, today, workstate, worksets, workfinish, workout, worktaps, workfields, workdrag, report, account, importflow, demo, actsapp, actsroutine, actspick, actsstart, actslift, screens, events
 Layer 5, the page's start: main
 
-- **Screens as components**, one per tab, reading copy and labels from one place.
+- **Screens as components**, one per tab. Each screen keeps its words beside the markup that shows them (one language, so a catalogue of keys would only make the templates harder to read); `node scripts/copy.js --md FILE` lists every piece of text a lifter can read, by module and line, for a wording pass (CA-3, V 2026-11-10).
 
 ## How it gets there: the legacy code shrinks
 
