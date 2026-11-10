@@ -76,8 +76,7 @@ async function app(o = {}) {
     await D.page.waitForTimeout(200);
     const g1 = await D.page.evaluate(() => (window.__ironlog.state.settings.gym || {}).plates || null);
     ok(Array.isArray(g1) && g1.includes(1) && g1.includes(20), "2. tapping 1 kg puts it on the gym's list with the usual plates", g1);
-    const pl = await D.page.evaluate(() => window.__ironlog.plateList('kg'));
-    ok(pl.includes(1), "2. with 1 kg tapped, the gym's plates for every load include it", pl);
+    // The plates line's list (plateList), also checked here, is gone (2.42, NEW-103: V removed the plates line; tests/r88.js holds that it is not drawn); the gym's own list is held just above.
     await D.page.evaluate(() => window.__ironlog.ACT.gymPlate({ dataset: { v: '1' } })); // the section may be folded; its tap's own handler
     await D.page.waitForTimeout(200);
     const g2 = await D.page.evaluate(() => (window.__ironlog.state.settings.gym || {}).plates || null);
@@ -155,7 +154,8 @@ async function app(o = {}) {
       ok(a.name === 'Set 1' && a.btns.length === 4 && a.btns.every(x => x.w >= 44 && x.h >= 44 && !x.off), `5. (${w} px) under the first lift's sets: minus and plus for the load and the reps of Set 1, each 44 px`, a);
       ok(a.wide <= w, `5. (${w} px) no sideways scroll`, a.wide);
       // V, 2026-11-09: two pills side by side, each wholly in the one accent, ends included (V, 09:42), with the number it changes between its ends.
-      const pills = await D.page.evaluate(() => [...document.querySelectorAll('#blk-0 .stepr-g')].map(g => { const r = g.getBoundingClientRect(), t = g.querySelector('.stepr-v b'), tr = t && t.getBoundingClientRect(), bs = [...g.querySelectorAll('button')].map(x => x.getBoundingClientRect()); return { top: Math.round(r.top), v: t ? t.textContent : null, inside: !!tr && tr.left >= bs[0].right - 6 && tr.right <= bs[1].left + 6, accent: getComputedStyle(g).backgroundImage === 'none' && getComputedStyle(g).backgroundColor === getComputedStyle(document.documentElement).getPropertyValue('--volt').trim().replace(/^#(..)(..)(..)$/, (m, r, gg, b) => `rgb(${parseInt(r, 16)}, ${parseInt(gg, 16)}, ${parseInt(b, 16)})`) }; }));
+      // Since 2.42 (NEW-104) the pill is drawn inside its 44 px targets by the group's ::before, so the accent is read there.
+      const pills = await D.page.evaluate(() => [...document.querySelectorAll('#blk-0 .stepr-g')].map(g => { const r = g.getBoundingClientRect(), t = g.querySelector('.stepr-v b'), tr = t && t.getBoundingClientRect(), bs = [...g.querySelectorAll('button')].map(x => x.getBoundingClientRect()); return { top: Math.round(r.top), v: t ? t.textContent : null, inside: !!tr && tr.left >= bs[0].right - 6 && tr.right <= bs[1].left + 6, accent: (q => q.backgroundImage === 'none' && q.backgroundColor === getComputedStyle(document.documentElement).getPropertyValue('--volt').trim().replace(/^#(..)(..)(..)$/, (m, r, gg, b) => `rgb(${parseInt(r, 16)}, ${parseInt(gg, 16)}, ${parseInt(b, 16)})`))((c => (c.content && c.content !== 'none' ? c : getComputedStyle(g)))(getComputedStyle(g, '::before'))) }; }));
       ok(pills.length === 2 && pills[0].top === pills[1].top && pills[0].v === a.w && pills[1].v === a.r && pills.every(p => p.inside && p.accent), `5. (${w} px) two accent pills side by side, the load and the reps shown between minus and plus`, pills);
       await D.page.click('#blk-0 .stepr button[aria-label="Set 1: heavier"]'); await wait(300);
       const b = await look();

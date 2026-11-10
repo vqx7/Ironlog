@@ -121,7 +121,7 @@ export function renderInner(): void {
      mid-draw) runs once this one is done: lit-html takes nodes away one by
      one, and a draw inside that would find them gone. The session screen
      puts back first what the legacy page's fresh markup reset (the effort
-     strip, the plates line, a fold waiting its moment). */
+     strip and a fold waiting its moment). */
   if (sessionShown()) workoutFullDraw();
   const v = document.getElementById('view');
   const tab = TABS[ui.tab] || TABS['today'];

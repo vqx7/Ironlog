@@ -106,6 +106,7 @@ async function shortAt(page, v) {
 
   if (run(2)) {
     // a. The same answers as 2.33 on usual plates (a guard), read on both builds.
+    // The plates line read with them is gone (2.42, NEW-103: V removed it), so is not compared.
     const probe = async file => {
       const D = await open(file, { w: 390, h: 844, clock: DAY + 'T10:00:00' });
       const r = await D.page.evaluate(() => {
@@ -120,7 +121,7 @@ async function shortAt(page, v) {
           const ex = L.EX('bench'), plan = { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150 };
           for (let at = 20; at <= 300; at += 0.37) {
             const f = v => (v == null ? null : Math.round(v * 1000) / 1000);
-            out.push([gu, app, plates.join(','), f(at), f(L.incOf(ex, plan, at)), f(L.lighterLoad(ex, plan, at, at * 0.9)), f(L.heavierLoad(ex, plan, at, at * 1.03)), f(L.capOf({ ...ex, maxLoad: at }, plan)), L.plateText(at, 'bar', ex)].join('|'));
+            out.push([gu, app, plates.join(','), f(at), f(L.incOf(ex, plan, at)), f(L.lighterLoad(ex, plan, at, at * 0.9)), f(L.heavierLoad(ex, plan, at, at * 1.03)), f(L.capOf({ ...ex, maxLoad: at }, plan))].join('|'));
           }
           // A suggestion and a lighter day from a logged session at a few loads.
           for (const w of [60, 84.3, 102.1, 140]) {
@@ -148,15 +149,19 @@ async function shortAt(page, v) {
         const s = L.state; s.settings.onboarded = true; s.settings.unit = app; s.settings.gym = { u: gu, plates }; delete s.settings.barKg;
         s.sessions = []; s.draft = null; L.state = L.normalize(s); L.invalidate();
         const ex = L.EX('bench'), plan = { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150 };
-        const loadable = w => w != null && !/not loadable/.test(L.plateText(w, 'bar', ex));
+        // A load the bar and these plates make, a pair at a time, read in the gym's unit within the rounding of a typed load:
+        // the plates line's own reading (plateText, gone in 2.42 with the line, NEW-103), kept here as this check's judge.
+        const inU = v => (gu === 'lb' ? v / 0.45359237 : v);
+        const sideOf = w => { const r = L.platesPerSide([...plates].sort((a, b) => b - a), (inU(w) - inU(L.exBarKg(ex))) / 2, Math.max(1e-6, inU(L.rackTol()) / 2)); return Math.round(r.rest * 100) / 100; };
+        const loadable = w => w != null && inU(w) >= inU(L.exBarKg(ex)) - 1e-6 && (sideOf(w) <= 0 || (gu !== app && sideOf(w) < (gu === 'kg' ? 0.1 : 0.25)));
         for (let at = 25; at <= 200; at += 1.3) {
           const got = { lighter: L.lighterLoad(ex, plan, at, at * 0.9), heavier: L.heavierLoad(ex, plan, at, at * 1.03), cap: L.capOf({ ...ex, maxLoad: at }, plan) };
-          for (const [k, v] of Object.entries(got)) { n++; if (v != null && !loadable(v)) bad.push({ gu, app, plates: plates.join(','), at, k, v, line: L.plateText(v, 'bar', ex) }); }
+          for (const [k, v] of Object.entries(got)) { n++; if (v != null && !loadable(v)) bad.push({ gu, app, plates: plates.join(','), at, k, v, rest: sideOf(v) }); }
         }
         for (const w of [61, 84.3, 102.1, 140]) {
           const one = (id, date) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [10, 10, 10].map(r => ({ w, r, rir: 2, warm: false, drop: false })) }] });
           s.sessions = [one('g1', '2026-10-01'), one('g2', '2026-10-08')]; L.state = L.normalize(s); L.invalidate();
-          for (const o of [{}, { light: true }]) { n++; const v = L.suggest('bench', plan, o).w; if (!loadable(v)) bad.push({ gu, app, w, o, v, line: L.plateText(v, 'bar', ex) }); }
+          for (const o of [{}, { light: true }]) { n++; const v = L.suggest('bench', plan, o).w; if (!loadable(v)) bad.push({ gu, app, w, o, v, rest: sideOf(v) }); }
         }
       }
       return { n, bad };

@@ -97,8 +97,8 @@ await page.mouse.move(1,1);await page.waitForTimeout(100);ok(await ev(()=>docume
 await page.click('.hero [data-act="startSession"]:not([data-light])');
 const hs=await ev(()=>{const i=window.__ironlog.state.draft.ex.findIndex(b=>b.exId==='hackSquat');const inp=document.querySelector(`[data-f="w"][data-b="${i}"][data-s="0"]`);return {i,head:document.querySelectorAll('.sg.head')[i].querySelector('.lh').innerText};});
 await page.fill(`[data-f="w"][data-b="${hs.i}"][data-s="0"]`,'90');await page.waitForTimeout(100);
-const pl=await ev(i=>document.getElementById('pl-'+i).innerText,hs.i);
-ok(/side/i.test(hs.head)&&/45, 45/.test(pl),'hack squat logged per side: plate line shows 45, 45 a side',{head:hs.head,pl});
+// The plate line it also checked is gone (2.42, NEW-103: V removed the plates line and its Small plates toggle; tests/r88.js holds that neither is drawn).
+ok(/side/i.test(hs.head),'hack squat logged per side: its load heading says per side',{head:hs.head});
 ok(!errors.length,'no console errors',errors);
 await ctx.close();
 }

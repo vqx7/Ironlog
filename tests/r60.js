@@ -99,7 +99,8 @@ const SCREENS = [
   ['a blank session, named, notes typed', DEMO + FREE(['bench', 'dbRow']) + "L.state.draft.dayName='Arms <b>';L.state.draft.notes='felt <i>good</i>';L.saveNow();"],
   ['bodyweight lifts and the bodyweight ask', DEMO + "L.state.bodyweights=[];L.invalidate();L.saveNow();" + FREE(['pullup', 'pushup', 'dips']), null, /Your bodyweight/],
   ['timed, per side, assisted and a loaded hold', DEMO + FREE(['plank', 'sidePlank', 'dbRow', 'assistPullup', 'farmerHold']), null, /Sec\/side[\s\S]*machine help/],
-  ['plates under barbell lifts', DEMO + FREE(['bench', 'bbRow', 'ohp']), null, /Per side at/],
+  // Its plates line is gone (2.42, NEW-103: V removed the plates line and its Small plates toggle; tests/r88.js holds that neither is drawn); the screen is still drawn.
+  ['barbell lifts', DEMO + FREE(['bench', 'bbRow', 'ohp']), null, /Barbell Bench Press/],
   ['a lift twice', DEMO + FREE(['bench', 'pecDeck', 'bench']), null, /Barbell Bench Press[\s\S]*Barbell Bench Press/],
   ['an injury on a lift', DEMO + "L.state.injuries=[{id:'i1',m:'chest',note:'',date:'2026-10-20'}];L.state=L.normalize(L.state);L.invalidate();L.saveNow();" + START(), null, /Injury: /],
   ['cardio rows', DEMO + START() + TAP('cDraftAdd', { when: 'pre' }) + TAP('cDraftAdd', { when: 'post' }) + "L.state.draft.cardio[0].min=12;L.state.draft.cardio[0].hr=130;L.saveNow();"],

@@ -101,7 +101,7 @@ const LOG_SHOWN = 5;
 const KEPT_TOAST_MS = 8000;
 import { HARD_RIR } from './formulas';
 import { PROFILE_PLAN } from './routines';
-import { CHANGE_PLATES, SMALL_PLATE, DEFAULT_STEP, PLATES_KG, PLATES_LB } from './units';
+import { CHANGE_PLATES, DEFAULT_STEP, PLATES_KG, PLATES_LB } from './units';
 import { DEMO_WEEKS } from './importing';
 import { adjOn, refreshEx, syncDraftPlan, unitWords } from './worksets';
 import { confirmBox, render, rerenderKeepScroll, setSaveState } from './page';
@@ -317,8 +317,6 @@ function gymSettings(): TemplateResult {
       : a.map(fmtG).join(', ');
   const half = !!typed && !dbListOf(asRack(typed));
   const pair = !!typed && !half && (typed.fine == null) !== (typed.fineTo == null);
-  const su = (gymOf() || { u: U() }).u === 'kg' ? 'kg' : 'lb';
-  const small = `${SMALL_PLATE[su]} ${su}`;
   return html`${howText(
     'gym',
     `What your gym has, so suggested loads are ones you can pick up. Blank keeps the usual steps (${DEFAULT_STEP.lb} lb or ${DEFAULT_STEP.kg} kg, and dumbbells read from what you log). A step set on an exercise or in your plan still wins for that lift.`
@@ -335,7 +333,7 @@ ${
     ? html`<p class="small u-m0">Suggestions show in ${U()}, on the ${u} weights below.</p>
 `
     : nothing
-} <label class="field">${labelTip('lt-barKg', `Bar weight (${U()})`, 'Used by the plates-per-side line in the logger.')}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
+} <label class="field">${labelTip('lt-barKg', `Bar weight (${U()})`, "Suggested barbell loads are this bar and the plates on hand. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor.")}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
 <div>
 <p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="A barbell is loaded with these plates, a pair at a time, so its suggested loads are ones they make. A plate-loaded machine steps by two of the smallest, one a side; a landmine by one. Tap a plate your gym does not have, or add one it has that is not here.">Plates on hand (${u})</span></p>
 <div class="chips" role="group" aria-label="Plates on hand">${[
@@ -353,11 +351,6 @@ ${
 <button class="btn" data-act="gymPlateAdd">Add plate</button>
 </div>
 </div>
-<label class="check-inline"><input type="checkbox" data-bind="smallPlates" aria-labelledby="lt-smallPlates" .checked=${live(!!state.settings.smallPlates)}/>${labelTip(
-    'lt-smallPlates',
-    `Small plates (${small})`,
-    "Adds them to the plates-per-side line. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor."
-  )}</label>
 <div>
 <p class="small muted u-m0-0-6_fw600">Dumbbells (${u})</p>
 <div class="grid3">
@@ -1496,13 +1489,6 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
       state.settings.autoDone = on;
     });
     rerenderKeepScroll();
-  },
-  smallPlates(t) {
-    const on = checked(t);
-    act(() => {
-      if (on) state.settings.smallPlates = true;
-      else delete state.settings.smallPlates;
-    });
   },
   bwEvery(t) {
     const v = +t.value;

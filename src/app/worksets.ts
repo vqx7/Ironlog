@@ -11,9 +11,8 @@ import { isCompound } from './library';
 import { planItemOf, move, fixSupersets, partOf, DEFAULT_PLAN } from './routines';
 import { min5, rangeWords, MISSED_SAID } from './format';
 import { e1, prSameLoad, BACK_DAYS, isMissed, prScoreOf } from './formulas';
-import { PLATES_LB, PLATES_KG, LB, KM_MI, SMALL_PLATE } from './units';
-import { r1, addDays, today, uid, numIn, EPS, EPS_SAME, HUNDREDTHS, WEEK_DAYS, r3 } from './util';
-import { platesPerSide } from './gym';
+import { KM_MI } from './units';
+import { addDays, today, uid, numIn, EPS, EPS_SAME, WEEK_DAYS, r3 } from './util';
 import { loadWords } from './loads';
 import { BAND_WORDS, prAdd, prBestOf, prJudge, prSoFar } from './prs';
 import {
@@ -27,9 +26,6 @@ import {
   U,
   loadLabel,
   fmtW,
-  gymOf,
-  exBarKg,
-  rackTol,
   bwRefLoad,
   IDX,
   liftRead,
@@ -75,7 +71,6 @@ import {
 import type { Draft } from './workstate';
 
 /** A remainder of plates this light, per unit of the gym's plates, is conversion dust when the app shows the other unit: not said. */
-const PLATE_DUST: Readonly<Record<'kg' | 'lb', number>> = { kg: 0.1, lb: 0.25 };
 /** The calibration set is offered once CAL_OFFER.sessions sessions are logged, and again CAL_OFFER.weeks weeks after the last (or after Later). */
 export const CAL_OFFER = { sessions: 3, weeks: 3 } as const;
 /** Reps past ODD_REPS, and more than ODD_REPS_TIMES the top of the range and anything logged on the lift, are asked about first: a slipped digit (r32, a convention). */
@@ -397,56 +392,6 @@ export function prBeat(exId: string, s: DraftSet, date: string, pr: string): str
 /** A load as its field shows it: the help on an assisted lift, blank for none. */
 export const loadIn = (ex: ExerciseLike | null | undefined, w: number | null | undefined): string =>
   w == null ? '' : fmtW(ex && ex.assist ? -w : w);
-
-/* Small change plates (r29, item 98) add 1.25 lb or 0.5 kg, for gyms that
-   have them; the load step is still set per exercise. Your gym's own plates
-   when they are in the unit asked for. */
-/** The plates a bar is loaded from, in a unit: Your gym's, else the usual set, with the small ones when on. */
-export function plateList(u?: 'lb' | 'kg'): number[] {
-  const unit = u || U();
-  const g = gymOf();
-  const own =
-    g && (g.u || U()) === unit && Array.isArray(g.plates) && g.plates.length
-      ? g.plates.slice().sort((a, b) => b - a)
-      : null;
-  const b = own || (unit === 'lb' ? PLATES_LB : PLATES_KG);
-  return state.settings.smallPlates ? [...b, SMALL_PLATE[unit]] : b.slice();
-}
-
-/* Plates per side for a barbell load, greedy from the biggest plate down.
-   The plates are counted in the unit the gym's plates are labelled in, and
-   said in it (r34.2, from the review: a kg gym with the app in lb was told
-   "35, 5, 2.5, 1.14 lb not loadable" for one 20 kg plate a side). A plate
-   within half the load's last shown digit, split across the sides, is that
-   plate (platesPerSide, PENDING 333); within a rounding of the shown load,
-   not a plate short (a 60 kg load shown as 132.3 lb). */
-/** The plates line for a load: per side, on the sleeve, or below the bar. */
-export function plateText(kg: number, mode?: string, ex?: ExerciseLike | null): string {
-  const md = mode || 'bar';
-  if (md === 'none') return '';
-  const g = gymOf();
-  const pu: 'lb' | 'kg' = g && g.u && g.u !== U() ? g.u : U();
-  const inU = (v: number): number => (pu === 'lb' ? v / LB : v);
-  const load = inU(kg),
-    bar = md === 'bar' ? inU(exBarKg(ex)) : 0;
-  if (!(load > 0)) return '';
-  if (load < bar - EPS_SAME) return `${fmtW(kg)} ${U()} is below the ${r1(bar)} ${pu} bar`;
-  const { plates: out, rest: left } = platesPerSide(
-    plateList(pu),
-    md === 'sleeve' ? load : (load - bar) / 2,
-    Math.max(EPS_SAME, inU(rackTol()) / (md === 'sleeve' ? 1 : 2))
-  );
-  const rest = Math.round(left * HUNDREDTHS) / HUNDREDTHS;
-  const tiny = pu !== U() && rest < PLATE_DUST[pu];
-  const lead =
-    md === 'sleeve'
-      ? `On the sleeve at ${fmtW(kg)}`
-      : md === 'side'
-        ? `Per side at ${fmtW(kg)} (no bar)`
-        : `Per side at ${fmtW(kg)}`;
-  const tag = pu !== U() ? ` ${pu}` : '';
-  return `${lead}: ${out.length ? out.join(', ') + tag : 'bar only'}${rest > 0 && !tiny ? ` (${rest} ${pu} not loadable)` : ''}`;
-}
 
 /* ---------- progress, time, the calibration set ---------- */
 
@@ -946,7 +891,6 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
     { inProgress: true }
   );
   if (val && isMissed(s) && !s.warm && !s.drop) toast(MISSED_SAID);
-  W.platesAt = null;
   if (val && !d.editingId && blockDone(b) && !blkIsOpen(bi, b)) W.foldWait.add(b);
   onLiftDraw(bi, redraw);
   const pr = rowPR(b, si, d.date);

@@ -252,34 +252,30 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     await P.browser.close();
   }
 
-  // ---- Small plates and a lift's own bar.
+  // ---- Small plates and a lift's own bar. The plates line (plateText) and the Small plates toggle are gone (2.42, NEW-103: V removed the plates line and its Small plates toggle; tests/r88.js holds that neither is drawn); the
+  // saved setting and a lift's own bar stay, so their checks do.
   {
     const P = await open('index.html', { touch: true, clock: '2026-10-03T11:30:00' });
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
     const r = await ev(() => {
       const L = window.__ironlog; const LB = 0.45359237;
-      const off = L.plateText(137.5 * LB, 'bar');
-      L.state.settings.smallPlates = true; const on = L.plateText(137.5 * LB, 'bar');
+      L.state.settings.smallPlates = true;
       const n1 = L.normalize(JSON.parse(JSON.stringify(L.state))).settings.smallPlates;
       delete L.state.settings.smallPlates; const n2 = 'smallPlates' in L.normalize(JSON.parse(JSON.stringify(L.state))).settings;
       // A trap bar of 55 lb on a deadlift.
       const ex = L.state.exercises.find(e => e.id === 'rackPull') || L.state.exercises.find(e => e.equip === 'barbell');
-      ex.barKg = 55 * LB; const trap = L.plateText(145 * LB, 'bar', ex); const def = L.plateText(145 * LB, 'bar');
+      ex.barKg = 55 * LB;
       const kept = L.normalize(JSON.parse(JSON.stringify(L.state))).exercises.find(e => e.id === ex.id).barKg;
       const other = L.normalize(JSON.parse(JSON.stringify(L.state))).exercises.find(e => e.id === 'bench');
-      return { off, on, n1, n2, trap, def, kept: Math.round(kept / LB), noBar: !('barKg' in other) || other.barKg === undefined };
+      return { n1, n2, kept: Math.round(kept / LB), noBar: !('barKg' in other) || other.barKg === undefined };
     });
-    ok(/not loadable/.test(r.off) && /1\.25/.test(r.on) && !/not loadable/.test(r.on), 'small plates add 1.25 lb, so 137.5 lb is loadable', r);
     ok(r.n1 === true && r.n2 === false, 'small plates are saved only when on', r);
-    ok(/^Per side at 145: 45$/.test(r.trap) && /^Per side at 145: 45, 5$/.test(r.def), 'a 55 lb trap bar changes the plates per side (45 a side, against 45 and 5 on the 45 lb bar)', r);
     ok(r.kept === 55 && r.noBar, 'a lift keeps its own bar; others have none set', r);
     // The deload floor is the lift's own bar.
     const fl = await ev(() => { const L = window.__ironlog; const LB = 0.45359237; const ex = L.state.exercises.find(e => e.id === 'ezCurl'); ex.barKg = 25 * LB; const w = L.lighterLoad(ex, { inc: 5 * LB }, 30 * LB, 10 * LB); return Math.round(w / LB); });
     ok(fl === 25, 'a curl on a 25 lb EZ bar never deloads under the bar', fl);
     // Settings and the editor show them.
     await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); });
-    const ui = await ev(() => !!document.querySelector('[data-bind="smallPlates"]'));
-    ok(ui, 'Settings has Small plates');
     await ev(() => { const L = window.__ironlog; L.ACT.exEdit({ dataset: { ex: 'bench' } }); document.querySelectorAll('#modal details').forEach(d => d.open = true); });
     const ed = await ev(() => !!document.querySelector('[data-ebind="barRaw"]'));
     ok(ed, 'the exercise editor has Bar for this lift on a barbell lift');
@@ -403,7 +399,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       const P = await open('index.html', { clock: day + 'T11:30:00', realStarter: true });
       const r = await P.page.evaluate((unit) => { const L = window.__ironlog; const out = []; L.state.settings.unit = unit; const r = L.routineFromTemplate('onemuscle'); L.state.routines = [r]; L.state.activeRoutineId = r.id; L.makeDemo(); L.invalidate();
         const st = L.stalledIds(); if (st.length) out.push('stalled ' + st.join('/'));
-        const seen = new Set(); for (const s of L.state.sessions) for (const b of s.ex) { if (seen.has(b.exId)) continue; seen.add(b.exId); const e = L.state.exercises.find(x => x.id === b.exId); if (e.equip === 'barbell' && !e.bw && /below the/.test(L.plateText(b.sets[0].w, 'bar', e))) out.push(b.exId + ' under the bar'); }
+        const seen = new Set(); for (const s of L.state.sessions) for (const b of s.ex) { if (seen.has(b.exId)) continue; seen.add(b.exId); const e = L.state.exercises.find(x => x.id === b.exId); if (e.equip === 'barbell' && !e.bw && b.sets[0].w < L.exBarKg(e) - 1e-6) out.push(b.exId + ' under the bar'); }
         return out; }, unit);
       if (r.length) bad.push(unit + ' ' + day + ' ' + r.join(', '));
       await P.browser.close();

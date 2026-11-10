@@ -131,7 +131,6 @@ export function workoutInput(t: Field): boolean {
       },
       { inProgress: true, soon: true }
     );
-    if (t.dataset.f === 'w') W.platesAt = { b: blkRef(bi), s: si };
     W.onSet = setRef(bi, si);
     onLiftDraw(bi, redraw);
     return true;
