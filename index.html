@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.09-r89">
+<meta name="app-build" content="2026.11.10-r90">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2119,8 +2119,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.43";
-  var APP_VERSION = "2026.11.09-r89";
+  var DISPLAY_VERSION = "2.44";
+  var APP_VERSION = "2026.11.10-r90";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -4198,6 +4198,92 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return keepExtra(r0, { id: rid, name: typeof r4.name === "string" ? r4.name : "Routine", schedule, days });
   }
+  function cleanDraftSet(x0) {
+    const x2 = rec(x0);
+    if (!x2) return [];
+    return [
+      keepExtra(x0, {
+        w: x2.w == null ? null : clampN(x2.w, LOAD_MIN, LOAD_MAX, 0),
+        r: x2.r == null || x2.r === "" ? null : Math.round(clampN(x2.r, 0, LIMITS.reps, 0)),
+        rir: x2.rir == null || x2.rir === "" ? null : clampN(x2.rir, 0, EFFORT_TOP, null),
+        warm: !!x2.warm,
+        drop: !!x2.drop && !x2.warm,
+        done: !!x2.done,
+        cal: x2.warm ? void 0 : cleanCal(rec(x2.cal)) || void 0,
+        // The row's own id (r56.1), last, where a build before it kept the unknown field.
+        ...typeof x2.rid === "string" ? { rid: fixId(x2.rid) } : {}
+      })
+    ];
+  }
+  function cleanDraftBlock(b0) {
+    const b2 = rec(b0);
+    if (!b2 || typeof b2.exId !== "string" || !arr(b2.sets)) return [];
+    const pl = rec(b2.plan) || {};
+    const plan = {
+      ...planNums(pl),
+      ss: typeof pl.ss === "string" && pl.ss ? fixId(pl.ss) : null,
+      ...jumpOf(pl)
+    };
+    if (plan.repMax < plan.repMin) plan.repMax = plan.repMin;
+    const adj = rec(b2.adj);
+    const adjW = adj ? Number(adj.w) : NaN, adjFrom = adj ? Number(adj.from) : NaN, sw = Number(b2.sw);
+    const prev = arr(b2.prev), lastR = arr(b2.lastR), keepRR = arr(b2.keepRR), ln = rec(b2.lastNote);
+    return [
+      keepExtra(
+        b0,
+        {
+          ...typeof b2.bid === "string" && b2.bid ? { bid: fixId(b2.bid) } : {},
+          exId: fixId(b2.exId),
+          plan,
+          note: typeof b2.note === "string" ? b2.note : "",
+          inj: typeof b2.inj === "string" && isMuscleOrJoint(b2.inj) ? b2.inj : null,
+          hint: typeof b2.hint === "string" ? b2.hint : "",
+          last: typeof b2.last === "string" ? b2.last : "",
+          // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
+          prev: prev ? strings(prev, () => true).slice(0, LIMITS.sets).map((x2) => x2.slice(0, LIMITS.lastText)) : void 0,
+          prevOff: b2.prevOff === true ? true : void 0,
+          target: typeof b2.target === "string" ? b2.target : "",
+          easier: typeof b2.easier === "string" ? b2.easier : null,
+          tgt: cleanTgt(rec(b2.tgt)),
+          // Last time's reps per set: shown as placeholders, so numbers only.
+          lastR: lastR ? lastR.slice(0, LIMITS.sets).map((v3) => {
+            const n3 = numOr(v3, NaN);
+            return isNum(n3) && n3 >= 0 ? Math.min(n3, LIMITS.reps) : null;
+          }) : [],
+          swappedFrom: typeof b2.swappedFrom === "string" ? fixId(b2.swappedFrom) : null,
+          cut: b2.cut === true ? true : void 0,
+          // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
+          full: typeof b2.full === "number" && Number.isInteger(b2.full) && b2.full >= 1 && b2.full <= LIMITS.sets ? b2.full : void 0,
+          light: b2.light === true ? true : void 0,
+          // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
+          basis: typeof b2.basis === "string" && isDate(b2.basis) ? b2.basis : void 0,
+          // The suggested load the rows started from (r24); absent in older drafts.
+          sw: b2.sw === null ? null : b2.sw === void 0 || !isNum(sw) ? void 0 : clampN(b2.sw, LOAD_MIN, LOAD_MAX, 0),
+          // The next sets adjusted from a set (r34), and Keep for the rest of the session.
+          adj: adj && typeof adj.at === "number" && Number.isInteger(adj.at) && adj.at >= 0 && isNum(adjW) && isNum(adjFrom) ? {
+            at: adj.at,
+            w: clampN(adj.w, 0, LOAD_MAX, 0),
+            from: clampN(adj.from, 0, LOAD_MAX, 0),
+            r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
+            up: adj.up === true,
+            why: typeof adj.why === "string" ? adj.why.slice(0, LIMITS.why) : "",
+            // The row it came from (PENDING 333), last, where a build before it kept no such field.
+            ...typeof adj.rid === "string" ? { rid: fixId(adj.rid) } : {}
+          } : void 0,
+          adjOff: b2.adjOff === true ? true : void 0,
+          // Editing a saved session keeps the rep range it was logged under.
+          keepRR: b2.keepRR === void 0 ? void 0 : keepRR && keepRR.length === 2 ? pair(Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1) : null,
+          lastNote: ln && typeof ln.text === "string" && typeof ln.date === "string" && isDate(ln.date) ? { date: ln.date, text: ln.text } : null,
+          sets: (arr(b2.sets) || []).flatMap(cleanDraftSet),
+          // Done at a new machine or gym (r61, 343 7), last, where the menu adds it; absent unless marked.
+          ...b2.nw === true ? { nw: true } : {},
+          // The pictures on its note (r66, 373), by id, last; absent unless there are any.
+          ...picsField(b2.pics)
+        },
+        KNOWN_BLOCK
+      )
+    ];
+  }
   function equipList(v3) {
     const a2 = arr(v3);
     if (!a2) return void 0;
@@ -4239,108 +4325,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       note0: typeof d3.note0 === "string" ? d3.note0.slice(0, LIMITS.startNote) : void 0,
       chk: cleanChk(rec(d3.chk)) || void 0,
       cardio: (arr(d3.cardio) || []).filter((c4) => !!c4 && typeof c4 === "object").map((c4, ci) => cleanDraftCardio(c4, ci)),
-      ex: (arr(d3.ex) || []).flatMap((b0) => {
-        const b2 = rec(b0);
-        if (!b2 || typeof b2.exId !== "string" || !arr(b2.sets)) return [];
-        const pl = rec(b2.plan) || {};
-        const plan = {
-          ...planNums(pl),
-          ss: typeof pl.ss === "string" && pl.ss ? fixId(pl.ss) : null,
-          ...jumpOf(pl)
-        };
-        if (plan.repMax < plan.repMin) plan.repMax = plan.repMin;
-        const adj = rec(b2.adj);
-        const adjW = adj ? Number(adj.w) : NaN, adjFrom = adj ? Number(adj.from) : NaN, sw = Number(b2.sw);
-        const prev = arr(b2.prev), lastR = arr(b2.lastR), keepRR = arr(b2.keepRR), ln = rec(b2.lastNote);
-        return [
-          keepExtra(
-            b0,
-            {
-              ...typeof b2.bid === "string" && b2.bid ? { bid: fixId(b2.bid) } : {},
-              exId: fixId(b2.exId),
-              plan,
-              note: typeof b2.note === "string" ? b2.note : "",
-              inj: typeof b2.inj === "string" && isMuscleOrJoint(b2.inj) ? b2.inj : null,
-              hint: typeof b2.hint === "string" ? b2.hint : "",
-              last: typeof b2.last === "string" ? b2.last : "",
-              // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
-              prev: prev ? strings(prev, () => true).slice(0, LIMITS.sets).map((x2) => x2.slice(0, LIMITS.lastText)) : void 0,
-              prevOff: b2.prevOff === true ? true : void 0,
-              target: typeof b2.target === "string" ? b2.target : "",
-              easier: typeof b2.easier === "string" ? b2.easier : null,
-              tgt: cleanTgt(rec(b2.tgt)),
-              // Last time's reps per set: shown as placeholders, so numbers only.
-              lastR: lastR ? lastR.slice(0, LIMITS.sets).map((v3) => {
-                const n3 = numOr(v3, NaN);
-                return isNum(n3) && n3 >= 0 ? Math.min(n3, LIMITS.reps) : null;
-              }) : [],
-              swappedFrom: typeof b2.swappedFrom === "string" ? fixId(b2.swappedFrom) : null,
-              cut: b2.cut === true ? true : void 0,
-              // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
-              full: typeof b2.full === "number" && Number.isInteger(b2.full) && b2.full >= 1 && b2.full <= LIMITS.sets ? b2.full : void 0,
-              light: b2.light === true ? true : void 0,
-              // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
-              basis: typeof b2.basis === "string" && isDate(b2.basis) ? b2.basis : void 0,
-              // The suggested load the rows started from (r24); absent in older drafts.
-              sw: b2.sw === null ? null : b2.sw === void 0 || !isNum(sw) ? void 0 : clampN(b2.sw, LOAD_MIN, LOAD_MAX, 0),
-              // The next sets adjusted from a set (r34), and Keep for the rest of the session.
-              adj: adj && typeof adj.at === "number" && Number.isInteger(adj.at) && adj.at >= 0 && isNum(adjW) && isNum(adjFrom) ? {
-                at: adj.at,
-                w: clampN(adj.w, 0, LOAD_MAX, 0),
-                from: clampN(adj.from, 0, LOAD_MAX, 0),
-                r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
-                up: adj.up === true,
-                why: typeof adj.why === "string" ? adj.why.slice(0, LIMITS.why) : "",
-                // The row it came from (PENDING 333), last, where a build before it kept no such field.
-                ...typeof adj.rid === "string" ? { rid: fixId(adj.rid) } : {}
-              } : void 0,
-              adjOff: b2.adjOff === true ? true : void 0,
-              // Editing a saved session keeps the rep range it was logged under.
-              keepRR: b2.keepRR === void 0 ? void 0 : keepRR && keepRR.length === 2 ? pair(Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1) : null,
-              lastNote: ln && typeof ln.text === "string" && typeof ln.date === "string" && isDate(ln.date) ? { date: ln.date, text: ln.text } : null,
-              sets: (arr(b2.sets) || []).flatMap((x0) => {
-                const x2 = rec(x0);
-                if (!x2) return [];
-                return [
-                  keepExtra(x0, {
-                    w: x2.w == null ? null : clampN(x2.w, LOAD_MIN, LOAD_MAX, 0),
-                    r: x2.r == null || x2.r === "" ? null : Math.round(clampN(x2.r, 0, LIMITS.reps, 0)),
-                    rir: x2.rir == null || x2.rir === "" ? null : clampN(x2.rir, 0, EFFORT_TOP, null),
-                    warm: !!x2.warm,
-                    drop: !!x2.drop && !x2.warm,
-                    done: !!x2.done,
-                    cal: x2.warm ? void 0 : cleanCal(rec(x2.cal)) || void 0,
-                    // The row's own id (r56.1), last, where a build before it kept the unknown field.
-                    ...typeof x2.rid === "string" ? { rid: fixId(x2.rid) } : {}
-                  })
-                ];
-              }),
-              // Done at a new machine or gym (r61, 343 7), last, where the menu adds it; absent unless marked.
-              ...b2.nw === true ? { nw: true } : {},
-              // The pictures on its note (r66, 373), by id, last; absent unless there are any.
-              ...picsField(b2.pics)
-            },
-            KNOWN_BLOCK
-          )
-        ];
-      })
+      ex: (arr(d3.ex) || []).flatMap(cleanDraftBlock)
     };
     extraInto(d3, out, DRAFT_KNOWN);
     for (const k2 of Object.keys(d3)) if (!(k2 in out)) Reflect.deleteProperty(d3, k2);
     return Object.assign(d3, out);
   }
-  function normalize(input) {
-    const f3 = freshState();
-    normalize.dropped = 0;
-    const s3 = rec(input) || f3;
-    const drop3 = (n3) => {
-      normalize.dropped += n3 == null ? 1 : Math.max(0, n3);
-    };
-    const raw = { ...f3, ...s3 };
-    const settings = cleanSettings(s3, f3);
-    const list = (k2) => arr(raw[k2]) || [];
-    const removedLib = settings.removedLib;
-    const exercises = list("exercises").flatMap((e0) => {
+  function cleanExercises(listed, s3, removedLib) {
+    const exercises = listed.flatMap((e0) => {
       const e5 = rec(e0);
       return e5 && typeof e5.id === "string" && typeof e5.name === "string" ? [cleanExercise(e0, e5, e5.name)] : [];
     });
@@ -4381,92 +4373,90 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         for (const m3 of NEW_MUSCLES_V5) if (L2.secondary.includes(m3) && e5.primary !== m3 && !sec.includes(m3)) sec.push(m3);
       }
     }
-    const kept = list("routines").filter((r0) => {
-      const r4 = rec(r0);
-      return !!r4 && Array.isArray(r4.days);
-    }).map((r0, ri) => cleanRoutine(r0, ri));
-    const routines = kept.length ? kept : [cleanRoutine(starterRoutine(), 0)];
+    return exercises;
+  }
+  function cleanTrash(listed) {
     const cutoff = addDays(today(), -TRASH_DAYS);
-    let trash = list("trash").flatMap((t0) => {
+    const trash = listed.flatMap((t0) => {
       const t4 = rec(t0);
       const data = t4 ? rec(t4.data) : null;
       const kind = t4 ? trashKind(t4.kind) : null;
       return t4 && typeof t4.id === "string" && kind && typeof t4.date === "string" && isDate(t4.date) && t4.date >= cutoff && data ? [{ id: fixId(t4.id), kind, date: t4.date, data }] : [];
     }).sort((a2, b2) => a2.date < b2.date ? 1 : a2.date > b2.date ? -1 : 0).slice(0, TRASH_MAX);
     while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
-    const before = list("sessions").length;
-    let sessions = list("sessions").filter((x2) => okSess(rec(x2))).map((x2, i5) => cleanSess(x2, i5)).filter((ss) => ss.ex.length);
-    drop3(before - sessions.length);
-    let cardio;
-    {
-      const tS = /* @__PURE__ */ new Map(), tC = /* @__PURE__ */ new Map();
-      for (const t4 of trash) {
-        if (t4.kind === "session") tS.set(t4.id, t4);
-        else if (t4.kind === "cardio") tC.set(t4.id, t4);
-      }
-      const revived = /* @__PURE__ */ new Set();
-      const same = (cur, data, clean, ok) => {
-        try {
-          return !ok(data) || canon(clean(data, 0)) === canon(cur);
-        } catch (e5) {
-          return true;
-        }
-      };
-      sessions = sessions.filter((ss) => {
-        const t4 = tS.get(ss.id);
-        if (!t4) return true;
-        if (same(
-          { ...ss, id: ss.id },
-          { ...t4.data, id: ss.id },
-          (x2, i5) => cleanSess(x2, i5),
-          (x2) => okSess(rec(x2))
-        ))
-          return false;
-        revived.add(t4.id);
-        return true;
-      });
-      cardio = list("cardio").filter((c0) => {
-        const c4 = rec(c0);
-        return !!c4 && isDate(c4.date) && isNum(numOr(c4.min, NaN)) && numOr(c4.min, 0) > 0;
-      }).map((c4, ci) => cleanCardio(c4, ci)).filter((c4) => {
-        const t4 = tC.get(c4.id);
-        if (!t4) return true;
-        if (same(
-          c4,
-          { ...t4.data, id: c4.id },
-          (x2, i5) => cleanCardio(x2, i5),
-          (x2) => !!x2 && typeof x2 === "object"
-        ))
-          return false;
-        revived.add(t4.id);
-        return true;
-      });
-      if (revived.size) trash = trash.filter((t4) => t4.kind === "routine" || !revived.has(t4.id));
+    return trash;
+  }
+  function reviveEdited(sessions, listedCardio, trash) {
+    const tS = /* @__PURE__ */ new Map(), tC = /* @__PURE__ */ new Map();
+    for (const t4 of trash) {
+      if (t4.kind === "session") tS.set(t4.id, t4);
+      else if (t4.kind === "cardio") tC.set(t4.id, t4);
     }
-    const dedupe = (list0, kind, size) => {
-      const byId = /* @__PURE__ */ new Map(), extra2 = [];
-      for (const x2 of list0) {
-        const o3 = byId.get(x2.id);
-        if (!o3) {
-          byId.set(x2.id, x2);
-          continue;
-        }
-        if (canon(o3) === canon(x2)) continue;
-        const keepNew = size(x2) > size(o3) || size(x2) === size(o3) && (x2.date > o3.date || x2.date === o3.date && canon(x2) > canon(o3));
-        byId.set(x2.id, keepNew ? x2 : o3);
-        extra2.push(keepNew ? o3 : x2);
+    const revived = /* @__PURE__ */ new Set();
+    const same = (cur, data, clean, ok) => {
+      try {
+        return !ok(data) || canon(clean(data, 0)) === canon(cur);
+      } catch (e5) {
+        return true;
       }
-      if (!extra2.length) return list0;
-      for (const x2 of extra2) {
-        const id = fixId(x2.id + "-dup" + hashStr(canon(x2)).slice(0, DUP_HASH));
-        if (!trash.some((t4) => t4.id === id)) trash.unshift({ id, kind, date: today(), data: { ...rec(x2), id } });
-      }
-      return [...byId.values()];
     };
-    sessions = dedupe(sessions, "session", (x2) => x2.ex.reduce((a2, b2) => a2 + b2.sets.length, 0));
-    cardio = dedupe(cardio, "cardio", (x2) => x2.min);
-    const bBefore = list("bodyweights").length;
-    const bodyweights = list("bodyweights").filter((b0) => {
+    const kept = sessions.filter((ss) => {
+      const t4 = tS.get(ss.id);
+      if (!t4) return true;
+      if (same(
+        { ...ss, id: ss.id },
+        { ...t4.data, id: ss.id },
+        (x2, i5) => cleanSess(x2, i5),
+        (x2) => okSess(rec(x2))
+      ))
+        return false;
+      revived.add(t4.id);
+      return true;
+    });
+    const cardio = listedCardio.filter((c0) => {
+      const c4 = rec(c0);
+      return !!c4 && isDate(c4.date) && isNum(numOr(c4.min, NaN)) && numOr(c4.min, 0) > 0;
+    }).map((c4, ci) => cleanCardio(c4, ci)).filter((c4) => {
+      const t4 = tC.get(c4.id);
+      if (!t4) return true;
+      if (same(
+        c4,
+        { ...t4.data, id: c4.id },
+        (x2, i5) => cleanCardio(x2, i5),
+        (x2) => !!x2 && typeof x2 === "object"
+      ))
+        return false;
+      revived.add(t4.id);
+      return true;
+    });
+    return {
+      sessions: kept,
+      cardio,
+      trash: revived.size ? trash.filter((t4) => t4.kind === "routine" || !revived.has(t4.id)) : trash
+    };
+  }
+  function dedupe(list0, kind, size, trash) {
+    const byId = /* @__PURE__ */ new Map(), extra = [];
+    for (const x2 of list0) {
+      const o3 = byId.get(x2.id);
+      if (!o3) {
+        byId.set(x2.id, x2);
+        continue;
+      }
+      if (canon(o3) === canon(x2)) continue;
+      const keepNew = size(x2) > size(o3) || size(x2) === size(o3) && (x2.date > o3.date || x2.date === o3.date && canon(x2) > canon(o3));
+      byId.set(x2.id, keepNew ? x2 : o3);
+      extra.push(keepNew ? o3 : x2);
+    }
+    if (!extra.length) return list0;
+    for (const x2 of extra) {
+      const id = fixId(x2.id + "-dup" + hashStr(canon(x2)).slice(0, DUP_HASH));
+      if (!trash.some((t4) => t4.id === id)) trash.unshift({ id, kind, date: today(), data: { ...rec(x2), id } });
+    }
+    return [...byId.values()];
+  }
+  function cleanBodyweights(listed) {
+    return listed.filter((b0) => {
       const b2 = rec(b0);
       return !!b2 && isDate(b2.date) && isNum(numOr(b2.kg, NaN)) && numOr(b2.kg, 0) > 0;
     }).map((b0, bi) => {
@@ -4478,9 +4468,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         demo: !!b2.demo
       });
     });
-    drop3(bBefore - bodyweights.length);
-    const mBefore = list("measurements").length;
-    const measurements = list("measurements").filter((m0) => {
+  }
+  function cleanMeasurements(listed) {
+    return listed.filter((m0) => {
       const m3 = rec(m0);
       return !!m3 && isDate(m3.date);
     }).map((m0, mi) => {
@@ -4496,11 +4486,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
       return keepExtra(m0, o3, KNOWN_MEAS);
     });
-    drop3(mBefore - measurements.length);
-    const d3 = rec(raw.draft);
-    const draft = d3 && Array.isArray(d3.ex) && typeof d3.date === "string" && isDate(d3.date) ? cleanDraft(d3, d3.date) : null;
-    const dw = raw.deloadWeek;
-    const injuries = (arr(raw.injuries) || []).filter((x0) => {
+  }
+  function cleanInjuries(listed) {
+    return listed.filter((x0) => {
       const x2 = rec(x0);
       return !!x2 && isMuscleOrJoint(x2.m);
     }).map((x0, xi) => {
@@ -4512,14 +4500,54 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         date: typeof x2.date === "string" && isDate(x2.date) ? x2.date : today()
       });
     });
-    const ar = raw.activeRoutineId;
-    const want = typeof ar === "string" ? fixId(ar) : null;
-    const activeRoutineId = want != null && routines.some((r4) => r4.id === want) ? want : routines[0].id;
+  }
+  function unknownFields(s3, f3) {
     const rest = { ...s3 };
     for (const k2 of Object.keys(f3)) delete rest[k2];
     delete rest.priors;
     const extra = {};
     extraInto(rest, extra);
+    return extra;
+  }
+  function normalize(input) {
+    const f3 = freshState();
+    normalize.dropped = 0;
+    const s3 = rec(input) || f3;
+    const drop3 = (n3) => {
+      normalize.dropped += n3 == null ? 1 : Math.max(0, n3);
+    };
+    const raw = { ...f3, ...s3 };
+    const settings = cleanSettings(s3, f3);
+    const list = (k2) => arr(raw[k2]) || [];
+    const removedLib = settings.removedLib;
+    const exercises = cleanExercises(list("exercises"), s3, removedLib);
+    const kept = list("routines").filter((r0) => {
+      const r4 = rec(r0);
+      return !!r4 && Array.isArray(r4.days);
+    }).map((r0, ri) => cleanRoutine(r0, ri));
+    const routines = kept.length ? kept : [cleanRoutine(starterRoutine(), 0)];
+    let trash = cleanTrash(list("trash"));
+    const before = list("sessions").length;
+    let sessions = list("sessions").filter((x2) => okSess(rec(x2))).map((x2, i5) => cleanSess(x2, i5)).filter((ss) => ss.ex.length);
+    drop3(before - sessions.length);
+    let cardio;
+    ({ sessions, cardio, trash } = reviveEdited(sessions, list("cardio"), trash));
+    sessions = dedupe(sessions, "session", (x2) => x2.ex.reduce((a2, b2) => a2 + b2.sets.length, 0), trash);
+    cardio = dedupe(cardio, "cardio", (x2) => x2.min, trash);
+    const bBefore = list("bodyweights").length;
+    const bodyweights = cleanBodyweights(list("bodyweights"));
+    drop3(bBefore - bodyweights.length);
+    const mBefore = list("measurements").length;
+    const measurements = cleanMeasurements(list("measurements"));
+    drop3(mBefore - measurements.length);
+    const d3 = rec(raw.draft);
+    const draft = d3 && Array.isArray(d3.ex) && typeof d3.date === "string" && isDate(d3.date) ? cleanDraft(d3, d3.date) : null;
+    const dw = raw.deloadWeek;
+    const injuries = cleanInjuries(arr(raw.injuries) || []);
+    const ar = raw.activeRoutineId;
+    const want = typeof ar === "string" ? fixId(ar) : null;
+    const activeRoutineId = want != null && routines.some((r4) => r4.id === want) ? want : routines[0].id;
+    const extra = unknownFields(s3, f3);
     return {
       version: STATE_VERSION,
       settings,
@@ -6319,13 +6347,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   // src/app/analytics.ts
   function dateIndexIn(M3) {
     if (M3.c._dix) return M3.c._dix;
-    const byDate = {}, weekN = {};
+    const byDate2 = {}, weekN = {};
     for (const x2 of sortedSessionsIn(M3)) {
-      (byDate[x2.date] = byDate[x2.date] || []).push(x2);
+      (byDate2[x2.date] = byDate2[x2.date] || []).push(x2);
       const w2 = weekStart(x2.date);
       weekN[w2] = (weekN[w2] || 0) + 1;
     }
-    return M3.c._dix = { byDate, weekN };
+    return M3.c._dix = { byDate: byDate2, weekN };
   }
   var PICK_DAYS = 7;
   var RECOVERY_EASY_RIR = 3;
@@ -6378,6 +6406,53 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return sinceNew(all.filter((x2) => x2.date > d3.date));
     return sinceNew(all);
   }
+  function tallyIn(M3, ss, b2, ex, novel, T2) {
+    const { ws, wc, dm, dx, weekHard, wk, recentFrom } = T2;
+    const mus = [[ex.primary, 1], ...ex.secondary.map((m3) => [m3, HELPER_CREDIT])];
+    let n3 = 0, total = 0;
+    for (const s3 of b2.sets) {
+      if (!isWork(s3)) continue;
+      const logged2 = M3.s.settings.rirMode === "off" || !(s3.rir == null || String(s3.rir) === "");
+      if (ss.date >= recentFrom) {
+        total++;
+        if (logged2) n3++;
+      }
+      const hard = isHardIn(M3, s3, ex);
+      const cr = hard ? setCredit(s3) : hardCreditIn(M3, s3, ex);
+      if (!cr) continue;
+      const q = rirEffIn(M3, s3, ex);
+      weekHard[wk] = (weekHard[wk] || 0) + cr;
+      for (const [m3, f3] of mus) {
+        ws[m3] = (ws[m3] || 0) + f3 * cr;
+        if (logged2) wc[m3] = (wc[m3] || 0) + f3 * cr;
+        if (!hard) continue;
+        dm[m3] = (dm[m3] || 0) + f3 * cr;
+        const o3 = dx[m3] || (dx[m3] = { fail: 0, easy: 0, hard: 0, slow: false, novel: false });
+        o3.hard++;
+        if (q === 0) o3.fail++;
+        if (q != null && q >= RECOVERY_EASY_RIR) o3.easy++;
+        if (SLOW_RECOVERY.has(ex.id)) o3.slow = true;
+        if (novel) o3.novel = true;
+      }
+    }
+    return { logged: n3, total };
+  }
+  function trendReads(ex, atTop, pts) {
+    let tAdj = null, tRaw = null, topL = 0, rated = 0;
+    if (!noE1(ex)) {
+      const avg = (f3) => {
+        const v3 = atTop.map(f3).filter((x2) => x2 != null);
+        return v3.length ? v3.reduce((a2, b2) => a2 + b2, 0) / v3.length : null;
+      };
+      tAdj = avg((p3) => trendE(p3.load, p3.r, p3.rq));
+      tRaw = avg((p3) => trendE(p3.load, p3.r, 0));
+    }
+    for (const p3 of pts) {
+      if (p3.load > topL) topL = p3.load;
+      if (p3.rir != null) rated++;
+    }
+    return { tAdj, tRaw, topL, rated };
+  }
   function idxSessionsIn(M3, sessions) {
     const byEx = {}, sessVol = [], weekSets = {}, weekConf = {}, dayMus = {}, dayMeta2 = {}, weekHard = {};
     const recentFrom = addDays(M3.today(), -RECENT_DAYS);
@@ -6393,35 +6468,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       for (const b2 of sameExOnce(ss.ex)) {
         const ex = EXIn(M3, b2.exId);
         const novel = !seenEx.has(b2.exId);
-        const mus = [
-          [ex.primary, 1],
-          ...ex.secondary.map((m3) => [m3, HELPER_CREDIT])
-        ];
-        for (const s3 of b2.sets) {
-          if (!isWork(s3)) continue;
-          const logged2 = M3.s.settings.rirMode === "off" || !(s3.rir == null || String(s3.rir) === "");
-          if (ss.date >= recentFrom) {
-            rirTotal++;
-            if (logged2) rirLogged++;
-          }
-          const hard = isHardIn(M3, s3, ex);
-          const cr = hard ? setCredit(s3) : hardCreditIn(M3, s3, ex);
-          if (!cr) continue;
-          const q = rirEffIn(M3, s3, ex);
-          weekHard[wk] = (weekHard[wk] || 0) + cr;
-          for (const [m3, f3] of mus) {
-            ws[m3] = (ws[m3] || 0) + f3 * cr;
-            if (logged2) wc[m3] = (wc[m3] || 0) + f3 * cr;
-            if (!hard) continue;
-            dm[m3] = (dm[m3] || 0) + f3 * cr;
-            const o3 = dx[m3] || (dx[m3] = { fail: 0, easy: 0, hard: 0, slow: false, novel: false });
-            o3.hard++;
-            if (q === 0) o3.fail++;
-            if (q != null && q >= RECOVERY_EASY_RIR) o3.easy++;
-            if (SLOW_RECOVERY.has(ex.id)) o3.slow = true;
-            if (novel) o3.novel = true;
-          }
-        }
+        const rc = tallyIn(M3, ss, b2, ex, novel, { ws, wc, dm, dx, weekHard, wk, recentFrom });
+        rirLogged += rc.logged;
+        rirTotal += rc.total;
         seenEx.add(b2.exId);
         const work = b2.sets.filter(isWork);
         if (!work.length) continue;
@@ -6461,19 +6510,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
             }
           }
         const { pb, pbb } = prBestOf(ex, pts, nb);
-        let tAdj = null, tRaw = null, topL = 0, rated = 0;
-        if (!noE1(ex)) {
-          const avg = (f3) => {
-            const v4 = atTop.map(f3).filter((x2) => x2 != null);
-            return v4.length ? v4.reduce((a2, b3) => a2 + b3, 0) / v4.length : null;
-          };
-          tAdj = avg((p3) => trendE(p3.load, p3.r, p3.rq));
-          tRaw = avg((p3) => trendE(p3.load, p3.r, 0));
-        }
-        for (const p3 of pts) {
-          if (p3.load > topL) topL = p3.load;
-          if (p3.rir != null) rated++;
-        }
+        const { tAdj, tRaw, topL, rated } = trendReads(ex, atTop, pts);
         const v3 = ex && ex.timed ? 0 : work.reduce((a2, s3) => a2 + tonnageIn(M3, ex, s3, ss.date), 0);
         vol += v3;
         (byEx[b2.exId] || (byEx[b2.exId] = [])).push({
@@ -6637,6 +6674,30 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const q = s3.reduce((a2, b2) => b2.weeks < a2.weeks ? b2 : a2);
     return q.last ? `over the last ${q.weeks} weeks` : `over ${q.weeks} weeks`;
   }
+  function rirInTrendIn(M3, inRange) {
+    const recent = inRange.slice(-RIR_TREND.sessions);
+    const nPts = recent.reduce((a2, x2) => a2 + x2.pts.length, 0), nRated = recent.reduce((a2, x2) => a2 + x2.rated, 0);
+    const useAdj = M3.s.settings.rirMode !== "off" && nPts > 0 && nRated / nPts >= RIR_TREND.share;
+    return useAdj;
+  }
+  function stillTrainedIn(M3, id, exI, lastReal, winStart) {
+    return !!lastReal && lastReal.date >= winStart && !afterBreak(lastReal, M3.today()) && !exI.archived && M3.s.exercises.some((e5) => e5.id === id) && !exInjuryIn(M3, exI);
+  }
+  function stretchMoved(l4, offSince, listed) {
+    const z2 = l4[l4.length - 1], a0 = l4[0];
+    const same = l4.slice(0, -1).filter((x2) => Math.abs(x2.topW - z2.topW) < EPS_SAME && x2.topN >= z2.topN);
+    return l4.slice(-STALL.noProgress).some((x2) => x2.progress) || offSince(l4[l4.length - STALL.noProgress].date).some(listed) || z2.topL > a0.topL + EPS_SAME || z2.topW > a0.topW + EPS_SAME || same.length > 0 && z2.topReps > Math.max(...same.map((x2) => x2.topReps));
+  }
+  function otherRangesIn(M3, exI, scopes, sc, falling) {
+    const holdRR = [], quietRR = [];
+    if (falling)
+      for (const q of scopes.slice(1)) {
+        const o3 = q.rr ? liftTrendIn(M3, exI, trendW({ inRange: q.inR, exWin: sc.exWin })) : null;
+        if (q.rr && o3 && o3.pct == null) quietRR.push(q.rr);
+        else if (q.rr && o3 && !o3.falling) holdRR.push(q.rr);
+      }
+    return { holdRR, quietRR };
+  }
   function idxLiftIn(M3, id, exps, maxBest, anchor, winStart, prs) {
     const sc = trendScope(exps, anchor);
     const { real, curRR, inRange, lastReal } = sc;
@@ -6645,12 +6706,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const plC = basePlanIn(M3, id);
     const capL = lastReal ? capOfIn(M3, exI, plC, lastReal.topW) : null;
     const capped = !!lastReal && atCapOfIn(M3, exI, plC, lastReal.topW, capL);
-    const recent = inRange.slice(-RIR_TREND.sessions);
-    const nPts = recent.reduce((a2, x2) => a2 + x2.pts.length, 0), nRated = recent.reduce((a2, x2) => a2 + x2.rated, 0);
-    const useAdj = M3.s.settings.rirMode !== "off" && nPts > 0 && nRated / nPts >= RIR_TREND.share;
+    const useAdj = rirInTrendIn(M3, inRange);
     for (const x2 of exps) x2.tv = useAdj ? x2.tAdj : x2.tRaw;
     let stalled = false;
-    const current = !!lastReal && lastReal.date >= winStart && !afterBreak(lastReal, M3.today()) && !exI.archived && M3.s.exercises.some((e5) => e5.id === id) && !exInjuryIn(M3, exI);
+    const current = stillTrainedIn(M3, id, exI, lastReal, winStart);
     const listed = (x2) => prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === id);
     const stalledIn = (rr, all) => {
       const inR = all.filter((x2) => !x2.held);
@@ -6658,9 +6717,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const offSince = (from) => cur.filter((x2) => (lighter(x2) || x2.held) && sameRR(x2.rr, rr) && x2.date >= from);
       const l4 = stallStretch(withE1);
       if (l4) {
-        const z2 = l4[l4.length - 1], a0 = l4[0];
-        const same = l4.slice(0, -1).filter((x2) => Math.abs(x2.topW - z2.topW) < EPS_SAME && x2.topN >= z2.topN);
-        const moved = l4.slice(-STALL.noProgress).some((x2) => x2.progress) || offSince(l4[l4.length - STALL.noProgress].date).some(listed) || z2.topL > a0.topL + EPS_SAME || z2.topW > a0.topW + EPS_SAME || same.length > 0 && z2.topReps > Math.max(...same.map((x2) => x2.topReps));
+        const moved = stretchMoved(l4, offSince, listed);
         const sen = (() => {
           const a2 = [];
           for (let i5 = 0; i5 < l4.length; i5++)
@@ -6681,13 +6738,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const { pct, slope, slopeSe, moving, pLo, pHi, spanW, loadUp } = t4;
     const scopes = stallScopesIn(M3, id, sc);
     const rrIn = scopes.length > 1 ? curRR : null;
-    const holdRR = [], quietRR = [];
-    if (t4.falling)
-      for (const q of scopes.slice(1)) {
-        const o3 = q.rr ? liftTrendIn(M3, exI, trendW({ inRange: q.inR, exWin: sc.exWin })) : null;
-        if (q.rr && o3 && o3.pct == null) quietRR.push(q.rr);
-        else if (q.rr && o3 && !o3.falling) holdRR.push(q.rr);
-      }
+    const { holdRR, quietRR } = otherRangesIn(M3, exI, scopes, sc, t4.falling);
     const falling = t4.falling && !holdRR.length && !quietRR.length;
     let easier = null;
     if (inRange.length >= DRIFT_N) {
@@ -9256,9 +9307,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const lw = atLoad(x2.pts, x2.topW);
     return lw.length > 0 && lw.every((q) => q.r >= top);
   }
-  function coachIn(M3) {
-    const I2 = IDXIn(M3);
-    const R2 = activeRoutineIn(M3);
+  function quietWeekIn(M3) {
     if (!M3.s.sessions.length)
       return { tone: "blue", text: "Log your first session. Advice starts after a few sessions.", act: null };
     if (isRestWeekIn(M3, weekStart(M3.today())))
@@ -9275,6 +9324,74 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         why: `Half the sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR} or more reps in reserve. Your targets pick up where they were.`,
         act: null
       };
+    return null;
+  }
+  function shortfallLineIn(M3, R2, avg, under, liftFor) {
+    const per = plannedPerWeek(R2);
+    if (under.length && !freeModeIn(M3) && per > 0 && Math.round(avg._sess) < per)
+      return {
+        tone: "yellow",
+        text: `You made ${r1(avg._sess)} of ${per} planned sessions a week. Getting them in matters more than adding sets.`,
+        why: `Your plan's sets assume every planned session is done; over your recent full weeks you made ${r1(avg._sess)} a week of the ${per} it plans. A routine with fewer days fits fewer sessions.`,
+        act: null
+      };
+    if (under.length) {
+      const u4 = under[0];
+      const gap = Math.max(1, Math.ceil(u4.lo - u4.got));
+      const exId = liftFor(u4.m).id;
+      const planned = plannedSetsIn(M3, R2)[u4.m] || 0;
+      const rpe = effScale(M3.s.settings.rirScale) === "rpe";
+      const hard = rpe ? "RPE 7 or harder" : "3 or fewer reps in reserve", easy = rpe ? "at RPE 6 or easier" : "with 4 or more in reserve";
+      if (!freeModeIn(M3) && !belowMin(planned, u4.lo))
+        return {
+          tone: "yellow",
+          text: `${ML[u4.m]}: ${r1(u4.got)} hard set${r1(u4.got) === 1 ? "" : "s"} a week, target ${u4.lo}-${u4.hi}. Your plan has ${r1(planned)}: do every planned set${M3.s.settings.rirMode === "off" ? "" : `, to ${hard}`}.${under.length > 1 ? ` ${under.length - 1} more below target.` : ""}`,
+          why: `Your average of hard sets per week over your recent full weeks. Your plan already reaches the target, so the gap is in how the sets are done, not how many are planned: ${M3.s.settings.rirMode === "off" ? "a planned set skipped does not count." : `a set counts as hard at ${hard}, so a planned set skipped, or ended ${easy} (as a lift's first sessions are while its load is found), does not.`}`,
+          act: { label: `See ${ML[u4.m]}`, sec: "volume", m: u4.m }
+        };
+      const how = exId ? `Add ${gap} set${gap > 1 ? "s" : ""} a week to ${exNameIn(M3, exId)}.` : "Add an exercise for it.";
+      return {
+        tone: "yellow",
+        text: `${ML[u4.m]}: ${r1(u4.got)} hard set${r1(u4.got) === 1 ? "" : "s"} a week, target ${u4.lo}-${u4.hi}. ${how}${under.length > 1 ? ` ${under.length - 1} more below target.` : ""}`,
+        why: `Your average of hard sets per week over your recent full weeks. The largest shortfall comes first, and priority muscles before the rest.${exId ? "" : " Nothing in your routine trains it directly."}`,
+        act: { label: `See ${ML[u4.m]}`, sec: "volume", m: u4.m }
+      };
+    }
+    return null;
+  }
+  function lastWordIn(M3, I2, avg, mst, inj) {
+    const lag = I2.scores.filter((x2) => x2.clear && x2.score <= -GROW_PCT);
+    if (lag.length) {
+      const x2 = lag[lag.length - 1];
+      return {
+        tone: "yellow",
+        text: `${ML[x2.m]} strength is falling over ${x2.wk || TREND_WEEKS} weeks. Check sleep and recovery before adding sets.`,
+        act: { label: `See ${ML[x2.m]}`, sec: "rank", m: x2.m }
+      };
+    }
+    if (!avg) {
+      const w2 = avgWaitIn(M3);
+      const text = `${w2.lead}Volume advice ${w2.kind === "back" ? "comes back" : "appears here"} after ${w2.after}.`;
+      return w2.kind === "second" ? { tone: "blue", text, why: w2.why, wait: true, act: null } : { tone: "blue", text, wait: true, act: null };
+    }
+    const onPlan = mst ? MK.filter((m3) => !inj.has(m3) && mst[m3].st === "plan") : [];
+    if (onPlan.length)
+      return {
+        tone: "green",
+        text: "Every muscle on plan, nothing stalled.",
+        why: `Under the minimum over these weeks, on plan: ${andList(
+          onPlan.map((m3) => ML[m3]),
+          ON_PLAN_SHOWN
+        )}. ${ON_PLAN_TIP}`,
+        act: null
+      };
+    return { tone: "green", text: "Every muscle at target, nothing stalled.", act: null };
+  }
+  function coachIn(M3) {
+    const I2 = IDXIn(M3);
+    const R2 = activeRoutineIn(M3);
+    const quiet = quietWeekIn(M3);
+    if (quiet) return quiet;
     const stalled = stalledIdsIn(M3);
     const rl = recentLighterIn(M3, DELOAD_GAP_DAYS);
     const big = fatigueStallsIn(M3, stalled);
@@ -9325,36 +9442,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         pri: M3.s.settings.priorities.includes(m3) ? 1 : 0,
         lag: lagSet.has(m3) ? 1 : 0
       })).sort((a2, b2) => b2.pri - a2.pri || b2.lag - a2.lag || b2.lo - b2.got - (a2.lo - a2.got) || a2.got / a2.lo - b2.got / b2.lo);
-      const per = plannedPerWeek(R2);
-      if (under.length && !freeModeIn(M3) && per > 0 && Math.round(avg._sess) < per)
-        return {
-          tone: "yellow",
-          text: `You made ${r1(avg._sess)} of ${per} planned sessions a week. Getting them in matters more than adding sets.`,
-          why: `Your plan's sets assume every planned session is done; over your recent full weeks you made ${r1(avg._sess)} a week of the ${per} it plans. A routine with fewer days fits fewer sessions.`,
-          act: null
-        };
-      if (under.length) {
-        const u4 = under[0];
-        const gap = Math.max(1, Math.ceil(u4.lo - u4.got));
-        const exId = liftFor(u4.m).id;
-        const planned = plannedSetsIn(M3, R2)[u4.m] || 0;
-        const rpe = effScale(M3.s.settings.rirScale) === "rpe";
-        const hard = rpe ? "RPE 7 or harder" : "3 or fewer reps in reserve", easy = rpe ? "at RPE 6 or easier" : "with 4 or more in reserve";
-        if (!freeModeIn(M3) && !belowMin(planned, u4.lo))
-          return {
-            tone: "yellow",
-            text: `${ML[u4.m]}: ${r1(u4.got)} hard set${r1(u4.got) === 1 ? "" : "s"} a week, target ${u4.lo}-${u4.hi}. Your plan has ${r1(planned)}: do every planned set${M3.s.settings.rirMode === "off" ? "" : `, to ${hard}`}.${under.length > 1 ? ` ${under.length - 1} more below target.` : ""}`,
-            why: `Your average of hard sets per week over your recent full weeks. Your plan already reaches the target, so the gap is in how the sets are done, not how many are planned: ${M3.s.settings.rirMode === "off" ? "a planned set skipped does not count." : `a set counts as hard at ${hard}, so a planned set skipped, or ended ${easy} (as a lift's first sessions are while its load is found), does not.`}`,
-            act: { label: `See ${ML[u4.m]}`, sec: "volume", m: u4.m }
-          };
-        const how = exId ? `Add ${gap} set${gap > 1 ? "s" : ""} a week to ${exNameIn(M3, exId)}.` : "Add an exercise for it.";
-        return {
-          tone: "yellow",
-          text: `${ML[u4.m]}: ${r1(u4.got)} hard set${r1(u4.got) === 1 ? "" : "s"} a week, target ${u4.lo}-${u4.hi}. ${how}${under.length > 1 ? ` ${under.length - 1} more below target.` : ""}`,
-          why: `Your average of hard sets per week over your recent full weeks. The largest shortfall comes first, and priority muscles before the rest.${exId ? "" : " Nothing in your routine trains it directly."}`,
-          act: { label: `See ${ML[u4.m]}`, sec: "volume", m: u4.m }
-        };
-      }
+      const line = shortfallLineIn(M3, R2, avg, under, liftFor);
+      if (line) return line;
     }
     if (stalled.length) {
       const id = stalled[0];
@@ -9374,32 +9463,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         act: { label: "See the lift", sec: "exercise", ex: id }
       };
     }
-    const lag = I2.scores.filter((x2) => x2.clear && x2.score <= -GROW_PCT);
-    if (lag.length) {
-      const x2 = lag[lag.length - 1];
-      return {
-        tone: "yellow",
-        text: `${ML[x2.m]} strength is falling over ${x2.wk || TREND_WEEKS} weeks. Check sleep and recovery before adding sets.`,
-        act: { label: `See ${ML[x2.m]}`, sec: "rank", m: x2.m }
-      };
-    }
-    if (!avg) {
-      const w2 = avgWaitIn(M3);
-      const text = `${w2.lead}Volume advice ${w2.kind === "back" ? "comes back" : "appears here"} after ${w2.after}.`;
-      return w2.kind === "second" ? { tone: "blue", text, why: w2.why, wait: true, act: null } : { tone: "blue", text, wait: true, act: null };
-    }
-    const onPlan = mst ? MK.filter((m3) => !inj.has(m3) && mst[m3].st === "plan") : [];
-    if (onPlan.length)
-      return {
-        tone: "green",
-        text: "Every muscle on plan, nothing stalled.",
-        why: `Under the minimum over these weeks, on plan: ${andList(
-          onPlan.map((m3) => ML[m3]),
-          ON_PLAN_SHOWN
-        )}. ${ON_PLAN_TIP}`,
-        act: null
-      };
-    return { tone: "green", text: "Every muscle at target, nothing stalled.", act: null };
+    return lastWordIn(M3, I2, avg, mst, inj);
   }
   function musTrend(sc) {
     if (!sc.clear)
@@ -10534,10 +10598,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     clearTimer(cloud.t);
     cloud.t = setTimeout(() => cq(cloudFlush), SYNC_MS.flush);
   }
-  async function cloudFlush() {
-    if (!cloud.on) return;
-    if (!pulled) return cloudPull();
-    if (trackT || cloud.pendAt) trackEdits();
+  function changedDocs() {
     const ch = chunksOf(state);
     const ids = /* @__PURE__ */ new Set([...Object.keys(ch), ...Object.keys(cloud.meta)]);
     const todo = [];
@@ -10556,6 +10617,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!m3 || m3.h !== h3) todo.push({ id, json, h: h3 });
     }
     if (backfilled) saveMeta();
+    return todo;
+  }
+  function tooBigSaid(tooBig) {
+    return tooBig.includes("core") ? "Routines and settings are too large to sync. Export a backup." : tooBig.some((i5) => i5.startsWith("b-")) ? "A year of body data is too large to sync. Export a backup." : tooBig.includes("draft") ? "The workout in progress is too large to sync. Export a backup." : "One month of sessions is too large to sync. Export a backup.";
+  }
+  async function cloudFlush() {
+    if (!cloud.on) return;
+    if (!pulled) return cloudPull();
+    if (trackT || cloud.pendAt) trackEdits();
+    const todo = changedDocs();
     todo.sort((a2, b2) => +(a2.id === "draft") - +(b2.id === "draft"));
     if (!todo.length) {
       if (cloud.status !== "synced") {
@@ -10571,7 +10642,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     setCloud("saving");
     try {
-      let adopted = false, moreBody = false, again = false;
+      let adopted = false, moreBody2 = false, again = false;
       const stat = { conflicts: 0 };
       let dn = null;
       const tooBig = [];
@@ -10614,7 +10685,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
                 dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
                 if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
               }
-              if (x2.id === "core" && absorbLegacy(legacyBody(rec(rd)))) moreBody = true;
+              if (x2.id === "core" && absorbLegacy(legacyBody(rec(rd)))) moreBody2 = true;
               json = JSON.stringify(chunksOf(state)[x2.id] || emptyChunk(x2.id));
               if (hashStr(json) === hashStr(b2.json)) {
                 cloud.meta[x2.id] = took;
@@ -10672,13 +10743,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         return;
       }
       cloud.retry = 0;
-      if (moreBody || again) cloudSoon();
+      if (moreBody2 || again) cloudSoon();
       if (tooBig.length) {
         saveMeta();
-        setCloud(
-          "offline",
-          tooBig.includes("core") ? "Routines and settings are too large to sync. Export a backup." : tooBig.some((i5) => i5.startsWith("b-")) ? "A year of body data is too large to sync. Export a backup." : tooBig.includes("draft") ? "The workout in progress is too large to sync. Export a backup." : "One month of sessions is too large to sync. Export a backup."
-        );
+        setCloud("offline", tooBigSaid(tooBig));
         return;
       }
       cloud.last = Date.now();
@@ -10688,6 +10756,90 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       log("sync-flush", e5);
       cloudFail(e5);
     }
+  }
+  function remoteDocs(docs) {
+    const remote = {};
+    for (const d3 of docs) {
+      if (!d3.exists || !isChunkId(d3.id)) continue;
+      const b2 = rec(d3.data());
+      ownWrite(d3.id, b2);
+      if (!b2 || typeof b2.json !== "string") continue;
+      try {
+        remote[d3.id] = {
+          at: Number(b2.at) || 0,
+          et: Number(b2.et) || Number(b2.at) || 0,
+          data: parseJson(b2.json),
+          h: hashStr(b2.json)
+        };
+      } catch (e5) {
+        log("sync-parse", e5);
+      }
+    }
+    return remote;
+  }
+  function mergeFirstLink(mine, rState, rids, remote) {
+    const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
+    const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
+    const kept = aside ? draftSession(aside) : null;
+    const keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some((x2) => x2.id === kept.id);
+    setState(
+      normalize({
+        ...base,
+        exercises: unionById(base.exercises, other.exercises),
+        routines: unionById(base.routines, other.routines),
+        sessions: unionById(mine.sessions, keptDraft && kept ? [...rState.sessions, kept] : rState.sessions),
+        bodyweights: unionById(mine.bodyweights, rState.bodyweights),
+        measurements: unionById(mine.measurements, rState.measurements),
+        cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio),
+        trash: unionById(arr(state.trash) || [], arr(rState.trash) || []),
+        draft: state.draft || rState.draft
+      })
+    );
+    for (const id of rids) {
+      cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
+      cloud.editAt[id] = Date.now();
+    }
+    return keptDraft;
+  }
+  function mergeChanged(local, remote, rids, legB, stat, adoptedIds, leg) {
+    let parts = { ...local };
+    let draftIn = false, draftMerged = false, draftRemoteWins = false;
+    let any = false;
+    for (const id of rids) {
+      const r4 = remote[id], m3 = cloud.meta[id];
+      if (m3 && r4.h === m3.h) continue;
+      if (id === "draft") draftIn = true;
+      const lJson = JSON.stringify(local[id] || emptyChunk(id));
+      const localDirty = !m3 || hashStr(lJson) !== m3.h;
+      if (!localDirty) {
+        parts[id] = rec(r4.data);
+        adoptedIds.add(id);
+        any = true;
+        continue;
+      }
+      if (id === "draft") {
+        draftMerged = true;
+        draftRemoteWins = r4.et > (cloud.editAt[id] || 0);
+      }
+      if (id === "core") {
+        const L2 = legacyBody(rec(r4.data));
+        leg.bodyweights.push(...L2.bodyweights);
+        leg.measurements.push(...L2.measurements);
+      }
+      parts[id] = mergeChunk(
+        id,
+        baseFor(id, m3, legB),
+        local[id] || emptyChunk(id),
+        r4.data,
+        r4.et > (cloud.editAt[id] || 0),
+        stat
+      );
+      cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, r4.et);
+      cloud.meta[id] = { h: r4.h, at: r4.at, b: baseOf(id, r4.data) };
+      any = true;
+    }
+    if (!any) parts = null;
+    return { parts, draftIn, draftMerged, draftRemoteWins };
   }
   async function cloudPull() {
     if (!cloud.on || !cloud.db) return;
@@ -10709,23 +10861,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     pulled = true;
     const ph = snap.docs.find((x2) => x2.id === PHOTO_DOC && x2.exists);
     await photoReconcile(ph ? rec(ph.data()) : null);
-    const remote = {};
-    for (const d3 of snap.docs) {
-      if (!d3.exists || !isChunkId(d3.id)) continue;
-      const b2 = rec(d3.data());
-      ownWrite(d3.id, b2);
-      if (!b2 || typeof b2.json !== "string") continue;
-      try {
-        remote[d3.id] = {
-          at: Number(b2.at) || 0,
-          et: Number(b2.et) || Number(b2.at) || 0,
-          data: parseJson(b2.json),
-          h: hashStr(b2.json)
-        };
-      } catch (e5) {
-        log("sync-parse", e5);
-      }
-    }
+    const remote = remoteDocs(snap.docs);
     const rids = Object.keys(remote);
     if (!rids.length) {
       if (!Object.keys(cloud.meta).length && hasDemo(state)) {
@@ -10757,65 +10893,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         rids.forEach((k2) => adoptedIds.add(k2));
       } else {
         merged = true;
-        const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
-        const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
-        const kept2 = aside ? draftSession(aside) : null;
-        keptDraft = !!kept2 && ![...mine.sessions, ...rState.sessions].some((x2) => x2.id === kept2.id);
-        setState(
-          normalize({
-            ...base,
-            exercises: unionById(base.exercises, other.exercises),
-            routines: unionById(base.routines, other.routines),
-            sessions: unionById(mine.sessions, keptDraft && kept2 ? [...rState.sessions, kept2] : rState.sessions),
-            bodyweights: unionById(mine.bodyweights, rState.bodyweights),
-            measurements: unionById(mine.measurements, rState.measurements),
-            cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio),
-            trash: unionById(arr(state.trash) || [], arr(rState.trash) || []),
-            draft: state.draft || rState.draft
-          })
-        );
-        for (const id of rids) {
-          cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
-          cloud.editAt[id] = Date.now();
-        }
+        keptDraft = mergeFirstLink(mine, rState, rids, remote);
       }
     } else {
-      parts = { ...local };
-      let any = false;
-      for (const id of rids) {
-        const r4 = remote[id], m3 = cloud.meta[id];
-        if (m3 && r4.h === m3.h) continue;
-        if (id === "draft") draftIn = true;
-        const lJson = JSON.stringify(local[id] || emptyChunk(id));
-        const localDirty = !m3 || hashStr(lJson) !== m3.h;
-        if (!localDirty) {
-          parts[id] = rec(r4.data);
-          adoptedIds.add(id);
-          any = true;
-          continue;
-        }
-        if (id === "draft") {
-          draftMerged = true;
-          draftRemoteWins = r4.et > (cloud.editAt[id] || 0);
-        }
-        if (id === "core") {
-          const L2 = legacyBody(rec(r4.data));
-          leg.bodyweights.push(...L2.bodyweights);
-          leg.measurements.push(...L2.measurements);
-        }
-        parts[id] = mergeChunk(
-          id,
-          baseFor(id, m3, legB),
-          local[id] || emptyChunk(id),
-          r4.data,
-          r4.et > (cloud.editAt[id] || 0),
-          stat
-        );
-        cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, r4.et);
-        cloud.meta[id] = { h: r4.h, at: r4.at, b: baseOf(id, r4.data) };
-        any = true;
-      }
-      if (!any) parts = null;
+      const got = mergeChanged(local, remote, rids, legB, stat, adoptedIds, leg);
+      parts = got.parts;
+      draftIn = got.draftIn;
+      draftMerged = got.draftMerged;
+      draftRemoteWins = got.draftRemoteWins;
     }
     const dr0 = state.draft;
     let kept = null, lost = null;
@@ -14446,6 +14531,45 @@ ${more}`;
   };
   var csvGuard = (s3) => needsMark(s3) ? "'" + s3 : s3;
   var csvUnguard = (s3) => s3.startsWith("'") && needsMark(s3.slice(1)) ? s3.slice(1) : s3;
+  var num = (v3) => {
+    const n3 = parseFloat(String(v3 == null ? "" : v3).replace(",", "."));
+    return isFinite(n3) ? n3 : null;
+  };
+  function ownCardio(date, ex, minCell, hrCell, note) {
+    const kind = (CARDIO.find(([, l4]) => l4 === ex) || ["other"])[0];
+    const min = num(minCell), hr = num(hrCell);
+    const o3 = { date, kind, secs: min != null && min > 0 ? min * MINUTE_S : 0, dist: 0, name: ex };
+    if (min != null && min > 0) o3.min = Math.round(min);
+    if (hr != null && hr > 0) o3.hr = Math.round(hr);
+    const rest = [];
+    for (const part of note.split("; ").filter(Boolean)) {
+      const wh = CWHEN.find(([, l4]) => l4 === part);
+      const d3 = /^(\d+(?:\.\d+)?) (km|mi)$/.exec(part);
+      if (wh) o3.when = wh[0];
+      else if (d3) o3.km = d3[2] === "km" ? +d3[1] : +d3[1] * KM_MI;
+      else rest.push(part);
+    }
+    if (rest.length) o3.note = rest.join("; ");
+    return o3;
+  }
+  function rowSet(cell, w2, reps, secs, missed, numTypes, u4) {
+    const ty = cell("type").toLowerCase();
+    const yes = (v3) => /^(1|true|yes|y|x)$/i.test(v3);
+    const rpe = num(cell("rpe"));
+    let rir = num(cell("rir"));
+    if (rir == null && rpe != null && rpe >= RPE_LOW && rpe <= EFFORT_TOP) rir = Math.max(0, EFFORT_TOP - rpe);
+    const code = numTypes ? ty : "";
+    if (ty === "f" || ty === "failure" || code === "4") rir = 0;
+    return {
+      w: w2,
+      r: reps > 0 ? Math.round(reps) : Math.round(secs),
+      rir: rir != null && rir >= 0 && rir <= EFFORT_TOP ? rir : null,
+      warm: ty === "w" || ty === "warmup" || ty === "warm-up" || code === "2" || yes(cell("warm")),
+      drop: ty === "d" || ty === "dropset" || ty === "drop" || code === "3" || yes(cell("drop")),
+      timed: !(reps > 0) && !missed,
+      u: u4
+    };
+  }
   function impFromTable(rows2, map) {
     const head = rows2[0];
     let unit = impUnitOf(head, map);
@@ -14469,10 +14593,6 @@ ${more}`;
     let skipped = 0, cardio = 0;
     const bad = [];
     const C2 = /* @__PURE__ */ new Map();
-    const num2 = (v3) => {
-      const n3 = parseFloat(String(v3 == null ? "" : v3).replace(",", "."));
-      return isFinite(n3) ? n3 : null;
-    };
     const dc = map.date;
     const order = dc == null ? void 0 : impDateOrder(rows2.slice(1).map((r4) => r4[dc]));
     for (let i5 = 1; i5 < rows2.length; i5++) {
@@ -14480,7 +14600,7 @@ ${more}`;
       const raw = (f3) => map[f3] == null ? "" : String(r4[map[f3]] == null ? "" : r4[map[f3]]).trim();
       const cell = (f3) => ours ? csvUnguard(raw(f3)) : raw(f3);
       let date = cell("date");
-      date = date ? impDate(date, void 0, order) || impSerial(num2(date)) : lastDate;
+      date = date ? impDate(date, void 0, order) || impSerial(num(date)) : lastDate;
       const ex = cell("ex") || lastEx;
       if (!date || !ex) {
         skipped++;
@@ -14491,33 +14611,20 @@ ${more}`;
       lastEx = ex;
       const name = cell("name") || (cell("date") ? "" : lastName);
       lastName = name;
-      const reps = num2(cell("r")), secs = num2(cell("secs"));
-      const w2 = num2(cell("w")) || 0;
+      const reps = num(cell("r")), secs = num(cell("secs"));
+      const w2 = num(cell("w")) || 0;
       if (/^rest timer$/i.test(ex) || /rest/i.test(cell("type"))) {
         skipped++;
         continue;
       }
       if (ours && at2(r4, cUnit) === "minutes") {
         cardio++;
-        const kind = (CARDIO.find(([, l4]) => l4 === ex) || ["other"])[0];
-        const min = num2(at2(r4, cMin)), hr = num2(at2(r4, cHr));
-        const o3 = { date, kind, secs: min != null && min > 0 ? min * MINUTE_S : 0, dist: 0, name: ex };
-        if (min != null && min > 0) o3.min = Math.round(min);
-        if (hr != null && hr > 0) o3.hr = Math.round(hr);
-        const rest = [];
-        for (const part of cell("note").split("; ").filter(Boolean)) {
-          const wh = CWHEN.find(([, l4]) => l4 === part);
-          const d3 = /^(\d+(?:\.\d+)?) (km|mi)$/.exec(part);
-          if (wh) o3.when = wh[0];
-          else if (d3) o3.km = d3[2] === "km" ? +d3[1] : +d3[1] * KM_MI;
-          else rest.push(part);
-        }
-        if (rest.length) o3.note = rest.join("; ");
-        C2.set(date + "|" + kind + "|" + C2.size, o3);
+        const o3 = ownCardio(date, ex, at2(r4, cMin), at2(r4, cHr), cell("note"));
+        C2.set(date + "|" + o3.kind + "|" + C2.size, o3);
         continue;
       }
       const ck = impCardioKind(ex);
-      const dist = num2(cell("dist"));
+      const dist = num(cell("dist"));
       if (dist > 0 || ck && !(reps > 0)) {
         cardio++;
         const k3 = date + "|" + (ck || "other");
@@ -14532,28 +14639,13 @@ ${more}`;
         skipped++;
         continue;
       }
-      const ty = cell("type").toLowerCase();
-      const yes = (v3) => /^(1|true|yes|y|x)$/i.test(v3);
-      const rpe = num2(cell("rpe"));
-      let rir = num2(cell("rir"));
-      if (rir == null && rpe != null && rpe >= RPE_LOW && rpe <= EFFORT_TOP) rir = Math.max(0, EFFORT_TOP - rpe);
-      const code = numTypes ? ty : "";
-      if (ty === "f" || ty === "failure" || code === "4") rir = 0;
-      const set = {
-        w: w2,
-        r: reps > 0 ? Math.round(reps) : Math.round(secs),
-        rir: rir != null && rir >= 0 && rir <= EFFORT_TOP ? rir : null,
-        warm: ty === "w" || ty === "warmup" || ty === "warm-up" || code === "2" || yes(cell("warm")),
-        drop: ty === "d" || ty === "dropset" || ty === "drop" || code === "3" || yes(cell("drop")),
-        timed: !(reps > 0) && !missed,
-        u: rowUnit(r4)
-      };
+      const set = rowSet(cell, w2, reps, secs, missed, numTypes, rowUnit(r4));
       const k2 = date + "|" + name;
       if (!S4.has(k2)) S4.set(k2, { date, name, items: /* @__PURE__ */ new Map(), note: "" });
       const ss = S4.get(k2);
       const sn = ours ? at2(r4, cNote) : cell("snote");
       if (!ss.note && sn) ss.note = sn;
-      const dm = ours ? num2(at2(r4, cMin)) : impSpan(strong ? cell("dur") : "", cell("date"), cell("end"), order);
+      const dm = ours ? num(at2(r4, cMin)) : impSpan(strong ? cell("dur") : "", cell("date"), cell("end"), order);
       if (ss.durMin == null && dm != null && dm >= 1 && dm <= LIMITS.minutes) ss.durMin = Math.round(dm);
       if (/^(yes|true|1|y)$/i.test(String(cell("deload") || "").trim())) ss.deload = true;
       let it = ss.items.get(ex);
@@ -14563,7 +14655,7 @@ ${more}`;
       }
       const en = String(cell("note") || "").trim();
       if (en && !it.note.split("; ").includes(en)) it.note = (it.note ? it.note + "; " + en : en).slice(0, LIMITS.note);
-      const n3 = Math.min(Math.max(Math.round(num2(cell("sets")) || 1), 1), ROW_SETS);
+      const n3 = Math.min(Math.max(Math.round(num(cell("sets")) || 1), 1), ROW_SETS);
       for (let j3 = 0; j3 < n3; j3++) it.sets.push({ ...set });
     }
     return {
@@ -14670,6 +14762,29 @@ ${more}`;
     }
     return out.length && out.length <= TYPED.sets ? out : null;
   }
+  var asTyped = (v3) => v3;
+  var REPS = /^\d{1,2}(\s*[/,]\s*\d{1,2})+$/;
+  function dateLineRest(L2) {
+    return L2.replace(/\b(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?\b/gi, "").replace(
+      /\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{1,2}(st|nd|rd|th)?\s+[a-z]{3,9}\.?,?(\s*\d{4})?\b|\b[a-z]{3,9}\.?\s+\d{1,2}(st|nd|rd|th)?(,?\s*\d{4})?\b/gi,
+      ""
+    ).replace(/[,:;\-–|]+/g, " ").trim();
+  }
+  function nameThenSets(words) {
+    for (let i5 = 1; i5 < words.length; i5++) {
+      const name = words.slice(0, i5).join(" ").replace(/[:\-–]+$/, "").trim();
+      const rest = words.slice(i5).join(" ");
+      if (!/[a-z]/i.test(name)) continue;
+      const got = readSets(impSetsText(rest), { bw: true }, null, asTyped);
+      if (got) return { name, rest };
+    }
+    return null;
+  }
+  function nameLoadThenReps(L2, next) {
+    const g2 = L2.match(/^(.*?[a-z].*?)\s+(\d{2,}(?:\.\d+)?\s*(?:lbs?|kgs?|#)?)$/i);
+    if (!g2 || !REPS.test(next)) return null;
+    return { name: (g2[1] || "").replace(/[:\-–]+$/, "").trim(), setsText: g2[2] + " " + next };
+  }
   var UNREAD_SHOWN = 50;
   function impFromText(text) {
     const lines = String(text).split(/\r?\n/);
@@ -14686,7 +14801,6 @@ ${more}`;
       pend = null;
       return d3;
     };
-    const raw = (v3) => v3;
     const nextIsName = (i5) => {
       for (let j3 = i5 + 1; j3 < lines.length; j3++) {
         const t4 = (lines[j3] || "").trim();
@@ -14694,7 +14808,6 @@ ${more}`;
       }
       return true;
     };
-    const REPS = /^\d{1,2}(\s*[/,]\s*\d{1,2})+$/;
     for (let li = 0; li < lines.length; li++) {
       const L0 = lines[li] || "";
       const L2 = L0.replace(/^[\s\-•*–]+/, "").trim();
@@ -14718,17 +14831,14 @@ ${more}`;
       }
       if (dt && pend && under && REPS.test(L2)) dt = null;
       if (dt) {
-        const rest = L2.replace(/\b(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?\b/gi, "").replace(
-          /\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{1,2}(st|nd|rd|th)?\s+[a-z]{3,9}\.?,?(\s*\d{4})?\b|\b[a-z]{3,9}\.?\s+\d{1,2}(st|nd|rd|th)?(,?\s*\d{4})?\b/gi,
-          ""
-        ).replace(/[,:;\-–|]+/g, " ").trim();
+        const rest = dateLineRest(L2);
         if (!/\d/.test(rest)) {
           day(dt, rest, L2);
           continue;
         }
       }
       const target = ex || pend;
-      const alone = readSets(impSetsText(L2), { bw: true }, null, raw);
+      const alone = readSets(impSetsText(L2), { bw: true }, null, asTyped);
       if (alone && target && !/[a-z]{3,}/i.test(L2.replace(/\b(bw|x|at|for|rir|reps?|sets?|of|lbs?|kgs?|sec|secs|seconds)\b/gi, ""))) {
         const p3 = pend;
         let into = cur;
@@ -14746,36 +14856,23 @@ ${more}`;
         if (e5) e5.setsText.push(L2);
         continue;
       }
-      let done = false;
-      for (let i5 = 1; i5 < words.length; i5++) {
-        const name = words.slice(0, i5).join(" ").replace(/[:\-–]+$/, "").trim();
-        const rest = words.slice(i5).join(" ");
-        if (!/[a-z]/i.test(name)) continue;
-        const got = readSets(impSetsText(rest), { bw: true }, null, raw);
-        if (got) {
-          const into = cur || day(null, "");
-          const e5 = { name, sets: [], setsText: [rest] };
-          into.items.push(e5);
-          ex = e5;
-          pend = null;
-          done = true;
-          break;
-        }
+      const ns = nameThenSets(words);
+      if (ns) {
+        const into = cur || day(null, "");
+        const e5 = { name: ns.name, sets: [], setsText: [ns.rest] };
+        into.items.push(e5);
+        ex = e5;
+        pend = null;
+        continue;
       }
-      if (done) continue;
       {
-        const g2 = L2.match(/^(.*?[a-z].*?)\s+(\d{2,}(?:\.\d+)?\s*(?:lbs?|kgs?|#)?)$/i);
-        const nx = (lines[li + 1] || "").replace(/^[\s\-•*–]+/, "").trim();
-        if (g2 && REPS.test(nx)) {
+        const nl = nameLoadThenReps(L2, (lines[li + 1] || "").replace(/^[\s\-•*–]+/, "").trim());
+        if (nl) {
           const into = cur || day(null, "");
           const pw = pend;
           if (pw) unread.push(pw.raw);
           pend = null;
-          const e5 = {
-            name: (g2[1] || "").replace(/[:\-–]+$/, "").trim(),
-            sets: [],
-            setsText: [g2[2] + " " + nx]
-          };
+          const e5 = { name: nl.name, sets: [], setsText: [nl.setsText] };
           into.items.push(e5);
           ex = e5;
           li++;
@@ -16280,6 +16377,160 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
 </div>
 `;
   }
+  function measurementsBody(s3) {
+    return b`<div class="card stack">
+<label class="field">Units<select data-bind="unit">
+<option value="lb" .selected=${l3(s3.unit === "lb")}>lb and inches</option>
+<option value="kg" .selected=${l3(s3.unit === "kg")}>kg and cm</option>
+</select></label>
+<div class="grid2 one-narrow">
+<label class="field">${labelTip(
+      "lt-bwGoalPct",
+      "Bodyweight goal (%/wk)",
+      "Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target."
+    )}<input type="text" inputmode="decimal" data-bind="bwGoalPct" aria-labelledby="lt-bwGoalPct" .value=${fieldValue(s3.bwGoalPct == null ? "" : String(s3.bwGoalPct))} placeholder="e.g. 0.3 or -0.5"/></label> <label class="field">${labelTip(
+      "lt-bwEvery",
+      "Weigh-in reminder",
+      "A card on Today asks for your bodyweight when the last weigh-in is this old. Pull-ups, dips, and other bodyweight lifts use your latest weigh-in."
+    )}<select data-bind="bwEvery" aria-labelledby="lt-bwEvery">${BW_EVERY.map(
+      ([v3, l4]) => b`<option value=${String(v3)} .selected=${l3(bwEvery() === v3)}>${l4}</option>
+`
+    )}</select></label>
+</div>
+${bwSettings()}
+</div>
+`;
+  }
+  function appearanceBody(s3) {
+    return b`<div class="card stack">
+<label class="field">Theme<select data-bind="theme">
+<option value="system" .selected=${l3(s3.theme === "system")}>Match device</option>
+<option value="dark" .selected=${l3(s3.theme === "dark")}>Dark</option>
+<option value="light" .selected=${l3(s3.theme === "light")}>Light</option>
+</select></label>
+<div>
+<p class="small muted u-m0-0-6_fw600">Accent colour</p>
+<div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
+      ([k2, l4]) => b`<button class=${(s3.accent || ACCENT0) === k2 ? "chip acc on" : "chip acc"} data-act="accent" data-v=${k2} aria-pressed=${String((s3.accent || ACCENT0) === k2)}><i class=${`sw sw-${k2}`} aria-hidden="true"></i>${l4}</button>`
+    )}</div>
+</div>
+</div>
+`;
+  }
+  function timerBody(s3) {
+    return b` <div class="card stack">
+<label class="field">${labelTip(
+      "lt-timerMode",
+      "Rest timer",
+      "Auto starts the timer when a set is marked done. Manual starts it from Rest on the exercise."
+    )}<select data-bind="timerMode" aria-labelledby="lt-timerMode">
+<option value="auto" .selected=${l3(s3.timerMode === "auto")}>Auto, after each set</option>
+<option value="manual" .selected=${l3(s3.timerMode === "manual")}>Manual, from Rest</option>
+<option value="off" .selected=${l3(s3.timerMode === "off")}>Off</option>
+</select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${l3(!!s3.timerSound)} ?disabled=${s3.timerMode === "off"}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${l3(!!s3.timerCompact)} ?disabled=${s3.timerMode === "off"}/>${labelTip(
+      "lt-timerCompact",
+      "Compact timer",
+      "A small pill in the corner instead of the rest card above the tabs."
+    )}</label> <label class="check-inline"><input type="checkbox" data-bind="autoDone" aria-labelledby="lt-autoDone" .checked=${l3(!!s3.autoDone)}/>${labelTip(
+      "lt-autoDone",
+      "Auto-mark a set done after its reps",
+      "A mistyped rep count is then saved without a tap to confirm, so check the row. A tap on the checkmark right after only confirms it; tap again to undo."
+    )}</label> <label class="check-inline"><input type="checkbox" data-bind="loadFill" aria-labelledby="lt-loadFill" .checked=${l3(s3.loadFill === "fill")}/>${labelTip(
+      "lt-loadFill",
+      "Fill in suggested loads",
+      "Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row for you. Either way, a load you type is never changed."
+    )}</label> <label class="field">${labelTip(
+      "lt-todayStart",
+      "Today starts with",
+      "Blank: Today opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history."
+    )}<select data-bind="todayStart" aria-labelledby="lt-todayStart">
+<option value="plan" .selected=${l3(s3.todayStart !== "free")}>My plan's day</option>
+<option value="free" .selected=${l3(s3.todayStart === "free")}>A blank session (freestyle)</option>
+</select></label> <label class="check-inline"><input type="checkbox" data-bind="autoAdj" aria-labelledby="lt-autoAdj" .checked=${l3(adjOn())}/>${labelTip(
+      "lt-autoAdj",
+      "Adjust the next sets from the last one",
+      "After a set clearly easier or harder than planned, the rest of that exercise's sets move up or down, unless you typed their weight. A line says why; Keep puts it back. Up: 2+ reps in reserve over your target, or 2+ past the top of the range. Down: 2+ under the range. A rep or two lost per set is normal."
+    )}</label> <label class="check-inline"><input type="checkbox" data-bind="wakeLock" aria-labelledby="lt-wakeLock" .checked=${l3(!!s3.wakeLock)}/>${labelTip(
+      "lt-wakeLock",
+      "Keep the screen on during a session",
+      "A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost."
+    )}</label>
+</div>
+`;
+  }
+  function priorityBody(s3) {
+    return b`${howText("prio", "Flagged as Your priority under Muscles in Stats, and favoured by Pick for me.")}
+<div class="card chips">${MUSCLES.map(
+      ([k2, l4]) => b`<button class=${s3.priorities.includes(k2) ? "chip on" : "chip"} data-act="prio" data-m=${k2}>${l4}</button>`
+    )}</div>
+`;
+  }
+  function bandsBody(s3) {
+    return b`${howText(
+      "bands",
+      "Fractional hard sets per week: direct work 1, helper muscles 0.5. 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a rule of thumb, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back."
+    )}
+<div class="card">
+<table class="t">
+<tbody>
+<tr>
+<th>Muscle</th>
+<th class="r">Min</th>
+<th class="r">Max</th>
+</tr>
+${MUSCLES.map(
+      ([k2, l4]) => (
+        /* A muscle with no target (339 e, r58) offers one; one the lifter gave a
+           target (not by default and not a focus, which Your training sets) can go
+           back to tracked only. */
+        !hasTarget(k2) ? b`<tr>
+<td>${l4}</td>
+<td class="r" colspan="2"><span class="small muted">Tracked only</span> <button type="button" class="btn sm" data-act="tgtSet" data-m=${k2}>Set a target</button></td>
+</tr>
+` : b`<tr>
+<td>${l4}${TARGETED.has(k2) || (prof().focus || []).includes(k2) ? A : b`<br><button type="button" class="linkbtn tall" data-act="tgtOff" data-m=${k2}>Track only</button>`}</td>
+<td class="r"><input class="u-w70" type="text" inputmode="numeric" aria-label=${`${l4} minimum hard sets a week`} data-band=${k2} data-bi="0" .value=${fieldValue(String(s3.bands[k2][0]))}/></td>
+<td class="r"><input class="u-w70" type="text" inputmode="numeric" aria-label=${`${l4} maximum hard sets a week`} data-band=${k2} data-bi="1" .value=${fieldValue(String(s3.bands[k2][1]))}/></td>
+</tr>
+`
+      )
+    )}</tbody>
+</table>
+<div class="row u-mt8"><button class="btn sm" data-act="bandsDefault" ?disabled=${MK.every((m3) => {
+      const d3 = defBand(m3);
+      return s3.bands[m3][0] === d3[0] && s3.bands[m3][1] === d3[1];
+    }) && !s3.bandsFit && !s3.ownTargets}>Default targets</button></div>
+</div>
+`;
+  }
+  function helpBody() {
+    return b`<div class="card stack">
+<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? b`<button class="btn" data-act="fbInbox">Reports inbox</button>` : A}</div>
+</div>
+`;
+  }
+  function moreBody(hasDemo2) {
+    return b`<div class="card stack">
+<div>
+<p class="small u-m0-0-6"><b>Demo data</b> ${tipButton(
+      `${DEMO_WEEKS} weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.`,
+      "About demo data"
+    )}</p>
+<div class="row">${hasDemo2 ? b`<button class="btn" data-act="demoClear">Clear demo data</button>` : b`<button class="btn" data-act="demoLoad">Load demo data</button>`}</div>
+</div>
+<div>
+<p class="small u-m0-0-6"><b>Version</b> ${VERSION_LINE}${logBuf.length ? b` <span class="muted">· cloud ${cloud.on ? cloud.status : "off"} · ${logBuf.length} logged error${logBuf.length === 1 ? "" : "s"}</span>` : A}</p>
+${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
+      (x2) => b`<li><span class="small"><b>${x2.a}</b> ${x2.m}${x2.n ? ` (${x2.n} times)` : ""}</span><span class="small muted">${stampShort(x2.t)}</span></li>
+`
+    )}</ul>
+` : A}${logBuf.length ? b`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>
+` : A}${window.IRONLOG_APP ? b`<p class="small u-m8-0-0"><a href="LICENSES.txt" target="_blank" rel="noopener" class="u-diflex_aicenter_minh44">Open-source licenses</a></p>
+` : A}</div>
+<div><button class="btn danger" data-act="resetAll">Erase everything</button></div>
+</div>
+`;
+  }
   function viewSettings() {
     const s3 = state.settings;
     const hasDemo2 = state.sessions.some((x2) => x2.demo) || state.bodyweights.some((x2) => x2.demo);
@@ -16297,51 +16548,12 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
       /* Measurements and Appearance (2.34, from an Android user via V: "Split general settings into measurements v
          appearance"): what was one General section, its key kept for Measurements so a saved order and fold stay
          with the units, and Appearance new beside it (orderKeys slots a new key after the one before it in code). */
-      G(
-        "general",
-        "Measurements",
-        `${s3.unit === "kg" ? "kg, cm" : "lb, in"}`,
-        b`<div class="card stack">
-<label class="field">Units<select data-bind="unit">
-<option value="lb" .selected=${l3(s3.unit === "lb")}>lb and inches</option>
-<option value="kg" .selected=${l3(s3.unit === "kg")}>kg and cm</option>
-</select></label>
-<div class="grid2 one-narrow">
-<label class="field">${labelTip(
-          "lt-bwGoalPct",
-          "Bodyweight goal (%/wk)",
-          "Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target."
-        )}<input type="text" inputmode="decimal" data-bind="bwGoalPct" aria-labelledby="lt-bwGoalPct" .value=${fieldValue(s3.bwGoalPct == null ? "" : String(s3.bwGoalPct))} placeholder="e.g. 0.3 or -0.5"/></label> <label class="field">${labelTip(
-          "lt-bwEvery",
-          "Weigh-in reminder",
-          "A card on Today asks for your bodyweight when the last weigh-in is this old. Pull-ups, dips, and other bodyweight lifts use your latest weigh-in."
-        )}<select data-bind="bwEvery" aria-labelledby="lt-bwEvery">${BW_EVERY.map(
-          ([v3, l4]) => b`<option value=${String(v3)} .selected=${l3(bwEvery() === v3)}>${l4}</option>
-`
-        )}</select></label>
-</div>
-${bwSettings()}
-</div>
-`
-      ),
+      G("general", "Measurements", `${s3.unit === "kg" ? "kg, cm" : "lb, in"}`, measurementsBody(s3)),
       G(
         "look",
         "Appearance",
         `${s3.theme === "system" ? "device theme" : s3.theme} · ${(ACCENTS.find(([k2]) => k2 === (s3.accent || ACCENT0)) || ["", ""])[1].toLowerCase()}`,
-        b`<div class="card stack">
-<label class="field">Theme<select data-bind="theme">
-<option value="system" .selected=${l3(s3.theme === "system")}>Match device</option>
-<option value="dark" .selected=${l3(s3.theme === "dark")}>Dark</option>
-<option value="light" .selected=${l3(s3.theme === "light")}>Light</option>
-</select></label>
-<div>
-<p class="small muted u-m0-0-6_fw600">Accent colour</p>
-<div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
-          ([k2, l4]) => b`<button class=${(s3.accent || ACCENT0) === k2 ? "chip acc on" : "chip acc"} data-act="accent" data-v=${k2} aria-pressed=${String((s3.accent || ACCENT0) === k2)}><i class=${`sw sw-${k2}`} aria-hidden="true"></i>${l4}</button>`
-        )}</div>
-</div>
-</div>
-`
+        appearanceBody(s3)
       ),
       G(
         "gym",
@@ -16351,50 +16563,7 @@ ${bwSettings()}
 `,
         "gym"
       ),
-      G(
-        "timer",
-        "Rest timer and logging",
-        s3.timerMode === "off" ? "timer off" : s3.timerMode + " timer",
-        b` <div class="card stack">
-<label class="field">${labelTip(
-          "lt-timerMode",
-          "Rest timer",
-          "Auto starts the timer when a set is marked done. Manual starts it from Rest on the exercise."
-        )}<select data-bind="timerMode" aria-labelledby="lt-timerMode">
-<option value="auto" .selected=${l3(s3.timerMode === "auto")}>Auto, after each set</option>
-<option value="manual" .selected=${l3(s3.timerMode === "manual")}>Manual, from Rest</option>
-<option value="off" .selected=${l3(s3.timerMode === "off")}>Off</option>
-</select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${l3(!!s3.timerSound)} ?disabled=${s3.timerMode === "off"}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${l3(!!s3.timerCompact)} ?disabled=${s3.timerMode === "off"}/>${labelTip(
-          "lt-timerCompact",
-          "Compact timer",
-          "A small pill in the corner instead of the rest card above the tabs."
-        )}</label> <label class="check-inline"><input type="checkbox" data-bind="autoDone" aria-labelledby="lt-autoDone" .checked=${l3(!!s3.autoDone)}/>${labelTip(
-          "lt-autoDone",
-          "Auto-mark a set done after its reps",
-          "A mistyped rep count is then saved without a tap to confirm, so check the row. A tap on the checkmark right after only confirms it; tap again to undo."
-        )}</label> <label class="check-inline"><input type="checkbox" data-bind="loadFill" aria-labelledby="lt-loadFill" .checked=${l3(s3.loadFill === "fill")}/>${labelTip(
-          "lt-loadFill",
-          "Fill in suggested loads",
-          "Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row for you. Either way, a load you type is never changed."
-        )}</label> <label class="field">${labelTip(
-          "lt-todayStart",
-          "Today starts with",
-          "Blank: Today opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history."
-        )}<select data-bind="todayStart" aria-labelledby="lt-todayStart">
-<option value="plan" .selected=${l3(s3.todayStart !== "free")}>My plan's day</option>
-<option value="free" .selected=${l3(s3.todayStart === "free")}>A blank session (freestyle)</option>
-</select></label> <label class="check-inline"><input type="checkbox" data-bind="autoAdj" aria-labelledby="lt-autoAdj" .checked=${l3(adjOn())}/>${labelTip(
-          "lt-autoAdj",
-          "Adjust the next sets from the last one",
-          "After a set clearly easier or harder than planned, the rest of that exercise's sets move up or down, unless you typed their weight. A line says why; Keep puts it back. Up: 2+ reps in reserve over your target, or 2+ past the top of the range. Down: 2+ under the range. A rep or two lost per set is normal."
-        )}</label> <label class="check-inline"><input type="checkbox" data-bind="wakeLock" aria-labelledby="lt-wakeLock" .checked=${l3(!!s3.wakeLock)}/>${labelTip(
-          "lt-wakeLock",
-          "Keep the screen on during a session",
-          "A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost."
-        )}</label>
-</div>
-`
-      ),
+      G("timer", "Rest timer and logging", s3.timerMode === "off" ? "timer off" : s3.timerMode + " timer", timerBody(s3)),
       G(
         "rir",
         "Effort (RIR)",
@@ -16413,55 +16582,10 @@ ${bwSettings()}
         "prio",
         "Priority muscles",
         s3.priorities.length ? s3.priorities.map((m3) => ML[m3]).join(", ") : "none",
-        b`${howText("prio", "Flagged as Your priority under Muscles in Stats, and favoured by Pick for me.")}
-<div class="card chips">${MUSCLES.map(
-          ([k2, l4]) => b`<button class=${s3.priorities.includes(k2) ? "chip on" : "chip"} data-act="prio" data-m=${k2}>${l4}</button>`
-        )}</div>
-`,
+        priorityBody(s3),
         "prio"
       ),
-      G(
-        "bands",
-        "Weekly set targets",
-        "",
-        b`${howText(
-          "bands",
-          "Fractional hard sets per week: direct work 1, helper muscles 0.5. 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a rule of thumb, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back."
-        )}
-<div class="card">
-<table class="t">
-<tbody>
-<tr>
-<th>Muscle</th>
-<th class="r">Min</th>
-<th class="r">Max</th>
-</tr>
-${MUSCLES.map(
-          ([k2, l4]) => (
-            /* A muscle with no target (339 e, r58) offers one; one the lifter gave a
-               target (not by default and not a focus, which Your training sets) can go
-               back to tracked only. */
-            !hasTarget(k2) ? b`<tr>
-<td>${l4}</td>
-<td class="r" colspan="2"><span class="small muted">Tracked only</span> <button type="button" class="btn sm" data-act="tgtSet" data-m=${k2}>Set a target</button></td>
-</tr>
-` : b`<tr>
-<td>${l4}${TARGETED.has(k2) || (prof().focus || []).includes(k2) ? A : b`<br><button type="button" class="linkbtn tall" data-act="tgtOff" data-m=${k2}>Track only</button>`}</td>
-<td class="r"><input class="u-w70" type="text" inputmode="numeric" aria-label=${`${l4} minimum hard sets a week`} data-band=${k2} data-bi="0" .value=${fieldValue(String(s3.bands[k2][0]))}/></td>
-<td class="r"><input class="u-w70" type="text" inputmode="numeric" aria-label=${`${l4} maximum hard sets a week`} data-band=${k2} data-bi="1" .value=${fieldValue(String(s3.bands[k2][1]))}/></td>
-</tr>
-`
-          )
-        )}</tbody>
-</table>
-<div class="row u-mt8"><button class="btn sm" data-act="bandsDefault" ?disabled=${MK.every((m3) => {
-          const d3 = defBand(m3);
-          return s3.bands[m3][0] === d3[0] && s3.bands[m3][1] === d3[1];
-        }) && !s3.bandsFit && !s3.ownTargets}>Default targets</button></div>
-</div>
-`,
-        "bands"
-      ),
+      G("bands", "Weekly set targets", "", bandsBody(s3), "bands"),
       G(
         "data",
         "Your data",
@@ -16470,41 +16594,9 @@ ${MUSCLES.map(
         "",
         "dataSec"
       ),
-      G(
-        "help",
-        "Help",
-        "Guide, report a problem",
-        b`<div class="card stack">
-<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? b`<button class="btn" data-act="fbInbox">Reports inbox</button>` : A}</div>
-</div>
-`
-      ),
+      G("help", "Help", "Guide, report a problem", helpBody()),
       // Demo data, Diagnostics and Erase everything (r35, V): one group at the bottom, not three in front of everyday settings.
-      G(
-        "more",
-        "More",
-        hasDemo2 ? "demo data loaded" : "demo data, version, erase",
-        b`<div class="card stack">
-<div>
-<p class="small u-m0-0-6"><b>Demo data</b> ${tipButton(
-          `${DEMO_WEEKS} weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.`,
-          "About demo data"
-        )}</p>
-<div class="row">${hasDemo2 ? b`<button class="btn" data-act="demoClear">Clear demo data</button>` : b`<button class="btn" data-act="demoLoad">Load demo data</button>`}</div>
-</div>
-<div>
-<p class="small u-m0-0-6"><b>Version</b> ${VERSION_LINE}${logBuf.length ? b` <span class="muted">· cloud ${cloud.on ? cloud.status : "off"} · ${logBuf.length} logged error${logBuf.length === 1 ? "" : "s"}</span>` : A}</p>
-${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
-          (x2) => b`<li><span class="small"><b>${x2.a}</b> ${x2.m}${x2.n ? ` (${x2.n} times)` : ""}</span><span class="small muted">${stampShort(x2.t)}</span></li>
-`
-        )}</ul>
-` : A}${logBuf.length ? b`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>
-` : A}${window.IRONLOG_APP ? b`<p class="small u-m8-0-0"><a href="LICENSES.txt" target="_blank" rel="noopener" class="u-diflex_aicenter_minh44">Open-source licenses</a></p>
-` : A}</div>
-<div><button class="btn danger" data-act="resetAll">Erase everything</button></div>
-</div>
-`
-      )
+      G("more", "More", hasDemo2 ? "demo data loaded" : "demo data, version, erase", moreBody(hasDemo2))
     ];
     return b`${pageTitle(kick, "Settings", meta)}${c3(
       placed("settings", list),
@@ -17246,31 +17338,31 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     )}</div>${tipButton(COMMON_TIP, "About Most common and Less common")}</div></div>
   <div id="libList">${libCards()}</div>`;
   }
-  var num = (v3) => +(v3 ?? NaN);
+  var num2 = (v3) => +(v3 ?? NaN);
   var PLAN_ACTS = {
     toggleItem(t4) {
       ui.openItem = ui.openItem === t4.dataset.uid ? null : t4.dataset.uid;
       rerenderKeepScroll();
     },
     iUp(t4) {
-      const d3 = curRoutineB().days[num(t4.dataset.day)];
+      const d3 = curRoutineB().days[num2(t4.dataset.day)];
       if (!d3) return;
-      act(() => move(d3.items, num(t4.dataset.i), num(t4.dataset.i) - 1));
+      act(() => move(d3.items, num2(t4.dataset.i), num2(t4.dataset.i) - 1));
       rerenderKeepScroll();
     },
     iDown(t4) {
-      const d3 = curRoutineB().days[num(t4.dataset.day)];
+      const d3 = curRoutineB().days[num2(t4.dataset.day)];
       if (!d3) return;
-      act(() => move(d3.items, num(t4.dataset.i), num(t4.dataset.i) + 1));
+      act(() => move(d3.items, num2(t4.dataset.i), num2(t4.dataset.i) + 1));
       rerenderKeepScroll();
     },
     iDel(t4) {
-      const d3 = curRoutineB().days[num(t4.dataset.day)];
+      const d3 = curRoutineB().days[num2(t4.dataset.day)];
       if (!d3) return;
       let gone;
       act(
         () => {
-          [gone] = d3.items.splice(num(t4.dataset.i), 1);
+          [gone] = d3.items.splice(num2(t4.dataset.i), 1);
         },
         { undo: true }
       );
@@ -17411,7 +17503,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     },
     dUp(t4) {
       const R2 = curRoutineB();
-      const i5 = num(t4.dataset.day);
+      const i5 = num2(t4.dataset.day);
       if (!(i5 >= 1)) return;
       act(() => move(R2.days, i5, i5 - 1));
       ui.todayDay = null;
@@ -17419,7 +17511,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     },
     dDown(t4) {
       const R2 = curRoutineB();
-      const i5 = num(t4.dataset.day);
+      const i5 = num2(t4.dataset.day);
       if (!(i5 < R2.days.length - 1)) return;
       act(() => move(R2.days, i5, i5 + 1));
       ui.todayDay = null;
@@ -17427,7 +17519,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     },
     dDel(t4) {
       const R2 = curRoutineB();
-      const i5 = num(t4.dataset.day);
+      const i5 = num2(t4.dataset.day);
       if (R2.schedule === "weekly") return;
       if (R2.days.length < 2) {
         toast("A cycle needs at least one day");
@@ -17574,7 +17666,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return true;
     }
     if (t4.dataset.dayname != null) {
-      const d3 = curRoutineB().days[num(t4.dataset.dayname)];
+      const d3 = curRoutineB().days[num2(t4.dataset.dayname)];
       if (d3)
         act(
           () => {
@@ -17585,7 +17677,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return true;
     }
     if (t4.dataset.daypm != null) {
-      const d3 = curRoutineB().days[num(t4.dataset.daypm)];
+      const d3 = curRoutineB().days[num2(t4.dataset.daypm)];
       const v3 = t4.value.trim().slice(0, LIMITS.name);
       if (d3)
         act(
@@ -17621,7 +17713,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return true;
     }
     if (t4.dataset.dayname != null) {
-      const d3 = curRoutineB().days[num(t4.dataset.dayname)];
+      const d3 = curRoutineB().days[num2(t4.dataset.dayname)];
       if (d3)
         act(() => {
           d3.name = within(t4.value, d3.name, LIMITS.name);
@@ -17634,7 +17726,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return true;
     }
     if (t4.dataset.dayrest != null) {
-      const d3 = curRoutineB().days[num(t4.dataset.dayrest)];
+      const d3 = curRoutineB().days[num2(t4.dataset.dayrest)];
       if (!d3) return true;
       const on = t4 instanceof HTMLInputElement && t4.checked;
       act(
@@ -17739,7 +17831,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     }, 0);
   };
   function dropItem(evt) {
-    const from = num(evt.from.dataset.day), to = num(evt.to.dataset.day);
+    const from = num2(evt.from.dataset.day), to = num2(evt.to.dataset.day);
     const oi = evt.oldIndex ?? -1, ni = evt.newIndex ?? -1;
     if (from === to && oi === ni) {
       dragDrop();
@@ -17781,7 +17873,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return;
     }
     if (evt.clone && evt.clone !== evt.item) evt.clone.remove();
-    const to = num(evt.to.dataset.day);
+    const to = num2(evt.to.dataset.day);
     const exId = evt.item.dataset.ex;
     const ni = evt.newIndex ?? 0;
     after(() => {
@@ -17797,7 +17889,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   }
   function dayKey(dg, up) {
     const R2 = curRoutineB();
-    const i5 = num(dg.dataset.di);
+    const i5 = num2(dg.dataset.di);
     const j3 = i5 + (up ? -1 : 1);
     if (R2.schedule === "weekly" || !R2.days[i5] || j3 < 0 || j3 >= R2.days.length) return;
     act(() => move(R2.days, i5, j3));
@@ -18296,36 +18388,27 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       noLog() ? "Nothing logged yet" : `${sk.weeks}-week streak${adher != null ? ` · ${adher}% adherence` : ""}`
     );
   }
-  function viewDash() {
-    chartNoticeUsed = false;
-    const I2 = IDX();
-    const R2 = activeRoutine();
-    const cur = weekStart(today());
-    const thisWeek = I2.weekSets[cur] || {};
-    const thisWeekConf = I2.weekConf[cur] || {};
-    const wkHard = weekStats().got;
-    const stalled = Object.entries(I2.exStats).flatMap(([id, s3]) => s3 && s3.stalled ? [[id, s3]] : []);
+  function rirCoverLine(I2) {
     const rc = I2.rirCov;
     const covPct = rc.total && state.settings.rirMode !== "off" ? Math.round(rc.logged / rc.total * PERCENT) : null;
-    const cov = covPct == null || covPct >= RIR_COVER_PCT ? "" : b`<p class="small muted hastip u-m0-0n12" data-tip="A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, else the set counts as hard. The lighter shading shows those sets.">RIR on ${covPct}% of recent sets. The lighter part of each bar is assumed.</p>`;
-    const nS = state.sessions.length;
+    return covPct == null || covPct >= RIR_COVER_PCT ? "" : b`<p class="small muted hastip u-m0-0n12" data-tip="A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, else the set counts as hard. The lighter shading shows those sets.">RIR on ${covPct}% of recent sets. The lighter part of each bar is assumed.</p>`;
+  }
+  function dashHead(nS) {
     const first = sortedSessions()[0];
-    const head = b`${pageTitle("", "Stats", noLog() ? "Nothing logged yet" : `${nS} session${nS === 1 ? "" : "s"} logged${first ? `, since ${fmtDate(first.date)}` : ""}`, helpButton("stats"), true)}${howText(
+    return b`${pageTitle("", "Stats", noLog() ? "Nothing logged yet" : `${nS} session${nS === 1 ? "" : "s"} logged${first ? `, since ${fmtDate(first.date)}` : ""}`, helpButton("stats"), true)}${howText(
       "stats",
       "Everything here is calculated from your logged sets: performance trends, not direct measurements of muscle size. Tap a section title to open or fold it. Inside each section, How this works says what its numbers mean."
     )}
   <nav class="jump" aria-label="Stats sections">${orderKeys(state.settings.secOrder.dash || [], DSEC_KEYS).filter((k2) => !state.settings.hidden.includes("dash:" + k2)).flatMap((k2) => DSECS.filter((x2) => x2[0] === k2)).map(([k2, l4]) => b`<button class="chip" data-act="dashJump" data-sec=${k2}>${l4}</button>`)}</nav>`;
-    const none = !nS ? b`<div class="card"><p class="u-m0"><b>No sessions yet.</b> Trends start after a few sessions. ${tipButton("Trends, stall detection, and rankings need a few sessions of each exercise. To preview the full Stats page, load demo data in Settings.", "About Stats")}</p></div>` : A;
-    const R4 = recent4w();
+  }
+  function dashKpis(R4, nS) {
     const prs4 = R4.prs.length;
     const was = (n3) => R4.back ? ` (${n3} in the ${RECENT_WEEKS} weeks before)` : "";
-    const kpis = b`<div class="kpis"><div class="kpi"><div class="v">${nz(R4.sess)}</div><div class="l">Sessions, last ${RECENT_WEEKS} weeks${was(R4.sessP)}</div></div>
+    return b`<div class="kpis"><div class="kpi"><div class="v">${nz(R4.sess)}</div><div class="l">Sessions, last ${RECENT_WEEKS} weeks${was(R4.sessP)}</div></div>
   <div class="kpi"><div class="v">${nz(prs4)}</div><div class="l">PRs, last ${RECENT_WEEKS} weeks${was(R4.prsP)}</div></div>
 ${extraKpis()}</div>${nS ? dashSummary() : A}`;
-    const avg = actualAvg4();
-    const plan = plannedSets(R2);
-    const avgSt = avg ? muscleStatus(avg) : null;
-    const confOff = state.settings.rirMode === "off";
+  }
+  function volumeSec(cov, thisWeek, thisWeekConf, wkHard, avg, nS, confOff) {
     const volCard = () => {
       if (ui.volMode === "region") return regionBody();
       if (ui.volMode === "trend") return trendBody();
@@ -18338,7 +18421,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const w2 = avgWait();
       return b`<div class="card"><p class="muted">${w2.lead}An average ${w2.kind === "back" ? "comes back" : "starts"} after ${w2.after}.${w2.kind === "second" ? b` ${tipButton(w2.why, "Your first week")}` : A}</p></div>`;
     };
-    const volSec = dashSection(
+    return dashSection(
       "volume",
       "Volume",
       VOL_HELP,
@@ -18347,6 +18430,8 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
   ${volCard()}`,
       noLog() ? "Nothing logged yet" : `${wkHard} hard sets this week`
     );
+  }
+  function weakPoints(I2, avg, avgSt, thisWeek, plan, nS) {
     const inj = injuredSet();
     const reasons = {};
     const add = (m3, t4, c4) => {
@@ -18363,7 +18448,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     }
     for (const m3 of state.settings.priorities) add(m3, "Your priority", "blue");
     const wp = Object.entries(reasons).sort((a2, b2) => b2[1].length - a2[1].length);
-    const weakBody = b`<div class="card">${wp.length ? wp.map(([m3, rs]) => {
+    const body = b`<div class="card">${wp.length ? wp.map(([m3, rs]) => {
       const tags = rs.map(([t4, c4]) => b`<span class=${`tag ${c4}`}>${t4}</span>`);
       if (!MK.some((x2) => x2 === m3))
         return b`<div class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${injLabel(m3)}</b><div class="chips">${tags}</div></div></div>`;
@@ -18373,11 +18458,18 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       if (belowMin(plan[m3], lo)) bits.push(`your routine plans ${r1(plan[m3] || 0)}`);
       return b`<div class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${ML[m3]}</b><div class="chips">${tags}</div></div><p class="small muted u-m2-0-0">${bits.join(" · ")}</p></div>`;
     }) : b`<p class="muted u-m0">${nS ? "Nothing flagged." : "Flags start once you have logged a few sessions."}</p>`}</div>`;
+    return { body, n: wp.length };
+  }
+  function stallsBody(stalled) {
     const bigN = stalled.length ? fatigueStalls(stalled.map(([id]) => id)).length : 0;
     const lw = lastLighterWeek();
     const stl = b`${stalled.length ? b`${stalled.map(
       ([id, s3]) => b`<div class="row spread u-p6-0_bb1-solid-line"><span><span class="plate yellow u-h14_van2"></span> ${exName(id)}</span><span class="muted small">last ${fmtDate(s3.last.date)}</span></div>`
     )}${bigN >= FATIGUE_STALLS ? b`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : A}` : b`<p class="muted">No stalls detected.</p>`}${lw ? b`<p class="small muted u-mt8">${lw.weeks == null ? "No lighter week in the last 12." : `Last lighter week: ${lw.weeks} week${lw.weeks === 1 ? "" : "s"} ago${lw.kind === "rest" ? " (a rest week)" : lw.kind === "off" ? " (a week off)" : ""}.`} ${tipButton(LIGHTER_WEEK_TIP, "Lighter week")}</p>` : A}`;
+    return { stl, bigN };
+  }
+  function liftsSec(I2, stalled, prs4) {
+    const { stl, bigN } = stallsBody(stalled);
     const withData = Object.keys(I2.byEx).filter((id) => (I2.byEx[id] || []).length).sort((a2, b2) => exName(a2).localeCompare(exName(b2)));
     const nOf = (id) => (I2.byEx[id] || []).length;
     if (!ui.dashEx || typeof ui.dashEx !== "string" || !I2.byEx[ui.dashEx])
@@ -18396,7 +18488,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     })}` : b`<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>`;
     const nLifts = Object.keys(I2.byEx).length;
     const firstPR = bigPR[0];
-    const liftsSec = dashSection(
+    return dashSection(
       "exercise",
       "Lifts",
       LIFTS_HELP,
@@ -18408,31 +18500,61 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       )}${dashSub("stalls", "Stalls", stl, stalled.length ? b`<span class=${`pill ${bigN >= FATIGUE_STALLS ? "red" : "yellow"}`}>${stalled.length} stalled</span>` : "none")}`,
       noLog() ? "Nothing logged yet" : `${nLifts} lift${nLifts === 1 ? "" : "s"} tracked`
     );
+  }
+  function musclesSec(weak, avg, thisWeek, nS) {
     const rank = b`<div class="card">${rankBody(avg || thisWeek)}</div>`;
-    const musSec = dashSection(
+    return dashSection(
       "weak",
       "Muscles",
       MUSCLES_HELP,
-      b`${weakBody}${dashSub("rank", "Strength return on volume", rank)}${dashSub("size", "Size check", sizeBody())}`,
-      wp.length ? b`<span class="pill yellow">${wp.length} flagged</span>` : nS ? b`<span class="pill green">none flagged</span>` : "after a few sessions"
+      b`${weak.body}${dashSub("rank", "Strength return on volume", rank)}${dashSub("size", "Size check", sizeBody())}`,
+      weak.n ? b`<span class="pill yellow">${weak.n} flagged</span>` : nS ? b`<span class="pill green">none flagged</span>` : "after a few sessions"
     );
+  }
+  function bodySec() {
     const nBw = state.bodyweights.length;
-    const bodySec = dashSection(
+    return dashSection(
       "body",
       "Body",
       "Daily bodyweight with a 7-day average. Tape changes help cross-check which muscles are actually growing.",
       b`<div class="card">${nBw ? b`${rangeChips("bw", weeksSpan(firstDate(state.bodyweights)), CHART_WEEKS, "all")}<div class="chartbox"><canvas id="chBW"></canvas></div>${chartFallback()}` : b`<p class="small muted u-m0">Log your bodyweight in Body on Today to start this chart.</p>${state.settings.hidden.includes("today:body") ? b`<button class="btn sm u-mt8" data-act="secShow" data-k="today:body">Show Body on Today</button>` : A}`}${nBw ? bwRateText() : A}${nBw || state.measurements.length ? measTable() : A}</div>`,
       nBw ? `${nBw} weigh-in${nBw === 1 ? "" : "s"}` : "not logged yet"
     );
+  }
+  function viewDash() {
+    chartNoticeUsed = false;
+    const I2 = IDX();
+    const R2 = activeRoutine();
+    const cur = weekStart(today());
+    const thisWeek = I2.weekSets[cur] || {};
+    const thisWeekConf = I2.weekConf[cur] || {};
+    const wkHard = weekStats().got;
+    const stalled = Object.entries(I2.exStats).flatMap(([id, s3]) => s3 && s3.stalled ? [[id, s3]] : []);
+    const cov = rirCoverLine(I2);
+    const nS = state.sessions.length;
+    const head = dashHead(nS);
+    const none = !nS ? b`<div class="card"><p class="u-m0"><b>No sessions yet.</b> Trends start after a few sessions. ${tipButton("Trends, stall detection, and rankings need a few sessions of each exercise. To preview the full Stats page, load demo data in Settings.", "About Stats")}</p></div>` : A;
+    const R4 = recent4w();
+    const prs4 = R4.prs.length;
+    const kpis = dashKpis(R4, nS);
+    const avg = actualAvg4();
+    const plan = plannedSets(R2);
+    const avgSt = avg ? muscleStatus(avg) : null;
+    const confOff = state.settings.rirMode === "off";
+    const volSec = volumeSec(cov, thisWeek, thisWeekConf, wkHard, avg, nS, confOff);
+    const weak = weakPoints(I2, avg, avgSt, thisWeek, plan, nS);
+    const lifts = liftsSec(I2, stalled, prs4);
+    const musSec = musclesSec(weak, avg, thisWeek, nS);
+    const body = bodySec();
     return b`${slotted("dash", [
       [null, head],
       [null, none],
       [null, kpis],
       ["volume", volSec],
-      ["exercise", liftsSec],
+      ["exercise", lifts],
       ["weak", musSec],
       ["consistency", consistencySec(R2, cur)],
-      ["body", bodySec]
+      ["body", body]
     ])}${tabFoot("dash")}`;
   }
   var BEST_EST_TIP = "Best estimated one-rep max (e1RM): the most your strongest set says you could lift once, from its weight, reps, and RIR. An estimate, not a tested max.";
@@ -22214,13 +22336,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       showAll: false
     });
   }
-  function impBuild(m3) {
-    const conv = m3.unit === "kg" ? (v3) => v3 : (v3) => v3 * LB;
-    const out = [];
-    const ssOf = {};
-    const bad = [];
-    const odd = [];
-    let timedOff = 0;
+  function newExercises(m3) {
     const allTimed = (n3) => m3.res.sessions.every(
       (x2) => x2.items.every((i5) => i5.name !== n3 || i5.sets && i5.sets.length && i5.sets.every((q) => q.timed))
     );
@@ -22244,7 +22360,61 @@ ${JSON.stringify(ctx, null, 1)}`;
         if (!m3.res.text && allTimed(n3)) e5.timed = true;
         newExE.push([n3, e5]);
       }
-    const newEx2 = Object.fromEntries(newExE);
+    return Object.fromEntries(newExE);
+  }
+  function notInLog(out) {
+    const fp = (ss) => ss.date + "|" + ss.ex.map((b2) => b2.exId + ":" + b2.sets.map((q) => q.r).join(",")).sort().join(";");
+    const have = new Set(state.sessions.map(fp));
+    const seen = /* @__PURE__ */ new Set();
+    const fresh = [];
+    let dup = 0;
+    for (const ss of out) {
+      const k2 = fp(ss);
+      if (have.has(k2) || seen.has(k2)) {
+        dup++;
+        continue;
+      }
+      seen.add(k2);
+      fresh.push(ss);
+    }
+    return { fresh, dup };
+  }
+  function fileCardio(m3) {
+    const cardio = [];
+    let cardioNoTime = 0, dup = 0;
+    for (const c4 of m3.res.cardioRows || []) {
+      const min = c4.min || Math.round(c4.secs / MINUTE_S3);
+      if (!(min > 0)) {
+        cardioNoTime++;
+        continue;
+      }
+      if (state.cardio.some((x2) => x2.date === c4.date && x2.kind === c4.kind && x2.min === min)) {
+        dup++;
+        continue;
+      }
+      cardio.push(
+        cleanCardio({
+          id: uid(),
+          date: c4.date,
+          kind: c4.kind,
+          min,
+          hr: c4.hr || null,
+          when: c4.when || "solo",
+          note: c4.note || "",
+          dist: c4.km != null ? c4.km : c4.dist > 0 ? m3.unit === "kg" ? c4.dist : c4.dist * KM_MI : null
+        })
+      );
+    }
+    return { cardio, cardioNoTime, dup };
+  }
+  function impBuild(m3) {
+    const conv = m3.unit === "kg" ? (v3) => v3 : (v3) => v3 * LB;
+    const out = [];
+    const ssOf = {};
+    const bad = [];
+    const odd = [];
+    let timedOff = 0;
+    const newEx2 = newExercises(m3);
     for (const x2 of m3.res.sessions) {
       const date = x2.date || m3.date;
       const ex = [];
@@ -22297,45 +22467,9 @@ ${JSON.stringify(ctx, null, 1)}`;
           light: false
         });
     }
-    const fp = (ss) => ss.date + "|" + ss.ex.map((b2) => b2.exId + ":" + b2.sets.map((q) => q.r).join(",")).sort().join(";");
-    const have = new Set(state.sessions.map(fp));
-    const seen = /* @__PURE__ */ new Set();
-    const fresh = [];
-    let dup = 0;
-    for (const ss of out) {
-      const k2 = fp(ss);
-      if (have.has(k2) || seen.has(k2)) {
-        dup++;
-        continue;
-      }
-      seen.add(k2);
-      fresh.push(ss);
-    }
-    const cardio = [];
-    let cardioNoTime = 0;
-    for (const c4 of m3.res.cardioRows || []) {
-      const min = c4.min || Math.round(c4.secs / MINUTE_S3);
-      if (!(min > 0)) {
-        cardioNoTime++;
-        continue;
-      }
-      if (state.cardio.some((x2) => x2.date === c4.date && x2.kind === c4.kind && x2.min === min)) {
-        dup++;
-        continue;
-      }
-      cardio.push(
-        cleanCardio({
-          id: uid(),
-          date: c4.date,
-          kind: c4.kind,
-          min,
-          hr: c4.hr || null,
-          when: c4.when || "solo",
-          note: c4.note || "",
-          dist: c4.km != null ? c4.km : c4.dist > 0 ? m3.unit === "kg" ? c4.dist : c4.dist * KM_MI : null
-        })
-      );
-    }
+    const { fresh, dup: dupSessions } = notInLog(out);
+    const { cardio, cardioNoTime, dup: dupCardio } = fileCardio(m3);
+    const dup = dupSessions + dupCardio;
     return {
       sessions: fresh,
       ssOf,
@@ -22370,13 +22504,22 @@ ${JSON.stringify(ctx, null, 1)}`;
   ];
   var HIGH_RANGE = [15, 20];
   var LETTER_A = 65;
-  function routineFromLog(sessions, ssOf) {
-    const all = sessions.filter((x2) => !x2.demo && x2.ex && x2.ex.length);
-    const first = all[0];
-    if (!first) return null;
-    const byDate = (a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0;
-    const newest = all.reduce((m3, x2) => x2.date > m3 ? x2.date : m3, first.date);
-    const rec2 = all.filter((x2) => x2.date >= addDays(newest, 1 - IMPORT_DAYS)).sort(byDate);
+  var byDate = (a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0;
+  var liftsOf = (x2) => new Set(x2.ex.filter((b2) => b2.sets.some((q) => !q.warm)).map((b2) => b2.exId));
+  var jac = (a2, b2) => {
+    let n3 = 0;
+    for (const v3 of a2) if (b2.has(v3)) n3++;
+    const u4 = a2.size + b2.size - n3;
+    return u4 ? n3 / u4 : 0;
+  };
+  var nameOf = (x2) => String(x2.dayName || "").trim();
+  var medianOf = (a2) => median(a2.filter((v3) => v3 != null && isFinite(v3)));
+  var usualRange = (r4) => {
+    for (const [top, range] of USUAL_RANGES) if (r4 <= top) return range;
+    return HIGH_RANGE;
+  };
+  var workSets = (b2) => b2.sets.filter((q) => !q.warm && !q.drop);
+  function offSessions() {
     const I2 = IDX();
     const tot = {}, off = {};
     for (const id in I2.byEx)
@@ -22384,26 +22527,19 @@ ${JSON.stringify(ctx, null, 1)}`;
         tot[x2.sid] = (tot[x2.sid] || 0) + 1;
         if (offTarget(x2)) off[x2.sid] = (off[x2.sid] || 0) + 1;
       }
-    const offS = (x2) => x2.deload || x2.light || (tot[x2.id] || 0) > 0 && (off[x2.id] || 0) * 2 >= (tot[x2.id] || 0);
-    const lifts = (x2) => new Set(x2.ex.filter((b2) => b2.sets.some((q) => !q.warm)).map((b2) => b2.exId));
-    const jac = (a2, b2) => {
-      let n3 = 0;
-      for (const v3 of a2) if (b2.has(v3)) n3++;
-      const u4 = a2.size + b2.size - n3;
-      return u4 ? n3 / u4 : 0;
-    };
-    const nm = (x2) => String(x2.dayName || "").trim();
-    const named2 = !rec2.some((x2) => GENERIC_WORKOUT.test(nm(x2)));
-    let groups = [];
+    return (x2) => x2.deload || x2.light || (tot[x2.id] || 0) > 0 && (off[x2.id] || 0) * 2 >= (tot[x2.id] || 0);
+  }
+  function groupSessions(rec2, named2, offS) {
+    const groups = [];
     let pop;
     if (named2) {
       pop = rec2;
       const by = /* @__PURE__ */ new Map();
       for (const x2 of rec2) {
-        const k2 = nm(x2).slice(0, FROM_LOG.name).toLowerCase();
+        const k2 = nameOf(x2).slice(0, FROM_LOG.name).toLowerCase();
         let g2 = by.get(k2);
         if (!g2) {
-          g2 = { name: nm(x2).slice(0, FROM_LOG.name), list: [], ids: /* @__PURE__ */ new Set() };
+          g2 = { name: nameOf(x2).slice(0, FROM_LOG.name), list: [], ids: /* @__PURE__ */ new Set() };
           by.set(k2, g2);
           groups.push(g2);
         }
@@ -22412,87 +22548,71 @@ ${JSON.stringify(ctx, null, 1)}`;
     } else {
       pop = rec2.filter((x2) => !offS(x2));
       for (const x2 of pop) {
-        const L3 = lifts(x2);
+        const L2 = liftsOf(x2);
         let g2 = null, bj = 0;
         for (const q of groups) {
-          const j3 = jac(L3, q.ids);
+          const j3 = jac(L2, q.ids);
           if (j3 >= FROM_LOG.sameAt && j3 > bj) {
             g2 = q;
             bj = j3;
           }
         }
         if (!g2) {
-          g2 = { name: "", list: [], ids: L3 };
+          g2 = { name: "", list: [], ids: L2 };
           groups.push(g2);
         }
         g2.list.push(x2);
-        g2.ids = L3;
+        g2.ids = L2;
       }
     }
-    groups = groups.filter((g2) => g2.list.length >= IMPORT_REPEATS);
-    if (!groups.length || groups.length > FROM_LOG.days || groups.reduce((a2, g2) => a2 + g2.list.length, 0) < pop.length * FROM_LOG.cover)
-      return null;
-    const lastOf2 = (g2) => g2.list[g2.list.length - 1] || first;
-    groups.sort((a2, b2) => byDate(lastOf2(a2), lastOf2(b2)));
-    if (!named2)
-      groups.forEach((g2, i5) => {
-        g2.name = "Day " + String.fromCharCode(LETTER_A + i5);
-      });
-    const med = (a2) => median(a2.filter((v3) => v3 != null && isFinite(v3)));
-    const band = (r4) => {
-      for (const [top, range] of USUAL_RANGES) if (r4 <= top) return range;
-      return HIGH_RANGE;
-    };
-    const work = (b2) => b2.sets.filter((q) => !q.warm && !q.drop);
-    const days = groups.map((g2) => {
-      const full = g2.list.filter((x2) => !offS(x2));
-      const recent = (full.length ? full : g2.list).slice(-FROM_LOG.latest);
-      const latest = recent[recent.length - 1] || first;
-      const cnt = /* @__PURE__ */ new Map();
-      for (const x2 of recent) for (const id of lifts(x2)) cnt.set(id, (cnt.get(id) || 0) + 1);
-      const order = (id) => {
-        for (let k2 = recent.length - 1; k2 >= 0; k2--) {
-          const s3 = recent[k2];
-          const i5 = s3 ? s3.ex.findIndex((b2) => b2.exId === id) : -1;
-          if (i5 >= 0) return k2 === recent.length - 1 ? i5 : ORDER.older + i5;
-        }
-        return ORDER.none;
-      };
-      const ids = [...cnt.keys()].filter((id) => (cnt.get(id) || 0) * 2 >= recent.length && state.exercises.some((e5) => e5.id === id && !e5.archived)).sort((a2, b2) => order(a2) - order(b2));
-      const items = ids.map((id) => {
-        const ex = EX(id);
-        const it = newItem(id);
-        let b2 = null;
-        for (let k2 = recent.length - 1; k2 >= 0 && !b2; k2--) {
-          const s3 = recent[k2];
-          b2 = s3 && s3.ex.find((q2) => q2.exId === id && work(q2).length) || null;
-        }
-        if (!b2) return it;
-        const ws = work(b2);
-        it.sets = Math.min(FROM_LOG.sets, Math.max(1, ws.length));
-        if (!ex.timed) {
-          const r4 = med(ws.map((q2) => Number(q2.r)));
-          if (r4 != null && r4 > 0) [it.repMin, it.repMax] = band(r4);
-        }
-        const rt = ws.filter((x2) => x2.rir != null);
-        const q = rt.length * 2 > ws.length ? med(rt.map((x2) => Number(x2.rir))) : null;
-        if (q != null) it.rir = Math.min(FROM_LOG.rir, Math.max(0, Math.round(q)));
-        return it;
-      });
-      {
-        const sg = ssOf && ssOf[latest.id] || {};
-        const gid = {};
-        for (const it of items) {
-          const k2 = sg[it.exId];
-          if (k2 && items.filter((o3) => sg[o3.exId] === k2).length > 1) it.ss = gid[k2] || (gid[k2] = uid());
-        }
+    return { groups, pop };
+  }
+  function logDay(g2, offS, ssOf, first) {
+    const full = g2.list.filter((x2) => !offS(x2));
+    const recent = (full.length ? full : g2.list).slice(-FROM_LOG.latest);
+    const latest = recent[recent.length - 1] || first;
+    const cnt = /* @__PURE__ */ new Map();
+    for (const x2 of recent) for (const id of liftsOf(x2)) cnt.set(id, (cnt.get(id) || 0) + 1);
+    const order = (id) => {
+      for (let k2 = recent.length - 1; k2 >= 0; k2--) {
+        const s3 = recent[k2];
+        const i5 = s3 ? s3.ex.findIndex((b2) => b2.exId === id) : -1;
+        if (i5 >= 0) return k2 === recent.length - 1 ? i5 : ORDER.older + i5;
       }
-      return { g: g2, day: { id: uid(), name: g2.name, rest: false, items }, ids: lifts(latest) };
-    }).filter((d3) => d3.day.items.length);
-    const r0 = rec2[0];
-    if (!days.length || !r0) return null;
-    const span = Math.max(WEEK_DAYS, daysBetween(r0.date, newest) + 1);
-    const perWeek = Math.min(WEEK_DAYS, Math.max(1, Math.round(rec2.length / (span / WEEK_DAYS))));
+      return ORDER.none;
+    };
+    const ids = [...cnt.keys()].filter((id) => (cnt.get(id) || 0) * 2 >= recent.length && state.exercises.some((e5) => e5.id === id && !e5.archived)).sort((a2, b2) => order(a2) - order(b2));
+    const items = ids.map((id) => {
+      const ex = EX(id);
+      const it = newItem(id);
+      let b2 = null;
+      for (let k2 = recent.length - 1; k2 >= 0 && !b2; k2--) {
+        const s3 = recent[k2];
+        b2 = s3 && s3.ex.find((q2) => q2.exId === id && workSets(q2).length) || null;
+      }
+      if (!b2) return it;
+      const ws = workSets(b2);
+      it.sets = Math.min(FROM_LOG.sets, Math.max(1, ws.length));
+      if (!ex.timed) {
+        const r4 = medianOf(ws.map((q2) => Number(q2.r)));
+        if (r4 != null && r4 > 0) [it.repMin, it.repMax] = usualRange(r4);
+      }
+      const rt = ws.filter((x2) => x2.rir != null);
+      const q = rt.length * 2 > ws.length ? medianOf(rt.map((x2) => Number(x2.rir))) : null;
+      if (q != null) it.rir = Math.min(FROM_LOG.rir, Math.max(0, Math.round(q)));
+      return it;
+    });
+    {
+      const sg = ssOf && ssOf[latest.id] || {};
+      const gid = {};
+      for (const it of items) {
+        const k2 = sg[it.exId];
+        if (k2 && items.filter((o3) => sg[o3.exId] === k2).length > 1) it.ss = gid[k2] || (gid[k2] = uid());
+      }
+    }
+    return { g: g2, day: { id: uid(), name: g2.name, rest: false, items }, ids: liftsOf(latest) };
+  }
+  function cycleOf(days, perWeek) {
     const reps = perWeek >= days.length * 2 ? Math.min(FROM_LOG.rounds, Math.floor(perWeek / days.length)) : 1;
     const seq = [];
     for (let r4 = 0; r4 < reps; r4++)
@@ -22520,16 +22640,19 @@ ${JSON.stringify(ctx, null, 1)}`;
       for (let j3 = 0; j3 < k2; j3++) cyc.push(restDay());
       rest -= k2;
     });
-    const dayFor = (x2) => {
+    return cyc;
+  }
+  function dayFinder(named2, days) {
+    return (x2) => {
       if (named2) {
-        const k2 = nm(x2).slice(0, FROM_LOG.name).toLowerCase();
+        const k2 = nameOf(x2).slice(0, FROM_LOG.name).toLowerCase();
         const d3 = days.find((q) => q.g.name.toLowerCase() === k2);
         return d3 ? d3.day : null;
       }
-      const L22 = lifts(x2);
+      const L2 = liftsOf(x2);
       let best = null, bj = 0;
       for (const d3 of days) {
-        const j3 = jac(L22, d3.ids);
+        const j3 = jac(L2, d3.ids);
         if (j3 >= FROM_LOG.sameAt && j3 > bj) {
           best = d3.day;
           bj = j3;
@@ -22537,7 +22660,38 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
       return best;
     };
-    return { routine: { id: uid(), name: "From your log", schedule: "cycle", days: cyc }, perWeek, dayFor };
+  }
+  function routineFromLog(sessions, ssOf) {
+    const all = sessions.filter((x2) => !x2.demo && x2.ex && x2.ex.length);
+    const first = all[0];
+    if (!first) return null;
+    const newest = all.reduce((m3, x2) => x2.date > m3 ? x2.date : m3, first.date);
+    const rec2 = all.filter((x2) => x2.date >= addDays(newest, 1 - IMPORT_DAYS)).sort(byDate);
+    const offS = offSessions();
+    const named2 = !rec2.some((x2) => GENERIC_WORKOUT.test(nameOf(x2)));
+    const grouped = groupSessions(rec2, named2, offS);
+    let groups = grouped.groups;
+    const pop = grouped.pop;
+    groups = groups.filter((g2) => g2.list.length >= IMPORT_REPEATS);
+    if (!groups.length || groups.length > FROM_LOG.days || groups.reduce((a2, g2) => a2 + g2.list.length, 0) < pop.length * FROM_LOG.cover)
+      return null;
+    const lastOf2 = (g2) => g2.list[g2.list.length - 1] || first;
+    groups.sort((a2, b2) => byDate(lastOf2(a2), lastOf2(b2)));
+    if (!named2)
+      groups.forEach((g2, i5) => {
+        g2.name = "Day " + String.fromCharCode(LETTER_A + i5);
+      });
+    const days = groups.map((g2) => logDay(g2, offS, ssOf, first)).filter((d3) => d3.day.items.length);
+    const r0 = rec2[0];
+    if (!days.length || !r0) return null;
+    const span = Math.max(WEEK_DAYS, daysBetween(r0.date, newest) + 1);
+    const perWeek = Math.min(WEEK_DAYS, Math.max(1, Math.round(rec2.length / (span / WEEK_DAYS))));
+    const cyc = cycleOf(days, perWeek);
+    return {
+      routine: { id: uid(), name: "From your log", schedule: "cycle", days: cyc },
+      perWeek,
+      dayFor: dayFinder(named2, days)
+    };
   }
   async function liveLogFetch() {
     let local = null;
@@ -22961,6 +23115,92 @@ ${JSON.stringify(ctx, null, 1)}`;
   var PCT = 100;
   var REPS_DEF = 8;
   var inches = (o3) => Object.fromEntries(Object.entries(o3).map(([k2, v3]) => [k2, v3 * IN]));
+  var eqBase = (e5) => {
+    const c4 = isCompound(e5);
+    const t4 = EQ_LB[e5.equip] || EQ_LB["other"] || [0, 0];
+    return t4[c4 ? 0 : 1];
+  };
+  function startOf(e5, it) {
+    const known = BASE_LB[it.exId];
+    const lb = known != null && known > 0 || e5.bw && known === 0 ? known || 0 : eqBase(e5);
+    if (e5.assist) return { w: -LIFTER.help * LB, reps: null };
+    const step = progStep(e5, it, lb * LB) || LIFTER.step * LB;
+    let w2 = lb > 0 ? Math.max(step, Math.round(lb * LB * LIFTER.near / step) * step) : 0;
+    if (w2 > 0 && platesMode(e5) === "bar" && loadMode(e5) === "total") {
+      const bar2 = exBarKg(e5);
+      if (w2 < bar2 - BAR_EPS) w2 = bar2;
+    }
+    return { w: w2, reps: null };
+  }
+  function demoSlots(R2, cur, t4) {
+    const slots = [];
+    if (R2.schedule === "weekly") {
+      for (let k2 = 0; k2 < DEMO_WEEKS; k2++) {
+        const ws = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1 - k2));
+        R2.days.forEach((_2, di) => slots.push({ date: addDays(ws, di), di }));
+      }
+    } else {
+      const start2 = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1));
+      for (let p3 = 0; ; p3++) {
+        const date = addDays(start2, p3);
+        if (date > t4) break;
+        slots.push({ date, di: p3 % R2.days.length });
+      }
+    }
+    return slots;
+  }
+  function deloadBlocks(items, prog) {
+    const BW = LIFTER.bw;
+    return items.map((it) => {
+      const e5 = EX(it.exId);
+      const key = it.exId + "|" + it.repMin + "-" + it.repMax;
+      const g2 = prog[key] || (prog[key] = Object.assign(startOf(e5, it), {
+        lv: Math.round(((+it.repMin || REPS_DEF) + Math.max(+it.repMin || REPS_DEF, +it.repMax || REPS_DEF)) / 2),
+        n: 0
+      }));
+      const n3 = Math.max(1, Math.ceil(it.sets / 2));
+      const lo = +it.repMin || REPS_DEF;
+      const w2 = e5.assist ? g2.w - (progStep(e5, it, BW * LB) || LIFTER.step * LB) : g2.w > 0 ? lighterLoad(e5, it, g2.w, g2.w * LIFTER.near) : g2.w;
+      return { exId: it.exId, sets: Array.from({ length: n3 }, () => ({ w: w2, r: lo, rir: DELOAD_RIR, warm: false })) };
+    });
+  }
+  function demoBlocks(items, prog, rnd) {
+    const BW = LIFTER.bw;
+    return items.map((it) => {
+      const e5 = EX(it.exId);
+      const key = it.exId + "|" + it.repMin + "-" + it.repMax;
+      let g2 = prog[key];
+      const lo = +it.repMin || REPS_DEF, hi = Math.max(lo, +it.repMax || lo);
+      const repsAt = (lv, n3) => Array.from({ length: n3 }, (_2, j3) => Math.max(lo, Math.min(hi, lv - (j3 >= 2 && lv < hi ? 1 : 0))));
+      const known = BASE_LB[it.exId];
+      const pureBw = e5.bw && !e5.assist && !(known != null && known > 0);
+      if (!g2) {
+        g2 = prog[key] = Object.assign(startOf(e5, it), { lv: pureBw ? lo : Math.round((lo + hi) / 2), n: 0 });
+      } else if (pureBw) {
+        g2.n++;
+        if (g2.n % 2 === 1) g2.lv = Math.min(hi, g2.lv + 1);
+      } else if (repsAt(g2.lv, it.sets).every((r4) => r4 >= hi) && (e5.assist || g2.w > 0 || !e5.bw)) {
+        const was = (e5.bw ? BW * LB : 0) + g2.w;
+        const step = progStep(e5, it, e5.assist ? BW * LB : was) || LIFTER.step * LB;
+        if (e5.assist) g2.w = Math.min(0, g2.w + step);
+        else g2.w = g2.w + step;
+        g2.lv = Math.max(lo, hi - Math.max(1, Math.round(step / Math.max(was, step) * PCT / LIFTER.repPct)));
+      } else g2.lv++;
+      const reps = repsAt(g2.lv, it.sets);
+      g2.reps = reps;
+      const lastR = reps[reps.length - 1];
+      if (reps.length > 2 && lastR != null && rnd() < LIFTER.short) reps[reps.length - 1] = Math.max(lo, lastR - 1);
+      const rir = Math.max(0, Math.min(LIFTER.rirTop, isNum(+it.rir) ? +it.rir : LIFTER.rir));
+      const w2 = g2.w;
+      const sets = reps.map((r4, j3) => ({
+        w: w2,
+        r: r4,
+        rir: j3 === reps.length - 1 ? Math.max(0, rir - 1) : rir,
+        warm: false
+      }));
+      return { exId: it.exId, sets };
+    });
+  }
   function makeDemo() {
     act(() => {
       state.sessions = state.sessions.filter((s3) => !s3.demo);
@@ -22968,43 +23208,13 @@ ${JSON.stringify(ctx, null, 1)}`;
       state.measurements = state.measurements.filter((m3) => !m3.demo);
       const R2 = activeRoutine();
       const rnd = mulberry(LIFTER.seed);
-      const eqBase = (e5) => {
-        const c4 = isCompound(e5);
-        const t5 = EQ_LB[e5.equip] || EQ_LB["other"] || [0, 0];
-        return t5[c4 ? 0 : 1];
-      };
       const BW = LIFTER.bw;
       const cur = weekStart(today());
       const t4 = today();
       const realDates = new Set(state.sessions.map((x2) => x2.date));
       const realBW = new Set(state.bodyweights.map((x2) => x2.date)), realMeas = new Set(state.measurements.map((x2) => x2.date));
-      const slots = [];
-      if (R2.schedule === "weekly") {
-        for (let k2 = 0; k2 < DEMO_WEEKS; k2++) {
-          const ws = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1 - k2));
-          R2.days.forEach((_2, di) => slots.push({ date: addDays(ws, di), di }));
-        }
-      } else {
-        const start2 = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1));
-        for (let p3 = 0; ; p3++) {
-          const date = addDays(start2, p3);
-          if (date > t4) break;
-          slots.push({ date, di: p3 % R2.days.length });
-        }
-      }
+      const slots = demoSlots(R2, cur, t4);
       const prog = {};
-      const startOf = (e5, it) => {
-        const known = BASE_LB[it.exId];
-        const lb = known != null && known > 0 || e5.bw && known === 0 ? known || 0 : eqBase(e5);
-        if (e5.assist) return { w: -LIFTER.help * LB, reps: null };
-        const step = progStep(e5, it, lb * LB) || LIFTER.step * LB;
-        let w2 = lb > 0 ? Math.max(step, Math.round(lb * LB * LIFTER.near / step) * step) : 0;
-        if (w2 > 0 && platesMode(e5) === "bar" && loadMode(e5) === "total") {
-          const bar2 = exBarKg(e5);
-          if (w2 < bar2 - BAR_EPS) w2 = bar2;
-        }
-        return { w: w2, reps: null };
-      };
       const dlw = addDays(weekStart(t4), -BACK.deload), msw = addDays(weekStart(t4), -BACK.missed);
       let msn = 0;
       for (const sl of slots) {
@@ -23013,18 +23223,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         if (realDates.has(date)) continue;
         if (weekStart(date) === msw && msn++ === 1) continue;
         if (weekStart(date) === dlw) {
-          const ex2 = d3.items.map((it) => {
-            const e5 = EX(it.exId);
-            const key = it.exId + "|" + it.repMin + "-" + it.repMax;
-            const g2 = prog[key] || (prog[key] = Object.assign(startOf(e5, it), {
-              lv: Math.round(((+it.repMin || REPS_DEF) + Math.max(+it.repMin || REPS_DEF, +it.repMax || REPS_DEF)) / 2),
-              n: 0
-            }));
-            const n3 = Math.max(1, Math.ceil(it.sets / 2));
-            const lo = +it.repMin || REPS_DEF;
-            const w2 = e5.assist ? g2.w - (progStep(e5, it, BW * LB) || LIFTER.step * LB) : g2.w > 0 ? lighterLoad(e5, it, g2.w, g2.w * LIFTER.near) : g2.w;
-            return { exId: it.exId, sets: Array.from({ length: n3 }, () => ({ w: w2, r: lo, rir: DELOAD_RIR, warm: false })) };
-          });
+          const ex2 = deloadBlocks(d3.items, prog);
           state.sessions.push(
             cleanSess(
               {
@@ -23044,40 +23243,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           );
           continue;
         }
-        const ex = d3.items.map((it) => {
-          const e5 = EX(it.exId);
-          const key = it.exId + "|" + it.repMin + "-" + it.repMax;
-          let g2 = prog[key];
-          const lo = +it.repMin || REPS_DEF, hi = Math.max(lo, +it.repMax || lo);
-          const repsAt = (lv, n3) => Array.from({ length: n3 }, (_2, j3) => Math.max(lo, Math.min(hi, lv - (j3 >= 2 && lv < hi ? 1 : 0))));
-          const known = BASE_LB[it.exId];
-          const pureBw = e5.bw && !e5.assist && !(known != null && known > 0);
-          if (!g2) {
-            g2 = prog[key] = Object.assign(startOf(e5, it), { lv: pureBw ? lo : Math.round((lo + hi) / 2), n: 0 });
-          } else if (pureBw) {
-            g2.n++;
-            if (g2.n % 2 === 1) g2.lv = Math.min(hi, g2.lv + 1);
-          } else if (repsAt(g2.lv, it.sets).every((r4) => r4 >= hi) && (e5.assist || g2.w > 0 || !e5.bw)) {
-            const was = (e5.bw ? BW * LB : 0) + g2.w;
-            const step = progStep(e5, it, e5.assist ? BW * LB : was) || LIFTER.step * LB;
-            if (e5.assist) g2.w = Math.min(0, g2.w + step);
-            else g2.w = g2.w + step;
-            g2.lv = Math.max(lo, hi - Math.max(1, Math.round(step / Math.max(was, step) * PCT / LIFTER.repPct)));
-          } else g2.lv++;
-          const reps = repsAt(g2.lv, it.sets);
-          g2.reps = reps;
-          const lastR = reps[reps.length - 1];
-          if (reps.length > 2 && lastR != null && rnd() < LIFTER.short) reps[reps.length - 1] = Math.max(lo, lastR - 1);
-          const rir = Math.max(0, Math.min(LIFTER.rirTop, isNum(+it.rir) ? +it.rir : LIFTER.rir));
-          const w2 = g2.w;
-          const sets = reps.map((r4, j3) => ({
-            w: w2,
-            r: r4,
-            rir: j3 === reps.length - 1 ? Math.max(0, rir - 1) : rir,
-            warm: false
-          }));
-          return { exId: it.exId, sets };
-        });
+        const ex = demoBlocks(d3.items, prog, rnd);
         state.sessions.push(
           cleanSess(
             { id: uid(), date, dayIdx: di, dayId: d3.id, dayName: d3.name, routineId: R2.id, ex, notes: "", demo: true },
@@ -23807,40 +23973,235 @@ ${JSON.stringify(ctx, null, 1)}`;
     el.classList.add("flash");
     el.addEventListener("animationend", () => el.classList.remove("flash"), { once: true });
   }
+  function pickAddDay(m3, id) {
+    const R2 = curRoutineB();
+    const di = m3.day ?? -1;
+    const d3 = R2.days[di];
+    closeModal();
+    if (!d3) {
+      rerenderKeepScroll();
+      return;
+    }
+    act(() => {
+      d3.items.push(m3.pm && R2.schedule === "weekly" ? { ...newItem(id), pm: true } : newItem(id));
+      Object.assign(d3, trainOn(d3));
+    });
+    rerenderKeepScroll();
+    toast(`${exName(id)} added to ${dayLabel(R2, di)}${m3.pm ? ", second workout" : ""}`);
+    bwNudge([id]);
+    return;
+  }
+  function pickSwapItem(m3, id) {
+    const f3 = findItem(m3.uid);
+    if (f3) {
+      const day = f3.r.days[f3.di];
+      const q = swapPlan(f3.it, f3.it.exId, id, f3.r, day ? day.id : void 0);
+      act(() => {
+        Object.assign(f3.it, { repMin: q.repMin, repMax: q.repMax, rir: q.rir, rest: q.rest, inc: q.inc });
+        if (q.jump != null) f3.it.jump = q.jump;
+        else delete f3.it.jump;
+        f3.it.exId = id;
+      });
+    }
+    closeModal();
+    rerenderKeepScroll();
+    return;
+  }
+  function pickAddBlock(m3, id, d3) {
+    const half = (p3) => ({
+      ...p3,
+      ss: p3.ss ?? null,
+      ...d3.deload || d3.light ? { sets: Math.max(1, Math.ceil(p3.sets / 2)) } : {}
+    });
+    const p0 = planFor(id, null, d3.dayId, false, d3.date, partOf(d3));
+    const nb = newBlock(id, half(p0), { deload: !!d3.deload, light: !!d3.light, before: d3.date });
+    if (d3.deload || d3.light) nb.full = +p0.sets;
+    if (m3.one) nb.sets = nb.sets.slice(0, 1);
+    const li = d3.ex.length - 1;
+    const last = d3.ex[li];
+    if (last && joinable(last, nb)) {
+      const had = last.sets.length;
+      const plan = { ...last.plan }, did2 = d3.id;
+      let added = [];
+      act(
+        () => {
+          added = joinRows(last, nb);
+        },
+        {
+          inProgress: true,
+          undo: () => {
+            const dd = state.draft;
+            if (!dd || dd.id !== did2) return false;
+            const y2 = dd.ex.find((x2) => x2 === last);
+            if (!y2 || added.some((x2) => x2.done)) return false;
+            y2.sets = y2.sets.filter((x2) => !added.includes(x2));
+            y2.plan = plan;
+            return y2.sets.length === had;
+          }
+        }
+      );
+      afterAdd(li);
+      toast(`${EX(id).name}: ${added.length} more set${added.length === 1 ? "" : "s"}, with the ones above`, true);
+      return;
+    }
+    act(() => d3.ex.push(nb), { inProgress: true });
+    afterAdd(d3.ex.length - 1);
+    bwNudge([id]);
+    return;
+  }
+  function swapMoveSets(sw) {
+    const { d: d3, bi, b: b2, nb, orig, did: did2, id } = sw;
+    nb.sets = b2.sets;
+    if (b2.bid) nb.bid = b2.bid;
+    act(
+      () => {
+        d3.ex[bi] = nb;
+        fixSupersets(d3.ex.map((x2) => x2.plan));
+      },
+      {
+        inProgress: true,
+        undo: () => {
+          const dd = state.draft;
+          if (!dd || dd.id !== did2) return false;
+          const i5 = dd.ex.indexOf(nb);
+          if (i5 < 0) return false;
+          dd.ex[i5] = orig;
+          return true;
+        }
+      }
+    );
+    rerenderKeepScroll();
+    toast(`Your sets are on ${EX(id).name} now`, true);
+    return;
+  }
+  function swapJoin(sw, ni, y2) {
+    const { d: d3, bi, b: b2, nb, orig, did: did2, done, id } = sw;
+    const plan = { ...y2.plan };
+    let added = [];
+    act(
+      () => {
+        added = joinRows(y2, nb);
+        if (done.length) {
+          b2.sets = done;
+          b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
+        } else keepOpen(() => d3.ex.splice(bi, 1));
+        fixSupersets(d3.ex.map((x2) => x2.plan));
+      },
+      {
+        inProgress: true,
+        undo: () => {
+          const dd = state.draft;
+          if (!dd || dd.id !== did2) return false;
+          const yy = dd.ex.find((x2) => x2 === y2);
+          if (!yy || added.some((x2) => x2.done)) return false;
+          yy.sets = yy.sets.filter((x2) => !added.includes(x2));
+          yy.plan = plan;
+          if (done.length) {
+            const i5 = dd.ex.findIndex((x2) => x2 === b2);
+            if (i5 < 0) return false;
+            dd.ex[i5] = orig;
+          } else dd.ex.splice(dd.ex.indexOf(yy) + (ni < bi ? 1 : 0), 0, orig);
+          return true;
+        }
+      }
+    );
+    rerenderKeepScroll();
+    toast(
+      done.length ? `${EX(id).name}: the sets left join the ones below. Your sets so far stay with ${EX(orig.exId).name}.` : `Swapped to ${EX(id).name}: its sets are together now`,
+      true
+    );
+    return;
+  }
+  function swapInPlace(sw) {
+    const { d: d3, bi, b: b2, nb, orig, did: did2, done, left, id } = sw;
+    act(
+      () => {
+        if (done.length) {
+          b2.sets = done;
+          b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
+          keepOpen(() => d3.ex.splice(bi + 1, 0, nb));
+        } else d3.ex[bi] = nb;
+        fixSupersets(d3.ex.map((x2) => x2.plan));
+      },
+      {
+        inProgress: true,
+        undo: () => {
+          const dd = state.draft;
+          if (!dd || dd.id !== did2) return false;
+          const at2 = dd.ex.findIndex((x2) => x2 === nb);
+          if (at2 < 0 || nb.sets.some((x2) => x2.done)) return false;
+          if (done.length) {
+            dd.ex.splice(at2, 1);
+            const i5 = dd.ex.findIndex((x2) => x2 === b2);
+            if (i5 >= 0) dd.ex[i5] = orig;
+            else return false;
+          } else dd.ex[at2] = orig;
+          return true;
+        }
+      }
+    );
+    rerenderKeepScroll();
+    toast(
+      done.length && left ? `${EX(id).name} added for the sets left. Your sets so far stay with ${EX(orig.exId).name}.` : done.length ? `${EX(id).name} added after ${EX(orig.exId).name}` : `Swapped to ${EX(id).name}`,
+      true
+    );
+    return;
+  }
+  function pickSwapBlock(m3, id, d3) {
+    const bi = m3.b ?? -1;
+    const b2 = d3.ex[bi];
+    if (!b2) {
+      rerenderKeepScroll();
+      return;
+    }
+    const orig = structuredClone(b2);
+    const did2 = d3.id;
+    const done = b2.sets.filter((x2) => !rowBlank(b2, x2));
+    const left = b2.sets.filter((x2) => !x2.warm && !x2.drop && rowBlank(b2, x2)).length;
+    const rows2 = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
+    if (done.length && !left && !m3.all) {
+      const nn = EX(id).name;
+      confirmBox(
+        `Every set of ${EX(b2.exId).name} is logged`,
+        `Logged on the wrong exercise? Move the sets to ${nn}. Or add ${nn} after it.`,
+        "Move the sets",
+        () => applyPick({ ...m3, all: "move" }, id),
+        false,
+        { label: `Add ${nn}`, fn: () => applyPick({ ...m3, all: "add" }, id) }
+      );
+      return;
+    }
+    const nb = newBlock(
+      id,
+      {
+        ...swapPlan(b2.plan, b2.exId, id, null, d3.dayId),
+        sets: done.length && left ? left : Math.max(1, rows2 || +b2.plan.sets || 1)
+      },
+      { deload: !!d3.deload, light: !!d3.light, before: d3.date }
+    );
+    const sw = { d: d3, bi, b: b2, nb, orig, did: did2, done, left, id };
+    if (m3.all === "move") {
+      swapMoveSets(sw);
+      return;
+    }
+    nb.swappedFrom = b2.swappedFrom || b2.exId;
+    if (nb.swappedFrom === id) nb.swappedFrom = null;
+    const ni = done.length ? joinable(d3.ex[bi + 1], nb) ? bi + 1 : -1 : joinable(d3.ex[bi - 1], nb) ? bi - 1 : joinable(d3.ex[bi + 1], nb) ? bi + 1 : -1;
+    const y2 = ni >= 0 ? d3.ex[ni] : void 0;
+    if (y2) {
+      swapJoin(sw, ni, y2);
+      return;
+    }
+    swapInPlace(sw);
+  }
   function applyPick(m3, id) {
     if (!m3 || !id) return;
     if (m3.mode === "addDay") {
-      const R2 = curRoutineB();
-      const di = m3.day ?? -1;
-      const d4 = R2.days[di];
-      closeModal();
-      if (!d4) {
-        rerenderKeepScroll();
-        return;
-      }
-      act(() => {
-        d4.items.push(m3.pm && R2.schedule === "weekly" ? { ...newItem(id), pm: true } : newItem(id));
-        Object.assign(d4, trainOn(d4));
-      });
-      rerenderKeepScroll();
-      toast(`${exName(id)} added to ${dayLabel(R2, di)}${m3.pm ? ", second workout" : ""}`);
-      bwNudge([id]);
+      pickAddDay(m3, id);
       return;
     }
     if (m3.mode === "swapItem") {
-      const f3 = findItem(m3.uid);
-      if (f3) {
-        const day = f3.r.days[f3.di];
-        const q = swapPlan(f3.it, f3.it.exId, id, f3.r, day ? day.id : void 0);
-        act(() => {
-          Object.assign(f3.it, { repMin: q.repMin, repMax: q.repMax, rir: q.rir, rest: q.rest, inc: q.inc });
-          if (q.jump != null) f3.it.jump = q.jump;
-          else delete f3.it.jump;
-          f3.it.exId = id;
-        });
-      }
-      closeModal();
-      rerenderKeepScroll();
+      pickSwapItem(m3, id);
       return;
     }
     const d3 = state.draft;
@@ -23849,176 +24210,12 @@ ${JSON.stringify(ctx, null, 1)}`;
       rerenderKeepScroll();
       return;
     }
-    const half = (p3) => ({
-      ...p3,
-      ss: p3.ss ?? null,
-      ...d3.deload || d3.light ? { sets: Math.max(1, Math.ceil(p3.sets / 2)) } : {}
-    });
     if (m3.mode === "addBlock") {
-      const p0 = planFor(id, null, d3.dayId, false, d3.date, partOf(d3));
-      const nb = newBlock(id, half(p0), { deload: !!d3.deload, light: !!d3.light, before: d3.date });
-      if (d3.deload || d3.light) nb.full = +p0.sets;
-      if (m3.one) nb.sets = nb.sets.slice(0, 1);
-      const li = d3.ex.length - 1;
-      const last = d3.ex[li];
-      if (last && joinable(last, nb)) {
-        const had = last.sets.length;
-        const plan = { ...last.plan }, did2 = d3.id;
-        let added = [];
-        act(
-          () => {
-            added = joinRows(last, nb);
-          },
-          {
-            inProgress: true,
-            undo: () => {
-              const dd = state.draft;
-              if (!dd || dd.id !== did2) return false;
-              const y2 = dd.ex.find((x2) => x2 === last);
-              if (!y2 || added.some((x2) => x2.done)) return false;
-              y2.sets = y2.sets.filter((x2) => !added.includes(x2));
-              y2.plan = plan;
-              return y2.sets.length === had;
-            }
-          }
-        );
-        afterAdd(li);
-        toast(`${EX(id).name}: ${added.length} more set${added.length === 1 ? "" : "s"}, with the ones above`, true);
-        return;
-      }
-      act(() => d3.ex.push(nb), { inProgress: true });
-      afterAdd(d3.ex.length - 1);
-      bwNudge([id]);
+      pickAddBlock(m3, id, d3);
       return;
     }
     if (m3.mode === "swapBlock") {
-      const bi = m3.b ?? -1;
-      const b2 = d3.ex[bi];
-      if (!b2) {
-        rerenderKeepScroll();
-        return;
-      }
-      const orig = structuredClone(b2);
-      const did2 = d3.id;
-      const done = b2.sets.filter((x2) => !rowBlank(b2, x2));
-      const left = b2.sets.filter((x2) => !x2.warm && !x2.drop && rowBlank(b2, x2)).length;
-      const rows2 = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
-      if (done.length && !left && !m3.all) {
-        const nn = EX(id).name;
-        confirmBox(
-          `Every set of ${EX(b2.exId).name} is logged`,
-          `Logged on the wrong exercise? Move the sets to ${nn}. Or add ${nn} after it.`,
-          "Move the sets",
-          () => applyPick({ ...m3, all: "move" }, id),
-          false,
-          { label: `Add ${nn}`, fn: () => applyPick({ ...m3, all: "add" }, id) }
-        );
-        return;
-      }
-      const nb = newBlock(
-        id,
-        {
-          ...swapPlan(b2.plan, b2.exId, id, null, d3.dayId),
-          sets: done.length && left ? left : Math.max(1, rows2 || +b2.plan.sets || 1)
-        },
-        { deload: !!d3.deload, light: !!d3.light, before: d3.date }
-      );
-      if (m3.all === "move") {
-        nb.sets = b2.sets;
-        if (b2.bid) nb.bid = b2.bid;
-        act(
-          () => {
-            d3.ex[bi] = nb;
-            fixSupersets(d3.ex.map((x2) => x2.plan));
-          },
-          {
-            inProgress: true,
-            undo: () => {
-              const dd = state.draft;
-              if (!dd || dd.id !== did2) return false;
-              const i5 = dd.ex.indexOf(nb);
-              if (i5 < 0) return false;
-              dd.ex[i5] = orig;
-              return true;
-            }
-          }
-        );
-        rerenderKeepScroll();
-        toast(`Your sets are on ${EX(id).name} now`, true);
-        return;
-      }
-      nb.swappedFrom = b2.swappedFrom || b2.exId;
-      if (nb.swappedFrom === id) nb.swappedFrom = null;
-      const ni = done.length ? joinable(d3.ex[bi + 1], nb) ? bi + 1 : -1 : joinable(d3.ex[bi - 1], nb) ? bi - 1 : joinable(d3.ex[bi + 1], nb) ? bi + 1 : -1;
-      const y2 = ni >= 0 ? d3.ex[ni] : void 0;
-      if (y2) {
-        const plan = { ...y2.plan };
-        let added = [];
-        act(
-          () => {
-            added = joinRows(y2, nb);
-            if (done.length) {
-              b2.sets = done;
-              b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
-            } else keepOpen(() => d3.ex.splice(bi, 1));
-            fixSupersets(d3.ex.map((x2) => x2.plan));
-          },
-          {
-            inProgress: true,
-            undo: () => {
-              const dd = state.draft;
-              if (!dd || dd.id !== did2) return false;
-              const yy = dd.ex.find((x2) => x2 === y2);
-              if (!yy || added.some((x2) => x2.done)) return false;
-              yy.sets = yy.sets.filter((x2) => !added.includes(x2));
-              yy.plan = plan;
-              if (done.length) {
-                const i5 = dd.ex.findIndex((x2) => x2 === b2);
-                if (i5 < 0) return false;
-                dd.ex[i5] = orig;
-              } else dd.ex.splice(dd.ex.indexOf(yy) + (ni < bi ? 1 : 0), 0, orig);
-              return true;
-            }
-          }
-        );
-        rerenderKeepScroll();
-        toast(
-          done.length ? `${EX(id).name}: the sets left join the ones below. Your sets so far stay with ${EX(orig.exId).name}.` : `Swapped to ${EX(id).name}: its sets are together now`,
-          true
-        );
-        return;
-      }
-      act(
-        () => {
-          if (done.length) {
-            b2.sets = done;
-            b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
-            keepOpen(() => d3.ex.splice(bi + 1, 0, nb));
-          } else d3.ex[bi] = nb;
-          fixSupersets(d3.ex.map((x2) => x2.plan));
-        },
-        {
-          inProgress: true,
-          undo: () => {
-            const dd = state.draft;
-            if (!dd || dd.id !== did2) return false;
-            const at2 = dd.ex.findIndex((x2) => x2 === nb);
-            if (at2 < 0 || nb.sets.some((x2) => x2.done)) return false;
-            if (done.length) {
-              dd.ex.splice(at2, 1);
-              const i5 = dd.ex.findIndex((x2) => x2 === b2);
-              if (i5 >= 0) dd.ex[i5] = orig;
-              else return false;
-            } else dd.ex[at2] = orig;
-            return true;
-          }
-        }
-      );
-      rerenderKeepScroll();
-      toast(
-        done.length && left ? `${EX(id).name} added for the sets left. Your sets so far stay with ${EX(orig.exId).name}.` : done.length ? `${EX(id).name} added after ${EX(orig.exId).name}` : `Swapped to ${EX(id).name}`,
-        true
-      );
+      pickSwapBlock(m3, id, d3);
       return;
     }
     rerenderKeepScroll();
@@ -25135,112 +25332,112 @@ ${JSON.stringify(ctx, null, 1)}`;
   var TIMED_MAX_MIN = 360;
   var BACK_SAID = " Your workout in progress is back: Resume it on Today.";
   var HEAVIEST_SHOWN = 4;
-  function finish() {
-    const d3 = state.draft;
-    if (!d3) return;
-    if (!d3._leftAsked && !d3.editingId && !d3.past) {
-      let n3 = 0, left = 0;
-      for (const b2 of d3.ex)
-        for (const x2 of b2.sets) {
-          if (x2.warm) continue;
-          n3++;
-          if (!x2.done && rowBlank(b2, x2)) left++;
-        }
-      const any = d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !x2.warm));
-      if (any && left > 0) {
-        confirmBox(
-          `${left} of ${n3} sets not done`,
-          `Finish now and they are left out. An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.`,
-          "Finish now",
-          () => {
-            const dd = state.draft;
-            if (!dd) return;
-            dd._leftAsked = true;
-            finish();
-          },
-          false,
-          { label: "Keep going", fn: () => {
-          } }
-        );
-        return;
+  function askSetsLeft(d3) {
+    let n3 = 0, left = 0;
+    for (const b2 of d3.ex)
+      for (const x2 of b2.sets) {
+        if (x2.warm) continue;
+        n3++;
+        if (!x2.done && rowBlank(b2, x2)) left++;
       }
+    const any = d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !x2.warm));
+    if (any && left > 0) {
+      confirmBox(
+        `${left} of ${n3} sets not done`,
+        `Finish now and they are left out. An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.`,
+        "Finish now",
+        () => {
+          const dd = state.draft;
+          if (!dd) return;
+          dd._leftAsked = true;
+          finish();
+        },
+        false,
+        { label: "Keep going", fn: () => {
+        } }
+      );
+      return true;
     }
-    if (!d3._rampAsked) {
-      const ramps = [];
-      for (const b2 of d3.ex) {
-        const e5 = EX(b2.exId);
-        const wk = b2.sets.filter((x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0);
-        if (wk.length < 2) continue;
-        const L2 = (x2) => bwLoad(e5, d3.date) + (+(x2.w ?? 0) || 0);
-        const top = Math.max(...wk.map(L2));
-        if (!(top > 0)) continue;
-        const firstTop = b2.sets.findIndex(
-          (x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && Math.abs(L2(x2) - top) < EPS_SAME
+    return false;
+  }
+  function askRamps(d3) {
+    const ramps = [];
+    for (const b2 of d3.ex) {
+      const e5 = EX(b2.exId);
+      const wk = b2.sets.filter((x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0);
+      if (wk.length < 2) continue;
+      const L2 = (x2) => bwLoad(e5, d3.date) + (+(x2.w ?? 0) || 0);
+      const top = Math.max(...wk.map(L2));
+      if (!(top > 0)) continue;
+      const firstTop = b2.sets.findIndex(
+        (x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && Math.abs(L2(x2) - top) < EPS_SAME
+      );
+      const bi = d3.ex.indexOf(b2);
+      const st = IDX().exStats[b2.exId];
+      const est = st ? st.bestAll : void 0;
+      const thr = isCompound(e5) ? WARM_SHARE.compound : WARM_SHARE.isolation;
+      const easy = (x2) => {
+        if (!(L2(x2) < top - EPS_SAME)) return false;
+        const q = rirEff(x2, e5);
+        if (q != null) return q >= RIR_CALL_TOP;
+        if (est && !noE1(e5)) {
+          const rtf = rtfAt(est, L2(x2));
+          if (rtf != null) return rtf - +(x2.r ?? 0) >= RIR_CALL_TOP;
+        }
+        return L2(x2) < top * thr;
+      };
+      const appSet = (x2, si) => b2.sw != null && Math.abs((+(x2.w ?? 0) || 0) - b2.sw) < EPS_SAME || !!b2.adj && b2.adj.up && si <= b2.adj.at;
+      b2.sets.forEach((x2, si) => {
+        if (si < firstTop && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && (e5.bw || +(x2.w ?? 0) > 0) && !appSet(x2, si) && easy(x2))
+          ramps.push({ bi, si, name: e5.name, txt: `${loadLabel(e5, +(x2.w ?? 0) || 0)}×${x2.r}` });
+      });
+    }
+    if (ramps.length) {
+      const done = () => {
+        const dd = state.draft;
+        if (!dd) return;
+        act(
+          () => {
+            dd._rampAsked = true;
+          },
+          { inProgress: true }
         );
-        const bi = d3.ex.indexOf(b2);
-        const st = IDX().exStats[b2.exId];
-        const est = st ? st.bestAll : void 0;
-        const thr = isCompound(e5) ? WARM_SHARE.compound : WARM_SHARE.isolation;
-        const easy = (x2) => {
-          if (!(L2(x2) < top - EPS_SAME)) return false;
-          const q = rirEff(x2, e5);
-          if (q != null) return q >= RIR_CALL_TOP;
-          if (est && !noE1(e5)) {
-            const rtf = rtfAt(est, L2(x2));
-            if (rtf != null) return rtf - +(x2.r ?? 0) >= RIR_CALL_TOP;
-          }
-          return L2(x2) < top * thr;
-        };
-        const appSet = (x2, si) => b2.sw != null && Math.abs((+(x2.w ?? 0) || 0) - b2.sw) < EPS_SAME || !!b2.adj && b2.adj.up && si <= b2.adj.at;
-        b2.sets.forEach((x2, si) => {
-          if (si < firstTop && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && (e5.bw || +(x2.w ?? 0) > 0) && !appSet(x2, si) && easy(x2))
-            ramps.push({ bi, si, name: e5.name, txt: `${loadLabel(e5, +(x2.w ?? 0) || 0)}×${x2.r}` });
-        });
-      }
-      if (ramps.length) {
-        const done = () => {
+        finish();
+      };
+      confirmBox(
+        "These look like ramp-up sets",
+        `${[...new Set(ramps.map((r4) => r4.bi))].map((bi) => {
+          const rs = ramps.filter((r4) => r4.bi === bi);
+          return `${rs[0].name}: ${rs.map((r4) => r4.txt).join(", ")}`;
+        }).join(
+          "; "
+        )}. Lighter and easy, before your top set. Mark ${ramps.length > 1 ? "them" : "it"} as warm-up${ramps.length > 1 ? "s" : ""}?`,
+        `Mark as warm-up${ramps.length > 1 ? "s" : ""}`,
+        () => {
           const dd = state.draft;
           if (!dd) return;
           act(
             () => {
-              dd._rampAsked = true;
+              for (const r4 of ramps) {
+                const x2 = dd.ex[r4.bi] && dd.ex[r4.bi].sets[r4.si];
+                if (x2) {
+                  x2.warm = true;
+                  x2.drop = false;
+                }
+              }
             },
             { inProgress: true }
           );
-          finish();
-        };
-        confirmBox(
-          "These look like ramp-up sets",
-          `${[...new Set(ramps.map((r4) => r4.bi))].map((bi) => {
-            const rs = ramps.filter((r4) => r4.bi === bi);
-            return `${rs[0].name}: ${rs.map((r4) => r4.txt).join(", ")}`;
-          }).join(
-            "; "
-          )}. Lighter and easy, before your top set. Mark ${ramps.length > 1 ? "them" : "it"} as warm-up${ramps.length > 1 ? "s" : ""}?`,
-          `Mark as warm-up${ramps.length > 1 ? "s" : ""}`,
-          () => {
-            const dd = state.draft;
-            if (!dd) return;
-            act(
-              () => {
-                for (const r4 of ramps) {
-                  const x2 = dd.ex[r4.bi] && dd.ex[r4.bi].sets[r4.si];
-                  if (x2) {
-                    x2.warm = true;
-                    x2.drop = false;
-                  }
-                }
-              },
-              { inProgress: true }
-            );
-            done();
-          },
-          false,
-          { label: "Keep as working sets", fn: done }
-        );
-        return;
-      }
+          done();
+        },
+        false,
+        { label: "Keep as working sets", fn: done }
+      );
+      return true;
     }
+    return false;
+  }
+  function askUnchecked(d3) {
     const unchecked = [];
     for (const b2 of d3.ex) {
       const n3 = b2.sets.filter((s3) => !s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3))).length;
@@ -25278,8 +25475,16 @@ ${JSON.stringify(ctx, null, 1)}`;
         false,
         { label: "Save without them", fn: () => finishNow() }
       );
-      return;
+      return true;
     }
+    return false;
+  }
+  function finish() {
+    const d3 = state.draft;
+    if (!d3) return;
+    if (!d3._leftAsked && !d3.editingId && !d3.past && askSetsLeft(d3)) return;
+    if (!d3._rampAsked && askRamps(d3)) return;
+    if (askUnchecked(d3)) return;
     finishNow();
   }
   function finishNow() {
@@ -25361,6 +25566,35 @@ ${JSON.stringify(ctx, null, 1)}`;
         { label: "Save anyway", fn: save }
       );
     else save();
+  }
+  function setCounts(ex) {
+    const work = ex.reduce((a2, b2) => a2 + b2.sets.filter(isWork).length, 0), miss = ex.reduce((a2, b2) => a2 + b2.sets.filter((q) => !q.warm && !q.drop && isMissed(q)).length, 0), hard = r1(
+      ex.reduce((a2, b2) => {
+        const e5 = EX(b2.exId);
+        return a2 + b2.sets.reduce((c4, q) => c4 + hardCredit(q, e5), 0);
+      }, 0)
+    );
+    return { work, miss, hard };
+  }
+  function recapPr(pr) {
+    const e5 = EX(pr.exId);
+    if (pr.type === "Weight PR")
+      return {
+        name: e5.name,
+        what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${pr.value != null && isCompound(e5) ? `, best estimate ${fmtE(pr.value)} ${U()}${loadNote(e5)}` : ""}`,
+        was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${e5.bw ? loadLabel(e5, pr.prevW ?? 0) : fmtW(pr.prevW) + " " + U()}` : ""
+      };
+    const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.date) : null;
+    if (ps) return { name: e5.name, what: `PR, ${setShort(e5, ps.w, ps.r)}`, was: "your best for that number of reps" };
+    return pr.type === "e1RM" ? {
+      name: e5.name,
+      what: `${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e5)}`,
+      was: prOverall(pr) ? wasE(pr.value, pr.prevAll) ? `was ${wasE(pr.value, pr.prevAll)}` : "" : wasE(pr.value, pr.prev) ? `was ${wasE(pr.value, pr.prev)} at those reps` : ""
+    } : {
+      name: e5.name,
+      what: `${e5.timed ? "Time" : "Rep"} PR, ${setShort(e5, pr.w, pr.r)}`,
+      was: pr.prevR ? `was ${pr.prevR} ${e5.timed ? "s" : "reps"} at this load or heavier` : "heaviest yet"
+    };
   }
   function saveSession(d3, ex, cardio) {
     const clockMin = d3.editingId || d3.past || !d3.startedAt || iso(new Date(d3.startedAt)) !== d3.date ? null : (() => {
@@ -25453,12 +25687,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const e5 = EX(p3.exId);
       return [`${e5.name} ${setShort(e5, p3.w, p3.r)}`];
     });
-    const work = ex.reduce((a2, b2) => a2 + b2.sets.filter(isWork).length, 0), miss = ex.reduce((a2, b2) => a2 + b2.sets.filter((q) => !q.warm && !q.drop && isMissed(q)).length, 0), hard = r1(
-      ex.reduce((a2, b2) => {
-        const e5 = EX(b2.exId);
-        return a2 + b2.sets.reduce((c4, q) => c4 + hardCredit(q, e5), 0);
-      }, 0)
-    );
+    const { work, miss, hard } = setCounts(ex);
     ui.todayDay = null;
     window.scrollTo(0, 0);
     render();
@@ -25476,26 +25705,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       lines.push("Not timed: the sets went in faster than they can be lifted. Add its minutes by editing it in History.");
     if (targets) lines.push(`${beaten} of ${targets} exercise target${targets === 1 ? "" : "s"} beaten`);
     if (heavier.length) lines.push(`Heaviest yet: ${andList(heavier, HEAVIEST_SHOWN)}`);
-    const prList = prs.map((pr) => {
-      const e5 = EX(pr.exId);
-      if (pr.type === "Weight PR")
-        return {
-          name: e5.name,
-          what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${pr.value != null && isCompound(e5) ? `, best estimate ${fmtE(pr.value)} ${U()}${loadNote(e5)}` : ""}`,
-          was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${e5.bw ? loadLabel(e5, pr.prevW ?? 0) : fmtW(pr.prevW) + " " + U()}` : ""
-        };
-      const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.date) : null;
-      if (ps) return { name: e5.name, what: `PR, ${setShort(e5, ps.w, ps.r)}`, was: "your best for that number of reps" };
-      return pr.type === "e1RM" ? {
-        name: e5.name,
-        what: `${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e5)}`,
-        was: prOverall(pr) ? wasE(pr.value, pr.prevAll) ? `was ${wasE(pr.value, pr.prevAll)}` : "" : wasE(pr.value, pr.prev) ? `was ${wasE(pr.value, pr.prev)} at those reps` : ""
-      } : {
-        name: e5.name,
-        what: `${e5.timed ? "Time" : "Rep"} PR, ${setShort(e5, pr.w, pr.r)}`,
-        was: pr.prevR ? `was ${pr.prevR} ${e5.timed ? "s" : "reps"} at this load or heavier` : "heaviest yet"
-      };
-    });
+    const prList = prs.map(recapPr);
     if (cardio.length) lines.push(`Cardio and mobility: ${cardio.reduce((a2, c4) => a2 + c4.min, 0)} min`);
     if (demoGone) lines.push("Demo data removed, so your stats show only your own sessions");
     openModal({
@@ -26374,174 +26584,176 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (document.visibilityState === "visible" && tm && !tm.hidden) tick();
     });
   }
+  function onClick(e5) {
+    const el = e5.target;
+    if (!(el instanceof Element)) return;
+    const tab = el.closest("#tabs button");
+    if (tab instanceof HTMLElement) {
+      ui.tab = tab.dataset.tab || "";
+      ui.away = null;
+      if (ui.tab === "program") ui.planView = "routine";
+      window.scrollTo(0, 0);
+      render();
+      return;
+    }
+    if (el.id === "modal") {
+      if (ui.modal && ui.modal.dirty) {
+        toast(DIRTY_SAID);
+        return;
+      }
+      closeModal();
+      return;
+    }
+    const t4 = el.closest("[data-act]");
+    if (!(t4 instanceof HTMLElement || t4 instanceof SVGElement)) return;
+    const fn = ACT[t4.getAttribute("data-act") || ""];
+    if (fn) {
+      e5.preventDefault();
+      fn(t4);
+    }
+  }
+  function onActivateKey(e5) {
+    const el = e5.target;
+    if (e5.key === "Enter" && el instanceof Element && el.id === "qTxt") {
+      e5.preventDefault();
+      run("qFill");
+      return;
+    }
+    const g2 = el instanceof Element ? el.closest("g[data-act]") : null;
+    if (g2 && (e5.key === "Enter" || e5.key === " ")) {
+      e5.preventDefault();
+      g2.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    }
+  }
+  function onInput(e5) {
+    const t4 = fieldOf(e5.target);
+    if (!t4) return;
+    const m3 = ui.modal;
+    if (m3 && FORM_SHEETS.has(m3.kind) && t4.closest("#modal")) m3.dirty = true;
+    if (t4.id === "incVal" && m3 && m3.kind === "inc") m3.typed = true;
+    if (workoutInput(t4)) return;
+    if (planInput(t4)) return;
+    if (t4.dataset.band) {
+      bandInput(t4);
+      return;
+    }
+    if (reportInput(t4)) return;
+    if (accountInput(t4)) return;
+    if (t4.dataset.ebind && m3 && m3.kind === "exEdit") {
+      if (t4 instanceof HTMLInputElement && t4.type === "checkbox") return;
+      editorSet(m3.e, t4.dataset.ebind, t4.value);
+      return;
+    }
+    const mb = t4.dataset.mbind;
+    if (mb && m3 && m3.kind === "picker") {
+      if (mb === "q") m3.q = t4.value;
+      else if (mb === "m") m3.m = t4.value;
+      renderModal();
+      const pl = document.getElementById("pickList");
+      if (pl) pl.scrollTop = 0;
+      return;
+    }
+  }
+  function onChange(e5) {
+    const t4 = fieldOf(e5.target);
+    if (!t4) return;
+    const m3 = ui.modal;
+    if (m3 && FORM_SHEETS.has(m3.kind) && t4.closest("#modal")) m3.dirty = true;
+    if (reportChange(t4)) return;
+    if (picChange(t4)) return;
+    if (photoChange(t4)) return;
+    if (importChange(t4)) return;
+    if (planChange(t4)) return;
+    if (t4.dataset.gym) {
+      gymField(t4);
+      return;
+    }
+    if (todayChange(t4)) return;
+    if (t4.dataset.band) {
+      bandChange(t4);
+      return;
+    }
+    const k2 = t4.dataset.ebind;
+    if (k2 && m3 && m3.kind === "exEdit") {
+      const ed = m3.e;
+      const box3 = t4 instanceof HTMLInputElement && t4.type === "checkbox";
+      editorSet(ed, k2, box3 ? t4.checked : t4.value);
+      if (k2 === "primary") {
+        ed.secondary = ed.secondary.filter((x2) => x2 !== t4.value);
+        renderModal();
+      }
+      if (k2 === "bw") {
+        if (box3 && t4.checked && !ed.bwfRaw) ed.bwfRaw = String(Math.round(bwShare(ed) * PERCENT2));
+        renderModal();
+      }
+      if (k2 === "timed" || k2 === "equip" || k2 === "plates") renderModal();
+      return;
+    }
+    if (t4.dataset.mbind) return;
+    if (t4.dataset.pbind === "date" && m3 && m3.kind === "past") {
+      if (isDate(t4.value) && t4.value <= today()) m3.date = t4.value;
+      else toast("Pick today or an earlier date");
+      renderModal();
+      return;
+    }
+    if (workoutChange(t4)) return;
+    const b2 = t4.dataset.bind;
+    if (!b2) return;
+    const own2 = HISTORY_BINDS[b2] || SETTINGS_BINDS[b2] || PLAN_BINDS[b2] || DASH_BINDS[b2] || TODAY_BINDS[b2];
+    if (own2) {
+      own2(t4);
+      return;
+    }
+    if (b2 === "loadFill") run("loadAsk", { v: t4 instanceof HTMLInputElement && t4.checked ? "fill" : "grey" });
+  }
+  function onToggle(e5) {
+    const el = e5.target;
+    if (!(el instanceof HTMLElement)) return;
+    if (el.classList.contains("more") && el instanceof HTMLDetailsElement && ui.modal) {
+      ui.modal.moreOpen = el.open;
+      return;
+    }
+    if (!(el instanceof HTMLDetailsElement) || !el.dataset.sk) return;
+    if (el.dataset.auto) delete el.dataset.auto;
+    else ui.folds[el.dataset.sk] = el.open;
+    if (el.open) chartsResize(el);
+  }
+  function onKey(e5) {
+    const el = e5.target;
+    if (e5.key === "Enter" && el instanceof Element && el.id === "bwVal") {
+      e5.preventDefault();
+      run("addBW");
+      return;
+    }
+    if (workoutKey(e5)) return;
+    if (e5.key === "Escape" && ui.modal) {
+      if (ui.modal.dirty) toast(DIRTY_SAID);
+      else closeModal();
+      return;
+    }
+    if (e5.key !== "Tab" || !ui.modal) return;
+    const f3 = modalFocusables();
+    const first = f3[0], last = f3[f3.length - 1];
+    if (!first || !last) return;
+    const a2 = document.activeElement;
+    const box3 = document.getElementById("modal");
+    const outside = !box3 || !box3.contains(a2);
+    if (e5.shiftKey && (a2 === first || outside)) {
+      e5.preventDefault();
+      last.focus();
+    } else if (!e5.shiftKey && (a2 === last || outside)) {
+      e5.preventDefault();
+      first.focus();
+    }
+  }
   function eventListeners() {
     document.addEventListener("submit", accountSubmit);
-    document.addEventListener("click", (e5) => {
-      const el = e5.target;
-      if (!(el instanceof Element)) return;
-      const tab = el.closest("#tabs button");
-      if (tab instanceof HTMLElement) {
-        ui.tab = tab.dataset.tab || "";
-        ui.away = null;
-        if (ui.tab === "program") ui.planView = "routine";
-        window.scrollTo(0, 0);
-        render();
-        return;
-      }
-      if (el.id === "modal") {
-        if (ui.modal && ui.modal.dirty) {
-          toast(DIRTY_SAID);
-          return;
-        }
-        closeModal();
-        return;
-      }
-      const t4 = el.closest("[data-act]");
-      if (!(t4 instanceof HTMLElement || t4 instanceof SVGElement)) return;
-      const fn = ACT[t4.getAttribute("data-act") || ""];
-      if (fn) {
-        e5.preventDefault();
-        fn(t4);
-      }
-    });
-    document.addEventListener("keydown", (e5) => {
-      const el = e5.target;
-      if (e5.key === "Enter" && el instanceof Element && el.id === "qTxt") {
-        e5.preventDefault();
-        run("qFill");
-        return;
-      }
-      const g2 = el instanceof Element ? el.closest("g[data-act]") : null;
-      if (g2 && (e5.key === "Enter" || e5.key === " ")) {
-        e5.preventDefault();
-        g2.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      }
-    });
-    document.addEventListener("input", (e5) => {
-      const t4 = fieldOf(e5.target);
-      if (!t4) return;
-      const m3 = ui.modal;
-      if (m3 && FORM_SHEETS.has(m3.kind) && t4.closest("#modal")) m3.dirty = true;
-      if (t4.id === "incVal" && m3 && m3.kind === "inc") m3.typed = true;
-      if (workoutInput(t4)) return;
-      if (planInput(t4)) return;
-      if (t4.dataset.band) {
-        bandInput(t4);
-        return;
-      }
-      if (reportInput(t4)) return;
-      if (accountInput(t4)) return;
-      if (t4.dataset.ebind && m3 && m3.kind === "exEdit") {
-        if (t4 instanceof HTMLInputElement && t4.type === "checkbox") return;
-        editorSet(m3.e, t4.dataset.ebind, t4.value);
-        return;
-      }
-      const mb = t4.dataset.mbind;
-      if (mb && m3 && m3.kind === "picker") {
-        if (mb === "q") m3.q = t4.value;
-        else if (mb === "m") m3.m = t4.value;
-        renderModal();
-        const pl = document.getElementById("pickList");
-        if (pl) pl.scrollTop = 0;
-        return;
-      }
-    });
-    document.addEventListener("change", (e5) => {
-      const t4 = fieldOf(e5.target);
-      if (!t4) return;
-      const m3 = ui.modal;
-      if (m3 && FORM_SHEETS.has(m3.kind) && t4.closest("#modal")) m3.dirty = true;
-      if (reportChange(t4)) return;
-      if (picChange(t4)) return;
-      if (photoChange(t4)) return;
-      if (importChange(t4)) return;
-      if (planChange(t4)) return;
-      if (t4.dataset.gym) {
-        gymField(t4);
-        return;
-      }
-      if (todayChange(t4)) return;
-      if (t4.dataset.band) {
-        bandChange(t4);
-        return;
-      }
-      const k2 = t4.dataset.ebind;
-      if (k2 && m3 && m3.kind === "exEdit") {
-        const ed = m3.e;
-        const box3 = t4 instanceof HTMLInputElement && t4.type === "checkbox";
-        editorSet(ed, k2, box3 ? t4.checked : t4.value);
-        if (k2 === "primary") {
-          ed.secondary = ed.secondary.filter((x2) => x2 !== t4.value);
-          renderModal();
-        }
-        if (k2 === "bw") {
-          if (box3 && t4.checked && !ed.bwfRaw) ed.bwfRaw = String(Math.round(bwShare(ed) * PERCENT2));
-          renderModal();
-        }
-        if (k2 === "timed" || k2 === "equip" || k2 === "plates") renderModal();
-        return;
-      }
-      if (t4.dataset.mbind) return;
-      if (t4.dataset.pbind === "date" && m3 && m3.kind === "past") {
-        if (isDate(t4.value) && t4.value <= today()) m3.date = t4.value;
-        else toast("Pick today or an earlier date");
-        renderModal();
-        return;
-      }
-      if (workoutChange(t4)) return;
-      const b2 = t4.dataset.bind;
-      if (!b2) return;
-      const own2 = HISTORY_BINDS[b2] || SETTINGS_BINDS[b2] || PLAN_BINDS[b2] || DASH_BINDS[b2] || TODAY_BINDS[b2];
-      if (own2) {
-        own2(t4);
-        return;
-      }
-      if (b2 === "loadFill") run("loadAsk", { v: t4 instanceof HTMLInputElement && t4.checked ? "fill" : "grey" });
-    });
-    document.addEventListener(
-      "toggle",
-      (e5) => {
-        const el = e5.target;
-        if (!(el instanceof HTMLElement)) return;
-        if (el.classList.contains("more") && el instanceof HTMLDetailsElement && ui.modal) {
-          ui.modal.moreOpen = el.open;
-          return;
-        }
-        if (!(el instanceof HTMLDetailsElement) || !el.dataset.sk) return;
-        if (el.dataset.auto) delete el.dataset.auto;
-        else ui.folds[el.dataset.sk] = el.open;
-        if (el.open) chartsResize(el);
-      },
-      true
-    );
-    document.addEventListener("keydown", (e5) => {
-      const el = e5.target;
-      if (e5.key === "Enter" && el instanceof Element && el.id === "bwVal") {
-        e5.preventDefault();
-        run("addBW");
-        return;
-      }
-      if (workoutKey(e5)) return;
-      if (e5.key === "Escape" && ui.modal) {
-        if (ui.modal.dirty) toast(DIRTY_SAID);
-        else closeModal();
-        return;
-      }
-      if (e5.key !== "Tab" || !ui.modal) return;
-      const f3 = modalFocusables();
-      const first = f3[0], last = f3[f3.length - 1];
-      if (!first || !last) return;
-      const a2 = document.activeElement;
-      const box3 = document.getElementById("modal");
-      const outside = !box3 || !box3.contains(a2);
-      if (e5.shiftKey && (a2 === first || outside)) {
-        e5.preventDefault();
-        last.focus();
-      } else if (!e5.shiftKey && (a2 === last || outside)) {
-        e5.preventDefault();
-        first.focus();
-      }
-    });
+    document.addEventListener("click", onClick);
+    document.addEventListener("keydown", onActivateKey);
+    document.addEventListener("input", onInput);
+    document.addEventListener("change", onChange);
+    document.addEventListener("toggle", onToggle, true);
+    document.addEventListener("keydown", onKey);
   }
 
   // src/app/workdrag.ts
@@ -27814,32 +28026,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         view
       );
   }
-  function start() {
-    setRoot(renderInner);
-    setSheets(SHEETS, afterSheet2);
-    setFx({ render, rerenderKeepScroll, toast, undoToastHide, setSaveState, syncLine, obGate, ask });
-    storageStart();
-    syncStart();
-    viewStart();
-    updateStart();
-    accountStart();
-    pageListeners();
-    window.ironlogInstallReady = () => {
-      if (ui.tab === "today" || ui.tab === "settings") rerenderKeepScroll();
-    };
-    window.addEventListener("appinstalled", () => {
-      prefSet(APP_INSTALLED, "1");
-    });
-    window.ironlogLog = (area, e5) => log(area, e5);
-    tipsStart();
-    eventListeners();
-    workoutStart();
-    sectionsStart();
-    window.__onLib = (which) => {
-      if (which === "chart" && ui.tab === "dash" || which === "sortable" && ui.tab === "program")
-        rerenderKeepScroll();
-    };
-    trashTidy();
+  function oldLogFixes() {
     try {
       recordOldFloors();
     } catch (e5) {
@@ -27860,6 +28047,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     } catch (e5) {
       log("refit", e5);
     }
+  }
+  function exposeForTests() {
     window.__ironlog = {
       act,
       liftRead,
@@ -28228,6 +28417,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       blocks,
       stepLoad
     };
+  }
+  function firstDraw() {
     render();
     wakeOn();
     timerResume();
@@ -28247,6 +28438,36 @@ ${JSON.stringify(ctx, null, 1)}`;
         log("pics-read", e5);
       }
     );
+  }
+  function start() {
+    setRoot(renderInner);
+    setSheets(SHEETS, afterSheet2);
+    setFx({ render, rerenderKeepScroll, toast, undoToastHide, setSaveState, syncLine, obGate, ask });
+    storageStart();
+    syncStart();
+    viewStart();
+    updateStart();
+    accountStart();
+    pageListeners();
+    window.ironlogInstallReady = () => {
+      if (ui.tab === "today" || ui.tab === "settings") rerenderKeepScroll();
+    };
+    window.addEventListener("appinstalled", () => {
+      prefSet(APP_INSTALLED, "1");
+    });
+    window.ironlogLog = (area, e5) => log(area, e5);
+    tipsStart();
+    eventListeners();
+    workoutStart();
+    sectionsStart();
+    window.__onLib = (which) => {
+      if (which === "chart" && ui.tab === "dash" || which === "sortable" && ui.tab === "program")
+        rerenderKeepScroll();
+    };
+    trashTidy();
+    oldLogFixes();
+    exposeForTests();
+    firstDraw();
   }
   if (framed()) refuseFramed();
   else start();

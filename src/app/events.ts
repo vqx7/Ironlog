@@ -164,199 +164,213 @@ export function pageListeners(): void {
   });
 }
 
+/** A tap: a tab, outside a sheet, or anything with an action (data-act). */
+function onClick(e: MouseEvent): void {
+  const el = e.target;
+  if (!(el instanceof Element)) return;
+  const tab = el.closest('#tabs button');
+  if (tab instanceof HTMLElement) {
+    ui.tab = tab.dataset.tab || '';
+    // Back to the tab from anywhere opens the workout in progress (NEW-89, V: Today defaults to it).
+    ui.away = null;
+    if (ui.tab === 'program') ui.planView = 'routine';
+    window.scrollTo(0, 0);
+    render();
+    return;
+  }
+  /* A tap outside a sheet closes it, unless something was typed there: a
+     half-filled new exercise or note is not thrown away by a stray tap. */
+  if (el.id === 'modal') {
+    if (ui.modal && ui.modal.dirty) {
+      toast(DIRTY_SAID);
+      return;
+    }
+    closeModal();
+    return;
+  }
+  const t = el.closest('[data-act]');
+  if (!(t instanceof HTMLElement || t instanceof SVGElement)) return;
+  // getAttribute rather than dataset: the muscle map's targets are SVG groups.
+  const fn = ACT[t.getAttribute('data-act') || ''];
+  if (fn) {
+    e.preventDefault();
+    fn(t);
+  }
+}
+
+/** Enter in Type or dictate sets fills them; Enter or Space on a muscle-map group taps it. */
+function onActivateKey(e: KeyboardEvent): void {
+  const el = e.target;
+  // Enter fills the sets in Type or dictate sets (r30), as the button does.
+  if (e.key === 'Enter' && el instanceof Element && el.id === 'qTxt') {
+    e.preventDefault();
+    run('qFill');
+    return;
+  }
+  const g = el instanceof Element ? el.closest('g[data-act]') : null;
+  if (g && (e.key === 'Enter' || e.key === ' ')) {
+    e.preventDefault();
+    g.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  }
+}
+
+/** A field typed in: the screen or sheet it belongs to takes it, the first that does. */
+function onInput(e: Event): void {
+  const t = fieldOf(e.target);
+  if (!t) return;
+  const m = ui.modal;
+  if (m && FORM_SHEETS.has(m.kind) && t.closest('#modal')) m.dirty = true;
+  if (t.id === 'incVal' && m && m.kind === 'inc') m.typed = true;
+  // The session screen's (r60): a set's load and reps, cardio, the name, the notes.
+  if (workoutInput(t)) return;
+  // Plan's fields (r58): an exercise's numbers, a day's name, the routine's name, the searches.
+  if (planInput(t)) return;
+  if (t.dataset.band) {
+    bandInput(t);
+    return;
+  }
+  // A problem report's text (src/app/report.ts).
+  if (reportInput(t)) return;
+  // The account sheet's fields (src/app/account.ts).
+  if (accountInput(t)) return;
+  if (t.dataset.ebind && m && m.kind === 'exEdit') {
+    if (t instanceof HTMLInputElement && t.type === 'checkbox') return;
+    editorSet(m.e, t.dataset.ebind, t.value);
+    return;
+  }
+  // The picker's list drawn again in place (src/app/sheetspicker.ts), so the search field keeps the focus and the keyboard; the list goes back to its top.
+  const mb = t.dataset.mbind;
+  if (mb && m && m.kind === 'picker') {
+    if (mb === 'q') m.q = t.value;
+    else if (mb === 'm') m.m = t.value;
+    renderModal();
+    const pl = document.getElementById('pickList');
+    if (pl) pl.scrollTop = 0;
+    return;
+  }
+}
+
+/** A field changed: the screen or sheet it belongs to takes it, the first that does. */
+function onChange(e: Event): void {
+  const t = fieldOf(e.target);
+  if (!t) return;
+  const m = ui.modal;
+  if (m && FORM_SHEETS.has(m.kind) && t.closest('#modal')) m.dirty = true;
+  // A problem report's screenshot (src/app/report.ts).
+  if (reportChange(t)) return;
+  // A picture added to a note (r66, src/app/notepics.ts).
+  if (picChange(t)) return;
+  // The profile photo, from the menu or Today's line (2.33, src/app/actsapp.ts).
+  if (photoChange(t)) return;
+  // A file to import or restore, and the import preview's choices (src/app/importflow.ts).
+  if (importChange(t)) return;
+  // Plan's fields (r58): an exercise's numbers, a day's name and rest day, Move to.
+  if (planChange(t)) return;
+  if (t.dataset.gym) {
+    gymField(t);
+    return;
+  }
+  // Today's (r59): the Set up page's bodyweight.
+  if (todayChange(t)) return;
+  if (t.dataset.band) {
+    bandChange(t);
+    return;
+  }
+  const k = t.dataset.ebind;
+  if (k && m && m.kind === 'exEdit') {
+    const ed = m.e;
+    const box = t instanceof HTMLInputElement && t.type === 'checkbox';
+    editorSet(ed, k, box ? t.checked : t.value);
+    if (k === 'primary') {
+      ed.secondary = ed.secondary.filter(x => x !== t.value);
+      renderModal();
+    }
+    if (k === 'bw') {
+      if (box && t.checked && !ed.bwfRaw) ed.bwfRaw = String(Math.round(bwShare(ed) * PERCENT));
+      renderModal();
+    }
+    if (k === 'timed' || k === 'equip' || k === 'plates') renderModal();
+    return;
+  }
+  if (t.dataset.mbind) return;
+  if (t.dataset.pbind === 'date' && m && m.kind === 'past') {
+    if (isDate(t.value) && t.value <= today()) m.date = t.value;
+    else toast('Pick today or an earlier date');
+    renderModal();
+    return;
+  }
+  // The session screen's (r60): a set's reps and load, cardio, the date.
+  if (workoutChange(t)) return;
+  const b = t.dataset.bind;
+  if (!b) return;
+  // The moved screens' fields (History and Settings, r57; Plan and Stats, r58; Today, r59): each change through act.
+  const own = HISTORY_BINDS[b] || SETTINGS_BINDS[b] || PLAN_BINDS[b] || DASH_BINDS[b] || TODAY_BINDS[b];
+  if (own) {
+    own(t);
+    return;
+  }
+  if (b === 'loadFill') run('loadAsk', { v: t instanceof HTMLInputElement && t.checked ? 'fill' : 'grey' });
+}
+
+/** A section or a sheet's More opened or folded: remembered for this visit, and a chart inside given its size. */
+function onToggle(e: Event): void {
+  const el = e.target;
+  if (!(el instanceof HTMLElement)) return;
+  if (el.classList.contains('more') && el instanceof HTMLDetailsElement && ui.modal) {
+    ui.modal.moreOpen = el.open;
+    return;
+  }
+  if (!(el instanceof HTMLDetailsElement) || !el.dataset.sk) return;
+  // A main section opened by openMain() stays a default, not a choice.
+  if (el.dataset.auto) delete el.dataset.auto;
+  else ui.folds[el.dataset.sk] = el.open;
+  // A chart created inside a closed <details> has no size; give it one now.
+  if (el.open) chartsResize(el);
+}
+
+/** A key: Enter on bodyweight, the session screen's keys, Escape on a sheet, and Tab kept inside an open sheet. */
+function onKey(e: KeyboardEvent): void {
+  const el = e.target;
+  if (e.key === 'Enter' && el instanceof Element && el.id === 'bwVal') {
+    e.preventDefault();
+    run('addBW');
+    return;
+  }
+  // The session screen's (r60): Next through a set's fields, Escape on the effort strip, the arrows on an exercise's handle.
+  if (workoutKey(e)) return;
+  // Escape closes a sheet as a tap outside it does: one with something typed in it stays (2.28, 2.27-F6).
+  if (e.key === 'Escape' && ui.modal) {
+    if (ui.modal.dirty) toast(DIRTY_SAID);
+    else closeModal();
+    return;
+  }
+  if (e.key !== 'Tab' || !ui.modal) return;
+  const f = modalFocusables();
+  const first = f[0],
+    last = f[f.length - 1];
+  if (!first || !last) return;
+  const a = document.activeElement;
+  const box = document.getElementById('modal');
+  const outside = !box || !box.contains(a);
+  if (e.shiftKey && (a === first || outside)) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && (a === last || outside)) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
 /** The taps, keys and fields of every screen and sheet, added after the tips' listeners. */
 export function eventListeners(): void {
   /* The sign-in sheet is a real form so the phone offers to save and fill the
      password; it never navigates (accountSubmit, src/app/account.ts). */
   document.addEventListener('submit', accountSubmit);
-  document.addEventListener('click', e => {
-    const el = e.target;
-    if (!(el instanceof Element)) return;
-    const tab = el.closest('#tabs button');
-    if (tab instanceof HTMLElement) {
-      ui.tab = tab.dataset.tab || '';
-      // Back to the tab from anywhere opens the workout in progress (NEW-89, V: Today defaults to it).
-      ui.away = null;
-      if (ui.tab === 'program') ui.planView = 'routine';
-      window.scrollTo(0, 0);
-      render();
-      return;
-    }
-    /* A tap outside a sheet closes it, unless something was typed there: a
-       half-filled new exercise or note is not thrown away by a stray tap. */
-    if (el.id === 'modal') {
-      if (ui.modal && ui.modal.dirty) {
-        toast(DIRTY_SAID);
-        return;
-      }
-      closeModal();
-      return;
-    }
-    const t = el.closest('[data-act]');
-    if (!(t instanceof HTMLElement || t instanceof SVGElement)) return;
-    // getAttribute rather than dataset: the muscle map's targets are SVG groups.
-    const fn = ACT[t.getAttribute('data-act') || ''];
-    if (fn) {
-      e.preventDefault();
-      fn(t);
-    }
-  });
+  document.addEventListener('click', onClick);
   // Muscle-map groups are focusable; Enter or Space activates them like a button.
-  document.addEventListener('keydown', e => {
-    const el = e.target;
-    // Enter fills the sets in Type or dictate sets (r30), as the button does.
-    if (e.key === 'Enter' && el instanceof Element && el.id === 'qTxt') {
-      e.preventDefault();
-      run('qFill');
-      return;
-    }
-    const g = el instanceof Element ? el.closest('g[data-act]') : null;
-    if (g && (e.key === 'Enter' || e.key === ' ')) {
-      e.preventDefault();
-      g.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    }
-  });
-  document.addEventListener('input', e => {
-    const t = fieldOf(e.target);
-    if (!t) return;
-    const m = ui.modal;
-    if (m && FORM_SHEETS.has(m.kind) && t.closest('#modal')) m.dirty = true;
-    if (t.id === 'incVal' && m && m.kind === 'inc') m.typed = true;
-    // The session screen's (r60): a set's load and reps, cardio, the name, the notes.
-    if (workoutInput(t)) return;
-    // Plan's fields (r58): an exercise's numbers, a day's name, the routine's name, the searches.
-    if (planInput(t)) return;
-    if (t.dataset.band) {
-      bandInput(t);
-      return;
-    }
-    // A problem report's text (src/app/report.ts).
-    if (reportInput(t)) return;
-    // The account sheet's fields (src/app/account.ts).
-    if (accountInput(t)) return;
-    if (t.dataset.ebind && m && m.kind === 'exEdit') {
-      if (t instanceof HTMLInputElement && t.type === 'checkbox') return;
-      editorSet(m.e, t.dataset.ebind, t.value);
-      return;
-    }
-    // The picker's list drawn again in place (src/app/sheetspicker.ts), so the search field keeps the focus and the keyboard; the list goes back to its top.
-    const mb = t.dataset.mbind;
-    if (mb && m && m.kind === 'picker') {
-      if (mb === 'q') m.q = t.value;
-      else if (mb === 'm') m.m = t.value;
-      renderModal();
-      const pl = document.getElementById('pickList');
-      if (pl) pl.scrollTop = 0;
-      return;
-    }
-  });
-  document.addEventListener('change', e => {
-    const t = fieldOf(e.target);
-    if (!t) return;
-    const m = ui.modal;
-    if (m && FORM_SHEETS.has(m.kind) && t.closest('#modal')) m.dirty = true;
-    // A problem report's screenshot (src/app/report.ts).
-    if (reportChange(t)) return;
-    // A picture added to a note (r66, src/app/notepics.ts).
-    if (picChange(t)) return;
-    // The profile photo, from the menu or Today's line (2.33, src/app/actsapp.ts).
-    if (photoChange(t)) return;
-    // A file to import or restore, and the import preview's choices (src/app/importflow.ts).
-    if (importChange(t)) return;
-    // Plan's fields (r58): an exercise's numbers, a day's name and rest day, Move to.
-    if (planChange(t)) return;
-    if (t.dataset.gym) {
-      gymField(t);
-      return;
-    }
-    // Today's (r59): the Set up page's bodyweight.
-    if (todayChange(t)) return;
-    if (t.dataset.band) {
-      bandChange(t);
-      return;
-    }
-    const k = t.dataset.ebind;
-    if (k && m && m.kind === 'exEdit') {
-      const ed = m.e;
-      const box = t instanceof HTMLInputElement && t.type === 'checkbox';
-      editorSet(ed, k, box ? t.checked : t.value);
-      if (k === 'primary') {
-        ed.secondary = ed.secondary.filter(x => x !== t.value);
-        renderModal();
-      }
-      if (k === 'bw') {
-        if (box && t.checked && !ed.bwfRaw) ed.bwfRaw = String(Math.round(bwShare(ed) * PERCENT));
-        renderModal();
-      }
-      if (k === 'timed' || k === 'equip' || k === 'plates') renderModal();
-      return;
-    }
-    if (t.dataset.mbind) return;
-    if (t.dataset.pbind === 'date' && m && m.kind === 'past') {
-      if (isDate(t.value) && t.value <= today()) m.date = t.value;
-      else toast('Pick today or an earlier date');
-      renderModal();
-      return;
-    }
-    // The session screen's (r60): a set's reps and load, cardio, the date.
-    if (workoutChange(t)) return;
-    const b = t.dataset.bind;
-    if (!b) return;
-    // The moved screens' fields (History and Settings, r57; Plan and Stats, r58; Today, r59): each change through act.
-    const own = HISTORY_BINDS[b] || SETTINGS_BINDS[b] || PLAN_BINDS[b] || DASH_BINDS[b] || TODAY_BINDS[b];
-    if (own) {
-      own(t);
-      return;
-    }
-    if (b === 'loadFill') run('loadAsk', { v: t instanceof HTMLInputElement && t.checked ? 'fill' : 'grey' });
-  });
-  document.addEventListener(
-    'toggle',
-    e => {
-      const el = e.target;
-      if (!(el instanceof HTMLElement)) return;
-      if (el.classList.contains('more') && el instanceof HTMLDetailsElement && ui.modal) {
-        ui.modal.moreOpen = el.open;
-        return;
-      }
-      if (!(el instanceof HTMLDetailsElement) || !el.dataset.sk) return;
-      // A main section opened by openMain() stays a default, not a choice.
-      if (el.dataset.auto) delete el.dataset.auto;
-      else ui.folds[el.dataset.sk] = el.open;
-      // A chart created inside a closed <details> has no size; give it one now.
-      if (el.open) chartsResize(el);
-    },
-    true
-  );
-  document.addEventListener('keydown', e => {
-    const el = e.target;
-    if (e.key === 'Enter' && el instanceof Element && el.id === 'bwVal') {
-      e.preventDefault();
-      run('addBW');
-      return;
-    }
-    // The session screen's (r60): Next through a set's fields, Escape on the effort strip, the arrows on an exercise's handle.
-    if (workoutKey(e)) return;
-    // Escape closes a sheet as a tap outside it does: one with something typed in it stays (2.28, 2.27-F6).
-    if (e.key === 'Escape' && ui.modal) {
-      if (ui.modal.dirty) toast(DIRTY_SAID);
-      else closeModal();
-      return;
-    }
-    if (e.key !== 'Tab' || !ui.modal) return;
-    const f = modalFocusables();
-    const first = f[0],
-      last = f[f.length - 1];
-    if (!first || !last) return;
-    const a = document.activeElement;
-    const box = document.getElementById('modal');
-    const outside = !box || !box.contains(a);
-    if (e.shiftKey && (a === first || outside)) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && (a === last || outside)) {
-      e.preventDefault();
-      first.focus();
-    }
-  });
+  document.addEventListener('keydown', onActivateKey);
+  document.addEventListener('input', onInput);
+  document.addEventListener('change', onChange);
+  document.addEventListener('toggle', onToggle, true);
+  document.addEventListener('keydown', onKey);
 }

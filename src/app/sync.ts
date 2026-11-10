@@ -1038,15 +1038,8 @@ function cloudSoon(): void {
 
 /* ---------- sending and pulling ---------- */
 
-/** Writes every document that changed here to the account, merging each the account changed meanwhile. */
-export async function cloudFlush(): Promise<void> {
-  if (!cloud.on) return;
-  /* No pull has come through since the sync started (it failed, or got no
-     answer): this one pulls first, which then sends. A retry that only sent
-     found nothing to send and said Synced, the account's own changes never
-     read (found building r64's fix of the r63 audit's F3). */
-  if (!pulled) return cloudPull();
-  if (trackT || cloud.pendAt) trackEdits();
+/** The documents that differ from the copy last agreed with the account, each with its text and hash; one an older build synced, identical to the account's, is given its base and the notes saved. */
+function changedDocs(): { id: string; json: string; h: string }[] {
   const ch = chunksOf(state);
   const ids = new Set([...Object.keys(ch), ...Object.keys(cloud.meta)]);
   const todo: { id: string; json: string; h: string }[] = [];
@@ -1066,6 +1059,30 @@ export async function cloudFlush(): Promise<void> {
     if (!m || m.h !== h) todo.push({ id, json, h });
   }
   if (backfilled) saveMeta();
+  return todo;
+}
+
+/** What the sync line says when a document is over the size cap, by which one it is. */
+function tooBigSaid(tooBig: readonly string[]): string {
+  return tooBig.includes('core')
+    ? 'Routines and settings are too large to sync. Export a backup.'
+    : tooBig.some(i => i.startsWith('b-'))
+      ? 'A year of body data is too large to sync. Export a backup.'
+      : tooBig.includes('draft')
+        ? 'The workout in progress is too large to sync. Export a backup.'
+        : 'One month of sessions is too large to sync. Export a backup.';
+}
+
+/** Writes every document that changed here to the account, merging each the account changed meanwhile. */
+export async function cloudFlush(): Promise<void> {
+  if (!cloud.on) return;
+  /* No pull has come through since the sync started (it failed, or got no
+     answer): this one pulls first, which then sends. A retry that only sent
+     found nothing to send and said Synced, the account's own changes never
+     read (found building r64's fix of the r63 audit's F3). */
+  if (!pulled) return cloudPull();
+  if (trackT || cloud.pendAt) trackEdits();
+  const todo = changedDocs();
   /* The draft goes up last (r46, the r45 QC): Finish empties it and adds the
      session, and written first, a device pulling in between saw the workout
      gone and no session, and said it was discarded. */
@@ -1218,16 +1235,7 @@ export async function cloudFlush(): Promise<void> {
     if (moreBody || again) cloudSoon();
     if (tooBig.length) {
       saveMeta();
-      setCloud(
-        'offline',
-        tooBig.includes('core')
-          ? 'Routines and settings are too large to sync. Export a backup.'
-          : tooBig.some(i => i.startsWith('b-'))
-            ? 'A year of body data is too large to sync. Export a backup.'
-            : tooBig.includes('draft')
-              ? 'The workout in progress is too large to sync. Export a backup.'
-              : 'One month of sessions is too large to sync. Export a backup.'
-      );
+      setCloud('offline', tooBigSaid(tooBig));
       return;
     }
     cloud.last = Date.now();
@@ -1238,6 +1246,120 @@ export async function cloudFlush(): Promise<void> {
     cloudFail(e);
   }
 }
+/** One document of the account as read: its write time, its edit time, its data and the hash of its text. */
+type Remote = { at: number; et: number; data: unknown; h: string };
+
+/** The account's documents as read, each with its times, its data and the hash of its text; one that cannot be read is left out and logged. */
+function remoteDocs(docs: readonly { id: string; exists: boolean; data(): unknown }[]): Record<string, Remote> {
+  const remote: Record<string, Remote> = {};
+  for (const d of docs) {
+    if (!d.exists || !isChunkId(d.id)) continue;
+    const b = rec(d.data());
+    ownWrite(d.id, b);
+    if (!b || typeof b.json !== 'string') continue;
+    try {
+      remote[d.id] = {
+        at: Number(b.at) || 0,
+        et: Number(b.et) || Number(b.at) || 0,
+        data: parseJson(b.json),
+        h: hashStr(b.json)
+      };
+    } catch (e) {
+      log('sync-parse', e);
+    }
+  }
+  return remote;
+}
+
+/** A first sign-in on a phone that holds a log of its own: the two combined (below), the account's copy made the agreed base; true when the other phone's workout in progress was saved as a session. */
+function mergeFirstLink(mine: State, rState: State, rids: readonly string[], remote: Record<string, Remote>): boolean {
+  // a routine or exercise made here is the phone's own too (r55, the review: one built before a first sign-in was replaced)
+  const base = realCount(mine) > realCount(rState) ? mine : rState,
+    other = base === mine ? rState : mine;
+  /* Settings come from the side with more sessions, but exercises and
+     routines are combined by id (that side's copy wins a clash), so a
+     custom exercise or routine made on the other device is not lost and
+     its logged sets keep their name. Of two workouts in progress, this device's stays in progress and the other's ticked sets and cardio are saved, as Finish saves them, never dropped (r55, the review: one was lost on every device; the second review: its cardio and check-in were). */
+  const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
+  const kept = aside ? draftSession(aside) : null;
+  const keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some(x => x.id === kept.id);
+  setState(
+    normalize({
+      ...base,
+      exercises: unionById(base.exercises, other.exercises),
+      routines: unionById(base.routines, other.routines),
+      sessions: unionById(mine.sessions, keptDraft && kept ? [...rState.sessions, kept] : rState.sessions),
+      bodyweights: unionById(mine.bodyweights, rState.bodyweights),
+      measurements: unionById(mine.measurements, rState.measurements),
+      cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio),
+      trash: unionById(arr(state.trash) || [], arr(rState.trash) || []),
+      draft: state.draft || rState.draft
+    })
+  );
+  // The cloud copy becomes the agreed base, so the merged result is what
+  // the flush writes, rather than being merged a second time.
+  for (const id of rids) {
+    cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
+    cloud.editAt[id] = Date.now();
+  }
+  return keptDraft;
+}
+
+/** Every document the account changed since the copy last agreed, taken in: as it is when nothing changed here, else merged record by record (mergeChunk), its copy made the agreed base. Null parts when nothing changed. The documents taken as they are go into adoptedIds, and weigh-ins an older core held into leg. */
+function mergeChanged(
+  local: Record<string, Rec | null>,
+  remote: Record<string, Remote>,
+  rids: readonly string[],
+  legB: ReturnType<typeof legacyBodyBase>,
+  stat: { conflicts: number },
+  adoptedIds: Set<string>,
+  leg: { bodyweights: unknown[]; measurements: unknown[] }
+): { parts: Record<string, Rec | null> | null; draftIn: boolean; draftMerged: boolean; draftRemoteWins: boolean } {
+  let parts: Record<string, Rec | null> | null = { ...local };
+  let draftIn = false,
+    draftMerged = false,
+    draftRemoteWins = false;
+  let any = false;
+  for (const id of rids) {
+    const r = remote[id],
+      m = cloud.meta[id];
+    // Unchanged in the cloud since we last agreed. Content, not clocks, decides.
+    if (m && r.h === m.h) continue;
+    if (id === 'draft') draftIn = true;
+    const lJson = JSON.stringify(local[id] || emptyChunk(id));
+    const localDirty = !m || hashStr(lJson) !== m.h;
+    if (!localDirty) {
+      parts[id] = rec(r.data);
+      adoptedIds.add(id);
+      any = true;
+      continue;
+    }
+    if (id === 'draft') {
+      draftMerged = true;
+      draftRemoteWins = r.et > (cloud.editAt[id] || 0);
+    }
+    if (id === 'core') {
+      const L = legacyBody(rec(r.data));
+      leg.bodyweights.push(...L.bodyweights);
+      leg.measurements.push(...L.measurements);
+    }
+    parts[id] = mergeChunk(
+      id,
+      baseFor(id, m, legB),
+      local[id] || emptyChunk(id),
+      r.data,
+      r.et > (cloud.editAt[id] || 0),
+      stat
+    );
+    cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, r.et);
+    // The cloud copy is now the agreed base; the merge result is written by the flush below.
+    cloud.meta[id] = { h: r.h, at: r.at, b: baseOf(id, r.data) };
+    any = true;
+  }
+  if (!any) parts = null;
+  return { parts, draftIn, draftMerged, draftRemoteWins };
+}
+
 /* Pull what other devices wrote. Per document:
    - changed in the cloud only: take the cloud copy.
    - changed on both: merge record by record (see mergeChunk).
@@ -1266,23 +1388,7 @@ export async function cloudPull(): Promise<void> {
   // The profile photo, from the same listing: a document of its own, so nothing below reads it (2.34).
   const ph = snap.docs.find(x => x.id === PHOTO_DOC && x.exists);
   await photoReconcile(ph ? rec(ph.data()) : null);
-  const remote: Record<string, { at: number; et: number; data: unknown; h: string }> = {};
-  for (const d of snap.docs) {
-    if (!d.exists || !isChunkId(d.id)) continue;
-    const b = rec(d.data());
-    ownWrite(d.id, b);
-    if (!b || typeof b.json !== 'string') continue;
-    try {
-      remote[d.id] = {
-        at: Number(b.at) || 0,
-        et: Number(b.et) || Number(b.at) || 0,
-        data: parseJson(b.json),
-        h: hashStr(b.json)
-      };
-    } catch (e) {
-      log('sync-parse', e);
-    }
-  }
+  const remote = remoteDocs(snap.docs);
   const rids = Object.keys(remote);
   if (!rids.length) {
     // an empty account takes this device's log as it is, less its demo data, as a merge does (r55, the review: an empty account was given the demo's 27 sessions)
@@ -1320,77 +1426,15 @@ export async function cloudPull(): Promise<void> {
       parts = Object.fromEntries(rids.map(k => [k, rec(remote[k].data)]));
       rids.forEach(k => adoptedIds.add(k));
     } else {
-      // a routine or exercise made here is the phone's own too (r55, the review: one built before a first sign-in was replaced)
       merged = true; // no Undo (r55, the audit): a merge only adds, and undoing it took the account's own sessions off every device
-      const base = realCount(mine) > realCount(rState) ? mine : rState,
-        other = base === mine ? rState : mine;
-      /* Settings come from the side with more sessions, but exercises and
-         routines are combined by id (that side's copy wins a clash), so a
-         custom exercise or routine made on the other device is not lost and
-         its logged sets keep their name. Of two workouts in progress, this device's stays in progress and the other's ticked sets and cardio are saved, as Finish saves them, never dropped (r55, the review: one was lost on every device; the second review: its cardio and check-in were). */
-      const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
-      const kept = aside ? draftSession(aside) : null;
-      keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some(x => x.id === kept.id);
-      setState(
-        normalize({
-          ...base,
-          exercises: unionById(base.exercises, other.exercises),
-          routines: unionById(base.routines, other.routines),
-          sessions: unionById(mine.sessions, keptDraft && kept ? [...rState.sessions, kept] : rState.sessions),
-          bodyweights: unionById(mine.bodyweights, rState.bodyweights),
-          measurements: unionById(mine.measurements, rState.measurements),
-          cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio),
-          trash: unionById(arr(state.trash) || [], arr(rState.trash) || []),
-          draft: state.draft || rState.draft
-        })
-      );
-      // The cloud copy becomes the agreed base, so the merged result is what
-      // the flush writes, rather than being merged a second time.
-      for (const id of rids) {
-        cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
-        cloud.editAt[id] = Date.now();
-      }
+      keptDraft = mergeFirstLink(mine, rState, rids, remote);
     }
   } else {
-    parts = { ...local };
-    let any = false;
-    for (const id of rids) {
-      const r = remote[id],
-        m = cloud.meta[id];
-      // Unchanged in the cloud since we last agreed. Content, not clocks, decides.
-      if (m && r.h === m.h) continue;
-      if (id === 'draft') draftIn = true;
-      const lJson = JSON.stringify(local[id] || emptyChunk(id));
-      const localDirty = !m || hashStr(lJson) !== m.h;
-      if (!localDirty) {
-        parts[id] = rec(r.data);
-        adoptedIds.add(id);
-        any = true;
-        continue;
-      }
-      if (id === 'draft') {
-        draftMerged = true;
-        draftRemoteWins = r.et > (cloud.editAt[id] || 0);
-      }
-      if (id === 'core') {
-        const L = legacyBody(rec(r.data));
-        leg.bodyweights.push(...L.bodyweights);
-        leg.measurements.push(...L.measurements);
-      }
-      parts[id] = mergeChunk(
-        id,
-        baseFor(id, m, legB),
-        local[id] || emptyChunk(id),
-        r.data,
-        r.et > (cloud.editAt[id] || 0),
-        stat
-      );
-      cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, r.et);
-      // The cloud copy is now the agreed base; the merge result is written by the flush below.
-      cloud.meta[id] = { h: r.h, at: r.at, b: baseOf(id, r.data) };
-      any = true;
-    }
-    if (!any) parts = null;
+    const got = mergeChanged(local, remote, rids, legB, stat, adoptedIds, leg);
+    parts = got.parts;
+    draftIn = got.draftIn;
+    draftMerged = got.draftMerged;
+    draftRemoteWins = got.draftRemoteWins;
   }
   const dr0 = state.draft;
   let kept: Kept = null,

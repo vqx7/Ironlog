@@ -794,6 +794,131 @@ function cleanRoutine(r0: unknown, ri: number): Routine {
   return keepExtra(r0, { id: rid, name: typeof r.name === 'string' ? r.name : 'Routine', schedule, days });
 }
 
+/** A set row of the workout in progress as normalize reads it, or none when it is not one. */
+function cleanDraftSet(x0: unknown): DraftSet[] {
+  const x = rec(x0);
+  if (!x) return [];
+  return [
+    keepExtra(x0, {
+      w: x.w == null ? null : clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
+      r: x.r == null || x.r === '' ? null : Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
+      rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
+      warm: !!x.warm,
+      drop: !!x.drop && !x.warm,
+      done: !!x.done,
+      cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
+      // The row's own id (r56.1), last, where a build before it kept the unknown field.
+      ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
+    })
+  ];
+}
+
+/** A block of the workout in progress as normalize reads it, or none when it is not one. */
+function cleanDraftBlock(b0: unknown): DraftBlock[] {
+  const b = rec(b0);
+  if (!b || typeof b.exId !== 'string' || !arr(b.sets)) return [];
+  const pl = rec(b.plan) || {};
+  const plan: DraftBlock['plan'] = {
+    ...planNums(pl),
+    ss: typeof pl.ss === 'string' && pl.ss ? fixId(pl.ss) : null,
+    ...jumpOf(pl)
+  };
+  if (plan.repMax < plan.repMin) plan.repMax = plan.repMin;
+  const adj = rec(b.adj);
+  const adjW = adj ? Number(adj.w) : NaN,
+    adjFrom = adj ? Number(adj.from) : NaN,
+    sw = Number(b.sw);
+  const prev = arr(b.prev),
+    lastR = arr(b.lastR),
+    keepRR = arr(b.keepRR),
+    ln = rec(b.lastNote);
+  return [
+    keepExtra(
+      b0,
+      {
+        ...(typeof b.bid === 'string' && b.bid ? { bid: fixId(b.bid) } : {}),
+        exId: fixId(b.exId),
+        plan,
+        note: typeof b.note === 'string' ? b.note : '',
+        inj: typeof b.inj === 'string' && isMuscleOrJoint(b.inj) ? b.inj : null,
+        hint: typeof b.hint === 'string' ? b.hint : '',
+        last: typeof b.last === 'string' ? b.last : '',
+        // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
+        prev: prev
+          ? strings(prev, () => true)
+              .slice(0, LIMITS.sets)
+              .map(x => x.slice(0, LIMITS.lastText))
+          : undefined,
+        prevOff: b.prevOff === true ? true : undefined,
+        target: typeof b.target === 'string' ? b.target : '',
+        easier: typeof b.easier === 'string' ? b.easier : null,
+        tgt: cleanTgt(rec(b.tgt)),
+        // Last time's reps per set: shown as placeholders, so numbers only.
+        lastR: lastR
+          ? lastR.slice(0, LIMITS.sets).map(v => {
+              const n = numOr(v, NaN);
+              return isNum(n) && n >= 0 ? Math.min(n, LIMITS.reps) : null;
+            })
+          : [],
+        swappedFrom: typeof b.swappedFrom === 'string' ? fixId(b.swappedFrom) : null,
+        cut: b.cut === true ? true : undefined,
+        // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
+        full:
+          typeof b.full === 'number' && Number.isInteger(b.full) && b.full >= 1 && b.full <= LIMITS.sets
+            ? b.full
+            : undefined,
+        light: b.light === true ? true : undefined,
+        // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
+        basis: typeof b.basis === 'string' && isDate(b.basis) ? b.basis : undefined,
+        // The suggested load the rows started from (r24); absent in older drafts.
+        sw: b.sw === null ? null : b.sw === undefined || !isNum(sw) ? undefined : clampN(b.sw, LOAD_MIN, LOAD_MAX, 0),
+        // The next sets adjusted from a set (r34), and Keep for the rest of the session.
+        adj:
+          adj && typeof adj.at === 'number' && Number.isInteger(adj.at) && adj.at >= 0 && isNum(adjW) && isNum(adjFrom)
+            ? {
+                at: adj.at,
+                w: clampN(adj.w, 0, LOAD_MAX, 0),
+                from: clampN(adj.from, 0, LOAD_MAX, 0),
+                r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
+                up: adj.up === true,
+                why: typeof adj.why === 'string' ? adj.why.slice(0, LIMITS.why) : '',
+                // The row it came from (PENDING 333), last, where a build before it kept no such field.
+                ...(typeof adj.rid === 'string' ? { rid: fixId(adj.rid) } : {})
+              }
+            : undefined,
+        adjOff: b.adjOff === true ? true : undefined,
+        // Editing a saved session keeps the rep range it was logged under.
+        keepRR:
+          b.keepRR === undefined
+            ? undefined
+            : keepRR && keepRR.length === 2
+              ? pair(Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1)
+              : null,
+        lastNote:
+          ln && typeof ln.text === 'string' && typeof ln.date === 'string' && isDate(ln.date)
+            ? { date: ln.date, text: ln.text }
+            : null,
+        sets: (arr(b.sets) || []).flatMap(cleanDraftSet),
+        // Done at a new machine or gym (r61, 343 7), last, where the menu adds it; absent unless marked.
+        ...(b.nw === true ? { nw: true as const } : {}),
+        // The pictures on its note (r66, 373), by id, last; absent unless there are any.
+        ...picsField(b.pics)
+      } satisfies DraftBlock,
+      KNOWN_BLOCK
+    )
+  ];
+}
+
+/** A Limited equipment session's equipment: the library's kinds it names, in the library's order, or absent. */
+function equipList(v: unknown): string[] | undefined {
+  const a = arr(v);
+  if (!a) return undefined;
+  const out = EQUIP.map(([k]) => k).filter(k => a.includes(k));
+  return out.length ? out : undefined;
+}
+/** The draft fields this build writes only when valid (its pictures, its equipment): an invalid one is dropped, not kept as unknown. */
+const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics', 'equip']);
+
 /* The workout in progress, cleaned: called only on one whose exercises are a
    list and whose date is a date (normalize), rebuilt field by field in place,
    as every build since r56 has rebuilt it. The logger reads plan, lastR and
@@ -804,15 +929,6 @@ function cleanRoutine(r0: unknown, ri: number): Routine {
    one it has (a field a newer build saved among them) stays where it
    stands: the draft keeps the key order and the very object it came as. */
 /** A workout in progress, cleaned field by field (above). */
-/** A Limited equipment session's equipment: the library's kinds it names, in the library's order, or absent. */
-function equipList(v: unknown): string[] | undefined {
-  const a = arr(v);
-  if (!a) return undefined;
-  const out = EQUIP.map(([k]) => k).filter(k => a.includes(k));
-  return out.length ? out : undefined;
-}
-/** The draft fields this build writes only when valid (its pictures, its equipment): an invalid one is dropped, not kept as unknown. */
-const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics', 'equip']);
 function cleanDraft(d: Rec, date: string): DraftLike {
   const startedAt = Number(d.startedAt),
     durMin = Number(d.durMin);
@@ -853,122 +969,7 @@ function cleanDraft(d: Rec, date: string): DraftLike {
     note0: typeof d.note0 === 'string' ? d.note0.slice(0, LIMITS.startNote) : undefined,
     chk: cleanChk(rec(d.chk)) || undefined,
     cardio: (arr(d.cardio) || []).filter(c => !!c && typeof c === 'object').map((c, ci) => cleanDraftCardio(c, ci)),
-    ex: (arr(d.ex) || []).flatMap((b0): DraftBlock[] => {
-      const b = rec(b0);
-      if (!b || typeof b.exId !== 'string' || !arr(b.sets)) return [];
-      const pl = rec(b.plan) || {};
-      const plan: DraftBlock['plan'] = {
-        ...planNums(pl),
-        ss: typeof pl.ss === 'string' && pl.ss ? fixId(pl.ss) : null,
-        ...jumpOf(pl)
-      };
-      if (plan.repMax < plan.repMin) plan.repMax = plan.repMin;
-      const adj = rec(b.adj);
-      const adjW = adj ? Number(adj.w) : NaN,
-        adjFrom = adj ? Number(adj.from) : NaN,
-        sw = Number(b.sw);
-      const prev = arr(b.prev),
-        lastR = arr(b.lastR),
-        keepRR = arr(b.keepRR),
-        ln = rec(b.lastNote);
-      return [
-        keepExtra(
-          b0,
-          {
-            ...(typeof b.bid === 'string' && b.bid ? { bid: fixId(b.bid) } : {}),
-            exId: fixId(b.exId),
-            plan,
-            note: typeof b.note === 'string' ? b.note : '',
-            inj: typeof b.inj === 'string' && isMuscleOrJoint(b.inj) ? b.inj : null,
-            hint: typeof b.hint === 'string' ? b.hint : '',
-            last: typeof b.last === 'string' ? b.last : '',
-            // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
-            prev: prev
-              ? strings(prev, () => true)
-                  .slice(0, LIMITS.sets)
-                  .map(x => x.slice(0, LIMITS.lastText))
-              : undefined,
-            prevOff: b.prevOff === true ? true : undefined,
-            target: typeof b.target === 'string' ? b.target : '',
-            easier: typeof b.easier === 'string' ? b.easier : null,
-            tgt: cleanTgt(rec(b.tgt)),
-            // Last time's reps per set: shown as placeholders, so numbers only.
-            lastR: lastR
-              ? lastR.slice(0, LIMITS.sets).map(v => {
-                  const n = numOr(v, NaN);
-                  return isNum(n) && n >= 0 ? Math.min(n, LIMITS.reps) : null;
-                })
-              : [],
-            swappedFrom: typeof b.swappedFrom === 'string' ? fixId(b.swappedFrom) : null,
-            cut: b.cut === true ? true : undefined,
-            // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
-            full:
-              typeof b.full === 'number' && Number.isInteger(b.full) && b.full >= 1 && b.full <= LIMITS.sets
-                ? b.full
-                : undefined,
-            light: b.light === true ? true : undefined,
-            // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
-            basis: typeof b.basis === 'string' && isDate(b.basis) ? b.basis : undefined,
-            // The suggested load the rows started from (r24); absent in older drafts.
-            sw:
-              b.sw === null ? null : b.sw === undefined || !isNum(sw) ? undefined : clampN(b.sw, LOAD_MIN, LOAD_MAX, 0),
-            // The next sets adjusted from a set (r34), and Keep for the rest of the session.
-            adj:
-              adj &&
-              typeof adj.at === 'number' &&
-              Number.isInteger(adj.at) &&
-              adj.at >= 0 &&
-              isNum(adjW) &&
-              isNum(adjFrom)
-                ? {
-                    at: adj.at,
-                    w: clampN(adj.w, 0, LOAD_MAX, 0),
-                    from: clampN(adj.from, 0, LOAD_MAX, 0),
-                    r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
-                    up: adj.up === true,
-                    why: typeof adj.why === 'string' ? adj.why.slice(0, LIMITS.why) : '',
-                    // The row it came from (PENDING 333), last, where a build before it kept no such field.
-                    ...(typeof adj.rid === 'string' ? { rid: fixId(adj.rid) } : {})
-                  }
-                : undefined,
-            adjOff: b.adjOff === true ? true : undefined,
-            // Editing a saved session keeps the rep range it was logged under.
-            keepRR:
-              b.keepRR === undefined
-                ? undefined
-                : keepRR && keepRR.length === 2
-                  ? pair(Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1)
-                  : null,
-            lastNote:
-              ln && typeof ln.text === 'string' && typeof ln.date === 'string' && isDate(ln.date)
-                ? { date: ln.date, text: ln.text }
-                : null,
-            sets: (arr(b.sets) || []).flatMap((x0): DraftSet[] => {
-              const x = rec(x0);
-              if (!x) return [];
-              return [
-                keepExtra(x0, {
-                  w: x.w == null ? null : clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
-                  r: x.r == null || x.r === '' ? null : Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
-                  rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
-                  warm: !!x.warm,
-                  drop: !!x.drop && !x.warm,
-                  done: !!x.done,
-                  cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
-                  // The row's own id (r56.1), last, where a build before it kept the unknown field.
-                  ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
-                })
-              ];
-            }),
-            // Done at a new machine or gym (r61, 343 7), last, where the menu adds it; absent unless marked.
-            ...(b.nw === true ? { nw: true as const } : {}),
-            // The pictures on its note (r66, 373), by id, last; absent unless there are any.
-            ...picsField(b.pics)
-          } satisfies DraftBlock,
-          KNOWN_BLOCK
-        )
-      ];
-    })
+    ex: (arr(d.ex) || []).flatMap(cleanDraftBlock)
   };
   // The unknown fields kept: copied into the known ones, then every field of the draft not among them taken off it.
   extraInto(d, out, DRAFT_KNOWN);
@@ -976,35 +977,9 @@ function cleanDraft(d: Rec, date: string): DraftLike {
   return Object.assign(d, out);
 }
 
-/* Every field below is validated rather than trusted. The old version only
-   checked that five keys were arrays, so a backup containing sessions:[{}]
-   imported cleanly and then threw inside IDX() on the first render, leaving
-   the app unusable with no obvious way back. normalize() runs on both load
-   and import, so this also protects against a half-written localStorage
-   record. Anything unusable is dropped; the count is reported to the caller
-   via normalize.dropped. Each record is built against its type, so the
-   compiler checks every field a reader relies on (r61, PENDING 351: until
-   then the log was typed as the State once, at the end, by a cast). */
-/** A save read as every build reads it (above); `normalize.dropped` counts the damaged records the last call left out. */
-export function normalize(input: unknown): State {
-  const f = freshState();
-  normalize.dropped = 0;
-  // A new device and Erase everything both start here, fully normalized:
-  // the raw fresh state lacks fields (section order, folds) every view reads.
-  const s: Rec = rec(input) || f;
-  // drop() is one record; drop(n) is n, and drop(0) is none (it used to count 1).
-  const drop = (n?: number): void => {
-    normalize.dropped += n == null ? 1 : Math.max(0, n);
-  };
-  // The save as it came over the fresh log: each field read from here, and those this build does not know kept as they came.
-  const raw: Rec = { ...f, ...s };
-  const settings = cleanSettings(s, f);
-  // Each list as it came, or none.
-  const list = (k: string): unknown[] => arr(raw[k]) || [];
-
-  const removedLib = settings.removedLib;
-  // The library's own records go in beside the lifter's (below).
-  const exercises: Exercise[] = list('exercises').flatMap(e0 => {
+/** The lifter's exercises and the library's beside them, cleaned, renamed and migrated as normalize reads a save. */
+function cleanExercises(listed: unknown[], s: Rec, removedLib: readonly string[]): Exercise[] {
+  const exercises: Exercise[] = listed.flatMap(e0 => {
     const e = rec(e0);
     return e && typeof e.id === 'string' && typeof e.name === 'string' ? [cleanExercise(e0, e, e.name)] : [];
   });
@@ -1058,21 +1033,13 @@ export function normalize(input: unknown): State {
       for (const m of NEW_MUSCLES_V5) if (L.secondary.includes(m) && e.primary !== m && !sec.includes(m)) sec.push(m);
     }
   }
+  return exercises;
+}
 
-  // Numbered among the routines kept, as each one with no id of its own is named by its place (did).
-  const kept: Routine[] = list('routines')
-    .filter(r0 => {
-      const r = rec(r0);
-      return !!r && Array.isArray(r.days);
-    })
-    .map((r0, ri) => cleanRoutine(r0, ri));
-  /* A save with no routine left gets the one a new install starts with, read
-     as any routine is (r61: added as made until then, its items without the
-     superset field the next load gave them). */
-  const routines: Routine[] = kept.length ? kept : [cleanRoutine(starterRoutine(), 0)];
-
+/** Recently deleted as a save holds it: each entry checked, the expired ones and the oldest past the limits dropped. */
+function cleanTrash(listed: unknown[]): Trashed[] {
   const cutoff = addDays(today(), -TRASH_DAYS);
-  let trash: Trashed[] = list('trash')
+  const trash: Trashed[] = listed
     .flatMap(t0 => {
       const t = rec(t0);
       const data = t ? rec(t.data) : null;
@@ -1090,110 +1057,116 @@ export function normalize(input: unknown): State {
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     .slice(0, TRASH_MAX);
   while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
-  const before = list('sessions').length;
-  let sessions: Session[] = list('sessions')
-    .filter(x => okSess(rec(x)))
-    .map((x, i) => cleanSess(x, i))
-    .filter(ss => ss.ex.length);
-  drop(before - sessions.length);
+  return trash;
+}
+
+/** The sessions and cardio a save holds, less the deleted ones, and Recently deleted less the ones edited since (below). */
+function reviveEdited(
+  sessions: Session[],
+  listedCardio: unknown[],
+  trash: Trashed[]
+): { sessions: Session[]; cardio: CardioEntry[]; trash: Trashed[] } {
   /* A trashed id is a tombstone, but only for the copy that was deleted. If
      the same session was edited afterwards (on another device, or in an edit
      that was open while it was deleted), the edit is newer than the delete:
      keep it and retire the tombstone, because keeping data is the mistake
      that can be undone. Sessions are compared in their cleaned form, so
      field order and defaults added by newer builds do not count as edits. */
-  let cardio: CardioEntry[];
-  {
-    const tS = new Map<string, Trashed>(),
-      tC = new Map<string, Trashed>();
-    for (const t of trash) {
-      if (t.kind === 'session') tS.set(t.id, t);
-      else if (t.kind === 'cardio') tC.set(t.id, t);
+  const tS = new Map<string, Trashed>(),
+    tC = new Map<string, Trashed>();
+  for (const t of trash) {
+    if (t.kind === 'session') tS.set(t.id, t);
+    else if (t.kind === 'cardio') tC.set(t.id, t);
+  }
+  const revived = new Set<string>();
+  const same = (cur: unknown, data: Rec, clean: (x: unknown, i: number) => unknown, ok: (x: unknown) => boolean) => {
+    try {
+      return !ok(data) || canon(clean(data, 0)) === canon(cur);
+    } catch (e) {
+      // A copy that cannot be cleaned is read as the same record, so the deletion stands, as before the move.
+      return true;
     }
-    const revived = new Set<string>();
-    const same = (cur: unknown, data: Rec, clean: (x: unknown, i: number) => unknown, ok: (x: unknown) => boolean) => {
-      try {
-        return !ok(data) || canon(clean(data, 0)) === canon(cur);
-      } catch (e) {
-        // A copy that cannot be cleaned is read as the same record, so the deletion stands, as before the move.
-        return true;
-      }
-    };
-    sessions = sessions.filter(ss => {
-      const t = tS.get(ss.id);
+  };
+  const kept = sessions.filter(ss => {
+    const t = tS.get(ss.id);
+    if (!t) return true;
+    if (
+      same(
+        { ...ss, id: ss.id },
+        { ...t.data, id: ss.id },
+        (x, i) => cleanSess(x, i),
+        x => okSess(rec(x))
+      )
+    )
+      return false;
+    revived.add(t.id);
+    return true;
+  });
+  const cardio = listedCardio
+    .filter(c0 => {
+      const c = rec(c0);
+      return !!c && isDate(c.date) && isNum(numOr(c.min, NaN)) && numOr(c.min, 0) > 0;
+    })
+    .map((c, ci) => cleanCardio(c, ci))
+    .filter(c => {
+      const t = tC.get(c.id);
       if (!t) return true;
       if (
         same(
-          { ...ss, id: ss.id },
-          { ...t.data, id: ss.id },
-          (x, i) => cleanSess(x, i),
-          x => okSess(rec(x))
+          c,
+          { ...t.data, id: c.id },
+          (x, i) => cleanCardio(x, i),
+          x => !!x && typeof x === 'object'
         )
       )
         return false;
       revived.add(t.id);
       return true;
     });
-    cardio = list('cardio')
-      .filter(c0 => {
-        const c = rec(c0);
-        return !!c && isDate(c.date) && isNum(numOr(c.min, NaN)) && numOr(c.min, 0) > 0;
-      })
-      .map((c, ci) => cleanCardio(c, ci))
-      .filter(c => {
-        const t = tC.get(c.id);
-        if (!t) return true;
-        if (
-          same(
-            c,
-            { ...t.data, id: c.id },
-            (x, i) => cleanCardio(x, i),
-            x => !!x && typeof x === 'object'
-          )
-        )
-          return false;
-        revived.add(t.id);
-        return true;
-      });
-    if (revived.size) trash = trash.filter(t => t.kind === 'routine' || !revived.has(t.id));
-  }
-  /* One id, two different copies: a session moved to a date in another
-     half-month on one device while it was edited on another. Both used to be
-     kept and counted twice. Keep the copy with more logged sets (then the
-     later date) and put the other in Recently deleted under its own id, so
-     nothing is lost. Every device resolves it the same way. */
-  const dedupe = <T extends { id: string; date: string }>(
-    list0: T[],
-    kind: 'session' | 'cardio',
-    size: (x: T) => number
-  ): T[] => {
-    const byId = new Map<string, T>(),
-      extra: T[] = [];
-    for (const x of list0) {
-      const o = byId.get(x.id);
-      if (!o) {
-        byId.set(x.id, x);
-        continue;
-      }
-      if (canon(o) === canon(x)) continue;
-      const keepNew =
-        size(x) > size(o) || (size(x) === size(o) && (x.date > o.date || (x.date === o.date && canon(x) > canon(o))));
-      byId.set(x.id, keepNew ? x : o);
-      extra.push(keepNew ? o : x);
-    }
-    if (!extra.length) return list0;
-    for (const x of extra) {
-      const id = fixId(x.id + '-dup' + hashStr(canon(x)).slice(0, DUP_HASH));
-      if (!trash.some(t => t.id === id)) trash.unshift({ id, kind, date: today(), data: { ...rec(x), id } });
-    }
-    return [...byId.values()];
+  return {
+    sessions: kept,
+    cardio,
+    trash: revived.size ? trash.filter(t => t.kind === 'routine' || !revived.has(t.id)) : trash
   };
-  sessions = dedupe(sessions, 'session', x => x.ex.reduce((a, b) => a + b.sets.length, 0));
-  cardio = dedupe(cardio, 'cardio', x => x.min);
+}
 
-  const bBefore = list('bodyweights').length;
+/* One id, two different copies: a session moved to a date in another
+   half-month on one device while it was edited on another. Both used to be
+   kept and counted twice. Keep the copy with more logged sets (then the
+   later date) and put the other in Recently deleted under its own id, so
+   nothing is lost. Every device resolves it the same way. */
+function dedupe<T extends { id: string; date: string }>(
+  list0: T[],
+  kind: 'session' | 'cardio',
+  size: (x: T) => number,
+  trash: Trashed[]
+): T[] {
+  const byId = new Map<string, T>(),
+    extra: T[] = [];
+  for (const x of list0) {
+    const o = byId.get(x.id);
+    if (!o) {
+      byId.set(x.id, x);
+      continue;
+    }
+    if (canon(o) === canon(x)) continue;
+    const keepNew =
+      size(x) > size(o) || (size(x) === size(o) && (x.date > o.date || (x.date === o.date && canon(x) > canon(o))));
+    byId.set(x.id, keepNew ? x : o);
+    extra.push(keepNew ? o : x);
+  }
+  if (!extra.length) return list0;
+  for (const x of extra) {
+    const id = fixId(x.id + '-dup' + hashStr(canon(x)).slice(0, DUP_HASH));
+    if (!trash.some(t => t.id === id)) trash.unshift({ id, kind, date: today(), data: { ...rec(x), id } });
+  }
+  return [...byId.values()];
+}
+
+/** The weigh-ins a save holds, each checked. */
+function cleanBodyweights(listed: unknown[]): Bodyweight[] {
   // Numbered among those kept, as one with no id is named by its place (did); each has a date (the filter), the '' never reached.
-  const bodyweights: Bodyweight[] = list('bodyweights')
+  return listed
     .filter(b0 => {
       const b = rec(b0);
       return !!b && isDate(b.date) && isNum(numOr(b.kg, NaN)) && numOr(b.kg, 0) > 0;
@@ -1207,11 +1180,12 @@ export function normalize(input: unknown): State {
         demo: !!b.demo
       });
     });
-  drop(bBefore - bodyweights.length);
+}
 
-  const mBefore = list('measurements').length;
+/** The body measurements a save holds, each checked. */
+function cleanMeasurements(listed: unknown[]): Measurement[] {
   // As the weigh-ins: numbered among those kept, each with a date.
-  const measurements: Measurement[] = list('measurements')
+  return listed
     .filter(m0 => {
       const m = rec(m0);
       return !!m && isDate(m.date);
@@ -1230,19 +1204,12 @@ export function normalize(input: unknown): State {
       }
       return keepExtra(m0, o, KNOWN_MEAS);
     });
-  drop(mBefore - measurements.length);
+}
 
-  /* The draft is rendered by the logger, which reads plan, lastR and every set
-     field directly. The old check only confirmed that ex was an array, so an
-     imported backup carrying a half-written draft threw on first paint with no
-     way back. Rebuilt field by field instead (cleanDraft); anything else is
-     no workout in progress (r61: a false, a 0 or an empty string no build
-     writes was kept as it came until then). */
-  const d = rec(raw.draft);
-  const draft = d && Array.isArray(d.ex) && typeof d.date === 'string' && isDate(d.date) ? cleanDraft(d, d.date) : null;
-  const dw = raw.deloadWeek;
+/** The injuries a save holds, each checked. */
+function cleanInjuries(listed: unknown[]): Injury[] {
   // As the weigh-ins: numbered among those kept, each a muscle or a joint (the filter), the '' never reached.
-  const injuries: Injury[] = (arr(raw.injuries) || [])
+  return listed
     .filter(x0 => {
       const x = rec(x0);
       return !!x && isMuscleOrJoint(x.m);
@@ -1256,9 +1223,10 @@ export function normalize(input: unknown): State {
         date: typeof x.date === 'string' && isDate(x.date) ? x.date : today()
       });
     });
-  const ar = raw.activeRoutineId;
-  const want = typeof ar === 'string' ? fixId(ar) : null;
-  const activeRoutineId = want != null && routines.some(r => r.id === want) ? want : routines[0].id;
+}
+
+/** The fields of a save this build does not know, within the limits a record's unknown fields have. */
+function unknownFields(s: Rec, f: Fresh): Rec {
   /* The fields this build does not know, kept as they came and after its own,
      as a spread of the save over the fresh log puts them. Former bests
      belonged to the Comeback tracker, removed at the owner's request in r19
@@ -1271,6 +1239,85 @@ export function normalize(input: unknown): State {
   // Kept within the limits a record's unknown fields have (2.28, 2.27-F2: at any size before).
   const extra: Rec = {};
   extraInto(rest, extra);
+  return extra;
+}
+
+/* Every field below is validated rather than trusted. The old version only
+   checked that five keys were arrays, so a backup containing sessions:[{}]
+   imported cleanly and then threw inside IDX() on the first render, leaving
+   the app unusable with no obvious way back. normalize() runs on both load
+   and import, so this also protects against a half-written localStorage
+   record. Anything unusable is dropped; the count is reported to the caller
+   via normalize.dropped. Each record is built against its type, so the
+   compiler checks every field a reader relies on (r61, PENDING 351: until
+   then the log was typed as the State once, at the end, by a cast). */
+/** A save read as every build reads it (above); `normalize.dropped` counts the damaged records the last call left out. */
+export function normalize(input: unknown): State {
+  const f = freshState();
+  normalize.dropped = 0;
+  // A new device and Erase everything both start here, fully normalized:
+  // the raw fresh state lacks fields (section order, folds) every view reads.
+  const s: Rec = rec(input) || f;
+  // drop() is one record; drop(n) is n, and drop(0) is none (it used to count 1).
+  const drop = (n?: number): void => {
+    normalize.dropped += n == null ? 1 : Math.max(0, n);
+  };
+  // The save as it came over the fresh log: each field read from here, and those this build does not know kept as they came.
+  const raw: Rec = { ...f, ...s };
+  const settings = cleanSettings(s, f);
+  // Each list as it came, or none.
+  const list = (k: string): unknown[] => arr(raw[k]) || [];
+
+  const removedLib = settings.removedLib;
+  // The library's own records go in beside the lifter's (cleanExercises).
+  const exercises = cleanExercises(list('exercises'), s, removedLib);
+
+  // Numbered among the routines kept, as each one with no id of its own is named by its place (did).
+  const kept: Routine[] = list('routines')
+    .filter(r0 => {
+      const r = rec(r0);
+      return !!r && Array.isArray(r.days);
+    })
+    .map((r0, ri) => cleanRoutine(r0, ri));
+  /* A save with no routine left gets the one a new install starts with, read
+     as any routine is (r61: added as made until then, its items without the
+     superset field the next load gave them). */
+  const routines: Routine[] = kept.length ? kept : [cleanRoutine(starterRoutine(), 0)];
+
+  let trash = cleanTrash(list('trash'));
+  const before = list('sessions').length;
+  let sessions: Session[] = list('sessions')
+    .filter(x => okSess(rec(x)))
+    .map((x, i) => cleanSess(x, i))
+    .filter(ss => ss.ex.length);
+  drop(before - sessions.length);
+  let cardio: CardioEntry[];
+  ({ sessions, cardio, trash } = reviveEdited(sessions, list('cardio'), trash));
+  sessions = dedupe(sessions, 'session', x => x.ex.reduce((a, b) => a + b.sets.length, 0), trash);
+  cardio = dedupe(cardio, 'cardio', x => x.min, trash);
+
+  const bBefore = list('bodyweights').length;
+  const bodyweights = cleanBodyweights(list('bodyweights'));
+  drop(bBefore - bodyweights.length);
+
+  const mBefore = list('measurements').length;
+  const measurements = cleanMeasurements(list('measurements'));
+  drop(mBefore - measurements.length);
+
+  /* The draft is rendered by the logger, which reads plan, lastR and every set
+     field directly. The old check only confirmed that ex was an array, so an
+     imported backup carrying a half-written draft threw on first paint with no
+     way back. Rebuilt field by field instead (cleanDraft); anything else is
+     no workout in progress (r61: a false, a 0 or an empty string no build
+     writes was kept as it came until then). */
+  const d = rec(raw.draft);
+  const draft = d && Array.isArray(d.ex) && typeof d.date === 'string' && isDate(d.date) ? cleanDraft(d, d.date) : null;
+  const dw = raw.deloadWeek;
+  const injuries = cleanInjuries(arr(raw.injuries) || []);
+  const ar = raw.activeRoutineId;
+  const want = typeof ar === 'string' ? fixId(ar) : null;
+  const activeRoutineId = want != null && routines.some(r => r.id === want) ? want : routines[0].id;
+  const extra = unknownFields(s, f);
   return {
     version: STATE_VERSION,
     settings,

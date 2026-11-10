@@ -313,16 +313,8 @@ interface ImpBuilt {
   timedOff: number;
   newEx: NewExercise[];
 }
-/** Sessions as they would be saved, and which are already in the log. */
-export function impBuild(m: ImpPreviewModal): ImpBuilt {
-  const conv = m.unit === 'kg' ? (v: number) => v : (v: number) => v * LB;
-  const out: BuiltSession[] = [];
-  /* Each session's supersets from the file (Hevy's superset_id), by lift, for
-     the routine an import makes; sessions keep none (r55.1). */
-  const ssOf: Record<string, Record<string, string>> = {};
-  const bad: string[] = [];
-  const odd: string[] = [];
-  let timedOff = 0;
+/** The exercises the preview makes, by the file's name for each: one for every name picked as new, guessed from its name. */
+function newExercises(m: ImpPreviewModal): Record<string, NewExercise> {
   const allTimed = (n: string) =>
     m.res.sessions.every(x =>
       x.items.every(i => i.name !== n || (i.sets && i.sets.length && i.sets.every(q => q.timed)))
@@ -348,7 +340,84 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
       newExE.push([n, e]);
     }
   // From pairs, as the picks are (openPreview): a name from the file is an own key whatever it is.
-  const newEx = Object.fromEntries(newExE);
+  return Object.fromEntries(newExE);
+}
+
+/** The built sessions not in the log yet, and how many were (below). */
+function notInLog(out: BuiltSession[]): { fresh: BuiltSession[]; dup: number } {
+  /* Date, lifts and reps, not loads (r31): the same file imported again with
+     the other unit choice converted every load differently and added every
+     session a second time. */
+  const fp = (ss: { date: string; ex: { exId: string; sets: { r: number | null }[] }[] }) =>
+    ss.date +
+    '|' +
+    ss.ex
+      .map(b => b.exId + ':' + b.sets.map(q => q.r).join(','))
+      .sort()
+      .join(';');
+  const have = new Set(state.sessions.map(fp));
+  const seen = new Set<string>();
+  const fresh: BuiltSession[] = [];
+  let dup = 0;
+  for (const ss of out) {
+    const k = fp(ss);
+    if (have.has(k) || seen.has(k)) {
+      dup++;
+      continue;
+    }
+    seen.add(k);
+    fresh.push(ss);
+  }
+  return { fresh, dup };
+}
+
+/** The cardio the preview would save (below), how many entries had no time, and how many were in the log already. */
+function fileCardio(m: ImpPreviewModal): { cardio: CardioEntry[]; cardioNoTime: number; dup: number } {
+  /* Cardio from the file (r30): minutes from its time, distance in the file's
+     unit (km beside kg, miles beside lb, as Strong writes it). An entry with
+     no time cannot be saved (minutes are required) and is counted instead.
+     One already in the log (same date, kind and minutes) is skipped. The app's
+     own file says the minutes, heart rate, when, note and km (r55). */
+  const cardio: CardioEntry[] = [];
+  let cardioNoTime = 0,
+    dup = 0;
+  for (const c of m.res.cardioRows || []) {
+    const min = c.min || Math.round(c.secs / MINUTE_S);
+    if (!(min > 0)) {
+      cardioNoTime++;
+      continue;
+    }
+    if (state.cardio.some(x => x.date === c.date && x.kind === c.kind && x.min === min)) {
+      dup++;
+      continue;
+    }
+    cardio.push(
+      cleanCardio({
+        id: uid(),
+        date: c.date,
+        kind: c.kind,
+        min,
+        hr: c.hr || null,
+        when: c.when || 'solo',
+        note: c.note || '',
+        dist: c.km != null ? c.km : c.dist > 0 ? (m.unit === 'kg' ? c.dist : c.dist * KM_MI) : null
+      })
+    );
+  }
+  return { cardio, cardioNoTime, dup };
+}
+
+/** Sessions as they would be saved, and which are already in the log. */
+export function impBuild(m: ImpPreviewModal): ImpBuilt {
+  const conv = m.unit === 'kg' ? (v: number) => v : (v: number) => v * LB;
+  const out: BuiltSession[] = [];
+  /* Each session's supersets from the file (Hevy's superset_id), by lift, for
+     the routine an import makes; sessions keep none (r55.1). */
+  const ssOf: Record<string, Record<string, string>> = {};
+  const bad: string[] = [];
+  const odd: string[] = [];
+  let timedOff = 0;
+  const newEx = newExercises(m);
   for (const x of m.res.sessions) {
     const date = x.date || m.date;
     const ex: BuiltSession['ex'] = [];
@@ -413,59 +482,9 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
         light: false
       });
   }
-  /* Date, lifts and reps, not loads (r31): the same file imported again with
-     the other unit choice converted every load differently and added every
-     session a second time. */
-  const fp = (ss: { date: string; ex: { exId: string; sets: { r: number | null }[] }[] }) =>
-    ss.date +
-    '|' +
-    ss.ex
-      .map(b => b.exId + ':' + b.sets.map(q => q.r).join(','))
-      .sort()
-      .join(';');
-  const have = new Set(state.sessions.map(fp));
-  const seen = new Set<string>();
-  const fresh: BuiltSession[] = [];
-  let dup = 0;
-  for (const ss of out) {
-    const k = fp(ss);
-    if (have.has(k) || seen.has(k)) {
-      dup++;
-      continue;
-    }
-    seen.add(k);
-    fresh.push(ss);
-  }
-  /* Cardio from the file (r30): minutes from its time, distance in the file's
-     unit (km beside kg, miles beside lb, as Strong writes it). An entry with
-     no time cannot be saved (minutes are required) and is counted instead.
-     One already in the log (same date, kind and minutes) is skipped. The app's
-     own file says the minutes, heart rate, when, note and km (r55). */
-  const cardio: CardioEntry[] = [];
-  let cardioNoTime = 0;
-  for (const c of m.res.cardioRows || []) {
-    const min = c.min || Math.round(c.secs / MINUTE_S);
-    if (!(min > 0)) {
-      cardioNoTime++;
-      continue;
-    }
-    if (state.cardio.some(x => x.date === c.date && x.kind === c.kind && x.min === min)) {
-      dup++;
-      continue;
-    }
-    cardio.push(
-      cleanCardio({
-        id: uid(),
-        date: c.date,
-        kind: c.kind,
-        min,
-        hr: c.hr || null,
-        when: c.when || 'solo',
-        note: c.note || '',
-        dist: c.km != null ? c.km : c.dist > 0 ? (m.unit === 'kg' ? c.dist : c.dist * KM_MI) : null
-      })
-    );
-  }
+  const { fresh, dup: dupSessions } = notInLog(out);
+  const { cardio, cardioNoTime, dup: dupCardio } = fileCardio(m);
+  const dup = dupSessions + dupCardio;
   return {
     sessions: fresh,
     ssOf,
@@ -508,34 +527,35 @@ const HIGH_RANGE: readonly [number, number] = [15, 20];
 const LETTER_A = 65;
 type Sess = State['sessions'][number];
 type RoutineOut = State['routines'][number];
-/* A routine from an import, on a first run (r31). Someone who brings their
-   Strong or Hevy history has a routine already; measuring them against the
-   starter they never picked read as 69% adherence, 15 muscles below target
-   and "add sets to Lat Pulldown" for someone who had never done one. The
-   days are the workouts' own names (the most recent 8 weeks), or, when the
-   names cannot tell them apart (Strong calls every untitled workout
-   "Morning Workout"), the sessions grouped by the lifts in them (Day A, B).
-   Days come in the order they last came round, with rest days so the cycle
-   runs about as many days a week as they trained. What each day holds comes
-   from its latest 3 full sessions, so a program changed a few weeks ago is
-   the program now (the review saw a bench moved from 5 x 5 to 3 x 8-10
-   brought back as 3 x 3-5): the lifts done in at least half of them, in the
-   latest order, and each lift's working sets, a rep range around its reps
-   (the nearest common range, a convention) and its RIR from its latest full
-   session there. Deload and lighter sessions are left out of that. Returns
-   null when nothing repeats; the routine picker opens instead. */
-/** A routine made from an imported log, how many days a week it runs, and which day a session was; null when nothing repeats. */
-export function routineFromLog(
-  sessions: readonly Sess[],
-  ssOf: Readonly<Record<string, Readonly<Record<string, string>>>>
-): { routine: RoutineOut; perWeek: number; dayFor: (x: Sess) => RoutineOut['days'][number] | null } | null {
-  const all = sessions.filter(x => !x.demo && x.ex && x.ex.length);
-  const first = all[0];
-  if (!first) return null;
-  const byDate = (a: Sess, b: Sess) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
-  const newest = all.reduce((m, x) => (x.date > m ? x.date : m), first.date);
-  const rec = all.filter(x => x.date >= addDays(newest, 1 - IMPORT_DAYS)).sort(byDate);
-  // A session is off (a deload, a lighter day) when it was tagged, or when most of its lifts read lighter or short of their usual (r54, the one rule).
+/** Sessions read as one day of a routine made from a log: its name, its sessions in date order, and the lifts of the latest one. */
+type Group = { name: string; list: Sess[]; ids: Set<string> };
+/** A day made from a log: its group, the day, and the lifts of its latest session. */
+type LogDay = { g: Group; day: RoutineOut['days'][number]; ids: Set<string> };
+/** Sessions in date order. */
+const byDate = (a: Sess, b: Sess) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+/** The lifts a session did a working set of. */
+const liftsOf = (x: Sess) => new Set(x.ex.filter(b => b.sets.some(q => !q.warm)).map(b => b.exId));
+/** How alike two sets of lifts are: those in both over those in either (Jaccard), 0 when both are empty. */
+const jac = (a: Set<string>, b: Set<string>) => {
+  let n = 0;
+  for (const v of a) if (b.has(v)) n++;
+  const u = a.size + b.size - n;
+  return u ? n / u : 0;
+};
+/** A session's workout name as the file gave it. */
+const nameOf = (x: Sess) => String(x.dayName || '').trim();
+/** The median of the numbers given, the blanks and non-numbers left out. */
+const medianOf = (a: number[]) => median(a.filter(v => v != null && isFinite(v)));
+/** The common rep range a lift's median reps fall in. */
+const usualRange = (r: number): readonly [number, number] => {
+  for (const [top, range] of USUAL_RANGES) if (r <= top) return range;
+  return HIGH_RANGE;
+};
+/** A block's working sets: no warm-ups or drops. */
+const workSets = (b: Sess['ex'][number]) => b.sets.filter(q => !q.warm && !q.drop);
+
+/** Which sessions are off (a deload, a lighter day): tagged so, or most of their lifts read lighter or short of their usual (r54, the one rule). */
+function offSessions(): (x: Sess) => boolean {
   const I = IDX();
   const tot: Record<string, number> = {},
     off: Record<string, number> = {};
@@ -544,27 +564,21 @@ export function routineFromLog(
       tot[x.sid] = (tot[x.sid] || 0) + 1;
       if (offTarget(x)) off[x.sid] = (off[x.sid] || 0) + 1;
     }
-  const offS = (x: Sess) => x.deload || x.light || ((tot[x.id] || 0) > 0 && (off[x.id] || 0) * 2 >= (tot[x.id] || 0));
-  const lifts = (x: Sess) => new Set(x.ex.filter(b => b.sets.some(q => !q.warm)).map(b => b.exId));
-  const jac = (a: Set<string>, b: Set<string>) => {
-    let n = 0;
-    for (const v of a) if (b.has(v)) n++;
-    const u = a.size + b.size - n;
-    return u ? n / u : 0;
-  };
-  const nm = (x: Sess) => String(x.dayName || '').trim();
-  const named = !rec.some(x => GENERIC_WORKOUT.test(nm(x)));
-  type Group = { name: string; list: Sess[]; ids: Set<string> };
-  let groups: Group[] = [];
+  return (x: Sess) => x.deload || x.light || ((tot[x.id] || 0) > 0 && (off[x.id] || 0) * 2 >= (tot[x.id] || 0));
+}
+
+/** The sessions grouped into days, by their workout names when they are named, else by the lifts in them; and the sessions the days must cover. */
+function groupSessions(rec: Sess[], named: boolean, offS: (x: Sess) => boolean): { groups: Group[]; pop: Sess[] } {
+  const groups: Group[] = [];
   let pop: Sess[];
   if (named) {
     pop = rec;
     const by = new Map<string, Group>();
     for (const x of rec) {
-      const k = nm(x).slice(0, FROM_LOG.name).toLowerCase();
+      const k = nameOf(x).slice(0, FROM_LOG.name).toLowerCase();
       let g = by.get(k);
       if (!g) {
-        g = { name: nm(x).slice(0, FROM_LOG.name), list: [], ids: new Set() };
+        g = { name: nameOf(x).slice(0, FROM_LOG.name), list: [], ids: new Set() };
         by.set(k, g);
         groups.push(g);
       }
@@ -573,7 +587,7 @@ export function routineFromLog(
   } else {
     pop = rec.filter(x => !offS(x));
     for (const x of pop) {
-      const L = lifts(x);
+      const L = liftsOf(x);
       let g: Group | null = null,
         bj = 0;
       for (const q of groups) {
@@ -591,80 +605,67 @@ export function routineFromLog(
       g.ids = L;
     }
   }
-  groups = groups.filter(g => g.list.length >= IMPORT_REPEATS);
-  if (
-    !groups.length ||
-    groups.length > FROM_LOG.days ||
-    groups.reduce((a, g) => a + g.list.length, 0) < pop.length * FROM_LOG.cover
-  )
-    return null;
-  const lastOf = (g: Group): Sess => g.list[g.list.length - 1] || first;
-  groups.sort((a, b) => byDate(lastOf(a), lastOf(b)));
-  if (!named)
-    groups.forEach((g, i) => {
-      g.name = 'Day ' + String.fromCharCode(LETTER_A + i);
-    });
-  const med = (a: number[]) => median(a.filter(v => v != null && isFinite(v)));
-  const band = (r: number): readonly [number, number] => {
-    for (const [top, range] of USUAL_RANGES) if (r <= top) return range;
-    return HIGH_RANGE;
+  return { groups, pop };
+}
+
+/** One day of the routine from its group: the lifts in at least half of its latest full sessions, in the latest order, each with its sets, rep range and RIR from its latest full session there, and the file's supersets. */
+function logDay(
+  g: Group,
+  offS: (x: Sess) => boolean,
+  ssOf: Readonly<Record<string, Readonly<Record<string, string>>>>,
+  first: Sess
+): LogDay {
+  const full = g.list.filter(x => !offS(x));
+  const recent = (full.length ? full : g.list).slice(-FROM_LOG.latest);
+  const latest = recent[recent.length - 1] || first;
+  const cnt = new Map<string, number>();
+  for (const x of recent) for (const id of liftsOf(x)) cnt.set(id, (cnt.get(id) || 0) + 1);
+  const order = (id: string) => {
+    for (let k = recent.length - 1; k >= 0; k--) {
+      const s = recent[k];
+      const i = s ? s.ex.findIndex(b => b.exId === id) : -1;
+      if (i >= 0) return k === recent.length - 1 ? i : ORDER.older + i;
+    }
+    return ORDER.none;
   };
-  const work = (b: Sess['ex'][number]) => b.sets.filter(q => !q.warm && !q.drop);
-  const days = groups
-    .map(g => {
-      const full = g.list.filter(x => !offS(x));
-      const recent = (full.length ? full : g.list).slice(-FROM_LOG.latest);
-      const latest = recent[recent.length - 1] || first;
-      const cnt = new Map<string, number>();
-      for (const x of recent) for (const id of lifts(x)) cnt.set(id, (cnt.get(id) || 0) + 1);
-      const order = (id: string) => {
-        for (let k = recent.length - 1; k >= 0; k--) {
-          const s = recent[k];
-          const i = s ? s.ex.findIndex(b => b.exId === id) : -1;
-          if (i >= 0) return k === recent.length - 1 ? i : ORDER.older + i;
-        }
-        return ORDER.none;
-      };
-      const ids = [...cnt.keys()]
-        .filter(id => (cnt.get(id) || 0) * 2 >= recent.length && state.exercises.some(e => e.id === id && !e.archived))
-        .sort((a, b) => order(a) - order(b));
-      const items = ids.map(id => {
-        const ex = EX(id);
-        const it = newItem(id);
-        let b: Sess['ex'][number] | null = null;
-        for (let k = recent.length - 1; k >= 0 && !b; k--) {
-          const s = recent[k];
-          b = (s && s.ex.find(q => q.exId === id && work(q).length)) || null;
-        }
-        if (!b) return it;
-        const ws = work(b);
-        it.sets = Math.min(FROM_LOG.sets, Math.max(1, ws.length));
-        if (!ex.timed) {
-          const r = med(ws.map(q => Number(q.r)));
-          if (r != null && r > 0) [it.repMin, it.repMax] = band(r);
-        }
-        // RIR only when most of the sets were rated: one failure set in a file (Strong's F) is not a plan to fail every set.
-        const rt = ws.filter(x => x.rir != null);
-        const q = rt.length * 2 > ws.length ? med(rt.map(x => Number(x.rir))) : null;
-        if (q != null) it.rir = Math.min(FROM_LOG.rir, Math.max(0, Math.round(q)));
-        return it;
-      });
-      /* The file's supersets, from the day's latest session (r55.1). */
-      {
-        const sg = (ssOf && ssOf[latest.id]) || {};
-        const gid: Record<string, string> = {};
-        for (const it of items) {
-          const k = sg[it.exId];
-          if (k && items.filter(o => sg[o.exId] === k).length > 1) it.ss = gid[k] || (gid[k] = uid());
-        }
-      }
-      return { g, day: { id: uid(), name: g.name, rest: false, items }, ids: lifts(latest) };
-    })
-    .filter(d => d.day.items.length);
-  const r0 = rec[0];
-  if (!days.length || !r0) return null;
-  const span = Math.max(WEEK_DAYS, daysBetween(r0.date, newest) + 1);
-  const perWeek = Math.min(WEEK_DAYS, Math.max(1, Math.round(rec.length / (span / WEEK_DAYS))));
+  const ids = [...cnt.keys()]
+    .filter(id => (cnt.get(id) || 0) * 2 >= recent.length && state.exercises.some(e => e.id === id && !e.archived))
+    .sort((a, b) => order(a) - order(b));
+  const items = ids.map(id => {
+    const ex = EX(id);
+    const it = newItem(id);
+    let b: Sess['ex'][number] | null = null;
+    for (let k = recent.length - 1; k >= 0 && !b; k--) {
+      const s = recent[k];
+      b = (s && s.ex.find(q => q.exId === id && workSets(q).length)) || null;
+    }
+    if (!b) return it;
+    const ws = workSets(b);
+    it.sets = Math.min(FROM_LOG.sets, Math.max(1, ws.length));
+    if (!ex.timed) {
+      const r = medianOf(ws.map(q => Number(q.r)));
+      if (r != null && r > 0) [it.repMin, it.repMax] = usualRange(r);
+    }
+    // RIR only when most of the sets were rated: one failure set in a file (Strong's F) is not a plan to fail every set.
+    const rt = ws.filter(x => x.rir != null);
+    const q = rt.length * 2 > ws.length ? medianOf(rt.map(x => Number(x.rir))) : null;
+    if (q != null) it.rir = Math.min(FROM_LOG.rir, Math.max(0, Math.round(q)));
+    return it;
+  });
+  /* The file's supersets, from the day's latest session (r55.1). */
+  {
+    const sg = (ssOf && ssOf[latest.id]) || {};
+    const gid: Record<string, string> = {};
+    for (const it of items) {
+      const k = sg[it.exId];
+      if (k && items.filter(o => sg[o.exId] === k).length > 1) it.ss = gid[k] || (gid[k] = uid());
+    }
+  }
+  return { g, day: { id: uid(), name: g.name, rest: false, items }, ids: liftsOf(latest) };
+}
+
+/** The days in a cycle with rest days, so it runs about as many days a week as they trained (below). */
+function cycleOf(days: LogDay[], perWeek: number): RoutineOut['days'] {
   /* Workouts that come round more than once a week repeat in the cycle (r32,
      from the third review: push, pull, legs twice a week became "3 training
      days in a 4-day cycle", about 5 a week for someone doing 6). The second
@@ -697,15 +698,20 @@ export function routineFromLog(
     for (let j = 0; j < k; j++) cyc.push(restDay());
     rest -= k;
   });
+  return cyc;
+}
+
+/** Which day of the routine a session was (below). */
+function dayFinder(named: boolean, days: LogDay[]): (x: Sess) => RoutineOut['days'][number] | null {
   /* Which day a session was: by name, or by the lifts in it (most in
      common, at least half), for sessions older than the 8 weeks too. */
-  const dayFor = (x: Sess): RoutineOut['days'][number] | null => {
+  return (x: Sess): RoutineOut['days'][number] | null => {
     if (named) {
-      const k = nm(x).slice(0, FROM_LOG.name).toLowerCase();
+      const k = nameOf(x).slice(0, FROM_LOG.name).toLowerCase();
       const d = days.find(q => q.g.name.toLowerCase() === k);
       return d ? d.day : null;
     }
-    const L2 = lifts(x);
+    const L2 = liftsOf(x);
     let best: RoutineOut['days'][number] | null = null,
       bj = 0;
     for (const d of days) {
@@ -717,7 +723,63 @@ export function routineFromLog(
     }
     return best;
   };
-  return { routine: { id: uid(), name: 'From your log', schedule: 'cycle', days: cyc }, perWeek, dayFor };
+}
+
+/* A routine from an import, on a first run (r31). Someone who brings their
+   Strong or Hevy history has a routine already; measuring them against the
+   starter they never picked read as 69% adherence, 15 muscles below target
+   and "add sets to Lat Pulldown" for someone who had never done one. The
+   days are the workouts' own names (the most recent 8 weeks), or, when the
+   names cannot tell them apart (Strong calls every untitled workout
+   "Morning Workout"), the sessions grouped by the lifts in them (Day A, B).
+   Days come in the order they last came round, with rest days so the cycle
+   runs about as many days a week as they trained. What each day holds comes
+   from its latest 3 full sessions, so a program changed a few weeks ago is
+   the program now (the review saw a bench moved from 5 x 5 to 3 x 8-10
+   brought back as 3 x 3-5): the lifts done in at least half of them, in the
+   latest order, and each lift's working sets, a rep range around its reps
+   (the nearest common range, a convention) and its RIR from its latest full
+   session there. Deload and lighter sessions are left out of that. Returns
+   null when nothing repeats; the routine picker opens instead. */
+/** A routine made from an imported log, how many days a week it runs, and which day a session was; null when nothing repeats. */
+export function routineFromLog(
+  sessions: readonly Sess[],
+  ssOf: Readonly<Record<string, Readonly<Record<string, string>>>>
+): { routine: RoutineOut; perWeek: number; dayFor: (x: Sess) => RoutineOut['days'][number] | null } | null {
+  const all = sessions.filter(x => !x.demo && x.ex && x.ex.length);
+  const first = all[0];
+  if (!first) return null;
+  const newest = all.reduce((m, x) => (x.date > m ? x.date : m), first.date);
+  const rec = all.filter(x => x.date >= addDays(newest, 1 - IMPORT_DAYS)).sort(byDate);
+  const offS = offSessions();
+  const named = !rec.some(x => GENERIC_WORKOUT.test(nameOf(x)));
+  const grouped = groupSessions(rec, named, offS);
+  let groups = grouped.groups;
+  const pop = grouped.pop;
+  groups = groups.filter(g => g.list.length >= IMPORT_REPEATS);
+  if (
+    !groups.length ||
+    groups.length > FROM_LOG.days ||
+    groups.reduce((a, g) => a + g.list.length, 0) < pop.length * FROM_LOG.cover
+  )
+    return null;
+  const lastOf = (g: Group): Sess => g.list[g.list.length - 1] || first;
+  groups.sort((a, b) => byDate(lastOf(a), lastOf(b)));
+  if (!named)
+    groups.forEach((g, i) => {
+      g.name = 'Day ' + String.fromCharCode(LETTER_A + i);
+    });
+  const days = groups.map(g => logDay(g, offS, ssOf, first)).filter(d => d.day.items.length);
+  const r0 = rec[0];
+  if (!days.length || !r0) return null;
+  const span = Math.max(WEEK_DAYS, daysBetween(r0.date, newest) + 1);
+  const perWeek = Math.min(WEEK_DAYS, Math.max(1, Math.round(rec.length / (span / WEEK_DAYS))));
+  const cyc = cycleOf(days, perWeek);
+  return {
+    routine: { id: uid(), name: 'From your log', schedule: 'cycle', days: cyc },
+    perWeek,
+    dayFor: dayFinder(named, days)
+  };
 }
 
 /* The preview only (r29, V): the preview keeps its own log so nothing tried

@@ -24,7 +24,7 @@ import { demoFirstRun, demoKeep } from './storage';
 import { cloudStop } from './sync';
 import { EX, activeRoutine, exBarKg, lighterLoad, progStep } from './live';
 import { acct, cloud, state, ui } from './store';
-import type { PlanItem } from './types';
+import type { PlanItem, Routine } from './types';
 import { act } from './act';
 import { confirmBox, render } from './page';
 import { toast } from './toast';
@@ -96,6 +96,134 @@ interface Prog {
   n: number;
 }
 
+/** A block of a demo session as cleanSess reads it: the lift and its sets. */
+type DemoBlock = { exId: string; sets: { w: number; r: number; rir: number; warm: boolean }[] };
+
+/** Where a lift with no known start load begins, by its equipment, compound or not. */
+const eqBase = (e: Lift) => {
+  const c = isCompound(e);
+  const t = EQ_LB[e.equip] || EQ_LB['other'] || [0, 0];
+  return t[c ? 0 : 1];
+};
+
+/** Where a lift's progression starts: its known load or its equipment's, about eight weeks of steps below the end, never under the bar; an assisted lift with 40 lb of help. */
+function startOf(e: Lift, it: PlanItem): { w: number; reps: null } {
+  const known = BASE_LB[it.exId];
+  const lb = (known != null && known > 0) || (e.bw && known === 0) ? known || 0 : eqBase(e);
+  // An assisted lift starts with 40 lb of help and earns its way down.
+  if (e.assist) return { w: -LIFTER.help * LB, reps: null };
+  const step = progStep(e, it, lb * LB) || LIFTER.step * LB;
+  // About eight weeks of progress below the end load, in whole steps.
+  let w = lb > 0 ? Math.max(step, Math.round((lb * LB * LIFTER.near) / step) * step) : 0;
+  // Never under the bar on a lift loaded on one (a light wrist curl was).
+  if (w > 0 && platesMode(e) === 'bar' && loadMode(e) === 'total') {
+    const bar = exBarKg(e);
+    if (w < bar - BAR_EPS) w = bar;
+  }
+  return { w, reps: null };
+}
+
+/** The days the demo's sessions fall on: a weekly routine on its weekdays, a cycle in order, one day per calendar day, across the eight weeks. */
+function demoSlots(R: Routine, cur: string, t: string): { date: string; di: number }[] {
+  // Weekly routines land on their weekdays; cycles run in order, one cycle
+  // day per calendar day, across the same eight weeks.
+  const slots: { date: string; di: number }[] = [];
+  if (R.schedule === 'weekly') {
+    for (let k = 0; k < DEMO_WEEKS; k++) {
+      const ws = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1 - k));
+      R.days.forEach((_, di) => slots.push({ date: addDays(ws, di), di }));
+    }
+  } else {
+    const start = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1));
+    for (let p = 0; ; p++) {
+      const date = addDays(start, p);
+      if (date > t) break;
+      slots.push({ date, di: p % R.days.length });
+    }
+  }
+  return slots;
+}
+
+/** A deload day's blocks: half the sets (rounded up) at about 90% loads in real steps, the bottom of the range, 3 RIR; the progression waits. */
+function deloadBlocks(items: readonly PlanItem[], prog: Record<string, Prog>): DemoBlock[] {
+  const BW = LIFTER.bw;
+  return items.map(it => {
+    const e = EX(it.exId);
+    const key = it.exId + '|' + it.repMin + '-' + it.repMax;
+    const g =
+      prog[key] ||
+      (prog[key] = Object.assign(startOf(e, it), {
+        lv: Math.round(((+it.repMin || REPS_DEF) + Math.max(+it.repMin || REPS_DEF, +it.repMax || REPS_DEF)) / 2),
+        n: 0
+      }));
+    const n = Math.max(1, Math.ceil(it.sets / 2));
+    const lo = +it.repMin || REPS_DEF;
+    const w = e.assist
+      ? g.w - (progStep(e, it, BW * LB) || LIFTER.step * LB)
+      : g.w > 0
+        ? lighterLoad(e, it, g.w, g.w * LIFTER.near)
+        : g.w;
+    return { exId: it.exId, sets: Array.from({ length: n }, () => ({ w, r: lo, rir: DELOAD_RIR, warm: false })) };
+  });
+}
+
+/** A training day's blocks, each lift a step along its progression (below). */
+function demoBlocks(items: readonly PlanItem[], prog: Record<string, Prog>, rnd: () => number): DemoBlock[] {
+  const BW = LIFTER.bw;
+  return items.map(it => {
+    const e = EX(it.exId);
+    const key = it.exId + '|' + it.repMin + '-' + it.repMax;
+    let g = prog[key];
+    const lo = +it.repMin || REPS_DEF,
+      hi = Math.max(lo, +it.repMax || lo);
+    /* One level per lift: the first two sets make it, later sets a rep
+       fewer from fatigue until the level reaches the top of the range,
+       every set capped there. The level climbs a rep each session; once
+       every set made the top, the load goes up one real step, which costs
+       about a rep (2.5% on a compound) or two (5% on an isolation lift),
+       so the estimate keeps climbing. Resetting reps to the bottom after
+       each step read as a stall. A wide range starts in its middle, where
+       a 90% load lands. */
+    const repsAt = (lv: number, n: number) =>
+      Array.from({ length: n }, (_, j) => Math.max(lo, Math.min(hi, lv - (j >= 2 && lv < hi ? 1 : 0))));
+    // A bodyweight lift with no load to add climbs a rep every other
+    // session from the bottom: parked at the top it read as a stall.
+    const known = BASE_LB[it.exId];
+    const pureBw = e.bw && !e.assist && !(known != null && known > 0);
+    if (!g) {
+      g = prog[key] = Object.assign(startOf(e, it), { lv: pureBw ? lo : Math.round((lo + hi) / 2), n: 0 });
+    } else if (pureBw) {
+      g.n++;
+      if (g.n % 2 === 1) g.lv = Math.min(hi, g.lv + 1);
+    } else if (repsAt(g.lv, it.sets).every(r => r >= hi) && (e.assist || g.w > 0 || !e.bw)) {
+      // Every set at the top: one real step more (less help on an assisted
+      // lift). A pure bodyweight lift with no load to add stays at the top.
+      const was = (e.bw ? BW * LB : 0) + g.w;
+      const step = progStep(e, it, e.assist ? BW * LB : was) || LIFTER.step * LB;
+      if (e.assist) g.w = Math.min(0, g.w + step);
+      else g.w = g.w + step;
+      // About a rep for each 2.5% added: 1 on a heavy compound, 2 on an
+      // isolation lift, and back near the bottom on a light dumbbell where
+      // one 5 lb step is 15%.
+      g.lv = Math.max(lo, hi - Math.max(1, Math.round(((step / Math.max(was, step)) * PCT) / LIFTER.repPct)));
+    } else g.lv++;
+    const reps = repsAt(g.lv, it.sets);
+    g.reps = reps;
+    // Now and then the last set falls a rep short; the best set is unchanged.
+    const lastR = reps[reps.length - 1];
+    if (reps.length > 2 && lastR != null && rnd() < LIFTER.short) reps[reps.length - 1] = Math.max(lo, lastR - 1);
+    const rir = Math.max(0, Math.min(LIFTER.rirTop, isNum(+it.rir) ? +it.rir : LIFTER.rir));
+    const w = g.w;
+    const sets = reps.map((r, j) => ({
+      w,
+      r,
+      rir: j === reps.length - 1 ? Math.max(0, rir - 1) : rir,
+      warm: false
+    }));
+    return { exId: it.exId, sets };
+  });
+}
+
 /** Makes the demo log from the active routine: 8 weeks of sessions, a deload week, a missed day, weigh-ins and measurements, all tagged demo; the lifter's own log is never changed. */
 export function makeDemo(): void {
   act(() => {
@@ -104,50 +232,15 @@ export function makeDemo(): void {
     state.measurements = state.measurements.filter(m => !m.demo);
     const R = activeRoutine();
     const rnd = mulberry(LIFTER.seed);
-    const eqBase = (e: Lift) => {
-      const c = isCompound(e);
-      const t = EQ_LB[e.equip] || EQ_LB['other'] || [0, 0];
-      return t[c ? 0 : 1];
-    };
     const BW = LIFTER.bw;
     const cur = weekStart(today());
     const t = today();
     const realDates = new Set(state.sessions.map(x => x.date));
     const realBW = new Set(state.bodyweights.map(x => x.date)),
       realMeas = new Set(state.measurements.map(x => x.date));
-    // Weekly routines land on their weekdays; cycles run in order, one cycle
-    // day per calendar day, across the same eight weeks.
-    const slots: { date: string; di: number }[] = [];
-    if (R.schedule === 'weekly') {
-      for (let k = 0; k < DEMO_WEEKS; k++) {
-        const ws = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1 - k));
-        R.days.forEach((_, di) => slots.push({ date: addDays(ws, di), di }));
-      }
-    } else {
-      const start = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1));
-      for (let p = 0; ; p++) {
-        const date = addDays(start, p);
-        if (date > t) break;
-        slots.push({ date, di: p % R.days.length });
-      }
-    }
+    const slots = demoSlots(R, cur, t);
     // One progression per lift and rep range, like the app's own targets.
     const prog: Record<string, Prog> = {};
-    const startOf = (e: Lift, it: PlanItem): { w: number; reps: null } => {
-      const known = BASE_LB[it.exId];
-      const lb = (known != null && known > 0) || (e.bw && known === 0) ? known || 0 : eqBase(e);
-      // An assisted lift starts with 40 lb of help and earns its way down.
-      if (e.assist) return { w: -LIFTER.help * LB, reps: null };
-      const step = progStep(e, it, lb * LB) || LIFTER.step * LB;
-      // About eight weeks of progress below the end load, in whole steps.
-      let w = lb > 0 ? Math.max(step, Math.round((lb * LB * LIFTER.near) / step) * step) : 0;
-      // Never under the bar on a lift loaded on one (a light wrist curl was).
-      if (w > 0 && platesMode(e) === 'bar' && loadMode(e) === 'total') {
-        const bar = exBarKg(e);
-        if (w < bar - BAR_EPS) w = bar;
-      }
-      return { w, reps: null };
-    };
     /* r30 (V's choice): one marked deload week, three weeks back, and one
        missed day, six weeks back, so the demo shows how a deload is handled
        (left out of trends, stalls, targets and the volume average) and a gap.
@@ -167,24 +260,7 @@ export function makeDemo(): void {
       if (weekStart(date) === msw && msn++ === 1) continue;
       if (weekStart(date) === dlw) {
         // Half the sets (rounded up) at about 90% loads in real steps, the bottom of the range, 3 RIR. The progression waits.
-        const ex = d.items.map(it => {
-          const e = EX(it.exId);
-          const key = it.exId + '|' + it.repMin + '-' + it.repMax;
-          const g =
-            prog[key] ||
-            (prog[key] = Object.assign(startOf(e, it), {
-              lv: Math.round(((+it.repMin || REPS_DEF) + Math.max(+it.repMin || REPS_DEF, +it.repMax || REPS_DEF)) / 2),
-              n: 0
-            }));
-          const n = Math.max(1, Math.ceil(it.sets / 2));
-          const lo = +it.repMin || REPS_DEF;
-          const w = e.assist
-            ? g.w - (progStep(e, it, BW * LB) || LIFTER.step * LB)
-            : g.w > 0
-              ? lighterLoad(e, it, g.w, g.w * LIFTER.near)
-              : g.w;
-          return { exId: it.exId, sets: Array.from({ length: n }, () => ({ w, r: lo, rir: DELOAD_RIR, warm: false })) };
-        });
+        const ex = deloadBlocks(d.items, prog);
         state.sessions.push(
           cleanSess(
             {
@@ -204,58 +280,7 @@ export function makeDemo(): void {
         );
         continue;
       }
-      const ex = d.items.map(it => {
-        const e = EX(it.exId);
-        const key = it.exId + '|' + it.repMin + '-' + it.repMax;
-        let g = prog[key];
-        const lo = +it.repMin || REPS_DEF,
-          hi = Math.max(lo, +it.repMax || lo);
-        /* One level per lift: the first two sets make it, later sets a rep
-           fewer from fatigue until the level reaches the top of the range,
-           every set capped there. The level climbs a rep each session; once
-           every set made the top, the load goes up one real step, which costs
-           about a rep (2.5% on a compound) or two (5% on an isolation lift),
-           so the estimate keeps climbing. Resetting reps to the bottom after
-           each step read as a stall. A wide range starts in its middle, where
-           a 90% load lands. */
-        const repsAt = (lv: number, n: number) =>
-          Array.from({ length: n }, (_, j) => Math.max(lo, Math.min(hi, lv - (j >= 2 && lv < hi ? 1 : 0))));
-        // A bodyweight lift with no load to add climbs a rep every other
-        // session from the bottom: parked at the top it read as a stall.
-        const known = BASE_LB[it.exId];
-        const pureBw = e.bw && !e.assist && !(known != null && known > 0);
-        if (!g) {
-          g = prog[key] = Object.assign(startOf(e, it), { lv: pureBw ? lo : Math.round((lo + hi) / 2), n: 0 });
-        } else if (pureBw) {
-          g.n++;
-          if (g.n % 2 === 1) g.lv = Math.min(hi, g.lv + 1);
-        } else if (repsAt(g.lv, it.sets).every(r => r >= hi) && (e.assist || g.w > 0 || !e.bw)) {
-          // Every set at the top: one real step more (less help on an assisted
-          // lift). A pure bodyweight lift with no load to add stays at the top.
-          const was = (e.bw ? BW * LB : 0) + g.w;
-          const step = progStep(e, it, e.assist ? BW * LB : was) || LIFTER.step * LB;
-          if (e.assist) g.w = Math.min(0, g.w + step);
-          else g.w = g.w + step;
-          // About a rep for each 2.5% added: 1 on a heavy compound, 2 on an
-          // isolation lift, and back near the bottom on a light dumbbell where
-          // one 5 lb step is 15%.
-          g.lv = Math.max(lo, hi - Math.max(1, Math.round(((step / Math.max(was, step)) * PCT) / LIFTER.repPct)));
-        } else g.lv++;
-        const reps = repsAt(g.lv, it.sets);
-        g.reps = reps;
-        // Now and then the last set falls a rep short; the best set is unchanged.
-        const lastR = reps[reps.length - 1];
-        if (reps.length > 2 && lastR != null && rnd() < LIFTER.short) reps[reps.length - 1] = Math.max(lo, lastR - 1);
-        const rir = Math.max(0, Math.min(LIFTER.rirTop, isNum(+it.rir) ? +it.rir : LIFTER.rir));
-        const w = g.w;
-        const sets = reps.map((r, j) => ({
-          w,
-          r,
-          rir: j === reps.length - 1 ? Math.max(0, rir - 1) : rir,
-          warm: false
-        }));
-        return { exId: it.exId, sets };
-      });
+      const ex = demoBlocks(d.items, prog, rnd);
       state.sessions.push(
         cleanSess(
           { id: uid(), date, dayIdx: di, dayId: d.id, dayName: d.name, routineId: R.id, ex, notes: '', demo: true },

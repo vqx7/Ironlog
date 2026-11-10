@@ -147,6 +147,7 @@ import { pageTitle, helpButton, howText, section, slotted, subsection, tabFoot, 
 import type { Field } from './view';
 import type { Part } from './view';
 import type { Routine } from './types';
+import type { ExStat, Idx } from './model';
 import type { Block } from './weeks';
 import { rangeKey, weekWindow } from './graphs';
 import { rerenderKeepScroll } from './page';
@@ -944,29 +945,20 @@ function consistencySec(R: ReturnType<typeof activeRoutine>, cur: string): Templ
   );
 }
 
-/** Stats, as a template of the log and `ui`; its charts are drawn after it (graphs.ts, mountCharts). */
-export function viewDash(): TemplateResult {
-  chartNoticeUsed = false;
-  const I = IDX();
-  const R = activeRoutine();
-  const cur = weekStart(today());
-  const thisWeek = I.weekSets[cur] || {};
-  const thisWeekConf = I.weekConf[cur] || {};
-  // Each set once, as on Today. Summing the per-muscle counts double counts
-  // secondary work (a bench set is 1 chest + 0.5 triceps + 0.5 delts).
-  const wkHard = weekStats().got;
-  const stalled = Object.entries(I.exStats).flatMap(([id, s]) => (s && s.stalled ? [[id, s] as const] : []));
-  // How much of the last 4 weeks of volume is measured rather than assumed.
+/** How much of the last 4 weeks of volume is measured rather than assumed, said only when under RIR_COVER_PCT of recent sets carry an RIR. */
+function rirCoverLine(I: Idx): Part {
   const rc = I.rirCov;
   const covPct = rc.total && state.settings.rirMode !== 'off' ? Math.round((rc.logged / rc.total) * PERCENT) : null;
   // Only said when it matters: under RIR_COVER_PCT of recent sets carry an RIR.
-  const cov =
-    covPct == null || covPct >= RIR_COVER_PCT
-      ? ''
-      : html`<p class="small muted hastip u-m0-0n12" data-tip="A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, else the set counts as hard. The lighter shading shows those sets.">RIR on ${covPct}% of recent sets. The lighter part of each bar is assumed.</p>`;
-  const nS = state.sessions.length;
+  return covPct == null || covPct >= RIR_COVER_PCT
+    ? ''
+    : html`<p class="small muted hastip u-m0-0n12" data-tip="A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, else the set counts as hard. The lighter shading shows those sets.">RIR on ${covPct}% of recent sets. The lighter part of each bar is assumed.</p>`;
+}
+
+/** Stats' title, its line and the jump chips to its sections. */
+function dashHead(nS: number): TemplateResult {
   const first = sortedSessions()[0];
-  const head = html`${pageTitle('', 'Stats', noLog() ? 'Nothing logged yet' : `${nS} session${nS === 1 ? '' : 's'} logged${first ? `, since ${fmtDate(first.date)}` : ''}`, helpButton('stats'), true)}${howText(
+  return html`${pageTitle('', 'Stats', noLog() ? 'Nothing logged yet' : `${nS} session${nS === 1 ? '' : 's'} logged${first ? `, since ${fmtDate(first.date)}` : ''}`, helpButton('stats'), true)}${howText(
     'stats',
     'Everything here is calculated from your logged sets: performance trends, not direct measurements of muscle size. Tap a section title to open or fold it. Inside each section, How this works says what its numbers mean.'
   )}
@@ -974,26 +966,32 @@ export function viewDash(): TemplateResult {
     .filter(k => !state.settings.hidden.includes('dash:' + k))
     .flatMap(k => DSECS.filter(x => x[0] === k))
     .map(([k, l]) => html`<button class="chip" data-act="dashJump" data-sec=${k}>${l}</button>`)}</nav>`;
-  const none = !nS
-    ? html`<div class="card"><p class="u-m0"><b>No sessions yet.</b> Trends start after a few sessions. ${tipButton('Trends, stall detection, and rankings need a few sessions of each exercise. To preview the full Stats page, load demo data in Settings.', 'About Stats')}</p></div>`
-    : nothing;
+}
+
+/** Stats' tiles and summary. */
+function dashKpis(R4: ReturnType<typeof recent4w>, nS: number): TemplateResult {
   /* The tiles count what was done (V, 2026-10-13: less anchoring on the
      plan): sessions and PRs in the last 28 days, with the 28 before when the
      log reaches back that far, so month on month reads at a glance.
      Adherence stays in Consistency, hard sets against the plan in Volume and
      This week. PRs are the ones Recent PRs lists (big). */
-  const R4 = recent4w();
   const prs4 = R4.prs.length;
   const was = (n: number): string => (R4.back ? ` (${n} in the ${RECENT_WEEKS} weeks before)` : '');
-  const kpis = html`<div class="kpis"><div class="kpi"><div class="v">${nz(R4.sess)}</div><div class="l">Sessions, last ${RECENT_WEEKS} weeks${was(R4.sessP)}</div></div>
+  return html`<div class="kpis"><div class="kpi"><div class="v">${nz(R4.sess)}</div><div class="l">Sessions, last ${RECENT_WEEKS} weeks${was(R4.sessP)}</div></div>
   <div class="kpi"><div class="v">${nz(prs4)}</div><div class="l">PRs, last ${RECENT_WEEKS} weeks${was(R4.prsP)}</div></div>
 ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
+}
 
-  const avg = actualAvg4();
-  const plan = plannedSets(R);
-  const avgSt = avg ? muscleStatus(avg) : null;
-  const confOff = state.settings.rirMode === 'off';
-
+/** Volume: five ways to read the same hard-set counts, plus tonnage (below). */
+function volumeSec(
+  cov: Part,
+  thisWeek: Record<string, number>,
+  thisWeekConf: Record<string, number>,
+  wkHard: number,
+  avg: ReturnType<typeof actualAvg4>,
+  nS: number,
+  confOff: boolean
+): TemplateResult {
   // volume: five ways to read the same hard-set counts, plus tonnage
   const volCard = (): TemplateResult => {
     if (ui.volMode === 'region') return regionBody();
@@ -1007,7 +1005,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
     const w = avgWait();
     return html`<div class="card"><p class="muted">${w.lead}An average ${w.kind === 'back' ? 'comes back' : 'starts'} after ${w.after}.${w.kind === 'second' ? html` ${tipButton(w.why, 'Your first week')}` : nothing}</p></div>`;
   };
-  const volSec = dashSection(
+  return dashSection(
     'volume',
     'Volume',
     VOL_HELP,
@@ -1016,7 +1014,17 @@ ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
   ${volCard()}`,
     noLog() ? 'Nothing logged yet' : `${wkHard} hard sets this week`
   );
+}
 
+/** Muscles' weak points: each flagged muscle or joint with its tags and the numbers it is judged on, and how many there are. */
+function weakPoints(
+  I: Idx,
+  avg: ReturnType<typeof actualAvg4>,
+  avgSt: ReturnType<typeof muscleStatus> | null,
+  thisWeek: Record<string, number>,
+  plan: ReturnType<typeof plannedSets>,
+  nS: number
+): { body: TemplateResult; n: number } {
   // muscles: weak points, then return on volume folded beneath
   const inj = injuredSet();
   const reasons: Record<string, [string, string][]> = {};
@@ -1042,7 +1050,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
   }
   for (const m of state.settings.priorities) add(m, 'Your priority', 'blue');
   const wp = Object.entries(reasons).sort((a, b) => b[1].length - a[1].length);
-  const weakBody = html`<div class="card">${
+  const body = html`<div class="card">${
     wp.length
       ? wp.map(([m, rs]) => {
           const tags = rs.map(([t, c]) => html`<span class=${`tag ${c}`}>${t}</span>`);
@@ -1064,7 +1072,14 @@ ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
         })
       : html`<p class="muted u-m0">${nS ? 'Nothing flagged.' : 'Flags start once you have logged a few sessions.'}</p>`
   }</div>`;
+  return { body, n: wp.length };
+}
 
+/** Lifts' Stalls: the stalled lifts, a word when several main lifts stall at once, and the last lighter week; and how many main lifts are stalled. */
+function stallsBody(stalled: readonly (readonly [string, ExStat])[]): {
+  stl: TemplateResult;
+  bigN: number;
+} {
   // stalls (folded inside Lifts, after Recent PRs and All-time bests since r28)
   const bigN = stalled.length ? fatigueStalls(stalled.map(([id]) => id)).length : 0;
   const lw = lastLighterWeek();
@@ -1080,7 +1095,12 @@ ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
       ? html`<p class="small muted u-mt8">${lw.weeks == null ? 'No lighter week in the last 12.' : `Last lighter week: ${lw.weeks} week${lw.weeks === 1 ? '' : 's'} ago${lw.kind === 'rest' ? ' (a rest week)' : lw.kind === 'off' ? ' (a week off)' : ''}.`} ${tipButton(LIGHTER_WEEK_TIP, 'Lighter week')}</p>`
       : nothing
   }`;
+  return { stl, bigN };
+}
 
+/** Lifts: the chosen lift's card (the one logged most often to start), Recent PRs, All-time bests and Stalls. */
+function liftsSec(I: Idx, stalled: readonly (readonly [string, ExStat])[], prs4: number): TemplateResult {
+  const { stl, bigN } = stallsBody(stalled);
   // exercise trend
   const withData = Object.keys(I.byEx)
     .filter(id => (I.byEx[id] || []).length)
@@ -1115,7 +1135,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
     : html`<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>`;
   const nLifts = Object.keys(I.byEx).length;
   const firstPR = bigPR[0];
-  const liftsSec = dashSection(
+  return dashSection(
     'exercise',
     'Lifts',
     LIFTS_HELP,
@@ -1127,24 +1147,35 @@ ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
     )}${dashSub('stalls', 'Stalls', stl, stalled.length ? html`<span class=${`pill ${bigN >= FATIGUE_STALLS ? 'red' : 'yellow'}`}>${stalled.length} stalled</span>` : 'none')}`,
     noLog() ? 'Nothing logged yet' : `${nLifts} lift${nLifts === 1 ? '' : 's'} tracked`
   );
+}
 
+/** Muscles: the weak points, then Strength return on volume and Size check folded beneath. */
+function musclesSec(
+  weak: { body: TemplateResult; n: number },
+  avg: ReturnType<typeof actualAvg4>,
+  thisWeek: Record<string, number>,
+  nS: number
+): TemplateResult {
   // ranking (folded inside Muscles)
   const rank = html`<div class="card">${rankBody(avg || thisWeek)}</div>`;
-  const musSec = dashSection(
+  return dashSection(
     'weak',
     'Muscles',
     MUSCLES_HELP,
-    html`${weakBody}${dashSub('rank', 'Strength return on volume', rank)}${dashSub('size', 'Size check', sizeBody())}`,
-    wp.length
-      ? html`<span class="pill yellow">${wp.length} flagged</span>`
+    html`${weak.body}${dashSub('rank', 'Strength return on volume', rank)}${dashSub('size', 'Size check', sizeBody())}`,
+    weak.n
+      ? html`<span class="pill yellow">${weak.n} flagged</span>`
       : nS
         ? html`<span class="pill green">none flagged</span>`
         : 'after a few sessions'
   );
+}
 
+/** Body: bodyweight's chart, its rate and the tape. */
+function bodySec(): TemplateResult {
   // body: chart, entry, tape, muscle map
   const nBw = state.bodyweights.length;
-  const bodySec = dashSection(
+  return dashSection(
     'body',
     'Body',
     'Daily bodyweight with a 7-day average. Tape changes help cross-check which muscles are actually growing.',
@@ -1155,16 +1186,50 @@ ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
     }${nBw ? bwRateText() : nothing}${nBw || state.measurements.length ? measTable() : nothing}</div>`,
     nBw ? `${nBw} weigh-in${nBw === 1 ? '' : 's'}` : 'not logged yet'
   );
+}
+
+/** Stats, as a template of the log and `ui`; its charts are drawn after it (graphs.ts, mountCharts). The sections are
+    built in the order they always were, since the first chart without its library says so once (chartFallback). */
+export function viewDash(): TemplateResult {
+  chartNoticeUsed = false;
+  const I = IDX();
+  const R = activeRoutine();
+  const cur = weekStart(today());
+  const thisWeek = I.weekSets[cur] || {};
+  const thisWeekConf = I.weekConf[cur] || {};
+  // Each set once, as on Today. Summing the per-muscle counts double counts
+  // secondary work (a bench set is 1 chest + 0.5 triceps + 0.5 delts).
+  const wkHard = weekStats().got;
+  const stalled = Object.entries(I.exStats).flatMap(([id, s]) => (s && s.stalled ? [[id, s] as const] : []));
+  const cov = rirCoverLine(I);
+  const nS = state.sessions.length;
+  const head = dashHead(nS);
+  const none = !nS
+    ? html`<div class="card"><p class="u-m0"><b>No sessions yet.</b> Trends start after a few sessions. ${tipButton('Trends, stall detection, and rankings need a few sessions of each exercise. To preview the full Stats page, load demo data in Settings.', 'About Stats')}</p></div>`
+    : nothing;
+  const R4 = recent4w();
+  const prs4 = R4.prs.length;
+  const kpis = dashKpis(R4, nS);
+
+  const avg = actualAvg4();
+  const plan = plannedSets(R);
+  const avgSt = avg ? muscleStatus(avg) : null;
+  const confOff = state.settings.rirMode === 'off';
+  const volSec = volumeSec(cov, thisWeek, thisWeekConf, wkHard, avg, nS, confOff);
+  const weak = weakPoints(I, avg, avgSt, thisWeek, plan, nS);
+  const lifts = liftsSec(I, stalled, prs4);
+  const musSec = musclesSec(weak, avg, thisWeek, nS);
+  const body = bodySec();
 
   return html`${slotted('dash', [
     [null, head],
     [null, none],
     [null, kpis],
     ['volume', volSec],
-    ['exercise', liftsSec],
+    ['exercise', lifts],
     ['weak', musSec],
     ['consistency', consistencySec(R, cur)],
-    ['body', bodySec]
+    ['body', body]
   ])}${tabFoot('dash')}`;
 }
 

@@ -40,6 +40,7 @@ import type { DraftSet, CardioEntry, SessionEx, Session } from './types';
 import { setShort, fmtDateLong, fmtE, prSet, wasE } from './display';
 import { W, blkOpen, blkRef, redraw } from './workstate';
 import type { Draft } from './workstate';
+import type { Pr } from './model';
 import { blockProgress, calDueIdx, draftPlanMin, oddReps, rowBlank, setDone, settleLoad } from './worksets';
 import { confirmBox, openModal, render } from './page';
 import { stopTimer, wakeOff } from './timer';
@@ -58,140 +59,129 @@ const HEAVIEST_SHOWN = 4;
 
 /* ---------- Finish ---------- */
 
-/* Sets left (r30): finishing with half the planned sets untouched used to
-   save without a word. Asked once, only when something was done, and not for
-   an edit or a past workout typed in afterwards. Ramp-up sets logged as work
-   count as hard sets and inflate weekly volume: a done working set before
-   the first set at the exercise's top load is a likely warm-up when it was
-   easy (logged at 5+ RIR, or with no RIR 5+ reps short of what the best
-   estimate says that load allows; with neither, under 75% of the top load on
-   a compound lift or 80% on isolation work), never one logged at 4 RIR or
-   less (hard pyramid sets stay working sets), never a weighted set with no
-   load (asked about below as a missing load, r31), and never a set at the
-   load the app suggested or one the app itself raised the load after
-   (r34.2). Asked once per session; either answer moves on. Only sets marked
-   done are saved, but sets with reps and no tick are counted first and the
-   lifter may keep them, a typed 0 (a missed set, r55) among them, warm-ups
-   too (r55, the audit); reps or a load far off ask first, as when ticked
-   (r55, the audit: 110 reps put off once was saved here). */
-export function finish(): void {
-  const d = state.draft;
-  if (!d) return;
-  if (!d._leftAsked && !d.editingId && !d.past) {
-    let n = 0,
-      left = 0;
-    for (const b of d.ex)
-      for (const x of b.sets) {
-        if (x.warm) continue;
-        n++;
-        if (!x.done && rowBlank(b, x)) left++;
-      }
-    const any = d.ex.some(b => b.sets.some(x => x.done && !x.warm));
-    if (any && left > 0) {
-      confirmBox(
-        `${left} of ${n} sets not done`,
-        `Finish now and they are left out. An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.`,
-        'Finish now',
-        () => {
-          const dd = state.draft;
-          if (!dd) return;
-          dd._leftAsked = true;
-          finish();
-        },
-        false,
-        { label: 'Keep going', fn: () => {} }
-      );
-      return;
+/** Asks about sets left untouched when something was done (finish says when); true when it asked, and Finish waits on the answer. */
+function askSetsLeft(d: Draft): boolean {
+  let n = 0,
+    left = 0;
+  for (const b of d.ex)
+    for (const x of b.sets) {
+      if (x.warm) continue;
+      n++;
+      if (!x.done && rowBlank(b, x)) left++;
     }
+  const any = d.ex.some(b => b.sets.some(x => x.done && !x.warm));
+  if (any && left > 0) {
+    confirmBox(
+      `${left} of ${n} sets not done`,
+      `Finish now and they are left out. An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.`,
+      'Finish now',
+      () => {
+        const dd = state.draft;
+        if (!dd) return;
+        dd._leftAsked = true;
+        finish();
+      },
+      false,
+      { label: 'Keep going', fn: () => {} }
+    );
+    return true;
   }
-  if (!d._rampAsked) {
-    const ramps: { bi: number; si: number; name: string; txt: string }[] = [];
-    for (const b of d.ex) {
-      const e = EX(b.exId);
-      const wk = b.sets.filter(x => x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0);
-      if (wk.length < 2) continue;
-      const L = (x: DraftSet): number => bwLoad(e, d.date) + (+(x.w ?? 0) || 0);
-      const top = Math.max(...wk.map(L));
-      if (!(top > 0)) continue;
-      const firstTop = b.sets.findIndex(
-        x => x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && Math.abs(L(x) - top) < EPS_SAME
+  return false;
+}
+
+/** Asks about done sets that look like ramp-ups (finish says which); true when it asked. */
+function askRamps(d: Draft): boolean {
+  const ramps: { bi: number; si: number; name: string; txt: string }[] = [];
+  for (const b of d.ex) {
+    const e = EX(b.exId);
+    const wk = b.sets.filter(x => x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0);
+    if (wk.length < 2) continue;
+    const L = (x: DraftSet): number => bwLoad(e, d.date) + (+(x.w ?? 0) || 0);
+    const top = Math.max(...wk.map(L));
+    if (!(top > 0)) continue;
+    const firstTop = b.sets.findIndex(
+      x => x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && Math.abs(L(x) - top) < EPS_SAME
+    );
+    const bi = d.ex.indexOf(b);
+    const st = IDX().exStats[b.exId];
+    const est = st ? st.bestAll : undefined;
+    const thr = isCompound(e) ? WARM_SHARE.compound : WARM_SHARE.isolation;
+    const easy = (x: DraftSet): boolean => {
+      if (!(L(x) < top - EPS_SAME)) return false;
+      const q = rirEff(x, e);
+      if (q != null) return q >= RIR_CALL_TOP;
+      if (est && !noE1(e)) {
+        const rtf = rtfAt(est, L(x));
+        if (rtf != null) return rtf - +(x.r ?? 0) >= RIR_CALL_TOP;
+      }
+      return L(x) < top * thr;
+    };
+    const appSet = (x: DraftSet, si: number): boolean =>
+      (b.sw != null && Math.abs((+(x.w ?? 0) || 0) - b.sw) < EPS_SAME) || (!!b.adj && b.adj.up && si <= b.adj.at);
+    b.sets.forEach((x, si) => {
+      if (
+        si < firstTop &&
+        x.done &&
+        !x.warm &&
+        !x.drop &&
+        +(x.r ?? 0) > 0 &&
+        (e.bw || +(x.w ?? 0) > 0) &&
+        !appSet(x, si) &&
+        easy(x)
+      )
+        ramps.push({ bi, si, name: e.name, txt: `${loadLabel(e, +(x.w ?? 0) || 0)}×${x.r}` });
+    });
+  }
+  if (ramps.length) {
+    const done = (): void => {
+      const dd = state.draft;
+      if (!dd) return;
+      act(
+        () => {
+          dd._rampAsked = true;
+        },
+        { inProgress: true }
       );
-      const bi = d.ex.indexOf(b);
-      const st = IDX().exStats[b.exId];
-      const est = st ? st.bestAll : undefined;
-      const thr = isCompound(e) ? WARM_SHARE.compound : WARM_SHARE.isolation;
-      const easy = (x: DraftSet): boolean => {
-        if (!(L(x) < top - EPS_SAME)) return false;
-        const q = rirEff(x, e);
-        if (q != null) return q >= RIR_CALL_TOP;
-        if (est && !noE1(e)) {
-          const rtf = rtfAt(est, L(x));
-          if (rtf != null) return rtf - +(x.r ?? 0) >= RIR_CALL_TOP;
-        }
-        return L(x) < top * thr;
-      };
-      const appSet = (x: DraftSet, si: number): boolean =>
-        (b.sw != null && Math.abs((+(x.w ?? 0) || 0) - b.sw) < EPS_SAME) || (!!b.adj && b.adj.up && si <= b.adj.at);
-      b.sets.forEach((x, si) => {
-        if (
-          si < firstTop &&
-          x.done &&
-          !x.warm &&
-          !x.drop &&
-          +(x.r ?? 0) > 0 &&
-          (e.bw || +(x.w ?? 0) > 0) &&
-          !appSet(x, si) &&
-          easy(x)
-        )
-          ramps.push({ bi, si, name: e.name, txt: `${loadLabel(e, +(x.w ?? 0) || 0)}×${x.r}` });
-      });
-    }
-    if (ramps.length) {
-      const done = (): void => {
+      finish();
+    };
+    confirmBox(
+      'These look like ramp-up sets',
+      `${[...new Set(ramps.map(r => r.bi))]
+        .map(bi => {
+          const rs = ramps.filter(r => r.bi === bi);
+          return `${rs[0].name}: ${rs.map(r => r.txt).join(', ')}`;
+        })
+        .join(
+          '; '
+        )}. Lighter and easy, before your top set. Mark ${ramps.length > 1 ? 'them' : 'it'} as warm-up${ramps.length > 1 ? 's' : ''}?`,
+      `Mark as warm-up${ramps.length > 1 ? 's' : ''}`,
+      () => {
         const dd = state.draft;
         if (!dd) return;
         act(
           () => {
-            dd._rampAsked = true;
+            for (const r of ramps) {
+              const x = dd.ex[r.bi] && dd.ex[r.bi].sets[r.si];
+              if (x) {
+                x.warm = true;
+                x.drop = false;
+              }
+            }
           },
           { inProgress: true }
         );
-        finish();
-      };
-      confirmBox(
-        'These look like ramp-up sets',
-        `${[...new Set(ramps.map(r => r.bi))]
-          .map(bi => {
-            const rs = ramps.filter(r => r.bi === bi);
-            return `${rs[0].name}: ${rs.map(r => r.txt).join(', ')}`;
-          })
-          .join(
-            '; '
-          )}. Lighter and easy, before your top set. Mark ${ramps.length > 1 ? 'them' : 'it'} as warm-up${ramps.length > 1 ? 's' : ''}?`,
-        `Mark as warm-up${ramps.length > 1 ? 's' : ''}`,
-        () => {
-          const dd = state.draft;
-          if (!dd) return;
-          act(
-            () => {
-              for (const r of ramps) {
-                const x = dd.ex[r.bi] && dd.ex[r.bi].sets[r.si];
-                if (x) {
-                  x.warm = true;
-                  x.drop = false;
-                }
-              }
-            },
-            { inProgress: true }
-          );
-          done();
-        },
-        false,
-        { label: 'Keep as working sets', fn: done }
-      );
-      return;
-    }
+        done();
+      },
+      false,
+      { label: 'Keep as working sets', fn: done }
+    );
+    return true;
   }
+  return false;
+}
+
+/** Asks about sets with reps and no tick (finish says how); true when it asked. */
+function askUnchecked(d: Draft): boolean {
   const unchecked: { n: number; name: string }[] = [];
   for (const b of d.ex) {
     const n = b.sets.filter(s => !s.done && (+(s.r ?? 0) > 0 || isMissed(s))).length;
@@ -229,8 +219,33 @@ export function finish(): void {
       false,
       { label: 'Save without them', fn: () => finishNow() }
     );
-    return;
+    return true;
   }
+  return false;
+}
+
+/* Sets left (r30): finishing with half the planned sets untouched used to
+   save without a word. Asked once, only when something was done, and not for
+   an edit or a past workout typed in afterwards. Ramp-up sets logged as work
+   count as hard sets and inflate weekly volume: a done working set before
+   the first set at the exercise's top load is a likely warm-up when it was
+   easy (logged at 5+ RIR, or with no RIR 5+ reps short of what the best
+   estimate says that load allows; with neither, under 75% of the top load on
+   a compound lift or 80% on isolation work), never one logged at 4 RIR or
+   less (hard pyramid sets stay working sets), never a weighted set with no
+   load (asked about below as a missing load, r31), and never a set at the
+   load the app suggested or one the app itself raised the load after
+   (r34.2). Asked once per session; either answer moves on. Only sets marked
+   done are saved, but sets with reps and no tick are counted first and the
+   lifter may keep them, a typed 0 (a missed set, r55) among them, warm-ups
+   too (r55, the audit); reps or a load far off ask first, as when ticked
+   (r55, the audit: 110 reps put off once was saved here). */
+export function finish(): void {
+  const d = state.draft;
+  if (!d) return;
+  if (!d._leftAsked && !d.editingId && !d.past && askSetsLeft(d)) return;
+  if (!d._rampAsked && askRamps(d)) return;
+  if (askUnchecked(d)) return;
   finishNow();
 }
 
@@ -331,6 +346,53 @@ export function finishNow(): void {
       { label: 'Save anyway', fn: save }
     );
   else save();
+}
+
+/** The recap's counts: working sets, missed sets and hard sets as the week counts them. */
+function setCounts(ex: ReturnType<typeof savedEx>[]): { work: number; miss: number; hard: number } {
+  const work = ex.reduce((a, b) => a + b.sets.filter(isWork).length, 0),
+    miss = ex.reduce((a, b) => a + b.sets.filter(q => !q.warm && !q.drop && isMissed(q)).length, 0),
+    hard = r1(
+      ex.reduce((a, b) => {
+        const e = EX(b.exId);
+        return a + b.sets.reduce((c, q) => c + hardCredit(q, e), 0);
+      }, 0)
+    );
+  return { work, miss, hard };
+}
+
+/** A PR as the recap says it: the lift, what was done, and what it beat. */
+function recapPr(pr: Pr): { name: string; what: string; was: string } {
+  const e = EX(pr.exId);
+  if (pr.type === 'Weight PR')
+    return {
+      name: e.name,
+      what: `Weight PR, ${setShort(e, pr.w, pr.r)}${pr.value != null && isCompound(e) ? `, best estimate ${fmtE(pr.value)} ${U()}${loadNote(e)}` : ''}`,
+      was: e.assist
+        ? 'less help than ever'
+        : isFinite(pr.prevW ?? NaN)
+          ? `heaviest before ${e.bw ? loadLabel(e, pr.prevW ?? 0) : fmtW(pr.prevW) + ' ' + U()}`
+          : ''
+    };
+  const ps = pr.type === 'e1RM' && !isCompound(e) ? prSet(pr.exId, pr.date) : null;
+  if (ps) return { name: e.name, what: `PR, ${setShort(e, ps.w, ps.r)}`, was: 'your best for that number of reps' };
+  return pr.type === 'e1RM'
+    ? {
+        name: e.name,
+        what: `${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e)}`,
+        was: prOverall(pr)
+          ? wasE(pr.value, pr.prevAll)
+            ? `was ${wasE(pr.value, pr.prevAll)}`
+            : ''
+          : wasE(pr.value, pr.prev)
+            ? `was ${wasE(pr.value, pr.prev)} at those reps`
+            : ''
+      }
+    : {
+        name: e.name,
+        what: `${e.timed ? 'Time' : 'Rep'} PR, ${setShort(e, pr.w, pr.r)}`,
+        was: pr.prevR ? `was ${pr.prevR} ${e.timed ? 's' : 'reps'} at this load or heavier` : 'heaviest yet'
+      };
 }
 
 /* The session saved, then the recap. Timed only when started and finished
@@ -471,14 +533,7 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     const e = EX(p.exId);
     return [`${e.name} ${setShort(e, p.w, p.r)}`];
   });
-  const work = ex.reduce((a, b) => a + b.sets.filter(isWork).length, 0),
-    miss = ex.reduce((a, b) => a + b.sets.filter(q => !q.warm && !q.drop && isMissed(q)).length, 0),
-    hard = r1(
-      ex.reduce((a, b) => {
-        const e = EX(b.exId);
-        return a + b.sets.reduce((c, q) => c + hardCredit(q, e), 0);
-      }, 0)
-    );
+  const { work, miss, hard } = setCounts(ex);
   ui.todayDay = null;
   window.scrollTo(0, 0);
   render();
@@ -497,38 +552,7 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     lines.push('Not timed: the sets went in faster than they can be lifted. Add its minutes by editing it in History.');
   if (targets) lines.push(`${beaten} of ${targets} exercise target${targets === 1 ? '' : 's'} beaten`);
   if (heavier.length) lines.push(`Heaviest yet: ${andList(heavier, HEAVIEST_SHOWN)}`);
-  const prList = prs.map(pr => {
-    const e = EX(pr.exId);
-    if (pr.type === 'Weight PR')
-      return {
-        name: e.name,
-        what: `Weight PR, ${setShort(e, pr.w, pr.r)}${pr.value != null && isCompound(e) ? `, best estimate ${fmtE(pr.value)} ${U()}${loadNote(e)}` : ''}`,
-        was: e.assist
-          ? 'less help than ever'
-          : isFinite(pr.prevW ?? NaN)
-            ? `heaviest before ${e.bw ? loadLabel(e, pr.prevW ?? 0) : fmtW(pr.prevW) + ' ' + U()}`
-            : ''
-      };
-    const ps = pr.type === 'e1RM' && !isCompound(e) ? prSet(pr.exId, pr.date) : null;
-    if (ps) return { name: e.name, what: `PR, ${setShort(e, ps.w, ps.r)}`, was: 'your best for that number of reps' };
-    return pr.type === 'e1RM'
-      ? {
-          name: e.name,
-          what: `${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e)}`,
-          was: prOverall(pr)
-            ? wasE(pr.value, pr.prevAll)
-              ? `was ${wasE(pr.value, pr.prevAll)}`
-              : ''
-            : wasE(pr.value, pr.prev)
-              ? `was ${wasE(pr.value, pr.prev)} at those reps`
-              : ''
-        }
-      : {
-          name: e.name,
-          what: `${e.timed ? 'Time' : 'Rep'} PR, ${setShort(e, pr.w, pr.r)}`,
-          was: pr.prevR ? `was ${pr.prevR} ${e.timed ? 's' : 'reps'} at this load or heavier` : 'heaviest yet'
-        };
-  });
+  const prList = prs.map(recapPr);
   if (cardio.length) lines.push(`Cardio and mobility: ${cardio.reduce((a, c) => a + c.min, 0)} min`);
   if (demoGone) lines.push('Demo data removed, so your stats show only your own sessions');
   openModal({
