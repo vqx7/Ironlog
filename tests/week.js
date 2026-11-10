@@ -8,6 +8,9 @@
 //   4  The pull-down: a finger drawn down from the week bar brings the month calendar down from the top, following
 //      the finger; let go past the point and it stays, short of it and it goes back; drawn back up, it closes. A tap
 //      on a day and a sideways move are the bar's own.
+//   5-8  The independent review of 2.45 and 2.46 (REV9-1 to REV9-4), each failing on the first build of 2.46 (a2a…):
+//      the calendar left moved up by a push brought back; a workout done earlier shown planned ahead; an empty past week
+//      read against the routine now; a week in another year named without it.
 // WEEK_ONLY=1,4 runs some sections.
 const { open, touchDriver } = require('./h');
 const fails = [];
@@ -108,11 +111,13 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     const want = await page.evaluate(() => {
       const L = window.__ironlog; const ws = '2026-11-02', we = '2026-11-08';
       const ss = L.state.sessions.filter(s => s.date >= ws && s.date <= we);
-      return { n: ss.length, need: L.weekNeed(ws), hard: Math.round((L.IDX().weekHard[ws] || 0) * 10) / 10 };
+      // What was planned then, as the week's own sessions recorded it; the demo records none (REV9-3).
+      const rec = ss.map(x => x.pw).find(x => x);
+      return { n: ss.length, rec: rec || null, hard: Math.round((L.IDX().weekHard[ws] || 0) * 10) / 10 };
     });
     await tap(page, '[data-act="wkStep"][data-v="-1"]'); await wait(100);
     const a = await shown(page);
-    ok(a && a.sub === `${want.n} of ${want.need} sessions`, '3. a week before reads its sessions against what was planned then', { sub: a && a.sub, want });
+    ok(a && a.sub === (want.rec ? `${want.n} of ${want.rec} sessions` : `${want.n} sessions`), '3. a week before reads its sessions against what was planned then, or alone with no record of it', { sub: a && a.sub, want });
     ok(a && new RegExp(`\\b${String(want.hard).replace('.', '\\.')} hard sets? logged`).test(a.text) && /lifted/.test(a.text), '3. and its hard sets and weight lifted', { text: a && a.text, want });
     ok(a && !a.band, '3. no bar against this week\'s plan on another week', a && a.band);
     // Next week: what is planned.
@@ -181,6 +186,96 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     const g = await sheet();
     ok(g.open && g.kind === 'calendar' && !g.top, '4. History\'s Calendar still opens from the bottom', g);
     ok(!P.errors.length, '4. no page error', P.errors);
+    await P.browser.close();
+  }
+
+  if (run(5)) {
+    // REV9-1 (the independent review of 2.45 and 2.46): pushed up and brought back down before letting go, the calendar
+    // stayed moved up, its header off the screen.
+    const P = await lifter();
+    const { page } = P;
+    const touch = await touchDriver(page);
+    const box = await page.evaluate(() => { const r = document.getElementById('wkbar').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+    await touch('touchStart', box.x, box.y); for (let k = 1; k <= 8; k++) { await touch('touchMove', box.x, box.y + k * 15); await wait(16); } await touch('touchEnd', 0, 0); await wait(350);
+    const sb = await page.evaluate(() => { const r = document.querySelector('#modal .sheet').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.bottom - 12 }; });
+    for (const back of [-2, 5]) {
+      await touch('touchStart', sb.x, sb.y);
+      for (const dy of [-20, -45, -65, back]) { await touch('touchMove', sb.x, sb.y + dy); await wait(16); }
+      await touch('touchEnd', 0, 0); await wait(350);
+      const a = await page.evaluate(() => { const s = document.querySelector('#modal .sheet'); const h = document.getElementById('calH'); return s ? { tf: s.style.transform, drag: s.classList.contains('drag'), y: Math.round(s.getBoundingClientRect().top), head: h ? Math.round(h.getBoundingClientRect().top) : null } : null; });
+      ok(a && !a.tf && !a.drag && a.y >= 0 && a.head >= 0, `5. pushed up then brought back to ${back} px before letting go, the calendar goes back in place, its header on screen`, a);
+    }
+    ok(!P.errors.length, '5. no page error', P.errors);
+    await P.browser.close();
+  }
+
+  if (run(6)) {
+    // REV9-2: on a fixed-weekday routine, a day ahead whose workout was done earlier this week read "planned" under the bar
+    // that said "done Wed", and its tap offered the workout again; the month calendar the same.
+    const P = await lifter();
+    const { page } = P;
+    await page.evaluate(() => {
+      const L = window.__ironlog; const R = L.activeRoutine();
+      R.schedule = 'weekly';
+      // Friday's workout (day 4) done today, Wednesday.
+      const fri = R.days[4];
+      L.state.sessions = L.state.sessions.filter(s => s.date !== '2026-11-11');
+      L.state.sessions.push({ id: 'wedFri', date: '2026-11-11', dayIdx: 4, dayId: fri.id, dayName: fri.name, routineId: R.id, notes: '', deload: false, light: false, ex: [{ exId: fri.items[0].exId, rr: [8, 12], note: '', sets: [{ w: 50, r: 10, rir: 2, warm: false }] }] });
+      L.state = L.normalize(L.state); L.invalidate(); L.saveNow(); L.render();
+    });
+    await wait(200);
+    const a = await page.evaluate(() => {
+      const L = window.__ironlog; const name = L.activeRoutine().days[4].name;
+      const row = document.querySelector('.wkdays [data-date="2026-11-13"]');
+      const bar = document.querySelector('#wkbar [data-date="2026-11-13"]');
+      L.ui.wkView = 'month'; L.render();
+      const cell = document.querySelector('.cal-inline [data-date="2026-11-13"]');
+      const out = { name, row: row && row.innerText.replace(/\s+/g, ' '), rowAct: row && row.getAttribute('data-act'), bar: bar && bar.getAttribute('aria-label'), cellPlan: !!cell && cell.classList.contains('plan') };
+      L.ui.wkView = 'week'; L.render();
+      return out;
+    });
+    ok(a && /done Wed/.test(a.bar || ''), '6. the bar says Friday\'s workout was done Wednesday', a);
+    ok(a && a.row && a.row.includes(a.name + ', done Wed') && a.rowAct !== 'wkGo', '6. This week says so too, and its row offers no second start', a);
+    ok(a && !a.cellPlan, '6. the month calendar does not show it planned on Friday', a);
+    ok(!P.errors.length, '6. no page error', P.errors);
+    await P.browser.close();
+  }
+
+  if (run(7)) {
+    // REV9-3: a past week with no record of what was planned then was read against the routine as it is now
+    // (CLAUDE.md: a past week is read against what was planned then). With no record it says its sessions alone.
+    const P = await lifter();
+    const { page } = P;
+    const a = await page.evaluate(() => {
+      const L = window.__ironlog; const R = L.activeRoutine();
+      L.state.sessions = L.state.sessions.filter(s => !(s.date >= '2026-10-26' && s.date <= '2026-11-01'));
+      // Sessions up to Oct 25 record no plan (as the demo's and older builds' do); those from Nov 2 record six a week.
+      for (const s of L.state.sessions) { s.routineId = R.id; s.free = undefined; if (s.date >= '2026-11-02') s.pw = 6; else delete s.pw; }
+      L.state = L.normalize(L.state); L.invalidate();
+      // The routine now plans four days.
+      const R2 = L.activeRoutine(); let k = 0; for (const d of R2.days) if (!d.rest && d.items.length && ++k > 4) { d.rest = true; d.items = []; }
+      L.invalidate(); L.saveNow();
+      const sub = ws => { L.ui.wkWs = ws; L.render(); return document.querySelector('[data-sk="today:week"] .sec-s').innerText; };
+      return { kept: sub('2026-11-02'), empty: sub('2026-10-26'), none: sub('2026-10-19') };
+    });
+    ok(a && a.kept === '6 of 6 sessions', '7. a past week whose sessions recorded its plan reads against it', a);
+    ok(a && a.empty === '0 sessions', '7. an empty past week, with nothing to say what was planned then, says its sessions alone', a);
+    ok(a && /^\d+ sessions?$/.test(a.none) && !/ of /.test(a.none), '7. so does a week whose sessions recorded no plan, never against the routine now', a);
+    ok(!P.errors.length, '7. no page error', P.errors);
+    await P.browser.close();
+  }
+
+  if (run(8)) {
+    // REV9-4: a week in another year was named without its year.
+    const P = await lifter();
+    const { page } = P;
+    const a = await page.evaluate(() => {
+      const L = window.__ironlog; const out = {};
+      for (const ws of ['2027-01-04', '2026-12-28']) { L.ui.wkWs = ws; L.render(); out[ws] = document.querySelector('[data-sk="today:week"] .sec-t').innerText; }
+      return out;
+    });
+    ok(a['2027-01-04'] === 'Jan 4, 2027 to Jan 10, 2027' && a['2026-12-28'] === 'Dec 28 to Jan 3, 2027', '8. a week in another year names its year', a);
+    ok(!P.errors.length, '8. no page error', P.errors);
     await P.browser.close();
   }
 

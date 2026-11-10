@@ -9,7 +9,7 @@
 import { html, nothing, render } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { DAYS, dayLabel, weekFactor } from './routines';
-import { NIL, WD2, fmtDate } from './format';
+import { NIL, WD2, fmtDate, fmtDateFrom } from './format';
 import { addDays, r1, today, weekStart, monthOf, dayOfMonth, dayOfWeek, WEEK_DAYS } from './util';
 import { firstDate } from './charts';
 import {
@@ -19,7 +19,7 @@ import {
   dateIndex,
   freeMode,
   isRestWeek,
-  weekNeed,
+  weekRecorded,
   weekSessions,
   weekStats,
   cycleState
@@ -27,6 +27,7 @@ import {
 import { state, ui } from './store';
 import { WKVIEW_KEY, log, prefGet } from './storage';
 import {
+  doneElsewhere,
   fmtBig,
   fmtDateLong,
   noLog,
@@ -249,9 +250,10 @@ export function weekShown(): string {
   const { min, max } = weekBounds();
   return typeof ws === 'string' && ws >= min && ws <= max ? ws : weekStart(today());
 }
-/** A week's dates in words: "Nov 3 to Nov 9". */
+/** A week's dates in words, "Nov 3 to Nov 9", each with its year when it is not this one (REV9-4). */
 function weekWords(ws: string): string {
-  return `${fmtDate(ws)} to ${fmtDate(addDays(ws, WEEK_DAYS - 1))}`;
+  const t = today();
+  return `${fmtDateFrom(ws, t)} to ${fmtDateFrom(addDays(ws, WEEK_DAYS - 1), t)}`;
 }
 /** ‹ the week's dates ›, as the month's header. */
 function weekNav(ws: string): TemplateResult {
@@ -262,6 +264,7 @@ function weekNav(ws: string): TemplateResult {
 function weekDays(ws: string): TemplateResult {
   const t = today();
   const plan = planAhead(addDays(ws, WEEK_DAYS - 1));
+  const moved = doneElsewhere();
   const rows: TemplateResult[] = [];
   for (let i = 0; i < WEEK_DAYS; i++) {
     const d = addDays(ws, i);
@@ -269,21 +272,25 @@ function weekDays(ws: string): TemplateResult {
     const c = state.cardio.filter(x => x.date === d).reduce((a, x) => a + x.min, 0);
     const ahead = d > t ? plan[d] : undefined;
     // A training day ahead is a tap to it on Today; a rest day ahead says so; the calendar reads days ahead the same way.
-    const p = ahead && !ahead.day.rest && ahead.day.items.length ? ahead : undefined;
+    // Done on another day this week, as the bar says: said so, and not offered again (REV9-2).
+    const done = moved[d];
+    const p = ahead && !ahead.day.rest && ahead.day.items.length && !done ? ahead : undefined;
     const rest = !!ahead && ahead.day.rest;
     const what = ss.length
       ? ss.map(x => x.dayName || 'Session').join(', ') + (c ? `, cardio ${c} min` : '')
       : c
         ? `Cardio ${c} min`
-        : p
-          ? `${p.day.name}, planned`
-          : rest
-            ? 'Rest'
-            : d === t
-              ? 'Nothing logged yet'
-              : d > t
-                ? ''
-                : 'Nothing logged';
+        : done
+          ? done.map(x => `${x.name}, done ${DAYS[dayOfWeek(x.on)]}`).join('; ')
+          : p
+            ? `${p.day.name}, planned`
+            : rest
+              ? 'Rest'
+              : d === t
+                ? 'Nothing logged yet'
+                : d > t
+                  ? ''
+                  : 'Nothing logged';
     const cls = ['wkday', ss.length ? 'on' : '', !ss.length && !c ? 'none' : '', d === t ? 'today' : '']
       .filter(Boolean)
       .join(' ');
@@ -294,7 +301,7 @@ function weekDays(ws: string): TemplateResult {
         p
           ? html`<button type="button" class=${cls} data-act="wkGo" data-date=${d} data-day=${String(p.di)} aria-label=${`${lbl}. Open on Today`}>${inner}</button>`
           : d > t
-            ? html`<span class=${cls}>${inner}</span>`
+            ? html`<span class=${cls} data-date=${d}>${inner}</span>`
             : html`<button type="button" class=${cls} data-act="calDay" data-date=${d} aria-label=${lbl}>${inner}</button>`
       }</li>`
     );
@@ -367,8 +374,10 @@ export function weekCard(): TemplateResult {
   }
   const ws = weekShown();
   if (ws !== weekStart(today())) {
-    // Another week: its dates, and its sessions against what was planned then (weekNeed), or what is planned ahead.
+    /* Another week: its dates, and its sessions against what was planned then, as its sessions recorded it; with no
+       record, its sessions alone, never against the routine as it is now (REV9-3); or what is planned ahead. */
     const n = weekSessions(ws);
+    const rec = weekRecorded(ws);
     const ahead = ws > weekStart(today());
     const planned = ahead
       ? Object.entries(planAhead(addDays(ws, WEEK_DAYS - 1))).filter(
@@ -379,9 +388,9 @@ export function weekCard(): TemplateResult {
       ? planWords(planned)
       : isRestWeek(ws)
         ? `Rest week${n ? `, ${n} session${n === 1 ? '' : 's'}` : ''}`
-        : freeMode()
+        : freeMode() || rec == null
           ? `${n} session${n === 1 ? '' : 's'}`
-          : `${n} of ${weekNeed(ws)} sessions`;
+          : `${n} of ${rec} sessions`;
     return section({ sk: 'today:week', key: 'week', title: weekWords(ws), sub, body });
   }
   const done = `${w.doneDays} session${w.doneDays === 1 ? '' : 's'}`;
@@ -512,18 +521,21 @@ export function pullStart(): void {
       const sh = topSheet();
       if (!pushing || !t || !sh) return;
       up = t.clientY - u0;
-      if (up < -PULL.start) {
+      // Once moved, the sheet follows the finger both ways, never below its place.
+      if (up < -PULL.start || sh.classList.contains('drag')) {
         e.preventDefault();
-        follow(sh, up);
+        follow(sh, Math.min(0, up));
       }
     },
     { passive: false }
   );
+  // Let go anywhere, a sheet the push moved settles: closed when it ends PULL.open up, else back in place (REV9-1: brought
+  // back down before letting go, it was left moved up, its header off the screen).
   const done = (): void => {
     if (!pushing) return;
     pushing = false;
     const sh = topSheet();
-    if (sh && up < -PULL.start) settle(sh, up > -PULL.open);
+    if (sh && sh.classList.contains('drag')) settle(sh, up > -PULL.open);
   };
   document.addEventListener('touchend', done);
   document.addEventListener('touchcancel', done);

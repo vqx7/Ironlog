@@ -9090,6 +9090,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const rec2 = IDXIn(M3).weekPw;
     return Math.max(1, rec2 && rec2[ws] || plannedPerWeek(R2));
   }
+  function weekRecordedIn(M3, ws) {
+    weekRoutineIn(M3, ws);
+    const rec2 = IDXIn(M3).weekPw;
+    return rec2 && rec2[ws] ? rec2[ws] : null;
+  }
   var STREAK_WEEKS = 104;
   function weekStreakIn(M3) {
     const R2 = activeRoutineIn(M3);
@@ -9792,6 +9797,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var recentLighter = live(recentLighterIn);
   var regionBalance = live(regionBalanceIn);
   var weekNeed = live(weekNeedIn);
+  var weekRecorded = live(weekRecordedIn);
   var weekRoutine = live(weekRoutineIn);
   var weekStats = live(weekStatsIn);
   var weekStreak = live(weekStreakIn);
@@ -11850,6 +11856,20 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const di = sessDayIdx(R2, s3), part = partOf(s3);
       const slot = out.find((x2) => x2.di === di && x2.part === part && !x2.doneOn);
       if (slot) slot.doneOn = s3.date;
+    }
+    return out;
+  }
+  function doneElsewhere() {
+    const R2 = activeRoutine();
+    const cur = weekStart(today());
+    const out = {};
+    if (R2.schedule !== "weekly" || isRestWeek(cur)) return out;
+    const slots = weekSlots(R2);
+    for (let i5 = 0; i5 < WEEK_DAYS; i5++) {
+      const d3 = addDays(cur, i5);
+      const mine = slots.filter((x2) => x2.di === i5);
+      if (d3 > today() && mine.length && !sessionsOn(d3).length && mine.every((x2) => x2.doneOn && x2.doneOn !== d3))
+        out[d3] = mine.map((x2) => ({ name: x2.day.name, on: x2.doneOn || "" }));
     }
     return out;
   }
@@ -18706,8 +18726,9 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
   }
   function plannedIn(ym) {
     const out = {};
+    const moved = doneElsewhere();
     for (const [d3, p3] of Object.entries(planAhead(monthEnd(ym))))
-      if (d3.startsWith(ym) && !p3.day.rest && p3.day.items.length) out[d3] = p3;
+      if (d3.startsWith(ym) && !p3.day.rest && p3.day.items.length && !moved[d3]) out[d3] = p3;
     return out;
   }
   function monthPlanned(ym) {
@@ -18873,7 +18894,8 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     return typeof ws === "string" && ws >= min && ws <= max ? ws : weekStart(today());
   }
   function weekWords(ws) {
-    return `${fmtDate(ws)} to ${fmtDate(addDays(ws, WEEK_DAYS - 1))}`;
+    const t4 = today();
+    return `${fmtDateFrom(ws, t4)} to ${fmtDateFrom(addDays(ws, WEEK_DAYS - 1), t4)}`;
   }
   function weekNav(ws) {
     const { min, max } = weekBounds();
@@ -18882,20 +18904,22 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
   function weekDays(ws) {
     const t4 = today();
     const plan = planAhead(addDays(ws, WEEK_DAYS - 1));
+    const moved = doneElsewhere();
     const rows2 = [];
     for (let i5 = 0; i5 < WEEK_DAYS; i5++) {
       const d3 = addDays(ws, i5);
       const ss = sessionsOn(d3);
       const c4 = state.cardio.filter((x2) => x2.date === d3).reduce((a2, x2) => a2 + x2.min, 0);
       const ahead = d3 > t4 ? plan[d3] : void 0;
-      const p3 = ahead && !ahead.day.rest && ahead.day.items.length ? ahead : void 0;
+      const done = moved[d3];
+      const p3 = ahead && !ahead.day.rest && ahead.day.items.length && !done ? ahead : void 0;
       const rest = !!ahead && ahead.day.rest;
-      const what = ss.length ? ss.map((x2) => x2.dayName || "Session").join(", ") + (c4 ? `, cardio ${c4} min` : "") : c4 ? `Cardio ${c4} min` : p3 ? `${p3.day.name}, planned` : rest ? "Rest" : d3 === t4 ? "Nothing logged yet" : d3 > t4 ? "" : "Nothing logged";
+      const what = ss.length ? ss.map((x2) => x2.dayName || "Session").join(", ") + (c4 ? `, cardio ${c4} min` : "") : c4 ? `Cardio ${c4} min` : done ? done.map((x2) => `${x2.name}, done ${DAYS[dayOfWeek(x2.on)]}`).join("; ") : p3 ? `${p3.day.name}, planned` : rest ? "Rest" : d3 === t4 ? "Nothing logged yet" : d3 > t4 ? "" : "Nothing logged";
       const cls = ["wkday", ss.length ? "on" : "", !ss.length && !c4 ? "none" : "", d3 === t4 ? "today" : ""].filter(Boolean).join(" ");
       const inner = b`<span class="wkday-d">${DAYS[i5]} ${dayOfMonth(d3)}</span><span class="wkday-n">${what || NIL}</span>`;
       const lbl = `${fmtDateLong(d3)}: ${what || "nothing planned"}`;
       rows2.push(
-        b`<li>${p3 ? b`<button type="button" class=${cls} data-act="wkGo" data-date=${d3} data-day=${String(p3.di)} aria-label=${`${lbl}. Open on Today`}>${inner}</button>` : d3 > t4 ? b`<span class=${cls}>${inner}</span>` : b`<button type="button" class=${cls} data-act="calDay" data-date=${d3} aria-label=${lbl}>${inner}</button>`}</li>`
+        b`<li>${p3 ? b`<button type="button" class=${cls} data-act="wkGo" data-date=${d3} data-day=${String(p3.di)} aria-label=${`${lbl}. Open on Today`}>${inner}</button>` : d3 > t4 ? b`<span class=${cls} data-date=${d3}>${inner}</span>` : b`<button type="button" class=${cls} data-act="calDay" data-date=${d3} aria-label=${lbl}>${inner}</button>`}</li>`
       );
     }
     return b`<ul class="wkdays">${rows2}</ul>`;
@@ -18946,11 +18970,12 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
     const ws = weekShown();
     if (ws !== weekStart(today())) {
       const n3 = weekSessions(ws);
+      const rec2 = weekRecorded(ws);
       const ahead = ws > weekStart(today());
       const planned = ahead ? Object.entries(planAhead(addDays(ws, WEEK_DAYS - 1))).filter(
         ([d3, p3]) => d3 >= ws && !p3.day.rest && p3.day.items.length
       ).length : 0;
-      const sub = ahead ? planWords(planned) : isRestWeek(ws) ? `Rest week${n3 ? `, ${n3} session${n3 === 1 ? "" : "s"}` : ""}` : freeMode() ? `${n3} session${n3 === 1 ? "" : "s"}` : `${n3} of ${weekNeed(ws)} sessions`;
+      const sub = ahead ? planWords(planned) : isRestWeek(ws) ? `Rest week${n3 ? `, ${n3} session${n3 === 1 ? "" : "s"}` : ""}` : freeMode() || rec2 == null ? `${n3} session${n3 === 1 ? "" : "s"}` : `${n3} of ${rec2} sessions`;
       return section({ sk: "today:week", key: "week", title: weekWords(ws), sub, body });
     }
     const done = `${w2.doneDays} session${w2.doneDays === 1 ? "" : "s"}`;
@@ -19059,9 +19084,9 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
         const sh = topSheet();
         if (!pushing || !t4 || !sh) return;
         up = t4.clientY - u0;
-        if (up < -PULL.start) {
+        if (up < -PULL.start || sh.classList.contains("drag")) {
           e5.preventDefault();
-          follow(sh, up);
+          follow(sh, Math.min(0, up));
         }
       },
       { passive: false }
@@ -19070,7 +19095,7 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
       if (!pushing) return;
       pushing = false;
       const sh = topSheet();
-      if (sh && up < -PULL.start) settle(sh, up > -PULL.open);
+      if (sh && sh.classList.contains("drag")) settle(sh, up > -PULL.open);
     };
     document.addEventListener("touchend", done);
     document.addEventListener("touchcancel", done);
@@ -20827,7 +20852,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       b2.sets,
       (x2) => x2.rid,
       (_2, si) => setRow(d3, b2, bi, si, ex, nr, dupB)
-    )}${stepStrip(d3, b2, bi, ex)}${adjLine(b2, bi)}<div class="row u-mt8">${canFill ? b`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps">Copy last</button>` : ""}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done" ?disabled=${!b2.sets.length}>− Set</button>${!ex.timed && b2.sets.some((x2) => x2.done && !x2.warm && !x2.drop) ? b`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working weight, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>` : ""}${!d3.editingId && b2.sets.some((x2) => x2.done && !x2.warm) && b2.sets.some((x2) => !x2.done) ? b`<button class="btn sm bdone" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them">✓ Done</button>` : ""}${state.settings.timerMode !== "off" && +p3.rest > 0 && !d3.past ? b`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p3.rest} second rest`} data-tip="Start the rest timer">⏱ ${p3.rest}s</button>` : ""}</div></section>`;
+    )}${stepStrip(d3, b2, bi, ex)}${adjLine(b2, bi)}<div class="row u-mt8">${canFill ? b`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps">Copy last</button>` : ""}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done" ?disabled=${!b2.sets.length}>− Set</button>${!ex.timed && b2.sets.some((x2) => x2.done && !x2.warm && !x2.drop) ? b`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working weight, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>` : ""}${!d3.editingId && b2.sets.some((x2) => x2.done && !x2.warm) && b2.sets.some((x2) => !x2.done) ? b`<button class="btn sm bdone" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them">✓ Done</button>` : ""}${state.settings.timerMode !== "off" && +p3.rest > 0 && !d3.past ? b`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p3.rest} second rest`} data-tip="Start the rest timer">⏱</button>` : ""}</div></section>`;
   }
   var LOG_HELP_ON = "RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ";
   var LOG_HELP = "W marks a warm-up (kept, never analysed); tap it again for ↳, a drop set (counts as work and volume, never as a PR or target). + Drop adds one under the last set ticked, with no rest before it; a warm-up is added from the ⋯ menu. Drag an exercise by its ⠿ to change the order. A superset is one box, A1 and A2: after a set of A1 the screen moves to A2, and the rest timer starts after the last exercise of the group. Timed holds log seconds in the Sec column. The date can be changed to log a past session.";

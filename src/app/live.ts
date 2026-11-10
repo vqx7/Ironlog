@@ -77,6 +77,7 @@ import {
   recentLighterIn,
   regionBalanceIn,
   weekNeedIn,
+  weekRecordedIn,
   weekRoutineIn,
   weekStatsIn,
   weekStreakIn,
@@ -250,6 +251,8 @@ export const muscleStatus = live(muscleStatusIn);
 export const recentLighter = live(recentLighterIn);
 export const regionBalance = live(regionBalanceIn);
 export const weekNeed = live(weekNeedIn);
+/** The sessions a week planned as its own sessions recorded it, or null (weekRecordedIn). */
+export const weekRecorded = live(weekRecordedIn);
 export const weekRoutine = live(weekRoutineIn);
 export const weekStats = live(weekStatsIn);
 export const weekStreak = live(weekStreakIn);

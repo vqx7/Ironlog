@@ -724,6 +724,24 @@ export function weekSlots(R: Routine): WeekSlot[] {
   return out;
 }
 
+/** This week's days ahead on a fixed-weekday routine whose every workout was done on another day, each with the workouts
+    and the day they were done, as the bar reads them (weekSlots): This week and the calendar say so rather than offer them
+    again (NEW-107, REV9-2: the list read "Legs B, planned" under the bar's "Legs B, done Wed"). */
+export function doneElsewhere(): Record<string, { name: string; on: string }[]> {
+  const R = activeRoutine();
+  const cur = weekStart(today());
+  const out: Record<string, { name: string; on: string }[]> = {};
+  if (R.schedule !== 'weekly' || isRestWeek(cur)) return out;
+  const slots = weekSlots(R);
+  for (let i = 0; i < WEEK_DAYS; i++) {
+    const d = addDays(cur, i);
+    const mine = slots.filter(x => x.di === i);
+    if (d > today() && mine.length && !sessionsOn(d).length && mine.every(x => x.doneOn && x.doneOn !== d))
+      out[d] = mine.map(x => ({ name: x.day.name, on: x.doneOn || '' }));
+  }
+  return out;
+}
+
 /* Looking ahead (329, V 2026-10-20: "future days, and the coming weeks and
    months, show the planned workout, and a tap opens it"): what the routine
    in use plans on each date after today up to a date, by weekday on a weekly

@@ -18,7 +18,7 @@ import { MONTHS } from './format';
 import { today, monthOf, dayOfWeek } from './util';
 import { firstDate } from './charts';
 import { state, ui } from './store';
-import { fmtDateLong, planAhead, sessionsOn } from './display';
+import { doneElsewhere, fmtDateLong, planAhead, sessionsOn } from './display';
 import type { PlannedDay } from './display';
 
 /* How far ahead the calendar goes: a year, as far as a lifter
@@ -52,8 +52,10 @@ function monthEnd(ym: string): string {
 /** The training days the routine plans in a month after today (a rest day, or a day with nothing in it, is none). */
 function plannedIn(ym: string): Record<string, PlannedDay> {
   const out: Record<string, PlannedDay> = {};
+  // A day whose workout was done earlier this week is not planned any more, as the bar and This week say (REV9-2).
+  const moved = doneElsewhere();
   for (const [d, p] of Object.entries(planAhead(monthEnd(ym))))
-    if (d.startsWith(ym) && !p.day.rest && p.day.items.length) out[d] = p;
+    if (d.startsWith(ym) && !p.day.rest && p.day.items.length && !moved[d]) out[d] = p;
   return out;
 }
 /** How many training days the routine plans in a month after today. */
