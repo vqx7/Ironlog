@@ -442,7 +442,7 @@ ${acctStep && !acct.user ? html`<button class="linkbtn ob-back" data-act="obAcct
 function welcomeCard(): Part {
   if (state.settings.onboarded || !cloudChecked || state.draft || state.sessions.some(s => !s.demo)) return nothing;
   if (state.sessions.some(s => s.demo))
-    return html`<div class="card welcome" id="demoNote"><p class="small u-m0-0-8"><b>You are looking at demo data.</b> ${DEMO_WEEKS} weeks of generated sessions to look around; none of it is yours.</p><button class="btn sm primary" data-act="demoStart">Clear demo and set up</button></div>`;
+    return html`<div class="card welcome" id="demoNote"><p class="small u-m0-0-8"><b>This is demo data.</b> ${DEMO_WEEKS} weeks of generated sessions to look around; none of it is yours.</p><button class="btn sm primary" data-act="demoStart">Clear demo and set up</button></div>`;
   return nothing;
 }
 /* Signed out: one slim line on Today, because a log that lives only on the
@@ -698,7 +698,7 @@ export function viewToday(): TemplateResult {
   else if (cs && chosen == null) {
     if (cs.lastDate === t) note = `${dayLabel(R, cs.last)} done today.`;
     else if (cs.restToday)
-      note = html`<b>Scheduled rest today</b> (${dayLabel(R, cs.restIdx)} of your cycle). ${(R.days[cs.next] || { name: '' }).name} is ready whenever you want it.`;
+      note = html`<b>Scheduled rest today</b> (${dayLabel(R, cs.restIdx)} of your cycle). ${(R.days[cs.next] || { name: '' }).name} is ready any time.`;
   } else if (
     weekly &&
     chosen == null &&

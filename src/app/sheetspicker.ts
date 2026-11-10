@@ -154,13 +154,13 @@ export function pickTodaySheet(): TemplateResult {
   if (!best)
     lead = html`<p class="small">Your routine has no exercises yet. Start a freestyle session and use Pick for me there.</p>`;
   else if (best.ready < READY.rest)
-    lead = html`<p class="callout yellow u-m0">Everything left works muscles still recovering. Rest, or do easy cardio. If you train anyway, the first option is the freshest.</p>`;
+    lead = html`<p class="callout yellow u-m0">Everything left works muscles still recovering. Rest, or do easy cardio. To train anyway, the first option is the freshest.</p>`;
   else if (best.plan) lead = html`<p class="small u-m0">Stick with the plan: it is also the best fit for today.</p>`;
   else if (plan)
     lead = html`<p class="small u-m0">${best.day.name} fits today better than ${plan.day.name}, next in your plan: ${plan.ready < 1 ? `${plan.day.name} leans on muscles that may still be recovering.` : 'it trains what is furthest behind this week.'} ${tipButton('Starting it moves your cycle on from there, the same as choosing it under Change day.', 'About the cycle')}</p>`;
   const sameDay = sessionsOn(today()).length > 0;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3>${closeX()}</div>
-    ${lead}${sameDay ? html`<p class="small muted u-m8-0-0">Includes the session you logged today.</p>` : ''}${rk.deload ? html`<p class="small muted u-m8-0-0">Deload week: counted at half the sets.</p>` : ''}
+    ${lead}${sameDay ? html`<p class="small muted u-m8-0-0">Includes the session logged today.</p>` : ''}${rk.deload ? html`<p class="small muted u-m8-0-0">Deload week: counted at half the sets.</p>` : ''}
     ${top.map(
       (
         x,
@@ -238,7 +238,7 @@ export function shortSheet(m: { mins?: number | null | undefined }): TemplateRes
     : !pl
       ? ''
       : pl.changes.length
-        ? html`<ul class="short-list">${pl.changes.map(c => html`<li>${c}</li>`)}</ul><p class="small muted u-m6-0-0">${estMin(min5(pl.est))} after the change.${pl.over ? ' Still over, because sets you typed in are kept.' : ''} Done sets are never touched.</p>`
+        ? html`<ul class="short-list">${pl.changes.map(c => html`<li>${c}</li>`)}</ul><p class="small muted u-m6-0-0">${estMin(min5(pl.est))} after the change.${pl.over ? ' Still over: typed sets are kept.' : ''} Done sets are never touched.</p>`
         : pl.over
           ? html`<p class="small">Nothing can come off: every set left has something you typed in it, and Short on time only takes sets you haven't touched. ${estMin(min5(pl.est))} left.</p>`
           : html`<p class="small">Everything left fits in ${m.mins} minutes as planned.</p>`;

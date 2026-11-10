@@ -869,7 +869,7 @@ export function importData(text: string, after?: () => void): void {
   const body =
     `This backup has ${clean.sessions.length} session${clean.sessions.length === 1 ? '' : 's'} and ${clean.routines.length} routine${clean.routines.length === 1 ? '' : 's'}.` +
     (dropped ? ` ${dropped} damaged record${dropped === 1 ? ' was' : 's were'} skipped.` : '') +
-    ' It will replace everything currently in the app. You can step this back with Undo.';
+    ' It replaces everything in the app. Undo can step it back.';
   confirmBox(
     'Replace all data?',
     body,

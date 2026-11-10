@@ -695,7 +695,7 @@ function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: stri
     ? `First time: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.`
     : ex.bw
       ? `First time: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.`
-      : `First time: pick a load you think you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
+      : `First time: pick a load you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
   return { w: w0, text, lastR: [], last: '', target: '', tgt: null };
 }
 

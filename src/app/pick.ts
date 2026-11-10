@@ -618,7 +618,7 @@ export function exReasonsIn(M: Model, x: ExPick): string[] {
         ? `Not trained hard in the last ${RECOVERY.window / WEEK_DAYS} weeks.`
         : `Last trained hard ${agoTxt(lastAnyHardIn(M, x.m) ?? 0)}, recovered.`
       : x.rec.r < 1
-        ? `Last trained hard ${agoTxt(x.rec.days)} (${r1(x.rec.sets)} sets), so it may still be recovering.`
+        ? `Last trained hard ${agoTxt(x.rec.days)} (${r1(x.rec.sets)} sets), may still be recovering.`
         : `Last trained hard ${agoTxt(x.rec.days)}, recovered.`
   );
   if (x.inSess > 0)
@@ -630,9 +630,7 @@ export function exReasonsIn(M: Model, x: ExPick): string[] {
       x.st && x.st.pct != null
         ? `, ${x.st.pct >= 0 ? '+' : ''}${r1(x.st.pct)}% over ${x.st.spanW || TREND_WEEKS_SAID} weeks`
         : '';
-    out.push(
-      `You have logged it ${x.n} time${x.n === 1 ? '' : 's'}${p}${x.st && x.st.stalled ? ', stalled lately' : ''}.`
-    );
+    out.push(`Logged ${x.n} time${x.n === 1 ? '' : 's'}${p}${x.st && x.st.stalled ? ', stalled lately' : ''}.`);
   } else out.push('New to you: the first session sets its baseline.');
   if (LONG_IDS.has(x.e.id))
     out.push(
@@ -645,8 +643,8 @@ export function exReasonsIn(M: Model, x: ExPick): string[] {
   if (x.sp)
     out.push(
       x.sp === 'stalled'
-        ? `Strength focus: stalled lately, and ${STR_REST} days or more since you did it.`
-        : `Strength focus: within ${Math.round((1 - STR_NEAR) * PERCENT)}% of your best, and ${STR_REST} days or more since you did it.`
+        ? `Strength focus: stalled lately, and ${STR_REST} days or more since last done.`
+        : `Strength focus: within ${Math.round((1 - STR_NEAR) * PERCENT)}% of your best, and ${STR_REST} days or more since last done.`
     );
   return out;
 }

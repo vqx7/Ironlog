@@ -132,7 +132,7 @@ async function exportFile(
   // Only the lifter can see whether the download landed.
   confirmBox(
     'Did the file download?',
-    `Look for ${filename}. If nothing appeared, this browser blocked the download and you should copy the text instead.`,
+    `Look for ${filename}. If nothing appeared, the browser blocked the download. Copy the text instead.`,
     'Yes, I have the file',
     () => {
       if (onSaved) onSaved();
@@ -310,7 +310,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   photoDel() {
     confirmBox(
       'Remove your profile photo?',
-      'It goes from your account and every phone you sign in on. You can add a new one any time.',
+      'It goes from your account and every phone signed in to it. Add a new one any time.',
       'Remove',
       () => {
         photoRemove();

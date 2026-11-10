@@ -421,7 +421,7 @@ function volHeadline(): Part {
   if (!IDX().sessVol.length) return '';
   const tn = tonnageNow();
   const cmp = `. By this point last week: ${fmtBig(tn.prev)} ${U()}`;
-  return html`<p class="headline">${tn.now ? `${fmtBig(tn.now)} ${U()} lifted this week so far` : 'Nothing lifted yet this week'}${cmp}. Last week finished at ${fmtBig(tn.prevFull)} ${U()}. ${tipButton('Weight lifted is load times reps. It drops when the load goes up and reps come down, which is progress, so it is not a measure of progress on its own.', 'About weight lifted')}</p>`;
+  return html`<p class="headline">${tn.now ? `${fmtBig(tn.now)} ${U()} lifted this week so far` : 'Nothing lifted yet this week'}${cmp}. Last week finished at ${fmtBig(tn.prevFull)} ${U()}. ${tipButton('Weight lifted is load times reps. It drops when the load goes up and reps come down, which is progress: on its own it is not a measure of progress.', 'About weight lifted')}</p>`;
 }
 
 /* Weight lifted this week is on Today's This week, and stalls are the Stuck
@@ -531,9 +531,9 @@ function regionBody(): TemplateResult {
         : html`<p class="headline">${high.length ? 'Every region at or above its minimum.' : 'Every region on target.'}</p>`
       : html`<p class="headline">${on} of ${regs.length} regions on target. Furthest short: ${worst.label}, ${r1(worst.got)} of ${r1(worst.lo)} sets.</p>`;
   const note =
-    (rs.old ? `Nothing logged in the last ${rs.n || REGION_WK_DEFAULT} weeks, so this shows ${rs.label}. ` : '') +
-    (rs.noFull ? 'No full week to average yet, so this is this week so far. ' : '') +
-    (rs.week && low.length ? 'The week is still going, so this fills in as you train.' : '');
+    (rs.old ? `Nothing logged in the last ${rs.n || REGION_WK_DEFAULT} weeks: showing ${rs.label}. ` : '') +
+    (rs.noFull ? 'No full week to average yet: this week so far. ' : '') +
+    (rs.week && low.length ? 'The week is still going: it fills in with each session.' : '');
   const chips = html`<div class="wkpick"><span class="small muted" id="wkpickL">Average of the last</span><div class="chips" role="group" aria-labelledby="wkpickL">${REGION_WKS.map(
     ([k, l]) =>
       html`<button class=${rs.n === k ? 'chip on' : 'chip '} data-act="regionWk" data-v=${String(k)} aria-pressed=${String(rs.n === k)}>${l}</button>`
@@ -1070,7 +1070,7 @@ function weakPoints(
           if (belowMin(plan[m], lo)) bits.push(`your routine plans ${r1(plan[m] || 0)}`);
           return html`<div class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${ML[m]}</b><div class="chips">${tags}</div></div><p class="small muted u-m2-0-0">${bits.join(' · ')}</p></div>`;
         })
-      : html`<p class="muted u-m0">${nS ? 'Nothing flagged.' : 'Flags start once you have logged a few sessions.'}</p>`
+      : html`<p class="muted u-m0">${nS ? 'Nothing flagged.' : 'Flags start after a few sessions.'}</p>`
   }</div>`;
   return { body, n: wp.length };
 }

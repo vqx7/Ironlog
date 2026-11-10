@@ -575,8 +575,8 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       confirmBox(
         'Replace the session in progress?',
         d.editingId
-          ? 'You are editing a saved session. Your edits will be lost.'
-          : 'You have an unsaved session open. Starting this one discards it.',
+          ? 'Editing a saved session. The edits will be lost.'
+          : 'An unsaved session is open. Starting this one discards it.',
         'Discard and start',
         go,
         true
@@ -650,8 +650,8 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       confirmBox(
         'Replace the session in progress?',
         state.draft.editingId
-          ? 'You are editing a saved session. Your edits will be lost.'
-          : 'You have an unsaved session open. Editing this one will discard it.',
+          ? 'Editing a saved session. The edits will be lost.'
+          : 'An unsaved session is open. Editing this one discards it.',
         'Discard and edit',
         go,
         true

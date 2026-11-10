@@ -289,7 +289,7 @@ export async function acctInit(): Promise<void> {
         kind: 'account',
         mode: 'sent',
         title: 'Email confirmed',
-        msg: 'You are signed in. Your log syncs to your account.'
+        msg: 'Signed in. Your log syncs to your account.'
       });
       cloudInit();
     } else openModal({ kind: 'account', mode: 'where', title: 'Email confirmed' });
@@ -669,7 +669,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const del = A.deleteAccount;
     confirmBox(
       'Delete your account?',
-      'Your account and the synced copy of your log are deleted for good. The copy on this phone stays; export a backup first if you want one elsewhere.',
+      'Your account and the synced copy of your log are deleted for good. The copy on this phone stays; export a backup first to keep one elsewhere.',
       'Delete account',
       async () => {
         toast('Deleting your account');

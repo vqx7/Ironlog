@@ -5868,7 +5868,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function hintOnce(t4, seen) {
     if (!t4) return "";
     const m3 = t4.match(
-      /^First time: pick a load you think you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/
+      /^First time: pick a load you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/
     );
     if (m3) {
       if (seen.has("first")) return `First time: a load you could lift about ${m3[1]} times; do ${m3[2]}.`;
@@ -7752,7 +7752,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         tgt: null,
         kin: kin.ex.id
       };
-    const text = ex.assist ? `First time: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.` : ex.bw ? `First time: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.` : `First time: pick a load you think you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
+    const text = ex.assist ? `First time: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.` : ex.bw ? `First time: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.` : `First time: pick a load you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
     return { w: w0, text, lastR: [], last: "", target: "", tgt: null };
   }
   function sgEasyIn(M3, C2) {
@@ -8648,7 +8648,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       !hasTargetIn(M3, x2.m) ? `${name}: ${r1(x2.r7)} hard sets in the last 7 days, counting this session (tracked only, no target).` : `${name}: ${r1(x2.r7)} of ${lo}-${hi} hard sets in the last 7 days, counting this session${x2.def > 0 ? `, ${r1(x2.def)} short of target` : ", at or above target"}.`
     );
     out.push(
-      x2.rec.days == null ? lastAnyHardIn(M3, x2.m) == null ? `Not trained hard in the last ${RECOVERY.window / WEEK_DAYS} weeks.` : `Last trained hard ${agoTxt(lastAnyHardIn(M3, x2.m) ?? 0)}, recovered.` : x2.rec.r < 1 ? `Last trained hard ${agoTxt(x2.rec.days)} (${r1(x2.rec.sets)} sets), so it may still be recovering.` : `Last trained hard ${agoTxt(x2.rec.days)}, recovered.`
+      x2.rec.days == null ? lastAnyHardIn(M3, x2.m) == null ? `Not trained hard in the last ${RECOVERY.window / WEEK_DAYS} weeks.` : `Last trained hard ${agoTxt(lastAnyHardIn(M3, x2.m) ?? 0)}, recovered.` : x2.rec.r < 1 ? `Last trained hard ${agoTxt(x2.rec.days)} (${r1(x2.rec.sets)} sets), may still be recovering.` : `Last trained hard ${agoTxt(x2.rec.days)}, recovered.`
     );
     if (x2.inSess > 0)
       out.push(
@@ -8656,9 +8656,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       );
     if (x2.n) {
       const p3 = x2.st && x2.st.pct != null ? `, ${x2.st.pct >= 0 ? "+" : ""}${r1(x2.st.pct)}% over ${x2.st.spanW || TREND_WEEKS_SAID} weeks` : "";
-      out.push(
-        `You have logged it ${x2.n} time${x2.n === 1 ? "" : "s"}${p3}${x2.st && x2.st.stalled ? ", stalled lately" : ""}.`
-      );
+      out.push(`Logged ${x2.n} time${x2.n === 1 ? "" : "s"}${p3}${x2.st && x2.st.stalled ? ", stalled lately" : ""}.`);
     } else out.push("New to you: the first session sets its baseline.");
     if (LONG_IDS.has(x2.e.id))
       out.push(
@@ -8668,7 +8666,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     else if ((profIn(M3).focus || []).some((f3) => f3 === x2.m)) out.push("One of your focus muscles.");
     if (x2.sp)
       out.push(
-        x2.sp === "stalled" ? `Strength focus: stalled lately, and ${STR_REST} days or more since you did it.` : `Strength focus: within ${Math.round((1 - STR_NEAR) * PERCENT)}% of your best, and ${STR_REST} days or more since you did it.`
+        x2.sp === "stalled" ? `Strength focus: stalled lately, and ${STR_REST} days or more since last done.` : `Strength focus: within ${Math.round((1 - STR_NEAR) * PERCENT)}% of your best, and ${STR_REST} days or more since last done.`
       );
     return out;
   }
@@ -9558,7 +9556,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           bestW = p3.w;
         }
     if (best > 0 && load2 > Math.max(best, top) * ODD_BEST + EPS)
-      return `${say(w2)} is more than twice the heaviest you have logged on this exercise, ${say(bestW)}.`;
+      return `${say(w2)} is more than twice the heaviest logged on this exercise, ${say(bestW)}.`;
     if (ex.bw && w2 > 0) {
       const kg2 = bwAtIn(M3, date);
       if (kg2 != null && kg2 > 0 && w2 >= kg2 * ODD_ADDED_BW - EPS)
@@ -9569,7 +9567,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         if (i5 !== si && x2.done && isWork(x2) && !x2.drop && x2.w != null) most = Math.max(most, x2.w);
       });
       if (most > 0 && w2 > most * ODD_ADDED_BEST + EPS)
-        return `${say(w2)} is more than ${timesWord(ODD_ADDED_BEST)} the most you have added on this exercise, ${say(most)}.`;
+        return `${say(w2)} is more than ${timesWord(ODD_ADDED_BEST)} the most added on this exercise, ${say(most)}.`;
     }
     return under;
   }
@@ -12979,14 +12977,14 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!id) return;
     saidThisVisit = true;
     toast(
-      `${EX(id).name} counts your bodyweight, plus any weight you add. Set it on Today or in Settings; it is optional.`,
+      `${EX(id).name} counts your bodyweight, plus any weight you add. Set it on Today or in Settings (optional).`,
       null,
       NUDGE_MS
     );
   }
   function bwWarn(exId) {
     if (!bwMissing(exId)) return A;
-    return b`<p class="small bwwarn">No bodyweight set, so this counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId}>Set it</button></p>`;
+    return b`<p class="small bwwarn">No bodyweight set: counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId}>Add bodyweight</button></p>`;
   }
   var latestBw = () => state.bodyweights.filter((b2) => !b2.demo).sort((a2, b2) => a2.date < b2.date ? 1 : -1)[0];
   function bwSheet(m3) {
@@ -16138,7 +16136,7 @@ ${u4 !== U() ? b`<p class="small u-m0">Suggestions show in ${U()}, on the ${u4} 
     )}<input type="text" inputmode="decimal" data-gym="db.fine" aria-labelledby="lt-dbFine" .value=${fieldValue(v3("fine"))} placeholder=${String(DB_EXAMPLE[u4].fine)} /></label>
 <label class="field">Up to<input type="text" inputmode="decimal" data-gym="db.fineTo" .value=${fieldValue(v3("fineTo"))} placeholder=${String(DB_EXAMPLE[u4].fineTo)}/></label>
 </div>
-<p class=${half ? "small u-m6-0-0" : "small muted u-m6-0-0"} id="gymDbList">${half ? "Add From, To, and Step to use these." : L2 ? `${L2.length} pairs: ${listTxt(L2)} ${u4}${pair2 ? ". Add both smaller-step fields to use them." : ""}` : "Not set: dumbbell steps are read from what you log."}</p>
+<p class=${half ? "small u-m6-0-0" : "small muted u-m6-0-0"} id="gymDbList">${half ? "Add From, To, and Step to use these." : L2 ? `${L2.length} pairs: ${listTxt(L2)} ${u4}${pair2 ? ". Add both smaller-step fields to use them." : ""}` : "Not set: dumbbell steps come from your log."}</p>
 </div>
 <label class="field">${labelTip("lt-kb", `Kettlebells (${u4})`, "The weights you have, any order, separated by commas.")}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g2 && g2.kb ? g2.kb.map(fmtG).join(", ") : "")} placeholder=${lb ? "18, 26, 35, 44, 53" : "8, 12, 16, 20, 24"}/></label> <label class="field">${labelTip(
       "lt-stack",
@@ -16292,7 +16290,7 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
     const when = ago == null ? "not yet" : ago < 1 ? "just now" : ago < HOUR_MIN ? `${ago} min ago` : ago < DAY_MIN ? `${Math.round(ago / HOUR_MIN)} h ago` : fmtDate(iso(new Date(cloud.last ?? 0)));
     const st = cloud.status === "synced" ? b`<span class="tag green">Synced</span>` : cloud.status === "offline" ? b`<span class="tag yellow">Waiting to sync</span>` : b`<span class="tag blue">Syncing</span>`;
     return b`<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
-<p class="small hastip u-m6-0-0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last ${UNDO_DAYS} days.`}>${cloud.status !== "synced" ? "Saved on this device. It reaches your account when you are back online." : window.claude ? "Saved to your Claude account and this device." : "Saved to your account and this device."}${cloud.err ? b` <b class="u-cred">${cloud.err}</b>` : A}</p>
+<p class="small hastip u-m6-0-0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last ${UNDO_DAYS} days.`}>${cloud.status !== "synced" ? "Saved on this device. It reaches your account once back online." : window.claude ? "Saved to your Claude account and this device." : "Saved to your account and this device."}${cloud.err ? b` <b class="u-cred">${cloud.err}</b>` : A}</p>
 `;
   }
   function noteLine(id, label, words, full, more, about) {
@@ -16799,11 +16797,11 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       const kept = k2 === "focus" && !!np && (np.focus || []).includes(raw) && !!fm && !moved[fm];
       if (kept)
         toast(
-          `Your ${ML[raw]} target is one you set, so it stays. Default targets in Weekly set targets puts the app's back.`,
+          `Your ${ML[raw]} target is your own and stays. Default targets in Weekly set targets puts the app's back.`,
           n3 > 0,
           KEPT_TOAST_MS
         );
-      else if (n3) toast(`Weekly targets moved for ${n3} muscle${n3 === 1 ? "" : "s"}. Ones you typed stay.`, true);
+      else if (n3) toast(`Weekly targets moved for ${n3} muscle${n3 === 1 ? "" : "s"}. Typed ones stay.`, true);
     },
     profApply() {
       const R2 = activeRoutine();
@@ -16902,7 +16900,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     unreadForget() {
       confirmBox(
         "Forget the save kept aside?",
-        "It is deleted for good. Export or copy it first if you might want it.",
+        "It is deleted for good. Export or copy it first to keep a copy.",
         "Forget it",
         () => {
           unreadableForget();
@@ -16940,7 +16938,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       if (!parkSettle()) return;
       confirmBox(
         "Erase everything?",
-        `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? " on this device and in your cloud copy" : " on this device"}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first if you might want it.`,
+        `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? " on this device and in your cloud copy" : " on this device"}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first to keep a copy.`,
         "Erase everything",
         () => {
           act(
@@ -18082,7 +18080,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     if (!IDX().sessVol.length) return "";
     const tn = tonnageNow();
     const cmp = `. By this point last week: ${fmtBig(tn.prev)} ${U()}`;
-    return b`<p class="headline">${tn.now ? `${fmtBig(tn.now)} ${U()} lifted this week so far` : "Nothing lifted yet this week"}${cmp}. Last week finished at ${fmtBig(tn.prevFull)} ${U()}. ${tipButton("Weight lifted is load times reps. It drops when the load goes up and reps come down, which is progress, so it is not a measure of progress on its own.", "About weight lifted")}</p>`;
+    return b`<p class="headline">${tn.now ? `${fmtBig(tn.now)} ${U()} lifted this week so far` : "Nothing lifted yet this week"}${cmp}. Last week finished at ${fmtBig(tn.prevFull)} ${U()}. ${tipButton("Weight lifted is load times reps. It drops when the load goes up and reps come down, which is progress: on its own it is not a measure of progress.", "About weight lifted")}</p>`;
   }
   function extraKpis() {
     const sd = sessionLength();
@@ -18133,7 +18131,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     const on = regs.length - low.length - plan.length;
     const worst = [...low].sort((a2, b2) => a2.pct - b2.pct)[0];
     const rh = rs.week ? b`<p class="headline">This week so far: ${on} of ${regs.length} regions at their minimum.</p>` : !worst ? plan.length ? b`<p class="headline">Every region on plan.</p>` : b`<p class="headline">${high.length ? "Every region at or above its minimum." : "Every region on target."}</p>` : b`<p class="headline">${on} of ${regs.length} regions on target. Furthest short: ${worst.label}, ${r1(worst.got)} of ${r1(worst.lo)} sets.</p>`;
-    const note = (rs.old ? `Nothing logged in the last ${rs.n || REGION_WK_DEFAULT} weeks, so this shows ${rs.label}. ` : "") + (rs.noFull ? "No full week to average yet, so this is this week so far. " : "") + (rs.week && low.length ? "The week is still going, so this fills in as you train." : "");
+    const note = (rs.old ? `Nothing logged in the last ${rs.n || REGION_WK_DEFAULT} weeks: showing ${rs.label}. ` : "") + (rs.noFull ? "No full week to average yet: this week so far. " : "") + (rs.week && low.length ? "The week is still going: it fills in with each session." : "");
     const chips = b`<div class="wkpick"><span class="small muted" id="wkpickL">Average of the last</span><div class="chips" role="group" aria-labelledby="wkpickL">${REGION_WKS.map(
       ([k2, l4]) => b`<button class=${rs.n === k2 ? "chip on" : "chip "} data-act="regionWk" data-v=${String(k2)} aria-pressed=${String(rs.n === k2)}>${l4}</button>`
     )}</div></div>`;
@@ -18457,7 +18455,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const bits = avg ? [`${hs(avg[m3] || 0)} a week on average, target ${lo}-${hi}`, `this week ${r1(thisWeek[m3] || 0)}`] : [`this week ${hs(thisWeek[m3] || 0)} of ${lo}-${hi}`];
       if (belowMin(plan[m3], lo)) bits.push(`your routine plans ${r1(plan[m3] || 0)}`);
       return b`<div class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${ML[m3]}</b><div class="chips">${tags}</div></div><p class="small muted u-m2-0-0">${bits.join(" · ")}</p></div>`;
-    }) : b`<p class="muted u-m0">${nS ? "Nothing flagged." : "Flags start once you have logged a few sessions."}</p>`}</div>`;
+    }) : b`<p class="muted u-m0">${nS ? "Nothing flagged." : "Flags start after a few sessions."}</p>`}</div>`;
     return { body, n: wp.length };
   }
   function stallsBody(stalled) {
@@ -19771,7 +19769,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
   function welcomeCard() {
     if (state.settings.onboarded || !cloudChecked || state.draft || state.sessions.some((s3) => !s3.demo)) return A;
     if (state.sessions.some((s3) => s3.demo))
-      return b`<div class="card welcome" id="demoNote"><p class="small u-m0-0-8"><b>You are looking at demo data.</b> ${DEMO_WEEKS} weeks of generated sessions to look around; none of it is yours.</p><button class="btn sm primary" data-act="demoStart">Clear demo and set up</button></div>`;
+      return b`<div class="card welcome" id="demoNote"><p class="small u-m0-0-8"><b>This is demo data.</b> ${DEMO_WEEKS} weeks of generated sessions to look around; none of it is yours.</p><button class="btn sm primary" data-act="demoStart">Clear demo and set up</button></div>`;
     return A;
   }
   function acctBar() {
@@ -19896,7 +19894,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     else if (cs && chosen == null) {
       if (cs.lastDate === t4) note = `${dayLabel(R2, cs.last)} done today.`;
       else if (cs.restToday)
-        note = b`<b>Scheduled rest today</b> (${dayLabel(R2, cs.restIdx)} of your cycle). ${(R2.days[cs.next] || { name: "" }).name} is ready whenever you want it.`;
+        note = b`<b>Scheduled rest today</b> (${dayLabel(R2, cs.restIdx)} of your cycle). ${(R2.days[cs.next] || { name: "" }).name} is ready any time.`;
     } else if (weekly && chosen == null && state.sessions.some((x2) => x2.date === t4 && x2.routineId === R2.id && sessDayIdx(R2, x2) === wd && partOf(x2) === part))
       note = `${day.name || dayLabel(R2, wd)} done today.`;
     const playable = !day.rest && day.items.length > 0;
@@ -21085,7 +21083,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
 
   // src/app/report.ts
   var NO_ANSWER = "No answer. Check your connection and try again.";
-  var LIMIT_SAID = `You have sent ${FB_DAY} reports today. Try again tomorrow.`;
+  var LIMIT_SAID = `${FB_DAY} reports sent today. Try again tomorrow.`;
   var CTX = { device: 300, errors: 10, words: 100 };
   var DAY_MS2 = 864e5;
   var SHOT = { sides: [1280, 960, 720], q0: 0.72, qStep: 0.14, qMin: 0.3, chars: 5e5 };
@@ -21694,7 +21692,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           kind: "account",
           mode: "sent",
           title: "Email confirmed",
-          msg: "You are signed in. Your log syncs to your account."
+          msg: "Signed in. Your log syncs to your account."
         });
         cloudInit();
       } else openModal({ kind: "account", mode: "where", title: "Email confirmed" });
@@ -22025,7 +22023,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const del = A2.deleteAccount;
       confirmBox(
         "Delete your account?",
-        "Your account and the synced copy of your log are deleted for good. The copy on this phone stays; export a backup first if you want one elsewhere.",
+        "Your account and the synced copy of your log are deleted for good. The copy on this phone stays; export a backup first to keep one elsewhere.",
         "Delete account",
         async () => {
           toast("Deleting your account");
@@ -22757,7 +22755,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       toast("No readable sessions in that backup");
       return;
     }
-    const body = `This backup has ${clean.sessions.length} session${clean.sessions.length === 1 ? "" : "s"} and ${clean.routines.length} routine${clean.routines.length === 1 ? "" : "s"}.` + (dropped ? ` ${dropped} damaged record${dropped === 1 ? " was" : "s were"} skipped.` : "") + " It will replace everything currently in the app. You can step this back with Undo.";
+    const body = `This backup has ${clean.sessions.length} session${clean.sessions.length === 1 ? "" : "s"} and ${clean.routines.length} routine${clean.routines.length === 1 ? "" : "s"}.` + (dropped ? ` ${dropped} damaged record${dropped === 1 ? " was" : "s were"} skipped.` : "") + " It replaces everything in the app. Undo can step it back.";
     confirmBox(
       "Replace all data?",
       body,
@@ -23378,7 +23376,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     }
     confirmBox(
       "Did the file download?",
-      `Look for ${filename}. If nothing appeared, this browser blocked the download and you should copy the text instead.`,
+      `Look for ${filename}. If nothing appeared, the browser blocked the download. Copy the text instead.`,
       "Yes, I have the file",
       () => {
         if (onSaved) onSaved();
@@ -23540,7 +23538,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     photoDel() {
       confirmBox(
         "Remove your profile photo?",
-        "It goes from your account and every phone you sign in on. You can add a new one any time.",
+        "It goes from your account and every phone signed in to it. Add a new one any time.",
         "Remove",
         () => {
           photoRemove();
@@ -24907,7 +24905,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       } else if (d3 && (d3.editingId || draftEntered(d3)))
         confirmBox(
           "Replace the session in progress?",
-          d3.editingId ? "You are editing a saved session. Your edits will be lost." : "You have an unsaved session open. Starting this one discards it.",
+          d3.editingId ? "Editing a saved session. The edits will be lost." : "An unsaved session is open. Starting this one discards it.",
           "Discard and start",
           go,
           true
@@ -24979,7 +24977,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       } else if (state.draft)
         confirmBox(
           "Replace the session in progress?",
-          state.draft.editingId ? "You are editing a saved session. Your edits will be lost." : "You have an unsaved session open. Editing this one will discard it.",
+          state.draft.editingId ? "Editing a saved session. The edits will be lost." : "An unsaved session is open. Editing this one discards it.",
           "Discard and edit",
           go,
           true
@@ -27580,13 +27578,13 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (!best)
       lead = b`<p class="small">Your routine has no exercises yet. Start a freestyle session and use Pick for me there.</p>`;
     else if (best.ready < READY.rest)
-      lead = b`<p class="callout yellow u-m0">Everything left works muscles still recovering. Rest, or do easy cardio. If you train anyway, the first option is the freshest.</p>`;
+      lead = b`<p class="callout yellow u-m0">Everything left works muscles still recovering. Rest, or do easy cardio. To train anyway, the first option is the freshest.</p>`;
     else if (best.plan) lead = b`<p class="small u-m0">Stick with the plan: it is also the best fit for today.</p>`;
     else if (plan)
       lead = b`<p class="small u-m0">${best.day.name} fits today better than ${plan.day.name}, next in your plan: ${plan.ready < 1 ? `${plan.day.name} leans on muscles that may still be recovering.` : "it trains what is furthest behind this week."} ${tipButton("Starting it moves your cycle on from there, the same as choosing it under Change day.", "About the cycle")}</p>`;
     const sameDay = sessionsOn(today()).length > 0;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3>${closeX()}</div>
-    ${lead}${sameDay ? b`<p class="small muted u-m8-0-0">Includes the session you logged today.</p>` : ""}${rk.deload ? b`<p class="small muted u-m8-0-0">Deload week: counted at half the sets.</p>` : ""}
+    ${lead}${sameDay ? b`<p class="small muted u-m8-0-0">Includes the session logged today.</p>` : ""}${rk.deload ? b`<p class="small muted u-m8-0-0">Deload week: counted at half the sets.</p>` : ""}
     ${top.map(
       (x2, k2) => b`<div class=${"pcard" + (k2 === 0 ? " best" : "")}><div class="row spread"><b>${dayLabel(rk.R, x2.i)}: ${x2.day.name}</b>${k2 === 0 ? b`<span class="tag green">Best fit</span>` : ""}</div>
       <ul>${dayReasons(x2, rk.r7).map((r4) => b`<li>${r4}</li>`)}</ul>
@@ -27634,7 +27632,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (!d3) return null;
     const left = remainMin(d3);
     const pl = m3.mins ? shortPlan(d3, m3.mins) : null;
-    const body = !left ? b`<p class="small">Nothing is left to trim: every planned set is done.</p>` : !pl ? "" : pl.changes.length ? b`<ul class="short-list">${pl.changes.map((c4) => b`<li>${c4}</li>`)}</ul><p class="small muted u-m6-0-0">${estMin(min5(pl.est))} after the change.${pl.over ? " Still over, because sets you typed in are kept." : ""} Done sets are never touched.</p>` : pl.over ? b`<p class="small">Nothing can come off: every set left has something you typed in it, and Short on time only takes sets you haven't touched. ${estMin(min5(pl.est))} left.</p>` : b`<p class="small">Everything left fits in ${m3.mins} minutes as planned.</p>`;
+    const body = !left ? b`<p class="small">Nothing is left to trim: every planned set is done.</p>` : !pl ? "" : pl.changes.length ? b`<ul class="short-list">${pl.changes.map((c4) => b`<li>${c4}</li>`)}</ul><p class="small muted u-m6-0-0">${estMin(min5(pl.est))} after the change.${pl.over ? " Still over: typed sets are kept." : ""} Done sets are never touched.</p>` : pl.over ? b`<p class="small">Nothing can come off: every set left has something you typed in it, and Short on time only takes sets you haven't touched. ${estMin(min5(pl.est))} left.</p>` : b`<p class="small">Everything left fits in ${m3.mins} minutes as planned.</p>`;
     const trims = !!pl && pl.changes.length > 0;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Short on time</h3>${closeX()}</div>
     ${left ? b`<p class="small muted u-m0-0-8">How long do you have? Planned: ${estMin(min5(left))}.</p>

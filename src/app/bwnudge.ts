@@ -10,7 +10,7 @@
        or comes in a ready-made routine picked, once a visit, never blocking;
      - a quiet line on the first bodyweight lift still open in a session
        (on each one until r69, when V found it a wall of text), until one
-       is logged, whose Set it opens a small sheet;
+       is logged, whose Add bodyweight opens a small sheet;
      - a field in Settings, always there, beside the weigh-in reminder.
    A weigh-in saved here is the same weigh-in as Today's. */
 
@@ -42,7 +42,7 @@ export function bwNudge(exIds: readonly string[]): void {
   if (!id) return;
   saidThisVisit = true;
   toast(
-    `${EX(id).name} counts your bodyweight, plus any weight you add. Set it on Today or in Settings; it is optional.`,
+    `${EX(id).name} counts your bodyweight, plus any weight you add. Set it on Today or in Settings (optional).`,
     null,
     NUDGE_MS
   );
@@ -51,7 +51,7 @@ export function bwNudge(exIds: readonly string[]): void {
 /** The line on a session's first bodyweight lift still open while no weigh-in is logged: what it counts, and a way to set it. */
 export function bwWarn(exId: string): TemplateResult | typeof nothing {
   if (!bwMissing(exId)) return nothing;
-  return html`<p class="small bwwarn">No bodyweight set, so this counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId}>Set it</button></p>`;
+  return html`<p class="small bwwarn">No bodyweight set: counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId}>Add bodyweight</button></p>`;
 }
 
 /** The latest weigh-in the lifter logged, if any. */

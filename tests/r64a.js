@@ -272,7 +272,7 @@ const TODAY = '2026-10-26';
     const b20 = await tick(20, 8);
     await log(loaded, { routine: R, bw });
     const b25 = await tick(25, 8);
-    ok(!b20.asked && b20.done && b25.asked && /more than twice the most you have added/.test(b25.body || ''), 'P-S2-3. the most added before 10 lb: BW+20 logged, BW+25 asked', { b20, b25 });
+    ok(!b20.asked && b20.done && b25.asked && /more than twice the most added on this exercise/.test(b25.body || ''), 'P-S2-3. the most added before 10 lb: BW+20 logged, BW+25 asked', { b20, b25 });
   }
 
   if (P.errors.length) ok(false, 'no page errors', P.errors);

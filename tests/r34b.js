@@ -117,7 +117,7 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     // 1o. Small helpers: the plan's effort in RPE mode, a hint said once, a start time.
     const hp = await ev(() => {
       const L = window.__ironlog; const s = L.state; s.settings.rirScale = 'rpe'; const a = L.effTgt(1); delete s.settings.rirScale; const b = L.effTgt(1);
-      const full = "First time: pick a load you think you could lift about 12 times, erring light. Do 6 to 10 reps, stopping with about 2 still in you. Next time's load is worked out from this.";
+      const full = "First time: pick a load you could lift about 12 times, erring light. Do 6 to 10 reps, stopping with about 2 still in you. Next time's load is worked out from this.";
       const seen = new Set(); const h1 = L.hintOnce(full, seen); const h2 = L.hintOnce(full, seen);
       return { a, b, h1, h2, tm: L.sessTm({ t: new Date(2026, 9, 9, 18, 0).getTime() }), tm0: L.sessTm({}) };
     });

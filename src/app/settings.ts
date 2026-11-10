@@ -371,7 +371,7 @@ ${
       ? 'Add From, To, and Step to use these.'
       : L
         ? `${L.length} pairs: ${listTxt(L)} ${u}${pair ? '. Add both smaller-step fields to use them.' : ''}`
-        : 'Not set: dumbbell steps are read from what you log.'
+        : 'Not set: dumbbell steps come from your log.'
   }</p>
 </div>
 <label class="field">${labelTip('lt-kb', `Kettlebells (${u})`, 'The weights you have, any order, separated by commas.')}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g && g.kb ? g.kb.map(fmtG).join(', ') : '')} placeholder=${lb ? '18, 26, 35, 44, 53' : '8, 12, 16, 20, 24'}/></label> <label class="field">${labelTip(
@@ -600,7 +600,7 @@ function syncInfo(): TemplateResult {
   return html`<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
 <p class="small hastip u-m6-0-0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last ${UNDO_DAYS} days.`}>${
     cloud.status !== 'synced'
-      ? 'Saved on this device. It reaches your account when you are back online.'
+      ? 'Saved on this device. It reaches your account once back online.'
       : window.claude
         ? 'Saved to your Claude account and this device.'
         : 'Saved to your account and this device.'
@@ -1228,11 +1228,11 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const kept = k === 'focus' && !!np && (np.focus || []).includes(raw) && !!fm && !moved[fm];
     if (kept)
       toast(
-        `Your ${ML[raw]} target is one you set, so it stays. Default targets in Weekly set targets puts the app's back.`,
+        `Your ${ML[raw]} target is your own and stays. Default targets in Weekly set targets puts the app's back.`,
         n > 0,
         KEPT_TOAST_MS
       );
-    else if (n) toast(`Weekly targets moved for ${n} muscle${n === 1 ? '' : 's'}. Ones you typed stay.`, true);
+    else if (n) toast(`Weekly targets moved for ${n} muscle${n === 1 ? '' : 's'}. Typed ones stay.`, true);
   },
   profApply() {
     const R = activeRoutine();
@@ -1332,7 +1332,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   unreadForget() {
     confirmBox(
       'Forget the save kept aside?',
-      'It is deleted for good. Export or copy it first if you might want it.',
+      'It is deleted for good. Export or copy it first to keep a copy.',
       'Forget it',
       () => {
         unreadableForget();
@@ -1370,7 +1370,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!parkSettle()) return;
     confirmBox(
       'Erase everything?',
-      `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? ' on this device and in your cloud copy' : ' on this device'}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first if you might want it.`,
+      `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? ' on this device and in your cloud copy' : ' on this device'}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first to keep a copy.`,
       'Erase everything',
       () => {
         act(

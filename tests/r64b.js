@@ -262,7 +262,7 @@ const MENU = () => { const el = document.getElementById('saveState'); return el 
     await D.openData();
     const panel = await D.text('#acctPanel'), info = await D.text('#syncInfo');
     const v = { user: await D.user(), menu, panel, info };
-    ok(v.user === 'away@example.com' && menu === 'Offline, saved on this device' && /^Signed in as away@example\.com/.test(panel || '') && /Waiting to sync/.test(info || '') && /It reaches your account when you are back online\./.test(info || ''), 'it says it is signed in and waiting, in the words a signed-in phone uses offline (r63: "Saved on this phone only. Create an account")', v);
+    ok(v.user === 'away@example.com' && menu === 'Offline, saved on this device' && /^Signed in as away@example\.com/.test(panel || '') && /Waiting to sync/.test(info || '') && /It reaches your account once back online\./.test(info || ''), 'it says it is signed in and waiting, in the words a signed-in phone uses offline (r63: "Saved on this phone only. Create an account")', v);
     ok(await D.has('sE1'), 'the log stays on the phone');
     await D.log('sE2');
     await D.ctx.setOffline(false); D.st.offline = false;

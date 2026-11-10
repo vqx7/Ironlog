@@ -39,7 +39,7 @@ import type { Tap } from './workstate';
 export const NO_ANSWER = 'No answer. Check your connection and try again.';
 
 /** What a report past the day's limit is told, whether this phone or the database counted it (r65, the r63 audit's A-9: the account script said its own 5). */
-const LIMIT_SAID = `You have sent ${FB_DAY} reports today. Try again tomorrow.`;
+const LIMIT_SAID = `${FB_DAY} reports sent today. Try again tomorrow.`;
 
 /** What a report says of the device and the log, at most: the browser's own name, the errors kept, and an error's words once the context is too large. */
 const CTX = { device: 300, errors: 10, words: 100 } as const;

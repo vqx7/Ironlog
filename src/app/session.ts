@@ -536,7 +536,7 @@ const HINT_ONCE: readonly string[] = [
 export function hintOnce(t: string | null | undefined, seen: Set<string>): string {
   if (!t) return '';
   const m = t.match(
-    /^First time: pick a load you think you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/
+    /^First time: pick a load you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/
   );
   if (m) {
     if (seen.has('first')) return `First time: a load you could lift about ${m[1]} times; do ${m[2]}.`;
