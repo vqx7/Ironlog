@@ -2,7 +2,7 @@
    design): Today with a workout open, drawn by lit-html as src/21-pick-session.js
    drew it (viewLogger): the sets, the grey reps, the effort strip, minus and
    plus, the folds, the check-in and the cardio cards. Its taps are worktaps.ts
-   and its fields workfields.ts (CL-1); what a set and a tick change is
+   and its fields workfields.ts; what a set and a tick change is
    worksets.ts. Every change to the session in progress goes through `act`,
    which leaves the caches for a change to the session alone (nothing they hold
    is read from it). The screen is drawn again after each change and lit-html
@@ -71,7 +71,7 @@ import { LIMITS } from './records';
 import { PICK_DAYS } from './analytics';
 import { closeX } from './sheetsmisc';
 
-/** What the New machine tag on an exercise says, tapped (r61). */
+/** What the New machine tag on an exercise says, tapped. */
 const NEW_TIP =
   'A new machine or gym: its targets, trend, stalls, PRs and bests start over from this session. Earlier sessions stay in History. Take it off in the ⋯ menu.';
 /** The gap above the cardio buttons when there are entries, in pixels. */
@@ -157,7 +157,7 @@ function sideTip(ex: ExerciseLike): string | null {
     : 'Reps per side: reps for one side; do the same on the other. One set still counts as one set.';
 }
 
-// Effort as the lifter reads it: RIR, or RPE when effort is entered as RPE. Same load, more reps: said as reps (r35).
+// Effort as the lifter reads it: RIR, or RPE when effort is entered as RPE. Same load, more reps: said as reps.
 function adjLine(b: DraftBlock, bi: number): Part {
   const a = b.adj;
   if (!a || !b.sets.some((x, i) => i > a.at && !x.done && !x.warm && !x.drop)) return '';
@@ -171,7 +171,7 @@ function adjLine(b: DraftBlock, bi: number): Part {
 /* ---------- the screen ---------- */
 
 /* RIR used to be a free-text field, then a native picker; it is picked from a
-   strip of 0 to 5 under the set (r30): the cell shows the value, a tap on it
+   strip of 0 to 5 under the set: the cell shows the value, a tap on it
    opens the strip, and ticking a set with no RIR opens it by itself when
    asked for in Settings > Effort. Whole RIR is one row of 0 to 5. Half points
    and RPE are a grid under the label: whole numbers on top, each half between
@@ -219,7 +219,7 @@ function rirStrip(bi: number, si: number, cur: string): TemplateResult {
    a fold until r69, when it moved behind the Check-in button beside the date
    (V, 2026-11-03: the top of the session was text before the first
    exercise); answered the same way and saved on the session the same way.
-   What it offers (r30) stays at the top of the session, with the two changes
+   What it offers stays at the top of the session, with the two changes
    that answer it: two or more low answers, a lighter session first; one, a
    note to keep a rep more in reserve. Already made lighter: said instead of
    offered again. */
@@ -306,7 +306,7 @@ export function bgrip(bi: number, name: string): TemplateResult {
   return html`<span class="bgrip" role="button" tabindex="0" data-b=${bi} aria-label=${`Move ${name}: drag, or use the arrow keys`} title="Drag to move">⠿</span>`;
 }
 
-// Last time's set beside this row (r44): "100×8" with a break allowed before the ×, as the column is narrow.
+// Last time's set beside this row: "100×8" with a break allowed before the ×, as the column is narrow.
 function lastText(lt: string): Part {
   const k = lt.indexOf('×');
   return k < 0 ? lt : html`${lt.slice(0, k)}<wbr>${lt.slice(k)}`;
@@ -330,7 +330,7 @@ function setRow(
   // Last time's set for this row, beside this time's (r44, V): working sets only, by their order.
   const lt = s.warm || s.drop ? '' : lastCell(b, wn - 1, dupB);
   const gw = s.w == null ? greyW(b, si) : null;
-  /* A drop set sits under the set it drops from (r66, 375): set in, marked ↳
+  /* A drop set sits under the set it drops from: set in, marked ↳
      and named in the Last column, where it has no set of its own last time. */
   return html`<div class=${`sg${nr ? ' norir' : ''} ${s.done ? 'done' : ''}${pr ? ' pr' : ''}${s.drop ? ' sgdrop' : ''}`} data-pr=${pr || nothing}><button class=${'n wbtn' + (s.drop ? ' drop' : s.warm ? ' warm' : '')} aria-label=${`Set ${si + 1} type: ${s.warm ? 'warm-up' : s.drop ? 'drop set' : 'working set'}. Tap to change`} data-act="sWarm" data-b=${bi} data-s=${si}>${s.drop ? '↳' : s.warm ? 'W' : wn}</button><span class="ls" aria-label=${lt ? 'Last time ' + lt : s.drop ? 'Drop set' : 'No set last time'}>${lt ? lastText(lt) : s.drop ? 'Drop' : '–'}</span>
         <input type="text" inputmode="decimal" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} load`} data-f="w" data-b=${bi} data-s=${si} class=${needHere(bi, si) ? 'need' : nothing} .value=${fieldValue(loadIn(ex, s.w))} placeholder=${gw != null ? loadIn(ex, gw) : emptyLoad(ex)}>
@@ -344,7 +344,7 @@ function setRow(
    tick moves nothing above them, and change the set you are on (stepAt, NEW-100), which the strip names, on the lift
    you are on only (liftsOn, NEW-98), not under every lift. Drawn as two accent pills side by side, each with the number
    it changes (V, 2026-11-09, after the Stitch drafts' steppers: the whole pill in the one accent, ends included),
-   compact beside the set's name (NEW-104). An assisted lift's field takes the help, so only its reps step. Not in an
+   compact beside the set's name. An assisted lift's field takes the help, so only its reps step. Not in an
    edit, where every set is done. */
 function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part {
   const si = stepAt(b, bi);

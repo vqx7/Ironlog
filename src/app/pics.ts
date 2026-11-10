@@ -1,10 +1,10 @@
-/* ---------- pictures on notes (r66, PENDING 373) ----------
+/* ---------- pictures on notes ----------
    A picture added to an exercise's note or the workout's notes lives on this
    phone only (V, 2026-11-01: "Phone only for now"): its bytes in IndexedDB,
    its id in the log (`pics` on the session and on each exercise), so a move,
    a swap, Finish and an edit from History carry it with no bookkeeping, Undo
    takes a picture off and puts it back, and a later release can sync the
-   bytes by the ids already saved (373 b). A phone that does not hold a
+   bytes by the ids already saved. A phone that does not hold a
    picture's bytes (another phone on the account, a backup restored) shows
    nothing for it.
 
@@ -181,7 +181,7 @@ async function decode(f: Blob): Promise<{ img: CanvasImageSource; w: number; h: 
   }
 }
 
-/* Every photo the app keeps, a note's picture or the profile photo (2.33),
+/* Every photo the app keeps, a note's picture or the profile photo,
    goes through this one redraw, so the refusals and the stripping of a
    photo's hidden data are the same for both. `square` crops the middle of
    the photo to a square first, as a profile photo is shown in a circle. */

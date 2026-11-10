@@ -40,7 +40,7 @@ export function prName(p: PrMark): string {
   return prOverall(p) ? 'Best estimate' : `Best for ${(p.bb != null && BAND_WORDS[p.bb]) || 'its reps'}`;
 }
 
-/* ---------- the PR scorer (r64, the r63 audit's A-6 and 339 o) ----------
+/* ---------- the PR scorer ----------
    One rule for the PR list (idxPRsIn, a session at a time over a lift's
    stretch) and the toast as a set is ticked (livePR in worksets.ts, the set
    alone against the lift's sessions before): until r64 the toast read its
@@ -61,7 +61,7 @@ interface PrSoFar {
   byBand: Record<number, number>;
   /** The best estimate so far in any band. */
   maxPb: number | null;
-  /** Every load logged so far, for prSameLoad (r54). */
+  /** Every load logged so far, for prSameLoad. */
   seen: Set<number>;
   /** Whether no session has been added yet: a lift's first session makes no PR. */
   none: boolean;
@@ -184,7 +184,7 @@ export function prJudge(
      same in any range, so they stay global. */
   const pb = (bandJ != null ? h.byBand[bandJ] : undefined) ?? h.maxPb;
   const e1PR = pbJ != null && pb != null && pbJ > pb + EPS_SAME;
-  /* A weight PR (r29): more weight than any earlier working set of the
+  /* A weight PR: more weight than any earlier working set of the
      lift, as logged (added load on a bodyweight lift, less help on an
      assisted one). It is also a rep PR by definition, so it used to show
      as one (V: "a new weight and rep PR in the same set marks it as a
@@ -265,7 +265,7 @@ export function prJudge(
    as a whole, a session named a best estimate from one set and counted it
    by another set's strength, so the recap said Best estimate where the
    toast had said Rep PR. Null when no set counts one: the session's own
-   judgement then names what it did (Heaviest yet), not counted (r72). */
+   judgement then names what it did (Heaviest yet), not counted. */
 function prCounted(ex: ExerciseLike, h: PrSoFar, x: Pick<Exposure, 'pts'>, noBody: boolean): PrMade | null {
   // The kinds, the smallest news first.
   const ORDER: readonly PrMade['type'][] = ['Rep PR', 'e1RM', 'Weight PR'];
@@ -285,7 +285,7 @@ function prCounted(ex: ExerciseLike, h: PrSoFar, x: Pick<Exposure, 'pts'>, noBod
 /* Step 4: one lift's PRs, in order, into prs (and each exposure's progress
    mark, which the stall test reads), each session judged against those
    before it in its stretch by the PR scorer above. Each PR keeps its session
-   (sid), so two sessions on one day never share one (r34.2). Returns the
+   (sid), so two sessions on one day never share one. Returns the
    lift's best estimate ever. */
 export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): number | null {
   const ex = EXIn(M, id);

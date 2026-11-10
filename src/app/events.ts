@@ -107,7 +107,7 @@ function editorSet(e: ExEdit, k: string, v: string | boolean): void {
     else if (k === 'assist') e.assist = v;
     return;
   }
-  // Within the fields' own limits whatever reaches them (2.28, 2.27-F3).
+  // Within the fields' own limits whatever reaches them.
   if (k === 'name') e.name = within(v, e.name || '', LIMITS.exName);
   else if (k === 'note') e.note = within(v, e.note || '', LIMITS.note);
   else if (k === 'primary') e.primary = v;
@@ -138,7 +138,7 @@ export function pageListeners(): void {
   setInterval(() => {
     if (document.visibilityState === 'visible' && !ui.modal && drawnBeforeToday()) rerenderKeepScroll();
   }, NEW_DAY_MS);
-  // Pictures another tab of the app kept (r66, 373): read when its change arrives or this page comes back to the front, and drawn if any are new.
+  // Pictures another tab of the app kept: read when its change arrives or this page comes back to the front, and drawn if any are new.
   const picsAgain = (): void => {
     picsRefresh().then(
       found => {
@@ -201,7 +201,7 @@ function onClick(e: MouseEvent): void {
 /** Enter in Type or dictate sets fills them; Enter or Space on a muscle-map group taps it. */
 function onActivateKey(e: KeyboardEvent): void {
   const el = e.target;
-  // Enter fills the sets in Type or dictate sets (r30), as the button does.
+  // Enter fills the sets in Type or dictate sets, as the button does.
   if (e.key === 'Enter' && el instanceof Element && el.id === 'qTxt') {
     e.preventDefault();
     run('qFill');
@@ -221,9 +221,9 @@ function onInput(e: Event): void {
   const m = ui.modal;
   if (m && FORM_SHEETS.has(m.kind) && t.closest('#modal')) m.dirty = true;
   if (t.id === 'incVal' && m && m.kind === 'inc') m.typed = true;
-  // The session screen's (r60): a set's load and reps, cardio, the name, the notes.
+  // The session screen's: a set's load and reps, cardio, the name, the notes.
   if (workoutInput(t)) return;
-  // Plan's fields (r58): an exercise's numbers, a day's name, the routine's name, the searches.
+  // Plan's fields: an exercise's numbers, a day's name, the routine's name, the searches.
   if (planInput(t)) return;
   if (t.dataset.band) {
     bandInput(t);
@@ -264,13 +264,13 @@ function onChange(e: Event): void {
   if (photoChange(t)) return;
   // A file to import or restore, and the import preview's choices (src/app/importflow.ts).
   if (importChange(t)) return;
-  // Plan's fields (r58): an exercise's numbers, a day's name and rest day, Move to.
+  // Plan's fields: an exercise's numbers, a day's name and rest day, Move to.
   if (planChange(t)) return;
   if (t.dataset.gym) {
     gymField(t);
     return;
   }
-  // Today's (r59): the Set up page's bodyweight.
+  // Today's: the Set up page's bodyweight.
   if (todayChange(t)) return;
   if (t.dataset.band) {
     bandChange(t);
@@ -299,7 +299,7 @@ function onChange(e: Event): void {
     renderModal();
     return;
   }
-  // The session screen's (r60): a set's reps and load, cardio, the date.
+  // The session screen's: a set's reps and load, cardio, the date.
   if (workoutChange(t)) return;
   const b = t.dataset.bind;
   if (!b) return;
@@ -336,9 +336,9 @@ function onKey(e: KeyboardEvent): void {
     run('addBW');
     return;
   }
-  // The session screen's (r60): Next through a set's fields, Escape on the effort strip, the arrows on an exercise's handle.
+  // The session screen's: Next through a set's fields, Escape on the effort strip, the arrows on an exercise's handle.
   if (workoutKey(e)) return;
-  // Escape closes a sheet as a tap outside it does: one with something typed in it stays (2.28, 2.27-F6).
+  // Escape closes a sheet as a tap outside it does: one with something typed in it stays.
   if (e.key === 'Escape' && ui.modal) {
     if (ui.modal.dirty) toast(DIRTY_SAID);
     else closeModal();

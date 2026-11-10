@@ -13,7 +13,7 @@ import type { DraftLike, BlkRef } from './session';
 import type { DraftSet, DraftBlock } from './types';
 /** What more than one module of the session screen changes between draws, read and written through W. */
 interface WorkState {
-  // A pending fold, the exercise drag and the timer for the blocks waiting to move up (r29, r45).
+  // A pending fold, the exercise drag and the timer for the blocks waiting to move up.
   foldT: ReturnType<typeof setTimeout> | null;
   blockDrag: boolean;
   orderT: ReturnType<typeof setTimeout> | null;
@@ -21,7 +21,7 @@ interface WorkState {
   lastAuto: { b: BlkRef | null; s: number; t: number } | null;
   pendAuto: { b: BlkRef | null; s: number } | null;
   oddOk: string | null;
-  /* The row whose tick waits for its weight (344) or whose load Finish asked
+  /* The row whose tick waits for its weight or whose load Finish asked
      for: its load field is marked until a load is typed into it or the screen
      is drawn afresh. */
   needAt: { b: BlkRef | null; s: number } | null;
@@ -29,9 +29,9 @@ interface WorkState {
   lastDown: { el: Element | null; t: number };
   // The effort strip open under a set (StripAt).
   stripAt: StripAt | null;
-  /** The lift you last ticked, typed in or stepped (NEW-98): minus and plus show on it while it has a set left (liftsOn). */
+  /** The lift you last ticked, typed in or stepped: minus and plus show on it while it has a set left (liftsOn). */
   onLift: BlkRef | null;
-  /** The set you are on (NEW-100): the one you last typed in, touched, stepped or unticked, which minus and plus change; null after a tick of yours, when they change the first set not ticked (stepAt). */
+  /** The set you are on: the one you last typed in, touched, stepped or unticked, which minus and plus change; null after a tick of yours, when they change the first set not ticked (stepAt). */
   onSet: SetRef | null;
   /* A block done this visit folds a moment after its last tick (FOLD_MS.tick,
      or FOLD_MS.effort once its effort is picked), not on the tick: the lifter
@@ -42,7 +42,7 @@ interface WorkState {
   // The load field just focused whose number the first key replaces (and backspace clears), until a key, a tap on it or leaving it.
   replaceNext: HTMLInputElement | null;
 }
-/** How long a block done this visit waits to fold, in milliseconds: after its last tick, after its effort is picked, and again while an effort strip is open; and how long the glide to the next exercise takes (r72). */
+/** How long a block done this visit waits to fold, in milliseconds: after its last tick, after its effort is picked, and again while an effort strip is open; and how long the glide to the next exercise takes. */
 export const FOLD_MS = { tick: 1200, effort: 900, strip: 1500, glide: 320 } as const;
 
 /** The session screen's state between draws (WorkState). */
@@ -88,11 +88,11 @@ export const carried = new WeakSet<DraftSet>();
 /** The rows unticked because their load was cleared, to be ticked again as the same set. */
 export const unloaded = new WeakSet<DraftSet>();
 
-// The set an adjustment came from, by object, so a row added or removed above it cannot move it onto another set (r34.2); after a reload or a merge, by its row id (PENDING 333).
+// The set an adjustment came from, by object, so a row added or removed above it cannot move it onto another set; after a reload or a merge, by its row id.
 export const adjSrc = new WeakMap<DraftBlock, DraftSet>();
 
 /* An exercise opened again after it folded stays open when exercises around
-   it move (r25): the block itself is remembered as well as its place. */
+   it move: the block itself is remembered as well as its place. */
 const blkOpenObj = new WeakSet<DraftBlock>();
 
 /* What an edit of a saved session holds, to tell whether anything changed
@@ -117,13 +117,13 @@ export function redraw(): void {
   if (drawer) drawer();
 }
 
-/** The blocks waiting to move up after their first tick (r45), in the order ticked. */
+/** The blocks waiting to move up after their first tick, in the order ticked. */
 export const orderQ: DraftBlock[] = [];
 
 // Loads far from last time's, said once per exercise per session (mixCheck).
 export const mixSeen = new Set<string>();
 
-// Where a block was before its first tick moved it up (r55): an untick within half a minute puts it back.
+// Where a block was before its first tick moved it up: an untick within half a minute puts it back.
 export const ordBack = new WeakMap<DraftBlock, { i: number; t: number }>();
 
 // Keyed by session too, so a block opened in one session is not open in the next.
@@ -148,7 +148,7 @@ export function blkShut(bi: number, b: DraftBlock): void {
   blkOpenObj.delete(b);
 }
 
-/** Opens a block again after it folded, by its place and the block itself (r25). */
+/** Opens a block again after it folded, by its place and the block itself. */
 export function blkOpen(bi: number, b: DraftBlock): void {
   ui.blkOpen.add(blkKey(bi, b));
   blkOpenObj.add(b);
@@ -179,7 +179,7 @@ export function keepOpen<T>(fn: () => T): T {
   return r;
 }
 
-/* A block in the session over time (r46). Neither handle on its own
+/* A block in the session over time. Neither handle on its own
    survives: a place changes whenever exercises move, and the object is
    replaced by normalize, which runs on every sync, Undo, cross-tab write and
    restore. The id made with the exercise survives both, so it leads, with
@@ -206,8 +206,8 @@ export function blkIdx(r: BlkRef | null | undefined): number {
 /* Null when the row is gone. A field still focused when its row goes (− Set,
    Swap, Undo, another phone's change) fires its pending change for a set that
    is no longer there. */
-/* A set held between draws (NEW-100): by its row id, which keeps it when rows are added above (a warm-up goes in at
-   the top), else by its place, for a session started before rows had ids (r56.1). */
+/* A set held between draws: by its row id, which keeps it when rows are added above (a warm-up goes in at
+   the top), else by its place, for a session started before rows had ids. */
 /** A set of a held block, by its row id and its place. */
 interface SetRef {
   b: BlkRef | null;

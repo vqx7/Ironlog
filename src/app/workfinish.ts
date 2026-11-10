@@ -51,7 +51,7 @@ import type { RoutineUpdate } from './plans';
 const WARM_SHARE = { compound: 0.75, isolation: 0.8 } as const;
 /** A session open longer than this many minutes was left open, so it is not timed. */
 const TIMED_MAX_MIN = 360;
-/** Said when a workout set aside for an edit or a past workout comes back (R81-2). */
+/** Said when a workout set aside for an edit or a past workout comes back. */
 export const BACK_SAID = ' Your workout in progress is back: Resume it on Today.';
 
 /** The lifts the recap's Heaviest yet line names before "and N more". */
@@ -195,7 +195,7 @@ function askUnchecked(d: Draft): boolean {
       `${total} set${total > 1 ? 's have' : ' has'} reps entered but no checkmark, so ${total > 1 ? 'they' : 'it'} will not be saved: ${list}.`,
       `Mark ${total > 1 ? 'them' : 'it'} done and save`,
       /* Each set is ticked in turn; one far off asks first, and once it is logged the rest are ticked and the
-         session saved, with no second tap on Finish (2.28, 2.27-F13). Fix it leaves the workout open there. */
+         session saved, with no second tap on Finish. Fix it leaves the workout open there. */
       function markAll(): void {
         const dd = state.draft;
         if (!dd) return;
@@ -224,7 +224,7 @@ function askUnchecked(d: Draft): boolean {
   return false;
 }
 
-/* Sets left (r30): finishing with half the planned sets untouched used to
+/* Sets left: finishing with half the planned sets untouched used to
    save without a word. Asked once, only when something was done, and not for
    an edit or a past workout typed in afterwards. Ramp-up sets logged as work
    count as hard sets and inflate weekly volume: a done working set before
@@ -254,12 +254,12 @@ export function finish(): void {
    in afterwards or edited, is read so from the log (analytics.ts, idxShort),
    so it sets no target and still counts toward its trend. savedEx
    (session.ts) is one source with a first link keeping another device's
-   workout (r55); side by side, the same lift is saved as one exercise
+   workout; side by side, the same lift is saved as one exercise
    (r34.2, V), apart each stays where it was done; on a day of a routine each
    lift keeps the sets its plan gave it (withPlanSets, r58). A blank load on
    a weighted lift used to save silently as a real 0 set, which drags down
    volume load and still counts toward your weekly sets: asked as "add them"
-   first (r29, item 116), Add loads going back to the first one, opened, its
+   first, Add loads going back to the first one, opened, its
    load field focused. */
 export function finishNow(): void {
   const d = state.draft;
@@ -398,28 +398,28 @@ function recapPr(pr: Pr): { name: string; what: string; was: string } {
 /* The session saved, then the recap. Timed only when started and finished
    today in this app; an edit keeps whatever the original session measured.
    When it started: kept on an edit, else the start (or now, for a past
-   workout entered later); and, new, what its routine planned a week (r55).
-   An RIR check offered and passed over waits 3 weeks, as Not now does (r32),
+   workout entered later); and, new, what its routine planned a week.
+   An RIR check offered and passed over waits 3 weeks, as Not now does,
    read before the session is saved, since the check counts sessions. An
    edit rebuilds the session from the screen, so fields a newer build stored
    on it, or on an exercise still in its place, are carried over (r43, as
    normalize keeps them), each exercise matched by its lift in order. A new
    session goes in by id: the other phone's copy of this workout, kept at its
-   first link, is replaced, never held twice (r55). A real session saved
-   while demo data is loaded (r30) takes the demo away, so stats never mix
+   first link, is replaced, never held twice. A real session saved
+   while demo data is loaded takes the demo away, so stats never mix
    generated sessions with yours. Saving an edit of a session deleted while
    the edit was open brings it back: the save is the newer action. The recap
    is worked out before the session in progress is cleared, while its ticks
-   exist: only exercises with a set done count toward targets (r30), not one
-   with fewer sets than its target's (r55); heavier than ever without a new
-   best estimate is said once, quietly, not counted as a PR (r32); the PR
-   moment (item 28) is its own gold block, each with what it beat. */
+   exist: only exercises with a set done count toward targets, not one
+   with fewer sets than its target's; heavier than ever without a new
+   best estimate is said once, quietly, not counted as a PR; the PR
+   moment is its own gold block, each with what it beat. */
 function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioEntry[]): void {
   /* Timed by the clock when the workout began on the day it is saved on, so one
-     that runs past midnight keeps its minutes (r64, the r63 audit's F8); a past
+     that runs past midnight keeps its minutes; a past
      workout logged later, or one moved to another date, is not timed by it.
      A past workout and an edit from History take the minutes typed beside
-     the date (r67, NEW-39). */
+     the date. */
   const clockMin =
     d.editingId || d.past || !d.startedAt || iso(new Date(d.startedAt)) !== d.date
       ? null
@@ -450,7 +450,7 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
      workout (V, 2026-11-02: 5 minutes for a whole session). It is saved
      untimed, by the bound the pace already uses to leave out such a session
      (under PACE_LO of what the time model gives its sets), and the recap says
-     how to add its minutes (r67, NEW-39). */
+     how to add its minutes. */
   let untimed = false;
   if (clockMin != null) {
     const model = sessModelMin(sess);
@@ -459,7 +459,7 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
       untimed = true;
     }
   }
-  // The workout's pictures go last, after the start time and the plan's week Finish adds below, as normalize writes them (r66, 373).
+  // The workout's pictures go last, after the start time and the plan's week Finish adds below, as normalize writes them.
   const sessPics = d.pics && d.pics.length ? [...d.pics] : undefined;
   let upd: RoutineUpdate | null = null,
     demoGone = false,
@@ -474,7 +474,7 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     const pw = d.editingId || d.free ? undefined : pwOf(state.routines, d.routineId);
     if (pw) sess.pw = pw;
     if (sessPics) sess.pics = sessPics;
-    // The day's second workout (r68, 366 (c)), last, as normalize writes it.
+    // The day's second workout, last, as normalize writes it.
     if (d.part === 2) sess.part = 2;
     if (!d.editingId) putById(state.cardio, cardio);
     if (!d.editingId && calDueIdx(d) >= 0 && !d.ex.some(b => b.sets.some(x => x.cal && x.done)))
@@ -486,14 +486,14 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
         const o = state.sessions[i];
         // demo is written by an edit from the session it replaces, and absent on a new one, as Finish always wrote it.
         if (o.demo !== undefined) sess.demo = o.demo;
-        // Its pictures are the edit's to keep or take off (r66), so they are not carried from the copy saved before.
+        // Its pictures are the edit's to keep or take off, so they are not carried from the copy saved before.
         keepExtra(o, sess, KNOWN_SESS);
         const used = new Set<object>();
         exR.forEach(b => {
           const ob = o.ex.find(x => x.exId === b.exId && !used.has(x));
           if (ob) {
             used.add(ob);
-            // Its own new-machine mark is the edit's to keep or take off (r61), so it is not carried from the copy saved before.
+            // Its own new-machine mark is the edit's to keep or take off, so it is not carried from the copy saved before.
             keepExtra(ob, b, KNOWN_BLOCK);
           }
         });
@@ -522,7 +522,7 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
   wakeOff();
   // An Undo offered during the session (a trim, a removed set) has nothing left to undo once it is saved.
   undoToastHide();
-  // A workout set aside for this one comes back now, offered on Today (R81-2).
+  // A workout set aside for this one comes back now, offered on Today.
   const back = unpark();
   const prAll = IDX().prs.filter(
     p => (p.sid ? p.sid === sess.id : p.date === sess.date) && ex.some(b => b.exId === p.exId)

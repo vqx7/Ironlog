@@ -1,4 +1,4 @@
-/* The month calendar (r59, phase 5): any date one tap away. A day with a
+/* The month calendar: any date one tap away. A day with a
    session opens it in History, a day with two asks which, an empty past day
    logs a workout for it (as in the week bar), and today opens Today (calDay,
    in actsstart.ts with what it opens, r63). A day ahead shows the workout
@@ -7,7 +7,7 @@
    this one). It sits inline in This week on
    Today (Week or Month, r26), and opens as a sheet from History's Calendar
    button and a Consistency square; drawn by lit-html as src/27-actions.js
-   drew it. The pull-down on the week bar (r25) is gone: the calendar rose
+   drew it. The pull-down on the week bar is gone: the calendar rose
    from the bottom of the screen while the finger pulled down from the top. */
 
 import { html, nothing } from 'lit-html';
@@ -20,7 +20,7 @@ import { state, ui } from './store';
 import { fmtDateLong, planAhead, sessionsOn } from './display';
 import type { PlannedDay } from './display';
 
-/* How far ahead the calendar goes (329, r59): a year, as far as a lifter
+/* How far ahead the calendar goes: a year, as far as a lifter
    plans; until r59 it stopped at this month. */
 const AHEAD_MONTHS = 12;
 /** The month `k` months after a month (YYYY-MM). */

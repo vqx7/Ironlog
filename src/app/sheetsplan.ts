@@ -1,9 +1,9 @@
-/* The sheets of the plan (r62, PENDING 355): Change on Today's card (every
+/* The sheets of the plan: Change on Today's card (every
    other way to start), the routine templates (on a first run with Your
    training folded above them), a new routine, and the recap after Finish, which offers the routine the session's changes. Each
    is drawn by lit-html as src/24-sheets.js drew it (tests/r62.js holds them
    to r61's), and answered by actsstart.ts's and actsroutine.ts's actions by
-   their data-act (r63). */
+   their data-act. */
 
 import { html, nothing } from 'lit-html';
 import { LIMITS } from './records';
@@ -22,8 +22,8 @@ import type { RecapSheet } from './modals';
 const FIT_DAYS = 0.5;
 
 /* Minutes come from the same time model as Plan, so the list and the plan
-   agree; a range (r28), as an average read as a promise and Today then
-   showed a longer first day. The days a week in Your training (r44) mark
+   agree; a range, as an average read as a promise and Today then
+   showed a longer first day. The days a week in Your training mark
    the routines that fit. */
 /** The routine templates, a first run's (with Your training folded above them, r44) or Plan's. */
 export function templatesSheet(m: { from?: string | undefined; imported?: boolean | undefined }): TemplateResult {
@@ -76,7 +76,7 @@ export function startAltSheet(m: {
 }): TemplateResult {
   const R = activeRoutine();
   const di = Math.min(+(m.di || 0) || 0, R.days.length - 1);
-  // The day's second workout when the card showed it (r68, 366 (c)).
+  // The day's second workout when the card showed it.
   const d0 = R.days[di];
   const part: 1 | 2 = m.part === 2 && d0 && dayParts(d0).includes(2) ? 2 : 1;
   const day = d0 ? (R.schedule === 'weekly' ? dayWorkout(d0, part) : d0) : undefined;
@@ -100,7 +100,7 @@ export function startAltSheet(m: {
     opts.push(opt('startShort', 'Short on time', 'Your minutes; the main work stays at full effort', { day: di }));
   if (!m.free) opts.push(opt('startFree', 'Blank session', 'Add exercises as you go; your plan stays where it is'));
   opts.push(opt('pickToday', 'Pick for me', 'The day that fits today best, and why'));
-  // Each of a day's workouts on a fixed-weekday routine, its second as its own choice (r68, 366 (c)).
+  // Each of a day's workouts on a fixed-weekday routine, its second as its own choice.
   const days = R.days.flatMap((d, i) =>
     (weekly && dayParts(d).length > 1 ? dayParts(d) : [1 as const]).map(p => {
       const w = weekly && dayParts(d).length > 1 ? dayWorkout(d, p) : d;

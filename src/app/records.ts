@@ -58,7 +58,7 @@ export const LIMITS = {
   why: 160,
   /** The lifter's name, a session's, a routine's and a day's, in characters. */
   name: 40,
-  /** An exercise's name, in characters: the library's longest is 36 (2.28, 2.27-F3). */
+  /** An exercise's name, in characters: the library's longest is 36. */
   exName: 60,
   /** A note, in characters: a session's, an exercise's, an injury's (2.28, 2.27-F3: any length before, and one
       long paste could make a month too large to sync). */
@@ -91,7 +91,7 @@ export const LIMITS = {
   /** The heaviest load, in pounds. */
   loadLb: 20000
 } as const;
-/** Text as typed, kept within `max` characters (2.28, 2.27-F3). A name or a note saved longer before its limit existed
+/** Text as typed, kept within `max` characters. A name or a note saved longer before its limit existed
     is edited, never cut: it may get shorter, and a change that would make it longer still is not taken (the field's
     maxlength already stops typing there; this holds a paste or a script to the same). */
 export function within(next: string, was: string, max: number): string {
@@ -120,7 +120,7 @@ export const BW_MAX_KG = 400,
 /* ---------- reading what came in ---------- */
 
 /* A save, a backup, a cloud document or a sync note arrives as JSON whose
-   shape nothing promises. The storage and sync code (phase 4, r56) reads
+   shape nothing promises. The storage and sync code reads
    such a value through these readers alone, so the casts an unknown value
    needs are here and nowhere else. */
 
@@ -158,7 +158,7 @@ export const parseJson = (text: string): unknown => JSON.parse(text) as unknown;
    both. The position is included so identical records stay distinct. A
    cleaner called on one record alone (a cardio entry typed in) gives no
    position, and the id then carries "undefined" where the position goes, as
-   it did before the storage code moved (r56). */
+   it did before the storage code moved. */
 export function did(tag: string, obj: unknown, i: number | undefined): string {
   let j = '';
   try {
@@ -208,13 +208,13 @@ export const okExtraKey = (k: string): boolean => /^[A-Za-z][\w]{0,39}$/.test(k)
 export const KNOWN_ITEM: ReadonlySet<string> = new Set(['jump', 'pm']),
   KNOWN_CARDIO: ReadonlySet<string> = new Set(['dist']),
   KNOWN_MEAS: ReadonlySet<string> = new Set(MEAS.map(x => x[0])),
-  // A saved session's exercise: the injury it was held for (r54), the sets its plan gave it (r58), a new machine or gym (r61), and its note's pictures (r66).
+  // A saved session's exercise: the injury it was held for, the sets its plan gave it, a new machine or gym, and its note's pictures.
   KNOWN_SEX: ReadonlySet<string> = new Set(['inj', 'ps', 'nw', 'pics']),
-  // An exercise of a workout in progress, and one an edit saves over: a new machine or gym (r61), true or absent, and its note's pictures (r66).
+  // An exercise of a workout in progress, and one an edit saves over: a new machine or gym, true or absent, and its note's pictures.
   KNOWN_BLOCK: ReadonlySet<string> = new Set(['nw', 'pics']),
-  // A saved session, and one an edit saves over: its notes' pictures (r66) and its part of the day (r68), absent when none.
+  // A saved session, and one an edit saves over: its notes' pictures and its part of the day, absent when none.
   KNOWN_SESS: ReadonlySet<string> = new Set(['pics', 'part']),
-  // A routine's day: the name of its second workout (r68, 366 (c)), absent when none.
+  // A routine's day: the name of its second workout, absent when none.
   KNOWN_DAY: ReadonlySet<string> = new Set(['pmName']);
 
 /* ---------- cleaners ---------- */
@@ -280,7 +280,7 @@ export const sessCmp = (
 ): number =>
   a.date < b.date ? -1 : a.date > b.date ? 1 : (a.t || 0) - (b.t || 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
-/* ---------- pictures named by the log (r66, PENDING 373) ---------- */
+/* ---------- pictures named by the log ---------- */
 
 /** How many pictures + Picture adds to one note (a convention: enough for a machine's settings and a form check). */
 export const PIC_MAX = 4;

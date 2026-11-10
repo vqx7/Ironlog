@@ -1,5 +1,5 @@
-/* Words and numbers more than one screen shows (r57): moved with History,
-   the first screen to move that reads them, and with Plan and Stats (r58),
+/* Words and numbers more than one screen shows: moved with History,
+   the first screen to move that reads them, and with Plan and Stats,
    and imported by every screen that shows them. Each is as it was in the
    legacy script it came from (deleted in r63). */
 
@@ -108,7 +108,7 @@ export function setStr(
   return `${x.warm ? '(W) ' : x.drop ? '(D) ' : ''}${setShort(ex, x.w, x.r)}${missedTag(x)}${!ex.timed && x.rir != null && x.rir !== '' ? (rirScale() === 'rpe' ? ' @RPE ' + effShow(x.rir) : ' @' + effShow(x.rir)) : ''}${x.cal ? ' (RIR check)' : ''}`;
 }
 
-/* ---------- moved with Plan and Stats (r58) ---------- */
+/* ---------- moved with Plan and Stats ---------- */
 
 /** The number for a tile, or a dash before anything is logged. */
 export const nz = (v: number | string): number | string => (noLog() ? NIL : v);
@@ -123,7 +123,7 @@ export function effTgt(rir: number | string | null | undefined): string {
 }
 
 /* Estimates (1RM, PR toasts, the bests board) are good to a few percent at
-   best, so they show whole pounds or half kilos (r34): 293.8 next to 294 and
+   best, so they show whole pounds or half kilos: 293.8 next to 294 and
    301 read as precision the numbers do not have. Loads keep their decimals. */
 /** An estimate in the unit on screen: whole pounds or half kilos, or '' for none. */
 export function fmtE(kg: number | null | undefined): string {
@@ -185,7 +185,7 @@ export function topSetPt(ex: ExerciseLike, x: Exposure): { v: number; txt: strin
   return q ? { v: q.v, txt: setShort(ex, q.p.w, q.p.r) } : { v: 0, txt: '' };
 }
 
-/** A lift's strongest working set by reps alone, with its date; at one score, the one with more reps (r55). */
+/** A lift's strongest working set by reps alone, with its date; at one score, the one with more reps. */
 export function bestSet(exId: string): { v: number; w: number; r: number; date: string } | null {
   let b: { v: number; w: number; r: number; date: string } | null = null;
   for (const x of liftRead(exId))
@@ -197,7 +197,7 @@ export function bestSet(exId: string): { v: number; w: number; r: number; date: 
 }
 
 /* An isolation lift's best-estimate PR is shown as the set that set it, not
-   as a 1RM (r30): the strongest set of that lift in that session. */
+   as a 1RM: the strongest set of that lift in that session. */
 /** The set with the best estimate in a lift's session on a date, or null. */
 export function prSet(exId: string, date: string): { v: number; w: number; r: number } | null {
   const x = (IDX().byEx[exId] || []).find(q => q.date === date);
@@ -211,9 +211,9 @@ export function prSet(exId: string, date: string): { v: number; w: number; r: nu
 }
 
 /* The last 28 days, today included, and the 28 before: the one window for
-   sessions and PRs on Today, the Stats tiles and Recent PRs (r46). The 4
+   sessions and PRs on Today, the Stats tiles and Recent PRs. The 4
    weeks before are given only when the log covers all of them, so 2 days of
-   a first month never read as a jump. Counted PRs only (r32). */
+   a first month never read as a jump. Counted PRs only. */
 /* The screens use recent4w; the suites reach for this one to check a window
    of their own (r63, from the legacy script's 19-today.js). */
 /** The counted PRs (the ones marked big, r32) of the last days given. */
@@ -290,7 +290,7 @@ export function bwRate(): { pct: number; wk: number; days: number; from: string;
     to: last.date
   };
 }
-/* The weekly rate in the lifter's unit (r41): "+0.4 lb a week" is what a
+/* The weekly rate in the lifter's unit: "+0.4 lb a week" is what a
    scale shows. Under BW_FLAT of a unit a week reads flat. */
 /** Half the last digit the weekly rate shows (a tenth of a unit): less reads flat. */
 const BW_FLAT = 0.05;
@@ -374,7 +374,7 @@ export function sessionLength(): { avg: number; n: number; plan: number | null }
   const from = addDays(today(), -RECENT_DAYS);
   const R = activeRoutine();
   const ss = state.sessions.filter(x => x.date >= from && x.durMin);
-  // An average of one is not an average (r30): shown from AVG_SESSIONS timed sessions.
+  // An average of one is not an average: shown from AVG_SESSIONS timed sessions.
   if (ss.length < AVG_SESSIONS) return null;
   const avg = Math.round(ss.reduce((a, x) => a + (x.durMin || 0), 0) / ss.length);
   const pl = ss
@@ -412,7 +412,7 @@ export function bestLine(exId: string, upTo?: string): string {
    estimate comes from, the one Stats' All-time bests names ("Best estimate
    from 230×8") and the PR list last counted, with its date; a lift with no
    estimate (a timed hold, a lift past the reps an estimate reads) its
-   heaviest set, as bestLine says it. As on the board (r30), the set behind
+   heaviest set, as bestLine says it. As on the board, the set behind
    an estimate is named for a compound lift only, and any other lift names
    its heaviest set. One function, allTimeBests, for both screens. */
 /** "Best 230×8, Oct 20": the set behind a compound lift's best estimate, else its heaviest set, or ''. */
@@ -430,7 +430,7 @@ export function bestSetLine(exId: string): string {
    it stands: reached when a working set matched it (that load or more, those
    reps or more); otherwise the best estimate from the last 12 weeks against
    what the goal takes done to failure, by the same estimate the targets use
-   (fitE), so a goal at any reps compares with sets at any reps (r38). No
+   (fitE), so a goal at any reps compares with sets at any reps. No
    date to reach it (r41, V: guide, do not predict); on a lift whose estimate
    is a load anyone lifts, the gap is said as a load as well (goalLine). */
 /** Where a lift's goal stands: the goal, the date a set reached it, how close the best estimate of 12 weeks is, and whether a weigh-in is missing; null with no goal. */
@@ -459,7 +459,7 @@ export function goalState(exId: string): {
   }
   const need = fitE(g.w + bw, g.r, 0);
   const from = addDays(today(), -WEEK_DAYS * BEST_WEEKS);
-  // Every set of the last BEST_WEEKS weeks, a lighter day's and a deload's too, as the bests read them (r54, PENDING 311 e).
+  // Every set of the last BEST_WEEKS weeks, a lighter day's and a deload's too, as the bests read them.
   const cur =
     bestFit(
       exps.filter(x => x.date >= from).flatMap(x => x.pts),

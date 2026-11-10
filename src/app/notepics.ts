@@ -1,4 +1,4 @@
-/* ---------- pictures on a workout's notes (r66, PENDING 373) ----------
+/* ---------- pictures on a workout's notes ----------
    The strip of pictures under an exercise's note and under the workout's
    notes, the Add picture button beside it, and a picture shown large with
    Remove. A picture is added the moment it is picked (one Undo step), as a

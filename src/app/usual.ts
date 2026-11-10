@@ -23,8 +23,8 @@ const mid = (v: readonly number[]): number => [...v].sort((a, b) => a - b)[Math.
    load either way (LIGHTER_LOAD), and any heavier set up to its usual
    working load (`usualW`, typed). A set a tenth or more lighter is a
    back-off set or an unmarked warm-up, as a session that much lighter reads
-   lighter (r30); one a tenth or more heavier is a top set, which the target
-   does not build on (r31), unless it was at the usual load: a set at the
+   lighter; one a tenth or more heavier is a top set, which the target
+   does not build on, unless it was at the usual load: a set at the
    usual load is a usual set, whatever the session's working load came to
    (100 x 3, then 82.5 x 7 three times, is four sets, a day below usual).
    From the independent review of r54: counting only the sets at the
@@ -32,7 +32,7 @@ const mid = (v: readonly number[]): number => [...v].sort((a, b) => a - b)[Math.
    as fewer sets, and so a heavier last set, and the sets after a load
    lowered mid-session. With no load to compare (a bodyweight lift with
    nothing added, an assisted one before any weigh-in), every working set.
-   A set tried and missed (r55) counts by the same test (r64, the r63 audit's
+   A set tried and missed counts by the same test (r64, the r63 audit's
    R-1): it was one of the session's sets, short of the range, which the
    next target reads (triedAt). Left out, 185 x 10, 0, 0 after 185 x 10 x 3
    read as a session of fewer sets, which sets no target, so the target came
@@ -50,7 +50,7 @@ function setsAt(q: Exposure, usualW: number): number {
 }
 
 /* The sets a lift's session tried at a load, in the order done, a missed
-   set (r55) among them with its 0 reps and marked as missed (PENDING 338 A).
+   set among them with its 0 reps and marked as missed (PENDING 338 A).
    A missed set counts toward no volume, PR, estimate or trend, but it is a
    set of the session short of the range, which the next target reads: read
    without it, a 5 x 5 with its last two sets missed twice running read as
@@ -118,10 +118,10 @@ function repsOf(q: Exposure, k: number): number {
     range (`ref`, up to three), and its strength reading, reps alone, no
     further under theirs than USUAL_SHARE allows, each read over as many
     sets at the working load as theirs usually were (readingOf, r54). The
-    working load since r54 (PENDING 313 c): by the heaviest set, a lifter
+    working load since r54: by the heaviest set, a lifter
     who opens with a heavy single and leaves it out on a lighter day, doing
     the usual sets after it, read lighter, though the single is not where
-    reps are built (r31). */
+    reps are built. */
 export function atUsualLoad(x: Exposure, ref: readonly Exposure[]): boolean {
   const k = usualSets(ref);
   const mW = Math.max(...ref.map(q => q.topW)),
@@ -131,7 +131,7 @@ export function atUsualLoad(x: Exposure, ref: readonly Exposure[]): boolean {
 }
 
 /** Whether a lift's session on a deload or lighter day was at its usual
-    load and reps (r53), against its previous sessions in the range not
+    load and reps, against its previous sessions in the range not
     done lighter (`ref`, up to three), its sets aside: those V's one rule
     reads next, as on any day (idxShort, r54). With a strength reading on
     it and on one of them, the usual-load test above. Without one (a timed
@@ -161,7 +161,7 @@ function setsHeldTo(usualSets: number, plan: number | null, saved: number | null
   return plan != null && plan > 0 ? Math.min(usualSets, plan) : usualSets;
 }
 
-/* V's one rule for every session (r54): a lift's session sets its next target only when it did its usual load and
+/* V's one rule for every session: a lift's session sets its next target only when it did its usual load and
    reps for the sets it is held to (setsHeldTo); a session short of either still counts for the trend, stalls and PRs,
    and the target repeats. Short by its sets: fewer near its working load (setsAt) than it is held to. Short by its
    reading: at a working load no heavier than the sessions before it, its strength reading (else its reps a set) over
@@ -171,7 +171,7 @@ function setsHeldTo(usualSets: number, plan: number | null, saved: number | null
    up, never short by its reading. A session labelled lighter or a deload but done at its usual load and reps (`tag`)
    is read against the sessions before it alone, and if short is not one later sessions are read against. The first
    session in a range, or back after a break or on a new machine, is its own usual. Each case, with the release and
-   the bug that made it, is a row of tests/usual.js; the history is in docs/ARCHIVE.md (CL-2). */
+   the bug that made it, is a row of tests/usual.js; the history is in docs/ARCHIVE.md. */
 /** Marks each of a lift's sessions short of its usual by its sets or its reading, by V's one rule (above). */
 export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string, x: Exposure) => number | null): void {
   for (const id of Object.keys(byEx)) {

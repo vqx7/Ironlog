@@ -1,4 +1,4 @@
-/* The sheets that choose (r62, PENDING 355): Pick for me before a session
+/* The sheets that choose: Pick for me before a session
    and inside one, Limited equipment, Short on time, and the exercise
    picker. The picker adds to a session or a routine's
    day, or swap one in, with a search and a muscle to narrow it. With
@@ -7,7 +7,7 @@
    the matches, common ones first, and a swap's closest matches above its
    muscle's list. Drawn by lit-html as src/24-sheets.js drew it (tests/r62.js
    holds it to r61's), and answered by actspick.ts's and actsstart.ts's
-   actions by their data-act (r63). A search typed redraws the list in
+   actions by their data-act. A search typed redraws the list in
    place, so the field keeps the focus and the keyboard. */
 
 import { html, nothing } from 'lit-html';
@@ -99,7 +99,7 @@ function pickerBody(m: PickerSheet): TemplateResult {
     const list = commonFirst(libFiltered(m.q, m.m || '', '', false));
     const parts: (TemplateResult | TemplateResult[])[] = [];
     if (!q && swapId && m.m === EX(swapId).primary) {
-      // In a Limited equipment session, only what the gym has (NEW-79).
+      // In a Limited equipment session, only what the gym has.
       const best = swapCands(swapId, sb && d && d.equip ? new Set(d.equip) : null, used.set)
         .slice(0, SWAP_PICKS)
         .map(x => x.e);
@@ -202,7 +202,7 @@ export function pickExSheet(): TemplateResult | null {
 
 /* ---------- Limited equipment ---------- */
 
-/* A fixed-height sheet with the chips at the top (r30): the sheet grew
+/* A fixed-height sheet with the chips at the top: the sheet grew
    upward as swaps were listed, so the chips moved under the finger and the
    next tap landed on the wrong one. */
 /** Limited equipment for a day: the equipment on, each exercise's swap, and Start; null when the day is gone. */

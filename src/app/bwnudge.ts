@@ -1,4 +1,4 @@
-/* ---------- bodyweight, asked for where it matters (r66, PENDING 372) ----------
+/* ---------- bodyweight, asked for where it matters ----------
    Bodyweight is never required (V, 2026-11-01), but a bodyweight lift reads
    it: with no weigh-in, a pull-up counts only the weight added (bodyweight
    read as 0), so it moves nothing and gives no estimate. So the app asks
@@ -77,7 +77,7 @@ export function bwSettings(): TemplateResult {
 
 /** The taps: open the bodyweight sheet from a lift's line. */
 export const BW_ACTS: Readonly<Record<string, (t: { dataset: DOMStringMap }) => void>> = {
-  // From a session's header (NEW-90) the sheet carries the session's date, so a past workout's weigh-in is dated that day.
+  // From a session's header the sheet carries the session's date, so a past workout's weigh-in is dated that day.
   bwOpen(t) {
     const id = t.dataset.ex;
     const d = t.dataset.date;

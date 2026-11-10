@@ -44,9 +44,9 @@ export function dayMinutesIn(M: Model, day: { items: readonly TimedItem[] }, hal
    is a clock left running or stopped early and is left out. Fewer than
    PACE_MIN usable sessions: the model as is (1). Conventions, not measured
    numbers: the model itself is one. A session with no minutes never counts;
-   a past workout counts by the minutes typed for it (r67). A drop set is read
+   a past workout counts by the minutes typed for it. A drop set is read
    with the set before it: it is done straight after that set, with no rest of
-   its own (r66), so it adds no set and no rest (the review of r67: read as a
+   its own, so it adds no set and no rest (the review of r67: read as a
    full set and a full rest, an honest session of drops was saved untimed). */
 /** The minutes the time model gives for the sets a session logged, at its own ranges and the plan's rest. */
 export function sessModelMinIn(M: Model, ss: Session): number {
@@ -59,7 +59,7 @@ export function sessModelMinIn(M: Model, ss: Session): number {
     const it = day && day.items.find(i => i.exId === id);
     return (it && it.ss) || null;
   };
-  // plain (r44 review): a goal set later must not change how long a past session is read to have taken.
+  // plain: a goal set later must not change how long a past session is read to have taken.
   const items = ss.ex
     .map(b => {
       const p = basePlanIn(M, b.exId, R, ss.dayId, true);
@@ -93,7 +93,7 @@ export function paceRatiosIn(M: Model): number[] {
     const m = sessModelMinIn(M, ss);
     if (m < 1) continue;
     // Cardio done before or after lifting is timed with the session but is not
-    // in the model (the r43 review); taken off when the day had one session.
+    // in the model; taken off when the day had one session.
     const cm =
       sameDay[ss.date] === 1
         ? M.s.cardio

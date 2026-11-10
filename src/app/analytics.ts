@@ -53,7 +53,7 @@ import { idxPRsIn, prBestOf } from './prs';
 /** The sessions and the lighter ones in a week (idxAutoLighter, idxLightWeeks). */
 type WeekCount = { n: number; l: number };
 
-/* The sessions on each date, in sessCmp order, and the count per week (r47).
+/* The sessions on each date, in sessCmp order, and the count per week.
    Built once per change beside the other analytics and read by every screen
    that groups sessions by day: the week bar, the calendar, the day picker,
    This month's title, Consistency's heatmap. Before r47 each grouped the log
@@ -304,7 +304,7 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
         if (ptsSrc.includes(s)) seen++;
         else if (!s.warm && !s.drop && isMissed(s)) miss.push({ ...point(s), at: seen });
       // Mean logged RIR on the sets at this session's top load, or null if none was logged.
-      // The working load (r31): a heavy top single is not where reps are built.
+      // The working load: a heavy top single is not where reps are built.
       const topW = workLoad(pts, b.rr ? b.rr[0] : 0);
       const tr = pts.filter(p => Math.abs(p.w - topW) < EPS_SAME && p.rir != null);
       const atTop = atLoad(pts, topW);
@@ -327,7 +327,7 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
             bb = rtfBand(rtfOf(p.r, p.rq)!);
           }
         }
-      // The same at the PR load (prLoad): identical to best except on a bodyweight lift; the PR scorer's one reading (r64).
+      // The same at the PR load (prLoad): identical to best except on a bodyweight lift; the PR scorer's one reading.
       const { pb, pbb } = prBestOf(ex, pts, nb);
       /* r30: the trend reads its own value per session, two ways. tAdj uses
          RIR as read everywhere else; tRaw ignores RIR (reps alone). Which one
@@ -366,7 +366,7 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
         rr: b.rr || null,
         ...(b.ps ? { ps: b.ps } : {}),
         ...(b.nw ? { nw: true as const } : {}),
-        // Read from its drop sets alone (r64): neither the PR list nor the bests board reads it, as no drop set feeds a PR.
+        // Read from its drop sets alone: neither the PR list nor the bests board reads it, as no drop set feeds a PR.
         ...(main.length ? {} : { dropOnly: true as const }),
         topN: atTop.length,
         tAdj,
@@ -429,7 +429,7 @@ function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCo
     const readAgainst = new Map<Exposure, readonly Exposure[]>();
     let before: Exposure | null = null;
     for (const x of exps) {
-      // A new machine or gym starts the lift over as a break does (r61).
+      // A new machine or gym starts the lift over as a break does.
       if (afterBreak(before, x.date) || x.nw) {
         prev.length = 0;
         run = [];
@@ -571,7 +571,7 @@ export function lighterTally(
   return { weeks, lighter: lit };
 }
 
-/* Step 3: lighter weeks (r30). Weekly volume averages skip them: a deload
+/* Step 3: lighter weeks. Weekly volume averages skip them: a deload
    halves the sets on purpose, and averaging it in read as below target for a
    month after every deload. Since r54 a week is lighter when more than half
    its sessions were, or its last two or more were deload sessions done
@@ -726,7 +726,7 @@ function idxLiftIn(
   const plC = basePlanIn(M, id);
   const capL = lastReal ? capOfIn(M, exI, plC, lastReal.topW) : null;
   const capped = !!lastReal && atCapOfIn(M, exI, plC, lastReal.topW, capL);
-  /* RIR in the trend only where it is logged consistently (r30): on at
+  /* RIR in the trend only where it is logged consistently: on at
      least 80% of the lift's working sets in its last 8 sessions in range, a
      convention. Rated on some sets and blank on others, a 255 x 5 called
      RIR 3 read as strong as 270 x 5 called RIR 1, so the load going up
@@ -780,13 +780,13 @@ function idxLiftIn(
     const l = stallStretch(withE1);
     if (l) {
       /* More reps at the same working load over no more sets is progress
-           too (r31): double progression adds reps to sets 2 to 4 once set 1
+           too: double progression adds reps to sets 2 to 4 once set 1
            is at the top of the range, and that is not a stall. Since r32
            it has to beat every earlier session at that load in the
            stretch, not only the first: a press alternating 6, 6, 6 and 5,
            5, 4 at one load for 7 weeks "moved" every other week. */
       const moved = stretchMoved(l, offSince, listed);
-      /* Flat is under 0.1% a week (r31): averaging working sets leaves
+      /* Flat is under 0.1% a week: averaging working sets leaves
            rounding dust, and identical sessions came out at +1e-32 a
            week, so a perfectly flat lift was not called stalled. */
       /* Since r32 the line is the median of the slopes between every
@@ -982,7 +982,7 @@ function idxScoresIn(M: Model, exStats: Record<string, ExStat>): Score[] {
      called lagging even if the rest of the list is worse; rank decides no
      label.
      In order below: going backwards is an absolute fact and does not need a
-     ranking to be worth saying. A rising muscle is progressing (r30): ranked
+     ranking to be worth saying. A rising muscle is progressing: ranked
      third or higher used to be needed too, so with eight muscles rising five
      read steady. A flat muscle is lagging only when one of its lifts has
      stalled (r29, a convention). By rank alone, the bottom third read
@@ -1002,7 +1002,7 @@ function idxScoresIn(M: Model, exStats: Record<string, ExStat>): Score[] {
 }
 
 /* What a lift's session was, in the words the Last line, Stats' history
-   of a lift and its chart say it (r54): short of its usual by its sets or
+   of a lift and its chart say it: short of its usual by its sets or
    its reading, lighter (tagged or read from its loads), a deload, or
    nothing for a full session. */
 /** A lift's session in a word or two: fewer sets, below usual, lighter, deload, or empty for a full one. */
@@ -1056,7 +1056,7 @@ export function lastOf(
 ): { line: string; prev: string[]; prevOff: true | undefined; lastR: number[]; basis: string | null } {
   const rec = all && all.length ? all[all.length - 1] : base;
   const kind = sessionWord(rec);
-  // Every set in the order done, a missed one in its place (r55).
+  // Every set in the order done, a missed one in its place.
   const miss = rec.miss || [];
   const sets: string[] = [];
   rec.pts.forEach((p, i) => {
@@ -1064,14 +1064,14 @@ export function lastOf(
     sets.push(fmt(p));
   });
   for (const m of miss) if (m.at >= rec.pts.length) sets.push(fmt(m) + missedTag(m));
-  // The date with its year when it is not this one (r64, R-7): "Last (Oct 20)" a year on read as last week.
+  // The date with its year when it is not this one: "Last (Oct 20)" a year on read as last week.
   const line = `Last (${fmtDateFrom(rec.date, now)}${kind ? ', ' + kind : ''}): ${sets.join(', ')}.`;
   /* A session short of its usual sets at another working load than the one
      the target comes from gives no reps for it either (r55, the audit: after
      85 x 6, 6 stopped short, the target went back to 80 kg with 6s in grey). */
   const repsFrom =
     rec !== base && (lighter(rec) || rec.short === 'reading' || Math.abs(rec.topW - base.topW) > EPS_SAME) ? base : rec;
-  /* Grey reps are last time's reps at the working load only (r31): a top
+  /* Grey reps are last time's reps at the working load only: a top
      single before them is not a row to repeat, and in a pyramid the reps
      done at a lighter load are not reps due at this one (225 x 7, 205 x 8,
      185 x 10 asked 225 x 10). Rows past them take the set above, or the
@@ -1084,10 +1084,10 @@ export function lastOf(
      bottom of the range instead. */
   const fl = repFloor(wp.length ? wp : repsFrom.pts, repMin);
   /* prev: that session's sets at its working load, one per row, for the Last
-     column beside the sets (r44). The same rule as the grey reps, so row n of
+     column beside the sets. The same rule as the grey reps, so row n of
      Last is the set row n repeats: a top single or a pyramid's other loads
-     would push every set down a row (the r44 review). prevOff says some sets
-     are left out, a missed one too (r55), so the line above the sets keeps
+     would push every set down a row. prevOff says some sets
+     are left out, a missed one too, so the line above the sets keeps
      listing them. */
   const rl = workLoad(rec.pts, repMin || 0);
   const rp = atLoad(rec.pts, rl);
@@ -1101,7 +1101,7 @@ export function lastOf(
   };
 }
 
-// Sessions in the week, not days (r34): two plan days done on one day are two of the week's sessions.
+// Sessions in the week, not days: two plan days done on one day are two of the week's sessions.
 // Counted once per change and kept with the analytics (dateIndex, r47; r46: the streak scanned every session for each of 104 weeks, twice a render).
 export function weekSessionsIn(M: Model, ws: string): number {
   return dateIndexIn(M).weekN[ws] || 0;

@@ -1,6 +1,6 @@
-/* Lift goals (r38): which lifts can have one, and how far a goal is (phase
+/* Lift goals: which lifts can have one, and how far a goal is (phase
    3a, r51; moved unchanged from the legacy script). goalState, which reads the log, is in display.ts
-   with what the screens share (r58). */
+   with what the screens share. */
 
 import type { Exercise } from './types';
 import { e1inv } from './formulas';

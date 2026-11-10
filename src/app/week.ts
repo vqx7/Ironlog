@@ -1,4 +1,4 @@
-/* The week (r59, phase 5): the bar at the top of every tab, Today's This
+/* The week: the bar at the top of every tab, Today's This
    week card (the week, or the month, the cycle's row and the hard sets
    against the plan) and the ring on Today's start card, drawn by lit-html as
    src/21-pick-session.js drew them. What a day of the bar opens (History, a
@@ -40,7 +40,7 @@ function weekBar(): TemplateResult[] {
   // A rest week plans nothing, so no day in it reads planned or missed (r55, the audit: the bar said "Upper A, missed" under "Rest week. Nothing planned.").
   const rw = isRestWeek(cur);
   const plan = rw ? {} : weekPlan(R);
-  // Which planned workouts were done, and on which date, wherever in the week (NEW-31, r68).
+  // Which planned workouts were done, and on which date, wherever in the week.
   const slots = weekly && !rw ? weekSlots(R) : [];
   // The + on empty past days appears once there is a log to add to; a brand-new week bar stays clean (the days still open the sheet).
   const hasLog = state.sessions.length > 0;
@@ -114,7 +114,7 @@ function weekBar(): TemplateResult[] {
       out.push(
         html`<button type="button" class=${cls} data-act="wkGo" data-date=${d} data-tip=${label} aria-label=${`${label}. Open the session`}>${inner}</button>`
       );
-    // A day with two sessions asks which, as the calendar does (r47): both go through calDay. Until r47 the bar opened one of them without asking.
+    // A day with two sessions asks which, as the calendar does: both go through calDay. Until r47 the bar opened one of them without asking.
     else if (first && ss.length > 1)
       out.push(
         html`<button type="button" class=${cls} data-act="calDay" data-date=${d} data-tip=${label} aria-label=${`${label}. Choose one to open`}>${inner}</button>`
@@ -127,7 +127,7 @@ function weekBar(): TemplateResult[] {
       out.push(
         html`<button type="button" class=${cls} data-act="wkGo" data-date=${d} data-day=${p ? String(p.di) : nothing} data-tip=${label} aria-label=${`${label}. Open on Today`}>${inner}</button>`
       );
-    // An empty past day logs a workout for that date (item 53): every day in the bar does something.
+    // An empty past day logs a workout for that date: every day in the bar does something.
     else
       out.push(
         html`<button type="button" class=${hasLog ? `${cls} add` : cls} data-act="pastOpen" data-date=${d} data-tip=${`${label}. Tap to log it`} aria-label=${`${label}. Log a workout for this day`}>${inner}</button>`
@@ -184,12 +184,12 @@ function cycleStrip(R: Routine): TemplateResult {
 }
 
 /* Weight lifted this week, against last week to this point. It moved here from
-   At a glance in r23 (item 32): This week owns everything about this week,
+   At a glance in r23: This week owns everything about this week,
    At a glance the longer view. */
 function liftedLine(): Part {
   const tn = tonnageNow();
   if (!tn.now && !tn.prevFull) return nothing;
-  /* No percentage against last week (r30): weight lifted falls when loads
+  /* No percentage against last week: weight lifted falls when loads
      go up and reps come down, so as a headline it read progress as decline
      ("−5%" on a week of PRs). The number stays; the detail is in Stats. */
   return html`<button class="linkbtn wklift u-m6-0-0_tdnone_taleft" data-act="goDash" data-sec="svol"><b>${tn.now ? fmtBig(tn.now) : 0} ${U()}</b> lifted</button>`;
@@ -248,7 +248,7 @@ export function weekCard(): TemplateResult {
       ym === cur
         ? 'This month'
         : new Date(ym + '-15T12:00:00').toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-    // A month ahead counts what is planned in it (329, r59).
+    // A month ahead counts what is planned in it.
     const sub = ym > cur ? planWords(monthPlanned(ym)) : `${n} session${n === 1 ? '' : 's'}`;
     return section({ sk: 'today:week', key: 'week', title, sub, body });
   }

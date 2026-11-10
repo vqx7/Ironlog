@@ -70,11 +70,11 @@ import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScr
 import { toast } from './toast';
 import { startTimer, stopTimer, wakeOff } from './timer';
 import { stripIs } from './workout';
-/** After an auto-mark, a tap on that set's checkmark within this many milliseconds confirms it rather than undoing it (r28). */
+/** After an auto-mark, a tap on that set's checkmark within this many milliseconds confirms it rather than undoing it. */
 const AUTO_CONFIRM_MS = 15000;
-/** An exercise a tick moved up goes back when its sets are all unticked within this many milliseconds (r55). */
+/** An exercise a tick moved up goes back when its sets are all unticked within this many milliseconds. */
 const REORDER_BACK_MS = 30000;
-/** Seconds a timed hold's minus and plus step by (ST-6): one second is too fine a step to tap toward a 30 to 60 s hold. */
+/** Seconds a timed hold's minus and plus step by: one second is too fine a step to tap toward a 30 to 60 s hold. */
 const STEP_SECONDS = 5;
 
 // The block a tap names by its data-b, or null.
@@ -387,10 +387,10 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     );
     rerenderKeepScroll();
   },
-  /* Minus and plus (ST-6): from what the row holds, else what it shows in grey, to the next load on the lift's list
+  /* Minus and plus: from what the row holds, else what it shows in grey, to the next load on the lift's list
      or one rep (five seconds on a hold) either way, written as the number typed in the field would be: the same carry
      to the rows below, and on a set ticked the same checks as a number typed there (doneChanged). They never tick or
-     untick a set, and the set stepped is the one you are on (NEW-100). One change, saved once. */
+     untick a set, and the set stepped is the one you are on. One change, saved once. */
   sStep(t) {
     const bi = Number(t.dataset.b),
       si = Number(t.dataset.s);
@@ -435,7 +435,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   sDel: setRemove,
   /* Warm-ups go in at the top, already flagged, so they stay out of every
      analytic, and are seeded from the working load; each new one goes after
-     the ones already there, so they climb to the working load (r27). */
+     the ones already there, so they climb to the working load. */
   wAdd(t) {
     const b = tapBlock(t);
     if (!b) return;
@@ -455,7 +455,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     let at = 0;
     while (at < b.sets.length && b.sets[at].warm) at++;
     let w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * frac) : null;
-    /* Each warm-up a step heavier than the one before where the loads allow (r68): on a 10 lb step a 50 lb curl's
+    /* Each warm-up a step heavier than the one before where the loads allow: on a 10 lb step a 50 lb curl's
        third warm-up came out at 30 again, the second's load; it takes the next load up, at most the ramp's top share
        of the working load, so a warm-up never reaches it. Where no load fits there, it repeats the one before, never
        a lighter one (the review of r68: a 30 kg bench on 5 kg steps warmed up at 20, 25, then 20). */
@@ -475,7 +475,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
     toast('Warm-up set added');
   },
-  // The load the last working set was, or will be (a grey load counts); a missed set's is passed over (r55).
+  // The load the last working set was, or will be (a grey load counts); a missed set's is passed over.
   /* Done with an exercise that has sets left (r66, PENDING 374; V: "Ask:
      log or skip"): one question, then every set left ticked as it shows (its
      load and reps, typed or grey; a 0 typed is a missed set, as a tick logs
@@ -582,7 +582,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
     }
     const w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * DROP_START) : null;
-    // Attached to the last working set ticked (r66, 375): after it and any drops already under it, not at the end of the exercise.
+    // Attached to the last working set ticked: after it and any drops already under it, not at the end of the exercise.
     let at = -1;
     b.sets.forEach((x, i) => {
       if (x.done && !x.warm && !x.drop) at = i;
@@ -676,7 +676,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         // Scrolling is best effort; the exercise is open either way.
       }
   },
-  /* Save and leave (NEW-89): the workout is saved as it goes, so this only
+  /* Save and leave: the workout is saved as it goes, so this only
      steps away to Today, which offers it back; the tab, Back and opening the
      app again all open the workout. */
   wkAway() {
@@ -691,7 +691,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     window.scrollTo(0, 0);
     render();
   },
-  // Today's card for a workout set aside that did not come back by itself (R81-2): it comes back and opens.
+  // Today's card for a workout set aside that did not come back by itself: it comes back and opens.
   parkBack() {
     if (!unpark()) return;
     ui.away = null;
@@ -699,7 +699,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     window.scrollTo(0, 0);
     render();
   },
-  // Folded by hand, done or not (NEW-101), and every place it was opened at forgotten, so a move leaves nothing behind.
+  // Folded by hand, done or not, and every place it was opened at forgotten, so a move leaves nothing behind.
   bFold(t) {
     const b = tapBlock(t);
     if (!b) return;
@@ -818,7 +818,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     }
     rerenderKeepScroll();
   },
-  /* The check-in's lighter session (r30, r31): only the exercises not
+  /* The check-in's lighter session: only the exercises not
      started become lighter (b.light: half their sets, about 90% loads, 3+
      RIR, no target); the session itself is not marked, so work already done
      at full effort still sets next time's target and counts in trends.
@@ -888,7 +888,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       );
       stopTimer();
       wakeOff();
-      // A workout set aside for this one comes back, offered on Today (R81-2).
+      // A workout set aside for this one comes back, offered on Today.
       if (unpark()) setTimeout(() => toast(BACK_SAID.trim()), 0);
       window.scrollTo(0, 0);
       render();

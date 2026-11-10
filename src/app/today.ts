@@ -1,4 +1,4 @@
-/* Today (r59, phase 5): the first pages of a new install (the account, Set
+/* Today: the first pages of a new install (the account, Set
    up), the lines above the start card (demo data, Set up sync, Get the app,
    the new icon), the start card for the plan's day or a blank session, and
    everything under it (This week, At a glance, the coach, injuries, the
@@ -6,7 +6,7 @@
    src/19-today.js and src/21-pick-session.js drew them, with the actions
    and fields that change what they show, each change to the log through
    `act`. What Today opens or starts elsewhere is reached by the button's
-   data-act through events.ts's table (r63): the sheets (Change, Pick for
+   data-act through events.ts's table: the sheets (Change, Pick for
    me, Short on time, Install, the new icon's steps, a past workout, an
    injury, cardio, a rest week, Limited equipment, the routine picker,
    import), the account's actions, demo data's Load, and every start of a
@@ -134,7 +134,7 @@ import { heroRing, weekCard } from './week';
 import { mapCard } from './map';
 import type { Day, Routine } from './types';
 
-/** The first-run tour's sample numbers (r34), chosen to follow the app's own
+/** The first-run tour's sample numbers, chosen to follow the app's own
     rules: last time, this time and the next sets' loads per unit (65 for 10,
     10 and 10 at the top of 8 to 10 means 70 next; a first set with 4 in
     reserve moves the next ones up), a best estimate going from one number to
@@ -175,7 +175,7 @@ declare global {
 
 /* ---------- the first pages ---------- */
 
-/* First run (r22). A new install opens on its own pages instead of Today:
+/* First run. A new install opens on its own pages instead of Today:
    first the account (Create account, I have an account, Not now), then an
    optional name and the units above the ways to start. Nothing is required:
    Not now and the start choices skip everything. The account comes first
@@ -447,7 +447,7 @@ function welcomeCard(): Part {
 }
 /* Signed out: one slim line on Today, because a log that lives only on the
    phone is the biggest risk to it. It comes before the Install line in a
-   browser (item 55). "Not now" hides it on this device until an account is
+   browser. "Not now" hides it on this device until an account is
    used. Never shown inside Claude, during a first run (the welcome card
    offers it there), or before the sign-in check. Someone who just chose
    Continue without an account is not asked again on the next screen (r32,
@@ -459,7 +459,7 @@ function acctBar(): Part {
   if (prefGet(OB_ACCT) === 'later' && !state.sessions.some(x => !x.demo)) return nothing;
   return html`<div class="acctbar" id="acctBar"><span class="small"><b>Only on this phone.</b><span class="ab-more"> Sync it with an account.</span></span><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Set up sync</button><button class="ib" aria-label="Not now" data-act="acctLater">✕</button></div>`;
 }
-/* The new icon (r25). iPhone keeps a home-screen icon exactly as it was when
+/* The new icon. iPhone keeps a home-screen icon exactly as it was when
    added and never refreshes it, so an app installed before r25 shows the old
    barbell until it is removed and added again, and removing it also removes
    the log kept on the phone. So an existing iPhone install is told once, with
@@ -485,7 +485,7 @@ function iconBar(): Part {
    to Home Screen), so there Install opens a short picture guide for the
    browser in use (installSheet). Nothing shows once installed, inside
    Claude, or in the plain source file. An iPhone's button says Add to Home
-   Screen (item 56). */
+   Screen. */
 function installBar(): Part {
   if (!canInstallHere()) return nothing;
   if (prefGet(INSTALL_LATER)) return nothing;
@@ -498,7 +498,7 @@ function installBar(): Part {
    whether new or signed in for months, one slim line asks for a photo for
    the menu button. Add photo picks one there and then; Not now hides the
    line on this phone until it signs out, as does a photo added from the menu
-   or one the account already has (2.34). It
+   or one the account already has. It
    waits behind the install and new-icon lines, so Today never stacks two,
    and stays out of the first run and the demo. */
 function photoBar(): Part {
@@ -507,7 +507,7 @@ function photoBar(): Part {
   return html`<div class="acctbar" id="photoBar"><span class="small"><b>Add a profile photo.</b><span class="ab-more"> It shows at the top right on any phone you sign in on.</span></span><label class="btn sm primary">Add photo<input type="file" accept="image/*" data-photo hidden></label><button class="ib" aria-label="Not now" data-act="photoLater">✕</button></div>`;
 }
 /* A field for a new weigh-in or tape measurement, made again when the unit
-   changes: these fields keep what is typed through a draw (r59), and a number
+   changes: these fields keep what is typed through a draw, and a number
    typed in pounds or inches left in place under kilograms or centimetres
    would be saved as that (180 lb as 180 kg). Typed in the unit shown, it goes
    with it (the review of r59's keeping of fields). */
@@ -646,12 +646,12 @@ export function viewToday(): TemplateResult {
   const cs = weekly ? null : cycleState(R);
   if (typeof ui.todayDay === 'number' && ui.todayDay >= R.days.length) ui.todayDay = null;
   const chosen = typeof ui.todayDay === 'number' ? ui.todayDay : null;
-  // On a fixed-weekday routine the card offers the week's workout due (NEW-31): one still to do, else today's.
+  // On a fixed-weekday routine the card offers the week's workout due: one still to do, else today's.
   const offer = weekly && chosen == null && !isRestWeek(weekStart(today())) ? weekOffer(R, wd) : null;
   const di = chosen == null ? (offer ? offer.di : weekly ? wd : cs ? cs.next : 0) : chosen;
   const day0: Day = R.days[di] || { id: '', name: '', rest: true, items: [] };
   const t = today();
-  // "Next up" is said once, in Change day below (r28): on the card it made the
+  // "Next up" is said once, in Change day below: on the card it made the
   // date line wrap and leave "UP" on a line of its own on a phone.
   // On a scheduled rest day the card shows the next training day, and says so (r30: "Day 1 of 7" beside "rest today, Day 7").
   /* A day opened from a date past this week (the calendar's days ahead, 329)
@@ -668,7 +668,7 @@ export function viewToday(): TemplateResult {
     at.d > addDays(weekStart(t), SUNDAY)
       ? at.d
       : null;
-  // Which of the day's workouts (366 (c)): the one offered, the one picked, else the first not done this week; on a
+  // Which of the day's workouts: the one offered, the one picked, else the first not done this week; on a
   // date past this week, its first (the review of r68: next Monday showed this week's second workout, still to do).
   const parts = weekly ? dayParts(day0) : [];
   const part: 1 | 2 = offer
@@ -716,13 +716,13 @@ export function viewToday(): TemplateResult {
   const free = state.settings.todayStart === 'free' && chosen == null;
   const lines = [acctBar(), installBar(), iconBar()];
   const above = html`${welcomeCard()}${lines}${lines.every(l => l === nothing) ? photoBar() : nothing}`;
-  // Stepped away from a workout with Save and leave (NEW-89): its card takes the start card's place, so Today offers no second start.
+  // Stepped away from a workout with Save and leave: its card takes the start card's place, so Today offers no second start.
   const open = state.draft && awayFrom() ? state.draft : null;
   if (open)
     return html`${above}${resumeCard(open)}${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
   /* A workout set aside for an edit that has not come back by itself (the app
      closed halfway, or the account was away when the edit ended) is offered in
-     the start card's place until it does (R81-2). */
+     the start card's place until it does. */
   if (!state.draft && parkedHere())
     return html`${above}<section class="hero" id="parkedCard"><div class="hero-top"><div class="hero-t"><p class="eyebrow">Workout set aside</p><h2>Your workout in progress</h2>
 <p class="muted small u-m0">Set aside while you fixed an earlier one.</p></div></div>
@@ -782,7 +782,7 @@ function resumeCard(d: NonNullable<typeof state.draft>): TemplateResult {
 
 /* ---------- under the start card ---------- */
 
-/* Counted PRs only (r32): the latest of the last 4 weeks, and the streak. */
+/* Counted PRs only: the latest of the last 4 weeks, and the streak. */
 function homeTiles(): TemplateResult {
   const sk = weekStreak();
   const pr = recent4w().prs;
@@ -829,7 +829,7 @@ function injuryCard(): TemplateResult | null {
   });
 }
 /* Quick answers before a session starts: is this lift moving, and what to
-   do. A PR as Recent PRs counts it (r58). */
+   do. A PR as Recent PRs counts it. */
 function liftTags(exId: string): Part {
   const I = IDX();
   const st = I.exStats[exId];
@@ -924,7 +924,7 @@ function heightField(): TemplateResult {
 }
 /* The body on Today: the latest weigh-in and the weekly change, a weigh-in
    to log for a date, the last five, and the tape measurements. "−0 vs
-   previous" read as a loss; a change that rounds to nothing says so (r41). */
+   previous" read as a loss; a change that rounds to nothing says so. */
 function bodyCard(): TemplateResult {
   const bws = [...state.bodyweights].sort((a, b) => (a.date < b.date ? 1 : -1));
   const ms = [...state.measurements].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, BODY_SHOWN.tape);
@@ -1173,7 +1173,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const inp = field(own || 'bwVal');
     const v = numIn(inp ? inp.value || inp.dataset['grey'] || '' : '');
     const de = own ? null : field('bwDate');
-    // The sheet opened from a session names the session's day (NEW-90); else the date field, else today.
+    // The sheet opened from a session names the session's day; else the date field, else today.
     const at = t && t.dataset && t.dataset['date'];
     const date = (at && isDate(at) && at <= today() ? at : null) || (de && de.value) || today();
     if (v == null || v <= 0) {
@@ -1192,7 +1192,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     // The fields are kept between draws now (lit-html): the weigh-in logged leaves them as a fresh card shows them.
     if (inp) inp.value = '';
     if (de) de.value = today();
-    // Saved from the bodyweight sheet (r66, 372): the sheet has done its job.
+    // Saved from the bodyweight sheet: the sheet has done its job.
     if (ui.modal && ui.modal.kind === 'bw') closeModal();
     rerenderKeepScroll();
     toast('Bodyweight logged');
@@ -1397,7 +1397,7 @@ export const TODAY_BINDS: Readonly<Record<string, (t: Field) => void>> = {
     toast(`Height ${heightTxt(cm)}`);
   }
 };
-/** A field of Today changed (on change): the Set up page's bodyweight, today's weigh-in, replaced if typed again and removed if cleared (r34); whether it was Today's. */
+/** A field of Today changed (on change): the Set up page's bodyweight, today's weigh-in, replaced if typed again and removed if cleared; whether it was Today's. */
 export function todayChange(t: Field): boolean {
   if (t.id !== 'obBw') return false;
   const v = numIn(t.value);

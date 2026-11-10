@@ -111,7 +111,7 @@ export function allTimeBestsIn(
   last: string | undefined;
 } | null {
   const all = IDXIn(M).byEx[id];
-  // Since a new machine or gym, if one is marked (r61): another machine's loads are no record here.
+  // Since a new machine or gym, if one is marked: another machine's loads are no record here.
   const exps = all ? sinceNew(upTo ? all.filter(x => x.date <= upTo) : all) : all;
   if (!exps || !exps.length) return null;
   const ex = EXIn(M, id);

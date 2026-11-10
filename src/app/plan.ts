@@ -1,9 +1,9 @@
-/* Plan (r58, phase 5): the routine, its days and exercises, the library to
+/* Plan: the routine, its days and exercises, the library to
    add from and the routine's weekly volume, and the exercise library page,
    drawn by lit-html as src/22-plan-stats.js drew them, with the actions and
    fields that change what they show, each change to the log through `act`.
    What Plan opens elsewhere is reached by the button's data-act through
-   events.ts's table (r63): the pickers (Add exercise, Swap), the sheets (a
+   events.ts's table: the pickers (Add exercise, Swap), the sheets (a
    new routine, a template, the exercise editor) and the guide. A drag of
    an exercise, a day or a library card ends here (`dropItem`, `dropDay`,
    `dropLib`), the dragged element put back where lit-html drew it first. */
@@ -121,7 +121,7 @@ export function sessionCapNote(day: Day): Part {
 
 /* Plan against the usual ranges (r30, V's choice). Picking a routine on a
    first run brings the weekly minimums down to what it plans, so following
-   it reads as on target (r29); measured against those, the plan always
+   it reads as on target; measured against those, the plan always
    passes. This one quiet line, on Plan only, names the muscles the plan
    puts under the usual range where the target was brought down to meet it.
    No colour and no flag anywhere else: the targets stay the lifter's. */
@@ -129,7 +129,7 @@ export function sessionCapNote(day: Day): Part {
 export function planEvidenceNote(pv: Readonly<Record<string, number>>): Part {
   const b = state.settings.bands;
   // Major muscles only (a default minimum of MAJOR_MIN or more): the usual range is about them; smaller ones have lower, softer defaults.
-  // Brought down below the profile's own default too (r44): a focus's maintenance targets were not lowered to meet the plan.
+  // Brought down below the profile's own default too: a focus's maintenance targets were not lowered to meet the plan.
   const low = MK.filter(
     m =>
       hasTarget(m) &&
@@ -145,7 +145,7 @@ export function planEvidenceNote(pv: Readonly<Record<string, number>>): Part {
 }
 
 /* soFar: this week while it is still going, so short of the minimum is
-   under way (pale green), not amber (r29). Each row's status is the one
+   under way (pale green), not amber. Each row's status is the one
    every screen reads (muscleStatus, r54): no sets is none, as on the map,
    never green, and not yet this week rather than under way; on an average
    with a minimum it is below, unless on plan. */
@@ -239,7 +239,7 @@ function bLibItems(): TemplateResult[] {
   );
 }
 
-/** A day's line under its name: its exercises, sets and minutes, each workout's when it holds two (366 (c)). */
+/** A day's line under its name: its exercises, sets and minutes, each workout's when it holds two. */
 function dayMeta(d: Day): TemplateResult {
   const parts = dayParts(d);
   if (parts.length < 2) return html`${d.items.length} exercises, ${daySets(d)} sets, ${minPart(dayMinutes(d))}`;
@@ -310,7 +310,7 @@ export function viewProgram(): TemplateResult {
     <option value="weekly" .selected=${live(weekly)}>Fixed weekdays: Monday to Sunday</option></select></label>
     <p class="small muted hastip u-m0" data-tip=${weekly ? 'Each day is pinned to a weekday and Today opens on the calendar day.' : `The cycle runs in order whatever the calendar says. Today opens on the day after your last session, so a missed workout waits instead of being skipped. A week plans the whole sessions the cycle brings round in 7 days, ${plannedPerWeek(R)} here. 1 to ${MAX_DAYS} days.`}>How this works</p></div>`
   });
-  // The weekly count is in the header; a cycle of other than a week's days says its own count here (r34.2).
+  // The weekly count is in the header; a cycle of other than a week's days says its own count here.
   const dnd = !!(window.__libs && window.__libs.sortable);
   const focus = dayFocusId(R);
   const daysBody = html`${!weekly && R.days.length !== WEEK_DAYS ? html`<p class="muted small u-m0-0-4">${totSets} sets a ${R.days.length}-day cycle ${tipButton('Drag the ⠿ beside a day number to reorder days; they renumber from their new position.', 'About days')}</p>` : nothing}<div id="dayList">${R.days.map((d, di) => dayPart(R, d, di, weekly, dnd, focus))}</div>${weekly ? nothing : html`<div class="row u-mt10"><button class="btn sm" data-act="dAdd" ?disabled=${R.days.length >= MAX_DAYS}>+ Training day</button><button class="btn sm" data-act="dAddRest" ?disabled=${R.days.length >= MAX_DAYS}>+ Rest day</button></div>`}`;
@@ -755,7 +755,7 @@ export function planInput(t: Field): boolean {
       );
     return true;
   }
-  // A day's second workout's name (r68, 366 (c)): absent when cleared, so the day's name with a 2 shows.
+  // A day's second workout's name: absent when cleared, so the day's name with a 2 shows.
   if (t.dataset.daypm != null) {
     const d = curRoutineB().days[num(t.dataset.daypm)];
     const v = t.value.trim().slice(0, LIMITS.name);
@@ -831,7 +831,7 @@ export function planChange(t: Field): boolean {
   if (t.dataset.moveto) {
     const f = findItem(t.dataset.moveto);
     if (!f) return true;
-    // "3" is a day, "3:2" its second workout on a fixed-weekday routine (r68, 366 (c)).
+    // "3" is a day, "3:2" its second workout on a fixed-weekday routine.
     const [toS, partS] = t.value.split(':');
     const to = +(toS ?? '');
     const pm = partS === '2' && f.r.schedule === 'weekly';
@@ -881,7 +881,7 @@ export const PLAN_BINDS: Readonly<Record<string, (t: Field) => void>> = {
       () => {
         if (v === 'weekly')
           while (R.days.length < WEEK_DAYS) R.days.push({ id: uid(), name: 'Rest', rest: true, items: [] });
-        // A cycle has no second workouts (366 (c)): a day's two become one, its exercises kept in order.
+        // A cycle has no second workouts: a day's two become one, its exercises kept in order.
         if (v === 'cycle')
           for (const d of R.days) {
             delete d.pmName;

@@ -69,7 +69,7 @@ function noteDown(e: Event): void {
    clamped as stored (the field keeps what was typed so the lifter is not
    fought mid-keystroke, but history can never take a negative load or an
    impossible rep count), saved once the typing pauses. Whole reps: 8.5 is 8,
-   a partial rep not a rep (r55). On an assisted lift the number is the help.
+   a partial rep not a rep. On an assisted lift the number is the help.
    A load typed is the lifter's, no longer carried. The grey numbers, the
    progress line and the plates follow at once, as the legacy patches had
    them; a name or notes are drawn at the next draw, as before. */
@@ -158,7 +158,7 @@ export function workoutInput(t: Field): boolean {
 }
 
 /* A field of the session screen left with a new value. Reps: the field shows
-   the reps stored (r55); a done set whose reps were cleared is undone, once
+   the reps stored; a done set whose reps were cleared is undone, once
    the new rows are in place (a field taken away mid-draw fires its change as
    if left); one typed as 0 is a missed set, ticked as typed (r55, V), and a
    ticked set changed to 0 asks, as a tick does, when its load is light
@@ -168,7 +168,7 @@ export function workoutInput(t: Field): boolean {
    into the field being typed in (r55, the audit: 105 typed there became
    101050); heading for this row's RIR box: ticked when its strip closes (or
    after 2 s if it never opened), by identity, so a later tick cannot run this
-   one (r45). A load: a ticked set's load changed to one far off asks too,
+   one. A load: a ticked set's load changed to one far off asks too,
    unticked until answered; Log it, or the load fixed after Fix it, ticks it
    again, its rest not started over (r55; the second review). The date: last
    time and the targets are read as of the session's date, so a new date
@@ -214,7 +214,7 @@ export function workoutChange(t: Field): boolean {
       const toRir = near(`.rirb[data-b="${bi}"][data-s="${si}"]`);
       const toW = !toRir && near(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
       /* Leaving the field for the set's own minus or plus ticks it, as leaving it any other way does: the pills stay on
-         the set you are on (NEW-100), so the step changes the set just ticked (the review of 2.36 to 2.41, REV8-O1:
+         the set you are on, so the step changes the set just ticked (the review of 2.36 to 2.41, REV8-O1:
          until then the step there left it unticked, where the keyboard closed first ticked it; REV7-5 had made that
          exception while a tick still moved the pills on). */
       if (toW) W.pendAuto = { b: blkRef(bi), s: si };
@@ -241,7 +241,7 @@ export function workoutChange(t: Field): boolean {
        cleared are (V on r61's preview, 2026-10-26: set 2 ticked on its grey
        225, its load then cleared, stayed ticked with no weight, and the
        recap read it as 0 x 8). It then waits for its weight, as a tick made
-       before one is typed does (344): a load typed ticks it again (the
+       before one is typed does: a load typed ticks it again (the
        independent review of r62: typing 230 left it unticked, and Finish
        offered to save without it), and so does the checkmark on its grey
        load, as the same set, its rest not started over (unloaded, setDone).
@@ -259,7 +259,7 @@ export function workoutChange(t: Field): boolean {
     const refix = ui.refix;
     const rf = !!refix && refix.s === si && blkIdx(refix.b) === bi;
     if (rf) ui.refix = null;
-    /* A tick that waited for its weight (344) is made once one is typed; the
+    /* A tick that waited for its weight is made once one is typed; the
        checkmark tapped next keeps it, as after auto-mark. Only while the set
        still has its reps (or a 0 typed, a missed set): reps cleared since,
        the tick has nothing to log and is dropped (the independent review of
@@ -279,7 +279,7 @@ export function workoutChange(t: Field): boolean {
     redraw();
     return true;
   }
-  /* The minutes a past workout or an edited session took, typed (r67, NEW-39):
+  /* The minutes a past workout or an edited session took, typed:
      empty is none, and a number past what a workout takes is refused. */
   if (t.dataset.bind === 'draftMin') {
     const v = t.value.trim();
@@ -332,7 +332,7 @@ export function workoutKey(e: KeyboardEvent): boolean {
     const bi = Number(t.dataset.b),
       si = Number(t.dataset.s);
     if (t.dataset.f === 'r' && !t.value.trim()) acceptGrey(bi, si);
-    /* A set whose tick waits for its weight (344) keeps the focus on its
+    /* A set whose tick waits for its weight keeps the focus on its
        load field, which setDone gave it (from the independent review of r60:
        Next moved on, and the weight typed next went to the set after). */
     if (needHere(bi, si)) return true;
@@ -402,9 +402,9 @@ function workoutFocus(e: FocusEvent): void {
   W.selAgain = t;
 }
 
-/* A set's field focused on the lift minus and plus are on makes it the set you are on (NEW-100), drawn at once so the
+/* A set's field focused on the lift minus and plus are on makes it the set you are on, drawn at once so the
    strip and the mark follow; the strip stays where it is, so nothing moves. A field on another lift waits for a number
-   typed, which moves the pills there (NEW-98), keeping the lift tapped in place. Drawn before the load field is made
+   typed, which moves the pills there, keeping the lift tapped in place. Drawn before the load field is made
    ready to be typed over (armLoad), whose grey number a draw would take back out. */
 function onSetFocus(t: HTMLInputElement): void {
   const d = state.draft;

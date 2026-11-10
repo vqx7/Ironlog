@@ -77,7 +77,7 @@ export function blockDragStop(): void {
 
 /* The exercises open again at the drop. The scroll is moved with them, so
    the one just dropped stays where the finger left it instead of the page
-   going back to a position measured on the one-line list (r29 review). */
+   going back to a position measured on the one-line list. */
 function dragOpenUp(it: Element): void {
   const t0 = it.isConnected ? it.getBoundingClientRect().top : null;
   document.body.classList.remove('blkdrag');
@@ -89,12 +89,12 @@ function dragOpenUp(it: Element): void {
   }
 }
 
-/* The session's exercises are dragged by their ⠿ handle (r29). lit-html owns
-   their nodes (r60), so the exercise dragged goes back where it was drawn
+/* The session's exercises are dragged by their ⠿ handle. lit-html owns
+   their nodes, so the exercise dragged goes back where it was drawn
    (view.ts, dragDrop) before the session changes and the screen is drawn in
    the new order, as a drag on Plan or a section does since r57 and r58. An
    open exercise is taller than the screen, so the next one started
-   off-screen and a drag could only move one place (r29 review): while
+   off-screen and a drag could only move one place: while
    dragging, every exercise shows only its title line, the page scrolled so
    the one held stays under the finger, with room added below the list when
    the shorter page cannot scroll that far. A field still focused when the

@@ -1,4 +1,4 @@
-/* The sheets of an exercise in the library (r62, PENDING 355): the editor,
+/* The sheets of an exercise in the library: the editor,
    new or saved, the muscles it works, flat or in 3D, and its history from
    inside a session with the trend line. Each is drawn by
    lit-html as src/24-sheets.js drew it (tests/r62.js holds them to r61's),
@@ -103,7 +103,7 @@ const TREND_SESSIONS = 3;
 
 /* The sessions the trend reads (r30: a deload or lighter day in the list
    read as a drop; since r54 one short of its usual is in), in the trend's
-   range, so a heavy and a light day are not read as one line (r55), and
+   range, so a heavy and a light day are not read as one line, and
    since a new machine or gym (liftRead, r61). The word follows the lift's
    trend when it has one (r32, from the third review: a press flat for 7
    weeks read "67.5 → 69.7 → 69.7 · up" from its last three sessions), says

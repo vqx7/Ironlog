@@ -138,7 +138,7 @@ const NEW_V5: ReadonlySet<string> = new Set(NEW_MUSCLES_V5);
 /** A cardio kind, and when it sat against the lifting: one of the lists' keys (r56.1; until then any key Object has, and a list, passed). */
 const CARDIO_KINDS: ReadonlySet<string> = new Set(CARDIO.map(c => c[0]));
 const CARDIO_WHENS: ReadonlySet<string> = new Set(CWHEN.map(c => c[0]));
-/** A time a Date can hold (r56.1, PENDING 308): a whole number of milliseconds after 1970, within what Date represents. */
+/** A time a Date can hold: a whole number of milliseconds after 1970, within what Date represents. */
 const isTime = (t: number): boolean => Number.isInteger(t) && t > 0 && t <= MAX_TIME;
 /** The latest time a Date can hold, in milliseconds after 1970 (ECMAScript: 10^8 days). */
 const MAX_TIME = 8.64e15;
@@ -165,7 +165,7 @@ function planNums(p: Rec): Pick<Plan, 'sets' | 'repMin' | 'repMax' | 'rir' | 're
   };
 }
 
-/** A plan's load jump in percent, within its bound, absent unless set (r30), so older plans keep their hash. */
+/** A plan's load jump in percent, within its bound, absent unless set, so older plans keep their hash. */
 function jumpOf(p: Rec): { jump?: number } {
   const jump = Number(p.jump);
   return p.jump != null && p.jump !== '' && isNum(jump) ? { jump: Math.min(Math.max(jump, 0), LIMITS.jumpPct) } : {};
@@ -173,7 +173,7 @@ function jumpOf(p: Rec): { jump?: number } {
 
 /* ---------- fields a newer build added ---------- */
 
-/* Fields a newer build adds to a record, kept as they came (r43). Every record
+/* Fields a newer build adds to a record, kept as they came. Every record
    is rebuilt from the fields this build knows, so a phone on an older build
    used to drop anything newer whenever it loaded or synced the log: an r37
    phone wiped a lift goal set on r38. A field this build does not know is now
@@ -196,7 +196,7 @@ export function keepExtra<O extends object>(src: unknown, out: O, known?: Readon
 }
 keepExtra.n = 0;
 /** The work of keepExtra, counted for its caller: the unknown fields of `src` written into `out` within the limits,
-    and how many were kept. The workout in progress and the log itself use it uncounted (2.28, 2.27-F2): before 2.28
+    and how many were kept. The workout in progress and the log itself use it uncounted: before 2.28
     their unknown fields passed through whole, and the count the suites read is of records' fields. */
 function extraInto(src: unknown, out: object, known?: ReadonlySet<string>): number {
   const S = rec(src);
@@ -275,7 +275,7 @@ export const cleanCardio = (c: unknown, i?: number): CardioEntry => cardioOf(c, 
 /** One cardio row of a workout in progress, cleaned: its minutes may still be blank. */
 export const cleanDraftCardio = (c: unknown, i?: number): CardioRow => cardioOf(c, null, i);
 
-/** A record's pictures as a field to spread last: { pics } when it has any, nothing otherwise (r66, 373). */
+/** A record's pictures as a field to spread last: { pics } when it has any, nothing otherwise. */
 const picsField = (v: unknown): { pics?: string[] } => {
   const p = picIds(v);
   return p ? { pics: p } : {};
@@ -330,7 +330,7 @@ export function cleanSess(raw: unknown, si: number): Session {
                 cut: b.cut === true ? true : undefined,
                 // One exercise made lighter mid-session (r31, Make it lighter): out of trends and targets, the rest of the session counts.
                 light: b.light === true ? true : undefined,
-                // Held for a flagged injury, its key (r54): left out of the stall test. Absent unless held, so earlier records keep their hash.
+                // Held for a flagged injury, its key: left out of the stall test. Absent unless held, so earlier records keep their hash.
                 ...(typeof b.inj === 'string' && isMuscleOrJoint(b.inj) ? { inj: b.inj } : {}),
                 sets: (arr(b.sets) || []).flatMap((x0): LoggedSet[] => {
                   const x = rec(x0);
@@ -344,18 +344,18 @@ export function cleanSess(raw: unknown, si: number): Session {
                       warm: !!x.warm,
                       drop: !!x.drop && !x.warm,
                       cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
-                      // The row's own id (r56.1), last, where a build before it kept the unknown field.
+                      // The row's own id, last, where a build before it kept the unknown field.
                       ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
                     })
                   ];
                 }),
-                // The sets its routine's plan gave it when saved (r58, 339 h), last, as Finish writes it; absent unless recorded, so older records keep their hash.
+                // The sets its routine's plan gave it when saved, last, as Finish writes it; absent unless recorded, so older records keep their hash.
                 ...(typeof b.ps === 'number' && Number.isInteger(b.ps) && b.ps >= 1 && b.ps <= LIMITS.sets
                   ? { ps: b.ps }
                   : {}),
                 // Done at a new machine or gym (r61, 343 7), last, as Finish writes it; absent unless marked, so older records keep their hash.
                 ...(b.nw === true ? { nw: true as const } : {}),
-                // The pictures on its note (r66, 373), by id, last; absent unless there are any, so older records keep their hash.
+                // The pictures on its note, by id, last; absent unless there are any, so older records keep their hash.
                 ...picsField(b.pics)
               },
               KNOWN_SEX
@@ -363,14 +363,14 @@ export function cleanSess(raw: unknown, si: number): Session {
           ];
         })
         .filter(b => b.sets.length),
-      // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold (r56.1).
+      // When the session started: orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold.
       t: isTime(Math.round(t)) ? Math.round(t) : undefined,
       // The sessions a week its routine planned when saved (r55, pwOf); absent unless recorded, so older records keep their hash.
       // At most seven, as every build before reads it: a week of more is not recorded (pwOf, the review of r68).
       pw: typeof ss.pw === 'number' && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= WEEK_DAYS ? ss.pw : undefined,
-      // The pictures on the workout's notes (r66, 373), by id; absent unless there are any, so older records keep their shape and hash.
+      // The pictures on the workout's notes, by id; absent unless there are any, so older records keep their shape and hash.
       ...picsField(ss.pics),
-      // Its day's second workout (r68, 366 (c)): 2 or absent, last, where a build before r68 keeps it among its extras.
+      // Its day's second workout: 2 or absent, last, where a build before r68 keeps it among its extras.
       ...(ss.part === 2 ? { part: 2 as const } : {})
     },
     KNOWN_SESS
@@ -399,7 +399,7 @@ export function starterSigs(): string[] {
   return [routineSig(starterRoutine()), starterSigBefore(), routineSig(defaultRoutine())];
 }
 /* The starter as installs made it up to r63, before an isolation lift's
-   rest became ISO_REST at least (r64, 302): a phone set up then and never
+   rest became ISO_REST at least: a phone set up then and never
    changed still has it. */
 function starterSigBefore(): string {
   const k = window.IRONLOG_STARTER;
@@ -547,7 +547,7 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
   })();
   const gym = gymClean(rec(st.gym));
   const profile = profClean(rec(st.profile));
-  // The floors a first-run routine pick set (r44): whole sets 0 to 100, in muscle order.
+  // The floors a first-run routine pick set: whole sets 0 to 100, in muscle order.
   const bandsFit = (() => {
     const F = rec(st.bandsFit);
     const o: Partial<Record<MuscleKey, number>> = {};
@@ -559,7 +559,7 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
       }
     return o;
   })();
-  // The muscles the lifter gave a target with Set a target (r58): in muscle order, never one with a target by default.
+  // The muscles the lifter gave a target with Set a target: in muscle order, never one with a target by default.
   const ownTargets = (() => {
     const o = arr(st.ownTargets);
     return o ? MK.filter(m => !TARGETED.has(m) && o.includes(m)) : [];
@@ -599,32 +599,32 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     // Optional settings added in r20 stay undefined unless set.
     ...(accent ? { accent } : {}),
     ...(st.rirAsk === true ? { rirAsk: true } : {}),
-    // Count RIR 4 to 5 as half a set (r40): absent unless on.
+    // Count RIR 4 to 5 as half a set: absent unless on.
     ...(st.rirHalf === true ? { rirHalf: true } : {}),
     // r34: adjusting the next sets is on unless turned off; only false is stored, so older saves hash as before.
     ...(st.autoAdj === false ? { autoAdj: false } : {}),
     // r34: weigh-in reminder in days (0 off); absent is every BW_EVERY_DEFAULT days.
     ...(bwEvery !== undefined ? { bwEvery } : {}),
-    // 2.37 (ST-6): This block vs last's length; absent is BLOCK_WEEKS_DEFAULT, so saves without it hash as before.
+    // 2.37: This block vs last's length; absent is BLOCK_WEEKS_DEFAULT, so saves without it hash as before.
     ...(blockWeeks !== undefined ? { blockWeeks } : {}),
     // r34: Today opens on a blank session; absent is the plan's day.
     ...(st.todayStart === 'free' ? { todayStart: 'free' } : {}),
     // r34: rest weeks, week-start dates; the last two years kept.
     ...(restWeeks.length ? { restWeeks } : {}),
-    // r33 (item 206): effort in half points or RPE; absent is whole RIR, so older saves hash as before.
+    // r33: effort in half points or RPE; absent is whole RIR, so older saves hash as before.
     ...(rirScale ? { rirScale } : {}),
     // r25: suggested loads show grey until typed; 'fill' puts them in the rows as before. Unset means grey (V's choice).
     ...(st.loadFill === 'fill' ? { loadFill: 'fill' } : {}),
     ...(userName ? { userName } : {}),
     homeFolded: hf ? strings(hf, k => oneOf(k, ['map', 'body', 'week', 'tiles', 'coach', 'injuries'])) : [],
-    // Section order per tab (drag the ⠿ in a section header): a new install starts in the default order (r28).
+    // Section order per tab (drag the ⠿ in a section header): a new install starts in the default order.
     secOrder,
     folds: fl ? strings(fl, k => safeKey(k) && k.length < LIMITS.foldKey).slice(0, LIMITS.folds) : [],
     wakeLock: st.wakeLock === true,
-    // Small change plates (r29, item 98): absent unless on, so saves without it hash as before. Its toggle went with the
-    // plates line in 2.42 (NEW-103); a log that has it keeps it, and a build before reads it as it did.
+    // Small change plates: absent unless on, so saves without it hash as before. Its toggle went with the
+    // plates line in 2.42; a log that has it keeps it, and a build before reads it as it did.
     ...(st.smallPlates === true ? { smallPlates: true } : {}),
-    // Your gym (r33, item 207) and the profile (r44, item 271): absent unless set, rebuilt in one key order.
+    // Your gym and the profile: absent unless set, rebuilt in one key order.
     ...(gym ? { gym } : {}),
     ...(profile ? { profile } : {}),
     ...(Object.keys(bandsFit).length ? { bandsFit } : {}),
@@ -706,15 +706,15 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     // stack or rack, past which progression moves to reps. Absent when unset,
     // so records saved before these existed hash exactly as before.
     timed: e.timed === true ? true : undefined,
-    // Compound or isolation, when set in the editor (r27); absent reads it from the name.
+    // Compound or isolation, when set in the editor; absent reads it from the name.
     kind: e.kind === 'compound' || e.kind === 'iso' ? e.kind : undefined,
-    // Assisted (item 45): the load number is the machine's help, stored below 0.
+    // Assisted: the load number is the machine's help, stored below 0.
     assist: e.assist === true && !!e.bw ? true : undefined,
     bwf: isNum(bwf) && bwf > 0 && bwf <= LIMITS.bwShare ? Math.round(bwf * HUNDREDTHS) / HUNDREDTHS : undefined,
     maxLoad: isNum(ml) && ml > 0 ? Math.min(ml, LOAD_MAX) : undefined,
-    // This lift's own bar (r29, item 98): a trap or EZ bar instead of the bar in Settings. Absent when unset.
+    // This lift's own bar: a trap or EZ bar instead of the bar in Settings. Absent when unset.
     barKg: isNum(bar) && bar > 0 ? Math.min(bar, LIMITS.barKg) : undefined,
-    // A lift goal (r38, item 188): a load (added load on a bodyweight lift) for a number of reps. Absent when unset.
+    // A lift goal: a load (added load on a bodyweight lift) for a number of reps. Absent when unset.
     goal:
       g && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e.timed && !e.assist
         ? { w: gw, r: gr }
@@ -764,7 +764,7 @@ function cleanRoutine(r0: unknown, ri: number): Routine {
             ...planNums(it),
             ss: typeof it.ss === 'string' && it.ss ? fixId(it.ss) : null,
             ...jumpOf(it),
-            // In the day's second workout (r68, 366 (c)): true or absent, last, so older items keep their hash.
+            // In the day's second workout: true or absent, last, so older items keep their hash.
             ...(it.pm === true && schedule === 'weekly' ? { pm: true as const } : {})
           },
           KNOWN_ITEM
@@ -775,7 +775,7 @@ function cleanRoutine(r0: unknown, ri: number): Routine {
     let id = dbase;
     if (seen.has(id)) id = id + '-' + i;
     seen.add(id);
-    // The second workout's name (r68, 366 (c)), last and absent unless given, so older days keep their hash.
+    // The second workout's name, last and absent unless given, so older days keep their hash.
     const pmName = typeof d.pmName === 'string' ? d.pmName.trim().slice(0, LIMITS.name) : '';
     days.push(
       keepExtra(
@@ -807,7 +807,7 @@ function cleanDraftSet(x0: unknown): DraftSet[] {
       drop: !!x.drop && !x.warm,
       done: !!x.done,
       cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
-      // The row's own id (r56.1), last, where a build before it kept the unknown field.
+      // The row's own id, last, where a build before it kept the unknown field.
       ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
     })
   ];
@@ -843,7 +843,7 @@ function cleanDraftBlock(b0: unknown): DraftBlock[] {
         inj: typeof b.inj === 'string' && isMuscleOrJoint(b.inj) ? b.inj : null,
         hint: typeof b.hint === 'string' ? b.hint : '',
         last: typeof b.last === 'string' ? b.last : '',
-        // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
+        // Last time's sets as shown in the Last column: short strings, absent in older drafts.
         prev: prev
           ? strings(prev, () => true)
               .slice(0, LIMITS.sets)
@@ -862,17 +862,17 @@ function cleanDraftBlock(b0: unknown): DraftBlock[] {
           : [],
         swappedFrom: typeof b.swappedFrom === 'string' ? fixId(b.swappedFrom) : null,
         cut: b.cut === true ? true : undefined,
-        // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
+        // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine; absent otherwise.
         full:
           typeof b.full === 'number' && Number.isInteger(b.full) && b.full >= 1 && b.full <= LIMITS.sets
             ? b.full
             : undefined,
         light: b.light === true ? true : undefined,
-        // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
+        // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload.
         basis: typeof b.basis === 'string' && isDate(b.basis) ? b.basis : undefined,
-        // The suggested load the rows started from (r24); absent in older drafts.
+        // The suggested load the rows started from; absent in older drafts.
         sw: b.sw === null ? null : b.sw === undefined || !isNum(sw) ? undefined : clampN(b.sw, LOAD_MIN, LOAD_MAX, 0),
-        // The next sets adjusted from a set (r34), and Keep for the rest of the session.
+        // The next sets adjusted from a set, and Keep for the rest of the session.
         adj:
           adj && typeof adj.at === 'number' && Number.isInteger(adj.at) && adj.at >= 0 && isNum(adjW) && isNum(adjFrom)
             ? {
@@ -882,7 +882,7 @@ function cleanDraftBlock(b0: unknown): DraftBlock[] {
                 r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
                 up: adj.up === true,
                 why: typeof adj.why === 'string' ? adj.why.slice(0, LIMITS.why) : '',
-                // The row it came from (PENDING 333), last, where a build before it kept no such field.
+                // The row it came from, last, where a build before it kept no such field.
                 ...(typeof adj.rid === 'string' ? { rid: fixId(adj.rid) } : {})
               }
             : undefined,
@@ -901,7 +901,7 @@ function cleanDraftBlock(b0: unknown): DraftBlock[] {
         sets: (arr(b.sets) || []).flatMap(cleanDraftSet),
         // Done at a new machine or gym (r61, 343 7), last, where the menu adds it; absent unless marked.
         ...(b.nw === true ? { nw: true as const } : {}),
-        // The pictures on its note (r66, 373), by id, last; absent unless there are any.
+        // The pictures on its note, by id, last; absent unless there are any.
         ...picsField(b.pics)
       } satisfies DraftBlock,
       KNOWN_BLOCK
@@ -932,7 +932,7 @@ const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics', 'equip']);
 function cleanDraft(d: Rec, date: string): DraftLike {
   const startedAt = Number(d.startedAt),
     durMin = Number(d.durMin);
-  // The workout's pictures (r66, 373): kept when valid, else the field goes, so a draft without any keeps its shape.
+  // The workout's pictures: kept when valid, else the field goes, so a draft without any keeps its shape.
   const pics = picIds(d.pics);
   const equip = equipList(d.equip);
   /* The fields this build knows, worked out first; then the draft is cleaned in place, as before 2.28 (its own fields
@@ -953,11 +953,11 @@ function cleanDraft(d: Rec, date: string): DraftLike {
     deload: !!d.deload,
     light: !!d.light,
     limited: d.limited === true ? true : undefined,
-    // The equipment a Limited equipment session keeps to (NEW-79), as the library names it; absent when there is none.
+    // The equipment a Limited equipment session keeps to, as the library names it; absent when there is none.
     ...(equip ? { equip } : {}),
     ...(pics ? { pics } : {}),
     free: d.free === true ? true : undefined,
-    // Started as its day's second workout (r68, 366 (c)).
+    // Started as its day's second workout.
     part: d.part === 2 ? (2 as const) : undefined,
     // Finish's two questions once answered (sets left, ramp-ups), kept as they came: until 2.28 they passed through
     // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (the r56-1c suite).
@@ -986,16 +986,16 @@ function cleanExercises(listed: unknown[], s: Rec, removedLib: readonly string[]
   const have = new Set(exercises.map(e => e.id));
   const gone = new Set(removedLib);
   const lib = libExercises();
-  /* Through the same cleaning as every other record (r72, the 387 audit's 387-B7): appended as the library gives
+  /* Through the same cleaning as every other record: appended as the library gives
      them, without inc and plates, the next load added both as null, so normalize twice differed from once and the
      record's sync hash changed on every phone when the library gained a lift. */
   for (const e of lib) {
     const r = rec(e);
     if (r && !have.has(e.id) && !gone.has(e.id)) exercises.push(cleanExercise(e, r, e.name));
   }
-  // A built-in the library has renamed reads by its name now where the log holds one the library gave it before; a name the lifter gave it stays (NEW-37).
+  // A built-in the library has renamed reads by its name now where the log holds one the library gave it before; a name the lifter gave it stays.
   const libName = new Map(lib.map(e => [e.id, e.name]));
-  // The same for a note the library has reworded: the old text word for word reads as the library's now; an edited note stays (NEW-85).
+  // The same for a note the library has reworded: the old text word for word reads as the library's now; an edited note stays.
   const libNote = new Map(lib.map(e => [e.id, e.note]));
   for (const e of exercises) {
     const now = libName.get(e.id);

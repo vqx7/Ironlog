@@ -327,7 +327,7 @@ export const DEMO_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       () => {
         const first = demoFirstRun();
         demoKeep();
-        // On a first run the targets fit the routine, as picking it would (r29);
+        // On a first run the targets fit the routine, as picking it would;
         // demoRestore puts the settings back when the demo is cleared.
         act(() => {
           if (first) fitTargets(activeRoutine());

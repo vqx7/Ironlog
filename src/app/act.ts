@@ -3,7 +3,7 @@
    which does every step a change needs, always in this order: the check,
    the Undo step, the change, the caches dropped, the save on this device and
    the edit noted for the sync (the save does both, saveNow). A change that
-   fails halfway is put back whole, with no save and no Undo step (2.28). Before r57 each
+   fails halfway is put back whole, with no save and no Undo step. Before r57 each
    action placed these by hand, about 170 saves and 41 Undo steps, and one
    left out was found only when it lost something. The legacy script's
    direct writes are replaced screen by screen as each moves; tests/hygiene.js
@@ -31,7 +31,7 @@ interface ActOpts {
   undo?: boolean | (() => boolean) | undefined;
   /** Saves once the typing pauses (400 ms, saveSoon), for a change made on every keystroke; the caches are still dropped at once. */
   soon?: boolean | undefined;
-  /** The change touches only the session in progress, which nothing cached reads (the index, the bests, the pace are built from saved sessions): the caches stay, as the legacy session screen left them on every keystroke and tick (r60). */
+  /** The change touches only the session in progress, which nothing cached reads (the index, the bests, the pace are built from saved sessions): the caches stay, as the legacy session screen left them on every keystroke and tick. */
   inProgress?: boolean | undefined;
 }
 
@@ -52,7 +52,7 @@ let logBefore: State | null = null;
 let outerDraftOnly = false;
 // Whether the change being made keeps an Undo step: one asked for inside a change that keeps none cannot be taken (the log is half changed by then), so it is said in the error log rather than lost unsaid.
 let outerUndo = false;
-/* The Undo step the newest change kept, until its message names it (2.30, RC-4): the toast that reports a change is
+/* The Undo step the newest change kept, until its message names it: the toast that reports a change is
    shown just after it, and its words are what Undo says it took back. A change that keeps no step clears it, so a
    message never names an older change's step. */
 let lastStep: (typeof undoStack)[number] | undefined;
@@ -61,7 +61,7 @@ let lastStep: (typeof undoStack)[number] | undefined;
 export function act(change: () => void, opts: ActOpts = {}): boolean {
   if (opts.check && !opts.check()) return false;
   if (depth > 0) {
-    // A change to the whole log inside one to the workout alone: the log as it was before it is kept for the outer change to put back if it fails (2.28).
+    // A change to the whole log inside one to the workout alone: the log as it was before it is kept for the outer change to put back if it fails.
     if (!opts.inProgress && outerDraftOnly && !logBefore) logBefore = structuredClone(state);
     if (!opts.inProgress) dropInside = true;
     if (opts.undo && !outerUndo) log('act', 'an Undo step was asked inside a change that keeps none');
@@ -88,7 +88,7 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
     queueMicrotask(() => {
       if (lastStep === step) lastStep = undefined;
     });
-  /* What a change that fails halfway is put back to (2.28, 2.27-F5): an exact copy of the workout in progress for a
+  /* What a change that fails halfway is put back to: an exact copy of the workout in progress for a
      change to it alone, else of the whole log. Before 2.28 the half-changed log stayed, and the next change saved
      it. */
   const draftWas = opts.inProgress ? structuredClone(state.draft) : null;
@@ -125,7 +125,7 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   return true;
 }
 
-/** Puts a copy of a deleted session, routine or cardio entry into Recently deleted, newest first, within its count and size; a ready-made routine left as it came is not kept (r34.1). Called inside a change given to `act`. */
+/** Puts a copy of a deleted session, routine or cardio entry into Recently deleted, newest first, within its count and size; a ready-made routine left as it came is not kept. Called inside a change given to `act`. */
 export function toTrash(kind: Trashed['kind'], data: { id: string }): void {
   if (kind === 'routine' && plainTemplate(data)) return;
   const copy = rec(parseJson(JSON.stringify(data))) ?? {};

@@ -117,7 +117,7 @@ const EX_RANK = {
   /** Priority, lagging and focus muscles: 1.2 on while short of target, 0.3 once at it. */
   focusShort: 1.2,
   focusMet: 0.3,
-  /** Strength focus (r44, item 44): stalled lifts lose 0.8 above, so 1.6 nets 0.8; near-best ones gain 1.2. */
+  /** Strength focus: stalled lifts lose 0.8 above, so 1.6 nets 0.8; near-best ones gain 1.2. */
   strStalled: 1.6,
   strNear: 1.2,
   /** The picks shown, and the sets one takes when its plan has none. */
@@ -307,7 +307,7 @@ function dayDirectIn(M: Model, day: Day): Record<string, number> {
 /** A routine day as Pick for me ranks it. */
 interface DayRow {
   i: number;
-  /** Which of the day's workouts (r68, 366 (c)): its second on a fixed-weekday routine, else its first. */
+  /** Which of the day's workouts: its second on a fixed-weekday routine, else its first. */
   part: 1 | 2;
   day: Day;
   score: number;
@@ -319,7 +319,7 @@ interface DayRow {
   ready: number;
   dir: Record<string, number>;
   joints: string[];
-  /** The flagged muscles the day loads, helpers included, heaviest first (R81-5). */
+  /** The flagged muscles the day loads, helpers included, heaviest first. */
   injM: string[];
 }
 
@@ -389,7 +389,7 @@ export function rankDaysIn(M: Model): {
       wR += w * recoveryIn(M, m).r;
       wT += w;
     }
-    /* A flagged joint counts like a flagged muscle (r30): each set of an
+    /* A flagged joint counts like a flagged muscle: each set of an
        exercise that loads it weighs against the day. */
     const jointOf = (exId: string): string | null => exInjuryIn(M, EXIn(M, exId));
     const jHit = JK.some(j => inj.has(j))
@@ -479,7 +479,7 @@ export function sessionMusclesIn(M: Model, d: Pick<DraftLike, 'ex'>): Record<str
   return out;
 }
 
-/** Strength focus (r44, item 44): a heavy compound not done for STR_REST days that is stalled, or near its best. */
+/** Strength focus: a heavy compound not done for STR_REST days that is stalled, or near its best. */
 export function strengthPickIn(
   M: Model,
   e: ExerciseLike,
@@ -519,7 +519,7 @@ export function rankExercisesIn(
   d: Pick<DraftLike, 'ex' | 'date' | 'dayId' | 'deload' | 'light' | 'part' | 'equip'>
 ): (ExPick & { plan: Plan; full: number })[] {
   const I = IDXIn(M);
-  // Focus muscles in the profile (r44) count as priorities here.
+  // Focus muscles in the profile count as priorities here.
   const pri = new Set<string>([...M.s.settings.priorities, ...(profIn(M).focus || [])]);
   const lag = new Set(I.scores.filter(x => x.label === 'lagging').map(x => x.m));
   const sess = sessionMusclesIn(M, d);
@@ -535,7 +535,7 @@ export function rankExercisesIn(
   const best: Record<string, ExPick> = {};
   const need = (m: string): number => (!hasTargetIn(M, m) ? 0 : Math.max(0, bandOfIn(M, m)[0] - (r7[m] || 0)));
   for (const e of M.s.exercises) {
-    // A Limited equipment session offers only what the gym has (NEW-79).
+    // A Limited equipment session offers only what the gym has.
     if (e.archived || inS.has(e.id) || exInjuryIn(M, e) || (d.equip && !d.equip.includes(e.equip))) continue;
     const m = e.primary;
     const hi = bandOfIn(M, m)[1];
@@ -544,7 +544,7 @@ export function rankExercisesIn(
     const def = need(m);
     const inSess = sess[m] || 0;
     let s = Math.min(def, EX_RANK.needCap) * EX_RANK.needStep;
-    // At target already: optional, and better where the week has room left. Tracked-only muscles have no target, so no penalty either (r29).
+    // At target already: optional, and better where the week has room left. Tracked-only muscles have no target, so no penalty either.
     if (def <= 0 && hasTargetIn(M, m))
       s -= r7m >= hi ? EX_RANK.pastTop : EX_RANK.atTarget - Math.min(hi - r7m, EX_RANK.roomCap) * EX_RANK.roomStep;
     if (inSess >= SESSION_CAP) s -= EX_RANK.fullOff;
@@ -595,7 +595,7 @@ export function rankExercisesIn(
         1,
         Math.min(cap, x.def > 0 ? Math.min(+plan.sets || EX_RANK.sets, Math.max(2, Math.ceil(x.def))) : 2)
       );
-      // A deload or lighter session halves its sets; what Pick for me adds to it does too (r27).
+      // A deload or lighter session halves its sets; what Pick for me adds to it does too.
       const full = sets;
       if (d.deload || d.light) sets = Math.max(1, Math.ceil(sets * LIGHTER_SET_SHARE));
       return { ...x, plan: { ...plan, sets }, full };
@@ -808,7 +808,7 @@ interface TrimRow {
 }
 
 /* Trim to fit, then fill. A session fits when its minutes left, rounded as the sheet shows them (min5), are no more
-   than the time given, so "Planned: ~60 min" fits 60 (NEW-77). Lowest priority first: sets come off down to
+   than the time given, so "Planned: ~60 min" fits 60. Lowest priority first: sets come off down to
    SHORT_MIN_SETS per exercise, then whole exercises not started yet drop out, then exercises in progress finish
    with what is done. An exercise whose muscle another kept exercise already trains goes before one that is the
    only work for its muscle, so every muscle keeps at least one movement for as long as possible (a fly does not

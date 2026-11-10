@@ -1,4 +1,4 @@
-/* The sessions a lift's trend reads, and its two ends (r41), shared by the
+/* The sessions a lift's trend reads, and its two ends, shared by the
    trend itself and by the screens that say its change, so the two cannot
    disagree (phase 3a, r51; moved unchanged from the legacy script). The trend's reading of each
    session (tv) is set by the analytics (analytics.ts, idxLift), whose
@@ -15,7 +15,7 @@ import { bwRefIn } from './setread';
 type Read = { tv: number };
 
 /* The sessions a lift's trend reads, shared by the trend itself and by the
-   screens that say its change in loads (r41), so the two cannot disagree.
+   screens that say its change in loads, so the two cannot disagree.
    Sessions not done lighter (a session short of its usual counts since r54,
    V's one rule); the current rep range only, since changing the range
    restarts the baseline instead of drawing one line across two scales; the
@@ -81,7 +81,7 @@ export function stallStretch<X extends { date: string }>(wE: readonly X[]): X[] 
 }
 
 /* The sessions in a range the stall test reads a strength reading over: those
-   with one, not held for an injury (r54, PENDING 311 g). One list for the
+   with one, not held for an injury. One list for the
    test (idxLiftIn) and for the span it says it read (stallSpans): from the
    independent review of r54, the span still counted the held sessions. */
 export const stallReads = (inR: readonly Exposure[]): Exposure[] => inR.filter(x => !x.held && x.tv != null);
@@ -153,7 +153,7 @@ export function liftTrendIn(M: Model, exI: Pick<ExerciseLike, 'bw'>, w: (Exposur
     pHi: number | null = null,
     spanW: number | null = null,
     loadUp = false;
-  /* A trend needs 3 sessions spread over 2 weeks or more (r31): three
+  /* A trend needs 3 sessions spread over 2 weeks or more: three
        sessions in nine days read as "+6.6% a week" from what was mostly one
        good day. The text gives the weeks it really covers (spanW). A
        bodyweight lift needs a weigh-in too (r55, found while fixing the
@@ -176,7 +176,7 @@ export function liftTrendIn(M: Model, exI: Pick<ExerciseLike, 'bw'>, w: (Exposur
         hi = slopeSe != null ? slope + tq * slopeSe : slope;
       moving = pct >= GROW_PCT && lo > 0;
       falling = pct <= -GROW_PCT && hi < 0;
-      // The weekly rate the 80% interval allows (r30): "about 1.5% a week,
+      // The weekly rate the 80% interval allows: "about 1.5% a week,
       // likely 1.2 to 1.8" rather than one number stated as fact. It is
       // given on the weekly rate the line measures; a range on the 6-week
       // change beside an endpoint percentage could leave that percentage

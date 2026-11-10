@@ -97,7 +97,7 @@ export function nextSetsIn(M: Model, b: DraftBlock, si: number, lastR: number | 
   const p = b.plan;
   if (ex.timed || ex.assist || noE1(ex) || exInjuryIn(M, ex) || !(+p.repMin > 0)) return null;
   if (!(incOfIn(M, ex, p, s.w) > 0) || bwNoLoadIn(M, ex, b)) return null;
-  // Nor a bodyweight lift with no weigh-in, which has no total load to estimate from (r55).
+  // Nor a bodyweight lift with no weigh-in, which has no total load to estimate from.
   if (ex.bw && !(bwRefLoadIn(M, ex) > 0)) return null;
   const sc = effScale(M.s.settings.rirScale);
   // A first session back after a break: its reserve is the return's, 2 or more; the load from before it is a re-approach, and the most it asks.

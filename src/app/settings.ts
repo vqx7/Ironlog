@@ -1,4 +1,4 @@
-/* Settings (r57, phase 5): every group, the account and sync lines of Your
+/* Settings: every group, the account and sync lines of Your
    data, drawn by lit-html as src/23-history-settings.js and the account part
    of src/14-account.js drew them, and the actions and fields that change
    what it shows, each change to the log through `act`. What Settings opens
@@ -120,7 +120,7 @@ export function bwEvery(): 0 | 7 | 14 | 30 {
 /** What the suggestions are and are not, in full: the tip on Your data's line, and the first page's. */
 export const SAFETY_TXT = `${APP_NAME} works out suggested loads and reps from your own log with published formulas and the rules of thumb in the Guide. They are estimates, not medical, physical therapy, or coaching advice, and they can be wrong. Use good technique, and safety bars or a spotter on heavy lifts. Stop on pain. Check with a doctor before starting or changing training, especially with an injury, a health condition, or a pregnancy. You train at your own risk.`;
 
-/* ---------- Your training (r44) ---------- */
+/* ---------- Your training ---------- */
 
 /** One routine item a profile's rules would change: its day, the item and the fields with their new values. */
 interface ProfApply {
@@ -133,7 +133,7 @@ interface ProfApply {
    rest of 0 (no timer, on purpose) is left alone. Under a year, Apply only
    raises reps in reserve and keeps the routine's ranges: a ready-made
    routine's 5 x 5 or 10 to 15 was chosen on purpose, and 8 to 12 is where new
-   exercises start (the r44 review). */
+   exercises start. */
 /** What Apply would change in a routine, item by item. */
 export function profApplyList(R: Routine | null | undefined): ProfApply[] {
   const out: ProfApply[] = [];
@@ -256,7 +256,7 @@ ${
 }`;
 }
 
-/* ---------- Your gym (r33, item 207) ---------- */
+/* ---------- Your gym ---------- */
 
 /** The dumbbell fields as typed, kept on screen (ui.gymDb) until From, To and Step make a rack, so a half-filled form is never thrown away or saved. */
 type DbTyped = Partial<DbRack>;
@@ -293,7 +293,7 @@ function gymNext(): Gym {
     : { u: gymUnit() };
 }
 /* The usual plates of a unit, heaviest first, as Your gym's chips offer them: a new list on each call, so no caller
-   can change the table (units.ts). In gym.ts until 2.34, when a saved gym stopped being limited to them (NEW-76) and
+   can change the table (units.ts). In gym.ts until 2.34, when a saved gym stopped being limited to them and
    Settings became their only reader. */
 function usualPlates(u: string): number[] {
   return [...(u === 'kg' ? PLATES_KG : PLATES_LB)];
@@ -543,7 +543,7 @@ function acctPanel(): TemplateResult | typeof nothing {
 <button class="btn sm" data-act="acctRetry">Try again</button></div>
 `
       : nothing;
-  /* Signed out, this one line says where the log is and what an account adds (r34.2): Your data
+  /* Signed out, this one line says where the log is and what an account adds: Your data
      used to say it four times (this panel, the storage line, the privacy line, Backup due). */
   return u
     ? html`<div class="panel" id="acctPanel">
@@ -670,7 +670,7 @@ function privacyLine(): TemplateResult {
       );
 }
 
-/** The line that says a log kept aside for another account is on this phone (r56.1, PENDING 328 b). */
+/** The line that says a log kept aside for another account is on this phone. */
 function asideLine(): TemplateResult | typeof nothing {
   const kept = asideList();
   if (!kept.length) return nothing;
@@ -844,7 +844,7 @@ function bandsBody(s: Settings): TemplateResult {
 <th class="r">Max</th>
 </tr>
 ${MUSCLES.map(([k, l]) =>
-  /* A muscle with no target (339 e, r58) offers one; one the lifter gave a
+  /* A muscle with no target offers one; one the lifter gave a
      target (not by default and not a focus, which Your training sets) can go
      back to tracked only. */
   !hasTarget(k)
@@ -1170,7 +1170,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
     toast('Your gym cleared: the usual steps apply', true);
   },
-  /* Your training (r44): a tap on a choice sets it, a tap on the one set
+  /* Your training: a tap on a choice sets it, a tap on the one set
      clears it. Focus moves only the app's own weekly targets, with Undo. */
   profSet(t) {
     const k = t.dataset.k;
@@ -1223,7 +1223,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     );
     rerenderKeepScroll();
     const n = Object.keys(moved).length;
-    // A focus whose own target was typed does nothing to it; say so rather than nothing (the r44 review).
+    // A focus whose own target was typed does nothing to it; say so rather than nothing.
     const fm = MK.find(m => m === raw);
     const kept = k === 'focus' && !!np && (np.focus || []).includes(raw) && !!fm && !moved[fm];
     if (kept)
@@ -1262,7 +1262,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
     );
   },
-  // Weekly set targets back to the defaults (r44), with Your training's focus; typed ones, those given with Set a target (r58) and a first-run fit go.
+  // Weekly set targets back to the defaults, with Your training's focus; typed ones, those given with Set a target and a first-run fit go.
   bandsDefault() {
     const b = state.settings.bands;
     const fit = state.settings.bandsFit ? { ...state.settings.bandsFit } : null;
@@ -1302,7 +1302,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
     toast('Weekly set targets back to the defaults', true);
   },
-  // A muscle with no target given one (339 e, r58): its numbers as they stand, now counted.
+  // A muscle with no target given one: its numbers as they stand, now counted.
   tgtSet(t) {
     const m = MK.find(x => x === t.dataset.m);
     if (!m || hasTarget(m)) return;
@@ -1381,8 +1381,8 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           },
           { undo: true }
         );
-        // Pictures are not part of the log Undo keeps, so they go at once, as the question says (r66, 373). The profile photo
-        // with them (2.33): from the account too while it syncs, as the cloud copy of the log goes (2.34), else from this phone.
+        // Pictures are not part of the log Undo keeps, so they go at once, as the question says. The profile photo
+        // with them: from the account too while it syncs, as the cloud copy of the log goes, else from this phone.
         picsClear().catch((e: unknown) => {
           log('pics-clear', e);
         });

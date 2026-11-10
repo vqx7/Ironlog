@@ -126,7 +126,7 @@ export function dropOnlyLiftIn(M: Model, id: string): boolean {
   return n > 0;
 }
 
-/* Stalls that can point to whole-body fatigue (r31): compound lifts with a
+/* Stalls that can point to whole-body fatigue: compound lifts with a
    strength estimate. A plank held at 60 s or curls stuck at one dumbbell say
    little about recovery, and they used to count toward "3 lifts stalled at
    once, a deload week may help". They are still listed as stalled. */
@@ -283,7 +283,7 @@ function lastWordIn(
       : { tone: 'blue', text, wait: true, act: null };
   }
   /* Under the minimum only by which days of a cycle fell in the weeks
-     averaged (r54): on plan, so the line says that rather than at target. */
+     averaged: on plan, so the line says that rather than at target. */
   const onPlan = mst ? MK.filter(m => !inj.has(m) && mst[m].st === 'plan') : [];
   if (onPlan.length)
     return {
@@ -306,7 +306,7 @@ export function coachIn(M: Model): CoachLine {
   const quiet = quietWeekIn(M);
   if (quiet) return quiet;
   const stalled = stalledIdsIn(M);
-  /* A deload is not suggested within DELOAD_GAP_DAYS of a lighter week (r30): the
+  /* A deload is not suggested within DELOAD_GAP_DAYS of a lighter week: the
      review saw "6 lifts stalled, a deload week may help" three weeks after
      one. Since r53 the week is read from what the lifts did, not the labels,
      and a week marked as a deload with nothing trained in it counts too, as
@@ -326,7 +326,7 @@ export function coachIn(M: Model): CoachLine {
   const inj = injuredSetIn(M);
   const avg = actualAvg4In(M);
   const bands = M.s.settings.bands;
-  /* MISSED_WEEKS_SAID or more of the last AVG_WEEKS weeks with no training (r31): the averages are
+  /* MISSED_WEEKS_SAID or more of the last AVG_WEEKS weeks with no training: the averages are
      per week trained, so they can look fine while most weeks are missed.
      Turning up comes before any set count. */
   if (avg && avg._missed >= MISSED_WEEKS_SAID) {
@@ -417,7 +417,7 @@ export function coachIn(M: Model): CoachLine {
   return lastWordIn(M, I, avg, mst, inj);
 }
 
-/* A muscle's strength trend in words (r30): unclear when none of its lifts
+/* A muscle's strength trend in words: unclear when none of its lifts
    has a trend outside day-to-day noise, never "+0%". */
 export function musTrend(sc: Pick<Score, 'clear' | 'n' | 'score' | 'wk'>): string {
   if (!sc.clear)

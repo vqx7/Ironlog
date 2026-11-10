@@ -64,7 +64,7 @@ declare global {
   }
 }
 
-/** A name's match to the library: the share of words in common it needs to be picked, and what a word of equipment or of a variant that differs costs (r30). */
+/** A name's match to the library: the share of words in common it needs to be picked, and what a word of equipment or of a variant that differs costs. */
 const MATCH = { pickAt: 0.6, eqOff: 0.5, modOff: 0.7, shown: 8 } as const;
 /** The characters of a new exercise's name and of an imported session's name. */
 const NAME_CHARS = 60;
@@ -115,7 +115,7 @@ const MOD = [
   'upright',
   'face'
 ] as const;
-/** The names the library gave a lift before it renamed it, read as aliases of the lift: an import naming it as before finds it first (NEW-37). */
+/** The names the library gave a lift before it renamed it, read as aliases of the lift: an import naming it as before finds it first. */
 const NAMED_BEFORE: Readonly<Record<string, string>> = Object.fromEntries(
   Object.entries(LIB_NAMES_BEFORE).flatMap(([id, names]) => names.map(n => [impNorm(n).join(' '), id]))
 );
@@ -345,7 +345,7 @@ function newExercises(m: ImpPreviewModal): Record<string, NewExercise> {
 
 /** The built sessions not in the log yet, and how many were (below). */
 function notInLog(out: BuiltSession[]): { fresh: BuiltSession[]; dup: number } {
-  /* Date, lifts and reps, not loads (r31): the same file imported again with
+  /* Date, lifts and reps, not loads: the same file imported again with
      the other unit choice converted every load differently and added every
      session a second time. */
   const fp = (ss: { date: string; ex: { exId: string; sets: { r: number | null }[] }[] }) =>
@@ -373,11 +373,11 @@ function notInLog(out: BuiltSession[]): { fresh: BuiltSession[]; dup: number } {
 
 /** The cardio the preview would save (below), how many entries had no time, and how many were in the log already. */
 function fileCardio(m: ImpPreviewModal): { cardio: CardioEntry[]; cardioNoTime: number; dup: number } {
-  /* Cardio from the file (r30): minutes from its time, distance in the file's
+  /* Cardio from the file: minutes from its time, distance in the file's
      unit (km beside kg, miles beside lb, as Strong writes it). An entry with
      no time cannot be saved (minutes are required) and is counted instead.
      One already in the log (same date, kind and minutes) is skipped. The app's
-     own file says the minutes, heart rate, when, note and km (r55). */
+     own file says the minutes, heart rate, when, note and km. */
   const cardio: CardioEntry[] = [];
   let cardioNoTime = 0,
     dup = 0;
@@ -412,7 +412,7 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
   const conv = m.unit === 'kg' ? (v: number) => v : (v: number) => v * LB;
   const out: BuiltSession[] = [];
   /* Each session's supersets from the file (Hevy's superset_id), by lift, for
-     the routine an import makes; sessions keep none (r55.1). */
+     the routine an import makes; sessions keep none. */
   const ssOf: Record<string, Record<string, string>> = {};
   const bad: string[] = [];
   const odd: string[] = [];
@@ -465,7 +465,7 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
       if (it.ss) grp[exo.id] = it.ss;
     }
     if (ex.length && Object.keys(grp).length) ssOf[sid] = grp;
-    // The note and minutes the app's own file carries (r55).
+    // The note and minutes the app's own file carries.
     if (ex.length)
       out.push({
         id: sid,
@@ -652,7 +652,7 @@ function logDay(
     if (q != null) it.rir = Math.min(FROM_LOG.rir, Math.max(0, Math.round(q)));
     return it;
   });
-  /* The file's supersets, from the day's latest session (r55.1). */
+  /* The file's supersets, from the day's latest session. */
   {
     const sg = (ssOf && ssOf[latest.id]) || {};
     const gid: Record<string, string> = {};
@@ -725,7 +725,7 @@ function dayFinder(named: boolean, days: LogDay[]): (x: Sess) => RoutineOut['day
   };
 }
 
-/* A routine from an import, on a first run (r31). Someone who brings their
+/* A routine from an import, on a first run. Someone who brings their
    Strong or Hevy history has a routine already; measuring them against the
    starter they never picked read as 69% adherence, 15 muscles below target
    and "add sets to Lat Pulldown" for someone who had never done one. The
@@ -942,7 +942,7 @@ export const IMPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const b = impBuild(m);
     if (!b.sessions.length && !b.cardio.length) return;
     /* A first run (no log of their own yet, the starter routine untouched):
-       the routine comes from the import (r31), or the picker opens. */
+       the routine comes from the import, or the picker opens. */
     const AR = activeRoutine();
     const first =
       !realCount(state) &&
@@ -1063,7 +1063,7 @@ export const IMPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       );
     else go();
   },
-  // The save kept aside at start (r45): restored through the import's checks, or shown as text (Forget it is Settings', settings.ts).
+  // The save kept aside at start: restored through the import's checks, or shown as text (Forget it is Settings', settings.ts).
   unreadRestore() {
     const raw = unreadableRaw();
     if (!raw) return;

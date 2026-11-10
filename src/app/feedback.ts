@@ -1,4 +1,4 @@
-/* Problem reports (r25): their kinds, the words on the sheet, the limits the
+/* Problem reports: their kinds, the words on the sheet, the limits the
    feedback table also enforces, and the check on a report's screenshot
    (phase 3a, r51; moved unchanged from the legacy script). */
 

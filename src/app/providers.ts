@@ -23,13 +23,13 @@ interface AuthService {
   deleteAccount?: (() => Promise<unknown>) | undefined;
   /** This browser is where the app is used: let it sync. */
   release?: (() => void) | undefined;
-  /** Whether the sign-in this phone had is gone without the phone signing out: the server refused it (r65, NEW-3). True once. */
+  /** Whether the sign-in this phone had is gone without the phone signing out: the server refused it. True once. */
   refused?: (() => boolean) | undefined;
   /** Calls back on every sign-in change: the event's name and who is signed in after it. */
   onChange(cb: (ev: string, user: AcctUser | null) => void): void;
 }
 
-/** A problem report as the report service sends it, with the key made on the phone that lets the table refuse it sent twice (r63, PENDING 306). */
+/** A problem report as the report service sends it, with the key made on the phone that lets the table refuse it sent twice. */
 export interface Report {
   category: string;
   message: string;

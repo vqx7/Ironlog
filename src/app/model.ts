@@ -24,7 +24,7 @@ export interface ExPoint {
   rq: number | null;
 }
 
-/** A missed set as the Last line lists it (r55): read as a working set is,
+/** A missed set as the Last line lists it: read as a working set is,
     with 0 reps, and `at`, how many of the session's working sets came first. */
 export type MissedPoint = ExPoint & { at: number };
 
@@ -35,7 +35,7 @@ export type MissedPoint = ExPoint & { at: number };
     of its usual, by its sets or its reading, `tag` for one labelled lighter
     or a deload but done at its usual load and reps, `tv` the trend's
     reading, `progress` a PR or a heavier load), `held`, a session held
-    for a flagged injury (r54), and `miss`, its missed sets, for the Last
+    for a flagged injury, and `miss`, its missed sets, for the Last
     line alone (r55; absent when there are none). */
 export interface Exposure {
   date: string;
@@ -71,7 +71,7 @@ export interface Exposure {
   miss?: MissedPoint[];
   /** Done at a new machine or gym (SessionEx.nw, r61): the lift's stretch starts here (sinceNew). */
   nw?: true;
-  /** Every working set a drop set, so its points are the drops (r64): neither the PR list nor the bests board reads it. */
+  /** Every working set a drop set, so its points are the drops: neither the PR list nor the bests board reads it. */
   dropOnly?: true;
 }
 
@@ -109,7 +109,7 @@ export interface Drift {
     is the rep range its trend is read in when it is trained in more than
     one, and `holdRR`, when it falls there, the other ranges in use where it
     does not, and `quietRR` those with too few sessions to tell, so it is not
-    read as falling (r55, PENDING 319). */
+    read as falling. */
 export interface ExStat {
   n: number;
   stalled: boolean;
@@ -117,7 +117,7 @@ export interface ExStat {
   slope: number | null;
   slopeSe: number | null;
   moving: boolean;
-  /** The readings the trend is fitted to, oldest first: its sessions in the current range within the trend's weeks (trendW), each one's tv; Today's Lifts moving draws them (r70, R70-3). */
+  /** The readings the trend is fitted to, oldest first: its sessions in the current range within the trend's weeks (trendW), each one's tv; Today's Lifts moving draws them. */
   trendTv: number[];
   falling: boolean;
   rrIn: [number, number] | null;
@@ -261,7 +261,7 @@ export interface Suggestion {
   capped?: boolean | undefined;
   buildTo?: number | undefined;
   back?: number | undefined;
-  /** Asked as done earlier the same day (NEW-18): the load stays as logged, never moved onto a grid. */
+  /** Asked as done earlier the same day: the load stays as logged, never moved onto a grid. */
   same?: true | undefined;
 }
 
@@ -281,7 +281,7 @@ interface Caches {
   _rirUse: Partial<Record<string, number>> | null;
   _bwRef: number | undefined;
   _pace: number | null;
-  /** The loads Your gym's plates make on a bar (gym.ts, plateGridIn), by plates, unit and bar (NEW-76, 2.34). */
+  /** The loads Your gym's plates make on a bar (gym.ts, plateGridIn), by plates, unit and bar. */
   _plates: Map<string, readonly number[]> | null;
 }
 
@@ -318,7 +318,7 @@ export function isDeloadWeekIn(M: Model): boolean {
   return !!M.s.deloadWeek && M.s.deloadWeek === weekStart(M.today());
 }
 
-/* Freestyle mode (r34): Today starts blank, so no routine is being
+/* Freestyle mode: Today starts blank, so no routine is being
    followed. The week is then measured against the lifter's own training,
    not a plan's days: the streak counts weeks trained in a row, This week says
    sessions and hard sets without "of planned", and adherence has no plan to
@@ -397,7 +397,7 @@ export function invalidateIn(M: Model): void {
   M.c._plates = null;
 }
 
-/** Whether sets at RIR 4 to 5 count as half a set (r40): the setting, and RIR in use. */
+/** Whether sets at RIR 4 to 5 count as half a set: the setting, and RIR in use. */
 export const rirHalfOnIn = (M: Model): boolean => M.s.settings.rirHalf === true && M.s.settings.rirMode !== 'off';
 
 /** The log's sessions in sessCmp order (date, start time, id), a new list each call. */
@@ -405,13 +405,13 @@ export function sortedSessionsIn(M: Model): Session[] {
   return [...M.s.sessions].sort(sessCmp);
 }
 
-/* ---------- Your gym (r33, item 207) ----------
+/* ---------- Your gym ----------
    What the gym has: its dumbbells and kettlebells, the plates on hand, and
    the step of its cable and machine stacks. Kept in the unit the gym is
    labelled in (a rack in lb stays in lb after a switch to kg). Nothing set
    means nothing changes: every default below is the step used before.
    Precedence: a step set on the exercise or in the plan, then Your gym, then
-   the rack read from logged loads (r32), then 5 lb or 2.5 kg. */
+   the rack read from logged loads, then 5 lb or 2.5 kg. */
 /** The gym set in Settings, or null. */
 export function gymOfIn(M: Model): Gym | null {
   const g = M.s.settings.gym;

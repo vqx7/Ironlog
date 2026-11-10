@@ -23,14 +23,14 @@ import { captchaOn } from './captcha';
 /** The account service the menu offers: none inside Claude (retired), where the artifact keeps the log. */
 const menuAuth = () => (AUTH() && !(window.claude && typeof window.claude.use === 'function') ? AUTH() : null);
 
-/* The menu (r27): one tap from every tab for the things people look for
+/* The menu: one tap from every tab for the things people look for
    outside a workout: who is signed in, signing in or out, the save state,
    Report a problem and the Guide. Since r28 Settings has a Help group near
    the bottom with the same Guide and reports (V asked for both places).
    Opened from the first pages (their Help, r64, the r63 audit's P-S4-6), it
    leaves out the sections and Your data: both open a tab, and the tabs open
    only once Set up is done, so a tap there would do nothing. */
-/* The profile photo (2.33): in the menu's own header, beside its title, so
+/* The profile photo: in the menu's own header, beside its title, so
    the menu keeps its height on a small phone (tests/r54b.js). The photo, or
    an empty circle with a camera, is the button that adds or changes it;
    Remove photo sits beside it once there is one, and asks first (V: nothing
@@ -153,7 +153,7 @@ export function fbInboxSheet(m: { items: FbItem[] | null; err?: string | undefin
 
 /* ---------- the account sheet ---------- */
 
-/* The code from the confirmation email (r45), on the waiting sheet and, after
+/* The code from the confirmation email, on the waiting sheet and, after
    "Confirm your email first", on sign-in: the code needs only the email, so
    it still works after the wait gives up or the app was closed. Digits only
    are sent; the length is the project's (6 by default), so none is forced.
@@ -174,7 +174,7 @@ export function acctSheet(m: AccountModal): TemplateResult {
   const email = html`<label class="field">Email<input type="email" data-abind="email" .value=${live(m.email || '')} autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" enterkeyhint="next"></label>`;
   const pw = (label: string, ac: string, min: boolean) =>
     html`<label class="field">${label}<input type="password" data-abind="pw" .value=${live(m.pw || '')} autocomplete=${ac} minlength=${min ? '8' : nothing} enterkeyhint="go"></label>`;
-  // The error line is always there, hidden when empty, so the sheet keeps its shape when one is said (r54).
+  // The error line is always there, hidden when empty, so the sheet keeps its shape when one is said.
   const err = html`<p class="small u-cred_m0" role="alert" ?hidden=${!m.err}>${m.err || ''}</p>`;
   /* The sign-up bot check's box (captcha.ts, r66): on the pages whose requests the account server checks, only when
      config.ts has its key; drawn into by Turnstile once the sheet is drawn (screens.ts, afterSheet). */

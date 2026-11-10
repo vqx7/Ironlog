@@ -107,10 +107,10 @@ export const missedTag = (s: { r: number | string | null }): string => (isMissed
 export const DIRTY_SAID = 'Save or cancel first. Your changes are still here.';
 
 /* What a missed set does, as the next target reads it since r56.2 (a set short of the range) and R-1 (one of the
-   session's sets): r64, the r63 audit's NEW-4, where it said "or targets". Since r72 (NEW-66) it never earns a step
+   session's sets): r64, the r63 audit's NEW-4, where it said "or targets". Since r72 it never earns a step
    up: under 387-B3 a step earned by a full session before it still stands, so "keeps the load from going up" read
    false there. */
-/** Said once when a set is ticked as missed (r55). */
+/** Said once when a set is ticked as missed. */
 export const MISSED_SAID = 'Logged as missed. It counts toward no volume or PRs, and never earns a step up.';
 
 /** A number to at most three decimals, without trailing zeros. */
@@ -127,7 +127,7 @@ export const rangeWords = (p: { repMin: number | string; repMax: number | string
 /* ---------- dates as the engine's sentences say them (phase 3b, r52; moved unchanged from the legacy script) ---------- */
 
 /* One Intl formatter per format, made once: toLocaleDateString builds a new
-   one on every call, about a fifth of a Stats render (r46). Same output. */
+   one on every call, about a fifth of a Stats render. Same output. */
 export const DTF: Record<string, Intl.DateTimeFormat> = {};
 
 /** The kept formatter for a format, made on first use. */
@@ -143,7 +143,7 @@ export const fmtWith = (k: string, o: Intl.DateTimeFormatOptions, s: string): st
 /** A date as "Oct 17". */
 export const fmtDate = (s: string): string => fmtWith('d', { month: 'short', day: 'numeric' }, s);
 
-/** A date as "Oct 17", with its year when it is not the year of now ("Oct 20, 2025"), so a date a year away is not read as this year's (r64, the r63 audit's R-7). */
+/** A date as "Oct 17", with its year when it is not the year of now ("Oct 20, 2025"), so a date a year away is not read as this year's. */
 export const fmtDateFrom = (s: string, now: string): string =>
   yearOf(s) === yearOf(now) ? fmtDate(s) : fmtWith('dy', { month: 'short', day: 'numeric', year: 'numeric' }, s);
 

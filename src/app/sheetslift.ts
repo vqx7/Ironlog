@@ -1,9 +1,9 @@
-/* The sheets of one lift (r62, PENDING 355): its menu in a session, and
+/* The sheets of one lift: its menu in a session, and
    what the menu opens there (typed sets, a note, a calibration set, its load
    step, the heaviest load the gym has); its goal; an injury flagged; and the
    how-to link. Each is drawn by lit-html as src/24-sheets.js drew it
    (tests/r62.js holds them to r61's), and answered by actslift.ts's actions
-   by their data-act (r63). A sheet of a session's lift is null once that
+   by their data-act. A sheet of a session's lift is null once that
    lift or the session is gone, and the sheet host (page.ts) then closes it. */
 
 import { picStrip } from './notepics';
@@ -94,7 +94,7 @@ export function maxSheet(m: { exId: string }): TemplateResult {
     <div class="row u-mt10"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 
-/** A note on a lift in a session, saved with it and shown next time, with its pictures (r66, 373). */
+/** A note on a lift in a session, saved with it and shown next time, with its pictures. */
 export function noteSheet(m: { bi: number; title: string; text?: string | undefined }): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.title}</h3>${closeX()}</div>
     <p class="small muted">Shown next time. Pictures stay on this phone.</p>

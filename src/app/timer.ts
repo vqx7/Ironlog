@@ -20,7 +20,7 @@ const BUZZ = [200, 100, 200] as const;
 /** The seconds in a minute. */
 const MINUTE_S = 60;
 
-/** The rest timer: when it ends (an absolute time, so a hidden tab comes back right), the interval drawing it, whether it has sounded, its full length, and what comes after it (r71). */
+/** The rest timer: when it ends (an absolute time, so a hidden tab comes back right), the interval drawing it, whether it has sounded, its full length, and what comes after it. */
 export const timer: {
   end: number;
   iv: ReturnType<typeof setInterval> | null;
@@ -108,7 +108,7 @@ function wakeTip(): void {
 }
 /* The end time is kept on this device, so a phone that reloads a backgrounded
    tab mid-rest comes back to the same countdown. The rest's full length is
-   kept beside it (r29), so the bar along the top still empties from the right
+   kept beside it, so the bar along the top still empties from the right
    place after a reload. */
 const TIMER_KEY = KEY + '.timer';
 const bar = (): HTMLElement | null => document.getElementById('timer');
@@ -268,7 +268,7 @@ export function tick(): void {
     }
   }
 }
-/** Takes 15 seconds off the rest (r71); one taken to its end is done, as if it had run out. */
+/** Takes 15 seconds off the rest; one taken to its end is done, as if it had run out. */
 export function timerSub(): void {
   timer.end = Math.max(Date.now(), timer.end - ADD_S * TIMER_MS.second);
   timerSave();
@@ -295,10 +295,10 @@ export function timerRefresh(): void {
 /* A bar bounds the room below only when it sits in the lower half of the
    screen. r70's first build drew the rest as a ring in the top bar, and read
    by its top alone it made the whole screen the bottom edge: an exercise
-   dragged during a rest scrolled the page (NEW-56), and on a phone with a
+   dragged during a rest scrolled the page, and on a phone with a
    notch, where the ring started below the status bar, a tick's effort strip
-   scrolled up under the header (NEW-58). The rest is a bar along the bottom
-   again (NEW-60), and the rule holds wherever a bar is put. Both bars are
+   scrolled up under the header. The rest is a bar along the bottom
+   again, and the rule holds wherever a bar is put. Both bars are
    position:fixed, whose offsetParent is always null, so getClientRects
    tells a shown bar from a hidden one. */
 /** The top of the bars along the bottom of the screen (the tab bar and the rest timer), or the screen's bottom when none shows: what a dragged exercise and the effort strip stay above. */

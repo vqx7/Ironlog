@@ -1,4 +1,4 @@
-/* The app's own sheets (r62, PENDING 355): installing it from a browser,
+/* The app's own sheets: installing it from a browser,
    getting the new icon, and logging a past workout. Each is drawn by
    lit-html as the legacy script drew it (tests/r62.js holds them to r61's),
    and answered by its actions by their data-act (actsapp.ts, actsstart.ts,
@@ -27,7 +27,7 @@ import { closeX } from './sheetsmisc';
 import type { Routine } from './types';
 
 /* Where this copy of the app lives, for the install pictures and steps, so
-   they stay right when the app moves to its own domain (r27). */
+   they stay right when the app moves to its own domain. */
 /** The host this copy of the app is served from, or the site's own from a file. */
 export function siteHost(): string {
   return location.host && /^https?:$/.test(location.protocol) ? location.host : SITE_HOST;
@@ -90,7 +90,7 @@ export function installSheet(m: { how?: string | undefined }): TemplateResult {
     body = html`<ol class="isteps">${step(1, html`Open <b>${siteHost() + siteDir()}</b> in Safari.`)}${step(2, html`Tap <b>⋯</b>, then <b>Share</b>, then <b>Add to Home Screen</b>.`)}</ol>`;
   else
     body = html`<ol class="isteps">${step(1, html`Open your browser's menu (⋮ or ⋯).`)}${step(2, html`Choose <b>Install app</b> or <b>Add to Home screen</b>, then confirm.`)}</ol>`;
-  /* The reasons go in a tip (item 56). One line stays on screen only when it
+  /* The reasons go in a tip. One line stays on screen only when it
      matters: a log already kept in this browser does not follow the app. */
   const tip =
     (ios

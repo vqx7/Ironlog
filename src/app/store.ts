@@ -1,4 +1,4 @@
-/* The app's shared state, owned here (phase 3a, r51): the log (state), what
+/* The app's shared state, owned here: the log (state), what
    the screens are showing (ui), the sync's progress (cloud), and the account
    (acct; the wait for a new account's email is account.ts's own since r63).
    The legacy script imports them under the same names, so every
@@ -19,9 +19,9 @@ import type { Modal } from './modals';
 /** The whole log as normalize() returns it: the fields the engine and the
     analytics read, typed field by field since 3b (EngineState), the settings
     as normalize() keeps every one of them, the tape entries and the session
-    in progress as the sync reads them (r56), Recently deleted as History
-    reads it (r57), and the rest still open until they are typed with the
-    screens that read them (phase 5). */
+    in progress as the sync reads them, Recently deleted as History
+    reads it, and the rest still open until they are typed with the
+    screens that read them. */
 export type State = Omit<EngineState, 'settings' | 'draft'> & {
   version: number;
   settings: Settings;
@@ -52,12 +52,12 @@ interface Ui {
   /** The tab shown before this one (Back's entry, and where a report from Settings says it came from). */
   prevTab?: string | null | undefined;
   blkOpen: Set<unknown>;
-  /** Exercises folded by hand in an edit of a saved session, which opens on every exercise (NEW-91). */
+  /** Exercises folded by hand in an edit of a saved session, which opens on every exercise. */
   blkShut: Set<unknown>;
   help: Set<unknown>;
   tab: string;
   todayDay: unknown;
-  /** Of the day Today shows (todayDay), its second workout (2) on a fixed-weekday routine; null for the first (r68). */
+  /** Of the day Today shows (todayDay), its second workout (2) on a fixed-weekday routine; null for the first. */
   todayPart?: 1 | 2 | null | undefined;
   mapSel: unknown;
   mapSrc: unknown;
@@ -87,17 +87,17 @@ interface Ui {
   rng: Partial<Record<string, string>>;
   /** The equipment Limited equipment last started with, which it opens on next. */
   eqLast: string[] | null;
-  /** Your gym's dumbbell fields as typed, until they make a rack (r33). */
+  /** Your gym's dumbbell fields as typed, until they make a rack. */
   gymDb?: Partial<DbRack> | null | undefined;
   /** The unit Your gym is labelled in, chosen before anything is saved there. */
   gymU?: 'lb' | 'kg' | undefined;
-  /** A ticked set unticked to ask about a load far off, to tick again once Fix it's load is in (r55): its block, through blkRef, and its row. */
+  /** A ticked set unticked to ask about a load far off, to tick again once Fix it's load is in: its block, through blkRef, and its row. */
   refix: { b: BlkRef | null; s: number } | null;
-  /** The exercise editor's body figure shown (r40). */
+  /** The exercise editor's body figure shown. */
   exBody?: boolean | undefined;
-  /** Your training's fold in the first-run routine picker opened (r44). */
+  /** Your training's fold in the first-run routine picker opened. */
   obProf?: boolean | undefined;
-  /** The date a day of the plan was opened for from the week bar or the calendar, said on Today's card when past this week (329, r59). */
+  /** The date a day of the plan was opened for from the week bar or the calendar, said on Today's card when past this week. */
   todayAt?: { d: string | undefined; di: number } | null | undefined;
   /** The month This week shows, when moved off this one. */
   calYm?: string | undefined;
@@ -111,7 +111,7 @@ interface Ui {
   bestsAll?: boolean | undefined;
   /** More options opened on Today's start card. */
   heroMore?: boolean | undefined;
-  /** The workout stepped away from to Today with Save and leave (NEW-89), by its id, so a workout that replaces it (finished and another started elsewhere) opens as any does (R81-1); any other way back to the tab clears it. */
+  /** The workout stepped away from to Today with Save and leave, by its id, so a workout that replaces it (finished and another started elsewhere) opens as any does; any other way back to the tab clears it. */
   away?: string | null | undefined;
 }
 /** What the screens are showing (the type above). */
@@ -149,7 +149,7 @@ export const ui: Ui = {
   refix: null
 };
 
-/** Whether the screen shows the workout in progress: Today's tab with a workout open, unless the lifter stepped away with Save and leave (NEW-89). */
+/** Whether the screen shows the workout in progress: Today's tab with a workout open, unless the lifter stepped away with Save and leave. */
 export const sessionShown = (): boolean => ui.tab === 'today' && !!state.draft && !awayFrom();
 
 /** Whether the workout in progress is the one the lifter stepped away from with Save and leave. */
@@ -167,7 +167,7 @@ interface CloudSnap {
     2.28 wrote, which carries no mark, its write time (`at`, null when it has none). */
 export type CloudSeen = null | { w: string } | { at: number | null };
 /** A sync document as written: its format (1), when it was written and when its content was last edited (each by
-    the writing device's clock), its write mark (2.28, 2.27-F1), and its content as JSON. */
+    the writing device's clock), its write mark, and its content as JSON. */
 export interface CloudDoc {
   v: 1;
   at: number;
@@ -223,7 +223,7 @@ export interface SyncNote {
   b?: Base | null | undefined;
 }
 
-/** A write of a document this device sent and has not heard back about (2.28, NEW-67): its write mark, the account
+/** A write of a document this device sent and has not heard back about: its write mark, the account
     and the note it was sent from, and the note it makes once the account is found holding it. A write the server
     applies can lose its answer on the way back; read later with this mark, it is known as this device's own. */
 export interface CloudSent {
@@ -238,7 +238,7 @@ export interface CloudSent {
    this device's hashes (localH), when each document was last edited here
    (editAt) and sent, the queue of writes (chain), and the last error. Typed
    field by field since r56, when its writers moved into sync.ts. The status
-   becomes one set of states in r56.1 (PENDING 307). */
+   becomes one set of states in r56.1. */
 interface Cloud {
   on: boolean;
   db: CloudDb | null;

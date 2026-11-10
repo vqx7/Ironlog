@@ -1,4 +1,4 @@
-/* The values that name and identify the app, each defined once (r49).
+/* The values that name and identify the app, each defined once.
    Everything that shows the name, the version or the site reads them from
    here: the screens, the page title and heading (written by scripts/join.js),
    the installed app's manifest and home-screen label (scripts/build.js) and
@@ -30,11 +30,11 @@ export const APP_NAME = 'Ironlog';
     which a lifter sees in Files, so it follows the name. */
 export const FILE_PREFIX = APP_NAME.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-/** The test build's name and its home-screen label (r24). */
+/** The test build's name and its home-screen label. */
 export const PREVIEW_NAME = `${APP_NAME} Preview`;
 export const PREVIEW_LABEL = 'Preview';
 
-/** The logo's wordmark (r25): the dumbbell mark is the first letter, the rest
+/** The logo's wordmark: the dumbbell mark is the first letter, the rest
     is set as text. A new name needs a new wordmark, so tests/hygiene.js checks
     the three still spell APP_NAME. `strong` is set in the ink colour at full
     weight, `light` in the muted colour (.ob-logo in the styles). */
@@ -61,7 +61,7 @@ export const APP_VERSION = '2026.11.10-r90';
 export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
 
 /** Where the app is published, for the install steps when the page is opened
-    from a file (r27); a page on the web reads its own address instead. */
+    from a file; a page on the web reads its own address instead. */
 export const SITE_HOST = 'ironapp.org';
 export const SITE_DIR_FALLBACK = '/Ironlog';
 
@@ -97,7 +97,7 @@ export const CHART_URLS: readonly string[] = [
   `${JSDELIVR}/chart.js@${CHART_VERSION}/dist/chart.umd.js`
 ];
 
-/** The two typefaces (r20): the display face for headings and big numbers,
+/** The two typefaces: the display face for headings and big numbers,
     the body face for everything else, and the weights the page uses of each.
     The page asks Google Fonts for them; the installed app ships the same
     weights from the @fontsource packages (scripts/build.js). */
@@ -115,12 +115,12 @@ export const FONTS_CSS = `${FONTS_ORIGIN}/css2?family=${FONT_DISPLAY.replace(/ /
     lift's name is added (src/app/sheetslift.ts). */
 export const HOWTO_SEARCH = 'https://www.youtube.com/results?search_query=';
 
-/** Have I Been Pwned's password range service (r26), which the account
+/** Have I Been Pwned's password range service, which the account
     script asks before an account takes a password; the installed app's
     Content Security Policy allows it. */
 export const HIBP_ORIGIN = 'https://api.pwnedpasswords.com';
 
-/** three.js for the 3D body (r20). The installed app ships its own copy and
+/** three.js for the 3D body. The installed app ships its own copy and
     loads only that: its Content Security Policy allows script from this site
     alone (scripts/build.js), so the public CDNs, tried after it until r59,
     could never load there and only added failures to the error log. The
@@ -147,7 +147,7 @@ export const NET_MS = 20000;
     whoever sent it, so any other address is not linked; FEEDBACK.md). */
 export const TICKETS_AT = 'https://github.com/';
 
-/** The sign-up bot check (r66, PENDING 378): the public site key of a Cloudflare Turnstile widget made for the
+/** The sign-up bot check: the public site key of a Cloudflare Turnstile widget made for the
     site, which Supabase Auth checks once its CAPTCHA protection is on (OWNER.md, E1). It is public by design, like
     the Supabase publishable key; the widget's secret key goes only into Supabase. Empty, the check is off: nothing
     loads, the account sheet is as before, and its requests carry no token. Set, the account sheet draws the check

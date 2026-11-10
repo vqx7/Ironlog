@@ -73,7 +73,7 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   obSample() {
     openModal({ kind: 'templates', from: 'welcome' });
   },
-  // The fold in the first-run routine picker (r44): its own state, so a re-render keeps it open.
+  // The fold in the first-run routine picker: its own state, so a re-render keeps it open.
   obProfTog() {
     ui.obProf = !ui.obProf;
     rerenderKeepScroll();
@@ -168,7 +168,7 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const mine = (i: { pm?: true | undefined }): boolean => !!i.pm === pm;
     act(
       () => {
-        // At the plan it was done at (r55).
+        // At the plan it was done at.
         for (const x of u.swap) {
           const it = day.items.find(i => i.exId === x.from && mine(i));
           if (it) {
