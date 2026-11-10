@@ -21,7 +21,7 @@ import { curRoutineB, findItem, newItem } from './display';
 import { closeModal, confirmBox, openModal, renderModal, rerenderKeepScroll } from './page';
 import { toast } from './toast';
 import { keepOpen } from './workstate';
-import type { Tap } from './workstate';
+import type { Draft, Tap } from './workstate';
 import { newBlock, refreshEx, rowBlank } from './worksets';
 
 /** The most sets an exercise added by Pick for me may take. */
@@ -89,6 +89,275 @@ function afterAdd(bi: number): void {
   el.addEventListener('animationend', () => el.classList.remove('flash'), { once: true });
 }
 
+/** The lift picked added to a routine day. */
+function pickAddDay(m: PickerModal, id: string): void {
+  const R = curRoutineB();
+  const di = m.day ?? -1;
+  const d = R.days[di];
+  closeModal();
+  if (!d) {
+    rerenderKeepScroll();
+    return;
+  }
+  act(() => {
+    d.items.push(m.pm && R.schedule === 'weekly' ? { ...newItem(id), pm: true } : newItem(id));
+    Object.assign(d, trainOn(d));
+  });
+  rerenderKeepScroll();
+  toast(`${exName(id)} added to ${dayLabel(R, di)}${m.pm ? ', second workout' : ''}`);
+  bwNudge([id]);
+  return;
+}
+
+/** A routine item swapped for the lift picked, its plan carried over (swapPlan). */
+function pickSwapItem(m: PickerModal, id: string): void {
+  const f = findItem(m.uid);
+  if (f) {
+    const day = f.r.days[f.di];
+    const q = swapPlan(f.it, f.it.exId, id, f.r, day ? day.id : undefined);
+    act(() => {
+      Object.assign(f.it, { repMin: q.repMin, repMax: q.repMax, rir: q.rir, rest: q.rest, inc: q.inc });
+      if (q.jump != null) f.it.jump = q.jump;
+      else delete f.it.jump;
+      f.it.exId = id;
+    });
+  }
+  closeModal();
+  rerenderKeepScroll();
+  return;
+}
+
+/** The lift picked added to the session, or joined to the same lift just above it. */
+function pickAddBlock(m: PickerModal, id: string, d: Draft): void {
+  // A plan's superset is null unless a routine item gave one (DEFAULT_PLAN's), as a session's block holds it.
+  const half = (p: Plan): DraftBlock['plan'] => ({
+    ...p,
+    ss: p.ss ?? null,
+    ...(d.deload || d.light ? { sets: Math.max(1, Math.ceil(p.sets / 2)) } : {})
+  });
+  const p0 = planFor(id, null, d.dayId, false, d.date, partOf(d));
+  const nb = newBlock(id, half(p0), { deload: !!d.deload, light: !!d.light, before: d.date });
+  if (d.deload || d.light) nb.full = +p0.sets;
+  // An old best is one set (380, r70): the row left to type its load and reps, nothing more to skip at Finish.
+  if (m.one) nb.sets = nb.sets.slice(0, 1);
+  const li = d.ex.length - 1;
+  const last = d.ex[li];
+  if (last && joinable(last, nb)) {
+    const had = last.sets.length;
+    const plan = { ...last.plan },
+      did = d.id;
+    let added: ReturnType<typeof joinRows> = [];
+    act(
+      () => {
+        added = joinRows(last, nb);
+      },
+      {
+        inProgress: true,
+        undo: () => {
+          const dd = state.draft;
+          if (!dd || dd.id !== did) return false;
+          const y = dd.ex.find(x => x === last);
+          if (!y || added.some(x => x.done)) return false;
+          y.sets = y.sets.filter(x => !added.includes(x));
+          y.plan = plan;
+          return y.sets.length === had;
+        }
+      }
+    );
+    afterAdd(li);
+    toast(`${EX(id).name}: ${added.length} more set${added.length === 1 ? '' : 's'}, with the ones above`, true);
+    return;
+  }
+  act(() => d.ex.push(nb), { inProgress: true });
+  afterAdd(d.ex.length - 1);
+  bwNudge([id]);
+  return;
+}
+
+/** A swap of a session's exercise as its parts read it: the draft, the block at bi and its copy before the swap (orig), the new block (nb), the sets done and the rows left, and the lift picked. */
+type SwapCtx = {
+  d: Draft;
+  bi: number;
+  b: DraftBlock;
+  nb: DraftBlock;
+  orig: DraftBlock;
+  did: string;
+  done: DraftBlock['sets'];
+  left: number;
+  id: string;
+};
+
+/** Logged on the wrong exercise: every set moves to the one picked (Move the sets). */
+function swapMoveSets(sw: SwapCtx): void {
+  const { d, bi, b, nb, orig, did, id } = sw;
+  nb.sets = b.sets;
+  if (b.bid) nb.bid = b.bid;
+  act(
+    () => {
+      d.ex[bi] = nb;
+      fixSupersets(d.ex.map(x => x.plan));
+    },
+    {
+      inProgress: true,
+      undo: () => {
+        const dd = state.draft;
+        if (!dd || dd.id !== did) return false;
+        const i = dd.ex.indexOf(nb);
+        if (i < 0) return false;
+        dd.ex[i] = orig;
+        return true;
+      }
+    }
+  );
+  rerenderKeepScroll();
+  toast(`Your sets are on ${EX(id).name} now`, true);
+  return;
+}
+
+/** The swap's sets join the same lift just after it (or just before it, when nothing stays behind), at index ni. */
+function swapJoin(sw: SwapCtx, ni: number, y: DraftBlock): void {
+  const { d, bi, b, nb, orig, did, done, id } = sw;
+  const plan = { ...y.plan };
+  let added: ReturnType<typeof joinRows> = [];
+  act(
+    () => {
+      added = joinRows(y, nb);
+      if (done.length) {
+        b.sets = done;
+        b.plan = { ...b.plan, sets: done.filter(x => !x.warm && !x.drop).length || 1 };
+      } else keepOpen(() => d.ex.splice(bi, 1));
+      fixSupersets(d.ex.map(x => x.plan));
+    },
+    {
+      inProgress: true,
+      undo: () => {
+        const dd = state.draft;
+        if (!dd || dd.id !== did) return false;
+        const yy = dd.ex.find(x => x === y);
+        if (!yy || added.some(x => x.done)) return false;
+        yy.sets = yy.sets.filter(x => !added.includes(x));
+        yy.plan = plan;
+        if (done.length) {
+          const i = dd.ex.findIndex(x => x === b);
+          if (i < 0) return false;
+          dd.ex[i] = orig;
+        } else dd.ex.splice(dd.ex.indexOf(yy) + (ni < bi ? 1 : 0), 0, orig);
+        return true;
+      }
+    }
+  );
+  rerenderKeepScroll();
+  toast(
+    done.length
+      ? `${EX(id).name}: the sets left join the ones below. Your sets so far stay with ${EX(orig.exId).name}.`
+      : `Swapped to ${EX(id).name}: its sets are together now`,
+    true
+  );
+  return;
+}
+
+/** The swap in place: the new lift takes the sets still to do, after the one they were done on, or in its place when none were. */
+function swapInPlace(sw: SwapCtx): void {
+  const { d, bi, b, nb, orig, did, done, left, id } = sw;
+  act(
+    () => {
+      if (done.length) {
+        b.sets = done;
+        b.plan = { ...b.plan, sets: done.filter(x => !x.warm && !x.drop).length || 1 };
+        keepOpen(() => d.ex.splice(bi + 1, 0, nb));
+      } else d.ex[bi] = nb;
+      fixSupersets(d.ex.map(x => x.plan));
+    },
+    {
+      inProgress: true,
+      undo: () => {
+        const dd = state.draft;
+        if (!dd || dd.id !== did) return false;
+        const at = dd.ex.findIndex(x => x === nb);
+        if (at < 0 || nb.sets.some(x => x.done)) return false;
+        if (done.length) {
+          dd.ex.splice(at, 1);
+          const i = dd.ex.findIndex(x => x === b);
+          if (i >= 0) dd.ex[i] = orig;
+          else return false;
+        } else dd.ex[at] = orig;
+        return true;
+      }
+    }
+  );
+  rerenderKeepScroll();
+  toast(
+    done.length && left
+      ? `${EX(id).name} added for the sets left. Your sets so far stay with ${EX(orig.exId).name}.`
+      : done.length
+        ? `${EX(id).name} added after ${EX(orig.exId).name}`
+        : `Swapped to ${EX(id).name}`,
+    true
+  );
+  return;
+}
+
+/** The session's exercise swapped for the one picked (below). */
+function pickSwapBlock(m: PickerModal, id: string, d: Draft): void {
+  const bi = m.b ?? -1;
+  const b = d.ex[bi];
+  if (!b) {
+    rerenderKeepScroll();
+    return;
+  }
+  const orig: DraftBlock = structuredClone(b);
+  const did = d.id;
+  // Sets ticked or typed stay with the exercise they were done on (r25: typed, not ticked, used to vanish).
+  const done = b.sets.filter(x => !rowBlank(b, x));
+  const left = b.sets.filter(x => !x.warm && !x.drop && rowBlank(b, x)).length;
+  const rows = b.sets.filter(x => !x.warm && !x.drop).length;
+  // r55, the audit: it added the new lift with one set "for the sets left", none being left.
+  if (done.length && !left && !m.all) {
+    const nn = EX(id).name;
+    confirmBox(
+      `Every set of ${EX(b.exId).name} is logged`,
+      `Logged on the wrong exercise? Move the sets to ${nn}. Or add ${nn} after it.`,
+      'Move the sets',
+      () => applyPick({ ...m, all: 'move' }, id),
+      false,
+      { label: `Add ${nn}`, fn: () => applyPick({ ...m, all: 'add' }, id) }
+    );
+    return;
+  }
+  const nb = newBlock(
+    id,
+    {
+      ...swapPlan(b.plan, b.exId, id, null, d.dayId),
+      sets: done.length && left ? left : Math.max(1, rows || +b.plan.sets || 1)
+    },
+    { deload: !!d.deload, light: !!d.light, before: d.date }
+  );
+  const sw: SwapCtx = { d, bi, b, nb, orig, did, done, left, id };
+  if (m.all === 'move') {
+    swapMoveSets(sw);
+    return;
+  }
+  nb.swappedFrom = b.swappedFrom || b.exId;
+  if (nb.swappedFrom === id) nb.swappedFrom = null;
+  /* Swapped to the exercise just after it (or just before it, when nothing
+     stays behind): the sets go to that one, so the lift is one exercise. */
+  const ni = done.length
+    ? joinable(d.ex[bi + 1], nb)
+      ? bi + 1
+      : -1
+    : joinable(d.ex[bi - 1], nb)
+      ? bi - 1
+      : joinable(d.ex[bi + 1], nb)
+        ? bi + 1
+        : -1;
+  const y = ni >= 0 ? d.ex[ni] : undefined;
+  if (y) {
+    swapJoin(sw, ni, y);
+    return;
+  }
+  swapInPlace(sw);
+}
+
 /* One place that applies a choice from the exercise picker, or an exercise
    just created from it, for every mode the picker opens in. Adding to a
    session scrolls to the new exercise and marks it. */
@@ -96,37 +365,11 @@ function afterAdd(bi: number): void {
 export function applyPick(m: PickerModal | null | undefined, id: string | undefined): void {
   if (!m || !id) return;
   if (m.mode === 'addDay') {
-    const R = curRoutineB();
-    const di = m.day ?? -1;
-    const d = R.days[di];
-    closeModal();
-    if (!d) {
-      rerenderKeepScroll();
-      return;
-    }
-    act(() => {
-      d.items.push(m.pm && R.schedule === 'weekly' ? { ...newItem(id), pm: true } : newItem(id));
-      Object.assign(d, trainOn(d));
-    });
-    rerenderKeepScroll();
-    toast(`${exName(id)} added to ${dayLabel(R, di)}${m.pm ? ', second workout' : ''}`);
-    bwNudge([id]);
+    pickAddDay(m, id);
     return;
   }
   if (m.mode === 'swapItem') {
-    const f = findItem(m.uid);
-    if (f) {
-      const day = f.r.days[f.di];
-      const q = swapPlan(f.it, f.it.exId, id, f.r, day ? day.id : undefined);
-      act(() => {
-        Object.assign(f.it, { repMin: q.repMin, repMax: q.repMax, rir: q.rir, rest: q.rest, inc: q.inc });
-        if (q.jump != null) f.it.jump = q.jump;
-        else delete f.it.jump;
-        f.it.exId = id;
-      });
-    }
-    closeModal();
-    rerenderKeepScroll();
+    pickSwapItem(m, id);
     return;
   }
   const d = state.draft;
@@ -135,49 +378,8 @@ export function applyPick(m: PickerModal | null | undefined, id: string | undefi
     rerenderKeepScroll();
     return;
   }
-  // A plan's superset is null unless a routine item gave one (DEFAULT_PLAN's), as a session's block holds it.
-  const half = (p: Plan): DraftBlock['plan'] => ({
-    ...p,
-    ss: p.ss ?? null,
-    ...(d.deload || d.light ? { sets: Math.max(1, Math.ceil(p.sets / 2)) } : {})
-  });
   if (m.mode === 'addBlock') {
-    const p0 = planFor(id, null, d.dayId, false, d.date, partOf(d));
-    const nb = newBlock(id, half(p0), { deload: !!d.deload, light: !!d.light, before: d.date });
-    if (d.deload || d.light) nb.full = +p0.sets;
-    // An old best is one set (380, r70): the row left to type its load and reps, nothing more to skip at Finish.
-    if (m.one) nb.sets = nb.sets.slice(0, 1);
-    const li = d.ex.length - 1;
-    const last = d.ex[li];
-    if (last && joinable(last, nb)) {
-      const had = last.sets.length;
-      const plan = { ...last.plan },
-        did = d.id;
-      let added: ReturnType<typeof joinRows> = [];
-      act(
-        () => {
-          added = joinRows(last, nb);
-        },
-        {
-          inProgress: true,
-          undo: () => {
-            const dd = state.draft;
-            if (!dd || dd.id !== did) return false;
-            const y = dd.ex.find(x => x === last);
-            if (!y || added.some(x => x.done)) return false;
-            y.sets = y.sets.filter(x => !added.includes(x));
-            y.plan = plan;
-            return y.sets.length === had;
-          }
-        }
-      );
-      afterAdd(li);
-      toast(`${EX(id).name}: ${added.length} more set${added.length === 1 ? '' : 's'}, with the ones above`, true);
-      return;
-    }
-    act(() => d.ex.push(nb), { inProgress: true });
-    afterAdd(d.ex.length - 1);
-    bwNudge([id]);
+    pickAddBlock(m, id, d);
     return;
   }
   /* Swapping used to replace the whole block, so sets already logged on the
@@ -187,151 +389,7 @@ export function applyPick(m: PickerModal | null | undefined, id: string | undefi
      count undid Short on time, + Set and − Set (r24). Since r54 nothing is
      marked: the replacement is read by its own usual, as every lift is. */
   if (m.mode === 'swapBlock') {
-    const bi = m.b ?? -1;
-    const b = d.ex[bi];
-    if (!b) {
-      rerenderKeepScroll();
-      return;
-    }
-    const orig: DraftBlock = structuredClone(b);
-    const did = d.id;
-    // Sets ticked or typed stay with the exercise they were done on (r25: typed, not ticked, used to vanish).
-    const done = b.sets.filter(x => !rowBlank(b, x));
-    const left = b.sets.filter(x => !x.warm && !x.drop && rowBlank(b, x)).length;
-    const rows = b.sets.filter(x => !x.warm && !x.drop).length;
-    // r55, the audit: it added the new lift with one set "for the sets left", none being left.
-    if (done.length && !left && !m.all) {
-      const nn = EX(id).name;
-      confirmBox(
-        `Every set of ${EX(b.exId).name} is logged`,
-        `Logged on the wrong exercise? Move the sets to ${nn}. Or add ${nn} after it.`,
-        'Move the sets',
-        () => applyPick({ ...m, all: 'move' }, id),
-        false,
-        { label: `Add ${nn}`, fn: () => applyPick({ ...m, all: 'add' }, id) }
-      );
-      return;
-    }
-    const nb = newBlock(
-      id,
-      {
-        ...swapPlan(b.plan, b.exId, id, null, d.dayId),
-        sets: done.length && left ? left : Math.max(1, rows || +b.plan.sets || 1)
-      },
-      { deload: !!d.deload, light: !!d.light, before: d.date }
-    );
-    if (m.all === 'move') {
-      nb.sets = b.sets;
-      if (b.bid) nb.bid = b.bid;
-      act(
-        () => {
-          d.ex[bi] = nb;
-          fixSupersets(d.ex.map(x => x.plan));
-        },
-        {
-          inProgress: true,
-          undo: () => {
-            const dd = state.draft;
-            if (!dd || dd.id !== did) return false;
-            const i = dd.ex.indexOf(nb);
-            if (i < 0) return false;
-            dd.ex[i] = orig;
-            return true;
-          }
-        }
-      );
-      rerenderKeepScroll();
-      toast(`Your sets are on ${EX(id).name} now`, true);
-      return;
-    }
-    nb.swappedFrom = b.swappedFrom || b.exId;
-    if (nb.swappedFrom === id) nb.swappedFrom = null;
-    /* Swapped to the exercise just after it (or just before it, when nothing
-       stays behind): the sets go to that one, so the lift is one exercise. */
-    const ni = done.length
-      ? joinable(d.ex[bi + 1], nb)
-        ? bi + 1
-        : -1
-      : joinable(d.ex[bi - 1], nb)
-        ? bi - 1
-        : joinable(d.ex[bi + 1], nb)
-          ? bi + 1
-          : -1;
-    const y = ni >= 0 ? d.ex[ni] : undefined;
-    if (y) {
-      const plan = { ...y.plan };
-      let added: ReturnType<typeof joinRows> = [];
-      act(
-        () => {
-          added = joinRows(y, nb);
-          if (done.length) {
-            b.sets = done;
-            b.plan = { ...b.plan, sets: done.filter(x => !x.warm && !x.drop).length || 1 };
-          } else keepOpen(() => d.ex.splice(bi, 1));
-          fixSupersets(d.ex.map(x => x.plan));
-        },
-        {
-          inProgress: true,
-          undo: () => {
-            const dd = state.draft;
-            if (!dd || dd.id !== did) return false;
-            const yy = dd.ex.find(x => x === y);
-            if (!yy || added.some(x => x.done)) return false;
-            yy.sets = yy.sets.filter(x => !added.includes(x));
-            yy.plan = plan;
-            if (done.length) {
-              const i = dd.ex.findIndex(x => x === b);
-              if (i < 0) return false;
-              dd.ex[i] = orig;
-            } else dd.ex.splice(dd.ex.indexOf(yy) + (ni < bi ? 1 : 0), 0, orig);
-            return true;
-          }
-        }
-      );
-      rerenderKeepScroll();
-      toast(
-        done.length
-          ? `${EX(id).name}: the sets left join the ones below. Your sets so far stay with ${EX(orig.exId).name}.`
-          : `Swapped to ${EX(id).name}: its sets are together now`,
-        true
-      );
-      return;
-    }
-    act(
-      () => {
-        if (done.length) {
-          b.sets = done;
-          b.plan = { ...b.plan, sets: done.filter(x => !x.warm && !x.drop).length || 1 };
-          keepOpen(() => d.ex.splice(bi + 1, 0, nb));
-        } else d.ex[bi] = nb;
-        fixSupersets(d.ex.map(x => x.plan));
-      },
-      {
-        inProgress: true,
-        undo: () => {
-          const dd = state.draft;
-          if (!dd || dd.id !== did) return false;
-          const at = dd.ex.findIndex(x => x === nb);
-          if (at < 0 || nb.sets.some(x => x.done)) return false;
-          if (done.length) {
-            dd.ex.splice(at, 1);
-            const i = dd.ex.findIndex(x => x === b);
-            if (i >= 0) dd.ex[i] = orig;
-            else return false;
-          } else dd.ex[at] = orig;
-          return true;
-        }
-      }
-    );
-    rerenderKeepScroll();
-    toast(
-      done.length && left
-        ? `${EX(id).name} added for the sets left. Your sets so far stay with ${EX(orig.exId).name}.`
-        : done.length
-          ? `${EX(id).name} added after ${EX(orig.exId).name}`
-          : `Swapped to ${EX(id).name}`,
-      true
-    );
+    pickSwapBlock(m, id, d);
     return;
   }
   rerenderKeepScroll();
