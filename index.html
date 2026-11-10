@@ -18336,36 +18336,27 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       noLog() ? "Nothing logged yet" : `${sk.weeks}-week streak${adher != null ? ` · ${adher}% adherence` : ""}`
     );
   }
-  function viewDash() {
-    chartNoticeUsed = false;
-    const I2 = IDX();
-    const R2 = activeRoutine();
-    const cur = weekStart(today());
-    const thisWeek = I2.weekSets[cur] || {};
-    const thisWeekConf = I2.weekConf[cur] || {};
-    const wkHard = weekStats().got;
-    const stalled = Object.entries(I2.exStats).flatMap(([id, s3]) => s3 && s3.stalled ? [[id, s3]] : []);
+  function rirCoverLine(I2) {
     const rc = I2.rirCov;
     const covPct = rc.total && state.settings.rirMode !== "off" ? Math.round(rc.logged / rc.total * PERCENT) : null;
-    const cov = covPct == null || covPct >= RIR_COVER_PCT ? "" : b`<p class="small muted hastip u-m0-0n12" data-tip="A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, else the set counts as hard. The lighter shading shows those sets.">RIR on ${covPct}% of recent sets. The lighter part of each bar is assumed.</p>`;
-    const nS = state.sessions.length;
+    return covPct == null || covPct >= RIR_COVER_PCT ? "" : b`<p class="small muted hastip u-m0-0n12" data-tip="A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, else the set counts as hard. The lighter shading shows those sets.">RIR on ${covPct}% of recent sets. The lighter part of each bar is assumed.</p>`;
+  }
+  function dashHead(nS) {
     const first = sortedSessions()[0];
-    const head = b`${pageTitle("", "Stats", noLog() ? "Nothing logged yet" : `${nS} session${nS === 1 ? "" : "s"} logged${first ? `, since ${fmtDate(first.date)}` : ""}`, helpButton("stats"), true)}${howText(
+    return b`${pageTitle("", "Stats", noLog() ? "Nothing logged yet" : `${nS} session${nS === 1 ? "" : "s"} logged${first ? `, since ${fmtDate(first.date)}` : ""}`, helpButton("stats"), true)}${howText(
       "stats",
       "Everything here is calculated from your logged sets: performance trends, not direct measurements of muscle size. Tap a section title to open or fold it. Inside each section, How this works says what its numbers mean."
     )}
   <nav class="jump" aria-label="Stats sections">${orderKeys(state.settings.secOrder.dash || [], DSEC_KEYS).filter((k2) => !state.settings.hidden.includes("dash:" + k2)).flatMap((k2) => DSECS.filter((x2) => x2[0] === k2)).map(([k2, l4]) => b`<button class="chip" data-act="dashJump" data-sec=${k2}>${l4}</button>`)}</nav>`;
-    const none = !nS ? b`<div class="card"><p class="u-m0"><b>No sessions yet.</b> Trends start after a few sessions. ${tipButton("Trends, stall detection, and rankings need a few sessions of each exercise. To preview the full Stats page, load demo data in Settings.", "About Stats")}</p></div>` : A;
-    const R4 = recent4w();
+  }
+  function dashKpis(R4, nS) {
     const prs4 = R4.prs.length;
     const was = (n3) => R4.back ? ` (${n3} in the ${RECENT_WEEKS} weeks before)` : "";
-    const kpis = b`<div class="kpis"><div class="kpi"><div class="v">${nz(R4.sess)}</div><div class="l">Sessions, last ${RECENT_WEEKS} weeks${was(R4.sessP)}</div></div>
+    return b`<div class="kpis"><div class="kpi"><div class="v">${nz(R4.sess)}</div><div class="l">Sessions, last ${RECENT_WEEKS} weeks${was(R4.sessP)}</div></div>
   <div class="kpi"><div class="v">${nz(prs4)}</div><div class="l">PRs, last ${RECENT_WEEKS} weeks${was(R4.prsP)}</div></div>
 ${extraKpis()}</div>${nS ? dashSummary() : A}`;
-    const avg = actualAvg4();
-    const plan = plannedSets(R2);
-    const avgSt = avg ? muscleStatus(avg) : null;
-    const confOff = state.settings.rirMode === "off";
+  }
+  function volumeSec(cov, thisWeek, thisWeekConf, wkHard, avg, nS, confOff) {
     const volCard = () => {
       if (ui.volMode === "region") return regionBody();
       if (ui.volMode === "trend") return trendBody();
@@ -18378,7 +18369,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const w2 = avgWait();
       return b`<div class="card"><p class="muted">${w2.lead}An average ${w2.kind === "back" ? "comes back" : "starts"} after ${w2.after}.${w2.kind === "second" ? b` ${tipButton(w2.why, "Your first week")}` : A}</p></div>`;
     };
-    const volSec = dashSection(
+    return dashSection(
       "volume",
       "Volume",
       VOL_HELP,
@@ -18387,6 +18378,8 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
   ${volCard()}`,
       noLog() ? "Nothing logged yet" : `${wkHard} hard sets this week`
     );
+  }
+  function weakPoints(I2, avg, avgSt, thisWeek, plan, nS) {
     const inj = injuredSet();
     const reasons = {};
     const add = (m3, t4, c4) => {
@@ -18403,7 +18396,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     }
     for (const m3 of state.settings.priorities) add(m3, "Your priority", "blue");
     const wp = Object.entries(reasons).sort((a2, b2) => b2[1].length - a2[1].length);
-    const weakBody = b`<div class="card">${wp.length ? wp.map(([m3, rs]) => {
+    const body = b`<div class="card">${wp.length ? wp.map(([m3, rs]) => {
       const tags = rs.map(([t4, c4]) => b`<span class=${`tag ${c4}`}>${t4}</span>`);
       if (!MK.some((x2) => x2 === m3))
         return b`<div class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${injLabel(m3)}</b><div class="chips">${tags}</div></div></div>`;
@@ -18413,11 +18406,18 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       if (belowMin(plan[m3], lo)) bits.push(`your routine plans ${r1(plan[m3] || 0)}`);
       return b`<div class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${ML[m3]}</b><div class="chips">${tags}</div></div><p class="small muted u-m2-0-0">${bits.join(" · ")}</p></div>`;
     }) : b`<p class="muted u-m0">${nS ? "Nothing flagged." : "Flags start once you have logged a few sessions."}</p>`}</div>`;
+    return { body, n: wp.length };
+  }
+  function stallsBody(stalled) {
     const bigN = stalled.length ? fatigueStalls(stalled.map(([id]) => id)).length : 0;
     const lw = lastLighterWeek();
     const stl = b`${stalled.length ? b`${stalled.map(
       ([id, s3]) => b`<div class="row spread u-p6-0_bb1-solid-line"><span><span class="plate yellow u-h14_van2"></span> ${exName(id)}</span><span class="muted small">last ${fmtDate(s3.last.date)}</span></div>`
     )}${bigN >= FATIGUE_STALLS ? b`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : A}` : b`<p class="muted">No stalls detected.</p>`}${lw ? b`<p class="small muted u-mt8">${lw.weeks == null ? "No lighter week in the last 12." : `Last lighter week: ${lw.weeks} week${lw.weeks === 1 ? "" : "s"} ago${lw.kind === "rest" ? " (a rest week)" : lw.kind === "off" ? " (a week off)" : ""}.`} ${tipButton(LIGHTER_WEEK_TIP, "Lighter week")}</p>` : A}`;
+    return { stl, bigN };
+  }
+  function liftsSec(I2, stalled, prs4) {
+    const { stl, bigN } = stallsBody(stalled);
     const withData = Object.keys(I2.byEx).filter((id) => (I2.byEx[id] || []).length).sort((a2, b2) => exName(a2).localeCompare(exName(b2)));
     const nOf = (id) => (I2.byEx[id] || []).length;
     if (!ui.dashEx || typeof ui.dashEx !== "string" || !I2.byEx[ui.dashEx])
@@ -18436,7 +18436,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     })}` : b`<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>`;
     const nLifts = Object.keys(I2.byEx).length;
     const firstPR = bigPR[0];
-    const liftsSec = dashSection(
+    return dashSection(
       "exercise",
       "Lifts",
       LIFTS_HELP,
@@ -18448,31 +18448,61 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       )}${dashSub("stalls", "Stalls", stl, stalled.length ? b`<span class=${`pill ${bigN >= FATIGUE_STALLS ? "red" : "yellow"}`}>${stalled.length} stalled</span>` : "none")}`,
       noLog() ? "Nothing logged yet" : `${nLifts} lift${nLifts === 1 ? "" : "s"} tracked`
     );
+  }
+  function musclesSec(weak, avg, thisWeek, nS) {
     const rank = b`<div class="card">${rankBody(avg || thisWeek)}</div>`;
-    const musSec = dashSection(
+    return dashSection(
       "weak",
       "Muscles",
       MUSCLES_HELP,
-      b`${weakBody}${dashSub("rank", "Strength return on volume", rank)}${dashSub("size", "Size check", sizeBody())}`,
-      wp.length ? b`<span class="pill yellow">${wp.length} flagged</span>` : nS ? b`<span class="pill green">none flagged</span>` : "after a few sessions"
+      b`${weak.body}${dashSub("rank", "Strength return on volume", rank)}${dashSub("size", "Size check", sizeBody())}`,
+      weak.n ? b`<span class="pill yellow">${weak.n} flagged</span>` : nS ? b`<span class="pill green">none flagged</span>` : "after a few sessions"
     );
+  }
+  function bodySec() {
     const nBw = state.bodyweights.length;
-    const bodySec = dashSection(
+    return dashSection(
       "body",
       "Body",
       "Daily bodyweight with a 7-day average. Tape changes help cross-check which muscles are actually growing.",
       b`<div class="card">${nBw ? b`${rangeChips("bw", weeksSpan(firstDate(state.bodyweights)), CHART_WEEKS, "all")}<div class="chartbox"><canvas id="chBW"></canvas></div>${chartFallback()}` : b`<p class="small muted u-m0">Log your bodyweight in Body on Today to start this chart.</p>${state.settings.hidden.includes("today:body") ? b`<button class="btn sm u-mt8" data-act="secShow" data-k="today:body">Show Body on Today</button>` : A}`}${nBw ? bwRateText() : A}${nBw || state.measurements.length ? measTable() : A}</div>`,
       nBw ? `${nBw} weigh-in${nBw === 1 ? "" : "s"}` : "not logged yet"
     );
+  }
+  function viewDash() {
+    chartNoticeUsed = false;
+    const I2 = IDX();
+    const R2 = activeRoutine();
+    const cur = weekStart(today());
+    const thisWeek = I2.weekSets[cur] || {};
+    const thisWeekConf = I2.weekConf[cur] || {};
+    const wkHard = weekStats().got;
+    const stalled = Object.entries(I2.exStats).flatMap(([id, s3]) => s3 && s3.stalled ? [[id, s3]] : []);
+    const cov = rirCoverLine(I2);
+    const nS = state.sessions.length;
+    const head = dashHead(nS);
+    const none = !nS ? b`<div class="card"><p class="u-m0"><b>No sessions yet.</b> Trends start after a few sessions. ${tipButton("Trends, stall detection, and rankings need a few sessions of each exercise. To preview the full Stats page, load demo data in Settings.", "About Stats")}</p></div>` : A;
+    const R4 = recent4w();
+    const prs4 = R4.prs.length;
+    const kpis = dashKpis(R4, nS);
+    const avg = actualAvg4();
+    const plan = plannedSets(R2);
+    const avgSt = avg ? muscleStatus(avg) : null;
+    const confOff = state.settings.rirMode === "off";
+    const volSec = volumeSec(cov, thisWeek, thisWeekConf, wkHard, avg, nS, confOff);
+    const weak = weakPoints(I2, avg, avgSt, thisWeek, plan, nS);
+    const lifts = liftsSec(I2, stalled, prs4);
+    const musSec = musclesSec(weak, avg, thisWeek, nS);
+    const body = bodySec();
     return b`${slotted("dash", [
       [null, head],
       [null, none],
       [null, kpis],
       ["volume", volSec],
-      ["exercise", liftsSec],
+      ["exercise", lifts],
       ["weak", musSec],
       ["consistency", consistencySec(R2, cur)],
-      ["body", bodySec]
+      ["body", body]
     ])}${tabFoot("dash")}`;
   }
   var BEST_EST_TIP = "Best estimated one-rep max (e1RM): the most your strongest set says you could lift once, from its weight, reps, and RIR. An estimate, not a tested max.";
