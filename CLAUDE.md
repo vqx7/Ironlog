@@ -61,7 +61,8 @@ stand-in cloud.
     (correct by a written rule or V's ruling, cited), DECISION PENDING (V's, the question quoted), DEFERRED (only on
     V's word, dated) or NEW (found while building, added with its reproduction the moment it is found and reported
     to V in the same message; never fixed without a reproduction, never folded silently into scope). No row is
-    deleted or merged into another. A message to V about progress names rows by ID, and every session ends with the
+    deleted or merged into another; a row closed in a merged release may move, word for word, to docs/ARCHIVE.md, where it stays
+    readable and goes back here as OPEN if it turns out missed or wrongly closed (V, 2026-11-10, CA-5). A message to V about progress names rows by ID, and every session ends with the
     tracker and the project's ledger updated, so nothing lives only in a chat.
 
 ## What is in this repo
