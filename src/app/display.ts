@@ -242,7 +242,7 @@ export function recent4w(): { back: boolean; sess: number; sessP: number; prs: P
 }
 
 /** The weight lifted in a week, to its day `upto` (0 Monday), or all of it. */
-function weekVolume(ws: string, upto?: number | null): number {
+export function weekVolume(ws: string, upto?: number | null): number {
   const end = addDays(ws, upto == null ? SUNDAY : upto);
   let v = 0;
   for (const x of IDX().sessVol) if (x.date >= ws && x.date <= end) v += x.vol;

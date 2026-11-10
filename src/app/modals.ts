@@ -189,7 +189,7 @@ export type Modal =
   /* first: opened from the first pages, where the app's tabs are not open yet. */
   | (SheetBase & { kind: 'menu'; first?: true | undefined })
   | (SheetBase & { kind: 'guide'; open?: string | undefined })
-  | (SheetBase & { kind: 'calendar'; ym: string })
+  | (SheetBase & { kind: 'calendar'; ym: string; top?: true | undefined })
   /* old: Add an old best, a past Freestyle workout of one lift and one set. */
   | (SheetBase & { kind: 'past' | 'daypick'; date: string; old?: true | undefined })
   | (SheetBase & { kind: 'fbInbox'; items: FbItem[] | null; err?: string | undefined })

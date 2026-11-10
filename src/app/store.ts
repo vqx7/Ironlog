@@ -103,6 +103,8 @@ interface Ui {
   calYm?: string | undefined;
   /** This week on Today as the week or the month (remembered on this device). */
   wkView?: 'week' | 'month' | undefined;
+  /** The Monday of the week This week shows when stepped away from this one; absent for this week (NEW-107). */
+  wkWs?: string | undefined;
   /** The weeks Volume by region averages, picked this visit. */
   regionWk?: number | undefined;
   /** The day Plan has open: its id, '' for none, unset for the routine's target day. */
