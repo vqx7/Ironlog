@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-JcH2BO4dQcZeYhb4zBgOI0vMafAGBewOoeHPt50ukjA=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-hrF4ymaXbWBPf5HvS2U0EHQJJPVW4NU0ld8kV7aQ3y0=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.09-r86">
+<meta name="app-build" content="2026.11.09-r87">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -676,7 +676,7 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .stepr-b:disabled{opacity:.35;cursor:default}
 .stepr-v{flex:1 1 auto;min-width:0;margin:0 -4px;display:flex;align-items:baseline;justify-content:center;gap:3px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .stepr-v b{font-size:18px;font-weight:800;letter-spacing:-.01em}
-.stepr-v small{font-size:12px;font-weight:600;opacity:.75}
+.stepr-v small{font-size:12px;font-weight:600}
 @media (max-width:379px){.stepr-v small{display:none}.stepr-v b{font-size:17px}}
 .sg.norir{grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) 44px}
 .sg .n.drop{color:var(--blue)}
@@ -986,6 +986,7 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .sprog span{font:700 13px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
 .bfold{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:10px 14px;background:none;border:0;color:var(--ink);text-align:left;cursor:pointer;font:inherit}
 .bf-ck{flex:none;width:30px;height:30px;border-radius:50%;background:var(--volt);color:var(--on-volt);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
+.bf-ck.bf-todo{background:none;box-shadow:inset 0 0 0 2px var(--line)}
 .bf-t{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:2px}
 .bf-t b{font:700 18px/1.1 var(--display);text-transform:uppercase;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bf-t span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2134,8 +2135,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.40";
-  var APP_VERSION = "2026.11.09-r86";
+  var DISPLAY_VERSION = "2.41";
+  var APP_VERSION = "2026.11.09-r87";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -3566,7 +3567,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   function mergeDraft(base0, cur0, pre0, saved) {
     const base = undoDraftOf(base0), cur = undoDraftOf(cur0), pre = undoDraftOf(pre0);
-    if (pre && !base && !cur && cur0 == null && base0 == null && !saved(pre.id)) return pre0;
+    if (pre && (!base || base.id !== pre.id) && canon(cur0) === canon(base0) && !saved(pre.id)) return pre0;
     if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur0 === void 0 ? null : cur0;
     const keyed = (list) => {
       const seen = {};
@@ -14014,7 +14015,7 @@ ${more}`;
   };
   function parkDraft() {
     const d3 = state.draft;
-    if (!d3 || parkedHeld()) return false;
+    if (!d3 || d3.editingId || parkedHeld()) return false;
     return prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: d3 }));
   }
   function unpark() {
@@ -14894,6 +14895,8 @@ ${more}`;
   function blkShut(bi, b2) {
     ui.blkShut.add(blkKey(bi, b2));
     blkShutObj.add(b2);
+    ui.blkOpen.delete(blkKey(bi, b2));
+    blkOpenObj.delete(b2);
   }
   function blkOpen(bi, b2) {
     ui.blkOpen.add(blkKey(bi, b2));
@@ -15542,19 +15545,20 @@ ${more}`;
     return false;
   }
   function nextLift(d3, i5) {
-    const nx = d3.ex.findIndex((x2, j3) => j3 > i5 && !blockDone(x2));
-    return nx >= 0 ? nx : d3.ex.findIndex((x2) => blockUntouched(x2));
+    const open = (x2, j3) => !blkIsShut(j3, x2);
+    const nx = d3.ex.findIndex((x2, j3) => j3 > i5 && !blockDone(x2) && open(x2, j3));
+    return nx >= 0 ? nx : d3.ex.findIndex((x2, j3) => blockUntouched(x2) && open(x2, j3));
   }
   function liftsOn(d3) {
     const held3 = (x2) => {
       const j3 = d3.ex.indexOf(x2);
       return j3 >= 0 && setIdx(W.onSet, j3) >= 0 && (W.foldWait.has(x2) || blkIsOpen(j3, x2));
     };
-    const left = (x2) => !blockDone(x2) || held3(x2);
+    const left = (x2) => (!blockDone(x2) || held3(x2)) && !blkIsShut(d3.ex.indexOf(x2), x2);
     const i5 = blkIdx(W.onLift);
     const at2 = i5 >= 0 ? d3.ex[i5] : void 0;
     const nx = at2 && !left(at2) ? nextLift(d3, i5) : -1;
-    const b2 = at2 && left(at2) ? at2 : nx >= 0 ? d3.ex[nx] : d3.ex.find(left);
+    const b2 = at2 && left(at2) ? at2 : nx >= 0 && left(d3.ex[nx]) ? d3.ex[nx] : d3.ex.find(left);
     if (!b2) return /* @__PURE__ */ new Set();
     const ss = b2.plan && b2.plan.ss;
     return new Set(ss ? d3.ex.filter((x2) => x2.plan && x2.plan.ss === ss && left(x2)) : [b2]);
@@ -20558,7 +20562,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const p3 = blockProgress(b2);
     return p3 ? b`<span class=${"tp" + (p3.beat ? " beat" : "")} id=${`tp-${bi}`} aria-hidden=${p3.text ? A : "true"}>${p3.text || " "}</span>` : "";
   }
-  var isFolded = (d3, b2, bi) => blockDone(b2) && (d3.editingId ? blkIsShut(bi, b2) : !blkIsOpen(bi, b2) && !W.foldWait.has(b2));
+  var isFolded = (d3, b2, bi) => blkIsShut(bi, b2) || !d3.editingId && blockDone(b2) && !blkIsOpen(bi, b2) && !W.foldWait.has(b2);
   function blockPart(d3, b2, bi, letters, hintSeen, calIdx, bwAt2) {
     const ex = EX(b2.exId);
     const p3 = b2.plan;
@@ -20573,7 +20577,10 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     if (isFolded(d3, b2, bi)) {
       const ws = b2.sets.filter((x2) => !x2.warm);
       const prs = b2.sets.filter((x2, si) => !x2.warm && rowPR(b2, si, d3.date)).length;
-      return b`<section class=${"block folded" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${bgrip(bi, ex.name)}<button class="bfold" data-act="bOpen" data-b=${bi} aria-expanded="false" aria-label=${`${ex.name}, done. Open to edit`}><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${ssLbl}${ex.name}</b><span>${ws.map((x2) => setShort(ex, x2.w, x2.r) + missedTag(x2)).join(", ")}</span></span>${prs ? b`<span class="bf-pr">PR</span>` : ""}<span class="chev" aria-hidden="true"></span></button></section>`;
+      const done = blockDone(b2);
+      const work2 = b2.sets.filter((x2) => !x2.warm && !x2.drop);
+      const line = done ? ws.map((x2) => setShort(ex, x2.w, x2.r) + missedTag(x2)).join(", ") : `${work2.filter((x2) => x2.done).length} of ${work2.length} sets`;
+      return b`<section class=${"block folded" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${bgrip(bi, ex.name)}<button class="bfold" data-act="bOpen" data-b=${bi} aria-expanded="false" aria-label=${done ? `${ex.name}, done. Open to edit` : `${ex.name}, ${line} done. Open`}><span class=${done ? "bf-ck" : "bf-ck bf-todo"} aria-hidden="true">${done ? "✓" : ""}</span><span class="bf-t"><b>${ssLbl}${ex.name}</b><span>${line}</span></span>${prs ? b`<span class="bf-pr">PR</span>` : ""}<span class="chev" aria-hidden="true"></span></button></section>`;
     }
     const partner = ss ? d3.ex.filter((x2) => x2 !== b2 && x2.plan.ss === p3.ss).map((x2) => exName(x2.exId)).join(" + ") : "";
     const why = whyTarget(b2);
@@ -20581,7 +20588,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const work = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
     const canFill = !!b2.lastR && b2.lastR.some((r4) => r4 != null) && b2.sets.some((s3, i5) => !s3.done && !s3.warm && !s3.drop && s3.r == null && lastRFor(b2, i5) != null);
     return b`<section class=${"block" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? b`<p class="ssh">Superset ${ss}</p>` : ""}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : A}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? b` ${tipButton(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · ${work || p3.sets}×${repSpan(p3.repMin, p3.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}${nr ? "" : ` @${b2.inj || (d3.light || d3.deload || b2.light) && b2.last ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p3.rir)}`} · ${p3.rest}s${b2.inj ? b` · <span class="tag red">Injury: ${injLabel(b2.inj)}</span>` : ""}${markedNew(d3, b2.exId) ? b` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ""}</p></div>
-      <div class="bh-acts">${blockDone(b2) ? b`<button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button>` : ""}<button class=${"ib" + (b2.note || b2.pics && b2.pics.length ? " noted" : "")} aria-label=${b2.note || b2.pics && b2.pics.length ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle.">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
+      <div class="bh-acts"><button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button><button class=${"ib" + (b2.note || b2.pics && b2.pics.length ? " noted" : "")} aria-label=${b2.note || b2.pics && b2.pics.length ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle.">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
       ${b2.target ? b`<p class="hint"><b>Today: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
       ${ss && partner && gk === 0 ? b`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? "pair" : "group"}.</p>` : ""}
       ${b2.lastNote && !b2.note ? b`<p class="small lnote">Your note, ${fmtDate(b2.lastNote.date)}: ${b2.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ""}
@@ -20755,9 +20762,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       } else if ((state.settings.autoDone || d3.past) && !s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3))) {
         const toRir = near(`.rirb[data-b="${bi}"][data-s="${si}"]`);
         const toW = !toRir && near(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
-        const toStep = !toRir && !toW && near(`.stepr-b[data-b="${bi}"][data-s="${si}"]`);
-        if (toStep) W.pendAuto = null;
-        else if (toW) W.pendAuto = { b: blkRef(bi), s: si };
+        if (toW) W.pendAuto = { b: blkRef(bi), s: si };
         else if (toRir) {
           const p3 = { b: blkRef(bi), s: si };
           W.pendAuto = p3;
@@ -24853,7 +24858,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       } else if (state.draft)
         confirmBox(
           "Replace the session in progress?",
-          "You have an unsaved session open. Editing this one will discard it.",
+          state.draft.editingId ? "You are editing a saved session. Your edits will be lost." : "You have an unsaved session open. Editing this one will discard it.",
           "Discard and edit",
           go,
           true
@@ -26141,20 +26146,14 @@ ${JSON.stringify(ctx, null, 1)}`;
       window.scrollTo(0, 0);
       render();
     },
-    // Every place this exercise was opened at, so a move and a fold leave nothing behind.
+    // Folded by hand, done or not (NEW-101), and every place it was opened at forgotten, so a move leaves nothing behind.
     bFold(t4) {
       const b2 = tapBlock(t4);
       if (!b2) return;
-      const d3 = state.draft;
-      if (d3 && d3.editingId) {
-        blkShut(Number(t4.dataset.b), b2);
-        rerenderKeepScroll();
-        return;
-      }
       const pre = (state.draft && state.draft.id || "") + ":";
       for (const k2 of [...ui.blkOpen])
         if (typeof k2 === "string" && k2.startsWith(pre) && k2.endsWith(":" + b2.exId)) ui.blkOpen.delete(k2);
-      blkOpenObj.delete(b2);
+      blkShut(Number(t4.dataset.b), b2);
       rerenderKeepScroll();
     },
     bUp(t4) {
