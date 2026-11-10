@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-hrF4ymaXbWBPf5HvS2U0EHQJJPVW4NU0ld8kV7aQ3y0=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-+l/ccCw7hXwVKmca3X8TAwJ1S/qCiu6AVzDsrE1rXD0=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.09-r87">
+<meta name="app-build" content="2026.11.09-r88">
 <title>Ironlog</title>
 <script>window.IRONLOG_APP=true;window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -667,17 +667,21 @@ button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .blkt th,.blkt td{padding:7px 4px;border-bottom:1px solid var(--line);text-align:right}
 .blkt tbody th,.blkt thead th:first-child{text-align:left;font-weight:600}
 .blkt thead th{font-size:12px;color:var(--muted);font-weight:650}
-.stepr{margin-top:10px;padding-top:10px;border-top:1px solid var(--line-soft)}
-.stepr-h{font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
-.stepr-row{display:flex;gap:8px}
-.stepr-g{flex:1 1 0;min-width:0;display:flex;align-items:center;height:48px;border-radius:24px;color:var(--on-volt);background:var(--volt)}
-.stepr-b{position:relative;z-index:1;width:44px;height:48px;flex:none;border:0;padding:0;background:none;color:inherit;font-size:24px;font-weight:700;line-height:1;cursor:pointer;border-radius:24px}
-.stepr-b:active{background:rgba(0,0,0,.14)}
+.stepr{display:flex;flex-wrap:wrap;align-items:center;column-gap:10px;margin-top:10px;padding-top:4px;border-top:1px solid var(--line-soft)}
+.stepr-h{flex:0 1 0;line-height:1.25;font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.stepr-n{white-space:nowrap}
+.stepr-row{flex:1 1 0;display:flex;justify-content:flex-end;gap:8px}
+.stepr-g{flex:1 1 0;max-width:150px;position:relative;display:flex;align-items:center;height:44px;color:var(--on-volt)}
+.stepr-g::before{content:"";position:absolute;inset:6px 0;border-radius:16px;background:var(--volt)}
+.stepr-b{position:relative;z-index:1;width:44px;height:44px;flex:none;border:0;padding:0;background:none;color:inherit;font-size:20px;font-weight:700;line-height:1;cursor:pointer}
+.stepr-b:active::after{content:"";position:absolute;inset:6px 0;border-radius:16px;background:rgba(0,0,0,.14)}
 .stepr-b:disabled{opacity:.35;cursor:default}
-.stepr-v{flex:1 1 auto;min-width:0;margin:0 -4px;display:flex;align-items:baseline;justify-content:center;gap:3px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.stepr-v b{font-size:18px;font-weight:800;letter-spacing:-.01em}
-.stepr-v small{font-size:12px;font-weight:600}
-@media (max-width:379px){.stepr-v small{display:none}.stepr-v b{font-size:17px}}
+.stepr-b[data-d="-1"]{padding-right:8px}
+.stepr-b[data-d="1"]{padding-left:8px}
+.stepr-v{position:relative;z-index:1;flex:1 1 auto;margin:0 -12px;display:flex;align-items:baseline;justify-content:center;gap:3px;font-variant-numeric:tabular-nums;white-space:nowrap;pointer-events:none}
+.stepr-v b{font-size:16px;font-weight:800;letter-spacing:-.01em}
+.stepr-v small{font-size:11px;font-weight:600}
+@media (max-width:379px){.stepr-v small{display:none}}
 .sg.norir{grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) 44px}
 .sg .n.drop{color:var(--blue)}
 /* A drop set sits under its set (r66, 375): set in on a quiet band, its Last column naming it. */
@@ -2135,8 +2139,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.41";
-  var APP_VERSION = "2026.11.09-r87";
+  var DISPLAY_VERSION = "2.42";
+  var APP_VERSION = "2026.11.09-r88";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2340,7 +2344,6 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var TYPED_STEP = 0.05;
   var PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
   var CHANGE_PLATES = { kg: [2, 1.5, 1, 0.5], lb: [1.25] };
-  var SMALL_PLATE = { lb: 1.25, kg: 0.5 };
   var inUnitIn = (M3, kg2) => UIn(M3) === "lb" ? kg2 / LB : kg2;
   var kgOfIn = (M3, v3) => UIn(M3) === "lb" ? v3 * LB : v3;
   var toDIn = (M3, kg2) => kg2 == null ? null : inUnitIn(M3, kg2);
@@ -4069,7 +4072,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       secOrder,
       folds: fl ? strings(fl, (k2) => safeKey(k2) && k2.length < LIMITS.foldKey).slice(0, LIMITS.folds) : [],
       wakeLock: st.wakeLock === true,
-      // Small change plates (r29, item 98): absent unless on, so saves without it hash as before.
+      // Small change plates (r29, item 98): absent unless on, so saves without it hash as before. Its toggle went with the
+      // plates line in 2.42 (NEW-103); a log that has it keeps it, and a build before reads it as it did.
       ...st.smallPlates === true ? { smallPlates: true } : {},
       // Your gym (r33, item 207) and the profile (r44, item 271): absent unless set, rebuilt in one key order.
       ...gym ? { gym } : {},
@@ -14866,7 +14870,6 @@ ${more}`;
     needAt: null,
     lastDown: { el: null, t: 0 },
     stripAt: null,
-    platesAt: null,
     onLift: null,
     onSet: null,
     foldWait: /* @__PURE__ */ new WeakSet(),
@@ -14961,7 +14964,6 @@ ${more}`;
   var greyIn = /* @__PURE__ */ new WeakSet();
 
   // src/app/worksets.ts
-  var PLATE_DUST = { kg: 0.1, lb: 0.25 };
   var CAL_OFFER = { sessions: 3, weeks: 3 };
   var ODD_REPS = 30, ODD_REPS_TIMES = 2;
   var PR_TOAST_MS = 4200, PR_BUZZ = [30, 50, 30];
@@ -15127,33 +15129,6 @@ ${more}`;
     return "";
   }
   var loadIn = (ex, w2) => w2 == null ? "" : fmtW(ex && ex.assist ? -w2 : w2);
-  function plateList(u4) {
-    const unit = u4 || U();
-    const g2 = gymOf();
-    const own2 = g2 && (g2.u || U()) === unit && Array.isArray(g2.plates) && g2.plates.length ? g2.plates.slice().sort((a2, b3) => b3 - a2) : null;
-    const b2 = own2 || (unit === "lb" ? PLATES_LB : PLATES_KG);
-    return state.settings.smallPlates ? [...b2, SMALL_PLATE[unit]] : b2.slice();
-  }
-  function plateText(kg2, mode, ex) {
-    const md = mode || "bar";
-    if (md === "none") return "";
-    const g2 = gymOf();
-    const pu = g2 && g2.u && g2.u !== U() ? g2.u : U();
-    const inU = (v3) => pu === "lb" ? v3 / LB : v3;
-    const load2 = inU(kg2), bar2 = md === "bar" ? inU(exBarKg(ex)) : 0;
-    if (!(load2 > 0)) return "";
-    if (load2 < bar2 - EPS_SAME) return `${fmtW(kg2)} ${U()} is below the ${r1(bar2)} ${pu} bar`;
-    const { plates: out, rest: left } = platesPerSide(
-      plateList(pu),
-      md === "sleeve" ? load2 : (load2 - bar2) / 2,
-      Math.max(EPS_SAME, inU(rackTol()) / (md === "sleeve" ? 1 : 2))
-    );
-    const rest = Math.round(left * HUNDREDTHS) / HUNDREDTHS;
-    const tiny = pu !== U() && rest < PLATE_DUST[pu];
-    const lead = md === "sleeve" ? `On the sleeve at ${fmtW(kg2)}` : md === "side" ? `Per side at ${fmtW(kg2)} (no bar)` : `Per side at ${fmtW(kg2)}`;
-    const tag = pu !== U() ? ` ${pu}` : "";
-    return `${lead}: ${out.length ? out.join(", ") + tag : "bar only"}${rest > 0 && !tiny ? ` (${rest} ${pu} not loadable)` : ""}`;
-  }
   function blockProgress(b2) {
     const t0 = b2.tgt;
     const t4 = effTarget(b2);
@@ -15480,7 +15455,6 @@ ${more}`;
       { inProgress: true }
     );
     if (val && isMissed(s3) && !s3.warm && !s3.drop) toast(MISSED_SAID);
-    W.platesAt = null;
     if (val && !d3.editingId && blockDone(b2) && !blkIsOpen(bi, b2)) W.foldWait.add(b2);
     onLiftDraw(bi, redraw);
     const pr = rowPR(b2, si, d3.date);
@@ -16046,8 +16020,6 @@ ${ap.length ? b`<div class="panel row spread" id="profApply">
     const listTxt = (a2) => a2.length > RACK_LIST.whole ? `${a2.slice(0, RACK_LIST.head).map(fmtG).join(", ")} … ${a2.slice(-RACK_LIST.tail).map(fmtG).join(", ")}` : a2.map(fmtG).join(", ");
     const half = !!typed && !dbListOf(asRack(typed));
     const pair2 = !!typed && !half && typed.fine == null !== (typed.fineTo == null);
-    const su = (gymOf() || { u: U() }).u === "kg" ? "kg" : "lb";
-    const small = `${SMALL_PLATE[su]} ${su}`;
     return b`${howText(
       "gym",
       `What your gym has, so suggested loads are ones you can pick up. Blank keeps the usual steps (${DEFAULT_STEP.lb} lb or ${DEFAULT_STEP.kg} kg, and dumbbells read from what you log). A step set on an exercise or in your plan still wins for that lift.`
@@ -16059,7 +16031,7 @@ ${ap.length ? b`<div class="panel row spread" id="profApply">
     )}</div>
 </div>
 ${u4 !== U() ? b`<p class="small u-m0">Suggestions show in ${U()}, on the ${u4} weights below.</p>
-` : A} <label class="field">${labelTip("lt-barKg", `Bar weight (${U()})`, "Used by the plates-per-side line in the logger.")}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
+` : A} <label class="field">${labelTip("lt-barKg", `Bar weight (${U()})`, "Suggested barbell loads are this bar and the plates on hand. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor.")}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
 <div>
 <p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="A barbell is loaded with these plates, a pair at a time, so its suggested loads are ones they make. A plate-loaded machine steps by two of the smallest, one a side; a landmine by one. Tap a plate your gym does not have, or add one it has that is not here.">Plates on hand (${u4})</span></p>
 <div class="chips" role="group" aria-label="Plates on hand">${[
@@ -16074,11 +16046,6 @@ ${u4 !== U() ? b`<p class="small u-m0">Suggestions show in ${U()}, on the ${u4} 
 <button class="btn" data-act="gymPlateAdd">Add plate</button>
 </div>
 </div>
-<label class="check-inline"><input type="checkbox" data-bind="smallPlates" aria-labelledby="lt-smallPlates" .checked=${l3(!!state.settings.smallPlates)}/>${labelTip(
-      "lt-smallPlates",
-      `Small plates (${small})`,
-      "Adds them to the plates-per-side line. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor."
-    )}</label>
 <div>
 <p class="small muted u-m0-0-6_fw600">Dumbbells (${u4})</p>
 <div class="grid3">
@@ -17015,13 +16982,6 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         state.settings.autoDone = on;
       });
       rerenderKeepScroll();
-    },
-    smallPlates(t4) {
-      const on = checked(t4);
-      act(() => {
-        if (on) state.settings.smallPlates = true;
-        else delete state.settings.smallPlates;
-      });
     },
     bwEvery(t4) {
       const v3 = +t4.value;
@@ -20417,19 +20377,6 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     if (!ex.perSide) return null;
     return ex.timed ? "Seconds per side: seconds for one side; do the same on the other." : "Reps per side: reps for one side; do the same on the other. One set still counts as one set.";
   }
-  function plateLine(b2, si) {
-    let at2 = si != null && b2.sets[si] ? si : -1;
-    if (at2 < 0) at2 = b2.sets.findIndex((x2, i5) => !x2.done && !x2.warm && +(effW(b2, i5) ?? 0) > 0);
-    const kg2 = at2 >= 0 ? +(effW(b2, at2) ?? 0) || 0 : Math.max(0, ...b2.sets.map((x2, i5) => x2.warm ? 0 : +(effW(b2, i5) ?? 0) || 0));
-    const ex = EX(b2.exId);
-    const pm = platesMode(ex);
-    if (loadMode(ex) === "side")
-      return plateText(kg2 * 2 + (pm === "bar" ? exBarKg(ex) : 0), pm, ex).replace(
-        /^Per side at [^:]+:/,
-        "Plates a side:"
-      );
-    return plateText(kg2, pm, ex);
-  }
   function adjLine(b2, bi) {
     const a2 = b2.adj;
     if (!a2 || !b2.sets.some((x2, i5) => i5 > a2.at && !x2.done && !x2.warm && !x2.drop)) return "";
@@ -20542,7 +20489,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     if (!s3 || d3.editingId || !liftsOn(d3).has(b2)) return "";
     const wn = b2.sets.slice(0, si + 1).filter((x2) => !x2.warm && !x2.drop).length;
     const name = s3.warm ? "Warm-up" : s3.drop ? "Drop set" : `Set ${wn}`;
-    const said2 = s3.done ? `${name}, done` : name;
+    const said2 = b`<span class="stepr-n">${name}</span>`;
     const w2 = effW(b2, si) ?? 0;
     const r4 = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
     const btn = (f3, dir, off, label, txt) => b`<button type="button" class="stepr-b" data-act="sStep" data-b=${bi} data-s=${si} data-sf=${f3} data-d=${dir} aria-label=${`${name}: ${label}`} ?disabled=${off}>${txt}</button>`;
@@ -20597,7 +20544,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       b2.sets,
       (x2) => x2.rid,
       (_2, si) => setRow(d3, b2, bi, si, ex, nr, dupB)
-    )}${stepStrip(d3, b2, bi, ex)}${adjLine(b2, bi)}${platesMode(ex) !== "none" ? b`<p class="small muted u-m6-0-0" id=${`pl-${bi}`}>${plateLine(b2, W.platesAt && blkIdx(W.platesAt.b) === bi ? W.platesAt.s : null)}</p>` : ""}<div class="row u-mt8">${canFill ? b`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>` : ""}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done." ?disabled=${!b2.sets.length}>− Set</button>${!ex.timed && b2.sets.some((x2) => x2.done && !x2.warm && !x2.drop) ? b`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working weight, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>` : ""}${!d3.editingId && b2.sets.some((x2) => x2.done && !x2.warm) && b2.sets.some((x2) => !x2.done) ? b`<button class="btn sm bdone" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them.">✓ Done</button>` : ""}${state.settings.timerMode !== "off" && +p3.rest > 0 && !d3.past ? b`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p3.rest} second rest`} data-tip="Start the rest timer.">⏱ ${p3.rest}s</button>` : ""}</div></section>`;
+    )}${stepStrip(d3, b2, bi, ex)}${adjLine(b2, bi)}<div class="row u-mt8">${canFill ? b`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>` : ""}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done." ?disabled=${!b2.sets.length}>− Set</button>${!ex.timed && b2.sets.some((x2) => x2.done && !x2.warm && !x2.drop) ? b`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working weight, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>` : ""}${!d3.editingId && b2.sets.some((x2) => x2.done && !x2.warm) && b2.sets.some((x2) => !x2.done) ? b`<button class="btn sm bdone" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them.">✓ Done</button>` : ""}${state.settings.timerMode !== "off" && +p3.rest > 0 && !d3.past ? b`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p3.rest} second rest`} data-tip="Start the rest timer.">⏱ ${p3.rest}s</button>` : ""}</div></section>`;
   }
   var LOG_HELP_ON = "RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ";
   var LOG_HELP = "W marks a warm-up (kept, never analysed); tap it again for ↳, a drop set (counts as work and volume, never as a PR or target). + Drop adds one under the last set ticked, with no rest before it; a warm-up is added from the ⋯ menu. Drag an exercise by its ⠿ to change the order. A superset is one box, A1 and A2: after a set of A1 the screen moves to A2, and the rest timer starts after the last exercise of the group. Timed holds log seconds in the Sec column. The date can be changed to log a past session.";
@@ -20630,7 +20577,6 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   function workoutFullDraw() {
     W.needAt = null;
     W.stripAt = null;
-    W.platesAt = null;
     W.foldWait = /* @__PURE__ */ new WeakSet();
   }
   function drawNow() {
@@ -20699,7 +20645,6 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         },
         { inProgress: true, soon: true }
       );
-      if (t4.dataset.f === "w") W.platesAt = { b: blkRef(bi), s: si };
       W.onSet = setRef(bi, si);
       onLiftDraw(bi, redraw);
       return true;
@@ -25898,7 +25843,6 @@ ${JSON.stringify(ctx, null, 1)}`;
         { inProgress: true }
       );
       if (f3 === "w") {
-        W.platesAt = { b: blkRef(bi), s: si };
         mixCheck(bi, si);
       }
       onLiftDraw(bi, redraw);
@@ -27198,7 +27142,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     <label class="check-inline"><input type="checkbox" data-ebind="rare" ?checked=${!!e5.rare}>Mark as less common</label>
     <div class="grid2"><label class="field">${labelTip("lt-ex-incRaw", `Load step (${U()})`, "The smallest jump you can make on this exercise, everywhere it appears. Earned increases are whole multiples of it, about 2.5% of the load on compound lifts and 5% on isolation work. Blank uses Your gym's step, or the usual one for the equipment.")}<input type="text" inputmode="decimal" data-ebind="incRaw" aria-labelledby="lt-ex-incRaw" value=${e5.incRaw} placeholder="Usual step"></label>
     <label class="field">${labelTip("lt-ex-plates", "Plate helper", "What to load, shown under the sets in a session.")}<select data-ebind="plates" aria-labelledby="lt-ex-plates">${PLATE_MODES.map(([k2, l4]) => b`<option value=${k2} ?selected=${(e5.plates || "auto") === k2}>${l4}</option>`)}</select></label></div>
-    ${platesMode(e5) === "bar" ? b`<label class="field">${labelTip("lt-ex-barRaw", `Bar for this lift (${U()})`, "A trap bar, EZ bar, or any bar other than the one in Settings. Used for the plates line and so a deload never goes under it.")}<input type="text" inputmode="decimal" data-ebind="barRaw" aria-labelledby="lt-ex-barRaw" value=${e5.barRaw || ""} placeholder=${`Settings bar, ${fmtW(barKg())}`}></label>` : ""}
+    ${platesMode(e5) === "bar" ? b`<label class="field">${labelTip("lt-ex-barRaw", `Bar for this lift (${U()})`, "A trap bar, EZ bar, or any bar other than the one in Settings. Suggested loads on this lift are this bar and the plates on hand, and a deload never goes under it.")}<input type="text" inputmode="decimal" data-ebind="barRaw" aria-labelledby="lt-ex-barRaw" value=${e5.barRaw || ""} placeholder=${`Settings bar, ${fmtW(barKg())}`}></label>` : ""}
     <label class="field">${labelTip("lt-ex-maxRaw", `Heaviest available (${U()}${e5.bw ? ", added" : ""})`, "The top of the stack or the biggest dumbbell. At that load, targets move to more reps and then harder reps, and the lift is not called stalled.")}<input type="text" inputmode="decimal" data-ebind="maxRaw" aria-labelledby="lt-ex-maxRaw" value=${e5.maxRaw || ""} placeholder="No limit"></label>
     <label class="field">Notes and cues<textarea data-ebind="note" maxlength=${LIMITS.note}>${e5.note || ""}</textarea></label></div></details>
     <div class="row"><button class="btn primary" data-act="exSave">${save}</button><button class="btn" data-act=${m3.back ? "exBack" : "mClose"}>${m3.back ? "Back" : "Cancel"}</button></div>${m3.isNew ? "" : howToLink(e5)}${!m3.isNew && e5.custom && !window.claude ? b`<button class="linkbtn u-minh44" data-act="exSuggest" data-tip="Your exercises are only in your log. This sends it to the app's owner, who can add it to the library for everyone.">Suggest for the library</button>` : ""}</div></div>`;
@@ -28030,7 +27974,6 @@ ${JSON.stringify(ctx, null, 1)}`;
       aboveMax,
       starterRoutine,
       starterSigs,
-      plateList,
       exBarKg,
       VOL_MODES,
       liveLogFetch,
@@ -28156,7 +28099,6 @@ ${JSON.stringify(ctx, null, 1)}`;
       routineUpdates,
       planFor,
       platesMode,
-      plateText,
       IDX,
       suggest,
       e1,
