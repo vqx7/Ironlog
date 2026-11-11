@@ -279,7 +279,7 @@ const tickAll = H => H.ev(() => { const L = window.__ironlog; for (const b of L.
   // ---- 5. R67-1: a past workout's typed minutes kept when the sync saves it.
   if (run(5)) {
     const CLOCK = '2026-10-21T10:00:00';
-    // A stand-in account (Claude's db, as tests/r56-1.js uses it) that every phone signed in as one lifter shares.
+    // A stand-in account (Claude's db, as tests/storage-sync.js uses it) that every phone signed in as one lifter shares.
     const cloudOf = () => {
       const store = new Map();
       const setup = uid => async (ctx, page) => {

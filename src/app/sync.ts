@@ -1951,13 +1951,16 @@ function mergeIn(text: string, own: boolean): void {
       Rr = chunksOf(incoming),
       B = chunksOf(base),
       parts: Record<string, Rec | null> = {};
+    /* A record changed in both tabs keeps the later edit. On this tab's own save (own), the change just made here is
+       the newest, so this tab's copy wins; on hearing the other tab's save, that save is the newer one (NEW-124: this
+       tab's own later change lost to the other's earlier one, while the message said the later edit was kept). */
     for (const id of new Set([...Object.keys(L), ...Object.keys(Rr), ...Object.keys(B)]))
       parts[id] = mergeChunk(
         id,
         baseOf(id, B[id] || emptyChunk(id)),
         L[id] || emptyChunk(id),
         Rr[id] || emptyChunk(id),
-        true,
+        !own,
         stat
       );
     setState(assemble(parts));

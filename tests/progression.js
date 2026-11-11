@@ -1,5 +1,5 @@
-// Targets and progression, checked against their written rules (CA-1; the spec "Targets and progression", P-1 to P-28,
-// in the project's claude/ironlog-spec-progression-draft1.md, taken from the Guide's "How targets are set"). A feature
+// Targets and progression, checked against their written rules (CA-1; the spec "Targets and progression", P-1 to P-37,
+// in the project's claude/ironlog-spec-progression-draft1.md, built from the code, V's rulings deciding). A feature
 // suite: each section is one rule, a lifter's log seeded and the session started from Today's card, and what the
 // session screen shows (the grey load, the grey reps, the target) compared with what the rule gives, worked out here
 // from the rule and its numbers (docs/EVIDENCE.md), never read from the app. A failure names its rule.
