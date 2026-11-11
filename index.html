@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-59ur9DYypS8hihFHI3dyztt08+If6gqurqGpXatHxD8=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-wnMVojVNwkQMmDMkTG+6tTPMo7DAJ8BW+vQuMP8Mlck=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.10-r92">
+<meta name="app-build" content="2026.11.10-r93">
 <title>Ironlog</title>
 <script>window.IRONLOG_APP=true;window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2149,8 +2149,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.46";
-  var APP_VERSION = "2026.11.10-r92";
+  var DISPLAY_VERSION = "2.47";
+  var APP_VERSION = "2026.11.10-r93";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2514,6 +2514,18 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var BACK_RIR = 2;
   function afterBreak(prev, date) {
     return !!prev && daysBetween(prev.date, date) > BACK_DAYS;
+  }
+  var LONG_BREAK_DAYS = 182;
+  function longBreak(prev, date) {
+    return !!prev && daysBetween(prev.date, date) > LONG_BREAK_DAYS;
+  }
+  function longBreakAt(xs) {
+    for (let i5 = xs.length - 1; i5 > 0; i5--) if (longBreak(xs[i5 - 1], xs[i5].date)) return i5;
+    return 0;
+  }
+  function sinceLongBreak(xs, date) {
+    if (xs.length && longBreak(xs[xs.length - 1], date)) return [];
+    return xs.slice(longBreakAt(xs));
   }
   var GROW_PCT = 3;
   var DAY_SWING_PCT = [2, 8];
@@ -5627,6 +5639,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var MISSED_SAID = "Logged as missed. It counts toward no volume or PRs, and never earns a step up.";
   var fmtG = (v3) => String(r3(v3));
   var repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
+  var YEAR_DAYS = 365.25;
+  var YEAR_MONTHS = 12;
+  var AWAY_MONTHS_MAX = 24;
+  function awayWords(days) {
+    const months = Math.round(days * YEAR_MONTHS / YEAR_DAYS);
+    if (months < AWAY_MONTHS_MAX) return `${months} month${months === 1 ? "" : "s"}`;
+    return `${Math.floor(months / YEAR_MONTHS)} years`;
+  }
   var rangeWords = (p3) => +p3.repMin === +p3.repMax ? `target of ${+p3.repMin}` : `${+p3.repMin}-${+p3.repMax} range`;
   var DTF = {};
   var dtf = (k2, o3) => DTF[k2] || (DTF[k2] = new Intl.DateTimeFormat(void 0, o3));
@@ -5898,10 +5918,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function hintOnce(t4, seen) {
     if (!t4) return "";
     const m3 = t4.match(
-      /^First time: pick a load you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/
+      /^(First time|Back after \d+ (?:months?|years)): pick a load you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/
     );
     if (m3) {
-      if (seen.has("first")) return `First time: a load you could lift about ${m3[1]} times; do ${m3[2]}.`;
+      const [, lead, can, reps] = m3;
+      if (seen.has("first")) return `${lead}: a load you could lift about ${can} times; do ${reps}.`;
       seen.add("first");
       return t4;
     }
@@ -6046,8 +6067,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     for (let i5 = 1; i5 < exps.length; i5++) if (afterBreak(exps[i5 - 1], exps[i5].date)) from = exps[i5].date;
     const inRange = real.filter((x2) => sameRR(x2.rr, curRR) && x2.date >= from);
     const lastReal = real.length ? real[real.length - 1] : null;
+    const lastAny = exps.length ? exps[exps.length - 1] : null;
     const exWin = addDays(lastReal ? lastReal.date : anchor, -TREND_DAYS);
-    return { real, curRR, inRange, lastReal, exWin, from };
+    return { real, curRR, inRange, lastReal, lastAny, exWin, from };
   }
   function trendW(sc) {
     return sc.inRange.filter((x2) => x2.date >= sc.exWin && x2.tv != null);
@@ -6771,7 +6793,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const { holdRR, quietRR } = otherRangesIn(M3, exI, scopes, sc, t4.falling);
     const falling = t4.falling && !holdRR.length && !quietRR.length;
     let easier = null;
-    if (inRange.length >= DRIFT_N) {
+    if (inRange.length >= DRIFT_N && !afterBreak(sc.lastAny, M3.today())) {
       const l32 = inRange.slice(-DRIFT_N);
       const sameW = l32.every((x2) => Math.abs(x2.topW - l32[0].topW) < EPS_SAME);
       const allRir = l32.every((x2) => x2.topRir != null);
@@ -7080,6 +7102,18 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const exps = all ? sinceNew(upTo ? all.filter((x2) => x2.date <= upTo) : all) : all;
     if (!exps || !exps.length) return null;
     const ex = EXIn(M3, id);
+    return { ex, ...recordsOfIn(M3, ex, exps) };
+  }
+  function sinceBackIn(M3, id) {
+    const all = IDXIn(M3).byEx[id];
+    const exps = all ? sinceNew(all) : [];
+    const i5 = longBreakAt(exps);
+    if (!i5) return null;
+    const back2 = exps.slice(i5);
+    const r4 = recordsOfIn(M3, EXIn(M3, id), back2);
+    return { from: back2[0].date, est: r4.est, heavy: r4.heavy, first: back2.length === 1 };
+  }
+  function recordsOfIn(M3, ex, exps) {
     let est = null, heavy = null;
     const front = [];
     const seen = /* @__PURE__ */ new Set();
@@ -7089,16 +7123,16 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       for (const p3 of x2.pts) {
         const d3 = prSameLoad(p3.w, seen) - p3.w, j3 = p3.pl + d3;
         const v3 = noE1(ex) || noBodyIn(M3, ex) ? null : e1(p3.load + d3, p3.r, p3.rq);
-        if (v3 != null && (!est || v3 > est.v + EPS_SAME)) est = { v: v3, p: p3, date: x2.date };
+        if (v3 != null && (!est || v3 > est.v + EPS_SAME)) est = { v: v3, p: p3, date: x2.date, sid: x2.sid };
         if (!heavy || j3 > heavy.j + EPS_SAME || Math.abs(j3 - heavy.j) < EPS_SAME && p3.r > heavy.p.r)
-          heavy = { p: p3, j: j3, date: x2.date };
+          heavy = { p: p3, j: j3, date: x2.date, sid: x2.sid };
         if (!front.some((q) => q.j >= j3 - EPS_SAME && q.p.r >= p3.r)) fresh.push({ p: p3, j: j3 });
       }
       for (const { p: p3, j: j3 } of fresh) {
         if (front.some((q) => q.j >= j3 - EPS_SAME && q.p.r >= p3.r)) continue;
         for (let k2 = front.length - 1; k2 >= 0; k2--)
           if (j3 >= front[k2].j - EPS_SAME && p3.r >= front[k2].p.r) front.splice(k2, 1);
-        front.push({ p: p3, j: j3, date: x2.date });
+        front.push({ p: p3, j: j3, date: x2.date, sid: x2.sid });
       }
       for (const p3 of x2.pts) seen.add(p3.w);
     }
@@ -7108,10 +7142,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (heavy) dates.push(heavy.date);
     const last = dates.sort().pop();
     return {
-      ex,
       est,
-      heavy: heavy ? { p: heavy.p, date: heavy.date } : null,
-      front: front.map((f3) => ({ p: f3.p, date: f3.date })),
+      heavy: heavy ? { p: heavy.p, date: heavy.date, sid: heavy.sid } : null,
+      front: front.map((f3) => ({ p: f3.p, date: f3.date, sid: f3.sid })),
       last
     };
   }
@@ -7455,7 +7488,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   function backDaysIn(M3, exId, plan, opts) {
     const T2 = opts.before && isDate(opts.before) ? opts.before : M3.today();
-    const all = liftReadIn(M3, exId, T2);
+    const all = sinceLongBreak(liftReadIn(M3, exId, T2), T2);
     const want = [+plan.repMin, +plan.repMax];
     const xs = rangeInUse(
       all.filter((x2) => !offTarget(x2)),
@@ -7484,7 +7517,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         ...base,
         w: lw,
         lastR: Array(Math.max(1, +plan.sets || 1)).fill(+plan.repMin),
-        text: `First time, ${opts.deload ? "deload" : "Lighter day"}. About ${loadLabelIn(M3, ex, lw)} ${UIn(M3)}${loadNote(ex)} for ${repSpan(plan.repMin, plan.repMax, "-")} with ${effLeast(effScale(M3.s.settings.rirScale), LIGHT_RIR)}, from your ${EXIn(M3, base.kin).name}. Half the usual sets, nothing to beat.`
+        text: `${base.away ? `Back after ${awayWords(base.away)}` : "First time"}, ${opts.deload ? "deload" : "Lighter day"}. About ${loadLabelIn(M3, ex, lw)} ${UIn(M3)}${loadNote(ex)} for ${repSpan(plan.repMin, plan.repMax, "-")} with ${effLeast(effScale(M3.s.settings.rirScale), LIGHT_RIR)}, from your ${EXIn(M3, base.kin).name}. Half the usual sets, nothing to beat.`
       };
     }
     if (!base.last || base.w == null) return base;
@@ -7608,7 +7641,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     opts = opts || {};
     const T2 = opts.before && isDate(opts.before) ? opts.before : M3.today();
     const every = IDXIn(M3).byEx[exId];
-    const all = every ? liftReadIn(M3, exId, T2) : every;
+    const read = every ? liftReadIn(M3, exId, T2) : every;
+    const all = read ? sinceLongBreak(read, T2) : read;
+    const away = read && read.length && all && !all.length ? daysBetween(read[read.length - 1].date, T2) : 0;
     const ex = EXIn(M3, exId);
     const injM = exInjuryIn(M3, ex);
     const full = all ? all.filter((x2) => !offTarget(x2)) : [];
@@ -7622,8 +7657,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     ) ?? [];
     const seen = oneADay(inRR ? all.filter((x2) => sameRR(x2.rr, want)) : all, want[0]);
     const noAdd = !!ex.bw && !ex.assist && !(all || []).some((x2) => x2.pts.some((p3) => p3.w > EPS_SAME));
-    if (ex.timed) return suggestTimedIn(M3, ex, plan, exps, opts, injM, seen, noAdd);
-    if (!exps || !exps.length) return sgFirstIn(M3, ex, plan, T2, injM);
+    if (ex.timed) return suggestTimedIn(M3, ex, plan, exps, opts, injM, seen, noAdd, away);
+    if (!exps || !exps.length) return sgFirstIn(M3, ex, plan, T2, injM, away);
     const last = exps[exps.length - 1], ws = last.pts;
     const stx = all.length < every.length ? statsUpToIn(M3, exId, all) : IDXIn(M3).exStats[exId] || {};
     const top = workLoad(ws, +plan.repMin);
@@ -7755,7 +7790,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       easier: null
     };
   }
-  function sgFirstIn(M3, ex, plan, T2, injM) {
+  function sgFirstIn(M3, ex, plan, T2, injM, away) {
     const w0 = ex.bw && !ex.assist ? 0 : null;
     if (injM)
       return {
@@ -7772,18 +7807,21 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const reps = `${repSpan(plan.repMin, plan.repMax)} rep${+plan.repMax === 1 ? "" : "s"}`;
     const stop = rr >= 1 ? `stopping with about ${rr} still in you` : "to the last rep you can do well";
     const kin = !ex.bw ? kinStartIn(M3, ex, plan, T2) : null;
+    const lead = away ? `Back after ${awayWords(away)}` : "First time";
+    const was = away ? { away } : {};
     if (kin)
       return {
+        ...was,
         w: kin.w,
-        text: `First time. About ${loadLabelIn(M3, ex, kin.w)} ${UIn(M3)}${loadNote(ex)} for ${reps}, from your ${kin.ex.name} (${kin.set}, ${fmtDate(kin.date)}), ${stop}. If the first set is off, change the load.`,
+        text: `${lead}. About ${loadLabelIn(M3, ex, kin.w)} ${UIn(M3)}${loadNote(ex)} for ${reps}, from your ${kin.ex.name} (${kin.set}, ${fmtDate(kin.date)}), ${stop}. If the first set is off, change the load.`,
         lastR: [],
         last: "",
         target: "",
         tgt: null,
         kin: kin.ex.id
       };
-    const text = ex.assist ? `First time: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.` : ex.bw ? `First time: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.` : `First time: pick a load you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
-    return { w: w0, text, lastR: [], last: "", target: "", tgt: null };
+    const text = ex.assist ? `${lead}: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.` : ex.bw ? `${lead}: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.` : `${lead}: pick a load you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
+    return { ...was, w: w0, text, lastR: [], last: "", target: "", tgt: null };
   }
   function sgEasyIn(M3, C2) {
     const {
@@ -8107,7 +8145,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (!(w2 > 0)) return null;
     return { ex: k2.ex, date: x2.date, w: w2, set: `${loadLabelIn(M3, k2.ex, set.w)}×${set.r}` };
   }
-  function suggestTimedIn(M3, ex, plan, exps, opts, injM, all, noAdd) {
+  function suggestTimedIn(M3, ex, plan, exps, opts, injM, all, noAdd, away) {
     opts = opts || {};
     const side = ex.perSide ? " per side" : "";
     if (!exps || !exps.length) {
@@ -8122,8 +8160,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           inj: injM
         };
       return {
+        ...away ? { away } : {},
         w: ex.bw ? 0 : null,
-        text: `No history yet. Hold for ${repSpan(plan.repMin, plan.repMax, "-")} seconds${side} each set.`,
+        text: `${away ? `Back after ${awayWords(away)}.` : "No history yet."} Hold for ${repSpan(plan.repMin, plan.repMax, "-")} seconds${side} each set.`,
         lastR: [],
         last: "",
         target: "",
@@ -9583,8 +9622,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       return `${say(w2)} is more than three times your heaviest set today, ${say(topW)}.`;
     if (top > 0 && load2 * ODD_SESSION < top - EPS)
       return `${say(w2)} is under a third of your heaviest set today, ${say(topW)}.`;
+    const all = liftReadIn(M3, b2.exId, date);
+    const read = sinceLongBreak(all, date).length ? all : [];
     let best = 0, bestW = 0;
-    for (const x2 of liftReadIn(M3, b2.exId, date))
+    for (const x2 of read)
       for (const p3 of x2.pts)
         if (bw + p3.w > best) {
           best = bw + p3.w;
@@ -9597,7 +9638,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (kg2 != null && kg2 > 0 && w2 >= kg2 * ODD_ADDED_BW - EPS)
         return `${say(w2)} adds ${pctOf(ODD_ADDED_BW)}% or more of your bodyweight, ${fmtWIn(M3, kg2)} ${UIn(M3)}.`;
       let most = 0;
-      for (const x2 of liftReadIn(M3, b2.exId, date)) for (const p3 of x2.pts) most = Math.max(most, p3.w);
+      for (const x2 of read) for (const p3 of x2.pts) most = Math.max(most, p3.w);
       b2.sets.forEach((x2, i5) => {
         if (i5 !== si && x2.done && isWork(x2) && !x2.drop && x2.w != null) most = Math.max(most, x2.w);
       });
@@ -9609,7 +9650,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
 
   // src/app/adjust.ts
   function stretchTopIn(M3, exId, plan) {
-    const xs = liftReadIn(M3, exId, M3.today());
+    const xs = sinceLongBreak(liftReadIn(M3, exId, M3.today()), M3.today());
     if (!xs.length) return null;
     let i5 = xs.length - 1;
     while (i5 > 0 && !afterBreak(xs[i5 - 1], xs[i5].date)) i5--;
@@ -9623,7 +9664,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function bwNoLoadIn(M3, ex, b2) {
     if (!ex || !ex.bw || ex.assist) return false;
     if (b2 && b2.sets.some((x2) => +(x2.w ?? 0) > EPS_SAME)) return false;
-    return !(IDXIn(M3).byEx[ex.id] || []).some((x2) => x2.pts.some((p3) => p3.w > EPS_SAME));
+    return !sinceLongBreak(IDXIn(M3).byEx[ex.id] || [], M3.today()).some((x2) => x2.pts.some((p3) => p3.w > EPS_SAME));
   }
   function nextSetsIn(M3, b2, si, lastR) {
     const s3 = b2.sets[si];
@@ -9758,6 +9799,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var loadLabel = live(loadLabelIn);
   var IDX = live(IDXIn);
   var allTimeBests = live(allTimeBestsIn);
+  var sinceBack = live(sinceBackIn);
   var bwAt = live(bwAtIn);
   var bwLoad = live(bwLoadIn);
   var bwRef = live(bwRefIn);
@@ -11694,15 +11736,15 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const ex = r4.ex;
     const exps = (IDX().byEx[exId] || []).filter((x2) => !upTo || x2.date <= upTo);
     const last = exps[exps.length - 1];
-    const when = last && r4.heavy.date === last.date ? "" : `, ${fmtDate(r4.heavy.date)}`;
+    const when = last && r4.heavy.date === last.date ? "" : `, ${fmtDateYr(r4.heavy.date)}`;
     return `Heaviest ${setShort(ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(ex)}${when}`;
   }
   function bestSetLine(exId) {
     const r4 = allTimeBests(exId);
     if (!r4) return "";
     if (r4.est && isCompound(r4.ex))
-      return `Best ${setShort(r4.ex, r4.est.p.w, r4.est.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.est.date)}`;
-    return r4.heavy ? `Heaviest ${setShort(r4.ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.heavy.date)}` : "";
+      return `Best ${setShort(r4.ex, r4.est.p.w, r4.est.p.r)}${loadNote(r4.ex)}, ${fmtDateYr(r4.est.date)}`;
+    return r4.heavy ? `Heaviest ${setShort(r4.ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(r4.ex)}, ${fmtDateYr(r4.heavy.date)}` : "";
   }
   function goalState(exId) {
     const ex = EX(exId);
@@ -13021,20 +13063,16 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var own = () => state.bodyweights.filter((b2) => !b2.demo).length;
   var bwMissing = (exId) => own() === 0 && !!EX(exId).bw;
   var saidThisVisit = false;
-  function bwNudge(exIds) {
-    if (saidThisVisit) return;
+  function bwNote(exIds) {
+    if (saidThisVisit) return "";
     const id = exIds.find(bwMissing);
-    if (!id) return;
+    if (!id) return "";
     saidThisVisit = true;
-    toast(
-      `${EX(id).name} counts your bodyweight, plus any weight you add. Set it on Today or in Settings (optional).`,
-      null,
-      NUDGE_MS
-    );
+    return ` ${EX(id).name} counts your bodyweight, plus any weight you add: set it on Today or in Settings (optional).`;
   }
-  function bwWarn(exId) {
+  function bwWarn(exId, date) {
     if (!bwMissing(exId)) return A;
-    return b`<p class="small bwwarn">No bodyweight set: counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId}>Add bodyweight</button></p>`;
+    return b`<p class="small bwwarn">No bodyweight set: counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId} data-date=${date || A}>Add bodyweight</button></p>`;
   }
   var latestBw = () => state.bodyweights.filter((b2) => !b2.demo).sort((a2, b2) => a2.date < b2.date ? 1 : -1)[0];
   function bwSheet(m3) {
@@ -15755,7 +15793,7 @@ ${more}`;
     const ex = EX(b2.exId);
     const st = IDX().exStats[b2.exId];
     const last = st && st.last ? st.last.topW : 0;
-    if (!(last > 0)) return;
+    if (!(last > 0) || st && longBreak(st.last, d3.date)) return;
     const r4 = +(s3.w ?? 0) / last;
     if (r4 >= MIX_RANGE[0] && r4 <= MIX_RANGE[1]) return;
     const key = d3.id + ":" + bi;
@@ -18265,14 +18303,19 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       html: b`<div class="bests">${shown2.map((r4) => {
         const ex = r4.ex;
         const est = r4.est && isCompound(ex) ? r4.est : null;
-        const top = [
-          est ? `best est ${fmtE(est.v)}${u4(ex)}${loadNote(ex)}, ${fmtDate(est.date)}` : "",
-          r4.heavy ? `heaviest ${setShort(ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(ex)}, ${fmtDate(r4.heavy.date)}` : ""
+        const when = fmtDateYr;
+        const line = (e5, h3) => [
+          e5 ? `best est ${fmtE(e5.v)}${u4(ex)}${loadNote(ex)}, ${when(e5.date)}` : "",
+          h3 ? `heaviest ${setShort(ex, h3.p.w, h3.p.r)}${loadNote(ex)}, ${when(h3.date)}` : ""
         ].filter(Boolean).join(" · ");
-        return b`<details class="bx" data-ex=${ex.id}><summary><span class="bn">${ex.name}</span><span class="bs">${top}</span></summary>
+        const top = line(est, r4.heavy);
+        const b2 = sinceBack(ex.id);
+        const older = !!b2 && (!!r4.heavy && r4.heavy.date < b2.from || !!est && est.date < b2.from);
+        const since = b2 && older ? line(b2.est && isCompound(ex) ? b2.est : null, b2.heavy) : "";
+        return b`<details class="bx" data-ex=${ex.id}><summary><span class="bn">${ex.name}</span><span class="bs">${since ? `All time: ${top}` : top}</span>${since && b2 ? b`<span class="bs">Since you came back on ${when(b2.from)}: ${since}</span>` : A}</summary>
     ${est ? b`<p class="small u-m0-0-6">Best estimate from ${setShort(ex, est.p.w, est.p.r)}.</p>` : A}
     <table class="t"><tr><th>${ex.assist ? "Load" : loadHead(ex)}</th><th class="r">${ex.timed ? "Seconds" : "Reps"}</th><th class="r">First done</th></tr>${r4.front.map(
-          (f3) => b`<tr><td class="num">${loadLabel(ex, f3.p.w)}</td><td class="r num">${f3.p.r}</td><td class="r">${fmtDate(f3.date)}</td></tr>`
+          (f3) => b`<tr><td class="num">${loadLabel(ex, f3.p.w)}</td><td class="r num">${f3.p.r}</td><td class="r">${when(f3.date)}</td></tr>`
         )}</table></details>`;
       })}</div>${rows2.length > shown2.length ? b`<button class="btn sm u-mt8" data-act="bestsAll">Show all ${rows2.length} lifts</button>` : A}<p class="small muted hastip u-m8-0-0" data-tip="Most reps at each weight, unless a heavier set matched it. Beat a line with a set at least 90% as strong as your best: a rep PR. Best estimate (compound lifts): the highest one-rep max any set gives, in the terms you log it (total, per side or per dumbbell). Warm-ups and drop sets left out.">How to read this</p>${oldBest}`
     };
@@ -18532,7 +18575,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const ps = iso2 ? prSet(p3.exId, p3.date) : null;
       const tag = ex.timed && p3.type === "Rep PR" ? "Time PR" : p3.type === "e1RM" ? iso2 ? "PR" : prName(p3) : p3.type;
       const val = p3.type === "e1RM" ? iso2 ? ps ? setShort(ex, ps.w, ps.r) : "" : fmtE(p3.value) + " " + U() : setShort(ex, p3.w, p3.r);
-      return b`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p3.type === "Rep PR" ? "blue" : "green"}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDate(p3.date)}</span></span></div>`;
+      return b`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p3.type === "Rep PR" ? "blue" : "green"}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDateYr(p3.date)}</span></span></div>`;
     })}` : b`<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>`;
     const nLifts = Object.keys(I2.byEx).length;
     const firstPR = bigPR[0];
@@ -18540,7 +18583,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       "exercise",
       "Lifts",
       LIFTS_HELP,
-      b`${exh}${dashSub("prs", "Recent PRs", prBody, noLog() ? "none yet" : prs4 || !firstPR ? `${prs4} in ${RECENT_WEEKS} weeks` : `latest ${fmtDate(firstPR.date)}`)}${dashSub(
+      b`${exh}${dashSub("prs", "Recent PRs", prBody, noLog() ? "none yet" : prs4 || !firstPR ? `${prs4} in ${RECENT_WEEKS} weeks` : `latest ${fmtDateYr(firstPR.date)}`)}${dashSub(
         "bests",
         "All-time bests",
         bests.html,
@@ -20197,7 +20240,7 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di, part)}</section
     const rows2 = day.items.map((it, k2) => {
       const ex = EX(it.exId);
       const sg = suggest(it.exId, it, { deload, before: today() });
-      const none = !sg.last && !sg.inj && !sg.target;
+      const none = !sg.last && !sg.inj && !sg.target && !sg.away;
       if (none) fresh++;
       const text = String(sg.text || "");
       const short = none ? "" : sg.target ? `Today: ${sg.target}` : sg.inj ? "Injury flagged: start light, stop on pain." : sg.last && text.startsWith(sg.last) ? text.slice(sg.last.length).trim() : text;
@@ -20859,7 +20902,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const canFill = !!b2.lastR && b2.lastR.some((r4) => r4 != null) && b2.sets.some((s3, i5) => !s3.done && !s3.warm && !s3.drop && s3.r == null && lastRFor(b2, i5) != null);
     return b`<section class=${"block" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? b`<p class="ssh">Superset ${ss}</p>` : ""}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : A}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? b` ${tipButton(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · ${work || p3.sets}×${repSpan(p3.repMin, p3.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}${nr ? "" : ` @${b2.inj || (d3.light || d3.deload || b2.light) && b2.last ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p3.rir)}`} · ${p3.rest}s${b2.inj ? b` · <span class="tag red">Injury: ${injLabel(b2.inj)}</span>` : ""}${markedNew(d3, b2.exId) ? b` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ""}</p></div>
       <div class="bh-acts"><button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button><button class=${"ib" + (b2.note || b2.pics && b2.pics.length ? " noted" : "")} aria-label=${b2.note || b2.pics && b2.pics.length ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
-      ${b2.target ? b`<p class="hint"><b>Today: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
+      ${b2.target ? b`<p class="hint"><b>Today: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId, d3.date) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
       ${ss && partner && gk === 0 ? b`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? "pair" : "group"}.</p>` : ""}
       ${b2.lastNote && !b2.note ? b`<p class="small lnote">Your note, ${fmtDate(b2.lastNote.date)}: ${b2.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ""}
       ${b2.note ? b`<p class="small bnote" id=${`bn-${bi}`}>${b2.note}</p>` : b`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}${picStrip(bi, false)}
@@ -20882,7 +20925,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const left = leftMin(d3);
     const sp = sessProgress(d3);
     const calIdx = d3.editingId ? -1 : calDueIdx(d3);
-    const bwAt2 = d3.editingId ? -1 : d3.ex.findIndex((b2, bi) => !!EX(b2.exId).bw && !isFolded(d3, b2, bi));
+    const bwAt2 = d3.ex.findIndex((b2, bi) => !!EX(b2.exId).bw && !isFolded(d3, b2, bi));
     const letters = ssLetters(d3.ex.map((b2) => b2.plan));
     const when = d3.past ? `for ${fmtDateLong(d3.date)}` : d3.startedAt ? `started ${startedWords(d3.startedAt)}` : "";
     const meta = sp.n ? b`${when ? when.charAt(0).toUpperCase() + when.slice(1) : ""}<span id="sessLeft">${left > 0 ? `${when ? " · " : ""}${estMin(left)} left` : ""}</span>` : b`<span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? "set" : "sets"}</span> done${when ? `, ${when}` : ""}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ""}</span>`;
@@ -24064,7 +24107,6 @@ ${JSON.stringify(ctx, null, 1)}`;
           null,
           fit || pa.length ? READY_SAID : 0
         );
-        bwNudge(r4.days.flatMap((x2) => x2.items.map((i5) => i5.exId)));
         return;
       }
       if (same) {
@@ -24078,8 +24120,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       });
       ui.bRoutine = r4.id;
       render();
-      toast(`${r4.name} added. Tap Make active to use it.`);
-      bwNudge(r4.days.flatMap((x2) => x2.items.map((i5) => i5.exId)));
+      const note = bwNote(r4.days.flatMap((x2) => x2.items.map((i5) => i5.exId)));
+      toast(`${r4.name} added. Tap Make active to use it.${note}`, null, note ? NUDGE_MS : null);
     },
     rNew() {
       openModal({ kind: "routineNew" });
@@ -24209,8 +24251,12 @@ ${JSON.stringify(ctx, null, 1)}`;
       Object.assign(d3, trainOn(d3));
     });
     rerenderKeepScroll();
-    toast(`${exName(id)} added to ${dayLabel(R2, di)}${m3.pm ? ", second workout" : ""}`);
-    bwNudge([id]);
+    const note = bwNote([id]);
+    toast(
+      `${exName(id)} added to ${dayLabel(R2, di)}${m3.pm ? ", second workout" : ""}${note ? "." + note : ""}`,
+      null,
+      note ? NUDGE_MS : null
+    );
     return;
   }
   function pickSwapItem(m3, id) {
@@ -24268,7 +24314,6 @@ ${JSON.stringify(ctx, null, 1)}`;
     }
     act(() => d3.ex.push(nb), { inProgress: true });
     afterAdd(d3.ex.length - 1);
-    bwNudge([id]);
     return;
   }
   function swapMoveSets(sw) {
@@ -25553,6 +25598,17 @@ ${JSON.stringify(ctx, null, 1)}`;
   var WARM_SHARE = { compound: 0.75, isolation: 0.8 };
   var TIMED_MAX_MIN = 360;
   var BACK_SAID = " Your workout in progress is back: Resume it on Today.";
+  function backBests(ex, prAll, sid) {
+    const out = [];
+    for (const id of new Set(ex.map((b2) => b2.exId))) {
+      if (prAll.some((p3) => p3.exId === id && (p3.big || p3.type === "Weight PR"))) continue;
+      const r4 = sinceBack(id);
+      if (!r4 || r4.first) continue;
+      const set = r4.heavy && r4.heavy.sid === sid ? r4.heavy.p : r4.est && r4.est.sid === sid ? r4.est.p : null;
+      if (set) out.push(`${EX(id).name} ${setShort(EX(id), set.w, set.r)}`);
+    }
+    return out;
+  }
   var HEAVIEST_SHOWN = 4;
   function askSetsLeft(d3) {
     let n3 = 0, left = 0;
@@ -25596,7 +25652,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       );
       const bi = d3.ex.indexOf(b2);
       const st = IDX().exStats[b2.exId];
-      const est = st ? st.bestAll : void 0;
+      const back2 = sinceBack(b2.exId);
+      const est = st && longBreak(st.last, d3.date) ? void 0 : back2 ? back2.est?.v : st ? st.bestAll : void 0;
       const thr = isCompound(e5) ? WARM_SHARE.compound : WARM_SHARE.isolation;
       const easy = (x2) => {
         if (!(L2(x2) < top - EPS_SAME)) return false;
@@ -25909,6 +25966,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const e5 = EX(p3.exId);
       return [`${e5.name} ${setShort(e5, p3.w, p3.r)}`];
     });
+    const backBest = backBests(ex, prAll, sess.id);
     const { work, miss, hard } = setCounts(ex);
     ui.todayDay = null;
     window.scrollTo(0, 0);
@@ -25927,6 +25985,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       lines.push("Not timed: the sets went in faster than they can be lifted. Add its minutes by editing it in History.");
     if (targets) lines.push(`${beaten} of ${targets} exercise target${targets === 1 ? "" : "s"} beaten`);
     if (heavier.length) lines.push(`Heaviest yet: ${andList(heavier, HEAVIEST_SHOWN)}`);
+    if (backBest.length) lines.push(`Best since you came back: ${andList(backBest, HEAVIEST_SHOWN)}`);
     const prList = prs.map(recapPr);
     if (cardio.length) lines.push(`Cardio and mobility: ${cardio.reduce((a2, c4) => a2 + c4.min, 0)} min`);
     if (demoGone) lines.push("Demo data removed, so your stats show only your own sessions");
@@ -27251,7 +27310,8 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>The first session of a close variation</b> (a hammer curl after DB curls, a front squat after back squats) starts from the related lift's last full session in the last ${KIN.days} days, when both use the same equipment, load, main muscle, and movement, with both arms or both legs at once. About ${pctOf(KIN.isolation)}% of its estimate (${pctOf(KIN.compound)}% on a compound lift), for the middle of the range with ${numWord(FATIGUE_RIR)} more rep in reserve, rounded down. Machines and cables start fresh, since two machines' numbers do not compare.</p>
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
    <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load. <b>Bodyweight lifts and holds never done with added load</b> (push-ups, pull-ups, a hanging leg raise, a plank): more reps or seconds, then harder ones or a little added load when you type it; the app never adds load you did not use.</p>
-   <p><b>Back after more than ${BACK_DAYS / WEEK_DAYS} weeks off a lift</b>: about ${pctOf(LIGHT_SHARE)}% of its last working weight, with ${BACK_RIR} or more reps in reserve (rule of thumb). The ${BACK_DAYS / WEEK_DAYS} weeks is a rule of thumb for where a break begins: strength falls the longer a lift is left. That first session back is the lift's new start: its trend and stall test start again from it, never drawn across the break. Until the lift is back at its load from before the break, each full session sets the next load: what its sets say fits your usual reps, never lower than the load you did and never past that load (rule of thumb). Back at it in fewer than your planned sets, the next session asks every set at it, for the fewest reps you did there. Then the usual rules. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about ${pctOf(LIGHT_SHARE)}% as long.</p>
+   <p><b>Back after more than ${BACK_DAYS / WEEK_DAYS} weeks off a lift</b>, up to ${awayWords(LONG_BREAK_DAYS)}: about ${pctOf(LIGHT_SHARE)}% of its last working weight, with ${BACK_RIR} or more reps in reserve (rule of thumb). The ${BACK_DAYS / WEEK_DAYS} weeks is a rule of thumb for where a break begins: strength falls the longer a lift is left. That first session back is the lift's new start: its trend and stall test start again from it, never drawn across the break. Until the lift is back at its load from before the break, each full session sets the next load: what its sets say fits your usual reps, never lower than the load you did and never past that load (rule of thumb). Back at it in fewer than your planned sets, the next session asks every set at it, for the fewest reps you did there. Then the usual rules. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about ${pctOf(LIGHT_SHARE)}% as long.</p>
+   <p><b>Back after more than ${awayWords(LONG_BREAK_DAYS)} off a lift</b>, it starts fresh, as a lift never done: pick a load for your first session back and the next is worked out from it, so nothing from before the break is asked of you (rule of thumb: after that long, the strength left varies too much to guess). Your records stay. All-time bests keeps the best you ever did and, beside it, your best since you came back; a set is a PR only when it beats every set you ever did, and the recap says when you beat your best since you came back.</p>
    <p><b>Your gym</b> (Settings): the dumbbells, kettlebells, plates, and stack steps you have. Suggestions stay on them, and a weight you type for a dumbbell counts as the nearest one.</p>
    <p><b>New machine or gym</b> (in an exercise's ⋯ menu during a session): the lift starts over from that session, as from a first one, so another machine's loads give no target, PR, or best. Its trend, stalls, and dumbbell steps read from that session on; earlier sessions stay in History and its chart. Tap it again before Finish to take it off.</p>
    <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the ${numWord(USUAL_BEFORE)} before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks, and in a session on a day of your routine they are the sets the plan gave the lift that day, once a session has done that many, so fewer sets than planned never become the usual there; a blank session saves, with each lift your routine plans, the sets of its day nearest to what you did, among the days that plan it in that session's rep range (the fewer on a tie), and is held to them the same way; in Freestyle (Today opens blank) it saves none, and your own sets lead. Each session keeps the plan it was done to, so a plan changed later never rereads the sessions before it; sessions saved before version 2.12 read their own sets. A set counts toward them when its load is within ${shareWords(1 - LIGHTER_LOAD)} of the session's working weight, or at the usual load (rule of thumb): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set ${shareWords(1 - LIGHTER_LOAD)} or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than ${pctOf(1 - USUAL_SHARE)}% by strength, a rule of thumb), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the ${numWord(USUAL_BEFORE)} before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
@@ -28458,6 +28518,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       undoRestore,
       undoForget,
       allTimeBests,
+      sinceBack,
       bestsBoard: () => {
         const b2 = bestsBoard();
         return { n: b2.n, html: markupOf(b2.html) };
