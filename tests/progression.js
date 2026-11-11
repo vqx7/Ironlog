@@ -56,6 +56,8 @@ async function startOn(P, dayIdx) {
   await P.page.evaluate(k => { const L = window.__ironlog; L.ui.todayDay = k; L.render(); }, dayIdx);
   await P.page.click('#view .hero [data-act="startSession"]:not([data-light])'); await wait(250);
 }
+// The Guide's How targets are set, as its text reads.
+const guideRules = P => P.page.evaluate(() => { window.__ironlog.ACT.guideOpen({ dataset: { topic: 'rules' } }); const t = (document.getElementById('modal') || {}).textContent.replace(/\s+/g, ' '); window.__ironlog.ACT.mClose(); return t; });
 // A Lighter day started as a lifter starts one: Change on Today's card, then Lighter day.
 async function startLighter(P) {
   await P.page.click('#view .hero [data-act="startAltOpen"]'); await wait(200);
@@ -245,6 +247,8 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     await startOn(P, 0);
     s = await shows(P, 'assistPullup');
     ok(s.tgt && s.tgt.kind === 'load' && Math.round(s.tgt.w / 0.45359237) === -45 && s.rows.every(r => r.w === 45) && /help off/.test(s.hint), 'P-15 assisted pull-ups with 50 lb of help, 10 x 3 at the top: 45 lb of help next, one 5 lb step off', s);
+    const g15 = await guideRules(P);
+    ok(/5 lb on anything else, including the help on an assisted machine/.test(g15), 'P-15 the Guide says the help on an assisted machine moves 5 lb at a time (it said a machine stack moves 10)', g15.slice(g15.indexOf('Load steps'), g15.indexOf('Load steps') + 300));
     await P.ctx.close(); await P.browser.close();
     // Timed holds: add seconds, then load. A plank held 45 s x 3 on 30-60 s: beat 135 s, no load.
     P = await lifter([{ id: 'A', name: 'Core', items: [['plank', 3, 30, 60, 0]] }], weeks('A', []).map(([d, k]) => [d, k, [['plank', [[0, 45, null], [0, 45, null], [0, 45, null]]]]]));
@@ -475,6 +479,10 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     ok(!/Load due/.test(t), 'P-22 six weeks after three sessions getting easier: no Load due on Today', t.slice(0, 400));
     t = await loadDue(7);
     ok(/Load due/.test(t), 'P-22 a guard: the same sessions ending last week say Load due', t.slice(0, 400));
+    const P = await lifter(DAY_BENCH, []);
+    const g22 = await guideRules(P);
+    await P.ctx.close(); await P.browser.close();
+    ok(/Load due/.test(g22) && /last three sessions/.test(g22) && /on a break/.test(g22), 'P-22 the Guide says what Load due is (three sessions at one load, reps held, reps in reserve rising) and that it is not shown on a break (it said nothing about it)', g22.slice(g22.indexOf('Load due'), g22.indexOf('Load due') + 400));
   }
 
   if (run('P-25')) {
