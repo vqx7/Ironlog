@@ -174,7 +174,7 @@ function pickAddBlock(m: PickerModal, id: string, d: Draft): void {
     return;
   }
   act(() => d.ex.push(nb), { inProgress: true });
-  // No bodyweight note here: the session's card and the line under the lift ask (NEW-116).
+  // No bodyweight note here: the line under the lift asks, in a saved session being edited too (NEW-116, REV11-2).
   afterAdd(d.ex.length - 1);
   return;
 }

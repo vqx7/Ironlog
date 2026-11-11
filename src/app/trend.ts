@@ -36,8 +36,11 @@ export function trendScope<X extends Exposure>(every: readonly X[], anchor: stri
   for (let i = 1; i < exps.length; i++) if (afterBreak(exps[i - 1], exps[i].date)) from = exps[i].date;
   const inRange = real.filter(x => sameRR(x.rr, curRR) && x.date >= from);
   const lastReal = real.length ? real[real.length - 1] : null;
+  /* Its last session of any kind, a lighter one too: whether the lift is on a break today is read from it, as the
+     engine reads a break (backDaysIn), since a deload is training (REV11-1). */
+  const lastAny = exps.length ? exps[exps.length - 1] : null;
   const exWin = addDays(lastReal ? lastReal.date : anchor, -TREND_DAYS);
-  return { real, curRR, inRange, lastReal, exWin, from };
+  return { real, curRR, inRange, lastReal, lastAny, exWin, from };
 }
 
 /* The sessions in that scope with a trend reading. Separate from trendScope

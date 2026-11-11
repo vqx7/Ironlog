@@ -12,10 +12,10 @@
 //   6  The recap says a best since you came back that is not a PR; the first session back says none.
 //   7  Today's workout and the session screen say the time away, not a load; a load typed far under one from years ago
 //      is not taken for a mix-up of per-dumbbell and total.
-//  10  The independent review of 2.47 (REV10-2 to REV10-5), each failing on its build (dd3b40d): the recap's best since
-//      you came back from this session only, not another the same day; the odd-load check measured against every
-//      session once the lift is back; a bodyweight lift back at bodyweight moving by reps, as the engine starts it; and
-//      no Load due on a lift on a break today, on Today or Stats (2.46 too).
+//  10  The independent reviews of 2.47 (REV10-2 to REV10-5, failing on dd3b40d; REV11-1, failing on cad8921): the recap's
+//      best since you came back from this session only, not another the same day; the odd-load check measured against
+//      every session once the lift is back; a bodyweight lift back at bodyweight moving by reps, as the engine starts
+//      it; no Load due on a lift on a break today, on Today or Stats (2.46 too); and a deload is no break.
 //   9  The session's other checks read the lift as its targets do (NEW-113): ten years on, a lighter set is not called
 //      a ramp-up by an old best's strength (asked by 2.47 before this fix, not by 2.46, whose return read blank efforts
 //      as 2 in reserve), nor a load more than twice an old best a slipped digit (2.46 asked), as on a lift never done;
@@ -44,7 +44,7 @@ async function lifter(sessions) {
       { uid: 'u1', exId: 'bench', sets: PLAN.sets, repMin: PLAN.repMin, repMax: PLAN.repMax, rir: PLAN.rir, rest: PLAN.rest, ss: null }
     ] }] }];
     S.activeRoutineId = 'R1';
-    S.sessions = sessions.map(([date, exId, sets], i) => ({ id: 'h' + i, date, dayIdx: 0, dayId: null, dayName: 'Freestyle', routineId: '', notes: '', free: true,
+    S.sessions = sessions.map(([date, exId, sets, marks], i) => ({ id: 'h' + i, date, dayIdx: 0, dayId: null, dayName: 'Freestyle', routineId: '', notes: '', free: true, ...(marks || {}),
       ex: [{ exId, rr: exId === 'plank' ? [30, 60] : [PLAN.repMin, PLAN.repMax], sets: sets.map(([w, r, rir]) => ({ w: w * LB, r, rir: rir == null ? null : rir, done: true })) }] }));
     L.state = L.normalize(S);
     localStorage.setItem(L.KEY + '.installLater', '1'); localStorage.setItem(L.KEY + '.tipWake', '1');
@@ -261,8 +261,8 @@ async function logSet(page, b, s, w, r) {
     d = await dips([['2026-10-27', 45], ['2026-11-03', 45]]);
     ok(!/bodyweight only/.test(d.text), '10. a guard: dips at +45 last week are a loaded lift', d);
     // REV10-5: three sessions of 225 x 8 getting easier, then a break: no Load due on Today, nor its line on Stats.
-    const easy = async start => {
-      const Q = await lifter([0, 7, 14].map(k => [addD(start, k), 'bench', [[225, 8, 1 + k / 7], [225, 8, 1 + k / 7], [225, 8, 1 + k / 7]]]));
+    const easy = async (start, more = []) => {
+      const Q = await lifter([...[0, 7, 14].map(k => [addD(start, k), 'bench', [[225, 8, 1 + k / 7], [225, 8, 1 + k / 7], [225, 8, 1 + k / 7]]]), ...more]);
       const r = await Q.page.evaluate(() => { const L = window.__ironlog; L.ui.folds['today:session'] = true; L.render();
         const t = document.getElementById('view').innerText;
         return { today: /Load due/.test(t), easier: !!(L.IDX().exStats.bench || {}).easier }; });
@@ -275,6 +275,10 @@ async function logSet(page, b, s, w, r) {
     ok(!e.today && !e.easier, '10. REV10-5: back after six weeks, no Load due either: the way back sets the load', e);
     e = await easy(addD(DAY, -15));
     ok(e.today && e.easier, '10. a guard: trained last week, the Load due stays', e);
+    /* REV11-1: a deload ten days ago is training, so the lift is not on a break (the engine reads a break from a
+       session of any kind, backDaysIn), and the Load due from the three sessions before it stays, as in 2.46. */
+    e = await easy(addD(DAY, -50), [[addD(DAY, -10), 'bench', [[195, 8, 3], [195, 8, 3], [195, 8, 3]], { deload: true }]]);
+    ok(e.today && e.easier, '10. REV11-1: three easier sessions, then a deload ten days ago: the Load due stays, as the lift is not on a break (2.47: gone)', e);
   }
 
   if (run(8)) {

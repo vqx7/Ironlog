@@ -8,6 +8,8 @@
 //   3  Adding a ready-made routine on Plan (not made active): its "Tap Make active" stays, with the note in it.
 //   4  Adding pull-ups in a session: no note, since the session's card and the line under the lift ask.
 //   5  Guards: with a weigh-in no note anywhere; the note once a visit.
+//   6  Editing a saved session (REV11-2): pull-ups added there get the line under the lift too, and its Add bodyweight
+//      dates the weigh-in the session's day, as the session's Bodyweight button does.
 // BODYWEIGHT_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -102,6 +104,28 @@ async function pickPullups(P, mode) {
     await P.page.click('#modal [data-act="pickDo"][data-ex="dips"]'); await wait(300);
     t = await toastNow(P);
     ok(/added to/.test(t) && !NOTE.test(t), '5. a guard: the note once a visit, so dips added next say only what was added', t);
+    await P.ctx.close(); await P.browser.close();
+  }
+
+  if (run(6)) {
+    // History's Edit on a session of Nov 8 with no weigh-in, then pull-ups added with the picker.
+    const P = await phone({ onboarded: true });
+    await P.page.evaluate(() => { const L = window.__ironlog; const S = L.state; const LB = 0.45359237;
+      S.sessions = [{ id: 's1', date: '2026-11-08', dayIdx: 0, dayId: null, dayName: 'Freestyle', routineId: '', notes: '', free: true,
+        ex: [{ exId: 'bench', rr: [6, 10], sets: [0, 1, 2].map(() => ({ w: 135 * LB, r: 8, rir: 2, done: true })) }] }];
+      L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.render(); });
+    await wait(100);
+    await P.page.evaluate(() => window.__ironlog.ACT.histEdit({ dataset: { id: 's1' } })); await wait(300);
+    await P.page.evaluate(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
+    await pickPullups(P, 'addBlock');
+    const line = await P.page.evaluate(() => { const L = window.__ironlog; const d = L.state.draft; const i = d.ex.findIndex(b => b.exId === 'pullup'); const e = document.querySelector(`#blk-${i} .bwwarn`); return { editing: d.editingId, i, line: e ? e.innerText.replace(/\s+/g, ' ').trim() : '' }; });
+    ok(line.editing === 's1' && line.i >= 0 && /counts only the weight you add/.test(line.line) && /Add bodyweight/.test(line.line), '6. REV11-2: pull-ups added while editing a saved session get the line under them, with Add bodyweight (2.47: nothing said anywhere until saved)', line);
+    let sheet = '';
+    if (line.line) { await P.page.click(`#blk-${line.i} .bwwarn [data-act="bwOpen"]`); await wait(200);
+      sheet = await P.page.evaluate(() => { const m = document.getElementById('modal'); return m ? m.innerText.replace(/\s+/g, ' ') : ''; }); }
+    const nov8 = await P.page.evaluate(() => window.__ironlog.fmtDate('2026-11-08'));
+    ok(sheet.includes(`Saved as the weigh-in for ${nov8}`), '6. and its Add bodyweight saves the weigh-in for the session\'s day, as the session\'s Bodyweight button does', sheet.slice(0, 300));
+    ok(!P.errors.length, '6. no page errors', P.errors);
     await P.ctx.close(); await P.browser.close();
   }
 

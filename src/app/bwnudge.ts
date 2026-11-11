@@ -47,10 +47,10 @@ export function bwNote(exIds: readonly string[]): string {
   return ` ${EX(id).name} counts your bodyweight, plus any weight you add: set it on Today or in Settings (optional).`;
 }
 
-/** The line on a session's first bodyweight lift still open while no weigh-in is logged: what it counts, and a way to set it. */
-export function bwWarn(exId: string): TemplateResult | typeof nothing {
+/** The line on a session's first bodyweight lift still open while no weigh-in is logged: what it counts, and a way to set it, dated the session's day when given (as the session's Bodyweight button is). */
+export function bwWarn(exId: string, date?: string): TemplateResult | typeof nothing {
   if (!bwMissing(exId)) return nothing;
-  return html`<p class="small bwwarn">No bodyweight set: counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId}>Add bodyweight</button></p>`;
+  return html`<p class="small bwwarn">No bodyweight set: counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId} data-date=${date || nothing}>Add bodyweight</button></p>`;
 }
 
 /** The latest weigh-in the lifter logged, if any. */
