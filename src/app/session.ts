@@ -532,13 +532,22 @@ const HINT_ONCE: readonly string[] = [
 /** A suggestion's hint as the session screen shows it: once a line has been
     said on an earlier exercise (recorded in seen, which the session screen
     makes anew each time it is drawn), a first session's paragraph is said as
-    the engine's short line for it (again) and the HINT_ONCE lines are left out. */
-export function hintOnce(t: string | null | undefined, again: string | null | undefined, seen: Set<string>): string {
+    the engine's short line for it (again) once one of its kind (kind: a
+    loaded, bodyweight or assisted lift) has said it, and the HINT_ONCE lines
+    are left out. */
+export function hintOnce(
+  t: string | null | undefined,
+  again: string | null | undefined,
+  kind: string,
+  seen: Set<string>
+): string {
   if (!t) return '';
-  // The engine gives its short line with the paragraph (NEW-109), so nothing here reads the engine's words.
+  /* The engine gives its short line with the paragraph (NEW-109), so nothing here reads the engine's words. Each kind
+     says its own paragraph once: a loaded lift's does not stand for a bodyweight lift's, whose advice differs. */
   if (again) {
-    if (seen.has('first')) return again;
-    seen.add('first');
+    const key = 'first:' + kind;
+    if (seen.has(key)) return again;
+    seen.add(key);
     return t;
   }
   let out = t;

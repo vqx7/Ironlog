@@ -5902,11 +5902,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     "If the first set is off, change the load.",
     "Next time picks up from here."
   ];
-  function hintOnce(t4, again, seen) {
+  function hintOnce(t4, again, kind, seen) {
     if (!t4) return "";
     if (again) {
-      if (seen.has("first")) return again;
-      seen.add("first");
+      const key = "first:" + kind;
+      if (seen.has(key)) return again;
+      seen.add(key);
       return t4;
     }
     let out = t4;
@@ -20946,7 +20947,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const canFill = !!b2.lastR && b2.lastR.some((r4) => r4 != null) && b2.sets.some((s3, i5) => !s3.done && !s3.warm && !s3.drop && s3.r == null && lastRFor(b2, i5) != null);
     return b`<section class=${"block" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? b`<p class="ssh">Superset ${ss}</p>` : ""}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : A}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? b` ${tipButton(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · ${work || p3.sets}×${repSpan(p3.repMin, p3.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}${nr ? "" : ` @${b2.inj || (d3.light || d3.deload || b2.light) && b2.last ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p3.rir)}`} · ${p3.rest}s${b2.inj ? b` · <span class="tag red">Injury: ${injLabel(b2.inj)}</span>` : ""}${markedNew(d3, b2.exId) ? b` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ""}</p></div>
       <div class="bh-acts"><button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button><button class=${"ib" + (b2.note || b2.pics && b2.pics.length ? " noted" : "")} aria-label=${b2.note || b2.pics && b2.pics.length ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
-      ${b2.target ? b`<p class="hint"><b>Today: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", b2.hintAgain, hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId, d3.date) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
+      ${b2.target ? b`<p class="hint"><b>Today: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", b2.hintAgain, ex.assist ? "assisted" : ex.bw ? "bodyweight" : "loaded", hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId, d3.date) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
       ${ss && partner && gk === 0 ? b`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? "pair" : "group"}.</p>` : ""}
       ${b2.lastNote && !b2.note ? b`<p class="small lnote">Your note, ${fmtDate(b2.lastNote.date)}: ${b2.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ""}
       ${b2.note ? b`<p class="small bnote" id=${`bn-${bi}`}>${b2.note}</p>` : b`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}${picStrip(bi, false)}

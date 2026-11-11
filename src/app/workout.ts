@@ -450,7 +450,7 @@ function blockPart(
       ${
         b.target
           ? html`<p class="hint"><b>Today: ${targetText(b)}</b>${why ? html` ${tipButton(why, 'Why this target')}` : ''}<span class="tp muted u-dblock">${lastHead(b, dupB)}</span>${bl ? html`<span class="tp muted u-dblock">${bl}</span>` : ''}${b.easier ? html`<span class="tp ez">${b.easier}</span>` : ''}${progressLine(b, bi)}</p>`
-          : html`<p class="hint">${hintOnce(b.hint || '', b.hintAgain, hintSeen)}</p>`
+          : html`<p class="hint">${hintOnce(b.hint || '', b.hintAgain, ex.assist ? 'assisted' : ex.bw ? 'bodyweight' : 'loaded', hintSeen)}</p>`
       }${bi === bwAt ? bwWarn(b.exId, d.date) : ''}${bi === calIdx ? html`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ''}
       ${ss && partner && gk === 0 ? html`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? 'pair' : 'group'}.</p>` : ''}
       ${b.lastNote && !b.note ? html`<p class="small lnote">Your note, ${fmtDate(b.lastNote.date)}: ${b.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ''}

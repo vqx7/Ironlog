@@ -143,6 +143,17 @@ async function pickPullups(P, mode) {
     await P.page.click('#view .hero [data-act="startSession"]:not([data-light])'); await wait(300);
     const hints = await P.page.evaluate(() => [0, 1, 2].map(i => { const e = document.querySelector(`#blk-${i} p.hint`); return e ? e.textContent.trim() : ''; }));
     ok(/^First time: your bodyweight only\. Do 6 to 12 reps/.test(hints[0]) && hints.slice(1).every(h => h === 'First time: bodyweight only; do 6 to 12 reps.'), '7. three new bodyweight lifts: the first-time paragraph on the first, one short line on the others (2.48: the paragraph three times)', hints);
+    await P.page.evaluate(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.render(); });
+    /* Each kind of first session says its own paragraph once: a new loaded lift's does not stand for a bodyweight or
+       assisted lift's, whose advice differs (an easier version; setting the help). Leg extensions, then pull-ups, dips,
+       and assisted pull-ups twice. */
+    await P.page.evaluate(() => { const L = window.__ironlog; const S = L.state;
+      S.routines[0].days[0].items = ['legExt', 'pullup', 'dips', 'assistPullup', 'assistDip'].map((exId, k) => ({ uid: 'B' + k, exId, sets: 3, repMin: 6, repMax: 12, rir: 2, rest: 120, ss: null }));
+      L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); });
+    await wait(150);
+    await P.page.click('#view .hero [data-act="startSession"]:not([data-light])'); await wait(300);
+    const mixed = await P.page.evaluate(() => [0, 1, 2, 3, 4].map(i => { const e = document.querySelector(`#blk-${i} p.hint`); return e ? e.textContent.trim() : ''; }));
+    ok(/^First time: pick a load/.test(mixed[0]) && /^First time: your bodyweight only\. Do 6 to 12 reps/.test(mixed[1]) && mixed[2] === 'First time: bodyweight only; do 6 to 12 reps.' && /^First time: set the help/.test(mixed[3]) && /^First time: help for about \d+ reps; do 6 to 12 reps\.$/.test(mixed[4]), '7. a new loaded lift, two bodyweight and two assisted: each kind\'s paragraph once, then its short line', mixed);
     ok(!P.errors.length, '7. no page errors', P.errors);
     await P.ctx.close(); await P.browser.close();
   }
