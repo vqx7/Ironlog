@@ -403,7 +403,8 @@ export function bestLine(exId: string, upTo?: string): string {
   const ex = r.ex;
   const exps = (IDX().byEx[exId] || []).filter(x => !upTo || x.date <= upTo);
   const last = exps[exps.length - 1];
-  const when = last && r.heavy.date === last.date ? '' : `, ${fmtDate(r.heavy.date)}`;
+  // Its year when not this one, as the board says it (NEW-111).
+  const when = last && r.heavy.date === last.date ? '' : `, ${fmtDateYr(r.heavy.date)}`;
   return `Heaviest ${setShort(ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(ex)}${when}`;
 }
 
@@ -420,9 +421,9 @@ export function bestSetLine(exId: string): string {
   const r = allTimeBests(exId);
   if (!r) return '';
   if (r.est && isCompound(r.ex))
-    return `Best ${setShort(r.ex, r.est.p.w, r.est.p.r)}${loadNote(r.ex)}, ${fmtDate(r.est.date)}`;
+    return `Best ${setShort(r.ex, r.est.p.w, r.est.p.r)}${loadNote(r.ex)}, ${fmtDateYr(r.est.date)}`;
   return r.heavy
-    ? `Heaviest ${setShort(r.ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(r.ex)}, ${fmtDate(r.heavy.date)}`
+    ? `Heaviest ${setShort(r.ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(r.ex)}, ${fmtDateYr(r.heavy.date)}`
     : '';
 }
 

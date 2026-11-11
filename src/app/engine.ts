@@ -17,6 +17,7 @@ import { addDays, daysBetween, isDate, r1, EPS, EPS_SAME, WEEK_DAYS, pctOf } fro
 import {
   BACK_DAYS,
   afterBreak,
+  sinceLongBreak,
   E1_MAX_RIR,
   LIGHT_SHARE,
   atLoad,
@@ -37,7 +38,7 @@ import {
   FATIGUE_RIR
 } from './formulas';
 import { KIN_UNI, injLabel, isCompound, loadMode, noE1, patternOf, rackKind } from './library';
-import { LIGHT_RIR, effAt, effLeast, effScale, fmtDate, rangeWords, repSpan } from './format';
+import { LIGHT_RIR, awayWords, effAt, effLeast, effScale, fmtDate, rangeWords, repSpan } from './format';
 import { overSets } from './session';
 import {
   BIG_STEP_REPS,
@@ -148,7 +149,8 @@ export function daysOffIn(M: Model, exId: string, opts?: SuggestOpts | null): nu
    r54 the session after that asked for the load from before the break. */
 export function backDaysIn(M: Model, exId: string, plan: Plan, opts: SuggestOpts): number {
   const T = opts.before && isDate(opts.before) ? opts.before : M.today();
-  const all = liftReadIn(M, exId, T);
+  // After a long break the lift starts fresh (NEW-110), so only its sessions since are a way back from anything.
+  const all = sinceLongBreak(liftReadIn(M, exId, T), T);
   /* A lift trained in two rep ranges restarts each on its own first session
      back (r55.1, from the audit of r55: a light day eased after a break ended
      the heavy day's return too, so the heavy day's first session back asked
@@ -186,7 +188,8 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
     return core.same ? core : snapUnitIn(M, ex, plan, core);
   }
   const base = suggestCoreIn(M, exId, plan, { ...opts, deload: false, light: false });
-  /* A close variation's first session on a Lighter day or deload: 90% of the start, like any lighter day. */
+  /* A close variation's first session on a Lighter day or deload: 90% of the start, like any lighter day; back after a
+     long break, said as the time away, as its first session is (NEW-110). */
   if (base.kin && base.w! > 0) {
     const ks =
       !gymRackIn(M, ex, plan) && rackKind(ex) && rackKind(EXIn(M, base.kin)) ? rackStepIn(M, EXIn(M, base.kin)) : null;
@@ -197,7 +200,7 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
       ...base,
       w: lw,
       lastR: Array<number>(Math.max(1, +plan.sets || 1)).fill(+plan.repMin),
-      text: `First time, ${opts.deload ? 'deload' : 'Lighter day'}. About ${loadLabelIn(M, ex, lw)} ${UIn(M)}${loadNote(ex)} for ${repSpan(plan.repMin, plan.repMax, '-')} with ${effLeast(effScale(M.s.settings.rirScale), LIGHT_RIR)}, from your ${EXIn(M, base.kin).name}. Half the usual sets, nothing to beat.`
+      text: `${base.away ? `Back after ${awayWords(base.away)}` : 'First time'}, ${opts.deload ? 'deload' : 'Lighter day'}. About ${loadLabelIn(M, ex, lw)} ${UIn(M)}${loadNote(ex)} for ${repSpan(plan.repMin, plan.repMax, '-')} with ${effLeast(effScale(M.s.settings.rirScale), LIGHT_RIR)}, from your ${EXIn(M, base.kin).name}. Half the usual sets, nothing to beat.`
     };
   }
   if (!base.last || base.w == null) return base;
@@ -379,7 +382,11 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   const T = opts.before && isDate(opts.before) ? opts.before : M.today();
   const every = IDXIn(M).byEx[exId];
   // Since a new machine or gym, if one is marked (liftReadIn, r61): with none since, it is a first session.
-  const all = every ? liftReadIn(M, exId, T) : every;
+  const read = every ? liftReadIn(M, exId, T) : every;
+  /* And since the lift's last long break (NEW-110): with none since, it starts fresh, as a first session, saying the
+     time away (away, in days, from its last session before). */
+  const all = read ? sinceLongBreak(read, T) : read;
+  const away = read && read.length && all && !all.length ? daysBetween(read[read.length - 1].date, T) : 0;
   const ex = EXIn(M, exId);
   const injM = exInjuryIn(M, ex);
   // The last full session sets the target: not one done lighter, nor one short of its usual (r54, V's one rule). If there is nothing else, use them.
@@ -424,8 +431,8 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
      read only its range's sessions and took a plank loaded on its heavy day
      for one never loaded). */
   const noAdd = !!ex.bw && !ex.assist && !(all || []).some(x => x.pts.some(p => p.w > EPS_SAME));
-  if (ex.timed) return suggestTimedIn(M, ex, plan, exps, opts, injM, seen, noAdd);
-  if (!exps || !exps.length) return sgFirstIn(M, ex, plan, T, injM);
+  if (ex.timed) return suggestTimedIn(M, ex, plan, exps, opts, injM, seen, noAdd, away);
+  if (!exps || !exps.length) return sgFirstIn(M, ex, plan, T, injM, away);
   const last = exps[exps.length - 1],
     ws = last.pts;
   const stx: Partial<LiftBests> =
@@ -650,7 +657,7 @@ function sgAfterReturnIn(M: Model, C: SuggestCtx): Suggestion | null {
 }
 
 /* No history yet: an injury note, a start from a close variation, or the first-time line. */
-function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: string | null): Suggestion {
+function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: string | null, away: number): Suggestion {
   /* An assisted lift's help is the lifter's to set the first time (the text
      says so): with none shown, a set ticked untyped is one Finish asks about,
      where a help of 0 shown saved it at full bodyweight, and the next
@@ -681,10 +688,15 @@ function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: stri
   const reps = `${repSpan(plan.repMin, plan.repMax)} rep${+plan.repMax === 1 ? '' : 's'}`;
   const stop = rr >= 1 ? `stopping with about ${rr} still in you` : 'to the last rep you can do well';
   const kin = !ex.bw ? kinStartIn(M, ex, plan, T) : null;
+  /* Back after a long break, it is said as the time away, not as new (NEW-110); the words after it are a first
+     session's, since that is how it starts. The time away is kept on the suggestion for the screens (away). */
+  const lead = away ? `Back after ${awayWords(away)}` : 'First time';
+  const was = away ? { away } : {};
   if (kin)
     return {
+      ...was,
       w: kin.w,
-      text: `First time. About ${loadLabelIn(M, ex, kin.w)} ${UIn(M)}${loadNote(ex)} for ${reps}, from your ${kin.ex.name} (${kin.set}, ${fmtDate(kin.date)}), ${stop}. If the first set is off, change the load.`,
+      text: `${lead}. About ${loadLabelIn(M, ex, kin.w)} ${UIn(M)}${loadNote(ex)} for ${reps}, from your ${kin.ex.name} (${kin.set}, ${fmtDate(kin.date)}), ${stop}. If the first set is off, change the load.`,
       lastR: [],
       last: '',
       target: '',
@@ -692,11 +704,11 @@ function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: stri
       kin: kin.ex.id
     };
   const text = ex.assist
-    ? `First time: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.`
+    ? `${lead}: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.`
     : ex.bw
-      ? `First time: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.`
-      : `First time: pick a load you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
-  return { w: w0, text, lastR: [], last: '', target: '', tgt: null };
+      ? `${lead}: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.`
+      : `${lead}: pick a load you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
+  return { ...was, w: w0, text, lastR: [], last: '', target: '', tgt: null };
 }
 
 /* Every top set 2 or more over the target reserve: the load from the estimate.
@@ -1220,7 +1232,8 @@ function suggestTimedIn(
   opts: SuggestOpts | null | undefined,
   injM: string | null,
   all: Exposure[] | null | undefined,
-  noAdd: boolean
+  noAdd: boolean,
+  away: number
 ): Suggestion {
   opts = opts || {};
   const side = ex.perSide ? ' per side' : '';
@@ -1235,9 +1248,11 @@ function suggestTimedIn(
         tgt: null,
         inj: injM
       };
+    // Back after a long break, a hold starts fresh as any lift does, said as the time away (NEW-110).
     return {
+      ...(away ? { away } : {}),
       w: ex.bw ? 0 : null,
-      text: `No history yet. Hold for ${repSpan(plan.repMin, plan.repMax, '-')} seconds${side} each set.`,
+      text: `${away ? `Back after ${awayWords(away)}.` : 'No history yet.'} Hold for ${repSpan(plan.repMin, plan.repMax, '-')} seconds${side} each set.`,
       lastR: [],
       last: '',
       target: '',

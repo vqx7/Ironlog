@@ -838,7 +838,9 @@ function idxLiftIn(
      exposures while logged RIR climbed by a full rep or more. e1RM cannot see
      this, but it is the clearest sign that the load is due to go up. */
   let easier: ExStat['easier'] = null;
-  if (inRange.length >= DRIFT_N) {
+  /* Not on a lift on a break today, as it is not stalled then (stillTrainedIn): the way back after the break, or its
+     fresh start after a long one, sets the load, and Load due beside it contradicted it (REV10-5, 2.46 too). */
+  if (inRange.length >= DRIFT_N && !afterBreak(lastReal, M.today())) {
     const l3 = inRange.slice(-DRIFT_N);
     const sameW = l3.every(x => Math.abs(x.topW - l3[0].topW) < EPS_SAME);
     const allRir = l3.every(x => x.topRir != null);

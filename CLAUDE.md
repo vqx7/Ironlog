@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r92, version 2.46, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r93, version 2.47, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -153,7 +153,10 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   clearly weaker reading the target repeats and the session still counts for the trend, stalls and PRs; done
   lighter it sets no target or trend, and done in full on a
   lighter or deload day it is a full session (a day's label never overrides what a lift did). A break of more than
-  four weeks restarts a lift's readings, and the weeks counted (averages and adherence) start after it. A session
+  four weeks restarts a lift's readings, and the weeks counted (averages and adherence) start after it. More than
+  six months off, a lift starts fresh: nothing from before the break is asked of it, while its records and PRs read
+  every session and All-time bests shows the best since you came back beside an older best ever (V, 2026-11-10,
+  NEW-110, `sinceLongBreak`). A session
   marked New machine or gym restarts them too, its PRs, bests and dumbbell steps with them, and keeps every session
   shown (`liftReadIn`, r61). A ticked set
   of 0 reps is a missed set: kept and shown, counted toward no volume, PR, estimate or trend, read by the next target

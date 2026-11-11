@@ -7,7 +7,7 @@ import { unpark } from './park';
 import { isCompound, noE1 } from './library';
 import { withPlanSets, pwOf } from './routines';
 import { estMin } from './format';
-import { rtfAt, isMissed, isWork, RIR_CALL_TOP, PACE_LO } from './formulas';
+import { rtfAt, isMissed, isWork, longBreak, RIR_CALL_TOP, PACE_LO } from './formulas';
 import { putById, andList, today, iso, r1, EPS_SAME, MINUTE_S, SECOND_MS } from './util';
 import { cleanCardio, keepExtra } from './normalize';
 import { KNOWN_BLOCK, KNOWN_SESS, cleanChk } from './records';
@@ -32,7 +32,8 @@ import {
   fmtW,
   sessModelMin,
   activeRoutine,
-  freeMode
+  freeMode,
+  sinceBack
 } from './live';
 import { state, ui } from './store';
 import { joinAdjacent, savedEx, draftCardio, effTarget, withNew, picsLast, typedMin } from './session';
@@ -53,6 +54,25 @@ const WARM_SHARE = { compound: 0.75, isolation: 0.8 } as const;
 const TIMED_MAX_MIN = 360;
 /** Said when a workout set aside for an edit or a past workout comes back. */
 export const BACK_SAID = ' Your workout in progress is back: Resume it on Today.';
+
+/* A lift back after a long break whose session beat every set since it came back, under its older best (NEW-110,
+   V 2026-11-10: the lifter knows when they hit new numbers; an old best is never the goal). Said in the recap as
+   Heaviest yet is, not counted as a PR: the heaviest set since if this session made it, else the set behind the best
+   estimate since. The first session back has nothing since to beat; a lift with a PR or Heaviest yet this session
+   is named there already. Read by the session, not its date, so a second session the same day never claims the
+   first's set (REV10-2). */
+/** The recap's Best since you came back: each lift of the session that beat its sets since it came back, as "Bench 255×3". */
+function backBests(ex: readonly { exId: string }[], prAll: readonly Pr[], sid: string): string[] {
+  const out: string[] = [];
+  for (const id of new Set(ex.map(b => b.exId))) {
+    if (prAll.some(p => p.exId === id && (p.big || p.type === 'Weight PR'))) continue;
+    const r = sinceBack(id);
+    if (!r || r.first) continue;
+    const set = r.heavy && r.heavy.sid === sid ? r.heavy.p : r.est && r.est.sid === sid ? r.est.p : null;
+    if (set) out.push(`${EX(id).name} ${setShort(EX(id), set.w, set.r)}`);
+  }
+  return out;
+}
 
 /** The lifts the recap's Heaviest yet line names before "and N more". */
 const HEAVIEST_SHOWN = 4;
@@ -104,7 +124,10 @@ function askRamps(d: Draft): boolean {
     );
     const bi = d.ex.indexOf(b);
     const st = IDX().exStats[b.exId];
-    const est = st ? st.bestAll : undefined;
+    /* The lift's strength as its targets read it (NEW-113): after a long break it starts fresh, so its best from before
+       is no measure of how easy today's lighter sets were; with sessions since, their best is (sinceBack). */
+    const back = sinceBack(b.exId);
+    const est = st && longBreak(st.last, d.date) ? undefined : back ? back.est?.v : st ? st.bestAll : undefined;
     const thr = isCompound(e) ? WARM_SHARE.compound : WARM_SHARE.isolation;
     const easy = (x: DraftSet): boolean => {
       if (!(L(x) < top - EPS_SAME)) return false;
@@ -533,6 +556,7 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     const e = EX(p.exId);
     return [`${e.name} ${setShort(e, p.w, p.r)}`];
   });
+  const backBest = backBests(ex, prAll, sess.id);
   const { work, miss, hard } = setCounts(ex);
   ui.todayDay = null;
   window.scrollTo(0, 0);
@@ -552,6 +576,7 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     lines.push('Not timed: the sets went in faster than they can be lifted. Add its minutes by editing it in History.');
   if (targets) lines.push(`${beaten} of ${targets} exercise target${targets === 1 ? '' : 's'} beaten`);
   if (heavier.length) lines.push(`Heaviest yet: ${andList(heavier, HEAVIEST_SHOWN)}`);
+  if (backBest.length) lines.push(`Best since you came back: ${andList(backBest, HEAVIEST_SHOWN)}`);
   const prList = prs.map(recapPr);
   if (cardio.length) lines.push(`Cardio and mobility: ${cardio.reduce((a, c) => a + c.min, 0)} min`);
   if (demoGone) lines.push('Demo data removed, so your stats show only your own sessions');

@@ -303,9 +303,11 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
       await pg.click('#view .fin-row .btn.primary'); await wait(500);
       const saved = await pg.evaluate(() => { const L = window.__ironlog; const s = L.state.sessions.find(x => x.date === '2024-03-01'); const b = L.allTimeBests('bench'); return { s: s ? s.ex.map(e => [e.exId, e.sets.map(z => [Math.round(z.w / 0.45359237), z.r])]) : null, draft: !!L.state.draft, best: b && b.heavy ? [Math.round(b.heavy.p.w / 0.45359237), b.heavy.p.r, b.heavy.date] : null }; });
       ok(saved.s && JSON.stringify(saved.s) === JSON.stringify([['bench', [[315, 1]]]]) && !saved.draft && JSON.stringify(saved.best) === JSON.stringify([315, 1, '2024-03-01']), '7. Finish saves one set of 315 x 1 on Mar 1, 2024, and All-time bests shows it', saved);
-      // As the lift's only history, the next load starts from it (the return after a break); with recent sessions, they lead.
-      const g = await pg.evaluate(() => { const L = window.__ironlog; const r = L.suggest('bench', { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150 }, {}); return { w: Math.round(r.w / 0.45359237), text: r.text }; });
-      ok(/Back after \d+ weeks/.test(g.text) && g.w < 315 && g.w > 135, '7. as the only history, the next load is a return from it, lighter than 315 (V, r48)', g);
+      /* As the lift's only history, from 2024: more than six months back, so the lift starts fresh and no load is asked
+         from it (NEW-110, V 2026-11-10: an old best is never made a goal). Until 2.47 the next load was a return from it,
+         lighter than 315 (V, r48); an old best within six months still is (tests/longbreak.js, section 1). */
+      const g = await pg.evaluate(() => { const L = window.__ironlog; const r = L.suggest('bench', { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150 }, {}); return { w: r.w, text: r.text }; });
+      ok(/^Back after 2 years: pick a load/.test(g.text) && g.w == null, '7. as the only history, from 2024, the lift starts fresh: the time away said, no load asked from it (NEW-110)', g);
     }
     await pg.close();
   }

@@ -89,6 +89,11 @@
 //      toast, in the recap and in the counted list alike; and the next week the bench repeats its target, 31+ reps
 //      at 185, as after any weaker session, and never asks more weight because of the miss; History then says the
 //      session's one PR in gold and marks the raises, not the bench (2.33, ST-4).
+//  17  back after ten years away (NEW-110, V 2026-11-10: an old best is entered, never made a goal, and new numbers
+//      are seen as they come): a 315 x 1 from 2016 entered by Add an old best on Stats; Today and the session say
+//      the bench is back after 10 years and ask no load from it; a first session at 135, then a week on the usual
+//      step up from 135, never a share of 315; the recap says the best since you came back, the first session back
+//      says none; All-time bests keeps 315 x 1 with its year and shows the best since you came back beside it.
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
 const { open, engine } = require('./h');
@@ -1105,6 +1110,52 @@ async function finish() {
     const r0 = await H.row(0, 0);
     ok(Number(r0.w) === 185 && d.ex[0].tgt && d.ex[0].tgt.kind === 'reps' && d.ex[0].tgt.total === 30, '16. a week on, the bench repeats its target: 185 lb, 30 reps to beat, never fewer for the miss, never more weight', { grey: r0.w, tgt: d.ex[0].tgt });
     ok(!H.P.errors.length, '16. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  if (run(17)) {
+    const T0 = '2026-11-10';
+    const H = await phone(T0);
+    const { ev, page } = H;
+    await seed(H, { unit: 'lb', days: [{ id: 'Dp', name: 'Push', items: [['bench', 3, 6, 10, 2, 150]] }], sessions: [] });
+    const name = await ev(() => window.__ironlog.EX('bench').name);
+    // Stats, its sections open, then Add an old best: the date, the lift, one set of 315 x 1, Finish.
+    await page.click('#tabs [data-tab="dash"]'); await wait(200);
+    await ev(() => { for (let k = 0; k < 2; k++) { document.querySelectorAll('#view details').forEach(d => { d.open = true; }); window.__ironlog.render(); } });
+    // With nothing logged the Lifts section is folded on a phone, so the button is tapped as tests/r70.js taps it.
+    await ev(() => document.querySelector('#view [data-act="oldBestOpen"]').click()); await wait(200);
+    await page.fill('#modal input[data-pbind="date"]', '2016-03-01'); await page.dispatchEvent('#modal input[data-pbind="date"]', 'change'); await wait(120);
+    await page.click('#modal [data-act="pastGo"]'); await wait(250);
+    await page.click('#modal [data-act="pickDo"][data-ex="bench"]'); await wait(250);
+    await H.type('w', 0, 0, 315); await H.type('r', 0, 0, 1); await H.quiet(); await H.tick(0, 0);
+    let fin = await H.finish();
+    ok(fin.recap.kind === 'recap' && await ev(() => window.__ironlog.state.sessions.some(x => x.date === '2016-03-01')), '17. the old best is saved on Mar 1, 2016', fin);
+    // Today: the bench is back after 10 years, with no load from 315.
+    await page.click('#tabs [data-tab="today"]'); await wait(200);
+    await ev(() => { const L = window.__ironlog; L.ui.folds['today:session'] = true; L.render(); });
+    const today = await H.text();
+    ok(/Back after 10 years: pick a load/.test(today) && !/about \d+ lb/.test(today), '17. Today says the bench is back after 10 years and asks no load from 315 (2.46: about 215 lb)', today.slice(0, 700));
+    // The first session back: 135 x 10 x 3 at 2 in reserve. Nothing since to beat, so no best since you came back.
+    await H.start();
+    const blank = await H.row(0, 0);
+    ok(!blank.wTyped && !(Number(blank.w) > 0), '17. the session\'s first row has no load filled in from 315', blank);
+    for (const s of [0, 1, 2]) { await H.type('w', 0, s, 135); await H.type('r', 0, s, 10); await H.effort(0, s, 2); await H.quiet(); await H.tick(0, s); }
+    fin = await H.finish();
+    ok(fin.recap.kind === 'recap' && !/came back/.test(fin.recap.text), '17. the first session back says no best since you came back', fin.recap.text);
+    // A week on: the usual step up from 135, nothing from 315.
+    await H.day(addD(T0, 7));
+    await H.start();
+    const r0 = await H.row(0, 0);
+    ok(Number(r0.w) === 145, '17. a week on, the bench asks 145 lb, one step up from 135 x 10 x 3 at the top of the range', r0);
+    for (const s of [0, 1, 2]) { await H.type('w', 0, s, 145); await H.type('r', 0, s, 10); await H.effort(0, s, 2); await H.quiet(); await H.tick(0, s); }
+    fin = await H.finish();
+    ok(new RegExp(`Best since you came back: ${name} 145×10`).test(fin.recap.text) && !/PR/.test(fin.recap.text.replace('No PRs this time', '')), '17. the recap says 145 x 10 is the best since you came back, and counts no PR under 315 x 1', fin.recap.text);
+    // Stats: All-time bests keeps 315 x 1 with its year, and the best since you came back beside it.
+    await page.click('#tabs [data-tab="dash"]'); await wait(200);
+    await ev(() => { for (let k = 0; k < 2; k++) { document.querySelectorAll('#view details').forEach(d => { d.open = true; }); window.__ironlog.render(); } });
+    const row = await ev(() => { const s = document.querySelector('#view .bests .bx[data-ex="bench"] summary'); return s ? [...s.querySelectorAll('.bs')].map(x => x.textContent.trim()) : null; });
+    ok(row && /^All time: .*heaviest 315×1, Mar 1, 2016$/.test(row[0]) && /^Since you came back on Nov 10: .*heaviest 145×10, Nov 17$/.test(row[1] || ''), '17. All-time bests: 315 x 1 from 2016 on record, and the best since you came back beside it', row);
+    ok(!H.P.errors.length, '17. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
 

@@ -478,6 +478,45 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
     await P.ctx.close();
   }
 
+  // ---- The best since you came back, every screen (NEW-110, 2.47): on the demo with its first half moved back a year
+  // and made a fifth heavier, so its lifts have a long break and an older best ever, All-time bests' lines are the records allTimeBests and sinceBack read, the second
+  // only when the best ever is older than the return, and the session's heaviest line names the board's heaviest set,
+  // each date with its year when not this one (NEW-111).
+  {
+    const P = await open(FILE, { browser, clock: '2026-11-04T10:00:00' });
+    const r = await P.page.evaluate(() => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb';
+      L.makeDemo(); for (const x of S.sessions) delete x.demo;
+      const sorted = [...S.sessions].sort((a, b) => (a.date < b.date ? -1 : 1)); const half = sorted[Math.floor(sorted.length / 2)].date;
+      const back = d => { const t = new Date(Date.parse(d + 'T12:00:00Z')); t.setUTCFullYear(t.getUTCFullYear() - 1); return t.toISOString().slice(0, 10); };
+      // The year before, a fifth heavier: so most lifts' best ever is older than the return.
+      for (const x of S.sessions) if (x.date < half) { x.date = back(x.date); for (const b of x.ex) for (const t of b.sets) if (t.w > 0) t.w *= 1.2; }
+      L.state = L.normalize(S); L.invalidate(); L.ui.bestsAll = true;
+      const d = document.createElement('div'); d.innerHTML = L.bestsBoard().html;
+      // A date as the screens write it: its year when it is not this one.
+      const yr = date => L.fmtDate(date) + (date.slice(0, 4) === '2026' ? '' : ', ' + date.slice(0, 4));
+      const out = []; let two = 0, n = 0;
+      for (const id of Object.keys(L.IDX().byEx)) {
+        const s = d.querySelector(`.bx[data-ex="${id}"] summary`); if (!s) continue;
+        n++;
+        const lines = [...s.querySelectorAll('.bs')].map(x => x.textContent.trim());
+        const a = L.allTimeBests(id), b = L.sinceBack(id);
+        const older = !!b && !!a.heavy && a.heavy.date < b.from;
+        if (older) two++;
+        const okFirst = !a.heavy || new RegExp(`heaviest [^·]*, ${yr(a.heavy.date)}$`).test(lines[0]);
+        const okSecond = older
+          ? lines.length === 2 && lines[1].startsWith(`Since you came back on ${yr(b.from)}: `) && new RegExp(`heaviest [^·]*, ${yr(b.heavy.date)}$`).test(lines[1])
+          : lines.length === 1 || (!!b && !!a.est && a.est.date < b.from);
+        const line = L.bestLine(id);
+        const okLine = !line || !a.heavy || line.endsWith(', ' + yr(a.heavy.date)) || line === line.replace(/, [A-Z][a-z]{2} \d.*$/, '');
+        if (!(okFirst && okSecond && okLine) && out.length < 4) out.push({ id, lines, line, from: b && b.from, heavy: a.heavy && a.heavy.date });
+      }
+      return { n, two, out };
+    });
+    ok(r.two >= 3 && r.out.length === 0, `All-time bests' best ever and best since you came back are the records allTimeBests and sinceBack read, and the session's heaviest line agrees, each date with its year when not this one (${r.n} lifts, ${r.two} with both)`, r);
+    ok(!P.errors.length, 'no page errors (best since you came back)', P.errors);
+    await P.ctx.close();
+  }
+
   await browser.close();
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.log('FAIL crashed:', e && e.stack || e); process.exit(1); });

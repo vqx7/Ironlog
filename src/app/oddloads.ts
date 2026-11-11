@@ -9,7 +9,7 @@ import { liftReadIn } from './analytics';
 import { loadFloorIn, rackTolIn } from './gym';
 import { fmtWIn, loadLabelIn } from './loads';
 import { EPS, pctOf, timesWord } from './util';
-import { LIGHTER_LOAD, isMissed, isWork } from './formulas';
+import { LIGHTER_LOAD, isMissed, isWork, sinceLongBreak } from './formulas';
 import { effW } from './session';
 import { bwAtIn, bwLoadIn } from './setread';
 
@@ -119,9 +119,14 @@ export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): st
     return `${say(w)} is more than three times your heaviest set today, ${say(topW)}.`;
   if (top > 0 && load * ODD_SESSION < top - EPS)
     return `${say(w)} is under a third of your heaviest set today, ${say(topW)}.`;
+  /* After a long break with nothing since, the lift starts fresh (NEW-113): a load from years ago is no measure of a
+     slipped digit today, as on a lift never done. Once it is back, every session counts, so a load the lifter has
+     lifted before is never called more than twice the heaviest logged (REV10-3: 285 after 135 last week, 315 in 2016). */
+  const all = liftReadIn(M, b.exId, date);
+  const read = sinceLongBreak(all, date).length ? all : [];
   let best = 0,
     bestW = 0;
-  for (const x of liftReadIn(M, b.exId, date))
+  for (const x of read)
     for (const p of x.pts)
       if (bw + p.w > best) {
         best = bw + p.w;
@@ -134,7 +139,7 @@ export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): st
     if (kg != null && kg > 0 && w >= kg * ODD_ADDED_BW - EPS)
       return `${say(w)} adds ${pctOf(ODD_ADDED_BW)}% or more of your bodyweight, ${fmtWIn(M, kg)} ${UIn(M)}.`;
     let most = 0;
-    for (const x of liftReadIn(M, b.exId, date)) for (const p of x.pts) most = Math.max(most, p.w);
+    for (const x of read) for (const p of x.pts) most = Math.max(most, p.w);
     b.sets.forEach((x, i) => {
       if (i !== si && x.done && isWork(x) && !x.drop && x.w != null) most = Math.max(most, x.w);
     });

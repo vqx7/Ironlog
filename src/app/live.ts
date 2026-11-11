@@ -113,7 +113,7 @@ import {
   rirUsualIn,
   tonnageIn
 } from './setread';
-import { allTimeBestsIn, prFrameIn, statsUpToIn } from './bests';
+import { allTimeBestsIn, prFrameIn, sinceBackIn, statsUpToIn } from './bests';
 
 /** The one model the app runs on: the store's log, the phone's date, and the caches. */
 export const LIVE: Model = {
@@ -195,6 +195,7 @@ export const fmtW = live(fmtWIn);
 export const loadLabel = live(loadLabelIn);
 export const IDX = live(IDXIn);
 export const allTimeBests = live(allTimeBestsIn);
+export const sinceBack = live(sinceBackIn);
 export const bwAt = live(bwAtIn);
 export const bwLoad = live(bwLoadIn);
 export const bwRef = live(bwRefIn);

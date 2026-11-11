@@ -860,7 +860,8 @@ function previewCard(day: Day, deload: boolean): TemplateResult {
     const ex = EX(it.exId);
     // Asked for today, the day Start would log it on, so a lift already done today shows what the session will.
     const sg = suggest(it.exId, it, { deload, before: today() });
-    const none = !sg.last && !sg.inj && !sg.target;
+    // A lift back after a long break starts as a first session does, but it is not new: its line says the time away (NEW-110).
+    const none = !sg.last && !sg.inj && !sg.target && !sg.away;
     if (none) fresh++;
     const text = String(sg.text || '');
     const short = none

@@ -416,6 +416,32 @@ export function afterBreak(prev: { date: string } | null | undefined, date: stri
   return !!prev && daysBetween(prev.date, date) > BACK_DAYS;
 }
 
+/* A long break: more than about six months off a lift (NEW-110, V 2026-11-10: an old best "shouldn't automatically
+   become a goal"). The way back above starts at 90% of the load from before, which a break of weeks supports; after
+   months or years the strength kept depends on the lifter too much for any one share to be safe (a 315 x 1 from ten
+   years ago asked 215 x 6-10, the same as one from 14 weeks ago). So a lift starts fresh after one, as a lift never
+   done: its targets, the next sets and the way back read only its sessions since. Its records and PRs read every
+   session, as before. Bosquet 2013 shows strength falling with the length of the stop but names no point where a
+   start from the old load stops being sound, so the six months is a convention (docs/EVIDENCE.md). */
+export const LONG_BREAK_DAYS = 182;
+
+/** Whether `date` comes after a long break from a lift's session `prev`: more than LONG_BREAK_DAYS after it. */
+export function longBreak(prev: { date: string } | null | undefined, date: string): boolean {
+  return !!prev && daysBetween(prev.date, date) > LONG_BREAK_DAYS;
+}
+
+/** Where a lift's sessions (in date order) start again after their last long break between two of them: the index of the first after it, 0 with none. */
+export function longBreakAt<X extends { date: string }>(xs: readonly X[]): number {
+  for (let i = xs.length - 1; i > 0; i--) if (longBreak(xs[i - 1], xs[i].date)) return i;
+  return 0;
+}
+
+/** A lift's sessions (in date order) as its targets read them on `date`: those since its last long break, none when `date` is one after the last. */
+export function sinceLongBreak<X extends { date: string }>(xs: readonly X[], date: string): X[] {
+  if (xs.length && longBreak(xs[xs.length - 1], date)) return [];
+  return xs.slice(longBreakAt(xs));
+}
+
 /* ---------- trends ---------- */
 
 /* Percent change over the trend window below which a muscle is treated as flat

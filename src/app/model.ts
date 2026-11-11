@@ -261,6 +261,8 @@ export interface Suggestion {
   capped?: boolean | undefined;
   buildTo?: number | undefined;
   back?: number | undefined;
+  /** The days a lift was away when it starts fresh after a long break (NEW-110): nothing from before it is asked. */
+  away?: number | undefined;
   /** Asked as done earlier the same day: the load stays as logged, never moved onto a grid. */
   same?: true | undefined;
 }

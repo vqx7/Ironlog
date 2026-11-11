@@ -96,6 +96,7 @@ import {
   blocks,
   stepLoad,
   allTimeBests,
+  sinceBack,
   appBand,
   atRangeTop,
   avgFirstWeek,
@@ -588,6 +589,7 @@ function exposeForTests(): void {
     undoRestore,
     undoForget,
     allTimeBests,
+    sinceBack,
     bestsBoard: () => {
       const b = bestsBoard();
       return { n: b.n, html: markupOf(b.html) };

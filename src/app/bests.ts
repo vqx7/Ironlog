@@ -5,7 +5,7 @@ import type { ExPoint, ExStat, Exposure, ExerciseLike, Model } from './model';
 import { noE1 } from './library';
 import { EPS_SAME } from './util';
 import { EXIn, sinceNew } from './model';
-import { prSameLoad, e1, sameRR } from './formulas';
+import { prSameLoad, e1, longBreakAt, sameRR } from './formulas';
 
 import type { LoadedSet } from './setread';
 import { noBodyIn, prLoadIn } from './setread';
@@ -84,8 +84,8 @@ export function prFrameIn(M: Model, exId: string, s: LoadedSet, date: string): P
   return { ex, exps, st, heaviest, w, load: own + (w - typed), own };
 }
 
-/** One record on the bests board: the set and the day it was first reached. */
-type BestAt = { p: ExPoint; date: string };
+/** One record on the bests board: the set, the day it was first reached and the session it was in (the recap's, REV10-2). */
+type BestAt = { p: ExPoint; date: string; sid: string };
 
 /* All-time bests (item 27; moved from the legacy script in r55 to judge loads
    as the PR list does): per lift, the best estimate and the heaviest set,
@@ -115,6 +115,33 @@ export function allTimeBestsIn(
   const exps = all ? sinceNew(upTo ? all.filter(x => x.date <= upTo) : all) : all;
   if (!exps || !exps.length) return null;
   const ex = EXIn(M, id);
+  return { ex, ...recordsOfIn(M, ex, exps) };
+}
+
+/* The best since you came back (NEW-110, V 2026-11-10: an old best is never denied, never made a goal, and the
+   lifter sees when they hit new numbers): a lift's records over its sessions since its last long break, read as the
+   board reads them (since a new machine or gym too), with the day it came back. None when it has had no long break,
+   so a lift trained on through deloads and short breaks shows its bests as before. */
+/** A lift's records since it came back from its last long break, and the day it came back; null with no long break. */
+export function sinceBackIn(
+  M: Model,
+  id: string
+): { from: string; est: (BestAt & { v: number }) | null; heavy: BestAt | null; first: boolean } | null {
+  const all = IDXIn(M).byEx[id];
+  const exps = all ? sinceNew(all) : [];
+  const i = longBreakAt(exps);
+  if (!i) return null;
+  const back = exps.slice(i);
+  const r = recordsOfIn(M, EXIn(M, id), back);
+  return { from: back[0].date, est: r.est, heavy: r.heavy, first: back.length === 1 };
+}
+
+/** A lift's records over some of its sessions (in date order): its best estimate, heaviest set and rep records, each dated when first reached, and the newest of those dates. */
+function recordsOfIn(
+  M: Model,
+  ex: ExerciseLike,
+  exps: readonly Exposure[]
+): { est: (BestAt & { v: number }) | null; heavy: BestAt | null; front: BestAt[]; last: string | undefined } {
   let est: (BestAt & { v: number }) | null = null,
     heavy: (BestAt & { j: number }) | null = null;
   const front: (BestAt & { j: number })[] = [];
@@ -128,17 +155,17 @@ export function allTimeBestsIn(
       const d = prSameLoad(p.w, seen) - p.w,
         j = p.pl + d;
       const v = noE1(ex) || noBodyIn(M, ex) ? null : e1(p.load + d, p.r, p.rq);
-      if (v != null && (!est || v > est.v + EPS_SAME)) est = { v, p, date: x.date };
+      if (v != null && (!est || v > est.v + EPS_SAME)) est = { v, p, date: x.date, sid: x.sid };
       // Heaviest and rep records at the PR load (prLoad, r32.1): on a bodyweight lift, by added load and reps, dated when first done.
       if (!heavy || j > heavy.j + EPS_SAME || (Math.abs(j - heavy.j) < EPS_SAME && p.r > heavy.p.r))
-        heavy = { p, j, date: x.date };
+        heavy = { p, j, date: x.date, sid: x.sid };
       if (!front.some(q => q.j >= j - EPS_SAME && q.p.r >= p.r)) fresh.push({ p, j });
     }
     for (const { p, j } of fresh) {
       if (front.some(q => q.j >= j - EPS_SAME && q.p.r >= p.r)) continue;
       for (let k = front.length - 1; k >= 0; k--)
         if (j >= front[k].j - EPS_SAME && p.r >= front[k].p.r) front.splice(k, 1);
-      front.push({ p, j, date: x.date });
+      front.push({ p, j, date: x.date, sid: x.sid });
     }
     for (const p of x.pts) seen.add(p.w);
   }
@@ -148,10 +175,9 @@ export function allTimeBestsIn(
   if (heavy) dates.push(heavy.date);
   const last = dates.sort().pop();
   return {
-    ex,
     est,
-    heavy: heavy ? { p: heavy.p, date: heavy.date } : null,
-    front: front.map(f => ({ p: f.p, date: f.date })),
+    heavy: heavy ? { p: heavy.p, date: heavy.date, sid: heavy.sid } : null,
+    front: front.map(f => ({ p: f.p, date: f.date, sid: f.sid })),
     last
   };
 }
