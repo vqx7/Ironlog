@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-ayaeHO512NH0FzpIeoCgML9HSoKASelQD9p61NExLqA=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-u3322hsPSCWI3whyopmYqkLEGKRRO1gZjXH4mjQduws=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.10-r94">
+<meta name="app-build" content="2026.11.11-r95">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2149,8 +2149,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.48";
-  var APP_VERSION = "2026.11.10-r94";
+  var DISPLAY_VERSION = "2.49";
+  var APP_VERSION = "2026.11.11-r95";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -4280,6 +4280,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           note: typeof b2.note === "string" ? b2.note : "",
           inj: typeof b2.inj === "string" && isMuscleOrJoint(b2.inj) ? b2.inj : null,
           hint: typeof b2.hint === "string" ? b2.hint : "",
+          ...typeof b2.hintAgain === "string" && b2.hintAgain ? { hintAgain: b2.hintAgain } : {},
           last: typeof b2.last === "string" ? b2.last : "",
           // Last time's sets as shown in the Last column: short strings, absent in older drafts.
           prev: prev ? strings(prev, () => true).slice(0, LIMITS.sets).map((x2) => x2.slice(0, LIMITS.lastText)) : void 0,
@@ -5916,15 +5917,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     "If the first set is off, change the load.",
     "Next time picks up from here."
   ];
-  function hintOnce(t4, seen) {
+  function hintOnce(t4, again, kind, seen) {
     if (!t4) return "";
-    const m3 = t4.match(
-      /^(First time|Back after \d+ (?:months?|years)): pick a load you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/
-    );
-    if (m3) {
-      const [, lead, can, reps] = m3;
-      if (seen.has("first")) return `${lead}: a load you could lift about ${can} times; do ${reps}.`;
-      seen.add("first");
+    if (again) {
+      const key = "first:" + kind;
+      if (seen.has(key)) return again;
+      seen.add(key);
       return t4;
     }
     let out = t4;
@@ -7822,7 +7820,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         kin: kin.ex.id
       };
     const text = ex.assist ? `${lead}: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.` : ex.bw ? `${lead}: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.` : `${lead}: pick a load you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
-    return { ...was, w: w0, text, lastR: [], last: "", target: "", tgt: null };
+    const again = ex.assist ? `${lead}: help for about ${can} reps; do ${reps}.` : ex.bw ? `${lead}: bodyweight only; do ${reps}.` : `${lead}: a load you could lift about ${can} times; do ${reps}.`;
+    return { ...was, w: w0, text, again, lastR: [], last: "", target: "", tgt: null };
   }
   function sgEasyIn(M3, C2) {
     const {
@@ -15456,6 +15455,7 @@ ${more}`;
       lastNote: lastNoteOf(exId, opts && opts.before),
       inj: sg.inj || null,
       hint: sg.text,
+      hintAgain: sg.again || void 0,
       last: sg.last,
       prev: sg.prev || void 0,
       prevOff: sg.prevOff || void 0,
@@ -15477,6 +15477,7 @@ ${more}`;
     Object.assign(b2, {
       inj: sg.inj || null,
       hint: sg.text,
+      hintAgain: sg.again || void 0,
       last: sg.last,
       prev: sg.prev || void 0,
       prevOff: sg.prevOff || void 0,
@@ -15533,6 +15534,7 @@ ${more}`;
           if (b2.sw != null && sg.w != null && Math.abs(sg.w - b2.sw) > EPS_SAME) continue;
           Object.assign(b2, {
             hint: sg.text,
+            hintAgain: sg.again || void 0,
             last: sg.last,
             prev: sg.prev || void 0,
             prevOff: sg.prevOff || void 0,
@@ -20960,7 +20962,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const canFill = !!b2.lastR && b2.lastR.some((r4) => r4 != null) && b2.sets.some((s3, i5) => !s3.done && !s3.warm && !s3.drop && s3.r == null && lastRFor(b2, i5) != null);
     return b`<section class=${"block" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? b`<p class="ssh">Superset ${ss}</p>` : ""}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : A}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? b` ${tipButton(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · ${work || p3.sets}×${repSpan(p3.repMin, p3.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}${nr ? "" : ` @${b2.inj || (d3.light || d3.deload || b2.light) && b2.last ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p3.rir)}`} · ${p3.rest}s${b2.inj ? b` · <span class="tag red">Injury: ${injLabel(b2.inj)}</span>` : ""}${markedNew(d3, b2.exId) ? b` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ""}</p></div>
       <div class="bh-acts"><button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button><button class=${"ib" + (b2.note || b2.pics && b2.pics.length ? " noted" : "")} aria-label=${b2.note || b2.pics && b2.pics.length ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
-      ${b2.target ? b`<p class="hint"><b>Today: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId, d3.date) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
+      ${b2.target ? b`<p class="hint"><b>Today: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", b2.hintAgain, ex.assist ? "assisted" : ex.bw ? "bodyweight" : "loaded", hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId, d3.date) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
       ${ss && partner && gk === 0 ? b`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? "pair" : "group"}.</p>` : ""}
       ${b2.lastNote && !b2.note ? b`<p class="small lnote">Your note, ${fmtDate(b2.lastNote.date)}: ${b2.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ""}
       ${b2.note ? b`<p class="small bnote" id=${`bn-${bi}`}>${b2.note}</p>` : b`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}${picStrip(bi, false)}
