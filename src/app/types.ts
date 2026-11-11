@@ -423,6 +423,8 @@ export interface DraftBlock {
   last?: string | undefined;
   /** The suggestion's words, shown under the exercise when it has no target. */
   hint?: string | undefined;
+  /** The suggestion's short line, said instead of hint once an earlier lift in the session said its kind (NEW-109). */
+  hintAgain?: string | undefined;
   /** Last time's reps per working set, the grey reps. */
   lastR?: (number | null)[] | undefined;
   /** The easier way the suggestion offers, when it offers one. */

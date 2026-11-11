@@ -708,7 +708,12 @@ function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: stri
     : ex.bw
       ? `${lead}: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.`
       : `${lead}: pick a load you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
-  return { ...was, w: w0, text, lastR: [], last: '', target: '', tgt: null };
+  const again = ex.assist
+    ? `${lead}: help for about ${can} reps; do ${reps}.`
+    : ex.bw
+      ? `${lead}: bodyweight only; do ${reps}.`
+      : `${lead}: a load you could lift about ${can} times; do ${reps}.`;
+  return { ...was, w: w0, text, again, lastR: [], last: '', target: '', tgt: null };
 }
 
 /* Every top set 2 or more over the target reserve: the load from the estimate.

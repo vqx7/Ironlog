@@ -117,8 +117,9 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     // 1o. Small helpers: the plan's effort in RPE mode, a hint said once, a start time.
     const hp = await ev(() => {
       const L = window.__ironlog; const s = L.state; s.settings.rirScale = 'rpe'; const a = L.effTgt(1); delete s.settings.rirScale; const b = L.effTgt(1);
-      const full = "First time: pick a load you could lift about 12 times, erring light. Do 6 to 10 reps, stopping with about 2 still in you. Next time's load is worked out from this.";
-      const seen = new Set(); const h1 = L.hintOnce(full, seen); const h2 = L.hintOnce(full, seen);
+      // The engine's own first-time paragraph and short line for a loaded lift never done (since 2.49 the engine gives both, NEW-109).
+      const sg = ['legExt', 'legCurl', 'cableRow', 'latPd'].map(id => L.suggest(id, { sets: 3, repMin: 6, repMax: 10, rir: 2 }, {})).find(x => /^First time: pick a load/.test(x.text));
+      const seen = new Set(); const h1 = sg ? L.hintOnce(sg.text, sg.again, seen) : ''; const h2 = sg ? L.hintOnce(sg.text, sg.again, seen) : '';
       return { a, b, h1, h2, tm: L.sessTm({ t: new Date(2026, 9, 9, 18, 0).getTime() }), tm0: L.sessTm({}) };
     });
     ok(hp.a === 'RPE 9' && hp.b === '1 RIR', 'a plan\'s effort reads "RPE 9" in RPE mode and "1 RIR" otherwise', hp);

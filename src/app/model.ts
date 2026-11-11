@@ -265,6 +265,11 @@ export interface Suggestion {
   away?: number | undefined;
   /** Asked as done earlier the same day: the load stays as logged, never moved onto a grid. */
   same?: true | undefined;
+  /* The engine says its own short form rather than the screen reading its words for one (NEW-109): until 2.49 the
+     session matched the loaded first-time paragraph by a pattern, so a reworded sentence, or a bodyweight or
+     assisted lift's, was said in full on every lift. */
+  /** A first session's paragraph shortened, said on a later lift in the same session once one has said it in full. */
+  again?: string | undefined;
 }
 
 /** An exercise as EX() gives it: the log's own record, or, for an id the log

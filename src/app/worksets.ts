@@ -582,6 +582,7 @@ export function newBlock(
     lastNote: lastNoteOf(exId, opts && opts.before),
     inj: sg.inj || null,
     hint: sg.text,
+    hintAgain: sg.again || undefined,
     last: sg.last,
     prev: sg.prev || undefined,
     prevOff: sg.prevOff || undefined,
@@ -610,6 +611,7 @@ export function refreshBlock(b: DraftBlock): void {
   Object.assign(b, {
     inj: sg.inj || null,
     hint: sg.text,
+    hintAgain: sg.again || undefined,
     last: sg.last,
     prev: sg.prev || undefined,
     prevOff: sg.prevOff || undefined,
@@ -685,6 +687,7 @@ export function unitWords(): void {
         if (b.sw != null && sg.w != null && Math.abs(sg.w - b.sw) > EPS_SAME) continue;
         Object.assign(b, {
           hint: sg.text,
+          hintAgain: sg.again || undefined,
           last: sg.last,
           prev: sg.prev || undefined,
           prevOff: sg.prevOff || undefined,
