@@ -813,7 +813,11 @@ function start(): void {
      effect runs. Then what the storage and sync parts ran as the page loaded,
      in their order: the save read into the store, the sync notes, the device
      id, the listeners. */
-  setFx({ render, rerenderKeepScroll, toast, undoToastHide, setSaveState, syncLine, obGate, ask });
+  /* Every message storage and sync raise is news about the log (a sync's notes, a workout set aside), which the toast
+     never loses (toast.ts, 2.48): marked so here, in the one place they reach the page. */
+  const notice = (msg: string, undo?: boolean | null, ms?: number | null, kind?: string): void =>
+    toast(msg, undo, ms, kind ?? 'notice');
+  setFx({ render, rerenderKeepScroll, toast: notice, undoToastHide, setSaveState, syncLine, obGate, ask });
   storageStart();
   syncStart();
   // Fields typed in, and the update bar: started before the page's handlers are added below.

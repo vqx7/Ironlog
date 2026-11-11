@@ -177,6 +177,11 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   em dashes, hype or exclamation marks; the serial comma in any list of three; estimated minutes only through
   `estMin` ("~N min"); the first-run Set up page stays under 400 characters, in lines of 45 at most. Code comments
   explain why, not what, in full sentences.
+- **Messages (V, 2026-11-10, 2.48):** a toast says what the tap just did (with Undo when it can be undone), an error,
+  news about the log from storage and sync, or a one-time tip shown when nothing else is; an ask or advice lives
+  where it applies (a card, a line on the item, a tip), never in a message, and nothing repeats what is on screen.
+  One tap is one message: what one tap says is joined, never one over another, and news about the log is never lost
+  (`toast.ts`; `tests/messages.js`).
 - **Phone:** 44 px touch targets, no sideways scroll at 320 px, light and dark both checked. Rows of seven (the
   week bar, the calendar, Consistency) reach 44 px from 375 px phones up; at 320 px seven cannot. No code follows the
   on-screen keyboard (Safari does not shrink the page for it, and code that did fought iOS): a sheet you type in

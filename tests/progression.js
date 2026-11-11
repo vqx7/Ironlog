@@ -401,6 +401,11 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     const latest = await P.page.evaluate(d => window.__ironlog.fmtDate(d), addD(DAY, -7));
     ok(s.hint.startsWith(`Last (${latest})`) && !/155/.test(s.hint), `P-2 the light range last used before eight weeks of heavy days: its target starts from the latest session, the heavy day of ${latest}, not the 155 lb of then`, s);
     await P.ctx.close(); await P.browser.close();
+    // And the Guide says the rule as the app keeps it, a break not counted (NEW-117: until 2.48 it said 6 weeks plain).
+    const G = await lifter(DAY_BENCH, []);
+    const g = await G.page.evaluate(() => { window.__ironlog.ACT.guideOpen({ dataset: { topic: 'rules' } }); return (document.getElementById('modal') || {}).textContent.replace(/\s+/g, ' '); });
+    ok(/not used within 6 weeks of training before your latest session of the lift \(time on a break of more than 4 weeks is not counted\)/.test(g), 'P-2 the Guide says the 6 weeks are weeks of training, a break of more than 4 weeks not counted', g.slice(0, 120));
+    await G.ctx.close(); await G.browser.close();
   }
   if (run('P-4')) {
     /* A target is not a record: Today's workout names the lift's best set beside it, and the session's target is its own.
