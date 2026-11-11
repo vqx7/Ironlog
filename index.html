@@ -24744,7 +24744,6 @@ ${JSON.stringify(ctx, null, 1)}`;
   var HARD_SWAP = { repMin: 3, repMax: 6, rir: 2 };
   var AGAIN_CHARS = 40;
   var MONTH_RE = /^\d{4}-\d{2}$/;
-  var halfSets = (n3) => Math.max(1, Math.ceil(n3 / 2));
   var blockPlan = (p3) => ({ ...p3, ss: p3.ss ?? null });
   function begin(d3, live2) {
     ui.away = null;
@@ -24812,7 +24811,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const d3 = R2.schedule === "weekly" ? dayWorkout(d0, part) : d0;
     const light = t4.dataset.light === "1";
     const deload = !light && isDeloadWeek();
-    const items = d3.rest ? [] : d3.items.map((it) => light || deload ? { ...it, sets: halfSets(it.sets) } : it);
+    const items = d3.rest ? [] : d3.items.map((it) => light || deload ? { ...it, sets: lighterSets(it.sets) } : it);
     begin(
       {
         id: uid(),
@@ -25028,14 +25027,14 @@ ${JSON.stringify(ctx, null, 1)}`;
         const deload = isDeloadWeek();
         const plan = (b2) => {
           const it = day && day.items.find((i5) => i5.exId === b2.exId);
-          if (it) return deload ? { ...it, sets: halfSets(it.sets) } : { ...it };
+          if (it) return deload ? { ...it, sets: lighterSets(it.sets) } : { ...it };
           const p3 = planFor(b2.exId);
           if (b2.rr) {
             p3.repMin = b2.rr[0];
             p3.repMax = Math.max(b2.rr[0], b2.rr[1]);
           }
           const n3 = b2.sets.filter(isWork).length;
-          if (n3) p3.sets = deload ? halfSets(n3) : n3;
+          if (n3) p3.sets = deload ? lighterSets(n3) : n3;
           return blockPlan(p3);
         };
         const ex = s3.ex.map((b2) => {
@@ -25154,7 +25153,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const deload = isDeloadWeek();
       const ex = pl.flatMap((x2) => {
         if (!x2.to) return [];
-        const it = deload ? { ...x2.it, sets: halfSets(x2.it.sets) } : x2.it;
+        const it = deload ? { ...x2.it, sets: lighterSets(x2.it.sets) } : x2.it;
         const sp = x2.from ? swapPlan(it, x2.from, x2.to, R2, day.id) : { ...it };
         if (x2.hard) Object.assign(sp, HARD_SWAP);
         const b2 = newBlock(x2.to, sp, { deload, before: today() });
