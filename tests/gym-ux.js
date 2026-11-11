@@ -127,6 +127,24 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
     await T.browser.close();
   }
 
+  // NEW-108 (V, 2026-11-10: "drop it from the timer's button label"): an exercise's rest is said once on its card, in
+  // the line under its name; the rest timer's button is its icon, its rest said to a screen reader.
+  {
+    const R = await open(process.env.IRONLOG_FILE || 'index.html', { touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });
+    const r = await R.page.evaluate(async () => {
+      const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.timerMode = 'manual';
+      L.ACT.startFree(); if (L.ui.modal) L.ACT.mClose();
+      L.state.draft.ex.push(L.newBlock('bench', { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 180, inc: 2.5 }, {}));
+      L.saveNow(); L.ui.tab = 'today'; L.render(); await new Promise(q => setTimeout(q, 150));
+      const b = document.querySelector('[data-act="tStart"]');
+      const card = b && b.closest('.blk, .ex, [data-bi], section, .card');
+      return { btn: b ? b.innerText.trim() : null, aria: b ? b.getAttribute('aria-label') : null, line: card ? (card.innerText.match(/180s/g) || []).length : -1 };
+    });
+    ok(r.btn === '⏱' && r.aria === 'Start a 180 second rest', 'NEW-108: the rest timer button is its icon, its rest said to a screen reader: ' + JSON.stringify(r));
+    ok(r.line === 1, 'NEW-108: the card says its rest once, in the line under its name: ' + JSON.stringify(r));
+    await R.browser.close();
+  }
+
   ok(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log(fails.length ? `FAILURES ${fails.length}` : 'ALL PASS');
   await browser.close(); process.exit(fails.length ? 1 : 0);

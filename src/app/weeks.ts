@@ -452,6 +452,14 @@ export function weekNeedIn(M: Model, ws: string): number {
   return Math.max(1, (rec && rec[ws]) || plannedPerWeek(R));
 }
 
+/** The sessions a week planned as its own sessions recorded it (pw), or null when none did: nothing says what was planned then (NEW-107, REV9-3). */
+export function weekRecordedIn(M: Model, ws: string): number | null {
+  weekRoutineIn(M, ws);
+  // weekRoutineIn has just built the week marks, weekPw among them.
+  const rec = IDXIn(M).weekPw;
+  return rec && rec[ws] ? rec[ws] : null;
+}
+
 /** The weeks the streak looks back over: two years of them. */
 const STREAK_WEEKS = 104;
 

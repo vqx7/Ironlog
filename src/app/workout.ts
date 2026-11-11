@@ -469,7 +469,7 @@ function blockPart(
           : ''
       }${
         state.settings.timerMode !== 'off' && +p.rest > 0 && !d.past
-          ? html`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p.rest} second rest`} data-tip="Start the rest timer">⏱ ${p.rest}s</button>`
+          ? html`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p.rest} second rest`} data-tip="Start the rest timer">⏱</button>`
           : ''
       }</div></section>`;
 }

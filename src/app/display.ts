@@ -242,7 +242,7 @@ export function recent4w(): { back: boolean; sess: number; sessP: number; prs: P
 }
 
 /** The weight lifted in a week, to its day `upto` (0 Monday), or all of it. */
-function weekVolume(ws: string, upto?: number | null): number {
+export function weekVolume(ws: string, upto?: number | null): number {
   const end = addDays(ws, upto == null ? SUNDAY : upto);
   let v = 0;
   for (const x of IDX().sessVol) if (x.date >= ws && x.date <= end) v += x.vol;
@@ -720,6 +720,24 @@ export function weekSlots(R: Routine): WeekSlot[] {
       part = partOf(s);
     const slot = out.find(x => x.di === di && x.part === part && !x.doneOn);
     if (slot) slot.doneOn = s.date;
+  }
+  return out;
+}
+
+/** This week's days ahead on a fixed-weekday routine whose every workout was done on another day, each with the workouts
+    and the day they were done, as the bar reads them (weekSlots): This week and the calendar say so rather than offer them
+    again (NEW-107, REV9-2: the list read "Legs B, planned" under the bar's "Legs B, done Wed"). */
+export function doneElsewhere(): Record<string, { name: string; on: string }[]> {
+  const R = activeRoutine();
+  const cur = weekStart(today());
+  const out: Record<string, { name: string; on: string }[]> = {};
+  if (R.schedule !== 'weekly' || isRestWeek(cur)) return out;
+  const slots = weekSlots(R);
+  for (let i = 0; i < WEEK_DAYS; i++) {
+    const d = addDays(cur, i);
+    const mine = slots.filter(x => x.di === i);
+    if (d > today() && mine.length && !sessionsOn(d).length && mine.every(x => x.doneOn && x.doneOn !== d))
+      out[d] = mine.map(x => ({ name: x.day.name, on: x.doneOn || '' }));
   }
   return out;
 }

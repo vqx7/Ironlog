@@ -67,6 +67,8 @@ const EXTRA = {
   // A lift's all-time bests, now and as of the log's middle session (a past workout's), and where the weeks are counted from.
   allTimeBests: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : '']]),
   logBack: () => [[]], logStart: () => [[]],
+  // 2.46 (REV9-3): what a week's sessions recorded their routine planned, for the log's first weeks and a week before it.
+  weekRecorded: (s) => [...new Set(s.sessions.slice(0, 8).map(x => window.__ironlog.weekStart(x.date)))].map(w => [w]).concat([['2020-01-06']]),
   // The plates one side takes (r56.1, PENDING 333): a load typed as shown in lb on kg plates (110.2 lb, 15 kg a side within
   // its tolerance, and strictly), lb plates, the bar alone, and less than the smallest plate.
   platesPerSide: () => [[[25, 20, 15, 10, 5, 2.5, 1.25], 14.993, 0.0113], [[25, 20, 15, 10, 5, 2.5, 1.25], 14.993, 1e-6], [[45, 35, 25, 10, 5, 2.5], 92.5, 0.025], [[45, 35, 25, 10, 5, 2.5], 0, 1e-6], [[25, 20, 15, 10, 5, 2.5, 1.25], 1.2, 1e-6]],

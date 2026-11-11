@@ -11,6 +11,7 @@
 import { picsStart, picsTidy } from './pics';
 import { ACT, eventListeners, pageListeners } from './events';
 import { afterSheet, renderInner, sectionsStart, SHEETS } from './screens';
+import { pullStart } from './week';
 import { APP_NAME, SITE_HOST, THREE_URLS } from './config';
 import { html, render as drawLine } from 'lit-html';
 import { addDays, andList, today, weekStart } from './util';
@@ -209,7 +210,8 @@ import {
   weeksAvg,
   weekSessions,
   weekStats,
-  weekStreak
+  weekStreak,
+  weekRecorded
 } from './live';
 import { keepExtra, normalize, plainTemplate, starterRoutine, starterSigs } from './normalize';
 import {
@@ -467,6 +469,7 @@ function exposeForTests(): void {
     sessCmp,
     avgWeeks,
     weekStreak,
+    weekRecorded,
     coach,
     noLog,
     adjOn,
@@ -834,6 +837,8 @@ function start(): void {
   // The session screen's own listeners (workout.ts, r60): after the page's, in the order they ran before.
   workoutStart();
   sectionsStart();
+  // The week bar's pull-down, and the push-up of the calendar it opens (NEW-107).
+  pullStart();
   window.__onLib = which => {
     if ((which === 'chart' && ui.tab === 'dash') || (which === 'sortable' && ui.tab === 'program'))
       rerenderKeepScroll();

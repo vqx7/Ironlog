@@ -7,8 +7,9 @@
    this one). It sits inline in This week on
    Today (Week or Month, r26), and opens as a sheet from History's Calendar
    button and a Consistency square; drawn by lit-html as src/27-actions.js
-   drew it. The pull-down on the week bar is gone: the calendar rose
-   from the bottom of the screen while the finger pulled down from the top. */
+   drew it. A pull down on the week bar opens it from the top, following the
+   finger (NEW-107, week.ts): r25's rose from the bottom while the finger
+   pulled down from the top, and V had it removed on 2026-10-01. */
 
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
@@ -17,7 +18,7 @@ import { MONTHS } from './format';
 import { today, monthOf, dayOfWeek } from './util';
 import { firstDate } from './charts';
 import { state, ui } from './store';
-import { fmtDateLong, planAhead, sessionsOn } from './display';
+import { doneElsewhere, fmtDateLong, planAhead, sessionsOn } from './display';
 import type { PlannedDay } from './display';
 
 /* How far ahead the calendar goes: a year, as far as a lifter
@@ -51,8 +52,10 @@ function monthEnd(ym: string): string {
 /** The training days the routine plans in a month after today (a rest day, or a day with nothing in it, is none). */
 function plannedIn(ym: string): Record<string, PlannedDay> {
   const out: Record<string, PlannedDay> = {};
+  // A day whose workout was done earlier this week is not planned any more, as the bar and This week say (REV9-2).
+  const moved = doneElsewhere();
   for (const [d, p] of Object.entries(planAhead(monthEnd(ym))))
-    if (d.startsWith(ym) && !p.day.rest && p.day.items.length) out[d] = p;
+    if (d.startsWith(ym) && !p.day.rest && p.day.items.length && !moved[d]) out[d] = p;
   return out;
 }
 /** How many training days the routine plans in a month after today. */
@@ -129,7 +132,7 @@ export function planWords(k: number): string {
   return k ? `${k} planned` : 'Nothing planned';
 }
 
-/** The calendar as a sheet, opened at a month. */
-export function calSheet(m: { ym: string }): TemplateResult {
-  return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="calH">${calBody(m.ym, false)}</div>`;
+/** The calendar as a sheet, opened at a month: from the bottom as every sheet is, or from the top when the week bar was pulled down. */
+export function calSheet(m: { ym: string; top?: true | undefined }): TemplateResult {
+  return html`<div class=${m.top ? 'sheet fromtop' : 'sheet'} role="dialog" aria-modal="true" aria-labelledby="calH">${calBody(m.ym, false)}</div>`;
 }

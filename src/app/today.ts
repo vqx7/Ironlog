@@ -130,7 +130,7 @@ import {
 } from './view';
 import type { Field } from './view';
 import type { Part } from './view';
-import { heroRing, weekCard } from './week';
+import { heroRing, weekBounds, weekCard, weekShown } from './week';
 import { mapCard } from './map';
 import type { Day, Routine } from './types';
 
@@ -1156,11 +1156,22 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       if (el.scrollIntoView) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
   },
+  // This week on Today, a week back or ahead, or back to this week (NEW-107), within the weeks it steps between.
+  wkStep(t) {
+    const v = t.dataset['v'];
+    const cur = weekStart(today());
+    const ws = v === 'now' ? cur : addDays(weekShown(), (v === '-1' ? -1 : 1) * WEEK_DAYS);
+    const { min, max } = weekBounds();
+    if (ws < min || ws > max) return;
+    ui.wkWs = ws === cur ? undefined : ws;
+    rerenderKeepScroll();
+  },
   // This week on Today: the week, or the month (remembered on this device).
   wkView(t) {
     const v = t.dataset['v'] === 'month' ? 'month' : 'week';
     ui.wkView = v;
     if (v === 'month') ui.calYm = monthOf(today());
+    else ui.wkWs = undefined;
     prefSet(WKVIEW_KEY, v);
     rerenderKeepScroll();
   },

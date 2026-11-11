@@ -320,6 +320,15 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
 .wkbar .w.add .dn{position:relative}
 .wkbar .w.add .dn::after{content:"+";position:absolute;right:-3px;bottom:-3px;width:13px;height:13px;border-radius:50%;background:var(--surface);color:var(--muted);box-shadow:0 0 0 1px var(--line);font:800 11px/13px var(--font);text-align:center}
 @media (prefers-reduced-motion:reduce){.wkbar .w .dn{transition:none}}
+/* This week's days (NEW-107): one row a day, a tap away as the calendar's days are. */
+.wkdays{list-style:none;margin:8px 0 0;padding:0}
+.wkdays li+li{border-top:1px solid var(--line-soft)}
+.wkday{-webkit-appearance:none;appearance:none;display:flex;align-items:center;gap:12px;width:100%;min-height:44px;margin:0;padding:6px 2px;border:0;background:transparent;font:inherit;color:var(--ink);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+span.wkday{cursor:default}
+.wkday-d{flex:0 0 56px;font:650 13px/1.2 var(--font);color:var(--muted);font-variant-numeric:tabular-nums}
+.wkday.today .wkday-d{color:var(--ink);font-weight:800}
+.wkday-n{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.wkday.none .wkday-n{color:var(--muted)}
 .wkbar .w .wd{font:650 9.5px/1.1 var(--font);letter-spacing:.06em;text-transform:uppercase}
 /* Each day is a small disc, like an activity ring: filled in the accent when
    trained, a grey ring when planned (red when a fixed weekday was missed), a
@@ -1143,6 +1152,12 @@ details.more>summary .small{display:block;font-weight:400}
 .block.flash{animation:flashIn 1.4s ease-out}
 .sheet h3{font:700 22px/1.15 var(--font);letter-spacing:-.015em}
 @media(min-width:700px){#modal{align-items:center}.sheet{border-radius:28px}.sheet::before{display:none}}
+/* The calendar pulled down from the week bar (NEW-107; not .top, the page header's class): it comes from the top, its handle at the bottom, and follows the finger while it is held. */
+#modal:has(> .sheet.fromtop){align-items:flex-start}
+.sheet.fromtop{border-radius:0 0 28px 28px;padding-top:calc(22px + env(safe-area-inset-top,0px));padding-bottom:24px;transition:transform .22s ease}
+.sheet.fromtop.drag{transition:none}
+.sheet.fromtop::before{top:auto;bottom:8px}
+@media (prefers-reduced-motion:reduce){.sheet.fromtop{transition:none}}
 .sheet-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
 .pick{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:11px 2px;cursor:pointer;color:var(--ink)}
 .pick b{font-weight:650}

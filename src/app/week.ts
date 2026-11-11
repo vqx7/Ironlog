@@ -9,12 +9,36 @@
 import { html, nothing, render } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { DAYS, dayLabel, weekFactor } from './routines';
-import { NIL, WD2, fmtDate } from './format';
+import { NIL, WD2, fmtDate, fmtDateFrom } from './format';
 import { addDays, r1, today, weekStart, monthOf, dayOfMonth, dayOfWeek, WEEK_DAYS } from './util';
-import { U, activeRoutine, dateIndex, freeMode, isRestWeek, weekStats, cycleState } from './live';
+import { firstDate } from './charts';
+import {
+  IDX,
+  U,
+  activeRoutine,
+  dateIndex,
+  freeMode,
+  isRestWeek,
+  weekRecorded,
+  weekSessions,
+  weekStats,
+  cycleState
+} from './live';
 import { state, ui } from './store';
 import { WKVIEW_KEY, log, prefGet } from './storage';
-import { fmtBig, noLog, sessionsOn, tonnageNow, weekPlan, weekSlots } from './display';
+import {
+  doneElsewhere,
+  fmtBig,
+  fmtDateLong,
+  noLog,
+  planAhead,
+  sessionsOn,
+  tonnageNow,
+  weekPlan,
+  weekSlots,
+  weekVolume
+} from './display';
+import { closeModal, openModal } from './page';
 import { helpButton, howText, section } from './view';
 import type { Part } from './view';
 import { calBody, calNow, monthPlanned, planWords } from './calendar';
@@ -207,6 +231,99 @@ function cardioLine(w: WeekNow): Part {
     : nothing;
 }
 
+/* Any week (NEW-107, V 2026-11-10: "what is this week doing?" Month steps through months and opens its days; Week
+   showed only this week, with its days only in the bar at the top). ‹ and › step a week at a time, as Month steps,
+   from the first week with a session or cardio to a year ahead, and every day of the week shown is listed with what
+   it holds; a tap does what the same day does in the month calendar (calDay, wkGo). A week before this one is read
+   against what was planned then (weekNeed, from the sessions' own record), never the routine as it is now. */
+/** How far ahead This week steps, in weeks: a year, as the calendar. */
+const AHEAD_WEEKS = 52;
+/** The weeks This week steps between: from the first week with a session or cardio, to a year ahead. */
+export function weekBounds(): { min: string; max: string } {
+  const cur = weekStart(today());
+  const f = firstDate([...state.sessions, ...state.cardio]);
+  return { min: f && weekStart(f) < cur ? weekStart(f) : cur, max: addDays(cur, WEEK_DAYS * AHEAD_WEEKS) };
+}
+/** The Monday of the week This week shows: the one stepped to, while it is within its weeks, else this week's. */
+export function weekShown(): string {
+  const ws = ui.wkWs;
+  const { min, max } = weekBounds();
+  return typeof ws === 'string' && ws >= min && ws <= max ? ws : weekStart(today());
+}
+/** A week's dates in words, "Nov 3 to Nov 9", each with its year when it is not this one (REV9-4). */
+function weekWords(ws: string): string {
+  const t = today();
+  return `${fmtDateFrom(ws, t)} to ${fmtDateFrom(addDays(ws, WEEK_DAYS - 1), t)}`;
+}
+/** ‹ the week's dates ›, as the month's header. */
+function weekNav(ws: string): TemplateResult {
+  const { min, max } = weekBounds();
+  return html`<div class="cal-h"><button class="ib" data-act="wkStep" data-v="-1" aria-label="Previous week" ?disabled=${ws <= min}>‹</button><h4>${weekWords(ws)}</h4><button class="ib" data-act="wkStep" data-v="1" aria-label="Next week" ?disabled=${ws >= max}>›</button></div>`;
+}
+/** The week's seven days, each with its sessions, its cardio, or the workout planned on it; a tap does what the calendar's day does. */
+function weekDays(ws: string): TemplateResult {
+  const t = today();
+  const plan = planAhead(addDays(ws, WEEK_DAYS - 1));
+  const moved = doneElsewhere();
+  const rows: TemplateResult[] = [];
+  for (let i = 0; i < WEEK_DAYS; i++) {
+    const d = addDays(ws, i);
+    const ss = sessionsOn(d);
+    const c = state.cardio.filter(x => x.date === d).reduce((a, x) => a + x.min, 0);
+    const ahead = d > t ? plan[d] : undefined;
+    // A training day ahead is a tap to it on Today; a rest day ahead says so; the calendar reads days ahead the same way.
+    // Done on another day this week, as the bar says: said so, and not offered again (REV9-2).
+    const done = moved[d];
+    const p = ahead && !ahead.day.rest && ahead.day.items.length && !done ? ahead : undefined;
+    const rest = !!ahead && ahead.day.rest;
+    const what = ss.length
+      ? ss.map(x => x.dayName || 'Session').join(', ') + (c ? `, cardio ${c} min` : '')
+      : c
+        ? `Cardio ${c} min`
+        : done
+          ? done.map(x => `${x.name}, done ${DAYS[dayOfWeek(x.on)]}`).join('; ')
+          : p
+            ? `${p.day.name}, planned`
+            : rest
+              ? 'Rest'
+              : d === t
+                ? 'Nothing logged yet'
+                : d > t
+                  ? ''
+                  : 'Nothing logged';
+    const cls = ['wkday', ss.length ? 'on' : '', !ss.length && !c ? 'none' : '', d === t ? 'today' : '']
+      .filter(Boolean)
+      .join(' ');
+    const inner = html`<span class="wkday-d">${DAYS[i]} ${dayOfMonth(d)}</span><span class="wkday-n">${what || NIL}</span>`;
+    const lbl = `${fmtDateLong(d)}: ${what || 'nothing planned'}`;
+    rows.push(
+      html`<li>${
+        p
+          ? html`<button type="button" class=${cls} data-act="wkGo" data-date=${d} data-day=${String(p.di)} aria-label=${`${lbl}. Open on Today`}>${inner}</button>`
+          : d > t
+            ? html`<span class=${cls} data-date=${d}>${inner}</span>`
+            : html`<button type="button" class=${cls} data-act="calDay" data-date=${d} aria-label=${lbl}>${inner}</button>`
+      }</li>`
+    );
+  }
+  return html`<ul class="wkdays">${rows}</ul>`;
+}
+/** A week other than this one: its days, its hard sets, its cardio and its weight lifted; ahead, its days alone. */
+function otherWeek(ws: string): TemplateResult {
+  const cur = weekStart(today());
+  if (ws > cur) return html`${weekNav(ws)}${weekDays(ws)}`;
+  const got = IDX().weekHard[ws] || 0;
+  const cardio = state.cardio.filter(c => c.date >= ws && c.date <= addDays(ws, WEEK_DAYS - 1));
+  const cmin = cardio.reduce((a, c) => a + c.min, 0);
+  const vol = weekVolume(ws);
+  return html`${weekNav(ws)}${weekDays(ws)}
+<p class="small muted u-m5-0-0">${isRestWeek(ws) ? 'Rest week. ' : ''}${r1(got)} hard set${r1(got) === 1 ? '' : 's'} logged.</p>${
+    cmin
+      ? html`<p class="small u-m5-0-0">Cardio and mobility: ${cmin} min in ${cardio.length} entr${cardio.length === 1 ? 'y' : 'ies'}</p>`
+      : nothing
+  }${vol ? html`<p class="small u-m5-0-0"><b>${fmtBig(vol)} ${U()}</b> lifted</p>` : nothing}`;
+}
+
 function weekBody(w: WeekNow): Part {
   /* The two numbers are counted differently on purpose and the label has to
      say so: the denominator is every hard set the routine plans (RIR 3 or
@@ -216,15 +333,18 @@ function weekBody(w: WeekNow): Part {
   const month = monthView();
   const tog = html`<div class="wkview" role="group" aria-label="Show"><button type="button" data-act="wkView" data-v="week" aria-pressed=${String(!month)} class=${month ? nothing : 'on'}>Week</button><button type="button" data-act="wkView" data-v="month" aria-pressed=${String(month)} class=${month ? 'on' : nothing}>Month</button></div>`;
   if (month) return html`${tog}<div class="cal-inline">${calBody(calNow(), true)}</div>`;
+  const ws = weekShown();
+  if (ws !== weekStart(today())) return html`${tog}${otherWeek(ws)}`;
+  const head = html`${weekNav(ws)}${weekDays(ws)}`;
   if (freeMode())
-    return html`${tog}<div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">${noLog() ? 'Nothing logged yet.' : `${r1(w.got)} hard sets this week.`}</p>${helpButton('wk')}</div>
+    return html`${tog}${head}<div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">${noLog() ? 'Nothing logged yet.' : `${r1(w.got)} hard sets this week.`}</p>${helpButton('wk')}</div>
 ${cardioLine(w)}${liftedLine()}
 ${howText('wk', 'Each set counts once; a set at RIR 4 or more is not hard and does not count. Muscle targets are on the Muscle map and in Stats.')}`;
   if (w.rest)
-    return html`${tog}<div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">Rest week. ${w.got ? `${r1(w.got)} hard sets logged.` : 'Nothing planned.'}</p>${helpButton('wk')}</div>
+    return html`${tog}${head}<div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">Rest week. ${w.got ? `${r1(w.got)} hard sets logged.` : 'Nothing planned.'}</p>${helpButton('wk')}</div>
 ${cardioLine(w)}${liftedLine()}
 ${howText('wk', 'A rest week you marked under More options on Today. It does not count as missed: your averages, streak, and adherence skip it.')}`;
-  return html`${tog}${w.weekly ? nothing : cycleStrip(w.R)}
+  return html`${tog}${head}${w.weekly ? nothing : cycleStrip(w.R)}
 <div class="band" data-tip=${noLog() ? `${w.tgt} hard sets planned` : `${w.got} hard sets logged of ${w.tgt} planned`}><div class="fill prog" style=${`width:${w.pct}%;--pct:${w.pct}`}></div></div>
 ${cardioLine(w)}
 <div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">${noLog() ? `${w.tgt} hard sets planned this week.` : `${w.got} hard sets logged of ${w.tgt} planned${w.tgt > 0 ? ` (${Math.round(w.pct)}%)` : ''}.`}</p>${helpButton('wk')}</div>
@@ -252,6 +372,27 @@ export function weekCard(): TemplateResult {
     const sub = ym > cur ? planWords(monthPlanned(ym)) : `${n} session${n === 1 ? '' : 's'}`;
     return section({ sk: 'today:week', key: 'week', title, sub, body });
   }
+  const ws = weekShown();
+  if (ws !== weekStart(today())) {
+    /* Another week: its dates, and its sessions against what was planned then, as its sessions recorded it; with no
+       record, its sessions alone, never against the routine as it is now (REV9-3); or what is planned ahead. */
+    const n = weekSessions(ws);
+    const rec = weekRecorded(ws);
+    const ahead = ws > weekStart(today());
+    const planned = ahead
+      ? Object.entries(planAhead(addDays(ws, WEEK_DAYS - 1))).filter(
+          ([d, p]) => d >= ws && !p.day.rest && p.day.items.length
+        ).length
+      : 0;
+    const sub = ahead
+      ? planWords(planned)
+      : isRestWeek(ws)
+        ? `Rest week${n ? `, ${n} session${n === 1 ? '' : 's'}` : ''}`
+        : freeMode() || rec == null
+          ? `${n} session${n === 1 ? '' : 's'}`
+          : `${n} of ${rec} sessions`;
+    return section({ sk: 'today:week', key: 'week', title: weekWords(ws), sub, body });
+  }
   const done = `${w.doneDays} session${w.doneDays === 1 ? '' : 's'}`;
   if (freeMode())
     return section({
@@ -277,4 +418,125 @@ export function weekCard(): TemplateResult {
     sub: noLog() ? `${about}${w.planDays} sessions planned` : `${w.doneDays} of ${about}${w.planDays} sessions`,
     body
   });
+}
+
+/* ---------- the pull-down ----------
+   NEW-107 (V, 2026-11-10: "re-attempt fixing the top bar ... so it drags properly"): a finger drawn down from the
+   week bar brings the month calendar down from the top of the screen, following the finger; let go past PULL.open and
+   it stays open, short of it and it goes back. Drawn back up, or a tap outside, closes it. r25's pull opened the
+   calendar from the bottom while the finger pulled down from the top, and V had it removed on 2026-10-01 (item 86).
+   A tap on a day, and a sideways move, stay the bar's: the pull starts only once the finger has gone PULL.start down
+   and more down than sideways. */
+/** The pull's distances in CSS pixels: how far down before it starts, and how far before letting go keeps it open. */
+const PULL = { start: 12, open: 70 } as const;
+/** The calendar sheet that came down from the top, if it is open. */
+const topSheet = (): HTMLElement | null => {
+  const el = document.querySelector('#modal .sheet.fromtop');
+  return el instanceof HTMLElement ? el : null;
+};
+/** The sheet moved to follow the finger: down from above as it opens (dy from the bar), or up as it closes. */
+function follow(sh: HTMLElement, y: number): void {
+  sh.classList.add('drag');
+  sh.style.transform = `translateY(${Math.round(y)}px)`;
+}
+/** The sheet let go: back to its place, or closed. */
+function settle(sh: HTMLElement, keep: boolean): void {
+  sh.classList.remove('drag');
+  sh.style.transform = '';
+  if (!keep) closeModal();
+}
+/** Adds the pull-down's listeners to the week bar, and the push-up's to the calendar it opens; run once at start. */
+export function pullStart(): void {
+  const bar = document.getElementById('wkbar');
+  if (!bar) return;
+  let y0 = 0,
+    x0 = 0,
+    dy = 0,
+    live = false,
+    on = false;
+  bar.addEventListener(
+    'touchstart',
+    e => {
+      const t = e.touches[0];
+      live = e.touches.length === 1 && !ui.modal && !!t;
+      on = false;
+      dy = 0;
+      if (t) {
+        y0 = t.clientY;
+        x0 = t.clientX;
+      }
+    },
+    { passive: true }
+  );
+  bar.addEventListener(
+    'touchmove',
+    e => {
+      const t = e.touches[0];
+      if (!live || !t) return;
+      dy = t.clientY - y0;
+      const dx = t.clientX - x0;
+      if (!on) {
+        // Sideways, or up: the bar's own (a tap, the page's scroll); the pull is not started for this touch.
+        if (Math.abs(dx) > PULL.start && Math.abs(dx) >= dy) live = false;
+        if (dy < PULL.start || Math.abs(dx) >= dy) return;
+        on = true;
+        openModal({ kind: 'calendar', ym: monthOf(today()), top: true });
+      }
+      // The page must not scroll or bounce under the pull.
+      e.preventDefault();
+      const sh = topSheet();
+      if (sh) follow(sh, Math.min(0, dy - sh.offsetHeight));
+    },
+    { passive: false }
+  );
+  const end = (): void => {
+    if (!live) return;
+    live = false;
+    if (!on) return;
+    on = false;
+    const sh = topSheet();
+    if (sh) settle(sh, dy >= PULL.open);
+  };
+  bar.addEventListener('touchend', end);
+  bar.addEventListener('touchcancel', end);
+  // The calendar drawn back up closes it; a short push goes back. A tap on a day inside it is the calendar's own.
+  let u0 = 0,
+    up = 0,
+    pushing = false;
+  document.addEventListener(
+    'touchstart',
+    e => {
+      const t = e.touches[0];
+      const sh = topSheet();
+      pushing = !!t && !!sh && e.touches.length === 1 && e.target instanceof Node && sh.contains(e.target);
+      up = 0;
+      if (t) u0 = t.clientY;
+    },
+    { passive: true }
+  );
+  document.addEventListener(
+    'touchmove',
+    e => {
+      const t = e.touches[0];
+      const sh = topSheet();
+      if (!pushing || !t || !sh) return;
+      up = t.clientY - u0;
+      // Once moved, the sheet follows the finger both ways, never below its place.
+      if (up < -PULL.start || sh.classList.contains('drag')) {
+        e.preventDefault();
+        follow(sh, Math.min(0, up));
+      }
+    },
+    { passive: false }
+  );
+  // Let go anywhere, a sheet the push moved settles: closed when it ends PULL.open up, else back in place (REV9-1: brought
+  // back down before letting go, it was left moved up, its header off the screen).
+  const done = (): void => {
+    if (!pushing) return;
+    pushing = false;
+    const sh = topSheet();
+    if (sh && sh.classList.contains('drag')) settle(sh, up > -PULL.open);
+  };
+  document.addEventListener('touchend', done);
+  document.addEventListener('touchcancel', done);
 }
