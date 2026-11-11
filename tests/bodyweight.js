@@ -9,6 +9,9 @@
 //   3  Adding a ready-made routine on Plan (not made active): its "Tap Make active" stays, nothing over it or in it.
 //   4  Adding pull-ups in a session: no note, since the session's card and the line under the lift ask.
 //   5  Guards: with a weigh-in, nothing about bodyweight; on Plan the line is under the day's first bodyweight lift only.
+//   7  Three bodyweight lifts never done in one session: the first-time paragraph on the first, a short line on the
+//      others, as every first-time paragraph (r34.2; NEW-109: until 2.49 only a loaded lift's was shortened, read by
+//      its words).
 //   6  Editing a saved session (REV11-2): pull-ups added there get the line under the lift too, and its Add bodyweight
 //      dates the weigh-in the session's day, as the session's Bodyweight button does.
 // BODYWEIGHT_ONLY=1,2 runs some sections.
@@ -128,6 +131,30 @@ async function pickPullups(P, mode) {
     const nov8 = await P.page.evaluate(() => window.__ironlog.fmtDate('2026-11-08'));
     ok(sheet.includes(`Saved as the weigh-in for ${nov8}`), '6. and its Add bodyweight saves the weigh-in for the session\'s day, as the session\'s Bodyweight button does', sheet.slice(0, 300));
     ok(!P.errors.length, '6. no page errors', P.errors);
+    await P.ctx.close(); await P.browser.close();
+  }
+
+  if (run(7)) {
+    const P = await phone({ onboarded: true, bw: 180 });
+    await P.page.evaluate(() => { const L = window.__ironlog; const S = L.state;
+      S.routines = [{ id: 'R1', name: 'Mine', schedule: 'cycle', days: [{ id: 'A', name: 'Bodyweight', rest: false, items: ['pullup', 'dips', 'pushup'].map((exId, k) => ({ uid: 'A' + k, exId, sets: 3, repMin: 6, repMax: 12, rir: 2, rest: 120, ss: null })) }] }];
+      S.activeRoutineId = 'R1'; S.sessions = []; L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); });
+    await wait(150);
+    await P.page.click('#view .hero [data-act="startSession"]:not([data-light])'); await wait(300);
+    const hints = await P.page.evaluate(() => [0, 1, 2].map(i => { const e = document.querySelector(`#blk-${i} p.hint`); return e ? e.textContent.trim() : ''; }));
+    ok(/^First time: your bodyweight only\. Do 6 to 12 reps/.test(hints[0]) && hints.slice(1).every(h => h === 'First time: bodyweight only; do 6 to 12 reps.'), '7. three new bodyweight lifts: the first-time paragraph on the first, one short line on the others (2.48: the paragraph three times)', hints);
+    await P.page.evaluate(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.render(); });
+    /* Each kind of first session says its own paragraph once: a new loaded lift's does not stand for a bodyweight or
+       assisted lift's, whose advice differs (an easier version; setting the help). Leg extensions, then pull-ups, dips,
+       and assisted pull-ups twice. */
+    await P.page.evaluate(() => { const L = window.__ironlog; const S = L.state;
+      S.routines[0].days[0].items = ['legExt', 'pullup', 'dips', 'assistPullup', 'assistDip'].map((exId, k) => ({ uid: 'B' + k, exId, sets: 3, repMin: 6, repMax: 12, rir: 2, rest: 120, ss: null }));
+      L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); });
+    await wait(150);
+    await P.page.click('#view .hero [data-act="startSession"]:not([data-light])'); await wait(300);
+    const mixed = await P.page.evaluate(() => [0, 1, 2, 3, 4].map(i => { const e = document.querySelector(`#blk-${i} p.hint`); return e ? e.textContent.trim() : ''; }));
+    ok(/^First time: pick a load/.test(mixed[0]) && /^First time: your bodyweight only\. Do 6 to 12 reps/.test(mixed[1]) && mixed[2] === 'First time: bodyweight only; do 6 to 12 reps.' && /^First time: set the help/.test(mixed[3]) && /^First time: help for about \d+ reps; do 6 to 12 reps\.$/.test(mixed[4]), '7. a new loaded lift, two bodyweight and two assisted: each kind\'s paragraph once, then its short line', mixed);
+    ok(!P.errors.length, '7. no page errors', P.errors);
     await P.ctx.close(); await P.browser.close();
   }
 

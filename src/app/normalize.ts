@@ -842,6 +842,7 @@ function cleanDraftBlock(b0: unknown): DraftBlock[] {
         note: typeof b.note === 'string' ? b.note : '',
         inj: typeof b.inj === 'string' && isMuscleOrJoint(b.inj) ? b.inj : null,
         hint: typeof b.hint === 'string' ? b.hint : '',
+        ...(typeof b.hintAgain === 'string' && b.hintAgain ? { hintAgain: b.hintAgain } : {}),
         last: typeof b.last === 'string' ? b.last : '',
         // Last time's sets as shown in the Last column: short strings, absent in older drafts.
         prev: prev
