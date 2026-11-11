@@ -80,6 +80,7 @@ import {
   bandOf,
   actualAvg4,
   allTimeBests,
+  sinceBack,
   atRangeTop,
   avgWait,
   bwAt,
@@ -123,6 +124,7 @@ import {
   bwWeekTxt,
   fmtBig,
   fmtDateLong,
+  fmtDateYr,
   fmtE,
   goalState,
   goalWords,
@@ -670,17 +672,31 @@ export function bestsBoard(): { n: number; html: TemplateResult } {
          record of any kind, read as the date of the heaviest set. A 1RM is shown
          for compound lifts only. */
       const est = r.est && isCompound(ex) ? r.est : null;
-      const top = [
-        est ? `best est ${fmtE(est.v)}${u(ex)}${loadNote(ex)}, ${fmtDate(est.date)}` : '',
-        r.heavy ? `heaviest ${setShort(ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(ex)}, ${fmtDate(r.heavy.date)}` : ''
-      ]
-        .filter(Boolean)
-        .join(' · ');
-      return html`<details class="bx" data-ex=${ex.id}><summary><span class="bn">${ex.name}</span><span class="bs">${top}</span></summary>
+      // A record's date says its year when it is not this one (NEW-111: an old best from 2016 read as this March 1).
+      const when = fmtDateYr;
+      const line = (
+        e: { v: number; date: string } | null,
+        h: { p: { w: number; r: number }; date: string } | null
+      ): string =>
+        [
+          e ? `best est ${fmtE(e.v)}${u(ex)}${loadNote(ex)}, ${when(e.date)}` : '',
+          h ? `heaviest ${setShort(ex, h.p.w, h.p.r)}${loadNote(ex)}, ${when(h.date)}` : ''
+        ]
+          .filter(Boolean)
+          .join(' · ');
+      const top = line(est, r.heavy);
+      /* Back after a long break with a best ever from before it (NEW-110), the best since you came back is shown
+         beside it, so the old number stays on record and the new ones show as they come. */
+      const b = sinceBack(ex.id);
+      const older = !!b && ((!!r.heavy && r.heavy.date < b.from) || (!!est && est.date < b.from));
+      const since = b && older ? line(b.est && isCompound(ex) ? b.est : null, b.heavy) : '';
+      return html`<details class="bx" data-ex=${ex.id}><summary><span class="bn">${ex.name}</span><span class="bs">${since ? `All time: ${top}` : top}</span>${
+        since && b ? html`<span class="bs">Since you came back on ${when(b.from)}: ${since}</span>` : nothing
+      }</summary>
     ${est ? html`<p class="small u-m0-0-6">Best estimate from ${setShort(ex, est.p.w, est.p.r)}.</p>` : nothing}
     <table class="t"><tr><th>${ex.assist ? 'Load' : loadHead(ex)}</th><th class="r">${ex.timed ? 'Seconds' : 'Reps'}</th><th class="r">First done</th></tr>${r.front.map(
       f =>
-        html`<tr><td class="num">${loadLabel(ex, f.p.w)}</td><td class="r num">${f.p.r}</td><td class="r">${fmtDate(f.date)}</td></tr>`
+        html`<tr><td class="num">${loadLabel(ex, f.p.w)}</td><td class="r num">${f.p.r}</td><td class="r">${when(f.date)}</td></tr>`
     )}</table></details>`;
     })}</div>${rows.length > shown.length ? html`<button class="btn sm u-mt8" data-act="bestsAll">Show all ${rows.length} lifts</button>` : nothing}<p class="small muted hastip u-m8-0-0" data-tip="Most reps at each weight, unless a heavier set matched it. Beat a line with a set at least 90% as strong as your best: a rep PR. Best estimate (compound lifts): the highest one-rep max any set gives, in the terms you log it (total, per side or per dumbbell). Warm-ups and drop sets left out.">How to read this</p>${oldBest}`
   };
@@ -1130,7 +1146,7 @@ function liftsSec(I: Idx, stalled: readonly (readonly [string, ExStat])[], prs4:
                 : ''
               : fmtE(p.value) + ' ' + U()
             : setShort(ex, p.w, p.r);
-        return html`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p.type === 'Rep PR' ? 'blue' : 'green'}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDate(p.date)}</span></span></div>`;
+        return html`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p.type === 'Rep PR' ? 'blue' : 'green'}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDateYr(p.date)}</span></span></div>`;
       })}`
     : html`<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>`;
   const nLifts = Object.keys(I.byEx).length;
@@ -1139,7 +1155,7 @@ function liftsSec(I: Idx, stalled: readonly (readonly [string, ExStat])[], prs4:
     'exercise',
     'Lifts',
     LIFTS_HELP,
-    html`${exh}${dashSub('prs', 'Recent PRs', prBody, noLog() ? 'none yet' : prs4 || !firstPR ? `${prs4} in ${RECENT_WEEKS} weeks` : `latest ${fmtDate(firstPR.date)}`)}${dashSub(
+    html`${exh}${dashSub('prs', 'Recent PRs', prBody, noLog() ? 'none yet' : prs4 || !firstPR ? `${prs4} in ${RECENT_WEEKS} weeks` : `latest ${fmtDateYr(firstPR.date)}`)}${dashSub(
       'bests',
       'All-time bests',
       bests.html,

@@ -120,6 +120,22 @@ export const fmtG = (v: number): string => String(r3(v));
 export const repSpan = (lo: number | string, hi: number | string, sep = ' to '): string =>
   +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
 
+/** The days in a year, on average over the leap years. */
+const YEAR_DAYS = 365.25;
+/** The months in a year: a month is a twelfth of YEAR_DAYS. */
+const YEAR_MONTHS = 12;
+/** Up to this many months a time away is said in months, so 18 months is not rounded to a year or two. */
+const AWAY_MONTHS_MAX = 24;
+
+/* The time a lift was away after a long break, as a lifter says it (NEW-110): months up to two years, then whole
+   years, both read from the months rounded, so 23.5 months is 2 years and never "1 years" (REV10-1). */
+/** The days of a long break in words: "7 months", "2 years". */
+export function awayWords(days: number): string {
+  const months = Math.round((days * YEAR_MONTHS) / YEAR_DAYS);
+  if (months < AWAY_MONTHS_MAX) return `${months} month${months === 1 ? '' : 's'}`;
+  return `${Math.floor(months / YEAR_MONTHS)} years`;
+}
+
 /** A plan's reps as a phrase: "target of 5" or "8-12 range". */
 export const rangeWords = (p: { repMin: number | string; repMax: number | string }): string =>
   +p.repMin === +p.repMax ? `target of ${+p.repMin}` : `${+p.repMin}-${+p.repMax} range`;

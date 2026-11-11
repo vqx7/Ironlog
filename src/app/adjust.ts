@@ -11,6 +11,7 @@ import { EPS, EPS_SAME } from './util';
 import {
   BACK_DAYS,
   afterBreak,
+  sinceLongBreak,
   E1_MAX_RIR,
   e1inv,
   fitE,
@@ -66,7 +67,8 @@ import { bwRefLoadIn, rirEstIn } from './setread';
    re-approaches without the 10% cap (341 b, rule 3). Read only when the lift
    is not back after a break, so its last session is in today's stretch. */
 function stretchTopIn(M: Model, exId: string, plan: Plan): number | null {
-  const xs = liftReadIn(M, exId, M.today());
+  // After a long break the lift starts fresh (NEW-110): loads from before it are no re-approach.
+  const xs = sinceLongBreak(liftReadIn(M, exId, M.today()), M.today());
   if (!xs.length) return null;
   let i = xs.length - 1;
   while (i > 0 && !afterBreak(xs[i - 1], xs[i].date)) i--;
@@ -86,7 +88,8 @@ function stretchTopIn(M: Model, exId: string, plan: Plan): number | null {
 export function bwNoLoadIn(M: Model, ex: ExerciseLike | null | undefined, b?: DraftBlock | null): boolean {
   if (!ex || !ex.bw || ex.assist) return false;
   if (b && b.sets.some(x => +(x.w ?? 0) > EPS_SAME)) return false;
-  return !(IDXIn(M).byEx[ex.id] || []).some(x => x.pts.some(p => p.w > EPS_SAME));
+  // Since a long break, as the engine starts it (NEW-110, REV10-4): loads from years ago make no loaded lift today.
+  return !sinceLongBreak(IDXIn(M).byEx[ex.id] || [], M.today()).some(x => x.pts.some(p => p.w > EPS_SAME));
 }
 
 /** The next sets after ticked set `si` of a block, or null when it was not clearly off or the lift does not take an adjustment (above); `lastR` is last time's reps for that row (the Last column's), or null. */

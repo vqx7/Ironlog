@@ -10,7 +10,7 @@ import { act } from './act';
 import { isCompound } from './library';
 import { planItemOf, move, fixSupersets, partOf, DEFAULT_PLAN } from './routines';
 import { min5, rangeWords, MISSED_SAID } from './format';
-import { e1, prSameLoad, BACK_DAYS, isMissed, prScoreOf } from './formulas';
+import { e1, prSameLoad, BACK_DAYS, isMissed, longBreak, prScoreOf } from './formulas';
 import { KM_MI } from './units';
 import { addDays, today, uid, numIn, EPS, EPS_SAME, WEEK_DAYS, r3 } from './util';
 import { loadWords } from './loads';
@@ -1147,7 +1147,8 @@ export function mixCheck(bi: number, si: number): void {
   const ex = EX(b.exId);
   const st = IDX().exStats[b.exId];
   const last = st && st.last ? st.last.topW : 0;
-  if (!(last > 0)) return;
+  // After a long break the lift starts fresh (NEW-110): a load far under one from years ago is no mix-up.
+  if (!(last > 0) || (st && longBreak(st.last, d.date))) return;
   const r = +(s.w ?? 0) / last;
   if (r >= MIX_RANGE[0] && r <= MIX_RANGE[1]) return;
   const key = d.id + ':' + bi;

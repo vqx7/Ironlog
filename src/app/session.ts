@@ -536,10 +536,12 @@ const HINT_ONCE: readonly string[] = [
 export function hintOnce(t: string | null | undefined, seen: Set<string>): string {
   if (!t) return '';
   const m = t.match(
-    /^First time: pick a load you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/
+    /^(First time|Back after \d+ (?:months?|years)): pick a load you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/
   );
+  // A lift back after a long break is worded as a first session after its time away (NEW-110), and shortened alike.
   if (m) {
-    if (seen.has('first')) return `First time: a load you could lift about ${m[1]} times; do ${m[2]}.`;
+    const [, lead, can, reps] = m;
+    if (seen.has('first')) return `${lead}: a load you could lift about ${can} times; do ${reps}.`;
     seen.add('first');
     return t;
   }

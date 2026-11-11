@@ -451,7 +451,7 @@ function blockPart(
         b.target
           ? html`<p class="hint"><b>Today: ${targetText(b)}</b>${why ? html` ${tipButton(why, 'Why this target')}` : ''}<span class="tp muted u-dblock">${lastHead(b, dupB)}</span>${bl ? html`<span class="tp muted u-dblock">${bl}</span>` : ''}${b.easier ? html`<span class="tp ez">${b.easier}</span>` : ''}${progressLine(b, bi)}</p>`
           : html`<p class="hint">${hintOnce(b.hint || '', hintSeen)}</p>`
-      }${bi === bwAt ? bwWarn(b.exId) : ''}${bi === calIdx ? html`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ''}
+      }${bi === bwAt ? bwWarn(b.exId, d.date) : ''}${bi === calIdx ? html`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ''}
       ${ss && partner && gk === 0 ? html`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? 'pair' : 'group'}.</p>` : ''}
       ${b.lastNote && !b.note ? html`<p class="small lnote">Your note, ${fmtDate(b.lastNote.date)}: ${b.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ''}
       ${b.note ? html`<p class="small bnote" id=${`bn-${bi}`}>${b.note}</p>` : html`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}${picStrip(bi, false)}
@@ -500,8 +500,10 @@ export function viewWorkout(d: Draft): TemplateResult {
   const left = leftMin(d);
   const sp = sessProgress(d);
   const calIdx = d.editingId ? -1 : calDueIdx(d);
-  // The bodyweight line, once a session: on the first bodyweight lift still open (r69, V: on every one it read as a wall of text).
-  const bwAt = d.editingId ? -1 : d.ex.findIndex((b, bi) => !!EX(b.exId).bw && !isFolded(d, b, bi));
+  /* The bodyweight line, once a session: on the first bodyweight lift still open (r69, V: on every one it read as a
+     wall of text). In a saved session being edited too: there it was the only place that said it, the note in a
+     message having gone (REV11-2). */
+  const bwAt = d.ex.findIndex((b, bi) => !!EX(b.exId).bw && !isFolded(d, b, bi));
   const letters = ssLetters(d.ex.map(b => b.plan));
   const when = d.past ? `for ${fmtDateLong(d.date)}` : d.startedAt ? `started ${startedWords(d.startedAt)}` : '';
   /* The sets done are the bar's to say once it shows (r69, V, 2026-11-03:
