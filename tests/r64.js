@@ -464,16 +464,19 @@ const run = n => !ONLY || ONLY.includes(n);
 
   // ---- 14. R-7: bench last done Oct 20, 2025, read on Oct 25, 2026: "Last (Oct 20): ..." read as five days ago.
   if (run(14)) {
-    const P = await open(FILE, { browser, clock: '2026-10-25T10:00:00' }); pages.push(P);
+    /* The session from another year is within six months of today, so its lift is read as usual: since 2.47 a lift a
+       year off starts fresh with no Last line (NEW-110), which is where this check first put it (Oct 20, 2025 read on
+       Oct 25, 2026). Dec 20, 2025 read on Feb 10, 2026 is another year, seven weeks back. */
+    const P = await open(FILE, { browser, clock: '2026-02-10T10:00:00' }); pages.push(P);
     const r = await P.page.evaluate(() => {
       const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg';
       const plan = { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.5 };
       const one = (date, ex) => { s.draft = null; s.sessions = [{ id: 'y1', date, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: ex, rr: [6, 10], sets: [0, 1, 2].map(() => ({ w: 60, r: 8, rir: 2, warm: false, drop: false })) }] }]; L.state = L.normalize(s); L.invalidate(); return L.suggest(ex, plan).last || L.suggest(ex, plan).text; };
-      return { old: one('2025-10-20', 'bench'), now: one('2026-10-18', 'bench'), hold: one('2025-10-20', 'plank') };
+      return { old: one('2025-12-20', 'bench'), now: one('2026-02-03', 'bench'), hold: one('2025-12-20', 'plank') };
     });
-    ok(/^Last \(Oct 20, 2025\b/.test(r.old), '14. a session a year back says its year: "Last (Oct 20, 2025 ..." (r63: "Last (Oct 20")', r);
-    ok(/^Last \(Oct 20, 2025\b/.test(r.hold), '14. and a timed hold\'s Last line too', r.hold);
-    ok(/^Last \(Oct 18\b(?!, 20)/.test(r.now), '14. (a guard) one this year says the day alone, as before', r.now);
+    ok(/^Last \(Dec 20, 2025\b/.test(r.old), '14. a session of another year says its year: "Last (Dec 20, 2025 ..." (r63: "Last (Dec 20")', r);
+    ok(/^Last \(Dec 20, 2025\b/.test(r.hold), '14. and a timed hold\'s Last line too', r.hold);
+    ok(/^Last \(Feb 3\b(?!, 20)/.test(r.now), '14. (a guard) one this year says the day alone, as before', r.now);
   }
 
   // ---- 15. A-6 and 339 o: the list judged a session as a whole and the toast a set alone, each with its own copy of the
