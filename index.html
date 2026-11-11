@@ -4344,7 +4344,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       // Started as its day's second workout.
       part: d3.part === 2 ? 2 : void 0,
       // Finish's two questions once answered (sets left, ramp-ups), kept as they came: until 2.28 they passed through
-      // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (the r56-1c suite).
+      // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (tests/storage-sync.js, S-12, moved from r56-1c).
       _leftAsked: typeof d3._leftAsked === "boolean" ? d3._leftAsked : void 0,
       _rampAsked: typeof d3._rampAsked === "boolean" ? d3._rampAsked : void 0,
       // A past workout typed in after the fact: no rest timer, no clock, no check-in.

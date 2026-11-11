@@ -1790,7 +1790,7 @@ export async function cloudInit(): Promise<void> {
      this call's too, rather than reading the sync as off while it is still
      deciding (r64, the r63 audit's F3: a sign-in made meanwhile said "Signed
      in. Syncing your log." and nothing synced). A start of its own after it
-     would ask again a question just answered Cancel (tests/r56-1.js). */
+     would ask again a question just answered Cancel (tests/storage-sync.js, S-14). */
   if (starting) {
     await starting;
     return;

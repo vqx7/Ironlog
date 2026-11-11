@@ -335,7 +335,7 @@ const CASES = [
 
   // ---- 5. Back online, the sync pulls (the independent review of r63).
   if (run(5)) {
-    // Two phones on one stand-in account (as tests/r56-1.js builds it).
+    // Two phones on one stand-in account (as tests/storage-sync.js builds it).
     const store = new Map();
     const setup = uid => async (ctx, page) => {
       await page.exposeFunction('__dbGet', p => (store.has(p) ? store.get(p) : null));

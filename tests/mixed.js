@@ -68,7 +68,7 @@ async function phone(browser, cloud, file, uid) {
   P.tick = (i, w, r) => P.ev(([i, w, r]) => { const L = window.__ironlog; const s = L.state.draft.ex[0].sets[i]; s.w = w; s.r = r; s.done = true; L.saveNow(); }, [i, w, r]);
   // Starts the first day with its first exercise only, four rows, as tests/storage-sync.js's moved two-phone sections do.
   P.start = () => P.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ACT.startSession({ dataset: { day: '0', light: '0' } }); const d = L.state.draft; d.ex = d.ex.slice(0, 1); d.ex[0].sets.length = 4; d._rampAsked = true; L.saveNow(); });
-  // Finishes the workout in progress with any row left unticked answered, as tests/r56-1.js finishes.
+  // Finishes the workout in progress with any row left unticked answered, as tests/storage-sync.js's moved two-phone sections finish.
   P.finish = async () => { await P.ev(() => { const L = window.__ironlog; L.state.draft._leftAsked = true; L.ACT.finishNow(); }); await wait(300); await P.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); };
   P.toast = () => P.ev(() => { const el = document.getElementById('toast'); return el && !el.hidden ? el.innerText : ''; });
   return P;
