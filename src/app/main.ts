@@ -210,7 +210,8 @@ import {
   weeksAvg,
   weekSessions,
   weekStats,
-  weekStreak
+  weekStreak,
+  weekRecorded
 } from './live';
 import { keepExtra, normalize, plainTemplate, starterRoutine, starterSigs } from './normalize';
 import {
@@ -468,6 +469,7 @@ function exposeForTests(): void {
     sessCmp,
     avgWeeks,
     weekStreak,
+    weekRecorded,
     coach,
     noLog,
     adjOn,
