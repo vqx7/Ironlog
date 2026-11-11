@@ -58,10 +58,10 @@ const CLOCK = '2026-10-14T10:00:00';
     // Dates read the same through the kept formatters.
     const dt = await P.page.evaluate(() => { const L = window.__ironlog; let bad = [];
       for (let i = 0; i < 800; i += 7) { const d = L.addDays('2025-01-01', i); const p = new Date(d + 'T12:00:00'); const a = L.fmtDate(d), b = L.fmtDateLong(d);
-        const ea = new Date(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8)).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); const eb = new Date(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        const ea = new Date(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8)).toLocaleDateString(undefined, { month: 'short', day: 'numeric', ...(d.slice(0, 4) === L.today().slice(0, 4) ? {} : { year: 'numeric' }) }); const eb = new Date(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
         if (a !== ea || b !== eb) bad.push([d, a, ea, b, eb]); }
       return bad; });
-    ok(dt.length === 0, 'fmtDate and fmtDateLong read the same as before for 115 dates over two years', dt.slice(0, 3));
+    ok(dt.length === 0, 'fmtDate and fmtDateLong read as the locale writes them for 115 dates over two years, fmtDate with its year when not this one (2.48, NEW-112)', dt.slice(0, 3));
     ok(!P.errors.length, 'no page errors (adherence)', P.errors);
     await P.ctx.close();
   }

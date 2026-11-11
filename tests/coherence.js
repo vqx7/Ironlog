@@ -493,7 +493,7 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
       L.state = L.normalize(S); L.invalidate(); L.ui.bestsAll = true;
       const d = document.createElement('div'); d.innerHTML = L.bestsBoard().html;
       // A date as the screens write it: its year when it is not this one.
-      const yr = date => L.fmtDate(date) + (date.slice(0, 4) === '2026' ? '' : ', ' + date.slice(0, 4));
+      const yr = date => new Date(date + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', ...(date.slice(0, 4) === '2026' ? {} : { year: 'numeric' }) });
       const out = []; let two = 0, n = 0;
       for (const id of Object.keys(L.IDX().byEx)) {
         const s = d.querySelector(`.bx[data-ex="${id}"] summary`); if (!s) continue;
