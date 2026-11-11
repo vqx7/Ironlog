@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-I5UcH5cQlx6ZK1tcCWk+Njz3/pY6/Lox2UeU6y9Wwe4=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-59ur9DYypS8hihFHI3dyztt08+If6gqurqGpXatHxD8=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.10-r91">
+<meta name="app-build" content="2026.11.10-r92">
 <title>Ironlog</title>
 <script>window.IRONLOG_APP=true;window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -344,6 +344,15 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
 .wkbar .w.add .dn{position:relative}
 .wkbar .w.add .dn::after{content:"+";position:absolute;right:-3px;bottom:-3px;width:13px;height:13px;border-radius:50%;background:var(--surface);color:var(--muted);box-shadow:0 0 0 1px var(--line);font:800 11px/13px var(--font);text-align:center}
 @media (prefers-reduced-motion:reduce){.wkbar .w .dn{transition:none}}
+/* This week's days (NEW-107): one row a day, a tap away as the calendar's days are. */
+.wkdays{list-style:none;margin:8px 0 0;padding:0}
+.wkdays li+li{border-top:1px solid var(--line-soft)}
+.wkday{-webkit-appearance:none;appearance:none;display:flex;align-items:center;gap:12px;width:100%;min-height:44px;margin:0;padding:6px 2px;border:0;background:transparent;font:inherit;color:var(--ink);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+span.wkday{cursor:default}
+.wkday-d{flex:0 0 56px;font:650 13px/1.2 var(--font);color:var(--muted);font-variant-numeric:tabular-nums}
+.wkday.today .wkday-d{color:var(--ink);font-weight:800}
+.wkday-n{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.wkday.none .wkday-n{color:var(--muted)}
 .wkbar .w .wd{font:650 9.5px/1.1 var(--font);letter-spacing:.06em;text-transform:uppercase}
 /* Each day is a small disc, like an activity ring: filled in the accent when
    trained, a grey ring when planned (red when a fixed weekday was missed), a
@@ -1167,6 +1176,12 @@ details.more>summary .small{display:block;font-weight:400}
 .block.flash{animation:flashIn 1.4s ease-out}
 .sheet h3{font:700 22px/1.15 var(--font);letter-spacing:-.015em}
 @media(min-width:700px){#modal{align-items:center}.sheet{border-radius:28px}.sheet::before{display:none}}
+/* The calendar pulled down from the week bar (NEW-107; not .top, the page header's class): it comes from the top, its handle at the bottom, and follows the finger while it is held. */
+#modal:has(> .sheet.fromtop){align-items:flex-start}
+.sheet.fromtop{border-radius:0 0 28px 28px;padding-top:calc(22px + env(safe-area-inset-top,0px));padding-bottom:24px;transition:transform .22s ease}
+.sheet.fromtop.drag{transition:none}
+.sheet.fromtop::before{top:auto;bottom:8px}
+@media (prefers-reduced-motion:reduce){.sheet.fromtop{transition:none}}
 .sheet-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
 .pick{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:11px 2px;cursor:pointer;color:var(--ink)}
 .pick b{font-weight:650}
@@ -2134,8 +2149,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.45";
-  var APP_VERSION = "2026.11.10-r91";
+  var DISPLAY_VERSION = "2.46";
+  var APP_VERSION = "2026.11.10-r92";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -9090,6 +9105,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const rec2 = IDXIn(M3).weekPw;
     return Math.max(1, rec2 && rec2[ws] || plannedPerWeek(R2));
   }
+  function weekRecordedIn(M3, ws) {
+    weekRoutineIn(M3, ws);
+    const rec2 = IDXIn(M3).weekPw;
+    return rec2 && rec2[ws] ? rec2[ws] : null;
+  }
   var STREAK_WEEKS = 104;
   function weekStreakIn(M3) {
     const R2 = activeRoutineIn(M3);
@@ -9792,6 +9812,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var recentLighter = live(recentLighterIn);
   var regionBalance = live(regionBalanceIn);
   var weekNeed = live(weekNeedIn);
+  var weekRecorded = live(weekRecordedIn);
   var weekRoutine = live(weekRoutineIn);
   var weekStats = live(weekStatsIn);
   var weekStreak = live(weekStreakIn);
@@ -11850,6 +11871,20 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const di = sessDayIdx(R2, s3), part = partOf(s3);
       const slot = out.find((x2) => x2.di === di && x2.part === part && !x2.doneOn);
       if (slot) slot.doneOn = s3.date;
+    }
+    return out;
+  }
+  function doneElsewhere() {
+    const R2 = activeRoutine();
+    const cur = weekStart(today());
+    const out = {};
+    if (R2.schedule !== "weekly" || isRestWeek(cur)) return out;
+    const slots = weekSlots(R2);
+    for (let i5 = 0; i5 < WEEK_DAYS; i5++) {
+      const d3 = addDays(cur, i5);
+      const mine = slots.filter((x2) => x2.di === i5);
+      if (d3 > today() && mine.length && !sessionsOn(d3).length && mine.every((x2) => x2.doneOn && x2.doneOn !== d3))
+        out[d3] = mine.map((x2) => ({ name: x2.day.name, on: x2.doneOn || "" }));
     }
     return out;
   }
@@ -18706,8 +18741,9 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
   }
   function plannedIn(ym) {
     const out = {};
+    const moved = doneElsewhere();
     for (const [d3, p3] of Object.entries(planAhead(monthEnd(ym))))
-      if (d3.startsWith(ym) && !p3.day.rest && p3.day.items.length) out[d3] = p3;
+      if (d3.startsWith(ym) && !p3.day.rest && p3.day.items.length && !moved[d3]) out[d3] = p3;
     return out;
   }
   function monthPlanned(ym) {
@@ -18754,7 +18790,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     return k2 ? `${k2} planned` : "Nothing planned";
   }
   function calSheet(m3) {
-    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="calH">${calBody(m3.ym, false)}</div>`;
+    return b`<div class=${m3.top ? "sheet fromtop" : "sheet"} role="dialog" aria-modal="true" aria-labelledby="calH">${calBody(m3.ym, false)}</div>`;
   }
 
   // src/app/week.ts
@@ -18861,19 +18897,74 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
   function cardioLine(w2) {
     return w2.cardioMin ? b`<p class="small u-m5-0-0">Cardio and mobility: ${w2.cardioMin} min in ${w2.cardioN} entr${w2.cardioN === 1 ? "y" : "ies"}</p>` : A;
   }
+  var AHEAD_WEEKS = 52;
+  function weekBounds() {
+    const cur = weekStart(today());
+    const f3 = firstDate([...state.sessions, ...state.cardio]);
+    return { min: f3 && weekStart(f3) < cur ? weekStart(f3) : cur, max: addDays(cur, WEEK_DAYS * AHEAD_WEEKS) };
+  }
+  function weekShown() {
+    const ws = ui.wkWs;
+    const { min, max } = weekBounds();
+    return typeof ws === "string" && ws >= min && ws <= max ? ws : weekStart(today());
+  }
+  function weekWords(ws) {
+    const t4 = today();
+    return `${fmtDateFrom(ws, t4)} to ${fmtDateFrom(addDays(ws, WEEK_DAYS - 1), t4)}`;
+  }
+  function weekNav(ws) {
+    const { min, max } = weekBounds();
+    return b`<div class="cal-h"><button class="ib" data-act="wkStep" data-v="-1" aria-label="Previous week" ?disabled=${ws <= min}>‹</button><h4>${weekWords(ws)}</h4><button class="ib" data-act="wkStep" data-v="1" aria-label="Next week" ?disabled=${ws >= max}>›</button></div>`;
+  }
+  function weekDays(ws) {
+    const t4 = today();
+    const plan = planAhead(addDays(ws, WEEK_DAYS - 1));
+    const moved = doneElsewhere();
+    const rows2 = [];
+    for (let i5 = 0; i5 < WEEK_DAYS; i5++) {
+      const d3 = addDays(ws, i5);
+      const ss = sessionsOn(d3);
+      const c4 = state.cardio.filter((x2) => x2.date === d3).reduce((a2, x2) => a2 + x2.min, 0);
+      const ahead = d3 > t4 ? plan[d3] : void 0;
+      const done = moved[d3];
+      const p3 = ahead && !ahead.day.rest && ahead.day.items.length && !done ? ahead : void 0;
+      const rest = !!ahead && ahead.day.rest;
+      const what = ss.length ? ss.map((x2) => x2.dayName || "Session").join(", ") + (c4 ? `, cardio ${c4} min` : "") : c4 ? `Cardio ${c4} min` : done ? done.map((x2) => `${x2.name}, done ${DAYS[dayOfWeek(x2.on)]}`).join("; ") : p3 ? `${p3.day.name}, planned` : rest ? "Rest" : d3 === t4 ? "Nothing logged yet" : d3 > t4 ? "" : "Nothing logged";
+      const cls = ["wkday", ss.length ? "on" : "", !ss.length && !c4 ? "none" : "", d3 === t4 ? "today" : ""].filter(Boolean).join(" ");
+      const inner = b`<span class="wkday-d">${DAYS[i5]} ${dayOfMonth(d3)}</span><span class="wkday-n">${what || NIL}</span>`;
+      const lbl = `${fmtDateLong(d3)}: ${what || "nothing planned"}`;
+      rows2.push(
+        b`<li>${p3 ? b`<button type="button" class=${cls} data-act="wkGo" data-date=${d3} data-day=${String(p3.di)} aria-label=${`${lbl}. Open on Today`}>${inner}</button>` : d3 > t4 ? b`<span class=${cls} data-date=${d3}>${inner}</span>` : b`<button type="button" class=${cls} data-act="calDay" data-date=${d3} aria-label=${lbl}>${inner}</button>`}</li>`
+      );
+    }
+    return b`<ul class="wkdays">${rows2}</ul>`;
+  }
+  function otherWeek(ws) {
+    const cur = weekStart(today());
+    if (ws > cur) return b`${weekNav(ws)}${weekDays(ws)}`;
+    const got = IDX().weekHard[ws] || 0;
+    const cardio = state.cardio.filter((c4) => c4.date >= ws && c4.date <= addDays(ws, WEEK_DAYS - 1));
+    const cmin = cardio.reduce((a2, c4) => a2 + c4.min, 0);
+    const vol = weekVolume(ws);
+    return b`${weekNav(ws)}${weekDays(ws)}
+<p class="small muted u-m5-0-0">${isRestWeek(ws) ? "Rest week. " : ""}${r1(got)} hard set${r1(got) === 1 ? "" : "s"} logged.</p>${cmin ? b`<p class="small u-m5-0-0">Cardio and mobility: ${cmin} min in ${cardio.length} entr${cardio.length === 1 ? "y" : "ies"}</p>` : A}${vol ? b`<p class="small u-m5-0-0"><b>${fmtBig(vol)} ${U()}</b> lifted</p>` : A}`;
+  }
   function weekBody(w2) {
     const month = monthView();
     const tog = b`<div class="wkview" role="group" aria-label="Show"><button type="button" data-act="wkView" data-v="week" aria-pressed=${String(!month)} class=${month ? A : "on"}>Week</button><button type="button" data-act="wkView" data-v="month" aria-pressed=${String(month)} class=${month ? "on" : A}>Month</button></div>`;
     if (month) return b`${tog}<div class="cal-inline">${calBody(calNow(), true)}</div>`;
+    const ws = weekShown();
+    if (ws !== weekStart(today())) return b`${tog}${otherWeek(ws)}`;
+    const head = b`${weekNav(ws)}${weekDays(ws)}`;
     if (freeMode())
-      return b`${tog}<div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">${noLog() ? "Nothing logged yet." : `${r1(w2.got)} hard sets this week.`}</p>${helpButton("wk")}</div>
+      return b`${tog}${head}<div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">${noLog() ? "Nothing logged yet." : `${r1(w2.got)} hard sets this week.`}</p>${helpButton("wk")}</div>
 ${cardioLine(w2)}${liftedLine()}
 ${howText("wk", "Each set counts once; a set at RIR 4 or more is not hard and does not count. Muscle targets are on the Muscle map and in Stats.")}`;
     if (w2.rest)
-      return b`${tog}<div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">Rest week. ${w2.got ? `${r1(w2.got)} hard sets logged.` : "Nothing planned."}</p>${helpButton("wk")}</div>
+      return b`${tog}${head}<div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">Rest week. ${w2.got ? `${r1(w2.got)} hard sets logged.` : "Nothing planned."}</p>${helpButton("wk")}</div>
 ${cardioLine(w2)}${liftedLine()}
 ${howText("wk", "A rest week you marked under More options on Today. It does not count as missed: your averages, streak, and adherence skip it.")}`;
-    return b`${tog}${w2.weekly ? A : cycleStrip(w2.R)}
+    return b`${tog}${head}${w2.weekly ? A : cycleStrip(w2.R)}
 <div class="band" data-tip=${noLog() ? `${w2.tgt} hard sets planned` : `${w2.got} hard sets logged of ${w2.tgt} planned`}><div class="fill prog" style=${`width:${w2.pct}%;--pct:${w2.pct}`}></div></div>
 ${cardioLine(w2)}
 <div class="hrow u-m5-0-0"><p class="small muted u-m0" id="wkSets">${noLog() ? `${w2.tgt} hard sets planned this week.` : `${w2.got} hard sets logged of ${w2.tgt} planned${w2.tgt > 0 ? ` (${Math.round(w2.pct)}%)` : ""}.`}</p>${helpButton("wk")}</div>
@@ -18890,6 +18981,17 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
       const title = ym === cur ? "This month" : (/* @__PURE__ */ new Date(ym + "-15T12:00:00")).toLocaleDateString(void 0, { month: "long", year: "numeric" });
       const sub = ym > cur ? planWords(monthPlanned(ym)) : `${n3} session${n3 === 1 ? "" : "s"}`;
       return section({ sk: "today:week", key: "week", title, sub, body });
+    }
+    const ws = weekShown();
+    if (ws !== weekStart(today())) {
+      const n3 = weekSessions(ws);
+      const rec2 = weekRecorded(ws);
+      const ahead = ws > weekStart(today());
+      const planned = ahead ? Object.entries(planAhead(addDays(ws, WEEK_DAYS - 1))).filter(
+        ([d3, p3]) => d3 >= ws && !p3.day.rest && p3.day.items.length
+      ).length : 0;
+      const sub = ahead ? planWords(planned) : isRestWeek(ws) ? `Rest week${n3 ? `, ${n3} session${n3 === 1 ? "" : "s"}` : ""}` : freeMode() || rec2 == null ? `${n3} session${n3 === 1 ? "" : "s"}` : `${n3} of ${rec2} sessions`;
+      return section({ sk: "today:week", key: "week", title: weekWords(ws), sub, body });
     }
     const done = `${w2.doneDays} session${w2.doneDays === 1 ? "" : "s"}`;
     if (freeMode())
@@ -18916,6 +19018,102 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
       sub: noLog() ? `${about}${w2.planDays} sessions planned` : `${w2.doneDays} of ${about}${w2.planDays} sessions`,
       body
     });
+  }
+  var PULL = { start: 12, open: 70 };
+  var topSheet = () => {
+    const el = document.querySelector("#modal .sheet.fromtop");
+    return el instanceof HTMLElement ? el : null;
+  };
+  function follow(sh, y2) {
+    sh.classList.add("drag");
+    sh.style.transform = `translateY(${Math.round(y2)}px)`;
+  }
+  function settle(sh, keep) {
+    sh.classList.remove("drag");
+    sh.style.transform = "";
+    if (!keep) closeModal();
+  }
+  function pullStart() {
+    const bar2 = document.getElementById("wkbar");
+    if (!bar2) return;
+    let y0 = 0, x0 = 0, dy = 0, live2 = false, on = false;
+    bar2.addEventListener(
+      "touchstart",
+      (e5) => {
+        const t4 = e5.touches[0];
+        live2 = e5.touches.length === 1 && !ui.modal && !!t4;
+        on = false;
+        dy = 0;
+        if (t4) {
+          y0 = t4.clientY;
+          x0 = t4.clientX;
+        }
+      },
+      { passive: true }
+    );
+    bar2.addEventListener(
+      "touchmove",
+      (e5) => {
+        const t4 = e5.touches[0];
+        if (!live2 || !t4) return;
+        dy = t4.clientY - y0;
+        const dx = t4.clientX - x0;
+        if (!on) {
+          if (Math.abs(dx) > PULL.start && Math.abs(dx) >= dy) live2 = false;
+          if (dy < PULL.start || Math.abs(dx) >= dy) return;
+          on = true;
+          openModal({ kind: "calendar", ym: monthOf(today()), top: true });
+        }
+        e5.preventDefault();
+        const sh = topSheet();
+        if (sh) follow(sh, Math.min(0, dy - sh.offsetHeight));
+      },
+      { passive: false }
+    );
+    const end = () => {
+      if (!live2) return;
+      live2 = false;
+      if (!on) return;
+      on = false;
+      const sh = topSheet();
+      if (sh) settle(sh, dy >= PULL.open);
+    };
+    bar2.addEventListener("touchend", end);
+    bar2.addEventListener("touchcancel", end);
+    let u0 = 0, up = 0, pushing = false;
+    document.addEventListener(
+      "touchstart",
+      (e5) => {
+        const t4 = e5.touches[0];
+        const sh = topSheet();
+        pushing = !!t4 && !!sh && e5.touches.length === 1 && e5.target instanceof Node && sh.contains(e5.target);
+        up = 0;
+        if (t4) u0 = t4.clientY;
+      },
+      { passive: true }
+    );
+    document.addEventListener(
+      "touchmove",
+      (e5) => {
+        const t4 = e5.touches[0];
+        const sh = topSheet();
+        if (!pushing || !t4 || !sh) return;
+        up = t4.clientY - u0;
+        if (up < -PULL.start || sh.classList.contains("drag")) {
+          e5.preventDefault();
+          follow(sh, Math.min(0, up));
+        }
+      },
+      { passive: false }
+    );
+    const done = () => {
+      if (!pushing) return;
+      pushing = false;
+      const sh = topSheet();
+      if (sh && sh.classList.contains("drag")) settle(sh, up > -PULL.open);
+    };
+    document.addEventListener("touchend", done);
+    document.addEventListener("touchcancel", done);
   }
 
   // src/app/outside.ts
@@ -20200,11 +20398,22 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         if (el.scrollIntoView) el.scrollIntoView({ block: "start", behavior: "smooth" });
       }
     },
+    // This week on Today, a week back or ahead, or back to this week (NEW-107), within the weeks it steps between.
+    wkStep(t4) {
+      const v3 = t4.dataset["v"];
+      const cur = weekStart(today());
+      const ws = v3 === "now" ? cur : addDays(weekShown(), (v3 === "-1" ? -1 : 1) * WEEK_DAYS);
+      const { min, max } = weekBounds();
+      if (ws < min || ws > max) return;
+      ui.wkWs = ws === cur ? void 0 : ws;
+      rerenderKeepScroll();
+    },
     // This week on Today: the week, or the month (remembered on this device).
     wkView(t4) {
       const v3 = t4.dataset["v"] === "month" ? "month" : "week";
       ui.wkView = v3;
       if (v3 === "month") ui.calYm = monthOf(today());
+      else ui.wkWs = void 0;
       prefSet(WKVIEW_KEY, v3);
       rerenderKeepScroll();
     },
@@ -20658,7 +20867,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       b2.sets,
       (x2) => x2.rid,
       (_2, si) => setRow(d3, b2, bi, si, ex, nr, dupB)
-    )}${stepStrip(d3, b2, bi, ex)}${adjLine(b2, bi)}<div class="row u-mt8">${canFill ? b`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps">Copy last</button>` : ""}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done" ?disabled=${!b2.sets.length}>− Set</button>${!ex.timed && b2.sets.some((x2) => x2.done && !x2.warm && !x2.drop) ? b`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working weight, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>` : ""}${!d3.editingId && b2.sets.some((x2) => x2.done && !x2.warm) && b2.sets.some((x2) => !x2.done) ? b`<button class="btn sm bdone" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them">✓ Done</button>` : ""}${state.settings.timerMode !== "off" && +p3.rest > 0 && !d3.past ? b`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p3.rest} second rest`} data-tip="Start the rest timer">⏱ ${p3.rest}s</button>` : ""}</div></section>`;
+    )}${stepStrip(d3, b2, bi, ex)}${adjLine(b2, bi)}<div class="row u-mt8">${canFill ? b`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps">Copy last</button>` : ""}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done" ?disabled=${!b2.sets.length}>− Set</button>${!ex.timed && b2.sets.some((x2) => x2.done && !x2.warm && !x2.drop) ? b`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working weight, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>` : ""}${!d3.editingId && b2.sets.some((x2) => x2.done && !x2.warm) && b2.sets.some((x2) => !x2.done) ? b`<button class="btn sm bdone" data-act="bDoneAll" data-b=${bi} aria-label=${`Done with ${ex.name}`} data-tip="Log the sets left as shown, or skip them">✓ Done</button>` : ""}${state.settings.timerMode !== "off" && +p3.rest > 0 && !d3.past ? b`<button class="btn sm rest" data-act="tStart" data-b=${bi} aria-label=${`Start a ${p3.rest} second rest`} data-tip="Start the rest timer">⏱</button>` : ""}</div></section>`;
   }
   var LOG_HELP_ON = "RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ";
   var LOG_HELP = "W marks a warm-up (kept, never analysed); tap it again for ↳, a drop set (counts as work and volume, never as a PR or target). + Drop adds one under the last set ticked, with no rest before it; a warm-up is added from the ⋯ menu. Drag an exercise by its ⠿ to change the order. A superset is one box, A1 and A2: after a set of A1 the screen moves to A2, and the rest timer starts after the last exercise of the group. Timed holds log seconds in the Sec column. The date can be changed to log a past session.";
@@ -28130,6 +28339,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       sessCmp,
       avgWeeks,
       weekStreak,
+      weekRecorded,
       coach,
       noLog,
       adjOn,
@@ -28473,6 +28683,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     eventListeners();
     workoutStart();
     sectionsStart();
+    pullStart();
     window.__onLib = (which) => {
       if (which === "chart" && ui.tab === "dash" || which === "sortable" && ui.tab === "program")
         rerenderKeepScroll();
