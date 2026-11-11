@@ -74,7 +74,7 @@ export interface PlanItem {
   inc: number;
   ss: string | null;
   jump?: number | undefined;
-  /** On a fixed-weekday routine, in the day's second workout (366 (c), r68); absent for the first. */
+  /** On a fixed-weekday routine, in the day's second workout; absent for the first. */
   pm?: true | undefined;
 }
 
@@ -87,7 +87,7 @@ export interface Day {
   name: string;
   rest: boolean;
   items: PlanItem[];
-  /** The name of the day's second workout (366 (c), r68), when the lifter gave one; absent otherwise. */
+  /** The name of the day's second workout, when the lifter gave one; absent otherwise. */
   pmName?: string | undefined;
 }
 
@@ -125,11 +125,11 @@ export interface LoggedSet {
 
 /** One exercise in a saved session: its sets, the planned range at the time
     (null on sessions logged before ranges were kept), and whether it was made
-    lighter mid-session (r31), and the injury it was held for (`inj`, a muscle
+    lighter mid-session, and the injury it was held for (`inj`, a muscle
     or a joint, r54: its load capped and no target while that was flagged).
     `cut` marked it trimmed from r24 to r53; since r54 it is neither written
     nor read (V's one rule reads the log), and sessions saved before keep it.
-    `ps` is the sets its routine's plan gave it when saved (r58, 339 h): on
+    `ps` is the sets its routine's plan gave it when saved: on
     a session saved on a day of a routine with the lift in it, absent on the
     rest, on an edit's new exercises and on sessions saved before r58.
     `nw` marks it done at a new machine or gym (r61, 343 7): the lift starts
@@ -144,12 +144,12 @@ export interface SessionEx {
   sets: LoggedSet[];
   ps?: number | undefined;
   nw?: true | undefined;
-  /** The pictures on this exercise's note (r66, PENDING 373), by id; their bytes are kept on the phone that took them (pics.ts). Absent when none. */
+  /** The pictures on this exercise's note, by id; their bytes are kept on the phone that took them (pics.ts). Absent when none. */
   pics?: string[] | undefined;
 }
 
 /** A saved session (cleanSess in the storage part). `t` is when it started,
-    which orders two sessions on one day (r34); `chk` the check-in's answers;
+    which orders two sessions on one day; `chk` the check-in's answers;
     `pw` the sessions a week its routine planned when it was saved (r55, pwOf). */
 export interface Session {
   id: string;
@@ -169,9 +169,9 @@ export interface Session {
   ex: SessionEx[];
   t?: number | undefined;
   pw?: number | undefined;
-  /** The pictures on the workout's notes (r66, PENDING 373), by id; absent when none. */
+  /** The pictures on the workout's notes, by id; absent when none. */
   pics?: string[] | undefined;
-  /** Started as its day's second workout on a fixed-weekday routine (366 (c), r68); absent for the first. */
+  /** Started as its day's second workout on a fixed-weekday routine; absent for the first. */
   part?: 2 | undefined;
 }
 
@@ -251,24 +251,24 @@ interface EngineSettings {
   unit: 'lb' | 'kg';
   rirMode: 'on' | 'off' | 'cal';
   rirHalf?: true | undefined;
-  // The effort scale the engine's sentences are worded in (r54).
+  // The effort scale the engine's sentences are worded in.
   rirScale?: 'half' | 'rpe' | undefined;
   gym?: Gym | undefined;
   barKg: number | null;
   profile?: Profile | undefined;
   bands: Record<MuscleKey, [number, number]>;
-  // The floors a first-run routine pick recorded (r44), whole sets per muscle.
+  // The floors a first-run routine pick recorded, whole sets per muscle.
   bandsFit?: Partial<Record<MuscleKey, number>> | undefined;
-  // The muscles outside TARGETED the lifter gave a target with Set a target (r58), in muscle order; absent when none.
+  // The muscles outside TARGETED the lifter gave a target with Set a target, in muscle order; absent when none.
   ownTargets?: MuscleKey[] | undefined;
   priorities: MuscleKey[];
   restWeeks?: string[] | undefined;
   todayStart?: 'free' | undefined;
-  /** Weeks a block runs on Stats' This block vs last (2.37, ST-6): 'auto' ends one at a lighter, rest or missed week; absent is BLOCK_WEEKS_DEFAULT. */
+  /** Weeks a block runs on Stats' This block vs last: 'auto' ends one at a lighter, rest or missed week; absent is BLOCK_WEEKS_DEFAULT. */
   blockWeeks?: 'auto' | 4 | 5 | 8 | undefined;
 }
 
-/** Every setting as normalize() keeps it (r56): the engine's, and the rest
+/** Every setting as normalize() keeps it: the engine's, and the rest
     the screens and the storage read. A field absent unless set is optional;
     the rest are always written. A setting a newer build saved is kept beside
     these at run time (keepExtra does not run on the settings; normalize
@@ -303,7 +303,7 @@ export interface Settings extends EngineSettings {
 }
 
 /** The log as the engine and the analytics read it: these fields and no
-    others, so the type checker refuses a read of any other (phase 3b). */
+    others, so the type checker refuses a read of any other. */
 export interface EngineState {
   sessions: Session[];
   exercises: Exercise[];
@@ -365,7 +365,7 @@ export interface LogEntry {
   m: string;
   v: string;
   s?: string | undefined;
-  /** How many times it came in a row, when more than once (r59); the time is the last one's. */
+  /** How many times it came in a row, when more than once; the time is the last one's. */
   n?: number | undefined;
 }
 
@@ -381,15 +381,15 @@ export interface Target {
 }
 
 /** One exercise in the session in progress: its plan, its rows, the target
-    and suggestion it started with, an adjustment made mid-session (r34),
-    last time's sets for the Last column (r44), and, for one added on a
+    and suggestion it started with, an adjustment made mid-session,
+    last time's sets for the Last column, and, for one added on a
     lighter day or in a deload with its sets halved, the count before
     (`full`, r54), for Finish's offer to the routine. `cut` marked it
     trimmed until r53, and is neither written nor read since r54. An edit
     from History keeps the saved range (`keepRR`); an exercise held for an
     injury carries its key (`inj`, r54). */
 export interface DraftBlock {
-  /** The exercise's own id in this session (r46), which a move or a merge keeps; absent on a session begun before r46. */
+  /** The exercise's own id in this session, which a move or a merge keeps; absent on a session begun before r46. */
   bid?: string | undefined;
   exId: string;
   /** What it is done for: the sets, rest, superset, range, effort and load step a routine item or the lift's default gave it; normalize writes every one but the jump (a superset's letter key, or null). */
@@ -413,9 +413,9 @@ export interface DraftBlock {
   full?: number | undefined;
   tgt?: Target | null | undefined;
   target?: string | undefined;
-  /** The next sets adjusted from a set (r34): at the row it came from, whose id (`rid`, since PENDING 333) keeps it on that row when rows are added above; the load they take and the one they had, the reps the estimate expects there, up or down, and why. */
+  /** The next sets adjusted from a set: at the row it came from, whose id (`rid`, since PENDING 333) keeps it on that row when rows are added above; the load they take and the one they had, the reps the estimate expects there, up or down, and why. */
   adj?: NextSetsAdj | null | undefined;
-  /** Keep as it was: no adjustment for this exercise for the rest of the session (r34). */
+  /** Keep as it was: no adjustment for this exercise for the rest of the session. */
   adjOff?: boolean | undefined;
   sw?: number | null | undefined;
   prev?: string[] | undefined;
@@ -427,7 +427,7 @@ export interface DraftBlock {
   lastR?: (number | null)[] | undefined;
   /** The easier way the suggestion offers, when it offers one. */
   easier?: string | null | undefined;
-  /** The date of the full session the target came from, when the last was not one (r26). */
+  /** The date of the full session the target came from, when the last was not one. */
   basis?: string | undefined;
   /** The note left on this lift last time, shown until one is written today. */
   lastNote?: { date: string; text: string } | null | undefined;
@@ -435,11 +435,11 @@ export interface DraftBlock {
   swappedFrom?: string | null | undefined;
   /** Done at a new machine or gym (r61, 343 7): every block of the lift in the session carries it, its suggestion read as a first session's; absent unless marked. */
   nw?: true | undefined;
-  /** The pictures on this exercise's note (r66, PENDING 373), by id, carried to the saved exercise by Finish; absent when none. */
+  /** The pictures on this exercise's note, by id, carried to the saved exercise by Finish; absent when none. */
   pics?: string[] | undefined;
 }
 
-/** The next sets adjusted from a ticked set (r34): see DraftBlock's `adj`. */
+/** The next sets adjusted from a ticked set: see DraftBlock's `adj`. */
 export interface NextSetsAdj {
   at: number;
   w: number;

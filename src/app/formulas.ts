@@ -27,7 +27,7 @@ export const E1_MAX_REPS = 12;
    establishes how a formula errs on a given lift, so the number is shown as
    an estimate everywhere (fmtE, "Est. 1RM") rather than adjusted. */
 export const E1_MAX_RIR = 4;
-/** The most reserve a set is rated at on the effort strip (0 to RIR_CALL_TOP): a set rated there is "this many or more", so the estimate it gives is only a floor (r34.2). */
+/** The most reserve a set is rated at on the effort strip (0 to RIR_CALL_TOP): a set rated there is "this many or more", so the estimate it gives is only a floor. */
 export const RIR_CALL_TOP = 5;
 
 /** Brzycki's formula, 1RM = load x BRZYCKI_A / (BRZYCKI_B - reps to failure)
@@ -66,7 +66,7 @@ export function e1(load: number, r: number, rir?: Rir): number | null {
   return e1At(load, rtf);
 }
 
-/* The reading a lift's trend is drawn from (r30): e1() up to 12 reps to
+/* The reading a lift's trend is drawn from: e1() up to 12 reps to
    failure, then Epley up to 20. Past 12 the formulas spread too far to state
    a 1RM, but one lift compared with itself at similar reps still shows which
    way it is going, so a leg press done for 15 is not left without a trend.
@@ -93,7 +93,7 @@ export function bestFit<P extends { load: number; r: number }>(
   return best;
 }
 
-/* For picking a load only, never shown (r31): the estimate up to 12 reps to
+/* For picking a load only, never shown: the estimate up to 12 reps to
    failure, then Epley to 30. With the 12-rep limit, a set of 25 or a set of
    12 with 5 in reserve had no estimate, so a beginner who started light got
    one 5 lb step a session for months. Past 12 it is rough, which is why the
@@ -107,7 +107,7 @@ export function fitE(load: number, r: number, rir?: Rir): number | null {
   return t <= FIT_MAX_RTF ? epley(load, t) : null;
 }
 
-/* A set's score for PRs, never shown (r72, the 387 audit's 387-B4): the estimate, read no further than 12 reps to
+/* A set's score for PRs, never shown: the estimate, read no further than 12 reps to
    failure. Past 12 it read Epley on the reps alone, leaving out the reserve, so one more rep at the same load and
    effort scored lower (20 lb x 11 at RIR 2 under x 10) and was no PR; at RIR 0 the same sets were each one. A reserve
    past E1_MAX_RIR reads as it, as the Guide says. */
@@ -249,7 +249,7 @@ export const WORK_FLOOR = 0.6;
 /** Loads compared as whole thousandths, so loads typed in either unit and kept in kilograms group by the gram. */
 const LOAD_KEY = 1000;
 
-/* The working load of one session of a lift (r31): the load done for the
+/* The working load of one session of a lift: the load done for the
    most sets, the heavier on a tie, among loads at 60% or more of the
    session's heaviest (unmarked warm-ups sit lower). A heavy top set, or a
    pair of them, before back-off sets is a top set: it counts for bests and
@@ -294,7 +294,7 @@ export function workLoad(pts: readonly Point[], _repMin?: number): number {
 export const atLoad = <P extends Pick<Point, 'w'>>(pts: readonly P[], w: number): P[] =>
   pts.filter(p => Math.abs(p.w - w) < EPS_SAME);
 
-/* The floor for reps that set targets and grey reps (r32): one set under
+/* The floor for reps that set targets and grey reps: one set under
    the range among two or more is read at the bottom of the range. With more
    of them under it, the load was heavy that day or too heavy, and the drop
    below the range (or the way back to it) handles that. */
@@ -327,7 +327,7 @@ export const USUAL_BEFORE = 2;
 /** How far off its plan a set must be to be clearly off, in reps or in reps
     in reserve: past the top of the range, short of the bottom, or easier than
     the target RIR, by this many or more. It moves the next session's load
-    from the estimate (r27) and the next sets in a session (r34; 3 until r45,
+    from the estimate and the next sets in a session (r34; 3 until r45,
     V: 14 reps on a 10 to 12 range left the load alone). A convention. */
 export const CLEARLY_OFF = 2;
 /** The rep more in reserve a load set from an estimate leaves for fatigue: the next sets in a session, and a close variation's first session (r32.1, r34; a convention, meant to err light). */
@@ -343,7 +343,7 @@ type SessionMarks =
    drift; since r54, V's one rule for every session, PENDING 312 E). A lift's
    session done lighter, tagged a deload or a lighter day or made lighter and
    not done at its usual level there, or read lighter from its loads, sets no
-   target and no trend; its PRs count (r53). A session short of its usual,
+   target and no trend; its PRs count. A session short of its usual,
    fewer working sets than usual or a reading under it (analytics.ts,
    idxShort), sets no target, so the target repeats, while its trend, stalls
    and PRs count; two in a row make it the usual, and the app follows. Until
@@ -381,7 +381,7 @@ export function jumpPct(
 /** The most one session's adjustment may raise the load, as a multiple of it
     (conventions): JUMP_CAP, or JUMP_CAP_LIGHT on an isolation lift under
     LIGHT_LIFT_KG, where one plate or dumbbell step is a large fraction, and
-    JUMP_CAP_EARLY in a lift's first EARLY_SESSIONS sessions (r31), while its
+    JUMP_CAP_EARLY in a lift's first EARLY_SESSIONS sessions, while its
     load is still being found. One rep of RIR error is normal, so bigger jumps
     overshoot. */
 export const JUMP_CAP = 1.1,
@@ -401,7 +401,7 @@ export function jumpCap(ex: Parameters<typeof isCompound>[0], loadKg: number, ea
    2013, a meta-analysis of training cessation, which names no number of
    weeks; the 4 weeks is the app's line), so the first session back is about 90% of the last working load, in whole
    steps, like a Lighter day but with the usual sets. It is the lift's new
-   start (r54): the sessions before the break are not its usual any more, so
+   start: the sessions before the break are not its usual any more, so
    it is not read lighter than them, and its trend and stall test start from
    it, and the session after it picks up from it. Until r54 it read lighter
    than the sessions before the break, so the session after it asked for the
@@ -466,7 +466,7 @@ export const DRIFT_N = 3;
    before; with 3 to 6 sessions the interval came out up to 2.4 times too
    narrow, so noise was called a trend. Past the table's 30 degrees of
    freedom, T90_INF + T90_SLOPE / df is within 0.001 of the exact value. */
-export const T90: readonly number[] = [
+const T90: readonly number[] = [
   NaN,
   3.078,
   1.886,
@@ -525,7 +525,7 @@ export function t90(df: number): number {
     dayMinutes in the analytics.) Every figure here is a convention, not a
     measurement; your own pace (pace(), r43) scales the total to how long
     your sessions take. */
-export const TIME_MODEL = {
+const TIME_MODEL = {
   set: 40,
   setReps: 12,
   rep: 3,
@@ -556,7 +556,7 @@ export function setupSecs(ex: Parameters<typeof isCompound>[0], compoundsBefore:
   return isCompound(ex) ? (compoundsBefore < T.firstCompounds ? T.setupFirst : T.setupLater) : T.setupIsolation;
 }
 
-/** Your pace (r43): pace() in the analytics compares your timed sessions with
+/** Your pace: pace() in the analytics compares your timed sessions with
     the time model above. It reads the newest PACE_N in the last PACE_DAYS
     days, needs PACE_MIN of them, and leaves out a session at under PACE_LO or
     over PACE_HI times its model (a clock left running or stopped early).
@@ -580,5 +580,5 @@ export const SESSION_CAP = 11;
 export const SHORT_MIN_SETS = 2;
 
 /** The Plan editor's tip on the load jump (jumpPct above), r30; moved in
-    phase 3a (r51). */
+    phase 3a. */
 export const JUMP_TIP = `When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: ${pct1(JUMP_COMPOUND)}% on compound lifts, ${pct1(JUMP_ISOLATION)}% on isolation lifts, a rule of thumb. 0: one step every time. Until then the target is to beat last time's total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.`;

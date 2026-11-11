@@ -26,7 +26,7 @@ import { obActive } from './today';
 import type { Tap } from './workstate';
 import { csvGuard } from './importing';
 
-/** Clears what earlier builds put in Recently deleted: a ready-made routine removed unchanged is not kept (r34.1). Once, at start. */
+/** Clears what earlier builds put in Recently deleted: a ready-made routine removed unchanged is not kept. Once, at start. */
 export function trashTidy(): void {
   const tr = state.trash || [];
   const keep = tr.filter(t => !(t.kind === 'routine' && plainTemplate(t.data)));
@@ -132,7 +132,7 @@ async function exportFile(
   // Only the lifter can see whether the download landed.
   confirmBox(
     'Did the file download?',
-    `Look for ${filename}. If nothing appeared, this browser blocked the download and you should copy the text instead.`,
+    `Look for ${filename}. If nothing appeared, the browser blocked the download. Copy the text instead.`,
     'Yes, I have the file',
     () => {
       if (onSaved) onSaved();
@@ -310,7 +310,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   photoDel() {
     confirmBox(
       'Remove your profile photo?',
-      'It goes from your account and every phone you sign in on. You can add a new one any time.',
+      'It goes from your account and every phone signed in to it. Add a new one any time.',
       'Remove',
       () => {
         photoRemove();
@@ -440,7 +440,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
     }
   },
-  // The sheet closed first (r56.1): a question left open reads as Cancel, so the sync waiting on it does not wait forever.
+  // The sheet closed first: a question left open reads as Cancel, so the sync waiting on it does not wait forever.
   crashRetry() {
     ui.tab = 'today';
     ui.planView = 'routine';
@@ -461,7 +461,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     else {
       toastHide();
       render();
-      // What was taken back, in the words its own message used (2.30, RC-4); never a count of the steps kept.
+      // What was taken back, in the words its own message used; never a count of the steps kept.
       toast(r.said ? `Undone: ${r.said}` : 'Undone');
     }
   },

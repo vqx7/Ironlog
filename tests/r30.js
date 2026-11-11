@@ -295,7 +295,7 @@ function strongCsv() {
     const P = await open('index.html', { touch: true, clock: '2026-10-04T10:00:00' });
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
     const fs = await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.sessions = []; L.invalidate(); return { sq: L.suggest('backSquat', { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150, inc: 2.27 }, {}).text, curl: L.suggest('dbCurl', { sets: 2, repMin: 10, repMax: 15, rir: 2, rest: 60, inc: 2.27 }, {}).text }; });
-    ok(/a load you think you could lift about 12 times, erring light/.test(fs.sq) && /6 to 10 reps, stopping with about 2 still in you/.test(fs.sq) && !/Warm up/.test(fs.sq + fs.curl), 'a first session says, in one line per exercise, how to pick a load', fs);
+    ok(/a load you could lift about 12 times, erring light/.test(fs.sq) && /6 to 10 reps, stopping with about 2 still in you/.test(fs.sq) && !/Warm up/.test(fs.sq + fs.curl), 'a first session says, in one line per exercise, how to pick a load', fs);
     const pv = await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.ui.folds['today:session'] = true; L.render(); const e = document.querySelector('[data-mkey="session"]'); return e ? e.innerText : ''; });
     ok(/Warm up on the first big lift/.test(pv), 'and the workout preview says once to warm up on the first big lift', pv.slice(0, 200));
     await ev(() => window.__ironlog.impStart({ text: 'Sep 30\nBench press 185x8, 185x8\nLateral raise 1.5x40' })); await wait(300);

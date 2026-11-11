@@ -56,7 +56,7 @@ function tipHide(): void {
 }
 
 /* On a phone nothing can be hovered, and a press and hold is not something
-   anyone finds (r27). An explanation on a control's label gets a visible i
+   anyone finds. An explanation on a control's label gets a visible i
    button beside the label instead (a tap on the label still works the
    control), and dotted-underlined text shows its explanation on a tap. */
 let labelIds = 0;

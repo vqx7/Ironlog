@@ -1,4 +1,4 @@
-/* The muscle map (r59, phase 5): Today's card, a flat front and back
+/* The muscle map: Today's card, a flat front and back
    outline, or a 3D body, each muscle shaded by where its weekly hard sets
    sit against its own target, drawn by lit-html as src/20-map.js drew it,
    with the actions that change what it shows. The exercise sheets (an
@@ -415,7 +415,7 @@ export function map3dColors(): Record<string, string> {
     ex: v('--volt')
   };
 }
-/* An exercise's muscles on the body (r39, item 172): the same flat figures and
+/* An exercise's muscles on the body: the same flat figures and
    the same 3D body, lit by what the exercise trains instead of by the week's
    sets. While the sheet with #bm3dx is open the canvas sits there, and
    Today's map takes it back when the sheet closes. */
@@ -735,7 +735,7 @@ export function mount3D(): void {
     }
     const st = m === '_base' ? null : B3.status && B3.status[m];
     mt.color.set(m === '_base' ? C('base') : st ? C(st.st) : C('none'));
-    // White lifts a tapped muscle on the dark theme; on the light one it washed it out to pale, so there the muscle glows in its own colour (r29).
+    // White lifts a tapped muscle on the dark theme; on the light one it washed it out to pale, so there the muscle glows in its own colour.
     const lightUI = !darkTheme();
     if (m === B3.sel) {
       if (lightUI) em.copy(mt.color);
@@ -894,7 +894,7 @@ export const MAP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
 
 /* ---------- an exercise's muscles (the exercise sheets) ---------- */
 
-/* An exercise's muscles on the body (r39, item 172), for the exercise sheets
+/* An exercise's muscles on the body, for the exercise sheets
    in the legacy script (r60 moves them): the same flat figures, the main
    muscle in the accent, helpers lighter (they count half a set), the rest
    left neutral. */

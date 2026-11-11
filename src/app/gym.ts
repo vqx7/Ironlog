@@ -1,4 +1,4 @@
-/* Your gym (r33, item 207): the plates on hand, the dumbbell rack, the
+/* Your gym: the plates on hand, the dumbbell rack, the
    stack step, and how a saved gym is cleaned; and how plates load on an
    exercise (phase 3a, r51; moved unchanged from the legacy script). The steps the engine reads from
    them move with the engine. */
@@ -20,7 +20,7 @@ export const PLATE_MODES: readonly (readonly [string, string])[] = [
   ['none', 'None']
 ];
 
-/* A load typed as shown is the load it shows (PENDING 333): within tol of a
+/* A load typed as shown is the load it shows: within tol of a
    plate, the side takes that plate. 110.2 lb typed is 49.986 kg, the 50 kg of
    15 kg a side, where a strict count gave 10, 2.5 and 1.25 kg with 1.24 kg
    not loadable. The caller's tol is half the last shown digit, split across
@@ -163,7 +163,7 @@ export function gymClean(g: Raw): Gym | null {
       .slice(0, GYM_LIMITS.bells);
     if (kb.length) out.kb = kb;
   }
-  /* Any plate the gym has (NEW-76, 2.34), not only the usual ones (Settings' chips, settings.ts usualPlates): a weight above 0, no heavier than the
+  /* Any plate the gym has, not only the usual ones (Settings' chips, settings.ts usualPlates): a weight above 0, no heavier than the
      heaviest plate made, in whole hundredths of the unit (every plate label is), heaviest first, each once. A saved
      list of usual plates comes out as it went in, so its hash is unchanged. */
   const plates = arr(g.plates);
@@ -299,7 +299,7 @@ export function gymStepIn(M: Model, ex: ExerciseLike | null | undefined): number
   return null;
 }
 
-/* The lightest load a lift can be given (r27): the empty bar on a lift on the
+/* The lightest load a lift can be given: the empty bar on a lift on the
    full bar (bench, squat, rows) typed as the total. Curls and skull crushers
    are often on an EZ or fixed bar lighter than the bar weight setting, and a
    per-side number has no bar in it, so neither has one. An exercise with no
@@ -319,7 +319,7 @@ export function loadFloorIn(M: Model, ex: ExerciseLike): number {
    pair of each side's load, and its suggestions, steps, lighter and heavier
    loads and warm-ups land on those loads. Before 2.34 this was the bar and every pair of the smallest plate, which
    holds only when every plate is a whole multiple of the smallest; any other gym (10 and 25 lb without 5s, or 1 kg
-   plates beside 1.25 and 2.5) kept the lift's step, off the plates (NEW-76). The list is now every load the plates
+   plates beside 1.25 and 2.5) kept the lift's step, off the plates. The list is now every load the plates
    make, any number of each, up to PLATE_SIDE_MAX a side: with plates that are whole multiples of the smallest it is
    the same as before, the bar and every pair of the smallest. */
 /** Per side, the most a bar's plates are counted to, in each unit: past any lift's load (a convention: 250 kg a side is a 520 kg bar). */

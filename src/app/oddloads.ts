@@ -128,7 +128,7 @@ export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): st
         bestW = p.w;
       }
   if (best > 0 && load > Math.max(best, top) * ODD_BEST + EPS)
-    return `${say(w)} is more than twice the heaviest you have logged on this exercise, ${say(bestW)}.`;
+    return `${say(w)} is more than twice the heaviest logged on this exercise, ${say(bestW)}.`;
   if (ex.bw && w > 0) {
     const kg = bwAtIn(M, date);
     if (kg != null && kg > 0 && w >= kg * ODD_ADDED_BW - EPS)
@@ -139,7 +139,7 @@ export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): st
       if (i !== si && x.done && isWork(x) && !x.drop && x.w != null) most = Math.max(most, x.w);
     });
     if (most > 0 && w > most * ODD_ADDED_BEST + EPS)
-      return `${say(w)} is more than ${timesWord(ODD_ADDED_BEST)} the most you have added on this exercise, ${say(most)}.`;
+      return `${say(w)} is more than ${timesWord(ODD_ADDED_BEST)} the most added on this exercise, ${say(most)}.`;
   }
   return under;
 }

@@ -101,13 +101,13 @@ const CAP = pctOf(JUMP_CAP - 1),
 /** The load under which an isolation lift takes the larger cap, in the unit on screen: in pounds, about it, to the nearest default step. */
 const lightLift = (kg: boolean): string =>
   kg ? `${LIGHT_LIFT_KG} kg` : `about ${Math.round(LIGHT_LIFT_KG / LB / DEFAULT_STEP.lb) * DEFAULT_STEP.lb} lb`;
-/** A default load step in the unit on screen (367). */
+/** A default load step in the unit on screen. */
 const stepWords = (st: Readonly<Record<'kg' | 'lb', number>>, kg: boolean): string =>
   kg ? `${st.kg} kg` : `${st.lb} lb`;
 /** The weeks the radar can average besides its default. */
 const OTHER_WKS = orList(REGION_WKS.map(([n]) => n).filter(n => n !== REGION_WK_DEFAULT));
 
-/* The Guide (r27): how Ironlog works and the rules behind its numbers, in
+/* The Guide: how Ironlog works and the rules behind its numbers, in
    one place, opened from the menu. Screens keep the number and the action;
    the reasoning lives here, so it is findable on a phone where nothing can
    be hovered. Each topic folds. Keep it in step with the code: the rules

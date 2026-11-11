@@ -3,7 +3,7 @@
    moved unchanged from the legacy script); a lift's plan in a routine, and
    a routine's planned sets. Which routine a lifter starts on stays with the
    app's state, and what reads the analytics, a lift's plan from its own
-   sessions and Finish's offer to change the routine, is in plans.ts (r54). */
+   sessions and Finish's offer to change the routine, is in plans.ts. */
 
 import type { Day, Plan, PlanItem, Profile, Routine } from './types';
 import type { ExerciseLike, Model } from './model';
@@ -175,7 +175,7 @@ export const TEMPLATES: readonly Template[] = (() => {
       D('Full body A',[I('backSquat',3,6,10,2,180),I('bench',3,6,10,2,150),I('cableRow',3,8,12,1,120),I('seatedCurl',3,10,15,1,75),I('dbLateral',3,10,20,1,60),I('inclineCurl',2,10,15,1,60)]),R(),
       D('Full body B',[I('rdl',3,6,10,2,150),I('ohp',3,6,10,2,150),I('pullup',3,6,10,2,150),I('legPress',3,10,15,1,120),I('cableFly',3,10,15,1,75),I('standCalf',3,10,15,1,60)]),R(),
       D('Full body C',[I('hackSquat',3,8,12,1,150),I('incDb',3,8,12,1,120),I('latPulldown',3,8,12,1,120),I('lyingCurl',3,10,15,1,75),I('cableLateral',3,10,20,1,60),I('ohCableExt',3,10,15,1,60),I('seatedCalf',3,10,15,1,60)]),R(),R()]}),
-    /* Two days a week (r30): the whole body each day, about an hour. */
+    /* Two days a week: the whole body each day, about an hour. */
     tpl({key:'full2',name:'Full body, 2 days',who:'Two sessions a week: the whole body each time',days:[
       D('Full body A',[I('backSquat',3,6,10,2,180),I('bench',3,6,10,2,150),I('cableRow',3,8,12,2,120),I('seatedCurl',3,10,15,1,75),I('dbLateral',3,10,20,1,60),I('inclineCurl',2,10,15,1,60)]),R(),R(),
       D('Full body B',[I('rdl',3,6,10,2,150),I('incDb',3,8,12,2,120),I('latPulldown',3,8,12,2,120),I('legPress',3,10,15,1,120),I('cableLateral',3,10,20,1,60),I('ohCableExt',2,10,15,1,60),I('standCalf',3,10,15,1,60)]),R(),R(),R()]}),
@@ -195,7 +195,7 @@ export const TEMPLATES: readonly Template[] = (() => {
       D('Chest',[I('bench',3,6,10,2,150),I('incDb',3,8,12,1,120),I('cableFly',3,10,15,1,75),I('dips',2,8,12,1,120),I('cableCrunch',3,10,15,1,60)]),
       D('Back',[I('pullup',4,6,10,1,150),I('bbRow',3,6,10,2,150),I('cableRow',3,8,12,1,120),I('latPulldown',3,8,12,1,120),I('reversePecDeck',3,12,20,0,60)]),
       D('Legs',[I('backSquat',3,6,10,2,180),I('rdl',3,6,10,2,150),I('legPress',3,10,15,1,120),I('legExt',3,10,15,1,75),I('seatedCurl',4,10,15,1,75),I('hipThrust',3,8,12,1,120),I('standCalf',4,10,15,1,60)]),
-      // Lateral raises split over two days (r30): nine sets in one session added little past the first five or six.
+      // Lateral raises split over two days: nine sets in one session added little past the first five or six.
       D('Shoulders',[I('ohp',3,6,10,2,150),I('cableLateral',5,10,20,1,60),I('facePull',3,12,20,1,60),I('dbShrug',3,10,15,1,60),I('seatedCalf',4,10,15,1,60),I('hangingLegRaise',3,10,15,1,60)]),
       D('Arms and legs',[I('inclineCurl',4,8,12,1,75),I('ohCableExt',4,8,12,1,75),I('hammer',3,10,12,1,60),I('pressdown',3,10,15,1,60),I('dbLateral',4,12,20,1,60),I('bss',3,8,12,1,90),I('lyingCurl',3,10,15,1,75)]),R(),R()]}),
     /* Strength (r30, from the review: nothing for someone after a stronger
@@ -239,7 +239,7 @@ export function templateBefore(key: string): NewRoutine | null {
   return t ? routineOf(t, true) : null;
 }
 
-/** The signature of each ready-made routine as made up to r63, in the table's order: a copy made then, untouched, is still ready-made (302). Read from the table, so no ids are made and no random number is drawn. */
+/** The signature of each ready-made routine as made up to r63, in the table's order: a copy made then, untouched, is still ready-made. Read from the table, so no ids are made and no random number is drawn. */
 export function templateSigsBefore(): string[] {
   return TEMPLATES.map(t =>
     routineSig({
@@ -330,7 +330,7 @@ export function nextTrainIdx(R: RoutineLike, i: number): number {
 /** Training days a week, for a weekly schedule or a cycle. */
 export function plannedPerWeek(R: RoutineLike): number {
   const n = trainDaysOf(R);
-  // A fixed-weekday routine plans each day's workouts: two on a day that holds a second (r68, 366 (c)).
+  // A fixed-weekday routine plans each day's workouts: two on a day that holds a second.
   if (R.schedule === 'weekly') return R.days.reduce((a, d) => a + dayParts(d).length, 0);
   return n ? Math.max(1, Math.floor(n * weekFactor(R) + EPS)) : 0;
 }
@@ -597,7 +597,7 @@ export function tplCountLine(): string {
   return `${upFirst(w)} plans, ${Math.floor(Math.min(...n))} to ${Math.round(Math.max(...n))} days a week`;
 }
 
-/** The Plan editor's tip on target RIR (r29.5): why the default is 1, a convention. */
+/** The Plan editor's tip on target RIR: why the default is 1, a convention. */
 export const RIR_TGT_TIP = `Target RIR is ${DEFAULT_PLAN.rir} unless you change it, a rule of thumb: muscle growth improves as sets end closer to failure, but going all the way to failure grew muscle no more than stopping 1 to 2 reps short and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.`;
 
 /* ---------- the plan a lift is trained at (phase 3b, r52; moved from the legacy script) ---------- */
@@ -614,7 +614,7 @@ export const PROFILE_PLAN = {
   both: { repMin: 5, repMax: 8, rir: 2, rest: 180 }
 } as const;
 /** A timed hold's plan until one is set: 30 to 60 seconds, 60 s rest. */
-export const TIMED_PLAN = { repMin: 30, repMax: 60, rest: 60 } as const;
+const TIMED_PLAN = { repMin: 30, repMax: 60, rest: 60 } as const;
 
 /* What a profile changes in a plan item (the rules Apply and new items share):
    - Strength or Both, past the first year: heavy compounds (`profHeavy`) at
@@ -647,7 +647,7 @@ export function profPlanIn(M: Model, ex: ExerciseLike, plain?: boolean): Plan {
 
 /* Default plan for an exercise that is not in the routine yet. Timed holds
    start at TIMED_PLAN's seconds rather than the default reps. */
-// The profile's rules for a lift (r44); with no profile, or Size, exactly the defaults as before.
+// The profile's rules for a lift; with no profile, or Size, exactly the defaults as before.
 // plain: without the profile, for reading sessions already logged (the pace model, r44 review).
 export function defPlanIn(M: Model, exId: string, plain?: boolean): Plan {
   const ex = EXIn(M, exId);
@@ -700,12 +700,12 @@ export function planItemOf<I extends { exId: string; pm?: true | undefined }>(
    the plan of plans.ts (planForIn), which adds the lift's own last full
    session; until r54 this read it here, from the records, where the
    analytics' reading of a session (done lighter, or short of its usual) is
-   not known (PENDING 313). */
+   not known. */
 export function basePlanIn(M: Model, exId: string, R?: Routine | null, dayId?: string | null, plain?: boolean): Plan {
   return routinePlanIn(M, exId, R, dayId) || defPlanIn(M, exId, plain);
 }
 
-/* Planned hard sets (r27). A planned set counts only if its target RIR
+/* Planned hard sets. A planned set counts only if its target RIR
    would make it hard (3 or less, or every set when RIR is off), the same test
    as a logged set; a plan at RIR 4 used to set a weekly target that logging
    it could never meet. In a deload week each exercise is half its sets,
@@ -714,7 +714,7 @@ function planHardIn(M: Model, it: { rir: number | string }): boolean {
   return M.s.settings.rirMode === 'off' || !(+it.rir > HARD_RIR);
 }
 
-// A planned set at RIR 4 to 5 counts half with the setting on (r40), as logged ones do.
+// A planned set at RIR 4 to 5 counts half with the setting on, as logged ones do.
 export function planCreditIn(M: Model, it: { rir: number | string }): number {
   return planHardIn(M, it) ? 1 : rirHalfOnIn(M) && +it.rir <= RIR_CALL_TOP ? HALF_SET : 0;
 }

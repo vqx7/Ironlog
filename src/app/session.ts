@@ -12,7 +12,7 @@ import { cleanChk, picIds, LIMITS } from './records';
 
 /* ---------- loads and targets ---------- */
 
-/* The load a row shows in grey while its load field is empty (r25), and the
+/* The load a row shows in grey while its load field is empty, and the
    load settleLoad writes in when the set is ticked or saved at Finish: the
    load of the nearest working set above that has one, else the block's
    suggestion; none on a warm-up or a drop set. A missed set's load (r55, a
@@ -61,7 +61,7 @@ interface TargetReason {
   basis?: string | null | undefined;
 }
 
-/** The reason behind a target, in the engine's own words (r47). b.hint is the
+/** The reason behind a target, in the engine's own words. b.hint is the
     whole sentence the case wrote, and it opens with the Last line (b.last),
     which the screen shows on its own line already, so that prefix comes off
     rather than being said twice. Nothing is recomputed here: a second account
@@ -141,7 +141,7 @@ export function sessProgress(d: { ex: DraftBlock[] }): { n: number; k: number; p
    ("Last (Oct 10, fewer sets)"), unless a top single or a pyramid's other
    loads were left out of the column (b.prevOff): then it keeps every set. A
    block from before r44 has no prev and keeps the whole line. */
-/* The same lift again later in the session (r45): last time's sets are one
+/* The same lift again later in the session: last time's sets are one
    merged list (sameExOnce), and how they were split between the blocks is
    not recorded, so the column cannot say which set this row repeats. The
    later block shows dashes and the whole Last line instead of a wrong row
@@ -225,16 +225,16 @@ export function savedEx(b: DraftBlock): SessionEx {
         warm: !!s.warm,
         drop: !!s.drop && !s.warm,
         cal: s.cal && !s.warm ? s.cal : undefined,
-        // The row's own id (r56.1), last, where a build before it keeps the unknown field.
+        // The row's own id, last, where a build before it keeps the unknown field.
         ...(typeof s.rid === 'string' ? { rid: s.rid } : {})
       })),
-    // The note's pictures (r66, 373); put last by picsLast once the plan's sets and a new-machine mark are on.
+    // The note's pictures; put last by picsLast once the plan's sets and a new-machine mark are on.
     ...(b.pics && b.pics.length ? { pics: [...b.pics] } : {})
   };
 }
 
 /* A saved exercise's pictures go last, where normalize writes them, so a
-   session saved by Finish is the same text a reload reads (r66, 373). */
+   session saved by Finish is the same text a reload reads. */
 /** The saved exercises with each one's pictures moved to the end of its fields. */
 export function picsLast(ex: readonly SessionEx[]): SessionEx[] {
   return ex.map(b => {
@@ -243,7 +243,7 @@ export function picsLast(ex: readonly SessionEx[]): SessionEx[] {
   });
 }
 
-/* A block in the session over time (r46). Neither handle on its own
+/* A block in the session over time. Neither handle on its own
    survives: a place changes whenever exercises move, and the object is
    replaced by normalize, which runs on every sync, Undo, cross-tab write and
    restore. The id made with the exercise survives both, so it leads, with
@@ -279,12 +279,12 @@ export interface DraftLike {
   note0?: string | undefined;
   /** Started with Limited equipment. */
   limited?: boolean | undefined;
-  /** The equipment it was started with under Limited equipment, which Pick for me and Swap keep to (NEW-79); absent
+  /** The equipment it was started with under Limited equipment, which Pick for me and Swap keep to; absent
       otherwise. */
   equip?: string[] | undefined;
-  /** The pictures on the workout's notes (r66, PENDING 373), by id; absent when none. */
+  /** The pictures on the workout's notes, by id; absent when none. */
   pics?: string[] | undefined;
-  /** Started as its day's second workout (366 (c), r68); absent for the first. */
+  /** Started as its day's second workout; absent for the first. */
   part?: 2 | undefined;
   /** An edit's measured minutes, kept as the saved session had them. */
   durMin?: number | null | undefined;
@@ -314,7 +314,7 @@ interface DraftCardio {
    saved session is not one (that session is already kept). Null when
    nothing is ticked. */
 /* The minutes typed for a workout entered after it was done or an edit from
-   History (r67, NEW-39): a whole number from 1 to LIMITS.minutes, else none;
+   History: a whole number from 1 to LIMITS.minutes, else none;
    a workout in progress is timed by its clock instead. One rule for Finish
    and for the sync, which saves a past workout as a session when another
    device closes it (the review of r67: those saves dropped the minutes). */
@@ -349,7 +349,7 @@ export function draftSession(d: DraftLike, empty?: boolean): Session | null {
     ...(chk ? { chk } : {}),
     ...(d.startedAt && d.startedAt > 0 ? { t: d.startedAt } : {}),
     ...(d.pics && d.pics.length ? { pics: [...d.pics] } : {}),
-    // The day's second workout (r68, 366 (c)), last, as normalize writes it.
+    // The day's second workout, last, as normalize writes it.
     ...(d.part === 2 ? { part: 2 as const } : {})
   };
 }
@@ -374,7 +374,7 @@ export function joinAdjacent<X extends Joinable>(ex: readonly X[]): X[] {
     if (a && a.exId === b.exId && !a.light === !b.light) {
       a.sets = [...a.sets, ...b.sets];
       if (b.note && b.note.trim()) a.note = [a.note, b.note].filter(x => x && x.trim()).join(' ');
-      // Both notes' pictures stay with the joined exercise, the first block's first, up to the note's limit (r66, 373).
+      // Both notes' pictures stay with the joined exercise, the first block's first, up to the note's limit.
       if (b.pics && b.pics.length) a.pics = picIds([...(a.pics || []), ...b.pics]);
       if (!a.rr && b.rr) a.rr = b.rr;
       continue;
@@ -402,7 +402,7 @@ export function sameExOnce<X extends Joinable>(ex: readonly X[]): X[] {
     const wa = a.sets.filter(isWork).length,
       wb = b.sets.filter(isWork).length;
     a.sets.push(...b.sets);
-    // A new machine or gym marks the lift in the session, so its one exposure carries the mark when any block does (r61).
+    // A new machine or gym marks the lift in the session, so its one exposure carries the mark when any block does.
     if (b.nw) a.nw = true;
     if (wb > wa && b.rr) a.rr = b.rr;
     else if (!a.rr && b.rr) a.rr = b.rr;
@@ -430,7 +430,7 @@ export function withNew<B extends { exId: string }>(ex: readonly B[], d: Paramet
 
 /* ---------- a session as a whole ---------- */
 
-/** A new row of a workout in progress: blank, or with the fields given, and its own id (r56.1), kept when one is given (a saved set opened for editing keeps its row). */
+/** A new row of a workout in progress: blank, or with the fields given, and its own id, kept when one is given (a saved set opened for editing keeps its row). */
 export function newRow(over?: Partial<DraftSet>): DraftSet {
   return {
     w: null,
@@ -480,9 +480,9 @@ export function editFp(d: {
     ex: d.ex.map(b => [
       b.exId,
       (b.note || '').trim(),
-      // A new machine or gym marked or taken off is an edit too (r61).
+      // A new machine or gym marked or taken off is an edit too.
       !!b.nw,
-      // So is a picture added or taken off (r66, 373).
+      // So is a picture added or taken off.
       (b.pics || []).join(),
       b.sets.map(x => [
         x.w == null ? null : +x.w,
@@ -522,7 +522,7 @@ export const RIR_HALF_OPTS: readonly string[] = Array.from({ length: 2 * RIR_CAL
    first-time paragraph on all 8 exercises, "Half the usual sets, nothing to
    beat." on each of a lighter day's). Later exercises keep what is theirs:
    the load and the reps. */
-export const HINT_ONCE: readonly string[] = [
+const HINT_ONCE: readonly string[] = [
   'Half the usual sets, nothing to beat.',
   "Next time's load is worked out from this.",
   'If the first set is off, change the load.',
@@ -536,7 +536,7 @@ export const HINT_ONCE: readonly string[] = [
 export function hintOnce(t: string | null | undefined, seen: Set<string>): string {
   if (!t) return '';
   const m = t.match(
-    /^First time: pick a load you think you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/
+    /^First time: pick a load you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/
   );
   if (m) {
     if (seen.has('first')) return `First time: a load you could lift about ${m[1]} times; do ${m[2]}.`;

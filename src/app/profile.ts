@@ -14,7 +14,7 @@ import type { NewRoutine } from './routines';
 import { MINUTE_S, numWord, pctOf, shareWords } from './util';
 import { arr } from './records';
 
-/* The profile (r44): its choices, read by normalize while the save loads. */
+/* The profile: its choices, read by normalize while the save loads. */
 
 /** The goals a profile can name, each with its label on screen. */
 export const PROF_GOALS: readonly (readonly [string, string])[] = [
@@ -36,7 +36,7 @@ export const PROF_DAYS: readonly number[] = [2, 3, 4, 5, 6];
 /** The most focus muscles a profile can name. */
 export const FOCUS_MAX = 2;
 
-/* Focus muscles (item 43): weekly targets about 30% higher, the other major
+/* Focus muscles: weekly targets about 30% higher, the other major
    muscles at maintenance, a third of the usual minimum. More weekly sets
    grow a muscle more (Pelland 2025, the dose-response meta-regression the
    targets rest on); 30% is a convention, not a measured dose. Size and
@@ -60,7 +60,7 @@ export const FOCUS_UP = 1.3,
 export function profClean(p: Partial<Record<string, unknown>> | null | undefined): Profile | null {
   if (!p || typeof p !== 'object' || Array.isArray(p)) return null;
   const o: Profile = {};
-  // Each value is the table's own entry that equals the one saved, so it is typed as the table is, with no cast (r65).
+  // Each value is the table's own entry that equals the one saved, so it is typed as the table is, with no cast.
   const goal = PROF_GOALS.find(g => g[0] === p.goal);
   if (goal) o.goal = goal[0];
   const exp = PROF_EXP.find(g => g[0] === p.exp);
@@ -76,7 +76,7 @@ export function profClean(p: Partial<Record<string, unknown>> | null | undefined
   return Object.keys(o).length ? o : null;
 }
 
-/* Strength focus in Pick for me (item 44): with Strength as the goal, a
+/* Strength focus in Pick for me: with Strength as the goal, a
    barbell or machine compound you have logged, not trained for 5 days or
    more and recovered, is favoured when it is stalled or near its best
    (within 3%, the app's threshold for a real change). The ranking without
@@ -106,7 +106,7 @@ export function defBandIn(M: Model, m: MuscleKey, p?: Profile | null): [number, 
   return [Math.ceil(b[0] * MAINT_SHARE), b[1]];
 }
 
-/* The app's own target for a muscle (r44): the profile's default, brought
+/* The app's own target for a muscle: the profile's default, brought
    down to the floor a first-run routine pick recorded (settings.bandsFit,
    or the floors given), except on a focus muscle, whose raised target is
    the point. A target that reads anything else was typed and never moves;

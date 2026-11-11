@@ -24,7 +24,7 @@ export function toast(msg: string, undo?: boolean | null, ms?: number | null, ki
   say.textContent = msg;
   const parts: Node[] = [say];
   if (undo) {
-    // The message names the change's Undo step, so Undo can later say what it took back (2.30, RC-4).
+    // The message names the change's Undo step, so Undo can later say what it took back.
     nameLastStep(msg);
     const b = document.createElement('button');
     b.dataset.act = 'undo';
@@ -42,7 +42,7 @@ export function toast(msg: string, undo?: boolean | null, ms?: number | null, ki
   );
 }
 
-/* A note with nothing to undo goes when a session starts (r31): the
+/* A note with nothing to undo goes when a session starts: the
    routine-ready note sat over the session title and Discard. */
 /** Hides the toast when it offers no Undo. */
 export function toastQuiet(): void {
@@ -53,7 +53,7 @@ export function toastQuiet(): void {
   }
 }
 
-/** Hides the toast when it offers an Undo: a session saved has nothing left to undo from its own steps (r60). */
+/** Hides the toast when it offers an Undo: a session saved has nothing left to undo from its own steps. */
 export function undoToastHide(): void {
   const el = box();
   if (el && el.querySelector('[data-act="undo"]')) {

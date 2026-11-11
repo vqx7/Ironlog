@@ -24,7 +24,7 @@ export const DEFAULT_STEP: Readonly<Record<'kg' | 'lb', number>> = { kg: 2.5, lb
 
 /** The default load step, 5 lb, in kilograms. A step is stored in kg; the
     engine's stepRead reads this one, or 2.5 kg, as the default of whichever
-    unit is on screen (r27). */
+    unit is on screen. */
 export const STEP_LB = DEFAULT_STEP.lb * LB;
 
 /** The default load step by how a lift is loaded (367, V's pick of 2026-11-02, "By equipment"), as typed in each
@@ -42,7 +42,7 @@ export const EQUIP_STEP: Readonly<Record<'bar' | 'stack' | 'each', Readonly<Reco
 /** Whether a number is a whole number of a step, to a millionth of the step. */
 export const onStep = (v: number, step: number): boolean => Math.abs(v / step - Math.round(v / step)) < EPS_SAME;
 
-/** What a load typed in its unit is a whole number of (r54): a load converted
+/** What a load typed in its unit is a whole number of: a load converted
     from the other unit almost never is, so a number on it reads as typed. */
 export const TYPED_STEP = 0.05;
 
@@ -76,7 +76,7 @@ export const fromDIn = (M: Model, v: number | null | undefined): number | null =
 /* The default step is stored as 5 lb, from before units were chosen, so a
    kg user saw "add 2.3 kg". Either unit's default (5 lb or 2.5 kg) now reads
    as the current unit's, so steps follow a change of units; any other step is
-   used exactly as typed (r27). */
+   used exactly as typed. */
 /** The default load step in the unit on screen, stored in kg as STEP_LB is. */
 export function unitStepIn(M: Model): number {
   return UIn(M) === 'kg' ? DEFAULT_STEP.kg : STEP_LB;

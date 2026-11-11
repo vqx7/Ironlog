@@ -76,8 +76,8 @@ export function unpark(): boolean {
    Load demo data; Replace my data; Copy my log in), a workout set aside for this log comes back into it, so it goes
    where the log goes and an Undo of the action brings it back with the rest, as any workout in progress. With another
    workout open (the edit), the action waits until that one is saved or discarded. Without this, a sign-out took the
-   only copy off the phone (REV6-1), an Undo after a reload could not bring it back (REV7-2), and a log replaced while
-   signed out left it tagged for an account the phone no longer named (REV7-3). */
+   only copy off the phone, an Undo after a reload could not bring it back, and a log replaced while
+   signed out left it tagged for an account the phone no longer named. */
 /** Whether the phone may let go of or replace its log now: a set-aside workout of this log brought back first; false, said, while another workout is open. */
 export function parkSettle(): boolean {
   if (!parkedHere()) return true;

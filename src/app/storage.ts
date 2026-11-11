@@ -7,7 +7,7 @@
    menu button makes of all that (backupDue, saveStateNow). Writing the save
    is in sync.ts (saveNow), since every write goes on to the account.
    Nothing here runs on import: storageStart() runs what the legacy part
-   ran when the page loaded, called from main.ts at start (r63). */
+   ran when the page loaded, called from main.ts at start. */
 
 import { APP_VERSION, STORAGE_ID } from './config';
 import { daysBetween, today, DAY_MS } from './util';
@@ -21,7 +21,7 @@ import type { State } from './store';
 
 /* ---------- the keys ---------- */
 
-/* The preview build (r24) is served from the same site as the live app, so
+/* The preview build is served from the same site as the live app, so
    the two would otherwise share this browser's storage: a preview could
    rewrite the live log, or migrate it forward to a shape the live build
    cannot read. Every stored key here is derived from KEY, so a different KEY
@@ -35,19 +35,19 @@ export const ENV: 'preview' | 'live' =
 export const KEY = ENV === 'preview' ? `${STORAGE_ID}-preview.v1` : `${STORAGE_ID}.v1`;
 /** The error log's key. */
 const LOGK = KEY + '.log';
-/** Week or Month in This week on Today (r26), per device. */
+/** Week or Month in This week on Today, per device. */
 export const WKVIEW_KEY = KEY + '.wkView';
-/** How many weeks Stats' By region averages (r31), per device. */
+/** How many weeks Stats' By region averages, per device. */
 export const REGION_KEY = KEY + '.regionWk';
-/** The muscle map's view, flat or 3D (r27), per device. */
+/** The muscle map's view, flat or 3D, per device. */
 export const MAPVIEW_KEY = KEY + '.mapView';
-/** Today's lines dismissed on this device: Set up sync (acctBar), Get the app (installBar), the new icon (r25). */
+/** Today's lines dismissed on this device: Set up sync (acctBar), Get the app (installBar), the new icon. */
 export const ACCT_LATER = KEY + '.acctLater',
   INSTALL_LATER = KEY + '.installLater',
   ICON_NOTE = KEY + '.icon25';
 /** This browser has installed the app (its appinstalled event, 2.34): its tabs no longer offer Get the app. */
 export const APP_INSTALLED = KEY + '.appInstalled';
-/** The first pages on this device: the account page passed (Continue without an account), and held open after a sign-out (r33). */
+/** The first pages on this device: the account page passed (Continue without an account), and held open after a sign-out. */
 export const OB_ACCT = KEY + '.obAcct',
   OB_OUT = KEY + '.signedOut';
 /** A weigh-in asked about on this device: snoozed until a date (Later), and the session's first ask answered (Not now). */
@@ -55,7 +55,7 @@ export const BWSNOOZE_KEY = KEY + '.bwSnooze',
   BWASK_KEY = KEY + '.bwAsk';
 /** The account's profile photo as this phone holds it (2.34; kept on this phone only in 2.33), the note of where that
     copy stands against the account (photo.ts), and its one-time line on Today answered (Add photo or Not now). */
-/** A workout in progress set aside while an earlier one is edited or logged (R81-2): this phone's, with its account. */
+/** A workout in progress set aside while an earlier one is edited or logged: this phone's, with its account. */
 export const PARKED_KEY = KEY + '.parked';
 export const PHOTO_KEY = KEY + '.photo',
   PHOTO_SYNC = KEY + '.photoSync',
@@ -101,7 +101,7 @@ export const clearTimer = (t: number | null): void => {
    PENDING 305). */
 /** The last 60 errors on this device, oldest first. */
 export const logBuf: LogEntry[] = [];
-/** An entry of the error log as saved, or null when it is not one (r56.1, PENDING 305). */
+/** An entry of the error log as saved, or null when it is not one. */
 const logEntryIn = (v: unknown): LogEntry | null => {
   const E = rec(v);
   if (!E || typeof E.t !== 'string' || typeof E.a !== 'string' || typeof E.m !== 'string' || typeof E.v !== 'string')
@@ -115,7 +115,7 @@ const logEntryIn = (v: unknown): LogEntry | null => {
     ...(typeof E.n === 'number' && Number.isInteger(E.n) && E.n > 1 ? { n: E.n } : {})
   };
 };
-/* A URL's query and fragment, cut from what the log keeps (r47). The log
+/* A URL's query and fragment, cut from what the log keeps. The log
    goes out with a problem report, and the page's own URL holds a reset
    link's token in its fragment for a moment after the link is opened; a stack
    frame carries that URL, and an error message can. Only the part after ? or #
@@ -134,7 +134,7 @@ export function log(area: string, err: unknown): void {
     // What an account server said that the app does not show (serverSaid, scripts/cloud-supabase.js, 2.28) is kept here.
     const said = E && typeof E.serverSaid === 'string' ? ` (server: ${E.serverSaid})` : '';
     const m = (E && E.message ? E.message : E ? JSON.stringify(err) : String(err)) + said;
-    // Where it broke, not only what it said (r47): the first lines of the stack travel with a problem report, so a crash can be found in the code without the phone.
+    // Where it broke, not only what it said: the first lines of the stack travel with a problem report, so a crash can be found in the code without the phone.
     const st =
       E && typeof E.stack === 'string'
         ? logCut(E.stack.split('\n').slice(0, LOG_LIMITS.stackLines).join('\n')).slice(0, LOG_LIMITS.stackChars)
@@ -164,7 +164,7 @@ interface UndoStep {
   post: string | null;
   inv: (() => boolean) | null;
   t: number;
-  /** The words of the message that reported the change (2.30, RC-4), so Undo can say what it takes back; absent on a step kept by a build before 2.30 or by a change that reported nothing. */
+  /** The words of the message that reported the change, so Undo can say what it takes back; absent on a step kept by a build before 2.30 or by a change that reported nothing. */
   said?: string;
 }
 /** Undo's steps are kept this many days; the Settings line says so. */
@@ -177,7 +177,7 @@ const UNDO_SAVE_MS = 400;
 /** The steps Undo can take back, oldest first; UNDO_MAX at most. */
 export const undoStack: UndoStep[] = [],
   UNDO_MAX = 20;
-/* Undo history survives a reload and a closed app (item 20). It holds whole
+/* Undo history survives a reload and a closed app. It holds whole
    copies of the log, so it lives in IndexedDB, whose quota is separate from
    and much larger than localStorage's: it can never crowd out the main save.
    Entries older than UNDO_DAYS are dropped. The reversal functions some
@@ -372,7 +372,7 @@ export function load(): State {
     }
     /* Not kept aside (a full store refused the copy, or the save could not
        even be read out): it is the only copy, so nothing is saved over it
-       this visit, and the menu says Not saving (r64, the r63 audit's A-2). */
+       this visit, and the menu says Not saving. */
     if (!kept) device.ok = device.boot = false;
   }
   return normalize(null);
@@ -446,7 +446,7 @@ export function demoRestore(): void {
   state.settings = normalize({ ...state, settings: { ...S, ...keep } }).settings;
 }
 
-/* ---------- a log kept aside for another account (r56.1, PENDING 328 b) ---------- */
+/* ---------- a log kept aside for another account ---------- */
 
 /* A phone signed in to one account that holds another account's log, told
    to use this account's log, keeps the other's aside first, whole, with the
@@ -647,7 +647,7 @@ export function backupDue(): boolean {
   // lost or wiped loses everything since the last backup.
   return !le || daysBetween(le, today()) > BACKUP_DAYS;
 }
-/* The menu button (r27) ends the top bar on every tab: a person for the
+/* The menu button ends the top bar on every tab: a person for the
    account, with a dot for the save state (green synced, blue syncing, amber
    when something wants attention, red when nothing is being saved; none when
    the log is simply saved on this device). Wider screens show the words too.
@@ -656,7 +656,7 @@ export function backupDue(): boolean {
 export function saveStateNow(): { cls: string; txt: string } {
   let cls = '',
     txt = 'Saved on this device';
-  /* A save the phone refuses is said first, signed in or not (PENDING 336):
+  /* A save the phone refuses is said first, signed in or not:
      "Synced" or "Offline, saved on this device" said nothing of a log that was
      not being saved here. */
   if (!device.ok) {
@@ -715,7 +715,7 @@ export function storageStart(): void {
   asideStart().catch((e: unknown) => {
     log('aside', e);
   });
-  // Records the save held that this build could not read are gone at the next save (r45 review): say so in Diagnostics.
+  // Records the save held that this build could not read are gone at the next save: say so in Diagnostics.
   if (normalize.dropped)
     log(
       'load',
@@ -725,7 +725,7 @@ export function storageStart(): void {
     );
 }
 
-/* ---------- pictures' bytes (r66, PENDING 373) ----------
+/* ---------- pictures' bytes ----------
    A picture on a note keeps its bytes in IndexedDB, as Undo's copies and a
    log kept aside do, under a database of its own, so it never crowds the
    log's save. pics.ts decides what is kept; these read and write it, and

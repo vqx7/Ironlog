@@ -340,7 +340,7 @@ export function mergeWorkout(
   stat: Stat
 ): DraftLike {
   const out: DraftLike = { ...local, ex: mergeExercises(base.ex, local.ex, remote.ex, remoteWins, stat, 'place') };
-  // The next sets adjusted from a set stay on the rows under it when rows were added above it (PENDING 333): its place follows its row.
+  // The next sets adjusted from a set stay on the rows under it when rows were added above it: its place follows its row.
   for (const b of out.ex) {
     const a = b.adj;
     const i = a && typeof a.rid === 'string' ? b.sets.findIndex(x => x.rid === a.rid) : -1;
@@ -463,7 +463,7 @@ export function mergeDraft(base0: unknown, cur0: unknown, pre0: unknown, saved: 
   for (const f of ['notes', 'dayName', 'deload', 'light', 'limited', 'cardio', 'chk']) {
     if (canon(cur[f]) === canon(base[f])) res[f] = pre[f];
   }
-  // The workout's pictures (r66, 373) go back the same way, absent where they were (the review of r66: Undo left one taken off gone).
+  // The workout's pictures go back the same way, absent where they were (the review of r66: Undo left one taken off gone).
   if (canon(cur.pics) === canon(base.pics)) {
     if (pre.pics === undefined) delete res.pics;
     else res.pics = pre.pics;

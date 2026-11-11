@@ -522,19 +522,19 @@ export const isCommon = (
 /* A log holds every built-in lift by name (normalize puts the library's own
    records in beside the lifter's, and the save keeps them), so a lift the
    library renames keeps its old name on every phone that saved before,
-   unless the log reads it again on load. Since r66 (NEW-37) the names the
+   unless the log reads it again on load. Since r66 the names the
    library gave a lift before are kept here by id: a log holding one of them
    reads the lift by its name now (normalize), a name the lifter typed stays,
    and an import naming the lift as before still finds it (impMatch). */
-/** The names the library gave a built-in lift before it renamed it, by id: Reverse Pec Deck until r66 (377). */
+/** The names the library gave a built-in lift before it renamed it, by id: Reverse Pec Deck until r66. */
 export const LIB_NAMES_BEFORE: Readonly<Record<string, readonly string[]>> = {
   reversePecDeck: ['Reverse Pec Deck']
 };
 
-/* The same for a lift's note (2.37, NEW-85): a log holds the note the library gave when it was saved, and shows it as
+/* The same for a lift's note: a log holds the note the library gave when it was saved, and shows it as
    the lift's tip. Since 2.34 the Guide's Sources name the studies and tips do not (V, 2026-11-08), so a note that is
    word for word one the library gave before reads as the library's note now; a note the lifter edited stays. */
-/** The notes the library gave a built-in lift before it reworded them, by id, word for word: the three that named a study until 2.37 (NEW-85). */
+/** The notes the library gave a built-in lift before it reworded them, by id, word for word: the three that named a study until 2.37. */
 export const LIB_NOTES_BEFORE: Readonly<Record<string, readonly string[]>> = {
   declinePushup: ['Feet on a bench: about 70% of bodyweight, against 64% for a floor push-up (Ebben 2011).'],
   ohCableExt: ['Long head at long length. Grew the triceps more than pushdowns in a 2023 study (Maeo et al.).'],
@@ -567,7 +567,7 @@ export function libExercises(): Exercise[] {
 
 /* Movement pattern from the name, so a fly is replaced by a fly rather than a
    press that happens to share helper muscles. Checked in order. */
-export const PATTERNS: readonly (readonly [string, RegExp])[] = [
+const PATTERNS: readonly (readonly [string, RegExp])[] = [
   ['calf', /calf raise/],
   ['hinge', /hyperextension/],
   ['squat', /leg press|hack squat|pendulum/],
@@ -595,7 +595,7 @@ export function patternOf(e: { name?: string } | null | undefined): string | nul
 
 /* Compound: a press, row, pull, squat or hinge for a main muscle. Used to
    split RIR calibration, size load steps, spot warm-ups and budget time. */
-export const NON_COMPOUND_PRIMARY: ReadonlySet<string> = new Set([
+const NON_COMPOUND_PRIMARY: ReadonlySet<string> = new Set([
   'abs',
   'obliques',
   'neck',
@@ -633,7 +633,7 @@ export function isCompound(ex: Kinded | null | undefined): boolean {
    sissy squats): the share of bodyweight is kept for display, but torque, not
    mass moved, sets how hard they are, so they get no 1RM estimate and no
    tonnage. Progress on them reads from reps and added load. */
-export const NO_E1: ReadonlySet<string> = new Set(['nordic', 'ghr', 'revNordic', 'sissy']);
+const NO_E1: ReadonlySet<string> = new Set(['nordic', 'ghr', 'revNordic', 'sissy']);
 
 /* Bodyweight core and neck work is done for reps, with a share of bodyweight no rep formula reads well, so it gets no
    estimate. Read from the exercise's own fields since 2.29 (387-B8, NEW-62; V, 2026-11-05: a lifter's own exercise
@@ -713,7 +713,7 @@ export const LOAD_STEPS: { readonly kg: readonly number[]; readonly lb: readonly
 };
 
 /** The spacings dumbbell and kettlebell racks come in, per unit, largest
-    first (r32), dumbbells' those of any load. The engine's rackStep picks the
+    first, dumbbells' those of any load. The engine's rackStep picks the
     largest one every load logged on a lift fits, trying a dumbbell's default
     step by equipment first (2 kg, r68, 367), and a lb dumbbell no spacing fits
     is read on the 5 lb rack (the engine's rackGrid). */
@@ -771,9 +771,9 @@ export const HARD_EX: ReadonlySet<string> = new Set([
    machine compounds with a strength estimate, as the copy says (the r44
    review: `estInLoad` took goblet squats and single-dumbbell rows and left
    out selectorized machine presses and rows). */
-export const PROF_EQUIP: ReadonlySet<string> = new Set(['barbell', 'smith', 'machine']);
+const PROF_EQUIP: ReadonlySet<string> = new Set(['barbell', 'smith', 'machine']);
 // Hip and back accessories on a bar or a machine, not lifts trained heavy for strength (a judgment, the r44 review).
-export const PROF_NOT_HEAVY: ReadonlySet<string> = new Set(['reverseHyper', 'goodMorning', 'gluteBridge']);
+const PROF_NOT_HEAVY: ReadonlySet<string> = new Set(['reverseHyper', 'goodMorning', 'gluteBridge']);
 
 /** A heavy compound for Your training (profRule, r44): a compound with a 1RM
     estimate, not timed or bodyweight, on a barbell, a Smith machine, or a
@@ -799,7 +799,7 @@ export const commonFirst = <E extends Pick<Exercise, 'id' | 'custom' | 'rare'>>(
   ...list.filter(e => !isCommon(e))
 ];
 
-/* Search by words, ignoring hyphens, spaces and case (r31): "t bar row" and
+/* Search by words, ignoring hyphens, spaces and case: "t bar row" and
    "tbar" did not find Landmine T-Bar Row, so it looked missing. Since r66
    (PENDING 377, V: "How was rear delt peck deck flyes missing from
    library??"), a word typed may also match the lift's main muscle ("rear

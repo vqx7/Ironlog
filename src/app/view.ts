@@ -36,7 +36,7 @@ declare global {
   }
 }
 
-/** The options a screen gives SortableJS for a list it drags: the session's exercises (r60), Plan's lists and a tab's sections (r63). */
+/** The options a screen gives SortableJS for a list it drags: the session's exercises, Plan's lists and a tab's sections. */
 interface SortableOptions {
   group: { name: string; pull: boolean | 'clone'; put: boolean | string[] };
   handle: string;
@@ -71,7 +71,7 @@ export type Part = TemplateResult | DirectiveResult | string | number | typeof n
 
 /* ---------- the host ---------- */
 
-/* The day the screen was last drawn for (r59). A phone keeps the app open
+/* The day the screen was last drawn for. A phone keeps the app open
    overnight, and nothing draws it again when it comes back to the screen
    without an account, so the next morning Today was yesterday's: its date
    line, the week bar, and Body's date, which a weigh-in typed at once was
@@ -222,10 +222,10 @@ export function dragDrop(): boolean {
    where one tap (or another device) could leave a section open or closed
    for good. One ? button per explanation: the paragraph is in the page but
    hidden until tapped, so nothing has to be read twice and nothing has to be
-   scrolled past; inside a section (r28) the explanation is the first line,
+   scrolled past; inside a section the explanation is the first line,
    How this works, since a ? in the header sat beside the fold arrow. The
    legacy script's string copies of these parts went with the last screen
-   drawn from it (r60). */
+   drawn from it. */
 /** Whether a section is open: what was chosen on this visit, else its default (r28: folded unless it is the tab's content). */
 function isOpen(sk: string, def?: boolean): boolean {
   return Object.prototype.hasOwnProperty.call(ui.folds, sk) ? !!ui.folds[sk] : !!def;
@@ -309,7 +309,7 @@ interface SecOpts {
   def?: boolean | undefined;
   id?: string | undefined;
 }
-/** One foldable section, the one component every tab's sections are drawn with (r28). */
+/** One foldable section, the one component every tab's sections are drawn with. */
 export function section(o: SecOpts): TemplateResult {
   return html`<details class="sec" data-sk=${o.sk} data-mkey=${o.key ?? nothing} id=${o.id ?? nothing} .open=${live(isOpen(o.sk, o.def))}>
 <summary>${o.key ? grip(o.title) : nothing}<span class="sec-t">${o.title}</span><span class="sec-s">${o.sub ?? ''}</span><span class="chev" aria-hidden="true"></span></summary>
@@ -362,13 +362,13 @@ export function slotted(tab: string, parts: readonly (readonly [string | null, P
 }
 
 /** Whether a hidden section of History has something to show (the legacy MORE_LIVE takes these): cardio logged, or something recently deleted. */
-export const MORE_OFFER: Readonly<Record<string, () => boolean>> = {
+const MORE_OFFER: Readonly<Record<string, () => boolean>> = {
   'history:cardio': () => state.cardio.length > 0,
   'history:trash': () => state.trash.length > 0
 };
 
 /* The foot of a tab: the hidden sections it can show, one tap each, and the
-   way to Layout (r28). The chips say what they do ("+ Coach"), so they need
+   way to Layout. The chips say what they do ("+ Coach"), so they need
    no heading, and the link is "Edit sections" here; the menu keeps its full
    name (r69, V, 2026-11-03: the app read as text heavy). */
 /** The foot of a tab: the hidden sections it can show, one tap each (with what the tab says of its own, `offer`), and the way to Layout. */
@@ -383,7 +383,7 @@ export function tabFoot(tab: string, offer?: Readonly<Record<string, () => boole
 `;
 }
 
-/* The progress gradient on a line chart (2.33): defined inside the chart's
+/* The progress gradient on a line chart: defined inside the chart's
    own drawing, across its width in its own units, so a flat line is drawn
    with it too (a gradient laid over a line's own box needs the box to have a
    height). Its stops take their colours from the stylesheet's tokens. */

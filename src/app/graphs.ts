@@ -1,4 +1,4 @@
-/* Stats' charts (r58, phase 5): drawn with Chart.js after Stats is drawn,
+/* Stats' charts: drawn with Chart.js after Stats is drawn,
    into the canvases its template leaves (chMuscle, chRadar, chEx, chVol,
    chBW), from the same readings the screen's numbers use, and taken down
    before every draw (killCharts). Moved from src/22-plan-stats.js with Stats,
@@ -34,7 +34,7 @@ const CS = {
   radarLegendBox: 12,
   radarStep: 50,
   radarMin: 150,
-  /* The radar is drawn up to 200% (r29): a minimum brought down to 2 sets read 8 sets as 400%, and the ring and every
+  /* The radar is drawn up to 200%: a minimum brought down to 2 sets read 8 sets as 400%, and the ring and every
      other spoke shrank to a quarter. The real share is in the table and the tooltip. */
   radarMax: 200,
   radarPoint: 3,
@@ -654,7 +654,7 @@ function muscleChart(I: Idx, sFirst: string | null, { blue, green }: Pal): void 
 /** The balance radar, built from the same source the table on screen uses. */
 function radarChart({ blue, green }: Pal): void {
   const regs = regionBalance(regionSrc().src);
-  // Drawn up to CS.radarMax (r29), the real share in the table and the tooltip.
+  // Drawn up to CS.radarMax, the real share in the table and the tooltip.
   const rMax = Math.min(
     CS.radarMax,
     Math.max(CS.radarMin, Math.ceil(Math.max(...regs.map(x => x.pct)) / CS.radarStep) * CS.radarStep)

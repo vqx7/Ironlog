@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r90, version 2.44, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r91, version 2.45, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -61,7 +61,8 @@ stand-in cloud.
     (correct by a written rule or V's ruling, cited), DECISION PENDING (V's, the question quoted), DEFERRED (only on
     V's word, dated) or NEW (found while building, added with its reproduction the moment it is found and reported
     to V in the same message; never fixed without a reproduction, never folded silently into scope). No row is
-    deleted or merged into another. A message to V about progress names rows by ID, and every session ends with the
+    deleted or merged into another; a row closed in a merged release may move, word for word, to docs/ARCHIVE.md, where it stays
+    readable and goes back here as OPEN if it turns out missed or wrongly closed (V, 2026-11-10, CA-5). A message to V about progress names rows by ID, and every session ends with the
     tracker and the project's ledger updated, so nothing lives only in a chat.
 
 ## What is in this repo
@@ -197,7 +198,7 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   a value worked out as the page is drawn; a fixed one is a `u-` class in the stylesheet (r65). Image tags in the
   script are written `\x3cimg`. Any new inline script, outside host or `eval` needs the Content Security Policy in
   `scripts/build.js` changed with it. Keep `window.__ironlog`: it is how the tests reach in.
-- **Tests:** never weaken or delete an assertion to make it pass. Suites reach no outside service. A suite left out
+- **Tests:** a new check goes in the suite of the feature it checks, never in a suite named for a release (V, 2026-11-10, CA-1; `tests/hygiene.js` refuses a new one). Never weaken or delete an assertion to make it pass. Suites reach no outside service. A suite left out
   of the WebKit run is in `WEBKIT_SKIP` in `tests/run.js`, with the reason.
 
 ## Releasing

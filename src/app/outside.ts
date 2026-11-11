@@ -1,4 +1,4 @@
-/* A library loaded at run time from an address (r59): three.js for the 3D
+/* A library loaded at run time from an address: three.js for the 3D
    body, which only Today's 3D view needs, so it loads the first time 3D is
    opened instead of with the page (THREE_URLS in config.ts: this build's own
    copy first, then the listed CDNs, as ARCHITECTURE.md lists them). The one

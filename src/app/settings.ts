@@ -1,4 +1,4 @@
-/* Settings (r57, phase 5): every group, the account and sync lines of Your
+/* Settings: every group, the account and sync lines of Your
    data, drawn by lit-html as src/23-history-settings.js and the account part
    of src/14-account.js drew them, and the actions and fields that change
    what it shows, each change to the log through `act`. What Settings opens
@@ -120,7 +120,7 @@ export function bwEvery(): 0 | 7 | 14 | 30 {
 /** What the suggestions are and are not, in full: the tip on Your data's line, and the first page's. */
 export const SAFETY_TXT = `${APP_NAME} works out suggested loads and reps from your own log with published formulas and the rules of thumb in the Guide. They are estimates, not medical, physical therapy, or coaching advice, and they can be wrong. Use good technique, and safety bars or a spotter on heavy lifts. Stop on pain. Check with a doctor before starting or changing training, especially with an injury, a health condition, or a pregnancy. You train at your own risk.`;
 
-/* ---------- Your training (r44) ---------- */
+/* ---------- Your training ---------- */
 
 /** One routine item a profile's rules would change: its day, the item and the fields with their new values. */
 interface ProfApply {
@@ -133,7 +133,7 @@ interface ProfApply {
    rest of 0 (no timer, on purpose) is left alone. Under a year, Apply only
    raises reps in reserve and keeps the routine's ranges: a ready-made
    routine's 5 x 5 or 10 to 15 was chosen on purpose, and 8 to 12 is where new
-   exercises start (the r44 review). */
+   exercises start. */
 /** What Apply would change in a routine, item by item. */
 export function profApplyList(R: Routine | null | undefined): ProfApply[] {
   const out: ProfApply[] = [];
@@ -256,7 +256,7 @@ ${
 }`;
 }
 
-/* ---------- Your gym (r33, item 207) ---------- */
+/* ---------- Your gym ---------- */
 
 /** The dumbbell fields as typed, kept on screen (ui.gymDb) until From, To and Step make a rack, so a half-filled form is never thrown away or saved. */
 type DbTyped = Partial<DbRack>;
@@ -293,7 +293,7 @@ function gymNext(): Gym {
     : { u: gymUnit() };
 }
 /* The usual plates of a unit, heaviest first, as Your gym's chips offer them: a new list on each call, so no caller
-   can change the table (units.ts). In gym.ts until 2.34, when a saved gym stopped being limited to them (NEW-76) and
+   can change the table (units.ts). In gym.ts until 2.34, when a saved gym stopped being limited to them and
    Settings became their only reader. */
 function usualPlates(u: string): number[] {
   return [...(u === 'kg' ? PLATES_KG : PLATES_LB)];
@@ -371,10 +371,10 @@ ${
       ? 'Add From, To, and Step to use these.'
       : L
         ? `${L.length} pairs: ${listTxt(L)} ${u}${pair ? '. Add both smaller-step fields to use them.' : ''}`
-        : 'Not set: dumbbell steps are read from what you log.'
+        : 'Not set: dumbbell steps come from your log.'
   }</p>
 </div>
-<label class="field">${labelTip('lt-kb', `Kettlebells (${u})`, 'The weights you have, any order, separated by commas.')}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g && g.kb ? g.kb.map(fmtG).join(', ') : '')} placeholder=${lb ? '18, 26, 35, 44, 53' : '8, 12, 16, 20, 24'}/></label> <label class="field">${labelTip(
+<label class="field">${labelTip('lt-kb', `Kettlebells (${u})`, 'The weights you have, any order, separated by commas')}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g && g.kb ? g.kb.map(fmtG).join(', ') : '')} placeholder=${lb ? '18, 26, 35, 44, 53' : '8, 12, 16, 20, 24'}/></label> <label class="field">${labelTip(
     'lt-stack',
     `Cable and machine stacks step by (${u})`,
     'The usual step between pins on your cable and machine stacks. A machine that differs gets its own step in its exercise.'
@@ -487,7 +487,7 @@ function rirSettings(): TemplateResult {
       : html`<label class="check-inline"><input type="checkbox" data-bind="rirAsk" aria-labelledby="lt-rirAsk" .checked=${live(s.rirAsk === true)}/>${labelTip(
           'lt-rirAsk',
           `Open the ${effName()} picker after each set`,
-          "Off: tap a set's RIR box when you want to rate it. On: the picker opens by itself after each set you tick."
+          "Off: tap a set's RIR box to rate it. On: the picker opens by itself after each ticked set."
         )}</label> <label class="check-inline"><input type="checkbox" data-bind="rirHalf" aria-labelledby="lt-rirHalf" .checked=${live(s.rirHalf === true)}/>${labelTip(
           'lt-rirHalf',
           `Count ${halfLbl()} as half a set`,
@@ -512,7 +512,7 @@ function layoutSettings(): TemplateResult {
     `Hidden sections are still tracked, and come back where they were. Each time ${APP_NAME} opens, every section starts folded except Sessions on History. Drag a section by its ⠿ to move it; each tab keeps its order.`,
     'About layout'
   )}</p>
-<div class="row"><button class=${dflt ? 'btn sm noted' : 'btn sm'} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Weekly volume hidden on Plan, and the default order.">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
+<div class="row"><button class=${dflt ? 'btn sm noted' : 'btn sm'} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Weekly volume hidden on Plan, and the default order">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
 ${HIDE_TABS.map(
   ([t, l]) =>
     html`<div class="hide-grp">
@@ -543,7 +543,7 @@ function acctPanel(): TemplateResult | typeof nothing {
 <button class="btn sm" data-act="acctRetry">Try again</button></div>
 `
       : nothing;
-  /* Signed out, this one line says where the log is and what an account adds (r34.2): Your data
+  /* Signed out, this one line says where the log is and what an account adds: Your data
      used to say it four times (this panel, the storage line, the privacy line, Backup due). */
   return u
     ? html`<div class="panel" id="acctPanel">
@@ -600,7 +600,7 @@ function syncInfo(): TemplateResult {
   return html`<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
 <p class="small hastip u-m6-0-0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last ${UNDO_DAYS} days.`}>${
     cloud.status !== 'synced'
-      ? 'Saved on this device. It reaches your account when you are back online.'
+      ? 'Saved on this device. It reaches your account once back online.'
       : window.claude
         ? 'Saved to your Claude account and this device.'
         : 'Saved to your account and this device.'
@@ -670,7 +670,7 @@ function privacyLine(): TemplateResult {
       );
 }
 
-/** The line that says a log kept aside for another account is on this phone (r56.1, PENDING 328 b). */
+/** The line that says a log kept aside for another account is on this phone. */
 function asideLine(): TemplateResult | typeof nothing {
   const kept = asideList();
   if (!kept.length) return nothing;
@@ -722,7 +722,7 @@ function dataBody(): TemplateResult {
       : nothing
   }
 <div class="card stack">
-<div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
+<div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
 <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button> <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"/></label> <button class="btn" data-act="pasteImport">Paste backup text instead</button>
 <div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Takes back the changes that offered Undo when you made them, one at a time, newest first, from the last ${UNDO_DAYS} days, even after the app is closed. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.`}>${undoLabel()}</button></div>
 </div>
@@ -790,7 +790,7 @@ function timerBody(s: Settings): TemplateResult {
 </select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${live(!!s.timerSound)} ?disabled=${s.timerMode === 'off'}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${live(!!s.timerCompact)} ?disabled=${s.timerMode === 'off'}/>${labelTip(
     'lt-timerCompact',
     'Compact timer',
-    'A small pill in the corner instead of the rest card above the tabs.'
+    'A small pill in the corner instead of the rest card above the tabs'
   )}</label> <label class="check-inline"><input type="checkbox" data-bind="autoDone" aria-labelledby="lt-autoDone" .checked=${live(!!s.autoDone)}/>${labelTip(
     'lt-autoDone',
     'Auto-mark a set done after its reps',
@@ -798,7 +798,7 @@ function timerBody(s: Settings): TemplateResult {
   )}</label> <label class="check-inline"><input type="checkbox" data-bind="loadFill" aria-labelledby="lt-loadFill" .checked=${live(s.loadFill === 'fill')}/>${labelTip(
     'lt-loadFill',
     'Fill in suggested loads',
-    "Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row for you. Either way, a load you type is never changed."
+    "Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row. Either way, a typed load is never changed."
   )}</label> <label class="field">${labelTip(
     'lt-todayStart',
     'Today starts with',
@@ -844,7 +844,7 @@ function bandsBody(s: Settings): TemplateResult {
 <th class="r">Max</th>
 </tr>
 ${MUSCLES.map(([k, l]) =>
-  /* A muscle with no target (339 e, r58) offers one; one the lifter gave a
+  /* A muscle with no target offers one; one the lifter gave a
      target (not by default and not a focus, which Your training sets) can go
      back to tracked only. */
   !hasTarget(k)
@@ -876,7 +876,7 @@ ${MUSCLES.map(([k, l]) =>
 /** Help: the Guide, Report a problem and, for the reader of reports, their inbox. */
 function helpBody(): TemplateResult {
   return html`<div class="card stack">
-<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? html`<button class="btn" data-act="fbInbox">Reports inbox</button>` : nothing}</div>
+<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which">Report a problem</button>${acct.reader && FB() ? html`<button class="btn" data-act="fbInbox">Reports inbox</button>` : nothing}</div>
 </div>
 `;
 }
@@ -1170,7 +1170,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
     toast('Your gym cleared: the usual steps apply', true);
   },
-  /* Your training (r44): a tap on a choice sets it, a tap on the one set
+  /* Your training: a tap on a choice sets it, a tap on the one set
      clears it. Focus moves only the app's own weekly targets, with Undo. */
   profSet(t) {
     const k = t.dataset.k;
@@ -1223,16 +1223,16 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     );
     rerenderKeepScroll();
     const n = Object.keys(moved).length;
-    // A focus whose own target was typed does nothing to it; say so rather than nothing (the r44 review).
+    // A focus whose own target was typed does nothing to it; say so rather than nothing.
     const fm = MK.find(m => m === raw);
     const kept = k === 'focus' && !!np && (np.focus || []).includes(raw) && !!fm && !moved[fm];
     if (kept)
       toast(
-        `Your ${ML[raw]} target is one you set, so it stays. Default targets in Weekly set targets puts the app's back.`,
+        `Your ${ML[raw]} target is your own and stays. Default targets in Weekly set targets puts the app's back.`,
         n > 0,
         KEPT_TOAST_MS
       );
-    else if (n) toast(`Weekly targets moved for ${n} muscle${n === 1 ? '' : 's'}. Ones you typed stay.`, true);
+    else if (n) toast(`Weekly targets moved for ${n} muscle${n === 1 ? '' : 's'}. Typed ones stay.`, true);
   },
   profApply() {
     const R = activeRoutine();
@@ -1262,7 +1262,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
     );
   },
-  // Weekly set targets back to the defaults (r44), with Your training's focus; typed ones, those given with Set a target (r58) and a first-run fit go.
+  // Weekly set targets back to the defaults, with Your training's focus; typed ones, those given with Set a target and a first-run fit go.
   bandsDefault() {
     const b = state.settings.bands;
     const fit = state.settings.bandsFit ? { ...state.settings.bandsFit } : null;
@@ -1302,7 +1302,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
     toast('Weekly set targets back to the defaults', true);
   },
-  // A muscle with no target given one (339 e, r58): its numbers as they stand, now counted.
+  // A muscle with no target given one: its numbers as they stand, now counted.
   tgtSet(t) {
     const m = MK.find(x => x === t.dataset.m);
     if (!m || hasTarget(m)) return;
@@ -1332,7 +1332,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   unreadForget() {
     confirmBox(
       'Forget the save kept aside?',
-      'It is deleted for good. Export or copy it first if you might want it.',
+      'It is deleted for good. Export or copy it first to keep a copy.',
       'Forget it',
       () => {
         unreadableForget();
@@ -1370,7 +1370,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!parkSettle()) return;
     confirmBox(
       'Erase everything?',
-      `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? ' on this device and in your cloud copy' : ' on this device'}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first if you might want it.`,
+      `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? ' on this device and in your cloud copy' : ' on this device'}. Pictures on this phone go too, and Undo does not bring them back. Export a backup first to keep a copy.`,
       'Erase everything',
       () => {
         act(
@@ -1381,8 +1381,8 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           },
           { undo: true }
         );
-        // Pictures are not part of the log Undo keeps, so they go at once, as the question says (r66, 373). The profile photo
-        // with them (2.33): from the account too while it syncs, as the cloud copy of the log goes (2.34), else from this phone.
+        // Pictures are not part of the log Undo keeps, so they go at once, as the question says. The profile photo
+        // with them: from the account too while it syncs, as the cloud copy of the log goes, else from this phone.
         picsClear().catch((e: unknown) => {
           log('pics-clear', e);
         });

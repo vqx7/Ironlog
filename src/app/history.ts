@@ -1,10 +1,10 @@
-/* History (r57, phase 5): the sessions by week, cardio and mobility, and
+/* History: the sessions by week, cardio and mobility, and
    Recently deleted, drawn by lit-html as src/23-history-settings.js drew
    them, and the actions that change what it shows, each change to the log
    through `act`. Starting a workout from a session (Edit, Do again) and the
    sheets it opens (the calendar, a past workout, an import) are the session
    and sheet modules' actions (actsstart.ts, the sheets*.ts modules),
-   reached by the button's data-act through events.ts's table (r63). */
+   reached by the button's data-act through events.ts's table. */
 
 import { picStripSaved } from './notepics';
 import { html, nothing } from 'lit-html';
@@ -146,7 +146,7 @@ function sessionsSec(ss: readonly Session[], perDay: Record<string, number>): Te
       : nothing;
   };
   const vol = new Map(I.sessVol.map(v => [v.id, v.vol]));
-  // A session's counted PRs (2.33): the same PRs, counted the same way, as Today's and Stats' "PRs, last 4 weeks".
+  // A session's counted PRs: the same PRs, counted the same way, as Today's and Stats' "PRs, last 4 weeks".
   const prs = new Map<string, Pr[]>();
   for (const p of I.prs) if (p.big) prs.set(p.sid, [...(prs.get(p.sid) || []), p]);
   const nWork = (s: Session): number => s.ex.reduce((a, b) => a + b.sets.filter(isWork).length, 0);
@@ -372,7 +372,7 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       { undo: true }
     );
     render();
-    // Its own Undo step, like every change (2.30, RC-4): before, Restore kept none, so the delete's step stayed on top and Undo read "Nothing to undo there" (NEW-73).
+    // Its own Undo step, like every change: before, Restore kept none, so the delete's step stayed on top and Undo read "Nothing to undo there".
     toast(`${x.kind === 'session' ? 'Session' : x.kind === 'cardio' ? 'Cardio entry' : 'Routine'} restored`, true);
   },
   histDel(t) {

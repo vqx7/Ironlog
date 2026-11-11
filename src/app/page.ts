@@ -329,7 +329,7 @@ export function openModal(m: Modal): void {
   }
   const was = ui.modal;
   ui.modal = m;
-  // A question replaced unanswered (r56.1) reads as Cancel, as closeModal reads it: the sync waiting on it must not wait forever.
+  // A question replaced unanswered reads as Cancel, as closeModal reads it: the sync waiting on it must not wait forever.
   if (was && was.kind === 'confirm' && was.onClose && !was.answered) was.onClose();
   renderModal();
   const el = document.getElementById('modal');
@@ -391,7 +391,7 @@ export function closeModal(): void {
 
 /* alt is an optional second action, {label, fn}. Some choices are genuinely
    three-way ("keep them", "drop them", "go back") and collapsing that into
-   OK/Cancel is how data gets thrown away by accident. onClose (r56.1): the
+   OK/Cancel is how data gets thrown away by accident. onClose: the
    sheet closed without an answer, so a question the sync asked can read it
    as Cancel. */
 /** Asks before an action: the title, the question, the button's words, what it does, whether it deletes, a second answer, and what closing without an answer does. */
@@ -431,7 +431,7 @@ export function setSaveState(): void {
   const el = document.getElementById('saveState');
   if (!el) return;
   const { cls, txt } = saveStateNow();
-  // The profile photo, where this phone keeps one (2.33), takes the menu icon's place; the save state's dot stays on it.
+  // The profile photo, where this phone keeps one, takes the menu icon's place; the save state's dot stays on it.
   const ph = photoUrl();
   el.className = 'ssb' + (ph ? ' ph' : '') + (cls ? ' ' + cls : '');
   draw(

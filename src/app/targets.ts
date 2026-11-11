@@ -17,7 +17,7 @@ import { starterRoutine } from './normalize';
 import { activeRoutine, defBand, fitFloors, plannedSets, prof } from './live';
 import { state } from './store';
 
-/* Targets fitted before r44 recorded no floors (r44 review): once, on this
+/* Targets fitted before r44 recorded no floors: once, on this
    device's state at start, when every target is exactly what a first-run
    pick of the routine in use, the starter or the old default gives, record
    those floors. Any target that differs (typed) leaves it alone. Not in
@@ -60,7 +60,7 @@ export function fitTargets(
      after that left targets measured against a routine no longer used). */
   const same = (x: Readonly<Record<string, readonly number[]>>) =>
     MK.every(m => b[m] && b[m][0] === x[m][0] && b[m][1] === x[m][1]);
-  /* The defaults are the profile's (r44): with focus muscles set, those
+  /* The defaults are the profile's: with focus muscles set, those
      targets are where a first-run pick starts. With no profile they are BANDS. */
   const D: Record<string, readonly number[]> = {};
   for (const m of MK) D[m] = defBand(m);
@@ -80,11 +80,11 @@ export function fitTargets(
      sets a week and the weeks as trained never match exactly (2 days
      alternating, 3 sessions a week, plans 2.8), and the review saw "Abs
      below target, add a set to Plank" measured against the lifter's own
-     program. A focus muscle keeps its raised target (r44): raising it is
+     program. A focus muscle keeps its raised target: raising it is
      the point of the focus. Each floor is recorded (settings.bandsFit), so a
      later focus change knows which targets are the app's; a focus muscle's
      floor is recorded too, though not applied while it is a focus, so
-     taking the focus off later brings it to the plan (the r44 review). The
+     taking the focus off later brings it to the plan. The
      floors are fitFloors' (profile.ts, r54), the one rule the refit of an
      older fit reads too. */
   const fit = fitFloors(R, actual);

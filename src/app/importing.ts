@@ -1,4 +1,4 @@
-/* Importing workouts (r23, PENDING 65): the parsers that turn a file or
+/* Importing workouts: the parsers that turn a file or
    pasted text into rows, dates, exercise names and sets, before anything is
    matched to the library or saved (phase 3a, r51; moved unchanged from the
    legacy script). The preview and
@@ -21,7 +21,7 @@ type ImpSet = {
 };
 /** An exercise of an imported session, in order of first appearance. */
 type ImpItem = { name: string; sets: ImpSet[]; note: string; ss?: string };
-/** An imported session: a date and a workout name, its exercises, whether it was a deload, and its note and minutes, from the app's own file (r55) and from Strong and Hevy (r55.1). */
+/** An imported session: a date and a workout name, its exercises, whether it was a deload, and its note and minutes, from the app's own file and from Strong and Hevy. */
 type ImpSession = {
   date: string;
   name: string;
@@ -30,7 +30,7 @@ type ImpSession = {
   deload?: boolean;
   durMin?: number;
 };
-/** Cardio read from a table, per date and kind, time and distance added up; from the app's own file its exact minutes, heart rate, when, note and distance in km (r55). */
+/** Cardio read from a table, per date and kind, time and distance added up; from the app's own file its exact minutes, heart rate, when, note and distance in km. */
 type ImpCardio = {
   date: string;
   kind: string;
@@ -65,7 +65,7 @@ interface ImpReadSession {
 export interface ImpRead {
   sessions: ImpReadSession[];
   unit?: 'kg' | 'lb' | null | undefined;
-  /** Notes that name both kg and lb: no unit is read as theirs, and the preview says so (r64). */
+  /** Notes that name both kg and lb: no unit is read as theirs, and the preview says so. */
   mixed?: true | undefined;
   skipped?: number | undefined;
   cardio?: number | undefined;
@@ -144,7 +144,7 @@ const NUM_DATE = /\b(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b/;
 /** A date with the year first (2026-10-16), which is never read day first. */
 const YEAR_FIRST = /(?<!\d)(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)/;
 
-/* One file, one way of writing dates (NEW-80): 02/10/2026 is 10 February in a month-first file and 2 October in a
+/* One file, one way of writing dates: 02/10/2026 is 10 February in a month-first file and 2 October in a
    day-first one, and read alone it is taken month first. A file whose dates include one that can only be day
    first (16/10) and none that can only be month first (10/16) is day first throughout; any other file is read
    date by date, as before. */
@@ -335,7 +335,7 @@ export async function impXlsx(buf: ArrayBuffer): Promise<string[][]> {
     const at = f.lo + ZIP.localHead + ln + le;
     const data = u.subarray(at, at + f.cs);
     if (f.meth === 0) return new TextDecoder().decode(data);
-    /* Read in pieces and stopped past XLSX_MAX_BYTES (2.28, 2.27-F10): a file of a megabyte or two can inflate to
+    /* Read in pieces and stopped past XLSX_MAX_BYTES: a file of a megabyte or two can inflate to
        gigabytes, and read whole it took that much of the phone's memory before anything was checked. */
     const rd = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
     const parts: Uint8Array[] = [];
@@ -400,7 +400,7 @@ export async function impXlsx(buf: ArrayBuffer): Promise<string[][]> {
 /* Exercise names from other apps and from people: "Bench Press (Barbell)",
    "DB curls", "lat pull down". Words are reduced to one spelling, then the
    closest library exercise is found by shared words. */
-export const IMP_SYN: readonly (readonly [RegExp, string])[] = [
+const IMP_SYN: readonly (readonly [RegExp, string])[] = [
   [/\bdumb ?bells?\b|\bdbs?\b/g, 'db'],
   [/\bbar ?bells?\b|\bbb\b/g, 'bb'],
   [/\bpull[ -]?downs?\b/g, 'pulldown'],
@@ -579,7 +579,7 @@ function impSpan(dur: string, start: string, end: string, order?: 'dm'): number 
 /* Header words for each field, across Strong, Hevy and hand-made sheets. */
 /* Each field lists header names best first, so a sheet with both Date and Day
    takes Date, and a total-load column never passes for the weight. */
-export const IMP_COLS: Readonly<Record<string, readonly RegExp[]>> = {
+const IMP_COLS: Readonly<Record<string, readonly RegExp[]>> = {
   date: [/^date$/, /^(workout date|start_?time|date ?time|when)$/, /^day$/],
   name: [/^(workout name|workout|title|session|routine)$/],
   ex: [/^(exercise( name)?|exercise_title|movement|lift)$/, /^name$/],
@@ -632,7 +632,7 @@ export function impHeader(row: readonly unknown[]): Record<string, number> {
     const i = k.findIndex(h => /^load_(lb|kg)$/.test(h));
     if (i >= 0) map.w = i;
   }
-  /* Ironlog's own CSV (r31.2): its day column is the workout's name, and
+  /* Ironlog's own CSV: its day column is the workout's name, and
      its unit column says reps or seconds, not lb or kg. In other sheets a
      Day column can be a date or a weekday, so this is only for ours. */
   if (k.some(h => /^load_(lb|kg)$/.test(h)) && k.includes('exercise_note')) {
@@ -758,7 +758,7 @@ function rowSet(
    order of first appearance. A row with no date or exercise continues the
    one above (sheets often write the date once). Rest timer rows, and rows
    with neither reps nor seconds that are not cardio, are skipped and
-   counted; cardio rows become cardio entries (r30). */
+   counted; cardio rows become cardio entries. */
 export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<string, number>): ImpRead {
   const head = rows[0];
   let unit = impUnitOf(head, map);
@@ -798,7 +798,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     cardio = 0;
   const bad: string[] = [];
   const C = new Map<string, ImpCardio>();
-  // The file's way of writing dates, from its date column (NEW-80).
+  // The file's way of writing dates, from its date column.
   const dc = map.date;
   const order = dc == null ? undefined : impDateOrder(rows.slice(1).map(r => r[dc]));
   for (let i = 1; i < rows.length; i++) {
@@ -851,7 +851,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       C.set(k, o);
       continue;
     }
-    // A set of 0 reps in the app's own file is a missed set (r55), kept as one; elsewhere, a row with nothing done.
+    // A set of 0 reps in the app's own file is a missed set, kept as one; elsewhere, a row with nothing done.
     const missed = ours && cell('r') !== '' && reps === 0;
     if (!(reps > 0) && !(secs > 0) && !missed) {
       skipped++;
@@ -1117,7 +1117,7 @@ export function impFromText(text: unknown): ImpRead {
     ex: TextItem | null = null,
     pend: { name: string; raw: string } | null = null,
     hint: 'kg' | 'lb' | null = null;
-  /* Both units named (r64, the r63 audit's F2): a line with its unit is read
+  /* Both units named: a line with its unit is read
      in it, and a line with none was read in the first unit named, so 225
      under an earlier 100kg became 225 kg beside a 135lb line. Notes naming
      both say neither as theirs: the preview starts on the app's unit and
@@ -1240,7 +1240,7 @@ export function impFromText(text: unknown): ImpRead {
   }
   const last: { name: string; raw: string } | null = pend;
   if (last) unread.push(last.raw);
-  // The notes' way of writing dates, from the lines read as dates (NEW-80): a day-first file is read again day first.
+  // The notes' way of writing dates, from the lines read as dates: a day-first file is read again day first.
   const order = impDateOrder(S.flatMap(x => (x.line ? [x.line] : [])));
   if (order) for (const x of S) if (x.line) x.date = impDate(x.line, undefined, order) || x.date;
   return {

@@ -31,7 +31,7 @@ import { swapPlan } from './actspick';
 
 /** The most sets a lift done again in a deload records as its full count. */
 const MAX_FULL = 30;
-/** A swap in Limited equipment much harder than the lift it replaces is done for these (r30). */
+/** A swap in Limited equipment much harder than the lift it replaces is done for these. */
 const HARD_SWAP = { repMin: 3, repMax: 6, rir: 2 } as const;
 /** The longest name Do again gives a blank session. */
 const AGAIN_CHARS = 40;
@@ -102,10 +102,10 @@ function pastDraft(date: string, di: number | null, part: 1 | 2 = 1): DraftLike 
   };
 }
 
-/** What is said when the workout open is set aside for an edit or a past workout (R81-2). */
+/** What is said when the workout open is set aside for an edit or a past workout. */
 const PARKED_SAID = 'Your workout in progress is set aside. It comes back when you save or discard this one.';
 
-/* A start with a workout already open opens that one instead (NEW-89): Today
+/* A start with a workout already open opens that one instead: Today
    offers starts while the lifter has stepped away from a workout, and a start
    never discards one unasked. */
 function resumeOpen(): boolean {
@@ -137,7 +137,7 @@ function startSession(t: Tap): void {
   const di = Number(t.dataset.day);
   const d0 = R.days[di];
   if (!d0) return;
-  // The day's second workout on a fixed-weekday routine (r68, 366 (c)), else its first.
+  // The day's second workout on a fixed-weekday routine, else its first.
   const part = R.schedule === 'weekly' && t.dataset.part === '2' ? 2 : 1;
   const d = R.schedule === 'weekly' ? dayWorkout(d0, part) : d0;
   const light = t.dataset.light === '1';
@@ -175,7 +175,7 @@ function wkGo(t: Tap): void {
     const on = d === today() || di == null || !R.days[di] ? null : di;
     ui.todayDay = on;
     ui.todayPart = null;
-    // The date it was opened for, said on the card when past this week (329, r59).
+    // The date it was opened for, said on the card when past this week.
     ui.todayAt = on == null ? null : { d, di: on };
   }
   if (ui.modal) closeModal();
@@ -204,7 +204,7 @@ function wkOpen(t: Tap): void {
 }
 
 /** Log a past workout: from an empty past day in the top bar (that date), or from History (yesterday, changeable in the sheet). */
-/** Add an old best (380, r70): the past sheet for a date, then the lift, as a Freestyle past workout of one set. */
+/** Add an old best: the past sheet for a date, then the lift, as a Freestyle past workout of one set. */
 function oldBestOpen(): void {
   openModal({ kind: 'past', date: today(), old: true });
 }
@@ -232,7 +232,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const cur = inline || !sheet ? (typeof kept === 'string' && kept) || monthOf(today()) : sheet.ym;
     const { min, max } = calBounds();
     let ym: string;
-    // This month, now the calendar goes a year ahead (329, r59).
+    // This month, now the calendar goes a year ahead.
     if (t.dataset.v === 'now') ym = monthOf(today());
     else {
       const [y = 0, mo = 1] = cur.split('-').map(Number);
@@ -258,7 +258,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       wkOpen({ dataset: { id: one.id } });
       return;
     }
-    // Two-a-days (r34): a day with more than one session asks which.
+    // Two-a-days: a day with more than one session asks which.
     if (ss.length > 1) {
       openModal({ kind: 'daypick', date: d });
       return;
@@ -331,7 +331,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       {
         inProgress: true,
-        /* Undo puts back exactly what the trim took (r25): the blank rows, at
+        /* Undo puts back exactly what the trim took: the blank rows, at
            the end of their exercise, and the skipped exercises in their
            places. Sets logged since stay (the merge Undo used before brought
            back skipped exercises but not removed rows). Nothing is marked
@@ -429,7 +429,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       ...(t.dataset.part === '2' ? { part: 2 as const } : {})
     });
   },
-  // Today's own workout on a fixed-weekday routine, when the card offered one from another day (NEW-31, r68).
+  // Today's own workout on a fixed-weekday routine, when the card offered one from another day.
   todayOwn(t) {
     ui.todayDay = Number(t.dataset.day);
     ui.todayPart = t.dataset.part === '2' ? 2 : 1;
@@ -494,7 +494,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       closeModal();
       return;
     }
-    // The day's second workout when the card showed it (r68, 366 (c)).
+    // The day's second workout when the card showed it.
     const day = R.schedule === 'weekly' ? dayWorkout(day0, m.part === 2 ? 2 : 1) : day0;
     const eq = new Set(m.equip);
     const pl = eqPlan(day, eq).filter(x => x.to);
@@ -508,7 +508,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const ex = pl.flatMap(x => {
       if (!x.to) return [];
       const it = deload ? { ...x.it, sets: halfSets(x.it.sets) } : x.it;
-      // A much harder swap gets a range it can be done in (r30): 3 to 6 reps, 2 in reserve.
+      // A much harder swap gets a range it can be done in: 3 to 6 reps, 2 in reserve.
       const sp = x.from ? swapPlan(it, x.from, x.to, R, day.id) : { ...it };
       if (x.hard) Object.assign(sp, HARD_SWAP);
       const b = newBlock(x.to, sp, { deload, before: today() });
@@ -534,7 +534,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         deload,
         light: false,
         limited: true,
-        // What this gym has, for Pick for me and Swap in this session (NEW-79); all of it on limits nothing.
+        // What this gym has, for Pick for me and Swap in this session; all of it on limits nothing.
         ...(eq.size < EQUIP.length ? { equip: EQUIP.map(([k]) => k).filter(k => eq.has(k)) } : {}),
         cardio: [],
         notes: [deload ? DELOAD_NOTE : '', note].filter(Boolean).join(' '),
@@ -567,7 +567,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     };
     closeModal();
     const d = state.draft;
-    // The workout open is set aside and comes back when this one is saved or discarded (R81-2); else asked, as before.
+    // The workout open is set aside and comes back when this one is saved or discarded; else asked, as before.
     if (d && parkDraft()) {
       go();
       toast(PARKED_SAID);
@@ -575,8 +575,8 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       confirmBox(
         'Replace the session in progress?',
         d.editingId
-          ? 'You are editing a saved session. Your edits will be lost.'
-          : 'You have an unsaved session open. Starting this one discards it.',
+          ? 'Editing a saved session. The edits will be lost.'
+          : 'An unsaved session is open. Starting this one discards it.',
         'Discard and start',
         go,
         true
@@ -607,7 +607,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         routineId: s.routineId,
         notes: s.notes || '',
         ...(s.pics && s.pics.length ? { pics: [...s.pics] } : {}),
-        // An edit of a day's second workout stays one (r68, 366 (c)).
+        // An edit of a day's second workout stays one.
         ...(s.part === 2 ? { part: 2 as const } : {}),
         ex: s.ex.map(b => {
           const it = dayItems.find(i => i.exId === b.exId);
@@ -642,7 +642,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       ui.tab = 'today';
       begin(d, false);
     };
-    // The workout open is set aside and comes back when the edit is saved or cancelled (R81-2); else asked, as before.
+    // The workout open is set aside and comes back when the edit is saved or cancelled; else asked, as before.
     if (state.draft && parkDraft()) {
       go();
       toast(PARKED_SAID);
@@ -650,8 +650,8 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       confirmBox(
         'Replace the session in progress?',
         state.draft.editingId
-          ? 'You are editing a saved session. Your edits will be lost.'
-          : 'You have an unsaved session open. Editing this one will discard it.',
+          ? 'Editing a saved session. The edits will be lost.'
+          : 'An unsaved session is open. Editing this one discards it.',
         'Discard and edit',
         go,
         true

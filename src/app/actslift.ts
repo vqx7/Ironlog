@@ -235,7 +235,7 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       closeModal();
       return;
     }
-    // Saved without typing, a lift with no step of its own keeps following its default (Your gym's rack, say) (r33).
+    // Saved without typing, a lift with no step of its own keeps following its default (Your gym's rack, say).
     // A number typed is saved, even the one shown (review: typing 5 on a 5 and 2.5 rack did nothing); so is any other number.
     if (e.inc == null && !sheet.typed && String(numIn(fmtW(incOf(e, sheet.plan)))) === String(n)) {
       closeModal();

@@ -50,7 +50,7 @@ export const VOL_MODES: readonly (readonly [string, string])[] = [
    Plan's Schedule is shown since r70 (381, V 2026-11-03): it is the only
    place to switch between a cycle and fixed weekdays. */
 export const DEFAULT_HIDDEN: readonly string[] = ['today:tiles', 'today:coach', 'today:body', 'program:pvol'];
-export const DEFAULT_ORDER: Readonly<Record<string, readonly string[]>> = {
+const DEFAULT_ORDER: Readonly<Record<string, readonly string[]>> = {
   today: ['moving', 'session', 'map', 'week', 'injuries', 'coach', 'tiles', 'body'],
   dash: ['exercise', 'volume', 'weak', 'consistency', 'body']
 };
@@ -173,7 +173,7 @@ export const HIDEABLE: readonly (readonly [string, string, string])[] = [
   ['settings', 'bands', 'Weekly set targets'],
   ['settings', 'more', 'More']
 ];
-/** The hidden sections a tab's foot offers (r28): its hideable ones that are hidden, each that would show nothing now left out (`live` says which have something to show). */
+/** The hidden sections a tab's foot offers: its hideable ones that are hidden, each that would show nothing now left out (`live` says which have something to show). */
 export function moreList(
   tab: string,
   hidden: readonly string[],
@@ -195,7 +195,7 @@ export const HIDE_TABS: readonly (readonly [string, string])[] = [
   ['settings', 'Settings']
 ];
 
-/* This block vs last on Stats (2.37, ST-6): its lengths, here beside the other kept choices (bwEveryKept) so normalize
+/* This block vs last on Stats: its lengths, here beside the other kept choices (bwEveryKept) so normalize
    reads them; the blocks themselves are blocksIn (weeks.ts). */
 /** Weeks a block runs when the lifter has not picked (Rogerson 2024: a deload about every 5.6 weeks). */
 export const BLOCK_WEEKS_DEFAULT = 6;

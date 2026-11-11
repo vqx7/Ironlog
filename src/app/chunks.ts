@@ -36,7 +36,7 @@ export const chunkOf = (date: string): string => `s-${monthOf(date)}-${dayOfMont
 /** Records in a document are kept in the one session order. */
 const bySess = sessCmp;
 
-/* Body data (item 19): bodyweights and tape measurements sync in one document
+/* Body data: bodyweights and tape measurements sync in one document
    per year, b-YYYY, instead of inside core, where years of daily weigh-ins
    would have passed the size cap and stopped core (routines, settings) from
    syncing. Builds before r22 read only core, draft and s- documents and never
@@ -139,7 +139,7 @@ export function unionById<X>(a: readonly X[] | null | undefined, b: readonly X[]
 /** Sessions in a save that are not demo data. */
 export const realCount = (st: { sessions: { demo?: boolean }[] }): number => st.sessions.filter(x => !x.demo).length;
 
-/* The one way demo data leaves a log (r55): Clear demo data, a real session
+/* The one way demo data leaves a log: Clear demo data, a real session
    finished beside it, and a first link to an account, which demo data never
    goes into (the review of r55 found an empty account given the demo's 27
    sessions). Replaces the lists on the object given, so a shallow copy of

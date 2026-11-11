@@ -5,7 +5,7 @@ import { state } from './store';
 import { effAt, effScale } from './format';
 import { EFFORT_TOP } from './records';
 
-/* Effort in half points or as RPE (r33, item 206): a setting for how effort
+/* Effort in half points or as RPE: a setting for how effort
    is entered and shown. What is stored is always RIR (RPE 8 is RIR 2, RPE
    8.5 is RIR 1.5), so every estimate, hard-set count and target reads it
    unchanged, and switching back and forth loses nothing. Unset is whole RIR. */

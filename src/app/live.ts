@@ -123,7 +123,7 @@ export const LIVE: Model = {
   c: freshCaches()
 };
 
-/* LIVE's caches hold what was read on one day (r64, the r63 audit's A-4).
+/* LIVE's caches hold what was read on one day.
    They were dropped only when the log changed, so a page left open past
    midnight kept yesterday's readings of days and weeks back ("No clear
    change yet" beside "Last done Sep 22, 4 weeks ago") until the next change.
@@ -237,7 +237,7 @@ export const pace = live(paceIn);
 export const paceRatios = live(paceRatiosIn);
 export const sessModelMin = live(sessModelMinIn);
 export const actualAvg4 = live(actualAvg4In);
-/** This block and the one before it on Stats (ST-6). */
+/** This block and the one before it on Stats. */
 export const blocks = live(blocksIn);
 export const avgFirstWeek = live(avgFirstWeekIn);
 export const avgWait = live(avgWaitIn);
@@ -266,7 +266,7 @@ export const daysOff = live(daysOffIn);
 export const easierText = live(easierTextIn);
 export const incOf = live(incOfIn);
 export const heavierLoad = live(heavierLoadIn);
-/** The next load down or up on a lift's list, for minus and plus on a set (ST-6). */
+/** The next load down or up on a lift's list, for minus and plus on a set. */
 export const stepLoad = live(stepLoadIn);
 export const oddLoad = live(oddLoadIn);
 export const lightZero = live(lightZeroIn);

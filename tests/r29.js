@@ -28,7 +28,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     // Only older training (nothing in the last 4 weeks or this week): the last trained weeks, dated, the log's first week left out as the averages leave it (r54).
     const old = await ev(() => { const L = window.__ironlog; const R = L.state.routines[0]; const d = R.days.find(x => !x.rest); L.state.sessions = ['2026-07-06', '2026-07-08', '2026-07-14', '2026-07-21'].map((date, i) => ({ id: 'o' + i, date, dayIdx: 0, dayId: d.id, dayName: d.name, routineId: R.id, notes: '', ex: d.items.slice(0, 3).map(it => ({ exId: it.exId, sets: [{ w: 100, r: 8, rir: 2 }, { w: 100, r: 8, rir: 2 }] })) })); L.state = L.normalize(L.state); L.invalidate(); const rs = L.regionSrc(); return { label: rs.label, old: rs.old }; });
     const o = await vol();
-    ok(old.old && /your last 2 trained weeks, to Jul 26/.test(old.label) && o.canvas && o.data.some(x => x > 0) && /Nothing logged in the last 4 weeks, so this shows your last 2 trained weeks/.test(o.text), 'nothing in the last 4 weeks: the radar draws from your last trained weeks, dated, and says so', { old, t: o.text.slice(0, 260) });
+    ok(old.old && /your last 2 trained weeks, to Jul 26/.test(old.label) && o.canvas && o.data.some(x => x > 0) && /Nothing logged in the last 4 weeks: showing your last 2 trained weeks/.test(o.text), 'nothing in the last 4 weeks: the radar draws from your last trained weeks, dated, and says so', { old, t: o.text.slice(0, 260) });
     const cb = await ev(() => { const L = window.__ironlog; return L.coach().text; });
     ok(/Nothing logged in the last 4 weeks/.test(cb), 'back from a break, the coach says nothing was logged lately, not "after your first full week"', cb);
     // Weeks of data: the average.

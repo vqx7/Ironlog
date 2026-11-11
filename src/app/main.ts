@@ -345,7 +345,7 @@ function framed(): boolean {
     return true;
   }
 }
-/* Inside another page's frame (r66, PENDING 378): GitHub Pages sends no header and a policy set in the page cannot
+/* Inside another page's frame: GitHub Pages sends no header and a policy set in the page cannot
    set frame-ancestors, so the app refuses to run there itself. A page that framed it could otherwise show the log
    (it shares the site's storage when it is on the same site) and lay its own buttons over the app's, to have a tap
    land where the lifter cannot see. Nothing starts: no log is read or drawn, no storage written, no account; one
@@ -755,16 +755,16 @@ function exposeForTests(): void {
     bandOf,
     picsTidy,
     risingWords,
-    // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it (r70).
+    // A set as the app writes it, by the lift's id: Today's Lifts moving is checked against it.
     setShortOf: (id: string, w: number, r: number): string => setShort(EX(id), w, r),
-    // Today's Lifts moving, so tests/engine.js compares the page's answer with the engine's in Node (r70).
+    // Today's Lifts moving, so tests/engine.js compares the page's answer with the engine's in Node.
     liftsMoving,
-    // Whether a bodyweight lift has no weigh-in to read, so tests/engine.js compares it with Node's (2.29, NEW-72).
+    // Whether a bodyweight lift has no weigh-in to read, so tests/engine.js compares it with Node's.
     noBody,
-    // 2.32 (r78): the tape row's sentence and the one count of minutes left.
+    // 2.32: the tape row's sentence and the one count of minutes left.
     sizeWhat,
     sessLeftMin,
-    // 2.37 (ST-6): This block vs last, so tests/r83.js reads the blocks against a log worked out by hand, and the next
+    // 2.37: This block vs last, so tests/r83.js reads the blocks against a log worked out by hand, and the next
     // load minus and plus step to, so tests/engine.js compares the page's answer with Node's.
     blocks,
     stepLoad
@@ -783,7 +783,7 @@ function firstDraw(): void {
   undoRestore().catch((e: unknown) => {
     log('undo-load', e);
   });
-  // Pictures on notes are read once the page is up (r66, 373); a page that names any is drawn again with them.
+  // Pictures on notes are read once the page is up; a page that names any is drawn again with them.
   picsStart().then(
     () => {
       const named = (x: { pics?: string[] | undefined; ex: { pics?: string[] | undefined }[] }): boolean =>
@@ -803,7 +803,7 @@ function start(): void {
      draw. */
   setRoot(renderInner);
   setSheets(SHEETS, afterSheet);
-  /* The storage and sync modules (phase 4, r56) reach the page through this
+  /* The storage and sync modules reach the page through this
      one object (fx, store.ts): filled before anything that could call an
      effect runs. Then what the storage and sync parts ran as the page loaded,
      in their order: the save read into the store, the sync notes, the device
@@ -811,7 +811,7 @@ function start(): void {
   setFx({ render, rerenderKeepScroll, toast, undoToastHide, setSaveState, syncLine, obGate, ask });
   storageStart();
   syncStart();
-  // Fields typed in, and the update bar (r60): started before the page's handlers are added below.
+  // Fields typed in, and the update bar: started before the page's handlers are added below.
   viewStart();
   updateStart();
   /* The account's listeners (a return to the front or online tries the wait

@@ -10,7 +10,7 @@
    1,000 characters, one image, 5 reports a day per account. Without a report
    service at all (the plain source file) the report is copied as text.
 
-   r63 (PENDING 306): a send gets the time limit the sync has (NET_MS), so
+   r63: a send gets the time limit the sync has (NET_MS), so
    a request that never answers no longer leaves the sheet on Sending; and
    each report carries a key made on the phone (client_id), so a report sent
    again after its reply was lost is refused by the table as a repeat and
@@ -39,7 +39,7 @@ import type { Tap } from './workstate';
 export const NO_ANSWER = 'No answer. Check your connection and try again.';
 
 /** What a report past the day's limit is told, whether this phone or the database counted it (r65, the r63 audit's A-9: the account script said its own 5). */
-const LIMIT_SAID = `You have sent ${FB_DAY} reports today. Try again tomorrow.`;
+const LIMIT_SAID = `${FB_DAY} reports sent today. Try again tomorrow.`;
 
 /** What a report says of the device and the log, at most: the browser's own name, the errors kept, and an error's words once the context is too large. */
 const CTX = { device: 300, errors: 10, words: 100 } as const;
@@ -109,7 +109,7 @@ export function fbContext(m: {
   ex?: string | null | undefined;
   crash?: boolean | undefined;
 }): FbContext {
-  // A report about a crash must survive the crash (r47): each field that reads the log is guarded, so a save that cannot be read still sends what the rest knows.
+  // A report about a crash must survive the crash: each field that reads the log is guarded, so a save that cannot be read still sends what the rest knows.
   const safe = <T>(f: () => T, alt: T): T => {
     try {
       return f();
@@ -228,7 +228,7 @@ export const REPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const from = ui.tab === 'settings' ? ui.prevTab || 'settings' : ui.tab;
     const c = t && t.dataset ? t.dataset.cat : undefined;
     const cat = c && FB_TITLE[c] ? c : 'bug';
-    /* From the crash screen (r47): the report opens written, with the error the
+    /* From the crash screen: the report opens written, with the error the
        screen shows, so one tap sends it; the context marks it a crash and
        carries the stack the log kept. Until r47 a crash reached the owner only
        if the lifter wrote it up by hand. */
@@ -253,7 +253,7 @@ export const REPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       crash: crash || undefined
     });
   },
-  /* A lifter's own exercise stays in their log (r34). Suggesting it sends
+  /* A lifter's own exercise stays in their log. Suggesting it sends
      it to the owner as a report; the library changes only when the owner
      adds it in a build. */
   exSuggest() {
@@ -272,7 +272,7 @@ export const REPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   async fbCopy() {
     const m = reportOpen();
     if (!m) return;
-    // A report opened from the crash screen is already written (r47), so the copy carries it.
+    // A report opened from the crash screen is already written, so the copy carries it.
     const txt = asText(m.cat, m.msg && m.msg.trim() ? m.msg.trim() : '(Write it here)', fbContext(m));
     if (!(await copied(txt))) {
       closeModal();
@@ -321,7 +321,7 @@ export const REPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       renderModal();
       return;
     }
-    // The key is made once per sheet, so the same report sent again carries the same key (PENDING 306).
+    // The key is made once per sheet, so the same report sent again carries the same key.
     if (!m.cid) m.cid = uid();
     const fb: Report = {
       category: FB_CATS.some(([k]) => k === m.cat) ? m.cat : 'bug',

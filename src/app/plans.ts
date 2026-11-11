@@ -16,12 +16,12 @@ import { dayWorkout, defPlanIn, profRuleIn, routinePlanIn, DEFAULT_PLAN } from '
    already sits in the routine (the active one unless given), the day being
    trained first, instead of a generic 3 x 8-12. A lift on no day of it
    starts from its own last full session (r53, V 2026-10-18: "tied at
-   exercise level"), read as the analytics read it, by V's one rule (r54):
+   exercise level"), read as the analytics read it, by V's one rule:
    the newest of its sessions up to the date being logged (`before`, a past
    workout's; today else) not done lighter nor short of its usual, and not
    a sample. Its working sets, and the range it was done at where the
    training profile sets none for the lift. Until r54 it was read from the
-   records by the day's label, at any date (PENDING 313): a deload logged
+   records by the day's label, at any date: a deload logged
    without its button set the plan, a lift done at its usual level on a
    lighter day did not, a session stopped at half its sets did, and an
    exercise added to a past workout read sessions after it. Never done in
@@ -73,7 +73,7 @@ interface FinishedDraft {
 export interface RoutineUpdate {
   rid: string;
   dayId: string;
-  /** The day's second workout, when the session was it (r68, 366 (c)): the change goes there. */
+  /** The day's second workout, when the session was it: the change goes there. */
   part?: 2 | undefined;
   dayName: string;
   add: { exId: string; plan: Partial<Plan> & { sets: number } }[];
@@ -88,20 +88,20 @@ export interface RoutineUpdate {
 
 /* Exercises added or swapped in a session, relative to the routine day it was
    logged against, so Finish can offer to make the change permanent. An
-   exercise added on a lighter day or in a deload had half its sets (r30), so
+   exercise added on a lighter day or in a deload had half its sets, so
    the day gets the sets it would have on a normal day, the count that was
    halved (r53, V 2026-10-18: added after a lighter day, it came back with
    half its sets every time after): the block's own (`full`, kept when its
    sets were halved, r54: Pick for me's count, or Do again's), else the
    lift's plan. Until r54 that was the lift's plan whatever was chosen, so
    Pick for me's 2 sets on a normal day went in as 2 and on a lighter day
-   as 3 (PENDING 313 g). */
+   as 3. */
 export function routineUpdatesIn(M: Model, d: FinishedDraft): RoutineUpdate | null {
   const R = M.s.routines.find(r => r.id === d.routineId);
   if (!R) return null;
   const day0 = R.days.find(x => x.id === d.dayId);
   if (!day0) return null;
-  // The workout of the day the session was (r68, 366 (c)): its second workout's exercises when it was that one.
+  // The workout of the day the session was: its second workout's exercises when it was that one.
   const day = dayWorkout(day0, d.part === 2 ? 2 : 1);
   const have = new Set(day.items.map(i => i.exId));
   const add: RoutineUpdate['add'] = [],

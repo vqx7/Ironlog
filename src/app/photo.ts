@@ -2,7 +2,7 @@
    A photo of the lifter shown in the menu button at the top right. Since 2.34
    it belongs to the account, as a profile photo does in other apps (V,
    2026-11-08: "we should be treating it like an account"): it shows on every
-   phone signed in to the account, goes from a phone that signs out (R79-1),
+   phone signed in to the account, goes from a phone that signs out,
    and is deleted with the account, whose documents all go with it
    (SUPABASE.md, on delete cascade). With no account there is no photo. It is
    not part of the log: it is one document of its own beside the log's
@@ -140,7 +140,7 @@ export function photoSent(et: number, uid: string): void {
   noteSet({ uid, et, up: false });
 }
 
-/** Signing out: the photo goes from the phone (R79-1), unless it holds a change the account has not taken and the
+/** Signing out: the photo goes from the phone, unless it holds a change the account has not taken and the
     lifter chose to keep this phone's copy (the review of 2.34, F2). That change stays, with its note of the account,
     and is sent when that account signs in here again; another account signed in here takes its own instead
     (photoReconcile). Signed out, the menu shows no photo (photoUrl), and Today's line is offered again either way. */

@@ -202,7 +202,7 @@ export function loadOfIn(M: Model, ex: ExerciseLike | null | undefined, s: Loade
   return bwLoadIn(M, ex, date) + (Number(s.w) || 0);
 }
 
-/* PRs on a bodyweight lift are judged at one bodyweight (r32.1): the latest
+/* PRs on a bodyweight lift are judged at one bodyweight: the latest
    weigh-in, the same for every session. Each set's load includes the
    bodyweight of its day, so a weigh-in 0.4 kg up made the same 8 pull-ups or
    12 leg raises a new PR every week (8 identical weeks, 10 PRs counted), and
@@ -214,7 +214,7 @@ export function loadOfIn(M: Model, ex: ExerciseLike | null | undefined, s: Loade
 export const bwRefIn = (M: Model): number =>
   M.c._bwRef !== undefined ? M.c._bwRef : (M.c._bwRef = bwAtIn(M, '9999-12-31') || 0);
 
-// The bodyweight part of a bodyweight lift's load at the latest weigh-in: what the engine and every reading use (r34).
+// The bodyweight part of a bodyweight lift's load at the latest weigh-in: what the engine and every reading use.
 export const bwRefLoadIn = (M: Model, ex: ExerciseLike | null | undefined): number =>
   ex && ex.bw ? bwRefIn(M) * bwShare(ex) : 0;
 
@@ -236,7 +236,7 @@ export function tonnageIn(M: Model, ex: ExerciseLike, s: LoadedSet, date?: strin
   // A row with no load or reps reads as 0, as in loadOfIn.
   const w = Number(s.w) || 0;
   // Assisted with no bodyweight logged would go below 0; weight lifted is then 0.
-  /* Bodyweight known on or before the date only (r30): a first weigh-in
+  /* Bodyweight known on or before the date only: a first weigh-in
      logged today used to be applied to every earlier session, so weight
      lifted in past weeks changed after the fact (4,420 to 6,634 kg). */
   const known = bwKnownAtIn(M, date || M.today());

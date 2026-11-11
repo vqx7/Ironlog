@@ -1,4 +1,4 @@
-/* Where this copy of the app runs (r57): the home-screen app or a browser
+/* Where this copy of the app runs: the home-screen app or a browser
    tab, a touch screen or not, and how this browser installs it. Moved from
    the legacy script with Settings, which reads them; the other screens and
    the account flow import them from here. */

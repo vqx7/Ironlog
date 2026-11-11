@@ -1,4 +1,4 @@
-/* The open sheet (r63): one type for every sheet the page can show, each kind
+/* The open sheet: one type for every sheet the page can show, each kind
    with the fields its sheet draws and its actions read and write. Before r63
    the open sheet was `unknown` to the typed modules, since the legacy script
    wrote it with whatever fields it liked; the actions that write it are
@@ -113,7 +113,7 @@ export interface AccountModal extends SheetBase {
   needCode?: boolean | undefined;
   title?: string | undefined;
   msg?: string | undefined;
-  /** A problem report it was opened from: signing in goes back to it, with what was typed (r55). */
+  /** A problem report it was opened from: signing in goes back to it, with what was typed. */
   back?: FeedbackModal | undefined;
   /** Where do you use Ironlog? was answered (closing it unanswered signs this browser out). */
   answered?: boolean | undefined;
@@ -132,7 +132,7 @@ export interface FeedbackModal extends SheetBase {
   copied?: boolean | undefined;
   busy?: boolean | undefined;
   err?: string | undefined;
-  /** The report's key, made when it is first sent and sent again with it (r63, PENDING 306). */
+  /** The report's key, made when it is first sent and sent again with it. */
   cid?: string | undefined;
 }
 
@@ -186,11 +186,11 @@ export type Modal =
   | ImpPreviewModal
   | (SheetBase & { kind: 'install'; how?: string | undefined })
   | (SheetBase & { kind: 'icon' | 'restwk' | 'injury' | 'routineNew' | 'cardio' | 'pickToday' | 'pickEx' | 'checkin' })
-  /* first: opened from the first pages, where the app's tabs are not open yet (r64). */
+  /* first: opened from the first pages, where the app's tabs are not open yet. */
   | (SheetBase & { kind: 'menu'; first?: true | undefined })
   | (SheetBase & { kind: 'guide'; open?: string | undefined })
   | (SheetBase & { kind: 'calendar'; ym: string })
-  /* old: Add an old best, a past Freestyle workout of one lift and one set (r70, 380). */
+  /* old: Add an old best, a past Freestyle workout of one lift and one set. */
   | (SheetBase & { kind: 'past' | 'daypick'; date: string; old?: true | undefined })
   | (SheetBase & { kind: 'fbInbox'; items: FbItem[] | null; err?: string | undefined })
   | (SheetBase & ExEditSheet & { kind: 'exEdit' })
@@ -217,9 +217,9 @@ export type Modal =
       applied?: boolean | undefined;
     })
   | (SheetBase & { kind: 'note'; bi: number; title: string; text?: string | undefined })
-  // A picture on a note, shown large (r66, 373): its id, and the exercise it is on, or null for the workout's notes.
+  // A picture on a note, shown large: its id, and the exercise it is on, or null for the workout's notes.
   | (SheetBase & { kind: 'pic'; id: string; at: number | null; ro?: true | undefined })
-  // Your bodyweight, asked for where a bodyweight lift reads it (r66, 372): the lift that asked, when one did.
+  // Your bodyweight, asked for where a bodyweight lift reads it: the lift that asked, when one did.
   | (SheetBase & { kind: 'bw'; ex?: string | undefined; date?: string | undefined })
   | (SheetBase & { kind: 'startAlt'; di?: number | undefined; free?: boolean | undefined; part?: 2 | undefined })
   | (SheetBase & { kind: 'eq'; day: number; equip: string[]; part?: 2 | undefined })

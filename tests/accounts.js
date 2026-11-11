@@ -306,7 +306,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await D4.ev(() => localStorage.setItem('ironlog.v1.acctWait', JSON.stringify({ t: Date.now() })));
   await D4.page.goto(linkOf(await tok('auto@example.com'))); await D4.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(1200);
   sh = await sheet(D4);
-  ok(sh && sh.mode === 'sent' && /You are signed in/.test(sh.text) && await synced(D4), 'opened where the app waits: signed in and syncing, no question', sh);
+  ok(sh && sh.mode === 'sent' && /Signed in\. Your log syncs to your account\./.test(sh.text) && await synced(D4), 'opened where the app waits: signed in and syncing, no question', sh);
 
   // ---- 9. Password reset: request, then the emailed link opened in a browser.
   await openData(D);
@@ -460,10 +460,10 @@ fs.cpSync(DIST, tmp, { recursive: true });
   for (const t of ['Fifth report here']) await sendFb(R2, t);
   ok(fake.feedback.length === 5, 'five reports in a day go through', fake.feedback.length);
   fr = await sendFb(R2, 'Sixth report here');
-  ok(!fr.sent && /5 reports today/.test(fr.err) && fake.feedback.length === 5, 'the sixth is stopped with a plain message', fr);
+  ok(!fr.sent && /5 reports sent today/.test(fr.err) && fake.feedback.length === 5, 'the sixth is stopped with a plain message', fr);
   await R2.ev(() => { localStorage.removeItem(window.__ironlog.KEY + '.fbSent'); });
   await R2.page.click('#modal [data-act="fbSend"]'); await R2.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && !m.busy; }, null, { timeout: 10000 });
-  ok(await R2.ev(() => /5 reports today/.test(window.__ironlog.ui.modal.err || '')) && fake.feedback.length === 5, 'with the app\'s own count cleared, the database still refuses the sixth');
+  ok(await R2.ev(() => /5 reports sent today/.test(window.__ironlog.ui.modal.err || '')) && fake.feedback.length === 5, 'with the app\'s own count cleared, the database still refuses the sixth');
   ok(!(await R2.ev(() => { const L = window.__ironlog; L.ACT.mClose(); L.render(); return !!document.querySelector('[data-act="fbInbox"]'); })), 'not the owner: no inbox');
   ok((await R2.ev(async () => { const r = await window.ironlogFeedback.inbox(); return r.length; })) === 0, 'not the owner: the database returns no reports');
   // The owner reads them in the app.

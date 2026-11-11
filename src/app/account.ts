@@ -8,7 +8,7 @@
    r63: every request the account sheet makes has the time limit the sync
    has (NET_MS, PENDING 309), so one that never answers leaves Signing in
    with words that say so; and the wait for the confirmation email is one
-   typed state (PENDING 307): `wait` holds the email and the password while
+   typed state: `wait` holds the email and the password while
    a new account waits, or is null, and `flight` says which request is out,
    a check of the wait or the code, in place of the email, password, busy,
    coding and timer kept side by side, which could say two things at once. */
@@ -55,7 +55,7 @@ const WAIT_MS = {
 } as const;
 /** The code waits for a check of the wait already out (the app just came back to the front): tries, a tenth of a second apart. */
 const CODE_WAIT = { tries: 50, stepMs: 100 } as const;
-/** How long signing out waits for the changes not yet in the account, in milliseconds (r34.2). */
+/** How long signing out waits for the changes not yet in the account, in milliseconds. */
 const OUT_FLUSH_MS = 15000;
 /** The shortest password an account takes. */
 const PW_MIN = 8;
@@ -73,7 +73,7 @@ function acctRerender(): void {
   else syncLine();
 }
 
-/* ---------- waiting for the confirmation email (item 61) ----------
+/* ---------- waiting for the confirmation email ----------
    On an iPhone the link in the email opens the browser, never the
    home-screen app, so the app cannot be told the account was confirmed.
    Instead, while its "Check your email" sheet is open, it tries to sign in
@@ -112,7 +112,7 @@ function back(): void {
   if (m && m.back) openModal(m.back);
   else closeModal();
 }
-/** A request to the account service with the time limit (PENDING 309). */
+/** A request to the account service with the time limit. */
 const limited = <T>(pr: Promise<T>): Promise<T> => withTimeout(pr, NET_MS, 'auth-late');
 /** What the sheet says of a failed request: no answer, or the service's own words. */
 const failed = (e: unknown, or: string): string => (codeOf(e) === 'timeout' ? NO_ANSWER : said(e, or));
@@ -254,7 +254,7 @@ export async function acctInit(): Promise<void> {
   acct.checked = true;
   /* The phone opened signed in and the server refused the sign-in as the
      account library refreshed it: the library signed the phone out itself,
-     and before r65 nothing said so (the r63 audit's NEW-3). The log stays. */
+     and before r65 nothing said so. The log stays. */
   if (!acct.user && A.refused && A.refused()) signInAgain();
   fbCheckReader();
   const L = A.landing;
@@ -273,7 +273,7 @@ export async function acctInit(): Promise<void> {
        where Ironlog is used (cloud-supabase.js holds it). If this storage
        is the one waiting for the confirmation (the same browser, or an
        Android app sharing it), this is the place: stay signed in. Otherwise
-       ask (item 61): here, or the home-screen app, which on an iPhone keeps
+       ask: here, or the home-screen app, which on an iPhone keeps
        separate storage and signs itself in when it comes back to the front. */
     let mine: unknown = null;
     try {
@@ -289,7 +289,7 @@ export async function acctInit(): Promise<void> {
         kind: 'account',
         mode: 'sent',
         title: 'Email confirmed',
-        msg: 'You are signed in. Your log syncs to your account.'
+        msg: 'Signed in. Your log syncs to your account.'
       });
       cloudInit();
     } else openModal({ kind: 'account', mode: 'where', title: 'Email confirmed' });
@@ -351,7 +351,7 @@ const inCode = (): boolean => {
   return a instanceof HTMLElement && a.dataset.abind === 'code';
 };
 
-/* Confirm sign-up with the emailed code (r45). This action owns success:
+/* Confirm sign-up with the emailed code. This action owns success:
    the wait's tries are held off while it runs, and the sign-in event's own
    wait branch stands aside (flight 'code'), so nothing toasts or syncs
    twice. A code fails when the emailed link was opened first (it used the
@@ -362,7 +362,7 @@ async function acctCode(): Promise<void> {
   if (!m || m.busy || !A || !A.verifyCode) return;
   const verify = A.verifyCode;
   readFields(m);
-  // A try of the wait already signing in (the app just came back to the front): let it finish first, and stop if it signed in (r45 review).
+  // A try of the wait already signing in (the app just came back to the front): let it finish first, and stop if it signed in.
   if (flight) {
     m.busy = true;
     renderModal();
@@ -429,7 +429,7 @@ async function acctCode(): Promise<void> {
   }
 }
 
-/** The account sheet's own submit: Go in the code field confirms with the code (r45), elsewhere it submits through the sheet's button. */
+/** The account sheet's own submit: Go in the code field confirms with the code, elsewhere it submits through the sheet's button. */
 export function accountSubmit(e: SubmitEvent): void {
   const f = e.target;
   if (!(f instanceof HTMLFormElement) || f.id !== 'acctForm') return;
@@ -457,7 +457,7 @@ async function acctSubmit(): Promise<void> {
   const m = acctOpen(),
     A = AUTH();
   if (!m || m.busy || !A) return;
-  // Go in the code field: the browser clicks the form's first button (Sign in), so route it to the code (r45).
+  // Go in the code field: the browser clicks the form's first button (Sign in), so route it to the code.
   if (inCode()) return acctCode();
   readFields(m);
   const email = String(m.email || '')
@@ -546,7 +546,7 @@ async function acctSubmit(): Promise<void> {
     log('auth', e);
     if (ui.modal === m) {
       m.err = failed(e, 'Something went wrong. Try again.');
-      // Not confirmed yet: the code works from here too (r45), whatever happened to the waiting sheet.
+      // Not confirmed yet: the code works from here too, whatever happened to the waiting sheet.
       if (m.mode === 'signin' && codeOf(e) === 'email_not_confirmed') m.needCode = true;
     }
   } finally {
@@ -669,7 +669,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const del = A.deleteAccount;
     confirmBox(
       'Delete your account?',
-      'Your account and the synced copy of your log are deleted for good. The copy on this phone stays; export a backup first if you want one elsewhere.',
+      'Your account and the synced copy of your log are deleted for good. The copy on this phone stays; export a backup first to keep one elsewhere.',
       'Delete account',
       async () => {
         toast('Deleting your account');
@@ -683,7 +683,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         }
         acct.user = null;
         cloudStop(true);
-        // The photo went with the account's documents; the phone's copy goes too (R79-1).
+        // The photo went with the account's documents; the phone's copy goes too.
         photoForget();
         setSaveState();
         rerenderKeepScroll();
@@ -711,7 +711,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         try {
           if (cloud.t) clearTimeout(cloud.t);
           await withTimeout(cq(cloudFlush), OUT_FLUSH_MS);
-          // The profile photo is the account's too (2.34): a change made here goes up before the phone lets go of it (the review's F2).
+          // The profile photo is the account's too: a change made here goes up before the phone lets go of it (the review's F2).
           if (photoPending()) await withTimeout(cq(photoFlush), OUT_FLUSH_MS);
         } catch (e) {
           log('auth', e);
@@ -734,7 +734,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
       acct.user = null;
       cloudStop(remove);
-      // The profile photo is the account's: it goes from the phone with the sign-out (R79-1), but for a change not yet
+      // The profile photo is the account's: it goes from the phone with the sign-out, but for a change not yet
       // in the account that the lifter kept on this phone, sent when that account signs in here again (F2).
       photoSignOut(keepPhoto);
       /* A session in progress kept on the phone carries on where it was, and
@@ -759,7 +759,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       render();
       toast(remove ? 'Signed out' : 'Signed out. A copy stays on this phone.');
     };
-    // With changes not yet in the account, say so first rather than "saved in your account" (r34.2).
+    // With changes not yet in the account, say so first rather than "saved in your account".
     if (navigator.onLine === false && hasUnsent()) {
       confirmBox('Not in your account yet', NOT_IN, 'Keep on this phone and sign out', () => out(false));
       return;

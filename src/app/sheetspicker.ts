@@ -1,4 +1,4 @@
-/* The sheets that choose (r62, PENDING 355): Pick for me before a session
+/* The sheets that choose: Pick for me before a session
    and inside one, Limited equipment, Short on time, and the exercise
    picker. The picker adds to a session or a routine's
    day, or swap one in, with a search and a muscle to narrow it. With
@@ -7,7 +7,7 @@
    the matches, common ones first, and a swap's closest matches above its
    muscle's list. Drawn by lit-html as src/24-sheets.js drew it (tests/r62.js
    holds it to r61's), and answered by actspick.ts's and actsstart.ts's
-   actions by their data-act (r63). A search typed redraws the list in
+   actions by their data-act. A search typed redraws the list in
    place, so the field keeps the focus and the keyboard. */
 
 import { html, nothing } from 'lit-html';
@@ -99,7 +99,7 @@ function pickerBody(m: PickerSheet): TemplateResult {
     const list = commonFirst(libFiltered(m.q, m.m || '', '', false));
     const parts: (TemplateResult | TemplateResult[])[] = [];
     if (!q && swapId && m.m === EX(swapId).primary) {
-      // In a Limited equipment session, only what the gym has (NEW-79).
+      // In a Limited equipment session, only what the gym has.
       const best = swapCands(swapId, sb && d && d.equip ? new Set(d.equip) : null, used.set)
         .slice(0, SWAP_PICKS)
         .map(x => x.e);
@@ -154,13 +154,13 @@ export function pickTodaySheet(): TemplateResult {
   if (!best)
     lead = html`<p class="small">Your routine has no exercises yet. Start a freestyle session and use Pick for me there.</p>`;
   else if (best.ready < READY.rest)
-    lead = html`<p class="callout yellow u-m0">Everything left works muscles still recovering. Rest, or do easy cardio. If you train anyway, the first option is the freshest.</p>`;
+    lead = html`<p class="callout yellow u-m0">Everything left works muscles still recovering. Rest, or do easy cardio. To train anyway, the first option is the freshest.</p>`;
   else if (best.plan) lead = html`<p class="small u-m0">Stick with the plan: it is also the best fit for today.</p>`;
   else if (plan)
     lead = html`<p class="small u-m0">${best.day.name} fits today better than ${plan.day.name}, next in your plan: ${plan.ready < 1 ? `${plan.day.name} leans on muscles that may still be recovering.` : 'it trains what is furthest behind this week.'} ${tipButton('Starting it moves your cycle on from there, the same as choosing it under Change day.', 'About the cycle')}</p>`;
   const sameDay = sessionsOn(today()).length > 0;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3>${closeX()}</div>
-    ${lead}${sameDay ? html`<p class="small muted u-m8-0-0">Includes the session you logged today.</p>` : ''}${rk.deload ? html`<p class="small muted u-m8-0-0">Deload week: counted at half the sets.</p>` : ''}
+    ${lead}${sameDay ? html`<p class="small muted u-m8-0-0">Includes the session logged today.</p>` : ''}${rk.deload ? html`<p class="small muted u-m8-0-0">Deload week: counted at half the sets.</p>` : ''}
     ${top.map(
       (
         x,
@@ -181,7 +181,7 @@ export function pickExSheet(): TemplateResult | null {
   const picks = rankExercises(d);
   const allMet = picks.length && picks.every(x => x.def <= 0);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3>${closeX()}</div>
-    <p class="small muted hastip u-m0" data-tip="From this session so far, your last 7 days against your targets, recovery, injuries, and your trends.">What to add next.</p>
+    <p class="small muted hastip u-m0" data-tip="From this session so far, your last 7 days against your targets, recovery, injuries, and your trends">What to add next.</p>
     ${allMet ? html`<p class="callout green u-m8-0-0">Every muscle is at target for the last 7 days.</p>` : ''}
     ${
       picks.length
@@ -202,7 +202,7 @@ export function pickExSheet(): TemplateResult | null {
 
 /* ---------- Limited equipment ---------- */
 
-/* A fixed-height sheet with the chips at the top (r30): the sheet grew
+/* A fixed-height sheet with the chips at the top: the sheet grew
    upward as swaps were listed, so the chips moved under the finger and the
    next tap landed on the wrong one. */
 /** Limited equipment for a day: the equipment on, each exercise's swap, and Start; null when the day is gone. */
@@ -238,9 +238,9 @@ export function shortSheet(m: { mins?: number | null | undefined }): TemplateRes
     : !pl
       ? ''
       : pl.changes.length
-        ? html`<ul class="short-list">${pl.changes.map(c => html`<li>${c}</li>`)}</ul><p class="small muted u-m6-0-0">${estMin(min5(pl.est))} after the change.${pl.over ? ' Still over, because sets you typed in are kept.' : ''} Done sets are never touched.</p>`
+        ? html`<ul class="short-list">${pl.changes.map(c => html`<li>${c}</li>`)}</ul><p class="small muted u-m6-0-0">${estMin(min5(pl.est))} after the change.${pl.over ? ' Still over: typed sets are kept.' : ''} Done sets are never touched.</p>`
         : pl.over
-          ? html`<p class="small">Nothing can come off: every set left has something you typed in it, and Short on time only takes sets you haven't touched. ${estMin(min5(pl.est))} left.</p>`
+          ? html`<p class="small">Nothing can come off: every set left has something typed in it, and Short on time only takes untouched sets. ${estMin(min5(pl.est))} left.</p>`
           : html`<p class="small">Everything left fits in ${m.mins} minutes as planned.</p>`;
   const trims = !!pl && pl.changes.length > 0;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Short on time</h3>${closeX()}</div>
@@ -252,5 +252,5 @@ export function shortSheet(m: { mins?: number | null | undefined }): TemplateRes
     }
     ${body}
     <div class="row u-mt12">${trims ? html`<button class="btn primary" data-act="shortApply">Trim the session</button>` : ''}<button class="btn" data-act="mClose">${trims ? 'Cancel' : 'Close'}</button></div>
-    <p class="small muted hastip u-m8-0-0" data-tip="Kept longest: priority and lagging muscles, exercises you have started, and at least one exercise per muscle. The rest lose sets down to 2, then drop out, later exercises first. Trimmed work does not count against trends. Undo is in the message after.">What gets cut first</p></div>`;
+    <p class="small muted hastip u-m8-0-0" data-tip="Kept longest: priority and lagging muscles, exercises already started, and at least one exercise per muscle. The rest lose sets down to 2, then drop out, later exercises first. Trimmed work does not count against trends. Undo is in the message after.">What gets cut first</p></div>`;
 }

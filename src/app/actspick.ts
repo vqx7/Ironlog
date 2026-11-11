@@ -31,7 +31,7 @@ const MAX_LOAD = { lb: 4000, kg: 2000 } as const;
 /** A share of bodyweight typed, as a percent: the most, and how far from the lift's own it must be to be kept. */
 const BWF_PCT = { most: 150, off: 0.005, whole: 100 } as const;
 
-/* What a swapped-in exercise is done for (r27). It keeps the slot's set
+/* What a swapped-in exercise is done for. It keeps the slot's set
    count and superset. Its range, RIR, rest and step come from where it
    already sits in the routine, or from its own default when it is the other
    kind (a timed hold for reps, or reps for a hold: a plank swapped in for
@@ -82,7 +82,7 @@ function afterAdd(bi: number): void {
     // An old browser takes no options.
     el.scrollIntoView();
   }
-  // The screen keeps the block between draws (r60), so the mark goes when the flash ends.
+  // The screen keeps the block between draws, so the mark goes when the flash ends.
   el.classList.remove('flash');
   void el.offsetWidth;
   el.classList.add('flash');
@@ -138,7 +138,7 @@ function pickAddBlock(m: PickerModal, id: string, d: Draft): void {
   const p0 = planFor(id, null, d.dayId, false, d.date, partOf(d));
   const nb = newBlock(id, half(p0), { deload: !!d.deload, light: !!d.light, before: d.date });
   if (d.deload || d.light) nb.full = +p0.sets;
-  // An old best is one set (380, r70): the row left to type its load and reps, nothing more to skip at Finish.
+  // An old best is one set: the row left to type its load and reps, nothing more to skip at Finish.
   if (m.one) nb.sets = nb.sets.slice(0, 1);
   const li = d.ex.length - 1;
   const last = d.ex[li];
@@ -386,7 +386,7 @@ export function applyPick(m: PickerModal | null | undefined, id: string | undefi
      old exercise vanished. Now logged sets stay with the exercise they were
      done on, and the new one takes over the sets still to do. The count comes
      from the rows the exercise has now, not the routine's plan: the plan's
-     count undid Short on time, + Set and − Set (r24). Since r54 nothing is
+     count undid Short on time, + Set and − Set. Since r54 nothing is
      marked: the replacement is read by its own usual, as every lift is. */
   if (m.mode === 'swapBlock') {
     pickSwapBlock(m, id, d);
@@ -490,7 +490,7 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!back || back.kind !== 'picker') return;
     openModal({ kind: 'exEdit', isNew: true, back, e: { ...newEx((back.q || '').trim(), back.m || ''), incRaw: '' } });
   },
-  // Back to the sheet this one was opened from, else closed: the exercise editor's, and an account sheet's opened from a problem report (r55).
+  // Back to the sheet this one was opened from, else closed: the exercise editor's, and an account sheet's opened from a problem report.
   exBack() {
     const m = ui.modal;
     const back: Modal | null | undefined = m && (m.kind === 'exEdit' || m.kind === 'account') ? m.back : null;

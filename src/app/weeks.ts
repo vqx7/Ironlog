@@ -1,6 +1,6 @@
 /* The week as the screens count it (phase 3b, r52; moved from the legacy
    script): the weekly averages every flag, the coach and Muscles read, each
-   muscle's status against its target and the region balance (r54), the
+   muscle's status against its target and the region balance, the
    routine a past week was trained on and what it asked for, the streak, the
    newest lighter session, and this week's numbers on Today. */
 
@@ -67,7 +67,7 @@ export function logBackIn(M: Model): boolean {
 }
 
 /* The first week adherence counts: the week the log started in counts only
-   if it started on that week's first day (r29): someone who began on a
+   if it started on that week's first day: someone who began on a
    Saturday with one session read as "19 flagged" and a "1-week average" the
    following Monday. The weekly averages start a week later (avgFirstWeekIn).
    Since r55 the log starts after a break of more than 4 weeks (logStartIn). */
@@ -99,7 +99,7 @@ export function avgFirstWeekIn(M: Model): string | null {
 }
 
 /* The weeks an average covers, in words: "your last 4 full weeks", or
-   "the 1 week you trained of the last 4" when weeks were missed (r31). */
+   "the 1 week you trained of the last 4" when weeks were missed. */
 /* r31.2: says the span the weeks really came from, and a lighter week left
    out (the review saw "3 full weeks logged so far" for a deload and a
    missed week inside the window of a 9-week log). */
@@ -172,11 +172,11 @@ export function avgWeeksIn(M: Model, n: number, lightToo?: boolean): WeeklyAvg |
     con: Record<string, number> = {};
   const ff = avgFirstWeekIn(M);
   /* The last n weeks, but a lighter week among them is skipped and the
-     week before them takes its place (r30), up to twice as far back: a
+     week before them takes its place, up to twice as far back: a
      deload halves the sets on purpose, and averaging it in read as below
      target for a month after every deload. Weeks with no training are
      skipped without a replacement, so the average is per week trained; they
-     are counted in _missed (r31) and said wherever the average is, so one
+     are counted in _missed and said wherever the average is, so one
      week trained out of four never reads as on track without saying so. */
   let extra = 0,
     missed = 0,
@@ -234,7 +234,7 @@ export function avgWeeksIn(M: Model, n: number, lightToo?: boolean): WeeklyAvg |
   Object.defineProperty(out, '_light', { value: lightToo ? 0 : light, enumerable: false });
   Object.defineProperty(out, '_rest', { value: rest, enumerable: false });
   Object.defineProperty(out, '_ff', { value: ffHit, enumerable: false });
-  // Cut short by a first week back after a break, not the log's first (r55).
+  // Cut short by a first week back after a break, not the log's first.
   Object.defineProperty(out, '_back', { value: ffHit && logBackIn(M), enumerable: false });
   Object.defineProperty(out, '_conf', { value: conf, enumerable: false });
   Object.defineProperty(out, '_mix', { value: cycleMixIn(M, used, out), enumerable: false });
@@ -306,7 +306,7 @@ export function weeksAvgIn(M: Model, wks: readonly string[]): Record<string, num
   return out;
 }
 
-/* On plan, as the screens say it (r54): under the minimum only by which
+/* On plan, as the screens say it: under the minimum only by which
    days of a cycle fell in the weeks averaged (cycleMixIn). */
 /** Why a muscle reads on plan though under its minimum, behind an i on the map, Volume, Muscles and the coach. */
 export const ON_PLAN_TIP =
@@ -321,7 +321,7 @@ export interface MuscleStatus {
 }
 
 /* A muscle with no target (hasTargetIn, r58) is tracked ('track').
-   soFar (r29): the week is still going, so a muscle short of its minimum is
+   soFar: the week is still going, so a muscle short of its minimum is
    under way ('part'), not below target; amber on a Tuesday read as behind
    for training that had not happened yet. With no sets a muscle is 'none'
    whatever its target: one whose minimum was brought down to 0 (a routine
@@ -373,7 +373,7 @@ export function muscleStatusIn(
    minimum (r29; before, the midpoint of the band). 100 means the region has
    reached its target. This is relative to the bands you set, not an
    absolute standard. A region short of its minimum only through muscles on
-   plan (muscleStatusIn) is on plan, not low (r54). */
+   plan (muscleStatusIn) is on plan, not low. */
 export function regionBalanceIn(
   M: Model,
   sets: Readonly<Record<string, number>> & { readonly _mix?: Readonly<Record<string, boolean>> }
@@ -409,7 +409,7 @@ export function regionBalanceIn(
 
 /* What a past week asked for: the routine most of its sessions were logged
    against, so switching from a 3-day to a 6-day routine does not rescore the
-   weeks done on the 3-day one (r27). A week without routine sessions reads
+   weeks done on the 3-day one. A week without routine sessions reads
    the active routine. Since r55 a week also keeps the sessions a week that
    routine planned, as its newest session recorded it (pwOf), so a routine
    changed or deleted since does not rescore it either. */
@@ -457,7 +457,7 @@ const STREAK_WEEKS = 104;
 
 /* Consecutive weeks in which you trained at least as many days as the routine
    plans. The current week joins the streak once it is met, and does not break
-   it before it is over. Rest weeks are skipped (r34). */
+   it before it is over. Rest weeks are skipped. */
 export function weekStreakIn(M: Model): { weeks: number; best: number; need: number; thisWeek: number } {
   const R = activeRoutineIn(M);
   const need = freeModeIn(M) ? 1 : Math.max(1, plannedPerWeek(R));
@@ -504,7 +504,7 @@ export function weekStreakIn(M: Model): { weeks: number; best: number; need: num
    programme with its light days late in the week never had one suggested
    (the fifth review). A deload session is one tagged deload, or any in the
    week marked as one: a blank or Freestyle session in a marked week is not
-   tagged (PENDING 311), so a lifter in Freestyle mode who tapped Deload
+   tagged, so a lifter in Freestyle mode who tapped Deload
    week on Wednesday was asked for another deload the next week (the sixth
    review). Only the latest mark is kept, which is the one four weeks
    reach in practice.
@@ -558,14 +558,14 @@ export const LIGHTER_WEEK_WORDS =
 /** The tip beside Stats' line on the last lighter week: what counts, and what reads it. */
 export const LIGHTER_WEEK_TIP = `Lighter week: ${LIGHTER_WEEK_WORDS}. Rest weeks and weeks with nothing trained count too. Left out of weekly averages; no deload suggested within ${DELOAD_GAP_DAYS / WEEK_DAYS} weeks of one.`;
 
-/* The last lighter week, said under Stalls on Stats (r30). Until r54 it was
+/* The last lighter week, said under Stalls on Stats. Until r54 it was
    read by hard sets, a week at 65% or less of the usual, and named weeks the
    averages kept and the deload suggestion beside it did not count (the audit
    V asked for). Since r54 it is their reading: a lighter week as the
    averages leave it out, a rest week, or a week with nothing trained.
    Completed weeks only, back to the week the log began, 12 at most; nothing
    until 4 of them were trained, nor just after two empty weeks, which are a
-   break, not a lighter week (r34.2). */
+   break, not a lighter week. */
 /** The last lighter week is looked for in the last LIGHTER_LOOK.weeks weeks, once LIGHTER_LOOK.trained of them were trained (r30, a convention). */
 const LIGHTER_LOOK = { weeks: 12, trained: 4 } as const;
 
@@ -608,7 +608,7 @@ export function weekStatsIn(M: Model) {
      where the split matters; summed across muscles it double-counts. The
      numerator is hard sets only, so a set left at RIR 4 or more does not
      count toward the week, unless Count RIR 4 to 5 as half a set is on
-     (r40, hardCredit). Read from IDX's weekHard (r47), the same table the
+     (r40, hardCredit). Read from IDX's weekHard, the same table the
      recap, Volume and the muscle views count from; until r47 this walked the
      log with its own copy of the rule. */
   const got = IDXIn(M).weekHard[cur] || 0;
@@ -656,7 +656,7 @@ export interface Block {
   hard: number | null;
   /** Counted PRs (the ones marked big) on any day of it. */
   prs: number;
-  /** Full weeks in it with nothing trained (not rest weeks): said beside the averages, which leave them out (r31, REV6-6). */
+  /** Full weeks in it with nothing trained (not rest weeks): said beside the averages, which leave them out. */
   missed: number;
   /** Full weeks in it read as lighter, left out of the averages and said. */
   light: number;

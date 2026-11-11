@@ -146,7 +146,7 @@ export function renderInner(): void {
    elements (page titles, the Start card, notices) never move. Keys a tab
    does not show right now (Injuries with none flagged) keep their saved
    place. On the handle, the arrow keys do the same as dragging. A session's
-   exercises are dragged by workout.ts (r60). */
+   exercises are dragged by workout.ts. */
 /** The tab's sections, in the order they are on the page. */
 function keyedKids(): HTMLElement[] {
   const v = document.getElementById('view');
@@ -234,7 +234,7 @@ function moveSecKey(g: Element, dir: number): void {
 function mountSortable(): void {
   const S = window.Sortable;
   if (!S) return;
-  // Plan is drawn by lit-html (r58): each drag ends in src/app/plan.ts, which puts the element back where it was drawn and changes the log.
+  // Plan is drawn by lit-html: each drag ends in src/app/plan.ts, which puts the element back where it was drawn and changes the log.
   const onStart = (e: { item: HTMLElement }): void => dragStart(e.item);
   document.querySelectorAll('ul.items').forEach(el =>
     sortables.push(
@@ -372,7 +372,7 @@ export const SHEETS: Sheets = {
         );
         stopTimer();
         wakeOff();
-        // A workout set aside comes back once this trial goes (R81-2).
+        // A workout set aside comes back once this trial goes.
         unpark();
         setTimeout(render, 0);
       }
