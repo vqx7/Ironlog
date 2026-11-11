@@ -5,7 +5,7 @@
    a change to the session in progress alone leaves the caches as they are
    (inProgress), as the legacy script's save of the session did. */
 
-import { bwNudge } from './bwnudge';
+import { NUDGE_MS, bwNote } from './bwnudge';
 import { uid, numIn } from './util';
 import { BWF, MK, bwShare } from './library';
 import { dayLabel, fixSupersets, partOf, trainOn } from './routines';
@@ -104,8 +104,13 @@ function pickAddDay(m: PickerModal, id: string): void {
     Object.assign(d, trainOn(d));
   });
   rerenderKeepScroll();
-  toast(`${exName(id)} added to ${dayLabel(R, di)}${m.pm ? ', second workout' : ''}`);
-  bwNudge([id]);
+  // The bodyweight note joins this message rather than replacing it (NEW-116), as a second sentence.
+  const note = bwNote([id]);
+  toast(
+    `${exName(id)} added to ${dayLabel(R, di)}${m.pm ? ', second workout' : ''}${note ? '.' + note : ''}`,
+    null,
+    note ? NUDGE_MS : null
+  );
   return;
 }
 
@@ -169,8 +174,8 @@ function pickAddBlock(m: PickerModal, id: string, d: Draft): void {
     return;
   }
   act(() => d.ex.push(nb), { inProgress: true });
+  // No bodyweight note here: the session's card and the line under the lift ask (NEW-116).
   afterAdd(d.ex.length - 1);
-  bwNudge([id]);
   return;
 }
 

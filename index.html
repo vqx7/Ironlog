@@ -13047,16 +13047,12 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var own = () => state.bodyweights.filter((b2) => !b2.demo).length;
   var bwMissing = (exId) => own() === 0 && !!EX(exId).bw;
   var saidThisVisit = false;
-  function bwNudge(exIds) {
-    if (saidThisVisit) return;
+  function bwNote(exIds) {
+    if (saidThisVisit) return "";
     const id = exIds.find(bwMissing);
-    if (!id) return;
+    if (!id) return "";
     saidThisVisit = true;
-    toast(
-      `${EX(id).name} counts your bodyweight, plus any weight you add. Set it on Today or in Settings (optional).`,
-      null,
-      NUDGE_MS
-    );
+    return ` ${EX(id).name} counts your bodyweight, plus any weight you add: set it on Today or in Settings (optional).`;
   }
   function bwWarn(exId) {
     if (!bwMissing(exId)) return A;
@@ -24095,7 +24091,6 @@ ${JSON.stringify(ctx, null, 1)}`;
           null,
           fit || pa.length ? READY_SAID : 0
         );
-        bwNudge(r4.days.flatMap((x2) => x2.items.map((i5) => i5.exId)));
         return;
       }
       if (same) {
@@ -24109,8 +24104,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       });
       ui.bRoutine = r4.id;
       render();
-      toast(`${r4.name} added. Tap Make active to use it.`);
-      bwNudge(r4.days.flatMap((x2) => x2.items.map((i5) => i5.exId)));
+      const note = bwNote(r4.days.flatMap((x2) => x2.items.map((i5) => i5.exId)));
+      toast(`${r4.name} added. Tap Make active to use it.${note}`, null, note ? NUDGE_MS : null);
     },
     rNew() {
       openModal({ kind: "routineNew" });
@@ -24240,8 +24235,12 @@ ${JSON.stringify(ctx, null, 1)}`;
       Object.assign(d3, trainOn(d3));
     });
     rerenderKeepScroll();
-    toast(`${exName(id)} added to ${dayLabel(R2, di)}${m3.pm ? ", second workout" : ""}`);
-    bwNudge([id]);
+    const note = bwNote([id]);
+    toast(
+      `${exName(id)} added to ${dayLabel(R2, di)}${m3.pm ? ", second workout" : ""}${note ? "." + note : ""}`,
+      null,
+      note ? NUDGE_MS : null
+    );
     return;
   }
   function pickSwapItem(m3, id) {
@@ -24299,7 +24298,6 @@ ${JSON.stringify(ctx, null, 1)}`;
     }
     act(() => d3.ex.push(nb), { inProgress: true });
     afterAdd(d3.ex.length - 1);
-    bwNudge([id]);
     return;
   }
   function swapMoveSets(sw) {
