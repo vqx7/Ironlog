@@ -4,7 +4,7 @@
    legacy script it came from (deleted in r63). */
 
 import { IN, KM_MI, FT_IN } from './units';
-import { NIL, fmtDate, fmtDateFrom, fmtWith, missedTag } from './format';
+import { NIL, fmtDate, fmtWith, missedTag } from './format';
 import { bestFit, e1, fitE, trendE, RECENT_DAYS, BEST_WEEKS, TAPE_WEEKS } from './formulas';
 import { MK, ML, isCommon, isCompound, loadMode, nameMatch } from './library';
 import { dayParts, dayWorkout, partOf, routineEmpty, routineSig, sessDayIdx } from './routines';
@@ -166,10 +166,6 @@ export function loadHead(ex: ExerciseLike | null | undefined): string {
   if (ex && ex.assist) return 'Help ' + u;
   return m === 'each' ? u + ' each' : m === 'side' ? u + '/side' : m === 'stack' ? 'Stack' : m === 'bw' ? '+' + u : u;
 }
-
-/* The screens' name for fmtDateFrom (format.ts, since r64 the one rule, which the engine's Last line reads with the model's date) on this phone's today. */
-/** A date as "Oct 17", with its year when it is not this one ("Mar 1, 2027"): a date a year ahead is not read as one this year. */
-export const fmtDateYr = (s: string): string => fmtDateFrom(s, today());
 
 /** A date written out: "Sat, Oct 24, 2026". */
 export const fmtDateLong = (s: string): string =>
@@ -404,7 +400,7 @@ export function bestLine(exId: string, upTo?: string): string {
   const exps = (IDX().byEx[exId] || []).filter(x => !upTo || x.date <= upTo);
   const last = exps[exps.length - 1];
   // Its year when not this one, as the board says it (NEW-111).
-  const when = last && r.heavy.date === last.date ? '' : `, ${fmtDateYr(r.heavy.date)}`;
+  const when = last && r.heavy.date === last.date ? '' : `, ${fmtDate(r.heavy.date)}`;
   return `Heaviest ${setShort(ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(ex)}${when}`;
 }
 
@@ -421,9 +417,9 @@ export function bestSetLine(exId: string): string {
   const r = allTimeBests(exId);
   if (!r) return '';
   if (r.est && isCompound(r.ex))
-    return `Best ${setShort(r.ex, r.est.p.w, r.est.p.r)}${loadNote(r.ex)}, ${fmtDateYr(r.est.date)}`;
+    return `Best ${setShort(r.ex, r.est.p.w, r.est.p.r)}${loadNote(r.ex)}, ${fmtDate(r.est.date)}`;
   return r.heavy
-    ? `Heaviest ${setShort(r.ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(r.ex)}, ${fmtDateYr(r.heavy.date)}`
+    ? `Heaviest ${setShort(r.ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(r.ex)}, ${fmtDate(r.heavy.date)}`
     : '';
 }
 

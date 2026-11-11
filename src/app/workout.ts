@@ -73,7 +73,7 @@ import { closeX } from './sheetsmisc';
 
 /** What the New machine tag on an exercise says, tapped. */
 const NEW_TIP =
-  'A new machine or gym: its targets, trend, stalls, PRs and bests start over from this session. Earlier sessions stay in History. Take it off in the ⋯ menu.';
+  "A new machine or gym: its targets, trend, stalls, PRs and bests start over from this session. Earlier sessions stay in History. Use it only when the loads there don't compare; take it off in the ⋯ menu.";
 /** The gap above the cardio buttons when there are entries, in pixels. */
 const CARDIO_ADD_GAP_PX = 10;
 /* lit-html moves an exercise's nodes, or a row's, with it when the order

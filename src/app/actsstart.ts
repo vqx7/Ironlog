@@ -9,7 +9,7 @@
 import { addDays, isDate, monthOf, today, uid } from './util';
 import { EQUIP } from './library';
 import { dayWorkout, fixSupersets, sessDayIdx } from './routines';
-import { isWork } from './formulas';
+import { isWork, lighterSets } from './formulas';
 import { sessCmp } from './records';
 import type { DraftBlock, Plan } from './types';
 import { DELOAD_NOTE, LIGHTER_NOTE, editFp, freeDraft, newRow } from './session';
@@ -38,8 +38,6 @@ const AGAIN_CHARS = 40;
 /** A month as the calendar keys it (YYYY-MM). */
 const MONTH_RE = /^\d{4}-\d{2}$/;
 
-/** Half the sets, at least one, as a lighter day and a deload week do. */
-const halfSets = (n: number): number => Math.max(1, Math.ceil(n / 2));
 /** A plan as a session's block holds it: its superset null unless a routine item gave one. */
 const blockPlan = (p: Plan): DraftBlock['plan'] => ({ ...p, ss: p.ss ?? null });
 
@@ -142,7 +140,7 @@ function startSession(t: Tap): void {
   const d = R.schedule === 'weekly' ? dayWorkout(d0, part) : d0;
   const light = t.dataset.light === '1';
   const deload = !light && isDeloadWeek();
-  const items = d.rest ? [] : d.items.map(it => (light || deload ? { ...it, sets: halfSets(it.sets) } : it));
+  const items = d.rest ? [] : d.items.map(it => (light || deload ? { ...it, sets: lighterSets(it.sets) } : it));
   begin(
     {
       id: uid(),
@@ -376,14 +374,14 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       const deload = isDeloadWeek();
       const plan = (b: (typeof s.ex)[number]): DraftBlock['plan'] => {
         const it = day && day.items.find(i => i.exId === b.exId);
-        if (it) return deload ? { ...it, sets: halfSets(it.sets) } : { ...it };
+        if (it) return deload ? { ...it, sets: lighterSets(it.sets) } : { ...it };
         const p = planFor(b.exId);
         if (b.rr) {
           p.repMin = b.rr[0];
           p.repMax = Math.max(b.rr[0], b.rr[1]);
         }
         const n = b.sets.filter(isWork).length;
-        if (n) p.sets = deload ? halfSets(n) : n;
+        if (n) p.sets = deload ? lighterSets(n) : n;
         return blockPlan(p);
       };
       const ex = s.ex.map(b => {
@@ -507,7 +505,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const deload = isDeloadWeek();
     const ex = pl.flatMap(x => {
       if (!x.to) return [];
-      const it = deload ? { ...x.it, sets: halfSets(x.it.sets) } : x.it;
+      const it = deload ? { ...x.it, sets: lighterSets(x.it.sets) } : x.it;
       // A much harder swap gets a range it can be done in: 3 to 6 reps, 2 in reserve.
       const sp = x.from ? swapPlan(it, x.from, x.to, R, day.id) : { ...it };
       if (x.hard) Object.assign(sp, HARD_SWAP);

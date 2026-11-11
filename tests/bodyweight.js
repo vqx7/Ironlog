@@ -4,10 +4,11 @@
 // baselines/r92.html`, 2.46) every section fails there but the guards, which say so.
 //   1  Picking a ready-made routine with pull-ups on the first page: its own message stays (the routine is ready, its
 //      set targets), with no bodyweight note over it, since Today's card asks right there.
-//   2  Adding pull-ups to a Plan day: one message, what was added and the bodyweight note together.
-//   3  Adding a ready-made routine on Plan (not made active): its "Tap Make active" stays, with the note in it.
+//   2  Adding pull-ups to a Plan day: the message says what was added, and Plan asks under the pull-ups (since 2.48, the
+//      message rule in toast.ts: an ask lives where it applies; 2.47 put it in the message as a second sentence).
+//   3  Adding a ready-made routine on Plan (not made active): its "Tap Make active" stays, nothing over it or in it.
 //   4  Adding pull-ups in a session: no note, since the session's card and the line under the lift ask.
-//   5  Guards: with a weigh-in no note anywhere; the note once a visit.
+//   5  Guards: with a weigh-in, nothing about bodyweight; on Plan the line is under the day's first bodyweight lift only.
 //   6  Editing a saved session (REV11-2): pull-ups added there get the line under the lift too, and its Add bodyweight
 //      dates the weigh-in the session's day, as the session's Bodyweight button does.
 // BODYWEIGHT_ONLY=1,2 runs some sections.
@@ -61,7 +62,8 @@ async function pickPullups(P, mode) {
     await P.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'program'; L.render(); });
     await pickPullups(P, 'addDay');
     const t = await toastNow(P);
-    ok(/added to/.test(t) && NOTE.test(t), '2. adding pull-ups to a Plan day says what was added and the bodyweight note, in one message (2.46: the note alone)', t);
+    const line = await P.page.evaluate(() => { const e = [...document.querySelectorAll('#view .bwwarn')].find(x => x.offsetParent !== null); return e ? e.textContent : ''; });
+    ok(/added to/.test(t) && !NOTE.test(t) && /counts only the weight you add/.test(line), '2. adding pull-ups to a Plan day says what was added, and Plan asks under the pull-ups (2.46: the note alone, over "added to")', { t, line });
     await P.ctx.close(); await P.browser.close();
   }
 
@@ -71,7 +73,7 @@ async function pickPullups(P, mode) {
     await wait(250);
     await P.page.click('#modal [data-act="tplPick"][data-k="full3t"]'); await wait(300);
     const t = await toastNow(P);
-    ok(/Tap Make active/.test(t) && NOTE.test(t), '3. adding a ready-made routine on Plan keeps "Tap Make active", with the note in it (2.46: the note alone)', t);
+    ok(/Tap Make active/.test(t) && !NOTE.test(t), '3. adding a ready-made routine on Plan keeps "Tap Make active", nothing over it (2.46: the note alone)', t);
     await P.ctx.close(); await P.browser.close();
   }
 
@@ -95,15 +97,15 @@ async function pickPullups(P, mode) {
     let t = await toastNow(P);
     ok(/added to/.test(t) && !NOTE.test(t), '5. a guard: with a weigh-in, adding pull-ups says only what was added', t);
     await P.ctx.close(); await P.browser.close();
-    // Once a visit: a second pull-up added says no note.
+    // On Plan, one line for the day, under its first bodyweight lift: dips added after the pull-ups add no second one.
     P = await phone({ onboarded: true });
     await P.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'program'; L.render(); });
     await pickPullups(P, 'addDay');
-    await P.page.evaluate(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
-    await P.page.evaluate(() => { const L = window.__ironlog; L.openModal({ kind: 'picker', mode: 'addDay', day: 1, title: 'Add', q: '', m: '' }); }); await wait(200);
+    await P.page.evaluate(() => { const L = window.__ironlog; L.openModal({ kind: 'picker', mode: 'addDay', day: 0, title: 'Add', q: '', m: '' }); }); await wait(200);
     await P.page.click('#modal [data-act="pickDo"][data-ex="dips"]'); await wait(300);
-    t = await toastNow(P);
-    ok(/added to/.test(t) && !NOTE.test(t), '5. a guard: the note once a visit, so dips added next say only what was added', t);
+    // The day open on Plan: the other days' lists are drawn but hidden.
+    const lines = await P.page.evaluate(() => [...document.querySelectorAll('#view .bwwarn')].filter(e => e.offsetParent !== null).map(e => e.closest('[data-uid]') && e.closest('[data-uid]').textContent.slice(0, 20)));
+    ok(lines.length === 1 && /Pull-up/.test(lines[0] || ''), '5. a guard: one line on the day, under the pull-ups, the first bodyweight lift', lines);
     await P.ctx.close(); await P.browser.close();
   }
 

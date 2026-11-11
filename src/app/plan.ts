@@ -87,6 +87,7 @@ import type { Part } from './view';
 import type { Day, Exercise, PlanItem, Routine } from './types';
 import { confirmBox, render, rerenderKeepScroll } from './page';
 import { toast } from './toast';
+import { bwWarn } from './bwnudge';
 import { refreshEx, syncDraftPlan } from './worksets';
 
 /** The fewest sets the volume bars' scale shows, so a light week's bars are not stretched. */
@@ -228,8 +229,10 @@ function itemPart(R: Routine, di: number, it: PlanItem, ii: number): TemplateRes
     ${ex.note ? html`<p class="small muted">${ex.note}</p>` : nothing}</div>`
     : nothing;
   const letter = it.ss ? letters[it.ss] : undefined;
+  // Bodyweight asked where it matters (2.48): under the day's first bodyweight lift, as in a session, never in a message.
+  const bwFirst = items.findIndex(x => !!EX(x.exId).bw) === ii;
   return html`<li class=${it.ss ? 'it ss' : 'it'} data-uid=${it.uid}><div class="ir"><span class="grip" aria-hidden="true">⠿</span><button class="imain" data-act="toggleItem" data-uid=${it.uid}><b>${ex.name}</b><span>${it.sets} × ${repSpan(it.repMin, it.repMax, '-')}${ex.timed ? 's' : ''}, ${rirShow(ex) ? `${effTgt(it.rir)}, ` : ''}rest ${it.rest}s${it.ss ? ` · superset ${letter}` : ''}${it.pm ? ' · second workout' : ''}</span></button><button class="ib" aria-label=${`Move ${ex.name} up`} data-act="iUp" data-day=${String(di)} data-i=${String(ii)} ?disabled=${ii === 0}>↑</button><button class="ib" aria-label=${`Move ${ex.name} down`} data-act="iDown" data-day=${String(di)} data-i=${String(ii)} ?disabled=${ii === items.length - 1}>↓</button></div>
-  ${editor}</li>`;
+  ${editor}${bwFirst ? bwWarn(it.exId) : nothing}</li>`;
 }
 
 function bLibItems(): TemplateResult[] {

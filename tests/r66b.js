@@ -454,14 +454,15 @@ const stored = H => H.ev(async secret => {
     ok(/Latest 180/.test(st), '4. Settings holds the bodyweight field, with the latest', st.slice(0, 200));
     ok(!H.P.errors.length, '4. no page errors', H.P.errors);
     await H.P.ctx.close();
-    // Adding a bodyweight lift to a plan day says so once, without a sheet in the way.
+    // Adding a bodyweight lift to a plan day says so, without a sheet in the way: since 2.48 on Plan under the lift (the
+    // message rule, toast.ts), where until then a message said it over "added to" (NEW-116).
     const H2 = await phone(MON);
     await seed(H2);
     await H2.ev(() => { const L = window.__ironlog; L.ui.tab = 'program'; L.render(); L.openModal({ kind: 'picker', mode: 'addDay', day: 0, title: 'Add', q: 'pull-up', m: '' }); });
     await wait(150);
     await H2.page.click('#modal [data-act="pickDo"][data-ex="pullup"]'); await wait(250);
-    const said = await H2.ev(() => { const L = window.__ironlog; const t = document.getElementById('toast'); return { modal: L.ui.modal && L.ui.modal.kind, toast: t && !t.hidden ? t.innerText : '', added: L.state.routines[0].days[0].items.some(i => i.exId === 'pullup') }; });
-    ok(said.added && !said.modal && /counts your bodyweight/.test(said.toast), '4. adding pull-ups to a plan day says it counts bodyweight, no sheet in the way', said);
+    const said = await H2.ev(() => { const L = window.__ironlog; const t = document.getElementById('toast'); const w = [...document.querySelectorAll('#view .bwwarn')].find(x => x.offsetParent !== null); return { modal: L.ui.modal && L.ui.modal.kind, toast: t && !t.hidden ? t.innerText : '', line: w ? w.textContent : '', added: L.state.routines[0].days[0].items.some(i => i.exId === 'pullup') }; });
+    ok(said.added && !said.modal && /counts only the weight you add/.test(said.line), '4. adding pull-ups to a plan day says it counts bodyweight, on Plan under the lift, no sheet in the way', said);
     await H2.P.ctx.close();
   }
 

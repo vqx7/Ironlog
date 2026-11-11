@@ -56,6 +56,8 @@ async function startOn(P, dayIdx) {
   await P.page.evaluate(k => { const L = window.__ironlog; L.ui.todayDay = k; L.render(); }, dayIdx);
   await P.page.click('#view .hero [data-act="startSession"]:not([data-light])'); await wait(250);
 }
+// The Guide's How targets are set, as its text reads.
+const guideRules = P => P.page.evaluate(() => { window.__ironlog.ACT.guideOpen({ dataset: { topic: 'rules' } }); const t = (document.getElementById('modal') || {}).textContent.replace(/\s+/g, ' '); window.__ironlog.ACT.mClose(); return t; });
 // A Lighter day started as a lifter starts one: Change on Today's card, then Lighter day.
 async function startLighter(P) {
   await P.page.click('#view .hero [data-act="startAltOpen"]'); await wait(200);
@@ -245,6 +247,8 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     await startOn(P, 0);
     s = await shows(P, 'assistPullup');
     ok(s.tgt && s.tgt.kind === 'load' && Math.round(s.tgt.w / 0.45359237) === -45 && s.rows.every(r => r.w === 45) && /help off/.test(s.hint), 'P-15 assisted pull-ups with 50 lb of help, 10 x 3 at the top: 45 lb of help next, one 5 lb step off', s);
+    const g15 = await guideRules(P);
+    ok(/5 lb on anything else, including the help on an assisted machine/.test(g15), 'P-15 the Guide says the help on an assisted machine moves 5 lb at a time (it said a machine stack moves 10)', g15.slice(g15.indexOf('Load steps'), g15.indexOf('Load steps') + 300));
     await P.ctx.close(); await P.browser.close();
     // Timed holds: add seconds, then load. A plank held 45 s x 3 on 30-60 s: beat 135 s, no load.
     P = await lifter([{ id: 'A', name: 'Core', items: [['plank', 3, 30, 60, 0]] }], weeks('A', []).map(([d, k]) => [d, k, [['plank', [[0, 45, null], [0, 45, null], [0, 45, null]]]]]));
@@ -401,6 +405,11 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     const latest = await P.page.evaluate(d => window.__ironlog.fmtDate(d), addD(DAY, -7));
     ok(s.hint.startsWith(`Last (${latest})`) && !/155/.test(s.hint), `P-2 the light range last used before eight weeks of heavy days: its target starts from the latest session, the heavy day of ${latest}, not the 155 lb of then`, s);
     await P.ctx.close(); await P.browser.close();
+    // And the Guide says the rule as the app keeps it, a break not counted (NEW-117: until 2.48 it said 6 weeks plain).
+    const G = await lifter(DAY_BENCH, []);
+    const g = await G.page.evaluate(() => { window.__ironlog.ACT.guideOpen({ dataset: { topic: 'rules' } }); return (document.getElementById('modal') || {}).textContent.replace(/\s+/g, ' '); });
+    ok(/not used within 6 weeks of training before your latest session of the lift \(time on a break of more than 4 weeks is not counted\)/.test(g), 'P-2 the Guide says the 6 weeks are weeks of training, a break of more than 4 weeks not counted', g.slice(0, 120));
+    await G.ctx.close(); await G.browser.close();
   }
   if (run('P-4')) {
     /* A target is not a record: Today's workout names the lift's best set beside it, and the session's target is its own.
@@ -470,6 +479,10 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     ok(!/Load due/.test(t), 'P-22 six weeks after three sessions getting easier: no Load due on Today', t.slice(0, 400));
     t = await loadDue(7);
     ok(/Load due/.test(t), 'P-22 a guard: the same sessions ending last week say Load due', t.slice(0, 400));
+    const P = await lifter(DAY_BENCH, []);
+    const g22 = await guideRules(P);
+    await P.ctx.close(); await P.browser.close();
+    ok(/Load due/.test(g22) && /last three sessions/.test(g22) && /on a break/.test(g22), 'P-22 the Guide says what Load due is (three sessions at one load, reps held, reps in reserve rising) and that it is not shown on a break (it said nothing about it)', g22.slice(g22.indexOf('Load due'), g22.indexOf('Load due') + 400));
   }
 
   if (run('P-25')) {
@@ -541,7 +554,25 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
       ok(nw ? n === 0 : n > 0, nw ? 'P-27 250 x 8 x 3 on a session marked New machine or gym after 200 x 8 x 3: no PR' : 'P-27 a guard: the same 250 x 8 x 3 with no new gym is a PR', n);
       await Q.ctx.close(); await Q.browser.close();
     }
+  }  if (run('P-29')) {
+    /* Another gym changes nothing unless a lift is marked New machine or gym (V 2026-11-10: "Everything should stay as
+       is unless the user explicitly marks it"). Marked, the lift starts over: the marked session is its baseline, no PR,
+       and the next one beating it is a PR. The mark says when to use it, in one line (V 2026-11-10, "keep it simple"):
+       only when loads don't compare; plates and dumbbells weigh the same anywhere. */
+    const P = await lifter(DAY_BENCH, [...weeks('A', [[200, 8, 2], [200, 8, 2], [200, 8, 2]], 3).map(([d, k, e]) => [addD(d, -14), k, e]), [addD(DAY, -14), 'A', [['bench', [[150, 8, 2], [150, 8, 2], [150, 8, 2]], { nw: true }]]], [addD(DAY, -7), 'A', [['bench', [[160, 8, 2], [160, 8, 2], [160, 8, 2]]]]]]);
+    const pr = await P.page.evaluate(() => { const p = window.__ironlog.IDX().prs; return { marked: p.filter(x => x.sid === 's3').length, next: p.filter(x => x.sid === 's4' && x.big).length }; });
+    ok(pr.marked === 0 && pr.next > 0, 'P-29 after 200 x 8 x 3, 150 x 8 x 3 marked New machine or gym is no PR, and 160 x 8 x 3 the week after is one', pr);
+    const g = await P.page.evaluate(() => { window.__ironlog.ACT.guideOpen({ dataset: { topic: 'rules' } }); return (document.getElementById('modal') || {}).textContent.replace(/\s+/g, ' '); });
+    ok(/New machine or gym/.test(g) && /only when the loads there don.t compare/i.test(g) && /plates and dumbbells weigh the same/i.test(g), 'P-29 the Guide says when to mark New machine or gym: only when loads don\'t compare, as plates and dumbbells weigh the same anywhere', g.slice(g.indexOf('New machine or gym'), g.indexOf('New machine or gym') + 400));
+    await P.page.evaluate(() => window.__ironlog.ACT.mClose());
+    await startOn(P, 0);
+    await P.page.click('#view [data-act="bMenu"][data-b="0"]'); await wait(200);
+    await P.page.click('#modal [data-act="bMenuDo"][data-op="bNew"]'); await wait(200);
+    const tip = await P.page.evaluate(() => { const t = document.querySelector('#blk-0 .tag[data-tip]'); return t ? t.getAttribute('data-tip') : ''; });
+    ok(/only when the loads there don.t compare/i.test(tip), 'P-29 marked from the exercise\'s menu, its New machine tag says the same in its tip', tip);
+    await P.ctx.close(); await P.browser.close();
   }
+
 
 
   // ---- A. Where a target comes from.
@@ -569,6 +600,91 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     const s = await shows(P, 'bench');
     const work = s.rows.filter(r => r.w === 205);
     ok(work.length >= 3 && s.tgt && s.tgt.w != null && Math.round(s.tgt.w / 0.45359237) === 205, 'P-3 95 x 10, 245 x 2, then 205 x 8 x 3: the target is at 205 lb, the back-off sets\' load, not 245 or 95', s);
+    await P.ctx.close(); await P.browser.close();
+  }
+
+  // ---- G. The engine's other branches (each a rule of the code, engine.ts, with V's rulings; the Guide is checked against them).
+  const USUAL8 = [[200, 8, 2], [200, 8, 2], [200, 8, 2]];
+  if (run('P-30')) {
+    // The same lift twice in one day, in the same range: the same again, no step up within one day (sgSameDayIn).
+    for (const [when, d, w] of [['earlier today', DAY, 200], ['yesterday (a guard)', addD(DAY, -1), 200 + BAR_STEP_LB]]) {
+      const P = await lifter(DAY_BENCH, [...weeks('A', USUAL8, 3).map(([x, k, e]) => [addD(x, -7), k, e]), [d, 'A', [['bench', [[200, 10, 2], [200, 10, 2], [200, 10, 2]]]]]]);
+      await startOn(P, 0);
+      const s = await shows(P, 'bench');
+      ok(s.rows.every(r => r.w === w) && (d === DAY ? !s.tgt && /^Earlier today/.test(s.hint) : true), `P-30 200 x 10 x 3 at the top ${when}: ${w} lb${d === DAY ? ', the same again, nothing to beat' : ''}`, s);
+      await P.ctx.close(); await P.browser.close();
+    }
+  }
+  if (run('P-31')) {
+    /* Well past the range (every set 2 or more over the top, as after moving the range down): the load the estimate gives
+       for the middle of the range, capped as P-11, in whole steps. 200 x 14 x 3 at 2 on 6-10, the fifth session:
+       200 x (1 + 16/30) = 307 lb gives 230 for 8 at 2, capped at 10%: 220, where one step would be 210. */
+    const P = await lifter(DAY_BENCH, weeks('A', [[200, 14, 2], [200, 14, 2], [200, 14, 2]], 4));
+    await startOn(P, 0);
+    const s = await shows(P, 'bench');
+    const want = stepsDown(Math.min(loadFor(e1(200, 14 + 2), 8 + 2), 200 * 1.1), BAR_STEP_LB);
+    ok(want === 220 && s.rows.every(r => r.w === want) && /well past/.test(s.hint), `P-31 200 x 14 x 3 on 6-10: ${want} lb, from the estimate, not one step`, s);
+    await P.ctx.close(); await P.browser.close();
+  }
+  if (run('P-32')) {
+    /* A bad day at a load done in the range the time before: every set under the range now, every set in it then, and
+       not below its usual. Stay at the load and get back to the bottom of the range in every set, not one rep more
+       than the bad day (sgBadDay). 200 x 5, 5, 6 and 5 sets of three on 6-10: the last at its usual of 5, the one
+       before in the range. (A bad day below its usual repeats the last target instead, P-16.) */
+    const reps = [5, 5, 6, 5];
+    const P = await lifter(DAY_BENCH, reps.map((r, k) => [addD(DAY, -7 * (reps.length - k)), 'A', [['bench', [[200, r, 2], [200, r, 2], [200, r, 2]]]]]));
+    await startOn(P, 0);
+    const s = await shows(P, 'bench');
+    ok(s.rows.every(r => r.w === 200) && s.tgt && s.tgt.kind === 'load' && s.tgt.repMin === 6, 'P-32 200 x 5 x 3 after 200 x 6 x 3 on 6-10, at its usual: stay at 200 lb, 6 or more in every set', s);
+    await P.ctx.close(); await P.browser.close();
+  }
+  if (run('P-33')) {
+    /* Back at the load from before a break in fewer sets than planned (the next sets moved up within the session, 180,
+       190, 200 x 8): every planned set at that load next, for the fewest reps done there (V 2026-10-27, NEW-5). */
+    const P = await lifter(DAY_BENCH, [...weeks('A', USUAL8).map(([x, k, e]) => [addD(x, -56), k, e]), [addD(DAY, -7), 'A', [['bench', [[180, 8, 2], [190, 8, 2], [200, 8, 2]]]]]]);
+    await startOn(P, 0);
+    const s = await shows(P, 'bench');
+    ok(s.rows.length === 3 && s.rows.every(r => r.w === 200) && s.tgt && s.tgt.kind === 'load' && s.tgt.repMin === 8, 'P-33 back after eight weeks at 180, 190 and 200 x 8: 200 lb in all 3 sets, 8 or more in each', s);
+    await P.ctx.close(); await P.browser.close();
+  }
+  if (run('P-34')) {
+    /* No drop just after one step up while 3 or fewer reps short: a step that is large for the load starts below the
+       range on purpose. 210 x 4 x 3 just after 200 x 8 x 3 holds at 210; the same 210 x 4 x 3 twice drops, to what its
+       estimate gives for 6 at 2 in reserve: 210 x 36 / 31 = 244 lb, which gives 197, so 190 in whole steps from 210. */
+    const SHORT = [[210, 4, 2], [210, 4, 2], [210, 4, 2]];
+    const down = 210 - Math.ceil((210 - loadFor(e1(210, 4 + 2), 6 + 2)) / BAR_STEP_LB) * BAR_STEP_LB;
+    for (const [why, hist, w] of [['just after the step up from 200', [...weeks('A', USUAL8, 2).map(([x, k, e]) => [addD(x, -7), k, e]), [addD(DAY, -7), 'A', [['bench', SHORT]]]], 210], ['a second time at 210', [...weeks('A', USUAL8, 2).map(([x, k, e]) => [addD(x, -14), k, e]), [addD(DAY, -14), 'A', [['bench', SHORT]]], [addD(DAY, -7), 'A', [['bench', SHORT]]]], down]]) {
+      const P = await lifter(DAY_BENCH, hist);
+      await startOn(P, 0);
+      const s = await shows(P, 'bench');
+      ok(s.rows.every(r => r.w === w), `P-34 210 x 4 x 3 on 6-10 ${why}: ${w} lb`, s);
+      await P.ctx.close(); await P.browser.close();
+    }
+  }
+  if (run('P-35')) {
+    // The plan's own Load jump %: 10% at the top of the range on 200 lb is two 10 lb steps, 220 (2.5% gives one step).
+    const P = await lifter([{ id: 'A', name: 'Push', items: [['bench', 3, 6, 10, 2, { jump: 10 }]] }], weeks('A', [[200, 10, 2], [200, 10, 2], [200, 10, 2]]));
+    await startOn(P, 0);
+    const s = await shows(P, 'bench');
+    ok(s.rows.every(r => r.w === stepUp(200, BAR_STEP_LB, 0.1)) && stepUp(200, BAR_STEP_LB, 0.1) === 220, 'P-35 Load jump 10% on the plan, 200 x 10 x 3 at the top: 220 lb', s);
+    await P.ctx.close(); await P.browser.close();
+  }
+  if (run('P-36')) {
+    /* A deload week: half the sets rounded up, about 90% of what the normal day would ask in whole steps down, the bottom
+       of the range. After 200 x 8 x 3: 2 sets of 180 lb for 6. */
+    const P = await lifter(DAY_BENCH, weeks('A', USUAL8));
+    await P.page.evaluate(() => { const L = window.__ironlog; L.state.deloadWeek = L.weekStart(L.today()); L.saveNow(); L.invalidate(); L.render(); }); await wait(100);
+    await startOn(P, 0);
+    const s = await shows(P, 'bench');
+    ok(s.rows.length === Math.ceil(3 / 2) && s.rows.every(r => r.w === 200 - Math.ceil((200 - 200 * 0.9) / BAR_STEP_LB) * BAR_STEP_LB && r.r === 6) && !s.tgt, 'P-36 a deload week after 200 x 8 x 3 on 6-10: 2 sets of 180 lb for 6, nothing to beat', s);
+    await P.ctx.close(); await P.browser.close();
+  }
+  if (run('P-37')) {
+    // A flagged injury on a lift back after a break: the lower of last time's load and the way back's, in the injury's words.
+    const P = await lifter(DAY_BENCH, weeks('A', USUAL8).map(([x, k, e]) => [addD(x, -42), k, e]), { inj: 'chest' });
+    await startOn(P, 0);
+    const s = await shows(P, 'bench');
+    ok(s.rows.every(r => r.w === 180) && !s.tgt && /Injury flagged/.test(s.hint), 'P-37 chest flagged, bench back after seven weeks from 200 x 8 x 3: 180 lb, the way back\'s, with the flag said and nothing to beat', s);
     await P.ctx.close(); await P.browser.close();
   }
 

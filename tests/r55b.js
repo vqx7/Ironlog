@@ -54,6 +54,9 @@ fs.cpSync(SRC, tmp, { recursive: true });
     D.reload = async () => { await page.reload(); await ready(); await wait(800); };
     D.synced = () => page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 15000 }).then(() => true, () => false);
     D.toast = () => page.evaluate(() => { const t = document.getElementById('toast'); return t && !t.hidden ? { text: t.innerText.replace(/\s+/g, ' '), undo: !!t.querySelector('[data-act="undo"]') } : null; });
+    /* The message that matches, once it shows: since 2.48 news from sync waits for the sign-in's own message ("Signed in.
+       Syncing your log.") to go, and is never lost (toast.ts, NEW-118), so it is read when it comes, up to 8 s. */
+    D.toastWait = async re => { let t = null; for (let k = 0; k < 40; k++) { t = await D.toast(); if (t && re.test(t.text)) return t; await wait(200); } return t; };
     D.signIn = async (email) => {
       const ob = await page.evaluate(() => { const p = document.getElementById('obPage'); return p ? p.dataset.step : null; });
       if (ob) { if (await page.$('#obPage [data-act="obAcctBack"]')) { await page.click('#obPage [data-act="obAcctBack"]'); await wait(200); } await page.click('#obPage [data-act="acctOpen"][data-mode="signin"]'); }
@@ -100,7 +103,7 @@ fs.cpSync(SRC, tmp, { recursive: true });
     const mine = await A.ev(() => window.__ironlog.state.sessions.map(s => s.id));
     await A.signIn('one@example.com');
     const after = await A.ev(() => window.__ironlog.state.sessions.map(s => s.id).sort());
-    const acc = sessIn('one@example.com').sort(); const t = await A.toast();
+    const acc = sessIn('one@example.com').sort(); const t = await A.toastWait(/Merged/);
     ok(mine.length === 1 && after.includes('old1') && after.includes(mine[0]) && acc.includes(mine[0]) && acc.includes('old1'), 'a workout finished on a new phone\'s first run, then signed in to an account with a log, without reopening the app: both are kept, on the phone and in the account (r54 replaced the workout with the account\'s log)', { mine, after, acc });
     ok(t && /Merged/.test(t.text) && !t.undo, 'the phone says it merged, and offers no Undo (r54 offered one that deleted the account\'s sessions)', t);
     await A.ctx.close();
@@ -128,7 +131,7 @@ fs.cpSync(SRC, tmp, { recursive: true });
     await B.ev(s => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.sessions = s; L.state = L.normalize(L.state); L.invalidate(); L.saveNow(); }, [mk('ph1', '2026-10-05', 'Phone one')]);
     await B.reload();
     await B.signIn('three@example.com');
-    const t = await B.toast(); const undo = await B.ev(() => window.__ironlog.undoStack.length);
+    const t = await B.toastWait(/Merged/); const undo = await B.ev(() => window.__ironlog.undoStack.length);
     await B.ev(() => window.__ironlog.flush()); await wait(800);
     await O.ev(() => window.__ironlog.sync()); await wait(1000);
     const other = await O.ev(() => window.__ironlog.state.sessions.map(s => s.id).sort().join());
@@ -193,7 +196,7 @@ fs.cpSync(SRC, tmp, { recursive: true });
     await B.page.fill('#view .sg input[data-f="w"][data-b="0"][data-s="0"]', '95'); await B.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(200); await answer(B);
     const b0 = await draftOf(B);
     await B.signIn('eight@example.com');
-    const t = await B.toast();
+    const t = await B.toastWait(/other device is saved in History/);
     await B.ev(() => window.__ironlog.flush()); await wait(1000);
     const b1 = await draftOf(B);
     const kept = await B.ev(id => { const s = window.__ironlog.state.sessions.find(x => x.id === id); return s ? s.ex.reduce((a, b) => a + b.sets.length, 0) : 0; }, o0 && o0.id);

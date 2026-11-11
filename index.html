@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.10-r93">
+<meta name="app-build" content="2026.11.10-r94">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2055,9 +2055,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     /** The heaviest load, in pounds. */
     loadLb: 2e4
   };
-  function within(next, was, max) {
-    if (was.length <= max) return next.slice(0, max);
-    return next.length <= was.length ? next : was;
+  function within(next2, was, max) {
+    if (was.length <= max) return next2.slice(0, max);
+    return next2.length <= was.length ? next2 : was;
   }
   var CHECKIN_TOP = 3;
   var TRASH_DAYS = 30, TRASH_MAX = 20, TRASH_BYTES = 6e4;
@@ -2134,8 +2134,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.47";
-  var APP_VERSION = "2026.11.10-r93";
+  var DISPLAY_VERSION = "2.48";
+  var APP_VERSION = "2026.11.10-r94";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -3345,8 +3345,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const R2 = activeRoutineIn(M3);
     if (R2.schedule === "weekly") return null;
     const s3 = M3.s.settings;
-    const was = fitFloorsIn(M3, R2, null, weekFactor(R2)), now = fitFloorsIn(M3, R2);
-    if (sameFloors(was, now)) return null;
+    const was = fitFloorsIn(M3, R2, null, weekFactor(R2)), now2 = fitFloorsIn(M3, R2);
+    if (sameFloors(was, now2)) return null;
     if (s3.bandsFit ? !sameFloors(s3.bandsFit, was) : !!s3.profile || !MK.every((m3) => sameBand(s3.bands[m3], appBandIn(M3, m3, null, was))))
       return null;
     const bands = {};
@@ -3354,10 +3354,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (TRACK_ONLY.has(m3)) continue;
       const o3 = appBandIn(M3, m3, null, was);
       if (!sameBand(s3.bands[m3], o3)) continue;
-      const n3 = appBandIn(M3, m3, null, now);
+      const n3 = appBandIn(M3, m3, null, now2);
       if (!sameBand(n3, o3)) bands[m3] = n3;
     }
-    return { bands, fit: now };
+    return { bands, fit: now2 };
   }
 
   // src/app/merge.ts
@@ -3576,9 +3576,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return { ...d3, id: d3["id"], ex: blocks2 };
   }
   function mergeDraft(base0, cur0, pre0, saved) {
-    const base = undoDraftOf(base0), cur = undoDraftOf(cur0), pre = undoDraftOf(pre0);
+    const base = undoDraftOf(base0), cur2 = undoDraftOf(cur0), pre = undoDraftOf(pre0);
     if (pre && (!base || base.id !== pre.id) && canon(cur0) === canon(base0) && !saved(pre.id)) return pre0;
-    if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur0 === void 0 ? null : cur0;
+    if (!pre || !cur2 || !base || pre.id !== cur2.id || base.id !== cur2.id) return cur0 === void 0 ? null : cur0;
     const keyed = (list) => {
       const seen = {};
       return (list || []).map((b2) => {
@@ -3586,7 +3586,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         return [k2, b2];
       });
     };
-    const B5 = new Map(keyed(base.ex)), C2 = keyed(cur.ex), P2 = keyed(pre.ex);
+    const B5 = new Map(keyed(base.ex)), C2 = keyed(cur2.ex), P2 = keyed(pre.ex);
     const Cm = new Map(C2);
     const pick2 = (k2) => {
       const b2 = B5.get(k2), c4 = Cm.get(k2), p3 = P2.find((x2) => x2[0] === k2);
@@ -3609,11 +3609,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         if (v3 && !out.includes(v3)) out.push(v3);
       }
     }
-    const res = { ...cur, ex: out };
+    const res = { ...cur2, ex: out };
     for (const f3 of ["notes", "dayName", "deload", "light", "limited", "cardio", "chk"]) {
-      if (canon(cur[f3]) === canon(base[f3])) res[f3] = pre[f3];
+      if (canon(cur2[f3]) === canon(base[f3])) res[f3] = pre[f3];
     }
-    if (canon(cur.pics) === canon(base.pics)) {
+    if (canon(cur2.pics) === canon(base.pics)) {
       if (pre.pics === void 0) delete res.pics;
       else res.pics = pre.pics;
     }
@@ -4364,17 +4364,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return e5 && typeof e5.id === "string" && typeof e5.name === "string" ? [cleanExercise(e0, e5, e5.name)] : [];
     });
     const have = new Set(exercises.map((e5) => e5.id));
-    const gone = new Set(removedLib);
+    const gone2 = new Set(removedLib);
     const lib = libExercises();
     for (const e5 of lib) {
       const r4 = rec(e5);
-      if (r4 && !have.has(e5.id) && !gone.has(e5.id)) exercises.push(cleanExercise(e5, r4, e5.name));
+      if (r4 && !have.has(e5.id) && !gone2.has(e5.id)) exercises.push(cleanExercise(e5, r4, e5.name));
     }
     const libName = new Map(lib.map((e5) => [e5.id, e5.name]));
     const libNote = new Map(lib.map((e5) => [e5.id, e5.note]));
     for (const e5 of exercises) {
-      const now = libName.get(e5.id);
-      if (now && !e5.custom && (LIB_NAMES_BEFORE[e5.id] || []).includes(e5.name)) e5.name = now;
+      const now2 = libName.get(e5.id);
+      if (now2 && !e5.custom && (LIB_NAMES_BEFORE[e5.id] || []).includes(e5.name)) e5.name = now2;
       const note = libNote.get(e5.id);
       if (note !== void 0 && !e5.custom && (LIB_NOTES_BEFORE[e5.id] || []).includes(e5.note)) e5.note = note;
     }
@@ -4420,9 +4420,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       else if (t4.kind === "cardio") tC.set(t4.id, t4);
     }
     const revived = /* @__PURE__ */ new Set();
-    const same = (cur, data, clean, ok) => {
+    const same = (cur2, data, clean, ok) => {
       try {
-        return !ok(data) || canon(clean(data, 0)) === canon(cur);
+        return !ok(data) || canon(clean(data, 0)) === canon(cur2);
       } catch (e5) {
         return true;
       }
@@ -4596,8 +4596,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/store.ts
   var state;
-  function setState(next) {
-    return state = next;
+  function setState(next2) {
+    return state = next2;
   }
   var HIST_PAGE = 25;
   var ui = {
@@ -4766,10 +4766,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
     });
     if (undoStack.length) return;
-    const now = Date.now();
+    const now2 = Date.now();
     for (const e5 of arr(list) || []) {
       const E2 = rec(e5);
-      if (E2 && typeof E2.pre === "string" && now - (Number(E2.t) || 0) < UNDO_TTL)
+      if (E2 && typeof E2.pre === "string" && now2 - (Number(E2.t) || 0) < UNDO_TTL)
         undoStack.push({
           pre: E2.pre,
           post: typeof E2.post === "string" ? E2.post : null,
@@ -5294,8 +5294,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const j3 = await jpegOf(f3, PIC_EDGE, PIC_QUALITY);
     if ("why" in j3) return j3;
     const { blob, w: w2, h: h3 } = j3;
-    const now = Date.now();
-    const row = { id: "p" + uid(), blob, w: w2, h: h3, t: now, seen: now, own: owner() };
+    const now2 = Date.now();
+    const row = { id: "p" + uid(), blob, w: w2, h: h3, t: now2, seen: now2, own: owner() };
     if (asBytes) row.bytes = await blob.arrayBuffer();
     let kept = await picRowsWrite([storedForm(row)], []);
     if (!kept && !asBytes) {
@@ -5324,20 +5324,20 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     for (const t4 of state.trash) if (t4.kind === "session") sess(t4.data);
     return out;
   }
-  async function picsTidy(now = Date.now()) {
+  async function picsTidy(now2 = Date.now()) {
     if (!ready) return;
     const live2 = named();
     const me = owner();
-    const seen = [], gone = [];
+    const seen = [], gone2 = [];
     for (const r4 of rows.values()) {
       if (live2.has(r4.id)) {
-        if (now - r4.seen > DAY_MS || r4.own !== me) seen.push({ ...r4, seen: now, own: me });
-      } else if (r4.own === me && now - r4.seen > PIC_KEEP_DAYS * DAY_MS) gone.push(r4.id);
+        if (now2 - r4.seen > DAY_MS || r4.own !== me) seen.push({ ...r4, seen: now2, own: me });
+      } else if (r4.own === me && now2 - r4.seen > PIC_KEEP_DAYS * DAY_MS) gone2.push(r4.id);
     }
-    if (!seen.length && !gone.length) return;
-    if (!await picRowsWrite(seen.map(storedForm), gone)) return;
+    if (!seen.length && !gone2.length) return;
+    if (!await picRowsWrite(seen.map(storedForm), gone2)) return;
     for (const r4 of seen) rows.set(r4.id, r4);
-    for (const id of gone) drop(id);
+    for (const id of gone2) drop(id);
   }
   function drop(id) {
     rows.delete(id);
@@ -5639,8 +5639,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const d3 = parse(s3);
     return isNaN(+d3) ? "" : dtf(k2, o3).format(d3);
   };
-  var fmtDate = (s3) => fmtWith("d", { month: "short", day: "numeric" }, s3);
-  var fmtDateFrom = (s3, now) => yearOf(s3) === yearOf(now) ? fmtDate(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
+  var fmtDay = (s3) => fmtWith("d", { month: "short", day: "numeric" }, s3);
+  var fmtDateFrom = (s3, now2) => yearOf(s3) === yearOf(now2) ? fmtDay(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
+  var fmtDate = (s3) => fmtDateFrom(s3, today());
   function effScale(v3) {
     return v3 === "half" || v3 === "rpe" ? v3 : "whole";
   }
@@ -6738,7 +6739,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function idxLiftIn(M3, id, exps, maxBest, anchor, winStart, prs) {
     const sc = trendScope(exps, anchor);
     const { real, curRR, inRange, lastReal } = sc;
-    const cur = sinceNew(exps);
+    const cur2 = sinceNew(exps);
     const exI = EXIn(M3, id);
     const plC = basePlanIn(M3, id);
     const capL = lastReal ? capOfIn(M3, exI, plC, lastReal.topW) : null;
@@ -6751,7 +6752,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const stalledIn = (rr, all) => {
       const inR = all.filter((x2) => !x2.held);
       const withE1 = stallReads(all);
-      const offSince = (from) => cur.filter((x2) => (lighter(x2) || x2.held) && sameRR(x2.rr, rr) && x2.date >= from);
+      const offSince = (from) => cur2.filter((x2) => (lighter(x2) || x2.held) && sameRR(x2.rr, rr) && x2.date >= from);
       const l4 = stallStretch(withE1);
       if (l4) {
         const moved = stretchMoved(l4, offSince, listed);
@@ -6795,11 +6796,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     let bestCur = null;
     const byBand = {};
-    for (const x2 of cur) {
+    for (const x2 of cur2) {
       if (x2.best == null) continue;
       if (sameRR(x2.rr, curRR)) bestCur = bestCur == null ? x2.best : Math.max(bestCur, x2.best);
     }
-    for (const x2 of cur) if (x2.pb != null) byBand[x2.pbb] = Math.max(byBand[x2.pbb] || 0, x2.pb);
+    for (const x2 of cur2) if (x2.pb != null) byBand[x2.pbb] = Math.max(byBand[x2.pbb] || 0, x2.pb);
     const fresh = !!lastReal && lastReal.date >= addDays(M3.today(), -BACK_DAYS);
     return {
       n: exps.length,
@@ -6822,7 +6823,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       wN: w2.length,
       trendTv: w2.map((x2) => x2.tv),
       wSpan: w2.length ? daysBetween(w2[0].date, w2[w2.length - 1].date) : 0,
-      last: real.length ? real[real.length - 1] : cur[cur.length - 1],
+      last: real.length ? real[real.length - 1] : cur2[cur2.length - 1],
       best: bestCur,
       bestAll: maxBest,
       rr: curRR,
@@ -6885,7 +6886,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
     return out;
   }
-  function lastOf(all, base, fmt, now, repMin) {
+  function lastOf(all, base, fmt, now2, repMin) {
     const rec2 = all && all.length ? all[all.length - 1] : base;
     const kind = sessionWord(rec2);
     const miss = rec2.miss || [];
@@ -6895,7 +6896,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       sets.push(fmt(p3));
     });
     for (const m3 of miss) if (m3.at >= rec2.pts.length) sets.push(fmt(m3) + missedTag(m3));
-    const line = `Last (${fmtDateFrom(rec2.date, now)}${kind ? ", " + kind : ""}): ${sets.join(", ")}.`;
+    const line = `Last (${fmtDateFrom(rec2.date, now2)}${kind ? ", " + kind : ""}): ${sets.join(", ")}.`;
     const repsFrom = rec2 !== base && (lighter(rec2) || rec2.short === "reading" || Math.abs(rec2.topW - base.topW) > EPS_SAME) ? base : rec2;
     const wl = workLoad(repsFrom.pts, repMin || 0);
     const wp = atLoad(repsFrom.pts, wl);
@@ -7049,16 +7050,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/bests.ts
   function statsUpToIn(M3, exId, exps) {
-    const now = IDXIn(M3).exStats[exId] || {};
+    const now2 = IDXIn(M3).exStats[exId] || {};
     let best = null, bestAll = null;
     const byBand = {};
     for (const x2 of exps) {
       if (x2.best == null) continue;
-      if (sameRR(x2.rr, now.rr)) best = best == null ? x2.best : Math.max(best, x2.best);
+      if (sameRR(x2.rr, now2.rr)) best = best == null ? x2.best : Math.max(best, x2.best);
       bestAll = bestAll == null ? x2.best : Math.max(bestAll, x2.best);
     }
     for (const x2 of exps) if (x2.pb != null) byBand[x2.pbb] = Math.max(byBand[x2.pbb] || 0, x2.pb);
-    return { best, bestAll, byBand, rr: now.rr, easier: null };
+    return { best, bestAll, byBand, rr: now2.rr, easier: null };
   }
   function prFrameIn(M3, exId, s3, date) {
     const I2 = IDXIn(M3);
@@ -7219,8 +7220,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       };
     }
     if (res.top == null) return out;
-    const was = fmtWIn(M3, res.w - res.top), now = fmtWIn(M3, nw - res.top);
-    const say = (t4) => t4.replace(`add ${was} ${UIn(M3)}`, `add ${now} ${UIn(M3)}`).replace(`take ${was} ${UIn(M3)} of help off`, `take ${now} ${UIn(M3)} of help off`);
+    const was = fmtWIn(M3, res.w - res.top), now2 = fmtWIn(M3, nw - res.top);
+    const say = (t4) => t4.replace(`add ${was} ${UIn(M3)}`, `add ${now2} ${UIn(M3)}`).replace(`take ${was} ${UIn(M3)} of help off`, `take ${now2} ${UIn(M3)} of help off`);
     out.text = out.last && out.text.startsWith(out.last) ? out.last + say(out.text.slice(out.last.length)) : say(out.text);
     return out;
   }
@@ -7798,7 +7799,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return {
         ...was,
         w: kin.w,
-        text: `${lead}. About ${loadLabelIn(M3, ex, kin.w)} ${UIn(M3)}${loadNote(ex)} for ${reps}, from your ${kin.ex.name} (${kin.set}, ${fmtDate(kin.date)}), ${stop}. If the first set is off, change the load.`,
+        text: `${lead}. About ${loadLabelIn(M3, ex, kin.w)} ${UIn(M3)}${loadNote(ex)} for ${reps}, from your ${kin.ex.name} (${kin.set}, ${fmtDateFrom(kin.date, M3.today())}), ${stop}. If the first set is off, change the load.`,
         lastR: [],
         last: "",
         target: "",
@@ -8403,9 +8404,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const L2 = mine[mine.length - 1];
     if (!L2)
       return { last: -1, lastDate: null, next: nextTrainIdx(R2, -1), done: /* @__PURE__ */ new Set(), restToday: false, restIdx: -1 };
-    const next = nextTrainIdx(R2, L2.i);
+    const next2 = nextTrainIdx(R2, L2.i);
     const done = /* @__PURE__ */ new Set();
-    if (next > L2.i) {
+    if (next2 > L2.i) {
       done.add(L2.i);
       let prev = L2.i;
       for (let k2 = mine.length - 2; k2 >= 0; k2--) {
@@ -8425,7 +8426,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     const since = daysBetween(L2.s.date, T2);
     const restToday = since >= 1 && since <= run2;
-    return { last: L2.i, lastDate: L2.s.date, next, done, restToday, restIdx: restToday ? (L2.i + since) % n3 : -1 };
+    return { last: L2.i, lastDate: L2.s.date, next: next2, done, restToday, restIdx: restToday ? (L2.i + since) % n3 : -1 };
   }
   function sessionMuscleSetsIn(M3, day) {
     const out = {};
@@ -8806,8 +8807,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!k2) return;
       let nx = -1;
       for (let j3 = bi + 1; j3 < d3.ex.length && nx < 0; j3++) if (n3(j3) > 0) nx = j3;
-      const next = nx >= 0 ? d3.ex[nx] : void 0;
-      const r4 = b2.plan.ss && next && next.plan.ss === b2.plan.ss ? 0 : +b2.plan.rest || 0;
+      const next2 = nx >= 0 ? d3.ex[nx] : void 0;
+      const r4 = b2.plan.ss && next2 && next2.plan.ss === b2.plan.ss ? 0 : +b2.plan.rest || 0;
       s3 += k2 * (setSecs(ex, b2.plan) + r4) + (done ? 0 : su);
       lastRest = r4;
     });
@@ -8962,14 +8963,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function avgWeeksIn(M3, n3, lightToo) {
     const I2 = IDXIn(M3);
-    const cur = weekStart(M3.today());
+    const cur2 = weekStart(M3.today());
     let weeks = 0;
     const tot = {}, con = {};
     const ff = avgFirstWeekIn(M3);
     let extra = 0, missed = 0, span = 0, ffHit = false, rest = 0, light = 0;
     const used = [];
     for (let k2 = 1; k2 <= Math.min(2 * n3, n3 + extra); k2++) {
-      const wk = addDays(cur, -WEEK_DAYS * k2);
+      const wk = addDays(cur2, -WEEK_DAYS * k2);
       if (ff && wk < ff) {
         ffHit = true;
         continue;
@@ -9138,13 +9139,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function weekStreakIn(M3) {
     const R2 = activeRoutineIn(M3);
     const need = freeModeIn(M3) ? 1 : Math.max(1, plannedPerWeek(R2));
-    const cur = weekStart(M3.today());
-    const thisWeek = weekSessionsIn(M3, cur);
+    const cur2 = weekStart(M3.today());
+    const thisWeek = weekSessionsIn(M3, cur2);
     if (!M3.s.sessions.length) return { weeks: 0, best: 0, need, thisWeek: 0 };
     const first = weekStart(sortedSessionsIn(M3)[0].date);
     let run2 = null, cnt = 0, best = 0;
     for (let k2 = 1; k2 <= STREAK_WEEKS; k2++) {
-      const wk = addDays(cur, -WEEK_DAYS * k2);
+      const wk = addDays(cur2, -WEEK_DAYS * k2);
       if (wk < first) break;
       if (isRestWeekIn(M3, wk)) continue;
       if (weekSessionsIn(M3, wk) >= weekNeedIn(M3, wk)) {
@@ -9163,15 +9164,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const from = addDays(M3.today(), -days);
     let d3 = null;
     const I2 = IDXIn(M3);
-    const cur = weekStart(M3.today());
+    const cur2 = weekStart(M3.today());
     const { weeks: T2, lighter: lighter2 } = lighterTally(sortedSessionsIn(M3), I2.byEx, M3.s.deloadWeek);
-    const week = (k2) => !!I2.lightWk[k2] && (k2 < cur || T2[k2].light >= 2);
+    const week = (k2) => !!I2.lightWk[k2] && (k2 < cur2 || T2[k2].light >= 2);
     for (const x2 of M3.s.sessions)
       if (x2.date >= from && lighter2(x2.id) && week(weekStart(x2.date)) && (!d3 || x2.date > d3)) d3 = x2.date;
     const off = [];
     const f3 = firstDate(M3.s.sessions);
     if (f3) {
-      for (let w2 = weekStart(f3) > weekStart(from) ? weekStart(f3) : weekStart(from); w2 < cur; w2 = addDays(w2, WEEK_DAYS))
+      for (let w2 = weekStart(f3) > weekStart(from) ? weekStart(f3) : weekStart(from); w2 < cur2; w2 = addDays(w2, WEEK_DAYS))
         if (!T2[w2]) off.push(w2);
     }
     for (const w2 of [
@@ -9191,10 +9192,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const f3 = firstDate(M3.s.sessions);
     if (!f3) return null;
     const I2 = IDXIn(M3);
-    const cur = weekStart(M3.today());
+    const cur2 = weekStart(M3.today());
     const ks = [];
-    for (let k2 = 1; k2 <= LIGHTER_LOOK.weeks && addDays(cur, -WEEK_DAYS * k2) >= weekStart(f3); k2++)
-      ks.push(addDays(cur, -WEEK_DAYS * k2));
+    for (let k2 = 1; k2 <= LIGHTER_LOOK.weeks && addDays(cur2, -WEEK_DAYS * k2) >= weekStart(f3); k2++)
+      ks.push(addDays(cur2, -WEEK_DAYS * k2));
     const trained = (w2) => weekSessionsIn(M3, w2) > 0;
     if (ks.filter(trained).length < LIGHTER_LOOK.trained) return null;
     if (ks.length >= 2 && !trained(ks[0]) && !trained(ks[1])) return null;
@@ -9207,19 +9208,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function weekStatsIn(M3) {
     const R2 = activeRoutineIn(M3);
-    const cur = weekStart(M3.today());
+    const cur2 = weekStart(M3.today());
     const weekly = R2.schedule === "weekly";
     let cardioMin = 0, cardioN = 0;
     for (const c4 of M3.s.cardio)
-      if (c4.date >= cur && c4.date <= addDays(cur, SUNDAY)) {
+      if (c4.date >= cur2 && c4.date <= addDays(cur2, SUNDAY)) {
         cardioMin += c4.min;
         cardioN++;
       }
-    const doneDays = weekSessionsIn(M3, cur);
+    const doneDays = weekSessionsIn(M3, cur2);
     const planDays = plannedPerWeek(R2);
-    const got = IDXIn(M3).weekHard[cur] || 0;
+    const got = IDXIn(M3).weekHard[cur2] || 0;
     const tgt = planSetsPerWeekIn(M3, R2, isDeloadWeekIn(M3));
-    const rest = isRestWeekIn(M3, cur);
+    const rest = isRestWeekIn(M3, cur2);
     return {
       R: R2,
       weekly,
@@ -9238,10 +9239,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const f3 = logStartIn(M3), c0 = avgFirstWeekIn(M3);
     if (!f3 || !c0) return null;
     const I2 = IDXIn(M3);
-    const cur = weekStart(M3.today());
+    const cur2 = weekStart(M3.today());
     const first = weekStart(f3);
-    const wk = (k2) => addDays(cur, -WEEK_DAYS * k2);
-    const ends = (w2) => w2 < cur && (isRestWeekIn(M3, w2) || !weekSessionsIn(M3, w2) || !!I2.lightWk[w2]);
+    const wk = (k2) => addDays(cur2, -WEEK_DAYS * k2);
+    const ends = (w2) => w2 < cur2 && (isRestWeekIn(M3, w2) || !weekSessionsIn(M3, w2) || !!I2.lightWk[w2]);
     const pick2 = M3.s.settings.blockWeeks;
     let spans = null;
     if (pick2 === "auto") {
@@ -9272,7 +9273,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       let counted = 0, sess = 0, hard = 0, missed = 0, light = 0;
       for (let w2 = from; w2 <= wk(tk); w2 = addDays(w2, WEEK_DAYS)) {
         const n3 = weekSessionsIn(M3, w2);
-        if (w2 >= cur || w2 < c0 || isRestWeekIn(M3, w2)) continue;
+        if (w2 >= cur2 || w2 < c0 || isRestWeekIn(M3, w2)) continue;
         if (!n3) {
           missed++;
           continue;
@@ -9298,9 +9299,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         light
       };
     };
-    const now = block(spans[0]);
-    if (!now) return null;
-    return { auto, len: auto ? null : len, now, last: spans[1] ? block(spans[1]) : null };
+    const now2 = block(spans[0]);
+    if (!now2) return null;
+    return { auto, len: auto ? null : len, now: now2, last: spans[1] ? block(spans[1]) : null };
   }
 
   // src/app/coach.ts
@@ -9729,9 +9730,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var dayFrom = 0;
   var dayTo = 0;
   function cachesForToday() {
-    const now = Date.now();
-    if (now >= dayFrom && now < dayTo) return;
-    const d3 = new Date(now);
+    const now2 = Date.now();
+    if (now2 >= dayFrom && now2 < dayTo) return;
+    const d3 = new Date(now2);
     d3.setHours(0, 0, 0, 0);
     dayFrom = d3.getTime();
     d3.setDate(d3.getDate() + 1);
@@ -10016,8 +10017,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function storedElsewhere() {
     if (!device.boot || device.lastSaved == null) return null;
     try {
-      const cur = localStorage.getItem(KEY);
-      return cur != null && cur !== device.lastSaved ? cur : null;
+      const cur2 = localStorage.getItem(KEY);
+      return cur2 != null && cur2 !== device.lastSaved ? cur2 : null;
     } catch (e5) {
       log("storage", e5);
       return null;
@@ -10033,8 +10034,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         mergeDue = true;
         queueMicrotask(() => {
           mergeDue = false;
-          const cur = storedElsewhere();
-          if (cur != null) mergeIn(cur, true);
+          const cur2 = storedElsewhere();
+          if (cur2 != null) mergeIn(cur2, true);
           else saveNow();
         });
       }
@@ -10438,14 +10439,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     trackT = null;
     try {
       const ch = chunksOf(state);
-      const now = cloud.pendAt || Date.now();
+      const now2 = cloud.pendAt || Date.now();
       cloud.pendAt = null;
       let moved = false;
       for (const id of /* @__PURE__ */ new Set([...Object.keys(ch), ...Object.keys(cloud.localH)])) {
         const h3 = hashStr(JSON.stringify(ch[id] || emptyChunk(id)));
         if (cloud.localH[id] !== h3) {
           if (cloud.localH[id] !== void 0) {
-            cloud.editAt[id] = now;
+            cloud.editAt[id] = now2;
             moved = true;
           }
           cloud.localH[id] = h3;
@@ -10485,8 +10486,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       kept === "joined" || kept === "cardioJoined" ? "The workout in progress was saved on another device. What was done here since was added to it." : kept === "saved" || kept === "cardio" ? `The workout in progress was ${state.draft ? "replaced by the one on" : "closed on"} another device. Its ${kept === "saved" ? "ticked sets are" : "cardio is"} saved in History.` : state.draft ? saved ? "The workout in progress was replaced by the one on another device. Its ticked sets are in History." : "The workout in progress was replaced by the one on another device." : saved ? "The workout in progress was saved on another device." : "The workout in progress was closed on another device."
     );
   }
-  function keepLost(lost, now, agreed, remoteWins) {
-    if (!lost || lost.editingId || now && now.id === lost.id) return null;
+  function keepLost(lost, now2, agreed, remoteWins) {
+    if (!lost || lost.editingId || now2 && now2.id === lost.id) return null;
     const kept = draftSession(lost), cardio = draftCardio(lost);
     if (!kept && !cardio.length) return null;
     const was = agreed && agreed.id === lost.id ? agreed : null;
@@ -10494,7 +10495,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (have) {
       const base = was ? draftSession(was, true) : null;
       const stat = { conflicts: 0 };
-      const joined = kept ? mergeSession(base, kept, have, base ? remoteWins : true, stat) : have;
+      const joined2 = kept ? mergeSession(base, kept, have, base ? remoteWins : true, stat) : have;
       const norm = (l4) => l4.map((c4) => cleanCardio(c4));
       const ids = new Set(
         [...was ? draftCardio(was) : [], ...cardio].map((c4) => c4.id).filter((x2) => typeof x2 === "string")
@@ -10504,12 +10505,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const theirs = state.cardio.filter((c4) => ids.has(c4.id));
       const merged = merge3List(was ? bh : null, norm(cardio), theirs, base ? remoteWins : true, stat);
       const cardioNow = [...state.cardio.filter((c4) => !ids.has(c4.id)), ...merged];
-      const sets = canon(joined) !== canon(have), rows2 = canon(normalize({ cardio: cardioNow }).cardio) !== canon(state.cardio);
+      const sets = canon(joined2) !== canon(have), rows2 = canon(normalize({ cardio: cardioNow }).cardio) !== canon(state.cardio);
       if (!sets && !rows2) return null;
       setState(
-        normalize({ ...state, sessions: state.sessions.map((q) => q.id === lost.id ? joined : q), cardio: cardioNow })
+        normalize({ ...state, sessions: state.sessions.map((q) => q.id === lost.id ? joined2 : q), cardio: cardioNow })
       );
-      edited(joined.date);
+      edited(joined2.date);
       conflictNote(stat);
       return sets ? "joined" : "cardioJoined";
     }
@@ -11018,8 +11019,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           async setIf(doc, seen) {
             if (typeof d3.setIf === "function") return d3.setIf(doc, seen);
             if (typeof d3.set !== "function") throw new Error("The cloud store cannot write.");
-            const now = await d3.get();
-            if (!stillSeen(now && now.exists ? rec(now.data()) : null, seen)) return false;
+            const now2 = await d3.get();
+            if (!stillSeen(now2 && now2.exists ? rec(now2.data()) : null, seen)) return false;
             await d3.set(doc);
             return true;
           }
@@ -11061,15 +11062,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       log("tabs", e5);
     }
     if (!m3) return;
-    const now = typeof m3.acct === "string" ? m3.acct : null;
+    const now2 = typeof m3.acct === "string" ? m3.acct : null;
     notesEp = epOf(m3);
-    if (now === cloud.acct) return;
+    if (now2 === cloud.acct) return;
     const n3 = notesIn(m3, "tabs");
     cloud.meta = n3.meta || {};
     cloud.sent = {};
     cloud.editAt = n3.editAt || {};
     cloud.last = n3.last;
-    cloud.acct = now;
+    cloud.acct = now2;
     setState(load());
     invalidate();
     resyncLocalH();
@@ -11158,19 +11159,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       stripDemo(o3);
       return o3;
     };
-    const next = use ? aside ? aside.state : normalize(null) : aside ? mine ? joinLogs(aside.state, own2()) : aside.state : null;
+    const next2 = use ? aside ? aside.state : normalize(null) : aside ? mine ? joinLogs(aside.state, own2()) : aside.state : null;
     const both = !use && !!aside && mine && !!state.draft && !!aside.state.draft && aside.state.draft.id !== state.draft.id;
     cloud.meta = n3 && n3.meta || {};
     cloud.sent = {};
     cloud.editAt = n3 && n3.editAt || {};
     cloud.last = n3 ? n3.last : null;
-    if (next) {
-      setState(next);
+    if (next2) {
+      setState(next2);
       commit();
     }
     cloud.acct = id;
     newEp();
-    const written = !device.boot || (!next || device.ok) && saveMeta();
+    const written = !device.boot || (!next2 || device.ok) && saveMeta();
     if (!written) {
       setState(before.state);
       cloud.meta = before.meta;
@@ -11187,7 +11188,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       await undoSignIn();
       return false;
     }
-    if (next) {
+    if (next2) {
       undoForget();
       resyncLocalH();
       fx.render();
@@ -11220,8 +11221,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!pv) return;
       const db = pv.db, id = pv.userId;
       const go = await oneTab(async () => {
-        const now = await cloudProvider();
-        return !!now && now.userId === id && await takeAccount(id);
+        const now2 = await cloudProvider();
+        return !!now2 && now2.userId === id && await takeAccount(id);
       });
       if (!go) return;
       if (cloud.acct !== id) newEp();
@@ -11554,9 +11555,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const v3 = toD(kg2) ?? 0;
     return String(U() === "lb" ? Math.round(v3) : Math.round(v3 * 2) / 2);
   }
-  function wasE(now, before) {
+  function wasE(now2, before) {
     const b2 = fmtE(before);
-    return b2 && b2 !== fmtE(now) ? b2 : "";
+    return b2 && b2 !== fmtE(now2) ? b2 : "";
   }
   var LU = () => U() === "lb" ? "in" : "cm";
   function measAt(m3, k2) {
@@ -11571,7 +11572,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (ex && ex.assist) return "Help " + u4;
     return m3 === "each" ? u4 + " each" : m3 === "side" ? u4 + "/side" : m3 === "stack" ? "Stack" : m3 === "bw" ? "+" + u4 : u4;
   }
-  var fmtDateYr = (s3) => fmtDateFrom(s3, today());
   var fmtDateLong = (s3) => fmtWith("l", { weekday: "short", month: "short", day: "numeric", year: "numeric" }, s3);
   function topSetPt(ex, x2) {
     let q = null;
@@ -11626,10 +11626,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return v3;
   }
   function tonnageNow() {
-    const cur = weekStart(today());
-    const off = daysBetween(cur, today());
-    const now = weekVolume(cur, off), prev = weekVolume(addDays(cur, -WEEK_DAYS), off), prevFull = weekVolume(addDays(cur, -WEEK_DAYS));
-    return { now, prev, prevFull, delta: prev > 0 ? (now / prev - 1) * PERCENT : null };
+    const cur2 = weekStart(today());
+    const off = daysBetween(cur2, today());
+    const now2 = weekVolume(cur2, off), prev = weekVolume(addDays(cur2, -WEEK_DAYS), off), prevFull = weekVolume(addDays(cur2, -WEEK_DAYS));
+    return { now: now2, prev, prevFull, delta: prev > 0 ? (now2 / prev - 1) * PERCENT : null };
   }
   var BW_RATE = { from: 14, to: 42 };
   function bwRate() {
@@ -11721,15 +11721,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const ex = r4.ex;
     const exps = (IDX().byEx[exId] || []).filter((x2) => !upTo || x2.date <= upTo);
     const last = exps[exps.length - 1];
-    const when = last && r4.heavy.date === last.date ? "" : `, ${fmtDateYr(r4.heavy.date)}`;
+    const when = last && r4.heavy.date === last.date ? "" : `, ${fmtDate(r4.heavy.date)}`;
     return `Heaviest ${setShort(ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(ex)}${when}`;
   }
   function bestSetLine(exId) {
     const r4 = allTimeBests(exId);
     if (!r4) return "";
     if (r4.est && isCompound(r4.ex))
-      return `Best ${setShort(r4.ex, r4.est.p.w, r4.est.p.r)}${loadNote(r4.ex)}, ${fmtDateYr(r4.est.date)}`;
-    return r4.heavy ? `Heaviest ${setShort(r4.ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(r4.ex)}, ${fmtDateYr(r4.heavy.date)}` : "";
+      return `Best ${setShort(r4.ex, r4.est.p.w, r4.est.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.est.date)}`;
+    return r4.heavy ? `Heaviest ${setShort(r4.ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.heavy.date)}` : "";
   }
   function goalState(exId) {
     const ex = EX(exId);
@@ -11747,12 +11747,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     const need = fitE(g2.w + bw, g2.r, 0);
     const from = addDays(today(), -WEEK_DAYS * BEST_WEEKS);
-    const cur = bestFit(
+    const cur2 = bestFit(
       exps.filter((x2) => x2.date >= from).flatMap((x2) => x2.pts),
       (p3) => p3.rq
     )?.est ?? null;
-    const pct = !noBw && need && cur ? Math.min(PERCENT, cur / need * PERCENT) : null;
-    return { g: g2, hit, pct, cur, need, noBw };
+    const pct = !noBw && need && cur2 ? Math.min(PERCENT, cur2 / need * PERCENT) : null;
+    return { g: g2, hit, pct, cur: cur2, need, noBw };
   }
   function goalWords(ex, g2) {
     return `${loadLabel(ex, g2.w)}${ex.bw ? "" : " " + U()}${loadNote(ex)} × ${g2.r}`;
@@ -11773,15 +11773,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         short: `${avg._weeks}-week average`,
         label: avg._missed || avg._light || avg._rest ? `your average over ${avgWeeksTxt(avg)}` : avg._weeks < n3 && avg._ff ? avgWeeksTxt(avg) : `your ${avg._weeks}-week average`
       };
-    const I2 = IDX(), cur = weekStart(today());
-    const wk = I2.weekSets[cur] || {};
+    const I2 = IDX(), cur2 = weekStart(today());
+    const wk = I2.weekSets[cur2] || {};
     if (MK.some((m3) => (wk[m3] || 0) > 0)) return { src: wk, n: n3, label: "this week so far", week: true, noFull: true };
     const has = (w2) => {
       const x2 = I2.weekSets[w2];
       return !!x2 && MK.some((m3) => (x2[m3] || 0) > 0);
     };
     const ff = avgFirstWeek();
-    const all = Object.keys(I2.weekSets).filter((w2) => w2 < cur && has(w2)).sort();
+    const all = Object.keys(I2.weekSets).filter((w2) => w2 < cur2 && has(w2)).sort();
     const full = all.filter((w2) => !ff || w2 >= ff);
     const wks = (full.length ? full : all.filter((w2) => !ff || w2 >= addDays(ff, -WEEK_DAYS))).slice(-n3);
     const lastWk = wks[wks.length - 1];
@@ -11864,18 +11864,18 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return out;
   }
   function weekPlan(R2) {
-    const cur = weekStart(today());
+    const cur2 = weekStart(today());
     const out = {};
     if (R2.schedule === "weekly") {
       for (let i5 = 0; i5 < WEEK_DAYS; i5++) {
         const day = R2.days[i5];
-        if (day) out[addDays(cur, i5)] = { di: i5, day };
+        if (day) out[addDays(cur2, i5)] = { di: i5, day };
       }
       return out;
     }
     const pj = cycleProjection(R2, WEEK_DAYS + 1);
     for (let i5 = 0; i5 < WEEK_DAYS; i5++) {
-      const d3 = addDays(cur, i5);
+      const d3 = addDays(cur2, i5);
       const di = pj[d3];
       const day = di == null ? void 0 : R2.days[di];
       if (di != null && day) out[d3] = { di, day };
@@ -11884,16 +11884,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function weekSlots(R2) {
     if (R2.schedule !== "weekly") return [];
-    const cur = weekStart(today());
+    const cur2 = weekStart(today());
     const plan = weekPlan(R2);
     const out = [];
     for (let i5 = 0; i5 < WEEK_DAYS; i5++) {
-      const p3 = plan[addDays(cur, i5)];
+      const p3 = plan[addDays(cur2, i5)];
       if (!p3) continue;
       for (const part of dayParts(p3.day)) out.push({ di: i5, part, day: dayWorkout(p3.day, part), doneOn: null });
     }
-    const end = addDays(cur, WEEK_DAYS - 1);
-    const mine = state.sessions.filter((s3) => s3.routineId === R2.id && !s3.free && s3.date >= cur && s3.date <= end).slice().sort((a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : (a2.t || 0) - (b2.t || 0));
+    const end = addDays(cur2, WEEK_DAYS - 1);
+    const mine = state.sessions.filter((s3) => s3.routineId === R2.id && !s3.free && s3.date >= cur2 && s3.date <= end).slice().sort((a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : (a2.t || 0) - (b2.t || 0));
     for (const s3 of mine) {
       const di = sessDayIdx(R2, s3), part = partOf(s3);
       const slot = out.find((x2) => x2.di === di && x2.part === part && !x2.doneOn);
@@ -11903,12 +11903,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function doneElsewhere() {
     const R2 = activeRoutine();
-    const cur = weekStart(today());
+    const cur2 = weekStart(today());
     const out = {};
-    if (R2.schedule !== "weekly" || isRestWeek(cur)) return out;
+    if (R2.schedule !== "weekly" || isRestWeek(cur2)) return out;
     const slots = weekSlots(R2);
     for (let i5 = 0; i5 < WEEK_DAYS; i5++) {
-      const d3 = addDays(cur, i5);
+      const d3 = addDays(cur2, i5);
       const mine = slots.filter((x2) => x2.di === i5);
       if (d3 > today() && mine.length && !sessionsOn(d3).length && mine.every((x2) => x2.doneOn && x2.doneOn !== d3))
         out[d3] = mine.map((x2) => ({ name: x2.day.name, on: x2.doneOn || "" }));
@@ -11944,10 +11944,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     <div class="row u-mt10">${m3.readonly ? b`<button class="btn primary" data-act="copyText">Copy</button>` : b`<button class="btn primary" data-act="importText">Import</button>`}<button class="btn" data-act="mClose">Close</button></div></div>`;
   }
   function restWeekSheet() {
-    const cur = weekStart(today());
+    const cur2 = weekStart(today());
     const weeks = [
-      [cur, "This week"],
-      [addDays(cur, -WEEK_DAYS), "Last week"]
+      [cur2, "This week"],
+      [addDays(cur2, -WEEK_DAYS), "Last week"]
     ];
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rwH"><div class="sheet-h"><h3 id="rwH">Rest week</h3>${closeX()}</div>
     <p class="small muted u-m0-0n10">A planned week off. Not counted as missed.</p>
@@ -12163,9 +12163,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     update(part, [v3]) {
       const el = part.element;
-      const now = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.value : null;
-      if (now === v3) return E;
-      if (el === document.activeElement && now != null && (unconfirmed.has(el) || shown.has(el) || numIn(now) === numIn(v3)))
+      const now2 = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.value : null;
+      if (now2 === v3) return E;
+      if (el === document.activeElement && now2 != null && (unconfirmed.has(el) || shown.has(el) || numIn(now2) === numIn(v3)))
         return E;
       p2(part);
       return v3;
@@ -12285,17 +12285,41 @@ ${actions ? b`<div class="ph-a">${actions}</div>
 
   // src/app/toast.ts
   var TOAST_MS = { undo: 6e3, plain: 2600 };
+  var NOTICE_READ_MS = 4e3;
   var toastT;
+  var cur = null;
+  var waiting = [];
+  var tapSince = true;
+  var watching = false;
+  var sameTask = false;
+  var taskT;
+  function openTask() {
+    sameTask = true;
+    clearTimeout(taskT);
+    taskT = setTimeout(() => {
+      sameTask = false;
+    }, 0);
+  }
   var box = () => document.getElementById("toast");
-  function toast(msg, undo, ms, kind) {
-    const el = box();
-    if (!el) return;
-    el.classList.toggle("pr", kind === "pr");
+  var now = () => performance.now();
+  function watchTaps() {
+    if (watching) return;
+    watching = true;
+    const moved = () => {
+      tapSince = true;
+    };
+    for (const t4 of ["pointerdown", "keydown", "touchstart"])
+      document.addEventListener(t4, moved, { capture: true, passive: true });
+  }
+  var joined = (parts) => parts.map((p3, i5) => i5 < parts.length - 1 && !/[.!?:]$/.test(p3) ? p3 + "." : p3).join(" ");
+  function draw(el) {
+    if (!cur) return;
+    const c4 = cur;
+    el.classList.toggle("pr", c4.pr);
     const say = document.createElement("span");
-    say.textContent = msg;
+    say.textContent = joined(c4.parts);
     const parts = [say];
-    if (undo) {
-      nameLastStep(msg);
+    if (c4.undo) {
       const b2 = document.createElement("button");
       b2.dataset.act = "undo";
       b2.textContent = "Undo";
@@ -12304,30 +12328,72 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     el.replaceChildren(...parts);
     el.hidden = false;
     clearTimeout(toastT);
-    toastT = setTimeout(
-      () => {
-        el.hidden = true;
-      },
-      ms || (undo ? TOAST_MS.undo : TOAST_MS.plain)
-    );
+    toastT = setTimeout(() => gone(el), Math.max(0, c4.at + c4.ms - now()));
+  }
+  function gone(el) {
+    el.hidden = true;
+    cur = null;
+    next(el);
+  }
+  function next(el) {
+    const w2 = waiting.shift();
+    if (!w2) return;
+    cur = { parts: [w2.msg], undo: false, pr: false, notice: true, at: now(), ms: w2.ms };
+    tapSince = false;
+    draw(el);
+  }
+  function toast(msg, undo, ms, kind) {
+    const el = box();
+    if (!el) return;
+    watchTaps();
+    if (undo) nameLastStep(msg);
+    const notice = kind === "notice";
+    const t4 = now();
+    const len = ms || (undo ? TOAST_MS.undo : TOAST_MS.plain);
+    const showing = !el.hidden && cur ? cur : null;
+    if (showing && !tapSince && sameTask) {
+      if (!showing.parts.includes(msg)) showing.parts.push(msg);
+      showing.undo = showing.undo || !!undo;
+      showing.pr = showing.pr || kind === "pr";
+      showing.notice = showing.notice || notice;
+      showing.ms = Math.max(showing.ms, t4 - showing.at + len);
+      openTask();
+      draw(el);
+      return;
+    }
+    if (notice && showing && !showing.notice) {
+      if (!waiting.some((w2) => w2.msg === msg)) waiting.push({ msg, ms: len });
+      return;
+    }
+    if (!notice && showing && showing.notice && t4 - showing.at < NOTICE_READ_MS) {
+      const left = joined(showing.parts);
+      if (!waiting.some((w2) => w2.msg === left))
+        waiting.unshift({ msg: left, ms: Math.max(TOAST_MS.plain, showing.ms - (t4 - showing.at)) });
+    }
+    cur = { parts: [msg], undo: !!undo, pr: kind === "pr", notice, at: t4, ms: len };
+    tapSince = false;
+    openTask();
+    draw(el);
   }
   function toastQuiet() {
     const el = box();
-    if (el && !el.hidden && !el.querySelector('[data-act="undo"]')) {
+    if (el && !el.hidden && !el.querySelector('[data-act="undo"]') && !(cur && cur.notice)) {
       clearTimeout(toastT);
-      el.hidden = true;
+      gone(el);
     }
   }
   function undoToastHide() {
     const el = box();
     if (el && el.querySelector('[data-act="undo"]')) {
       clearTimeout(toastT);
-      el.hidden = true;
+      gone(el);
     }
   }
   function toastHide() {
     const el = box();
-    if (el) el.hidden = true;
+    if (!el) return;
+    clearTimeout(toastT);
+    gone(el);
   }
 
   // src/app/timer.ts
@@ -12408,11 +12474,11 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       prefDel(TIMER_KEY + "Next");
     }
   }
-  function startTimer(sec, next) {
+  function startTimer(sec, next2) {
     wakeTip();
     timer.end = Date.now() + sec * TIMER_MS.second;
     timer.total = sec;
-    timer.next = next || "";
+    timer.next = next2 || "";
     timer.fired = false;
     primeAudio();
     const el = bar();
@@ -12741,8 +12807,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   // src/app/page.ts
   var root = () => {
   };
-  function setRoot(draw) {
-    root = draw;
+  function setRoot(draw2) {
+    root = draw2;
   }
   function renderCrash(e5) {
     let txt = "";
@@ -12793,18 +12859,18 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     render();
     window.scrollTo(0, y2);
     if (!key) return;
-    let next = null;
+    let next2 = null;
     try {
-      next = document.querySelector(key);
+      next2 = document.querySelector(key);
     } catch (e5) {
     }
-    if (!(next instanceof HTMLElement)) return;
+    if (!(next2 instanceof HTMLElement)) return;
     try {
-      next.focus({ preventScroll: true });
-      if (txt != null && next instanceof HTMLInputElement && next.value !== txt && numIn(next.value) === numIn(txt))
-        next.value = txt;
-      if (ss != null && (next instanceof HTMLInputElement || next instanceof HTMLTextAreaElement))
-        next.setSelectionRange(ss, se);
+      next2.focus({ preventScroll: true });
+      if (txt != null && next2 instanceof HTMLInputElement && next2.value !== txt && numIn(next2.value) === numIn(txt))
+        next2.value = txt;
+      if (ss != null && (next2 instanceof HTMLInputElement || next2 instanceof HTMLTextAreaElement))
+        next2.setSelectionRange(ss, se);
     } catch (e5) {
     }
     window.scrollTo(0, y2);
@@ -13044,17 +13110,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
 
   // src/app/bwnudge.ts
-  var NUDGE_MS = 6e3;
   var own = () => state.bodyweights.filter((b2) => !b2.demo).length;
   var bwMissing = (exId) => own() === 0 && !!EX(exId).bw;
-  var saidThisVisit = false;
-  function bwNote(exIds) {
-    if (saidThisVisit) return "";
-    const id = exIds.find(bwMissing);
-    if (!id) return "";
-    saidThisVisit = true;
-    return ` ${EX(id).name} counts your bodyweight, plus any weight you add: set it on Today or in Settings (optional).`;
-  }
   function bwWarn(exId, date) {
     if (!bwMissing(exId)) return A;
     return b`<p class="small bwwarn">No bodyweight set: counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId} data-date=${date || A}>Add bodyweight</button></p>`;
@@ -13124,17 +13181,17 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
   function weekWindow(first, id, base) {
     const b2 = base || CHART_WEEKS;
-    const cur = weekStart(today());
+    const cur2 = weekStart(today());
     if (!first) return [];
     const fw = weekStart(first);
     const n3 = weeksSpan(first);
     if (n3 <= b2)
       return Array.from({ length: b2 }, (_2, k2) => {
         const wk = addDays(fw, WEEK_DAYS * k2);
-        return { wk, fut: wk > cur };
+        return { wk, fut: wk > cur2 };
       });
     const span = Math.min(n3, Math.max(b2, rangeWeeks(rangeKey(id), b2)));
-    return Array.from({ length: span }, (_2, k2) => ({ wk: addDays(cur, -WEEK_DAYS * (span - 1 - k2)), fut: false }));
+    return Array.from({ length: span }, (_2, k2) => ({ wk: addDays(cur2, -WEEK_DAYS * (span - 1 - k2)), fut: false }));
   }
   function dayWindow(base, lastDay, id, minSpan, def) {
     const todayN = daysBetween(base, today());
@@ -13333,7 +13390,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     };
   }
   function weekAxis(win, o3) {
-    const cur = weekStart(today());
+    const cur2 = weekStart(today());
     const ink = cssv("--muted");
     const faded = ink + "80";
     const many = win.length > CHART_WEEKS;
@@ -13351,7 +13408,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const ym = (d3) => d3.split("-").slice(0, 2).join("-");
     const dom = (d3) => String(+(d3.split("-")[2] ?? ""));
     return win.map((w2, i5) => {
-      if (w2.wk === cur) return "This wk";
+      if (w2.wk === cur2) return "This wk";
       const prev = win[i5 - 1];
       return !many && prev && ym(prev.wk) === ym(w2.wk) ? dom(w2.wk) : fmtDate(w2.wk);
     });
@@ -14104,8 +14161,8 @@ ${more}`;
         () => {
           const id = x2.id;
           const base = { ...state, trash: state.trash.filter((y2) => y2 !== x2) };
-          const next = x2.kind === "session" && !state.sessions.some((s3) => s3.id === id) ? { ...base, sessions: [...state.sessions, x2.data] } : x2.kind === "cardio" && !state.cardio.some((c4) => c4.id === id) ? { ...base, cardio: [...state.cardio, x2.data] } : x2.kind === "routine" && !state.routines.some((r4) => r4.id === id) ? { ...base, routines: [...state.routines, x2.data] } : base;
-          setState(normalize(next));
+          const next2 = x2.kind === "session" && !state.sessions.some((s3) => s3.id === id) ? { ...base, sessions: [...state.sessions, x2.data] } : x2.kind === "cardio" && !state.cardio.some((c4) => c4.id === id) ? { ...base, cardio: [...state.cardio, x2.data] } : x2.kind === "routine" && !state.routines.some((r4) => r4.id === id) ? { ...base, routines: [...state.routines, x2.data] } : base;
+          setState(normalize(next2));
         },
         { undo: true }
       );
@@ -14851,22 +14908,22 @@ ${more}`;
     }
     return null;
   }
-  function nameLoadThenReps(L2, next) {
+  function nameLoadThenReps(L2, next2) {
     const g2 = L2.match(/^(.*?[a-z].*?)\s+(\d{2,}(?:\.\d+)?\s*(?:lbs?|kgs?|#)?)$/i);
-    if (!g2 || !REPS.test(next)) return null;
-    return { name: (g2[1] || "").replace(/[:\-–]+$/, "").trim(), setsText: g2[2] + " " + next };
+    if (!g2 || !REPS.test(next2)) return null;
+    return { name: (g2[1] || "").replace(/[:\-–]+$/, "").trim(), setsText: g2[2] + " " + next2 };
   }
   var UNREAD_SHOWN = 50;
   function impFromText(text) {
     const lines = String(text).split(/\r?\n/);
     const S4 = [];
-    let cur = null, ex = null, pend = null, hint = null;
+    let cur2 = null, ex = null, pend = null, hint = null;
     const named2 = { kg: false, lb: false };
     const unread = [];
     const day = (date, name, line) => {
       if (pend) unread.push(pend.raw);
       const d3 = { date, name: name || "", items: [], ...line ? { line } : {} };
-      cur = d3;
+      cur2 = d3;
       S4.push(d3);
       ex = null;
       pend = null;
@@ -14912,7 +14969,7 @@ ${more}`;
       const alone = readSets(impSetsText(L2), { bw: true }, null, asTyped);
       if (alone && target && !/[a-z]{3,}/i.test(L2.replace(/\b(bw|x|at|for|rir|reps?|sets?|of|lbs?|kgs?|sec|secs|seconds)\b/gi, ""))) {
         const p3 = pend;
-        let into = cur;
+        let into = cur2;
         if (!into) {
           pend = null;
           into = day(null, "");
@@ -14929,7 +14986,7 @@ ${more}`;
       }
       const ns = nameThenSets(words);
       if (ns) {
-        const into = cur || day(null, "");
+        const into = cur2 || day(null, "");
         const e5 = { name: ns.name, sets: [], setsText: [ns.rest] };
         into.items.push(e5);
         ex = e5;
@@ -14939,7 +14996,7 @@ ${more}`;
       {
         const nl = nameLoadThenReps(L2, (lines[li + 1] || "").replace(/^[\s\-•*–]+/, "").trim());
         if (nl) {
-          const into = cur || day(null, "");
+          const into = cur2 || day(null, "");
           const pw = pend;
           if (pw) unread.push(pw.raw);
           pend = null;
@@ -15488,17 +15545,17 @@ ${more}`;
     }
     b2.adj.at = i5;
   }
-  function adjRows(b2, prev, next) {
+  function adjRows(b2, prev, next2) {
     const rows2 = (at2, f3) => b2.sets.forEach((x2, i5) => {
       if (i5 > at2 && !x2.done && !x2.warm && !x2.drop && x2.w != null) f3(x2);
     });
-    if (prev && (!next || next.at !== prev.at || next.w !== prev.w))
+    if (prev && (!next2 || next2.at !== prev.at || next2.w !== prev.w))
       rows2(prev.at, (x2) => {
         if (x2.w != null && Math.abs(x2.w - prev.w) < EPS) x2.w = prev.from;
       });
-    if (next)
-      rows2(next.at, (x2) => {
-        if (x2.w != null && Math.abs(x2.w - next.from) < EPS && (x2.w === b2.sw || carried.has(x2))) x2.w = next.w;
+    if (next2)
+      rows2(next2.at, (x2) => {
+        if (x2.w != null && Math.abs(x2.w - next2.from) < EPS && (x2.w === b2.sw || carried.has(x2))) x2.w = next2.w;
       });
   }
   function assessSet(bi, si) {
@@ -15689,7 +15746,7 @@ ${more}`;
     const i5 = setIdx(W.onSet, bi);
     return i5 >= 0 ? i5 : b2.sets.findIndex((x2) => !x2.done);
   }
-  function onLiftDraw(bi, draw) {
+  function onLiftDraw(bi, draw2) {
     const d3 = state.draft;
     const was = d3 ? liftsOn(d3) : null;
     W.onLift = blkRef(bi);
@@ -15697,9 +15754,9 @@ ${more}`;
     const ref2 = W.onLift;
     const el = document.getElementById("blk-" + bi);
     const top = el ? el.getBoundingClientRect().top : null;
-    draw();
-    const now = state.draft ? liftsOn(state.draft) : null;
-    if (top == null || !was || !now || was.size === now.size && [...was].every((x2) => now.has(x2))) return;
+    draw2();
+    const now2 = state.draft ? liftsOn(state.draft) : null;
+    if (top == null || !was || !now2 || was.size === now2.size && [...was].every((x2) => now2.has(x2))) return;
     const j3 = blkIdx(ref2);
     const el2 = j3 >= 0 ? document.getElementById("blk-" + j3) : null;
     if (el2) window.scrollBy(0, el2.getBoundingClientRect().top - top);
@@ -15863,14 +15920,14 @@ ${more}`;
     };
     window.addEventListener("touchstart", stop, { passive: true });
     window.addEventListener("wheel", stop, { passive: true });
-    const frame2 = (now) => {
+    const frame2 = (now2) => {
       if (stopped) return;
       if (!a1.isConnected) {
         stopped = true;
         off();
         return;
       }
-      const k2 = Math.max(0, Math.min(1, (now - t0) / FOLD_MS.glide));
+      const k2 = Math.max(0, Math.min(1, (now2 - t0) / FOLD_MS.glide));
       const e5 = 1 - (1 - k2) ** GLIDE_EASE;
       a1.style.marginTop = `${m0 + held3 * (1 - e5)}px`;
       const v3 = top0 + (vEnd - top0) * e5;
@@ -16068,9 +16125,9 @@ ${more}`;
     }
     return moved;
   }
-  function profChips(k2, opts, cur, label) {
+  function profChips(k2, opts, cur2, label) {
     return b`<div class="ob-units" role="group" aria-label=${label}>${opts.map(
-      ([v3, l4]) => b`<button class=${cur === v3 ? "chip on" : "chip"} data-act="profSet" data-k=${k2} data-v=${String(v3)} aria-pressed=${String(cur === v3)}>${l4}</button>`
+      ([v3, l4]) => b`<button class=${cur2 === v3 ? "chip on" : "chip"} data-act="profSet" data-k=${k2} data-v=${String(v3)} aria-pressed=${String(cur2 === v3)}>${l4}</button>`
     )}</div>
 `;
   }
@@ -16842,8 +16899,8 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         else p3.days = +raw;
       } else return;
       const np = profClean({ ...p3 });
-      const cur = state.settings.profile;
-      const was = cur ? { ...cur, ...cur.focus ? { focus: cur.focus.slice() } : {} } : null;
+      const cur2 = state.settings.profile;
+      const was = cur2 ? { ...cur2, ...cur2.focus ? { focus: cur2.focus.slice() } : {} } : null;
       let moved = {};
       act(
         () => {
@@ -16885,22 +16942,22 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         `${list.length} exercise${list.length === 1 ? "" : "s"}. ${profApplyWhat()} Sets and exercises stay as they are.`,
         "Apply",
         () => {
-          const now = activeRoutine();
+          const now2 = activeRoutine();
           let n3 = 0;
           const done = act(
             () => {
-              const L2 = profApplyList(now);
+              const L2 = profApplyList(now2);
               n3 = L2.length;
               for (const x2 of L2) {
                 Object.assign(x2.it, x2.ch);
-                syncDraftPlan({ r: now, di: x2.di, it: x2.it });
+                syncDraftPlan({ r: now2, di: x2.di, it: x2.it });
               }
             },
-            { check: () => !!now && now.id === R2.id, undo: true }
+            { check: () => !!now2 && now2.id === R2.id, undo: true }
           );
           if (!done) return;
           rerenderKeepScroll();
-          toast(`${now.name}: ${n3} exercise${n3 === 1 ? "" : "s"} updated`, true);
+          toast(`${now2.name}: ${n3} exercise${n3 === 1 ? "" : "s"} updated`, true);
         }
       );
     },
@@ -17286,8 +17343,9 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     ${nx ? b`<div class="row u-mt8"><button class=${linked ? "btn sm noted" : "btn sm "} data-act="ssToggle" data-uid=${it.uid}>${linked ? "Unlink superset" : "Superset with next"}</button>${linked ? b`<span class="small muted">Paired with ${exName(nx.exId)}: alternate sets, rest once after the pair.</span>` : A}</div>` : A}
     ${ex.note ? b`<p class="small muted">${ex.note}</p>` : A}</div>` : A;
     const letter = it.ss ? letters[it.ss] : void 0;
+    const bwFirst = items.findIndex((x2) => !!EX(x2.exId).bw) === ii;
     return b`<li class=${it.ss ? "it ss" : "it"} data-uid=${it.uid}><div class="ir"><span class="grip" aria-hidden="true">⠿</span><button class="imain" data-act="toggleItem" data-uid=${it.uid}><b>${ex.name}</b><span>${it.sets} × ${repSpan(it.repMin, it.repMax, "-")}${ex.timed ? "s" : ""}, ${rirShow(ex) ? `${effTgt(it.rir)}, ` : ""}rest ${it.rest}s${it.ss ? ` · superset ${letter}` : ""}${it.pm ? " · second workout" : ""}</span></button><button class="ib" aria-label=${`Move ${ex.name} up`} data-act="iUp" data-day=${String(di)} data-i=${String(ii)} ?disabled=${ii === 0}>↑</button><button class="ib" aria-label=${`Move ${ex.name} down`} data-act="iDown" data-day=${String(di)} data-i=${String(ii)} ?disabled=${ii === items.length - 1}>↓</button></div>
-  ${editor}</li>`;
+  ${editor}${bwFirst ? bwWarn(it.exId) : A}</li>`;
   }
   function bLibItems() {
     return commonFirst(libFiltered(ui.bLibQ, ui.bLibM, "", false)).map(
@@ -17430,15 +17488,15 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     iDel(t4) {
       const d3 = curRoutineB().days[num2(t4.dataset.day)];
       if (!d3) return;
-      let gone;
+      let gone2;
       act(
         () => {
-          [gone] = d3.items.splice(num2(t4.dataset.i), 1);
+          [gone2] = d3.items.splice(num2(t4.dataset.i), 1);
         },
         { undo: true }
       );
       rerenderKeepScroll();
-      if (gone) toast(`${exName(gone.exId)} removed`, true);
+      if (gone2) toast(`${exName(gone2.exId)} removed`, true);
     },
     libAdd(t4) {
       const R2 = curRoutineB();
@@ -17645,9 +17703,9 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         () => {
           const done = act(
             () => {
-              const cur = state.exercises.find((x2) => x2.id === id);
-              if (!cur) return;
-              if (used) cur.archived = true;
+              const cur2 = state.exercises.find((x2) => x2.id === id);
+              if (!cur2) return;
+              if (used) cur2.archived = true;
               else {
                 state.exercises = state.exercises.filter((x2) => x2.id !== id);
                 if (!e5.custom && !state.settings.removedLib.includes(id)) state.settings.removedLib.push(id);
@@ -17996,12 +18054,12 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   function rangeChips(id, n3, base, def) {
     const b2 = base || CHART_WEEKS;
     if (n3 <= b2) return A;
-    const cur = rangeKey(id, def);
+    const cur2 = rangeKey(id, def);
     const opts = [["base", `${b2} wk`]];
     if (n3 > HALF_YEAR_WEEKS && b2 < HALF_YEAR_WEEKS) opts.push(["6m", "6 mo"]);
     opts.push(["all", "All"]);
     return b`<div class="chips rng" role="group" aria-label="Range">${opts.map(
-      ([k2, l4]) => b`<button class=${cur === k2 ? "chip on" : "chip "} data-act="chartRange" data-id=${id} data-v=${k2} aria-pressed=${String(cur === k2)}>${l4}</button>`
+      ([k2, l4]) => b`<button class=${cur2 === k2 ? "chip on" : "chip "} data-act="chartRange" data-id=${id} data-v=${k2} aria-pressed=${String(cur2 === k2)}>${l4}</button>`
     )}</div>`;
   }
   function dashSection(key, title, explain, body, subTxt) {
@@ -18288,7 +18346,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       html: b`<div class="bests">${shown2.map((r4) => {
         const ex = r4.ex;
         const est = r4.est && isCompound(ex) ? r4.est : null;
-        const when = fmtDateYr;
+        const when = fmtDate;
         const line = (e5, h3) => [
           e5 ? `best est ${fmtE(e5.v)}${u4(ex)}${loadNote(ex)}, ${when(e5.date)}` : "",
           h3 ? `heaviest ${setShort(ex, h3.p.w, h3.p.r)}${loadNote(ex)}, ${when(h3.date)}` : ""
@@ -18409,13 +18467,13 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   ${row("Sessions a week", avg(b2.now.sess), L2 ? avg(L2.sess) : "–")}${row("Hard sets a week", avg(b2.now.hard), L2 ? avg(L2.hard) : "–")}${row("PRs", String(b2.now.prs), L2 ? String(L2.prs) : "–")}</tbody></table>
   <div class="u-mt8">${sel}</div></div>`;
   }
-  function consistencySec(R2, cur) {
+  function consistencySec(R2, cur2) {
     const sessDates = new Set(Object.keys(dateIndex().byDate));
     const planned = freeMode() ? 0 : trainDaysOf(R2) * weekFactor(R2);
     const firstWk = firstFullWeek();
     let done4 = 0, wks4 = 0, need4 = 0;
     for (let k2 = 1; k2 <= AVG_WEEKS; k2++) {
-      const ws = addDays(cur, -WEEK_DAYS * k2);
+      const ws = addDays(cur2, -WEEK_DAYS * k2);
       if (!firstWk || ws < firstWk) break;
       if (isRestWeek(ws)) continue;
       wks4++;
@@ -18442,7 +18500,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     const cn = Math.min(CARDIO_WEEKS, weeksSpan(cf));
     const crows = [];
     for (let k2 = cn - 1; k2 >= 0; k2--) {
-      const ws = addDays(cur, -WEEK_DAYS * k2), we = addDays(ws, SUNDAY);
+      const ws = addDays(cur2, -WEEK_DAYS * k2), we = addDays(ws, SUNDAY);
       crows.push({ ws, min: state.cardio.filter((c4) => c4.date >= ws && c4.date <= we).reduce((a2, c4) => a2 + c4.min, 0) });
     }
     const cmx = Math.max(1, ...crows.map((r4) => r4.min));
@@ -18560,7 +18618,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const ps = iso2 ? prSet(p3.exId, p3.date) : null;
       const tag = ex.timed && p3.type === "Rep PR" ? "Time PR" : p3.type === "e1RM" ? iso2 ? "PR" : prName(p3) : p3.type;
       const val = p3.type === "e1RM" ? iso2 ? ps ? setShort(ex, ps.w, ps.r) : "" : fmtE(p3.value) + " " + U() : setShort(ex, p3.w, p3.r);
-      return b`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p3.type === "Rep PR" ? "blue" : "green"}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDateYr(p3.date)}</span></span></div>`;
+      return b`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p3.type === "Rep PR" ? "blue" : "green"}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDate(p3.date)}</span></span></div>`;
     })}` : b`<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>`;
     const nLifts = Object.keys(I2.byEx).length;
     const firstPR = bigPR[0];
@@ -18568,7 +18626,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       "exercise",
       "Lifts",
       LIFTS_HELP,
-      b`${exh}${dashSub("prs", "Recent PRs", prBody, noLog() ? "none yet" : prs4 || !firstPR ? `${prs4} in ${RECENT_WEEKS} weeks` : `latest ${fmtDateYr(firstPR.date)}`)}${dashSub(
+      b`${exh}${dashSub("prs", "Recent PRs", prBody, noLog() ? "none yet" : prs4 || !firstPR ? `${prs4} in ${RECENT_WEEKS} weeks` : `latest ${fmtDate(firstPR.date)}`)}${dashSub(
         "bests",
         "All-time bests",
         bests.html,
@@ -18601,9 +18659,9 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     chartNoticeUsed = false;
     const I2 = IDX();
     const R2 = activeRoutine();
-    const cur = weekStart(today());
-    const thisWeek = I2.weekSets[cur] || {};
-    const thisWeekConf = I2.weekConf[cur] || {};
+    const cur2 = weekStart(today());
+    const thisWeek = I2.weekSets[cur2] || {};
+    const thisWeekConf = I2.weekConf[cur2] || {};
     const wkHard = weekStats().got;
     const stalled = Object.entries(I2.exStats).flatMap(([id, s3]) => s3 && s3.stalled ? [[id, s3]] : []);
     const cov = rirCoverLine(I2);
@@ -18629,7 +18687,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       ["volume", volSec],
       ["exercise", lifts],
       ["weak", musSec],
-      ["consistency", consistencySec(R2, cur)],
+      ["consistency", consistencySec(R2, cur2)],
       ["body", body]
     ])}${tabFoot("dash")}`;
   }
@@ -18785,8 +18843,8 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     const cd = {};
     for (const c4 of state.cardio) cd[c4.date] = (cd[c4.date] || 0) + c4.min;
     const { min, max } = calBounds();
-    const cur = monthOf(t4);
-    const plan = ym >= cur ? plannedIn(ym) : {};
+    const cur2 = monthOf(t4);
+    const plan = ym >= cur2 ? plannedIn(ym) : {};
     const cells = [];
     let n3 = 0;
     for (let i5 = 1; i5 <= dim; i5++) {
@@ -18812,7 +18870,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     const title = `${MONTHS[mo - 1]} ${y2}`;
     return b`<div class="cal-h"><button class="ib" data-act="calMonth" data-v="-1" data-inline=${inl} aria-label="Previous month" ?disabled=${ym <= min}>‹</button>${inline ? b`<h4 id="calHi">${title}</h4>` : b`<h3 id="calH">${title}</h3>`}<button class="ib" data-act="calMonth" data-v="1" data-inline=${inl} aria-label="Next month" ?disabled=${ym >= max}>›</button>${inline ? "" : b`<button class="ib" aria-label="Close" data-act="mClose">✕</button>`}</div>
 <div class="cal-g">${DAYS.map((d3) => b`<span class="wd">${d3.slice(0, 2)}</span>`)}${Array.from({ length: lead }, () => b`<span></span>`)}${cells}</div>
-<div class="row spread u-mt10"><p class="small muted u-m0">${ym > cur ? planWords(Object.keys(plan).length) : `${n3 ? `${n3} session${n3 === 1 ? "" : "s"}` : "No sessions"}${ym === cur ? " so far" : ""}`}</p>${ym !== cur ? b`<button class="btn sm" data-act="calMonth" data-v="now" data-inline=${inl}>This month</button>` : ""}</div>`;
+<div class="row spread u-mt10"><p class="small muted u-m0">${ym > cur2 ? planWords(Object.keys(plan).length) : `${n3 ? `${n3} session${n3 === 1 ? "" : "s"}` : "No sessions"}${ym === cur2 ? " so far" : ""}`}</p>${ym !== cur2 ? b`<button class="btn sm" data-act="calMonth" data-v="now" data-inline=${inl}>This month</button>` : ""}</div>`;
   }
   function planWords(k2) {
     return k2 ? `${k2} planned` : "Nothing planned";
@@ -18824,17 +18882,17 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
   // src/app/week.ts
   function weekBar() {
     const R2 = activeRoutine();
-    const cur = weekStart(today()), t4 = today();
+    const cur2 = weekStart(today()), t4 = today();
     const weekly = R2.schedule === "weekly";
     const cByDate = {};
     for (const c4 of state.cardio) (cByDate[c4.date] = cByDate[c4.date] || []).push(c4);
-    const rw = isRestWeek(cur);
+    const rw = isRestWeek(cur2);
     const plan = rw ? {} : weekPlan(R2);
     const slots = weekly && !rw ? weekSlots(R2) : [];
     const hasLog = state.sessions.length > 0;
     const out = [];
     for (let i5 = 0; i5 < WEEK_DAYS; i5++) {
-      const d3 = addDays(cur, i5), ss = sessionsOn(d3), trained = ss.length > 0, cd = cByDate[d3] || [];
+      const d3 = addDays(cur2, i5), ss = sessionsOn(d3), trained = ss.length > 0, cd = cByDate[d3] || [];
       const p3 = plan[d3];
       const pd = p3 ? p3.day : null;
       const isPlan = !!pd && !pd.rest && pd.items.length > 0;
@@ -18927,9 +18985,9 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
   }
   var AHEAD_WEEKS = 52;
   function weekBounds() {
-    const cur = weekStart(today());
+    const cur2 = weekStart(today());
     const f3 = firstDate([...state.sessions, ...state.cardio]);
-    return { min: f3 && weekStart(f3) < cur ? weekStart(f3) : cur, max: addDays(cur, WEEK_DAYS * AHEAD_WEEKS) };
+    return { min: f3 && weekStart(f3) < cur2 ? weekStart(f3) : cur2, max: addDays(cur2, WEEK_DAYS * AHEAD_WEEKS) };
   }
   function weekShown() {
     const ws = ui.wkWs;
@@ -18968,8 +19026,8 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     return b`<ul class="wkdays">${rows2}</ul>`;
   }
   function otherWeek(ws) {
-    const cur = weekStart(today());
-    if (ws > cur) return b`${weekNav(ws)}${weekDays(ws)}`;
+    const cur2 = weekStart(today());
+    if (ws > cur2) return b`${weekNav(ws)}${weekDays(ws)}`;
     const got = IDX().weekHard[ws] || 0;
     const cardio = state.cardio.filter((c4) => c4.date >= ws && c4.date <= addDays(ws, WEEK_DAYS - 1));
     const cmin = cardio.reduce((a2, c4) => a2 + c4.min, 0);
@@ -19004,10 +19062,10 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
     const body = weekBody(w2);
     if (monthView()) {
       const ym = calNow();
-      const cur = monthOf(today());
+      const cur2 = monthOf(today());
       const n3 = Object.keys(dateIndex().byDate).filter((d3) => monthOf(d3) === ym).reduce((a2, d3) => a2 + sessionsOn(d3).length, 0);
-      const title = ym === cur ? "This month" : (/* @__PURE__ */ new Date(ym + "-15T12:00:00")).toLocaleDateString(void 0, { month: "long", year: "numeric" });
-      const sub = ym > cur ? planWords(monthPlanned(ym)) : `${n3} session${n3 === 1 ? "" : "s"}`;
+      const title = ym === cur2 ? "This month" : (/* @__PURE__ */ new Date(ym + "-15T12:00:00")).toLocaleDateString(void 0, { month: "long", year: "numeric" });
+      const sub = ym > cur2 ? planWords(monthPlanned(ym)) : `${n3} session${n3 === 1 ? "" : "s"}`;
       return section({ sk: "today:week", key: "week", title, sub, body });
     }
     const ws = weekShown();
@@ -19846,7 +19904,7 @@ ${detail}`
 <div class="obv-row"><b class="mu">1</b><span>${f3(w2[1])}</span><span>10</span><i class="on"></i></div>
 <div class="obv-row"><b class="mu">2</b><span>${f3(w2[1])}</span><span>9</span><i class="on"></i></div>
 <div class="obv-row"><b class="mu">3</b><span class="g fill">${f3(w2[1])}</span><span class="g fill">9</span><i class="on tick"></i></div></div>`;
-    const next = b`<div class="obv" aria-hidden="true"><b>Incline DB Press</b>
+    const next2 = b`<div class="obv" aria-hidden="true"><b>Incline DB Press</b>
 <div class="obv-next"><span class="mu">Last</span><b>${f3(w2[0])} ${u4}</b><span class="mu">10, 10, 10</span></div>
 <div class="obv-next now"><span>Next</span><b>${f3(w2[1])} ${u4}</b><span>8 or more</span></div></div>`;
     const adjust = b`<div class="obv" aria-hidden="true"><b>Incline DB Press</b>
@@ -19872,7 +19930,7 @@ ${detail}`
 <polyline class="ln" points=${pts.map((p3) => p3.join(",")).join(" ")}></polyline>${pts.slice(0, -1).map(([x2, y2]) => b`<circle class="pt" cx=${x2} cy=${y2} r="3.2"></circle>`)}<circle class="pr" cx=${end[0]} cy=${end[1]} r="5.5"></circle></svg></div>`;
     return [
       [log2, "Log a set in one tap"],
-      [next, "Next weights, worked out"],
+      [next2, "Next weights, worked out"],
       [adjust, "Adjusts as you lift"],
       [plan, "Your plan, or freestyle"],
       [prog, "See every lift progress"]
@@ -20082,8 +20140,8 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const mine = todo.find((x2) => x2.di === wd);
     if (mine) return { di: wd, part: mine.part, kind: "today" };
     if (!slots.some((x2) => x2.di === wd)) return null;
-    const next = todo.find((x2) => x2.di > wd);
-    return next ? { di: next.di, part: next.part, kind: "ahead" } : null;
+    const next2 = todo.find((x2) => x2.di > wd);
+    return next2 ? { di: next2.di, part: next2.part, kind: "ahead" } : null;
   }
   function doneWhen(d3) {
     const t4 = today();
@@ -20128,7 +20186,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const parts = weekly ? dayParts(day0) : [];
     const part = offer ? offer.part : chosen != null && ui.todayPart && parts.includes(ui.todayPart) ? ui.todayPart : ahead ? parts[0] ?? 1 : (weekSlots(R2).find((x2) => x2.di === di && !x2.doneOn) || { part: parts[0] ?? 1 }).part;
     const day = parts.length > 1 || part === 2 ? dayWorkout(day0, part) : day0;
-    const eyebrow = ahead ? weekly ? `Viewing ${DAYS[di]}, ${fmtDateYr(ahead)}` : `Viewing ${fmtDateYr(ahead)} · ${dayLabel(R2, di)}` : weekly ? offer && offer.kind === "behind" ? `Planned ${DAYS[di]}` : offer && offer.kind === "ahead" ? `Next up · ${DAYS[di]}` : di === wd ? "Today" : `Viewing ${DAYS[di]}` : `${cs && cs.restToday && chosen == null ? "Next: " : ""}${dayLabel(R2, di)}`;
+    const eyebrow = ahead ? weekly ? `Viewing ${DAYS[di]}, ${fmtDate(ahead)}` : `Viewing ${fmtDate(ahead)} · ${dayLabel(R2, di)}` : weekly ? offer && offer.kind === "behind" ? `Planned ${DAYS[di]}` : offer && offer.kind === "ahead" ? `Next up · ${DAYS[di]}` : di === wd ? "Today" : `Viewing ${DAYS[di]}` : `${cs && cs.restToday && chosen == null ? "Next: " : ""}${dayLabel(R2, di)}`;
     let note = A;
     if (offer && offer.kind !== "today") note = offerNote(R2, wd, offer);
     else if (offer && offer.part === 2) note = secondNote(R2, wd);
@@ -20429,11 +20487,11 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     // This week on Today, a week back or ahead, or back to this week (NEW-107), within the weeks it steps between.
     wkStep(t4) {
       const v3 = t4.dataset["v"];
-      const cur = weekStart(today());
-      const ws = v3 === "now" ? cur : addDays(weekShown(), (v3 === "-1" ? -1 : 1) * WEEK_DAYS);
+      const cur2 = weekStart(today());
+      const ws = v3 === "now" ? cur2 : addDays(weekShown(), (v3 === "-1" ? -1 : 1) * WEEK_DAYS);
       const { min, max } = weekBounds();
       if (ws < min || ws > max) return;
-      ui.wkWs = ws === cur ? void 0 : ws;
+      ui.wkWs = ws === cur2 ? void 0 : ws;
       rerenderKeepScroll();
     },
     // This week on Today: the week, or the month (remembered on this device).
@@ -20692,7 +20750,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   }
 
   // src/app/workout.ts
-  var NEW_TIP = "A new machine or gym: its targets, trend, stalls, PRs and bests start over from this session. Earlier sessions stay in History. Take it off in the ⋯ menu.";
+  var NEW_TIP = "A new machine or gym: its targets, trend, stalls, PRs and bests start over from this session. Earlier sessions stay in History. Use it only when the loads there don't compare; take it off in the ⋯ menu.";
   var CARDIO_ADD_GAP_PX = 10;
   var visitKeys = /* @__PURE__ */ new WeakMap();
   function repeatKeyed(xs, id, part) {
@@ -20747,18 +20805,18 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     return !!W.stripAt && W.stripAt.s === si && blkIdx(W.stripAt.b) === bi;
   }
   function rirButton(val, bi, si, target) {
-    const cur = effShow(val);
-    return b`<button type="button" class=${"rirb" + (cur === "" ? " unset" : "")} data-act="rirOpen" data-f="rir" data-b=${bi} data-s=${si} aria-haspopup="true" aria-expanded=${String(stripIs(bi, si))} aria-label=${`${effAria(si)}: ${cur === "" ? "not set" : cur}`}>${cur === "" ? target != null ? "–" : effName() : cur}</button>`;
+    const cur2 = effShow(val);
+    return b`<button type="button" class=${"rirb" + (cur2 === "" ? " unset" : "")} data-act="rirOpen" data-f="rir" data-b=${bi} data-s=${si} aria-haspopup="true" aria-expanded=${String(stripIs(bi, si))} aria-label=${`${effAria(si)}: ${cur2 === "" ? "not set" : cur2}`}>${cur2 === "" ? target != null ? "–" : effName() : cur2}</button>`;
   }
-  function rirStrip(bi, si, cur) {
+  function rirStrip(bi, si, cur2) {
     const sc = rirScale();
     const two = sc !== "whole";
     const opts = effOpts();
-    if (!two && cur !== "" && !opts.includes(cur)) {
-      opts.push(cur);
+    if (!two && cur2 !== "" && !opts.includes(cur2)) {
+      opts.push(cur2);
       opts.sort((a2, b2) => +a2 - +b2);
     }
-    const btn = (o3) => b`<button type="button" data-act="rirPick" data-b=${bi} data-s=${si} data-v=${o3} aria-pressed=${String(cur === o3)} class=${cur === o3 ? "on" : A}>${sc === "rpe" ? effShow(o3) : o3}</button>`;
+    const btn = (o3) => b`<button type="button" data-act="rirPick" data-b=${bi} data-s=${si} data-v=${o3} aria-pressed=${String(cur2 === o3)} class=${cur2 === o3 ? "on" : A}>${sc === "rpe" ? effShow(o3) : o3}</button>`;
     const ord = sc === "rpe" ? opts.slice().reverse() : opts;
     const body = two ? b`<div class="rs-g">${ord.filter((o3) => Number.isInteger(+o3)).map(btn)}${ord.filter((o3) => !Number.isInteger(+o3)).map(btn)}</div>` : opts.map(btn);
     return b`<div class=${"rirstrip" + (two ? " two" : "")} role="group" aria-label=${effAria(si)} data-b=${bi} data-s=${si}><span class="rs-l">${effName()}</span>${body}<button type="button" class="rs-x" data-act="rirPick" data-b=${bi} data-s=${si} data-v="" aria-label=${`Clear ${effName()}`}>✕</button></div>`;
@@ -20900,9 +20958,9 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   var LOG_HELP_ON = "RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ";
   var LOG_HELP = "W marks a warm-up (kept, never analysed); tap it again for ↳, a drop set (counts as work and volume, never as a PR or target). + Drop adds one under the last set ticked, with no rest before it; a warm-up is added from the ⋯ menu. Drag an exercise by its ⠿ to change the order. A superset is one box, A1 and A2: after a set of A1 the screen moves to A2, and the rest timer starts after the last exercise of the group. Timed holds log seconds in the Sec column. The date can be changed to log a past session.";
   function startedWords(t4) {
-    const began = iso(new Date(t4)), now = today();
-    if (began === now) return new Date(t4).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    return began === addDays(now, -1) ? "yesterday" : fmtDate(began);
+    const began = iso(new Date(t4)), now2 = today();
+    if (began === now2) return new Date(t4).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return began === addDays(now2, -1) ? "yesterday" : fmtDate(began);
   }
   function viewWorkout(d3) {
     const hintSeen = /* @__PURE__ */ new Set();
@@ -21782,7 +21840,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   var wait = null;
   var flight = null;
   var lastTry = 0;
-  var waiting = () => !!wait;
+  var waiting2 = () => !!wait;
   var acctOpen = () => {
     const m3 = ui.modal;
     return m3 && m3.kind === "account" ? m3 : null;
@@ -22105,10 +22163,10 @@ ${JSON.stringify(ctx, null, 1)}`;
     m3.busy = true;
     m3.err = "";
     renderModal();
-    const done = (next) => {
+    const done = (next2) => {
       if (ui.modal !== m3) return;
-      if (next) {
-        ui.modal = { kind: "account", back: m3.back, ...next };
+      if (next2) {
+        ui.modal = { kind: "account", back: m3.back, ...next2 };
         renderModal();
       } else back();
     };
@@ -23382,15 +23440,15 @@ ${JSON.stringify(ctx, null, 1)}`;
     }
     return { w: w2, reps: null };
   }
-  function demoSlots(R2, cur, t4) {
+  function demoSlots(R2, cur2, t4) {
     const slots = [];
     if (R2.schedule === "weekly") {
       for (let k2 = 0; k2 < DEMO_WEEKS; k2++) {
-        const ws = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1 - k2));
+        const ws = addDays(cur2, -WEEK_DAYS * (DEMO_WEEKS - 1 - k2));
         R2.days.forEach((_2, di) => slots.push({ date: addDays(ws, di), di }));
       }
     } else {
-      const start2 = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1));
+      const start2 = addDays(cur2, -WEEK_DAYS * (DEMO_WEEKS - 1));
       for (let p3 = 0; ; p3++) {
         const date = addDays(start2, p3);
         if (date > t4) break;
@@ -23459,11 +23517,11 @@ ${JSON.stringify(ctx, null, 1)}`;
       const R2 = activeRoutine();
       const rnd = mulberry(LIFTER.seed);
       const BW = LIFTER.bw;
-      const cur = weekStart(today());
+      const cur2 = weekStart(today());
       const t4 = today();
       const realDates = new Set(state.sessions.map((x2) => x2.date));
       const realBW = new Set(state.bodyweights.map((x2) => x2.date)), realMeas = new Set(state.measurements.map((x2) => x2.date));
-      const slots = demoSlots(R2, cur, t4);
+      const slots = demoSlots(R2, cur2, t4);
       const prog = {};
       const dlw = addDays(weekStart(t4), -BACK.deload), msw = addDays(weekStart(t4), -BACK.missed);
       let msn = 0;
@@ -24105,8 +24163,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       });
       ui.bRoutine = r4.id;
       render();
-      const note = bwNote(r4.days.flatMap((x2) => x2.items.map((i5) => i5.exId)));
-      toast(`${r4.name} added. Tap Make active to use it.${note}`, null, note ? NUDGE_MS : null);
+      toast(`${r4.name} added. Tap Make active to use it.`);
     },
     rNew() {
       openModal({ kind: "routineNew" });
@@ -24236,12 +24293,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       Object.assign(d3, trainOn(d3));
     });
     rerenderKeepScroll();
-    const note = bwNote([id]);
-    toast(
-      `${exName(id)} added to ${dayLabel(R2, di)}${m3.pm ? ", second workout" : ""}${note ? "." + note : ""}`,
-      null,
-      note ? NUDGE_MS : null
-    );
+    toast(`${exName(id)} added to ${dayLabel(R2, di)}${m3.pm ? ", second workout" : ""}`);
     return;
   }
   function pickSwapItem(m3, id) {
@@ -24662,7 +24714,9 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (m3.isNew && back2 && back2.kind === "picker") {
         applyPick(back2, e5.id);
         toast(
-          back2.mode === "addBlock" || back2.mode === "addDay" ? `${e5.name} created and added` : `${e5.name} created and swapped in`
+          /* Joined to what the pick said (2.48, the message rule): a Plan day's add and a session's swap say what they
+             did, so this says only that it was created; the others say nothing, so this says it all. */
+          back2.mode === "addDay" || back2.mode === "swapBlock" ? `${e5.name} created` : back2.mode === "addBlock" ? `${e5.name} created and added` : `${e5.name} created and swapped in`
         );
         return;
       }
@@ -24690,7 +24744,6 @@ ${JSON.stringify(ctx, null, 1)}`;
   var HARD_SWAP = { repMin: 3, repMax: 6, rir: 2 };
   var AGAIN_CHARS = 40;
   var MONTH_RE = /^\d{4}-\d{2}$/;
-  var halfSets = (n3) => Math.max(1, Math.ceil(n3 / 2));
   var blockPlan = (p3) => ({ ...p3, ss: p3.ss ?? null });
   function begin(d3, live2) {
     ui.away = null;
@@ -24758,7 +24811,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const d3 = R2.schedule === "weekly" ? dayWorkout(d0, part) : d0;
     const light = t4.dataset.light === "1";
     const deload = !light && isDeloadWeek();
-    const items = d3.rest ? [] : d3.items.map((it) => light || deload ? { ...it, sets: halfSets(it.sets) } : it);
+    const items = d3.rest ? [] : d3.items.map((it) => light || deload ? { ...it, sets: lighterSets(it.sets) } : it);
     begin(
       {
         id: uid(),
@@ -24833,12 +24886,12 @@ ${JSON.stringify(ctx, null, 1)}`;
       const sheet = m3 && m3.kind === "calendar" ? m3 : null;
       if (!inline && !sheet) return;
       const kept = ui.calYm;
-      const cur = inline || !sheet ? typeof kept === "string" && kept || monthOf(today()) : sheet.ym;
+      const cur2 = inline || !sheet ? typeof kept === "string" && kept || monthOf(today()) : sheet.ym;
       const { min, max } = calBounds();
       let ym;
       if (t4.dataset.v === "now") ym = monthOf(today());
       else {
-        const [y2 = 0, mo = 1] = cur.split("-").map(Number);
+        const [y2 = 0, mo = 1] = cur2.split("-").map(Number);
         const d3 = new Date(y2, mo - 1 + (+(t4.dataset.v ?? 0) || 0), 1);
         ym = `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, "0")}`;
       }
@@ -24915,15 +24968,15 @@ ${JSON.stringify(ctx, null, 1)}`;
               continue;
             }
             let n3 = x2.undone - x2.keep;
-            const gone = [];
+            const gone2 = [];
             for (let i5 = b2.sets.length - 1; i5 >= 0 && n3 > 0; i5--) {
               const s3 = b2.sets[i5];
               if (s3 && !s3.warm && rowBlank(b2, s3)) {
-                gone.unshift(...b2.sets.splice(i5, 1));
+                gone2.unshift(...b2.sets.splice(i5, 1));
                 n3--;
               }
             }
-            removed.set(b2, gone);
+            removed.set(b2, gone2);
           }
           d3.ex = d3.ex.filter((_b, bi) => !drop3.has(bi));
           fixSupersets(d3.ex.map((b2) => b2.plan));
@@ -24974,14 +25027,14 @@ ${JSON.stringify(ctx, null, 1)}`;
         const deload = isDeloadWeek();
         const plan = (b2) => {
           const it = day && day.items.find((i5) => i5.exId === b2.exId);
-          if (it) return deload ? { ...it, sets: halfSets(it.sets) } : { ...it };
+          if (it) return deload ? { ...it, sets: lighterSets(it.sets) } : { ...it };
           const p3 = planFor(b2.exId);
           if (b2.rr) {
             p3.repMin = b2.rr[0];
             p3.repMax = Math.max(b2.rr[0], b2.rr[1]);
           }
           const n3 = b2.sets.filter(isWork).length;
-          if (n3) p3.sets = deload ? halfSets(n3) : n3;
+          if (n3) p3.sets = deload ? lighterSets(n3) : n3;
           return blockPlan(p3);
         };
         const ex = s3.ex.map((b2) => {
@@ -25100,7 +25153,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const deload = isDeloadWeek();
       const ex = pl.flatMap((x2) => {
         if (!x2.to) return [];
-        const it = deload ? { ...x2.it, sets: halfSets(x2.it.sets) } : x2.it;
+        const it = deload ? { ...x2.it, sets: lighterSets(x2.it.sets) } : x2.it;
         const sp = x2.from ? swapPlan(it, x2.from, x2.to, R2, day.id) : { ...it };
         if (x2.hard) Object.assign(sp, HARD_SWAP);
         const b2 = newBlock(x2.to, sp, { deload, before: today() });
@@ -25483,8 +25536,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       const on = r4.includes(ws);
       act(
         () => {
-          const next = on ? r4.filter((x2) => x2 !== ws) : [...r4, ws].sort();
-          if (next.length) state.settings.restWeeks = next;
+          const next2 = on ? r4.filter((x2) => x2 !== ws) : [...r4, ws].sort();
+          if (next2.length) state.settings.restWeeks = next2;
           else delete state.settings.restWeeks;
         },
         { undo: true }
@@ -25545,8 +25598,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       const got = parseSets(txt, EX(b2.exId), defW, null, rirScale() === "rpe");
       if (got) {
         const n3 = fillSets(m3.b, got);
-        const now = ui.modal;
-        if (!(now && now.kind === "confirm")) {
+        const now2 = ui.modal;
+        if (!(now2 && now2.kind === "confirm")) {
           closeModal();
           rerenderKeepScroll();
           toast(`${n3} set${n3 === 1 ? "" : "s"} filled and marked done`);
@@ -27282,10 +27335,10 @@ ${JSON.stringify(ctx, null, 1)}`;
         `<p class="muted">These are estimates from your log, not medical or coaching advice. Adjust them to how you feel on the day, and stop on pain.</p>
    <p><b>In short.</b> Your target comes from your last full session. Every set at the top of the range, or ${CLEARLY_OFF}+ reps in reserve over your target: more weight. Well short of the range: less. Anything else: same weight, more total reps. During a session, the next sets change only after a set that was clearly off (or, on a first session back after a break, one that shows more strength): ${CLEARLY_OFF} or more reps past the top, or ${CLEARLY_OFF} or more in reserve over your target with the reps in the range, heavier; ${CLEARLY_OFF} or more reps under the range and under what was asked, lighter; anything else, the same load, with last time's reps in grey. Loads show in grey, taken when you tick the set, or typed in for you with Settings, Rest timer and logging, Fill in suggested loads. A load you type is never changed. Every target on the session screen has an i beside it, Why this target, which gives the reason for that exact number and what makes the load go up next. The details follow.</p>
    <p><b>A target is not a record.</b> The target is what to beat in today's session, worked out from your last full session of that lift. A record is the best you have ever done: the heaviest set of a lift shows while you train it, and every record is under Stats, Lifts, All-time bests. A PR is the moment you set one, and it is announced as you log the set, on any day. Lifts you did before this app count the same way once they are in: History, Log a past workout.</p>
-   <p>Each exercise progresses from its <b>last full session in the rep range you plan for it that day</b>, so the same lift on a heavy day and a light day progresses on each separately. A range not used within ${TREND_WEEKS} weeks of your latest session of the lift starts from that latest session instead.</p>
+   <p>Each exercise progresses from its <b>last full session in the rep range you plan for it that day</b>, so the same lift on a heavy day and a light day progresses on each separately. A range not used within ${TREND_WEEKS} weeks of training before your latest session of the lift (time on a break of more than ${BACK_DAYS / WEEK_DAYS} weeks is not counted) starts from that latest session instead.</p>
    <p><b>Working weight</b>: the weight you did the most sets with (the heavier on a tie), ignoring anything under ${pctOf(WORK_FLOOR)}% of your heaviest. One or two heavy top sets before back-off sets count for bests and PRs; targets, grey reps, and trends follow the back-off sets.</p>
    <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about ${pct1(JUMP_COMPOUND)}% of the load on compound lifts and ${pct1(JUMP_ISOLATION)}% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (it costs ${BIG_STEP_REPS} reps or more, as 5 lb on a 35 lb dumbbell does), on a range ${FIXED_RANGE} or more reps wide, you first build a few reps past the top at this load, up to ${shareWords(BUILD_PAST.share)} of the top of the range more (${numWord(BUILD_PAST.min)} at least), until your estimate says the new load allows the bottom of the range; then the load goes up. Past that, the load goes up anyway, with the reps your estimate allows there as the target. A fixed-rep plan (5 x 5, 3 x 3-5) goes up a step every time all its sets are done.</p>
-   <p><b>Load steps</b>, with none set on the exercise: ${stepWords(EQUIP_STEP.bar, kg2)} on a barbell, a Smith machine, or a machine stack; ${stepWords(EQUIP_STEP.each, kg2)} on a dumbbell; ${stepWords(DEFAULT_STEP, kg2)} on anything else (rules of thumb: the smallest jumps most gyms can load). Your gym, in Settings, and the exercise's own load step come first.</p>
+   <p><b>Load steps</b>, with none set on the exercise: ${stepWords(EQUIP_STEP.bar, kg2)} on a barbell, a Smith machine, or a machine stack; ${stepWords(EQUIP_STEP.each, kg2)} on a dumbbell; ${stepWords(DEFAULT_STEP, kg2)} on anything else, including the help on an assisted machine and load added to a bodyweight lift (rules of thumb: the smallest jumps most gyms can load). Your gym, in Settings, and the exercise's own load step come first.</p>
    <p><b>Dumbbells and kettlebells</b> step by what your rack has: with no load step set on the exercise, the step fits every load you logged on it (12, 14, and 16 kg is a rack in 2 kg steps; 12.5 and 15, one in 2.5).</p>
    <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets, a set past the top of the range counting as the top. One set under the range among the others shows the bottom of the range as its grey reps, so one bad set is not the next plan. A session clearly below your usual repeats the last target (One rule for every session, below); a second in a row is your usual, and then every set under the range at a load you did in it the time before asks for the bottom of the range in every set again.</p>
    <p><b>Well past the range</b> (every set ${CLEARLY_OFF} or more reps over the top, as after moving the range down): the load your estimated 1RM gives for the middle of the range, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg2)}), in whole steps.</p>
@@ -27293,12 +27346,13 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Too easy</b> (every top set logged ${CLEARLY_OFF} or more RIR above the target): the same estimate sets a heavier load, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg2)}), and at least one step when every set was rated ${RIR_CALL_TOP} or more in reserve, where the estimate is only a floor.</p>
    <p><b>The first ${EARLY_SESSIONS} sessions</b> of a lift, counted again after a break or a New machine or gym, find its load: there the most these two can add is ${CAP_EARLY}%, so a first guess well under what you can do moves up by what your reps and reps in reserve allow, not a step at a time. A set rated ${RIR_CALL_TOP} or more in reserve is read as ${E1_MAX_RIR}, so from such sets the load moves about a step a session: rate the reps left as closely as you can. For picking a load only, sets past ${E1_MAX_REPS} reps to failure are read with Epley up to ${FIT_MAX_RTF}, so a set of 25 still moves the load the right amount (never shown as a 1RM). A rule of thumb.</p>
    <p><b>The first session of a close variation</b> (a hammer curl after DB curls, a front squat after back squats) starts from the related lift's last full session in the last ${KIN.days} days, when both use the same equipment, load, main muscle, and movement, with both arms or both legs at once. About ${pctOf(KIN.isolation)}% of its estimate (${pctOf(KIN.compound)}% on a compound lift), for the middle of the range with ${numWord(FATIGUE_RIR)} more rep in reserve, rounded down. Machines and cables start fresh, since two machines' numbers do not compare.</p>
+   <p><b>Load due</b> (on Today and Stats): your last ${numWord(DRIFT_N)} sessions of a lift in its range at the same load and at least the same reps, with the reps in reserve on its top set rising by 1 or more, so the load is getting easier (a rule of thumb). Not on a lift on a break today: the way back sets the load.</p>
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
    <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load. <b>Bodyweight lifts and holds never done with added load</b> (push-ups, pull-ups, a hanging leg raise, a plank): more reps or seconds, then harder ones or a little added load when you type it; the app never adds load you did not use.</p>
    <p><b>Back after more than ${BACK_DAYS / WEEK_DAYS} weeks off a lift</b>, up to ${awayWords(LONG_BREAK_DAYS)}: about ${pctOf(LIGHT_SHARE)}% of its last working weight, with ${BACK_RIR} or more reps in reserve (rule of thumb). The ${BACK_DAYS / WEEK_DAYS} weeks is a rule of thumb for where a break begins: strength falls the longer a lift is left. That first session back is the lift's new start: its trend and stall test start again from it, never drawn across the break. Until the lift is back at its load from before the break, each full session sets the next load: what its sets say fits your usual reps, never lower than the load you did and never past that load (rule of thumb). Back at it in fewer than your planned sets, the next session asks every set at it, for the fewest reps you did there. Then the usual rules. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about ${pctOf(LIGHT_SHARE)}% as long.</p>
    <p><b>Back after more than ${awayWords(LONG_BREAK_DAYS)} off a lift</b>, it starts fresh, as a lift never done: pick a load for your first session back and the next is worked out from it, so nothing from before the break is asked of you (rule of thumb: after that long, the strength left varies too much to guess). Your records stay. All-time bests keeps the best you ever did and, beside it, your best since you came back; a set is a PR only when it beats every set you ever did, and the recap says when you beat your best since you came back.</p>
    <p><b>Your gym</b> (Settings): the dumbbells, kettlebells, plates, and stack steps you have. Suggestions stay on them, and a weight you type for a dumbbell counts as the nearest one.</p>
-   <p><b>New machine or gym</b> (in an exercise's ⋯ menu during a session): the lift starts over from that session, as from a first one, so another machine's loads give no target, PR, or best. Its trend, stalls, and dumbbell steps read from that session on; earlier sessions stay in History and its chart. Tap it again before Finish to take it off.</p>
+   <p><b>New machine or gym</b> (in an exercise's ⋯ menu during a session): the lift starts over from that session, as from a first one, so another machine's loads give no target, PR, or best. Its trend, stalls, and dumbbell steps read from that session on; earlier sessions stay in History and its chart. Tap it again before Finish to take it off. Use it only when the loads there don't compare, such as another brand of machine: plates and dumbbells weigh the same at every gym.</p>
    <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the ${numWord(USUAL_BEFORE)} before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks, and in a session on a day of your routine they are the sets the plan gave the lift that day, once a session has done that many, so fewer sets than planned never become the usual there; a blank session saves, with each lift your routine plans, the sets of its day nearest to what you did, among the days that plan it in that session's rep range (the fewer on a tie), and is held to them the same way; in Freestyle (Today opens blank) it saves none, and your own sets lead. Each session keeps the plan it was done to, so a plan changed later never rereads the sessions before it; sessions saved before version 2.12 read their own sets. A set counts toward them when its load is within ${shareWords(1 - LIGHTER_LOAD)} of the session's working weight, or at the usual load (rule of thumb): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set ${shareWords(1 - LIGHTER_LOAD)} or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than ${pctOf(1 - USUAL_SHARE)}% by strength, a rule of thumb), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the ${numWord(USUAL_BEFORE)} before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled fewer sets, below usual, lighter, or deload when it was. When it did not set the target, the next target comes from the last full session, and the i beside the target names its date; grey reps come from that session too after one below usual or done lighter.</p>
    <p><b>Deload week</b>: ${shareWords(LIGHTER_SET_SHARE)} the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the load the normal day would ask for (or of last time's, if lower), in whole steps down (never under the empty bar on a full-bar lift), the bottom of the range, ${LIGHT_RIR} or more reps in reserve. A week with ${LIGHTER_WEEK_WORDS}, stays out of the weekly volume average (a lift done there at its usual load with fewer sets than usual counts as done lighter for this, the sets cut on purpose); each lift done lighter stays out of its trend. A <b>lighter day</b> is the same for one day.</p>
@@ -28527,7 +28581,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       }),
       cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }),
       acctUser: () => acct.user,
-      acctWaiting: waiting,
+      acctWaiting: waiting2,
       flush: () => cq(cloudFlush),
       cloudInit,
       cloudStop,
@@ -28711,7 +28765,8 @@ ${JSON.stringify(ctx, null, 1)}`;
   function start() {
     setRoot(renderInner);
     setSheets(SHEETS, afterSheet2);
-    setFx({ render, rerenderKeepScroll, toast, undoToastHide, setSaveState, syncLine, obGate, ask });
+    const notice = (msg, undo, ms, kind) => toast(msg, undo, ms, kind ?? "notice");
+    setFx({ render, rerenderKeepScroll, toast: notice, undoToastHide, setSaveState, syncLine, obGate, ask });
     storageStart();
     syncStart();
     viewStart();

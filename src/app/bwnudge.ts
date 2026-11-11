@@ -6,12 +6,10 @@
    until a weigh-in exists:
      - Today's bodyweight card from the first day a bodyweight lift is in the
        routine in use (today.ts, bwDueCard), with Later;
-     - a short note when a bodyweight lift is added to a plan, or comes in a
-       ready-made routine added there, once a visit, never blocking: said in
-       the same message as what was added, never over it, and not where a
-       card or line already asks (Today after a routine is picked, a session;
-       NEW-116, V 2026-11-10: it replaced "is ready" while Today's card said
-       the same just below);
+     - a line under the first bodyweight lift of the day open on Plan, as
+       in a session, until a weigh-in exists (2.48): never in a message,
+       which until then said it over what was added, the note of r66
+       turned into a sentence in 2.47 (NEW-116, the message rule in toast.ts);
      - a quiet line on the first bodyweight lift still open in a session
        (on each one until r69, when V found it a wall of text), until one
        is logged, whose Add bodyweight opens a small sheet;
@@ -27,27 +25,13 @@ import { openModal } from './page';
 import { fmtDate } from './format';
 import { isDate, today } from './util';
 
-/** How long a message carrying the bodyweight note stays up, in milliseconds: long enough to read two short sentences. */
-export const NUDGE_MS = 6000;
-
 /** The weigh-ins that count: a demo's are not the lifter's. */
 const own = (): number => state.bodyweights.filter(b => !b.demo).length;
 
 /** Whether a lift reads bodyweight while none is logged: the case this module asks about. */
 const bwMissing = (exId: string): boolean => own() === 0 && !!EX(exId).bw;
 
-let saidThisVisit = false;
-
-/** The note to add to the message about lifts just added to a plan, once a visit: that one counts bodyweight and none is logged, and where to set it; '' otherwise. */
-export function bwNote(exIds: readonly string[]): string {
-  if (saidThisVisit) return '';
-  const id = exIds.find(bwMissing);
-  if (!id) return '';
-  saidThisVisit = true;
-  return ` ${EX(id).name} counts your bodyweight, plus any weight you add: set it on Today or in Settings (optional).`;
-}
-
-/** The line on a session's first bodyweight lift still open while no weigh-in is logged: what it counts, and a way to set it, dated the session's day when given (as the session's Bodyweight button is). */
+/** The line on the first bodyweight lift in a session still open, or of the day open on Plan, while no weigh-in is logged: what it counts, and a way to set it, dated the session's day when given (as the session's Bodyweight button is). */
 export function bwWarn(exId: string, date?: string): TemplateResult | typeof nothing {
   if (!bwMissing(exId)) return nothing;
   return html`<p class="small bwwarn">No bodyweight set: counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId} data-date=${date || nothing}>Add bodyweight</button></p>`;

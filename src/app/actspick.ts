@@ -5,7 +5,6 @@
    a change to the session in progress alone leaves the caches as they are
    (inProgress), as the legacy script's save of the session did. */
 
-import { NUDGE_MS, bwNote } from './bwnudge';
 import { uid, numIn } from './util';
 import { BWF, MK, bwShare } from './library';
 import { dayLabel, fixSupersets, partOf, trainOn } from './routines';
@@ -104,13 +103,8 @@ function pickAddDay(m: PickerModal, id: string): void {
     Object.assign(d, trainOn(d));
   });
   rerenderKeepScroll();
-  // The bodyweight note joins this message rather than replacing it (NEW-116), as a second sentence.
-  const note = bwNote([id]);
-  toast(
-    `${exName(id)} added to ${dayLabel(R, di)}${m.pm ? ', second workout' : ''}${note ? '.' + note : ''}`,
-    null,
-    note ? NUDGE_MS : null
-  );
+  // Bodyweight, if this lift counts it and none is logged, is asked on Plan under the lift, not here (2.48, the message rule).
+  toast(`${exName(id)} added to ${dayLabel(R, di)}${m.pm ? ', second workout' : ''}`);
   return;
 }
 
@@ -605,9 +599,13 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (m.isNew && back && back.kind === 'picker') {
       applyPick(back, e.id);
       toast(
-        back.mode === 'addBlock' || back.mode === 'addDay'
-          ? `${e.name} created and added`
-          : `${e.name} created and swapped in`
+        /* Joined to what the pick said (2.48, the message rule): a Plan day's add and a session's swap say what they
+           did, so this says only that it was created; the others say nothing, so this says it all. */
+        back.mode === 'addDay' || back.mode === 'swapBlock'
+          ? `${e.name} created`
+          : back.mode === 'addBlock'
+            ? `${e.name} created and added`
+            : `${e.name} created and swapped in`
       );
       return;
     }

@@ -4,7 +4,6 @@
    the log goes through `act`. */
 
 import { LIMITS } from './records';
-import { NUDGE_MS, bwNote } from './bwnudge';
 import { uid } from './util';
 import {
   DEFAULT_PLAN,
@@ -129,9 +128,7 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     });
     ui.bRoutine = r.id;
     render();
-    // The bodyweight note joins this message rather than replacing it (NEW-116).
-    const note = bwNote(r.days.flatMap(x => x.items.map(i => i.exId)));
-    toast(`${r.name} added. Tap Make active to use it.${note}`, null, note ? NUDGE_MS : null);
+    toast(`${r.name} added. Tap Make active to use it.`);
   },
   rNew() {
     openModal({ kind: 'routineNew' });

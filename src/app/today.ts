@@ -100,7 +100,6 @@ import {
   bwRate,
   bwWeekTxt,
   effTgt,
-  fmtDateYr,
   heightTxt,
   lenD,
   lenFrom,
@@ -681,8 +680,8 @@ export function viewToday(): TemplateResult {
   const day: Day = parts.length > 1 || part === 2 ? dayWorkout(day0, part) : day0;
   const eyebrow = ahead
     ? weekly
-      ? `Viewing ${DAYS[di]}, ${fmtDateYr(ahead)}`
-      : `Viewing ${fmtDateYr(ahead)} · ${dayLabel(R, di)}`
+      ? `Viewing ${DAYS[di]}, ${fmtDate(ahead)}`
+      : `Viewing ${fmtDate(ahead)} · ${dayLabel(R, di)}`
     : weekly
       ? offer && offer.kind === 'behind'
         ? `Planned ${DAYS[di]}`
