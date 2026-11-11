@@ -546,7 +546,25 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
       ok(nw ? n === 0 : n > 0, nw ? 'P-27 250 x 8 x 3 on a session marked New machine or gym after 200 x 8 x 3: no PR' : 'P-27 a guard: the same 250 x 8 x 3 with no new gym is a PR', n);
       await Q.ctx.close(); await Q.browser.close();
     }
+  }  if (run('P-29')) {
+    /* Another gym changes nothing unless a lift is marked New machine or gym (V 2026-11-10: "Everything should stay as
+       is unless the user explicitly marks it"). Marked, the lift starts over: the marked session is its baseline, no PR,
+       and the next one beating it is a PR. The mark says when to use it, in one line (V 2026-11-10, "keep it simple"):
+       only when loads don't compare; plates and dumbbells weigh the same anywhere. */
+    const P = await lifter(DAY_BENCH, [...weeks('A', [[200, 8, 2], [200, 8, 2], [200, 8, 2]], 3).map(([d, k, e]) => [addD(d, -14), k, e]), [addD(DAY, -14), 'A', [['bench', [[150, 8, 2], [150, 8, 2], [150, 8, 2]], { nw: true }]]], [addD(DAY, -7), 'A', [['bench', [[160, 8, 2], [160, 8, 2], [160, 8, 2]]]]]]);
+    const pr = await P.page.evaluate(() => { const p = window.__ironlog.IDX().prs; return { marked: p.filter(x => x.sid === 's3').length, next: p.filter(x => x.sid === 's4' && x.big).length }; });
+    ok(pr.marked === 0 && pr.next > 0, 'P-29 after 200 x 8 x 3, 150 x 8 x 3 marked New machine or gym is no PR, and 160 x 8 x 3 the week after is one', pr);
+    const g = await P.page.evaluate(() => { window.__ironlog.ACT.guideOpen({ dataset: { topic: 'rules' } }); return (document.getElementById('modal') || {}).textContent.replace(/\s+/g, ' '); });
+    ok(/New machine or gym/.test(g) && /only when the loads there don.t compare/i.test(g) && /plates and dumbbells weigh the same/i.test(g), 'P-29 the Guide says when to mark New machine or gym: only when loads don\'t compare, as plates and dumbbells weigh the same anywhere', g.slice(g.indexOf('New machine or gym'), g.indexOf('New machine or gym') + 400));
+    await P.page.evaluate(() => window.__ironlog.ACT.mClose());
+    await startOn(P, 0);
+    await P.page.click('#view [data-act="bMenu"][data-b="0"]'); await wait(200);
+    await P.page.click('#modal [data-act="bMenuDo"][data-op="bNew"]'); await wait(200);
+    const tip = await P.page.evaluate(() => { const t = document.querySelector('#blk-0 .tag[data-tip]'); return t ? t.getAttribute('data-tip') : ''; });
+    ok(/only when the loads there don.t compare/i.test(tip), 'P-29 marked from the exercise\'s menu, its New machine tag says the same in its tip', tip);
+    await P.ctx.close(); await P.browser.close();
   }
+
 
 
   // ---- A. Where a target comes from.
