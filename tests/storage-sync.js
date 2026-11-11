@@ -1,6 +1,6 @@
 // Saving and sync, checked against their written rules (CA-1; the spec "Saving and sync", S-1 to S-26, in the
 // project's claude/ironlog-spec-storage-sync-draft2.md, built from the code: sync.ts, storage.ts, merge.ts, act.ts,
-// normalize.ts, chunks.ts, account.ts and toast.ts). A feature suite: each section is one rule, a lifter's log seeded,
+// normalize.ts, chunks.ts, account.ts and toast.ts, V's rulings deciding). A feature suite: each section is one rule, a lifter's log seeded,
 // the rule's change made as the lifter makes it (a tap, a field typed, a second tab, a second phone, the network
 // gone), and what the phone and the account then hold compared with what the rule gives, with the rule's numbers and
 // the app's own words. A failure names its rule. Each rule was changed in a copy of the page to show its check fails
@@ -1300,8 +1300,8 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     const core = C.doc('u13', 'core');
     ok(core.exercises.some(e => e.id === 'myPress') && core.routines.some(r => r.id === 'myRoutine'), 'S-13: its custom exercises and routines are kept', core.routines.map(r => r.name));
     // A ready-made routine left as it came goes in too at a first sign-in (the other account's join, S-14, leaves it
-    // out): V's call, NEW-127, asked 2026-11-11 with the recommendation to keep it, since the phone may be training on it.
-    ok(core.routines.some(r => r.id === 'tplAsCame'), 'S-13: a ready-made routine the phone kept as it came is kept too (NEW-127, V\'s call pending)', core.routines.map(r => r.name));
+    // out), since the phone may be training on it and a spare routine is one tap to delete (V, 2026-11-11, NEW-127).
+    ok(core.routines.some(r => r.id === 'tplAsCame'), 'S-13: a ready-made routine the phone kept as it came is kept too (NEW-127)', core.routines.map(r => r.name));
     const onB = await B.ev(() => ({ s: window.__ironlog.state.sessions.filter(s => !s.demo).map(s => s.id).sort(), undo: window.__ironlog.undoStack.length }));
     ok(JSON.stringify(onB.s) === '["acct","mine"]', 'S-13: the phone holds both logs\' sessions', onB);
     ok(onB.undo <= undo0, 'S-13: the sign-in leaves no Undo step to take it back', { before: undo0, after: onB.undo });
