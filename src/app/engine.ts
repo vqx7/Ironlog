@@ -38,7 +38,7 @@ import {
   FATIGUE_RIR
 } from './formulas';
 import { KIN_UNI, injLabel, isCompound, loadMode, noE1, patternOf, rackKind } from './library';
-import { LIGHT_RIR, awayWords, effAt, effLeast, effScale, fmtDate, rangeWords, repSpan } from './format';
+import { LIGHT_RIR, awayWords, effAt, effLeast, effScale, fmtDateFrom, rangeWords, repSpan } from './format';
 import { overSets } from './session';
 import {
   BIG_STEP_REPS,
@@ -696,7 +696,7 @@ function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: stri
     return {
       ...was,
       w: kin.w,
-      text: `${lead}. About ${loadLabelIn(M, ex, kin.w)} ${UIn(M)}${loadNote(ex)} for ${reps}, from your ${kin.ex.name} (${kin.set}, ${fmtDate(kin.date)}), ${stop}. If the first set is off, change the load.`,
+      text: `${lead}. About ${loadLabelIn(M, ex, kin.w)} ${UIn(M)}${loadNote(ex)} for ${reps}, from your ${kin.ex.name} (${kin.set}, ${fmtDateFrom(kin.date, M.today())}), ${stop}. If the first set is off, change the load.`,
       lastR: [],
       last: '',
       target: '',

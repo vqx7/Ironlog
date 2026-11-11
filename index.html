@@ -5639,8 +5639,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const d3 = parse(s3);
     return isNaN(+d3) ? "" : dtf(k2, o3).format(d3);
   };
-  var fmtDate = (s3) => fmtWith("d", { month: "short", day: "numeric" }, s3);
-  var fmtDateFrom = (s3, now2) => yearOf(s3) === yearOf(now2) ? fmtDate(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
+  var fmtDay = (s3) => fmtWith("d", { month: "short", day: "numeric" }, s3);
+  var fmtDateFrom = (s3, now2) => yearOf(s3) === yearOf(now2) ? fmtDay(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
+  var fmtDate = (s3) => fmtDateFrom(s3, today());
   function effScale(v3) {
     return v3 === "half" || v3 === "rpe" ? v3 : "whole";
   }
@@ -7798,7 +7799,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return {
         ...was,
         w: kin.w,
-        text: `${lead}. About ${loadLabelIn(M3, ex, kin.w)} ${UIn(M3)}${loadNote(ex)} for ${reps}, from your ${kin.ex.name} (${kin.set}, ${fmtDate(kin.date)}), ${stop}. If the first set is off, change the load.`,
+        text: `${lead}. About ${loadLabelIn(M3, ex, kin.w)} ${UIn(M3)}${loadNote(ex)} for ${reps}, from your ${kin.ex.name} (${kin.set}, ${fmtDateFrom(kin.date, M3.today())}), ${stop}. If the first set is off, change the load.`,
         lastR: [],
         last: "",
         target: "",
@@ -11571,7 +11572,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (ex && ex.assist) return "Help " + u4;
     return m3 === "each" ? u4 + " each" : m3 === "side" ? u4 + "/side" : m3 === "stack" ? "Stack" : m3 === "bw" ? "+" + u4 : u4;
   }
-  var fmtDateYr = (s3) => fmtDateFrom(s3, today());
   var fmtDateLong = (s3) => fmtWith("l", { weekday: "short", month: "short", day: "numeric", year: "numeric" }, s3);
   function topSetPt(ex, x2) {
     let q = null;
@@ -11721,15 +11721,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const ex = r4.ex;
     const exps = (IDX().byEx[exId] || []).filter((x2) => !upTo || x2.date <= upTo);
     const last = exps[exps.length - 1];
-    const when = last && r4.heavy.date === last.date ? "" : `, ${fmtDateYr(r4.heavy.date)}`;
+    const when = last && r4.heavy.date === last.date ? "" : `, ${fmtDate(r4.heavy.date)}`;
     return `Heaviest ${setShort(ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(ex)}${when}`;
   }
   function bestSetLine(exId) {
     const r4 = allTimeBests(exId);
     if (!r4) return "";
     if (r4.est && isCompound(r4.ex))
-      return `Best ${setShort(r4.ex, r4.est.p.w, r4.est.p.r)}${loadNote(r4.ex)}, ${fmtDateYr(r4.est.date)}`;
-    return r4.heavy ? `Heaviest ${setShort(r4.ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(r4.ex)}, ${fmtDateYr(r4.heavy.date)}` : "";
+      return `Best ${setShort(r4.ex, r4.est.p.w, r4.est.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.est.date)}`;
+    return r4.heavy ? `Heaviest ${setShort(r4.ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.heavy.date)}` : "";
   }
   function goalState(exId) {
     const ex = EX(exId);
@@ -18346,7 +18346,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       html: b`<div class="bests">${shown2.map((r4) => {
         const ex = r4.ex;
         const est = r4.est && isCompound(ex) ? r4.est : null;
-        const when = fmtDateYr;
+        const when = fmtDate;
         const line = (e5, h3) => [
           e5 ? `best est ${fmtE(e5.v)}${u4(ex)}${loadNote(ex)}, ${when(e5.date)}` : "",
           h3 ? `heaviest ${setShort(ex, h3.p.w, h3.p.r)}${loadNote(ex)}, ${when(h3.date)}` : ""
@@ -18618,7 +18618,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const ps = iso2 ? prSet(p3.exId, p3.date) : null;
       const tag = ex.timed && p3.type === "Rep PR" ? "Time PR" : p3.type === "e1RM" ? iso2 ? "PR" : prName(p3) : p3.type;
       const val = p3.type === "e1RM" ? iso2 ? ps ? setShort(ex, ps.w, ps.r) : "" : fmtE(p3.value) + " " + U() : setShort(ex, p3.w, p3.r);
-      return b`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p3.type === "Rep PR" ? "blue" : "green"}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDateYr(p3.date)}</span></span></div>`;
+      return b`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p3.type === "Rep PR" ? "blue" : "green"}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDate(p3.date)}</span></span></div>`;
     })}` : b`<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>`;
     const nLifts = Object.keys(I2.byEx).length;
     const firstPR = bigPR[0];
@@ -18626,7 +18626,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       "exercise",
       "Lifts",
       LIFTS_HELP,
-      b`${exh}${dashSub("prs", "Recent PRs", prBody, noLog() ? "none yet" : prs4 || !firstPR ? `${prs4} in ${RECENT_WEEKS} weeks` : `latest ${fmtDateYr(firstPR.date)}`)}${dashSub(
+      b`${exh}${dashSub("prs", "Recent PRs", prBody, noLog() ? "none yet" : prs4 || !firstPR ? `${prs4} in ${RECENT_WEEKS} weeks` : `latest ${fmtDate(firstPR.date)}`)}${dashSub(
         "bests",
         "All-time bests",
         bests.html,
@@ -20186,7 +20186,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const parts = weekly ? dayParts(day0) : [];
     const part = offer ? offer.part : chosen != null && ui.todayPart && parts.includes(ui.todayPart) ? ui.todayPart : ahead ? parts[0] ?? 1 : (weekSlots(R2).find((x2) => x2.di === di && !x2.doneOn) || { part: parts[0] ?? 1 }).part;
     const day = parts.length > 1 || part === 2 ? dayWorkout(day0, part) : day0;
-    const eyebrow = ahead ? weekly ? `Viewing ${DAYS[di]}, ${fmtDateYr(ahead)}` : `Viewing ${fmtDateYr(ahead)} · ${dayLabel(R2, di)}` : weekly ? offer && offer.kind === "behind" ? `Planned ${DAYS[di]}` : offer && offer.kind === "ahead" ? `Next up · ${DAYS[di]}` : di === wd ? "Today" : `Viewing ${DAYS[di]}` : `${cs && cs.restToday && chosen == null ? "Next: " : ""}${dayLabel(R2, di)}`;
+    const eyebrow = ahead ? weekly ? `Viewing ${DAYS[di]}, ${fmtDate(ahead)}` : `Viewing ${fmtDate(ahead)} · ${dayLabel(R2, di)}` : weekly ? offer && offer.kind === "behind" ? `Planned ${DAYS[di]}` : offer && offer.kind === "ahead" ? `Next up · ${DAYS[di]}` : di === wd ? "Today" : `Viewing ${DAYS[di]}` : `${cs && cs.restToday && chosen == null ? "Next: " : ""}${dayLabel(R2, di)}`;
     let note = A;
     if (offer && offer.kind !== "today") note = offerNote(R2, wd, offer);
     else if (offer && offer.part === 2) note = secondNote(R2, wd);

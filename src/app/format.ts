@@ -156,12 +156,18 @@ export const fmtWith = (k: string, o: Intl.DateTimeFormatOptions, s: string): st
   return isNaN(+d) ? '' : dtf(k, o).format(d);
 };
 
-/** A date as "Oct 17". */
-export const fmtDate = (s: string): string => fmtWith('d', { month: 'short', day: 'numeric' }, s);
+// A date as "Oct 17", never with its year: the part of the rule below for a date in the year of now.
+const fmtDay = (s: string): string => fmtWith('d', { month: 'short', day: 'numeric' }, s);
 
 /** A date as "Oct 17", with its year when it is not the year of now ("Oct 20, 2025"), so a date a year away is not read as this year's. */
 export const fmtDateFrom = (s: string, now: string): string =>
-  yearOf(s) === yearOf(now) ? fmtDate(s) : fmtWith('dy', { month: 'short', day: 'numeric', year: 'numeric' }, s);
+  yearOf(s) === yearOf(now) ? fmtDay(s) : fmtWith('dy', { month: 'short', day: 'numeric', year: 'numeric' }, s);
+
+/* Every date on screen follows that one rule (NEW-111 and NEW-112, 2.48): until then about fifty places wrote a
+   date without its year, so last year's Dec 15 read as this year's. It reads the clock, so a function of the model
+   says its dates with fmtDateFrom and the model's today instead. */
+/** A date as "Oct 17", with its year when it is not this year's ("Dec 15, 2025"). */
+export const fmtDate = (s: string): string => fmtDateFrom(s, today());
 
 /* ---------- effort ---------- */
 

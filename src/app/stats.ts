@@ -124,7 +124,6 @@ import {
   bwWeekTxt,
   fmtBig,
   fmtDateLong,
-  fmtDateYr,
   fmtE,
   goalState,
   goalWords,
@@ -673,7 +672,7 @@ export function bestsBoard(): { n: number; html: TemplateResult } {
          for compound lifts only. */
       const est = r.est && isCompound(ex) ? r.est : null;
       // A record's date says its year when it is not this one (NEW-111: an old best from 2016 read as this March 1).
-      const when = fmtDateYr;
+      const when = fmtDate;
       const line = (
         e: { v: number; date: string } | null,
         h: { p: { w: number; r: number }; date: string } | null
@@ -1146,7 +1145,7 @@ function liftsSec(I: Idx, stalled: readonly (readonly [string, ExStat])[], prs4:
                 : ''
               : fmtE(p.value) + ' ' + U()
             : setShort(ex, p.w, p.r);
-        return html`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p.type === 'Rep PR' ? 'blue' : 'green'}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDateYr(p.date)}</span></span></div>`;
+        return html`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p.type === 'Rep PR' ? 'blue' : 'green'}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDate(p.date)}</span></span></div>`;
       })}`
     : html`<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>`;
   const nLifts = Object.keys(I.byEx).length;
@@ -1155,7 +1154,7 @@ function liftsSec(I: Idx, stalled: readonly (readonly [string, ExStat])[], prs4:
     'exercise',
     'Lifts',
     LIFTS_HELP,
-    html`${exh}${dashSub('prs', 'Recent PRs', prBody, noLog() ? 'none yet' : prs4 || !firstPR ? `${prs4} in ${RECENT_WEEKS} weeks` : `latest ${fmtDateYr(firstPR.date)}`)}${dashSub(
+    html`${exh}${dashSub('prs', 'Recent PRs', prBody, noLog() ? 'none yet' : prs4 || !firstPR ? `${prs4} in ${RECENT_WEEKS} weeks` : `latest ${fmtDate(firstPR.date)}`)}${dashSub(
       'bests',
       'All-time bests',
       bests.html,
