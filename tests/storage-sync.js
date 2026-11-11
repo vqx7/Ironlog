@@ -1,12 +1,13 @@
-// Saving and sync, checked against their written rules (CA-1; the spec "Saving and sync", S-1 to S-26, in the
+// Saving and sync, checked against their written rules (CA-1; the spec "Saving and sync", S-1 to S-33, in the
 // project's claude/ironlog-spec-storage-sync-draft2.md, built from the code: sync.ts, storage.ts, merge.ts, act.ts,
-// normalize.ts, chunks.ts, account.ts and toast.ts, V's rulings deciding). A feature suite: each section is one rule, a lifter's log seeded,
-// the rule's change made as the lifter makes it (a tap, a field typed, a second tab, a second phone, the network
-// gone), and what the phone and the account then hold compared with what the rule gives, with the rule's numbers and
-// the app's own words. A failure names its rule. Each rule was changed in a copy of the page to show its check fails
-// there (PENDING, CA-1). The account is the stand-in the sync suites use (the Claude db the sync takes when
-// window.claude exists); S-22, Sign out, runs on the built app against the stand-in Supabase server, in
-// tests/storage-sync-account.js. SYNC_ONLY=S-1,S-4 runs some rules.
+// normalize.ts, chunks.ts, account.ts and toast.ts, V's rulings deciding). A feature suite: each section is one rule,
+// a lifter's log seeded, the rule's change made as the lifter makes it (a tap, a field typed, a second tab, a second
+// phone, the network gone), and what the phone and the account then hold compared with what the rule gives, with the
+// rule's numbers and the app's own words. A failure names its rule. Each rule was changed in a copy of the page to
+// show its check fails there (PENDING, CA-1). The account is the stand-in the sync suites use (the Claude db the sync
+// takes when window.claude exists). The rules that need the real account service run on the built app against the
+// stand-in Supabase server: S-22 (Sign out) in tests/accounts.js and tests/storage-sync-account.js, the account
+// itself (S-27 to S-33) in tests/accounts.js, tests/breach.js and tests/sql.js. SYNC_ONLY=S-1,S-4 runs some rules.
 const { open, tab, engine } = require('./h');
 const path = require('path');
 const fails = [];
