@@ -124,7 +124,8 @@ function setRemove(t: Tap): void {
   const what = `${x.warm ? 'Warm-up' : x.drop ? 'Drop set' : 'Set ' + n}`;
   const val =
     +(x.r ?? 0) > 0
-      ? setShort(ex, x.w == null ? 0 : x.w, x.r)
+      ? // The load as the row shows it: typed, else the grey load the set would take (NEW-128: a grey load read as 0).
+        setShort(ex, x.w ?? effW(b, i) ?? 0, x.r)
       : x.w != null
         ? loadLabel(ex, x.w) + (ex.bw ? '' : ' ' + U())
         : '';
