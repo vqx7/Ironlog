@@ -94,7 +94,8 @@ const run = n => !ONLY || ONLY.includes(n);
       const meta = async startIso => {
         if (L.state.draft) { L.state.draft = null; L.saveNow(); }
         L.ACT.startFree(); await new Promise(q => setTimeout(q, 120));
-        L.state.draft.startedAt = new Date(startIso).getTime(); L.saveNow(); L.render(); await new Promise(q => setTimeout(q, 120));
+        // Begun then (NEW-129: the header reads when the lifting began, so the workout holds something logged, here cardio).
+        const t = new Date(startIso).getTime(); Object.assign(L.state.draft, { startedAt: t, begunAt: t, cardio: [{ id: 'c1', kind: 'walk', when: 'pre', min: 10 }] }); L.saveNow(); L.render(); await new Promise(q => setTimeout(q, 120));
         const el = document.querySelector('#view .ph .meta'); return el ? el.innerText.replace(/\s+/g, ' ') : '';
       };
       return { yesterday: await meta('2026-10-26T09:00:00'), earlier: await meta('2026-10-24T09:00:00'), today: await meta('2026-10-27T07:40:00') };

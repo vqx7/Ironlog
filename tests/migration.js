@@ -125,4 +125,24 @@ for(const [file,label] of [['baselines/r98.html','r98'],['baselines/r97.html','r
   await O.page.evaluate(()=>window.__ironlog.saveNow());const kept=JSON.parse(await O.page.evaluate(()=>localStorage.getItem('ironlog.v1'))).draft.ex.map(b=>b.hintAgain||'none');await O.ctx.close();
   ok(kept.every(x=>/^First time: a load/.test(x)),'2.48 keeps the short line when it saves the workout, so it comes back here',kept);
 }
+// A workout in progress across 2.51 and 2.52 (NEW-129, the review of 2.52's REV13-7): 2.52 notes when the lifting began
+// (begunAt) beside when the workout was opened (startedAt, as before). Begun here, 2.51 keeps the start when it saves
+// the workout (an unknown field kept where it came), so it comes back; begun on 2.51, which keeps no start, it reads
+// here as begun when it was opened, as 2.51 reads it.
+{
+  const day={id:'A',name:'Push',rest:false,items:['bench'].map((exId,k)=>({uid:'A'+k,exId,sets:3,repMin:6,repMax:10,rir:2,rest:120,ss:null}))};
+  const begin=async file=>{const P=await open(file,{browser,clock:'2026-11-11T10:00:00',realStarter:true});
+    await P.page.evaluate(d=>{const L=window.__ironlog;const S=L.state;S.settings.onboarded=true;S.routines=[{id:'R1',name:'Mine',schedule:'cycle',days:[d]}];S.activeRoutineId='R1';S.sessions=[];L.state=L.normalize(S);L.invalidate();L.ACT.startSession({dataset:{day:'0',light:'0'}});
+      const go=()=>{const s=L.state.draft.ex[0].sets[0];s.w=60;s.r=8;s.done=true;};if(L.act)L.act(go,{inProgress:true});else{go();L.saveNow();}},day);
+    const raw=await P.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await P.ctx.close();return raw;};
+  const raw=await begin('index.html');const here=JSON.parse(raw).draft;
+  ok(here&&typeof here.begunAt==='number'&&typeof here.startedAt==='number','a workout begun here keeps when it was opened and when it began',here&&{startedAt:here.startedAt,begunAt:here.begunAt});
+  const O=await open('baselines/r97.html',{browser,state:JSON.parse(raw),clock:'2026-11-11T10:30:00',realStarter:true});
+  await O.page.evaluate(()=>window.__ironlog.saveNow());const back=JSON.parse(await O.page.evaluate(()=>localStorage.getItem('ironlog.v1'))).draft;await O.ctx.close();
+  ok(back&&back.begunAt===here.begunAt&&back.startedAt===here.startedAt,'2.51 keeps both when it saves the workout, so the start comes back here',back&&{startedAt:back.startedAt,begunAt:back.begunAt});
+  const old=JSON.parse(await begin('baselines/r97.html')).draft;
+  const P=await open('index.html',{browser,state:{...JSON.parse(await begin('baselines/r97.html')),draft:old},clock:'2026-11-11T10:30:00',realStarter:true});
+  const line=await P.page.evaluate(()=>{const L=window.__ironlog;L.ui.tab='today';L.render();const m=document.querySelector('#view .ph .meta');return {meta:m?m.innerText.trim():null,begunAt:L.state.draft.begunAt};});await P.ctx.close();
+  ok(old&&old.begunAt===undefined&&/^Started 10:00 AM/.test(line.meta||'')&&line.begunAt===undefined,'a workout begun on 2.51 reads here as begun when it was opened, and is given no start of its own',{old:old&&old.begunAt,line});
+}
 console.log(fails.length?'FAILURES '+fails.length:'ALL PASS');await browser.close();})();

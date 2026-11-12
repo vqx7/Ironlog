@@ -5,7 +5,7 @@
    session (suggestions, adjustments) moves with the engine in 3b. */
 
 import type { DraftBlock, DraftSet, Session, SessionEx, Target } from './types';
-import { uid, today, PERCENT, pctOf, shareWords } from './util';
+import { uid, today, iso, PERCENT, pctOf, shareWords } from './util';
 import { isMissed, isWork, LIGHTER_SET_SHARE, LIGHT_SHARE, RIR_CALL_TOP } from './formulas';
 import { fmtDate, LIGHT_RIR } from './format';
 import { cleanChk, picIds, LIMITS } from './records';
@@ -269,7 +269,10 @@ export interface DraftLike {
   light?: boolean | undefined;
   free?: boolean | undefined;
   editingId?: string | null | undefined;
+  /** When it was opened. */
   startedAt?: number | null | undefined;
+  /** When the lifting began: its first set ticked or its reps entered, or cardio logged with its minutes (clockStart). Absent until then. */
+  begunAt?: number | undefined;
   chk?: Session['chk'] | null;
   cardio?: DraftCardio[] | undefined;
   ex: DraftBlock[];
@@ -347,7 +350,7 @@ export function draftSession(d: DraftLike, empty?: boolean): Session | null {
     free: d.free ? true : undefined,
     demo: false,
     ...(chk ? { chk } : {}),
-    ...(d.startedAt && d.startedAt > 0 ? { t: d.startedAt } : {}),
+    ...((d.begunAt || d.startedAt || 0) > 0 ? { t: d.begunAt || d.startedAt || 0 } : {}),
     ...(d.pics && d.pics.length ? { pics: [...d.pics] } : {}),
     // The day's second workout, last, as normalize writes it.
     ...(d.part === 2 ? { part: 2 as const } : {})
@@ -449,8 +452,7 @@ export function newRow(over?: Partial<DraftSet>): DraftSet {
 export function freeDraft(name: string, ex?: DraftBlock[] | null) {
   return {
     id: uid(),
-    // Not started until its first set is ticked (clockStart, below).
-    startedAt: null,
+    startedAt: Date.now(),
     date: today(),
     dayIdx: 0,
     dayId: null,
@@ -466,16 +468,40 @@ export function freeDraft(name: string, ex?: DraftBlock[] | null) {
   };
 }
 
-/* A workout's clock starts when the lifting does, at its first set ticked (a warm-up too) or the first cardio
-   logged with its minutes, not when it is opened (V, 2026-11-11, NEW-129): a workout set up ahead, blank, freestyle
-   or a routine day, and left with Save and leave, then times exactly like one opened at the gym. Until then it reads
-   "Not started". Its saved minutes, the pace read from them ("~N min", Short on time) and its start time all come
-   from this. A past workout and an edit of a saved one have no clock. */
-/** Starts the clock of the workout in progress if it has begun and its clock has not; called after every change (act). */
-export function clockStart(d: DraftLike | null | undefined): void {
-  if (!d || d.startedAt || d.past || d.editingId) return;
-  const begun = d.ex.some(b => b.sets.some(s => s.done)) || (d.cardio || []).some(c => !!c.min && c.min > 0);
-  if (begun) d.startedAt = Date.now();
+/** Whether a workout has begun: a set ticked (a warm-up too) or its reps entered, or cardio logged with its minutes. */
+export function begunIn(d: DraftLike): boolean {
+  return d.ex.some(b => b.sets.some(s => s.done || s.r != null)) || (d.cardio || []).some(c => !!c.min && c.min > 0);
+}
+
+/* A workout's clock starts when the lifting does, not when it is opened (V, 2026-11-11, NEW-129): at the change that
+   begins it (begunIn), so a workout set up ahead (blank, freestyle or a routine day) and left with Save and leave
+   times exactly like one opened at the gym, and reads "Not started" until then. Reps entered count as well as a
+   tick, since Finish marks typed rows done for a lifter who does not tick (the review of 2.52, REV13-2: such a
+   session was saved untimed). Everything taken back, it is not started again (REV13-4). When it was opened stays in
+   startedAt, as every build before keeps it: which day the workout is for, and its start where one began on a build
+   that keeps no begunAt (REV13-7). A past workout and an edit of a saved one have no clock. */
+/** Starts or stops the clock of the workout in progress after a change; wasBegun: whether that same workout had begun before it (act). */
+export function clockStart(d: DraftLike | null | undefined, wasBegun: boolean): void {
+  if (!d || d.past || d.editingId) return;
+  const begun = begunIn(d);
+  if (begun && !wasBegun && !d.begunAt) {
+    d.begunAt = Date.now();
+    /* Set up on an earlier day (the evening before) and begun today, it is today's workout, as one opened today is
+       (NEW-132: it was saved under the day it was set up, and untimed); a date set by hand, which no longer reads the
+       day it was opened, stays. Its targets are read again for the day, as the date field reads them. */
+    const day = today();
+    if (d.startedAt && d.date === iso(new Date(d.startedAt)) && d.date < day) {
+      d.date = day;
+      if (readAgain) readAgain(d);
+    }
+  } else if (!begun && d.begunAt !== undefined) delete d.begunAt;
+}
+/* What reads a workout's exercises again for a new date (worksets.ts refreshBlock: last time and the targets), given by
+   the session screen at start (workfields.ts workoutStart), since this module is below the screen's. */
+let readAgain: ((d: DraftLike) => void) | null = null;
+/** Gives what reads a workout's exercises again for a new date, once, at start. */
+export function onDayMoved(f: (d: DraftLike) => void): void {
+  readAgain = f;
 }
 
 /** What an edit from History is compared by, to tell whether anything changed: the date, notes, sets and cardio. */

@@ -917,7 +917,7 @@ function equipList(v: unknown): string[] | undefined {
   return out.length ? out : undefined;
 }
 /** The draft fields this build writes only when valid (its pictures, its equipment): an invalid one is dropped, not kept as unknown. */
-const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics', 'equip']);
+const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics', 'equip', 'begunAt']);
 
 /* The workout in progress, cleaned: called only on one whose exercises are a
    list and whose date is a date (normalize), rebuilt field by field in place,
@@ -931,6 +931,7 @@ const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics', 'equip']);
 /** A workout in progress, cleaned field by field (above). */
 function cleanDraft(d: Rec, date: string): DraftLike {
   const startedAt = Number(d.startedAt),
+    begunAt = Number(d.begunAt),
     durMin = Number(d.durMin);
   // The workout's pictures: kept when valid, else the field goes, so a draft without any keeps its shape.
   const pics = picIds(d.pics);
@@ -945,6 +946,8 @@ function cleanDraft(d: Rec, date: string): DraftLike {
     dayIdx: clampN(d.dayIdx, 0, MAX_DAYS - 1, 0),
     dayId: typeof d.dayId === 'string' ? fixId(d.dayId) : null,
     startedAt: isTime(startedAt) ? startedAt : null,
+    // When the lifting began (NEW-129), once it has; absent before, so a workout's record is unchanged until then.
+    ...(isTime(begunAt) ? { begunAt } : {}),
     durMin: Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null,
     dayName: typeof d.dayName === 'string' ? d.dayName : 'Session',
     routineId: typeof d.routineId === 'string' && d.routineId ? fixId(d.routineId) : '',

@@ -17,7 +17,7 @@ import { chunksOf, emptyChunk } from './chunks';
 import type { Rec } from './records';
 import { invalidate } from './live';
 import { normalize, plainTemplate } from './normalize';
-import { clockStart } from './session';
+import { begunIn, clockStart } from './session';
 import { TRASH_BYTES, TRASH_DAYS, TRASH_MAX, parseJson, rec } from './records';
 import type { Trashed } from './records';
 import type { State } from './store';
@@ -57,6 +57,8 @@ let outerUndo = false;
    shown just after it, and its words are what Undo says it took back. A change that keeps no step clears it, so a
    message never names an older change's step. */
 let lastStep: (typeof undoStack)[number] | undefined;
+// The workout in progress as the outer change being made found it (begunBefore): its clock is started against it.
+let outerBegun: { id: string; begun: boolean } | null = null;
 
 /** Changes the log with every step a change needs, in order; false when its check refused it. Inside another change it is part of that one. */
 export function act(change: () => void, opts: ActOpts = {}): boolean {
@@ -67,8 +69,9 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
     if (!opts.inProgress) dropInside = true;
     if (opts.undo && !outerUndo) log('act', 'an Undo step was asked inside a change that keeps none');
     change();
-    // Here too, so a screen drawn before the outer change ends (a tick inside the tap's change) shows the clock started.
-    clockStart(state.draft);
+    /* Here too, against the workout as the outer change found it, so a screen drawn before the outer change ends (a
+       tick inside the tap's change, after the tap took the grey reps) shows the clock started. */
+    clockAfter(outerBegun);
     return true;
   }
   /* A toast's Undo takes back the change it reports. Once another change is
@@ -100,10 +103,11 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   outerDraftOnly = !!opts.inProgress;
   depth++;
   let inside = false;
+  outerBegun = begunBefore();
   try {
     change();
-    // The workout's clock starts with the change that begins it, whichever tap ticked its first set (session.ts, NEW-129).
-    clockStart(state.draft);
+    // The workout's clock starts with the change that begins it, whichever tap began it (session.ts, NEW-129).
+    clockAfter(outerBegun);
   } catch (e) {
     if (logWas) setState(logWas);
     else {
@@ -128,6 +132,20 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   if (opts.soon) saveSoon();
   else saveNow();
   return true;
+}
+
+/* The workout in progress before a change, for its clock after it (session.ts clockStart): which workout, and whether
+   it had begun. The clock starts only at the change that begins it, so a workout that arrives begun (another tab's or
+   phone's on a build that keeps no start, a backup restored) keeps the start it came with, or none. */
+/** The workout in progress before a change: its id and whether it had begun. */
+function begunBefore(): { id: string; begun: boolean } | null {
+  const d = state.draft;
+  return d ? { id: d.id, begun: begunIn(d) } : null;
+}
+/** Starts or stops the clock of the workout in progress after a change, given what it was before (begunBefore). */
+function clockAfter(before: { id: string; begun: boolean } | null): void {
+  const d = state.draft;
+  clockStart(d, !before || !d || before.id !== d.id ? true : before.begun);
 }
 
 /** Puts a copy of a deleted session, routine or cardio entry into Recently deleted, newest first, within its count and size; a ready-made routine left as it came is not kept. Called inside a change given to `act`. */

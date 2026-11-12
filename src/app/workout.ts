@@ -43,7 +43,8 @@ import {
   lastHead,
   hintOnce,
   sessProgress,
-  markedNew
+  markedNew,
+  begunIn
 } from './session';
 import type { DraftBlock, DraftSet } from './types';
 import type { ExerciseLike } from './model';
@@ -505,14 +506,17 @@ export function viewWorkout(d: Draft): TemplateResult {
      message having gone (REV11-2). */
   const bwAt = d.ex.findIndex((b, bi) => !!EX(b.exId).bw && !isFolded(d, b, bi));
   const letters = ssLetters(d.ex.map(b => b.plan));
-  // A workout in progress whose clock has not started (NEW-129): set up ahead, nothing ticked or logged yet.
-  const notYet = !d.past && !d.editingId && !d.startedAt;
+  /* A workout in progress not begun yet (NEW-129): set up ahead, nothing ticked or entered. Begun, it began at begunAt,
+     or, begun on a build that keeps no begunAt, when it was opened, as that build reads it. */
+  const begun = begunIn(d);
+  const notYet = !d.past && !d.editingId && !begun;
+  const began = d.begunAt || (begun ? d.startedAt : null);
   const when = d.past
     ? `for ${fmtDateLong(d.date)}`
-    : d.startedAt
-      ? `started ${startedWords(d.startedAt)}`
-      : notYet
-        ? 'not started'
+    : notYet
+      ? 'not started'
+      : began
+        ? `started ${startedWords(began)}`
         : '';
   /* The sets done are the bar's to say once it shows (r69, V, 2026-11-03:
      "0 sets done" beside "0 of 19" said it twice), so the line keeps when the
