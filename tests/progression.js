@@ -69,6 +69,15 @@ const shows = (P, exId) => P.page.evaluate(exId => {
   return { rows, tgt: blk.tgt, hint: blk.hint || '' };
 }, exId);
 
+/* The target line ("Today: ...") as the block shows it after − Set takes its last row (empty, so at once): the target
+   counted over the sets left (session.ts targetText, which reads the engine's words with a pattern; NEW-122: a target
+   the engine words another way would stop being restated, so each form the engine writes is checked here). */
+async function restated(P, exId) {
+  const b = await P.page.evaluate(exId => window.__ironlog.state.draft.ex.findIndex(x => x.exId === exId), exId);
+  await P.page.click(`#view [data-act="sDel"][data-b="${b}"]`); await wait(200);
+  return P.page.evaluate(b => { const h = document.querySelector(`#blk-${b} .hint b`); return h ? h.textContent.trim() : null; }, b);
+}
+
 // A field typed as a thumb does, and a set typed, rated and ticked, on the session screen.
 async function type(P, b, si, f, v) {
   const q = `#view .sg input[data-f="${f}"][data-b="${b}"][data-s="${si}"]`;
@@ -121,6 +130,8 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     await startOn(P, 0);
     const s = await shows(P, 'bench');
     ok(s.rows.every(r => r.w === 200) && s.tgt && s.tgt.kind === 'reps' && s.tgt.total === 24, 'P-8 200 x 8 x 3 in 6-10: the same 200 lb, 24 reps over 3 sets to beat', s);
+    const t = await restated(P, 'bench');
+    ok(t === 'Today: 17+ reps over 2 sets at 200 lb', 'P-8 with a set removed, the target counts the 2 left: "Today: 17+ reps over 2 sets at 200 lb" (NEW-122)', t);
     await P.ctx.close(); await P.browser.close();
   }
   if (run('P-9')) {
@@ -219,6 +230,8 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     await startOn(P, 0);
     let s = await shows(P, 'bench');
     ok(s.rows.every(r => r.w === 200) && s.tgt && s.tgt.kind === 'reps' && s.tgt.total === 30, 'P-14 the heaviest available is 200 lb, 200 x 10 x 3 at the top: the same 200 lb, 30 reps to beat (the target is the total to beat, as in P-8)', s);
+    const t14 = await restated(P, 'bench');
+    ok(t14 === 'Today: 21+ reps over 2 sets at 200 lb, the heaviest available', 'P-14 with a set removed, the target counts the 2 left and still says why the load holds: "Today: 21+ reps over 2 sets at 200 lb, the heaviest available" (NEW-122)', t14);
     await P.ctx.close(); await P.browser.close();
     // Then harder reps: every set about 40% past the top (10 + 4 = 14), the next step is a harder rep, not load.
     P = await lifter(DAY_BENCH, weeks('A', [[200, 14, 2], [200, 14, 2], [200, 14, 2]]), { maxLoad: 200 });
@@ -255,6 +268,8 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     await startOn(P, 0);
     s = await shows(P, 'plank');
     ok(s.tgt && s.tgt.kind === 'reps' && s.tgt.total === 135 && !(s.tgt.w > 0), 'P-15 a plank of 45 s x 3 on 30-60 s: 135 s to beat at bodyweight', s);
+    const t15 = await restated(P, 'plank');
+    ok(t15 === 'Today: 91s+ over 2 holds at BW', 'P-15 with a hold removed, the target counts the 2 left: "Today: 91s+ over 2 holds at BW" (NEW-122)', t15);
     await P.ctx.close(); await P.browser.close();
     // A plank held with 10 lb on the back, 60 s x 3, the top: the load step added, 5 lb, so 15 lb.
     P = await lifter([{ id: 'A', name: 'Core', items: [['plank', 3, 30, 60, 0]] }], weeks('A', []).map(([d, k]) => [d, k, [['plank', [[10, 60, null], [10, 60, null], [10, 60, null]]]]]));
@@ -428,6 +443,10 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     await startOn(P, 0);
     const s = await shows(P, 'dbLateral');
     ok(s.rows.every(r => r.w === 15) && s.tgt && s.tgt.kind === 'reps' && s.tgt.total === 45, 'P-6 15 lb raises at the top of 10-15, where a 5 lb step is a third of the load: the same 15 lb, reps past the top to build first (45 to beat)', s);
+    // The line before and after a set is removed: the sets counted change, the engine's words around them stay.
+    const before = await P.page.evaluate(() => { const h = document.querySelector('#blk-0 .hint b'); return h ? h.textContent.trim() : null; });
+    const t6 = await restated(P, 'dbLateral');
+    ok(/^Today: 46\+ reps over 3 sets at 15 lb per dumbbell, building to \d+ each$/.test(before || '') && t6 === before.replace('46+ reps over 3 sets', '31+ reps over 2 sets'), 'P-6 with a set removed, the target counts the 2 left and keeps what to build to: "Today: 31+ reps over 2 sets at 15 lb per dumbbell, building to ..." (NEW-122)', { before, t6 });
     await P.ctx.close(); await P.browser.close();
   }
   if (run('P-13')) {
