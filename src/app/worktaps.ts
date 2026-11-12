@@ -122,9 +122,14 @@ function setRemove(t: Tap): void {
     exId = b.exId,
     n = b.sets.slice(0, i + 1).filter(y => !y.warm && !y.drop).length;
   const what = `${x.warm ? 'Warm-up' : x.drop ? 'Drop set' : 'Set ' + n}`;
+  // The load as the row shows it: typed, else the grey load the set would take (NEW-128: a grey load read as 0).
+  const shown = x.w ?? effW(b, i);
   const val =
     +(x.r ?? 0) > 0
-      ? setShort(ex, x.w == null ? 0 : x.w, x.r)
+      ? // No load anywhere on a loaded lift: the reps alone, never a 0 the row does not show (REV12-5).
+        shown == null && !ex.bw && !ex.timed
+        ? `${x.r} rep${Number(x.r) === 1 ? '' : 's'}`
+        : setShort(ex, shown ?? 0, x.r)
       : x.w != null
         ? loadLabel(ex, x.w) + (ex.bw ? '' : ' ' + U())
         : '';

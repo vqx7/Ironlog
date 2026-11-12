@@ -173,7 +173,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     ['history filtered to one lift, rack half typed, RIR off', `
       const s=L.state;s.settings.onboarded=true;L.makeDemo();s.settings.rirMode='off';
       const id=Object.keys(L.IDX().byEx)[0];L.ui.histEx=id;L.ui.gymDb={lo:5,hi:50};s.settings.gym={u:'lb',stack:10};L.saveNow();`],
-    ['an account service, synced, the built app (signed in is read by tests/accounts.js and r56-1b.js, which sign in)', `
+    ['an account service, synced, the built app (signed in is read by tests/accounts.js and storage-sync-account.js, which sign in)', `
       const s=L.state;s.settings.onboarded=true;L.makeDemo();window.IRONLOG_APP=true;
       window.ironlogAuth={user(){return null;},signOut(){return Promise.resolve();},deleteAccount(){return Promise.resolve();}};
       L.cloud.on=true;L.cloud.status='synced';L.cloud.last=Date.now()-5*60000;L.saveNow();`]

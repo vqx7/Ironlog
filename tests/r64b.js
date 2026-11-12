@@ -1,6 +1,6 @@
 // r64b: the r63 audit's account, sync-status and update findings (F3 to F7,
 // F10), on the built app against the stand-in Supabase server
-// (tests/fake-supabase.js), as tests/r55-1b.js runs its cases. Each case
+// (tests/fake-supabase.js), as tests/storage-sync-account.js runs its cases. Each case
 // fails on r63 (`node tests/r64b.js <a dist folder built from r63>`) unless
 // it says it is a guard:
 //   F3  a request to the account server that never answers (a token refresh

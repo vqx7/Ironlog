@@ -2,7 +2,7 @@
 // app's own screens, each section written as what a lifter expects and run first on 2.32
 // (`node tests/r79.js <2.32's index.html>`), where each section fails unless it says it guards:
 //   1  ST-1: a profile photo picked in the menu shows in the menu button at the top right: a small square JPEG under
-//      its own key, never in the log or a backup (since 2.34 the account's, signed in only: tests/r80b.js). Remove asks first. A value in
+//      its own key, never in the log or a backup (since 2.34 the account's, signed in only: tests/storage-sync-account.js, from r80b). Remove asks first. A value in
 //      storage that is not a JPEG data address is never shown, an SVG is refused, and Erase everything removes it.
 //   2  ST-2: once a lifter has an account, one line on Today offers a photo, once per phone: Not now hides it for
 //      good, and so does a photo added. Guards: never signed out, in the demo, with a photo, or beside another line.
@@ -57,12 +57,12 @@ const button = page => page.evaluate(() => new Promise(res => {
 
 (async () => {
   // The built app brings its own account script, which replaces the stand-in signed-in service these sections
-  // use: on it, the photo is read signed in by tests/r80b.js and the line by tests/accounts.js, against a stand-in
+  // use: on it, the photo is read signed in by tests/storage-sync-account.js and the line by tests/accounts.js, against a stand-in
   // Supabase (since 2.34 section 1 is signed in too, as the photo is the account's).
   const STUB_OK = !process.env.IRONLOG_FILE;
-  if (!STUB_OK) console.log('note r79 sections 1, 2 and 5 need a stand-in account service; on the built app tests/r80b.js and tests/accounts.js read the photo signed in');
+  if (!STUB_OK) console.log('note r79 sections 1, 2 and 5 need a stand-in account service; on the built app tests/storage-sync-account.js and tests/accounts.js read the photo signed in');
   if (run(1) && STUB_OK) try {
-    // Signed in since 2.34 (R79-1, V 2026-11-08): the photo is the account's, offered only with an account (tests/r80b.js).
+    // Signed in since 2.34 (R79-1, V 2026-11-08): the photo is the account's, offered only with an account (tests/storage-sync-account.js).
     const D = await app({ auth: SIGNED_IN });
     const pg = D.page;
     await pg.click('#saveState'); await wait(200);
