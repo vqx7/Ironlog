@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-0bbz1aysgYGTxqiX+h4BYVjCvuuBlaJVtFd6JiGAWjE=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-dv3xy8Z/NX6N8ER9Pq63WR9alB/IRTC+G4IQ/icq8yk=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.11-r96">
+<meta name="app-build" content="2026.11.11-r97">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2149,8 +2149,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.50";
-  var APP_VERSION = "2026.11.11-r96";
+  var DISPLAY_VERSION = "2.51";
+  var APP_VERSION = "2026.11.11-r97";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -26091,7 +26091,11 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (i5 < 0) i5 = b2.sets.length - 1;
     const x2 = b2.sets[i5], ex = EX(b2.exId), did2 = d3.id, exId = b2.exId, n3 = b2.sets.slice(0, i5 + 1).filter((y2) => !y2.warm && !y2.drop).length;
     const what = `${x2.warm ? "Warm-up" : x2.drop ? "Drop set" : "Set " + n3}`;
-    const val = +(x2.r ?? 0) > 0 ? setShort(ex, x2.w == null ? 0 : x2.w, x2.r) : x2.w != null ? loadLabel(ex, x2.w) + (ex.bw ? "" : " " + U()) : "";
+    const shown2 = x2.w ?? effW(b2, i5);
+    const val = +(x2.r ?? 0) > 0 ? (
+      // No load anywhere on a loaded lift: the reps alone, never a 0 the row does not show (REV12-5).
+      shown2 == null && !ex.bw && !ex.timed ? `${x2.r} rep${Number(x2.r) === 1 ? "" : "s"}` : setShort(ex, shown2 ?? 0, x2.r)
+    ) : x2.w != null ? loadLabel(ex, x2.w) + (ex.bw ? "" : " " + U()) : "";
     const at2 = i5;
     confirmBox(
       `Remove ${what.toLowerCase()}?`,
