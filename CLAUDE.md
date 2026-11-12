@@ -172,7 +172,8 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   draws; no Planned chip on Stats; the plan's usual-range note is a quiet line on Plan, never a flag and never on
   Stats; no other app is named on screen; no wording about shared phones, someone else or another person; no
   Comeback (former bests); no restyle without V's direction; "on target", the 1RM display and mid-workout
-  adjustments on by default are V's calls.
+  adjustments on by default are V's calls; the top bar sits at the top of every tab and scrolls away with the page, its
+  pull-down opening the calendar only with the page at its top (V, 2026-11-12, NEW-138).
 - **Copy:** short, plain, specific; the number and the action on screen, the reasons in a tip or How this works; no
   em dashes, hype or exclamation marks; the serial comma in any list of three; estimated minutes only through
   `estMin` ("~N min"); the first-run Set up page stays under 400 characters, in lines of 45 at most. Code comments
