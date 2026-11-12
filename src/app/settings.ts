@@ -704,7 +704,7 @@ function dataBody(): TemplateResult {
       : nothing
   }${asideLine()}${privacyLine()}${safetyLine()}${
     backupDue()
-      ? html`<p class="callout yellow u-m10-0-0"><b>Backup due.</b> ${s.lastExport ? `Last backup file ${fmtDate(s.lastExport)}.` : 'No backup file yet.'}${cloud.on ? 'Your account has not synced this week. Export one below.' : ''}</p>
+      ? html`<p class="callout yellow u-m10-0-0"><b>Backup due.</b> ${s.lastExport ? `Last backup file ${fmtDate(s.lastExport)}.` : 'No backup file yet.'}${cloud.on ? ' Your account has not synced this week. Export one below.' : ''}</p>
 `
       : nothing
   }${

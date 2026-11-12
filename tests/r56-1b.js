@@ -3,7 +3,7 @@
 // tests/r55-1b.js runs its cases: a phone signed out of one account keeping
 // its log, then signed in to another, is asked before anything merges, and
 // each answer does here, through the real account service (the sign-in
-// sheet, the auth callbacks, signOut), what tests/r56-1.js shows it does on
+// sheet, the auth callbacks, signOut), what tests/storage-sync.js (S-14) shows it does on
 // the mock cloud. Each case fails on a dist built from r56
 // (`node tests/r56-1b.js <that folder>`): r56 merged the log into the second
 // account at once, unasked. The next two cases are from the stack's review

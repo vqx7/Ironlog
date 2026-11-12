@@ -49,7 +49,8 @@ async function open(file, opts = {}) {
   // IRONLOG_FILE runs the same suites against another build (the standalone dist/index.html).
   if (file === 'index.html' && process.env.IRONLOG_FILE) file = process.env.IRONLOG_FILE;
   const browser = opts.browser || await engine.launch();
-  const ctx = await browser.newContext({ viewport: { width: opts.w || 390, height: opts.h || 844 }, deviceScaleFactor: opts.dpr || 1, hasTouch: !!opts.touch, isMobile: !!opts.touch, colorScheme: opts.dark ? 'dark' : 'light' });
+  // opts.tz and opts.locale set the phone's time zone and language (tests/storage-sync.js S-26 reads a log on two).
+  const ctx = await browser.newContext({ viewport: { width: opts.w || 390, height: opts.h || 844 }, deviceScaleFactor: opts.dpr || 1, hasTouch: !!opts.touch, isMobile: !!opts.touch, colorScheme: opts.dark ? 'dark' : 'light', ...(opts.tz ? { timezoneId: opts.tz } : {}), ...(opts.locale ? { locale: opts.locale } : {}) });
   // Most suites were written on the six-day routine installs started with
   // before r29; they keep it. opts.realStarter runs a new install as shipped.
   if (!opts.realStarter) await ctx.addInitScript(`window.IRONLOG_STARTER='legacy';`);
@@ -70,11 +71,13 @@ async function open(file, opts = {}) {
 /* A second tab of the same page in the same browser profile as P (open's
    result): the same storage, so a save in one is a storage event in the
    other, as two tabs of the app on one phone. */
-async function tab(P, file) {
+async function tab(P, file, setup) {
   if (file === 'index.html' && process.env.IRONLOG_FILE) file = process.env.IRONLOG_FILE;
   const page = await P.ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+  // setup(ctx, page): what the page needs before it loads (a stand-in account set up per page).
+  if (setup) await setup(P.ctx, page);
   await page.route('**/*', serve);
   await page.goto('file://' + path.resolve(file));
   await page.waitForFunction(() => window.__libs && window.__libs.chart && window.__libs.sortable);

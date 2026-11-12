@@ -961,7 +961,7 @@ function cleanDraft(d: Rec, date: string): DraftLike {
     // Started as its day's second workout.
     part: d.part === 2 ? (2 as const) : undefined,
     // Finish's two questions once answered (sets left, ramp-ups), kept as they came: until 2.28 they passed through
-    // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (the r56-1c suite).
+    // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (tests/storage-sync.js, S-12, moved from r56-1c).
     _leftAsked: typeof d._leftAsked === 'boolean' ? d._leftAsked : undefined,
     _rampAsked: typeof d._rampAsked === 'boolean' ? d._rampAsked : undefined,
     // A past workout typed in after the fact: no rest timer, no clock, no check-in.

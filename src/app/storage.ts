@@ -648,7 +648,7 @@ export function backupDue(): boolean {
   return !le || daysBetween(le, today()) > BACKUP_DAYS;
 }
 /* The menu button ends the top bar on every tab: a person for the
-   account, with a dot for the save state (green synced, blue syncing, amber
+   account, with a dot for the save state (green synced, grey syncing, amber
    when something wants attention, red when nothing is being saved; none when
    the log is simply saved on this device). Wider screens show the words too.
    A tap opens the menu: account, Report a problem, the Guide, your data. */

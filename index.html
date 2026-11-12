@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.11-r95">
+<meta name="app-build" content="2026.11.11-r96">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2134,8 +2134,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.49";
-  var APP_VERSION = "2026.11.11-r95";
+  var DISPLAY_VERSION = "2.50";
+  var APP_VERSION = "2026.11.11-r96";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -4344,7 +4344,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       // Started as its day's second workout.
       part: d3.part === 2 ? 2 : void 0,
       // Finish's two questions once answered (sets left, ramp-ups), kept as they came: until 2.28 they passed through
-      // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (the r56-1c suite).
+      // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (tests/storage-sync.js, S-12, moved from r56-1c).
       _leftAsked: typeof d3._leftAsked === "boolean" ? d3._leftAsked : void 0,
       _rampAsked: typeof d3._rampAsked === "boolean" ? d3._rampAsked : void 0,
       // A past workout typed in after the fact: no rest timer, no clock, no check-in.
@@ -16493,7 +16493,7 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
 ` : A}${ENV === "preview" ? b`<div class="panel row spread u-mt8">
 <p class="small u-m0_f1n1n180"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in ${APP_NAME} stays as it is.</p>
 <button class="btn sm primary" data-act="previewCopy">Copy my log in</button></div>
-` : A}${asideLine()}${privacyLine()}${safetyLine()}${backupDue() ? b`<p class="callout yellow u-m10-0-0"><b>Backup due.</b> ${s3.lastExport ? `Last backup file ${fmtDate(s3.lastExport)}.` : "No backup file yet."}${cloud.on ? "Your account has not synced this week. Export one below." : ""}</p>
+` : A}${asideLine()}${privacyLine()}${safetyLine()}${backupDue() ? b`<p class="callout yellow u-m10-0-0"><b>Backup due.</b> ${s3.lastExport ? `Last backup file ${fmtDate(s3.lastExport)}.` : "No backup file yet."}${cloud.on ? " Your account has not synced this week. Export one below." : ""}</p>
 ` : A}${device.ok ? A : b`<p class="small u-cred">This browser blocks storage: nothing is kept after a reload unless you sync.</p>
 `}${unreadableRaw() ? b`<div class="panel u-mt8" id="unreadPanel">
 <p class="small u-m0-0-6"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p>

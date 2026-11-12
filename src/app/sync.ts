@@ -1790,7 +1790,7 @@ export async function cloudInit(): Promise<void> {
      this call's too, rather than reading the sync as off while it is still
      deciding (r64, the r63 audit's F3: a sign-in made meanwhile said "Signed
      in. Syncing your log." and nothing synced). A start of its own after it
-     would ask again a question just answered Cancel (tests/r56-1.js). */
+     would ask again a question just answered Cancel (tests/storage-sync.js, S-14). */
   if (starting) {
     await starting;
     return;
@@ -1951,6 +1951,11 @@ function mergeIn(text: string, own: boolean): void {
       Rr = chunksOf(incoming),
       B = chunksOf(base),
       parts: Record<string, Rec | null> = {};
+    /* A record changed in both tabs keeps the other tab's copy, the one saved first. Letting this tab's own copy win
+       on its own save (2.50's first fix of NEW-124) lost what the other tab logged: a tab behind took away the other's
+       new workout and its sets, a change typed lost to a later tick, and Undo took back the other tab's edit (the
+       review of 2.50 and 2.51, REV-1 to REV-4; tests/storage-sync.js S-6). NEW-124 is OPEN: keeping the later edit
+       needs each tab's time of change, and a workout's sets kept whichever copy wins. */
     for (const id of new Set([...Object.keys(L), ...Object.keys(Rr), ...Object.keys(B)]))
       parts[id] = mergeChunk(
         id,
