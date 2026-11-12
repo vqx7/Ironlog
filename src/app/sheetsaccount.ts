@@ -40,11 +40,25 @@ const menuAuth = () => (AUTH() && !(window.claude && typeof window.claude.use ==
 function photoHead(): TemplateResult | typeof nothing {
   if (!acct.user) return nothing;
   const u = photoUrl();
-  return html`<label class="mph" id="menuPhoto" aria-label=${u ? 'Change your profile photo' : 'Add a profile photo'} data-tip="Your profile photo, kept in your account">${
-    u
-      ? html`\x3cimg class="mph-i" src=${u} alt="">`
-      : html`<span class="mph-i mph-none" aria-hidden="true">${markup(MENU_ICON)}</span>`
-  }<span class="mph-cam" aria-hidden="true">${markup(CAMERA_ICON)}</span><input type="file" accept="image/*" data-photo hidden></label>`;
+  const cam = html`<span class="mph-cam" aria-hidden="true">${markup(CAMERA_ICON)}</span>`;
+  // With a photo, a tap opens it large, where it is changed or removed (NEW-141); with none, a tap picks one.
+  return u
+    ? html`<button type="button" class="mph" id="menuPhoto" data-act="photoView" aria-label="Open your profile photo" data-tip="Your profile photo, kept in your account">\x3cimg class="mph-i" src=${u} alt="">${cam}</button>`
+    : html`<label class="mph" id="menuPhoto" aria-label="Add a profile photo" data-tip="Your profile photo, kept in your account"><span class="mph-i mph-none" aria-hidden="true">${markup(MENU_ICON)}</span>${cam}<input type="file" accept="image/*" data-photo hidden></label>`;
+}
+
+/* The profile photo opened large from the menu (V, 2026-11-12, NEW-141: it could only be seen at the size of the
+   menu button). Change photo picks another, as the menu's photo did; Remove asks first, as the menu's link does. */
+/** The profile photo, large, with Change photo, Remove photo and Close; Close alone once it is gone. */
+export function photoSheet(): TemplateResult {
+  const u = photoUrl();
+  return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="phH"><div class="sheet-h"><h3 id="phH">Profile photo</h3>${closeX()}</div>
+    ${u ? html`\x3cimg class="pbig" src=${u} alt="Your profile photo">` : html`<p class="small muted u-m0">No profile photo.</p>`}
+    <div class="row u-mt10">${
+      u
+        ? html`<label class="btn">Change photo<input type="file" accept="image/*" data-photo hidden></label><button type="button" class="btn danger" data-act="photoDel">Remove photo</button>`
+        : nothing
+    }<button type="button" class="btn" data-act="mClose">Close</button></div></div>`;
 }
 
 /** The menu; `first` when it is opened from the first pages. */

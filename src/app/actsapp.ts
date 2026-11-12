@@ -10,7 +10,7 @@ import { CARDIOL, CWHENL, MK, ML, noE1 } from './library';
 import { DSEC_ALIAS, HIDEABLE, HIDEABLE_KEYS } from './layout';
 import { loadWords } from './loads';
 import { PHOTO_ASKED, log, prefSet } from './storage';
-import { photoRemove, photoSet } from './photo';
+import { photoRemove, photoSet, photoUrl } from './photo';
 import { photoSyncSoon } from './sync';
 import { plainTemplate } from './normalize';
 import { EX, U, fmtW, loadOf, noBody, rirEst, sortedSessions } from './live';
@@ -277,7 +277,7 @@ export function exportCSV(): Promise<void> | undefined {
 /** Redraws what shows the profile photo. */
 function photoShown(): void {
   setSaveState();
-  if (ui.modal && ui.modal.kind === 'menu') renderModal();
+  if (ui.modal && (ui.modal.kind === 'menu' || ui.modal.kind === 'photo')) renderModal();
   rerenderKeepScroll();
 }
 /** A photo picked in a profile photo field (the menu or Today's line): kept and shown; true when the field was one. */
@@ -320,6 +320,9 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       true
     );
+  },
+  photoView() {
+    if (photoUrl()) openModal({ kind: 'photo' });
   },
   photoLater() {
     prefSet(PHOTO_ASKED, '1');

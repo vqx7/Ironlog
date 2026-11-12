@@ -29,7 +29,7 @@ import { checkinSheet, viewWorkout, workoutFullDraw } from './workout';
 import { blockDragStop, mountBlockDrag } from './workdrag';
 import { curRoutineB } from './display';
 import { calSheet } from './calendar';
-import { acctSheet, fbInboxSheet, fbSheet, menuSheet } from './sheetsaccount';
+import { acctSheet, fbInboxSheet, fbSheet, menuSheet, photoSheet } from './sheetsaccount';
 import { acctClosed } from './account';
 import { captchaMount } from './captcha';
 import { guideSheet } from './guide';
@@ -322,6 +322,7 @@ export const SHEETS: Sheets = {
   install: { draw: installSheet },
   icon: { draw: iconSheet },
   menu: { draw: menuSheet },
+  photo: { draw: photoSheet },
   guide: { draw: guideSheet },
   calendar: { draw: calSheet },
   past: { draw: pastSheet },

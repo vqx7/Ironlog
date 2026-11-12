@@ -26,8 +26,9 @@ import { parseJson, rec } from './records';
 import { PHOTO_KEY, PHOTO_SYNC, PHOTO_ASKED, log, prefDel, prefGet, prefSet } from './storage';
 import { acct, cloud } from './store';
 
-/** The side of the kept photo in pixels: sharp at the button's size on a phone screen. */
-const PHOTO_EDGE = 256;
+/** The side of the kept photo in pixels: sharp on the menu button and fair opened large (NEW-141; 256 until 2.60,
+    soft once enlarged), and still tens of kilobytes. */
+const PHOTO_EDGE = 512;
 /** The JPEG quality the photo is kept at. */
 const PHOTO_QUALITY = 0.85;
 /** What a kept photo must look like: a JPEG data address and nothing else. */

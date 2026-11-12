@@ -1309,15 +1309,19 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     render();
     toast(`${x ? injLabel(x.m) : 'Injury'} cleared`, true);
   },
+  /* Each says what it hid and where that stays, from where the lifter is: the menu at the top right. Until 2.60 both
+     said "Hidden. Settings > Your data has it.", which read as the log and named nothing (V, 2026-11-12, NEW-140). */
   acctLater() {
     prefSet(ACCT_LATER, '1');
     rerenderKeepScroll();
-    toast('Hidden. Settings > Your data has it.');
+    toast('Hidden. Sign in and Create account stay in the menu at the top right.');
   },
   installLater() {
     prefSet(INSTALL_LATER, '1');
     rerenderKeepScroll();
-    toast('Hidden. Settings > Your data has it.');
+    toast(
+      `Hidden. ${/^ios/.test(installKind()) ? 'Add to Home Screen' : 'Install'} stays in the menu at the top right, under Your data and backups.`
+    );
   },
   iconLater() {
     prefSet(ICON_NOTE, '1');

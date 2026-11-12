@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.12-r105">
+<meta name="app-build" content="2026.11.12-r106">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -478,6 +478,8 @@ details[open]>summary .chev::before{transform:translateY(2px) rotate(-135deg)}
 .gbody{padding:0 0 12px}.gbody p{margin:0 0 8px;font-size:14.5px;line-height:1.45}
 /* The menu's profile photo (2.33): in its header, the photo in the progress gradient's ring, a camera on it. */
 .mph{position:relative;flex:none;width:44px;height:44px;cursor:pointer}
+/* With a photo it is a button that opens the photo large (2.60, NEW-141), drawn as the label it was. */
+button.mph{-webkit-appearance:none;appearance:none;border:0;padding:0;margin:0;background:none;color:inherit;font:inherit}
 .mph-i{width:44px;height:44px;box-sizing:border-box;padding:2px;border-radius:50%;background:var(--holo);object-fit:cover;display:block}
 .mph-none{display:inline-flex;align-items:center;justify-content:center;padding:0;background:var(--volt-soft);color:var(--volt-line);box-shadow:inset 0 0 0 1.5px var(--volt-line)}
 .mph-none svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round}
@@ -2135,8 +2137,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.59";
-  var APP_VERSION = "2026.11.12-r105";
+  var DISPLAY_VERSION = "2.60";
+  var APP_VERSION = "2026.11.12-r106";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -10126,7 +10128,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var FB = () => window.ironlogFeedback && typeof window.ironlogFeedback.send === "function" ? window.ironlogFeedback : null;
 
   // src/app/photo.ts
-  var PHOTO_EDGE = 256;
+  var PHOTO_EDGE = 512;
   var PHOTO_QUALITY = 0.85;
   var PHOTO_SHAPE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
   function photoOf(v3) {
@@ -21008,15 +21010,19 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       render();
       toast(`${x2 ? injLabel(x2.m) : "Injury"} cleared`, true);
     },
+    /* Each says what it hid and where that stays, from where the lifter is: the menu at the top right. Until 2.60 both
+       said "Hidden. Settings > Your data has it.", which read as the log and named nothing (V, 2026-11-12, NEW-140). */
     acctLater() {
       prefSet(ACCT_LATER, "1");
       rerenderKeepScroll();
-      toast("Hidden. Settings > Your data has it.");
+      toast("Hidden. Sign in and Create account stay in the menu at the top right.");
     },
     installLater() {
       prefSet(INSTALL_LATER, "1");
       rerenderKeepScroll();
-      toast("Hidden. Settings > Your data has it.");
+      toast(
+        `Hidden. ${/^ios/.test(installKind()) ? "Add to Home Screen" : "Install"} stays in the menu at the top right, under Your data and backups.`
+      );
     },
     iconLater() {
       prefSet(ICON_NOTE, "1");
@@ -24203,7 +24209,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   function photoShown() {
     setSaveState();
-    if (ui.modal && ui.modal.kind === "menu") renderModal();
+    if (ui.modal && (ui.modal.kind === "menu" || ui.modal.kind === "photo")) renderModal();
     rerenderKeepScroll();
   }
   function photoChange(t4) {
@@ -24243,6 +24249,9 @@ ${JSON.stringify(ctx, null, 1)}`;
         },
         true
       );
+    },
+    photoView() {
+      if (photoUrl()) openModal({ kind: "photo" });
     },
     photoLater() {
       prefSet(PHOTO_ASKED, "1");
@@ -27578,7 +27587,14 @@ ${JSON.stringify(ctx, null, 1)}`;
   function photoHead() {
     if (!acct.user) return A;
     const u4 = photoUrl();
-    return b`<label class="mph" id="menuPhoto" aria-label=${u4 ? "Change your profile photo" : "Add a profile photo"} data-tip="Your profile photo, kept in your account">${u4 ? b`\x3cimg class="mph-i" src=${u4} alt="">` : b`<span class="mph-i mph-none" aria-hidden="true">${markup(MENU_ICON)}</span>`}<span class="mph-cam" aria-hidden="true">${markup(CAMERA_ICON)}</span><input type="file" accept="image/*" data-photo hidden></label>`;
+    const cam = b`<span class="mph-cam" aria-hidden="true">${markup(CAMERA_ICON)}</span>`;
+    return u4 ? b`<button type="button" class="mph" id="menuPhoto" data-act="photoView" aria-label="Open your profile photo" data-tip="Your profile photo, kept in your account">\x3cimg class="mph-i" src=${u4} alt="">${cam}</button>` : b`<label class="mph" id="menuPhoto" aria-label="Add a profile photo" data-tip="Your profile photo, kept in your account"><span class="mph-i mph-none" aria-hidden="true">${markup(MENU_ICON)}</span>${cam}<input type="file" accept="image/*" data-photo hidden></label>`;
+  }
+  function photoSheet() {
+    const u4 = photoUrl();
+    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="phH"><div class="sheet-h"><h3 id="phH">Profile photo</h3>${closeX()}</div>
+    ${u4 ? b`\x3cimg class="pbig" src=${u4} alt="Your profile photo">` : b`<p class="small muted u-m0">No profile photo.</p>`}
+    <div class="row u-mt10">${u4 ? b`<label class="btn">Change photo<input type="file" accept="image/*" data-photo hidden></label><button type="button" class="btn danger" data-act="photoDel">Remove photo</button>` : A}<button type="button" class="btn" data-act="mClose">Close</button></div></div>`;
   }
   function menuSheet(m3) {
     const A2 = menuAuth();
@@ -28638,6 +28654,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     install: { draw: installSheet },
     icon: { draw: iconSheet },
     menu: { draw: menuSheet },
+    photo: { draw: photoSheet },
     guide: { draw: guideSheet },
     calendar: { draw: calSheet },
     past: { draw: pastSheet },
