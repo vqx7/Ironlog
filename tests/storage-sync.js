@@ -373,6 +373,45 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     ok(m2.cls !== 'bad' && m2.txt !== 'Not saving: export a backup', 'S-3: and the menu no longer says Not saving', m2);
     await P.close();
   }
+  if (run('S-3')) {
+    /* REV6-S2 (V, 2026-11-09 08:11: "if phone storage is full hold onto draft copy"): a workout set aside while a saved
+       session is edited comes back when the edit is saved, and its set-aside copy on the phone is let go only once a
+       save of the log holding it succeeds. Until then that copy is the only one the phone keeps: closed and reopened,
+       the workout comes back from it. Before 2.55 the copy was dropped as the workout came back, so a phone full then
+       lost the workout at the next reload. */
+    const seed = (S, L) => { S.sessions = [{ id: 'old', date: '2026-11-07', dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', notes: '', free: true, ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w: 90, r: 8, rir: 2, done: true }] }] }]; };
+    const P = await phone({ seed });
+    const parked = () => P.ev(k => { const v = localStorage.getItem(k + '.parked'); return v ? JSON.parse(v).draft.id : null; }, KEY);
+    await start(P); await tick(P, 0, 0, '100', '8');
+    const w0 = (await P.ev(() => window.__ironlog.state.draft)).id;
+    await P.tabTo('history'); await P.page.click('#view [data-act="histToggle"][data-id="old"]'); await wait(150);
+    await P.page.click('#view [data-act="histEdit"][data-id="old"]'); await wait(300);
+    ok((await parked()) === w0 && (await P.ev(() => !!(window.__ironlog.state.draft || {}).editingId)), 'S-3: (setup) the saved session open for editing, the workout set aside', await parked());
+    await P.ev(() => { window.__full = 'ironlog\\.v1$'; });
+    await P.page.click('#view [data-act="finish"]'); await wait(300);
+    for (let k = 0; k < 3 && (await P.ev(() => !!window.__ironlog.ui.modal)); k++) { await P.page.click('#modal [data-act="mOk"]').catch(() => {}); await wait(250); }
+    const back = await P.ev(() => { const d = window.__ironlog.state.draft; return d && !d.editingId ? { id: d.id, done: d.ex[0].sets.filter(x => x.done).length } : null; });
+    ok(back && back.id === w0 && back.done === 1 && (await P.menu()).cls === 'bad', 'S-3: the edit saved with the phone full: the workout comes back, its set ticked, and the save fails', { back, menu: await P.menu() });
+    ok((await parked()) === w0, 'S-3: its set-aside copy stays on the phone while no save holds it (REV6-S2)', await parked());
+    const today = await P.ev(() => ({ resume: !!document.querySelector('#view [data-act="wkResume"]'), bring: !!document.querySelector('#view [data-act="parkBack"]') }));
+    ok(today.resume && !today.bring, 'S-3: (a guard) Today offers the workout as back (Resume), not as still set aside', today);
+    // Closed and opened again with the log never saved since: the edit is what the phone kept, and the workout set
+    // aside comes back from its copy when the edit ends.
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__ironlog.state); await wait(400);
+    const after = await P.ev(() => ({ editing: !!(window.__ironlog.state.draft || {}).editingId }));
+    await P.ev(() => window.__ironlog.ACT.discard()); await wait(300);
+    for (let k = 0; k < 3 && (await P.ev(() => !!window.__ironlog.ui.modal)); k++) { await P.page.click('#modal [data-act="mOk"]').catch(() => {}); await wait(250); }
+    const again = await P.ev(() => { const d = window.__ironlog.state.draft; return d && !d.editingId ? { id: d.id, done: d.ex[0].sets.filter(x => x.done).length } : null; });
+    ok(after.editing && again && again.id === w0 && again.done === 1, 'S-3: reopened, the edit the phone kept is cancelled and the workout comes back from its copy, its set ticked (REV6-S2)', { after, again });
+    ok((await parked()) === null, 'S-3: (a guard) saved with it, the copy is let go', await parked());
+    // A copy let go is never offered again: the workout finished, nothing comes back.
+    await P.tabTo('today'); await P.page.click('#view [data-act="wkResume"]').catch(() => {}); await wait(250);
+    await P.page.click('#view [data-act="finish"]'); await wait(300);
+    for (let k = 0; k < 3 && (await P.ev(() => !!window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind !== 'recap')); k++) { await P.page.click('#modal [data-act="mOk"], #modal button:has-text("Finish now")').catch(() => {}); await wait(250); }
+    const end = await P.ev(() => ({ draft: !!window.__ironlog.state.draft, n: window.__ironlog.state.sessions.filter(x => x.id === window.__ironlog.state.sessions[0].id).length, ids: window.__ironlog.state.sessions.map(x => x.id) }));
+    ok(!end.draft && end.ids.filter(id => id === w0).length === 1, 'S-3: finished, the workout is one session and nothing comes back after it', end);
+    await P.close();
+  }
 
   /* ---------- S-4: the menu button's dot and words ---------- */
   if (run('S-4')) {

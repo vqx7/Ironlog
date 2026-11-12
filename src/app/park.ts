@@ -14,6 +14,7 @@ import { act } from './act';
 import { normalize } from './normalize';
 import { parseJson, rec } from './records';
 import { PARKED_KEY, log, prefDel, prefGet, prefSet } from './storage';
+import { onSaved } from './sync';
 import { cloud, fx, state, ui } from './store';
 
 /* The account whose log this phone holds, as the sync notes name it (cloud.acct): known from the start, before the
@@ -28,13 +29,36 @@ function held(): { uid: string; draft: unknown } | null {
   const r = rec(parseJson(prefGet(PARKED_KEY) || 'null'));
   return r && typeof r['uid'] === 'string' ? { uid: r['uid'], draft: r['draft'] } : null;
 }
+/** The id of a held record's workout, or null when it has none. */
+const heldId = (h: { draft: unknown } | null): string | null => {
+  const id = h ? rec(h.draft)?.['id'] : null;
+  return typeof id === 'string' ? id : null;
+};
 
-/** Whether a workout is set aside on this phone, for any account. */
-export const parkedHeld = (): boolean => held() != null;
+/* The workout brought back in this visit whose set-aside copy is still held (REV6-S2, V 2026-11-09 08:11: "if phone
+   storage is full hold onto draft copy"): the copy is let go once a write of the log succeeds, which then holds the
+   workout or what became of it (saved, discarded). Until then the log lives in memory alone, so the copy is the
+   phone's only one: kept, and offered again only after the app is closed, when this visit's log is gone with it. */
+let backHere: string | null = null;
+/** Lets go of the copy of the workout brought back, once a write of the log succeeds (registered with onSaved at the first unpark). */
+function letGo(): void {
+  if (backHere == null) return;
+  if (heldId(held()) === backHere) prefDel(PARKED_KEY);
+  backHere = null;
+}
+let hooked = false;
+/** The held record, unless it is the copy of the workout already brought back in this visit. */
+const waiting = (): { uid: string; draft: unknown } | null => {
+  const h = held();
+  return h && backHere != null && heldId(h) === backHere ? null : h;
+};
+
+/** Whether a workout is set aside on this phone, for any account (not one already brought back whose copy waits for a save). */
+export const parkedHeld = (): boolean => waiting() != null;
 
 /** Whether a workout set aside on this phone is this account's, so it can come back here. */
 export const parkedHere = (): boolean => {
-  const h = held();
+  const h = waiting();
   return !!h && h.uid === who();
 };
 
@@ -45,7 +69,8 @@ export const parkedHere = (): boolean => {
 /** Sets the workout in progress aside; false when there is none, it is an edit of a saved session, one is held already, or the phone refused the write (the caller then asks, as before 2.36). */
 export function parkDraft(): boolean {
   const d = state.draft;
-  if (!d || d.editingId || parkedHeld()) return false;
+  // Any copy held, one waiting for a save included, is the only one of its workout: never written over.
+  if (!d || d.editingId || held() != null) return false;
   return prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: d }));
 }
 
@@ -60,13 +85,24 @@ export function unpark(): boolean {
     prefDel(PARKED_KEY);
     return false;
   }
-  act(
-    () => {
-      state.draft = d;
-    },
-    { inProgress: true }
-  );
-  prefDel(PARKED_KEY);
+  // Its copy is let go by the save that holds it (letGo), not here: a phone that cannot save keeps it.
+  if (!hooked) {
+    onSaved(letGo);
+    hooked = true;
+  }
+  backHere = d.id;
+  try {
+    act(
+      () => {
+        state.draft = d;
+      },
+      { inProgress: true }
+    );
+  } catch (e) {
+    // Not brought back: the copy stays set aside, offered as before.
+    backHere = null;
+    throw e;
+  }
   ui.away = d.id;
   return true;
 }

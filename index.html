@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.11-r100">
+<meta name="app-build" content="2026.11.11-r101">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2134,8 +2134,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.54";
-  var APP_VERSION = "2026.11.11-r100";
+  var DISPLAY_VERSION = "2.55";
+  var APP_VERSION = "2026.11.11-r101";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -10075,9 +10075,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var WRITE_TRIES = 3;
   var KEEP_TRIES = 10;
   var saveT = null;
+  var savedHooks = [];
+  function onSaved(f3) {
+    savedHooks.push(f3);
+  }
   function writeLocal(j3) {
     localStorage.setItem(KEY, j3);
     device.lastSaved = j3;
+    for (const f3 of savedHooks)
+      try {
+        f3();
+      } catch (e5) {
+        log("storage", e5);
+      }
   }
   function storedElsewhere() {
     if (!device.boot || device.lastSaved == null) return null;
@@ -14323,14 +14333,29 @@ ${more}`;
     const r4 = rec(parseJson(prefGet(PARKED_KEY) || "null"));
     return r4 && typeof r4["uid"] === "string" ? { uid: r4["uid"], draft: r4["draft"] } : null;
   }
-  var parkedHeld = () => held2() != null;
-  var parkedHere = () => {
+  var heldId = (h3) => {
+    const id = h3 ? rec(h3.draft)?.["id"] : null;
+    return typeof id === "string" ? id : null;
+  };
+  var backHere = null;
+  function letGo() {
+    if (backHere == null) return;
+    if (heldId(held2()) === backHere) prefDel(PARKED_KEY);
+    backHere = null;
+  }
+  var hooked = false;
+  var waiting2 = () => {
     const h3 = held2();
+    return h3 && backHere != null && heldId(h3) === backHere ? null : h3;
+  };
+  var parkedHeld = () => waiting2() != null;
+  var parkedHere = () => {
+    const h3 = waiting2();
     return !!h3 && h3.uid === who();
   };
   function parkDraft() {
     const d3 = state.draft;
-    if (!d3 || d3.editingId || parkedHeld()) return false;
+    if (!d3 || d3.editingId || held2() != null) return false;
     return prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: d3 }));
   }
   function unpark() {
@@ -14342,13 +14367,22 @@ ${more}`;
       prefDel(PARKED_KEY);
       return false;
     }
-    act(
-      () => {
-        state.draft = d3;
-      },
-      { inProgress: true }
-    );
-    prefDel(PARKED_KEY);
+    if (!hooked) {
+      onSaved(letGo);
+      hooked = true;
+    }
+    backHere = d3.id;
+    try {
+      act(
+        () => {
+          state.draft = d3;
+        },
+        { inProgress: true }
+      );
+    } catch (e5) {
+      backHere = null;
+      throw e5;
+    }
     ui.away = d3.id;
     return true;
   }
@@ -21967,7 +22001,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   var wait = null;
   var flight = null;
   var lastTry = 0;
-  var waiting2 = () => !!wait;
+  var waiting3 = () => !!wait;
   var acctOpen = () => {
     const m3 = ui.modal;
     return m3 && m3.kind === "account" ? m3 : null;
@@ -23752,14 +23786,14 @@ ${JSON.stringify(ctx, null, 1)}`;
   var codeIs = (e5, c4) => !!e5 && typeof e5 === "object" && "code" in e5 && e5.code === c4;
   var nameIs = (e5, n3) => e5 instanceof Error && e5.name === n3;
   var LINK_MS = 1e3;
-  async function exportFile(data, filename, mime, okMsg, onSaved, fallbackTitle, fallbackHelp) {
+  async function exportFile(data, filename, mime, okMsg, onSaved2, fallbackTitle, fallbackHelp) {
     try {
       const c4 = window.claude;
       const dl = c4 && typeof c4.use === "function" ? await c4.use("downloads") : null;
       if (dl) {
         try {
           await dl.save({ filename, data });
-          if (onSaved) onSaved();
+          if (onSaved2) onSaved2();
           toast(okMsg);
           return;
         } catch (e5) {
@@ -23778,7 +23812,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (file && isStandalone() && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({ files: [file], title: filename });
-          if (onSaved) onSaved();
+          if (onSaved2) onSaved2();
           toast(okMsg);
           return;
         } catch (e5) {
@@ -23816,7 +23850,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       `Look for ${filename}. If nothing appeared, the browser blocked the download. Copy the text instead.`,
       "Yes, I have the file",
       () => {
-        if (onSaved) onSaved();
+        if (onSaved2) onSaved2();
         toast("Backup recorded");
       },
       false,
@@ -28713,7 +28747,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       }),
       cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }),
       acctUser: () => acct.user,
-      acctWaiting: waiting2,
+      acctWaiting: waiting3,
       flush: () => cq(cloudFlush),
       cloudInit,
       cloudStop,

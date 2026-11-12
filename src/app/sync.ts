@@ -120,10 +120,25 @@ declare global {
 /* ---------- the save on this device ---------- */
 
 let saveT: number | null = null;
+/** What runs after each write of the log to this device succeeds (onSaved). */
+const savedHooks: (() => void)[] = [];
+/* A copy kept elsewhere on the phone until the log holding it is written (park.ts's set-aside workout, REV6-S2) is let
+   go here, once a write succeeds: until then the log lives in memory alone. */
+/** Runs `f` after each write of the log to this device succeeds. */
+export function onSaved(f: () => void): void {
+  savedHooks.push(f);
+}
 /** Writes the log's text to this device and notes it as the last saved, the base another tab's write is merged against (onStorage); throws as setItem does. */
 function writeLocal(j: string): void {
   localStorage.setItem(KEY, j);
   device.lastSaved = j;
+  for (const f of savedHooks)
+    try {
+      f();
+    } catch (e) {
+      // The write itself succeeded; what follows it is said in the error log, never taken as a failed save.
+      log('storage', e);
+    }
 }
 /* Whether another tab wrote the log since this one last saved or heard it:
    the save there is not yet heard here (a storage event comes a task later),
