@@ -4756,10 +4756,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
   }
   var UNDO_DAYS = 7;
-  var UNDO_SAVE_MS = 400;
   var undoStack = [], UNDO_MAX = 20;
   var UNDO_DB = ENV === "preview" ? `${STORAGE_ID}-preview-undo` : `${STORAGE_ID}-undo`, UNDO_TTL = UNDO_DAYS * DAY_MS;
-  var undoDbP = null, undoT = null;
+  var undoDbP = null;
   function undoDb() {
     if (!undoDbP)
       undoDbP = new Promise((res) => {
@@ -4791,14 +4790,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
   }
   function undoPersist() {
-    clearTimer(undoT);
+    if (undoWaiting) return;
     undoWaiting = true;
-    undoT = setTimeout(() => void undoWrite(), UNDO_SAVE_MS);
-  }
-  function undoFlush() {
-    if (!undoWaiting) return;
-    clearTimer(undoT);
-    void undoWrite();
+    queueMicrotask(() => {
+      if (undoWaiting) void undoWrite();
+    });
   }
   async function undoRestore() {
     const db = await undoDb();
@@ -4830,7 +4826,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function undoForget() {
     undoStack.length = 0;
-    clearTimer(undoT);
     undoWaiting = false;
     undoDb().then((db) => {
       if (!db) return;
@@ -11439,7 +11434,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function onVisibility() {
     if (document.visibilityState === "hidden") {
       if (saveT) saveNow();
-      undoFlush();
       if (cloud.on) {
         clearTimer(cloud.t);
         cq(cloudFlush);
@@ -11452,7 +11446,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function onPageHide() {
     if (saveT) saveNow();
-    undoFlush();
     if (trackT || cloud.pendAt) trackEdits();
   }
   function syncStart() {
