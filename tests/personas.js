@@ -1005,11 +1005,12 @@ async function finish() {
     // That evening, a session typed in on Today after the gym, all of it in 3 minutes: saved untimed.
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
     await blank();
-    const t1 = await ev(() => window.__ironlog.state.draft.startedAt);
     await add('squat');
     for (let k = 0; k < 3; k++) { if (k === 0) await H.type('w', 0, 0, 225); await H.type('r', 0, k, 5); await H.tick(0, k); }
     await add('leg press');
     for (let k = 0; k < 3; k++) { if (k === 0) await H.type('w', 1, 0, 360); await H.type('r', 1, k, 10); await H.tick(1, k); }
+    // Its clock started at its first set ticked (NEW-129): Finish 3 minutes after that.
+    const t1 = await ev(() => window.__ironlog.state.draft.startedAt);
     await ev(t => window.__setClock(t + 3 * 60000), t1);
     fin = await H.finish();
     const last = await ev(() => { const S = window.__ironlog.state.sessions; const s = S.find(x => x.ex.length === 2 && x.ex.every(b => b.sets.length === 3) && !x.ex.some(b => b.exId === 'bench')); return s && { durMin: s.durMin, ex: s.ex.map(b => b.exId) }; });
@@ -1036,10 +1037,11 @@ async function finish() {
     const planned = 6; // the Monday's two lifts, 3 sets each
     const head = () => ev(() => { const b = document.querySelector('#view .sprog .band'); return { meta: document.querySelector('#view .ph .meta').innerText.trim(), of: (document.getElementById('sessOf') || {}).textContent, now: b && b.getAttribute('aria-valuenow'), vt: b && b.getAttribute('aria-valuetext') }; });
     const h0 = await head();
-    ok(/^Started 9:00 AM · ~\d+ min left$/.test(h0.meta) && h0.of === `0 of ${planned}` && h0.vt === `0 of ${planned} sets done`, '15. the session header: when it began and the minutes left; the bar counts the 6 sets planned', h0);
+    // NEW-129: the workout's clock starts at its first set ticked, so the header says when it began from then.
+    ok(/^Not started · ~\d+ min left$/.test(h0.meta) && h0.of === `0 of ${planned}` && h0.vt === `0 of ${planned} sets done`, '15. the session header: not started until a set is ticked, and the minutes left; the bar counts the 6 sets planned', h0);
     await H.type('w', 0, 0, 140); await H.type('r', 0, 0, 10); await H.effort(0, 0, 2); await H.tick(0, 0);
     const h1 = await head();
-    ok(h1.of === `1 of ${planned}` && h1.now === '1' && !/sets? done/.test(h1.meta), '15. one set ticked: the bar 1 of 6, and the line still says no count', h1);
+    ok(/^Started 9:0[01] AM · ~\d+ min left$/.test(h1.meta) && h1.of === `1 of ${planned}` && h1.now === '1' && !/sets? done/.test(h1.meta), '15. one set ticked: the header says when it began and the minutes left, the bar 1 of 6, and the line still says no count', h1);
     await page.click('#view [data-act="chkOpen"]'); await wait(120);
     for (const [k, v] of [['sleep', 3], ['energy', 2], ['joints', 3]]) { await page.click(`#modal [data-act="chk"][data-k="${k}"][data-v="${v}"]`); await wait(100); }
     const ck = await ev(() => ({ open: !!window.__ironlog.ui.modal, chk: window.__ironlog.state.draft.chk }));

@@ -560,6 +560,25 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       await A3.close();
     }
     {
+      // NEW-129: a workout's clock starts at its first set ticked. Open in two tabs that have not heard each other, each
+      // ticks its first set, A's first: the workout began at A's tick, and two starts are not two edits that clash.
+      const A6 = await phone({ seed: function (S) { S.settings.lastExport = '2026-11-11'; S.settings.autoDone = false; } });
+      const B6 = await tab(A6, FILE); B6.ev = (f, a) => B6.page.evaluate(f, a); await wait(300);
+      await start(A6); await B6.page.click('#tabs [data-tab="today"]'); await wait(400);
+      await A6.ev(() => { window.__deaf = true; }); await B6.ev(() => { window.__deaf = true; });
+      const t0 = await A6.ev(() => Date.now());
+      await tick(A6, 0, 0); await wait(300);
+      const t1 = await A6.ev(() => Date.now());
+      await wait(1200);
+      await tick(B6, 0, 1); await wait(600);
+      await A6.ev(() => { window.__deaf = false; }); await B6.ev(() => { window.__deaf = false; }); await wait(400);
+      const st = await A6.stored();
+      const said = [...(await A6.ev(() => (window.__toasts || []).map(t => t.text))), ...(await B6.ev(() => (window.__toasts || []).map(t => t.text)))];
+      ok(st && st.draft && storedTicks(st).length === 2 && st.draft.startedAt >= t0 && st.draft.startedAt <= t1, 'S-6: one workout in two tabs, each ticking its first set: both sets kept, and it began at the earlier tick', st && st.draft && { ticks: storedTicks(st), startedAt: st.draft.startedAt, t0, t1 });
+      ok(!said.some(t => /edited on two devices/.test(t)), 'S-6: and nothing is said about two edits', said);
+      await A6.close();
+    }
+    {
       // REV-3: the same with both tabs signed in to one account: one copy ends up everywhere, and it is said once.
       const C = cloudOf();
       const A4 = await phone({ cloud: C, uid: 'u6r', seed: function (S) { S.sessions.push({ id: 'k4', date: '2026-11-05', dayIdx: 0, dayName: 'Day 1', notes: 'first', ex: [{ exId: 'bench', sets: [{ w: 62.5, r: 8, rir: 2, done: true }] }] }); S.settings.lastExport = '2026-11-11'; } });

@@ -1,4 +1,4 @@
-// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-34, in the
+// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-35, in the
 // project's claude/ironlog-spec-session.md, built from the code: workout.ts, worksets.ts, worktaps.ts, workfields.ts,
 // workfinish.ts, timer.ts, actsstart.ts, actspick.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
 // expects). A feature suite: each section is one rule, a lifter's log seeded, the workout started from Today's card
@@ -52,7 +52,10 @@ const ROWS = b => [...document.querySelectorAll(`#view .sg`)].filter(r => r.quer
    o.settings sets settings; o.seed (S, L) changes anything else first. */
 async function lifter(o = {}) {
   const items = o.items || [['bench', 3, 6, 10, REST_BENCH], ['dbLateral', 2, 10, 15, REST_RAISE]];
-  const P = await open(FILE, { browser: o.browser, w: o.w || 390, h: 844, clock: (o.day || DAY) + 'T10:00:00', setup: async ctx => { await ctx.addInitScript(TOAST_LOG); } });
+  // o.movable: a clock the check moves (window.__setClock), from 10:00 on the day, as a lifter's day goes on.
+  const T0 = JSON.stringify((o.day || DAY) + 'T10:00:00');
+  const MOVABLE = `(()=>{const R=Date;let off=new R(${T0}).getTime()-R.now();window.__setClock=t=>{off=new R(t).getTime()-R.now();};class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`;
+  const P = await open(FILE, { browser: o.browser, w: o.w || 390, h: 844, clock: o.movable ? undefined : (o.day || DAY) + 'T10:00:00', setup: async ctx => { if (o.movable) await ctx.addInitScript(MOVABLE); await ctx.addInitScript(TOAST_LOG); } });
   P.ev = (f, a) => P.page.evaluate(f, a);
   await P.ev(([items, o, LB]) => {
     const L = window.__ironlog; const S = L.state;
@@ -932,6 +935,60 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await P.tap('#view [data-act="chkOpen"]', 250); for (const k of ['sleep', 'energy']) await P.tap(`#modal [data-act="chk"][data-k="${k}"][data-v="1"]`, 150);
     ok(!(await P.ev(() => !!document.getElementById('readyCard'))), 'L-34: a low check-in offers nothing more on a lighter day');
     await P.close();
+  }
+
+  /* ---------- L-35: the workout's clock starts at its first set ticked or cardio logged, not when it is opened ---------- */
+  if (run('L-35')) {
+    // The time on the page's clock a stored start reads as, "10:31".
+    const hm = t => P => P.ev(t => { if (!t) return null; const d = new Date(t); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); }, t);
+    const meta = P => P.ev(() => { const m = document.querySelector('#view .ph .meta'); return m ? m.innerText.replace(/\s+/g, ' ').trim() : null; });
+    const at = (P, time) => P.ev(t => { window.__setClock(t); }, DAY + 'T' + time + ':00');
+    // A routine day set up ahead: opened at 10:00 and left, resumed at the gym at 10:30, its first set ticked at 10:31.
+    const P = await lifter({ settings: { autoDone: false }, movable: true });
+    await start(P);
+    const m0 = await meta(P);
+    ok(/^Not started · ~\d+ min left$/.test(m0) && !(await P.draft()).startedAt, 'L-35: opened, the workout reads "Not started", its clock not running', { meta: m0, startedAt: (await P.draft()).startedAt });
+    await P.tap('#view [data-act="wkAway"]', 300);
+    await at(P, '10:30');
+    await P.tap('#view [data-act="wkResume"]', 300);
+    const m1 = await meta(P);
+    ok(/^Not started/.test(m1), 'L-35: resumed half an hour later, still "Not started" until a set is ticked', m1);
+    await at(P, '10:31');
+    await P.tap(tick(0, 0));
+    const m2 = await meta(P);
+    ok(/^Started 10:31 AM · ~\d+ min left$/.test(m2), 'L-35: the first set ticked starts it: "Started 10:31 AM"', m2);
+    await at(P, '11:16');
+    for (const [b, s] of [[0, 1], [0, 2], [1, 0], [1, 1]]) await P.tap(tick(b, s));
+    await P.tap('#view [data-act="finish"]', 400);
+    const fm = await P.modal(); if (fm && fm.kind === 'confirm') await mOk(P);
+    await wait(300);
+    const s = await P.ev(() => window.__ironlog.state.sessions.find(x => x.id !== 'last') || null);
+    ok(s && s.durMin === 45, 'L-35: saved with the minutes from its first set to Finish (45), not from when it was opened (76)', s && s.durMin);
+    ok(s && (await hm(s.t)(P)) === '10:31', 'L-35: and saved as begun at 10:31, its first set', s && (await hm(s.t)(P)));
+    await P.close();
+
+    // A blank session set up ahead: not started either.
+    const Q = await lifter({ movable: true });
+    await Q.page.click('#tabs [data-tab="today"]'); await wait(120);
+    await Q.tap('#view .hero [data-act="startAltOpen"]', 250);
+    await Q.tap('#modal [data-go="startFree"]', 300);
+    if (await Q.ev(() => !!window.__ironlog.ui.modal)) await Q.ev(() => window.__ironlog.ACT.mClose());
+    await wait(150);
+    const q0 = await meta(Q), qd = await Q.draft();
+    ok(qd && qd.free && /Not started/.test(q0) && !qd.startedAt, 'L-35: a blank session opened reads "Not started" too', { meta: q0, free: qd && qd.free, startedAt: qd && qd.startedAt });
+    await Q.close();
+
+    // Cardio before lifting: a row added starts nothing; its minutes logged at 10:20 start the clock there.
+    const C = await lifter({ movable: true });
+    await start(C);
+    await C.tap('#view details[data-sk="logger:cardio"] > summary', 200);
+    await C.tap('#view [data-act="cDraftAdd"][data-when="pre"]', 250);
+    ok(!(await C.draft()).startedAt, 'L-35: "+ Before lifting" alone starts nothing', (await C.draft()).startedAt);
+    await at(C, '10:20');
+    await C.page.fill('#view input[data-cf="min"][data-c="0"]', '10'); await wait(600);
+    const cd = await C.ev(() => JSON.parse(localStorage.getItem('ironlog.v1')).draft);
+    ok(cd && cd.cardio[0].min === 10 && (await hm(cd.startedAt)(C)) === '10:20', 'L-35: its minutes logged start the clock then (10:20), and it is saved', cd && { min: cd.cardio[0] && cd.cardio[0].min, started: await hm(cd.startedAt)(C) });
+    await C.close();
   }
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');

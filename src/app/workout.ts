@@ -505,15 +505,25 @@ export function viewWorkout(d: Draft): TemplateResult {
      message having gone (REV11-2). */
   const bwAt = d.ex.findIndex((b, bi) => !!EX(b.exId).bw && !isFolded(d, b, bi));
   const letters = ssLetters(d.ex.map(b => b.plan));
-  const when = d.past ? `for ${fmtDateLong(d.date)}` : d.startedAt ? `started ${startedWords(d.startedAt)}` : '';
+  // A workout in progress whose clock has not started (NEW-129): set up ahead, nothing ticked or logged yet.
+  const notYet = !d.past && !d.editingId && !d.startedAt;
+  const when = d.past
+    ? `for ${fmtDateLong(d.date)}`
+    : d.startedAt
+      ? `started ${startedWords(d.startedAt)}`
+      : notYet
+        ? 'not started'
+        : '';
   /* The sets done are the bar's to say once it shows (r69, V, 2026-11-03:
      "0 sets done" beside "0 of 19" said it twice), so the line keeps when the
      workout began and the minutes left; with no sets to count it says the
-     count as before. The bar names itself to a screen reader, which read the
-     count from this line until then. */
+     count as before, and before the workout has started, only that (no set can be done yet). The bar names itself
+     to a screen reader, which read the count from this line until then. */
   const meta = sp.n
     ? html`${when ? when.charAt(0).toUpperCase() + when.slice(1) : ''}<span id="sessLeft">${left > 0 ? `${when ? ' · ' : ''}${estMin(left)} left` : ''}</span>`
-    : html`<span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? 'set' : 'sets'}</span> done${when ? `, ${when}` : ''}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ''}</span>`;
+    : notYet
+      ? html`Not started<span id="sessLeft">${left > 0 ? ` · ${estMin(left)} left` : ''}</span>`
+      : html`<span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? 'set' : 'sets'}</span> done${when ? `, ${when}` : ''}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ''}</span>`;
   return html`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d.editingId ? 'Editing a saved session' : d.past ? 'Past workout' : 'Session in progress'}</p><div class="hrow"><h2 class="u-owany_minw0">${d.dayName}</h2>${helpButton('log')}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button></div><p class="meta">${meta}</p>${parkedHeld() ? html`<p class="small muted u-m4-0-0" id="parkedLine">Your workout in progress is set aside. It comes back when you save or discard this one.</p>` : ''}${
     sp.n
       ? html`<div class="sprog"><div class="band" role="progressbar" aria-label="Sets done" aria-valuemin="0" aria-valuemax=${sp.n} aria-valuenow=${sp.k} aria-valuetext=${`${sp.k} of ${sp.n} sets done`}><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%;--pct:${sp.pct}`}></div></div><span id="sessOf" aria-hidden="true">${sp.k} of ${sp.n}</span></div>`

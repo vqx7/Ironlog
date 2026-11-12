@@ -88,8 +88,9 @@ const finish = async H => {
   await H.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
   return m ? m.text : '';
 };
-// Every set of the session in progress ticked at its shown numbers, as a lifter entering them does.
-const tickAll = H => H.ev(() => { const L = window.__ironlog; for (const b of L.state.draft.ex) for (const s of b.sets) { s.w = s.w == null ? 100 * 0.45359237 : s.w; s.r = s.r || 8; s.done = true; } L.saveNow(); L.render(); });
+// Every set of the session in progress ticked at its shown numbers, as a lifter entering them does: through act, the
+// one way the app changes the log, so the ticks start the workout's clock as a tap's do (NEW-129).
+const tickAll = H => H.ev(() => { const L = window.__ironlog; L.act(() => { for (const b of L.state.draft.ex) for (const s of b.sets) { s.w = s.w == null ? 100 * 0.45359237 : s.w; s.r = s.r || 8; s.done = true; } }, { inProgress: true }); L.render(); });
 
 (async () => {
   browser = await engine.launch();
@@ -376,7 +377,8 @@ const tickAll = H => H.ev(() => { const L = window.__ironlog; for (const b of L.
     await seed(H, { items });
     await H.page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(150);
     // Each lift: a top set, then three drops, every one ticked.
-    await H.ev(() => { const L = window.__ironlog; for (const b of L.state.draft.ex) b.sets.forEach((s, i) => { s.w = (100 - i * 15) * 0.45359237; s.r = 8; s.rir = 0; s.drop = i > 0; s.done = true; }); L.saveNow(); L.render(); });
+    // Through act, as tickAll above, so the ticks start the workout's clock (NEW-129).
+    await H.ev(() => { const L = window.__ironlog; L.act(() => { for (const b of L.state.draft.ex) b.sets.forEach((s, i) => { s.w = (100 - i * 15) * 0.45359237; s.r = 8; s.rir = 0; s.drop = i > 0; s.done = true; }); }, { inProgress: true }); L.render(); });
     await H.ev(m => { window.__setClock(window.__ironlog.state.draft.startedAt + m * 60000); }, 17);
     const recap = await finish(H);
     const s = await H.ev(() => { const s = window.__ironlog.state.sessions[0]; return s && { durMin: s.durMin, drops: s.ex.reduce((a, b) => a + b.sets.filter(x => x.drop).length, 0) }; });

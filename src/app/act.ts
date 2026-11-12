@@ -17,6 +17,7 @@ import { chunksOf, emptyChunk } from './chunks';
 import type { Rec } from './records';
 import { invalidate } from './live';
 import { normalize, plainTemplate } from './normalize';
+import { clockStart } from './session';
 import { TRASH_BYTES, TRASH_MAX, parseJson, rec } from './records';
 import type { Trashed } from './records';
 import type { State } from './store';
@@ -66,6 +67,8 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
     if (!opts.inProgress) dropInside = true;
     if (opts.undo && !outerUndo) log('act', 'an Undo step was asked inside a change that keeps none');
     change();
+    // Here too, so a screen drawn before the outer change ends (a tick inside the tap's change) shows the clock started.
+    clockStart(state.draft);
     return true;
   }
   /* A toast's Undo takes back the change it reports. Once another change is
@@ -99,6 +102,8 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   let inside = false;
   try {
     change();
+    // The workout's clock starts with the change that begins it, whichever tap ticked its first set (session.ts, NEW-129).
+    clockStart(state.draft);
   } catch (e) {
     if (logWas) setState(logWas);
     else {

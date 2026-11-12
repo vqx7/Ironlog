@@ -142,16 +142,22 @@ const guard = async f => { try { await f(); } catch (e) { ok(false, 'a section t
     await startToday(D.page);
     const h = () => D.page.evaluate(() => { const b = document.querySelector('#view .sprog .band'); return { meta: document.querySelector('#view .ph .meta').innerText.trim(), of: (document.getElementById('sessOf') || {}).textContent, role: b && b.getAttribute('role'), vt: b && b.getAttribute('aria-valuetext'), now: b && b.getAttribute('aria-valuenow'), hidden: !!document.querySelector('#view .sprog[aria-hidden]'), n: window.__ironlog.state.draft.ex.reduce((a, x) => a + x.sets.filter(s => !s.warm).length, 0) }; });
     const a = await h();
-    ok(/^Started 6:00 PM · ~\d+ min left$/.test(a.meta) && a.of === `0 of ${a.n}`, '4. the header: "Started 6:00 PM · ~N min left", the bar 0 of the sets planned', a);
+    // NEW-129: a workout's clock starts at its first set ticked, so the header says when it began only from then.
+    ok(/^Not started · ~\d+ min left$/.test(a.meta) && a.of === `0 of ${a.n}`, '4. the header: "Not started · ~N min left" until a set is ticked, the bar 0 of the sets planned', a);
     ok(a.role === 'progressbar' && a.vt === `0 of ${a.n} sets done` && !a.hidden, '4. the bar says the sets done to a screen reader', a);
     await D.page.fill('#view input[data-f="r"][data-b="0"][data-s="0"]', '8'); await D.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(200);
     const m = await D.page.evaluate(() => { const m = window.__ironlog.ui.modal; return m && m.kind; });
     if (m === 'confirm') { await D.page.click('#modal [data-act="mOk"]'); await wait(150); }
     const b = await h();
-    ok(b.of === `1 of ${b.n}` && b.now === '1' && !/sets? done/.test(b.meta), '4. a set ticked: the bar 1 of the sets, the line still no count', b);
+    ok(/^Started 6:00 PM · ~\d+ min left$/.test(b.meta) && b.of === `1 of ${b.n}` && b.now === '1' && !/sets? done/.test(b.meta), '4. a set ticked: "Started 6:00 PM · ~N min left", the bar 1 of the sets, the line still no count', b);
     await D.page.evaluate(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.render(); });
     await D.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.ACT.startFree(); L.ACT.mClose(); L.render(); }); await wait(150);
-    const c = await D.page.evaluate(() => ({ meta: document.querySelector('#view .ph .meta').innerText.trim(), count: (document.getElementById('doneCount') || {}).textContent, bar: !!document.querySelector('#view .sprog') }));
+    const line = () => D.page.evaluate(() => ({ meta: document.querySelector('#view .ph .meta').innerText.trim(), count: (document.getElementById('doneCount') || {}).textContent, bar: !!document.querySelector('#view .sprog') }));
+    const c0 = await line();
+    ok(c0.meta === 'Not started' && !c0.bar, '4. a blank session with nothing in it, not started: no bar, "Not started" (no set can be done yet)', c0);
+    // Begun by cardio before lifting, with no exercise yet: the count said as before, with when it began.
+    await D.page.evaluate(() => { const L = window.__ironlog; L.ACT.cDraftAdd({ dataset: { when: 'pre' } }); L.act(() => { L.state.draft.cardio[0].min = 10; }, { inProgress: true }); L.render(); }); await wait(150);
+    const c = await line();
     ok(/^0 sets done, started 6:00 PM/.test(c.meta) && c.count === '0' && !c.bar, '4. a blank session with nothing in it: no bar, the count said as before', c);
     await D.page.evaluate(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); const R = L.activeRoutine(); const di = String(R.days.findIndex(x => !x.rest && x.items.length)); L.ACT.pastOpen({ dataset: { date: '2026-11-02' } }); L.ACT.pastGo({ dataset: { day: di } }); L.render(); }); await wait(200);
     const p = await D.page.evaluate(() => ({ kick: document.querySelector('#view .ph .kick').textContent, meta: document.querySelector('#view .ph .meta').innerText.trim(), bar: !!document.querySelector('#view .sprog') }));

@@ -350,7 +350,13 @@ export function mergeWorkout(
     Bf = rec(base) || {},
     Lf = rec(local) || {},
     Rf = rec(remote) || {};
-  mergeFields(O, Bf, Lf, Rf, ['ex', 'id', 'cardio'], remoteWins, stat);
+  mergeFields(O, Bf, Lf, Rf, ['ex', 'id', 'cardio', 'startedAt'], remoteWins, stat);
+  /* The workout began at the first set ticked on either copy (NEW-129): the earlier start of the two. Each copy starts
+     its clock on its own first tick, so two starts are never a clash. */
+  let first: number | null = null;
+  for (const t of [local.startedAt, remote.startedAt])
+    if (typeof t === 'number' && t > 0 && (first == null || t < first)) first = t;
+  if (first != null) O.startedAt = first;
   // The cardio rows have ids, so they merge record by record.
   const cardio = merge3List(cardioBase(Bf.cardio), Lf.cardio, Rf.cardio, remoteWins, stat);
   if (cardio.length || Lf.cardio !== undefined || Rf.cardio !== undefined) O.cardio = cardio;

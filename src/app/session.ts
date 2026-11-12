@@ -449,7 +449,8 @@ export function newRow(over?: Partial<DraftSet>): DraftSet {
 export function freeDraft(name: string, ex?: DraftBlock[] | null) {
   return {
     id: uid(),
-    startedAt: Date.now(),
+    // Not started until its first set is ticked (clockStart, below).
+    startedAt: null,
     date: today(),
     dayIdx: 0,
     dayId: null,
@@ -463,6 +464,18 @@ export function freeDraft(name: string, ex?: DraftBlock[] | null) {
     editingId: null,
     ex: ex || []
   };
+}
+
+/* A workout's clock starts when the lifting does, at its first set ticked (a warm-up too) or the first cardio
+   logged with its minutes, not when it is opened (V, 2026-11-11, NEW-129): a workout set up ahead, blank, freestyle
+   or a routine day, and left with Save and leave, then times exactly like one opened at the gym. Until then it reads
+   "Not started". Its saved minutes, the pace read from them ("~N min", Short on time) and its start time all come
+   from this. A past workout and an edit of a saved one have no clock. */
+/** Starts the clock of the workout in progress if it has begun and its clock has not; called after every change (act). */
+export function clockStart(d: DraftLike | null | undefined): void {
+  if (!d || d.startedAt || d.past || d.editingId) return;
+  const begun = d.ex.some(b => b.sets.some(s => s.done)) || (d.cardio || []).some(c => !!c.min && c.min > 0);
+  if (begun) d.startedAt = Date.now();
 }
 
 /** What an edit from History is compared by, to tell whether anything changed: the date, notes, sets and cardio. */

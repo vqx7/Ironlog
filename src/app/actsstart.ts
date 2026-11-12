@@ -44,7 +44,8 @@ const blockPlan = (p: Plan): DraftBlock['plan'] => ({ ...p, ss: p.ss ?? null });
 /* The session in progress replaced by another. One started now notes the
    notes the app wrote, so Discard can tell them from the lifter's, and keeps
    the screen on; a past workout typed in and an edit of a saved session do
-   neither, as before r63. */
+   neither, as before r63. Every workout opens with its clock stopped: it starts at the first set ticked or cardio
+   logged (session.ts clockStart, NEW-129), so one set up ahead times the same as one opened at the gym. */
 /** Opens the session screen on a new session in progress: one started now (live), or a past workout or an edit. */
 function begin(d: DraftLike, live: boolean): void {
   ui.away = null;
@@ -144,7 +145,7 @@ function startSession(t: Tap): void {
   begin(
     {
       id: uid(),
-      startedAt: Date.now(),
+      startedAt: null,
       date: today(),
       dayIdx: di,
       dayId: d.id,
@@ -395,7 +396,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         day
           ? {
               id: uid(),
-              startedAt: Date.now(),
+              startedAt: null,
               date: today(),
               dayIdx: day0 ? R.days.indexOf(day0) : -1,
               dayId: day.id,
@@ -522,7 +523,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     begin(
       {
         id: uid(),
-        startedAt: Date.now(),
+        startedAt: null,
         date: today(),
         dayIdx: m.day,
         dayId: day.id,
