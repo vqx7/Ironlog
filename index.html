@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.11-r101">
+<meta name="app-build" content="2026.11.12-r102">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2134,8 +2134,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.55";
-  var APP_VERSION = "2026.11.11-r101";
+  var DISPLAY_VERSION = "2.56";
+  var APP_VERSION = "2026.11.12-r102";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -10231,6 +10231,45 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     notesEp = Math.max(Date.now(), notesEp + 1);
   };
   var epOf = (m3) => m3 && typeof m3.ep === "number" ? m3.ep : 0;
+  var notesSeen = null;
+  var sameNote = (a2, b2) => a2 === b2 || !!a2 && !!b2 && a2.h === b2.h && a2.at === b2.at;
+  function joinNotes(m3, text) {
+    const { meta, editAt, last } = notesIn(m3, "tabs");
+    const seenRec = rec(parseJson(notesSeen || "null"));
+    const base = seenRec && notesIn(seenRec, "tabs").meta || {};
+    const theirs = meta || {};
+    let mine = false;
+    for (const k2 of /* @__PURE__ */ new Set([...Object.keys(cloud.meta), ...Object.keys(theirs)])) {
+      const here = cloud.meta[k2], there = theirs[k2];
+      const keep = !there ? here : !here ? there : sameNote(there, base[k2]) ? here : sameNote(here, base[k2]) ? there : there.at > here.at ? there : here;
+      if (keep) cloud.meta[k2] = keep;
+      if (!sameNote(keep, there)) mine = true;
+    }
+    const te = editAt || {};
+    for (const k2 in cloud.editAt) if (!(k2 in te) || cloud.editAt[k2] > te[k2]) mine = true;
+    for (const k2 in te) cloud.editAt[k2] = Math.max(cloud.editAt[k2] || 0, te[k2]);
+    if (cloud.last != null && (last == null || cloud.last > last)) mine = true;
+    else cloud.last = last;
+    const sent = sentIn(m3.sent);
+    for (const k2 in cloud.sent) if (!sent[k2]) mine = true;
+    for (const k2 in sent) if (!cloud.sent[k2]) cloud.sent[k2] = sent[k2];
+    notesSeen = text;
+    return mine;
+  }
+  function notesCatchUp() {
+    let text = null;
+    try {
+      text = localStorage.getItem(SYNC_KEY);
+    } catch (e5) {
+      log("tabs", e5);
+      return false;
+    }
+    if (text == null || text === notesSeen) return false;
+    const m3 = rec(parseJson(text));
+    if (!m3 || epOf(m3) !== notesEp || (typeof m3.acct === "string" ? m3.acct : null) !== cloud.acct) return false;
+    joinNotes(m3, text);
+    return true;
+  }
   function saveMeta() {
     if (!device.ok) return false;
     try {
@@ -10238,19 +10277,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         log("tabs", new Error("newer sync notes from another tab; not written over"));
         return false;
       }
-      localStorage.setItem(
-        SYNC_KEY,
-        JSON.stringify({
-          meta: cloud.meta,
-          // Writes sent and not yet answered, so a reload before the answer still knows its own.
-          sent: Object.keys(cloud.sent).length ? cloud.sent : void 0,
-          last: cloud.last,
-          editAt: cloud.editAt,
-          devId: cloud.devId,
-          acct: cloud.acct || void 0,
-          ep: notesEp || void 0
-        })
-      );
+      notesCatchUp();
+      const text = JSON.stringify({
+        meta: cloud.meta,
+        // Writes sent and not yet answered, so a reload before the answer still knows its own.
+        sent: Object.keys(cloud.sent).length ? cloud.sent : void 0,
+        last: cloud.last,
+        editAt: cloud.editAt,
+        devId: cloud.devId,
+        acct: cloud.acct || void 0,
+        ep: notesEp || void 0
+      });
+      localStorage.setItem(SYNC_KEY, text);
+      notesSeen = text;
       return true;
     } catch (e5) {
       log("sync-meta", e5);
@@ -10544,7 +10583,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       log("sync-track", e5);
     }
   }
-  function draftNote(prev, kept) {
+  function draftNote(prev, kept, where = "on another device") {
     const P2 = rec(prev);
     const d3 = state.draft;
     if (!P2 || d3 && d3.id === P2.id) return;
@@ -10560,7 +10599,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     const saved = state.sessions.some((s3) => s3.id === P2.id);
     fx.toast(
-      kept === "joined" || kept === "cardioJoined" ? "The workout in progress was saved on another device. What was done here since was added to it." : kept === "saved" || kept === "cardio" ? `The workout in progress was ${state.draft ? "replaced by the one on" : "closed on"} another device. Its ${kept === "saved" ? "ticked sets are" : "cardio is"} saved in History.` : state.draft ? saved ? "The workout in progress was replaced by the one on another device. Its ticked sets are in History." : "The workout in progress was replaced by the one on another device." : saved ? "The workout in progress was saved on another device." : "The workout in progress was closed on another device."
+      kept === "joined" || kept === "cardioJoined" ? `The workout in progress was saved ${where}. What was done here since was added to it.` : kept === "saved" || kept === "cardio" ? `The workout in progress was ${state.draft ? "replaced by the one" : "closed"} ${where}. Its ${kept === "saved" ? "ticked sets are" : "cardio is"} saved in History.` : state.draft ? saved ? `The workout in progress was replaced by the one ${where}. Its ticked sets are in History.` : `The workout in progress was replaced by the one ${where}.` : saved ? `The workout in progress was saved ${where}.` : `The workout in progress was closed ${where}.`
     );
   }
   function keepLost(lost, now2, agreed, remoteWins, tabs = false) {
@@ -10767,6 +10806,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   async function cloudFlush() {
     if (!cloud.on) return;
+    notesCatchUp();
     if (!pulled) return cloudPull();
     if (trackT || cloud.pendAt) trackEdits();
     const todo = changedDocs();
@@ -11002,6 +11042,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     cloud.lastPull = Date.now();
     pulled = true;
+    notesCatchUp();
     const ph = snap.docs.find((x2) => x2.id === PHOTO_DOC && x2.exists);
     await photoReconcile(ph ? rec(ph.data()) : null);
     const remote = remoteDocs(snap.docs);
@@ -11136,16 +11177,22 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return fn();
   }
   function readStored() {
-    let m3 = null;
+    let m3 = null, text = null;
     try {
-      m3 = rec(parseJson(localStorage.getItem(SYNC_KEY) || "null"));
+      text = localStorage.getItem(SYNC_KEY);
+      m3 = rec(parseJson(text || "null"));
     } catch (e5) {
       log("tabs", e5);
     }
     if (!m3) return;
     const now2 = typeof m3.acct === "string" ? m3.acct : null;
+    if (now2 === cloud.acct) {
+      if (epOf(m3) === notesEp && text !== notesSeen) joinNotes(m3, text);
+      notesEp = epOf(m3);
+      return;
+    }
     notesEp = epOf(m3);
-    if (now2 === cloud.acct) return;
+    notesSeen = text;
     const n3 = notesIn(m3, "tabs");
     cloud.meta = n3.meta || {};
     cloud.sent = {};
@@ -11355,6 +11402,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         if (m3 && epOf(m3) < notesEp) {
           log("tabs", new Error("older sync notes from another tab; this tab wrote its own back"));
           saveMeta();
+        } else if (m3 && epOf(m3) === notesEp && (typeof m3.acct === "string" ? m3.acct : null) === cloud.acct) {
+          if (joinNotes(m3, ev.newValue)) saveMeta();
         } else if (m3) {
           const { meta, editAt, last } = notesIn(m3, "tabs");
           if (meta) cloud.meta = meta;
@@ -11363,6 +11412,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           cloud.last = last;
           cloud.acct = typeof m3.acct === "string" ? m3.acct : null;
           notesEp = epOf(m3);
+          notesSeen = ev.newValue;
         }
       } catch (e5) {
         log("tabs", e5);
@@ -11433,7 +11483,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!ui.modal) fx.rerenderKeepScroll();
     else fx.render();
     conflictNote(stat, true);
-    if (kept) draftNote(dr0, kept);
+    if (kept) draftNote(dr0, kept, "in another tab");
   }
   function onVisibility() {
     if (document.visibilityState === "hidden") {
@@ -11456,7 +11506,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function syncStart() {
     try {
-      const m3 = rec(parseJson(localStorage.getItem(SYNC_KEY) || "null"));
+      const text = localStorage.getItem(SYNC_KEY);
+      const m3 = rec(parseJson(text || "null"));
+      notesSeen = text;
       if (m3) {
         const { meta, editAt, last } = notesIn(m3, "sync-meta");
         cloud.meta = meta || {};

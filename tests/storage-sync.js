@@ -574,7 +574,8 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(n1 === 2, 'S-6: and the set the tab behind ticked in the finished workout joins its saved session (REV12-6)', { sets: s1 && s1.ex.map(b => b.sets.map(x => [x.w, x.r])) });
       const saidB1 = await B1.ev(() => (window.__toasts || []).map(t => t.text));
       // Said with what the merge kept, in one message (toast.ts joins what one change says).
-      ok(saidB1.some(t => t.includes('The workout in progress was saved on another device. What was done here since was added to it.')), 'S-6: and the tab behind says so (REV12-6)', saidB1);
+      // NEW-136: said as "saved on another device" until 2.56; it was another tab of this phone.
+      ok(saidB1.some(t => t.includes('The workout in progress was saved in another tab. What was done here since was added to it.')), 'S-6: and the tab behind says so, as another tab (REV12-6, NEW-136)', saidB1);
       await A1.close();
     }
     {
@@ -666,7 +667,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const sets = s ? s.ex.flatMap(b => b.sets.map(x => x.r)) : null;
       ok(!st.draft && JSON.stringify(sets) === '[8,7]', 'S-6: a set ticked in a tab behind the other, in the workout the other finished, joins the saved session, and the workout stays closed (REV12-6)', { draft: !!st.draft, sets });
       const said8 = await B8.ev(() => (window.__toasts || []).map(t => t.text));
-      ok(said8.includes('The workout in progress was saved on another device. What was done here since was added to it.'), 'S-6: and the tab behind says so (REV12-6: dropped without a word)', said8);
+      ok(said8.includes('The workout in progress was saved in another tab. What was done here since was added to it.'), 'S-6: and the tab behind says so, as another tab (REV12-6: dropped without a word; NEW-136: "on another device" until 2.56)', said8);
       ok((await B8.ev(() => !window.__ironlog.state.draft)), 'S-6: and the tab behind shows it closed too');
       await A8.close();
     }
@@ -726,6 +727,37 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(got.save === 'typed in tab A' && got.account === got.save && got.A === got.save && got.B === got.save, 'S-6: signed in, the same record changed in both tabs at once: one whole copy on the phone, in the account and in both tabs (REV-3, NEW-124)', got);
       ok(got.said === 1, 'S-6: and the app says it once (REV-3: twice on 2.50\'s first fix)', got.said);
       await A4.close();
+    }
+    {
+      /* REV13-10: both tabs signed in, the workout open in both; tab A finishes it, and tab B, not yet hearing A,
+         ticks one more set, which joins the finished session (NEW-124). Nothing was edited twice, so nothing may say
+         so: until 2.56 tab B, writing the account's sync notes it held from before A synced the session, wrote over
+         A's, tab A took them, and with no agreed copy of the session left it read its own 3 sets against the
+         account's 2 as an edit on two devices. */
+      const C = cloudOf();
+      const A = await phone({ cloud: C, uid: 'u6n' });
+      const B = await tab(A, FILE, C.setup('u6n', 'B')); B.ev = (f, a) => B.page.evaluate(f, a);
+      B.toasts = () => B.ev(() => (window.__toasts || []).map(t => t.text));
+      B.flush = async () => { await B.ev(() => window.__ironlog.flush()); await wait(120); };
+      const on = P => P.page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 10000 }).then(() => true, () => false);
+      ok((await on(A)) && (await on(B)), 'S-6: (setup) both tabs synced to the account');
+      await start(A); await tick(A, 0, 0); await tick(A, 0, 1); await wait(300);
+      await A.flush(); await wait(300);
+      if (!(await B.ev(() => !!document.querySelector('#view [data-act="sDone"]')))) { await B.page.click('#tabs [data-tab="today"]'); await wait(200); if (await B.ev(() => !!document.querySelector('#view [data-act="wkResume"]'))) { await B.page.click('#view [data-act="wkResume"]'); await wait(300); } }
+      await B.ev(() => { window.__deaf = true; });
+      await A.page.click('#view [data-act="finish"]'); await wait(300);
+      for (let k = 0; k < 4 && (await A.ev(() => !!window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind !== 'recap')); k++) { await A.page.click('#modal button:has-text("Finish now"), #modal [data-act="mOk"]').catch(() => {}); await wait(300); }
+      await A.flush(); await wait(300);
+      await tick(B, 0, 2); await wait(500);
+      await B.ev(() => { window.__deaf = false; }); await wait(400);
+      await B.flush(); await wait(1600); await A.flush(); await B.flush(); await wait(800);
+      const setsOf = st => { const x = (st.sessions || []).find(q => q.ex && q.ex[0] && q.ex[0].sets.length && q.date === '2026-11-11'); return x ? x.ex[0].sets.length : null; };
+      const acct = C.sessionsIn('u6n').filter(q => q.date === '2026-11-11').map(q => q.ex[0].sets.length);
+      const got = { A: setsOf(await A.ev(() => window.__ironlog.state)), B: setsOf(await B.ev(() => window.__ironlog.state)), account: acct, saidA: await A.toasts(), saidB: await B.toasts() };
+      ok(got.A === 3 && got.B === 3 && acct.length === 1 && acct[0] === 3, 'S-6: signed in, a set ticked in a tab behind after the other finished: the session has its 3 sets in both tabs and in the account', got);
+      ok(![...got.saidA, ...got.saidB].some(t => /edited on two devices|changed in two tabs/.test(t)), 'S-6: and no message says it was edited twice: the tab behind keeps the notes the other wrote (REV13-10)', got);
+      ok(got.saidB.some(t => t.includes('The workout in progress was saved in another tab. What was done here since was added to it.')) && ![...got.saidA, ...got.saidB].some(t => /another device/.test(t)), 'S-6: the tab behind says the workout was saved in another tab, and nothing names another device (NEW-136)', got);
+      await A.close();
     }
   }
 

@@ -352,6 +352,70 @@ const newEp = (): void => {
 };
 /** The moment stored notes last stopped describing the log before them; 0 when they say none. */
 const epOf = (m: Rec | null): number => (m && typeof m.ep === 'number' ? m.ep : 0);
+/* Two tabs keep one set of notes for one log and account, and each changes them as it syncs. A tab takes in the
+   other's by joining them into its own, never by taking or writing either whole (REV13-10). Each document's note is
+   read against the notes this tab last saw: the one changed since, here or there, is kept; changed in both (both tabs
+   synced it), the later agreement, by the account's time for the copy agreed. Edit times and the last sync are this
+   phone's clock, so the later of each; a write sent from either tab is kept until it is answered. A tab that had not
+   heard the other's notes wrote its own over them, so a session the other tab had synced lost its agreed copy, and
+   the next sync read the tab's copy against the account's as an edit on two devices. Notes for another log (a later
+   `ep`) or another account still replace these whole (onStorage, readStored). */
+/** The notes' text as this tab last wrote or took it in: stored text unlike it was written by another tab and not yet taken in. */
+let notesSeen: string | null = null;
+/** Whether two notes for a document are one agreement (or both absent). */
+const sameNote = (a: SyncNote | undefined, b: SyncNote | undefined): boolean =>
+  a === b || (!!a && !!b && a.h === b.h && a.at === b.at);
+/** Joins notes another tab wrote for the same log and account into this tab's (above): whether this tab's held something theirs did not. */
+function joinNotes(m: Rec, text: string | null): boolean {
+  const { meta, editAt, last } = notesIn(m, 'tabs');
+  const seenRec = rec(parseJson(notesSeen || 'null'));
+  const base: Record<string, SyncNote> = (seenRec && notesIn(seenRec, 'tabs').meta) || {};
+  const theirs = meta || {};
+  let mine = false;
+  for (const k of new Set([...Object.keys(cloud.meta), ...Object.keys(theirs)])) {
+    const here = cloud.meta[k],
+      there = theirs[k];
+    const keep = !there
+      ? here
+      : !here
+        ? there
+        : sameNote(there, base[k])
+          ? here
+          : sameNote(here, base[k])
+            ? there
+            : there.at > here.at
+              ? there
+              : here;
+    if (keep) cloud.meta[k] = keep;
+    if (!sameNote(keep, there)) mine = true;
+  }
+  const te = editAt || {};
+  for (const k in cloud.editAt) if (!(k in te) || cloud.editAt[k] > te[k]) mine = true;
+  for (const k in te) cloud.editAt[k] = Math.max(cloud.editAt[k] || 0, te[k]);
+  if (cloud.last != null && (last == null || cloud.last > last)) mine = true;
+  else cloud.last = last;
+  const sent = sentIn(m.sent);
+  for (const k in cloud.sent) if (!sent[k]) mine = true;
+  for (const k in sent) if (!cloud.sent[k]) cloud.sent[k] = sent[k];
+  notesSeen = text;
+  return mine;
+}
+/** Takes in notes another tab wrote that this tab has not heard (above), before the sync reads its own; whether it found any. */
+function notesCatchUp(): boolean {
+  let text: string | null = null;
+  try {
+    text = localStorage.getItem(SYNC_KEY);
+  } catch (e) {
+    // Storage unreadable now: this tab goes on with the notes it holds.
+    log('tabs', e);
+    return false;
+  }
+  if (text == null || text === notesSeen) return false;
+  const m = rec(parseJson(text));
+  if (!m || epOf(m) !== notesEp || (typeof m.acct === 'string' ? m.acct : null) !== cloud.acct) return false;
+  joinNotes(m, text);
+  return true;
+}
 /** Writes the sync notes to this device: whether they were written (above). */
 function saveMeta(): boolean {
   /* The notes describe the log on this device, so they are written only while
@@ -364,19 +428,20 @@ function saveMeta(): boolean {
       log('tabs', new Error('newer sync notes from another tab; not written over'));
       return false;
     }
-    localStorage.setItem(
-      SYNC_KEY,
-      JSON.stringify({
-        meta: cloud.meta,
-        // Writes sent and not yet answered, so a reload before the answer still knows its own.
-        sent: Object.keys(cloud.sent).length ? cloud.sent : undefined,
-        last: cloud.last,
-        editAt: cloud.editAt,
-        devId: cloud.devId,
-        acct: cloud.acct || undefined,
-        ep: notesEp || undefined
-      })
-    );
+    // Notes the other tab wrote and this one has not heard are joined in, never written over (REV13-10).
+    notesCatchUp();
+    const text = JSON.stringify({
+      meta: cloud.meta,
+      // Writes sent and not yet answered, so a reload before the answer still knows its own.
+      sent: Object.keys(cloud.sent).length ? cloud.sent : undefined,
+      last: cloud.last,
+      editAt: cloud.editAt,
+      devId: cloud.devId,
+      acct: cloud.acct || undefined,
+      ep: notesEp || undefined
+    });
+    localStorage.setItem(SYNC_KEY, text);
+    notesSeen = text;
     return true;
   } catch (e) {
     log('sync-meta', e);
@@ -766,7 +831,7 @@ function resyncLocalH(): void {
 /* The session in progress is one record, so another device finishing or
    discarding it replaces this one's (the later edit wins). Said in its own
    words rather than the generic note (r45, audit item 288). */
-function draftNote(prev: unknown, kept?: Kept): void {
+function draftNote(prev: unknown, kept?: Kept, where = 'on another device'): void {
   const P = rec(prev);
   const d = state.draft;
   if (!P || (d && d.id === P.id)) return;
@@ -794,19 +859,20 @@ function draftNote(prev: unknown, kept?: Kept): void {
   // What became of the sets ticked here (keepLost, r56.1) is said with it: joined to the session the other phone
   // saved, or saved as a session of their own. A session of the workout's id with another workout now open was
   // either finished there or kept there from this copy; either way its sets are in History, and that is what is said.
+  // Where it happened: another device, or another tab of this phone for a tab's merge (mergeIn; NEW-136).
   const saved = state.sessions.some(s => s.id === P.id);
   fx.toast(
     kept === 'joined' || kept === 'cardioJoined'
-      ? 'The workout in progress was saved on another device. What was done here since was added to it.'
+      ? `The workout in progress was saved ${where}. What was done here since was added to it.`
       : kept === 'saved' || kept === 'cardio'
-        ? `The workout in progress was ${state.draft ? 'replaced by the one on' : 'closed on'} another device. Its ${kept === 'saved' ? 'ticked sets are' : 'cardio is'} saved in History.`
+        ? `The workout in progress was ${state.draft ? 'replaced by the one' : 'closed'} ${where}. Its ${kept === 'saved' ? 'ticked sets are' : 'cardio is'} saved in History.`
         : state.draft
           ? saved
-            ? 'The workout in progress was replaced by the one on another device. Its ticked sets are in History.'
-            : 'The workout in progress was replaced by the one on another device.'
+            ? `The workout in progress was replaced by the one ${where}. Its ticked sets are in History.`
+            : `The workout in progress was replaced by the one ${where}.`
           : saved
-            ? 'The workout in progress was saved on another device.'
-            : 'The workout in progress was closed on another device.'
+            ? `The workout in progress was saved ${where}.`
+            : `The workout in progress was closed ${where}.`
   );
 }
 /* The copy of the workout in progress that loses a merge is never dropped
@@ -1110,6 +1176,7 @@ function tooBigSaid(tooBig: readonly string[]): string {
 /** Writes every document that changed here to the account, merging each the account changed meanwhile. */
 export async function cloudFlush(): Promise<void> {
   if (!cloud.on) return;
+  notesCatchUp();
   /* No pull has come through since the sync started (it failed, or got no
      answer): this one pulls first, which then sends. A retry that only sent
      found nothing to send and said Synced, the account's own changes never
@@ -1419,6 +1486,8 @@ export async function cloudPull(): Promise<void> {
   }
   cloud.lastPull = Date.now();
   pulled = true;
+  // What the other tab synced while this one waited for the account is read before this tab's notes are (REV13-10).
+  notesCatchUp();
   // The profile photo, from the same listing: a document of its own, so nothing below reads it.
   const ph = snap.docs.find(x => x.id === PHOTO_DOC && x.exists);
   await photoReconcile(ph ? rec(ph.data()) : null);
@@ -1633,16 +1702,24 @@ async function oneTab<T>(fn: () => Promise<T>): Promise<T> {
 }
 /** The notes as stored now, and the log with them when another tab moved them to another account: a tab acts on what is stored, not on what it read before (above). */
 function readStored(): void {
-  let m: Rec | null = null;
+  let m: Rec | null = null,
+    text: string | null = null;
   try {
-    m = rec(parseJson(localStorage.getItem(SYNC_KEY) || 'null'));
+    text = localStorage.getItem(SYNC_KEY);
+    m = rec(parseJson(text || 'null'));
   } catch (e) {
     log('tabs', e);
   }
   if (!m) return;
   const now = typeof m.acct === 'string' ? m.acct : null;
+  if (now === cloud.acct) {
+    // The same account: notes for this log the other tab wrote and this one has not heard are joined in (REV13-10).
+    if (epOf(m) === notesEp && text !== notesSeen) joinNotes(m, text);
+    notesEp = epOf(m);
+    return;
+  }
   notesEp = epOf(m);
-  if (now === cloud.acct) return;
+  notesSeen = text;
   const n = notesIn(m, 'tabs');
   cloud.meta = n.meta || {};
   cloud.sent = {};
@@ -1924,6 +2001,9 @@ function onStorage(ev: StorageEvent): void {
         // Written by a tab that had not yet heard these notes (saveMeta, above): these stand, written back.
         log('tabs', new Error('older sync notes from another tab; this tab wrote its own back'));
         saveMeta();
+      } else if (m && epOf(m) === notesEp && (typeof m.acct === 'string' ? m.acct : null) === cloud.acct) {
+        // The same log and account: joined (joinNotes), and written back when this tab held something they lacked.
+        if (joinNotes(m, ev.newValue)) saveMeta();
       } else if (m) {
         const { meta, editAt, last } = notesIn(m, 'tabs');
         if (meta) cloud.meta = meta;
@@ -1933,6 +2013,7 @@ function onStorage(ev: StorageEvent): void {
         // The notes' account with them (PENDING 333, F2): a tab that kept the account it read before acted for it on another's log.
         cloud.acct = typeof m.acct === 'string' ? m.acct : null;
         notesEp = epOf(m);
+        notesSeen = ev.newValue;
       }
     } catch (e) {
       log('tabs', e);
@@ -2035,7 +2116,7 @@ function mergeIn(text: string, own: boolean): void {
   else fx.render();
   conflictNote(stat, true);
   // What became of what was done here, when the workout it was done in was closed in the other tab.
-  if (kept) draftNote(dr0, kept);
+  if (kept) draftNote(dr0, kept, 'in another tab');
 }
 function onVisibility(): void {
   if (document.visibilityState === 'hidden') {
@@ -2066,7 +2147,9 @@ function onPageHide(): void {
     from main.ts at start, after storageStart(). */
 export function syncStart(): void {
   try {
-    const m = rec(parseJson(localStorage.getItem(SYNC_KEY) || 'null'));
+    const text = localStorage.getItem(SYNC_KEY);
+    const m = rec(parseJson(text || 'null'));
+    notesSeen = text;
     if (m) {
       const { meta, editAt, last } = notesIn(m, 'sync-meta');
       cloud.meta = meta || {};
