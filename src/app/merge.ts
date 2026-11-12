@@ -266,6 +266,13 @@ function mergeFields(
 ): void {
   for (const f of new Set([...Object.keys(l), ...Object.keys(r)])) {
     if (skip.includes(f)) continue;
+    /* With no copy both agreed on, a field one copy lacks is no clash: the copy that has it keeps it, as keeping data is
+       the recoverable mistake (the review of 2.52, REV13-6: Finish's `ps` on a saved session, absent from the copy
+       joined to it, was said as an item edited on two devices). */
+    if (!base && (l[f] === undefined) !== (r[f] === undefined)) {
+      out[f] = l[f] === undefined ? r[f] : l[f];
+      continue;
+    }
     const v = merge3Val(base ? Hx(base[f]) : '?', l[f], r[f], remoteWins, stat);
     if (v === undefined) delete out[f];
     else out[f] = v;
@@ -350,7 +357,13 @@ export function mergeWorkout(
     Bf = rec(base) || {},
     Lf = rec(local) || {},
     Rf = rec(remote) || {};
-  mergeFields(O, Bf, Lf, Rf, ['ex', 'id', 'cardio'], remoteWins, stat);
+  mergeFields(O, Bf, Lf, Rf, ['ex', 'id', 'cardio', 'begunAt'], remoteWins, stat);
+  /* The workout began when either copy first began it (NEW-129): the earlier of the two. Each copy starts its clock
+     at its own first set, so two starts are never a clash. */
+  let first: number | null = null;
+  for (const t of [local.begunAt, remote.begunAt])
+    if (typeof t === 'number' && t > 0 && (first == null || t < first)) first = t;
+  if (first != null) O.begunAt = first;
   // The cardio rows have ids, so they merge record by record.
   const cardio = merge3List(cardioBase(Bf.cardio), Lf.cardio, Rf.cardio, remoteWins, stat);
   if (cardio.length || Lf.cardio !== undefined || Rf.cardio !== undefined) O.cardio = cardio;
@@ -373,10 +386,16 @@ export function mergeSession(
     base ? rec(base) : null,
     rec(local) || {},
     rec(remote) || {},
-    ['ex', 'id'],
+    ['ex', 'id', 't'],
     remoteWins,
     stat
   );
+  /* The start is the saved session's, the one its minutes were timed from at Finish: the copy joined to it began on
+     its own clock (NEW-129), which is no edit, and taken alone it left a start that did not match the minutes (the
+     review of 2.52, REV13-5: two starts said as an item edited on two devices). */
+  const t = remote.t ?? local.t;
+  if (t !== undefined) out.t = t;
+  else delete out.t;
   return out;
 }
 

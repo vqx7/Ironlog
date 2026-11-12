@@ -44,7 +44,8 @@ const blockPlan = (p: Plan): DraftBlock['plan'] => ({ ...p, ss: p.ss ?? null });
 /* The session in progress replaced by another. One started now notes the
    notes the app wrote, so Discard can tell them from the lifter's, and keeps
    the screen on; a past workout typed in and an edit of a saved session do
-   neither, as before r63. */
+   neither, as before r63. A workout notes when it was opened (startedAt); its clock starts when the lifting does
+   (begunAt, session.ts clockStart, NEW-129), so one set up ahead times the same as one opened at the gym. */
 /** Opens the session screen on a new session in progress: one started now (live), or a past workout or an edit. */
 function begin(d: DraftLike, live: boolean): void {
   ui.away = null;

@@ -50,6 +50,7 @@ import { rerenderKeepScroll } from './page';
 
 import { toast } from './toast';
 import { drawNow } from './workout';
+import { onDayMoved } from './session';
 /** A touch this many milliseconds ago is where the lifter went (an iPhone's buttons never take focus). */
 const TOUCH_MS = 700;
 /** With the effort strip about to open, an auto-mark waits this long for it before it marks the set. */
@@ -521,6 +522,10 @@ function workoutBlur(e: FocusEvent): void {
 /** Adds the session screen's listeners to the page: where a touch lands and is released (capture), a field left, a field focused, and a key about to change one. Called once at start, after the page's own. */
 export function workoutStart(): void {
   onRedraw(drawNow);
+  // A workout set up on an earlier day and begun today reads its exercises again for today, as the date field does.
+  onDayMoved(d => {
+    for (const b of d.ex) refreshBlock(b);
+  });
   document.addEventListener('pointerdown', noteDown, true);
   document.addEventListener('mouseup', workoutUp, true);
   document.addEventListener('focusout', workoutBlur);
