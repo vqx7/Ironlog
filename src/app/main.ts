@@ -313,6 +313,7 @@ import { accountStart, acctInit, syncLine, waiting } from './account';
 import { impBuild, impMatch, importData, impStart, liveLogFetch, routineFromLog } from './importflow';
 import { makeDemo } from './demo';
 import { exportCSV, trashTidy } from './actsapp';
+import { parkTidy } from './park';
 import { applyPick, swapPlan } from './actspick';
 import type { State } from './store';
 import { workoutStart } from './workfields';
@@ -850,6 +851,8 @@ function start(): void {
       rerenderKeepScroll();
   };
   trashTidy();
+  // A workout set aside past its last day goes, said as it goes (NEW-96).
+  parkTidy();
   oldLogFixes();
   exposeForTests();
   firstDraw();

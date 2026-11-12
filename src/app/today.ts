@@ -72,7 +72,7 @@ import {
   cycleState
 } from './live';
 import { acct, awayFrom, cloud, state, ui } from './store';
-import { parkedHere } from './park';
+import { parkedDates, parkedHere } from './park';
 import {
   ACCT_LATER,
   BWSNOOZE_KEY,
@@ -636,6 +636,11 @@ function moreRow(deload: boolean, playable: boolean, di: number, part?: 1 | 2): 
 }
 const STARTS_HELP = html`In <b>Change</b>: <b>Lighter day</b>: every exercise on the day, half the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the loads, ${LIGHT_RIR} or more reps in reserve, and no target to beat: a one-day deload. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine's days for today from what each muscle got in the last ${PICK_DAYS} days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Blank session</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of half sets at about ${pctOf(LIGHT_SHARE)}% loads. <b>Limited equipment</b> (More options): today's workout with each exercise your gym cannot do swapped for the closest match it can.`;
 
+/** The set-aside workout card's line, with the last day it is kept (NEW-96, park.ts). */
+function parkLine(): string {
+  const d = parkedDates();
+  return `Set aside while you fixed an earlier one.${d ? ` Kept until ${fmtDate(d.until)}.` : ''}`;
+}
 /** Today, with no session in progress: the first pages of a new install, or the start card and everything under it. */
 export function viewToday(): TemplateResult {
   if (obActive()) return obView();
@@ -724,7 +729,7 @@ export function viewToday(): TemplateResult {
      the start card's place until it does. */
   if (!state.draft && parkedHere())
     return html`${above}<section class="hero" id="parkedCard"><div class="hero-top"><div class="hero-t"><p class="eyebrow">Workout set aside</p><h2>Your workout in progress</h2>
-<p class="muted small u-m0">Set aside while you fixed an earlier one.</p></div></div>
+<p class="muted small u-m0">${parkLine()}</p></div></div>
 <button class="btn primary fullw big" data-act="parkBack">Bring it back</button></section>${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
   if (free) {
     const w = noLog()

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.12-r102">
+<meta name="app-build" content="2026.11.12-r103">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2134,8 +2134,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.56";
-  var APP_VERSION = "2026.11.12-r102";
+  var DISPLAY_VERSION = "2.57";
+  var APP_VERSION = "2026.11.12-r103";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -14383,7 +14383,26 @@ ${more}`;
   var who = () => cloud.acct || "";
   function held2() {
     const r4 = rec(parseJson(prefGet(PARKED_KEY) || "null"));
-    return r4 && typeof r4["uid"] === "string" ? { uid: r4["uid"], draft: r4["draft"] } : null;
+    return r4 && typeof r4["uid"] === "string" ? { uid: r4["uid"], draft: r4["draft"], at: typeof r4["at"] === "number" ? r4["at"] : null } : null;
+  }
+  var PARK_KEEP_DAYS = 30;
+  function parkedDates() {
+    const h3 = parkedHere() ? waiting2() : null;
+    if (!h3 || h3.at == null) return null;
+    const set = iso(new Date(h3.at));
+    return { set, until: addDays(set, PARK_KEEP_DAYS) };
+  }
+  function parkTidy() {
+    const h3 = held2();
+    if (!h3) return;
+    if (h3.at == null) {
+      prefSet(PARKED_KEY, JSON.stringify({ uid: h3.uid, draft: h3.draft, at: Date.now() }));
+      return;
+    }
+    const d3 = parkedDates();
+    if (!d3 || today() <= d3.until) return;
+    prefDel(PARKED_KEY);
+    fx.toast(`The workout set aside was removed: it was kept until ${fmtDate(d3.until)}.`);
   }
   var heldId = (h3) => {
     const id = h3 ? rec(h3.draft)?.["id"] : null;
@@ -14408,7 +14427,7 @@ ${more}`;
   function parkDraft() {
     const d3 = state.draft;
     if (!d3 || d3.editingId || held2() != null) return false;
-    return prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: d3 }));
+    return prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: d3, at: Date.now() }));
   }
   function unpark() {
     if (state.draft || !parkedHere()) return false;
@@ -20376,6 +20395,10 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     return b`<div class="row u-mt8"><button class=${`btn sm ${deload ? "noted" : ""}`} data-act="deloadToggle" aria-pressed=${String(deload)}>${deload ? "Deload week: on" : "Deload week"}</button>${playable ? b`<button class="btn sm" data-act="eqOpen" data-day=${di} data-part=${part === 2 ? "2" : A}>Limited equipment</button>` : A}<button class=${`btn sm ${rw ? "noted" : ""}`} data-act="restWkOpen">Rest week</button><button class="btn sm" data-act="injAdd">Flag an injury</button><button class="btn sm" data-act="cardioNew">Log cardio</button></div>`;
   }
   var STARTS_HELP = b`In <b>Change</b>: <b>Lighter day</b>: every exercise on the day, half the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the loads, ${LIGHT_RIR} or more reps in reserve, and no target to beat: a one-day deload. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine's days for today from what each muscle got in the last ${PICK_DAYS} days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Blank session</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of half sets at about ${pctOf(LIGHT_SHARE)}% loads. <b>Limited equipment</b> (More options): today's workout with each exercise your gym cannot do swapped for the closest match it can.`;
+  function parkLine() {
+    const d3 = parkedDates();
+    return `Set aside while you fixed an earlier one.${d3 ? ` Kept until ${fmtDate(d3.until)}.` : ""}`;
+  }
   function viewToday() {
     if (obActive()) return obView();
     const R2 = activeRoutine();
@@ -20413,7 +20436,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
       return b`${above}${resumeCard(open)}${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
     if (!state.draft && parkedHere())
       return b`${above}<section class="hero" id="parkedCard"><div class="hero-top"><div class="hero-t"><p class="eyebrow">Workout set aside</p><h2>Your workout in progress</h2>
-<p class="muted small u-m0">Set aside while you fixed an earlier one.</p></div></div>
+<p class="muted small u-m0">${parkLine()}</p></div></div>
 <button class="btn primary fullw big" data-act="parkBack">Bring it back</button></section>${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;
     if (free) {
       const w2 = noLog() ? "Add exercises as you go." : (() => {
@@ -29008,6 +29031,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         rerenderKeepScroll();
     };
     trashTidy();
+    parkTidy();
     oldLogFixes();
     exposeForTests();
     firstDraw();

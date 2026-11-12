@@ -11,11 +11,13 @@
    back at once (another account signed in, or the app closed halfway) is
    offered on Today until it does (`parkedHere`). */
 import { act } from './act';
+import { fmtDate } from './format';
 import { normalize } from './normalize';
 import { parseJson, rec } from './records';
 import { PARKED_KEY, log, prefDel, prefGet, prefSet } from './storage';
 import { onSaved } from './sync';
 import { cloud, fx, state, ui } from './store';
+import { addDays, iso, today } from './util';
 
 /* The account whose log this phone holds, as the sync notes name it (cloud.acct): known from the start, before the
    sync is on (the review of 2.36, REV6-3: tagged by the sync, a workout set aside in the seconds before it started was
@@ -24,10 +26,41 @@ import { cloud, fx, state, ui } from './store';
 /** The account a set-aside workout belongs to: the one whose log this phone holds, '' for a log of no account. */
 const who = (): string => cloud.acct || '';
 
-/** The set-aside workout's record, if one is held: the account it was for and the workout as saved. */
-function held(): { uid: string; draft: unknown } | null {
+/** The set-aside workout's record, if one is held: the account it was for, the workout as saved, and when it was set aside (null on a copy set aside before 2.57 not yet seen by this build). */
+function held(): { uid: string; draft: unknown; at: number | null } | null {
   const r = rec(parseJson(prefGet(PARKED_KEY) || 'null'));
-  return r && typeof r['uid'] === 'string' ? { uid: r['uid'], draft: r['draft'] } : null;
+  return r && typeof r['uid'] === 'string'
+    ? { uid: r['uid'], draft: r['draft'], at: typeof r['at'] === 'number' ? r['at'] : null }
+    : null;
+}
+
+/* A workout set aside and never brought back is kept PARK_KEEP_DAYS days from the day it was set aside, then removed
+   when the app next opens (NEW-96, V 2026-11-09 08:11: "is it possible to delete it after 30 days?"; 30 is V's
+   choice, a convention). It is the only copy of what was typed in it, so it never goes unannounced: Today's card says
+   until when it is kept, and the removal is said as it happens, by that day. A copy from before 2.57 carries no date;
+   its days count from the first time this build opens with it, so none goes sooner than a card could have said. Only a copy
+   this account can bring back is removed: one kept for another account waits for it, as before. */
+/** Days a set-aside workout is kept (above). */
+const PARK_KEEP_DAYS = 30;
+/** The day a set-aside workout was set aside and the last day it is kept, for Today's card; null when none is offered here. */
+export function parkedDates(): { set: string; until: string } | null {
+  const h = parkedHere() ? waiting() : null;
+  if (!h || h.at == null) return null;
+  const set = iso(new Date(h.at));
+  return { set, until: addDays(set, PARK_KEEP_DAYS) };
+}
+/** At start: dates a copy set aside before 2.57, and removes one of this account kept past its last day, saying so (above). */
+export function parkTidy(): void {
+  const h = held();
+  if (!h) return;
+  if (h.at == null) {
+    prefSet(PARKED_KEY, JSON.stringify({ uid: h.uid, draft: h.draft, at: Date.now() }));
+    return;
+  }
+  const d = parkedDates();
+  if (!d || today() <= d.until) return;
+  prefDel(PARKED_KEY);
+  fx.toast(`The workout set aside was removed: it was kept until ${fmtDate(d.until)}.`);
 }
 /** The id of a held record's workout, or null when it has none. */
 const heldId = (h: { draft: unknown } | null): string | null => {
@@ -48,7 +81,7 @@ function letGo(): void {
 }
 let hooked = false;
 /** The held record, unless it is the copy of the workout already brought back in this visit. */
-const waiting = (): { uid: string; draft: unknown } | null => {
+const waiting = (): ReturnType<typeof held> => {
   const h = held();
   return h && backHere != null && heldId(h) === backHere ? null : h;
 };
@@ -71,7 +104,7 @@ export function parkDraft(): boolean {
   const d = state.draft;
   // Any copy held, one waiting for a save included, is the only one of its workout: never written over.
   if (!d || d.editingId || held() != null) return false;
-  return prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: d }));
+  return prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: d, at: Date.now() }));
 }
 
 /** Brings a set-aside workout of this account back as the session in progress, offered on Today; false when there is none to bring or a workout is open. */

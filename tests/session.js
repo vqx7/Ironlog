@@ -52,9 +52,12 @@ const ROWS = b => [...document.querySelectorAll(`#view .sg`)].filter(r => r.quer
    o.settings sets settings; o.seed (S, L) changes anything else first. */
 async function lifter(o = {}) {
   const items = o.items || [['bench', 3, 6, 10, REST_BENCH], ['dbLateral', 2, 10, 15, REST_RAISE]];
-  // o.movable: a clock the check moves (window.__setClock), from 10:00 on the day, as a lifter's day goes on.
+  // o.movable: a clock the check moves (window.__setClock), from 10:00 on the day, as a lifter's day goes on; a page
+  // loaded again starts at the time the check left in the tab's name ("__clock=..."), an app closed and opened on a
+  // later day. The tab's name, not storage: in this harness an init script that reads localStorage as a page reloads
+  // sometimes gave that page an empty storage (found building NEW-96's check).
   const T0 = JSON.stringify((o.day || DAY) + 'T10:00:00');
-  const MOVABLE = `(()=>{const R=Date;let off=new R(${T0}).getTime()-R.now();window.__setClock=t=>{off=new R(t).getTime()-R.now();};class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`;
+  const MOVABLE = `(()=>{const R=Date;let off=new R(${T0}).getTime()-R.now();const m=/^__clock=(.+)$/.exec(window.name||'');if(m)off=new R(m[1]).getTime()-R.now();window.__setClock=t=>{off=new R(t).getTime()-R.now();};class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`;
   const P = await open(FILE, { browser: o.browser, w: o.w || 390, h: 844, clock: o.movable ? undefined : (o.day || DAY) + 'T10:00:00', setup: async ctx => { if (o.movable) await ctx.addInitScript(MOVABLE); await ctx.addInitScript(TOAST_LOG); } });
   P.ev = (f, a) => P.page.evaluate(f, a);
   await P.ev(([items, o, LB]) => {
@@ -458,6 +461,40 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     ok((await P.toasts()).some(x => x === 'Session updated. Your workout in progress is back: Resume it on Today.'), 'L-19: "Session updated." and the workout set aside is back', await P.toasts());
     const back = await P.draft();
     ok(back && !back.editingId && back.ex[0].sets[0].done, 'L-19: the workout in progress is back as it was', back && back.ex[0].sets.map(x => x.done));
+    await P.close();
+  }
+  if (run('L-19')) {
+    /* NEW-96 (V, 2026-11-09 08:11: "is it possible to delete it after 30 days?"): a workout set aside and never
+       brought back is kept 30 days from the day it was set aside, Today's card saying until when, then removed when
+       the app next opens, said as it goes. Here the app closes while the edit is open and before the edit is saved
+       (the log on the phone then holds no workout), so Today offers the workout set aside. */
+    const P = await lifter({ settings: { autoDone: false }, movable: true });
+    await start(P); await P.tap(tick(0, 0));
+    await P.tap('#tabs [data-tab="history"]', 200);
+    await P.tap('#view [data-act="histToggle"][data-id="last"]', 150); await P.tap('#view [data-act="histEdit"][data-id="last"]', 300);
+    // Reopened: the page loaded again at that time, then Today's tab tapped, as a lifter opens the app to it.
+    const reopen = async t => {
+      await P.ev(t => { window.name = '__clock=' + t; }, t);
+      await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__ironlog.state && document.querySelector('#tabs [data-tab="today"]'));
+      await wait(300); await P.tap('#tabs [data-tab="today"]', 300);
+      const now = await P.ev(() => new Date().toISOString().slice(0, 10));
+      if (now !== t.slice(0, 10)) ok(false, 'L-19: (setup) the page reopened on ' + t.slice(0, 10), now);
+    };
+    await P.ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); });
+    await reopen('2026-12-11T09:00:00');
+    const card = await P.ev(() => { const c = document.getElementById('parkedCard'); return c ? c.innerText.replace(/\s+/g, ' ') : null; });
+    ok(card && /Set aside while you fixed an earlier one\. Kept until Dec 11\./.test(card), 'L-19: Today\'s card says until when the workout set aside on Nov 11 is kept: "Kept until Dec 11." (NEW-96)', card);
+    await reopen('2026-12-12T09:00:00');
+    const gone = await P.ev(() => ({ card: !!document.getElementById('parkedCard'), held: localStorage.getItem(window.__ironlog.KEY + '.parked') }));
+    const said = await P.toasts();
+    ok(!gone.card && gone.held == null && said.includes('The workout set aside was removed: it was kept until Dec 11.'), 'L-19: opened the day after, it is removed and the app says so: "The workout set aside was removed: it was kept until Dec 11." (NEW-96)', { gone, said });
+    // A copy set aside by a build before 2.57 carries no date: its 30 days count from the day this build first opens
+    // with it, so it is never removed sooner than its card could say.
+    // As 2.56 wrote it: the account and the workout, no date.
+    await P.ev(() => { localStorage.setItem(window.__ironlog.KEY + '.parked', JSON.stringify({ uid: '', draft: { id: 'old1', date: '2026-11-01', ex: [{ exId: 'bench', sets: [{ w: 80, r: 8, done: true }] }] } })); });
+    await reopen('2026-12-20T09:00:00');
+    const old = await P.ev(() => { const c = document.getElementById('parkedCard'); const r = JSON.parse(localStorage.getItem(window.__ironlog.KEY + '.parked') || 'null'); return { card: c ? c.innerText.replace(/\s+/g, ' ') : null, at: r && r.at }; });
+    ok(old.card && /Kept until Jan 19, 2027\./.test(old.card) && typeof old.at === 'number', 'L-19: a copy from before 2.57, first opened Dec 20, is kept until Jan 19, 2027 (NEW-96)', old);
     await P.close();
   }
 

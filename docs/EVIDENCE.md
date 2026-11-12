@@ -182,3 +182,4 @@ Since r61 every number a rule uses is a named constant in `src/app/`, declared o
 - `UNDO_DAYS` 7 and `UNDO_MAX` 20 (storage): Undo keeps 20 steps at most, and since r22 keeps them 7 days after the app is closed. Conventions; `UNDO_MAX`'s release not recorded.
 - `BACKUP_DAYS` 7 (storage): a backup is due 7 days after the last when this phone holds the only copy. A convention, release not recorded.
 - `TRASH_DAYS` 30 and `TRASH_MAX` 20 (records): Recently deleted keeps the 20 most recent for 30 days. A convention (Recently deleted came with schema v4).
+- `PARK_KEEP_DAYS` 30 (park): a workout set aside for an edit and never brought back is kept 30 days from the day it was set aside, Today's card saying until when, then removed when the app next opens, said as it goes. V's choice (NEW-96, V 2026-11-09 08:11), a convention, in step with Recently deleted.
