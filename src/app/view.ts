@@ -21,6 +21,7 @@ import { moreList, orderKeys } from './layout';
 import { estMin, min5 } from './format';
 import { numIn, today } from './util';
 import { state, ui } from './store';
+import { trashShown } from './act';
 
 declare global {
   interface Window {
@@ -364,7 +365,7 @@ export function slotted(tab: string, parts: readonly (readonly [string | null, P
 /** Whether a hidden section of History has something to show (the legacy MORE_LIVE takes these): cardio logged, or something recently deleted. */
 const MORE_OFFER: Readonly<Record<string, () => boolean>> = {
   'history:cardio': () => state.cardio.length > 0,
-  'history:trash': () => state.trash.length > 0
+  'history:trash': () => trashShown().length > 0
 };
 
 /* The foot of a tab: the hidden sections it can show, one tap each, and the

@@ -10,7 +10,7 @@ import { picStripSaved } from './notepics';
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { repeat } from 'lit-html/directives/repeat.js';
-import { act, toTrash } from './act';
+import { act, toTrash, trashShown } from './act';
 import { CARDIOL, CWHENL } from './library';
 import { fmtDate, fmtDateRow, sessTm } from './format';
 import { isWork } from './formulas';
@@ -63,7 +63,7 @@ export function viewHistory(): TemplateResult {
   const keyed: [string, TemplateResult][] = [];
   const cs = [...state.cardio].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   if (cs.length) keyed.push(['cardio', cardioSec(cs)]);
-  const tr = state.trash;
+  const tr = trashShown();
   if (tr.length) keyed.push(['trash', trashSec()]);
   const impLine = html`<p class="small u-m14-0-0"><button class="linkbtn u-minh44" data-act="impOpen" data-tip=${IMPORT_TIP}>Import workouts</button></p>
 `;
@@ -115,7 +115,7 @@ function trashName(x: (typeof state.trash)[number]): string {
 }
 
 function trashSec(): TemplateResult {
-  const tr = state.trash;
+  const tr = trashShown();
   return section({
     sk: 'history:trash',
     key: 'trash',
@@ -331,7 +331,7 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     toast('Deleted for good', true);
   },
   trashEmpty() {
-    const n = state.trash.length;
+    const n = trashShown().length;
     if (!n) return;
     confirmBox(
       `Empty Recently deleted (${n} item${n > 1 ? 's' : ''})?`,

@@ -635,6 +635,12 @@ export function mergeChunk(
     // Closed on one side (finished or discarded) while the other ticked on: closed stays closed, whichever edit was
     // later, since closing is the lifter's call; the sets ticked since are kept by keepLost (joined to the saved session).
     if (bd && ((!rd && ld && ld.id === bd.id) || (!ld && rd && rd.id === bd.id))) return { draft: null };
+    /* The same with the next workout started on the side that closed it, which notes the one it follows: it stays open,
+       and the sets ticked late in the closed one join its session (NEW-134: the later edit won, so a phone behind
+       brought the finished workout back open on both and saved the next one away as a session). A workout chosen at a
+       first sign-in follows nothing, so there the later edit still decides (S-13). */
+    if (bd && ld && rd && ld.id === bd.id && rd.follows === bd.id) return { draft: r.draft };
+    if (bd && ld && rd && rd.id === bd.id && ld.follows === bd.id) return { draft: l.draft };
     // Otherwise one session in progress is one record: the later edit replaces the other (keepLost keeps the other's sets).
     const v = merge3Val(base ? base.d : '?', l.draft || null, r.draft || null, remoteWins, stat);
     return { draft: v === undefined ? null : v };
@@ -1984,13 +1990,24 @@ function mergeIn(text: string, own: boolean): void {
       );
     setState(assemble(parts));
     /* The copy of the workout that lost the merge keeps its sets, as on two phones (keepLost): this tab's when it held
-       a change the other tab's save lacked, the other tab's when it did and this tab's copy stood. A copy no different
-       from this tab's last save lost nothing. Before 2.53 a set ticked in a tab behind, in a workout the other tab had
-       finished, was dropped without a word (REV12-6). */
+       something logged the other tab's save lacked, the other tab's when it did and this tab's copy stood. Logged means
+       a set ticked or changed once ticked, or cardio entered: a load being typed or a question answered is no reason to
+       keep a workout the other tab discarded (the review of 2.53, REV13-8: Discard in one tab while a load was typed in
+       the other, and the workout came back in History). Before 2.53 a set ticked in a tab behind, in a workout the
+       other tab had finished, was dropped without a word (REV12-6). */
     const agreed = base.draft;
-    const changed = (d: DraftLike | null | undefined): boolean => canon(d ?? null) !== canon(agreed ?? null);
-    if (changed(dr0)) kept = keepLost(dr0, state.draft, agreed, true, true);
-    if (changed(incoming.draft)) keepLost(incoming.draft, state.draft, agreed, true, true);
+    const loggedNew = (d: DraftLike | null | undefined): boolean => {
+      if (!d) return false;
+      const was = agreed && agreed.id === d.id ? agreed : null;
+      const rows = new Set(was ? was.ex.flatMap(b => b.sets.filter(x => x.done).map(x => canon(x))) : []);
+      const cards = new Set(was ? (was.cardio || []).map(c => canon(c)) : []);
+      return (
+        d.ex.some(b => b.sets.some(x => x.done && !rows.has(canon(x)))) ||
+        (d.cardio || []).some(c => !!c.min && !cards.has(canon(c)))
+      );
+    };
+    if (loggedNew(dr0)) kept = keepLost(dr0, state.draft, agreed, true, true);
+    if (loggedNew(incoming.draft)) keepLost(incoming.draft, state.draft, agreed, true, true);
   }
   device.lastSaved = text;
   clearTimer(saveT);

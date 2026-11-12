@@ -4329,7 +4329,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const out = EQUIP.map(([k2]) => k2).filter((k2) => a2.includes(k2));
     return out.length ? out : void 0;
   }
-  var DRAFT_KNOWN = /* @__PURE__ */ new Set(["pics", "equip", "begunAt"]);
+  var DRAFT_KNOWN = /* @__PURE__ */ new Set(["pics", "equip", "begunAt", "follows"]);
   function cleanDraft(d3, date) {
     const startedAt = Number(d3.startedAt), begunAt = Number(d3.begunAt), durMin = Number(d3.durMin);
     const pics = picIds(d3.pics);
@@ -4342,6 +4342,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       startedAt: isTime(startedAt) ? startedAt : null,
       // When the lifting began (NEW-129), once it has; absent before, so a workout's record is unchanged until then.
       ...isTime(begunAt) ? { begunAt } : {},
+      // The workout closed on this phone just before this one was started here (NEW-134); absent otherwise.
+      ...typeof d3.follows === "string" && d3.follows ? { follows: fixId(d3.follows) } : {},
       durMin: Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null,
       dayName: typeof d3.dayName === "string" ? d3.dayName : "Session",
       routineId: typeof d3.routineId === "string" && d3.routineId ? fixId(d3.routineId) : "",
@@ -4491,8 +4493,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!extra.length) return list0;
     for (const x2 of extra) {
       const id = fixId(x2.id + "-dup" + hashStr(canon(x2)).slice(0, DUP_HASH));
-      if (!trash.some((t4) => t4.id === id)) trash.unshift({ id, kind, date: today(), data: { ...rec(x2), id } });
+      if (trash.some((t4) => t4.id === id)) continue;
+      const at2 = trash.findIndex((t4) => t4.date < x2.date);
+      trash.splice(at2 < 0 ? trash.length : at2, 0, { id, kind, date: x2.date, data: { ...rec(x2), id } });
     }
+    trash.splice(TRASH_MAX);
+    while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
     return [...byId.values()];
   }
   function cleanBodyweights(listed) {
@@ -4610,7 +4616,25 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   // src/app/store.ts
   var state;
   function setState(next2) {
-    return state = next2;
+    const was = state;
+    state = next2;
+    sheetFollows(was);
+    return state;
+  }
+  function sheetFollows(was) {
+    const m3 = ui.modal;
+    if (!m3 || !("b" in m3) || typeof m3.b !== "number") return;
+    const d0 = was ? was.draft : null, d1 = state.draft;
+    const b2 = d0 ? d0.ex[m3.b] : void 0;
+    if (!d0 || !b2) return;
+    const at2 = d1 ? d1.ex[m3.b] : void 0;
+    if (d1 && d1.id === d0.id && at2 && (b2.bid ? at2.bid === b2.bid : at2 === b2 || at2.exId === b2.exId)) return;
+    const nth = d0.ex.slice(0, m3.b).filter((x2) => x2.exId === b2.exId).length;
+    const j3 = !d1 || d1.id !== d0.id ? -1 : b2.bid ? d1.ex.findIndex((x2) => x2.bid === b2.bid) : d1.ex.findIndex(
+      (x2, i5) => x2.exId === b2.exId && d1.ex.slice(0, i5).filter((y2) => y2.exId === b2.exId).length === nth
+    );
+    if (j3 >= 0) m3.b = j3;
+    else fx.closeModal();
   }
   var HIST_PAGE = 25;
   var ui = {
@@ -10416,6 +10440,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (bd && ld && rd && ld.id === rd.id && bd.id === ld.id && !ld.editingId && !rd.editingId)
         return { draft: mergeWorkout(bd, ld, rd, remoteWins, stat) };
       if (bd && (!rd && ld && ld.id === bd.id || !ld && rd && rd.id === bd.id)) return { draft: null };
+      if (bd && ld && rd && ld.id === bd.id && rd.follows === bd.id) return { draft: r4.draft };
+      if (bd && ld && rd && rd.id === bd.id && ld.follows === bd.id) return { draft: l4.draft };
       const v3 = merge3Val(base ? base.d : "?", l4.draft || null, r4.draft || null, remoteWins, stat);
       return { draft: v3 === void 0 ? null : v3 };
     }
@@ -11378,9 +11404,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         );
       setState(assemble(parts));
       const agreed = base.draft;
-      const changed = (d3) => canon(d3 ?? null) !== canon(agreed ?? null);
-      if (changed(dr0)) kept = keepLost(dr0, state.draft, agreed, true, true);
-      if (changed(incoming.draft)) keepLost(incoming.draft, state.draft, agreed, true, true);
+      const loggedNew = (d3) => {
+        if (!d3) return false;
+        const was = agreed && agreed.id === d3.id ? agreed : null;
+        const rows2 = new Set(was ? was.ex.flatMap((b2) => b2.sets.filter((x2) => x2.done).map((x2) => canon(x2))) : []);
+        const cards = new Set(was ? (was.cardio || []).map((c4) => canon(c4)) : []);
+        return d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !rows2.has(canon(x2)))) || (d3.cardio || []).some((c4) => !!c4.min && !cards.has(canon(c4)));
+      };
+      if (loggedNew(dr0)) kept = keepLost(dr0, state.draft, agreed, true, true);
+      if (loggedNew(incoming.draft)) keepLost(incoming.draft, state.draft, agreed, true, true);
     }
     device.lastSaved = text;
     clearTimer(saveT);
@@ -11478,6 +11510,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     try {
       change();
       clockAfter(outerBegun);
+      followsAfter(outerBegun);
     } catch (e5) {
       if (logWas) setState(logWas);
       else {
@@ -11503,7 +11536,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function begunBefore() {
     const d3 = state.draft;
-    return d3 ? { id: d3.id, begun: begunIn(d3) } : null;
+    return d3 ? { id: d3.id, begun: begunIn(d3), live: !d3.past && !d3.editingId } : null;
+  }
+  var closedHere = null;
+  function followsAfter(before) {
+    const d3 = state.draft;
+    if (before && before.live && !d3) closedHere = before.id;
+    else if (!before && d3 && closedHere && !d3.past && !d3.editingId && !d3.follows && !begunIn(d3)) {
+      d3.follows = closedHere;
+      closedHere = null;
+    }
   }
   function clockAfter(before) {
     const d3 = state.draft;
@@ -11520,12 +11562,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     while (state.trash.length > 1 && JSON.stringify(state.trash).length > TRASH_BYTES) state.trash.pop();
   }
   var trashCutoff = () => addDays(today(), -TRASH_DAYS);
-  function trashExpire() {
+  function trashShown() {
     const cutoff = trashCutoff();
-    if (!state.trash.some((t4) => t4.date < cutoff)) return;
-    act(() => {
-      state.trash = state.trash.filter((t4) => t4.date >= cutoff);
-    });
+    return state.trash.filter((t4) => t4.date >= cutoff);
   }
   function nameLastStep(said2) {
     if (!lastStep || lastStep.said || !undoStack.includes(lastStep)) return;
@@ -12346,7 +12385,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
   var MORE_OFFER = {
     "history:cardio": () => state.cardio.length > 0,
-    "history:trash": () => state.trash.length > 0
+    "history:trash": () => trashShown().length > 0
   };
   function tabFoot(tab, offer) {
     const list = moreList(tab, state.settings.hidden, offer ? { ...MORE_OFFER, ...offer } : MORE_OFFER);
@@ -14024,7 +14063,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const keyed = [];
     const cs = [...state.cardio].sort((a2, b2) => a2.date < b2.date ? 1 : a2.date > b2.date ? -1 : 0);
     if (cs.length) keyed.push(["cardio", cardioSec(cs)]);
-    const tr = state.trash;
+    const tr = trashShown();
     if (tr.length) keyed.push(["trash", trashSec()]);
     const impLine = b`<p class="small u-m14-0-0"><button class="linkbtn u-minh44" data-act="impOpen" data-tip=${IMPORT_TIP}>Import workouts</button></p>
 `;
@@ -14064,7 +14103,7 @@ ${cs.length > CARDIO_SHOWN ? b`<p class="small muted">${cs.length - CARDIO_SHOWN
     return `Routine: ${typeof d3.name === "string" && d3.name || "Routine"}`;
   }
   function trashSec() {
-    const tr = state.trash;
+    const tr = trashShown();
     return section({
       sk: "history:trash",
       key: "trash",
@@ -14214,7 +14253,7 @@ ${more}`;
       toast("Deleted for good", true);
     },
     trashEmpty() {
-      const n3 = state.trash.length;
+      const n3 = trashShown().length;
       if (!n3) return;
       confirmBox(
         `Empty Recently deleted (${n3} item${n3 > 1 ? "s" : ""})?`,
@@ -28835,7 +28874,6 @@ ${JSON.stringify(ctx, null, 1)}`;
     };
   }
   function firstDraw() {
-    trashExpire();
     render();
     wakeOn();
     timerResume();
@@ -28860,7 +28898,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     setRoot(renderInner);
     setSheets(SHEETS, afterSheet2);
     const notice = (msg, undo, ms, kind) => toast(msg, undo, ms, kind ?? "notice");
-    setFx({ render, rerenderKeepScroll, toast: notice, undoToastHide, setSaveState, syncLine, obGate, ask });
+    setFx({ render, rerenderKeepScroll, toast: notice, undoToastHide, setSaveState, syncLine, obGate, ask, closeModal });
     storageStart();
     syncStart();
     viewStart();

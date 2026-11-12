@@ -273,6 +273,8 @@ export interface DraftLike {
   startedAt?: number | null | undefined;
   /** When the lifting began: its first set ticked or its reps entered, or cardio logged with its minutes (clockStart). Absent until then. */
   begunAt?: number | undefined;
+  /** The workout closed on this phone just before this one was started here (act.ts followsAfter); absent otherwise. */
+  follows?: string | undefined;
   chk?: Session['chk'] | null;
   cardio?: DraftCardio[] | undefined;
   ex: DraftBlock[];

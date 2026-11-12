@@ -36,9 +36,40 @@ export type State = Omit<EngineState, 'settings' | 'draft'> & {
    others). */
 export let state!: State;
 
-/** Replaces the whole log and returns it, as `state = next` did. */
+/** Replaces the whole log and returns it, as `state = next` did; a sheet open on one of the workout's exercises stays on it (below). */
 export function setState(next: State): State {
-  return (state = next);
+  const was = state;
+  state = next;
+  sheetFollows(was);
+  return state;
+}
+/* A sheet opened on one of the workout's exercises (Swap, its menu, the check-in set, an old best, quick entry) holds it
+   by its place in the list. A log replaced under it (another tab's or phone's change merged in, a tab shown again
+   catching up, Undo) may move that exercise: the sheet's place follows it, by its id, and closes when it is gone or
+   the workout is another, so a pick there never acts on the exercise now in its place (the review of 2.53, REV13-11:
+   Swap open on the raises, the other tab moved them up, and the pick replaced the bench). */
+/** Keeps an open sheet on the exercise it was opened on after the log is replaced (above). */
+function sheetFollows(was: State | undefined): void {
+  const m = ui.modal;
+  if (!m || !('b' in m) || typeof m.b !== 'number') return;
+  const d0 = was ? was.draft : null,
+    d1 = state.draft;
+  const b = d0 ? d0.ex[m.b] : undefined;
+  if (!d0 || !b) return;
+  // The same exercise at the same place: nothing moved under the sheet.
+  const at = d1 ? d1.ex[m.b] : undefined;
+  if (d1 && d1.id === d0.id && at && (b.bid ? at.bid === b.bid : at === b || at.exId === b.exId)) return;
+  const nth = d0.ex.slice(0, m.b).filter(x => x.exId === b.exId).length;
+  const j =
+    !d1 || d1.id !== d0.id
+      ? -1
+      : b.bid
+        ? d1.ex.findIndex(x => x.bid === b.bid)
+        : d1.ex.findIndex(
+            (x, i) => x.exId === b.exId && d1.ex.slice(0, i).filter(y => y.exId === b.exId).length === nth
+          );
+  if (j >= 0) m.b = j;
+  else fx.closeModal();
 }
 
 /** Sessions History shows at a time, and adds with Show more: ui's first
@@ -311,6 +342,8 @@ interface Fx {
   syncLine(): void;
   /** Whether the first page is held open on this device after a sign-out (Today's obGate). */
   obGate(): boolean;
+  /** Closes the open sheet, as its own close does. */
+  closeModal(): void;
 }
 /* Set once at start, before anything that could call an effect runs (the !
    says so), as state is set by load(). */

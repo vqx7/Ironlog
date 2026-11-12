@@ -917,7 +917,7 @@ function equipList(v: unknown): string[] | undefined {
   return out.length ? out : undefined;
 }
 /** The draft fields this build writes only when valid (its pictures, its equipment): an invalid one is dropped, not kept as unknown. */
-const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics', 'equip', 'begunAt']);
+const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics', 'equip', 'begunAt', 'follows']);
 
 /* The workout in progress, cleaned: called only on one whose exercises are a
    list and whose date is a date (normalize), rebuilt field by field in place,
@@ -948,6 +948,8 @@ function cleanDraft(d: Rec, date: string): DraftLike {
     startedAt: isTime(startedAt) ? startedAt : null,
     // When the lifting began (NEW-129), once it has; absent before, so a workout's record is unchanged until then.
     ...(isTime(begunAt) ? { begunAt } : {}),
+    // The workout closed on this phone just before this one was started here (NEW-134); absent otherwise.
+    ...(typeof d.follows === 'string' && d.follows ? { follows: fixId(d.follows) } : {}),
     durMin: Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null,
     dayName: typeof d.dayName === 'string' ? d.dayName : 'Session',
     routineId: typeof d.routineId === 'string' && d.routineId ? fixId(d.routineId) : '',
@@ -1039,10 +1041,10 @@ function cleanExercises(listed: unknown[], s: Rec, removedLib: readonly string[]
   return exercises;
 }
 
-/* Entries past Recently deleted's days are dropped by this phone's date when the app opens and when something is
-   deleted (act.ts trashExpire), not here: normalize reads every log the same way on every phone (it runs in the sync's
-   comparison too), and by the phone's own date one in Los Angeles kept a deletion that one in Tokyo, a day ahead at
-   that instant, dropped (REV12-T2). */
+/* Entries past Recently deleted's days are hidden by this phone's date where they are shown and dropped when
+   something is deleted (act.ts trashShown and toTrash), not here: normalize reads every log the same way on every
+   phone (it runs in the sync's comparison too), and by the phone's own date one in Los Angeles kept a deletion that
+   one in Tokyo, a day ahead at that instant, dropped (REV12-T2). */
 /** Recently deleted as a save holds it: each entry checked, the oldest past the limits dropped. */
 function cleanTrash(listed: unknown[]): Trashed[] {
   const trash: Trashed[] = listed
@@ -1158,8 +1160,16 @@ function dedupe<T extends { id: string; date: string }>(
   if (!extra.length) return list0;
   for (const x of extra) {
     const id = fixId(x.id + '-dup' + hashStr(canon(x)).slice(0, DUP_HASH));
-    if (!trash.some(t => t.id === id)) trash.unshift({ id, kind, date: today(), data: { ...rec(x), id } });
+    /* Dated by the copy's own date, not the phone's: every phone puts the same entry in Recently deleted, so one log
+       reads the same on each and the two copies never clash (the review of 2.53, REV13-12: a phone in Los Angeles and
+       one in Tokyo dated it a day apart). Put where Recently deleted's order puts it, newest first, after the entries of
+       its date, and the list held to its limits, so reading the log again gives the same list (cleanTrash). */
+    if (trash.some(t => t.id === id)) continue;
+    const at = trash.findIndex(t => t.date < x.date);
+    trash.splice(at < 0 ? trash.length : at, 0, { id, kind, date: x.date, data: { ...rec(x), id } });
   }
+  trash.splice(TRASH_MAX);
+  while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
   return [...byId.values()];
 }
 
