@@ -169,8 +169,6 @@ interface UndoStep {
 }
 /** Undo's steps are kept this many days; the Settings line says so. */
 export const UNDO_DAYS = 7;
-/** Undo's steps are written to IndexedDB this long after the last change, so a burst of changes writes once. */
-const UNDO_SAVE_MS = 400;
 
 /* Undo steps: the state before a destructive action, and the state right
    after it (captured at the next save). See snapshot() and ACT.undo. */
@@ -186,8 +184,7 @@ export const undoStack: UndoStep[] = [],
    effort: without IndexedDB, Undo works as before, for this visit only. */
 const UNDO_DB = ENV === 'preview' ? `${STORAGE_ID}-preview-undo` : `${STORAGE_ID}-undo`,
   UNDO_TTL = UNDO_DAYS * DAY_MS;
-let undoDbP: Promise<IDBDatabase | null> | null = null,
-  undoT: number | null = null;
+let undoDbP: Promise<IDBDatabase | null> | null = null;
 function undoDb(): Promise<IDBDatabase | null> {
   if (!undoDbP)
     undoDbP = new Promise(res => {
@@ -203,7 +200,7 @@ function undoDb(): Promise<IDBDatabase | null> {
     });
   return undoDbP;
 }
-/** Whether a change to the steps is waiting to be written. */
+/** Whether a write of the steps is waiting for the tap that changed them to end. */
 let undoWaiting = false;
 /** Writes the steps to IndexedDB now. */
 async function undoWrite(): Promise<void> {
@@ -224,18 +221,19 @@ async function undoWrite(): Promise<void> {
     log('undo-save', e);
   }
 }
-/** Writes the steps to IndexedDB once the taps pause. */
+/* The steps are written as the tap that changed them ends: a microtask, so the step, the log right after it and its
+   words, all made in that tap, go in one write, and the write is under way before anything else can happen. Until
+   2.52 they waited 0.4 s for a pause in the taps, then for the page to be hidden or left as well: a change made just
+   before the app closed lost its step (NEW-130), and in WebKit a write begun as the page was torn down (a reload with
+   no hiding first: Update, another address) never ended (NEW-139, REV13-1 there). Either way Undo then took back the
+   change before it. */
+/** Writes the steps to IndexedDB as the current tap ends. */
 export function undoPersist(): void {
-  clearTimer(undoT);
+  if (undoWaiting) return;
   undoWaiting = true;
-  undoT = setTimeout(() => void undoWrite(), UNDO_SAVE_MS);
-}
-/** Writes the steps at once if a write is waiting: the page hidden or left (sync.ts), so a change made just before
-    the app closed keeps its step (NEW-130: it was lost, and Undo then took back the change before it). */
-export function undoFlush(): void {
-  if (!undoWaiting) return;
-  clearTimer(undoT);
-  void undoWrite();
+  queueMicrotask(() => {
+    if (undoWaiting) void undoWrite();
+  });
 }
 /** Reads the steps saved by an earlier visit, those under a week old, once at start. */
 export async function undoRestore(): Promise<void> {
@@ -271,7 +269,6 @@ export async function undoRestore(): Promise<void> {
 /** Drops every step, here and in IndexedDB (a restore, a sign-in that takes the account's log). */
 export function undoForget(): void {
   undoStack.length = 0;
-  clearTimer(undoT);
   undoWaiting = false;
   undoDb().then(db => {
     if (!db) return;
