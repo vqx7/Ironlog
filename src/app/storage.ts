@@ -216,6 +216,10 @@ async function undoWrite(): Promise<void> {
       undoStack.map(e => ({ pre: e.pre, post: e.post, t: e.t || Date.now(), ...(e.said ? { said: e.said } : {}) })),
       'stack'
     );
+    /* Committed at once rather than when the page next idles: a page reloaded or closed straight after (Update, the
+       app closed, another address) was gone before the write ended, and Undo then took back the change before it (the
+       review of 2.52, REV13-1). A browser without commit() ends the write as before. */
+    if ('commit' in tx) tx.commit();
   } catch (e) {
     log('undo-save', e);
   }

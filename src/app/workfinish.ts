@@ -438,16 +438,17 @@ function recapPr(pr: Pr): { name: string; what: string; was: string } {
    best estimate is said once, quietly, not counted as a PR; the PR
    moment is its own gold block, each with what it beat. */
 function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioEntry[]): void {
-  /* Timed by the clock when the workout began on the day it is saved on, so one
-     that runs past midnight keeps its minutes; a past
-     workout logged later, or one moved to another date, is not timed by it.
-     A past workout and an edit from History take the minutes typed beside
-     the date. */
+  /* Timed by the clock from when the lifting began (begunAt, NEW-129), or, begun on a build that keeps no begunAt, from
+     when it was opened, as that build times it (REV13-7); kept when it began on the day it is saved on (one set up the
+     day before is moved to the day it begins, session.ts clockStart; REV13-3, NEW-132), so one that runs past
+     midnight keeps its minutes, while a past workout logged later, or one moved to another date by hand, is not timed
+     by it. A past workout and an edit from History take the minutes typed beside the date. */
+  const began = d.begunAt || d.startedAt || 0;
   const clockMin =
-    d.editingId || d.past || !d.startedAt || iso(new Date(d.startedAt)) !== d.date
+    d.editingId || d.past || !d.startedAt || !began || iso(new Date(began)) !== d.date
       ? null
       : ((): number | null => {
-          const m = Math.round((Date.now() - (d.startedAt || 0)) / (MINUTE_S * SECOND_MS));
+          const m = Math.round((Date.now() - began) / (MINUTE_S * SECOND_MS));
           return m >= 1 && m <= TIMED_MAX_MIN ? m : null;
         })();
   const durMin = d.editingId || d.past ? typedMin(d) : clockMin;
@@ -492,7 +493,7 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
   const editing = !!d.editingId;
   act(() => {
     const was = d.editingId ? state.sessions.find(x => x.id === d.editingId) : null;
-    const t0 = was ? was.t : d.startedAt || Date.now();
+    const t0 = was ? was.t : began || Date.now();
     if (t0) sess.t = t0;
     const pw = d.editingId || d.free ? undefined : pwOf(state.routines, d.routineId);
     if (pw) sess.pw = pw;

@@ -297,7 +297,8 @@ async function from_r55b() {
       for (let s = 0; s < 2; s++) { await O.page.fill(`#view .sg input[data-f="w"][data-b="0"][data-s="${s}"]`, '225'); await O.page.click(`#view [data-act="sDone"][data-b="0"][data-s="${s}"]`); await wait(200); await answer(O); }
       await O.ev(() => { const L = window.__ironlog; L.ACT.cDraftAdd({ dataset: { when: 'after' } }); L.state.draft.cardio[0].min = 20; L.state.draft.chk = { sleep: 1, energy: 2, joints: 3 }; L.saveNow(); });
       await O.ev(() => window.__ironlog.flush()); await wait(1200);
-      const o0 = await O.ev(() => { const d = window.__ironlog.state.draft; return { id: d.id, cardio: d.cardio[0].id, t: d.startedAt }; });
+      // Its start: when the lifting began (NEW-129), as Finish would save it.
+      const o0 = await O.ev(() => { const d = window.__ironlog.state.draft; return { id: d.id, cardio: d.cardio[0].id, t: d.begunAt || d.startedAt }; });
       const B = await firstRun();
       await B.page.click('#obPage [data-act="obSample"]'); await wait(300);
       await B.page.click('#modal [data-act="tplPick"][data-k="full3"]'); await wait(400);

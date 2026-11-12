@@ -3487,6 +3487,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function mergeFields(out, base, l4, r4, skip, remoteWins, stat) {
     for (const f3 of /* @__PURE__ */ new Set([...Object.keys(l4), ...Object.keys(r4)])) {
       if (skip.includes(f3)) continue;
+      if (!base && l4[f3] === void 0 !== (r4[f3] === void 0)) {
+        out[f3] = l4[f3] === void 0 ? r4[f3] : l4[f3];
+        continue;
+      }
       const v3 = merge3Val(base ? Hx(base[f3]) : "?", l4[f3], r4[f3], remoteWins, stat);
       if (v3 === void 0) delete out[f3];
       else out[f3] = v3;
@@ -3542,11 +3546,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (a2 && i5 >= 0 && i5 !== a2.at) b2.adj = { ...a2, at: i5 };
     }
     const O = rec(out) || {}, Bf = rec(base) || {}, Lf = rec(local) || {}, Rf = rec(remote) || {};
-    mergeFields(O, Bf, Lf, Rf, ["ex", "id", "cardio", "startedAt"], remoteWins, stat);
+    mergeFields(O, Bf, Lf, Rf, ["ex", "id", "cardio", "begunAt"], remoteWins, stat);
     let first = null;
-    for (const t4 of [local.startedAt, remote.startedAt])
+    for (const t4 of [local.begunAt, remote.begunAt])
       if (typeof t4 === "number" && t4 > 0 && (first == null || t4 < first)) first = t4;
-    if (first != null) O.startedAt = first;
+    if (first != null) O.begunAt = first;
     const cardio = merge3List(cardioBase(Bf.cardio), Lf.cardio, Rf.cardio, remoteWins, stat);
     if (cardio.length || Lf.cardio !== void 0 || Rf.cardio !== void 0) O.cardio = cardio;
     return out;
@@ -3561,10 +3565,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       base ? rec(base) : null,
       rec(local) || {},
       rec(remote) || {},
-      ["ex", "id"],
+      ["ex", "id", "t"],
       remoteWins,
       stat
     );
+    const t4 = remote.t ?? local.t;
+    if (t4 !== void 0) out.t = t4;
+    else delete out.t;
     return out;
   }
   function undoDraftOf(v3) {
@@ -4322,9 +4329,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const out = EQUIP.map(([k2]) => k2).filter((k2) => a2.includes(k2));
     return out.length ? out : void 0;
   }
-  var DRAFT_KNOWN = /* @__PURE__ */ new Set(["pics", "equip"]);
+  var DRAFT_KNOWN = /* @__PURE__ */ new Set(["pics", "equip", "begunAt"]);
   function cleanDraft(d3, date) {
-    const startedAt = Number(d3.startedAt), durMin = Number(d3.durMin);
+    const startedAt = Number(d3.startedAt), begunAt = Number(d3.begunAt), durMin = Number(d3.durMin);
     const pics = picIds(d3.pics);
     const equip = equipList(d3.equip);
     const out = {
@@ -4333,6 +4340,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       dayIdx: clampN(d3.dayIdx, 0, MAX_DAYS - 1, 0),
       dayId: typeof d3.dayId === "string" ? fixId(d3.dayId) : null,
       startedAt: isTime(startedAt) ? startedAt : null,
+      // When the lifting began (NEW-129), once it has; absent before, so a workout's record is unchanged until then.
+      ...isTime(begunAt) ? { begunAt } : {},
       durMin: Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null,
       dayName: typeof d3.dayName === "string" ? d3.dayName : "Session",
       routineId: typeof d3.routineId === "string" && d3.routineId ? fixId(d3.routineId) : "",
@@ -4752,6 +4761,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         undoStack.map((e5) => ({ pre: e5.pre, post: e5.post, t: e5.t || Date.now(), ...e5.said ? { said: e5.said } : {} })),
         "stack"
       );
+      if ("commit" in tx) tx.commit();
     } catch (e5) {
       log("undo-save", e5);
     }
@@ -5802,7 +5812,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       free: d3.free ? true : void 0,
       demo: false,
       ...chk ? { chk } : {},
-      ...d3.startedAt && d3.startedAt > 0 ? { t: d3.startedAt } : {},
+      ...(d3.begunAt || d3.startedAt || 0) > 0 ? { t: d3.begunAt || d3.startedAt || 0 } : {},
       ...d3.pics && d3.pics.length ? { pics: [...d3.pics] } : {},
       // The day's second workout, last, as normalize writes it.
       ...d3.part === 2 ? { part: 2 } : {}
@@ -5867,8 +5877,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function freeDraft(name, ex) {
     return {
       id: uid(),
-      // Not started until its first set is ticked (clockStart, below).
-      startedAt: null,
+      startedAt: Date.now(),
       date: today(),
       dayIdx: 0,
       dayId: null,
@@ -5883,10 +5892,24 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       ex: ex || []
     };
   }
-  function clockStart(d3) {
-    if (!d3 || d3.startedAt || d3.past || d3.editingId) return;
-    const begun = d3.ex.some((b2) => b2.sets.some((s3) => s3.done)) || (d3.cardio || []).some((c4) => !!c4.min && c4.min > 0);
-    if (begun) d3.startedAt = Date.now();
+  function begunIn(d3) {
+    return d3.ex.some((b2) => b2.sets.some((s3) => s3.done || s3.r != null)) || (d3.cardio || []).some((c4) => !!c4.min && c4.min > 0);
+  }
+  function clockStart(d3, wasBegun) {
+    if (!d3 || d3.past || d3.editingId) return;
+    const begun = begunIn(d3);
+    if (begun && !wasBegun && !d3.begunAt) {
+      d3.begunAt = Date.now();
+      const day = today();
+      if (d3.startedAt && d3.date === iso(new Date(d3.startedAt)) && d3.date < day) {
+        d3.date = day;
+        if (readAgain) readAgain(d3);
+      }
+    } else if (!begun && d3.begunAt !== void 0) delete d3.begunAt;
+  }
+  var readAgain = null;
+  function onDayMoved(f3) {
+    readAgain = f3;
   }
   function editFp(d3) {
     return JSON.stringify({
@@ -11410,6 +11433,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var outerDraftOnly = false;
   var outerUndo = false;
   var lastStep;
+  var outerBegun = null;
   function act(change, opts = {}) {
     if (opts.check && !opts.check()) return false;
     if (depth > 0) {
@@ -11417,7 +11441,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!opts.inProgress) dropInside = true;
       if (opts.undo && !outerUndo) log("act", "an Undo step was asked inside a change that keeps none");
       change();
-      clockStart(state.draft);
+      clockAfter(outerBegun);
       return true;
     }
     fx.undoToastHide();
@@ -11436,9 +11460,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     outerDraftOnly = !!opts.inProgress;
     depth++;
     let inside = false;
+    outerBegun = begunBefore();
     try {
       change();
-      clockStart(state.draft);
+      clockAfter(outerBegun);
     } catch (e5) {
       if (logWas) setState(logWas);
       else {
@@ -11461,6 +11486,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (opts.soon) saveSoon();
     else saveNow();
     return true;
+  }
+  function begunBefore() {
+    const d3 = state.draft;
+    return d3 ? { id: d3.id, begun: begunIn(d3) } : null;
+  }
+  function clockAfter(before) {
+    const d3 = state.draft;
+    clockStart(d3, !before || !d3 || before.id !== d3.id ? true : before.begun);
   }
   function toTrash(kind, data) {
     if (kind === "routine" && plainTemplate(data)) return;
@@ -20996,8 +21029,10 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const calIdx = d3.editingId ? -1 : calDueIdx(d3);
     const bwAt2 = d3.ex.findIndex((b2, bi) => !!EX(b2.exId).bw && !isFolded(d3, b2, bi));
     const letters = ssLetters(d3.ex.map((b2) => b2.plan));
-    const notYet = !d3.past && !d3.editingId && !d3.startedAt;
-    const when = d3.past ? `for ${fmtDateLong(d3.date)}` : d3.startedAt ? `started ${startedWords(d3.startedAt)}` : notYet ? "not started" : "";
+    const begun = begunIn(d3);
+    const notYet = !d3.past && !d3.editingId && !begun;
+    const began = d3.begunAt || (begun ? d3.startedAt : null);
+    const when = d3.past ? `for ${fmtDateLong(d3.date)}` : notYet ? "not started" : began ? `started ${startedWords(began)}` : "";
     const meta = sp.n ? b`${when ? when.charAt(0).toUpperCase() + when.slice(1) : ""}<span id="sessLeft">${left > 0 ? `${when ? " · " : ""}${estMin(left)} left` : ""}</span>` : notYet ? b`Not started<span id="sessLeft">${left > 0 ? ` · ${estMin(left)} left` : ""}</span>` : b`<span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? "set" : "sets"}</span> done${when ? `, ${when}` : ""}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ""}</span>`;
     return b`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d3.editingId ? "Editing a saved session" : d3.past ? "Past workout" : "Session in progress"}</p><div class="hrow"><h2 class="u-owany_minw0">${d3.dayName}</h2>${helpButton("log")}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d3.editingId ? "Cancel edit" : "Discard"}</button></div><p class="meta">${meta}</p>${parkedHeld() ? b`<p class="small muted u-m4-0-0" id="parkedLine">Your workout in progress is set aside. It comes back when you save or discard this one.</p>` : ""}${sp.n ? b`<div class="sprog"><div class="band" role="progressbar" aria-label="Sets done" aria-valuemin="0" aria-valuemax=${sp.n} aria-valuenow=${sp.k} aria-valuetext=${`${sp.k} of ${sp.n} sets done`}><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%;--pct:${sp.pct}`}></div></div><span id="sessOf" aria-hidden="true">${sp.k} of ${sp.n}</span></div>` : ""}
   <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d3.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d3.past || d3.editingId ? b`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d3.durMin ? String(d3.durMin) : "")} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : A}${d3.past ? "" : b`<button class="btn sm" data-act="chkOpen" aria-label=${chkSum(d3) ? `Check-in: ${chkSum(d3)}` : "Check-in, optional"}>Check-in</button>`}${left > 0 ? b`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ""}<button class="btn sm" data-act="bwOpen" data-date=${d3.date} data-tip="Log or update your weigh-in without leaving the workout">Bodyweight</button><button class="btn sm" data-act="wkAway" data-tip="Everything is saved as you go. Today shows the workout to resume.">Save and leave</button></div></div></div>
@@ -21349,6 +21384,9 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   }
   function workoutStart() {
     onRedraw(drawNow);
+    onDayMoved((d3) => {
+      for (const b2 of d3.ex) refreshBlock(b2);
+    });
     document.addEventListener("pointerdown", noteDown, true);
     document.addEventListener("mouseup", workoutUp, true);
     document.addEventListener("focusout", workoutBlur);
@@ -24842,7 +24880,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     begin(
       {
         id: uid(),
-        startedAt: null,
+        startedAt: Date.now(),
         date: today(),
         dayIdx: di,
         dayId: d3.id,
@@ -25074,7 +25112,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         begin(
           day ? {
             id: uid(),
-            startedAt: null,
+            startedAt: Date.now(),
             date: today(),
             dayIdx: day0 ? R2.days.indexOf(day0) : -1,
             dayId: day.id,
@@ -25192,7 +25230,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       begin(
         {
           id: uid(),
-          startedAt: null,
+          startedAt: Date.now(),
           date: today(),
           dayIdx: m3.day,
           dayId: day.id,
@@ -25941,8 +25979,9 @@ ${JSON.stringify(ctx, null, 1)}`;
     };
   }
   function saveSession(d3, ex, cardio) {
-    const clockMin = d3.editingId || d3.past || !d3.startedAt || iso(new Date(d3.startedAt)) !== d3.date ? null : (() => {
-      const m3 = Math.round((Date.now() - (d3.startedAt || 0)) / (MINUTE_S * SECOND_MS));
+    const began = d3.begunAt || d3.startedAt || 0;
+    const clockMin = d3.editingId || d3.past || !d3.startedAt || !began || iso(new Date(began)) !== d3.date ? null : (() => {
+      const m3 = Math.round((Date.now() - began) / (MINUTE_S * SECOND_MS));
       return m3 >= 1 && m3 <= TIMED_MAX_MIN ? m3 : null;
     })();
     const durMin = d3.editingId || d3.past ? typedMin(d3) : clockMin;
@@ -25975,7 +26014,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const editing = !!d3.editingId;
     act(() => {
       const was = d3.editingId ? state.sessions.find((x2) => x2.id === d3.editingId) : null;
-      const t0 = was ? was.t : d3.startedAt || Date.now();
+      const t0 = was ? was.t : began || Date.now();
       if (t0) sess.t = t0;
       const pw = d3.editingId || d3.free ? void 0 : pwOf(state.routines, d3.routineId);
       if (pw) sess.pw = pw;

@@ -226,8 +226,11 @@ async function phoneTwo(browser, cloud, uid, fileOrOpts = {}) {
   P.rows = (bi = 0) => P.ev(bi => { const d = window.__ironlog.state.draft; return d ? d.ex[bi].sets.map(s => (s.warm ? 'W:' : '') + (s.done ? `${s.w}x${s.r}` : '-')).join(' ') : null; }, bi);
   P.blocks = () => P.ev(() => { const d = window.__ironlog.state.draft; return d ? d.ex.map(b => `${b.exId}[${b.sets.map(s => (s.done ? `${s.w}x${s.r}` : '-')).join(' ')}]`).join(' ') : null; });
   P.saved = () => P.ev(() => window.__ironlog.state.sessions.map(s => s.ex.map(b => b.sets.map(x => `${x.warm ? 'W' : ''}${x.w}x${x.r}`).join(' ')).join(' | ')));
-  // Ticks row i of exercise bi (the first unless given) with a load and reps, as the logger saves a tick.
-  P.tick = (i, w, r, bi = 0) => P.ev(([i, w, r, bi]) => { const L = window.__ironlog; const s = L.state.draft.ex[bi].sets[i]; s.w = w; s.r = r; s.done = true; L.saveNow(); }, [i, w, r, bi]);
+  // Ticks row i of exercise bi (the first unless given) with a load and reps, as the logger saves a tick: through act,
+  // so the workout's clock starts as a tap's does (the review of 2.52, REV13-T3: written by hand, no two-phone check
+  // ran with two starts).
+  // A build from before act (r56, opened for a note from an older build) is written as that build's logger wrote it.
+  P.tick = (i, w, r, bi = 0) => P.ev(([i, w, r, bi]) => { const L = window.__ironlog; const set = () => { const s = L.state.draft.ex[bi].sets[i]; s.w = w; s.r = r; s.done = true; }; if (L.act) L.act(set, { inProgress: true }); else { set(); L.saveNow(); } }, [i, w, r, bi]);
   // Starts the first day with its first exercise only, n rows (4 unless given).
   P.start = (n = 4) => P.ev(n => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ACT.startSession({ dataset: { day: '0', light: '0' } }); const d = L.state.draft; d.ex = d.ex.slice(0, 1); d.ex[0].sets.length = n; d._rampAsked = true; L.saveNow(); }, n);
   P.finish = async () => { await P.ev(() => { const L = window.__ironlog; L.state.draft._leftAsked = true; L.state.draft._rampAsked = true; L.ACT.finishNow(); }); await wait(300); await P.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); };
@@ -574,7 +577,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       await A6.ev(() => { window.__deaf = false; }); await B6.ev(() => { window.__deaf = false; }); await wait(400);
       const st = await A6.stored();
       const said = [...(await A6.ev(() => (window.__toasts || []).map(t => t.text))), ...(await B6.ev(() => (window.__toasts || []).map(t => t.text)))];
-      ok(st && st.draft && storedTicks(st).length === 2 && st.draft.startedAt >= t0 && st.draft.startedAt <= t1, 'S-6: one workout in two tabs, each ticking its first set: both sets kept, and it began at the earlier tick', st && st.draft && { ticks: storedTicks(st), startedAt: st.draft.startedAt, t0, t1 });
+      ok(st && st.draft && storedTicks(st).length === 2 && st.draft.begunAt >= t0 && st.draft.begunAt <= t1, 'S-6: one workout in two tabs, each ticking its first set: both sets kept, and it began at the earlier tick', st && st.draft && { ticks: storedTicks(st), begunAt: st.draft.begunAt, t0, t1 });
       ok(!said.some(t => /edited on two devices/.test(t)), 'S-6: and nothing is said about two edits', said);
       await A6.close();
     }
@@ -637,6 +640,22 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       if (await Q.ev(() => !document.querySelector('#dataSec [data-act="undo"]').disabled)) { await Q.page.click('#dataSec [data-act="undo"]'); await wait(250); }
       const back = await Q.ev(() => window.__ironlog.state.sessions.some(s => s.id === 'u5'));
       ok(/^Undo: /.test(label) && back, 'S-7: closed right after a change, the app keeps its Undo step: "Undo" in Settings names it and puts the deleted session back', { label, back });
+      await Q.close();
+    }
+    // Reloaded at once, with no hiding first (Update, the app closed, another address): the page is gone straight after
+    // the change, and the step written as it goes still lands. An earlier step, written a second before, is there too,
+    // so a lost step would show as Undo taking back that one instead (the review of 2.52, REV13-1).
+    {
+      const Q = await phone({ seed });
+      await Q.tabTo('history');
+      const del = async id => { await Q.ev(id => { window.__ironlog.ACT.histDel({ dataset: { id } }); }, id); await wait(80); await Q.page.click('#modal [data-act="mOk"]'); };
+      await del('u4'); await wait(1000);
+      await del('u5');
+      await Q.page.reload(); await Q.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(500);
+      await settingsOpen(Q, 'dataSec');
+      if (await Q.ev(() => !document.querySelector('#dataSec [data-act="undo"]').disabled)) { await Q.page.click('#dataSec [data-act="undo"]'); await wait(250); }
+      const got = await Q.ev(() => ({ u5: window.__ironlog.state.sessions.some(s => s.id === 'u5'), u4: window.__ironlog.state.sessions.some(s => s.id === 'u4') }));
+      ok(got.u5 && !got.u4, 'S-7: reloaded at once after a change, with no hiding first, Undo takes that change back, not the one before it (REV13-1)', got);
       await Q.close();
     }
     // Up to 20 steps: 22 more deletions keep the newest 20.
@@ -1093,6 +1112,29 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       await A.ev(() => { window.__offline = false; }); await A.flush(); await wait(1600); await A.flush();
       const a = await A.saved(), acct = cloud.sessionsIn('u1').map(s => s.ex[0].sets.map(x => `${x.w}x${x.r}`).join(' '));
       ok(a.join() === '100x8 100x8 100x7' && acct.join() === '100x8 100x8 100x7', 'finished on the other phone while the updated one ticked a set offline: the set joins the session once, the two sets both had are one each (on the stack as reviewed: 100x8 100x8 100x8 100x8 100x7)', { a, acct });
+    }
+
+    // ---- The review of 2.52 (REV13-5, REV13-6): a workout opened on phone A and taken in by phone B, nothing ticked;
+    // B, offline, ticks a set first; A ticks another a moment later and finishes. Each phone's clock started at its own
+    // first set, so the copies hold two starts, and the lift A finished was not in the copy both last agreed on. Joined,
+    // B's set is kept and nothing is said to have been edited on two devices; the session keeps the start its minutes
+    // were timed from at Finish.
+    {
+      const cloud = cloudOf();
+      const A = await phoneTwo(browser, cloud, 'u1'); pages.push(A);
+      await wait(900); await A.start(4); await A.flush();
+      const B = await phoneTwo(browser, cloud, 'u1'); pages.push(B);
+      await wait(1500); await B.sync();
+      await B.ev(() => { window.__offline = true; });
+      await B.tick(0, 100, 8); await wait(1200);
+      await A.tick(1, 100, 7);
+      const aStart = await A.ev(() => window.__ironlog.state.draft.begunAt);
+      await A.finish(); await A.flush();
+      await B.ev(() => { window.__offline = false; }); await B.flush(); await wait(1600); await B.flush(); await A.sync();
+      const sb = (await B.ev(() => window.__ironlog.state.sessions.map(s => ({ t: s.t, n: s.ex.reduce((a, b) => a + b.sets.length, 0) }))))[0];
+      const said = await B.toasts();
+      ok(sb && sb.n === 2 && sb.t === aStart, 'two starts: the set phone B ticked first joins the session, which keeps the start phone A timed it from', { sb, aStart });
+      ok(!said.some(t => /edited on two devices/.test(t)) && said.some(t => /What was done here since was added to it/.test(t)), 'two starts: and phone B is told only of the join, not of an item edited on two devices (REV13-5 and REV13-6: "2 items were edited on two devices")', said);
     }
 
     // ---- F6: cardio typed on the phone whose copy lost, with a ticked set and without.

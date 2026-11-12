@@ -947,7 +947,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const P = await lifter({ settings: { autoDone: false }, movable: true });
     await start(P);
     const m0 = await meta(P);
-    ok(/^Not started · ~\d+ min left$/.test(m0) && !(await P.draft()).startedAt, 'L-35: opened, the workout reads "Not started", its clock not running', { meta: m0, startedAt: (await P.draft()).startedAt });
+    ok(/^Not started · ~\d+ min left$/.test(m0) && !(await P.draft()).begunAt, 'L-35: opened, the workout reads "Not started", its clock not running', { meta: m0, begunAt: (await P.draft()).begunAt });
     await P.tap('#view [data-act="wkAway"]', 300);
     await at(P, '10:30');
     await P.tap('#view [data-act="wkResume"]', 300);
@@ -975,7 +975,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     if (await Q.ev(() => !!window.__ironlog.ui.modal)) await Q.ev(() => window.__ironlog.ACT.mClose());
     await wait(150);
     const q0 = await meta(Q), qd = await Q.draft();
-    ok(qd && qd.free && /Not started/.test(q0) && !qd.startedAt, 'L-35: a blank session opened reads "Not started" too', { meta: q0, free: qd && qd.free, startedAt: qd && qd.startedAt });
+    ok(qd && qd.free && /Not started/.test(q0) && !qd.begunAt, 'L-35: a blank session opened reads "Not started" too', { meta: q0, free: qd && qd.free, begunAt: qd && qd.begunAt });
     await Q.close();
 
     // Cardio before lifting: a row added starts nothing; its minutes logged at 10:20 start the clock there.
@@ -983,12 +983,98 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await start(C);
     await C.tap('#view details[data-sk="logger:cardio"] > summary', 200);
     await C.tap('#view [data-act="cDraftAdd"][data-when="pre"]', 250);
-    ok(!(await C.draft()).startedAt, 'L-35: "+ Before lifting" alone starts nothing', (await C.draft()).startedAt);
+    ok(!(await C.draft()).begunAt, 'L-35: "+ Before lifting" alone starts nothing', (await C.draft()).begunAt);
     await at(C, '10:20');
     await C.page.fill('#view input[data-cf="min"][data-c="0"]', '10'); await wait(600);
     const cd = await C.ev(() => JSON.parse(localStorage.getItem('ironlog.v1')).draft);
-    ok(cd && cd.cardio[0].min === 10 && (await hm(cd.startedAt)(C)) === '10:20', 'L-35: its minutes logged start the clock then (10:20), and it is saved', cd && { min: cd.cardio[0] && cd.cardio[0].min, started: await hm(cd.startedAt)(C) });
+    ok(cd && cd.cardio[0].min === 10 && (await hm(cd.begunAt)(C)) === '10:20', 'L-35: its minutes logged start the clock then (10:20), and it is saved', cd && { min: cd.cardio[0] && cd.cardio[0].min, started: await hm(cd.begunAt)(C) });
     await C.close();
+
+    // The review of 2.52 (REV13-2): a lifter who types reps and does not tick, Finish marking the rows done. The first
+    // reps entered begin the workout, so it is timed from them, not left untimed.
+    const E = await lifter({ settings: { autoDone: false }, movable: true });
+    await start(E);
+    await at(E, '10:05');
+    await E.page.fill(field('r', 0, 0), '8'); await wait(500);
+    const e1 = await meta(E);
+    ok(/^Started 10:05 AM/.test(e1), 'L-35: reps entered on a set, not ticked, start it too: "Started 10:05 AM" (REV13-2)', e1);
+    await at(E, '10:50');
+    for (const [b, k, r] of [[0, 1, '8'], [0, 2, '7'], [1, 0, '12'], [1, 1, '12']]) await E.page.fill(field('r', b, k), r);
+    await wait(500);
+    await E.tap('#view [data-act="finish"]', 300);
+    let em = await E.modal();
+    ok(em && em.title === 'Some sets are not marked done', 'L-35: (setup) Finish asks about the rows with reps and no tick', em && em.title);
+    await mOk(E);
+    while (await E.modal()) { const mm = await E.modal(); if (mm.kind === 'confirm') await mOk(E); else { await E.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } }
+    const es = await E.ev(() => window.__ironlog.state.sessions.find(x => x.id !== 'last') || null);
+    ok(es && es.durMin === 45 && (await hm(es.t)(E)) === '10:05', 'L-35: saved with 45 minutes, from the first reps entered (10:05) to Finish (10:50) (REV13-2: untimed)', es && { durMin: es.durMin, began: await hm(es.t)(E) });
+    await E.close();
+
+    // REV13-4: a set ticked by mistake while setting up, and unticked: nothing has begun, so it is not started again.
+    const U = await lifter({ settings: { autoDone: false }, movable: true });
+    await start(U);
+    await at(U, '10:01');
+    await U.tap(tick(0, 0)); await U.tap(tick(0, 0));
+    const u1 = await meta(U);
+    ok(/^Not started/.test(u1) && !(await U.draft()).begunAt, 'L-35: a tick taken back, with nothing else entered, leaves it "Not started" (REV13-4)', u1);
+    await at(U, '10:31');
+    await U.tap(tick(0, 0));
+    await at(U, '11:16');
+    for (const [b, k] of [[0, 1], [0, 2], [1, 0], [1, 1]]) await U.tap(tick(b, k));
+    await U.tap('#view [data-act="finish"]', 400);
+    const um = await U.modal(); if (um && um.kind === 'confirm') await mOk(U);
+    await wait(300);
+    const us = await U.ev(() => window.__ironlog.state.sessions.find(x => x.id !== 'last') || null);
+    ok(us && us.durMin === 45 && (await hm(us.t)(U)) === '10:31', 'L-35: and timed from the set that began it (10:31 to 11:16, 45 minutes), not the tick taken back (REV13-4: 75)', us && { durMin: us.durMin, began: await hm(us.t)(U) });
+    await U.close();
+
+    // REV13-3: opened before midnight, first set after it: a workout of the day it began (NEW-132's rule, below),
+    // timed from its first set.
+    const N = await lifter({ settings: { autoDone: false }, movable: true, day: '2026-11-10' });
+    await N.ev(() => window.__setClock('2026-11-10T23:50:00'));
+    await start(N);
+    await N.ev(() => window.__setClock('2026-11-11T00:05:00'));
+    await N.tap(tick(0, 0));
+    await N.ev(() => window.__setClock('2026-11-11T00:50:00'));
+    for (const [b, k] of [[0, 1], [0, 2], [1, 0], [1, 1]]) await N.tap(tick(b, k));
+    await N.tap('#view [data-act="finish"]', 400);
+    const nm = await N.modal(); if (nm && nm.kind === 'confirm') await mOk(N);
+    await wait(300);
+    const ns = await N.ev(() => window.__ironlog.state.sessions.find(x => x.id !== 'last') || null);
+    ok(ns && ns.date === '2026-11-11' && ns.durMin === 45, 'L-35: opened at 23:50, first set at 0:05, Finish at 0:50: saved on the day it began, with 45 minutes (REV13-3: untimed)', ns && { date: ns.date, durMin: ns.durMin });
+    await N.close();
+
+    // NEW-132: set up the evening before (21:00, Save and leave), lifted the next morning. Its first set makes it that
+    // day's workout: the date field moves to it, and it is saved there, timed from its first set.
+    const V = await lifter({ settings: { autoDone: false }, movable: true, day: '2026-11-10' });
+    await V.ev(() => window.__setClock('2026-11-10T21:00:00'));
+    await start(V);
+    await V.tap('#view [data-act="wkAway"]', 300);
+    await V.ev(() => { window.__setClock('2026-11-11T10:30:00'); const L = window.__ironlog; L.render(); });
+    await V.tap('#view [data-act="wkResume"]', 300);
+    const vd0 = await V.ev(() => document.querySelector('#view input[data-bind="draftDate"]').value);
+    await V.ev(() => window.__setClock('2026-11-11T10:31:00'));
+    await V.tap(tick(0, 0));
+    const vd1 = await V.ev(() => document.querySelector('#view input[data-bind="draftDate"]').value);
+    ok(vd0 === '2026-11-10' && vd1 === '2026-11-11', 'L-35: set up the evening before, its first set the next morning moves it to that day (NEW-132)', { before: vd0, after: vd1 });
+    await V.ev(() => window.__setClock('2026-11-11T11:16:00'));
+    for (const [b, k] of [[0, 1], [0, 2], [1, 0], [1, 1]]) await V.tap(tick(b, k));
+    await V.tap('#view [data-act="finish"]', 400);
+    const vm = await V.modal(); if (vm && vm.kind === 'confirm') await mOk(V);
+    await wait(300);
+    const vs = await V.ev(() => window.__ironlog.state.sessions.find(x => x.id !== 'last') || null);
+    ok(vs && vs.date === '2026-11-11' && vs.durMin === 45, 'L-35: and it is saved on that day with 45 minutes, its first set to Finish (NEW-132: saved under the evening before, untimed)', vs && { date: vs.date, durMin: vs.durMin });
+    await V.close();
+
+    // A date set by hand stays: opened today, its date set to yesterday to log it there, then a set ticked.
+    const H = await lifter({ settings: { autoDone: false }, movable: true });
+    await start(H);
+    await H.page.fill('#view input[data-bind="draftDate"]', '2026-11-10'); await H.page.dispatchEvent('#view input[data-bind="draftDate"]', 'change'); await wait(300);
+    await at(H, '10:31');
+    await H.tap(tick(0, 0));
+    const hd = await H.ev(() => window.__ironlog.state.draft.date);
+    ok(hd === '2026-11-10', 'L-35: a date set by hand stays when the first set is ticked (NEW-132)', hd);
+    await H.close();
   }
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
