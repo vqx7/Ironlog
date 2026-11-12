@@ -11335,7 +11335,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           baseOf(id, B5[id] || emptyChunk(id)),
           L2[id] || emptyChunk(id),
           Rr[id] || emptyChunk(id),
-          !own2,
+          true,
           stat
         );
       setState(assemble(parts));
@@ -26088,9 +26088,10 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (i5 < 0) i5 = b2.sets.length - 1;
     const x2 = b2.sets[i5], ex = EX(b2.exId), did2 = d3.id, exId = b2.exId, n3 = b2.sets.slice(0, i5 + 1).filter((y2) => !y2.warm && !y2.drop).length;
     const what = `${x2.warm ? "Warm-up" : x2.drop ? "Drop set" : "Set " + n3}`;
+    const shown2 = x2.w ?? effW(b2, i5);
     const val = +(x2.r ?? 0) > 0 ? (
-      // The load as the row shows it: typed, else the grey load the set would take (NEW-128: a grey load read as 0).
-      setShort(ex, x2.w ?? effW(b2, i5) ?? 0, x2.r)
+      // No load anywhere on a loaded lift: the reps alone, never a 0 the row does not show (REV12-5).
+      shown2 == null && !ex.bw && !ex.timed ? `${x2.r} rep${Number(x2.r) === 1 ? "" : "s"}` : setShort(ex, shown2 ?? 0, x2.r)
     ) : x2.w != null ? loadLabel(ex, x2.w) + (ex.bw ? "" : " " + U()) : "";
     const at2 = i5;
     confirmBox(

@@ -238,6 +238,16 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await mOk(P);
     ok((await P.toasts()).includes('Logged set removed'), 'L-9: and says "Logged set removed"', await P.toasts());
     await P.close();
+    // A first session of a lift: reps typed and no load anywhere, typed or grey. The question names the reps alone,
+    // never a load of 0 the row does not show (REV12-5).
+    const Q = await lifter({ fresh: true, settings: { autoDone: false } });
+    await start(Q);
+    for (const k of [0, 1, 2]) await Q.page.fill(field('r', 0, k), '5');
+    await Q.page.press(field('r', 0, 2), 'Tab'); await wait(300);
+    await Q.tap(btn('sDel', 0), 250);
+    const m3 = await Q.modal();
+    ok(m3 && m3.title === 'Remove set 3?' && m3.text.includes('Barbell Bench Press: 5 reps, typed, not ticked.') && !/0×/.test(m3.text), 'L-9: with no load anywhere, the question names the reps alone: "5 reps, typed, not ticked" (REV12-5)', m3);
+    await Q.close();
   }
 
   /* ---------- L-10: auto-mark: a row with its load and reps is ticked when the reps field is left ---------- */

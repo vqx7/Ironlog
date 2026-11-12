@@ -1952,16 +1952,18 @@ function mergeIn(text: string, own: boolean): void {
       Rr = chunksOf(incoming),
       B = chunksOf(base),
       parts: Record<string, Rec | null> = {};
-    /* A record changed in both tabs keeps the later edit. On this tab's own save (own), the change just made here is
-       the newest, so this tab's copy wins; on hearing the other tab's save, that save is the newer one (NEW-124: this
-       tab's own later change lost to the other's earlier one, while the message said the later edit was kept). */
+    /* A record changed in both tabs keeps the other tab's copy, the one saved first. Letting this tab's own copy win
+       on its own save (2.50's first fix of NEW-124) lost what the other tab logged: a tab behind took away the other's
+       new workout and its sets, a change typed lost to a later tick, and Undo took back the other tab's edit (the
+       review of 2.50 and 2.51, REV-1 to REV-4; tests/storage-sync.js S-6). NEW-124 is OPEN: keeping the later edit
+       needs each tab's time of change, and a workout's sets kept whichever copy wins. */
     for (const id of new Set([...Object.keys(L), ...Object.keys(Rr), ...Object.keys(B)]))
       parts[id] = mergeChunk(
         id,
         baseOf(id, B[id] || emptyChunk(id)),
         L[id] || emptyChunk(id),
         Rr[id] || emptyChunk(id),
-        !own,
+        true,
         stat
       );
     setState(assemble(parts));

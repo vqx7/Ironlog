@@ -71,11 +71,13 @@ async function open(file, opts = {}) {
 /* A second tab of the same page in the same browser profile as P (open's
    result): the same storage, so a save in one is a storage event in the
    other, as two tabs of the app on one phone. */
-async function tab(P, file) {
+async function tab(P, file, setup) {
   if (file === 'index.html' && process.env.IRONLOG_FILE) file = process.env.IRONLOG_FILE;
   const page = await P.ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+  // setup(ctx, page): what the page needs before it loads (a stand-in account set up per page).
+  if (setup) await setup(P.ctx, page);
   await page.route('**/*', serve);
   await page.goto('file://' + path.resolve(file));
   await page.waitForFunction(() => window.__libs && window.__libs.chart && window.__libs.sortable);
