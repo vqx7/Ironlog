@@ -11,6 +11,11 @@
 //   5-8  The independent review of 2.45 and 2.46 (REV9-1 to REV9-4), each failing on the first build of 2.46 (a2a…):
 //      the calendar left moved up by a push brought back; a workout done earlier shown planned ahead; an empty past week
 //      read against the routine now; a week in another year named without it.
+//   9  The top bar on the page (NEW-138; V, 2026-11-12: "let's ensure it is not scrolling with you and being a blocker
+//      ... I do still want to be able to drag down the top bar and have an interactive calendar"): it sits at the top of
+//      every tab and scrolls away with the page; the pull starts only with the page at its top, so a drag down on the
+//      bar scrolled partly away scrolls the page (pinned, from 2.46 to 2.51 a drag down that began on the bar opened the
+//      calendar wherever the page was). The two fail on 2.51's build (`baselines/r97.html`).
 // WEEK_ONLY=1,4 runs some sections.
 const { open, touchDriver } = require('./h');
 const fails = [];
@@ -276,6 +281,52 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     });
     ok(a['2027-01-04'] === 'Jan 4, 2027 to Jan 10, 2027' && a['2026-12-28'] === 'Dec 28 to Jan 3, 2027', '8. a week in another year names its year', a);
     ok(!P.errors.length, '8. no page error', P.errors);
+    await P.browser.close();
+  }
+
+  if (run(9)) {
+    const P = await lifter();
+    const { page } = P;
+    // The bar at the top of each tab, and scrolled out of view 400 px down.
+    const where = [];
+    for (const t of ['today', 'stats', 'history', 'settings']) {
+      where.push(await page.evaluate(async t => {
+        const L = window.__ironlog; L.ui.tab = t; L.render(); window.scrollTo(0, 0);
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const bar = () => document.querySelector('header.top').getBoundingClientRect();
+        const top = Math.round(bar().top);
+        window.scrollTo(0, 400);
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        return { t, top, y: Math.round(window.scrollY), after: Math.round(bar().bottom) };
+      }, t));
+    }
+    ok(where.every(w => w.top === 0), '9. the top bar is at the top of every tab', where);
+    ok(where.every(w => w.y > 52 && w.after === 52 - w.y), '9. scrolled down, it goes up with the page, as far as the page went, and takes none of the screen', where);
+    await page.evaluate(() => { window.__ironlog.ui.tab = 'today'; window.__ironlog.render(); window.scrollTo(0, 0); });
+    await wait(100);
+    const touch = await touchDriver(page);
+    const box = await page.evaluate(() => { const r = document.getElementById('wkbar').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+    await touch('touchStart', box.x, box.y);
+    for (let k = 1; k <= 8; k++) { await touch('touchMove', box.x, box.y + k * 15); await wait(16); }
+    await touch('touchEnd', 0, 0); await wait(350);
+    const opened = await page.evaluate(() => { const m = window.__ironlog.ui.modal; return { kind: m && m.kind, top: !!document.querySelector('#modal .sheet.fromtop') }; });
+    ok(opened.kind === 'calendar' && opened.top, '9. at the top of the page the pull still brings the calendar down', opened);
+    // Closed by a push up, as a lifter closes it.
+    const sb = await page.evaluate(() => { const r = document.querySelector('#modal .sheet').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.bottom - 12 }; });
+    await touch('touchStart', sb.x, sb.y);
+    for (const dy of [-40, -90, -140]) { await touch('touchMove', sb.x, sb.y + dy); await wait(16); }
+    await touch('touchEnd', 0, 0); await wait(350);
+    const shut = await page.evaluate(() => { const m = window.__ironlog.ui.modal; return !m || m.kind !== 'calendar'; });
+    ok(shut, '9. and a push up closes it', shut);
+    // Scrolled 20 px, the bar partly on screen: a drag down on it is the page's scroll, not the pull.
+    await page.evaluate(() => window.scrollTo(0, 20)); await wait(100);
+    const part = await page.evaluate(() => { const r = document.getElementById('wkbar').getBoundingClientRect(); return { x: r.left + r.width / 2, y: Math.round(Math.max(r.top, 0) + (r.bottom - Math.max(r.top, 0)) / 2), shown: Math.round(r.bottom) }; });
+    await touch('touchStart', part.x, part.y);
+    for (let k = 1; k <= 8; k++) { await touch('touchMove', part.x, part.y + k * 15); await wait(16); }
+    await touch('touchEnd', 0, 0); await wait(350);
+    const none = await page.evaluate(() => { const m = window.__ironlog.ui.modal; return { kind: m && m.kind }; });
+    ok(part.shown > 0 && none.kind !== 'calendar', '9. scrolled partly away, a drag down on the bar does not open the calendar', { part, none });
+    ok(!P.errors.length, '9. no page error', P.errors);
     await P.browser.close();
   }
 

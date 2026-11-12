@@ -149,7 +149,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     for (let i = 0; i < 8; i++) { const sel = `[data-act="sDone"][data-b="0"][data-s="${i}"]`; if (await page.$(sel)) { await page.tap(sel); await wait(80); } }
     await wait(2600);
     await page.setViewportSize({ width: 320, height: 700 }); await ev(() => window.__ironlog.render()); await wait(200);
-    const w320 = await ev(() => { const f = document.querySelector('#view section.block.folded'); const r = f && f.getBoundingClientRect(); const gr = f && f.querySelector('.bgrip'); const g = gr && gr.getBoundingClientRect(); const cy = g && g.top + g.height / 2, cx = g && g.left + g.width / 2; let hit = 0; if (g) for (let dx = -40; dx <= 40; dx++) if (document.elementFromPoint(cx + dx, cy) === gr) hit++; return { folded: !!f, sw: document.documentElement.scrollWidth, right: r && Math.round(r.right), grip: hit, h: g && Math.round(g.height) }; });
+    /* On screen first: since 2.52 the next exercise glides to the top of the screen, the top bar having scrolled away
+       (NEW-138), so the one just folded is above it, off the screen, where no point hits its handle. */
+    const w320 = await ev(() => { const f = document.querySelector('#view section.block.folded'); if (f) f.scrollIntoView({ block: 'center' }); const r = f && f.getBoundingClientRect(); const gr = f && f.querySelector('.bgrip'); const g = gr && gr.getBoundingClientRect(); const cy = g && g.top + g.height / 2, cx = g && g.left + g.width / 2; let hit = 0; if (g) for (let dx = -40; dx <= 40; dx++) if (document.elementFromPoint(cx + dx, cy) === gr) hit++; return { folded: !!f, sw: document.documentElement.scrollWidth, right: r && Math.round(r.right), grip: hit, h: g && Math.round(g.height) }; });
     ok(w320.folded && w320.sw <= 320 && w320.right <= 320 && w320.grip >= 44 && w320.h >= 44, 'at 320 px a folded exercise and its 44 px handle (touch area) fit, no sideways scroll', w320);
     ok(!P.errors.length, 'no page errors (review fixes, session)', P.errors);
     await P.browser.close();
@@ -182,13 +184,16 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await page.locator(`.bgrip[data-b="${last}"]`).scrollIntoViewIfNeeded();
     gb = await page.locator(`.bgrip[data-b="${last}"]`).boundingBox(); x0 = gb.x + gb.width / 2; y0 = gb.y + gb.height / 2;
     const sy0 = await ev(() => window.scrollY);
+    /* 23 px into the band at the top of the space the exercises scroll in: under the top bar while it was pinned (75 px
+       down), under the status bar since 2.52, when the bar scrolls away with the page (NEW-138). */
+    const yT = await ev(() => Math.round(Math.max(parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0, document.querySelector('header.top').getBoundingClientRect().bottom)) + 23);
     await tp('touchStart', x0, y0); await wait(60);
-    for (let k = 1; k <= 10; k++) { await tp('touchMove', x0, y0 + (75 - y0) * k / 10); await wait(30); }
-    for (let k = 0; k < 50; k++) { await tp('touchMove', x0, 75 + (k % 2)); await wait(40); }
+    for (let k = 1; k <= 10; k++) { await tp('touchMove', x0, y0 + (yT - y0) * k / 10); await wait(30); }
+    for (let k = 0; k < 50; k++) { await tp('touchMove', x0, yT + (k % 2)); await wait(40); }
     const sy1 = await ev(() => window.scrollY);
-    await tp('touchEnd', x0, 75); await wait(400);
+    await tp('touchEnd', x0, yT); await wait(400);
     const a2 = await ids();
-    ok(sy0 > 200 && sy1 < sy0 - 200 && a2[0] === a1[last], 'held at the top edge, the page scrolls and the last exercise reaches the top', { sy0, sy1, to: a2.indexOf(a1[last]) });
+    ok(sy0 > 200 && sy1 < sy0 - 200 && a2[0] === a1[last], 'held at the top edge, the page scrolls and the last exercise reaches the top', { sy0, sy1, yT, to: a2.indexOf(a1[last]) });
     // A drop keeps the page where it was: the exercise moved is on screen afterwards.
     await ev(() => { window.scrollTo(0, 0); });
     await page.locator('.bgrip[data-b="3"]').scrollIntoViewIfNeeded(); await ev(() => window.scrollBy(0, 200)); await wait(100);

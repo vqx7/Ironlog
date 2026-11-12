@@ -82,7 +82,8 @@
 //      session by Finish; then Stats read by taps: adherence as sessions,
 //      11 of the 12 the routine planned in the 4 full weeks before, with the
 //      percentage a tap away (92%), and By region's weeks named short, in
-//      full a tap away.
+//      full a tap away; read on down by a chip, the top bar has gone up with
+//      the page and the section starts under the chips (NEW-138, 2.52).
 //  16  a bad day on the bench and a small win on raises (r72, NEW-63, 387-B3 and 387-B4): after two weeks of 185 x
 //      10 x 3, the bench's third set missed (0 reps ticked); finishing it brings the raises up in one glide, never
 //      a jump to the session's title; 20 lb raises for 11 at 2 in reserve after 10 are a PR on the row, in the
@@ -1061,6 +1062,17 @@ async function finish() {
     ok(tip === `Adherence, previous 4 full weeks: ${Math.round(want.done / want.need * 100)}% of planned sessions (${want.done}/${want.need})`, '15. a tap on its i: the percentage, 92%', tip);
     const reg = await ev(() => { const c = document.getElementById('chRadar') && document.getElementById('chRadar').closest('.card'); const p = c && [...c.querySelectorAll('p.small.muted')].find(x => x.querySelector('.tipi')); if (!p) return null; const q = p.cloneNode(true); q.querySelectorAll('.tipi').forEach(x => x.remove()); return { line: q.textContent.trim(), tip: p.querySelector('.tipi').getAttribute('data-tip') }; });
     ok(reg && reg.line === '4-week average' && reg.tip.startsWith('Using your 4-week average. '), '15. By region: "4-week average", every week of the four trained, said in full in its i', reg);
+    /* Read on down Stats by its chips (NEW-138; V, 2026-11-12: the top bar is not to scroll with you and be a blocker):
+       the top bar has gone up with the page and takes none of the screen, the chips stay at the top of it, and the
+       section tapped starts just under them, or as near as the end of the page lets it. */
+    const chips = await ev(() => [...document.querySelectorAll('#view nav.jump [data-act="dashJump"]')].map(b => b.dataset.sec));
+    const midSec = chips[Math.floor(chips.length / 2)];
+    await page.click(`#view nav.jump [data-act="dashJump"][data-sec="${midSec}"]`); await wait(1200);
+    const rd = await ev(sec => {
+      const bar = document.querySelector('header.top').getBoundingClientRect(), nav = document.querySelector('#view nav.jump').getBoundingClientRect(), s = document.getElementById('sec-' + sec).getBoundingClientRect();
+      return { y: Math.round(window.scrollY), end: window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2, bar: Math.round(bar.bottom), nav: [Math.round(nav.top), Math.round(nav.bottom)], sec: Math.round(s.top) };
+    }, midSec);
+    ok(chips.length > 2 && rd.y > 52 && rd.bar <= 0 && rd.nav[0] === 0 && rd.sec >= rd.nav[1] && (rd.sec < rd.nav[1] + 40 || rd.end), '15. down Stats by a chip: the top bar gone up with the page, the chips at the top of the screen, the section just under them', { midSec, rd });
     ok(!H.P.errors.length, '15. no page errors', H.P.errors);
     await H.P.ctx.close();
   }

@@ -119,7 +119,7 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   // Import of the app's own backup reports nothing skipped.
   ok(await ev(() => { const L = window.__ironlog; L.normalize(JSON.parse(JSON.stringify(L.state))); return L.normalize.dropped === 0; }), 'a clean backup reports 0 damaged records');
 
-  // Program: an opened day shows its header below the sticky bar.
+  // Program: an opened day shows its header below the top bar, or at the top of the screen once the bar has scrolled away (2.52).
   await browser.close();
   const X = await open('index.html', { touch: true, w: 320, h: 640, clock: '2026-09-20T10:00:00' });
   const e2 = (f, a) => X.page.evaluate(f, a);

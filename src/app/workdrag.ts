@@ -17,7 +17,7 @@ const DRAG = { edgePx: 56, speedPx: 14, maxPx: 20, animMs: 150 } as const;
 /* ---------- an exercise dragged ---------- */
 
 /* While an exercise is dragged, a finger near the top or bottom of the space
-   between the header and the bars along the bottom (bottomBarsTop) scrolls
+   between the top bar and the bars along the bottom (bottomBarsTop) scrolls
    the page, faster the closer it is. Sortable's own scrolling did not run
    for a touch drag on the window. Sortable re-reads the target every 50 ms on
    its own, so a finger held still keeps moving the exercise as the page
@@ -30,8 +30,12 @@ const edgeScroll = ((): { start(): void; stop(): void } => {
     if (p) y = p.clientY;
   };
   const zone = (): [number, number] => {
+    /* Under what covers the top of the screen: the status bar (the root's padding is its height) or what is left on
+       screen of the top bar, which since 2.52 scrolls away with the page (NEW-138). Read from the bar alone, the band
+       went off the top of the screen once it had scrolled away. */
     const h = document.querySelector('header.top');
-    const top = h ? h.getBoundingClientRect().bottom : 0;
+    const safe = parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0;
+    const top = Math.max(safe, h ? h.getBoundingClientRect().bottom : 0);
     return [top, bottomBarsTop()];
   };
   const step = (): void => {
