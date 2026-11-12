@@ -763,6 +763,25 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(/^Undo: /.test(label) && back, 'S-7: closed right after a change, the app keeps its Undo step: "Undo" in Settings names it and puts the deleted session back', { label, back });
       await Q.close();
     }
+    // The step is stored as the tap that made the change ends, before anything else can happen: a page torn down straight
+    // after, in WebKit, ended no write begun then (NEW-139; the step waited 0.4 s, or for the page to be hidden or left).
+    {
+      const Q = await phone({ seed });
+      await Q.tabTo('history');
+      const got = await Q.ev(async () => {
+        const L = window.__ironlog;
+        L.ACT.histDel({ dataset: { id: 'u5' } });
+        document.querySelector('#modal [data-act="mOk"]').click();
+        // One task later: the tap has ended, and nothing else has run.
+        await new Promise(r => setTimeout(r, 0));
+        const db = await new Promise(r => { const q = indexedDB.open('ironlog-undo'); q.onsuccess = () => r(q.result); q.onerror = () => r(null); });
+        const all = db && db.objectStoreNames.contains('kv') ? await new Promise(r => { const q = db.transaction('kv').objectStore('kv').getAll(); q.onsuccess = () => r(q.result); q.onerror = () => r([]); }) : [];
+        const steps = all.flatMap(v => (Array.isArray(v) ? v : [v])).filter(v => v && typeof v.pre === 'string');
+        return { mem: L.undoStack.length, stored: steps.length };
+      });
+      ok(got.mem === 1 && got.stored === 1, 'S-7: a change\'s Undo step is stored as its tap ends (NEW-139)', got);
+      await Q.close();
+    }
     // Reloaded at once, with no hiding first (Update, the app closed, another address): the page is gone straight after
     // the change, and the step written as it goes still lands. An earlier step, written a second before, is there too,
     // so a lost step would show as Undo taking back that one instead (the review of 2.52, REV13-1).
