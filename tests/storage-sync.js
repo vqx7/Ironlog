@@ -319,7 +319,8 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     // the save kept aside is still there, never written over.
     await P.ev(() => { const L = window.__ironlog; L.act(() => { L.state.settings.onboarded = true; L.state.settings.lastExport = '2026-11-11'; }); L.render(); });
     const after = await P.stored();
-    ok(after && after.settings && after.settings.onboarded === true, 'S-2: a change made after is saved', after && after.settings && after.settings.onboarded);
+    // Read by the change's own value: phone() saved onboarded while passing the first page (the review, T1).
+    ok(after && after.settings && after.settings.lastExport === '2026-11-11', 'S-2: a change made after is saved', after && after.settings && after.settings.lastExport);
     ok((await P.ev(k => localStorage.getItem(k + '.unreadable'), KEY)) === RAW, 'S-2: the save kept aside is never written over by a later save');
     await settingsOpen(P, 'dataSec');
     const panel = await P.ev(() => { const p = document.getElementById('unreadPanel'); return p ? { text: p.innerText.replace(/\s+/g, ' '), btns: [...p.querySelectorAll('button')].map(b => b.innerText.trim()) } : null; });
@@ -488,10 +489,100 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     await wait(300);
     await B.ev(() => { window.__deaf = false; });
     const k2 = (await A.stored()).sessions.find(s => s.id === 'k2');
-    ok(k2 && k2.notes === 'from B', 'S-6: the same record changed in both tabs keeps the later edit (NEW-124)', k2 && k2.notes);
+    // 2.49's rule, kept: the tab that has not heard the other's save takes that save's copy (NEW-124 is OPEN: the later
+    // edit should be kept; 2.50's first fix let this tab's own copy win, and lost logged sets, REV-1 to REV-4).
+    ok(k2 && k2.notes === 'from A', 'S-6: the same record changed in both tabs keeps one whole copy, the one saved first (NEW-124 OPEN)', k2 && k2.notes);
     const said = await B.ev(() => (window.__toasts || []).map(t => t.text));
     ok(said.some(t => t === '1 item was edited on two devices. The later edit was kept.'), 'S-6: and the app says "1 item was edited on two devices. The later edit was kept."', { B: said, A: await A.ev(() => (window.__toasts || []).map(t => t.text)) });
     await A.close();
+
+    // The independent review of 2.50 and 2.51 (REV-1, REV-2, REV-4): a tab that has not heard the other's saves never
+    // takes away what the other tab logged. Each fails on 2.50's first fix of NEW-124 and passes on 2.49's build.
+    const sheetsShut = async P => { for (let i = 0; i < 5 && (await P.ev(() => !!window.__ironlog.ui.modal)); i++) { if ((await P.ev(() => window.__ironlog.ui.modal.kind)) === 'confirm') await confirmOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(200); } } };
+    const draftOf = st => (st && st.draft ? { id: st.draft.id, ticked: st.draft.ex.reduce((n, b) => n + b.sets.filter(x => x.done).length, 0) } : null);
+    {
+      // REV-1: tab A finishes a workout and starts the next, two sets ticked; tab B, behind, ticks a set in the first.
+      const A1 = await phone({ seed: function (S) {
+        S.routines = [{ id: 'R1', name: 'Mine', schedule: 'cycle', days: [
+          { id: 'A', name: 'Push', rest: false, items: [{ uid: 'i0', exId: 'bench', sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 120, ss: null }] },
+          { id: 'B', name: 'Pull', rest: false, items: [{ uid: 'j0', exId: 'bbRow', sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 120, ss: null }] }] }];
+        S.activeRoutineId = 'R1';
+        S.sessions = [{ id: 'last', date: '2026-11-07', dayIdx: 0, dayId: 'A', dayName: 'Push', routineId: 'R1', notes: '', ex: [{ exId: 'bench', rr: [6, 10], ps: 3, sets: [90, 90, 90].map(w => ({ w, r: 8, rir: 2, done: true })) }] },
+          { id: 'last2', date: '2026-11-08', dayIdx: 1, dayId: 'B', dayName: 'Pull', routineId: 'R1', notes: '', ex: [{ exId: 'bbRow', rr: [6, 10], ps: 3, sets: [70, 70, 70].map(w => ({ w, r: 8, rir: 2, done: true })) }] }];
+        S.settings.lastExport = '2026-11-11'; S.settings.autoDone = false; } });
+      const B1 = await tab(A1, FILE); B1.ev = (f, a) => B1.page.evaluate(f, a); await wait(300);
+      await start(A1); await A1.page.click(tickBtn(0, 0)); await wait(300);
+      await B1.page.click('#tabs [data-tab="today"]'); await wait(300);
+      const w1 = (await A1.ev(() => window.__ironlog.state.draft.id));
+      await B1.ev(() => { window.__deaf = true; });
+      await A1.page.click('#view [data-act="finish"]'); await wait(300); await sheetsShut(A1);
+      await start(A1); await sheetsShut(A1);
+      const w2 = await A1.ev(() => window.__ironlog.state.draft && window.__ironlog.state.draft.id);
+      await A1.page.click(tickBtn(0, 0)); await wait(250); await A1.page.click(tickBtn(0, 1)); await wait(250);
+      await B1.page.click(tickBtn(0, 1)); await wait(500);
+      await B1.ev(() => { window.__deaf = false; }); await wait(400);
+      const st = await A1.stored(), d = draftOf(st);
+      ok(w2 && w2 !== w1 && d && d.id === w2 && d.ticked === 2 && st.sessions.filter(x => x.id === w1).length === 1, 'S-6: a tab behind the other ticks a set in a workout the other finished: the new workout and its two ticked sets are kept, and the finished one is saved once (REV-1)', { d, w1, w2, saved: st.sessions.filter(x => x.id === w1).length });
+      ok((await A1.ev(() => window.__ironlog.state.draft && window.__ironlog.state.draft.id)) === w2, 'S-6: and the tab that started it still shows the new workout (REV-1)');
+      await A1.close();
+    }
+    {
+      // REV-2: a note changed in tab A, then in tab B, which has not heard it; Undo in B's Settings keeps A's note.
+      const A2 = await phone({ seed: function (S) { S.sessions.push({ id: 'k3', date: '2026-11-05', dayIdx: 0, dayName: 'Day 1', notes: 'first', ex: [{ exId: 'bench', sets: [{ w: 62.5, r: 8, rir: 2, done: true }] }] }); S.settings.lastExport = '2026-11-11'; } });
+      const B2 = await tab(A2, FILE); B2.ev = (f, a) => B2.page.evaluate(f, a); await wait(300);
+      await B2.ev(() => { window.__deaf = true; });
+      await A2.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'k3').notes = 'typed in tab A'; }); });
+      await wait(150);
+      await B2.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'k3').notes = 'typed in tab B'; }, { undo: true }); });
+      await wait(400);
+      await B2.ev(() => { window.__deaf = false; }); await wait(200);
+      await B2.page.click('#tabs [data-tab="settings"]'); await wait(200);
+      await B2.ev(() => { const d = document.getElementById('dataSec'); if (d && d.tagName === 'DETAILS' && !d.open) d.querySelector('summary').click(); }); await wait(200);
+      if (await B2.ev(() => !document.querySelector('#dataSec [data-act="undo"]').disabled)) { await B2.page.click('#dataSec [data-act="undo"]'); await wait(500); }
+      const note = (await A2.stored()).sessions.find(s => s.id === 'k3').notes;
+      ok(note === 'typed in tab A', 'S-6: Undo in the tab that was behind never takes away the note the other tab typed (REV-2)', note);
+      await A2.close();
+    }
+    {
+      // REV-4: a load typed in tab A (saved 0.4 s after the last key); within that, tab B ticks the same row.
+      const A3 = await phone({ seed: function (S) { S.settings.lastExport = '2026-11-11'; S.settings.autoDone = false; } });
+      const B3 = await tab(A3, FILE); B3.ev = (f, a) => B3.page.evaluate(f, a); await wait(300);
+      await start(A3); await B3.page.click('#tabs [data-tab="today"]'); await wait(400);
+      const f = (k, s) => `#view input[data-f="${k}"][data-b="0"][data-s="${s}"]`;
+      await A3.ev(() => { window.__deaf = true; });
+      await A3.page.type(f('w', 0), '110', { delay: 30 });
+      await B3.page.fill(f('w', 0), '100'); await B3.page.fill(f('r', 0), '8'); await B3.page.click(tickBtn(0, 0));
+      await wait(900);
+      await A3.ev(() => { window.__deaf = false; }); await wait(300);
+      const x = (await A3.stored()).draft.ex[0].sets[0];
+      ok(x.done && x.r === 8, 'S-6: a set ticked in one tab while a load was being typed into it in the other is kept (REV-4)', { w: x.w, r: x.r, done: x.done });
+      await A3.close();
+    }
+    {
+      // REV-3: the same with both tabs signed in to one account: one copy ends up everywhere, and it is said once.
+      const C = cloudOf();
+      const A4 = await phone({ cloud: C, uid: 'u6r', seed: function (S) { S.sessions.push({ id: 'k4', date: '2026-11-05', dayIdx: 0, dayName: 'Day 1', notes: 'first', ex: [{ exId: 'bench', sets: [{ w: 62.5, r: 8, rir: 2, done: true }] }] }); S.settings.lastExport = '2026-11-11'; } });
+      const B4 = await tab(A4, FILE, C.setup('u6r', 'B')); B4.ev = (f, a) => B4.page.evaluate(f, a);
+      const on = P => P.page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 10000 }).then(() => true, () => false);
+      const onA = await on(A4), onB = await on(B4);
+      ok(onA && onB, 'S-6: (setup) both tabs synced to the account', { onA, onB, B: await B4.ev(() => window.__ironlog.cloudState()) });
+      await A4.flush(); await B4.ev(() => window.__ironlog.flush()); await wait(500);
+      // Every showing of the message counted, the same words shown again included.
+      await B4.ev(() => { window.__said = 0; const el = document.getElementById('toast'); new MutationObserver(ms => { if (!el.hidden && ms.some(m => m.type === 'childList' && m.target === el) && /edited on two devices/.test(el.innerText)) window.__said++; }).observe(el, { childList: true, subtree: true }); });
+      await B4.ev(() => { window.__deaf = true; });
+      await A4.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'k4').notes = 'typed in tab A'; }); });
+      await wait(2200);
+      await B4.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'k4').notes = 'typed in tab B'; }); });
+      await wait(1000);
+      await B4.ev(() => { window.__deaf = false; });
+      await wait(2500);
+      await A4.flush(); await B4.ev(() => window.__ironlog.flush()); await wait(800);
+      const noteOf = st => (st.sessions.find(x => x.id === 'k4') || {}).notes;
+      const got = { save: noteOf(await A4.stored()), account: noteOf(C.doc('u6r', 's-2026-11-1') || { sessions: [] }), A: noteOf(await A4.ev(() => window.__ironlog.state)), B: noteOf(await B4.ev(() => window.__ironlog.state)), said: await B4.ev(() => window.__said) };
+      ok(got.save === 'typed in tab A' && got.account === got.save && got.A === got.save && got.B === got.save, 'S-6: signed in, the same record changed in both tabs: one whole copy on the phone, in the account and in both tabs (REV-3, NEW-124 OPEN)', got);
+      ok(got.said === 1, 'S-6: and the app says it once (REV-3: twice on 2.50\'s first fix)', got.said);
+      await A4.close();
+    }
   }
 
   /* ---------- S-7: Undo ---------- */
@@ -685,7 +776,9 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const cloud = cloudOf();
       const A = await phoneTwo(browser, cloud, 'u1'); pages.push(A);
       await wait(900); await A.start(); await A.flush();
-      const B = await phoneTwo(browser, cloud, 'u1'); pages.push(B);
+      // B on A's clock, so "the later edit" below is read on one clock (the review, T3: each phone's clock started at
+      // CLOCK_TWO when it loaded, B about 1.5 s behind A, and the check took either edit).
+      const B = await phoneTwo(browser, cloud, 'u1', { clock: await clockOf(A) }); pages.push(B);
       await wait(1200);
       const bd = await B.draft();
       ok(bd && bd.id === (await A.draft()).id && bd.n === 1, 'two phones signed in to one account hold the same workout in progress', bd);
@@ -696,10 +789,10 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(setsOf(ad) === '100x8,100x7' && setsOf(bd2) === '100x8,100x7', 'a set ticked on each phone: both phones hold both sets, merged row by row (328 a and c)', { A: setsOf(ad), B: setsOf(bd2) });
       ok(ad && ad.id === bd2.id && (await A.ev(() => window.__ironlog.state.sessions.length)) === 0, 'the workout stays one workout in progress, and no session was saved for it');
       // The same row ticked on both with different reps: the later edit wins, once, and says so.
-      await A.tick(2, 100, 6); await B.tick(2, 100, 5);
+      await A.tick(2, 100, 6); await wait(400); await B.tick(2, 100, 5);
       await A.flush(); await B.flush(); await A.sync();
       const ad3 = await A.draft(), bd3 = await B.draft();
-      ok(setsOf(ad3) === setsOf(bd3) && /100x[56]$/.test(setsOf(ad3)) && ad3.sets.filter(s => s.done).length === 3, 'the same row ticked on both phones keeps one of the two, the later edit, and the other rows', { A: setsOf(ad3), B: setsOf(bd3) });
+      ok(setsOf(ad3) === setsOf(bd3) && /100x5$/.test(setsOf(ad3)) && ad3.sets.filter(s => s.done).length === 3, 'the same row ticked on both phones keeps one of the two, the later edit, and the other rows', { A: setsOf(ad3), B: setsOf(bd3) });
       // A set ticked while signed out joins the workout at the next sign-in (328 c).
       await B.ev(() => window.__ironlog.cloudStop());
       ok(!(await B.cloudState()).on, 'B signs out, keeping its log and its sync notes');
