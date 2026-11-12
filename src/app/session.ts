@@ -226,7 +226,9 @@ export function savedEx(b: DraftBlock): SessionEx {
         drop: !!s.drop && !s.warm,
         cal: s.cal && !s.warm ? s.cal : undefined,
         // The row's own id, last, where a build before it keeps the unknown field.
-        ...(typeof s.rid === 'string' ? { rid: s.rid } : {})
+        ...(typeof s.rid === 'string' ? { rid: s.rid } : {}),
+        // What the app asked of it as it was ticked (391), after the id, as normalize writes it.
+        ...(s.sg && !s.warm && !s.drop && !s.cal ? { sg: [...s.sg] } : {})
       })),
     // The note's pictures; put last by picsLast once the plan's sets and a new-machine mark are on.
     ...(b.pics && b.pics.length ? { pics: [...b.pics] } : {})

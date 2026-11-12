@@ -121,7 +121,14 @@ export interface LoggedSet {
   drop: boolean;
   cal?: RirCheck | undefined;
   rid?: string | undefined;
+  /** What the app asked of the set as it was ticked at the gym (391, V 2026-11-12): its load (kg) and reps, either null
+      when none was asked; absent on a warm-up, a drop set, a RIR check, a set typed in afterwards and a set saved
+      before 2.61. Kept last, where a build before it keeps the unknown field. */
+  sg?: Asked | undefined;
 }
+
+/** A set's load and reps as the app asked them (LoggedSet's sg). */
+export type Asked = [number | null, number | null];
 
 /** One exercise in a saved session: its sets, the planned range at the time
     (null on sessions logged before ranges were kept), and whether it was made
@@ -281,6 +288,8 @@ export interface Settings extends EngineSettings {
   autoDone: boolean;
   accent?: 'blue' | 'volt' | 'ember' | 'pink' | 'violet' | 'cyan' | 'red' | undefined;
   rirAsk?: true | undefined;
+  /** History lists what the app asked of each set under what was done (391): absent, off, unless turned on. */
+  askedShow?: true | undefined;
   autoAdj?: false | undefined;
   bwEvery?: 0 | 7 | 30 | undefined;
   loadFill?: 'fill' | undefined;
@@ -374,6 +383,8 @@ export interface DraftSet {
   drop?: boolean | undefined;
   cal?: RirCheck | null | undefined;
   rid?: string | undefined;
+  /** What the app asked of the set as it was ticked (LoggedSet's sg), absent until then. */
+  sg?: Asked | undefined;
 }
 
 /** One entry of the error log Settings can copy: when, the area, the message, the build, and the first lines of the stack. */

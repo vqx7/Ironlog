@@ -10,6 +10,7 @@
    live here too, since the log's fresh state is made from them. */
 
 import type {
+  Asked,
   Bodyweight,
   CardioEntry,
   Day,
@@ -334,18 +335,25 @@ export function cleanSess(raw: unknown, si: number): Session {
                 sets: (arr(b.sets) || []).flatMap((x0): LoggedSet[] => {
                   const x = rec(x0);
                   if (!x) return [];
+                  const sg = askedOf(x);
                   return [
-                    keepExtra(x0, {
-                      // Below 0 only for assisted sets (bodyweight minus the machine's help).
-                      w: clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
-                      r: Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
-                      rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
-                      warm: !!x.warm,
-                      drop: !!x.drop && !x.warm,
-                      cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
-                      // The row's own id, last, where a build before it kept the unknown field.
-                      ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
-                    })
+                    keepExtra(
+                      x0,
+                      {
+                        // Below 0 only for assisted sets (bodyweight minus the machine's help).
+                        w: clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
+                        r: Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
+                        rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
+                        warm: !!x.warm,
+                        drop: !!x.drop && !x.warm,
+                        cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
+                        // The row's own id, last, where a build before it kept the unknown field.
+                        ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {}),
+                        // What the app asked of it (391), after the id, where a build before 2.61 keeps it.
+                        ...(sg ? { sg } : {})
+                      },
+                      KNOWN_SETF
+                    )
                   ];
                 }),
                 // The sets its routine's plan gave it when saved, last, as Finish writes it; absent unless recorded, so older records keep their hash.
@@ -598,6 +606,8 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     // Optional settings added in r20 stay undefined unless set.
     ...(accent ? { accent } : {}),
     ...(st.rirAsk === true ? { rirAsk: true } : {}),
+    // 2.61: History lists what the app asked of each set (391); absent unless on.
+    ...(st.askedShow === true ? { askedShow: true } : {}),
     // Count RIR 4 to 5 as half a set: absent unless on.
     ...(st.rirHalf === true ? { rirHalf: true } : {}),
     // r34: adjusting the next sets is on unless turned off; only false is stored, so older saves hash as before.
@@ -654,6 +664,7 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
 const OPTIONAL_SETTINGS = [
   'accent',
   'rirAsk',
+  'askedShow',
   'rirHalf',
   'autoAdj',
   'bwEvery',
@@ -793,22 +804,45 @@ function cleanRoutine(r0: unknown, ri: number): Routine {
   return keepExtra(r0, { id: rid, name: typeof r.name === 'string' ? r.name : 'Routine', schedule, days });
 }
 
+/* What the app asked of a set (391): a load within the loads a set may have and whole reps within the reps it may
+   have, each null when none was asked; nothing when neither was, when the value is anything else, or on a warm-up, a
+   drop set or a RIR check, which are asked nothing. */
+/** A set's asked load and reps as kept, or null. */
+function askedOf(x: Rec): Asked | null {
+  if (x.warm || x.drop || x.cal) return null;
+  const a = arr(x.sg);
+  if (!a || a.length !== 2) return null;
+  const [w0, r0] = a;
+  const w = w0 == null ? null : isNum(w0) ? clampN(w0, LOAD_MIN, LOAD_MAX, 0) : undefined;
+  const r = r0 == null ? null : isNum(r0) ? Math.round(clampN(r0, 0, LIMITS.reps, 0)) : undefined;
+  return w === undefined || r === undefined || (w == null && r == null) ? null : [w, r];
+}
+/** A set's fields this build reads, so one it drops as unreadable is not kept as a field it does not know. */
+const KNOWN_SETF: ReadonlySet<string> = new Set(['sg']);
+
 /** A set row of the workout in progress as normalize reads it, or none when it is not one. */
 function cleanDraftSet(x0: unknown): DraftSet[] {
   const x = rec(x0);
   if (!x) return [];
+  const sg = askedOf(x);
   return [
-    keepExtra(x0, {
-      w: x.w == null ? null : clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
-      r: x.r == null || x.r === '' ? null : Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
-      rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
-      warm: !!x.warm,
-      drop: !!x.drop && !x.warm,
-      done: !!x.done,
-      cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
-      // The row's own id, last, where a build before it kept the unknown field.
-      ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
-    })
+    keepExtra(
+      x0,
+      {
+        w: x.w == null ? null : clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
+        r: x.r == null || x.r === '' ? null : Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
+        rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
+        warm: !!x.warm,
+        drop: !!x.drop && !x.warm,
+        done: !!x.done,
+        cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
+        // The row's own id, last, where a build before it kept the unknown field.
+        ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {}),
+        // What the app asked of it once ticked (391), after the id.
+        ...(sg ? { sg } : {})
+      },
+      KNOWN_SETF
+    )
   ];
 }
 

@@ -814,6 +814,10 @@ function timerBody(s: Settings): TemplateResult {
     'lt-wakeLock',
     'Keep the screen on during a session',
     'A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost.'
+  )}</label> <label class="check-inline"><input type="checkbox" data-bind="askedShow" aria-labelledby="lt-askedShow" .checked=${live(!!s.askedShow)}/>${labelTip(
+    'lt-askedShow',
+    'In History, show what the app asked for each set',
+    'Each set you tick keeps the weight and reps the app asked for it then. With this on, History lists them under what you did.'
   )}</label>
 </div>
 `;
@@ -1521,6 +1525,13 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
     act(() => {
       if (on) delete state.settings.autoAdj;
       else state.settings.autoAdj = false;
+    });
+  },
+  askedShow(t) {
+    const on = checked(t);
+    act(() => {
+      if (on) state.settings.askedShow = true;
+      else delete state.settings.askedShow;
     });
   },
   wakeLock(t) {

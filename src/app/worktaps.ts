@@ -40,6 +40,7 @@ import {
 } from './workstate';
 import type { Tap } from './workstate';
 import {
+  noteAsked,
   adjRows,
   adjSync,
   assessSet,
@@ -543,6 +544,8 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }));
       act(
         () => {
+          // What each was asked as Done was tapped, before a set's adjustment changes the ones after it (391).
+          for (const x of shown) noteAsked(d, b, x.si);
           for (const x of shown) {
             x.s.w = x.w;
             x.s.r = x.r;

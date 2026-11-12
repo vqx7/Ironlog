@@ -807,6 +807,21 @@ function noLoadYet(b: DraftBlock, si: number): boolean {
   return !!s && !ex.bw && !ex.timed && s.w == null && greyW(b, si) == null;
 }
 
+/* What the app asked of a set, kept with it as it is ticked (391; V 2026-11-12: kept, and shown only when asked for):
+   the load it asked of that row (an adjustment's for the rows under the set it came from, else the exercise's
+   suggestion) and its grey reps, so a later engine can read how a lifter answers what is asked. Each tick keeps what
+   was asked then. A warm-up, a drop set and a RIR check are asked nothing, a workout typed in afterwards was not done
+   to what was asked, and an edit keeps what was asked when the set was first ticked. */
+/** Keeps on row si what the app asked of it, as it is ticked. */
+export function noteAsked(d: Pick<Draft, 'editingId' | 'past'>, b: DraftBlock, si: number): void {
+  const s = b.sets[si];
+  if (!s || d.editingId || d.past) return;
+  const w = s.warm || s.drop || s.cal ? null : b.adj && si > b.adj.at ? b.adj.w : (b.sw ?? null);
+  const r = s.warm || s.drop || s.cal ? null : greyR(b, si);
+  if (w == null && r == null) delete s.sg;
+  else s.sg = [w, r];
+}
+
 /* A set being ticked takes its grey load, so a saved set never has an empty
    load that would be stored as 0. Called inside a change given to act. */
 /** A row about to be ticked takes the load it shows in grey. */
@@ -892,7 +907,10 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
   const wasPR = rowPR(b, si, d);
   act(
     () => {
-      if (val) settleLoad(b, si);
+      if (val) {
+        settleLoad(b, si);
+        noteAsked(d, b, si);
+      }
       s.done = val;
       assessSet(bi, si);
     },

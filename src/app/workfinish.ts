@@ -42,7 +42,7 @@ import { setShort, fmtDateLong, fmtE, prSet, wasE } from './display';
 import { W, blkOpen, blkRef, redraw } from './workstate';
 import type { Draft } from './workstate';
 import type { Pr } from './model';
-import { blockProgress, calDueIdx, draftPlanMin, oddReps, rowBlank, setDone, settleLoad } from './worksets';
+import { blockProgress, calDueIdx, draftPlanMin, noteAsked, oddReps, rowBlank, setDone, settleLoad } from './worksets';
 import { confirmBox, openModal, render } from './page';
 import { stopTimer, wakeOff } from './timer';
 import { toast, undoToastHide } from './toast';
@@ -232,6 +232,7 @@ function askUnchecked(d: Draft): boolean {
                 act(
                   () => {
                     settleLoad(b, si);
+                    noteAsked(dd, b, si);
                     s.done = true;
                   },
                   { inProgress: true }

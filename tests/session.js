@@ -1,4 +1,4 @@
-// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-35, in the
+// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-36, in the
 // project's claude/ironlog-spec-session.md, built from the code: workout.ts, worksets.ts, worktaps.ts, workfields.ts,
 // workfinish.ts, timer.ts, actsstart.ts, actspick.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
 // expects). A feature suite: each section is one rule, a lifter's log seeded, the workout started from Today's card
@@ -1112,6 +1112,54 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const hd = await H.ev(() => window.__ironlog.state.draft.date);
     ok(hd === '2026-11-10', 'L-35: a date set by hand stays when the first set is ticked (NEW-132)', hd);
     await H.close();
+  }
+
+  /* ---------- L-36: a ticked set keeps what the app asked of it (391) ---------- */
+  if (run('L-36')) {
+    /* V, 2026-11-05 and 2026-11-12: kept beside what was done, for an engine that later learns how a lifter answers
+       what is asked, and shown only when asked for (a setting, off). Asked of each working set: the exercise's
+       suggested load and the row's grey reps. A load typed over it is kept as typed, beside what was asked. */
+    const P = await lifter({ settings: { autoDone: false } });
+    await start(P);
+    const sw = (await P.draft()).ex[0].sw;
+    await P.tap(tick(0, 0));
+    await P.page.fill(field('w', 0, 1), '190'); await P.page.fill(field('r', 0, 1), '8'); await P.tap(tick(0, 1));
+    await P.tap(tick(0, 2));
+    const d = await P.draft();
+    const sg = d.ex[0].sets.map(x => x.sg || null);
+    ok(sw != null && Math.abs(sw - 185 * LB) < 1e-6 && JSON.stringify(sg) === JSON.stringify([[sw, 8], [sw, 8], [sw, 7]]), 'L-36: each set ticked keeps what was asked of it: the suggested 185 and the grey reps 8, 8 and 7', { sw, sg });
+    ok(Math.abs(d.ex[0].sets[1].w - 190 * LB) < 1e-6, 'L-36: a load typed over the asked one is kept as typed, beside it', d.ex[0].sets[1].w);
+    await P.tap('#view [data-act="finish"]', 400);
+    while (await P.modal()) { const mm = await P.modal(); if (mm.kind === 'confirm') await mOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } }
+    const saved = await P.ev(() => window.__ironlog.state.sessions.find(x => x.id !== 'last'));
+    const bench = saved && saved.ex.find(b => b.exId === 'bench');
+    ok(bench && JSON.stringify(bench.sets.map(x => x.sg || null)) === JSON.stringify([[sw, 8], [sw, 8], [sw, 7]]) && bench.sets.every(x => Object.keys(x).pop() === 'sg'), 'L-36: Finish saves it with each set, last among its fields', bench && bench.sets);
+    // History: not shown until asked for in Settings.
+    await P.tap('#tabs [data-tab="history"]', 200); await P.tap(`#view [data-act="histToggle"][data-id="${saved.id}"]`, 200);
+    let h = await P.ev(() => document.getElementById('view').innerText.replace(/\s+/g, ' '));
+    ok(!/Asked:/.test(h), 'L-36: History does not show it by default', h.slice(0, 200));
+    await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:timer'] = true; L.render(); document.querySelectorAll('#view details').forEach(x => { x.open = true; }); });
+    await wait(150);
+    await P.page.click('#view input[data-bind="askedShow"]'); await wait(250);
+    ok(await P.ev(() => window.__ironlog.state.settings.askedShow === true), 'L-36: Settings turns it on');
+    h = await P.ev(id => { const L = window.__ironlog; L.ui.tab = 'history'; L.ui.histOpen = id; L.render(); return document.getElementById('view').innerText.replace(/\s+/g, ' '); }, saved.id);
+    ok(/Asked: 185×8, 185×8, 185×7/.test(h), 'L-36: then History lists what was asked under what was done: "Asked: 185×8, 185×8, 185×7"', (h.match(/Barbell Bench Press[^]*?Asked:[^.]*/) || [h.slice(0, 300)])[0]);
+    // An edit from History keeps what was asked when the set was first ticked, whatever it asks now.
+    await P.tap(`#view [data-act="histEdit"][data-id="${saved.id}"]`, 300);
+    await P.tap(tick(0, 2)); await P.page.fill(field('r', 0, 2), '9'); await P.tap(tick(0, 2));
+    await P.tap('#view [data-act="finish"]', 300);
+    while (await P.modal()) { const mm = await P.modal(); if (mm.kind === 'confirm') await mOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } }
+    const ed = await P.ev(id => window.__ironlog.state.sessions.find(x => x.id === id).ex.find(b => b.exId === 'bench').sets.map(x => [x.r, x.sg || null]), saved.id);
+    ok(ed[2][0] === 9 && JSON.stringify(ed.map(x => x[1])) === JSON.stringify([[sw, 8], [sw, 8], [sw, 7]]), 'L-36: an edit keeps what was asked when each set was first ticked', ed);
+    await P.close();
+    // A workout typed in afterwards was not done to what was asked: it keeps none.
+    const Q = await lifter({ settings: { autoDone: false } });
+    await start(Q);
+    await Q.ev(() => { const L = window.__ironlog; L.state.draft.past = true; L.render(); });
+    await Q.tap(tick(0, 0));
+    const qd = await Q.draft();
+    ok(qd.ex[0].sets[0].done && !qd.ex[0].sets[0].sg, 'L-36: a set ticked in a workout typed in afterwards keeps nothing asked', qd.ex[0].sets[0]);
+    await Q.close();
   }
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
