@@ -249,7 +249,7 @@
    which the rule above cannot reach, so padded inputs stuck out of their card. */
 details>*{box-sizing:border-box}
 input[type=file]{max-width:100%;width:100%;font-size:14px}
-html{scroll-padding-top:calc(var(--head-h) + env(safe-area-inset-top,0px));-webkit-text-size-adjust:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 /* An app, not a web page (r65.2, PENDING 369): a double tap is a tap, never a zoom (pinch stays, which iOS keeps
    for accessibility whatever a page says); a long press on the app's own words selects nothing and opens no Copy
    and Look Up menu; a tap leaves no grey flash, a button's :active shrink being its feedback. What the lifter
@@ -281,10 +281,11 @@ p{margin:.35em 0}
 b{font-weight:650}
 
 /* ---------- header ---------- */
-/* One sticky bar on every tab: the wordmark, this calendar week, and the save
-   state. It replaced a decorative four-colour strip and the week grid that
-   used to sit only on Today. */
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);display:flex;align-items:center;gap:8px;height:var(--head-h);padding:0 12px;border-bottom:1px solid var(--line-soft)}
+/* One bar at the top of every tab: this calendar week and the menu button. It
+   replaced a decorative four-colour strip and the week grid that used to sit
+   only on Today. It scrolls away with the page (V, 2026-11-12, NEW-138:
+   pinned from r12 to 2.51, it kept 52 px of the screen on every tab). */
+.top{position:relative;z-index:20;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);display:flex;align-items:center;gap:8px;height:var(--head-h);padding:0 12px;border-bottom:1px solid var(--line-soft)}
 /* The strip under the phone's status bar (r28). The header sticks just below
    it, so content scrolled up used to show through behind the clock. In the
    installed iPhone app the status bar text is always white, so in the light
@@ -885,10 +886,10 @@ table.t td.r,table.t th.r{text-align:right}
 table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .subsec table.t .stick-r{background:var(--surface)}
 .scroll-x{overflow-x:auto}
-.jump{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;margin:0 -16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.jump{position:sticky;top:env(safe-area-inset-top,0px);z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;margin:0 -16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .jump::-webkit-scrollbar{display:none}
 .jump .chip{flex:none;min-height:32px;font-size:13px}
-.sec[id^="sec-"]{scroll-margin-top:calc(var(--head-h) + 56px + env(safe-area-inset-top,0px))}
+.sec[id^="sec-"]{scroll-margin-top:calc(56px + env(safe-area-inset-top,0px))}
 .bw-entry{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) auto;gap:8px;align-items:end;margin-top:12px}
 .bw-entry .btn{min-height:44px}
 /* Under 390 px the date takes its own row; beside the weight it showed 08/31/20 at 320 px. */
@@ -1159,7 +1160,7 @@ details.more>summary::-webkit-details-marker{display:none}
 details.more>summary::before{content:"+ ";}
 details.more[open]>summary::before{content:"− ";}
 details.more>summary .small{display:block;font-weight:400}
-.block,.day,:where(.btn).fullw{scroll-margin-top:calc(var(--head-h) + 12px + env(safe-area-inset-top,0px))}
+.block,.day,:where(.btn).fullw{scroll-margin-top:calc(12px + env(safe-area-inset-top,0px))}
 @keyframes flashIn{0%{box-shadow:0 0 0 3px var(--volt-line)}100%{box-shadow:0 0 0 0 transparent}}
 .block.flash{animation:flashIn 1.4s ease-out}
 .sheet h3{font:700 22px/1.15 var(--font);letter-spacing:-.015em}
@@ -1176,12 +1177,12 @@ details.more>summary .small{display:block;font-weight:400}
 /* Docked under the header: at the bottom it sat over the next set rows and
    swallowed taps on them. Only its Undo button takes taps. */
 #toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--head-h) + 8px + env(safe-area-inset-top,0px));z-index:60;pointer-events:none;background:var(--ink);color:var(--on-ink);padding:11px 15px;border-radius:var(--r-md);font-size:15px;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 8px 24px rgba(0,0,0,.22)}
-/* Sits under the sticky header and stays in view while scrolling, so a new
-   version is noticed without covering anything. */
-#updbar{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
+/* Sits under the top bar and stays in view while scrolling, so a new
+   version is noticed without covering anything. Since 2.52 the top bar scrolls
+   away, so it stays at the top of the screen, as it did on the first-run pages,
+   which hide the bar (r55: 52 px down there, it sat over Set up's back link). */
+#updbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
 #updbar[hidden]{display:none}
-/* The first-run pages hide the header, so the bar stays at the top there (r55, from the audit: it sat 52 px down, over the wordmark and Set up's back link). */
-body.obmode #updbar{top:env(safe-area-inset-top,0px)}
 .acctbar+.acctbar{margin-top:-6px}
 /* On a phone each line keeps its bold half and its button (item 62). */
 @media (max-width:429px){.acctbar .ab-more{display:none}}
@@ -19353,7 +19354,7 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
       "touchstart",
       (e5) => {
         const t4 = e5.touches[0];
-        live2 = e5.touches.length === 1 && !ui.modal && !!t4;
+        live2 = e5.touches.length === 1 && !ui.modal && !!t4 && window.scrollY <= 0;
         on = false;
         dy = 0;
         if (t4) {
@@ -27326,7 +27327,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     };
     const zone = () => {
       const h3 = document.querySelector("header.top");
-      const top = h3 ? h3.getBoundingClientRect().bottom : 0;
+      const safe = parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0;
+      const top = Math.max(safe, h3 ? h3.getBoundingClientRect().bottom : 0);
       return [top, bottomBarsTop()];
     };
     const step = () => {
