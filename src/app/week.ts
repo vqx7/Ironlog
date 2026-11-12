@@ -426,7 +426,9 @@ export function weekCard(): TemplateResult {
    it stays open, short of it and it goes back. Drawn back up, or a tap outside, closes it. r25's pull opened the
    calendar from the bottom while the finger pulled down from the top, and V had it removed on 2026-10-01 (item 86).
    A tap on a day, and a sideways move, stay the bar's: the pull starts only once the finger has gone PULL.start down
-   and more down than sideways. */
+   and more down than sideways, and only with the page at its top (NEW-138: since 2.52 the bar scrolls with the page,
+   so a drag down on it scrolled partly away is the page's scroll back up; pinned, from 2.46 to 2.51, a drag down that
+   began on the bar opened the calendar wherever the page was). */
 /** The pull's distances in CSS pixels: how far down before it starts, and how far before letting go keeps it open. */
 const PULL = { start: 12, open: 70 } as const;
 /** The calendar sheet that came down from the top, if it is open. */
@@ -458,7 +460,7 @@ export function pullStart(): void {
     'touchstart',
     e => {
       const t = e.touches[0];
-      live = e.touches.length === 1 && !ui.modal && !!t;
+      live = e.touches.length === 1 && !ui.modal && !!t && window.scrollY <= 0;
       on = false;
       dy = 0;
       if (t) {
