@@ -32,8 +32,10 @@ ok(Math.abs(p2.h-p1.h)<1,'sheet height stable while filtering ('+p1.h+' vs '+p2.
 ok(p2.names.includes('DB Curl')&&p2.names.includes('EZ-Bar Curl'),'DB Curl and EZ-Bar Curl in library');
 const nBefore=await ev(()=>window.__ironlog.state.draft.ex.length);
 await page.click('#pickList .pick[data-ex="dbCurl"]');await page.waitForTimeout(700);
-const a1=await ev(()=>{const d=window.__ironlog.state.draft;const bi=d.ex.length-1;const el=document.getElementById('blk-'+bi);const r=el.getBoundingClientRect();return {n:d.ex.length,last:d.ex[bi].exId,top:r.top,flash:el.classList.contains('flash'),modal:!document.getElementById('modal').hidden};});
-ok(a1.n===nBefore+1&&a1.last==='dbCurl','DB Curl added');ok(a1.top>=40&&a1.top<140,'scrolled to new block (top '+a1.top+')');ok(a1.flash,'new block flashed');ok(!a1.modal,'picker closed');
+const a1=await ev(()=>{const d=window.__ironlog.state.draft;const bi=d.ex.length-1;const el=document.getElementById('blk-'+bi);const r=el.getBoundingClientRect();const under=Math.max(parseFloat(getComputedStyle(document.documentElement).paddingTop)||0,document.querySelector('header.top').getBoundingClientRect().bottom);return {n:d.ex.length,last:d.ex[bi].exId,top:r.top,under,flash:el.classList.contains('flash'),modal:!document.getElementById('modal').hidden};});
+// The new block at the top of the screen, just under what covers its top: the top bar while it was pinned (52 px), the
+// status bar since 2.52, when the bar scrolls away with the page (NEW-138).
+ok(a1.n===nBefore+1&&a1.last==='dbCurl','DB Curl added');ok(a1.top>=a1.under&&a1.top<a1.under+100,'scrolled to new block (top '+a1.top+', under '+a1.under+')');ok(a1.flash,'new block flashed');ok(!a1.modal,'picker closed');
 // create new from picker
 await page.click('[data-act="pickSession"]');await page.waitForTimeout(80);
 await page.fill('#pickQ','Zercher Carry');await page.waitForTimeout(50);
