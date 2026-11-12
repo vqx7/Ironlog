@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.12-r103">
+<meta name="app-build" content="2026.11.12-r104">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2134,8 +2134,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.57";
-  var APP_VERSION = "2026.11.12-r103";
+  var DISPLAY_VERSION = "2.58";
+  var APP_VERSION = "2026.11.12-r104";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -4774,16 +4774,47 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return undoDbP;
   }
   var undoWaiting = false;
+  var STEP_KEY = "step:", LEGACY_KEY = "stack";
+  var stepIds = /* @__PURE__ */ new WeakMap();
+  function stepId(e5) {
+    let id = stepIds.get(e5);
+    if (!id) {
+      id = `${e5.t || Date.now()}-${uid()}`;
+      stepIds.set(e5, id);
+    }
+    return id;
+  }
+  var stepSig = (e5) => `${e5.post == null ? "" : "p"}|${e5.said ?? ""}`;
+  var stepsStored = /* @__PURE__ */ new Map();
+  var legacyStored = false;
   async function undoWrite() {
     undoWaiting = false;
     const db = await undoDb();
     if (!db) return;
     try {
       const tx = db.transaction("kv", "readwrite");
-      tx.objectStore("kv").put(
-        undoStack.map((e5) => ({ pre: e5.pre, post: e5.post, t: e5.t || Date.now(), ...e5.said ? { said: e5.said } : {} })),
-        "stack"
-      );
+      const st = tx.objectStore("kv");
+      const live2 = /* @__PURE__ */ new Set(), put = /* @__PURE__ */ new Map(), gone2 = [];
+      for (const e5 of undoStack) {
+        const id = stepId(e5), sig = stepSig(e5);
+        live2.add(id);
+        if (stepsStored.get(id) === sig) continue;
+        st.put({ pre: e5.pre, post: e5.post, t: e5.t || Date.now(), ...e5.said ? { said: e5.said } : {} }, STEP_KEY + id);
+        put.set(id, sig);
+      }
+      for (const id of stepsStored.keys())
+        if (!live2.has(id)) {
+          st.delete(STEP_KEY + id);
+          gone2.push(id);
+        }
+      const legacy = legacyStored;
+      if (legacy) st.delete(LEGACY_KEY);
+      tx.oncomplete = () => {
+        for (const [id, sig] of put) stepsStored.set(id, sig);
+        for (const id of gone2) stepsStored.delete(id);
+        if (legacy) legacyStored = false;
+      };
+      tx.onerror = () => log("undo-save", tx.error);
       if ("commit" in tx) tx.commit();
     } catch (e5) {
       log("undo-save", e5);
@@ -4802,29 +4833,59 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   async function undoRestore() {
     const db = await undoDb();
     if (!db) return;
-    const list = await new Promise((res) => {
+    const read = await new Promise((res) => {
+      const got = { legacy: null, steps: [] };
       try {
-        const q = db.transaction("kv").objectStore("kv").get("stack");
-        q.onsuccess = () => res(q.result || []);
-        q.onerror = () => res([]);
+        const q = db.transaction("kv").objectStore("kv").openCursor(IDBKeyRange.bound(LEGACY_KEY, STEP_KEY + "￿"));
+        q.onsuccess = () => {
+          const c4 = q.result;
+          if (!c4) {
+            res(got);
+            return;
+          }
+          const k2 = String(c4.key);
+          const v3 = c4.value;
+          if (k2 === LEGACY_KEY) got.legacy = v3;
+          else if (k2.startsWith(STEP_KEY)) got.steps.push([k2.slice(STEP_KEY.length), v3]);
+          c4.continue();
+        };
+        q.onerror = () => res(got);
       } catch (e5) {
         log("undo-read", e5);
-        res([]);
+        res(got);
       }
     });
-    if (undoStack.length) return;
     const now2 = Date.now();
-    for (const e5 of arr(list) || []) {
-      const E2 = rec(e5);
+    for (const [id] of read.steps) stepsStored.set(id, "");
+    legacyStored = read.legacy != null;
+    const found = [];
+    const take = (v3, id) => {
+      const E2 = rec(v3);
       if (E2 && typeof E2.pre === "string" && now2 - (Number(E2.t) || 0) < UNDO_TTL)
-        undoStack.push({
-          pre: E2.pre,
-          post: typeof E2.post === "string" ? E2.post : null,
-          inv: null,
-          t: Number(E2.t),
-          ...typeof E2.said === "string" ? { said: E2.said } : {}
+        found.push({
+          e: {
+            pre: E2.pre,
+            post: typeof E2.post === "string" ? E2.post : null,
+            inv: null,
+            t: Number(E2.t),
+            ...typeof E2.said === "string" ? { said: E2.said } : {}
+          },
+          id
         });
+    };
+    for (const v3 of arr(read.legacy) || []) take(v3, null);
+    for (const [id, v3] of read.steps) take(v3, id);
+    if (!undoStack.length) {
+      found.sort((a2, b2) => a2.e.t - b2.e.t);
+      for (const f3 of found.slice(-UNDO_MAX)) {
+        if (f3.id) {
+          stepIds.set(f3.e, f3.id);
+          stepsStored.set(f3.id, stepSig(f3.e));
+        }
+        undoStack.push(f3.e);
+      }
     }
+    if (legacyStored || [...stepsStored.values()].includes("")) undoPersist();
     if (undoStack.length && ui.tab === "settings" && !ui.modal) fx.rerenderKeepScroll();
   }
   function undoForget() {
@@ -4834,7 +4895,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     undoDb().then((db) => {
       if (!db) return;
       try {
-        db.transaction("kv", "readwrite").objectStore("kv").delete("stack");
+        const tx = db.transaction("kv", "readwrite");
+        tx.objectStore("kv").clear();
+        tx.oncomplete = () => {
+          stepsStored.clear();
+          legacyStored = false;
+        };
       } catch (e5) {
         log("undo-clear", e5);
       }

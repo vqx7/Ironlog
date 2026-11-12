@@ -10,7 +10,7 @@
    ran when the page loaded, called from main.ts at start. */
 
 import { APP_VERSION, STORAGE_ID } from './config';
-import { daysBetween, today, DAY_MS } from './util';
+import { daysBetween, today, uid, DAY_MS } from './util';
 import { arr, fixId, parseJson, rec } from './records';
 import type { Rec } from './records';
 import type { LogEntry } from './types';
@@ -183,7 +183,15 @@ export const undoStack: UndoStep[] = [],
    Entries older than UNDO_DAYS are dropped. The reversal functions some
    in-session entries carry cannot be stored; after a reload those entries
    undo through the three-way merge, which gives the same result. Best
-   effort: without IndexedDB, Undo works as before, for this visit only. */
+   effort: without IndexedDB, Undo works as before, for this visit only.
+   Each step is stored under a key of its own (STEP_KEY and its id), written
+   when it is new or changes (its log after the change kept, or its words)
+   and deleted when it leaves the list, so a change writes its own step, not
+   all 20 again (2.27-F4: on two years of training, 416 sessions, every
+   delete rewrote 40 copies of the log, about half a second of an older
+   phone's time each; one step is two). Steps kept by 2.57 and before, the
+   whole list under 'stack', are read as before and stored on their own from
+   then. */
 const UNDO_DB = ENV === 'preview' ? `${STORAGE_ID}-preview-undo` : `${STORAGE_ID}-undo`,
   UNDO_TTL = UNDO_DAYS * DAY_MS;
 let undoDbP: Promise<IDBDatabase | null> | null = null,
@@ -205,17 +213,59 @@ function undoDb(): Promise<IDBDatabase | null> {
 }
 /** Whether a change to the steps is waiting to be written. */
 let undoWaiting = false;
-/** Writes the steps to IndexedDB now. */
+/** The key prefix of a step stored on its own (above); the list as 2.57 and before kept it is under LEGACY_KEY. */
+const STEP_KEY = 'step:',
+  LEGACY_KEY = 'stack';
+/** Each step's id in the store, given when it is first written or read back. */
+const stepIds = new WeakMap<UndoStep, string>();
+/** A step's id in the store: the time it was kept and a fresh id, unique on this phone. */
+function stepId(e: UndoStep): string {
+  let id = stepIds.get(e);
+  if (!id) {
+    id = `${e.t || Date.now()}-${uid()}`;
+    stepIds.set(e, id);
+  }
+  return id;
+}
+/** What a step as stored says beyond its log before (which never changes): whether its log after is kept, and its words. */
+const stepSig = (e: UndoStep): string => `${e.post == null ? '' : 'p'}|${e.said ?? ''}`;
+/** The steps in the store, by id, with what each says (stepSig); a step not listed here is not stored. */
+const stepsStored = new Map<string, string>();
+/** Whether the list as 2.57 kept it is still in the store, to be deleted once the steps are stored on their own. */
+let legacyStored = false;
+/** Writes the steps to IndexedDB now: the new and changed ones, and deletes those that left the list. */
 async function undoWrite(): Promise<void> {
   undoWaiting = false;
   const db = await undoDb();
   if (!db) return;
   try {
     const tx = db.transaction('kv', 'readwrite');
-    tx.objectStore('kv').put(
-      undoStack.map(e => ({ pre: e.pre, post: e.post, t: e.t || Date.now(), ...(e.said ? { said: e.said } : {}) })),
-      'stack'
-    );
+    const st = tx.objectStore('kv');
+    const live = new Set<string>(),
+      put = new Map<string, string>(),
+      gone: string[] = [];
+    for (const e of undoStack) {
+      const id = stepId(e),
+        sig = stepSig(e);
+      live.add(id);
+      if (stepsStored.get(id) === sig) continue;
+      st.put({ pre: e.pre, post: e.post, t: e.t || Date.now(), ...(e.said ? { said: e.said } : {}) }, STEP_KEY + id);
+      put.set(id, sig);
+    }
+    for (const id of stepsStored.keys())
+      if (!live.has(id)) {
+        st.delete(STEP_KEY + id);
+        gone.push(id);
+      }
+    const legacy = legacyStored;
+    if (legacy) st.delete(LEGACY_KEY);
+    // The store's own record follows the write only once it has ended: a write that failed is tried again next time.
+    tx.oncomplete = () => {
+      for (const [id, sig] of put) stepsStored.set(id, sig);
+      for (const id of gone) stepsStored.delete(id);
+      if (legacy) legacyStored = false;
+    };
+    tx.onerror = () => log('undo-save', tx.error);
     /* Committed at once rather than when the page next idles: a page reloaded or closed straight after (Update, the
        app closed, another address) was gone before the write ended, and Undo then took back the change before it (the
        review of 2.52, REV13-1). A browser without commit() ends the write as before. */
@@ -241,31 +291,68 @@ export function undoFlush(): void {
 export async function undoRestore(): Promise<void> {
   const db = await undoDb();
   if (!db) return;
-  const list = await new Promise<unknown>(res => {
+  const read = await new Promise<{ legacy: unknown; steps: [string, unknown][] }>(res => {
+    const got: { legacy: unknown; steps: [string, unknown][] } = { legacy: null, steps: [] };
     try {
-      // A request's result is typed any; the cast reads it as the unknown value it is.
-      const q = db.transaction('kv').objectStore('kv').get('stack') as IDBRequest<unknown>;
-      q.onsuccess = () => res(q.result || []);
-      q.onerror = () => res([]);
+      // One pass over the store's keys from the list as 2.57 kept it ('stack') to the last step ('step:' and an id).
+      const q = db
+        .transaction('kv')
+        .objectStore('kv')
+        .openCursor(IDBKeyRange.bound(LEGACY_KEY, STEP_KEY + '\uffff'));
+      q.onsuccess = () => {
+        const c = q.result;
+        if (!c) {
+          res(got);
+          return;
+        }
+        const k = String(c.key);
+        // A cursor's value is typed any; the cast reads it as the unknown value it is.
+        const v = c.value as unknown;
+        if (k === LEGACY_KEY) got.legacy = v;
+        else if (k.startsWith(STEP_KEY)) got.steps.push([k.slice(STEP_KEY.length), v]);
+        c.continue();
+      };
+      q.onerror = () => res(got);
     } catch (e) {
       // The store cannot be read (a database another build made): no steps to restore, and the reason is kept.
       log('undo-read', e);
-      res([]);
+      res(got);
     }
   });
-  if (undoStack.length) return;
   const now = Date.now();
-  for (const e of arr(list) || []) {
-    const E = rec(e);
+  /* Every step found is noted as stored, so one not taken back into the list (too old, past the newest UNDO_MAX, or
+     steps kept here already this visit) is deleted at the next write, as the whole list once was written over. */
+  for (const [id] of read.steps) stepsStored.set(id, '');
+  legacyStored = read.legacy != null;
+  const found: { e: UndoStep; id: string | null }[] = [];
+  const take = (v: unknown, id: string | null): void => {
+    const E = rec(v);
     if (E && typeof E.pre === 'string' && now - (Number(E.t) || 0) < UNDO_TTL)
-      undoStack.push({
-        pre: E.pre,
-        post: typeof E.post === 'string' ? E.post : null,
-        inv: null,
-        t: Number(E.t),
-        ...(typeof E.said === 'string' ? { said: E.said } : {})
+      found.push({
+        e: {
+          pre: E.pre,
+          post: typeof E.post === 'string' ? E.post : null,
+          inv: null,
+          t: Number(E.t),
+          ...(typeof E.said === 'string' ? { said: E.said } : {})
+        },
+        id
       });
+  };
+  for (const v of arr(read.legacy) || []) take(v, null);
+  for (const [id, v] of read.steps) take(v, id);
+  if (!undoStack.length) {
+    found.sort((a, b) => a.e.t - b.e.t);
+    for (const f of found.slice(-UNDO_MAX)) {
+      if (f.id) {
+        stepIds.set(f.e, f.id);
+        stepsStored.set(f.id, stepSig(f.e));
+      }
+      undoStack.push(f.e);
+    }
   }
+  // Steps to delete or to store on their own: written now, not left for the next change.
+  if (legacyStored || [...stepsStored.values()].includes('')) undoPersist();
   if (undoStack.length && ui.tab === 'settings' && !ui.modal) fx.rerenderKeepScroll();
 }
 /** Drops every step, here and in IndexedDB (a restore, a sign-in that takes the account's log). */
@@ -276,7 +363,13 @@ export function undoForget(): void {
   undoDb().then(db => {
     if (!db) return;
     try {
-      db.transaction('kv', 'readwrite').objectStore('kv').delete('stack');
+      const tx = db.transaction('kv', 'readwrite');
+      // The store holds Undo's steps alone, each on its own and, from before 2.58, the list.
+      tx.objectStore('kv').clear();
+      tx.oncomplete = () => {
+        stepsStored.clear();
+        legacyStored = false;
+      };
     } catch (e) {
       log('undo-clear', e);
     }

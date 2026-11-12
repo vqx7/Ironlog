@@ -828,6 +828,53 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     await P.close();
   }
 
+  if (run('S-7')) {
+    /* 2.27-F4: each Undo step is stored on its own, so a change writes its own step, not every step again. Undo kept 20
+       whole copies of the log and rewrote all of them on every change it kept a step for: on a log of two years (416
+       sessions) that froze an older phone about half a second after each delete (measured at 6x CPU slowdown). */
+    const seed = function (S) { for (let i = 1; i <= 120; i++) S.sessions.push({ id: 'w' + i, date: new Date(Date.UTC(2026, 4, 1) + i * 1.5 * 864e5).toISOString().slice(0, 10), dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'bench', sets: [1, 2, 3, 4].map(() => ({ w: 60, r: 8, rir: 2, done: true })) }, { exId: 'backSquat', sets: [1, 2, 3, 4].map(() => ({ w: 80, r: 8, rir: 2, done: true })) }] }); S.settings.lastExport = '2026-11-11'; };
+    // The bytes each write to Undo's store puts, counted as the app writes them.
+    const COUNT = () => { window.__undoPut = []; const put = IDBObjectStore.prototype.put; IDBObjectStore.prototype.put = function (v, k) { try { window.__undoPut.push(JSON.stringify(v).length); } catch (e) { window.__undoPut.push(-1); } return put.call(this, v, k); }; };
+    const P = await phone({ seed, setup: async ctx => { await ctx.addInitScript(COUNT); } });
+    await P.tabTo('history');
+    const del = async id => { await P.ev(id => { window.__ironlog.ACT.histDel({ dataset: { id } }); }, id); await wait(80); await confirmOk(P); };
+    for (let i = 1; i <= 20; i++) await del('w' + i);
+    await wait(900);
+    const logLen = await P.ev(k => localStorage.getItem(k).length, KEY);
+    await P.ev(() => { window.__undoPut.length = 0; });
+    await del('w21'); await wait(900);
+    const put = await P.ev(() => window.__undoPut.reduce((a, b) => a + b, 0));
+    ok((await P.ev(() => window.__ironlog.undoStack.length)) === UNDO_MAX && put > 0 && put < 3 * logLen, `S-7: with ${UNDO_MAX} steps kept, a delete writes its own step (under 3 copies of the log), not every step again (2.27-F4: ${UNDO_MAX * 2} copies)`, { put, logLen, ratio: +(put / logLen).toFixed(1) });
+    // Read back from the store after a reload: the newest steps in order, each Undo taking back one delete.
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(600);
+    const n = await P.ev(() => window.__ironlog.undoStack.length);
+    await settingsOpen(P, 'dataSec');
+    for (let k = 0; k < 3; k++) { await P.page.click('#dataSec [data-act="undo"]'); await wait(300); }
+    const back = await P.ev(() => ['w21', 'w20', 'w19', 'w18'].map(id => window.__ironlog.state.sessions.some(s => s.id === id)));
+    ok(n === UNDO_MAX && JSON.stringify(back) === '[true,true,true,false]', `S-7: reopened, the ${UNDO_MAX} steps are there, and Undo three times takes back the last three deletes, newest first`, { n, back });
+    await P.close();
+  }
+  if (run('S-7')) {
+    // Steps stored by 2.57 and before, the whole list under one key, still undo after the update, and are stored on their own from then.
+    const seed = function (S) { for (let i = 1; i <= 6; i++) S.sessions.push({ id: 'v' + i, date: '2026-11-0' + i, dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }); S.settings.lastExport = '2026-11-11'; };
+    const P = await phone({ seed });
+    // Two deletes as 2.57 kept them: the log before each and after it, in one list.
+    const ok2 = await P.ev(async ([dbName]) => {
+      const L = window.__ironlog; const s0 = JSON.parse(JSON.stringify(L.state));
+      const a = JSON.stringify(s0); const s1 = { ...s0, sessions: s0.sessions.filter(s => s.id !== 'v1') }; const b = JSON.stringify(s1); const s2 = { ...s1, sessions: s1.sessions.filter(s => s.id !== 'v2') }; const c = JSON.stringify(s2);
+      L.act(() => { L.state.sessions = L.state.sessions.filter(s => s.id !== 'v1' && s.id !== 'v2'); });
+      const db = await new Promise(r => { const q = indexedDB.open(dbName, 1); q.onupgradeneeded = () => q.result.createObjectStore('kv'); q.onsuccess = () => r(q.result); });
+      await new Promise(r => { const tx = db.transaction('kv', 'readwrite'); const os = tx.objectStore('kv'); os.clear(); os.put([{ pre: a, post: b, t: Date.now() - 2000, said: 'Session deleted' }, { pre: b, post: c, t: Date.now() - 1000, said: 'Session deleted' }], 'stack'); tx.oncomplete = () => r(); });
+      db.close(); return true;
+    }, ['ironlog-undo']);
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(800);
+    await settingsOpen(P, 'dataSec');
+    await P.page.click('#dataSec [data-act="undo"]'); await wait(900);
+    const one = await P.ev(() => ['v1', 'v2'].map(id => window.__ironlog.state.sessions.some(s => s.id === id)));
+    const keys = await P.ev(async () => { const db = await new Promise(r => { const q = indexedDB.open('ironlog-undo', 1); q.onsuccess = () => r(q.result); }); const k = await new Promise(r => { const q = db.transaction('kv').objectStore('kv').getAllKeys(); q.onsuccess = () => r(q.result); }); db.close(); return k; });
+    ok(ok2 && JSON.stringify(one) === '[false,true]' && !keys.includes('stack') && keys.length === 1, 'S-7: steps kept by 2.57 still undo after the update (the newest first), and the one left is stored on its own', { one, keys });
+    await P.close();
+  }
   /* ---------- S-8: Recently deleted ---------- */
   if (run('S-8')) {
     const P = await phone({ seed: (S, L, a) => {
