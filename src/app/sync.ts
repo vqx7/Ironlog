@@ -74,7 +74,6 @@ import {
   parkedRetag,
   dropAside,
   load,
-  undoFlush,
   undoForget
 } from './storage';
 
@@ -2121,7 +2120,6 @@ function mergeIn(text: string, own: boolean): void {
 function onVisibility(): void {
   if (document.visibilityState === 'hidden') {
     if (saveT) saveNow();
-    undoFlush();
     if (cloud.on) {
       clearTimer(cloud.t);
       cq(cloudFlush);
@@ -2136,7 +2134,6 @@ function onVisibility(): void {
 }
 function onPageHide(): void {
   if (saveT) saveNow();
-  undoFlush();
   if (trackT || cloud.pendAt) trackEdits();
 }
 
