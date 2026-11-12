@@ -244,7 +244,7 @@ import {
   syncStart,
   withTimeout
 } from './sync';
-import { act } from './act';
+import { act, trashExpire } from './act';
 import { fitTargets, oldFloors } from './targets';
 import { FB_CTX_MAX } from './feedback';
 import { effShow, rirScale } from './effort';
@@ -778,6 +778,8 @@ function exposeForTests(): void {
 
 /** The first draw, then what waits on the page being up: the screen kept on, the rest timer, the account, Undo's steps and the pictures. */
 function firstDraw(): void {
+  // Recently deleted past its days goes first, by this phone's date, so the first draw and the account see it gone.
+  trashExpire();
   render();
   wakeOn();
   timerResume();

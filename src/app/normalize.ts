@@ -29,7 +29,7 @@ import type {
 } from './types';
 import type { DraftLike } from './session';
 import type { State } from './store';
-import { addDays, clampN, hashStr, isDate, isNum, numOr, today, r1, r3, HUNDREDTHS, WEEK_DAYS, SUNDAY } from './util';
+import { clampN, hashStr, isDate, isNum, numOr, today, r1, r3, HUNDREDTHS, WEEK_DAYS, SUNDAY } from './util';
 import { LB } from './units';
 import {
   BANDS,
@@ -72,7 +72,6 @@ import {
   MEAS_MAX_CM,
   STATE_VERSION,
   TRASH_BYTES,
-  TRASH_DAYS,
   TRASH_MAX,
   cleanCal,
   cleanChk,
@@ -1037,21 +1036,18 @@ function cleanExercises(listed: unknown[], s: Rec, removedLib: readonly string[]
   return exercises;
 }
 
-/** Recently deleted as a save holds it: each entry checked, the expired ones and the oldest past the limits dropped. */
+/* Entries past Recently deleted's days are dropped by this phone's date when the app opens and when something is
+   deleted (act.ts trashExpire), not here: normalize reads every log the same way on every phone (it runs in the sync's
+   comparison too), and by the phone's own date one in Los Angeles kept a deletion that one in Tokyo, a day ahead at
+   that instant, dropped (REV12-T2). */
+/** Recently deleted as a save holds it: each entry checked, the oldest past the limits dropped. */
 function cleanTrash(listed: unknown[]): Trashed[] {
-  const cutoff = addDays(today(), -TRASH_DAYS);
   const trash: Trashed[] = listed
     .flatMap(t0 => {
       const t = rec(t0);
       const data = t ? rec(t.data) : null;
       const kind = t ? trashKind(t.kind) : null;
-      return t &&
-        typeof t.id === 'string' &&
-        kind &&
-        typeof t.date === 'string' &&
-        isDate(t.date) &&
-        t.date >= cutoff &&
-        data
+      return t && typeof t.id === 'string' && kind && typeof t.date === 'string' && isDate(t.date) && data
         ? [{ id: fixId(t.id), kind, date: t.date, data }]
         : [];
     })

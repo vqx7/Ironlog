@@ -18,11 +18,11 @@ import type { Rec } from './records';
 import { invalidate } from './live';
 import { normalize, plainTemplate } from './normalize';
 import { clockStart } from './session';
-import { TRASH_BYTES, TRASH_MAX, parseJson, rec } from './records';
+import { TRASH_BYTES, TRASH_DAYS, TRASH_MAX, parseJson, rec } from './records';
 import type { Trashed } from './records';
 import type { State } from './store';
 import { fx, setState, state } from './store';
-import { today } from './util';
+import { addDays, today } from './util';
 
 /** How a change is made: its check, and the Undo step it keeps. */
 interface ActOpts {
@@ -134,11 +134,27 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
 export function toTrash(kind: Trashed['kind'], data: { id: string }): void {
   if (kind === 'routine' && plainTemplate(data)) return;
   const copy = rec(parseJson(JSON.stringify(data))) ?? {};
+  const cutoff = trashCutoff();
   state.trash = [
     { id: data.id, kind, date: today(), data: copy },
-    ...state.trash.filter(t => !(t.id === data.id && t.kind === kind))
+    ...state.trash.filter(t => !(t.id === data.id && t.kind === kind) && t.date >= cutoff)
   ].slice(0, TRASH_MAX);
   while (state.trash.length > 1 && JSON.stringify(state.trash).length > TRASH_BYTES) state.trash.pop();
+}
+
+/* Recently deleted keeps a deletion TRASH_DAYS days by this phone's date. It is counted here, when the app opens and
+   when something is deleted (toTrash), rather than where the log is read (normalize), which must read every log the
+   same way on every phone (REV12-T2). The drop is a change like any other: saved here and sent to the account, where
+   the other phone takes it as a deletion. */
+/** The oldest date Recently deleted still keeps, by this phone's date. */
+const trashCutoff = (): string => addDays(today(), -TRASH_DAYS);
+/** Drops what has been in Recently deleted past its days, as a change with no Undo step; nothing when none has. Called when the app opens (main.ts). */
+export function trashExpire(): void {
+  const cutoff = trashCutoff();
+  if (!state.trash.some(t => t.date < cutoff)) return;
+  act(() => {
+    state.trash = state.trash.filter(t => t.date >= cutoff);
+  });
 }
 
 /* ---------- Undo (moved from the legacy script's 27-actions.js in r63) ----------
