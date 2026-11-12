@@ -144,7 +144,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(await ev(() => { const c = window.__ironlog.state.draft.cardio; return c.length === 1 && c[0].min === 12; }), 'Undo brings the cardio entry back with its minutes');
   await ev(() => { window.__ironlog.state.draft.cardio = []; window.__ironlog.render(); });
   // A blank RIR is fine: the set still counts as hard (assumed).
-  ok(await ev(() => { const L = window.__ironlog; const s = L.state.draft.ex[0].sets[1]; return s.rir == null && L.isHard(s, L.EX ? L.EX(L.state.draft.ex[0].exId) : undefined); }), 'a set with RIR left blank still counts as a hard set');
+  ok(await ev(() => { const L = window.__ironlog; const s = L.state.draft.ex[0].sets[1]; return s.rir == null && L.isHard(s, L.EX ? L.EX(L.state.draft.ex[0].exId) : undefined, L.state.draft); }), 'a set with RIR left blank still counts as a hard set');
   ok(A.errors.length === 0, 'no console errors', A.errors);
   await A.browser.close();
 

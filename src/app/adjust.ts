@@ -27,6 +27,7 @@ import { noE1 } from './library';
 import { effAt, effScale, rangeWords } from './format';
 import { heavierLoadIn, incOfIn, lighterLoadIn } from './loadsteps';
 import { backDaysIn, suggestCoreIn } from './engine';
+import type { ReadDay } from './setread';
 import { bwRefLoadIn, rirEstIn } from './setread';
 /* ---------- Adjusting the next sets (r34, V; moved from src/17-adjust.js in r60) ----------
    Coaches who program by effort move the next set from how the last one
@@ -114,7 +115,9 @@ export function nextSetsIn(M: Model, b: DraftBlock, si: number, lastR: number | 
     hi = +p.repMax,
     r = +(s.r ?? 0);
   const q = s.rir == null || s.rir === '' ? null : +s.rir;
-  const qe = q != null ? q : back ? BACK_RIR : rirEstIn(M, s, ex);
+  // Read as a row of the workout open, as once it is saved (RC-3); a block of none, as of today.
+  const at: ReadDay = M.s.draft && M.s.draft.ex.includes(b) ? M.s.draft : M.today();
+  const qe = q != null ? q : back ? BACK_RIR : rirEstIn(M, s, ex, at);
   const bw = bwRefLoadIn(M, ex),
     Lt = s.w + bw;
   const expR =

@@ -131,7 +131,7 @@ function askRamps(d: Draft): boolean {
     const thr = isCompound(e) ? WARM_SHARE.compound : WARM_SHARE.isolation;
     const easy = (x: DraftSet): boolean => {
       if (!(L(x) < top - EPS_SAME)) return false;
-      const q = rirEff(x, e);
+      const q = rirEff(x, e, d);
       if (q != null) return q >= RIR_CALL_TOP;
       if (est && !noE1(e)) {
         const rtf = rtfAt(est, L(x));
@@ -372,13 +372,13 @@ export function finishNow(): void {
 }
 
 /** The recap's counts: working sets, missed sets and hard sets as the week counts them. */
-function setCounts(ex: ReturnType<typeof savedEx>[]): { work: number; miss: number; hard: number } {
+function setCounts(ex: ReturnType<typeof savedEx>[], date: string): { work: number; miss: number; hard: number } {
   const work = ex.reduce((a, b) => a + b.sets.filter(isWork).length, 0),
     miss = ex.reduce((a, b) => a + b.sets.filter(q => !q.warm && !q.drop && isMissed(q)).length, 0),
     hard = r1(
       ex.reduce((a, b) => {
         const e = EX(b.exId);
-        return a + b.sets.reduce((c, q) => c + hardCredit(q, e), 0);
+        return a + b.sets.reduce((c, q) => c + hardCredit(q, e, date), 0);
       }, 0)
     );
   return { work, miss, hard };
@@ -558,7 +558,8 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     return [`${e.name} ${setShort(e, p.w, p.r)}`];
   });
   const backBest = backBests(ex, prAll, sess.id);
-  const { work, miss, hard } = setCounts(ex);
+  // Read with the session saved, as of its day, as the week counts it.
+  const { work, miss, hard } = setCounts(ex, sess.date);
   ui.todayDay = null;
   window.scrollTo(0, 0);
   render();

@@ -278,14 +278,40 @@ export interface Suggestion {
 export type ExerciseLike = Pick<Exercise, 'id' | 'name' | 'primary' | 'secondary' | 'equip' | 'bw' | 'archived'> &
   Partial<Exercise>;
 
+/** A rated working set as a lift's usual effort reads it (setread.ts): its day, its RIR as typed, and its session. */
+export interface RatedSet {
+  date: string;
+  rir: number;
+  sid: string;
+}
+
+/** A RIR check as the correction reads it (setread.ts): its day, the reps left at the stop less the reps called, the
+    kind of lift (compound or isolation), and its session. */
+export interface CheckSet {
+  date: string;
+  err: number;
+  c: 'c' | 'i';
+  sid: string;
+}
+
+/** The log's efforts as saved (setread.ts, RC-3), built once per change: each lift's rated working sets and every RIR
+    check, in date order, and what has been read of them as of a day (the correction, each lift's usual effort, and
+    the first usual effort a lift had). */
+export interface Efforts {
+  rated: Map<string, RatedSet[]>;
+  checks: CheckSet[];
+  cal: Map<string, CalStats>;
+  usual: Map<string, Map<string, number | null>>;
+  first: Map<string, { date: string; v: number } | null>;
+}
+
 /** The values built from the log once per change, under their r51 names,
     each null (or undefined) until first read and again after invalidate. */
 interface Caches {
   EXMAP: Partial<Record<string, Exercise>> | null;
   _idx: Idx | null;
   _dix: DateIndex | null;
-  _cal: CalStats | null;
-  _rirUse: Partial<Record<string, number>> | null;
+  _eff: Efforts | null;
   _bwRef: number | undefined;
   _pace: number | null;
   /** The loads Your gym's plates make on a bar (gym.ts, plateGridIn), by plates, unit and bar. */
@@ -307,8 +333,7 @@ export function freshCaches(): Caches {
     EXMAP: null,
     _idx: null,
     _dix: null,
-    _cal: null,
-    _rirUse: null,
+    _eff: null,
     _bwRef: undefined,
     _pace: null,
     _plates: null
@@ -397,8 +422,7 @@ export function invalidateIn(M: Model): void {
   M.c._idx = null;
   M.c._dix = null;
   M.c.EXMAP = null;
-  M.c._cal = null;
-  M.c._rirUse = null;
+  M.c._eff = null;
   M.c._bwRef = undefined;
   M.c._pace = null;
   M.c._plates = null;

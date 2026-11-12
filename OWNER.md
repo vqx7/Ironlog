@@ -470,6 +470,7 @@ Status: in B1a, the r64 block, which adds it only where it is missing. Nothing s
 ## Checks on your phone (items 7 and 63)
 Status: to do whenever you are at the gym; tell Claude what you see. Newest first; the rest stay listed until you say they are done.
 - 2.52 to 2.57, in the preview once each is open, in Safari and in the home-screen app:
+  - scroll down any tab: the top bar with the week goes up with the page and comes back at the top; at the top of Today, pull down on the bar: the calendar comes down, and a push up closes it; scrolled a little, a drag down on the bar scrolls the page (NEW-138);
   - start a workout and wait: the header says Not started until you tick the first set, and the time counts from that tick; set a workout up the evening before and start lifting the next day: it moves to that day;
   - delete a session, close the app from the app switcher straight away, open it: Undo in Settings still takes the delete back;
   - edit an old session while a workout is open: the workout is set aside and comes back when you save the edit; Today's card for one set aside says until when it is kept;

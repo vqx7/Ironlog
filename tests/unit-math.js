@@ -19,7 +19,7 @@ const res=await page.evaluate(()=>{
   let inv=true;for(let r=1;r<=12;r++){const est=e1(87.5,r,0);if(!near(L.e1inv(est,r),87.5,1e-9))inv=false;if(!near(L.rtfAt(est,87.5),r,1e-9))inv=false;}ok(inv,'inverse functions round-trip for 1 to 12 RTF');
   ok(L.rtfBand(5)===1&&L.rtfBand(6)===2&&L.rtfBand(10)===2&&L.rtfBand(11)===3&&L.rtfBand(12)===3,'rep bands 1-5, 6-10, 11-12');
   // ---- hard sets and credit
-  ok(L.isHard({r:8,rir:3})&&!L.isHard({r:8,rir:4})&&L.isHard({r:8,rir:null})&&!L.isHard({r:8,rir:1,warm:true})&&!L.isHard({r:0,rir:1}),'hard set: RIR ≤3 or blank; warm-ups and zero reps never');
+  {const T=L.today();ok(L.isHard({r:8,rir:3},null,T)&&!L.isHard({r:8,rir:4},null,T)&&L.isHard({r:8,rir:null},null,T)&&!L.isHard({r:8,rir:1,warm:true},null,T)&&!L.isHard({r:0,rir:1},null,T),'hard set: RIR ≤3 or blank; warm-ups and zero reps never');}
   ok(L.setCredit({drop:true})===0.5&&L.setCredit({})===1,'drop set = half a set');
   // ---- load modes and tonnage
   const EX=id=>L.state.exercises.find(e=>e.id===id);

@@ -71,7 +71,7 @@ const RIRS = [null, 0, 1, 2, 3, 4, 5];
     const b2 = L.state.draft.ex[0];
     const bw = ex.bw ? L.bwRefLoad(ex) : 0;
     // A blank effort reads as the lift's usual, but on a first session back as 2 in reserve, what the return asked (V's decision 1, r64).
-    const rq = c.rir != null ? c.rir : c.brk > L.BACK_DAYS ? 2 : L.rirEst(b2.sets[0], ex);
+    const rq = c.rir != null ? c.rir : c.brk > L.BACK_DAYS ? 2 : L.rirEst(b2.sets[0], ex, L.state.draft);
     return { w0, adj: b2.adj || null, step: L.incOf(ex, b2.plan, w0), bar: L.exBarKg(ex), barbell: ex.equip === 'barbell', bw, rq, iso: !L.isCompound(ex), est: L.fitE(w0 + bw, c.r, rq == null ? 0 : Math.min(rq, 4)), preKg: kg(c.P), hint: b2.hint, next: L.heavierLoad(ex, b2.plan, w0, w0 + L.incOf(ex, b2.plan, w0) * 4) == null ? null : (() => { let t = w0 + L.incOf(ex, b2.plan, w0) * 0.5, h = null; for (let k = 0; k < 40 && h == null; k++, t += L.incOf(ex, b2.plan, w0) * 0.5) h = L.heavierLoad(ex, b2.plan, w0, t); return h; })() };
   }, c);
   const fitE = (load, r, q) => { const t = r + Math.max(0, Math.min(q == null ? 0 : q, 4)); return t <= 10 ? load * 36 / (37 - t) : t <= 30 ? load * (1 + t / 30) : null; };

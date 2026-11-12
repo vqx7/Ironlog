@@ -52,6 +52,7 @@ import { dayParts, dayWorkout, nextTrainIdx, partOf, sessDayIdx } from './routin
 import { sessCmp } from './records';
 import { addDays, andList, daysBetween, r1, MINUTE_S, PERCENT, WEEK_DAYS } from './util';
 import { agoTxt, min5 } from './format';
+import type { ReadDay } from './setread';
 import { isHardIn } from './setread';
 
 /** Recovery after a dose (Recovery tiers, docs/EVIDENCE.md): the hard sets a
@@ -467,11 +468,18 @@ export function dayReasonsIn(M: Model, x: DayRow, r7: Readonly<Record<string, nu
 /* ---------- Pick for me, inside a session ---------- */
 
 /** The hard sets each muscle has in a session so far (rows not yet ticked count as planned), helpers at HELPER_CREDIT. */
-export function sessionMusclesIn(M: Model, d: Pick<DraftLike, 'ex'>): Record<string, number> {
+export function sessionMusclesIn(
+  M: Model,
+  d: Pick<DraftLike, 'ex' | 'date'> & Partial<Pick<DraftLike, 'id' | 'editingId'>>
+): Record<string, number> {
   const out: Record<string, number> = {};
+  // Its ticked rows read as once it is saved (RC-3), as of its day; a session with no date is today's.
+  const w: ReadDay = { id: d.id, date: d.date || M.today(), editingId: d.editingId, ex: d.ex };
   for (const b of d.ex) {
     const ex = EXIn(M, b.exId);
-    const n = b.sets.filter(x => !x.warm && (x.done ? isHardIn(M, x, ex) : true)).reduce((a, x) => a + setCredit(x), 0);
+    const n = b.sets
+      .filter(x => !x.warm && (x.done ? isHardIn(M, x, ex, w) : true))
+      .reduce((a, x) => a + setCredit(x), 0);
     if (!n) continue;
     out[ex.primary] = (out[ex.primary] || 0) + n;
     for (const m of ex.secondary) out[m] = (out[m] || 0) + HELPER_CREDIT * n;
@@ -516,7 +524,8 @@ interface ExPick {
 /** The exercises to add next to a session, best first, each with the plan and sets it would be added with (and `full`, the sets before a deload or lighter day halved them, for Finish's offer to the routine, r54). */
 export function rankExercisesIn(
   M: Model,
-  d: Pick<DraftLike, 'ex' | 'date' | 'dayId' | 'deload' | 'light' | 'part' | 'equip'>
+  d: Pick<DraftLike, 'ex' | 'date' | 'dayId' | 'deload' | 'light' | 'part' | 'equip'> &
+    Partial<Pick<DraftLike, 'id' | 'editingId'>>
 ): (ExPick & { plan: Plan; full: number })[] {
   const I = IDXIn(M);
   // Focus muscles in the profile count as priorities here.

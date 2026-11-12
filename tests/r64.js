@@ -535,7 +535,7 @@ const run = n => !ONLY || ONLY.includes(n);
       s.sessions = base; L.state = L.normalize(s); L.invalidate();
       const toast = L.livePR('bench', { w: 97.5, r: 10, rir: null, warm: false, drop: false, done: true }, '2026-10-04');
       const beat = L.prBeat('bench', { w: 97.5, r: 10, rir: null, warm: false, drop: false, done: true }, '2026-10-04', toast || '');
-      return { drop, dropBoard, blank, blankBoard, toast, beat, usual: L.rirUsual('bench') };
+      return { drop, dropBoard, blank, blankBoard, toast, beat, usual: L.rirUsual('bench', L.today()) };
     });
     ok(!c.drop.some(p => p.sid === 'd2') && c.dropBoard && c.dropBoard.date === '2026-10-01', '15. a block of drop sets alone makes no PR in the list and no record on the board, as no drop set feeds one (r63: a Weight PR)', c);
     const b3 = c.blank.find(p => p.sid === 'b3');

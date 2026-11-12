@@ -11,6 +11,8 @@ import { isCompound } from './library';
 import { planItemOf, move, fixSupersets, partOf, DEFAULT_PLAN } from './routines';
 import { min5, rangeWords, MISSED_SAID } from './format';
 import { e1, prSameLoad, BACK_DAYS, isMissed, longBreak, prScoreOf } from './formulas';
+import type { ReadDay } from './setread';
+import { dayOf } from './setread';
 import { KM_MI } from './units';
 import { addDays, today, uid, numIn, EPS, EPS_SAME, WEEK_DAYS, r3 } from './util';
 import { loadWords } from './loads';
@@ -284,9 +286,10 @@ export function draftEntered(d: Draft | null | undefined): boolean {
 function liveMade(
   exId: string,
   s: DraftSet | null | undefined,
-  date: string
+  at: ReadDay
 ): { ex: ExerciseLike; pr: ReturnType<typeof prJudge>['pr'] } | null {
   if (!s || s.warm || s.drop || !(+(s.r ?? 0) > 0)) return null;
+  const date = dayOf(at);
   const f = prFrame(exId, s, date);
   if (!f) return null;
   const { ex, exps } = f;
@@ -299,16 +302,16 @@ function liveMade(
     pl: f.own,
     r: +(s.r ?? 0),
     w: Number(s.w) || 0,
-    rir: rirEff(s, ex),
-    rq: rirEst(s, ex)
+    rir: rirEff(s, ex, at),
+    rq: rirEst(s, ex, at)
   };
   const { pb, pbb } = prBestOf(ex, [p], noBody(ex));
   return { ex, pr: prJudge(ex, h, { pts: [p], pb, pbb }).pr };
 }
 
-/** The PR a set being logged makes against the log up to its date, or null. */
-export function livePR(exId: string, s: DraftSet | null | undefined, date: string): string | null {
-  const m = liveMade(exId, s, date);
+/** The PR a set being logged makes against the log up to its day, or null; read as a row of the workout given, or as a set saved on the date given. */
+export function livePR(exId: string, s: DraftSet | null | undefined, at: ReadDay): string | null {
+  const m = liveMade(exId, s, at);
   const pr = m && m.pr;
   if (!m || !pr || !pr.big) return null;
   if (pr.type === 'Weight PR') return 'Weight PR';
@@ -326,16 +329,17 @@ export function livePR(exId: string, s: DraftSet | null | undefined, date: strin
    list judges each set against the sessions before, so 145 x 12 after 135 x 15
    at 3 in reserve, no PR, was a counted Weight PR with no label or toast. */
 /** The PR row si of a block shows: livePR, unless an earlier PR of this session was as strong. */
-export function rowPR(b: DraftBlock, si: number, date: string): string | null {
+export function rowPR(b: DraftBlock, si: number, at: ReadDay): string | null {
   const s = b.sets[si];
   if (!s || !s.done) return null;
-  const pr = livePR(b.exId, s, date);
+  const pr = livePR(b.exId, s, at);
+  const date = dayOf(at);
   if (!pr) return null;
   const ex = EX(b.exId);
   const scq = (x: DraftSet): number => {
     const l = prLoad(ex, x, date);
     const r = +(x.r ?? 0);
-    return prScoreOf(l, r, rirEst(x, ex));
+    return prScoreOf(l, r, rirEst(x, ex, at));
   };
   const me = scq(s),
     myLoad = prLoad(ex, s, date),
@@ -344,7 +348,7 @@ export function rowPR(b: DraftBlock, si: number, date: string): string | null {
   const asStrong = (x: DraftSet): boolean =>
     scq(x) > me + EPS || (scq(x) >= me - EPS && prLoad(ex, x, date) >= myLoad - EPS && +(x.r ?? 0) >= myR);
   return b.sets.some(
-    (x, i) => i < si && x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && asStrong(x) && livePR(b.exId, x, date)
+    (x, i) => i < si && x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && asStrong(x) && livePR(b.exId, x, at)
   )
     ? null
     : pr;
@@ -359,9 +363,9 @@ export function rowPR(b: DraftBlock, si: number, date: string): string | null {
    best before the set is named, so "was" never names a band's best that
    reads as lower than the bests board. */
 /** The tail of a PR toast: what the set beat. */
-export function prBeat(exId: string, s: DraftSet, date: string, pr: string): string {
+export function prBeat(exId: string, s: DraftSet, at: ReadDay, pr: string): string {
   // The words come from the same judgement the label does, so a toast never names a number the list does not.
-  const m = liveMade(exId, s, date);
+  const m = liveMade(exId, s, at);
   const j = m && m.pr;
   if (!m || !j) return '';
   const { ex } = m;
@@ -426,7 +430,8 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
     const seen = new Set<number>();
     for (const x of liftRead(b.exId)) for (const p of x.pts) seen.add(p.w);
     for (const s of heavier) {
-      const v = e1(bw + prSameLoad(+(s.w ?? 0) || 0, seen), +(s.r ?? 0), rirEst(s, ex));
+      // Read as a row of the workout open, as once saved (RC-3); a block with none open, as of today.
+      const v = e1(bw + prSameLoad(+(s.w ?? 0) || 0, seen), +(s.r ?? 0), rirEst(s, ex, state.draft || today()));
       if (v != null && (best == null || v > best)) {
         best = v;
         bs = s;
@@ -884,7 +889,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
     );
     return;
   }
-  const wasPR = rowPR(b, si, d.date);
+  const wasPR = rowPR(b, si, d);
   act(
     () => {
       if (val) settleLoad(b, si);
@@ -896,11 +901,11 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
   if (val && isMissed(s) && !s.warm && !s.drop) toast(MISSED_SAID);
   if (val && !d.editingId && blockDone(b) && !blkIsOpen(bi, b)) W.foldWait.add(b);
   onLiftDraw(bi, redraw);
-  const pr = rowPR(b, si, d.date);
+  const pr = rowPR(b, si, d);
   if (pr && !wasPR) {
     const ex = EX(b.exId);
     toast(
-      `${pr === 'Best' ? (isCompound(ex) ? 'New best estimate' : 'PR') : pr}: ${exName(b.exId)}, ${setShort(ex, +(s.w ?? 0) || 0, s.r)}${prBeat(b.exId, s, d.date, pr)}`,
+      `${pr === 'Best' ? (isCompound(ex) ? 'New best estimate' : 'PR') : pr}: ${exName(b.exId)}, ${setShort(ex, +(s.w ?? 0) || 0, s.r)}${prBeat(b.exId, s, d, pr)}`,
       false,
       PR_TOAST_MS,
       'pr'

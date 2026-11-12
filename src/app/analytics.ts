@@ -178,10 +178,10 @@ function tallyIn(
       total++;
       if (logged) n++;
     }
-    const hard = isHardIn(M, s, ex);
-    const cr = hard ? setCredit(s) : hardCreditIn(M, s, ex);
+    const hard = isHardIn(M, s, ex, ss.date);
+    const cr = hard ? setCredit(s) : hardCreditIn(M, s, ex, ss.date);
     if (!cr) continue;
-    const q = rirEffIn(M, s, ex);
+    const q = rirEffIn(M, s, ex, ss.date);
     weekHard[wk] = (weekHard[wk] || 0) + cr;
     for (const [m, f] of mus) {
       ws[m] = (ws[m] || 0) + f * cr;
@@ -287,8 +287,8 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
           pl,
           r: +s.r,
           w: +s.w || 0,
-          rir: rirEffIn(M, s, ex),
-          rq: rirEstIn(M, s, ex)
+          rir: rirEffIn(M, s, ex, ss.date),
+          rq: rirEstIn(M, s, ex, ss.date)
         };
       };
       const pts = ptsSrc.map(point);

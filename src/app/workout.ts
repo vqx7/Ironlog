@@ -326,7 +326,7 @@ function setRow(
   const p = b.plan;
   const g = greyR(b, si);
   const ph = g == null ? '' : String(g);
-  const pr = rowPR(b, si, d.date);
+  const pr = rowPR(b, si, d);
   const wn = b.sets.slice(0, si + 1).filter(x => !x.warm && !x.drop).length;
   // Last time's set for this row, beside this time's (r44, V): working sets only, by their order.
   const lt = s.warm || s.drop ? '' : lastCell(b, wn - 1, dupB);
@@ -424,7 +424,7 @@ function blockPart(
   const ssLbl = ss ? html`<span class="sslbl">${ss}${gk + 1}</span> ` : '';
   if (isFolded(d, b, bi)) {
     const ws = b.sets.filter(x => !x.warm);
-    const prs = b.sets.filter((x, si) => !x.warm && rowPR(b, si, d.date)).length;
+    const prs = b.sets.filter((x, si) => !x.warm && rowPR(b, si, d)).length;
     const done = blockDone(b);
     // Not done (folded by hand, NEW-101): the sets it has done of its sets, and an empty ring where the tick goes.
     const work = b.sets.filter(x => !x.warm && !x.drop);

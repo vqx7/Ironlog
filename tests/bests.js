@@ -45,8 +45,8 @@ const TOAST_LOG = () => {
 /* A lifter in lb on one day of a routine ("Push": bench 3 x 6 to 10, lateral raise 2 x 10 to 15; o.items replaces
    them, as [exId, sets, repMin, repMax]), with last week's session (bench 185 x 8, 8, 7 and raises 20 x 12, 12, all at
    2 in reserve) unless o.log gives the log: sessions as [date, [[exId, [[load, reps, rir, mark], ...]], ...]], loads in
-   lb (kg with o.kg), mark 'w' a warm-up and 'd' a drop set. o.bw adds weigh-ins as [date, kg]; o.settings sets
-   settings. */
+   lb (kg with o.kg), mark 'w' a warm-up, 'd' a drop set, or fields of the set ({ cal: { at, pred } }, an RIR check).
+   o.bw adds weigh-ins as [date, kg]; o.settings sets settings. */
 async function lifter(o = {}) {
   const items = o.items || [['bench', 3, 6, 10], ['dbLateral', 2, 10, 15]];
   const log = o.log || [['2026-11-07', [['bench', [[185, 8, 2], [185, 8, 2], [185, 7, 2]]], ['dbLateral', [[20, 12, 2], [20, 12, 2]]]]]];
@@ -60,7 +60,7 @@ async function lifter(o = {}) {
     S.activeRoutineId = 'R1';
     const rrOf = id => { const it = items.find(x => x[0] === id); return it ? [it[2], it[3]] : [6, 10]; };
     S.sessions = log.map(([date, ex], k) => ({ id: 's' + k, date, dayIdx: 0, dayId: 'A', dayName: 'Push', routineId: 'R1', notes: '',
-      ex: ex.map(([exId, sets]) => ({ exId, rr: rrOf(exId), sets: sets.map(([w, r, rir, m]) => ({ w: o.kg ? w : w * LB, r, rir, done: true, ...(m === 'w' ? { warm: true } : m === 'd' ? { drop: true } : {}) })) })) }));
+      ex: ex.map(([exId, sets]) => ({ exId, rr: rrOf(exId), sets: sets.map(([w, r, rir, m]) => ({ w: o.kg ? w : w * LB, r, rir, done: true, ...(m === 'w' ? { warm: true } : m === 'd' ? { drop: true } : m && typeof m === 'object' ? m : {}) })) })) }));
     S.bodyweights = (o.bw || []).map(([date, kg], k) => ({ id: 'bw' + k, date, kg }));
     L.state = L.normalize(S);
     localStorage.setItem(L.KEY + '.installLater', '1'); localStorage.setItem(L.KEY + '.tipWake', '1');
@@ -597,6 +597,105 @@ async function stats(P) {
     st = await stats(P);
     ok(st.board.length === 7 && st.board[6].ex === 'bench', 'B-16: "Show all 7 lifts" shows the seventh', st.board.map(x => x.ex));
     await P.close();
+  }
+
+  /* ---------- B-20: a workout's effort is read as of its day ---------- */
+  if (run('B-20')) {
+    /* RC-3 (387-C6, NEW-71, R75-5; V's go 2026-11-12): a blank effort reads the lift's usual effort, and a rated one,
+       with Corrected RIR on, its correction, each from the 12 weeks before the workout's own day, never as of today:
+       nothing logged that day or after moves a workout's numbers, so a set reads the same as it is ticked, in the
+       recap and on every list (R75-1). Until a lift has a usual effort, its blanks read its first one once it forms,
+       so a lifter who starts rating sees no step in the lift's history. Estimates in kg here: Brzycki to 10 reps to
+       failure, Epley at 11 and 12, shown to the half kilo. */
+    const kgE = v => String(Math.round(v * 2) / 2);
+    const bench = st => st.board.find(b => b.ex === 'bench');
+    {
+      // 387-C6: Sep 15's 102.5 x 8, blank, read with Sep 1 and 8's effort (2 in reserve on six sets): 10 to failure.
+      // October's sets at 0 and today's change the usual of today's weeks, never Sep 15's.
+      const P = await lifter({ kg: true, settings: { unit: 'kg' }, items: [['bench', 3, 6, 10]], log: [
+        ['2026-09-01', [['bench', [[100, 8, 2], [100, 8, 2], [100, 8, 2]]]]], ['2026-09-08', [['bench', [[100, 8, 2], [100, 8, 2], [100, 8, 2]]]]],
+        ['2026-09-15', [['bench', [[102.5, 8, null], [102.5, 8, null], [102.5, 8, null]]]]],
+        ['2026-10-06', [['bench', [[90, 8, 0], [90, 8, 0], [90, 8, 0]]]]], ['2026-10-13', [['bench', [[90, 8, 0], [90, 8, 0], [90, 8, 0]]]]]] });
+      const want = `best est ${kgE(e1(102.5, 10))} kg, Sep 15`;
+      let st = await stats(P);
+      const before = bench(st) && bench(st).lines[0];
+      await start(P);
+      for (let k = 0; k < 3; k++) await logSet(P, 0, k, 90, 8, 0);
+      await finish(P);
+      st = await stats(P);
+      const after = bench(st) && bench(st).lines[0];
+      ok(before && before.startsWith(want) && after && after.startsWith(want), `B-20: Sep 15's 102.5 x 8, blank, reads the effort of the weeks before it (2 in reserve): "${want}", before and after October's and today's sets at 0 (387-C6)`, { before, after });
+      await P.close();
+    }
+    {
+      // NEW-71: with Corrected RIR on, Sep 15's 100 x 8 rated 2 is corrected only by RIR checks up to Sep 15: none, so
+      // read as rated (10 to failure). October's two checks, each a rep under-called, correct later workouts' ratings.
+      const chk = { cal: { at: 8, pred: 2 } };
+      const P = await lifter({ kg: true, settings: { unit: 'kg', rirMode: 'cal' }, items: [['bench', 3, 6, 10]], log: [
+        ['2026-09-15', [['bench', [[100, 8, 2], [100, 8, 2], [100, 8, 2]]]]],
+        ['2026-10-06', [['bench', [[70, 11, 0, chk]]]]], ['2026-10-13', [['bench', [[70, 11, 0, chk]]]]]] });
+      const st = await stats(P);
+      const line = bench(st) && bench(st).lines[0];
+      ok(line && line.startsWith(`best est ${kgE(e1(100, 10))} kg, Sep 15`), `B-20: with Corrected RIR on, Sep 15's 100 x 8 rated 2 is read as rated, no RIR check being in by its day: "best est ${kgE(e1(100, 10))} kg, Sep 15" (NEW-71: October's checks moved it)`, line);
+      await P.close();
+    }
+    {
+      /* R75-5: four sets rated 0 today, then 105 x 8 left blank. It reads the usual of the weeks before today (100 x 8 at
+         2, three sets), 10 to failure, past 100 x 8 at 2: a PR, said alike by its row, its toast and the recap. Read
+         with today's ratings once saved and without them while open, the row announced a PR the recap did not count. */
+      ok(e1(105, 10) > e1(100, 10), 'B-20: worked out from the rule: 105 x 8 read at 2 in reserve is stronger than 100 x 8 at 2', [e1(105, 10), e1(100, 10)]);
+      const P = await lifter({ kg: true, settings: { unit: 'kg' }, items: [['bench', 5, 6, 10]], log: [['2026-11-04', [['bench', [[100, 8, 2], [100, 8, 2], [100, 8, 2]]]]]] });
+      await start(P);
+      for (let k = 0; k < 4; k++) await logSet(P, 0, k, 100, 8, 0);
+      await P.clearToasts();
+      await logSet(P, 0, 4, 105, 8);
+      const t = await P.prToasts(), gold = await P.gold(0, 4);
+      const rc = await finish(P);
+      ok(t.length === 1 && /Barbell Bench Press, 105×8/.test(t[0]) && gold && /NEW PR/.test(rc || '') && /Barbell Bench Press/.test(rc || '') && !/Heaviest yet/.test(rc || ''), 'B-20: 105 x 8 left blank after four sets rated 0 today: read at the usual of the weeks before (2), a PR on its row, in its toast and in the recap alike (R75-5)', { t, gold, rc });
+      await P.close();
+    }
+    {
+      // A lifter who starts rating: Sep 1 and 8 blank, Oct 6 rated 2 (the lift's first usual). The earlier blanks read
+      // it too, so the lift's estimate is the same 100 x 8 throughout and its best was first reached Sep 1.
+      const P = await lifter({ kg: true, settings: { unit: 'kg' }, items: [['bench', 3, 6, 10]], log: [
+        ['2026-09-01', [['bench', [[100, 8, null], [100, 8, null], [100, 8, null]]]]], ['2026-09-08', [['bench', [[100, 8, null], [100, 8, null], [100, 8, null]]]]],
+        ['2026-10-06', [['bench', [[100, 8, 2], [100, 8, 2], [100, 8, 2]]]]]] });
+      const st = await stats(P);
+      const line = bench(st) && bench(st).lines[0];
+      ok(line && line.startsWith(`best est ${kgE(e1(100, 10))} kg, Sep 1`), `B-20: a lift first rated Oct 6 reads its earlier blanks at that first usual effort: "best est ${kgE(e1(100, 10))} kg, Sep 1", no step when rating starts`, line);
+      await P.close();
+      {
+      /* R75-4, a guard (the review of 2.29's first try): a lift's first rated day, Oct 6, three sets at 2 and 102.5 x 8
+         left blank. The blank reads the usual first formed that day (2), and a later, lighter workout at 0 leaves it. */
+      const P = await lifter({ kg: true, settings: { unit: 'kg' }, items: [['bench', 4, 6, 10]], log: [
+        ['2026-10-06', [['bench', [[100, 8, 2], [100, 8, 2], [100, 8, 2], [102.5, 8, null]]]]]] });
+      const want = `best est ${kgE(e1(102.5, 10))} kg, Oct 6`;
+      const before = (b => b && b.lines[0])(bench(await stats(P)));
+      await P.ev(() => {
+        const L = window.__ironlog; const s0 = L.state.sessions[0];
+        L.state.sessions.push({ ...JSON.parse(JSON.stringify(s0)), id: 'later', date: '2026-10-13', ex: [{ ...JSON.parse(JSON.stringify(s0.ex[0])), sets: [0, 1, 2].map(() => ({ w: 80, r: 8, rir: 0, warm: false, drop: false })) }] });
+        L.state = L.normalize(L.state); L.invalidate(); L.saveNow(); L.render();
+      });
+      const after = (b => b && b.lines[0])(bench(await stats(P)));
+      ok(before && before.startsWith(want) && after && after.startsWith(want), `B-20: a lift's first rated day reads its blank at the usual first formed that day: "${want}", before and after a later, lighter workout (R75-4)`, { before, after });
+      await P.close();
+    }
+    {
+      /* R75-3, a guard (the review of 2.29's first try): History's Edit moving Sep 8's workout, its three sets rated 0, to
+         Sep 22. Open, it reads the weeks before Sep 22 without its own saved copy: Sep 1's three sets at 2, a usual of 2,
+         as it reads once saved there. Its own Sep 8 ratings read in, the usual would be 1. */
+      const P = await lifter({ kg: true, settings: { unit: 'kg' }, items: [['bench', 3, 6, 10]], log: [
+        ['2026-09-01', [['bench', [[100, 8, 2], [100, 8, 2], [100, 8, 2]]]]], ['2026-09-08', [['bench', [[100, 8, 0], [100, 8, 0], [100, 8, 0]]]]]] });
+      const r = await P.ev(() => {
+        const L = window.__ironlog; const id = L.state.sessions[1].id;
+        const open = L.rirUsual('bench', { id: 'edit', date: '2026-09-22', editingId: id });
+        L.state.sessions[1].date = '2026-09-22'; L.state = L.normalize(L.state); L.invalidate();
+        return { open, saved: L.rirUsual('bench', '2026-09-22') };
+      });
+      ok(r.open === 2 && r.saved === 2, 'B-20: an edit moved to a later day reads its effort without its own saved copy, as once saved there (R75-3)', r);
+      await P.close();
+    }
+  }
   }
 
   /* ---------- B-17, B-18 and B-19: while training, before the app, and the Guide (moved from this suite's r47 checks) ---------- */

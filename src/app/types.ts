@@ -314,11 +314,29 @@ export interface EngineState {
   injuries: Injury[];
   deloadWeek: string | null;
   settings: EngineSettings;
-  /** The session in progress as the rules read it: its day, the lifts it marks as done at a new machine or gym (r61, liftReadIn), and the saved session it is an edit of (2.30, R75-6: its saved version is no earlier session of itself); absent or null with none. */
-  draft?:
-    | { date: string; editingId?: string | null | undefined; ex: readonly { exId: string; nw?: true | undefined }[] }
-    | null
-    | undefined;
+  /** The session in progress as the rules read it (OpenWorkout); absent or null with none. */
+  draft?: OpenWorkout | null | undefined;
+}
+
+/** A row of a workout not yet saved, as its effort is read (setread.ts): the reps as typed, the effort called, its
+    marks, and whether it is ticked, which is what Finish saves. */
+export interface OpenSet {
+  r: number | string | null;
+  rir?: Rir;
+  cal?: RirCheck | null | undefined;
+  done?: boolean | undefined;
+  warm?: boolean | undefined;
+  drop?: boolean | undefined;
+}
+
+/** A workout not yet saved as the rules read it: its id, which its saved copy keeps; its day; the saved session it is
+    an edit of (2.30, R75-6: its saved version is no earlier session of itself); and each lift's rows, with the lifts it
+    marks as done at a new machine or gym (r61, liftReadIn). */
+export interface OpenWorkout {
+  id?: string | undefined;
+  date: string;
+  editingId?: string | null | undefined;
+  ex: readonly { exId: string; nw?: true | undefined; sets: readonly OpenSet[] }[];
 }
 
 /** One set as the analytics read it (a point in IDX's byEx): the load as typed,
