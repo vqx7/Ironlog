@@ -203,22 +203,35 @@ function undoDb(): Promise<IDBDatabase | null> {
     });
   return undoDbP;
 }
+/** Whether a change to the steps is waiting to be written. */
+let undoWaiting = false;
+/** Writes the steps to IndexedDB now. */
+async function undoWrite(): Promise<void> {
+  undoWaiting = false;
+  const db = await undoDb();
+  if (!db) return;
+  try {
+    const tx = db.transaction('kv', 'readwrite');
+    tx.objectStore('kv').put(
+      undoStack.map(e => ({ pre: e.pre, post: e.post, t: e.t || Date.now(), ...(e.said ? { said: e.said } : {}) })),
+      'stack'
+    );
+  } catch (e) {
+    log('undo-save', e);
+  }
+}
 /** Writes the steps to IndexedDB once the taps pause. */
 export function undoPersist(): void {
   clearTimer(undoT);
-  undoT = setTimeout(async () => {
-    const db = await undoDb();
-    if (!db) return;
-    try {
-      const tx = db.transaction('kv', 'readwrite');
-      tx.objectStore('kv').put(
-        undoStack.map(e => ({ pre: e.pre, post: e.post, t: e.t || Date.now(), ...(e.said ? { said: e.said } : {}) })),
-        'stack'
-      );
-    } catch (e) {
-      log('undo-save', e);
-    }
-  }, UNDO_SAVE_MS);
+  undoWaiting = true;
+  undoT = setTimeout(() => void undoWrite(), UNDO_SAVE_MS);
+}
+/** Writes the steps at once if a write is waiting: the page hidden or left (sync.ts), so a change made just before
+    the app closed keeps its step (NEW-130: it was lost, and Undo then took back the change before it). */
+export function undoFlush(): void {
+  if (!undoWaiting) return;
+  clearTimer(undoT);
+  void undoWrite();
 }
 /** Reads the steps saved by an earlier visit, those under a week old, once at start. */
 export async function undoRestore(): Promise<void> {
@@ -255,6 +268,7 @@ export async function undoRestore(): Promise<void> {
 export function undoForget(): void {
   undoStack.length = 0;
   clearTimer(undoT);
+  undoWaiting = false;
   undoDb().then(db => {
     if (!db) return;
     try {

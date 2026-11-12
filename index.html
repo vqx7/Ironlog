@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.11-r97">
+<meta name="app-build" content="2026.11.11-r98">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2134,8 +2134,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.51";
-  var APP_VERSION = "2026.11.11-r97";
+  var DISPLAY_VERSION = "2.52";
+  var APP_VERSION = "2026.11.11-r98";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -4737,21 +4737,30 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       });
     return undoDbP;
   }
+  var undoWaiting = false;
+  async function undoWrite() {
+    undoWaiting = false;
+    const db = await undoDb();
+    if (!db) return;
+    try {
+      const tx = db.transaction("kv", "readwrite");
+      tx.objectStore("kv").put(
+        undoStack.map((e5) => ({ pre: e5.pre, post: e5.post, t: e5.t || Date.now(), ...e5.said ? { said: e5.said } : {} })),
+        "stack"
+      );
+    } catch (e5) {
+      log("undo-save", e5);
+    }
+  }
   function undoPersist() {
     clearTimer(undoT);
-    undoT = setTimeout(async () => {
-      const db = await undoDb();
-      if (!db) return;
-      try {
-        const tx = db.transaction("kv", "readwrite");
-        tx.objectStore("kv").put(
-          undoStack.map((e5) => ({ pre: e5.pre, post: e5.post, t: e5.t || Date.now(), ...e5.said ? { said: e5.said } : {} })),
-          "stack"
-        );
-      } catch (e5) {
-        log("undo-save", e5);
-      }
-    }, UNDO_SAVE_MS);
+    undoWaiting = true;
+    undoT = setTimeout(() => void undoWrite(), UNDO_SAVE_MS);
+  }
+  function undoFlush() {
+    if (!undoWaiting) return;
+    clearTimer(undoT);
+    void undoWrite();
   }
   async function undoRestore() {
     const db = await undoDb();
@@ -4784,6 +4793,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function undoForget() {
     undoStack.length = 0;
     clearTimer(undoT);
+    undoWaiting = false;
     undoDb().then((db) => {
       if (!db) return;
       try {
@@ -11343,6 +11353,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function onVisibility() {
     if (document.visibilityState === "hidden") {
       if (saveT) saveNow();
+      undoFlush();
       if (cloud.on) {
         clearTimer(cloud.t);
         cq(cloudFlush);
@@ -11351,6 +11362,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function onPageHide() {
     if (saveT) saveNow();
+    undoFlush();
     if (trackT || cloud.pendAt) trackEdits();
   }
   function syncStart() {

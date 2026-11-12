@@ -1,6 +1,6 @@
-// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-22, in the
+// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-34, in the
 // project's claude/ironlog-spec-session.md, built from the code: workout.ts, worksets.ts, worktaps.ts, workfields.ts,
-// workfinish.ts, timer.ts, actsstart.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
+// workfinish.ts, timer.ts, actsstart.ts, actspick.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
 // expects). A feature suite: each section is one rule, a lifter's log seeded, the workout started from Today's card
 // and driven by taps and typing as a lifter drives it, and what the screen shows and the log then holds compared with
 // what the rule gives, with the rule's numbers and the app's own words. A failure names its rule. Each rule was changed
@@ -12,6 +12,8 @@ const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== 
 const FILE = process.argv[2] || 'index.html';
 const ONLY = process.env.SESSION_ONLY ? process.env.SESSION_ONLY.split(',') : null;
 const run = id => !ONLY || ONLY.includes(id);
+// A moved check named by its rule.
+const okAs = rule => (c, m, x) => ok(c, `${rule}: ${m}`, x);
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const DAY = '2026-11-11';
 const LB = 0.45359237;
@@ -49,24 +51,26 @@ const ROWS = b => [...document.querySelectorAll(`#view .sg`)].filter(r => r.quer
    60 s; o.items replaces them), with last week's session (bench 185 x 8, 8, 7; raises 20 x 12, 12) unless o.fresh.
    o.settings sets settings; o.seed (S, L) changes anything else first. */
 async function lifter(o = {}) {
-  const items = o.items || [['bench', 3, 6, 10, REST_BENCH], ['lateralRaise', 2, 10, 15, REST_RAISE]];
+  const items = o.items || [['bench', 3, 6, 10, REST_BENCH], ['dbLateral', 2, 10, 15, REST_RAISE]];
   const P = await open(FILE, { browser: o.browser, w: o.w || 390, h: 844, clock: (o.day || DAY) + 'T10:00:00', setup: async ctx => { await ctx.addInitScript(TOAST_LOG); } });
   P.ev = (f, a) => P.page.evaluate(f, a);
   await P.ev(([items, o, LB]) => {
     const L = window.__ironlog; const S = L.state;
     S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.lastExport = '2026-11-11';
     Object.assign(S.settings, o.settings || {});
-    S.routines = [{ id: 'R1', name: 'Mine', schedule: 'cycle', days: [{ id: 'A', name: 'Push', rest: false, items: items.map(([exId, sets, repMin, repMax, rest], k) => ({ uid: 'i' + k, exId, sets, repMin, repMax, rir: 2, rest, ss: null })) }] }];
+    const its = (list, p) => list.map(([exId, sets, repMin, repMax, rest], k) => ({ uid: p + k, exId, sets, repMin, repMax, rir: 2, rest, ss: null }));
+    // o.more: further days of the routine, as [name, items].
+    S.routines = [{ id: 'R1', name: 'Mine', schedule: 'cycle', days: [{ id: 'A', name: 'Push', rest: false, items: its(items, 'i') }, ...(o.more || []).map(([name, list], k) => ({ id: 'D' + k, name, rest: false, items: its(list, 'd' + k + '-') }))] }];
     S.activeRoutineId = 'R1';
     S.sessions = o.fresh ? [] : [{ id: 'last', date: '2026-11-07', dayIdx: 0, dayId: 'A', dayName: 'Push', routineId: 'R1', notes: '', ex: [
       { exId: 'bench', rr: [6, 10], ps: 3, sets: [[185, 8], [185, 8], [185, 7]].map(([w, r]) => ({ w: w * LB, r, rir: 2, done: true })) },
-      { exId: 'lateralRaise', rr: [10, 15], ps: 2, sets: [[20, 12], [20, 12]].map(([w, r]) => ({ w: w * LB, r, rir: 2, done: true })) }] }];
+      { exId: 'dbLateral', rr: [10, 15], ps: 2, sets: [[20, 12], [20, 12]].map(([w, r]) => ({ w: w * LB, r, rir: 2, done: true })) }] }];
     // eslint-disable-next-line no-new-func
     if (o.seed) new Function('return ' + o.seed)()(S, L);
     L.state = L.normalize(S);
     localStorage.setItem(L.KEY + '.installLater', '1'); localStorage.setItem(L.KEY + '.tipWake', '1');
     L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
-  }, [items, { settings: o.settings, fresh: !!o.fresh, seed: o.seed ? String(o.seed) : '' }, LB]);
+  }, [items, { settings: o.settings, fresh: !!o.fresh, seed: o.seed ? String(o.seed) : '', more: o.more || [] }, LB]);
   await wait(100);
   P.rows = b => P.ev(ROWS, b);
   P.toast = () => P.ev(TOAST);
@@ -94,7 +98,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const P = await lifter();
     await start(P);
     const d = await P.draft();
-    ok(d && d.ex.map(b => b.exId).join() === 'bench,lateralRaise', 'L-1: the day\'s exercises, in the plan\'s order', d && d.ex.map(b => b.exId));
+    ok(d && d.ex.map(b => b.exId).join() === 'bench,dbLateral', 'L-1: the day\'s exercises, in the plan\'s order', d && d.ex.map(b => b.exId));
     const b0 = await P.rows(0), b1 = await P.rows(1);
     ok(b0.length === 3 && b1.length === 2, 'L-1: each with the plan\'s sets (3 and 2)', [b0.length, b1.length]);
     ok(b0.every(r => r.w === '~185') && b0.map(r => r.r).join() === '~8,~8,~7' && b1.every(r => r.w === '~20' && r.r === '~12'), 'L-1: every row shows the target in grey: last time\'s load and reps to beat (P-8)', { b0, b1 });
@@ -447,7 +451,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
   /* ---------- L-20: Short on time: blank rows go from the end, typed and ticked sets stay, with Undo ---------- */
   if (run('L-20')) {
     // A longer day (about half an hour left), so 15 minutes asks for a trim.
-    const P = await lifter({ settings: { autoDone: false }, items: [['bench', 6, 6, 10, 180], ['lateralRaise', 4, 10, 15, 90], ['cableFly', 4, 10, 15, 90]] });
+    const P = await lifter({ settings: { autoDone: false }, items: [['bench', 6, 6, 10, 180], ['dbLateral', 4, 10, 15, 90], ['cableFly', 4, 10, 15, 90]] });
     await start(P);
     // A set ticked at the top, and reps typed on the last row, where a trim from the end would reach first.
     await P.tap(tick(0, 0)); await P.page.fill(field('r', 0, 5), '8'); await wait(500);
@@ -486,9 +490,437 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await start(P);
     await P.tap(btn('bMenu', 1), 250); await P.tap('#modal [data-act="bMenuDo"][data-op="bUp"]', 300);
     const d = await P.draft();
-    ok(d.ex.map(b => b.exId).join() === 'lateralRaise,bench', 'L-22: "Move up" puts the raises first', d.ex.map(b => b.exId));
+    ok(d.ex.map(b => b.exId).join() === 'dbLateral,bench', 'L-22: "Move up" puts the raises first', d.ex.map(b => b.exId));
     await P.tap(btn('bMenu', 0), 250); await P.tap('#modal [data-act="bMenuDo"][data-op="bDown"]', 300);
-    ok((await P.draft()).ex.map(b => b.exId).join() === 'bench,lateralRaise', 'L-22: "Move down" puts them back', (await P.draft()).ex.map(b => b.exId));
+    ok((await P.draft()).ex.map(b => b.exId).join() === 'bench,dbLateral', 'L-22: "Move down" puts them back', (await P.draft()).ex.map(b => b.exId));
+    await P.close();
+  }
+
+  /* ---------- the Swap sections' helpers ---------- */
+  // The exercise's menu, then one of its items, as a lifter taps them.
+  // A done exercise is folded: its heading opens it first, as a lifter opens it.
+  const menuOp = async (P, b, op) => { if (await P.page.$(btn('bOpen', b))) await P.tap(btn('bOpen', b), 250); await P.tap(btn('bMenu', b), 250); await P.tap(`#modal [data-act="bMenuDo"][data-op="${op}"]`, 300); };
+  // Swap exercise b for the lift named, picked from the list as a lifter finds it: its name typed in Search, every
+  // muscle shown when it works another (the list opens on the swapped lift's muscle).
+  const swapTo = async (P, b, id, name, all) => {
+    await menuOp(P, b, 'bSwap');
+    if (all) { await P.page.selectOption('#modal select[data-mbind="m"]', ''); await wait(200); }
+    await P.page.fill('#pickQ', name); await wait(300);
+    await P.tap(`#pickList .pick[data-ex="${id}"]`, 350);
+  };
+  const DB_SEED = S => { S.sessions.push({ id: 'db', date: '2026-11-04', dayIdx: 0, dayName: 'Push', notes: '', ex: [{ exId: 'dbBench', rr: [8, 12], ps: 3, sets: [[70, 10], [70, 10], [70, 9]].map(([w, r]) => ({ w: w * 0.45359237, r, rir: 2, done: true })) }] }); };
+  const exIds = P => P.ev(() => window.__ironlog.state.draft.ex.map(b => b.exId));
+  const undoToast = async P => { await P.tap('#toast [data-act="undo"], #toast button', 300); };
+  // "Undo" in Settings, as a lifter reaches it: the Settings tab, the section that holds it opened.
+  const settingsUndo = async P => {
+    await P.tap('#tabs [data-tab="settings"]', 200);
+    await P.ev(() => { const b = document.querySelector('#view [data-act="undo"]'); const d = b && b.closest('details'); if (d && !d.open) d.querySelector('summary').click(); });
+    await wait(150);
+    const label = await P.ev(() => (document.querySelector('#view [data-act="undo"]') || {}).innerText || '');
+    await P.tap('#view [data-act="undo"]', 300);
+    await P.tap('#tabs [data-tab="today"]', 200);
+    return label;
+  };
+
+  /* ---------- L-23: a swap with nothing logged: the new lift in its place, with the rows it has now, and Undo ---------- */
+  if (run('L-23')) {
+    const P = await lifter({ settings: { autoDone: false }, seed: DB_SEED });
+    await start(P);
+    // − Set first, so the exercise has fewer rows than its plan.
+    await P.tap(btn('sDel', 0), 250);
+    ok((await P.rows(0)).length === 2, 'L-23: (setup) − Set leaves the bench two rows of its plan\'s three');
+    await swapTo(P, 0, 'dbBench', 'DB Bench');
+    let d = await P.draft();
+    ok(d.ex[0].exId === 'dbBench' && d.ex.length === 2, 'L-23: the lift picked takes the bench\'s place', d.ex.map(b => b.exId));
+    ok((await P.rows(0)).length === 2 && d.ex[0].plan.sets === 2, 'L-23: with the rows the bench had now (two), not the plan\'s three', { rows: (await P.rows(0)).length, plan: d.ex[0].plan.sets });
+    ok((await P.toasts()).includes('Swapped to DB Bench Press'), 'L-23: it says "Swapped to DB Bench Press", with Undo', await P.toasts());
+    await swapTo(P, 0, 'incBench', 'Incline Barbell');
+    ok((await P.rows(0)).length === 2 && (await exIds(P))[0] === 'incBench', 'L-23: a second swap keeps the two rows', await P.rows(0));
+    // The app closed as a phone closes it: hidden (the app switcher), then gone.
+    await P.ev(() => { Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); }); await wait(100);
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(300);
+    if (!(await P.ev(() => !!document.querySelector('#view [data-act="sDone"]')))) await start(P);
+    ok((await P.rows(0)).length === 2, 'L-23: and so does closing and reopening the app', await P.rows(0));
+    // The message's Undo goes with the reload; the one in Settings takes the newest step back.
+    await settingsUndo(P);
+    d = await P.draft();
+    ok(d.ex[0].exId === 'dbBench' && (await P.rows(0)).length === 2, 'L-23: Undo puts back the exercise the last swap replaced, with its rows', { ex: d.ex.map(b => b.exId), rows: await P.rows(0) });
+    await P.close();
+  }
+
+  /* ---------- L-24: some sets logged and some left: the logged ones stay, the new lift takes the rest ---------- */
+  if (run('L-24')) {
+    const P = await lifter({ settings: { autoDone: false }, seed: DB_SEED });
+    await start(P);
+    await P.tap(tick(0, 0));
+    await swapTo(P, 0, 'dbBench', 'DB Bench');
+    let d = await P.draft();
+    ok(d.ex.map(b => b.exId).join() === 'bench,dbBench,dbLateral', 'L-24: the new lift goes right after the one swapped', d.ex.map(b => b.exId));
+    ok(d.ex[0].sets.length === 1 && d.ex[0].sets[0].done && Math.round(d.ex[0].sets[0].w / LB) === 185, 'L-24: the set ticked stays with the bench, as it was done', d.ex[0].sets);
+    ok(d.ex[1].sets.length === 2 && d.ex[1].sets.every(x => !x.done), 'L-24: the dumbbell bench takes the two sets left', d.ex[1].sets.length);
+    ok((await P.toasts()).includes('DB Bench Press added for the sets left. Your sets so far stay with Barbell Bench Press.'), 'L-24: it says "DB Bench Press added for the sets left. Your sets so far stay with Barbell Bench Press."', await P.toasts());
+    await undoToast(P);
+    d = await P.draft();
+    ok(d.ex.map(b => b.exId).join() === 'bench,dbLateral' && d.ex[0].sets.length === 3 && d.ex[0].sets[0].done, 'L-24: Undo puts the bench back with its three rows and the set ticked', d.ex.map(b => [b.exId, b.sets.length]));
+    // A set typed and not ticked is logged too: it stays (r25: typed sets used to go with the swap).
+    const Q = await lifter({ settings: { autoDone: false }, seed: DB_SEED });
+    await start(Q);
+    await Q.page.fill(field('w', 0, 0), '190'); await Q.page.fill(field('r', 0, 0), '6'); await Q.page.press(field('r', 0, 0), 'Tab'); await wait(300);
+    await swapTo(Q, 0, 'dbBench', 'DB Bench');
+    const q = await Q.draft();
+    ok(q.ex[0].exId === 'bench' && q.ex[0].sets.length === 1 && Math.round(q.ex[0].sets[0].w / LB) === 190 && q.ex[0].sets[0].r === 6 && q.ex[1].exId === 'dbBench' && q.ex[1].sets.length === 2, 'L-24: a set typed and not ticked counts as logged: 190 x 6 stays with the bench, and the dumbbell bench takes the two left', q.ex.map(b => [b.exId, b.sets.map(x => [Math.round((x.w || 0) / LB), x.r])]));
+    await Q.close();
+    await P.close();
+  }
+
+  /* ---------- L-25: every set logged: Move the sets, or add the lift after it ---------- */
+  if (run('L-25')) {
+    const P = await lifter({ settings: { autoDone: false }, seed: DB_SEED });
+    await start(P);
+    for (const s of [0, 1, 2]) await P.tap(tick(0, s));
+    await swapTo(P, 0, 'dbBench', 'DB Bench');
+    const m = await P.modal();
+    ok(m && /Every set of Barbell Bench Press is logged/.test(m.text) && /Logged on the wrong exercise\? Move the sets to DB Bench Press\. Or add DB Bench Press after it\./.test(m.text) && m.buttons.includes('Move the sets') && m.buttons.includes('Add DB Bench Press'), 'L-25: with every set logged it asks: "Every set of Barbell Bench Press is logged", "Move the sets" or "Add DB Bench Press"', m);
+    await mOk(P);
+    let d = await P.draft();
+    ok(d.ex.map(b => b.exId).join() === 'dbBench,dbLateral' && d.ex[0].sets.filter(x => x.done).map(x => x.r).join() === '8,8,7', 'L-25: "Move the sets" puts every set on the dumbbell bench, as logged', d.ex.map(b => [b.exId, b.sets.map(x => x.r)]));
+    ok((await P.toasts()).includes('Your sets are on DB Bench Press now'), 'L-25: and says "Your sets are on DB Bench Press now"', await P.toasts());
+    await undoToast(P);
+    ok((await exIds(P)).join() === 'bench,dbLateral', 'L-25: Undo puts them back on the bench', await exIds(P));
+    await swapTo(P, 0, 'dbBench', 'DB Bench');
+    await mAlt(P);
+    d = await P.draft();
+    ok(d.ex.map(b => b.exId).join() === 'bench,dbBench,dbLateral' && d.ex[0].sets.every(x => x.done) && d.ex[1].sets.length === 3 && d.ex[1].sets.every(x => !x.done), 'L-25: "Add DB Bench Press" leaves the bench as logged and adds the dumbbell bench after it, with three sets to do', d.ex.map(b => [b.exId, b.sets.length]));
+    ok((await P.toasts()).includes('DB Bench Press added after Barbell Bench Press'), 'L-25: and says "DB Bench Press added after Barbell Bench Press"', await P.toasts());
+    await P.close();
+  }
+
+  /* ---------- L-26: swapped to the lift just above or below: one exercise, its sets together ---------- */
+  if (run('L-26')) {
+    const P = await lifter({ settings: { autoDone: false } });
+    await start(P);
+    await swapTo(P, 0, 'dbLateral', 'Lateral Raise', true);
+    let d = await P.draft();
+    ok(d.ex.length === 1 && d.ex[0].exId === 'dbLateral' && d.ex[0].sets.length === 5, 'L-26: the bench swapped to the raises just below, with nothing logged: one exercise of five rows (the bench\'s three and the raises\' two)', d.ex.map(b => [b.exId, b.sets.length]));
+    ok((await P.toasts()).includes('Swapped to DB Lateral Raise: its sets are together now'), 'L-26: it says "Swapped to DB Lateral Raise: its sets are together now"', await P.toasts());
+    await undoToast(P);
+    ok(JSON.stringify((await P.draft()).ex.map(b => [b.exId, b.sets.length])) === '[["bench",3],["dbLateral",2]]', 'L-26: Undo puts both back', (await P.draft()).ex.map(b => [b.exId, b.sets.length]));
+    // The raises swapped to the bench just above: they join it.
+    await swapTo(P, 1, 'bench', 'Barbell Bench', true);
+    d = await P.draft();
+    ok(d.ex.length === 1 && d.ex[0].exId === 'bench' && d.ex[0].sets.length === 5, 'L-26: the raises swapped to the bench just above, with nothing logged: one exercise of five rows', d.ex.map(b => [b.exId, b.sets.length]));
+    ok((await P.toasts()).includes('Swapped to Barbell Bench Press: its sets are together now'), 'L-26: it says "Swapped to Barbell Bench Press: its sets are together now"', await P.toasts());
+    await undoToast(P);
+    await P.tap(tick(0, 0));
+    await swapTo(P, 0, 'dbLateral', 'Lateral Raise', true);
+    d = await P.draft();
+    ok(JSON.stringify(d.ex.map(b => [b.exId, b.sets.length])) === '[["bench",1],["dbLateral",4]]' && d.ex[0].sets[0].done, 'L-26: with a set ticked, it stays with the bench and the two left join the raises below', d.ex.map(b => [b.exId, b.sets.length]));
+    ok((await P.toasts()).includes('DB Lateral Raise: the sets left join the ones below. Your sets so far stay with Barbell Bench Press.'), 'L-26: it says "DB Lateral Raise: the sets left join the ones below. Your sets so far stay with Barbell Bench Press."', await P.toasts());
+    await P.close();
+  }
+
+  /* ---------- L-27: the lift swapped in is done for the slot: its range, effort and rest; its own step and targets ---------- */
+  if (run('L-27')) {
+    // The bench's load step set to 10 lb in its menu, a fly on another day of the routine.
+    const P = await lifter({ settings: { autoDone: false }, seed: DB_SEED, more: [['Pull', [['cableFly', 3, 12, 15, 45]]]] });
+    // Pull is next in the cycle: Push is picked on Today's Change sheet, as a lifter picks a day.
+    await P.page.click('#tabs [data-tab="today"]'); await wait(120);
+    await P.tap('#view .hero [data-act="startAltOpen"]', 250); await P.tap('#modal [data-act="dayPick"][data-i="0"]', 250);
+    if (await P.modal()) await P.tap('#modal [data-act="mClose"]', 200);
+    await start(P);
+    ok((await exIds(P)).join() === 'bench,dbLateral', 'L-27: (setup) Push started', await exIds(P));
+    await P.ev(LB => { const L = window.__ironlog; L.act(() => { L.state.draft.ex[0].plan.inc = 10 * LB; }); L.render(); }, LB);
+    await swapTo(P, 0, 'dbBench', 'DB Bench');
+    let p = (await P.draft()).ex[0].plan;
+    ok(p.repMin === 6 && p.repMax === 10 && p.rir === 2 && p.rest === REST_BENCH, 'L-27: the dumbbell bench is done for the bench\'s range, effort and rest (6 to 10, 2 in reserve, 120 s)', p);
+    const r0 = (await P.rows(0))[0];
+    const g = +String(r0.w).replace('~', '');
+    ok(/^~\d/.test(r0.w) && g >= 65 && g <= 80, 'L-27: its grey load is its own, from its own 70 lb sets, not the bench\'s 185', r0);
+    await undoToast(P);
+    await swapTo(P, 0, 'incBench', 'Incline Barbell');
+    p = (await P.draft()).ex[0].plan;
+    ok(Math.round(p.inc / LB) === 10, 'L-27: on the same equipment it keeps the slot\'s 10 lb step', Math.round(p.inc / LB));
+    await undoToast(P);
+    await swapTo(P, 0, 'cableFly', 'Cable Fly');
+    p = (await P.draft()).ex[0].plan;
+    ok(p.repMin === 12 && p.repMax === 15 && p.rest === 45, 'L-27: a lift on another day of the routine is done as planned there (12 to 15, 45 s)', p);
+    await undoToast(P);
+    await swapTo(P, 0, 'plank', 'Plank', true);
+    p = (await P.draft()).ex[0].plan;
+    ok(!(p.repMin === 6 && p.repMax === 10) && p.repMin >= 15, 'L-27: a timed hold swapped in for a lift done for reps takes its own range in seconds, never 6 to 10', p);
+    await undoToast(P);
+    // Last, as a load typed takes the message's Undo away (r64).
+    await swapTo(P, 0, 'dbBench', 'DB Bench');
+    await P.page.fill(field('w', 0, 0), '70'); await P.tap(`${btn('sStep', 0, 0)}[data-sf="w"][data-d="1"]`, 200);
+    ok(+(await P.page.inputValue(field('w', 0, 0))) === 75, 'L-27: on other equipment it takes its own load step: plus moves the dumbbells 5 lb (70 to 75), not the bar slot\'s 10', await P.page.inputValue(field('w', 0, 0)));
+    await P.close();
+  }
+
+  /* ---------- L-28: a change after a swap is never undone by it; Finish saves the lift swapped in ---------- */
+  if (run('L-28')) {
+    const P = await lifter({ settings: { autoDone: false }, seed: DB_SEED });
+    await start(P);
+    await P.tap(tick(0, 0));
+    await swapTo(P, 0, 'dbBench', 'DB Bench');
+    await P.tap(tick(1, 0));
+    ok(await P.ev(() => { const b = document.querySelector('#toast [data-act="undo"]'); return !b || b.hidden || b.offsetParent === null || document.getElementById('toast').hidden; }), 'L-28: a set ticked after the swap takes the swap\'s Undo off the message');
+    const label = await settingsUndo(P);
+    ok(label === 'Undo: DB Bench Press added for the sets left. Your sets so far stay with Barbell Bench Press.', 'L-28: "Undo" in Settings names the swap', label);
+    const d = await P.draft();
+    const bench = d.ex.find(b => b.exId === 'bench'), db = d.ex.find(b => b.exId === 'dbBench');
+    ok(bench && bench.sets.length === 3 && bench.sets[0].done, 'L-28: it puts the bench back with its rows and the set ticked', bench && bench.sets.map(x => x.done));
+    ok(db && db.sets[0].done, 'L-28: and the set ticked on the dumbbell bench since stays (S-7: Undo takes back only what that change did)', db && db.sets);
+    await P.tap('#view [data-act="finish"]', 300);
+    if ((await P.modal()) && (await P.modal()).buttons.includes('Finish now')) await P.tap('#modal button:has-text("Finish now")', 300);
+    const m = await P.modal(); if (m && m.kind === 'confirm') await mOk(P);
+    await wait(300);
+    const s = await P.ev(() => { const L = window.__ironlog; return L.state.sessions.find(x => x.id !== 'last' && x.id !== 'db'); });
+    ok(s && s.ex.map(b => b.exId).join() === 'bench,dbBench' && s.ex.every(b => b.sets.length === 1), 'L-28: Finish saves both: the bench\'s set and the dumbbell bench\'s', s && s.ex.map(b => [b.exId, b.sets.length]));
+    await P.close();
+  }
+
+  /* ---------- L-23, L-24, L-28 and L-29: a swap keeps the rows an exercise has now (moved from tests/r24.js in 2.52, every check kept) ----------
+     One change in a session never undoes another: a swap keeps the number of sets the exercise has right now (after
+     Short on time, a lighter day, a deload, + Set or − Set), through a second swap, Undo, a reload and Finish; a date
+     change keeps set counts and typed loads; a session left open by r23 carries on. Kept as r24 wrote them, on the
+     demo's routine, each check named by its rule. */
+  if (run('L-23') || run('L-24') || run('L-28') || run('L-29')) {
+    let ok = okAs('L-23');
+    const { browser, page, errors } = await open(FILE, { touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });
+    const ev = (f, a) => page.evaluate(f, a);
+    const fresh = async () => { await ev(() => { const L = window.__ironlog; L.state.draft = null; L.state.settings.onboarded = true; if (!L.state.sessions.length) L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.state.deloadWeek = null; L.ui.tab = 'today'; L.ui.todayDay = 0; L.ui.modal = null; document.getElementById('modal').hidden = true; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); window.scrollTo(0, 0); }); };
+    // r35: a lighter day starts from the card's Change sheet.
+    const start = async (light) => { await fresh(); if (light) { await page.click('.hero [data-act="startAltOpen"]'); await page.waitForTimeout(80); await page.click('#modal [data-go="startSession"][data-light="1"]'); } else await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(120); };
+    const work = (bi) => ev(b => { const x = window.__ironlog.state.draft.ex[b]; return x ? x.sets.filter(s => !s.warm && !s.drop).length : -1; }, bi);
+    // Swap block bi through the real picker, to the first exercise it lists that is not already in the session.
+    const swap = async (bi) => {
+      await ev(b => window.__ironlog.ACT.bSwap({ dataset: { b: String(b) } }), bi);
+      await page.waitForTimeout(80);
+      const id = await ev(() => { const inS = new Set(window.__ironlog.state.draft.ex.map(b => b.exId)); const el = [...document.querySelectorAll('#pickList .pick[data-ex]')].find(p => !inS.has(p.dataset.ex)); if (!el) return null; el.click(); return el.dataset.ex; });
+      await page.waitForTimeout(150);
+      return id;
+    };
+
+    // 1. Short on time, then a swap on a trimmed exercise that has not started.
+    await start();
+    const trim = await ev(() => { const L = window.__ironlog; const d = L.state.draft; const before = d.ex.map(b => ({ id: b.exId, n: b.sets.length }));
+      L.ACT.shortOpen(); L.ui.modal.mins = 30; L.ACT.shortApply();
+      const after = L.state.draft.ex.map((b, bi) => ({ bi, id: b.exId, n: b.sets.length, cut: !!b.cut }));
+      const t = after.find(a => a.n < (before.find(x => x.id === a.id) || {}).n);
+      return { t, after }; });
+    ok(!!trim.t, 'Short on time trims at least one exercise to fewer sets (' + JSON.stringify(trim.after) + ')');
+    ok(trim.after.every(a => !a.cut), 'and marks none of them: since r54 a lift with fewer sets than usual is read so from the log (' + JSON.stringify(trim.after) + ')');
+    const bi = trim.t.bi, nTrim = trim.t.n;
+    const planSets = await ev(b => window.__ironlog.state.draft.ex[b].plan.sets, bi);
+    ok(planSets > nTrim, `the routine plans more sets than were kept (${planSets} planned, ${nTrim} kept)`);
+    const newId = await swap(bi);
+    ok(!!newId, 'the picker offers another exercise');
+    const s1 = await ev(b => { const x = window.__ironlog.state.draft.ex[b]; return { id: x.exId, n: x.sets.length, cut: !!x.cut, plan: x.plan.sets }; }, bi);
+    ok(s1.id === newId && s1.n === nTrim, `after the swap the new exercise keeps the trimmed ${nTrim} sets, not the planned ${planSets} (${JSON.stringify(s1)})`);
+    ok(!s1.cut, 'and no mark: the swapped-in exercise is read against its own usual, as every lift is (r54)');
+    ok(s1.plan === nTrim, 'its plan says the same number of sets, so targets and grey reps follow it');
+
+    // 2. A second swap in a row keeps it too.
+    await swap(bi);
+    ok(await work(bi) === nTrim, 'a second swap keeps the trimmed count');
+
+    // 3. Undo puts back the exercise before the last swap, with the same count.
+    await ev(() => window.__ironlog.ACT.undo()); await page.waitForTimeout(80);
+    ok(await ev((a) => { const x = window.__ironlog.state.draft.ex[a.b]; return x.exId === a.id && x.sets.length === a.n; }, { b: bi, id: newId, n: nTrim }), 'Undo returns the previous exercise with the trimmed count');
+
+    // 4. A reload keeps the count.
+    await ev(() => window.__ironlog.saveNow());
+    await page.reload(); await page.waitForFunction(() => window.__libs && window.__libs.chart); await page.waitForTimeout(150);
+    ok(await ev((a) => { const x = window.__ironlog.state.draft.ex[a.b]; return x && x.sets.length === a.n; }, { b: bi, n: nTrim }), 'after a reload the swapped exercise still has the trimmed count');
+
+    ok = okAs('L-29');
+    // 5. Changing the session date re-reads targets but keeps set counts and typed loads.
+    await ev((b) => { const L = window.__ironlog; const x = L.state.draft.ex[b]; x.sets[0].w = 77; L.saveNow(); L.render(); }, bi);
+    const counts0 = await ev(() => window.__ironlog.state.draft.ex.map(b => b.sets.length));
+    await ev(() => { const el = document.querySelector('input[data-bind="draftDate"]'); el.value = '2026-09-19'; el.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.waitForTimeout(120);
+    const counts1 = await ev(() => window.__ironlog.state.draft.ex.map(b => b.sets.length));
+    ok(JSON.stringify(counts0) === JSON.stringify(counts1), `a date change keeps every exercise's set count (${counts0} vs ${counts1})`);
+    ok(await ev(b => window.__ironlog.state.draft.ex[b].sets[0].w === 77, bi), 'a date change keeps a load you typed');
+
+    ok = okAs('L-24');
+    // 6. Swap after one set is logged on a trimmed exercise: the new one gets only the sets left.
+    await start();
+    const t6 = await ev(() => { const L = window.__ironlog; const n0 = Object.fromEntries(L.state.draft.ex.map(b => [b.exId, b.sets.length])); L.ACT.shortOpen(); L.ui.modal.mins = 30; L.ACT.shortApply(); const d = L.state.draft; const i = d.ex.findIndex(b => b.sets.length < n0[b.exId] && b.sets.length >= 2); return { i, n: i >= 0 ? d.ex[i].sets.length : 0 }; });
+    ok(t6.i >= 0, 'a trimmed exercise with 2 or more sets exists');
+    await ev(b => { const L = window.__ironlog; const s = L.state.draft.ex[b].sets[0]; s.w = s.w || 40; s.r = 8; s.done = true; L.saveNow(); L.render(); }, t6.i);
+    await swap(t6.i);
+    const s6 = await ev(b => { const d = window.__ironlog.state.draft; return { old: d.ex[b].sets.length, oldCut: !!d.ex[b].cut, nw: d.ex[b + 1].sets.length, nwCut: !!d.ex[b + 1].cut }; }, t6.i);
+    ok(s6.old === 1 && s6.nw === t6.n - 1, `the logged set stays and the new exercise takes the ${t6.n - 1} left (${JSON.stringify(s6)})`);
+    ok(!s6.oldCut && !s6.nwCut, 'and neither half is marked (r54)');
+
+    ok = okAs('L-23');
+    // 7. Lighter day: a swap keeps half the sets.
+    await start(true);
+    const n7 = await work(0);
+    await swap(0);
+    ok(await work(0) === n7, `a lighter day's swap keeps its ${n7} sets`);
+
+    // 8. + Set and − Set, then a swap: the count you chose stays.
+    await start();
+    const n8 = await work(1);
+    await ev(() => { const L = window.__ironlog; L.ACT.sAdd({ dataset: { b: '1' } }); L.ACT.sAdd({ dataset: { b: '1' } }); });
+    await swap(1);
+    ok(await work(1) === n8 + 2, `+ Set twice then a swap keeps ${n8 + 2} sets (got ${await work(1)})`);
+    const n8b = await work(2);
+    await ev(() => document.querySelector('[data-act="sDel"][data-b="2"]').click()); await page.waitForTimeout(60);
+    await swap(2);
+    ok(await work(2) === n8b - 1, `− Set then a swap keeps ${n8b - 1} sets (got ${await work(2)})`);
+
+    // 9. Deload week: a swap keeps the deload count.
+    await fresh();
+    await ev(() => { const L = window.__ironlog; L.state.deloadWeek = L.weekStart(L.today()); L.render(); });
+    await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(120);
+    const n9 = await work(0);
+    await swap(0);
+    ok(await work(0) === n9 && await ev(() => !!window.__ironlog.state.draft.deload), `a deload session's swap keeps its ${n9} sets`);
+    await ev(() => { window.__ironlog.state.deloadWeek = null; });
+
+    ok = okAs('L-28');
+    // 10. Finishing a trimmed, swapped session: nothing is marked, and the lifts trimmed below their usual read so from the log (r54).
+    await start();
+    const f0 = await ev(() => Object.fromEntries(window.__ironlog.state.draft.ex.map(b => [b.exId, b.sets.length])));
+    const f = await ev(() => { const L = window.__ironlog; const n0 = Object.fromEntries(L.state.draft.ex.map(b => [b.exId, b.sets.length])); L.ACT.shortOpen(); L.ui.modal.mins = 30; L.ACT.shortApply(); const d = L.state.draft; return d.ex.findIndex(b => b.sets.length < n0[b.exId] && !b.sets.some(s => s.done)); });
+    // The trimmed lifts left in place, with their sets as Short on time left them, all done.
+    const kept = await ev(([f, f0]) => { const L = window.__ironlog; const d = L.state.draft; const out = []; d.ex.forEach((b, i) => { if (i === f || b.sets.length >= f0[b.exId]) return; b.sets.forEach(s => { s.w = s.w == null ? L.greyW(b, b.sets.indexOf(s)) || 30 : s.w; s.r = 10; s.done = true; }); out.push(b.exId); }); L.saveNow(); return out; }, [f, f0]);
+    const fid = await swap(f);
+    await ev(b => { const L = window.__ironlog; const x = L.state.draft.ex[b]; x.sets.forEach(s => { s.w = s.w == null ? 30 : s.w; s.r = 10; s.done = true; }); L.saveNow(); }, f);
+    const saved = await ev(async ([id, kept]) => { const L = window.__ironlog; const n0 = L.state.sessions.length; L.state.draft.ex = L.state.draft.ex.filter(b => b.sets.some(s => s.done)); L.ACT.finish(); await new Promise(r => setTimeout(r, 200)); const btn = document.querySelector('#modal [data-act="finishGo"],#modal [data-act="finishConfirm"]'); if (btn) { btn.click(); await new Promise(r => setTimeout(r, 200)); } const s = L.state.sessions[L.state.sessions.length - 1]; const b = s && s.ex.find(x => x.exId === id); const I = L.IDX(); const read = kept.map(k => { const x = (I.byEx[k] || []).find(q => q.sid === s.id); return { id: k, short: x ? x.short || null : 'none' }; }); return { grew: L.state.sessions.length > n0, saved: !!b, marks: s ? s.ex.filter(x => x.cut).length : -1, read }; }, [fid, kept]);
+    ok(saved.grew && saved.saved && saved.marks === 0, 'the session is saved, the swapped-in exercise with it, and no exercise carries a trimmed mark (' + JSON.stringify(saved) + ')');
+    ok(saved.read.length > 0 && saved.read.every(r => r.short === 'sets'), 'each lift Short on time left with fewer sets than its usual reads as short of its usual by its sets, so it sets no target (' + JSON.stringify(saved.read) + ')');
+
+    ok = okAs('L-23');
+    // 11. A session left open by the live build (r23, no stored suggestion) carries on here.
+    const O = await open('baselines/r23.html', { browser, touch: true, clock: '2026-09-20T10:00:00' });
+    await O.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
+    await O.page.click('.hero [data-act="startSession"]:not([data-light])'); await O.page.waitForTimeout(120);
+    const old = await O.page.evaluate(() => { const L = window.__ironlog; L.ACT.shortOpen(); L.ui.modal.mins = 30; L.ACT.shortApply(); L.saveNow(); return JSON.parse(localStorage.getItem('ironlog.v1')); });
+    await O.ctx.close();
+    const N = await open(FILE, { browser, touch: true, state: old, stateOnce: false, clock: '2026-09-20T10:00:00' });
+    const nb = await N.page.evaluate(() => { const d = window.__ironlog.state.draft; return d ? { n: d.ex.map(b => b.sets.length), sw: d.ex.map(b => b.sw), cut: d.ex.findIndex(b => b.cut) } : null; });
+    ok(nb && nb.n.join() === old.draft.ex.map(b => b.sets.length).join() && nb.sw.every(v => v === undefined), 'an r23 session in progress loads with its trimmed counts and no stored suggestion (' + JSON.stringify(nb) + ')');
+    await N.page.evaluate((b) => window.__ironlog.ACT.bSwap({ dataset: { b: String(b) } }), nb.cut); await N.page.waitForTimeout(80);
+    await N.page.evaluate(() => { const inS = new Set(window.__ironlog.state.draft.ex.map(b => b.exId)); [...document.querySelectorAll('#pickList .pick[data-ex]')].find(p => !inS.has(p.dataset.ex)).click(); }); await N.page.waitForTimeout(150);
+    // r23 filled its rows with the suggested load and stored none, so its rows read as typed: they stay with that exercise, and the mark r23 stored on it is kept as stored (normalize keeps it; nothing reads it since r54).
+    ok(await N.page.evaluate((a) => { const x = window.__ironlog.state.draft.ex[a.b]; return x.sets.length === a.n && !!x.cut; }, { b: nb.cut, n: nb.n[nb.cut] }), 'a swap in that session keeps its trimmed count, and the mark r23 stored stays as stored');
+    ok(!N.errors.length, 'no page errors loading an r23 session (' + N.errors.join(' | ') + ')');
+    await N.ctx.close();
+
+    ok(!errors.length, 'no page errors (' + errors.join(' | ') + ')');
+    await browser.close();
+  }
+
+  /* ---------- L-30: the check-in: three questions, a tap each, kept with the session ---------- */
+  if (run('L-30')) {
+    const P = await lifter({ settings: { autoDone: false } });
+    await start(P);
+    await P.tap('#view [data-act="chkOpen"]', 250);
+    const qs = await P.ev(() => [...document.querySelectorAll('#modal .ci-row')].map(r => [r.querySelector('span').innerText, ...[...r.querySelectorAll('[data-act="chk"]')].map(b => b.innerText)].join(' ')));
+    ok(JSON.stringify(qs) === JSON.stringify(['Sleep Poor OK Good', 'Energy Low OK High', 'Aches Sore A little None']), 'L-30: "Check-in" asks three questions, worst answer first: sleep, energy and aches', qs);
+    const pressed = () => P.ev(() => [...document.querySelectorAll('#modal [data-act="chk"][aria-pressed="true"]')].map(b => b.dataset.k + b.dataset.v).join());
+    await P.tap('#modal [data-act="chk"][data-k="sleep"][data-v="1"]', 150);
+    ok((await pressed()) === 'sleep1', 'L-30: a tap answers', await pressed());
+    await P.tap('#modal [data-act="chk"][data-k="sleep"][data-v="1"]', 150);
+    ok((await pressed()) === '' && !(await P.draft()).chk, 'L-30: the same tap again clears it', await P.draft().then(d => d.chk));
+    await P.tap('#modal [data-act="chk"][data-k="sleep"][data-v="1"]', 150); await P.tap('#modal [data-act="chk"][data-k="energy"][data-v="2"]', 150);
+    ok(!!(await P.modal()), 'L-30: two answers keep the sheet open');
+    await P.tap('#modal [data-act="chk"][data-k="joints"][data-v="3"]', 250);
+    ok(!(await P.modal()), 'L-30: the third answer closes it');
+    const label = await P.ev(() => document.querySelector('#view [data-act="chkOpen"]').getAttribute('aria-label'));
+    ok(label === 'Check-in: sleep poor, energy OK, aches none', 'L-30: the button then reads the answers', label);
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(300);
+    ok(JSON.stringify((await P.draft()).chk) === JSON.stringify({ sleep: 1, energy: 2, joints: 3 }), 'L-30: the answers are kept with the workout', (await P.draft()).chk);
+    await P.close();
+  }
+
+  /* ---------- L-31: what a low check-in offers ---------- */
+  if (run('L-31')) {
+    const P = await lifter({ settings: { autoDone: false } });
+    await start(P);
+    const card = () => P.ev(() => { const c = document.getElementById('readyCard'); return c ? { text: c.innerText.replace(/\s+/g, ' ').trim(), acts: [...c.querySelectorAll('button[data-act]')].map(b => b.dataset.act + ':' + b.innerText.trim()).filter(x => !/^tip/.test(x)) } : null; });
+    ok(!(await card()), 'L-31: no answers, nothing offered');
+    await P.tap('#view [data-act="chkOpen"]', 250); await P.tap('#modal [data-act="chk"][data-k="sleep"][data-v="1"]', 150); await P.tap('#modal [data-act="chk"][data-k="energy"][data-v="3"]', 150);
+    let c = await card();
+    ok(c && c.text === 'Keep the loads. Leave an extra rep in reserve if it feels heavy.', 'L-31: one low answer (sleep poor): "Keep the loads. Leave an extra rep in reserve if it feels heavy."', c);
+    await P.tap('#modal [data-act="chk"][data-k="energy"][data-v="1"]', 150);
+    c = await card();
+    ok(c && /^Low readiness today\./.test(c.text) && c.acts.includes('makeLight:Make it lighter') && c.acts.includes('shortOpen:Short on time'), 'L-31: two low answers: "Low readiness today.", with "Make it lighter" and "Short on time"', c);
+    await P.close();
+  }
+
+  /* ---------- L-32: Make it lighter: only the exercises not started, half their sets at lighter loads, with Undo ---------- */
+  if (run('L-32')) {
+    const P = await lifter({ settings: { autoDone: false } });
+    await start(P);
+    const lowCheckin = async () => { await P.tap('#view [data-act="chkOpen"]', 250); await P.tap('#modal [data-act="chk"][data-k="sleep"][data-v="1"]', 150); await P.tap('#modal [data-act="chk"][data-k="energy"][data-v="1"]', 150); await P.tap('#modal [data-act="chk"][data-k="joints"][data-v="3"]', 250); };
+    await P.tap(tick(0, 0));
+    await lowCheckin();
+    const raises0 = await P.rows(1), bench0 = await P.rows(0);
+    await P.tap('#readyCard [data-act="makeLight"]', 300);
+    const b0 = await P.rows(0), b1 = await P.rows(1), d = await P.draft();
+    ok(JSON.stringify(b0) === JSON.stringify(bench0), 'L-32: the bench, started, stays exactly as it was', { before: bench0, after: b0 });
+    ok(b1.length === 1, 'L-32: the raises, not started, keep half their sets, rounded up (2 to 1)', b1);
+    // 90% of 20 lb is 18; the heaviest whole dumbbell step at or under it is 15 (P-26).
+    ok(b1[0].w === '~15' && b1[0].r === '~10', 'L-32: at a lighter load in whole steps (15 lb, from 20) for the bottom of the range (10), nothing to beat', b1);
+    ok((await P.toasts()).includes('Lighter: 1 exercise not started now half the sets at about 90% loads'), 'L-32: it says "Lighter: 1 exercise not started now half the sets at about 90% loads"', await P.toasts());
+    ok(d.notes === 'Made lighter after the check-in: exercises not started, half sets at about 90% loads.' && !d.light, 'L-32: the session\'s note says so; the session itself is not marked lighter', { notes: d.notes, light: d.light });
+    const card = await P.ev(() => { const c = document.getElementById('readyCard'); return c ? c.innerText.replace(/\s+/g, ' ').trim() : ''; });
+    ok(card === 'Made lighter: the exercises not started are half the sets at about 90% loads.' && !(await P.ev(() => !!document.querySelector('[data-act="makeLight"]'))), 'L-32: the card then says what was done instead of offering it again', card);
+    await undoToast(P);
+    ok(JSON.stringify(await P.rows(1)) === JSON.stringify(raises0) && !(await P.draft()).notes, 'L-32: Undo puts the raises back as they were, and the note with them', { before: raises0, after: await P.rows(1) });
+    // A note typed first is kept as typed.
+    await P.ev(() => { const L = window.__ironlog; L.act(() => { L.state.draft.notes = 'Left shoulder tight'; }, { inProgress: true }); L.render(); });
+    await P.tap('#readyCard [data-act="makeLight"]', 300);
+    ok((await P.draft()).notes === 'Left shoulder tight', 'L-32: a note you typed stays as typed', (await P.draft()).notes);
+    await P.close();
+  }
+
+  /* ---------- L-33: made lighter, a lift sets no target; done at full effort, it does ---------- */
+  if (run('L-33')) {
+    const P = await lifter({ settings: { autoDone: false } });
+    await start(P);
+    const raises0 = await P.rows(1);
+    await P.page.fill(field('r', 0, 0), '9'); await P.tap(tick(0, 0)); await P.tap(tick(0, 1)); await P.tap(tick(0, 2));
+    await P.tap('#view [data-act="chkOpen"]', 250); for (const k of ['sleep', 'energy', 'joints']) await P.tap(`#modal [data-act="chk"][data-k="${k}"][data-v="1"]`, 150);
+    await P.tap('#readyCard [data-act="makeLight"]', 300);
+    await P.tap(tick(1, 0));
+    await P.tap('#view [data-act="finish"]', 400);
+    const m = await P.modal(); if (m && m.kind === 'confirm') await mOk(P);
+    await wait(300);
+    await P.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    await P.page.click('#tabs [data-tab="history"]'); await wait(250);
+    // The session opened by its row, as a lifter opens it.
+    const sid = await P.ev(() => window.__ironlog.state.sessions.find(s => s.id !== 'last').id);
+    await P.tap(`#view [data-act="histToggle"][data-id="${sid}"]`, 250);
+    const hist = await P.ev(() => document.getElementById('view').innerText);
+    ok(/Check-in: sleep poor, energy low, aches sore/.test(hist), 'L-30: History shows the saved session\'s check-in', hist.slice(0, 400));
+    // The next week's session: the bench's target comes from today's 185 x 9, 8, 7; the raises' from the last full one.
+    await P.ev(() => { const L = window.__ironlog; L.state.sessions.forEach(s => { if (s.id !== 'last') s.date = '2026-11-10'; }); L.invalidate(); L.saveNow(); });
+    await start(P);
+    const b = await P.rows(0), r = await P.rows(1);
+    ok(b.map(x => x.r).join() === '~9,~8,~7', 'L-33: the bench, done at full effort, sets next time\'s target: 185 x 9, 8, 7 to beat', b);
+    ok(JSON.stringify(r) === JSON.stringify(raises0), 'L-33: the raises, made lighter, set none: next time asks what it asked before (20 x 12, 12)', { before: raises0, after: r });
+    await P.close();
+  }
+
+  /* ---------- L-34: a lighter day from Today ---------- */
+  if (run('L-34')) {
+    const P = await lifter({ settings: { autoDone: false } });
+    await P.page.click('#tabs [data-tab="today"]'); await wait(120);
+    await P.tap('#view .hero [data-act="startAltOpen"]', 250);
+    const label = await P.ev(() => (document.querySelector('#modal [data-go="startSession"][data-light="1"]') || {}).innerText || '');
+    await P.tap('#modal [data-go="startSession"][data-light="1"]', 300);
+    const d = await P.draft(), b0 = await P.rows(0), b1 = await P.rows(1);
+    ok(d && d.light && d.dayName === 'Push (lighter)', 'L-34: "' + label.replace(/\s+/g, ' ').trim() + '" on Today\'s Change sheet starts the day lighter: "Push (lighter)"', d && { light: d.light, name: d.dayName });
+    ok(b0.length === 2 && b1.length === 1, 'L-34: every lift with half its sets, rounded up (3 to 2, 2 to 1)', [b0.length, b1.length]);
+    ok(b0.every(x => x.w === '~165' && x.r === '~6') && b1[0].w === '~15' && b1[0].r === '~10', 'L-34: at about 90% loads in whole steps (185 to 165, 20 to 15) for the bottom of the range, nothing to beat', { b0, b1 });
+    await P.tap('#view [data-act="chkOpen"]', 250); for (const k of ['sleep', 'energy']) await P.tap(`#modal [data-act="chk"][data-k="${k}"][data-v="1"]`, 150);
+    ok(!(await P.ev(() => !!document.getElementById('readyCard'))), 'L-34: a low check-in offers nothing more on a lighter day');
     await P.close();
   }
 

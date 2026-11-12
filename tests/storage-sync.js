@@ -511,6 +511,24 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     const after = await P.ev(() => ({ back: window.__ironlog.state.sessions.some(s => s.id === 'u1'), draft: !!window.__ironlog.state.draft && window.__ironlog.state.draft.ex[0].sets[0].done }));
     ok(after.back, 'S-7: "Undo" in Settings puts the deleted session back', after);
     ok(after.draft === true, 'S-7: Undo puts back only what that change did: the set ticked after it stays', after);
+    // The app closed right after a change, inside the moment Undo waits before writing its steps: the step is kept,
+    // and Undo in Settings takes that change back (NEW-130: the step was lost, and Undo took back the change before it).
+    // A phone closes an app from the app switcher, so the page is hidden first, as here, then gone.
+    {
+      const Q = await phone({ seed });
+      await Q.tabTo('history');
+      await Q.ev(() => { const L = window.__ironlog; L.ACT.histDel({ dataset: { id: 'u5' } }); }); await wait(80);
+      await Q.page.click('#modal [data-act="mOk"]'); await wait(50);
+      await Q.ev(() => { Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+      await wait(100);
+      await Q.page.reload(); await Q.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(500);
+      await settingsOpen(Q, 'dataSec');
+      const label = await Q.ev(() => document.querySelector('#dataSec [data-act="undo"]').innerText.trim());
+      if (await Q.ev(() => !document.querySelector('#dataSec [data-act="undo"]').disabled)) { await Q.page.click('#dataSec [data-act="undo"]'); await wait(250); }
+      const back = await Q.ev(() => window.__ironlog.state.sessions.some(s => s.id === 'u5'));
+      ok(/^Undo: /.test(label) && back, 'S-7: closed right after a change, the app keeps its Undo step: "Undo" in Settings names it and puts the deleted session back', { label, back });
+      await Q.close();
+    }
     // Up to 20 steps: 22 more deletions keep the newest 20.
     for (let i = 2; i <= 23; i++) await del('u' + i);
     const steps = await P.ev(() => window.__ironlog.undoStack.length);
