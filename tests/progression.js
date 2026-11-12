@@ -461,6 +461,71 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     ok(/^First time/.test(s.hint) && !/DB Curl/.test(s.hint), 'P-13 a guard: DB curls last done 127 days ago, past 120, give the hammer curl nothing: a first time', s);
     await P.ctx.close(); await P.browser.close();
   }
+  if (run('P-13')) {
+    /* Moved whole from tests/r32b.js's part 2 (r32.1, 2026-10-07), every check kept and named by its rule: the first
+       session of a close variation (a hammer curl after DB curls) starts from the related lift's last full session,
+       conservatively; unrelated lifts, machines, cables and one-leg work still start fresh. Seeded and read through
+       the engine as r32.1 wrote it, then through the screen: a swap to hammer curls shows that start in grey. */
+    const okP = (c, m, x) => ok(c, 'P-13 ' + m, x);
+    const mk = (id, d, exId, sets, rr, extra) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ...(extra || {}), ex: [{ exId, rr, sets: sets.map(([w, r, rir]) => ({ w, r, rir, done: true })) }] });
+    const P = await open(FILE, { clock: '2026-10-07T10:00:00' });
+    const r = await P.page.evaluate(([mkS]) => {
+      const mk = eval(mkS); const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg'; s.settings.rirMode = 'on'; s.draft = null;
+      s.sessions = [mk('a', '2026-10-01', 'dbCurl', [[16, 10, 1], [16, 10, 1], [16, 9, 1]], [8, 12]), mk('b', '2026-09-30', 'backSquat', [[120, 8, 2], [120, 8, 2], [120, 7, 2]], [6, 10]), mk('c', '2026-09-29', 'bench', [[100, 8, 1], [100, 7, 1]], [6, 10])];
+      L.invalidate();
+      const P8 = { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 2.5 }, P6 = { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 180, inc: 2.5 };
+      const g = (id, pl) => { const x = L.suggest(id, pl, {}); return { w: x.w, t: x.text, kin: x.kin || null }; };
+      const o = { hammer: g('hammer', P8), incCurl: g('inclineCurl', P8), front: g('frontSquat', P6), inc: g('incBench', P6), cable: g('cableCurl', P8), lunge: g('walkingLunge', P6), dbB: g('dbBench', P6), bb: g('bbCurl', P8), self: g('dbCurl', P8) };
+      // Expected by hand: DB curl 16 x 10 at 1 RIR is 11 to failure, Epley 16 x 1.3667 = 21.87; 90% is 19.68; for 10 reps at 2 RIR (12): 19.68 / 1.4 = 14.06, down to 14 on the 2 kg rack.
+      // Back squat 120 x 8 at 2 RIR (10, Brzycki): 120 x 36 / 27 = 160; 80% is 128; for 8 reps at 3 RIR (11, Epley): 128 / 1.3667 = 93.66, down to 92.5.
+      // Bench 100 x 8 at 1 RIR (9): 100 x 36 / 28 = 128.57; 80% is 102.86; at 11: 75.26, down to 75.
+      // A related lift trained only 130 days ago is too old; one whose last session was a deload uses the full one before it.
+      s.sessions = [mk('o', '2026-05-30', 'dbCurl', [[16, 10, 1]], [8, 12])]; L.invalidate(); o.old = g('hammer', P8);
+      s.sessions = [mk('f', '2026-09-24', 'dbCurl', [[16, 10, 1], [16, 10, 1]], [8, 12]), mk('d', '2026-10-01', 'dbCurl', [[8, 10, 4]], [8, 12], { deload: true })]; L.invalidate(); o.dl = g('hammer', P8);
+      // In lb on a 5 lb rack: 35 x 10 at 1 RIR gives 30 (35 x 1.3667 x 0.9 / 1.4 = 30.75).
+      s.settings.unit = 'lb'; const LB = 0.45359237;
+      s.sessions = [mk('l', '2026-10-01', 'dbCurl', [[35 * LB, 10, 1], [35 * LB, 10, 1]], [8, 12])]; L.invalidate(); o.lb = g('hammer', { ...P8, inc: 5 * LB }); o.lbD = o.lb.w / LB;
+      s.settings.unit = 'kg';
+      // A Lighter day or a deload on a never-logged variation: 90% of the start, never the full start (r32 rule 193).
+      s.sessions = [mk('a2', '2026-10-01', 'dbCurl', [[16, 10, 1], [16, 10, 1], [16, 9, 1]], [8, 12])]; L.invalidate();
+      const lt = L.suggest('hammer', P8, { light: true }), de = L.suggest('hammer', P8, { deload: true });
+      o.light = { w: lt.w, t: lt.text, r: lt.lastR }; o.deload = { w: de.w, t: de.text };
+      return o;
+    }, [mk.toString()]);
+    okP(r.hammer.w === 14 && r.hammer.kin === 'dbCurl' && /from your DB Curl \(16×10, Oct 1\)/.test(r.hammer.t), 'a hammer curl after DB curl 16 x 10 starts at 14 kg, worked out by hand, and says where it came from', r.hammer);
+    okP(r.incCurl.w === 14, 'an incline DB curl the same way', r.incCurl);
+    okP(r.front.w === 92.5 && r.front.kin === 'backSquat', 'a front squat after back squat 120 x 8 starts at 92.5 kg (80% on a compound lift)', r.front);
+    okP(r.inc.w === 75 && r.inc.kin === 'bench', 'an incline bench after bench 100 x 8 starts at 75 kg', r.inc);
+    okP(r.cable.w == null && !r.cable.kin && /First time: pick a load/.test(r.cable.t), 'a cable curl starts fresh: a stack is not dumbbells', r.cable);
+    okP(r.lunge.w == null && !r.lunge.kin, 'a walking lunge does not borrow from a back squat', r.lunge);
+    okP(r.dbB.w == null && !r.dbB.kin, 'DB bench does not borrow from barbell bench (load per dumbbell, not total)', r.dbB);
+    okP(r.bb.w == null && !r.bb.kin, 'a barbell curl does not borrow from DB curls', r.bb);
+    okP(r.self.kin === null && !/First time/.test(r.self.t), 'the DB curl itself still reads its own history', r.self);
+    okP(r.old.w == null && !r.old.kin, 'a related lift last trained over 120 days ago is not used', r.old);
+    okP(r.dl.w === 14 && r.dl.kin === 'dbCurl' && /Sep 24/.test(r.dl.t), 'a deload session is skipped: the start comes from the full session before it', r.dl);
+    okP(r.light.w === 12 && r.deload.w === 12 && /Lighter day\. About 12 kg per dumbbell for 8-12 with 3 or more reps in reserve, from your DB Curl/.test(r.light.t) && r.light.r.every(v => v === 8), 'on a Lighter day or a deload, a hammer curl after DB curls starts at 12 kg (90% of 14, down a step) for 8 with 3 or more in reserve', { l: r.light, d: r.deload });
+    okP(Math.abs(r.lbD - 30) < 1e-6, 'in lb on a 5 lb rack, DB curl 35 x 10 gives a hammer curl of 30 lb', r.lb);
+
+    // Through the screen: a session with DB curls, swapped for hammer curls; the grey load is 14.
+    const sw = await P.page.evaluate(([mkS]) => {
+      const mk = eval(mkS); const L = window.__ironlog; const s = L.state; s.settings.unit = 'kg'; s.draft = null;
+      s.sessions = [mk('a', '2026-10-01', 'dbCurl', [[16, 10, 1], [16, 10, 1], [16, 9, 1]], [8, 12])]; L.invalidate();
+      const R = s.routines[0]; R.days[0].items = [{ uid: 'c', exId: 'dbCurl', sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 2.5, ss: null }];
+      L.saveNow(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); L.ACT.startSession({ dataset: { day: '0' } });
+      L.ACT.bSwap({ dataset: { b: '0' } }); return !!document.querySelector('#pickList');
+    }, [mk.toString()]);
+    okP(sw, 'the swap picker opens');
+    const picked = await P.page.evaluate(() => { const q = document.querySelector('#pickQ, #pickList input, .sheet input[type="search"]'); const el = document.querySelector('#pickList .pick[data-ex="hammer"]'); if (el) { el.click(); return 'list'; } if (q) { q.value = 'hammer'; q.dispatchEvent(new Event('input', { bubbles: true })); return 'search'; } return null; });
+    if (picked === 'search') { await P.page.waitForTimeout(150); await P.page.evaluate(() => { const el = document.querySelector('#pickList .pick[data-ex="hammer"]'); if (el) el.click(); }); }
+    await P.page.waitForTimeout(200);
+    const after = await P.page.evaluate(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; const wf = document.querySelector('.sg input[data-f="w"][data-b="0"][data-s="0"]'); const x = L.suggest('hammer', b.plan, {}); return { id: b.exId, sw: b.sw, w: wf && (wf.value || wf.placeholder), want: x.w, kin: x.kin, plan: [b.plan.repMin, b.plan.repMax, b.plan.rir], text: document.querySelector('#view').innerText.includes('from your DB Curl') }; });
+    okP(after.id === 'hammer' && after.kin === 'dbCurl' && after.want > 0 && Math.abs(after.sw - after.want) < 1e-9 && +after.w === after.want && after.text, 'swapped to hammer curls in a session: the grey load is the start from the DB curl for the plan it got (' + after.want + ' kg for ' + after.plan.slice(0, 2).join('-') + '), and the line names the DB curl', after);
+    // Once a hammer curl session is logged, it goes by its own history.
+    const own = await P.page.evaluate(([mkS]) => { const mk = eval(mkS); const L = window.__ironlog; L.state.draft = null; L.state.sessions.push(mk('h', '2026-10-04', 'hammer', [[14, 12, 1], [14, 12, 1], [14, 11, 1]], [8, 12])); L.invalidate(); const x = L.suggest('hammer', { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 2.5 }, {}); return { kin: x.kin || null, t: x.text }; }, [mk.toString()]);
+    okP(!own.kin && !/DB Curl/.test(own.t), 'after its first session the hammer curl reads its own history', own);
+    okP(!P.errors.length, 'part 2 ran with no page errors', P.errors);
+    await P.browser.close();
+  }
 
   if (run('P-17')) {
     // Its usual sets are never more than the plan: four sets done on a plan of three are read over three.

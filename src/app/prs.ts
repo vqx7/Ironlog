@@ -204,8 +204,9 @@ export function prJudge(
   /* big: a PR that is counted and announced (r32, from the third review:
      "8 new PRs" in a fifth session, 34 in 30 days after an import, since
      every load step was a weight PR and every added rep a rep PR). On a
-     lift with a strength estimate that is a new best estimate; a heavier
-     set or more reps without one stays in the list. Lifts with no
+     lift with a strength estimate it is a set stronger than every earlier
+     one (below); a heavier set or more reps that is not stays in the list,
+     the heavier set named in the recap as Heaviest yet. Lifts with no
      estimate (timed, joint rotation) keep every kind, and so does a
      session with no load known (a bodyweight lift before any weigh-in,
      r54: none of its PRs was counted, the score being 0 on every set;
