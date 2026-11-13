@@ -1,4 +1,4 @@
-/* Chart windows (phase 3a; moved unchanged from the legacy script). Charts start where the data
+/* Chart windows. Charts start where the data
    starts; the window chips widen them. */
 
 import { isDate, daysBetween, weekStart, today, WEEK_DAYS } from './util';

@@ -1,9 +1,7 @@
 /* The open sheet: one type for every sheet the page can show, each kind
-   with the fields its sheet draws and its actions read and write. Before r63
-   the open sheet was `unknown` to the typed modules, since the legacy script
-   wrote it with whatever fields it liked; the actions that write it are
-   typed now, so each kind says what it holds, and an action reads a sheet's
-   fields only after checking its kind. */
+   with the fields its sheet draws and its actions read and write, so each
+   kind says what it holds, and an action reads a sheet's fields only after
+   checking its kind. */
 
 import type { DraftBlock, Exercise } from './types';
 import type { RoutineUpdate } from './plans';

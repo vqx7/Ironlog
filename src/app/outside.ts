@@ -3,8 +3,8 @@
    opened instead of with the page (THREE_URLS in config.ts: this build's own
    copy first, then the listed CDNs, as ARCHITECTURE.md lists them). The one
    place a module loads code by address; every other import is a module in
-   src/app/ or lit-html (tests/hygiene.js). Since r66 also the sign-up bot
-   check's script (Cloudflare Turnstile, captcha.ts), which is a classic
+   src/app/ or lit-html (tests/hygiene.js). Also the sign-up bot check's
+   script (Cloudflare Turnstile, captcha.ts), which is a classic
    script, not a module, and loads only when config.ts has its key. */
 
 import { log } from './storage';

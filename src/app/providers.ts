@@ -1,7 +1,6 @@
 /* The services the build's account script provides (scripts/cloud-supabase.js):
    accounts and sync (window.ironlogAuth) and problem reports
-   (window.ironlogFeedback). Moved unchanged from the legacy script in r53,
-   with the Guide that reads them. */
+   (window.ironlogFeedback), which the Guide reads too. */
 
 import type { AcctUser, CloudDbIn } from './store';
 import type { FbItem } from './modals';
