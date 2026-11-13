@@ -1,9 +1,7 @@
 /* Words and numbers as the screens and the engine's sentences say them:
-   dates, times, durations, rep ranges and counts (phase 3a, and the
-   date words the engine uses in 3b; moved unchanged from the legacy
-   script). Durations are worded only by estMin, which
-   tests/hygiene.js enforces. Layer 2 since r52, beside the engine whose
-   sentences use it; a few words here read the clock (fmtDateRow and
+   dates, times, durations, rep ranges and counts, and the date words the
+   engine uses. Durations are worded only by estMin, which tests/hygiene.js
+   enforces. Layer 2, beside the engine whose sentences use it; a few words here read the clock (fmtDateRow and
    todayEye) and so may never be reached from the engine (tests/hygiene.js). */
 
 import { parse, today, yearOf, r1, r3 } from './util';
@@ -38,7 +36,7 @@ export function sessTm(x: { t?: number | null | undefined }): string {
     return x.t ? new Date(x.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
   } catch (e) {
     // A guard only: with these options a number does not make it throw (a time
-    // out of range gives "Invalid Date" instead, PENDING 308); if an engine
+    // out of range gives "Invalid Date" instead); if an engine
     // did throw, the session shows no time rather than breaking History.
     return '';
   }
@@ -81,9 +79,9 @@ const MIN_STEP = 5,
 export const min5 = (m: number): number =>
   m >= MIN_STEP_FROM ? Math.round(m / MIN_STEP) * MIN_STEP : Math.max(1, Math.round(m));
 
-/* Every estimated duration on screen is written here and nowhere else (V,
-   r42: "~75 min", never "about"). Callers round first, as each did before;
-   this only words the number. tests/hygiene.js fails on the wording typed
+/* Every estimated duration on screen is written here and nowhere else (V:
+   "~75 min", never "about"). Callers round first; this only words the
+   number. tests/hygiene.js fails on the wording typed
    anywhere else in the source. */
 export const estMin = (n: number): string => `~${n} min`;
 
@@ -103,20 +101,19 @@ export const NIL = '–';
     History, the Last line and wherever a saved set is listed. */
 export const missedTag = (s: { r: number | string | null }): string => (isMissed(s) ? ' missed' : '');
 
-/** Said when a sheet with something typed in it is asked to close by a tap outside it or by Back (r55: Back closed it unasked). */
+/** Said when a sheet with something typed in it is asked to close by a tap outside it or by Back, never closed unasked. */
 export const DIRTY_SAID = 'Save or cancel first. Your changes are still here.';
 
-/* What a missed set does, as the next target reads it since r56.2 (a set short of the range) and R-1 (one of the
-   session's sets): r64, the r63 audit's NEW-4, where it said "or targets". Since r72 it never earns a step
-   up: under 387-B3 a step earned by a full session before it still stands, so "keeps the load from going up" read
-   false there. */
+/* What a missed set does, as the next target reads it (a set short of the range, and one of the session's
+   sets): it never earns a step up. A step earned by a full session before it still stands, so "keeps the load from
+   going up" would be false there. */
 /** Said once when a set is ticked as missed. */
 export const MISSED_SAID = 'Logged as missed. It counts toward no volume or PRs, and never earns a step up.';
 
 /** A number to at most three decimals, without trailing zeros. */
 export const fmtG = (v: number): string => String(r3(v));
 
-// A rep range in words and labels: "5" when both ends are the same (r31: "5-5", "5×5-5").
+// A rep range in words and labels: "5" when both ends are the same (not "5-5", "5×5-5").
 export const repSpan = (lo: number | string, hi: number | string, sep = ' to '): string =>
   +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
 
@@ -140,7 +137,7 @@ export function awayWords(days: number): string {
 export const rangeWords = (p: { repMin: number | string; repMax: number | string }): string =>
   +p.repMin === +p.repMax ? `target of ${+p.repMin}` : `${+p.repMin}-${+p.repMax} range`;
 
-/* ---------- dates as the engine's sentences say them (phase 3b; moved unchanged from the legacy script) ---------- */
+/* ---------- dates as the engine's sentences say them ---------- */
 
 /* One Intl formatter per format, made once: toLocaleDateString builds a new
    one on every call, about a fifth of a Stats render. Same output. */
@@ -163,19 +160,18 @@ const fmtDay = (s: string): string => fmtWith('d', { month: 'short', day: 'numer
 export const fmtDateFrom = (s: string, now: string): string =>
   yearOf(s) === yearOf(now) ? fmtDay(s) : fmtWith('dy', { month: 'short', day: 'numeric', year: 'numeric' }, s);
 
-/* Every date on screen follows that one rule: until then about fifty places wrote a
-   date without its year, so last year's Dec 15 read as this year's. It reads the clock, so a function of the model
+/* Every date on screen follows that one rule, not fifty places each writing a date
+   without its year, which read last year's Dec 15 as this year's. It reads the clock, so a function of the model
    says its dates with fmtDateFrom and the model's today instead. */
 /** A date as "Oct 17", with its year when it is not this year's ("Dec 15, 2025"). */
 export const fmtDate = (s: string): string => fmtDateFrom(s, today());
 
 /* ---------- effort ---------- */
 
-/* The effort scale a setting names: half points or RPE, else whole RIR
-   (item 206). One rule for the screens (rirScale, src/app/effort.ts)
-   and the engine's sentences (from the audit V asked for: on the RPE
-   scale, the reason behind a target said "RIR 4 at 40 kg against a target of
-   1" under a header reading @RPE 9). */
+/* The effort scale a setting names: half points or RPE, else whole RIR. One
+   rule for the screens (rirScale, src/app/effort.ts) and the engine's
+   sentences (not, on the RPE scale, "RIR 4 at 40 kg against a target of 1"
+   under a header reading @RPE 9). */
 /** The effort scale a setting's value names. */
 export function effScale(v: unknown): 'whole' | 'half' | 'rpe' {
   return v === 'half' || v === 'rpe' ? v : 'whole';
@@ -190,8 +186,8 @@ export function effAt(scale: 'whole' | 'half' | 'rpe', rir: number): string {
 
 /* A lighter day, a deload and a flagged injury ask for 3 or more reps in
    reserve (a convention), said here once and in the lifter's scale
-   (from the audit: on a lighter day the session header said the plan's
-   1 RIR beside the engine's "3 or more reps in reserve"). */
+   (not the plan's 1 RIR in the session header beside the engine's "3 or
+   more reps in reserve"). */
 /** The reps in reserve a lighter day, a deload or an injury hold asks for at least. */
 export const LIGHT_RIR = 3;
 

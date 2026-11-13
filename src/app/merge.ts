@@ -1,10 +1,9 @@
-/* Record fingerprints and the three-way merge (phase 3a; moved
-   unchanged from the legacy script). Each synced document remembers the per-record hashes of the
+/* Record fingerprints and the three-way merge. Each synced document remembers the per-record hashes of the
    version both sides last agreed on, its base; on a conflict every record is
    judged on its own: changed on one side only, that side wins; changed on
    both, the newer side does (remoteWins), and the conflict is counted.
    Undo's merge of a session in progress is the same idea per exercise.
-   Merging whole documents (mergeChunk) moves with sync in phase 4. */
+   Merging whole documents (mergeChunk) is sync.ts's. */
 
 import { hashStr } from './util';
 import { arr, rec } from './records';
@@ -119,7 +118,7 @@ export function merge3Val<V>(bh: string | undefined, a: V, b: V, remoteWins: boo
   return remoteWins ? b : a;
 }
 
-/* ---------- one workout open on two phones (PENDING 328 a and c) ---------- */
+/* ---------- one workout open on two phones ---------- */
 
 /* Two phones' copies of one workout in progress, merged against the copy
    both last agreed with the account, exercise by exercise and set by set:
@@ -127,18 +126,16 @@ export function merge3Val<V>(bh: string | undefined, a: V, b: V, remoteWins: boo
    later edit (remoteWins), counted as a conflict; a row removed on one side
    alone goes, unless the other side changed it, since keeping data is the
    recoverable mistake; a row added on one side is kept, after the row it
-   follows on that side, so a warm-up added at the top stays at the top
-   (F10). Rows are matched by their own ids (`rid`, given since
-   r56.1). A row without one (a build before r56.1 made it) is matched by its
+   follows on that side, so a warm-up added at the top stays at the top.
+   Rows are matched by their own ids (`rid`, given since r56.1). A row without one (a build before r56.1 made it) is matched by its
    place among the rows without one in a workout in progress, whose rows all
    stay in place, ticked or not, as long as rows are added at the end (an
-   older build's warm-up added at the top moves every place: PENDING 333,
-   F8); in a saved session (a join, below) the rows left unticked are gone,
+   older build's warm-up added at the top moves every place); in a saved session (a join, below) the rows left unticked are gone,
    so a place means nothing there, and such a row is matched by what it
    holds instead. Exercises are keyed by their own ids (`bid`), or, on an
    exercise an older build made without one, by exercise and occurrence, as
    Undo keys them, so the same lift twice is two exercises however either
-   phone changes the other (F9); the order of exercises follows the side
+   phone changes the other; the order of exercises follows the side
    that changed it, both when neither did, and the later edit when both did;
    an exercise's own fields, and the workout's, are merged value by value,
    and the workout's cardio rows record by record, since they have ids. */
@@ -164,7 +161,7 @@ function rowKeys<R extends Rowed>(sets: readonly R[]): [string, R][] {
    typed alike on the two phones stay two; with no agreed copy (a note from a
    build before r56.1), a row of the other side's, one to one, so the sets
    both phones had are one each and only what one side has besides is added
-   (F5: matched to nothing, every set both had was saved twice). */
+   (matched to nothing, every set both had would be saved twice). */
 /** One side's rows by key, matched by content to the rows given (above). */
 function contentKeys<R extends Rowed>(to: readonly [string, R][], sets: readonly R[], side: string): [string, R][] {
   // A row this side still holds by its id is taken by it, so no row without an id can take its key as well.
@@ -227,7 +224,7 @@ function mergeRows<R extends Rowed>(
      side's own rows go after the row they follow on that side (weave). In a
      join the rows left unticked are gone, so where a row sat is not known:
      the session saved on the other phone (remote) keeps its order, a warm-up
-     it added at the top included (the review of the fix), and
+     it added at the top included, and
      what was done here since is added after it, as the lifter is told. */
   const order =
     match === 'place'
@@ -267,8 +264,8 @@ function mergeFields(
   for (const f of new Set([...Object.keys(l), ...Object.keys(r)])) {
     if (skip.includes(f)) continue;
     /* With no copy both agreed on, a field one copy lacks is no clash: the copy that has it keeps it, as keeping data is
-       the recoverable mistake (the review of 2.52, REV13-6: Finish's `ps` on a saved session, absent from the copy
-       joined to it, was said as an item edited on two devices). */
+       the recoverable mistake (Finish's `ps` on a saved session, absent from the copy joined to it, is not an item
+       edited on two devices). */
     if (!base && (l[f] === undefined) !== (r[f] === undefined)) {
       out[f] = l[f] === undefined ? r[f] : l[f];
       continue;
@@ -391,8 +388,8 @@ export function mergeSession(
     stat
   );
   /* The start is the saved session's, the one its minutes were timed from at Finish: the copy joined to it began on
-     its own clock, which is no edit, and taken alone it left a start that did not match the minutes (the
-     review of 2.52, REV13-5: two starts said as an item edited on two devices). */
+     its own clock, which is no edit, and taken alone it would leave a start that did not match the minutes
+     (and two starts would be said as an item edited on two devices). */
   const t = remote.t ?? local.t;
   if (t !== undefined) out.t = t;
   else delete out.t;
@@ -430,10 +427,9 @@ export function mergeDraft(base0: unknown, cur0: unknown, pre0: unknown, saved: 
     pre = undoDraftOf(pre0);
   /* A workout the step itself took away or put another in its place (Erase everything; a backup restored, with or
      without a workout of its own), the workout unchanged since the step and not saved since: it comes back, as
-     everything else the step took does (the review of 2.36, REV6-2: Undo after Erase everything left it gone; the
-     review of 2.36 to 2.41, REV8-3: after a backup with its own workout, the backup's stayed). Saved since, it is a
-     session in the log (Finish gives the session its id) and stays one: reopened, a second Finish wrote it over an
-     edit made to it (the review of 2.38). One changed since the step stays as it is. */
+     everything else the step took does, also after a backup with a workout of its own, whose workout then goes. Saved
+     since, it is a session in the log (Finish gives the session its id) and stays one: reopened, a second Finish
+     would write it over an edit made to it. One changed since the step stays as it is. */
   if (pre && (!base || base.id !== pre.id) && canon(cur0) === canon(base0) && !saved(pre.id)) return pre0;
   if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur0 === undefined ? null : cur0;
   type B = UndoDraft['ex'][number];
@@ -463,7 +459,7 @@ export function mergeDraft(base0: unknown, cur0: unknown, pre0: unknown, saved: 
   const out: B[] = [];
   // An action that left the exercises' order alone (a Settings change, a
   // layout reset) must not undo a reorder made after it, so the order now is
-  // kept (r29: dragging exercises made that common). An action that changed
+  // kept (dragging exercises makes that common). An action that changed
   // the order or the list puts back the order from before it.
   const ord = (l: [string, B][]): string => l.map(x => x[0]).join('|');
   const keep = ord(keyed(base.ex)) === ord(P);
@@ -482,7 +478,7 @@ export function mergeDraft(base0: unknown, cur0: unknown, pre0: unknown, saved: 
   for (const f of ['notes', 'dayName', 'deload', 'light', 'limited', 'cardio', 'chk']) {
     if (canon(cur[f]) === canon(base[f])) res[f] = pre[f];
   }
-  // The workout's pictures go back the same way, absent where they were (the review of r66: Undo left one taken off gone).
+  // The workout's pictures go back the same way, absent where they were, so one taken off comes back.
   if (canon(cur.pics) === canon(base.pics)) {
     if (pre.pics === undefined) delete res.pics;
     else res.pics = pre.pics;

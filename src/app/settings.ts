@@ -293,8 +293,7 @@ function gymNext(): Gym {
     : { u: gymUnit() };
 }
 /* The usual plates of a unit, heaviest first, as Your gym's chips offer them: a new list on each call, so no caller
-   can change the table (units.ts). In gym.ts until 2.34, when a saved gym stopped being limited to them and
-   Settings became their only reader. */
+   can change the table (units.ts). Settings is their only reader. */
 function usualPlates(u: string): number[] {
   return [...(u === 'kg' ? PLATES_KG : PLATES_LB)];
 }
@@ -461,8 +460,8 @@ function rirSettings(): TemplateResult {
       ? `${c.n} calibration set${c.n === 1 ? '' : 's'}, none in the last ${CAL_WEEKS} weeks.`
       : `${c.recent} recent calibration set${c.recent === 1 ? '' : 's'}: median miss ${raw > 0 ? '+' : ''}${r1(raw)} reps (${raw > 0 ? 'you stop with more left than you call' : raw < 0 ? 'closer to failure than you call' : 'accurate'}). Correction applied: ${c.bias > 0 ? '+' : ''}${c.bias}.`;
   const sc = rirScale();
-  /* What RIR is stays on screen here (V): this is where it is decided whether to use it. r69 kept it (V,
-     2026-11-03: the text cuts were to override nothing already agreed). */
+  /* What RIR is stays on screen here (V): this is where it is decided whether to use it (V, 2026-11-03: the
+     text cuts were to override nothing already agreed). */
   return html`<p class="small u-m0"><b>RIR, reps in reserve:</b> reps you could still have done. RIR 3 or less is a hard set.</p>
 <label class="field">Reps in reserve<select data-bind="rirMode">
 <option value="on" .selected=${live(s.rirMode === 'on')}>On: log RIR and use it as logged</option>
@@ -1021,7 +1020,7 @@ export function viewSettings(): TemplateResult {
   )}${tabFoot('settings')}`;
 }
 
-/** Draws Settings' sync line again where it is on screen (fx.syncLine, from the sync): Settings is drawn again in place, nothing else, so a sheet open over it and a field being typed in are left as they are, as the line alone was before r57. */
+/** Draws Settings' sync line again where it is on screen (fx.syncLine, from the sync): Settings is drawn again in place, nothing else, so a sheet open over it and a field being typed in are left as they are. */
 export function settingsSyncLine(): void {
   const v = document.getElementById('view');
   if (v && ui.tab === 'settings' && document.getElementById('syncInfo')) drawScreen(v, viewSettings());
@@ -1123,9 +1122,8 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       );
     else go();
   },
-  /* A plate tapped: a usual one turns on or off; one the lifter added goes (2.34: an added plate has no off
-     state to keep, and adding it again is one tap). Every usual plate and nothing else is the default, stored as no
-     list, as before. */
+  /* A plate tapped: a usual one turns on or off; one the lifter added goes (an added plate has no off state to
+     keep, and adding it again is one tap). Every usual plate and nothing else is the default, stored as no list. */
   gymPlate(t) {
     const g = gymNext();
     const all = usualPlates(g.u);
@@ -1204,8 +1202,8 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const was: Profile | null = cur ? { ...cur, ...(cur.focus ? { focus: cur.focus.slice() } : {}) } : null;
     let moved: ReturnType<typeof profMoveBands> = {};
     /* Undo puts the profile back and each target this moved that still reads
-       what it was moved to (the r44 review: the merge lost them when a target
-       was typed in between). */
+       what it was moved to (a merge would lose them when a target is typed
+       in between). */
     act(
       () => {
         if (np) state.settings.profile = np;
@@ -1280,7 +1278,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           [d[0], d[1]]
         ];
     }
-    // Undo puts back the floors and each target that still reads the default it was set to (the r44 review: the merge kept the floors and lost the targets).
+    // Undo puts back the floors and each target that still reads the default it was set to (a merge would keep the floors and lose the targets).
     act(
       () => {
         for (const m of MK) {
@@ -1409,7 +1407,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
 /** What a field holds on change: a box's tick, or the text or option picked. */
 const checked = (t: Field): boolean => t instanceof HTMLInputElement && t.checked;
 
-/** Settings' fields, by the data-bind they carry, read on change; each change to a setting goes through `act`, with no Undo step (an edit, as before r57) unless it says. */
+/** Settings' fields, by the data-bind they carry, read on change; each change to a setting goes through `act`, with no Undo step (an edit) unless it says. */
 export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
   unit(t) {
     const u = t.value === 'kg' ? 'kg' : 'lb';
@@ -1552,7 +1550,7 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
   barKg(t) {
     const n = numIn(t.value);
     act(() => {
-      // Within the bar's bound in kilograms, the one a save keeps (until then 110 in lb and 50 in kg, typed).
+      // Within the bar's bound in kilograms, the one a save keeps, not 110 in lb and 50 in kg as typed.
       state.settings.barKg = n == null || n <= 0 ? null : Math.min(fromD(n) ?? 0, LIMITS.barKg);
     });
     rerenderKeepScroll();
