@@ -10438,7 +10438,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     let mine = false;
     for (const k2 of /* @__PURE__ */ new Set([...Object.keys(cloud.meta), ...Object.keys(theirs)])) {
       const here = cloud.meta[k2], there = theirs[k2];
-      const keep = !there ? here : !here ? there : sameNote(there, base[k2]) ? here : sameNote(here, base[k2]) ? there : there.at > here.at ? there : here;
+      const keep = !there ? here : !here ? there : sameNote(there, base[k2]) ? here : sameNote(here, base[k2]) ? there.at >= here.at ? there : here : there.at > here.at ? there : here;
       if (keep) cloud.meta[k2] = keep;
       if (!sameNote(keep, there)) mine = true;
     }
@@ -11794,14 +11794,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function begunBefore() {
     const d3 = state.draft;
-    return d3 ? { id: d3.id, begun: begunIn(d3), live: !d3.past && !d3.editingId } : null;
+    return d3 ? { id: d3.id, begun: begunIn(d3), live: !d3.past && !d3.editingId, follows: d3.follows } : null;
   }
   var closedHere = null;
   function followsAfter(before2) {
     const d3 = state.draft;
     if (before2 && before2.live && !d3) {
-      closedHere = before2.id;
-      prefSet(CLOSED_KEY, before2.id);
+      const id = !before2.begun && before2.follows ? before2.follows : before2.id;
+      closedHere = id;
+      prefSet(CLOSED_KEY, id);
       return;
     }
     if (before2 || !d3) return;
@@ -14604,6 +14605,10 @@ ${more}`;
     const set = iso(new Date(h3.at));
     return { set, until: addDays(set, PARK_KEEP_DAYS) };
   }
+  function keptUntil() {
+    const d3 = parkedDates();
+    return d3 ? ` Kept until ${fmtDate(d3.until)}.` : "";
+  }
   function parkTidy() {
     const h3 = held2();
     if (!h3) return;
@@ -14611,6 +14616,7 @@ ${more}`;
       prefSet(PARKED_KEY, JSON.stringify({ uid: h3.uid, draft: h3.draft, at: Date.now() }));
       return;
     }
+    if (state.draft) return;
     const d3 = parkedDates();
     if (!d3 || today() <= d3.until) return;
     prefDel(PARKED_KEY);
@@ -20633,8 +20639,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
   }
   var STARTS_HELP = b`In <b>Change</b>: <b>Lighter day</b>: every exercise on the day, half the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the loads, ${LIGHT_RIR} or more reps in reserve, and no target to beat: a one-day deload. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine's days for today from what each muscle got in the last ${PICK_DAYS} days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Blank session</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of half sets at about ${pctOf(LIGHT_SHARE)}% loads. <b>Limited equipment</b> (More options): today's workout with each exercise your gym cannot do swapped for the closest match it can.`;
   function parkLine() {
-    const d3 = parkedDates();
-    return `Set aside while you fixed an earlier one.${d3 ? ` Kept until ${fmtDate(d3.until)}.` : ""}`;
+    return `Set aside while you fixed an earlier one.${keptUntil()}`;
   }
   function viewToday() {
     if (obActive()) return obView();
