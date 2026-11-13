@@ -1,9 +1,8 @@
-/* The exercise picker's choice and the exercise editor (from the legacy
-   script's 16-engine.js, 24-sheets.js and 27-actions.js): an exercise added
+/* The exercise picker's choice and the exercise editor: an exercise added
    to a session or a routine day, a swap in either, Pick for me's addition,
    and a new or saved exercise. Each change to the log goes through `act`;
    a change to the session in progress alone leaves the caches as they are
-   (inProgress), as the legacy script's save of the session did. */
+   (inProgress). */
 
 import { uid, numIn } from './util';
 import { BWF, MK, bwShare } from './library';
@@ -46,8 +45,8 @@ export function swapPlan<P extends Partial<Plan>>(
 ): P & Partial<Plan> {
   const R = R0 || activeRoutine();
   const inR = R.days.some(d => d.items.some(it => it.exId === toId));
-  /* A step is the equipment's (the review of 2.35: a 10 lb barbell
-     slot gave dumbbell bench a 10 lb step): a lift on other equipment takes
+  /* A step is the equipment's (a 10 lb barbell slot must not give
+     dumbbell bench a 10 lb step): a lift on other equipment takes
      its own, the slot's range, effort and rest kept. */
   if (!inR && !!EX(fromId).timed === !!EX(toId).timed) {
     if (EX(fromId).equip === EX(toId).equip) return { ...p };
@@ -306,11 +305,11 @@ function pickSwapBlock(m: PickerModal, id: string, d: Draft): void {
   }
   const orig: DraftBlock = structuredClone(b);
   const did = d.id;
-  // Sets ticked or typed stay with the exercise they were done on (r25: typed, not ticked, used to vanish).
+  // Sets ticked or typed stay with the exercise they were done on, typed and not ticked too.
   const done = b.sets.filter(x => !rowBlank(b, x));
   const left = b.sets.filter(x => !x.warm && !x.drop && rowBlank(b, x)).length;
   const rows = b.sets.filter(x => !x.warm && !x.drop).length;
-  // r55, the audit: it added the new lift with one set "for the sets left", none being left.
+  // Not the new lift with one set "for the sets left", none being left.
   if (done.length && !left && !m.all) {
     const nn = EX(id).name;
     confirmBox(
@@ -381,12 +380,12 @@ export function applyPick(m: PickerModal | null | undefined, id: string | undefi
     pickAddBlock(m, id, d);
     return;
   }
-  /* Swapping used to replace the whole block, so sets already logged on the
-     old exercise vanished. Now logged sets stay with the exercise they were
-     done on, and the new one takes over the sets still to do. The count comes
+  /* Logged sets stay with the exercise they were done on, and the new one
+     takes over the sets still to do, so a swap never takes away sets already
+     logged on the old exercise. The count comes
      from the rows the exercise has now, not the routine's plan: the plan's
-     count undid Short on time, + Set and − Set. Since r54 nothing is
-     marked: the replacement is read by its own usual, as every lift is. */
+     count would undo Short on time, + Set and − Set. Nothing is marked: the
+     replacement is read by its own usual, as every lift is. */
   if (m.mode === 'swapBlock') {
     pickSwapBlock(m, id, d);
     return;

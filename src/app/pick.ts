@@ -1,5 +1,5 @@
-/* Pick for me, Limited equipment, Swap's closest matches and Short on time
-   (moved from the legacy script as functions of the model). Two
+/* Pick for me, Limited equipment, Swap's closest matches and Short on time,
+   as functions of the model. Two
    questions, one set of rules. Before a session: which of the routine's days
    fits today. Inside one: which exercise to add next. Both read the same
    numbers the rest of the app shows, and every pick says why.
@@ -275,8 +275,8 @@ export function recoveryIn(M: Model, m: string, at?: string): Recovery {
 
 /* The days since a muscle's last hard set in the recovery window, any
    number of them: recovery reads only days of RECOVERY.dose or more, so a
-   muscle with a single hard set a day read as "not trained hard" beside its
-   hard sets this week (the review of 2.35). */
+   muscle with a single hard set a day would read as "not trained hard"
+   beside its hard sets this week. */
 function lastAnyHardIn(M: Model, m: string): number | null {
   const dm = IDXIn(M).dayMus;
   for (let k = 0; k <= RECOVERY.window; k++) {
@@ -343,7 +343,7 @@ export function rankDaysIn(M: Model): {
   const weekly = R.schedule === 'weekly';
   // Today's place in a weekly routine, Monday first (Date counts from Sunday).
   const planIdx = weekly ? (new Date(t + 'T12:00:00').getDay() + WEEK_DAYS - 1) % WEEK_DAYS : cycleStateIn(M, R).next;
-  // Each workout's last date, by day and workout (a day's second workout is ranked on its own: the second review of r68).
+  // Each workout's last date, by day and workout (a day's second workout is ranked on its own).
   const lastDone: Record<string, string> = {};
   for (const x of M.s.sessions) {
     const k = x.dayId ? `${x.dayId}:${weekly ? partOf(x) : 1}` : '';
@@ -446,8 +446,8 @@ export function dayReasonsIn(M: Model, x: DayRow, r7: Readonly<Record<string, nu
   if (x.joints && x.joints.length)
     out.push(`Loads your ${andList(x.joints.map(j => (JL[j] || j).toLowerCase()))}, which you flagged.`);
   /* A flagged muscle the day loads, as a helper or past its two largest, is
-     said as a flagged joint is (the review of 2.35: front delts
-     flagged, Push said nothing though its presses load them). */
+     said as a flagged joint is (with front delts flagged, Push says so, its
+     presses loading them). */
   const injOther = x.injM.filter(m => !main.includes(m));
   if (injOther.length) out.push(`Loads ${andList(injOther.map(m => ML[m] || m))}, which you flagged as injured.`);
   for (const m of main) {
@@ -771,7 +771,7 @@ export function recentExIdsIn(M: Model, n: number): string[] {
    and its rest, and its setup while none of its rows is ticked (the long one for the first two compounds done or
    to do). No rest is counted after the very last set, nor between two exercises of one superset while the next of
    them still has a set to do (a partner done or left out rests like any lift). The session's minutes left and Short on time both read this, so the time a trim fits to is
-   the time the session shows (NEW-77: two counts of one number disagreed by up to 3 minutes). setsOf gives each
+   the time the session shows (two counts of one number would disagree by up to 3 minutes). setsOf gives each
    exercise's sets to count; by default the work rows not yet ticked. */
 /** Minutes of lifting left in a session, with each exercise's sets to do given or read from its unticked work rows. */
 export function sessLeftMinIn(M: Model, d: { ex: readonly DraftBlock[] }, setsOf?: (bi: number) => number): number {

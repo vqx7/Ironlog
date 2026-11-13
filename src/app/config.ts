@@ -40,13 +40,12 @@ export const PREVIEW_LABEL = 'Preview';
     weight, `light` in the muted colour (.ob-logo in the styles). */
 export const WORDMARK = { mark: 'I', strong: 'ron', light: 'log' } as const;
 
-/** The dark theme's page colour (the r63 audit's A-9, where it was typed
-    in five places): the style sheet's --bg in dark mode, the installed app's
+/** The dark theme's page colour, typed once: the style sheet's --bg in dark mode, the installed app's
     splash and status bar, and the status bar's when the page's cannot be read. */
 export const DARK_BG = '#08090b';
 
-/** The version people see (V, 2026-10-16): 2.0 from r49, the minor number up
-    by one for each release merged, the major number for a large change. */
+/** The version people see (V, 2026-10-16): 2.0 from build r49, the minor
+    number up by one for each release merged, the major number for a large change. */
 export const DISPLAY_VERSION = '2.61';
 
 /** The build: shown beside the version in Diagnostics, problem reports and
@@ -122,10 +121,9 @@ export const HIBP_ORIGIN = 'https://api.pwnedpasswords.com';
 
 /** three.js for the 3D body. The installed app ships its own copy and
     loads only that: its Content Security Policy allows script from this site
-    alone (scripts/build.js), so the public CDNs, tried after it until r59,
-    could never load there and only added failures to the error log. The
-    source page loads from the CDNs. This was a text edit in scripts/build.js
-    until r49, which broke once the script was bundled. */
+    alone (scripts/build.js), so the public CDNs could never load there and
+    would only add failures to the error log. The source page loads from the
+    CDNs. */
 const THREE_CDN = [
   `${JSDELIVR}/three@${THREE_VERSION}/build/three.module.min.js`,
   `${UNPKG}/three@${THREE_VERSION}/build/three.module.min.js`
@@ -136,10 +134,10 @@ export const THREE_URLS: readonly string[] =
 
 /** How long a request to the account server may go without an answer
     before it is given up, in milliseconds. One limit for every such request:
-    the sync's, the sign-in's and a problem report's (PENDING 306 and
-    309), and since r64 every request the account library makes itself,
-    whose token refresh every later call waits behind (scripts/cloud-supabase.js
-    reads it through the build's placeholder; the r63 audit's F3). */
+    the sync's, the sign-in's and a problem report's, and every request the
+    account library makes itself, whose token refresh every later call waits
+    behind (scripts/cloud-supabase.js reads it through the build's
+    placeholder). */
 export const NET_MS = 20000;
 
 /** Where a report's ticket lives: the Inbox links a report to its ticket
@@ -150,7 +148,7 @@ export const TICKETS_AT = 'https://github.com/';
 /** The sign-up bot check: the public site key of a Cloudflare Turnstile widget made for the
     site, which Supabase Auth checks once its CAPTCHA protection is on (OWNER.md, E1). It is public by design, like
     the Supabase publishable key; the widget's secret key goes only into Supabase. Empty, the check is off: nothing
-    loads, the account sheet is as before, and its requests carry no token. Set, the account sheet draws the check
+    loads, the account sheet draws no check, and its requests carry no token. Set, the account sheet draws the check
     and sends its token, and the installed app's Content Security Policy allows Turnstile's site (scripts/build.js). */
 export const TURNSTILE_SITE_KEY = '';
 

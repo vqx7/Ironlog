@@ -1,5 +1,4 @@
-/* The page's draw (from the legacy script's 10-start.js, 18-ui.js and
-   29-sections.js): every tab by its screen, what goes before a draw (the
+/* The page's draw: every tab by its screen, what goes before a draw (the
    drags, the charts and the tour taken down) and after it (each mounted
    again), the drags and the arrow keys that move a tab's sections and a
    routine's days and exercises, and the table of every sheet by its kind
@@ -77,7 +76,7 @@ function killDynamic(): void {
   sortables = [];
 }
 
-/** The tabs drawn by their modules (phase 5, r57 to r60): each a template of the log and ui. Today with a session in progress is the session screen (workout.ts). */
+/** The tabs drawn by their modules: each a template of the log and ui. Today with a session in progress is the session screen (workout.ts). */
 const TABS: Readonly<Record<string, () => TemplateResult>> = {
   today: () => (state.draft && !awayFrom() ? viewWorkout(state.draft) : viewToday()),
   history: viewHistory,
@@ -115,13 +114,12 @@ export function renderInner(): void {
   // The setup pages stand alone: no tabs or week bar until a way to start is picked.
   if (obActive() && ui.tab !== 'today') ui.tab = 'today';
   document.body.classList.toggle('obmode', obActive());
-  /* One host draws every tab (every tab a module's screen since r60): a
-     template, updated in place, which places its sections itself. A draw
+  /* One host draws every tab: a template, updated in place, which places its sections itself. A draw
      asked for while lit-html is drawing (an event a removed field fires
      mid-draw) runs once this one is done: lit-html takes nodes away one by
      one, and a draw inside that would find them gone. The session screen
-     puts back first what the legacy page's fresh markup reset (the effort
-     strip and a fold waiting its moment). */
+     puts back first what a fresh draw resets (the effort strip and a fold
+     waiting its moment). */
   if (sessionShown()) workoutFullDraw();
   const v = document.getElementById('view');
   const tab = TABS[ui.tab] || TABS['today'];
@@ -174,8 +172,8 @@ function saveSecOrder(keys0: string[]): void {
     { soon: true }
   );
 }
-/* A screen places its sections from the saved order itself (every tab is a
-   module's screen since r60), and its drawn nodes may not be moved under it:
+/* A screen places its sections from the saved order itself, and its drawn
+   nodes may not be moved under it:
    a drag or an arrow key reads the new order, puts the section back where it
    was drawn, saves the order and draws the screen again, which moves it. */
 /** Makes the tab's sections draggable by their handles. */
@@ -340,7 +338,7 @@ export const SHEETS: Sheets = {
   imp: { draw: impSheet },
   templates: { draw: templatesSheet },
   routineNew: { draw: routineNewSheet },
-  // The 3D body goes back to Today's map, coloured by the week again, facing the way it was, a turn still running stopped first (r54: it went on, on Today's body).
+  // The 3D body goes back to Today's map, coloured by the week again, facing the way it was, a turn still running stopped first, not going on, on Today's body.
   exMus: {
     draw: exMusSheet,
     closed: () => {
