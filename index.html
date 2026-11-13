@@ -4868,8 +4868,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     for (const [id] of read.steps) stepsStored.set(id, "");
     legacyStored = read.legacy != null;
     const found = [];
+    const seen = /* @__PURE__ */ new Set();
     const take = (v3, id) => {
       const E2 = rec(v3);
+      const key = E2 && typeof E2.pre === "string" ? `${Number(E2.t) || 0}|${E2.pre}` : "";
+      if (!key || seen.has(key)) return;
+      seen.add(key);
       if (E2 && typeof E2.pre === "string" && now2 - (Number(E2.t) || 0) < UNDO_TTL)
         found.push({
           e: {
@@ -4882,8 +4886,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           id
         });
     };
-    for (const v3 of arr(read.legacy) || []) take(v3, null);
     for (const [id, v3] of read.steps) take(v3, id);
+    for (const v3 of arr(read.legacy) || []) take(v3, null);
     if (!undoStack.length) {
       found.sort((a2, b2) => a2.e.t - b2.e.t);
       for (const f3 of found.slice(-UNDO_MAX)) {

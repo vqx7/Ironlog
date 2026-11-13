@@ -937,6 +937,32 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     ok(ok2 && JSON.stringify(one) === '[false,true]' && !keys.includes('stack') && keys.length === 1, 'S-7: steps kept by 2.57 still undo after the update (the newest first), and the one left is stored on its own', { one, keys });
     await P.close();
   }
+  if (run('S-7')) {
+    // REV15-3: one step is one step, however many copies the store holds. Three deletes stored on their own; then the
+    // list written again under 'stack' (a tab still on 2.57 after the other took Update) and one step stored twice
+    // (two tabs of this build moving that list at once). Reopened: three steps, three Undos each bringing a session
+    // back, then nothing to undo (5 steps were kept for 3 changes, two Undos saying "Undone" for nothing).
+    const seed = function (S) { for (let i = 1; i <= 6; i++) S.sessions.push({ id: 'x' + i, date: '2026-11-0' + i, dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }); S.settings.lastExport = '2026-11-11'; };
+    const P = await phone({ seed });
+    await P.tabTo('history');
+    for (const id of ['x1', 'x2', 'x3']) { await P.ev(id => window.__ironlog.ACT.histDel({ dataset: { id } }), id); await wait(80); await confirmOk(P); await wait(150); }
+    await wait(600);
+    const stored = await P.ev(async dbName => {
+      const db = await new Promise(r => { const q = indexedDB.open(dbName, 1); q.onsuccess = () => r(q.result); });
+      const all = await new Promise(r => { const out = []; const q = db.transaction('kv').objectStore('kv').openCursor(); q.onsuccess = () => { const c = q.result; if (!c) { r(out); return; } out.push([String(c.key), c.value]); c.continue(); }; });
+      const steps = all.filter(([k]) => k.startsWith('step:'));
+      await new Promise(r => { const tx = db.transaction('kv', 'readwrite'); const os = tx.objectStore('kv'); os.put(steps.map(([, v]) => v), 'stack'); os.put(steps[0][1], 'step:' + steps[0][0].slice(5) + 'b'); tx.oncomplete = () => r(); });
+      db.close(); return steps.length;
+    }, 'ironlog-undo');
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(800);
+    const n = await P.ev(() => window.__ironlog.undoStack.length);
+    await settingsOpen(P, 'dataSec');
+    const backs = [];
+    for (let k = 0; k < 3; k++) { await P.page.click('#dataSec [data-act="undo"]'); await wait(400); backs.push(await P.ev(() => ['x1', 'x2', 'x3'].filter(id => window.__ironlog.state.sessions.some(s => s.id === id)).length)); }
+    const left = await P.ev(() => window.__ironlog.undoStack.length);
+    ok(stored === 3 && n === 3 && JSON.stringify(backs) === '[1,2,3]' && left === 0, 'S-7: steps the store holds twice (the list written again by a tab on 2.57, a step stored twice) are taken once: three changes, three steps, each Undo bringing one back (REV15-3)', { stored, n, backs, left });
+    await P.close();
+  }
   /* ---------- S-8: Recently deleted ---------- */
   if (run('S-8')) {
     const P = await phone({ seed: (S, L, a) => {
