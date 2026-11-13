@@ -1,12 +1,11 @@
-/* The account flow (from the legacy script's 14-account.js and
-   27-actions.js): signing in, creating an account and confirming its email,
+/* The account flow: signing in, creating an account and confirming its email,
    a reset link and a new password, signing out, deleting the account, and
    the retries when the phone comes back online or to the front. The sheet is
    sheetsaccount.ts's; the account service is the build's
    (scripts/cloud-supabase.js, window.ironlogAuth).
 
-   r63: every request the account sheet makes has the time limit the sync
-   has (NET_MS), so one that never answers leaves Signing in
+   Every request the account sheet makes has the time limit the sync has
+   (NET_MS), so one that never answers leaves Signing in
    with words that say so; and the wait for the confirmation email is one
    typed state: `wait` holds the email and the password while
    a new account waits, or is null, and `flight` says which request is out,
@@ -116,14 +115,14 @@ function back(): void {
 const limited = <T>(pr: Promise<T>): Promise<T> => withTimeout(pr, NET_MS, 'auth-late');
 /** What the sheet says of a failed request: no answer, or the service's own words. */
 const failed = (e: unknown, or: string): string => (codeOf(e) === 'timeout' ? NO_ANSWER : said(e, or));
-/** Starts the sync after a sign-in and says the words given once it has started, and only then (the r63 audit's F3: "Signed in. Syncing your log." was said while nothing synced). */
+/** Starts the sync after a sign-in and says the words given once it has started, and only then (never "Signed in. Syncing your log." while nothing syncs). */
 async function syncAndSay(msg: string): Promise<void> {
   const go = cloudInit();
   await cloudDecided();
   if (cloud.on) toast(msg);
   await go;
 }
-/** A sync waiting to try again goes now: back online, or the sign-in answered. A pull, so what another phone sent meanwhile comes in (r63's review: a flush only sent this phone's). */
+/** A sync waiting to try again goes now: back online, or the sign-in answered. A pull, so what another phone sent meanwhile comes in, not only this phone's sent. */
 function resume(): void {
   cloud.retry = 0;
   if (cloud.t) clearTimeout(cloud.t);
@@ -239,8 +238,8 @@ export async function acctInit(): Promise<void> {
     }
     /* The sign-in answered (signed in, its token refreshed, or the library's
        start ended with it): a sync that is off starts, and one waiting to try
-       again goes now (the r63 audit's F3: after a request with no answer
-       it never synced again until the app was relaunched). */
+       again goes now (else after a request with no answer it never syncs
+       again until the app is relaunched). */
     if (user && (ev === 'SIGNED_IN' || ev === 'TOKEN_REFRESHED' || ev === 'INITIAL_SESSION')) {
       if (!cloud.on) cloudInit();
       else if (cloud.status === 'offline') resume();
@@ -254,7 +253,7 @@ export async function acctInit(): Promise<void> {
   acct.checked = true;
   /* The phone opened signed in and the server refused the sign-in as the
      account library refreshed it: the library signed the phone out itself,
-     and before r65 nothing said so. The log stays. */
+     and this says so. The log stays. */
   if (!acct.user && A.refused && A.refused()) signInAgain();
   fbCheckReader();
   const L = A.landing;
@@ -297,7 +296,7 @@ export async function acctInit(): Promise<void> {
   acctRerender();
 }
 
-/** The account's listeners, added at start where the legacy script added them: a return to the front or online tries the wait or the sync again. */
+/** The account's listeners, added at start: a return to the front or online tries the wait or the sync again. */
 export function accountStart(): void {
   window.addEventListener('focus', () => {
     if (wait) waitTry(false);
@@ -322,7 +321,7 @@ export function accountStart(): void {
   });
 }
 
-/** What the account sheet closing does: the wait stopped, and Where do you use Ironlog? left unanswered signs this browser out, the safe choice, as before item 61. */
+/** What the account sheet closing does: the wait stopped, and Where do you use Ironlog? left unanswered signs this browser out, the safe choice. */
 export function acctClosed(m: AccountModal): void {
   if (m.mode === 'wait') waitStop();
   if (m.mode === 'where' && !m.answered) {
@@ -565,7 +564,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     // A sign-in the server refused has signed the phone out and said so (sync.ts, cloudFail): nothing to add to that.
     if (!cloud.on && acct.user) toast('Still not syncing. Check your connection, or sign out and in again.');
   },
-  // From a problem report, signing in goes back to it (the audit: the report and what was typed in it were gone).
+  // From a problem report, signing in goes back to it, with what was typed in it.
   acctOpen(t) {
     const m = ui.modal;
     openModal({
@@ -630,7 +629,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
     }
   },
-  /* The answer on a browser that opened the confirmation link (item 61b). */
+  /* The answer on a browser that opened the confirmation link. */
   async acctWhere(t) {
     const m = acctOpen(),
       A = AUTH();
@@ -706,19 +705,19 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       'Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.';
     const out = async (remove: boolean): Promise<void> => {
       // Send anything not yet synced first, so signing out never loses work.
-      // Offline there is nothing to wait for (r34.2: 15 s with no sign of anything happening).
+      // Offline there is nothing to wait for (not 15 s with no sign of anything happening).
       if (cloud.on && navigator.onLine !== false) {
         try {
           if (cloud.t) clearTimeout(cloud.t);
           await withTimeout(cq(cloudFlush), OUT_FLUSH_MS);
-          // The profile photo is the account's too: a change made here goes up before the phone lets go of it (the review's F2).
+          // The profile photo is the account's too: a change made here goes up before the phone lets go of it.
           if (photoPending()) await withTimeout(cq(photoFlush), OUT_FLUSH_MS);
         } catch (e) {
           log('auth', e);
         }
       }
       /* Nothing is removed until everything has reached the account, by the one test of that (hasUnsent): the log's
-         state, its documents and the photo. The log's state alone let a photo the account had refused go with it (F2). */
+         state, its documents and the photo. The log's state alone would let a photo the account had refused go with it. */
       if (remove && (!cloud.on || hasUnsent())) {
         confirmBox('Not in your account yet', NOT_IN, 'Keep on this phone and sign out', () => out(false));
         return;
@@ -735,7 +734,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       acct.user = null;
       cloudStop(remove);
       // The profile photo is the account's: it goes from the phone with the sign-out, but for a change not yet
-      // in the account that the lifter kept on this phone, sent when that account signs in here again (F2).
+      // in the account that the lifter kept on this phone, sent when that account signs in here again.
       photoSignOut(keepPhoto);
       /* A session in progress kept on the phone carries on where it was, and
          the app stays as it is after it: sending someone mid-workout to the

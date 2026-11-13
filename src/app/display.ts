@@ -1,7 +1,5 @@
-/* Words and numbers more than one screen shows: moved with History,
-   the first screen to move that reads them, and with Plan and Stats,
-   and imported by every screen that shows them. Each is as it was in the
-   legacy script it came from (deleted in r63). */
+/* Words and numbers more than one screen shows, imported by every screen
+   that shows them, so each is said one way. */
 
 import { IN, KM_MI, FT_IN } from './units';
 import { NIL, fmtDate, fmtWith, missedTag } from './format';
@@ -59,7 +57,7 @@ import { state, ui } from './store';
 import type { ExPoint, Exposure, ExerciseLike, Pr } from './model';
 import type { Day, Exercise, LoggedSet, Measurement, PlanItem, Routine, Session } from './types';
 
-/** The words on an Undo button (Settings, and the first page after Erase everything): the change it takes back, named as its message named it (before, "Undo last delete or reset (N available)"). */
+/** The words on an Undo button (Settings, and the first page after Erase everything): the change it takes back, named as its message named it, not "Undo last delete or reset (N available)". */
 export function undoLabel(): string {
   const said = undoNext();
   return said === null ? 'Nothing to undo' : said ? `Undo: ${said}` : 'Undo the last change';
@@ -133,8 +131,7 @@ export function fmtE(kg: number | null | undefined): string {
 }
 
 /* A best estimate a little above the one before it can show as the same
-   number (the r63 audit's P-S4-2: "Best estimate 8 lb per dumbbell
-   (was 8)"): the PR stands, and a "was" that reads the same number is left
+   number ("Best estimate 8 lb per dumbbell (was 8)"): the PR stands, and a "was" that reads the same number is left
    out, in the recap and the toast alike. */
 /** What an estimate was before, as shown, or '' when it shows as the same number now. */
 export function wasE(now: number | null | undefined, before: number | null | undefined): string {
@@ -211,7 +208,7 @@ export function prSet(exId: string, date: string): { v: number; w: number; r: nu
    weeks before are given only when the log covers all of them, so 2 days of
    a first month never read as a jump. Counted PRs only. */
 /* The screens use recent4w; the suites reach for this one to check a window
-   of their own (from the legacy script's 19-today.js). */
+   of their own. */
 /** The counted PRs (the ones marked big) of the last days given. */
 export function prsWithin(days: number): Pr[] {
   const from = addDays(today(), -days);
@@ -358,7 +355,7 @@ export function libFiltered(q: string | null | undefined, m: string, e: string, 
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/* ---------- where the cycle stands: cycleStateIn in pick.ts since r62 ---------- */
+/* ---------- where the cycle stands: cycleStateIn in pick.ts ---------- */
 
 /** The timed sessions the average session needs (a convention). */
 const AVG_SESSIONS = 3;
@@ -391,7 +388,7 @@ export function sessionLength(): { avg: number; n: number; plan: number | null }
    PR is a record the moment it is set, while this is the standing best. The
    date is dropped when the heaviest set was the lift's last session, since
    the Last line beside it already carries that date. upTo reads it as of a
-   past workout's date (the audit). */
+   past workout's date. */
 /** "Heaviest 225×5, Oct 3": a lift's heaviest set, or '' before one. */
 export function bestLine(exId: string, upTo?: string): string {
   const r = allTimeBests(exId, upTo);
@@ -445,7 +442,7 @@ export function goalState(exId: string): {
   // Since a new machine or gym (liftRead): a goal reached at another machine is not reached here.
   const exps = liftRead(exId);
   const bw = bwRefLoad(ex);
-  // With no weigh-in a bodyweight lift has no load to compare: say so rather than a number read from the added load alone (the review of r40).
+  // With no weigh-in a bodyweight lift has no load to compare: say so rather than a number read from the added load alone.
   const noBw = !!ex.bw && !((bwRef() ?? 0) > 0);
   let hit: string | null = null;
   for (const x of exps) {
@@ -495,12 +492,11 @@ interface RegionSrc {
   empty?: boolean;
 }
 /* Volume section, "By region" mode: the balance radar and its table, the
-   first view of Volume since r28 (V). It reads what you logged and nothing
-   else (V, r29: in r28 it read the routine's plan until a full week was
-   logged, which made every new person look behind): your recent average,
-   else this week so far, else your last trained weeks however long ago, so
-   the chart is always drawn from real sets (V, r29: a blank card read as the
-   chart being gone). With no sessions at all it still draws, empty, with the
+   first view of Volume (V). It reads what you logged and nothing else (V:
+   the routine's plan, read until a full week was logged, made every new
+   person look behind): your recent average, else this week so far, else
+   your last trained weeks however long ago, so the chart is always drawn
+   from real sets (V: a blank card read as the chart being gone). With no sessions at all it still draws, empty, with the
    target ring. The chart and the table use this one source. */
 /** The hard sets By region reads: the average of the weeks picked, else this week, else the last weeks trained. */
 export function regionSrc(): RegionSrc {
@@ -532,7 +528,7 @@ export function regionSrc(): RegionSrc {
     .filter(w => w < cur && has(w))
     .sort();
   const full = all.filter(w => !ff || w >= ff);
-  // With no full week, the first week (back, after a break: r55, logStart) alone, not weeks before the break.
+  // With no full week, the first week (back, after a break: logStart) alone, not weeks before the break.
   const wks = (full.length ? full : all.filter(w => !ff || w >= addDays(ff, -WEEK_DAYS))).slice(-n);
   const lastWk = wks[wks.length - 1];
   if (lastWk) {
@@ -609,8 +605,8 @@ export function sizeRows(): SizeRow[] {
 }
 
 /* What a tape row's muscles got between its two measurements. Like every weekly average (avgWeeksIn), it is
-   per week trained, and when weeks went untrained it says so (NEW-81: "10 hard sets a week" over three weeks
-   trained of seven read as seven weeks of it). */
+   per week trained, and when weeks went untrained it says so ("10 hard sets a week" over three weeks trained of
+   seven would read as seven weeks of it). */
 /** The hard sets a week a tape row's muscles got, with the weeks trained of the weeks between when any went untrained. */
 export function sizeWhat(r: Pick<SizeRow, 'weeks' | 'span' | 'sets' | 'mus'>): string {
   if (!r.weeks) return 'no logged training in between';
@@ -723,7 +719,7 @@ export function weekSlots(R: Routine): WeekSlot[] {
 
 /** This week's days ahead on a fixed-weekday routine whose every workout was done on another day, each with the workouts
     and the day they were done, as the bar reads them (weekSlots): This week and the calendar say so rather than offer them
-    again (REV9-2: the list read "Legs B, planned" under the bar's "Legs B, done Wed"). */
+    again (not "Legs B, planned" under the bar's "Legs B, done Wed"). */
 export function doneElsewhere(): Record<string, { name: string; on: string }[]> {
   const R = activeRoutine();
   const cur = weekStart(today());
