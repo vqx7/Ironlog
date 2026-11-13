@@ -10249,7 +10249,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     let mine = false;
     for (const k2 of /* @__PURE__ */ new Set([...Object.keys(cloud.meta), ...Object.keys(theirs)])) {
       const here = cloud.meta[k2], there = theirs[k2];
-      const keep = !there ? here : !here ? there : sameNote(there, base[k2]) ? here : sameNote(here, base[k2]) ? there : there.at > here.at ? there : here;
+      const keep = !there ? here : !here ? there : sameNote(there, base[k2]) ? here : sameNote(here, base[k2]) ? there.at >= here.at ? there : here : there.at > here.at ? there : here;
       if (keep) cloud.meta[k2] = keep;
       if (!sameNote(keep, there)) mine = true;
     }
@@ -11605,14 +11605,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function begunBefore() {
     const d3 = state.draft;
-    return d3 ? { id: d3.id, begun: begunIn(d3), live: !d3.past && !d3.editingId } : null;
+    return d3 ? { id: d3.id, begun: begunIn(d3), live: !d3.past && !d3.editingId, follows: d3.follows } : null;
   }
   var closedHere = null;
   function followsAfter(before) {
     const d3 = state.draft;
     if (before && before.live && !d3) {
-      closedHere = before.id;
-      prefSet(CLOSED_KEY, before.id);
+      const id = !before.begun && before.follows ? before.follows : before.id;
+      closedHere = id;
+      prefSet(CLOSED_KEY, id);
       return;
     }
     if (before || !d3) return;
