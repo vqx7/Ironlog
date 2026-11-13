@@ -777,6 +777,31 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(got.saidB.some(t => t.includes('The workout in progress was saved in another tab. What was done here since was added to it.')) && ![...got.saidA, ...got.saidB].some(t => /another device/.test(t)), 'S-6: the tab behind says the workout was saved in another tab, and nothing names another device (NEW-136)', got);
       await A.close();
     }
+    {
+      /* REV15-2: a tab takes in the other tab's sync notes only with the log they describe. Two tabs of one phone and a
+         second phone, one account. The second phone logs a session; tab A pulls it; tab B, which has not yet heard tab
+         A's save, syncs. Its notes would then say the account holds the session while its log does not, and its sync
+         would send the month's sessions without it, taking it off the account and the second phone. */
+      const C = cloudOf();
+      const A = await phone({ cloud: C, uid: 'u6r2', seed: function (S) { S.settings.lastExport = '2026-11-11'; S.sessions.push({ id: 'k1', date: '2026-11-05', dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }); } });
+      const B = await tab(A, FILE, C.setup('u6r2', 'B')); B.ev = (f, a) => B.page.evaluate(f, a);
+      const P2 = await phone({ cloud: C, uid: 'u6r2', who: 'P2', fresh: true });
+      await P2.ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); });
+      const on = P => P.page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 10000 }).then(() => true, () => false);
+      ok((await on(A)) && (await on(B)) && (await on(P2)), 'S-6: (setup) two tabs and a second phone synced to one account');
+      const has = (P, id) => P.ev(id => window.__ironlog.state.sessions.some(s => s.id === id), id);
+      await B.ev(() => { window.__deaf = true; });
+      await P2.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.push({ id: 'S', date: '2026-11-06', dayIdx: 0, dayId: null, dayName: 'Day 1', routineId: '', notes: '', demo: false, deload: false, light: false, ex: [{ exId: 'bench', note: '', rr: null, sets: [{ w: 62.5, r: 8, rir: 2, warm: false, drop: false }] }] }); }); });
+      await wait(300); await P2.ev(() => window.__ironlog.flush()); await wait(600);
+      await A.ev(() => window.__ironlog.sync()); await wait(600);
+      const pulled = { A: await has(A, 'S'), B: await has(B, 'S'), account: C.sessionsIn('u6r2').some(x => x.id === 'S') };
+      const w0 = C.writes.length;
+      await B.ev(() => window.__ironlog.flush()); await wait(800);
+      await P2.ev(() => window.__ironlog.sync()); await wait(600);
+      const got = { pulled, wroteB: C.writes.slice(w0).filter(w => w.who === 'B').map(w => w.p.split('/').pop()), account: C.sessionsIn('u6r2').some(x => x.id === 'S'), phone2: await has(P2, 'S') };
+      ok(got.pulled.A && !got.pulled.B && got.pulled.account && got.account && got.phone2, 'S-6: a tab that has not yet heard the other tab\'s save syncs: a session the other tab pulled stays in the account and on the phone that logged it (REV15-2)', got);
+      await P2.close(); await A.close();
+    }
   }
 
   /* ---------- S-7: Undo ---------- */

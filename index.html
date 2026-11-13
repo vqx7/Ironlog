@@ -10265,6 +10265,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return mine;
   }
   function notesCatchUp() {
+    if (storedElsewhere() != null) return false;
     let text = null;
     try {
       text = localStorage.getItem(SYNC_KEY);
