@@ -72,7 +72,7 @@ import {
   cycleState
 } from './live';
 import { acct, awayFrom, cloud, state, ui } from './store';
-import { parkedDates, parkedHere } from './park';
+import { keptUntil, parkedHere } from './park';
 import {
   ACCT_LATER,
   BWSNOOZE_KEY,
@@ -638,8 +638,7 @@ const STARTS_HELP = html`In <b>Change</b>: <b>Lighter day</b>: every exercise on
 
 /** The set-aside workout card's line, with the last day it is kept (NEW-96, park.ts). */
 function parkLine(): string {
-  const d = parkedDates();
-  return `Set aside while you fixed an earlier one.${d ? ` Kept until ${fmtDate(d.until)}.` : ''}`;
+  return `Set aside while you fixed an earlier one.${keptUntil()}`;
 }
 /** Today, with no session in progress: the first pages of a new install, or the start card and everything under it. */
 export function viewToday(): TemplateResult {
