@@ -1365,9 +1365,12 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     // later, since closing is the lifter's call, and the late set joins the finished session (before, the later edit
     // won: the finished workout came back open on both phones and the next one was saved away as a session). The
     // same with the app closed and opened again between the two workouts, the usual order on a phone (REV15-6: what
-    // the phone closed was known for the visit only, so the finished workout came back open on both).
-    for (const reopen of [false, true]) {
-      const said = reopen ? ' (the app closed and opened again between the two workouts, REV15-6)' : '';
+    // the phone closed was known for the visit only, so the finished workout came back open on both), and with an
+    // empty workout started and discarded between them, the wrong day tapped (REV16-A3: the next one followed the empty
+    // one, so the finished workout came back open on both).
+    for (const between of ['', 'reopen', 'empty']) {
+      const reopen = between === 'reopen';
+      const said = reopen ? ' (the app closed and opened again between the two workouts, REV15-6)' : between === 'empty' ? ' (an empty workout started and discarded between them, REV16-A3)' : '';
       const cloud = cloudOf();
       const A = await phoneTwo(browser, cloud, 'u1'); pages.push(A);
       await wait(900); await A.start(4); await A.tick(0, 100, 8); await A.flush();
@@ -1377,6 +1380,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       await B.ev(() => { window.__offline = true; });
       await A.finish();
       if (reopen) { await A.flush(); await A.reopen(); }
+      if (between === 'empty') { await A.start(4); await A.ev(() => window.__ironlog.ACT.discard()); await wait(200); }
       await A.start(4); await A.tick(0, 110, 8); await A.flush(); await wait(400);
       const w2 = (await A.draft()) && (await A.draft()).id;
       await wait(1100);
