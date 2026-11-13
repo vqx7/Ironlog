@@ -1498,6 +1498,9 @@ export function fillSets(bi: number, list: TypedSet[]): number {
         x.warm = false;
         x.drop = false;
         x.done = !oddLoad(b, si, d.date) && !oddReps(b, x);
+        // Ticked here by the app, it keeps what was asked of it as a set ticked by its button does; one far off is
+        // ticked, and keeps it, when its question is answered (setDone). Left out, quick entry kept nothing (REV15-7).
+        if (x.done) noteAsked(d, b, si);
         if (!x.done && far < 0) far = si;
         si++;
       }

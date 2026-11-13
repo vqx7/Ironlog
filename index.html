@@ -16504,6 +16504,7 @@ ${more}`;
           x2.warm = false;
           x2.drop = false;
           x2.done = !oddLoad(b2, si, d3.date) && !oddReps(b2, x2);
+          if (x2.done) noteAsked(d3, b2, si);
           if (!x2.done && far < 0) far = si;
           si++;
         }

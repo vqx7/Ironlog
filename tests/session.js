@@ -1160,6 +1160,16 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const qd = await Q.draft();
     ok(qd.ex[0].sets[0].done && !qd.ex[0].sets[0].sg, 'L-36: a set ticked in a workout typed in afterwards keeps nothing asked', qd.ex[0].sets[0]);
     await Q.close();
+    // Sets typed in the lift's quick entry ("185x8, 8, 7") are ticked by the app, each keeping what was asked of it as a
+    // set ticked by its button does (REV15-7: they kept nothing).
+    const R = await lifter({ settings: { autoDone: false } });
+    await start(R);
+    const rsw = (await R.draft()).ex[0].sw;
+    await R.ev(() => window.__ironlog.ACT.bQuick({ dataset: { b: '0' } })); await wait(250);
+    await R.page.fill('#qTxt', '185x8, 8, 7'); await R.tap('#modal [data-act="qFill"]', 400);
+    const rd = (await R.draft()).ex[0].sets.filter(x => x.done).map(x => x.sg || null);
+    ok(rd.length === 3 && JSON.stringify(rd) === JSON.stringify([[rsw, 8], [rsw, 8], [rsw, 7]]), 'L-36: sets typed in quick entry keep what was asked of each, as sets ticked by their button do (REV15-7)', rd);
+    await R.close();
   }
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
