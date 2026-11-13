@@ -122,6 +122,10 @@ const res=await page.evaluate(()=>{
    ok(L.rirUsual('bench',L.today())===0&&I.dayMeta[T].chest.fail===0,'recovery reads only entered RIR: blanks never count as failure sets',I.dayMeta[T].chest);
    reset([S(addDays(T,-7),'bench',[[100,8,3,{drop:true}],[100,8,3,{drop:true}],[100,8,3,{warm:true}],[100,8,3,{cal:{at:8,pred:3}}]])]);
    ok(L.rirUsual('bench',L.today())==null,'warm-ups, drop sets and RIR checks are not part of the usual RIR');
+   // REV15-T1: each kind alone, so leaving out one kind and not another fails: two rated working sets and one of the kind.
+   for(const [k,mark] of [['drop sets',{drop:true}],['warm-ups',{warm:true}],['RIR checks',{cal:{at:8,pred:3}}]]){
+     reset([S(addDays(T,-7),'bench',[[100,8,3],[100,8,3],[100,8,3,mark]])]);
+     ok(L.rirUsual('bench',L.today())==null,`${k} alone are not part of the usual RIR: two rated working sets and one of them give none (REV15-T1)`,L.rirUsual('bench',L.today()));}
    reset([S(addDays(T,-90),'bench',[[100,8,2],[100,8,2],[100,8,2]])]);
    ok(L.rirUsual('bench',L.today())==null,'ratings older than 12 weeks do not count');
    reset(mix);L.state.settings.rirMode='off';L.invalidate();
