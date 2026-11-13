@@ -225,7 +225,7 @@ function stepId(e: UndoStep): string {
 }
 /** What a step as stored says beyond its log before (which never changes): whether its log after is kept, and its words. */
 const stepSig = (e: UndoStep): string => `${e.post == null ? '' : 'p'}|${e.said ?? ''}`;
-/** The steps in the store, by id, with what each says (stepSig); a step not listed here is not stored. */
+/** The steps in the store, by id, with what each says (stepSig), or '' while that is not known (read back, or being written); a step not listed here is not stored. */
 const stepsStored = new Map<string, string>();
 /** Whether the list as 2.57 kept it is still in the store, to be deleted once the steps are stored on their own. */
 let legacyStored = false;
@@ -247,6 +247,10 @@ async function undoWrite(): Promise<void> {
       if (stepsStored.get(id) === sig) continue;
       st.put({ pre: e.pre, post: e.post, t: e.t || Date.now(), ...(e.said ? { said: e.said } : {}) }, STEP_KEY + id);
       put.set(id, sig);
+      /* A step being written is in the store from the moment it is put, what it says unknown until the write ends: a
+         step taken back before then (Undo tapped at once) is deleted by the next write, which runs after this one. It
+         was left in the store, and the next visit offered it again, then said "Nothing to undo". */
+      stepsStored.set(id, '');
     }
     for (const id of stepsStored.keys())
       if (!live.has(id)) {
