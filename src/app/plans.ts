@@ -20,12 +20,11 @@ import { dayWorkout, defPlanIn, profRuleIn, routinePlanIn, DEFAULT_PLAN } from '
    the newest of its sessions up to the date being logged (`before`, a past
    workout's; today else) not done lighter nor short of its usual, and not
    a sample. Its working sets, and the range it was done at where the
-   training profile sets none for the lift. Until r54 it was read from the
-   records by the day's label, at any date: a deload logged
-   without its button set the plan, a lift done at its usual level on a
-   lighter day did not, a session stopped at half its sets did, and an
-   exercise added to a past workout read sessions after it. Never done in
-   full, the default as before. plain (the pace model) reads past sessions
+   training profile sets none for the lift. Read from the records by the
+   day's label, at any date, a deload logged without its button would set
+   the plan, a lift done at its usual level on a lighter day would not, a
+   session stopped at half its sets would, and an exercise added to a past
+   workout would read sessions after it. Never done in full, the default. plain (the pace model) reads past sessions
    without this, as without the profile. */
 /** The plan a lift is done at: the routine's, else its own last full session's sets and range, else its default. */
 export function planForIn(
@@ -92,10 +91,9 @@ export interface RoutineUpdate {
    the day gets the sets it would have on a normal day, the count that was
    halved (V 2026-10-18: added after a lighter day, it came back with
    half its sets every time after): the block's own (`full`, kept when its
-   sets were halved, r54: Pick for me's count, or Do again's), else the
-   lift's plan. Until r54 that was the lift's plan whatever was chosen, so
-   Pick for me's 2 sets on a normal day went in as 2 and on a lighter day
-   as 3. */
+   sets were halved: Pick for me's count, or Do again's), else the lift's
+   plan, so Pick for me's 2 sets go in as 2 on a lighter day as on a normal
+   one. */
 export function routineUpdatesIn(M: Model, d: FinishedDraft): RoutineUpdate | null {
   const R = M.s.routines.find(r => r.id === d.routineId);
   if (!R) return null;
@@ -113,8 +111,8 @@ export function routineUpdatesIn(M: Model, d: FinishedDraft): RoutineUpdate | nu
     // Limited-equipment swaps are for that session only.
     if (d.limited && b.swappedFrom) continue;
     /* A swap takes the range, effort, rest and step it was done at into the
-       day, its sets staying the slot's (from the audit: the day kept the
-       old lift's plan, so the next session asked other reps than this one). */
+       day, its sets staying the slot's (else the day keeps the old lift's
+       plan, and the next session asks other reps than this one). */
     if (b.swappedFrom && have.has(b.swappedFrom)) {
       const plan: RoutineUpdate['swap'][number]['plan'] = {};
       for (const k of ['repMin', 'repMax', 'rir', 'rest', 'inc', 'jump'] as const) {

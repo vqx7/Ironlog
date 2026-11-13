@@ -1,5 +1,5 @@
-/* The effort scale the lifter enters and reads effort in. Moved unchanged
-   from the legacy script in r53, with the Guide that names its ranges. */
+/* The effort scale the lifter enters and reads effort in, with the Guide
+   that names its ranges. */
 
 import { state } from './store';
 import { effAt, effScale } from './format';
@@ -12,8 +12,7 @@ import { EFFORT_TOP } from './records';
 /** The scale in use: whole RIR, half points, or RPE. */
 export const rirScale = () => effScale(state.settings.rirScale);
 
-/* An effort as the lifter's scale shows it, blank when there is none (moved in r54 so the screens and the engine's sentences show it by one
-   rule, effAt). */
+/* An effort as the lifter's scale shows it, blank when there is none, so the screens and the engine's sentences show it by one rule (effAt). */
 /** A stored RIR, or nothing, as the effort scale in use shows it. */
 export function effShow(v: number | string | null | undefined): string {
   if (v == null || v === '') return '';
@@ -22,9 +21,9 @@ export function effShow(v: number | string | null | undefined): string {
   return effAt(rirScale(), n);
 }
 
-/* A plan's effort is typed in the scale in use too (from the audit: on
-   the RPE scale Plan's line read RPE 8 while its field, labelled Target RIR,
-   took the 8 as RIR 8, and the line then read RPE 2). */
+/* A plan's effort is typed in the scale in use too (on the RPE scale,
+   Plan's line reading RPE 8 must not take the 8 in its field as RIR 8, and
+   then read RPE 2). */
 /** A number typed in the scale in use, as the RIR stored: RPE 8 is RIR 2. */
 export function effIn(n: number): number {
   return rirScale() === 'rpe' ? EFFORT_TOP - n : n;

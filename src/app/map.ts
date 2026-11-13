@@ -1,8 +1,7 @@
 /* The muscle map: Today's card, a flat front and back
    outline, or a 3D body, each muscle shaded by where its weekly hard sets
-   sit against its own target, drawn by lit-html as src/20-map.js drew it,
-   with the actions that change what it shows. The exercise sheets (an
-   exercise's muscles on the body, sheetsexercise.ts since r62) draw the same
+   sit against its own target, drawn by lit-html, with the actions that change what it shows. The exercise sheets (an
+   exercise's muscles on the body, sheetsexercise.ts) draw the same
    figures and the same 3D body from here.
 
    The flat figures: coordinates for a 120 x 210 box, left-side shapes
@@ -755,7 +754,7 @@ export function mapCard(): TemplateResult {
   const src = ui.mapSrc === 'week' || !avg ? 'week' : 'avg';
   const st = muscleStatus(src === 'avg' ? avg : I.weekSets[weekStart(today())] || {}, src === 'week');
   const S = (m: string): MuscleStatus => st[m] || { v: 0, lo: 0, hi: 0, st: 'none' };
-  // "1 hard set", and no target for a tracked-only muscle (from the review).
+  // "1 hard set", and no target for a tracked-only muscle.
   const hsw = (v: number): string => `${r1(v)} hard set${r1(v) === 1 ? '' : 's'} a week`;
   const tgt = (m: string): string => (!hasTarget(m) ? ', tracked only' : `, target ${S(m).lo} to ${S(m).hi}`);
   const lab = (m: string): string =>
@@ -894,8 +893,8 @@ export const MAP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
 
 /* ---------- an exercise's muscles (the exercise sheets) ---------- */
 
-/* An exercise's muscles on the body, for the exercise sheets
-   in the legacy script (r60 moves them): the same flat figures, the main
+/* An exercise's muscles on the body, for the exercise sheets: the same
+   flat figures, the main
    muscle in the accent, helpers lighter (they count half a set), the rest
    left neutral. */
 /** An exercise's main muscle and its helpers. */

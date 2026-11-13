@@ -1,9 +1,8 @@
 /* What a stored record may hold: the schema version, the limits on body
    entries and kept unknown fields, the id checks, the cleaners for a
    calibration set, a check-in and a target, the order of sessions, and how
-   long deleted things are kept (phase 3a; moved unchanged from the
-   legacy script). normalize(),
-   which applies them to a whole save, moves with storage in phase 4. */
+   long deleted things are kept. normalize(), which applies them to a whole
+   save, is normalize.ts's. */
 
 import { hashStr, numOr, isNum, isDate } from './util';
 import { MEAS } from './library';
@@ -60,8 +59,8 @@ export const LIMITS = {
   name: 40,
   /** An exercise's name, in characters: the library's longest is 36. */
   exName: 60,
-  /** A note, in characters: a session's, an exercise's, an injury's (2.27-F3: any length before, and one
-      long paste could make a month too large to sync). */
+  /** A note, in characters: a session's, an exercise's, an injury's (one long paste could otherwise make a
+      month too large to sync). */
   note: 5000,
   /** A section key, in characters, and how many a tab's order keeps. */
   secKey: 40,
@@ -287,7 +286,7 @@ export const PIC_MAX = 4;
 /* PIC_MAX is room to add, not a bound on what is kept: a lift done twice in
    a row is saved as one exercise (joinAdjacent), its notes' pictures
    together, so a saved exercise can hold more than one note's four, and
-   cutting them there lost pictures the lifter added (the review of r66).
+   cutting them there would lose pictures the lifter added.
    What a record keeps is bounded only against a damaged save. */
 /** The most picture ids one record keeps as a save is read: ten notes' worth, far past what the app's own saves hold. */
 const PIC_KEEP = 10 * PIC_MAX;

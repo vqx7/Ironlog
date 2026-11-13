@@ -227,7 +227,7 @@ ${more}`;
 
 /* A session's counted PRs (V 2026-11-07): a gold cup beside its name,
    the count and the words in its name and its tip, so History reads no more
-   text than before (tests/acceptance.js holds its text to r12's); an opened
+   text (tests/acceptance.js holds its text); an opened
    session marks each lift that had one. */
 /** The gold cup on a History row with `n` counted PRs. */
 function prBadge(n: number): TemplateResult {
@@ -245,7 +245,7 @@ function sessionRow(
   prs: readonly Pr[]
 ): TemplateResult {
   const open = ui.histOpen === s.id;
-  // A deload's name ends " (deload)", so beside its tag it read "(deload) deload" (the audit): the tag says it once.
+  // A deload's name ends " (deload)", so beside its tag it would read "(deload) deload": the tag says it once.
   const name = s.deload ? String(s.dayName || 'Session').replace(/ \(deload\)$/, '') : s.dayName || 'Session';
   const tm = (perDay[s.date] || 0) > 1 && sessTm(s) ? `, ${sessTm(s)}` : '';
   const filtered = ui.histEx && !open ? s.ex.find(x => x.exId === ui.histEx) : undefined;
@@ -391,7 +391,7 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       { undo: true }
     );
     render();
-    // Its own Undo step, like every change: before, Restore kept none, so the delete's step stayed on top and Undo read "Nothing to undo there".
+    // Its own Undo step, like every change, so the delete's step is not left on top for Undo to read "Nothing to undo there".
     toast(`${x.kind === 'session' ? 'Session' : x.kind === 'cardio' ? 'Cardio entry' : 'Routine'} restored`, true);
   },
   histDel(t) {

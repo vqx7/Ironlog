@@ -1,6 +1,5 @@
-/* Demo data (reworked in r29, V: the old demo "feels shitty and demotivates
-   users"; moved from the legacy script's 26-import.js and 27-actions.js in
-   r63). It is a lifter who follows the active routine and the app's own
+/* Demo data (V, of an earlier demo: it "feels shitty and demotivates
+   users"). It is a lifter who follows the active routine and the app's own
    double progression: every set adds a rep each session until all reach the
    top of the range, then the load goes up one real step (progStep) and the
    reps start again near the bottom. Every planned session is done, RIR sits
@@ -241,7 +240,7 @@ export function makeDemo(): void {
     const slots = demoSlots(R, cur, t);
     // One progression per lift and rep range, like the app's own targets.
     const prog: Record<string, Prog> = {};
-    /* r30 (V's choice): one marked deload week, three weeks back, and one
+    /* V's choice: one marked deload week, three weeks back, and one
        missed day, six weeks back, so the demo shows how a deload is handled
        (left out of trends, stalls, targets and the volume average) and a gap.
        The missed day sits outside the weeks the volume average reads, and the
@@ -310,8 +309,7 @@ const DEMO_SAID = 6000;
 
 /** The demo's tap, by data-act. */
 export const DEMO_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
-  /* Signed in, the demo would sync into the account (the second
-     review of r55); signing out to load it would make the next sign-in a
+  /* Signed in, the demo would sync into the account; signing out to load it would make the next sign-in a
      first link, which brings back what other phones deleted meanwhile, so it
      is not offered. */
   demoLoad() {

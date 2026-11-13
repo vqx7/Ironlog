@@ -1,9 +1,8 @@
 /* The sheets of an exercise in the library: the editor,
    new or saved, the muscles it works, flat or in 3D, and its history from
    inside a session with the trend line. Each is drawn by
-   lit-html as src/24-sheets.js drew it (tests/r62.js holds them to r61's),
-   and answered by the editor's actions and listeners by their data-act and
-   data-ebind (actspick.ts and events.ts since r63). The editor is drawn again
+   lit-html and answered by the editor's actions and listeners by their
+   data-act and data-ebind (actspick.ts and events.ts). The editor is drawn again
    in place as its fields change (a helper muscle, bodyweight, timed, the
    equipment), so what is typed stays; so its labels' tips are drawn with
    the labels (labelTip), not added by the page's tip pass, which would
@@ -101,15 +100,14 @@ export function exMusSheet(m: { exId: string }): TemplateResult {
 /** A lift's trend line reads its last three full sessions in its usual range. */
 const TREND_SESSIONS = 3;
 
-/* The sessions the trend reads (r30: a deload or lighter day in the list
-   read as a drop; since r54 one short of its usual is in), in the trend's
-   range, so a heavy and a light day are not read as one line, and
+/* The sessions the trend reads (a deload or lighter day in the list would
+   read as a drop; one short of its usual is in), in the trend's range, so a heavy and a light day are not read as one line, and
    since a new machine or gym (liftRead). The word follows the lift's
-   trend when it has one (from the third review: a press flat for 7
-   weeks read "67.5 → 69.7 → 69.7 · up" from its last three sessions), says
-   nothing with no trend yet (under 3 sessions over 2 weeks: r32's second
-   check, "· up" from three sessions in a week), covers the trend's weeks,
-   not just the three numbers shown (r34.2: "252 → 249 → 252 · up"), and
+   trend when it has one (not "67.5 → 69.7 → 69.7 · up" from its last three
+   sessions for a press flat for 7 weeks), says nothing with no trend yet
+   (under 3 sessions over 2 weeks: not "· up" from three sessions in a
+   week), covers the trend's weeks, not just the three numbers shown (not
+   "252 → 249 → 252 · up"), and
    says nothing for a lift weeks off. Isolation lifts show their top sets,
    not a 1RM. */
 /** The trend line of a lift's history: its Est. 1RM or top sets over its last full sessions, and which way they go. */
@@ -150,12 +148,12 @@ const FLAT_SPAN = 0.02;
 /** The sessions the history lists, newest first. */
 const HIST_ROWS = 10;
 
-/* A lift's history from inside a session (from the third review: a
-   Strong or Hevy user expects it a tap away, not only the Last line). The
+/* A lift's history from inside a session, a tap away, not only the Last
+   line. The
    recent sessions as logged (warm-ups and drops marked, RIR as typed, from
    the saved session), labelled as the Last line labels them (sessionWord),
    a line of the strength reading (direction only), the best (the estimate
-   All-time bests says, PENDING 338 1), and a link to the full view in Stats. */
+   All-time bests says), and a link to the full view in Stats. */
 /** A lift's history sheet. */
 export function exHistSheet(m: { exId: string }): TemplateResult {
   const exId = m.exId;

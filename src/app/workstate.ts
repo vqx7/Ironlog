@@ -81,8 +81,8 @@ export type Draft = DraftLike;
 /** The rows whose load was carried down from a load typed above them (in this visit only). */
 export const carried = new WeakSet<DraftSet>();
 
-/* A ticked set whose load is cleared is unticked and waits for its weight
-   (356, and the independent review of r62): a load typed, or the checkmark
+/* A ticked set whose load is cleared is unticked and waits for its weight:
+   a load typed, or the checkmark
    tapped on its grey load, ticks it again as the same set, so the rest under
    way is not started over. In this visit only, like carried. */
 /** The rows unticked because their load was cleared, to be ticked again as the same set. */
@@ -96,7 +96,7 @@ export const adjSrc = new WeakMap<DraftBlock, DraftSet>();
 const blkOpenObj = new WeakSet<DraftBlock>();
 
 /* What an edit of a saved session holds, to tell whether anything changed
-   (r30: Cancel on an untouched edit asked "Discard this session?"). Kept in
+   (Cancel on an untouched edit does not ask "Discard this session?"). Kept in
    memory per draft; after a reload the edit asks as before. */
 /** The fingerprint an edit from History started from, by the edit's draft id. */
 export const editFp0 = new Map<string, string>();
@@ -132,8 +132,7 @@ const blkKey = (bi: number, b: DraftBlock): string => ((state.draft && state.dra
 /** Whether a block was opened again after it folded, by its place or itself. */
 export const blkIsOpen = (bi: number, b: DraftBlock): boolean => ui.blkOpen.has(blkKey(bi, b)) || blkOpenObj.has(b);
 
-/* Any exercise folds by hand, done or not (V 2026-11-09: in a blank session every exercise added stayed open;
-   NEW-91 gave an edit its button first): held by its place and itself, as an opened one is. A done exercise also folds
+/* Any exercise folds by hand, done or not (V 2026-11-09: in a blank session every exercise added stayed open): held by its place and itself, as an opened one is. A done exercise also folds
    by itself a moment after its last tick in a session, not in an edit, where all are done and the lifter came to
    change them. */
 const blkShutObj = new WeakSet<DraftBlock>();

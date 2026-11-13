@@ -1,6 +1,6 @@
-/* ---------- the profile photo (the account's since 2.34) ----------
-   A photo of the lifter shown in the menu button at the top right. Since 2.34
-   it belongs to the account, as a profile photo does in other apps (V,
+/* ---------- the profile photo, the account's ----------
+   A photo of the lifter shown in the menu button at the top right. It belongs
+   to the account, as a profile photo does in other apps (V,
    2026-11-08: "we should be treating it like an account"): it shows on every
    phone signed in to the account, goes from a phone that signs out,
    and is deleted with the account, whose documents all go with it
@@ -26,8 +26,8 @@ import { parseJson, rec } from './records';
 import { PHOTO_KEY, PHOTO_SYNC, PHOTO_ASKED, log, prefDel, prefGet, prefSet } from './storage';
 import { acct, cloud } from './store';
 
-/** The side of the kept photo in pixels: sharp on the menu button and fair opened large (256 until 2.60,
-    soft once enlarged), and still tens of kilobytes. */
+/** The side of the kept photo in pixels: sharp on the menu button and fair opened large (256 is soft once
+    enlarged), and still tens of kilobytes. */
 const PHOTO_EDGE = 512;
 /** The JPEG quality the photo is kept at. */
 const PHOTO_QUALITY = 0.85;
@@ -58,7 +58,7 @@ export function photoUrl(): string | null {
   return acct.user ? photoHeld() : null;
 }
 
-/** Where the phone's copy stands against the account, or null when nothing was noted (no photo, or one 2.33 kept). */
+/** Where the phone's copy stands against the account, or null when nothing was noted (no photo, or one a build of 2.33 kept). */
 export function photoNote(): PhotoNote | null {
   const t = prefGet(PHOTO_SYNC);
   if (!t) return null;
@@ -142,7 +142,7 @@ export function photoSent(et: number, uid: string): void {
 }
 
 /** Signing out: the photo goes from the phone, unless it holds a change the account has not taken and the
-    lifter chose to keep this phone's copy (the review of 2.34, F2). That change stays, with its note of the account,
+    lifter chose to keep this phone's copy. That change stays, with its note of the account,
     and is sent when that account signs in here again; another account signed in here takes its own instead
     (photoReconcile). Signed out, the menu shows no photo (photoUrl), and Today's line is offered again either way. */
 export function photoSignOut(keepUnsent: boolean): void {

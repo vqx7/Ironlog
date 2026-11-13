@@ -1,5 +1,4 @@
-/* The app's own taps (from the legacy script's 25-helpers.js and
-   27-actions.js): the menu and the Guide, installing, a section shown again
+/* The app's own taps: the menu and the Guide, installing, a section shown again
    or reached, the crash screen's Try again, Undo, the help lines, the rest
    timer's buttons, a question's answers, and the backup and spreadsheet
    exports. Each change to the log goes through `act`. */
@@ -66,8 +65,7 @@ async function exportFile(
 ): Promise<void> {
   /* The downloads service where the page runs inside Claude (retired), which
      says when a file is saved. Waited for only there: everywhere else the
-     share sheet and the download link run in the tap itself, as before r63,
-     since a browser may refuse them once the tap has passed. */
+     share sheet and the download link run in the tap itself, since a browser may refuse them once the tap has passed. */
   try {
     const c = window.claude;
     const dl = c && typeof c.use === 'function' ? await c.use('downloads') : null;
@@ -229,7 +227,7 @@ export function exportCSV(): Promise<void> | undefined {
       });
     }
   }
-  // A cardio entry's minutes under session_minutes, as the header says (r54 wrote them a column early).
+  // A cardio entry's minutes under session_minutes, as the header says, not a column early.
   for (const c of [...state.cardio].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)))
     rows.push([
       c.date,
@@ -270,7 +268,7 @@ export function exportCSV(): Promise<void> | undefined {
   );
 }
 
-/* The profile photo (the account's since 2.34): what shows it is
+/* The profile photo, the account's: what shows it is
    redrawn once it is kept or removed, the menu button, an open menu and
    Today's line, and the change is sent to the account. Once a photo is added,
    Today's line is answered on this phone until it signs out. */

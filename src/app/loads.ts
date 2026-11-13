@@ -1,5 +1,4 @@
-/* What a load number means, in words (phase 3a; moved unchanged from
-   the legacy script). Every set
+/* What a load number means, in words. Every set
    stores the number as typed; its meaning is a property of the exercise
    (loadMode, in library.ts). */
 
@@ -47,13 +46,13 @@ export function estInLoad(ex: ExerciseLike): boolean {
 
 /* What an empty load field shows when nothing is suggested: 0 on a
    bodyweight lift, nothing added, and nothing on a loaded lift or an
-   assisted one, whose help is not known until it is typed (PENDING
-   315 i: a first session showed 0 help, and ticked past it was saved at
-   full bodyweight, so the next normal session read lighter). */
+   assisted one, whose help is not known until it is typed (0 help shown,
+   ticked past, would be saved at full bodyweight, so the next normal session
+   would read lighter). */
 /** The grey text of an empty load field with no suggestion. */
 export const emptyLoad = (ex: Pick<Exercise, 'bw' | 'assist'>): string => (ex.bw && !ex.assist ? '0' : '');
 
-/* ---------- loads in words, in the unit on screen (phase 3b; moved from the legacy script) ---------- */
+/* ---------- loads in words, in the unit on screen ---------- */
 
 /** A load in kilograms as shown, rounded to a tenth; empty for none. toD of a number is a number, as the ! says. */
 export const fmtWIn = (M: Model, kg: number | null | undefined): string =>

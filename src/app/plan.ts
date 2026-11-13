@@ -95,7 +95,7 @@ const BAR_SCALE_MIN = 24;
 
 /* ---------- small parts ---------- */
 
-/** What a muscle with no weekly target says where its target would be (r58: any muscle may be given one). */
+/** What a muscle with no weekly target says where its target would be (any muscle may be given one). */
 const TRACKED_TIP = 'Tracked only: counted, with no target. Give it one in Settings, Weekly set targets.';
 
 /** An exercise's library tags (exTags): Most common and Less common, but not the one the list is filtered to. */
@@ -108,7 +108,7 @@ export function exTagParts(e: Pick<Exercise, 'id'> & Partial<Pick<Exercise, 'cus
 /** A day's flag for a muscle planned past SESSION_CAP sets in one workout, or nothing. */
 export function sessionCapNote(day: Day): Part {
   if (day.rest || !day.items.length) return nothing;
-  // Each of the day's workouts on its own (the review of r68: a morning and an evening were added up).
+  // Each of the day's workouts on its own, a morning and an evening not added up.
   const ms: Record<string, number> = {};
   for (const part of dayParts(day))
     for (const [m, v] of Object.entries(sessionMuscleSets(dayWorkout(day, part)))) ms[m] = Math.max(ms[m] ?? 0, v);
@@ -699,7 +699,7 @@ function itemInput(t: Field): void {
       if (k === 'jump') f.it.jump = r1(clamp(n, 0, LIMITS.jumpPct));
       else if (k === 'inc') {
         const e = state.exercises.find(x => x.id === f.it.exId);
-        // fromD gives null only for no number, and n is one. Within the step's bound in kilograms, the one a save keeps (until then 500 in the unit typed).
+        // fromD gives null only for no number, and n is one. Within the step's bound in kilograms, the one a save keeps, not 500 in the unit typed.
         const v = Math.min(fromD(Math.max(n, 0)) ?? 0, LIMITS.step);
         f.it.inc = v;
         if (e) e.inc = v > 0 ? v : null;
@@ -713,8 +713,8 @@ function itemInput(t: Field): void {
   );
 }
 
-/* Left (on change): never a minimum above the maximum (r30: the editor saved
-   "1 x 12-10", which nothing can read). The field just changed wins: a
+/* Left (on change): never a minimum above the maximum ("1 x 12-10", which
+   nothing can read). The field just changed wins: a
    minimum typed above the maximum raises it, a maximum typed below the
    minimum lowers it, so typing 12 then 15 into a 6 to 10 range gives 12 to
    15. A change other than the sets is carried into a workout in progress

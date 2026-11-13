@@ -1,4 +1,4 @@
-/* Routines' taps (from the legacy script's 27-actions.js): a ready-made
+/* Routines' taps: a ready-made
    routine picked (on a first run, in place of the starter), a new routine,
    and the update a finished session offers its routine day. Each change to
    the log goes through `act`. */
@@ -29,7 +29,7 @@ import type { Tap } from './workstate';
 
 /** How long a first run's routine note stays when it says more (Your training applied, the targets fitted), in milliseconds. */
 const READY_SAID = 6000;
-/** A new routine's days, laid out as Build my own's (the audit: three training days and no rest planned 7 sessions a week): 1 is a rest day. */
+/** A new routine's days, laid out as Build my own's (three training days and no rest would plan 7 sessions a week): 1 is a rest day. */
 const NEW_DAYS = [0, 1, 0, 1, 0, 1, 1] as const;
 
 /* A ready-made routine as first made has no superset links; it is given the
@@ -100,7 +100,7 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           state.activeRoutineId = r.id;
         }
         fit = fitTargets(state.routines.find(x => x.id === state.activeRoutineId));
-        // Your training, set in this sheet, applied as its Apply does (the audit: Strength set here left the pick's plans as they were, and Settings then offered to apply it).
+        // Your training, set in this sheet, applied as its Apply does (else Strength set here leaves the pick's plans as they were, and Settings then offers to apply it).
         pa = profApplyList(activeRoutine());
         for (const x of pa) Object.assign(x.it, x.ch);
         state.settings.onboarded = true;
@@ -161,7 +161,7 @@ export const ROUTINE_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       toast('That routine day no longer exists');
       return;
     }
-    // The workout it was done as: the day's second, or its first (the review of r68: an exercise added in the second went into the first).
+    // The workout it was done as: the day's second, or its first, so an exercise added in the second goes into the second.
     const pm = u.part === 2;
     const mine = (i: { pm?: true | undefined }): boolean => !!i.pm === pm;
     act(

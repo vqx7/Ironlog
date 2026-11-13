@@ -1,5 +1,4 @@
-/* The page (from the legacy script's 18-ui.js and 24-sheets.js): the
-   screen drawn into #view, the sheet over it in #modal, Back through both,
+/* The page: the screen drawn into #view, the sheet over it in #modal, Back through both,
    the menu button's save state, and the theme. The screens and the sheets
    import what they need from here; this module imports no screen and no
    sheet, since they import it (a circle, which the bundle would turn into a
@@ -59,7 +58,7 @@ function renderCrash(e: unknown): void {
 
 /** Draws the page: the current tab, and the open sheet over it. */
 export function render(): void {
-  // No session, no rest timer or screen kept on: a session erased, restored over or finished on another phone left both running (the audit).
+  // No session, no rest timer or screen kept on: a session erased, restored over or finished on another phone must not leave both running.
   if (!state.draft) {
     const t = document.getElementById('timer');
     if (t && !t.hidden) stopTimer();
@@ -91,7 +90,7 @@ export function rerenderKeepScroll(): void {
   const y = window.scrollY,
     el = document.activeElement,
     key = focusKey(el);
-  // The text as typed: "152." is 152 stored, and redrawn from the log it lost its point (the audit).
+  // The text as typed: "152." is 152 stored, and redrawn from the log it would lose its point.
   const txt = el instanceof HTMLInputElement && el.type === 'text' ? el.value : null;
   const sel = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el : null;
   const ss = sel && typeof sel.selectionStart === 'number' ? sel.selectionStart : null;
