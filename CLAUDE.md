@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r108, version 2.62, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r109, version 2.63, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -173,7 +173,7 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   Stats; no other app is named on screen; no wording about shared phones, someone else or another person; no
   Comeback (former bests); no restyle without V's direction; "on target", the 1RM display and mid-workout
   adjustments on by default are V's calls; the top bar sits at the top of every tab and scrolls away with the page, its
-  pull-down opening the calendar only with the page at its top (V, 2026-11-12, NEW-138).
+  pull-down opening the calendar only with the page at its top (V, 2026-11-12, NEW-138), out of the bar's bottom edge with the bar in view above it (V, 2026-11-12, NEW-142).
 - **Copy:** short, plain, specific; the number and the action on screen, the reasons in a tip or How this works; no
   em dashes, hype or exclamation marks; the serial comma in any list of three; estimated minutes only through
   `estMin` ("~N min"); the first-run Set up page stays under 400 characters, in lines of 45 at most. Code comments

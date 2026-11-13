@@ -1156,11 +1156,17 @@ details.more>summary .small{display:block;font-weight:400}
 .sheet h3{font:700 22px/1.15 var(--font);letter-spacing:-.015em}
 @media(min-width:700px){#modal{align-items:center}.sheet{border-radius:28px}.sheet::before{display:none}}
 /* The calendar pulled down from the week bar (NEW-107; not .top, the page header's class): it comes from the top, its handle at the bottom, and follows the finger while it is held. */
-#modal:has(> .sheet.fromtop){align-items:flex-start}
-.sheet.fromtop{border-radius:0 0 28px 28px;padding-top:calc(22px + env(safe-area-inset-top,0px));padding-bottom:24px;transition:transform .22s ease}
+/* The calendar pulled down from the top bar comes out of the bar's bottom edge (--bar-b, measured by the pull; the
+   header's height under the status bar otherwise): the bar stays in view above it, undimmed, and the page under it
+   dims as far as the pull has come (--pull, 0 to 1, set as the finger moves). The layer still covers the bar, so a
+   tap on the bar is a tap outside, and closes it. The sheet moved up into the bar is cut off at its edge (week.ts). */
+#modal:has(> .sheet.fromtop){align-items:flex-start;padding-top:var(--bar-b,calc(env(safe-area-inset-top,0px) + var(--head-h)));background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+#modal:has(> .sheet.fromtop)::before{content:"";position:absolute;left:0;right:0;bottom:0;top:var(--bar-b,calc(env(safe-area-inset-top,0px) + var(--head-h)));background:rgba(6,7,9,.55);opacity:var(--pull,1);transition:opacity .22s ease;pointer-events:none}
+#modal:has(> .sheet.fromtop.drag)::before{transition:none}
+.sheet.fromtop{border-radius:0 0 28px 28px;padding-bottom:24px;max-height:calc(100% - 16px);clip-path:inset(0 0 0 0);transition:transform .22s ease,clip-path .22s ease}
 .sheet.fromtop.drag{transition:none}
 .sheet.fromtop::before{top:auto;bottom:8px}
-@media (prefers-reduced-motion:reduce){.sheet.fromtop{transition:none}}
+@media (prefers-reduced-motion:reduce){.sheet.fromtop,#modal:has(> .sheet.fromtop)::before{transition:none}}
 .sheet-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
 .pick{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:11px 2px;cursor:pointer;color:var(--ink)}
 .pick b{font-weight:650}

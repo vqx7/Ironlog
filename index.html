@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.12-r108">
+<meta name="app-build" content="2026.11.12-r109">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1168,11 +1168,17 @@ details.more>summary .small{display:block;font-weight:400}
 .sheet h3{font:700 22px/1.15 var(--font);letter-spacing:-.015em}
 @media(min-width:700px){#modal{align-items:center}.sheet{border-radius:28px}.sheet::before{display:none}}
 /* The calendar pulled down from the week bar (NEW-107; not .top, the page header's class): it comes from the top, its handle at the bottom, and follows the finger while it is held. */
-#modal:has(> .sheet.fromtop){align-items:flex-start}
-.sheet.fromtop{border-radius:0 0 28px 28px;padding-top:calc(22px + env(safe-area-inset-top,0px));padding-bottom:24px;transition:transform .22s ease}
+/* The calendar pulled down from the top bar comes out of the bar's bottom edge (--bar-b, measured by the pull; the
+   header's height under the status bar otherwise): the bar stays in view above it, undimmed, and the page under it
+   dims as far as the pull has come (--pull, 0 to 1, set as the finger moves). The layer still covers the bar, so a
+   tap on the bar is a tap outside, and closes it. The sheet moved up into the bar is cut off at its edge (week.ts). */
+#modal:has(> .sheet.fromtop){align-items:flex-start;padding-top:var(--bar-b,calc(env(safe-area-inset-top,0px) + var(--head-h)));background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+#modal:has(> .sheet.fromtop)::before{content:"";position:absolute;left:0;right:0;bottom:0;top:var(--bar-b,calc(env(safe-area-inset-top,0px) + var(--head-h)));background:rgba(6,7,9,.55);opacity:var(--pull,1);transition:opacity .22s ease;pointer-events:none}
+#modal:has(> .sheet.fromtop.drag)::before{transition:none}
+.sheet.fromtop{border-radius:0 0 28px 28px;padding-bottom:24px;max-height:calc(100% - 16px);clip-path:inset(0 0 0 0);transition:transform .22s ease,clip-path .22s ease}
 .sheet.fromtop.drag{transition:none}
 .sheet.fromtop::before{top:auto;bottom:8px}
-@media (prefers-reduced-motion:reduce){.sheet.fromtop{transition:none}}
+@media (prefers-reduced-motion:reduce){.sheet.fromtop,#modal:has(> .sheet.fromtop)::before{transition:none}}
 .sheet-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
 .pick{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:11px 2px;cursor:pointer;color:var(--ink)}
 .pick b{font-weight:650}
@@ -2137,8 +2143,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.62";
-  var APP_VERSION = "2026.11.12-r108";
+  var DISPLAY_VERSION = "2.63";
+  var APP_VERSION = "2026.11.12-r109";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -19570,14 +19576,38 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
     const el = document.querySelector("#modal .sheet.fromtop");
     return el instanceof HTMLElement ? el : null;
   };
+  var SLIDE = { ms: 220, spare: 60 };
+  function pulled2(sh, p3) {
+    const md = sh.parentElement;
+    if (md) md.style.setProperty("--pull", String(Math.max(0, Math.min(1, p3))));
+  }
   function follow(sh, y2) {
+    const h3 = sh.offsetHeight, up = Math.round(Math.max(-h3, Math.min(0, y2)));
     sh.classList.add("drag");
-    sh.style.transform = `translateY(${Math.round(y2)}px)`;
+    sh.style.transform = `translateY(${up}px)`;
+    sh.style.clipPath = `inset(${-up}px 0 0 0)`;
+    pulled2(sh, h3 ? 1 + up / h3 : 1);
   }
   function settle(sh, keep) {
     sh.classList.remove("drag");
-    sh.style.transform = "";
-    if (!keep) closeModal();
+    if (keep) {
+      sh.style.transform = "";
+      sh.style.clipPath = "";
+      pulled2(sh, 1);
+      return;
+    }
+    const h3 = sh.offsetHeight;
+    sh.style.transform = `translateY(${-h3}px)`;
+    sh.style.clipPath = `inset(${h3}px 0 0 0)`;
+    pulled2(sh, 0);
+    let gone2 = false;
+    const close = () => {
+      if (gone2) return;
+      gone2 = true;
+      if (topSheet() === sh) closeModal();
+    };
+    sh.addEventListener("transitionend", close, { once: true });
+    setTimeout(close, SLIDE.ms + SLIDE.spare);
   }
   function pullStart() {
     const bar2 = document.getElementById("wkbar");
@@ -19606,13 +19636,17 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
         const dx = t4.clientX - x0;
         if (!on) {
           if (Math.abs(dx) > PULL.start && Math.abs(dx) >= dy) live2 = false;
+          if (live2 && dy > 0 && dy >= Math.abs(dx)) e5.preventDefault();
           if (dy < PULL.start || Math.abs(dx) >= dy) return;
           on = true;
+          const md = document.getElementById("modal");
+          const head = bar2.closest("header");
+          if (md && head) md.style.setProperty("--bar-b", `${Math.round(head.getBoundingClientRect().bottom)}px`);
           openModal({ kind: "calendar", ym: monthOf(today()), top: true });
         }
         e5.preventDefault();
         const sh = topSheet();
-        if (sh) follow(sh, Math.min(0, dy - sh.offsetHeight));
+        if (sh) follow(sh, dy - sh.offsetHeight);
       },
       { passive: false }
     );
