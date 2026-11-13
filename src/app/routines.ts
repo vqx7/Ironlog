@@ -1,6 +1,5 @@
 /* Routines as data: the weekday names, the default plan for an exercise, and
-   the ready-made routines with the function that copies one (phase 2;
-   moved unchanged from the legacy script); a lift's plan in a routine, and
+   the ready-made routines with the function that copies one; a lift's plan in a routine, and
    a routine's planned sets. Which routine a lifter starts on stays with the
    app's state, and what reads the analytics, a lift's plan from its own
    sessions and Finish's offer to change the routine, is in plans.ts. */
@@ -107,8 +106,8 @@ const LEGACY: Template = {
 };
 
 /* The routine installs started with before r29, with ids of its own, built
-   as every template's routine is (r61: by a copy of that code of its own
-   until then), so its key order is theirs. */
+   as every template's routine is, by the same code, so its key order is
+   theirs. */
 /** The routine installs started with before r29. */
 export function defaultRoutine(): NewRoutine {
   return routineOf(LEGACY, true);
@@ -155,9 +154,8 @@ export const TEMPLATES: readonly Template[] = (() => {
   // A routine's line under its name, unless it gives its own: its training days a week, read from its days (a week long, every one of them).
   const tpl = (t: { key: string; name: string; who: string; meta?: string; days: TemplateDay[] }): Template => ({ ...t, meta: t.meta ?? `${t.days.filter(d => !d.rest).length} days a week` });
   return [
-    /* New to lifting (from the review: 7 exercises, about 19 sets and
-       over an hour, with incline curls and hack squats, was not a first
-       routine). Five exercises a day on machines and dumbbells, 2 to 3 sets,
+    /* New to lifting (7 exercises, about 19 sets and over an hour, with
+       incline curls and hack squats, is not a first routine). Five exercises a day on machines and dumbbells, 2 to 3 sets,
        3 reps in reserve (easy to judge: stop when a rep slows down), about
        45 minutes. Weekly sets sit under the usual 10 on purpose; add a set as
        it gets easy. */
@@ -198,8 +196,7 @@ export const TEMPLATES: readonly Template[] = (() => {
       // Lateral raises split over two days: nine sets in one session added little past the first five or six.
       D('Shoulders',[I('ohp',3,6,10,2,150),I('cableLateral',5,10,20,1,60),I('facePull',3,12,20,1,60),I('dbShrug',3,10,15,1,60),I('seatedCalf',4,10,15,1,60),I('hangingLegRaise',3,10,15,1,60)]),
       D('Arms and legs',[I('inclineCurl',4,8,12,1,75),I('ohCableExt',4,8,12,1,75),I('hammer',3,10,12,1,60),I('pressdown',3,10,15,1,60),I('dbLateral',4,12,20,1,60),I('bss',3,8,12,1,90),I('lyingCurl',3,10,15,1,75)]),R(),R()]}),
-    /* Strength (from the review: nothing for someone after a stronger
-       squat, bench and deadlift). The classic five sets of five, alternating
+    /* Strength (for someone after a stronger squat, bench and deadlift). The classic five sets of five, alternating
        two days: when all five sets reach 5, the load goes up a step; two
        sessions short of 5 bring it down to what the estimate says fits.
        Fewer sets per muscle than the weekly targets, on purpose. */
@@ -210,8 +207,8 @@ export const TEMPLATES: readonly Template[] = (() => {
       D('Dumbbell A',[I('goblet',3,8,15,2,120),I('dbBench',3,8,12,2,120),I('dbRow',3,8,12,2,90),I('dbLateral',3,12,20,1,60),I('dbRearFly',3,12,20,1,60),I('dbCurl',3,10,15,1,60),I('slCalf',3,10,15,1,45)]),R(),
       D('Dumbbell B',[I('dbRdl',3,8,12,2,120),I('seatedDbPress',3,8,12,2,120),I('csDbRow',3,8,12,1,90),I('revLunge',3,8,12,2,90),I('dbLateral',3,12,20,1,60),I('ohDbExt',3,10,15,1,60),I('reverseCrunch',2,10,15,1,60)]),R(),
       D('Dumbbell C',[I('bss',3,8,12,2,90),I('incDb',3,8,12,2,120),I('dbPullover',3,10,15,1,75),I('slRdl',3,8,12,1,75),I('dbRearFly',2,12,20,1,60),I('hammer',3,10,15,1,60),I('slCalf',3,10,15,1,45)]),R(),R()]}),
-    /* High volume, trimmed (from the review: 17 chest sets in one
-       session, mostly to failure, and a neck circuit on shoulder day). At
+    /* High volume, trimmed (not 17 chest sets in one session, mostly to
+       failure, and a neck circuit on shoulder day). At
        most 11 sets for one muscle in a session (the app's per-session line),
        isolation lifts at 1 RIR with a few at 0, no neck work (tracked only).
        Installs before r30 keep their copy; Plan changes it. */
@@ -271,7 +268,7 @@ function routineOf(t: Template, shipped?: boolean): NewRoutine {
   };
 }
 
-/* ---------- routine helpers (phase 3a; moved unchanged) ---------- */
+/* ---------- routine helpers ---------- */
 
 /** The parts of a routine these helpers read. */
 type RoutineLike = {
@@ -321,9 +318,9 @@ export function nextTrainIdx(R: RoutineLike, i: number): number {
 
 /* A cycle that is not 7 days long plans a fraction a week: an every-other-day
    routine (5 x 5) 3.5, done in weeks of 4 and 3. The week counts as on plan at
-   the whole number below (V's call of 2026-10-18 after the audit V asked
-   for: rounded to 4, a lifter doing exactly what the routine says never built a
-   streak, and the ring read 3 of 4 every other week). One rule for the ring,
+   the whole number below (V's call of 2026-10-18: rounded to 4, a lifter
+   doing exactly what the routine says would never build a streak, and the
+   ring would read 3 of 4 every other week). One rule for the ring,
    This week, the streak and adherence. A routine that trains plans at least
    one a week, however long its cycle: rounded down alone, a cycle of one
    training day in nine would plan none and lose its ring. */
@@ -336,15 +333,15 @@ export function plannedPerWeek(R: RoutineLike): number {
 }
 
 /* What a session records at Finish of the routine it was logged against: the
-   sessions a week it planned then (from the audit: deleting the routine
-   a month was trained on, or adding a day to it, rescored those weeks against
-   the routine as it is now, and a 5-week streak read 0). Absent for a
+   sessions a week it planned then (else deleting the routine a month was
+   trained on, or adding a day to it, rescores those weeks against the
+   routine as it is now, and a 5-week streak reads 0). Absent for a
    Freestyle session or a routine that plans none, and on sessions saved
    before r55, which read the routine as it is now. A week of more than
    seven (two workouts on some weekdays) is not recorded either: a build
    before r68 drops a count past seven when it loads the session and saves
-   it back to the account, so every phone would lose it (the review of r68);
-   such a week reads the routine as it is now. */
+   it back to the account, so every phone would lose it; such a week reads
+   the routine as it is now. */
 /** The sessions a week the routine with this id plans, for a session to record; undefined when it plans none, more than seven, or is gone. */
 export function pwOf(routines: readonly (RoutineLike & { id: string })[], id: string): number | undefined {
   const R = routines.find(r => r.id === id);
@@ -353,12 +350,12 @@ export function pwOf(routines: readonly (RoutineLike & { id: string })[], id: st
 }
 
 /* The sets a routine's plan gives a lift, for a session saved on one of its
-   days to record with the lift (SessionEx.ps, 339 h): the day's item
+   days to record with the lift (SessionEx.ps): the day's item
    first, else the routine's first day with it (planItemOf, the order every
    plan of a lift is read in). Undefined for a lift on no day of it, or a
    routine gone. A session keeps the plan it was done to, so a plan changed
-   later never rereads the sessions before it (the r58 review: a plan raised
-   from 3 sets to 4 read every session of 3 as short). */
+   later never rereads the sessions before it (a plan raised from 3 sets to 4
+   does not read every session of 3 as short). */
 /** The sets the routine with this id plans for a lift, the given day first; undefined when it plans none or is gone. */
 export function planSetsOf(
   routines: readonly {
@@ -469,9 +466,9 @@ export function daySets(day: { items: { sets: number | string }[] }): number {
 }
 
 /* A rest day an exercise is added to becomes a training day, and its name
-   goes with it when it is the name rest days are given (from the audit:
-   a day of Build my own or New blank, given an exercise, read "Rest" on Today
-   and in the week bar with its exercises planned). A name typed stays. */
+   goes with it when it is the name rest days are given (a day of Build my
+   own or New blank, given an exercise, does not read "Rest" on Today and in
+   the week bar with its exercises planned). A name typed stays. */
 /** What a day given an exercise becomes: a training day, named Training day when it was a rest day named Rest. */
 export function trainOn(d: { rest: boolean; name: string }): { rest: false; name: string } {
   return { rest: false, name: d.rest && d.name === 'Rest' ? 'Training day' : d.name };
@@ -572,9 +569,9 @@ export const routineSig = (
   ]);
 
 /* A first-run choice (a ready-made routine, a routine from an import, or
-   Build my own since r55) replaces the starter a new install was given, as
+   Build my own) replaces the starter a new install was given, as
    long as it is untouched (its signature, `sigs`) and nothing was logged
-   against it: the audit of r54 found Build my own kept it beside My routine. */
+   against it, so Build my own does not keep it beside My routine. */
 /** The routines less an untouched starter, by its signatures, that no session was logged against. */
 export function dropStarter<R extends Parameters<typeof routineSig>[0] & { id: string }>(
   routines: readonly R[],
@@ -584,8 +581,8 @@ export function dropStarter<R extends Parameters<typeof routineSig>[0] & { id: s
   return routines.filter(x => !sigs.includes(routineSig(x)) || sessions.some(q => q.routineId === x.id));
 }
 
-/* "Eight plans, 2 to 6 days a week", counted from the list (r30: the line
-   said six after two were added). Every other day counts as about 3.5.
+/* "Eight plans, 2 to 6 days a week", counted from the list, so it stays true
+   as plans are added. Every other day counts as about 3.5.
    Each key comes from TEMPLATES itself, so each copy is found (the !). */
 export function tplCountLine(): string {
   const T = TEMPLATES.filter(t => !t.hidden);
@@ -600,7 +597,7 @@ export function tplCountLine(): string {
 /** The Plan editor's tip on target RIR: why the default is 1, a convention. */
 export const RIR_TGT_TIP = `Target RIR is ${DEFAULT_PLAN.rir} unless you change it, a rule of thumb: muscle growth improves as sets end closer to failure, but going all the way to failure grew muscle no more than stopping 1 to 2 reps short and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.`;
 
-/* ---------- the plan a lift is trained at (phase 3b; moved from the legacy script) ---------- */
+/* ---------- the plan a lift is trained at ---------- */
 
 /** What a profile changes in a plan item: the range and reserve, and on a heavy compound the rest. */
 type ProfChange = { repMin: number; repMax: number; rir: number; rest?: number };
@@ -648,7 +645,7 @@ export function profPlanIn(M: Model, ex: ExerciseLike, plain?: boolean): Plan {
 /* Default plan for an exercise that is not in the routine yet. Timed holds
    start at TIMED_PLAN's seconds rather than the default reps. */
 // The profile's rules for a lift; with no profile, or Size, exactly the defaults as before.
-// plain: without the profile, for reading sessions already logged (the pace model, r44 review).
+// plain: without the profile, for reading sessions already logged (the pace model).
 export function defPlanIn(M: Model, exId: string, plain?: boolean): Plan {
   const ex = EXIn(M, exId);
   return ex.timed ? { ...DEFAULT_PLAN, ...TIMED_PLAN } : profPlanIn(M, ex, plain);
@@ -665,7 +662,7 @@ export function routinePlanIn(
   dayId?: string | null,
   part?: 1 | 2
 ): Plan | null {
-  // The day's workout first when a session names it (the second review of r68: a lift in both workouts).
+  // The day's workout first when a session names it, for a lift in both workouts.
   const it = planItemOf(R || activeRoutineIn(M), exId, dayId, part);
   if (!it) return null;
   const { uid: _u, ss: _s, ...p } = it;
@@ -673,9 +670,9 @@ export function routinePlanIn(
 }
 
 /* The item itself, so a change to it in Plan reaches the exercises of a
-   session that took their plan from it, by the one search order (from
-   the audit: a range changed in Plan never reached the same lift in a blank
-   session, which took its plan from the first day with it). */
+   session that took their plan from it, by the one search order (else a
+   range changed in Plan never reaches the same lift in a blank session, which
+   took its plan from the first day with it). */
 /** The item a lift's plan in a routine comes from: on the day given first, else the first day with it; null on no day. */
 export function planItemOf<I extends { exId: string; pm?: true | undefined }>(
   R: { days: readonly { id: string; items: readonly I[] }[] },
@@ -684,7 +681,7 @@ export function planItemOf<I extends { exId: string; pm?: true | undefined }>(
   part?: 1 | 2
 ): I | null {
   const days = dayId ? [...R.days.filter(d => d.id === dayId), ...R.days.filter(d => d.id !== dayId)] : R.days;
-  // On the day, its workout first when one is named (366 (c): a lift in both of a day's workouts, the review of r68).
+  // On the day, its workout first when one is named, for a lift in both of a day's workouts.
   const mine = (it: I): boolean => !!it.pm === (part === 2);
   for (const d of days) {
     const its = part && d.id === dayId ? [...d.items.filter(mine), ...d.items.filter(it => !mine(it))] : d.items;
@@ -698,9 +695,8 @@ export function planItemOf<I extends { exId: string; pm?: true | undefined }>(
    analytics read, neither of which reads the lift's own sessions for it.
    An exercise added mid-session, or a lift on no day of the routine, takes
    the plan of plans.ts (planForIn), which adds the lift's own last full
-   session; until r54 this read it here, from the records, where the
-   analytics' reading of a session (done lighter, or short of its usual) is
-   not known. */
+   session: not here, from the records, where the analytics' reading of a
+   session (done lighter, or short of its usual) is not known. */
 export function basePlanIn(M: Model, exId: string, R?: Routine | null, dayId?: string | null, plain?: boolean): Plan {
   return routinePlanIn(M, exId, R, dayId) || defPlanIn(M, exId, plain);
 }
@@ -724,8 +720,8 @@ export function planCreditIn(M: Model, it: { rir: number | string }): number {
    (plannedPerWeek) shared over its training days (V 2026-10-18: the
    planned sets follow the sessions a week counts as on plan, so Strength
    5 x 5, every other day, plans three sessions' worth, 39 hard sets, where
-   three and a half read 46 and a lifter on plan was told to do every
-   planned set; the review of r54 found that). */
+   three and a half would read 46 and tell a lifter on plan to do every
+   planned set). */
 /** How many times a week each training day of a routine comes round. */
 export function dayShare(R: RoutineLike): number {
   const n = trainDaysOf(R);
@@ -755,10 +751,10 @@ export function dayCreditIn(M: Model, d: Day): Record<string, number> {
 }
 
 /* A muscle's planned hard sets a week: each day's as often as it comes round
-   (dayShare). Moved from the legacy script in r54 so the coach can tell a
-   plan short of a muscle's target from one that already reaches it. `share`
-   reads the plan another way: before r54 each day of a cycle came round 7
-   divided by its length times a week (weekFactor), and the targets a
+   (dayShare), so the coach can tell a plan short of a muscle's target from
+   one that already reaches it. `share` reads the plan another way, each day
+   of a cycle coming round 7 divided by its length times a week (weekFactor),
+   as builds before r54 read it: the targets a
    first-run pick fitted by that reading are refitted from it (refitIn). */
 /** Planned hard sets a week for each muscle, from a routine (each day `share` times a week, dayShare unless given). */
 export function plannedSetsIn(M: Model, routine: Routine | NewRoutine, share?: number): Record<string, number> {

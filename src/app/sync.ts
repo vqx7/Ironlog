@@ -1,11 +1,9 @@
-/* Saving the log, and the account's copy of it (phase 4; moved from the
-   legacy script's storage, sync and account parts, changing nothing they do).
-   A save goes to this device at once (saveNow) and on to the account after
+/* Saving the log, and the account's copy of it. A save goes to this device at once (saveNow) and on to the account after
    it (cloudSoon): localStorage alone is not durable on a phone (iOS deletes a
    site's storage after 7 days without a visit, clearing browser data wipes
    it, a new phone starts empty), so localStorage stays the instant, offline
-   copy and the account is the durable one. Inside Claude the artifact's own
-   database stood in for the account, and the sync suites still use it so.
+   copy and the account is the durable one. The sync suites use the Claude
+   artifact's database as their stand-in account (cloudProvider).
 
    Layout: one document for routines, exercises, settings and body data, one
    for the in-progress session, one per half-month of sessions, and one per
@@ -93,7 +91,7 @@ const SYNC_MS = {
 const RETRY_S: readonly number[] = [5, 15, 60, 180];
 /** What a phone whose sign-in the server refuses says. */
 const SIGNIN_AGAIN = 'Your sign-in has expired. Sign in again to sync. Your log stays on this phone.';
-/** Says that the server refused this phone's sign-in: when a sync meets the refusal (F10), and when the account library met it first and signed the phone out itself. */
+/** Says that the server refused this phone's sign-in: when a sync meets the refusal, and when the account library met it first and signed the phone out itself. */
 export function signInAgain(): void {
   fx.toast(SIGNIN_AGAIN, null, SYNC_MS.errToast);
 }
@@ -121,7 +119,7 @@ declare global {
 let saveT: number | null = null;
 /** What runs after each write of the log to this device succeeds (onSaved). */
 const savedHooks: (() => void)[] = [];
-/* A copy kept elsewhere on the phone until the log holding it is written (park.ts's set-aside workout, REV6-S2) is let
+/* A copy kept elsewhere on the phone until the log holding it is written (park.ts's set-aside workout) is let
    go here, once a write succeeds: until then the log lives in memory alone. */
 /** Runs `f` after each write of the log to this device succeeds. */
 export function onSaved(f: () => void): void {
@@ -141,9 +139,8 @@ function writeLocal(j: string): void {
 }
 /* Whether another tab wrote the log since this one last saved or heard it:
    the save there is not yet heard here (a storage event comes a task later),
-   so writing now would replace it (from the independent review of r60: a
-   tick in one tab and a load typed in another, each tab saving what it had,
-   lost one of them). A log never saved or read here has nothing to compare. */
+   so writing now would replace it (a tick in one tab and a load typed in
+   another, each tab saving what it had, lost one of them). A log never saved or read here has nothing to compare. */
 function storedElsewhere(): string | null {
   if (!device.boot || device.lastSaved == null) return null;
   try {
@@ -328,10 +325,10 @@ const notesIn = (
   }
   return { meta, editAt, last: typeof m.last === 'number' ? m.last : null };
 };
-/* The notes on the phone describe the log on the phone, always (the review of the fix). So they are not written while the log's own
+/* The notes on the phone describe the log on the phone, always. So they are not written while the log's own
    save is failing: a sync note saved ahead of the log made the log of the
    next start read as edited back, and the sync deleted the workouts it
-   lacked from the account (r55 and since). Nor over newer notes from another
+   lacked from the account. Nor over newer notes from another
    tab. Tabs share one storage, but a tab reads another's write only once it
    arrives, milliseconds on: a second tab hearing the menu's Sign out a
    millisecond after the first had forgotten the notes still read the old
@@ -567,8 +564,8 @@ function cloudFail(e: unknown): void {
     /* A sign-in the server refuses can never sync again: this phone signs out
        of it, keeping the log and the sync notes (signing back in to the
        account goes on from them), and says so, once, as the failure turns the
-       sync off (the r63 audit's F10: nothing was said, and Your data
-       read "Not syncing right now" with no way to sign in). */
+       sync off (said nothing, Your data read "Not syncing right now" with no
+       way to sign in). */
     if (c === 'revoked' && was) {
       const A = AUTH();
       acct.user = null;
@@ -713,8 +710,8 @@ export function mergeChunk(
     // later, since closing is the lifter's call; the sets ticked since are kept by keepLost (joined to the saved session).
     if (bd && ((!rd && ld && ld.id === bd.id) || (!ld && rd && rd.id === bd.id))) return { draft: null };
     /* The same with the next workout started on the side that closed it, which notes the one it follows: it stays open,
-       and the sets ticked late in the closed one join its session (NEW-134: the later edit won, so a phone behind
-       brought the finished workout back open on both and saved the next one away as a session). A workout chosen at a
+       and the sets ticked late in the closed one join its session (were the later edit to win, a phone behind would
+       bring the finished workout back open on both and save the next one away as a session). A workout chosen at a
        first sign-in follows nothing, so there the later edit still decides (S-13). */
     if (bd && ld && rd && ld.id === bd.id && rd.follows === bd.id) return { draft: r.draft };
     if (bd && ld && rd && rd.id === bd.id && ld.follows === bd.id) return { draft: l.draft };
@@ -827,7 +824,7 @@ function resyncLocalH(): void {
 }
 /* The session in progress is one record, so another device finishing or
    discarding it replaces this one's (the later edit wins). Said in its own
-   words rather than the generic note (audit item 288). */
+   words rather than the generic note. */
 function draftNote(prev: unknown, kept?: Kept, where = 'on another device'): void {
   const P = rec(prev);
   const d = state.draft;
@@ -873,13 +870,13 @@ function draftNote(prev: unknown, kept?: Kept, where = 'on another device'): voi
   );
 }
 /* The copy of the workout in progress that loses a merge is never dropped
-   (PENDING 328 a and c): its ticked sets go into the log as a session,
+   : its ticked sets go into the log as a session,
    with its cardio rows and check-in, as a first link keeps another phone's
    workout (draftSession); when the same workout was finished on another
    phone (a session of its id is in the log), the sets join that session row
    by row against the copy both agreed on, and its cardio rows join the log's
-   cardio, as Finish saves them (F6: the join kept the sets
-   alone, and a copy with cardio and no ticked set was dropped whole). A copy
+   cardio, as Finish saves them (joining the sets alone would
+   drop a copy with cardio and no ticked set whole). A copy
    that lost nothing (the same workout, still open), an edit of a saved
    session, or one with nothing ticked and no cardio is left alone. Only a
    copy that carried changes the account did not have is kept: the callers
@@ -903,8 +900,8 @@ function keepLost(
   const have = state.sessions.find(q => q.id === lost.id);
   if (have) {
     /* The agreed copy is the base, an agreed copy with nothing ticked an
-       empty one (the review of the fix: read as none, two
-       identical sets ticked one on each phone were matched as one). */
+       empty one (read as none, two identical sets ticked
+       one on each phone would be matched as one). */
     const base = was ? draftSession(was, true) : null;
     const stat = { conflicts: 0 };
     // With no agreed copy (a note from a build before r56.1) the saved session's values stand where the two differ,
@@ -912,8 +909,8 @@ function keepLost(
     const joined = kept ? mergeSession(base, kept, have, base ? remoteWins : true, stat) : have;
     /* Its cardio rows merge against the agreed copy's, record by record, as
        its sets do: an edit made here is kept, a row the other phone deleted
-       stays deleted (the review of the fix: a row in the log stood as it was,
-       so an edit here was lost and a deletion there came back). */
+       stays deleted (with the log's row standing as it was,
+       an edit here would be lost and a deletion there come back). */
     const norm = (l: readonly unknown[]): CardioEntry[] => l.map(c => cleanCardio(c));
     const ids = new Set(
       [...(was ? draftCardio(was) : []), ...cardio].map(c => c.id).filter(x => typeof x === 'string')
@@ -984,7 +981,7 @@ async function sessionFromCloud(d: DraftLike, legB: Base | null): Promise<void> 
 /* What a clash kept, in words that are true of it. Between devices the later edit is kept, by each document's time
    of edit. Between two tabs of one phone the tab merging keeps the other tab's copy (mergeIn): when both changed one
    item before either heard the other, that copy may be the earlier change, so the words say whose was kept, not
-   that it was later (NEW-124: they said "The later edit was kept" of the earlier one). */
+   that it was later (not "The later edit was kept" of the earlier one). */
 /** Says how many items were changed in two places at once, and which copy was kept: the later edit between devices (tabs false), the other tab's between tabs. */
 function conflictNote(stat: { conflicts: number }, tabs = false): void {
   const n = stat.conflicts;
@@ -1009,7 +1006,7 @@ function seenOf(d: Rec | null): CloudSeen {
 }
 /** Whether the account holds this device's own unanswered write of a document, read as `d`: then its
     note is the copy written, as if the answer had come, so what was deleted here since is read as deleted, not as
-    added on the account (2.27 and before: a session deleted after a lost answer came back, and one phone alone was
+    added on the account (else a session deleted after a lost answer comes back, and one phone alone is
     told a record was edited on two devices). Taken only for the account and the note it was sent from. */
 function ownWrite(id: string, d: Rec | null): void {
   const s = cloud.sent[id];
@@ -1086,7 +1083,7 @@ async function photoSend(url: string | null, et: number, d: Rec | null, me: stri
   }
 }
 /** Settles the photo with the account now: the account's copy read, then the later change kept or sent. Run in the
-    sync's queue (cq); Sign out awaits it, so a change made here is sent before the phone lets go of it (the review's F2). */
+    sync's queue (cq); Sign out awaits it, so a change made here is sent before the phone lets go of it. */
 export async function photoFlush(): Promise<void> {
   if (!cloud.on || !cloud.db) return;
   try {
@@ -1176,12 +1173,12 @@ export async function cloudFlush(): Promise<void> {
   notesCatchUp();
   /* No pull has come through since the sync started (it failed, or got no
      answer): this one pulls first, which then sends. A retry that only sent
-     found nothing to send and said Synced, the account's own changes never
-     read (found building r64's fix of the r63 audit's F3). */
+     would find nothing to send and say Synced, the account's own changes
+     never read. */
   if (!pulled) return cloudPull();
   if (trackT || cloud.pendAt) trackEdits();
   const todo = changedDocs();
-  /* The draft goes up last (the r45 QC): Finish empties it and adds the
+  /* The draft goes up last: Finish empties it and adds the
      session, and written first, a device pulling in between saw the workout
      gone and no session, and said it was discarded. */
   todo.sort((a, b) => +(a.id === 'draft') - +(b.id === 'draft'));
@@ -1298,8 +1295,8 @@ export async function cloudFlush(): Promise<void> {
           saveMeta();
           done = true;
         } else {
-          /* Another device wrote it between the read and this write (2.27-F1: before 2.28 this write landed over
-             that one, and its sets were gone from every phone, unsaid). What was taken in from the copy read is
+          /* Another device wrote it between the read and this write (landing over that write would take its
+             sets off every phone, unsaid). What was taken in from the copy read is
              merged here now, so that copy is the base the next read is merged against. */
           log('sync-race', { id: x.id, tries: tries + 1 });
           if (took) {
@@ -1371,13 +1368,13 @@ function remoteDocs(docs: readonly { id: string; exists: boolean; data(): unknow
 
 /** A first sign-in on a phone that holds a log of its own: the two combined (below), the account's copy made the agreed base; true when the other phone's workout in progress was saved as a session. */
 function mergeFirstLink(mine: State, rState: State, rids: readonly string[], remote: Record<string, Remote>): boolean {
-  // a routine or exercise made here is the phone's own too (the review: one built before a first sign-in was replaced)
+  // a routine or exercise made here is the phone's own too, never replaced by the account's
   const base = realCount(mine) > realCount(rState) ? mine : rState,
     other = base === mine ? rState : mine;
   /* Settings come from the side with more sessions, but exercises and
      routines are combined by id (that side's copy wins a clash), so a
      custom exercise or routine made on the other device is not lost and
-     its logged sets keep their name. Of two workouts in progress, this device's stays in progress and the other's ticked sets and cardio are saved, as Finish saves them, never dropped (the review: one was lost on every device; the second review: its cardio and check-in were). */
+     its logged sets keep their name. Of two workouts in progress, this device's stays in progress and the other's ticked sets and cardio are saved, as Finish saves them, never dropped. */
   const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
   const kept = aside ? draftSession(aside) : null;
   const keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some(x => x.id === kept.id);
@@ -1462,8 +1459,8 @@ function mergeChanged(
    - changed in the cloud only: take the cloud copy.
    - changed on both: merge record by record (see mergeChunk).
    - first link of a device that already had its own data: merge sessions, cardio and body logs from both (never demo data), keep the side
-     with more real sessions for settings, routines and exercises combined; no Undo since r55 (it put this device's copy back as the truth,
-     which deleted the account's own records everywhere). */
+     with more real sessions for settings, routines and exercises combined; no Undo (it would put this device's copy back as the truth,
+     deleting the account's own records everywhere). */
 /** Reads every document of the account and takes in what other devices wrote, then flushes. */
 export async function cloudPull(): Promise<void> {
   if (!cloud.on || !cloud.db) return;
@@ -1491,7 +1488,7 @@ export async function cloudPull(): Promise<void> {
   const remote = remoteDocs(snap.docs);
   const rids = Object.keys(remote);
   if (!rids.length) {
-    // an empty account takes this device's log as it is, less its demo data, as a merge does (the review: an empty account was given the demo's 27 sessions)
+    // an empty account takes this device's log as it is, less its demo data, as a merge does
     if (!Object.keys(cloud.meta).length && hasDemo(state)) {
       stripDemo(state);
       demoRestore();
@@ -1520,13 +1517,13 @@ export async function cloudPull(): Promise<void> {
   if (first) {
     const rState = assemble(Object.fromEntries(rids.map(k => [k, rec(remote[k].data)])));
     const mine = { ...state };
-    stripDemo(mine); // demo data never goes into an account (the audit: it was merged and uploaded)
+    stripDemo(mine); // demo data never goes into an account
     if (!holdsLog()) {
-      // by what is here, not by whether a save was found at start: a first run's workout was wiped by a sign-in before a reopen (the audit)
+      // by what is here, not by whether a save was found at start: a first run's workout must survive a sign-in before a reopen
       parts = Object.fromEntries(rids.map(k => [k, rec(remote[k].data)]));
       rids.forEach(k => adoptedIds.add(k));
     } else {
-      merged = true; // no Undo (the audit): a merge only adds, and undoing it took the account's own sessions off every device
+      merged = true; // no Undo: a merge only adds, and undoing it would take the account's own sessions off every device
       keptDraft = mergeFirstLink(mine, rState, rids, remote);
     }
   } else {
@@ -1652,7 +1649,7 @@ let pulled = false;
 export async function cloudDecided(): Promise<void> {
   while (starting) await starting;
 }
-/** Whether the sync has started and its first pull is not yet tried: the first page shows only the logo until it is, so it never flashes before the account's log (the r63 audit's F3: until a pull came through, which with no answer was never). */
+/** Whether the sync has started and its first pull is not yet tried: the first page shows only the logo until it is, so it never flashes before the account's log. Tried, not come through: with no answer a pull never comes through. */
 export const cloudFirstPull = (): boolean => cloud.on && firstPull;
 /* ---------- signing in: which log the phone holds ---------- */
 
@@ -1664,10 +1661,10 @@ export const cloudFirstPull = (): boolean => cloud.on && firstPull;
      back with its own notes, so it syncs as a continuation: what that account
      changed or deleted meanwhile stands. Taken back without its notes it
      synced as a first link, undoing edits and bringing back deletions on
-     every phone (F4). It is looked for whenever the notes do not
+     every phone. It is looked for whenever the notes do not
      name this account, also when they name none (Sign out, a restore, Copy
-     my log in, demo data and Erase everything forget them), which once left
-     it aside for good (F3).
+     my log in, demo data and Erase everything forget them), which would
+     otherwise leave it aside for good.
    - The log here: when the notes name another account and it holds
      something of the lifter's, the question (Add it to this account, Use
      this account's log, Cancel). Add it: the log here is added, as a first
@@ -1682,15 +1679,15 @@ export const cloudFirstPull = (): boolean => cloud.on && firstPull;
    - Nothing is left half done: the log is replaced and saved, then the notes
      naming this account; a save the phone refuses puts both back as they
      were and undoes the sign-in, so the next start never syncs one account's
-     log under the other's notes (F1). Undo is cleared once the log is
+     log under the other's notes. Undo is cleared once the log is
      another account's: a step held the log before, and undoing it would sync
      that log into this account.
    - One tab at a time: every tab hears a sign-in, and each would ask and act
-     on the notes it read before (F2). The rule runs under a lock the browser
+     on the notes it read before. The rule runs under a lock the browser
      gives one tab at a time (Web Locks), and a tab that waited reads the
      notes, and the log with them, as the other tab left them, so it finds the
      switch made. A browser without Web Locks (Safari before 15.4) runs it at
-     once, as before. */
+     once. */
 /** Runs fn in one tab of this app at a time (above); at once where the browser has no Web Locks. */
 async function oneTab<T>(fn: () => Promise<T>): Promise<T> {
   const L = typeof navigator !== 'undefined' ? navigator.locks : undefined;
@@ -1752,7 +1749,7 @@ function holdsLog(): boolean {
     mine.exercises.some(e => e.custom)
   );
 }
-/** A log kept aside joined with the lifter's log here, as a first link joins them: every record of both by id (the log kept aside winning a clash), its settings, and the workout in progress here, which stays open as a first link keeps this device's, the other's ticked sets and cardio saved (the review of the fix: the one kept aside opened and the one here closed, unsaid). */
+/** A log kept aside joined with the lifter's log here, as a first link joins them: every record of both by id (the log kept aside winning a clash), its settings, and the workout in progress here, which stays open as a first link keeps this device's, the other's ticked sets and cardio saved. */
 function joinLogs(base: State, here: State): State {
   const away = base.draft && here.draft && here.draft.id !== base.draft.id ? base.draft : null;
   const kept = away ? draftSession(away) : null;
@@ -1790,7 +1787,7 @@ async function takeAccount(id: string): Promise<boolean> {
      forgotten, or came from a build before accounts): signing in with them
      is a first link, which keeps everything and judges nothing deleted. Kept
      as a continuation, a stale write from a tab signed out mid-sync could
-     make an empty log read as deletions (the review of the fix). */
+     make an empty log read as deletions. */
   if (!from && !aside) {
     cloud.meta = {};
     cloud.sent = {};
@@ -1831,8 +1828,8 @@ async function takeAccount(id: string): Promise<boolean> {
   const n = aside ? notesIn({ meta: aside.meta, editAt: aside.editAt, last: aside.last }, 'aside') : null;
   /* With nothing of the lifter's here, the log kept aside comes back as it
      was; with something, what is the lifter's is joined to it, never demo
-     data or a ready-made routine left as it came (the review of the fix: the
-     join put demo sessions and a second starter routine into the account). */
+     data or a ready-made routine left as it came, which would put demo sessions
+     and a second starter routine into the account. */
   const own = (): State => {
     const o: State = { ...state, routines: state.routines.filter(r => !plainTemplate(r) && !routineEmpty(r)) };
     stripDemo(o);
@@ -1896,8 +1893,8 @@ async function takeAccount(id: string): Promise<boolean> {
 export async function cloudInit(): Promise<void> {
   /* A start under way is joined: this call waits for its answer, which is
      this call's too, rather than reading the sync as off while it is still
-     deciding (the r63 audit's F3: a sign-in made meanwhile said "Signed
-     in. Syncing your log." and nothing synced). A start of its own after it
+     deciding (a sign-in made meanwhile would say "Signed in. Syncing your
+     log." and nothing sync). A start of its own after it
      would ask again a question just answered Cancel (tests/storage-sync.js, S-14). */
   if (starting) {
     await starting;
@@ -1957,9 +1954,9 @@ export async function cloudInit(): Promise<void> {
 }
 /** Stops the sync. forget: the log or the account is gone, so the sync
     notes go too; else they stay with the copy kept, so signing back in to
-    that account merges against them, as a sync does (the audit: a first
-    link let the kept copy undo edits and bring back deletions made since on
-    other phones). A log replaced while signed out (Erase everything, a backup
+    that account merges against them, as a sync does (as a first link the
+    kept copy would undo edits and bring back deletions made since on other
+    phones). A log replaced while signed out (Erase everything, a backup
     restored, Copy my log in, demo data loaded) forgets them, since the notes
     describe a log that is no longer here. */
 export function cloudStop(forget?: boolean): void {
@@ -2007,7 +2004,7 @@ function onStorage(ev: StorageEvent): void {
         cloud.sent = sentIn(m.sent);
         if (editAt) cloud.editAt = editAt;
         cloud.last = last;
-        // The notes' account with them (F2): a tab that kept the account it read before acted for it on another's log.
+        // The notes' account with them: a tab that kept the account it read before acted for it on another's log.
         cloud.acct = typeof m.acct === 'string' ? m.acct : null;
         notesEp = epOf(m);
         notesSeen = ev.newValue;
@@ -2042,7 +2039,7 @@ function mergeIn(text: string, own: boolean): void {
     incoming = normalize(raw);
   } catch (e) {
     log('tabs', e);
-    // Not merged. This tab's own save goes ahead over it, as every save did before r60.
+    // Not merged: what the other tab saved cannot be read, so this tab's own save goes ahead over it.
     if (own) {
       device.lastSaved = text;
       saveNow();
@@ -2067,9 +2064,8 @@ function mergeIn(text: string, own: boolean): void {
       B = chunksOf(base),
       parts: Record<string, Rec | null> = {};
     /* A record changed in both tabs keeps the other tab's copy. Letting this tab's own copy win on its own save
-       (2.50's first fix of NEW-124) lost what the other tab logged: a tab behind took away the other's new workout and
-       its sets, a change typed lost to a later tick, and Undo took back the other tab's edit (the review of 2.50 and
-       2.51, REV-1 to REV-4; tests/storage-sync.js S-6). A tab shown again takes in the other's saves first
+       loses what the other tab logged: a tab behind takes away the other's new workout and its sets, a change typed
+       loses to a later tick, and Undo takes back the other tab's edit (tests/storage-sync.js S-6). A tab shown again takes in the other's saves first
        (onVisibility), so a clash needs both tabs changing one item before either hears the other, a moment; the
        words then say whose copy was kept (conflictNote). */
     for (const id of new Set([...Object.keys(L), ...Object.keys(Rr), ...Object.keys(B)]))
@@ -2085,9 +2081,9 @@ function mergeIn(text: string, own: boolean): void {
     /* The copy of the workout that lost the merge keeps its sets, as on two phones (keepLost): this tab's when it held
        something logged the other tab's save lacked, the other tab's when it did and this tab's copy stood. Logged means
        a set ticked or changed once ticked, or cardio entered: a load being typed or a question answered is no reason to
-       keep a workout the other tab discarded (the review of 2.53, REV13-8: Discard in one tab while a load was typed in
-       the other, and the workout came back in History). Before 2.53 a set ticked in a tab behind, in a workout the
-       other tab had finished, was dropped without a word. */
+       keep a workout the other tab discarded (else Discard in one tab while a load is typed in the other brings the
+       workout back in History). Without this, a set ticked in a tab behind, in a workout the other tab had finished,
+       would be dropped without a word. */
     const agreed = base.draft;
     const loggedNew = (d: DraftLike | null | undefined): boolean => {
       if (!d) return false;
@@ -2124,7 +2120,7 @@ function onVisibility(): void {
     }
   } else {
     /* Shown again: what another tab saved meanwhile is taken in first, since a hidden page may hear none of it, so a
-       change made here next is the later one and is kept (NEW-124: it met that save unheard, and lost to it). */
+       change made here next is the later one and is kept (else it meets that save unheard, and loses to it). */
     const cur = storedElsewhere();
     if (cur != null) mergeIn(cur, false);
     if (cloud.on && Date.now() - cloud.lastPull > SYNC_MS.pullAfter) cq(cloudPull);
