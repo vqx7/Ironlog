@@ -123,7 +123,7 @@ function trashSec(): TemplateResult {
     sub: html`<span class="hastip" data-tip=${`The ${TRASH_MAX} most recent deletions, each kept ${TRASH_DAYS} days`}>${tr.length}</span>`,
     body: html`<ul class="clist">${tr.map(x => {
       const nm = trashName(x);
-      return html`<li><span>${nm} <span class="small muted">deleted ${fmtDate(x.date)}</span></span><span class="row u-g6_fnone"><button class="btn sm" data-act="restore" data-id=${x.id} data-k=${x.kind}>Restore</button><button class="ib sm" data-act="trashDel" data-id=${x.id} data-k=${x.kind} aria-label=${`Delete ${nm} for good`}>✕</button></span></li>
+      return html`<li><span>${nm} <span class="small muted">${x.clash ? 'edited on two devices' : `deleted ${fmtDate(x.date)}`}</span></span><span class="row u-g6_fnone"><button class="btn sm" data-act="restore" data-id=${x.id} data-k=${x.kind}>Restore</button><button class="ib sm" data-act="trashDel" data-id=${x.id} data-k=${x.kind} aria-label=${`Delete ${nm} for good`}>✕</button></span></li>
 `;
     })}</ul>
 <p class="small u-m10-0-0"><button class="linkbtn u-minh44" data-act="trashEmpty">Delete all for good</button></p>

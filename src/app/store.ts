@@ -43,23 +43,38 @@ export function setState(next: State): State {
   sheetFollows(was);
   return state;
 }
-/* A sheet opened on one of the workout's exercises (Swap, its menu, the check-in set, an old best, quick entry) holds it
-   by its place in the list. A log replaced under it (another tab's or phone's change merged in, a tab shown again
-   catching up, Undo) may move that exercise: the sheet's place follows it, by its id, and closes when it is gone or
-   the workout is another, so a pick there never acts on the exercise now in its place (the review of 2.53, REV13-11:
-   Swap open on the raises, the other tab moved them up, and the pick replaced the bench). */
+/* A sheet opened on one of the workout's exercises (Swap, its menu, the check-in set, an old best, quick entry, its
+   note and a picture on it) holds it by its place in the list. A log replaced under it (another tab's or phone's change
+   merged in, a tab shown again catching up, Undo) may move that exercise: the sheet's place follows it, by its id, and
+   closes when it is gone or the workout is another, so a pick there never acts on the exercise now in its place (the
+   review of 2.53, REV13-11: Swap open on the raises, the other tab moved them up, and the pick replaced the bench; the
+   review of 2.53 to 2.61, REV15-5: the note sheet, which holds its place as `bi`, saved onto the exercise moved into
+   it and replaced that one's note). */
+/** Where an open sheet holds its exercise in the workout: the note's `bi`, a note picture's `at` (null on the workout's own notes), every other sheet's `b`; null when it holds none. */
+function placeOf(m: Modal): number | null {
+  if (m.kind === 'note') return m.bi;
+  if (m.kind === 'pic') return m.at;
+  return 'b' in m && typeof m.b === 'number' ? m.b : null;
+}
+/** Moves an open sheet's exercise place (placeOf) to `j`. */
+function placeTo(m: Modal, j: number): void {
+  if (m.kind === 'note') m.bi = j;
+  else if (m.kind === 'pic') m.at = j;
+  else if ('b' in m && typeof m.b === 'number') m.b = j;
+}
 /** Keeps an open sheet on the exercise it was opened on after the log is replaced (above). */
 function sheetFollows(was: State | undefined): void {
   const m = ui.modal;
-  if (!m || !('b' in m) || typeof m.b !== 'number') return;
+  const p = m ? placeOf(m) : null;
+  if (!m || p == null) return;
   const d0 = was ? was.draft : null,
     d1 = state.draft;
-  const b = d0 ? d0.ex[m.b] : undefined;
+  const b = d0 ? d0.ex[p] : undefined;
   if (!d0 || !b) return;
   // The same exercise at the same place: nothing moved under the sheet.
-  const at = d1 ? d1.ex[m.b] : undefined;
+  const at = d1 ? d1.ex[p] : undefined;
   if (d1 && d1.id === d0.id && at && (b.bid ? at.bid === b.bid : at === b || at.exId === b.exId)) return;
-  const nth = d0.ex.slice(0, m.b).filter(x => x.exId === b.exId).length;
+  const nth = d0.ex.slice(0, p).filter(x => x.exId === b.exId).length;
   const j =
     !d1 || d1.id !== d0.id
       ? -1
@@ -68,7 +83,7 @@ function sheetFollows(was: State | undefined): void {
         : d1.ex.findIndex(
             (x, i) => x.exId === b.exId && d1.ex.slice(0, i).filter(y => y.exId === b.exId).length === nth
           );
-  if (j >= 0) m.b = j;
+  if (j >= 0) placeTo(m, j);
   else fx.closeModal();
 }
 

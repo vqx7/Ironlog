@@ -53,10 +53,12 @@ export const OB_ACCT = KEY + '.obAcct',
 /** A weigh-in asked about on this device: snoozed until a date (Later), and the session's first ask answered (Not now). */
 export const BWSNOOZE_KEY = KEY + '.bwSnooze',
   BWASK_KEY = KEY + '.bwAsk';
-/** The account's profile photo as this phone holds it (2.34; kept on this phone only in 2.33), the note of where that
-    copy stands against the account (photo.ts), and its one-time line on Today answered (Add photo or Not now). */
 /** A workout in progress set aside while an earlier one is edited or logged: this phone's, with its account. */
 export const PARKED_KEY = KEY + '.parked';
+/** The workout this phone closed last, for the next one started here to note (act.ts, followsAfter): kept on the phone, as the next is often started after the app was closed. */
+export const CLOSED_KEY = KEY + '.closed';
+/** The account's profile photo as this phone holds it (2.34; kept on this phone only in 2.33), the note of where that
+    copy stands against the account (photo.ts), and its one-time line on Today answered (Add photo or Not now). */
 export const PHOTO_KEY = KEY + '.photo',
   PHOTO_SYNC = KEY + '.photoSync',
   PHOTO_ASKED = KEY + '.photoAsked';
