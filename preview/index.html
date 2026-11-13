@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-t8xzDXNNm5bQBg20NHichXh7qT/aOx1XG/qcube1MBw=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-CagElUPE7vn5J7RUHqQ1axHzogLEa+ddDGFxej0BM+c=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.11-r100">
+<meta name="app-build" content="2026.11.12-r102">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2150,8 +2150,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.54";
-  var APP_VERSION = "2026.11.11-r100";
+  var DISPLAY_VERSION = "2.56";
+  var APP_VERSION = "2026.11.12-r102";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -10098,9 +10098,19 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var WRITE_TRIES = 3;
   var KEEP_TRIES = 10;
   var saveT = null;
+  var savedHooks = [];
+  function onSaved(f3) {
+    savedHooks.push(f3);
+  }
   function writeLocal(j3) {
     localStorage.setItem(KEY, j3);
     device.lastSaved = j3;
+    for (const f3 of savedHooks)
+      try {
+        f3();
+      } catch (e5) {
+        log("storage", e5);
+      }
   }
   function storedElsewhere() {
     if (!device.boot || device.lastSaved == null) return null;
@@ -10244,6 +10254,46 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     notesEp = Math.max(Date.now(), notesEp + 1);
   };
   var epOf = (m3) => m3 && typeof m3.ep === "number" ? m3.ep : 0;
+  var notesSeen = null;
+  var sameNote = (a2, b2) => a2 === b2 || !!a2 && !!b2 && a2.h === b2.h && a2.at === b2.at;
+  function joinNotes(m3, text) {
+    const { meta, editAt, last } = notesIn(m3, "tabs");
+    const seenRec = rec(parseJson(notesSeen || "null"));
+    const base = seenRec && notesIn(seenRec, "tabs").meta || {};
+    const theirs = meta || {};
+    let mine = false;
+    for (const k2 of /* @__PURE__ */ new Set([...Object.keys(cloud.meta), ...Object.keys(theirs)])) {
+      const here = cloud.meta[k2], there = theirs[k2];
+      const keep = !there ? here : !here ? there : sameNote(there, base[k2]) ? here : sameNote(here, base[k2]) ? there : there.at > here.at ? there : here;
+      if (keep) cloud.meta[k2] = keep;
+      if (!sameNote(keep, there)) mine = true;
+    }
+    const te = editAt || {};
+    for (const k2 in cloud.editAt) if (!(k2 in te) || cloud.editAt[k2] > te[k2]) mine = true;
+    for (const k2 in te) cloud.editAt[k2] = Math.max(cloud.editAt[k2] || 0, te[k2]);
+    if (cloud.last != null && (last == null || cloud.last > last)) mine = true;
+    else cloud.last = last;
+    const sent = sentIn(m3.sent);
+    for (const k2 in cloud.sent) if (!sent[k2]) mine = true;
+    for (const k2 in sent) if (!cloud.sent[k2]) cloud.sent[k2] = sent[k2];
+    notesSeen = text;
+    return mine;
+  }
+  function notesCatchUp() {
+    if (storedElsewhere() != null) return false;
+    let text = null;
+    try {
+      text = localStorage.getItem(SYNC_KEY);
+    } catch (e5) {
+      log("tabs", e5);
+      return false;
+    }
+    if (text == null || text === notesSeen) return false;
+    const m3 = rec(parseJson(text));
+    if (!m3 || epOf(m3) !== notesEp || (typeof m3.acct === "string" ? m3.acct : null) !== cloud.acct) return false;
+    joinNotes(m3, text);
+    return true;
+  }
   function saveMeta() {
     if (!device.ok) return false;
     try {
@@ -10251,19 +10301,19 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         log("tabs", new Error("newer sync notes from another tab; not written over"));
         return false;
       }
-      localStorage.setItem(
-        SYNC_KEY,
-        JSON.stringify({
-          meta: cloud.meta,
-          // Writes sent and not yet answered, so a reload before the answer still knows its own.
-          sent: Object.keys(cloud.sent).length ? cloud.sent : void 0,
-          last: cloud.last,
-          editAt: cloud.editAt,
-          devId: cloud.devId,
-          acct: cloud.acct || void 0,
-          ep: notesEp || void 0
-        })
-      );
+      notesCatchUp();
+      const text = JSON.stringify({
+        meta: cloud.meta,
+        // Writes sent and not yet answered, so a reload before the answer still knows its own.
+        sent: Object.keys(cloud.sent).length ? cloud.sent : void 0,
+        last: cloud.last,
+        editAt: cloud.editAt,
+        devId: cloud.devId,
+        acct: cloud.acct || void 0,
+        ep: notesEp || void 0
+      });
+      localStorage.setItem(SYNC_KEY, text);
+      notesSeen = text;
       return true;
     } catch (e5) {
       log("sync-meta", e5);
@@ -10557,7 +10607,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       log("sync-track", e5);
     }
   }
-  function draftNote(prev, kept) {
+  function draftNote(prev, kept, where = "on another device") {
     const P2 = rec(prev);
     const d3 = state.draft;
     if (!P2 || d3 && d3.id === P2.id) return;
@@ -10573,7 +10623,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     const saved = state.sessions.some((s3) => s3.id === P2.id);
     fx.toast(
-      kept === "joined" || kept === "cardioJoined" ? "The workout in progress was saved on another device. What was done here since was added to it." : kept === "saved" || kept === "cardio" ? `The workout in progress was ${state.draft ? "replaced by the one on" : "closed on"} another device. Its ${kept === "saved" ? "ticked sets are" : "cardio is"} saved in History.` : state.draft ? saved ? "The workout in progress was replaced by the one on another device. Its ticked sets are in History." : "The workout in progress was replaced by the one on another device." : saved ? "The workout in progress was saved on another device." : "The workout in progress was closed on another device."
+      kept === "joined" || kept === "cardioJoined" ? `The workout in progress was saved ${where}. What was done here since was added to it.` : kept === "saved" || kept === "cardio" ? `The workout in progress was ${state.draft ? "replaced by the one" : "closed"} ${where}. Its ${kept === "saved" ? "ticked sets are" : "cardio is"} saved in History.` : state.draft ? saved ? `The workout in progress was replaced by the one ${where}. Its ticked sets are in History.` : `The workout in progress was replaced by the one ${where}.` : saved ? `The workout in progress was saved ${where}.` : `The workout in progress was closed ${where}.`
     );
   }
   function keepLost(lost, now2, agreed, remoteWins, tabs = false) {
@@ -10780,6 +10830,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   async function cloudFlush() {
     if (!cloud.on) return;
+    notesCatchUp();
     if (!pulled) return cloudPull();
     if (trackT || cloud.pendAt) trackEdits();
     const todo = changedDocs();
@@ -11015,6 +11066,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     cloud.lastPull = Date.now();
     pulled = true;
+    notesCatchUp();
     const ph = snap.docs.find((x2) => x2.id === PHOTO_DOC && x2.exists);
     await photoReconcile(ph ? rec(ph.data()) : null);
     const remote = remoteDocs(snap.docs);
@@ -11149,16 +11201,22 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return fn();
   }
   function readStored() {
-    let m3 = null;
+    let m3 = null, text = null;
     try {
-      m3 = rec(parseJson(localStorage.getItem(SYNC_KEY) || "null"));
+      text = localStorage.getItem(SYNC_KEY);
+      m3 = rec(parseJson(text || "null"));
     } catch (e5) {
       log("tabs", e5);
     }
     if (!m3) return;
     const now2 = typeof m3.acct === "string" ? m3.acct : null;
+    if (now2 === cloud.acct) {
+      if (epOf(m3) === notesEp && text !== notesSeen) joinNotes(m3, text);
+      notesEp = epOf(m3);
+      return;
+    }
     notesEp = epOf(m3);
-    if (now2 === cloud.acct) return;
+    notesSeen = text;
     const n3 = notesIn(m3, "tabs");
     cloud.meta = n3.meta || {};
     cloud.sent = {};
@@ -11368,6 +11426,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         if (m3 && epOf(m3) < notesEp) {
           log("tabs", new Error("older sync notes from another tab; this tab wrote its own back"));
           saveMeta();
+        } else if (m3 && epOf(m3) === notesEp && (typeof m3.acct === "string" ? m3.acct : null) === cloud.acct) {
+          if (joinNotes(m3, ev.newValue)) saveMeta();
         } else if (m3) {
           const { meta, editAt, last } = notesIn(m3, "tabs");
           if (meta) cloud.meta = meta;
@@ -11376,6 +11436,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           cloud.last = last;
           cloud.acct = typeof m3.acct === "string" ? m3.acct : null;
           notesEp = epOf(m3);
+          notesSeen = ev.newValue;
         }
       } catch (e5) {
         log("tabs", e5);
@@ -11446,7 +11507,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (!ui.modal) fx.rerenderKeepScroll();
     else fx.render();
     conflictNote(stat, true);
-    if (kept) draftNote(dr0, kept);
+    if (kept) draftNote(dr0, kept, "in another tab");
   }
   function onVisibility() {
     if (document.visibilityState === "hidden") {
@@ -11467,7 +11528,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   function syncStart() {
     try {
-      const m3 = rec(parseJson(localStorage.getItem(SYNC_KEY) || "null"));
+      const text = localStorage.getItem(SYNC_KEY);
+      const m3 = rec(parseJson(text || "null"));
+      notesSeen = text;
       if (m3) {
         const { meta, editAt, last } = notesIn(m3, "sync-meta");
         cloud.meta = meta || {};
@@ -14351,14 +14414,29 @@ ${more}`;
     const r4 = rec(parseJson(prefGet(PARKED_KEY) || "null"));
     return r4 && typeof r4["uid"] === "string" ? { uid: r4["uid"], draft: r4["draft"] } : null;
   }
-  var parkedHeld = () => held2() != null;
-  var parkedHere = () => {
+  var heldId = (h3) => {
+    const id = h3 ? rec(h3.draft)?.["id"] : null;
+    return typeof id === "string" ? id : null;
+  };
+  var backHere = null;
+  function letGo() {
+    if (backHere == null) return;
+    if (heldId(held2()) === backHere) prefDel(PARKED_KEY);
+    backHere = null;
+  }
+  var hooked = false;
+  var waiting2 = () => {
     const h3 = held2();
+    return h3 && backHere != null && heldId(h3) === backHere ? null : h3;
+  };
+  var parkedHeld = () => waiting2() != null;
+  var parkedHere = () => {
+    const h3 = waiting2();
     return !!h3 && h3.uid === who();
   };
   function parkDraft() {
     const d3 = state.draft;
-    if (!d3 || d3.editingId || parkedHeld()) return false;
+    if (!d3 || d3.editingId || held2() != null) return false;
     return prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: d3 }));
   }
   function unpark() {
@@ -14370,13 +14448,22 @@ ${more}`;
       prefDel(PARKED_KEY);
       return false;
     }
-    act(
-      () => {
-        state.draft = d3;
-      },
-      { inProgress: true }
-    );
-    prefDel(PARKED_KEY);
+    if (!hooked) {
+      onSaved(letGo);
+      hooked = true;
+    }
+    backHere = d3.id;
+    try {
+      act(
+        () => {
+          state.draft = d3;
+        },
+        { inProgress: true }
+      );
+    } catch (e5) {
+      backHere = null;
+      throw e5;
+    }
     ui.away = d3.id;
     return true;
   }
@@ -21995,7 +22082,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   var wait = null;
   var flight = null;
   var lastTry = 0;
-  var waiting2 = () => !!wait;
+  var waiting3 = () => !!wait;
   var acctOpen = () => {
     const m3 = ui.modal;
     return m3 && m3.kind === "account" ? m3 : null;
@@ -23780,14 +23867,14 @@ ${JSON.stringify(ctx, null, 1)}`;
   var codeIs = (e5, c4) => !!e5 && typeof e5 === "object" && "code" in e5 && e5.code === c4;
   var nameIs = (e5, n3) => e5 instanceof Error && e5.name === n3;
   var LINK_MS = 1e3;
-  async function exportFile(data, filename, mime, okMsg, onSaved, fallbackTitle, fallbackHelp) {
+  async function exportFile(data, filename, mime, okMsg, onSaved2, fallbackTitle, fallbackHelp) {
     try {
       const c4 = window.claude;
       const dl = c4 && typeof c4.use === "function" ? await c4.use("downloads") : null;
       if (dl) {
         try {
           await dl.save({ filename, data });
-          if (onSaved) onSaved();
+          if (onSaved2) onSaved2();
           toast(okMsg);
           return;
         } catch (e5) {
@@ -23806,7 +23893,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (file && isStandalone() && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({ files: [file], title: filename });
-          if (onSaved) onSaved();
+          if (onSaved2) onSaved2();
           toast(okMsg);
           return;
         } catch (e5) {
@@ -23844,7 +23931,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       `Look for ${filename}. If nothing appeared, the browser blocked the download. Copy the text instead.`,
       "Yes, I have the file",
       () => {
-        if (onSaved) onSaved();
+        if (onSaved2) onSaved2();
         toast("Backup recorded");
       },
       false,
@@ -28742,7 +28829,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       }),
       cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }),
       acctUser: () => acct.user,
-      acctWaiting: waiting2,
+      acctWaiting: waiting3,
       flush: () => cq(cloudFlush),
       cloudInit,
       cloudStop,
