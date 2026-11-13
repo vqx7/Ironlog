@@ -4811,6 +4811,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         if (stepsStored.get(id) === sig) continue;
         st.put({ pre: e5.pre, post: e5.post, t: e5.t || Date.now(), ...e5.said ? { said: e5.said } : {} }, STEP_KEY + id);
         put.set(id, sig);
+        stepsStored.set(id, "");
       }
       for (const id of stepsStored.keys())
         if (!live2.has(id)) {
