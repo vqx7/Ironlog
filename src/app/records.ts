@@ -132,6 +132,8 @@ export interface Trashed {
   kind: 'session' | 'routine' | 'cardio';
   date: string;
   data: Rec;
+  /** A copy put aside when one session or cardio entry was held twice with different contents (normalize's dedupe): kept until the lifter restores or deletes it, not for the days a deletion is, and dated by its own date. Absent on a deletion. */
+  clash?: true | undefined;
 }
 /** The kind of copy Recently deleted holds that a value names, or null. */
 export const trashKind = (v: unknown): Trashed['kind'] | null =>
