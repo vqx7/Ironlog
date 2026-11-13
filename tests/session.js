@@ -52,12 +52,13 @@ const ROWS = b => [...document.querySelectorAll(`#view .sg`)].filter(r => r.quer
    o.settings sets settings; o.seed (S, L) changes anything else first. */
 async function lifter(o = {}) {
   const items = o.items || [['bench', 3, 6, 10, REST_BENCH], ['dbLateral', 2, 10, 15, REST_RAISE]];
-  // o.movable: a clock the check moves (window.__setClock), from 10:00 on the day, as a lifter's day goes on; a page
-  // loaded again starts at the time the check left in the tab's name ("__clock=..."), an app closed and opened on a
-  // later day. The tab's name, not storage: in this harness an init script that reads localStorage as a page reloads
-  // sometimes gave that page an empty storage (found building NEW-96's check).
+  // o.movable: a clock the check moves (window.__setClock), from 10:00 on the day, as a lifter's day goes on. A page
+  // loaded again, an app closed and opened on a later day, is given its time by an init script the check adds before
+  // the reload (L-19's reopen), run after this one: a value handed to the script, not storage (in this harness an init
+  // script that read localStorage as a page reloaded sometimes gave that page an empty storage) and not the tab's name
+  // (WebKit gave the reloaded page none, so it opened on the first day: GitHub's WebKit run of 2.59, NEW-143).
   const T0 = JSON.stringify((o.day || DAY) + 'T10:00:00');
-  const MOVABLE = `(()=>{const R=Date;let off=new R(${T0}).getTime()-R.now();const m=/^__clock=(.+)$/.exec(window.name||'');if(m)off=new R(m[1]).getTime()-R.now();window.__setClock=t=>{off=new R(t).getTime()-R.now();};class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`;
+  const MOVABLE = `(()=>{const R=Date;let off=new R(${T0}).getTime()-R.now();window.__setClock=t=>{off=new R(t).getTime()-R.now();};class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`;
   const P = await open(FILE, { browser: o.browser, w: o.w || 390, h: 844, clock: o.movable ? undefined : (o.day || DAY) + 'T10:00:00', setup: async ctx => { if (o.movable) await ctx.addInitScript(MOVABLE); await ctx.addInitScript(TOAST_LOG); } });
   P.ev = (f, a) => P.page.evaluate(f, a);
   await P.ev(([items, o, LB]) => {
@@ -474,7 +475,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await P.tap('#view [data-act="histToggle"][data-id="last"]', 150); await P.tap('#view [data-act="histEdit"][data-id="last"]', 300);
     // Reopened: the page loaded again at that time, then Today's tab tapped, as a lifter opens the app to it.
     const reopen = async t => {
-      await P.ev(t => { window.name = '__clock=' + t; }, t);
+      await P.ctx.addInitScript(t => { if (window.__setClock) window.__setClock(t); }, t);
       await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__ironlog.state && document.querySelector('#tabs [data-tab="today"]'));
       await wait(300); await P.tap('#tabs [data-tab="today"]', 300);
       const now = await P.ev(() => new Date().toISOString().slice(0, 10));
