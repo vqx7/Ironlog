@@ -43,11 +43,18 @@ function held(): { uid: string; draft: unknown; at: number | null } | null {
 /** Days a set-aside workout is kept (above). */
 const PARK_KEEP_DAYS = 30;
 /** The day a set-aside workout was set aside and the last day it is kept, for Today's card; null when none is offered here. */
-export function parkedDates(): { set: string; until: string } | null {
+function parkedDates(): { set: string; until: string } | null {
   const h = parkedHere() ? waiting() : null;
   if (!h || h.at == null) return null;
   const set = iso(new Date(h.at));
   return { set, until: addDays(set, PARK_KEEP_DAYS) };
+}
+/** The words that say until when the workout set aside is kept (" Kept until Dec 11."), for every screen that shows
+    it waiting: Today's card, and the edit or past workout it waits for, which is what the lifter sees meanwhile. Empty
+    when no date is known. */
+export function keptUntil(): string {
+  const d = parkedDates();
+  return d ? ` Kept until ${fmtDate(d.until)}.` : '';
 }
 /** At start: dates a copy set aside before 2.57, and removes one of this account kept past its last day, saying so (above). */
 export function parkTidy(): void {

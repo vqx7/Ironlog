@@ -478,6 +478,11 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await start(P); await P.tap(tick(0, 0));
     await P.tap('#tabs [data-tab="history"]', 200);
     await P.tap('#view [data-act="histToggle"][data-id="last"]', 150); await P.tap('#view [data-act="histEdit"][data-id="last"]', 300);
+    // The edit screen, which the lifter sees while the copy waits for the edit, says until when it is kept as Today's
+    // card does (REV16-C1: only the card said, and it is not drawn while the edit is open, so a lifter away a month
+    // came back to the copy removed without having seen a date).
+    const line = await P.ev(() => { const e = document.getElementById('parkedLine'); return e ? e.textContent.replace(/\s+/g, ' ').trim() : null; });
+    ok(line && /^Your workout in progress is set aside\. It comes back when you save or discard this one\. Kept until Dec 11\.$/.test(line), 'L-19: the edit screen\'s line says until when the workout set aside is kept: "Kept until Dec 11." (REV16-C1)', line);
     // Reopened: the page loaded again at that time, then Today's tab tapped, as a lifter opens the app to it.
     const reopen = async t => {
       await P.ctx.addInitScript(t => { if (window.__setClock) window.__setClock(t); }, t);
