@@ -177,7 +177,8 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
 - **Copy:** short, plain, specific; the number and the action on screen, the reasons in a tip or How this works; no
   em dashes, hype or exclamation marks; the serial comma in any list of three; estimated minutes only through
   `estMin` ("~N min"); the first-run Set up page stays under 400 characters, in lines of 45 at most. Code comments
-  explain why, not what, in full sentences.
+  explain why, not what, in full sentences, and tell no history: no tracker row, and a build only where the code reads
+  what it saved or does (CA-4, `tests/hygiene.js`); the history is docs/ARCHIVE.md's.
 - **Messages (V, 2026-11-10, 2.48):** a toast says what the tap just did (with Undo when it can be undone), an error,
   news about the log from storage and sync, or a one-time tip shown when nothing else is; an ask or advice lives
   where it applies (a card, a line on the item, a tip), never in a message, and nothing repeats what is on screen.

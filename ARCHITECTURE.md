@@ -122,6 +122,10 @@ Casts: 49
 Non-null assertions: 22
 Open types: 8
 
+**Comments say the reason, not the history (CA-4, 2.62).** A comment in `src/app/` names no tracker row, and a build only where the code still reads what that build saved or does (a field a build before r56.1 left out, the starter routine installs got before r29); the history behind a rule is `docs/ARCHIVE.md`'s. `tests/hygiene.js` refuses a tracker row in a comment and counts the builds named against the number below, which only falls, as the casts' does.
+
+Builds named in comments: 91
+
 Marks in r52's moved code (from baselines/r51.html): 4 casts, 67 non-null assertions
 Marks in r56's moved code (from baselines/r55.html): 2 casts, 1 non-null assertions
 r73 (2.28): 8 open types from 9: a sync document's write typed as the document it is (`CloudDoc`, store.ts) where the store's `set` took any record. 1 non-null assertion from 2 in r56's moved code: the device id `takeLease` asserted, gone with the lease the backend never had (2.27-F1).

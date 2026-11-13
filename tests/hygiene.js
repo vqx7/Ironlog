@@ -672,6 +672,28 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     }
     ok(silent.length === 0, 'every catch and promise handler in src/app/ ends in a throw, logs the error or carries a comment saying why the error is expected, and no finally returns, breaks or continues', silent);
   }
+  // The history of the code is docs/ARCHIVE.md's, not the comments' (CA-4, from V's audit of 2026-11-10): a comment
+  // says the rule and its reason, which stand on their own, so it names no tracker row (NEW-110, REV13-2, PENDING 338,
+  // 387-B3, RC-3 and the like), and a build (r54, 2.57) only where the code still reads what that build saved or
+  // does. Those build names are counted against ARCHITECTURE.md's number, which only falls, as the casts' does. A
+  // suite's file name (tests/r36.js) is a path to it, not history, and is not counted.
+  {
+    const TRACKER = /\b(?:NEW-\d+|REV\d+(?:-\w+)?|R\d{2}-\d+|PENDING \d+|CA-\d+|CL-\d+|ST-\d+|RC-\d+|P-S\d-\d+|\d{3}-[A-Z]\d+|2\.\d{2}-F\d+)\b/g;
+    const BUILD = /\b(?:r\d{2,3}(?:\.\d)?|2\.\d{2})\b/g;
+    const rows = []; let builds = 0;
+    for (const id of MODS) {
+      const txt = fs.readFileSync(path.join(APP, id + '.ts'), 'utf8');
+      for (const [a, z] of appComments.get(id) || []) {
+        const c = txt.slice(a, z).replace(/tests\/[\w.-]+\.js/g, '');
+        for (const m of c.match(TRACKER) || []) rows.push(`${id}.ts: ${m}`);
+        builds += (c.match(BUILD) || []).length;
+      }
+    }
+    ok(rows.length === 0, 'no comment in src/app/ names a tracker row: the reason it gives stands on its own, and the history is docs/ARCHIVE.md\'s', rows);
+    const cb = +((fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8').match(/^Builds named in comments: (\d+)$/m) || [])[1]);
+    ok(cb >= 0 && builds <= cb, `src/app/'s comments name no more builds than ARCHITECTURE.md records (${builds} of ${cb}): a build is named only where the code reads what it saved or does`);
+    ok(builds >= cb, 'when a comment stops naming a build, the number in ARCHITECTURE.md is lowered to match', { builds, cb });
+  }
   // Every stored value is read in one place (r56.1, PENDING 305): localStorage
   // and IndexedDB are named only in storage.ts and sync.ts, and JSON text is
   // parsed only by records.ts's parseJson, so every raw value comes through
