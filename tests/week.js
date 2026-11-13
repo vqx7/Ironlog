@@ -173,10 +173,21 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     const bar0 = await barShot();
     // The first move of a drag down, 3 px, is the pull's: left to the page, a phone starts the page's own bounce under
     // the finger. Dispatched on the bar itself, as a phone sends every move (Chromium's own input holds back a move
-    // this small, inside its tap's slop).
+    // this small, inside its tap's slop). WebKit makes a touch only through document.createTouch (its Touch constructor
+    // is refused, NEW-143), as tests/h.js makes them there; Chromium has only the constructor.
     const first = await page.evaluate(([x, y]) => {
       const bar = document.getElementById('wkbar');
-      const mk = (type, yy, live) => { const t = typeof Touch === 'function' ? new Touch({ identifier: 7, target: bar, clientX: x, clientY: yy, pageX: x, pageY: yy }) : document.createTouch(window, bar, 7, x, yy, x, yy); const l = live ? [t] : []; return new TouchEvent(type, { bubbles: true, cancelable: true, composed: true, view: window, touches: l, targetTouches: l, changedTouches: [t] }); };
+      const se = document.scrollingElement || document.documentElement;
+      const mk = (type, yy, live) => {
+        if (typeof document.createTouch === 'function') {
+          const t = document.createTouch(window, bar, 7, x + se.scrollLeft, yy + se.scrollTop, x, yy);
+          const l = live ? document.createTouchList(t) : document.createTouchList();
+          return new TouchEvent(type, { bubbles: true, cancelable: true, composed: true, view: window, touches: l, targetTouches: l, changedTouches: document.createTouchList(t) });
+        }
+        const t = new Touch({ identifier: 7, target: bar, clientX: x, clientY: yy, pageX: x + se.scrollLeft, pageY: yy + se.scrollTop });
+        const l = live ? [t] : [];
+        return new TouchEvent(type, { bubbles: true, cancelable: true, composed: true, view: window, touches: l, targetTouches: l, changedTouches: [t] });
+      };
       bar.dispatchEvent(mk('touchstart', y, true));
       const mv = mk('touchmove', y + 3, true); bar.dispatchEvent(mv);
       bar.dispatchEvent(mk('touchend', y + 3, false));
