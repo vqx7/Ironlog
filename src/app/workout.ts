@@ -18,7 +18,7 @@ import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { repeat } from 'lit-html/directives/repeat.js';
 
-import { keptUntil, parkedHeld } from './park';
+import { parkedHeld } from './park';
 import { loadMode, CARDIO, CWHEN, ML, injLabel } from './library';
 import { ssLetters } from './routines';
 import { missedTag, repSpan, effLeastShort, LIGHT_RIR, fmtDate, estMin } from './format';
@@ -528,7 +528,7 @@ export function viewWorkout(d: Draft): TemplateResult {
     : notYet
       ? html`Not started<span id="sessLeft">${left > 0 ? ` · ${estMin(left)} left` : ''}</span>`
       : html`<span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? 'set' : 'sets'}</span> done${when ? `, ${when}` : ''}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ''}</span>`;
-  return html`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d.editingId ? 'Editing a saved session' : d.past ? 'Past workout' : 'Session in progress'}</p><div class="hrow"><h2 class="u-owany_minw0">${d.dayName}</h2>${helpButton('log')}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button></div><p class="meta">${meta}</p>${parkedHeld() ? html`<p class="small muted u-m4-0-0" id="parkedLine">Your workout in progress is set aside. It comes back when you save or discard this one.${keptUntil()}</p>` : ''}${
+  return html`<div class="ph"><div class="u-minw0_f1n1-auto"><p class="kick">${d.editingId ? 'Editing a saved session' : d.past ? 'Past workout' : 'Session in progress'}</p><div class="hrow"><h2 class="u-owany_minw0">${d.dayName}</h2>${helpButton('log')}<button class="btn sm danger u-mlauto_fnone" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button></div><p class="meta">${meta}</p>${parkedHeld() ? html`<p class="small muted u-m4-0-0" id="parkedLine">Your workout in progress is set aside. It comes back when you save or discard this one.</p>` : ''}${
     sp.n
       ? html`<div class="sprog"><div class="band" role="progressbar" aria-label="Sets done" aria-valuemin="0" aria-valuemax=${sp.n} aria-valuenow=${sp.k} aria-valuetext=${`${sp.k} of ${sp.n} sets done`}><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%;--pct:${sp.pct}`}></div></div><span id="sessOf" aria-hidden="true">${sp.k} of ${sp.n}</span></div>`
       : ''

@@ -470,6 +470,27 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await P.close();
   }
   if (run('L-19')) {
+    /* The 30 days stand still while the edit the workout set aside waits for is open (V, 2026-11-13: "the draft workout
+       is paused"). REV16-C1: the app left 32 days with the edit open, the copy was removed at the next open, its sets in
+       no session, and no screen the lifter saw had given a date. Saved then, the edit brings the workout back. */
+    const P = await lifter({ settings: { autoDone: false }, movable: true });
+    await start(P); await P.tap(tick(0, 0));
+    await P.tap('#tabs [data-tab="history"]', 200);
+    await P.tap('#view [data-act="histToggle"][data-id="last"]', 150); await P.tap('#view [data-act="histEdit"][data-id="last"]', 300);
+    const lineOf = () => P.ev(() => { const e = document.getElementById('parkedLine'); return e ? e.textContent.replace(/\s+/g, ' ').trim() : null; });
+    await P.ctx.addInitScript(t => { if (window.__setClock) window.__setClock(t); }, '2026-12-13T09:00:00');
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__ironlog.state && document.querySelector('#tabs [data-tab="today"]')); await wait(400);
+    const now = await P.ev(() => new Date().toISOString().slice(0, 10));
+    if (now !== '2026-12-13') ok(false, 'L-19: (setup) the page reopened on 2026-12-13', now);
+    const kept = { held: await P.ev(() => localStorage.getItem(window.__ironlog.KEY + '.parked') != null), line: await lineOf(), said: await P.toasts() };
+    ok(kept.held && kept.line === 'Your workout in progress is set aside. It comes back when you save or discard this one.' && !kept.said.some(x => /removed/.test(x)), 'L-19: opened 32 days later with the edit still open, the workout set aside is kept, its line giving no date: nothing is removed while the edit is open (REV16-C1)', kept);
+    await P.tap('#view [data-act="finish"]', 300);
+    while (await P.modal()) { const mm = await P.modal(); if (mm.kind === 'confirm') await mOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } }
+    const back = await P.draft();
+    ok(back && !back.editingId && back.ex[0].sets[0].done && (await P.toasts()).some(x => /Your workout in progress is back/.test(x)), 'L-19: and the edit saved then brings it back as it was (REV16-C1)', back && back.ex[0].sets.map(x => x.done));
+    await P.close();
+  }
+  if (run('L-19')) {
     /* NEW-96 (V, 2026-11-09 08:11: "is it possible to delete it after 30 days?"): a workout set aside and never
        brought back is kept 30 days from the day it was set aside, Today's card saying until when, then removed when
        the app next opens, said as it goes. Here the app closes while the edit is open and before the edit is saved
@@ -478,11 +499,6 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await start(P); await P.tap(tick(0, 0));
     await P.tap('#tabs [data-tab="history"]', 200);
     await P.tap('#view [data-act="histToggle"][data-id="last"]', 150); await P.tap('#view [data-act="histEdit"][data-id="last"]', 300);
-    // The edit screen, which the lifter sees while the copy waits for the edit, says until when it is kept as Today's
-    // card does (REV16-C1: only the card said, and it is not drawn while the edit is open, so a lifter away a month
-    // came back to the copy removed without having seen a date).
-    const line = await P.ev(() => { const e = document.getElementById('parkedLine'); return e ? e.textContent.replace(/\s+/g, ' ').trim() : null; });
-    ok(line && /^Your workout in progress is set aside\. It comes back when you save or discard this one\. Kept until Dec 11\.$/.test(line), 'L-19: the edit screen\'s line says until when the workout set aside is kept: "Kept until Dec 11." (REV16-C1)', line);
     // Reopened: the page loaded again at that time, then Today's tab tapped, as a lifter opens the app to it.
     const reopen = async t => {
       await P.ctx.addInitScript(t => { if (window.__setClock) window.__setClock(t); }, t);
