@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-lYZKKpWgvLmfTCNNn/4vHJWzNYD7FEjeXCC8eDcLsxA=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-STyO0lPrDJmyGkELhm+6Up95fmB7qJezFYZCri18ax0=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.11-r99">
+<meta name="app-build" content="2026.11.11-r101">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2150,8 +2150,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.53";
-  var APP_VERSION = "2026.11.11-r99";
+  var DISPLAY_VERSION = "2.55";
+  var APP_VERSION = "2026.11.11-r101";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -10098,9 +10098,19 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var WRITE_TRIES = 3;
   var KEEP_TRIES = 10;
   var saveT = null;
+  var savedHooks = [];
+  function onSaved(f3) {
+    savedHooks.push(f3);
+  }
   function writeLocal(j3) {
     localStorage.setItem(KEY, j3);
     device.lastSaved = j3;
+    for (const f3 of savedHooks)
+      try {
+        f3();
+      } catch (e5) {
+        log("storage", e5);
+      }
   }
   function storedElsewhere() {
     if (!device.boot || device.lastSaved == null) return null;
@@ -14351,14 +14361,29 @@ ${more}`;
     const r4 = rec(parseJson(prefGet(PARKED_KEY) || "null"));
     return r4 && typeof r4["uid"] === "string" ? { uid: r4["uid"], draft: r4["draft"] } : null;
   }
-  var parkedHeld = () => held2() != null;
-  var parkedHere = () => {
+  var heldId = (h3) => {
+    const id = h3 ? rec(h3.draft)?.["id"] : null;
+    return typeof id === "string" ? id : null;
+  };
+  var backHere = null;
+  function letGo() {
+    if (backHere == null) return;
+    if (heldId(held2()) === backHere) prefDel(PARKED_KEY);
+    backHere = null;
+  }
+  var hooked = false;
+  var waiting2 = () => {
     const h3 = held2();
+    return h3 && backHere != null && heldId(h3) === backHere ? null : h3;
+  };
+  var parkedHeld = () => waiting2() != null;
+  var parkedHere = () => {
+    const h3 = waiting2();
     return !!h3 && h3.uid === who();
   };
   function parkDraft() {
     const d3 = state.draft;
-    if (!d3 || d3.editingId || parkedHeld()) return false;
+    if (!d3 || d3.editingId || held2() != null) return false;
     return prefSet(PARKED_KEY, JSON.stringify({ uid: who(), draft: d3 }));
   }
   function unpark() {
@@ -14370,13 +14395,22 @@ ${more}`;
       prefDel(PARKED_KEY);
       return false;
     }
-    act(
-      () => {
-        state.draft = d3;
-      },
-      { inProgress: true }
-    );
-    prefDel(PARKED_KEY);
+    if (!hooked) {
+      onSaved(letGo);
+      hooked = true;
+    }
+    backHere = d3.id;
+    try {
+      act(
+        () => {
+          state.draft = d3;
+        },
+        { inProgress: true }
+      );
+    } catch (e5) {
+      backHere = null;
+      throw e5;
+    }
     ui.away = d3.id;
     return true;
   }
@@ -21995,7 +22029,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   var wait = null;
   var flight = null;
   var lastTry = 0;
-  var waiting2 = () => !!wait;
+  var waiting3 = () => !!wait;
   var acctOpen = () => {
     const m3 = ui.modal;
     return m3 && m3.kind === "account" ? m3 : null;
@@ -23780,14 +23814,14 @@ ${JSON.stringify(ctx, null, 1)}`;
   var codeIs = (e5, c4) => !!e5 && typeof e5 === "object" && "code" in e5 && e5.code === c4;
   var nameIs = (e5, n3) => e5 instanceof Error && e5.name === n3;
   var LINK_MS = 1e3;
-  async function exportFile(data, filename, mime, okMsg, onSaved, fallbackTitle, fallbackHelp) {
+  async function exportFile(data, filename, mime, okMsg, onSaved2, fallbackTitle, fallbackHelp) {
     try {
       const c4 = window.claude;
       const dl = c4 && typeof c4.use === "function" ? await c4.use("downloads") : null;
       if (dl) {
         try {
           await dl.save({ filename, data });
-          if (onSaved) onSaved();
+          if (onSaved2) onSaved2();
           toast(okMsg);
           return;
         } catch (e5) {
@@ -23806,7 +23840,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (file && isStandalone() && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({ files: [file], title: filename });
-          if (onSaved) onSaved();
+          if (onSaved2) onSaved2();
           toast(okMsg);
           return;
         } catch (e5) {
@@ -23844,7 +23878,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       `Look for ${filename}. If nothing appeared, the browser blocked the download. Copy the text instead.`,
       "Yes, I have the file",
       () => {
-        if (onSaved) onSaved();
+        if (onSaved2) onSaved2();
         toast("Backup recorded");
       },
       false,
@@ -27536,7 +27570,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Trends</b> read each session's working sets the same way, averaged, up to ${TREND_MAX_RTF} reps to failure (so high-rep work has a trend too, never shown as a 1RM). RIR is used in a trend only when it is rated on ${pctOf(RIR_TREND.share)}% or more of the lift's sets; otherwise loads and reps alone, so tapping RIR on some days and not others cannot bend it. The ${TREND_WEEKS} weeks are counted back from the lift's own last session, and a trend needs ${TREND_MIN.sessions} sessions spread over ${TREND_MIN.days / WEEK_DAYS} weeks or more (and, on a bodyweight lift, a weigh-in, since it is read at your bodyweight); it says how many weeks it covers. A muscle's trend counts a lift once it has ${MUSCLE_TREND_MIN.sessions} sessions over ${MUSCLE_TREND_MIN.days / WEEK_DAYS} weeks or more, and says the weeks too. A trend shows how many sessions it rests on and its weekly rate with the range an 80% interval allows (about +1.5% a week, likely +1.2% to +1.8%). <b>Weight lifted</b> is load times reps; it falls when the load goes up and reps come down, so it is shown as a number, not as progress.</p>
    <p><b>A lift on Stats</b> says its change in what was lifted: the change in its estimated 1RM on a compound lift you load as a total (a barbell, a plate-loaded machine), the top set at each end on anything else. A number shows only when it points the same way as the trend. The percentages are behind its i. <b>Next session</b> is the target its next workout will show; there are no predictions of where a lift will be.</p>
    <p><b>Goals</b>: on Stats, Lifts, set a goal for a lift as a load for a number of reps (100 x 5). It is reached when a working set matches it, that load or more for those reps or more. Until then it shows how close your best estimate from the last ${BEST_WEEKS} weeks is to what the goal takes done to failure, and, on a compound lift you load as a total, about how much load is left for those reps. It gives no date: your session targets are the steps toward it. On a bodyweight lift the load is the added load.</p>
-   <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats every earlier estimate of the lift; a <b>best for its reps</b> beats the earlier best in the same band of reps to failure (${BAND_RANGES.join(", ")}); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least ${pctOf(REP_PR_SHARE)}% as strong as your strongest before it (a rule of thumb: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these. A load in the other unit, after a change of units or gyms, is read as the earlier load it stands for when it is the nearest load over it on its own spacing (a rule of thumb: 155 lb after 70 kg, which is 154.3 lb, is not a weight PR; 157.5 lb is). PRs count on any day, a lighter day, a deload, and an exercise made lighter included, and are announced as you log the set. Only a PR with a new best estimate is announced and counted (on a lift with no estimate, or a bodyweight lift before any weigh-in, any of them); a heavier set or more reps without one is kept in the list and named in the recap as heaviest yet. Counting them all made each load step a PR. On a bodyweight lift, PRs, estimates, trends, and charts are all read at your latest weigh-in for every session, so progress is more reps or more added load, never a change on the scale. Weight lifted uses each day's weigh-in, the work actually done. With no weigh-in they count only the weight you add. Estimates and trends wait for one.</p>
+   <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats every earlier estimate of the lift; a <b>best for its reps</b> beats the earlier best in the same band of reps to failure (${BAND_RANGES.join(", ")}); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least ${pctOf(REP_PR_SHARE)}% as strong as your strongest before it (a rule of thumb: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these. A load in the other unit, after a change of units or gyms, is read as the earlier load it stands for when it is the nearest load over it on its own spacing (a rule of thumb: 155 lb after 70 kg, which is 154.3 lb, is not a weight PR; 157.5 lb is). PRs count on any day, a lighter day, a deload, and an exercise made lighter included, and are announced as you log the set. Only a set stronger than every earlier one is announced and counted: a higher estimate, or, past ${E1_MAX_REPS} reps to failure where the estimate stops, more reps at a load (on a lift with no estimate, or a bodyweight lift before any weigh-in, any of them). A heavier set that is not stronger is named in the recap as heaviest yet. Counting them all made each load step a PR. On a bodyweight lift, PRs, estimates, trends, and charts are all read at your latest weigh-in for every session, so progress is more reps or more added load, never a change on the scale. Weight lifted uses each day's weigh-in, the work actually done. With no weigh-in they count only the weight you add. Estimates and trends wait for one.</p>
    <p><b>Moving</b>: up ${GROW_PCT}% or more with a trend clearly above zero. <b>Falling</b>: down ${GROW_PCT}% or more with a trend clearly below zero, in each rep range you train it in; a lift on a heavy day and a light day falls only when it falls in both, and its line says which range is down. <b>Stalled</b>: flat or falling over the last ${STALL.sessions} sessions (by the middle of the changes between every pair of them, so one good or bad day does not decide it) in each rep range you train it in, or ${STALL.days / WEEK_DAYS} weeks if that covers more (at least ${STALL.min} sessions); a lift on a heavy day and a light day is stalled only when it is stalled in both. With no PR in the last ${STALL.noProgress} of them, nor, in a session of that range done lighter since the third-last, a set stronger than any before it, the load no heavier than at the start of that stretch, and no more reps at that load than any session before it in the stretch, and only while you still train the lift and no injury it loads is flagged (the app holds its load then). Adding load and dropping reps for a while, or adding reps to later sets, as double progression does, is not a stall. A deload is suggested when ${FATIGUE_STALLS} or more main lifts (compound lifts with an estimate) stall together, and not within ${DELOAD_GAP_DAYS / WEEK_DAYS} weeks of a lighter week (more than half its sessions done lighter, counted once it ends or from the second, or a deload begun mid-week, once its last two or more deload sessions were done lighter), a rest week, or a week with nothing trained in it, a week marked as a deload included; isolation and core lifts are listed but not counted for it.</p>
    <p><b>Weekly averages</b> use the weeks you trained of the last ${AVG_WEEKS}, starting the week after your first, or after your first back from over ${BACK_DAYS / WEEK_DAYS} weeks off (${FIRST_WEEK_REASON}). Weeks before that break are not counted as missed. A lighter week (${LIGHTER_WEEK_WORDS}) or a rest week is swapped for an earlier one. A week with no training is left out rather than counted as zero, and when ${MISSED_WEEKS_SAID} or more of the ${AVG_WEEKS} were missed the Coach says so first.</p>
    <p><b>Consistency</b>: weeks with at least as many sessions as the routine you trained that week planned (one session, when Today starts with a blank session). Each session records what its routine planned then, so changing or deleting the routine later does not rescore its weeks; sessions from before that record began read the routine as it is now. A cycle that is not a week long plans the whole number of sessions under its rate: every other day is 3.5 a week, so 3, for the streak, adherence, and This week alike. Rest weeks are skipped.</p>
@@ -28742,7 +28776,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       }),
       cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }),
       acctUser: () => acct.user,
-      acctWaiting: waiting2,
+      acctWaiting: waiting3,
       flush: () => cq(cloudFlush),
       cloudInit,
       cloudStop,
