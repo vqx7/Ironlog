@@ -963,6 +963,29 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     ok(stored === 3 && n === 3 && JSON.stringify(backs) === '[1,2,3]' && left === 0, 'S-7: steps the store holds twice (the list written again by a tab on 2.57, a step stored twice) are taken once: three changes, three steps, each Undo bringing one back (REV15-3)', { stored, n, backs, left });
     await P.close();
   }
+  if (run('S-7')) {
+    // REV15-8: Undo tapped at once, while the delete's step is still being written. A step taken back is gone from the
+    // store as well: reopened, Settings offers nothing to undo (the step was left in the store, and Settings offered
+    // "Undo: Session deleted", then said "Nothing to undo"). A long log, so the step's write is still under way.
+    const seed = function (S) { for (let i = 1; i <= 300; i++) S.sessions.push({ id: 'y' + i, date: new Date(Date.UTC(2025, 0, 1) + i * 2 * 864e5).toISOString().slice(0, 10), dayIdx: 0, dayName: 'Day 1', notes: '', ex: ['bench', 'backSquat', 'dbLateral'].map(exId => ({ exId, sets: [1, 2, 3, 4].map(() => ({ w: 60, r: 8, rir: 2, done: true })) })) }); S.settings.lastExport = '2026-11-11'; };
+    const P = await phone({ seed });
+    await P.tabTo('history');
+    await P.ev(() => window.__ironlog.ACT.histDel({ dataset: { id: 'y300' } })); await wait(150);
+    // The confirm, then Undo on the toast in the next task: two taps, the second as soon as a tap can follow.
+    const now = await P.ev(async () => {
+      const L = window.__ironlog;
+      document.querySelector('#modal [data-act="mOk"]').click();
+      await new Promise(r => setTimeout(r, 0));
+      document.querySelector('#toast [data-act="undo"]').click();
+      return { back: L.state.sessions.some(s => s.id === 'y300'), steps: L.undoStack.length };
+    });
+    await wait(1200);
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(800);
+    await settingsOpen(P, 'dataSec');
+    const then = await P.ev(() => { const b = document.querySelector('#dataSec [data-act="undo"]'); return { steps: window.__ironlog.undoStack.length, offered: !!b && !b.disabled, back: window.__ironlog.state.sessions.some(s => s.id === 'y300') }; });
+    ok(now.back && now.steps === 0 && then.steps === 0 && !then.offered && then.back, 'S-7: Undo tapped while the change\'s step is still being written takes the step out of the store too: reopened, there is nothing to undo, and the session is there (REV15-8)', { now, then });
+    await P.close();
+  }
   /* ---------- S-8: Recently deleted ---------- */
   if (run('S-8')) {
     const P = await phone({ seed: (S, L, a) => {
