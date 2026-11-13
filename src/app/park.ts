@@ -1,13 +1,12 @@
-/* A workout in progress set aside (the review of 2.35; V, 2026-11-08:
-   "go back and retroactively fix a prior workout first"). Editing a saved
-   session or logging a past one opens it as the session in progress, and
-   there is one; before 2.36 the question offered only to throw the open
-   workout away, with no Undo. Now the open one is kept on this phone, with
+/* A workout in progress set aside (V, 2026-11-08: "go back and
+   retroactively fix a prior workout first"). Editing a saved session or
+   logging a past one opens it as the session in progress, and there is one,
+   so rather than throw the open workout away, it is kept on this phone, with
    the account it was for, and comes back when the edit or past workout ends
    (saved, discarded or emptied), Today offering it as after Save and leave.
-   It is the phone's own and never synced, so no build before this one meets
-   it and nothing in the log changes shape; one is held at a time, and a
-   second edit with one held asks first, as before. A copy that cannot come
+   It is the phone's own and never synced, so no older build meets it and
+   nothing in the log changes shape; one is held at a time, and a second edit
+   with one held asks first. A copy that cannot come
    back at once (another account signed in, or the app closed halfway) is
    offered on Today until it does (`parkedHere`). */
 import { act } from './act';
@@ -20,13 +19,13 @@ import { cloud, fx, state, ui } from './store';
 import { addDays, iso, today } from './util';
 
 /* The account whose log this phone holds, as the sync notes name it (cloud.acct): known from the start, before the
-   sync is on (the review of 2.36, REV6-3: tagged by the sync, a workout set aside in the seconds before it started was
-   tagged as no account's and never came back), and kept by a sign-out that keeps a copy, as the log is. A sign-in that
+   sync is on (tagged by the sync, a workout set aside in the seconds before it started would be no account's and never
+   come back), and kept by a sign-out that keeps a copy, as the log is. A sign-in that
    takes the phone's log into an account takes the set-aside workout with it (parkedRetag, in takeAccount). */
 /** The account a set-aside workout belongs to: the one whose log this phone holds, '' for a log of no account. */
 const who = (): string => cloud.acct || '';
 
-/** The set-aside workout's record, if one is held: the account it was for, the workout as saved, and when it was set aside (null on a copy set aside before 2.57 not yet seen by this build). */
+/** The set-aside workout's record, if one is held: the account it was for, the workout as saved, and when it was set aside (null on a copy set aside by a build before 2.57, not yet seen by this one). */
 function held(): { uid: string; draft: unknown; at: number | null } | null {
   const r = rec(parseJson(prefGet(PARKED_KEY) || 'null'));
   return r && typeof r['uid'] === 'string'
@@ -37,9 +36,9 @@ function held(): { uid: string; draft: unknown; at: number | null } | null {
 /* A workout set aside and never brought back is kept PARK_KEEP_DAYS days from the day it was set aside, then removed
    when the app next opens (V 2026-11-09 08:11: "is it possible to delete it after 30 days?"; 30 is V's
    choice, a convention). It is the only copy of what was typed in it, so it never goes unannounced: Today's card says
-   until when it is kept, and the removal is said as it happens, by that day. A copy from before 2.57 carries no date;
+   until when it is kept, and the removal is said as it happens, by that day. A copy set aside by a build before 2.57 carries no date;
    its days count from the first time this build opens with it, so none goes sooner than a card could have said. Only a copy
-   this account can bring back is removed: one kept for another account waits for it, as before. */
+   this account can bring back is removed: one kept for another account waits for it. */
 /** Days a set-aside workout is kept (above). */
 const PARK_KEEP_DAYS = 30;
 /** The day a set-aside workout was set aside and the last day it is kept, for Today's card; null when none is offered here. */
@@ -49,7 +48,7 @@ export function parkedDates(): { set: string; until: string } | null {
   const set = iso(new Date(h.at));
   return { set, until: addDays(set, PARK_KEEP_DAYS) };
 }
-/** At start: dates a copy set aside before 2.57, and removes one of this account kept past its last day, saying so (above). */
+/** At start: dates a copy set aside by a build before 2.57, and removes one of this account kept past its last day, saying so (above). */
 export function parkTidy(): void {
   const h = held();
   if (!h) return;
@@ -68,8 +67,8 @@ const heldId = (h: { draft: unknown } | null): string | null => {
   return typeof id === 'string' ? id : null;
 };
 
-/* The workout brought back in this visit whose set-aside copy is still held (REV6-S2, V 2026-11-09 08:11: "if phone
-   storage is full hold onto draft copy"): the copy is let go once a write of the log succeeds, which then holds the
+/* The workout brought back in this visit whose set-aside copy is still held (V 2026-11-09 08:11: "if phone storage
+   is full hold onto draft copy"): the copy is let go once a write of the log succeeds, which then holds the
    workout or what became of it (saved, discarded). Until then the log lives in memory alone, so the copy is the
    phone's only one: kept, and offered again only after the app is closed, when this visit's log is gone with it. */
 let backHere: string | null = null;
@@ -96,10 +95,10 @@ export const parkedHere = (): boolean => {
 };
 
 /* Only a workout, or a past workout being logged, is set aside: what is typed there is in the log nowhere else. An edit
-   of a saved session is a copy of the log, stale the moment the log changes, so it is never set aside (the review of
-   2.36 to 2.41, REV8-1: set aside, an edit came back after a newer edit of the same session was saved and wrote over
-   it, and after its session was deleted, put it back). Opening another over an edit asks first, as before 2.36. */
-/** Sets the workout in progress aside; false when there is none, it is an edit of a saved session, one is held already, or the phone refused the write (the caller then asks, as before 2.36). */
+   of a saved session is a copy of the log, stale the moment the log changes, so it is never set aside (set aside, an edit
+   would come back after a newer edit of the same session was saved and write over it, and after its session was
+   deleted, put it back). Opening another over an edit asks first. */
+/** Sets the workout in progress aside; false when there is none, it is an edit of a saved session, one is held already, or the phone refused the write (the caller then asks). */
 export function parkDraft(): boolean {
   const d = state.draft;
   // Any copy held, one waiting for a save included, is the only one of its workout: never written over.
@@ -140,13 +139,13 @@ export function unpark(): boolean {
   return true;
 }
 
-/* The phone never lets go of a log while a workout is set aside for it (the reviews of 2.36 and 2.38): before an
+/* The phone never lets go of a log while a workout is set aside for it: before an
    action that takes the log off the phone or replaces it (Sign out, either way; Delete my account; Erase everything;
    Load demo data; Replace my data; Copy my log in), a workout set aside for this log comes back into it, so it goes
    where the log goes and an Undo of the action brings it back with the rest, as any workout in progress. With another
-   workout open (the edit), the action waits until that one is saved or discarded. Without this, a sign-out took the
-   only copy off the phone, an Undo after a reload could not bring it back, and a log replaced while
-   signed out left it tagged for an account the phone no longer named. */
+   workout open (the edit), the action waits until that one is saved or discarded. Without this, a sign-out would take
+   the only copy off the phone, an Undo after a reload could not bring it back, and a log replaced while
+   signed out would leave it tagged for an account the phone no longer named. */
 /** Whether the phone may let go of or replace its log now: a set-aside workout of this log brought back first; false, said, while another workout is open. */
 export function parkSettle(): boolean {
   if (!parkedHere()) return true;

@@ -1,7 +1,6 @@
 /* Importing workouts: the parsers that turn a file or
    pasted text into rows, dates, exercise names and sets, before anything is
-   matched to the library or saved (phase 3a; moved unchanged from the
-   legacy script). The preview and
+   matched to the library or saved. The preview and
    the save, which read the log, stay with the import screen. */
 
 import { today, isDate, yearOf, DAY_MS, isoDateOf, HOUR_MIN, MINUTE_S, SECOND_MS, LETTERS, WEEK_DAYS } from './util';
@@ -650,8 +649,7 @@ function impUnitOf(headers: readonly unknown[], map: Record<string, number>): 'k
 }
 
 /* Cardio by name, or null: an imported row with a distance, or with a
-   cardio name and no reps, is cardio (r30: Strong's treadmill rows were
-   dropped). Carries and lunges that say "walk" are lifting. */
+   cardio name and no reps, is cardio, so a treadmill row is not dropped. Carries and lunges that say "walk" are lifting. */
 function impCardioKind(name: unknown): string | null {
   const n = String(name || '').toLowerCase();
   if (/farmer|carry|lunge|suitcase/.test(n)) return null;
@@ -688,7 +686,7 @@ const FORMULA_LEAD = /^[=+\-@\t\r]/,
 /* A cell gets the mark when a spreadsheet would read it as a formula, and
    also when it is the lifter's own ' before such a text ('+5 lb' next
    time): reading the export back takes one ' off a marked cell, so without
-   its own mark that ' would be the one taken off (the review of r66). */
+   its own mark that ' would be the one taken off. */
 /** Whether a cell's text needs the ' mark: past any ' it starts with, it reads as a formula and is not a plain number. */
 const needsMark = (s: string): boolean => {
   const t = s.replace(/^'+/, '');
@@ -771,8 +769,8 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
   };
   if (!unit && map.unit != null) for (let i = 1; i < rows.length && !unit; i++) unit = rowUnit(rows[i]);
   const S = new Map<string, ImpSession>();
-  /* The app's own file (the audit: read back, it lost cardio, session
-     notes and the minutes a session took, and a missed set): its columns
+  /* The app's own file, read back with its cardio, session notes, the
+     minutes a session took, and its missed sets: its columns
      past the ones every table has, by their names. */
   const heads = head.map(h =>
     String(h == null ? '' : h)
@@ -874,8 +872,8 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     }
     /* An exercise's note may sit on any of its rows (a set's note in another
        app's file, its warm-up row first and blank): every distinct one is
-       kept, each once, up to a note's room (the review of 2.35: only
-       the first row's was read, so a note after a blank row was lost). */
+       kept, each once, up to a note's room, so a note after a blank row is
+       not lost. */
     const en = String(cell('note') || '').trim();
     if (en && !it.note.split('; ').includes(en)) it.note = (it.note ? it.note + '; ' + en : en).slice(0, LIMITS.note);
     const n = Math.min(Math.max(Math.round(num(cell('sets')) || 1), 1), ROW_SETS);
@@ -911,13 +909,13 @@ function impSetsText(t: unknown): string {
   s = s.replace(/(\d),(\d{1,2})(?=\s*(?:lbs?|kgs?)?\s*[x×*])/g, '$1.$2');
   s = s.replace(/(\d)\s*(lbs?|kgs?|#)(?=[\s,x×*@;/]|$)/g, '$1 ');
   s = s.replace(/(\d)\s*(?:s|sec|secs|seconds)\b/g, '$1');
-  /* Notation lifters write (from the third review): RPE ("180x5
+  /* Notation lifters write: RPE ("180x5
      @RPE8", "rpe 8.5", "@8 rpe") becomes RIR, 10 minus RPE, for the line's
      sets; "+10" before sets is load added to bodyweight ("Chins +10 3x8");
      "BW" before sets is bodyweight ("Pull-ups BW 3x10"). */
   /* A bare "@8" after sets on a line that already has a load ("Bench 100
      3x8 @9", "140x5x5 @8") is RPE as lifters write it, not a load of 9
-     (second check: that line saved nine sets at 100 and two at 9). Only
+     (not nine sets at 100 and two at 9). Only
      6 to 10; "@2" stays RIR. */
   if (/(^|\s)\d{2,}(\.\d+)?\s*(x|×|\*|\s\d)/.test(s))
     s = s.replace(/@\s*((?:6|7|8|9)(?:\.5)?|10)(?![\d.x×*])/g, (_m: string, v: string) => ` rpe ${v} `);
@@ -952,10 +950,10 @@ function impSetsText(t: unknown): string {
     (m: string, a: string, b: string, c: string) =>
       +a <= TEXT_SETS && +c > +a ? Array<string>(+a).fill(`${c}x${b}`).join(' ') : m
   );
-  /* sets x reps then a load at the end: "OHP 3x8 40" is 3 sets of 8 at 40
-     (from the review: it read as 3 x 8 and 3 x 40). Only up to TEXT_SETS sets,
+  /* sets x reps then a load at the end: "OHP 3x8 40" is 3 sets of 8 at 40,
+     not 3 x 8 and 3 x 40. Only up to TEXT_SETS sets,
      and only a last number larger than the set count, so "185x8 8" (a load
-     for 8, then 8 more reps) still reads as before. */
+     for 8, then 8 more reps) reads as that. */
   s = s.replace(
     /(^|\s)(\d{1,2})\s*[x×*]\s*(\d{1,3})\s+(\d+(?:\.\d+)?)\s*$/,
     (m: string, p: string, a: string, b: string, c: string) =>
@@ -993,7 +991,7 @@ function impSetsText(t: unknown): string {
 export const GENERIC_WORKOUT =
   /^\s*((early|late)\s+)?(morning|afternoon|evening|night|midday|lunch|weekend)?\s*(workout|session|training|lifting|lift|gym)?\s*$|^imported$/i;
 
-/* ---------- typed sets and notes (from the legacy script) ---------- */
+/* ---------- typed sets and notes ---------- */
 
 /** What one line of typed sets may hold: the most reps in a set and the most sets. */
 const TYPED = { reps: 100, sets: 20 } as const;

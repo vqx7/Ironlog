@@ -1,6 +1,5 @@
-/* The page's start (from the legacy script's 10-start.js to
-   29-sections.js, deleted with it): the bundle's entry. Every module runs
-   nothing on import, so the page starts here, in the order it always did:
+/* The page's start: the bundle's entry. Every module runs nothing on
+   import, so the page starts here, in this order:
    the page given its draw and its sheets, storage and sync's effects, the
    saved log read and the sync started, the fields and the update bar, the
    account's listeners, the page's own, the tips', every screen's taps and
@@ -374,15 +373,14 @@ function oldLogFixes(): void {
   /* Fixes of a log an older build saved, once, on this device's state, each
      made only when it changes something (a save is also a sync, so one at
      every start would send the log each time), and inside `act`, as every
-     change to the log is (the r63 audit's A-5: they were written and
-     saved by hand). */
-  // r44: floors from a first-run pick made before they were recorded (oldFloors).
+     change to the log is, never written and saved by hand. */
+  // Floors from a first-run pick made before r44 recorded them (oldFloors).
   try {
     recordOldFloors();
   } catch (e) {
     log('fitRecordOld', e);
   }
-  // r54: targets fitted to a cycle by the reading of its plan before r54 follow r54's (refit, src/app/profile.ts).
+  // Targets fitted to a cycle by the reading of its plan builds before r54 made follow the current one (refit, src/app/profile.ts).
   try {
     const rf = refit();
     if (rf)
@@ -767,10 +765,10 @@ function exposeForTests(): void {
     liftsMoving,
     // Whether a bodyweight lift has no weigh-in to read, so tests/engine.js compares it with Node's.
     noBody,
-    // 2.32: the tape row's sentence and the one count of minutes left.
+    // The tape row's sentence and the one count of minutes left.
     sizeWhat,
     sessLeftMin,
-    // 2.37: This block vs last, so tests/r83.js reads the blocks against a log worked out by hand, and the next
+    // This block vs last, so tests/r83.js reads the blocks against a log worked out by hand, and the next
     // load minus and plus step to, so tests/engine.js compares the page's answer with Node's.
     blocks,
     stepLoad
@@ -836,7 +834,7 @@ function start(): void {
   window.addEventListener('appinstalled', () => {
     prefSet(APP_INSTALLED, '1');
   });
-  // The installed app's start script keeps its errors in the error log (the r63 audit's A-12: it dropped them).
+  // The installed app's start script keeps its errors in the error log, never dropping them.
   window.ironlogLog = (area, e) => log(area, e);
   // The tips' listeners, before the page's own.
   tipsStart();

@@ -1,10 +1,8 @@
-/* The model the engine and the analytics read (phase 3b;
-   ARCHITECTURE.md): the log, the date the engine takes as today, and the
+/* The model the engine and the analytics read (ARCHITECTURE.md): the log, the date the engine takes as today, and the
    values built from the log once per change. Every function that reads any
    of it takes the model as its first parameter, `M`, so it reads nothing
    else: a test hands it a log and a date, and the app hands it the one live
-   model (live.ts). The accessors here moved unchanged from the legacy script
-   but for that parameter. */
+   model (live.ts). */
 
 import type { EngineState, Exercise, Gym, Profile, Routine, Session, Target } from './types';
 import { weekStart } from './util';
@@ -75,8 +73,8 @@ export interface Exposure {
   dropOnly?: true;
 }
 
-/* A lift's sessions from its newest "New machine or gym" mark (PENDING
-   343 7, V's decision of 2026-10-24): a session marked so starts the lift
+/* A lift's sessions from its newest "New machine or gym" mark (V's
+   decision of 2026-10-24): a session marked so starts the lift
    over, so its targets, trend, stalls, PRs, bests and rack spacing read from
    it as from a first session, and the sessions before it, at another
    machine, are kept and shown (its history, its chart, History) but read by
@@ -265,9 +263,8 @@ export interface Suggestion {
   away?: number | undefined;
   /** Asked as done earlier the same day: the load stays as logged, never moved onto a grid. */
   same?: true | undefined;
-  /* The engine says its own short form rather than the screen reading its words for one: until 2.49 the
-     session matched the loaded first-time paragraph by a pattern, so a reworded sentence, or a bodyweight or
-     assisted lift's, was said in full on every lift. */
+  /* The engine says its own short form rather than the screen reading its words for one: matched by a
+     pattern, a reworded sentence, or a bodyweight or assisted lift's, would be said in full on every lift. */
   /** A first session's paragraph shortened, said on a later lift in the same session once one has said it in full. */
   again?: string | undefined;
 }
@@ -305,7 +302,7 @@ export interface Efforts {
   first: Map<string, { date: string; v: number } | null>;
 }
 
-/** The values built from the log once per change, under their r51 names,
+/** The values built from the log once per change, under their first names,
     each null (or undefined) until first read and again after invalidate. */
 interface Caches {
   EXMAP: Partial<Record<string, Exercise>> | null;
@@ -325,7 +322,7 @@ export interface Model {
   c: Caches;
 }
 
-/** The caches as r51 started them: every one null except _bwRef, which
+/** The caches as they start: every one null except _bwRef, which
     bwRef tests for undefined (a null there would leave every bodyweight lift
     without its bodyweight). */
 export function freshCaches(): Caches {
@@ -449,13 +446,13 @@ export function gymOfIn(M: Model): Gym | null {
   return g && typeof g === 'object' ? g : null;
 }
 
-/* ---------- PROFILE (item 271, with 43 and 44) ----------
+/* ---------- PROFILE ----------
    An optional short profile: goal, experience, days a week and up to two
    focus muscles. V's answers (2026-10-13): it sets defaults and new plan
    items only; the routine in use changes only through Apply; targets the
    lifter typed stay as typed, and only the app's own targets move. With no
-   profile, or with Size, every number is exactly what it was before r44,
-   because the app's defaults were already set for size. */
+   profile, or with Size, every number is the app's default, because the
+   defaults are set for size. */
 /** The profile set in Settings, or an empty one. */
 export function profIn(M: Model): Profile {
   return M.s.settings.profile || {};
@@ -464,7 +461,7 @@ export function profIn(M: Model): Profile {
 /** A muscle with no band of its own (none the log can hold: every muscle key has one). */
 const NO_BAND: readonly [number, number] = [0, 0];
 
-/** A muscle's weekly band, found by its key among the muscles (an index's keys are typed as any string): one reading for Pick for me and Stats (the r63 audit's A-6, where each had its own). */
+/** A muscle's weekly band, found by its key among the muscles (an index's keys are typed as any string): one reading for Pick for me and Stats. */
 export function bandOfIn(M: Model, m: string): readonly [number, number] {
   for (const k of MK) if (k === m) return M.s.settings.bands[k];
   return NO_BAND;
