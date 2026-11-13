@@ -22,7 +22,7 @@
 //      bar scrolled partly away scrolls the page (pinned, from 2.46 to 2.51 a drag down that began on the bar opened the
 //      calendar wherever the page was). The two fail on 2.51's build (`baselines/r97.html`).
 // WEEK_ONLY=1,4 runs some sections.
-const { open, touchDriver } = require('./h');
+const { open, touchDriver, ENGINE } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
 const FILE = process.argv[2] || 'index.html';
@@ -170,7 +170,12 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     const barShot = () => page.screenshot({ clip: { x: 0, y: 0, width: 390, height: barB - 1 } });
     const afterEnd = () => page.evaluate(() => { window.__afterEnd = null; document.addEventListener('touchend', () => requestAnimationFrame(() => { const s = document.querySelector('#modal .sheet'); window.__afterEnd = s ? { open: !document.getElementById('modal').hidden, tf: s.style.transform } : { open: false }; }), { once: true }); });
     const ended = async () => { await wait(60); return page.evaluate(() => window.__afterEnd); };
+    // The bar before the pull, drawn with the page held still as an open sheet holds it (body.modal-open): where the
+    // browser draws a scrollbar, holding the page takes it away and widens the page, which redraws the bar with no
+    // change to the app (WebKit on GitHub, NEW-143).
+    const cw0 = await page.evaluate(() => { const w = document.documentElement.clientWidth; document.body.classList.add('modal-open'); return w; });
     const bar0 = await barShot();
+    const cw0held = await page.evaluate(() => { const w = document.documentElement.clientWidth; document.body.classList.remove('modal-open'); return w; });
     // The first move of a drag down, 3 px, is the pull's: left to the page, a phone starts the page's own bounce under
     // the finger. Dispatched on the bar itself, as a phone sends every move (Chromium's own input holds back a move
     // this small, inside its tap's slop). WebKit makes a touch only through document.createTouch (its Touch constructor
@@ -207,7 +212,8 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     const a = await sheet();
     const barOpen = await barShot();
     ok(a.open && a.kind === 'calendar' && a.top && Math.abs(a.y - barB) <= 1 && !a.tf, '4. let go past the point, it stays open just under the bar', { a, barB });
-    ok(bar0.equals(barOpen), '4. the bar stays in view above it, drawn as it was before the pull');
+    const cwOpen = await page.evaluate(() => document.documentElement.clientWidth);
+    ok(bar0.equals(barOpen), '4. the bar stays in view above it, drawn as it was before the pull', { cw0, cw0held, cwOpen });
     const dOpen = await dim();
     ok(d30 < 0.2 && dOpen >= 0.5, '4. the page under it dims as the pull comes, not all at once, to a sheet\'s dimming once open', { d30, dOpen });
     ok(a.h > 300 && a.grid > 200 && a.gridIn, '4. laid out as the calendar is: the whole month inside the sheet', a);
@@ -215,9 +221,14 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     ok(month === 'NOVEMBER 2026' || month === 'November 2026', '4. on this month', month);
     // A tap on the bar while it is open is a tap outside the calendar: it closes, and the day tapped is not opened.
     const tab0 = await page.evaluate(() => window.__ironlog.ui.tab);
+    // What the finger reached, for the run's notes: the element at the point, and where the touch and the click went.
+    const name = 'const nm = e => !e ? null : e.id ? "#" + e.id : e.tagName.toLowerCase() + (e.className && typeof e.className === "string" ? "." + e.className.trim().split(/\\s+/).join(".") : "");';
+    await page.evaluate(([x, y, name]) => { const nm = new Function('e', name + ' return nm(e);'); window.__tapSeen = { at: nm(document.elementFromPoint(x, y)), touch: null, click: null }; document.addEventListener('touchstart', e => { window.__tapSeen.touch = nm(e.target); }, { once: true, capture: true, passive: true }); document.addEventListener('click', e => { window.__tapSeen.click = nm(e.target); }, { once: true, capture: true }); }, [box.x, box.y, name]);
     await page.touchscreen.tap(box.x, box.y); await wait(300);
-    const tb = await page.evaluate(() => ({ modal: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind, tab: window.__ironlog.ui.tab }));
+    const tb = await page.evaluate(() => ({ modal: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind, tab: window.__ironlog.ui.tab, seen: window.__tapSeen }));
+    console.log(`note week section 4 (${ENGINE}): a finger on the bar with the calendar open reached ${JSON.stringify(tb.seen)}, and the calendar ${tb.modal ? 'stayed open' : 'closed'}`);
     ok(!tb.modal && tb.tab === tab0, '4. a tap on the bar while it is open closes it, as a tap outside does', tb);
+    if (tb.modal) { await page.evaluate(() => window.__ironlog.ACT.mClose()); await wait(150); }
     await touch('touchStart', box.x, box.y); for (let k = 1; k <= 8; k++) { await touch('touchMove', box.x, box.y + k * 15); await wait(16); } await touch('touchEnd', 0, 0); await wait(350);
     // Pushed back up a little, it goes back; pushed up far, it closes.
     const sb = await page.evaluate(() => { const r = document.querySelector('#modal .sheet').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.bottom - 12 }; });
@@ -249,16 +260,24 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     await page.touchscreen.tap(t.x, t.y); await wait(300);
     const f = await page.evaluate(() => ({ tab: window.__ironlog.ui.tab, modal: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind }));
     ok(f.tab === 'today' && f.modal !== 'calendar', '4. a tap on a day in the bar still opens it', f);
-    // A tap whose finger drifts 2 px down is still a tap: the pull claims the move, and the day still opens.
-    await page.evaluate(() => { window.__ironlog.ui.tab = 'history'; window.__ironlog.render(); window.scrollTo(0, 0); }); await wait(100);
-    await touch('touchStart', t.x, t.y); await touch('touchMove', t.x, t.y + 2); await wait(16); await touch('touchEnd', 0, 0); await wait(300);
-    const f2 = await page.evaluate(() => ({ tab: window.__ironlog.ui.tab, modal: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind }));
-    ok(f2.tab === 'today' && f2.modal !== 'calendar', '4. a tap on a day whose finger drifts 2 px down still opens it', f2);
+    // A tap whose finger drifts 2 px down is still a tap: the pull claims the move, and the day still opens. Only in
+    // Chromium, whose touches here are the browser's own input: in WebKit the suite's touches are made by the page's
+    // script (tests/h.js), and a touch made so never becomes a tap in any build.
+    if (ENGINE === 'chromium') {
+      await page.evaluate(() => { window.__ironlog.ui.tab = 'history'; window.__ironlog.render(); window.scrollTo(0, 0); }); await wait(100);
+      await touch('touchStart', t.x, t.y); await touch('touchMove', t.x, t.y + 2); await wait(16); await touch('touchEnd', 0, 0); await wait(300);
+      const f2 = await page.evaluate(() => ({ tab: window.__ironlog.ui.tab, modal: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind }));
+      ok(f2.tab === 'today' && f2.modal !== 'calendar', '4. a tap on a day whose finger drifts 2 px down still opens it', f2);
+    } else console.log('note week section 4: the tap whose finger drifts 2 px runs in Chromium, where the suite\'s touches are the browser\'s own');
     // History's Calendar button still opens the calendar from the bottom, as every sheet.
     await page.evaluate(() => { window.__ironlog.ui.tab = 'history'; window.__ironlog.render(); });
     await tap(page, '[data-act="calOpen"]'); await wait(200);
     const g = await sheet();
     ok(g.open && g.kind === 'calendar' && !g.top, '4. History\'s Calendar still opens from the bottom', g);
+    // For the run's notes, not a check: whether a finger on the dimmed area above an ordinary sheet closes it here.
+    await page.touchscreen.tap(195, 30); await wait(300);
+    const away = await page.evaluate(() => !window.__ironlog.ui.modal);
+    console.log(`note week section 4 (${ENGINE}): a finger on the dimmed area above History's Calendar ${away ? 'closed it' : 'left it open'}`);
     ok(!P.errors.length, '4. no page error', P.errors);
     await P.browser.close();
   }
