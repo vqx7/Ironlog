@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-frr2L2geTLAcejWBML7roDRsEm7utpUlCcDMT29P4jc=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-SB27hgnY7KUI3yHKUPr8SKhH9EcHAQ8JnI2GRC/w3u4=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.12-r107">
+<meta name="app-build" content="2026.11.12-r108">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2042,8 +2042,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     name: 40,
     /** An exercise's name, in characters: the library's longest is 36. */
     exName: 60,
-    /** A note, in characters: a session's, an exercise's, an injury's (2.28, 2.27-F3: any length before, and one
-        long paste could make a month too large to sync). */
+    /** A note, in characters: a session's, an exercise's, an injury's (one long paste could otherwise make a
+        month too large to sync). */
     note: 5e3,
     /** A section key, in characters, and how many a tab's order keeps. */
     secKey: 40,
@@ -2152,8 +2152,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.61";
-  var APP_VERSION = "2026.11.12-r107";
+  var DISPLAY_VERSION = "2.62";
+  var APP_VERSION = "2026.11.12-r108";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2672,9 +2672,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const D2 = (name, items) => ({ name, items }), R2 = () => ({ name: "Rest", items: [], rest: true });
     const tpl = (t4) => ({ ...t4, meta: t4.meta ?? `${t4.days.filter((d3) => !d3.rest).length} days a week` });
     return [
-      /* New to lifting (r30, from the review: 7 exercises, about 19 sets and
-         over an hour, with incline curls and hack squats, was not a first
-         routine). Five exercises a day on machines and dumbbells, 2 to 3 sets,
+      /* New to lifting (7 exercises, about 19 sets and over an hour, with
+         incline curls and hack squats, is not a first routine). Five exercises a day on machines and dumbbells, 2 to 3 sets,
          3 reps in reserve (easy to judge: stop when a rep slows down), about
          45 minutes. Weekly sets sit under the usual 10 on purpose; add a set as
          it gets easy. */
@@ -2687,7 +2686,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         R2(),
         R2()
       ] }),
-      /* Past the first year, three days a week (r45, V): the full3 days are a
+      /* Past the first year, three days a week (V): the full3 days are a
          first routine (machines, 3 in reserve, under 10 sets a muscle), so a
          trained lifter with three days had only Strength or the dumbbell
          routine. The main barbell lifts at 6 to 10 and 2 in reserve, the
@@ -2740,8 +2739,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         R2(),
         R2()
       ] }),
-      /* Strength (r30, from the review: nothing for someone after a stronger
-         squat, bench and deadlift). The classic five sets of five, alternating
+      /* Strength (for someone after a stronger squat, bench and deadlift). The classic five sets of five, alternating
          two days: when all five sets reach 5, the load goes up a step; two
          sessions short of 5 bring it down to what the estimate says fits.
          Fewer sets per muscle than the weekly targets, on purpose. */
@@ -2760,8 +2758,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         R2(),
         R2()
       ] }),
-      /* High volume, trimmed (r30, from the review: 17 chest sets in one
-         session, mostly to failure, and a neck circuit on shoulder day). At
+      /* High volume, trimmed (not 17 chest sets in one session, mostly to
+         failure, and a neck circuit on shoulder day). At
          most 11 sets for one muscle in a session (the app's per-session line),
          isolation lifts at 1 RIR with a few at 0, no neck work (tracked only).
          Installs before r30 keep their copy; Plan changes it. */
@@ -3900,9 +3898,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
                 note: typeof b2.note === "string" ? b2.note : "",
                 // Planned rep range at the time, [min,max]. Older sessions have none.
                 rr: rr && rr.length === 2 && rr.every((v3) => Number.isFinite(Number(v3)) && Number(v3) > 0) ? pair(Math.round(Number(rr[0])), Math.round(Number(rr[1]))) : null,
-                // Marked trimmed (Short on time, under half its sets) until r53. Neither written nor read since r54 (V's one rule reads the log); kept, here and in drafts, so a record saved before keeps its shape and hash.
+                // Marked trimmed (Short on time, under half its sets) by builds up to r53, and no longer written or read (V's one rule reads the log); kept, here and in drafts, so a record saved with it keeps its shape and hash.
                 cut: b2.cut === true ? true : void 0,
-                // One exercise made lighter mid-session (r31, Make it lighter): out of trends and targets, the rest of the session counts.
+                // One exercise made lighter mid-session (Make it lighter): out of trends and targets, the rest of the session counts.
                 light: b2.light === true ? true : void 0,
                 // Held for a flagged injury, its key: left out of the stall test. Absent unless held, so earlier records keep their hash.
                 ...typeof b2.inj === "string" && isMuscleOrJoint(b2.inj) ? { inj: b2.inj } : {},
@@ -3923,7 +3921,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
                         cal: x2.warm ? void 0 : cleanCal(rec(x2.cal)) || void 0,
                         // The row's own id, last, where a build before it kept the unknown field.
                         ...typeof x2.rid === "string" ? { rid: fixId(x2.rid) } : {},
-                        // What the app asked of it (391), after the id, where a build before 2.61 keeps it.
+                        // What the app asked of it, after the id, where a build before 2.61 keeps it.
                         ...sg ? { sg } : {}
                       },
                       KNOWN_SETF
@@ -3932,7 +3930,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
                 }),
                 // The sets its routine's plan gave it when saved, last, as Finish writes it; absent unless recorded, so older records keep their hash.
                 ...typeof b2.ps === "number" && Number.isInteger(b2.ps) && b2.ps >= 1 && b2.ps <= LIMITS.sets ? { ps: b2.ps } : {},
-                // Done at a new machine or gym (r61, 343 7), last, as Finish writes it; absent unless marked, so older records keep their hash.
+                // Done at a new machine or gym, last, as Finish writes it; absent unless marked, so older records keep their hash.
                 ...b2.nw === true ? { nw: true } : {},
                 // The pictures on its note, by id, last; absent unless there are any, so older records keep their hash.
                 ...picsField(b2.pics)
@@ -3943,8 +3941,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         }).filter((b2) => b2.sets.length),
         // When the session started: orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold.
         t: isTime(Math.round(t4)) ? Math.round(t4) : void 0,
-        // The sessions a week its routine planned when saved (r55, pwOf); absent unless recorded, so older records keep their hash.
-        // At most seven, as every build before reads it: a week of more is not recorded (pwOf, the review of r68).
+        // The sessions a week its routine planned when saved (pwOf); absent unless recorded, so older records keep their hash.
+        // At most seven, as every build before reads it: a week of more is not recorded (pwOf).
         pw: typeof ss.pw === "number" && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= WEEK_DAYS ? ss.pw : void 0,
         // The pictures on the workout's notes, by id; absent unless there are any, so older records keep their shape and hash.
         ...picsField(ss.pics),
@@ -4088,26 +4086,26 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       timerSound: st.timerSound !== false,
       timerCompact: st.timerCompact === true,
       autoDone: st.autoDone === true,
-      // Optional settings added in r20 stay undefined unless set.
+      // Optional settings stay undefined unless set.
       ...accent ? { accent } : {},
       ...st.rirAsk === true ? { rirAsk: true } : {},
-      // 2.61: History lists what the app asked of each set (391); absent unless on.
+      // History lists what the app asked of each set; absent unless on.
       ...st.askedShow === true ? { askedShow: true } : {},
       // Count RIR 4 to 5 as half a set: absent unless on.
       ...st.rirHalf === true ? { rirHalf: true } : {},
-      // r34: adjusting the next sets is on unless turned off; only false is stored, so older saves hash as before.
+      // Adjusting the next sets is on unless turned off; only false is stored, so older saves hash as before.
       ...st.autoAdj === false ? { autoAdj: false } : {},
-      // r34: weigh-in reminder in days (0 off); absent is every BW_EVERY_DEFAULT days.
+      // The weigh-in reminder in days (0 off); absent is every BW_EVERY_DEFAULT days.
       ...bwEvery2 !== void 0 ? { bwEvery: bwEvery2 } : {},
-      // 2.37: This block vs last's length; absent is BLOCK_WEEKS_DEFAULT, so saves without it hash as before.
+      // This block vs last's length; absent is BLOCK_WEEKS_DEFAULT, so saves without it hash as before.
       ...blockWeeks !== void 0 ? { blockWeeks } : {},
-      // r34: Today opens on a blank session; absent is the plan's day.
+      // Today opens on a blank session; absent is the plan's day.
       ...st.todayStart === "free" ? { todayStart: "free" } : {},
-      // r34: rest weeks, week-start dates; the last two years kept.
+      // Rest weeks, week-start dates; the last two years kept.
       ...restWeeks.length ? { restWeeks } : {},
-      // r33: effort in half points or RPE; absent is whole RIR, so older saves hash as before.
+      // Effort in half points or RPE; absent is whole RIR, so older saves hash as before.
       ...rirScale2 ? { rirScale: rirScale2 } : {},
-      // r25: suggested loads show grey until typed; 'fill' puts them in the rows as before. Unset means grey (V's choice).
+      // Suggested loads show grey until typed; 'fill' puts them in the rows. Unset means grey (V's choice).
       ...st.loadFill === "fill" ? { loadFill: "fill" } : {},
       ...userName ? { userName } : {},
       homeFolded: hf ? strings(hf, (k2) => oneOf(k2, ["map", "body", "week", "tiles", "coach", "injuries"])) : [],
@@ -4115,8 +4113,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       secOrder,
       folds: fl ? strings(fl, (k2) => safeKey(k2) && k2.length < LIMITS.foldKey).slice(0, LIMITS.folds) : [],
       wakeLock: st.wakeLock === true,
-      // Small change plates: absent unless on, so saves without it hash as before. Its toggle went with the
-      // plates line in 2.42; a log that has it keeps it, and a build before reads it as it did.
+      // Small change plates: absent unless on, so saves without it hash as before. Nothing sets it now (its
+      // toggle went with the plates line); a log that has it keeps it for builds before 2.42, which read it.
       ...st.smallPlates === true ? { smallPlates: true } : {},
       // Your gym and the profile: absent unless set, rebuilt in one key order.
       ...gym ? { gym } : {},
@@ -4357,7 +4355,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           keepRR: b2.keepRR === void 0 ? void 0 : keepRR && keepRR.length === 2 ? pair(Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1) : null,
           lastNote: ln && typeof ln.text === "string" && typeof ln.date === "string" && isDate(ln.date) ? { date: ln.date, text: ln.text } : null,
           sets: (arr(b2.sets) || []).flatMap(cleanDraftSet),
-          // Done at a new machine or gym (r61, 343 7), last, where the menu adds it; absent unless marked.
+          // Done at a new machine or gym, last, where the menu adds it; absent unless marked.
           ...b2.nw === true ? { nw: true } : {},
           // The pictures on its note, by id, last; absent unless there are any.
           ...picsField(b2.pics)
@@ -4383,9 +4381,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       dayIdx: clampN(d3.dayIdx, 0, MAX_DAYS - 1, 0),
       dayId: typeof d3.dayId === "string" ? fixId(d3.dayId) : null,
       startedAt: isTime(startedAt) ? startedAt : null,
-      // When the lifting began (NEW-129), once it has; absent before, so a workout's record is unchanged until then.
+      // When the lifting began, once it has; absent before, so a workout's record is unchanged until then.
       ...isTime(begunAt) ? { begunAt } : {},
-      // The workout closed on this phone just before this one was started here (NEW-134); absent otherwise.
+      // The workout closed on this phone just before this one was started here; absent otherwise.
       ...typeof d3.follows === "string" && d3.follows ? { follows: fixId(d3.follows) } : {},
       durMin: Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null,
       dayName: typeof d3.dayName === "string" ? d3.dayName : "Session",
@@ -4401,8 +4399,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       free: d3.free === true ? true : void 0,
       // Started as its day's second workout.
       part: d3.part === 2 ? 2 : void 0,
-      // Finish's two questions once answered (sets left, ramp-ups), kept as they came: until 2.28 they passed through
-      // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (tests/storage-sync.js, S-12, moved from r56-1c).
+      // Finish's two questions once answered (sets left, ramp-ups), kept as they came: builds up to 2.27 passed them
+      // through with every field of the draft and write them still, so every build keeps them alike (tests/storage-sync.js, S-12).
       _leftAsked: typeof d3._leftAsked === "boolean" ? d3._leftAsked : void 0,
       _rampAsked: typeof d3._rampAsked === "boolean" ? d3._rampAsked : void 0,
       // A past workout typed in after the fact: no rest timer, no clock, no check-in.
@@ -13887,7 +13885,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
               yAxisID: "y"
             },
             { label: "Assumed hard", data: assumV, backgroundColor: blue + "55", yAxisID: "y" },
-            // No target lines for a muscle with no target (r29; hasTargetIn since r58).
+            // No target lines for a muscle with no target (hasTargetIn).
             ...!hasTarget(m3) ? [] : [
               {
                 type: "line",
@@ -14528,7 +14526,7 @@ ${more}`;
       );
     },
     /* Recently deleted is already deleted, so one item goes on a tap with Undo;
-       all of them ask first (r34.1, V: no way to clear it). */
+       all of them ask first (V: no way to clear it). */
     trashDel(t4) {
       const x2 = state.trash.find((y2) => y2.id === t4.dataset.id && y2.kind === t4.dataset.k);
       if (!x2) return;
@@ -17144,7 +17142,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         b`<div class="card stack">${profSettings()}</div>
 `
       ),
-      /* Measurements and Appearance (2.34, from an Android user via V: "Split general settings into measurements v
+      /* Measurements and Appearance (from an Android user via V: "Split general settings into measurements v
          appearance"): what was one General section, its key kept for Measurements so a saved order and fold stay
          with the units, and Appearance new beside it (orderKeys slots a new key after the one before it in code). */
       G("general", "Measurements", `${s3.unit === "kg" ? "kg, cm" : "lb, in"}`, measurementsBody(s3)),
@@ -17194,7 +17192,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         "dataSec"
       ),
       G("help", "Help", "Guide, report a problem", helpBody()),
-      // Demo data, Diagnostics and Erase everything (r35, V): one group at the bottom, not three in front of everyday settings.
+      // Demo data, Diagnostics and Erase everything (V): one group at the bottom, not three in front of everyday settings.
       G("more", "More", hasDemo2 ? "demo data loaded" : "demo data, version, erase", moreBody(hasDemo2))
     ];
     return b`${pageTitle(kick, "Settings", meta)}${c3(
@@ -17293,9 +17291,8 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         );
       else go();
     },
-    /* A plate tapped: a usual one turns on or off; one the lifter added goes (NEW-76, 2.34: an added plate has no off
-       state to keep, and adding it again is one tap). Every usual plate and nothing else is the default, stored as no
-       list, as before. */
+    /* A plate tapped: a usual one turns on or off; one the lifter added goes (an added plate has no off state to
+       keep, and adding it again is one tap). Every usual plate and nothing else is the default, stored as no list. */
     gymPlate(t4) {
       const g2 = gymNext();
       const all = usualPlates(g2.u);
@@ -17310,7 +17307,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       else g2.plates = on.sort((a2, b2) => b2 - a2);
       gymSave(g2);
     },
-    /* A plate the usual list does not have (NEW-76, V 2026-11-07: "at other gyms there might be just standard one KG
+    /* A plate the usual list does not have (V 2026-11-07: "at other gyms there might be just standard one KG
        plates"), typed as it is labelled, in the gym's unit. */
     gymPlateAdd() {
       const el = document.getElementById("gymPlateNew");
@@ -19392,8 +19389,8 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const first = ss[0];
       const name = first ? first.dayName + (ss.length > 1 ? ` +${ss.length - 1}` : "") : cd.length ? "Cardio" : pd && d3 >= t4 ? isRest ? "Rest" : pd.name : pd && weekly && isPlan && d3 < t4 ? pd.name : "";
       const what = trained ? `${ss.map((x2) => x2.dayName).join(", ")}, logged` : live2 ? "session in progress" : pd && isPlan && weekly && mine.length ? (
-        /* Each of the day's workouts in its own words: done on another day, missed, or planned (the review of
-           r68: Monday's Push done Tuesday and its second workout missed read "Push, missed"). */
+        /* Each of the day's workouts in its own words: done on another day, missed, or planned (not "Push,
+           missed" for Monday's Push done Tuesday and its second workout missed). */
         mine.map(
           (x2) => `${x2.day.name}, ${x2.doneOn ? `done ${DAYS[dayOfWeek(x2.doneOn)]}` : d3 < t4 ? "missed" : "planned"}`
         ).join("; ")
@@ -19792,7 +19789,7 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
     return w`<polygon points=${x2[1].map((q) => q.join(",")).join(" ")}></polygon>`;
   }
   var B3_PARTS = [
-    /* Proportions (r29, V: "still looks fat"): an athletic build, not a
+    /* Proportions (V: "still looks fat"): an athletic build, not a
        mannequin. Shoulders well outside the ribs, a narrow waist and pelvis, a
        torso flatter front to back, long lean legs that do not touch, slimmer
        arms, and muscles that sit close on the body instead of bulging. */
@@ -20966,7 +20963,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         if (el.scrollIntoView) el.scrollIntoView({ block: "start", behavior: "smooth" });
       }
     },
-    // This week on Today, a week back or ahead, or back to this week (NEW-107), within the weeks it steps between.
+    // This week on Today, a week back or ahead, or back to this week, within the weeks it steps between.
     wkStep(t4) {
       const v3 = t4.dataset["v"];
       const cur2 = weekStart(today());
@@ -20987,8 +20984,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     },
     /* A weigh-in for the date given (Today's Body), or for today (the weigh-in
        due card, data-in). A grey number in the field is what Save takes, as
-       everywhere in the app (r34.2: the weigh-in card showed the last weight
-       and refused it). One weigh-in a date: a second replaces it. */
+       everywhere in the app (not the last weight shown and then refused). One weigh-in a date: a second replaces it. */
     addBW(t4) {
       const own2 = t4 && t4.dataset && t4.dataset["in"];
       const inp = field(own2 || "bwVal");
@@ -21041,7 +21037,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       );
     },
     /* A second save the same day adds to it, keeping what it does not retype,
-       with Undo (r55, the audit: it replaced the day's entry). */
+       with Undo, never replacing the day's entry. */
     addMeas() {
       const m3 = {};
       let any = false;
@@ -21111,8 +21107,8 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       render();
       toast(`${x2 ? injLabel(x2.m) : "Injury"} cleared`, true);
     },
-    /* Each says what it hid and where that stays, from where the lifter is: the menu at the top right. Until 2.60 both
-       said "Hidden. Settings > Your data has it.", which read as the log and named nothing (V, 2026-11-12, NEW-140). */
+    /* Each says what it hid and where that stays, from where the lifter is: the menu at the top right (V, 2026-11-12: "Hidden. Settings > Your data has
+       it." read as the log and named nothing). */
     acctLater() {
       prefSet(ACCT_LATER, "1");
       rerenderKeepScroll();
@@ -21155,9 +21151,9 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       render();
     },
     /* Build my own routine: three training days with rest days between, as the
-       ready-made 3-day routines are laid out (r54, the audit: three days and no
-       rest planned 7 sessions a week), replacing the untouched starter, as a
-       ready-made pick does (r55, the audit). */
+       ready-made 3-day routines are laid out (three days and no rest would plan
+       7 sessions a week), replacing the untouched starter, as a ready-made pick
+       does. */
     obOwn() {
       const r4 = {
         id: uid(),
@@ -22727,7 +22723,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       acctRerender();
       if (!cloud.on && acct.user) toast("Still not syncing. Check your connection, or sign out and in again.");
     },
-    // From a problem report, signing in goes back to it (r55, the audit: the report and what was typed in it were gone).
+    // From a problem report, signing in goes back to it, with what was typed in it.
     acctOpen(t4) {
       const m3 = ui.modal;
       openModal({
@@ -22788,7 +22784,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         }
       }
     },
-    /* The answer on a browser that opened the confirmation link (item 61b). */
+    /* The answer on a browser that opened the confirmation link. */
     async acctWhere(t4) {
       const m3 = acctOpen(), A2 = AUTH();
       if (!m3 || m3.mode !== "where" || !A2) return;
@@ -22847,7 +22843,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         true
       );
     },
-    /* Sign out works like any app with an account (r33, V): the log lives in
+    /* Sign out works like any app with an account (V): the log lives in
        the account and comes back on sign-in, so the phone's copy goes with the
        sign-out. Keeping a copy on the phone is offered, quietly, second. Either
        way the app opens on the first page. Nothing is removed until every
@@ -24069,8 +24065,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   var DEMO_SAID = 6e3;
   var DEMO_ACTS = {
-    /* Signed in, the demo would sync into the account (r55.1, the second
-       review of r55); signing out to load it would make the next sign-in a
+    /* Signed in, the demo would sync into the account; signing out to load it would make the next sign-in a
        first link, which brings back what other phones deleted meanwhile, so it
        is not offered. */
     demoLoad() {
@@ -25209,7 +25204,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (m3.isNew && back2 && back2.kind === "picker") {
         applyPick(back2, e5.id);
         toast(
-          /* Joined to what the pick said (2.48, the message rule): a Plan day's add and a session's swap say what they
+          /* Joined to what the pick said (the message rule): a Plan day's add and a session's swap say what they
              did, so this says only that it was created; the others say nothing, so this says it all. */
           back2.mode === "addDay" || back2.mode === "swapBlock" ? `${e5.name} created` : back2.mode === "addBlock" ? `${e5.name} created and added` : `${e5.name} created and swapped in`
         );
@@ -25368,7 +25363,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     openModal({ kind: "past", date: d3 });
   }
   var START_ACTS = {
-    // 'calendar', not 'cal', the calibration set's sheet (r59: from r25 a calibration set opened the calendar and threw).
+    // 'calendar', not 'cal', the calibration set's sheet (the same name opened the calendar from a calibration set, and threw).
     calOpen(t4) {
       const v3 = t4 && t4.dataset ? t4.dataset.ym : void 0;
       const ym = v3 && MONTH_RE.test(v3) ? v3 : monthOf(today());
@@ -25480,9 +25475,8 @@ ${JSON.stringify(ctx, null, 1)}`;
           inProgress: true,
           /* Undo puts back exactly what the trim took: the blank rows, at
              the end of their exercise, and the skipped exercises in their
-             places. Sets logged since stay (the merge Undo used before brought
-             back skipped exercises but not removed rows). Nothing is marked
-             since r54. */
+             places. Sets logged since stay (a merge would bring back skipped
+             exercises but not removed rows). Nothing is marked. */
           undo: () => {
             const dd = state.draft;
             if (!dd || dd.id !== did2) return false;
@@ -25499,9 +25493,9 @@ ${JSON.stringify(ctx, null, 1)}`;
       rerenderKeepScroll();
       toast(`Trimmed to ${estMin(min5(pl.est))}`, true);
     },
-    /* Log a workout now is a freestyle choice (r34.2, from the review: the
-       starter's 4 days a week became the bar for someone training 3 times as
-       they liked, "0-week streak", "of 88 planned"). Today opens on a blank
+    /* Log a workout now is a freestyle choice (the starter's 4 days a week
+       would become the bar for someone training 3 times as they liked,
+       "0-week streak", "of 88 planned"). Today opens on a blank
        session, the starter stays one tap away as the plan, and the default
        targets stay, with nothing said over the exercise picker. */
     obFree() {
@@ -26068,7 +26062,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const b2 = state.draft && state.draft.ex[Number(t4.dataset.b)];
       if (b2) openModal({ kind: "exhist", exId: b2.exId });
     },
-    // The editor's muscle pickers already name the muscles; the figure is there on request (r40, V: not both at once).
+    // The editor's muscle pickers already name the muscles; the figure is there on request (V: not both at once).
     exBodyTog() {
       ui.exBody = !ui.exBody;
       renderModal();
@@ -26575,7 +26569,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const what = `${x2.warm ? "Warm-up" : x2.drop ? "Drop set" : "Set " + n3}`;
     const shown2 = x2.w ?? effW(b2, i5);
     const val = +(x2.r ?? 0) > 0 ? (
-      // No load anywhere on a loaded lift: the reps alone, never a 0 the row does not show (REV12-5).
+      // No load anywhere on a loaded lift: the reps alone, never a 0 the row does not show.
       shown2 == null && !ex.bw && !ex.timed ? `${x2.r} rep${Number(x2.r) === 1 ? "" : "s"}` : setShort(ex, shown2 ?? 0, x2.r)
     ) : x2.w != null ? loadLabel(ex, x2.w) + (ex.bw ? "" : " " + U()) : "";
     const at2 = i5;
@@ -26711,14 +26705,14 @@ ${JSON.stringify(ctx, null, 1)}`;
   var WORKOUT_ACTS = {
     /* With auto-done on, leaving the reps field marks the set done, and on a
        phone that blur happens a moment before the tap on the checkmark lands.
-       Without this guard the tap would immediately undo the auto-mark. Since
-       r28 (auto-mark on for new installs) the first tap on that set's
-       checkmark confirms it for AUTO_CONFIRM_MS, until another set is touched: typing
-       reps, picking RIR and then tapping the checkmark is the natural order,
-       and it used to untick the set. A second tap undoes it. Tapping done on
+       Without this guard the tap would immediately undo the auto-mark. The
+       first tap on that set's checkmark confirms it for AUTO_CONFIRM_MS,
+       until another set is touched: typing reps, picking RIR and then tapping
+       the checkmark is the natural order, and must not untick the set. A
+       second tap undoes it. Tapping done on
        an empty reps field logs the grey number in it (see greyR), like the
-       paper log you copy from; warm-ups and drops have theirs since r64; a typed
-       0 is a missed set (r55, V), ticked as typed. Unticked (r55, the audit):
+       paper log you copy from; warm-ups and drops have theirs; a typed 0 is a
+       missed set (V), ticked as typed. Unticked:
        numbers that are what the row shows in grey go back to grey, so a tap by
        mistake leaves nothing typed for Finish to offer to save, and an
        exercise the tick moved up goes back if it has no set left ticked,
@@ -26800,7 +26794,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     /* The new working set copies the last working set's load, not a drop set's
        (DROP_START) or a warm-up's. Grey by default: the new row shows the load above
        it, or what the last set ticked asks for, as a planned row under it would
-       have (r55, V: after 300 x 1, + Set copied 300). Filled in, it takes that load. */
+       have (V: after 300 x 1, + Set copied 300). Filled in, it takes that load. */
     sAdd(t4) {
       const bi = Number(t4.dataset.b);
       const b2 = tapBlock(t4);
@@ -26898,14 +26892,14 @@ ${JSON.stringify(ctx, null, 1)}`;
       toast("Warm-up set added");
     },
     // The load the last working set was, or will be (a grey load counts); a missed set's is passed over.
-    /* Done with an exercise that has sets left (r66, PENDING 374; V: "Ask:
+    /* Done with an exercise that has sets left (V: "Ask:
        log or skip"): one question, then every set left ticked as it shows (its
        load and reps, typed or grey; a 0 typed is a missed set, as a tick logs
        it), or every set left taken off. Either is one change with one Undo. A
        warm-up or a drop set left is a set left like any other, logged as it
        is; the target repeats only when a working set is skipped (V's one
-       rule), so the question says so only then (the review of r66: a warm-up alone was
-       counted as a set whose skip repeats the target, and Log took it off).
+       rule), so the question says so only then (a warm-up alone is no set whose skip
+       repeats the target, and Log does not take it off).
        Logging stops before anything is ticked when a set left has no weight
        or reps to take, looks far off, or is a 0 at a weight well under the
        working load (each is ticked on its own, where it is asked about). */
@@ -27119,7 +27113,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (moveBlock(Number(t4.dataset.b), Number(t4.dataset.b) + 1)) rerenderKeepScroll();
     },
     bDel: blockRemove,
-    /* New machine or gym (r61, PENDING 343 7, V's decision of 2026-10-24): the
+    /* New machine or gym (V's decision of 2026-10-24): the
        lift starts over from this session, every block of it marked and its
        suggestion read again as a first session's; tapped again, it reads its
        history again. Rows typed are kept; rows still on the suggestion take
@@ -27148,7 +27142,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         on ? `${exName(b0.exId)} starts over from this session. Its history stays.` : `${exName(b0.exId)} reads its history again.`
       );
     },
-    // A superset made here is this session's; Finish offers to keep it in the plan (r34.2, from the review: it was gone next time without a word).
+    // A superset made here is this session's; Finish offers to keep it in the plan, so it is not gone next time without a word.
     bSs(t4) {
       const d3 = state.draft;
       const bi = Number(t4.dataset.b);
@@ -27917,7 +27911,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    ${window.IRONLOG_APP ? '<p><b>Updates</b>: when "Update ready" shows, tap Update.</p>' : ""}
    ${report}`
       ],
-      /* The studies behind the app's numbers, in one place (2.34, V 2026-11-08: tips say "rule of thumb" and the
+      /* The studies behind the app's numbers, in one place (V 2026-11-08: tips say "rule of thumb" and the
          references live in the Guide). docs/EVIDENCE.md has each in full and every rule of thumb beside them. */
       [
         "sources",
@@ -28777,7 +28771,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     imp: { draw: impSheet },
     templates: { draw: templatesSheet },
     routineNew: { draw: routineNewSheet },
-    // The 3D body goes back to Today's map, coloured by the week again, facing the way it was, a turn still running stopped first (r54: it went on, on Today's body).
+    // The 3D body goes back to Today's map, coloured by the week again, facing the way it was, a turn still running stopped first, not going on, on Today's body.
     exMus: {
       draw: exMusSheet,
       closed: () => {
@@ -29245,10 +29239,10 @@ ${JSON.stringify(ctx, null, 1)}`;
       liftsMoving,
       // Whether a bodyweight lift has no weigh-in to read, so tests/engine.js compares it with Node's.
       noBody,
-      // 2.32: the tape row's sentence and the one count of minutes left.
+      // The tape row's sentence and the one count of minutes left.
       sizeWhat,
       sessLeftMin,
-      // 2.37: This block vs last, so tests/r83.js reads the blocks against a log worked out by hand, and the next
+      // This block vs last, so tests/r83.js reads the blocks against a log worked out by hand, and the next
       // load minus and plus step to, so tests/engine.js compares the page's answer with Node's.
       blocks,
       stepLoad
