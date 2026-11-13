@@ -247,8 +247,8 @@ function askUnchecked(d: Draft): boolean {
   return false;
 }
 
-/* Sets left: finishing with half the planned sets untouched used to
-   save without a word. Asked once, only when something was done, and not for
+/* Sets left: finishing with half the planned sets untouched is never
+   saved without a word. Asked once, only when something was done, and not for
    an edit or a past workout typed in afterwards. Ramp-up sets logged as work
    count as hard sets and inflate weekly volume: a done working set before
    the first set at the exercise's top load is a likely warm-up when it was
@@ -261,8 +261,8 @@ function askUnchecked(d: Draft): boolean {
    Asked once per session; either answer moves on. Only sets marked
    done are saved, but sets with reps and no tick are counted first and the
    lifter may keep them, a typed 0 (a missed set) among them, warm-ups
-   too (the audit); reps or a load far off ask first, as when ticked
-   (the audit: 110 reps put off once was saved here). */
+   too; reps or a load far off ask first, as when ticked (not 110 reps put
+   off once saved here). */
 export function finish(): void {
   const d = state.draft;
   if (!d) return;
@@ -272,7 +272,7 @@ export function finish(): void {
   finishNow();
 }
 
-/* Nothing is marked trimmed since r54 (V's one rule, PENDING 312 E): an
+/* Nothing is marked trimmed (V's one rule): an
    exercise with fewer sets than usual, stopped early, Short on time, typed
    in afterwards or edited, is read so from the log (analytics.ts, idxShort),
    so it sets no target and still counts toward its trend. savedEx
@@ -280,7 +280,7 @@ export function finish(): void {
    workout; side by side, the same lift is saved as one exercise
    (V), apart each stays where it was done; on a day of a routine each
    lift keeps the sets its plan gave it (withPlanSets). A blank load on
-   a weighted lift used to save silently as a real 0 set, which drags down
+   a weighted lift would save silently as a real 0 set, which drags down
    volume load and still counts toward your weekly sets: asked as "add them"
    first, Add loads going back to the first one, opened, its
    load field focused. */

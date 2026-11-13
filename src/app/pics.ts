@@ -22,7 +22,7 @@
    (cloud.acct) or the phone's own (''). Only that log can let it go, so a
    picture whose log has gone to the account at a sign-out, or been kept
    aside for another account, stays until that log is back on the phone
-   (the review of r66: fifty days after a sign-out the picture was gone). */
+   (not gone fifty days after a sign-out). */
 
 import { arr, isPicId, rec } from './records';
 import { log, picRowsRead, picRowsWrite } from './storage';
@@ -52,8 +52,8 @@ interface PicRow {
 }
 
 /* A browser whose IndexedDB refuses a Blob keeps the picture's bytes
-   instead, with its type (GitHub's WebKit run of r66, whose pages open in
-   private contexts, could add no picture). Once a Blob is refused, the rest
+   instead, with its type (WebKit run in private contexts, as on GitHub's
+   runs, could add no picture). Once a Blob is refused, the rest
    of the visit keeps bytes, so the refusal is logged once. A Blob is kept
    wherever the browser takes one: the browser then holds it on disk, not in
    the page's memory. */

@@ -5,8 +5,7 @@
    neither, the list leads with the rest of today's plan and the lifts
    logged last, then the most common lifts and all the others; with them,
    the matches, common ones first, and a swap's closest matches above its
-   muscle's list. Drawn by lit-html as src/24-sheets.js drew it (tests/r62.js
-   holds it to r61's), and answered by actspick.ts's and actsstart.ts's
+   muscle's list. Drawn by lit-html, and answered by actspick.ts's and actsstart.ts's
    actions by their data-act. A search typed redraws the list in
    place, so the field keeps the focus and the keyboard. */
 
@@ -226,7 +225,7 @@ export function eqSheet(m: { day: number; equip: readonly string[]; part?: 2 | u
 
 /* What is left over after a trim is only rows the lifter typed into: its last pass takes the blank rows of exercises
    already started too (trimPlanIn), so a session still over, or with nothing to take, is over because of those rows
-   (R79-2: the sheet said everything fitted, and named started exercises as the reason). */
+   (not "everything fitted", naming started exercises as the reason). */
 /** Short on time: the minutes there are, what the trim changes, and the minutes after; null once the session is gone. */
 export function shortSheet(m: { mins?: number | null | undefined }): TemplateResult | null {
   const d = state.draft;

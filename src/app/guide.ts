@@ -1,7 +1,5 @@
-/* The Guide (phase 5's first screen code, moved in r53 so that its words
-   could follow r53's rules: the Guide must say what the code does, and the
-   legacy script it lived in then changed only by moving). Its words change
-   with the rules they state. */
+/* The Guide: it must say what the code does, so its words change with the
+   rules they state. */
 
 import { andList, numWord, orList, pct1, pctOf, shareWords, timesWord, MINUTE_S, WEEK_DAYS } from './util';
 import {
@@ -81,8 +79,8 @@ import { ODD_ADDED_BEST, ODD_ADDED_BW, ODD_BEST, ODD_SESSION } from './oddloads'
 import { CAL_WEEKS, RIR_USUAL_MIN } from './setread';
 import { USUAL_SHARE } from './usual';
 
-/* The muscles the Guide names, read from the tables that decide them (the r63 audit's A-9: the lists were typed in, so a muscle added to a table
-   would have been missing here). Those with a target in their table's order;
+/* The muscles the Guide names, read from the tables that decide them, not typed in, so a muscle added to a table is
+   never missing here. Those with a target in their table's order;
    the others in the muscles' order, the ones never a focus last. */
 const musSaid = (m: string): string => String(ML[m]).toLowerCase();
 const TARGETED_SAID = andList([...TARGETED].map(musSaid));

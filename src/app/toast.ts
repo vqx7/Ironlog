@@ -1,19 +1,17 @@
-/* The toast (from the legacy script's 18-ui.js): one message at the
-   foot of the page, with Undo when the change it reports can be undone. Undo
-   used to be one snapshot the toast's timer threw away after six seconds;
-   the steps are kept in storage.ts since r30, and the toast only offers the
-   newest.
+/* The toast: one message at the foot of the page, with Undo when the
+   change it reports can be undone. Undo's steps are kept in storage.ts, not
+   in the toast, which only offers the newest.
 
-   One rule for every message (V 2026-11-10, after NEW-116, a note
-   about pull-ups over "is ready", "Should there not be a general system
-   architect level rule"): one tap, one message, and nothing lost.
+   One rule for every message (V 2026-11-10, after a note about pull-ups
+   over "is ready": "Should there not be a general system architect level
+   rule"): one tap, one message, and nothing lost.
      - What one tap says is joined into one message, never one over another:
        a message raised before the lifter's next touch, click or key, in the
        same task as the last or one it set off (a setTimeout of 0 after it,
        as Discard's "is back"), is added to it. Read by tasks, not by time,
-       so it holds on a slow phone and under a test's fixed clock. Until 2.48 each replaced
-       the one before, so of two messages from one tap only the last was
-       ever seen ("Pull-up added to Day 1" under the bodyweight note,
+       so it holds on a slow phone and under a test's fixed clock. Each
+       replacing the one before, of two messages from one tap only the last
+       would be seen ("Pull-up added to Day 1" under the bodyweight note,
        "Band Face Pull added to Day 1" under "created and added", and of a
        sync's notes only the last).
      - News about the log from storage and sync (kind 'notice', which

@@ -31,8 +31,8 @@ const edgeScroll = ((): { start(): void; stop(): void } => {
   };
   const zone = (): [number, number] => {
     /* Under what covers the top of the screen: the status bar (the root's padding is its height) or what is left on
-       screen of the top bar, which since 2.52 scrolls away with the page. Read from the bar alone, the band
-       went off the top of the screen once it had scrolled away. */
+       screen of the top bar, which scrolls away with the page. Read from the bar alone, the band would go off the
+       top of the screen once it had scrolled away. */
     const h = document.querySelector('header.top');
     const safe = parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0;
     const top = Math.max(safe, h ? h.getBoundingClientRect().bottom : 0);
@@ -96,9 +96,9 @@ function dragOpenUp(it: Element): void {
 /* The session's exercises are dragged by their ⠿ handle. lit-html owns
    their nodes, so the exercise dragged goes back where it was drawn
    (view.ts, dragDrop) before the session changes and the screen is drawn in
-   the new order, as a drag on Plan or a section does since r57 and r58. An
-   open exercise is taller than the screen, so the next one started
-   off-screen and a drag could only move one place: while
+   the new order, as a drag on Plan or a section does. An open exercise is
+   taller than the screen, so the next one starts off-screen and a drag
+   could only move one place: while
    dragging, every exercise shows only its title line, the page scrolled so
    the one held stays under the finger, with room added below the list when
    the shorter page cannot scroll that far. A field still focused when the

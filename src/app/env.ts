@@ -1,7 +1,6 @@
 /* Where this copy of the app runs: the home-screen app or a browser
-   tab, a touch screen or not, and how this browser installs it. Moved from
-   the legacy script with Settings, which reads them; the other screens and
-   the account flow import them from here. */
+   tab, a touch screen or not, and how this browser installs it, for
+   Settings, the other screens and the account flow. */
 
 import { APP_INSTALLED, prefGet } from './storage';
 
@@ -20,9 +19,9 @@ declare global {
    (account.ts: where a sign-in link lands, Sign out's wording), sharing, Settings and problem reports all read it.
    Ironlog's manifest opens standalone; a browser that cannot do that falls back to minimal-ui, and an installed copy
    on a computer can draw its own title bar (window-controls-overlay). None of those is ever a browser tab. Two
-   signals are not used (the review of 2.34, F1): fullscreen, which a browser tab also reports in full screen, and an
+   signals are not used: fullscreen, which a browser tab also reports in full screen, and an
    android-app:// referrer, which Chrome on Android gives any page another app opens (a link in Gmail), so a tab
-   opened from an email read as the app and signed itself in. Safari has its own flag. Get the app has one more
+   opened from an email would read as the app and sign itself in. Safari has its own flag. Get the app has one more
    reason to stay away (canInstallHere, below): this browser has installed the app (appinstalled, main.ts). */
 /** The display modes only an installed copy of Ironlog opens in. */
 const INSTALLED_MODES = ['standalone', 'minimal-ui', 'window-controls-overlay'] as const;

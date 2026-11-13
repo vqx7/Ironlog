@@ -1,5 +1,4 @@
-/* Units and the plates a gym has (phase 2; moved unchanged from the
-   legacy script). Logged loads are
+/* Units and the plates a gym has. Logged loads are
    kept in kilograms, tape measurements in centimetres and cardio distances in
    kilometres (Your gym's lists keep the unit the gym is labelled in); these
    convert to and from the unit on screen. */

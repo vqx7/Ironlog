@@ -83,7 +83,7 @@ const usualSets = (ref: readonly Exposure[]): number => {
    planned sets beat). */
 /* A set missed at the working load is one of those sets, read as 0 (V 2026-11-04: "count as 0 reps"): left out, 185
    x 10, 10 and a missed set would read as full and ask 21+ reps, where 185 x 10, 10, 2 reads below its usual and
-   repeats 31+, so failing a set outright set an easier target than two reps of it. Read as 0,
+   repeats 31+, so failing a set outright would set an easier target than two reps of it. Read as 0,
    it is below its usual too and the target repeats; the load still never steps up on it (setsAt). */
 function readingOf(q: Exposure, k: number): number | null {
   if (q.tRaw == null) return null;

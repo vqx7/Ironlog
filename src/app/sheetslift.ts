@@ -1,8 +1,7 @@
 /* The sheets of one lift: its menu in a session, and
    what the menu opens there (typed sets, a note, a calibration set, its load
    step, the heaviest load the gym has); its goal; an injury flagged; and the
-   how-to link. Each is drawn by lit-html as src/24-sheets.js drew it
-   (tests/r62.js holds them to r61's), and answered by actslift.ts's actions
+   how-to link. Each is drawn by lit-html, and answered by actslift.ts's actions
    by their data-act. A sheet of a session's lift is null once that
    lift or the session is gone, and the sheet host (page.ts) then closes it. */
 
@@ -102,8 +101,8 @@ export function noteSheet(m: { bi: number; title: string; text?: string | undefi
     <div class="row u-mt10"><button class="btn primary" data-act="noteSave">Save note</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 
-/* Sets typed or dictated (r30: the examples in the unit in use; r33: RPE when
-   effort is entered as RPE, the examples and @ following it). */
+/* Sets typed or dictated (the examples in the unit in use; RPE when effort is
+   entered as RPE, the examples and @ following it). */
 /** Type or dictate a lift's sets. */
 export function quickSheet(m: {
   b: number;

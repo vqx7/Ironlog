@@ -1,6 +1,5 @@
 /* Problem reports: their kinds, the words on the sheet, the limits the
-   feedback table also enforces, and the check on a report's screenshot
-   (phase 3a; moved unchanged from the legacy script). */
+   feedback table also enforces, and the check on a report's screenshot. */
 
 /** The kinds a report can be, stored as bug, question and idea. */
 export const FB_CATS: readonly (readonly [string, string])[] = [
@@ -43,6 +42,6 @@ export const FB_WHAT =
 
 /* A report's screenshot is written by whoever sent it, through the API as
    well as the app, so the Inbox shows it only when it is a plain base64 JPEG
-   from start to end. Checking only the start let a quote end the src and add
-   script to the owner's page (found in the r29 review). */
+   from start to end. Checking only the start would let a quote end the src and
+   add script to the owner's page. */
 export const FB_SHOT_RE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
