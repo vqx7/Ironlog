@@ -1,6 +1,6 @@
 /* Words and numbers as the screens and the engine's sentences say them:
-   dates, times, durations, rep ranges and counts (phase 3a, r51, and the
-   date words the engine uses in 3b, r52; moved unchanged from the legacy
+   dates, times, durations, rep ranges and counts (phase 3a, and the
+   date words the engine uses in 3b; moved unchanged from the legacy
    script). Durations are worded only by estMin, which
    tests/hygiene.js enforces. Layer 2 since r52, beside the engine whose
    sentences use it; a few words here read the clock (fmtDateRow and
@@ -21,7 +21,7 @@ export const fmtDateRow = (s: string): string =>
     ...(yearOf(s) === yearOf(today()) ? {} : { year: 'numeric' })
   });
 
-/* Today's date without the comma (V, r42): "Mon Oct 12". Built from two
+/* Today's date without the comma (V): "Mon Oct 12". Built from two
    parts so every locale keeps its own day and month words. */
 export function todayEye(): string {
   const d = new Date();
@@ -70,7 +70,7 @@ export const MONTHS: readonly string[] = [
 
 /* ---------- durations ---------- */
 
-/* Rounded to MIN_STEP minutes, as in the routine picker (r32, from the third
+/* Rounded to MIN_STEP minutes, as in the routine picker (from the third
    review: the picker said 55 to 75 min and Today "about 77 min" for the same
    day), and so is the time left in a session; under MIN_STEP_FROM minutes, to
    the minute. The budget is compared before rounding. */
@@ -95,11 +95,11 @@ export const stampShort = (t: string): string => t.slice(STAMP_FROM, STAMP_TO).r
 
 /* ---------- numbers and ranges ---------- */
 
-/* Nothing logged yet (r34, V): a dash, not a row of zeros. A count of 0
+/* Nothing logged yet (V): a dash, not a row of zeros. A count of 0
    once there is a log is real and stays a number. */
 export const NIL = '–';
 
-/** A missed set's mark after the set (r55, V: "300 × 0, missed"), in
+/** A missed set's mark after the set (V: "300 × 0, missed"), in
     History, the Last line and wherever a saved set is listed. */
 export const missedTag = (s: { r: number | string | null }): string => (isMissed(s) ? ' missed' : '');
 
@@ -127,8 +127,8 @@ const YEAR_MONTHS = 12;
 /** Up to this many months a time away is said in months, so 18 months is not rounded to a year or two. */
 const AWAY_MONTHS_MAX = 24;
 
-/* The time a lift was away after a long break, as a lifter says it (NEW-110): months up to two years, then whole
-   years, both read from the months rounded, so 23.5 months is 2 years and never "1 years" (REV10-1). */
+/* The time a lift was away after a long break, as a lifter says it: months up to two years, then whole
+   years, both read from the months rounded, so 23.5 months is 2 years and never "1 years". */
 /** The days of a long break in words: "7 months", "2 years". */
 export function awayWords(days: number): string {
   const months = Math.round((days * YEAR_MONTHS) / YEAR_DAYS);
@@ -140,7 +140,7 @@ export function awayWords(days: number): string {
 export const rangeWords = (p: { repMin: number | string; repMax: number | string }): string =>
   +p.repMin === +p.repMax ? `target of ${+p.repMin}` : `${+p.repMin}-${+p.repMax} range`;
 
-/* ---------- dates as the engine's sentences say them (phase 3b, r52; moved unchanged from the legacy script) ---------- */
+/* ---------- dates as the engine's sentences say them (phase 3b; moved unchanged from the legacy script) ---------- */
 
 /* One Intl formatter per format, made once: toLocaleDateString builds a new
    one on every call, about a fifth of a Stats render. Same output. */
@@ -163,7 +163,7 @@ const fmtDay = (s: string): string => fmtWith('d', { month: 'short', day: 'numer
 export const fmtDateFrom = (s: string, now: string): string =>
   yearOf(s) === yearOf(now) ? fmtDay(s) : fmtWith('dy', { month: 'short', day: 'numeric', year: 'numeric' }, s);
 
-/* Every date on screen follows that one rule (NEW-111 and NEW-112, 2.48): until then about fifty places wrote a
+/* Every date on screen follows that one rule: until then about fifty places wrote a
    date without its year, so last year's Dec 15 read as this year's. It reads the clock, so a function of the model
    says its dates with fmtDateFrom and the model's today instead. */
 /** A date as "Oct 17", with its year when it is not this year's ("Dec 15, 2025"). */
@@ -172,8 +172,8 @@ export const fmtDate = (s: string): string => fmtDateFrom(s, today());
 /* ---------- effort ---------- */
 
 /* The effort scale a setting names: half points or RPE, else whole RIR
-   (r33, item 206). One rule for the screens (rirScale, src/app/effort.ts)
-   and the engine's sentences (r54, from the audit V asked for: on the RPE
+   (item 206). One rule for the screens (rirScale, src/app/effort.ts)
+   and the engine's sentences (from the audit V asked for: on the RPE
    scale, the reason behind a target said "RIR 4 at 40 kg against a target of
    1" under a header reading @RPE 9). */
 /** The effort scale a setting's value names. */
@@ -189,8 +189,8 @@ export function effAt(scale: 'whole' | 'half' | 'rpe', rir: number): string {
 }
 
 /* A lighter day, a deload and a flagged injury ask for 3 or more reps in
-   reserve (r30, a convention), said here once and in the lifter's scale
-   (r55, from the audit: on a lighter day the session header said the plan's
+   reserve (a convention), said here once and in the lifter's scale
+   (from the audit: on a lighter day the session header said the plan's
    1 RIR beside the engine's "3 or more reps in reserve"). */
 /** The reps in reserve a lighter day, a deload or an injury hold asks for at least. */
 export const LIGHT_RIR = 3;

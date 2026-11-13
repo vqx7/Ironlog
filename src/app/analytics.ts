@@ -1,4 +1,4 @@
-/* The analytics index and what it reads (phase 3b, r52; moved from the
+/* The analytics index and what it reads (phase 3b; moved from the
    legacy script): RIR as the
    analytics read it and the RIR checks, hard sets, bodyweight, IDX() and its
    six steps, a lift's bests up to a date, the Last line, and the sessions by
@@ -102,7 +102,7 @@ export function IDXIn(M: Model): Idx {
   const exStats: Record<string, ExStat> = {};
   for (const id of Object.keys(byEx)) {
     /* Each stretch's PRs judged against that stretch alone (a new machine
-       or gym starts the lift over, r61), the list keeping every stretch's;
+       or gym starts the lift over), the list keeping every stretch's;
        the lift's bests are its newest stretch's. */
     let maxBest: number | null = null;
     for (const part of stretchesOf(byEx[id])) maxBest = idxPRsIn(M, id, part, prs);
@@ -128,7 +128,7 @@ export function IDXIn(M: Model): Idx {
   return M.c._idx;
 }
 
-/* The sessions of a lift its rules read up to a date (r61, PENDING 343 7):
+/* The sessions of a lift its rules read up to a date (PENDING 343 7):
    those since its newest New machine or gym mark (sinceNew), and, while the
    session in progress marks the lift (a block's nw), only those after that
    session's day, since it starts the lift over: none until one is logged
@@ -273,10 +273,9 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
          use them rather than have no exposure at all. */
       const main = work.filter(s => !s.drop);
       const ptsSrc = main.length ? main : work;
-      /* On a bodyweight lift every reading is at the latest weigh-in (r34,
-         V: the right bodyweight pulled through everywhere): estimates, trends,
+      /* On a bodyweight lift every reading is at the latest weigh-in (V: the right bodyweight pulled through everywhere): estimates, trends,
          charts, stalls, the lighter-week check and the load engine, as PRs
-         already were (r32.1, prLoad). Read at each day's weigh-in, 8 kg lost
+         already were (prLoad). Read at each day's weigh-in, 8 kg lost
          on the scale read as unchanged push-ups being 10% weaker, with
          "look at recovery". Weight lifted (tonnage) keeps each day's weigh-in:
          that is the work actually done. */
@@ -292,10 +291,10 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
         };
       };
       const pts = ptsSrc.map(point);
-      /* Missed sets (r55, V): kept for the Last line, each with the number
+      /* Missed sets (V): kept for the Last line, each with the number
          of the session's sets read before it, so the line lists every set in
          the order done; the next target reads them as sets short of the range
-         (triedAt, PENDING 338 A) and a session's sets count them (setsAt, r64).
+         (triedAt, PENDING 338 A) and a session's sets count them (setsAt).
          No volume, PR, estimate or trend reads them, and the field is absent
          when there are none. */
       const miss: MissedPoint[] = [];
@@ -390,7 +389,7 @@ function removeWhere<T>(a: T[], f: (x: T) => boolean): void {
 }
 
 function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCount> {
-  /* Lighter sessions nobody tagged (r30, from an independent review): an
+  /* Lighter sessions nobody tagged (from an independent review): an
      imported deload week, or one logged without the Deload or Lighter
      buttons, sat in every trend as a dip and made rising lifts read flat or
      stalled. A lift's session is read as lighter when its heaviest load is at
@@ -403,19 +402,18 @@ function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCo
      day swings in estimated strength run 2 to 8% (Sigvaldsen 2023). Lighter
      sessions read this way are treated exactly like tagged ones: kept in
      history and charts, left out of trends, stalls and targets. */
-  /* A lift on a deload or lighter day, or made lighter mid-session (r53, V
+  /* A lift on a deload or lighter day, or made lighter mid-session (V
      2026-10-18: a session's label must not override what a lift actually
      did), done at its usual load and reps (atUsualWork) is not lighter: it
      is read as any other session of the lift, here and by V's one rule
-     (idxShort, r54), so with its usual sets it is a full session for that
+     (idxShort), so with its usual sets it is a full session for that
      lift, setting its targets, its trend, its stalls and its Last line, and
      with fewer it is short of its usual, its trend, stalls and PRs counting
      while its target repeats; the rest of the day stays lighter. Done
      lighter, at 90% for more reps say, or for fewer reps at its usual load,
      it stays lighter. Its label is kept (`tag`): with fewer sets than usual,
      half a deload's say, its week reads lighter (lighterTally), the sets
-     cut on purpose. Read in the same pass as the loads (r54, PENDING 313
-     b), so a lift counted there is one of the sessions later ones are
+     cut on purpose. Read in the same pass as the loads, so a lift counted there is one of the sessions later ones are
      compared with. A lift back after a break (afterBreak, more than
      BACK_DAYS since its session before) is compared with nothing before
      the break, since its usual from then is not its usual now (r54: the
@@ -470,9 +468,9 @@ function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCo
              again, and what follows is compared with them. Counting sessions
              alone (three in a row) read a deload week on a lift trained three
              times a week as a new level, then as a 16% fall and a stall
-             (r31, from the review). In a row against the same usual: the
+             (from the review). In a row against the same usual: the
              lighter sessions read against any of the same earlier sessions
-             (r72, the 387 audit's 387-C1, and the review's R72-1). Counted
+             (the 387 audit's 387-C1, and the review's R72-1). Counted
              across every range, one lighter session on a light day's 16 to 23
              made two lighter sessions on 10 to 15 a new level, and the 10 to
              15 target fell from 100 kg to 85; counted within one range, a
@@ -530,7 +528,7 @@ function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCo
   return wkAuto;
 }
 
-/* What a lighter week is, read from what the lifts did (r53, V 2026-10-18,
+/* What a lighter week is, read from what the lifts did (V 2026-10-18,
    for the coach; since r54 one reading for the weekly averages, the coach
    and Stats). A session is lighter when half or more of its lifts were
    done lighter for the week: still deload or lighter once a lift at its
@@ -611,7 +609,7 @@ function stallSpans(M: Model, id: string): { weeks: number; last: boolean }[] {
 
 /* How many weeks the stall test read a lift over: its stretch's span, or
    null for a lift with no strength reading, which the count test reads over
-   its last 3 sessions (r54, from the audit V asked for: the coach and the
+   its last 3 sessions (from the audit V asked for: the coach and the
    headline said "3 weeks" of a lift flat for ten). On two rep ranges,
    stalled only while both are, so for as long as the shorter. */
 /** The weeks a lift's stall stretch spans, or null when it is read by count. */
@@ -716,7 +714,7 @@ function idxLiftIn(
      purpose is not evidence of a stall. */
   const sc = trendScope(exps, anchor);
   const { real, curRR, inRange, lastReal } = sc;
-  // The lift as it is now: its sessions since a new machine or gym (sinceNew, r61), which its bests and readings come from; its count is every session.
+  // The lift as it is now: its sessions since a new machine or gym (sinceNew), which its bests and readings come from; its count is every session.
   const cur = sinceNew(exps);
   /* At the heaviest load the machine or rack has, progress moves to reps and
      then to harder reps (tempo, pauses, one side), which the load-based PR
@@ -745,16 +743,16 @@ function idxLiftIn(
   let stalled = false;
   /* Only a lift still being trained can be stalled: one not done in the
      42 days up to the log's newest session, or deleted or archived,
-     used to stay stalled forever and kept the Coach calling for a deload
-     (r27). Nor one on a break today (afterBreak, more than BACK_DAYS since
-     its last session, r64, the r63 audit's P-S2-2): its next session starts
+     used to stay stalled forever and kept the Coach calling for a deload.
+     Nor one on a break today (afterBreak, more than BACK_DAYS since
+     its last session, the r63 audit's P-S2-2): its next session starts
      its readings over, so a pull-up last done 39 days ago read as stalled on
      Stats and by the coach until then. Nor one held for a flagged injury
-     (r53, from the audit V asked for): the engine keeps it at last time's
+     (from the audit V asked for): the engine keeps it at last time's
      load on purpose, and three weeks of doing as told read as a stall to
      change the range. */
   const current = stillTrainedIn(M, id, exI, lastReal, winStart);
-  /* A PR is movement whatever the day (r53, V 2026-10-18: a PR is a PR
+  /* A PR is movement whatever the day (V 2026-10-18: a PR is a PR
      whenever it happens). A session where the lift was done lighter is left
      out of the stretch (and until r54 a trimmed one), and its PR went with it, so a lift
      that set one on yesterday's Lighter day read stalled beside it in Recent
@@ -768,9 +766,9 @@ function idxLiftIn(
   const listed = (x: Exposure): boolean => prs.some(p => p.big && p.sid === x.sid && p.exId === id);
   /* The test in one rep range, on its sessions since the last break (all):
      a lift trained in two (a heavy day and a light day) is stalled only when
-     it is stalled in each, as each range has its own targets (r54, V
+     it is stalled in each, as each range has its own targets (V
      2026-10-18; stallScopesIn). A session held for a flagged injury, its
-     load capped on purpose, is left out as one done lighter is (r54, PENDING
+     load capped on purpose, is left out as one done lighter is (PENDING
      311 g: once the injury was cleared, the held weeks read as a stall). */
   const stalledIn = (rr: [number, number] | null, all: readonly Exposure[]): boolean => {
     const inR = all.filter(x => !x.held);
@@ -821,13 +819,13 @@ function idxLiftIn(
   const { pct, slope, slopeSe, moving, pLo, pHi, spanW, loadUp } = t;
   /* A lift trained in two rep ranges, a heavy day and a light day, reads
      falling only when it falls in each range in use, as it reads stalled
-     (r55, V 2026-10-19, PENDING 319): its trend is read in its newest
+     (V 2026-10-19): its trend is read in its newest
      session's range, so until r55 Stats and the coach said "falling" after
      the light day and "up" after the heavy one. rrIn is the range the trend
      is read in when the lift is trained in more than one, so the screens
      name it; holdRR, when the trend falls there, the other ranges in use
      where it does not, and quietRR those with too few sessions for a trend
-     (r55, the review: a range trained once was said to be "not" down, a
+     (the review: a range trained once was said to be "not" down, a
      claim with no reading behind it). Either keeps it from reading falling,
      as a range in use with too few sessions keeps it from reading stalled. */
   const scopes = stallScopesIn(M, id, sc);
@@ -839,9 +837,9 @@ function idxLiftIn(
      this, but it is the clearest sign that the load is due to go up. */
   let easier: ExStat['easier'] = null;
   /* Not on a lift on a break today: the way back after the break, or its fresh start after a long one, sets the load,
-     and Load due beside it contradicted it (REV10-5, 2.46 too). The break is read from the lift's last session of any
+     and Load due beside it contradicted it (2.46 too). The break is read from the lift's last session of any
      kind, as the engine reads it: from the last one not done lighter, a deload ten days ago hid the Load due of a
-     lift trained then, whose next target the engine set as usual (REV11-1). */
+     lift trained then, whose next target the engine set as usual. */
   if (inRange.length >= DRIFT_N && !afterBreak(sc.lastAny, M.today())) {
     const l3 = inRange.slice(-DRIFT_N);
     const sameW = l3.every(x => Math.abs(x.topW - l3[0].topW) < EPS_SAME);
@@ -945,7 +943,7 @@ function idxScoresIn(M: Model, exStats: Record<string, ExStat>): Score[] {
       for (const m of ex.secondary) stallS[m] = true;
     }
     if (st.pct == null || !st.fresh) continue;
-    /* A muscle's trend needs a little more than a lift's (r32, from the third
+    /* A muscle's trend needs a little more than a lift's (from the third
        review: "Chest +4%, rising: hold this volume" after 3 sessions, off one
        extra rep): its lifts count once they have 4 sessions over 3 weeks or
        more in the window. */
@@ -989,7 +987,7 @@ function idxScoresIn(M: Model, exStats: Record<string, ExStat>): Score[] {
      ranking to be worth saying. A rising muscle is progressing: ranked
      third or higher used to be needed too, so with eight muscles rising five
      read steady. A flat muscle is lagging only when one of its lifts has
-     stalled (r29, a convention). By rank alone, the bottom third read
+     stalled (a convention). By rank alone, the bottom third read
      "Lagging strength" in red while its lifts were gaining reps every
      session: sets above 12 reps to failure have no 1RM estimate, so high-rep
      isolation work shows no trend however well it is going (V: demotivating
@@ -1038,7 +1036,7 @@ export function sessionWordsIn(M: Model, sids: readonly string[]): Record<string
   return out;
 }
 
-/* "Last" is the most recent session of a lift, whatever kind (r26, V's
+/* "Last" is the most recent session of a lift, whatever kind (V's
    rule): a session short of its usual, lighter, or a deload is what you did
    last, so it is what you look back at, labelled for what it was (fewer
    sets, below usual, lighter, deload; trimmed until r54). Targets still come
@@ -1071,7 +1069,7 @@ export function lastOf(
   // The date with its year when it is not this one: "Last (Oct 20)" a year on read as last week.
   const line = `Last (${fmtDateFrom(rec.date, now)}${kind ? ', ' + kind : ''}): ${sets.join(', ')}.`;
   /* A session short of its usual sets at another working load than the one
-     the target comes from gives no reps for it either (r55, the audit: after
+     the target comes from gives no reps for it either (the audit: after
      85 x 6, 6 stopped short, the target went back to 80 kg with 6s in grey). */
   const repsFrom =
     rec !== base && (lighter(rec) || rec.short === 'reading' || Math.abs(rec.topW - base.topW) > EPS_SAME) ? base : rec;
@@ -1082,7 +1080,7 @@ export function lastOf(
      bottom of the range (greyR). */
   const wl = workLoad(repsFrom.pts, repMin || 0);
   const wp = atLoad(repsFrom.pts, wl);
-  /* One bad set is not next time's plan (r32, from the third review: squat
+  /* One bad set is not next time's plan (from the third review: squat
      140 x 3, 6, 6 on 6-10 greyed (3)(6)(6), and one tap logged 140 x 3
      again). With one set under the range among the rest, that set shows the
      bottom of the range instead. */
@@ -1106,7 +1104,7 @@ export function lastOf(
 }
 
 // Sessions in the week, not days: two plan days done on one day are two of the week's sessions.
-// Counted once per change and kept with the analytics (dateIndex, r47; r46: the streak scanned every session for each of 104 weeks, twice a render).
+// Counted once per change and kept with the analytics (dateIndex; r46: the streak scanned every session for each of 104 weeks, twice a render).
 export function weekSessionsIn(M: Model, ws: string): number {
   return dateIndexIn(M).weekN[ws] || 0;
 }

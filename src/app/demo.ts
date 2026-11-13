@@ -9,7 +9,7 @@
    open, so the next workout is ready to start. Seeded, so the same routine
    always gives the same demo.
 
-   Looked at before setting up (V, r28): whatever is changed while looking
+   Looked at before setting up (V): whatever is changed while looking
    around is put back once the demo is cleared (storage.ts, demoKeep and
    demoRestore), so a real start begins on the default layout. */
 
@@ -65,7 +65,7 @@ const LIFTER = {
   repPct: 2.5,
   seed: 11
 } as const;
-/** The marked deload week, and the week with one day missed, in days back from this week (r30, V's choice). */
+/** The marked deload week, and the week with one day missed, in days back from this week (V's choice). */
 const BACK = { deload: 21, missed: 42 } as const;
 /** A deload's sessions: the reps in reserve. */
 const DELOAD_RIR = 3;
@@ -310,7 +310,7 @@ const DEMO_SAID = 6000;
 
 /** The demo's tap, by data-act. */
 export const DEMO_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
-  /* Signed in, the demo would sync into the account (r55.1, the second
+  /* Signed in, the demo would sync into the account (the second
      review of r55); signing out to load it would make the next sign-in a
      first link, which brings back what other phones deleted meanwhile, so it
      is not offered. */

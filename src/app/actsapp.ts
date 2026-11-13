@@ -1,4 +1,4 @@
-/* The app's own taps (r63, from the legacy script's 25-helpers.js and
+/* The app's own taps (from the legacy script's 25-helpers.js and
    27-actions.js): the menu and the Guide, installing, a section shown again
    or reached, the crash screen's Try again, Undo, the help lines, the rest
    timer's buttons, a question's answers, and the backup and spreadsheet
@@ -167,7 +167,7 @@ function exportBackup(): Promise<void> {
    settings. The JSON export remains the thing that restores the app. */
 /** Exports every set as a spreadsheet's rows (CSV), and cardio after them. */
 export function exportCSV(): Promise<void> | undefined {
-  // A cell a spreadsheet would read as a formula gets a ' in front (csvGuard, NEW-35); one with a comma, a quote or a line break is quoted.
+  // A cell a spreadsheet would read as a formula gets a ' in front (csvGuard); one with a comma, a quote or a line break is quoted.
   const q = (v: unknown) => {
     const s = typeof v === 'number' ? String(v) : csvGuard(String(v == null ? '' : v));
     return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
@@ -229,7 +229,7 @@ export function exportCSV(): Promise<void> | undefined {
       });
     }
   }
-  // A cardio entry's minutes under session_minutes, as the header says (r55; r54 wrote them a column early).
+  // A cardio entry's minutes under session_minutes, as the header says (r54 wrote them a column early).
   for (const c of [...state.cardio].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)))
     rows.push([
       c.date,
@@ -270,7 +270,7 @@ export function exportCSV(): Promise<void> | undefined {
   );
 }
 
-/* The profile photo (2.33; the account's since 2.34): what shows it is
+/* The profile photo (the account's since 2.34): what shows it is
    redrawn once it is kept or removed, the menu button, an open menu and
    Today's line, and the change is sent to the account. Once a photo is added,
    Today's line is answered on this phone until it signs out. */
@@ -342,7 +342,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       return;
     }
     if (ui.modal) closeModal();
-    // From the first pages (Help, r64) the menu leaves out what needs the app's tabs.
+    // From the first pages (Help) the menu leaves out what needs the app's tabs.
     openModal(obActive() ? { kind: 'menu', first: true } : { kind: 'menu' });
   },
   install() {

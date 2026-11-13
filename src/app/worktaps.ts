@@ -1,4 +1,4 @@
-/* The session screen's taps (CL-1, split from workout.ts): every button on it by its data-act (WORKOUT_ACTS, reached
+/* The session screen's taps (split from workout.ts): every button on it by its data-act (WORKOUT_ACTS, reached
    through events.ts's table), a set ticked, stepped, added or removed, an exercise removed, a warm-up added, and the
    sheets they open. Each change to the session in progress goes through act. What the screen opens is reached by the
    button's data-act through events.ts's table (the sheets moved in r62, the actions in r63): the exercise menu, the
@@ -127,7 +127,7 @@ function setRemove(t: Tap): void {
   const shown = x.w ?? effW(b, i);
   const val =
     +(x.r ?? 0) > 0
-      ? // No load anywhere on a loaded lift: the reps alone, never a 0 the row does not show (REV12-5).
+      ? // No load anywhere on a loaded lift: the reps alone, never a 0 the row does not show.
         shown == null && !ex.bw && !ex.timed
         ? `${x.r} rep${Number(x.r) === 1 ? '' : 's'}`
         : setShort(ex, shown ?? 0, x.r)
@@ -284,7 +284,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
      and it used to untick the set. A second tap undoes it. Tapping done on
      an empty reps field logs the grey number in it (see greyR), like the
      paper log you copy from; warm-ups and drops have theirs since r64; a typed
-     0 is a missed set (r55, V), ticked as typed. Unticked (r55, the audit):
+     0 is a missed set (V), ticked as typed. Unticked (the audit):
      numbers that are what the row shows in grey go back to grey, so a tap by
      mistake leaves nothing typed for Finish to offer to save, and an
      exercise the tick moved up goes back if it has no set left ticked,
@@ -296,8 +296,8 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const d = state.draft;
     if (!s || !d) return;
     if (W.lastAuto && (blkIdx(W.lastAuto.b) !== bi || W.lastAuto.s !== si)) W.lastAuto = null;
-    /* A tick of yours moves minus and plus on, to the first set not ticked; an untick keeps them on the set unticked
-       (NEW-100). The checkmark tapped after auto-mark keeps the tick and is a tick of yours too. */
+    /* A tick of yours moves minus and plus on, to the first set not ticked; an untick keeps them on the set unticked.
+       The checkmark tapped after auto-mark keeps the tick and is a tick of yours too. */
     if (W.lastAuto && Date.now() - W.lastAuto.t < AUTO_CONFIRM_MS && s.done) {
       W.lastAuto = null;
       W.onSet = null;
@@ -376,7 +376,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   /* The new working set copies the last working set's load, not a drop set's
      (DROP_START) or a warm-up's. Grey by default: the new row shows the load above
      it, or what the last set ticked asks for, as a planned row under it would
-     have (r55, V: after 300 x 1, + Set copied 300). Filled in, it takes that load. */
+     have (V: after 300 x 1, + Set copied 300). Filled in, it takes that load. */
   sAdd(t) {
     const bi = Number(t.dataset.b);
     const b = tapBlock(t);
@@ -412,7 +412,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       if (ex.assist) return;
       const to = stepLoad(ex, b.plan, effW(b, si) ?? 0, dir);
       /* As the number typed in the unit on screen, to the hundredth a field takes: the field's own text is rounded to a
-         tenth, and stored from it a 1.25 kg step went 41.3, 42.6, 43.9, off every load the lift has (the review, REV6-5). */
+         tenth, and stored from it a 1.25 kg step went 41.3, 42.6, 43.9, off every load the lift has (the review). */
       const v = to == null ? null : toD(to);
       if (v == null) return;
       w = Math.min(fromD(Math.max(Math.round(v * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
@@ -482,7 +482,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     toast('Warm-up set added');
   },
   // The load the last working set was, or will be (a grey load counts); a missed set's is passed over.
-  /* Done with an exercise that has sets left (r66, PENDING 374; V: "Ask:
+  /* Done with an exercise that has sets left (V: "Ask:
      log or skip"): one question, then every set left ticked as it shows (its
      load and reps, typed or grey; a 0 typed is a missed set, as a tick logs
      it), or every set left taken off. Either is one change with one Undo. A
@@ -724,7 +724,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (moveBlock(Number(t.dataset.b), Number(t.dataset.b) + 1)) rerenderKeepScroll();
   },
   bDel: blockRemove,
-  /* New machine or gym (r61, PENDING 343 7, V's decision of 2026-10-24): the
+  /* New machine or gym (PENDING 343 7, V's decision of 2026-10-24): the
      lift starts over from this session, every block of it marked and its
      suggestion read again as a first session's; tapped again, it reads its
      history again. Rows typed are kept; rows still on the suggestion take
@@ -754,7 +754,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         : `${exName(b0.exId)} reads its history again.`
     );
   },
-  // A superset made here is this session's; Finish offers to keep it in the plan (r34.2, from the review: it was gone next time without a word).
+  // A superset made here is this session's; Finish offers to keep it in the plan (from the review: it was gone next time without a word).
   bSs(t) {
     const d = state.draft;
     const bi = Number(t.dataset.b);

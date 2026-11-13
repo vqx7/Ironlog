@@ -1,5 +1,5 @@
 /* Lift goals: which lifts can have one, and how far a goal is (phase
-   3a, r51; moved unchanged from the legacy script). goalState, which reads the log, is in display.ts
+   3a; moved unchanged from the legacy script). goalState, which reads the log, is in display.ts
    with what the screens share. */
 
 import type { Exercise } from './types';

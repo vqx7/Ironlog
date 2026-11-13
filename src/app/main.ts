@@ -1,4 +1,4 @@
-/* The page's start (r63, from the legacy script's 10-start.js to
+/* The page's start (from the legacy script's 10-start.js to
    29-sections.js, deleted with it): the bundle's entry. Every module runs
    nothing on import, so the page starts here, in the order it always did:
    the page given its draw and its sheets, storage and sync's effects, the
@@ -374,7 +374,7 @@ function oldLogFixes(): void {
   /* Fixes of a log an older build saved, once, on this device's state, each
      made only when it changes something (a save is also a sync, so one at
      every start would send the log each time), and inside `act`, as every
-     change to the log is (r65, the r63 audit's A-5: they were written and
+     change to the log is (the r63 audit's A-5: they were written and
      saved by hand). */
   // r44: floors from a first-run pick made before they were recorded (oldFloors).
   try {
@@ -815,7 +815,7 @@ function start(): void {
      in their order: the save read into the store, the sync notes, the device
      id, the listeners. */
   /* Every message storage and sync raise is news about the log (a sync's notes, a workout set aside), which the toast
-     never loses (toast.ts, 2.48): marked so here, in the one place they reach the page. */
+     never loses (toast.ts): marked so here, in the one place they reach the page. */
   const notice = (msg: string, undo?: boolean | null, ms?: number | null, kind?: string): void =>
     toast(msg, undo, ms, kind ?? 'notice');
   setFx({ render, rerenderKeepScroll, toast: notice, undoToastHide, setSaveState, syncLine, obGate, ask, closeModal });
@@ -832,26 +832,26 @@ function start(): void {
   window.ironlogInstallReady = () => {
     if (ui.tab === 'today' || ui.tab === 'settings') rerenderKeepScroll();
   };
-  // Installed from this browser: noted, so its tabs stop offering Get the app (canInstallHere, 2.34).
+  // Installed from this browser: noted, so its tabs stop offering Get the app (canInstallHere).
   window.addEventListener('appinstalled', () => {
     prefSet(APP_INSTALLED, '1');
   });
-  // The installed app's start script keeps its errors in the error log (r65, the r63 audit's A-12: it dropped them).
+  // The installed app's start script keeps its errors in the error log (the r63 audit's A-12: it dropped them).
   window.ironlogLog = (area, e) => log(area, e);
   // The tips' listeners, before the page's own.
   tipsStart();
   eventListeners();
-  // The session screen's own listeners (workout.ts, r60): after the page's, in the order they ran before.
+  // The session screen's own listeners (workout.ts): after the page's, in the order they ran before.
   workoutStart();
   sectionsStart();
-  // The week bar's pull-down, and the push-up of the calendar it opens (NEW-107).
+  // The week bar's pull-down, and the push-up of the calendar it opens.
   pullStart();
   window.__onLib = which => {
     if ((which === 'chart' && ui.tab === 'dash') || (which === 'sortable' && ui.tab === 'program'))
       rerenderKeepScroll();
   };
   trashTidy();
-  // A workout set aside past its last day goes, said as it goes (NEW-96).
+  // A workout set aside past its last day goes, said as it goes.
   parkTidy();
   oldLogFixes();
   exposeForTests();

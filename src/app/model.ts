@@ -1,4 +1,4 @@
-/* The model the engine and the analytics read (phase 3b, r52;
+/* The model the engine and the analytics read (phase 3b;
    ARCHITECTURE.md): the log, the date the engine takes as today, and the
    values built from the log once per change. Every function that reads any
    of it takes the model as its first parameter, `M`, so it reads nothing
@@ -36,7 +36,7 @@ export type MissedPoint = ExPoint & { at: number };
     or a deload but done at its usual load and reps, `tv` the trend's
     reading, `progress` a PR or a heavier load), `held`, a session held
     for a flagged injury, and `miss`, its missed sets, for the Last
-    line alone (r55; absent when there are none). */
+    line alone (absent when there are none). */
 export interface Exposure {
   date: string;
   sid: string;
@@ -55,7 +55,7 @@ export interface Exposure {
   light: boolean;
   held: boolean;
   rr: [number, number] | null;
-  /** The sets its routine's plan gave it when saved (SessionEx.ps, r58); absent when none was recorded. */
+  /** The sets its routine's plan gave it when saved (SessionEx.ps); absent when none was recorded. */
   ps?: number;
   topN: number;
   tAdj: number | null;
@@ -69,13 +69,13 @@ export interface Exposure {
   tv?: number | null;
   progress?: boolean;
   miss?: MissedPoint[];
-  /** Done at a new machine or gym (SessionEx.nw, r61): the lift's stretch starts here (sinceNew). */
+  /** Done at a new machine or gym (SessionEx.nw): the lift's stretch starts here (sinceNew). */
   nw?: true;
   /** Every working set a drop set, so its points are the drops: neither the PR list nor the bests board reads it. */
   dropOnly?: true;
 }
 
-/* A lift's sessions from its newest "New machine or gym" mark (r61, PENDING
+/* A lift's sessions from its newest "New machine or gym" mark (PENDING
    343 7, V's decision of 2026-10-24): a session marked so starts the lift
    over, so its targets, trend, stalls, PRs, bests and rack spacing read from
    it as from a first session, and the sessions before it, at another
@@ -87,7 +87,7 @@ export function sinceNew<X extends { nw?: true | undefined }>(xs: readonly X[]):
   return xs.slice();
 }
 
-/** A lift's sessions cut at each new-machine mark into its stretches, in order, each read as its own (the PR list, r61). */
+/** A lift's sessions cut at each new-machine mark into its stretches, in order, each read as its own (the PR list). */
 export function stretchesOf<X extends { nw?: true | undefined }>(xs: readonly X[]): X[][] {
   const out: X[][] = [];
   for (const x of xs) {
@@ -142,7 +142,7 @@ export interface ExStat {
 }
 
 /** What every PR keeps: its day and session, its lift, and whether it is
-    counted and announced (`big`, r32). */
+    counted and announced (`big`). */
 interface PrBase {
   date: string;
   sid: string;
@@ -261,11 +261,11 @@ export interface Suggestion {
   capped?: boolean | undefined;
   buildTo?: number | undefined;
   back?: number | undefined;
-  /** The days a lift was away when it starts fresh after a long break (NEW-110): nothing from before it is asked. */
+  /** The days a lift was away when it starts fresh after a long break: nothing from before it is asked. */
   away?: number | undefined;
   /** Asked as done earlier the same day: the load stays as logged, never moved onto a grid. */
   same?: true | undefined;
-  /* The engine says its own short form rather than the screen reading its words for one (NEW-109): until 2.49 the
+  /* The engine says its own short form rather than the screen reading its words for one: until 2.49 the
      session matched the loaded first-time paragraph by a pattern, so a reworded sentence, or a bodyweight or
      assisted lift's, was said in full on every lift. */
   /** A first session's paragraph shortened, said on a later lift in the same session once one has said it in full. */
@@ -294,7 +294,7 @@ export interface CheckSet {
   sid: string;
 }
 
-/** The log's efforts as saved (setread.ts, RC-3), built once per change: each lift's rated working sets and every RIR
+/** The log's efforts as saved (setread.ts), built once per change: each lift's rated working sets and every RIR
     check, in date order, and what has been read of them as of a day (the correction, each lift's usual effort, and
     the first usual effort a lift had). */
 export interface Efforts {
@@ -359,7 +359,7 @@ export function freeModeIn(M: Model): boolean {
   return M.s.settings.todayStart === 'free';
 }
 
-/* Rest weeks (r34, V): a week off on purpose (a holiday, a break) is marked,
+/* Rest weeks (V): a week off on purpose (a holiday, a break) is marked,
    this week or last, from More options on Today. It is not a missed week:
    the weekly average reaches past it (like a lighter week), the streak and
    adherence skip it, and the coach reads it as recovery. Kept in settings,
@@ -449,7 +449,7 @@ export function gymOfIn(M: Model): Gym | null {
   return g && typeof g === 'object' ? g : null;
 }
 
-/* ---------- PROFILE (r44, item 271, with 43 and 44) ----------
+/* ---------- PROFILE (item 271, with 43 and 44) ----------
    An optional short profile: goal, experience, days a week and up to two
    focus muscles. V's answers (2026-10-13): it sets defaults and new plan
    items only; the routine in use changes only through Apply; targets the
@@ -464,7 +464,7 @@ export function profIn(M: Model): Profile {
 /** A muscle with no band of its own (none the log can hold: every muscle key has one). */
 const NO_BAND: readonly [number, number] = [0, 0];
 
-/** A muscle's weekly band, found by its key among the muscles (an index's keys are typed as any string): one reading for Pick for me and Stats (r65, the r63 audit's A-6, where each had its own). */
+/** A muscle's weekly band, found by its key among the muscles (an index's keys are typed as any string): one reading for Pick for me and Stats (the r63 audit's A-6, where each had its own). */
 export function bandOfIn(M: Model, m: string): readonly [number, number] {
   for (const k of MK) if (k === m) return M.s.settings.bands[k];
   return NO_BAND;

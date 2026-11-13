@@ -81,8 +81,7 @@ import { ODD_ADDED_BEST, ODD_ADDED_BW, ODD_BEST, ODD_SESSION } from './oddloads'
 import { CAL_WEEKS, RIR_USUAL_MIN } from './setread';
 import { USUAL_SHARE } from './usual';
 
-/* The muscles the Guide names, read from the tables that decide them (r65,
-   the r63 audit's A-9: the lists were typed in, so a muscle added to a table
+/* The muscles the Guide names, read from the tables that decide them (the r63 audit's A-9: the lists were typed in, so a muscle added to a table
    would have been missing here). Those with a target in their table's order;
    the others in the muscles' order, the ones never a focus last. */
 const musSaid = (m: string): string => String(ML[m]).toLowerCase();
@@ -90,8 +89,7 @@ const TARGETED_SAID = andList([...TARGETED].map(musSaid));
 const TRACKED_SAID = andList([...MK.filter(m => !TARGETED.has(m) && !TRACK_ONLY.has(m)), ...TRACK_ONLY].map(musSaid));
 const NO_FOCUS_SAID = andList([...TRACK_ONLY].map(musSaid));
 
-/* The Guide's numbers, each the constant its rule applies (the numbers pass,
-   r61), so a changed rule changes what the Guide says. The profile's plans
+/* The Guide's numbers, each the constant its rule applies (the numbers pass), so a changed rule changes what the Guide says. The profile's plans
    are Strength's, Both's and a first year's. */
 const S = PROFILE_PLAN.strength,
   B = PROFILE_PLAN.both,
@@ -242,7 +240,7 @@ export function guideSheet(m: { open?: string | undefined }): TemplateResult {
    ${window.IRONLOG_APP ? '<p><b>Updates</b>: when "Update ready" shows, tap Update.</p>' : ''}
    ${report}`
     ],
-    /* The studies behind the app's numbers, in one place (2.34, V 2026-11-08: tips say "rule of thumb" and the
+    /* The studies behind the app's numbers, in one place (V 2026-11-08: tips say "rule of thumb" and the
        references live in the Guide). docs/EVIDENCE.md has each in full and every rule of thumb beside them. */
     [
       'sources',

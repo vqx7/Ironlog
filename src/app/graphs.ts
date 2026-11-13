@@ -616,7 +616,7 @@ function muscleChart(I: Idx, sFirst: string | null, { blue, green }: Pal): void 
             yAxisID: 'y'
           },
           { label: 'Assumed hard', data: assumV, backgroundColor: blue + '55', yAxisID: 'y' },
-          // No target lines for a muscle with no target (r29; hasTargetIn since r58).
+          // No target lines for a muscle with no target (hasTargetIn since r58).
           ...(!hasTarget(m)
             ? []
             : [
@@ -710,7 +710,7 @@ function liftChart(I: Idx, { blue, green, yellow }: Pal): void {
          bests, so their numbers agree; the headline says when the trend itself
          is read from loads and reps alone. */
       const vals = exps.map(x => (e1Mode ? +fmtE(x.best) : r1(toD(x.topW ?? 0) ?? 0)));
-      // A PR as Recent PRs counts it (r58, 343 6): a session with a set stronger than every earlier one.
+      // A PR as Recent PRs counts it (343 6): a session with a set stronger than every earlier one.
       const prOf = exps.map(x => I.prs.find(q => q.big && q.exId === exId && q.sid === x.sid) || null);
       const isPR = prOf.map(p => !!p);
       // A rep PR can land below an earlier best estimate, which read as a mistake

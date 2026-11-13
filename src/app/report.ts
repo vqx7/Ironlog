@@ -1,12 +1,11 @@
-/* Problem reports (PENDING 58, reworked in r25; moved from the legacy
+/* Problem reports (reworked in r25; moved from the legacy
    script's 14-account.js and 27-actions.js in r63). The menu and an
    exercise's ⋯ menu open one sheet (sheetsaccount.ts): a problem, a
    question or a suggestion, one text box, an optional screenshot, and what a
    report needs to be acted on without asking the person anything technical:
    build, device, screen size, which screen they came from, whether a
    session was open, sync status and the last 10 logged errors. Never the
-   workouts. Replies go to the account's email. Signed in only (V's choice,
-   r25), to keep spam out, with limits the database enforces too: 10 to
+   workouts. Replies go to the account's email. Signed in only (V's choice), to keep spam out, with limits the database enforces too: 10 to
    1,000 characters, one image, 5 reports a day per account. Without a report
    service at all (the plain source file) the report is copied as text.
 
@@ -38,14 +37,14 @@ import type { Tap } from './workstate';
 /** What a request with no answer within the time limit says, on the sheet that sent it. */
 export const NO_ANSWER = 'No answer. Check your connection and try again.';
 
-/** What a report past the day's limit is told, whether this phone or the database counted it (r65, the r63 audit's A-9: the account script said its own 5). */
+/** What a report past the day's limit is told, whether this phone or the database counted it (the r63 audit's A-9: the account script said its own 5). */
 const LIMIT_SAID = `${FB_DAY} reports sent today. Try again tomorrow.`;
 
 /** What a report says of the device and the log, at most: the browser's own name, the errors kept, and an error's words once the context is too large. */
 const CTX = { device: 300, errors: 10, words: 100 } as const;
 /** A day, in milliseconds (the reports sent in the last one). */
 const DAY_MS = 864e5;
-/** A screenshot as kept: its long side tried at each of these, in pixels, at each JPEG quality from the first down by the step to the last, until it fits in the characters allowed (r45, audit item 287, when each was also committed to the tickets repository for good; since r64 it is kept only with its report in the table and shown in the Inbox). */
+/** A screenshot as kept: its long side tried at each of these, in pixels, at each JPEG quality from the first down by the step to the last, until it fits in the characters allowed (audit item 287, when each was also committed to the tickets repository for good; since r64 it is kept only with its report in the table and shown in the Inbox). */
 const SHOT = { sides: [1280, 960, 720], q0: 0.72, qStep: 0.14, qMin: 0.3, chars: 500000 } as const;
 /** A megabyte, in bytes. */
 const MB = 1048576;

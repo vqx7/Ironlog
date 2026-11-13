@@ -1,4 +1,4 @@
-/* How long a session takes (phase 3b, r52; moved from the legacy script): the time model for a day's
+/* How long a session takes (phase 3b; moved from the legacy script): the time model for a day's
    plan, the same model for the sets a past session logged, and your pace,
    the median of how long your timed sessions took against that model. They
    call each other (a day's minutes scale by the pace, which reads past
@@ -34,7 +34,7 @@ export function dayMinutesIn(M: Model, day: { items: readonly TimedItem[] }, hal
   return Math.round((Math.max(0, s - lastRest) * (raw ? 1 : paceIn(M))) / MINUTE_S);
 }
 
-/* Your own pace (r43, V): how long your sessions take against the time model,
+/* Your own pace (V): how long your sessions take against the time model,
    so every estimate (Today, Plan, a session's minutes left, Short on time,
    Pick for me, the recap) follows what your sessions actually take. Each
    timed session in the last PACE_DAYS days is compared with the model for

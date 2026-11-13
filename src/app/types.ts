@@ -139,7 +139,7 @@ export type Asked = [number | null, number | null];
     `ps` is the sets its routine's plan gave it when saved: on
     a session saved on a day of a routine with the lift in it, absent on the
     rest, on an edit's new exercises and on sessions saved before r58.
-    `nw` marks it done at a new machine or gym (r61, 343 7): the lift starts
+    `nw` marks it done at a new machine or gym (343 7): the lift starts
     over from this session (sinceNew), absent unless marked. */
 export interface SessionEx {
   exId: string;
@@ -157,7 +157,7 @@ export interface SessionEx {
 
 /** A saved session (cleanSess in the storage part). `t` is when it started,
     which orders two sessions on one day; `chk` the check-in's answers;
-    `pw` the sessions a week its routine planned when it was saved (r55, pwOf). */
+    `pw` the sessions a week its routine planned when it was saved (pwOf). */
 export interface Session {
   id: string;
   date: string;
@@ -339,8 +339,8 @@ export interface OpenSet {
 }
 
 /** A workout not yet saved as the rules read it: its id, which its saved copy keeps; its day; the saved session it is
-    an edit of (2.30, R75-6: its saved version is no earlier session of itself); and each lift's rows, with the lifts it
-    marks as done at a new machine or gym (r61, liftReadIn). */
+    an edit of (R75-6: its saved version is no earlier session of itself); and each lift's rows, with the lifts it
+    marks as done at a new machine or gym (liftReadIn). */
 export interface OpenWorkout {
   id?: string | undefined;
   date: string;
@@ -413,10 +413,10 @@ export interface Target {
     and suggestion it started with, an adjustment made mid-session,
     last time's sets for the Last column, and, for one added on a
     lighter day or in a deload with its sets halved, the count before
-    (`full`, r54), for Finish's offer to the routine. `cut` marked it
+    (`full`), for Finish's offer to the routine. `cut` marked it
     trimmed until r53, and is neither written nor read since r54. An edit
     from History keeps the saved range (`keepRR`); an exercise held for an
-    injury carries its key (`inj`, r54). */
+    injury carries its key (`inj`). */
 export interface DraftBlock {
   /** The exercise's own id in this session, which a move or a merge keeps; absent on a session begun before r46. */
   bid?: string | undefined;
@@ -452,7 +452,7 @@ export interface DraftBlock {
   last?: string | undefined;
   /** The suggestion's words, shown under the exercise when it has no target. */
   hint?: string | undefined;
-  /** The suggestion's short line, said instead of hint once an earlier lift in the session said its kind (NEW-109). */
+  /** The suggestion's short line, said instead of hint once an earlier lift in the session said its kind. */
   hintAgain?: string | undefined;
   /** Last time's reps per working set, the grey reps. */
   lastR?: (number | null)[] | undefined;
@@ -464,7 +464,7 @@ export interface DraftBlock {
   lastNote?: { date: string; text: string } | null | undefined;
   /** The exercise it was swapped from, for Finish's offer to the routine. */
   swappedFrom?: string | null | undefined;
-  /** Done at a new machine or gym (r61, 343 7): every block of the lift in the session carries it, its suggestion read as a first session's; absent unless marked. */
+  /** Done at a new machine or gym (343 7): every block of the lift in the session carries it, its suggestion read as a first session's; absent unless marked. */
   nw?: true | undefined;
   /** The pictures on this exercise's note, by id, carried to the saved exercise by Finish; absent when none. */
   pics?: string[] | undefined;

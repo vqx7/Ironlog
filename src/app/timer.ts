@@ -1,4 +1,4 @@
-/* The rest timer and the screen kept on (r63, from the legacy script's
+/* The rest timer and the screen kept on (from the legacy script's
    18-ui.js). The timer is the page's (#timer), outside the screens: since
    r71 a card floating above the tabs, or the compact pill; the session
    screen starts it on a tick and stops it with the session. */

@@ -1,4 +1,4 @@
-/* The session screen's state between draws (r60, from workout.ts): which
+/* The session screen's state between draws (from workout.ts): which
    exercise is open, the set an auto-mark waits on, the row whose load is
    marked, the effort strip open, the folds waiting, an
    exercise being dragged, and the hook the screen draws itself again
@@ -132,7 +132,7 @@ const blkKey = (bi: number, b: DraftBlock): string => ((state.draft && state.dra
 /** Whether a block was opened again after it folded, by its place or itself. */
 export const blkIsOpen = (bi: number, b: DraftBlock): boolean => ui.blkOpen.has(blkKey(bi, b)) || blkOpenObj.has(b);
 
-/* Any exercise folds by hand, done or not (NEW-101, V 2026-11-09: in a blank session every exercise added stayed open;
+/* Any exercise folds by hand, done or not (V 2026-11-09: in a blank session every exercise added stayed open;
    NEW-91 gave an edit its button first): held by its place and itself, as an opened one is. A done exercise also folds
    by itself a moment after its last tick in a session, not in an edit, where all are done and the lifter came to
    change them. */

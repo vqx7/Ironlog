@@ -1,4 +1,4 @@
-/* The logo and the small icons drawn in markup (phase 3a, r51; moved
+/* The logo and the small icons drawn in markup (phase 3a; moved
    unchanged from the legacy script). */
 
 import { APP_NAME, WORDMARK } from './config';

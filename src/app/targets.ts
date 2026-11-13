@@ -1,4 +1,4 @@
-/* The weekly set targets fitted to a routine on a first run (r29, V:
+/* The weekly set targets fitted to a routine on a first run (V:
    "targets that can actually be met"; moved from the legacy script's
    15-analytics.js in r63). When a new person picks a ready-made routine,
    imports their log or loads the demo, and the weekly targets are still the
@@ -75,7 +75,7 @@ export function fitTargets(
   if (!same(D) && ![starterRoutine(), defaultRoutine()].some(r => same(fitOf(r)))) return false;
   const was = JSON.stringify(MK.map(m => b[m]));
   for (const m of MK) b[m] = [D[m][0], D[m][1]];
-  /* actual (a routine made from an import, r31): no minimum above what the
+  /* actual (a routine made from an import): no minimum above what the
      log itself averaged on a muscle the routine trains. A cycle's planned
      sets a week and the weeks as trained never match exactly (2 days
      alternating, 3 sessions a week, plans 2.8), and the review saw "Abs
@@ -85,7 +85,7 @@ export function fitTargets(
      later focus change knows which targets are the app's; a focus muscle's
      floor is recorded too, though not applied while it is a focus, so
      taking the focus off later brings it to the plan. The
-     floors are fitFloors' (profile.ts, r54), the one rule the refit of an
+     floors are fitFloors' (profile.ts), the one rule the refit of an
      older fit reads too. */
   const fit = fitFloors(R, actual);
   for (const m of MK) {

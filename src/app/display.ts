@@ -59,7 +59,7 @@ import { state, ui } from './store';
 import type { ExPoint, Exposure, ExerciseLike, Pr } from './model';
 import type { Day, Exercise, LoggedSet, Measurement, PlanItem, Routine, Session } from './types';
 
-/** The words on an Undo button (Settings, and the first page after Erase everything): the change it takes back, named as its message named it (2.30, RC-4; before, "Undo last delete or reset (N available)"). */
+/** The words on an Undo button (Settings, and the first page after Erase everything): the change it takes back, named as its message named it (before, "Undo last delete or reset (N available)"). */
 export function undoLabel(): string {
   const said = undoNext();
   return said === null ? 'Nothing to undo' : said ? `Undo: ${said}` : 'Undo the last change';
@@ -133,7 +133,7 @@ export function fmtE(kg: number | null | undefined): string {
 }
 
 /* A best estimate a little above the one before it can show as the same
-   number (r64, the r63 audit's P-S4-2: "Best estimate 8 lb per dumbbell
+   number (the r63 audit's P-S4-2: "Best estimate 8 lb per dumbbell
    (was 8)"): the PR stands, and a "was" that reads the same number is left
    out, in the recap and the toast alike. */
 /** What an estimate was before, as shown, or '' when it shows as the same number now. */
@@ -211,8 +211,8 @@ export function prSet(exId: string, date: string): { v: number; w: number; r: nu
    weeks before are given only when the log covers all of them, so 2 days of
    a first month never read as a jump. Counted PRs only. */
 /* The screens use recent4w; the suites reach for this one to check a window
-   of their own (r63, from the legacy script's 19-today.js). */
-/** The counted PRs (the ones marked big, r32) of the last days given. */
+   of their own (from the legacy script's 19-today.js). */
+/** The counted PRs (the ones marked big) of the last days given. */
 export function prsWithin(days: number): Pr[] {
   const from = addDays(today(), -days);
   return IDX().prs.filter(x => x.date >= from && x.big);
@@ -360,7 +360,7 @@ export function libFiltered(q: string | null | undefined, m: string, e: string, 
 
 /* ---------- where the cycle stands: cycleStateIn in pick.ts since r62 ---------- */
 
-/** The timed sessions the average session needs (r30, a convention). */
+/** The timed sessions the average session needs (a convention). */
 const AVG_SESSIONS = 3;
 
 /* Session length measured from Start to Finish. Sessions logged for a past
@@ -386,12 +386,12 @@ export function sessionLength(): { avg: number; n: number; plan: number | null }
 /* ---------- bests and goals, as Stats and the session say them ---------- */
 
 /* A lift's heaviest set, in the words the bests board uses, so nothing new is
-   invented and the two always read alike (r48, V: "is it easy to see what your
+   invented and the two always read alike (V: "is it easy to see what your
    PR was during a today session"). "Heaviest" rather than "PR": in this app a
    PR is a record the moment it is set, while this is the standing best. The
    date is dropped when the heaviest set was the lift's last session, since
    the Last line beside it already carries that date. upTo reads it as of a
-   past workout's date (r55, the audit). */
+   past workout's date (the audit). */
 /** "Heaviest 225×5, Oct 3": a lift's heaviest set, or '' before one. */
 export function bestLine(exId: string, upTo?: string): string {
   const r = allTimeBests(exId, upTo);
@@ -399,12 +399,12 @@ export function bestLine(exId: string, upTo?: string): string {
   const ex = r.ex;
   const exps = (IDX().byEx[exId] || []).filter(x => !upTo || x.date <= upTo);
   const last = exps[exps.length - 1];
-  // Its year when not this one, as the board says it (NEW-111).
+  // Its year when not this one, as the board says it.
   const when = last && r.heavy.date === last.date ? '' : `, ${fmtDate(r.heavy.date)}`;
   return `Heaviest ${setShort(ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(ex)}${when}`;
 }
 
-/* Each lift's best on Today's Workout preview (379, r70, V 2026-11-03: "PR/best
+/* Each lift's best on Today's Workout preview (379, V 2026-11-03: "PR/best
    should be more clearly called out on each exercise"): the set its best
    estimate comes from, the one Stats' All-time bests names ("Best estimate
    from 230×8") and the PR list last counted, with its date; a lift with no
@@ -428,7 +428,7 @@ export function bestSetLine(exId: string): string {
    reps or more); otherwise the best estimate from the last 12 weeks against
    what the goal takes done to failure, by the same estimate the targets use
    (fitE), so a goal at any reps compares with sets at any reps. No
-   date to reach it (r41, V: guide, do not predict); on a lift whose estimate
+   date to reach it (V: guide, do not predict); on a lift whose estimate
    is a load anyone lifts, the gap is said as a load as well (goalLine). */
 /** Where a lift's goal stands: the goal, the date a set reached it, how close the best estimate of 12 weeks is, and whether a weigh-in is missing; null with no goal. */
 export function goalState(exId: string): {
@@ -442,7 +442,7 @@ export function goalState(exId: string): {
   const ex = EX(exId);
   const g = ex && ex.goal;
   if (!g || !goalOk(ex)) return null;
-  // Since a new machine or gym (liftRead, r61): a goal reached at another machine is not reached here.
+  // Since a new machine or gym (liftRead): a goal reached at another machine is not reached here.
   const exps = liftRead(exId);
   const bw = bwRefLoad(ex);
   // With no weigh-in a bodyweight lift has no load to compare: say so rather than a number read from the added load alone (the review of r40).
@@ -608,7 +608,7 @@ export function sizeRows(): SizeRow[] {
   return out;
 }
 
-/* What a tape row's muscles got between its two measurements. Like every weekly average (r31, avgWeeksIn), it is
+/* What a tape row's muscles got between its two measurements. Like every weekly average (avgWeeksIn), it is
    per week trained, and when weeks went untrained it says so (NEW-81: "10 hard sets a week" over three weeks
    trained of seven read as seven weeks of it). */
 /** The hard sets a week a tape row's muscles got, with the weeks trained of the weeks between when any went untrained. */
@@ -620,7 +620,7 @@ export function sizeWhat(r: Pick<SizeRow, 'weeks' | 'span' | 'sets' | 'mus'>): s
     : base;
 }
 
-/* ---------- what is planned on a date (Today, the week bar and the calendar, r59) ---------- */
+/* ---------- what is planned on a date (Today, the week bar and the calendar) ---------- */
 
 /* The cycle day that falls on each date from today on. After a session the
    calendar walks the cycle one day per day, rest days included; a missed day
@@ -684,7 +684,7 @@ export function weekPlan(R: Routine): Record<string, PlannedDay> {
   return out;
 }
 
-/* A fixed-weekday routine's week, slot by slot (NEW-31 and 366 (c), V's rulings of 2026-11-02): each weekday's
+/* A fixed-weekday routine's week, slot by slot (V's rulings of 2026-11-02): each weekday's
    workouts in order (a day's first, then its second), each with the date it was done on this week, or null. A
    session fills the slot of the day and workout it was started from, whatever date it was done on, so Monday's
    Push done on Tuesday fills Monday's slot; one session fills one slot, the earliest first. A rest week plans
@@ -723,7 +723,7 @@ export function weekSlots(R: Routine): WeekSlot[] {
 
 /** This week's days ahead on a fixed-weekday routine whose every workout was done on another day, each with the workouts
     and the day they were done, as the bar reads them (weekSlots): This week and the calendar say so rather than offer them
-    again (NEW-107, REV9-2: the list read "Legs B, planned" under the bar's "Legs B, done Wed"). */
+    again (REV9-2: the list read "Legs B, planned" under the bar's "Legs B, done Wed"). */
 export function doneElsewhere(): Record<string, { name: string; on: string }[]> {
   const R = activeRoutine();
   const cur = weekStart(today());

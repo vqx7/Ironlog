@@ -1,8 +1,8 @@
 /* The plan a lift is done at, read with the analytics, and Finish's offer
-   to change the routine (r54, from routines.ts: under the analytics, it
+   to change the routine (from routines.ts: under the analytics, it
    could read a lift's own sessions only from the records, by their labels,
    so a session the analytics read as done lighter, or short of its usual,
-   set a lift's plan there; PENDING 313). */
+   set a lift's plan there). */
 
 import type { Plan, Routine } from './types';
 import type { Model } from './model';
@@ -15,7 +15,7 @@ import { dayWorkout, defPlanIn, profRuleIn, routinePlanIn, DEFAULT_PLAN } from '
 /* An exercise added mid-session borrows its settings from wherever it
    already sits in the routine (the active one unless given), the day being
    trained first, instead of a generic 3 x 8-12. A lift on no day of it
-   starts from its own last full session (r53, V 2026-10-18: "tied at
+   starts from its own last full session (V 2026-10-18: "tied at
    exercise level"), read as the analytics read it, by V's one rule:
    the newest of its sessions up to the date being logged (`before`, a past
    workout's; today else) not done lighter nor short of its usual, and not
@@ -90,7 +90,7 @@ export interface RoutineUpdate {
    logged against, so Finish can offer to make the change permanent. An
    exercise added on a lighter day or in a deload had half its sets, so
    the day gets the sets it would have on a normal day, the count that was
-   halved (r53, V 2026-10-18: added after a lighter day, it came back with
+   halved (V 2026-10-18: added after a lighter day, it came back with
    half its sets every time after): the block's own (`full`, kept when its
    sets were halved, r54: Pick for me's count, or Do again's), else the
    lift's plan. Until r54 that was the lift's plan whatever was chosen, so
@@ -113,7 +113,7 @@ export function routineUpdatesIn(M: Model, d: FinishedDraft): RoutineUpdate | nu
     // Limited-equipment swaps are for that session only.
     if (d.limited && b.swappedFrom) continue;
     /* A swap takes the range, effort, rest and step it was done at into the
-       day, its sets staying the slot's (r55, from the audit: the day kept the
+       day, its sets staying the slot's (from the audit: the day kept the
        old lift's plan, so the next session asked other reps than this one). */
     if (b.swappedFrom && have.has(b.swappedFrom)) {
       const plan: RoutineUpdate['swap'][number]['plan'] = {};
@@ -131,7 +131,7 @@ export function routineUpdatesIn(M: Model, d: FinishedDraft): RoutineUpdate | nu
       add.push({ exId: b.exId, plan: { ...p, sets: Math.max(1, +(sets || 0) || DEFAULT_PLAN.sets) } });
     }
   }
-  /* A superset made in the session (r35, V, as Strong and Hevy ask): pairs
+  /* A superset made in the session (V, as Strong and Hevy ask): pairs
      of exercises done linked that the day has, or will have after the
      change, but not linked there. */
   const after = new Set([

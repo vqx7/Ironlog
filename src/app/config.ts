@@ -40,7 +40,7 @@ export const PREVIEW_LABEL = 'Preview';
     weight, `light` in the muted colour (.ob-logo in the styles). */
 export const WORDMARK = { mark: 'I', strong: 'ron', light: 'log' } as const;
 
-/** The dark theme's page colour (r65, the r63 audit's A-9, where it was typed
+/** The dark theme's page colour (the r63 audit's A-9, where it was typed
     in five places): the style sheet's --bg in dark mode, the installed app's
     splash and status bar, and the status bar's when the page's cannot be read. */
 export const DARK_BG = '#08090b';
@@ -65,7 +65,7 @@ export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
 export const SITE_HOST = 'ironapp.org';
 export const SITE_DIR_FALLBACK = '/Ironlog';
 
-/* Outside addresses and library versions (r51, from the outside review V
+/* Outside addresses and library versions (from the outside review V
    brought): each is defined here once. The page's library loader and fonts
    read them through scripts/join.js's placeholders, the style sheet's font
    names the same way, scripts/build.js for the installed app's own copies,
@@ -136,7 +136,7 @@ export const THREE_URLS: readonly string[] =
 
 /** How long a request to the account server may go without an answer
     before it is given up, in milliseconds. One limit for every such request:
-    the sync's, the sign-in's and a problem report's (r63, PENDING 306 and
+    the sync's, the sign-in's and a problem report's (PENDING 306 and
     309), and since r64 every request the account library makes itself,
     whose token refresh every later call waits behind (scripts/cloud-supabase.js
     reads it through the build's placeholder; the r63 audit's F3). */

@@ -1,4 +1,4 @@
-/* The account flow (r63, from the legacy script's 14-account.js and
+/* The account flow (from the legacy script's 14-account.js and
    27-actions.js): signing in, creating an account and confirming its email,
    a reset link and a new password, signing out, deleting the account, and
    the retries when the phone comes back online or to the front. The sheet is
@@ -6,7 +6,7 @@
    (scripts/cloud-supabase.js, window.ironlogAuth).
 
    r63: every request the account sheet makes has the time limit the sync
-   has (NET_MS, PENDING 309), so one that never answers leaves Signing in
+   has (NET_MS), so one that never answers leaves Signing in
    with words that say so; and the wait for the confirmation email is one
    typed state: `wait` holds the email and the password while
    a new account waits, or is null, and `flight` says which request is out,
@@ -86,7 +86,7 @@ function acctRerender(): void {
    that shares this storage (the same browser, or Android's installed app)
    can then tell that the link was opened where Ironlog lives. */
 const ACCT_WAIT = KEY + '.acctWait';
-/** A new account waiting for its email: the email and password typed (memory only, r21), when it began, and the next try. */
+/** A new account waiting for its email: the email and password typed (memory only), when it began, and the next try. */
 let wait: { email: string; pw: string; since: number; timer: ReturnType<typeof setTimeout> | null } | null = null;
 /** The request out: a try of the wait's sign-in, the code, or none. */
 let flight: 'poll' | 'code' | null = null;
@@ -106,7 +106,7 @@ const waitSheet = (): AccountModal | null => {
   const m = acctOpen();
   return m && m.mode === 'wait' ? m : null;
 };
-/** Back to the sheet the account sheet was opened from (a problem report, r55), else closed. */
+/** Back to the sheet the account sheet was opened from (a problem report), else closed. */
 function back(): void {
   const m = acctOpen();
   if (m && m.back) openModal(m.back);
@@ -116,7 +116,7 @@ function back(): void {
 const limited = <T>(pr: Promise<T>): Promise<T> => withTimeout(pr, NET_MS, 'auth-late');
 /** What the sheet says of a failed request: no answer, or the service's own words. */
 const failed = (e: unknown, or: string): string => (codeOf(e) === 'timeout' ? NO_ANSWER : said(e, or));
-/** Starts the sync after a sign-in and says the words given once it has started, and only then (r64, the r63 audit's F3: "Signed in. Syncing your log." was said while nothing synced). */
+/** Starts the sync after a sign-in and says the words given once it has started, and only then (the r63 audit's F3: "Signed in. Syncing your log." was said while nothing synced). */
 async function syncAndSay(msg: string): Promise<void> {
   const go = cloudInit();
   await cloudDecided();
@@ -171,7 +171,7 @@ async function waitTry(manual: boolean): Promise<void> {
     waitSchedule();
     return;
   }
-  // With the bot check on (captcha.ts, r66), each try takes a token of its own; without one yet the try waits.
+  // With the bot check on (captcha.ts), each try takes a token of its own; without one yet the try waits.
   const tk = captchaTake();
   if (tk === null) {
     const m1 = waitSheet();
@@ -239,7 +239,7 @@ export async function acctInit(): Promise<void> {
     }
     /* The sign-in answered (signed in, its token refreshed, or the library's
        start ended with it): a sync that is off starts, and one waiting to try
-       again goes now (r64, the r63 audit's F3: after a request with no answer
+       again goes now (the r63 audit's F3: after a request with no answer
        it never synced again until the app was relaunched). */
     if (user && (ev === 'SIGNED_IN' || ev === 'TOKEN_REFRESHED' || ev === 'INITIAL_SESSION')) {
       if (!cloud.on) cloudInit();
@@ -345,7 +345,7 @@ function readFields(m: AccountModal): void {
     if (k === 'email' || k === 'pw' || k === 'code') m[k] = el.value;
   }
 }
-/** Whether the code field has the focus (Go on the keyboard there confirms with the code, r45). */
+/** Whether the code field has the focus (Go on the keyboard there confirms with the code). */
 const inCode = (): boolean => {
   const a = document.activeElement;
   return a instanceof HTMLElement && a.dataset.abind === 'code';
@@ -475,7 +475,7 @@ async function acctSubmit(): Promise<void> {
   if ((m.mode === 'signup' || m.mode === 'newpw') && !need(pw.length >= PW_MIN, `Use ${PW_MIN} or more characters.`))
     return;
   if (m.mode === 'signin' && !need(pw.length > 0, 'Enter your password.')) return;
-  /* The bot check's token (captcha.ts, r66): undefined when the check is off, so every request goes as before; on,
+  /* The bot check's token (captcha.ts): undefined when the check is off, so every request goes as before; on,
      a sign-in, a new account and a reset link each take one, and none is sent until the check has given one. A new
      password is set by a signed-in session, which the account server does not check. */
   const tk = m.mode === 'newpw' ? undefined : captchaTake();
@@ -565,7 +565,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     // A sign-in the server refused has signed the phone out and said so (sync.ts, cloudFail): nothing to add to that.
     if (!cloud.on && acct.user) toast('Still not syncing. Check your connection, or sign out and in again.');
   },
-  // From a problem report, signing in goes back to it (r55, the audit: the report and what was typed in it were gone).
+  // From a problem report, signing in goes back to it (the audit: the report and what was typed in it were gone).
   acctOpen(t) {
     const m = ui.modal;
     openModal({
@@ -606,7 +606,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       renderModal();
       return;
     }
-    // A new code is a request the bot check (when on) asks a token of (captcha.ts, r66).
+    // A new code is a request the bot check (when on) asks a token of (captcha.ts).
     const tk = captchaTake();
     if (tk === null) {
       m.err = captchaWait();
@@ -664,7 +664,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   acctDelete() {
     const A = AUTH();
     if (!A || typeof A.deleteAccount !== 'function') return;
-    // A workout set aside for an edit comes back into the log first, which stays on this phone (REV6-1, parkSettle).
+    // A workout set aside for an edit comes back into the log first, which stays on this phone (parkSettle).
     if (!parkSettle()) return;
     const del = A.deleteAccount;
     confirmBox(
@@ -692,7 +692,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       true
     );
   },
-  /* Sign out works like any app with an account (r33, V): the log lives in
+  /* Sign out works like any app with an account (V): the log lives in
      the account and comes back on sign-in, so the phone's copy goes with the
      sign-out. Keeping a copy on the phone is offered, quietly, second. Either
      way the app opens on the first page. Nothing is removed until every
@@ -700,7 +700,7 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   acctSignOut() {
     const A = AUTH();
     if (!A) return;
-    // A workout set aside for an edit comes back into the log first, so it goes where the log goes (REV6-1, parkSettle).
+    // A workout set aside for an edit comes back into the log first, so it goes where the log goes (parkSettle).
     if (!parkSettle()) return;
     const NOT_IN =
       'Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.';

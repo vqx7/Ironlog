@@ -1,6 +1,6 @@
 /* The numbers the engine and the analytics share: the 1RM estimate and its
    inverses, the working load of a session, set counting, the time model, and
-   the thresholds behind trends, breaks and the per-session cap (phase 2, r50;
+   the thresholds behind trends, breaks and the per-session cap (phase 2;
    moved unchanged from the legacy script). Each is a pure function of its arguments. Where a number comes from
    is said beside it; CLAUDE.md's Evidence base has the sources. */
 
@@ -38,9 +38,9 @@ const BRZYCKI_A = 36,
 export const BRZYCKI_TOP = 10;
 /** Epley's formula, 1RM = load x (1 + reps to failure / EPLEY_REPS) (Epley 1985). */
 const EPLEY_REPS = 30;
-/** How far a trend reads, in reps to failure, with Epley past E1_MAX_REPS (r30, a convention): never shown as a 1RM. */
+/** How far a trend reads, in reps to failure, with Epley past E1_MAX_REPS (a convention): never shown as a 1RM. */
 export const TREND_MAX_RTF = 20;
-/** How far load-finding reads, in reps to failure, with Epley past E1_MAX_REPS (r31, a convention): never shown. */
+/** How far load-finding reads, in reps to failure, with Epley past E1_MAX_REPS (a convention): never shown. */
 export const FIT_MAX_RTF = 30;
 
 /* The two formulas, each way: the 1RM a load allows at some reps to failure,
@@ -79,8 +79,8 @@ export function trendE(load: number, r: number, rir?: Rir): number | null {
 }
 
 /** The best estimate among sets, and the set it came from: the highest fitE of each set's load and reps at the effort
-    `q` reads for it; null when no set gives one (2.31, RC-2: the same loop was written out in the engine six times
-    and once on the goal card, 387-C5, so a fix to how a set is read reached some screens and not others, NEW-72). */
+    `q` reads for it; null when no set gives one (RC-2: the same loop was written out in the engine six times
+    and once on the goal card, so a fix to how a set is read reached some screens and not others). */
 export function bestFit<P extends { load: number; r: number }>(
   pts: readonly P[],
   q: (p: P) => Rir
@@ -139,7 +139,7 @@ export function rtfAt(est: number, load: number): number | null {
 /** A rep band PRs are judged within. */
 type PrBand = 1 | 2 | 3;
 /** The rep bands for PR comparisons, by the reps to failure each ends at (a
-    convention, r56.2): estimates from triples and from sets of 12 are not
+    convention): estimates from triples and from sets of 12 are not
     interchangeable, so a best is judged within its own band. The last ends
     where estimates do. */
 export const PR_BANDS: readonly { readonly band: PrBand; readonly top: number }[] = [
@@ -151,7 +151,7 @@ export const PR_BANDS: readonly { readonly band: PrBand; readonly top: number }[
 export const rtfBand = (rtf: number): PrBand =>
   (PR_BANDS.find(b => rtf <= b.top) ?? PR_BANDS[PR_BANDS.length - 1]).band;
 
-/* A rep PR counts at 90% or more of the strongest set before it (r30, a convention). */
+/* A rep PR counts at 90% or more of the strongest set before it (a convention). */
 export const REP_PR_SHARE = 0.9;
 
 /* The unit a load was typed in, read from the number kept (kilograms, every
@@ -178,7 +178,7 @@ function halfStep(a: number, u: 'kg' | 'lb'): number {
   return st ? (st / 2) * k : 0;
 }
 
-/* The load a set is judged at for its PRs against earlier sets (r54, from
+/* The load a set is judged at for its PRs against earlier sets (from
    the audit V asked for: 155 lb after 70 kg, which is 154.3 lb, logged a
    weight PR, and a new best estimate with it, made of unit rounding, the
    lifter having changed units or gyms). A load is read as the earlier load
@@ -198,7 +198,7 @@ export function prSameLoad(w: number, earlier: ReadonlySet<number>): number {
   /* Or within half the last digit the screens show a load to (a tenth, so
      0.05 in the unit it was typed in, TYPED_STEP): 100 kg is shown in lb as
      220.5, and 220.5 typed as the Last column shows it is that load, not a
-     heavier one (r55.1, from the audit of r55: a Weight PR made of rounding). */
+     heavier one (from the audit of r55: a Weight PR made of rounding). */
   const k = u === 'lb' ? LB : 1;
   const lo = w - Math.max(halfStep(Math.abs(w), u), TYPED_STEP * k) - EPS;
   let best = w;
@@ -214,7 +214,7 @@ export function prSameLoad(w: number, earlier: ReadonlySet<number>): number {
 export const isWork = (s: { warm?: boolean | undefined; r: number | string | null }): boolean =>
   !s.warm && Number(s.r) > 0;
 
-/** A missed set (r55, V 2026-10-19): reps typed as 0, a lift tried and not
+/** A missed set (V 2026-10-19): reps typed as 0, a lift tried and not
     made. Ticked, it is kept and shown as missed, and counts toward no volume,
     PR, estimate or target, which isWork already gives, since it reads reps
     above 0. A row with no reps typed (null, or '' in a field) is not one. */
@@ -222,13 +222,13 @@ export const isMissed = (s: { r: number | string | null }): boolean => s.r !== n
 
 /** A hard set is one called at HARD_RIR or less (Robinson 2024, Refalo 2023: growth rises as sets end closer to failure; the exact cut-off is a convention). */
 export const HARD_RIR = 3;
-/** With Count RIR 4 to 5 as half a set on (r40, a convention), a working set past HARD_RIR counts this share of one. */
+/** With Count RIR 4 to 5 as half a set on (a convention), a working set past HARD_RIR counts this share of one. */
 export const HALF_SET = 0.5;
 /** A set counts this share toward a muscle it trains as a helper, against 1 for its main muscle (Pelland 2025: 0.5 fitted the dose-response data best). */
 export const HELPER_CREDIT = 0.5;
-/** + Drop starts at about this share of the last working load, in the lift's steps (a convention, r56.2). */
+/** + Drop starts at about this share of the last working load, in the lift's steps (a convention). */
 export const DROP_START = 0.75;
-/** + Warm-up's loads, as shares of the working load: the first warm-up, the second, the third and any after (a convention, r56.2). */
+/** + Warm-up's loads, as shares of the working load: the first warm-up, the second, the third and any after (a convention). */
 export const WARM_RAMP: readonly number[] = [0.4, 0.6, 0.75, 0.85];
 /** A drop set's weight in a weekly count, against 1 for a straight set (a convention, r56.2: no study measures it). */
 export const DROP_CREDIT = 0.5;
@@ -244,7 +244,7 @@ export function sameRR(
   return !a || !b || (a[0] === b[0] && a[1] === b[1]);
 }
 
-/** The share of a session's heaviest load a set's must reach to count toward its working load (r31, a convention): unmarked warm-ups sit lower. */
+/** The share of a session's heaviest load a set's must reach to count toward its working load (a convention): unmarked warm-ups sit lower. */
 export const WORK_FLOOR = 0.6;
 /** Loads compared as whole thousandths, so loads typed in either unit and kept in kilograms group by the gram. */
 const LOAD_KEY = 1000;
@@ -312,25 +312,25 @@ export function repFloor(
 export const LIGHTER_SET_SHARE = 1 / 2;
 /** The sets a lighter day, a deload or Make it lighter keeps of a lift's: LIGHTER_SET_SHARE of them, rounded up, at least one. */
 export const lighterSets = (n: number): number => Math.max(1, Math.ceil(n * LIGHTER_SET_SHARE));
-/** A deload is not suggested within DELOAD_GAP_DAYS of a lighter week (r30, a convention). */
+/** A deload is not suggested within DELOAD_GAP_DAYS of a lighter week (a convention). */
 export const DELOAD_GAP_DAYS = 28;
 
-/** A lift's session reads lighter than its usual when its heaviest load is this share of the heaviest of its previous three or less (r30, a convention: a deload is usually about 10% off), and its strength reading LIGHTER_READING of theirs or less. */
+/** A lift's session reads lighter than its usual when its heaviest load is this share of the heaviest of its previous three or less (a convention: a deload is usually about 10% off), and its strength reading LIGHTER_READING of theirs or less. */
 export const LIGHTER_LOAD = 0.9;
-/** The share of the normal load a lighter day, a deload or a lift back after a break asks for, and of the hold time on a timed hold back after one (r32, r55; a convention, the usual deload of about a tenth). */
+/** The share of the normal load a lighter day, a deload or a lift back after a break asks for, and of the hold time on a timed hold back after one (a convention, the usual deload of about a tenth). */
 export const LIGHT_SHARE = 0.9;
-/** The strength reading, reps alone, at which a session with a load LIGHTER_LOAD or less under reads lighter (r30, a convention). */
+/** The strength reading, reps alone, at which a session with a load LIGHTER_LOAD or less under reads lighter (a convention). */
 export const LIGHTER_READING = 0.93;
-/** A lift's usual (V's one rule, r54) is the middle of its session and the USUAL_BEFORE sessions before it in its range, not done lighter (a convention). */
+/** A lift's usual (V's one rule) is the middle of its session and the USUAL_BEFORE sessions before it in its range, not done lighter (a convention). */
 export const USUAL_BEFORE = 2;
 
 /** How far off its plan a set must be to be clearly off, in reps or in reps
     in reserve: past the top of the range, short of the bottom, or easier than
     the target RIR, by this many or more. It moves the next session's load
-    from the estimate and the next sets in a session (r34; 3 until r45,
+    from the estimate and the next sets in a session (3 until r45,
     V: 14 reps on a 10 to 12 range left the load alone). A convention. */
 export const CLEARLY_OFF = 2;
-/** The rep more in reserve a load set from an estimate leaves for fatigue: the next sets in a session, and a close variation's first session (r32.1, r34; a convention, meant to err light). */
+/** The rep more in reserve a load set from an estimate leaves for fatigue: the next sets in a session, and a close variation's first session (a convention, meant to err light). */
 export const FATIGUE_RIR = 1;
 
 /** The marks a lift's session can carry that keep it from setting targets, or trends too. */
@@ -356,14 +356,14 @@ export const offTarget = (x: SessionMarks): boolean => lighter(x) || !!(x && x.s
 
 /* ---------- load steps ---------- */
 
-/** The load jump at the top of the range, as a share of the load, when the plan sets none: about 2.5% on compound lifts and 5% on isolation lifts (r30, a convention, double progression). */
+/** The load jump at the top of the range, as a share of the load, when the plan sets none: about 2.5% on compound lifts and 5% on isolation lifts (a convention, double progression). */
 export const JUMP_COMPOUND = 0.025,
   JUMP_ISOLATION = 0.05;
 
 /* When every set reaches the top of the range, the load goes up by whole
    multiples of the smallest step you can add, sized to about 2.5% of the
    load on compound lifts and 5% on isolation lifts (the engine's progStep).
-   The jump can be set per exercise in a routine (plan.jump, r30, V: "the
+   The jump can be set per exercise in a routine (plan.jump, V: "the
    progression should be overridable in the planner"): a percent of the load,
    rounded down to whole load steps and never less than one step; 0 means
    always one step. Unset, it is the 2.5% or 5%. */
@@ -395,7 +395,7 @@ export function jumpCap(ex: Parameters<typeof isCompound>[0], loadKg: number, ea
   return early ? JUMP_CAP_EARLY : !isCompound(ex) && loadKg < LIGHT_LIFT_KG ? JUMP_CAP_LIGHT : JUMP_CAP;
 }
 
-/* Back after more than 4 weeks off a lift (a convention, r34.2, from the
+/* Back after more than 4 weeks off a lift (a convention, from the
    review: after 6 weeks away the app asked for the next load up, as if no
    time had passed). Strength falls the longer training stops (Bosquet
    2013, a meta-analysis of training cessation, which names no number of
@@ -408,7 +408,7 @@ export function jumpCap(ex: Parameters<typeof isCompound>[0], loadKg: number, ea
    load from before the break again, and a trend across a five-week break
    read as a fall. */
 export const BACK_DAYS = 28;
-/** The reps in reserve a lift back after a break is asked to keep at least (r34.2, a convention), and what an unrated set of it reads as. */
+/** The reps in reserve a lift back after a break is asked to keep at least (a convention), and what an unrated set of it reads as. */
 export const BACK_RIR = 2;
 
 /** Whether a lift's session on `date` comes after a break in it: more than BACK_DAYS after its session before, of any kind. */
@@ -416,7 +416,7 @@ export function afterBreak(prev: { date: string } | null | undefined, date: stri
   return !!prev && daysBetween(prev.date, date) > BACK_DAYS;
 }
 
-/* A long break: more than about six months off a lift (NEW-110, V 2026-11-10: an old best "shouldn't automatically
+/* A long break: more than about six months off a lift (V 2026-11-10: an old best "shouldn't automatically
    become a goal"). The way back above starts at 90% of the load from before, which a break of weeks supports; after
    months or years the strength kept depends on the lifter too much for any one share to be safe (a 315 x 1 from ten
    years ago asked 215 x 6-10, the same as one from 14 weeks ago). So a lift starts fresh after one, as a lift never
@@ -462,27 +462,27 @@ export const TREND_DAYS = 42,
 /** The trend window in weeks, as the screens say it. */
 export const TREND_WEEKS = TREND_DAYS / WEEK_DAYS,
   RECENT_WEEKS = RECENT_DAYS / WEEK_DAYS;
-/** A lift's trend needs TREND_MIN.sessions sessions spread over TREND_MIN.days days or more (r31, a convention): three in nine days read one good day as "+6.6% a week". */
+/** A lift's trend needs TREND_MIN.sessions sessions spread over TREND_MIN.days days or more (a convention): three in nine days read one good day as "+6.6% a week". */
 export const TREND_MIN = { sessions: 3, days: 14 } as const;
-/** A muscle's trend counts a lift once it has MUSCLE_TREND_MIN.sessions sessions over MUSCLE_TREND_MIN.days days in the window (r32, a convention). */
+/** A muscle's trend counts a lift once it has MUSCLE_TREND_MIN.sessions sessions over MUSCLE_TREND_MIN.days days in the window (a convention). */
 export const MUSCLE_TREND_MIN = { sessions: 4, days: 21 } as const;
-/** Flat: a slope under FLAT_PCT_WEEK percent a week (r31, a convention), below the rounding dust of averaged sets. */
+/** Flat: a slope under FLAT_PCT_WEEK percent a week (a convention), below the rounding dust of averaged sets. */
 export const FLAT_PCT_WEEK = 0.1;
-/** The stall test (r30, r31, r32; conventions): the fitted line over a lift's
+/** The stall test (conventions): the fitted line over a lift's
     last `sessions` sessions, widened to cover `days` days when they do not, at
     least `min`; with no strength reading, `min` sessions and no progress in
     the last `noProgress`, which is also how many sessions a PR in keeps a lift
     from reading stalled. */
 export const STALL = { sessions: 6, days: 21, min: 4, noProgress: 3 } as const;
-/** A session is read against its previous LIGHTER_REF sessions for a lighter reading (r30, a convention). */
+/** A session is read against its previous LIGHTER_REF sessions for a lighter reading (a convention). */
 export const LIGHTER_REF = 3;
-/** Lighter sessions in a row are a new level, not a deload, once NEW_LEVEL.sessions of them cover NEW_LEVEL.days days or more (r31, a convention). */
+/** Lighter sessions in a row are a new level, not a deload, once NEW_LEVEL.sessions of them cover NEW_LEVEL.days days or more (a convention). */
 export const NEW_LEVEL = { sessions: 3, days: 14 } as const;
-/** A lift's best estimate now, as a goal's progress reads it, comes from its sets of the last BEST_WEEKS weeks, lighter days' and deloads' too (r38, r54; a convention). */
+/** A lift's best estimate now, as a goal's progress reads it, comes from its sets of the last BEST_WEEKS weeks, lighter days' and deloads' too (a convention). */
 export const BEST_WEEKS = 12;
 /** Tape measurements are compared when TAPE_WEEKS.from to TAPE_WEEKS.to weeks apart (a convention). */
 export const TAPE_WEEKS = { from: 3, to: 12 } as const;
-/** RIR enters a lift's trend only when rated on RIR_TREND.share or more of its working sets in its last RIR_TREND.sessions sessions in range (r30, a convention). */
+/** RIR enters a lift's trend only when rated on RIR_TREND.share or more of its working sets in its last RIR_TREND.sessions sessions in range (a convention). */
 export const RIR_TREND = { share: 0.8, sessions: 8 } as const;
 /** The readings over a lift's last DRIFT_N sessions: RIR climbing at one load, and the back sets fading (conventions). */
 export const DRIFT_N = 3;
@@ -549,7 +549,7 @@ export function t90(df: number): number {
     later compounds, `setupIsolation` for isolation work. The rest after the
     final set is never taken, so it is dropped. (The rests are added by
     dayMinutes in the analytics.) Every figure here is a convention, not a
-    measurement; your own pace (pace(), r43) scales the total to how long
+    measurement; your own pace (pace()) scales the total to how long
     your sessions take. */
 const TIME_MODEL = {
   set: 40,

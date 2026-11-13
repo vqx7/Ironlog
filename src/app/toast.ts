@@ -1,10 +1,10 @@
-/* The toast (r63, from the legacy script's 18-ui.js): one message at the
+/* The toast (from the legacy script's 18-ui.js): one message at the
    foot of the page, with Undo when the change it reports can be undone. Undo
    used to be one snapshot the toast's timer threw away after six seconds;
    the steps are kept in storage.ts since r30, and the toast only offers the
    newest.
 
-   One rule for every message (2.48; V 2026-11-10, after NEW-116, a note
+   One rule for every message (V 2026-11-10, after NEW-116, a note
    about pull-ups over "is ready", "Should there not be a general system
    architect level rule"): one tap, one message, and nothing lost.
      - What one tap says is joined into one message, never one over another:

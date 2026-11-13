@@ -1,4 +1,4 @@
-/* The account's sheets (r63, from the legacy script's 14-account.js): the
+/* The account's sheets (from the legacy script's 14-account.js): the
    menu, the account sheet in each of its pages, a problem report and the
    owner's inbox of them. Drawn by lit-html, so the account sheet redrawn
    while someone types in it (an error said, Signing in) keeps its fields,
@@ -27,7 +27,7 @@ const menuAuth = () => (AUTH() && !(window.claude && typeof window.claude.use ==
    outside a workout: who is signed in, signing in or out, the save state,
    Report a problem and the Guide. Since r28 Settings has a Help group near
    the bottom with the same Guide and reports (V asked for both places).
-   Opened from the first pages (their Help, r64, the r63 audit's P-S4-6), it
+   Opened from the first pages (their Help, the r63 audit's P-S4-6), it
    leaves out the sections and Your data: both open a tab, and the tabs open
    only once Set up is done, so a tap there would do nothing. */
 /* The profile photo: in the menu's own header, beside its title, so
@@ -41,7 +41,7 @@ function photoHead(): TemplateResult | typeof nothing {
   if (!acct.user) return nothing;
   const u = photoUrl();
   const cam = html`<span class="mph-cam" aria-hidden="true">${markup(CAMERA_ICON)}</span>`;
-  // With a photo, a tap opens it large, where it is changed or removed (NEW-141); with none, a tap picks one.
+  // With a photo, a tap opens it large, where it is changed or removed; with none, a tap picks one.
   return u
     ? html`<button type="button" class="mph" id="menuPhoto" data-act="photoView" aria-label="Open your profile photo" data-tip="Your profile photo, kept in your account">\x3cimg class="mph-i" src=${u} alt="">${cam}</button>`
     : html`<label class="mph" id="menuPhoto" aria-label="Add a profile photo" data-tip="Your profile photo, kept in your account"><span class="mph-i mph-none" aria-hidden="true">${markup(MENU_ICON)}</span>${cam}<input type="file" accept="image/*" data-photo hidden></label>`;
@@ -88,13 +88,13 @@ export function menuSheet(m: { first?: true | undefined }): TemplateResult {
   <p class="small muted u-m12-0-0">Version ${DISPLAY_VERSION}</p></div>`;
 }
 
-/* ---------- problem reports (PENDING 58, reworked in r25) ----------
+/* ---------- problem reports (reworked in r25) ----------
    The menu (top right) and an exercise's ⋯ menu open one sheet. Report a
    problem comes first; a question or a suggestion is the same sheet with
    another kind chosen at its top (stored as bug, question, idea). One text
    box, an optional screenshot, and what a report needs to be acted on
    without asking the person anything technical (report.ts, fbContext).
-   Signed in only (V's choice, r25), to keep spam out. Signed out, the sheet
+   Signed in only (V's choice), to keep spam out. Signed out, the sheet
    asks to sign in, and can still copy the details for a message. Without a
    report service at all (the plain source file) it copies the report as
    text. */
@@ -190,7 +190,7 @@ export function acctSheet(m: AccountModal): TemplateResult {
     html`<label class="field">${label}<input type="password" data-abind="pw" .value=${live(m.pw || '')} autocomplete=${ac} minlength=${min ? '8' : nothing} enterkeyhint="go"></label>`;
   // The error line is always there, hidden when empty, so the sheet keeps its shape when one is said.
   const err = html`<p class="small u-cred_m0" role="alert" ?hidden=${!m.err}>${m.err || ''}</p>`;
-  /* The sign-up bot check's box (captcha.ts, r66): on the pages whose requests the account server checks, only when
+  /* The sign-up bot check's box (captcha.ts): on the pages whose requests the account server checks, only when
      config.ts has its key; drawn into by Turnstile once the sheet is drawn (screens.ts, afterSheet). */
   const check = captchaOn() ? html`<div data-captcha></div>` : nothing;
   const go = (label: string) =>

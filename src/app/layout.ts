@@ -1,6 +1,6 @@
 /* Which sections each tab has, in what order, and the choices that shape
    the screens: the accent, the volume views, the weeks the radar averages,
-   the weigh-in cadence, the sheets that hold typed fields (phase 3a, r51;
+   the weigh-in cadence, the sheets that hold typed fields (phase 3a;
    moved unchanged from the legacy script). */
 
 import { parseJson } from './records';
@@ -41,7 +41,7 @@ export const VOL_MODES: readonly (readonly [string, string])[] = [
   ['load', 'Load']
 ];
 
-/* The layout a new install starts with (V, r28): every section folded,
+/* The layout a new install starts with (V): every section folded,
    the extras hidden, and a line at the bottom of each tab that adds them
    back in one tap. Existing logs keep their own layout: these only seed a
    fresh state, and Settings > Layout's "Default layout" and "Reset section
@@ -111,7 +111,7 @@ export const ACCENTS: readonly (readonly [string, string])[] = [
 /** The default accent, read when none is stored; choosing it again removes the stored one. */
 export const ACCENT0 = 'ember';
 
-/* The weeks the radar averages (r31.2, V: one week says little about
+/* The weeks the radar averages (V: one week says little about
    balance): the last 2, 4 or 8 full weeks, 4 unless changed, kept per
    device. Fewer full weeks logged than chosen: those, said so; none yet:
    this week so far, said so. This week on its own is Volume's This week. */
@@ -119,7 +119,7 @@ export const REGION_WKS: readonly (readonly [number, string])[] = [2, 4, 8].map(
 /** The weeks the radar averages until another is picked. */
 export const REGION_WK_DEFAULT = 4;
 
-/* Weigh-ins on a cadence (r34, V: at the start, then every two weeks or so,
+/* Weigh-ins on a cadence (V: at the start, then every two weeks or so,
    the time frame the lifter's to set). Bodyweight lifts use the latest
    weigh-in, so an old one keeps counting until a new one comes in. Every 7,
    14 (the default) or 30 days, or off (Settings > Measurements); Later waits 2
@@ -140,7 +140,7 @@ export function bwEveryKept(v: unknown): 0 | 7 | 30 | undefined {
   return d === BW_EVERY_DEFAULT ? undefined : d;
 }
 
-/** The tabs whose sections keep an order and folds (phase 4, r56; moved from the legacy script). */
+/** The tabs whose sections keep an order and folds (phase 4; moved from the legacy script). */
 export const SEC_TABS: readonly string[] = ['today', 'program', 'dash', 'history', 'settings'];
 
 /* Sections that can be hidden from Settings > Layout, as tab:key. Hidden

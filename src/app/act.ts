@@ -1,4 +1,4 @@
-/* The one way to change the log (phase 5, r57; ARCHITECTURE.md, Phase 5
+/* The one way to change the log (phase 5; ARCHITECTURE.md, Phase 5
    design, item 2). An action on a moved screen hands its change to `act`,
    which does every step a change needs, always in this order: the check,
    the Undo step, the change, the caches dropped, the save on this device and
@@ -47,7 +47,7 @@ interface ActOpts {
 let depth = 0;
 let dropInside = false;
 /* The log as it was before the first change to the whole log made inside an outer change to the workout alone: the
-   outer change copied the workout only, so a failure puts the rest back from this (2.28, the review of 2.28). */
+   outer change copied the workout only, so a failure puts the rest back from this (the review of 2.28). */
 let logBefore: State | null = null;
 // Whether the outer change being made copied the workout alone (inProgress).
 let outerDraftOnly = false;
@@ -106,7 +106,7 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   outerBegun = begunBefore();
   try {
     change();
-    // The workout's clock starts with the change that begins it, whichever tap began it (session.ts, NEW-129).
+    // The workout's clock starts with the change that begins it, whichever tap began it (session.ts).
     clockAfter(outerBegun);
     followsAfter(outerBegun);
   } catch (e) {
@@ -145,7 +145,7 @@ function begunBefore(): { id: string; begun: boolean; live: boolean } | null {
 }
 /* The workout this phone closed last (finished or discarded) in this visit, for the next one started here, which notes
    it (follows): a merge with a copy of the closed one that another phone kept working in then knows this phone moved on
-   from it, and keeps the next workout open rather than bringing the closed one back (sync.ts mergeChunk, NEW-134). */
+   from it, and keeps the next workout open rather than bringing the closed one back (sync.ts mergeChunk). */
 let closedHere: string | null = null;
 /** Notes a workout closed here, or gives the next one started here the one it follows; after an outer change (act). */
 function followsAfter(before: { id: string; live: boolean } | null): void {
@@ -178,7 +178,7 @@ export function toTrash(kind: Trashed['kind'], data: { id: string }): void {
    (trashShown) and when something is deleted (toTrash, a change the lifter makes), never where the log is read
    (normalize), which must read every log the same way on every phone (REV12-T2), and never as a change the app makes
    by itself: one at open marked the whole core document as edited then, so an older edit kept on this phone beat a
-   later one made on another (the review of 2.53, REV13-9). */
+   later one made on another (the review of 2.53). */
 /** The oldest date Recently deleted still keeps, by this phone's date. */
 const trashCutoff = (): string => addDays(today(), -TRASH_DAYS);
 /** Recently deleted as it is shown: the entries within its days, newest first. */
@@ -239,7 +239,7 @@ export function undoStep(): 'none' | 'failed' | 'unchanged' | { said: string } {
         const q = Q[id] || emptyChunk(id);
         /* The session in progress compared in one form, all three normalized,
            as a reload leaves it: the live one compared raw read every exercise
-           as changed since and nothing went back (r55.1, the audit of r55:
+           as changed since and nothing went back (the audit of r55:
            Undo after Make it lighter). */
         const qd = Q['draft'],
           pd = P['draft'];

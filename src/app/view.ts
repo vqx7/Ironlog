@@ -1,4 +1,4 @@
-/* How the screens draw (phase 5, r57; ARCHITECTURE.md, Phase 5 design, item
+/* How the screens draw (phase 5; ARCHITECTURE.md, Phase 5 design, item
    1). lit-html, bundled into the page from its pinned package (no address to
    load, so offline and the Content Security Policy need nothing new), draws
    every tab into #view, and owns it: a moved screen is a template of the
@@ -7,7 +7,7 @@
    script was drawn here as its markup string (drawLegacy, deleted with the
    script); every tab is a template now. The parts every screen shares are
    here, drawing the markup the legacy script's helpers of the same names drew
-   (the legacy copies went with the last screen drawn from it, r60;
+   (the legacy copies went with the last screen drawn from it;
    tests/r57.js compares the two screens with r56.2's). */
 
 import { html, nothing, render, noChange, svg } from 'lit-html';
@@ -27,7 +27,7 @@ declare global {
   interface Window {
     /** Which of the page's two outside libraries loaded (03-body.html): the drag lists and the charts. */
     __libs?: { sortable: boolean; chart: boolean } | undefined;
-    /** SortableJS, loaded by script tag: the copy a drag out of a list that copies (Plan's library) leaves in it, and the lists a moved screen makes (the session's exercises, r60). */
+    /** SortableJS, loaded by script tag: the copy a drag out of a list that copies (Plan's library) leaves in it, and the lists a moved screen makes (the session's exercises). */
     Sortable?:
       | {
           clone?: Element | null | undefined;
@@ -122,7 +122,7 @@ export function markup(fixed: string): Part {
 /* A field shows the value the log holds. While it is being typed in, the text
    under the lifter's fingers stays when it reads as the value saved ("152."
    for 152, a name with its spaces), as rerenderKeepScroll kept it before r57,
-   and so does text typed and not yet confirmed (r60, PENDING 345 item 11: a
+   and so does text typed and not yet confirmed (PENDING 345 item 11: a
    field saved only when left, as Settings' numbers, Plan's step and the Set
    up page's bodyweight are, lost a half-typed number whenever anything drew
    the page meanwhile, a sync taking in another phone's change, or the new
@@ -133,7 +133,7 @@ export function markup(fixed: string): Part {
    each time, as lit's `live` does, so a value typed over and left is put
    back even when the log still holds the value drawn last. */
 const unconfirmed = new WeakSet<EventTarget>();
-// Fields showing text the screen put there for the lifter to type over (a grey load, selected on a tap: workout.ts, r60).
+// Fields showing text the screen put there for the lifter to type over (a grey load, selected on a tap: workout.ts).
 const shown = new WeakSet<EventTarget>();
 /** Marks a field as showing text the screen put there to be typed over, kept through a draw while it is focused, or unmarks it. */
 export function fieldShown(el: EventTarget, on: boolean): void {
@@ -236,7 +236,7 @@ function isOpen(sk: string, def?: boolean): boolean {
 export function minPart(m: number): Part {
   const b = state.settings.timeBudget;
   const r = min5(m);
-  // Over by the minutes shown (R81-9, the review of 2.35: 61 minutes showed "~60 min, over your 60 min budget").
+  // Over by the minutes shown (the review of 2.35: 61 minutes showed "~60 min, over your 60 min budget").
   return b && r > b ? html`<span class="overb">${estMin(r)}, over your ${b} min budget</span>` : estMin(r);
 }
 
@@ -263,7 +263,7 @@ export function howText(key: string, text: Part): TemplateResult {
 `;
 }
 
-/** The title at the top of a tab: a kicker, the title, a line under it and its buttons (a lone ? sits at the top right, r28). */
+/** The title at the top of a tab: a kicker, the title, a line under it and its buttons (a lone ? sits at the top right). */
 export function pageTitle(kick: string, title: string, meta: Part, actions?: Part, onlyHelp?: boolean): TemplateResult {
   return html`<div class=${onlyHelp ? 'ph q' : 'ph'}>
 <div>${
@@ -371,7 +371,7 @@ const MORE_OFFER: Readonly<Record<string, () => boolean>> = {
 /* The foot of a tab: the hidden sections it can show, one tap each, and the
    way to Layout. The chips say what they do ("+ Coach"), so they need
    no heading, and the link is "Edit sections" here; the menu keeps its full
-   name (r69, V, 2026-11-03: the app read as text heavy). */
+   name (V, 2026-11-03: the app read as text heavy). */
 /** The foot of a tab: the hidden sections it can show, one tap each (with what the tab says of its own, `offer`), and the way to Layout. */
 export function tabFoot(tab: string, offer?: Readonly<Record<string, () => boolean>>): TemplateResult | typeof nothing {
   const list = moreList(tab, state.settings.hidden, offer ? { ...MORE_OFFER, ...offer } : MORE_OFFER);

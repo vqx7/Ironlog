@@ -1,4 +1,4 @@
-/* The session in progress, set by set (r60, from workout.ts): the loads and
+/* The session in progress, set by set (from workout.ts): the loads and
    reps a row shows in grey, a set ticked and what it changes (its load
    taken, the next sets adjusted, a PR, the rest timer, the fold), a load or
    reps far off asked about first, a tick waiting for its weight, the
@@ -75,7 +75,7 @@ import type { Draft } from './workstate';
 /** A remainder of plates this light, per unit of the gym's plates, is conversion dust when the app shows the other unit: not said. */
 /** The calibration set is offered once CAL_OFFER.sessions sessions are logged, and again CAL_OFFER.weeks weeks after the last (or after Later). */
 export const CAL_OFFER = { sessions: 3, weeks: 3 } as const;
-/** Reps past ODD_REPS, and more than ODD_REPS_TIMES the top of the range and anything logged on the lift, are asked about first: a slipped digit (r32, a convention). */
+/** Reps past ODD_REPS, and more than ODD_REPS_TIMES the top of the range and anything logged on the lift, are asked about first: a slipped digit (a convention). */
 export const ODD_REPS = 30,
   ODD_REPS_TIMES = 2;
 /** A PR's toast stays this many milliseconds, and the phone buzzes this pattern where it can. */
@@ -109,7 +109,7 @@ import { bottomBarsTop, startTimer } from './timer';
 /** Whether suggested loads are filled into the rows (a setting), rather than shown in grey. */
 export const fillLoads = (): boolean => state.settings.loadFill === 'fill';
 
-/** Whether the next sets move after a set clearly off its plan (r34; on unless turned off in Settings). */
+/** Whether the next sets move after a set clearly off its plan (on unless turned off in Settings). */
 export function adjOn(): boolean {
   return state.settings.autoAdj !== false;
 }
@@ -194,7 +194,7 @@ export function greyR(b: DraftBlock | null | undefined, si: number): number | nu
   return m > 0 ? m : null;
 }
 
-/* The grey reps of a warm-up or a drop set (r64, V's decision 3 on the r63
+/* The grey reps of a warm-up or a drop set (V's decision 3 on the r63
    audit's P-S4-5; until then they had none, and their checkmark asked for
    reps): what that row did last time, the warm-up or drop in the same place
    among the lift's warm-ups or drops in the last session that did it. With
@@ -270,17 +270,16 @@ export function draftEntered(d: Draft | null | undefined): boolean {
 /* ---------- PRs as a set is logged ---------- */
 
 /* The PR a set makes as it is logged: the PR list's own scorer (prJudge,
-   r64, the r63 audit's A-6), the set judged as a session of one against the
+   the r63 audit's A-6), the set judged as a session of one against the
    lift's sessions before it. Only sets logged up to the session's date count,
    so a past session entered late is judged against what came before it, at
    its load as the list judges it (prSameLoad, r54: changing units or gyms is
    not a PR); since a New machine or gym, against the sessions there. Said
-   only when the list counts it (big: stronger than ever by the rep PR score,
-   r32; any kind on a lift with no estimate, timed, or with no load known),
+   only when the list counts it (big: stronger than ever by the rep PR score; any kind on a lift with no estimate, timed, or with no load known),
    one label, the biggest news first: more weight than any earlier working
    set, a new best estimate (in its band of reps to failure, or past
    every earlier estimate as its band's first, R-6), more reps at a load
-   (90% or more of the strongest set before it, r30). A blank effort is read
+   (90% or more of the strongest set before it). A blank effort is read
    as every estimate reads it (rirEst, 339 o). */
 /* The set judged, with its lift: what livePR names and prBeat words. */
 function liveMade(
@@ -319,13 +318,13 @@ export function livePR(exId: string, s: DraftSet | null | undefined, at: ReadDay
   return m.ex.timed ? 'Time PR' : 'Rep PR';
 }
 
-/* Not a PR when an earlier PR in this session was as strong (r32, second
+/* Not a PR when an earlier PR in this session was as strong (second
    check: 100 x 10, then 100 x 9 announced as a new best). On any day since
    r54, as the list counts it since r53. Until r60 the screen
    applied this only when a set was ticked, and drew every row of a redraw by
    livePR alone, so a redraw marked 100 x 9 a PR again after 100 x 10: the row
    and the folded line are now read by this one rule every draw. Only an
-   earlier set that was itself a PR counts here (r72, the review's R72-2): the
+   earlier set that was itself a PR counts here (the review's R72-2): the
    list judges each set against the sessions before, so 145 x 12 after 135 x 15
    at 3 in reserve, no PR, was a counted Weight PR with no label or toast. */
 /** The PR row si of a block shows: livePR, unless an earlier PR of this session was as strong. */
@@ -344,7 +343,7 @@ export function rowPR(b: DraftBlock, si: number, at: ReadDay): string | null {
   const me = scq(s),
     myLoad = prLoad(ex, s, date),
     myR = +(s.r ?? 0);
-  // As strong: a higher score, or the same with as many reps at as much load (prJudge's big, R72-4).
+  // As strong: a higher score, or the same with as many reps at as much load (prJudge's big).
   const asStrong = (x: DraftSet): boolean =>
     scq(x) > me + EPS || (scq(x) >= me - EPS && prLoad(ex, x, date) >= myLoad - EPS && +(x.r ?? 0) >= myR);
   return b.sets.some(
@@ -403,13 +402,13 @@ export const loadIn = (ex: ExerciseLike | null | undefined, w: number | null | u
    warm-up, with reps, at or above the target load count. Reps are compared
    only at the target load; anything heavier is judged on estimated 1RM
    against your previous best, each set at the load it stands for, as PRs are
-   judged (prSameLoad: the same load in the other unit beats nothing, r55.1).
+   judged (prSameLoad: the same load in the other unit beats nothing).
    Estimates in whole pounds, and on an isolation lift the set itself, never
    a 1RM. Only the first n sets at the target load count, n being
    last time's set count; reps past the top count as the top, as the target
-   counted them (r55; not for a target set past the range on purpose). With
+   counted them (not for a target set past the range on purpose). With
    fewer sets than last time, nothing is beaten: the one rule repeats the
-   target (r55, the audit). Drop sets are extra work after the working sets,
+   target (the audit). Drop sets are extra work after the working sets,
    never part of the target; nor a set past the plan's count. */
 /** How a block stands against its target, or null when it has none. */
 export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | null {
@@ -430,7 +429,7 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
     const seen = new Set<number>();
     for (const x of liftRead(b.exId)) for (const p of x.pts) seen.add(p.w);
     for (const s of heavier) {
-      // Read as a row of the workout open, as once saved (RC-3); a block with none open, as of today.
+      // Read as a row of the workout open, as once saved; a block with none open, as of today.
       const v = e1(bw + prSameLoad(+(s.w ?? 0) || 0, seen), +(s.r ?? 0), rirEst(s, ex, state.draft || today()));
       if (v != null && (best == null || v > best)) {
         best = v;
@@ -453,8 +452,7 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
   if (t.kind === 'reps') {
     /* Every set done at one load heavier than the target's counts toward its
        reps, since a heavier set is at least as hard as the same reps at the
-       target's load, and the next target is then read at that load (r66,
-       NEW-30: leg press 1,000 x 15, 15, 14 against 990 for 37+ read "Nothing
+       target's load, and the next target is then read at that load (NEW-30: leg press 1,000 x 15, 15, 14 against 990 for 37+ read "Nothing
        logged at 990 yet", since the estimate the heavier sets were judged by
        stops at 12 reps to failure). With loads mixed (1,000 x 13, then 990 x
        12 twice) the next target reads only the sets at the target's load, so
@@ -529,8 +527,8 @@ export function draftPlanMin(d: Draft | null | undefined): number {
    calibration set when none was done in the last 3 weeks, RIR is on, and
    you have at least 3 real sessions. Not now waits another 3 weeks. Not on a
    day meant to be easy: a deload, a lighter day, or two or more low
-   check-in answers; nor on a lift's first session back after weeks off
-   (r34.2): a set to failure is the last thing it needs. */
+   check-in answers; nor on a lift's first session back after weeks off:
+   a set to failure is the last thing it needs. */
 /** The block offered a calibration set, or -1. */
 export function calDueIdx(d: Draft): number {
   if (state.settings.rirMode === 'off') return -1;
@@ -645,7 +643,7 @@ export function refreshEx(exId: string): void {
   if (todo.length) act(() => todo.forEach(refreshBlock), { inProgress: true });
 }
 
-/** A plan item's change carried into the session in progress: the blocks of its lift not started yet take its range, effort, rest and step, when the item is the one the session's lift took its plan from (planFor's order, so a blank session's follows it too, r55, the audit). */
+/** A plan item's change carried into the session in progress: the blocks of its lift not started yet take its range, effort, rest and step, when the item is the one the session's lift took its plan from (planFor's order, so a blank session's follows it too, the audit). */
 export function syncDraftPlan(f: { r: Routine; di: number; it: PlanItem }): void {
   const d = state.draft;
   if (!d || !f || d.editingId) return;
@@ -675,7 +673,7 @@ export function syncDraftPlan(f: { r: Routine; di: number; it: PlanItem }): void
 }
 
 /* After a unit change, a session in progress says its targets and last time
-   in the new unit (r34.2, from the review: "at 60 kg" beside fields in lb).
+   in the new unit (from the review: "at 60 kg" beside fields in lb).
    Only the words: the loads are stored in kg and stay as they are, and a
    suggestion is re-read without the unit's rounding so it names the same
    load the rows hold. */
@@ -705,7 +703,7 @@ export function unitWords(): void {
   );
 }
 
-/* ---------- the next sets adjusted (r34; the rule is nextSetsIn's) ---------- */
+/* ---------- the next sets adjusted (the rule is nextSetsIn's) ---------- */
 
 /** Keeps a block's adjustment on the set it came from after rows move (or drops it when that set is gone, undone or no longer a working set). Called inside a change given to act. */
 export function adjSync(b: DraftBlock | null | undefined): void {
@@ -746,7 +744,7 @@ export function adjRows(b: DraftBlock, prev: NextSetsAdj | null, next: NextSetsA
 /* After a set is ticked, unticked or changed: judged again. Which rows are
    still the app's is read before the old adjustment goes: with "Fill in
    suggested loads" on they hold its load, and reading them after it was
-   dropped put them back at once (r34.2, from the review). Called inside a
+   dropped put them back at once (from the review). Called inside a
    change given to act. */
 export function assessSet(bi: number, si: number): void {
   const d = state.draft;
@@ -784,7 +782,7 @@ export function assessSet(bi: number, si: number): void {
 
 /* ---------- a set done ---------- */
 
-/** Whether reps are far past anything logged on the lift and its range (a typo: 105 for 10), asked about before they count (r32, second check: 100 x 105 was saved with a gold "Rep PR" and next time asked to beat 124 reps). */
+/** Whether reps are far past anything logged on the lift and its range (a typo: 105 for 10), asked about before they count (second check: 100 x 105 was saved with a gold "Rep PR" and next time asked to beat 124 reps). */
 export function oddReps(b: DraftBlock, s: DraftSet): boolean {
   const r = +(s.r ?? 0);
   if (!(r > ODD_REPS)) return false;
@@ -836,9 +834,9 @@ export function settleLoad(b: DraftBlock | null | undefined, si: number): void {
 /* One place that marks a set done or not done, so the checkmark and
    auto-done paths cannot drift apart. The rest timer starts here only in
    Auto mode. A set far off (a load, or reps) is asked about first, and so is
-   a 0 at a weight well under today's working load (r55.1, V 2026-10-19):
+   a 0 at a weight well under today's working load (V 2026-10-19):
    Fix it goes back to the field; Log it ticks it, its rest not started over
-   when it was ticked before (again, r55, the second review). In a superset
+   when it was ticked before (again, the second review). In a superset
    the rest is taken after the last exercise of the group: no rest while a
    partner after this one still has a set to do; once the partners are
    through (a pair of 5 and 3 sets), every set rests. The effort strip
@@ -1004,13 +1002,13 @@ export function doneChanged(bi: number, si: number, f: 'w' | 'r'): boolean {
    card's "next:" (restNext) and the pills (liftsOn), so the three never point at different lifts. */
 /** The place of the lift that comes up after lift i, or -1 when none does. */
 function nextLift(d: Draft, i: number): number {
-  // A lift folded by hand is put away, so none of the three names it (the review, REV8-2).
+  // A lift folded by hand is put away, so none of the three names it (the review).
   const open = (x: DraftBlock, j: number): boolean => !blkIsShut(j, x);
   const nx = d.ex.findIndex((x, j) => j > i && !blockDone(x) && open(x, j));
   return nx >= 0 ? nx : d.ex.findIndex((x, j) => blockUntouched(x) && open(x, j));
 }
 
-/* The lift you are on (NEW-98, V 2026-11-09: "It will help reduce and avoid the overwhelm"), where minus and plus
+/* The lift you are on (V 2026-11-09: "It will help reduce and avoid the overwhelm"), where minus and plus
    show: the one you last ticked a set of, typed a load or reps in, or stepped, while it is not done; once it is done,
    the lift the screen brings up after it (nextLift); with none, the first lift not done. A superset's lifts are done together, so each
    lift of its group with a set left is on with it. Held for this visit only (W.onLift): after a reload, the first lift
@@ -1018,7 +1016,7 @@ function nextLift(d: Draft, i: number): number {
 /** The lifts of the session that minus and plus show on now: the one you are on, or its superset's lifts with a set left. */
 export function liftsOn(d: Draft): Set<DraftBlock> {
   // A lift is left while it is not done by the rule the screen folds it by (blockDone: a warm-up left unticked does
-  // not keep it open), so the pills never go to a folded lift (the review of 2.38, REV7-1).
+  // not keep it open), so the pills never go to a folded lift (the review of 2.38).
   const held = (x: DraftBlock): boolean => {
     const j = d.ex.indexOf(x);
     return j >= 0 && setIdx(W.onSet, j) >= 0 && (W.foldWait.has(x) || blkIsOpen(j, x));
@@ -1038,7 +1036,7 @@ export function liftsOn(d: Draft): Set<DraftBlock> {
   return new Set(ss ? d.ex.filter(x => x.plan && x.plan.ss === ss && left(x)) : [b]);
 }
 
-/* The set minus and plus change (NEW-100, V on the 2.38 preview, 2026-11-09: a minus or plus meant for the set just
+/* The set minus and plus change (V on the 2.38 preview, 2026-11-09: a minus or plus meant for the set just
    done changed the next one, as reps typed in it ticked it and the pills moved on): the set you are on, the one you
    last typed in, touched, stepped or unticked, ticked or not; only a tick of yours with the checkmark moves them on, to
    the first set not ticked. Held for this visit only (W.onSet). */
@@ -1070,7 +1068,7 @@ export function onLiftDraw(bi: number, draw: () => void): void {
   if (el2) window.scrollBy(0, el2.getBoundingClientRect().top - top);
 }
 
-/* What the rest card names as next (r71, 364 b-1), by the rules the screen
+/* What the rest card names as next (364 b-1), by the rules the screen
    already follows after a tick: the lift's next working set, numbered as its
    rows are; in a superset, whose rest comes after the group's last lift, the
    group's first lift with a set to do (ssNext); with the lift done, the one
@@ -1173,7 +1171,7 @@ export function mixCheck(bi: number, si: number): void {
   const ex = EX(b.exId);
   const st = IDX().exStats[b.exId];
   const last = st && st.last ? st.last.topW : 0;
-  // After a long break the lift starts fresh (NEW-110): a load far under one from years ago is no mix-up.
+  // After a long break the lift starts fresh: a load far under one from years ago is no mix-up.
   if (!(last > 0) || (st && longBreak(st.last, d.date))) return;
   const r = +(s.w ?? 0) / last;
   if (r >= MIX_RANGE[0] && r <= MIX_RANGE[1]) return;
@@ -1204,7 +1202,7 @@ export function carryLoad(b: DraftBlock, si: number): void {
 
 /* A done exercise brings up the next one not done below it or, with none
    below, the first one above not started yet; never one started and left
-   (V, 2026-11-02, NEW-40): an earlier exercise left with a set not ticked is
+   (V, 2026-11-02): an earlier exercise left with a set not ticked is
    one the lifter moved on from, and in a blank session, where nothing is
    below until it is added, going back to it took the screen up after every
    exercise finished. One not started is still to do (a past workout typed
@@ -1235,7 +1233,7 @@ export function autoFold(ref: BlkRef | null): void {
   else foldGlide(a1, top0);
 }
 
-/* The next exercise comes up in one glide from where it was to the top of the screen under the bar (r72, NEW-63, V
+/* The next exercise comes up in one glide from where it was to the top of the screen under the bar (V
    2026-11-04: "ensure scrolling is seamless"). The fold above it takes the done exercise's sets away at once; until
    r71 the page was scrolled to keep the next one where it was and then scrolled smoothly to it, but where the fold
    took away more than the page was scrolled (the first exercise of a session, always) that scroll stopped at the
@@ -1460,7 +1458,7 @@ export const distIn = (v: string): number | null => {
   return n != null && n > 0 ? Math.min(r3(U() === 'kg' ? n : n * KM_MI), LIMITS.distKm) : null;
 };
 
-/* ---------- typed sets (r63, from the legacy script's 29-sections.js) ---------- */
+/* ---------- typed sets (from the legacy script's 29-sections.js) ---------- */
 
 /** Sets typed or dictated for a lift (importing.ts's readSets), the loads in the unit on screen unless conv says otherwise. */
 export function parseSets(
@@ -1475,7 +1473,7 @@ export function parseSets(
 }
 /* Sets typed for a lift fill its rows from the first one not done, each
    ticked; a set far off is left for setDone's question, as a tick asks it
-   (r55.1, the audit of r55: 1000x8 was saved as typed, a 1285 kg PR). On an
+   (the audit of r55: 1000x8 was saved as typed, a 1285 kg PR). On an
    assisted lift the numbers typed or said are the machine's help. */
 /** Fills a lift's rows with typed sets, ticked unless one is far off (then asked about); how many sets were typed. */
 export function fillSets(bi: number, list: TypedSet[]): number {

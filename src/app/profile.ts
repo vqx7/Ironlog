@@ -1,6 +1,5 @@
-/* Your training (r44, item 271, with items 43 and 44): the profile's choices,
-   its focus numbers, how a saved profile is cleaned, and its tips (phase 3a,
-   r51; moved unchanged from the legacy script). The rules that apply a profile to a plan move with the
+/* Your training (item 271, with items 43 and 44): the profile's choices,
+   its focus numbers, how a saved profile is cleaned, and its tips (phase 3a; moved unchanged from the legacy script). The rules that apply a profile to a plan move with the
    engine. Since r54 the app's own weekly targets too: a muscle's default with
    the profile, the floors a first-run routine pick records, and the refit of
    floors recorded by the reading of a cycle's plan before r54. */
@@ -95,7 +94,7 @@ export const PROF_GOAL_TIP = `Size keeps the app's defaults. Strength: new barbe
 export const PROF_EXP_TIP = `Under 1 year, whatever the goal: new exercises start at ${F.repMin} to ${F.repMax} reps (sources in the Guide). Compounds stop ${F.rirCompound} reps short and isolation lifts ${F.rirIsolation}, as in the beginner plan (a rule of thumb: easier to judge, further from failure). Apply raises reps in reserve to that and keeps your ranges.`;
 export const PROF_FOCUS_TIP = `Up to ${numWord(FOCUS_MAX)}. Their weekly targets rise about ${pctOf(FOCUS_UP - 1)}%; the other major muscles drop to maintenance, ${shareWords(MAINT_SHARE)} of their usual minimum (studies held size and strength on a third of the volume; sources in the Guide). Targets you typed stay put; removing a focus puts them back. Pick for me favours them.`;
 
-/* ---------- The app's own weekly targets (r44; moved from the legacy script in r54) ---------- */
+/* ---------- The app's own weekly targets (moved from the legacy script in r54) ---------- */
 
 /** A muscle's weekly target with a profile (the current one unless given; the defaults with no focus). */
 export function defBandIn(M: Model, m: MuscleKey, p?: Profile | null): [number, number] {
@@ -127,7 +126,7 @@ export function appBandIn(
   return lo == null || TRACK_ONLY.has(m) || (q.focus || []).includes(m) ? d : [Math.min(d[0], lo), d[1]];
 }
 
-/* Whether a muscle has a weekly target (339 e, V 2026-10-24, r58): one of
+/* Whether a muscle has a weekly target (339 e, V 2026-10-24): one of
    TARGETED, which lifters train directly for size, or one the lifter gave a
    target: with Set a target in Weekly set targets (settings.ownTargets), by
    naming it a focus in Your training, or by a target typed before r58 (one
@@ -149,10 +148,9 @@ export function hasTargetIn(M: Model, m: string): boolean {
   return b[0] !== a[0] || b[1] !== a[1];
 }
 
-/* The floors a first-run pick of a routine records (fitTargets, r29 and
-   r44): each muscle's planned hard sets a week in whole sets, where under
+/* The floors a first-run pick of a routine records (fitTargets): each muscle's planned hard sets a week in whole sets, where under
    both its default minimum and the profile's, never on a tracked-only
-   muscle. With `actual` (a routine made from an import, r31), no floor above
+   muscle. With `actual` (a routine made from an import), no floor above
    what the log itself averaged on a muscle the routine trains. `share` reads
    the plan another way, as plannedSetsIn does. Built in muscle order, as
    normalize keeps them. */

@@ -1,4 +1,4 @@
-/* Starting a session, and the ways to one (r63, from the legacy script's
+/* Starting a session, and the ways to one (from the legacy script's
    27-actions.js): a routine day, lighter or in a deload week, a blank
    session, Short on time, Limited equipment, Do again, an edit of a saved
    session, a past workout date first, and the days of the top bar and the
@@ -45,7 +45,7 @@ const blockPlan = (p: Plan): DraftBlock['plan'] => ({ ...p, ss: p.ss ?? null });
    notes the app wrote, so Discard can tell them from the lifter's, and keeps
    the screen on; a past workout typed in and an edit of a saved session do
    neither, as before r63. A workout notes when it was opened (startedAt); its clock starts when the lifting does
-   (begunAt, session.ts clockStart, NEW-129), so one set up ahead times the same as one opened at the gym. */
+   (begunAt, session.ts clockStart), so one set up ahead times the same as one opened at the gym. */
 /** Opens the session screen on a new session in progress: one started now (live), or a past workout or an edit. */
 function begin(d: DraftLike, live: boolean): void {
   ui.away = null;
@@ -70,7 +70,7 @@ function begin(d: DraftLike, live: boolean): void {
    The session is saved under its date, so next up, targets and PRs after it
    read correctly even when it is entered after later sessions. Its sheet
    and the day due then are src/app/sheetsapp.ts's since r62. */
-/* Never a deload (r54, from the audit V asked for): the week's mark does not
+/* Never a deload (from the audit V asked for): the week's mark does not
    say which day Deload week was tapped, so a workout logged for a day before
    it opened and saved as one. It is logged as what was done, and a lift done
    lighter reads lighter from its numbers. */
@@ -79,7 +79,7 @@ function pastDraft(date: string, di: number | null, part: 1 | 2 = 1): DraftLike 
   const R = activeRoutine();
   const day0 = di == null ? null : R.days[di];
   if (!day0 || di == null) return { ...freeDraft('Freestyle'), date, startedAt: null, past: true };
-  // One of the day's two workouts on a fixed-weekday routine (r68, 366 (c); the review of r68: both in one).
+  // One of the day's two workouts on a fixed-weekday routine (the review of r68: both in one).
   const day = R.schedule === 'weekly' ? dayWorkout(day0, part) : day0;
   return {
     id: uid(),
@@ -120,14 +120,14 @@ function resumeOpen(): boolean {
 /** A blank session, with the picker open on it; in a week marked as a deload, a deload one. */
 function startFree(): void {
   if (resumeOpen()) return;
-  // In a week marked as a deload, a blank session is one too, as a routine day and Do again are (r54, PENDING 311 c: it started at full sets).
+  // In a week marked as a deload, a blank session is one too, as a routine day and Do again are (PENDING 311 c: it started at full sets).
   const dl = isDeloadWeek();
   ui.tab = 'today';
   begin({ ...freeDraft(dl ? 'Freestyle (deload)' : 'Freestyle'), deload: dl, notes: dl ? DELOAD_NOTE : '' }, true);
   openModal({ kind: 'picker', mode: 'addBlock', title: 'Add exercise to session', q: '', m: '' });
 }
 
-/** A routine day started: lighter (half the sets at about 90% loads, one easy day, r30), or in a deload week (the same for the whole week, and flagged so it never counts against a lift's trend or stall read). */
+/** A routine day started: lighter (half the sets at about 90% loads, one easy day), or in a deload week (the same for the whole week, and flagged so it never counts against a lift's trend or stall read). */
 function startSession(t: Tap): void {
   if (ui.modal) closeModal();
   if (resumeOpen()) return;
@@ -351,7 +351,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
     toast(`Trimmed to ${estMin(min5(pl.est))}`, true);
   },
-  /* Log a workout now is a freestyle choice (r34.2, from the review: the
+  /* Log a workout now is a freestyle choice (from the review: the
      starter's 4 days a week became the bar for someone training 3 times as
      they liked, "0-week streak", "of 88 planned"). Today opens on a blank
      session, the starter stays one tap away as the plan, and the default
@@ -369,7 +369,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const go = (): void => {
       const R = activeRoutine();
       const day0 = !s.free && s.routineId === R.id && s.dayId ? R.days.find(x => x.id === s.dayId) : undefined;
-      // A day's second workout done again is that workout again (r68, 366 (c); the review of r68: it started as the first).
+      // A day's second workout done again is that workout again (the review of r68: it started as the first).
       const part = R.schedule === 'weekly' && s.part === 2 && day0 && day0.items.some(i => i.pm) ? 2 : 1;
       const day = day0 && R.schedule === 'weekly' ? dayWorkout(day0, part) : day0;
       const deload = isDeloadWeek();

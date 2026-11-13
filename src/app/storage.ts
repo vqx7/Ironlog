@@ -1,9 +1,9 @@
-/* The save on this device (phase 4, r56; moved from the legacy script's
+/* The save on this device (phase 4; moved from the legacy script's
    storage part, changing nothing it does): the keys every stored value lives
    under, whether storage can be written, reading the save at start, the error
    log Settings can copy, Undo's steps and their copy in IndexedDB, the
    settings kept aside while the demo is loaded, a log kept aside for another
-   account (r56.1, in IndexedDB too), and the two readings the
+   account (in IndexedDB too), and the two readings the
    menu button makes of all that (backupDue, saveStateNow). Writing the save
    is in sync.ts (saveNow), since every write goes on to the account.
    Nothing here runs on import: storageStart() runs what the legacy part
@@ -45,7 +45,7 @@ export const MAPVIEW_KEY = KEY + '.mapView';
 export const ACCT_LATER = KEY + '.acctLater',
   INSTALL_LATER = KEY + '.installLater',
   ICON_NOTE = KEY + '.icon25';
-/** This browser has installed the app (its appinstalled event, 2.34): its tabs no longer offer Get the app. */
+/** This browser has installed the app (its appinstalled event): its tabs no longer offer Get the app. */
 export const APP_INSTALLED = KEY + '.appInstalled';
 /** The first pages on this device: the account page passed (Continue without an account), and held open after a sign-out. */
 export const OB_ACCT = KEY + '.obAcct',
@@ -53,14 +53,14 @@ export const OB_ACCT = KEY + '.obAcct',
 /** A weigh-in asked about on this device: snoozed until a date (Later), and the session's first ask answered (Not now). */
 export const BWSNOOZE_KEY = KEY + '.bwSnooze',
   BWASK_KEY = KEY + '.bwAsk';
-/** The account's profile photo as this phone holds it (2.34; kept on this phone only in 2.33), the note of where that
+/** The account's profile photo as this phone holds it (kept on this phone only in 2.33), the note of where that
     copy stands against the account (photo.ts), and its one-time line on Today answered (Add photo or Not now). */
 /** A workout in progress set aside while an earlier one is edited or logged: this phone's, with its account. */
 export const PARKED_KEY = KEY + '.parked';
 export const PHOTO_KEY = KEY + '.photo',
   PHOTO_SYNC = KEY + '.photoSync',
   PHOTO_ASKED = KEY + '.photoAsked';
-/** Moves a set-aside workout from the log of account `from` ('' for none) to `to`, when a sign-in takes the phone's log into that account (takeAccount): it goes where the log goes (the review of 2.36, REV6-4). */
+/** Moves a set-aside workout from the log of account `from` ('' for none) to `to`, when a sign-in takes the phone's log into that account (takeAccount): it goes where the log goes (the review of 2.36). */
 export function parkedRetag(from: string, to: string): void {
   const r = rec(parseJson(prefGet(PARKED_KEY) || 'null'));
   if (r && r['uid'] === from) prefSet(PARKED_KEY, JSON.stringify({ ...r, uid: to }));
@@ -97,8 +97,7 @@ export const clearTimer = (t: number | null): void => {
 
 /* Diagnostics log: the last 60 errors, kept in this browser only. Errors that
    used to be swallowed silently land here, and Settings can copy them. Filled
-   at start from LOGK, with the entries as they were saved (r56.1 checks each,
-   PENDING 305). */
+   at start from LOGK, with the entries as they were saved (r56.1 checks each). */
 /** The last 60 errors on this device, oldest first. */
 export const logBuf: LogEntry[] = [];
 /** An entry of the error log as saved, or null when it is not one. */
@@ -131,7 +130,7 @@ const LOG_LIMITS = { stackLines: 4, stackChars: 400, messageChars: 300, kept: 60
 export function log(area: string, err: unknown): void {
   try {
     const E = rec(err);
-    // What an account server said that the app does not show (serverSaid, scripts/cloud-supabase.js, 2.28) is kept here.
+    // What an account server said that the app does not show (serverSaid, scripts/cloud-supabase.js) is kept here.
     const said = E && typeof E.serverSaid === 'string' ? ` (server: ${E.serverSaid})` : '';
     const m = (E && E.message ? E.message : E ? JSON.stringify(err) : String(err)) + said;
     // Where it broke, not only what it said: the first lines of the stack travel with a problem report, so a crash can be found in the code without the phone.
@@ -265,7 +264,7 @@ async function undoWrite(): Promise<void> {
     tx.onerror = () => log('undo-save', tx.error);
     /* Committed at once rather than when the page next idles: a page reloaded or closed straight after (Update, the
        app closed, another address) was gone before the write ended, and Undo then took back the change before it (the
-       review of 2.52, REV13-1). A browser without commit() ends the write as before. */
+       review of 2.52). A browser without commit() ends the write as before. */
     if ('commit' in tx) tx.commit();
   } catch (e) {
     log('undo-save', e);
@@ -274,8 +273,8 @@ async function undoWrite(): Promise<void> {
 /* The steps are written as the tap that changed them ends: a microtask, so the step, the log right after it and its
    words, all made in that tap, go in one write, and the write is under way before anything else can happen. Until
    2.52 they waited 0.4 s for a pause in the taps, then for the page to be hidden or left as well: a change made just
-   before the app closed lost its step (NEW-130), and in WebKit a write begun as the page was torn down (a reload with
-   no hiding first: Update, another address) never ended (NEW-139, REV13-1 there). Either way Undo then took back the
+   before the app closed lost its step, and in WebKit a write begun as the page was torn down (a reload with
+   no hiding first: Update, another address) never ended (REV13-1 there). Either way Undo then took back the
    change before it. */
 /** Writes the steps to IndexedDB as the current tap ends. */
 export function undoPersist(): void {
@@ -565,7 +564,7 @@ export function demoRestore(): void {
    A log kept aside is a whole copy of a log, so it lives in IndexedDB, as
    Undo's copies do: that room is separate from localStorage's and far
    larger, so a log kept aside never crowds out the save of the log in use,
-   then or as that log grows (PENDING 333, tests/room.js: kept in
+   then or as that log grows (tests/room.js: kept in
    localStorage, a log of 40% of the room kept aside made the save of a log
    of 62% of it fail, and every save after it). Your data's line reads a list
    held in memory (asideIdx), read from the database at start and kept
@@ -744,7 +743,7 @@ const BACKUP_DAYS = 7;
 export function backupDue(): boolean {
   /* Signed in and synced, the account is where the log lives, as in any
      app; deletions are covered by Recently deleted (TRASH_DAYS) and Undo (UNDO_DAYS),
-     so no reminder (r34.2, from the review: the menu said "Backup due" to a
+     so no reminder (from the review: the menu said "Backup due" to a
      synced account while the first page says the account backs it up). */
   if (!state.sessions.some(s => !s.demo)) return false;
   const synced = cloud.on && cloud.last && Date.now() - cloud.last < BACKUP_DAYS * DAY_MS;

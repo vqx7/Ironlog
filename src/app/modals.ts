@@ -24,7 +24,7 @@ export interface ConfirmSheet {
   alt?: { label: string; quiet?: boolean | undefined; only?: boolean | undefined } | null | undefined;
 }
 
-/** A question as it is open: what its answers do, and what closing it without one does (a question the sync asked reads that as Cancel, r56.1). */
+/** A question as it is open: what its answers do, and what closing it without one does (a question the sync asked reads that as Cancel). */
 interface ConfirmModal extends SheetBase, ConfirmSheet {
   kind: 'confirm';
   fn: () => void;
@@ -49,13 +49,13 @@ export interface PickerSheet {
   m?: string | undefined;
   /** The day of the routine shown in Plan (addDay). */
   day?: number | undefined;
-  /** Added to that day's second workout (addDay on a fixed-weekday routine, r68, 366 (c)). */
+  /** Added to that day's second workout (addDay on a fixed-weekday routine). */
   pm?: true | undefined;
   /** The routine item swapped (swapItem). */
   uid?: string | undefined;
   /** The session's exercise swapped (swapBlock). */
   b?: number | undefined;
-  /** Added with one set row (addBlock from Add an old best, r70, 380). */
+  /** Added with one set row (addBlock from Add an old best, 380). */
   one?: true | undefined;
 }
 

@@ -1,14 +1,14 @@
 /* The month calendar: any date one tap away. A day with a
    session opens it in History, a day with two asks which, an empty past day
    logs a workout for it (as in the week bar), and today opens Today (calDay,
-   in actsstart.ts with what it opens, r63). A day ahead shows the workout
+   in actsstart.ts with what it opens). A day ahead shows the workout
    the routine plans on it and opens Today on that workout, for a year ahead
    (329, r59: until then days ahead were blank and the months stopped at
    this one). It sits inline in This week on
-   Today (Week or Month, r26), and opens as a sheet from History's Calendar
+   Today (Week or Month), and opens as a sheet from History's Calendar
    button and a Consistency square; drawn by lit-html as src/27-actions.js
    drew it. A pull down on the week bar opens it from the top, following the
-   finger (NEW-107, week.ts): r25's rose from the bottom while the finger
+   finger (week.ts): r25's rose from the bottom while the finger
    pulled down from the top, and V had it removed on 2026-10-01. */
 
 import { html, nothing } from 'lit-html';
@@ -52,7 +52,7 @@ function monthEnd(ym: string): string {
 /** The training days the routine plans in a month after today (a rest day, or a day with nothing in it, is none). */
 function plannedIn(ym: string): Record<string, PlannedDay> {
   const out: Record<string, PlannedDay> = {};
-  // A day whose workout was done earlier this week is not planned any more, as the bar and This week say (REV9-2).
+  // A day whose workout was done earlier this week is not planned any more, as the bar and This week say.
   const moved = doneElsewhere();
   for (const [d, p] of Object.entries(planAhead(monthEnd(ym))))
     if (d.startsWith(ym) && !p.day.rest && p.day.items.length && !moved[d]) out[d] = p;

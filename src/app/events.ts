@@ -1,4 +1,4 @@
-/* The page's listeners and its actions by data-act (r63, from the legacy
+/* The page's listeners and its actions by data-act (from the legacy
    script's 18-ui.js, 27-actions.js and 28-events.js). Every screen's and
    sheet's taps are in their modules' tables, joined here into one; two
    choices name another action to run, so they read the whole table and live
@@ -129,7 +129,7 @@ function editorSet(e: ExEdit, k: string, v: string | boolean): void {
 /** The page's own listeners, the first it adds: Back, the return to the front, a new day while on the screen, and the rest timer read again. */
 export function pageListeners(): void {
   window.addEventListener('popstate', pageBack);
-  // Back on a new day, or on the screen as one begins, the screen is drawn again for it (drawnBeforeToday, r59).
+  // Back on a new day, or on the screen as one begins, the screen is drawn again for it (drawnBeforeToday).
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     wakeOn();
@@ -171,7 +171,7 @@ function onClick(e: MouseEvent): void {
   const tab = el.closest('#tabs button');
   if (tab instanceof HTMLElement) {
     ui.tab = tab.dataset.tab || '';
-    // Back to the tab from anywhere opens the workout in progress (NEW-89, V: Today defaults to it).
+    // Back to the tab from anywhere opens the workout in progress (V: Today defaults to it).
     ui.away = null;
     if (ui.tab === 'program') ui.planView = 'routine';
     window.scrollTo(0, 0);
@@ -258,9 +258,9 @@ function onChange(e: Event): void {
   if (m && FORM_SHEETS.has(m.kind) && t.closest('#modal')) m.dirty = true;
   // A problem report's screenshot (src/app/report.ts).
   if (reportChange(t)) return;
-  // A picture added to a note (r66, src/app/notepics.ts).
+  // A picture added to a note (src/app/notepics.ts).
   if (picChange(t)) return;
-  // The profile photo, from the menu or Today's line (2.33, src/app/actsapp.ts).
+  // The profile photo, from the menu or Today's line (src/app/actsapp.ts).
   if (photoChange(t)) return;
   // A file to import or restore, and the import preview's choices (src/app/importflow.ts).
   if (importChange(t)) return;
@@ -303,7 +303,7 @@ function onChange(e: Event): void {
   if (workoutChange(t)) return;
   const b = t.dataset.bind;
   if (!b) return;
-  // The moved screens' fields (History and Settings, r57; Plan and Stats, r58; Today, r59): each change through act.
+  // The moved screens' fields (History and Settings; Plan and Stats; Today): each change through act.
   const own = HISTORY_BINDS[b] || SETTINGS_BINDS[b] || PLAN_BINDS[b] || DASH_BINDS[b] || TODAY_BINDS[b];
   if (own) {
     own(t);

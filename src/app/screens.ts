@@ -1,4 +1,4 @@
-/* The page's draw (r63, from the legacy script's 10-start.js, 18-ui.js and
+/* The page's draw (from the legacy script's 10-start.js, 18-ui.js and
    29-sections.js): every tab by its screen, what goes before a draw (the
    drags, the charts and the tour taken down) and after it (each mounted
    again), the drags and the arrow keys that move a tab's sections and a
@@ -77,7 +77,7 @@ function killDynamic(): void {
   sortables = [];
 }
 
-/** The tabs drawn by their modules (phase 5, r57 to r60): each a template of the log and ui. Today with a session in progress is the session screen (workout.ts, r60). */
+/** The tabs drawn by their modules (phase 5, r57 to r60): each a template of the log and ui. Today with a session in progress is the session screen (workout.ts). */
 const TABS: Readonly<Record<string, () => TemplateResult>> = {
   today: () => (state.draft && !awayFrom() ? viewWorkout(state.draft) : viewToday()),
   history: viewHistory,
@@ -115,7 +115,7 @@ export function renderInner(): void {
   // The setup pages stand alone: no tabs or week bar until a way to start is picked.
   if (obActive() && ui.tab !== 'today') ui.tab = 'today';
   document.body.classList.toggle('obmode', obActive());
-  /* One host draws every tab (r57; every tab a module's screen since r60): a
+  /* One host draws every tab (every tab a module's screen since r60): a
      template, updated in place, which places its sections itself. A draw
      asked for while lit-html is drawing (an event a removed field fires
      mid-draw) runs once this one is done: lit-html takes nodes away one by
@@ -389,7 +389,7 @@ export const SHEETS: Sheets = {
   eq: { draw: eqSheet },
   text: { draw: textSheet }
 };
-/** What a sheet mounts once drawn: the 3D body of an exercise's muscles, and the account sheet's bot check (r66, when on). */
+/** What a sheet mounts once drawn: the 3D body of an exercise's muscles, and the account sheet's bot check (when on). */
 export function afterSheet(): void {
   if (document.getElementById('bm3dx')) mount3D();
   captchaMount();

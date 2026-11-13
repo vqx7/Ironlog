@@ -1,4 +1,4 @@
-/* ---------- the profile photo (2.33; the account's since 2.34) ----------
+/* ---------- the profile photo (the account's since 2.34) ----------
    A photo of the lifter shown in the menu button at the top right. Since 2.34
    it belongs to the account, as a profile photo does in other apps (V,
    2026-11-08: "we should be treating it like an account"): it shows on every
@@ -26,7 +26,7 @@ import { parseJson, rec } from './records';
 import { PHOTO_KEY, PHOTO_SYNC, PHOTO_ASKED, log, prefDel, prefGet, prefSet } from './storage';
 import { acct, cloud } from './store';
 
-/** The side of the kept photo in pixels: sharp on the menu button and fair opened large (NEW-141; 256 until 2.60,
+/** The side of the kept photo in pixels: sharp on the menu button and fair opened large (256 until 2.60,
     soft once enlarged), and still tens of kilobytes. */
 const PHOTO_EDGE = 512;
 /** The JPEG quality the photo is kept at. */
@@ -150,8 +150,8 @@ export function photoSignOut(keepUnsent: boolean): void {
   else photoForget();
 }
 
-/** Takes the photo off this phone, with its line on Today answered, as signing out and deleting the account do
-    (R79-1): the account keeps its photo, and the next account signed in here shows its own or is offered the line. */
+/** Takes the photo off this phone, with its line on Today answered, as signing out and deleting the account do:
+    the account keeps its photo, and the next account signed in here shows its own or is offered the line. */
 export function photoForget(): void {
   prefDel(PHOTO_KEY);
   prefDel(PHOTO_SYNC);

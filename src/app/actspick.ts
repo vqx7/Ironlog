@@ -1,4 +1,4 @@
-/* The exercise picker's choice and the exercise editor (r63, from the legacy
+/* The exercise picker's choice and the exercise editor (from the legacy
    script's 16-engine.js, 24-sheets.js and 27-actions.js): an exercise added
    to a session or a routine day, a swap in either, Pick for me's addition,
    and a new or saved exercise. Each change to the log goes through `act`;
@@ -46,7 +46,7 @@ export function swapPlan<P extends Partial<Plan>>(
 ): P & Partial<Plan> {
   const R = R0 || activeRoutine();
   const inR = R.days.some(d => d.items.some(it => it.exId === toId));
-  /* A step is the equipment's (R81-8, the review of 2.35: a 10 lb barbell
+  /* A step is the equipment's (the review of 2.35: a 10 lb barbell
      slot gave dumbbell bench a 10 lb step): a lift on other equipment takes
      its own, the slot's range, effort and rest kept. */
   if (!inR && !!EX(fromId).timed === !!EX(toId).timed) {
@@ -103,7 +103,7 @@ function pickAddDay(m: PickerModal, id: string): void {
     Object.assign(d, trainOn(d));
   });
   rerenderKeepScroll();
-  // Bodyweight, if this lift counts it and none is logged, is asked on Plan under the lift, not here (2.48, the message rule).
+  // Bodyweight, if this lift counts it and none is logged, is asked on Plan under the lift, not here (the message rule).
   toast(`${exName(id)} added to ${dayLabel(R, di)}${m.pm ? ', second workout' : ''}`);
   return;
 }
@@ -168,7 +168,7 @@ function pickAddBlock(m: PickerModal, id: string, d: Draft): void {
     return;
   }
   act(() => d.ex.push(nb), { inProgress: true });
-  // No bodyweight note here: the line under the lift asks, in a saved session being edited too (NEW-116, REV11-2).
+  // No bodyweight note here: the line under the lift asks, in a saved session being edited too.
   afterAdd(d.ex.length - 1);
   return;
 }
@@ -599,7 +599,7 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (m.isNew && back && back.kind === 'picker') {
       applyPick(back, e.id);
       toast(
-        /* Joined to what the pick said (2.48, the message rule): a Plan day's add and a session's swap say what they
+        /* Joined to what the pick said (the message rule): a Plan day's add and a session's swap say what they
            did, so this says only that it was created; the others say nothing, so this says it all. */
         back.mode === 'addDay' || back.mode === 'swapBlock'
           ? `${e.name} created`

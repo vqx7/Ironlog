@@ -25,7 +25,7 @@ const FIT_DAYS = 0.5;
    agree; a range, as an average read as a promise and Today then
    showed a longer first day. The days a week in Your training mark
    the routines that fit. */
-/** The routine templates, a first run's (with Your training folded above them, r44) or Plan's. */
+/** The routine templates, a first run's (with Your training folded above them) or Plan's. */
 export function templatesSheet(m: { from?: string | undefined; imported?: boolean | undefined }): TemplateResult {
   const pd = prof().days;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick a routine</h3>${closeX()}</div>

@@ -227,7 +227,7 @@ interface B3Part {
 }
 /** The 3D body's parts, the neutral body first, then the muscle groups. */
 export const B3_PARTS: readonly B3Part[] = [
-  /* Proportions (r29, V: "still looks fat"): an athletic build, not a
+  /* Proportions (V: "still looks fat"): an athletic build, not a
      mannequin. Shoulders well outside the ribs, a narrow waist and pelvis, a
      torso flatter front to back, long lean legs that do not touch, slimmer
      arms, and muscles that sit close on the body instead of bulging. */
@@ -755,7 +755,7 @@ export function mapCard(): TemplateResult {
   const src = ui.mapSrc === 'week' || !avg ? 'week' : 'avg';
   const st = muscleStatus(src === 'avg' ? avg : I.weekSets[weekStart(today())] || {}, src === 'week');
   const S = (m: string): MuscleStatus => st[m] || { v: 0, lo: 0, hi: 0, st: 'none' };
-  // "1 hard set", and no target for a tracked-only muscle (r34.2, from the review).
+  // "1 hard set", and no target for a tracked-only muscle (from the review).
   const hsw = (v: number): string => `${r1(v)} hard set${r1(v) === 1 ? '' : 's'} a week`;
   const tgt = (m: string): string => (!hasTarget(m) ? ', tracked only' : `, target ${S(m).lo} to ${S(m).hi}`);
   const lab = (m: string): string =>
@@ -820,7 +820,7 @@ export function mapCard(): TemplateResult {
         : nothing
     }`;
   }
-  /* The summary is a count out of the muscles with a target (V, r42): "15 of 19 on target". Tracked-only muscles have no target, so they are in neither number. */
+  /* The summary is a count out of the muscles with a target (V): "15 of 19 on target". Tracked-only muscles have no target, so they are in neither number. */
   const N = MK.filter(m => hasTarget(m)).length;
   const msub = ((): string => {
     if (!avg) {

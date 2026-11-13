@@ -6,7 +6,7 @@
 import type { AcctUser, CloudDbIn } from './store';
 import type { FbItem } from './modals';
 
-/** The account service (window.ironlogAuth, scripts/cloud-supabase.js): who is signed in, the ways to sign in or out, the confirmation code, the password, deleting the account, and what an emailed link opened the page with. A request the account server checks for bots takes the bot check's token last (captcha.ts, r66), absent when the check is off. */
+/** The account service (window.ironlogAuth, scripts/cloud-supabase.js): who is signed in, the ways to sign in or out, the confirmation code, the password, deleting the account, and what an emailed link opened the page with. A request the account server checks for bots takes the bot check's token last (captcha.ts), absent when the check is off. */
 interface AuthService {
   /** What an emailed link opened the page with: an error, or its kind (a sign-up's confirmation, a password reset). */
   landing?: { error?: string | undefined; type?: string | undefined } | null | undefined;
@@ -51,8 +51,7 @@ interface ReportService {
    with Supabase's email_not_confirmed passed through as Supabase names it),
    the sync's (the sync's reader of a refused write, cloudFail, and its own
    timeout and too_big), and a save the downloads service declined. One
-   list, so a code the app compares against is one a service gives (r63,
-   PENDING 307). */
+   list, so a code the app compares against is one a service gives. */
 /** Every error code the app reads. */
 const SERVICE_CODES = [
   'bad_code',

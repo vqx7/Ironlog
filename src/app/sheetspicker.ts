@@ -70,7 +70,7 @@ function pickerUsed(m: PickerSheet): { set: Set<string>; label: string } {
 }
 
 /* A lift that loads a flagged injury says so in the picker, as the session's
-   own exercise line does (NEW-83, V 2026-11-08): Swap's closest matches
+   own exercise line does (V 2026-11-08): Swap's closest matches
    could all load the injured knee and none said it. */
 /** The tag for a lift that loads a flagged injury, or nothing. */
 function injTagFor(e: ExerciseLike): Part {

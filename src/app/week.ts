@@ -61,7 +61,7 @@ function weekBar(): TemplateResult[] {
   const weekly = R.schedule === 'weekly';
   const cByDate: Record<string, { min: number }[]> = {};
   for (const c of state.cardio) (cByDate[c.date] = cByDate[c.date] || []).push(c);
-  // A rest week plans nothing, so no day in it reads planned or missed (r55, the audit: the bar said "Upper A, missed" under "Rest week. Nothing planned.").
+  // A rest week plans nothing, so no day in it reads planned or missed (the audit: the bar said "Upper A, missed" under "Rest week. Nothing planned.").
   const rw = isRestWeek(cur);
   const plan = rw ? {} : weekPlan(R);
   // Which planned workouts were done, and on which date, wherever in the week.
@@ -81,7 +81,7 @@ function weekBar(): TemplateResult[] {
     // The session in progress sits on its own date, which for a past workout is not today.
     const live = !!state.draft && !state.draft.editingId && d === state.draft.date;
     /* A planned day whose every workout was done on another day this week: not missed, nor still planned when it
-       was done early (NEW-31; the review of r68: Tuesday's Pull done Monday read planned on Tuesday). */
+       was done early (the review of r68: Tuesday's Pull done Monday read planned on Tuesday). */
     const mine = slots.filter(x => x.di === i);
     const movedTo = !trained && weekly && isPlan && mine.length && mine.every(x => x.doneOn) ? mine : null;
     const cls = [
@@ -219,7 +219,7 @@ function liftedLine(): Part {
   return html`<button class="linkbtn wklift u-m6-0-0_tdnone_taleft" data-act="goDash" data-sec="svol"><b>${tn.now ? fmtBig(tn.now) : 0} ${U()}</b> lifted</button>`;
 }
 
-/** Whether This week shows the month, remembered on this device (Week or Month, r26). */
+/** Whether This week shows the month, remembered on this device (Week or Month). */
 function monthView(): boolean {
   if (ui.wkView === undefined) ui.wkView = prefGet(WKVIEW_KEY) === 'month' ? 'month' : 'week';
   return ui.wkView === 'month';
@@ -231,7 +231,7 @@ function cardioLine(w: WeekNow): Part {
     : nothing;
 }
 
-/* Any week (NEW-107, V 2026-11-10: "what is this week doing?" Month steps through months and opens its days; Week
+/* Any week (V 2026-11-10: "what is this week doing?" Month steps through months and opens its days; Week
    showed only this week, with its days only in the bar at the top). ‹ and › step a week at a time, as Month steps,
    from the first week with a session or cardio to a year ahead, and every day of the week shown is listed with what
    it holds; a tap does what the same day does in the month calendar (calDay, wkGo). A week before this one is read
@@ -250,7 +250,7 @@ export function weekShown(): string {
   const { min, max } = weekBounds();
   return typeof ws === 'string' && ws >= min && ws <= max ? ws : weekStart(today());
 }
-/** A week's dates in words, "Nov 3 to Nov 9", each with its year when it is not this one (REV9-4). */
+/** A week's dates in words, "Nov 3 to Nov 9", each with its year when it is not this one. */
 function weekWords(ws: string): string {
   const t = today();
   return `${fmtDateFrom(ws, t)} to ${fmtDateFrom(addDays(ws, WEEK_DAYS - 1), t)}`;
@@ -272,7 +272,7 @@ function weekDays(ws: string): TemplateResult {
     const c = state.cardio.filter(x => x.date === d).reduce((a, x) => a + x.min, 0);
     const ahead = d > t ? plan[d] : undefined;
     // A training day ahead is a tap to it on Today; a rest day ahead says so; the calendar reads days ahead the same way.
-    // Done on another day this week, as the bar says: said so, and not offered again (REV9-2).
+    // Done on another day this week, as the bar says: said so, and not offered again.
     const done = moved[d];
     const p = ahead && !ahead.day.rest && ahead.day.items.length && !done ? ahead : undefined;
     const rest = !!ahead && ahead.day.rest;
@@ -327,7 +327,7 @@ function otherWeek(ws: string): TemplateResult {
 function weekBody(w: WeekNow): Part {
   /* The two numbers are counted differently on purpose and the label has to
      say so: the denominator is every hard set the routine plans (RIR 3 or
-     less, halved in a deload week; r27), the numerator is
+     less, halved in a deload week), the numerator is
      only the sets that counted as hard. You cannot reach 100% on a week where
      you left RIR at 4 or above. The day-by-day week is the bar at the top. */
   const month = monthView();
@@ -356,7 +356,7 @@ ${howText('wk', `Each set counts once; a set at RIR 4 or more is not hard and do
 export function weekCard(): TemplateResult {
   const w = weekStats();
   const body = weekBody(w);
-  /* The title follows the view (V, r28): This week, or This month (the
+  /* The title follows the view (V): This week, or This month (the
      month's name for an earlier one) with that month's session count. */
   if (monthView()) {
     const ym = calNow();
@@ -375,7 +375,7 @@ export function weekCard(): TemplateResult {
   const ws = weekShown();
   if (ws !== weekStart(today())) {
     /* Another week: its dates, and its sessions against what was planned then, as its sessions recorded it; with no
-       record, its sessions alone, never against the routine as it is now (REV9-3); or what is planned ahead. */
+       record, its sessions alone, never against the routine as it is now; or what is planned ahead. */
     const n = weekSessions(ws);
     const rec = weekRecorded(ws);
     const ahead = ws > weekStart(today());

@@ -104,8 +104,8 @@ const TREND_SESSIONS = 3;
 /* The sessions the trend reads (r30: a deload or lighter day in the list
    read as a drop; since r54 one short of its usual is in), in the trend's
    range, so a heavy and a light day are not read as one line, and
-   since a new machine or gym (liftRead, r61). The word follows the lift's
-   trend when it has one (r32, from the third review: a press flat for 7
+   since a new machine or gym (liftRead). The word follows the lift's
+   trend when it has one (from the third review: a press flat for 7
    weeks read "67.5 → 69.7 → 69.7 · up" from its last three sessions), says
    nothing with no trend yet (under 3 sessions over 2 weeks: r32's second
    check, "· up" from three sessions in a week), covers the trend's weeks,
@@ -150,7 +150,7 @@ const FLAT_SPAN = 0.02;
 /** The sessions the history lists, newest first. */
 const HIST_ROWS = 10;
 
-/* A lift's history from inside a session (r32, from the third review: a
+/* A lift's history from inside a session (from the third review: a
    Strong or Hevy user expects it a tap away, not only the Last line). The
    recent sessions as logged (warm-ups and drops marked, RIR as typed, from
    the saved session), labelled as the Last line labels them (sessionWord),

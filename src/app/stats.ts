@@ -4,8 +4,8 @@
    (IDX, the weekly averages, the coach), so a headline and the section under
    it cannot disagree; this module only decides what to say and draws it. The
    charts are drawn after the screen, from graphs.ts. What Stats opens
-   elsewhere is reached by the button's data-act through events.ts's table
-   (r63): a day of the calendar, a goal's sheet, Layout. */
+   elsewhere is reached by the button's data-act through events.ts's table:
+   a day of the calendar, a goal's sheet, Layout. */
 
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
@@ -255,7 +255,7 @@ function liftChange(exId: string, dir: string, ow: string): string {
 }
 
 /* One line with the verdict and what to do; the numbers behind it (rates,
-   ranges, sessions, how it was read) sit behind an i (r34, V: no walls of
+   ranges, sessions, how it was read) sit behind an i (V: no walls of
    text). The tiles under it already show the best, the change and the rate. */
 /** A lift's headline on Stats: what its trend says and what to do, the numbers behind an i. */
 export function exHeadline(exId: string): Part {
@@ -299,7 +299,7 @@ export function exHeadline(exId: string): Part {
   const ns = `${st.wN} session${st.wN === 1 ? '' : 's'}`;
   // The range named when it trains in more than one.
   const ow = `over ${st.spanW || TREND_WEEKS} weeks${st.rrIn ? ` in the ${repSpan(st.rrIn[0], st.rrIn[1])} range` : ''}`;
-  /* The percentages are behind the i (r41, V asked whether they help: a lifter
+  /* The percentages are behind the i (V asked whether they help: a lifter
      acts on loads and reps, so the line says those and the i keeps the
      change and the rate for anyone who wants them). A range only when it says
      something: perfectly steady numbers give one of zero width. */
@@ -312,8 +312,7 @@ export function exHeadline(exId: string): Part {
     );
   if (!st.useAdj) more.push('Read from loads and reps; RIR is left out of the trend until it is rated on most sets.');
   /* The change compares the ends; the rate fits every session. When they point
-     different ways the reason sits behind the i, not as a line on screen (r40,
-     V: the old note "Change and trend disagree" was confusing on its own). */
+     different ways the reason sits behind the i, not as a line on screen (V: the old note "Change and trend disagree" was confusing on its own). */
   if (
     st.pct != null &&
     st.slope != null &&
@@ -327,7 +326,7 @@ export function exHeadline(exId: string): Part {
   const atTopR = atRangeTop(exId);
   if (st.stalled) {
     // At the top of the range, the advice is load, as on the Coach.
-    /* The span the stall test read, and its rule in the coach's words (r54, from the audit V asked for: "Stalled for 3 weeks" was fixed text, said of a lift flat for ten). */
+    /* The span the stall test read, and its rule in the coach's words (from the audit V asked for: "Stalled for 3 weeks" was fixed text, said of a lift flat for ten). */
     parts.push(
       atTopR
         ? "Stalled at the top of the range: due a step up. The session's target says how."
@@ -335,7 +334,7 @@ export function exHeadline(exId: string): Part {
     );
     more.push(STALL_WHY);
   } else if (st.pct == null)
-    // (r55, the audit: said of pull-ups with 8 sessions and no weigh-in)
+    // (the audit: said of pull-ups with 8 sessions and no weigh-in)
     parts.push(
       ex.bw && !((bwRef() ?? 0) > 0)
         ? 'A trend needs a weigh-in: a bodyweight lift is read at your bodyweight.'
@@ -344,7 +343,7 @@ export function exHeadline(exId: string): Part {
   else if (st.moving) parts.push(`${liftChange(exId, 'Up', ow)}.`);
   else if (st.falling) parts.push(`${liftChange(exId, 'Down', ow)}. Look at recovery before adding work.`);
   else if (st.holdRR.length || st.quietRR.length) {
-    // One range down, another not (r55, V).
+    // One range down, another not (V).
     const rs = (a: readonly [number, number][]): string =>
       `the ${andList(a.map(r => repSpan(r[0], r[1])))} range${a.length > 1 ? 's' : ''}`;
     parts.push(
@@ -388,7 +387,7 @@ function muscleHeadline(m: string): TemplateResult {
   const [lo, hi] = bandOf(m);
   const sc = I.scores.find(x => x.m === m);
   const parts: string[] = [];
-  // A muscle with no target has none to be above or below (r29; the one rule since r58, hasTargetIn).
+  // A muscle with no target has none to be above or below (the one rule since r58, hasTargetIn).
   const tr = !hasTarget(m);
   // The status every screen reads (muscleStatus): on plan is said, with why behind an i.
   const st = avg ? (muscleStatus(avg)[m] || { st: null }).st : null;
@@ -400,7 +399,7 @@ function muscleHeadline(m: string): TemplateResult {
         : `${r1(v)} hard sets a week over ${avgWeeksTxt(avg)}, ${st === 'under' || st === 'plan' ? `${r1(lo - v)} below` : st === 'over' ? `${r1(v - hi)} above` : 'inside'} your ${lo} to ${hi} target${st === 'plan' ? ', on plan' : ''}.`
     );
   } else {
-    // With no average yet, what brings one, as the coach says it (avgWait, r54).
+    // With no average yet, what brings one, as the coach says it (avgWait).
     const w = avgWait();
     parts.push(
       tr
@@ -458,7 +457,7 @@ function dashSummary(): TemplateResult {
   /* The reason given is the true one: with enough sessions the changes
      are inside day-to-day noise; "needs 3 sessions" was said to someone with 6. */
   const nTr = Object.values(IDX().exStats).filter(x => x && x.pct != null && x.fresh).length;
-  /* Each lift's change is over the weeks its trend covers (r32, from the
+  /* Each lift's change is over the weeks its trend covers (from the
      third review: "+7.5% over 6 weeks" on a log 19 days old). One span is
      said once when the two share it. Names, not percentages: "Incline
      DB Curl +14.6%" is a change in an estimate nobody lifts; the lift's own
@@ -540,8 +539,7 @@ function regionBody(): TemplateResult {
       html`<button class=${rs.n === k ? 'chip on' : 'chip '} data-act="regionWk" data-v=${String(k)} aria-pressed=${String(rs.n === k)}>${l}</button>`
   )}</div></div>`;
   /* The weeks read are named short on the card ("4-week average") and in
-     full in its tip, with what "on target" means when every region is (r69,
-     V, 2026-11-03: the sentence ran two lines under the headline). */
+     full in its tip, with what "on target" means when every region is (V, 2026-11-03: the sentence ran two lines under the headline). */
   const inside = !rs.week && !worst && !plan.length && !high.length;
   return html`<div class="card">${rs.week ? nothing : chips}${rh}<p class="small muted u-m0-0-4">${rs.short || rs.label.charAt(0).toUpperCase() + rs.label.slice(1)} ${tipButton(
     `Using ${rs.label}. ${inside ? 'Every region at or past its minimum, inside its target. ' : ''}Hard sets per region. Dashed ring: the minimum of your weekly targets; on or past it is on target.${plan.length ? ' On plan: ' + ON_PLAN_TIP : ''}${rs.first || rs.src._ff ? ' ' + (rs.back ? BACK_WEEK_WHY : FIRST_WEEK_WHY) : ''}`,
@@ -566,7 +564,7 @@ function trendBody(): TemplateResult {
 /* ---------- Lifts ---------- */
 
 /* What to do next on this lift, the same target its next session shows
-   (r41, V: guide how to progress rather than predict where it lands). */
+   (V: guide how to progress rather than predict where it lands). */
 function nextLine(exId: string): Part {
   // EX() reads a deleted exercise as archived, so this covers both.
   if (EX(exId).archived) return '';
@@ -684,7 +682,7 @@ export function bestsBoard(): { n: number; html: TemplateResult } {
           .filter(Boolean)
           .join(' · ');
       const top = line(est, r.heavy);
-      /* Back after a long break with a best ever from before it (NEW-110), the best since you came back is shown
+      /* Back after a long break with a best ever from before it, the best since you came back is shown
          beside it, so the old number stays on record and the new ones show as they come. */
       const b = sinceBack(ex.id);
       const older = !!b && ((!!r.heavy && r.heavy.date < b.from) || (!!est && est.date < b.from));
@@ -744,7 +742,7 @@ function sizeBody(): TemplateResult {
   // Under TAPE_NOISE_CM is within what a tape repeats to.
   const mdc = (k: string): number => (k === 'chest' ? TAPE_NOISE_CM.chest : TAPE_NOISE_CM.other);
   /* Rows measured on the same days share their stretch, waist, and
-     bodyweight, so those are said once above them (r34, V: the same sentence
+     bodyweight, so those are said once above them (V: the same sentence
      under every row). */
   const span = (r: { from: string; to: string }): string => `${fmtDate(r.from)} to ${fmtDate(r.to)}`;
   const r0 = rows[0];
@@ -854,7 +852,7 @@ function blockBody(): TemplateResult {
   )}</select>`;
   if (!b) return html`<div class="card"><p class="small muted u-m0">Log a session to start this.</p>${sel}</div>`;
   const avg = (v: number | null): string => (v == null ? '–' : String(r1(v)));
-  // Weeks the averages leave out are said beside the dates, as every weekly average says them (avgWeeksTxt; REV6-6).
+  // Weeks the averages leave out are said beside the dates, as every weekly average says them (avgWeeksTxt).
   const out = (x: Block): string => {
     const o = [
       x.missed ? `${x.missed} week${x.missed === 1 ? '' : 's'} missed` : '',
@@ -1305,11 +1303,11 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
 
 /* Strength return on volume, a row a muscle. Rising at or above its target
    needs nothing done, so those muscles share one line and each row left is
-   one to act on (r41, V: clutter; it was 16 rows of "+8%" with nothing to
+   one to act on (V: clutter; it was 16 rows of "+8%" with nothing to
    do). A muscle with no sets lately has an old trend, not a return on volume
    (r34.2: "Quads +7.6% · 0 sets a week" after a break). */
 /* The muscles rising at the volume they get, which need nothing done: one
-   line with their count, and their names in its tip (r69, V, 2026-11-03:
+   line with their count, and their names in its tip (V, 2026-11-03:
    four names, "and 18 more", and the advice ran two lines). */
 /** The line for the muscles rising at their volume, and its tip naming every one. */
 export function risingWords(names: readonly string[]): { line: string; tip: string } {
@@ -1337,7 +1335,7 @@ function rankBody(src: Readonly<Record<string, number>>): Part {
       /* Advice only where the trend is clear. "Flat: try 2 more sets"
          was given to every muscle whose lifts were inside the noise, a causal
          call from no signal; a stalled lift is the one flat case stated.
-         Rising at its volume needs nothing done, so it says nothing (r34, V:
+         Rising at its volume needs nothing done, so it says nothing (V:
          "Rising: hold this volume" on every row read as filler). */
       const read = !s.clear
         ? s.stall

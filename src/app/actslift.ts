@@ -1,4 +1,4 @@
-/* A lift's sheets inside a session and the log's smaller entries (r63, from
+/* A lift's sheets inside a session and the log's smaller entries (from
    the legacy script's 27-actions.js): loads filled in or grey, a calibration
    set, the heaviest available, a goal, the load step, a note, typed sets,
    cardio, a rest week, and an injury. Each change to the log goes through
@@ -322,7 +322,7 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const b = state.draft && state.draft.ex[Number(t.dataset.b)];
     if (b) openModal({ kind: 'exhist', exId: b.exId });
   },
-  // The editor's muscle pickers already name the muscles; the figure is there on request (r40, V: not both at once).
+  // The editor's muscle pickers already name the muscles; the figure is there on request (V: not both at once).
   exBodyTog() {
     ui.exBody = !ui.exBody;
     renderModal();

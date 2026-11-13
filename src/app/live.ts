@@ -1,4 +1,4 @@
-/* The model the app runs on (phase 3b, r52; ARCHITECTURE.md). The engine and
+/* The model the app runs on (phase 3b; ARCHITECTURE.md). The engine and
    the analytics are pure functions of a model (model.ts); the app has one,
    LIVE, whose log is the store's, read at every use, so a log replaced by
    setState is the one read next; whose date is util's today, read at every

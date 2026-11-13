@@ -1,4 +1,4 @@
-/* An exercise of the session dragged by its handle (r60, from workout.ts):
+/* An exercise of the session dragged by its handle (from workout.ts):
    the page scrolled near the edges, a folded exercise opened under the
    finger, and the order kept through act (moveBlock). */
 
@@ -31,7 +31,7 @@ const edgeScroll = ((): { start(): void; stop(): void } => {
   };
   const zone = (): [number, number] => {
     /* Under what covers the top of the screen: the status bar (the root's padding is its height) or what is left on
-       screen of the top bar, which since 2.52 scrolls away with the page (NEW-138). Read from the bar alone, the band
+       screen of the top bar, which since 2.52 scrolls away with the page. Read from the bar alone, the band
        went off the top of the screen once it had scrolled away. */
     const h = document.querySelector('header.top');
     const safe = parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0;

@@ -1,4 +1,4 @@
-/* A lift's bests (CL-1, split from analytics.ts): its bests up to a date (a past session's, read as it was then),
+/* A lift's bests (split from analytics.ts): its bests up to a date (a past session's, read as it was then),
    the frame a set is judged a PR in, and its all-time bests. Each takes the model first (model.ts) and reads the
    analytics index. */
 import type { ExPoint, ExStat, Exposure, ExerciseLike, Model } from './model';
@@ -49,8 +49,8 @@ type PrFrame = {
   own: number;
 };
 
-/* What the live PR check and the PR toast judge a set being logged against
-   (r54): the lift's sessions up to its day (a past workout entered after
+/* What the live PR check and the PR toast judge a set being logged against:
+   the lift's sessions up to its day (a past workout entered after
    later ones reads only those up to it) with their bests (statsUpTo for a
    past day), and the set's load as the PR list judges it once saved
    (prSameLoad against every load of those sessions), so the toast and the
@@ -61,7 +61,7 @@ export function prFrameIn(M: Model, exId: string, s: LoadedSet, date: string): P
   const every = I.byEx[exId];
   if (!every || !every.length) return null;
   /* A set in a saved workout open for editing (History's Edit) is judged against the sessions before it, as the PR
-     list judges it once saved, never against its own saved copy (2.30, R75-6: its 100 x 8 lost the Weight PR the list
+     list judges it once saved, never against its own saved copy (R75-6: its 100 x 8 lost the Weight PR the list
      counts). Only this judgement leaves the copy out; the lift's history, bests and trend still show the workout as
      saved until the edit is (the review of 2.30: leaving it out of every reader made the history sheet's best set
      disagree with the PR list during an edit). */
@@ -84,7 +84,7 @@ export function prFrameIn(M: Model, exId: string, s: LoadedSet, date: string): P
   return { ex, exps, st, heaviest, w, load: own + (w - typed), own };
 }
 
-/** One record on the bests board: the set, the day it was first reached and the session it was in (the recap's, REV10-2). */
+/** One record on the bests board: the set, the day it was first reached and the session it was in (the recap's). */
 type BestAt = { p: ExPoint; date: string; sid: string };
 
 /* All-time bests (item 27; moved from the legacy script in r55 to judge loads
@@ -118,7 +118,7 @@ export function allTimeBestsIn(
   return { ex, ...recordsOfIn(M, ex, exps) };
 }
 
-/* The best since you came back (NEW-110, V 2026-11-10: an old best is never denied, never made a goal, and the
+/* The best since you came back (V 2026-11-10: an old best is never denied, never made a goal, and the
    lifter sees when they hit new numbers): a lift's records over its sessions since its last long break, read as the
    board reads them (since a new machine or gym too), with the day it came back. None when it has had no long break,
    so a lift trained on through deloads and short breaks shows its bests as before. */
@@ -156,7 +156,7 @@ function recordsOfIn(
         j = p.pl + d;
       const v = noE1(ex) || noBodyIn(M, ex) ? null : e1(p.load + d, p.r, p.rq);
       if (v != null && (!est || v > est.v + EPS_SAME)) est = { v, p, date: x.date, sid: x.sid };
-      // Heaviest and rep records at the PR load (prLoad, r32.1): on a bodyweight lift, by added load and reps, dated when first done.
+      // Heaviest and rep records at the PR load (prLoad): on a bodyweight lift, by added load and reps, dated when first done.
       if (!heavy || j > heavy.j + EPS_SAME || (Math.abs(j - heavy.j) < EPS_SAME && p.r > heavy.p.r))
         heavy = { p, j, date: x.date, sid: x.sid };
       if (!front.some(q => q.j >= j - EPS_SAME && q.p.r >= p.r)) fresh.push({ p, j });

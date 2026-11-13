@@ -1,6 +1,6 @@
 /* The page's sheet layer: every sheet is drawn here, by lit-html.
 
-   A sheet redrawn while someone types in it (r54, PENDING 311 f and 309; V
+   A sheet redrawn while someone types in it (PENDING 311 f and 309; V
    on the r52 preview: after Wrong email or password the email field could
    not be tapped to change it) was rebuilt from its markup, the field they
    were in replaced by a new one under the keyboard. Every sheet is a

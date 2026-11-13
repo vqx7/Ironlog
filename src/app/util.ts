@@ -1,5 +1,5 @@
 /* General helpers with no knowledge of training: text, ids, dates, numbers
-   and a string hash (phase 2, r50; moved unchanged from the legacy script). */
+   and a string hash (phase 2; moved unchanged from the legacy script). */
 
 /* ---------- the numbers everything else is measured in ---------- */
 
@@ -33,7 +33,7 @@ const ID_RADIX = 36;
 
 /* ---------- text ---------- */
 
-/** A list in a sentence (V, r29): "a and b", "a, b, and c", with the
+/** A list in a sentence (V): "a and b", "a, b, and c", with the
     serial comma; max shows that many and then "and N more". */
 export function andList(a?: readonly (string | number | null | undefined)[] | null, max?: number): string {
   a = (a || []).filter(x => x != null && x !== '');
@@ -216,7 +216,7 @@ export function hashStr(str: string): string {
   return (h2 >>> 0).toString(ID_RADIX) + (h1 >>> 0).toString(ID_RADIX);
 }
 
-/* ---------- seeded random numbers (phase 3a, r51; moved unchanged) ---------- */
+/* ---------- seeded random numbers (phase 3a; moved unchanged) ---------- */
 
 /** Mulberry32's constants (Tommy Ettinger, public domain): its step, its
     three shifts, the odd number of its second multiply, and 2^32, which

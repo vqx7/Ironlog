@@ -1,4 +1,4 @@
-/* Reading a set (CL-1, split from analytics.ts): its effort as RIR (typed, a RIR check, or the lift's usual), the
+/* Reading a set (split from analytics.ts): its effort as RIR (typed, a RIR check, or the lift's usual), the
    RIR checks' calibration, whether it was hard, the bodyweight it is read with, and its load, PR load and weight
    lifted. Each function that reads the log, the date or a cache takes the model first (model.ts). */
 import type { Bodyweight, OpenSet, OpenWorkout, Rir } from './types';
@@ -44,18 +44,18 @@ export const CAL_WEEKS = 12,
   CAL_CAP = 2,
   CAL_MIN = 2;
 
-/** A lift's usual RIR is read once it has RIR_USUAL_MIN rated working sets in the CAL_WEEKS weeks before the day read (r20, a convention). */
+/** A lift's usual RIR is read once it has RIR_USUAL_MIN rated working sets in the CAL_WEEKS weeks before the day read (a convention). */
 export const RIR_USUAL_MIN = 3;
 
 /** The days a reading of effort looks back over: the CAL_WEEKS weeks before the day read. */
 const LOOKBACK_DAYS = WEEK_DAYS * CAL_WEEKS;
 
-/* ---------- the day a set is read as of (RC-3) ----------
+/* ---------- the day a set is read as of ----------
    A set's effort is read from the 12 weeks before its workout's day: a blank by the lift's usual effort then, and with
    Corrected RIR on a rated one by the RIR checks then. Read as of today, a past workout moved as later ones were
    logged (387-C6: a blank read at today's usual; NEW-71: October's checks correcting September's ratings). Read from
    before its day, nothing logged that day or after moves it, so a set reads the same as it is ticked, in the recap and
-   on every list once saved (R75-1, R75-5: a row announced a PR its saved session then did not count). A workout not
+   on every list once saved (R75-5: a row announced a PR its saved session then did not count). A workout not
    yet saved is read in the log as it will be once saved: its saved copy and the session it is an edit of left out
    (R75-3: an edit moved to a later day read its own saved ratings), its ticked rows in on its day. */
 
@@ -290,7 +290,7 @@ function firstOf(M: Model, ex: ExerciseLike, v: View): { date: string; v: number
    once there are at least 3. That is a convention, not a study figure. Before
    a lift's first usual RIR forms, its blanks read that first one, which never
    moves once formed, so a lifter who starts rating sees no step in the lift's
-   history (RC-3). After it, in weeks with fewer than 3, a blank counts as
+   history. After it, in weeks with fewer than 3, a blank counts as
    hard and as 0 for estimates, which errs low and never inflates a PR.
    Recovery and the "that load was light" step read only the RIR you entered,
    since both act on what you said about effort. RIR off: no ratings are read
@@ -339,7 +339,7 @@ export const isHardIn = (M: Model, s: CountedSet, ex: ExerciseLike | null | unde
   return q == null || q <= HARD_RIR;
 };
 
-/* Count RIR 4 to 5 as half a set (r40, item 41; a setting, off by default).
+/* Count RIR 4 to 5 as half a set (item 41; a setting, off by default).
    Any working set past RIR 3 counts half: calls top out at 5, but Corrected
    RIR can read a call of 4 as 5.5 or 6, and that set is no less hard than a
    call of 5 (the independent review of r40).
@@ -385,7 +385,7 @@ export const bwRefLoadIn = (M: Model, ex: ExerciseLike | null | undefined): numb
   ex && ex.bw ? bwRefIn(M) * bwShare(ex) : 0;
 
 /** Whether a lift reads bodyweight while none is logged: its estimates would be of the added load alone, so it has
-    none until a weigh-in (NEW-72, 2.29: +20 kg pull-ups read "Best estimate ≈ 28.9 kg ... total"), as its trend
+    none until a weigh-in (2.29: +20 kg pull-ups read "Best estimate ≈ 28.9 kg ... total"), as its trend
     already waits (394; the Guide's Trends). Its reps, weight PRs and targets read as before. */
 export const noBodyIn = (M: Model, ex: ExerciseLike | null | undefined): boolean =>
   !!ex && !!ex.bw && !(bwRefIn(M) > 0);

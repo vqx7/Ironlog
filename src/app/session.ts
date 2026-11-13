@@ -1,7 +1,7 @@
 /* A session in progress: the grey and effective load of a row, the live
    target, the Last column, a lift done twice, the rest after an exercise, a
    blank session, the fingerprint an edit is compared by, and hints said once
-   (phase 3a, r51; moved unchanged from the legacy script). What reads the log or the settings to fill a
+   (phase 3a; moved unchanged from the legacy script). What reads the log or the settings to fill a
    session (suggestions, adjustments) moves with the engine in 3b. */
 
 import type { DraftBlock, DraftSet, Session, SessionEx, Target } from './types';
@@ -15,14 +15,14 @@ import { cleanChk, picIds, LIMITS } from './records';
 /* The load a row shows in grey while its load field is empty, and the
    load settleLoad writes in when the set is ticked or saved at Finish: the
    load of the nearest working set above that has one, else the block's
-   suggestion; none on a warm-up or a drop set. A missed set's load (r55, a
+   suggestion; none on a warm-up or a drop set. A missed set's load (a
    lift tried and not made) is passed over, so the row under it shows the
    last load done. A row that exists means the block does, which the ! on
    each b below says to TypeScript. */
 export function greyW(b: DraftBlock | null | undefined, si: number): number | null {
   const s = b && b.sets[si];
   if (!s || s.warm || s.drop) return null;
-  // After a set the app adjusted from (b.adj, r34), the rows under it carry the adjusted load.
+  // After a set the app adjusted from (b.adj), the rows under it carry the adjusted load.
   for (let i = si - 1; i >= 0; i--) {
     const x = b!.sets[i];
     if (!x.warm && !x.drop && x.w != null && !isMissed(x)) return b!.adj && b!.adj.at === i ? b!.adj.w : x.w;
@@ -66,7 +66,7 @@ interface TargetReason {
     which the screen shows on its own line already, so that prefix comes off
     rather than being said twice. Nothing is recomputed here: a second account
     of the rules would be a second thing to keep right. The note says what
-    does not set a target, by V's one rule for every session (r54, PENDING
+    does not set a target, by V's one rule for every session (PENDING
     312 E): a session of the lift with fewer sets or reps than its usual, or
     done lighter, whatever the day (r53 named trimmed sessions, and fewer
     reps or sets on lighter days only; until r53 lighter and deload sessions
@@ -103,7 +103,7 @@ export function targetText(b: DraftBlock): string | undefined {
 
 /* "Over your first 3 sets" only when the plan has more sets than that, so
    the extra ones are clearly not counted; "over 4 sets" when 4 is all there
-   are (r34.2, from the review). With no plan or no count, Number reads 0 or
+   are (from the review). With no plan or no count, Number reads 0 or
    NaN, neither more than n. */
 export function overSets(n: number, plan: { sets?: number | undefined } | null | undefined, kind?: string): string {
   const w = kind === 'hold' ? 'hold' : 'set';
@@ -134,7 +134,7 @@ export function sessProgress(d: { ex: DraftBlock[] }): { n: number; k: number; p
 
 /* ---------- the Last column ---------- */
 
-/* The Last column (r44, V: "what I did last time next to what I'm about to
+/* The Last column (V: "what I did last time next to what I'm about to
    do"). b.prev is the sets at the working load of the session the Last line
    names, the same sets the grey reps repeat; row n of the working sets sits
    beside set n of them. The line above the sets then names only the session
@@ -179,7 +179,7 @@ type Joinable = {
   pics?: string[] | undefined;
 };
 
-/* The same exercise twice in one session (r34.2, V): sets done on one lift
+/* The same exercise twice in one session (V): sets done on one lift
    are one exposure of it, whatever order they were logged in. Blocks side by
    side are joined into one (live when a swap or an add lands next to the
    same exercise, and at Finish); apart (2nd and 4th), they stay where they
@@ -312,7 +312,7 @@ interface DraftCardio {
 }
 
 /* Another device's workout in progress, kept as a session when a first link
-   keeps this device's own (r55, from the review: the merge kept one of the
+   keeps this device's own (from the review: the merge kept one of the
    two and the other's ticked sets were lost on every device). Only what was
    ticked, as Finish would save it, with its check-in and the time it started
    (the second review of r55: both were dropped), untimed unless it is a past
@@ -417,7 +417,7 @@ export function sameExOnce<X extends Joinable>(ex: readonly X[]): X[] {
   return out;
 }
 
-/* ---------- a new machine or gym (r61, PENDING 343 7) ---------- */
+/* ---------- a new machine or gym (PENDING 343 7) ---------- */
 
 /* "New machine or gym" in an exercise's menu marks the lift in the session
    in progress: every block of it then carries nw, and the rules read the
@@ -477,13 +477,13 @@ export function begunIn(d: DraftLike): boolean {
   return d.ex.some(b => b.sets.some(s => s.done || s.r != null)) || (d.cardio || []).some(c => !!c.min && c.min > 0);
 }
 
-/* A workout's clock starts when the lifting does, not when it is opened (V, 2026-11-11, NEW-129): at the change that
+/* A workout's clock starts when the lifting does, not when it is opened (V, 2026-11-11): at the change that
    begins it (begunIn), so a workout set up ahead (blank, freestyle or a routine day) and left with Save and leave
    times exactly like one opened at the gym, and reads "Not started" until then. Reps entered count as well as a
    tick, since Finish marks typed rows done for a lifter who does not tick (the review of 2.52, REV13-2: such a
-   session was saved untimed). Everything taken back, it is not started again (REV13-4). When it was opened stays in
+   session was saved untimed). Everything taken back, it is not started again. When it was opened stays in
    startedAt, as every build before keeps it: which day the workout is for, and its start where one began on a build
-   that keeps no begunAt (REV13-7). A past workout and an edit of a saved one have no clock. */
+   that keeps no begunAt. A past workout and an edit of a saved one have no clock. */
 /** Starts or stops the clock of the workout in progress after a change; wasBegun: whether that same workout had begun before it (act). */
 export function clockStart(d: DraftLike | null | undefined, wasBegun: boolean): void {
   if (!d || d.past || d.editingId) return;
@@ -561,7 +561,7 @@ export const RIR_OPTS: readonly string[] = Array.from({ length: RIR_CALL_TOP + 1
 /** The effort strip's choices in half reps (Settings, Effort): every half from 0 to RIR_CALL_TOP. */
 export const RIR_HALF_OPTS: readonly string[] = Array.from({ length: 2 * RIR_CALL_TOP + 1 }, (_, i) => String(i / 2));
 
-/* A line said on every exercise is said once (r34.2, from the review: the
+/* A line said on every exercise is said once (from the review: the
    first-time paragraph on all 8 exercises, "Half the usual sets, nothing to
    beat." on each of a lighter day's). Later exercises keep what is theirs:
    the load and the reps. */
@@ -585,7 +585,7 @@ export function hintOnce(
   seen: Set<string>
 ): string {
   if (!t) return '';
-  /* The engine gives its short line with the paragraph (NEW-109), so nothing here reads the engine's words. Each kind
+  /* The engine gives its short line with the paragraph, so nothing here reads the engine's words. Each kind
      says its own paragraph once: a loaded lift's does not stand for a bodyweight lift's, whose advice differs. */
   if (again) {
     const key = 'first:' + kind;

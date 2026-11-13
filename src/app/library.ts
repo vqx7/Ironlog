@@ -60,7 +60,7 @@ export const NEW_MUSCLES_V5: readonly MuscleKey[] = ['serratus', 'rotatorCuff'];
    convention, said so in the Guide. */
 export const TRACK_ONLY: ReadonlySet<string> = new Set(['serratus', 'rotatorCuff', 'neck', 'tibialis']);
 
-/* The muscles with a weekly target by default (339 e, V 2026-10-24, r58):
+/* The muscles with a weekly target by default (339 e, V 2026-10-24):
    those lifters train directly for size, which the dose-response research
    measures (Pelland 2025; docs/EVIDENCE.md). Every other muscle, the four
    above and traps, forearms, front delts, lower back, obliques, adductors
@@ -134,7 +134,7 @@ export const REGIONS: readonly (readonly [string, readonly MuscleKey[]])[] = [
 
 /* ---------- joints ---------- */
 
-/* Joints (r30, from the review: only muscles could be flagged, so a sore
+/* Joints (from the review: only muscles could be flagged, so a sore
    knee or elbow had no flag). A joint flag marks the exercises that load it,
    by movement pattern and main muscle, the same way a muscle flag does:
    targets pause, loads cap at last time, 3 or more reps in reserve. Which
@@ -474,7 +474,7 @@ export const LIB: readonly LibRow[] = [
 ['farmerHold','Farmer Carry or Hold','forearms','traps upperBack','dumbbell','rt','Timed: log seconds and the load in each hand.'],
 ];
 
-/* Most common (r33, V: 53 marked Common was too many to help). The lifts
+/* Most common (V: 53 marked Common was too many to help). The lifts
    in the top 25 of logged sets, overall or for men or women, in StrengthLog's
    data from over 700,000 users (2025): measured, not picked. Shown as a Most
    common tag, first in the exercise picker, and a filter in the library.
@@ -609,7 +609,7 @@ const NON_COMPOUND_PRIMARY: ReadonlySet<string> = new Set([
 type Kinded = Pick<Exercise, 'name' | 'primary' | 'timed' | 'kind'>;
 
 /* A custom exercise's name may not say what it is ("Hammer Strength Chest"),
-   so the editor can set it (ex.kind, r27): compound or isolation; absent
+   so the editor can set it (ex.kind): compound or isolation; absent
    reads it from the name as before. */
 export function autoCompound(ex: Kinded | null | undefined): boolean {
   // A null pattern is in no list.
@@ -636,7 +636,7 @@ export function isCompound(ex: Kinded | null | undefined): boolean {
 const NO_E1: ReadonlySet<string> = new Set(['nordic', 'ghr', 'revNordic', 'sissy']);
 
 /* Bodyweight core and neck work is done for reps, with a share of bodyweight no rep formula reads well, so it gets no
-   estimate. Read from the exercise's own fields since 2.29 (387-B8, NEW-62; V, 2026-11-05: a lifter's own exercise
+   estimate. Read from the exercise's own fields since 2.29 (V, 2026-11-05: a lifter's own exercise
    counts as the library's does), so one made in the editor reads the same as its library twin. Until 2.28 these
    were named by id here, and a lifter's own knee raise got a best estimate the library's never did. */
 const NO_E1_MUSCLES: ReadonlySet<string> = new Set(['abs', 'obliques', 'neck']);
@@ -705,7 +705,7 @@ export const KIN_UNI = /lunge|split squat|step-up|single[- ]|one[- ]arm|1-arm|pi
 
 /** The spacings loads come in, per unit, largest first: plates in pairs
     (2.5 kg and 5 lb, and with the small plates 1 kg and 2.5 lb) and dumbbell
-    racks (r32: 2.5, 2, 1 or 0.5 kg; 5 or 2.5 lb, never 1, r54, V's call: 12
+    racks (r32: 2.5, 2, 1 or 0.5 kg; 5 or 2.5 lb, never 1, V's call: 12
     lb went up to 13). */
 export const LOAD_STEPS: { readonly kg: readonly number[]; readonly lb: readonly number[] } = {
   kg: [2.5, 2, 1, 0.5],
@@ -715,7 +715,7 @@ export const LOAD_STEPS: { readonly kg: readonly number[]; readonly lb: readonly
 /** The spacings dumbbell and kettlebell racks come in, per unit, largest
     first, dumbbells' those of any load. The engine's rackStep picks the
     largest one every load logged on a lift fits, trying a dumbbell's default
-    step by equipment first (2 kg, r68, 367), and a lb dumbbell no spacing fits
+    step by equipment first (2 kg, 367), and a lb dumbbell no spacing fits
     is read on the 5 lb rack (the engine's rackGrid). */
 export const RACK: Readonly<
   Record<'dumbbell' | 'kettlebell', { readonly kg: readonly number[]; readonly lb: readonly number[] }>
@@ -751,8 +751,7 @@ export const LONG_IDS: ReadonlySet<string> = new Set([
   'sissy'
 ]);
 
-/* Exercises most people cannot do for sets of 8 to 15 when they start (r30,
-   from the review: a seated leg curl became Nordic curls for 3 x 10-15, and
+/* Exercises most people cannot do for sets of 8 to 15 when they start (from the review: a seated leg curl became Nordic curls for 3 x 10-15, and
    a lat pulldown became pull-ups). A judgment, not a measurement. */
 export const HARD_EX: ReadonlySet<string> = new Set([
   'nordic',
@@ -775,7 +774,7 @@ const PROF_EQUIP: ReadonlySet<string> = new Set(['barbell', 'smith', 'machine'])
 // Hip and back accessories on a bar or a machine, not lifts trained heavy for strength (a judgment, the r44 review).
 const PROF_NOT_HEAVY: ReadonlySet<string> = new Set(['reverseHyper', 'goodMorning', 'gluteBridge']);
 
-/** A heavy compound for Your training (profRule, r44): a compound with a 1RM
+/** A heavy compound for Your training (profRule): a compound with a 1RM
     estimate, not timed or bodyweight, on a barbell, a Smith machine, or a
     machine, and not in PROF_NOT_HEAVY. */
 export function profHeavy(
@@ -786,7 +785,7 @@ export function profHeavy(
   );
 }
 
-/* ---------- finding exercises (phase 3a, r51; moved unchanged) ---------- */
+/* ---------- finding exercises (phase 3a; moved unchanged) ---------- */
 
 /** The tip beside the library's Most common and Less common filter: where
     the list comes from, and what less common means. */
@@ -801,7 +800,7 @@ export const commonFirst = <E extends Pick<Exercise, 'id' | 'custom' | 'rare'>>(
 
 /* Search by words, ignoring hyphens, spaces and case: "t bar row" and
    "tbar" did not find Landmine T-Bar Row, so it looked missing. Since r66
-   (PENDING 377, V: "How was rear delt peck deck flyes missing from
+   (V: "How was rear delt peck deck flyes missing from
    library??"), a word typed may also match the lift's main muscle ("rear
    delt", "bicep", "hamstring curl"), a plural matches its singular ("flyes",
    "flies", "presses", "raises"), and a few names lifters use for a word the

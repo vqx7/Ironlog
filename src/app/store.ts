@@ -134,7 +134,7 @@ interface Ui {
   calYm?: string | undefined;
   /** This week on Today as the week or the month (remembered on this device). */
   wkView?: 'week' | 'month' | undefined;
-  /** The Monday of the week This week shows when stepped away from this one; absent for this week (NEW-107). */
+  /** The Monday of the week This week shows when stepped away from this one; absent for this week. */
   wkWs?: string | undefined;
   /** The weeks Volume by region averages, picked this visit. */
   regionWk?: number | undefined;
@@ -195,7 +195,7 @@ interface CloudSnap {
   exists: boolean;
   data(): unknown;
 }
-/** What a write expects a document to hold, read just before it (2.28, the 2.27 review's 2.27-F1): nothing (the
+/** What a write expects a document to hold, read just before it (the 2.27 review's 2.27-F1): nothing (the
     document is new), its write mark (`w`, which every write since 2.28 carries), or, for a document a build before
     2.28 wrote, which carries no mark, its write time (`at`, null when it has none). */
 export type CloudSeen = null | { w: string } | { at: number | null };
@@ -322,7 +322,7 @@ export const cloud: Cloud = {
    and read the first page's state through this one object, filled once at
    start with the page's own functions, since a module of layer 3 may not
    import a screen. The screens themselves (layer 4) import the page's
-   functions from page.ts, toast.ts and timer.ts (r63; until r63 every effect
+   functions from page.ts, toast.ts and timer.ts (until r63 every effect
    came through here, filled by the legacy script). */
 /** The page's effects the storage and sync code calls. */
 interface Fx {

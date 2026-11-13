@@ -7,9 +7,9 @@
      - Today's bodyweight card from the first day a bodyweight lift is in the
        routine in use (today.ts, bwDueCard), with Later;
      - a line under the first bodyweight lift of the day open on Plan, as
-       in a session, until a weigh-in exists (2.48): never in a message,
+       in a session, until a weigh-in exists: never in a message,
        which until then said it over what was added, the note of r66
-       turned into a sentence in 2.47 (NEW-116, the message rule in toast.ts);
+       turned into a sentence in 2.47 (the message rule in toast.ts);
      - a quiet line on the first bodyweight lift still open in a session
        (on each one until r69, when V found it a wall of text), until one
        is logged, whose Add bodyweight opens a small sheet;

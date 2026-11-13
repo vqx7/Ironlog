@@ -1,6 +1,6 @@
 /* Your gym: the plates on hand, the dumbbell rack, the
    stack step, and how a saved gym is cleaned; and how plates load on an
-   exercise (phase 3a, r51; moved unchanged from the legacy script). The steps the engine reads from
+   exercise (phase 3a; moved unchanged from the legacy script). The steps the engine reads from
    them move with the engine. */
 
 import type { DbRack, Exercise, Gym, Plan } from './types';
@@ -27,7 +27,7 @@ export const PLATE_MODES: readonly (readonly [string, string])[] = [
    the two sides. */
 /* Greedy, heaviest plate first, is how lifters load a bar and gives the line every lifter knows (45, 10, 5 for 60
    a side), so it stays whenever it loads the side. It misses only with plates that are not all whole multiples of the
-   smallest (NEW-76, 2.34: 2.5 and 1 kg make 3 kg a side as 1, 1, 1, where greedy takes 2.5 and leaves 0.5), and
+   smallest (2.34: 2.5 and 1 kg make 3 kg a side as 1, 1, 1, where greedy takes 2.5 and leaves 0.5), and
    then the side takes the closest load the plates do make, by the same order: as many of each plate, heaviest first,
    as still leave a load the lighter plates can finish. */
 /** The plates one side takes, heaviest first from list (sorted heaviest first), and the weight left over. */
@@ -214,7 +214,7 @@ export function platesMode(ex: Pick<Exercise, 'id' | 'bw' | 'equip' | 'plates'>)
   return 'none';
 }
 
-/* ---------- the steps the engine reads from Your gym (phase 3b, r52; moved from the legacy script) ---------- */
+/* ---------- the steps the engine reads from Your gym (phase 3b; moved from the legacy script) ---------- */
 
 /* The loads this lift can be done at, in kg, lightest first, or null: only
    dumbbell and kettlebell lifts, with no step of their own, logged as the
@@ -235,7 +235,7 @@ export function gymRackIn(
   return L && L.length ? L.map(v => gymK(g, v)) : null;
 }
 
-/** A load is the bell it is nearer than this share of the gap to its neighbours (r34.2, a convention). */
+/** A load is the bell it is nearer than this share of the gap to its neighbours (a convention). */
 const BELL_TOL = 0.45;
 
 /* A load typed as shown on screen is within half the last shown digit of
@@ -243,7 +243,7 @@ const BELL_TOL = 0.45;
    (review of r33). Rack comparisons use this, so a bell typed as shown is
    that bell, never "0.02 kg under the next one". */
 /* A load typed for a bell is that bell when it is nearer to it than to
-   its neighbours (r34.2, from the review: a 16 kg dumbbell typed as 35 lb,
+   its neighbours (from the review: a 16 kg dumbbell typed as 35 lb,
    15.88 kg, read as just under itself, and the "step up" was the same bell,
    "add 0.3 lb"). Within BELL_TOL of the gap around the bell; never less than half
    the last shown digit. Bounds a load must not pass (the target, the cap)
@@ -311,7 +311,7 @@ export function loadFloorIn(M: Model, ex: ExerciseLike): number {
     : 0;
 }
 
-/* Your gym's plates on a bar lift (r55.1, from the audit of r55: with no 2.5
+/* Your gym's plates on a bar lift (from the audit of r55: with no 2.5
    lb plates, bench logged at 230 lb was asked for 240, 230 or 200 and warmed
    up at 90 and 140, none of them loadable, beside a plate line saying 2.5 lb
    was not). A lift on the full bar typed as the total (loadFloorIn, so not a
@@ -378,8 +378,7 @@ export function capOfIn(
   let r = L ? L[L.length - 1] : null;
   if (r != null && top != null && top > r + rackTolIn(M, L, top)) r = null;
   const c = ex.maxLoad != null ? (r != null ? Math.min(ex.maxLoad, r) : ex.maxLoad) : r;
-  /* With Your gym's plates, the heaviest the lift can be given is the heaviest load the plates make not past it (2.31,
-     R77-2): with 102 kg set and plates that make 100 and 105, the engine aimed at 102, the plates brought it back to
+  /* With Your gym's plates, the heaviest the lift can be given is the heaviest load the plates make not past it: with 102 kg set and plates that make 100 and 105, the engine aimed at 102, the plates brought it back to
      100, and the step read "add 0 kg, which is the heaviest available". Read here, every rule and screen sees 100. */
   const G = c != null ? plateGridIn(M, ex, plan) : null;
   if (G && c != null && c > G.bar) return G.loads[Math.max(0, loadsFloorAt(G.loads, c + EPS_SAME))] ?? c;

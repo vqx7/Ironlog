@@ -1,4 +1,4 @@
-/* Record fingerprints and the three-way merge (phase 3a, r51; moved
+/* Record fingerprints and the three-way merge (phase 3a; moved
    unchanged from the legacy script). Each synced document remembers the per-record hashes of the
    version both sides last agreed on, its base; on a conflict every record is
    judged on its own: changed on one side only, that side wins; changed on
@@ -49,7 +49,7 @@ export const Hx = (x: unknown): string => hashStr(canon(x));
     to fingerprint), record by record as described at the top. With no base
     (as on a first sync) nothing reads as deleted. Local records keep their
     order, then remote ones local lacks; a record with no string id is left
-    out. The lists come straight from the documents (sync.ts, r56), so each
+    out. The lists come straight from the documents (sync.ts), so each
     is read as it is: a list field that is no list reads as empty. */
 export function merge3List(
   base: Record<string, string> | null | undefined,
@@ -119,7 +119,7 @@ export function merge3Val<V>(bh: string | undefined, a: V, b: V, remoteWins: boo
   return remoteWins ? b : a;
 }
 
-/* ---------- one workout open on two phones (r56.1, PENDING 328 a and c) ---------- */
+/* ---------- one workout open on two phones (PENDING 328 a and c) ---------- */
 
 /* Two phones' copies of one workout in progress, merged against the copy
    both last agreed with the account, exercise by exercise and set by set:
@@ -128,7 +128,7 @@ export function merge3Val<V>(bh: string | undefined, a: V, b: V, remoteWins: boo
    alone goes, unless the other side changed it, since keeping data is the
    recoverable mistake; a row added on one side is kept, after the row it
    follows on that side, so a warm-up added at the top stays at the top
-   (PENDING 333, F10). Rows are matched by their own ids (`rid`, given since
+   (F10). Rows are matched by their own ids (`rid`, given since
    r56.1). A row without one (a build before r56.1 made it) is matched by its
    place among the rows without one in a workout in progress, whose rows all
    stay in place, ticked or not, as long as rows are added at the end (an
@@ -164,7 +164,7 @@ function rowKeys<R extends Rowed>(sets: readonly R[]): [string, R][] {
    typed alike on the two phones stay two; with no agreed copy (a note from a
    build before r56.1), a row of the other side's, one to one, so the sets
    both phones had are one each and only what one side has besides is added
-   (PENDING 333, F5: matched to nothing, every set both had was saved twice). */
+   (F5: matched to nothing, every set both had was saved twice). */
 /** One side's rows by key, matched by content to the rows given (above). */
 function contentKeys<R extends Rowed>(to: readonly [string, R][], sets: readonly R[], side: string): [string, R][] {
   // A row this side still holds by its id is taken by it, so no row without an id can take its key as well.
@@ -227,7 +227,7 @@ function mergeRows<R extends Rowed>(
      side's own rows go after the row they follow on that side (weave). In a
      join the rows left unticked are gone, so where a row sat is not known:
      the session saved on the other phone (remote) keeps its order, a warm-up
-     it added at the top included (PENDING 333, the review of the fix), and
+     it added at the top included (the review of the fix), and
      what was done here since is added after it, as the lifter is told. */
   const order =
     match === 'place'
@@ -358,7 +358,7 @@ export function mergeWorkout(
     Lf = rec(local) || {},
     Rf = rec(remote) || {};
   mergeFields(O, Bf, Lf, Rf, ['ex', 'id', 'cardio', 'begunAt'], remoteWins, stat);
-  /* The workout began when either copy first began it (NEW-129): the earlier of the two. Each copy starts its clock
+  /* The workout began when either copy first began it: the earlier of the two. Each copy starts its clock
      at its own first set, so two starts are never a clash. */
   let first: number | null = null;
   for (const t of [local.begunAt, remote.begunAt])
@@ -391,7 +391,7 @@ export function mergeSession(
     stat
   );
   /* The start is the saved session's, the one its minutes were timed from at Finish: the copy joined to it began on
-     its own clock (NEW-129), which is no edit, and taken alone it left a start that did not match the minutes (the
+     its own clock, which is no edit, and taken alone it left a start that did not match the minutes (the
      review of 2.52, REV13-5: two starts said as an item edited on two devices). */
   const t = remote.t ?? local.t;
   if (t !== undefined) out.t = t;
@@ -401,7 +401,7 @@ export function mergeSession(
 
 /** A session in progress as Undo merges it: its id, its exercises and the fields merged whole. */
 type UndoDraft = { id: string; ex: { exId: string }[] } & Record<string, unknown>;
-/* A session in progress read for Undo (r63, as the typed Undo reads the
+/* A session in progress read for Undo (as the typed Undo reads the
    documents): an object with an id and a list of exercises, each an object
    with its exercise's id, else null. Each is read as a shallow copy; the
    merge picks among them by their contents, and what it returns is
@@ -433,7 +433,7 @@ export function mergeDraft(base0: unknown, cur0: unknown, pre0: unknown, saved: 
      everything else the step took does (the review of 2.36, REV6-2: Undo after Erase everything left it gone; the
      review of 2.36 to 2.41, REV8-3: after a backup with its own workout, the backup's stayed). Saved since, it is a
      session in the log (Finish gives the session its id) and stays one: reopened, a second Finish wrote it over an
-     edit made to it (the review of 2.38, REV7-4). One changed since the step stays as it is. */
+     edit made to it (the review of 2.38). One changed since the step stays as it is. */
   if (pre && (!base || base.id !== pre.id) && canon(cur0) === canon(base0) && !saved(pre.id)) return pre0;
   if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur0 === undefined ? null : cur0;
   type B = UndoDraft['ex'][number];

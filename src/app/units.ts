@@ -1,4 +1,4 @@
-/* Units and the plates a gym has (phase 2, r50; moved unchanged from the
+/* Units and the plates a gym has (phase 2; moved unchanged from the
    legacy script). Logged loads are
    kept in kilograms, tape measurements in centimetres and cardio distances in
    kilometres (Your gym's lists keep the unit the gym is labelled in); these
@@ -51,7 +51,7 @@ export const TYPED_STEP = 0.05;
 export const PLATES_LB = [45, 35, 25, 10, 5, 2.5],
   PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
 
-/* The change plates gyms and makers stock (NEW-87, V 2026-11-08: "1 KG and
+/* The change plates gyms and makers stock (V 2026-11-08: "1 KG and
    half KG plates ... should've been there for ease"): offered as buttons in
    Your gym, off until tapped, never counted unless the gym lists them, so no
    lifter's loads move. kg change plates are sold as 0.5, 1, 1.5, 2 and 2.5

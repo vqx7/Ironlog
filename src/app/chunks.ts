@@ -1,7 +1,7 @@
 /* How the log splits into sync documents: core (settings, exercises,
    routines and the rest), the session in progress, a session document per
    half month (s-YYYY-MM-1 or -2) and a body document per year (b-YYYY)
-   (phase 3a, r51; moved unchanged from the legacy script). Sending, pulling and merging them moves with
+   (phase 3a; moved unchanged from the legacy script). Sending, pulling and merging them moves with
    sync in phase 4. */
 
 import { arr, rec, sessCmp } from './records';
@@ -169,7 +169,7 @@ export const hasDemo = (s: {
 export const CORE_ARR: readonly string[] = ['routines', 'exercises', 'injuries', 'trash'];
 export const CORE_FIELDS: readonly string[] = ['version', 'activeRoutineId', 'deloadWeek'];
 
-/** The account's profile photo's document (2.34, photo.ts): written beside the log's, never one of them (isChunkId). */
+/** The account's profile photo's document (photo.ts): written beside the log's, never one of them (isChunkId). */
 export const PHOTO_DOC = 'photo';
 
 /** A document id the app writes: core, draft, a half-month session document or a year's body document. */

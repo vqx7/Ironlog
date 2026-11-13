@@ -4,8 +4,7 @@
    waiting. Nothing reloads by itself, because a reload in the middle of a
    set is jarring: the lifter picks the moment, and the session in progress
    is saved first, so it comes back as it was. "Later" hides the bar until
-   the next launch. The words say what the button does (V, 2026-10-25,
-   PENDING 335): "Update ready" and Update, where it said "New version ready"
+   the next launch. The words say what the button does (V, 2026-10-25): "Update ready" and Update, where it said "New version ready"
    and Reload. */
 
 import { html, nothing, render } from 'lit-html';

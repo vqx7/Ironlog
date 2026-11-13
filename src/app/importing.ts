@@ -1,6 +1,6 @@
 /* Importing workouts: the parsers that turn a file or
    pasted text into rows, dates, exercise names and sets, before anything is
-   matched to the library or saved (phase 3a, r51; moved unchanged from the
+   matched to the library or saved (phase 3a; moved unchanged from the
    legacy script). The preview and
    the save, which read the log, stay with the import screen. */
 
@@ -553,7 +553,7 @@ export function impGuess(name: unknown): { primary: string; equip: string; assis
   return { primary, equip };
 }
 
-/* The minutes a workout took, as Strong and Hevy write it (r55.1, V
+/* The minutes a workout took, as Strong and Hevy write it (V
    2026-10-19: imports dropped them): Strong's duration as "1h 5m", "50m" or
    "1h"; Hevy's start and end times, each a date and an "hh:mm" ("14 Sep 2026,
    17:29"), across midnight too. A bare number says no unit, so it is left
@@ -678,7 +678,7 @@ function impCardioKind(name: unknown): string | null {
 
 /* A spreadsheet reads a cell that starts with =, +, - or @ (or a tab or a
    carriage return) as a formula, so a note typed "=HYPERLINK(...)" would run
-   as one in the file Export CSV writes (r66, NEW-35, OWASP's CSV injection
+   as one in the file Export CSV writes (OWASP's CSV injection
    advice). Such a cell is written with a ' in front, which spreadsheets show
    as plain text; a number, a negative load among them, is left as it is.
    Reading Ironlog's own export back takes the ' off again, so a note goes
@@ -771,7 +771,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
   };
   if (!unit && map.unit != null) for (let i = 1; i < rows.length && !unit; i++) unit = rowUnit(rows[i]);
   const S = new Map<string, ImpSession>();
-  /* The app's own file (r55, the audit: read back, it lost cardio, session
+  /* The app's own file (the audit: read back, it lost cardio, session
      notes and the minutes a session took, and a missed set): its columns
      past the ones every table has, by their names. */
   const heads = head.map(h =>
@@ -781,7 +781,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
   );
   const ours = heads.some(h => /^load_(lb|kg)$/.test(h)) && heads.includes('exercise_note');
   /* Strong's file, by its own columns: its Duration is the workout's ("1h
-     5m"), where a hand-made sheet's Duration may be a set's (r55.1, the spec
+     5m"), where a hand-made sheet's Duration may be a set's (the spec
      review), so only Strong's is read as the session's minutes. */
   const strong = heads.includes('workout name') && heads.includes('set order');
   const col = (n: string): number | null => (ours && heads.includes(n) ? heads.indexOf(n) : null);
@@ -874,7 +874,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     }
     /* An exercise's note may sit on any of its rows (a set's note in another
        app's file, its warm-up row first and blank): every distinct one is
-       kept, each once, up to a note's room (R81-3, the review of 2.35: only
+       kept, each once, up to a note's room (the review of 2.35: only
        the first row's was read, so a note after a blank row was lost). */
     const en = String(cell('note') || '').trim();
     if (en && !it.note.split('; ').includes(en)) it.note = (it.note ? it.note + '; ' + en : en).slice(0, LIMITS.note);
@@ -911,13 +911,13 @@ function impSetsText(t: unknown): string {
   s = s.replace(/(\d),(\d{1,2})(?=\s*(?:lbs?|kgs?)?\s*[x×*])/g, '$1.$2');
   s = s.replace(/(\d)\s*(lbs?|kgs?|#)(?=[\s,x×*@;/]|$)/g, '$1 ');
   s = s.replace(/(\d)\s*(?:s|sec|secs|seconds)\b/g, '$1');
-  /* Notation lifters write (r32, from the third review): RPE ("180x5
+  /* Notation lifters write (from the third review): RPE ("180x5
      @RPE8", "rpe 8.5", "@8 rpe") becomes RIR, 10 minus RPE, for the line's
      sets; "+10" before sets is load added to bodyweight ("Chins +10 3x8");
      "BW" before sets is bodyweight ("Pull-ups BW 3x10"). */
   /* A bare "@8" after sets on a line that already has a load ("Bench 100
      3x8 @9", "140x5x5 @8") is RPE as lifters write it, not a load of 9
-     (r32, second check: that line saved nine sets at 100 and two at 9). Only
+     (second check: that line saved nine sets at 100 and two at 9). Only
      6 to 10; "@2" stays RIR. */
   if (/(^|\s)\d{2,}(\.\d+)?\s*(x|×|\*|\s\d)/.test(s))
     s = s.replace(/@\s*((?:6|7|8|9)(?:\.5)?|10)(?![\d.x×*])/g, (_m: string, v: string) => ` rpe ${v} `);
@@ -953,7 +953,7 @@ function impSetsText(t: unknown): string {
       +a <= TEXT_SETS && +c > +a ? Array<string>(+a).fill(`${c}x${b}`).join(' ') : m
   );
   /* sets x reps then a load at the end: "OHP 3x8 40" is 3 sets of 8 at 40
-     (r30, from the review: it read as 3 x 8 and 3 x 40). Only up to TEXT_SETS sets,
+     (from the review: it read as 3 x 8 and 3 x 40). Only up to TEXT_SETS sets,
      and only a last number larger than the set count, so "185x8 8" (a load
      for 8, then 8 more reps) still reads as before. */
   s = s.replace(
@@ -993,7 +993,7 @@ function impSetsText(t: unknown): string {
 export const GENERIC_WORKOUT =
   /^\s*((early|late)\s+)?(morning|afternoon|evening|night|midday|lunch|weekend)?\s*(workout|session|training|lifting|lift|gym)?\s*$|^imported$/i;
 
-/* ---------- typed sets and notes (r63, from the legacy script) ---------- */
+/* ---------- typed sets and notes (from the legacy script) ---------- */
 
 /** What one line of typed sets may hold: the most reps in a set and the most sets. */
 const TYPED = { reps: 100, sets: 20 } as const;
@@ -1011,7 +1011,7 @@ export interface TypedSet {
    "225 for 5 5 4 at 1"   "for" and "at" work like x and @ (RIR 1 on the last set)
    "bw x 10, bw+25 x 6"   bodyweight exercises, added load after the plus
    A bare number after the first set repeats the last load. Anything it
-   cannot read returns null. rpe: effort is entered as RPE (Settings, r33),
+   cannot read returns null. rpe: effort is entered as RPE (Settings),
    so @8 is RPE 8, read as RIR 2; "rpe 8" at the end is RPE in either mode, as
    "rir 2" is RIR. conv turns a typed load into the stored one. */
 /** Sets typed as text, or null when any part cannot be read: the loads through conv, bodyweight allowed when the lift is one. */
@@ -1259,7 +1259,7 @@ export function impFromText(text: unknown): ImpRead {
 const BW_SETS_OF = 10;
 /* Sets from text are read once the exercise is known, so a bodyweight lift
    may have reps alone. The unit is applied at the end. A unit written on
-   the line is that line's, glued to the x or as # for pounds too (r55, the
+   the line is that line's, glued to the x or as # for pounds too (the
    audit: 100kg under an earlier 30lb was read as 100 lb; the second review:
    100kgx8 and 225#). */
 /** A notes exercise's sets, read as the exercise it was matched to, the loads through conv unless a line says its unit; null when a line cannot be read. */

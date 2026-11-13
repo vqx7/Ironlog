@@ -108,7 +108,7 @@ export function exTagParts(e: Pick<Exercise, 'id'> & Partial<Pick<Exercise, 'cus
 /** A day's flag for a muscle planned past SESSION_CAP sets in one workout, or nothing. */
 export function sessionCapNote(day: Day): Part {
   if (day.rest || !day.items.length) return nothing;
-  // Each of the day's workouts on its own (r68, 366 (c); the review of r68: a morning and an evening were added up).
+  // Each of the day's workouts on its own (the review of r68: a morning and an evening were added up).
   const ms: Record<string, number> = {};
   for (const part of dayParts(day))
     for (const [m, v] of Object.entries(sessionMuscleSets(dayWorkout(day, part)))) ms[m] = Math.max(ms[m] ?? 0, v);
@@ -120,7 +120,7 @@ export function sessionCapNote(day: Day): Part {
   return html`<p class="small u-m4n12-0"><span class="flag hastip" data-tip=${`Over ${SESSION_CAP} sets for one muscle in one workout. One early study saw no extra growth past that (a rule of thumb; sources in the Guide). Move some to another day? Helper sets count half.`}>Heavy for one workout: ${who} sets</span></p>`;
 }
 
-/* Plan against the usual ranges (r30, V's choice). Picking a routine on a
+/* Plan against the usual ranges (V's choice). Picking a routine on a
    first run brings the weekly minimums down to what it plans, so following
    it reads as on target; measured against those, the plan always
    passes. This one quiet line, on Plan only, names the muscles the plan
@@ -147,7 +147,7 @@ export function planEvidenceNote(pv: Readonly<Record<string, number>>): Part {
 
 /* soFar: this week while it is still going, so short of the minimum is
    under way (pale green), not amber. Each row's status is the one
-   every screen reads (muscleStatus, r54): no sets is none, as on the map,
+   every screen reads (muscleStatus): no sets is none, as on the map,
    never green, and not yet this week rather than under way; on an average
    with a minimum it is below, unless on plan. */
 /** Hard sets per muscle against the weekly targets, a bar a muscle; `conf` the sets with RIR logged, shaded apart. */
@@ -176,7 +176,7 @@ export function volumeRows(
     const v = sets[m] || 0;
     const [lo, hi] = bands[m];
     const cls = st[m].st;
-    // No target (hasTargetIn, r58): counted, with no zone and no target said.
+    // No target (hasTargetIn): counted, with no zone and no target said.
     const tr = cls === 'track';
     const plate = plates[cls];
     const c = hasConf && conf ? Math.min(conf[m] || 0, v) : 0;
@@ -229,7 +229,7 @@ function itemPart(R: Routine, di: number, it: PlanItem, ii: number): TemplateRes
     ${ex.note ? html`<p class="small muted">${ex.note}</p>` : nothing}</div>`
     : nothing;
   const letter = it.ss ? letters[it.ss] : undefined;
-  // Bodyweight asked where it matters (2.48): under the day's first bodyweight lift, as in a session, never in a message.
+  // Bodyweight asked where it matters: under the day's first bodyweight lift, as in a session, never in a message.
   const bwFirst = items.findIndex(x => !!EX(x.exId).bw) === ii;
   return html`<li class=${it.ss ? 'it ss' : 'it'} data-uid=${it.uid}><div class="ir"><span class="grip" aria-hidden="true">⠿</span><button class="imain" data-act="toggleItem" data-uid=${it.uid}><b>${ex.name}</b><span>${it.sets} × ${repSpan(it.repMin, it.repMax, '-')}${ex.timed ? 's' : ''}, ${rirShow(ex) ? `${effTgt(it.rir)}, ` : ''}rest ${it.rest}s${it.ss ? ` · superset ${letter}` : ''}${it.pm ? ' · second workout' : ''}</span></button><button class="ib" aria-label=${`Move ${ex.name} up`} data-act="iUp" data-day=${String(di)} data-i=${String(ii)} ?disabled=${ii === 0}>↑</button><button class="ib" aria-label=${`Move ${ex.name} down`} data-act="iDown" data-day=${String(di)} data-i=${String(ii)} ?disabled=${ii === items.length - 1}>↓</button></div>
   ${editor}${bwFirst ? bwWarn(it.exId) : nothing}</li>`;
@@ -276,7 +276,7 @@ export function viewProgram(): TemplateResult {
     ? html`<b>${R.name}</b> · ${tdays} training days${weekly ? ' a week' : ` in a ${R.days.length}-day cycle`} · ${Math.round(totSets * dayShare(R))} planned sets a week`
     : html`<b>${R.name}</b> · ${weekly ? 'fixed weekdays' : `${R.days.length}-day cycle`} · no exercises yet`;
   const head = html`${pageTitle(isActive ? 'Active routine' : 'Not active', 'Plan', meta, helpButton('plan'), true)}${howText('plan', 'Drag the ⠿ handle to reorder or move exercises between days; the arrows and "Move to" do the same. Tap an exercise to edit sets, reps, RIR, rest, and load increment, or to superset it with the next exercise. The library button manages every exercise, including your own. In a numbered cycle, drag a day by the ⠿ beside its number to reorder days (or focus the ⠿ and use the arrow keys); they renumber from their new position. On every tab, the ⠿ beside a section title moves that section, and the order is remembered.')}`;
-  /* The library is one of the app's best parts (V, r28), so it gets a full
+  /* The library is one of the app's best parts (V), so it gets a full
      width button of its own instead of a small one beside the ?. */
   const libBtn = html`<button type="button" class="libbtn" data-act="planLib"><span class="lb-i" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="10" width="3" height="4" rx="1"/><rect x="6" y="7" width="3" height="10" rx="1.2"/><rect x="15" y="7" width="3" height="10" rx="1.2"/><rect x="18" y="10" width="3" height="4" rx="1"/><rect x="9" y="11" width="6" height="2"/></svg></span><span class="lb-t"><b>Exercise library</b></span><span class="lb-c" aria-hidden="true">›</span></button>`;
   const routineSec = section({
@@ -699,7 +699,7 @@ function itemInput(t: Field): void {
       if (k === 'jump') f.it.jump = r1(clamp(n, 0, LIMITS.jumpPct));
       else if (k === 'inc') {
         const e = state.exercises.find(x => x.id === f.it.exId);
-        // fromD gives null only for no number, and n is one. Within the step's bound in kilograms, the one a save keeps (r61; until then 500 in the unit typed).
+        // fromD gives null only for no number, and n is one. Within the step's bound in kilograms, the one a save keeps (until then 500 in the unit typed).
         const v = Math.min(fromD(Math.max(n, 0)) ?? 0, LIMITS.step);
         f.it.inc = v;
         if (e) e.inc = v > 0 ? v : null;

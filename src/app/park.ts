@@ -1,4 +1,4 @@
-/* A workout in progress set aside (R81-2, the review of 2.35; V, 2026-11-08:
+/* A workout in progress set aside (the review of 2.35; V, 2026-11-08:
    "go back and retroactively fix a prior workout first"). Editing a saved
    session or logging a past one opens it as the session in progress, and
    there is one; before 2.36 the question offered only to throw the open
@@ -35,7 +35,7 @@ function held(): { uid: string; draft: unknown; at: number | null } | null {
 }
 
 /* A workout set aside and never brought back is kept PARK_KEEP_DAYS days from the day it was set aside, then removed
-   when the app next opens (NEW-96, V 2026-11-09 08:11: "is it possible to delete it after 30 days?"; 30 is V's
+   when the app next opens (V 2026-11-09 08:11: "is it possible to delete it after 30 days?"; 30 is V's
    choice, a convention). It is the only copy of what was typed in it, so it never goes unannounced: Today's card says
    until when it is kept, and the removal is said as it happens, by that day. A copy from before 2.57 carries no date;
    its days count from the first time this build opens with it, so none goes sooner than a card could have said. Only a copy

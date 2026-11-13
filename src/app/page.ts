@@ -1,4 +1,4 @@
-/* The page (r63, from the legacy script's 18-ui.js and 24-sheets.js): the
+/* The page (from the legacy script's 18-ui.js and 24-sheets.js): the
    screen drawn into #view, the sheet over it in #modal, Back through both,
    the menu button's save state, and the theme. The screens and the sheets
    import what they need from here; this module imports no screen and no
@@ -59,7 +59,7 @@ function renderCrash(e: unknown): void {
 
 /** Draws the page: the current tab, and the open sheet over it. */
 export function render(): void {
-  // No session, no rest timer or screen kept on: a session erased, restored over or finished on another phone left both running (r55, the audit).
+  // No session, no rest timer or screen kept on: a session erased, restored over or finished on another phone left both running (the audit).
   if (!state.draft) {
     const t = document.getElementById('timer');
     if (t && !t.hidden) stopTimer();
@@ -91,7 +91,7 @@ export function rerenderKeepScroll(): void {
   const y = window.scrollY,
     el = document.activeElement,
     key = focusKey(el);
-  // The text as typed: "152." is 152 stored, and redrawn from the log it lost its point (r55, the audit).
+  // The text as typed: "152." is 152 stored, and redrawn from the log it lost its point (the audit).
   const txt = el instanceof HTMLInputElement && el.type === 'text' ? el.value : null;
   const sel = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el : null;
   const ss = sel && typeof sel.selectionStart === 'number' ? sel.selectionStart : null;
@@ -181,7 +181,7 @@ function navSync(): void {
     // History is best effort in a frame.
   }
 }
-/** Back: closes the open sheet (one with something typed in it stays, as a tap outside it does, r55), or shows the tab of the entry it lands on. */
+/** Back: closes the open sheet (one with something typed in it stays, as a tap outside it does), or shows the tab of the entry it lands on. */
 export function pageBack(): void {
   if (ui.modal) {
     if (ui.modal.dirty) {
@@ -258,7 +258,7 @@ function renderModalBody(keep: boolean): void {
     el.hidden = true;
     return;
   }
-  // Every sheet is its template, kept in place when the open sheet is drawn again, so the field in use stays under the keyboard (r54, sheets.ts).
+  // Every sheet is its template, kept in place when the open sheet is drawn again, so the field in use stays under the keyboard (sheets.ts).
   sheetDraw(el, h, keep);
   const sh = el.querySelector('.sheet');
   if (sh) {
@@ -287,7 +287,7 @@ export function renderModal(): void {
   const ss = sel && typeof sel.selectionStart === 'number' ? sel.selectionStart : null,
     se = sel && typeof sel.selectionEnd === 'number' ? sel.selectionEnd : null;
   renderModalBody(same);
-  // The labels' i buttons now, not when the page's watcher adds them after this task: they change the sheet's height, so a scroll put back before them slipped (r54; at the bottom, 4 px).
+  // The labels' i buttons now, not when the page's watcher adds them after this task: they change the sheet's height, so a scroll put back before them slipped (at the bottom, 4 px).
   tipLabels(el);
   if (el.hidden || !ui.modal) {
     document.body.classList.remove('modal-open');
@@ -377,7 +377,7 @@ export function closeModal(): void {
     const k = kindOf(sheets, was);
     if (k.closed) k.closed(was);
   }
-  // A sheet open since yesterday leaves today's screen when it closes (drawnBeforeToday, r59).
+  // A sheet open since yesterday leaves today's screen when it closes (drawnBeforeToday).
   if (drawnBeforeToday()) rerenderKeepScroll();
   const r = modalReturn;
   modalReturn = null;
@@ -424,7 +424,7 @@ export function ask(title: string, body: string, ok: string, alt: string): Promi
 /* ---------- the menu button ---------- */
 
 let saveShown = '';
-/* The menu button's dot and words (r27; the reading is saveStateNow, in
+/* The menu button's dot and words (the reading is saveStateNow, in
    storage.ts): drawn in place on every save and sync change. */
 /** Draws the menu button's save state; an open menu follows it, redrawn only when it changed, so a tap is never lost to a redraw. */
 export function setSaveState(): void {

@@ -9,7 +9,7 @@
    nothing for it.
 
    Every picture is decoded and drawn again as a JPEG before it is kept
-   (V's security ask, PENDING 378): what is kept is pixels and nothing else,
+   (V's security ask): what is kept is pixels and nothing else,
    so a photo's location and camera data, and anything hidden in the file,
    never reach storage. SVG is refused (it can carry script), as is anything
    the browser cannot decode as an image. Nothing here sends a picture

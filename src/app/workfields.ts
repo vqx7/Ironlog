@@ -1,4 +1,4 @@
-/* The session screen's fields (CL-1, split from workout.ts): a load, reps, effort or note typed, auto-mark when a
+/* The session screen's fields (split from workout.ts): a load, reps, effort or note typed, auto-mark when a
    field is left, the keys, a load field made ready to be typed over, and the listeners the screen starts with
    (workoutStart). Each change to the session in progress goes through act. */
 
@@ -118,7 +118,7 @@ export function workoutInput(t: Field): boolean {
           const bx = d.ex[bi];
           const as = !!bx && !!EX(bx.exId).assist;
           /* fromD of a number is a number (null only for no number), so 0 never
-             stands in. Within the bounds a save keeps, in kilograms (r61; until
+             stands in. Within the bounds a save keeps, in kilograms (until
              then 660 of help and 20000 in the unit typed). */
           s.w =
             n == null
@@ -161,17 +161,17 @@ export function workoutInput(t: Field): boolean {
 /* A field of the session screen left with a new value. Reps: the field shows
    the reps stored; a done set whose reps were cleared is undone, once
    the new rows are in place (a field taken away mid-draw fires its change as
-   if left); one typed as 0 is a missed set, ticked as typed (r55, V), and a
+   if left); one typed as 0 is a missed set, ticked as typed (V), and a
    ticked set changed to 0 asks, as a tick does, when its load is light
-   (r55.1, the spec review); cleared, it is marked, so leaving the field does
-   not tick it again at the grey reps (r55, the audit). Heading for this
+   (the spec review); cleared, it is marked, so leaving the field does
+   not tick it again at the grey reps (the audit). Heading for this
    row's load: ticked when the load is left, so the load is never written
-   into the field being typed in (r55, the audit: 105 typed there became
+   into the field being typed in (the audit: 105 typed there became
    101050); heading for this row's RIR box: ticked when its strip closes (or
    after 2 s if it never opened), by identity, so a later tick cannot run this
    one. A load: a ticked set's load changed to one far off asks too,
    unticked until answered; Log it, or the load fixed after Fix it, ticks it
-   again, its rest not started over (r55; the second review). The date: last
+   again, its rest not started over (the second review). The date: last
    time and the targets are read as of the session's date, so a new date
    reads them again; typed and ticked sets are left alone. */
 /** A change in one of the session screen's fields; whether it was one. */
@@ -371,7 +371,7 @@ export function workoutKey(e: KeyboardEvent): boolean {
   return false;
 }
 
-/* A tap on a load field shows its number selected (V, PENDING 341 a, from
+/* A tap on a load field shows its number selected (V, from
    the live r56.1: a grey load was an empty field under a hint, so it could
    not be edited in place and backspace did nothing, while a filled one took
    the caret where tapped, 165 then 1 giving 1615). A grey load is put in the

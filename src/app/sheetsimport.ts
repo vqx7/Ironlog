@@ -1,4 +1,4 @@
-/* The import sheet (r63, from the legacy script's 26-import.js): the first
+/* The import sheet (from the legacy script's 26-import.js): the first
    step (a file or pasted text), the columns of a table that does not name
    them, and the preview of what would be saved. It is drawn fresh on every
    draw, as it was while it was markup: its lists of choices are rebuilt as

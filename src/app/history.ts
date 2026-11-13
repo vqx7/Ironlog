@@ -225,7 +225,7 @@ ${more}`;
   });
 }
 
-/* A session's counted PRs (2.33, V 2026-11-07): a gold cup beside its name,
+/* A session's counted PRs (V 2026-11-07): a gold cup beside its name,
    the count and the words in its name and its tip, so History reads no more
    text than before (tests/acceptance.js holds its text to r12's); an opened
    session marks each lift that had one. */
@@ -245,7 +245,7 @@ function sessionRow(
   prs: readonly Pr[]
 ): TemplateResult {
   const open = ui.histOpen === s.id;
-  // A deload's name ends " (deload)", so beside its tag it read "(deload) deload" (r54, the audit): the tag says it once.
+  // A deload's name ends " (deload)", so beside its tag it read "(deload) deload" (the audit): the tag says it once.
   const name = s.deload ? String(s.dayName || 'Session').replace(/ \(deload\)$/, '') : s.dayName || 'Session';
   const tm = (perDay[s.date] || 0) > 1 && sessTm(s) ? `, ${sessTm(s)}` : '';
   const filtered = ui.histEx && !open ? s.ex.find(x => x.exId === ui.histEx) : undefined;
@@ -336,7 +336,7 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     );
   },
   /* Recently deleted is already deleted, so one item goes on a tap with Undo;
-     all of them ask first (r34.1, V: no way to clear it). */
+     all of them ask first (V: no way to clear it). */
   trashDel(t) {
     const x = state.trash.find(y => y.id === t.dataset.id && y.kind === t.dataset.k);
     if (!x) return;

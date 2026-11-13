@@ -1,7 +1,7 @@
 /* What a stored record may hold: the schema version, the limits on body
    entries and kept unknown fields, the id checks, the cleaners for a
    calibration set, a check-in and a target, the order of sessions, and how
-   long deleted things are kept (phase 3a, r51; moved unchanged from the
+   long deleted things are kept (phase 3a; moved unchanged from the
    legacy script). normalize(),
    which applies them to a whole save, moves with storage in phase 4. */
 
@@ -60,7 +60,7 @@ export const LIMITS = {
   name: 40,
   /** An exercise's name, in characters: the library's longest is 36. */
   exName: 60,
-  /** A note, in characters: a session's, an exercise's, an injury's (2.28, 2.27-F3: any length before, and one
+  /** A note, in characters: a session's, an exercise's, an injury's (2.27-F3: any length before, and one
       long paste could make a month too large to sync). */
   note: 5000,
   /** A section key, in characters, and how many a tab's order keeps. */
@@ -196,7 +196,7 @@ export const safeKey = (k: unknown): boolean => typeof k === 'string' && !/["'<>
 
 /* ---------- fields a newer build added ---------- */
 
-/** The most characters (names included) and fields of unknown data kept per record (keepExtra, r43). */
+/** The most characters (names included) and fields of unknown data kept per record (keepExtra). */
 export const EXTRA_MAX = 2000,
   EXTRA_KEYS = 20;
 
@@ -270,7 +270,7 @@ export function cleanTgt(t: Raw): Target | null {
    deleted, so a copy there can be compared with a live one. */
 export const okSess = (ss: Raw): boolean => !!ss && typeof ss === 'object' && isDate(ss.date) && Array.isArray(ss.ex);
 
-/* One order for sessions everywhere (r34, two-a-days): by date, then by the
+/* One order for sessions everywhere (two-a-days): by date, then by the
    time each started, then by id. Ordered by date alone, a morning and an
    evening session on one day came out in whatever order the list held, and
    after a sync by their random ids, so "last time" could be the morning. */

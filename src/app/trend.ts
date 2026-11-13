@@ -1,6 +1,6 @@
 /* The sessions a lift's trend reads, and its two ends, shared by the
    trend itself and by the screens that say its change, so the two cannot
-   disagree (phase 3a, r51; moved unchanged from the legacy script). The trend's reading of each
+   disagree (phase 3a; moved unchanged from the legacy script). The trend's reading of each
    session (tv) is set by the analytics (analytics.ts, idxLift), whose
    exposures these read (model.ts). */
 
@@ -19,13 +19,13 @@ type Read = { tv: number };
    Sessions not done lighter (a session short of its usual counts since r54,
    V's one rule); the current rep range only, since changing the range
    restarts the baseline instead of drawing one line across two scales; the
-   sessions since the lift's last break only (afterBreak, r54), for the same
+   sessions since the lift's last break only (afterBreak), for the same
    reason, as strength falls over a break (a five-week break read as a fall,
    "look at recovery", while every session back was heavier than the one
    before); and the 6 weeks up to the lift's own last session (r30: it ended
    at the newest session of any kind, so logging an upper day moved a split
    squat's trend from +14% to +9% without a new split squat set). A new
-   machine or gym starts the lift over (r61, sinceNew): its sessions before
+   machine or gym starts the lift over (sinceNew): its sessions before
    it are another machine's, read by none of these. The stall test reads
    the same sessions (inRange). */
 export function trendScope<X extends Exposure>(every: readonly X[], anchor: string) {
@@ -37,7 +37,7 @@ export function trendScope<X extends Exposure>(every: readonly X[], anchor: stri
   const inRange = real.filter(x => sameRR(x.rr, curRR) && x.date >= from);
   const lastReal = real.length ? real[real.length - 1] : null;
   /* Its last session of any kind, a lighter one too: whether the lift is on a break today is read from it, as the
-     engine reads a break (backDaysIn), since a deload is training (REV11-1). */
+     engine reads a break (backDaysIn), since a deload is training. */
   const lastAny = exps.length ? exps[exps.length - 1] : null;
   const exWin = addDays(lastReal ? lastReal.date : anchor, -TREND_DAYS);
   return { real, curRR, inRange, lastReal, lastAny, exWin, from };
@@ -68,10 +68,10 @@ export function trendEnds<X extends Read>(w: readonly X[]): { first: X; last: X 
   return { first: best(w.slice(0, k)), last: best(w.slice(w.length - k)) };
 }
 
-/* The sessions the stall test reads a lift with a strength reading over
-   (r30, r31): its last 6 in the range, widened to cover 21 days when 6 do
+/* The sessions the stall test reads a lift with a strength reading over:
+   its last 6 in the range, widened to cover 21 days when 6 do
    not, at least 4; none when they still do not reach 21 days. One rule for
-   the test (idxLiftIn) and the coach's words about it (r54, from the audit V
+   the test (idxLiftIn) and the coach's words about it (from the audit V
    asked for: "for 3 weeks" was said of a lift flat for ten). */
 /** The stretch of sessions a stall is read over, or null when there is none. */
 export function stallStretch<X extends { date: string }>(wE: readonly X[]): X[] | null {
@@ -89,11 +89,11 @@ export function stallStretch<X extends { date: string }>(wE: readonly X[]): X[] 
    independent review of r54, the span still counted the held sessions. */
 export const stallReads = (inR: readonly Exposure[]): Exposure[] => inR.filter(x => !x.held && x.tv != null);
 
-/* The rep ranges a lift's stall is read in (r54, V 2026-10-18: "stalled only
+/* The rep ranges a lift's stall is read in (V 2026-10-18: "stalled only
    if every range is"): its newest session's, as the trend's, and each other
    the routine plans it at, a heavy day and a light day say, while the lift
    has a session in it within 42 days of its newest (as targets read a range
-   in use, r27), each with its sessions not done lighter since the lift's
+   in use), each with its sessions not done lighter since the lift's
    last break. Until r54 only the newest session's range was read, so a lift
    could read stalled midweek and not at the weekend. */
 /** The rep ranges a lift's stall is read in, each with its sessions. */
@@ -159,7 +159,7 @@ export function liftTrendIn(M: Model, exI: Pick<ExerciseLike, 'bw'>, w: (Exposur
   /* A trend needs 3 sessions spread over 2 weeks or more: three
        sessions in nine days read as "+6.6% a week" from what was mostly one
        good day. The text gives the weeks it really covers (spanW). A
-       bodyweight lift needs a weigh-in too (r55, found while fixing the
+       bodyweight lift needs a weigh-in too (found while fixing the
        audit's C10): with none its readings are the added load alone, so
        pull-ups from BW+10 to BW+17.5 read as 40% stronger, where at an 80 kg
        weigh-in they are 5%. Goals have said so since r40 (goalState). */
@@ -190,7 +190,7 @@ export function liftTrendIn(M: Model, exI: Pick<ExerciseLike, 'bw'>, w: (Exposur
       }
     }
     /* A heavier working load with the reps still in the range is progress
-         that rep-max formulas disagree on, never a fall (r34.2, from the
+         that rep-max formulas disagree on, never a fall (from the
          review: a lat pulldown from 90 x 14 to 95 x 10, on plan, read "down
          4%, look at recovery"; Brzycki says -10%, Lombardi +2%, all inside
          the 2 to 8% day-to-day noise). */

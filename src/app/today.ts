@@ -182,7 +182,7 @@ declare global {
    in is also how an existing log arrives on a new phone. Any session, demo
    data or a session in progress ends it, and so does a sign-in that brings a
    log with it. Whether the account page was passed is kept per device.
-   Signing out goes back to the first page (r33, V: "sign out should go to
+   Signing out goes back to the first page (V: "sign out should go to
    the main page"), with or without a copy of the log kept on the phone.
    Continue without an account then opens that copy, and signing in brings
    the account's log. Kept per device; a sign-in clears it. The flag is
@@ -209,7 +209,7 @@ function obAcctOffered(): boolean {
   return prefGet(OB_ACCT) !== 'later';
 }
 
-/* The first page's tour (r33, V: the tiles read as an About box; make it
+/* The first page's tour (V: the tiles read as an About box; make it
    informational and swipeable: logging each session, the plan, progress,
    history, and the picture by muscle). Each slide shows a small piece of
    the screen it describes, with sample numbers in the unit chosen. Which
@@ -227,7 +227,7 @@ export const obTour: {
   t: null
 };
 function obTourSlides(): (readonly [TemplateResult, string])[] {
-  /* Five slides naming what the app does for a lifter (r34, V: say the
+  /* Five slides naming what the app does for a lifter (V: say the
      promises plainly, no line under each title): logging, the next weights
      worked out (progressive overload), the next sets adjusting as you lift,
      a plan or freestyle, and progress. Sample numbers in the unit chosen,
@@ -359,7 +359,7 @@ export function mountObTour(): void {
   }
   // Test browsers run it only when asked, so screenshots and suites stay still.
   if (reduce || obTour.user || (navigator.webdriver && !window.IRONLOG_TOUR_AUTO)) return;
-  // Every 4 seconds (r37, V): a slide is a title and a small picture, read in about 2; at 5.5 a pass took 22 seconds.
+  // Every 4 seconds (V): a slide is a title and a small picture, read in about 2; at 5.5 a pass took 22 seconds.
   obTour.auto = setInterval(() => {
     const t2 = document.getElementById('obTrack');
     if (!t2) {
@@ -367,7 +367,7 @@ export function mountObTour(): void {
       return;
     }
     if (document.hidden) return;
-    // One pass through, then it stays on the last slide (r34, V: less moving while reading the page).
+    // One pass through, then it stays on the last slide (V: less moving while reading the page).
     if (obTour.i >= t2.children.length - 1) {
       obTour.user = true;
       obTourStop();
@@ -377,21 +377,21 @@ export function mountObTour(): void {
   }, TOUR.advanceMs);
 }
 function obView(): TemplateResult {
-  // Still finding out whether this device is signed in, or pulling its log: show nothing that could flash away. A first pull that failed shows the page (r64, F3: with no answer it waited for ever).
+  // Still finding out whether this device is signed in, or pulling its log: show nothing that could flash away. A first pull that failed shows the page (F3: with no answer it waited for ever).
   if (!cloudChecked || (AUTH() && !window.claude && !acct.checked) || cloudFirstPull())
     return html`<div class="ob"><div class="ob-splash"><p class="ob-logo">${markup(LOCKUP)}</p></div></div>`;
   const acctStep = !!AUTH() && !window.claude;
   const undo = undoStack.length
     ? html`<button class="linkbtn ob-skip" data-act="undo">${undoLabel()}</button>`
     : nothing;
-  /* The first page (r31.2, V): what the app does, in three lines, before
+  /* The first page (V): what the app does, in three lines, before
      anything is asked; then the account, said to be optional and what it is
      for, and Continue without an account as a plain, clearly worded link. A
      page that opened on an account request alone lost a friend at the first
      screen. After Erase everything these pages are all there is, so its Undo
-     is here too (r55, the audit). The header and its menu are hidden on these
+     is here too (the audit). The header and its menu are hidden on these
      pages, so the Set up page ends with Help, the menu (Report a problem, the
-     Guide), for someone stuck before the app opens (r64, the r63 audit's P-S4-6). */
+     Guide), for someone stuck before the app opens (the r63 audit's P-S4-6). */
   if (obAcctOffered())
     return html`<div class="ob" id="obPage" data-step="acct">
 <div class="ob-top"><h1 class="ob-logo">${markup(LOCKUP)}</h1></div>
@@ -449,8 +449,7 @@ function welcomeCard(): Part {
    browser. "Not now" hides it on this device until an account is
    used. Never shown inside Claude, during a first run (the welcome card
    offers it there), or before the sign-in check. Someone who just chose
-   Continue without an account is not asked again on the next screen (r32,
-   from the third review: two bars and a toast on the first Today); the line
+   Continue without an account is not asked again on the next screen (from the third review: two bars and a toast on the first Today); the line
    comes back once a session is saved. */
 function acctBar(): Part {
   if (!AUTH() || window.claude || !acct.checked || acct.user || cloud.on || !state.settings.onboarded) return nothing;
@@ -493,7 +492,7 @@ function installBar(): Part {
     ios ? nothing : html`<span class="ab-more"> Install ${APP_NAME} on your home screen.</span>`
   }</span><button class="btn sm primary" data-act="install">${ios ? 'Add to Home Screen' : 'Install'}</button><button class="ib" aria-label="Not now" data-act="installLater">✕</button></div>`;
 }
-/* The profile photo (2.33, V 2026-11-07): once a lifter has an account,
+/* The profile photo (V 2026-11-07): once a lifter has an account,
    whether new or signed in for months, one slim line asks for a photo for
    the menu button. Add photo picks one there and then; Not now hides the
    line on this phone until it signs out, as does a photo added from the menu
@@ -519,7 +518,7 @@ const inUnit = (u: string, field: TemplateResult): DirectiveResult => keyed(u, f
 
 /* A weigh-in due (Settings > Measurements, how often): the last one and Save,
    or Later for two days. Never weighed in: only for someone who logs
-   bodyweight lifts, where it changes the numbers (r34.2, from the review: it
+   bodyweight lifts, where it changes the numbers (from the review: it
    asked every 2 days of a lifter who skipped the optional weigh-in and does
    none). */
 /** The weigh-in due card, or nothing. */
@@ -527,8 +526,7 @@ export function bwDueCard(): Part {
   const n = bwEvery();
   let last: (typeof state.bodyweights)[number] | null = null;
   for (const x of state.bodyweights) if (!last || x.date > last.date) last = x;
-  /* Never weighed in, with a bodyweight lift in the routine in use (r66,
-     PENDING 372, V: "should be asked or at least warned"): asked from the
+  /* Never weighed in, with a bodyweight lift in the routine in use (V: "should be asked or at least warned"): asked from the
      first day, before anything is logged, since those lifts count only the
      weight added until it is set. Later still puts it off two days. */
   const planned = !last && activeRoutine().days.some(d => d.items.some(i => !!EX(i.exId).bw));
@@ -567,7 +565,7 @@ export function bwDueCard(): Part {
 function changeBtn(di: number, free: boolean, part?: 1 | 2): TemplateResult {
   return html`<button class="btn sm" data-act="startAltOpen" data-day=${di} data-free=${free ? '1' : nothing} data-part=${part === 2 ? '2' : nothing}>Change</button>`;
 }
-/* More options on either card (r34.2, from the review: the blank-session
+/* More options on either card (from the review: the blank-session
    card had none, so a freestyler could not mark a rest week, a deload, an
    injury, or cardio from Today). */
 function moreBtn(deload: boolean): Part {
@@ -636,7 +634,7 @@ function moreRow(deload: boolean, playable: boolean, di: number, part?: 1 | 2): 
 }
 const STARTS_HELP = html`In <b>Change</b>: <b>Lighter day</b>: every exercise on the day, half the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the loads, ${LIGHT_RIR} or more reps in reserve, and no target to beat: a one-day deload. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine's days for today from what each muscle got in the last ${PICK_DAYS} days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Blank session</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of half sets at about ${pctOf(LIGHT_SHARE)}% loads. <b>Limited equipment</b> (More options): today's workout with each exercise your gym cannot do swapped for the closest match it can.`;
 
-/** The set-aside workout card's line, with the last day it is kept (NEW-96, park.ts). */
+/** The set-aside workout card's line, with the last day it is kept (park.ts). */
 function parkLine(): string {
   const d = parkedDates();
   return `Set aside while you fixed an earlier one.${d ? ` Kept until ${fmtDate(d.until)}.` : ''}`;
@@ -709,12 +707,12 @@ export function viewToday(): TemplateResult {
     state.sessions.some(x => x.date === t && x.routineId === R.id && sessDayIdx(R, x) === wd && partOf(x) === part)
   )
     /* A weekly routine offers today's day again once it is done (the day is
-       the weekday), so it says so, as a cycle's card does (r64, the r63
+       the weekday), so it says so, as a cycle's card does (the r63
        audit's P-S4-4). */
     note = `${day.name || dayLabel(R, wd)} done today.`;
   const playable = !day.rest && day.items.length > 0;
   const deload = isDeloadWeek();
-  /* Freestyle by default (r34, V): for a lifter who never follows a plan,
+  /* Freestyle by default (V): for a lifter who never follows a plan,
      Today opens on a blank session (Settings > Rest timer and logging). The
      plan's day stays one tap away, and Change day shows it as before. */
   const free = state.settings.todayStart === 'free' && chosen == null;
@@ -748,7 +746,7 @@ export function viewToday(): TemplateResult {
   const sets = deload
     ? `${day.items.reduce((a, it) => a + Math.max(1, Math.ceil(it.sets / 2)), 0)} sets (deload)`
     : `${daySets(day)} sets`;
-  /* One way to start (r35, V): Start, and Change for everything else (a
+  /* One way to start (V): Start, and Change for everything else (a
      lighter day, short on time, a blank session, Pick for me, another day of
      the plan), so the card is not five buttons and a list deep. Lighter and
      Short on time answer different problems: Lighter is for a body that
@@ -848,7 +846,7 @@ function liftTags(exId: string): Part {
 }
 /* The day's workout before it starts. The target alone; the full reasoning
    is a hold or hover away. A lift with no history says so once for the whole
-   day, not on every row. Its trend lives on Stats (r41, V: guidance before a
+   day, not on every row. Its trend lives on Stats (V: guidance before a
    session, not history). Only a stall is worth a word in the title; a PR
    last time or a load due is good news (r28: "5 flagged" was five green PR
    tags). */
@@ -864,7 +862,7 @@ function previewCard(day: Day, deload: boolean): TemplateResult {
     const ex = EX(it.exId);
     // Asked for today, the day Start would log it on, so a lift already done today shows what the session will.
     const sg = suggest(it.exId, it, { deload, before: today() });
-    // A lift back after a long break starts as a first session does, but it is not new: its line says the time away (NEW-110).
+    // A lift back after a long break starts as a first session does, but it is not new: its line says the time away.
     const none = !sg.last && !sg.inj && !sg.target && !sg.away;
     if (none) fresh++;
     const text = String(sg.text || '');
@@ -1019,7 +1017,7 @@ const TONE_WORDS: Readonly<Record<string, string>> = {
   green: 'On track',
   blue: 'Note'
 };
-/* Lifts moving (364 b-2, r70): the lifts Stats and the coach call clearly
+/* Lifts moving (364 b-2): the lifts Stats and the coach call clearly
    rising, each a row that opens it on Stats > Lifts, with its line (what
    Stats > Lifts charts for it, the lighter sessions left out, liftsMovingIn)
    and its latest heaviest set. Three at most, the count in the subtitle; none
@@ -1074,7 +1072,7 @@ function todayRest(o: {
 }): Part {
   /* Nothing logged yet: say where lifts done before this app go, since that
      is how a new lifter's bests and targets start from what they can already
-     do (r48, V). History's empty state says the same; Today said nothing. Led
+     do (V). History's empty state says the same; Today said nothing. Led
      by the action since 2.34 (V, 2026-11-08: "Lifted before this app?" read
      badly). */
   const pre =
@@ -1161,7 +1159,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       if (el.scrollIntoView) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
   },
-  // This week on Today, a week back or ahead, or back to this week (NEW-107), within the weeks it steps between.
+  // This week on Today, a week back or ahead, or back to this week, within the weeks it steps between.
   wkStep(t) {
     const v = t.dataset['v'];
     const cur = weekStart(today());
@@ -1239,7 +1237,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     );
   },
   /* A second save the same day adds to it, keeping what it does not retype,
-     with Undo (r55, the audit: it replaced the day's entry). */
+     with Undo (the audit: it replaced the day's entry). */
   addMeas() {
     const m: Record<string, number> = {};
     let any = false;
@@ -1310,7 +1308,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     toast(`${x ? injLabel(x.m) : 'Injury'} cleared`, true);
   },
   /* Each says what it hid and where that stays, from where the lifter is: the menu at the top right. Until 2.60 both
-     said "Hidden. Settings > Your data has it.", which read as the log and named nothing (V, 2026-11-12, NEW-140). */
+     said "Hidden. Settings > Your data has it.", which read as the log and named nothing (V, 2026-11-12). */
   acctLater() {
     prefSet(ACCT_LATER, '1');
     rerenderKeepScroll();
@@ -1353,9 +1351,9 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     render();
   },
   /* Build my own routine: three training days with rest days between, as the
-     ready-made 3-day routines are laid out (r54, the audit: three days and no
+     ready-made 3-day routines are laid out (the audit: three days and no
      rest planned 7 sessions a week), replacing the untouched starter, as a
-     ready-made pick does (r55, the audit). */
+     ready-made pick does (the audit). */
   obOwn() {
     const r = {
       id: uid(),
