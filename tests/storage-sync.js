@@ -802,6 +802,40 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(got.pulled.A && !got.pulled.B && got.pulled.account && got.account && got.phone2, 'S-6: a tab that has not yet heard the other tab\'s save syncs: a session the other tab pulled stays in the account and on the phone that logged it (REV15-2)', got);
       await P2.close(); await A.close();
     }
+    {
+      /* REV16-A1: notes another tab writes back from before it caught up hold an older agreement than this tab's, and
+         are never taken as news. Two tabs signed in, the workout open in both, its second set ticked and synced. Tab B
+         writes back the notes from when the account held one set ticked, as crossing writes did (a tab still listing a
+         write it had not sent wrote its notes back at every notes event, and the other read them as a later sync).
+         Tab A then removes its second set and syncs. The set stays removed, in both tabs and in the account: it came
+         back, the merge reading the account's two sets against the older agreement of one as a set added there. */
+      // Five times, each with new tabs: whether the two tabs' writes cross depends on the moment, and before the fix a
+      // round now and then came out clean (reviewer A's h1-takenin.js, at real timing, showed it every time).
+      const rounds = [];
+      for (let round = 0; round < 5; round++) {
+        const C = cloudOf();
+        const A = await phone({ cloud: C, uid: 'u6a1', seed: function (S) { S.settings.lastExport = '2026-11-11'; } });
+        const B = await tab(A, FILE, C.setup('u6a1', 'B')); B.ev = (f, a) => B.page.evaluate(f, a);
+        const on = P => P.page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 10000 }).then(() => true, () => false);
+        const setup = (await on(A)) && (await on(B));
+        const tickA = i => A.ev(i => { const L = window.__ironlog; L.act(() => { const s = L.state.draft.ex[0].sets[i]; s.w = 100; s.r = 8 - i; s.done = true; }, { inProgress: true }); }, i);
+        await A.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ACT.startSession({ dataset: { day: '0', light: '0' } }); const d = L.state.draft; d.ex = d.ex.slice(0, 1); d.ex[0].sets.length = 3; d._rampAsked = true; L.saveNow(); });
+        await tickA(0); await wait(300); await A.flush(); await wait(800);
+        const older = await A.ev(() => localStorage.getItem(window.__ironlog.KEY + '.sync'));
+        await tickA(1); await wait(300); await A.flush(); await wait(800);
+        const two = d => d && d.ex[0].sets.filter(x => x.done).length;
+        const before = { A: await A.ev(() => window.__ironlog.state.draft.ex[0].sets.filter(x => x.done).length), account: two((C.doc('u6a1', 'draft') || {}).draft) };
+        await B.ev(t => localStorage.setItem(window.__ironlog.KEY + '.sync', t), older); await wait(400);
+        await A.ev(() => { const L = window.__ironlog; L.act(() => { L.state.draft.ex[0].sets.splice(1, 1); }, { inProgress: true }); });
+        await wait(300); await A.flush(); await wait(800); await B.ev(() => window.__ironlog.sync()); await wait(800);
+        const ticked = P => P.ev(() => { const d = window.__ironlog.state.draft; return d ? d.ex[0].sets.filter(x => x.done).map(x => `${x.w}x${x.r}`).join(' ') : null; });
+        const got = { setup, before, A: await ticked(A), B: await ticked(B), account: (((C.doc('u6a1', 'draft') || {}).draft || { ex: [{ sets: [] }] }).ex[0].sets.filter(x => x.done).map(x => `${x.w}x${x.r}`).join(' ')), saidA: await A.toasts() };
+        got.clean = setup && before.A === 2 && before.account === 2 && got.A === '100x8' && got.B === '100x8' && got.account === '100x8' && !got.saidA.some(t => /edited on two devices/.test(t));
+        rounds.push(got);
+        await A.close();
+      }
+      ok(rounds.every(r => r.clean), 'S-6: a set removed after the other tab wrote back older sync notes stays removed, in both tabs and in the account, with no message of an edit on two devices, five times in five (REV16-A1)', rounds.filter(r => !r.clean));
+    }
   }
 
   /* ---------- S-7: Undo ---------- */
