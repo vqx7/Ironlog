@@ -1074,7 +1074,7 @@ function todayRest(o: {
     noLog() && !state.draft
       ? html`<p class="small muted u-m0-0n10" id="preApp"><button class="linkbtn" data-act="pastOpen">Log a past workout</button> so your targets start from your bests.</p>`
       : nothing;
-  // Item 62: a section's subtitle states a number, not what the section is about.
+  // A section's subtitle states a number, not what the section is about.
   const tiles = section({
     sk: 'today:tiles',
     key: 'tiles',

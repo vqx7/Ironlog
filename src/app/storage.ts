@@ -382,7 +382,7 @@ export function snapshot(inv?: (() => boolean) | null): void {
       t: Date.now()
     });
   } catch (e) {
-    // A log JSON cannot write is not kept as a step: the action goes ahead without Undo, as before the move, and the reason is kept.
+    // A log JSON cannot write is not kept as a step: the action goes ahead without Undo, and the reason is kept.
     log('undo-step', e);
     return;
   }
@@ -461,7 +461,7 @@ export function load(): State {
       return st;
     }
   } catch (e) {
-    /* An unreadable save used to be replaced by a fresh state on the next
+    /* An unreadable save would be replaced by a fresh state on the next
        save, destroying it. Keep the raw text aside so it can be recovered. */
     log('load', e);
     device.hadLocal = false;
@@ -489,7 +489,7 @@ export function unreadableRaw(): string {
   try {
     return localStorage.getItem(UNREAD_KEY) || '';
   } catch (e) {
-    // Storage this browser refuses: nothing kept aside can be read, as before the move.
+    // Storage this browser refuses: nothing kept aside can be read.
     return '';
   }
 }

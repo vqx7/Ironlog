@@ -1,9 +1,7 @@
-/* The page's listeners and its actions by data-act (from the legacy
-   script's 18-ui.js, 27-actions.js and 28-events.js). Every screen's and
+/* The page's listeners and its actions by data-act. Every screen's and
    sheet's taps are in their modules' tables, joined here into one; two
    choices name another action to run, so they read the whole table and live
-   with it. The listeners are added by main.ts, in the order the page always
-   added them: each document listener runs in the order it was added, so the
+   with it. The listeners are added by main.ts, in one fixed order: each document listener runs in the order it was added, so the
    order is part of what a tap does. */
 
 import { LIMITS, within } from './records';

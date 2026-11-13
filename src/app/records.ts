@@ -152,12 +152,11 @@ export const parseJson = (text: string): unknown => JSON.parse(text) as unknown;
 
 /* ---------- ids ---------- */
 
-/* Stable id for a record that arrived without one. It used to be random, so two
-   devices repairing the same record made two different ids and a merge kept
-   both. The position is included so identical records stay distinct. A
+/* Stable id for a record that arrived without one, not random: two devices
+   repairing the same record must make one id, or a merge keeps both. The position is included so identical records stay distinct. A
    cleaner called on one record alone (a cardio entry typed in) gives no
    position, and the id then carries "undefined" where the position goes, as
-   it did before the storage code moved. */
+   every build has made it. */
 export function did(tag: string, obj: unknown, i: number | undefined): string {
   let j = '';
   try {

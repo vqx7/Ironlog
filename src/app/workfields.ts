@@ -72,8 +72,8 @@ function noteDown(e: Event): void {
    impossible rep count), saved once the typing pauses. Whole reps: 8.5 is 8,
    a partial rep not a rep. On an assisted lift the number is the help.
    A load typed is the lifter's, no longer carried. The grey numbers, the
-   progress line and the plates follow at once, as the legacy patches had
-   them; a name or notes are drawn at the next draw, as before. */
+   progress line and the plates follow at once; a name or notes are drawn at
+   the next draw. */
 /** A keystroke in one of the session screen's fields; whether it was one. */
 export function workoutInput(t: Field): boolean {
   const d = state.draft;

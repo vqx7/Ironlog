@@ -419,8 +419,8 @@ function undoDraftOf(v: unknown): UndoDraft | null {
 /* Undo inside a session: the session in progress merged exercise by
    exercise (keyed by exercise and its occurrence), base = right after the
    action, local = now, other = before it. Exercises changed only by the
-   action go back; ones changed since keep the newer version. As a whole
-   record, any set logged after the action used to block the undo. */
+   action go back; ones changed since keep the newer version. Merged as a
+   whole record, any set logged after the action would block the undo. */
 export function mergeDraft(base0: unknown, cur0: unknown, pre0: unknown, saved: (id: string) => boolean): unknown {
   const base = undoDraftOf(base0),
     cur = undoDraftOf(cur0),

@@ -403,8 +403,8 @@ export function tonnageIn(M: Model, ex: ExerciseLike, s: LoadedSet, date?: strin
   const w = Number(s.w) || 0;
   // Assisted with no bodyweight logged would go below 0; weight lifted is then 0.
   /* Bodyweight known on or before the date only: a first weigh-in
-     logged today used to be applied to every earlier session, so weight
-     lifted in past weeks changed after the fact (4,420 to 6,634 kg). */
+     logged today, applied to every earlier session, would change weight
+     lifted in past weeks after the fact (4,420 to 6,634 kg). */
   const known = bwKnownAtIn(M, date || M.today());
   const bl = ex && ex.bw && known != null ? known * bwShare(ex) : 0;
   const load = m === 'bw' ? Math.max(0, bl + w) : m === 'each' || m === 'side' ? w * 2 : w;

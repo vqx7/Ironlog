@@ -968,18 +968,17 @@ function idxScoresIn(M: Model, exStats: Record<string, ExStat>): Score[] {
       wk: (o.indirect ? spanS[m] : spanP[m]) || null
     }))
     .sort((a, b) => b.score - a.score);
-  /* The label used to be purely positional: bottom third of the list was
-     "lagging" whatever the number said. So a muscle gaining 3% got a red
+  /* The label is not positional: by rank, the bottom third of the list would
+     be "lagging" whatever the number said, and a muscle gaining 3% get a red
      "Lagging trend" flag in Weak points while Return on volume, which reads
      the same score against an absolute threshold, said "Growing. Hold this
-     volume." on the same screen. Now a muscle that is actually growing is
+     volume." on the same screen. A muscle that is actually growing is
      never called lagging, and one that is actually going backwards is always
      called lagging even if the rest of the list is worse; rank decides no
      label.
      In order below: going backwards is an absolute fact and does not need a
-     ranking to be worth saying. A rising muscle is progressing: ranked
-     third or higher used to be needed too, so with eight muscles rising five
-     read steady. A flat muscle is lagging only when one of its lifts has
+     ranking to be worth saying. A rising muscle is progressing, whatever
+     its rank (with eight muscles rising, five would otherwise read steady). A flat muscle is lagging only when one of its lifts has
      stalled (a convention). By rank alone, the bottom third read
      "Lagging strength" in red while its lifts were gaining reps every
      session: sets above 12 reps to failure have no 1RM estimate, so high-rep

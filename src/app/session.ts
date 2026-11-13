@@ -388,8 +388,8 @@ export function joinAdjacent<X extends Joinable>(ex: readonly X[]): X[] {
 }
 
 /* For the numbers, every block of one lift in a session reads as one: one
-   exposure for targets, trends, stalls and PRs (two blocks used to count as
-   two sessions on one day, and could each set a PR). */
+   exposure for targets, trends, stalls and PRs (not two sessions on one
+   day, each able to set a PR). */
 export function sameExOnce<X extends Joinable>(ex: readonly X[]): X[] {
   const by = new Map<string, X>();
   const out: X[] = [];
@@ -536,10 +536,10 @@ export function editFp(d: {
   });
 }
 
-/* RIR used to be a free-text field, which on a phone means opening the keyboard
-   mid-set. Almost nobody does that, so almost every set came through blank and
-   the volume bands silently counted it as hard anyway. A native picker is one
-   tap, which is the difference between measuring and assuming. */
+/* RIR is picked, not typed: a free-text field on a phone means opening the
+   keyboard mid-set, which almost nobody does, so almost every set would come
+   through blank and the volume bands silently count it as hard anyway. One
+   tap is the difference between measuring and assuming. */
 /* The note a deload or a lighter session starts with, saved in its notes as
    the rules stood when it began: the share of the sets, the load and the
    reserve its lifts are given (lighterSets, LIGHT_SHARE, LIGHT_RIR). */

@@ -474,7 +474,7 @@ async function acctSubmit(): Promise<void> {
   if ((m.mode === 'signup' || m.mode === 'newpw') && !need(pw.length >= PW_MIN, `Use ${PW_MIN} or more characters.`))
     return;
   if (m.mode === 'signin' && !need(pw.length > 0, 'Enter your password.')) return;
-  /* The bot check's token (captcha.ts): undefined when the check is off, so every request goes as before; on,
+  /* The bot check's token (captcha.ts): undefined when the check is off, so every request goes without one; on,
      a sign-in, a new account and a reset link each take one, and none is sent until the check has given one. A new
      password is set by a signed-in session, which the account server does not check. */
   const tk = m.mode === 'newpw' ? undefined : captchaTake();

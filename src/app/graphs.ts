@@ -63,9 +63,9 @@ const CS = {
 import { RIR_CALL_TOP } from './formulas';
 
 /* ---------- chart windows ----------
-   Charts start where your data starts. A weekly chart used to open eight
-   weeks back whatever you had logged, so a new log sat on a row of empty
-   weeks. Now the first logged week is the left edge; while there is less
+   Charts start where your data starts, not eight weeks back whatever you
+   had logged, which would sit a new log on a row of empty weeks. The first
+   logged week is the left edge; while there is less
    than a full window of data, the weeks ahead fill the rest, empty and
    marked as upcoming, and each new week lands in the next slot. Once there
    is more history than the window, it follows the current week, and the

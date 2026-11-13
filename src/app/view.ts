@@ -78,7 +78,7 @@ export function drawnBeforeToday(): boolean {
 }
 /* While lit-html is drawing a screen: a field it takes away fires its
    change and blur as if the lifter had left it, which must not tick a set or
-   draw the screen again inside the draw (the legacy host's `rebuilding`). */
+   draw the screen again inside the draw. */
 let inDraw = 0;
 /** Whether a screen is being drawn this moment. */
 export const drawing = (): boolean => inDraw > 0;
@@ -328,8 +328,7 @@ export function placed(
 /* A tab whose movable sections have other elements between them (Plan's
    note about routines to remove sits between Routine and Add exercises):
    the sections take, in their saved order, the places sections hold in the
-   code's order, and the elements between stay where they are, as the legacy
-   applySecOrder moved them; then the hidden sections go (applyHidden). */
+   code's order, and the elements between stay where they are; then the hidden sections go (applyHidden). */
 /** A tab's parts in order, each [its section's key, or null for a part that does not move, the part]. */
 export function slotted(tab: string, parts: readonly (readonly [string | null, Part])[]): Part[] {
   const keyed = parts.flatMap(([key, part]) => (key == null ? [] : [[key, part] as const]));
@@ -351,7 +350,7 @@ export function slotted(tab: string, parts: readonly (readonly [string | null, P
   return out;
 }
 
-/** Whether a hidden section of History has something to show (the legacy MORE_LIVE takes these): cardio logged, or something recently deleted. */
+/** Whether a hidden section of History has something to show: cardio logged, or something recently deleted. */
 const MORE_OFFER: Readonly<Record<string, () => boolean>> = {
   'history:cardio': () => state.cardio.length > 0,
   'history:trash': () => trashShown().length > 0

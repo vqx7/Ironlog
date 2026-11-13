@@ -167,8 +167,8 @@ function adjLine(b: DraftBlock, bi: number): Part {
 
 /* ---------- the screen ---------- */
 
-/* RIR used to be a free-text field, then a native picker; it is picked from a
-   strip of 0 to 5 under the set: the cell shows the value, a tap on it
+/* RIR is picked from a strip of 0 to 5 under the set, not typed or chosen in
+   a native picker: the cell shows the value, a tap on it
    opens the strip, and ticking a set with no RIR opens it by itself when
    asked for in Settings > Effort. Whole RIR is one row of 0 to 5. Half points
    and RPE are a grid under the label: whole numbers on top, each half between
@@ -549,11 +549,10 @@ export function viewWorkout(d: Draft): TemplateResult {
 
 /* ---------- drawing it again ---------- */
 
-/* What a full draw of the page puts back as the legacy page's fresh markup
-   did (the host calls this before it draws the session): the effort strip
-   closed and a fold waiting for its
+/* What a full draw of the page puts back (the host calls this before it
+   draws the session): the effort strip closed and a fold waiting for its
    moment done now. A draw of the session in place (redraw, below) keeps
-   them, as the legacy page's patches did. */
+   them. */
 /** Puts back what a full draw of the page resets on the session screen. */
 export function workoutFullDraw(): void {
   W.needAt = null;

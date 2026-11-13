@@ -1,10 +1,8 @@
 /* The week: the bar at the top of every tab, Today's This
    week card (the week, or the month, the cycle's row and the hard sets
-   against the plan) and the ring on Today's start card, drawn by lit-html as
-   src/21-pick-session.js drew them. What a day of the bar opens (History, a
-   past workout, Today on that day) stays with that code, by the button's
-   data-act as before. And what the routine plans on a date ahead (329: the
-   calendar shows it). */
+   against the plan) and the ring on Today's start card, drawn by lit-html. What a day of the bar opens (History, a past workout,
+   Today on that day) is reached by the button's data-act. And what the
+   routine plans on a date ahead, which the calendar shows. */
 
 import { html, nothing, render } from 'lit-html';
 import type { TemplateResult } from 'lit-html';

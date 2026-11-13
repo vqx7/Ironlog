@@ -120,7 +120,7 @@ declare global {
 
 /* An object's own fields, spread as `{...v}` spreads any value (a string's
    letters, an array's entries, nothing for a number, a boolean or null), so a
-   field that arrives as the wrong type is read as it was before the move.
+   field that arrives as the wrong type is read as every build reads it.
    Spreading is defined for every value; TypeScript asks for an object, hence
    the cast. */
 const spread = (v: unknown): Rec => ({ ...(v as Rec) });
@@ -431,7 +431,7 @@ function tplSigs(): Set<string> {
 /** Whether a routine (from the log, or a copy in Recently deleted) is a ready-made one exactly as shipped. */
 export function plainTemplate(r: unknown): boolean {
   try {
-    // routineSig reads the fields a routine has; a record that lacks them throws into the catch, as before the move (the cast).
+    // routineSig reads the fields a routine has; a record that lacks them throws into the catch (the cast).
     return !!r && tplSigs().has(routineSig(r as Parameters<typeof routineSig>[0]));
   } catch (e) {
     // Not a routine at all, so not a ready-made one.
@@ -1116,7 +1116,7 @@ function reviveEdited(
     try {
       return !ok(data) || canon(clean(data, 0)) === canon(cur);
     } catch (e) {
-      // A copy that cannot be cleaned is read as the same record, so the deletion stands, as before the move.
+      // A copy that cannot be cleaned is read as the same record, so the deletion stands.
       return true;
     }
   };
@@ -1164,8 +1164,8 @@ function reviveEdited(
 }
 
 /* One id, two different copies: a session moved to a date in another
-   half-month on one device while it was edited on another. Both used to be
-   kept and counted twice. Keep the copy with more logged sets (then the
+   half-month on one device while it was edited on another. Both kept, they
+   would be counted twice. Keep the copy with more logged sets (then the
    later date) and put the other in Recently deleted under its own id, so
    nothing is lost. Every device resolves it the same way. */
 function dedupe<T extends { id: string; date: string }>(
@@ -1299,7 +1299,7 @@ export function normalize(input: unknown): State {
   // A new device and Erase everything both start here, fully normalized:
   // the raw fresh state lacks fields (section order, folds) every view reads.
   const s: Rec = rec(input) || f;
-  // drop() is one record; drop(n) is n, and drop(0) is none (it used to count 1).
+  // drop() is one record; drop(n) is n, and drop(0) is none, not 1.
   const drop = (n?: number): void => {
     normalize.dropped += n == null ? 1 : Math.max(0, n);
   };

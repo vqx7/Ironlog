@@ -703,8 +703,8 @@ export function basePlanIn(M: Model, exId: string, R?: Routine | null, dayId?: s
 
 /* Planned hard sets. A planned set counts only if its target RIR
    would make it hard (3 or less, or every set when RIR is off), the same test
-   as a logged set; a plan at RIR 4 used to set a weekly target that logging
-   it could never meet. In a deload week each exercise is half its sets,
+   as a logged set, so a plan at RIR 4 never sets a weekly target that
+   logging it could never meet. In a deload week each exercise is half its sets,
    rounded up, as the sessions are. */
 function planHardIn(M: Model, it: { rir: number | string }): boolean {
   return M.s.settings.rirMode === 'off' || !(+it.rir > HARD_RIR);

@@ -542,8 +542,8 @@ function acctPanel(): TemplateResult | typeof nothing {
 <button class="btn sm" data-act="acctRetry">Try again</button></div>
 `
       : nothing;
-  /* Signed out, this one line says where the log is and what an account adds: Your data
-     used to say it four times (this panel, the storage line, the privacy line, Backup due). */
+  /* Signed out, this one line says where the log is and what an account adds, said once,
+     not four times (this panel, the storage line, the privacy line, Backup due). */
   return u
     ? html`<div class="panel" id="acctPanel">
 <div class="row spread">

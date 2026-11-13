@@ -627,7 +627,7 @@ function normChunk(id: string, data: unknown): Rec | null {
       return chunksOf(normalize({ bodyweights: D.bodyweights || [], measurements: D.measurements || [] }))[id] || {};
     return chunksOf(normalize({ sessions: D.sessions || [], cardio: D.cardio || [] }))[id] || { sessions: [] };
   } catch (e) {
-    // A document normalize() cannot read is compared as it came, as before the move.
+    // A document normalize() cannot read is compared as it came.
     log('sync-norm', e);
     return D;
   }
@@ -774,7 +774,7 @@ function applyChunk(id: string, data: Rec | null): void {
 /* ---------- what changed on this device ---------- */
 
 /* When each document last changed on this device. It decides conflicts, so it
-   is tracked per document: an edit to a session no longer makes an older
+   is tracked per document: an edit to a session never makes an older
    routine edit look new. Kept across reloads. */
 /* Called on every save, so it only notes the time; the hashing runs once the
    taps pause, and again before any sync, so logging a set stays instant. */
@@ -1979,9 +1979,9 @@ export function cloudStop(forget?: boolean): void {
 
 /* ---------- another tab, and leaving the page ---------- */
 
-/* Two tabs (or the app and a second window) used to overwrite each other: each
-   wrote its whole state, so the one that saved last erased what the other had
-   saved. Now each tab hears the other's save and merges it into its own
+/* Two tabs (or the app and a second window) must not overwrite each other:
+   each writing its whole state, the one that saved last would erase what the
+   other had saved. So each tab hears the other's save and merges it into its own
    state, record by record, with this tab's last save as the base: changes
    made only there are taken, changes made only here are kept. Content is
    compared with canon(), which ignores key order, so two tabs holding the

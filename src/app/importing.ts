@@ -1257,9 +1257,8 @@ export function impFromText(text: unknown): ImpRead {
 const BW_SETS_OF = 10;
 /* Sets from text are read once the exercise is known, so a bodyweight lift
    may have reps alone. The unit is applied at the end. A unit written on
-   the line is that line's, glued to the x or as # for pounds too (the
-   audit: 100kg under an earlier 30lb was read as 100 lb; the second review:
-   100kgx8 and 225#). */
+   the line is that line's, glued to the x or as # for pounds too
+   (100kg under an earlier 30lb is 100 kg; 100kgx8 and 225# read too). */
 /** A notes exercise's sets, read as the exercise it was matched to, the loads through conv unless a line says its unit; null when a line cannot be read. */
 export function impTextSets(
   it: { setsText?: readonly string[] | undefined },

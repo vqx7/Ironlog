@@ -39,8 +39,8 @@ declare global {
   }
 }
 
-/* navigator.vibrate does not exist on iOS Safari, so the timer used to finish
-   in total silence on an iPhone. The audio context is created on the tap that
+/* navigator.vibrate does not exist on iOS Safari, so without a beep the timer
+   would finish in total silence on an iPhone. The audio context is created on the tap that
    starts the timer, which is a user gesture, so the beep is allowed to play
    later. A backgrounded tab can still suppress it, which is why the bar also
    changes state and the elapsed time is computed from an absolute end stamp

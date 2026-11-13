@@ -126,7 +126,7 @@ export function dropOnlyLiftIn(M: Model, id: string): boolean {
 
 /* Stalls that can point to whole-body fatigue: compound lifts with a
    strength estimate. A plank held at 60 s or curls stuck at one dumbbell say
-   little about recovery, and they used to count toward "3 lifts stalled at
+   little about recovery, so they do not count toward "3 lifts stalled at
    once, a deload week may help". They are still listed as stalled. */
 export function fatigueStallsIn(M: Model, ids: readonly string[]): string[] {
   return ids.filter(id => {
@@ -391,9 +391,9 @@ export function coachIn(M: Model): CoachLine {
   if (stalled.length) {
     const id = stalled[0];
     const st = I.exStats[id];
-    /* How long it has stalled, the span the stall test read (from the
-       audit V asked for: "for 3 weeks" was said of a lift flat for ten, and
-       of its whole stretch at the top of the range, which nothing checks). */
+    /* How long it has stalled, the span the stall test read (not "for
+       3 weeks" of a lift flat for ten, nor of its whole stretch at the top of
+       the range, which nothing checks). */
     const flat = stallWordsIn(M, id);
     // A last session at the top of its range means st was there to read it from, as the ! says.
     if (atRangeTopIn(M, id))

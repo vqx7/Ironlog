@@ -645,10 +645,10 @@ function loadsForIn(
 /* A load at or below `to`, reached from `from` in whole steps of the
    exercise's own load step, so a stack stays on its pins and a dumbbell rack
    on its dumbbells, and never below the empty bar on a barbell lift.
-   It used to round to the nearest 5 lb or 2.5 kg whatever the equipment: a
-   15 lb cable raise deloaded to 10, a 150 lb stack with 10 lb pins to 135, a
-   95 lb bench warmed up at 40, under the bar. With no step set, it rounds
-   down to 5 lb or 2.5 kg as before. May return `from` when nothing lighter
+   Rounded to the nearest 5 lb or 2.5 kg whatever the equipment, a 15 lb
+   cable raise would deload to 10, a 150 lb stack with 10 lb pins to 135, a
+   95 lb bench warm up at 40, under the bar. With no step set, it rounds down
+   to 5 lb or 2.5 kg. May return `from` when nothing lighter
    exists (the bar itself). On a list with a lightest load of its own (a rack or the plates): the heaviest load not
    past `to` and under `from`, at least the lightest, or `from` itself when nothing on the list is under it. */
 export function lighterLoadIn(

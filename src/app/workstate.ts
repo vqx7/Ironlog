@@ -236,7 +236,7 @@ export function draftSet(t: Tap): DraftSet | null {
   return (b && b.sets[Number(t.dataset.s)]) || null;
 }
 
-/** The effort strip open under a set this visit: the block, held, and the row; a full redraw closes it, as the legacy page's did. */
+/** The effort strip open under a set this visit: the block, held, and the row; a full redraw closes it. */
 interface StripAt {
   b: BlkRef | null;
   s: number;

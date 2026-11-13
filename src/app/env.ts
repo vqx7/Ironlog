@@ -31,7 +31,7 @@ export function isStandalone(): boolean {
     if (navigator.standalone === true) return true;
     return INSTALLED_MODES.some(m => window.matchMedia(`(display-mode: ${m})`).matches);
   } catch (e) {
-    // A browser without matchMedia: read as a tab, as before the move.
+    // A browser without matchMedia: read as a tab.
     return false;
   }
 }
@@ -41,7 +41,7 @@ export const coarse = (): boolean => {
   try {
     return window.matchMedia('(pointer:coarse)').matches;
   } catch (e) {
-    // A browser without matchMedia: read as no touch screen, as before the move.
+    // A browser without matchMedia: read as no touch screen.
     return false;
   }
 };

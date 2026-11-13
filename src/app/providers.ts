@@ -113,8 +113,8 @@ declare global {
 
 /* The build's cloud script defines window.ironlogAuth when a backend is
    configured; inside Claude and in the plain source file there is none, and
-   nothing below shows. An account is optional: without one the app keeps
-   working on this device exactly as before. */
+   nothing below shows. An account is optional: without one the app works
+   on this device alone. */
 /** The account service, or null where there is none. */
 export const AUTH = () =>
   window.ironlogAuth && typeof window.ironlogAuth.user === 'function' ? window.ironlogAuth : null;

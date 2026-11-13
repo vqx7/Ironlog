@@ -439,14 +439,14 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   const abW = ['abs', 'obliques'].includes(ex.primary);
   // Heaviest available load (top of the stack or rack), if set.
   const cap = capOfIn(M, ex, plan, top);
-  /* An assisted lift at no help is at the most the machine gives (the
-     audit: at BW it asked to "take 2.5 kg of help off", BW+2.5): reps, as at
+  /* An assisted lift at no help is at the most the machine gives (not
+     "take 2.5 kg of help off" at BW, BW+2.5): reps, as at
      the heaviest load of a rack. */
   const noHelp = !!ex.assist && top >= -EPS;
   const atCap = atCapOfIn(M, ex, plan, top, cap) || noHelp;
   const capW = (w: number): number => (cap != null ? Math.min(w, cap) : w);
-  // Only the sets at the top load decide progression. Ramp-up sets at lighter
-  // loads used to block every load increase unless they also reached repMax.
+  // Only the sets at the top load decide progression: ramp-up sets at lighter
+  // loads would otherwise block every load increase unless they also reached repMax.
   // As tried, a missed set among them with its 0 reps (triedAt).
   const topPts = triedAt(last, top);
   /* The planned sets among them decide a step, as they set the rep target

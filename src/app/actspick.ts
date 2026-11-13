@@ -33,7 +33,7 @@ const BWF_PCT = { most: 150, off: 0.005, whole: 100 } as const;
    count and superset. Its range, RIR, rest and step come from where it
    already sits in the routine, or from its own default when it is the other
    kind (a timed hold for reps, or reps for a hold: a plank swapped in for
-   bench used to hold for 6 to 10 seconds); otherwise it fills the slot as
+   bench does not hold for 6 to 10 seconds); otherwise it fills the slot as
    planned. */
 /** The plan an exercise swapped in for another takes in a slot. */
 export function swapPlan<P extends Partial<Plan>>(
@@ -524,7 +524,7 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       toast('Give the exercise a name');
       return;
     }
-    // A quick create from search used to default to Chest, so a curl made in a hurry was counted as chest work from then on.
+    // A quick create from search does not default to Chest, which would count a curl made in a hurry as chest work from then on.
     if (!MK.some(k => k === e.primary)) {
       toast('Pick the main muscle it trains');
       const el = document.querySelector('[data-ebind="primary"]');

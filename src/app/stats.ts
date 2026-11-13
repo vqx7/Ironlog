@@ -184,8 +184,8 @@ const HEAT_WEEKS = 12,
 
 /* ---------- the parts more than one section, or another screen, reads ---------- */
 
-/* This used to print under all five charts at once. It is one fact about the
-   page, so it is shown once a draw and the later calls draw nothing. */
+/* One fact about the page, not one for each of the five charts: shown once
+   a draw, and the later calls draw nothing. */
 let chartNoticeUsed = false;
 function chartFallback(): Part {
   if ((window.__libs && window.__libs.chart) || chartNoticeUsed) return nothing;
@@ -873,10 +873,10 @@ function blockBody(): TemplateResult {
 function consistencySec(R: ReturnType<typeof activeRoutine>, cur: string): TemplateResult {
   const sessDates = new Set(Object.keys(dateIndex().byDate));
   /* Adherence counts only days the routine actually plans work on: a non-rest
-     day with no exercises in it used to inflate the denominator. Each week is
+     day with no exercises in it would inflate the denominator. Each week is
      capped at its own planned days, so training seven days against a six-day
-     routine no longer reports 117%. The window is the four completed weeks
-     before this one, which the label now says out loud. */
+     routine never reports 117%. The window is the four completed weeks
+     before this one, which the label says out loud. */
   const planned = freeMode() ? 0 : trainDaysOf(R) * weekFactor(R);
   /* Only weeks since your first session count. Before that there was nothing
      to adhere to, and counting those weeks read 0% on day one. */

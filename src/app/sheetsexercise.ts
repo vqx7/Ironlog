@@ -80,7 +80,7 @@ export function exEditSheet(m: ExEditSheet): TemplateResult {
     <div class="row"><button class="btn primary" data-act="exSave">${save}</button><button class="btn" data-act=${m.back ? 'exBack' : 'mClose'}>${m.back ? 'Back' : 'Cancel'}</button></div>${m.isNew ? '' : howToLink(e)}${!m.isNew && e.custom && !window.claude ? html`<button class="linkbtn u-minh44" data-act="exSuggest" data-tip="Your exercises are only in your log. This sends it to the app's owner, who can add it to the library for everyone.">Suggest for the library</button>` : ''}</div></div>`;
 }
 
-/* The 3D body is mounted by the legacy host once the sheet is drawn (its
+/* The 3D body is mounted by the sheet host once the sheet is drawn (its
    #bm3dx); the lift's muscles are set for it here, and the turn it had on
    the map kept to restore when the sheet closes. */
 /** The muscles a lift works: in words, on the flat figures or the 3D body, and the legend. */

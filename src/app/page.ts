@@ -34,7 +34,7 @@ export function setRoot(draw: () => void): void {
   root = draw;
 }
 
-/* A code bug inside a view used to leave a blank screen. Now the error is
+/* A code bug inside a view would leave a blank screen, so the error is
    logged and a recovery screen offers your data and a way back. */
 function renderCrash(e: unknown): void {
   let txt = '';
@@ -73,8 +73,8 @@ export function render(): void {
   navSync();
 }
 
-/* Re-rendering used to replace #view wholesale, which blew away whatever the
-   user was typing in. A selector for the focused control is made first, then
+/* Re-rendering must not blow away whatever the user is typing in. A
+   selector for the focused control is made first, then
    focus and the caret are put back where they were. */
 /** A selector for an element: its id, or its tag with its data- attributes; null when it has neither. */
 function focusKey(el: Element | null): string | null {
@@ -138,8 +138,8 @@ export function applyTheme(): void {
 // cast: history.state is any in the browser's types; it is read as unknown and checked where it is used.
 const histState = (): unknown => history.state as unknown;
 
-/* The phone's Back gesture used to leave the app with a sheet open. Opening a
-   sheet adds one history entry, and Back closes the sheet instead. Closing
+/* The phone's Back gesture closes an open sheet rather than leave the app:
+   opening a sheet adds one history entry, and Back closes the sheet. Closing
    a sheet with its own buttons leaves that entry in place and the next sheet
    reuses it, rather than calling history.back(), whose delayed event could
    land on a sheet opened a moment later. */
@@ -229,8 +229,9 @@ function kindOf<K extends ModalKind>(t: Sheets, m: ModalOf<K>): SheetKind<K> {
   return t[k];
 }
 
-/* Focus used to stay behind the overlay, so keyboard and screen-reader users
-   could tab through the page underneath a supposedly modal sheet. */
+/* Focus goes to the sheet, not left behind the overlay, so keyboard and
+   screen-reader users cannot tab through the page underneath a modal
+   sheet. */
 let modalReturn: Element | null = null;
 /** The open sheet's controls a Tab can reach, in order. */
 export function modalFocusables(): HTMLElement[] {
@@ -266,9 +267,9 @@ function renderModalBody(keep: boolean): void {
     if (hd && !sh.hasAttribute('aria-label')) sh.setAttribute('aria-label', hd.textContent || 'Dialog');
   }
 }
-/* Re-rendering a sheet used to rebuild it from the top: a tap on a muscle chip
-   halfway down the exercise editor threw the sheet back to its first line and
-   dropped the cursor. When the same sheet is redrawn, its scroll positions and
+/* Rebuilt from the top, a sheet redrawn after a tap on a muscle chip halfway
+   down the exercise editor would go back to its first line and drop the
+   cursor. When the same sheet is redrawn, its scroll positions and
    the focused field (with the caret) are put back. */
 /** Draws the open sheet, or hides the sheet layer when none is open. */
 export function renderModal(): void {
