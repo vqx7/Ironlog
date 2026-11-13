@@ -162,7 +162,17 @@ export function pageListeners(): void {
   });
 }
 
-/** A tap: a tab, outside a sheet, or anything with an action (data-act). */
+/** A tap on the dimmed layer around a sheet, outside the sheet: closes it, unless something was typed there. */
+function onOutside(e: MouseEvent): void {
+  if (e.target !== e.currentTarget) return;
+  // A half-filled new exercise or note is not thrown away by a stray tap.
+  if (ui.modal && ui.modal.dirty) {
+    toast(DIRTY_SAID);
+    return;
+  }
+  closeModal();
+}
+/** A tap: a tab, or anything with an action (data-act). */
 function onClick(e: MouseEvent): void {
   const el = e.target;
   if (!(el instanceof Element)) return;
@@ -174,16 +184,6 @@ function onClick(e: MouseEvent): void {
     if (ui.tab === 'program') ui.planView = 'routine';
     window.scrollTo(0, 0);
     render();
-    return;
-  }
-  /* A tap outside a sheet closes it, unless something was typed there: a
-     half-filled new exercise or note is not thrown away by a stray tap. */
-  if (el.id === 'modal') {
-    if (ui.modal && ui.modal.dirty) {
-      toast(DIRTY_SAID);
-      return;
-    }
-    closeModal();
     return;
   }
   const t = el.closest('[data-act]');
@@ -365,6 +365,11 @@ export function eventListeners(): void {
      password; it never navigates (accountSubmit, src/app/account.ts). */
   document.addEventListener('submit', accountSubmit);
   document.addEventListener('click', onClick);
+  /* The tap outside a sheet is heard on the layer around it, not only on the page: an iPhone, as WebKit does, makes a
+     finger's tap a click only on an element that listens for clicks itself, and the layer is a plain element, so a
+     finger there closed nothing while a mouse click did. */
+  const layer = document.getElementById('modal');
+  if (layer) layer.addEventListener('click', onOutside);
   // Muscle-map groups are focusable; Enter or Space activates them like a button.
   document.addEventListener('keydown', onActivateKey);
   document.addEventListener('input', onInput);

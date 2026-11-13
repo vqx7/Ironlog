@@ -27420,6 +27420,14 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (document.visibilityState === "visible" && tm && !tm.hidden) tick();
     });
   }
+  function onOutside(e5) {
+    if (e5.target !== e5.currentTarget) return;
+    if (ui.modal && ui.modal.dirty) {
+      toast(DIRTY_SAID);
+      return;
+    }
+    closeModal();
+  }
   function onClick(e5) {
     const el = e5.target;
     if (!(el instanceof Element)) return;
@@ -27430,14 +27438,6 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (ui.tab === "program") ui.planView = "routine";
       window.scrollTo(0, 0);
       render();
-      return;
-    }
-    if (el.id === "modal") {
-      if (ui.modal && ui.modal.dirty) {
-        toast(DIRTY_SAID);
-        return;
-      }
-      closeModal();
       return;
     }
     const t4 = el.closest("[data-act]");
@@ -27585,6 +27585,8 @@ ${JSON.stringify(ctx, null, 1)}`;
   function eventListeners() {
     document.addEventListener("submit", accountSubmit);
     document.addEventListener("click", onClick);
+    const layer = document.getElementById("modal");
+    if (layer) layer.addEventListener("click", onOutside);
     document.addEventListener("keydown", onActivateKey);
     document.addEventListener("input", onInput);
     document.addEventListener("change", onChange);
