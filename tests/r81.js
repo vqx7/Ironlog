@@ -126,11 +126,11 @@ const draftOf = D => D.page.evaluate(() => { const d = window.__ironlog.state.dr
     await wait(500);
     const before = await draftOf(D);
     const leave = await D.page.$('#view [data-act="wkAway"]');
-    if (ok(!!leave, '3. the session has Save and leave')) {
+    if (ok(!!leave, '3. the session has Save for later (Save and leave before 2.63)')) {
       await leave.click();
       await wait(400);
       const t = await D.page.evaluate(() => ({ resume: !!document.querySelector('#view [data-act="wkResume"]'), start: !!document.querySelector('#view [data-act="startSession"], #view [data-act="startFree"]'), session: !!document.querySelector('#view section.block'), secs: [...document.querySelectorAll('#view [data-sk]')].map(e => e.dataset.sk), draft: !!window.__ironlog.state.draft }));
-      ok(t.resume && !t.start && !t.session && t.draft, '3. Save and leave shows Today with a card to resume the workout, and no Start', t);
+      ok(t.resume && !t.start && !t.session && t.draft, '3. Save for later shows Today with a card to resume the workout, and no Start', t);
       ok(JSON.stringify(t.secs) === JSON.stringify(secs0), "3. Today's own sections are there as without a workout (its Body among them when shown), less the planned day's preview", { secs0, now: t.secs });
       ok((await draftOf(D)) === before, '3. the workout is kept as it was');
       await D.page.click('#view [data-act="wkResume"]').catch(() => {});

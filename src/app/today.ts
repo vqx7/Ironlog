@@ -714,7 +714,7 @@ export function viewToday(): TemplateResult {
   const free = state.settings.todayStart === 'free' && chosen == null;
   const lines = [acctBar(), installBar(), iconBar()];
   const above = html`${welcomeCard()}${lines}${lines.every(l => l === nothing) ? photoBar() : nothing}`;
-  // Stepped away from a workout with Save and leave: its card takes the start card's place, so Today offers no second start.
+  // Stepped away from a workout with Save for later: its card takes the start card's place, so Today offers no second start.
   const open = state.draft && awayFrom() ? state.draft : null;
   if (open)
     return html`${above}${resumeCard(open)}${bwDueCard()}${todayRest({ playable: false, di, day, deload, cs })}`;

@@ -3,7 +3,7 @@
    logging a past one opens it as the session in progress, and there is one,
    so rather than throw the open workout away, it is kept on this phone, with
    the account it was for, and comes back when the edit or past workout ends
-   (saved, discarded or emptied), Today offering it as after Save and leave.
+   (saved, discarded or emptied), Today offering it as after Save for later.
    It is the phone's own and never synced, so no older build meets it and
    nothing in the log changes shape; one is held at a time, and a second edit
    with one held asks first. A copy that cannot come

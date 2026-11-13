@@ -148,6 +148,8 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const P = await lifter();
     await start(P);
     await P.tap(tick(0, 0));
+    const away = await P.ev(() => { const b = document.querySelector('#view [data-act="wkAway"]'); return b ? b.textContent.trim() : null; });
+    ok(away === 'Save for later', 'L-4: the button to step away from the workout reads "Save for later" (V, 2026-11-13: it read "Save and leave")', away);
     await P.tap('#view [data-act="wkAway"]', 300);
     ok((await P.toasts()).includes('Saved. Resume it from Today.') && (await P.ev(() => window.__ironlog.ui.tab)) === 'today', 'L-4: backing out says "Saved. Resume it from Today." and goes to Today', await P.toasts());
     await P.tap('#view .hero [data-act="startSession"], #view .hero [data-act="wkResume"]', 300);

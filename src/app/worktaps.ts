@@ -683,7 +683,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         // Scrolling is best effort; the exercise is open either way.
       }
   },
-  /* Save and leave: the workout is saved as it goes, so this only
+  /* Save for later: the workout is saved as it goes, so this only
      steps away to Today, which offers it back; the tab, Back and opening the
      app again all open the workout. */
   wkAway() {

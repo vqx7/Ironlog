@@ -474,7 +474,7 @@ export function begunIn(d: DraftLike): boolean {
 }
 
 /* A workout's clock starts when the lifting does, not when it is opened (V, 2026-11-11): at the change that
-   begins it (begunIn), so a workout set up ahead (blank, freestyle or a routine day) and left with Save and leave
+   begins it (begunIn), so a workout set up ahead (blank, freestyle or a routine day) and left with Save for later
    times exactly like one opened at the gym, and reads "Not started" until then. Reps entered count as well as a
    tick, since Finish marks typed rows done for a lifter who does not tick (else such a session is saved
    untimed). Everything taken back, it is not started again. When it was opened stays in
