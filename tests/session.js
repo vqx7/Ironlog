@@ -31,11 +31,16 @@ const TOAST_LOG = () => {
   const hook = () => {
     const el = document.getElementById('toast');
     if (!el) { setTimeout(hook, 20); return; }
-    new MutationObserver(() => {
+    const note = () => {
       if (el.hidden) return;
       const t = el.innerText.replace(/\s+/g, ' ').replace(/ Undo$/, '').trim(), last = window.__toasts[window.__toasts.length - 1];
       if (t && t !== last) window.__toasts.push(t);
-    }).observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
+    };
+    // A message the app showed as it started, before this watch began, is taken as it stands: the standalone build
+    // and WebKit start the app before the first look for the box, and the message then never changes for the watch
+    // to see (NEW-143, L-19's removal message).
+    note();
+    new MutationObserver(note).observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
   };
   hook();
 };
