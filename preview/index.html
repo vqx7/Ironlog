@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-G+WMz/LjF3rE1wLY62XQt1gSXsMwlf3x6ZNkchjL9Gc=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-QAyD5k8ciq6EqpXQJgaMTa30VzL0JraIvRZShhgsncI=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.12-r105">
+<meta name="app-build" content="2026.11.12-r104">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2150,8 +2150,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.59";
-  var APP_VERSION = "2026.11.12-r105";
+  var DISPLAY_VERSION = "2.58";
+  var APP_VERSION = "2026.11.12-r104";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2261,7 +2261,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       EXMAP: null,
       _idx: null,
       _dix: null,
-      _eff: null,
+      _cal: null,
+      _rirUse: null,
       _bwRef: void 0,
       _pace: null,
       _plates: null
@@ -2315,7 +2316,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     M3.c._idx = null;
     M3.c._dix = null;
     M3.c.EXMAP = null;
-    M3.c._eff = null;
+    M3.c._cal = null;
+    M3.c._rirUse = null;
     M3.c._bwRef = void 0;
     M3.c._pace = null;
     M3.c._plates = null;
@@ -4587,9 +4589,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }).map((r0, ri) => cleanRoutine(r0, ri));
     const routines = kept.length ? kept : [cleanRoutine(starterRoutine(), 0)];
     let trash = cleanTrash(list("trash"));
-    const before2 = list("sessions").length;
+    const before = list("sessions").length;
     let sessions = list("sessions").filter((x2) => okSess(rec(x2))).map((x2, i5) => cleanSess(x2, i5)).filter((ss) => ss.ex.length);
-    drop3(before2 - sessions.length);
+    drop3(before - sessions.length);
     let cardio;
     ({ sessions, cardio, trash } = reviveEdited(sessions, list("cardio"), trash));
     sessions = dedupe(sessions, "session", (x2) => x2.ex.reduce((a2, b2) => a2 + b2.sets.length, 0), trash);
@@ -6091,75 +6093,21 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     return best || earliest ? (best || earliest).kg : null;
   }
-  var CAL_WEEKS = 12, CAL_N = 8, CAL_SHRINK = 3, CAL_CAP = 2, CAL_MIN = 2;
-  var RIR_USUAL_MIN = 3;
-  var LOOKBACK_DAYS = WEEK_DAYS * CAL_WEEKS;
-  var dayOf = (at2) => typeof at2 === "string" ? at2 : at2.date;
-  function typedRir(s3) {
+  function rirEffIn(M3, s3, ex) {
+    const m3 = M3.s.settings.rirMode;
+    if (m3 === "off") return null;
     if (s3.rir == null || s3.rir === "") return null;
     const v3 = +s3.rir;
-    return isFinite(v3) ? v3 : null;
-  }
-  function addRows(M3, to, b2, date, sid, o3) {
-    const ex = EXIn(M3, b2.exId);
-    let c4 = null;
-    for (const x2 of b2.sets) {
-      if (o3.open && !x2.done) continue;
-      const cal = x2.cal && !(o3.open && x2.warm) ? x2.cal : null;
-      const r4 = Number(x2.r) || 0;
-      if (cal && !o3.demo && r4 >= cal.at)
-        to.checks.push({ date, err: r4 - cal.at - cal.pred, c: c4 ?? (c4 = isCompound(ex) ? "c" : "i"), sid });
-      if (ex.timed || !isWork(x2) || x2.drop && !(o3.open && x2.warm) || cal) continue;
-      const v3 = typedRir(x2);
-      if (v3 == null) continue;
-      const l4 = to.rated.get(b2.exId);
-      if (l4) l4.push({ date, rir: v3, sid });
-      else to.rated.set(b2.exId, [{ date, rir: v3, sid }]);
+    if (!isFinite(v3)) return null;
+    if (m3 === "cal" && !s3.cal && v3 <= E1_MAX_RIR) {
+      const c4 = calStatsIn(M3);
+      const k2 = ex ? isCompound(ex) ? "c" : "i" : null;
+      const src = k2 && c4.cls[k2].recent >= CAL_MIN ? c4.cls[k2] : c4;
+      if (src.recent >= CAL_MIN && src.bias) return Math.min(EFFORT_TOP, Math.max(0, v3 + src.bias));
     }
+    return v3;
   }
-  var byDate = (a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0;
-  function bound(list, d3) {
-    let lo = 0, hi = list.length;
-    while (lo < hi) {
-      const m3 = lo + hi >> 1;
-      if (list[m3].date < d3) lo = m3 + 1;
-      else hi = m3;
-    }
-    return lo;
-  }
-  function effortsIn(M3) {
-    if (M3.c._eff) return M3.c._eff;
-    const checks = [];
-    const to = { rated: /* @__PURE__ */ new Map(), checks };
-    for (const s3 of M3.s.sessions) for (const b2 of s3.ex) addRows(M3, to, b2, s3.date, s3.id, { demo: !!s3.demo, open: false });
-    for (const l4 of to.rated.values()) l4.sort(byDate);
-    checks.sort(byDate);
-    return M3.c._eff = {
-      ...to,
-      cal: /* @__PURE__ */ new Map(),
-      usual: /* @__PURE__ */ new Map(),
-      first: /* @__PURE__ */ new Map()
-    };
-  }
-  function viewOf(M3, at2) {
-    if (typeof at2 === "string") return { day: at2, out: [], own: null };
-    const out = [];
-    if (at2.id) out.push(at2.id);
-    if (at2.editingId) out.push(at2.editingId);
-    const checks = [];
-    const own2 = { date: at2.date, rated: /* @__PURE__ */ new Map(), checks };
-    for (const b2 of at2.ex || []) addRows(M3, own2, b2, at2.date, "", { demo: false, open: true });
-    return { day: at2.date, out, own: own2 };
-  }
-  var asSaved = (v3) => !v3.out.length && !v3.own;
-  function before(saved, own2, v3) {
-    const from = addDays(v3.day, -LOOKBACK_DAYS);
-    let got = saved.slice(bound(saved, from), bound(saved, v3.day));
-    if (v3.out.length) got = got.filter((p3) => !v3.out.includes(p3.sid));
-    if (!own2.length || !v3.own || v3.own.date < from || v3.own.date >= v3.day) return got;
-    const at2 = bound(got, addDays(v3.own.date, 1));
-    return [...got.slice(0, at2), ...own2, ...got.slice(at2)];
-  }
+  var CAL_WEEKS = 12, CAL_N = 8, CAL_SHRINK = 3, CAL_CAP = 2, CAL_MIN = 2;
   function calSummary(list) {
     const last = list.slice(-CAL_N);
     const n3 = last.length;
@@ -6172,98 +6120,65 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       mae: n3 ? last.reduce((a2, p3) => a2 + Math.abs(p3.err), 0) / n3 : null
     };
   }
-  function calStatsOf(list, from) {
-    const rec2 = list.slice(bound(list, from));
-    return {
+  function calStatsIn(M3) {
+    if (M3.c._cal) return M3.c._cal;
+    const pts = [];
+    for (const s3 of M3.s.sessions) {
+      if (s3.demo) continue;
+      for (const b2 of s3.ex) {
+        const c4 = isCompound(EXIn(M3, b2.exId)) ? "c" : "i";
+        for (const x2 of b2.sets)
+          if (x2.cal && +x2.r >= x2.cal.at) pts.push({ date: s3.date, err: +x2.r - x2.cal.at - x2.cal.pred, c: c4 });
+      }
+    }
+    pts.sort((a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0);
+    const cut = addDays(M3.today(), -WEEK_DAYS * CAL_WEEKS);
+    const rec2 = pts.filter((p3) => p3.date >= cut);
+    M3.c._cal = {
       ...calSummary(rec2),
-      n: list.length,
-      lastDate: list.length ? list[list.length - 1].date : null,
+      n: pts.length,
+      lastDate: pts.length ? pts[pts.length - 1].date : null,
       cls: { c: calSummary(rec2.filter((p3) => p3.c === "c")), i: calSummary(rec2.filter((p3) => p3.c === "i")) }
     };
+    return M3.c._cal;
   }
-  function calOf(M3, v3) {
-    const eff = effortsIn(M3);
-    const hit = asSaved(v3) ? eff.cal.get(v3.day) : void 0;
-    if (hit) return hit;
-    const out = calStatsOf(before(eff.checks, v3.own ? v3.own.checks : [], v3), addDays(v3.day, -LOOKBACK_DAYS));
-    if (asSaved(v3)) eff.cal.set(v3.day, out);
-    return out;
-  }
-  function calStatsIn(M3) {
-    const eff = effortsIn(M3);
-    const day = M3.today();
-    return calStatsOf(eff.checks.slice(0, bound(eff.checks, addDays(day, 1))), addDays(day, -LOOKBACK_DAYS));
-  }
-  function correctedOf(M3, v3, k2, view) {
-    if (M3.s.settings.rirMode !== "cal" || v3 > E1_MAX_RIR) return v3;
-    const c4 = calOf(M3, view);
-    const src = k2 && c4.cls[k2].recent >= CAL_MIN ? c4.cls[k2] : c4;
-    return src.recent >= CAL_MIN && src.bias ? Math.min(EFFORT_TOP, Math.max(0, v3 + src.bias)) : v3;
-  }
-  var kindOf = (ex) => ex ? isCompound(ex) ? "c" : "i" : null;
-  function rirEffIn(M3, s3, ex, at2) {
-    const m3 = M3.s.settings.rirMode;
-    if (m3 === "off") return null;
-    const v3 = typedRir(s3);
-    if (v3 == null) return null;
-    return s3.cal || m3 !== "cal" || v3 > E1_MAX_RIR ? v3 : correctedOf(M3, v3, kindOf(ex), viewOf(M3, at2));
-  }
-  function usualFrom(M3, ex, v3) {
-    const saved = effortsIn(M3).rated.get(ex.id) || [];
-    const got = before(saved, v3.own && v3.own.rated.get(ex.id) || [], v3);
-    if (got.length < RIR_USUAL_MIN) return null;
-    if (M3.s.settings.rirMode !== "cal") return median(got.map((p3) => p3.rir));
-    const k2 = kindOf(ex);
-    return median(got.map((p3) => correctedOf(M3, p3.rir, k2, v3)));
-  }
-  function firstOf(M3, ex, v3) {
-    const saved = effortsIn(M3).rated.get(ex.id) || [];
-    const days = /* @__PURE__ */ new Set();
-    for (const p3 of saved) if (!v3.out.includes(p3.sid)) days.add(p3.date);
-    if (v3.own && v3.own.rated.get(ex.id)) days.add(v3.own.date);
-    for (const d3 of [...days].sort()) {
-      const day = addDays(d3, 1);
-      const u4 = usualFrom(M3, ex, { ...v3, day });
-      if (u4 != null) return { date: day, v: u4 };
-    }
-    return null;
-  }
-  function rirUsualIn(M3, exId, at2) {
+  var RIR_USUAL_MIN = 3;
+  function rirUsualIn(M3, exId) {
     if (M3.s.settings.rirMode === "off") return null;
-    const eff = effortsIn(M3);
-    const kept = typeof at2 === "string" ? eff.usual.get(exId)?.get(at2) : void 0;
-    if (kept !== void 0) return kept;
-    const v3 = viewOf(M3, at2);
-    let byDay = asSaved(v3) ? eff.usual.get(exId) : void 0;
-    if (asSaved(v3) && !byDay) eff.usual.set(exId, byDay = /* @__PURE__ */ new Map());
-    const hit = byDay ? byDay.get(v3.day) : void 0;
-    if (hit !== void 0) return hit;
-    const ex = EXIn(M3, exId);
-    let u4 = usualFrom(M3, ex, v3);
-    if (u4 == null) {
-      let f3 = asSaved(v3) ? eff.first.get(exId) : void 0;
-      if (f3 === void 0) {
-        f3 = firstOf(M3, ex, v3);
-        if (asSaved(v3)) eff.first.set(exId, f3);
+    if (!M3.c._rirUse) {
+      M3.c._rirUse = /* @__PURE__ */ Object.create(null);
+      const cut = addDays(M3.today(), -WEEK_DAYS * CAL_WEEKS);
+      const by = /* @__PURE__ */ Object.create(null);
+      for (const ss of M3.s.sessions) {
+        if (ss.date < cut) continue;
+        for (const b2 of ss.ex) {
+          const ex = EXIn(M3, b2.exId);
+          if (ex.timed) continue;
+          for (const x2 of b2.sets) {
+            if (!isWork(x2) || x2.drop || x2.cal) continue;
+            const q = rirEffIn(M3, x2, ex);
+            if (q != null) (by[b2.exId] || (by[b2.exId] = [])).push(q);
+          }
+        }
       }
-      if (f3 && f3.date > v3.day) u4 = f3.v;
+      for (const k2 in by) if (by[k2].length >= RIR_USUAL_MIN) M3.c._rirUse[k2] = median(by[k2]);
     }
-    if (byDay) byDay.set(v3.day, u4);
-    return u4;
+    const v3 = M3.c._rirUse[exId];
+    return v3 == null ? null : v3;
   }
-  var rirEstIn = (M3, s3, ex, at2) => {
-    const q = rirEffIn(M3, s3, ex, at2);
-    return q != null ? q : ex ? rirUsualIn(M3, ex.id, at2) : null;
+  var rirEstIn = (M3, s3, ex) => {
+    const q = rirEffIn(M3, s3, ex);
+    return q != null ? q : ex ? rirUsualIn(M3, ex.id) : null;
   };
-  var isHardIn = (M3, s3, ex, at2) => {
+  var isHardIn = (M3, s3, ex) => {
     if (!isWork(s3)) return false;
-    const q = rirEstIn(M3, s3, ex, at2);
+    const q = rirEstIn(M3, s3, ex);
     return q == null || q <= HARD_RIR;
   };
-  function hardCreditIn(M3, s3, ex, at2) {
-    if (isHardIn(M3, s3, ex, at2)) return setCredit(s3);
+  function hardCreditIn(M3, s3, ex) {
+    if (isHardIn(M3, s3, ex)) return setCredit(s3);
     if (!rirHalfOnIn(M3) || !isWork(s3)) return 0;
-    const q = rirEstIn(M3, s3, ex, at2);
+    const q = rirEstIn(M3, s3, ex);
     return q != null && q > HARD_RIR ? setCredit(s3) * HALF_SET : 0;
   }
   function bwLoadIn(M3, ex, date) {
@@ -6459,23 +6374,23 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         last = x2;
         if (lighter(x2)) continue;
         const prior = normal.filter((q) => sameRR(q.rr, x2.rr));
-        const before2 = prior.slice(-USUAL_BEFORE);
-        const plan = before2.length && !x2.tag ? planSets(id, x2) : null;
+        const before = prior.slice(-USUAL_BEFORE);
+        const plan = before.length && !x2.tag ? planSets(id, x2) : null;
         const saved = !x2.tag && x2.ps != null ? x2.ps : null;
         const reached = saved != null && prior.some((q) => setsAt(q, q.topW) >= saved);
-        const sh = before2.length ? shortOf(x2, before2, plan, saved, reached) : void 0;
+        const sh = before.length ? shortOf(x2, before, plan, saved, reached) : void 0;
         if (sh) x2.short = sh;
         if (!(x2.tag && x2.short)) normal.push(x2);
       }
     }
-    function shortOf(x2, before2, plan, saved, reached) {
+    function shortOf(x2, before, plan, saved, reached) {
       const usual = (v3, own2) => mid(x2.tag ? v3 : [...v3, own2]);
-      const loads = before2.map((q) => q.topW);
+      const loads = before.map((q) => q.topW);
       const was = Math.max(...loads), usualW = usual(loads, x2.topW);
       const up = x2.topW > was + EPS_SAME;
       const n3 = up ? Math.max(setsAt(x2, usualW), x2.pts.filter((p3) => p3.w >= was - EPS_SAME).length) : setsAt(x2, usualW);
       const sets = usual(
-        before2.map((q) => setsAt(q, usualW)),
+        before.map((q) => setsAt(q, usualW)),
         n3
       );
       const usualN = setsHeldTo(sets, plan, null, false);
@@ -6484,11 +6399,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (up) return void 0;
       const k2 = Math.min(usualN, want);
       const tr = (q) => readingOf(q, k2) ?? 0;
-      if (x2.tRaw != null && before2.every((q) => q.tRaw != null))
-        return tr(x2) < usual(before2.map(tr), tr(x2)) * USUAL_SHARE - EPS ? "reading" : void 0;
+      if (x2.tRaw != null && before.every((q) => q.tRaw != null))
+        return tr(x2) < usual(before.map(tr), tr(x2)) * USUAL_SHARE - EPS ? "reading" : void 0;
       const per = (q) => repsOf(q, k2);
       const lighterW = x2.topW < usualW - EPS_SAME;
-      return lighterW || per(x2) < usual(before2.map(per), per(x2)) * USUAL_SHARE - EPS ? "reading" : void 0;
+      return lighterW || per(x2) < usual(before.map(per), per(x2)) * USUAL_SHARE - EPS ? "reading" : void 0;
     }
   }
 
@@ -6628,13 +6543,13 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   // src/app/analytics.ts
   function dateIndexIn(M3) {
     if (M3.c._dix) return M3.c._dix;
-    const byDate3 = {}, weekN = {};
+    const byDate2 = {}, weekN = {};
     for (const x2 of sortedSessionsIn(M3)) {
-      (byDate3[x2.date] = byDate3[x2.date] || []).push(x2);
+      (byDate2[x2.date] = byDate2[x2.date] || []).push(x2);
       const w2 = weekStart(x2.date);
       weekN[w2] = (weekN[w2] || 0) + 1;
     }
-    return M3.c._dix = { byDate: byDate3, weekN };
+    return M3.c._dix = { byDate: byDate2, weekN };
   }
   var PICK_DAYS = 7;
   var RECOVERY_EASY_RIR = 3;
@@ -6646,10 +6561,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const anchor = sessions.length ? sessions[sessions.length - 1].date : M3.today();
     const winStart = addDays(anchor, -TREND_DAYS);
     idxAutoLighter(byEx);
-    const dayOf2 = {};
-    for (const x2 of sessions) dayOf2[x2.id] = x2.dayId;
+    const dayOf = {};
+    for (const x2 of sessions) dayOf[x2.id] = x2.dayId;
     idxShort(byEx, (id, x2) => {
-      const p3 = routinePlanIn(M3, id, null, dayOf2[x2.sid]);
+      const p3 = routinePlanIn(M3, id, null, dayOf[x2.sid]);
       return p3 ? +p3.sets : null;
     });
     const lightWk = idxLightWeeks(sessions, byEx, M3.s.deloadWeek);
@@ -6698,10 +6613,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         total++;
         if (logged2) n3++;
       }
-      const hard = isHardIn(M3, s3, ex, ss.date);
-      const cr = hard ? setCredit(s3) : hardCreditIn(M3, s3, ex, ss.date);
+      const hard = isHardIn(M3, s3, ex);
+      const cr = hard ? setCredit(s3) : hardCreditIn(M3, s3, ex);
       if (!cr) continue;
-      const q = rirEffIn(M3, s3, ex, ss.date);
+      const q = rirEffIn(M3, s3, ex);
       weekHard[wk] = (weekHard[wk] || 0) + cr;
       for (const [m3, f3] of mus) {
         ws[m3] = (ws[m3] || 0) + f3 * cr;
@@ -6764,8 +6679,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
             pl,
             r: +s3.r,
             w: +s3.w || 0,
-            rir: rirEffIn(M3, s3, ex, ss.date),
-            rq: rirEstIn(M3, s3, ex, ss.date)
+            rir: rirEffIn(M3, s3, ex),
+            rq: rirEstIn(M3, s3, ex)
           };
         };
         const pts = ptsSrc.map(point);
@@ -6838,13 +6753,13 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const prev = [];
       let run2 = [];
       const readAgainst = /* @__PURE__ */ new Map();
-      let before2 = null;
+      let before = null;
       for (const x2 of exps) {
-        if (afterBreak(before2, x2.date) || x2.nw) {
+        if (afterBreak(before, x2.date) || x2.nw) {
           prev.length = 0;
           run2 = [];
         }
-        before2 = x2;
+        before = x2;
         const ref2 = prev.filter((q) => sameRR(q.rr, x2.rr)).slice(-LIGHTER_REF);
         const k2 = weekStart(x2.date);
         if (x2.deload || x2.light) {
@@ -6886,10 +6801,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     for (const id of Object.keys(byEx)) {
       const prev = [];
-      let before2 = null;
+      let before = null;
       for (const x2 of byEx[id]) {
-        if (afterBreak(before2, x2.date) || x2.nw) prev.length = 0;
-        before2 = x2;
+        if (afterBreak(before, x2.date) || x2.nw) prev.length = 0;
+        before = x2;
         if (x2.deload || x2.light) continue;
         if (x2.auto || x2.keep) {
           if (x2.keep) prev.push(x2);
@@ -7160,12 +7075,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
 
   // src/app/plans.ts
-  function planForIn(M3, exId, R2, dayId, plain, before2, part) {
+  function planForIn(M3, exId, R2, dayId, plain, before, part) {
     const inR = routinePlanIn(M3, exId, R2, dayId, part);
     if (inR) return inR;
     const base = defPlanIn(M3, exId, plain);
     if (plain) return base;
-    const T2 = before2 && isDate(before2) ? before2 : M3.today();
+    const T2 = before && isDate(before) ? before : M3.today();
     const demo = new Set(M3.s.sessions.filter((s3) => s3.demo).map((s3) => s3.id));
     const xs = (IDXIn(M3).byEx[exId] || []).filter((x3) => x3.date <= T2 && !offTarget(x3) && !demo.has(x3.sid));
     const x2 = xs[xs.length - 1];
@@ -8848,10 +8763,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   function sessionMusclesIn(M3, d3) {
     const out = {};
-    const w2 = { id: d3.id, date: d3.date || M3.today(), editingId: d3.editingId, ex: d3.ex };
     for (const b2 of d3.ex) {
       const ex = EXIn(M3, b2.exId);
-      const n3 = b2.sets.filter((x2) => !x2.warm && (x2.done ? isHardIn(M3, x2, ex, w2) : true)).reduce((a2, x2) => a2 + setCredit(x2), 0);
+      const n3 = b2.sets.filter((x2) => !x2.warm && (x2.done ? isHardIn(M3, x2, ex) : true)).reduce((a2, x2) => a2 + setCredit(x2), 0);
       if (!n3) continue;
       out[ex.primary] = (out[ex.primary] || 0) + n3;
       for (const m3 of ex.secondary) out[m3] = (out[m3] || 0) + HELPER_CREDIT * n3;
@@ -9500,8 +9414,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         const c4 = sep.find((k2) => k2 > b2 + 1);
         const lastTo = b2 + 1;
         const lastFrom = c4 !== void 0 ? c4 - 1 : b2 + BLOCK_WEEKS_DEFAULT;
-        const before2 = lastFrom >= lastTo ? [[lastFrom, lastTo]] : [];
-        spans = [[a2 - 1, 0], ...before2];
+        const before = lastFrom >= lastTo ? [[lastFrom, lastTo]] : [];
+        spans = [[a2 - 1, 0], ...before];
       }
     }
     const len = typeof pick2 === "number" ? pick2 : BLOCK_WEEKS_DEFAULT;
@@ -9909,8 +9823,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const back2 = backDaysIn(M3, b2.exId, p3, {}) > BACK_DAYS;
     const tgt = +p3.rir || 0, lo = +p3.repMin, hi = +p3.repMax, r4 = +(s3.r ?? 0);
     const q = s3.rir == null || s3.rir === "" ? null : +s3.rir;
-    const at2 = M3.s.draft && M3.s.draft.ex.includes(b2) ? M3.s.draft : M3.today();
-    const qe = q != null ? q : back2 ? BACK_RIR : rirEstIn(M3, s3, ex, at2);
+    const qe = q != null ? q : back2 ? BACK_RIR : rirEstIn(M3, s3, ex);
     const bw = bwRefLoadIn(M3, ex), Lt = s3.w + bw;
     const expR = b2.tgt && b2.tgt.kind === "load" && +(b2.tgt.repMin ?? 0) > 0 ? +(b2.tgt.repMin ?? 0) : lastR != null ? lastR : lo;
     const offLight = q != null && q >= tgt + CLEARLY_OFF && r4 >= lo || r4 >= hi + CLEARLY_OFF;
@@ -11453,7 +11366,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       }
       use = a2 === "alt";
     }
-    const before2 = { state, meta: cloud.meta, editAt: cloud.editAt, last: cloud.last, acct: cloud.acct, ep: notesEp };
+    const before = { state, meta: cloud.meta, editAt: cloud.editAt, last: cloud.last, acct: cloud.acct, ep: notesEp };
     if (use && from) {
       const k2 = await keepHere(from);
       if (k2 !== "kept") {
@@ -11483,13 +11396,13 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     newEp();
     const written = !device.boot || (!next2 || device.ok) && saveMeta();
     if (!written) {
-      setState(before2.state);
-      cloud.meta = before2.meta;
+      setState(before.state);
+      cloud.meta = before.meta;
       cloud.sent = {};
-      cloud.editAt = before2.editAt;
-      cloud.last = before2.last;
-      cloud.acct = before2.acct;
-      notesEp = before2.ep;
+      cloud.editAt = before.editAt;
+      cloud.last = before.last;
+      cloud.acct = before.acct;
+      notesEp = before.ep;
       commit();
       saveMeta();
       if (use && from) await dropAside(from);
@@ -11781,14 +11694,14 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return d3 ? { id: d3.id, begun: begunIn(d3), live: !d3.past && !d3.editingId } : null;
   }
   var closedHere = null;
-  function followsAfter(before2) {
+  function followsAfter(before) {
     const d3 = state.draft;
-    if (before2 && before2.live && !d3) {
-      closedHere = before2.id;
-      prefSet(CLOSED_KEY, before2.id);
+    if (before && before.live && !d3) {
+      closedHere = before.id;
+      prefSet(CLOSED_KEY, before.id);
       return;
     }
-    if (before2 || !d3) return;
+    if (before || !d3) return;
     const closed = prefGet(CLOSED_KEY) || closedHere;
     if (closed && !d3.past && !d3.editingId && !d3.follows && !begunIn(d3)) {
       d3.follows = closed;
@@ -11796,9 +11709,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       prefDel(CLOSED_KEY);
     }
   }
-  function clockAfter(before2) {
+  function clockAfter(before) {
     const d3 = state.draft;
-    clockStart(d3, !before2 || !d3 || before2.id !== d3.id ? true : before2.begun);
+    clockStart(d3, !before || !d3 || before.id !== d3.id ? true : before.begun);
   }
   function toTrash(kind, data) {
     if (kind === "routine" && plainTemplate(data)) return;
@@ -11830,7 +11743,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (!e5) return "none";
     lastStep = void 0;
     undoPersist();
-    const before2 = canon(state);
+    const before = canon(state);
     let done = false;
     if (e5.inv) {
       try {
@@ -11867,7 +11780,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       }
     const below = undoStack[undoStack.length - 1];
     if (below && below.post == null) below.post = e5.pre;
-    if (canon(state) === before2) return "unchanged";
+    if (canon(state) === before) return "unchanged";
     invalidate();
     saveNow();
     return { said: e5.said || "" };
@@ -11922,8 +11835,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const v3 = toD(kg2) ?? 0;
     return String(U() === "lb" ? Math.round(v3) : Math.round(v3 * 2) / 2);
   }
-  function wasE(now2, before2) {
-    const b2 = fmtE(before2);
+  function wasE(now2, before) {
+    const b2 = fmtE(before);
     return b2 && b2 !== fmtE(now2) ? b2 : "";
   }
   var LU = () => U() === "lb" ? "in" : "cm";
@@ -13310,7 +13223,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     sheets = t4;
     afterSheet = after2;
   }
-  function kindOf2(t4, m3) {
+  function kindOf(t4, m3) {
     const k2 = m3.kind;
     return t4[k2];
   }
@@ -13331,7 +13244,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       el.hidden = true;
       return;
     }
-    const h3 = sheets ? kindOf2(sheets, m3).draw(m3) : null;
+    const h3 = sheets ? kindOf(sheets, m3).draw(m3) : null;
     if (h3 === null) {
       ui.modal = null;
       el.hidden = true;
@@ -13426,7 +13339,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     document.body.classList.remove("modal-open");
     lastDrawn = null;
     if (was && sheets) {
-      const k2 = kindOf2(sheets, was);
+      const k2 = kindOf(sheets, was);
       if (k2.closed) k2.closed(was);
     }
     if (drawnBeforeToday()) rerenderKeepScroll();
@@ -15681,9 +15594,8 @@ ${more}`;
     if (!n3) return false;
     return typeof d3.note0 === "string" ? n3 !== d3.note0.trim() : true;
   }
-  function liveMade(exId, s3, at2) {
+  function liveMade(exId, s3, date) {
     if (!s3 || s3.warm || s3.drop || !(+(s3.r ?? 0) > 0)) return null;
-    const date = dayOf(at2);
     const f3 = prFrame(exId, s3, date);
     if (!f3) return null;
     const { ex, exps } = f3;
@@ -15694,40 +15606,39 @@ ${more}`;
       pl: f3.own,
       r: +(s3.r ?? 0),
       w: Number(s3.w) || 0,
-      rir: rirEff(s3, ex, at2),
-      rq: rirEst(s3, ex, at2)
+      rir: rirEff(s3, ex),
+      rq: rirEst(s3, ex)
     };
     const { pb, pbb } = prBestOf(ex, [p3], noBody(ex));
     return { ex, pr: prJudge(ex, h3, { pts: [p3], pb, pbb }).pr };
   }
-  function livePR(exId, s3, at2) {
-    const m3 = liveMade(exId, s3, at2);
+  function livePR(exId, s3, date) {
+    const m3 = liveMade(exId, s3, date);
     const pr = m3 && m3.pr;
     if (!m3 || !pr || !pr.big) return null;
     if (pr.type === "Weight PR") return "Weight PR";
     if (pr.type === "e1RM") return "Best";
     return m3.ex.timed ? "Time PR" : "Rep PR";
   }
-  function rowPR(b2, si, at2) {
+  function rowPR(b2, si, date) {
     const s3 = b2.sets[si];
     if (!s3 || !s3.done) return null;
-    const pr = livePR(b2.exId, s3, at2);
-    const date = dayOf(at2);
+    const pr = livePR(b2.exId, s3, date);
     if (!pr) return null;
     const ex = EX(b2.exId);
     const scq = (x2) => {
       const l4 = prLoad(ex, x2, date);
       const r4 = +(x2.r ?? 0);
-      return prScoreOf(l4, r4, rirEst(x2, ex, at2));
+      return prScoreOf(l4, r4, rirEst(x2, ex));
     };
     const me = scq(s3), myLoad = prLoad(ex, s3, date), myR = +(s3.r ?? 0);
     const asStrong = (x2) => scq(x2) > me + EPS || scq(x2) >= me - EPS && prLoad(ex, x2, date) >= myLoad - EPS && +(x2.r ?? 0) >= myR;
     return b2.sets.some(
-      (x2, i5) => i5 < si && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && asStrong(x2) && livePR(b2.exId, x2, at2)
+      (x2, i5) => i5 < si && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && asStrong(x2) && livePR(b2.exId, x2, date)
     ) ? null : pr;
   }
-  function prBeat(exId, s3, at2, pr) {
-    const m3 = liveMade(exId, s3, at2);
+  function prBeat(exId, s3, date, pr) {
+    const m3 = liveMade(exId, s3, date);
     const j3 = m3 && m3.pr;
     if (!m3 || !j3) return "";
     const { ex } = m3;
@@ -15762,7 +15673,7 @@ ${more}`;
       const seen = /* @__PURE__ */ new Set();
       for (const x2 of liftRead(b2.exId)) for (const p3 of x2.pts) seen.add(p3.w);
       for (const s3 of heavier) {
-        const v3 = e1(bw + prSameLoad(+(s3.w ?? 0) || 0, seen), +(s3.r ?? 0), rirEst(s3, ex, state.draft || today()));
+        const v3 = e1(bw + prSameLoad(+(s3.w ?? 0) || 0, seen), +(s3.r ?? 0), rirEst(s3, ex));
         if (v3 != null && (best == null || v3 > best)) {
           best = v3;
           bs = s3;
@@ -15833,10 +15744,10 @@ ${more}`;
       return !ex.timed && ["machine", "cable", "smith"].includes(ex.equip) && !b2.inj && !b2.light && daysOff(b2.exId) <= BACK_DAYS;
     });
   }
-  function lastNoteOf(exId, before2) {
+  function lastNoteOf(exId, before) {
     let best = null;
     for (const ss of state.sessions)
-      if (!before2 || ss.date <= before2) {
+      if (!before || ss.date <= before) {
         for (const b2 of ss.ex)
           if (b2.exId === exId && b2.note && b2.note.trim() && (!best || ss.date > best.date))
             best = { date: ss.date, text: b2.note.trim() };
@@ -16065,7 +15976,7 @@ ${more}`;
       );
       return;
     }
-    const wasPR = rowPR(b2, si, d3);
+    const wasPR = rowPR(b2, si, d3.date);
     act(
       () => {
         if (val) settleLoad(b2, si);
@@ -16077,11 +15988,11 @@ ${more}`;
     if (val && isMissed(s3) && !s3.warm && !s3.drop) toast(MISSED_SAID);
     if (val && !d3.editingId && blockDone(b2) && !blkIsOpen(bi, b2)) W.foldWait.add(b2);
     onLiftDraw(bi, redraw);
-    const pr = rowPR(b2, si, d3);
+    const pr = rowPR(b2, si, d3.date);
     if (pr && !wasPR) {
       const ex = EX(b2.exId);
       toast(
-        `${pr === "Best" ? isCompound(ex) ? "New best estimate" : "PR" : pr}: ${exName(b2.exId)}, ${setShort(ex, +(s3.w ?? 0) || 0, s3.r)}${prBeat(b2.exId, s3, d3, pr)}`,
+        `${pr === "Best" ? isCompound(ex) ? "New best estimate" : "PR" : pr}: ${exName(b2.exId)}, ${setShort(ex, +(s3.w ?? 0) || 0, s3.r)}${prBeat(b2.exId, s3, d3.date, pr)}`,
         false,
         PR_TOAST_MS,
         "pr"
@@ -21301,7 +21212,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const p3 = b2.plan;
     const g2 = greyR(b2, si);
     const ph = g2 == null ? "" : String(g2);
-    const pr = rowPR(b2, si, d3);
+    const pr = rowPR(b2, si, d3.date);
     const wn = b2.sets.slice(0, si + 1).filter((x2) => !x2.warm && !x2.drop).length;
     const lt = s3.warm || s3.drop ? "" : lastCell(b2, wn - 1, dupB);
     const gw = s3.w == null ? greyW(b2, si) : null;
@@ -21351,7 +21262,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const ssLbl = ss ? b`<span class="sslbl">${ss}${gk + 1}</span> ` : "";
     if (isFolded(d3, b2, bi)) {
       const ws = b2.sets.filter((x2) => !x2.warm);
-      const prs = b2.sets.filter((x2, si) => !x2.warm && rowPR(b2, si, d3)).length;
+      const prs = b2.sets.filter((x2, si) => !x2.warm && rowPR(b2, si, d3.date)).length;
       const done = blockDone(b2);
       const work2 = b2.sets.filter((x2) => !x2.warm && !x2.drop);
       const line = done ? ws.map((x2) => setShort(ex, x2.w, x2.r) + missedTag(x2)).join(", ") : `${work2.filter((x2) => x2.done).length} of ${work2.length} sets`;
@@ -23237,7 +23148,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   ];
   var HIGH_RANGE = [15, 20];
   var LETTER_A = 65;
-  var byDate2 = (a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0;
+  var byDate = (a2, b2) => a2.date < b2.date ? -1 : a2.date > b2.date ? 1 : 0;
   var liftsOf = (x2) => new Set(x2.ex.filter((b2) => b2.sets.some((q) => !q.warm)).map((b2) => b2.exId));
   var jac = (a2, b2) => {
     let n3 = 0;
@@ -23399,7 +23310,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const first = all[0];
     if (!first) return null;
     const newest = all.reduce((m3, x2) => x2.date > m3 ? x2.date : m3, first.date);
-    const rec2 = all.filter((x2) => x2.date >= addDays(newest, 1 - IMPORT_DAYS)).sort(byDate2);
+    const rec2 = all.filter((x2) => x2.date >= addDays(newest, 1 - IMPORT_DAYS)).sort(byDate);
     const offS = offSessions();
     const named2 = !rec2.some((x2) => GENERIC_WORKOUT.test(nameOf(x2)));
     const grouped = groupSessions(rec2, named2, offS);
@@ -23409,7 +23320,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (!groups.length || groups.length > FROM_LOG.days || groups.reduce((a2, g2) => a2 + g2.list.length, 0) < pop.length * FROM_LOG.cover)
       return null;
     const lastOf2 = (g2) => g2.list[g2.list.length - 1] || first;
-    groups.sort((a2, b2) => byDate2(lastOf2(a2), lastOf2(b2)));
+    groups.sort((a2, b2) => byDate(lastOf2(a2), lastOf2(b2)));
     if (!named2)
       groups.forEach((g2, i5) => {
         g2.name = "Day " + String.fromCharCode(LETTER_A + i5);
@@ -24175,7 +24086,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         const ex = EX(b2.exId);
         b2.sets.forEach((s3, i5) => {
           const total = loadOf(ex, s3, ss.date);
-          const est = s3.warm || s3.drop || noE1(ex) || noBody(ex) ? null : e1(total, +s3.r, rirEst(s3, ex, ss.date));
+          const est = s3.warm || s3.drop || noE1(ex) || noBody(ex) ? null : e1(total, +s3.r, rirEst(s3, ex));
           rows2.push([
             ss.date,
             ss.dayName,
@@ -26120,7 +26031,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const thr = isCompound(e5) ? WARM_SHARE.compound : WARM_SHARE.isolation;
       const easy = (x2) => {
         if (!(L2(x2) < top - EPS_SAME)) return false;
-        const q = rirEff(x2, e5, d3);
+        const q = rirEff(x2, e5);
         if (q != null) return q >= RIR_CALL_TOP;
         if (est && !noE1(e5)) {
           const rtf = rtfAt(est, L2(x2));
@@ -26309,11 +26220,11 @@ ${JSON.stringify(ctx, null, 1)}`;
       );
     else save();
   }
-  function setCounts(ex, date) {
+  function setCounts(ex) {
     const work = ex.reduce((a2, b2) => a2 + b2.sets.filter(isWork).length, 0), miss = ex.reduce((a2, b2) => a2 + b2.sets.filter((q) => !q.warm && !q.drop && isMissed(q)).length, 0), hard = r1(
       ex.reduce((a2, b2) => {
         const e5 = EX(b2.exId);
-        return a2 + b2.sets.reduce((c4, q) => c4 + hardCredit(q, e5, date), 0);
+        return a2 + b2.sets.reduce((c4, q) => c4 + hardCredit(q, e5), 0);
       }, 0)
     );
     return { work, miss, hard };
@@ -26431,7 +26342,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       return [`${e5.name} ${setShort(e5, p3.w, p3.r)}`];
     });
     const backBest = backBests(ex, prAll, sess.id);
-    const { work, miss, hard } = setCounts(ex, sess.date);
+    const { work, miss, hard } = setCounts(ex);
     ui.todayDay = null;
     window.scrollTo(0, 0);
     render();
