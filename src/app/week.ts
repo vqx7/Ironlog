@@ -61,7 +61,7 @@ function weekBar(): TemplateResult[] {
   const weekly = R.schedule === 'weekly';
   const cByDate: Record<string, { min: number }[]> = {};
   for (const c of state.cardio) (cByDate[c.date] = cByDate[c.date] || []).push(c);
-  // A rest week plans nothing, so no day in it reads planned or missed (the audit: the bar said "Upper A, missed" under "Rest week. Nothing planned.").
+  // A rest week plans nothing, so no day in it reads planned or missed (not "Upper A, missed" under "Rest week. Nothing planned.").
   const rw = isRestWeek(cur);
   const plan = rw ? {} : weekPlan(R);
   // Which planned workouts were done, and on which date, wherever in the week.
@@ -81,7 +81,7 @@ function weekBar(): TemplateResult[] {
     // The session in progress sits on its own date, which for a past workout is not today.
     const live = !!state.draft && !state.draft.editingId && d === state.draft.date;
     /* A planned day whose every workout was done on another day this week: not missed, nor still planned when it
-       was done early (the review of r68: Tuesday's Pull done Monday read planned on Tuesday). */
+       was done early (Tuesday's Pull done Monday is not planned on Tuesday). */
     const mine = slots.filter(x => x.di === i);
     const movedTo = !trained && weekly && isPlan && mine.length && mine.every(x => x.doneOn) ? mine : null;
     const cls = [
@@ -114,8 +114,8 @@ function weekBar(): TemplateResult[] {
       : live
         ? 'session in progress'
         : pd && isPlan && weekly && mine.length
-          ? /* Each of the day's workouts in its own words: done on another day, missed, or planned (the review of
-               r68: Monday's Push done Tuesday and its second workout missed read "Push, missed"). */
+          ? /* Each of the day's workouts in its own words: done on another day, missed, or planned (not "Push,
+               missed" for Monday's Push done Tuesday and its second workout missed). */
             mine
               .map(
                 x => `${x.day.name}, ${x.doneOn ? `done ${DAYS[dayOfWeek(x.doneOn)]}` : d < t ? 'missed' : 'planned'}`
@@ -207,9 +207,8 @@ function cycleStrip(R: Routine): TemplateResult {
   })}</div>`;
 }
 
-/* Weight lifted this week, against last week to this point. It moved here from
-   At a glance in r23: This week owns everything about this week,
-   At a glance the longer view. */
+/* Weight lifted this week, against last week to this point: This week owns
+   everything about this week, At a glance the longer view. */
 function liftedLine(): Part {
   const tn = tonnageNow();
   if (!tn.now && !tn.prevFull) return nothing;
@@ -421,14 +420,13 @@ export function weekCard(): TemplateResult {
 }
 
 /* ---------- the pull-down ----------
-   NEW-107 (V, 2026-11-10: "re-attempt fixing the top bar ... so it drags properly"): a finger drawn down from the
-   week bar brings the month calendar down from the top of the screen, following the finger; let go past PULL.open and
-   it stays open, short of it and it goes back. Drawn back up, or a tap outside, closes it. r25's pull opened the
-   calendar from the bottom while the finger pulled down from the top, and V had it removed on 2026-10-01 (item 86).
-   A tap on a day, and a sideways move, stay the bar's: the pull starts only once the finger has gone PULL.start down
-   and more down than sideways, and only with the page at its top (NEW-138: since 2.52 the bar scrolls with the page,
-   so a drag down on it scrolled partly away is the page's scroll back up; pinned, from 2.46 to 2.51, a drag down that
-   began on the bar opened the calendar wherever the page was). */
+   V, 2026-11-10: "re-attempt fixing the top bar ... so it drags properly". A finger drawn down from the week bar
+   brings the month calendar down from the top of the screen, following the finger; let go past PULL.open and it stays
+   open, short of it and it goes back. Drawn back up, or a tap outside, closes it. It never opens from the bottom
+   while the finger pulls down from the top (V had a pull like that removed on 2026-10-01). A tap on a day, and a
+   sideways move, stay the bar's: the pull starts only once the finger has gone PULL.start down and more down than
+   sideways, and only with the page at its top: the bar scrolls with the page (V, 2026-11-12), so a drag down on it
+   scrolled partly away is the page's scroll back up. */
 /** The pull's distances in CSS pixels: how far down before it starts, and how far before letting go keeps it open. */
 const PULL = { start: 12, open: 70 } as const;
 /** The calendar sheet that came down from the top, if it is open. */
@@ -531,8 +529,8 @@ export function pullStart(): void {
     },
     { passive: false }
   );
-  // Let go anywhere, a sheet the push moved settles: closed when it ends PULL.open up, else back in place (REV9-1: brought
-  // back down before letting go, it was left moved up, its header off the screen).
+  // Let go anywhere, a sheet the push moved settles: closed when it ends PULL.open up, else back in place (brought back
+  // down before letting go, it is not left moved up, its header off the screen).
   const done = (): void => {
     if (!pushing) return;
     pushing = false;

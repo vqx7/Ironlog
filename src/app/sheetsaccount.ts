@@ -1,9 +1,7 @@
-/* The account's sheets (from the legacy script's 14-account.js): the
-   menu, the account sheet in each of its pages, a problem report and the
+/* The account's sheets: the menu, the account sheet in each of its pages, a problem report and the
    owner's inbox of them. Drawn by lit-html, so the account sheet redrawn
    while someone types in it (an error said, Signing in) keeps its fields,
-   their focus and the keyboard, which r54 kept by putting the new markup
-   into the old sheet (morphOne, sheets.ts) while it was still markup. */
+   their focus and the keyboard. */
 
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
@@ -25,17 +23,17 @@ const menuAuth = () => (AUTH() && !(window.claude && typeof window.claude.use ==
 
 /* The menu: one tap from every tab for the things people look for
    outside a workout: who is signed in, signing in or out, the save state,
-   Report a problem and the Guide. Since r28 Settings has a Help group near
-   the bottom with the same Guide and reports (V asked for both places).
-   Opened from the first pages (their Help, the r63 audit's P-S4-6), it
+   Report a problem and the Guide. Settings has a Help group near the
+   bottom with the same Guide and reports (V asked for both places).
+   Opened from the first pages (their Help), it
    leaves out the sections and Your data: both open a tab, and the tabs open
    only once Set up is done, so a tap there would do nothing. */
 /* The profile photo: in the menu's own header, beside its title, so
    the menu keeps its height on a small phone (tests/r54b.js). The photo, or
    an empty circle with a camera, is the button that adds or changes it;
    Remove photo sits beside it once there is one, and asks first (V: nothing
-   kept goes on a single tap). Since 2.34 the photo is the account's, so the
-   header offers it only while signed in (V, 2026-11-08: no account, no photo). */
+   kept goes on a single tap). The photo is the account's, so the header
+   offers it only while signed in (V, 2026-11-08: no account, no photo). */
 /** The menu header's profile photo: the button that picks one, and Remove photo when there is one; nothing signed out. */
 function photoHead(): TemplateResult | typeof nothing {
   if (!acct.user) return nothing;
@@ -47,8 +45,7 @@ function photoHead(): TemplateResult | typeof nothing {
     : html`<label class="mph" id="menuPhoto" aria-label="Add a profile photo" data-tip="Your profile photo, kept in your account"><span class="mph-i mph-none" aria-hidden="true">${markup(MENU_ICON)}</span>${cam}<input type="file" accept="image/*" data-photo hidden></label>`;
 }
 
-/* The profile photo opened large from the menu (V, 2026-11-12, NEW-141: it could only be seen at the size of the
-   menu button). Change photo picks another, as the menu's photo did; Remove asks first, as the menu's link does. */
+/* The profile photo opened large from the menu (V, 2026-11-12), not only seen at the size of the menu button. Change photo picks another, as the menu's photo did; Remove asks first, as the menu's link does. */
 /** The profile photo, large, with Change photo, Remove photo and Close; Close alone once it is gone. */
 export function photoSheet(): TemplateResult {
   const u = photoUrl();
@@ -88,7 +85,7 @@ export function menuSheet(m: { first?: true | undefined }): TemplateResult {
   <p class="small muted u-m12-0-0">Version ${DISPLAY_VERSION}</p></div>`;
 }
 
-/* ---------- problem reports (reworked in r25) ----------
+/* ---------- problem reports ----------
    The menu (top right) and an exercise's ⋯ menu open one sheet. Report a
    problem comes first; a question or a suggestion is the same sheet with
    another kind chosen at its top (stored as bug, question, idea). One text
@@ -115,7 +112,7 @@ export function fbSheet(m: FeedbackModal): TemplateResult {
     <p class="small muted u-m12-0-0">No account? <button type="button" class="linkbtn" data-act="fbCopy">Copy the details</button> and send them to the app owner.</p></div>`;
   // The count is the span's text, set whole (reportInput sets it as each letter is typed), so no part of it is lit-html's to keep.
   const n = String(m.msg || '').length;
-  // Only the app's own JPEG data URL is ever shown (r44 security review): m.shot comes from fbShrink's canvas, and the check keeps it so if that changes.
+  // Only the app's own JPEG data URL is ever shown (a security rule): m.shot comes from fbShrink's canvas, and the check keeps it so if that changes.
   const shot =
     m.shot && FB_SHOT_RE.test(m.shot)
       ? html`<div class="fbshot"><img src=${m.shot} alt="Screenshot to send"><button type="button" class="btn sm" data-act="fbShotDel">Remove</button></div>`
@@ -176,7 +173,7 @@ export function fbInboxSheet(m: { items: FbItem[] | null; err?: string | undefin
 function codeField(m: AccountModal): TemplateResult {
   return html`<label class="field">Code from the email<input type="text" inputmode="numeric" autocomplete="one-time-code" data-abind="code" .value=${live(m.code || '')} enterkeyhint="go"></label><button type="button" class="btn primary fullw" data-act="acctCode" ?disabled=${!!m.busy}>Confirm with the code</button><div class="row"><button type="button" class="linkbtn tall" data-act="acctResend" ?disabled=${!!m.busy}>Send a new code</button></div>`;
 }
-/** What the button says while a request is out, by the page it is on (r34.2: not "Working"). */
+/** What the button says while a request is out, by the page it is on (not "Working"). */
 const BUSY: Partial<Record<AcctMode, string>> = {
   signin: 'Signing in',
   signup: 'Creating your account',

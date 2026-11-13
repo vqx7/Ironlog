@@ -1,7 +1,6 @@
 /* Which sections each tab has, in what order, and the choices that shape
    the screens: the accent, the volume views, the weeks the radar averages,
-   the weigh-in cadence, the sheets that hold typed fields (phase 3a;
-   moved unchanged from the legacy script). */
+   the weigh-in cadence, the sheets that hold typed fields. */
 
 import { parseJson } from './records';
 
@@ -31,8 +30,7 @@ export const DSEC_ALIAS: Readonly<Record<string, string>> = {
   svol: 'volume'
 };
 
-/* What Volume on Stats can show. Planned left Stats in r29 (V: Stats is what
-   you did); the plan against the targets is Weekly volume on Plan. */
+/* What Volume on Stats can show. Not Planned (V: Stats is what you did); the plan against the targets is Weekly volume on Plan. */
 export const VOL_MODES: readonly (readonly [string, string])[] = [
   ['region', 'By region'],
   ['week', 'This week'],
@@ -47,8 +45,8 @@ export const VOL_MODES: readonly (readonly [string, string])[] = [
    fresh state, and Settings > Layout's "Default layout" and "Reset section
    order" go back to them. Today leads with what a session needs (the
    workout, then the muscle map, then the week); Stats leads with Lifts.
-   Plan's Schedule is shown since r70 (381, V 2026-11-03): it is the only
-   place to switch between a cycle and fixed weekdays. */
+   Plan's Schedule is shown (V 2026-11-03): it is the only place to switch
+   between a cycle and fixed weekdays. */
 export const DEFAULT_HIDDEN: readonly string[] = ['today:tiles', 'today:coach', 'today:body', 'program:pvol'];
 const DEFAULT_ORDER: Readonly<Record<string, readonly string[]>> = {
   today: ['moving', 'session', 'map', 'week', 'injuries', 'coach', 'tiles', 'body'],
@@ -63,7 +61,7 @@ export const defaultOrder = (): Record<string, string[]> =>
 
 /** A saved order kept for the sections still present, each missing one placed after the one it follows. */
 export function orderKeys(saved: readonly string[], present: readonly string[]): string[] {
-  // Each key once, at its first place: r57 as first built could save one twice (its review).
+  // Each key once, at its first place, so none is saved twice.
   const order = saved.filter((k, i) => present.includes(k) && saved.indexOf(k) === i);
   present.forEach((k, i) => {
     if (order.includes(k)) return;
@@ -97,7 +95,7 @@ export const FORM_SHEETS: ReadonlySet<string> = new Set([
 ]);
 
 /* The accents Settings > Appearance offers, as a key and a label.
-   Violet, Cyan and Red since r65.2 (V). Ember is the default since r37 (V: "default to the orange ember one for now"): no accent stored reads as Ember. */
+   Violet, Cyan and Red among them (V). Ember is the default (V: "default to the orange ember one for now"): no accent stored reads as Ember. */
 export const ACCENTS: readonly (readonly [string, string])[] = [
   ['ember', 'Ember'],
   ['blue', 'Blue'],
@@ -140,7 +138,7 @@ export function bwEveryKept(v: unknown): 0 | 7 | 30 | undefined {
   return d === BW_EVERY_DEFAULT ? undefined : d;
 }
 
-/** The tabs whose sections keep an order and folds (phase 4; moved from the legacy script). */
+/** The tabs whose sections keep an order and folds. */
 export const SEC_TABS: readonly string[] = ['today', 'program', 'dash', 'history', 'settings'];
 
 /* Sections that can be hidden from Settings > Layout, as tab:key. Hidden

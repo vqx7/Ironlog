@@ -1,15 +1,11 @@
-/* The session screen (phase 5's last screen; ARCHITECTURE.md, Phase 5
-   design): Today with a workout open, drawn by lit-html as src/21-pick-session.js
-   drew it (viewLogger): the sets, the grey reps, the effort strip, minus and
+/* The session screen (ARCHITECTURE.md): Today with a workout open, drawn by
+   lit-html: the sets, the grey reps, the effort strip, minus and
    plus, the folds, the check-in and the cardio cards. Its taps are worktaps.ts
    and its fields workfields.ts; what a set and a tick change is
    worksets.ts. Every change to the session in progress goes through `act`,
    which leaves the caches for a change to the session alone (nothing they hold
    is read from it). The screen is drawn again after each change and lit-html
-   changes only what differs, where the legacy code patched the page by hand
-   (afterSet, the checkmark's classes, the progress bar, the grey numbers, the
-   PR mark, the effort strip put in after a row); the
-   numbers a row shows are read from the session each draw, so the screen
+   changes only what differs, nothing patched by hand; the numbers a row shows are read from the session each draw, so the screen
    cannot say what the log does not. */
 
 import { bwWarn } from './bwnudge';
@@ -216,10 +212,9 @@ function rirStrip(bi: number, si: number, cur: string): TemplateResult {
 }
 
 /* The check-in: three taps; how they line up with the sessions is Stats'
-   Readiness and performance (stats.ts). It sat at the top of the session as
-   a fold until r69, when it moved behind the Check-in button beside the date
-   (V, 2026-11-03: the top of the session was text before the first
-   exercise); answered the same way and saved on the session the same way.
+   Readiness and performance (stats.ts). It is behind the Check-in button beside
+   the date, not a fold at the top of the session (V, 2026-11-03: the top of
+   the session was text before the first exercise), and saved on the session.
    What it offers stays at the top of the session, with the two changes
    that answer it: two or more low answers, a lighter session first; one, a
    note to keep a rep more in reserve. Already made lighter: said instead of
@@ -265,8 +260,8 @@ export function readyCard(d: Draft, low: number): Part {
 }
 
 /* Bodyweight, asked once in the first session with a bodyweight lift when
-   none is logged (from the third review: pull-ups and leg raises added
-   nothing to weight lifted, and had no estimate, with no weigh-in). Saved
+   none is logged (with no weigh-in, pull-ups and leg raises add nothing to
+   weight lifted, and have no estimate). Saved
    like a weigh-in on Today; Not now is kept per device. */
 function bwAskCard(d: Draft): Part {
   if (d.editingId || d.past || state.bodyweights.length || !d.ex.some(b => EX(b.exId).bw)) return '';
@@ -353,7 +348,7 @@ function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part 
   if (!s || d.editingId || !liftsOn(d).has(b)) return '';
   const wn = b.sets.slice(0, si + 1).filter(x => !x.warm && !x.drop).length;
   const name = s.warm ? 'Warm-up' : s.drop ? 'Drop set' : `Set ${wn}`;
-  /* The set's name only: its row's tick already says it is done (V, 2026-11-09 21:41, NEW-105: no ", done"). It is the
+  /* The set's name only: its row's tick already says it is done (V, 2026-11-09 21:41: no ", done"). It is the
      one mark of the set minus and plus change; its number is not also drawn in the accent (V, 22:32). */
   const said = name;
   const w = effW(b, si) ?? 0;
@@ -482,8 +477,8 @@ const LOG_HELP =
   'W marks a warm-up (kept, never analysed); tap it again for ↳, a drop set (counts as work and volume, never as a PR or target). + Drop adds one under the last set ticked, with no rest before it; a warm-up is added from the ⋯ menu. Drag an exercise by its ⠿ to change the order. A superset is one box, A1 and A2: after a set of A1 the screen moves to A2, and the rest timer starts after the last exercise of the group. Timed holds log seconds in the Sec column. The date can be changed to log a past session.';
 
 /* When a workout began, in the header: its time on the day it began, and
-   "yesterday" or its date after that (the r63 audit's P-S4-8: left open
-   overnight, "started 9:00 AM" read as this morning). It is saved on the day
+   "yesterday" or its date after that (left open overnight, "started 9:00
+   AM" would read as this morning). It is saved on the day
    it began either way. */
 /** The header's words for when a workout began. */
 function startedWords(t: number): string {
@@ -521,8 +516,8 @@ export function viewWorkout(d: Draft): TemplateResult {
   /* The sets done are the bar's to say once it shows (V, 2026-11-03:
      "0 sets done" beside "0 of 19" said it twice), so the line keeps when the
      workout began and the minutes left; with no sets to count it says the
-     count as before, and before the workout has started, only that (no set can be done yet). The bar names itself
-     to a screen reader, which read the count from this line until then. */
+     count, and before the workout has started, only that (no set can be done yet). The bar names itself to a screen
+     reader. */
   const meta = sp.n
     ? html`${when ? when.charAt(0).toUpperCase() + when.slice(1) : ''}<span id="sessLeft">${left > 0 ? `${when ? ' · ' : ''}${estMin(left)} left` : ''}</span>`
     : notYet
