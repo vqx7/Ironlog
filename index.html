@@ -1175,7 +1175,10 @@ details.more>summary .small{display:block;font-weight:400}
 #modal:has(> .sheet.fromtop){align-items:flex-start;padding-top:var(--bar-b,calc(env(safe-area-inset-top,0px) + var(--head-h)));background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
 #modal:has(> .sheet.fromtop)::before{content:"";position:absolute;left:0;right:0;bottom:0;top:var(--bar-b,calc(env(safe-area-inset-top,0px) + var(--head-h)));background:rgba(6,7,9,.55);opacity:var(--pull,1);transition:opacity .22s ease;pointer-events:none}
 #modal:has(> .sheet.fromtop.drag)::before{transition:none}
-.sheet.fromtop{border-radius:0 0 28px 28px;padding-bottom:24px;max-height:calc(100% - 16px);clip-path:inset(0 0 0 0);transition:transform .22s ease,clip-path .22s ease}
+/* --pull is set again on the sheet, so the value the layer takes at every move stops there and its contents are not
+   drawn again for it; the sheet going back into the bar lets touches through to the page. */
+.sheet.fromtop{--pull:1;border-radius:0 0 28px 28px;padding-bottom:24px;max-height:calc(100% - 16px);clip-path:inset(0 0 0 0);transition:transform .22s ease,clip-path .22s ease}
+#modal:has(> .sheet.fromtop.going){pointer-events:none}
 .sheet.fromtop.drag{transition:none}
 .sheet.fromtop::before{top:auto;bottom:8px}
 @media (prefers-reduced-motion:reduce){.sheet.fromtop,#modal:has(> .sheet.fromtop)::before{transition:none}}
@@ -12671,7 +12674,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
 
   // src/app/toast.ts
-  var TOAST_MS = { undo: 6e3, plain: 2600 };
+  var TOAST_MS = { undo: 6e3, plain: 2600, word: 300 };
+  function stayMs(msg, ms) {
+    return Math.max(ms, msg.split(/\s+/).filter(Boolean).length * TOAST_MS.word);
+  }
   var NOTICE_READ_MS = 4e3;
   var toastT;
   var cur = null;
@@ -12736,14 +12742,14 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (undo) nameLastStep(msg);
     const notice = kind === "notice";
     const t4 = now();
-    const len = ms || (undo ? TOAST_MS.undo : TOAST_MS.plain);
+    const len = stayMs(msg, ms || (undo ? TOAST_MS.undo : TOAST_MS.plain));
     const showing = !el.hidden && cur ? cur : null;
     if (showing && !tapSince && sameTask) {
       if (!showing.parts.includes(msg)) showing.parts.push(msg);
       showing.undo = showing.undo || !!undo;
       showing.pr = showing.pr || kind === "pr";
       showing.notice = showing.notice || notice;
-      showing.ms = Math.max(showing.ms, t4 - showing.at + len);
+      showing.ms = Math.max(showing.ms, t4 - showing.at + len, stayMs(joined(showing.parts), 0));
       openTask();
       draw(el);
       return;
@@ -19571,7 +19577,7 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
       body
     });
   }
-  var PULL = { start: 12, open: 70 };
+  var PULL = { claim: 4, start: 12, open: 70 };
   var topSheet = () => {
     const el = document.querySelector("#modal .sheet.fromtop");
     return el instanceof HTMLElement ? el : null;
@@ -19596,7 +19602,12 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
       pulled2(sh, 1);
       return;
     }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      closeModal();
+      return;
+    }
     const h3 = sh.offsetHeight;
+    sh.classList.add("going");
     sh.style.transform = `translateY(${-h3}px)`;
     sh.style.clipPath = `inset(${h3}px 0 0 0)`;
     pulled2(sh, 0);
@@ -19617,6 +19628,7 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
       "touchstart",
       (e5) => {
         const t4 = e5.touches[0];
+        if (document.querySelector("#modal .sheet.fromtop.going")) closeModal();
         live2 = e5.touches.length === 1 && !ui.modal && !!t4 && window.scrollY <= 0;
         on = false;
         dy = 0;
@@ -19636,7 +19648,7 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
         const dx = t4.clientX - x0;
         if (!on) {
           if (Math.abs(dx) > PULL.start && Math.abs(dx) >= dy) live2 = false;
-          if (live2 && dy > 0 && dy >= Math.abs(dx)) e5.preventDefault();
+          if (live2 && dy >= PULL.claim && dy >= Math.abs(dx)) e5.preventDefault();
           if (dy < PULL.start || Math.abs(dx) >= dy) return;
           on = true;
           const md = document.getElementById("modal");

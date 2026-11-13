@@ -176,11 +176,13 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     const cw0 = await page.evaluate(() => { const w = document.documentElement.clientWidth; document.body.classList.add('modal-open'); return w; });
     const bar0 = await barShot();
     const cw0held = await page.evaluate(() => { const w = document.documentElement.clientWidth; document.body.classList.remove('modal-open'); return w; });
-    // The first move of a drag down, 3 px, is the pull's: left to the page, a phone starts the page's own bounce under
-    // the finger. Dispatched on the bar itself, as a phone sends every move (Chromium's own input holds back a move
-    // this small, inside its tap's slop). WebKit makes a touch only through document.createTouch (its Touch constructor
-    // is refused, NEW-143), as tests/h.js makes them there; Chromium has only the constructor.
-    const first = await page.evaluate(([x, y]) => {
+    // A move down at the page's top is the pull's once it is past what a tap's finger rolls as it lands, and before a
+    // phone starts its own scroll (about 10 px), so the page does not bounce under a pull. A move of a few pixels is left
+    // to the tap: an iPhone sends no click for a touch whose first move the page claims, so a claimed roll lost the tap
+    // (REV16-B1). Dispatched on the bar itself, as a phone sends every move (Chromium's own input holds back a move this
+    // small, inside its tap's slop). WebKit makes a touch only through document.createTouch (its Touch constructor is
+    // refused, NEW-143), as tests/h.js makes them there; Chromium has only the constructor.
+    const firstMove = by => page.evaluate(([x, y, by]) => {
       const bar = document.getElementById('wkbar');
       const se = document.scrollingElement || document.documentElement;
       const mk = (type, yy, live) => {
@@ -194,11 +196,13 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
         return new TouchEvent(type, { bubbles: true, cancelable: true, composed: true, view: window, touches: l, targetTouches: l, changedTouches: [t] });
       };
       bar.dispatchEvent(mk('touchstart', y, true));
-      const mv = mk('touchmove', y + 3, true); bar.dispatchEvent(mv);
-      bar.dispatchEvent(mk('touchend', y + 3, false));
-      return { prevented: mv.defaultPrevented, opened: !!window.__ironlog.ui.modal };
-    }, [box.x, box.y]);
-    ok(first.prevented && !first.opened, '4. at the top of the page, a drag down on the bar is the pull\'s from its first move, so the page does not bounce under it', first);
+      const mv = mk('touchmove', y + by, true); bar.dispatchEvent(mv);
+      bar.dispatchEvent(mk('touchend', y + by, false));
+      return { by, prevented: mv.defaultPrevented, opened: !!window.__ironlog.ui.modal };
+    }, [box.x, box.y, by]);
+    const roll = await firstMove(3), first = await firstMove(6);
+    ok(!roll.prevented && !roll.opened, '4. a move of 3 px down on the bar, as a tap\'s finger rolls, is left to the tap, so an iPhone still sends its click', roll);
+    ok(first.prevented && !first.opened, '4. a move of 6 px down, past a tap\'s roll and before a phone starts its own scroll, is the pull\'s, so the page does not bounce under it', first);
     // A long pull: the calendar comes out of the bar and stays.
     await touch('touchStart', box.x, box.y);
     await touch('touchMove', box.x, box.y + 30); await wait(16);
@@ -250,6 +254,29 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     const d = await sheet();
     ok(d1 && d1.open && !!d1.tf, '4. let go short of the point, it slides back into the bar rather than vanishing', d1);
     ok(!d.open || d.kind !== 'calendar', '4. a short pull goes back, nothing left open', d);
+    // As it slides away the calendar is going: a tap on the page then reaches the page, and a second pull straight away
+    // brings the calendar (REV16-B3: the layer took both for a quarter of a second). With motion reduced, nothing slides
+    // and it is gone at once.
+    const tabAt = await page.evaluate(() => { const r = document.querySelector('#tabs [data-tab="history"]').getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; });
+    await drag([[box.x, box.y], [box.x, box.y + 20], [box.x, box.y + 40]], false);
+    await touch('touchEnd', 0, 0); await wait(60);
+    await page.touchscreen.tap(tabAt.x, tabAt.y); await wait(300);
+    const slid = await page.evaluate(() => ({ tab: window.__ironlog.ui.tab, modal: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind }));
+    ok(slid.tab === 'history' && !slid.modal, '4. a tap on the page as the calendar slides away reaches the page', slid);
+    await page.evaluate(() => { window.__ironlog.ui.tab = 'today'; window.__ironlog.render(); window.scrollTo(0, 0); }); await wait(150);
+    await drag([[box.x, box.y], [box.x, box.y + 20], [box.x, box.y + 40]], false);
+    await touch('touchEnd', 0, 0); await wait(60);
+    await touch('touchStart', box.x, box.y); for (let k = 1; k <= 8; k++) { await touch('touchMove', box.x, box.y + k * 15); await wait(16); }
+    const again = await sheet();
+    await touch('touchEnd', 0, 0); await wait(350);
+    ok(again.open && again.kind === 'calendar' && again.top, '4. a pull begun as the calendar slides away brings it again', again);
+    await page.evaluate(() => window.__ironlog.ACT.mClose()); await wait(150);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await drag([[box.x, box.y], [box.x, box.y + 20], [box.x, box.y + 40]], false);
+    await touch('touchEnd', 0, 0); await wait(40);
+    const calm = await sheet();
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    ok(!calm.open, '4. with motion reduced, a short pull let go is gone at once', calm);
     // A sideways move is the bar's own.
     await drag([[box.x - 60, box.y], [box.x - 20, box.y + 6], [box.x + 40, box.y + 10], [box.x + 90, box.y + 14]]);
     const e = await sheet();

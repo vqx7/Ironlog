@@ -7,6 +7,9 @@
 //   2  News about the log from storage and sync is never lost: one covered by a tap's message comes back once that
 //      message has gone, and one raised while a tap's message shows waits for it.
 //   3  Nothing repeats what is on screen: the bodyweight ask lives on Plan under the bodyweight lift, not in a message.
+//   4  A message stays long enough to read: never less than its words take, 0.3 s a word (a convention, docs/EVIDENCE.md),
+//      so the 14 words of Hide's message on the account card are still there at 3.6 s, and gone by 5.2 s (REV16-B2: every
+//      message without Undo went at 2.6 s, whatever its length).
 // MESSAGES_ONLY=1,3 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -101,6 +104,17 @@ const tapAway = P => P.page.mouse.click(195, 420);
     await P.page.evaluate(() => { const L = window.__ironlog; L.state.bodyweights = [{ id: 'w1', date: '2026-11-01', kg: 80 }]; L.saveNow(); L.invalidate(); L.render(); }); await wait(100);
     const gone = await P.page.evaluate(() => ![...document.querySelectorAll('#view .bwwarn')].some(x => x.offsetParent !== null));
     ok(gone, '3. a guard: with a weigh-in, Plan says nothing about it', gone);
+    await P.ctx.close(); await P.browser.close();
+  }
+
+  if (run(4)) {
+    const P = await phone();
+    const said = await P.page.evaluate(() => { window.__ironlog.ACT.acctLater(); const t = document.getElementById('toast'); return t.hidden ? '' : t.textContent.trim(); });
+    const words = said.split(/\s+/).filter(Boolean).length;
+    await wait(3600); const at36 = await shown(P);
+    await wait(1600); const at52 = await shown(P);
+    ok(words === 14 && /Hidden\. Sign in/.test(at36.text), '4. Hide\'s 14-word message on the account card is still there at 3.6 s, long enough to read', { words, at36 });
+    ok(at52.text === '', '4. and gone by 5.2 s, its words read', at52);
     await P.ctx.close(); await P.browser.close();
   }
 

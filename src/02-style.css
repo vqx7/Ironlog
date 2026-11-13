@@ -1163,7 +1163,10 @@ details.more>summary .small{display:block;font-weight:400}
 #modal:has(> .sheet.fromtop){align-items:flex-start;padding-top:var(--bar-b,calc(env(safe-area-inset-top,0px) + var(--head-h)));background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
 #modal:has(> .sheet.fromtop)::before{content:"";position:absolute;left:0;right:0;bottom:0;top:var(--bar-b,calc(env(safe-area-inset-top,0px) + var(--head-h)));background:rgba(6,7,9,.55);opacity:var(--pull,1);transition:opacity .22s ease;pointer-events:none}
 #modal:has(> .sheet.fromtop.drag)::before{transition:none}
-.sheet.fromtop{border-radius:0 0 28px 28px;padding-bottom:24px;max-height:calc(100% - 16px);clip-path:inset(0 0 0 0);transition:transform .22s ease,clip-path .22s ease}
+/* --pull is set again on the sheet, so the value the layer takes at every move stops there and its contents are not
+   drawn again for it; the sheet going back into the bar lets touches through to the page. */
+.sheet.fromtop{--pull:1;border-radius:0 0 28px 28px;padding-bottom:24px;max-height:calc(100% - 16px);clip-path:inset(0 0 0 0);transition:transform .22s ease,clip-path .22s ease}
+#modal:has(> .sheet.fromtop.going){pointer-events:none}
 .sheet.fromtop.drag{transition:none}
 .sheet.fromtop::before{top:auto;bottom:8px}
 @media (prefers-reduced-motion:reduce){.sheet.fromtop,#modal:has(> .sheet.fromtop)::before{transition:none}}

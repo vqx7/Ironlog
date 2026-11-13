@@ -427,8 +427,9 @@ export function weekCard(): TemplateResult {
    and a sideways move, stay the bar's: the calendar comes only once the finger has gone PULL.start down and more
    down than sideways, and only with the page at its top: the bar scrolls with the page (V, 2026-11-12), so a drag
    down on it scrolled partly away is the page's scroll back up. */
-/** The pull's distances in CSS pixels: how far down before it starts, and how far before letting go keeps it open. */
-const PULL = { start: 12, open: 70 } as const;
+/** The pull's distances in CSS pixels: how far down before it claims the touch from the page, how far before the
+    calendar starts to come, and how far before letting go keeps it open. */
+const PULL = { claim: 4, start: 12, open: 70 } as const;
 /** The calendar sheet that came down from the top, if it is open. */
 const topSheet = (): HTMLElement | null => {
   const el = document.querySelector('#modal .sheet.fromtop');
@@ -462,11 +463,19 @@ function settle(sh: HTMLElement, keep: boolean): void {
     pulled(sh, 1);
     return;
   }
+  // With motion reduced nothing slides: it is gone at once.
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    closeModal();
+    return;
+  }
+  /* Going: the layer lets touches through to the page as it slides (the stylesheet), and the next pull closes it at
+     once (pullStart), so neither a tap nor a pull waits for the slide. */
   const h = sh.offsetHeight;
+  sh.classList.add('going');
   sh.style.transform = `translateY(${-h}px)`;
   sh.style.clipPath = `inset(${h}px 0 0 0)`;
   pulled(sh, 0);
-  // Closed once it is inside the bar; by the clock as well, since a phone set to reduce motion runs no transition.
+  // Closed once it is inside the bar; by the clock as well, in case the slide's end is never told.
   let gone = false;
   const close = (): void => {
     if (gone) return;
@@ -489,6 +498,8 @@ export function pullStart(): void {
     'touchstart',
     e => {
       const t = e.touches[0];
+      // A calendar still sliding into the bar is as good as closed: a new pull takes its place.
+      if (document.querySelector('#modal .sheet.fromtop.going')) closeModal();
       live = e.touches.length === 1 && !ui.modal && !!t && window.scrollY <= 0;
       on = false;
       dy = 0;
@@ -509,10 +520,12 @@ export function pullStart(): void {
       if (!on) {
         // Sideways, or up: the bar's own (a tap, the page's scroll); the pull is not started for this touch.
         if (Math.abs(dx) > PULL.start && Math.abs(dx) >= dy) live = false;
-        /* Down, with the page at its top, is the pull's from the first move: a phone left to scroll it starts the
-           page's own bounce under the finger and keeps it for the whole touch, the calendar moving over a page that
-           moves too. Nothing is lost to the page, which has nothing above to scroll to. */
-        if (live && dy > 0 && dy >= Math.abs(dx)) e.preventDefault();
+        /* Down, with the page at its top, is the pull's from PULL.claim: past the few pixels a tap's finger rolls as
+           it lands, since an iPhone sends no click for a touch whose move the page claims, and before a phone starts
+           its own scroll at about 10 px, which would bounce the page under the finger for the whole touch, the
+           calendar moving over a page that moves too. Nothing is lost to the page, which has nothing above to
+           scroll to. */
+        if (live && dy >= PULL.claim && dy >= Math.abs(dx)) e.preventDefault();
         if (dy < PULL.start || Math.abs(dx) >= dy) return;
         on = true;
         // Where the bar ends, for the calendar to come out of it there.

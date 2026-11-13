@@ -23,8 +23,13 @@
 
 import { nameLastStep } from './act';
 
-/** How long a toast stays, in milliseconds: one that offers Undo, and one that does not. */
-const TOAST_MS = { undo: 6000, plain: 2600 } as const;
+/** How long a toast stays, in milliseconds: one that offers Undo, one that does not, and at the least for each word it
+    says, so a long one is read to its end (a convention, docs/EVIDENCE.md). */
+const TOAST_MS = { undo: 6000, plain: 2600, word: 300 } as const;
+/** How long a message stays: the time it is given, and never less than its words take to read. */
+function stayMs(msg: string, ms: number): number {
+  return Math.max(ms, msg.split(/\s+/).filter(Boolean).length * TOAST_MS.word);
+}
 /** How long news about the log must have shown before a tap's message may cover it for good (milliseconds). */
 const NOTICE_READ_MS = 4000;
 
@@ -128,7 +133,7 @@ export function toast(msg: string, undo?: boolean | null, ms?: number | null, ki
   if (undo) nameLastStep(msg);
   const notice = kind === 'notice';
   const t = now();
-  const len = ms || (undo ? TOAST_MS.undo : TOAST_MS.plain);
+  const len = stayMs(msg, ms || (undo ? TOAST_MS.undo : TOAST_MS.plain));
   const showing = !el.hidden && cur ? cur : null;
   // Part of the same tap: added to the message showing, which stays for the longer of the two.
   if (showing && !tapSince && sameTask) {
@@ -136,7 +141,8 @@ export function toast(msg: string, undo?: boolean | null, ms?: number | null, ki
     showing.undo = showing.undo || !!undo;
     showing.pr = showing.pr || kind === 'pr';
     showing.notice = showing.notice || notice;
-    showing.ms = Math.max(showing.ms, t - showing.at + len);
+    // Long enough to read all it now says, from when it first showed.
+    showing.ms = Math.max(showing.ms, t - showing.at + len, stayMs(joined(showing.parts), 0));
     openTask();
     draw(el);
     return;

@@ -40,6 +40,8 @@ The sources behind the app's numbers, and which numbers are conventions (first c
 
 ## Where each number lives (r61)
 
+- **How long a message stays (a convention, 2.63, REV16-B2):** a message is never shown for less than 0.3 s a word (`TOAST_MS.word`, toast.ts), about 200 words a minute: under the average silent reading rate of adults, about 238 words a minute for non-fiction (Brysbaert 2019, "How many words do we read per minute? A review and meta-analysis of reading rate", Journal of Memory and Language 109, 104047), since a lifter reads it between sets. Its other times (2.6 s, 6 s with Undo) are the app's own.
+
 Since r61 every number a rule uses is a named constant in `src/app/`, declared once at the top of its module and read by the rule and by the words that state it (PENDING 350; `tests/hygiene.js` fails on any other number past 0, 1 and 2). This list goes from each constant to its source and back. Left out, since no lifter's numbers depend on them: pixel sizes, chart styling, animation and toast timings, ids, storage keys, version numbers, labels and choice lists with no rule in them, the copy built from these constants, the ready-made routines' tables (data, not policy: PENDING 350), the import reader's formats (dates, zip files, column names), and tolerances that only absorb rounding (`PLATE_TOL_MIN`, `LOAD_KEY`, `PLATE_DUST`). "Above" names the paragraph of this document that discusses the number.
 
 ### Loads and progression
