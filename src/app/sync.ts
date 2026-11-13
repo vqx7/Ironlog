@@ -564,8 +564,8 @@ function cloudFail(e: unknown): void {
     /* A sign-in the server refuses can never sync again: this phone signs out
        of it, keeping the log and the sync notes (signing back in to the
        account goes on from them), and says so, once, as the failure turns the
-       sync off (said nothing, Your data read "Not syncing right now" with no
-       way to sign in). */
+       sync off (else nothing is said, and Your data reads "Not syncing right
+       now" with no way to sign in). */
     if (c === 'revoked' && was) {
       const A = AUTH();
       acct.user = null;
@@ -869,8 +869,8 @@ function draftNote(prev: unknown, kept?: Kept, where = 'on another device'): voi
             : `The workout in progress was closed ${where}.`
   );
 }
-/* The copy of the workout in progress that loses a merge is never dropped
-   : its ticked sets go into the log as a session,
+/* The copy of the workout in progress that loses a merge is never dropped:
+   its ticked sets go into the log as a session,
    with its cardio rows and check-in, as a first link keeps another phone's
    workout (draftSession); when the same workout was finished on another
    phone (a session of its id is in the log), the sets join that session row
@@ -1649,7 +1649,7 @@ let pulled = false;
 export async function cloudDecided(): Promise<void> {
   while (starting) await starting;
 }
-/** Whether the sync has started and its first pull is not yet tried: the first page shows only the logo until it is, so it never flashes before the account's log. Tried, not come through: with no answer a pull never comes through. */
+/** Whether the sync has started and its first pull is not yet tried: the first page shows only the logo until it is, so it never flashes before the account's log. It waits for the pull to be tried, not to come through, which with no answer it never does. */
 export const cloudFirstPull = (): boolean => cloud.on && firstPull;
 /* ---------- signing in: which log the phone holds ---------- */
 
