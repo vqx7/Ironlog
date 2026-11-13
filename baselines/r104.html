@@ -4424,7 +4424,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const t4 = rec(t0);
       const data = t4 ? rec(t4.data) : null;
       const kind = t4 ? trashKind(t4.kind) : null;
-      return t4 && typeof t4.id === "string" && kind && typeof t4.date === "string" && isDate(t4.date) && data ? [{ id: fixId(t4.id), kind, date: t4.date, data }] : [];
+      return t4 && typeof t4.id === "string" && kind && typeof t4.date === "string" && isDate(t4.date) && data ? [{ id: fixId(t4.id), kind, date: t4.date, data, ...t4.clash === true ? { clash: true } : {} }] : [];
     }).sort((a2, b2) => a2.date < b2.date ? 1 : a2.date > b2.date ? -1 : 0).slice(0, TRASH_MAX);
     while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
     return trash;
@@ -4496,7 +4496,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const id = fixId(x2.id + "-dup" + hashStr(canon(x2)).slice(0, DUP_HASH));
       if (trash.some((t4) => t4.id === id)) continue;
       const at2 = trash.findIndex((t4) => t4.date < x2.date);
-      trash.splice(at2 < 0 ? trash.length : at2, 0, { id, kind, date: x2.date, data: { ...rec(x2), id } });
+      trash.splice(at2 < 0 ? trash.length : at2, 0, { id, kind, date: x2.date, data: { ...rec(x2), id }, clash: true });
     }
     trash.splice(TRASH_MAX);
     while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
@@ -4622,19 +4622,30 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     sheetFollows(was);
     return state;
   }
+  function placeOf(m3) {
+    if (m3.kind === "note") return m3.bi;
+    if (m3.kind === "pic") return m3.at;
+    return "b" in m3 && typeof m3.b === "number" ? m3.b : null;
+  }
+  function placeTo(m3, j3) {
+    if (m3.kind === "note") m3.bi = j3;
+    else if (m3.kind === "pic") m3.at = j3;
+    else if ("b" in m3 && typeof m3.b === "number") m3.b = j3;
+  }
   function sheetFollows(was) {
     const m3 = ui.modal;
-    if (!m3 || !("b" in m3) || typeof m3.b !== "number") return;
+    const p3 = m3 ? placeOf(m3) : null;
+    if (!m3 || p3 == null) return;
     const d0 = was ? was.draft : null, d1 = state.draft;
-    const b2 = d0 ? d0.ex[m3.b] : void 0;
+    const b2 = d0 ? d0.ex[p3] : void 0;
     if (!d0 || !b2) return;
-    const at2 = d1 ? d1.ex[m3.b] : void 0;
+    const at2 = d1 ? d1.ex[p3] : void 0;
     if (d1 && d1.id === d0.id && at2 && (b2.bid ? at2.bid === b2.bid : at2 === b2 || at2.exId === b2.exId)) return;
-    const nth = d0.ex.slice(0, m3.b).filter((x2) => x2.exId === b2.exId).length;
+    const nth = d0.ex.slice(0, p3).filter((x2) => x2.exId === b2.exId).length;
     const j3 = !d1 || d1.id !== d0.id ? -1 : b2.bid ? d1.ex.findIndex((x2) => x2.bid === b2.bid) : d1.ex.findIndex(
       (x2, i5) => x2.exId === b2.exId && d1.ex.slice(0, i5).filter((y2) => y2.exId === b2.exId).length === nth
     );
-    if (j3 >= 0) m3.b = j3;
+    if (j3 >= 0) placeTo(m3, j3);
     else fx.closeModal();
   }
   var HIST_PAGE = 25;
@@ -4711,6 +4722,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var OB_ACCT = KEY + ".obAcct", OB_OUT = KEY + ".signedOut";
   var BWSNOOZE_KEY = KEY + ".bwSnooze", BWASK_KEY = KEY + ".bwAsk";
   var PARKED_KEY = KEY + ".parked";
+  var CLOSED_KEY = KEY + ".closed";
   var PHOTO_KEY = KEY + ".photo", PHOTO_SYNC = KEY + ".photoSync", PHOTO_ASKED = KEY + ".photoAsked";
   function parkedRetag(from, to) {
     const r4 = rec(parseJson(prefGet(PARKED_KEY) || "null"));
@@ -4856,8 +4868,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     for (const [id] of read.steps) stepsStored.set(id, "");
     legacyStored = read.legacy != null;
     const found = [];
+    const seen = /* @__PURE__ */ new Set();
     const take = (v3, id) => {
       const E2 = rec(v3);
+      const key = E2 && typeof E2.pre === "string" ? `${Number(E2.t) || 0}|${E2.pre}` : "";
+      if (!key || seen.has(key)) return;
+      seen.add(key);
       if (E2 && typeof E2.pre === "string" && now2 - (Number(E2.t) || 0) < UNDO_TTL)
         found.push({
           e: {
@@ -4870,8 +4886,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           id
         });
     };
-    for (const v3 of arr(read.legacy) || []) take(v3, null);
     for (const [id, v3] of read.steps) take(v3, id);
+    for (const v3 of arr(read.legacy) || []) take(v3, null);
     if (!undoStack.length) {
       found.sort((a2, b2) => a2.e.t - b2.e.t);
       for (const f3 of found.slice(-UNDO_MAX)) {
@@ -10319,6 +10335,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return mine;
   }
   function notesCatchUp() {
+    if (storedElsewhere() != null) return false;
     let text = null;
     try {
       text = localStorage.getItem(SYNC_KEY);
@@ -11663,10 +11680,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var closedHere = null;
   function followsAfter(before) {
     const d3 = state.draft;
-    if (before && before.live && !d3) closedHere = before.id;
-    else if (!before && d3 && closedHere && !d3.past && !d3.editingId && !d3.follows && !begunIn(d3)) {
-      d3.follows = closedHere;
+    if (before && before.live && !d3) {
+      closedHere = before.id;
+      prefSet(CLOSED_KEY, before.id);
+      return;
+    }
+    if (before || !d3) return;
+    const closed = prefGet(CLOSED_KEY) || closedHere;
+    if (closed && !d3.past && !d3.editingId && !d3.follows && !begunIn(d3)) {
+      d3.follows = closed;
       closedHere = null;
+      prefDel(CLOSED_KEY);
     }
   }
   function clockAfter(before) {
@@ -11679,14 +11703,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const cutoff = trashCutoff();
     state.trash = [
       { id: data.id, kind, date: today(), data: copy },
-      ...state.trash.filter((t4) => !(t4.id === data.id && t4.kind === kind) && t4.date >= cutoff)
+      ...state.trash.filter((t4) => !(t4.id === data.id && t4.kind === kind) && (t4.clash || t4.date >= cutoff))
     ].slice(0, TRASH_MAX);
     while (state.trash.length > 1 && JSON.stringify(state.trash).length > TRASH_BYTES) state.trash.pop();
   }
   var trashCutoff = () => addDays(today(), -TRASH_DAYS);
   function trashShown() {
     const cutoff = trashCutoff();
-    return state.trash.filter((t4) => t4.date >= cutoff);
+    return state.trash.filter((t4) => t4.clash || t4.date >= cutoff);
   }
   function nameLastStep(said2) {
     if (!lastStep || lastStep.said || !undoStack.includes(lastStep)) return;
@@ -14233,7 +14257,7 @@ ${cs.length > CARDIO_SHOWN ? b`<p class="small muted">${cs.length - CARDIO_SHOWN
       sub: b`<span class="hastip" data-tip=${`The ${TRASH_MAX} most recent deletions, each kept ${TRASH_DAYS} days`}>${tr.length}</span>`,
       body: b`<ul class="clist">${tr.map((x2) => {
         const nm = trashName(x2);
-        return b`<li><span>${nm} <span class="small muted">deleted ${fmtDate(x2.date)}</span></span><span class="row u-g6_fnone"><button class="btn sm" data-act="restore" data-id=${x2.id} data-k=${x2.kind}>Restore</button><button class="ib sm" data-act="trashDel" data-id=${x2.id} data-k=${x2.kind} aria-label=${`Delete ${nm} for good`}>✕</button></span></li>
+        return b`<li><span>${nm} <span class="small muted">${x2.clash ? "edited on two devices" : `deleted ${fmtDate(x2.date)}`}</span></span><span class="row u-g6_fnone"><button class="btn sm" data-act="restore" data-id=${x2.id} data-k=${x2.kind}>Restore</button><button class="ib sm" data-act="trashDel" data-id=${x2.id} data-k=${x2.kind} aria-label=${`Delete ${nm} for good`}>✕</button></span></li>
 `;
       })}</ul>
 <p class="small u-m10-0-0"><button class="linkbtn u-minh44" data-act="trashEmpty">Delete all for good</button></p>
@@ -27702,7 +27726,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         "data",
         "Your data",
         `${where}
-   <p><b>Deleted</b> sessions, cardio, and routines wait in History, Recently deleted: the ${TRASH_MAX} most recent, for ${TRASH_DAYS} days, or until you delete them for good there. A ready-made routine removed unchanged is not kept, since New from a template adds it again. Undo in Settings takes back the changes that offered Undo, one at a time, newest first, for ${UNDO_DAYS} days, and names each one before you tap it; after Erase everything, the first page offers it.</p>
+   <p><b>Deleted</b> sessions, cardio, and routines wait in History, Recently deleted: the ${TRASH_MAX} most recent, for ${TRASH_DAYS} days, or until you delete them for good there. When one session was edited on two devices in ways that cannot be joined, the other copy waits there too, until you restore it or delete it. A ready-made routine removed unchanged is not kept, since New from a template adds it again. Undo in Settings takes back the changes that offered Undo, one at a time, newest first, for ${UNDO_DAYS} days, and names each one before you tap it; after Erase everything, the first page offers it.</p>
    <p><b>Import workouts</b> reads notes, a spreadsheet, or an export from another app; you check everything before it is saved. On a first run, an import whose workouts repeat (most of them ${timesWord(IMPORT_REPEATS)} or more in its last ${IMPORT_WEEKS} weeks) also makes your routine; otherwise you pick the closest ready-made one. Its days come from the workouts' names (or from the lifts in them when the names are all alike) and keep each day's latest sets and rep range. Your weekly targets then fit that routine.</p>
    ${window.IRONLOG_APP ? '<p><b>Updates</b>: when "Update ready" shows, tap Update.</p>' : ""}
    ${report}`

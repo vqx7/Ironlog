@@ -53,10 +53,12 @@ export const OB_ACCT = KEY + '.obAcct',
 /** A weigh-in asked about on this device: snoozed until a date (Later), and the session's first ask answered (Not now). */
 export const BWSNOOZE_KEY = KEY + '.bwSnooze',
   BWASK_KEY = KEY + '.bwAsk';
-/** The account's profile photo as this phone holds it (2.34; kept on this phone only in 2.33), the note of where that
-    copy stands against the account (photo.ts), and its one-time line on Today answered (Add photo or Not now). */
 /** A workout in progress set aside while an earlier one is edited or logged: this phone's, with its account. */
 export const PARKED_KEY = KEY + '.parked';
+/** The workout this phone closed last, for the next one started here to note (act.ts, followsAfter): kept on the phone, as the next is often started after the app was closed. */
+export const CLOSED_KEY = KEY + '.closed';
+/** The account's profile photo as this phone holds it (2.34; kept on this phone only in 2.33), the note of where that
+    copy stands against the account (photo.ts), and its one-time line on Today answered (Add photo or Not now). */
 export const PHOTO_KEY = KEY + '.photo',
   PHOTO_SYNC = KEY + '.photoSync',
   PHOTO_ASKED = KEY + '.photoAsked';
@@ -323,8 +325,18 @@ export async function undoRestore(): Promise<void> {
   for (const [id] of read.steps) stepsStored.set(id, '');
   legacyStored = read.legacy != null;
   const found: { e: UndoStep; id: string | null }[] = [];
+  /* One step is taken once, by its time and its log before, however many copies the store holds: a tab still on 2.57
+     after another took Update writes the whole list under 'stack' again, and two tabs of this build opened together
+     can each store the list's steps on their own, so a step can be in the store two or three times. Each copy taken
+     was a step of its own, and Undo said "Undone" for the copies, taking nothing back (the review of 2.53 to 2.61,
+     REV15-3). A step stored on its own is taken first, so it keeps its id; every copy left is deleted at the next
+     write. */
+  const seen = new Set<string>();
   const take = (v: unknown, id: string | null): void => {
     const E = rec(v);
+    const key = E && typeof E.pre === 'string' ? `${Number(E.t) || 0}|${E.pre}` : '';
+    if (!key || seen.has(key)) return;
+    seen.add(key);
     if (E && typeof E.pre === 'string' && now - (Number(E.t) || 0) < UNDO_TTL)
       found.push({
         e: {
@@ -337,8 +349,8 @@ export async function undoRestore(): Promise<void> {
         id
       });
   };
-  for (const v of arr(read.legacy) || []) take(v, null);
   for (const [id, v] of read.steps) take(v, id);
+  for (const v of arr(read.legacy) || []) take(v, null);
   if (!undoStack.length) {
     found.sort((a, b) => a.e.t - b.e.t);
     for (const f of found.slice(-UNDO_MAX)) {

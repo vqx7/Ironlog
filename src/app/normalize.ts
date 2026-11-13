@@ -1053,7 +1053,7 @@ function cleanTrash(listed: unknown[]): Trashed[] {
       const data = t ? rec(t.data) : null;
       const kind = t ? trashKind(t.kind) : null;
       return t && typeof t.id === 'string' && kind && typeof t.date === 'string' && isDate(t.date) && data
-        ? [{ id: fixId(t.id), kind, date: t.date, data }]
+        ? [{ id: fixId(t.id), kind, date: t.date, data, ...(t.clash === true ? { clash: true as const } : {}) }]
         : [];
     })
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
@@ -1162,11 +1162,14 @@ function dedupe<T extends { id: string; date: string }>(
     const id = fixId(x.id + '-dup' + hashStr(canon(x)).slice(0, DUP_HASH));
     /* Dated by the copy's own date, not the phone's: every phone puts the same entry in Recently deleted, so one log
        reads the same on each and the two copies never clash (the review of 2.53, REV13-12: a phone in Los Angeles and
-       one in Tokyo dated it a day apart). Put where Recently deleted's order puts it, newest first, after the entries of
-       its date, and the list held to its limits, so reading the log again gives the same list (cleanTrash). */
+       one in Tokyo dated it a day apart). Marked as a copy put aside (`clash`), which Recently deleted keeps until the
+       lifter restores or deletes it: by its own date alone, a session from weeks back was hidden at once and dropped by
+       the next deletion, its edit with it (REV15-1). Put where Recently deleted's order puts it, newest first, after
+       the entries of its date, and the list held to its limits, so reading the log again gives the same list
+       (cleanTrash). */
     if (trash.some(t => t.id === id)) continue;
     const at = trash.findIndex(t => t.date < x.date);
-    trash.splice(at < 0 ? trash.length : at, 0, { id, kind, date: x.date, data: { ...rec(x), id } });
+    trash.splice(at < 0 ? trash.length : at, 0, { id, kind, date: x.date, data: { ...rec(x), id }, clash: true });
   }
   trash.splice(TRASH_MAX);
   while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
