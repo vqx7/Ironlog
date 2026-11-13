@@ -43,11 +43,18 @@ function held(): { uid: string; draft: unknown; at: number | null } | null {
 /** Days a set-aside workout is kept (above). */
 const PARK_KEEP_DAYS = 30;
 /** The day a set-aside workout was set aside and the last day it is kept, for Today's card; null when none is offered here. */
-export function parkedDates(): { set: string; until: string } | null {
+function parkedDates(): { set: string; until: string } | null {
   const h = parkedHere() ? waiting() : null;
   if (!h || h.at == null) return null;
   const set = iso(new Date(h.at));
   return { set, until: addDays(set, PARK_KEEP_DAYS) };
+}
+/** The words that say until when the workout set aside is kept (" Kept until Dec 11."), for Today's card, the one
+    screen that shows it waiting with no workout open: while the edit or past workout it waits for is open, nothing is
+    removed (parkTidy), so no date stands there. Empty when no date is known. */
+export function keptUntil(): string {
+  const d = parkedDates();
+  return d ? ` Kept until ${fmtDate(d.until)}.` : '';
 }
 /** At start: dates a copy set aside before 2.57, and removes one of this account kept past its last day, saying so (above). */
 export function parkTidy(): void {
@@ -57,6 +64,10 @@ export function parkTidy(): void {
     prefSet(PARKED_KEY, JSON.stringify({ uid: h.uid, draft: h.draft, at: Date.now() }));
     return;
   }
+  /* The 30 days stand still while the edit or past workout the copy waits for is open (V, 2026-11-13): the lifter is
+     in the middle of it, and saving or discarding it brings the copy back. Removed meanwhile, the copy of a lifter who
+     left the app a month with the edit open was gone when he came back, though no screen he saw had given a date. */
+  if (state.draft) return;
   const d = parkedDates();
   if (!d || today() <= d.until) return;
   prefDel(PARKED_KEY);

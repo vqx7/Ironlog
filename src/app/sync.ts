@@ -354,7 +354,9 @@ const epOf = (m: Rec | null): number => (m && typeof m.ep === 'number' ? m.ep : 
 /* Two tabs keep one set of notes for one log and account, and each changes them as it syncs. A tab takes in the
    other's by joining them into its own, never by taking or writing either whole (REV13-10). Each document's note is
    read against the notes this tab last saw: the one changed since, here or there, is kept; changed in both (both tabs
-   synced it), the later agreement, by the account's time for the copy agreed. Edit times and the last sync are this
+   synced it), the later agreement, by the account's time for the copy agreed. An agreement older than this tab's is
+   never taken as a change there: it is a tab writing back notes from before it caught up, as two tabs' writes crossing
+   did, and taken, the next sync merged against it and put back a set removed since (REV16-A1). Edit times and the last sync are this
    phone's clock, so the later of each; a write sent from either tab is kept until it is answered. A tab that had not
    heard the other's notes wrote its own over them, so a session the other tab had synced lost its agreed copy, and
    the next sync read the tab's copy against the account's as an edit on two devices. Notes for another log (a later
@@ -381,7 +383,9 @@ function joinNotes(m: Rec, text: string | null): boolean {
         : sameNote(there, base[k])
           ? here
           : sameNote(here, base[k])
-            ? there
+            ? there.at >= here.at
+              ? there
+              : here
             : there.at > here.at
               ? there
               : here;
