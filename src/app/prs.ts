@@ -1,4 +1,4 @@
-/* What a PR is called and the rep bands estimates are judged in (phase 3a; moved unchanged from the legacy script). Finding the PRs moves with the analytics. */
+/* What a PR is called and the rep bands estimates are judged in, and the PR scorer. */
 
 import { EPS_SAME, EPS } from './util';
 import { PR_BANDS, REP_PR_SHARE, prSameLoad, e1, rtfBand, rtfOf, prScoreOf } from './formulas';
@@ -9,8 +9,8 @@ import { EXIn } from './model';
 import { noBodyIn } from './setread';
 
 // The bands in words, counted as reps to failure (reps plus RIR).
-/* Bands count reps to failure (reps plus reps in reserve), so they say so (from the review:
-   "sets of 11 to 12 reps" named the band of a set of 8 at 3 in reserve). */
+/* Bands count reps to failure (reps plus reps in reserve), so they say so (not "sets of 11
+   to 12 reps" for the band of a set of 8 at 3 in reserve). */
 /** Each band's reps to failure as a range, "1 to 5", in band order. */
 export const BAND_RANGES: readonly string[] = PR_BANDS.map((b, i) => `${i ? PR_BANDS[i - 1].top + 1 : 1} to ${b.top}`);
 /** Each band in words, by band. */
@@ -29,11 +29,11 @@ export function prOverall(p: Pick<PrMark, 'value' | 'prevAll'>): boolean {
   return p.prevAll == null || (p.value != null && p.value > p.prevAll + EPS_SAME);
 }
 
-/* What an estimate PR is called (from the review: a best for 6 to 8
-   reps was shown as "Best estimate 30 kg (was 29)" beside an all-time best
-   estimate of 30 kg from a set of 11): Best estimate only when it beats every
+/* What an estimate PR is called (not "Best estimate 30 kg (was 29)" for a
+   best for 6 to 8 reps beside an all-time best estimate of 30 kg from a set
+   of 11): Best estimate only when it beats every
    earlier set's estimate, else the best for its band of reps, in the words
-   the toast uses (until r54 a second table typed the same words). */
+   the toast uses, from this one table. */
 /** An estimate PR's name: Best estimate, or the best for its band of reps. */
 export function prName(p: PrMark): string {
   return prOverall(p) ? 'Best estimate' : `Best for ${(p.bb != null && BAND_WORDS[p.bb]) || 'its reps'}`;
@@ -42,11 +42,10 @@ export function prName(p: PrMark): string {
 /* ---------- the PR scorer ----------
    One rule for the PR list (idxPRsIn, a session at a time over a lift's
    stretch) and the toast as a set is ticked (livePR in worksets.ts, the set
-   alone against the lift's sessions before): until r64 the toast read its
-   own copy, its bands from the lift's current stretch (exStats) where the
-   list read every earlier session, and a drop set or a band's first set
-   one way where the list read it another. A blank effort is read once, as
-   every estimate reads it (rirEst: the lift's usual, 339 o). */
+   alone against the lift's sessions before), so the two read the same bands
+   from the same sessions and a drop set or a band's first set the same way.
+   A blank effort is read once, as
+   every estimate reads it (rirEst: the lift's usual). */
 
 /** What a lift's sessions so far are, as the next session's sets are judged against them. */
 interface PrSoFar {
@@ -135,7 +134,7 @@ export function prJudge(
 ): { pr: PrMade | null; progress: boolean } {
   if (h.none) return { pr: null, progress: false };
   let repPR: ExPoint | null = null;
-  /* Each set at the load its PRs judge it at (prSameLoad, r54: changing
+  /* Each set at the load its PRs judge it at (prSameLoad: changing
      units or gyms is not a PR), and as logged (at), which the PR list
      shows. The earlier sets stay as logged: a set is only ever judged
      lighter, so this can take a PR away and never make one. */
@@ -145,10 +144,10 @@ export function prJudge(
   });
   const pts = judged.map(j => j.p);
   const asLogged = (q: ExPoint): ExPoint => (judged.find(j => j.p === q) || { at: q }).at;
-  /* r30: a rep PR counts only when the set is at least 90% of the
-     strongest set logged before (by the same estimate), a convention.
-     Any new load and rep pairing used to count, so 40 kg x 10 after
-     95 kg x 5 was a PR and the demo showed 54 PRs in 14 days. Every set in
+  /* A rep PR counts only when the set is at least 90% of the strongest
+     set logged before (by the same estimate), a convention. Were any new
+     load and rep pairing to count, 40 kg x 10 after 95 kg x 5 would be a PR
+     and the demo would show 54 PRs in 14 days. Every set in
      the session is judged against the frontier as it stood before the
      session, so sets within one session cannot cancel each other. */
   const floor = h.front.reduce((a, q) => Math.max(a, prScore(q)), 0) * REP_PR_SHARE;
@@ -177,45 +176,42 @@ export function prJudge(
      triple and from a set of 12. An e1RM PR is judged against earlier bests
      from the same band of reps to failure (1-5, 6-10, 11-12), taken from the
      set itself, so a set that overshoots its planned range is judged where it
-     landed; a band's first set against every earlier estimate (the r63
-     audit's R-6: 185 x 8 after 200 x 3 was the board's best estimate and a
-     Rep PR in the list). Rep PRs compare actual load and reps, which mean the
+     landed; a band's first set against every earlier estimate (185 x 8
+     after 200 x 3 is the board's best estimate, not a Rep PR in the list). Rep PRs compare actual load and reps, which mean the
      same in any range, so they stay global. */
   const pb = (bandJ != null ? h.byBand[bandJ] : undefined) ?? h.maxPb;
   const e1PR = pbJ != null && pb != null && pbJ > pb + EPS_SAME;
   /* A weight PR: more weight than any earlier working set of the
      lift, as logged (added load on a bodyweight lift, less help on an
-     assisted one). It is also a rep PR by definition, so it used to show
-     as one (V: "a new weight and rep PR in the same set marks it as a
-     rep PR"). One label per lift and session, the biggest news first:
+     assisted one). It is also a rep PR by definition, but shows as a weight
+     PR (V: "a new weight and rep PR in the same set marks it as a rep
+     PR"). One label per lift and session, the biggest news first:
      weight PR, then best estimate, then rep PR. Of the sets at the new
-     weight, the strongest by the same score (from the audit: the
-     recap named 82.5 x 11 beside the estimate of 82.5 x 10, the set the live
-     toast named, as reps alone had picked it). */
+     weight, the strongest by the same score (as the live toast
+     names it, so the recap does not name 82.5 x 11 beside the estimate of
+     82.5 x 10). */
   const wJ = !ex.timed
     ? pts
         .filter(p => p.r > 0 && p.w > h.prevMaxW + EPS_SAME)
         .sort((a, b) => b.w - a.w || prScore(b) - prScore(a) || b.r - a.r)[0]
     : null;
   const wPR = wJ ? asLogged(wJ) : null;
-  // Any record at all (heavier, a best for its reps, more reps at a load): the stall test's sign the lift moved. Since r58 (343 6) no screen calls it a PR; a PR is `big`.
+  // Any record at all (heavier, a best for its reps, more reps at a load): the stall test's sign the lift moved. No screen calls it a PR; a PR is `big`.
   const progress = !!repPR || e1PR || !!wPR;
-  /* big: a PR that is counted and announced (from the third review:
-     "8 new PRs" in a fifth session, 34 in 30 days after an import, since
-     every load step was a weight PR and every added rep a rep PR). On a
+  /* big: a PR that is counted and announced (not "8 new PRs" in a fifth
+     session, 34 in 30 days after an import, every load step a weight PR and
+     every added rep a rep PR). On a
      lift with a strength estimate it is a set stronger than every earlier
      one (below); a heavier set or more reps that is not stays in the list,
      the heavier set named in the recap as Heaviest yet. Lifts with no
      estimate (timed, joint rotation) keep every kind, and so does a
      session with no load known (a bodyweight lift before any weigh-in,
-     r54: none of its PRs was counted, the score being 0 on every set;
-     the sixth review of r53). Stronger than ever is judged against every
+     the score being 0 on every set). Stronger than ever is judged against every
      earlier set by the same score as the rep PR floor, so 100 x 9 after
-     100 x 8 counts though it moved into a new band of reps. r34.2: a new
-     best in a band alone no longer makes it big (from the review: triceps
-     80 x 10 after 75 x 15 was announced as a PR though the set was weaker;
-     sets past 12 reps have no estimate, so it was the band's first). Only
-     stronger than ever, as the r32 rule says. A PR is a PR whatever the
+     100 x 8 counts though it moved into a new band of reps. A new best in a
+     band alone does not make it big (triceps 80 x 10 after 75 x 15 is no PR,
+     the set being weaker; sets past 12 reps have no estimate, so it was the
+     band's first). Only stronger than ever. A PR is a PR whatever the
      day is called (V 2026-10-18); a heavier set without one is said
      once, quietly (Heaviest yet), so the day's label decides nothing here. */
   /* Stronger than ever: a higher score, or the same score with more reps than any earlier set at its load or
@@ -258,12 +254,11 @@ export function prJudge(
   return { pr: null, progress };
 }
 
-/* The PR a session counts, as its sets were announced one by one (the
-   r63 audit's A-6): each set judged alone against the sessions before, the
+/* The PR a session counts, as its sets were announced one by one: each set judged alone against the sessions before, the
    biggest news among those counted (big), a weight PR first (the heaviest),
    then a best estimate (the highest), then a rep PR (the strongest). Judged
-   as a whole, a session named a best estimate from one set and counted it
-   by another set's strength, so the recap said Best estimate where the
+   as a whole, a session would name a best estimate from one set and count it
+   by another set's strength, and the recap say Best estimate where the
    toast had said Rep PR. Null when no set counts one: the session's own
    judgement then names what it did (Heaviest yet), not counted. */
 function prCounted(ex: ExerciseLike, h: PrSoFar, x: Pick<Exposure, 'pts'>, noBody: boolean): PrMade | null {
@@ -292,14 +287,14 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
   const h = prSoFar();
   let maxBest: number | null = null;
   for (const x of exps) {
-    // Drop sets never feed a PR or a best (r64: a block of drop sets alone made a Weight PR in the list, never in the toast).
+    // Drop sets never feed a PR or a best (a block of drop sets alone is no Weight PR, in the list or the toast).
     if (x.dropOnly) continue;
     const j = prJudge(ex, h, x);
     x.progress = j.progress;
     /* Its date, session and lift first, as every PR has kept them in that order. With no set counting one, the
-       session's own judgement names what it did and is not counted (from building 387-B4): judged as a
-       whole it was counted when any set was stronger than ever, so 100 x 7 at 2 in reserve was a counted best
-       estimate because 100 x 12 at 4 in the same session scored more, a set no toast announces, being no
+       session's own judgement names what it did and is not counted: judged as a whole it would be
+       counted when any set was stronger than ever, so 100 x 7 at 2 in reserve would be a counted best estimate
+       because 100 x 12 at 4 in the same session scored more, a set no toast announces, being no
        heavier and no more reps than one before. A PR is a set stronger than every earlier one (CLAUDE.md). */
     const pr = prCounted(ex, h, x, noBodyIn(M, ex)) ?? (j.pr ? { ...j.pr, big: false } : null);
     if (pr) prs.push({ date: x.date, sid: x.sid, exId: id, ...pr });
