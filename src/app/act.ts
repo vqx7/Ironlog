@@ -138,10 +138,10 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
 /* The workout in progress before a change, for its clock after it (session.ts clockStart): which workout, and whether
    it had begun. The clock starts only at the change that begins it, so a workout that arrives begun (another tab's or
    phone's on a build that keeps no start, a backup restored) keeps the start it came with, or none. */
-/** The workout in progress before a change: its id, whether it had begun, and whether it is one being lifted (not a past workout or an edit). */
-function begunBefore(): { id: string; begun: boolean; live: boolean } | null {
+/** The workout in progress before a change: its id, whether it had begun, whether it is one being lifted (not a past workout or an edit), and the one it follows. */
+function begunBefore(): { id: string; begun: boolean; live: boolean; follows?: string | undefined } | null {
   const d = state.draft;
-  return d ? { id: d.id, begun: begunIn(d), live: !d.past && !d.editingId } : null;
+  return d ? { id: d.id, begun: begunIn(d), live: !d.past && !d.editingId, follows: d.follows } : null;
 }
 /* The workout this phone closed last (finished or discarded), for the next one started here, which notes it
    (follows): a merge with a copy of the closed one that another phone kept working in then knows this phone moved on
@@ -151,11 +151,16 @@ function begunBefore(): { id: string; begun: boolean; live: boolean } | null {
    both phones (REV15-6). */
 let closedHere: string | null = null;
 /** Notes a workout closed here, or gives the next one started here the one it follows; after an outer change (act). */
-function followsAfter(before: { id: string; live: boolean } | null): void {
+function followsAfter(
+  before: { id: string; begun: boolean; live: boolean; follows?: string | undefined } | null
+): void {
   const d = state.draft;
   if (before && before.live && !d) {
-    closedHere = before.id;
-    prefSet(CLOSED_KEY, before.id);
+    /* A workout closed before it began (the wrong day tapped, then discarded) moved the phone on from nothing: the
+       next one follows what that one followed, so a merge still knows the phone moved on from the workout before it. */
+    const id = !before.begun && before.follows ? before.follows : before.id;
+    closedHere = id;
+    prefSet(CLOSED_KEY, id);
     return;
   }
   if (before || !d) return;
