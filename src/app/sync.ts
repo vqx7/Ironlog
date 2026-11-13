@@ -399,8 +399,14 @@ function joinNotes(m: Rec, text: string | null): boolean {
   notesSeen = text;
   return mine;
 }
+/* The notes describe the log they were written with, so another tab's are taken in only once its log is: a tab that has
+   not yet heard the other's save (a storage event comes a task later, and a hidden page may hear none) would hold
+   notes saying the account has what its own log lacks, and its sync would read the difference as its own deletion
+   and send it (the review of 2.53 to 2.61, REV15-2: a session the other tab had pulled from a second phone was taken
+   off the account and that phone). It keeps its own notes, which describe its own log, until it hears that save. */
 /** Takes in notes another tab wrote that this tab has not heard (above), before the sync reads its own; whether it found any. */
 function notesCatchUp(): boolean {
+  if (storedElsewhere() != null) return false;
   let text: string | null = null;
   try {
     text = localStorage.getItem(SYNC_KEY);
