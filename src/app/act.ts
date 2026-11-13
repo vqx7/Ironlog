@@ -10,7 +10,7 @@
    refuses a write to the log in a moved screen outside `act`, and
    tests/r57.js reads every step on the page after each action's tap. */
 
-import { log, snapshot, undoPersist, undoStack } from './storage';
+import { CLOSED_KEY, log, prefDel, prefGet, prefSet, snapshot, undoPersist, undoStack } from './storage';
 import { assemble, baseOf, mergeChunk, saveNow, saveSoon } from './sync';
 import { canon, mergeDraft } from './merge';
 import { chunksOf, emptyChunk } from './chunks';
@@ -143,17 +143,27 @@ function begunBefore(): { id: string; begun: boolean; live: boolean } | null {
   const d = state.draft;
   return d ? { id: d.id, begun: begunIn(d), live: !d.past && !d.editingId } : null;
 }
-/* The workout this phone closed last (finished or discarded) in this visit, for the next one started here, which notes
-   it (follows): a merge with a copy of the closed one that another phone kept working in then knows this phone moved on
-   from it, and keeps the next workout open rather than bringing the closed one back (sync.ts mergeChunk, NEW-134). */
+/* The workout this phone closed last (finished or discarded), for the next one started here, which notes it
+   (follows): a merge with a copy of the closed one that another phone kept working in then knows this phone moved on
+   from it, and keeps the next workout open rather than bringing the closed one back (sync.ts mergeChunk, NEW-134).
+   Kept on the phone (CLOSED_KEY), and for the visit when storage refuses it: a workout finished, the app closed, and
+   the next started later is the usual order, and known for the visit alone the finished workout came back open on
+   both phones (REV15-6). */
 let closedHere: string | null = null;
 /** Notes a workout closed here, or gives the next one started here the one it follows; after an outer change (act). */
 function followsAfter(before: { id: string; live: boolean } | null): void {
   const d = state.draft;
-  if (before && before.live && !d) closedHere = before.id;
-  else if (!before && d && closedHere && !d.past && !d.editingId && !d.follows && !begunIn(d)) {
-    d.follows = closedHere;
+  if (before && before.live && !d) {
+    closedHere = before.id;
+    prefSet(CLOSED_KEY, before.id);
+    return;
+  }
+  if (before || !d) return;
+  const closed = prefGet(CLOSED_KEY) || closedHere;
+  if (closed && !d.past && !d.editingId && !d.follows && !begunIn(d)) {
+    d.follows = closed;
     closedHere = null;
+    prefDel(CLOSED_KEY);
   }
 }
 /** Starts or stops the clock of the workout in progress after a change, given what it was before (begunBefore). */
@@ -169,7 +179,7 @@ export function toTrash(kind: Trashed['kind'], data: { id: string }): void {
   const cutoff = trashCutoff();
   state.trash = [
     { id: data.id, kind, date: today(), data: copy },
-    ...state.trash.filter(t => !(t.id === data.id && t.kind === kind) && t.date >= cutoff)
+    ...state.trash.filter(t => !(t.id === data.id && t.kind === kind) && (t.clash || t.date >= cutoff))
   ].slice(0, TRASH_MAX);
   while (state.trash.length > 1 && JSON.stringify(state.trash).length > TRASH_BYTES) state.trash.pop();
 }
@@ -181,10 +191,10 @@ export function toTrash(kind: Trashed['kind'], data: { id: string }): void {
    later one made on another (the review of 2.53, REV13-9). */
 /** The oldest date Recently deleted still keeps, by this phone's date. */
 const trashCutoff = (): string => addDays(today(), -TRASH_DAYS);
-/** Recently deleted as it is shown: the entries within its days, newest first. */
+/** Recently deleted as it is shown: the entries within its days, and every copy put aside from a session or cardio entry held twice (Trashed's clash, kept until the lifter acts on it), newest first. */
 export function trashShown(): Trashed[] {
   const cutoff = trashCutoff();
-  return state.trash.filter(t => t.date >= cutoff);
+  return state.trash.filter(t => t.clash || t.date >= cutoff);
 }
 
 /* ---------- Undo (moved from the legacy script's 27-actions.js in r63) ----------
