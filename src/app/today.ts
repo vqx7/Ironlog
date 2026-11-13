@@ -2,15 +2,14 @@
    up), the lines above the start card (demo data, Set up sync, Get the app,
    the new icon), the start card for the plan's day or a blank session, and
    everything under it (This week, At a glance, the coach, injuries, the
-   muscle map, the workout preview, the body), drawn by lit-html as
-   src/19-today.js and src/21-pick-session.js drew them, with the actions
+   muscle map, the workout preview, the body), drawn by lit-html, with the actions
    and fields that change what they show, each change to the log through
    `act`. What Today opens or starts elsewhere is reached by the button's
    data-act through events.ts's table: the sheets (Change, Pick for
    me, Short on time, Install, the new icon's steps, a past workout, an
    injury, cardio, a rest week, Limited equipment, the routine picker,
    import), the account's actions, demo data's Load, and every start of a
-   session (actsstart.ts; the session screen is workout.ts since r60). */
+   session (actsstart.ts; the session screen is workout.ts). */
 
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
@@ -188,9 +187,9 @@ declare global {
    the account's log. Kept per device; a sign-in clears it. The flag is
    cleared by a sign-in the lifter makes here (obOutClear), not by any
    signed-in moment: a confirmation link opened in this browser signs it in
-   only until it is told where Ironlog is used (review of r33). A session in
-   progress always shows, signed out or not (review: signing out mid-session
-   with a copy kept hid the tabs around it). */
+   only until it is told where Ironlog is used. A session in progress always
+   shows, signed out or not (signing out mid-session with a copy kept must
+   not hide the tabs around it). */
 /** Whether the first page is held open on this device after a sign-out. */
 export function obGate(): boolean {
   if (!AUTH() || window.claude || acct.user) return false;
@@ -377,7 +376,7 @@ export function mountObTour(): void {
   }, TOUR.advanceMs);
 }
 function obView(): TemplateResult {
-  // Still finding out whether this device is signed in, or pulling its log: show nothing that could flash away. A first pull that failed shows the page (F3: with no answer it waited for ever).
+  // Still finding out whether this device is signed in, or pulling its log: show nothing that could flash away. A first pull that failed shows the page, or with no answer it would wait for ever.
   if (!cloudChecked || (AUTH() && !window.claude && !acct.checked) || cloudFirstPull())
     return html`<div class="ob"><div class="ob-splash"><p class="ob-logo">${markup(LOCKUP)}</p></div></div>`;
   const acctStep = !!AUTH() && !window.claude;
@@ -389,9 +388,9 @@ function obView(): TemplateResult {
      for, and Continue without an account as a plain, clearly worded link. A
      page that opened on an account request alone lost a friend at the first
      screen. After Erase everything these pages are all there is, so its Undo
-     is here too (the audit). The header and its menu are hidden on these
+     is here too. The header and its menu are hidden on these
      pages, so the Set up page ends with Help, the menu (Report a problem, the
-     Guide), for someone stuck before the app opens (the r63 audit's P-S4-6). */
+     Guide), for someone stuck before the app opens. */
   if (obAcctOffered())
     return html`<div class="ob" id="obPage" data-step="acct">
 <div class="ob-top"><h1 class="ob-logo">${markup(LOCKUP)}</h1></div>
@@ -449,7 +448,7 @@ function welcomeCard(): Part {
    browser. "Not now" hides it on this device until an account is
    used. Never shown inside Claude, during a first run (the welcome card
    offers it there), or before the sign-in check. Someone who just chose
-   Continue without an account is not asked again on the next screen (from the third review: two bars and a toast on the first Today); the line
+   Continue without an account is not asked again on the next screen (not two bars and a toast on the first Today); the line
    comes back once a session is saved. */
 function acctBar(): Part {
   if (!AUTH() || window.claude || !acct.checked || acct.user || cloud.on || !state.settings.onboarded) return nothing;
@@ -508,19 +507,18 @@ function photoBar(): Part {
    changes: these fields keep what is typed through a draw, and a number
    typed in pounds or inches left in place under kilograms or centimetres
    would be saved as that (180 lb as 180 kg). Typed in the unit shown, it goes
-   with it (the review of r59's keeping of fields). */
+   with it. */
 const inUnit = (u: string, field: TemplateResult): DirectiveResult => keyed(u, field);
 /* Body's weigh-in date (bodyCard) is keyed by the day, for the same reason:
    a date field the lifter or a save has set no longer follows its value
-   attribute, so kept from one day into the next it said yesterday, and a
-   morning weigh-in went over the evening's (the second review of r59). Within
+   attribute, so kept from one day into the next it would say yesterday, and a
+   morning weigh-in would go over the evening's. Within
    a day it keeps the date chosen through a draw. */
 
 /* A weigh-in due (Settings > Measurements, how often): the last one and Save,
    or Later for two days. Never weighed in: only for someone who logs
-   bodyweight lifts, where it changes the numbers (from the review: it
-   asked every 2 days of a lifter who skipped the optional weigh-in and does
-   none). */
+   bodyweight lifts, where it changes the numbers (not every 2 days of a
+   lifter who skipped the optional weigh-in and does none). */
 /** The weigh-in due card, or nothing. */
 export function bwDueCard(): Part {
   const n = bwEvery();
@@ -565,15 +563,14 @@ export function bwDueCard(): Part {
 function changeBtn(di: number, free: boolean, part?: 1 | 2): TemplateResult {
   return html`<button class="btn sm" data-act="startAltOpen" data-day=${di} data-free=${free ? '1' : nothing} data-part=${part === 2 ? '2' : nothing}>Change</button>`;
 }
-/* More options on either card (from the review: the blank-session
-   card had none, so a freestyler could not mark a rest week, a deload, an
-   injury, or cardio from Today). */
+/* More options on either card, so a freestyler on the blank-session card
+   can mark a rest week, a deload, an injury, or cardio from Today. */
 function moreBtn(deload: boolean): Part {
   return html`<button class="btn sm" data-act="heroMore" aria-expanded=${String(!!ui.heroMore)}>${ui.heroMore ? 'Fewer options' : 'More options'}</button>${
     deload && !ui.heroMore ? html`<span class="tag blue">Deload week on</span>` : nothing
   }`;
 }
-/* NEW-31 (V, 2026-11-02): a fixed-weekday routine adapts to a slipped day. A workout done on another day fills
+/* A fixed-weekday routine adapts (V, 2026-11-02) to a slipped day. A workout done on another day fills
    its own slot (weekSlots), so its day stops reading missed, and Today offers the earliest workout this week still
    to do, else today's; once today's is done, today or earlier, the next one this week ("show what is up next if
    something was completed already"). A rest day with nothing behind keeps its card. Today's own workout is a tap
@@ -655,7 +652,7 @@ export function viewToday(): TemplateResult {
   const t = today();
   // "Next up" is said once, in Change day below: on the card it made the
   // date line wrap and leave "UP" on a line of its own on a phone.
-  // On a scheduled rest day the card shows the next training day, and says so (r30: "Day 1 of 7" beside "rest today, Day 7").
+  // On a scheduled rest day the card shows the next training day, and says so (not "Day 1 of 7" beside "rest today, Day 7").
   /* A day opened from a date past this week (the calendar's days ahead, 329)
      says that date, so a Wednesday weeks ahead does not read as this one. */
   const at = ui.todayAt;
@@ -671,7 +668,7 @@ export function viewToday(): TemplateResult {
       ? at.d
       : null;
   // Which of the day's workouts: the one offered, the one picked, else the first not done this week; on a
-  // date past this week, its first (the review of r68: next Monday showed this week's second workout, still to do).
+  // date past this week, its first (next Monday does not show this week's second workout, still to do).
   const parts = weekly ? dayParts(day0) : [];
   const part: 1 | 2 = offer
     ? offer.part
@@ -707,8 +704,7 @@ export function viewToday(): TemplateResult {
     state.sessions.some(x => x.date === t && x.routineId === R.id && sessDayIdx(R, x) === wd && partOf(x) === part)
   )
     /* A weekly routine offers today's day again once it is done (the day is
-       the weekday), so it says so, as a cycle's card does (the r63
-       audit's P-S4-4). */
+       the weekday), so it says so, as a cycle's card does. */
     note = `${day.name || dayLabel(R, wd)} done today.`;
   const playable = !day.rest && day.items.length > 0;
   const deload = isDeloadWeek();
@@ -848,7 +844,7 @@ function liftTags(exId: string): Part {
    is a hold or hover away. A lift with no history says so once for the whole
    day, not on every row. Its trend lives on Stats (V: guidance before a
    session, not history). Only a stall is worth a word in the title; a PR
-   last time or a load due is good news (r28: "5 flagged" was five green PR
+   last time or a load due is good news (not "5 flagged" for five green PR
    tags). */
 function previewCard(day: Day, deload: boolean): TemplateResult {
   const I = IDX();
@@ -1017,7 +1013,7 @@ const TONE_WORDS: Readonly<Record<string, string>> = {
   green: 'On track',
   blue: 'Note'
 };
-/* Lifts moving (364 b-2): the lifts Stats and the coach call clearly
+/* Lifts moving: the lifts Stats and the coach call clearly
    rising, each a row that opens it on Stats > Lifts, with its line (what
    Stats > Lifts charts for it, the lighter sessions left out, liftsMovingIn)
    and its latest heaviest set. Three at most, the count in the subtitle; none
@@ -1072,9 +1068,8 @@ function todayRest(o: {
 }): Part {
   /* Nothing logged yet: say where lifts done before this app go, since that
      is how a new lifter's bests and targets start from what they can already
-     do (V). History's empty state says the same; Today said nothing. Led
-     by the action since 2.34 (V, 2026-11-08: "Lifted before this app?" read
-     badly). */
+     do (V). History's empty state says the same. Led by the action (V,
+     2026-11-08: "Lifted before this app?" read badly). */
   const pre =
     noLog() && !state.draft
       ? html`<p class="small muted u-m0-0n10" id="preApp"><button class="linkbtn" data-act="pastOpen">Log a past workout</button> so your targets start from your bests.</p>`
@@ -1180,8 +1175,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   },
   /* A weigh-in for the date given (Today's Body), or for today (the weigh-in
      due card, data-in). A grey number in the field is what Save takes, as
-     everywhere in the app (r34.2: the weigh-in card showed the last weight
-     and refused it). One weigh-in a date: a second replaces it. */
+     everywhere in the app (not the last weight shown and then refused). One weigh-in a date: a second replaces it. */
   addBW(t) {
     const own = t && t.dataset && t.dataset['in'];
     const inp = field(own || 'bwVal');
@@ -1237,7 +1231,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     );
   },
   /* A second save the same day adds to it, keeping what it does not retype,
-     with Undo (the audit: it replaced the day's entry). */
+     with Undo, never replacing the day's entry. */
   addMeas() {
     const m: Record<string, number> = {};
     let any = false;
@@ -1307,8 +1301,8 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     render();
     toast(`${x ? injLabel(x.m) : 'Injury'} cleared`, true);
   },
-  /* Each says what it hid and where that stays, from where the lifter is: the menu at the top right. Until 2.60 both
-     said "Hidden. Settings > Your data has it.", which read as the log and named nothing (V, 2026-11-12). */
+  /* Each says what it hid and where that stays, from where the lifter is: the menu at the top right (V, 2026-11-12: "Hidden. Settings > Your data has
+     it." read as the log and named nothing). */
   acctLater() {
     prefSet(ACCT_LATER, '1');
     rerenderKeepScroll();
@@ -1351,9 +1345,9 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     render();
   },
   /* Build my own routine: three training days with rest days between, as the
-     ready-made 3-day routines are laid out (the audit: three days and no
-     rest planned 7 sessions a week), replacing the untouched starter, as a
-     ready-made pick does (the audit). */
+     ready-made 3-day routines are laid out (three days and no rest would plan
+     7 sessions a week), replacing the untouched starter, as a ready-made pick
+     does. */
   obOwn() {
     const r = {
       id: uid(),

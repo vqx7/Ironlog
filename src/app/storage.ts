@@ -1,13 +1,12 @@
-/* The save on this device (phase 4; moved from the legacy script's
-   storage part, changing nothing it does): the keys every stored value lives
+/* The save on this device: the keys every stored value lives
    under, whether storage can be written, reading the save at start, the error
    log Settings can copy, Undo's steps and their copy in IndexedDB, the
    settings kept aside while the demo is loaded, a log kept aside for another
    account (in IndexedDB too), and the two readings the
    menu button makes of all that (backupDue, saveStateNow). Writing the save
    is in sync.ts (saveNow), since every write goes on to the account.
-   Nothing here runs on import: storageStart() runs what the legacy part
-   ran when the page loaded, called from main.ts at start. */
+   Nothing here runs on import: storageStart() runs it as the page loads,
+   called from main.ts at start. */
 
 import { APP_VERSION, STORAGE_ID } from './config';
 import { daysBetween, today, uid, DAY_MS } from './util';
@@ -60,7 +59,7 @@ export const PARKED_KEY = KEY + '.parked';
 export const PHOTO_KEY = KEY + '.photo',
   PHOTO_SYNC = KEY + '.photoSync',
   PHOTO_ASKED = KEY + '.photoAsked';
-/** Moves a set-aside workout from the log of account `from` ('' for none) to `to`, when a sign-in takes the phone's log into that account (takeAccount): it goes where the log goes (the review of 2.36). */
+/** Moves a set-aside workout from the log of account `from` ('' for none) to `to`, when a sign-in takes the phone's log into that account (takeAccount): it goes where the log goes. */
 export function parkedRetag(from: string, to: string): void {
   const r = rec(parseJson(prefGet(PARKED_KEY) || 'null'));
   if (r && r['uid'] === from) prefSet(PARKED_KEY, JSON.stringify({ ...r, uid: to }));
@@ -80,7 +79,7 @@ interface Device {
   boot: boolean;
   /** Whether a readable save was found at start (the sync's first pull adopts the account's copy when not). */
   hadLocal: boolean;
-  /** Whether this device had a log before this page first ran, read before any save (r25: only an existing install still has the old icon). */
+  /** Whether this device had a log before this page first ran, read before any save (only an install from before r25 still has the old icon). */
   hadLog: boolean;
   /** The text this tab last wrote or adopted. Another tab's change is merged against it (the storage listener, sync.ts). */
   lastSaved: string | null;
@@ -96,8 +95,8 @@ export const clearTimer = (t: number | null): void => {
 /* ---------- the error log ---------- */
 
 /* Diagnostics log: the last 60 errors, kept in this browser only. Errors that
-   used to be swallowed silently land here, and Settings can copy them. Filled
-   at start from LOGK, with the entries as they were saved (r56.1 checks each). */
+   would be swallowed silently land here, and Settings can copy them. Filled
+   at start from LOGK, each entry checked as it is read. */
 /** The last 60 errors on this device, oldest first. */
 export const logBuf: LogEntry[] = [];
 /** An entry of the error log as saved, or null when it is not one. */
@@ -142,7 +141,7 @@ export function log(area: string, err: unknown): void {
       msg = logCut(m).slice(0, LOG_LIMITS.messageChars);
     /* The same error again (its area, message, build and place in the code), straight after itself, is counted on its line (n) with the time it last came, so one that
        repeats (a sign-in tried each time the app comes back to the screen, offline) cannot push an earlier one out of
-       the LOG_LIMITS.kept kept or the 10 a problem report carries (the second review of r59). */
+       the LOG_LIMITS.kept kept or the 10 a problem report carries. */
     const last = logBuf[logBuf.length - 1];
     if (last && last.a === area && last.m === msg && last.v === APP_VERSION && (last.s || '') === st) {
       last.t = t;
@@ -180,15 +179,14 @@ export const undoStack: UndoStep[] = [],
    Entries older than UNDO_DAYS are dropped. The reversal functions some
    in-session entries carry cannot be stored; after a reload those entries
    undo through the three-way merge, which gives the same result. Best
-   effort: without IndexedDB, Undo works as before, for this visit only.
+   effort: without IndexedDB, Undo works for this visit only.
    Each step is stored under a key of its own (STEP_KEY and its id), written
    when it is new or changes (its log after the change kept, or its words)
    and deleted when it leaves the list, so a change writes its own step, not
-   all 20 again (2.27-F4: on two years of training, 416 sessions, every
-   delete rewrote 40 copies of the log, about half a second of an older
-   phone's time each; one step is two). Steps kept by 2.57 and before, the
-   whole list under 'stack', are read as before and stored on their own from
-   then. */
+   all 20 again (on two years of training, 416 sessions, rewriting the list
+   is 40 copies of the log, about half a second of an older phone's time
+   each; one step is two). Steps kept by 2.57 and before, the whole list
+   under 'stack', are read and then stored on their own. */
 const UNDO_DB = ENV === 'preview' ? `${STORAGE_ID}-preview-undo` : `${STORAGE_ID}-undo`,
   UNDO_TTL = UNDO_DAYS * DAY_MS;
 let undoDbP: Promise<IDBDatabase | null> | null = null;
@@ -263,19 +261,18 @@ async function undoWrite(): Promise<void> {
     };
     tx.onerror = () => log('undo-save', tx.error);
     /* Committed at once rather than when the page next idles: a page reloaded or closed straight after (Update, the
-       app closed, another address) was gone before the write ended, and Undo then took back the change before it (the
-       review of 2.52). A browser without commit() ends the write as before. */
+       app closed, another address) can be gone before the write ends, and Undo then takes back the change before it.
+       A browser without commit() ends the write when it idles. */
     if ('commit' in tx) tx.commit();
   } catch (e) {
     log('undo-save', e);
   }
 }
 /* The steps are written as the tap that changed them ends: a microtask, so the step, the log right after it and its
-   words, all made in that tap, go in one write, and the write is under way before anything else can happen. Until
-   2.52 they waited 0.4 s for a pause in the taps, then for the page to be hidden or left as well: a change made just
-   before the app closed lost its step, and in WebKit a write begun as the page was torn down (a reload with
-   no hiding first: Update, another address) never ended (REV13-1 there). Either way Undo then took back the
-   change before it. */
+   words, all made in that tap, go in one write, and the write is under way before anything else can happen. Waiting for a pause in the taps, or
+   for the page to be hidden or left, a change made just before the app closed would lose its step, and in WebKit a
+   write begun as the page is torn down (a reload with no hiding first: Update, another address) never ends. Either
+   way Undo would then take back the change before it. */
 /** Writes the steps to IndexedDB as the current tap ends. */
 export function undoPersist(): void {
   if (undoWaiting) return;
@@ -695,7 +692,7 @@ export function asideClear(): void {
   asideIdx.length = 0;
   void asideWrite(s => s.clear());
 }
-/* A preview of r56.1 before PENDING 333 kept the log aside in localStorage,
+/* A preview of r56.1 kept the log aside in localStorage,
    under ASIDE_KEY and the account; such a copy is moved into the database at
    start, then removed, so it is neither lost nor left taking the log's room. */
 /** Reads the list of logs kept aside at start, after moving any a preview kept in localStorage; Your data is redrawn if it is open. */
@@ -743,8 +740,8 @@ const BACKUP_DAYS = 7;
 export function backupDue(): boolean {
   /* Signed in and synced, the account is where the log lives, as in any
      app; deletions are covered by Recently deleted (TRASH_DAYS) and Undo (UNDO_DAYS),
-     so no reminder (from the review: the menu said "Backup due" to a
-     synced account while the first page says the account backs it up). */
+     so no reminder (no "Backup due" to a synced account while the
+     first page says the account backs it up). */
   if (!state.sessions.some(s => !s.demo)) return false;
   const synced = cloud.on && cloud.last && Date.now() - cloud.last < BACKUP_DAYS * DAY_MS;
   if (synced) return false;
@@ -792,8 +789,8 @@ export function saveStateNow(): { cls: string; txt: string } {
 
 /** What the storage part ran as the page loaded, in its order: the preview's
     mark on the page, whether a log was here, the error log, the error
-    listeners, then the save read into the store. Called once, from the start
-    of the legacy script. */
+    listeners, then the save read into the store. Called once, from main.ts at
+    start. */
 export function storageStart(): void {
   if (ENV === 'preview') document.documentElement.dataset.env = 'preview';
   try {

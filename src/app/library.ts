@@ -1,8 +1,7 @@
 /* The reference data about exercises and the body: muscles and their weekly
    bands, joints, equipment, cardio and tape kinds, the exercise library, and
    the rules read from an exercise alone (its movement pattern, whether it is a
-   compound lift, its load meaning, its share of bodyweight). Phase 2, r50;
-   moved unchanged from the legacy script. Nothing here reads the log or the settings. */
+   compound lift, its load meaning, its share of bodyweight). Nothing here reads the log or the settings. */
 
 import type { Exercise, LibRow, LoadMode, MuscleKey } from './types';
 import { pctOf } from './util';
@@ -52,21 +51,20 @@ export const ML = Object.fromEntries(MUSCLES);
     library exercises whose library entry now lists them. */
 export const NEW_MUSCLES_V5: readonly MuscleKey[] = ['serratus', 'rotatorCuff'];
 
-/* The four muscles no ready-made routine trains directly (neck and tibialis
-   joined in r29, V: as targets they made every routine read as short):
-   never a focus, never fitted to a routine, and, as every muscle outside
-   TARGETED below since r58, with no target until the lifter gives one
+/* The four muscles no ready-made routine trains directly (V: as targets
+   they made every routine read as short): never a focus, never fitted to a
+   routine, and, as every muscle outside TARGETED below, with no target until the lifter gives one
    (hasTargetIn). Their bands have no dose-response data behind them. A
    convention, said so in the Guide. */
 export const TRACK_ONLY: ReadonlySet<string> = new Set(['serratus', 'rotatorCuff', 'neck', 'tibialis']);
 
-/* The muscles with a weekly target by default (339 e, V 2026-10-24):
+/* The muscles with a weekly target by default (V 2026-10-24):
    those lifters train directly for size, which the dose-response research
    measures (Pelland 2025; docs/EVIDENCE.md). Every other muscle, the four
    above and traps, forearms, front delts, lower back, obliques, adductors
    and abductors, is counted and shown with no target until the lifter gives
-   it one (hasTargetIn, profile.ts); before r58 the seven had targets nobody
-   set, unsourced, that read almost every routine as short. */
+   it one (hasTargetIn, profile.ts): targets nobody set, unsourced, would
+   read almost every routine as short. */
 /** The muscles with a default weekly target. */
 export const TARGETED: ReadonlySet<MuscleKey> = new Set<MuscleKey>([
   'chest',
@@ -134,8 +132,7 @@ export const REGIONS: readonly (readonly [string, readonly MuscleKey[]])[] = [
 
 /* ---------- joints ---------- */
 
-/* Joints (from the review: only muscles could be flagged, so a sore
-   knee or elbow had no flag). A joint flag marks the exercises that load it,
+/* Joints, so a sore knee or elbow can be flagged as a muscle can. A joint flag marks the exercises that load it,
    by movement pattern and main muscle, the same way a muscle flag does:
    targets pause, loads cap at last time, 3 or more reps in reserve. Which
    exercises load which joint is a judgment, stated in the sheet. The muscle
@@ -522,8 +519,8 @@ export const isCommon = (
 /* A log holds every built-in lift by name (normalize puts the library's own
    records in beside the lifter's, and the save keeps them), so a lift the
    library renames keeps its old name on every phone that saved before,
-   unless the log reads it again on load. Since r66 the names the
-   library gave a lift before are kept here by id: a log holding one of them
+   unless the log reads it again on load. So the names the library
+   gave a lift before are kept here by id: a log holding one of them
    reads the lift by its name now (normalize), a name the lifter typed stays,
    and an import naming the lift as before still finds it (impMatch). */
 /** The names the library gave a built-in lift before it renamed it, by id: Reverse Pec Deck until r66. */
@@ -532,7 +529,7 @@ export const LIB_NAMES_BEFORE: Readonly<Record<string, readonly string[]>> = {
 };
 
 /* The same for a lift's note: a log holds the note the library gave when it was saved, and shows it as
-   the lift's tip. Since 2.34 the Guide's Sources name the studies and tips do not (V, 2026-11-08), so a note that is
+   the lift's tip. The Guide's Sources name the studies and tips do not (V, 2026-11-08), so a note that is
    word for word one the library gave before reads as the library's note now; a note the lifter edited stays. */
 /** The notes the library gave a built-in lift before it reworded them, by id, word for word: the three that named a study until 2.37. */
 export const LIB_NOTES_BEFORE: Readonly<Record<string, readonly string[]>> = {
@@ -636,9 +633,9 @@ export function isCompound(ex: Kinded | null | undefined): boolean {
 const NO_E1: ReadonlySet<string> = new Set(['nordic', 'ghr', 'revNordic', 'sissy']);
 
 /* Bodyweight core and neck work is done for reps, with a share of bodyweight no rep formula reads well, so it gets no
-   estimate. Read from the exercise's own fields since 2.29 (V, 2026-11-05: a lifter's own exercise
-   counts as the library's does), so one made in the editor reads the same as its library twin. Until 2.28 these
-   were named by id here, and a lifter's own knee raise got a best estimate the library's never did. */
+   estimate. Read from the exercise's own fields (V, 2026-11-05: a lifter's own exercise counts as the
+   library's does), so one made in the editor reads the same as its library twin, never by id (a lifter's own knee
+   raise would get a best estimate the library's never does). */
 const NO_E1_MUSCLES: ReadonlySet<string> = new Set(['abs', 'obliques', 'neck']);
 
 /** No 1RM estimate for this exercise: a timed hold, bodyweight core or neck work, or a lift in NO_E1 (eccentric
@@ -647,8 +644,7 @@ export const noE1 = (ex: Pick<Exercise, 'id' | 'timed' | 'bw' | 'primary'> | nul
   !!ex && (!!ex.timed || NO_E1.has(ex.id) || (!!ex.bw && NO_E1_MUSCLES.has(ex.primary)));
 
 /* Lifts that add recovery time: heavy lengthened hamstring and hinge work,
-   walking lunges (eccentric-heavy damage; a rule of thumb, docs/EVIDENCE.md. Pareja-Blanco 2020, cited here until
-   r72, studies how sets are configured and velocity loss, not exercise choice: 387-B9). */
+   walking lunges (eccentric-heavy damage; a rule of thumb, docs/EVIDENCE.md). */
 export const SLOW_RECOVERY: ReadonlySet<string> = new Set([
   'deadlift',
   'sumoDl',
@@ -700,13 +696,13 @@ export function loadMode(ex: Pick<Exercise, 'id' | 'bw' | 'load' | 'equip'> | nu
 }
 
 // One leg or arm at a time, by name: a lunge is not a squat at 90% of its load.
-// (Read by the engine's kinOf: a close variation's first session, r32.1.)
+// (Read by the engine's kinOf: a close variation's first session.)
 export const KIN_UNI = /lunge|split squat|step-up|single[- ]|one[- ]arm|1-arm|pistol|bulgarian|cossack|unilateral/i;
 
 /** The spacings loads come in, per unit, largest first: plates in pairs
     (2.5 kg and 5 lb, and with the small plates 1 kg and 2.5 lb) and dumbbell
-    racks (r32: 2.5, 2, 1 or 0.5 kg; 5 or 2.5 lb, never 1, V's call: 12
-    lb went up to 13). */
+    racks (2.5, 2, 1 or 0.5 kg; 5 or 2.5 lb, never 1, V's call: 12 lb went
+    up to 13). */
 export const LOAD_STEPS: { readonly kg: readonly number[]; readonly lb: readonly number[] } = {
   kg: [2.5, 2, 1, 0.5],
   lb: [5, 2.5]
@@ -751,8 +747,8 @@ export const LONG_IDS: ReadonlySet<string> = new Set([
   'sissy'
 ]);
 
-/* Exercises most people cannot do for sets of 8 to 15 when they start (from the review: a seated leg curl became Nordic curls for 3 x 10-15, and
-   a lat pulldown became pull-ups). A judgment, not a measurement. */
+/* Exercises most people cannot do for sets of 8 to 15 when they start (a seated leg curl must not become Nordic curls for 3 x 10-15, nor a lat
+   pulldown pull-ups). A judgment, not a measurement. */
 export const HARD_EX: ReadonlySet<string> = new Set([
   'nordic',
   'revNordic',
@@ -767,11 +763,11 @@ export const HARD_EX: ReadonlySet<string> = new Set([
 ]);
 
 /* The heavy compounds a Strength or Both goal moves: barbell, Smith and
-   machine compounds with a strength estimate, as the copy says (the r44
-   review: `estInLoad` took goblet squats and single-dumbbell rows and left
-   out selectorized machine presses and rows). */
+   machine compounds with a strength estimate, as the copy says (`estInLoad`
+   would take goblet squats and single-dumbbell rows and leave out
+   selectorized machine presses and rows). */
 const PROF_EQUIP: ReadonlySet<string> = new Set(['barbell', 'smith', 'machine']);
-// Hip and back accessories on a bar or a machine, not lifts trained heavy for strength (a judgment, the r44 review).
+// Hip and back accessories on a bar or a machine, not lifts trained heavy for strength (a judgment).
 const PROF_NOT_HEAVY: ReadonlySet<string> = new Set(['reverseHyper', 'goodMorning', 'gluteBridge']);
 
 /** A heavy compound for Your training (profRule): a compound with a 1RM
@@ -785,7 +781,7 @@ export function profHeavy(
   );
 }
 
-/* ---------- finding exercises (phase 3a; moved unchanged) ---------- */
+/* ---------- finding exercises ---------- */
 
 /** The tip beside the library's Most common and Less common filter: where
     the list comes from, and what less common means. */
@@ -798,10 +794,9 @@ export const commonFirst = <E extends Pick<Exercise, 'id' | 'custom' | 'rare'>>(
   ...list.filter(e => !isCommon(e))
 ];
 
-/* Search by words, ignoring hyphens, spaces and case: "t bar row" and
-   "tbar" did not find Landmine T-Bar Row, so it looked missing. Since r66
-   (V: "How was rear delt peck deck flyes missing from
-   library??"), a word typed may also match the lift's main muscle ("rear
+/* Search by words, ignoring hyphens, spaces and case, so "t bar row" and
+   "tbar" find Landmine T-Bar Row. A word typed may also match the lift's main
+   muscle (V: "How was rear delt peck deck flyes missing from library??"; "rear
    delt", "bicep", "hamstring curl"), a plural matches its singular ("flyes",
    "flies", "presses", "raises"), and a few names lifters use for a word the
    library writes another way match it (SEARCH_SAYS). */
