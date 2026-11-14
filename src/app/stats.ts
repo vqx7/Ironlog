@@ -70,35 +70,35 @@ import {
   pctOf
 } from './util';
 import {
-  EX,
-  IDX,
-  blocks,
-  logBack,
-  liftRead,
-  U,
   activeRoutine,
-  bandOf,
   actualAvg4,
   allTimeBests,
-  sinceBack,
+  appU,
   atRangeTop,
   avgWait,
+  bandOf,
+  blocks,
   bwAt,
   bwRef,
   coach,
+  cycleState,
   dateIndex,
   easierText,
+  EX,
   exName,
   fatigueStalls,
   firstFullWeek,
-  fmtW,
   freeMode,
   hasTarget,
+  IDX,
   injuredSet,
   isDeloadWeek,
   isRestWeek,
   lastLighterWeek,
+  liftRead,
+  liftU,
   loadLabel,
+  logBack,
   movers,
   muscleStatus,
   pace,
@@ -106,15 +106,17 @@ import {
   plannedSets,
   readiness,
   regionBalance,
+  sinceBack,
   sortedSessions,
-  stallWords,
   stalledIds,
+  stallWords,
   suggest,
   weekNeed,
   weekSessions,
   weekStats,
   weekStreak,
-  cycleState
+  bodyU,
+  fmtBody
 } from './live';
 import { state, ui } from './store';
 import {
@@ -246,8 +248,8 @@ function liftChange(exId: string, dir: string, ow: string): string {
   const agrees = (d: number): boolean => (up ? d > 0 : d < 0);
   if (estInLoad(ex) && first.best != null && last.best != null) {
     const d = last.best - first.best;
-    const t = fmtE(Math.abs(d));
-    return agrees(d) && +t > 0 ? `Est. 1RM ${dir.toLowerCase()} about ${t} ${U()} ${ow}` : `${dir} ${ow}`;
+    const t = fmtE(ex, Math.abs(d));
+    return agrees(d) && +t > 0 ? `Est. 1RM ${dir.toLowerCase()} about ${t} ${liftU(ex)} ${ow}` : `${dir} ${ow}`;
   }
   const a = topSetPt(ex, first),
     b = topSetPt(ex, last);
@@ -420,8 +422,8 @@ function muscleHeadline(m: string): TemplateResult {
 function volHeadline(): Part {
   if (!IDX().sessVol.length) return '';
   const tn = tonnageNow();
-  const cmp = `. By this point last week: ${fmtBig(tn.prev)} ${U()}`;
-  return html`<p class="headline">${tn.now ? `${fmtBig(tn.now)} ${U()} lifted this week so far` : 'Nothing lifted yet this week'}${cmp}. Last week finished at ${fmtBig(tn.prevFull)} ${U()}. ${tipButton('Weight lifted is load times reps. It drops when the load goes up and reps come down, which is progress: on its own it is not a measure of progress.', 'About weight lifted')}</p>`;
+  const cmp = `. By this point last week: ${fmtBig(tn.prev)} ${appU()}`;
+  return html`<p class="headline">${tn.now ? `${fmtBig(tn.now)} ${appU()} lifted this week so far` : 'Nothing lifted yet this week'}${cmp}. Last week finished at ${fmtBig(tn.prevFull)} ${appU()}. ${tipButton('Weight lifted is load times reps. It drops when the load goes up and reps come down, which is progress: on its own it is not a measure of progress.', 'About weight lifted')}</p>`;
 }
 
 /* Weight lifted this week is on Today's This week, and stalls are the Stuck
@@ -607,7 +609,7 @@ export function goalLine(exId: string): Part {
   const s = goalState(exId);
   if (!s) return '';
   const gw = goalWords(ex, ex.goal);
-  const gap = s.cur != null ? fmtE(goalGap({ g: s.g, cur: s.cur })) : '';
+  const gap = s.cur != null ? fmtE(ex, goalGap({ g: s.g, cur: s.cur })) : '';
   const what = s.hit
     ? `reached ${fmtDate(s.hit)}`
     : s.noBw
@@ -616,7 +618,7 @@ export function goalLine(exId: string): Part {
         ? `no sets in the last ${BEST_WEEKS} weeks`
         : s.pct >= PERCENT
           ? 'within reach'
-          : `${Math.floor(s.pct)}% there${estInLoad(ex) && +gap > 0 ? `, about ${gap} ${U()} to go` : ''}`;
+          : `${Math.floor(s.pct)}% there${estInLoad(ex) && +gap > 0 ? `, about ${gap} ${liftU(ex)} to go` : ''}`;
   const tip = s.hit
     ? 'Reached: a working set at that load or more, for those reps or more.'
     : s.pct != null && s.pct >= PERCENT
@@ -658,7 +660,8 @@ export function bestsBoard(): { n: number; html: TemplateResult } {
   if (!rows.length)
     return { n: 0, html: html`<p class="muted">Your bests appear here after your first session.</p>${oldBest}` };
   // A bodyweight lift's estimate includes the body, so it says total; its sets read BW+x.
-  const u = (ex: { bw?: boolean | undefined }): string => ' ' + U() + (ex.bw ? ' total' : '');
+  const u = (ex: { bw?: boolean | undefined; unit?: 'kg' | 'lb' | undefined }): string =>
+    ' ' + liftU(ex) + (ex.bw ? ' total' : '');
   // The newest BESTS_SHOWN first; the rest one tap away, so the list stays short on a phone.
   const shown = ui.bestsAll ? rows : rows.slice(0, BESTS_SHOWN);
   return {
@@ -676,7 +679,7 @@ export function bestsBoard(): { n: number; html: TemplateResult } {
         h: { p: { w: number; r: number }; date: string } | null
       ): string =>
         [
-          e ? `best est ${fmtE(e.v)}${u(ex)}${loadNote(ex)}, ${when(e.date)}` : '',
+          e ? `best est ${fmtE(ex, e.v)}${u(ex)}${loadNote(ex)}, ${when(e.date)}` : '',
           h ? `heaviest ${setShort(ex, h.p.w, h.p.r)}${loadNote(ex)}, ${when(h.date)}` : ''
         ]
           .filter(Boolean)
@@ -735,7 +738,7 @@ function sizeBody(): TemplateResult {
     const bd = b0 != null && b1 != null && state.bodyweights.length >= 2 ? b1 - b0 : null;
     const bits: string[] = [];
     if (wd != null) bits.push(`waist ${wd >= 0 ? '+' : ''}${lenD(wd)} ${LU()}`);
-    if (bd != null) bits.push(`bodyweight ${bd >= 0 ? '+' : ''}${fmtW(bd)} ${U()}`);
+    if (bd != null) bits.push(`bodyweight ${bd >= 0 ? '+' : ''}${fmtBody(bd)} ${bodyU()}`);
     return bits.length ? ` Same stretch: ${bits.join(', ')}.` : '';
   };
   const sgn = (v: number): string => (v >= 0 ? '+' : '') + lenD(v);
@@ -1141,7 +1144,7 @@ function liftsSec(I: Idx, stalled: readonly (readonly [string, ExStat])[], prs4:
               ? ps
                 ? setShort(ex, ps.w, ps.r)
                 : ''
-              : fmtE(p.value) + ' ' + U()
+              : fmtE(ex, p.value) + ' ' + liftU(ex)
             : setShort(ex, p.w, p.r);
         return html`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p.type === 'Rep PR' ? 'blue' : 'green'}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDate(p.date)}</span></span></div>`;
       })}`
@@ -1276,7 +1279,7 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
         : nothing
     }<div class="kpis" style=${`margin-top:8px${n0 ? ';display:none' : ''}`}>${
       e1Mode
-        ? html`<div class="kpi"><div class="v">${be ? (ex.bw ? '≈' : '') + fmtE(be.v) : 'n/a'}</div><div class="l">Best estimate (${U()}${loadNote(ex)}) ${tipButton(BEST_EST_TIP, 'About the best estimate')}</div></div>`
+        ? html`<div class="kpi"><div class="v">${be ? (ex.bw ? '≈' : '') + fmtE(ex, be.v) : 'n/a'}</div><div class="l">Best estimate (${liftU(ex)}${loadNote(ex)}) ${tipButton(BEST_EST_TIP, 'About the best estimate')}</div></div>`
         : html`<div class="kpi"><div class="v">${bs ? setShort(ex, bs.w, bs.r) : 'n/a'}</div><div class="l">Best set${loadNote(ex)}</div></div>`
     }<div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div></div>
     ${
@@ -1288,7 +1291,7 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
     ${st && st.easier ? html`<p class="small u-cblue_mt6"><b>${easierText(ex, st.easier)}</b></p>` : ''}
     ${
       st && st.fade
-        ? html`<p class="small u-cyellow_mt6"><b>Drop-off growing at ${loadLabel(ex, st.fade.w)}${ex.bw ? '' : ' ' + U()}: ${st.fade.from} → ${st.fade.to} reps lost first set to last, last three sessions.</b> Likely fatigue or short rest, not lost strength.</p>`
+        ? html`<p class="small u-cyellow_mt6"><b>Drop-off growing at ${loadLabel(ex, st.fade.w)}${ex.bw ? '' : ' ' + liftU(ex)}: ${st.fade.from} → ${st.fade.to} reps lost first set to last, last three sessions.</b> Likely fatigue or short rest, not lost strength.</p>`
         : ''
     }
     ${ex.bw && !state.bodyweights.length ? html`<p class="small u-cyellow">Log your bodyweight to see a trend here.</p>` : bwBackfillNote(exId)}
@@ -1297,7 +1300,7 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
       .reverse()
       .map(x => {
         const tag = sessionWord(x);
-        return html`<tr><td>${fmtDate(x.date)}${I.prs.some(p => p.big && p.sid === x.sid && p.exId === exId) ? html` <span class="tag gold">PR</span>` : nothing}${tag ? html` <span class="tag">${tag}</span>` : nothing}</td><td>${x.pts.map(p => setShort(ex, p.w, p.r)).join(', ')}</td>${e1Mode ? html`<td class="r num">${x.best ? (ex.bw ? '≈' : '') + fmtE(x.best) : ''}</td>` : nothing}</tr>`;
+        return html`<tr><td>${fmtDate(x.date)}${I.prs.some(p => p.big && p.sid === x.sid && p.exId === exId) ? html` <span class="tag gold">PR</span>` : nothing}${tag ? html` <span class="tag">${tag}</span>` : nothing}</td><td>${x.pts.map(p => setShort(ex, p.w, p.r)).join(', ')}</td>${e1Mode ? html`<td class="r num">${x.best ? (ex.bw ? '≈' : '') + fmtE(ex, x.best) : ''}</td>` : nothing}</tr>`;
       })}</table></div>`;
 }
 

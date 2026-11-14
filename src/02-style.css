@@ -503,6 +503,11 @@ button.mph{-webkit-appearance:none;appearance:none;border:0;padding:0;margin:0;b
 .btn.primary,.block .btn.primary,.card .btn.primary,.sheet .btn.primary,.panel .btn.primary{background:var(--volt);color:var(--on-volt);border-color:transparent;border-radius:999px}
 .btn.danger{color:var(--red)}
 .btn.sm{min-height:44px;padding:0 12px;font-size:14px;border-radius:var(--r-sm)}
+/* The scale's unit beside a weigh-in field (bodyUnitTap): a button 44 px each way, the field's row aligned on the field. */
+.btn.bunit{min-width:44px;padding:0 8px}
+.bwrow{align-items:flex-end;flex-wrap:nowrap}
+.bw-w{display:flex;gap:8px;align-items:flex-end;min-width:0}
+.bwrow>label.field,.bw-w>label.field{min-width:0}
 /* A full-width button (r66, PENDING 368): fullw, never block, which is a session exercise's card. */
 .btn.fullw{width:100%}
 .btn:disabled{opacity:.4;cursor:default}
@@ -639,7 +644,11 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
    drop marking on the set number instead of its own column, so the inputs
    keep the width they had at 320 px. */
 .sg{position:relative;display:grid;grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) 44px;gap:6px;align-items:center;margin-top:6px}
-.sg.head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:650;margin-top:12px}
+/* The heading stands 24 px under whatever is above it, so the unit's 44 px touch area (::before, from the gap above
+   the first row of fields to the gap under that control) lies over no other control. */
+.sg.head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:650;margin-top:24px}
+.lunit{position:relative;background:none;border:0;padding:0;margin:0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer}
+.lunit::before{content:'';position:absolute;left:50%;bottom:-6px;width:max(100%,44px);height:44px;transform:translateX(-50%)}
 .sg .n{font:700 15px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center}
 button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg .ls{font:600 12px/1.15 var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center;overflow-wrap:anywhere}

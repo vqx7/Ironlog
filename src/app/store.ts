@@ -147,6 +147,8 @@ interface Ui {
   wkWs?: string | undefined;
   /** The weeks Volume by region averages, picked this visit. */
   regionWk?: number | undefined;
+  /** A number typed in a weigh-in field (its id) carried across a switch of the scale's unit, in kg exactly. */
+  bwKept?: { id: string; kg: number } | undefined;
   /** The day Plan has open: its id, '' for none, unset for the routine's target day. */
   dayFocus?: string | undefined;
   /** Stats' bests list shown whole. */

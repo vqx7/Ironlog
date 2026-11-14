@@ -134,7 +134,8 @@ async function finish(page) {
     });
     ok(!/Earlier today/.test(r.light.text) && r.light.w < 135, '3. a 12-15 evening after 135 x 10 x 3 on 8-12 this morning is read against its own range', r.light);
     ok(/^Earlier today: 135×10/.test(r.same.text) && r.same.w === 135, '3. (a guard) the same range again the same day asks the morning\'s 135', r.same);
-    ok(r.unit.w === 132.3 && /^Earlier today: 132\.3×10, 132\.3×10, 132\.3×10\./.test(r.unit.text), '3. a 60 kg morning shown in lb is asked again at 132.3, as lifted, with its sets named as done', r.unit);
+    // Its sets named as typed (since 2.66, U-1's class): 60 kg, the app in lb.
+    ok(r.unit.w === 132.3 && /^Earlier today: 60 kg×10, 60 kg×10, 60 kg×10\./.test(r.unit.text), '3. a 60 kg morning shown in lb is asked again at 132.3, as lifted, with its sets named as done, as typed', r.unit);
     ok(r.plank.w === 10 && /^Earlier today: /.test(r.plank.text) && !/add /.test(r.plank.text), '3. a plank held again the same day holds the same load, no step up', r.plank);
     ok(!P.errors.length, '3. no page errors', P.errors);
     await P.ctx.close();

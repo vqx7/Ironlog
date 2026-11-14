@@ -60,6 +60,8 @@ export interface Exercise {
   maxLoad?: number | undefined;
   barKg?: number | undefined;
   goal?: { w: number; r: number } | undefined;
+  /** The unit this lift's equipment is marked in, when the lifter set it on the lift; absent, the app's unit. */
+  unit?: 'kg' | 'lb' | undefined;
 }
 
 /** A routine day's exercise: the plan for it. */
@@ -268,6 +270,8 @@ interface EngineSettings {
   bandsFit?: Partial<Record<MuscleKey, number>> | undefined;
   // The muscles outside TARGETED the lifter gave a target with Set a target, in muscle order; absent when none.
   ownTargets?: MuscleKey[] | undefined;
+  // The unit the lifter's scale is marked in, when set apart from the app's (390's Release B); absent, the app's.
+  bwUnit?: 'kg' | 'lb' | undefined;
   priorities: MuscleKey[];
   restWeeks?: string[] | undefined;
   todayStart?: 'free' | undefined;

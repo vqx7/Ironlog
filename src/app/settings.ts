@@ -66,20 +66,20 @@ import {
 import { cloudPull, cloudStop, cq, photoSyncSoon, setCloud } from './sync';
 import { AUTH, FB } from './providers';
 import {
-  EX,
-  U,
   activeRoutine,
   appBand,
+  appU,
   barKg,
   calStats,
   defBand,
-  fmtW,
+  EX,
+  fmtWApp,
   gymOf,
   hasTarget,
   invalidate,
   prof,
   profRule,
-  typedBound
+  typedBoundApp
 } from './live';
 import { acct, cloud, setState, state, ui } from './store';
 import { effName, effShow, halfLbl, rirScale } from './effort';
@@ -278,7 +278,7 @@ function gymSub(): string {
 /** The unit Your gym's weights are labelled in: chosen there (until anything is saved), else the app's. */
 function gymUnit(): 'lb' | 'kg' {
   const g = gymOf();
-  return g ? g.u : ui.gymU || U();
+  return g ? g.u : ui.gymU || appU();
 }
 /** The gym to change: a copy of the saved one, or a new one in the unit chosen. */
 function gymNext(): Gym {
@@ -328,11 +328,11 @@ function gymSettings(): TemplateResult {
   )}</div>
 </div>
 ${
-  u !== U()
-    ? html`<p class="small u-m0">Suggestions show in ${U()}, on the ${u} weights below.</p>
+  u !== appU()
+    ? html`<p class="small u-m0">Suggestions show in ${appU()}, on the ${u} weights below.</p>
 `
     : nothing
-} <label class="field">${labelTip('lt-barKg', `Bar weight (${U()})`, "Suggested barbell loads are this bar and the plates on hand. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor.")}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
+} <label class="field">${labelTip('lt-barKg', `Bar weight (${appU()})`, "Suggested barbell loads are this bar and the plates on hand. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor.")}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtWApp(barKg()))}/></label>
 <div>
 <p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="A barbell is loaded with these plates, a pair at a time, so its suggested loads are ones they make. A plate-loaded machine steps by two of the smallest, one a side; a landmine by one. Tap a plate your gym does not have, or add one it has that is not here.">Plates on hand (${u})</span></p>
 <div class="chips" role="group" aria-label="Plates on hand">${[
@@ -1551,7 +1551,7 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
     const n = numIn(t.value);
     act(() => {
       // Within the bar's bound in kilograms, the one a save keeps, not 110 in lb and 50 in kg as typed (typedBoundIn).
-      state.settings.barKg = n == null || n <= 0 ? null : typedBound(n, LIMITS.barKg);
+      state.settings.barKg = n == null || n <= 0 ? null : typedBoundApp(n, LIMITS.barKg);
     });
     rerenderKeepScroll();
   },

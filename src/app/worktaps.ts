@@ -15,7 +15,19 @@ import { cleanDraftCardio, LOAD_MAX } from './normalize';
 
 import { CHK_Q } from './coach';
 import { BWASK_KEY, prefSet } from './storage';
-import { EX, loadLabel, U, exName, lighterLoad, heavierLoad, fromD, oddLoad, lightZero, stepLoad, toD } from './live';
+import {
+  EX,
+  exName,
+  fromDOf,
+  heavierLoad,
+  liftU,
+  lighterLoad,
+  lightZero,
+  loadLabel,
+  oddLoad,
+  stepLoad,
+  toDOf
+} from './live';
 import { state, ui } from './store';
 import { effW, greyW, blockDone, newRow, editFp, markedNew } from './session';
 import type { DraftBlock } from './types';
@@ -132,7 +144,7 @@ function setRemove(t: Tap): void {
         ? `${x.r} rep${Number(x.r) === 1 ? '' : 's'}`
         : setShort(ex, shown ?? 0, x.r)
       : x.w != null
-        ? loadLabel(ex, x.w) + (ex.bw ? '' : ' ' + U())
+        ? loadLabel(ex, x.w) + (ex.bw ? '' : ' ' + liftU(ex))
         : '';
   const at = i;
   confirmBox(
@@ -410,11 +422,11 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (f === 'w') {
       if (ex.assist) return;
       const to = stepLoad(ex, b.plan, effW(b, si) ?? 0, dir);
-      /* As the number typed in the unit on screen, to the hundredth a field takes: the field's own text is rounded to a
+      /* As the number typed in the lift's unit, to the hundredth a field takes: the field's own text is rounded to a
          tenth, and stored from it a 1.25 kg step would go 41.3, 42.6, 43.9, off every load the lift has. */
-      const v = to == null ? null : toD(to);
+      const v = to == null ? null : toDOf(ex, to);
       if (v == null) return;
-      w = Math.min(fromD(Math.max(Math.round(v * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
+      w = Math.min(fromDOf(ex, Math.max(Math.round(v * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
     } else {
       const was = +(s.r ?? greyR(b, si) ?? 0) || 0;
       r = Math.min(Math.max(was + dir * (ex.timed ? STEP_SECONDS : 1), 0), LIMITS.reps);

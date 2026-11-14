@@ -41,7 +41,7 @@ import { arr, parseJson, rec } from './records';
 import { assemble, cloudStop } from './sync';
 import { isChunkId, realCount } from './chunks';
 import type { Rec } from './records';
-import { EX, IDX, U, activeRoutine, actualAvg4, fmtW, invalidate } from './live';
+import { activeRoutine, actualAvg4, appU, EX, fmtWOf, IDX, invalidate, liftU } from './live';
 import { acct, cloud, setState, state, ui } from './store';
 import type { ImpPreviewModal, ImpTable } from './modals';
 import type { CardioEntry, Exercise } from './types';
@@ -267,7 +267,7 @@ function openPreview(res: ImpRead, tab: ImpTable | null): void {
     tab,
     pick,
     guess,
-    unit: res.unit || U(),
+    unit: res.unit || appU(),
     unitKnown: !!res.unit,
     date: today(),
     showAll: false
@@ -453,7 +453,7 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
       if (!exo.bw && !exo.timed)
         for (const q of sets)
           if ((q.w > 0 && q.w < ODD.kg) || q.r > ODD.reps) {
-            odd.push(`${exo.name} ${fmtW(q.w)} ${U()} x ${q.r}${x.date ? `, ${fmtDate(x.date)}` : ''}`);
+            odd.push(`${exo.name} ${fmtWOf(exo, q.w)} ${liftU(exo)} x ${q.r}${x.date ? `, ${fmtDate(x.date)}` : ''}`);
             break;
           }
       // A lift's sets across rows of the same exercise stay together.

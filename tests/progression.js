@@ -1,4 +1,4 @@
-// Targets and progression, checked against their written rules (CA-1; the spec "Targets and progression", P-1 to P-42,
+// Targets and progression, checked against their written rules (CA-1; the spec "Targets and progression", P-1 to P-43,
 // in the project's claude/ironlog-spec-progression-draft1.md, built from the code, V's rulings deciding). A feature
 // suite: each section is one rule, a lifter's log seeded and the session started from Today's card, and what the
 // session screen shows (the grey load, the grey reps, the target) compared with what the rule gives, worked out here
@@ -47,7 +47,8 @@ const stepUp = (w, step, share) => Math.max(w + step, Math.round((w * (1 + share
    with its day and its plan's sets; `more` adds fields to the item or block (inc, nw), marks to the session (light).
    o.gym is Your gym, o.bw a weigh-in in lb, o.maxLoad the heaviest bench available, o.inj a flagged muscle; o.logUnit the
    unit the sets were typed in (the app's, o.unit, unless given), o.exInc a lift's own load step as { exId: step in lb },
-   o.exSet fields set on a lift as stored, in kg ({ exId: { maxLoad: 100 } }), o.settings fields set in Settings. */
+   o.exSet fields set on a lift as stored, in kg ({ exId: { maxLoad: 100 } }), o.settings fields set in Settings,
+   o.exUnit a lift's own unit as { exId: 'kg' or 'lb' } (390's Release B). */
 async function lifter(days, sessions, o = {}) {
   const P = await open(FILE, { w: 390, h: 844, clock: (o.day || DAY) + 'T10:00:00' });
   await P.page.evaluate(([days, sessions, o]) => {
@@ -65,6 +66,7 @@ async function lifter(days, sessions, o = {}) {
     if (o.exInc) S.exercises = S.exercises.map(e => (o.exInc[e.id] ? { ...e, inc: o.exInc[e.id] * LB } : e));
     if (o.exSet) S.exercises = S.exercises.map(e => (o.exSet[e.id] ? { ...e, ...o.exSet[e.id] } : e));
     if (o.settings) Object.assign(S.settings, o.settings);
+    if (o.exUnit) S.exercises = S.exercises.map(e => (o.exUnit[e.id] ? { ...e, unit: o.exUnit[e.id] } : e));
     if (o.inj) S.injuries = [{ id: 'i1', m: o.inj, note: '', date: '2026-11-01' }];
     L.state = L.normalize(S);
     localStorage.setItem(L.KEY + '.installLater', '1'); localStorage.setItem(L.KEY + '.tipWake', '1');
@@ -975,6 +977,93 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     const own = await P.page.evaluate(() => { const L = window.__ironlog; return +(L.exBarKg(L.EX('bench')) / 0.45359237).toFixed(3); });
     ok(shown === '25' && own === 25, 'P-42 the app in lb, Your gym in kg: 25 typed as the lift\'s own bar reads 25 lb, as typed', { shown, own });
     await P.ctx.close(); await P.browser.close();
+  }
+
+  if (run('P-43')) {
+    /* A lift marked in the other unit (390's Release B: its equipment is marked in kg in an lb gym) is worked out in its
+       unit, every other lift in the app's: its step, its loads and its words, by P-38 to P-41. Bench marked kg in an lb
+       app: after 100 kg x 8 x 3 typed in kg, 100 kg and 24 to beat, no conversion said; after 225 lb x 10 x 3 typed in
+       lb, 107.5 kg (P-38's), last time quoted as typed. The raises beside it stay in lb. */
+    const DAY2 = [{ id: 'A', name: 'Push', items: [['bench', 3, 6, 10, 2], ['dbLateral', 3, 12, 15, 2]] }];
+    const two = (bench, raise) => Array.from({ length: 3 }, (_, k) => [addD(DAY, -7 * (3 - k)), 'A', [['bench', bench], ['dbLateral', raise]]]);
+    let P = await lifter(DAY2, two([[100 / LBK, 8, 2], [100 / LBK, 8, 2], [100 / LBK, 8, 2]], [[20, 13, 2], [20, 13, 2], [20, 13, 2]]), { exUnit: { bench: 'kg' } });
+    await startOn(P, 0);
+    let s = await shows(P, 'bench');
+    const r = await shows(P, 'dbLateral');
+    const head = await P.page.evaluate(() => [...document.querySelectorAll('#view .sg.head .lh')].map(e => e.textContent.trim().toUpperCase()));
+    ok(s.rows.every(x => x.w === 100) && s.tgt && s.tgt.total === 24 && s.hint.includes('Beat 24 reps over 3 sets at 100 kg') && !/ lb/.test(s.hint),
+      'P-43 bench marked kg in an lb app, after 100 kg x 8 x 3: 100 kg and 24 to beat, said in kg', s);
+    ok(r.rows.every(x => x.w === 20) && /20 lb/.test(r.hint) && JSON.stringify(head) === JSON.stringify(['KG', 'LB EACH']),
+      'P-43 the raises beside it stay in lb, and each heading names its lift\'s unit', { r, head });
+    await P.ctx.close(); await P.browser.close();
+    P = await lifter(DAY_BENCH, weeks('A', [[225, 10, 2], [225, 10, 2], [225, 10, 2]]), { exUnit: { bench: 'kg' } });
+    await startOn(P, 0);
+    s = await shows(P, 'bench');
+    ok(s.rows.every(x => x.w === 107.5) && s.hint.includes('Every set at 225 lb hit 10: go to 107.5 kg'), 'P-43 bench marked kg after 225 lb x 10 x 3 typed in lb: 107.5 kg, last time as typed', s);
+    await P.ctx.close(); await P.browser.close();
+    /* At Your gym in lb, its plates and dumbbells in lb, bench marked kg is on kg's standard plates: after 100 kg x 10 x
+       3 at the top of 6 to 10, its 5 kg step to 105 kg (the 20 kg bar and kg plates make it), not the nearest load lb
+       plates make (230 lb, 104.3 kg). The raises stay on the gym's rack in 5s. */
+    const gym = { u: 'lb', plates: [45, 35, 25, 10, 5, 2.5], db: { lo: 5, hi: 100, st: 5 } };
+    P = await lifter(DAY2, two([[100 / LBK, 10, 2], [100 / LBK, 10, 2], [100 / LBK, 10, 2]], [[20, 13, 2], [20, 13, 2], [20, 13, 2]]), { exUnit: { bench: 'kg' }, gym });
+    await startOn(P, 0);
+    s = await shows(P, 'bench');
+    const g2 = await shows(P, 'dbLateral');
+    ok(s.rows.every(x => x.w === 105) && s.hint.includes('add 5 kg') && g2.rows.every(x => x.w === 20), 'P-43 bench marked kg at Your gym in lb: 105 kg on kg plates, not lb plates; the raises on the gym\'s rack', { s, g2 });
+    await P.ctx.close(); await P.browser.close();
+    /* Marked kg, it stays on kg's plates when the app's unit is kg too: the mark is the lift's equipment, so a change of
+       the app's unit never moves it onto the gym's lb plates (225 lb, 102.06 kg). */
+    P = await lifter(DAY2, two([[100 / LBK, 10, 2], [100 / LBK, 10, 2], [100 / LBK, 10, 2]], [[20, 13, 2], [20, 13, 2], [20, 13, 2]]), { unit: 'kg', logUnit: 'lb', exUnit: { bench: 'kg' }, gym });
+    await startOn(P, 0);
+    s = await shows(P, 'bench');
+    ok(s.rows.every(x => x.w === 105) && s.hint.includes('add 5 kg'), 'P-43 bench marked kg at Your gym in lb, the app in kg as well: 105 kg on kg plates, never 102.06 kg (225 lb on the gym\'s plates)', s);
+    await P.ctx.close(); await P.browser.close();
+    /* A lift with no sessions borrows its start from a close variation (DB curl for a hammer curl); with the two in
+       different units the start is put on the new lift's own equipment, as when every lift is in its unit: hammer curls
+       marked kg after DB curls at 30 lb read as in a kg app, and hammer curls in lb after DB curls marked kg at 14 kg as
+       in an lb app with the curls typed in kg; a Lighter day too. */
+    const KIN = [{ id: 'A', name: 'Curl', items: [['dbCurl', 3, 8, 12, 2]] }, { id: 'B', name: 'Hammer', items: [['hammer', 3, 8, 12, 2]] }];
+    const curls = w => Array.from({ length: 3 }, (_, k) => [addD(DAY, -7 * (3 - k)), 'A', [['dbCurl', [[w, 10, 2], [w, 10, 2], [w, 9, 2]]]]]);
+    for (const [name, marked, same, w, log] of [
+      ['hammer curls marked kg, the app in lb, after DB curls at 30 lb', { exUnit: { hammer: 'kg' } }, { unit: 'kg' }, 30, 'lb'],
+      ['DB curls marked kg at 14 kg, hammer curls in the app\'s lb', { exUnit: { dbCurl: 'kg' } }, {}, 14, 'kg']
+    ]) {
+      const got = [];
+      for (const o of [marked, same]) {
+        const row = {};
+        for (const light of [false, true]) {
+          P = await lifter(KIN, curls(w), { logUnit: log, ...o });
+          if (light) { await P.page.evaluate(() => { const L = window.__ironlog; L.ui.todayDay = 1; L.render(); }); await startLighter(P); } else await startOn(P, 1);
+          s = await shows(P, 'hammer');
+          row[light ? 'light' : 'next'] = s.rows.map(r => r.w);
+          await P.ctx.close(); await P.browser.close();
+        }
+        got.push(row);
+      }
+      ok(JSON.stringify(got[0]) === JSON.stringify(got[1]) && got[0].next.length > 0, `P-43 ${name}: the start and a Lighter day as with every lift in its unit`, got);
+    }
+    /* A bodyweight lift marked kg quotes a set with nothing added as BW, with no unit, since there is no number for one to
+       name: "Heaviest BW×8", never "BW kg×8"; one with weight added names it ("BW+10 kg×8"). */
+    const PULL = [{ id: 'A', name: 'Pull', items: [['pullup', 3, 6, 10, 2]] }];
+    for (const [add, want] of [[0, 'Heaviest BW×8'], [10, 'Heaviest BW+10 kg×8']]) {
+      P = await lifter(PULL, Array.from({ length: 3 }, (_, k) => [addD(DAY, -7 * (3 - k)), 'A', [['pullup', [[add, 8, 2], [add, 8, 2], [add, 7, 2]]]]]), { logUnit: 'kg', bw: 180, exUnit: { pullup: 'kg' } });
+      await startOn(P, 0);
+      const t = await P.page.evaluate(() => (document.querySelector('#blk-0 .hint') || {}).textContent || '');
+      ok(t.includes(want) && !/BW kg/.test(t), `P-43 pull-ups marked kg in an lb app, ${add ? '10 kg added' : 'nothing added'}: "${want}"`, t);
+      await P.ctx.close(); await P.browser.close();
+    }
+    /* A round trip drifts nothing and makes no PR either way (390's plan): 225 lb x 8 x 3, then bench marked kg and
+       102.5 kg x 8 x 3, then back in lb and 225 lb x 8 x 3. */
+    const rt = (n, unit) => [[225 * LBK, 8, 2], [102.5, 8, 2], [225 * LBK, 8, 2]].slice(0, n).map((x, k) => [addD(DAY, -7 * (n - k)), 'A', [['bench', [x, x, x]]]]);
+    for (const [n, o, w, u] of [[2, { exUnit: { bench: 'kg' } }, 102.5, 'kg'], [3, {}, 225, 'lb']]) {
+      P = await lifter(DAY_BENCH, rt(n), { logUnit: 'kg', ...o });
+      await startOn(P, 0);
+      s = await shows(P, 'bench');
+      const prs = await P.page.evaluate(() => window.__ironlog.IDX().prs.filter(p => p.sid !== 's0').map(p => [p.sid, p.type]));
+      ok(s.rows.every(x => x.w === w) && s.tgt && s.tgt.total === 24 && s.hint.includes(`Beat 24 reps over 3 sets at ${w} ${u}`) && !prs.length,
+        `P-43 the round trip: after ${n === 2 ? '225 lb, then 102.5 kg marked kg' : '225 lb, 102.5 kg, then 225 lb back in lb'}, ${w} ${u} and 24 to beat, no PR`, { s, prs });
+      await P.ctx.close(); await P.browser.close();
+    }
   }
 
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');

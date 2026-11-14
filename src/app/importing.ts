@@ -786,7 +786,9 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
   const cNote = col('session_note'),
     cMin = col('session_minutes'),
     cHr = col('avg_hr'),
-    cUnit = col('unit');
+    cUnit = col('unit'),
+    cTyped = col('typed_load'),
+    cTypedU = col('typed_unit');
   const at = (r: readonly unknown[], i: number | null): string =>
     i == null ? '' : csvUnguard(String(r[i] == null ? '' : r[i]).trim());
   let lastDate: string | null = null,
@@ -855,7 +857,15 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       skipped++;
       continue;
     }
-    const set = rowSet(cell, w, reps, secs, missed, numTypes, rowUnit(r));
+    /* The app's own file gives each set's load as typed and the unit it was typed in (a file from before has neither
+       column): read so, a round trip keeps the number typed (225 lb, the app in kg, comes back as 225 lb, not the 102.1 kg
+       its load column rounds to). */
+    const tu = at(r, cTypedU),
+      tw = num(at(r, cTyped));
+    const tuK: 'kg' | 'lb' | null = tu === 'kg' ? 'kg' : tu === 'lb' ? 'lb' : null;
+    // An assisted lift's help is typed below 0, so a typed load below 0 is read where the row's own load is below 0 too.
+    const asTyped = tuK && tw != null && (tw >= 0 || w < 0) ? { w: tw, u: tuK } : null;
+    const set = rowSet(cell, asTyped ? asTyped.w : w, reps, secs, missed, numTypes, asTyped ? asTyped.u : rowUnit(r));
     const k = date + '|' + name;
     if (!S.has(k)) S.set(k, { date, name, items: new Map<string, ImpItem>(), note: '' });
     // Made just above when it was missing, so it is there (the !).

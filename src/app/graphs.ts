@@ -12,7 +12,7 @@ import { fmtDate } from './format';
 import { loadNote } from './loads';
 import { addDays, daysBetween, r1, today, weekStart, WEEK_DAYS, PERCENT } from './util';
 import { log } from './storage';
-import { EX, IDX, U, hasTarget, regionBalance, toD } from './live';
+import { appU, EX, hasTarget, IDX, liftU, regionBalance, toDApp, toDOf, bodyU, toDBody } from './live';
 import type { Idx } from './model';
 import { state, ui } from './store';
 import { fmtDateLong, fmtE, regionSrc } from './display';
@@ -709,7 +709,7 @@ function liftChart(I: Idx, { blue, green, yellow }: Pal): void {
       /* The line plots the same estimate as the tile, the table and All-time
          bests, so their numbers agree; the headline says when the trend itself
          is read from loads and reps alone. */
-      const vals = exps.map(x => (e1Mode ? +fmtE(x.best) : r1(toD(x.topW ?? 0) ?? 0)));
+      const vals = exps.map(x => (e1Mode ? +fmtE(exE, x.best) : r1(toDOf(exE, x.topW ?? 0) ?? 0)));
       // A PR as Recent PRs counts it: a session with a set stronger than every earlier one.
       const prOf = exps.map(x => I.prs.find(q => q.big && q.exId === exId && q.sid === x.sid) || null);
       const isPR = prOf.map(p => !!p);
@@ -721,7 +721,7 @@ function liftChart(I: Idx, { blue, green, yellow }: Pal): void {
       // below what was actually logged between two sessions.
       const ds: unknown[] = [
         {
-          label: e1Mode ? `Best estimate (${U()})` : `Top set load (${U()}${loadNote(exE)})`,
+          label: e1Mode ? `Best estimate (${liftU(exE)})` : `Top set load (${liftU(exE)}${loadNote(exE)})`,
           data: vals.map((v, i) => ({ x: xs[i], y: v })),
           borderColor: blue,
           backgroundColor: blue + '1f',
@@ -816,13 +816,13 @@ function volumeChart(I: Idx, sFirst: string | null, { blue, green, muted, yellow
           const w = its[0] ? wks[its[0].dataIndex] : undefined;
           return w ? `Week of ${fmtDate(w)}` : '';
         },
-        label: it => `${it.dataset.label}: ${Math.round(Number(it.raw)).toLocaleString()} ${U()}`,
+        label: it => `${it.dataset.label}: ${Math.round(Number(it.raw)).toLocaleString()} ${appU()}`,
         footer: its => {
           const it = its[0];
           if (!it) return '';
           const i = it.dataIndex;
-          const tot = types.reduce((a, t) => a + (toD((byT[t] || [])[i] || 0) ?? 0), 0);
-          return `Week total: ${Math.round(tot).toLocaleString()} ${U()}`;
+          const tot = types.reduce((a, t) => a + (toDApp((byT[t] || [])[i] || 0) ?? 0), 0);
+          return `Week total: ${Math.round(tot).toLocaleString()} ${appU()}`;
         }
       }
     };
@@ -832,7 +832,7 @@ function volumeChart(I: Idx, sFirst: string | null, { blue, green, muted, yellow
         labels,
         datasets: types.map((t, i) => ({
           label: t,
-          data: (byT[t] || []).map(v => (v == null ? null : Math.round(toD(v) ?? 0))),
+          data: (byT[t] || []).map(v => (v == null ? null : Math.round(toDApp(v) ?? 0))),
           backgroundColor: (pal[i % pal.length] || muted) + (i < pal.length ? '' : '99'),
           borderRadius: 2,
           stack: 'v'
@@ -851,7 +851,7 @@ function bodyweightChart({ blue, muted }: Pal): void {
     const avg = bw.map(b => {
       const from = addDays(b.date, -(WEEK_DAYS - 1));
       const w = bw.filter(x => x.date >= from && x.date <= b.date);
-      return r1(toD(w.reduce((a, x) => a + x.kg, 0) / w.length) ?? 0);
+      return r1(toDBody(w.reduce((a, x) => a + x.kg, 0) / w.length) ?? 0);
     });
     const base = b0.date;
     const xs = bw.map(b => daysBetween(base, b.date));
@@ -868,8 +868,8 @@ function bodyweightChart({ blue, muted }: Pal): void {
       data: {
         datasets: [
           {
-            label: `Bodyweight (${U()})`,
-            data: bw.map((b, i) => ({ x: xs[i], y: r1(toD(b.kg) ?? 0) })),
+            label: `Bodyweight (${bodyU()})`,
+            data: bw.map((b, i) => ({ x: xs[i], y: r1(toDBody(b.kg) ?? 0) })),
             borderColor: muted,
             backgroundColor: muted,
             pointRadius: 2,

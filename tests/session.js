@@ -1,4 +1,4 @@
-// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-37, in the
+// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-39, in the
 // project's claude/ironlog-spec-session.md, built from the code: workout.ts, worksets.ts, worktaps.ts, workfields.ts,
 // workfinish.ts, timer.ts, actsstart.ts, actspick.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
 // expects). A feature suite: each section is one rule, a lifter's log seeded, the workout started from Today's card
@@ -1224,6 +1224,126 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
       const line = await P.ev(() => { const e = document.getElementById('tp-0'); return e ? e.innerText.trim() : ''; });
       ok(half(e1(100, 10)) === half(e1(97.5, 11)) && line.endsWith(says), `L-37: in kg after 97.5 x 9 x 3, ${w} x ${r} at 2 in reserve reads "${says}"`, line);
       await P.close();
+    }
+  }
+
+  /* ---------- L-39: the unit switched on a lift already started, or in an edit: only the words change ---------- */
+  if (run('L-39')) {
+    /* A lift with a set done keeps what it started with when its unit is tapped, as for a change of the app's unit:
+       the target is worded in kg at the same load, the sets done at it still count, and Finish beats the target
+       (REV17-4). In an edit of a saved session nothing is read again but the words, so no flag from today reaches the
+       past session (REV17-2). */
+    const P = await lifter();
+    await start(P);
+    for (const s of [0, 1]) { await P.page.click(field('r', 0, s)); await P.page.fill(field('r', 0, s), ''); await P.page.keyboard.type('9'); await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60); await P.tap(btn('sDone', 0, s), 150); }
+    const before = await P.ev(() => { const b = window.__ironlog.state.draft.ex[0]; return { w: b.tgt && b.tgt.w, total: b.tgt && b.tgt.total }; });
+    await P.tap(btn('liftUnit', 0, null), 300);
+    const mid = await P.ev(() => { const b = window.__ironlog.state.draft.ex[0]; const e = document.getElementById('blk-0'); return { w: b.tgt && b.tgt.w, total: b.tgt && b.tgt.total, prog: (e.querySelector('.bprog, .prog') || {}).textContent || e.innerText }; });
+    ok(Math.abs(mid.w - before.w) < 1e-9 && mid.total === before.total && !/Nothing logged/.test(mid.prog), 'L-39: KG tapped after two sets: the target keeps its load and total, the sets done still count', { before, mid });
+    await P.ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
+    await P.page.click(field('r', 0, 2)); await P.page.fill(field('r', 0, 2), ''); await P.page.keyboard.type('9'); await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60);
+    await P.tap(btn('sDone', 0, 2), 150);
+    const finishAll = async X => { await X.tap('#view [data-act="finish"]', 300); let text = ''; for (let k = 0; k < 6; k++) { const m = await X.modal(); if (!m) break; if (m.kind === 'confirm') await mOk(X); else { if (m.kind === 'recap') text = m.text; await X.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } } return text; };
+    const rec = await finishAll(P);
+    ok(/1 of \d exercise targets? beaten/.test(rec) && !/ 0 of/.test(' ' + rec), 'L-39: Finish counts the bench\'s target beaten', rec);
+    await P.close();
+    // An edit: today chest flagged; the last session opened from History, KG tapped, saved: nothing from today reaches it.
+    const E = await lifter();
+    const sid = 'last';
+    await E.ev(() => { const L = window.__ironlog; L.state.injuries = [{ id: 'i1', m: 'chest', note: '', date: L.today() }]; L.invalidate(); L.saveNow(); L.ui.tab = 'history'; L.render(); }); await wait(150);
+    await E.tap('#view [data-act="histToggle"][data-id="last"]', 150); await E.tap('#view [data-act="histEdit"][data-id="last"]', 300);
+    const bi = await E.ev(() => window.__ironlog.state.draft.ex.findIndex(b => b.exId === 'bench'));
+    await E.tap(`#view .sg.head [data-act="liftUnit"][data-b="${bi}"]`, 300);
+    await E.ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
+    await finishAll(E);
+    const saved = await E.ev(sid => { const s = window.__ironlog.state.sessions.find(x => x.id === sid); const b = s.ex.find(x => x.exId === 'bench'); return { inj: b.inj || null }; }, sid);
+    ok(saved.inj === null, 'L-39: in an edit of a saved session, KG tapped and saved: no injury flagged since reaches it (REV17-2)', saved);
+    await E.close();
+  }
+
+  /* ---------- L-38: the unit beside a lift's loads switches the lift between lb and kg ---------- */
+  if (run('L-38')) {
+    /* 390's Release B: tapping "LB" in an exercise's heading marks its equipment in kg: kept on the lift, said with Undo,
+       its target read again in kg, a load already typed converted (225 lb shows as 102.1 kg, never read as 225 kg), the
+       other lifts left in lb; Undo puts it back; it is still kg when the app is opened again, and Finish saves the sets as
+       typed. */
+    const P = await lifter();
+    await start(P);
+    const head = () => P.ev(() => [...document.querySelectorAll('#view .sg.head .lh')].map(e => e.textContent.trim().toUpperCase()));
+    const h0 = await head();
+    await P.page.click(field('w', 0, 0)); await P.page.fill(field('w', 0, 0), ''); await P.page.keyboard.type('225');
+    await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(80);
+    await P.tap(btn('liftUnit', 0, null), 300);
+    const after = await P.ev(() => { const L = window.__ironlog; const d = L.state.draft; const e = L.state.exercises.find(x => x.id === 'bench');
+      return { unit: e.unit, w0: d.ex[0].sets[0].w, shown: document.querySelector('#view input[data-f="w"][data-b="0"][data-s="0"]').value, grey: document.querySelector('#view input[data-f="w"][data-b="0"][data-s="1"]').placeholder, hint: d.ex[0].hint || '' }; });
+    const t1 = await P.toast();
+    ok(JSON.stringify(h0) === JSON.stringify(['LB', 'LB EACH']) && JSON.stringify(await head()) === JSON.stringify(['KG', 'LB EACH']), 'L-38: the bench heading reads LB, then KG after a tap; the raises stay LB', { h0, h1: await head() });
+    // The tap takes a finger 44 px wide and tall over the unit, read from the points that reach it, no other control under
+    // it; and its tap opens no tip of the heading it sits in.
+    const reach = await P.ev(() => { const sel = '#view .sg.head [data-act="liftUnit"]'; const b = document.querySelector(sel); const r = b.getBoundingClientRect(); const cx = r.left + r.width / 2, cy = r.top + r.height / 2, left = cx - 22;
+      const hit = (x, y) => { const e = document.elementFromPoint(x, y); return !!e && e.closest(sel) === b; };
+      let top = cy, bot = cy; while (hit(cx, top - 1) && top > cy - 90) top--; while (hit(cx, bot + 1) && bot < cy + 90) bot++;
+      const all = Math.round(bot - top + 1) >= 44 && [cx - 21, cx, cx + 21].every(x => [bot, (top + bot) / 2, top].every(y => hit(x, y)));
+      const others = [...document.querySelectorAll('button, a, input, select, textarea, [data-act]')].filter(e => e !== b && !b.contains(e) && !e.contains(b)).filter(e => { const q = e.getBoundingClientRect(); return q.width && q.height && q.left < left + 44 && q.right > left && q.top < bot && q.bottom > top; }).map(e => e.outerHTML.slice(0, 80));
+      return { all, others, tip: !!document.querySelector('#tip:not([hidden])') }; });
+    ok(reach.all && !reach.others.length && !reach.tip, 'L-38: the unit takes a finger 44 px wide and tall, over no other control, and its tap opens no tip', reach);
+    ok(after.unit === 'kg' && Math.abs(after.w0 - 225 * LB) < 1e-9 && after.shown === '102.1' && after.grey === '102.1' && /85 kg is the nearest load in kg to what you did: aim for 24\+ reps over 3 sets at 85 kg/.test(after.hint) && t1 === 'Barbell Bench Press in kg',
+      'L-38: kept on the lift; 225 typed shows as 102.1 kg, stored as typed, the rows under it following it; the target read again in kg (185 lb x 8, 8, 7 is 85 kg, aim for 24+, P-40); "Barbell Bench Press in kg", with Undo', { after, t1 });
+    await P.tap('#toast [data-act="undo"]', 300);
+    const back = await P.ev(() => { const L = window.__ironlog; return { unit: L.state.exercises.find(x => x.id === 'bench').unit || null, shown: document.querySelector('#view input[data-f="w"][data-b="0"][data-s="0"]').value }; });
+    ok(back.unit === null && back.shown === '225', 'L-38: Undo puts it back in lb, the load as typed', back);
+    await P.tap(btn('liftUnit', 0, null), 300);
+    await P.page.reload(); await wait(600);
+    const kept = await P.ev(() => ({ unit: window.__ironlog.state.exercises.find(x => x.id === 'bench').unit, head: [...document.querySelectorAll('#view .sg.head .lh')].map(e => e.textContent.trim().toUpperCase())[0] }));
+    ok(kept.unit === 'kg' && kept.head === 'KG', 'L-38: switched again, it is still kg when the app is opened again', kept);
+    await P.close();
+    /* The unit's touch area is its own wherever the block puts a control above its heading: a note from last time with
+       Use again, a bodyweight lift's Add bodyweight, a note's pictures; at 390 and 320 px. Measured by taps: the points
+       that reach the unit span 44 px or more each way, no other control lies in them, and a tap at the bottom edge of
+       the control above does what that control does. */
+    const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    for (const w of [390, 320]) {
+      for (const [what, o, prep, b] of [
+        ['a note from last time with Use again', { seed: '(S) => { S.sessions[0].ex[0].note = "Seat 4, handles level, elbows at 45, pause on the chest"; }' }, null, 0],
+        ['Add bodyweight on a bodyweight lift', { items: [['bench', 3, 6, 10, REST_BENCH], ['pullup', 3, 6, 10, REST_BENCH]] }, null, 1],
+        ['a note\'s pictures', {}, async X => {
+          await X.tap('#view [data-act="bNote"][data-b="0"]', 250);
+          for (let n = 1; n <= 3; n++) {
+            await X.page.setInputFiles('#modal input[type="file"][data-pic="0"]', { name: `seat${n}.png`, mimeType: 'image/png', buffer: Buffer.from(PNG, 'base64') });
+            for (let k = 0; k < 30; k++) { if (await X.ev(n => (window.__ironlog.state.draft.ex[0].pics || []).length >= n, n)) break; await wait(100); }
+          }
+          await X.ev(() => { document.getElementById('mNote').value = 'Seat 4'; }); await X.tap('#modal [data-act="noteSave"]', 250);
+        }, 0]
+      ]) {
+        const X = await lifter({ w, ...o });
+        await start(X);
+        if (prep) await prep(X);
+        const r = await X.ev(sel => {
+          const b = document.querySelector(sel); if (!b) return { none: true };
+          b.scrollIntoView({ block: 'center' });
+          const q = b.getBoundingClientRect(), cx = q.left + q.width / 2, cy = q.top + q.height / 2;
+          const hit = (x, y) => { const e = document.elementFromPoint(x, y); return !!e && (e === b || b.contains(e)); };
+          let y1 = cy, y2 = cy, x1 = cx, x2 = cx;
+          while (hit(cx, y1 - 1) && y1 > cy - 90) y1--; while (hit(cx, y2 + 1) && y2 < cy + 90) y2++;
+          while (hit(x1 - 1, cy) && x1 > cx - 90) x1--; while (hit(x2 + 1, cy) && x2 < cx + 90) x2++;
+          const others = [...document.querySelectorAll('button, a, input, select, textarea, label.btn, [data-act]')].filter(e => e !== b && !b.contains(e) && !e.contains(b) && !(e.closest('details:not([open])') && !e.closest('summary')))
+            .filter(e => { const z = e.getBoundingClientRect(); return z.width && z.height && z.left < x2 && z.right > x1 && z.top < y2 && z.bottom > y1; })
+            .map(e => ({ act: e.dataset.act || e.tagName, box: [z => z.left, z => z.top, z => z.right, z => z.bottom].map(f => Math.round(f(e.getBoundingClientRect()))) }));
+          const above = [...document.querySelectorAll('#blk-' + b.dataset.b + ' [data-act="noteReuse"], #blk-' + b.dataset.b + ' [data-act="bwOpen"], #blk-' + b.dataset.b + ' .pthumb')].map(e => { const z = e.getBoundingClientRect(); return { act: e.dataset.act, x: z.left + Math.min(z.width / 2, 20), y: z.bottom - 2 }; });
+          return { h: Math.round(y2 - y1 + 1), w: Math.round(x2 - x1 + 1), others, above };
+        }, `#view .sg.head [data-act="liftUnit"][data-b="${b}"]`);
+        const taps = [];
+        for (const a of r.above || []) {
+          const exId = await X.ev(b => window.__ironlog.state.draft.ex[b].exId, b);
+          await X.page.mouse.click(a.x, a.y); await wait(250);
+          const unit = await X.ev(id => window.__ironlog.state.exercises.find(e => e.id === id).unit || null, exId);
+          taps.push({ act: a.act, unit });
+          await X.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); await wait(150);
+        }
+        ok(!r.none && r.h >= 44 && r.w >= 44 && !r.others.length && (r.above || []).length > 0 && taps.every(t => t.unit === null),
+          `L-38: at ${w} px, with ${what} above the heading: the unit takes 44 px or more each way, no other control lies in it, and a tap at the bottom of that control leaves the unit as it was`, { r, taps });
+        await X.close();
+      }
     }
   }
 

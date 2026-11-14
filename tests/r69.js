@@ -45,11 +45,11 @@ async function demo(tab, o = {}) {
 }
 const openAll = page => page.evaluate(() => { const L = window.__ironlog; for (let k = 0; k < 2; k++) { document.querySelectorAll('#view details').forEach(d => { d.open = true; }); L.render(); } document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
 // What a tap on an element shows in the tip box ('' for nothing), the tip then hidden again.
-const tapTip = async (page, sel) => {
+const tapTip = async (page, sel, position) => {
   if (!(await page.$(sel))) return null;
   // In view first, as a finger finds it: a scroll hides a tip, and the click's own scroll would land after it shows.
   await page.$eval(sel, e => e.scrollIntoView({ block: 'center' })); await wait(120);
-  await page.click(sel); await wait(80);
+  await page.click(sel, position ? { position } : undefined); await wait(80);
   const t = await page.evaluate(() => { const b = document.getElementById('tip'); return b && !b.hidden ? b.textContent : ''; });
   await page.evaluate(() => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' }))); await wait(40);
   return t;
@@ -117,12 +117,15 @@ const guard = async f => { try { await f(); } catch (e) { ok(false, 'a section t
       ['pullup', /^\+LB$/i, 'Load: added to bodyweight. Enter only what you add (belt, vest, dumbbell); 0 for bodyweight. Your logged bodyweight is added for estimates.'],
       ['dbRow', /^LB$/i, 'Load: one dumbbell. Enter the weight of the one dumbbell you hold.'],
       ['assistPullup', /HELP LB/i, 'Load: machine help. Enter the help the machine gives, as on its pin. Less help is progress; your logged bodyweight minus the help is what counts.'],
-      ['latPulldown', /^STACK$/i, 'Load: stack setting. Enter the pin setting. It is not comparable across machines.']
+      // Since 2.66 the stack's heading names its unit, a tap of its own that marks the machine in kg or lb (390's Release B).
+      ['latPulldown', /^LB STACK$/i, 'Load: stack setting. Enter the pin setting. It is not comparable across machines.']
     ];
     for (const [id, head, tip] of want) {
       const bi = await D.page.evaluate(id => window.__ironlog.state.draft.ex.findIndex(b => b.exId === id), id);
       const h = await D.page.evaluate(bi => document.querySelector(`#blk-${bi} .sg.head .lh`).innerText.trim(), bi);
-      const t = await tapTip(D.page, `#blk-${bi} .sg.head .lh`);
+      // The heading's words beside the unit, its right end: the unit itself is a tap that switches kg and lb (2.66).
+      const box = await D.page.evaluate(bi => { const r = document.querySelector(`#blk-${bi} .sg.head .lh`).getBoundingClientRect(); return { w: r.width, h: r.height }; }, bi);
+      const t = await tapTip(D.page, `#blk-${bi} .sg.head .lh`, { x: box.w - 3, y: box.h / 2 });
       ok(head.test(h) && t === tip, `3. ${id}: the load heading reads ${h}, and a tap on it says "${tip}"`, { h, t });
     }
     const row = await D.page.evaluate(() => window.__ironlog.state.draft.ex.findIndex(b => b.exId === 'dbRow'));

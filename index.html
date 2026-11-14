@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.13-r111">
+<meta name="app-build" content="2026.11.14-r112">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -515,6 +515,11 @@ button.mph{-webkit-appearance:none;appearance:none;border:0;padding:0;margin:0;b
 .btn.primary,.block .btn.primary,.card .btn.primary,.sheet .btn.primary,.panel .btn.primary{background:var(--volt);color:var(--on-volt);border-color:transparent;border-radius:999px}
 .btn.danger{color:var(--red)}
 .btn.sm{min-height:44px;padding:0 12px;font-size:14px;border-radius:var(--r-sm)}
+/* The scale's unit beside a weigh-in field (bodyUnitTap): a button 44 px each way, the field's row aligned on the field. */
+.btn.bunit{min-width:44px;padding:0 8px}
+.bwrow{align-items:flex-end;flex-wrap:nowrap}
+.bw-w{display:flex;gap:8px;align-items:flex-end;min-width:0}
+.bwrow>label.field,.bw-w>label.field{min-width:0}
 /* A full-width button (r66, PENDING 368): fullw, never block, which is a session exercise's card. */
 .btn.fullw{width:100%}
 .btn:disabled{opacity:.4;cursor:default}
@@ -651,7 +656,11 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
    drop marking on the set number instead of its own column, so the inputs
    keep the width they had at 320 px. */
 .sg{position:relative;display:grid;grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) 44px;gap:6px;align-items:center;margin-top:6px}
-.sg.head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:650;margin-top:12px}
+/* The heading stands 24 px under whatever is above it, so the unit's 44 px touch area (::before, from the gap above
+   the first row of fields to the gap under that control) lies over no other control. */
+.sg.head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:650;margin-top:24px}
+.lunit{position:relative;background:none;border:0;padding:0;margin:0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer}
+.lunit::before{content:'';position:absolute;left:50%;bottom:-6px;width:max(100%,44px);height:44px;transform:translateX(-50%)}
 .sg .n{font:700 15px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center}
 button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg .ls{font:600 12px/1.15 var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center;overflow-wrap:anywhere}
@@ -2148,8 +2157,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.65";
-  var APP_VERSION = "2026.11.13-r111";
+  var DISPLAY_VERSION = "2.66";
+  var APP_VERSION = "2026.11.14-r112";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2289,7 +2298,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     for (const j3 of exJoints(ex)) if (s3.has(j3)) return j3;
     return null;
   }
-  var UIn = (M3) => M3.s.settings.unit;
+  var UIn = (M3) => M3.u ?? M3.s.settings.unit;
+  var appUIn = (M3) => M3.s.settings.unit;
+  var liftUIn = (M3, ex) => ex && ex.unit || appUIn(M3);
+  var bodyIn = (M3) => ({ unit: M3.s.settings.bwUnit });
+  var bodyUIn = (M3) => liftUIn(M3, bodyIn(M3));
+  function appModelIn(M3) {
+    return M3.u === void 0 ? M3 : { ...M3, u: void 0 };
+  }
+  function liftModelIn(M3, ex) {
+    const u4 = ex && ex.unit;
+    if (!u4) return appModelIn(M3);
+    return M3.u === u4 ? M3 : { ...M3, u: u4 };
+  }
   function EXIn(M3, id) {
     if (!M3.c.EXMAP) {
       M3.c.EXMAP = /* @__PURE__ */ Object.create(null);
@@ -2324,7 +2345,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function gymOfIn(M3) {
     const g2 = M3.s.settings.gym;
-    return g2 && typeof g2 === "object" ? g2 : null;
+    if (!g2 || typeof g2 !== "object") return null;
+    return M3.u && g2.u !== M3.u ? null : g2;
   }
   function profIn(M3) {
     return M3.s.settings.profile || {};
@@ -2366,8 +2388,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function typedBoundIn(M3, v3, most) {
     return kgOfIn(M3, Math.min(v3, Math.floor(inUnitIn(M3, most) / TYPED_STEP + EPS_SAME) * TYPED_STEP));
   }
+  var typedBoundOfIn = (M3, ex, v3, most) => typedBoundIn(liftModelIn(M3, ex), v3, most);
   var toDIn = (M3, kg2) => kg2 == null ? null : inUnitIn(M3, kg2);
   var fromDIn = (M3, v3) => v3 == null ? null : kgOfIn(M3, v3);
+  var stepReadOfIn = (M3, ex, v3) => stepReadIn(liftModelIn(M3, ex), v3);
+  var toDOfIn = (M3, ex, kg2) => toDIn(liftModelIn(M3, ex), kg2);
+  var fromDOfIn = (M3, ex, v3) => fromDIn(liftModelIn(M3, ex), v3);
+  var toDAppIn = (M3, kg2) => toDIn(appModelIn(M3), kg2);
+  var fromDAppIn = (M3, v3) => fromDIn(appModelIn(M3), v3);
+  var typedBoundAppIn = (M3, v3, most) => typedBoundIn(appModelIn(M3), v3, most);
+  var toDBodyIn = (M3, kg2) => toDOfIn(M3, bodyIn(M3), kg2);
+  var fromDBodyIn = (M3, v3) => fromDOfIn(M3, bodyIn(M3), v3);
   function unitStepIn(M3) {
     return UIn(M3) === "kg" ? DEFAULT_STEP.kg : STEP_LB;
   }
@@ -2384,6 +2415,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return Math.max(1, Math.round(kg2 / k2 / d3)) * d3 * k2;
   }
   var loadReadIn = (M3, kg2) => loadReadAs(kg2, UIn(M3));
+  var loadReadOfIn = (M3, ex, kg2) => loadReadIn(liftModelIn(M3, ex), kg2);
 
   // src/app/formulas.ts
   var E1_MAX_REPS = 12;
@@ -3187,6 +3219,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return "none";
   }
   function gymRackIn(M3, ex, plan) {
+    M3 = liftModelIn(M3, ex);
     const g2 = gymOfIn(M3);
     if (!g2 || !ex || ex.bw || ex.assist || ex.timed || ex.inc != null) return null;
     if (plan && isNum(+plan.inc) && Math.abs(stepReadIn(M3, +plan.inc) - unitStepIn(M3)) > EPS_SAME) return null;
@@ -3227,6 +3260,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return best;
   }
   function gymStepIn(M3, ex) {
+    M3 = liftModelIn(M3, ex);
     const g2 = gymOfIn(M3);
     if (!g2 || !ex || ex.bw || ex.timed) return null;
     const pm = platesMode(ex), m3 = loadMode(ex);
@@ -3238,10 +3272,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return null;
   }
   function loadFloorIn(M3, ex) {
+    M3 = liftModelIn(M3, ex);
     return platesMode(ex) === "bar" && loadMode(ex) === "total" && (isCompound(ex) || (ex.barKg ?? 0) > 0) ? exBarKgIn(M3, ex) : 0;
   }
   var PLATE_SIDE_MAX = { kg: 250, lb: 550 };
   function plateGridIn(M3, ex, plan) {
+    M3 = liftModelIn(M3, ex);
     const g2 = gymOfIn(M3);
     if (!ex || ex.inc != null || ex.timed || !g2 || !Array.isArray(g2.plates) || !g2.plates.length) return null;
     if (platesMode(ex) !== "bar" || loadMode(ex) !== "total") return null;
@@ -3272,6 +3308,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return k2;
   }
   function capOfIn(M3, ex, plan, top) {
+    M3 = liftModelIn(M3, ex);
     const L2 = gymRackIn(M3, ex, plan);
     let r4 = L2 ? L2[L2.length - 1] : null;
     if (r4 != null && top != null && top > r4 + rackTolIn(M3, L2, top)) r4 = null;
@@ -3282,26 +3319,32 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return c4;
   }
   function atCapOfIn(M3, ex, plan, top, cap) {
+    M3 = liftModelIn(M3, ex);
     const L2 = gymRackIn(M3, ex, plan);
     return cap != null && top >= cap - (L2 && (ex.maxLoad == null || cap < (liftMaxIn(M3, ex) ?? 0) - EPS_SAME) ? rackTolIn(M3, L2, top) : EPS_SAME);
   }
   function exBarKgIn(M3, ex) {
+    M3 = liftModelIn(M3, ex);
     return ex && ex.barKg !== void 0 && ex.barKg > 0 ? barReadIn(M3, ex.barKg) : barKgIn(M3);
   }
   function liftMaxIn(M3, ex) {
-    return ex.maxLoad != null ? loadReadIn(M3, ex.maxLoad) : null;
+    return ex.maxLoad != null ? loadReadIn(liftModelIn(M3, ex), ex.maxLoad) : null;
+  }
+  function barUnitIn(M3) {
+    if (M3.u) return M3.u;
+    const g2 = gymOfIn(M3);
+    return g2 && g2.u || UIn(M3);
   }
   function barReadIn(M3, kg2) {
-    if (typedUnit(kg2) === UIn(M3)) return kg2;
-    const g2 = gymOfIn(M3);
-    return loadReadAs(kg2, g2 && g2.u || UIn(M3));
+    return typedUnit(kg2) === UIn(M3) ? kg2 : loadReadAs(kg2, barUnitIn(M3));
+  }
+  function barReadOfIn(M3, ex, kg2) {
+    return barReadIn(liftModelIn(M3, ex), kg2);
   }
   function barKgIn(M3) {
     const b2 = M3.s.settings.barKg;
     if (b2 != null) return barReadIn(M3, b2);
-    const g2 = gymOfIn(M3);
-    const u4 = g2 && g2.u || UIn(M3);
-    return u4 === "lb" ? BAR.lb * LB : BAR.kg;
+    return barUnitIn(M3) === "lb" ? BAR.lb * LB : BAR.kg;
   }
 
   // src/app/profile.ts
@@ -4143,6 +4186,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       ...profile ? { profile } : {},
       ...Object.keys(bandsFit).length ? { bandsFit } : {},
       ...ownTargets.length ? { ownTargets } : {},
+      // The scale's unit: absent unless set apart from the app's, so saves without it hash as before.
+      ...st.bwUnit === "kg" || st.bwUnit === "lb" ? { bwUnit: st.bwUnit } : {},
       // RIR: on (as logged), cal (on, shifted by your calibration sets), off.
       rirMode: pick(st.rirMode, ["on", "off", "cal"]) ?? "on",
       hidden: h3 ? [...new Set(strings(h3, (k2) => HIDEABLE_KEYS.has(k2)))] : [],
@@ -4182,7 +4227,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     "gym",
     "profile",
     "bandsFit",
-    "ownTargets"
+    "ownTargets",
+    "bwUnit"
   ];
   function cleanExercise(e0, e5, name) {
     const sc = arr(e5.secondary);
@@ -4220,7 +4266,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       // This lift's own bar: a trap or EZ bar instead of the bar in Settings. Absent when unset.
       barKg: isNum(bar2) && bar2 > 0 ? Math.min(bar2, LIMITS.barKg) : void 0,
       // A lift goal: a load (added load on a bodyweight lift) for a number of reps. Absent when unset.
-      goal: g2 && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e5.timed && !e5.assist ? { w: gw, r: gr } : void 0
+      goal: g2 && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e5.timed && !e5.assist ? { w: gw, r: gr } : void 0,
+      /* The unit the lift's equipment is marked in, set by a tap on the unit beside its load: kg or lb. Absent when unset,
+         so the lift follows the app's unit and a record saved before this existed hashes as before; a build without it
+         keeps it among the fields it does not know (keepExtra). */
+      unit: e5.unit === "kg" || e5.unit === "lb" ? e5.unit : void 0
     });
   }
   function cleanRoutine(r0, ri) {
@@ -5765,6 +5815,65 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return h3._$AI(t4), h3;
   };
+
+  // node_modules/lit-html/directive.js
+  var t2 = { ATTRIBUTE: 1, CHILD: 2, PROPERTY: 3, BOOLEAN_ATTRIBUTE: 4, EVENT: 5, ELEMENT: 6 }, e2 = (t4) => (...e5) => ({ _$litDirective$: t4, values: e5 });
+  var i2 = class {
+    constructor(t4) {
+    }
+    get _$AU() {
+      return this._$AM._$AU;
+    }
+    _$AT(t4, e5, i5) {
+      this._$Ct = t4, this._$AM = e5, this._$Ci = i5;
+    }
+    _$AS(t4, e5) {
+      return this.update(t4, e5);
+    }
+    update(t4, e5) {
+      return this.render(...e5);
+    }
+  };
+
+  // node_modules/lit-html/directive-helpers.js
+  var { I: t3 } = j, i3 = (o3) => o3, n2 = (o3) => null === o3 || "object" != typeof o3 && "function" != typeof o3, e3 = { HTML: 1, SVG: 2, MATHML: 3 }, l2 = (o3, t4) => void 0 === t4 ? void 0 !== o3?._$litType$ : o3?._$litType$ === t4, d2 = (o3) => null != o3?._$litType$?.h, c2 = (o3) => void 0 !== o3?._$litDirective$, f2 = (o3) => o3?._$litDirective$, r2 = (o3) => void 0 === o3.strings, s2 = () => document.createComment(""), v2 = (o3, n3, e5) => {
+    const l4 = o3._$AA.parentNode, d3 = void 0 === n3 ? o3._$AB : n3._$AA;
+    if (void 0 === e5) {
+      const i5 = l4.insertBefore(s2(), d3), n4 = l4.insertBefore(s2(), d3);
+      e5 = new t3(i5, n4, o3, o3.options);
+    } else {
+      const t4 = e5._$AB.nextSibling, n4 = e5._$AM, c4 = n4 !== o3;
+      if (c4) {
+        let t5;
+        e5._$AQ?.(o3), e5._$AM = o3, void 0 !== e5._$AP && (t5 = o3._$AU) !== n4._$AU && e5._$AP(t5);
+      }
+      if (t4 !== d3 || c4) {
+        let o4 = e5._$AA;
+        for (; o4 !== t4; ) {
+          const t5 = i3(o4).nextSibling;
+          i3(l4).insertBefore(o4, d3), o4 = t5;
+        }
+      }
+    }
+    return e5;
+  }, u2 = (o3, t4, i5 = o3) => (o3._$AI(t4, i5), o3), m2 = {}, p2 = (o3, t4 = m2) => o3._$AH = t4, M2 = (o3) => o3._$AH, h2 = (o3) => {
+    o3._$AR(), o3._$AA.remove();
+  }, j2 = (o3) => {
+    o3._$AR();
+  };
+
+  // node_modules/lit-html/directives/keyed.js
+  var i4 = e2(class extends i2 {
+    constructor() {
+      super(...arguments), this.key = A;
+    }
+    render(r4, t4) {
+      return this.key = r4, t4;
+    }
+    update(r4, [t4, e5]) {
+      return t4 !== this.key && (p2(r4), this.key = t4), e5;
+    }
+  });
 
   // src/app/format.ts
   var fmtDateRow = (s3) => parse(s3).toLocaleDateString(void 0, {
@@ -7322,20 +7431,32 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   var emptyLoad = (ex) => ex.bw && !ex.assist ? "0" : "";
   var fmtWIn = (M3, kg2) => kg2 == null || isNaN(kg2) ? "" : String(r1(toDIn(M3, kg2)));
+  var fmtWOfIn = (M3, ex, kg2) => fmtWIn(liftModelIn(M3, ex), kg2);
+  var fmtWAppIn = (M3, kg2) => fmtWIn(appModelIn(M3), kg2);
+  var fmtBodyIn = (M3, kg2) => fmtWOfIn(M3, bodyIn(M3), kg2);
   function loadLabelIn(M3, ex, kg2) {
+    M3 = liftModelIn(M3, ex);
     if (ex.bw) {
       return kg2 > 0 ? `BW+${fmtWIn(M3, kg2)}` : kg2 < 0 ? `BW−${fmtWIn(M3, -kg2)}` : "BW";
     }
     return fmtWIn(M3, kg2);
   }
   function typedLabelIn(M3, ex, kg2) {
+    M3 = liftModelIn(M3, ex);
     const u4 = typedUnit(kg2);
     if (u4 == null || u4 === UIn(M3)) return loadLabelIn(M3, ex, kg2);
     const n3 = (v3) => String(r1(u4 === "lb" ? v3 / LB : v3));
     const num3 = ex.bw ? kg2 > 0 ? `BW+${n3(kg2)}` : `BW−${n3(-kg2)}` : n3(kg2);
     return `${num3} ${u4}`;
   }
+  function listLabelIn(M3, ex, kg2, named2) {
+    const lift = liftUIn(M3, ex), u4 = typedUnit(kg2) ?? lift;
+    const label = loadLabelIn(M3, { bw: ex.bw, unit: u4 }, kg2);
+    if (ex.bw && kg2 === 0) return label;
+    return named2 || u4 !== UIn(M3) || u4 !== lift || u4 !== appUIn(M3) ? `${label} ${u4}` : label;
+  }
   function swapWIn(M3, ex, res, nw) {
+    M3 = liftModelIn(M3, ex);
     const a2 = loadLabelIn(M3, ex, res.w), b2 = loadLabelIn(M3, ex, nw);
     const fix = (t4) => t4 ? t4.split(a2).join(b2) : t4;
     const out = { ...res, w: nw, target: fix(res.target) };
@@ -7443,6 +7564,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var RACK_FIT = 0.01;
   var RACK_READ_N = 12;
   function snapUnitIn(M3, ex, plan, res, down) {
+    M3 = liftModelIn(M3, ex);
     const plates = res && res.w != null && !ex.timed && !!plateGridIn(M3, ex, plan);
     const out = plates ? plateSnap(M3, ex, plan, res, down) : gridSnap(M3, ex, plan, unitSnap(M3, ex, plan, res, down));
     if (!down || res.top == null || res.w == null || out.w == null || out.w <= Math.max(res.top, loadFloorIn(M3, ex)) + EPS)
@@ -7467,9 +7589,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return moveIn(M3, ex, plan, res, nw, `the nearest load in ${UIn(M3)}`);
   }
   function loadGridIn(M3, ex, plan) {
+    M3 = liftModelIn(M3, ex);
     return stepOfIn(M3, ex, plan, void 0, false);
   }
   function unitGridIn(M3, ex, plan, top, w2, down, whole) {
+    M3 = liftModelIn(M3, ex);
     if (ex.timed || gymRackIn(M3, ex, plan) || plateGridIn(M3, ex, plan)) return null;
     const sl = inUnitIn(M3, incOfIn(M3, ex, plan));
     if (!(sl > 0)) return null;
@@ -7573,6 +7697,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return { same: false, total, rs: per };
   }
   function incOfIn(M3, ex, plan, at2) {
+    M3 = liftModelIn(M3, ex);
     return stepOfIn(M3, ex, plan, at2, true);
   }
   function stepOfIn(M3, ex, plan, at2, byEquip) {
@@ -7634,6 +7759,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return nw == null || Math.abs(nw - w2) < EPS ? res : moveIn(M3, ex, plan, res, nw, why);
   }
   function rackStepIn(M3, ex, at2) {
+    M3 = liftModelIn(M3, ex);
     const I2 = IDXIn(M3);
     I2._rack = I2._rack || {};
     const xs = liftReadIn(M3, ex.id);
@@ -7684,6 +7810,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return kgOfIn(M3, Math.floor((inUnitIn(M3, w2) + inUnitIn(M3, tol)) / gd) * gd);
   }
   function offGrid(M3, ex, plan, at2) {
+    M3 = liftModelIn(M3, ex);
     const g2 = rackGridIn(M3, ex, plan, at2);
     if (g2 == null) return null;
     const gd = gridD(M3, g2), ad = inUnitIn(M3, at2);
@@ -7693,6 +7820,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return listSnapIn(M3, ex, plan, res);
   }
   function progStepIn(M3, ex, plan, loadKg, at2) {
+    M3 = liftModelIn(M3, ex);
     if (at2 != null) {
       const Ls = loadsForIn(M3, ex, plan, at2);
       if (Ls.kind === "rack" || Ls.kind === "grid") {
@@ -7785,6 +7913,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     };
   }
   function lighterLoadIn(M3, ex, plan, from, to) {
+    M3 = liftModelIn(M3, ex);
     const Ls = loadsForIn(M3, ex, plan, from);
     if (Ls.kind !== "step") {
       const dn2 = Ls.below(from);
@@ -7803,11 +7932,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return Math.max(0, w2);
   }
   function heavierLoadIn(M3, ex, plan, from, to) {
+    M3 = liftModelIn(M3, ex);
     const Ls = loadsForIn(M3, ex, plan, from);
     const up = Ls.above(from), c4 = Ls.floor(to);
     return up != null && c4 != null && c4 >= up - EPS_SAME ? c4 : null;
   }
   function stepLoadIn(M3, ex, plan, from, dir) {
+    M3 = liftModelIn(M3, ex);
     if (dir > 0) return loadsForIn(M3, ex, plan, from).above(from);
     const w2 = lighterLoadIn(M3, ex, plan, from, from - EPS_SAME);
     return w2 < from - EPS_SAME ? w2 : null;
@@ -7848,7 +7979,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       upTo: (nw) => other ? `go to ${lbl(nw)}` : `add ${fmtWIn(M3, nw - top)} ${UIn(M3)}`
     };
   }
+  function kinRackStepIn(M3, ex, kin) {
+    return rackKind(ex) && rackKind(kin) && liftUIn(M3, kin) === UIn(M3) ? rackStepIn(M3, kin) : null;
+  }
   function suggestIn(M3, exId, plan, opts) {
+    M3 = liftModelIn(M3, EXIn(M3, exId));
     opts = opts || {};
     const ex = EXIn(M3, exId);
     const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M3, exId, plan, opts) : 0;
@@ -7859,7 +7994,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     const base = suggestCoreIn(M3, exId, plan, { ...opts, deload: false, light: false });
     if (base.kin && base.w > 0) {
-      const ks = !gymRackIn(M3, ex, plan) && rackKind(ex) && rackKind(EXIn(M3, base.kin)) ? rackStepIn(M3, EXIn(M3, base.kin)) : null;
+      const ks = !gymRackIn(M3, ex, plan) ? kinRackStepIn(M3, ex, EXIn(M3, base.kin)) : null;
       const lw = ks ? fromDIn(M3, Math.floor(toDIn(M3, base.w * LIGHT_SHARE) / toDIn(M3, ks) + EPS) * toDIn(M3, ks)) : lighterLoadIn(M3, ex, plan, base.w, base.w * LIGHT_SHARE);
       return {
         ...base,
@@ -7971,7 +8106,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const { ex, last, T: T2, top, planPts, lastR, lastS, basis, opts, plan } = C2;
     if (!opts.before || last.date !== T2 || !(planPts.length > 0)) return null;
     if (!(last.rr && sameRR(last.rr, [+plan.repMin, +plan.repMax]))) return null;
-    const sets = last.pts.map((p3) => `${loadLabelIn(M3, ex, p3.w)}×${p3.r}`).join(", ");
+    const sets = last.pts.map((p3) => `${typedLabelIn(M3, ex, p3.w)}×${p3.r}`).join(", ");
     return {
       top,
       w: top,
@@ -7986,6 +8121,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     };
   }
   function suggestCoreIn(M3, exId, plan, opts) {
+    M3 = liftModelIn(M3, EXIn(M3, exId));
     opts = opts || {};
     const T2 = opts.before && isDate(opts.before) ? opts.before : M3.today();
     const every = IDXIn(M3).byEx[exId];
@@ -8488,7 +8624,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!c4.length) return null;
       w2 = c4[c4.length - 1];
     } else {
-      const rs = rackKind(ex) && rackKind(k2.ex) ? rackStepIn(M3, k2.ex) : null;
+      const rs = kinRackStepIn(M3, ex, k2.ex);
       const st = toDIn(M3, rs || loadGridIn(M3, ex, plan));
       if (!(st > 0)) return null;
       w2 = fromDIn(M3, Math.floor(toDIn(M3, want) / st + EPS) * st);
@@ -8496,7 +8632,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const floor = loadFloorIn(M3, ex);
     if (floor > 0 && w2 < floor - EPS) w2 = floor;
     if (!(w2 > 0)) return null;
-    return { ex: k2.ex, date: x2.date, w: w2, set: `${loadLabelIn(M3, k2.ex, set.w)}×${set.r}` };
+    return { ex: k2.ex, date: x2.date, w: w2, set: `${listLabelIn(M3, k2.ex, set.w)}×${set.r}` };
   }
   function suggestTimedIn(M3, ex, plan, exps, opts, injM, all, noAdd, away) {
     opts = opts || {};
@@ -8621,6 +8757,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     };
   }
   function easierTextIn(M3, ex, e5) {
+    M3 = liftModelIn(M3, ex);
     const sc = effScale(M3.s.settings.rirScale);
     return `Getting easier at ${loadLabelIn(M3, ex, e5.w)}${ex.bw ? "" : " " + UIn(M3)}: ${sc === "rpe" ? "RPE" : "RIR"} ${effAt(sc, e5.from)} → ${effAt(sc, e5.to)} at the same reps. Adding load today is reasonable.`;
   }
@@ -9876,10 +10013,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const id = stalled[0];
       const st = I2.exStats[id];
       const flat = stallWordsIn(M3, id);
+      const atTop = (ex, w2) => {
+        const L2 = liftModelIn(M3, ex);
+        return typedOtherIn(L2, w2) ? typedLabelIn(L2, ex, w2) : `${loadLabelIn(L2, ex, w2)}${ex.bw ? "" : " " + UIn(L2)}`;
+      };
       if (atRangeTopIn(M3, id))
         return {
           tone: "yellow",
-          text: `${exNameIn(M3, id)} is at the top of its range at ${loadLabelIn(M3, EXIn(M3, id), st.last.topW)}${EXIn(M3, id).bw ? "" : " " + UIn(M3)} and has stalled ${flat}: it is due a step up, not a new range. The session's target says how.`,
+          text: `${exNameIn(M3, id)} is at the top of its range at ${atTop(EXIn(M3, id), st.last.topW)} and has stalled ${flat}: it is due a step up, not a new range. The session's target says how.`,
           why: "Every set reached the top of the range. The next step is more load, or, when one step is large for the load, a few more reps first.",
           act: { label: "See the lift", sec: "exercise", ex: id }
         };
@@ -9934,6 +10075,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var ODD_ADDED_BW = 0.9;
   var ODD_ADDED_BEST = 2;
   function lightZeroIn(M3, b2, si, date) {
+    M3 = liftModelIn(M3, EXIn(M3, b2.exId));
     const s3 = b2.sets[si];
     if (!s3 || s3.warm || s3.drop || !isMissed(s3)) return false;
     const ex = EXIn(M3, b2.exId);
@@ -9956,6 +10098,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return (ex.barKg ?? 0) > 0 ? `${say(w2)} is under this lift's ${say(bar2)} bar.` : `${say(w2)} is under the ${say(bar2)} bar set in Settings.`;
   }
   function oddLoadIn(M3, b2, si, date) {
+    M3 = liftModelIn(M3, EXIn(M3, b2.exId));
     const s3 = b2.sets[si];
     const under = underBarIn(M3, b2, si);
     if (!s3 || s3.warm || s3.drop) return under;
@@ -10022,6 +10165,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return !sinceLongBreak(IDXIn(M3).byEx[ex.id] || [], M3.today()).some((x2) => x2.pts.some((p3) => p3.w > EPS_SAME));
   }
   function nextSetsIn(M3, b2, si, lastR) {
+    M3 = liftModelIn(M3, EXIn(M3, b2.exId));
     const s3 = b2.sets[si];
     if (!s3 || !(+(s3.r ?? 0) > 0) || s3.w == null) return null;
     const ex = EXIn(M3, b2.exId);
@@ -10116,7 +10260,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     };
   }
   var EX = live(EXIn);
-  var U = live(UIn);
+  var appU = live(appUIn);
+  var bodyU = live(bodyUIn);
+  var fmtBody = live(fmtBodyIn);
+  var toDBody = live(toDBodyIn);
+  var fromDBody = live(fromDBodyIn);
+  var liftU = live(liftUIn);
   var activeRoutine = live(activeRoutineIn);
   var bandOf = live(bandOfIn);
   var exInjury = live(exInjuryIn);
@@ -10130,9 +10279,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var prof = live(profIn);
   var rirHalfOn = live(rirHalfOnIn);
   var sortedSessions = live(sortedSessionsIn);
-  var fromD = live(fromDIn);
+  var fromDApp = live(fromDAppIn);
+  var fromDOf = live(fromDOfIn);
   var stepRead = live(stepReadIn);
-  var toD = live(toDIn);
+  var stepReadOf = live(stepReadOfIn);
+  var toDApp = live(toDAppIn);
+  var toDOf = live(toDOfIn);
   var defPlan = live(defPlanIn);
   var planCredit = live(planCreditIn);
   var planFor = live(planForIn);
@@ -10150,13 +10302,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var capOf = live(capOfIn);
   var exBarKg = live(exBarKgIn);
   var liftMax = live(liftMaxIn);
-  var barRead = live(barReadIn);
-  var loadRead = live(loadReadIn);
-  var typedBound = live(typedBoundIn);
+  var barReadOf = live(barReadOfIn);
+  var loadReadOf = live(loadReadOfIn);
+  var typedBoundOf = live(typedBoundOfIn);
+  var typedBoundApp = live(typedBoundAppIn);
   var gymRack = live(gymRackIn);
   var rackTol = live(rackTolIn);
-  var fmtW = live(fmtWIn);
+  var fmtWApp = live(fmtWAppIn);
+  var fmtWOf = live(fmtWOfIn);
   var loadLabel = live(loadLabelIn);
+  var typedLabel = live(typedLabelIn);
+  var listLabel = live(listLabelIn);
   var IDX = live(IDXIn);
   var allTimeBests = live(allTimeBestsIn);
   var sinceBack = live(sinceBackIn);
@@ -12030,13 +12186,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var sessionsOn = (d3) => dateIndex().byDate[d3] || [];
   var K_FROM = 1e4, K = 1e3;
   function fmtK(kg2) {
-    const v3 = Math.round(toD(kg2) ?? 0);
+    const v3 = Math.round(toDApp(kg2) ?? 0);
     return v3 >= K_FROM ? Math.round(v3 / K) + "k" : v3.toLocaleString();
   }
-  var distU = () => U() === "kg" ? "km" : "mi";
-  var distShow = (km) => Math.round((U() === "kg" ? km : km / KM_MI) * HUNDREDTHS) / HUNDREDTHS;
-  function setShort(ex, w2, r4) {
-    return ex.timed ? `${loadLabel(ex, +(w2 ?? 0) || 0)} for ${r4}s` : `${loadLabel(ex, +(w2 ?? 0) || 0)}×${r4}`;
+  var distU = () => appU() === "kg" ? "km" : "mi";
+  var distShow = (km) => Math.round((appU() === "kg" ? km : km / KM_MI) * HUNDREDTHS) / HUNDREDTHS;
+  function setShort(ex, w2, r4, named2) {
+    const l4 = listLabel(ex, +(w2 ?? 0) || 0, named2);
+    return ex.timed ? `${l4} for ${r4}s` : `${l4}×${r4}`;
   }
   function setStr(ex, x2) {
     return `${x2.warm ? "(W) " : x2.drop ? "(D) " : ""}${setShort(ex, x2.w, x2.r)}${missedTag(x2)}${!ex.timed && x2.rir != null && x2.rir !== "" ? rirScale() === "rpe" ? " @RPE " + effShow(x2.rir) : " @" + effShow(x2.rir) : ""}${x2.cal ? " (RIR check)" : ""}`;
@@ -12046,27 +12203,32 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function effTgt(rir) {
     return rirScale() === "rpe" ? `RPE ${effShow(rir)}` : `${effShow(rir)} RIR`;
   }
-  function fmtE(kg2) {
+  function fmtE(ex, kg2) {
     if (kg2 == null || isNaN(kg2)) return "";
-    const v3 = toD(kg2) ?? 0;
-    return String(U() === "lb" ? Math.round(v3) : Math.round(v3 * 2) / 2);
+    const v3 = toDOf(ex, kg2) ?? 0;
+    return String(liftU(ex) === "lb" ? Math.round(v3) : Math.round(v3 * 2) / 2);
   }
-  function wasE(now2, before2) {
-    const b2 = fmtE(before2);
-    return b2 && b2 !== fmtE(now2) ? b2 : "";
+  function wasE(ex, now2, before2) {
+    const b2 = fmtE(ex, before2);
+    return b2 && b2 !== fmtE(ex, now2) ? b2 : "";
   }
-  var LU = () => U() === "lb" ? "in" : "cm";
+  var LU = () => appU() === "lb" ? "in" : "cm";
   function measAt(m3, k2) {
     const v3 = rec(m3)?.[k2];
     return typeof v3 === "number" ? v3 : void 0;
   }
-  var lenFrom = (v3) => U() === "lb" ? v3 * IN : v3;
-  var lenD = (cm) => cm == null ? "" : String(r1(U() === "lb" ? cm / IN : cm));
-  var fmtBig = (kg2) => Math.round(toD(kg2) ?? 0).toLocaleString();
+  var lenFrom = (v3) => appU() === "lb" ? v3 * IN : v3;
+  var lenD = (cm) => cm == null ? "" : String(r1(appU() === "lb" ? cm / IN : cm));
+  var fmtBig = (kg2) => Math.round(toDApp(kg2) ?? 0).toLocaleString();
   function loadHead(ex) {
-    const m3 = loadMode(ex), u4 = U().toUpperCase();
-    if (ex && ex.assist) return "Help " + u4;
-    return m3 === "each" ? u4 + " each" : m3 === "side" ? u4 + "/side" : m3 === "stack" ? "Stack" : m3 === "bw" ? "+" + u4 : u4;
+    const p3 = loadHeadParts(ex);
+    return p3.pre + p3.unit + p3.post;
+  }
+  function loadHeadParts(ex) {
+    const m3 = loadMode(ex), unit = liftU(ex).toUpperCase();
+    if (ex && ex.assist) return { pre: "Help ", unit, post: "" };
+    if (m3 === "bw") return { pre: "+", unit, post: "" };
+    return { pre: "", unit, post: m3 === "each" ? " each" : m3 === "side" ? "/side" : m3 === "stack" ? " stack" : "" };
   }
   var fmtDateLong = (s3) => fmtWith("l", { weekday: "short", month: "short", day: "numeric", year: "numeric" }, s3);
   function topSetPt(ex, x2) {
@@ -12153,12 +12315,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   var BW_FLAT = 0.05;
   function bwWeekTxt(r4) {
-    const v3 = toD(r4.wk) ?? 0;
-    return Math.abs(v3) < BW_FLAT ? "Flat" : `${v3 > 0 ? "+" : "−"}${Math.abs(v3).toFixed(1)} ${U()} a week`;
+    const v3 = toDBody(r4.wk) ?? 0;
+    return Math.abs(v3) < BW_FLAT ? "Flat" : `${v3 > 0 ? "+" : "−"}${Math.abs(v3).toFixed(1)} ${bodyU()} a week`;
   }
   function heightTxt(cm) {
     if (cm == null) return "";
-    if (U() === "kg") return `${Math.round(cm)} cm`;
+    if (appU() === "kg") return `${Math.round(cm)} cm`;
     const i5 = Math.round(cm / IN);
     return `${Math.floor(i5 / FT_IN)}'${i5 % FT_IN}"`;
   }
@@ -12231,7 +12393,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const ex = EX(exId);
     const g0 = ex && ex.goal;
     if (!g0 || !goalOk(ex)) return null;
-    const g2 = { w: loadRead(g0.w), r: g0.r };
+    const g2 = { w: loadReadOf(ex, g0.w), r: g0.r };
     const exps = liftRead(exId);
     const bw = bwRefLoad(ex);
     const noBw = !!ex.bw && !((bwRef() ?? 0) > 0);
@@ -12253,7 +12415,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return { g: g2, hit, pct, cur: cur2, need, noBw };
   }
   function goalWords(ex, g2) {
-    return `${loadLabel(ex, loadRead(g2.w))}${ex.bw ? "" : " " + U()}${loadNote(ex)} × ${g2.r}`;
+    return `${loadLabel(ex, loadReadOf(ex, g2.w))}${ex.bw ? "" : " " + liftU(ex)}${loadNote(ex)} × ${g2.r}`;
   }
   function regionWk() {
     const v3 = ui.regionWk != null ? ui.regionWk : prefGet(REGION_KEY);
@@ -12523,52 +12685,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function sheetClear(el) {
     D(A, el);
   }
-
-  // node_modules/lit-html/directive.js
-  var t2 = { ATTRIBUTE: 1, CHILD: 2, PROPERTY: 3, BOOLEAN_ATTRIBUTE: 4, EVENT: 5, ELEMENT: 6 }, e2 = (t4) => (...e5) => ({ _$litDirective$: t4, values: e5 });
-  var i2 = class {
-    constructor(t4) {
-    }
-    get _$AU() {
-      return this._$AM._$AU;
-    }
-    _$AT(t4, e5, i5) {
-      this._$Ct = t4, this._$AM = e5, this._$Ci = i5;
-    }
-    _$AS(t4, e5) {
-      return this.update(t4, e5);
-    }
-    update(t4, e5) {
-      return this.render(...e5);
-    }
-  };
-
-  // node_modules/lit-html/directive-helpers.js
-  var { I: t3 } = j, i3 = (o3) => o3, n2 = (o3) => null === o3 || "object" != typeof o3 && "function" != typeof o3, e3 = { HTML: 1, SVG: 2, MATHML: 3 }, l2 = (o3, t4) => void 0 === t4 ? void 0 !== o3?._$litType$ : o3?._$litType$ === t4, d2 = (o3) => null != o3?._$litType$?.h, c2 = (o3) => void 0 !== o3?._$litDirective$, f2 = (o3) => o3?._$litDirective$, r2 = (o3) => void 0 === o3.strings, s2 = () => document.createComment(""), v2 = (o3, n3, e5) => {
-    const l4 = o3._$AA.parentNode, d3 = void 0 === n3 ? o3._$AB : n3._$AA;
-    if (void 0 === e5) {
-      const i5 = l4.insertBefore(s2(), d3), n4 = l4.insertBefore(s2(), d3);
-      e5 = new t3(i5, n4, o3, o3.options);
-    } else {
-      const t4 = e5._$AB.nextSibling, n4 = e5._$AM, c4 = n4 !== o3;
-      if (c4) {
-        let t5;
-        e5._$AQ?.(o3), e5._$AM = o3, void 0 !== e5._$AP && (t5 = o3._$AU) !== n4._$AU && e5._$AP(t5);
-      }
-      if (t4 !== d3 || c4) {
-        let o4 = e5._$AA;
-        for (; o4 !== t4; ) {
-          const t5 = i3(o4).nextSibling;
-          i3(l4).insertBefore(o4, d3), o4 = t5;
-        }
-      }
-    }
-    return e5;
-  }, u2 = (o3, t4, i5 = o3) => (o3._$AI(t4, i5), o3), m2 = {}, p2 = (o3, t4 = m2) => o3._$AH = t4, M2 = (o3) => o3._$AH, h2 = (o3) => {
-    o3._$AR(), o3._$AA.remove();
-  }, j2 = (o3) => {
-    o3._$AR();
-  };
 
   // node_modules/lit-html/directives/live.js
   var l3 = e2(class extends i2 {
@@ -13617,19 +13733,39 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (!bwMissing(exId)) return A;
     return b`<p class="small bwwarn">No bodyweight set: counts only the weight you add. <button class="linkbtn tall" data-act="bwOpen" data-ex=${exId} data-date=${date || A}>Add bodyweight</button></p>`;
   }
+  function bodyUnitTap(field2) {
+    const u4 = bodyU();
+    return b`<button type="button" class="btn sm bunit" data-act="bodyUnit" data-in=${field2} aria-label=${`Bodyweight in ${u4}. Switch to ${u4 === "kg" ? "lb" : "kg"}`}>${u4}</button>`;
+  }
+  function bodyKept(id) {
+    const k2 = ui.bwKept;
+    return k2 && k2.id === id ? fmtBody(k2.kg) : "";
+  }
+  function bodyFieldKg(id, text) {
+    const k2 = ui.bwKept;
+    if (k2 && k2.id === id && text.trim() === fmtBody(k2.kg)) return k2.kg;
+    const v3 = numIn(text);
+    return v3 == null ? null : fromDBody(v3);
+  }
+  function bodyField(id, attrs) {
+    return i4(
+      bodyU(),
+      b`<input type="text" inputmode="decimal" id=${id} value=${bodyKept(id)} placeholder=${attrs.placeholder} data-grey=${attrs.grey ?? A} aria-label=${attrs.label ?? A} enterkeyhint="done">`
+    );
+  }
   var latestBw = () => state.bodyweights.filter((b2) => !b2.demo).sort((a2, b2) => a2.date < b2.date ? 1 : -1)[0];
   function bwSheet(m3) {
     const last = latestBw();
     const on = m3.date && m3.date !== today() ? `the weigh-in for ${fmtDate(m3.date)}` : "today's weigh-in";
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Your bodyweight</h3>${closeX()}</div>
     <p class="small">${m3.ex ? `${m3.ex} counts` : "Pull-ups, dips, and push-ups count"} your bodyweight, plus any weight you add on a belt or vest; you type only what you add. Without a bodyweight, they count only the added load.</p>
-    <label class="field">Bodyweight (${U()})<input type="text" inputmode="decimal" id="bwSheetVal" placeholder=${last ? fmtW(last.kg) : `Weight (${U()})`} enterkeyhint="done"></label>
-    <p class="small muted">Optional. ${last ? `Latest ${fmtW(last.kg)} ${U()}, ${fmtDate(last.date)}. ` : ""}Saved as ${on}.</p>
+    <div class="row bwrow"><label class="field u-f1_m0" for="bwSheetVal"><span>Bodyweight<span class="vh"> (${bodyU()})</span></span>${bodyField("bwSheetVal", { placeholder: last ? fmtBody(last.kg) : `Weight (${bodyU()})` })}</label>${bodyUnitTap("bwSheetVal")}</div>
+    <p class="small muted">Optional. ${last ? `Latest ${fmtBody(last.kg)} ${bodyU()}, ${fmtDate(last.date)}. ` : ""}Saved as ${on}.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="addBW" data-in="bwSheetVal" data-date=${m3.date || A}>Save</button><button class="btn" data-act="mClose">Not now</button></div></div>`;
   }
   function bwSettings() {
     const last = latestBw();
-    return b`<div class="row u-mt8" id="bwSet"><label class="field u-f1_m0">Bodyweight (${U()})<input type="text" inputmode="decimal" id="bwSetVal" placeholder=${last ? fmtW(last.kg) : "Not set"} data-grey=${last ? fmtW(last.kg) : A} enterkeyhint="done"></label><button class="btn sm primary" data-act="addBW" data-in="bwSetVal">${last ? "Log" : "Set"}</button></div><p class="small muted u-m4-0-0">${last ? `Latest ${fmtW(last.kg)} ${U()}. ` : "Not set: bodyweight lifts count only the weight you add. "}Optional.</p>`;
+    return b`<div class="row bwrow u-mt8" id="bwSet"><label class="field u-f1_m0" for="bwSetVal"><span>Bodyweight<span class="vh"> (${bodyU()})</span></span>${bodyField("bwSetVal", { placeholder: last ? fmtBody(last.kg) : "Not set", grey: last ? fmtBody(last.kg) : void 0 })}</label>${bodyUnitTap("bwSetVal")}<button class="btn sm primary" data-act="addBW" data-in="bwSetVal">${last ? "Log" : "Set"}</button></div><p class="small muted u-m4-0-0">${last ? `Latest ${fmtBody(last.kg)} ${bodyU()}. ` : "Not set: bodyweight lifts count only the weight you add. "}Optional.</p>`;
   }
   var BW_ACTS = {
     // From a session's header the sheet carries the session's date, so a past workout's weigh-in is dated that day.
@@ -14071,14 +14207,14 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         const base = e0.date;
         const xs = exps.map((x2) => daysBetween(base, x2.date));
         const lastX = xs[xs.length - 1] ?? 0;
-        const vals = exps.map((x2) => e1Mode ? +fmtE(x2.best) : r1(toD(x2.topW ?? 0) ?? 0));
+        const vals = exps.map((x2) => e1Mode ? +fmtE(exE, x2.best) : r1(toDOf(exE, x2.topW ?? 0) ?? 0));
         const prOf = exps.map((x2) => I2.prs.find((q) => q.big && q.exId === exId && q.sid === x2.sid) || null);
         const isPR = prOf.map((p3) => !!p3);
         const prType = prOf.map((p3) => p3 ? p3.type === "Weight PR" && p3.value != null ? "WeightE1" : p3.type : null);
         const surf = cssv("--surface");
         const ds = [
           {
-            label: e1Mode ? `Best estimate (${U()})` : `Top set load (${U()}${loadNote(exE)})`,
+            label: e1Mode ? `Best estimate (${liftU(exE)})` : `Top set load (${liftU(exE)}${loadNote(exE)})`,
             data: vals.map((v3, i5) => ({ x: xs[i5], y: v3 })),
             borderColor: blue,
             backgroundColor: blue + "1f",
@@ -14168,13 +14304,13 @@ ${actions ? b`<div class="ph-a">${actions}</div>
             const w2 = its[0] ? wks[its[0].dataIndex] : void 0;
             return w2 ? `Week of ${fmtDate(w2)}` : "";
           },
-          label: (it) => `${it.dataset.label}: ${Math.round(Number(it.raw)).toLocaleString()} ${U()}`,
+          label: (it) => `${it.dataset.label}: ${Math.round(Number(it.raw)).toLocaleString()} ${appU()}`,
           footer: (its) => {
             const it = its[0];
             if (!it) return "";
             const i5 = it.dataIndex;
-            const tot = types.reduce((a2, t4) => a2 + (toD((byT[t4] || [])[i5] || 0) ?? 0), 0);
-            return `Week total: ${Math.round(tot).toLocaleString()} ${U()}`;
+            const tot = types.reduce((a2, t4) => a2 + (toDApp((byT[t4] || [])[i5] || 0) ?? 0), 0);
+            return `Week total: ${Math.round(tot).toLocaleString()} ${appU()}`;
           }
         }
       };
@@ -14184,7 +14320,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
           labels,
           datasets: types.map((t4, i5) => ({
             label: t4,
-            data: (byT[t4] || []).map((v3) => v3 == null ? null : Math.round(toD(v3) ?? 0)),
+            data: (byT[t4] || []).map((v3) => v3 == null ? null : Math.round(toDApp(v3) ?? 0)),
             backgroundColor: (pal[i5 % pal.length] || muted) + (i5 < pal.length ? "" : "99"),
             borderRadius: 2,
             stack: "v"
@@ -14201,7 +14337,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       const avg = bw.map((b2) => {
         const from = addDays(b2.date, -(WEEK_DAYS - 1));
         const w2 = bw.filter((x2) => x2.date >= from && x2.date <= b2.date);
-        return r1(toD(w2.reduce((a2, x2) => a2 + x2.kg, 0) / w2.length) ?? 0);
+        return r1(toDBody(w2.reduce((a2, x2) => a2 + x2.kg, 0) / w2.length) ?? 0);
       });
       const base = b0.date;
       const xs = bw.map((b2) => daysBetween(base, b2.date));
@@ -14218,8 +14354,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         data: {
           datasets: [
             {
-              label: `Bodyweight (${U()})`,
-              data: bw.map((b2, i5) => ({ x: xs[i5], y: r1(toD(b2.kg) ?? 0) })),
+              label: `Bodyweight (${bodyU()})`,
+              data: bw.map((b2, i5) => ({ x: xs[i5], y: r1(toDBody(b2.kg) ?? 0) })),
               borderColor: muted,
               backgroundColor: muted,
               pointRadius: 2,
@@ -14543,7 +14679,7 @@ ${cs.length > CARDIO_SHOWN ? b`<p class="small muted">${cs.length - CARDIO_SHOWN
         const o3 = wkTot[wk] || { n: 0, sets: 0, vol: 0 };
         const lbl = wk === thisWk ? "This week" : wk === addDays(thisWk, -WEEK_DAYS) ? "Last week" : `Week of ${fmtDate(wk)}`;
         rows2.push(
-          b`<div class="hweek"><span class="hw-t">${lbl}</span><span class="hw-s" data-tip=${`${o3.n} session${o3.n === 1 ? "" : "s"}, ${o3.sets} working sets, ${Math.round(toD(o3.vol) ?? 0).toLocaleString()} ${U()} lifted`}>${o3.sets} sets · ${fmtK(o3.vol)} ${U()}</span></div>
+          b`<div class="hweek"><span class="hw-t">${lbl}</span><span class="hw-s" data-tip=${`${o3.n} session${o3.n === 1 ? "" : "s"}, ${o3.sets} working sets, ${Math.round(toDApp(o3.vol) ?? 0).toLocaleString()} ${appU()} lifted`}>${o3.sets} sets · ${fmtK(o3.vol)} ${appU()}</span></div>
 `
         );
       }
@@ -14579,7 +14715,7 @@ ${more}`;
     const tm = (perDay[s3.date] || 0) > 1 && sessTm(s3) ? `, ${sessTm(s3)}` : "";
     const filtered = ui.histEx && !open ? s3.ex.find((x2) => x2.exId === ui.histEx) : void 0;
     const fex = filtered ? EX(filtered.exId) : null;
-    return b`<div class=${open ? "hitem open" : "hitem"}><button class="pick u-b0_p0" data-act="histToggle" data-id=${s3.id} aria-expanded=${String(open)}><span class="u-minw0"><b>${name}</b>${s3.deload ? b` <span class="tag blue">deload</span>` : A}${s3.free && !/freestyle/i.test(s3.dayName || "") ? b` <span class="tag">freestyle</span>` : A}${Object.values(wd[s3.id] || {}).includes("fewer sets") ? b` <span class="tag">fewer sets</span>` : A}${s3.demo ? b` <span class="tag">demo</span>` : A}${prs.length ? prBadge(prs.length) : A}<br /><span class="small muted">${fmtDateRow(s3.date)}${tm}</span></span><span class="num small u-taright_fnone">${nSets} sets<br /><span class="muted">${Math.round(toD(vol) ?? 0).toLocaleString()} ${U()}${s3.durMin ? ` · ${s3.durMin} min` : ""}</span></span></button>${filtered && fex ? b`<p class="small u-m6-0-0">${filtered.sets.map((x2) => setStr(fex, x2)).join(", ")}${histUnits(fex)}</p>
+    return b`<div class=${open ? "hitem open" : "hitem"}><button class="pick u-b0_p0" data-act="histToggle" data-id=${s3.id} aria-expanded=${String(open)}><span class="u-minw0"><b>${name}</b>${s3.deload ? b` <span class="tag blue">deload</span>` : A}${s3.free && !/freestyle/i.test(s3.dayName || "") ? b` <span class="tag">freestyle</span>` : A}${Object.values(wd[s3.id] || {}).includes("fewer sets") ? b` <span class="tag">fewer sets</span>` : A}${s3.demo ? b` <span class="tag">demo</span>` : A}${prs.length ? prBadge(prs.length) : A}<br /><span class="small muted">${fmtDateRow(s3.date)}${tm}</span></span><span class="num small u-taright_fnone">${nSets} sets<br /><span class="muted">${Math.round(toDApp(vol) ?? 0).toLocaleString()} ${appU()}${s3.durMin ? ` · ${s3.durMin} min` : ""}</span></span></button>${filtered && fex ? b`<p class="small u-m6-0-0">${filtered.sets.map((x2) => setStr(fex, x2)).join(", ")}${histUnits(fex)}</p>
 ` : A}${open ? sessionPanel(s3, wTag, prs) : A}</div>
 `;
   }
@@ -15273,7 +15409,7 @@ ${more}`;
     const ours = heads.some((h3) => /^load_(lb|kg)$/.test(h3)) && heads.includes("exercise_note");
     const strong = heads.includes("workout name") && heads.includes("set order");
     const col = (n3) => ours && heads.includes(n3) ? heads.indexOf(n3) : null;
-    const cNote = col("session_note"), cMin = col("session_minutes"), cHr = col("avg_hr"), cUnit = col("unit");
+    const cNote = col("session_note"), cMin = col("session_minutes"), cHr = col("avg_hr"), cUnit = col("unit"), cTyped = col("typed_load"), cTypedU = col("typed_unit");
     const at2 = (r4, i5) => i5 == null ? "" : csvUnguard(String(r4[i5] == null ? "" : r4[i5]).trim());
     let lastDate = null, lastEx = null, lastName = "";
     let skipped = 0, cardio = 0;
@@ -15325,7 +15461,10 @@ ${more}`;
         skipped++;
         continue;
       }
-      const set = rowSet(cell, w2, reps, secs, missed, numTypes, rowUnit(r4));
+      const tu = at2(r4, cTypedU), tw = num(at2(r4, cTyped));
+      const tuK = tu === "kg" ? "kg" : tu === "lb" ? "lb" : null;
+      const asTyped2 = tuK && tw != null && (tw >= 0 || w2 < 0) ? { w: tw, u: tuK } : null;
+      const set = rowSet(cell, asTyped2 ? asTyped2.w : w2, reps, secs, missed, numTypes, asTyped2 ? asTyped2.u : rowUnit(r4));
       const k2 = date + "|" + name;
       if (!S4.has(k2)) S4.set(k2, { date, name, items: /* @__PURE__ */ new Map(), note: "" });
       const ss = S4.get(k2);
@@ -15884,16 +16023,16 @@ ${more}`;
       if (j3.value == null) return "";
       if (!isCompound(ex)) return ` (your best for ${bandW})`;
       const all = j3.prevAll;
-      return all == null || j3.value > all + EPS_SAME ? ` (estimated 1RM ${fmtE(j3.value)} ${U()}${wasE(j3.value, all) ? `; was ${wasE(j3.value, all)}` : ""})` : ` (your best for ${bandW}, ${fmtE(j3.value)} ${U()})`;
+      return all == null || j3.value > all + EPS_SAME ? ` (estimated 1RM ${fmtE(ex, j3.value)} ${liftU(ex)}${wasE(ex, j3.value, all) ? `; was ${wasE(ex, j3.value, all)}` : ""})` : ` (your best for ${bandW}, ${fmtE(ex, j3.value)} ${liftU(ex)})`;
     }
     if (pr === "Weight PR" && j3.type === "Weight PR") {
-      const was = ex.assist ? `less help than ever` : `heaviest before ${ex.bw ? loadLabel(ex, j3.prevW) : fmtW(j3.prevW) + " " + U()}`;
-      return ` (${was}${isCompound(ex) && j3.value != null ? `; best estimate for ${bandW} now ${fmtE(j3.value)}` : ""})`;
+      const was = ex.assist ? `less help than ever` : `heaviest before ${listLabel(ex, j3.prevW, !ex.bw)}`;
+      return ` (${was}${isCompound(ex) && j3.value != null ? `; best estimate for ${bandW} now ${fmtE(ex, j3.value)}` : ""})`;
     }
     if (j3.type === "Rep PR") return j3.prevR ? ` (was ${j3.prevR} ${ex.timed ? "s" : "reps"})` : " (heaviest yet)";
     return "";
   }
-  var loadIn = (ex, w2) => w2 == null ? "" : fmtW(ex && ex.assist ? -w2 : w2);
+  var loadIn = (ex, w2) => w2 == null ? "" : fmtWOf(ex, ex && ex.assist ? -w2 : w2);
   function blockProgress(b2) {
     const t0 = b2.tgt;
     const t4 = effTarget(b2);
@@ -15920,7 +16059,7 @@ ${more}`;
         heavyBeat = best > t4.prevBest + EPS_SAME;
         const iso2 = !isCompound(ex);
         const setW = bs ? setShort(ex, +(bs.w ?? 0) || 0, +(bs.r ?? 0)) : "";
-        heavyTxt = iso2 ? heavyBeat ? `Beaten by load: ${setW}, your best yet` : `Heavier than target: ${setW}` : heavyBeat ? `Beaten by load: ${fmtE(best)} ${U()} estimated${wasE(best, t4.prevBest) ? `, previous best ${wasE(best, t4.prevBest)}` : ""}` : `Heavier than target, ${fmtE(best)} ${U()} estimated against a best of ${fmtE(t4.prevBest)}`;
+        heavyTxt = iso2 ? heavyBeat ? `Beaten by load: ${setW}, your best yet` : `Heavier than target: ${setW}` : heavyBeat ? `Beaten by load: ${fmtE(ex, best)} ${liftU(ex)} estimated${wasE(ex, best, t4.prevBest) ? `, previous best ${wasE(ex, best, t4.prevBest)}` : ""}` : `Heavier than target, ${fmtE(ex, best)} ${liftU(ex)} estimated against a best of ${fmtE(ex, t4.prevBest)}`;
       }
     }
     if (t4.kind === "reps") {
@@ -16074,23 +16213,25 @@ ${more}`;
     invalidate();
     act(
       () => {
-        for (const b2 of d3.ex) {
-          if (d3.deload || d3.light || b2.light || b2.inj) continue;
-          const sg = suggestCore(b2.exId, b2.plan, { before: d3.date });
-          if (b2.sw != null && sg.w != null && Math.abs(sg.w - b2.sw) > EPS_SAME) continue;
-          Object.assign(b2, {
-            hint: sg.text,
-            hintAgain: sg.again || void 0,
-            last: sg.last,
-            prev: sg.prev || void 0,
-            prevOff: sg.prevOff || void 0,
-            target: sg.target,
-            easier: sg.easier || null
-          });
-        }
+        for (const b2 of d3.ex) blockWords(b2);
       },
       { inProgress: true }
     );
+  }
+  function blockWords(b2) {
+    const d3 = state.draft;
+    if (!d3 || d3.deload || d3.light || b2.light || b2.inj) return;
+    const sg = suggestCore(b2.exId, b2.plan, { before: d3.date });
+    if (b2.sw != null && sg.w != null && Math.abs(sg.w - b2.sw) > EPS_SAME) return;
+    Object.assign(b2, {
+      hint: sg.text,
+      hintAgain: sg.again || void 0,
+      last: sg.last,
+      prev: sg.prev || void 0,
+      prevOff: sg.prevOff || void 0,
+      target: sg.target,
+      easier: sg.easier || null
+    });
   }
   function adjSync(b2) {
     if (!b2 || !b2.adj) return;
@@ -16194,7 +16335,7 @@ ${more}`;
       const ex = EX(b2.exId);
       const fix = far ? "w" : "r";
       confirmBox(
-        `${setShort(ex, effW(b2, si), s3.r)}${ex.bw ? "" : " " + U()}?`,
+        `${setShort(ex, effW(b2, si), s3.r, !ex.bw)}?`,
         lz ? `0 ${ex.timed ? "seconds" : "reps"} at a weight well under today's working weight. Log it as missed, or go back and fix it.` : `${far || `${s3.r} ${ex.timed ? "seconds" : "reps"} is far past your ${rangeWords(b2.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`,
         lz ? "Log it as missed" : "Log it",
         () => {
@@ -16416,7 +16557,7 @@ ${more}`;
     if (mixSeen.has(key)) return;
     mixSeen.add(key);
     toast(
-      `${fmtW(+(s3.w ?? 0))} ${U()} is ${r4 > 1 ? "well above" : "well below"} last time's ${fmtW(last)}. This one is logged as ${loadWords(ex)}.`,
+      `${fmtWOf(ex, +(s3.w ?? 0))} ${liftU(ex)} is ${r4 > 1 ? "well above" : "well below"} last time's ${fmtWOf(ex, last)}. This one is logged as ${loadWords(ex)}.`,
       false,
       MIX_TOAST_MS
     );
@@ -16601,10 +16742,10 @@ ${more}`;
   }
   var distIn = (v3) => {
     const n3 = numIn(v3);
-    return n3 != null && n3 > 0 ? Math.min(r3(U() === "kg" ? n3 : n3 * KM_MI), LIMITS.distKm) : null;
+    return n3 != null && n3 > 0 ? Math.min(r3(appU() === "kg" ? n3 : n3 * KM_MI), LIMITS.distKm) : null;
   };
   function parseSets(text, ex, defW, conv, rpe) {
-    return readSets(text, ex, defW, conv || ((v3) => Number(fromD(v3))), rpe);
+    return readSets(text, ex, defW, conv || ((v3) => Number(fromDOf(ex, v3))), rpe);
   }
   function fillSets(bi, list) {
     const d3 = state.draft;
@@ -16770,7 +16911,7 @@ ${ap.length ? b`<div class="panel row spread" id="profApply">
   }
   function gymUnit() {
     const g2 = gymOf();
-    return g2 ? g2.u : ui.gymU || U();
+    return g2 ? g2.u : ui.gymU || appU();
   }
   function gymNext() {
     const g2 = gymOf();
@@ -16810,8 +16951,8 @@ ${ap.length ? b`<div class="panel row spread" id="profApply">
       (k2) => b`<button class=${u4 === k2 ? "chip on" : "chip"} data-act="gymUnit" data-v=${k2} aria-pressed=${String(u4 === k2)}>${k2}</button>`
     )}</div>
 </div>
-${u4 !== U() ? b`<p class="small u-m0">Suggestions show in ${U()}, on the ${u4} weights below.</p>
-` : A} <label class="field">${labelTip("lt-barKg", `Bar weight (${U()})`, "Suggested barbell loads are this bar and the plates on hand. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor.")}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
+${u4 !== appU() ? b`<p class="small u-m0">Suggestions show in ${appU()}, on the ${u4} weights below.</p>
+` : A} <label class="field">${labelTip("lt-barKg", `Bar weight (${appU()})`, "Suggested barbell loads are this bar and the plates on hand. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor.")}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtWApp(barKg()))}/></label>
 <div>
 <p class="small muted u-m0-0-6_fw600"><span class="hastip" data-tip="A barbell is loaded with these plates, a pair at a time, so its suggested loads are ones they make. A plate-loaded machine steps by two of the smallest, one a side; a landmine by one. Tap a plate your gym does not have, or add one it has that is not here.">Plates on hand (${u4})</span></p>
 <div class="chips" role="group" aria-label="Plates on hand">${[
@@ -17809,7 +17950,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     barKg(t4) {
       const n3 = numIn(t4.value);
       act(() => {
-        state.settings.barKg = n3 == null || n3 <= 0 ? null : typedBound(n3, LIMITS.barKg);
+        state.settings.barKg = n3 == null || n3 <= 0 ? null : typedBoundApp(n3, LIMITS.barKg);
       });
       rerenderKeepScroll();
     },
@@ -17919,7 +18060,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     <label class="field">${ex.timed ? "Max seconds" : "Rep max"}<input type="text" inputmode="numeric" data-it="repMax" data-uid=${it.uid} .value=${fieldValue(String(it.repMax))}></label>
     <label class="field"><span class="hastip" data-tip=${RIR_TGT_TIP}>Target ${effName()}</span><input type="text" inputmode="decimal" data-it="rir" data-uid=${it.uid} .value=${fieldValue(effShow(it.rir))}></label>
     <label class="field">Rest (s)<input type="text" inputmode="numeric" data-it="rest" data-uid=${it.uid} .value=${fieldValue(String(it.rest))}></label>
-    <label class="field">Load step (${U()})<input type="text" inputmode="decimal" data-it="inc" data-uid=${it.uid} .value=${fieldValue(fmtW(incOf(ex, it)))} data-tip="Applies to this exercise on every day and routine"></label>
+    <label class="field">Load step (${liftU(ex)})<input type="text" inputmode="decimal" data-it="inc" data-uid=${it.uid} .value=${fieldValue(fmtWOf(ex, incOf(ex, it)))} data-tip="Applies to this exercise on every day and routine"></label>
     ${ex.timed ? A : b`<label class="field"><span class="hastip" data-tip=${JUMP_TIP}>Load jump %</span><input type="text" inputmode="decimal" data-it="jump" data-uid=${it.uid} .value=${fieldValue(it.jump != null ? String(it.jump) : "")} placeholder=${`auto ${isCompound(ex) ? "2.5" : "5"}`}></label>`}</div>
     <div class="row u-mt8"><label class="field u-f1">Move to<select data-moveto=${it.uid} data-day=${String(di)}>${R2.days.map(
       (d3, i5) => b`<option value=${String(i5)} .selected=${l3(i5 === di && !it.pm)}>${dayLabel(R2, i5)}: ${d3.name}</option>${R2.schedule === "weekly" ? b`<option value=${`${i5}:2`} .selected=${l3(i5 === di && !!it.pm)}>${dayLabel(R2, i5)}: ${pmNameOf(d3)} (second workout)</option>` : A}`
@@ -18035,7 +18176,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return b`<div class="card"><p class="u-m0">No exercises match. Clear the filters or create a new exercise.</p></div>`;
     return b`<div class="card">${list.map(
       (e5) => b`<div class="hitem"><div class="row spread u-aistart_fwrnw"><div class="u-minw0"><b>${e5.name}</b>${e5.note ? b` ${tipButton(e5.note, "About " + e5.name)}` : A}<p class="small muted u-m2-0-0">${ML[e5.primary]}${e5.secondary.length ? ", plus " + e5.secondary.map((m3) => ML[m3]).join(", ") : ""}</p></div><div class="row u-fnone_g4"><button class="btn sm" data-act="exEdit" data-ex=${e5.id}>Edit</button><button class="ib sm" data-act="exDel" data-ex=${e5.id} aria-label=${`Delete ${e5.name}`}>✕</button></div></div>
-    <p class="small u-m6-0-0_dflex_fwrwrap_g4">${exTagParts(e5, ui.libKind)}<span class="tag">${EQL[e5.equip] || e5.equip}</span>${e5.custom ? b`<span class="tag blue">Custom</span>` : A}${e5.bw ? b`<span class="tag">Bodyweight + load</span>` : A}<span class="tag">${loadWords(e5)}</span>${e5.perSide ? b`<span class="tag">Reps per side</span>` : A}${e5.timed ? b`<span class="tag">Timed</span>` : A}${e5.maxLoad != null ? b`<span class="tag">Max ${fmtW(liftMax(e5))} ${U()}</span>` : A}</p></div>`
+    <p class="small u-m6-0-0_dflex_fwrwrap_g4">${exTagParts(e5, ui.libKind)}<span class="tag">${EQL[e5.equip] || e5.equip}</span>${e5.custom ? b`<span class="tag blue">Custom</span>` : A}${e5.bw ? b`<span class="tag">Bodyweight + load</span>` : A}<span class="tag">${loadWords(e5)}</span>${e5.perSide ? b`<span class="tag">Reps per side</span>` : A}${e5.timed ? b`<span class="tag">Timed</span>` : A}${e5.maxLoad != null ? b`<span class="tag">Max ${fmtWOf(e5, liftMax(e5) ?? 0)} ${liftU(e5)}</span>` : A}</p></div>`
     )}</div>`;
   }
   function viewLibrary() {
@@ -18342,7 +18483,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         if (k2 === "jump") f3.it.jump = r1(clamp(n3, 0, LIMITS.jumpPct));
         else if (k2 === "inc") {
           const e5 = state.exercises.find((x2) => x2.id === f3.it.exId);
-          const v3 = typedBound(Math.max(n3, 0), LIMITS.step);
+          const v3 = typedBoundOf(e5, Math.max(n3, 0), LIMITS.step);
           f3.it.inc = v3;
           if (e5) e5.inc = v3 > 0 ? v3 : null;
         } else if (k2 === "rir") f3.it.rir = clamp(effIn(n3), 0, EFFORT_TOP);
@@ -18672,8 +18813,8 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     const agrees = (d3) => up ? d3 > 0 : d3 < 0;
     if (estInLoad(ex) && first.best != null && last.best != null) {
       const d3 = last.best - first.best;
-      const t4 = fmtE(Math.abs(d3));
-      return agrees(d3) && +t4 > 0 ? `Est. 1RM ${dir.toLowerCase()} about ${t4} ${U()} ${ow}` : `${dir} ${ow}`;
+      const t4 = fmtE(ex, Math.abs(d3));
+      return agrees(d3) && +t4 > 0 ? `Est. 1RM ${dir.toLowerCase()} about ${t4} ${liftU(ex)} ${ow}` : `${dir} ${ow}`;
     }
     const a2 = topSetPt(ex, first), b2 = topSetPt(ex, last);
     return agrees(b2.v - a2.v) && a2.txt !== b2.txt ? `${dir} ${ow}: ${a2.txt} to ${b2.txt}` : `${dir} ${ow}`;
@@ -18795,8 +18936,8 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   function volHeadline() {
     if (!IDX().sessVol.length) return "";
     const tn = tonnageNow();
-    const cmp = `. By this point last week: ${fmtBig(tn.prev)} ${U()}`;
-    return b`<p class="headline">${tn.now ? `${fmtBig(tn.now)} ${U()} lifted this week so far` : "Nothing lifted yet this week"}${cmp}. Last week finished at ${fmtBig(tn.prevFull)} ${U()}. ${tipButton("Weight lifted is load times reps. It drops when the load goes up and reps come down, which is progress: on its own it is not a measure of progress.", "About weight lifted")}</p>`;
+    const cmp = `. By this point last week: ${fmtBig(tn.prev)} ${appU()}`;
+    return b`<p class="headline">${tn.now ? `${fmtBig(tn.now)} ${appU()} lifted this week so far` : "Nothing lifted yet this week"}${cmp}. Last week finished at ${fmtBig(tn.prevFull)} ${appU()}. ${tipButton("Weight lifted is load times reps. It drops when the load goes up and reps come down, which is progress: on its own it is not a measure of progress.", "About weight lifted")}</p>`;
   }
   function extraKpis() {
     const sd = sessionLength();
@@ -18899,8 +19040,8 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     const s3 = goalState(exId);
     if (!s3) return "";
     const gw = goalWords(ex, ex.goal);
-    const gap = s3.cur != null ? fmtE(goalGap({ g: s3.g, cur: s3.cur })) : "";
-    const what = s3.hit ? `reached ${fmtDate(s3.hit)}` : s3.noBw ? "add a weigh-in to see how close" : s3.pct == null ? `no sets in the last ${BEST_WEEKS} weeks` : s3.pct >= PERCENT ? "within reach" : `${Math.floor(s3.pct)}% there${estInLoad(ex) && +gap > 0 ? `, about ${gap} ${U()} to go` : ""}`;
+    const gap = s3.cur != null ? fmtE(ex, goalGap({ g: s3.g, cur: s3.cur })) : "";
+    const what = s3.hit ? `reached ${fmtDate(s3.hit)}` : s3.noBw ? "add a weigh-in to see how close" : s3.pct == null ? `no sets in the last ${BEST_WEEKS} weeks` : s3.pct >= PERCENT ? "within reach" : `${Math.floor(s3.pct)}% there${estInLoad(ex) && +gap > 0 ? `, about ${gap} ${liftU(ex)} to go` : ""}`;
     const tip = s3.hit ? "Reached: a working set at that load or more, for those reps or more." : s3.pct != null && s3.pct >= PERCENT ? `Your best estimate from the last ${BEST_WEEKS} weeks says ${gw} done to failure is in you now. It counts as reached once a working set matches it.` : `Your best estimate from the last ${BEST_WEEKS} weeks against what ${gw} takes done to failure. Your session targets are the steps toward it.`;
     return b`<p class="small u-m6-0-0" id="goalLine"><b>Goal ${gw}</b>: ${what} ${tipButton(tip, "About this goal")} <button class="linkbtn tall" data-act="goalOpen" data-ex=${exId}>Change</button></p>`;
   }
@@ -18924,7 +19065,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     const oldBest = b`<p class="u-m8-0-0"><button class="linkbtn u-minh44" data-act="oldBestOpen">Add an old best</button></p>`;
     if (!rows2.length)
       return { n: 0, html: b`<p class="muted">Your bests appear here after your first session.</p>${oldBest}` };
-    const u4 = (ex) => " " + U() + (ex.bw ? " total" : "");
+    const u4 = (ex) => " " + liftU(ex) + (ex.bw ? " total" : "");
     const shown2 = ui.bestsAll ? rows2 : rows2.slice(0, BESTS_SHOWN);
     return {
       n: rows2.length,
@@ -18933,7 +19074,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         const est = r4.est && isCompound(ex) ? r4.est : null;
         const when = fmtDate;
         const line = (e5, h3) => [
-          e5 ? `best est ${fmtE(e5.v)}${u4(ex)}${loadNote(ex)}, ${when(e5.date)}` : "",
+          e5 ? `best est ${fmtE(ex, e5.v)}${u4(ex)}${loadNote(ex)}, ${when(e5.date)}` : "",
           h3 ? `heaviest ${setShort(ex, h3.p.w, h3.p.r)}${loadNote(ex)}, ${when(h3.date)}` : ""
         ].filter(Boolean).join(" · ");
         const top = line(est, r4.heavy);
@@ -18972,7 +19113,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       const bd = b0 != null && b1 != null && state.bodyweights.length >= 2 ? b1 - b0 : null;
       const bits = [];
       if (wd != null) bits.push(`waist ${wd >= 0 ? "+" : ""}${lenD(wd)} ${LU()}`);
-      if (bd != null) bits.push(`bodyweight ${bd >= 0 ? "+" : ""}${fmtW(bd)} ${U()}`);
+      if (bd != null) bits.push(`bodyweight ${bd >= 0 ? "+" : ""}${fmtBody(bd)} ${bodyU()}`);
       return bits.length ? ` Same stretch: ${bits.join(", ")}.` : "";
     };
     const sgn = (v3) => (v3 >= 0 ? "+" : "") + lenD(v3);
@@ -19202,7 +19343,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const iso2 = p3.type === "e1RM" && !isCompound(ex);
       const ps = iso2 ? prSet(p3.exId, p3.date) : null;
       const tag = ex.timed && p3.type === "Rep PR" ? "Time PR" : p3.type === "e1RM" ? iso2 ? "PR" : prName(p3) : p3.type;
-      const val = p3.type === "e1RM" ? iso2 ? ps ? setShort(ex, ps.w, ps.r) : "" : fmtE(p3.value) + " " + U() : setShort(ex, p3.w, p3.r);
+      const val = p3.type === "e1RM" ? iso2 ? ps ? setShort(ex, ps.w, ps.r) : "" : fmtE(ex, p3.value) + " " + liftU(ex) : setShort(ex, p3.w, p3.r);
       return b`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p3.type === "Rep PR" ? "blue" : "green"}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDate(p3.date)}</span></span></div>`;
     })}` : b`<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>`;
     const nLifts = Object.keys(I2.byEx).length;
@@ -19289,15 +19430,15 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     const nSess = st ? st.n : 0;
     const f0 = exps[0];
     return b`<select data-bind="dashEx" aria-label="Exercise">${withData.map((id) => b`<option value=${id} .selected=${l3(id === exId)}>${exName(id)}</option>`)}</select>
-    <div class="u-mt8">${exHeadline(exId)}</div>${nextLine(exId)}${goalLine(exId)}${n0 ? b`<div class="kpis u-mt8"><div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st && st.stalled ? "Yes" : "No"}</div><div class="l">Stalled</div></div></div>` : A}<div class="kpis" style=${`margin-top:8px${n0 ? ";display:none" : ""}`}>${e1Mode ? b`<div class="kpi"><div class="v">${be ? (ex.bw ? "≈" : "") + fmtE(be.v) : "n/a"}</div><div class="l">Best estimate (${U()}${loadNote(ex)}) ${tipButton(BEST_EST_TIP, "About the best estimate")}</div></div>` : b`<div class="kpi"><div class="v">${bs ? setShort(ex, bs.w, bs.r) : "n/a"}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div></div>
+    <div class="u-mt8">${exHeadline(exId)}</div>${nextLine(exId)}${goalLine(exId)}${n0 ? b`<div class="kpis u-mt8"><div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st && st.stalled ? "Yes" : "No"}</div><div class="l">Stalled</div></div></div>` : A}<div class="kpis" style=${`margin-top:8px${n0 ? ";display:none" : ""}`}>${e1Mode ? b`<div class="kpi"><div class="v">${be ? (ex.bw ? "≈" : "") + fmtE(ex, be.v) : "n/a"}</div><div class="l">Best estimate (${liftU(ex)}${loadNote(ex)}) ${tipButton(BEST_EST_TIP, "About the best estimate")}</div></div>` : b`<div class="kpi"><div class="v">${bs ? setShort(ex, bs.w, bs.r) : "n/a"}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div></div>
     ${n0 || !f0 ? "" : b`${rangeChips("ex", weeksSpan(f0.date), CHART_WEEKS, "all")}<div class="chartbox"><canvas id="chEx"></canvas></div>${chartFallback()}
     <p class="small muted hastip u-m4-0-0" data-tip="Filled diamond: a new best estimate (a weight PR that also set one is filled too). Hollow diamond: a rep PR or a weight PR that did not raise the estimate, which can sit below an earlier best. The thin dotted line is your RIR at the working weight.">Reading the chart</p>`}
     ${st && st.easier ? b`<p class="small u-cblue_mt6"><b>${easierText(ex, st.easier)}</b></p>` : ""}
-    ${st && st.fade ? b`<p class="small u-cyellow_mt6"><b>Drop-off growing at ${loadLabel(ex, st.fade.w)}${ex.bw ? "" : " " + U()}: ${st.fade.from} → ${st.fade.to} reps lost first set to last, last three sessions.</b> Likely fatigue or short rest, not lost strength.</p>` : ""}
+    ${st && st.fade ? b`<p class="small u-cyellow_mt6"><b>Drop-off growing at ${loadLabel(ex, st.fade.w)}${ex.bw ? "" : " " + liftU(ex)}: ${st.fade.from} → ${st.fade.to} reps lost first set to last, last three sessions.</b> Likely fatigue or short rest, not lost strength.</p>` : ""}
     ${ex.bw && !state.bodyweights.length ? b`<p class="small u-cyellow">Log your bodyweight to see a trend here.</p>` : bwBackfillNote(exId)}
     <div class="scroll-x"><table class="t u-mt8"><tr><th>Date</th><th>Sets</th>${e1Mode ? b`<th class="r">Best estimate</th>` : A}</tr>${exps.slice(-EX_ROWS).reverse().map((x2) => {
       const tag = sessionWord(x2);
-      return b`<tr><td>${fmtDate(x2.date)}${I2.prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === exId) ? b` <span class="tag gold">PR</span>` : A}${tag ? b` <span class="tag">${tag}</span>` : A}</td><td>${x2.pts.map((p3) => setShort(ex, p3.w, p3.r)).join(", ")}</td>${e1Mode ? b`<td class="r num">${x2.best ? (ex.bw ? "≈" : "") + fmtE(x2.best) : ""}</td>` : A}</tr>`;
+      return b`<tr><td>${fmtDate(x2.date)}${I2.prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === exId) ? b` <span class="tag gold">PR</span>` : A}${tag ? b` <span class="tag">${tag}</span>` : A}</td><td>${x2.pts.map((p3) => setShort(ex, p3.w, p3.r)).join(", ")}</td>${e1Mode ? b`<td class="r num">${x2.best ? (ex.bw ? "≈" : "") + fmtE(ex, x2.best) : ""}</td>` : A}</tr>`;
     })}</table></div>`;
   }
   function risingWords(names) {
@@ -19375,19 +19516,6 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       rerenderKeepScroll();
     }
   };
-
-  // node_modules/lit-html/directives/keyed.js
-  var i4 = e2(class extends i2 {
-    constructor() {
-      super(...arguments), this.key = A;
-    }
-    render(r4, t4) {
-      return this.key = r4, t4;
-    }
-    update(r4, [t4, e5]) {
-      return t4 !== this.key && (p2(r4), this.key = t4), e5;
-    }
-  });
 
   // src/app/calendar.ts
   var AHEAD_MONTHS = 12;
@@ -19559,7 +19687,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
   function liftedLine() {
     const tn = tonnageNow();
     if (!tn.now && !tn.prevFull) return A;
-    return b`<button class="linkbtn wklift u-m6-0-0_tdnone_taleft" data-act="goDash" data-sec="svol"><b>${tn.now ? fmtBig(tn.now) : 0} ${U()}</b> lifted</button>`;
+    return b`<button class="linkbtn wklift u-m6-0-0_tdnone_taleft" data-act="goDash" data-sec="svol"><b>${tn.now ? fmtBig(tn.now) : 0} ${appU()}</b> lifted</button>`;
   }
   function monthView() {
     if (ui.wkView === void 0) ui.wkView = prefGet(WKVIEW_KEY) === "month" ? "month" : "week";
@@ -19618,7 +19746,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     const cmin = cardio.reduce((a2, c4) => a2 + c4.min, 0);
     const vol = weekVolume(ws);
     return b`${weekNav(ws)}${weekDays(ws)}
-<p class="small muted u-m5-0-0">${isRestWeek(ws) ? "Rest week. " : ""}${r1(got)} hard set${r1(got) === 1 ? "" : "s"} logged.</p>${cmin ? b`<p class="small u-m5-0-0">Cardio and mobility: ${cmin} min in ${cardio.length} entr${cardio.length === 1 ? "y" : "ies"}</p>` : A}${vol ? b`<p class="small u-m5-0-0"><b>${fmtBig(vol)} ${U()}</b> lifted</p>` : A}`;
+<p class="small muted u-m5-0-0">${isRestWeek(ws) ? "Rest week. " : ""}${r1(got)} hard set${r1(got) === 1 ? "" : "s"} logged.</p>${cmin ? b`<p class="small u-m5-0-0">Cardio and mobility: ${cmin} min in ${cardio.length} entr${cardio.length === 1 ? "y" : "ies"}</p>` : A}${vol ? b`<p class="small u-m5-0-0"><b>${fmtBig(vol)} ${appU()}</b> lifted</p>` : A}`;
   }
   function weekBody(w2) {
     const month = monthView();
@@ -20515,10 +20643,10 @@ ${detail}`
     t: null
   };
   function obTourSlides() {
-    const kg2 = U() === "kg";
-    const u4 = U();
+    const kg2 = appU() === "kg";
+    const u4 = appU();
     const w2 = TOUR.loads[kg2 ? "kg" : "lb"];
-    const f3 = (v3) => fmtW(fromD(v3 || 0));
+    const f3 = (v3) => fmtWApp(fromDApp(v3 || 0));
     const log2 = b`<div class="obv" aria-hidden="true"><div class="row spread"><b>Incline DB Press</b><span class="mu">Last ${f3(w2[0])} × 10, 10, 10</span></div>
 <div class="obv-row"><b class="mu">1</b><span>${f3(w2[1])}</span><span>10</span><i class="on"></i></div>
 <div class="obv-row"><b class="mu">2</b><span>${f3(w2[1])}</span><span>9</span><i class="on"></i></div>
@@ -20671,9 +20799,9 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
       ["lb", "lb and inches"],
       ["kg", "kg and cm"]
     ].map(
-      ([k2, l4]) => b`<button class=${`chip ${U() === k2 ? "on" : ""}`} data-act="obUnit" data-v=${k2} aria-pressed=${String(U() === k2)}>${l4}</button>`
+      ([k2, l4]) => b`<button class=${`chip ${appU() === k2 ? "on" : ""}`} data-act="obUnit" data-v=${k2} aria-pressed=${String(appU() === k2)}>${l4}</button>`
     )}</div></div>
-<label class="field">Bodyweight <span class="muted">(optional)</span><input type="text" inputmode="decimal" id="obBw" .value=${fieldValue(todayBw ? fmtW(todayBw.kg) : "")} enterkeyhint="done"></label>
+<label class="field">Bodyweight <span class="muted">(optional)</span><input type="text" inputmode="decimal" id="obBw" .value=${fieldValue(todayBw ? fmtBody(todayBw.kg) : "")} enterkeyhint="done"></label>
 <h3 class="u-font700n20-display_m6-0-0">How do you want to start?</h3>
 <div class="ob-opts">
 <button class="ob-opt primary" data-act="obSample"><b>Pick a ready-made routine</b><span>${tplCountLine()}</span></button>
@@ -20739,11 +20867,8 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
       return A;
     const z2 = prefGet(BWSNOOZE_KEY);
     if (z2 && z2 > t4) return A;
-    return b`<div class="card" id="bwDue"><p class="small u-m0-0-8"><b>${last ? "Weigh-in due." : "Your bodyweight."}</b> ${last ? `Last ${fmtW(last.kg)} ${U()}, ${ago} days ago.` : "Pull-ups, dips, and push-ups count it, plus any weight you add; without it they count only what you add. Optional."} ${tipButton("Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > Measurements.", "About weigh-ins")}</p>
-<div class="row"><label class="field u-f1_m0"><span class="vh">Bodyweight (${U()})</span>${inUnit(
-      U(),
-      b`<input type="text" inputmode="decimal" id="bwDueVal" placeholder=${last ? fmtW(last.kg) : `Weight (${U()})`} data-grey=${last ? fmtW(last.kg) : A} aria-label=${`Bodyweight (${U()})`} enterkeyhint="done">`
-    )}</label><button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
+    return b`<div class="card" id="bwDue"><p class="small u-m0-0-8"><b>${last ? "Weigh-in due." : "Your bodyweight."}</b> ${last ? `Last ${fmtBody(last.kg)} ${bodyU()}, ${ago} days ago.` : "Pull-ups, dips, and push-ups count it, plus any weight you add; without it they count only what you add. Optional."} ${tipButton("Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > Measurements.", "About weigh-ins")}</p>
+<div class="row"><label class="field u-f1_m0" for="bwDueVal"><span class="vh">Bodyweight (${bodyU()})</span>${bodyField("bwDueVal", { placeholder: last ? fmtBody(last.kg) : `Weight (${bodyU()})`, grey: last ? fmtBody(last.kg) : void 0, label: `Bodyweight (${bodyU()})` })}</label>${bodyUnitTap("bwDueVal")}<button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
   }
   function changeBtn(di, free, part) {
     return b`<button class="btn sm" data-act="startAltOpen" data-day=${di} data-free=${free ? "1" : A} data-part=${part === 2 ? "2" : A}>Change</button>`;
@@ -20929,7 +21054,7 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di, part)}</section
     const t4 = String(v3 || "").trim().toLowerCase().replace(/["”]|in(ches)?|cm/g, "").trim();
     if (!t4) return null;
     let cm = null;
-    if (U() === "lb") {
+    if (appU() === "lb") {
       const m3 = t4.match(/^(\d+(?:\.\d+)?)\s*(?:'|’|ft|feet|\s)\s*(\d+(?:\.\d+)?)?$/);
       if (m3) cm = (+(m3[1] || 0) * FT_IN + (m3[2] ? +m3[2] : 0)) * IN;
       else {
@@ -20945,7 +21070,7 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di, part)}</section
   function heightField() {
     return b`<label class="field"><span class="hastip" data-tip="Set once. With a waist measurement it gives waist to height.">Height</span><input type="text" data-bind="height" .value=${fieldValue(
       heightTxt(state.settings.heightCm)
-    )} placeholder=${U() === "lb" ? "e.g. 5'10" : "e.g. 178"} autocomplete="off"></label>`;
+    )} placeholder=${appU() === "lb" ? "e.g. 5'10" : "e.g. 178"} autocomplete="off"></label>`;
   }
   function bodyCard() {
     const bws = [...state.bodyweights].sort((a2, b2) => a2.date < b2.date ? 1 : -1);
@@ -20955,22 +21080,19 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di, part)}</section
     const r4 = bwRate();
     const t4 = today();
     const loggedToday = !!last && last.date === t4;
-    const sub = last ? `${fmtW(last.kg)} ${U()}${r4 ? ` · ${bwWeekTxt(r4)}` : ""}` : "Not logged yet";
+    const sub = last ? `${fmtBody(last.kg)} ${bodyU()}${r4 ? ` · ${bwWeekTxt(r4)}` : ""}` : "Not logged yet";
     const chg = last && prev ? last.kg - prev.kg : null;
-    const chgTxt = chg == null ? "" : +fmtW(Math.abs(chg)) === 0 ? ", same as previous" : `, ${chg > 0 ? "+" : "−"}${fmtW(Math.abs(chg))} vs previous`;
+    const chgTxt = chg == null ? "" : +fmtBody(Math.abs(chg)) === 0 ? ", same as previous" : `, ${chg > 0 ? "+" : "−"}${fmtBody(Math.abs(chg))} vs previous`;
     const m0 = ms[0];
     return section({
       sk: "today:body",
       key: "body",
       title: "Body",
       sub,
-      body: b`${last ? b`<div class="body-sum"><div><div class="v">${fmtW(last.kg)}<span class="small"> ${U()}</span></div><div class="l">Latest, ${fmtDate(last.date)}${chgTxt}</div></div>${r4 ? b`<div><div class="v">${bwWeekTxt(r4).replace(" a week", "")}</div><div class="l">weekly change, from 7-day averages</div></div>` : A}</div>` : A}
-<div class="bw-entry"><label class="field">Date${i4(t4, b`<input type="date" id="bwDate" value=${t4} max=${t4}>`)}</label><label class="field">Weight (${U()})${inUnit(
-        U(),
-        b`<input type="text" inputmode="decimal" id="bwVal" placeholder=${last ? fmtW(last.kg) : ""} enterkeyhint="done">`
-      )}</label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts">${loggedToday ? "Update" : "Log"}</button></div>
+      body: b`${last ? b`<div class="body-sum"><div><div class="v">${fmtBody(last.kg)}<span class="small"> ${bodyU()}</span></div><div class="l">Latest, ${fmtDate(last.date)}${chgTxt}</div></div>${r4 ? b`<div><div class="v">${bwWeekTxt(r4).replace(" a week", "")}</div><div class="l">weekly change, from 7-day averages</div></div>` : A}</div>` : A}
+<div class="bw-entry"><label class="field">Date${i4(t4, b`<input type="date" id="bwDate" value=${t4} max=${t4}>`)}</label><div class="bw-w"><label class="field u-f1_m0" for="bwVal"><span>Weight<span class="vh"> (${bodyU()})</span></span>${bodyField("bwVal", { placeholder: last ? fmtBody(last.kg) : "" })}</label>${bodyUnitTap("bwVal")}</div><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts">${loggedToday ? "Update" : "Log"}</button></div>
 ${bws.length ? b`<ul class="bw-list" aria-label="Recent bodyweights">${bws.slice(0, BODY_SHOWN.weights).map(
-        (b2) => b`<li><span class="d">${fmtDate(b2.date)}</span><span class="num">${fmtW(b2.kg)} ${U()}</span><button class="ib sm" data-act="delBW" data-id=${b2.id} aria-label=${`Delete ${fmtDate(b2.date)} entry`}>✕</button></li>`
+        (b2) => b`<li><span class="d">${fmtDate(b2.date)}</span><span class="num">${fmtBody(b2.kg)} ${bodyU()}</span><button class="ib sm" data-act="delBW" data-id=${b2.id} aria-label=${`Delete ${fmtDate(b2.date)} entry`}>✕</button></li>`
       )}</ul>${bws.length > BODY_SHOWN.weights ? b`<p class="small muted u-m4-0-0">${bws.length - BODY_SHOWN.weights} older on Stats.</p>` : A}` : A}
 ${subsection(
         "today:tape",
@@ -21125,13 +21247,33 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       prefSet(WKVIEW_KEY, v3);
       rerenderKeepScroll();
     },
+    /* The scale's unit switched from a weigh-in field (390's Release B): kept for weigh-ins, said with Undo, and a number
+       typed in the field converted, never read again in the other unit (180 typed in lb shows as 81.6 kg). Set to the
+       app's unit, weigh-ins follow the app's again, so the setting is taken out. */
+    bodyUnit(t4) {
+      const id = t4 && t4.dataset && t4.dataset["in"] || "";
+      const inp = field(id);
+      const kg2 = bodyFieldKg(id, inp ? inp.value : "");
+      ui.bwKept = kg2 != null && kg2 > 0 ? { id, kg: kg2 } : void 0;
+      const to = bodyU() === "kg" ? "lb" : "kg";
+      act(
+        () => {
+          if (to === appU()) delete state.settings.bwUnit;
+          else state.settings.bwUnit = to;
+        },
+        { undo: true }
+      );
+      rerenderKeepScroll();
+      toast(`Bodyweight in ${to}`, true);
+    },
     /* A weigh-in for the date given (Today's Body), or for today (the weigh-in
        due card, data-in). A grey number in the field is what Save takes, as
        everywhere in the app (not the last weight shown and then refused). One weigh-in a date: a second replaces it. */
     addBW(t4) {
       const own2 = t4 && t4.dataset && t4.dataset["in"];
       const inp = field(own2 || "bwVal");
-      const v3 = numIn(inp ? inp.value || inp.dataset["grey"] || "" : "");
+      const text = inp ? inp.value || inp.dataset["grey"] || "" : "";
+      const v3 = numIn(text);
       const de = own2 ? null : field("bwDate");
       const at2 = t4 && t4.dataset && t4.dataset["date"];
       const date = (at2 && isDate(at2) && at2 <= today() ? at2 : null) || de && de.value || today();
@@ -21139,11 +21281,12 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         toast("Enter a bodyweight");
         return;
       }
-      const kg2 = fromD(v3);
+      const kg2 = bodyFieldKg(inp && inp.id || "", text);
       if (kg2 == null || kg2 < BW_MIN_KG || kg2 > BW_MAX_KG) {
-        toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);
+        toast(`Bodyweight must be between ${fmtBody(BW_MIN_KG)} and ${fmtBody(BW_MAX_KG)} ${bodyU()}`);
         return;
       }
+      ui.bwKept = void 0;
       act(() => {
         state.bodyweights = state.bodyweights.filter((b2) => b2.date !== date);
         state.bodyweights.push({ id: uid(), date, kg: kg2, demo: false });
@@ -21164,7 +21307,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       if (!x2) return;
       confirmBox(
         "Delete weigh-in?",
-        `${fmtDate(x2.date)}: ${fmtW(x2.kg)} ${U()}. Undo is offered right after.`,
+        `${fmtDate(x2.date)}: ${fmtBody(x2.kg)} ${bodyU()}. Undo is offered right after.`,
         "Delete",
         () => {
           act(
@@ -21347,7 +21490,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       }
       const cm = parseHeight(v3);
       if (cm == null) {
-        toast(U() === "lb" ? "Enter height like 5'10 or 70 (inches)" : "Enter height in cm, like 178");
+        toast(appU() === "lb" ? "Enter height like 5'10 or 70 (inches)" : "Enter height in cm, like 178");
         return;
       }
       act(() => {
@@ -21360,10 +21503,10 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   function todayChange(t4) {
     if (t4.id !== "obBw") return false;
     const v3 = numIn(t4.value);
-    const kg2 = v3 == null ? null : fromD(v3);
+    const kg2 = v3 == null ? null : fromDBody(v3);
     const okKg = kg2 != null && kg2 >= BW_MIN_KG && kg2 <= BW_MAX_KG ? kg2 : null;
     if (kg2 != null && okKg == null) {
-      toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);
+      toast(`Bodyweight must be between ${fmtBody(BW_MIN_KG)} and ${fmtBody(BW_MAX_KG)} ${bodyU()}`);
       t4.value = "";
     }
     const date = today();
@@ -21416,7 +21559,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const a2 = b2.adj;
     if (!a2 || !b2.sets.some((x2, i5) => i5 > a2.at && !x2.done && !x2.warm && !x2.drop)) return "";
     const ex = EX(b2.exId);
-    const lb = (w2) => `${loadLabel(ex, w2)}${ex.bw ? "" : " " + U()}${loadNote(ex)}`;
+    const lb = (w2) => `${loadLabel(ex, w2)}${ex.bw ? "" : " " + liftU(ex)}${loadNote(ex)}`;
     if (Math.abs(a2.w - a2.from) < EPS)
       return b`<p class="adjline small" id=${`adj-${bi}`}><span><b>Next sets: ${a2.r} reps at ${lb(a2.w)}</b>, because ${a2.why}.</span><button class="linkbtn" data-act="adjKeep" data-b=${bi}>Keep as it was</button></p>`;
     return b`<p class="adjline small" id=${`adj-${bi}`}><span><b>Next sets: ${lb(a2.w)}</b>, ${a2.up ? "up" : "down"} because ${a2.why}.</span><button class="linkbtn" data-act="adjKeep" data-b=${bi}>Keep ${lb(a2.from)}</button></p>`;
@@ -21474,7 +21617,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     if (d3.editingId || d3.past || state.bodyweights.length || !d3.ex.some((b2) => EX(b2.exId).bw)) return "";
     if (prefGet(BWASK_KEY)) return "";
     return b`<div class="card" id="bwAsk"><p class="small u-m0-0-8"><b>Your bodyweight</b> counts in bodyweight lifts, for weight lifted and estimates. ${tipButton("Logged as a weigh-in for today. Add more on Today, under Body.", "About bodyweight")}</p>
-  <div class="row"><label class="field u-f1_m0"><span class="vh">Bodyweight (${U()})</span><input type="text" inputmode="decimal" id="bwVal" placeholder=${`Weight (${U()})`} aria-label=${`Bodyweight (${U()})`}></label><button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
+  <div class="row"><label class="field u-f1_m0" for="bwVal"><span class="vh">Bodyweight (${bodyU()})</span>${bodyField("bwVal", { placeholder: `Weight (${bodyU()})`, label: `Bodyweight (${bodyU()})` })}</label>${bodyUnitTap("bwVal")}<button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
   }
   function cardioDraftCard(d3) {
     const list = d3.cardio || [];
@@ -21532,7 +21675,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     return b`<div class="stepr" role="group" aria-label=${`${name}: load and ${ex.timed ? "seconds" : "reps"}`}><div class="stepr-h"><span class="stepr-l">${said2}</span></div><div class="stepr-row">${ex.assist ? "" : pill(
       "w",
       lw == null ? "–" : loadIn(ex, lw),
-      U(),
+      liftU(ex),
       stepLoad(ex, b2.plan, w2, -1) == null,
       stepLoad(ex, b2.plan, w2, 1) == null,
       "lighter",
@@ -21565,6 +21708,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     }
     const partner = ss ? d3.ex.filter((x2) => x2 !== b2 && x2.plan.ss === p3.ss).map((x2) => exName(x2.exId)).join(" + ") : "";
     const why = whyTarget(b2);
+    const hp = loadHeadParts(ex);
     const bl = b2.target ? bestLine(b2.exId, d3.past ? d3.date : "") : "";
     const work = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
     const canFill = !!b2.lastR && b2.lastR.some((r4) => r4 != null) && b2.sets.some((s3, i5) => !s3.done && !s3.warm && !s3.drop && s3.r == null && lastRFor(b2, i5) != null);
@@ -21574,7 +21718,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       ${ss && partner && gk === 0 ? b`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? "pair" : "group"}.</p>` : ""}
       ${b2.lastNote && !b2.note ? b`<p class="small lnote">Your note, ${fmtDate(b2.lastNote.date)}: ${b2.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ""}
       ${b2.note ? b`<p class="small bnote" id=${`bn-${bi}`}>${b2.note}</p>` : b`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}${picStrip(bi, false)}
-      <div class=${"sg head" + (nr ? " norir" : "")}><span data-tip="Tap a set's number to mark it a warm-up or a drop set">#</span><span class="lsh">Last</span><span class="lh hastip" data-tip=${loadTip(ex)}>${loadHead(ex)}</span><span class=${side ? "hastip" : A} data-tip=${side ?? A}>${ex.timed ? ex.perSide ? "Sec/side" : "Sec" : ex.perSide ? "Reps/side" : "Reps"}</span>${nr ? "" : b`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
+      <div class=${"sg head" + (nr ? " norir" : "")}><span data-tip="Tap a set's number to mark it a warm-up or a drop set">#</span><span class="lsh">Last</span><span class="lh hastip" data-tip=${loadTip(ex)}>${hp.pre}<button type="button" class="lunit" data-act="liftUnit" data-b=${bi} aria-label=${`${ex.name}: loads in ${liftU(ex)}. Switch to ${liftU(ex) === "kg" ? "lb" : "kg"}`}>${hp.unit}</button>${hp.post}</span><span class=${side ? "hastip" : A} data-tip=${side ?? A}>${ex.timed ? ex.perSide ? "Sec/side" : "Sec" : ex.perSide ? "Reps/side" : "Reps"}</span>${nr ? "" : b`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
       b2.sets,
       (x2) => x2.rid,
       (_2, si) => setRow(d3, b2, bi, si, ex, nr, dupB)
@@ -21675,7 +21819,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
           if (t4.dataset.f === "w") {
             const bx = d3.ex[bi];
             const as = !!bx && !!EX(bx.exId).assist;
-            s3.w = n3 == null ? null : as ? -Math.min(fromD(Math.abs(n3)) ?? 0, -LOAD_MIN) : Math.min(fromD(Math.max(n3, 0)) ?? 0, LOAD_MAX);
+            s3.w = n3 == null ? null : as ? -Math.min(fromDOf(bx && EX(bx.exId), Math.abs(n3)) ?? 0, -LOAD_MIN) : Math.min(fromDOf(bx && EX(bx.exId), Math.max(n3, 0)) ?? 0, LOAD_MAX);
             if (s3.w === 0) s3.w = 0;
             carried.delete(s3);
           } else s3.r = n3 == null ? null : Math.min(Math.max(Math.floor(n3 + EPS), 0), LIMITS.reps);
@@ -22072,7 +22216,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       installed: isStandalone(),
       theme: state.settings.theme,
       accent: state.settings.accent || ACCENT0,
-      unit: U(),
+      unit: appU(),
       from: m3.from || ui.tab,
       exercise: m3.ex || void 0,
       session: d3 ? { past: !!d3.past, free: !!d3.free, editing: !!d3.editingId, exercises: d3.ex.length } : null,
@@ -23269,7 +23413,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       tab,
       pick: pick2,
       guess,
-      unit: res.unit || U(),
+      unit: res.unit || appU(),
       unitKnown: !!res.unit,
       date: today(),
       showAll: false
@@ -23380,7 +23524,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         if (!exo.bw && !exo.timed) {
           for (const q of sets)
             if (q.w > 0 && q.w < ODD.kg || q.r > ODD.reps) {
-              odd.push(`${exo.name} ${fmtW(q.w)} ${U()} x ${q.r}${x2.date ? `, ${fmtDate(x2.date)}` : ""}`);
+              odd.push(`${exo.name} ${fmtWOf(exo, q.w)} ${liftU(exo)} x ${q.r}${x2.date ? `, ${fmtDate(x2.date)}` : ""}`);
               break;
             }
         }
@@ -24345,6 +24489,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       "Copy all of this and keep it somewhere safe. Paste it into Import on any device to restore."
     );
   }
+  var TYPED_CENTS = 100;
   function exportCSV() {
     const q = (v3) => {
       const s3 = typeof v3 === "number" ? String(v3) : csvGuard(String(v3 == null ? "" : v3));
@@ -24362,19 +24507,25 @@ ${JSON.stringify(ctx, null, 1)}`;
         "dropset",
         "per_side",
         "load_entry",
-        `load_${U()}`,
-        `total_load_${U()}`,
+        `load_${appU()}`,
+        `total_load_${appU()}`,
         "reps",
         "rir",
-        `e1rm_${U()}`,
+        `e1rm_${appU()}`,
         "exercise_note",
         "session_note",
         "session_minutes",
         "avg_hr",
         "unit",
-        "calibration"
+        "calibration",
+        "typed_load",
+        "typed_unit"
       ]
     ];
+    const typed = (ex, w2) => {
+      const u4 = typedUnit(w2) ?? liftU(ex);
+      return [Math.round((u4 === "lb" ? w2 / LB : w2) * TYPED_CENTS) / TYPED_CENTS, u4];
+    };
     for (const ss of sortedSessions()) {
       for (const b2 of ss.ex) {
         const ex = EX(b2.exId);
@@ -24392,17 +24543,18 @@ ${JSON.stringify(ctx, null, 1)}`;
             s3.drop ? "yes" : "no",
             ex.perSide ? "yes" : "no",
             loadWords(ex),
-            fmtW(+s3.w || 0),
-            fmtW(total),
+            fmtWApp(+s3.w || 0),
+            fmtWApp(total),
             s3.r,
             s3.rir == null ? "" : s3.rir,
-            est == null ? "" : fmtW(est),
+            est == null ? "" : fmtWApp(est),
             b2.note || "",
             ss.notes || "",
             ss.durMin || "",
             "",
             ex.timed ? "seconds" : "reps",
-            s3.cal ? `stop at ${s3.cal.at}, called ${s3.cal.pred} left` : ""
+            s3.cal ? `stop at ${s3.cal.at}, called ${s3.cal.pred} left` : "",
+            ...typed(ex, +s3.w || 0)
           ]);
         });
       }
@@ -24429,6 +24581,8 @@ ${JSON.stringify(ctx, null, 1)}`;
         c4.min,
         c4.hr == null ? "" : c4.hr,
         "minutes",
+        "",
+        "",
         ""
       ]);
     if (rows2.length === 1) {
@@ -24895,9 +25049,9 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   function shownNumbers(x2) {
     return {
-      inc: x2.inc != null ? fmtW(stepRead(x2.inc)) : "",
-      max: x2.maxLoad != null ? fmtW(liftMax(x2) ?? 0) : "",
-      bar: x2.barKg != null ? fmtW(barRead(x2.barKg)) : ""
+      inc: x2.inc != null ? fmtWOf(x2, stepReadOf(x2, x2.inc)) : "",
+      max: x2.maxLoad != null ? fmtWOf(x2, liftMax(x2) ?? 0) : "",
+      bar: x2.barKg != null ? fmtWOf(x2, barReadOf(x2, x2.barKg)) : ""
     };
   }
   function afterAdd(bi) {
@@ -25303,20 +25457,21 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (sh && e5.incRaw === sh.inc) delete e5.incRaw;
       else {
         const n3 = numIn(e5.incRaw);
-        e5.inc = n3 != null && n3 > 0 ? typedBound(n3, LIMITS.step) : null;
+        e5.inc = n3 != null && n3 > 0 ? typedBoundOf(e5, n3, LIMITS.step) : null;
         delete e5.incRaw;
       }
       if (sh && e5.maxRaw === sh.max) delete e5.maxRaw;
       else {
         const n3 = numIn(e5.maxRaw);
-        if (n3 != null && n3 > 0) e5.maxLoad = Number(fromD(Math.min(n3, U() === "lb" ? MAX_LOAD.lb : MAX_LOAD.kg)));
+        if (n3 != null && n3 > 0)
+          e5.maxLoad = Number(fromDOf(e5, Math.min(n3, liftU(e5) === "lb" ? MAX_LOAD.lb : MAX_LOAD.kg)));
         else delete e5.maxLoad;
         delete e5.maxRaw;
       }
       if (sh && e5.barRaw === sh.bar && platesMode(e5) === "bar") delete e5.barRaw;
       else {
         const n3 = numIn(e5.barRaw);
-        if (n3 != null && n3 > 0 && platesMode(e5) === "bar") e5.barKg = typedBound(n3, LIMITS.barKg);
+        if (n3 != null && n3 > 0 && platesMode(e5) === "bar") e5.barKg = typedBoundOf(e5, n3, LIMITS.barKg);
         else delete e5.barKg;
         delete e5.barRaw;
       }
@@ -25949,7 +26104,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const el = document.getElementById(id);
     return el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement ? el.value : "";
   }
-  var kg = (n3) => fromD(n3) ?? 0;
+  var kg = (ex, n3) => fromDOf(ex, n3) ?? 0;
   var LIFT_ACTS = {
     /* The choice applies to the session in progress too: rows still on the
        suggestion switch between grey and filled, typed loads stay as typed. */
@@ -25978,6 +26133,31 @@ ${JSON.stringify(ctx, null, 1)}`;
       rerenderKeepScroll();
       toast(fill ? "Loads filled in" : "Loads in grey");
     },
+    /* The unit beside a lift's loads, tapped: the lift's equipment is marked in the other unit. Kept on the lift (back in
+       the app's unit it follows the app again, as one never switched does), so every screen and the next session read it;
+       the lift's blocks in the workout read their targets again in it, and a load already typed is converted, never read
+       as a number of the new unit. */
+    liftUnit(t4) {
+      const d3 = state.draft;
+      const b2 = d3 && d3.ex[Number(t4.dataset.b)];
+      const e5 = b2 && state.exercises.find((x2) => x2.id === b2.exId);
+      if (!d3 || !b2 || !e5) return;
+      const to = liftU(e5) === "kg" ? "lb" : "kg";
+      act(
+        () => {
+          if (to === appU()) delete e5.unit;
+          else e5.unit = to;
+          for (const x2 of d3.ex)
+            if (x2.exId === b2.exId) {
+              if (!d3.editingId && !x2.sets.some((s3) => s3.done)) refreshBlock(x2);
+              else blockWords(x2);
+            }
+        },
+        { undo: true }
+      );
+      rerenderKeepScroll();
+      toast(`${e5.name} in ${to}`, true);
+    },
     bCal(t4) {
       const bi = Number(t4.dataset.b);
       const d3 = state.draft;
@@ -25988,7 +26168,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       openModal({
         kind: "cal",
         b: bi,
-        w: w2 != null ? fmtW(w2) : "",
+        w: w2 != null ? fmtWOf(EX(b2.exId), w2) : "",
         at: "",
         pred: b2.plan && isNum(+b2.plan.rir) ? Math.min(CAL_PRED_MOST, Math.round(+b2.plan.rir)) : 1,
         total: ""
@@ -26018,7 +26198,15 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (!(at2 >= 1)) return no("Enter the rep you would normally have stopped at.");
       if (!(tot >= at2)) return no("Total reps to failure should be at least the rep you would have stopped at.");
       if (tot > CAL_MOST) return no("That is more than 100 reps. Check the number.");
-      const set = { w: kg(Math.max(0, w2 || 0)), r: tot, rir: 0, warm: false, drop: false, done: true, cal: { at: at2, pred } };
+      const set = {
+        w: kg(ex, Math.max(0, w2 || 0)),
+        r: tot,
+        rir: 0,
+        warm: false,
+        drop: false,
+        done: true,
+        cal: { at: at2, pred }
+      };
       act(
         () => {
           let si = b2.sets.findIndex((x2) => !x2.done && !x2.warm && x2.r == null);
@@ -26051,7 +26239,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         return;
       }
       const n3 = numIn(fieldText("maxVal"));
-      if (e5.maxLoad != null && n3 != null && String(numIn(fmtW(liftMax(e5) ?? 0))) === String(n3)) {
+      if (e5.maxLoad != null && n3 != null && String(numIn(fmtWOf(e5, liftMax(e5) ?? 0))) === String(n3)) {
         closeModal();
         return;
       }
@@ -26061,13 +26249,13 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
       closeModal();
       act(() => {
-        if (n3 != null && n3 > 0) e5.maxLoad = kg(Math.min(n3, U() === "lb" ? MAX_LOAD2.lb : MAX_LOAD2.kg));
+        if (n3 != null && n3 > 0) e5.maxLoad = kg(e5, Math.min(n3, liftU(e5) === "lb" ? MAX_LOAD2.lb : MAX_LOAD2.kg));
         else delete e5.maxLoad;
       });
       refreshEx(e5.id);
       rerenderKeepScroll();
       toast(
-        e5.maxLoad != null ? `Heaviest available for ${e5.name}: ${fmtW(liftMax(e5) ?? 0)} ${U()}` : `No limit for ${e5.name}`
+        e5.maxLoad != null ? `Heaviest available for ${e5.name}: ${fmtWOf(e5, liftMax(e5) ?? 0)} ${liftU(e5)}` : `No limit for ${e5.name}`
       );
     },
     goalOpen(t4) {
@@ -26094,7 +26282,10 @@ ${JSON.stringify(ctx, null, 1)}`;
         return;
       }
       const was = e5.goal;
-      const goal = { w: was && w2 != null && String(numIn(fmtW(loadRead(was.w)))) === String(w2) ? was.w : kg(w2 || 0), r: r4 };
+      const goal = {
+        w: was && w2 != null && String(numIn(fmtWOf(e5, loadReadOf(e5, was.w)))) === String(w2) ? was.w : kg(e5, w2 || 0),
+        r: r4
+      };
       act(
         () => {
           e5.goal = goal;
@@ -26140,18 +26331,18 @@ ${JSON.stringify(ctx, null, 1)}`;
         closeModal();
         return;
       }
-      if (!sheet.typed && String(numIn(fmtW(incOf(e5, sheet.plan)))) === String(n3)) {
+      if (!sheet.typed && String(numIn(fmtWOf(e5, incOf(e5, sheet.plan)))) === String(n3)) {
         closeModal();
         return;
       }
-      const inc = typedBound(n3, LIMITS.step);
+      const inc = typedBoundOf(e5, n3, LIMITS.step);
       closeModal();
       act(() => {
         e5.inc = inc;
       });
       refreshEx(e5.id);
       rerenderKeepScroll();
-      toast(`Load step for ${e5.name}: ${fmtW(inc)} ${U()}`);
+      toast(`Load step for ${e5.name}: ${fmtWOf(e5, inc)} ${liftU(e5)}`);
     },
     cardioNew() {
       openModal({ kind: "cardio" });
@@ -26360,7 +26551,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const appSet = (x2, si) => b2.sw != null && Math.abs((+(x2.w ?? 0) || 0) - b2.sw) < EPS_SAME || !!b2.adj && b2.adj.up && si <= b2.adj.at;
       b2.sets.forEach((x2, si) => {
         if (si < firstTop && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && (e5.bw || +(x2.w ?? 0) > 0) && !appSet(x2, si) && easy(x2))
-          ramps.push({ bi, si, name: e5.name, txt: `${loadLabel(e5, +(x2.w ?? 0) || 0)}×${x2.r}` });
+          ramps.push({ bi, si, name: e5.name, txt: setShort(e5, +(x2.w ?? 0) || 0, x2.r) });
       });
     }
     if (ramps.length) {
@@ -26553,15 +26744,15 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (pr.type === "Weight PR")
       return {
         name: e5.name,
-        what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${pr.value != null && isCompound(e5) ? `, best estimate ${fmtE(pr.value)} ${U()}${loadNote(e5)}` : ""}`,
-        was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${e5.bw ? loadLabel(e5, pr.prevW ?? 0) : fmtW(pr.prevW) + " " + U()}` : ""
+        what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${pr.value != null && isCompound(e5) ? `, best estimate ${fmtE(e5, pr.value)} ${liftU(e5)}${loadNote(e5)}` : ""}`,
+        was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${listLabel(e5, pr.prevW ?? 0, !e5.bw)}` : ""
       };
     const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.date) : null;
     if (ps) return { name: e5.name, what: `PR, ${setShort(e5, ps.w, ps.r)}`, was: "your best for that number of reps" };
     return pr.type === "e1RM" ? {
       name: e5.name,
-      what: `${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e5)}`,
-      was: prOverall(pr) ? wasE(pr.value, pr.prevAll) ? `was ${wasE(pr.value, pr.prevAll)}` : "" : wasE(pr.value, pr.prev) ? `was ${wasE(pr.value, pr.prev)} at those reps` : ""
+      what: `${prName(pr)} ${fmtE(e5, pr.value)} ${liftU(e5)}${loadNote(e5)}`,
+      was: prOverall(pr) ? wasE(e5, pr.value, pr.prevAll) ? `was ${wasE(e5, pr.value, pr.prevAll)}` : "" : wasE(e5, pr.value, pr.prev) ? `was ${wasE(e5, pr.value, pr.prev)} at those reps` : ""
     } : {
       name: e5.name,
       what: `${e5.timed ? "Time" : "Rep"} PR, ${setShort(e5, pr.w, pr.r)}`,
@@ -26734,7 +26925,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const val = +(x2.r ?? 0) > 0 ? (
       // No load anywhere on a loaded lift: the reps alone, never a 0 the row does not show.
       shown2 == null && !ex.bw && !ex.timed ? `${x2.r} rep${Number(x2.r) === 1 ? "" : "s"}` : setShort(ex, shown2 ?? 0, x2.r)
-    ) : x2.w != null ? loadLabel(ex, x2.w) + (ex.bw ? "" : " " + U()) : "";
+    ) : x2.w != null ? loadLabel(ex, x2.w) + (ex.bw ? "" : " " + liftU(ex)) : "";
     const at2 = i5;
     confirmBox(
       `Remove ${what.toLowerCase()}?`,
@@ -26990,9 +27181,9 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (f3 === "w") {
         if (ex.assist) return;
         const to = stepLoad(ex, b2.plan, effW(b2, si) ?? 0, dir);
-        const v3 = to == null ? null : toD(to);
+        const v3 = to == null ? null : toDOf(ex, to);
         if (v3 == null) return;
-        w2 = Math.min(fromD(Math.max(Math.round(v3 * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
+        w2 = Math.min(fromDOf(ex, Math.max(Math.round(v3 * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
       } else {
         const was = +(s3.r ?? greyR(b2, si) ?? 0) || 0;
         r4 = Math.min(Math.max(was + dir * (ex.timed ? STEP_SECONDS : 1), 0), LIMITS.reps);
@@ -27611,6 +27802,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const m3 = ui.modal;
     if (m3 && FORM_SHEETS.has(m3.kind) && t4.closest("#modal")) m3.dirty = true;
     if (t4.id === "incVal" && m3 && m3.kind === "inc") m3.typed = true;
+    if (ui.bwKept && t4.id === ui.bwKept.id) ui.bwKept = void 0;
     if (workoutInput(t4)) return;
     if (planInput(t4)) return;
     if (t4.dataset.band) {
@@ -27956,7 +28148,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   var OTHER_WKS = orList(REGION_WKS.map(([n3]) => n3).filter((n3) => n3 !== REGION_WK_DEFAULT));
   function guideSheet(m3) {
     const off = state.settings.rirMode === "off";
-    const kg2 = U() === "kg";
+    const kg2 = appU() === "kg";
     const inClaude2 = !!(window.claude && typeof window.claude.use === "function");
     const accts = !inClaude2 && !!AUTH();
     const where = inClaude2 ? `<p><b>Your log</b> is saved with your Claude account and in this browser.</p>` : accts ? `<p><b>Without an account</b> your log is on this phone only: deleting the app deletes it. Export a backup in Settings, Your data, and keep it in Files.</p>
@@ -28065,7 +28257,8 @@ ${JSON.stringify(ctx, null, 1)}`;
         "Sections",
         `<p>Tap a section's title to fold or open it. Drag its ⠿ to move it; the order is kept. Each time the app opens, every section starts folded, except Sessions on History.</p>
    <p><b>More sections</b>: when a tab has sections hidden, its bottom lists them; tap one to add it. The menu at the top right has Show, hide, or reorder sections. Settings, Layout shows or hides any section (nothing stops being tracked), and Default layout goes back to how a new install starts.</p>
-   <p><b>Your settings</b>: Settings has your training (goal, days, minutes, and focus), your gym's weights, the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>`
+   <p><b>Your settings</b>: Settings has your training (goal, days, minutes, and focus), your gym's weights, the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>
+   <p><b>kg or lb on one lift</b>: when a lift's equipment is marked in the other unit, tap LB or KG beside its weight in a workout. Its loads, targets, steps, and charts follow it; a load already typed is converted, never read again in the other unit. The unit beside a weigh-in field does the same for your scale. Totals that add lifts together stay in the unit in Settings, and a set from before a switch shows as it was typed.</p>`
       ],
       [
         "data",
@@ -28210,7 +28403,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const e5 = EX(b2.exId);
     const op = (o3, l4, dis, cls) => b`<button class=${"btn fullw u-mt6 " + (cls || "")} data-act="bMenuDo" data-op=${o3} data-b=${String(m3.b)} ?disabled=${!!dis}>${l4}</button>`;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${exName(b2.exId)}</h3>${closeX()}</div>
-    ${op("bHist", "History and chart")}${op("bMus", "Muscles worked")}${op("wAdd", "Add a warm-up set")}${op("dropAdd", "Add a drop set (about 75% load)")}${op("bQuick", "Type or dictate sets")}${op("bNote", b2.note ? "Edit note" : "Add note")}${op("bSwap", "Swap exercise")}${op("bNew", markedNew(d3, b2.exId) ? "Same machine as before" : "New machine or gym")}${howToLink(e5)}${op("bInc", `Load step: ${fmtW(incOf(e5, b2.plan))} ${U()}`)}${op("bMax", `Heaviest available: ${e5.maxLoad != null ? fmtW(liftMax(e5)) + " " + U() : "no limit"}`)}${rirShow(e5) ? op("bCal", "Calibration set (RIR check)") : ""}${nx ? op("bSs", linked ? "Unlink superset" : `Superset with ${exName(nx.exId)}`) : ""}${op("bUp", "Move up", m3.b === 0)}${op("bDown", "Move down", !nx)}${op("fbOpen", "Report a problem")}${op("bDel", "Remove from session", false, "danger")}</div>`;
+    ${op("bHist", "History and chart")}${op("bMus", "Muscles worked")}${op("wAdd", "Add a warm-up set")}${op("dropAdd", "Add a drop set (about 75% load)")}${op("bQuick", "Type or dictate sets")}${op("bNote", b2.note ? "Edit note" : "Add note")}${op("bSwap", "Swap exercise")}${op("bNew", markedNew(d3, b2.exId) ? "Same machine as before" : "New machine or gym")}${howToLink(e5)}${op("bInc", `Load step: ${fmtWOf(e5, incOf(e5, b2.plan))} ${liftU(e5)}`)}${op("bMax", `Heaviest available: ${e5.maxLoad != null ? fmtWOf(e5, liftMax(e5) ?? 0) + " " + liftU(e5) : "no limit"}`)}${rirShow(e5) ? op("bCal", "Calibration set (RIR check)") : ""}${nx ? op("bSs", linked ? "Unlink superset" : `Superset with ${exName(nx.exId)}`) : ""}${op("bUp", "Move up", m3.b === 0)}${op("bDown", "Move down", !nx)}${op("fbOpen", "Report a problem")}${op("bDel", "Remove from session", false, "danger")}</div>`;
   }
   function injurySheet() {
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3>${closeX()}</div>
@@ -28224,14 +28417,14 @@ ${JSON.stringify(ctx, null, 1)}`;
     const e5 = EX(m3.exId);
     const g2 = e5.goal;
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="goalH"><div class="sheet-h"><h3 id="goalH">Goal: ${e5.name}</h3>${closeX()}</div>
-    <div class="grid2"><label class="field">${e5.bw ? `Added load (${U()})` : `Load (${U()}${loadNote(e5)})`}<input type="text" inputmode="decimal" id="goalW" value=${g2 ? fmtW(loadRead(g2.w)) : ""} placeholder=${e5.bw ? "0" : ""}></label>
+    <div class="grid2"><label class="field">${e5.bw ? `Added load (${liftU(e5)})` : `Load (${liftU(e5)}${loadNote(e5)})`}<input type="text" inputmode="decimal" id="goalW" value=${g2 ? fmtWOf(e5, loadReadOf(e5, g2.w)) : ""} placeholder=${e5.bw ? "0" : ""}></label>
     <label class="field">Reps<input type="text" inputmode="numeric" id="goalR" value=${g2 ? String(g2.r) : ""}></label></div>
     <div class="row u-mt12"><button class="btn primary" data-act="goalSave">Save</button>${g2 ? b`<button class="btn danger" data-act="goalClear">Remove goal</button>` : ""}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
   function incSheet(m3) {
     const e5 = EX(m3.exId);
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Load step: ${e5.name}</h3>${closeX()}</div>
-    <label class="field">Step (${U()})<input type="text" inputmode="decimal" id="incVal" value=${fmtW(incOf(e5, m3.plan))}></label>
+    <label class="field">Step (${liftU(e5)})<input type="text" inputmode="decimal" id="incVal" value=${fmtWOf(e5, incOf(e5, m3.plan))}></label>
     <p class="small muted">The smallest jump the equipment allows.</p>
     ${e5.inc == null && gymRack(e5, m3.plan) ? b`<p class="small u-m0">Following the ${rackKind(e5) === "dumbbell" ? "dumbbells" : "kettlebells"} in Settings > Your gym. A step saved here replaces them for this lift.</p>` : ""}
     <div class="row u-mt10"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
@@ -28239,7 +28432,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   function maxSheet(m3) {
     const e5 = EX(m3.exId);
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${e5.name}</h3>${closeX()}</div>
-    <label class="field">Load (${U()}${e5.bw ? ", added to bodyweight" : ""})<input type="text" inputmode="decimal" id="maxVal" value=${e5.maxLoad != null ? fmtW(liftMax(e5)) : ""} placeholder="No limit"></label>
+    <label class="field">Load (${liftU(e5)}${e5.bw ? ", added to bodyweight" : ""})<input type="text" inputmode="decimal" id="maxVal" value=${e5.maxLoad != null ? fmtWOf(e5, liftMax(e5) ?? 0) : ""} placeholder="No limit"></label>
     <p class="small muted">Top of the stack or biggest dumbbell. Blank for no limit.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
@@ -28253,7 +28446,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const b2 = blockAt(m3.b);
     if (!b2) return null;
     const ex = EX(b2.exId);
-    const kg2 = U() === "kg";
+    const kg2 = liftU(ex) === "kg";
     const rp = rirScale() === "rpe";
     const tail = rp ? "rpe 9" : "rir 1";
     const eg1 = kg2 ? `100x5, 5, 4 ${tail}` : `235x5, 5, 4 ${tail}`;
@@ -28261,7 +28454,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const ph = kg2 ? `100x5, 5, 4 ${tail}` : `225x5, 5, 4 ${tail}`;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}: type sets</h3>${closeX()}</div>
     ${ex.timed ? b`<p class="small muted u-m0">Timed hold: the number after x is seconds, for example <b>25x45, 40</b> or <b>bw x 60, 50</b>.</p>` : ""}
-    <p class="small muted">Loads in ${U()}${loadNote(ex)}${ex.bw ? ", added to bodyweight (bw or bw+25)" : ""}. <b>${eg1}</b> or <b>${eg2}</b>. <span class="hastip" data-tip=${`Type or use the keyboard's dictation mic. ${rp ? "rpe" : "rir"} at the end applies to every set; @ gives ${effName()} per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.`}>More</span></p>
+    <p class="small muted">Loads in ${liftU(ex)}${loadNote(ex)}${ex.bw ? ", added to bodyweight (bw or bw+25)" : ""}. <b>${eg1}</b> or <b>${eg2}</b>. <span class="hastip" data-tip=${`Type or use the keyboard's dictation mic. ${rp ? "rpe" : "rir"} at the end applies to every set; @ gives ${effName()} per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.`}>More</span></p>
     <input type="text" id="qTxt" autocomplete="off" autocapitalize="off" spellcheck="false" value=${m3.text || ""} placeholder=${ex.bw ? "bw x 10, 8, 7" : ph} enterkeyhint="done">
     ${m3.err ? b`<p class="small u-cred_m8-0-0">${m3.err}</p>` : ""}
     <div class="row u-mt10"><button class="btn primary" data-act="qFill">Fill sets</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
@@ -28273,7 +28466,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Calibration set: ${ex.name}</h3>${closeX()}</div>
     <p class="small muted u-m0">Checks how well you judge reps in reserve. Go to failure only where it is safe: a machine, a cable or a spotter.</p>
     <ol class="steps"><li>Use your normal working weight.</li><li>At the rep where you would usually stop, note that rep and how many you think are left.</li><li>Keep going until you cannot complete a rep with good form.</li></ol>
-    <div class="grid2"><label class="field">Load (${ex.bw ? "+" + U() : U()})<input type="text" inputmode="decimal" id="calW" value=${m3.w != null ? String(m3.w) : ""}></label>
+    <div class="grid2"><label class="field">Load (${ex.bw ? "+" + liftU(ex) : liftU(ex)})<input type="text" inputmode="decimal" id="calW" value=${m3.w != null ? String(m3.w) : ""}></label>
     <label class="field">Usual stop rep<input type="text" inputmode="numeric" id="calAt" value=${m3.at || ""}></label>
     <label class="field">Reps left, your call<select id="calPred">${CAL_CALLS.map((v3) => b`<option value=${String(v3)} ?selected=${Number(m3.pred) === v3}>${v3}</option>`)}</select></label>
     <label class="field">Reps to failure<input type="text" inputmode="numeric" id="calTot" value=${m3.total || ""}></label></div>
@@ -28323,10 +28516,10 @@ ${JSON.stringify(ctx, null, 1)}`;
     <label class="check-inline"><input type="checkbox" data-ebind="timed" aria-labelledby="lt-ex-timed" ?checked=${!!e5.timed}>${labelTip("lt-ex-timed", "Timed hold (log seconds)", has ? "This exercise has logged sets: switching changes how those numbers read." : "The reps column holds seconds.")}</label>
     <details class="more" ?open=${!m3.back || !!m3.moreOpen}><summary>More options<span class="small muted">less common, load step, plates, heaviest, notes</span></summary><div class="stack">
     <label class="check-inline"><input type="checkbox" data-ebind="rare" ?checked=${!!e5.rare}>Mark as less common</label>
-    <div class="grid2"><label class="field">${labelTip("lt-ex-incRaw", `Load step (${U()})`, "The smallest jump on this exercise, everywhere it appears. Earned increases are whole multiples of it, about 2.5% of the load on compound lifts and 5% on isolation work. Blank uses Your gym's step, or the usual one for the equipment.")}<input type="text" inputmode="decimal" data-ebind="incRaw" aria-labelledby="lt-ex-incRaw" value=${e5.incRaw} placeholder="Usual step"></label>
+    <div class="grid2"><label class="field">${labelTip("lt-ex-incRaw", `Load step (${liftU(e5)})`, "The smallest jump on this exercise, everywhere it appears. Earned increases are whole multiples of it, about 2.5% of the load on compound lifts and 5% on isolation work. Blank uses Your gym's step, or the usual one for the equipment.")}<input type="text" inputmode="decimal" data-ebind="incRaw" aria-labelledby="lt-ex-incRaw" value=${e5.incRaw} placeholder="Usual step"></label>
     <label class="field">${labelTip("lt-ex-plates", "Plate helper", "What to load, shown under the sets in a session")}<select data-ebind="plates" aria-labelledby="lt-ex-plates">${PLATE_MODES.map(([k2, l4]) => b`<option value=${k2} ?selected=${(e5.plates || "auto") === k2}>${l4}</option>`)}</select></label></div>
-    ${platesMode(e5) === "bar" ? b`<label class="field">${labelTip("lt-ex-barRaw", `Bar for this lift (${U()})`, "A trap bar, EZ bar, or any bar other than the one in Settings. Suggested loads on this lift are this bar and the plates on hand, and a deload never goes under it.")}<input type="text" inputmode="decimal" data-ebind="barRaw" aria-labelledby="lt-ex-barRaw" value=${e5.barRaw || ""} placeholder=${`Settings bar, ${fmtW(barKg())}`}></label>` : ""}
-    <label class="field">${labelTip("lt-ex-maxRaw", `Heaviest available (${U()}${e5.bw ? ", added" : ""})`, "The top of the stack or the biggest dumbbell. At that load, targets move to more reps and then harder reps, and the lift is not called stalled.")}<input type="text" inputmode="decimal" data-ebind="maxRaw" aria-labelledby="lt-ex-maxRaw" value=${e5.maxRaw || ""} placeholder="No limit"></label>
+    ${platesMode(e5) === "bar" ? b`<label class="field">${labelTip("lt-ex-barRaw", `Bar for this lift (${liftU(e5)})`, "A trap bar, EZ bar, or any bar other than the one in Settings. Suggested loads on this lift are this bar and the plates on hand, and a deload never goes under it.")}<input type="text" inputmode="decimal" data-ebind="barRaw" aria-labelledby="lt-ex-barRaw" value=${e5.barRaw || ""} placeholder=${`Settings bar, ${fmtWOf(e5, barKg())}`}></label>` : ""}
+    <label class="field">${labelTip("lt-ex-maxRaw", `Heaviest available (${liftU(e5)}${e5.bw ? ", added" : ""})`, "The top of the stack or the biggest dumbbell. At that load, targets move to more reps and then harder reps, and the lift is not called stalled.")}<input type="text" inputmode="decimal" data-ebind="maxRaw" aria-labelledby="lt-ex-maxRaw" value=${e5.maxRaw || ""} placeholder="No limit"></label>
     <label class="field">Notes and cues<textarea data-ebind="note" maxlength=${LIMITS.note}>${e5.note || ""}</textarea></label></div></details>
     <div class="row"><button class="btn primary" data-act="exSave">${save}</button><button class="btn" data-act=${m3.back ? "exBack" : "mClose"}>${m3.back ? "Back" : "Cancel"}</button></div>${m3.isNew ? "" : howToLink(e5)}${!m3.isNew && e5.custom && !window.claude ? b`<button class="linkbtn u-minh44" data-act="exSuggest" data-tip="Your exercises are only in your log. This sends it to the app's owner, who can add it to the library for everyone.">Suggest for the library</button>` : ""}</div></div>`;
   }
@@ -28351,8 +28544,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     const ow = st && st.spanW ? ` over ${st.spanW} weeks${st.rrIn ? ` in the ${repSpan(st.rrIn[0], st.rrIn[1])} range` : ""}` : "";
     const dir = st && st.fresh && st.pct != null ? st.moving ? `up${ow}` : st.falling ? `down${ow}` : st.holdRR && (st.holdRR.length || st.quietRR.length) ? `down${ow}` : st.pLo != null && st.pLo > 0 ? `slowly up${ow}` : st.pHi != null && st.pHi < 0 ? `slowly down${ow}` : `no clear change over ${st.spanW || 2} weeks` : "";
     if (isCompound(ex) && exps.every((x2) => x2.best != null)) {
-      const v3 = exps.map((x2) => fmtE(x2.best));
-      return b`<p class="small muted u-m2-0">Est. 1RM <span class="trend">${v3.join(" → ")} ${U()}</span>${dir ? " · " + dir : ""}${st && !st.useAdj ? b` ${tipButton("Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.", "About this trend")}` : ""}</p>`;
+      const v3 = exps.map((x2) => fmtE(ex, x2.best));
+      return b`<p class="small muted u-m2-0">Est. 1RM <span class="trend">${v3.join(" → ")} ${liftU(ex)}</span>${dir ? " · " + dir : ""}${st && !st.useAdj ? b` ${tipButton("Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.", "About this trend")}` : ""}</p>`;
     }
     return b`<p class="small muted u-m2-0">Top sets <span class="trend">${exps.map((x2) => topSetPt(ex, x2).txt).join(" → ")}</span>${dir ? " · " + dir : ""}</p>`;
   }
@@ -28384,7 +28577,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       <figcaption class="small muted row spread"><span>${fmtDate(pts[0].date)}</span><span class="hastip" data-tip="Each full session's working sets read as one number from loads, reps, and RIR when it is rated on most sets. It shows direction only and is not a 1RM. Sessions where the lift was done lighter are left out.">Strength reading</span><span>${fmtDate(pts[pts.length - 1].date)}</span></figcaption></figure>`;
     }
     const bs = bestSet(exId);
-    const best = be && isCompound(ex) ? `Best estimate ${fmtE(be.v)} ${U()}${loadNote(ex)}` : bs ? `Best set ${setShort(ex, bs.w, bs.r)}${ex.bw ? "" : " " + U()}` : "";
+    const best = be && isCompound(ex) ? `Best estimate ${fmtE(ex, be.v)} ${liftU(ex)}${loadNote(ex)}` : bs ? `Best set ${setShort(ex, bs.w, bs.r, !ex.bw)}` : "";
     const setsOf = (x2) => {
       const ss = state.sessions.find((q) => q.id === x2.sid);
       const bl = ss && ss.ex.find((q) => q.exId === exId);
@@ -29138,9 +29331,10 @@ ${JSON.stringify(ctx, null, 1)}`;
       starterSigs,
       exBarKg,
       liftMax,
-      barRead,
-      loadRead,
-      typedBound,
+      barReadOf,
+      loadReadOf,
+      typedBoundOf,
+      typedBoundApp,
       VOL_MODES,
       liveLogFetch,
       regionSrc,
@@ -29239,7 +29433,9 @@ ${JSON.stringify(ctx, null, 1)}`;
         return { n: b2.n, html: markupOf(b2.html) };
       },
       obActive,
-      fmtW,
+      fmtW: fmtWApp,
+      fmtWApp,
+      fmtWOf,
       rirUsual,
       rirEst,
       routineFromTemplate,
@@ -29366,9 +29562,22 @@ ${JSON.stringify(ctx, null, 1)}`;
       ML,
       exMusParts,
       musTrend,
-      U,
-      toD,
-      fromD,
+      U: appU,
+      appU,
+      liftU,
+      toD: toDApp,
+      toDApp,
+      fromD: fromDApp,
+      fromDApp,
+      toDOf,
+      fromDOf,
+      fmtBody,
+      bodyU,
+      toDBody,
+      fromDBody,
+      typedLabel,
+      listLabel,
+      stepReadOf,
       loadLabel,
       exName,
       planCredit,
