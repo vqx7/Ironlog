@@ -6,7 +6,7 @@ import type { Exercise } from './types';
 import type { ExerciseLike, Model, Suggestion } from './model';
 import { loadMode, PLATE_SIDE_IDS, isCompound, noE1 } from './library';
 import { r1, EPS } from './util';
-import { UIn, bodyIn, liftModelIn, liftUnitIn } from './model';
+import { UIn, appUnitIn, bodyIn, liftModelIn, liftUnitIn } from './model';
 import { DEFAULT_STEP, LB, fromDIn, toDIn, typedUnit } from './units';
 
 /** The load meanings a lifter can choose in the exercise editor. */
@@ -90,15 +90,16 @@ export function typedLabelIn(M: Model, ex: Pick<Exercise, 'bw' | 'unit'>, kg: nu
   return `${num} ${u}`;
 }
 
-/* A load as a line about several lifts quotes it (History, the recap, All-time bests, a close variation named in another
-   lift's words): as typed, in its lift's unit when its number says none, and its unit named when it is not the unit the
-   line is read in (the app's, or the lift's whose words they are), so a number with no unit is in that unit wherever
-   lifts in kg and in lb meet (390's Release B); `named` names it in any unit. */
-/** A load as a list of lifts quotes it: as typed, its unit named when it is not the line's (or always, when asked). */
+/* A set's load as a line quotes it outside the lift's own column (History, the recap, All-time bests, the heaviest
+   line, a close variation named in another lift's words): as typed, in its lift's unit when its number says none, its
+   unit named when it is not the app's, not the lift's, or not the unit the line is read in, so a number with no unit
+   means one thing whichever screen or lift it is read beside (390's Release B); `named` names it in any unit. */
+/** A load as a line quotes it: as typed, its unit named unless it is the app's, the lift's and the line's (or always). */
 export function listLabelIn(M: Model, ex: Pick<Exercise, 'bw' | 'unit'>, kg: number, named?: boolean): string {
-  const u = typedUnit(kg) ?? liftUnitIn(M, ex);
+  const lift = liftUnitIn(M, ex),
+    u = typedUnit(kg) ?? lift;
   const label = loadLabelIn(M, { bw: ex.bw, unit: u }, kg);
-  return named || u !== UIn(M) ? `${label} ${u}` : label;
+  return named || u !== UIn(M) || u !== lift || u !== appUnitIn(M) ? `${label} ${u}` : label;
 }
 
 // Puts a new load into a suggestion, its words included.

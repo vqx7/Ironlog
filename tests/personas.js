@@ -1221,10 +1221,11 @@ async function finish() {
     const h1 = await heads(), t1 = await H.toast(); await H.quiet();
     const rows = []; for (const s of [0, 1, 2]) rows.push(await H.row(db, s));
     const hint = await H.ev(b => window.__ironlog.state.draft.ex[b].hint || '', db);
+    const heavy = await H.ev(b => { const e = document.getElementById('blk-' + b); const m = e && /Heaviest [^\n,]*/.exec(e.innerText); return m ? m[0] : ''; }, db);
     const w = Number(rows[0].w);
     // 50 lb is 22.68 kg: the nearest dumbbell in kg is a whole half kilogram within 4% of it.
-    ok(h0[db] === 'LB EACH' && h1[db] === 'KG EACH' && h1[bb] === 'LB' && /in kg/.test(t1) && Math.abs(w - 22.68) / 22.68 < 0.04 && Math.abs(w * 2 - Math.round(w * 2)) < 1e-9 && rows.every(r => Number(r.w) === w) && /at \d+(\.\d)? kg per dumbbell/.test(hint) && !/ lb/.test(hint.replace(/^Last[^.]*\.\s*/, '')),
-      '19. LB tapped on the dumbbells: KG, their rows the nearest dumbbell in kg, the target in kg (last time quoted as typed), the bench still in lb', { h0, h1, t1, rows, hint });
+    ok(h0[db] === 'LB EACH' && h1[db] === 'KG EACH' && h1[bb] === 'LB' && /in kg/.test(t1) && Math.abs(w - 22.68) / 22.68 < 0.04 && Math.abs(w * 2 - Math.round(w * 2)) < 1e-9 && rows.every(r => Number(r.w) === w) && /at \d+(\.\d)? kg per dumbbell/.test(hint) && !/ lb/.test(hint.replace(/^Last[^.]*\.\s*/, '')) && /^Heaviest 50 lb×10/.test(heavy),
+      '19. LB tapped on the dumbbells: KG, their rows the nearest dumbbell in kg, the target in kg, last time and the heaviest quoted as typed (50 lb), the bench still in lb', { h0, h1, t1, rows, hint, heavy });
     // The sets done as asked: the reps in grey typed, at 2 in reserve, each ticked.
     for (const [b, s, r] of [[db, 0, rows[0].r], [db, 1, rows[1].r], [db, 2, rows[2].r], [bb, 0, 8], [bb, 1, 8], [bb, 2, 8]]) { await H.type('r', b, s, r); await H.effort(b, s, 2); await H.quiet(); await H.tick(b, s); }
     const fin = await H.finish();

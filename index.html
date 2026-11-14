@@ -7376,9 +7376,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return `${num3} ${u4}`;
   }
   function listLabelIn(M3, ex, kg2, named2) {
-    const u4 = typedUnit(kg2) ?? liftUnitIn(M3, ex);
+    const lift = liftUnitIn(M3, ex), u4 = typedUnit(kg2) ?? lift;
     const label = loadLabelIn(M3, { bw: ex.bw, unit: u4 }, kg2);
-    return named2 || u4 !== UIn(M3) ? `${label} ${u4}` : label;
+    return named2 || u4 !== UIn(M3) || u4 !== lift || u4 !== appUnitIn(M3) ? `${label} ${u4}` : label;
   }
   function swapWIn(M3, ex, res, nw) {
     M3 = liftModelIn(M3, ex);
