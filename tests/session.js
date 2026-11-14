@@ -529,6 +529,32 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await P.close();
   }
 
+  if (run('L-19')) {
+    /* The workout set aside comes back reading the log as the edit saved it, as a change to a lift reaches a workout
+       open (NEW-152): last week's bench made 185 x 10, 10, 10 in the edit, the bench, not started, asks what a workout
+       started now asks, a step up (185 + 10 = 195 lb), with last time as saved; the raises, started, keep what they
+       started with. Before, it came back asking for 24+ reps at 185 lb beside the old last time. */
+    const P = await lifter({ settings: { autoDone: false } });
+    await start(P); await P.tap(tick(1, 0));
+    // Its target, the load it asked and its rows, compared by value (the copy set aside is read back with its keys in another order).
+    const raises = () => P.ev(() => { const b = window.__ironlog.state.draft.ex[1]; const t = b.tgt || {}; return JSON.stringify({ tgt: Object.keys(t).sort().map(k => [k, t[k]]), sw: b.sw, sets: b.sets.map(x => [x.w, x.r, !!x.done]) }); });
+    const raisesBefore = await raises();
+    await P.tap('#tabs [data-tab="history"]', 200);
+    await P.tap('#view [data-act="histToggle"][data-id="last"]', 150); await P.tap('#view [data-act="histEdit"][data-id="last"]', 300);
+    const bi = await P.ev(() => window.__ironlog.state.draft.ex.findIndex(b => b.exId === 'bench'));
+    for (const s of [0, 1, 2]) { await P.page.click(field('r', bi, s)); await P.page.fill(field('r', bi, s), ''); await P.page.keyboard.type('10'); await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(80); }
+    await P.tap('#view [data-act="finish"]', 300);
+    while (await P.modal()) { const mm = await P.modal(); if (mm.kind === 'confirm') await mOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } }
+    const saved = await P.ev(() => window.__ironlog.state.sessions.find(x => x.id === 'last').ex.find(b => b.exId === 'bench').sets.map(x => x.r));
+    if (saved.join() !== '10,10,10') ok(false, 'L-19: (setup) the edit saved the bench as 10, 10, 10', saved);
+    await P.tap('#tabs [data-tab="today"]', 300);
+    const bench = await P.ev(() => { const e = document.getElementById('blk-0'); return { grey: [...e.querySelectorAll('input[data-f="w"]')].map(i => i.value || i.placeholder), text: e.innerText.replace(/\s+/g, ' ') }; });
+    const up = String(185 + BAR_STEP_LB);
+    ok(bench.grey.length === 3 && bench.grey.every(v => v === up) && bench.text.includes(`${up} lb`) && /185×10 – ✓ 2 185×10 – ✓ 3 185×10/.test(bench.text) && !/185×7/.test(bench.text), `L-19: the workout set aside comes back with the bench, not started, at ${up} lb, read from last week as the edit saved it (NEW-152)`, bench);
+    ok((await raises()) === raisesBefore, 'L-19: the raises, started before, keep what they started with (NEW-152)', { before: raisesBefore, after: await raises() });
+    await P.close();
+  }
+
   /* ---------- L-20: Short on time: blank rows go from the end, typed and ticked sets stay, with Undo ---------- */
   if (run('L-20')) {
     // A longer day (about half an hour left), so 15 minutes asks for a trim.
@@ -1261,6 +1287,19 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const saved = await E.ev(sid => { const s = window.__ironlog.state.sessions.find(x => x.id === sid); const b = s.ex.find(x => x.exId === 'bench'); return { inj: b.inj || null }; }, sid);
     ok(saved.inj === null, 'L-39: in an edit of a saved session, KG tapped and saved: no injury flagged since reaches it (REV17-2)', saved);
     await E.close();
+    /* kg picked in an edit while a workout waits set aside: the workout comes back with its bench, not started, in kg on
+       kg's loads, as if kg were picked there (85 kg, L-38), never 83.9 kg under a target worded in lb (NEW-152). */
+    const W = await lifter();
+    await start(W);
+    await W.tap('#tabs [data-tab="history"]', 200);
+    await W.tap('#view [data-act="histToggle"][data-id="last"]', 150); await W.tap('#view [data-act="histEdit"][data-id="last"]', 300);
+    await toUnit(W, await W.ev(() => window.__ironlog.state.draft.ex.findIndex(b => b.exId === 'bench')), 'kg');
+    await W.ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
+    await finishAll(W);
+    await W.tap('#tabs [data-tab="today"]', 300);
+    const back = await W.ev(() => { const e = document.getElementById('blk-0'); return { badge: e.querySelector('[data-act="unitOpen"]').textContent.trim(), grey: [...e.querySelectorAll('input[data-f="w"]')].map(i => i.value || i.placeholder), text: e.innerText.replace(/\s+/g, ' ') }; });
+    ok(back.badge === 'kg' && back.grey.length === 3 && back.grey.every(v => v === '85') && /at 85 kg/.test(back.text) && !/at 185 lb/.test(back.text), 'L-39: kg picked in an edit while a workout waits set aside: the workout comes back with the bench in kg at 85 kg (NEW-152)', back);
+    await W.close();
   }
 
   /* ---------- L-38: a lift's badge says its unit and opens its sheet, where it switches between lb and kg ---------- */

@@ -303,6 +303,7 @@ import {
   adjOn,
   blockProgress,
   calDueIdx,
+  draftBack,
   draftPlanMin,
   fillSets,
   greyR,
@@ -852,7 +853,18 @@ function start(): void {
      never loses (toast.ts): marked so here, in the one place they reach the page. */
   const notice = (msg: string, undo?: boolean | null, ms?: number | null, kind?: string): void =>
     toast(msg, undo, ms, kind ?? 'notice');
-  setFx({ render, rerenderKeepScroll, toast: notice, undoToastHide, setSaveState, syncLine, obGate, ask, closeModal });
+  setFx({
+    render,
+    rerenderKeepScroll,
+    toast: notice,
+    undoToastHide,
+    setSaveState,
+    syncLine,
+    obGate,
+    ask,
+    closeModal,
+    draftBack
+  });
   storageStart();
   syncStart();
   // Fields typed in, and the update bar: started before the page's handlers are added below.

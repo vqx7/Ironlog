@@ -628,6 +628,20 @@ export function refreshBlock(b: DraftBlock): void {
     if (!x.done && !x.warm && !x.drop && x.r == null && x.w === oldW && !carried.has(x)) x.w = sg.w;
 }
 
+/* A workout set aside comes back to a log that may have changed while it waited: the session edited saved, a past
+   workout logged, a lift's unit picked in the edit. It reads them as a workout open reads a change to a lift
+   (refreshEx, the unit picked in a lift's sheet): a lift not started reads its target again, its rows not typed in
+   taking the new load; one with a set done keeps what it started with, its words said again. */
+/** The workout just brought back from being set aside, read again against the log as it is now; inside the change that brings it back (unpark). */
+export function draftBack(): void {
+  const d = state.draft;
+  if (!d || d.editingId) return;
+  for (const b of d.ex) {
+    if (b.sets.some(x => x.done)) blockWords(b);
+    else refreshBlock(b);
+  }
+}
+
 /* A change to an exercise or its plan reaches the session in progress:
    an exercise not started yet re-reads its target, so a new load step, rep
    range or heaviest load shows at once instead of next session. Exercises

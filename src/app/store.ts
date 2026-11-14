@@ -352,6 +352,8 @@ interface Fx {
   obGate(): boolean;
   /** Closes the open sheet, as its own close does. */
   closeModal(): void;
+  /** Reads the workout just brought back from being set aside against the log as it is now (the session's draftBack); inside the change that brings it back. */
+  draftBack(): void;
 }
 /* Set once at start, before anything that could call an effect runs (the !
    says so), as state is set by load(). */

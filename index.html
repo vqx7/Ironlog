@@ -14935,6 +14935,7 @@ ${more}`;
       act(
         () => {
           state.draft = d3;
+          fx.draftBack();
         },
         { inProgress: true }
       );
@@ -16197,6 +16198,14 @@ ${more}`;
     });
     for (const x2 of b2.sets)
       if (!x2.done && !x2.warm && !x2.drop && x2.r == null && x2.w === oldW && !carried.has(x2)) x2.w = sg.w;
+  }
+  function draftBack() {
+    const d3 = state.draft;
+    if (!d3 || d3.editingId) return;
+    for (const b2 of d3.ex) {
+      if (b2.sets.some((x2) => x2.done)) blockWords(b2);
+      else refreshBlock(b2);
+    }
   }
   function refreshEx(exId) {
     const d3 = state.draft;
@@ -29679,7 +29688,18 @@ ${JSON.stringify(ctx, null, 1)}`;
     setRoot(renderInner);
     setSheets(SHEETS, afterSheet2);
     const notice = (msg, undo, ms, kind) => toast(msg, undo, ms, kind ?? "notice");
-    setFx({ render, rerenderKeepScroll, toast: notice, undoToastHide, setSaveState, syncLine, obGate, ask, closeModal });
+    setFx({
+      render,
+      rerenderKeepScroll,
+      toast: notice,
+      undoToastHide,
+      setSaveState,
+      syncLine,
+      obGate,
+      ask,
+      closeModal,
+      draftBack
+    });
     storageStart();
     syncStart();
     viewStart();
