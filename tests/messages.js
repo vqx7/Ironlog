@@ -10,6 +10,9 @@
 //   4  A message stays long enough to read: never less than its words take, 0.3 s a word (a convention, docs/EVIDENCE.md),
 //      so the 14 words of Hide's message on the account card are still there at 3.6 s, and gone by 5.2 s (REV16-B2: every
 //      message without Undo went at 2.6 s, whatever its length).
+//   5  A long message lays out across the screen, not in half of it: Hide's 14 words are two lines at 390 px, and at
+//      320 px the box is centred inside the screen with nothing to scroll sideways; a short message stays as wide as
+//      its words (a guard). REV16-I1, V 2026-11-13: the box laid out in half the screen, four lines 195 px wide.
 // MESSAGES_ONLY=1,3 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -20,8 +23,8 @@ const run = n => !ONLY || ONLY.includes(String(n));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const DAY = '2026-11-10';
 
-async function phone() {
-  const P = await open(FILE, { w: 390, h: 844, clock: DAY + 'T10:00:00', realStarter: true });
+async function phone(w = 390) {
+  const P = await open(FILE, { w, h: 844, clock: DAY + 'T10:00:00', realStarter: true });
   await P.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.unit = 'lb';
     localStorage.setItem(L.KEY + '.installLater', '1'); localStorage.setItem(L.KEY + '.tipWake', '1');
     L.saveNow(); L.invalidate(); L.render(); });
@@ -116,6 +119,29 @@ const tapAway = P => P.page.mouse.click(195, 420);
     ok(words === 14 && /Hidden\. Sign in/.test(at36.text), '4. Hide\'s 14-word message on the account card is still there at 3.6 s, long enough to read', { words, at36 });
     ok(at52.text === '', '4. and gone by 5.2 s, its words read', at52);
     await P.ctx.close(); await P.browser.close();
+  }
+
+  if (run(5)) {
+    // The box as a lifter sees it: its lines (its height less its padding, over a line's height), where it sits, and
+    // whether the page now scrolls sideways.
+    const box = P => P.page.evaluate(() => {
+      const t = document.getElementById('toast'), cs = getComputedStyle(t), b = t.getBoundingClientRect();
+      const inner = b.height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      return { text: t.textContent.trim(), w: Math.round(b.width), left: Math.round(b.left), right: Math.round(b.right),
+        lines: Math.round(inner / parseFloat(cs.lineHeight)), page: document.documentElement.scrollWidth };
+    });
+    for (const w of [390, 320]) {
+      const P = await phone(w);
+      await P.page.evaluate(() => window.__ironlog.ACT.acctLater());
+      const long = await box(P);
+      if (w === 390) ok(long.lines <= 2 && long.w > w / 2, '5. at 390 px Hide\'s 14 words run across the screen in two lines, not down half of it', long);
+      ok(long.left >= 0 && long.right <= w && Math.abs(long.left - (w - long.right)) <= 1 && long.page <= w, `5. at ${w} px the box is centred inside the screen, with nothing to scroll sideways`, long);
+      await tapAway(P);
+      await P.page.evaluate(() => window.__ironlog.toast('Saved'));
+      const short = await box(P);
+      ok(short.text === 'Saved' && short.w < w / 2 && short.lines === 1, `5. (a guard) at ${w} px a one-word message stays as wide as its word`, short);
+      await P.ctx.close(); await P.browser.close();
+    }
   }
 
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');

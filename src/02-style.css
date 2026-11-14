@@ -1174,8 +1174,10 @@ details.more>summary .small{display:block;font-weight:400}
 .pick{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:11px 2px;cursor:pointer;color:var(--ink)}
 .pick b{font-weight:650}
 /* Docked under the header: at the bottom it sat over the next set rows and
-   swallowed taps on them. Only its Undo button takes taps. */
-#toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--head-h) + 8px + env(safe-area-inset-top,0px));z-index:60;pointer-events:none;background:var(--ink);color:var(--on-ink);padding:11px 15px;border-radius:var(--r-md);font-size:15px;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+   swallowed taps on them. Only its Undo button takes taps. As wide as its
+   words up to 92% of the screen: from left:50% alone a box lays out in the
+   half of the screen to its right, and a long message ran down four lines. */
+#toast{position:fixed;left:50%;transform:translateX(-50%);width:max-content;top:calc(var(--head-h) + 8px + env(safe-area-inset-top,0px));z-index:60;pointer-events:none;background:var(--ink);color:var(--on-ink);padding:11px 15px;border-radius:var(--r-md);font-size:15px;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 8px 24px rgba(0,0,0,.22)}
 /* Sits under the top bar and stays in view while scrolling, so a new
    version is noticed without covering anything. Since 2.52 the top bar scrolls
    away, so it stays at the top of the screen, as it did on the first-run pages,

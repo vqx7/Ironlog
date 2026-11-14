@@ -38,7 +38,7 @@ import { planForIn } from './plans';
 import { paceIn } from './time';
 import { hasTargetIn } from './profile';
 import { STR_NEAR, STR_REST } from './profile';
-import { HARD_EX, JK, JL, LONG_IDS, LONG_TRIAL, MK, ML, isCompound, patternOf, profHeavy } from './library';
+import { HARD_EX, JK, JL, LONG_IDS, LONG_TRIAL, MK, ML, isCompound, loadMode, patternOf, profHeavy } from './library';
 import {
   HELPER_CREDIT,
   LIGHTER_SET_SHARE,
@@ -668,7 +668,11 @@ function canDoIn(M: Model, e: Pick<Exercise, 'id'>, repMin: number | string | un
 
 /* Closest same-muscle replacements, used by Swap and Limited equipment.
    Same main muscle and same kind of set (timed or reps) are required; then
-   shared helper muscles, lifts already logged, and like-for-like setup. */
+   shared helper muscles, lifts already logged, and like-for-like setup. A
+   cable and a machine set by a pin in its stack are one setup: both keep
+   the load on through the whole range and step by the stack, and Swap is
+   often reached for because the cables are taken, so Cable Fly's closest
+   match is Pec Deck Fly rather than another fly on the same cables. */
 function swapScoreIn(M: Model, o: ExerciseLike, e: Exercise, repMin: number | string | undefined): number {
   const I = IDXIn(M);
   let s = e.secondary.filter(x => o.secondary.includes(x)).length;
@@ -681,7 +685,7 @@ function swapScoreIn(M: Model, o: ExerciseLike, e: Exercise, repMin: number | st
   if (!!e.bw === !!o.bw) s += SWAP_RANK.bw;
   if (!!e.perSide === !!o.perSide) s += SWAP_RANK.side;
   if (!e.rare) s += SWAP_RANK.common;
-  if (e.equip === o.equip) s += SWAP_RANK.equip;
+  if (e.equip === o.equip || (loadMode(e) === 'stack' && loadMode(o) === 'stack')) s += SWAP_RANK.equip;
   const st = I.exStats[e.id];
   if (st && st.stalled) s -= SWAP_RANK.stalled;
   if (exInjuryIn(M, e)) s -= SWAP_RANK.injured;
