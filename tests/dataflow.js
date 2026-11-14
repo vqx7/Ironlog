@@ -61,15 +61,17 @@ ok(JSON.stringify(back.cells[0])==='["220.5","100","kg"]'&&back.cells[1][2]==='l
 ok(back.help&&back.help.w===-20&&back.help.u==='kg','CSV: an assisted lift\'s help typed in kg (-20 kg) reads back as typed, never -20.003 kg from the lb column',back.help);
 }
 // A machine lift done on two machines (390 C): each row names its machine, and a file read back into an empty log keeps
-// each machine's sessions together, so the lift reads the same from it; a lift on one machine names none.
+// each machine's sessions together, so the lift reads the same from it; a lift on one machine names none. On pages of
+// its own, so the log the sections below read is left as it is.
 {
 const LB=0.45359237;
-await ev(LB=>{const L=window.__ironlog;const mk=(id,date,w,more)=>({id,date,dayIdx:0,dayId:null,dayName:'Push',routineId:'',free:true,notes:'',ex:[{exId:'machPress',note:'',rr:[8,12],sets:[11,11,10].map(r=>({w:w*LB,r,rir:2,done:true})),...more},{exId:'bench',note:'',rr:[6,10],sets:[{w:185*LB,r:8,rir:2,done:true}]}]});
+const P1=await open('index.html',{browser,clock:'2026-10-20T10:00:00'});
+await P1.page.evaluate(LB=>{const L=window.__ironlog;L.state.settings.onboarded=true;const mk=(id,date,w,more)=>({id,date,dayIdx:0,dayId:null,dayName:'Push',routineId:'',free:true,notes:'',ex:[{exId:'machPress',note:'',rr:[8,12],sets:[11,11,10].map(r=>({w:w*LB,r,rir:2,done:true})),...more},{exId:'bench',note:'',rr:[6,10],sets:[{w:185*LB,r:8,rir:2,done:true}]}]});
   L.state.sessions=[mk('a1','2026-10-01',200,{}),mk('a2','2026-10-08',140,{nw:true}),mk('a3','2026-10-15',200,{mc:'0'})];L.state=L.normalize(L.state);L.invalidate();L.saveNow();},LB);
-const [dl3]=await Promise.all([page.waitForEvent('download'),ev(()=>window.__ironlog.exportCSV())]);
+const [dl3]=await Promise.all([P1.page.waitForEvent('download'),P1.page.evaluate(()=>window.__ironlog.exportCSV())]);
 const text3=require('fs').readFileSync(await dl3.path(),'utf8');
-await page.waitForTimeout(100);await page.click('[data-act="mClose"]');
-const P2=await open('index.html',{clock:'2026-10-20T10:00:00',realStarter:true});
+await P1.ctx.close();
+const P2=await open('index.html',{browser,clock:'2026-10-20T10:00:00',realStarter:true});
 const got=await P2.page.evaluate(async t=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.saveNow();L.impStart({text:t});await new Promise(r=>setTimeout(r,300));L.ACT.impGo();await new Promise(r=>setTimeout(r,300));
   const rows=L.impRows(t);const m=rows[0].indexOf('machine'),e=rows[0].indexOf('exercise');
   const by=L.state.sessions.slice().sort((a,b)=>a.date<b.date?-1:1).map(s=>s.ex.find(b=>b.exId==='machPress')).map(b=>b&&b.mc||null);
