@@ -629,8 +629,9 @@ function loadsForIn(
        from its spacing reads one (below): the next weight is skipped only when it is a sliver over it, less than the
        lift's own jump (22.5 kg is 49.6 lb, so 55, not 50), never by BELL_TOL's share of the gap, which would take 24 kg
        (52.9 lb) for the 55 lb bell and step it to 60. BELL_TOL stays for a load typed in the unit on screen, a bell's
-       label converted (35 lb for a 16 kg dumbbell). */
-    const conv = at != null && typedOtherIn(M, at),
+       label converted (35 lb for a 16 kg dumbbell). A load that is one of this rack's own weights is a bell the lifter
+       has, whatever unit the app shows, so its next weight is the rack's next (45 kg on 1 kg steps goes to 46). */
+    const conv = at != null && typedOtherIn(M, at) && !L.some(x => Math.abs(x - at) < EPS_SAME),
       jump = jumpPct(ex, plan);
     const next = (w: number): number | null => L.find(x => x > w + tl) ?? null;
     return {

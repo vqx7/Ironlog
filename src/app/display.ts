@@ -447,9 +447,12 @@ export function goalState(exId: string): {
   const bw = bwRefLoad(ex);
   // With no weigh-in a bodyweight lift has no load to compare: say so rather than a number read from the added load alone.
   const noBw = !!ex.bw && !((bwRef() ?? 0) > 0);
+  /* Read on the other unit's equipment a goal can read heavier than it was set (225 lb reads 102.5 kg), so a set at it as
+     set reaches it too: a change of unit never takes a goal reached away. */
+  const reach = Math.min(g0.w, g.w) - EPS_SAME;
   let hit: string | null = null;
   for (const x of exps) {
-    if (x.pts.some(p => p.w >= g.w - EPS_SAME && p.r >= g.r)) {
+    if (x.pts.some(p => p.w >= reach && p.r >= g.r)) {
       hit = x.date;
       break;
     }

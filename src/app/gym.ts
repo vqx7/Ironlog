@@ -5,7 +5,7 @@
 import type { DbRack, Exercise, Gym, Plan } from './types';
 import type { ExerciseLike, Model } from './model';
 import { isNum, r3, EPS_SAME } from './util';
-import { LB, STEP_LB, stepReadIn, unitStepIn, BAR, TYPED_STEP, loadReadAs, loadReadIn } from './units';
+import { LB, STEP_LB, stepReadIn, unitStepIn, BAR, TYPED_STEP, loadReadAs, loadReadIn, typedUnit } from './units';
 import { ONE_DB, PLATE_SIDE_IDS, isCompound, loadMode, rackKind } from './library';
 import { UIn, gymOfIn } from './model';
 import { arr } from './records';
@@ -409,8 +409,12 @@ export function liftMaxIn(M: Model, ex: Pick<Exercise, 'maxLoad'>): number | nul
   return ex.maxLoad != null ? loadReadIn(M, ex.maxLoad) : null;
 }
 
-/** A bar's weight as set (kg), read in the unit the gym is labelled in, else the one on screen (loadReadAs). */
+/* A bar typed in the unit its field shows (the one on screen) is the bar the lifter has, so it reads as typed whatever
+   unit Your gym is in: 45 typed in lb with Your gym in kg is a 45 lb bar, not the gym's 20 kg one. One set in the
+   other unit is read on the gym's equipment, else the screen's. */
+/** A bar's weight as set (kg): as typed when typed in the unit on screen, else read in the unit the gym is labelled in, else the one on screen (loadReadAs). */
 export function barReadIn(M: Model, kg: number): number {
+  if (typedUnit(kg) === UIn(M)) return kg;
   const g = gymOfIn(M);
   return loadReadAs(kg, (g && g.u) || UIn(M));
 }
