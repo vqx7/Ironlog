@@ -330,13 +330,13 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
        since 2.67 (390 C) its menu has Machine, whose sheet has New machine and the machines it was done on (the first,
        "0"): tapped, it puts the lift on the other one, as New machine or gym marked and took off the mark before. It
        answers the option's words and the machine the sheet marked. */
-    const menu = async words => {
+    const menu = async (words, to) => {
       await P.page.click('#blk-0 [data-act="bMenu"]'); await wait(100);
       const label = await ev(() => [...document.querySelectorAll('#modal [data-op="machineOpen"]')].map(x => x.textContent.trim()).join('|'));
       if (!label) { await ev(() => window.__ironlog.ACT.mClose()); return { label, on: null }; }
       await P.page.click('#modal [data-op="machineOpen"]'); await wait(150);
       const on = await ev(() => { const b = document.querySelector('#modal [data-act="machinePick"][aria-pressed="true"]'); return b ? b.dataset.k : null; });
-      if (words) { await P.page.click(`#modal [data-act="machinePick"][data-k="${on === 'new' ? '0' : 'new'}"]`); await wait(150); }
+      if (words) { await P.page.click(`#modal [data-act="machinePick"][data-k="${to || (on === 'new' ? '0' : 'new')}"]`); await wait(150); }
       else await ev(() => window.__ironlog.ACT.mClose());
       return { label, on };
     };
@@ -390,13 +390,15 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       L.ui.tab = 'history'; L.render(); L.ACT.histEdit({ dataset: { id: sv.id } }); await new Promise(r => setTimeout(r, 150));
       return { nw: L.state.draft.ex[0].nw === true, id: sv.id };
     });
-    const label2 = await menu(true);
+    const label2 = await menu(true, '0');
     const ed2 = await ev(async id => {
       const L = window.__ironlog; const d = L.state.draft; d._rampAsked = true; d._leftAsked = true; L.ACT.finishNow(); await new Promise(r => setTimeout(r, 300)); if (L.ui.modal) L.ACT.mClose();
       const sv = L.state.sessions.find(x => x.id === id);
-      return { draft: !!L.state.draft, nw: 'nw' in sv.ex[0], prs: L.IDX().prs.filter(p => p.exId === 'legPress' && p.sid === id).length };
+      return { draft: !!L.state.draft, nw: 'nw' in sv.ex[0], mc: sv.ex[0].mc || null, prs: L.IDX().prs.filter(p => p.exId === 'legPress' && p.sid === id).length };
     }, ed.id);
-    ok(ed.nw && label2.on === 'new' && !ed2.draft && !ed2.nw && ed2.prs > 0, '5. an edit from History opens on the new machine, and saved with the first machine picked, the session reads against the old gym again (a PR)', { ed, label2, ed2 });
+    /* The edit opens on the machine the session began (its own key), and the first machine picked there names it on
+       that session alone (its mark kept, which sessions after it would follow): read against the old gym, a PR. */
+    ok(ed.nw && label2.on === ed.id && !ed2.draft && ed2.mc === '0' && ed2.prs > 0, '5. an edit from History opens on the new machine, and saved with the first machine picked, the session reads against the old gym again (a PR)', { ed, label2, ed2 });
     // A mark only as true: anything else a damaged save carries is dropped, on a saved exercise and in a workout.
     const clean = await ev(() => {
       const L = window.__ironlog; const f = L.normalize(null);
