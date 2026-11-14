@@ -75,12 +75,20 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
      the app's unit it follows the app again, as one never switched does), so every screen and the next session read it;
      the lift's blocks in the workout read their targets again in it, and a load already typed is converted, never read
      as a number of the new unit. */
+  unitOpen(t) {
+    const b = Number(t.dataset.b);
+    if (state.draft && state.draft.ex[b]) openModal({ kind: 'unit', b });
+  },
   liftUnit(t) {
     const d = state.draft;
     const b = d && d.ex[Number(t.dataset.b)];
     const e = b && state.exercises.find(x => x.id === b.exId);
+    if (ui.modal && ui.modal.kind === 'unit') closeModal();
     if (!d || !b || !e) return;
-    const to: 'kg' | 'lb' = liftU(e) === 'kg' ? 'lb' : 'kg';
+    // The unit picked in the exercise's sheet; the one it is already in changes nothing.
+    const to: 'kg' | 'lb' =
+      t.dataset.v === 'kg' || t.dataset.v === 'lb' ? t.dataset.v : liftU(e) === 'kg' ? 'lb' : 'kg';
+    if (to === liftU(e)) return;
     act(
       () => {
         if (to === appU()) delete e.unit;

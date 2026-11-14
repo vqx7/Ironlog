@@ -10,8 +10,8 @@ import { html } from 'lit-html';
 import { LIMITS } from './records';
 import type { TemplateResult } from 'lit-html';
 import { JOINTS, MUSCLES, rackKind } from './library';
-import { EX, exName, fmtWOf, gymRack, incOf, liftMax, liftU, loadReadOf } from './live';
-import { rirShow } from './display';
+import { appU, EX, exName, fmtWOf, gymRack, incOf, liftMax, liftU, loadReadOf } from './live';
+import { loadLong, rirShow } from './display';
 import { markedNew } from './session';
 import type { DraftBlock } from './types';
 import { loadNote } from './loads';
@@ -91,6 +91,25 @@ export function maxSheet(m: { exId: string }): TemplateResult {
     <label class="field">Load (${liftU(e)}${e.bw ? ', added to bodyweight' : ''})<input type="text" inputmode="decimal" id="maxVal" value=${e.maxLoad != null ? fmtWOf(e, liftMax(e) ?? 0) : ''} placeholder="No limit"></label>
     <p class="small muted">Top of the stack or biggest dumbbell. Blank for no limit.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+}
+
+/* The exercise's badge opens this: what its load column holds, in full, and the unit its weights are marked in (390's
+   Release B). A lift marked in the app's unit follows the app's (liftUnit takes the mark off). */
+/** What a session's exercise holds in its load column, and its weights' unit, lb or kg. */
+export function unitSheet(m: { b: number }): TemplateResult | null {
+  const b = blockAt(m.b);
+  if (!b) return null;
+  const ex = EX(b.exId);
+  const u = liftU(ex);
+  return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}</h3>${closeX()}</div>
+    <p>${loadLong(ex)}</p>
+    <div class="row spread u-mt10"><span>Weights in</span><div class="seg" role="group" aria-label="Weights in">${(
+      ['lb', 'kg'] as const
+    ).map(
+      k =>
+        html`<button class=${k === u ? 'chip on' : 'chip'} data-act="liftUnit" data-b=${m.b} data-v=${k} aria-pressed=${String(k === u)}>${k}</button>`
+    )}</div></div>
+    <p class="small muted">The unit marked on its weights. Other lifts stay in ${appU()}.</p></div>`;
 }
 
 /** A note on a lift in a session, saved with it and shown next time, with its pictures. */

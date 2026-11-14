@@ -172,19 +172,44 @@ export const fmtBig = (kg: number): string => Math.round(toDApp(kg) ?? 0).toLoca
 
 /** The load column's heading: the unit, and what the number is (each, per side, the stack, added, or the machine's help). */
 export function loadHead(ex: ExerciseLike | null | undefined): string {
-  const p = loadHeadParts(ex);
-  return p.pre + p.unit + p.post;
-}
-
-/* The heading in its parts, so the session's heading can make the unit a tap of its own (390's Release B: the unit
-   marks the lift's equipment) while the words around it keep the tip of what the load is. */
-/** The load column heading's words before and after the lift's unit, and the unit, upper case. */
-export function loadHeadParts(ex: ExerciseLike | null | undefined): { pre: string; unit: string; post: string } {
   const m = loadMode(ex),
     unit = liftU(ex).toUpperCase();
-  if (ex && ex.assist) return { pre: 'Help ', unit, post: '' };
-  if (m === 'bw') return { pre: '+', unit, post: '' };
-  return { pre: '', unit, post: m === 'each' ? ' each' : m === 'side' ? '/side' : m === 'stack' ? ' stack' : '' };
+  if (ex && ex.assist) return `Help ${unit}`;
+  if (m === 'bw') return `+${unit}`;
+  return unit + (m === 'each' ? ' each' : m === 'side' ? '/side' : m === 'stack' ? ' stack' : '');
+}
+
+/* What a lift's load column holds, said once for every place that says it (390's Release B, V 2026-11-14): the
+   exercise's badge is its unit alone ("lb"), the one thing it changes; the column's heading says what the number is in
+   one word, a lifter's word (Total, Each, Stack, Per side, Added, Assist), one line at every width; the exercise's
+   sheet says it in full. */
+// The longer words for a load mode; a mode not listed falls to the equipment's words.
+const LOAD_LONG: Readonly<Record<string, string>> = {
+  each: 'Enter the weight of one dumbbell. Weight lifted counts both.',
+  side: 'Enter the plates on one side. Weight lifted counts both sides.',
+  stack: 'Enter the pin setting. It is not comparable across machines.',
+  bw: 'Enter only what you add (belt, vest, dumbbell); 0 for bodyweight. Your logged bodyweight is added for estimates.'
+};
+
+/** What to enter in a lift's load column, in full: its sheet's words. */
+export function loadLong(ex: ExerciseLike): string {
+  if (ex.assist)
+    return 'Enter the assistance the machine gives, as on its pin. Less assistance is progress; your logged bodyweight minus it is what counts.';
+  return (
+    LOAD_LONG[loadMode(ex)] ||
+    (ex.equip === 'barbell'
+      ? 'Enter everything on the bar, the bar included.'
+      : ex.equip === 'dumbbell'
+        ? 'Enter the weight of the one dumbbell you hold.'
+        : 'Enter the total load.')
+  );
+}
+
+/** The load column's heading in a session: what the number is, in a lifter's word (Per side drops Per under 360 px). */
+export function loadColWord(ex: ExerciseLike): string {
+  if (ex.assist) return 'Assist';
+  const m = loadMode(ex);
+  return m === 'bw' ? 'Added' : m === 'each' ? 'Each' : m === 'side' ? 'Per side' : m === 'stack' ? 'Stack' : 'Total';
 }
 
 /** A date written out: "Sat, Oct 24, 2026". */

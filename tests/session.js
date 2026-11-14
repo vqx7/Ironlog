@@ -100,6 +100,8 @@ const tick = (b, s) => `#view [data-act="sDone"][data-b="${b}"][data-s="${s}"]`;
 const field = (f, b, s) => `#view input[data-f="${f}"][data-b="${b}"][data-s="${s}"]`;
 // A row's button by its action, for exercise b's row s (or the exercise's own when s is null).
 const btn = (act, b, s) => `#view [data-act="${act}"][data-b="${b}"]${s == null ? '' : `[data-s="${s}"]`}`;
+// A lift's weights switched as a lifter does it: its badge opens its sheet, and the unit is picked there (L-38).
+const toUnit = async (X, b, to) => { await X.tap(`#view [data-act="unitOpen"][data-b="${b}"]`, 250); await X.tap(`#modal [data-act="liftUnit"][data-v="${to}"]`, 300); };
 // The confirm sheet's buttons, as the lifter taps them.
 const mOk = P => P.tap('#modal [data-act="mOk"]', 250);
 const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
@@ -1237,9 +1239,9 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await start(P);
     for (const s of [0, 1]) { await P.page.click(field('r', 0, s)); await P.page.fill(field('r', 0, s), ''); await P.page.keyboard.type('9'); await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60); await P.tap(btn('sDone', 0, s), 150); }
     const before = await P.ev(() => { const b = window.__ironlog.state.draft.ex[0]; return { w: b.tgt && b.tgt.w, total: b.tgt && b.tgt.total }; });
-    await P.tap(btn('liftUnit', 0, null), 300);
+    await toUnit(P, 0, 'kg');
     const mid = await P.ev(() => { const b = window.__ironlog.state.draft.ex[0]; const e = document.getElementById('blk-0'); return { w: b.tgt && b.tgt.w, total: b.tgt && b.tgt.total, prog: (e.querySelector('.bprog, .prog') || {}).textContent || e.innerText }; });
-    ok(Math.abs(mid.w - before.w) < 1e-9 && mid.total === before.total && !/Nothing logged/.test(mid.prog), 'L-39: KG tapped after two sets: the target keeps its load and total, the sets done still count', { before, mid });
+    ok(Math.abs(mid.w - before.w) < 1e-9 && mid.total === before.total && !/Nothing logged/.test(mid.prog), 'L-39: kg picked after two sets: the target keeps its load and total, the sets done still count', { before, mid });
     await P.ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
     await P.page.click(field('r', 0, 2)); await P.page.fill(field('r', 0, 2), ''); await P.page.keyboard.type('9'); await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60);
     await P.tap(btn('sDone', 0, 2), 150);
@@ -1253,7 +1255,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await E.ev(() => { const L = window.__ironlog; L.state.injuries = [{ id: 'i1', m: 'chest', note: '', date: L.today() }]; L.invalidate(); L.saveNow(); L.ui.tab = 'history'; L.render(); }); await wait(150);
     await E.tap('#view [data-act="histToggle"][data-id="last"]', 150); await E.tap('#view [data-act="histEdit"][data-id="last"]', 300);
     const bi = await E.ev(() => window.__ironlog.state.draft.ex.findIndex(b => b.exId === 'bench'));
-    await E.tap(`#view .sg.head [data-act="liftUnit"][data-b="${bi}"]`, 300);
+    await toUnit(E, bi, 'kg');
     await E.ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
     await finishAll(E);
     const saved = await E.ev(sid => { const s = window.__ironlog.state.sessions.find(x => x.id === sid); const b = s.ex.find(x => x.exId === 'bench'); return { inj: b.inj || null }; }, sid);
@@ -1261,46 +1263,98 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await E.close();
   }
 
-  /* ---------- L-38: the unit beside a lift's loads switches the lift between lb and kg ---------- */
+  /* ---------- L-38: a lift's badge says its unit and opens its sheet, where it switches between lb and kg ---------- */
   if (run('L-38')) {
-    /* 390's Release B: tapping "LB" in an exercise's heading marks its equipment in kg: kept on the lift, said with Undo,
-       its target read again in kg, a load already typed converted (225 lb shows as 102.1 kg, never read as 225 kg), the
-       other lifts left in lb; Undo puts it back; it is still kg when the app is opened again, and Finish saves the sets as
-       typed. */
+    /* 390's Release B, as V settled it on 2026-11-14: each exercise has a badge under its buttons with its unit and what
+       its load column holds ("lb · total"); the column's heading is one word. The badge opens the exercise's sheet: what
+       to enter there in full, and the unit its weights are marked in. kg picked there marks its equipment in kg: kept on
+       the lift, said with Undo, its target read again in kg, a load already typed converted (225 lb shows as 102.1 kg,
+       never read as 225 kg), the other lifts left in lb; Undo puts it back; it is still kg when the app is opened again. */
     const P = await lifter();
     await start(P);
-    const head = () => P.ev(() => [...document.querySelectorAll('#view .sg.head .lh')].map(e => e.textContent.trim().toUpperCase()));
-    const h0 = await head();
+    const badges = () => P.ev(() => [...document.querySelectorAll('#view [data-act="unitOpen"]')].map(e => e.textContent.trim()));
+    const h0 = await badges();
     await P.page.click(field('w', 0, 0)); await P.page.fill(field('w', 0, 0), ''); await P.page.keyboard.type('225');
     await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(80);
-    await P.tap(btn('liftUnit', 0, null), 300);
+    await P.tap('#view [data-act="unitOpen"][data-b="0"]', 250);
+    const sheet = await P.ev(() => { const m = document.getElementById('modal'); const on = [...m.querySelectorAll('[data-act="liftUnit"]')].map(x => ({ v: x.dataset.v, on: x.getAttribute('aria-pressed') })); return { text: m.innerText, on, tip: !!document.querySelector('#tip:not([hidden])') }; });
+    ok(/Barbell Bench Press/.test(sheet.text) && /Enter everything on the bar, the bar included\./.test(sheet.text) && JSON.stringify(sheet.on) === JSON.stringify([{ v: 'lb', on: 'true' }, { v: 'kg', on: 'false' }]) && /Other lifts stay in lb\./.test(sheet.text) && !sheet.tip,
+      'L-38: the bench\'s badge opens its sheet: what to enter ("Enter everything on the bar, the bar included."), lb picked, kg to pick, other lifts staying in lb; no tip', sheet);
+    await P.tap('#modal [data-act="liftUnit"][data-v="lb"]', 250);
+    const same = await P.ev(() => ({ modal: !!window.__ironlog.ui.modal, unit: window.__ironlog.state.exercises.find(x => x.id === 'bench').unit || null }));
+    ok(!same.modal && same.unit === null, 'L-38: lb picked again closes the sheet and changes nothing', same);
+    await toUnit(P, 0, 'kg');
     const after = await P.ev(() => { const L = window.__ironlog; const d = L.state.draft; const e = L.state.exercises.find(x => x.id === 'bench');
-      return { unit: e.unit, w0: d.ex[0].sets[0].w, shown: document.querySelector('#view input[data-f="w"][data-b="0"][data-s="0"]').value, grey: document.querySelector('#view input[data-f="w"][data-b="0"][data-s="1"]').placeholder, hint: d.ex[0].hint || '' }; });
+      return { unit: e.unit, modal: !!L.ui.modal, w0: d.ex[0].sets[0].w, shown: document.querySelector('#view input[data-f="w"][data-b="0"][data-s="0"]').value, grey: document.querySelector('#view input[data-f="w"][data-b="0"][data-s="1"]').placeholder, hint: d.ex[0].hint || '' }; });
     const t1 = await P.toast();
-    ok(JSON.stringify(h0) === JSON.stringify(['LB', 'LB EACH']) && JSON.stringify(await head()) === JSON.stringify(['KG', 'LB EACH']), 'L-38: the bench heading reads LB, then KG after a tap; the raises stay LB', { h0, h1: await head() });
-    // The tap takes a finger 44 px wide and tall over the unit, read from the points that reach it, no other control under
-    // it; and its tap opens no tip of the heading it sits in.
-    const reach = await P.ev(() => { const sel = '#view .sg.head [data-act="liftUnit"]'; const b = document.querySelector(sel); const r = b.getBoundingClientRect(); const cx = r.left + r.width / 2, cy = r.top + r.height / 2, left = cx - 22;
-      const hit = (x, y) => { const e = document.elementFromPoint(x, y); return !!e && e.closest(sel) === b; };
-      let top = cy, bot = cy; while (hit(cx, top - 1) && top > cy - 90) top--; while (hit(cx, bot + 1) && bot < cy + 90) bot++;
-      const all = Math.round(bot - top + 1) >= 44 && [cx - 21, cx, cx + 21].every(x => [bot, (top + bot) / 2, top].every(y => hit(x, y)));
-      const others = [...document.querySelectorAll('button, a, input, select, textarea, [data-act]')].filter(e => e !== b && !b.contains(e) && !e.contains(b)).filter(e => { const q = e.getBoundingClientRect(); return q.width && q.height && q.left < left + 44 && q.right > left && q.top < bot && q.bottom > top; }).map(e => e.outerHTML.slice(0, 80));
-      return { all, others, tip: !!document.querySelector('#tip:not([hidden])') }; });
-    ok(reach.all && !reach.others.length && !reach.tip, 'L-38: the unit takes a finger 44 px wide and tall, over no other control, and its tap opens no tip', reach);
-    ok(after.unit === 'kg' && Math.abs(after.w0 - 225 * LB) < 1e-9 && after.shown === '102.1' && after.grey === '102.1' && /85 kg is the nearest load in kg to what you did: aim for 24\+ reps over 3 sets at 85 kg/.test(after.hint) && t1 === 'Barbell Bench Press in kg',
-      'L-38: kept on the lift; 225 typed shows as 102.1 kg, stored as typed, the rows under it following it; the target read again in kg (185 lb x 8, 8, 7 is 85 kg, aim for 24+, P-40); "Barbell Bench Press in kg", with Undo', { after, t1 });
+    ok(JSON.stringify(h0) === JSON.stringify(['lb', 'lb']) && JSON.stringify(await badges()) === JSON.stringify(['kg', 'lb']), 'L-38: the bench\'s badge reads lb, then kg; the raises stay lb', { h0, h1: await badges() });
+    ok(after.unit === 'kg' && !after.modal && Math.abs(after.w0 - 225 * LB) < 1e-9 && after.shown === '102.1' && after.grey === '102.1' && /85 kg is the nearest load in kg to what you did: aim for 24\+ reps over 3 sets at 85 kg/.test(after.hint) && t1 === 'Barbell Bench Press in kg',
+      'L-38: kg picked: the sheet closes, kept on the lift; 225 typed shows as 102.1 kg, stored as typed, the rows under it following it; the target read again in kg (185 lb x 8, 8, 7 is 85 kg, aim for 24+, P-40); "Barbell Bench Press in kg", with Undo', { after, t1 });
     await P.tap('#toast [data-act="undo"]', 300);
     const back = await P.ev(() => { const L = window.__ironlog; return { unit: L.state.exercises.find(x => x.id === 'bench').unit || null, shown: document.querySelector('#view input[data-f="w"][data-b="0"][data-s="0"]').value }; });
     ok(back.unit === null && back.shown === '225', 'L-38: Undo puts it back in lb, the load as typed', back);
-    await P.tap(btn('liftUnit', 0, null), 300);
+    await toUnit(P, 0, 'kg');
     await P.page.reload(); await wait(600);
-    const kept = await P.ev(() => ({ unit: window.__ironlog.state.exercises.find(x => x.id === 'bench').unit, head: [...document.querySelectorAll('#view .sg.head .lh')].map(e => e.textContent.trim().toUpperCase())[0] }));
-    ok(kept.unit === 'kg' && kept.head === 'KG', 'L-38: switched again, it is still kg when the app is opened again', kept);
+    const kept = await P.ev(() => ({ unit: window.__ironlog.state.exercises.find(x => x.id === 'bench').unit, badge: document.querySelector('#view [data-act="unitOpen"][data-b="0"]').textContent.trim() }));
+    ok(kept.unit === 'kg' && kept.badge === 'kg', 'L-38: switched again, it is still kg when the app is opened again', kept);
     await P.close();
-    /* The unit's touch area is its own wherever the block puts a control above its heading: a note from last time with
-       Use again, a bodyweight lift's Add bodyweight, a note's pictures; at 390 and 320 px. Measured by taps: the points
-       that reach the unit span 44 px or more each way, no other control lies in them, and a tap at the bottom edge of
-       the control above does what that control does. */
+    /* What each kind of lift says, and how it sits: the badge names the unit and what the column holds (each, stack,
+       added, help); the column's heading is one word, one line at every width; the badge's touch area is 44 px each way
+       over no other control, measured by taps, at 390 and 320 px, a tap at the bottom of the buttons above it doing what
+       they do. */
+    {
+      const X = await lifter({ items: [['bench', 3, 6, 10, REST_BENCH], ['dbCurl', 3, 8, 12, REST_RAISE], ['latPulldown', 3, 8, 12, REST_RAISE], ['pullup', 3, 6, 10, REST_BENCH], ['assistPullup', 3, 6, 10, REST_BENCH]] });
+      await start(X);
+      const seen = {};
+      for (const w of [320, 360, 375, 390, 430]) {
+        await X.page.setViewportSize({ width: w, height: 844 }); await wait(150);
+        seen[w] = await X.ev(() => [...document.querySelectorAll('#view section.block')].map(blk => {
+          const h = blk.querySelector('.sg.head .lh'), u = blk.querySelector('[data-act="unitOpen"]');
+          return { head: h.innerText.trim().toUpperCase(), one: h.getClientRects().length === 1 && h.getBoundingClientRect().height < 20, badge: u.textContent.trim(), badgeOne: u.getBoundingClientRect().height < 40 };
+        }));
+      }
+      const want = [['TOTAL', 'lb'], ['EACH', 'lb'], ['STACK', 'lb'], ['ADDED', 'lb'], ['ASSIST', 'lb']];
+      ok(Object.values(seen).every(bs => bs.length === 5 && bs.every((x, i) => x.one && x.badgeOne && x.head === want[i][0] && x.badge === want[i][1])),
+        'L-38: at 320, 360, 375, 390 and 430 px every load heading is one word on one line saying what the number is (Total, Each, Stack, Added, Assist), and every badge is the unit alone, lb', seen);
+      await X.page.setViewportSize({ width: 390, height: 844 }); await wait(150);
+      await X.tap('#view [data-act="unitOpen"][data-b="4"]', 250);
+      const asText = await X.ev(() => document.getElementById('modal').innerText);
+      await X.ev(() => window.__ironlog.ACT.mClose()); await wait(120);
+      ok(/Enter the assistance the machine gives, as on its pin\./.test(asText) && !/\bhelp\b/i.test(asText), 'L-38: the assisted pull-up\'s sheet says what to enter in a lifter\'s words ("Enter the assistance the machine gives, as on its pin."), never "help"', asText);
+      for (const w of [390, 320]) {
+        await X.page.setViewportSize({ width: w, height: 844 }); await wait(150);
+        for (const b of [0, 4]) {
+          const r = await X.ev(sel => {
+            const u = document.querySelector(sel); u.scrollIntoView({ block: 'center' });
+            const q = u.getBoundingClientRect(), cx = q.left + q.width / 2, cy = q.top + q.height / 2;
+            const hit = (x, y) => { const e = document.elementFromPoint(x, y); return !!e && (e === u || u.contains(e)); };
+            let y1 = cy, y2 = cy, x1 = cx, x2 = cx;
+            while (hit(cx, y1 - 1) && y1 > cy - 90) y1--; while (hit(cx, y2 + 1) && y2 < cy + 90) y2++;
+            while (hit(x1 - 1, cy) && x1 > cx - 120) x1--; while (hit(x2 + 1, cy) && x2 < cx + 120) x2++;
+            const others = [...document.querySelectorAll('button, a, input, select, textarea, [data-act]')].filter(e => e !== u && !u.contains(e) && !e.contains(u) && !(e.closest('details:not([open])') && !e.closest('summary')))
+              .filter(e => { const z = e.getBoundingClientRect(); return z.width && z.height && z.left < x2 && z.right > x1 && z.top < y2 && z.bottom > y1; }).map(e => e.dataset.act || e.tagName);
+            return { h: Math.round(y2 - y1 + 1), w: Math.round(x2 - x1 + 1), others };
+          }, `#view [data-act="unitOpen"][data-b="${b}"]`);
+          // Each button above it, found where it is just before its own tap, so a fold or a scroll after one tap moves nothing.
+          const taps = [];
+          for (const act of ['bFold', 'bNote', 'bMenu']) {
+            const a = await X.ev(([b, act]) => { document.querySelector(`#view [data-act="unitOpen"][data-b="${b}"]`).scrollIntoView({ block: 'center' }); const z = document.querySelector(`#blk-${b} .bh-btns [data-act="${act}"]`).getBoundingClientRect(); return { x: z.left + z.width / 2, y: z.bottom - 1 }; }, [b, act]);
+            await wait(80); await X.page.mouse.click(a.x, a.y); await wait(200);
+            taps.push({ act, sheet: await X.ev(() => { const m = window.__ironlog.ui.modal; return m ? m.kind : null; }), folded: await X.ev(b => !!document.querySelector(`#blk-${b}.folded`), b) });
+            await X.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); await wait(120);
+            await X.ev(b => { if (document.querySelector(`#blk-${b}.folded`)) window.__ironlog.ACT.bOpen({ dataset: { b: String(b) } }); }, b); await wait(150);
+          }
+          const did = { bFold: t => t.folded, bNote: t => t.sheet === 'note', bMenu: t => t.sheet !== null && t.sheet !== 'unit' };
+          ok(r.h >= 44 && r.w >= 44 && !r.others.length && taps.length === 3 && taps.every(t => t.sheet !== 'unit' && did[t.act](t)),
+            `L-38: at ${w} px the ${b ? 'assisted pull-up' : 'bench'}'s badge takes 44 px or more each way over no other control, and a tap at the bottom of the buttons above it does what that button does, never opening the badge's sheet`, { r, taps });
+        }
+      }
+      await X.close();
+    }
+    /* Wherever the block puts a control just above the load column's heading (a note from last time with Use again, a
+       bodyweight lift's Add bodyweight, a note's pictures), at 390 and 320 px: the heading holds no control, a tap at the
+       bottom edge of that control does what it does and never switches the unit, and the badge still takes 44 px or
+       more each way, measured by taps, over no other control. */
     const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
     for (const w of [390, 320]) {
       for (const [what, o, prep, b] of [
@@ -1330,8 +1384,9 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
             .filter(e => { const z = e.getBoundingClientRect(); return z.width && z.height && z.left < x2 && z.right > x1 && z.top < y2 && z.bottom > y1; })
             .map(e => ({ act: e.dataset.act || e.tagName, box: [z => z.left, z => z.top, z => z.right, z => z.bottom].map(f => Math.round(f(e.getBoundingClientRect()))) }));
           const above = [...document.querySelectorAll('#blk-' + b.dataset.b + ' [data-act="noteReuse"], #blk-' + b.dataset.b + ' [data-act="bwOpen"], #blk-' + b.dataset.b + ' .pthumb')].map(e => { const z = e.getBoundingClientRect(); return { act: e.dataset.act, x: z.left + Math.min(z.width / 2, 20), y: z.bottom - 2 }; });
-          return { h: Math.round(y2 - y1 + 1), w: Math.round(x2 - x1 + 1), others, above };
-        }, `#view .sg.head [data-act="liftUnit"][data-b="${b}"]`);
+          const headCtl = document.querySelectorAll(`#blk-${b.dataset.b} .sg.head button, #blk-${b.dataset.b} .sg.head [data-act]`).length;
+          return { h: Math.round(y2 - y1 + 1), w: Math.round(x2 - x1 + 1), others, above, headCtl };
+        }, `#view [data-act="unitOpen"][data-b="${b}"]`);
         const taps = [];
         for (const a of r.above || []) {
           const exId = await X.ev(b => window.__ironlog.state.draft.ex[b].exId, b);
@@ -1340,8 +1395,8 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
           taps.push({ act: a.act, unit });
           await X.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); await wait(150);
         }
-        ok(!r.none && r.h >= 44 && r.w >= 44 && !r.others.length && (r.above || []).length > 0 && taps.every(t => t.unit === null),
-          `L-38: at ${w} px, with ${what} above the heading: the unit takes 44 px or more each way, no other control lies in it, and a tap at the bottom of that control leaves the unit as it was`, { r, taps });
+        ok(!r.none && r.headCtl === 0 && r.h >= 44 && r.w >= 44 && !r.others.length && (r.above || []).length > 0 && taps.every(t => t.unit === null),
+          `L-38: at ${w} px, with ${what} above the load column's heading: the heading holds no control, a tap at the bottom of that control leaves the unit as it was, and the badge takes 44 px or more each way over no other control`, { r, taps });
         await X.close();
       }
     }
