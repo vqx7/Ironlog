@@ -240,8 +240,10 @@ function strongCsv() {
     ok(re[0] === 14 && re[1] === 14, 'a rep minimum typed above the maximum raises the maximum, never saving 12-10', re);
 
     // Load jump %: overridable per exercise.
-    // A 1 kg step (not a unit default, so read as typed) on a 100 kg bench.
-    const jp = await ev(() => { const L = window.__ironlog; const e = L.EX('bench'); const r = v => Math.round(v * 1000) / 1000; return { auto: r(L.progStep(e, { inc: 1 }, 100)), ten: r(L.progStep(e, { inc: 1, jump: 10 }, 100)), zero: r(L.progStep(e, { inc: 1, jump: 0 }, 100)) }; });
+    // A 1 kg step on a 100 kg bench, the app in kg, so the step is read as typed (in lb it is lb's matching step, 2.5 lb:
+    // tests/progression.js P-39).
+    const jp = await ev(() => { const L = window.__ironlog; const was = L.state.settings.unit; L.state.settings.unit = 'kg'; L.invalidate(); const e = L.EX('bench'); const r = v => Math.round(v * 1000) / 1000;
+      const o = { auto: r(L.progStep(e, { inc: 1 }, 100)), ten: r(L.progStep(e, { inc: 1, jump: 10 }, 100)), zero: r(L.progStep(e, { inc: 1, jump: 0 }, 100)) }; L.state.settings.unit = was; L.invalidate(); return o; });
     ok(jp.auto === 2 && jp.ten === 10 && jp.zero === 1, 'load jump: 2.5% by default (2 whole steps), 10% when set, one step at 0', jp);
     ok(!P.errors.length, 'no page errors (flows)', P.errors);
     await P.browser.close();

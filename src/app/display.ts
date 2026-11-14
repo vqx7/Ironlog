@@ -47,6 +47,7 @@ import {
   isRestWeek,
   defPlan,
   loadLabel,
+  loadRead,
   logBack,
   sortedSessions,
   toD,
@@ -437,8 +438,10 @@ export function goalState(exId: string): {
   noBw: boolean;
 } | null {
   const ex = EX(exId);
-  const g = ex && ex.goal;
-  if (!g || !goalOk(ex)) return null;
+  const g0 = ex && ex.goal;
+  if (!g0 || !goalOk(ex)) return null;
+  // Set in the other unit, the goal is the load of this unit's equipment it reads as (loadReadIn): 100 kg is 220 lb.
+  const g = { w: loadRead(g0.w), r: g0.r };
   // Since a new machine or gym (liftRead): a goal reached at another machine is not reached here.
   const exps = liftRead(exId);
   const bw = bwRefLoad(ex);
@@ -464,7 +467,7 @@ export function goalState(exId: string): {
 }
 /** A goal in words: "225 lb × 5", in the lift's own frame. */
 export function goalWords(ex: ExerciseLike, g: { w: number; r: number }): string {
-  return `${loadLabel(ex, g.w)}${ex.bw ? '' : ' ' + U()}${loadNote(ex)} × ${g.r}`;
+  return `${loadLabel(ex, loadRead(g.w))}${ex.bw ? '' : ' ' + U()}${loadNote(ex)} × ${g.r}`;
 }
 
 /* ---------- Volume by region: what it reads ---------- */

@@ -60,10 +60,11 @@ import {
   dayMinutes,
   exName,
   fmtW,
-  fromD,
   hasTarget,
   incOf,
   invalidate,
+  liftMax,
+  typedBound,
   muscleStatus,
   plannedSets,
   sessionMuscleSets
@@ -358,7 +359,7 @@ function libCards(): TemplateResult {
     return html`<div class="card"><p class="u-m0">No exercises match. Clear the filters or create a new exercise.</p></div>`;
   return html`<div class="card">${list.map(
     e => html`<div class="hitem"><div class="row spread u-aistart_fwrnw"><div class="u-minw0"><b>${e.name}</b>${e.note ? html` ${tipButton(e.note, 'About ' + e.name)}` : nothing}<p class="small muted u-m2-0-0">${ML[e.primary]}${e.secondary.length ? ', plus ' + e.secondary.map(m => ML[m]).join(', ') : ''}</p></div><div class="row u-fnone_g4"><button class="btn sm" data-act="exEdit" data-ex=${e.id}>Edit</button><button class="ib sm" data-act="exDel" data-ex=${e.id} aria-label=${`Delete ${e.name}`}>✕</button></div></div>
-    <p class="small u-m6-0-0_dflex_fwrwrap_g4">${exTagParts(e, ui.libKind)}<span class="tag">${EQL[e.equip] || e.equip}</span>${e.custom ? html`<span class="tag blue">Custom</span>` : nothing}${e.bw ? html`<span class="tag">Bodyweight + load</span>` : nothing}<span class="tag">${loadWords(e)}</span>${e.perSide ? html`<span class="tag">Reps per side</span>` : nothing}${e.timed ? html`<span class="tag">Timed</span>` : nothing}${e.maxLoad != null ? html`<span class="tag">Max ${fmtW(e.maxLoad)} ${U()}</span>` : nothing}</p></div>`
+    <p class="small u-m6-0-0_dflex_fwrwrap_g4">${exTagParts(e, ui.libKind)}<span class="tag">${EQL[e.equip] || e.equip}</span>${e.custom ? html`<span class="tag blue">Custom</span>` : nothing}${e.bw ? html`<span class="tag">Bodyweight + load</span>` : nothing}<span class="tag">${loadWords(e)}</span>${e.perSide ? html`<span class="tag">Reps per side</span>` : nothing}${e.timed ? html`<span class="tag">Timed</span>` : nothing}${e.maxLoad != null ? html`<span class="tag">Max ${fmtW(liftMax(e))} ${U()}</span>` : nothing}</p></div>`
   )}</div>`;
 }
 
@@ -699,8 +700,8 @@ function itemInput(t: Field): void {
       if (k === 'jump') f.it.jump = r1(clamp(n, 0, LIMITS.jumpPct));
       else if (k === 'inc') {
         const e = state.exercises.find(x => x.id === f.it.exId);
-        // fromD gives null only for no number, and n is one. Within the step's bound in kilograms, the one a save keeps, not 500 in the unit typed.
-        const v = Math.min(fromD(Math.max(n, 0)) ?? 0, LIMITS.step);
+        // Within the step's bound in kilograms, the one a save keeps, not 500 in the unit typed (typedBoundIn).
+        const v = typedBound(Math.max(n, 0), LIMITS.step);
         f.it.inc = v;
         if (e) e.inc = v > 0 ? v : null;
       } else if (k === 'rir') f.it.rir = clamp(effIn(n), 0, EFFORT_TOP);

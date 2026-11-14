@@ -2363,6 +2363,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var CHANGE_PLATES = { kg: [2, 1.5, 1, 0.5], lb: [1.25] };
   var inUnitIn = (M3, kg2) => UIn(M3) === "lb" ? kg2 / LB : kg2;
   var kgOfIn = (M3, v3) => UIn(M3) === "lb" ? v3 * LB : v3;
+  function typedBoundIn(M3, v3, most) {
+    return kgOfIn(M3, Math.min(v3, Math.floor(inUnitIn(M3, most) / TYPED_STEP + EPS_SAME) * TYPED_STEP));
+  }
   var toDIn = (M3, kg2) => kg2 == null ? null : inUnitIn(M3, kg2);
   var fromDIn = (M3, v3) => v3 == null ? null : kgOfIn(M3, v3);
   function unitStepIn(M3) {
@@ -2372,8 +2375,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const u4 = UIn(M3), t4 = typedUnit(v3);
     if (t4 == null || t4 === u4 || !(v3 > 0)) return v3;
     const k2 = u4 === "lb" ? LB : 1, d3 = DEFAULT_STEP[u4];
-    return d3 * 2 ** Math.round(Math.log2(v3 / k2 / d3)) * k2;
+    return Math.min(LIMITS.step, d3 * 2 ** Math.round(Math.log2(v3 / k2 / d3)) * k2);
   }
+  function loadReadAs(kg2, u4) {
+    const t4 = typedUnit(kg2);
+    if (t4 == null || t4 === u4) return kg2;
+    const k2 = u4 === "lb" ? LB : 1, d3 = DEFAULT_STEP[u4];
+    return Math.max(1, Math.round(kg2 / k2 / d3)) * d3 * k2;
+  }
+  var loadReadIn = (M3, kg2) => loadReadAs(kg2, UIn(M3));
 
   // src/app/formulas.ts
   var E1_MAX_REPS = 12;
@@ -3265,21 +3275,29 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const L2 = gymRackIn(M3, ex, plan);
     let r4 = L2 ? L2[L2.length - 1] : null;
     if (r4 != null && top != null && top > r4 + rackTolIn(M3, L2, top)) r4 = null;
-    const c4 = ex.maxLoad != null ? r4 != null ? Math.min(ex.maxLoad, r4) : ex.maxLoad : r4;
+    const mx = liftMaxIn(M3, ex);
+    const c4 = mx != null ? r4 != null ? Math.min(mx, r4) : mx : r4;
     const G = c4 != null ? plateGridIn(M3, ex, plan) : null;
     if (G && c4 != null && c4 > G.bar) return G.loads[Math.max(0, loadsFloorAt(G.loads, c4 + EPS_SAME))] ?? c4;
     return c4;
   }
   function atCapOfIn(M3, ex, plan, top, cap) {
     const L2 = gymRackIn(M3, ex, plan);
-    return cap != null && top >= cap - (L2 && (ex.maxLoad == null || cap < ex.maxLoad - EPS_SAME) ? rackTolIn(M3, L2, top) : EPS_SAME);
+    return cap != null && top >= cap - (L2 && (ex.maxLoad == null || cap < (liftMaxIn(M3, ex) ?? 0) - EPS_SAME) ? rackTolIn(M3, L2, top) : EPS_SAME);
   }
   function exBarKgIn(M3, ex) {
-    return ex && ex.barKg !== void 0 && ex.barKg > 0 ? ex.barKg : barKgIn(M3);
+    return ex && ex.barKg !== void 0 && ex.barKg > 0 ? barReadIn(M3, ex.barKg) : barKgIn(M3);
+  }
+  function liftMaxIn(M3, ex) {
+    return ex.maxLoad != null ? loadReadIn(M3, ex.maxLoad) : null;
+  }
+  function barReadIn(M3, kg2) {
+    const g2 = gymOfIn(M3);
+    return loadReadAs(kg2, g2 && g2.u || UIn(M3));
   }
   function barKgIn(M3) {
     const b2 = M3.s.settings.barKg;
-    if (b2 != null) return b2;
+    if (b2 != null) return barReadIn(M3, b2);
     const g2 = gymOfIn(M3);
     const u4 = g2 && g2.u || UIn(M3);
     return u4 === "lb" ? BAR.lb * LB : BAR.kg;
@@ -10130,6 +10148,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var barKg = live(barKgIn);
   var capOf = live(capOfIn);
   var exBarKg = live(exBarKgIn);
+  var liftMax = live(liftMaxIn);
+  var barRead = live(barReadIn);
+  var loadRead = live(loadReadIn);
+  var typedBound = live(typedBoundIn);
   var gymRack = live(gymRackIn);
   var rackTol = live(rackTolIn);
   var fmtW = live(fmtWIn);
@@ -12206,8 +12228,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function goalState(exId) {
     const ex = EX(exId);
-    const g2 = ex && ex.goal;
-    if (!g2 || !goalOk(ex)) return null;
+    const g0 = ex && ex.goal;
+    if (!g0 || !goalOk(ex)) return null;
+    const g2 = { w: loadRead(g0.w), r: g0.r };
     const exps = liftRead(exId);
     const bw = bwRefLoad(ex);
     const noBw = !!ex.bw && !((bwRef() ?? 0) > 0);
@@ -12228,7 +12251,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return { g: g2, hit, pct, cur: cur2, need, noBw };
   }
   function goalWords(ex, g2) {
-    return `${loadLabel(ex, g2.w)}${ex.bw ? "" : " " + U()}${loadNote(ex)} × ${g2.r}`;
+    return `${loadLabel(ex, loadRead(g2.w))}${ex.bw ? "" : " " + U()}${loadNote(ex)} × ${g2.r}`;
   }
   function regionWk() {
     const v3 = ui.regionWk != null ? ui.regionWk : prefGet(REGION_KEY);
@@ -17784,7 +17807,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     barKg(t4) {
       const n3 = numIn(t4.value);
       act(() => {
-        state.settings.barKg = n3 == null || n3 <= 0 ? null : Math.min(fromD(n3) ?? 0, LIMITS.barKg);
+        state.settings.barKg = n3 == null || n3 <= 0 ? null : typedBound(n3, LIMITS.barKg);
       });
       rerenderKeepScroll();
     },
@@ -18010,7 +18033,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return b`<div class="card"><p class="u-m0">No exercises match. Clear the filters or create a new exercise.</p></div>`;
     return b`<div class="card">${list.map(
       (e5) => b`<div class="hitem"><div class="row spread u-aistart_fwrnw"><div class="u-minw0"><b>${e5.name}</b>${e5.note ? b` ${tipButton(e5.note, "About " + e5.name)}` : A}<p class="small muted u-m2-0-0">${ML[e5.primary]}${e5.secondary.length ? ", plus " + e5.secondary.map((m3) => ML[m3]).join(", ") : ""}</p></div><div class="row u-fnone_g4"><button class="btn sm" data-act="exEdit" data-ex=${e5.id}>Edit</button><button class="ib sm" data-act="exDel" data-ex=${e5.id} aria-label=${`Delete ${e5.name}`}>✕</button></div></div>
-    <p class="small u-m6-0-0_dflex_fwrwrap_g4">${exTagParts(e5, ui.libKind)}<span class="tag">${EQL[e5.equip] || e5.equip}</span>${e5.custom ? b`<span class="tag blue">Custom</span>` : A}${e5.bw ? b`<span class="tag">Bodyweight + load</span>` : A}<span class="tag">${loadWords(e5)}</span>${e5.perSide ? b`<span class="tag">Reps per side</span>` : A}${e5.timed ? b`<span class="tag">Timed</span>` : A}${e5.maxLoad != null ? b`<span class="tag">Max ${fmtW(e5.maxLoad)} ${U()}</span>` : A}</p></div>`
+    <p class="small u-m6-0-0_dflex_fwrwrap_g4">${exTagParts(e5, ui.libKind)}<span class="tag">${EQL[e5.equip] || e5.equip}</span>${e5.custom ? b`<span class="tag blue">Custom</span>` : A}${e5.bw ? b`<span class="tag">Bodyweight + load</span>` : A}<span class="tag">${loadWords(e5)}</span>${e5.perSide ? b`<span class="tag">Reps per side</span>` : A}${e5.timed ? b`<span class="tag">Timed</span>` : A}${e5.maxLoad != null ? b`<span class="tag">Max ${fmtW(liftMax(e5))} ${U()}</span>` : A}</p></div>`
     )}</div>`;
   }
   function viewLibrary() {
@@ -18317,7 +18340,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         if (k2 === "jump") f3.it.jump = r1(clamp(n3, 0, LIMITS.jumpPct));
         else if (k2 === "inc") {
           const e5 = state.exercises.find((x2) => x2.id === f3.it.exId);
-          const v3 = Math.min(fromD(Math.max(n3, 0)) ?? 0, LIMITS.step);
+          const v3 = typedBound(Math.max(n3, 0), LIMITS.step);
           f3.it.inc = v3;
           if (e5) e5.inc = v3 > 0 ? v3 : null;
         } else if (k2 === "rir") f3.it.rir = clamp(effIn(n3), 0, EFFORT_TOP);
@@ -24868,6 +24891,13 @@ ${JSON.stringify(ctx, null, 1)}`;
     else delete o3.jump;
     return o3;
   }
+  function shownNumbers(x2) {
+    return {
+      inc: x2.inc != null ? fmtW(stepRead(x2.inc)) : "",
+      max: x2.maxLoad != null ? fmtW(liftMax(x2) ?? 0) : "",
+      bar: x2.barKg != null ? fmtW(barRead(x2.barKg)) : ""
+    };
+  }
   function afterAdd(bi) {
     rerenderKeepScroll();
     const el = document.getElementById("blk-" + bi);
@@ -25231,10 +25261,11 @@ ${JSON.stringify(ctx, null, 1)}`;
       const src = state.exercises.find((x2) => x2.id === t4.dataset.ex);
       if (!src) return;
       const e5 = structuredClone(src);
-      e5.incRaw = e5.inc != null ? fmtW(stepRead(e5.inc)) : "";
+      const sh = shownNumbers(src);
+      e5.incRaw = sh.inc;
       e5.bwfRaw = String(Math.round(bwShare(e5) * BWF_PCT.whole));
-      e5.maxRaw = e5.maxLoad != null ? fmtW(e5.maxLoad) : "";
-      e5.barRaw = e5.barKg != null ? fmtW(e5.barKg) : "";
+      e5.maxRaw = sh.max;
+      e5.barRaw = sh.bar;
       openModal({ kind: "exEdit", isNew: false, e: e5 });
     },
     secToggle(t4) {
@@ -25265,20 +25296,25 @@ ${JSON.stringify(ctx, null, 1)}`;
         return;
       }
       e5.secondary = e5.secondary.filter((k2) => k2 !== e5.primary);
-      {
+      const was = m3.isNew ? void 0 : state.exercises.find((x2) => x2.id === e5.id);
+      const sh = was ? shownNumbers(was) : null;
+      if (sh && e5.incRaw === sh.inc) delete e5.incRaw;
+      else {
         const n3 = numIn(e5.incRaw);
-        e5.inc = n3 != null && n3 > 0 ? Math.min(Number(fromD(n3)), LIMITS.step) : null;
+        e5.inc = n3 != null && n3 > 0 ? typedBound(n3, LIMITS.step) : null;
         delete e5.incRaw;
       }
-      {
+      if (sh && e5.maxRaw === sh.max) delete e5.maxRaw;
+      else {
         const n3 = numIn(e5.maxRaw);
         if (n3 != null && n3 > 0) e5.maxLoad = Number(fromD(Math.min(n3, U() === "lb" ? MAX_LOAD.lb : MAX_LOAD.kg)));
         else delete e5.maxLoad;
         delete e5.maxRaw;
       }
-      {
+      if (sh && e5.barRaw === sh.bar && platesMode(e5) === "bar") delete e5.barRaw;
+      else {
         const n3 = numIn(e5.barRaw);
-        if (n3 != null && n3 > 0 && platesMode(e5) === "bar") e5.barKg = Math.min(Number(fromD(n3)), LIMITS.barKg);
+        if (n3 != null && n3 > 0 && platesMode(e5) === "bar") e5.barKg = typedBound(n3, LIMITS.barKg);
         else delete e5.barKg;
         delete e5.barRaw;
       }
@@ -26013,6 +26049,10 @@ ${JSON.stringify(ctx, null, 1)}`;
         return;
       }
       const n3 = numIn(fieldText("maxVal"));
+      if (e5.maxLoad != null && n3 != null && String(numIn(fmtW(liftMax(e5) ?? 0))) === String(n3)) {
+        closeModal();
+        return;
+      }
       if (n3 != null && n3 < 0) {
         toast("Enter a load of 0 or more, or leave it blank");
         return;
@@ -26024,7 +26064,9 @@ ${JSON.stringify(ctx, null, 1)}`;
       });
       refreshEx(e5.id);
       rerenderKeepScroll();
-      toast(e5.maxLoad != null ? `Heaviest available for ${e5.name}: ${fmtW(e5.maxLoad)} ${U()}` : `No limit for ${e5.name}`);
+      toast(
+        e5.maxLoad != null ? `Heaviest available for ${e5.name}: ${fmtW(liftMax(e5) ?? 0)} ${U()}` : `No limit for ${e5.name}`
+      );
     },
     goalOpen(t4) {
       openModal({ kind: "goal", exId: t4.dataset.ex || "" });
@@ -26049,7 +26091,8 @@ ${JSON.stringify(ctx, null, 1)}`;
         toast("Enter a load of 0 or more");
         return;
       }
-      const goal = { w: kg(w2 || 0), r: r4 };
+      const was = e5.goal;
+      const goal = { w: was && w2 != null && String(numIn(fmtW(loadRead(was.w)))) === String(w2) ? was.w : kg(w2 || 0), r: r4 };
       act(
         () => {
           e5.goal = goal;
@@ -26095,11 +26138,11 @@ ${JSON.stringify(ctx, null, 1)}`;
         closeModal();
         return;
       }
-      if (e5.inc == null && !sheet.typed && String(numIn(fmtW(incOf(e5, sheet.plan)))) === String(n3)) {
+      if (!sheet.typed && String(numIn(fmtW(incOf(e5, sheet.plan)))) === String(n3)) {
         closeModal();
         return;
       }
-      const inc = Math.min(kg(n3), LIMITS.step);
+      const inc = typedBound(n3, LIMITS.step);
       closeModal();
       act(() => {
         e5.inc = inc;
@@ -28165,7 +28208,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const e5 = EX(b2.exId);
     const op = (o3, l4, dis, cls) => b`<button class=${"btn fullw u-mt6 " + (cls || "")} data-act="bMenuDo" data-op=${o3} data-b=${String(m3.b)} ?disabled=${!!dis}>${l4}</button>`;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${exName(b2.exId)}</h3>${closeX()}</div>
-    ${op("bHist", "History and chart")}${op("bMus", "Muscles worked")}${op("wAdd", "Add a warm-up set")}${op("dropAdd", "Add a drop set (about 75% load)")}${op("bQuick", "Type or dictate sets")}${op("bNote", b2.note ? "Edit note" : "Add note")}${op("bSwap", "Swap exercise")}${op("bNew", markedNew(d3, b2.exId) ? "Same machine as before" : "New machine or gym")}${howToLink(e5)}${op("bInc", `Load step: ${fmtW(incOf(e5, b2.plan))} ${U()}`)}${op("bMax", `Heaviest available: ${e5.maxLoad != null ? fmtW(e5.maxLoad) + " " + U() : "no limit"}`)}${rirShow(e5) ? op("bCal", "Calibration set (RIR check)") : ""}${nx ? op("bSs", linked ? "Unlink superset" : `Superset with ${exName(nx.exId)}`) : ""}${op("bUp", "Move up", m3.b === 0)}${op("bDown", "Move down", !nx)}${op("fbOpen", "Report a problem")}${op("bDel", "Remove from session", false, "danger")}</div>`;
+    ${op("bHist", "History and chart")}${op("bMus", "Muscles worked")}${op("wAdd", "Add a warm-up set")}${op("dropAdd", "Add a drop set (about 75% load)")}${op("bQuick", "Type or dictate sets")}${op("bNote", b2.note ? "Edit note" : "Add note")}${op("bSwap", "Swap exercise")}${op("bNew", markedNew(d3, b2.exId) ? "Same machine as before" : "New machine or gym")}${howToLink(e5)}${op("bInc", `Load step: ${fmtW(incOf(e5, b2.plan))} ${U()}`)}${op("bMax", `Heaviest available: ${e5.maxLoad != null ? fmtW(liftMax(e5)) + " " + U() : "no limit"}`)}${rirShow(e5) ? op("bCal", "Calibration set (RIR check)") : ""}${nx ? op("bSs", linked ? "Unlink superset" : `Superset with ${exName(nx.exId)}`) : ""}${op("bUp", "Move up", m3.b === 0)}${op("bDown", "Move down", !nx)}${op("fbOpen", "Report a problem")}${op("bDel", "Remove from session", false, "danger")}</div>`;
   }
   function injurySheet() {
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3>${closeX()}</div>
@@ -28179,7 +28222,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const e5 = EX(m3.exId);
     const g2 = e5.goal;
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="goalH"><div class="sheet-h"><h3 id="goalH">Goal: ${e5.name}</h3>${closeX()}</div>
-    <div class="grid2"><label class="field">${e5.bw ? `Added load (${U()})` : `Load (${U()}${loadNote(e5)})`}<input type="text" inputmode="decimal" id="goalW" value=${g2 ? fmtW(g2.w) : ""} placeholder=${e5.bw ? "0" : ""}></label>
+    <div class="grid2"><label class="field">${e5.bw ? `Added load (${U()})` : `Load (${U()}${loadNote(e5)})`}<input type="text" inputmode="decimal" id="goalW" value=${g2 ? fmtW(loadRead(g2.w)) : ""} placeholder=${e5.bw ? "0" : ""}></label>
     <label class="field">Reps<input type="text" inputmode="numeric" id="goalR" value=${g2 ? String(g2.r) : ""}></label></div>
     <div class="row u-mt12"><button class="btn primary" data-act="goalSave">Save</button>${g2 ? b`<button class="btn danger" data-act="goalClear">Remove goal</button>` : ""}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
@@ -28194,7 +28237,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   function maxSheet(m3) {
     const e5 = EX(m3.exId);
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${e5.name}</h3>${closeX()}</div>
-    <label class="field">Load (${U()}${e5.bw ? ", added to bodyweight" : ""})<input type="text" inputmode="decimal" id="maxVal" value=${e5.maxLoad != null ? fmtW(e5.maxLoad) : ""} placeholder="No limit"></label>
+    <label class="field">Load (${U()}${e5.bw ? ", added to bodyweight" : ""})<input type="text" inputmode="decimal" id="maxVal" value=${e5.maxLoad != null ? fmtW(liftMax(e5)) : ""} placeholder="No limit"></label>
     <p class="small muted">Top of the stack or biggest dumbbell. Blank for no limit.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
@@ -29092,6 +29135,10 @@ ${JSON.stringify(ctx, null, 1)}`;
       starterRoutine,
       starterSigs,
       exBarKg,
+      liftMax,
+      barRead,
+      loadRead,
+      typedBound,
       VOL_MODES,
       liveLogFetch,
       regionSrc,

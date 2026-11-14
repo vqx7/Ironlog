@@ -11,7 +11,20 @@ import type { DraftBlock, Exercise, Plan, Routine } from './types';
 import { joinRows, joinable } from './session';
 import { platesMode } from './gym';
 import { LIMITS } from './records';
-import { EX, U, activeRoutine, defPlan, exName, fmtW, fromD, planFor, stepRead } from './live';
+import {
+  EX,
+  U,
+  activeRoutine,
+  barRead,
+  defPlan,
+  exName,
+  fmtW,
+  fromD,
+  liftMax,
+  planFor,
+  stepRead,
+  typedBound
+} from './live';
 import { state, ui } from './store';
 import type { ExEdit, ExEditSheet, Modal, PickerModal } from './modals';
 import { act } from './act';
@@ -61,6 +74,15 @@ export function swapPlan<P extends Partial<Plan>>(
   if (q.jump != null) o.jump = q.jump;
   else delete o.jump;
   return o;
+}
+
+/** An exercise's step, heaviest load and bar as the editor shows them, each set in the other unit read as its match. */
+function shownNumbers(x: Exercise): { inc: string; max: string; bar: string } {
+  return {
+    inc: x.inc != null ? fmtW(stepRead(x.inc)) : '',
+    max: x.maxLoad != null ? fmtW(liftMax(x) ?? 0) : '',
+    bar: x.barKg != null ? fmtW(barRead(x.barKg)) : ''
+  };
 }
 
 /** Scrolls to an exercise just added to the session and marks it, instead of leaving it somewhere below the fold. */
@@ -501,10 +523,11 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const src = state.exercises.find(x => x.id === t.dataset.ex);
     if (!src) return;
     const e: ExEdit = structuredClone(src);
-    e.incRaw = e.inc != null ? fmtW(stepRead(e.inc)) : '';
+    const sh = shownNumbers(src);
+    e.incRaw = sh.inc;
     e.bwfRaw = String(Math.round(bwShare(e) * BWF_PCT.whole));
-    e.maxRaw = e.maxLoad != null ? fmtW(e.maxLoad) : '';
-    e.barRaw = e.barKg != null ? fmtW(e.barKg) : '';
+    e.maxRaw = sh.max;
+    e.barRaw = sh.bar;
     openModal({ kind: 'exEdit', isNew: false, e });
   },
   secToggle(t) {
@@ -537,20 +560,27 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       return;
     }
     e.secondary = e.secondary.filter(k => k !== e.primary);
-    {
+    // A field saved as it was shown keeps its number as set (shownNumbers): one set in the other unit is shown as its
+    // match on this unit's equipment, and saved as that it would move on every switch of units (100 kg, 220 lb, 97.5 kg).
+    const was = m.isNew ? undefined : state.exercises.find(x => x.id === e.id);
+    const sh = was ? shownNumbers(was) : null;
+    if (sh && e.incRaw === sh.inc) delete e.incRaw;
+    else {
       const n = numIn(e.incRaw);
-      e.inc = n != null && n > 0 ? Math.min(Number(fromD(n)), LIMITS.step) : null;
+      e.inc = n != null && n > 0 ? typedBound(n, LIMITS.step) : null;
       delete e.incRaw;
     }
-    {
+    if (sh && e.maxRaw === sh.max) delete e.maxRaw;
+    else {
       const n = numIn(e.maxRaw);
       if (n != null && n > 0) e.maxLoad = Number(fromD(Math.min(n, U() === 'lb' ? MAX_LOAD.lb : MAX_LOAD.kg)));
       else delete e.maxLoad;
       delete e.maxRaw;
     }
-    {
+    if (sh && e.barRaw === sh.bar && platesMode(e) === 'bar') delete e.barRaw;
+    else {
       const n = numIn(e.barRaw);
-      if (n != null && n > 0 && platesMode(e) === 'bar') e.barKg = Math.min(Number(fromD(n)), LIMITS.barKg);
+      if (n != null && n > 0 && platesMode(e) === 'bar') e.barKg = typedBound(n, LIMITS.barKg);
       else delete e.barKg;
       delete e.barRaw;
     }

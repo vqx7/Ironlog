@@ -74,12 +74,12 @@ import {
   calStats,
   defBand,
   fmtW,
-  fromD,
   gymOf,
   hasTarget,
   invalidate,
   prof,
-  profRule
+  profRule,
+  typedBound
 } from './live';
 import { acct, cloud, setState, state, ui } from './store';
 import { effName, effShow, halfLbl, rirScale } from './effort';
@@ -1550,8 +1550,8 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
   barKg(t) {
     const n = numIn(t.value);
     act(() => {
-      // Within the bar's bound in kilograms, the one a save keeps, not 110 in lb and 50 in kg as typed.
-      state.settings.barKg = n == null || n <= 0 ? null : Math.min(fromD(n) ?? 0, LIMITS.barKg);
+      // Within the bar's bound in kilograms, the one a save keeps, not 110 in lb and 50 in kg as typed (typedBoundIn).
+      state.settings.barKg = n == null || n <= 0 ? null : typedBound(n, LIMITS.barKg);
     });
     rerenderKeepScroll();
   },

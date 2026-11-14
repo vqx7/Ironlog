@@ -136,6 +136,12 @@ const EXTRA = {
   // The minutes left in those same sessions (2.32, NEW-77: the one count Short on time and the session's header read).
   sessLeftMin: (s) => (window.__pd && window.__pd.s === s ? window.__pd.d : []).map(d => [d]),
   // The strength focus on each lift: its stats and its main muscle's recovery, today and on the log's first day.
+  // 2.65 (390's Release A): a heaviest load, a bar and any load set in either unit, read on the unit's equipment, and a
+  // number typed within a bound.
+  liftMax: (s, ids) => ids.slice(0, 3).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e], [{ ...e, maxLoad: 100 }], [{ ...e, maxLoad: 220 * 0.45359237 }]]),
+  barRead: () => [[20], [45 * 0.45359237], [10], [60]],
+  loadRead: () => [[100], [220 * 0.45359237], [0.4], [102.06]],
+  typedBound: () => [[1200, 500], [600, 500], [200, 50], [30, 50]],
   strengthPick: (s, ids) => ids.map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e, window.__ironlog.IDX().exStats[e.id], window.__ironlog.recovery(e.primary)], [e, window.__ironlog.IDX().exStats[e.id], { r: 1, days: null, sets: 0, need: 0 }, s.sessions.length ? s.sessions[0].date : undefined]]),
 };
 // Hand-made histories beside the wide ones, for paths those never reach, each built on a wide history's settings,

@@ -1,4 +1,4 @@
-// Targets and progression, checked against their written rules (CA-1; the spec "Targets and progression", P-1 to P-41,
+// Targets and progression, checked against their written rules (CA-1; the spec "Targets and progression", P-1 to P-42,
 // in the project's claude/ironlog-spec-progression-draft1.md, built from the code, V's rulings deciding). A feature
 // suite: each section is one rule, a lifter's log seeded and the session started from Today's card, and what the
 // session screen shows (the grey load, the grey reps, the target) compared with what the rule gives, worked out here
@@ -46,7 +46,8 @@ const stepUp = (w, step, share) => Math.max(w + step, Math.round((w * (1 + share
    repMax, rir, more]] }, with sessions as [date, dayId, [[exId, [[load, reps, rir], ...], more]], marks], each saved
    with its day and its plan's sets; `more` adds fields to the item or block (inc, nw), marks to the session (light).
    o.gym is Your gym, o.bw a weigh-in in lb, o.maxLoad the heaviest bench available, o.inj a flagged muscle; o.logUnit the
-   unit the sets were typed in (the app's, o.unit, unless given), o.exInc a lift's own load step as { exId: step in lb }. */
+   unit the sets were typed in (the app's, o.unit, unless given), o.exInc a lift's own load step as { exId: step in lb },
+   o.exSet fields set on a lift as stored, in kg ({ exId: { maxLoad: 100 } }), o.settings fields set in Settings. */
 async function lifter(days, sessions, o = {}) {
   const P = await open(FILE, { w: 390, h: 844, clock: (o.day || DAY) + 'T10:00:00' });
   await P.page.evaluate(([days, sessions, o]) => {
@@ -62,6 +63,8 @@ async function lifter(days, sessions, o = {}) {
         ex: ex.map(([exId, sets, more]) => { const it = day.items.find(x => x[0] === exId); return { exId, rr: [it[2], it[3]], ps: it[1], sets: sets.map(([w, r, rir]) => ({ w: w * U, r, rir, done: true })), ...(more || {}) }; }) }; });
     if (o.maxLoad) S.exercises = S.exercises.map(e => (e.id === 'bench' ? { ...e, maxLoad: o.maxLoad * LB } : e));
     if (o.exInc) S.exercises = S.exercises.map(e => (o.exInc[e.id] ? { ...e, inc: o.exInc[e.id] * LB } : e));
+    if (o.exSet) S.exercises = S.exercises.map(e => (o.exSet[e.id] ? { ...e, ...o.exSet[e.id] } : e));
+    if (o.settings) Object.assign(S.settings, o.settings);
     if (o.inj) S.injuries = [{ id: 'i1', m: o.inj, note: '', date: '2026-11-01' }];
     L.state = L.normalize(S);
     localStorage.setItem(L.KEY + '.installLater', '1'); localStorage.setItem(L.KEY + '.tipWake', '1');
@@ -888,6 +891,36 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     s = await shows(P, 'dbBench');
     ok(s.rows.every(r => r.w === 52.5) && s.tgt && s.tgt.total === 29, 'P-41 a guard: 52.5 lb typed in lb, off the rack in 5s, was lifted and stays: 52.5 lb, 29 to beat', s);
     await P.ctx.close(); await P.browser.close();
+  }
+
+  if (run('P-42')) {
+    /* Every other number set on a lift in one unit and read in the other is put on that unit's equipment, as its step is
+       (P-39): a load goes to the nearest load of the unit's own step (5 lb, 2.5 kg), so a heaviest load or a goal of
+       100 kg set in kg reads as 220 lb set in lb does, and a 20 kg bar, the lift's own or Settings', as the 45 lb bar.
+       Each case beside the same lifter with the number set in lb, which must read alike. */
+    const read = async (sets, o, light) => {
+      const P = await lifter(DAY_BENCH, weeks('A', sets), o);
+      if (light) await startLighter(P); else await startOn(P, 0);
+      const s = await shows(P, 'bench');
+      const goal = await P.page.evaluate(() => { const L = window.__ironlog; const g = L.goalState('bench'); return { line: L.goalLine('bench').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(), hit: g && g.hit }; });
+      await P.ctx.close(); await P.browser.close();
+      return { ...s, goal };
+    };
+    const at = (w, r) => [[w, r, 2], [w, r, 2], [w, r, 2]];
+    for (const [w, why] of [[215, 'a step under it'], [220, 'at it']]) {
+      const kg = await read(at(w, 10), { exSet: { bench: { maxLoad: 100 } } }), lb = await read(at(w, 10), { exSet: { bench: { maxLoad: 220 * LBK } } });
+      ok(kg.rows.every(r => r.w === 220) && kg.hint === lb.hint && JSON.stringify(kg.rows) === JSON.stringify(lb.rows) && !/220\.5|0\.5 lb|5\.5 lb/.test(kg.hint),
+        `P-42 a heaviest load of 100 kg set in kg, the app in lb, ${why} (${w} lb x 10 x 3): 220 lb, as 220 lb set in lb reads`, { kg, lb });
+    }
+    const gk = await read(at(220, 5), { exSet: { bench: { goal: { w: 100, r: 5 } } } }), gl = await read(at(220, 5), { exSet: { bench: { goal: { w: 220 * LBK, r: 5 } } } });
+    ok(gk.goal.hit && gk.goal.line === gl.goal.line && /Goal 220 lb × 5/.test(gk.goal.line), 'P-42 a goal of 100 kg x 5 set in kg, the app in lb, after 220 lb x 5 x 3: "Goal 220 lb × 5", reached, as 220 lb set in lb reads', { gk: gk.goal, gl: gl.goal });
+    for (const [where, kgO, lbO] of [
+      ['the lift\'s own', { exSet: { bench: { barKg: 20 } } }, { exSet: { bench: { barKg: 45 * LBK } } }],
+      ['Settings\'', { settings: { barKg: 20 } }, { settings: { barKg: 45 * LBK } }]
+    ]) {
+      const bk = await read(at(50, 10), kgO, true), bl = await read(at(50, 10), lbO, true);
+      ok(bk.rows.every(r => r.w === 45) && bk.hint === bl.hint && !/44\.1/.test(bk.hint), `P-42 ${where} bar of 20 kg set in kg, the app in lb, a Lighter day after 50 lb x 10 x 3: the 45 lb bar, as 45 lb set in lb reads`, { bk, bl });
+    }
   }
 
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
