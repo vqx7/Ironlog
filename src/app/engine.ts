@@ -11,7 +11,7 @@ import type { LiftBests } from './bests';
 import { EXIn, UIn, exInjuryIn, liftModelIn, liftUIn } from './model';
 import { IDXIn, lastOf, liftReadIn } from './analytics';
 import { atCapOfIn, capOfIn, gymRackIn, loadFloorIn } from './gym';
-import { DEFAULT_STEP, fromDIn, toDIn, typedOtherIn } from './units';
+import { DEFAULT_STEP, fromDIn, loadReadIn, toDIn, typedOtherIn } from './units';
 import { fmtWIn, listLabelIn, loadLabelIn, loadNote, typedLabelIn } from './loads';
 import { addDays, daysBetween, isDate, r1, EPS, EPS_SAME, WEEK_DAYS, pctOf } from './util';
 import {
@@ -1296,6 +1296,9 @@ function suggestTimedIn(
     ws = last.pts;
   const top = Math.max(...ws.map(p => p.w));
   const topPts = ws.filter(p => Math.abs(p.w - top) < EPS_SAME);
+  /* The load held, read on the equipment of the lift's unit as any lift's is (P-42): 50 lb a hand held, the lift in
+     kg, is 22.5 kg, never 22.7; typed in the lift's unit it is as typed. Last time is still quoted as typed. */
+  const at = loadReadIn(M, top);
   const lbl = (w: number): string => `${loadLabelIn(M, ex, w)}${ex.bw ? '' : ' ' + UIn(M)}${loadNote(ex)}`;
   const { was, upTo } = pastWordsIn(M, ex, top, lbl);
   const L0 = lastOf(all, last, p => `${typedLabelIn(M, ex, p.w)} for ${p.r}s`, M.today());
@@ -1306,8 +1309,8 @@ function suggestTimedIn(
     return {
       prev: L0.prev,
       prevOff: L0.prevOff,
-      w: top,
-      text: `${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep it easy, and stop on pain.`,
+      w: at,
+      text: `${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(at)}, keep it easy, and stop on pain.`,
       lastR,
       basis,
       last: lastS,
@@ -1320,7 +1323,7 @@ function suggestTimedIn(
     return {
       prev: L0.prev,
       prevOff: L0.prevOff,
-      w: top,
+      w: at,
       text: `${lastS} ${opts.deload ? 'Deload' : 'Lighter day'}: same load, hold about two thirds as long, and stop well before shaking.`,
       lastR,
       basis,
@@ -1334,7 +1337,7 @@ function suggestTimedIn(
     return {
       prev: L0.prev,
       prevOff: L0.prevOff,
-      w: top,
+      w: at,
       text: `${opts.before === M.today() ? 'Earlier today' : 'Earlier that day'}: ${ws.map(p => `${loadLabelIn(M, ex, p.w)} for ${p.r}s`).join(', ')}. The same again: no step up within one day.`,
       lastR,
       basis,
@@ -1353,7 +1356,7 @@ function suggestTimedIn(
     return {
       prev: L0.prev,
       prevOff: L0.prevOff,
-      w: top,
+      w: at,
       text: `${lastS} Back after ${Math.round(off / WEEK_DAYS)} weeks: the same load, holds about ${pctOf(LIGHT_SHARE)}% as long, stopping before shaking. Next time picks up from here.`,
       lastR: lastR.map(r => Math.max(1, Math.round(r * LIGHT_SHARE))),
       basis,
@@ -1363,13 +1366,13 @@ function suggestTimedIn(
       easier: null,
       back: Math.round(off / WEEK_DAYS)
     };
-  const step = incOfIn(M, ex, plan, top);
-  const cap = capOfIn(M, ex, plan, top);
+  const step = incOfIn(M, ex, plan, at);
+  const cap = capOfIn(M, ex, plan, at);
   /* A hold at bodyweight, never loaded (noAdd, read by the caller from the whole log), builds time as a bodyweight
      lift builds reps: asked to add a plate at the top of its range, a plank held at
      bodyweight missed its target every session. */
-  if (step > 0 && !noAdd && topPts.every(p => p.r >= plan.repMax) && !atCapOfIn(M, ex, plan, top, cap)) {
-    const nw = cap != null ? Math.min(top + step, cap) : top + step;
+  if (step > 0 && !noAdd && topPts.every(p => p.r >= plan.repMax) && !atCapOfIn(M, ex, plan, at, cap)) {
+    const nw = cap != null ? Math.min(at + step, cap) : at + step;
     return {
       prev: L0.prev,
       prevOff: L0.prevOff,
@@ -1398,13 +1401,13 @@ function suggestTimedIn(
   return {
     prev: L0.prev,
     prevOff: L0.prevOff,
-    w: top,
-    text: `${lastS} Beat ${total}s ${over} at ${lbl(top)}.${then}`,
+    w: at,
+    text: `${lastS} Beat ${total}s ${over} at ${lbl(at)}.${then}`,
     lastR,
     basis,
     last: lastS,
-    target: `${total + 1}s+ ${over} at ${lbl(top)}`,
-    tgt: { kind: 'reps', w: top, total, n: nT, rs: topPts.map(p => p.r), prevBest: null },
+    target: `${total + 1}s+ ${over} at ${lbl(at)}`,
+    tgt: { kind: 'reps', w: at, total, n: nT, rs: topPts.map(p => p.r), prevBest: null },
     easier: null
   };
 }

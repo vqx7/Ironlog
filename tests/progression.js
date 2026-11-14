@@ -1052,6 +1052,20 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
       ok(t.includes(want) && !/BW kg/.test(t), `P-43 pull-ups marked kg in an lb app, ${add ? '10 kg added' : 'nothing added'}: "${want}"`, t);
       await P.ctx.close(); await P.browser.close();
     }
+    /* A timed hold with weight is put on its unit's equipment too: farmer holds at 50 lb a hand, marked kg (or every
+       lift in kg), hold 22.5 kg, never 22.7 (50 lb read as a mass), with last time's seconds to beat; quoted as typed. */
+    const HOLD = [{ id: 'A', name: 'Hold', items: [['farmerHold', 3, 30, 60, 2]] }];
+    const holds = Array.from({ length: 3 }, (_, k) => [addD(DAY, -7 * (3 - k)), 'A', [['farmerHold', [[50, 45, 2], [50, 45, 2], [50, 40, 2]]]]]);
+    const hl = [];
+    for (const o of [{ exUnit: { farmerHold: 'kg' } }, { unit: 'kg' }]) {
+      P = await lifter(HOLD, holds, { logUnit: 'lb', ...o });
+      await startOn(P, 0);
+      s = await shows(P, 'farmerHold');
+      hl.push(s);
+      await P.ctx.close(); await P.browser.close();
+    }
+    ok(hl.every(h => h.rows.every(x => x.w === 22.5) && /at 22\.5 kg per dumbbell/.test(h.hint) && !/22\.7/.test(h.hint) && /50 lb/.test(h.hint) && h.tgt && h.tgt.total === 130),
+      'P-43 farmer holds at 50 lb a hand, marked kg or with every lift in kg: 22.5 kg per dumbbell and 130s to beat, last time quoted as 50 lb, never 22.7 kg', hl.map(h => ({ rows: h.rows, hint: h.hint, tgt: h.tgt })));
     /* A round trip drifts nothing and makes no PR either way (390's plan): 225 lb x 8 x 3, then bench marked kg and
        102.5 kg x 8 x 3, then back in lb and 225 lb x 8 x 3. */
     const rt = (n, unit) => [[225 * LBK, 8, 2], [102.5, 8, 2], [225 * LBK, 8, 2]].slice(0, n).map((x, k) => [addD(DAY, -7 * (n - k)), 'A', [['bench', [x, x, x]]]]);

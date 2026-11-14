@@ -1469,8 +1469,8 @@ export function parseSets(
   conv?: ((v: number) => number) | null,
   rpe?: boolean
 ): TypedSet[] | null {
-  // A load typed is a number, which fromD always turns into one.
-  return readSets(text, ex, defW, conv || ((v: number) => Number(fromDOf(ex, v))), rpe);
+  // A load typed is a number, which fromD always turns into one; a load typed with its unit is read in that unit.
+  return readSets(text, ex, defW, conv || ((v: number) => Number(fromDOf(ex, v))), rpe, true);
 }
 /* Sets typed for a lift fill its rows from the first one not done, each
    ticked; a set far off is left for setDone's question, as a tick asks it

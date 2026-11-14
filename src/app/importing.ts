@@ -1028,16 +1028,23 @@ export function readSets(
   ex: { bw?: boolean | undefined },
   defW: number | null | undefined,
   conv: (v: number) => number,
-  rpe?: boolean
+  rpe?: boolean,
+  units?: boolean
 ): TypedSet[] | null {
   const fromRpe = (v: number) => (v >= 1 && v <= EFFORT_TOP ? Math.round((EFFORT_TOP - v) * TENTHS) / TENTHS : NaN);
   let s = String(text || '')
     .toLowerCase()
     .replace(/[×*]/g, 'x')
     .replace(/\bfor\b/g, 'x')
-    .replace(/\bat\b/g, '@')
-    .replace(/\breps?\b/g, '')
-    .replace(/\blbs?\b|\bkgs?\b/g, '');
+    .replace(/\bat\b/g, '@');
+  /* With `units`, a load with its unit named is read in that unit, as a load typed in the other unit is ("100 kg x 5"
+     on a lift in lb is 100 kg, never 100 lb): the unit is kept as a mark on the number (k or p) before the words go. A
+     unit after the reps ("225 x 5 lb") names no load and goes with the other words, as before. */
+  if (units)
+    s = s
+      .replace(/(\d+(?:\.\d+)?)\s*(?:kgs?|kilos?|kilograms?)\b(?=\s*x)/g, '$1k')
+      .replace(/(\d+(?:\.\d+)?)\s*(?:lbs?|pounds?)\b(?=\s*x)/g, '$1p');
+  s = s.replace(/\breps?\b/g, '').replace(/\blbs?\b|\bkgs?\b/g, '');
   let allRir: number | null = null;
   const m = s.match(/\b(rir|rpe)\s*(\d+(?:\.\d+)?)\s*$/);
   if (m) {
@@ -1052,15 +1059,17 @@ export function readSets(
     .trim();
   if (!s) return null;
   const toks = s.split(/[\s,;/]+/).filter(Boolean);
-  const re = /^(?:(bw)(?:\+(\d+(?:\.\d+)?))?x|(\d+(?:\.\d+)?)x)?(\d{1,3})(?:@(\d+(?:\.\d+)?))?$/;
+  const re = /^(?:(bw)(?:\+(\d+(?:\.\d+)?)([kp])?)?x|(\d+(?:\.\d+)?)([kp])?x)?(\d{1,3})(?:@(\d+(?:\.\d+)?))?$/;
+  // A number marked with its unit is that many kilograms or pounds; one with none is in the lift's unit (conv).
+  const read = (v: number, u: string | undefined): number => (u === 'k' ? v : u === 'p' ? v * LB : conv(v));
   let w = defW == null ? null : defW;
   const out: TypedSet[] = [];
   for (const t of toks) {
     const g = t.match(re);
     if (!g) return null;
-    const [, bw, added, load, reps, at] = g;
-    if (bw) w = added ? conv(+added) : 0;
-    else if (load != null) w = conv(+load);
+    const [, bw, added, addedU, load, loadU, reps, at] = g;
+    if (bw) w = added ? read(+added, addedU) : 0;
+    else if (load != null) w = read(+load, loadU);
     const r = +(reps || '');
     if (!(r >= 1 && r <= TYPED.reps)) return null;
     const rir = at != null ? (rpe ? fromRpe(+at) : +at) : allRir;

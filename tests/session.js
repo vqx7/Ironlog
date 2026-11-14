@@ -1402,6 +1402,29 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     }
   }
 
+  /* ---------- L-40: Type or dictate sets reads a load typed with its unit in that unit ---------- */
+  if (run('L-40')) {
+    /* A load typed with its unit named is read in that unit, as a load typed in the other unit is anywhere (P-38): on
+       the bench in lb, "100 kg x 5, 5, 5" fills 100 kg, stored as typed, never 100 lb; "100kg x 5" and "100 kilos x 5"
+       read the same; a load with no unit is the lift's (225 x 5 is 225 lb), and a unit after the reps names no load. */
+    const cases = [
+      ['100 kg x 5, 5, 5', 100, 3], ['100kg x 5', 100, 1], ['100 kilos x 5', 100, 1], ['225 lbs x 5, 5', 225 * LB, 2],
+      ['225 x 5', 225 * LB, 1], ['225 x 5 lb', 225 * LB, 1]
+    ];
+    const got = [];
+    for (const [txt] of cases) {
+      const P = await lifter();
+      await start(P);
+      await P.tap('#view [data-act="bMenu"][data-b="0"]', 150); await P.tap('#modal [data-act="bMenuDo"][data-op="bQuick"]', 200);
+      await P.page.fill('#qTxt', txt); await P.tap('#modal [data-act="qFill"]', 250);
+      got.push(await P.ev(() => { const L = window.__ironlog; return { err: (L.ui.modal && L.ui.modal.err) || null, sets: L.state.draft.ex[0].sets.filter(x => x.done).map(x => x.w), shown: (document.querySelector('#view input[data-f="w"][data-b="0"][data-s="0"]') || {}).value || null }; }));
+      await P.close();
+    }
+    ok(cases.every(([, w, n], i) => !got[i].err && got[i].sets.length === n && got[i].sets.every(x => Math.abs(x - w) < 1e-9)),
+      'L-40: on the bench in lb, "100 kg x 5, 5, 5", "100kg x 5" and "100 kilos x 5" fill 100 kg as typed; "225 lbs x 5, 5", "225 x 5" and "225 x 5 lb" fill 225 lb', { cases: cases.map(c => c[0]), got });
+    ok(got[1].shown === '220.5', 'L-40: 100kg typed shows in the lb bench\'s row as 220.5, its stored number never read again in lb', got[1]);
+  }
+
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
   process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.log('FAIL the suite stopped:', (e && e.stack) || e); process.exit(1); });
