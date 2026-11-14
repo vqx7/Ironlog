@@ -5808,6 +5808,65 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return h3._$AI(t4), h3;
   };
 
+  // node_modules/lit-html/directive.js
+  var t2 = { ATTRIBUTE: 1, CHILD: 2, PROPERTY: 3, BOOLEAN_ATTRIBUTE: 4, EVENT: 5, ELEMENT: 6 }, e2 = (t4) => (...e5) => ({ _$litDirective$: t4, values: e5 });
+  var i2 = class {
+    constructor(t4) {
+    }
+    get _$AU() {
+      return this._$AM._$AU;
+    }
+    _$AT(t4, e5, i5) {
+      this._$Ct = t4, this._$AM = e5, this._$Ci = i5;
+    }
+    _$AS(t4, e5) {
+      return this.update(t4, e5);
+    }
+    update(t4, e5) {
+      return this.render(...e5);
+    }
+  };
+
+  // node_modules/lit-html/directive-helpers.js
+  var { I: t3 } = j, i3 = (o3) => o3, n2 = (o3) => null === o3 || "object" != typeof o3 && "function" != typeof o3, e3 = { HTML: 1, SVG: 2, MATHML: 3 }, l2 = (o3, t4) => void 0 === t4 ? void 0 !== o3?._$litType$ : o3?._$litType$ === t4, d2 = (o3) => null != o3?._$litType$?.h, c2 = (o3) => void 0 !== o3?._$litDirective$, f2 = (o3) => o3?._$litDirective$, r2 = (o3) => void 0 === o3.strings, s2 = () => document.createComment(""), v2 = (o3, n3, e5) => {
+    const l4 = o3._$AA.parentNode, d3 = void 0 === n3 ? o3._$AB : n3._$AA;
+    if (void 0 === e5) {
+      const i5 = l4.insertBefore(s2(), d3), n4 = l4.insertBefore(s2(), d3);
+      e5 = new t3(i5, n4, o3, o3.options);
+    } else {
+      const t4 = e5._$AB.nextSibling, n4 = e5._$AM, c4 = n4 !== o3;
+      if (c4) {
+        let t5;
+        e5._$AQ?.(o3), e5._$AM = o3, void 0 !== e5._$AP && (t5 = o3._$AU) !== n4._$AU && e5._$AP(t5);
+      }
+      if (t4 !== d3 || c4) {
+        let o4 = e5._$AA;
+        for (; o4 !== t4; ) {
+          const t5 = i3(o4).nextSibling;
+          i3(l4).insertBefore(o4, d3), o4 = t5;
+        }
+      }
+    }
+    return e5;
+  }, u2 = (o3, t4, i5 = o3) => (o3._$AI(t4, i5), o3), m2 = {}, p2 = (o3, t4 = m2) => o3._$AH = t4, M2 = (o3) => o3._$AH, h2 = (o3) => {
+    o3._$AR(), o3._$AA.remove();
+  }, j2 = (o3) => {
+    o3._$AR();
+  };
+
+  // node_modules/lit-html/directives/keyed.js
+  var i4 = e2(class extends i2 {
+    constructor() {
+      super(...arguments), this.key = A;
+    }
+    render(r4, t4) {
+      return this.key = r4, t4;
+    }
+    update(r4, [t4, e5]) {
+      return t4 !== this.key && (p2(r4), this.key = t4), e5;
+    }
+  });
+
   // src/app/format.ts
   var fmtDateRow = (s3) => parse(s3).toLocaleDateString(void 0, {
     weekday: "short",
@@ -12615,52 +12674,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     D(A, el);
   }
 
-  // node_modules/lit-html/directive.js
-  var t2 = { ATTRIBUTE: 1, CHILD: 2, PROPERTY: 3, BOOLEAN_ATTRIBUTE: 4, EVENT: 5, ELEMENT: 6 }, e2 = (t4) => (...e5) => ({ _$litDirective$: t4, values: e5 });
-  var i2 = class {
-    constructor(t4) {
-    }
-    get _$AU() {
-      return this._$AM._$AU;
-    }
-    _$AT(t4, e5, i5) {
-      this._$Ct = t4, this._$AM = e5, this._$Ci = i5;
-    }
-    _$AS(t4, e5) {
-      return this.update(t4, e5);
-    }
-    update(t4, e5) {
-      return this.render(...e5);
-    }
-  };
-
-  // node_modules/lit-html/directive-helpers.js
-  var { I: t3 } = j, i3 = (o3) => o3, n2 = (o3) => null === o3 || "object" != typeof o3 && "function" != typeof o3, e3 = { HTML: 1, SVG: 2, MATHML: 3 }, l2 = (o3, t4) => void 0 === t4 ? void 0 !== o3?._$litType$ : o3?._$litType$ === t4, d2 = (o3) => null != o3?._$litType$?.h, c2 = (o3) => void 0 !== o3?._$litDirective$, f2 = (o3) => o3?._$litDirective$, r2 = (o3) => void 0 === o3.strings, s2 = () => document.createComment(""), v2 = (o3, n3, e5) => {
-    const l4 = o3._$AA.parentNode, d3 = void 0 === n3 ? o3._$AB : n3._$AA;
-    if (void 0 === e5) {
-      const i5 = l4.insertBefore(s2(), d3), n4 = l4.insertBefore(s2(), d3);
-      e5 = new t3(i5, n4, o3, o3.options);
-    } else {
-      const t4 = e5._$AB.nextSibling, n4 = e5._$AM, c4 = n4 !== o3;
-      if (c4) {
-        let t5;
-        e5._$AQ?.(o3), e5._$AM = o3, void 0 !== e5._$AP && (t5 = o3._$AU) !== n4._$AU && e5._$AP(t5);
-      }
-      if (t4 !== d3 || c4) {
-        let o4 = e5._$AA;
-        for (; o4 !== t4; ) {
-          const t5 = i3(o4).nextSibling;
-          i3(l4).insertBefore(o4, d3), o4 = t5;
-        }
-      }
-    }
-    return e5;
-  }, u2 = (o3, t4, i5 = o3) => (o3._$AI(t4, i5), o3), m2 = {}, p2 = (o3, t4 = m2) => o3._$AH = t4, M2 = (o3) => o3._$AH, h2 = (o3) => {
-    o3._$AR(), o3._$AA.remove();
-  }, j2 = (o3) => {
-    o3._$AR();
-  };
-
   // node_modules/lit-html/directives/live.js
   var l3 = e2(class extends i2 {
     constructor(r4) {
@@ -13712,19 +13725,35 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const u4 = bodyU();
     return b`<button type="button" class=${row ? "btn sm" : "lunit"} data-act="bodyUnit" data-in=${field2} aria-label=${`Bodyweight in ${u4}. Switch to ${u4 === "kg" ? "lb" : "kg"}`}>${u4}</button>`;
   }
+  function bodyKept(id) {
+    const k2 = ui.bwKept;
+    return k2 && k2.id === id ? fmtBody(k2.kg) : "";
+  }
+  function bodyFieldKg(id, text) {
+    const k2 = ui.bwKept;
+    if (k2 && k2.id === id && text.trim() === fmtBody(k2.kg)) return k2.kg;
+    const v3 = numIn(text);
+    return v3 == null ? null : fromDBody(v3);
+  }
+  function bodyField(id, attrs) {
+    return i4(
+      bodyU(),
+      b`<input type="text" inputmode="decimal" id=${id} value=${bodyKept(id)} placeholder=${attrs.placeholder} data-grey=${attrs.grey ?? A} aria-label=${attrs.label ?? A} enterkeyhint="done">`
+    );
+  }
   var latestBw = () => state.bodyweights.filter((b2) => !b2.demo).sort((a2, b2) => a2.date < b2.date ? 1 : -1)[0];
   function bwSheet(m3) {
     const last = latestBw();
     const on = m3.date && m3.date !== today() ? `the weigh-in for ${fmtDate(m3.date)}` : "today's weigh-in";
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Your bodyweight</h3>${closeX()}</div>
     <p class="small">${m3.ex ? `${m3.ex} counts` : "Pull-ups, dips, and push-ups count"} your bodyweight, plus any weight you add on a belt or vest; you type only what you add. Without a bodyweight, they count only the added load.</p>
-    <label class="field"><span>Bodyweight (${bodyUnitTap("bwSheetVal")})</span><input type="text" inputmode="decimal" id="bwSheetVal" placeholder=${last ? fmtBody(last.kg) : `Weight (${bodyU()})`} enterkeyhint="done"></label>
+    <label class="field" for="bwSheetVal"><span>Bodyweight (${bodyUnitTap("bwSheetVal")})</span>${bodyField("bwSheetVal", { placeholder: last ? fmtBody(last.kg) : `Weight (${bodyU()})` })}</label>
     <p class="small muted">Optional. ${last ? `Latest ${fmtBody(last.kg)} ${bodyU()}, ${fmtDate(last.date)}. ` : ""}Saved as ${on}.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="addBW" data-in="bwSheetVal" data-date=${m3.date || A}>Save</button><button class="btn" data-act="mClose">Not now</button></div></div>`;
   }
   function bwSettings() {
     const last = latestBw();
-    return b`<div class="row u-mt8" id="bwSet"><label class="field u-f1_m0"><span>Bodyweight (${bodyUnitTap("bwSetVal")})</span><input type="text" inputmode="decimal" id="bwSetVal" placeholder=${last ? fmtBody(last.kg) : "Not set"} data-grey=${last ? fmtBody(last.kg) : A} enterkeyhint="done"></label><button class="btn sm primary" data-act="addBW" data-in="bwSetVal">${last ? "Log" : "Set"}</button></div><p class="small muted u-m4-0-0">${last ? `Latest ${fmtBody(last.kg)} ${bodyU()}. ` : "Not set: bodyweight lifts count only the weight you add. "}Optional.</p>`;
+    return b`<div class="row u-mt8" id="bwSet"><label class="field u-f1_m0" for="bwSetVal"><span>Bodyweight (${bodyUnitTap("bwSetVal")})</span>${bodyField("bwSetVal", { placeholder: last ? fmtBody(last.kg) : "Not set", grey: last ? fmtBody(last.kg) : void 0 })}</label><button class="btn sm primary" data-act="addBW" data-in="bwSetVal">${last ? "Log" : "Set"}</button></div><p class="small muted u-m4-0-0">${last ? `Latest ${fmtBody(last.kg)} ${bodyU()}. ` : "Not set: bodyweight lifts count only the weight you add. "}Optional.</p>`;
   }
   var BW_ACTS = {
     // From a session's header the sheet carries the session's date, so a past workout's weigh-in is dated that day.
@@ -16172,23 +16201,25 @@ ${more}`;
     invalidate();
     act(
       () => {
-        for (const b2 of d3.ex) {
-          if (d3.deload || d3.light || b2.light || b2.inj) continue;
-          const sg = suggestCore(b2.exId, b2.plan, { before: d3.date });
-          if (b2.sw != null && sg.w != null && Math.abs(sg.w - b2.sw) > EPS_SAME) continue;
-          Object.assign(b2, {
-            hint: sg.text,
-            hintAgain: sg.again || void 0,
-            last: sg.last,
-            prev: sg.prev || void 0,
-            prevOff: sg.prevOff || void 0,
-            target: sg.target,
-            easier: sg.easier || null
-          });
-        }
+        for (const b2 of d3.ex) blockWords(b2);
       },
       { inProgress: true }
     );
+  }
+  function blockWords(b2) {
+    const d3 = state.draft;
+    if (!d3 || d3.deload || d3.light || b2.light || b2.inj) return;
+    const sg = suggestCore(b2.exId, b2.plan, { before: d3.date });
+    if (b2.sw != null && sg.w != null && Math.abs(sg.w - b2.sw) > EPS_SAME) return;
+    Object.assign(b2, {
+      hint: sg.text,
+      hintAgain: sg.again || void 0,
+      last: sg.last,
+      prev: sg.prev || void 0,
+      prevOff: sg.prevOff || void 0,
+      target: sg.target,
+      easier: sg.easier || null
+    });
   }
   function adjSync(b2) {
     if (!b2 || !b2.adj) return;
@@ -19474,19 +19505,6 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     }
   };
 
-  // node_modules/lit-html/directives/keyed.js
-  var i4 = e2(class extends i2 {
-    constructor() {
-      super(...arguments), this.key = A;
-    }
-    render(r4, t4) {
-      return this.key = r4, t4;
-    }
-    update(r4, [t4, e5]) {
-      return t4 !== this.key && (p2(r4), this.key = t4), e5;
-    }
-  });
-
   // src/app/calendar.ts
   var AHEAD_MONTHS = 12;
   function monthPlus(ym, k2) {
@@ -20838,10 +20856,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const z2 = prefGet(BWSNOOZE_KEY);
     if (z2 && z2 > t4) return A;
     return b`<div class="card" id="bwDue"><p class="small u-m0-0-8"><b>${last ? "Weigh-in due." : "Your bodyweight."}</b> ${last ? `Last ${fmtBody(last.kg)} ${bodyU()}, ${ago} days ago.` : "Pull-ups, dips, and push-ups count it, plus any weight you add; without it they count only what you add. Optional."} ${tipButton("Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > Measurements.", "About weigh-ins")}</p>
-<div class="row"><label class="field u-f1_m0" for="bwDueVal"><span class="vh">Bodyweight (${bodyU()})</span>${inUnit(
-      bodyU(),
-      b`<input type="text" inputmode="decimal" id="bwDueVal" placeholder=${last ? fmtBody(last.kg) : `Weight (${bodyU()})`} data-grey=${last ? fmtBody(last.kg) : A} aria-label=${`Bodyweight (${bodyU()})`} enterkeyhint="done">`
-    )}</label>${bodyUnitTap("bwDueVal", true)}<button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
+<div class="row"><label class="field u-f1_m0" for="bwDueVal"><span class="vh">Bodyweight (${bodyU()})</span>${bodyField("bwDueVal", { placeholder: last ? fmtBody(last.kg) : `Weight (${bodyU()})`, grey: last ? fmtBody(last.kg) : void 0, label: `Bodyweight (${bodyU()})` })}</label>${bodyUnitTap("bwDueVal", true)}<button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
   }
   function changeBtn(di, free, part) {
     return b`<button class="btn sm" data-act="startAltOpen" data-day=${di} data-free=${free ? "1" : A} data-part=${part === 2 ? "2" : A}>Change</button>`;
@@ -21063,10 +21078,7 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di, part)}</section
       title: "Body",
       sub,
       body: b`${last ? b`<div class="body-sum"><div><div class="v">${fmtBody(last.kg)}<span class="small"> ${bodyU()}</span></div><div class="l">Latest, ${fmtDate(last.date)}${chgTxt}</div></div>${r4 ? b`<div><div class="v">${bwWeekTxt(r4).replace(" a week", "")}</div><div class="l">weekly change, from 7-day averages</div></div>` : A}</div>` : A}
-<div class="bw-entry"><label class="field">Date${i4(t4, b`<input type="date" id="bwDate" value=${t4} max=${t4}>`)}</label><label class="field" for="bwVal"><span>Weight (${bodyUnitTap("bwVal")})</span>${inUnit(
-        bodyU(),
-        b`<input type="text" inputmode="decimal" id="bwVal" placeholder=${last ? fmtBody(last.kg) : ""} enterkeyhint="done">`
-      )}</label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts">${loggedToday ? "Update" : "Log"}</button></div>
+<div class="bw-entry"><label class="field">Date${i4(t4, b`<input type="date" id="bwDate" value=${t4} max=${t4}>`)}</label><label class="field" for="bwVal"><span>Weight (${bodyUnitTap("bwVal")})</span>${bodyField("bwVal", { placeholder: last ? fmtBody(last.kg) : "" })}</label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts">${loggedToday ? "Update" : "Log"}</button></div>
 ${bws.length ? b`<ul class="bw-list" aria-label="Recent bodyweights">${bws.slice(0, BODY_SHOWN.weights).map(
         (b2) => b`<li><span class="d">${fmtDate(b2.date)}</span><span class="num">${fmtBody(b2.kg)} ${bodyU()}</span><button class="ib sm" data-act="delBW" data-id=${b2.id} aria-label=${`Delete ${fmtDate(b2.date)} entry`}>✕</button></li>`
       )}</ul>${bws.length > BODY_SHOWN.weights ? b`<p class="small muted u-m4-0-0">${bws.length - BODY_SHOWN.weights} older on Stats.</p>` : A}` : A}
@@ -21229,8 +21241,8 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     bodyUnit(t4) {
       const id = t4 && t4.dataset && t4.dataset["in"] || "";
       const inp = field(id);
-      const typed = numIn(inp ? inp.value : "");
-      const kg2 = typed == null ? null : fromDBody(typed);
+      const kg2 = bodyFieldKg(id, inp ? inp.value : "");
+      ui.bwKept = kg2 != null && kg2 > 0 ? { id, kg: kg2 } : void 0;
       const to = bodyU() === "kg" ? "lb" : "kg";
       act(
         () => {
@@ -21240,8 +21252,6 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         { undo: true }
       );
       rerenderKeepScroll();
-      const after2 = field(id);
-      if (after2 && kg2 != null) after2.value = fmtBody(kg2);
       toast(`Bodyweight in ${to}`, true);
     },
     /* A weigh-in for the date given (Today's Body), or for today (the weigh-in
@@ -21250,7 +21260,8 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     addBW(t4) {
       const own2 = t4 && t4.dataset && t4.dataset["in"];
       const inp = field(own2 || "bwVal");
-      const v3 = numIn(inp ? inp.value || inp.dataset["grey"] || "" : "");
+      const text = inp ? inp.value || inp.dataset["grey"] || "" : "";
+      const v3 = numIn(text);
       const de = own2 ? null : field("bwDate");
       const at2 = t4 && t4.dataset && t4.dataset["date"];
       const date = (at2 && isDate(at2) && at2 <= today() ? at2 : null) || de && de.value || today();
@@ -21258,11 +21269,12 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
         toast("Enter a bodyweight");
         return;
       }
-      const kg2 = fromDBody(v3);
+      const kg2 = bodyFieldKg(inp && inp.id || "", text);
       if (kg2 == null || kg2 < BW_MIN_KG || kg2 > BW_MAX_KG) {
         toast(`Bodyweight must be between ${fmtBody(BW_MIN_KG)} and ${fmtBody(BW_MAX_KG)} ${bodyU()}`);
         return;
       }
+      ui.bwKept = void 0;
       act(() => {
         state.bodyweights = state.bodyweights.filter((b2) => b2.date !== date);
         state.bodyweights.push({ id: uid(), date, kg: kg2, demo: false });
@@ -21593,7 +21605,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     if (d3.editingId || d3.past || state.bodyweights.length || !d3.ex.some((b2) => EX(b2.exId).bw)) return "";
     if (prefGet(BWASK_KEY)) return "";
     return b`<div class="card" id="bwAsk"><p class="small u-m0-0-8"><b>Your bodyweight</b> counts in bodyweight lifts, for weight lifted and estimates. ${tipButton("Logged as a weigh-in for today. Add more on Today, under Body.", "About bodyweight")}</p>
-  <div class="row"><label class="field u-f1_m0" for="bwVal"><span class="vh">Bodyweight (${bodyU()})</span>${i4(bodyU(), b`<input type="text" inputmode="decimal" id="bwVal" placeholder=${`Weight (${bodyU()})`} aria-label=${`Bodyweight (${bodyU()})`}>`)}</label>${bodyUnitTap("bwVal", true)}<button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
+  <div class="row"><label class="field u-f1_m0" for="bwVal"><span class="vh">Bodyweight (${bodyU()})</span>${bodyField("bwVal", { placeholder: `Weight (${bodyU()})`, label: `Bodyweight (${bodyU()})` })}</label>${bodyUnitTap("bwVal", true)}<button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
   }
   function cardioDraftCard(d3) {
     const list = d3.cardio || [];
@@ -26123,7 +26135,11 @@ ${JSON.stringify(ctx, null, 1)}`;
         () => {
           if (to === appU()) delete e5.unit;
           else e5.unit = to;
-          for (const x2 of d3.ex) if (x2.exId === b2.exId) refreshBlock(x2);
+          for (const x2 of d3.ex)
+            if (x2.exId === b2.exId) {
+              if (!d3.editingId && !x2.sets.some((s3) => s3.done)) refreshBlock(x2);
+              else blockWords(x2);
+            }
         },
         { undo: true }
       );
@@ -27774,6 +27790,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const m3 = ui.modal;
     if (m3 && FORM_SHEETS.has(m3.kind) && t4.closest("#modal")) m3.dirty = true;
     if (t4.id === "incVal" && m3 && m3.kind === "inc") m3.typed = true;
+    if (ui.bwKept && t4.id === ui.bwKept.id) ui.bwKept = void 0;
     if (workoutInput(t4)) return;
     if (planInput(t4)) return;
     if (t4.dataset.band) {

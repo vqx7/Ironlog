@@ -8,10 +8,9 @@
    changes only what differs, nothing patched by hand; the numbers a row shows are read from the session each draw, so the screen
    cannot say what the log does not. */
 
-import { bodyUnitTap, bwWarn } from './bwnudge';
+import { bodyField, bodyUnitTap, bwWarn } from './bwnudge';
 import { picStrip } from './notepics';
 import { html, nothing } from 'lit-html';
-import { keyed } from 'lit-html/directives/keyed.js';
 import type { TemplateResult } from 'lit-html';
 import { repeat } from 'lit-html/directives/repeat.js';
 
@@ -268,7 +267,7 @@ function bwAskCard(d: Draft): Part {
   if (d.editingId || d.past || state.bodyweights.length || !d.ex.some(b => EX(b.exId).bw)) return '';
   if (prefGet(BWASK_KEY)) return '';
   return html`<div class="card" id="bwAsk"><p class="small u-m0-0-8"><b>Your bodyweight</b> counts in bodyweight lifts, for weight lifted and estimates. ${tipButton('Logged as a weigh-in for today. Add more on Today, under Body.', 'About bodyweight')}</p>
-  <div class="row"><label class="field u-f1_m0" for="bwVal"><span class="vh">Bodyweight (${bodyU()})</span>${keyed(bodyU(), html`<input type="text" inputmode="decimal" id="bwVal" placeholder=${`Weight (${bodyU()})`} aria-label=${`Bodyweight (${bodyU()})`}>`)}</label>${bodyUnitTap('bwVal', true)}<button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
+  <div class="row"><label class="field u-f1_m0" for="bwVal"><span class="vh">Bodyweight (${bodyU()})</span>${bodyField('bwVal', { placeholder: `Weight (${bodyU()})`, label: `Bodyweight (${bodyU()})` })}</label>${bodyUnitTap('bwVal', true)}<button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
 }
 
 /* Cardio and mobility inside a session: saved as their own entries on Finish,

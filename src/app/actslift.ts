@@ -10,7 +10,6 @@ import { JK, MK, injLabel } from './library';
 import { LIMITS, within } from './records';
 import { cleanCardio } from './normalize';
 import { effW, greyW } from './session';
-import { refreshBlock } from './worksets';
 import { rirScale } from './effort';
 import { appU, EX, exName, fmtWOf, fromDOf, incOf, liftMax, liftU, loadReadOf, typedBoundOf } from './live';
 import { state, ui } from './store';
@@ -20,7 +19,7 @@ import { closeModal, openModal, render, renderModal, rerenderKeepScroll } from '
 import { toast } from './toast';
 import { carried } from './workstate';
 import type { Tap } from './workstate';
-import { distIn, fillSets, parseSets, refreshEx } from './worksets';
+import { blockWords, distIn, fillSets, parseSets, refreshBlock, refreshEx } from './worksets';
 
 /** The heaviest load a lift's limit may be, by the unit typed in. */
 const MAX_LOAD = { lb: 4000, kg: 2000 } as const;
@@ -86,7 +85,14 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       () => {
         if (to === appU()) delete e.unit;
         else e.unit = to;
-        for (const x of d.ex) if (x.exId === b.exId) refreshBlock(x);
+        /* A block not started reads its target again in the new unit; one with a set done keeps what it started
+           with, as for a change of the app's unit, its words said again in the new unit, so the sets done at the
+           load asked still count; an edit of a saved session reads nothing again of today's. */
+        for (const x of d.ex)
+          if (x.exId === b.exId) {
+            if (!d.editingId && !x.sets.some(s => s.done)) refreshBlock(x);
+            else blockWords(x);
+          }
       },
       { undo: true }
     );

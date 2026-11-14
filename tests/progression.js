@@ -990,7 +990,7 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     await startOn(P, 0);
     let s = await shows(P, 'bench');
     const r = await shows(P, 'dbLateral');
-    const head = await P.page.evaluate(() => [...document.querySelectorAll('#view .sg.head [data-act="liftUnit"]')].map(e => e.textContent.trim().toUpperCase()));
+    const head = await P.page.evaluate(() => [...document.querySelectorAll('#view .sg.head .lh')].map(e => e.textContent.trim().toUpperCase()));
     ok(s.rows.every(x => x.w === 100) && s.tgt && s.tgt.total === 24 && s.hint.includes('Beat 24 reps over 3 sets at 100 kg') && !/ lb/.test(s.hint),
       'P-43 bench marked kg in an lb app, after 100 kg x 8 x 3: 100 kg and 24 to beat, said in kg', s);
     ok(r.rows.every(x => x.w === 20) && /20 lb/.test(r.hint) && JSON.stringify(head) === JSON.stringify(['KG', 'LB EACH']),

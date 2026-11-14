@@ -682,23 +682,27 @@ export function unitWords(): void {
   invalidate();
   act(
     () => {
-      for (const b of d.ex) {
-        if (d.deload || d.light || b.light || b.inj) continue;
-        const sg = suggestCore(b.exId, b.plan, { before: d.date });
-        if (b.sw != null && sg.w != null && Math.abs(sg.w - b.sw) > EPS_SAME) continue;
-        Object.assign(b, {
-          hint: sg.text,
-          hintAgain: sg.again || undefined,
-          last: sg.last,
-          prev: sg.prev || undefined,
-          prevOff: sg.prevOff || undefined,
-          target: sg.target,
-          easier: sg.easier || null
-        });
-      }
+      for (const b of d.ex) blockWords(b);
     },
     { inProgress: true }
   );
+}
+
+/** One block's target and last time worded again in its unit, its loads as they are (unitWords); inside a change. */
+export function blockWords(b: DraftBlock): void {
+  const d = state.draft;
+  if (!d || d.deload || d.light || b.light || b.inj) return;
+  const sg = suggestCore(b.exId, b.plan, { before: d.date });
+  if (b.sw != null && sg.w != null && Math.abs(sg.w - b.sw) > EPS_SAME) return;
+  Object.assign(b, {
+    hint: sg.text,
+    hintAgain: sg.again || undefined,
+    last: sg.last,
+    prev: sg.prev || undefined,
+    prevOff: sg.prevOff || undefined,
+    target: sg.target,
+    easier: sg.easier || null
+  });
 }
 
 /* ---------- the next sets adjusted (the rule is nextSetsIn's) ---------- */

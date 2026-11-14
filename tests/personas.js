@@ -1215,7 +1215,7 @@ async function finish() {
     await H.start();
     const d0 = await H.draft();
     const bb = d0.ex.findIndex(b => b.exId === 'bench'), db = d0.ex.findIndex(b => b.exId === 'dbBench');
-    const heads = () => H.ev(() => [...document.querySelectorAll('#view .sg.head [data-act="liftUnit"]')].map(e => e.textContent.trim().toUpperCase()));
+    const heads = () => H.ev(() => [...document.querySelectorAll('#view .sg.head .lh')].map(e => e.textContent.trim().toUpperCase()));
     const h0 = await heads();
     await H.page.click(`#view .sg.head [data-act="liftUnit"][data-b="${db}"]`); await wait(250);
     const h1 = await heads(), t1 = await H.toast(); await H.quiet();

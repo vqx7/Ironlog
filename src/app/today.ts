@@ -16,7 +16,7 @@ import type { TemplateResult } from 'lit-html';
 import { keyed } from 'lit-html/directives/keyed.js';
 import type { DirectiveResult } from 'lit-html/directive.js';
 import { act } from './act';
-import { bodyUnitTap } from './bwnudge';
+import { bodyField, bodyFieldKg, bodyUnitTap } from './bwnudge';
 import { APP_NAME } from './config';
 import { LOCKUP } from './icons';
 import { MEAS, injLabel } from './library';
@@ -556,10 +556,7 @@ export function bwDueCard(): Part {
       ? `Last ${fmtBody(last.kg)} ${bodyU()}, ${ago} days ago.`
       : 'Pull-ups, dips, and push-ups count it, plus any weight you add; without it they count only what you add. Optional.'
   } ${tipButton('Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > Measurements.', 'About weigh-ins')}</p>
-<div class="row"><label class="field u-f1_m0" for="bwDueVal"><span class="vh">Bodyweight (${bodyU()})</span>${inUnit(
-    bodyU(),
-    html`<input type="text" inputmode="decimal" id="bwDueVal" placeholder=${last ? fmtBody(last.kg) : `Weight (${bodyU()})`} data-grey=${last ? fmtBody(last.kg) : nothing} aria-label=${`Bodyweight (${bodyU()})`} enterkeyhint="done">`
-  )}</label>${bodyUnitTap('bwDueVal', true)}<button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
+<div class="row"><label class="field u-f1_m0" for="bwDueVal"><span class="vh">Bodyweight (${bodyU()})</span>${bodyField('bwDueVal', { placeholder: last ? fmtBody(last.kg) : `Weight (${bodyU()})`, grey: last ? fmtBody(last.kg) : undefined, label: `Bodyweight (${bodyU()})` })}</label>${bodyUnitTap('bwDueVal', true)}<button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
 }
 
 /* ---------- the start card ---------- */
@@ -958,10 +955,7 @@ function bodyCard(): TemplateResult {
           }</div>`
         : nothing
     }
-<div class="bw-entry"><label class="field">Date${keyed(t, html`<input type="date" id="bwDate" value=${t} max=${t}>`)}</label><label class="field" for="bwVal"><span>Weight (${bodyUnitTap('bwVal')})</span>${inUnit(
-      bodyU(),
-      html`<input type="text" inputmode="decimal" id="bwVal" placeholder=${last ? fmtBody(last.kg) : ''} enterkeyhint="done">`
-    )}</label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts">${loggedToday ? 'Update' : 'Log'}</button></div>
+<div class="bw-entry"><label class="field">Date${keyed(t, html`<input type="date" id="bwDate" value=${t} max=${t}>`)}</label><label class="field" for="bwVal"><span>Weight (${bodyUnitTap('bwVal')})</span>${bodyField('bwVal', { placeholder: last ? fmtBody(last.kg) : '' })}</label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts">${loggedToday ? 'Update' : 'Log'}</button></div>
 ${
   bws.length
     ? html`<ul class="bw-list" aria-label="Recent bodyweights">${bws
@@ -1182,8 +1176,9 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   bodyUnit(t) {
     const id = (t && t.dataset && t.dataset['in']) || '';
     const inp = field(id);
-    const typed = numIn(inp ? inp.value : '');
-    const kg = typed == null ? null : fromDBody(typed);
+    // Kept exactly (bodyField), so a tap back or Undo shows the number as it was typed.
+    const kg = bodyFieldKg(id, inp ? inp.value : '');
+    ui.bwKept = kg != null && kg > 0 ? { id, kg } : undefined;
     const to: 'kg' | 'lb' = bodyU() === 'kg' ? 'lb' : 'kg';
     act(
       () => {
@@ -1193,8 +1188,6 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       { undo: true }
     );
     rerenderKeepScroll();
-    const after = field(id);
-    if (after && kg != null) after.value = fmtBody(kg);
     toast(`Bodyweight in ${to}`, true);
   },
   /* A weigh-in for the date given (Today's Body), or for today (the weigh-in
@@ -1203,7 +1196,8 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   addBW(t) {
     const own = t && t.dataset && t.dataset['in'];
     const inp = field(own || 'bwVal');
-    const v = numIn(inp ? inp.value || inp.dataset['grey'] || '' : '');
+    const text = inp ? inp.value || inp.dataset['grey'] || '' : '';
+    const v = numIn(text);
     const de = own ? null : field('bwDate');
     // The sheet opened from a session names the session's day; else the date field, else today.
     const at = t && t.dataset && t.dataset['date'];
@@ -1212,11 +1206,12 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       toast('Enter a bodyweight');
       return;
     }
-    const kg = fromDBody(v);
+    const kg = bodyFieldKg((inp && inp.id) || '', text);
     if (kg == null || kg < BW_MIN_KG || kg > BW_MAX_KG) {
       toast(`Bodyweight must be between ${fmtBody(BW_MIN_KG)} and ${fmtBody(BW_MAX_KG)} ${bodyU()}`);
       return;
     }
+    ui.bwKept = undefined;
     act(() => {
       state.bodyweights = state.bodyweights.filter(b => b.date !== date);
       state.bodyweights.push({ id: uid(), date, kg, demo: false });

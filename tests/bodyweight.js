@@ -17,6 +17,8 @@
 //   8  The scale's unit (390's Release B): the unit beside a weigh-in field is a tap that marks the scale in the other
 //      unit, kept for weigh-ins alone, said with Undo; a number typed in the field is converted, never read again in the
 //      other unit; weigh-ins, the latest and the Body card then read in it; back to the app's unit, the setting goes.
+//   9  REV17-1: a weigh-in typed, the unit tapped, then Undo: the number typed comes back in its unit and is saved so;
+//      tapped there and back it does not drift.
 // BODYWEIGHT_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -180,7 +182,8 @@ async function pickPullups(P, mode) {
     await P.page.click('#modal [data-act="addBW"]'); await wait(250);
     const saved = await P.page.evaluate(() => { const L = window.__ironlog; const b = [...L.state.bodyweights].sort((a, b) => (a.date < b.date ? 1 : -1))[0]; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); const s = document.getElementById('bwSet'); if (s) s.scrollIntoView(); return { kg: b.kg, line: s ? s.parentElement.innerText : '' }; });
     await wait(150);
-    ok(Math.abs(saved.kg - 90.7) < 1e-9 && /Latest 90\.7 kg/.test(saved.line), '8. saved as shown, 90.7 kg as typed, and Settings reads it in kg', saved);
+    // The number typed, converted and never read again in the other unit: 200 lb exactly, read in kg as 90.7 (REV17-1).
+    ok(Math.abs(saved.kg - 200 * 0.45359237) < 1e-9 && /Latest 90\.7 kg/.test(saved.line), '8. saved as the 200 typed, converted (90.7 kg shown), and Settings reads it in kg', saved);
     await P.page.click('#bwSet [data-act="bodyUnit"]'); await wait(250);
     const back = await P.page.evaluate(() => { const L = window.__ironlog; return { set: 'bwUnit' in L.state.settings, line: document.getElementById('bwSet').parentElement.innerText }; });
     ok(!back.set && /Latest 200 lb/.test(back.line), '8. tapped again, weigh-ins follow the app\'s unit again and the setting is gone: 90.7 kg reads 200 lb', back);
@@ -188,6 +191,38 @@ async function pickPullups(P, mode) {
     const undone = await P.page.evaluate(() => window.__ironlog.state.settings.bwUnit || null);
     ok(undone === 'kg', '8. Undo puts the scale back in kg', undone);
     ok(!P.errors.length, '8. no page errors', P.errors);
+    await P.ctx.close(); await P.browser.close();
+  }
+
+  if (run(9)) {
+    /* REV17-1: a number typed, the unit tapped, then Undo: the field shows what was typed again, in the unit it was typed
+       in, and Save stores that (180 lb, never 81.6 lb); tapped there and back it is still 180 (no drift). On Today's Body
+       card and the sheet alike. */
+    const P = await phone({ onboarded: true, bw: 181 });
+    const out = {};
+    for (const [where, open, q] of [
+      ['the sheet', () => P.page.evaluate(() => window.__ironlog.openModal({ kind: 'bw' })), '#modal input#bwSheetVal'],
+      ['Settings', () => P.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); document.getElementById('bwSetVal').scrollIntoView({ block: 'center' }); }), '#view input#bwSetVal']
+    ]) {
+      await open(); await wait(250);
+      await P.page.click(q); await P.page.fill(q, ''); await P.page.keyboard.type('180');
+      const tap = q.replace(/input#\w+$/, `[data-act="bodyUnit"][data-in="${q.split('#').pop()}"]`);
+      await P.page.click(tap); await wait(200);
+      const conv = await P.page.evaluate(q => document.querySelector(q).value, q);
+      await P.page.click(tap); await wait(200);
+      const back = await P.page.evaluate(q => document.querySelector(q).value, q);
+      await P.page.click(tap); await wait(200);
+      await P.page.click('#toast [data-act="undo"]'); await wait(250);
+      const undone = await P.page.evaluate(q => ({ v: document.querySelector(q).value, u: window.__ironlog.bodyU() }), q);
+      const save = q.startsWith('#modal') ? '#modal [data-act="addBW"]' : '#bwSet [data-act="addBW"]';
+      await P.page.click(save); await wait(250);
+      const kg = await P.page.evaluate(() => { const b = [...window.__ironlog.state.bodyweights].sort((a, b) => (a.date < b.date ? 1 : -1))[0]; return b.kg; });
+      out[where] = { conv, back, undone, lb: Math.round(kg / 0.45359237 * 1000) / 1000 };
+      await P.page.evaluate(() => { const L = window.__ironlog; L.state.bodyweights = L.state.bodyweights.filter(b => b.date !== L.today()); delete L.state.settings.bwUnit; L.invalidate(); if (L.ui.modal) L.ACT.mClose(); L.render(); }); await wait(150);
+    }
+    ok(Object.values(out).every(o => o.conv === '81.6' && o.back === '180' && o.undone.v === '180' && o.undone.u === 'lb' && o.lb === 180),
+      '9. typed 180, tapped to kg (81.6), back (180), to kg again, then Undo: 180 in lb again, and Save stores 180 lb, on the sheet and in Settings (REV17-1)', out);
+    ok(!P.errors.length, '9. no page errors', P.errors);
     await P.ctx.close(); await P.browser.close();
   }
 

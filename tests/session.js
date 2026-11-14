@@ -1,4 +1,4 @@
-// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-38, in the
+// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-39, in the
 // project's claude/ironlog-spec-session.md, built from the code: workout.ts, worksets.ts, worktaps.ts, workfields.ts,
 // workfinish.ts, timer.ts, actsstart.ts, actspick.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
 // expects). A feature suite: each section is one rule, a lifter's log seeded, the workout started from Today's card
@@ -1227,6 +1227,40 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     }
   }
 
+  /* ---------- L-39: the unit switched on a lift already started, or in an edit: only the words change ---------- */
+  if (run('L-39')) {
+    /* A lift with a set done keeps what it started with when its unit is tapped, as for a change of the app's unit:
+       the target is worded in kg at the same load, the sets done at it still count, and Finish beats the target
+       (REV17-4). In an edit of a saved session nothing is read again but the words, so no flag from today reaches the
+       past session (REV17-2). */
+    const P = await lifter();
+    await start(P);
+    for (const s of [0, 1]) { await P.page.click(field('r', 0, s)); await P.page.fill(field('r', 0, s), ''); await P.page.keyboard.type('9'); await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60); await P.tap(btn('sDone', 0, s), 150); }
+    const before = await P.ev(() => { const b = window.__ironlog.state.draft.ex[0]; return { w: b.tgt && b.tgt.w, total: b.tgt && b.tgt.total }; });
+    await P.tap(btn('liftUnit', 0, null), 300);
+    const mid = await P.ev(() => { const b = window.__ironlog.state.draft.ex[0]; const e = document.getElementById('blk-0'); return { w: b.tgt && b.tgt.w, total: b.tgt && b.tgt.total, prog: (e.querySelector('.bprog, .prog') || {}).textContent || e.innerText }; });
+    ok(Math.abs(mid.w - before.w) < 1e-9 && mid.total === before.total && !/Nothing logged/.test(mid.prog), 'L-39: KG tapped after two sets: the target keeps its load and total, the sets done still count', { before, mid });
+    await P.ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
+    await P.page.click(field('r', 0, 2)); await P.page.fill(field('r', 0, 2), ''); await P.page.keyboard.type('9'); await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60);
+    await P.tap(btn('sDone', 0, 2), 150);
+    const finishAll = async X => { await X.tap('#view [data-act="finish"]', 300); let text = ''; for (let k = 0; k < 6; k++) { const m = await X.modal(); if (!m) break; if (m.kind === 'confirm') await mOk(X); else { if (m.kind === 'recap') text = m.text; await X.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } } return text; };
+    const rec = await finishAll(P);
+    ok(/1 of \d exercise targets? beaten/.test(rec) && !/ 0 of/.test(' ' + rec), 'L-39: Finish counts the bench\'s target beaten', rec);
+    await P.close();
+    // An edit: today chest flagged; the last session opened from History, KG tapped, saved: nothing from today reaches it.
+    const E = await lifter();
+    const sid = 'last';
+    await E.ev(() => { const L = window.__ironlog; L.state.injuries = [{ id: 'i1', m: 'chest', note: '', date: L.today() }]; L.invalidate(); L.saveNow(); L.ui.tab = 'history'; L.render(); }); await wait(150);
+    await E.tap('#view [data-act="histToggle"][data-id="last"]', 150); await E.tap('#view [data-act="histEdit"][data-id="last"]', 300);
+    const bi = await E.ev(() => window.__ironlog.state.draft.ex.findIndex(b => b.exId === 'bench'));
+    await E.tap(`#view .sg.head [data-act="liftUnit"][data-b="${bi}"]`, 300);
+    await E.ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
+    await finishAll(E);
+    const saved = await E.ev(sid => { const s = window.__ironlog.state.sessions.find(x => x.id === sid); const b = s.ex.find(x => x.exId === 'bench'); return { inj: b.inj || null }; }, sid);
+    ok(saved.inj === null, 'L-39: in an edit of a saved session, KG tapped and saved: no injury flagged since reaches it (REV17-2)', saved);
+    await E.close();
+  }
+
   /* ---------- L-38: the unit beside a lift's loads switches the lift between lb and kg ---------- */
   if (run('L-38')) {
     /* 390's Release B: tapping "LB" in an exercise's heading marks its equipment in kg: kept on the lift, said with Undo,
@@ -1235,7 +1269,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
        typed. */
     const P = await lifter();
     await start(P);
-    const head = () => P.ev(() => [...document.querySelectorAll('#view .sg.head [data-act="liftUnit"]')].map(e => e.textContent.trim().toUpperCase()));
+    const head = () => P.ev(() => [...document.querySelectorAll('#view .sg.head .lh')].map(e => e.textContent.trim().toUpperCase()));
     const h0 = await head();
     await P.page.click(field('w', 0, 0)); await P.page.fill(field('w', 0, 0), ''); await P.page.keyboard.type('225');
     await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(80);
@@ -1258,7 +1292,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     ok(back.unit === null && back.shown === '225', 'L-38: Undo puts it back in lb, the load as typed', back);
     await P.tap(btn('liftUnit', 0, null), 300);
     await P.page.reload(); await wait(600);
-    const kept = await P.ev(() => ({ unit: window.__ironlog.state.exercises.find(x => x.id === 'bench').unit, head: [...document.querySelectorAll('#view .sg.head [data-act="liftUnit"]')].map(e => e.textContent.trim())[0] }));
+    const kept = await P.ev(() => ({ unit: window.__ironlog.state.exercises.find(x => x.id === 'bench').unit, head: [...document.querySelectorAll('#view .sg.head .lh')].map(e => e.textContent.trim().toUpperCase())[0] }));
     ok(kept.unit === 'kg' && kept.head === 'KG', 'L-38: switched again, it is still kg when the app is opened again', kept);
     await P.close();
   }
