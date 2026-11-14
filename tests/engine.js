@@ -139,10 +139,25 @@ const EXTRA = {
   // 2.65 (390's Release A): a heaviest load, a bar and any load set in either unit, read on the unit's equipment, and a
   // number typed within a bound.
   liftMax: (s, ids) => ids.slice(0, 3).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e], [{ ...e, maxLoad: 100 }], [{ ...e, maxLoad: 220 * 0.45359237 }]]),
-  barRead: () => [[20], [45 * 0.45359237], [10], [60]],
-  loadRead: () => [[100], [220 * 0.45359237], [0.4], [102.06]],
-  typedBound: () => [[1200, 500], [600, 500], [200, 50], [30, 50]],
+  barReadOf: (s, ids) => ids.slice(0, 2).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [20, 45 * 0.45359237, 10, 60].flatMap(kg => [[e, kg], [{ ...e, unit: 'kg' }, kg], [{ ...e, unit: 'lb' }, kg]])),
+  loadReadOf: (s, ids) => ids.slice(0, 2).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [100, 220 * 0.45359237, 0.4, 102.06].flatMap(kg => [[e, kg], [{ ...e, unit: 'kg' }, kg], [{ ...e, unit: 'lb' }, kg]])),
+  typedBoundOf: (s, ids) => ids.slice(0, 2).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[1200, 500], [600, 500], [200, 50], [30, 50]].flatMap(a => [[e, ...a], [{ ...e, unit: 'kg' }, ...a], [{ ...e, unit: 'lb' }, ...a]])),
+  typedBoundApp: () => [[1200, 500], [600, 500], [200, 50], [30, 50]],
   strengthPick: (s, ids) => ids.map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e, window.__ironlog.IDX().exStats[e.id], window.__ironlog.recovery(e.primary)], [e, window.__ironlog.IDX().exStats[e.id], { r: 1, days: null, sets: 0, need: 0 }, s.sessions.length ? s.sessions[0].date : undefined]]),
+  // 2.66 (390's Release B): a lift's own unit, and its loads, steps and past loads in it, for a lift marked in kg, one in lb
+  // and one with no unit of its own (the app's), loads typed in each unit and one the app worked out.
+  liftU: (s, ids) => ids.slice(0, 2).flatMap(id => [[{ id, unit: 'kg' }], [{ id, unit: 'lb' }], [{ id }], [null]]),
+  fmtWOf: () => [[{ unit: 'kg' }, 102.05828325], [{ unit: 'lb' }, 100], [{}, 45.359237], [null, null]],
+  toDOf: () => [[{ unit: 'kg' }, 102.05828325], [{ unit: 'lb' }, 100], [{}, 20], [{ unit: 'lb' }, null]],
+  fromDOf: () => [[{ unit: 'kg' }, 100], [{ unit: 'lb' }, 225], [{}, 50], [null, null]],
+  stepReadOf: () => [[{ unit: 'kg' }, 4.5359237], [{ unit: 'lb' }, 5], [{ unit: 'lb' }, 2.5], [{ unit: 'kg' }, 0.5669904625], [{}, 2.26796185]],
+  // 2.66: the scale's unit, a weigh-in shown, read and typed in it.
+  bodyU: () => [[]],
+  fmtBody: () => [[81.6466266], [90.7], [null]],
+  toDBody: () => [[81.6466266], [90.7], [null]],
+  fromDBody: () => [[180], [90.7], [null]],
+  listLabel: () => [[{ bw: false, unit: 'kg' }, 22.5], [{ bw: false, unit: 'kg' }, 22.6796185], [{ bw: false }, 100], [{ bw: true, unit: 'kg' }, 10, true], [{ bw: false, unit: 'lb' }, 0, true]],
+  typedLabel: () => [[{ bw: false, unit: 'kg' }, 102.05828325], [{ bw: false, unit: 'lb' }, 100], [{ bw: true, unit: 'kg' }, 11.33980925], [{ bw: true, unit: 'lb' }, -4.5359237], [{ bw: false }, 101.7234]],
 };
 // Hand-made histories beside the wide ones, for paths those never reach, each built on a wide history's settings,
 // exercises and routines (since r54): a lifter back this week after ten weeks away, whose weeks count from the

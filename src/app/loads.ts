@@ -6,7 +6,7 @@ import type { Exercise } from './types';
 import type { ExerciseLike, Model, Suggestion } from './model';
 import { loadMode, PLATE_SIDE_IDS, isCompound, noE1 } from './library';
 import { r1, EPS } from './util';
-import { UIn } from './model';
+import { UIn, appModelIn, appUIn, bodyIn, liftModelIn, liftUIn } from './model';
 import { DEFAULT_STEP, LB, fromDIn, toDIn, typedUnit } from './units';
 
 /** The load meanings a lifter can choose in the exercise editor. */
@@ -58,8 +58,22 @@ export const emptyLoad = (ex: Pick<Exercise, 'bw' | 'assist'>): string => (ex.bw
 export const fmtWIn = (M: Model, kg: number | null | undefined): string =>
   kg == null || isNaN(kg) ? '' : String(r1(toDIn(M, kg)!));
 
+/** A load in kilograms as a lift shows it, in its unit, rounded to a tenth; empty for none. */
+export const fmtWOfIn = (
+  M: Model,
+  ex: Pick<Exercise, 'unit'> | null | undefined,
+  kg: number | null | undefined
+): string => fmtWIn(liftModelIn(M, ex), kg);
+
+/** A load in kilograms as the app's own numbers show it (totals, settings), in the app's unit; empty for none. */
+export const fmtWAppIn = (M: Model, kg: number | null | undefined): string => fmtWIn(appModelIn(M), kg);
+
+/** A bodyweight in kilograms as weigh-ins show it, in the scale's unit, rounded to a tenth; empty for none. */
+export const fmtBodyIn = (M: Model, kg: number | null | undefined): string => fmtWOfIn(M, bodyIn(M), kg);
+
 /** A load as shown on an exercise: BW+10 or BW−40 on a bodyweight lift, else the number. */
-export function loadLabelIn(M: Model, ex: Pick<Exercise, 'bw'>, kg: number): string {
+export function loadLabelIn(M: Model, ex: Pick<Exercise, 'bw' | 'unit'>, kg: number): string {
+  M = liftModelIn(M, ex);
   if (ex.bw) {
     return kg > 0 ? `BW+${fmtWIn(M, kg)}` : kg < 0 ? `BW−${fmtWIn(M, -kg)}` : 'BW';
   }
@@ -70,7 +84,8 @@ export function loadLabelIn(M: Model, ex: Pick<Exercise, 'bw'>, kg: number): str
    it converts to, which no plate shows. In the unit on screen that is the number as shown; typed in the other unit it is
    its number in that unit with the unit named, since the screen's unit would read it as its own. */
 /** A past load as it was typed: as shown when typed in the unit on screen, else in its own unit, named ("225 lb", "BW+10 kg"). */
-export function typedLabelIn(M: Model, ex: Pick<Exercise, 'bw'>, kg: number): string {
+export function typedLabelIn(M: Model, ex: Pick<Exercise, 'bw' | 'unit'>, kg: number): string {
+  M = liftModelIn(M, ex);
   const u = typedUnit(kg);
   if (u == null || u === UIn(M)) return loadLabelIn(M, ex, kg);
   const n = (v: number): string => String(r1(u === 'lb' ? v / LB : v));
@@ -78,8 +93,23 @@ export function typedLabelIn(M: Model, ex: Pick<Exercise, 'bw'>, kg: number): st
   return `${num} ${u}`;
 }
 
+/* A set's load as a line quotes it outside the lift's own column (History, the recap, All-time bests, the heaviest
+   line, a close variation named in another lift's words): as typed, in its lift's unit when its number says none, its
+   unit named when it is not the app's, not the lift's, or not the unit the line is read in, so a number with no unit
+   means one thing whichever screen or lift it is read beside (390's Release B); `named` names it in any unit. A
+   bodyweight set with nothing added is "BW" with no number, so it names no unit. */
+/** A load as a line quotes it: as typed, its unit named unless it is the app's, the lift's and the line's (or always), or the set is bodyweight alone. */
+export function listLabelIn(M: Model, ex: Pick<Exercise, 'bw' | 'unit'>, kg: number, named?: boolean): string {
+  const lift = liftUIn(M, ex),
+    u = typedUnit(kg) ?? lift;
+  const label = loadLabelIn(M, { bw: ex.bw, unit: u }, kg);
+  if (ex.bw && kg === 0) return label;
+  return named || u !== UIn(M) || u !== lift || u !== appUIn(M) ? `${label} ${u}` : label;
+}
+
 // Puts a new load into a suggestion, its words included.
-export function swapWIn(M: Model, ex: Pick<Exercise, 'bw'>, res: Suggestion, nw: number): Suggestion {
+export function swapWIn(M: Model, ex: Pick<Exercise, 'bw' | 'unit'>, res: Suggestion, nw: number): Suggestion {
+  M = liftModelIn(M, ex);
   // The load the words were written with; a suggestion is swapped only when it has one, as the ! says.
   const a = loadLabelIn(M, ex, res.w!),
     b = loadLabelIn(M, ex, nw);

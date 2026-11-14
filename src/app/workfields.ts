@@ -9,7 +9,7 @@ import { today, numIn, isDate, EPS } from './util';
 import { LOAD_MAX, LOAD_MIN } from './normalize';
 
 import { log } from './storage';
-import { EX, fromD } from './live';
+import { EX, fromDOf } from './live';
 import { state, ui } from './store';
 
 import { drawing, fieldShown } from './view';
@@ -124,8 +124,8 @@ export function workoutInput(t: Field): boolean {
             n == null
               ? null
               : as
-                ? -Math.min(fromD(Math.abs(n)) ?? 0, -LOAD_MIN)
-                : Math.min(fromD(Math.max(n, 0)) ?? 0, LOAD_MAX);
+                ? -Math.min(fromDOf(bx && EX(bx.exId), Math.abs(n)) ?? 0, -LOAD_MIN)
+                : Math.min(fromDOf(bx && EX(bx.exId), Math.max(n, 0)) ?? 0, LOAD_MAX);
           if (s.w === 0) s.w = 0;
           carried.delete(s);
         } else s.r = n == null ? null : Math.min(Math.max(Math.floor(n + EPS), 0), LIMITS.reps);

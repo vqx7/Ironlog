@@ -45,11 +45,11 @@ async function demo(tab, o = {}) {
 }
 const openAll = page => page.evaluate(() => { const L = window.__ironlog; for (let k = 0; k < 2; k++) { document.querySelectorAll('#view details').forEach(d => { d.open = true; }); L.render(); } document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
 // What a tap on an element shows in the tip box ('' for nothing), the tip then hidden again.
-const tapTip = async (page, sel) => {
+const tapTip = async (page, sel, position) => {
   if (!(await page.$(sel))) return null;
   // In view first, as a finger finds it: a scroll hides a tip, and the click's own scroll would land after it shows.
   await page.$eval(sel, e => e.scrollIntoView({ block: 'center' })); await wait(120);
-  await page.click(sel); await wait(80);
+  await page.click(sel, position ? { position } : undefined); await wait(80);
   const t = await page.evaluate(() => { const b = document.getElementById('tip'); return b && !b.hidden ? b.textContent : ''; });
   await page.evaluate(() => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' }))); await wait(40);
   return t;
@@ -104,7 +104,8 @@ const guard = async f => { try { await f(); } catch (e) { ok(false, 'a section t
     await D.ctx.close();
   });
 
-  // ---- 3. The load words: in the column heading's tip, not a line under every exercise.
+  // ---- 3. The load words: never a line under every exercise. Since 2.66 (V, 2026-11-14) the load column's heading
+  // says what the number is in one word and the exercise's badge (its unit) opens its sheet, which says it in full.
   if (run(3)) await guard(async () => {
     const D = await demo('today');
     const ids = ['dbCurl', 'bench', 'pullup', 'dbRow', 'assistPullup', 'latPulldown'];
@@ -112,18 +113,21 @@ const guard = async f => { try { await f(); } catch (e) { ok(false, 'a section t
     const lines = await D.page.evaluate(() => document.querySelectorAll('#view .lmrow, #view .lm').length);
     ok(lines === 0, '3. no exercise has a line of load words under its name', lines);
     const want = [
-      ['dbCurl', /LB EACH/i, 'Load: per dumbbell. Enter the weight of one dumbbell. Weight lifted counts both.'],
-      ['bench', /^LB$/i, 'Load: total, bar included. Enter everything on the bar, the bar included.'],
-      ['pullup', /^\+LB$/i, 'Load: added to bodyweight. Enter only what you add (belt, vest, dumbbell); 0 for bodyweight. Your logged bodyweight is added for estimates.'],
-      ['dbRow', /^LB$/i, 'Load: one dumbbell. Enter the weight of the one dumbbell you hold.'],
-      ['assistPullup', /HELP LB/i, 'Load: machine help. Enter the help the machine gives, as on its pin. Less help is progress; your logged bodyweight minus the help is what counts.'],
-      ['latPulldown', /^STACK$/i, 'Load: stack setting. Enter the pin setting. It is not comparable across machines.']
+      ['dbCurl', /^EACH$/i, 'Enter the weight of one dumbbell. Weight lifted counts both.'],
+      ['bench', /^TOTAL$/i, 'Enter everything on the bar, the bar included.'],
+      ['pullup', /^ADDED$/i, 'Enter only what you add (belt, vest, dumbbell); 0 for bodyweight. Your logged bodyweight is added for estimates.'],
+      ['dbRow', /^TOTAL$/i, 'Enter the weight of the one dumbbell you hold.'],
+      ['assistPullup', /^ASSIST$/i, 'Enter the assistance the machine gives, as on its pin. Less assistance is progress; your logged bodyweight minus it is what counts.'],
+      ['latPulldown', /^STACK$/i, 'Enter the pin setting. It is not comparable across machines.']
     ];
-    for (const [id, head, tip] of want) {
+    for (const [id, head, words] of want) {
       const bi = await D.page.evaluate(id => window.__ironlog.state.draft.ex.findIndex(b => b.exId === id), id);
       const h = await D.page.evaluate(bi => document.querySelector(`#blk-${bi} .sg.head .lh`).innerText.trim(), bi);
-      const t = await tapTip(D.page, `#blk-${bi} .sg.head .lh`);
-      ok(head.test(h) && t === tip, `3. ${id}: the load heading reads ${h}, and a tap on it says "${tip}"`, { h, t });
+      await D.page.$eval(`#view [data-act="unitOpen"][data-b="${bi}"]`, e => e.scrollIntoView({ block: 'center' })); await wait(100);
+      await D.page.click(`#view [data-act="unitOpen"][data-b="${bi}"]`); await wait(200);
+      const t = await D.page.evaluate(() => { const p = document.querySelector('#modal .sheet > p'); return p ? p.textContent.trim() : ''; });
+      await D.page.evaluate(() => window.__ironlog.ACT.mClose()); await wait(120);
+      ok(head.test(h) && t === words, `3. ${id}: the load heading reads ${h}, and its badge's sheet says "${words}"`, { h, t });
     }
     const row = await D.page.evaluate(() => window.__ironlog.state.draft.ex.findIndex(b => b.exId === 'dbRow'));
     const rh = await D.page.evaluate(bi => document.querySelectorAll(`#blk-${bi} .sg.head span`)[3].innerText.trim(), row);

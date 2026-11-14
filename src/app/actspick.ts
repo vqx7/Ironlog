@@ -12,18 +12,18 @@ import { joinRows, joinable } from './session';
 import { platesMode } from './gym';
 import { LIMITS } from './records';
 import {
-  EX,
-  U,
   activeRoutine,
-  barRead,
+  barReadOf,
   defPlan,
+  EX,
   exName,
-  fmtW,
-  fromD,
+  fmtWOf,
+  fromDOf,
   liftMax,
+  liftU,
   planFor,
-  stepRead,
-  typedBound
+  stepReadOf,
+  typedBoundOf
 } from './live';
 import { state, ui } from './store';
 import type { ExEdit, ExEditSheet, Modal, PickerModal } from './modals';
@@ -79,9 +79,9 @@ export function swapPlan<P extends Partial<Plan>>(
 /** An exercise's step, heaviest load and bar as the editor shows them, each set in the other unit read as its match. */
 function shownNumbers(x: Exercise): { inc: string; max: string; bar: string } {
   return {
-    inc: x.inc != null ? fmtW(stepRead(x.inc)) : '',
-    max: x.maxLoad != null ? fmtW(liftMax(x) ?? 0) : '',
-    bar: x.barKg != null ? fmtW(barRead(x.barKg)) : ''
+    inc: x.inc != null ? fmtWOf(x, stepReadOf(x, x.inc)) : '',
+    max: x.maxLoad != null ? fmtWOf(x, liftMax(x) ?? 0) : '',
+    bar: x.barKg != null ? fmtWOf(x, barReadOf(x, x.barKg)) : ''
   };
 }
 
@@ -567,20 +567,21 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (sh && e.incRaw === sh.inc) delete e.incRaw;
     else {
       const n = numIn(e.incRaw);
-      e.inc = n != null && n > 0 ? typedBound(n, LIMITS.step) : null;
+      e.inc = n != null && n > 0 ? typedBoundOf(e, n, LIMITS.step) : null;
       delete e.incRaw;
     }
     if (sh && e.maxRaw === sh.max) delete e.maxRaw;
     else {
       const n = numIn(e.maxRaw);
-      if (n != null && n > 0) e.maxLoad = Number(fromD(Math.min(n, U() === 'lb' ? MAX_LOAD.lb : MAX_LOAD.kg)));
+      if (n != null && n > 0)
+        e.maxLoad = Number(fromDOf(e, Math.min(n, liftU(e) === 'lb' ? MAX_LOAD.lb : MAX_LOAD.kg)));
       else delete e.maxLoad;
       delete e.maxRaw;
     }
     if (sh && e.barRaw === sh.bar && platesMode(e) === 'bar') delete e.barRaw;
     else {
       const n = numIn(e.barRaw);
-      if (n != null && n > 0 && platesMode(e) === 'bar') e.barKg = typedBound(n, LIMITS.barKg);
+      if (n != null && n > 0 && platesMode(e) === 'bar') e.barKg = typedBoundOf(e, n, LIMITS.barKg);
       else delete e.barKg;
       delete e.barRaw;
     }

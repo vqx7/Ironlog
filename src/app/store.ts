@@ -147,6 +147,8 @@ interface Ui {
   wkWs?: string | undefined;
   /** The weeks Volume by region averages, picked this visit. */
   regionWk?: number | undefined;
+  /** A number typed in a weigh-in field (its id) carried across a switch of the scale's unit, in kg exactly. */
+  bwKept?: { id: string; kg: number } | undefined;
   /** The day Plan has open: its id, '' for none, unset for the routine's target day. */
   dayFocus?: string | undefined;
   /** Stats' bests list shown whole. */
@@ -350,6 +352,8 @@ interface Fx {
   obGate(): boolean;
   /** Closes the open sheet, as its own close does. */
   closeModal(): void;
+  /** Reads the workout just brought back from being set aside against the log as it is now (the session's draftBack); inside the change that brings it back. */
+  draftBack(): void;
 }
 /* Set once at start, before anything that could call an effect runs (the !
    says so), as state is set by load(). */

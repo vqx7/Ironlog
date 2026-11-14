@@ -17,23 +17,22 @@ import { prName, prOverall } from './prs';
 import { stripDemo } from './chunks';
 import { demoRestore } from './storage';
 import {
-  EX,
-  bwLoad,
-  IDX,
-  rirEff,
-  loadLabel,
-  oddLoad,
-  lightZero,
-  routineUpdates,
-  invalidate,
-  hardCredit,
-  rirHalfOn,
-  U,
-  fmtW,
-  sessModelMin,
   activeRoutine,
+  bwLoad,
+  EX,
   freeMode,
-  sinceBack
+  hardCredit,
+  IDX,
+  invalidate,
+  liftU,
+  lightZero,
+  oddLoad,
+  rirEff,
+  rirHalfOn,
+  routineUpdates,
+  sessModelMin,
+  sinceBack,
+  listLabel
 } from './live';
 import { state, ui } from './store';
 import { joinAdjacent, savedEx, draftCardio, effTarget, withNew, picsLast, typedMin } from './session';
@@ -151,7 +150,7 @@ function askRamps(d: Draft): boolean {
         !appSet(x, si) &&
         easy(x)
       )
-        ramps.push({ bi, si, name: e.name, txt: `${loadLabel(e, +(x.w ?? 0) || 0)}×${x.r}` });
+        ramps.push({ bi, si, name: e.name, txt: setShort(e, +(x.w ?? 0) || 0, x.r) });
     });
   }
   if (ramps.length) {
@@ -390,11 +389,11 @@ function recapPr(pr: Pr): { name: string; what: string; was: string } {
   if (pr.type === 'Weight PR')
     return {
       name: e.name,
-      what: `Weight PR, ${setShort(e, pr.w, pr.r)}${pr.value != null && isCompound(e) ? `, best estimate ${fmtE(pr.value)} ${U()}${loadNote(e)}` : ''}`,
+      what: `Weight PR, ${setShort(e, pr.w, pr.r)}${pr.value != null && isCompound(e) ? `, best estimate ${fmtE(e, pr.value)} ${liftU(e)}${loadNote(e)}` : ''}`,
       was: e.assist
         ? 'less help than ever'
         : isFinite(pr.prevW ?? NaN)
-          ? `heaviest before ${e.bw ? loadLabel(e, pr.prevW ?? 0) : fmtW(pr.prevW) + ' ' + U()}`
+          ? `heaviest before ${listLabel(e, pr.prevW ?? 0, !e.bw)}`
           : ''
     };
   const ps = pr.type === 'e1RM' && !isCompound(e) ? prSet(pr.exId, pr.date) : null;
@@ -402,13 +401,13 @@ function recapPr(pr: Pr): { name: string; what: string; was: string } {
   return pr.type === 'e1RM'
     ? {
         name: e.name,
-        what: `${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e)}`,
+        what: `${prName(pr)} ${fmtE(e, pr.value)} ${liftU(e)}${loadNote(e)}`,
         was: prOverall(pr)
-          ? wasE(pr.value, pr.prevAll)
-            ? `was ${wasE(pr.value, pr.prevAll)}`
+          ? wasE(e, pr.value, pr.prevAll)
+            ? `was ${wasE(e, pr.value, pr.prevAll)}`
             : ''
-          : wasE(pr.value, pr.prev)
-            ? `was ${wasE(pr.value, pr.prev)} at those reps`
+          : wasE(e, pr.value, pr.prev)
+            ? `was ${wasE(e, pr.value, pr.prev)} at those reps`
             : ''
       }
     : {

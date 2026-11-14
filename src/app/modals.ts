@@ -201,6 +201,8 @@ export type Modal =
   | (SheetBase & { kind: 'inc'; exId: string; plan?: DraftBlock['plan'] | undefined; typed?: boolean | undefined })
   | (SheetBase & { kind: 'quick'; b: number; text?: string | undefined; err?: string | undefined })
   | (SheetBase & { kind: 'max'; exId: string; b?: number | undefined })
+  // What a session's exercise holds in its load column, and the unit its weights are marked in: the block it is on.
+  | (SheetBase & { kind: 'unit'; b: number })
   | (SheetBase & {
       kind: 'cal';
       b: number;

@@ -8,11 +8,11 @@ import type { Plan } from './types';
 import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from './model';
 import { statsUpToIn } from './bests';
 import type { LiftBests } from './bests';
-import { EXIn, UIn, exInjuryIn } from './model';
+import { EXIn, UIn, exInjuryIn, liftModelIn, liftUIn } from './model';
 import { IDXIn, lastOf, liftReadIn } from './analytics';
 import { atCapOfIn, capOfIn, gymRackIn, loadFloorIn } from './gym';
-import { DEFAULT_STEP, fromDIn, toDIn, typedOtherIn } from './units';
-import { fmtWIn, loadLabelIn, loadNote, typedLabelIn } from './loads';
+import { DEFAULT_STEP, fromDIn, loadReadIn, toDIn, typedOtherIn } from './units';
+import { fmtWIn, listLabelIn, loadLabelIn, loadNote, typedLabelIn } from './loads';
 import { addDays, daysBetween, isDate, r1, EPS, EPS_SAME, WEEK_DAYS, pctOf } from './util';
 import {
   BACK_DAYS,
@@ -190,6 +190,14 @@ function pastWordsIn(
   };
 }
 
+/* A close variation's rack spacing is borrowed for a lift with no sessions of its own (its dumbbells are likely the
+   same rack) only when both are in one unit: a spacing read in lb (5 lb) is no step of kg's dumbbells, so a lift in the
+   other unit from its variation starts on its own equipment's steps, as it would with every lift in its unit. */
+/** The rack spacing a lift with no sessions borrows from a close variation `kin`, or null when it has none to borrow. */
+function kinRackStepIn(M: Model, ex: ExerciseLike, kin: ExerciseLike): number | null {
+  return rackKind(ex) && rackKind(kin) && liftUIn(M, kin) === UIn(M) ? rackStepIn(M, kin) : null;
+}
+
 /* What to lift next for one exercise on a plan: the normal prescription
    (suggestCore), or a lighter day, a deload, or a lift back after a break
    worked out from it (above). A close variation's start, a lighter one, is
@@ -197,6 +205,7 @@ function pastWordsIn(
    a load (the test below), it is read as one. toD and fromD of a number are
    numbers, as the other ! say. */
 export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts | null): Suggestion {
+  M = liftModelIn(M, EXIn(M, exId));
   opts = opts || {};
   const ex = EXIn(M, exId);
   const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M, exId, plan, opts) : 0;
@@ -210,8 +219,7 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
   /* A close variation's first session on a Lighter day or deload: 90% of the start, like any lighter day; back after a
      long break, said as the time away, as its first session is. */
   if (base.kin && base.w! > 0) {
-    const ks =
-      !gymRackIn(M, ex, plan) && rackKind(ex) && rackKind(EXIn(M, base.kin)) ? rackStepIn(M, EXIn(M, base.kin)) : null;
+    const ks = !gymRackIn(M, ex, plan) ? kinRackStepIn(M, ex, EXIn(M, base.kin)) : null;
     const lw = ks
       ? fromDIn(M, Math.floor(toDIn(M, base.w! * LIGHT_SHARE)! / toDIn(M, ks)! + EPS) * toDIn(M, ks)!)!
       : lighterLoadIn(M, ex, plan, base.w!, base.w! * LIGHT_SHARE);
@@ -370,7 +378,7 @@ function sgSameDayIn(M: Model, C: SuggestCtx): Suggestion | null {
   /* Earlier that day in another rep range (a heavy morning, a light evening), or in one not on record (an import):
      that range's own rules read it. */
   if (!(last.rr && sameRR(last.rr, [+plan.repMin, +plan.repMax]))) return null;
-  const sets = last.pts.map(p => `${loadLabelIn(M, ex, p.w)}×${p.r}`).join(', ');
+  const sets = last.pts.map(p => `${typedLabelIn(M, ex, p.w)}×${p.r}`).join(', ');
   return {
     top,
     w: top,
@@ -393,6 +401,7 @@ function sgSameDayIn(M: Model, C: SuggestCtx): Suggestion | null {
    that test only when inRR holds, which needs a full session, so all is
    there then too. */
 export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts | null): Suggestion {
+  M = liftModelIn(M, EXIn(M, exId));
   opts = opts || {};
   /* opts.before: the date of a past session being logged. Only what was
      logged up to that date counts, so a workout entered after later ones
@@ -1232,7 +1241,7 @@ function kinStartIn(
     if (!c.length) return null;
     w = c[c.length - 1];
   } else {
-    const rs = rackKind(ex) && rackKind(k.ex) ? rackStepIn(M, k.ex) : null;
+    const rs = kinRackStepIn(M, ex, k.ex);
     const st = toDIn(M, rs || loadGridIn(M, ex, plan))!;
     if (!(st > 0)) return null;
     w = fromDIn(M, Math.floor(toDIn(M, want)! / st + EPS) * st)!;
@@ -1243,7 +1252,7 @@ function kinStartIn(
   const floor = loadFloorIn(M, ex);
   if (floor > 0 && w < floor - EPS) w = floor;
   if (!(w > 0)) return null;
-  return { ex: k.ex, date: x.date, w, set: `${loadLabelIn(M, k.ex, set!.w)}×${set!.r}` };
+  return { ex: k.ex, date: x.date, w, set: `${listLabelIn(M, k.ex, set!.w)}×${set!.r}` };
 }
 
 /* Timed holds: double progression on seconds. Beat the total time at the same
@@ -1287,6 +1296,9 @@ function suggestTimedIn(
     ws = last.pts;
   const top = Math.max(...ws.map(p => p.w));
   const topPts = ws.filter(p => Math.abs(p.w - top) < EPS_SAME);
+  /* The load held, read on the equipment of the lift's unit as any lift's is (P-42): 50 lb a hand held, the lift in
+     kg, is 22.5 kg, never 22.7; typed in the lift's unit it is as typed. Last time is still quoted as typed. */
+  const at = loadReadIn(M, top);
   const lbl = (w: number): string => `${loadLabelIn(M, ex, w)}${ex.bw ? '' : ' ' + UIn(M)}${loadNote(ex)}`;
   const { was, upTo } = pastWordsIn(M, ex, top, lbl);
   const L0 = lastOf(all, last, p => `${typedLabelIn(M, ex, p.w)} for ${p.r}s`, M.today());
@@ -1297,8 +1309,8 @@ function suggestTimedIn(
     return {
       prev: L0.prev,
       prevOff: L0.prevOff,
-      w: top,
-      text: `${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep it easy, and stop on pain.`,
+      w: at,
+      text: `${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(at)}, keep it easy, and stop on pain.`,
       lastR,
       basis,
       last: lastS,
@@ -1311,7 +1323,7 @@ function suggestTimedIn(
     return {
       prev: L0.prev,
       prevOff: L0.prevOff,
-      w: top,
+      w: at,
       text: `${lastS} ${opts.deload ? 'Deload' : 'Lighter day'}: same load, hold about two thirds as long, and stop well before shaking.`,
       lastR,
       basis,
@@ -1325,7 +1337,7 @@ function suggestTimedIn(
     return {
       prev: L0.prev,
       prevOff: L0.prevOff,
-      w: top,
+      w: at,
       text: `${opts.before === M.today() ? 'Earlier today' : 'Earlier that day'}: ${ws.map(p => `${loadLabelIn(M, ex, p.w)} for ${p.r}s`).join(', ')}. The same again: no step up within one day.`,
       lastR,
       basis,
@@ -1344,7 +1356,7 @@ function suggestTimedIn(
     return {
       prev: L0.prev,
       prevOff: L0.prevOff,
-      w: top,
+      w: at,
       text: `${lastS} Back after ${Math.round(off / WEEK_DAYS)} weeks: the same load, holds about ${pctOf(LIGHT_SHARE)}% as long, stopping before shaking. Next time picks up from here.`,
       lastR: lastR.map(r => Math.max(1, Math.round(r * LIGHT_SHARE))),
       basis,
@@ -1354,13 +1366,13 @@ function suggestTimedIn(
       easier: null,
       back: Math.round(off / WEEK_DAYS)
     };
-  const step = incOfIn(M, ex, plan, top);
-  const cap = capOfIn(M, ex, plan, top);
+  const step = incOfIn(M, ex, plan, at);
+  const cap = capOfIn(M, ex, plan, at);
   /* A hold at bodyweight, never loaded (noAdd, read by the caller from the whole log), builds time as a bodyweight
      lift builds reps: asked to add a plate at the top of its range, a plank held at
      bodyweight missed its target every session. */
-  if (step > 0 && !noAdd && topPts.every(p => p.r >= plan.repMax) && !atCapOfIn(M, ex, plan, top, cap)) {
-    const nw = cap != null ? Math.min(top + step, cap) : top + step;
+  if (step > 0 && !noAdd && topPts.every(p => p.r >= plan.repMax) && !atCapOfIn(M, ex, plan, at, cap)) {
+    const nw = cap != null ? Math.min(at + step, cap) : at + step;
     return {
       prev: L0.prev,
       prevOff: L0.prevOff,
@@ -1389,19 +1401,20 @@ function suggestTimedIn(
   return {
     prev: L0.prev,
     prevOff: L0.prevOff,
-    w: top,
-    text: `${lastS} Beat ${total}s ${over} at ${lbl(top)}.${then}`,
+    w: at,
+    text: `${lastS} Beat ${total}s ${over} at ${lbl(at)}.${then}`,
     lastR,
     basis,
     last: lastS,
-    target: `${total + 1}s+ ${over} at ${lbl(top)}`,
-    tgt: { kind: 'reps', w: top, total, n: nT, rs: topPts.map(p => p.r), prevBest: null },
+    target: `${total + 1}s+ ${over} at ${lbl(at)}`,
+    tgt: { kind: 'reps', w: at, total, n: nT, rs: topPts.map(p => p.r), prevBest: null },
     easier: null
   };
 }
 
 /** The note that a lift is getting easier at a load (RIR climbing at the same reps), for the session. */
 export function easierTextIn(M: Model, ex: ExerciseLike, e: Drift): string {
+  M = liftModelIn(M, ex);
   // In the lifter's effort scale.
   const sc = effScale(M.s.settings.rirScale);
   return `Getting easier at ${loadLabelIn(M, ex, e.w)}${ex.bw ? '' : ' ' + UIn(M)}: ${sc === 'rpe' ? 'RPE' : 'RIR'} ${effAt(sc, e.from)} → ${effAt(sc, e.to)} at the same reps. Adding load today is reasonable.`;

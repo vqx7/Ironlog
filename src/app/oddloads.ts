@@ -4,7 +4,7 @@
 import type { DraftBlock } from './types';
 import type { Model } from './model';
 
-import { EXIn, UIn } from './model';
+import { EXIn, UIn, liftModelIn } from './model';
 import { liftReadIn } from './analytics';
 import { loadFloorIn, rackTolIn } from './gym';
 import { fmtWIn, loadLabelIn } from './loads';
@@ -56,6 +56,7 @@ export const ODD_ADDED_BEST = 2;
    never asked. */
 /** Whether a ticked 0 on a row is at a load well under the session's working load, and so asked about. */
 export function lightZeroIn(M: Model, b: DraftBlock, si: number, date: string): boolean {
+  M = liftModelIn(M, EXIn(M, b.exId));
   const s = b.sets[si];
   if (!s || s.warm || s.drop || !isMissed(s)) return false;
   const ex = EXIn(M, b.exId);
@@ -96,6 +97,7 @@ function underBarIn(M: Model, b: DraftBlock, si: number): string | null {
    the bar answers when they do not. */
 /** Why a set's load is far off its session or the lift's log, or under the bar, or null (above). */
 export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): string | null {
+  M = liftModelIn(M, EXIn(M, b.exId));
   const s = b.sets[si];
   const under = underBarIn(M, b, si);
   if (!s || s.warm || s.drop) return under;

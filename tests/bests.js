@@ -337,14 +337,15 @@ async function stats(P) {
     ok(/No PRs this time\./.test(rc || '') && !/Heaviest yet/.test(rc || ''), 'B-9: the recap names no PR and no Heaviest yet', rc);
     let st = await stats(P);
     const bench = st.board.find(b => b.ex === 'bench');
-    ok(bench && /heaviest 154\.3×8, Nov 7$/.test(bench.lines[0] || ''), 'B-9: All-time bests keeps the 70 kg set as the heaviest, first done Nov 7', bench);
+    // Quoted as typed (since 2.66, U-1's class): 70 kg, the app in lb.
+    ok(bench && /heaviest 70 kg×8, Nov 7$/.test(bench.lines[0] || ''), 'B-9: All-time bests keeps the 70 kg set as the heaviest, first done Nov 7', bench);
     await P.close();
     // 157.5 lb is past the step 70 kg meant: heavier, and a Weight PR.
     P = await lifter({ kg: true, items: [['bench', 2, 6, 10]], log: [['2026-11-07', [['bench', [[70, 8, 2], [70, 8, 2]]]]]] });
     await start(P);
     await logSet(P, 0, 0, 157.5, 8, 2);
     const t = await P.prToasts();
-    ok(/^Weight PR: Barbell Bench Press, 157\.5×8 \(heaviest before 154\.3 lb/.test(t[0] || ''), 'B-9: 157.5 lb x 8 after 70 kg x 8: a Weight PR, the heaviest before named in lb', t);
+    ok(/^Weight PR: Barbell Bench Press, 157\.5×8 \(heaviest before 70 kg/.test(t[0] || ''), 'B-9: 157.5 lb x 8 after 70 kg x 8: a Weight PR, the heaviest before quoted as typed (70 kg)', t);
     await P.close();
   }
 

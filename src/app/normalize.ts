@@ -636,6 +636,8 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     ...(profile ? { profile } : {}),
     ...(Object.keys(bandsFit).length ? { bandsFit } : {}),
     ...(ownTargets.length ? { ownTargets } : {}),
+    // The scale's unit: absent unless set apart from the app's, so saves without it hash as before.
+    ...(st.bwUnit === 'kg' || st.bwUnit === 'lb' ? { bwUnit: st.bwUnit } : {}),
     // RIR: on (as logged), cal (on, shifted by your calibration sets), off.
     rirMode: pick(st.rirMode, ['on', 'off', 'cal'] as const) ?? 'on',
     hidden: h ? [...new Set(strings(h, k => HIDEABLE_KEYS.has(k)))] : [],
@@ -676,7 +678,8 @@ const OPTIONAL_SETTINGS = [
   'gym',
   'profile',
   'bandsFit',
-  'ownTargets'
+  'ownTargets',
+  'bwUnit'
 ] as const satisfies readonly (keyof Settings)[];
 
 /* An exercise, cleaned: called only on one whose id and name are strings
@@ -726,7 +729,11 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     goal:
       g && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e.timed && !e.assist
         ? { w: gw, r: gr }
-        : undefined
+        : undefined,
+    /* The unit the lift's equipment is marked in, set by a tap on the unit beside its load: kg or lb. Absent when unset,
+       so the lift follows the app's unit and a record saved before this existed hashes as before; a build without it
+       keeps it among the fields it does not know (keepExtra). */
+    unit: e.unit === 'kg' || e.unit === 'lb' ? e.unit : undefined
   });
 }
 

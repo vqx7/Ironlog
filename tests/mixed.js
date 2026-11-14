@@ -22,7 +22,9 @@
 //   (5) a workout finished on this phone while the older one ticked one more:
 //       the workout stays closed on both, the session alike on both; whether
 //       the set ticked there survives is the older build's own merge's to
-//       decide (pinned), since this build only sees what that phone sends.
+//       decide (pinned), since this build only sees what that phone sends;
+//   (6) a lift's unit and the scale's (2.66) reach the older phone, are kept
+//       there through its own edits and come back, with nothing more written.
 // `node tests/mixed.js <older page>` runs it against another build (default
 // baselines/r55.html); this build is index.html, or IRONLOG_FILE.
 const { open, engine } = require('./h');
@@ -155,6 +157,21 @@ const plain = rows => (rows || []).map(s => `${s.w}x${s.r}`).join(',');
   console.log(`ok   pinned, the older build's own merge: the set ticked there is ${plain(n5).includes('70x9') ? 'kept (its edit read as the later, sent, and joined here)' : 'dropped on that phone (the closed workout read as the later), as between two phones on the older build'}`);
   const w1 = cloud.writes(); await N.settle(); await O.settle(); await N.settle();
   ok(cloud.writes() === w1, 'and the two phones then write nothing more', { writes: cloud.writes() - w1 });
+
+  // ---- (6) A lift's unit and the scale's (2.66, 390's Release B), set on this phone: the older phone keeps them among the
+  // fields it does not know (keepExtra), sends them back with its own edits, and the two then write nothing more.
+  await N.ev(() => { const L = window.__ironlog; const e = L.state.exercises.find(x => x.id === 'bench'); e.unit = 'kg'; L.state.settings.bwUnit = 'kg'; L.saveNow(); });
+  for (let i = 0; i < 2; i++) { await N.settle(); await O.settle(); }
+  const ou = await O.ev(() => (window.__ironlog.state.exercises.find(x => x.id === 'bench') || {}).unit || null);
+  const keys0 = await N.ev(() => Object.keys(window.__ironlog.state.settings).join());
+  await O.ev(() => { const L = window.__ironlog; const e = L.state.exercises.find(x => x.id === 'bench'); e.note = 'older phone'; L.state.settings.theme = 'dark'; L.saveNow(); });
+  for (let i = 0; i < 2; i++) { await O.settle(); await N.settle(); }
+  const nu = await N.ev(() => { const e = window.__ironlog.state.exercises.find(x => x.id === 'bench'); return e ? [e.unit || null, e.note] : null; });
+  ok(ou === 'kg' && nu && nu[0] === 'kg' && nu[1] === 'older phone', 'a lift\'s unit set on this build is kept by the older phone and comes back with that phone\'s edit to the lift', { ou, nu });
+  const sn = await N.ev(() => ({ bw: window.__ironlog.state.settings.bwUnit || null, theme: window.__ironlog.state.settings.theme, keys: Object.keys(window.__ironlog.state.settings).join() }));
+  ok(sn.bw === 'kg' && sn.theme === 'dark' && sn.keys === keys0, 'the scale\'s unit too, through the older phone\'s edit to the settings, its key where it stood', { sn, keys0 });
+  const w6 = cloud.writes(); await N.settle(); await O.settle(); await N.settle();
+  ok(cloud.writes() === w6, 'and the two phones then write nothing more', { writes: cloud.writes() - w6 });
 
   const errors = pages.flatMap(P => P.errors);
   ok(!errors.length, 'no page errors', errors.slice(0, 4));

@@ -315,11 +315,13 @@ interface Caches {
   _plates: Map<string, readonly number[]> | null;
 }
 
-/** The model: the log, the date the engine reads as today, and the caches. */
+/** The model: the log, the date the engine reads as today, the caches, and, for one lift's numbers, the unit they are worked out in. */
 export interface Model {
   s: EngineState;
   today: () => string;
   c: Caches;
+  /** The unit loads are shown in, when this model is a lift's (liftModelIn); absent, the app's unit. */
+  u?: 'lb' | 'kg' | undefined;
 }
 
 /** The caches as they start: every one null except _bwRef, which
@@ -381,8 +383,41 @@ export function exInjuryIn(M: Model, ex: Pick<Exercise, 'name' | 'primary' | 'se
   return null;
 }
 
-/** The unit loads are shown and typed in. */
-export const UIn = (M: Model): 'lb' | 'kg' => M.s.settings.unit;
+/** The unit loads are shown and typed in: the lift's when the model is a lift's (liftModelIn), else the app's. */
+export const UIn = (M: Model): 'lb' | 'kg' => M.u ?? M.s.settings.unit;
+
+/** The app's unit, the one totals across lifts, bodyweight and the settings are shown in, whatever lift a model is read for. */
+export const appUIn = (M: Model): 'lb' | 'kg' => M.s.settings.unit;
+
+/** The unit a lift's loads are marked in: its own when the lifter set one, else the app's. */
+export const liftUIn = (M: Model, ex: Pick<Exercise, 'unit'> | null | undefined): 'lb' | 'kg' =>
+  (ex && ex.unit) || appUIn(M);
+
+/** The scale as the unit readers take it: a lift whose unit is the one set for weigh-ins (390's Release B). */
+export const bodyIn = (M: Model): Pick<Exercise, 'unit'> => ({ unit: M.s.settings.bwUnit });
+
+/** The unit weigh-ins are typed and shown in: the scale's when the lifter set one, else the app's. */
+export const bodyUIn = (M: Model): 'lb' | 'kg' => liftUIn(M, bodyIn(M));
+
+/* The app's own readings (totals across lifts, the settings) from any model, a lift's included: the model with no
+   lift's unit set, so the unit on screen is the app's again. */
+/** The model the app's own numbers are read in: the given one with the unit on screen the app's. */
+export function appModelIn(M: Model): Model {
+  return M.u === undefined ? M : { ...M, u: undefined };
+}
+
+/* A lift's numbers are worked out in its unit: the log as it is, read with the unit on screen set to the lift's, so every
+   rule of the engine that reads the unit on screen (steps, racks, plates, the words) reads the lift's without being told.
+   The caches are shared, since none holds a number in a unit but the rack's spacing, which is kept by unit. A lift
+   marked in a unit is on that unit's equipment whatever the app's unit is, so its unit is set even when it is the
+   app's (a bench marked kg at Your gym in lb stays on kg plates when the app is set to kg); a lift with no unit of its
+   own follows the app's, read in the app's model whichever lift's model it is asked from. */
+/** The model a lift's loads and words are worked out in: the given one with the unit on screen set to the lift's. */
+export function liftModelIn(M: Model, ex: Pick<Exercise, 'unit'> | null | undefined): Model {
+  const u = ex && ex.unit;
+  if (!u) return appModelIn(M);
+  return M.u === u ? M : { ...M, u };
+}
 
 /* An exercise by id, from a map of the log's exercises built once per
    change. No prototype: an exercise id such as "constructor" must not find
@@ -443,7 +478,10 @@ export function sortedSessionsIn(M: Model): Session[] {
 /** The gym set in Settings, or null. */
 export function gymOfIn(M: Model): Gym | null {
   const g = M.s.settings.gym;
-  return g && typeof g === 'object' ? g : null;
+  if (!g || typeof g !== 'object') return null;
+  /* A lift marked in the other unit from Your gym's (liftModelIn) is on equipment marked in its own: Your gym's plates,
+     racks and stack are another unit's, so it takes the standard set of its unit (390's Release B). */
+  return M.u && g.u !== M.u ? null : g;
 }
 
 /* ---------- PROFILE ----------

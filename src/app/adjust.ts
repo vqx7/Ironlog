@@ -4,7 +4,7 @@
 import type { DraftBlock, NextSetsAdj, Plan } from './types';
 import type { ExerciseLike, Model } from './model';
 
-import { EXIn, exInjuryIn } from './model';
+import { EXIn, exInjuryIn, liftModelIn } from './model';
 import { IDXIn, liftReadIn } from './analytics';
 import { capOfIn } from './gym';
 import { EPS, EPS_SAME } from './util';
@@ -95,6 +95,7 @@ export function bwNoLoadIn(M: Model, ex: ExerciseLike | null | undefined, b?: Dr
 
 /** The next sets after ticked set `si` of a block, or null when it was not clearly off or the lift does not take an adjustment (above); `lastR` is last time's reps for that row (the Last column's), or null. */
 export function nextSetsIn(M: Model, b: DraftBlock, si: number, lastR: number | null): NextSetsAdj | null {
+  M = liftModelIn(M, EXIn(M, b.exId));
   const s = b.sets[si];
   if (!s || !(+(s.r ?? 0) > 0) || s.w == null) return null;
   const ex = EXIn(M, b.exId);

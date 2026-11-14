@@ -138,6 +138,8 @@ export function unpark(): boolean {
     act(
       () => {
         state.draft = d;
+        // What the log gained while it waited reaches it, as a change to a lift reaches a workout open.
+        fx.draftBack();
       },
       { inProgress: true }
     );

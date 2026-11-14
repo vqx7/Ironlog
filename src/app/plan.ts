@@ -54,17 +54,17 @@ import { andList, numIn, r1, uid, PERCENT, WEEK_DAYS } from './util';
 import { plainTemplate } from './normalize';
 import { effIn, effName, effShow } from './effort';
 import {
-  EX,
-  U,
-  defBand,
   dayMinutes,
+  defBand,
+  EX,
   exName,
-  fmtW,
+  fmtWOf,
   hasTarget,
   incOf,
   invalidate,
   liftMax,
-  typedBound,
+  liftU,
+  typedBoundOf,
   muscleStatus,
   plannedSets,
   sessionMuscleSets
@@ -215,7 +215,7 @@ function itemPart(R: Routine, di: number, it: PlanItem, ii: number): TemplateRes
     <label class="field">${ex.timed ? 'Max seconds' : 'Rep max'}<input type="text" inputmode="numeric" data-it="repMax" data-uid=${it.uid} .value=${fieldValue(String(it.repMax))}></label>
     <label class="field"><span class="hastip" data-tip=${RIR_TGT_TIP}>Target ${effName()}</span><input type="text" inputmode="decimal" data-it="rir" data-uid=${it.uid} .value=${fieldValue(effShow(it.rir))}></label>
     <label class="field">Rest (s)<input type="text" inputmode="numeric" data-it="rest" data-uid=${it.uid} .value=${fieldValue(String(it.rest))}></label>
-    <label class="field">Load step (${U()})<input type="text" inputmode="decimal" data-it="inc" data-uid=${it.uid} .value=${fieldValue(fmtW(incOf(ex, it)))} data-tip="Applies to this exercise on every day and routine"></label>
+    <label class="field">Load step (${liftU(ex)})<input type="text" inputmode="decimal" data-it="inc" data-uid=${it.uid} .value=${fieldValue(fmtWOf(ex, incOf(ex, it)))} data-tip="Applies to this exercise on every day and routine"></label>
     ${ex.timed ? nothing : html`<label class="field"><span class="hastip" data-tip=${JUMP_TIP}>Load jump %</span><input type="text" inputmode="decimal" data-it="jump" data-uid=${it.uid} .value=${fieldValue(it.jump != null ? String(it.jump) : '')} placeholder=${`auto ${isCompound(ex) ? '2.5' : '5'}`}></label>`}</div>
     <div class="row u-mt8"><label class="field u-f1">Move to<select data-moveto=${it.uid} data-day=${String(di)}>${R.days.map(
       (d, i) =>
@@ -359,7 +359,7 @@ function libCards(): TemplateResult {
     return html`<div class="card"><p class="u-m0">No exercises match. Clear the filters or create a new exercise.</p></div>`;
   return html`<div class="card">${list.map(
     e => html`<div class="hitem"><div class="row spread u-aistart_fwrnw"><div class="u-minw0"><b>${e.name}</b>${e.note ? html` ${tipButton(e.note, 'About ' + e.name)}` : nothing}<p class="small muted u-m2-0-0">${ML[e.primary]}${e.secondary.length ? ', plus ' + e.secondary.map(m => ML[m]).join(', ') : ''}</p></div><div class="row u-fnone_g4"><button class="btn sm" data-act="exEdit" data-ex=${e.id}>Edit</button><button class="ib sm" data-act="exDel" data-ex=${e.id} aria-label=${`Delete ${e.name}`}>✕</button></div></div>
-    <p class="small u-m6-0-0_dflex_fwrwrap_g4">${exTagParts(e, ui.libKind)}<span class="tag">${EQL[e.equip] || e.equip}</span>${e.custom ? html`<span class="tag blue">Custom</span>` : nothing}${e.bw ? html`<span class="tag">Bodyweight + load</span>` : nothing}<span class="tag">${loadWords(e)}</span>${e.perSide ? html`<span class="tag">Reps per side</span>` : nothing}${e.timed ? html`<span class="tag">Timed</span>` : nothing}${e.maxLoad != null ? html`<span class="tag">Max ${fmtW(liftMax(e))} ${U()}</span>` : nothing}</p></div>`
+    <p class="small u-m6-0-0_dflex_fwrwrap_g4">${exTagParts(e, ui.libKind)}<span class="tag">${EQL[e.equip] || e.equip}</span>${e.custom ? html`<span class="tag blue">Custom</span>` : nothing}${e.bw ? html`<span class="tag">Bodyweight + load</span>` : nothing}<span class="tag">${loadWords(e)}</span>${e.perSide ? html`<span class="tag">Reps per side</span>` : nothing}${e.timed ? html`<span class="tag">Timed</span>` : nothing}${e.maxLoad != null ? html`<span class="tag">Max ${fmtWOf(e, liftMax(e) ?? 0)} ${liftU(e)}</span>` : nothing}</p></div>`
   )}</div>`;
 }
 
@@ -701,7 +701,7 @@ function itemInput(t: Field): void {
       else if (k === 'inc') {
         const e = state.exercises.find(x => x.id === f.it.exId);
         // Within the step's bound in kilograms, the one a save keeps, not 500 in the unit typed (typedBoundIn).
-        const v = typedBound(Math.max(n, 0), LIMITS.step);
+        const v = typedBoundOf(e, Math.max(n, 0), LIMITS.step);
         f.it.inc = v;
         if (e) e.inc = v > 0 ? v : null;
       } else if (k === 'rir') f.it.rir = clamp(effIn(n), 0, EFFORT_TOP);

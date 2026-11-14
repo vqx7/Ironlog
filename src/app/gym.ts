@@ -7,7 +7,7 @@ import type { ExerciseLike, Model } from './model';
 import { isNum, r3, EPS_SAME } from './util';
 import { LB, STEP_LB, stepReadIn, unitStepIn, BAR, TYPED_STEP, loadReadAs, loadReadIn, typedUnit } from './units';
 import { ONE_DB, PLATE_SIDE_IDS, isCompound, loadMode, rackKind } from './library';
-import { UIn, gymOfIn } from './model';
+import { UIn, gymOfIn, liftModelIn } from './model';
 import { arr } from './records';
 
 /** How plates load on an exercise, as chosen in the exercise editor. */
@@ -223,6 +223,7 @@ export function gymRackIn(
   ex: ExerciseLike | null | undefined,
   plan?: Pick<Plan, 'inc'> | null
 ): number[] | null {
+  M = liftModelIn(M, ex);
   const g = gymOfIn(M);
   if (!g || !ex || ex.bw || ex.assist || ex.timed || ex.inc != null) return null;
   if (plan && isNum(+plan.inc) && Math.abs(stepReadIn(M, +plan.inc) - unitStepIn(M)) > EPS_SAME) return null;
@@ -284,6 +285,7 @@ export function rackGapIn(M: Model, L: readonly number[], at?: number | null): n
    false with 0, which the cast lets TypeScript accept; past that test the
    step is there, as the ! says. */
 export function gymStepIn(M: Model, ex: ExerciseLike | null | undefined): number | null {
+  M = liftModelIn(M, ex);
   const g = gymOfIn(M);
   if (!g || !ex || ex.bw || ex.timed) return null;
   const pm = platesMode(ex),
@@ -303,6 +305,7 @@ export function gymStepIn(M: Model, ex: ExerciseLike | null | undefined): number
    bar of its own set reads as none. */
 /** The lightest load a lift can be given: the empty bar where one applies, else 0. */
 export function loadFloorIn(M: Model, ex: ExerciseLike): number {
+  M = liftModelIn(M, ex);
   return platesMode(ex) === 'bar' && loadMode(ex) === 'total' && (isCompound(ex) || (ex.barKg ?? 0) > 0)
     ? exBarKgIn(M, ex)
     : 0;
@@ -325,6 +328,7 @@ export function plateGridIn(
   ex: ExerciseLike | null | undefined,
   plan?: Pick<Plan, 'inc'> | null
 ): { bar: number; loads: readonly number[] } | null {
+  M = liftModelIn(M, ex);
   const g = gymOfIn(M);
   if (!ex || ex.inc != null || ex.timed || !g || !Array.isArray(g.plates) || !g.plates.length) return null;
   if (platesMode(ex) !== 'bar' || loadMode(ex) !== 'total') return null;
@@ -369,6 +373,7 @@ export function capOfIn(
   plan?: Pick<Plan, 'inc'> | null,
   top?: number | null
 ): number | null {
+  M = liftModelIn(M, ex);
   const L = gymRackIn(M, ex, plan);
   let r = L ? L[L.length - 1] : null;
   if (r != null && top != null && top > r + rackTolIn(M, L, top)) r = null;
@@ -389,6 +394,7 @@ export function atCapOfIn(
   top: number,
   cap: number | null
 ): boolean {
+  M = liftModelIn(M, ex);
   const L = gymRackIn(M, ex, plan);
   return (
     cap != null &&
@@ -401,22 +407,34 @@ export function atCapOfIn(
    in the exercise editor, else the bar in Settings. An exercise without its
    own bar has none. */
 export function exBarKgIn(M: Model, ex: ExerciseLike | null | undefined): number {
+  M = liftModelIn(M, ex);
   return ex && ex.barKg !== undefined && ex.barKg > 0 ? barReadIn(M, ex.barKg) : barKgIn(M);
 }
 
-/** The heaviest load set on a lift, read in the unit on screen (loadReadIn), or null when none is set. */
-export function liftMaxIn(M: Model, ex: Pick<Exercise, 'maxLoad'>): number | null {
-  return ex.maxLoad != null ? loadReadIn(M, ex.maxLoad) : null;
+/** The heaviest load set on a lift, read in its unit (loadReadIn), or null when none is set. */
+export function liftMaxIn(M: Model, ex: Pick<Exercise, 'maxLoad' | 'unit'>): number | null {
+  return ex.maxLoad != null ? loadReadIn(liftModelIn(M, ex), ex.maxLoad) : null;
 }
 
-/* A bar typed in the unit its field shows (the one on screen) is the bar the lifter has, so it reads as typed whatever
-   unit Your gym is in: 45 typed in lb with Your gym in kg is a 45 lb bar, not the gym's 20 kg one. One set in the
-   other unit is read on the gym's equipment, else the screen's. */
-/** A bar's weight as set (kg): as typed when typed in the unit on screen, else read in the unit the gym is labelled in, else the one on screen (loadReadAs). */
-export function barReadIn(M: Model, kg: number): number {
-  if (typedUnit(kg) === UIn(M)) return kg;
+/* The unit a bar is read in: a lift's own unit where it has one (its equipment is marked in it), else the unit the gym
+   is labelled in, else the one on screen. */
+function barUnitIn(M: Model): 'kg' | 'lb' {
+  if (M.u) return M.u;
   const g = gymOfIn(M);
-  return loadReadAs(kg, (g && g.u) || UIn(M));
+  return (g && g.u) || UIn(M);
+}
+
+/* A bar typed in the unit its field shows (the one on screen, the lift's own for its bar) is the bar the lifter has, so
+   it reads as typed whatever unit Your gym is in: 45 typed in lb with Your gym in kg is a 45 lb bar, not the gym's 20 kg
+   one. One set in the other unit is read on the equipment of the unit a bar is read in. */
+/** A bar's weight as set (kg): as typed when typed in the unit on screen, else read in the unit a bar is read in (barUnitIn, loadReadAs). */
+function barReadIn(M: Model, kg: number): number {
+  return typedUnit(kg) === UIn(M) ? kg : loadReadAs(kg, barUnitIn(M));
+}
+
+/** A lift's own bar as set (kg), read for that lift (barReadIn in its unit). */
+export function barReadOfIn(M: Model, ex: Pick<Exercise, 'unit'> | null | undefined, kg: number): number {
+  return barReadIn(liftModelIn(M, ex), kg);
 }
 
 /* The default bar is the gym's: a 20 kg bar in a gym labelled in kg, 45 lb in one in lb,
@@ -424,7 +442,5 @@ export function barReadIn(M: Model, kg: number): number {
 export function barKgIn(M: Model): number {
   const b = M.s.settings.barKg;
   if (b != null) return barReadIn(M, b);
-  const g = gymOfIn(M);
-  const u = (g && g.u) || UIn(M);
-  return u === 'lb' ? BAR.lb * LB : BAR.kg;
+  return barUnitIn(M) === 'lb' ? BAR.lb * LB : BAR.kg;
 }
