@@ -863,7 +863,8 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     const tu = at(r, cTypedU),
       tw = num(at(r, cTyped));
     const tuK: 'kg' | 'lb' | null = tu === 'kg' ? 'kg' : tu === 'lb' ? 'lb' : null;
-    const asTyped = tuK && tw != null && tw >= 0 ? { w: tw, u: tuK } : null;
+    // An assisted lift's help is typed below 0, so a typed load below 0 is read where the row's own load is below 0 too.
+    const asTyped = tuK && tw != null && (tw >= 0 || w < 0) ? { w: tw, u: tuK } : null;
     const set = rowSet(cell, asTyped ? asTyped.w : w, reps, secs, missed, numTypes, asTyped ? asTyped.u : rowUnit(r));
     const k = date + '|' + name;
     if (!S.has(k)) S.set(k, { date, name, items: new Map<string, ImpItem>(), note: '' });

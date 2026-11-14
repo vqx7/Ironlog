@@ -49,14 +49,16 @@ ok(csv[0].includes('load_entry')&&csv[1].includes('total, bar included'),'CSV ca
 // Each row says its load as typed and its unit (390's Release B): a set typed in kg in an lb app, bench marked kg, comes
 // back from the CSV as typed, 100 kg, not the 220.5 lb its load column rounds to.
 {
-await ev(()=>{const L=window.__ironlog;const s=L.state.sessions[0];const b=s.ex[0];L.state.exercises.find(e=>e.id===b.exId).unit='kg';b.sets=[{...b.sets[0],w:100},{...b.sets[0],w:135*0.45359237}];L.invalidate();L.saveNow();});
+await ev(()=>{const L=window.__ironlog;const s=L.state.sessions[0];const b=s.ex[0];L.state.exercises.find(e=>e.id===b.exId).unit='kg';b.sets=[{...b.sets[0],w:100},{...b.sets[0],w:135*0.45359237}];s.ex.push({exId:'assistPullup',rr:[6,10],ps:1,sets:[{w:-20,r:8,rir:2,done:true}]});L.invalidate();L.saveNow();});
 const [dl2]=await Promise.all([page.waitForEvent('download'),ev(()=>window.__ironlog.exportCSV())]);
 const text=require('fs').readFileSync(await dl2.path(),'utf8');
 await page.waitForTimeout(100);await page.click('[data-act="mClose"]');
 const back=await ev(text=>{const L=window.__ironlog;const rows=L.impRows(text);const h=rows[0];const i=h.indexOf('typed_load'),j=h.indexOf('typed_unit'),k=h.indexOf('load_lb');const r=L.impFromTable(rows,L.impHeader(rows[0]));const sets=[...r.sessions[0].items.values()][0].sets;
-  return {cells:rows.slice(1,3).map(x=>[x[k],x[i],x[j]]),first:{w:sets[0].w,u:sets[0].u},second:{w:sets[1].w,u:sets[1].u}};},text);
+  const help=[...r.sessions[0].items.values()].flatMap(it=>it.sets).find(x=>x.w<0)||null;
+  return {cells:rows.slice(1,3).map(x=>[x[k],x[i],x[j]]),first:{w:sets[0].w,u:sets[0].u},second:{w:sets[1].w,u:sets[1].u},help:help&&{w:help.w,u:help.u}};},text);
 ok(JSON.stringify(back.cells[0])==='["220.5","100","kg"]'&&back.cells[1][2]==='lb'&&back.cells[1][0]===back.cells[1][1]&&back.first.w===100&&back.first.u==='kg'&&back.second.u==='lb',
   'CSV: each row gives its load as typed and its unit (100 kg beside 220.5 in load_lb; 135 lb typed in lb on the same lift), and reads back as typed',back);
+ok(back.help&&back.help.w===-20&&back.help.u==='kg','CSV: an assisted lift\'s help typed in kg (-20 kg) reads back as typed, never -20.003 kg from the lb column',back.help);
 }
 // ---- 4. delete, trash, restore, undo
 await ev(()=>{const L=window.__ironlog;L.ui.tab='history';L.ui.histOpen=L.state.sessions[0].id;L.render();});

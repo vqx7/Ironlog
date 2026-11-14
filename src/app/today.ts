@@ -556,7 +556,7 @@ export function bwDueCard(): Part {
       ? `Last ${fmtBody(last.kg)} ${bodyU()}, ${ago} days ago.`
       : 'Pull-ups, dips, and push-ups count it, plus any weight you add; without it they count only what you add. Optional.'
   } ${tipButton('Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > Measurements.', 'About weigh-ins')}</p>
-<div class="row"><label class="field u-f1_m0" for="bwDueVal"><span class="vh">Bodyweight (${bodyU()})</span>${bodyField('bwDueVal', { placeholder: last ? fmtBody(last.kg) : `Weight (${bodyU()})`, grey: last ? fmtBody(last.kg) : undefined, label: `Bodyweight (${bodyU()})` })}</label>${bodyUnitTap('bwDueVal', true)}<button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
+<div class="row"><label class="field u-f1_m0" for="bwDueVal"><span class="vh">Bodyweight (${bodyU()})</span>${bodyField('bwDueVal', { placeholder: last ? fmtBody(last.kg) : `Weight (${bodyU()})`, grey: last ? fmtBody(last.kg) : undefined, label: `Bodyweight (${bodyU()})` })}</label>${bodyUnitTap('bwDueVal')}<button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
 }
 
 /* ---------- the start card ---------- */
@@ -955,7 +955,7 @@ function bodyCard(): TemplateResult {
           }</div>`
         : nothing
     }
-<div class="bw-entry"><label class="field">Date${keyed(t, html`<input type="date" id="bwDate" value=${t} max=${t}>`)}</label><label class="field" for="bwVal"><span>Weight (${bodyUnitTap('bwVal')})</span>${bodyField('bwVal', { placeholder: last ? fmtBody(last.kg) : '' })}</label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts">${loggedToday ? 'Update' : 'Log'}</button></div>
+<div class="bw-entry"><label class="field">Date${keyed(t, html`<input type="date" id="bwDate" value=${t} max=${t}>`)}</label><div class="bw-w"><label class="field u-f1_m0" for="bwVal"><span>Weight<span class="vh"> (${bodyU()})</span></span>${bodyField('bwVal', { placeholder: last ? fmtBody(last.kg) : '' })}</label>${bodyUnitTap('bwVal')}</div><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts">${loggedToday ? 'Update' : 'Log'}</button></div>
 ${
   bws.length
     ? html`<ul class="bw-list" aria-label="Recent bodyweights">${bws

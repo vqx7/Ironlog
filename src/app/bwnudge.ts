@@ -39,12 +39,13 @@ export function bwWarn(exId: string, date?: string): TemplateResult | typeof not
 }
 
 /* The scale's unit beside a weigh-in field, as a tap that switches it (390's Release B: the scale is equipment too, as
-   a lift's unit is): `field` is the id of the field whose typed number the switch converts (bodyUnit, in today.ts). In a
-   field's label it is the unit in the words, its touch area rising over them; in a row of buttons, a button of the row. */
-/** The unit of weigh-ins as a tap beside a weigh-in field: in its label, or as a button of its row. */
-export function bodyUnitTap(field: string, row?: boolean): TemplateResult {
+   a lift's unit is): `field` is the id of the field whose typed number the switch converts (bodyUnit, in today.ts). It
+   is a button of the field's row, 44 px each way, never in the field's label: a weigh-in field sits a few pixels under
+   another control (a date, a goal, a reminder), so a touch area rising from a label lay over it. */
+/** The unit of weigh-ins as a button beside a weigh-in field. */
+export function bodyUnitTap(field: string): TemplateResult {
   const u = bodyU();
-  return html`<button type="button" class=${row ? 'btn sm' : 'lunit'} data-act="bodyUnit" data-in=${field} aria-label=${`Bodyweight in ${u}. Switch to ${u === 'kg' ? 'lb' : 'kg'}`}>${u}</button>`;
+  return html`<button type="button" class="btn sm bunit" data-act="bodyUnit" data-in=${field} aria-label=${`Bodyweight in ${u}. Switch to ${u === 'kg' ? 'lb' : 'kg'}`}>${u}</button>`;
 }
 
 /* A number typed in a weigh-in field and carried across a switch of the scale's unit is kept exactly, in kg (ui.bwKept):
@@ -86,7 +87,7 @@ export function bwSheet(m: { ex?: string | undefined; date?: string | undefined 
   const on = m.date && m.date !== today() ? `the weigh-in for ${fmtDate(m.date)}` : "today's weigh-in";
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Your bodyweight</h3>${closeX()}</div>
     <p class="small">${m.ex ? `${m.ex} counts` : 'Pull-ups, dips, and push-ups count'} your bodyweight, plus any weight you add on a belt or vest; you type only what you add. Without a bodyweight, they count only the added load.</p>
-    <label class="field" for="bwSheetVal"><span>Bodyweight (${bodyUnitTap('bwSheetVal')})</span>${bodyField('bwSheetVal', { placeholder: last ? fmtBody(last.kg) : `Weight (${bodyU()})` })}</label>
+    <div class="row bwrow"><label class="field u-f1_m0" for="bwSheetVal"><span>Bodyweight<span class="vh"> (${bodyU()})</span></span>${bodyField('bwSheetVal', { placeholder: last ? fmtBody(last.kg) : `Weight (${bodyU()})` })}</label>${bodyUnitTap('bwSheetVal')}</div>
     <p class="small muted">Optional. ${last ? `Latest ${fmtBody(last.kg)} ${bodyU()}, ${fmtDate(last.date)}. ` : ''}Saved as ${on}.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="addBW" data-in="bwSheetVal" data-date=${m.date || nothing}>Save</button><button class="btn" data-act="mClose">Not now</button></div></div>`;
 }
@@ -94,7 +95,7 @@ export function bwSheet(m: { ex?: string | undefined; date?: string | undefined 
 /** Settings' bodyweight line: the latest weigh-in or none, and a field to log one. */
 export function bwSettings(): TemplateResult {
   const last = latestBw();
-  return html`<div class="row u-mt8" id="bwSet"><label class="field u-f1_m0" for="bwSetVal"><span>Bodyweight (${bodyUnitTap('bwSetVal')})</span>${bodyField('bwSetVal', { placeholder: last ? fmtBody(last.kg) : 'Not set', grey: last ? fmtBody(last.kg) : undefined })}</label><button class="btn sm primary" data-act="addBW" data-in="bwSetVal">${last ? 'Log' : 'Set'}</button></div><p class="small muted u-m4-0-0">${last ? `Latest ${fmtBody(last.kg)} ${bodyU()}. ` : 'Not set: bodyweight lifts count only the weight you add. '}Optional.</p>`;
+  return html`<div class="row bwrow u-mt8" id="bwSet"><label class="field u-f1_m0" for="bwSetVal"><span>Bodyweight<span class="vh"> (${bodyU()})</span></span>${bodyField('bwSetVal', { placeholder: last ? fmtBody(last.kg) : 'Not set', grey: last ? fmtBody(last.kg) : undefined })}</label>${bodyUnitTap('bwSetVal')}<button class="btn sm primary" data-act="addBW" data-in="bwSetVal">${last ? 'Log' : 'Set'}</button></div><p class="small muted u-m4-0-0">${last ? `Latest ${fmtBody(last.kg)} ${bodyU()}. ` : 'Not set: bodyweight lifts count only the weight you add. '}Optional.</p>`;
 }
 
 /** The taps: open the bodyweight sheet from a lift's line. */

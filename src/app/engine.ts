@@ -8,7 +8,7 @@ import type { Plan } from './types';
 import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from './model';
 import { statsUpToIn } from './bests';
 import type { LiftBests } from './bests';
-import { EXIn, UIn, exInjuryIn, liftModelIn } from './model';
+import { EXIn, UIn, exInjuryIn, liftModelIn, liftUIn } from './model';
 import { IDXIn, lastOf, liftReadIn } from './analytics';
 import { atCapOfIn, capOfIn, gymRackIn, loadFloorIn } from './gym';
 import { DEFAULT_STEP, fromDIn, toDIn, typedOtherIn } from './units';
@@ -190,6 +190,14 @@ function pastWordsIn(
   };
 }
 
+/* A close variation's rack spacing is borrowed for a lift with no sessions of its own (its dumbbells are likely the
+   same rack) only when both are in one unit: a spacing read in lb (5 lb) is no step of kg's dumbbells, so a lift in the
+   other unit from its variation starts on its own equipment's steps, as it would with every lift in its unit. */
+/** The rack spacing a lift with no sessions borrows from a close variation `kin`, or null when it has none to borrow. */
+function kinRackStepIn(M: Model, ex: ExerciseLike, kin: ExerciseLike): number | null {
+  return rackKind(ex) && rackKind(kin) && liftUIn(M, kin) === UIn(M) ? rackStepIn(M, kin) : null;
+}
+
 /* What to lift next for one exercise on a plan: the normal prescription
    (suggestCore), or a lighter day, a deload, or a lift back after a break
    worked out from it (above). A close variation's start, a lighter one, is
@@ -211,8 +219,7 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
   /* A close variation's first session on a Lighter day or deload: 90% of the start, like any lighter day; back after a
      long break, said as the time away, as its first session is. */
   if (base.kin && base.w! > 0) {
-    const ks =
-      !gymRackIn(M, ex, plan) && rackKind(ex) && rackKind(EXIn(M, base.kin)) ? rackStepIn(M, EXIn(M, base.kin)) : null;
+    const ks = !gymRackIn(M, ex, plan) ? kinRackStepIn(M, ex, EXIn(M, base.kin)) : null;
     const lw = ks
       ? fromDIn(M, Math.floor(toDIn(M, base.w! * LIGHT_SHARE)! / toDIn(M, ks)! + EPS) * toDIn(M, ks)!)!
       : lighterLoadIn(M, ex, plan, base.w!, base.w! * LIGHT_SHARE);
@@ -1234,7 +1241,7 @@ function kinStartIn(
     if (!c.length) return null;
     w = c[c.length - 1];
   } else {
-    const rs = rackKind(ex) && rackKind(k.ex) ? rackStepIn(M, k.ex) : null;
+    const rs = kinRackStepIn(M, ex, k.ex);
     const st = toDIn(M, rs || loadGridIn(M, ex, plan))!;
     if (!(st > 0)) return null;
     w = fromDIn(M, Math.floor(toDIn(M, want)! / st + EPS) * st)!;

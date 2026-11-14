@@ -96,12 +96,14 @@ export function typedLabelIn(M: Model, ex: Pick<Exercise, 'bw' | 'unit'>, kg: nu
 /* A set's load as a line quotes it outside the lift's own column (History, the recap, All-time bests, the heaviest
    line, a close variation named in another lift's words): as typed, in its lift's unit when its number says none, its
    unit named when it is not the app's, not the lift's, or not the unit the line is read in, so a number with no unit
-   means one thing whichever screen or lift it is read beside (390's Release B); `named` names it in any unit. */
-/** A load as a line quotes it: as typed, its unit named unless it is the app's, the lift's and the line's (or always). */
+   means one thing whichever screen or lift it is read beside (390's Release B); `named` names it in any unit. A
+   bodyweight set with nothing added is "BW" with no number, so it names no unit. */
+/** A load as a line quotes it: as typed, its unit named unless it is the app's, the lift's and the line's (or always), or the set is bodyweight alone. */
 export function listLabelIn(M: Model, ex: Pick<Exercise, 'bw' | 'unit'>, kg: number, named?: boolean): string {
   const lift = liftUIn(M, ex),
     u = typedUnit(kg) ?? lift;
   const label = loadLabelIn(M, { bw: ex.bw, unit: u }, kg);
+  if (ex.bw && kg === 0) return label;
   return named || u !== UIn(M) || u !== lift || u !== appUIn(M) ? `${label} ${u}` : label;
 }
 

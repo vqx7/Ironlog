@@ -408,12 +408,15 @@ export function appModelIn(M: Model): Model {
 
 /* A lift's numbers are worked out in its unit: the log as it is, read with the unit on screen set to the lift's, so every
    rule of the engine that reads the unit on screen (steps, racks, plates, the words) reads the lift's without being told.
-   The caches are shared, since none holds a number in a unit but the rack's spacing, which is kept by unit. A lift with
-   no unit of its own, or one in the unit already on screen, is read in the model as given. */
+   The caches are shared, since none holds a number in a unit but the rack's spacing, which is kept by unit. A lift
+   marked in a unit is on that unit's equipment whatever the app's unit is, so its unit is set even when it is the
+   app's (a bench marked kg at Your gym in lb stays on kg plates when the app is set to kg); a lift with no unit of its
+   own follows the app's, read in the app's model whichever lift's model it is asked from. */
 /** The model a lift's loads and words are worked out in: the given one with the unit on screen set to the lift's. */
 export function liftModelIn(M: Model, ex: Pick<Exercise, 'unit'> | null | undefined): Model {
-  const u = liftUIn(M, ex);
-  return u === UIn(M) ? M : { ...M, u };
+  const u = ex && ex.unit;
+  if (!u) return appModelIn(M);
+  return M.u === u ? M : { ...M, u };
 }
 
 /* An exercise by id, from a map of the log's exercises built once per

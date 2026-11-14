@@ -169,9 +169,12 @@ async function pickPullups(P, mode) {
     const q = '#modal input#bwSheetVal', tap = '#modal [data-act="bodyUnit"]';
     await P.page.click(q); await P.page.keyboard.type('200');
     const before = await P.page.evaluate(() => ({ u: document.querySelector('#modal [data-act="bodyUnit"]').textContent.trim(), text: document.querySelector('#modal').innerText }));
-    // The tap takes a finger 44 px wide and tall over the unit, the box rising from it (the field below), no other control under it.
-    const reach = await P.page.evaluate(() => { const sel = '#modal [data-act="bodyUnit"]'; const b = document.querySelector(sel); const r = b.getBoundingClientRect(); const cx = r.left + r.width / 2, bot = r.bottom + 2, top = bot - 44, left = cx - 22;
-      const all = [cx - 21, cx, cx + 21].every(x => [bot - 1, bot - 22, top + 1].every(y => { const e = document.elementFromPoint(x, y); return !!e && e.closest(sel) === b; }));
+    // The tap takes a finger 44 px wide and tall over the unit, read from the points that reach it, no other control under it.
+    const reach = await P.page.evaluate(() => { const sel = '#modal [data-act="bodyUnit"]'; const b = document.querySelector(sel); const r = b.getBoundingClientRect(); const cx = r.left + r.width / 2, cy = r.top + r.height / 2, left = cx - 22;
+      const hit = (x, y) => { const e = document.elementFromPoint(x, y); return !!e && e.closest(sel) === b; };
+      let top = cy, bot = cy, x1 = cx, x2 = cx; while (hit(cx, top - 1) && top > cy - 90) top--; while (hit(cx, bot + 1) && bot < cy + 90) bot++;
+      while (hit(x1 - 1, cy) && x1 > cx - 90) x1--; while (hit(x2 + 1, cy) && x2 < cx + 90) x2++;
+      const all = Math.round(bot - top + 1) >= 44 && Math.round(x2 - x1 + 1) >= 44;
       const others = [...document.querySelectorAll('#modal button, #modal a, #modal input, #modal [data-act]')].filter(e => e !== b && !b.contains(e) && !e.contains(b)).filter(e => { const q = e.getBoundingClientRect(); return q.width && q.height && q.left < left + 44 && q.right > left && q.top < bot && q.bottom > top; }).map(e => e.outerHTML.slice(0, 80));
       return all && !others.length ? true : { all, others }; });
     await P.page.click(tap); await wait(250);
@@ -224,6 +227,49 @@ async function pickPullups(P, mode) {
       '9. typed 180, tapped to kg (81.6), back (180), to kg again, then Undo: 180 in lb again, and Save stores 180 lb, on the sheet and in Settings (REV17-1)', out);
     ok(!P.errors.length, '9. no page errors', P.errors);
     await P.ctx.close(); await P.browser.close();
+  }
+
+  if (run(10)) {
+    /* The scale's unit beside a weigh-in field takes 44 px or more each way, and no other control lies in the points that
+       reach it, at 390 and 320 px: on Today's Body card (the Date field above the weight at 320), in Settings (the goal
+       and the reminder above the weigh-in) and in the sheet. A tap at the bottom of a control just above it does what
+       that control does, never switching the scale. */
+    const out = {};
+    for (const w of [390, 320]) {
+      const P = await phone({ onboarded: true, bw: 181 });
+      await P.page.setViewportSize({ width: w, height: 844 });
+      for (const [where, show, id] of [
+        ["Today's Body card", () => P.page.evaluate(() => { const L = window.__ironlog; L.state.settings.hidden = (L.state.settings.hidden || []).filter(k => k !== 'today:body'); L.ui.tab = 'today'; L.ui.folds['today:body'] = true; L.render(); }), 'bwVal'],
+        ['Settings', () => P.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); }), 'bwSetVal'],
+        ['the sheet', () => P.page.evaluate(() => window.__ironlog.openModal({ kind: 'bw' })), 'bwSheetVal']
+      ]) {
+        await show(); await wait(250);
+        const r = await P.page.evaluate(id => {
+          const b = document.querySelector(`[data-act="bodyUnit"][data-in="${id}"]`); if (!b) return { none: true };
+          b.scrollIntoView({ block: 'center' });
+          const q = b.getBoundingClientRect(), cx = q.left + q.width / 2, cy = q.top + q.height / 2;
+          const hit = (x, y) => { const e = document.elementFromPoint(x, y); return !!e && (e === b || b.contains(e)); };
+          let y1 = cy, y2 = cy, x1 = cx, x2 = cx;
+          while (hit(cx, y1 - 1) && y1 > cy - 90) y1--; while (hit(cx, y2 + 1) && y2 < cy + 90) y2++;
+          while (hit(x1 - 1, cy) && x1 > cx - 90) x1--; while (hit(x2 + 1, cy) && x2 < cx + 90) x2++;
+          const ctrls = [...(b.closest('#modal') || document).querySelectorAll('button, a, input, select, textarea, label.btn, [data-act]')].filter(e => e !== b && !b.contains(e) && !e.contains(b) && e.getClientRects().length && !(e.closest('details:not([open])') && !e.closest('summary')));
+          const others = ctrls.filter(e => { const z = e.getBoundingClientRect(); return z.width && z.height && z.left < x2 && z.right > x1 && z.top < y2 && z.bottom > y1; }).map(e => e.id || e.dataset.act || e.tagName);
+          const above = ctrls.map(e => [e, e.getBoundingClientRect()]).filter(([, z]) => z.bottom <= q.top && z.bottom > q.top - 30 && z.left < x2 && z.right > x1).map(([e, z]) => ({ c: e.id || e.dataset.act || e.tagName, x: Math.max(z.left, x1) + 2, y: z.bottom - 2 }));
+          return { h: Math.round(y2 - y1 + 1), w: Math.round(x2 - x1 + 1), others, above };
+        }, id);
+        const taps = [];
+        for (const a of r.above || []) {
+          await P.page.mouse.click(a.x, a.y); await wait(200);
+          taps.push({ c: a.c, bwUnit: await P.page.evaluate(() => window.__ironlog.state.settings.bwUnit || null) });
+          await P.page.keyboard.press('Escape'); await wait(100);
+        }
+        out[`${where} at ${w}`] = { r, taps };
+        await P.page.evaluate(() => { const L = window.__ironlog; delete L.state.settings.bwUnit; if (L.ui.modal) L.ACT.mClose(); L.render(); }); await wait(150);
+      }
+      await P.ctx.close(); await P.browser.close();
+    }
+    const bad = Object.entries(out).filter(([, o]) => o.r.none || o.r.h < 44 || o.r.w < 44 || o.r.others.length || o.taps.some(t => t.bwUnit));
+    ok(!bad.length, "10. the scale's unit takes 44 px or more each way over no other control, and a tap on the control above it never switches the scale, on Today's Body card, in Settings and in the sheet, at 390 and 320 px", bad.length ? Object.fromEntries(bad) : out);
   }
 
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');

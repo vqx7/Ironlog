@@ -1011,6 +1011,47 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     const g2 = await shows(P, 'dbLateral');
     ok(s.rows.every(x => x.w === 105) && s.hint.includes('add 5 kg') && g2.rows.every(x => x.w === 20), 'P-43 bench marked kg at Your gym in lb: 105 kg on kg plates, not lb plates; the raises on the gym\'s rack', { s, g2 });
     await P.ctx.close(); await P.browser.close();
+    /* Marked kg, it stays on kg's plates when the app's unit is kg too: the mark is the lift's equipment, so a change of
+       the app's unit never moves it onto the gym's lb plates (225 lb, 102.06 kg). */
+    P = await lifter(DAY2, two([[100 / LBK, 10, 2], [100 / LBK, 10, 2], [100 / LBK, 10, 2]], [[20, 13, 2], [20, 13, 2], [20, 13, 2]]), { unit: 'kg', logUnit: 'lb', exUnit: { bench: 'kg' }, gym });
+    await startOn(P, 0);
+    s = await shows(P, 'bench');
+    ok(s.rows.every(x => x.w === 105) && s.hint.includes('add 5 kg'), 'P-43 bench marked kg at Your gym in lb, the app in kg as well: 105 kg on kg plates, never 102.06 kg (225 lb on the gym\'s plates)', s);
+    await P.ctx.close(); await P.browser.close();
+    /* A lift with no sessions borrows its start from a close variation (DB curl for a hammer curl); with the two in
+       different units the start is put on the new lift's own equipment, as when every lift is in its unit: hammer curls
+       marked kg after DB curls at 30 lb read as in a kg app, and hammer curls in lb after DB curls marked kg at 14 kg as
+       in an lb app with the curls typed in kg; a Lighter day too. */
+    const KIN = [{ id: 'A', name: 'Curl', items: [['dbCurl', 3, 8, 12, 2]] }, { id: 'B', name: 'Hammer', items: [['hammer', 3, 8, 12, 2]] }];
+    const curls = w => Array.from({ length: 3 }, (_, k) => [addD(DAY, -7 * (3 - k)), 'A', [['dbCurl', [[w, 10, 2], [w, 10, 2], [w, 9, 2]]]]]);
+    for (const [name, marked, same, w, log] of [
+      ['hammer curls marked kg, the app in lb, after DB curls at 30 lb', { exUnit: { hammer: 'kg' } }, { unit: 'kg' }, 30, 'lb'],
+      ['DB curls marked kg at 14 kg, hammer curls in the app\'s lb', { exUnit: { dbCurl: 'kg' } }, {}, 14, 'kg']
+    ]) {
+      const got = [];
+      for (const o of [marked, same]) {
+        const row = {};
+        for (const light of [false, true]) {
+          P = await lifter(KIN, curls(w), { logUnit: log, ...o });
+          if (light) { await P.page.evaluate(() => { const L = window.__ironlog; L.ui.todayDay = 1; L.render(); }); await startLighter(P); } else await startOn(P, 1);
+          s = await shows(P, 'hammer');
+          row[light ? 'light' : 'next'] = s.rows.map(r => r.w);
+          await P.ctx.close(); await P.browser.close();
+        }
+        got.push(row);
+      }
+      ok(JSON.stringify(got[0]) === JSON.stringify(got[1]) && got[0].next.length > 0, `P-43 ${name}: the start and a Lighter day as with every lift in its unit`, got);
+    }
+    /* A bodyweight lift marked kg quotes a set with nothing added as BW, with no unit, since there is no number for one to
+       name: "Heaviest BW×8", never "BW kg×8"; one with weight added names it ("BW+10 kg×8"). */
+    const PULL = [{ id: 'A', name: 'Pull', items: [['pullup', 3, 6, 10, 2]] }];
+    for (const [add, want] of [[0, 'Heaviest BW×8'], [10, 'Heaviest BW+10 kg×8']]) {
+      P = await lifter(PULL, Array.from({ length: 3 }, (_, k) => [addD(DAY, -7 * (3 - k)), 'A', [['pullup', [[add, 8, 2], [add, 8, 2], [add, 7, 2]]]]]), { logUnit: 'kg', bw: 180, exUnit: { pullup: 'kg' } });
+      await startOn(P, 0);
+      const t = await P.page.evaluate(() => (document.querySelector('#blk-0 .hint') || {}).textContent || '');
+      ok(t.includes(want) && !/BW kg/.test(t), `P-43 pull-ups marked kg in an lb app, ${add ? '10 kg added' : 'nothing added'}: "${want}"`, t);
+      await P.ctx.close(); await P.browser.close();
+    }
     /* A round trip drifts nothing and makes no PR either way (390's plan): 225 lb x 8 x 3, then bench marked kg and
        102.5 kg x 8 x 3, then back in lb and 225 lb x 8 x 3. */
     const rt = (n, unit) => [[225 * LBK, 8, 2], [102.5, 8, 2], [225 * LBK, 8, 2]].slice(0, n).map((x, k) => [addD(DAY, -7 * (n - k)), 'A', [['bench', [x, x, x]]]]);
