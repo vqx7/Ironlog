@@ -182,26 +182,26 @@ export function loadHead(ex: ExerciseLike | null | undefined): string {
 /* What a lift's load column holds, said once for every place that says it (390's Release B, V 2026-11-14): the
    exercise's badge is its unit alone ("lb"), the one thing it changes; the column's heading says what the number is in
    one word, a lifter's word (Total, Each, Stack, Per side, Added, Assist), one line at every width; the exercise's
-   sheet says it in full. */
-// The longer words for a load mode; a mode not listed falls to the equipment's words.
+   sheet says what to enter in a few words and nothing more (V, 2026-11-14: explaining there confused more than it
+   helped). */
+// The sheet's words for a load mode; a mode not listed falls to the equipment's words.
 const LOAD_LONG: Readonly<Record<string, string>> = {
-  each: 'Enter the weight of one dumbbell. Weight lifted counts both.',
-  side: 'Enter the plates on one side. Weight lifted counts both sides.',
-  stack: 'Enter the pin setting. It is not comparable across machines.',
-  bw: 'Enter only what you add (belt, vest, dumbbell); 0 for bodyweight. Your logged bodyweight is added for estimates.'
+  each: 'Weight of one dumbbell.',
+  side: 'Plates on one side.',
+  stack: 'Weight on the stack.',
+  bw: 'Weight you add. 0 for bodyweight.'
 };
 
-/** What to enter in a lift's load column, in full: its sheet's words. */
+/** What to enter in a lift's load column, in a few words: its sheet's words. */
 export function loadLong(ex: ExerciseLike): string {
-  if (ex.assist)
-    return 'Enter the assistance the machine gives, as on its pin. Less assistance is progress; your logged bodyweight minus it is what counts.';
+  if (ex.assist) return 'Assistance on the machine.';
   return (
     LOAD_LONG[loadMode(ex)] ||
     (ex.equip === 'barbell'
-      ? 'Enter everything on the bar, the bar included.'
+      ? 'Total weight, bar included.'
       : ex.equip === 'dumbbell'
-        ? 'Enter the weight of the one dumbbell you hold.'
-        : 'Enter the total load.')
+        ? 'Weight of the dumbbell.'
+        : 'Total weight.')
   );
 }
 

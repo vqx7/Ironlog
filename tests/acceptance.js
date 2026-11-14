@@ -29,18 +29,18 @@ await ev(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.state.s
 const startDay=async name=>{await ev(n=>{const L=window.__ironlog;L.state.draft=null;const R=L.state.routines[0];L.ui.todayDay=R.days.findIndex(d=>d.name===n);L.ui.tab='today';L.render();},name);await page.click('.hero [data-act="startSession"]:not([data-light])');};
 // The load words were a line of chips under each exercise until r69, then the column headings' tips (V, 2026-11-03); since
 // 2.66 (V, 2026-11-14) the load column's heading says what the number is in one word, the exercise's badge is its unit, and
-// the badge's sheet says what to enter in full.
+// the badge's sheet says what to enter in a few words (V, 2026-11-14).
 const labels=async()=>ev(()=>[...document.querySelectorAll('section.block')].map(b=>{const hs=b.querySelectorAll('.sg.head > span');return {n:b.querySelector('h3').childNodes[0].textContent.trim(),head:b.querySelector('.sg.head .lh').innerText,badge:(b.querySelector('[data-act="unitOpen"]')||{}).textContent||'',chips:[...b.querySelectorAll('.lm')].map(x=>x.innerText),side:(hs[3]&&hs[3].getAttribute('data-tip'))||''};}));
 const sheetWords=async n=>{const bi=await ev(n=>[...document.querySelectorAll('section.block')].findIndex(b=>b.querySelector('h3').childNodes[0].textContent.trim().toUpperCase()===n.toUpperCase()),n);await page.$eval(`#view [data-act="unitOpen"][data-b="${bi}"]`,e=>e.scrollIntoView({block:'center'}));await page.click(`#view [data-act="unitOpen"][data-b="${bi}"]`);await page.waitForTimeout(150);const t=await ev(()=>{const p=document.querySelector('#modal .sheet > p');return p?p.textContent.trim():'';});await ev(()=>window.__ironlog.ACT.mClose());await page.waitForTimeout(100);return t;};
 await startDay('Arms');let lb=await labels();console.log(lb.map(x=>`${x.n}: [${x.badge} ${x.head}] | ${x.side}`).join('\n'));
 const f=n=>lb.find(x=>x.n.toUpperCase()===n.toUpperCase());
 ok(lb.every(x=>!x.chips.length),'no exercise has a line of load chips under it');
-ok(/^each$/i.test(f('Incline DB Curl').head.trim())&&f('Incline DB Curl').badge==='lb'&&/^Enter the weight of one dumbbell\./.test(await sheetWords('Incline DB Curl')),'DB curl: an "Each" column, its badge lb, one dumbbell in its sheet');
+ok(/^each$/i.test(f('Incline DB Curl').head.trim())&&f('Incline DB Curl').badge==='lb'&&/^Weight of one dumbbell\.$/.test(await sheetWords('Incline DB Curl')),'DB curl: an "Each" column, its badge lb, one dumbbell in its sheet');
 ok(/stack/i.test(f('Overhead Cable Triceps Extension').head),'cable: stack column');
-ok(/^total$/i.test(f('JM Press').head.trim())&&/^Enter everything on the bar, the bar included\./.test(await sheetWords('JM Press')),'barbell: a "Total" column, the bar included in its sheet');
+ok(/^total$/i.test(f('JM Press').head.trim())&&/^Total weight, bar included\.$/.test(await sheetWords('JM Press')),'barbell: a "Total" column, the bar included in its sheet');
 ok(/^Reps per side:/.test(f('Cable Woodchop').side),'woodchop: reps per side');
 await startDay('Back');lb=await labels();
-ok(/^added$/i.test(f('Pull-up').head.trim())&&/^Enter only what you add/.test(await sheetWords('Pull-up')),'pull-up: an "Added" column, only what you add in its sheet');
+ok(/^added$/i.test(f('Pull-up').head.trim())&&/^Weight you add\. 0 for bodyweight\.$/.test(await sheetWords('Pull-up')),'pull-up: an "Added" column, only what you add in its sheet');
 // mix-up warning
 const w0=await ev(()=>{const b=window.__ironlog.state.draft.ex[0];return window.__ironlog.IDX().exStats[b.exId].last.topW;});
 await page.fill('[data-f="w"][data-b="1"][data-s="0"]','500');await page.locator('[data-f="w"][data-b="1"][data-s="0"]').blur();await page.waitForTimeout(150);

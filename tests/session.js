@@ -1317,8 +1317,8 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(80);
     await P.tap('#view [data-act="unitOpen"][data-b="0"]', 250);
     const sheet = await P.ev(() => { const m = document.getElementById('modal'); const on = [...m.querySelectorAll('[data-act="liftUnit"]')].map(x => ({ v: x.dataset.v, on: x.getAttribute('aria-pressed') })); return { text: m.innerText, on, tip: !!document.querySelector('#tip:not([hidden])') }; });
-    ok(/Barbell Bench Press/.test(sheet.text) && /Enter everything on the bar, the bar included\./.test(sheet.text) && JSON.stringify(sheet.on) === JSON.stringify([{ v: 'lb', on: 'true' }, { v: 'kg', on: 'false' }]) && /Other lifts stay in lb\./.test(sheet.text) && !sheet.tip,
-      'L-38: the bench\'s badge opens its sheet: what to enter ("Enter everything on the bar, the bar included."), lb picked, kg to pick, other lifts staying in lb; no tip', sheet);
+    ok(sheet.text.replace(/\s+/g, ' ').trim() === 'Barbell Bench Press ✕ Total weight, bar included. Weights in lb kg' && JSON.stringify(sheet.on) === JSON.stringify([{ v: 'lb', on: 'true' }, { v: 'kg', on: 'false' }]) && !sheet.tip,
+      'L-38: the bench\'s badge opens its sheet: what to enter in a few words ("Total weight, bar included."), and Weights in, lb picked, kg to pick; nothing more (V, 2026-11-14 15:33); no tip', sheet);
     await P.tap('#modal [data-act="liftUnit"][data-v="lb"]', 250);
     const same = await P.ev(() => ({ modal: !!window.__ironlog.ui.modal, unit: window.__ironlog.state.exercises.find(x => x.id === 'bench').unit || null }));
     ok(!same.modal && same.unit === null, 'L-38: lb picked again closes the sheet and changes nothing', same);
@@ -1356,10 +1356,15 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
       ok(Object.values(seen).every(bs => bs.length === 5 && bs.every((x, i) => x.one && x.badgeOne && x.head === want[i][0] && x.badge === want[i][1])),
         'L-38: at 320, 360, 375, 390 and 430 px every load heading is one word on one line saying what the number is (Total, Each, Stack, Added, Assist), and every badge is the unit alone, lb', seen);
       await X.page.setViewportSize({ width: 390, height: 844 }); await wait(150);
-      await X.tap('#view [data-act="unitOpen"][data-b="4"]', 250);
-      const asText = await X.ev(() => document.getElementById('modal').innerText);
-      await X.ev(() => window.__ironlog.ACT.mClose()); await wait(120);
-      ok(/Enter the assistance the machine gives, as on its pin\./.test(asText) && !/\bhelp\b/i.test(asText), 'L-38: the assisted pull-up\'s sheet says what to enter in a lifter\'s words ("Enter the assistance the machine gives, as on its pin."), never "help"', asText);
+      const said = [];
+      for (let b = 0; b < 5; b++) {
+        await X.tap(`#view [data-act="unitOpen"][data-b="${b}"]`, 250);
+        said.push(await X.ev(() => document.getElementById('modal').innerText.replace(/\s+/g, ' ').trim()));
+        await X.ev(() => window.__ironlog.ACT.mClose()); await wait(120);
+      }
+      const words = ['Barbell Bench Press ✕ Total weight, bar included.', 'DB Curl ✕ Weight of one dumbbell.', 'Lat Pulldown ✕ Weight on the stack.', 'Pull-up ✕ Weight you add. 0 for bodyweight.', 'Assisted Pull-up (machine) ✕ Assistance on the machine.'];
+      ok(said.every((t, i) => t === `${words[i]} Weights in lb kg`) && !/\bhelp\b|comparable/i.test(said.join(' ')),
+        'L-38: each kind of lift\'s sheet says what to enter in a few words and its unit, nothing more (V, 2026-11-14 15:33): total with the bar, one dumbbell, the stack, the weight you add, the assistance; never "help" or machines compared', said);
       for (const w of [390, 320]) {
         await X.page.setViewportSize({ width: w, height: 844 }); await wait(150);
         for (const b of [0, 4]) {
@@ -1510,6 +1515,8 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
       'L-41: a week later the lift is on the machine it was last done on, in its kg, read from it alone (30+ at 60 kg); the sheet lists it first, then the first machine', { b, m: m && m.text });
     await pick('0');
     b = await block();
+    const raw = await P.ev(() => document.getElementById('toast').textContent);
+    ok(raw.includes('Nov\u00a07\u00a0·\u00a0200\u00a0lb\u00a0×\u00a011'), 'L-41: the message after a machine is picked keeps the machine\'s label on one line (V, 2026-11-14)', raw);
     ok(/^Machine Chest Press: Nov 7 · 200 lb × 11$/.test(await P.toast()) && b.badge === 'lb' && /Today: 33\+ reps over 3 sets at 200 lb/.test(b.hint) && /Heaviest 200×11/.test(b.hint) && !/kg/.test(b.hint) && b.grey.every(x => x === '200'),
       'L-41: the first machine picked again: said by its last session, back in lb, and read from its own sessions (33+ at 200 lb, its heaviest 200 × 11)', { t: await P.toast(), b });
     await doSets(200, [11, 11, 11]);

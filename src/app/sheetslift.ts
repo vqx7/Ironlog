@@ -11,7 +11,6 @@ import { LIMITS } from './records';
 import type { TemplateResult } from 'lit-html';
 import { JOINTS, MUSCLES, onMachines, rackKind } from './library';
 import {
-  appU,
   draftMachine,
   EX,
   exName,
@@ -108,8 +107,8 @@ export function maxSheet(m: { exId: string }): TemplateResult {
     <div class="row u-mt10"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
 
-/* The exercise's badge opens this: what its load column holds, in full, and the unit its weights are marked in (390's
-   Release B). A lift marked in the app's unit follows the app's (liftUnit takes the mark off). */
+/* The exercise's badge opens this: what its load column holds, in a few words, and the unit its weights are marked in
+   (390's Release B). A lift marked in the app's unit follows the app's (liftUnit takes the mark off). */
 /** What a session's exercise holds in its load column, and its weights' unit, lb or kg. */
 export function unitSheet(m: { b: number }): TemplateResult | null {
   const b = blockAt(m.b);
@@ -123,8 +122,7 @@ export function unitSheet(m: { b: number }): TemplateResult | null {
     ).map(
       k =>
         html`<button class=${k === u ? 'chip on' : 'chip'} data-act="liftUnit" data-b=${m.b} data-v=${k} aria-pressed=${String(k === u)}>${k}</button>`
-    )}</div></div>
-    <p class="small muted">The unit marked on its weights. Other lifts stay in ${appU()}.</p></div>`;
+    )}</div></div></div>`;
 }
 
 /* A machine lift's machines (390 C): the ones it was done on, the one used most lately first, each by its last

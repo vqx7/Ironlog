@@ -139,7 +139,10 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     );
     rerenderKeepScroll();
     toast(
-      was ? `${e.name}: ${fmtDate(was.date)} · ${listLabel(e, was.w, true)} × ${was.r}` : `${e.name}: new machine`,
+      // The machine's label is one thing to read, so it is kept on one line (no-break spaces) when the message wraps.
+      was
+        ? `${e.name}: ${`${fmtDate(was.date)} · ${listLabel(e, was.w, true)} × ${was.r}`.replace(/ /g, '\u00a0')}`
+        : `${e.name}: new machine`,
       true
     );
   },

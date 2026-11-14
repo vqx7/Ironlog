@@ -12334,15 +12334,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return unit + (m3 === "each" ? " each" : m3 === "side" ? "/side" : m3 === "stack" ? " stack" : "");
   }
   var LOAD_LONG = {
-    each: "Enter the weight of one dumbbell. Weight lifted counts both.",
-    side: "Enter the plates on one side. Weight lifted counts both sides.",
-    stack: "Enter the pin setting. It is not comparable across machines.",
-    bw: "Enter only what you add (belt, vest, dumbbell); 0 for bodyweight. Your logged bodyweight is added for estimates."
+    each: "Weight of one dumbbell.",
+    side: "Plates on one side.",
+    stack: "Weight on the stack.",
+    bw: "Weight you add. 0 for bodyweight."
   };
   function loadLong(ex) {
-    if (ex.assist)
-      return "Enter the assistance the machine gives, as on its pin. Less assistance is progress; your logged bodyweight minus it is what counts.";
-    return LOAD_LONG[loadMode(ex)] || (ex.equip === "barbell" ? "Enter everything on the bar, the bar included." : ex.equip === "dumbbell" ? "Enter the weight of the one dumbbell you hold." : "Enter the total load.");
+    if (ex.assist) return "Assistance on the machine.";
+    return LOAD_LONG[loadMode(ex)] || (ex.equip === "barbell" ? "Total weight, bar included." : ex.equip === "dumbbell" ? "Weight of the dumbbell." : "Total weight.");
   }
   function loadColWord(ex) {
     if (ex.assist) return "Assist";
@@ -26334,7 +26333,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       );
       rerenderKeepScroll();
       toast(
-        was ? `${e5.name}: ${fmtDate(was.date)} · ${listLabel(e5, was.w, true)} × ${was.r}` : `${e5.name}: new machine`,
+        // The machine's label is one thing to read, so it is kept on one line (no-break spaces) when the message wraps.
+        was ? `${e5.name}: ${`${fmtDate(was.date)} · ${listLabel(e5, was.w, true)} × ${was.r}`.replace(/ /g, " ")}` : `${e5.name}: new machine`,
         true
       );
     },
@@ -28654,8 +28654,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     <p>${loadLong(ex)}</p>
     <div class="row spread u-mt10"><span>Weights in</span><div class="seg" role="group" aria-label="Weights in">${["lb", "kg"].map(
       (k2) => b`<button class=${k2 === u4 ? "chip on" : "chip"} data-act="liftUnit" data-b=${m3.b} data-v=${k2} aria-pressed=${String(k2 === u4)}>${k2}</button>`
-    )}</div></div>
-    <p class="small muted">The unit marked on its weights. Other lifts stay in ${appU()}.</p></div>`;
+    )}</div></div></div>`;
   }
   function machineSheet(m3) {
     const b2 = blockAt(m3.b);

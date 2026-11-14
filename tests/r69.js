@@ -105,7 +105,8 @@ const guard = async f => { try { await f(); } catch (e) { ok(false, 'a section t
   });
 
   // ---- 3. The load words: never a line under every exercise. Since 2.66 (V, 2026-11-14) the load column's heading
-  // says what the number is in one word and the exercise's badge (its unit) opens its sheet, which says it in full.
+  // says what the number is in one word and the exercise's badge (its unit) opens its sheet, which says what to enter in a
+  // few words and nothing more (V, 2026-11-14 15:33: no explaining there).
   if (run(3)) await guard(async () => {
     const D = await demo('today');
     const ids = ['dbCurl', 'bench', 'pullup', 'dbRow', 'assistPullup', 'latPulldown'];
@@ -113,21 +114,21 @@ const guard = async f => { try { await f(); } catch (e) { ok(false, 'a section t
     const lines = await D.page.evaluate(() => document.querySelectorAll('#view .lmrow, #view .lm').length);
     ok(lines === 0, '3. no exercise has a line of load words under its name', lines);
     const want = [
-      ['dbCurl', /^EACH$/i, 'Enter the weight of one dumbbell. Weight lifted counts both.'],
-      ['bench', /^TOTAL$/i, 'Enter everything on the bar, the bar included.'],
-      ['pullup', /^ADDED$/i, 'Enter only what you add (belt, vest, dumbbell); 0 for bodyweight. Your logged bodyweight is added for estimates.'],
-      ['dbRow', /^TOTAL$/i, 'Enter the weight of the one dumbbell you hold.'],
-      ['assistPullup', /^ASSIST$/i, 'Enter the assistance the machine gives, as on its pin. Less assistance is progress; your logged bodyweight minus it is what counts.'],
-      ['latPulldown', /^STACK$/i, 'Enter the pin setting. It is not comparable across machines.']
+      ['dbCurl', /^EACH$/i, 'Weight of one dumbbell.'],
+      ['bench', /^TOTAL$/i, 'Total weight, bar included.'],
+      ['pullup', /^ADDED$/i, 'Weight you add. 0 for bodyweight.'],
+      ['dbRow', /^TOTAL$/i, 'Weight of the dumbbell.'],
+      ['assistPullup', /^ASSIST$/i, 'Assistance on the machine.'],
+      ['latPulldown', /^STACK$/i, 'Weight on the stack.']
     ];
     for (const [id, head, words] of want) {
       const bi = await D.page.evaluate(id => window.__ironlog.state.draft.ex.findIndex(b => b.exId === id), id);
       const h = await D.page.evaluate(bi => document.querySelector(`#blk-${bi} .sg.head .lh`).innerText.trim(), bi);
       await D.page.$eval(`#view [data-act="unitOpen"][data-b="${bi}"]`, e => e.scrollIntoView({ block: 'center' })); await wait(100);
       await D.page.click(`#view [data-act="unitOpen"][data-b="${bi}"]`); await wait(200);
-      const t = await D.page.evaluate(() => { const p = document.querySelector('#modal .sheet > p'); return p ? p.textContent.trim() : ''; });
+      const t = await D.page.evaluate(() => [...document.querySelectorAll('#modal .sheet > p')].map(p => p.textContent.trim()).join(' | '));
       await D.page.evaluate(() => window.__ironlog.ACT.mClose()); await wait(120);
-      ok(head.test(h) && t === words, `3. ${id}: the load heading reads ${h}, and its badge's sheet says "${words}"`, { h, t });
+      ok(head.test(h) && t === words, `3. ${id}: the load heading reads ${h}, and its badge's sheet says "${words}" and nothing more (V, 2026-11-14)`, { h, t });
     }
     const row = await D.page.evaluate(() => window.__ironlog.state.draft.ex.findIndex(b => b.exId === 'dbRow'));
     const rh = await D.page.evaluate(bi => document.querySelectorAll(`#blk-${bi} .sg.head span`)[3].innerText.trim(), row);
