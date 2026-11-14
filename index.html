@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-nIy33PeUHnF5TpmOC3m8Jn1uylr7qBPaoQxAsZPP7QE=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-tKf5+W5ermEvV9NZGtE6RvbMyaEMzRWVpuVLH81ahQA=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.11-r98">
+<meta name="app-build" content="2026.11.11-r99">
 <title>Ironlog</title>
 <script>window.IRONLOG_APP=true;window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2150,8 +2150,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.52";
-  var APP_VERSION = "2026.11.11-r98";
+  var DISPLAY_VERSION = "2.53";
+  var APP_VERSION = "2026.11.11-r99";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -4345,7 +4345,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const out = EQUIP.map(([k2]) => k2).filter((k2) => a2.includes(k2));
     return out.length ? out : void 0;
   }
-  var DRAFT_KNOWN = /* @__PURE__ */ new Set(["pics", "equip", "begunAt"]);
+  var DRAFT_KNOWN = /* @__PURE__ */ new Set(["pics", "equip", "begunAt", "follows"]);
   function cleanDraft(d3, date) {
     const startedAt = Number(d3.startedAt), begunAt = Number(d3.begunAt), durMin = Number(d3.durMin);
     const pics = picIds(d3.pics);
@@ -4358,6 +4358,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       startedAt: isTime(startedAt) ? startedAt : null,
       // When the lifting began (NEW-129), once it has; absent before, so a workout's record is unchanged until then.
       ...isTime(begunAt) ? { begunAt } : {},
+      // The workout closed on this phone just before this one was started here (NEW-134); absent otherwise.
+      ...typeof d3.follows === "string" && d3.follows ? { follows: fixId(d3.follows) } : {},
       durMin: Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null,
       dayName: typeof d3.dayName === "string" ? d3.dayName : "Session",
       routineId: typeof d3.routineId === "string" && d3.routineId ? fixId(d3.routineId) : "",
@@ -4433,12 +4435,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return exercises;
   }
   function cleanTrash(listed) {
-    const cutoff = addDays(today(), -TRASH_DAYS);
     const trash = listed.flatMap((t0) => {
       const t4 = rec(t0);
       const data = t4 ? rec(t4.data) : null;
       const kind = t4 ? trashKind(t4.kind) : null;
-      return t4 && typeof t4.id === "string" && kind && typeof t4.date === "string" && isDate(t4.date) && t4.date >= cutoff && data ? [{ id: fixId(t4.id), kind, date: t4.date, data }] : [];
+      return t4 && typeof t4.id === "string" && kind && typeof t4.date === "string" && isDate(t4.date) && data ? [{ id: fixId(t4.id), kind, date: t4.date, data, ...t4.clash === true ? { clash: true } : {} }] : [];
     }).sort((a2, b2) => a2.date < b2.date ? 1 : a2.date > b2.date ? -1 : 0).slice(0, TRASH_MAX);
     while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
     return trash;
@@ -4508,8 +4509,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (!extra.length) return list0;
     for (const x2 of extra) {
       const id = fixId(x2.id + "-dup" + hashStr(canon(x2)).slice(0, DUP_HASH));
-      if (!trash.some((t4) => t4.id === id)) trash.unshift({ id, kind, date: today(), data: { ...rec(x2), id } });
+      if (trash.some((t4) => t4.id === id)) continue;
+      const at2 = trash.findIndex((t4) => t4.date < x2.date);
+      trash.splice(at2 < 0 ? trash.length : at2, 0, { id, kind, date: x2.date, data: { ...rec(x2), id }, clash: true });
     }
+    trash.splice(TRASH_MAX);
+    while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
     return [...byId.values()];
   }
   function cleanBodyweights(listed) {
@@ -4627,7 +4632,36 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   // src/app/store.ts
   var state;
   function setState(next2) {
-    return state = next2;
+    const was = state;
+    state = next2;
+    sheetFollows(was);
+    return state;
+  }
+  function placeOf(m3) {
+    if (m3.kind === "note") return m3.bi;
+    if (m3.kind === "pic") return m3.at;
+    return "b" in m3 && typeof m3.b === "number" ? m3.b : null;
+  }
+  function placeTo(m3, j3) {
+    if (m3.kind === "note") m3.bi = j3;
+    else if (m3.kind === "pic") m3.at = j3;
+    else if ("b" in m3 && typeof m3.b === "number") m3.b = j3;
+  }
+  function sheetFollows(was) {
+    const m3 = ui.modal;
+    const p3 = m3 ? placeOf(m3) : null;
+    if (!m3 || p3 == null) return;
+    const d0 = was ? was.draft : null, d1 = state.draft;
+    const b2 = d0 ? d0.ex[p3] : void 0;
+    if (!d0 || !b2) return;
+    const at2 = d1 ? d1.ex[p3] : void 0;
+    if (d1 && d1.id === d0.id && at2 && (b2.bid ? at2.bid === b2.bid : at2 === b2 || at2.exId === b2.exId)) return;
+    const nth = d0.ex.slice(0, p3).filter((x2) => x2.exId === b2.exId).length;
+    const j3 = !d1 || d1.id !== d0.id ? -1 : b2.bid ? d1.ex.findIndex((x2) => x2.bid === b2.bid) : d1.ex.findIndex(
+      (x2, i5) => x2.exId === b2.exId && d1.ex.slice(0, i5).filter((y2) => y2.exId === b2.exId).length === nth
+    );
+    if (j3 >= 0) placeTo(m3, j3);
+    else fx.closeModal();
   }
   var HIST_PAGE = 25;
   var ui = {
@@ -4703,6 +4737,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var OB_ACCT = KEY + ".obAcct", OB_OUT = KEY + ".signedOut";
   var BWSNOOZE_KEY = KEY + ".bwSnooze", BWASK_KEY = KEY + ".bwAsk";
   var PARKED_KEY = KEY + ".parked";
+  var CLOSED_KEY = KEY + ".closed";
   var PHOTO_KEY = KEY + ".photo", PHOTO_SYNC = KEY + ".photoSync", PHOTO_ASKED = KEY + ".photoAsked";
   function parkedRetag(from, to) {
     const r4 = rec(parseJson(prefGet(PARKED_KEY) || "null"));
@@ -10428,6 +10463,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (bd && ld && rd && ld.id === rd.id && bd.id === ld.id && !ld.editingId && !rd.editingId)
         return { draft: mergeWorkout(bd, ld, rd, remoteWins, stat) };
       if (bd && (!rd && ld && ld.id === bd.id || !ld && rd && rd.id === bd.id)) return { draft: null };
+      if (bd && ld && rd && ld.id === bd.id && rd.follows === bd.id) return { draft: r4.draft };
+      if (bd && ld && rd && rd.id === bd.id && ld.follows === bd.id) return { draft: l4.draft };
       const v3 = merge3Val(base ? base.d : "?", l4.draft || null, r4.draft || null, remoteWins, stat);
       return { draft: v3 === void 0 ? null : v3 };
     }
@@ -10539,7 +10576,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       kept === "joined" || kept === "cardioJoined" ? "The workout in progress was saved on another device. What was done here since was added to it." : kept === "saved" || kept === "cardio" ? `The workout in progress was ${state.draft ? "replaced by the one on" : "closed on"} another device. Its ${kept === "saved" ? "ticked sets are" : "cardio is"} saved in History.` : state.draft ? saved ? "The workout in progress was replaced by the one on another device. Its ticked sets are in History." : "The workout in progress was replaced by the one on another device." : saved ? "The workout in progress was saved on another device." : "The workout in progress was closed on another device."
     );
   }
-  function keepLost(lost, now2, agreed, remoteWins) {
+  function keepLost(lost, now2, agreed, remoteWins, tabs = false) {
     if (!lost || lost.editingId || now2 && now2.id === lost.id) return null;
     const kept = draftSession(lost), cardio = draftCardio(lost);
     if (!kept && !cardio.length) return null;
@@ -10564,7 +10601,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         normalize({ ...state, sessions: state.sessions.map((q) => q.id === lost.id ? joined2 : q), cardio: cardioNow })
       );
       edited(joined2.date);
-      conflictNote(stat);
+      conflictNote(stat, tabs);
       return sets ? "joined" : "cardioJoined";
     }
     setState(
@@ -10608,13 +10645,17 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     cloud.meta[id] = { h: h3, at: Number(sb.at), b: baseOf(id, data) };
     saveMeta();
   }
-  function conflictNote(stat) {
-    if (stat.conflicts) {
-      log("sync-conflict", `${stat.conflicts} record(s) edited on two devices; kept the later edit`);
-      fx.toast(
-        `${stat.conflicts} item${stat.conflicts === 1 ? " was" : "s were"} edited on two devices. The later edit was kept.`
-      );
-    }
+  function conflictNote(stat, tabs = false) {
+    const n3 = stat.conflicts;
+    if (!n3) return;
+    log(
+      "sync-conflict",
+      `${n3} record(s) edited ${tabs ? "in two tabs; kept the other tab's copy" : "on two devices; kept the later edit"}`
+    );
+    const items = `${n3} item${n3 === 1 ? " was" : "s were"}`;
+    fx.toast(
+      tabs ? `${items} changed in two tabs at once. The other tab's change${n3 === 1 ? " was" : "s were"} kept.` : `${items} edited on two devices. The later edit was kept.`
+    );
   }
   function seenOf(d3) {
     if (!d3) return null;
@@ -11370,6 +11411,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       base = null;
     }
     const stat = { conflicts: 0 };
+    const dr0 = state.draft;
+    let kept = null;
     if (!base || canon(state) === canon(base)) setState(incoming);
     else {
       const L2 = chunksOf(state), Rr = chunksOf(incoming), B5 = chunksOf(base), parts = {};
@@ -11383,6 +11426,16 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           stat
         );
       setState(assemble(parts));
+      const agreed = base.draft;
+      const loggedNew = (d3) => {
+        if (!d3) return false;
+        const was = agreed && agreed.id === d3.id ? agreed : null;
+        const rows2 = new Set(was ? was.ex.flatMap((b2) => b2.sets.filter((x2) => x2.done).map((x2) => canon(x2))) : []);
+        const cards = new Set(was ? (was.cardio || []).map((c4) => canon(c4)) : []);
+        return d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !rows2.has(canon(x2)))) || (d3.cardio || []).some((c4) => !!c4.min && !cards.has(canon(c4)));
+      };
+      if (loggedNew(dr0)) kept = keepLost(dr0, state.draft, agreed, true, true);
+      if (loggedNew(incoming.draft)) keepLost(incoming.draft, state.draft, agreed, true, true);
     }
     device.lastSaved = text;
     clearTimer(saveT);
@@ -11392,7 +11445,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (own2 || canon(state) !== canon(incoming)) saveNow();
     if (!ui.modal) fx.rerenderKeepScroll();
     else fx.render();
-    conflictNote(stat);
+    conflictNote(stat, true);
+    if (kept) draftNote(dr0, kept);
   }
   function onVisibility() {
     if (document.visibilityState === "hidden") {
@@ -11401,7 +11455,11 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         clearTimer(cloud.t);
         cq(cloudFlush);
       }
-    } else if (cloud.on && Date.now() - cloud.lastPull > SYNC_MS.pullAfter) cq(cloudPull);
+    } else {
+      const cur2 = storedElsewhere();
+      if (cur2 != null) mergeIn(cur2, false);
+      if (cloud.on && Date.now() - cloud.lastPull > SYNC_MS.pullAfter) cq(cloudPull);
+    }
   }
   function onPageHide() {
     if (saveT) saveNow();
@@ -11473,6 +11531,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     try {
       change();
       clockAfter(outerBegun);
+      followsAfter(outerBegun);
     } catch (e5) {
       if (logWas) setState(logWas);
       else {
@@ -11498,7 +11557,24 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   }
   function begunBefore() {
     const d3 = state.draft;
-    return d3 ? { id: d3.id, begun: begunIn(d3) } : null;
+    return d3 ? { id: d3.id, begun: begunIn(d3), live: !d3.past && !d3.editingId, follows: d3.follows } : null;
+  }
+  var closedHere = null;
+  function followsAfter(before) {
+    const d3 = state.draft;
+    if (before && before.live && !d3) {
+      const id = !before.begun && before.follows ? before.follows : before.id;
+      closedHere = id;
+      prefSet(CLOSED_KEY, id);
+      return;
+    }
+    if (before || !d3) return;
+    const closed = prefGet(CLOSED_KEY) || closedHere;
+    if (closed && !d3.past && !d3.editingId && !d3.follows && !begunIn(d3)) {
+      d3.follows = closed;
+      closedHere = null;
+      prefDel(CLOSED_KEY);
+    }
   }
   function clockAfter(before) {
     const d3 = state.draft;
@@ -11507,11 +11583,17 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function toTrash(kind, data) {
     if (kind === "routine" && plainTemplate(data)) return;
     const copy = rec(parseJson(JSON.stringify(data))) ?? {};
+    const cutoff = trashCutoff();
     state.trash = [
       { id: data.id, kind, date: today(), data: copy },
-      ...state.trash.filter((t4) => !(t4.id === data.id && t4.kind === kind))
+      ...state.trash.filter((t4) => !(t4.id === data.id && t4.kind === kind) && (t4.clash || t4.date >= cutoff))
     ].slice(0, TRASH_MAX);
     while (state.trash.length > 1 && JSON.stringify(state.trash).length > TRASH_BYTES) state.trash.pop();
+  }
+  var trashCutoff = () => addDays(today(), -TRASH_DAYS);
+  function trashShown() {
+    const cutoff = trashCutoff();
+    return state.trash.filter((t4) => t4.clash || t4.date >= cutoff);
   }
   function nameLastStep(said2) {
     if (!lastStep || lastStep.said || !undoStack.includes(lastStep)) return;
@@ -12332,7 +12414,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
   var MORE_OFFER = {
     "history:cardio": () => state.cardio.length > 0,
-    "history:trash": () => state.trash.length > 0
+    "history:trash": () => trashShown().length > 0
   };
   function tabFoot(tab, offer) {
     const list = moreList(tab, state.settings.hidden, offer ? { ...MORE_OFFER, ...offer } : MORE_OFFER);
@@ -14010,7 +14092,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const keyed = [];
     const cs = [...state.cardio].sort((a2, b2) => a2.date < b2.date ? 1 : a2.date > b2.date ? -1 : 0);
     if (cs.length) keyed.push(["cardio", cardioSec(cs)]);
-    const tr = state.trash;
+    const tr = trashShown();
     if (tr.length) keyed.push(["trash", trashSec()]);
     const impLine = b`<p class="small u-m14-0-0"><button class="linkbtn u-minh44" data-act="impOpen" data-tip=${IMPORT_TIP}>Import workouts</button></p>
 `;
@@ -14050,7 +14132,7 @@ ${cs.length > CARDIO_SHOWN ? b`<p class="small muted">${cs.length - CARDIO_SHOWN
     return `Routine: ${typeof d3.name === "string" && d3.name || "Routine"}`;
   }
   function trashSec() {
-    const tr = state.trash;
+    const tr = trashShown();
     return section({
       sk: "history:trash",
       key: "trash",
@@ -14058,7 +14140,7 @@ ${cs.length > CARDIO_SHOWN ? b`<p class="small muted">${cs.length - CARDIO_SHOWN
       sub: b`<span class="hastip" data-tip=${`The ${TRASH_MAX} most recent deletions, each kept ${TRASH_DAYS} days`}>${tr.length}</span>`,
       body: b`<ul class="clist">${tr.map((x2) => {
         const nm = trashName(x2);
-        return b`<li><span>${nm} <span class="small muted">deleted ${fmtDate(x2.date)}</span></span><span class="row u-g6_fnone"><button class="btn sm" data-act="restore" data-id=${x2.id} data-k=${x2.kind}>Restore</button><button class="ib sm" data-act="trashDel" data-id=${x2.id} data-k=${x2.kind} aria-label=${`Delete ${nm} for good`}>✕</button></span></li>
+        return b`<li><span>${nm} <span class="small muted">${x2.clash ? "edited on two devices" : `deleted ${fmtDate(x2.date)}`}</span></span><span class="row u-g6_fnone"><button class="btn sm" data-act="restore" data-id=${x2.id} data-k=${x2.kind}>Restore</button><button class="ib sm" data-act="trashDel" data-id=${x2.id} data-k=${x2.kind} aria-label=${`Delete ${nm} for good`}>✕</button></span></li>
 `;
       })}</ul>
 <p class="small u-m10-0-0"><button class="linkbtn u-minh44" data-act="trashEmpty">Delete all for good</button></p>
@@ -14200,7 +14282,7 @@ ${more}`;
       toast("Deleted for good", true);
     },
     trashEmpty() {
-      const n3 = state.trash.length;
+      const n3 = trashShown().length;
       if (!n3) return;
       confirmBox(
         `Empty Recently deleted (${n3} item${n3 > 1 ? "s" : ""})?`,
@@ -27480,7 +27562,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         "data",
         "Your data",
         `${where}
-   <p><b>Deleted</b> sessions, cardio, and routines wait in History, Recently deleted: the ${TRASH_MAX} most recent, for ${TRASH_DAYS} days, or until you delete them for good there. A ready-made routine removed unchanged is not kept, since New from a template adds it again. Undo in Settings takes back the changes that offered Undo, one at a time, newest first, for ${UNDO_DAYS} days, and names each one before you tap it; after Erase everything, the first page offers it.</p>
+   <p><b>Deleted</b> sessions, cardio, and routines wait in History, Recently deleted: the ${TRASH_MAX} most recent, for ${TRASH_DAYS} days, or until you delete them for good there. When one session was edited on two devices in ways that cannot be joined, the other copy waits there too, until you restore it or delete it. A ready-made routine removed unchanged is not kept, since New from a template adds it again. Undo in Settings takes back the changes that offered Undo, one at a time, newest first, for ${UNDO_DAYS} days, and names each one before you tap it; after Erase everything, the first page offers it.</p>
    <p><b>Import workouts</b> reads notes, a spreadsheet, or an export from another app; you check everything before it is saved. On a first run, an import whose workouts repeat (most of them ${timesWord(IMPORT_REPEATS)} or more in its last ${IMPORT_WEEKS} weeks) also makes your routine; otherwise you pick the closest ready-made one. Its days come from the workouts' names (or from the lifts in them when the names are all alike) and keep each day's latest sets and rep range. Your weekly targets then fit that routine.</p>
    ${window.IRONLOG_APP ? '<p><b>Updates</b>: when "Update ready" shows, tap Update.</p>' : ""}
    ${report}`
@@ -28846,7 +28928,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     setRoot(renderInner);
     setSheets(SHEETS, afterSheet2);
     const notice = (msg, undo, ms, kind) => toast(msg, undo, ms, kind ?? "notice");
-    setFx({ render, rerenderKeepScroll, toast: notice, undoToastHide, setSaveState, syncLine, obGate, ask });
+    setFx({ render, rerenderKeepScroll, toast: notice, undoToastHide, setSaveState, syncLine, obGate, ask, closeModal });
     storageStart();
     syncStart();
     viewStart();
