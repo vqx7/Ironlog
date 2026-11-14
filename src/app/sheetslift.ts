@@ -9,8 +9,23 @@ import { picStrip } from './notepics';
 import { html } from 'lit-html';
 import { LIMITS } from './records';
 import type { TemplateResult } from 'lit-html';
-import { JOINTS, MUSCLES, rackKind } from './library';
-import { appU, EX, exName, fmtWOf, gymRack, incOf, liftMax, liftU, loadReadOf } from './live';
+import { JOINTS, MUSCLES, onMachines, rackKind } from './library';
+import {
+  appU,
+  draftMachine,
+  EX,
+  exName,
+  fmtWOf,
+  gymRack,
+  incOf,
+  liftMachines,
+  liftMax,
+  liftU,
+  listLabel,
+  loadReadOf
+} from './live';
+import { NEW_MACHINE } from './analytics';
+import { fmtDate } from './format';
 import { loadLong, rirShow } from './display';
 import { markedNew } from './session';
 import type { DraftBlock } from './types';
@@ -51,7 +66,7 @@ export function bmenuSheet(m: { b: number }): TemplateResult | null {
   const op = (o: string, l: string, dis?: boolean, cls?: string): TemplateResult =>
     html`<button class=${'btn fullw u-mt6 ' + (cls || '')} data-act="bMenuDo" data-op=${o} data-b=${String(m.b)} ?disabled=${!!dis}>${l}</button>`;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${exName(b.exId)}</h3>${closeX()}</div>
-    ${op('bHist', 'History and chart')}${op('bMus', 'Muscles worked')}${op('wAdd', 'Add a warm-up set')}${op('dropAdd', 'Add a drop set (about 75% load)')}${op('bQuick', 'Type or dictate sets')}${op('bNote', b.note ? 'Edit note' : 'Add note')}${op('bSwap', 'Swap exercise')}${op('bNew', markedNew(d, b.exId) ? 'Same machine as before' : 'New machine or gym')}${howToLink(e)}${op('bInc', `Load step: ${fmtWOf(e, incOf(e, b.plan))} ${liftU(e)}`)}${op('bMax', `Heaviest available: ${e.maxLoad != null ? fmtWOf(e, liftMax(e) ?? 0) + ' ' + liftU(e) : 'no limit'}`)}${rirShow(e) ? op('bCal', 'Calibration set (RIR check)') : ''}${nx ? op('bSs', linked ? 'Unlink superset' : `Superset with ${exName(nx.exId)}`) : ''}${op('bUp', 'Move up', m.b === 0)}${op('bDown', 'Move down', !nx)}${op('fbOpen', 'Report a problem')}${op('bDel', 'Remove from session', false, 'danger')}</div>`;
+    ${op('bHist', 'History and chart')}${op('bMus', 'Muscles worked')}${op('wAdd', 'Add a warm-up set')}${op('dropAdd', 'Add a drop set (about 75% load)')}${op('bQuick', 'Type or dictate sets')}${op('bNote', b.note ? 'Edit note' : 'Add note')}${op('bSwap', 'Swap exercise')}${onMachines(e) ? op('machineOpen', 'Machine') : op('bNew', markedNew(d, b.exId) ? 'Same machine as before' : 'New machine or gym')}${howToLink(e)}${op('bInc', `Load step: ${fmtWOf(e, incOf(e, b.plan))} ${liftU(e)}`)}${op('bMax', `Heaviest available: ${e.maxLoad != null ? fmtWOf(e, liftMax(e) ?? 0) + ' ' + liftU(e) : 'no limit'}`)}${rirShow(e) ? op('bCal', 'Calibration set (RIR check)') : ''}${nx ? op('bSs', linked ? 'Unlink superset' : `Superset with ${exName(nx.exId)}`) : ''}${op('bUp', 'Move up', m.b === 0)}${op('bDown', 'Move down', !nx)}${op('fbOpen', 'Report a problem')}${op('bDel', 'Remove from session', false, 'danger')}</div>`;
 }
 
 /** Flag an injury: a joint or a muscle, and a note. */
@@ -110,6 +125,23 @@ export function unitSheet(m: { b: number }): TemplateResult | null {
         html`<button class=${k === u ? 'chip on' : 'chip'} data-act="liftUnit" data-b=${m.b} data-v=${k} aria-pressed=${String(k === u)}>${k}</button>`
     )}</div></div>
     <p class="small muted">The unit marked on its weights. Other lifts stay in ${appU()}.</p></div>`;
+}
+
+/* A machine lift's machines (390 C): the ones it was done on, the one used most lately first, each by its last
+   session ("Nov 7 · 140 lb × 10"), and New machine; the one it is on today marked. Nothing to name: a machine is known
+   by the weight last done on it. */
+/** The Machine sheet of a lift in a session. */
+export function machineSheet(m: { b: number }): TemplateResult | null {
+  const b = blockAt(m.b);
+  if (!b) return null;
+  const ex = EX(b.exId);
+  const now = draftMachine(b.exId);
+  const row = (k: string, label: string): TemplateResult =>
+    html`<button class=${'mcrow' + (k === now ? ' on' : '')} data-act="machinePick" data-b=${m.b} data-k=${k} aria-pressed=${String(k === now)}><span class="mcdot"></span><span>${label}</span></button>`;
+  return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}</h3>${closeX()}</div>
+    <p class="mc-h">Machine</p><div class="mclist">${liftMachines(b.exId).map(x =>
+      row(x.key, `${fmtDate(x.date)} · ${listLabel(ex, x.w, true)} × ${x.r}`)
+    )}${row(NEW_MACHINE, 'New machine')}</div></div>`;
 }
 
 /** A note on a lift in a session, saved with it and shown next time, with its pictures. */

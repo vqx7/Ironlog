@@ -37,7 +37,7 @@ import {
   CLEARLY_OFF,
   FATIGUE_RIR
 } from './formulas';
-import { KIN_UNI, injLabel, isCompound, loadMode, noE1, patternOf, rackKind } from './library';
+import { KIN_UNI, injLabel, isCompound, loadMode, noE1, onMachines, patternOf, rackKind } from './library';
 import { LIGHT_RIR, awayWords, effAt, effLeast, effScale, fmtDateFrom, rangeWords, repSpan } from './format';
 import { overSets } from './session';
 import {
@@ -716,9 +716,19 @@ function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: stri
   const reps = `${repSpan(plan.repMin, plan.repMax)} rep${+plan.repMax === 1 ? '' : 's'}`;
   const stop = rr >= 1 ? `stopping with about ${rr} still in you` : 'to the last rep you can do well';
   const kin = !ex.bw ? kinStartIn(M, ex, plan, T) : null;
-  /* Back after a long break, it is said as the time away, not as new; the words after it are a first
-     session's, since that is how it starts. The time away is kept on the suggestion for the screens (away). */
-  const lead = away ? `Back after ${awayWords(away)}` : 'First time';
+  /* Back after a long break, it is said as the time away, not as new; on a machine new to a lift done before, as a new
+     machine (390 C: no load from another machine compares). The words after it are a first session's, since that is
+     how it starts. The time away is kept on the suggestion for the screens (away). */
+  const d = M.s.draft;
+  const newMachine =
+    !away && !!d && d.ex.some(b => b.exId === ex.id && b.nw) && (IDXIn(M).byEx[ex.id] || []).some(x => x.date <= T);
+  const lead = away
+    ? `Back after ${awayWords(away)}`
+    : newMachine
+      ? onMachines(ex)
+        ? 'New machine'
+        : 'New machine or gym'
+      : 'First time';
   const was = away ? { away } : {};
   if (kin)
     return {

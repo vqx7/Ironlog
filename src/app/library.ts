@@ -200,6 +200,13 @@ export const EQUIP: readonly (readonly [string, string])[] = [
 ];
 export const EQL = Object.fromEntries(EQUIP);
 
+/* Machines, cables and the Smith machine differ from one to the next (a pin, a pulley, a counterweight), so a lift on
+   one has its readings per machine and picks its machine in its ⋯ menu (390 C); plates and dumbbells weigh the same
+   at every gym, so a free weight keeps New machine or gym. */
+/** Whether a lift is done on a machine, a cable or a Smith machine, so its menu offers Machine (above). */
+export const onMachines = (ex: { equip: string }): boolean =>
+  ex.equip === 'machine' || ex.equip === 'cable' || ex.equip === 'smith';
+
 // Plate-loaded machines in the built-in library. Selectorized versions exist,
 // so this is only the default; the exercise editor can change it.
 export const PLATE_SIDE_IDS: readonly string[] = [

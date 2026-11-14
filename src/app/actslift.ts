@@ -11,7 +11,24 @@ import { LIMITS, within } from './records';
 import { cleanCardio } from './normalize';
 import { effW, greyW } from './session';
 import { rirScale } from './effort';
-import { appU, EX, exName, fmtWOf, fromDOf, incOf, liftMax, liftU, loadReadOf, typedBoundOf } from './live';
+import {
+  appU,
+  draftMachine,
+  EX,
+  exName,
+  fmtWOf,
+  fromDOf,
+  incOf,
+  liftMachines,
+  liftMax,
+  liftU,
+  listLabel,
+  loadReadOf,
+  typedBoundOf
+} from './live';
+import { NEW_MACHINE } from './analytics';
+import { fmtDate } from './format';
+import { typedUnit } from './units';
 import { state, ui } from './store';
 import { act } from './act';
 import { goalWords } from './display';
@@ -75,6 +92,50 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
      the app's unit it follows the app again, as one never switched does), so every screen and the next session read it;
      the lift's blocks in the workout read their targets again in it, and a load already typed is converted, never read
      as a number of the new unit. */
+  machineOpen(t) {
+    const b = Number(t.dataset.b);
+    if (state.draft && state.draft.ex[b]) openModal({ kind: 'machine', b });
+  },
+  /* A machine picked for a lift in a session (390 C): every block of it is on that machine, read from that machine's
+     sessions alone. Its target is read again, the sets done kept (a target from another machine is no target here);
+     in an edit of a saved session, only the machine changes, and the readings follow once it is saved. A machine done
+     on before brings its own kg or lb (as its weights were typed). One Undo step. */
+  machinePick(t) {
+    const d = state.draft;
+    const b0 = d && d.ex[Number(t.dataset.b)];
+    const e = b0 && state.exercises.find(x => x.id === b0.exId);
+    if (ui.modal && ui.modal.kind === 'machine') closeModal();
+    const k = t.dataset.k;
+    if (!d || !b0 || !e || !k || k === draftMachine(b0.exId)) return;
+    const was = k === NEW_MACHINE ? null : liftMachines(b0.exId).find(x => x.key === k);
+    if (k !== NEW_MACHINE && !was) return;
+    const u = was ? typedUnit(was.w) : null;
+    act(
+      () => {
+        if (u) {
+          if (u === appU()) delete e.unit;
+          else e.unit = u;
+        }
+        for (const b of d.ex)
+          if (b.exId === b0.exId) {
+            if (k === NEW_MACHINE) {
+              b.nw = true;
+              delete b.mc;
+            } else {
+              b.mc = k;
+              delete b.nw;
+            }
+          }
+        if (!d.editingId) for (const b of d.ex) if (b.exId === b0.exId) refreshBlock(b);
+      },
+      { undo: true }
+    );
+    rerenderKeepScroll();
+    toast(
+      was ? `${e.name}: ${fmtDate(was.date)} · ${listLabel(e, was.w, true)} × ${was.r}` : `${e.name}: new machine`,
+      true
+    );
+  },
   unitOpen(t) {
     const b = Number(t.dataset.b);
     if (state.draft && state.draft.ex[b]) openModal({ kind: 'unit', b });

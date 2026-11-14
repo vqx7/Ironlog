@@ -6,9 +6,9 @@
 
 import type { Session } from './types';
 import type { DateIndex, DayMeta, ExPoint, ExStat, Exposure, Idx, MissedPoint, Model, Pr, Score } from './model';
-import { MK, SLOW_RECOVERY, noE1 } from './library';
+import { MK, SLOW_RECOVERY, noE1, onMachines } from './library';
 import { addDays, daysBetween, median, r1, weekStart, EPS, EPS_SAME, WEEK_DAYS, PERCENT } from './util';
-import { EXIn, exInjuryIn, sinceNew, sortedSessionsIn, stretchesOf } from './model';
+import { EXIn, exInjuryIn, FIRST_MACHINE, machineKeys, machinesOf, onMachine, sortedSessionsIn } from './model';
 import {
   BACK_DAYS,
   GROW_PCT,
@@ -84,6 +84,7 @@ export function IDXIn(M: Model): Idx {
   const sessions = sortedSessionsIn(M);
   const V = idxSessionsIn(M, sessions);
   const byEx = V.byEx;
+  for (const id of Object.keys(byEx)) machineKeys(byEx[id]);
   const anchor = sessions.length ? sessions[sessions.length - 1].date : M.today();
   const winStart = addDays(anchor, -TREND_DAYS);
   idxAutoLighter(byEx);
@@ -98,11 +99,15 @@ export function IDXIn(M: Model): Idx {
   const prs: Pr[] = [];
   const exStats: Record<string, ExStat> = {};
   for (const id of Object.keys(byEx)) {
-    /* Each stretch's PRs judged against that stretch alone (a new machine
-       or gym starts the lift over), the list keeping every stretch's;
-       the lift's bests are its newest stretch's. */
+    /* Each machine's PRs judged against that machine's sessions alone (another machine or gym starts the lift
+       over), the list keeping every machine's; the lift's bests are those of the machine it was last done on. */
+    const xs = byEx[id];
+    const now = xs.length ? xs[xs.length - 1].mk : null;
     let maxBest: number | null = null;
-    for (const part of stretchesOf(byEx[id])) maxBest = idxPRsIn(M, id, part, prs);
+    for (const part of machinesOf(xs)) {
+      const b = idxPRsIn(M, id, part, prs);
+      if (part[0].mk === now) maxBest = b;
+    }
     exStats[id] = idxLiftIn(M, id, byEx[id], maxBest, anchor, winStart, prs);
   }
   const scores = idxScoresIn(M, exStats);
@@ -125,20 +130,76 @@ export function IDXIn(M: Model): Idx {
   return M.c._idx;
 }
 
-/* The sessions of a lift its rules read up to a date:
-   those since its newest New machine or gym mark (sinceNew), and, while the
-   session in progress marks the lift (a block's nw), only those after that
-   session's day, since it starts the lift over: none until one is logged
-   after it. The target, the return after a break, the next sets, the rack's
-   spacing, a load far off and the live PR read a lift through this. */
-/** A lift's sessions up to a date (all of them with none) as its rules read them: since a new machine or gym. */
+/* The sessions of a lift its rules read up to a date: those on one machine (machineKeys), the machine the session
+   in progress picked for it (a block's mc), else the one it was last done on. While the session in progress marks it
+   done on a new machine (a block's nw), only those after that session's day, since it starts the lift over: none until
+   one is logged after it. The target, the return after a break, the next sets, the rack's spacing, a load far off and
+   the live PR read a lift through this. */
+/** A lift's sessions up to a date (all of them with none) as its rules read them: on the machine in use. */
 export function liftReadIn(M: Model, exId: string, T?: string): Exposure[] {
   const every = IDXIn(M).byEx[exId] || [];
   const all = T === undefined ? every : every.filter(x => x.date <= T);
   const d = M.s.draft;
-  if (d && (T === undefined || d.date <= T) && d.ex.some(b => b.exId === exId && b.nw))
-    return sinceNew(all.filter(x => x.date > d.date));
-  return sinceNew(all);
+  if (d && (T === undefined || d.date <= T)) {
+    const bs = d.ex.filter(b => b.exId === exId);
+    if (bs.some(b => b.nw)) return onMachine(all.filter(x => x.date > d.date));
+    const mc = bs.find(b => b.mc)?.mc;
+    if (mc) return onMachine(all, mc);
+  }
+  return onMachine(all);
+}
+
+/* The machine a lift of the session in progress is on: the one picked for it (a block's mc); in an edit, the one it
+   was saved on; else the one it was last done on by the session's day; NEW_MACHINE when the session marks it done on a
+   new one (a block's nw). */
+/** What liftMachineIn answers when the session in progress marks the lift done on a new machine. */
+export const NEW_MACHINE = 'new';
+
+/** The machine a lift of the session in progress is on (above); null with no session in progress. */
+export function draftMachineIn(M: Model, exId: string): string | null {
+  const d = M.s.draft;
+  if (!d) return null;
+  const bs = d.ex.filter(b => b.exId === exId);
+  if (bs.some(b => b.nw)) return NEW_MACHINE;
+  const picked = bs.find(b => b.mc)?.mc;
+  if (picked) return picked;
+  const every = IDXIn(M).byEx[exId] || [];
+  const own = d.editingId ? every.find(x => x.sid === d.editingId) : undefined;
+  if (own) return own.mk;
+  const prior = every.filter(x => x.date <= d.date && x.sid !== d.editingId);
+  return prior.length ? prior[prior.length - 1].mk : FIRST_MACHINE;
+}
+
+/* Saved, a machine lift names its machine only when it has been done on more than one, this session's included, so a
+   lift on one machine saves as before (machineKeys); a new machine is named by the session's own mark (nw). */
+/** The machine key to save on a lift of the session in progress, or null to save none (above). */
+export function machineToSaveIn(M: Model, exId: string): string | null {
+  // A free weight's stretches are read as before (machineKeys): its sessions name no machine.
+  if (!onMachines(EXIn(M, exId))) return null;
+  const key = draftMachineIn(M, exId);
+  if (key == null || key === NEW_MACHINE) return null;
+  const d = M.s.draft;
+  const others = (IDXIn(M).byEx[exId] || []).filter(x => !d || x.sid !== d.editingId);
+  return new Set(others.map(x => x.mk)).add(key).size > 1 ? key : null;
+}
+
+/** One machine a lift was done on, for the Machine sheet: its key, the day it was last done on it, and that day's heaviest set (load and reps). */
+interface LiftMachine {
+  key: string;
+  date: string;
+  w: number;
+  r: number;
+}
+
+/** The machines a lift was done on, the one used most lately first, each known by the heaviest set of its last session. */
+export function liftMachinesIn(M: Model, exId: string): LiftMachine[] {
+  return machinesOf(IDXIn(M).byEx[exId] || [])
+    .map(g => {
+      const x = g[g.length - 1];
+      const at = x.pts.filter(p => Math.abs(p.w - x.topW) < EPS_SAME);
+      return { key: g[0].mk, date: x.date, w: x.topW, r: at.length ? Math.max(...at.map(p => p.r)) : x.topReps };
+    })
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 }
 
 /** Where idxSessionsIn adds up a session's hard sets: its week's (ws, wc and weekHard), its day's (dm, dx), and the start of the recent weeks RIR is counted over. */
@@ -361,6 +422,9 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
         rr: b.rr || null,
         ...(b.ps ? { ps: b.ps } : {}),
         ...(b.nw ? { nw: true as const } : {}),
+        ...(b.mc ? { mc: b.mc } : {}),
+        // Its machine, given by machineKeys once the lift's sessions are all in.
+        mk: FIRST_MACHINE,
         // Read from its drop sets alone: neither the PR list nor the bests board reads it, as no drop set feeds a PR.
         ...(main.length ? {} : { dropOnly: true as const }),
         topN: atTop.length,
@@ -414,51 +478,51 @@ function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCo
      the break, since its usual from then is not its usual now (the first
      session back would read lighter than them). */
   const wkAuto: Record<string, WeekCount> = {};
-  for (const id of Object.keys(byEx)) {
-    const exps = byEx[id];
-    const prev: Exposure[] = [];
-    let run: Exposure[] = [];
-    // The earlier sessions each lighter session in the run was read against.
-    const readAgainst = new Map<Exposure, readonly Exposure[]>();
-    let before: Exposure | null = null;
-    for (const x of exps) {
-      // A new machine or gym starts the lift over as a break does.
-      if (afterBreak(before, x.date) || x.nw) {
-        prev.length = 0;
-        run = [];
-      }
-      before = x;
-      const ref = prev.filter(q => sameRR(q.rr, x.rr)).slice(-LIGHTER_REF);
-      const k = weekStart(x.date);
-      if (x.deload || x.light) {
-        /* Its usual is the one V's rule reads a labelled session against
+  // Each machine's sessions are read against that machine's alone (machineKeys): another machine starts the lift over.
+  for (const id of Object.keys(byEx))
+    for (const exps of machinesOf(byEx[id])) {
+      const prev: Exposure[] = [];
+      let run: Exposure[] = [];
+      // The earlier sessions each lighter session in the run was read against.
+      const readAgainst = new Map<Exposure, readonly Exposure[]>();
+      let before: Exposure | null = null;
+      for (const x of exps) {
+        if (afterBreak(before, x.date)) {
+          prev.length = 0;
+          run = [];
+        }
+        before = x;
+        const ref = prev.filter(q => sameRR(q.rr, x.rr)).slice(-LIGHTER_REF);
+        const k = weekStart(x.date);
+        if (x.deload || x.light) {
+          /* Its usual is the one V's rule reads a labelled session against
            (idxShort): the two sessions before it, not done lighter. Read
            against the best of three, 100 x 9 x 3 after 100 x
            10 x 3 and two of 100 x 8 x 3 was lighter on a Lighter day and
            set no target, where on any other day it set one. */
-        if (!atUsualWork(x, ref.slice(-USUAL_BEFORE))) continue;
-        x.tag = x.deload ? 'deload' : 'light';
-        x.deload = false;
-        x.light = false;
-        (wkAuto[k] || (wkAuto[k] = { n: 0, l: 0 })).n++;
-        prev.push(x);
-        continue;
-      }
-      const o = wkAuto[k] || (wkAuto[k] = { n: 0, l: 0 });
-      o.n++;
-      if (ref.length >= 2) {
-        const mL = Math.max(...ref.map(q => q.topL)),
-          mT = Math.max(...ref.map(q => (q.tRaw == null ? -Infinity : q.tRaw)));
-        if (
-          mL > 0 &&
-          x.topL <= mL * LIGHTER_LOAD + EPS &&
-          (x.tRaw == null || !isFinite(mT) || x.tRaw <= mT * LIGHTER_READING + EPS)
-        ) {
-          x.auto = true;
-          o.l++;
-          run.push(x);
-          readAgainst.set(x, ref);
-          /* Lighter sessions in a row for two weeks or more is a new level
+          if (!atUsualWork(x, ref.slice(-USUAL_BEFORE))) continue;
+          x.tag = x.deload ? 'deload' : 'light';
+          x.deload = false;
+          x.light = false;
+          (wkAuto[k] || (wkAuto[k] = { n: 0, l: 0 })).n++;
+          prev.push(x);
+          continue;
+        }
+        const o = wkAuto[k] || (wkAuto[k] = { n: 0, l: 0 });
+        o.n++;
+        if (ref.length >= 2) {
+          const mL = Math.max(...ref.map(q => q.topL)),
+            mT = Math.max(...ref.map(q => (q.tRaw == null ? -Infinity : q.tRaw)));
+          if (
+            mL > 0 &&
+            x.topL <= mL * LIGHTER_LOAD + EPS &&
+            (x.tRaw == null || !isFinite(mT) || x.tRaw <= mT * LIGHTER_READING + EPS)
+          ) {
+            x.auto = true;
+            o.l++;
+            run.push(x);
+            readAgainst.set(x, ref);
+            /* Lighter sessions in a row for two weeks or more is a new level
              (a layoff, an injury, a new technique), not a deload: they count
              again, and what follows is compared with them. Counting sessions
              alone (three in a row) read a deload week on a lift trained three
@@ -473,53 +537,54 @@ function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCo
              range, the usual of every range) was lighter for good, the target
              50% over a month at 20 lb. A break (more than BACK_DAYS) still
              restarts everything. */
-          const mine = new Set(ref);
-          const inRun = run.filter(q => (readAgainst.get(q) || []).some(r => mine.has(r)));
-          if (
-            inRun.length >= NEW_LEVEL.sessions &&
-            daysBetween(inRun[0].date, inRun[inRun.length - 1].date) >= NEW_LEVEL.days
-          ) {
-            for (const q of inRun) {
-              q.auto = false;
-              q.keep = true;
-              wkAuto[weekStart(q.date)].l--;
+            const mine = new Set(ref);
+            const inRun = run.filter(q => (readAgainst.get(q) || []).some(r => mine.has(r)));
+            if (
+              inRun.length >= NEW_LEVEL.sessions &&
+              daysBetween(inRun[0].date, inRun[inRun.length - 1].date) >= NEW_LEVEL.days
+            ) {
+              for (const q of inRun) {
+                q.auto = false;
+                q.keep = true;
+                wkAuto[weekStart(q.date)].l--;
+              }
+              // What follows in their ranges is read against them now.
+              removeWhere(prev, q => inRun.some(m => sameRR(q.rr, m.rr)));
+              prev.push(...inRun);
+              removeWhere(run, q => inRun.includes(q));
             }
-            // What follows in their ranges is read against them now.
-            removeWhere(prev, q => inRun.some(m => sameRR(q.rr, m.rr)));
-            prev.push(...inRun);
-            removeWhere(run, q => inRun.includes(q));
+            continue;
           }
-          continue;
         }
+        removeWhere(run, q => sameRR(q.rr, x.rr));
+        prev.push(x);
       }
-      removeWhere(run, q => sameRR(q.rr, x.rr));
-      prev.push(x);
     }
-  }
   /* In a lighter week, a lift that was also lighter, by less than the
      thresholds above, is read as lighter too (a deload of 8%, say). A lift
      done at its usual load that week is not (a pushdown at its normal 50 x
      12 is not lighter because the rest of the week was). */
-  for (const id of Object.keys(byEx)) {
-    const prev: Exposure[] = [];
-    let before: Exposure | null = null;
-    for (const x of byEx[id]) {
-      if (afterBreak(before, x.date) || x.nw) prev.length = 0;
-      before = x;
-      if (x.deload || x.light) continue;
-      if (x.auto || x.keep) {
-        if (x.keep) prev.push(x);
-        continue;
+  for (const id of Object.keys(byEx))
+    for (const exps of machinesOf(byEx[id])) {
+      const prev: Exposure[] = [];
+      let before: Exposure | null = null;
+      for (const x of exps) {
+        if (afterBreak(before, x.date)) prev.length = 0;
+        before = x;
+        if (x.deload || x.light) continue;
+        if (x.auto || x.keep) {
+          if (x.keep) prev.push(x);
+          continue;
+        }
+        const o = wkAuto[weekStart(x.date)];
+        const ref = prev.filter(q => sameRR(q.rr, x.rr)).slice(-LIGHTER_REF);
+        if (o && o.l >= 2 && o.l * 2 >= o.n && ref.length && !atUsualLoad(x, ref)) {
+          x.auto = true;
+          continue;
+        }
+        prev.push(x);
       }
-      const o = wkAuto[weekStart(x.date)];
-      const ref = prev.filter(q => sameRR(q.rr, x.rr)).slice(-LIGHTER_REF);
-      if (o && o.l >= 2 && o.l * 2 >= o.n && ref.length && !atUsualLoad(x, ref)) {
-        x.auto = true;
-        continue;
-      }
-      prev.push(x);
     }
-  }
   return wkAuto;
 }
 
@@ -708,8 +773,8 @@ function idxLiftIn(
      purpose is not evidence of a stall. */
   const sc = trendScope(exps, anchor);
   const { real, curRR, inRange, lastReal } = sc;
-  // The lift as it is now: its sessions since a new machine or gym (sinceNew), which its bests and readings come from; its count is every session.
-  const cur = sinceNew(exps);
+  // The lift as it is now: its sessions on the machine it was last done on, which its bests and readings come from; its count is every session.
+  const cur = onMachine(exps);
   /* At the heaviest load the machine or rack has, progress moves to reps and
      then to harder reps (tempo, pauses, one side), which the load-based PR
      tests cannot see. Such a lift is marked capped rather than stalled. */

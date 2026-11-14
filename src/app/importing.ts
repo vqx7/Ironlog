@@ -19,7 +19,7 @@ type ImpSet = {
   u: 'kg' | 'lb' | null;
 };
 /** An exercise of an imported session, in order of first appearance. */
-type ImpItem = { name: string; sets: ImpSet[]; note: string; ss?: string };
+type ImpItem = { name: string; sets: ImpSet[]; note: string; ss?: string; mc?: string };
 /** An imported session: a date and a workout name, its exercises, whether it was a deload, and its note and minutes, from the app's own file and from Strong and Hevy. */
 type ImpSession = {
   date: string;
@@ -50,6 +50,8 @@ interface ImpReadItem {
   setsText?: string[] | undefined;
   note?: string | undefined;
   ss?: string | undefined;
+  /** The machine it was done on, from the app's own file (its machine column), for a lift done on more than one. */
+  mc?: string | undefined;
 }
 /** A session as the reader found it: no date when the notes gave none (the preview asks for one). */
 interface ImpReadSession {
@@ -788,7 +790,8 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     cHr = col('avg_hr'),
     cUnit = col('unit'),
     cTyped = col('typed_load'),
-    cTypedU = col('typed_unit');
+    cTypedU = col('typed_unit'),
+    cMachine = col('machine');
   const at = (r: readonly unknown[], i: number | null): string =>
     i == null ? '' : csvUnguard(String(r[i] == null ? '' : r[i]).trim());
   let lastDate: string | null = null,
@@ -880,6 +883,9 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       it = { name: ex, sets: [], note: '', ...(cell('ss') ? { ss: cell('ss') } : {}) };
       ss.items.set(ex, it);
     }
+    // The app's own file names the machine of a lift done on more than one (390 C), the same on each of its rows.
+    const mc = at(r, cMachine);
+    if (mc && !it.mc) it.mc = mc;
     /* An exercise's note may sit on any of its rows (a set's note in another
        app's file, its warm-up row first and blank): every distinct one is
        kept, each once, up to a note's room, so a note after a blank row is

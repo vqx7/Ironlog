@@ -651,6 +651,12 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .ubadge{position:relative;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px 0 13px;border-radius:999px;border:1px solid var(--btn-b);background:var(--btn);color:var(--ink);font:600 13px/1 var(--font);white-space:nowrap;cursor:pointer}
 .ubadge::after{content:'';width:6px;height:6px;margin:-3px 2px 0 1px;border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);transform:rotate(45deg)}
 .ubadge::before{content:'';position:absolute;left:50%;width:max(100%,44px);transform:translateX(-50%);top:-7px;bottom:-7px}
+.mc-h{margin:4px 0 8px;font-size:13px;font-weight:600;color:var(--muted)}
+.mclist{display:flex;flex-direction:column;gap:6px}
+.mcrow{display:flex;align-items:center;gap:12px;min-height:48px;padding:8px 12px;border-radius:var(--r-sm);border:1px solid var(--btn-b);background:var(--btn);color:var(--ink);font:inherit;font-size:15px;text-align:left;cursor:pointer}
+.mcrow.on{border-color:var(--ink)}
+.mcdot{flex:none;width:18px;height:18px;border-radius:50%;border:1.6px solid var(--muted)}
+.mcrow.on .mcdot{border-color:var(--ink);background:radial-gradient(circle,var(--ink) 0 4px,transparent 5px)}
 /* "Per side" is "Side" under 360 px, so the load column's heading is one line at every width. */
 @media (max-width:359px){.lhn{display:none}}
 .sg .n{font:700 15px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center}

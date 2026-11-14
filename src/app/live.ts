@@ -69,7 +69,10 @@ import {
 import {
   IDXIn,
   dateIndexIn,
+  draftMachineIn,
+  liftMachinesIn,
   liftReadIn,
+  machineToSaveIn,
   sessionWordsIn,
   stallWeeksIn,
   stallWordsIn,
@@ -242,6 +245,9 @@ export const dateIndex = live(dateIndexIn);
 export const hardCredit = live(hardCreditIn);
 export const isHard = live(isHardIn);
 export const liftRead = live(liftReadIn);
+export const draftMachine = live(draftMachineIn);
+export const liftMachines = live(liftMachinesIn);
+export const machineToSave = live(machineToSaveIn);
 export const cycleState = live(cycleStateIn);
 export const sessionMuscleSets = live(sessionMuscleSetsIn);
 export const rolling7 = live(rolling7In);

@@ -1,5 +1,5 @@
 {
   "note": "The sha256 of the shipped page (dist/index.html, and the preview's) with its app script, account settings, Content Security Policy and build id set aside, so what scripts/build.js adds to the page is pinned (tests/hygiene.js). It changes only on purpose and in review: when scripts/build.js changes, or when a release changes the page outside the app script (its style sheet or markup). Run node tests/hygiene.js, copy the two hashes it prints here, and say why in the commit.",
-  "live": "9e389dc1ace64921bf827c784e1e252084f9213d87cc8a27ffb0d647e8b9f0e2",
-  "preview": "53a9bcba38bb4d674557d98791ef54d5bef42d881255a8b62388f01b11031a07"
+  "live": "e546076aef3fa5565689a5bb33ce24681c0de78165312ea0d930a1d82af79649",
+  "preview": "87ec7902c402d6a0ee4d53e804daa6e7a04ae4a937b6b4eea1d5211bc48855b5"
 }

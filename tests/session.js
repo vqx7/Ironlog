@@ -1,4 +1,4 @@
-// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-39, in the
+// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-41, in the
 // project's claude/ironlog-spec-session.md, built from the code: workout.ts, worksets.ts, worktaps.ts, workfields.ts,
 // workfinish.ts, timer.ts, actsstart.ts, actspick.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
 // expects). A feature suite: each section is one rule, a lifter's log seeded, the workout started from Today's card
@@ -1462,6 +1462,74 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     ok(cases.every(([, w, n], i) => !got[i].err && got[i].sets.length === n && got[i].sets.every(x => Math.abs(x - w) < 1e-9)),
       'L-40: on the bench in lb, "100 kg x 5, 5, 5", "100kg x 5" and "100 kilos x 5" fill 100 kg as typed; "225 lbs x 5, 5", "225 x 5" and "225 x 5 lb" fill 225 lb', { cases: cases.map(c => c[0]), got });
     ok(got[1].shown === '220.5', 'L-40: 100kg typed shows in the lb bench\'s row as 220.5, its stored number never read again in lb', got[1]);
+  }
+
+  /* ---------- L-41: a machine lift's Machine sheet (390 C) ---------- */
+  if (run('L-41')) {
+    /* A machine, cable or Smith lift's ⋯ menu has Machine where a free weight's has New machine or gym. Its sheet lists
+       the machines the lift was done on, the one used most lately first, each by its last session's heaviest set
+       ("Nov 7 · 200 lb × 11"), and New machine; the one it is on marked. New machine starts it as a first session
+       ("New machine: pick a load ..."), with Undo. Saved, the lift is on that machine next time (the one last done on),
+       read from it alone; the first one picked again reads its own sessions and brings its kg or lb with it. A session
+       logged on the wrong machine is moved in its edit from History, from the same sheet. */
+    const LBk = 0.45359237;
+    const seed = `(S, L) => { const LB = ${LBk}; const mk = (id, date, rs) => ({ id, date, dayIdx: 0, dayId: 'A', dayName: 'Push', routineId: 'R1', notes: '', ex: [{ exId: 'machPress', rr: [8, 12], ps: 3, sets: rs.map(r => ({ w: 200 * LB, r, rir: 2, done: true })) }, { exId: 'bench', rr: [6, 10], ps: 3, sets: [8, 8, 7].map(r => ({ w: 185 * LB, r, rir: 2, done: true })) }] }); S.sessions = [mk('m1', '2026-10-31', [10, 10, 9]), mk('m2', '2026-11-07', [11, 11, 10])]; }`;
+    const P = await lifter({ items: [['machPress', 3, 8, 12, 120], ['bench', 3, 6, 10, REST_BENCH]], fresh: true, seed, movable: true, settings: { autoDone: false } });
+    const menu = async b => { await P.tap(`#view [data-act="bMenu"][data-b="${b}"]`, 200); const t = (await P.modal()).buttons; await P.ev(() => window.__ironlog.ACT.mClose()); await wait(120); return t; };
+    const sheet = async () => { await P.tap('#view [data-act="bMenu"][data-b="0"]', 200); await P.tap('#modal [data-act="bMenuDo"][data-op="machineOpen"]', 250); return P.modal(); };
+    const pick = async k => { await P.tap(`#modal [data-act="machinePick"][data-k="${k}"]`, 300); };
+    const block = () => P.ev(() => { const e = document.getElementById('blk-0'); return { grey: [...e.querySelectorAll('input[data-f="w"]')].map(i => i.value || i.placeholder), hint: ((e.querySelector('.hint') || {}).innerText || '').replace(/\s+/g, ' '), badge: e.querySelector('[data-act="unitOpen"]').textContent.trim() }; });
+    const doSets = async (w, rs) => { for (let i = 0; i < rs.length; i++) { await P.page.click(field('w', 0, i)); await P.page.fill(field('w', 0, i), String(w)); await P.page.click(field('r', 0, i)); await P.page.fill(field('r', 0, i), String(rs[i])); await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60); await P.tap(tick(0, i), 120); } };
+    const finish = async () => { await P.ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; }); await P.tap('#view [data-act="finish"]', 300); for (let k = 0; k < 6; k++) { const m = await P.modal(); if (!m) break; if (m.kind === 'confirm') await mOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } } };
+    const nextWeek = async t => { await P.ev(t => window.__setClock(t), t); await P.ev(() => { const L = window.__ironlog; L.invalidate(); L.ui.tab = 'today'; L.render(); }); await wait(150); await start(P); };
+    const saved = date => P.ev(date => { const s = window.__ironlog.state.sessions.find(x => x.date === date); const b = s && s.ex.find(x => x.exId === 'machPress'); return b ? { nw: b.nw || null, mc: b.mc || null, sid: s.id } : null; }, date);
+
+    await start(P);
+    const menus = [await menu(0), await menu(1)];
+    ok(menus[0].includes('Machine') && !menus[0].includes('New machine or gym') && menus[1].includes('New machine or gym') && !menus[1].includes('Machine'), 'L-41: the chest press\'s ⋯ menu has Machine; the bench\'s keeps New machine or gym', menus);
+    let m = await sheet();
+    ok(m && m.kind === 'machine' && /Machine Nov 7 · 200 lb × 11 New machine/.test(m.text), 'L-41: the sheet lists the one machine by its last session, "Nov 7 · 200 lb × 11", and New machine', m);
+    const before = await block();
+    await pick('new');
+    let b = await block();
+    ok(/^Machine Chest Press: new machine$/.test(await P.toast()) && /^New machine: pick a load you could lift about/.test(b.hint) && b.grey.every(x => x === ''), 'L-41: New machine says "Machine Chest Press: new machine" and starts the lift as a first session there, no load asked', { t: await P.toast(), b });
+    await P.tap('#toast [data-act="undo"]', 250);
+    ok(JSON.stringify(await block()) === JSON.stringify(before), 'L-41: Undo puts the lift back on its machine, its target as it was', { before, after: await block() });
+    m = await sheet(); await pick('new');
+    // The new machine is marked kg (its stack is in kg): its badge, kept by the lift.
+    await toUnit(P, 0, 'kg');
+    await doSets(60, [10, 10, 9]);
+    await finish();
+    let day1 = await saved('2026-11-11');
+    ok(day1 && day1.nw === true && day1.mc === null, 'L-41: saved, the session marks the lift done on a new machine', day1);
+
+    await nextWeek('2026-11-18T10:00:00');
+    b = await block();
+    m = await sheet();
+    ok(b.badge === 'kg' && /Today: 30\+ reps over 3 sets at 60 kg/.test(b.hint) && !/200|lb/.test(b.hint) && b.grey.every(x => x === '60') && /Machine Nov 11 · 60 kg × 10 Nov 7 · 200 lb × 11 New machine/.test(m.text),
+      'L-41: a week later the lift is on the machine it was last done on, in its kg, read from it alone (30+ at 60 kg); the sheet lists it first, then the first machine', { b, m: m && m.text });
+    await pick('0');
+    b = await block();
+    ok(/^Machine Chest Press: Nov 7 · 200 lb × 11$/.test(await P.toast()) && b.badge === 'lb' && /Today: 33\+ reps over 3 sets at 200 lb/.test(b.hint) && /Heaviest 200×11/.test(b.hint) && !/kg/.test(b.hint) && b.grey.every(x => x === '200'),
+      'L-41: the first machine picked again: said by its last session, back in lb, and read from its own sessions (33+ at 200 lb, its heaviest 200 × 11)', { t: await P.toast(), b });
+    await doSets(200, [11, 11, 11]);
+    await finish();
+    const day2 = await saved('2026-11-18');
+    const prs = await P.ev(() => window.__ironlog.IDX().prs.filter(p => p.exId === 'machPress').map(p => p.date));
+    ok(day2 && day2.mc === '0' && !day2.nw && !prs.includes('2026-11-18') && !prs.includes('2026-11-11'), 'L-41: saved on the first machine by name; neither machine\'s session is a PR against the other', { day2, prs });
+
+    // That session was on the kg machine after all: moved in its edit from History.
+    await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150);
+    await P.tap(`#view [data-act="histToggle"][data-id="${day2.sid}"]`, 150); await P.tap(`#view [data-act="histEdit"][data-id="${day2.sid}"]`, 300);
+    const bi = await P.ev(() => window.__ironlog.state.draft.ex.findIndex(x => x.exId === 'machPress'));
+    await P.tap(`#view [data-act="bMenu"][data-b="${bi}"]`, 200); await P.tap('#modal [data-act="bMenuDo"][data-op="machineOpen"]', 250);
+    m = await P.modal();
+    ok(m && /Machine Nov 18 · 200 lb × 11 Nov 11 · 60 kg × 10 New machine/.test(m.text), 'L-41: in the edit, the sheet marks the machine the session was saved on', m && m.text);
+    await pick(day1.sid);
+    await finish();
+    const moved = await saved('2026-11-18');
+    ok(moved && moved.mc === day1.sid, 'L-41: picked in the edit and saved, the session is on the kg machine', moved);
+    await P.close();
   }
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');

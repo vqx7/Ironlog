@@ -84,6 +84,8 @@ const EXTRA = {
   hasTarget: () => [['chest'], ['traps'], ['serratus'], ['neck'], ['forearms']],
   // A lift's sessions as its rules read them (r61, 343 7): all of them, up to the log's middle session, and up to today.
   liftRead: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : ''], [id, '9999-12-31']]),
+  // 390 C: the machine a lift of the workout in progress is on, the machines each lift was done on, and the machine to save.
+  draftMachine: (s, ids) => ids.map(id => [id]), liftMachines: (s, ids) => ids.map(id => [id]), machineToSave: (s, ids) => ids.map(id => [id]),
   defBand: () => [['chest'], ['serratus'], ['quads', { focus: ['quads'] }], ['biceps', { focus: ['quads'] }]],
   appBand: () => [['chest'], ['serratus'], ['quads', { focus: ['quads'] }], ['chest', null, { chest: 5 }], ['chest', null, null]],
   fitFloors: (s) => s.routines.flatMap(r => [[r], [r, { chest: 3, quads: 4 }], [r, null, 1.75]]),
@@ -276,6 +278,18 @@ const SCENARIOS = [
     sessions: [[-28, 'legPress', 160, false], [-21, 'legPress', 165, false], [-14, 'legPress', 230, true], [-7, 'legPress', 235, false], [-7, 'bench', 80, false]].map(([n, exId, w, nw], i) => ({ id: 'nw' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
       ex: [{ exId, rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r: 10, rir: 2, done: true })), ...(nw ? { nw: true } : {}) }] })),
     draft: { id: 'nwd', date: h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: null, r: null }], nw: true }] } } }),
+  // A machine lift on three machines (390 C): its first machine, a new one, back on the first by name, and on the new one by
+  // name; with a workout in progress picking the first machine (and a cable lift never done, on its first), editing the
+  // session back on the first, and marking it done on a new one; the bench beside it, a free weight, names none.
+  ...[
+    { exId: 'machPress', mc: '0', sets: [{ w: null, r: null }] },
+    { exId: 'machPress', sets: [{ w: 90, r: 10, rir: 2, done: true }] },
+    { exId: 'machPress', nw: true, sets: [{ w: null, r: null }] }
+  ].map((b, k) => h => ({ ...h, ids: ['machPress', 'cableFly', 'bench', ...h.ids], raw: { ...h.raw, injuries: [], deloadWeek: null, settings: { ...h.raw.settings, restWeeks: [] },
+    sessions: [[-28, 90, {}], [-21, 60, { nw: true }], [-14, 92.5, { mc: '0' }], [-7, 62.5, { mc: 'mc1' }]].map(([n, w, more], i) => ({ id: 'mc' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
+      ex: [{ exId: 'machPress', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r: 10, rir: 2, done: true })), ...more }, { exId: 'bench', rr: [6, 10], sets: [{ w: 80, r: 8, rir: 2, done: true }] }] })),
+    draft: { id: 'mcd', date: k === 1 ? day(h.today, -14) : h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ...(k === 1 ? { editingId: 'mc2' } : {}),
+      ex: [b, { exId: 'cableFly', sets: [{ w: null, r: null }] }, { exId: 'bench', sets: [{ w: null, r: null }] }] } } })),
   // 2.37 (ST-6): This block vs last by Auto and by 4 weeks, on a wide history with its own lighter and missed weeks;
   // before the stalled bench, whose coach line the check below reads as the last but one (the long-break history is last).
   h => ({ ...h, raw: { ...h.raw, settings: { ...h.raw.settings, blockWeeks: 'auto' } } }),

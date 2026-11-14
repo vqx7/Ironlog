@@ -16,7 +16,7 @@
 import { APP_NAME, STORAGE_ID } from './config';
 import { addDays, andList, daysBetween, isDate, median, today, uid, WEEK_DAYS } from './util';
 import { KM_MI, LB } from './units';
-import { LIB_NAMES_BEFORE, ML } from './library';
+import { LIB_NAMES_BEFORE, ML, onMachines } from './library';
 import { dropStarter, routineSig } from './routines';
 import { offTarget } from './formulas';
 import { fmtDate } from './format';
@@ -37,7 +37,7 @@ import {
 import type { ImpRead } from './importing';
 import { cleanCardio, normalize, starterSigs } from './normalize';
 import { ENV, log, prefGet, unreadableForget, unreadableRaw } from './storage';
-import { arr, parseJson, rec } from './records';
+import { arr, fixId, parseJson, rec } from './records';
 import { assemble, cloudStop } from './sync';
 import { isChunkId, realCount } from './chunks';
 import type { Rec } from './records';
@@ -293,7 +293,7 @@ interface BuiltSession {
   dayName: string;
   routineId: string;
   free: true;
-  ex: { exId: string; note: string; rr: null; sets: BuiltSet[] }[];
+  ex: { exId: string; note: string; rr: null; sets: BuiltSet[]; mc?: string }[];
   notes: string;
   durMin: number | null;
   deload: boolean;
@@ -459,7 +459,15 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
       // A lift's sets across rows of the same exercise stay together.
       const prev = ex.find(b => b.exId === exo.id);
       if (prev) prev.sets.push(...sets);
-      else ex.push({ exId: exo.id, note: it.note || '', rr: null, sets });
+      // The machine the app's own file names keeps the lift's sessions on each machine together (390 C).
+      else
+        ex.push({
+          exId: exo.id,
+          note: it.note || '',
+          rr: null,
+          sets,
+          ...(it.mc && onMachines(exo) ? { mc: fixId(it.mc) } : {})
+        });
       if (it.ss) grp[exo.id] = it.ss;
     }
     if (ex.length && Object.keys(grp).length) ssOf[sid] = grp;

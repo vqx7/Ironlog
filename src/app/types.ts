@@ -142,7 +142,10 @@ export type Asked = [number | null, number | null];
     a session saved on a day of a routine with the lift in it, absent on the
     rest, on an edit's new exercises and on sessions saved before r58.
     `nw` marks it done at a new machine or gym: the lift starts
-    over from this session (sinceNew), absent unless marked. */
+    over from this session (a machine of its own, machineKeys), absent unless
+    marked. `mc` names the machine it was done on (a machine lift's key,
+    machineKeys), written once the lift has been done on more than one;
+    absent otherwise. */
 export interface SessionEx {
   exId: string;
   note: string;
@@ -153,6 +156,7 @@ export interface SessionEx {
   sets: LoggedSet[];
   ps?: number | undefined;
   nw?: true | undefined;
+  mc?: string | undefined;
   /** The pictures on this exercise's note, by id; their bytes are kept on the phone that took them (pics.ts). Absent when none. */
   pics?: string[] | undefined;
 }
@@ -349,7 +353,7 @@ export interface OpenWorkout {
   id?: string | undefined;
   date: string;
   editingId?: string | null | undefined;
-  ex: readonly { exId: string; nw?: true | undefined; sets: readonly OpenSet[] }[];
+  ex: readonly { exId: string; nw?: true | undefined; mc?: string | undefined; sets: readonly OpenSet[] }[];
 }
 
 /** One set as the analytics read it (a point in IDX's byEx): the load as typed,
@@ -470,6 +474,8 @@ export interface DraftBlock {
   swappedFrom?: string | null | undefined;
   /** Done at a new machine or gym: every block of the lift in the session carries it, its suggestion read as a first session's; absent unless marked. */
   nw?: true | undefined;
+  /** The machine picked for the lift in this session (a key, machineKeys), on every block of it; absent until one is picked. */
+  mc?: string | undefined;
   /** The pictures on this exercise's note, by id, carried to the saved exercise by Finish; absent when none. */
   pics?: string[] | undefined;
 }
