@@ -9,7 +9,7 @@ import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from '
 import { statsUpToIn } from './bests';
 import type { LiftBests } from './bests';
 import { EXIn, UIn, exInjuryIn, liftModelIn, liftUIn } from './model';
-import { IDXIn, brokeAfterIn, lastOf, liftReadIn, sinceLongBreakOnIn } from './analytics';
+import { IDXIn, brokeAfterIn, lastOf, liftOffIn, liftReadIn, sinceLongBreakOnIn } from './analytics';
 import { atCapOfIn, capOfIn, gymRackIn, loadFloorIn } from './gym';
 import { DEFAULT_STEP, fromDIn, loadReadIn, toDIn, typedOtherIn } from './units';
 import { fmtWIn, listLabelIn, loadLabelIn, loadNote, typedLabelIn } from './loads';
@@ -165,9 +165,11 @@ export function backDaysIn(M: Model, exId: string, plan: Plan, opts: SuggestOpts
     ? all.filter(x => sameRR(x.rr, want))
     : all;
   if (!xs.length) return 0;
-  if (brokeAfterIn(M, exId, xs[xs.length - 1], T)) return daysBetween(xs[xs.length - 1].date, T);
+  // The break's length is the time the lift was off, another machine's sessions filling the rest (liftOffIn).
+  const last = xs[xs.length - 1];
+  if (brokeAfterIn(M, exId, last, T)) return liftOffIn(M, exId, last.mk, last.date, T);
   for (let i = xs.length - 1; i > 0 && offTarget(xs[i]); i--)
-    if (brokeAfterIn(M, exId, xs[i - 1], xs[i].date)) return daysBetween(xs[i - 1].date, xs[i].date);
+    if (brokeAfterIn(M, exId, xs[i - 1], xs[i].date)) return liftOffIn(M, exId, xs[i].mk, xs[i - 1].date, xs[i].date);
   return 0;
 }
 
@@ -412,7 +414,9 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   /* And since the lift's last long break: with none since, it starts fresh, as a first session, saying the
      time away (away, in days, from its last session before). */
   const all = read ? sinceLongBreakOnIn(M, exId, read, T) : read;
-  const away = read && read.length && all && !all.length ? daysBetween(read[read.length - 1].date, T) : 0;
+  // The time away is the lift's, another machine's sessions filling it (liftOffIn).
+  const lastRead = read && read.length ? read[read.length - 1] : null;
+  const away = lastRead && all && !all.length ? liftOffIn(M, exId, lastRead.mk, lastRead.date, T) : 0;
   const ex = EXIn(M, exId);
   const injM = exInjuryIn(M, ex);
   // The last full session sets the target: not one done lighter, nor one short of its usual (V's one rule). If there is nothing else, use them.

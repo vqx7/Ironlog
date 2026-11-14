@@ -280,15 +280,16 @@ const SCENARIOS = [
     draft: { id: 'nwd', date: h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: null, r: null }], nw: true }] } } }),
   // A machine lift on three machines (390 C): its first machine, a new one, back on the first by name, and on the new one by
   // name; with a workout in progress picking the first machine (and a cable lift never done, on its first), editing the
-  // session back on the first, and marking it done on a new one; the bench beside it, a free weight, names none.
+  // session that began the new one, kept on it by its mark, and marking it done on a new one; the bench beside it, a free
+  // weight, names none.
   ...[
     { exId: 'machPress', mc: '0', sets: [{ w: null, r: null }] },
-    { exId: 'machPress', sets: [{ w: 90, r: 10, rir: 2, done: true }] },
+    { exId: 'machPress', nw: true, sets: [{ w: 60, r: 10, rir: 2, done: true }] },
     { exId: 'machPress', nw: true, sets: [{ w: null, r: null }] }
   ].map((b, k) => h => ({ ...h, ids: ['machPress', 'cableFly', 'bench', ...h.ids], raw: { ...h.raw, injuries: [], deloadWeek: null, settings: { ...h.raw.settings, restWeeks: [] },
     sessions: [[-28, 90, {}], [-21, 60, { nw: true }], [-14, 92.5, { mc: '0' }], [-7, 62.5, { mc: 'mc1' }]].map(([n, w, more], i) => ({ id: 'mc' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
       ex: [{ exId: 'machPress', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r: 10, rir: 2, done: true })), ...more }, { exId: 'bench', rr: [6, 10], sets: [{ w: 80, r: 8, rir: 2, done: true }] }] })),
-    draft: { id: 'mcd', date: k === 1 ? day(h.today, -14) : h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ...(k === 1 ? { editingId: 'mc2' } : {}),
+    draft: { id: 'mcd', date: k === 1 ? day(h.today, -21) : h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ...(k === 1 ? { editingId: 'mc1' } : {}),
       ex: [b, { exId: 'cableFly', sets: [{ w: null, r: null }] }, { exId: 'bench', sets: [{ w: null, r: null }] }] } } })),
   // A machine back after weeks on another (390 C, G-25): two sessions on the first, six weeks on another, then the first
   // again, easy, so its climb is said "on this machine"; and a machine last used over a year ago, picked again after a

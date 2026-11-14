@@ -73,6 +73,9 @@ export interface Exposure {
   mc?: string;
   /** The machine it was done on (machineKeys): its key. */
   mk: string;
+  /** Back from a break (BACK_DAYS) or a long one (LONG_BREAK_DAYS) since the lift's session before on its machine, read on every machine (markBreaks); absent when not. */
+  br?: true;
+  lbr?: true;
   /** Every working set a drop set, so its points are the drops: neither the PR list nor the bests board reads it. */
   dropOnly?: true;
 }

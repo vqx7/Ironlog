@@ -5,7 +5,7 @@ import type { ExPoint, ExStat, Exposure, ExerciseLike, Model } from './model';
 import { noE1 } from './library';
 import { EPS_SAME } from './util';
 import { EXIn } from './model';
-import { prSameLoad, e1, longBreakAt, sameRR } from './formulas';
+import { prSameLoad, e1, sameRR } from './formulas';
 
 import type { LoadedSet } from './setread';
 import { noBodyIn, prLoadIn } from './setread';
@@ -128,7 +128,8 @@ export function sinceBackIn(
 ): { from: string; est: (BestAt & { v: number }) | null; heavy: BestAt | null; first: boolean } | null {
   const all = IDXIn(M).byEx[id];
   const exps = all ? liftReadIn(M, id) : [];
-  const i = longBreakAt(exps);
+  // Its last long break on the machine, read on every machine (markBreaks).
+  const i = Math.max(0, exps.map(x => !!x.lbr).lastIndexOf(true));
   if (!i) return null;
   const back = exps.slice(i);
   const r = recordsOfIn(M, EXIn(M, id), back);

@@ -86,7 +86,10 @@ export function IDXIn(M: Model): Idx {
   const sessions = sortedSessionsIn(M);
   const V = idxSessionsIn(M, sessions);
   const byEx = V.byEx;
-  for (const id of Object.keys(byEx)) machineKeys(byEx[id]);
+  for (const id of Object.keys(byEx)) {
+    machineKeys(byEx[id]);
+    markBreaks(byEx[id]);
+  }
   const anchor = sessions.length ? sessions[sessions.length - 1].date : M.today();
   const winStart = addDays(anchor, -TREND_DAYS);
   idxAutoLighter(byEx);
@@ -180,11 +183,16 @@ export function machineToSaveIn(M: Model, exId: string): string | null {
   if (!onMachines(EXIn(M, exId))) return null;
   const d = M.s.draft;
   if (!d) return null;
-  // An edit saves the machine the session was saved with, or the one picked in it (both a block's mc), and no other.
-  if (d.editingId) return d.ex.find(b => b.exId === exId && b.mc)?.mc ?? null;
+  /* The machine the session is shown on (draftMachineIn) is saved by name once the lift has more than one, an edit's
+     too, so a session's machine changes only by a pick: never by a date moved across a new machine's first session,
+     nor for a lift added to an edit. The edited session itself is not counted among the lift's machines. */
   const key = draftMachineIn(M, exId);
   if (key == null || key === NEW_MACHINE) return null;
-  return new Set((IDXIn(M).byEx[exId] || []).map(x => x.mk)).add(key).size > 1 ? key : null;
+  /* An edited session keeps its New machine mark (sessions after it follow it), and the mark puts it on a machine of
+     its own: that one needs no name, and any other picked for it is named however many the lift has. */
+  if (d.editingId && d.ex.some(b => b.exId === exId && b.nw)) return key === d.editingId ? null : key;
+  const others = (IDXIn(M).byEx[exId] || []).filter(x => x.sid !== d.editingId);
+  return new Set(others.map(x => x.mk)).add(key).size > 1 ? key : null;
 }
 
 /** One machine a lift was done on, for the Machine sheet: its key, the day it was last done on it, and that day's heaviest set (load and reps). */
@@ -206,29 +214,29 @@ export function liftMachinesIn(M: Model, exId: string): LiftMachine[] {
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 }
 
-/* A break is time off the lift (CLAUDE.md, Numbers): on a machine lift, a gap between two sessions on one machine is a
-   break only when the lift itself had one inside it, on every machine (390 C), since a lift trained weekly on another
-   machine was never off. With one machine, the same as reading the two sessions alone. The return after a break, its
-   long form and the first sessions' larger steps read breaks so. */
-/** Whether a lift was off every machine for more than `days` between `from` and `to`. */
-function liftOffIn(M: Model, exId: string, from: string, to: string, days: number): boolean {
+/* A break is time off the lift (CLAUDE.md, Numbers): on a machine lift, the time before a session (or before today)
+   since the lift was last done, on its machine or another (390 C). A lift trained weekly on another machine was never
+   off, so going back to the first one is no return from a break, and one that came back from a break on another
+   machine has come back. Only other machines count: the same machine's sessions in another rep range do not, as
+   before, so a range idle while the other went on is back after its break. With one machine, the same as reading the
+   two sessions alone. The return after a break, its long form, the first sessions' larger steps, the next sets and the
+   readings that walk a machine's sessions (markBreaks) read breaks so. */
+/** How long a lift was off before `to` (days): since `from`, its session there, or since its last session on a machine other than `key` after it. */
+export function liftOffIn(M: Model, exId: string, key: string, from: string, to: string): number {
   let at = from;
-  for (const x of IDXIn(M).byEx[exId] || []) {
-    if (x.date <= from || x.date > to) continue;
-    if (daysBetween(at, x.date) > days) return true;
-    at = x.date;
-  }
-  return daysBetween(at, to) > days;
+  for (const x of IDXIn(M).byEx[exId] || []) if (x.mk !== key && x.date > at && x.date <= to) at = x.date;
+  return daysBetween(at, to);
 }
 
 /** Whether a lift's session `a` on one machine is followed by a break by `to` (afterBreak), read on every machine (above). */
 export function brokeAfterIn(M: Model, exId: string, a: Exposure, to: string): boolean {
-  return afterBreak(a, to) && liftOffIn(M, exId, a.date, to, BACK_DAYS);
+  return afterBreak(a, to) && liftOffIn(M, exId, a.mk, a.date, to) > BACK_DAYS;
 }
 
 /** A lift's sessions on one machine as its targets read them on `T`: since its last long break (sinceLongBreak), read on every machine (above). */
 export function sinceLongBreakOnIn(M: Model, exId: string, xs: readonly Exposure[], T: string): Exposure[] {
-  const off = (a: Exposure, to: string): boolean => longBreak(a, to) && liftOffIn(M, exId, a.date, to, LONG_BREAK_DAYS);
+  const off = (a: Exposure, to: string): boolean =>
+    longBreak(a, to) && liftOffIn(M, exId, a.mk, a.date, to) > LONG_BREAK_DAYS;
   if (xs.length && off(xs[xs.length - 1], T)) return [];
   for (let i = xs.length - 1; i > 0; i--) if (off(xs[i - 1], xs[i].date)) return xs.slice(i);
   return xs.slice();
@@ -472,6 +480,24 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
   return { byEx, sessVol, weekSets, weekConf, dayMus, dayMeta, weekHard, rirLogged, rirTotal };
 }
 
+/* Each of a lift's sessions back from a break, read as liftOffIn reads it: more than BACK_DAYS (or LONG_BREAK_DAYS)
+   since the lift's session before, on any machine. The readings that walk a machine's sessions (the usual, the lighter
+   reading, the trend, the best since you came back) start again there, as the target does. With one machine, exactly
+   afterBreak and longBreak between neighbours. */
+/** Marks each of a lift's sessions (in date order) back from a break (br) or a long one (lbr) on its machine (above). */
+function markBreaks(xs: readonly Exposure[]): void {
+  const seen = new Set<string>();
+  xs.forEach((x, i) => {
+    // The first session on a machine starts it; any other comes back from the time since the lift's session before.
+    if (seen.has(x.mk)) {
+      const off = daysBetween(xs[i - 1].date, x.date);
+      if (off > BACK_DAYS) x.br = true;
+      if (off > LONG_BREAK_DAYS) x.lbr = true;
+    }
+    seen.add(x.mk);
+  });
+}
+
 /* Step 2: sessions lighter than their lift's usual that nobody tagged. Marks
    each such exposure (auto, or keep for a new level) and returns the count per
    week. */
@@ -517,13 +543,11 @@ function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCo
       let run: Exposure[] = [];
       // The earlier sessions each lighter session in the run was read against.
       const readAgainst = new Map<Exposure, readonly Exposure[]>();
-      let before: Exposure | null = null;
       for (const x of exps) {
-        if (afterBreak(before, x.date)) {
+        if (x.br) {
           prev.length = 0;
           run = [];
         }
-        before = x;
         const ref = prev.filter(q => sameRR(q.rr, x.rr)).slice(-LIGHTER_REF);
         const k = weekStart(x.date);
         if (x.deload || x.light) {
@@ -599,10 +623,8 @@ function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCo
   for (const id of Object.keys(byEx))
     for (const exps of machinesOf(byEx[id])) {
       const prev: Exposure[] = [];
-      let before: Exposure | null = null;
       for (const x of exps) {
-        if (afterBreak(before, x.date)) prev.length = 0;
-        before = x;
+        if (x.br) prev.length = 0;
         if (x.deload || x.light) continue;
         if (x.auto || x.keep) {
           if (x.keep) prev.push(x);

@@ -4,7 +4,7 @@
 import type { ExPoint, Exposure } from './model';
 import { machinesOf } from './model';
 import { EPS, EPS_SAME } from './util';
-import { LIGHTER_LOAD, afterBreak, lighter, sameRR, trendE, USUAL_BEFORE } from './formulas';
+import { LIGHTER_LOAD, lighter, sameRR, trendE, USUAL_BEFORE } from './formulas';
 
 /** How far under its usual a lift's session may fall and still be at its
     usual level: 97% of the best strength reading of the sessions it is
@@ -176,10 +176,8 @@ export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string
   for (const id of Object.keys(byEx))
     for (const xs of machinesOf(byEx[id])) {
       const normal: Exposure[] = [];
-      let last: Exposure | null = null;
       for (const x of xs) {
-        if (afterBreak(last, x.date)) normal.length = 0;
-        last = x;
+        if (x.br) normal.length = 0;
         if (lighter(x)) continue;
         const prior = normal.filter(q => sameRR(q.rr, x.rr));
         const before = prior.slice(-USUAL_BEFORE);

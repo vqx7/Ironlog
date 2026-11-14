@@ -6484,7 +6484,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const real = exps.filter((x2) => !lighter(x2));
     const curRR = real.length ? real[real.length - 1].rr : null;
     let from = "";
-    for (let i5 = 1; i5 < exps.length; i5++) if (afterBreak(exps[i5 - 1], exps[i5].date)) from = exps[i5].date;
+    for (let i5 = 1; i5 < exps.length; i5++) if (exps[i5].br) from = exps[i5].date;
     const inRange = real.filter((x2) => sameRR(x2.rr, curRR) && x2.date >= from);
     const lastReal = real.length ? real[real.length - 1] : null;
     const lastAny = exps.length ? exps[exps.length - 1] : null;
@@ -6645,10 +6645,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     for (const id of Object.keys(byEx))
       for (const xs of machinesOf(byEx[id])) {
         const normal = [];
-        let last = null;
         for (const x2 of xs) {
-          if (afterBreak(last, x2.date)) normal.length = 0;
-          last = x2;
+          if (x2.br) normal.length = 0;
           if (lighter(x2)) continue;
           const prior = normal.filter((q) => sameRR(q.rr, x2.rr));
           const before2 = prior.slice(-USUAL_BEFORE);
@@ -6835,7 +6833,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const sessions = sortedSessionsIn(M3);
     const V2 = idxSessionsIn(M3, sessions);
     const byEx = V2.byEx;
-    for (const id of Object.keys(byEx)) machineKeys(byEx[id]);
+    for (const id of Object.keys(byEx)) {
+      machineKeys(byEx[id]);
+      markBreaks(byEx[id]);
+    }
     const anchor = sessions.length ? sessions[sessions.length - 1].date : M3.today();
     const winStart = addDays(anchor, -TREND_DAYS);
     idxAutoLighter(byEx);
@@ -6907,10 +6908,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!onMachines(EXIn(M3, exId))) return null;
     const d3 = M3.s.draft;
     if (!d3) return null;
-    if (d3.editingId) return d3.ex.find((b2) => b2.exId === exId && b2.mc)?.mc ?? null;
     const key = draftMachineIn(M3, exId);
     if (key == null || key === NEW_MACHINE) return null;
-    return new Set((IDXIn(M3).byEx[exId] || []).map((x2) => x2.mk)).add(key).size > 1 ? key : null;
+    if (d3.editingId && d3.ex.some((b2) => b2.exId === exId && b2.nw)) return key === d3.editingId ? null : key;
+    const others = (IDXIn(M3).byEx[exId] || []).filter((x2) => x2.sid !== d3.editingId);
+    return new Set(others.map((x2) => x2.mk)).add(key).size > 1 ? key : null;
   }
   function liftMachinesIn(M3, exId) {
     return machinesOf(IDXIn(M3).byEx[exId] || []).map((g2) => {
@@ -6919,20 +6921,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return { key: g2[0].mk, date: x2.date, w: x2.topW, r: at2.length ? Math.max(...at2.map((p3) => p3.r)) : x2.topReps };
     }).sort((a2, b2) => a2.date < b2.date ? 1 : a2.date > b2.date ? -1 : 0);
   }
-  function liftOffIn(M3, exId, from, to, days) {
+  function liftOffIn(M3, exId, key, from, to) {
     let at2 = from;
-    for (const x2 of IDXIn(M3).byEx[exId] || []) {
-      if (x2.date <= from || x2.date > to) continue;
-      if (daysBetween(at2, x2.date) > days) return true;
-      at2 = x2.date;
-    }
-    return daysBetween(at2, to) > days;
+    for (const x2 of IDXIn(M3).byEx[exId] || []) if (x2.mk !== key && x2.date > at2 && x2.date <= to) at2 = x2.date;
+    return daysBetween(at2, to);
   }
   function brokeAfterIn(M3, exId, a2, to) {
-    return afterBreak(a2, to) && liftOffIn(M3, exId, a2.date, to, BACK_DAYS);
+    return afterBreak(a2, to) && liftOffIn(M3, exId, a2.mk, a2.date, to) > BACK_DAYS;
   }
   function sinceLongBreakOnIn(M3, exId, xs, T2) {
-    const off = (a2, to) => longBreak(a2, to) && liftOffIn(M3, exId, a2.date, to, LONG_BREAK_DAYS);
+    const off = (a2, to) => longBreak(a2, to) && liftOffIn(M3, exId, a2.mk, a2.date, to) > LONG_BREAK_DAYS;
     if (xs.length && off(xs[xs.length - 1], T2)) return [];
     for (let i5 = xs.length - 1; i5 > 0; i5--) if (off(xs[i5 - 1], xs[i5].date)) return xs.slice(i5);
     return xs.slice();
@@ -7081,6 +7079,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return { byEx, sessVol, weekSets, weekConf, dayMus, dayMeta: dayMeta2, weekHard, rirLogged, rirTotal };
   }
+  function markBreaks(xs) {
+    const seen = /* @__PURE__ */ new Set();
+    xs.forEach((x2, i5) => {
+      if (seen.has(x2.mk)) {
+        const off = daysBetween(xs[i5 - 1].date, x2.date);
+        if (off > BACK_DAYS) x2.br = true;
+        if (off > LONG_BREAK_DAYS) x2.lbr = true;
+      }
+      seen.add(x2.mk);
+    });
+  }
   function removeWhere(a2, f3) {
     for (let i5 = a2.length - 1; i5 >= 0; i5--) if (f3(a2[i5])) a2.splice(i5, 1);
   }
@@ -7091,13 +7100,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         const prev = [];
         let run2 = [];
         const readAgainst = /* @__PURE__ */ new Map();
-        let before2 = null;
         for (const x2 of exps) {
-          if (afterBreak(before2, x2.date)) {
+          if (x2.br) {
             prev.length = 0;
             run2 = [];
           }
-          before2 = x2;
           const ref2 = prev.filter((q) => sameRR(q.rr, x2.rr)).slice(-LIGHTER_REF);
           const k2 = weekStart(x2.date);
           if (x2.deload || x2.light) {
@@ -7140,10 +7147,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     for (const id of Object.keys(byEx))
       for (const exps of machinesOf(byEx[id])) {
         const prev = [];
-        let before2 = null;
         for (const x2 of exps) {
-          if (afterBreak(before2, x2.date)) prev.length = 0;
-          before2 = x2;
+          if (x2.br) prev.length = 0;
           if (x2.deload || x2.light) continue;
           if (x2.auto || x2.keep) {
             if (x2.keep) prev.push(x2);
@@ -7609,7 +7614,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function sinceBackIn(M3, id) {
     const all = IDXIn(M3).byEx[id];
     const exps = all ? liftReadIn(M3, id) : [];
-    const i5 = longBreakAt(exps);
+    const i5 = Math.max(0, exps.map((x2) => !!x2.lbr).lastIndexOf(true));
     if (!i5) return null;
     const back2 = exps.slice(i5);
     const r4 = recordsOfIn(M3, EXIn(M3, id), back2);
@@ -8061,9 +8066,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       want
     ) ? all.filter((x2) => sameRR(x2.rr, want)) : all;
     if (!xs.length) return 0;
-    if (brokeAfterIn(M3, exId, xs[xs.length - 1], T2)) return daysBetween(xs[xs.length - 1].date, T2);
+    const last = xs[xs.length - 1];
+    if (brokeAfterIn(M3, exId, last, T2)) return liftOffIn(M3, exId, last.mk, last.date, T2);
     for (let i5 = xs.length - 1; i5 > 0 && offTarget(xs[i5]); i5--)
-      if (brokeAfterIn(M3, exId, xs[i5 - 1], xs[i5].date)) return daysBetween(xs[i5 - 1].date, xs[i5].date);
+      if (brokeAfterIn(M3, exId, xs[i5 - 1], xs[i5].date)) return liftOffIn(M3, exId, xs[i5].mk, xs[i5 - 1].date, xs[i5].date);
     return 0;
   }
   function pastWordsIn(M3, ex, top, lbl) {
@@ -8221,7 +8227,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const every = IDXIn(M3).byEx[exId];
     const read = every ? liftReadIn(M3, exId, T2) : every;
     const all = read ? sinceLongBreakOnIn(M3, exId, read, T2) : read;
-    const away = read && read.length && all && !all.length ? daysBetween(read[read.length - 1].date, T2) : 0;
+    const lastRead = read && read.length ? read[read.length - 1] : null;
+    const away = lastRead && all && !all.length ? liftOffIn(M3, exId, lastRead.mk, lastRead.date, T2) : 0;
     const ex = EXIn(M3, exId);
     const injM = exInjuryIn(M3, ex);
     const full = all ? all.filter((x2) => !offTarget(x2)) : [];
@@ -28654,10 +28661,13 @@ ${JSON.stringify(ctx, null, 1)}`;
     const b2 = blockAt(m3.b);
     if (!b2) return null;
     const ex = EX(b2.exId);
-    const now2 = draftMachine(b2.exId);
+    const d3 = state.draft;
+    const ms = liftMachines(b2.exId);
+    const k02 = draftMachine(b2.exId);
+    const now2 = d3 && k02 === d3.editingId && !ms.some((x2) => x2.key === k02) ? NEW_MACHINE : k02;
     const row = (k2, label) => b`<button class=${"mcrow" + (k2 === now2 ? " on" : "")} data-act="machinePick" data-b=${m3.b} data-k=${k2} aria-pressed=${String(k2 === now2)}><span class="mcdot"></span><span>${label}</span></button>`;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}</h3>${closeX()}</div>
-    <p class="mc-h">Machine</p><div class="mclist">${liftMachines(b2.exId).map(
+    <p class="mc-h">Machine</p><div class="mclist">${ms.map(
       (x2) => row(x2.key, `${fmtDate(x2.date)} · ${listLabel(ex, x2.w, true)} × ${x2.r}`)
     )}${row(NEW_MACHINE, "New machine")}</div></div>`;
   }

@@ -7,7 +7,7 @@
 import type { Exposure, ExerciseLike, Model } from './model';
 import { onMachine, activeRoutineIn } from './model';
 import { addDays, daysBetween, EPS_SAME, WEEK_DAYS, PERCENT } from './util';
-import { afterBreak, lighter, sameRR, TREND_DAYS, GROW_PCT, t90, TREND_MIN, STALL } from './formulas';
+import { lighter, sameRR, TREND_DAYS, GROW_PCT, t90, TREND_MIN, STALL } from './formulas';
 
 import { bwRefIn } from './setread';
 
@@ -33,7 +33,7 @@ export function trendScope<X extends Exposure>(every: readonly X[], anchor: stri
   const real = exps.filter(x => !lighter(x));
   const curRR = real.length ? real[real.length - 1].rr : null;
   let from = '';
-  for (let i = 1; i < exps.length; i++) if (afterBreak(exps[i - 1], exps[i].date)) from = exps[i].date;
+  for (let i = 1; i < exps.length; i++) if (exps[i].br) from = exps[i].date;
   const inRange = real.filter(x => sameRR(x.rr, curRR) && x.date >= from);
   const lastReal = real.length ? real[real.length - 1] : null;
   /* Its last session of any kind, a lighter one too: whether the lift is on a break today is read from it, as the

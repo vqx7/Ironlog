@@ -135,11 +135,15 @@ export function machineSheet(m: { b: number }): TemplateResult | null {
   const b = blockAt(m.b);
   if (!b) return null;
   const ex = EX(b.exId);
-  const now = draftMachine(b.exId);
+  const d = state.draft;
+  const ms = liftMachines(b.exId);
+  // New machine picked in an edit names the session by its own key, a row only once it is saved: until then, New machine.
+  const k0 = draftMachine(b.exId);
+  const now = d && k0 === d.editingId && !ms.some(x => x.key === k0) ? NEW_MACHINE : k0;
   const row = (k: string, label: string): TemplateResult =>
     html`<button class=${'mcrow' + (k === now ? ' on' : '')} data-act="machinePick" data-b=${m.b} data-k=${k} aria-pressed=${String(k === now)}><span class="mcdot"></span><span>${label}</span></button>`;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}</h3>${closeX()}</div>
-    <p class="mc-h">Machine</p><div class="mclist">${liftMachines(b.exId).map(x =>
+    <p class="mc-h">Machine</p><div class="mclist">${ms.map(x =>
       row(x.key, `${fmtDate(x.date)} · ${listLabel(ex, x.w, true)} × ${x.r}`)
     )}${row(NEW_MACHINE, 'New machine')}</div></div>`;
 }
