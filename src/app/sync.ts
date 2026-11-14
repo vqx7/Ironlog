@@ -634,6 +634,12 @@ export function mergeChunk(
     // Closed on one side (finished or discarded) while the other ticked on: closed stays closed, whichever edit was
     // later, since closing is the lifter's call; the sets ticked since are kept by keepLost (joined to the saved session).
     if (bd && ((!rd && ld && ld.id === bd.id) || (!ld && rd && rd.id === bd.id))) return { draft: null };
+    /* The same with the next workout started on the side that closed it, which notes the one it follows: it stays open,
+       and the sets ticked late in the closed one join its session (NEW-134: the later edit won, so a phone behind
+       brought the finished workout back open on both and saved the next one away as a session). A workout chosen at a
+       first sign-in follows nothing, so there the later edit still decides (S-13). */
+    if (bd && ld && rd && ld.id === bd.id && rd.follows === bd.id) return { draft: r.draft };
+    if (bd && ld && rd && rd.id === bd.id && ld.follows === bd.id) return { draft: l.draft };
     // Otherwise one session in progress is one record: the later edit replaces the other (keepLost keeps the other's sets).
     const v = merge3Val(base ? base.d : '?', l.draft || null, r.draft || null, remoteWins, stat);
     return { draft: v === undefined ? null : v };
@@ -807,7 +813,8 @@ function keepLost(
   lost: DraftLike | null | undefined,
   now: DraftLike | null,
   agreed: DraftLike | null | undefined,
-  remoteWins: boolean
+  remoteWins: boolean,
+  tabs = false
 ): Kept {
   if (!lost || lost.editingId || (now && now.id === lost.id)) return null;
   const kept = draftSession(lost),
@@ -844,7 +851,7 @@ function keepLost(
       normalize({ ...state, sessions: state.sessions.map(q => (q.id === lost.id ? joined : q)), cardio: cardioNow })
     );
     edited(joined.date);
-    conflictNote(stat);
+    conflictNote(stat, tabs);
     return sets ? 'joined' : 'cardioJoined';
   }
   // Closed on the other phone with no session of its id (discarded there): what was done here is kept, as its ticked sets are.
@@ -895,13 +902,24 @@ async function sessionFromCloud(d: DraftLike, legB: Base | null): Promise<void> 
   saveMeta();
 }
 /** Says how many records were edited on two devices, if any (the later edit kept). */
-function conflictNote(stat: { conflicts: number }): void {
-  if (stat.conflicts) {
-    log('sync-conflict', `${stat.conflicts} record(s) edited on two devices; kept the later edit`);
-    fx.toast(
-      `${stat.conflicts} item${stat.conflicts === 1 ? ' was' : 's were'} edited on two devices. The later edit was kept.`
-    );
-  }
+/* What a clash kept, in words that are true of it. Between devices the later edit is kept, by each document's time
+   of edit. Between two tabs of one phone the tab merging keeps the other tab's copy (mergeIn): when both changed one
+   item before either heard the other, that copy may be the earlier change, so the words say whose was kept, not
+   that it was later (NEW-124: they said "The later edit was kept" of the earlier one). */
+/** Says how many items were changed in two places at once, and which copy was kept: the later edit between devices (tabs false), the other tab's between tabs. */
+function conflictNote(stat: { conflicts: number }, tabs = false): void {
+  const n = stat.conflicts;
+  if (!n) return;
+  log(
+    'sync-conflict',
+    `${n} record(s) edited ${tabs ? "in two tabs; kept the other tab's copy" : 'on two devices; kept the later edit'}`
+  );
+  const items = `${n} item${n === 1 ? ' was' : 's were'}`;
+  fx.toast(
+    tabs
+      ? `${items} changed in two tabs at once. The other tab's change${n === 1 ? ' was' : 's were'} kept.`
+      : `${items} edited on two devices. The later edit was kept.`
+  );
 }
 /** What a write of a document expects it to hold, from the document as read (its record, or null when there is none). */
 function seenOf(d: Rec | null): CloudSeen {
@@ -1945,17 +1963,21 @@ function mergeIn(text: string, own: boolean): void {
     base = null;
   }
   const stat = { conflicts: 0 };
+  // The workout here before the merge: the copy that may lose it (below), and what is then said.
+  const dr0 = state.draft;
+  let kept: Kept = null;
   if (!base || canon(state) === canon(base)) setState(incoming);
   else {
     const L = chunksOf(state),
       Rr = chunksOf(incoming),
       B = chunksOf(base),
       parts: Record<string, Rec | null> = {};
-    /* A record changed in both tabs keeps the other tab's copy, the one saved first. Letting this tab's own copy win
-       on its own save (2.50's first fix of NEW-124) lost what the other tab logged: a tab behind took away the other's
-       new workout and its sets, a change typed lost to a later tick, and Undo took back the other tab's edit (the
-       review of 2.50 and 2.51, REV-1 to REV-4; tests/storage-sync.js S-6). NEW-124 is OPEN: keeping the later edit
-       needs each tab's time of change, and a workout's sets kept whichever copy wins. */
+    /* A record changed in both tabs keeps the other tab's copy. Letting this tab's own copy win on its own save
+       (2.50's first fix of NEW-124) lost what the other tab logged: a tab behind took away the other's new workout and
+       its sets, a change typed lost to a later tick, and Undo took back the other tab's edit (the review of 2.50 and
+       2.51, REV-1 to REV-4; tests/storage-sync.js S-6). A tab shown again takes in the other's saves first
+       (onVisibility), so a clash needs both tabs changing one item before either hears the other, a moment; the
+       words then say whose copy was kept (conflictNote). */
     for (const id of new Set([...Object.keys(L), ...Object.keys(Rr), ...Object.keys(B)]))
       parts[id] = mergeChunk(
         id,
@@ -1966,6 +1988,25 @@ function mergeIn(text: string, own: boolean): void {
         stat
       );
     setState(assemble(parts));
+    /* The copy of the workout that lost the merge keeps its sets, as on two phones (keepLost): this tab's when it held
+       something logged the other tab's save lacked, the other tab's when it did and this tab's copy stood. Logged means
+       a set ticked or changed once ticked, or cardio entered: a load being typed or a question answered is no reason to
+       keep a workout the other tab discarded (the review of 2.53, REV13-8: Discard in one tab while a load was typed in
+       the other, and the workout came back in History). Before 2.53 a set ticked in a tab behind, in a workout the
+       other tab had finished, was dropped without a word (REV12-6). */
+    const agreed = base.draft;
+    const loggedNew = (d: DraftLike | null | undefined): boolean => {
+      if (!d) return false;
+      const was = agreed && agreed.id === d.id ? agreed : null;
+      const rows = new Set(was ? was.ex.flatMap(b => b.sets.filter(x => x.done).map(x => canon(x))) : []);
+      const cards = new Set(was ? (was.cardio || []).map(c => canon(c)) : []);
+      return (
+        d.ex.some(b => b.sets.some(x => x.done && !rows.has(canon(x)))) ||
+        (d.cardio || []).some(c => !!c.min && !cards.has(canon(c)))
+      );
+    };
+    if (loggedNew(dr0)) kept = keepLost(dr0, state.draft, agreed, true, true);
+    if (loggedNew(incoming.draft)) keepLost(incoming.draft, state.draft, agreed, true, true);
   }
   device.lastSaved = text;
   clearTimer(saveT);
@@ -1976,7 +2017,9 @@ function mergeIn(text: string, own: boolean): void {
   if (own || canon(state) !== canon(incoming)) saveNow();
   if (!ui.modal) fx.rerenderKeepScroll();
   else fx.render();
-  conflictNote(stat);
+  conflictNote(stat, true);
+  // What became of what was done here, when the workout it was done in was closed in the other tab.
+  if (kept) draftNote(dr0, kept);
 }
 function onVisibility(): void {
   if (document.visibilityState === 'hidden') {
@@ -1985,7 +2028,13 @@ function onVisibility(): void {
       clearTimer(cloud.t);
       cq(cloudFlush);
     }
-  } else if (cloud.on && Date.now() - cloud.lastPull > SYNC_MS.pullAfter) cq(cloudPull);
+  } else {
+    /* Shown again: what another tab saved meanwhile is taken in first, since a hidden page may hear none of it, so a
+       change made here next is the later one and is kept (NEW-124: it met that save unheard, and lost to it). */
+    const cur = storedElsewhere();
+    if (cur != null) mergeIn(cur, false);
+    if (cloud.on && Date.now() - cloud.lastPull > SYNC_MS.pullAfter) cq(cloudPull);
+  }
 }
 function onPageHide(): void {
   if (saveT) saveNow();

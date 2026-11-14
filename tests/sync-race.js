@@ -234,7 +234,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
     await A.ev(() => window.__ironlog.sync()); await wait(900);
     const r = await A.ev(() => ({ draft: window.__ironlog.state.draft && window.__ironlog.state.draft.id, toasts: window.__toasts }));
     ok(r.draft === 'w2' && has(await ids(A), 'w1') && has(serverIds(user.id), 'w1'), '8: the new workout is open and the finished one saved, here and in the account', { r, server: serverIds(user.id) });
-    ok(!r.toasts.some(t => /edited on two devices/.test(t)), '8: NEW-68: one phone alone is never told a record was edited on two devices (2.27 and the 2.28 reviewed: it was)', r.toasts);
+    ok(!r.toasts.some(t => /edited on two devices|changed in two tabs/.test(t)), '8: NEW-68: one phone alone is never told a record was edited on two devices (2.27 and the 2.28 reviewed: it was)', r.toasts);
     ok(!A.errors.length, '8: no page errors', A.errors);
     await A.ctx.close();
   }

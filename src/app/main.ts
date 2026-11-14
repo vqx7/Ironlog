@@ -277,7 +277,7 @@ import {
   weekPlan
 } from './display';
 import { markupOf, viewStart } from './view';
-import { ask, openModal, render, rerenderKeepScroll, setRoot, setSaveState, setSheets } from './page';
+import { ask, closeModal, openModal, render, rerenderKeepScroll, setRoot, setSaveState, setSheets } from './page';
 import { updateStart } from './update';
 import { bwEvery, profApplyList, profMoveBands, SAFETY_TXT } from './settings';
 import { planEvidenceNote, sessionCapNote } from './plan';
@@ -817,7 +817,7 @@ function start(): void {
      never loses (toast.ts, 2.48): marked so here, in the one place they reach the page. */
   const notice = (msg: string, undo?: boolean | null, ms?: number | null, kind?: string): void =>
     toast(msg, undo, ms, kind ?? 'notice');
-  setFx({ render, rerenderKeepScroll, toast: notice, undoToastHide, setSaveState, syncLine, obGate, ask });
+  setFx({ render, rerenderKeepScroll, toast: notice, undoToastHide, setSaveState, syncLine, obGate, ask, closeModal });
   storageStart();
   syncStart();
   // Fields typed in, and the update bar: started before the page's handlers are added below.

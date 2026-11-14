@@ -10,7 +10,7 @@ import { picStripSaved } from './notepics';
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { repeat } from 'lit-html/directives/repeat.js';
-import { act, toTrash } from './act';
+import { act, toTrash, trashShown } from './act';
 import { CARDIOL, CWHENL } from './library';
 import { fmtDate, fmtDateRow, sessTm } from './format';
 import { isWork } from './formulas';
@@ -63,7 +63,7 @@ export function viewHistory(): TemplateResult {
   const keyed: [string, TemplateResult][] = [];
   const cs = [...state.cardio].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   if (cs.length) keyed.push(['cardio', cardioSec(cs)]);
-  const tr = state.trash;
+  const tr = trashShown();
   if (tr.length) keyed.push(['trash', trashSec()]);
   const impLine = html`<p class="small u-m14-0-0"><button class="linkbtn u-minh44" data-act="impOpen" data-tip=${IMPORT_TIP}>Import workouts</button></p>
 `;
@@ -115,7 +115,7 @@ function trashName(x: (typeof state.trash)[number]): string {
 }
 
 function trashSec(): TemplateResult {
-  const tr = state.trash;
+  const tr = trashShown();
   return section({
     sk: 'history:trash',
     key: 'trash',
@@ -123,7 +123,7 @@ function trashSec(): TemplateResult {
     sub: html`<span class="hastip" data-tip=${`The ${TRASH_MAX} most recent deletions, each kept ${TRASH_DAYS} days`}>${tr.length}</span>`,
     body: html`<ul class="clist">${tr.map(x => {
       const nm = trashName(x);
-      return html`<li><span>${nm} <span class="small muted">deleted ${fmtDate(x.date)}</span></span><span class="row u-g6_fnone"><button class="btn sm" data-act="restore" data-id=${x.id} data-k=${x.kind}>Restore</button><button class="ib sm" data-act="trashDel" data-id=${x.id} data-k=${x.kind} aria-label=${`Delete ${nm} for good`}>✕</button></span></li>
+      return html`<li><span>${nm} <span class="small muted">${x.clash ? 'edited on two devices' : `deleted ${fmtDate(x.date)}`}</span></span><span class="row u-g6_fnone"><button class="btn sm" data-act="restore" data-id=${x.id} data-k=${x.kind}>Restore</button><button class="ib sm" data-act="trashDel" data-id=${x.id} data-k=${x.kind} aria-label=${`Delete ${nm} for good`}>✕</button></span></li>
 `;
     })}</ul>
 <p class="small u-m10-0-0"><button class="linkbtn u-minh44" data-act="trashEmpty">Delete all for good</button></p>
@@ -331,7 +331,7 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     toast('Deleted for good', true);
   },
   trashEmpty() {
-    const n = state.trash.length;
+    const n = trashShown().length;
     if (!n) return;
     confirmBox(
       `Empty Recently deleted (${n} item${n > 1 ? 's' : ''})?`,

@@ -495,9 +495,10 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     const k2 = (await A.stored()).sessions.find(s => s.id === 'k2');
     // 2.49's rule, kept: the tab that has not heard the other's save takes that save's copy (NEW-124 is OPEN: the later
     // edit should be kept; 2.50's first fix let this tab's own copy win, and lost logged sets, REV-1 to REV-4).
-    ok(k2 && k2.notes === 'from A', 'S-6: the same record changed in both tabs keeps one whole copy, the one saved first (NEW-124 OPEN)', k2 && k2.notes);
+    ok(k2 && k2.notes === 'from A', 'S-6: the same record changed in both tabs at once keeps one whole copy, the one saved first (NEW-124: the moment before either tab hears the other)', k2 && k2.notes);
     const said = await B.ev(() => (window.__toasts || []).map(t => t.text));
-    ok(said.some(t => t === '1 item was edited on two devices. The later edit was kept.'), 'S-6: and the app says "1 item was edited on two devices. The later edit was kept."', { B: said, A: await A.ev(() => (window.__toasts || []).map(t => t.text)) });
+    // NEW-124: 2.49 said "1 item was edited on two devices. The later edit was kept.", untrue here: the other tab's earlier change was kept.
+    ok(said.some(t => t === "1 item was changed in two tabs at once. The other tab's change was kept.") && !said.some(t => /later edit/.test(t)), 'S-6: and the app says what was kept: "1 item was changed in two tabs at once. The other tab\'s change was kept." (NEW-124)', { B: said, A: await A.ev(() => (window.__toasts || []).map(t => t.text)) });
     await A.close();
 
     // The independent review of 2.50 and 2.51 (REV-1, REV-2, REV-4): a tab that has not heard the other's saves never
@@ -528,6 +529,13 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const st = await A1.stored(), d = draftOf(st);
       ok(w2 && w2 !== w1 && d && d.id === w2 && d.ticked === 2 && st.sessions.filter(x => x.id === w1).length === 1, 'S-6: a tab behind the other ticks a set in a workout the other finished: the new workout and its two ticked sets are kept, and the finished one is saved once (REV-1)', { d, w1, w2, saved: st.sessions.filter(x => x.id === w1).length });
       ok((await A1.ev(() => window.__ironlog.state.draft && window.__ironlog.state.draft.id)) === w2, 'S-6: and the tab that started it still shows the new workout (REV-1)');
+      // REV12-6: the set the tab behind ticked in the finished workout is not dropped: it joins the session saved.
+      const s1 = st.sessions.find(x => x.id === w1);
+      const n1 = s1 ? s1.ex.reduce((n, b) => n + b.sets.length, 0) : 0;
+      ok(n1 === 2, 'S-6: and the set the tab behind ticked in the finished workout joins its saved session (REV12-6)', { sets: s1 && s1.ex.map(b => b.sets.map(x => [x.w, x.r])) });
+      const saidB1 = await B1.ev(() => (window.__toasts || []).map(t => t.text));
+      // Said with what the merge kept, in one message (toast.ts joins what one change says).
+      ok(saidB1.some(t => t.includes('The workout in progress was saved on another device. What was done here since was added to it.')), 'S-6: and the tab behind says so (REV12-6)', saidB1);
       await A1.close();
     }
     {
@@ -582,6 +590,98 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       await A6.close();
     }
     {
+      // NEW-124: a tab left in the background, where it hears nothing, while the other tab changes a note; shown again,
+      // it catches up first, so a change made there after is the later one: kept, with nothing said about a clash.
+      const A7 = await phone({ seed: function (S) { S.sessions.push({ id: 'k7', date: '2026-11-05', dayIdx: 0, dayName: 'Day 1', notes: 'first', ex: [{ exId: 'bench', sets: [{ w: 62.5, r: 8, rir: 2, done: true }] }] }); S.settings.lastExport = '2026-11-11'; } });
+      const B7 = await tab(A7, FILE); B7.ev = (f, a) => B7.page.evaluate(f, a); await wait(300);
+      const shown = v => B7.ev(v => { Object.defineProperty(document, 'visibilityState', { value: v, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); }, v);
+      await B7.ev(() => { window.__deaf = true; }); await shown('hidden');
+      await A7.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'k7').notes = 'typed in tab A'; }); });
+      await wait(300);
+      // Shown again, still hearing nothing: being shown is what catches it up.
+      await shown('visible'); await wait(250);
+      const seen = await B7.ev(() => window.__ironlog.state.sessions.find(s => s.id === 'k7').notes);
+      ok(seen === 'typed in tab A', 'S-6: a tab shown again catches up with what the other tab saved meanwhile (NEW-124)', seen);
+      await B7.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'k7').notes = 'typed in tab B'; }); });
+      await wait(400);
+      await B7.ev(() => { window.__deaf = false; }); await wait(300);
+      const note = (await A7.stored()).sessions.find(s => s.id === 'k7').notes;
+      const said7 = [...(await A7.ev(() => (window.__toasts || []).map(t => t.text))), ...(await B7.ev(() => (window.__toasts || []).map(t => t.text)))];
+      ok(note === 'typed in tab B' && !said7.some(t => /two devices|two tabs/.test(t)), 'S-6: so the change made there after is the later one: kept, and no clash is said (NEW-124)', { note, said: said7 });
+      await A7.close();
+    }
+    {
+      // REV12-6: tab A finishes the workout; tab B, behind, ticks one more set in it. Closed stays closed, and B's set
+      // joins the session A saved, as it does when the two are phones on one account.
+      const A8 = await phone({ seed: function (S) { S.settings.lastExport = '2026-11-11'; S.settings.autoDone = false; } });
+      const B8 = await tab(A8, FILE); B8.ev = (f, a) => B8.page.evaluate(f, a); await wait(300);
+      await start(A8); await tick(A8, 0, 0, '100', '8'); await wait(300);
+      await B8.page.click('#tabs [data-tab="today"]'); await wait(300);
+      const w = await A8.ev(() => window.__ironlog.state.draft.id);
+      await B8.ev(() => { window.__deaf = true; });
+      await A8.ev(() => { const L = window.__ironlog; L.state.draft._leftAsked = true; L.state.draft._rampAsked = true; L.ACT.finishNow(); }); await wait(300);
+      await A8.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+      await tick(B8, 0, 1, '100', '7'); await wait(500);
+      await B8.ev(() => { window.__deaf = false; }); await wait(400);
+      const st = await A8.stored(), s = st.sessions.find(x => x.id === w);
+      const sets = s ? s.ex.flatMap(b => b.sets.map(x => x.r)) : null;
+      ok(!st.draft && JSON.stringify(sets) === '[8,7]', 'S-6: a set ticked in a tab behind the other, in the workout the other finished, joins the saved session, and the workout stays closed (REV12-6)', { draft: !!st.draft, sets });
+      const said8 = await B8.ev(() => (window.__toasts || []).map(t => t.text));
+      ok(said8.includes('The workout in progress was saved on another device. What was done here since was added to it.'), 'S-6: and the tab behind says so (REV12-6: dropped without a word)', said8);
+      ok((await B8.ev(() => !window.__ironlog.state.draft)), 'S-6: and the tab behind shows it closed too');
+      await A8.close();
+    }
+    {
+      // The review of 2.53 (REV13-8): two sets ticked, both tabs agreed. Tab B types a load in the next row; within its
+      // 0.4 s, before it is saved, tab A's Discard is confirmed. A load typed is nothing logged: the discard stands,
+      // and the workout does not come back in History.
+      const A9 = await phone({ seed: function (S) { S.settings.lastExport = '2026-11-11'; S.settings.autoDone = false; } });
+      const B9 = await tab(A9, FILE); B9.ev = (f, a) => B9.page.evaluate(f, a); await wait(300);
+      await start(A9); await tick(A9, 0, 0, '100', '8'); await tick(A9, 0, 1, '100', '8'); await wait(300);
+      await B9.page.click('#tabs [data-tab="today"]'); await wait(300);
+      const w = await A9.ev(() => window.__ironlog.state.draft.id);
+      await A9.page.click('#view [data-act="discard"]'); await wait(300);
+      await B9.page.fill('#view input[data-f="w"][data-b="0"][data-s="2"]', '110');
+      await confirmOk(A9); await wait(900);
+      const st = await A9.stored();
+      const back = { draft: !!st.draft, inHistory: st.sessions.some(x => x.id === w), tabB: await B9.ev(id => window.__ironlog.state.sessions.some(x => x.id === id), w) };
+      ok(!back.draft && !back.inHistory && !back.tabB, 'S-6: a workout discarded in one tab while a load was typed in the other stays discarded, not saved to History (REV13-8)', back);
+      await A9.close();
+    }
+    {
+      // REV13-11: Swap open in tab B on the second exercise; tab A moves that exercise up. The lift picked in tab B
+      // replaces the exercise the sheet was opened on, now first, not the one now in its place.
+      const A10 = await phone({ seed: function (S) { S.settings.lastExport = '2026-11-11'; } });
+      const B10 = await tab(A10, FILE); B10.ev = (f, a) => B10.page.evaluate(f, a); await wait(300);
+      await start(A10); await B10.page.click('#tabs [data-tab="today"]'); await wait(300);
+      const ids0 = await A10.ev(() => window.__ironlog.state.draft.ex.map(b => b.exId));
+      await B10.page.click('#view [data-act="bMenu"][data-b="1"]'); await wait(250); await B10.page.click('#modal [data-act="bMenuDo"][data-op="bSwap"]'); await wait(300);
+      await A10.page.click('#view [data-act="bMenu"][data-b="1"]'); await wait(250); await A10.page.click('#modal [data-act="bMenuDo"][data-op="bUp"]'); await wait(500);
+      const pick = await B10.ev(not => [...document.querySelectorAll('#pickList .pick[data-ex]')].map(p => p.dataset.ex).find(x => !not.includes(x)), ids0);
+      if (pick) { await B10.page.click(`#pickList .pick[data-ex="${pick}"]`); await wait(500); }
+      const ids1 = (await A10.stored()).draft.ex.map(b => b.exId);
+      ok(pick && ids1[0] === pick && ids1[1] === ids0[0], 'S-6: Swap open in one tab while the other moved that exercise: the pick replaces the exercise the sheet was opened on (REV13-11)', { before: ids0, picked: pick, after: ids1 });
+      await A10.close();
+    }
+    {
+      // REV15-5: the same with the note sheet, which holds its exercise as `bi`. The first exercise has a note; tab B
+      // opens the second's; tab A moves the second up. The note typed in tab B goes on the exercise it was opened on,
+      // and the other keeps its own (it went to the exercise moved into the place, over its note).
+      const A11 = await phone({ seed: function (S) { S.settings.lastExport = '2026-11-11'; } });
+      const B11 = await tab(A11, FILE); B11.ev = (f, a) => B11.page.evaluate(f, a); await wait(300);
+      await start(A11); await B11.page.click('#tabs [data-tab="today"]'); await wait(300);
+      await A11.ev(() => window.__ironlog.ACT.bNote({ dataset: { b: '0' } })); await wait(250);
+      await A11.page.fill('#mNote', 'elbows tucked'); await A11.page.click('#modal [data-act="noteSave"]'); await wait(500);
+      const ids0 = await A11.ev(() => window.__ironlog.state.draft.ex.map(b => b.exId));
+      await B11.ev(() => window.__ironlog.ACT.bNote({ dataset: { b: '1' } })); await wait(300);
+      await A11.page.click('#view [data-act="bMenu"][data-b="1"]'); await wait(250); await A11.page.click('#modal [data-act="bMenuDo"][data-op="bUp"]'); await wait(600);
+      if (await B11.ev(() => !!document.getElementById('mNote'))) { await B11.page.fill('#mNote', 'left shoulder clicks'); await B11.page.click('#modal [data-act="noteSave"]'); await wait(600); }
+      const notes = (await A11.stored()).draft.ex.map(b => [b.exId, b.note || '']);
+      const of = id => (notes.find(n => n[0] === id) || [])[1];
+      ok(of(ids0[1]) === 'left shoulder clicks' && of(ids0[0]) === 'elbows tucked', 'S-6: a note typed in one tab while the other moved that exercise goes on the exercise it was opened on, and the other keeps its own (REV15-5)', notes.slice(0, 3));
+      await A11.close();
+    }
+    {
       // REV-3: the same with both tabs signed in to one account: one copy ends up everywhere, and it is said once.
       const C = cloudOf();
       const A4 = await phone({ cloud: C, uid: 'u6r', seed: function (S) { S.sessions.push({ id: 'k4', date: '2026-11-05', dayIdx: 0, dayName: 'Day 1', notes: 'first', ex: [{ exId: 'bench', sets: [{ w: 62.5, r: 8, rir: 2, done: true }] }] }); S.settings.lastExport = '2026-11-11'; } });
@@ -591,7 +691,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(onA && onB, 'S-6: (setup) both tabs synced to the account', { onA, onB, B: await B4.ev(() => window.__ironlog.cloudState()) });
       await A4.flush(); await B4.ev(() => window.__ironlog.flush()); await wait(500);
       // Every showing of the message counted, the same words shown again included.
-      await B4.ev(() => { window.__said = 0; const el = document.getElementById('toast'); new MutationObserver(ms => { if (!el.hidden && ms.some(m => m.type === 'childList' && m.target === el) && /edited on two devices/.test(el.innerText)) window.__said++; }).observe(el, { childList: true, subtree: true }); });
+      await B4.ev(() => { window.__said = 0; const el = document.getElementById('toast'); new MutationObserver(ms => { if (!el.hidden && ms.some(m => m.type === 'childList' && m.target === el) && /edited on two devices|changed in two tabs/.test(el.innerText)) window.__said++; }).observe(el, { childList: true, subtree: true }); });
       await B4.ev(() => { window.__deaf = true; });
       await A4.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'k4').notes = 'typed in tab A'; }); });
       await wait(2200);
@@ -602,7 +702,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       await A4.flush(); await B4.ev(() => window.__ironlog.flush()); await wait(800);
       const noteOf = st => (st.sessions.find(x => x.id === 'k4') || {}).notes;
       const got = { save: noteOf(await A4.stored()), account: noteOf(C.doc('u6r', 's-2026-11-1') || { sessions: [] }), A: noteOf(await A4.ev(() => window.__ironlog.state)), B: noteOf(await B4.ev(() => window.__ironlog.state)), said: await B4.ev(() => window.__said) };
-      ok(got.save === 'typed in tab A' && got.account === got.save && got.A === got.save && got.B === got.save, 'S-6: signed in, the same record changed in both tabs: one whole copy on the phone, in the account and in both tabs (REV-3, NEW-124 OPEN)', got);
+      ok(got.save === 'typed in tab A' && got.account === got.save && got.A === got.save && got.B === got.save, 'S-6: signed in, the same record changed in both tabs at once: one whole copy on the phone, in the account and in both tabs (REV-3, NEW-124)', got);
       ok(got.said === 1, 'S-6: and the app says it once (REV-3: twice on 2.50\'s first fix)', got.said);
       await A4.close();
     }
@@ -704,13 +804,21 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       S.settings.lastExport = '2026-11-11';
     }, arg: [new Date(Date.parse(DAY + 'T12:00:00Z') - TRASH_DAYS * 864e5).toISOString().slice(0, 10), new Date(Date.parse(DAY + 'T12:00:00Z') - (TRASH_DAYS + 1) * 864e5).toISOString().slice(0, 10)] });
     const ids = () => P.ev(() => window.__ironlog.state.trash.map(t => t.id));
-    ok(JSON.stringify(await ids()) === '["old30"]', `S-8: a deletion ${TRASH_DAYS} days old is kept, one ${TRASH_DAYS + 1} days old is gone`, await ids());
+    // The days are counted by this phone's date where Recently deleted is shown, and when something is deleted (a
+    // change the lifter makes), never where the log is read, so every phone reads one log the same way (REV12-T2,
+    // S-26), and never as a change the app makes by itself at open (the review of 2.53, REV13-9: that marked the log
+    // as edited then, and an older edit kept here beat a later one made on another phone). The seeded log opened again:
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(500);
+    ok((await P.ev(() => window.__writes.length)) === 0, `S-8: opening the app with a deletion past its ${TRASH_DAYS} days changes nothing in the log (REV13-9)`, await P.ev(() => window.__writes.length));
+    await P.tabTo('history'); await secOpen(P, 'history:trash');
+    const listed = () => P.ev(() => [...document.querySelectorAll('#view [data-act="restore"]')].map(b => b.dataset.id));
+    ok(JSON.stringify(await listed()) === '["old30"]', `S-8: a deletion ${TRASH_DAYS} days old is listed, one ${TRASH_DAYS + 1} days old is not`, await listed());
     // A session deleted in History, by its Delete button and the confirm.
-    await P.tabTo('history');
     await P.page.click('#view [data-act="histToggle"][data-id="t22"]'); await wait(150);
     const said = await P.ev(() => { window.__ironlog.ACT.histDel({ dataset: { id: 't22' } }); const m = document.querySelector('#modal .sheet'); return m ? m.innerText.replace(/\s+/g, ' ') : ''; });
     ok(said.includes(`It stays under Recently deleted for ${TRASH_DAYS} days (the ${TRASH_MAX} most recent items are kept).`), 'S-8: the delete says how long Recently deleted keeps it, and how many', said);
     await confirmOk(P);
+    ok(!(await P.stored()).trash.some(t => t.id === 'old31') && (await P.stored()).trash.some(t => t.id === 'old30'), `S-8: and that deletion, a change made, drops the one past its ${TRASH_DAYS} days from the save`, (await P.stored()).trash.map(t => t.id));
     await secOpen(P, 'history:trash');
     const row = await P.ev(() => { const b = document.querySelector('#view [data-act="restore"][data-id="t22"]'); return b ? b.closest('li').innerText.replace(/\s+/g, ' ') : null; });
     ok(row && /Day 22, .*deleted/.test(row), 'S-8: the deleted session is listed under Recently deleted in History, newest first', row);
@@ -1154,6 +1262,40 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const said = await B.toasts();
       ok(sb && sb.n === 2 && sb.t === aStart, 'two starts: the set phone B ticked first joins the session, which keeps the start phone A timed it from', { sb, aStart });
       ok(!said.some(t => /edited on two devices/.test(t)) && said.some(t => /What was done here since was added to it/.test(t)), 'two starts: and phone B is told only of the join, not of an item edited on two devices (REV13-5 and REV13-6: "2 items were edited on two devices")', said);
+    }
+
+    // ---- NEW-134: one phone finishes the workout and starts the next; the other, offline and behind, ticks one more
+    // set in the first, later. The next workout, which notes the one it follows, stands on both, whichever edit was
+    // later, since closing is the lifter's call, and the late set joins the finished session (before, the later edit
+    // won: the finished workout came back open on both phones and the next one was saved away as a session). The
+    // same with the app closed and opened again between the two workouts, the usual order on a phone (REV15-6: what
+    // the phone closed was known for the visit only, so the finished workout came back open on both), and with an
+    // empty workout started and discarded between them, the wrong day tapped (REV16-A3: the next one followed the empty
+    // one, so the finished workout came back open on both).
+    for (const between of ['', 'reopen', 'empty']) {
+      const reopen = between === 'reopen';
+      const said = reopen ? ' (the app closed and opened again between the two workouts, REV15-6)' : between === 'empty' ? ' (an empty workout started and discarded between them, REV16-A3)' : '';
+      const cloud = cloudOf();
+      const A = await phoneTwo(browser, cloud, 'u1'); pages.push(A);
+      await wait(900); await A.start(4); await A.tick(0, 100, 8); await A.flush();
+      const B = await phoneTwo(browser, cloud, 'u1'); pages.push(B);
+      await wait(1500); await B.sync();
+      const w1 = (await B.draft()) && (await B.draft()).id;
+      await B.ev(() => { window.__offline = true; });
+      await A.finish();
+      if (reopen) { await A.flush(); await A.reopen(); }
+      if (between === 'empty') { await A.start(4); await A.ev(() => window.__ironlog.ACT.discard()); await wait(200); }
+      await A.start(4); await A.tick(0, 110, 8); await A.flush(); await wait(400);
+      const w2 = (await A.draft()) && (await A.draft()).id;
+      await wait(1100);
+      await B.tick(1, 100, 7); await wait(1500);
+      await B.ev(() => { window.__offline = false; }); await B.flush(); await wait(1600); await B.flush(); await A.sync(); await wait(600);
+      const ad = await A.draft(), bd = await B.draft();
+      ok(w1 && w2 && w2 !== w1 && ad && bd && ad.id === w2 && bd.id === w2 && ad.sets[0].done && bd.sets[0].done, 'moved on: the next workout stands on both phones, its set ticked, whichever edit was later' + said, { w1, w2, ad, bd });
+      const s1 = async P => { const s = (await P.sessions()).find(x => x.id === w1); return s ? s.sets.map(x => x.join('x')).join(' ') : null; };
+      const a1 = await s1(A), b1 = await s1(B), acct = cloud.sessionsIn('u1').filter(s => s.id === w1).map(s => s.ex[0].sets.map(x => `${x.w}x${x.r}`).join(' '));
+      ok(a1 === '100x8 100x7' && b1 === a1 && acct.join() === a1, 'moved on: and the set the phone behind ticked late joins the finished session, on both phones and in the account' + said, { a1, b1, acct });
+      ok(!(await A.sessions()).some(s => s.id === w2), 'moved on: and the next workout is not saved away as a session' + said, await A.ids());
     }
 
     // ---- F6: cardio typed on the phone whose copy lost, with a ticked set and without.
@@ -1691,6 +1833,34 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     // Where they differ, if they do: the first character apart, with what each says there.
     const at = [...a].findIndex((c, i) => c !== b[i]);
     ok(a === b, 'S-26: two phones (another time zone, language, screen and theme) read the same log the same way', a === b ? '' : { a: a.slice(Math.max(0, at - 200), at + 120), b: b.slice(Math.max(0, at - 200), at + 120) });
+    // REV12-T2: the two phones above share one date. At one instant (07:30 UTC on Nov 12) it is still Nov 11 in Los
+    // Angeles and already Nov 12 in Tokyo; a deletion made on Oct 12 is then 30 days old on one and 31 on the other.
+    const instant = '2026-11-12T07:30:00Z';
+    const withOld = JSON.stringify({ ...raw, trash: [{ id: 't1', kind: 'session', date: '2026-10-12', data: { id: 't1', date: '2026-10-01', dayName: 'Old', ex: [] } }] });
+    const readAt = async tz => { const P = await phone({ tz, clock: instant, fresh: true }); const c = await P.ev(r => JSON.stringify(window.__ironlog.normalize(JSON.parse(r))), withOld); await P.close(); return c; };
+    const la = await readAt('America/Los_Angeles'), tokyo = await readAt('Asia/Tokyo');
+    ok(la === tokyo, 'S-26: at one instant, a phone where it is Nov 11 and one where it is Nov 12 read a deletion made Oct 12 the same way (REV12-T2)', la === tokyo ? '' : { losAngeles: la.includes('"t1"'), tokyo: tokyo.includes('"t1"') });
+    // REV13-12: a log holding one session's id twice with different sets: the copy with fewer sets goes to Recently
+    // deleted, the same entry on both phones at that instant.
+    const withDup = JSON.stringify({ ...raw, sessions: [...raw.sessions, { ...raw.sessions.find(x => x.id === 'a'), ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }, { w: 60, r: 7, rir: 2, done: true }] }] }] });
+    const readDup = async tz => { const P = await phone({ tz, clock: instant, fresh: true }); const c = await P.ev(r => JSON.stringify(window.__ironlog.normalize(JSON.parse(r)).trash), withDup); await P.close(); return c; };
+    const laD = await readDup('America/Los_Angeles'), tokyoD = await readDup('Asia/Tokyo');
+    ok(laD === tokyoD && /dup/.test(laD), 'S-26: and a session held twice puts the same entry in Recently deleted on both (REV13-12)', laD === tokyoD ? laD.slice(0, 120) : { losAngeles: laD.slice(0, 160), tokyo: tokyoD.slice(0, 160) });
+    // REV15-1: the other copy is kept for the lifter, whatever its date. A session from Sep 14 held twice (moved to Sep 20
+    // on one phone while its reps were corrected on another): the copy put aside is offered in Recently deleted, and a
+    // deletion made after keeps it (dated Sep 14, it was hidden at once and dropped by the next deletion, and the
+    // corrected reps were gone).
+    {
+      const old = { id: 'o', date: '2026-09-14', dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 9, rir: 2, done: true }, { w: 60, r: 8, rir: 2, done: true }] }] };
+      const P = await phone({ arg: old, seed: function (S, L, o) { S.settings.lastExport = '2026-11-11'; S.sessions.push(o, { ...o, date: '2026-09-20', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }, { w: 60, r: 8, rir: 2, done: true }] }] }, { id: 'y', date: '2026-11-03', dayIdx: 0, dayName: 'Day 2', notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }); } });
+      const held = () => P.ev(() => window.__ironlog.state.trash.filter(t => /dup/.test(t.id)).map(t => t.data.ex[0].sets.map(x => x.r).join()));
+      await P.tabTo('history');
+      const offered = await P.ev(() => { const v = document.getElementById('view'); const el = v.querySelector('details.sec[data-sk="history:trash"]'); if (el && !el.open) el.querySelector('summary').click(); return [...v.querySelectorAll('[data-act="restore"]')].map(b => b.dataset.id).filter(id => /dup/.test(id)).length; });
+      ok((await held()).join() === '9,8' && offered === 1, 'S-26: a session held twice and dated weeks back: the copy put aside is offered in Recently deleted (REV15-1)', { held: await held(), offered });
+      await P.ev(() => { const L = window.__ironlog; L.ACT.histDel({ dataset: { id: 'y' } }); }); await wait(80); await confirmOk(P); await wait(200);
+      ok((await held()).join() === '9,8', 'S-26: and a deletion made after it keeps that copy (REV15-1)', await held());
+      await P.close();
+    }
   }
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');

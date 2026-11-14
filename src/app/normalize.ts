@@ -29,7 +29,7 @@ import type {
 } from './types';
 import type { DraftLike } from './session';
 import type { State } from './store';
-import { addDays, clampN, hashStr, isDate, isNum, numOr, today, r1, r3, HUNDREDTHS, WEEK_DAYS, SUNDAY } from './util';
+import { clampN, hashStr, isDate, isNum, numOr, today, r1, r3, HUNDREDTHS, WEEK_DAYS, SUNDAY } from './util';
 import { LB } from './units';
 import {
   BANDS,
@@ -72,7 +72,6 @@ import {
   MEAS_MAX_CM,
   STATE_VERSION,
   TRASH_BYTES,
-  TRASH_DAYS,
   TRASH_MAX,
   cleanCal,
   cleanChk,
@@ -918,7 +917,7 @@ function equipList(v: unknown): string[] | undefined {
   return out.length ? out : undefined;
 }
 /** The draft fields this build writes only when valid (its pictures, its equipment): an invalid one is dropped, not kept as unknown. */
-const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics', 'equip', 'begunAt']);
+const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics', 'equip', 'begunAt', 'follows']);
 
 /* The workout in progress, cleaned: called only on one whose exercises are a
    list and whose date is a date (normalize), rebuilt field by field in place,
@@ -949,6 +948,8 @@ function cleanDraft(d: Rec, date: string): DraftLike {
     startedAt: isTime(startedAt) ? startedAt : null,
     // When the lifting began (NEW-129), once it has; absent before, so a workout's record is unchanged until then.
     ...(isTime(begunAt) ? { begunAt } : {}),
+    // The workout closed on this phone just before this one was started here (NEW-134); absent otherwise.
+    ...(typeof d.follows === 'string' && d.follows ? { follows: fixId(d.follows) } : {}),
     durMin: Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null,
     dayName: typeof d.dayName === 'string' ? d.dayName : 'Session',
     routineId: typeof d.routineId === 'string' && d.routineId ? fixId(d.routineId) : '',
@@ -1040,22 +1041,19 @@ function cleanExercises(listed: unknown[], s: Rec, removedLib: readonly string[]
   return exercises;
 }
 
-/** Recently deleted as a save holds it: each entry checked, the expired ones and the oldest past the limits dropped. */
+/* Entries past Recently deleted's days are hidden by this phone's date where they are shown and dropped when
+   something is deleted (act.ts trashShown and toTrash), not here: normalize reads every log the same way on every
+   phone (it runs in the sync's comparison too), and by the phone's own date one in Los Angeles kept a deletion that
+   one in Tokyo, a day ahead at that instant, dropped (REV12-T2). */
+/** Recently deleted as a save holds it: each entry checked, the oldest past the limits dropped. */
 function cleanTrash(listed: unknown[]): Trashed[] {
-  const cutoff = addDays(today(), -TRASH_DAYS);
   const trash: Trashed[] = listed
     .flatMap(t0 => {
       const t = rec(t0);
       const data = t ? rec(t.data) : null;
       const kind = t ? trashKind(t.kind) : null;
-      return t &&
-        typeof t.id === 'string' &&
-        kind &&
-        typeof t.date === 'string' &&
-        isDate(t.date) &&
-        t.date >= cutoff &&
-        data
-        ? [{ id: fixId(t.id), kind, date: t.date, data }]
+      return t && typeof t.id === 'string' && kind && typeof t.date === 'string' && isDate(t.date) && data
+        ? [{ id: fixId(t.id), kind, date: t.date, data, ...(t.clash === true ? { clash: true as const } : {}) }]
         : [];
     })
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
@@ -1162,8 +1160,19 @@ function dedupe<T extends { id: string; date: string }>(
   if (!extra.length) return list0;
   for (const x of extra) {
     const id = fixId(x.id + '-dup' + hashStr(canon(x)).slice(0, DUP_HASH));
-    if (!trash.some(t => t.id === id)) trash.unshift({ id, kind, date: today(), data: { ...rec(x), id } });
+    /* Dated by the copy's own date, not the phone's: every phone puts the same entry in Recently deleted, so one log
+       reads the same on each and the two copies never clash (the review of 2.53, REV13-12: a phone in Los Angeles and
+       one in Tokyo dated it a day apart). Marked as a copy put aside (`clash`), which Recently deleted keeps until the
+       lifter restores or deletes it: by its own date alone, a session from weeks back was hidden at once and dropped by
+       the next deletion, its edit with it (REV15-1). Put where Recently deleted's order puts it, newest first, after
+       the entries of its date, and the list held to its limits, so reading the log again gives the same list
+       (cleanTrash). */
+    if (trash.some(t => t.id === id)) continue;
+    const at = trash.findIndex(t => t.date < x.date);
+    trash.splice(at < 0 ? trash.length : at, 0, { id, kind, date: x.date, data: { ...rec(x), id }, clash: true });
   }
+  trash.splice(TRASH_MAX);
+  while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
   return [...byId.values()];
 }
 
