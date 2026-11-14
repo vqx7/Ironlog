@@ -182,7 +182,7 @@ function digest(spec) {
   const ws0 = (() => { const t = new Date(today + 'T12:00:00'); const g = (t.getDay() + 6) % 7; return add(today, -g); })();
   const weeks = [...new Set([...Array.from({ length: 10 }, (_, i) => add(ws0, -7 * i)), ...((s.settings.restWeeks) || []), add(ws0, 7)])];
   // The accessors and readers with no arguments.
-  for (const n of ['U', 'activeRoutine', 'freeMode', 'gymOf', 'injuredSet', 'isDeloadWeek', 'prof', 'rirHalfOn', 'barKg', 'sortedSessions', 'bwRef', 'calStats', 'pace', 'paceRatios', 'dateIndex', 'IDX', 'firstFullWeek', 'weekStats', 'weekStreak', 'coach', 'movers', 'readiness', 'stalledIds']) call(n);
+  for (const n of ['appU', 'activeRoutine', 'freeMode', 'gymOf', 'injuredSet', 'isDeloadWeek', 'prof', 'rirHalfOn', 'barKg', 'sortedSessions', 'bwRef', 'calStats', 'pace', 'paceRatios', 'dateIndex', 'IDX', 'firstFullWeek', 'weekStats', 'weekStreak', 'coach', 'movers', 'readiness', 'stalledIds']) call(n);
   // Identity, which values cannot show.
   const idn = [];
   for (const id of ids) { const rec = s.exercises.find(e => e.id === id); if (rec) idn.push(['EX is the record', id, L.EX(id) === rec]); }
@@ -193,7 +193,7 @@ function digest(spec) {
   // Made anew on each call in r51 (a sorted copy, a new Set): compared across builds, not held here.
   idn.push(['made anew', L.sortedSessions() === L.sortedSessions(), L.injuredSet() === L.injuredSet()]);
   out.push('identity ' + ser(idn));
-  for (const v of [0, 1, 2.5, 2.2679618, 20, 45.359237, 100.5, -40, 0.001, 1e-9, null, undefined]) { call('toD', v); call('fromD', v); call('fmtW', v); }
+  for (const v of [0, 1, 2.5, 2.2679618, 20, 45.359237, 100.5, -40, 0.001, 1e-9, null, undefined]) { call('toDApp', v); call('fromDApp', v); call('fmtWApp', v); }
   for (const v of [2.2679618, 2.5, 5, 1.25, 0, 10, 4.5359237]) call('stepRead', v);
   for (const d of [today, mid, dates[0] || today, '9999-12-31', '2000-01-01']) call('bwAt', d);
   // Calls on the id "constructor" are tagged, since they throw in both builds (byEx is a plain object).

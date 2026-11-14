@@ -20,20 +20,19 @@ import {
   activeRoutine,
   bwLoad,
   EX,
-  fmtWOf,
   freeMode,
   hardCredit,
   IDX,
   invalidate,
   liftU,
   lightZero,
-  loadLabel,
   oddLoad,
   rirEff,
   rirHalfOn,
   routineUpdates,
   sessModelMin,
-  sinceBack
+  sinceBack,
+  listLabel
 } from './live';
 import { state, ui } from './store';
 import { joinAdjacent, savedEx, draftCardio, effTarget, withNew, picsLast, typedMin } from './session';
@@ -394,7 +393,7 @@ function recapPr(pr: Pr): { name: string; what: string; was: string } {
       was: e.assist
         ? 'less help than ever'
         : isFinite(pr.prevW ?? NaN)
-          ? `heaviest before ${e.bw ? loadLabel(e, pr.prevW ?? 0) : fmtWOf(e, pr.prevW) + ' ' + liftU(e)}`
+          ? `heaviest before ${listLabel(e, pr.prevW ?? 0, !e.bw)}`
           : ''
     };
   const ps = pr.type === 'e1RM' && !isCompound(e) ? prSet(pr.exId, pr.date) : null;

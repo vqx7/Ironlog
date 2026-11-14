@@ -2292,12 +2292,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return null;
   }
   var UIn = (M3) => M3.u ?? M3.s.settings.unit;
-  var appUnitIn = (M3) => M3.s.settings.unit;
-  var liftUnitIn = (M3, ex) => ex && ex.unit || appUnitIn(M3);
+  var appUIn = (M3) => M3.s.settings.unit;
+  var liftUIn = (M3, ex) => ex && ex.unit || appUIn(M3);
   var bodyIn = (M3) => ({ unit: M3.s.settings.bwUnit });
-  var bodyUnitIn = (M3) => liftUnitIn(M3, bodyIn(M3));
+  var bodyUIn = (M3) => liftUIn(M3, bodyIn(M3));
+  function appModelIn(M3) {
+    return M3.u === void 0 ? M3 : { ...M3, u: void 0 };
+  }
   function liftModelIn(M3, ex) {
-    const u4 = liftUnitIn(M3, ex);
+    const u4 = liftUIn(M3, ex);
     return u4 === UIn(M3) ? M3 : { ...M3, u: u4 };
   }
   function EXIn(M3, id) {
@@ -2383,6 +2386,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var stepReadOfIn = (M3, ex, v3) => stepReadIn(liftModelIn(M3, ex), v3);
   var toDOfIn = (M3, ex, kg2) => toDIn(liftModelIn(M3, ex), kg2);
   var fromDOfIn = (M3, ex, v3) => fromDIn(liftModelIn(M3, ex), v3);
+  var toDAppIn = (M3, kg2) => toDIn(appModelIn(M3), kg2);
+  var fromDAppIn = (M3, v3) => fromDIn(appModelIn(M3), v3);
+  var typedBoundAppIn = (M3, v3, most) => typedBoundIn(appModelIn(M3), v3, most);
   var toDBodyIn = (M3, kg2) => toDOfIn(M3, bodyIn(M3), kg2);
   var fromDBodyIn = (M3, v3) => fromDOfIn(M3, bodyIn(M3), v3);
   function unitStepIn(M3) {
@@ -7359,6 +7365,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var emptyLoad = (ex) => ex.bw && !ex.assist ? "0" : "";
   var fmtWIn = (M3, kg2) => kg2 == null || isNaN(kg2) ? "" : String(r1(toDIn(M3, kg2)));
   var fmtWOfIn = (M3, ex, kg2) => fmtWIn(liftModelIn(M3, ex), kg2);
+  var fmtWAppIn = (M3, kg2) => fmtWIn(appModelIn(M3), kg2);
   var fmtBodyIn = (M3, kg2) => fmtWOfIn(M3, bodyIn(M3), kg2);
   function loadLabelIn(M3, ex, kg2) {
     M3 = liftModelIn(M3, ex);
@@ -7376,9 +7383,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return `${num3} ${u4}`;
   }
   function listLabelIn(M3, ex, kg2, named2) {
-    const lift = liftUnitIn(M3, ex), u4 = typedUnit(kg2) ?? lift;
+    const lift = liftUIn(M3, ex), u4 = typedUnit(kg2) ?? lift;
     const label = loadLabelIn(M3, { bw: ex.bw, unit: u4 }, kg2);
-    return named2 || u4 !== UIn(M3) || u4 !== lift || u4 !== appUnitIn(M3) ? `${label} ${u4}` : label;
+    return named2 || u4 !== UIn(M3) || u4 !== lift || u4 !== appUIn(M3) ? `${label} ${u4}` : label;
   }
   function swapWIn(M3, ex, res, nw) {
     M3 = liftModelIn(M3, ex);
@@ -10182,12 +10189,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     };
   }
   var EX = live(EXIn);
-  var appU = live(appUnitIn);
-  var bodyU = live(bodyUnitIn);
+  var appU = live(appUIn);
+  var bodyU = live(bodyUIn);
   var fmtBody = live(fmtBodyIn);
   var toDBody = live(toDBodyIn);
   var fromDBody = live(fromDBodyIn);
-  var liftU = live(liftUnitIn);
+  var liftU = live(liftUIn);
   var activeRoutine = live(activeRoutineIn);
   var bandOf = live(bandOfIn);
   var exInjury = live(exInjuryIn);
@@ -10201,11 +10208,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var prof = live(profIn);
   var rirHalfOn = live(rirHalfOnIn);
   var sortedSessions = live(sortedSessionsIn);
-  var fromDApp = live(fromDIn);
+  var fromDApp = live(fromDAppIn);
   var fromDOf = live(fromDOfIn);
   var stepRead = live(stepReadIn);
   var stepReadOf = live(stepReadOfIn);
-  var toDApp = live(toDIn);
+  var toDApp = live(toDAppIn);
   var toDOf = live(toDOfIn);
   var defPlan = live(defPlanIn);
   var planCredit = live(planCreditIn);
@@ -10227,10 +10234,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var barReadOf = live(barReadOfIn);
   var loadReadOf = live(loadReadOfIn);
   var typedBoundOf = live(typedBoundOfIn);
-  var typedBoundApp = live(typedBoundIn);
+  var typedBoundApp = live(typedBoundAppIn);
   var gymRack = live(gymRackIn);
   var rackTol = live(rackTolIn);
-  var fmtWApp = live(fmtWIn);
+  var fmtWApp = live(fmtWAppIn);
   var fmtWOf = live(fmtWOfIn);
   var loadLabel = live(loadLabelIn);
   var typedLabel = live(typedLabelIn);
@@ -12143,9 +12150,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var lenD = (cm) => cm == null ? "" : String(r1(appU() === "lb" ? cm / IN : cm));
   var fmtBig = (kg2) => Math.round(toDApp(kg2) ?? 0).toLocaleString();
   function loadHead(ex) {
-    const m3 = loadMode(ex), u4 = liftU(ex).toUpperCase();
-    if (ex && ex.assist) return "Help " + u4;
-    return m3 === "each" ? u4 + " each" : m3 === "side" ? u4 + "/side" : m3 === "stack" ? u4 + " stack" : m3 === "bw" ? "+" + u4 : u4;
+    const p3 = loadHeadParts(ex);
+    return p3.pre + p3.unit + p3.post;
+  }
+  function loadHeadParts(ex) {
+    const m3 = loadMode(ex), unit = liftU(ex).toUpperCase();
+    if (ex && ex.assist) return { pre: "Help ", unit, post: "" };
+    if (m3 === "bw") return { pre: "+", unit, post: "" };
+    return { pre: "", unit, post: m3 === "each" ? " each" : m3 === "side" ? "/side" : m3 === "stack" ? " stack" : "" };
   }
   var fmtDateLong = (s3) => fmtWith("l", { weekday: "short", month: "short", day: "numeric", year: "numeric" }, s3);
   function topSetPt(ex, x2) {
@@ -15973,7 +15985,7 @@ ${more}`;
       return all == null || j3.value > all + EPS_SAME ? ` (estimated 1RM ${fmtE(ex, j3.value)} ${liftU(ex)}${wasE(ex, j3.value, all) ? `; was ${wasE(ex, j3.value, all)}` : ""})` : ` (your best for ${bandW}, ${fmtE(ex, j3.value)} ${liftU(ex)})`;
     }
     if (pr === "Weight PR" && j3.type === "Weight PR") {
-      const was = ex.assist ? `less help than ever` : `heaviest before ${ex.bw ? loadLabel(ex, j3.prevW) : fmtWOf(ex, j3.prevW) + " " + liftU(ex)}`;
+      const was = ex.assist ? `less help than ever` : `heaviest before ${listLabel(ex, j3.prevW, !ex.bw)}`;
       return ` (${was}${isCompound(ex) && j3.value != null ? `; best estimate for ${bandW} now ${fmtE(ex, j3.value)}` : ""})`;
     }
     if (j3.type === "Rep PR") return j3.prevR ? ` (was ${j3.prevR} ${ex.timed ? "s" : "reps"})` : " (heaviest yet)";
@@ -21672,6 +21684,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     }
     const partner = ss ? d3.ex.filter((x2) => x2 !== b2 && x2.plan.ss === p3.ss).map((x2) => exName(x2.exId)).join(" + ") : "";
     const why = whyTarget(b2);
+    const hp = loadHeadParts(ex);
     const bl = b2.target ? bestLine(b2.exId, d3.past ? d3.date : "") : "";
     const work = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
     const canFill = !!b2.lastR && b2.lastR.some((r4) => r4 != null) && b2.sets.some((s3, i5) => !s3.done && !s3.warm && !s3.drop && s3.r == null && lastRFor(b2, i5) != null);
@@ -21681,7 +21694,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       ${ss && partner && gk === 0 ? b`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? "pair" : "group"}.</p>` : ""}
       ${b2.lastNote && !b2.note ? b`<p class="small lnote">Your note, ${fmtDate(b2.lastNote.date)}: ${b2.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ""}
       ${b2.note ? b`<p class="small bnote" id=${`bn-${bi}`}>${b2.note}</p>` : b`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}${picStrip(bi, false)}
-      <div class=${"sg head" + (nr ? " norir" : "")}><span data-tip="Tap a set's number to mark it a warm-up or a drop set">#</span><span class="lsh">Last</span><span class="lh hastip" data-tip=${loadTip(ex)}><button type="button" class="lunit" data-act="liftUnit" data-b=${bi} aria-label=${`${ex.name}: loads in ${liftU(ex)}. Switch to ${liftU(ex) === "kg" ? "lb" : "kg"}`}>${loadHead(ex)}</button></span><span class=${side ? "hastip" : A} data-tip=${side ?? A}>${ex.timed ? ex.perSide ? "Sec/side" : "Sec" : ex.perSide ? "Reps/side" : "Reps"}</span>${nr ? "" : b`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
+      <div class=${"sg head" + (nr ? " norir" : "")}><span data-tip="Tap a set's number to mark it a warm-up or a drop set">#</span><span class="lsh">Last</span><span class="lh hastip" data-tip=${loadTip(ex)}>${hp.pre}<button type="button" class="lunit" data-act="liftUnit" data-b=${bi} aria-label=${`${ex.name}: loads in ${liftU(ex)}. Switch to ${liftU(ex) === "kg" ? "lb" : "kg"}`}>${hp.unit}</button>${hp.post}</span><span class=${side ? "hastip" : A} data-tip=${side ?? A}>${ex.timed ? ex.perSide ? "Sec/side" : "Sec" : ex.perSide ? "Reps/side" : "Reps"}</span>${nr ? "" : b`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
       b2.sets,
       (x2) => x2.rid,
       (_2, si) => setRow(d3, b2, bi, si, ex, nr, dupB)
@@ -26704,7 +26717,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       return {
         name: e5.name,
         what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${pr.value != null && isCompound(e5) ? `, best estimate ${fmtE(e5, pr.value)} ${liftU(e5)}${loadNote(e5)}` : ""}`,
-        was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${e5.bw ? loadLabel(e5, pr.prevW ?? 0) : fmtWOf(e5, pr.prevW) + " " + liftU(e5)}` : ""
+        was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${listLabel(e5, pr.prevW ?? 0, !e5.bw)}` : ""
       };
     const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.date) : null;
     if (ps) return { name: e5.name, what: `PR, ${setShort(e5, ps.w, ps.r)}`, was: "your best for that number of reps" };
@@ -29392,6 +29405,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       },
       obActive,
       fmtW: fmtWApp,
+      fmtWApp,
       fmtWOf,
       rirUsual,
       rirEst,
@@ -29520,9 +29534,12 @@ ${JSON.stringify(ctx, null, 1)}`;
       exMusParts,
       musTrend,
       U: appU,
+      appU,
       liftU,
       toD: toDApp,
+      toDApp,
       fromD: fromDApp,
+      fromDApp,
       toDOf,
       fromDOf,
       fmtBody,

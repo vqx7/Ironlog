@@ -6,7 +6,7 @@ import type { Exercise } from './types';
 import type { ExerciseLike, Model, Suggestion } from './model';
 import { loadMode, PLATE_SIDE_IDS, isCompound, noE1 } from './library';
 import { r1, EPS } from './util';
-import { UIn, appUnitIn, bodyIn, liftModelIn, liftUnitIn } from './model';
+import { UIn, appModelIn, appUIn, bodyIn, liftModelIn, liftUIn } from './model';
 import { DEFAULT_STEP, LB, fromDIn, toDIn, typedUnit } from './units';
 
 /** The load meanings a lifter can choose in the exercise editor. */
@@ -65,6 +65,9 @@ export const fmtWOfIn = (
   kg: number | null | undefined
 ): string => fmtWIn(liftModelIn(M, ex), kg);
 
+/** A load in kilograms as the app's own numbers show it (totals, settings), in the app's unit; empty for none. */
+export const fmtWAppIn = (M: Model, kg: number | null | undefined): string => fmtWIn(appModelIn(M), kg);
+
 /** A bodyweight in kilograms as weigh-ins show it, in the scale's unit, rounded to a tenth; empty for none. */
 export const fmtBodyIn = (M: Model, kg: number | null | undefined): string => fmtWOfIn(M, bodyIn(M), kg);
 
@@ -96,10 +99,10 @@ export function typedLabelIn(M: Model, ex: Pick<Exercise, 'bw' | 'unit'>, kg: nu
    means one thing whichever screen or lift it is read beside (390's Release B); `named` names it in any unit. */
 /** A load as a line quotes it: as typed, its unit named unless it is the app's, the lift's and the line's (or always). */
 export function listLabelIn(M: Model, ex: Pick<Exercise, 'bw' | 'unit'>, kg: number, named?: boolean): string {
-  const lift = liftUnitIn(M, ex),
+  const lift = liftUIn(M, ex),
     u = typedUnit(kg) ?? lift;
   const label = loadLabelIn(M, { bw: ex.bw, unit: u }, kg);
-  return named || u !== UIn(M) || u !== lift || u !== appUnitIn(M) ? `${label} ${u}` : label;
+  return named || u !== UIn(M) || u !== lift || u !== appUIn(M) ? `${label} ${u}` : label;
 }
 
 // Puts a new load into a suggestion, its words included.

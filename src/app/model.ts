@@ -387,17 +387,24 @@ export function exInjuryIn(M: Model, ex: Pick<Exercise, 'name' | 'primary' | 'se
 export const UIn = (M: Model): 'lb' | 'kg' => M.u ?? M.s.settings.unit;
 
 /** The app's unit, the one totals across lifts, bodyweight and the settings are shown in, whatever lift a model is read for. */
-export const appUnitIn = (M: Model): 'lb' | 'kg' => M.s.settings.unit;
+export const appUIn = (M: Model): 'lb' | 'kg' => M.s.settings.unit;
 
 /** The unit a lift's loads are marked in: its own when the lifter set one, else the app's. */
-export const liftUnitIn = (M: Model, ex: Pick<Exercise, 'unit'> | null | undefined): 'lb' | 'kg' =>
-  (ex && ex.unit) || appUnitIn(M);
+export const liftUIn = (M: Model, ex: Pick<Exercise, 'unit'> | null | undefined): 'lb' | 'kg' =>
+  (ex && ex.unit) || appUIn(M);
 
 /** The scale as the unit readers take it: a lift whose unit is the one set for weigh-ins (390's Release B). */
 export const bodyIn = (M: Model): Pick<Exercise, 'unit'> => ({ unit: M.s.settings.bwUnit });
 
 /** The unit weigh-ins are typed and shown in: the scale's when the lifter set one, else the app's. */
-export const bodyUnitIn = (M: Model): 'lb' | 'kg' => liftUnitIn(M, bodyIn(M));
+export const bodyUIn = (M: Model): 'lb' | 'kg' => liftUIn(M, bodyIn(M));
+
+/* The app's own readings (totals across lifts, the settings) from any model, a lift's included: the model with no
+   lift's unit set, so the unit on screen is the app's again. */
+/** The model the app's own numbers are read in: the given one with the unit on screen the app's. */
+export function appModelIn(M: Model): Model {
+  return M.u === undefined ? M : { ...M, u: undefined };
+}
 
 /* A lift's numbers are worked out in its unit: the log as it is, read with the unit on screen set to the lift's, so every
    rule of the engine that reads the unit on screen (steps, racks, plates, the words) reads the lift's without being told.
@@ -405,7 +412,7 @@ export const bodyUnitIn = (M: Model): 'lb' | 'kg' => liftUnitIn(M, bodyIn(M));
    no unit of its own, or one in the unit already on screen, is read in the model as given. */
 /** The model a lift's loads and words are worked out in: the given one with the unit on screen set to the lift's. */
 export function liftModelIn(M: Model, ex: Pick<Exercise, 'unit'> | null | undefined): Model {
-  const u = liftUnitIn(M, ex);
+  const u = liftUIn(M, ex);
   return u === UIn(M) ? M : { ...M, u };
 }
 

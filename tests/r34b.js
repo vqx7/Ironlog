@@ -346,7 +346,9 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     const kgTxt = await ev(() => document.querySelector('#blk-0 .hint').innerText);
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); const s = document.querySelector('[data-bind="unit"]'); s.value = 'lb'; s.dispatchEvent(new Event('change', { bubbles: true })); L.ui.tab = 'today'; L.render(); });
     const lbTxt = await ev(() => document.querySelector('#blk-0 .hint').innerText);
-    ok(/kg/.test(kgTxt) && /lb/.test(lbTxt) && !/\bkg\b/.test(lbTxt), 'C-F11: the target and Last line follow a switch from kg to lb mid-session', { kgTxt, lbTxt });
+    // A set lifted before the switch is quoted as typed (60 kg×9, since 2.65 and 2.66: tests/progression.js P-38, coherence's
+    // lift in kg); everything else follows the switch.
+    ok(/kg/.test(kgTxt) && /at [\d.]+ lb/.test(lbTxt) && !/\bkg\b/.test(lbTxt.replace(/[\d.]+ kg×\d+/g, '')), 'C-F11: the target and Last line follow a switch from kg to lb mid-session, a set from before it quoted as typed', { kgTxt, lbTxt });
 
     // C-F2: Today in freestyle mode has More options, with Rest week.
     await ev(() => { const L = window.__ironlog; const s = L.state; s.draft = null; s.settings.unit = 'lb'; s.settings.todayStart = 'free'; L.state = L.normalize(s); L.invalidate(); L.ui.heroMore = false; L.ui.tab = 'today'; L.render(); });

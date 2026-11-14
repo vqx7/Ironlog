@@ -5,7 +5,7 @@
 
 import type { Exercise } from './types';
 import type { Model } from './model';
-import { UIn, bodyIn, liftModelIn } from './model';
+import { UIn, appModelIn, bodyIn, liftModelIn } from './model';
 import { EPS_SAME } from './util';
 import { LIMITS } from './records';
 
@@ -92,7 +92,7 @@ export const kgOfIn = (M: Model, v: number): number => (UIn(M) === 'lb' ? v * LB
    (typedUnit). Bounded at the kilograms themselves, 1,200 lb typed as a step was kept as 500 kg, read as typed in kg,
    and shown as lb's matching step (stepReadIn) or a bar's nearest load (loadReadAs) instead of the bound. */
 /** A number typed in the unit on screen, in kilograms, at most the largest typed number within a bound in kilograms. */
-export function typedBoundIn(M: Model, v: number, most: number): number {
+function typedBoundIn(M: Model, v: number, most: number): number {
   return kgOfIn(M, Math.min(v, Math.floor(inUnitIn(M, most) / TYPED_STEP + EPS_SAME) * TYPED_STEP));
 }
 
@@ -127,6 +127,15 @@ export const fromDOfIn = (
   ex: Pick<Exercise, 'unit'> | null | undefined,
   v: number | null | undefined
 ): number | null => fromDIn(liftModelIn(M, ex), v);
+
+/** A load in kilograms in the app's unit, for its own numbers (null stays null). */
+export const toDAppIn = (M: Model, kg: number | null | undefined): number | null => toDIn(appModelIn(M), kg);
+
+/** A load typed in the app's unit, in kilograms (null stays null). */
+export const fromDAppIn = (M: Model, v: number | null | undefined): number | null => fromDIn(appModelIn(M), v);
+
+/** A number typed in the app's unit, in kilograms, within a bound in kilograms (typedBoundIn in it). */
+export const typedBoundAppIn = (M: Model, v: number, most: number): number => typedBoundIn(appModelIn(M), v, most);
 
 /** A bodyweight in kilograms in the scale's unit (null stays null). */
 export const toDBodyIn = (M: Model, kg: number | null | undefined): number | null => toDOfIn(M, bodyIn(M), kg);

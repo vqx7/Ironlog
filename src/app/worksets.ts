@@ -45,7 +45,8 @@ import {
   sessLeftMin,
   suggest,
   suggestCore,
-  trimPlan
+  trimPlan,
+  listLabel
 } from './live';
 import { sessionShown, state, ui } from './store';
 import { lastDup, effTarget, newRow, greyW, effW, blockDone } from './session';
@@ -376,9 +377,7 @@ export function prBeat(exId: string, s: DraftSet, at: ReadDay, pr: string): stri
       : ` (your best for ${bandW}, ${fmtE(ex, j.value)} ${liftU(ex)})`;
   }
   if (pr === 'Weight PR' && j.type === 'Weight PR') {
-    const was = ex.assist
-      ? `less help than ever`
-      : `heaviest before ${ex.bw ? loadLabel(ex, j.prevW) : fmtWOf(ex, j.prevW) + ' ' + liftU(ex)}`;
+    const was = ex.assist ? `less help than ever` : `heaviest before ${listLabel(ex, j.prevW, !ex.bw)}`;
     return ` (${was}${isCompound(ex) && j.value != null ? `; best estimate for ${bandW} now ${fmtE(ex, j.value)}` : ''})`;
   }
   if (j.type === 'Rep PR') return j.prevR ? ` (was ${j.prevR} ${ex.timed ? 's' : 'reps'})` : ' (heaviest yet)';

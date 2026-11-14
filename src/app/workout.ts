@@ -45,7 +45,7 @@ import {
 } from './session';
 import type { DraftBlock, DraftSet } from './types';
 import type { ExerciseLike } from './model';
-import { distU, distShow, rirShow, setShort, bestLine, effTgt, loadHead, fmtDateLong } from './display';
+import { distU, distShow, rirShow, setShort, bestLine, effTgt, loadHeadParts, fmtDateLong } from './display';
 
 import { section, tipButton, fieldValue, helpButton, howText, drawing, drawScreen } from './view';
 
@@ -436,6 +436,7 @@ function blockPart(
         .join(' + ')
     : '';
   const why = whyTarget(b);
+  const hp = loadHeadParts(ex);
   const bl = b.target ? bestLine(b.exId, d.past ? d.date : '') : '';
   const work = b.sets.filter(x => !x.warm && !x.drop).length;
   const canFill =
@@ -452,7 +453,7 @@ function blockPart(
       ${ss && partner && gk === 0 ? html`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? 'pair' : 'group'}.</p>` : ''}
       ${b.lastNote && !b.note ? html`<p class="small lnote">Your note, ${fmtDate(b.lastNote.date)}: ${b.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ''}
       ${b.note ? html`<p class="small bnote" id=${`bn-${bi}`}>${b.note}</p>` : html`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}${picStrip(bi, false)}
-      <div class=${'sg head' + (nr ? ' norir' : '')}><span data-tip="Tap a set's number to mark it a warm-up or a drop set">#</span><span class="lsh">Last</span><span class="lh hastip" data-tip=${loadTip(ex)}><button type="button" class="lunit" data-act="liftUnit" data-b=${bi} aria-label=${`${ex.name}: loads in ${liftU(ex)}. Switch to ${liftU(ex) === 'kg' ? 'lb' : 'kg'}`}>${loadHead(ex)}</button></span><span class=${side ? 'hastip' : nothing} data-tip=${side ?? nothing}>${ex.timed ? (ex.perSide ? 'Sec/side' : 'Sec') : ex.perSide ? 'Reps/side' : 'Reps'}</span>${nr ? '' : html`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
+      <div class=${'sg head' + (nr ? ' norir' : '')}><span data-tip="Tap a set's number to mark it a warm-up or a drop set">#</span><span class="lsh">Last</span><span class="lh hastip" data-tip=${loadTip(ex)}>${hp.pre}<button type="button" class="lunit" data-act="liftUnit" data-b=${bi} aria-label=${`${ex.name}: loads in ${liftU(ex)}. Switch to ${liftU(ex) === 'kg' ? 'lb' : 'kg'}`}>${hp.unit}</button>${hp.post}</span><span class=${side ? 'hastip' : nothing} data-tip=${side ?? nothing}>${ex.timed ? (ex.perSide ? 'Sec/side' : 'Sec') : ex.perSide ? 'Reps/side' : 'Reps'}</span>${nr ? '' : html`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
         b.sets,
         x => x.rid,
         (_, si) => setRow(d, b, bi, si, ex, nr, dupB)

@@ -172,18 +172,19 @@ export const fmtBig = (kg: number): string => Math.round(toDApp(kg) ?? 0).toLoca
 
 /** The load column's heading: the unit, and what the number is (each, per side, the stack, added, or the machine's help). */
 export function loadHead(ex: ExerciseLike | null | undefined): string {
+  const p = loadHeadParts(ex);
+  return p.pre + p.unit + p.post;
+}
+
+/* The heading in its parts, so the session's heading can make the unit a tap of its own (390's Release B: the unit
+   marks the lift's equipment) while the words around it keep the tip of what the load is. */
+/** The load column heading's words before and after the lift's unit, and the unit, upper case. */
+export function loadHeadParts(ex: ExerciseLike | null | undefined): { pre: string; unit: string; post: string } {
   const m = loadMode(ex),
-    u = liftU(ex).toUpperCase();
-  if (ex && ex.assist) return 'Help ' + u;
-  return m === 'each'
-    ? u + ' each'
-    : m === 'side'
-      ? u + '/side'
-      : m === 'stack'
-        ? u + ' stack'
-        : m === 'bw'
-          ? '+' + u
-          : u;
+    unit = liftU(ex).toUpperCase();
+  if (ex && ex.assist) return { pre: 'Help ', unit, post: '' };
+  if (m === 'bw') return { pre: '+', unit, post: '' };
+  return { pre: '', unit, post: m === 'each' ? ' each' : m === 'side' ? '/side' : m === 'stack' ? ' stack' : '' };
 }
 
 /** A date written out: "Sat, Oct 24, 2026". */
