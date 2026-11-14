@@ -5,12 +5,11 @@ import type { DraftBlock, NextSetsAdj, Plan } from './types';
 import type { ExerciseLike, Model } from './model';
 
 import { EXIn, exInjuryIn, liftModelIn } from './model';
-import { IDXIn, liftReadIn } from './analytics';
+import { IDXIn, brokeAfterIn, liftReadIn, sinceLongBreakOnIn } from './analytics';
 import { capOfIn } from './gym';
 import { EPS, EPS_SAME } from './util';
 import {
   BACK_DAYS,
-  afterBreak,
   sinceLongBreak,
   E1_MAX_RIR,
   e1inv,
@@ -69,10 +68,10 @@ import { bwRefLoadIn, rirEstIn } from './setread';
    is not back after a break, so its last session is in today's stretch. */
 function stretchTopIn(M: Model, exId: string, plan: Plan): number | null {
   // After a long break the lift starts fresh: loads from before it are no re-approach.
-  const xs = sinceLongBreak(liftReadIn(M, exId, M.today()), M.today());
+  const xs = sinceLongBreakOnIn(M, exId, liftReadIn(M, exId, M.today()), M.today());
   if (!xs.length) return null;
   let i = xs.length - 1;
-  while (i > 0 && !afterBreak(xs[i - 1], xs[i].date)) i--;
+  while (i > 0 && !brokeAfterIn(M, exId, xs[i - 1], xs[i].date)) i--;
   let t: number | null = null;
   for (const x of xs.slice(i)) {
     const w = workLoad(x.pts, +plan.repMin);

@@ -97,9 +97,12 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (state.draft && state.draft.ex[b]) openModal({ kind: 'machine', b });
   },
   /* A machine picked for a lift in a session (390 C): every block of it is on that machine, read from that machine's
-     sessions alone. Its target is read again, the sets done kept (a target from another machine is no target here);
-     in an edit of a saved session, only the machine changes, and the readings follow once it is saved. A machine done
-     on before brings its own kg or lb (as its weights were typed). One Undo step. */
+     sessions alone. In a workout its target is read again, the sets done kept (a target from another machine is no
+     target here), and a machine done on before brings its own kg or lb (as its weights were typed); New machine marks
+     the lift's session new (nw), so it starts there. In an edit from History the pick names this session's machine
+     and nothing else, never the sessions after it or the lift's unit: a machine done on before by its key, a new one by the session's own; its mark,
+     which later sessions may follow, and the lift's unit stay as they are, and the readings follow once it is saved.
+     One Undo step. */
   machinePick(t) {
     const d = state.draft;
     const b0 = d && d.ex[Number(t.dataset.b)];
@@ -109,7 +112,10 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!d || !b0 || !e || !k || k === draftMachine(b0.exId)) return;
     const was = k === NEW_MACHINE ? null : liftMachines(b0.exId).find(x => x.key === k);
     if (k !== NEW_MACHINE && !was) return;
-    const u = was ? typedUnit(was.w) : null;
+    const ed = d.editingId;
+    // A new machine in an edit is named by the session's own key, which is the machine it is on already when it began one.
+    if (ed && k === NEW_MACHINE && draftMachine(b0.exId) === ed) return;
+    const u = was && !ed ? typedUnit(was.w) : null;
     act(
       () => {
         if (u) {
@@ -118,7 +124,8 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         }
         for (const b of d.ex)
           if (b.exId === b0.exId) {
-            if (k === NEW_MACHINE) {
+            if (ed) b.mc = k === NEW_MACHINE ? ed : k;
+            else if (k === NEW_MACHINE) {
               b.nw = true;
               delete b.mc;
             } else {
@@ -126,7 +133,7 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
               delete b.nw;
             }
           }
-        if (!d.editingId) for (const b of d.ex) if (b.exId === b0.exId) refreshBlock(b);
+        if (!ed) for (const b of d.ex) if (b.exId === b0.exId) refreshBlock(b);
       },
       { undo: true }
     );

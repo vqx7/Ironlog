@@ -1532,6 +1532,46 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await P.close();
   }
 
+  if (run('L-41')) {
+    /* An edit from History names the machine of that one session and nothing else (the review of 2.67, REV18-1 and
+       REV18-2): a chest press done only on one machine on Oct 24, Oct 31 and Nov 7, Oct 31 moved to a new machine in its
+       edit: Oct 31 alone moves, Nov 7 stays on the first machine, and the next workout reads it (beat 32 at 210 lb).
+       The lift's unit is the lifter's: an edit that picks a machine typed in another unit leaves it as it was. */
+    const LBk = 0.45359237;
+    const seed = `(S, L) => { const LB = ${LBk}; const mk = (id, date, w, rs) => ({ id, date, dayIdx: 0, dayId: 'A', dayName: 'Push', routineId: 'R1', notes: '', ex: [{ exId: 'machPress', rr: [8, 12], ps: 3, sets: rs.map(r => ({ w: w * LB, r, rir: 2, done: true })) }] }); S.sessions = [mk('e1', '2026-10-24', 200, [11, 11, 10]), mk('e2', '2026-10-31', 205, [11, 11, 10]), mk('e3', '2026-11-07', 210, [11, 11, 10])]; }`;
+    const P = await lifter({ items: [['machPress', 3, 8, 12, 120]], fresh: true, seed, settings: { autoDone: false } });
+    const sheetAt = async b => { await P.tap(`#view [data-act="bMenu"][data-b="${b}"]`, 200); await P.tap('#modal [data-act="bMenuDo"][data-op="machineOpen"]', 250); return P.modal(); };
+    const finish = async () => { await P.ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; }); await P.tap('#view [data-act="finish"]', 300); for (let k = 0; k < 6; k++) { const m = await P.modal(); if (!m) break; if (m.kind === 'confirm') await mOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } } };
+    await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150);
+    await P.tap('#view [data-act="histToggle"][data-id="e2"]', 150); await P.tap('#view [data-act="histEdit"][data-id="e2"]', 300);
+    let m = await sheetAt(0);
+    await P.tap('#modal [data-act="machinePick"][data-k="new"]', 300);
+    await finish();
+    const marks = await P.ev(() => window.__ironlog.state.sessions.map(s => [s.id, s.ex[0].nw || null, s.ex[0].mc || null]));
+    await start(P);
+    const blk = await P.ev(() => ({ hint: ((document.querySelector('#blk-0 .hint') || {}).innerText || '').replace(/\s+/g, ' '), grey: [...document.querySelectorAll('#blk-0 input[data-f="w"]')].map(i => i.value || i.placeholder) }));
+    m = await sheetAt(0);
+    ok(JSON.stringify(marks) === JSON.stringify([['e1', null, null], ['e2', null, 'e2'], ['e3', null, null]]) && /Today: 33\+ reps over 3 sets at 210 lb/.test(blk.hint) && blk.grey.every(x => x === '210') && /Machine Nov 7 · 210 lb × 11 Oct 31 · 205 lb × 11 New machine/.test(m.text),
+      'L-41: Oct 31 moved to a new machine in its edit moves alone: Nov 7 stays on the first machine and the next workout reads it (33+ at 210 lb)', { marks, blk, m: m && m.text });
+    await P.ev(() => window.__ironlog.ACT.mClose()); await wait(120);
+    await P.close();
+    /* The unit: the first machine's weights typed in lb, a second machine in kg (New machine on Oct 31, Nov 7 on it by
+       name), the lift set to kg as its machine in use is. Nov 7 moved to the first machine in its edit: the lift stays in
+       kg, as the lifter set it. */
+    const seed2 = `(S, L) => { const LB = ${LBk}; const mk = (id, date, w, more) => ({ id, date, dayIdx: 0, dayId: 'A', dayName: 'Push', routineId: 'R1', notes: '', ex: [{ exId: 'machPress', rr: [8, 12], ps: 3, sets: [11, 11, 10].map(r => ({ w, r, rir: 2, done: true })), ...more }] }); S.sessions = [mk('f1', '2026-10-24', 200 * LB, {}), mk('f2', '2026-10-31', 90, { nw: true }), mk('f3', '2026-11-07', 92.5, { mc: 'f2' })]; S.exercises = S.exercises.map(e => e.id === 'machPress' ? { ...e, unit: 'kg' } : e); }`;
+    const Q = await lifter({ items: [['machPress', 3, 8, 12, 120]], fresh: true, seed: seed2, settings: { autoDone: false } });
+    await Q.ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150);
+    await Q.tap('#view [data-act="histToggle"][data-id="f3"]', 150); await Q.tap('#view [data-act="histEdit"][data-id="f3"]', 300);
+    await Q.tap('#view [data-act="bMenu"][data-b="0"]', 200); await Q.tap('#modal [data-act="bMenuDo"][data-op="machineOpen"]', 250);
+    await Q.tap('#modal [data-act="machinePick"][data-k="0"]', 300);
+    const mid = await Q.ev(() => window.__ironlog.state.exercises.find(e => e.id === 'machPress').unit || null);
+    await Q.ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; }); await Q.tap('#view [data-act="finish"]', 300);
+    for (let k = 0; k < 6; k++) { const mm = await Q.modal(); if (!mm) break; if (mm.kind === 'confirm') await mOk(Q); else { await Q.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } }
+    const after = await Q.ev(() => ({ unit: window.__ironlog.state.exercises.find(e => e.id === 'machPress').unit || null, f3: window.__ironlog.state.sessions.find(s => s.id === 'f3').ex[0].mc || null }));
+    ok(mid === 'kg' && after.unit === 'kg' && after.f3 === '0', 'L-41: the first machine (typed in lb) picked in an edit leaves the lift in kg, as the lifter set it, and moves only that session', { mid, after });
+    await Q.close();
+  }
+
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
   process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.log('FAIL the suite stopped:', (e && e.stack) || e); process.exit(1); });

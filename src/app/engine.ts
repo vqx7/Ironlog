@@ -9,7 +9,7 @@ import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from '
 import { statsUpToIn } from './bests';
 import type { LiftBests } from './bests';
 import { EXIn, UIn, exInjuryIn, liftModelIn, liftUIn } from './model';
-import { IDXIn, lastOf, liftReadIn } from './analytics';
+import { IDXIn, brokeAfterIn, lastOf, liftReadIn, sinceLongBreakOnIn } from './analytics';
 import { atCapOfIn, capOfIn, gymRackIn, loadFloorIn } from './gym';
 import { DEFAULT_STEP, fromDIn, loadReadIn, toDIn, typedOtherIn } from './units';
 import { fmtWIn, listLabelIn, loadLabelIn, loadNote, typedLabelIn } from './loads';
@@ -17,7 +17,6 @@ import { addDays, daysBetween, isDate, r1, EPS, EPS_SAME, WEEK_DAYS, pctOf } fro
 import {
   BACK_DAYS,
   afterBreak,
-  sinceLongBreak,
   E1_MAX_RIR,
   LIGHT_SHARE,
   atLoad,
@@ -151,7 +150,7 @@ export function daysOffIn(M: Model, exId: string, opts?: SuggestOpts | null): nu
 export function backDaysIn(M: Model, exId: string, plan: Plan, opts: SuggestOpts): number {
   const T = opts.before && isDate(opts.before) ? opts.before : M.today();
   // After a long break the lift starts fresh, so only its sessions since are a way back from anything.
-  const all = sinceLongBreak(liftReadIn(M, exId, T), T);
+  const all = sinceLongBreakOnIn(M, exId, liftReadIn(M, exId, T), T);
   /* A lift trained in two rep ranges restarts each on its own first session
      back (else a light day eased after a break ends the heavy day's return
      too, and the heavy day's first session back asks for the load from
@@ -166,9 +165,9 @@ export function backDaysIn(M: Model, exId: string, plan: Plan, opts: SuggestOpts
     ? all.filter(x => sameRR(x.rr, want))
     : all;
   if (!xs.length) return 0;
-  if (afterBreak(xs[xs.length - 1], T)) return daysBetween(xs[xs.length - 1].date, T);
+  if (brokeAfterIn(M, exId, xs[xs.length - 1], T)) return daysBetween(xs[xs.length - 1].date, T);
   for (let i = xs.length - 1; i > 0 && offTarget(xs[i]); i--)
-    if (afterBreak(xs[i - 1], xs[i].date)) return daysBetween(xs[i - 1].date, xs[i].date);
+    if (brokeAfterIn(M, exId, xs[i - 1], xs[i].date)) return daysBetween(xs[i - 1].date, xs[i].date);
   return 0;
 }
 
@@ -412,7 +411,7 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   const read = every ? liftReadIn(M, exId, T) : every;
   /* And since the lift's last long break: with none since, it starts fresh, as a first session, saying the
      time away (away, in days, from its last session before). */
-  const all = read ? sinceLongBreak(read, T) : read;
+  const all = read ? sinceLongBreakOnIn(M, exId, read, T) : read;
   const away = read && read.length && all && !all.length ? daysBetween(read[read.length - 1].date, T) : 0;
   const ex = EXIn(M, exId);
   const injM = exInjuryIn(M, ex);
@@ -529,7 +528,7 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
      25%, 200 to 240, where 10% gives 220). */
   const xs = all || [];
   let since = xs.length - 1;
-  while (since > 0 && !afterBreak(xs[since - 1], xs[since].date)) since--;
+  while (since > 0 && !brokeAfterIn(M, exId, xs[since - 1], xs[since].date)) since--;
   const early = xs.length - since <= EARLY_SESSIONS;
   /* The reps a target is set from: last time's sets at the working load over the plan's sets, as done (V
      2026-11-04: "practical, realistic, helpful, not confusing"). One set under the range read as the bottom of it
@@ -613,7 +612,7 @@ function sgAfterReturnIn(M: Model, C: SuggestCtx): Suggestion | null {
   // The first session after the lift's latest break up to its last full session (all is read since a New machine or gym).
   const i = all.indexOf(last);
   let j = i;
-  while (j > 0 && !afterBreak(all[j - 1], all[j].date)) j--;
+  while (j > 0 && !brokeAfterIn(M, C.exId, all[j - 1], all[j].date)) j--;
   if (j < 1) return null;
   // The load from before the break: the last full session before it that the target reads (exps).
   const pre = exps.filter(x => x.date < all[j].date).pop();

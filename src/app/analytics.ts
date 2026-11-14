@@ -20,6 +20,8 @@ import {
   isMissed,
   isWork,
   lighter,
+  longBreak,
+  LONG_BREAK_DAYS,
   repFloor,
   rtfBand,
   rtfOf,
@@ -142,16 +144,16 @@ export function liftReadIn(M: Model, exId: string, T?: string): Exposure[] {
   const d = M.s.draft;
   if (d && (T === undefined || d.date <= T)) {
     const bs = d.ex.filter(b => b.exId === exId);
-    if (bs.some(b => b.nw)) return onMachine(all.filter(x => x.date > d.date));
     const mc = bs.find(b => b.mc)?.mc;
     if (mc) return onMachine(all, mc);
+    if (bs.some(b => b.nw)) return onMachine(all.filter(x => x.date > d.date));
   }
   return onMachine(all);
 }
 
 /* The machine a lift of the session in progress is on: the one picked for it (a block's mc); in an edit, the one it
-   was saved on; else the one it was last done on by the session's day; NEW_MACHINE when the session marks it done on a
-   new one (a block's nw). */
+   was saved on; NEW_MACHINE when the session marks it done on a new one (a block's nw); else the one it was last done
+   on by the session's day. */
 /** What liftMachineIn answers when the session in progress marks the lift done on a new machine. */
 export const NEW_MACHINE = 'new';
 
@@ -160,12 +162,12 @@ export function draftMachineIn(M: Model, exId: string): string | null {
   const d = M.s.draft;
   if (!d) return null;
   const bs = d.ex.filter(b => b.exId === exId);
-  if (bs.some(b => b.nw)) return NEW_MACHINE;
   const picked = bs.find(b => b.mc)?.mc;
   if (picked) return picked;
   const every = IDXIn(M).byEx[exId] || [];
   const own = d.editingId ? every.find(x => x.sid === d.editingId) : undefined;
   if (own) return own.mk;
+  if (bs.some(b => b.nw)) return NEW_MACHINE;
   const prior = every.filter(x => x.date <= d.date && x.sid !== d.editingId);
   return prior.length ? prior[prior.length - 1].mk : FIRST_MACHINE;
 }
@@ -176,11 +178,13 @@ export function draftMachineIn(M: Model, exId: string): string | null {
 export function machineToSaveIn(M: Model, exId: string): string | null {
   // A free weight's stretches are read as before (machineKeys): its sessions name no machine.
   if (!onMachines(EXIn(M, exId))) return null;
+  const d = M.s.draft;
+  if (!d) return null;
+  // An edit saves the machine the session was saved with, or the one picked in it (both a block's mc), and no other.
+  if (d.editingId) return d.ex.find(b => b.exId === exId && b.mc)?.mc ?? null;
   const key = draftMachineIn(M, exId);
   if (key == null || key === NEW_MACHINE) return null;
-  const d = M.s.draft;
-  const others = (IDXIn(M).byEx[exId] || []).filter(x => !d || x.sid !== d.editingId);
-  return new Set(others.map(x => x.mk)).add(key).size > 1 ? key : null;
+  return new Set((IDXIn(M).byEx[exId] || []).map(x => x.mk)).add(key).size > 1 ? key : null;
 }
 
 /** One machine a lift was done on, for the Machine sheet: its key, the day it was last done on it, and that day's heaviest set (load and reps). */
@@ -200,6 +204,34 @@ export function liftMachinesIn(M: Model, exId: string): LiftMachine[] {
       return { key: g[0].mk, date: x.date, w: x.topW, r: at.length ? Math.max(...at.map(p => p.r)) : x.topReps };
     })
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+}
+
+/* A break is time off the lift (CLAUDE.md, Numbers): on a machine lift, a gap between two sessions on one machine is a
+   break only when the lift itself had one inside it, on every machine (390 C), since a lift trained weekly on another
+   machine was never off. With one machine, the same as reading the two sessions alone. The return after a break, its
+   long form and the first sessions' larger steps read breaks so. */
+/** Whether a lift was off every machine for more than `days` between `from` and `to`. */
+function liftOffIn(M: Model, exId: string, from: string, to: string, days: number): boolean {
+  let at = from;
+  for (const x of IDXIn(M).byEx[exId] || []) {
+    if (x.date <= from || x.date > to) continue;
+    if (daysBetween(at, x.date) > days) return true;
+    at = x.date;
+  }
+  return daysBetween(at, to) > days;
+}
+
+/** Whether a lift's session `a` on one machine is followed by a break by `to` (afterBreak), read on every machine (above). */
+export function brokeAfterIn(M: Model, exId: string, a: Exposure, to: string): boolean {
+  return afterBreak(a, to) && liftOffIn(M, exId, a.date, to, BACK_DAYS);
+}
+
+/** A lift's sessions on one machine as its targets read them on `T`: since its last long break (sinceLongBreak), read on every machine (above). */
+export function sinceLongBreakOnIn(M: Model, exId: string, xs: readonly Exposure[], T: string): Exposure[] {
+  const off = (a: Exposure, to: string): boolean => longBreak(a, to) && liftOffIn(M, exId, a.date, to, LONG_BREAK_DAYS);
+  if (xs.length && off(xs[xs.length - 1], T)) return [];
+  for (let i = xs.length - 1; i > 0; i--) if (off(xs[i - 1], xs[i].date)) return xs.slice(i);
+  return xs.slice();
 }
 
 /** Where idxSessionsIn adds up a session's hard sets: its week's (ws, wc and weekHard), its day's (dm, dx), and the start of the recent weeks RIR is counted over. */

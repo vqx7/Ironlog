@@ -1117,6 +1117,29 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     const s = await shows(P, 'machPress');
     ok(s.rows.length && s.rows.every(x => x.w > 260) && /260/.test(s.hint) && !/\b(140|200)\b/.test(s.hint), 'P-44 a third machine, the one it was last done on: a step up from its 260 lb x 12 x 3, nothing from the other two', s);
     await P.ctx.close(); await P.browser.close();
+    /* A break is time off the lift, not off a machine (G-25; the review of 2.67, REV18-3): the lift trained every week
+       on another machine is not back from a break on its first one. Two sessions on the first machine at 200 lb, five
+       weeks on another: the first machine picked from the Machine sheet asks its own 200 lb (beat 32), never "Back
+       after 7 weeks" and about 90%; after one session back there, easy (180 lb x 12 x 3 at 4 in reserve), its next load
+       comes from that session (190 lb), with no word of a break. */
+    const hop = [
+      [addD(DAY, -56), 'A', [['machPress', at(200, [11, 11, 10])]]],
+      [addD(DAY, -49), 'A', [['machPress', at(200, [11, 11, 10])]]],
+      ...[42, 35, 28, 21, 14].map((n, k) => [addD(DAY, -n), 'A', [['machPress', at(140, [10, 10, 9]), k ? { mc: 's2' } : { nw: true }]]])
+    ];
+    const H = await lifter(MP, hop);
+    await startOn(H, 0);
+    await H.page.click('#view [data-act="bMenu"][data-b="0"]'); await wait(200);
+    await H.page.click('#modal [data-act="bMenuDo"][data-op="machineOpen"]'); await wait(250);
+    await H.page.click('#modal [data-act="machinePick"][data-k="0"]'); await wait(300);
+    const h = await shows(H, 'machPress');
+    ok(h.rows.every(x => x.w === 200) && h.tgt && h.tgt.total === 32 && !/break|Back after/.test(h.hint), 'P-44 its first machine picked after five weeks on another, trained weekly: 200 lb and 32 to beat, no break said', h);
+    await H.ctx.close(); await H.browser.close();
+    const B = await lifter(MP, [...hop, [addD(DAY, -7), 'A', [['machPress', [12, 12, 12].map(r => [180, r, 4]), { mc: '0' }]]]]);
+    await startOn(B, 0);
+    const b = await shows(B, 'machPress');
+    ok(b.rows.every(x => x.w === 190) && !/break|Back /.test(b.hint), 'P-44 after one easy session back on it (180 x 12 x 3 at 4 in reserve): 190 lb from that session, no break said', b);
+    await B.ctx.close(); await B.browser.close();
   }
 
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');

@@ -290,6 +290,16 @@ const SCENARIOS = [
       ex: [{ exId: 'machPress', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r: 10, rir: 2, done: true })), ...more }, { exId: 'bench', rr: [6, 10], sets: [{ w: 80, r: 8, rir: 2, done: true }] }] })),
     draft: { id: 'mcd', date: k === 1 ? day(h.today, -14) : h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ...(k === 1 ? { editingId: 'mc2' } : {}),
       ex: [b, { exId: 'cableFly', sets: [{ w: null, r: null }] }, { exId: 'bench', sets: [{ w: null, r: null }] }] } } })),
+  // A machine back after weeks on another (390 C, G-25): two sessions on the first, six weeks on another, then the first
+  // again, easy, so its climb is said "on this machine"; and a machine last used over a year ago, picked again after a
+  // session on another, so it starts fresh "on this machine", never as a break the lift did not have.
+  h => ({ ...h, ids: ['machPress', ...h.ids], raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] },
+    sessions: [[-56, 90, 2, {}], [-49, 90, 2, {}], [-42, 60, 2, { nw: true }], [-35, 60, 2, { mc: 'mb1' }], [-28, 60, 2, { mc: 'mb1' }], [-21, 60, 2, { mc: 'mb1' }], [-14, 60, 2, { mc: 'mb1' }], [-7, 80, 4, { mc: '0' }]].map(([n, w, rir, more], i) => ({ id: 'mb' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
+      ex: [{ exId: 'machPress', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r: 12, rir, done: true })), ...more }] })) } }),
+  h => ({ ...h, ids: ['machPress', ...h.ids], raw: { ...h.raw, injuries: [], deloadWeek: null, settings: { ...h.raw.settings, restWeeks: [] },
+    sessions: [[-400, 90, {}], [-390, 60, { nw: true }], [-10, 62.5, { mc: 'ml1' }]].map(([n, w, more], i) => ({ id: 'ml' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
+      ex: [{ exId: 'machPress', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r: 10, rir: 2, done: true })), ...more }] })),
+    draft: { id: 'mld', date: h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'machPress', mc: '0', sets: [{ w: null, r: null }] }] } } }),
   // 2.37 (ST-6): This block vs last by Auto and by 4 weeks, on a wide history with its own lighter and missed weeks;
   // before the stalled bench, whose coach line the check below reads as the last but one (the long-break history is last).
   h => ({ ...h, raw: { ...h.raw, settings: { ...h.raw.settings, blockWeeks: 'auto' } } }),

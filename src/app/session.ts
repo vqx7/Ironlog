@@ -430,16 +430,17 @@ export function markedNew(d: { ex: readonly { exId: string; nw?: true | undefine
   return d.ex.some(b => b.exId === exId && !!b.nw);
 }
 
-/** Saved exercises with the mark on each lift the session marks, and then the machine each was done on (`mcOf`, the key to save or null; machineToSaveIn), last. */
+/** Saved exercises with the mark on each lift the session marks and the machine each was done on (`mcOf`, the key to save or null; machineToSaveIn), last, in that order. */
 export function withNew<B extends { exId: string }>(
   ex: readonly B[],
   d: Parameters<typeof markedNew>[0],
   mcOf: (exId: string) => string | null
 ): B[] {
   return ex.map(b => {
-    if (markedNew(d, b.exId)) return { ...b, nw: true as const };
     const mc = mcOf(b.exId);
-    return mc ? { ...b, mc } : b;
+    // An edit can name a machine on a session marked new (machinePick): both are saved, the mark first.
+    const nw = markedNew(d, b.exId) ? { nw: true as const } : {};
+    return mc || markedNew(d, b.exId) ? { ...b, ...nw, ...(mc ? { mc } : {}) } : b;
   });
 }
 
