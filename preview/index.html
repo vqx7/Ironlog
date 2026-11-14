@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-bp1u9VGuqzIW+ROe6bPoTT3dzkc08FCeWFiqD8K4b94=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-y8MkdILU0rlSycn0ZFyOF6Vyj6bLj0U20PVaA5bwo00=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.13-r111">
@@ -3307,6 +3307,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return ex.maxLoad != null ? loadReadIn(M3, ex.maxLoad) : null;
   }
   function barReadIn(M3, kg2) {
+    if (typedUnit(kg2) === UIn(M3)) return kg2;
     const g2 = gymOfIn(M3);
     return loadReadAs(kg2, g2 && g2.u || UIn(M3));
   }
@@ -7726,7 +7727,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const L2 = gymRackIn(M3, ex, plan);
     if (L2) {
       const tl = rackTolIn(M3), tf = rackTolIn(M3, L2, at2);
-      const conv = at2 != null && typedOtherIn(M3, at2), jump = jumpPct(ex, plan);
+      const conv = at2 != null && typedOtherIn(M3, at2) && !L2.some((x2) => Math.abs(x2 - at2) < EPS_SAME), jump = jumpPct(ex, plan);
       const next2 = (w2) => L2.find((x2) => x2 > w2 + tl) ?? null;
       return {
         kind: "rack",
@@ -12249,9 +12250,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const exps = liftRead(exId);
     const bw = bwRefLoad(ex);
     const noBw = !!ex.bw && !((bwRef() ?? 0) > 0);
+    const reach = Math.min(g0.w, g2.w) - EPS_SAME;
     let hit = null;
     for (const x2 of exps) {
-      if (x2.pts.some((p3) => p3.w >= g2.w - EPS_SAME && p3.r >= g2.r)) {
+      if (x2.pts.some((p3) => p3.w >= reach && p3.r >= g2.r)) {
         hit = x2.date;
         break;
       }
