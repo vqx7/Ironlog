@@ -4,13 +4,15 @@
    `act`; one to the session in progress alone leaves the caches as they are
    (inProgress). */
 
+import type { Exercise } from './types';
 import { isDate, isNum, numIn, today, uid } from './util';
 import { JK, MK, injLabel } from './library';
 import { LIMITS, within } from './records';
 import { cleanCardio } from './normalize';
 import { effW, greyW } from './session';
+import { refreshBlock } from './worksets';
 import { rirScale } from './effort';
-import { EX, U, exName, fmtW, fromD, incOf, liftMax, loadRead, typedBound } from './live';
+import { appU, EX, exName, fmtWOf, fromDOf, incOf, liftMax, liftU, loadReadOf, typedBoundOf } from './live';
 import { state, ui } from './store';
 import { act } from './act';
 import { goalWords } from './display';
@@ -37,7 +39,8 @@ function fieldText(id: string): string {
     : '';
 }
 /** A load typed, as kilograms. */
-const kg = (n: number): number => fromD(n) ?? 0;
+// A load typed for a lift, in its unit, in kilograms.
+const kg = (ex: Pick<Exercise, 'unit'> | null | undefined, n: number): number => fromDOf(ex, n) ?? 0;
 
 /** A lift's sheets and the log's smaller entries, by data-act. */
 export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
@@ -69,6 +72,27 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
     toast(fill ? 'Loads filled in' : 'Loads in grey');
   },
+  /* The unit beside a lift's loads, tapped: the lift's equipment is marked in the other unit. Kept on the lift (back in
+     the app's unit it follows the app again, as one never switched does), so every screen and the next session read it;
+     the lift's blocks in the workout read their targets again in it, and a load already typed is converted, never read
+     as a number of the new unit. */
+  liftUnit(t) {
+    const d = state.draft;
+    const b = d && d.ex[Number(t.dataset.b)];
+    const e = b && state.exercises.find(x => x.id === b.exId);
+    if (!d || !b || !e) return;
+    const to: 'kg' | 'lb' = liftU(e) === 'kg' ? 'lb' : 'kg';
+    act(
+      () => {
+        if (to === appU()) delete e.unit;
+        else e.unit = to;
+        for (const x of d.ex) if (x.exId === b.exId) refreshBlock(x);
+      },
+      { undo: true }
+    );
+    rerenderKeepScroll();
+    toast(`${e.name} in ${to}`, true);
+  },
   bCal(t) {
     const bi = Number(t.dataset.b);
     const d = state.draft;
@@ -85,7 +109,7 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     openModal({
       kind: 'cal',
       b: bi,
-      w: w != null ? fmtW(w) : '',
+      w: w != null ? fmtWOf(EX(b.exId), w) : '',
       at: '',
       pred: b.plan && isNum(+b.plan.rir) ? Math.min(CAL_PRED_MOST, Math.round(+b.plan.rir)) : 1,
       total: ''
@@ -117,7 +141,15 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!(at >= 1)) return no('Enter the rep you would normally have stopped at.');
     if (!(tot >= at)) return no('Total reps to failure should be at least the rep you would have stopped at.');
     if (tot > CAL_MOST) return no('That is more than 100 reps. Check the number.');
-    const set = { w: kg(Math.max(0, w || 0)), r: tot, rir: 0, warm: false, drop: false, done: true, cal: { at, pred } };
+    const set = {
+      w: kg(ex, Math.max(0, w || 0)),
+      r: tot,
+      rir: 0,
+      warm: false,
+      drop: false,
+      done: true,
+      cal: { at, pred }
+    };
     act(
       () => {
         let si = b.sets.findIndex(x => !x.done && !x.warm && x.r == null);
@@ -152,7 +184,7 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     }
     const n = numIn(fieldText('maxVal'));
     // Saved as it was shown, it is kept as set: one set in the other unit is shown on this unit's equipment (liftMax).
-    if (e.maxLoad != null && n != null && String(numIn(fmtW(liftMax(e) ?? 0))) === String(n)) {
+    if (e.maxLoad != null && n != null && String(numIn(fmtWOf(e, liftMax(e) ?? 0))) === String(n)) {
       closeModal();
       return;
     }
@@ -162,13 +194,15 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     }
     closeModal();
     act(() => {
-      if (n != null && n > 0) e.maxLoad = kg(Math.min(n, U() === 'lb' ? MAX_LOAD.lb : MAX_LOAD.kg));
+      if (n != null && n > 0) e.maxLoad = kg(e, Math.min(n, liftU(e) === 'lb' ? MAX_LOAD.lb : MAX_LOAD.kg));
       else delete e.maxLoad;
     });
     refreshEx(e.id);
     rerenderKeepScroll();
     toast(
-      e.maxLoad != null ? `Heaviest available for ${e.name}: ${fmtW(liftMax(e) ?? 0)} ${U()}` : `No limit for ${e.name}`
+      e.maxLoad != null
+        ? `Heaviest available for ${e.name}: ${fmtWOf(e, liftMax(e) ?? 0)} ${liftU(e)}`
+        : `No limit for ${e.name}`
     );
   },
   goalOpen(t) {
@@ -197,7 +231,10 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     }
     // A load saved as it was shown is kept as set: a goal set in the other unit is shown on this unit's equipment.
     const was = e.goal;
-    const goal = { w: was && w != null && String(numIn(fmtW(loadRead(was.w)))) === String(w) ? was.w : kg(w || 0), r };
+    const goal = {
+      w: was && w != null && String(numIn(fmtWOf(e, loadReadOf(e, was.w)))) === String(w) ? was.w : kg(e, w || 0),
+      r
+    };
     act(
       () => {
         e.goal = goal;
@@ -246,18 +283,18 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     // Saved without typing, nothing changes: a lift with no step of its own keeps following its default (Your gym's rack,
     // say), and its own step stays as set, one set in the other unit too, shown as its match (stepReadIn). A number typed
     // is saved, even the one shown (review: typing 5 on a 5 and 2.5 rack did nothing); so is any other number.
-    if (!sheet.typed && String(numIn(fmtW(incOf(e, sheet.plan)))) === String(n)) {
+    if (!sheet.typed && String(numIn(fmtWOf(e, incOf(e, sheet.plan)))) === String(n)) {
       closeModal();
       return;
     }
-    const inc = typedBound(n, LIMITS.step);
+    const inc = typedBoundOf(e, n, LIMITS.step);
     closeModal();
     act(() => {
       e.inc = inc;
     });
     refreshEx(e.id);
     rerenderKeepScroll();
-    toast(`Load step for ${e.name}: ${fmtW(inc)} ${U()}`);
+    toast(`Load step for ${e.name}: ${fmtWOf(e, inc)} ${liftU(e)}`);
   },
   cardioNew() {
     openModal({ kind: 'cardio' });

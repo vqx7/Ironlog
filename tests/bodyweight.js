@@ -14,6 +14,9 @@
 //      its words).
 //   6  Editing a saved session (REV11-2): pull-ups added there get the line under the lift too, and its Add bodyweight
 //      dates the weigh-in the session's day, as the session's Bodyweight button does.
+//   8  The scale's unit (390's Release B): the unit beside a weigh-in field is a tap that marks the scale in the other
+//      unit, kept for weigh-ins alone, said with Undo; a number typed in the field is converted, never read again in the
+//      other unit; weigh-ins, the latest and the Body card then read in it; back to the app's unit, the setting goes.
 // BODYWEIGHT_ONLY=1,2 runs some sections.
 const { open } = require('./h');
 const fails = [];
@@ -155,6 +158,36 @@ async function pickPullups(P, mode) {
     const mixed = await P.page.evaluate(() => [0, 1, 2, 3, 4].map(i => { const e = document.querySelector(`#blk-${i} p.hint`); return e ? e.textContent.trim() : ''; }));
     ok(/^First time: pick a load/.test(mixed[0]) && /^First time: your bodyweight only\. Do 6 to 12 reps/.test(mixed[1]) && mixed[2] === 'First time: bodyweight only; do 6 to 12 reps.' && /^First time: set the help/.test(mixed[3]) && /^First time: help for about \d+ reps; do 6 to 12 reps\.$/.test(mixed[4]), '7. a new loaded lift, two bodyweight and two assisted: each kind\'s paragraph once, then its short line', mixed);
     ok(!P.errors.length, '7. no page errors', P.errors);
+    await P.ctx.close(); await P.browser.close();
+  }
+
+  if (run(8)) {
+    const P = await phone({ onboarded: true, bw: 180 });
+    await P.page.evaluate(() => window.__ironlog.openModal({ kind: 'bw' })); await wait(200);
+    const q = '#modal input#bwSheetVal', tap = '#modal [data-act="bodyUnit"]';
+    await P.page.click(q); await P.page.keyboard.type('200');
+    const before = await P.page.evaluate(() => ({ u: document.querySelector('#modal [data-act="bodyUnit"]').textContent.trim(), text: document.querySelector('#modal').innerText }));
+    // The tap takes a finger 44 px wide and tall over the unit, the box rising from it (the field below), no other control under it.
+    const reach = await P.page.evaluate(() => { const sel = '#modal [data-act="bodyUnit"]'; const b = document.querySelector(sel); const r = b.getBoundingClientRect(); const cx = r.left + r.width / 2, bot = r.bottom + 2, top = bot - 44, left = cx - 22;
+      const all = [cx - 21, cx, cx + 21].every(x => [bot - 1, bot - 22, top + 1].every(y => { const e = document.elementFromPoint(x, y); return !!e && e.closest(sel) === b; }));
+      const others = [...document.querySelectorAll('#modal button, #modal a, #modal input, #modal [data-act]')].filter(e => e !== b && !b.contains(e) && !e.contains(b)).filter(e => { const q = e.getBoundingClientRect(); return q.width && q.height && q.left < left + 44 && q.right > left && q.top < bot && q.bottom > top; }).map(e => e.outerHTML.slice(0, 80));
+      return all && !others.length ? true : { all, others }; });
+    await P.page.click(tap); await wait(250);
+    const after = await P.page.evaluate(() => { const L = window.__ironlog; const f = document.querySelector('#modal input#bwSheetVal'); return { u: document.querySelector('#modal [data-act="bodyUnit"]').textContent.trim(), set: L.state.settings.bwUnit || null, field: f && f.value, text: document.querySelector('#modal').innerText, app: L.state.settings.unit, lift: L.liftU(L.EX('bench')) }; });
+    const t1 = await toastNow(P);
+    ok(before.u === 'lb' && reach === true && after.u === 'kg' && after.set === 'kg' && after.field === '90.7' && /Latest 81\.6 kg/.test(after.text) && after.app === 'lb' && after.lift === 'lb' && /^Bodyweight in kg/.test(t1),
+      '8. the unit beside the field, tapped: weigh-ins in kg, 200 typed in lb shown as 90.7 kg, the latest 180 lb as 81.6 kg, the app and the lifts still in lb, with Undo', { before, reach, after, t1 });
+    await P.page.click('#modal [data-act="addBW"]'); await wait(250);
+    const saved = await P.page.evaluate(() => { const L = window.__ironlog; const b = [...L.state.bodyweights].sort((a, b) => (a.date < b.date ? 1 : -1))[0]; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); const s = document.getElementById('bwSet'); if (s) s.scrollIntoView(); return { kg: b.kg, line: s ? s.parentElement.innerText : '' }; });
+    await wait(150);
+    ok(Math.abs(saved.kg - 90.7) < 1e-9 && /Latest 90\.7 kg/.test(saved.line), '8. saved as shown, 90.7 kg as typed, and Settings reads it in kg', saved);
+    await P.page.click('#bwSet [data-act="bodyUnit"]'); await wait(250);
+    const back = await P.page.evaluate(() => { const L = window.__ironlog; return { set: 'bwUnit' in L.state.settings, line: document.getElementById('bwSet').parentElement.innerText }; });
+    ok(!back.set && /Latest 200 lb/.test(back.line), '8. tapped again, weigh-ins follow the app\'s unit again and the setting is gone: 90.7 kg reads 200 lb', back);
+    await P.page.click('#toast [data-act="undo"]'); await wait(250);
+    const undone = await P.page.evaluate(() => window.__ironlog.state.settings.bwUnit || null);
+    ok(undone === 'kg', '8. Undo puts the scale back in kg', undone);
+    ok(!P.errors.length, '8. no page errors', P.errors);
     await P.ctx.close(); await P.browser.close();
   }
 

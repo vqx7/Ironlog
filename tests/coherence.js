@@ -517,6 +517,34 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
     await P.ctx.close();
   }
 
+  // ---- A lift marked in kg in an lb app, every screen (2.66, 390's Release B): the demo's dumbbell lift marked kg, its
+  // sets typed in kg; All-time bests' heaviest, the session's heaviest line and History's line for it quote its heaviest
+  // set alike, with kg named, and the lifts beside it stay in lb with no unit named.
+  {
+    const P = await open(FILE, { browser, clock: '2026-11-04T10:00:00' });
+    const r = await P.page.evaluate(() => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb';
+      L.makeDemo(); for (const x of S.sessions) delete x.demo;
+      const id = Object.keys(L.IDX().byEx).find(k => L.EX(k).equip === 'dumbbell' && !L.EX(k).bw && !L.EX(k).timed);
+      for (const x of S.sessions) for (const b of x.ex) if (b.exId === id) for (const t of b.sets) if (t.w > 0) t.w = Math.round(t.w / 2.5) * 2.5;
+      S.exercises.find(e => e.id === id).unit = 'kg';
+      L.state = L.normalize(S); L.invalidate(); L.ui.bestsAll = true;
+      const h = L.allTimeBests(id).heavy;
+      const want = `${Math.round(h.p.w * 10) / 10} kg×${h.p.r}`;
+      const d = document.createElement('div'); d.innerHTML = L.bestsBoard().html;
+      const board = [...d.querySelectorAll(`.bx[data-ex="${id}"] summary .bs`)].map(x => x.textContent.trim());
+      const other = [...d.querySelectorAll('.bx summary .bs')].map(x => x.textContent.trim()).filter((x, i, all) => !board.includes(x));
+      const line = L.bestLine(id) || '';
+      const sid = [...S.sessions].filter(x => x.ex.some(b => b.exId === id)).sort((a, b) => (a.date < b.date ? 1 : -1))[0].id;
+      L.ui.tab = 'history'; L.ui.histOpen = sid; L.render();
+      const hp = [...document.querySelectorAll('#view p')].find(p => p.querySelector('b') && p.querySelector('b').textContent === L.EX(id).name); const hist = hp ? hp.textContent : '';
+      return { id, want, board, line, hist, otherKg: other.filter(x => / kg/.test(x)) };
+    });
+    ok(r.board.some(x => x.includes('heaviest ' + r.want)) && r.line.includes(r.want) && /\d kg×\d/.test(r.hist) && !/\d lb/.test(r.hist) && !r.otherKg.length,
+      `a lift marked kg (${r.id}): All-time bests, the session's heaviest line and History quote its heaviest set alike, ${r.want}, and no other lift is said in kg`, r);
+    ok(!P.errors.length, 'no page errors (a lift in kg)', P.errors);
+    await P.ctx.close();
+  }
+
   await browser.close();
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.log('FAIL crashed:', e && e.stack || e); process.exit(1); });

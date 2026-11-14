@@ -640,6 +640,8 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
    keep the width they had at 320 px. */
 .sg{position:relative;display:grid;grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) 44px;gap:6px;align-items:center;margin-top:6px}
 .sg.head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:650;margin-top:12px}
+.lunit{position:relative;background:none;border:0;padding:0;margin:0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer}
+.lunit::before{content:'';position:absolute;left:50%;bottom:-2px;width:max(100%,44px);height:44px;transform:translateX(-50%)}
 .sg .n{font:700 15px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center}
 button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg .ls{font:600 12px/1.15 var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center;overflow-wrap:anywhere}

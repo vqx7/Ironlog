@@ -8,11 +8,11 @@ import type { Plan } from './types';
 import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from './model';
 import { statsUpToIn } from './bests';
 import type { LiftBests } from './bests';
-import { EXIn, UIn, exInjuryIn } from './model';
+import { EXIn, UIn, exInjuryIn, liftModelIn } from './model';
 import { IDXIn, lastOf, liftReadIn } from './analytics';
 import { atCapOfIn, capOfIn, gymRackIn, loadFloorIn } from './gym';
 import { DEFAULT_STEP, fromDIn, toDIn, typedOtherIn } from './units';
-import { fmtWIn, loadLabelIn, loadNote, typedLabelIn } from './loads';
+import { fmtWIn, listLabelIn, loadLabelIn, loadNote, typedLabelIn } from './loads';
 import { addDays, daysBetween, isDate, r1, EPS, EPS_SAME, WEEK_DAYS, pctOf } from './util';
 import {
   BACK_DAYS,
@@ -197,6 +197,7 @@ function pastWordsIn(
    a load (the test below), it is read as one. toD and fromD of a number are
    numbers, as the other ! say. */
 export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts | null): Suggestion {
+  M = liftModelIn(M, EXIn(M, exId));
   opts = opts || {};
   const ex = EXIn(M, exId);
   const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M, exId, plan, opts) : 0;
@@ -370,7 +371,7 @@ function sgSameDayIn(M: Model, C: SuggestCtx): Suggestion | null {
   /* Earlier that day in another rep range (a heavy morning, a light evening), or in one not on record (an import):
      that range's own rules read it. */
   if (!(last.rr && sameRR(last.rr, [+plan.repMin, +plan.repMax]))) return null;
-  const sets = last.pts.map(p => `${loadLabelIn(M, ex, p.w)}×${p.r}`).join(', ');
+  const sets = last.pts.map(p => `${typedLabelIn(M, ex, p.w)}×${p.r}`).join(', ');
   return {
     top,
     w: top,
@@ -393,6 +394,7 @@ function sgSameDayIn(M: Model, C: SuggestCtx): Suggestion | null {
    that test only when inRR holds, which needs a full session, so all is
    there then too. */
 export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts | null): Suggestion {
+  M = liftModelIn(M, EXIn(M, exId));
   opts = opts || {};
   /* opts.before: the date of a past session being logged. Only what was
      logged up to that date counts, so a workout entered after later ones
@@ -1243,7 +1245,7 @@ function kinStartIn(
   const floor = loadFloorIn(M, ex);
   if (floor > 0 && w < floor - EPS) w = floor;
   if (!(w > 0)) return null;
-  return { ex: k.ex, date: x.date, w, set: `${loadLabelIn(M, k.ex, set!.w)}×${set!.r}` };
+  return { ex: k.ex, date: x.date, w, set: `${listLabelIn(M, k.ex, set!.w)}×${set!.r}` };
 }
 
 /* Timed holds: double progression on seconds. Beat the total time at the same
@@ -1402,6 +1404,7 @@ function suggestTimedIn(
 
 /** The note that a lift is getting easier at a load (RIR climbing at the same reps), for the session. */
 export function easierTextIn(M: Model, ex: ExerciseLike, e: Drift): string {
+  M = liftModelIn(M, ex);
   // In the lifter's effort scale.
   const sc = effScale(M.s.settings.rirScale);
   return `Getting easier at ${loadLabelIn(M, ex, e.w)}${ex.bw ? '' : ' ' + UIn(M)}: ${sc === 'rpe' ? 'RPE' : 'RIR'} ${effAt(sc, e.from)} → ${effAt(sc, e.to)} at the same reps. Adding load today is reasonable.`;

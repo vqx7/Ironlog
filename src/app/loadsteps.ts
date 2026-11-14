@@ -6,7 +6,7 @@
 import type { Plan } from './types';
 import type { ExerciseLike, Model, Suggestion } from './model';
 
-import { UIn } from './model';
+import { UIn, liftModelIn } from './model';
 import { IDXIn, liftReadIn } from './analytics';
 import { capOfIn, gymRackIn, gymStepIn, loadFloorIn, loadsFloorAt, plateGridIn, rackGapIn, rackTolIn } from './gym';
 import {
@@ -53,6 +53,7 @@ const RACK_READ_N = 12;
    asked. */
 /** A suggestion put on the nearest step in the unit on screen (onto the rack where the lift has one); going down, never heavier than last time's load. */
 export function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
+  M = liftModelIn(M, ex);
   const plates = res && res.w != null && !ex.timed && !!plateGridIn(M, ex, plan);
   const out = plates ? plateSnap(M, ex, plan, res, down) : gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
   /* A lighter day, a deload or a return is never above last time's load, but never under the bar either (CLAUDE.md, Numbers): the empty 20 kg
@@ -116,6 +117,7 @@ function unitSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?
    kg plates. */
 /** The spacing of the loads that exist for a lift, in kg: which loads exist, not how far a load goes up. */
 export function loadGridIn(M: Model, ex: ExerciseLike, plan?: Pick<Plan, 'inc'> | null): number {
+  M = liftModelIn(M, ex);
   return stepOfIn(M, ex, plan, undefined, false);
 }
 
@@ -135,6 +137,7 @@ export function unitGridIn(
   down?: boolean,
   whole?: boolean
 ): number | null {
+  M = liftModelIn(M, ex);
   if (ex.timed || gymRackIn(M, ex, plan) || plateGridIn(M, ex, plan)) return null;
   const sl = inUnitIn(M, incOfIn(M, ex, plan));
   if (!(sl > 0)) return null;
@@ -329,6 +332,7 @@ export function incOfIn(
   plan?: Pick<Plan, 'inc'> | null,
   at?: number | null
 ): number {
+  M = liftModelIn(M, ex);
   return stepOfIn(M, ex, plan, at, true);
 }
 
@@ -447,6 +451,7 @@ function listSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Su
    would be asked, which neither rack has. A spacing that is a step of the other
    (5 lb and 2.5) is the same rack read more closely. */
 export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): number | null {
+  M = liftModelIn(M, ex);
   const I = IDXIn(M);
   I._rack = I._rack || {};
   // Read since a new machine or gym (liftReadIn), its rack another gym's before: kept by where that stretch starts.
@@ -551,6 +556,7 @@ export function offGrid(
   plan: Pick<Plan, 'inc'> | null | undefined,
   at: number
 ): number | null {
+  M = liftModelIn(M, ex);
   const g = rackGridIn(M, ex, plan, at);
   if (g == null) return null;
   const gd = gridD(M, g),
@@ -573,6 +579,7 @@ function gridSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Sugg
    25 lb raise and 1% on a 500 lb leg press. A rack is read only with a load
    to step from (at), as the ! say. */
 export function progStepIn(M: Model, ex: ExerciseLike, plan: Plan, loadKg: number, at?: number | null): number {
+  M = liftModelIn(M, ex);
   /* On a rack, from Your gym or read from its spacing when the load is off its weights: the heaviest weight within
      the jump, at least the next one up (a load near a weight is that weight, so the next one up is a whole
      step: V 2026-10-27). */
@@ -743,6 +750,7 @@ export function lighterLoadIn(
   from: number,
   to: number
 ): number {
+  M = liftModelIn(M, ex);
   const Ls = loadsForIn(M, ex, plan, from);
   if (Ls.kind !== 'step') {
     const dn = Ls.below(from);
@@ -778,6 +786,7 @@ export function heavierLoadIn(
   from: number,
   to: number
 ): number | null {
+  M = liftModelIn(M, ex);
   const Ls = loadsForIn(M, ex, plan, from);
   const up = Ls.above(from),
     c = Ls.floor(to);
@@ -795,6 +804,7 @@ export function stepLoadIn(
   from: number,
   dir: 1 | -1
 ): number | null {
+  M = liftModelIn(M, ex);
   if (dir > 0) return loadsForIn(M, ex, plan, from).above(from);
   const w = lighterLoadIn(M, ex, plan, from, from - EPS_SAME);
   return w < from - EPS_SAME ? w : null;

@@ -95,6 +95,10 @@
 //      the bench is back after 10 years and ask no load from it; a first session at 135, then a week on the usual
 //      step up from 135, never a share of 315; the recap says the best since you came back, the first session back
 //      says none; All-time bests keeps 315 x 1 with its year and shows the best since you came back beside it.
+//  19  dumbbells marked in kg at a gym in pounds (2.66, 390's Release B): two weeks of 185 lb bench and 50 lb
+//      dumbbells; in the session, the dumbbells' LB tapped to KG: their rows ask the nearest load in kg, said so, the
+//      bench stays in lb; the sets done as asked and Finish; History shows the dumbbells in kg and the bench in lb; and
+//      the week after the dumbbells read last time in kg, nothing converted back, the bench in lb.
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
 const { open, engine, touchDriver } = require('./h');
@@ -1199,6 +1203,44 @@ async function finish() {
     const went = await ev(() => { const L = window.__ironlog; const s = L.state.sessions[0]; return { tab: L.ui.tab, open: L.ui.histOpen === (s && s.id), modal: L.ui.modal && L.ui.modal.kind }; });
     ok(!!day && went.tab === 'history' && went.open && !went.modal, '18. Tuesday, logged, tapped in the month: History opens on that session', { day, went });
     ok(!H.P.errors.length, '18. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 19. Dumbbells marked in kg at a gym in pounds (2.66, 390's Release B).
+  if (run(19)) {
+    const T0 = '2026-11-16';
+    const H = await phone(T0);
+    await seed(H, { unit: 'lb', days: [{ id: 'P', name: 'Push', items: [['bench', 3, 6, 10, 2, 120], ['dbBench', 3, 8, 12, 2, 90]] }],
+      sessions: [14, 7].map(n => ({ day: 'P', date: addD(T0, -n), ex: [['bench', [[185, 8, 2], [185, 8, 2], [185, 8, 2]]], ['dbBench', [[50, 10, 2], [50, 10, 2], [50, 9, 2]]]] })) });
+    await H.start();
+    const d0 = await H.draft();
+    const bb = d0.ex.findIndex(b => b.exId === 'bench'), db = d0.ex.findIndex(b => b.exId === 'dbBench');
+    const heads = () => H.ev(() => [...document.querySelectorAll('#view .sg.head [data-act="liftUnit"]')].map(e => e.textContent.trim().toUpperCase()));
+    const h0 = await heads();
+    await H.page.click(`#view .sg.head [data-act="liftUnit"][data-b="${db}"]`); await wait(250);
+    const h1 = await heads(), t1 = await H.toast(); await H.quiet();
+    const rows = []; for (const s of [0, 1, 2]) rows.push(await H.row(db, s));
+    const hint = await H.ev(b => window.__ironlog.state.draft.ex[b].hint || '', db);
+    const w = Number(rows[0].w);
+    // 50 lb is 22.68 kg: the nearest dumbbell in kg is a whole half kilogram within 4% of it.
+    ok(h0[db] === 'LB EACH' && h1[db] === 'KG EACH' && h1[bb] === 'LB' && /in kg/.test(t1) && Math.abs(w - 22.68) / 22.68 < 0.04 && Math.abs(w * 2 - Math.round(w * 2)) < 1e-9 && rows.every(r => Number(r.w) === w) && /at \d+(\.\d)? kg per dumbbell/.test(hint) && !/ lb/.test(hint.replace(/^Last[^.]*\.\s*/, '')),
+      '19. LB tapped on the dumbbells: KG, their rows the nearest dumbbell in kg, the target in kg (last time quoted as typed), the bench still in lb', { h0, h1, t1, rows, hint });
+    // The sets done as asked: the reps in grey typed, at 2 in reserve, each ticked.
+    for (const [b, s, r] of [[db, 0, rows[0].r], [db, 1, rows[1].r], [db, 2, rows[2].r], [bb, 0, 8], [bb, 1, 8], [bb, 2, 8]]) { await H.type('r', b, s, r); await H.effort(b, s, 2); await H.quiet(); await H.tick(b, s); }
+    const fin = await H.finish();
+    const saved = await H.ev(() => { const L = window.__ironlog; const s = [...L.state.sessions].sort((a, b) => (a.date < b.date ? 1 : -1))[0]; const x = s.ex.find(b => b.exId === 'dbBench'); return { sid: s.id, w: x.sets.map(t => t.w), units: x.sets.map(t => L.typedLabel(L.EX('dbBench'), t.w)) }; });
+    await H.ev(sid => { const L = window.__ironlog; L.ui.tab = 'history'; L.ui.histOpen = sid; L.render(); }, saved.sid); await wait(200);
+    const hist = await H.text();
+    ok(saved.sid !== 'h1' && saved.w.every(x => Math.abs(x - w) < 1e-9) && new RegExp(`${w} ?kg|kg[^\\n]*${w}`).test(hist) && /185/.test(hist), '19. Finish saves the dumbbells at the kilograms done; History shows them in kg and the bench at 185 lb', { saved, fin, hist: hist.slice(0, 600) });
+    await H.day(addD(T0, 7));
+    await H.ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); }); await wait(100);
+    await H.start();
+    const d2 = await H.draft();
+    const db2 = d2.ex.findIndex(b => b.exId === 'dbBench'), bb2 = d2.ex.findIndex(b => b.exId === 'bench');
+    const h2 = await heads();
+    const hint2 = await H.ev(b => window.__ironlog.state.draft.ex[b].hint || '', db2), bhint = await H.ev(b => window.__ironlog.state.draft.ex[b].hint || '', bb2);
+    ok(h2[db2] === 'KG EACH' && h2[bb2] === 'LB' && new RegExp(`Last \\(Nov 16\\): ${w}×`).test(hint2) && !/ lb/.test(hint2) && /185|lb/.test(bhint), '19. the week after: the dumbbells read last time in kg, nothing in lb; the bench in lb', { h2, hint2, bhint });
+    ok(!H.P.errors.length, '19. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
 

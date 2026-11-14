@@ -32,27 +32,32 @@ import { SIZE_MAP } from './coach';
 import { REGION_KEY, prefGet } from './storage';
 import { effShow, rirScale } from './effort';
 import {
-  EX,
-  IDX,
-  liftRead,
-  U,
   activeRoutine,
   allTimeBests,
+  appU,
+  bodyU,
   avgFirstWeek,
   avgWeeks,
   bwRef,
   bwRefLoad,
+  cycleState,
   dateIndex,
   dayMinutes,
-  isRestWeek,
   defPlan,
+  EX,
+  IDX,
+  isRestWeek,
+  liftRead,
+  liftU,
   loadLabel,
-  loadRead,
+  loadReadOf,
   logBack,
   sortedSessions,
-  toD,
-  weeksAvg,
-  cycleState
+  toDApp,
+  toDBody,
+  toDOf,
+  listLabel,
+  weeksAvg
 } from './live';
 import { state, ui } from './store';
 import type { ExPoint, Exposure, ExerciseLike, Pr } from './model';
@@ -77,23 +82,27 @@ const K_FROM = 10000,
   K = 1000;
 /** A load lifted, in the unit on screen: whole, and in thousands from K_FROM. */
 export function fmtK(kg: number): string {
-  const v = Math.round(toD(kg) ?? 0);
+  const v = Math.round(toDApp(kg) ?? 0);
   return v >= K_FROM ? Math.round(v / K) + 'k' : v.toLocaleString();
 }
 
 /** The unit cardio distances are shown in: km with kg, miles with lb. */
-export const distU = (): 'km' | 'mi' => (U() === 'kg' ? 'km' : 'mi');
+export const distU = (): 'km' | 'mi' => (appU() === 'kg' ? 'km' : 'mi');
 
 /** A distance kept in km, in the unit on screen, to two places. */
-export const distShow = (km: number): number => Math.round((U() === 'kg' ? km : km / KM_MI) * HUNDREDTHS) / HUNDREDTHS;
+export const distShow = (km: number): number =>
+  Math.round((appU() === 'kg' ? km : km / KM_MI) * HUNDREDTHS) / HUNDREDTHS;
 
-/** One set, short: the load and reps (185×8), or the hold (BW for 45s). */
+/** One set, short: the load and reps (185×8), or the hold (BW for 45s); with `named`, the load's unit said in any unit. */
 export function setShort(
-  ex: Pick<Exercise, 'bw' | 'timed'>,
+  ex: Pick<Exercise, 'bw' | 'timed' | 'unit'>,
   w: number | string | null | undefined,
-  r: number | string | null
+  r: number | string | null,
+  named?: boolean
 ): string {
-  return ex.timed ? `${loadLabel(ex, +(w ?? 0) || 0)} for ${r}s` : `${loadLabel(ex, +(w ?? 0) || 0)}×${r}`;
+  // A set is quoted as typed (225 lb), its unit named when it is not the app's (listLabelIn), in any screen's list.
+  const l = listLabel(ex, +(w ?? 0) || 0, named);
+  return ex.timed ? `${l} for ${r}s` : `${l}×${r}`;
 }
 
 /** One saved set as History lists it: its mark, load and reps, missed, the effort called and a calibration set. */
@@ -124,45 +133,57 @@ export function effTgt(rir: number | string | null | undefined): string {
 /* Estimates (1RM, PR toasts, the bests board) are good to a few percent at
    best, so they show whole pounds or half kilos: 293.8 next to 294 and
    301 read as precision the numbers do not have. Loads keep their decimals. */
-/** An estimate in the unit on screen: whole pounds or half kilos, or '' for none. */
-export function fmtE(kg: number | null | undefined): string {
+/** An estimate for a lift in its unit: whole pounds or half kilos, or '' for none. */
+export function fmtE(ex: Pick<Exercise, 'unit'> | null | undefined, kg: number | null | undefined): string {
   if (kg == null || isNaN(kg)) return '';
-  const v = toD(kg) ?? 0;
-  return String(U() === 'lb' ? Math.round(v) : Math.round(v * 2) / 2);
+  const v = toDOf(ex, kg) ?? 0;
+  return String(liftU(ex) === 'lb' ? Math.round(v) : Math.round(v * 2) / 2);
 }
 
 /* A best estimate a little above the one before it can show as the same
    number ("Best estimate 8 lb per dumbbell (was 8)"): the PR stands, and a "was" that reads the same number is left
    out, in the recap and the toast alike. */
 /** What an estimate was before, as shown, or '' when it shows as the same number now. */
-export function wasE(now: number | null | undefined, before: number | null | undefined): string {
-  const b = fmtE(before);
-  return b && b !== fmtE(now) ? b : '';
+export function wasE(
+  ex: Pick<Exercise, 'unit'> | null | undefined,
+  now: number | null | undefined,
+  before: number | null | undefined
+): string {
+  const b = fmtE(ex, before);
+  return b && b !== fmtE(ex, now) ? b : '';
 }
 
 /** The unit tape measurements are shown in: inches with lb, cm with kg. */
-export const LU = (): 'in' | 'cm' => (U() === 'lb' ? 'in' : 'cm');
+export const LU = (): 'in' | 'cm' => (appU() === 'lb' ? 'in' : 'cm');
 /** A tape entry's site in cm, or undefined when it was not measured. */
 export function measAt(m: Measurement, k: string): number | undefined {
   const v = rec(m)?.[k];
   return typeof v === 'number' ? v : undefined;
 }
 /** A length as typed in the unit on screen, in cm. */
-export const lenFrom = (v: number): number => (U() === 'lb' ? v * IN : v);
+export const lenFrom = (v: number): number => (appU() === 'lb' ? v * IN : v);
 
 /** A length kept in cm, in the unit on screen, to one place, or '' for none. */
 export const lenD = (cm: number | null | undefined): string =>
-  cm == null ? '' : String(r1(U() === 'lb' ? cm / IN : cm));
+  cm == null ? '' : String(r1(appU() === 'lb' ? cm / IN : cm));
 
 /** A load lifted, whole, with thousands separated (295,403). */
-export const fmtBig = (kg: number): string => Math.round(toD(kg) ?? 0).toLocaleString();
+export const fmtBig = (kg: number): string => Math.round(toDApp(kg) ?? 0).toLocaleString();
 
 /** The load column's heading: the unit, and what the number is (each, per side, the stack, added, or the machine's help). */
 export function loadHead(ex: ExerciseLike | null | undefined): string {
   const m = loadMode(ex),
-    u = U().toUpperCase();
+    u = liftU(ex).toUpperCase();
   if (ex && ex.assist) return 'Help ' + u;
-  return m === 'each' ? u + ' each' : m === 'side' ? u + '/side' : m === 'stack' ? 'Stack' : m === 'bw' ? '+' + u : u;
+  return m === 'each'
+    ? u + ' each'
+    : m === 'side'
+      ? u + '/side'
+      : m === 'stack'
+        ? u + ' stack'
+        : m === 'bw'
+          ? '+' + u
+          : u;
 }
 
 /** A date written out: "Sat, Oct 24, 2026". */
@@ -288,16 +309,16 @@ export function bwRate(): { pct: number; wk: number; days: number; from: string;
    scale shows. Under BW_FLAT of a unit a week reads flat. */
 /** Half the last digit the weekly rate shows (a tenth of a unit): less reads flat. */
 const BW_FLAT = 0.05;
-/** The bodyweight's weekly rate in words, in the unit on screen. */
+/** The bodyweight's weekly rate in words, in the scale's unit. */
 export function bwWeekTxt(r: { wk: number }): string {
-  const v = toD(r.wk) ?? 0;
-  return Math.abs(v) < BW_FLAT ? 'Flat' : `${v > 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} ${U()} a week`;
+  const v = toDBody(r.wk) ?? 0;
+  return Math.abs(v) < BW_FLAT ? 'Flat' : `${v > 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} ${bodyU()} a week`;
 }
 
 /** A height kept in cm, as the lifter reads it: 5'10" with lb, 178 cm with kg. */
 export function heightTxt(cm: number | null | undefined): string {
   if (cm == null) return '';
-  if (U() === 'kg') return `${Math.round(cm)} cm`;
+  if (appU() === 'kg') return `${Math.round(cm)} cm`;
   const i = Math.round(cm / IN);
   return `${Math.floor(i / FT_IN)}'${i % FT_IN}"`;
 }
@@ -441,7 +462,7 @@ export function goalState(exId: string): {
   const g0 = ex && ex.goal;
   if (!g0 || !goalOk(ex)) return null;
   // Set in the other unit, the goal is the load of this unit's equipment it reads as (loadReadIn): 100 kg is 220 lb.
-  const g = { w: loadRead(g0.w), r: g0.r };
+  const g = { w: loadReadOf(ex, g0.w), r: g0.r };
   // Since a new machine or gym (liftRead): a goal reached at another machine is not reached here.
   const exps = liftRead(exId);
   const bw = bwRefLoad(ex);
@@ -470,7 +491,7 @@ export function goalState(exId: string): {
 }
 /** A goal in words: "225 lb × 5", in the lift's own frame. */
 export function goalWords(ex: ExerciseLike, g: { w: number; r: number }): string {
-  return `${loadLabel(ex, loadRead(g.w))}${ex.bw ? '' : ' ' + U()}${loadNote(ex)} × ${g.r}`;
+  return `${loadLabel(ex, loadReadOf(ex, g.w))}${ex.bw ? '' : ' ' + liftU(ex)}${loadNote(ex)} × ${g.r}`;
 }
 
 /* ---------- Volume by region: what it reads ---------- */

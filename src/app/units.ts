@@ -3,8 +3,9 @@
    kilometres (Your gym's lists keep the unit the gym is labelled in); these
    convert to and from the unit on screen. */
 
+import type { Exercise } from './types';
 import type { Model } from './model';
-import { UIn } from './model';
+import { UIn, bodyIn, liftModelIn } from './model';
 import { EPS_SAME } from './util';
 import { LIMITS } from './records';
 
@@ -95,11 +96,43 @@ export function typedBoundIn(M: Model, v: number, most: number): number {
   return kgOfIn(M, Math.min(v, Math.floor(inUnitIn(M, most) / TYPED_STEP + EPS_SAME) * TYPED_STEP));
 }
 
+/** A number typed in a lift's unit, in kilograms, within a bound in kilograms (typedBoundIn in its unit). */
+export const typedBoundOfIn = (
+  M: Model,
+  ex: Pick<Exercise, 'unit'> | null | undefined,
+  v: number,
+  most: number
+): number => typedBoundIn(liftModelIn(M, ex), v, most);
+
 /** A load in kilograms in the unit on screen (null stays null). */
 export const toDIn = (M: Model, kg: number | null | undefined): number | null => (kg == null ? null : inUnitIn(M, kg));
 
 /** A load in the unit on screen in kilograms (null stays null). */
 export const fromDIn = (M: Model, v: number | null | undefined): number | null => (v == null ? null : kgOfIn(M, v));
+
+/** A step as stored (kg), read for a lift in its unit (stepReadIn). */
+export const stepReadOfIn = (M: Model, ex: Pick<Exercise, 'unit'> | null | undefined, v: number): number =>
+  stepReadIn(liftModelIn(M, ex), v);
+
+/** A load in kilograms in a lift's unit (null stays null): what its fields and lines show. */
+export const toDOfIn = (
+  M: Model,
+  ex: Pick<Exercise, 'unit'> | null | undefined,
+  kg: number | null | undefined
+): number | null => toDIn(liftModelIn(M, ex), kg);
+
+/** A load typed in a lift's unit, in kilograms (null stays null): what its fields store. */
+export const fromDOfIn = (
+  M: Model,
+  ex: Pick<Exercise, 'unit'> | null | undefined,
+  v: number | null | undefined
+): number | null => fromDIn(liftModelIn(M, ex), v);
+
+/** A bodyweight in kilograms in the scale's unit (null stays null). */
+export const toDBodyIn = (M: Model, kg: number | null | undefined): number | null => toDOfIn(M, bodyIn(M), kg);
+
+/** A bodyweight typed in the scale's unit, in kilograms (null stays null). */
+export const fromDBodyIn = (M: Model, v: number | null | undefined): number | null => fromDOfIn(M, bodyIn(M), v);
 
 /* Load step: the exercise's own setting wins, so one change applies on every
    day and routine the lift appears in. A step is kept as typed, in kilograms, like a load, so its number says which unit
@@ -140,3 +173,7 @@ export function loadReadAs(kg: number, u: 'kg' | 'lb'): number {
 
 /** A load set on a lift (kg), read in the unit on screen (loadReadAs). */
 export const loadReadIn = (M: Model, kg: number): number => loadReadAs(kg, UIn(M));
+
+/** A load set on a lift (kg), read in that lift's unit (loadReadAs). */
+export const loadReadOfIn = (M: Model, ex: Pick<Exercise, 'unit'> | null | undefined, kg: number): number =>
+  loadReadIn(liftModelIn(M, ex), kg);

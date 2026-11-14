@@ -22,7 +22,7 @@ import { ENV, KEY, log, logBuf, prefGet, prefSet } from './storage';
 import type { LogEntry } from './types';
 import { arr, parseJson } from './records';
 import { withTimeout } from './sync';
-import { U, exName } from './live';
+import { appU, exName } from './live';
 import { acct, cloud, sessionShown, state, ui } from './store';
 import type { FeedbackModal, Modal } from './modals';
 import { FB, codeOf, said } from './providers';
@@ -127,7 +127,7 @@ export function fbContext(m: {
     installed: isStandalone(),
     theme: state.settings.theme,
     accent: state.settings.accent || ACCENT0,
-    unit: U(),
+    unit: appU(),
     from: m.from || ui.tab,
     exercise: m.ex || undefined,
     session: d ? { past: !!d.past, free: !!d.free, editing: !!d.editingId, exercises: d.ex.length } : null,

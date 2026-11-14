@@ -1,4 +1,4 @@
-// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-37, in the
+// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-38, in the
 // project's claude/ironlog-spec-session.md, built from the code: workout.ts, worksets.ts, worktaps.ts, workfields.ts,
 // workfinish.ts, timer.ts, actsstart.ts, actspick.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
 // expects). A feature suite: each section is one rule, a lifter's log seeded, the workout started from Today's card
@@ -1225,6 +1225,42 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
       ok(half(e1(100, 10)) === half(e1(97.5, 11)) && line.endsWith(says), `L-37: in kg after 97.5 x 9 x 3, ${w} x ${r} at 2 in reserve reads "${says}"`, line);
       await P.close();
     }
+  }
+
+  /* ---------- L-38: the unit beside a lift's loads switches the lift between lb and kg ---------- */
+  if (run('L-38')) {
+    /* 390's Release B: tapping "LB" in an exercise's heading marks its equipment in kg: kept on the lift, said with Undo,
+       its target read again in kg, a load already typed converted (225 lb shows as 102.1 kg, never read as 225 kg), the
+       other lifts left in lb; Undo puts it back; it is still kg when the app is opened again, and Finish saves the sets as
+       typed. */
+    const P = await lifter();
+    await start(P);
+    const head = () => P.ev(() => [...document.querySelectorAll('#view .sg.head [data-act="liftUnit"]')].map(e => e.textContent.trim().toUpperCase()));
+    const h0 = await head();
+    await P.page.click(field('w', 0, 0)); await P.page.fill(field('w', 0, 0), ''); await P.page.keyboard.type('225');
+    await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(80);
+    await P.tap(btn('liftUnit', 0, null), 300);
+    const after = await P.ev(() => { const L = window.__ironlog; const d = L.state.draft; const e = L.state.exercises.find(x => x.id === 'bench');
+      return { unit: e.unit, w0: d.ex[0].sets[0].w, shown: document.querySelector('#view input[data-f="w"][data-b="0"][data-s="0"]').value, grey: document.querySelector('#view input[data-f="w"][data-b="0"][data-s="1"]').placeholder, hint: d.ex[0].hint || '' }; });
+    const t1 = await P.toast();
+    ok(JSON.stringify(h0) === JSON.stringify(['LB', 'LB EACH']) && JSON.stringify(await head()) === JSON.stringify(['KG', 'LB EACH']), 'L-38: the bench heading reads LB, then KG after a tap; the raises stay LB', { h0, h1: await head() });
+    // The tap takes a finger 44 px wide and tall over the unit, the box rising from it (the first row's fields below), no
+    // other control under it; and its tap opens no tip of the heading it sits in.
+    const reach = await P.ev(() => { const sel = '#view .sg.head [data-act="liftUnit"]'; const b = document.querySelector(sel); const r = b.getBoundingClientRect(); const cx = r.left + r.width / 2, bot = r.bottom + 2, top = bot - 44, left = cx - 22;
+      const all = [cx - 21, cx, cx + 21].every(x => [bot - 1, bot - 22, top + 1].every(y => { const e = document.elementFromPoint(x, y); return !!e && e.closest(sel) === b; }));
+      const others = [...document.querySelectorAll('button, a, input, select, textarea, [data-act]')].filter(e => e !== b && !b.contains(e) && !e.contains(b)).filter(e => { const q = e.getBoundingClientRect(); return q.width && q.height && q.left < left + 44 && q.right > left && q.top < bot && q.bottom > top; }).map(e => e.outerHTML.slice(0, 80));
+      return { all, others, tip: !!document.querySelector('#tip:not([hidden])') }; });
+    ok(reach.all && !reach.others.length && !reach.tip, 'L-38: the unit takes a finger 44 px wide and tall, over no other control, and its tap opens no tip', reach);
+    ok(after.unit === 'kg' && Math.abs(after.w0 - 225 * LB) < 1e-9 && after.shown === '102.1' && after.grey === '102.1' && /85 kg is the nearest load in kg to what you did: aim for 24\+ reps over 3 sets at 85 kg/.test(after.hint) && t1 === 'Barbell Bench Press in kg',
+      'L-38: kept on the lift; 225 typed shows as 102.1 kg, stored as typed, the rows under it following it; the target read again in kg (185 lb x 8, 8, 7 is 85 kg, aim for 24+, P-40); "Barbell Bench Press in kg", with Undo', { after, t1 });
+    await P.tap('#toast [data-act="undo"]', 300);
+    const back = await P.ev(() => { const L = window.__ironlog; return { unit: L.state.exercises.find(x => x.id === 'bench').unit || null, shown: document.querySelector('#view input[data-f="w"][data-b="0"][data-s="0"]').value }; });
+    ok(back.unit === null && back.shown === '225', 'L-38: Undo puts it back in lb, the load as typed', back);
+    await P.tap(btn('liftUnit', 0, null), 300);
+    await P.page.reload(); await wait(600);
+    const kept = await P.ev(() => ({ unit: window.__ironlog.state.exercises.find(x => x.id === 'bench').unit, head: [...document.querySelectorAll('#view .sg.head [data-act="liftUnit"]')].map(e => e.textContent.trim())[0] }));
+    ok(kept.unit === 'kg' && kept.head === 'KG', 'L-38: switched again, it is still kg when the app is opened again', kept);
+    await P.close();
   }
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');

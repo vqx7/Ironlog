@@ -8,9 +8,10 @@
    changes only what differs, nothing patched by hand; the numbers a row shows are read from the session each draw, so the screen
    cannot say what the log does not. */
 
-import { bwWarn } from './bwnudge';
+import { bodyUnitTap, bwWarn } from './bwnudge';
 import { picStrip } from './notepics';
 import { html, nothing } from 'lit-html';
+import { keyed } from 'lit-html/directives/keyed.js';
 import type { TemplateResult } from 'lit-html';
 import { repeat } from 'lit-html/directives/repeat.js';
 
@@ -24,7 +25,7 @@ import { loadWords, loadNote, emptyLoad } from './loads';
 import { CHK_Q, chkWord } from './coach';
 import { rirScale, effShow, effName } from './effort';
 import { prefGet, BWASK_KEY } from './storage';
-import { EX, loadLabel, U, exName, stepLoad } from './live';
+import { bodyU, EX, exName, liftU, loadLabel, stepLoad } from './live';
 import { sessionShown, state } from './store';
 import {
   effW,
@@ -159,7 +160,7 @@ function adjLine(b: DraftBlock, bi: number): Part {
   const a = b.adj;
   if (!a || !b.sets.some((x, i) => i > a.at && !x.done && !x.warm && !x.drop)) return '';
   const ex = EX(b.exId);
-  const lb = (w: number): string => `${loadLabel(ex, w)}${ex.bw ? '' : ' ' + U()}${loadNote(ex)}`;
+  const lb = (w: number): string => `${loadLabel(ex, w)}${ex.bw ? '' : ' ' + liftU(ex)}${loadNote(ex)}`;
   if (Math.abs(a.w - a.from) < EPS)
     return html`<p class="adjline small" id=${`adj-${bi}`}><span><b>Next sets: ${a.r} reps at ${lb(a.w)}</b>, because ${a.why}.</span><button class="linkbtn" data-act="adjKeep" data-b=${bi}>Keep as it was</button></p>`;
   return html`<p class="adjline small" id=${`adj-${bi}`}><span><b>Next sets: ${lb(a.w)}</b>, ${a.up ? 'up' : 'down'} because ${a.why}.</span><button class="linkbtn" data-act="adjKeep" data-b=${bi}>Keep ${lb(a.from)}</button></p>`;
@@ -267,7 +268,7 @@ function bwAskCard(d: Draft): Part {
   if (d.editingId || d.past || state.bodyweights.length || !d.ex.some(b => EX(b.exId).bw)) return '';
   if (prefGet(BWASK_KEY)) return '';
   return html`<div class="card" id="bwAsk"><p class="small u-m0-0-8"><b>Your bodyweight</b> counts in bodyweight lifts, for weight lifted and estimates. ${tipButton('Logged as a weigh-in for today. Add more on Today, under Body.', 'About bodyweight')}</p>
-  <div class="row"><label class="field u-f1_m0"><span class="vh">Bodyweight (${U()})</span><input type="text" inputmode="decimal" id="bwVal" placeholder=${`Weight (${U()})`} aria-label=${`Bodyweight (${U()})`}></label><button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
+  <div class="row"><label class="field u-f1_m0" for="bwVal"><span class="vh">Bodyweight (${bodyU()})</span>${keyed(bodyU(), html`<input type="text" inputmode="decimal" id="bwVal" placeholder=${`Weight (${bodyU()})`} aria-label=${`Bodyweight (${bodyU()})`}>`)}</label>${bodyUnitTap('bwVal', true)}<button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
 }
 
 /* Cardio and mobility inside a session: saved as their own entries on Finish,
@@ -373,7 +374,7 @@ function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part 
       : pill(
           'w',
           lw == null ? '–' : loadIn(ex, lw),
-          U(),
+          liftU(ex),
           stepLoad(ex, b.plan, w, -1) == null,
           stepLoad(ex, b.plan, w, 1) == null,
           'lighter',
@@ -451,7 +452,7 @@ function blockPart(
       ${ss && partner && gk === 0 ? html`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? 'pair' : 'group'}.</p>` : ''}
       ${b.lastNote && !b.note ? html`<p class="small lnote">Your note, ${fmtDate(b.lastNote.date)}: ${b.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ''}
       ${b.note ? html`<p class="small bnote" id=${`bn-${bi}`}>${b.note}</p>` : html`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}${picStrip(bi, false)}
-      <div class=${'sg head' + (nr ? ' norir' : '')}><span data-tip="Tap a set's number to mark it a warm-up or a drop set">#</span><span class="lsh">Last</span><span class="lh hastip" data-tip=${loadTip(ex)}>${loadHead(ex)}</span><span class=${side ? 'hastip' : nothing} data-tip=${side ?? nothing}>${ex.timed ? (ex.perSide ? 'Sec/side' : 'Sec') : ex.perSide ? 'Reps/side' : 'Reps'}</span>${nr ? '' : html`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
+      <div class=${'sg head' + (nr ? ' norir' : '')}><span data-tip="Tap a set's number to mark it a warm-up or a drop set">#</span><span class="lsh">Last</span><span class="lh hastip" data-tip=${loadTip(ex)}><button type="button" class="lunit" data-act="liftUnit" data-b=${bi} aria-label=${`${ex.name}: loads in ${liftU(ex)}. Switch to ${liftU(ex) === 'kg' ? 'lb' : 'kg'}`}>${loadHead(ex)}</button></span><span class=${side ? 'hastip' : nothing} data-tip=${side ?? nothing}>${ex.timed ? (ex.perSide ? 'Sec/side' : 'Sec') : ex.perSide ? 'Reps/side' : 'Reps'}</span>${nr ? '' : html`<span>${effName()}</span>`}<span>Done</span></div>${repeatKeyed(
         b.sets,
         x => x.rid,
         (_, si) => setRow(d, b, bi, si, ex, nr, dupB)

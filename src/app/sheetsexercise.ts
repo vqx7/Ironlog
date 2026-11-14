@@ -12,7 +12,7 @@ import { html, svg } from 'lit-html';
 import { LIMITS } from './records';
 import type { TemplateResult } from 'lit-html';
 import { EQUIP, ML, MUSCLES, autoCompound, isCompound } from './library';
-import { EX, IDX, U, allTimeBests, barKg, fmtW, liftRead } from './live';
+import { allTimeBests, barKg, EX, fmtWOf, IDX, liftRead, liftU } from './live';
 import { LOAD_MODES, loadNote, loadWords } from './loads';
 import { lighter, sameRR } from './formulas';
 import { fmtDate, repSpan } from './format';
@@ -72,10 +72,10 @@ export function exEditSheet(m: ExEditSheet): TemplateResult {
     <label class="check-inline"><input type="checkbox" data-ebind="timed" aria-labelledby="lt-ex-timed" ?checked=${!!e.timed}>${labelTip('lt-ex-timed', 'Timed hold (log seconds)', has ? 'This exercise has logged sets: switching changes how those numbers read.' : 'The reps column holds seconds.')}</label>
     <details class="more" ?open=${!m.back || !!m.moreOpen}><summary>More options<span class="small muted">less common, load step, plates, heaviest, notes</span></summary><div class="stack">
     <label class="check-inline"><input type="checkbox" data-ebind="rare" ?checked=${!!e.rare}>Mark as less common</label>
-    <div class="grid2"><label class="field">${labelTip('lt-ex-incRaw', `Load step (${U()})`, "The smallest jump on this exercise, everywhere it appears. Earned increases are whole multiples of it, about 2.5% of the load on compound lifts and 5% on isolation work. Blank uses Your gym's step, or the usual one for the equipment.")}<input type="text" inputmode="decimal" data-ebind="incRaw" aria-labelledby="lt-ex-incRaw" value=${e.incRaw} placeholder="Usual step"></label>
+    <div class="grid2"><label class="field">${labelTip('lt-ex-incRaw', `Load step (${liftU(e)})`, "The smallest jump on this exercise, everywhere it appears. Earned increases are whole multiples of it, about 2.5% of the load on compound lifts and 5% on isolation work. Blank uses Your gym's step, or the usual one for the equipment.")}<input type="text" inputmode="decimal" data-ebind="incRaw" aria-labelledby="lt-ex-incRaw" value=${e.incRaw} placeholder="Usual step"></label>
     <label class="field">${labelTip('lt-ex-plates', 'Plate helper', 'What to load, shown under the sets in a session')}<select data-ebind="plates" aria-labelledby="lt-ex-plates">${PLATE_MODES.map(([k, l]) => html`<option value=${k} ?selected=${(e.plates || 'auto') === k}>${l}</option>`)}</select></label></div>
-    ${platesMode(e) === 'bar' ? html`<label class="field">${labelTip('lt-ex-barRaw', `Bar for this lift (${U()})`, 'A trap bar, EZ bar, or any bar other than the one in Settings. Suggested loads on this lift are this bar and the plates on hand, and a deload never goes under it.')}<input type="text" inputmode="decimal" data-ebind="barRaw" aria-labelledby="lt-ex-barRaw" value=${e.barRaw || ''} placeholder=${`Settings bar, ${fmtW(barKg())}`}></label>` : ''}
-    <label class="field">${labelTip('lt-ex-maxRaw', `Heaviest available (${U()}${e.bw ? ', added' : ''})`, 'The top of the stack or the biggest dumbbell. At that load, targets move to more reps and then harder reps, and the lift is not called stalled.')}<input type="text" inputmode="decimal" data-ebind="maxRaw" aria-labelledby="lt-ex-maxRaw" value=${e.maxRaw || ''} placeholder="No limit"></label>
+    ${platesMode(e) === 'bar' ? html`<label class="field">${labelTip('lt-ex-barRaw', `Bar for this lift (${liftU(e)})`, 'A trap bar, EZ bar, or any bar other than the one in Settings. Suggested loads on this lift are this bar and the plates on hand, and a deload never goes under it.')}<input type="text" inputmode="decimal" data-ebind="barRaw" aria-labelledby="lt-ex-barRaw" value=${e.barRaw || ''} placeholder=${`Settings bar, ${fmtWOf(e, barKg())}`}></label>` : ''}
+    <label class="field">${labelTip('lt-ex-maxRaw', `Heaviest available (${liftU(e)}${e.bw ? ', added' : ''})`, 'The top of the stack or the biggest dumbbell. At that load, targets move to more reps and then harder reps, and the lift is not called stalled.')}<input type="text" inputmode="decimal" data-ebind="maxRaw" aria-labelledby="lt-ex-maxRaw" value=${e.maxRaw || ''} placeholder="No limit"></label>
     <label class="field">Notes and cues<textarea data-ebind="note" maxlength=${LIMITS.note}>${e.note || ''}</textarea></label></div></details>
     <div class="row"><button class="btn primary" data-act="exSave">${save}</button><button class="btn" data-act=${m.back ? 'exBack' : 'mClose'}>${m.back ? 'Back' : 'Cancel'}</button></div>${m.isNew ? '' : howToLink(e)}${!m.isNew && e.custom && !window.claude ? html`<button class="linkbtn u-minh44" data-act="exSuggest" data-tip="Your exercises are only in your log. This sends it to the app's owner, who can add it to the library for everyone.">Suggest for the library</button>` : ''}</div></div>`;
 }
@@ -135,8 +135,8 @@ export function liftTrend(exId: string): TemplateResult | string {
                 : `no clear change over ${st.spanW || 2} weeks`
       : '';
   if (isCompound(ex) && exps.every(x => x.best != null)) {
-    const v = exps.map(x => fmtE(x.best));
-    return html`<p class="small muted u-m2-0">Est. 1RM <span class="trend">${v.join(' → ')} ${U()}</span>${dir ? ' · ' + dir : ''}${st && !st.useAdj ? html` ${tipButton('Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.', 'About this trend')}` : ''}</p>`;
+    const v = exps.map(x => fmtE(ex, x.best));
+    return html`<p class="small muted u-m2-0">Est. 1RM <span class="trend">${v.join(' → ')} ${liftU(ex)}</span>${dir ? ' · ' + dir : ''}${st && !st.useAdj ? html` ${tipButton('Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.', 'About this trend')}` : ''}</p>`;
   }
   return html`<p class="small muted u-m2-0">Top sets <span class="trend">${exps.map(x => topSetPt(ex, x).txt).join(' → ')}</span>${dir ? ' · ' + dir : ''}</p>`;
 }
@@ -184,9 +184,9 @@ export function exHistSheet(m: { exId: string }): TemplateResult {
   const bs = bestSet(exId);
   const best =
     be && isCompound(ex)
-      ? `Best estimate ${fmtE(be.v)} ${U()}${loadNote(ex)}`
+      ? `Best estimate ${fmtE(ex, be.v)} ${liftU(ex)}${loadNote(ex)}`
       : bs
-        ? `Best set ${setShort(ex, bs.w, bs.r)}${ex.bw ? '' : ' ' + U()}`
+        ? `Best set ${setShort(ex, bs.w, bs.r, !ex.bw)}`
         : '';
   const setsOf = (x: (typeof all)[number]): string => {
     const ss = state.sessions.find(q => q.id === x.sid);

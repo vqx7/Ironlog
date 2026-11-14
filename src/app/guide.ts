@@ -65,7 +65,7 @@ import { FATIGUE_STALLS, MISSED_WEEKS_SAID } from './coach';
 import { AVG_WEEKS, FIRST_WEEK_REASON, LIGHTER_WEEK_WORDS } from './weeks';
 import { BUILD_PAST, FIXED_RANGE, JUST_UP, KIN, SHORT_RUN } from './engine';
 import { state } from './store';
-import { U } from './live';
+import { appU } from './live';
 import { UNDO_DAYS } from './storage';
 import { AUTH, FB } from './providers';
 import { halfLbl } from './effort';
@@ -112,7 +112,7 @@ const OTHER_WKS = orList(REGION_WKS.map(([n]) => n).filter(n => n !== REGION_WK_
    here are the ones suggest(), IDX() and shortPlan() apply. */
 export function guideSheet(m: { open?: string | undefined }): TemplateResult {
   const off = state.settings.rirMode === 'off';
-  const kg = U() === 'kg';
+  const kg = appU() === 'kg';
   const inClaude = !!(window.claude && typeof window.claude.use === 'function');
   const accts = !inClaude && !!AUTH();
   const where = inClaude
@@ -227,7 +227,8 @@ export function guideSheet(m: { open?: string | undefined }): TemplateResult {
       'Sections',
       `<p>Tap a section's title to fold or open it. Drag its ⠿ to move it; the order is kept. Each time the app opens, every section starts folded, except Sessions on History.</p>
    <p><b>More sections</b>: when a tab has sections hidden, its bottom lists them; tap one to add it. The menu at the top right has Show, hide, or reorder sections. Settings, Layout shows or hides any section (nothing stops being tracked), and Default layout goes back to how a new install starts.</p>
-   <p><b>Your settings</b>: Settings has your training (goal, days, minutes, and focus), your gym's weights, the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>`
+   <p><b>Your settings</b>: Settings has your training (goal, days, minutes, and focus), your gym's weights, the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>
+   <p><b>kg or lb on one lift</b>: when a lift's equipment is marked in the other unit, tap LB or KG beside its weight in a workout. Its loads, targets, steps, and charts follow it; a load already typed is converted, never read again in the other unit. The unit beside a weigh-in field does the same for your scale. Totals that add lifts together stay in the unit in Settings, and a set from before a switch shows as it was typed.</p>`
     ],
     [
       'data',

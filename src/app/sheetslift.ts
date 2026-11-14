@@ -10,7 +10,7 @@ import { html } from 'lit-html';
 import { LIMITS } from './records';
 import type { TemplateResult } from 'lit-html';
 import { JOINTS, MUSCLES, rackKind } from './library';
-import { EX, U, exName, fmtW, gymRack, incOf, liftMax, loadRead } from './live';
+import { EX, exName, fmtWOf, gymRack, incOf, liftMax, liftU, loadReadOf } from './live';
 import { rirShow } from './display';
 import { markedNew } from './session';
 import type { DraftBlock } from './types';
@@ -51,7 +51,7 @@ export function bmenuSheet(m: { b: number }): TemplateResult | null {
   const op = (o: string, l: string, dis?: boolean, cls?: string): TemplateResult =>
     html`<button class=${'btn fullw u-mt6 ' + (cls || '')} data-act="bMenuDo" data-op=${o} data-b=${String(m.b)} ?disabled=${!!dis}>${l}</button>`;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${exName(b.exId)}</h3>${closeX()}</div>
-    ${op('bHist', 'History and chart')}${op('bMus', 'Muscles worked')}${op('wAdd', 'Add a warm-up set')}${op('dropAdd', 'Add a drop set (about 75% load)')}${op('bQuick', 'Type or dictate sets')}${op('bNote', b.note ? 'Edit note' : 'Add note')}${op('bSwap', 'Swap exercise')}${op('bNew', markedNew(d, b.exId) ? 'Same machine as before' : 'New machine or gym')}${howToLink(e)}${op('bInc', `Load step: ${fmtW(incOf(e, b.plan))} ${U()}`)}${op('bMax', `Heaviest available: ${e.maxLoad != null ? fmtW(liftMax(e)) + ' ' + U() : 'no limit'}`)}${rirShow(e) ? op('bCal', 'Calibration set (RIR check)') : ''}${nx ? op('bSs', linked ? 'Unlink superset' : `Superset with ${exName(nx.exId)}`) : ''}${op('bUp', 'Move up', m.b === 0)}${op('bDown', 'Move down', !nx)}${op('fbOpen', 'Report a problem')}${op('bDel', 'Remove from session', false, 'danger')}</div>`;
+    ${op('bHist', 'History and chart')}${op('bMus', 'Muscles worked')}${op('wAdd', 'Add a warm-up set')}${op('dropAdd', 'Add a drop set (about 75% load)')}${op('bQuick', 'Type or dictate sets')}${op('bNote', b.note ? 'Edit note' : 'Add note')}${op('bSwap', 'Swap exercise')}${op('bNew', markedNew(d, b.exId) ? 'Same machine as before' : 'New machine or gym')}${howToLink(e)}${op('bInc', `Load step: ${fmtWOf(e, incOf(e, b.plan))} ${liftU(e)}`)}${op('bMax', `Heaviest available: ${e.maxLoad != null ? fmtWOf(e, liftMax(e) ?? 0) + ' ' + liftU(e) : 'no limit'}`)}${rirShow(e) ? op('bCal', 'Calibration set (RIR check)') : ''}${nx ? op('bSs', linked ? 'Unlink superset' : `Superset with ${exName(nx.exId)}`) : ''}${op('bUp', 'Move up', m.b === 0)}${op('bDown', 'Move down', !nx)}${op('fbOpen', 'Report a problem')}${op('bDel', 'Remove from session', false, 'danger')}</div>`;
 }
 
 /** Flag an injury: a joint or a muscle, and a note. */
@@ -69,7 +69,7 @@ export function goalSheet(m: { exId: string }): TemplateResult {
   const e = EX(m.exId);
   const g = e.goal;
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="goalH"><div class="sheet-h"><h3 id="goalH">Goal: ${e.name}</h3>${closeX()}</div>
-    <div class="grid2"><label class="field">${e.bw ? `Added load (${U()})` : `Load (${U()}${loadNote(e)})`}<input type="text" inputmode="decimal" id="goalW" value=${g ? fmtW(loadRead(g.w)) : ''} placeholder=${e.bw ? '0' : ''}></label>
+    <div class="grid2"><label class="field">${e.bw ? `Added load (${liftU(e)})` : `Load (${liftU(e)}${loadNote(e)})`}<input type="text" inputmode="decimal" id="goalW" value=${g ? fmtWOf(e, loadReadOf(e, g.w)) : ''} placeholder=${e.bw ? '0' : ''}></label>
     <label class="field">Reps<input type="text" inputmode="numeric" id="goalR" value=${g ? String(g.r) : ''}></label></div>
     <div class="row u-mt12"><button class="btn primary" data-act="goalSave">Save</button>${g ? html`<button class="btn danger" data-act="goalClear">Remove goal</button>` : ''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
@@ -78,7 +78,7 @@ export function goalSheet(m: { exId: string }): TemplateResult {
 export function incSheet(m: { exId: string; plan?: DraftBlock['plan'] | undefined }): TemplateResult {
   const e = EX(m.exId);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Load step: ${e.name}</h3>${closeX()}</div>
-    <label class="field">Step (${U()})<input type="text" inputmode="decimal" id="incVal" value=${fmtW(incOf(e, m.plan))}></label>
+    <label class="field">Step (${liftU(e)})<input type="text" inputmode="decimal" id="incVal" value=${fmtWOf(e, incOf(e, m.plan))}></label>
     <p class="small muted">The smallest jump the equipment allows.</p>
     ${e.inc == null && gymRack(e, m.plan) ? html`<p class="small u-m0">Following the ${rackKind(e) === 'dumbbell' ? 'dumbbells' : 'kettlebells'} in Settings > Your gym. A step saved here replaces them for this lift.</p>` : ''}
     <div class="row u-mt10"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
@@ -88,7 +88,7 @@ export function incSheet(m: { exId: string; plan?: DraftBlock['plan'] | undefine
 export function maxSheet(m: { exId: string }): TemplateResult {
   const e = EX(m.exId);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${e.name}</h3>${closeX()}</div>
-    <label class="field">Load (${U()}${e.bw ? ', added to bodyweight' : ''})<input type="text" inputmode="decimal" id="maxVal" value=${e.maxLoad != null ? fmtW(liftMax(e)) : ''} placeholder="No limit"></label>
+    <label class="field">Load (${liftU(e)}${e.bw ? ', added to bodyweight' : ''})<input type="text" inputmode="decimal" id="maxVal" value=${e.maxLoad != null ? fmtWOf(e, liftMax(e) ?? 0) : ''} placeholder="No limit"></label>
     <p class="small muted">Top of the stack or biggest dumbbell. Blank for no limit.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
@@ -112,7 +112,7 @@ export function quickSheet(m: {
   const b = blockAt(m.b);
   if (!b) return null;
   const ex = EX(b.exId);
-  const kg = U() === 'kg';
+  const kg = liftU(ex) === 'kg';
   const rp = rirScale() === 'rpe';
   const tail = rp ? 'rpe 9' : 'rir 1';
   const eg1 = kg ? `100x5, 5, 4 ${tail}` : `235x5, 5, 4 ${tail}`;
@@ -120,7 +120,7 @@ export function quickSheet(m: {
   const ph = kg ? `100x5, 5, 4 ${tail}` : `225x5, 5, 4 ${tail}`;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}: type sets</h3>${closeX()}</div>
     ${ex.timed ? html`<p class="small muted u-m0">Timed hold: the number after x is seconds, for example <b>25x45, 40</b> or <b>bw x 60, 50</b>.</p>` : ''}
-    <p class="small muted">Loads in ${U()}${loadNote(ex)}${ex.bw ? ', added to bodyweight (bw or bw+25)' : ''}. <b>${eg1}</b> or <b>${eg2}</b>. <span class="hastip" data-tip=${`Type or use the keyboard's dictation mic. ${rp ? 'rpe' : 'rir'} at the end applies to every set; @ gives ${effName()} per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.`}>More</span></p>
+    <p class="small muted">Loads in ${liftU(ex)}${loadNote(ex)}${ex.bw ? ', added to bodyweight (bw or bw+25)' : ''}. <b>${eg1}</b> or <b>${eg2}</b>. <span class="hastip" data-tip=${`Type or use the keyboard's dictation mic. ${rp ? 'rpe' : 'rir'} at the end applies to every set; @ gives ${effName()} per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.`}>More</span></p>
     <input type="text" id="qTxt" autocomplete="off" autocapitalize="off" spellcheck="false" value=${m.text || ''} placeholder=${ex.bw ? 'bw x 10, 8, 7' : ph} enterkeyhint="done">
     ${m.err ? html`<p class="small u-cred_m8-0-0">${m.err}</p>` : ''}
     <div class="row u-mt10"><button class="btn primary" data-act="qFill">Fill sets</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
@@ -141,7 +141,7 @@ export function calibrationSheet(m: {
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Calibration set: ${ex.name}</h3>${closeX()}</div>
     <p class="small muted u-m0">Checks how well you judge reps in reserve. Go to failure only where it is safe: a machine, a cable or a spotter.</p>
     <ol class="steps"><li>Use your normal working weight.</li><li>At the rep where you would usually stop, note that rep and how many you think are left.</li><li>Keep going until you cannot complete a rep with good form.</li></ol>
-    <div class="grid2"><label class="field">Load (${ex.bw ? '+' + U() : U()})<input type="text" inputmode="decimal" id="calW" value=${m.w != null ? String(m.w) : ''}></label>
+    <div class="grid2"><label class="field">Load (${ex.bw ? '+' + liftU(ex) : liftU(ex)})<input type="text" inputmode="decimal" id="calW" value=${m.w != null ? String(m.w) : ''}></label>
     <label class="field">Usual stop rep<input type="text" inputmode="numeric" id="calAt" value=${m.at || ''}></label>
     <label class="field">Reps left, your call<select id="calPred">${CAL_CALLS.map(v => html`<option value=${String(v)} ?selected=${Number(m.pred) === v}>${v}</option>`)}</select></label>
     <label class="field">Reps to failure<input type="text" inputmode="numeric" id="calTot" value=${m.total || ''}></label></div>
