@@ -1,5 +1,5 @@
-/* Pick for me, Limited equipment, Swap's closest matches and Short on time
-   (r62, moved from the legacy script as functions of the model). Two
+/* Pick for me, Limited equipment, Swap's closest matches and Short on time,
+   as functions of the model. Two
    questions, one set of rules. Before a session: which of the routine's days
    fits today. Inside one: which exercise to add next. Both read the same
    numbers the rest of the app shows, and every pick says why.
@@ -38,7 +38,7 @@ import { planForIn } from './plans';
 import { paceIn } from './time';
 import { hasTargetIn } from './profile';
 import { STR_NEAR, STR_REST } from './profile';
-import { HARD_EX, JK, JL, LONG_IDS, LONG_TRIAL, MK, ML, isCompound, patternOf, profHeavy } from './library';
+import { HARD_EX, JK, JL, LONG_IDS, LONG_TRIAL, MK, ML, isCompound, loadMode, patternOf, profHeavy } from './library';
 import {
   HELPER_CREDIT,
   LIGHTER_SET_SHARE,
@@ -52,6 +52,7 @@ import { dayParts, dayWorkout, nextTrainIdx, partOf, sessDayIdx } from './routin
 import { sessCmp } from './records';
 import { addDays, andList, daysBetween, r1, MINUTE_S, PERCENT, WEEK_DAYS } from './util';
 import { agoTxt, min5 } from './format';
+import type { ReadDay } from './setread';
 import { isHardIn } from './setread';
 
 /** Recovery after a dose (Recovery tiers, docs/EVIDENCE.md): the hard sets a
@@ -274,8 +275,8 @@ export function recoveryIn(M: Model, m: string, at?: string): Recovery {
 
 /* The days since a muscle's last hard set in the recovery window, any
    number of them: recovery reads only days of RECOVERY.dose or more, so a
-   muscle with a single hard set a day read as "not trained hard" beside its
-   hard sets this week (R81-6, the review of 2.35). */
+   muscle with a single hard set a day would read as "not trained hard"
+   beside its hard sets this week. */
 function lastAnyHardIn(M: Model, m: string): number | null {
   const dm = IDXIn(M).dayMus;
   for (let k = 0; k <= RECOVERY.window; k++) {
@@ -342,7 +343,7 @@ export function rankDaysIn(M: Model): {
   const weekly = R.schedule === 'weekly';
   // Today's place in a weekly routine, Monday first (Date counts from Sunday).
   const planIdx = weekly ? (new Date(t + 'T12:00:00').getDay() + WEEK_DAYS - 1) % WEEK_DAYS : cycleStateIn(M, R).next;
-  // Each workout's last date, by day and workout (a day's second workout is ranked on its own: the second review of r68).
+  // Each workout's last date, by day and workout (a day's second workout is ranked on its own).
   const lastDone: Record<string, string> = {};
   for (const x of M.s.sessions) {
     const k = x.dayId ? `${x.dayId}:${weekly ? partOf(x) : 1}` : '';
@@ -445,8 +446,8 @@ export function dayReasonsIn(M: Model, x: DayRow, r7: Readonly<Record<string, nu
   if (x.joints && x.joints.length)
     out.push(`Loads your ${andList(x.joints.map(j => (JL[j] || j).toLowerCase()))}, which you flagged.`);
   /* A flagged muscle the day loads, as a helper or past its two largest, is
-     said as a flagged joint is (R81-5, the review of 2.35: front delts
-     flagged, Push said nothing though its presses load them). */
+     said as a flagged joint is (with front delts flagged, Push says so, its
+     presses loading them). */
   const injOther = x.injM.filter(m => !main.includes(m));
   if (injOther.length) out.push(`Loads ${andList(injOther.map(m => ML[m] || m))}, which you flagged as injured.`);
   for (const m of main) {
@@ -467,11 +468,18 @@ export function dayReasonsIn(M: Model, x: DayRow, r7: Readonly<Record<string, nu
 /* ---------- Pick for me, inside a session ---------- */
 
 /** The hard sets each muscle has in a session so far (rows not yet ticked count as planned), helpers at HELPER_CREDIT. */
-export function sessionMusclesIn(M: Model, d: Pick<DraftLike, 'ex'>): Record<string, number> {
+export function sessionMusclesIn(
+  M: Model,
+  d: Pick<DraftLike, 'ex' | 'date'> & Partial<Pick<DraftLike, 'id' | 'editingId'>>
+): Record<string, number> {
   const out: Record<string, number> = {};
+  // Its ticked rows read as once it is saved, as of its day; a session with no date is today's.
+  const w: ReadDay = { id: d.id, date: d.date || M.today(), editingId: d.editingId, ex: d.ex };
   for (const b of d.ex) {
     const ex = EXIn(M, b.exId);
-    const n = b.sets.filter(x => !x.warm && (x.done ? isHardIn(M, x, ex) : true)).reduce((a, x) => a + setCredit(x), 0);
+    const n = b.sets
+      .filter(x => !x.warm && (x.done ? isHardIn(M, x, ex, w) : true))
+      .reduce((a, x) => a + setCredit(x), 0);
     if (!n) continue;
     out[ex.primary] = (out[ex.primary] || 0) + n;
     for (const m of ex.secondary) out[m] = (out[m] || 0) + HELPER_CREDIT * n;
@@ -513,10 +521,11 @@ interface ExPick {
    The best one per muscle is kept, then the top three muscles. Anchored on
    the session's own date, so logging a past day reads that week; the
    session itself is not fatigue to recover from, earlier days are. */
-/** The exercises to add next to a session, best first, each with the plan and sets it would be added with (and `full`, the sets before a deload or lighter day halved them, for Finish's offer to the routine, r54). */
+/** The exercises to add next to a session, best first, each with the plan and sets it would be added with (and `full`, the sets before a deload or lighter day halved them, for Finish's offer to the routine). */
 export function rankExercisesIn(
   M: Model,
-  d: Pick<DraftLike, 'ex' | 'date' | 'dayId' | 'deload' | 'light' | 'part' | 'equip'>
+  d: Pick<DraftLike, 'ex' | 'date' | 'dayId' | 'deload' | 'light' | 'part' | 'equip'> &
+    Partial<Pick<DraftLike, 'id' | 'editingId'>>
 ): (ExPick & { plan: Plan; full: number })[] {
   const I = IDXIn(M);
   // Focus muscles in the profile count as priorities here.
@@ -659,7 +668,11 @@ function canDoIn(M: Model, e: Pick<Exercise, 'id'>, repMin: number | string | un
 
 /* Closest same-muscle replacements, used by Swap and Limited equipment.
    Same main muscle and same kind of set (timed or reps) are required; then
-   shared helper muscles, lifts already logged, and like-for-like setup. */
+   shared helper muscles, lifts already logged, and like-for-like setup. A
+   cable and a machine set by a pin in its stack are one setup: both keep
+   the load on through the whole range and step by the stack, and Swap is
+   often reached for because the cables are taken, so Cable Fly's closest
+   match is Pec Deck Fly rather than another fly on the same cables. */
 function swapScoreIn(M: Model, o: ExerciseLike, e: Exercise, repMin: number | string | undefined): number {
   const I = IDXIn(M);
   let s = e.secondary.filter(x => o.secondary.includes(x)).length;
@@ -672,7 +685,7 @@ function swapScoreIn(M: Model, o: ExerciseLike, e: Exercise, repMin: number | st
   if (!!e.bw === !!o.bw) s += SWAP_RANK.bw;
   if (!!e.perSide === !!o.perSide) s += SWAP_RANK.side;
   if (!e.rare) s += SWAP_RANK.common;
-  if (e.equip === o.equip) s += SWAP_RANK.equip;
+  if (e.equip === o.equip || (loadMode(e) === 'stack' && loadMode(o) === 'stack')) s += SWAP_RANK.equip;
   const st = I.exStats[e.id];
   if (st && st.stalled) s -= SWAP_RANK.stalled;
   if (exInjuryIn(M, e)) s -= SWAP_RANK.injured;
@@ -762,7 +775,7 @@ export function recentExIdsIn(M: Model, n: number): string[] {
    and its rest, and its setup while none of its rows is ticked (the long one for the first two compounds done or
    to do). No rest is counted after the very last set, nor between two exercises of one superset while the next of
    them still has a set to do (a partner done or left out rests like any lift). The session's minutes left and Short on time both read this, so the time a trim fits to is
-   the time the session shows (NEW-77: two counts of one number disagreed by up to 3 minutes). setsOf gives each
+   the time the session shows (two counts of one number would disagree by up to 3 minutes). setsOf gives each
    exercise's sets to count; by default the work rows not yet ticked. */
 /** Minutes of lifting left in a session, with each exercise's sets to do given or read from its unticked work rows. */
 export function sessLeftMinIn(M: Model, d: { ex: readonly DraftBlock[] }, setsOf?: (bi: number) => number): number {
@@ -813,7 +826,7 @@ interface TrimRow {
    cover a bench press: only a compound covers a compound). Priority and lagging muscles are kept longest, then
    main lifts, as the Short on time help promises, then the earlier exercise, since a routine usually puts its
    main lifts first. Dropping a whole exercise can free more time than was needed, so work cut then goes back
-   while the session still fits, in the reverse of the cuts (NEW-78, V: "should not be irrational"): an exercise
+   while the session still fits, in the reverse of the cuts (V: "should not be irrational"): an exercise
    left out first, with SHORT_MIN_SETS sets, then single sets, the most important first. Done sets are never
    touched; a row typed but not ticked stays and its time counts, since trimming takes only blank rows (`blank`,
    each block's rows as the session screen's rowBlank reads them, handed in as data). */

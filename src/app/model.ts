@@ -1,10 +1,8 @@
-/* The model the engine and the analytics read (phase 3b, r52;
-   ARCHITECTURE.md): the log, the date the engine takes as today, and the
+/* The model the engine and the analytics read (ARCHITECTURE.md): the log, the date the engine takes as today, and the
    values built from the log once per change. Every function that reads any
    of it takes the model as its first parameter, `M`, so it reads nothing
    else: a test hands it a log and a date, and the app hands it the one live
-   model (live.ts). The accessors here moved unchanged from the legacy script
-   but for that parameter. */
+   model (live.ts). */
 
 import type { EngineState, Exercise, Gym, Profile, Routine, Session, Target } from './types';
 import { weekStart } from './util';
@@ -36,7 +34,7 @@ export type MissedPoint = ExPoint & { at: number };
     or a deload but done at its usual load and reps, `tv` the trend's
     reading, `progress` a PR or a heavier load), `held`, a session held
     for a flagged injury, and `miss`, its missed sets, for the Last
-    line alone (r55; absent when there are none). */
+    line alone (absent when there are none). */
 export interface Exposure {
   date: string;
   sid: string;
@@ -55,7 +53,7 @@ export interface Exposure {
   light: boolean;
   held: boolean;
   rr: [number, number] | null;
-  /** The sets its routine's plan gave it when saved (SessionEx.ps, r58); absent when none was recorded. */
+  /** The sets its routine's plan gave it when saved (SessionEx.ps); absent when none was recorded. */
   ps?: number;
   topN: number;
   tAdj: number | null;
@@ -69,14 +67,14 @@ export interface Exposure {
   tv?: number | null;
   progress?: boolean;
   miss?: MissedPoint[];
-  /** Done at a new machine or gym (SessionEx.nw, r61): the lift's stretch starts here (sinceNew). */
+  /** Done at a new machine or gym (SessionEx.nw): the lift's stretch starts here (sinceNew). */
   nw?: true;
   /** Every working set a drop set, so its points are the drops: neither the PR list nor the bests board reads it. */
   dropOnly?: true;
 }
 
-/* A lift's sessions from its newest "New machine or gym" mark (r61, PENDING
-   343 7, V's decision of 2026-10-24): a session marked so starts the lift
+/* A lift's sessions from its newest "New machine or gym" mark (V's
+   decision of 2026-10-24): a session marked so starts the lift
    over, so its targets, trend, stalls, PRs, bests and rack spacing read from
    it as from a first session, and the sessions before it, at another
    machine, are kept and shown (its history, its chart, History) but read by
@@ -87,7 +85,7 @@ export function sinceNew<X extends { nw?: true | undefined }>(xs: readonly X[]):
   return xs.slice();
 }
 
-/** A lift's sessions cut at each new-machine mark into its stretches, in order, each read as its own (the PR list, r61). */
+/** A lift's sessions cut at each new-machine mark into its stretches, in order, each read as its own (the PR list). */
 export function stretchesOf<X extends { nw?: true | undefined }>(xs: readonly X[]): X[][] {
   const out: X[][] = [];
   for (const x of xs) {
@@ -142,7 +140,7 @@ export interface ExStat {
 }
 
 /** What every PR keeps: its day and session, its lift, and whether it is
-    counted and announced (`big`, r32). */
+    counted and announced (`big`). */
 interface PrBase {
   date: string;
   sid: string;
@@ -261,13 +259,12 @@ export interface Suggestion {
   capped?: boolean | undefined;
   buildTo?: number | undefined;
   back?: number | undefined;
-  /** The days a lift was away when it starts fresh after a long break (NEW-110): nothing from before it is asked. */
+  /** The days a lift was away when it starts fresh after a long break: nothing from before it is asked. */
   away?: number | undefined;
   /** Asked as done earlier the same day: the load stays as logged, never moved onto a grid. */
   same?: true | undefined;
-  /* The engine says its own short form rather than the screen reading its words for one (NEW-109): until 2.49 the
-     session matched the loaded first-time paragraph by a pattern, so a reworded sentence, or a bodyweight or
-     assisted lift's, was said in full on every lift. */
+  /* The engine says its own short form rather than the screen reading its words for one: matched by a
+     pattern, a reworded sentence, or a bodyweight or assisted lift's, would be said in full on every lift. */
   /** A first session's paragraph shortened, said on a later lift in the same session once one has said it in full. */
   again?: string | undefined;
 }
@@ -278,14 +275,40 @@ export interface Suggestion {
 export type ExerciseLike = Pick<Exercise, 'id' | 'name' | 'primary' | 'secondary' | 'equip' | 'bw' | 'archived'> &
   Partial<Exercise>;
 
-/** The values built from the log once per change, under their r51 names,
+/** A rated working set as a lift's usual effort reads it (setread.ts): its day, its RIR as typed, and its session. */
+export interface RatedSet {
+  date: string;
+  rir: number;
+  sid: string;
+}
+
+/** A RIR check as the correction reads it (setread.ts): its day, the reps left at the stop less the reps called, the
+    kind of lift (compound or isolation), and its session. */
+export interface CheckSet {
+  date: string;
+  err: number;
+  c: 'c' | 'i';
+  sid: string;
+}
+
+/** The log's efforts as saved (setread.ts), built once per change: each lift's rated working sets and every RIR
+    check, in date order, and what has been read of them as of a day (the correction, each lift's usual effort, and
+    the first usual effort a lift had). */
+export interface Efforts {
+  rated: Map<string, RatedSet[]>;
+  checks: CheckSet[];
+  cal: Map<string, CalStats>;
+  usual: Map<string, Map<string, number | null>>;
+  first: Map<string, { date: string; v: number } | null>;
+}
+
+/** The values built from the log once per change, under their first names,
     each null (or undefined) until first read and again after invalidate. */
 interface Caches {
   EXMAP: Partial<Record<string, Exercise>> | null;
   _idx: Idx | null;
   _dix: DateIndex | null;
-  _cal: CalStats | null;
-  _rirUse: Partial<Record<string, number>> | null;
+  _eff: Efforts | null;
   _bwRef: number | undefined;
   _pace: number | null;
   /** The loads Your gym's plates make on a bar (gym.ts, plateGridIn), by plates, unit and bar. */
@@ -299,7 +322,7 @@ export interface Model {
   c: Caches;
 }
 
-/** The caches as r51 started them: every one null except _bwRef, which
+/** The caches as they start: every one null except _bwRef, which
     bwRef tests for undefined (a null there would leave every bodyweight lift
     without its bodyweight). */
 export function freshCaches(): Caches {
@@ -307,8 +330,7 @@ export function freshCaches(): Caches {
     EXMAP: null,
     _idx: null,
     _dix: null,
-    _cal: null,
-    _rirUse: null,
+    _eff: null,
     _bwRef: undefined,
     _pace: null,
     _plates: null
@@ -334,7 +356,7 @@ export function freeModeIn(M: Model): boolean {
   return M.s.settings.todayStart === 'free';
 }
 
-/* Rest weeks (r34, V): a week off on purpose (a holiday, a break) is marked,
+/* Rest weeks (V): a week off on purpose (a holiday, a break) is marked,
    this week or last, from More options on Today. It is not a missed week:
    the weekly average reaches past it (like a lighter week), the streak and
    adherence skip it, and the coach reads it as recovery. Kept in settings,
@@ -397,8 +419,7 @@ export function invalidateIn(M: Model): void {
   M.c._idx = null;
   M.c._dix = null;
   M.c.EXMAP = null;
-  M.c._cal = null;
-  M.c._rirUse = null;
+  M.c._eff = null;
   M.c._bwRef = undefined;
   M.c._pace = null;
   M.c._plates = null;
@@ -425,13 +446,13 @@ export function gymOfIn(M: Model): Gym | null {
   return g && typeof g === 'object' ? g : null;
 }
 
-/* ---------- PROFILE (r44, item 271, with 43 and 44) ----------
+/* ---------- PROFILE ----------
    An optional short profile: goal, experience, days a week and up to two
    focus muscles. V's answers (2026-10-13): it sets defaults and new plan
    items only; the routine in use changes only through Apply; targets the
    lifter typed stay as typed, and only the app's own targets move. With no
-   profile, or with Size, every number is exactly what it was before r44,
-   because the app's defaults were already set for size. */
+   profile, or with Size, every number is the app's default, because the
+   defaults are set for size. */
 /** The profile set in Settings, or an empty one. */
 export function profIn(M: Model): Profile {
   return M.s.settings.profile || {};
@@ -440,7 +461,7 @@ export function profIn(M: Model): Profile {
 /** A muscle with no band of its own (none the log can hold: every muscle key has one). */
 const NO_BAND: readonly [number, number] = [0, 0];
 
-/** A muscle's weekly band, found by its key among the muscles (an index's keys are typed as any string): one reading for Pick for me and Stats (r65, the r63 audit's A-6, where each had its own). */
+/** A muscle's weekly band, found by its key among the muscles (an index's keys are typed as any string): one reading for Pick for me and Stats. */
 export function bandOfIn(M: Model, m: string): readonly [number, number] {
   for (const k of MK) if (k === m) return M.s.settings.bands[k];
   return NO_BAND;

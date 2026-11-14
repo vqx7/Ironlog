@@ -1,9 +1,7 @@
 /* The sheets that ask one thing: a question with its
    answers, a block of text to copy or paste, a rest week, the sessions of a
-   day with two, and cardio logged on its own. Each is drawn by lit-html as
-   src/24-sheets.js drew it (tests/r62.js holds them to r61's), and opened and
-   answered by the actions by their data-act, through events.ts's table since
-   r63. */
+   day with two, and cardio logged on its own. Each is drawn by lit-html, and opened and
+   answered by the actions by their data-act, through events.ts's table. */
 
 import { html } from 'lit-html';
 import { LIMITS } from './records';

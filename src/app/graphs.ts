@@ -63,9 +63,9 @@ const CS = {
 import { RIR_CALL_TOP } from './formulas';
 
 /* ---------- chart windows ----------
-   Charts start where your data starts. A weekly chart used to open eight
-   weeks back whatever you had logged, so a new log sat on a row of empty
-   weeks. Now the first logged week is the left edge; while there is less
+   Charts start where your data starts, not eight weeks back whatever you
+   had logged, which would sit a new log on a row of empty weeks. The first
+   logged week is the left edge; while there is less
    than a full window of data, the weeks ahead fill the rest, empty and
    marked as upcoming, and each new week lands in the next slot. Once there
    is more history than the window, it follows the current week, and the
@@ -507,7 +507,7 @@ function weekAxis(win: readonly { wk: string; fut: boolean }[], o: Opts): string
   const ink = cssv('--muted');
   const faded = ink + '80';
   /* Up to CHART_WEEKS weeks every week is named, the month only on the first and where it changes, so the labels
-     between are a day's number and all fit side by side on a 320 px phone (r67 wrote "Oct 26This wk" there). Past
+     between are a day's number and all fit side by side on a 320 px phone (not "Oct 26This wk"). Past
      that, about CS.xTicks are named, each with its month, and Chart.js leaves out any that would run into the next. */
   const many = win.length > CHART_WEEKS;
   o.scales.x.ticks = {
@@ -616,7 +616,7 @@ function muscleChart(I: Idx, sFirst: string | null, { blue, green }: Pal): void 
             yAxisID: 'y'
           },
           { label: 'Assumed hard', data: assumV, backgroundColor: blue + '55', yAxisID: 'y' },
-          // No target lines for a muscle with no target (r29; hasTargetIn since r58).
+          // No target lines for a muscle with no target (hasTargetIn).
           ...(!hasTarget(m)
             ? []
             : [
@@ -710,7 +710,7 @@ function liftChart(I: Idx, { blue, green, yellow }: Pal): void {
          bests, so their numbers agree; the headline says when the trend itself
          is read from loads and reps alone. */
       const vals = exps.map(x => (e1Mode ? +fmtE(x.best) : r1(toD(x.topW ?? 0) ?? 0)));
-      // A PR as Recent PRs counts it (r58, 343 6): a session with a set stronger than every earlier one.
+      // A PR as Recent PRs counts it: a session with a set stronger than every earlier one.
       const prOf = exps.map(x => I.prs.find(q => q.big && q.exId === exId && q.sid === x.sid) || null);
       const isPR = prOf.map(p => !!p);
       // A rep PR can land below an earlier best estimate, which read as a mistake
@@ -890,7 +890,7 @@ function bodyweightChart({ blue, muted }: Pal): void {
   }
 }
 
-/** Draws Stats' charts into the canvases its template left (one function a chart since r65, the r63 audit's A-7). */
+/** Draws Stats' charts into the canvases its template left, one function a chart. */
 export function mountCharts(): void {
   const C = window.Chart;
   if (!C) return;

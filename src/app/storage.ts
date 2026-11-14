@@ -1,16 +1,15 @@
-/* The save on this device (phase 4, r56; moved from the legacy script's
-   storage part, changing nothing it does): the keys every stored value lives
+/* The save on this device: the keys every stored value lives
    under, whether storage can be written, reading the save at start, the error
    log Settings can copy, Undo's steps and their copy in IndexedDB, the
    settings kept aside while the demo is loaded, a log kept aside for another
-   account (r56.1, in IndexedDB too), and the two readings the
+   account (in IndexedDB too), and the two readings the
    menu button makes of all that (backupDue, saveStateNow). Writing the save
    is in sync.ts (saveNow), since every write goes on to the account.
-   Nothing here runs on import: storageStart() runs what the legacy part
-   ran when the page loaded, called from main.ts at start. */
+   Nothing here runs on import: storageStart() runs it as the page loads,
+   called from main.ts at start. */
 
 import { APP_VERSION, STORAGE_ID } from './config';
-import { daysBetween, today, DAY_MS } from './util';
+import { daysBetween, today, uid, DAY_MS } from './util';
 import { arr, fixId, parseJson, rec } from './records';
 import type { Rec } from './records';
 import type { LogEntry } from './types';
@@ -45,7 +44,7 @@ export const MAPVIEW_KEY = KEY + '.mapView';
 export const ACCT_LATER = KEY + '.acctLater',
   INSTALL_LATER = KEY + '.installLater',
   ICON_NOTE = KEY + '.icon25';
-/** This browser has installed the app (its appinstalled event, 2.34): its tabs no longer offer Get the app. */
+/** This browser has installed the app (its appinstalled event): its tabs no longer offer Get the app. */
 export const APP_INSTALLED = KEY + '.appInstalled';
 /** The first pages on this device: the account page passed (Continue without an account), and held open after a sign-out. */
 export const OB_ACCT = KEY + '.obAcct',
@@ -57,12 +56,12 @@ export const BWSNOOZE_KEY = KEY + '.bwSnooze',
 export const PARKED_KEY = KEY + '.parked';
 /** The workout this phone closed last, for the next one started here to note (act.ts, followsAfter): kept on the phone, as the next is often started after the app was closed. */
 export const CLOSED_KEY = KEY + '.closed';
-/** The account's profile photo as this phone holds it (2.34; kept on this phone only in 2.33), the note of where that
+/** The account's profile photo as this phone holds it (kept on this phone only in 2.33), the note of where that
     copy stands against the account (photo.ts), and its one-time line on Today answered (Add photo or Not now). */
 export const PHOTO_KEY = KEY + '.photo',
   PHOTO_SYNC = KEY + '.photoSync',
   PHOTO_ASKED = KEY + '.photoAsked';
-/** Moves a set-aside workout from the log of account `from` ('' for none) to `to`, when a sign-in takes the phone's log into that account (takeAccount): it goes where the log goes (the review of 2.36, REV6-4). */
+/** Moves a set-aside workout from the log of account `from` ('' for none) to `to`, when a sign-in takes the phone's log into that account (takeAccount): it goes where the log goes. */
 export function parkedRetag(from: string, to: string): void {
   const r = rec(parseJson(prefGet(PARKED_KEY) || 'null'));
   if (r && r['uid'] === from) prefSet(PARKED_KEY, JSON.stringify({ ...r, uid: to }));
@@ -82,7 +81,7 @@ interface Device {
   boot: boolean;
   /** Whether a readable save was found at start (the sync's first pull adopts the account's copy when not). */
   hadLocal: boolean;
-  /** Whether this device had a log before this page first ran, read before any save (r25: only an existing install still has the old icon). */
+  /** Whether this device had a log before this page first ran, read before any save (only an install from before r25 still has the old icon). */
   hadLog: boolean;
   /** The text this tab last wrote or adopted. Another tab's change is merged against it (the storage listener, sync.ts). */
   lastSaved: string | null;
@@ -98,9 +97,8 @@ export const clearTimer = (t: number | null): void => {
 /* ---------- the error log ---------- */
 
 /* Diagnostics log: the last 60 errors, kept in this browser only. Errors that
-   used to be swallowed silently land here, and Settings can copy them. Filled
-   at start from LOGK, with the entries as they were saved (r56.1 checks each,
-   PENDING 305). */
+   would be swallowed silently land here, and Settings can copy them. Filled
+   at start from LOGK, each entry checked as it is read. */
 /** The last 60 errors on this device, oldest first. */
 export const logBuf: LogEntry[] = [];
 /** An entry of the error log as saved, or null when it is not one. */
@@ -133,7 +131,7 @@ const LOG_LIMITS = { stackLines: 4, stackChars: 400, messageChars: 300, kept: 60
 export function log(area: string, err: unknown): void {
   try {
     const E = rec(err);
-    // What an account server said that the app does not show (serverSaid, scripts/cloud-supabase.js, 2.28) is kept here.
+    // What an account server said that the app does not show (serverSaid, scripts/cloud-supabase.js) is kept here.
     const said = E && typeof E.serverSaid === 'string' ? ` (server: ${E.serverSaid})` : '';
     const m = (E && E.message ? E.message : E ? JSON.stringify(err) : String(err)) + said;
     // Where it broke, not only what it said: the first lines of the stack travel with a problem report, so a crash can be found in the code without the phone.
@@ -145,7 +143,7 @@ export function log(area: string, err: unknown): void {
       msg = logCut(m).slice(0, LOG_LIMITS.messageChars);
     /* The same error again (its area, message, build and place in the code), straight after itself, is counted on its line (n) with the time it last came, so one that
        repeats (a sign-in tried each time the app comes back to the screen, offline) cannot push an earlier one out of
-       the LOG_LIMITS.kept kept or the 10 a problem report carries (the second review of r59). */
+       the LOG_LIMITS.kept kept or the 10 a problem report carries. */
     const last = logBuf[logBuf.length - 1];
     if (last && last.a === area && last.m === msg && last.v === APP_VERSION && (last.s || '') === st) {
       last.t = t;
@@ -183,7 +181,14 @@ export const undoStack: UndoStep[] = [],
    Entries older than UNDO_DAYS are dropped. The reversal functions some
    in-session entries carry cannot be stored; after a reload those entries
    undo through the three-way merge, which gives the same result. Best
-   effort: without IndexedDB, Undo works as before, for this visit only. */
+   effort: without IndexedDB, Undo works for this visit only.
+   Each step is stored under a key of its own (STEP_KEY and its id), written
+   when it is new or changes (its log after the change kept, or its words)
+   and deleted when it leaves the list, so a change writes its own step, not
+   all 20 again (on two years of training, 416 sessions, rewriting the list
+   is 40 copies of the log, about half a second of an older phone's time
+   each; one step is two). Steps kept by 2.57 and before, the whole list
+   under 'stack', are read and then stored on their own. */
 const UNDO_DB = ENV === 'preview' ? `${STORAGE_ID}-preview-undo` : `${STORAGE_ID}-undo`,
   UNDO_TTL = UNDO_DAYS * DAY_MS;
 let undoDbP: Promise<IDBDatabase | null> | null = null;
@@ -204,31 +209,76 @@ function undoDb(): Promise<IDBDatabase | null> {
 }
 /** Whether a write of the steps is waiting for the tap that changed them to end. */
 let undoWaiting = false;
-/** Writes the steps to IndexedDB now. */
+/** The key prefix of a step stored on its own (above); the list as 2.57 and before kept it is under LEGACY_KEY. */
+const STEP_KEY = 'step:',
+  LEGACY_KEY = 'stack';
+/** Each step's id in the store, given when it is first written or read back. */
+const stepIds = new WeakMap<UndoStep, string>();
+/** A step's id in the store: the time it was kept and a fresh id, unique on this phone. */
+function stepId(e: UndoStep): string {
+  let id = stepIds.get(e);
+  if (!id) {
+    id = `${e.t || Date.now()}-${uid()}`;
+    stepIds.set(e, id);
+  }
+  return id;
+}
+/** What a step as stored says beyond its log before (which never changes): whether its log after is kept, and its words. */
+const stepSig = (e: UndoStep): string => `${e.post == null ? '' : 'p'}|${e.said ?? ''}`;
+/** The steps in the store, by id, with what each says (stepSig), or '' while that is not known (read back, or being written); a step not listed here is not stored. */
+const stepsStored = new Map<string, string>();
+/** Whether the list as 2.57 kept it is still in the store, to be deleted once the steps are stored on their own. */
+let legacyStored = false;
+/** Writes the steps to IndexedDB now: the new and changed ones, and deletes those that left the list. */
 async function undoWrite(): Promise<void> {
   undoWaiting = false;
   const db = await undoDb();
   if (!db) return;
   try {
     const tx = db.transaction('kv', 'readwrite');
-    tx.objectStore('kv').put(
-      undoStack.map(e => ({ pre: e.pre, post: e.post, t: e.t || Date.now(), ...(e.said ? { said: e.said } : {}) })),
-      'stack'
-    );
+    const st = tx.objectStore('kv');
+    const live = new Set<string>(),
+      put = new Map<string, string>(),
+      gone: string[] = [];
+    for (const e of undoStack) {
+      const id = stepId(e),
+        sig = stepSig(e);
+      live.add(id);
+      if (stepsStored.get(id) === sig) continue;
+      st.put({ pre: e.pre, post: e.post, t: e.t || Date.now(), ...(e.said ? { said: e.said } : {}) }, STEP_KEY + id);
+      put.set(id, sig);
+      /* A step being written is in the store from the moment it is put, what it says unknown until the write ends: a
+         step taken back before then (Undo tapped at once) is deleted by the next write, which runs after this one. It
+         was left in the store, and the next visit offered it again, then said "Nothing to undo". */
+      stepsStored.set(id, '');
+    }
+    for (const id of stepsStored.keys())
+      if (!live.has(id)) {
+        st.delete(STEP_KEY + id);
+        gone.push(id);
+      }
+    const legacy = legacyStored;
+    if (legacy) st.delete(LEGACY_KEY);
+    // The store's own record follows the write only once it has ended: a write that failed is tried again next time.
+    tx.oncomplete = () => {
+      for (const [id, sig] of put) stepsStored.set(id, sig);
+      for (const id of gone) stepsStored.delete(id);
+      if (legacy) legacyStored = false;
+    };
+    tx.onerror = () => log('undo-save', tx.error);
     /* Committed at once rather than when the page next idles: a page reloaded or closed straight after (Update, the
-       app closed, another address) was gone before the write ended, and Undo then took back the change before it (the
-       review of 2.52, REV13-1). A browser without commit() ends the write as before. */
+       app closed, another address) can be gone before the write ends, and Undo then takes back the change before it.
+       A browser without commit() ends the write when it idles. */
     if ('commit' in tx) tx.commit();
   } catch (e) {
     log('undo-save', e);
   }
 }
 /* The steps are written as the tap that changed them ends: a microtask, so the step, the log right after it and its
-   words, all made in that tap, go in one write, and the write is under way before anything else can happen. Until
-   2.52 they waited 0.4 s for a pause in the taps, then for the page to be hidden or left as well: a change made just
-   before the app closed lost its step (NEW-130), and in WebKit a write begun as the page was torn down (a reload with
-   no hiding first: Update, another address) never ended (NEW-139, REV13-1 there). Either way Undo then took back the
-   change before it. */
+   words, all made in that tap, go in one write, and the write is under way before anything else can happen. Waiting for a pause in the taps, or
+   for the page to be hidden or left, a change made just before the app closed would lose its step, and in WebKit a
+   write begun as the page is torn down (a reload with no hiding first: Update, another address) never ends. Either
+   way Undo would then take back the change before it. */
 /** Writes the steps to IndexedDB as the current tap ends. */
 export function undoPersist(): void {
   if (undoWaiting) return;
@@ -241,31 +291,78 @@ export function undoPersist(): void {
 export async function undoRestore(): Promise<void> {
   const db = await undoDb();
   if (!db) return;
-  const list = await new Promise<unknown>(res => {
+  const read = await new Promise<{ legacy: unknown; steps: [string, unknown][] }>(res => {
+    const got: { legacy: unknown; steps: [string, unknown][] } = { legacy: null, steps: [] };
     try {
-      // A request's result is typed any; the cast reads it as the unknown value it is.
-      const q = db.transaction('kv').objectStore('kv').get('stack') as IDBRequest<unknown>;
-      q.onsuccess = () => res(q.result || []);
-      q.onerror = () => res([]);
+      // One pass over the store's keys from the list as 2.57 kept it ('stack') to the last step ('step:' and an id).
+      const q = db
+        .transaction('kv')
+        .objectStore('kv')
+        .openCursor(IDBKeyRange.bound(LEGACY_KEY, STEP_KEY + '\uffff'));
+      q.onsuccess = () => {
+        const c = q.result;
+        if (!c) {
+          res(got);
+          return;
+        }
+        const k = String(c.key);
+        // A cursor's value is typed any; the cast reads it as the unknown value it is.
+        const v = c.value as unknown;
+        if (k === LEGACY_KEY) got.legacy = v;
+        else if (k.startsWith(STEP_KEY)) got.steps.push([k.slice(STEP_KEY.length), v]);
+        c.continue();
+      };
+      q.onerror = () => res(got);
     } catch (e) {
       // The store cannot be read (a database another build made): no steps to restore, and the reason is kept.
       log('undo-read', e);
-      res([]);
+      res(got);
     }
   });
-  if (undoStack.length) return;
   const now = Date.now();
-  for (const e of arr(list) || []) {
-    const E = rec(e);
+  /* Every step found is noted as stored, so one not taken back into the list (too old, past the newest UNDO_MAX, or
+     steps kept here already this visit) is deleted at the next write, as the whole list once was written over. */
+  for (const [id] of read.steps) stepsStored.set(id, '');
+  legacyStored = read.legacy != null;
+  const found: { e: UndoStep; id: string | null }[] = [];
+  /* One step is taken once, by its time and its log before, however many copies the store holds: a tab still on a
+     build that kept the whole list writes it under 'stack' again after another tab took Update, and two tabs of this
+     build opened together can each store the list's steps on their own, so a step can be in the store two or three
+     times. Taken as steps
+     of their own, the copies would make Undo say "Undone" and take nothing back. A step stored on its own is taken
+     first, so it keeps its id; every copy left is deleted at the next write. */
+  const seen = new Set<string>();
+  const take = (v: unknown, id: string | null): void => {
+    const E = rec(v);
+    const key = E && typeof E.pre === 'string' ? `${Number(E.t) || 0}|${E.pre}` : '';
+    if (!key || seen.has(key)) return;
+    seen.add(key);
     if (E && typeof E.pre === 'string' && now - (Number(E.t) || 0) < UNDO_TTL)
-      undoStack.push({
-        pre: E.pre,
-        post: typeof E.post === 'string' ? E.post : null,
-        inv: null,
-        t: Number(E.t),
-        ...(typeof E.said === 'string' ? { said: E.said } : {})
+      found.push({
+        e: {
+          pre: E.pre,
+          post: typeof E.post === 'string' ? E.post : null,
+          inv: null,
+          t: Number(E.t),
+          ...(typeof E.said === 'string' ? { said: E.said } : {})
+        },
+        id
       });
+  };
+  for (const [id, v] of read.steps) take(v, id);
+  for (const v of arr(read.legacy) || []) take(v, null);
+  if (!undoStack.length) {
+    found.sort((a, b) => a.e.t - b.e.t);
+    for (const f of found.slice(-UNDO_MAX)) {
+      if (f.id) {
+        stepIds.set(f.e, f.id);
+        stepsStored.set(f.id, stepSig(f.e));
+      }
+      undoStack.push(f.e);
+    }
   }
+  // Steps to delete or to store on their own: written now, not left for the next change.
+  if (legacyStored || [...stepsStored.values()].includes('')) undoPersist();
   if (undoStack.length && ui.tab === 'settings' && !ui.modal) fx.rerenderKeepScroll();
 }
 /** Drops every step, here and in IndexedDB (a restore, a sign-in that takes the account's log). */
@@ -275,7 +372,13 @@ export function undoForget(): void {
   undoDb().then(db => {
     if (!db) return;
     try {
-      db.transaction('kv', 'readwrite').objectStore('kv').delete('stack');
+      const tx = db.transaction('kv', 'readwrite');
+      // The store holds Undo's steps alone, each on its own and, from before 2.58, the list.
+      tx.objectStore('kv').clear();
+      tx.oncomplete = () => {
+        stepsStored.clear();
+        legacyStored = false;
+      };
     } catch (e) {
       log('undo-clear', e);
     }
@@ -295,7 +398,7 @@ export function snapshot(inv?: (() => boolean) | null): void {
       t: Date.now()
     });
   } catch (e) {
-    // A log JSON cannot write is not kept as a step: the action goes ahead without Undo, as before the move, and the reason is kept.
+    // A log JSON cannot write is not kept as a step: the action goes ahead without Undo, and the reason is kept.
     log('undo-step', e);
     return;
   }
@@ -374,7 +477,7 @@ export function load(): State {
       return st;
     }
   } catch (e) {
-    /* An unreadable save used to be replaced by a fresh state on the next
+    /* An unreadable save would be replaced by a fresh state on the next
        save, destroying it. Keep the raw text aside so it can be recovered. */
     log('load', e);
     device.hadLocal = false;
@@ -402,7 +505,7 @@ export function unreadableRaw(): string {
   try {
     return localStorage.getItem(UNREAD_KEY) || '';
   } catch (e) {
-    // Storage this browser refuses: nothing kept aside can be read, as before the move.
+    // Storage this browser refuses: nothing kept aside can be read.
     return '';
   }
 }
@@ -474,7 +577,7 @@ export function demoRestore(): void {
    A log kept aside is a whole copy of a log, so it lives in IndexedDB, as
    Undo's copies do: that room is separate from localStorage's and far
    larger, so a log kept aside never crowds out the save of the log in use,
-   then or as that log grows (PENDING 333, tests/room.js: kept in
+   then or as that log grows (tests/room.js: kept in
    localStorage, a log of 40% of the room kept aside made the save of a log
    of 62% of it fail, and every save after it). Your data's line reads a list
    held in memory (asideIdx), read from the database at start and kept
@@ -605,7 +708,7 @@ export function asideClear(): void {
   asideIdx.length = 0;
   void asideWrite(s => s.clear());
 }
-/* A preview of r56.1 before PENDING 333 kept the log aside in localStorage,
+/* A preview of r56.1 kept the log aside in localStorage,
    under ASIDE_KEY and the account; such a copy is moved into the database at
    start, then removed, so it is neither lost nor left taking the log's room. */
 /** Reads the list of logs kept aside at start, after moving any a preview kept in localStorage; Your data is redrawn if it is open. */
@@ -653,8 +756,8 @@ const BACKUP_DAYS = 7;
 export function backupDue(): boolean {
   /* Signed in and synced, the account is where the log lives, as in any
      app; deletions are covered by Recently deleted (TRASH_DAYS) and Undo (UNDO_DAYS),
-     so no reminder (r34.2, from the review: the menu said "Backup due" to a
-     synced account while the first page says the account backs it up). */
+     so no reminder (no "Backup due" to a synced account while the
+     first page says the account backs it up). */
   if (!state.sessions.some(s => !s.demo)) return false;
   const synced = cloud.on && cloud.last && Date.now() - cloud.last < BACKUP_DAYS * DAY_MS;
   if (synced) return false;
@@ -702,8 +805,8 @@ export function saveStateNow(): { cls: string; txt: string } {
 
 /** What the storage part ran as the page loaded, in its order: the preview's
     mark on the page, whether a log was here, the error log, the error
-    listeners, then the save read into the store. Called once, from the start
-    of the legacy script. */
+    listeners, then the save read into the store. Called once, from main.ts at
+    start. */
 export function storageStart(): void {
   if (ENV === 'preview') document.documentElement.dataset.env = 'preview';
   try {

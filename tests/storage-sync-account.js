@@ -972,7 +972,9 @@ async function from_r80b() {
       D.pick = async (color) => {
         await page.click('#saveState'); await wait(300);
         const b64 = await page.evaluate(c => { const cv = document.createElement('canvas'); cv.width = 300; cv.height = 300; const x = cv.getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, 300, 300); return cv.toDataURL('image/png').split(',')[1]; }, color);
-        await page.setInputFiles('#menuPhoto input[data-photo]', { name: 'me.png', mimeType: 'image/png', buffer: Buffer.from(b64, 'base64') });
+        // With a photo already, it is changed where a lifter changes it: opened large from the menu, Change photo (2.60).
+        if (await page.evaluate(() => !!document.querySelector('#modal #menuPhoto[data-act="photoView"]'))) { await page.click('#modal #menuPhoto'); await wait(250); }
+        await page.setInputFiles('#modal input[data-photo]', { name: 'me.png', mimeType: 'image/png', buffer: Buffer.from(b64, 'base64') });
         await page.waitForFunction(() => !!document.querySelector('#saveState img.ssb-ph'), null, { timeout: 8000 }).catch(() => {});
         await wait(1500);
         await page.evaluate(() => { if (window.__ironlog.ui.modal) document.querySelector('#modal [data-act="mClose"], #modal .sheet-h [aria-label="Close"]') && document.querySelector('#modal [data-act="mClose"], #modal .sheet-h [aria-label="Close"]').click(); });

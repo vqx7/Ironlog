@@ -197,7 +197,7 @@ function digest(spec) {
   for (const v of [2.2679618, 2.5, 5, 1.25, 0, 10, 4.5359237]) call('stepRead', v);
   for (const d of [today, mid, dates[0] || today, '9999-12-31', '2000-01-01']) call('bwAt', d);
   // Calls on the id "constructor" are tagged, since they throw in both builds (byEx is a plain object).
-  for (const id of ids) { tag = id === 'constructor' ? '~' : ''; call('EX', id); call('exName', id); call('rirUsual', id); call('dropOnlyLift', id); call('defPlan', id); call('defPlan', id, true); call('daysOff', id); call('daysOff', id, { before: mid }); call('daysOff', id, null); }
+  for (const id of ids) { tag = id === 'constructor' ? '~' : ''; call('EX', id); call('exName', id); call('rirUsual', id, today); call('rirUsual', id, mid); call('dropOnlyLift', id); call('defPlan', id); call('defPlan', id, true); call('daysOff', id); call('daysOff', id, { before: mid }); call('daysOff', id, null); }
   tag = '';
   const R = s.routines.find(r => r.id === s.activeRoutineId) || s.routines[0];
   const profs = [undefined, null, { goal: 'strength' }, { goal: 'both', exp: 'new' }, { goal: 'size', exp: 'adv' }, { goal: 'strength', exp: 'mid', focus: ['chest'] }];
@@ -235,7 +235,9 @@ function digest(spec) {
   for (const ss of s.sessions) for (const b of ss.ex) for (const x of b.sets) {
     if (k++ % 7) continue; if (k > 120) break;
     const ex = L.EX(b.exId);
-    call('rirEff', x, ex); call('rirEst', x, ex); call('isHard', x, ex); call('hardCredit', x, ex); call('loadOf', ex, x, ss.date); call('prLoad', ex, x, ss.date); call('tonnage', ex, x, ss.date); call('tonnage', ex, x);
+    // As of the set's own day (RC-3), and as a row of its session opened again for an edit, which reads as saved.
+    const open = { id: 'open', editingId: ss.id, date: ss.date, ex: ss.ex.map(y => ({ exId: y.exId, sets: y.sets.map(z => ({ ...z, done: true })) })) };
+    call('rirEff', x, ex, ss.date); call('rirEst', x, ex, ss.date); call('isHard', x, ex, ss.date); call('hardCredit', x, ex, ss.date); call('rirEst', x, ex, open); call('rirEff', x, ex, open); call('loadOf', ex, x, ss.date); call('prLoad', ex, x, ss.date); call('tonnage', ex, x, ss.date); call('tonnage', ex, x);
   }
   for (const ws of weeks) { call('isRestWeek', ws); call('weekSessions', ws); call('weekNeed', ws); call('weekRoutine', ws); }
   for (const r2 of s.routines) { call('planSetsPerWeek', r2); call('planSetsPerWeek', r2, true); for (const d of r2.days) { call('dayMinutes', d); call('dayMinutes', d, true); call('dayMinutes', d, false, true); for (const it of d.items) call('planCredit', it); } }

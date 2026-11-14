@@ -373,6 +373,45 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     ok(m2.cls !== 'bad' && m2.txt !== 'Not saving: export a backup', 'S-3: and the menu no longer says Not saving', m2);
     await P.close();
   }
+  if (run('S-3')) {
+    /* REV6-S2 (V, 2026-11-09 08:11: "if phone storage is full hold onto draft copy"): a workout set aside while a saved
+       session is edited comes back when the edit is saved, and its set-aside copy on the phone is let go only once a
+       save of the log holding it succeeds. Until then that copy is the only one the phone keeps: closed and reopened,
+       the workout comes back from it. Before 2.55 the copy was dropped as the workout came back, so a phone full then
+       lost the workout at the next reload. */
+    const seed = (S, L) => { S.sessions = [{ id: 'old', date: '2026-11-07', dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', notes: '', free: true, ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w: 90, r: 8, rir: 2, done: true }] }] }]; };
+    const P = await phone({ seed });
+    const parked = () => P.ev(k => { const v = localStorage.getItem(k + '.parked'); return v ? JSON.parse(v).draft.id : null; }, KEY);
+    await start(P); await tick(P, 0, 0, '100', '8');
+    const w0 = (await P.ev(() => window.__ironlog.state.draft)).id;
+    await P.tabTo('history'); await P.page.click('#view [data-act="histToggle"][data-id="old"]'); await wait(150);
+    await P.page.click('#view [data-act="histEdit"][data-id="old"]'); await wait(300);
+    ok((await parked()) === w0 && (await P.ev(() => !!(window.__ironlog.state.draft || {}).editingId)), 'S-3: (setup) the saved session open for editing, the workout set aside', await parked());
+    await P.ev(() => { window.__full = 'ironlog\\.v1$'; });
+    await P.page.click('#view [data-act="finish"]'); await wait(300);
+    for (let k = 0; k < 3 && (await P.ev(() => !!window.__ironlog.ui.modal)); k++) { await P.page.click('#modal [data-act="mOk"]').catch(() => {}); await wait(250); }
+    const back = await P.ev(() => { const d = window.__ironlog.state.draft; return d && !d.editingId ? { id: d.id, done: d.ex[0].sets.filter(x => x.done).length } : null; });
+    ok(back && back.id === w0 && back.done === 1 && (await P.menu()).cls === 'bad', 'S-3: the edit saved with the phone full: the workout comes back, its set ticked, and the save fails', { back, menu: await P.menu() });
+    ok((await parked()) === w0, 'S-3: its set-aside copy stays on the phone while no save holds it (REV6-S2)', await parked());
+    const today = await P.ev(() => ({ resume: !!document.querySelector('#view [data-act="wkResume"]'), bring: !!document.querySelector('#view [data-act="parkBack"]') }));
+    ok(today.resume && !today.bring, 'S-3: (a guard) Today offers the workout as back (Resume), not as still set aside', today);
+    // Closed and opened again with the log never saved since: the edit is what the phone kept, and the workout set
+    // aside comes back from its copy when the edit ends.
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__ironlog.state); await wait(400);
+    const after = await P.ev(() => ({ editing: !!(window.__ironlog.state.draft || {}).editingId }));
+    await P.ev(() => window.__ironlog.ACT.discard()); await wait(300);
+    for (let k = 0; k < 3 && (await P.ev(() => !!window.__ironlog.ui.modal)); k++) { await P.page.click('#modal [data-act="mOk"]').catch(() => {}); await wait(250); }
+    const again = await P.ev(() => { const d = window.__ironlog.state.draft; return d && !d.editingId ? { id: d.id, done: d.ex[0].sets.filter(x => x.done).length } : null; });
+    ok(after.editing && again && again.id === w0 && again.done === 1, 'S-3: reopened, the edit the phone kept is cancelled and the workout comes back from its copy, its set ticked (REV6-S2)', { after, again });
+    ok((await parked()) === null, 'S-3: (a guard) saved with it, the copy is let go', await parked());
+    // A copy let go is never offered again: the workout finished, nothing comes back.
+    await P.tabTo('today'); await P.page.click('#view [data-act="wkResume"]').catch(() => {}); await wait(250);
+    await P.page.click('#view [data-act="finish"]'); await wait(300);
+    for (let k = 0; k < 3 && (await P.ev(() => !!window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind !== 'recap')); k++) { await P.page.click('#modal [data-act="mOk"], #modal button:has-text("Finish now")').catch(() => {}); await wait(250); }
+    const end = await P.ev(() => ({ draft: !!window.__ironlog.state.draft, n: window.__ironlog.state.sessions.filter(x => x.id === window.__ironlog.state.sessions[0].id).length, ids: window.__ironlog.state.sessions.map(x => x.id) }));
+    ok(!end.draft && end.ids.filter(id => id === w0).length === 1, 'S-3: finished, the workout is one session and nothing comes back after it', end);
+    await P.close();
+  }
 
   /* ---------- S-4: the menu button's dot and words ---------- */
   if (run('S-4')) {
@@ -535,7 +574,8 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(n1 === 2, 'S-6: and the set the tab behind ticked in the finished workout joins its saved session (REV12-6)', { sets: s1 && s1.ex.map(b => b.sets.map(x => [x.w, x.r])) });
       const saidB1 = await B1.ev(() => (window.__toasts || []).map(t => t.text));
       // Said with what the merge kept, in one message (toast.ts joins what one change says).
-      ok(saidB1.some(t => t.includes('The workout in progress was saved on another device. What was done here since was added to it.')), 'S-6: and the tab behind says so (REV12-6)', saidB1);
+      // NEW-136: said as "saved on another device" until 2.56; it was another tab of this phone.
+      ok(saidB1.some(t => t.includes('The workout in progress was saved in another tab. What was done here since was added to it.')), 'S-6: and the tab behind says so, as another tab (REV12-6, NEW-136)', saidB1);
       await A1.close();
     }
     {
@@ -627,7 +667,7 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       const sets = s ? s.ex.flatMap(b => b.sets.map(x => x.r)) : null;
       ok(!st.draft && JSON.stringify(sets) === '[8,7]', 'S-6: a set ticked in a tab behind the other, in the workout the other finished, joins the saved session, and the workout stays closed (REV12-6)', { draft: !!st.draft, sets });
       const said8 = await B8.ev(() => (window.__toasts || []).map(t => t.text));
-      ok(said8.includes('The workout in progress was saved on another device. What was done here since was added to it.'), 'S-6: and the tab behind says so (REV12-6: dropped without a word)', said8);
+      ok(said8.includes('The workout in progress was saved in another tab. What was done here since was added to it.'), 'S-6: and the tab behind says so, as another tab (REV12-6: dropped without a word; NEW-136: "on another device" until 2.56)', said8);
       ok((await B8.ev(() => !window.__ironlog.state.draft)), 'S-6: and the tab behind shows it closed too');
       await A8.close();
     }
@@ -705,6 +745,96 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(got.save === 'typed in tab A' && got.account === got.save && got.A === got.save && got.B === got.save, 'S-6: signed in, the same record changed in both tabs at once: one whole copy on the phone, in the account and in both tabs (REV-3, NEW-124)', got);
       ok(got.said === 1, 'S-6: and the app says it once (REV-3: twice on 2.50\'s first fix)', got.said);
       await A4.close();
+    }
+    {
+      /* REV13-10: both tabs signed in, the workout open in both; tab A finishes it, and tab B, not yet hearing A,
+         ticks one more set, which joins the finished session (NEW-124). Nothing was edited twice, so nothing may say
+         so: until 2.56 tab B, writing the account's sync notes it held from before A synced the session, wrote over
+         A's, tab A took them, and with no agreed copy of the session left it read its own 3 sets against the
+         account's 2 as an edit on two devices. */
+      const C = cloudOf();
+      const A = await phone({ cloud: C, uid: 'u6n' });
+      const B = await tab(A, FILE, C.setup('u6n', 'B')); B.ev = (f, a) => B.page.evaluate(f, a);
+      B.toasts = () => B.ev(() => (window.__toasts || []).map(t => t.text));
+      B.flush = async () => { await B.ev(() => window.__ironlog.flush()); await wait(120); };
+      const on = P => P.page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 10000 }).then(() => true, () => false);
+      ok((await on(A)) && (await on(B)), 'S-6: (setup) both tabs synced to the account');
+      await start(A); await tick(A, 0, 0); await tick(A, 0, 1); await wait(300);
+      await A.flush(); await wait(300);
+      if (!(await B.ev(() => !!document.querySelector('#view [data-act="sDone"]')))) { await B.page.click('#tabs [data-tab="today"]'); await wait(200); if (await B.ev(() => !!document.querySelector('#view [data-act="wkResume"]'))) { await B.page.click('#view [data-act="wkResume"]'); await wait(300); } }
+      await B.ev(() => { window.__deaf = true; });
+      await A.page.click('#view [data-act="finish"]'); await wait(300);
+      for (let k = 0; k < 4 && (await A.ev(() => !!window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind !== 'recap')); k++) { await A.page.click('#modal button:has-text("Finish now"), #modal [data-act="mOk"]').catch(() => {}); await wait(300); }
+      await A.flush(); await wait(300);
+      await tick(B, 0, 2); await wait(500);
+      await B.ev(() => { window.__deaf = false; }); await wait(400);
+      await B.flush(); await wait(1600); await A.flush(); await B.flush(); await wait(800);
+      const setsOf = st => { const x = (st.sessions || []).find(q => q.ex && q.ex[0] && q.ex[0].sets.length && q.date === '2026-11-11'); return x ? x.ex[0].sets.length : null; };
+      const acct = C.sessionsIn('u6n').filter(q => q.date === '2026-11-11').map(q => q.ex[0].sets.length);
+      const got = { A: setsOf(await A.ev(() => window.__ironlog.state)), B: setsOf(await B.ev(() => window.__ironlog.state)), account: acct, saidA: await A.toasts(), saidB: await B.toasts() };
+      ok(got.A === 3 && got.B === 3 && acct.length === 1 && acct[0] === 3, 'S-6: signed in, a set ticked in a tab behind after the other finished: the session has its 3 sets in both tabs and in the account', got);
+      ok(![...got.saidA, ...got.saidB].some(t => /edited on two devices|changed in two tabs/.test(t)), 'S-6: and no message says it was edited twice: the tab behind keeps the notes the other wrote (REV13-10)', got);
+      ok(got.saidB.some(t => t.includes('The workout in progress was saved in another tab. What was done here since was added to it.')) && ![...got.saidA, ...got.saidB].some(t => /another device/.test(t)), 'S-6: the tab behind says the workout was saved in another tab, and nothing names another device (NEW-136)', got);
+      await A.close();
+    }
+    {
+      /* REV15-2: a tab takes in the other tab's sync notes only with the log they describe. Two tabs of one phone and a
+         second phone, one account. The second phone logs a session; tab A pulls it; tab B, which has not yet heard tab
+         A's save, syncs. Its notes would then say the account holds the session while its log does not, and its sync
+         would send the month's sessions without it, taking it off the account and the second phone. */
+      const C = cloudOf();
+      const A = await phone({ cloud: C, uid: 'u6r2', seed: function (S) { S.settings.lastExport = '2026-11-11'; S.sessions.push({ id: 'k1', date: '2026-11-05', dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }); } });
+      const B = await tab(A, FILE, C.setup('u6r2', 'B')); B.ev = (f, a) => B.page.evaluate(f, a);
+      const P2 = await phone({ cloud: C, uid: 'u6r2', who: 'P2', fresh: true });
+      await P2.ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); });
+      const on = P => P.page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 10000 }).then(() => true, () => false);
+      ok((await on(A)) && (await on(B)) && (await on(P2)), 'S-6: (setup) two tabs and a second phone synced to one account');
+      const has = (P, id) => P.ev(id => window.__ironlog.state.sessions.some(s => s.id === id), id);
+      await B.ev(() => { window.__deaf = true; });
+      await P2.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.push({ id: 'S', date: '2026-11-06', dayIdx: 0, dayId: null, dayName: 'Day 1', routineId: '', notes: '', demo: false, deload: false, light: false, ex: [{ exId: 'bench', note: '', rr: null, sets: [{ w: 62.5, r: 8, rir: 2, warm: false, drop: false }] }] }); }); });
+      await wait(300); await P2.ev(() => window.__ironlog.flush()); await wait(600);
+      await A.ev(() => window.__ironlog.sync()); await wait(600);
+      const pulled = { A: await has(A, 'S'), B: await has(B, 'S'), account: C.sessionsIn('u6r2').some(x => x.id === 'S') };
+      const w0 = C.writes.length;
+      await B.ev(() => window.__ironlog.flush()); await wait(800);
+      await P2.ev(() => window.__ironlog.sync()); await wait(600);
+      const got = { pulled, wroteB: C.writes.slice(w0).filter(w => w.who === 'B').map(w => w.p.split('/').pop()), account: C.sessionsIn('u6r2').some(x => x.id === 'S'), phone2: await has(P2, 'S') };
+      ok(got.pulled.A && !got.pulled.B && got.pulled.account && got.account && got.phone2, 'S-6: a tab that has not yet heard the other tab\'s save syncs: a session the other tab pulled stays in the account and on the phone that logged it (REV15-2)', got);
+      await P2.close(); await A.close();
+    }
+    {
+      /* REV16-A1: notes another tab writes back from before it caught up hold an older agreement than this tab's, and
+         are never taken as news. Two tabs signed in, the workout open in both, its second set ticked and synced. Tab B
+         writes back the notes from when the account held one set ticked, as crossing writes did (a tab still listing a
+         write it had not sent wrote its notes back at every notes event, and the other read them as a later sync).
+         Tab A then removes its second set and syncs. The set stays removed, in both tabs and in the account: it came
+         back, the merge reading the account's two sets against the older agreement of one as a set added there. */
+      // Five times, each with new tabs: whether the two tabs' writes cross depends on the moment, and before the fix a
+      // round now and then came out clean (reviewer A's h1-takenin.js, at real timing, showed it every time).
+      const rounds = [];
+      for (let round = 0; round < 5; round++) {
+        const C = cloudOf();
+        const A = await phone({ cloud: C, uid: 'u6a1', seed: function (S) { S.settings.lastExport = '2026-11-11'; } });
+        const B = await tab(A, FILE, C.setup('u6a1', 'B')); B.ev = (f, a) => B.page.evaluate(f, a);
+        const on = P => P.page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 10000 }).then(() => true, () => false);
+        const setup = (await on(A)) && (await on(B));
+        const tickA = i => A.ev(i => { const L = window.__ironlog; L.act(() => { const s = L.state.draft.ex[0].sets[i]; s.w = 100; s.r = 8 - i; s.done = true; }, { inProgress: true }); }, i);
+        await A.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ACT.startSession({ dataset: { day: '0', light: '0' } }); const d = L.state.draft; d.ex = d.ex.slice(0, 1); d.ex[0].sets.length = 3; d._rampAsked = true; L.saveNow(); });
+        await tickA(0); await wait(300); await A.flush(); await wait(800);
+        const older = await A.ev(() => localStorage.getItem(window.__ironlog.KEY + '.sync'));
+        await tickA(1); await wait(300); await A.flush(); await wait(800);
+        const two = d => d && d.ex[0].sets.filter(x => x.done).length;
+        const before = { A: await A.ev(() => window.__ironlog.state.draft.ex[0].sets.filter(x => x.done).length), account: two((C.doc('u6a1', 'draft') || {}).draft) };
+        await B.ev(t => localStorage.setItem(window.__ironlog.KEY + '.sync', t), older); await wait(400);
+        await A.ev(() => { const L = window.__ironlog; L.act(() => { L.state.draft.ex[0].sets.splice(1, 1); }, { inProgress: true }); });
+        await wait(300); await A.flush(); await wait(800); await B.ev(() => window.__ironlog.sync()); await wait(800);
+        const ticked = P => P.ev(() => { const d = window.__ironlog.state.draft; return d ? d.ex[0].sets.filter(x => x.done).map(x => `${x.w}x${x.r}`).join(' ') : null; });
+        const got = { setup, before, A: await ticked(A), B: await ticked(B), account: (((C.doc('u6a1', 'draft') || {}).draft || { ex: [{ sets: [] }] }).ex[0].sets.filter(x => x.done).map(x => `${x.w}x${x.r}`).join(' ')), saidA: await A.toasts() };
+        got.clean = setup && before.A === 2 && before.account === 2 && got.A === '100x8' && got.B === '100x8' && got.account === '100x8' && !got.saidA.some(t => /edited on two devices/.test(t));
+        rounds.push(got);
+        await A.close();
+      }
+      ok(rounds.every(r => r.clean), 'S-6: a set removed after the other tab wrote back older sync notes stays removed, in both tabs and in the account, with no message of an edit on two devices, five times in five (REV16-A1)', rounds.filter(r => !r.clean));
     }
   }
 
@@ -794,6 +924,102 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     await P.close();
   }
 
+  if (run('S-7')) {
+    /* 2.27-F4: each Undo step is stored on its own, so a change writes its own step, not every step again. Undo kept 20
+       whole copies of the log and rewrote all of them on every change it kept a step for: on a log of two years (416
+       sessions) that froze an older phone about half a second after each delete (measured at 6x CPU slowdown). */
+    const seed = function (S) { for (let i = 1; i <= 120; i++) S.sessions.push({ id: 'w' + i, date: new Date(Date.UTC(2026, 4, 1) + i * 1.5 * 864e5).toISOString().slice(0, 10), dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'bench', sets: [1, 2, 3, 4].map(() => ({ w: 60, r: 8, rir: 2, done: true })) }, { exId: 'backSquat', sets: [1, 2, 3, 4].map(() => ({ w: 80, r: 8, rir: 2, done: true })) }] }); S.settings.lastExport = '2026-11-11'; };
+    // The bytes each write to Undo's store puts, counted as the app writes them.
+    const COUNT = () => { window.__undoPut = []; const put = IDBObjectStore.prototype.put; IDBObjectStore.prototype.put = function (v, k) { try { window.__undoPut.push(JSON.stringify(v).length); } catch (e) { window.__undoPut.push(-1); } return put.call(this, v, k); }; };
+    const P = await phone({ seed, setup: async ctx => { await ctx.addInitScript(COUNT); } });
+    await P.tabTo('history');
+    const del = async id => { await P.ev(id => { window.__ironlog.ACT.histDel({ dataset: { id } }); }, id); await wait(80); await confirmOk(P); };
+    for (let i = 1; i <= 20; i++) await del('w' + i);
+    await wait(900);
+    const logLen = await P.ev(k => localStorage.getItem(k).length, KEY);
+    await P.ev(() => { window.__undoPut.length = 0; });
+    await del('w21'); await wait(900);
+    const put = await P.ev(() => window.__undoPut.reduce((a, b) => a + b, 0));
+    ok((await P.ev(() => window.__ironlog.undoStack.length)) === UNDO_MAX && put > 0 && put < 3 * logLen, `S-7: with ${UNDO_MAX} steps kept, a delete writes its own step (under 3 copies of the log), not every step again (2.27-F4: ${UNDO_MAX * 2} copies)`, { put, logLen, ratio: +(put / logLen).toFixed(1) });
+    // Read back from the store after a reload: the newest steps in order, each Undo taking back one delete.
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(600);
+    const n = await P.ev(() => window.__ironlog.undoStack.length);
+    await settingsOpen(P, 'dataSec');
+    for (let k = 0; k < 3; k++) { await P.page.click('#dataSec [data-act="undo"]'); await wait(300); }
+    const back = await P.ev(() => ['w21', 'w20', 'w19', 'w18'].map(id => window.__ironlog.state.sessions.some(s => s.id === id)));
+    ok(n === UNDO_MAX && JSON.stringify(back) === '[true,true,true,false]', `S-7: reopened, the ${UNDO_MAX} steps are there, and Undo three times takes back the last three deletes, newest first`, { n, back });
+    await P.close();
+  }
+  if (run('S-7')) {
+    // Steps stored by 2.57 and before, the whole list under one key, still undo after the update, and are stored on their own from then.
+    const seed = function (S) { for (let i = 1; i <= 6; i++) S.sessions.push({ id: 'v' + i, date: '2026-11-0' + i, dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }); S.settings.lastExport = '2026-11-11'; };
+    const P = await phone({ seed });
+    // Two deletes as 2.57 kept them: the log before each and after it, in one list.
+    const ok2 = await P.ev(async ([dbName]) => {
+      const L = window.__ironlog; const s0 = JSON.parse(JSON.stringify(L.state));
+      const a = JSON.stringify(s0); const s1 = { ...s0, sessions: s0.sessions.filter(s => s.id !== 'v1') }; const b = JSON.stringify(s1); const s2 = { ...s1, sessions: s1.sessions.filter(s => s.id !== 'v2') }; const c = JSON.stringify(s2);
+      L.act(() => { L.state.sessions = L.state.sessions.filter(s => s.id !== 'v1' && s.id !== 'v2'); });
+      const db = await new Promise(r => { const q = indexedDB.open(dbName, 1); q.onupgradeneeded = () => q.result.createObjectStore('kv'); q.onsuccess = () => r(q.result); });
+      await new Promise(r => { const tx = db.transaction('kv', 'readwrite'); const os = tx.objectStore('kv'); os.clear(); os.put([{ pre: a, post: b, t: Date.now() - 2000, said: 'Session deleted' }, { pre: b, post: c, t: Date.now() - 1000, said: 'Session deleted' }], 'stack'); tx.oncomplete = () => r(); });
+      db.close(); return true;
+    }, ['ironlog-undo']);
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(800);
+    await settingsOpen(P, 'dataSec');
+    await P.page.click('#dataSec [data-act="undo"]'); await wait(900);
+    const one = await P.ev(() => ['v1', 'v2'].map(id => window.__ironlog.state.sessions.some(s => s.id === id)));
+    const keys = await P.ev(async () => { const db = await new Promise(r => { const q = indexedDB.open('ironlog-undo', 1); q.onsuccess = () => r(q.result); }); const k = await new Promise(r => { const q = db.transaction('kv').objectStore('kv').getAllKeys(); q.onsuccess = () => r(q.result); }); db.close(); return k; });
+    ok(ok2 && JSON.stringify(one) === '[false,true]' && !keys.includes('stack') && keys.length === 1, 'S-7: steps kept by 2.57 still undo after the update (the newest first), and the one left is stored on its own', { one, keys });
+    await P.close();
+  }
+  if (run('S-7')) {
+    // REV15-3: one step is one step, however many copies the store holds. Three deletes stored on their own; then the
+    // list written again under 'stack' (a tab still on 2.57 after the other took Update) and one step stored twice
+    // (two tabs of this build moving that list at once). Reopened: three steps, three Undos each bringing a session
+    // back, then nothing to undo (5 steps were kept for 3 changes, two Undos saying "Undone" for nothing).
+    const seed = function (S) { for (let i = 1; i <= 6; i++) S.sessions.push({ id: 'x' + i, date: '2026-11-0' + i, dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }); S.settings.lastExport = '2026-11-11'; };
+    const P = await phone({ seed });
+    await P.tabTo('history');
+    for (const id of ['x1', 'x2', 'x3']) { await P.ev(id => window.__ironlog.ACT.histDel({ dataset: { id } }), id); await wait(80); await confirmOk(P); await wait(150); }
+    await wait(600);
+    const stored = await P.ev(async dbName => {
+      const db = await new Promise(r => { const q = indexedDB.open(dbName, 1); q.onsuccess = () => r(q.result); });
+      const all = await new Promise(r => { const out = []; const q = db.transaction('kv').objectStore('kv').openCursor(); q.onsuccess = () => { const c = q.result; if (!c) { r(out); return; } out.push([String(c.key), c.value]); c.continue(); }; });
+      const steps = all.filter(([k]) => k.startsWith('step:'));
+      await new Promise(r => { const tx = db.transaction('kv', 'readwrite'); const os = tx.objectStore('kv'); os.put(steps.map(([, v]) => v), 'stack'); os.put(steps[0][1], 'step:' + steps[0][0].slice(5) + 'b'); tx.oncomplete = () => r(); });
+      db.close(); return steps.length;
+    }, 'ironlog-undo');
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(800);
+    const n = await P.ev(() => window.__ironlog.undoStack.length);
+    await settingsOpen(P, 'dataSec');
+    const backs = [];
+    for (let k = 0; k < 3; k++) { await P.page.click('#dataSec [data-act="undo"]'); await wait(400); backs.push(await P.ev(() => ['x1', 'x2', 'x3'].filter(id => window.__ironlog.state.sessions.some(s => s.id === id)).length)); }
+    const left = await P.ev(() => window.__ironlog.undoStack.length);
+    ok(stored === 3 && n === 3 && JSON.stringify(backs) === '[1,2,3]' && left === 0, 'S-7: steps the store holds twice (the list written again by a tab on 2.57, a step stored twice) are taken once: three changes, three steps, each Undo bringing one back (REV15-3)', { stored, n, backs, left });
+    await P.close();
+  }
+  if (run('S-7')) {
+    // REV15-8: Undo tapped at once, while the delete's step is still being written. A step taken back is gone from the
+    // store as well: reopened, Settings offers nothing to undo (the step was left in the store, and Settings offered
+    // "Undo: Session deleted", then said "Nothing to undo"). A long log, so the step's write is still under way.
+    const seed = function (S) { for (let i = 1; i <= 300; i++) S.sessions.push({ id: 'y' + i, date: new Date(Date.UTC(2025, 0, 1) + i * 2 * 864e5).toISOString().slice(0, 10), dayIdx: 0, dayName: 'Day 1', notes: '', ex: ['bench', 'backSquat', 'dbLateral'].map(exId => ({ exId, sets: [1, 2, 3, 4].map(() => ({ w: 60, r: 8, rir: 2, done: true })) })) }); S.settings.lastExport = '2026-11-11'; };
+    const P = await phone({ seed });
+    await P.tabTo('history');
+    await P.ev(() => window.__ironlog.ACT.histDel({ dataset: { id: 'y300' } })); await wait(150);
+    // The confirm, then Undo on the toast in the next task: two taps, the second as soon as a tap can follow.
+    const now = await P.ev(async () => {
+      const L = window.__ironlog;
+      document.querySelector('#modal [data-act="mOk"]').click();
+      await new Promise(r => setTimeout(r, 0));
+      document.querySelector('#toast [data-act="undo"]').click();
+      return { back: L.state.sessions.some(s => s.id === 'y300'), steps: L.undoStack.length };
+    });
+    await wait(1200);
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(800);
+    await settingsOpen(P, 'dataSec');
+    const then = await P.ev(() => { const b = document.querySelector('#dataSec [data-act="undo"]'); return { steps: window.__ironlog.undoStack.length, offered: !!b && !b.disabled, back: window.__ironlog.state.sessions.some(s => s.id === 'y300') }; });
+    ok(now.back && now.steps === 0 && then.steps === 0 && !then.offered && then.back, 'S-7: Undo tapped while the change\'s step is still being written takes the step out of the store too: reopened, there is nothing to undo, and the session is there (REV15-8)', { now, then });
+    await P.close();
+  }
   /* ---------- S-8: Recently deleted ---------- */
   if (run('S-8')) {
     const P = await phone({ seed: (S, L, a) => {

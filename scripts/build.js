@@ -175,7 +175,10 @@ if (cloudCfg) html = replaceOnce(html, '</head>', `<script>window.IRONLOG_SUPABA
 // controlled the page at open, so on an app installed in the same visit, which
 // iOS keeps open for days, Update cleared the bar and the old build stayed).
 // It never reloads by itself: a first install taking over, or another window's
-// update, leaves the page as it is. Its errors go to the app's error log through
+// update, leaves the page as it is. An update is a waiting worker other than the
+// one in control: on a first install WebKit can show the new worker as both at
+// once as its installed step is heard, and read as an update it showed "Update
+// ready" on a phone that had just installed (NEW-145). Its errors go to the app's error log through
 // window.ironlogLog (r65, the r63 audit's A-12: they were dropped), but for an
 // update check that fails offline, which is expected and tried again. The check also runs whenever the app comes back
 // to the foreground, because an installed iPhone app is often resumed rather
@@ -186,7 +189,7 @@ if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostnam
   let tapped=false,reloading=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(tapped&&!reloading){reloading=true;location.reload();}});
   window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').then(reg=>{
-    const offer=()=>{if(reg.waiting&&navigator.serviceWorker.controller&&window.ironlogUpdateReady)window.ironlogUpdateReady();};
+    const offer=()=>{const w=reg.waiting,c=navigator.serviceWorker.controller;if(w&&c&&w!==c&&window.ironlogUpdateReady)window.ironlogUpdateReady();};
     window.ironlogApplyUpdate=()=>{tapped=true;if(reg.waiting)reg.waiting.postMessage('skipWaiting');else location.reload();};
     reg.addEventListener('updatefound',()=>{const w=reg.installing;if(w)w.addEventListener('statechange',()=>{if(w.state==='installed')offer();});});
     offer();

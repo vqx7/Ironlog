@@ -1,4 +1,4 @@
-/* The session screen's fields (CL-1, split from workout.ts): a load, reps, effort or note typed, auto-mark when a
+/* The session screen's fields: a load, reps, effort or note typed, auto-mark when a
    field is left, the keys, a load field made ready to be typed over, and the listeners the screen starts with
    (workoutStart). Each change to the session in progress goes through act. */
 
@@ -72,8 +72,8 @@ function noteDown(e: Event): void {
    impossible rep count), saved once the typing pauses. Whole reps: 8.5 is 8,
    a partial rep not a rep. On an assisted lift the number is the help.
    A load typed is the lifter's, no longer carried. The grey numbers, the
-   progress line and the plates follow at once, as the legacy patches had
-   them; a name or notes are drawn at the next draw, as before. */
+   progress line and the plates follow at once; a name or notes are drawn at
+   the next draw. */
 /** A keystroke in one of the session screen's fields; whether it was one. */
 export function workoutInput(t: Field): boolean {
   const d = state.draft;
@@ -118,7 +118,7 @@ export function workoutInput(t: Field): boolean {
           const bx = d.ex[bi];
           const as = !!bx && !!EX(bx.exId).assist;
           /* fromD of a number is a number (null only for no number), so 0 never
-             stands in. Within the bounds a save keeps, in kilograms (r61; until
+             stands in. Within the bounds a save keeps, in kilograms (until
              then 660 of help and 20000 in the unit typed). */
           s.w =
             n == null
@@ -161,17 +161,16 @@ export function workoutInput(t: Field): boolean {
 /* A field of the session screen left with a new value. Reps: the field shows
    the reps stored; a done set whose reps were cleared is undone, once
    the new rows are in place (a field taken away mid-draw fires its change as
-   if left); one typed as 0 is a missed set, ticked as typed (r55, V), and a
-   ticked set changed to 0 asks, as a tick does, when its load is light
-   (r55.1, the spec review); cleared, it is marked, so leaving the field does
-   not tick it again at the grey reps (r55, the audit). Heading for this
-   row's load: ticked when the load is left, so the load is never written
-   into the field being typed in (r55, the audit: 105 typed there became
-   101050); heading for this row's RIR box: ticked when its strip closes (or
+   if left); one typed as 0 is a missed set, ticked as typed (V), and a
+   ticked set changed to 0 asks, as a tick does, when its load is light;
+   cleared, it is marked, so leaving the field does not tick it again at
+   the grey reps. Heading for this row's load: ticked when the load is left,
+   so the load is never written into the field being typed in (105 typed
+   there would become 101050); heading for this row's RIR box: ticked when its strip closes (or
    after 2 s if it never opened), by identity, so a later tick cannot run this
    one. A load: a ticked set's load changed to one far off asks too,
    unticked until answered; Log it, or the load fixed after Fix it, ticks it
-   again, its rest not started over (r55; the second review). The date: last
+   again, its rest not started over. The date: last
    time and the targets are read as of the session's date, so a new date
    reads them again; typed and ticked sets are left alone. */
 /** A change in one of the session screen's fields; whether it was one. */
@@ -215,9 +214,7 @@ export function workoutChange(t: Field): boolean {
       const toRir = near(`.rirb[data-b="${bi}"][data-s="${si}"]`);
       const toW = !toRir && near(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
       /* Leaving the field for the set's own minus or plus ticks it, as leaving it any other way does: the pills stay on
-         the set you are on, so the step changes the set just ticked (the review of 2.36 to 2.41, REV8-O1:
-         until then the step there left it unticked, where the keyboard closed first ticked it; REV7-5 had made that
-         exception while a tick still moved the pills on). */
+         the set you are on, so the step changes the set just ticked, as when the keyboard closes first. */
       if (toW) W.pendAuto = { b: blkRef(bi), s: si };
       else if (toRir) {
         const p = { b: blkRef(bi), s: si };
@@ -239,12 +236,12 @@ export function workoutChange(t: Field): boolean {
     const bi = Number(t.dataset.b),
       si = Number(t.dataset.s);
     /* A ticked set's load cleared is unticked, as a ticked set's reps
-       cleared are (V on r61's preview, 2026-10-26: set 2 ticked on its grey
-       225, its load then cleared, stayed ticked with no weight, and the
-       recap read it as 0 x 8). It then waits for its weight, as a tick made
-       before one is typed does: a load typed ticks it again (the
-       independent review of r62: typing 230 left it unticked, and Finish
-       offered to save without it), and so does the checkmark on its grey
+       cleared are (V, 2026-10-26: set 2 ticked on its grey 225, its load then
+       cleared, stayed ticked with no weight, and the recap read it as 0 x
+       8). It then waits for its weight, as a tick made
+       before one is typed does: a load typed ticks it again (else
+       typing 230 leaves it unticked, and Finish offers to save without it),
+       and so does the checkmark on its grey
        load, as the same set, its rest not started over (unloaded, setDone).
        So a ticked set of a lift that takes a load always has one. A
        bodyweight lift's added load and a timed hold's may be none, as
@@ -263,8 +260,8 @@ export function workoutChange(t: Field): boolean {
     /* A tick that waited for its weight is made once one is typed; the
        checkmark tapped next keeps it, as after auto-mark. Only while the set
        still has its reps (or a 0 typed, a missed set): reps cleared since,
-       the tick has nothing to log and is dropped (the independent review of
-       r60: 135 x 0 was saved as a missed set the lifter never logged). */
+       the tick has nothing to log and is dropped (not 135 x 0 saved as a
+       missed set the lifter never logged). */
     const typed = needHere(bi, si) && s.w != null;
     if (typed) W.needAt = null;
     const need = typed && (+(s.r ?? 0) > 0 || isMissed(s));
@@ -334,8 +331,8 @@ export function workoutKey(e: KeyboardEvent): boolean {
       si = Number(t.dataset.s);
     if (t.dataset.f === 'r' && !t.value.trim()) acceptGrey(bi, si);
     /* A set whose tick waits for its weight keeps the focus on its
-       load field, which setDone gave it (from the independent review of r60:
-       Next moved on, and the weight typed next went to the set after). */
+       load field, which setDone gave it (else Next moves on, and the weight typed
+       next goes to the set after). */
     if (needHere(bi, si)) return true;
     const all = [...document.querySelectorAll<HTMLInputElement>('.sg input[data-f]')];
     const nx = all[all.indexOf(t) + 1];
@@ -371,8 +368,8 @@ export function workoutKey(e: KeyboardEvent): boolean {
   return false;
 }
 
-/* A tap on a load field shows its number selected (V, PENDING 341 a, from
-   the live r56.1: a grey load was an empty field under a hint, so it could
+/* A tap on a load field shows its number selected (V: a grey load
+   was an empty field under a hint, so it could
    not be edited in place and backspace did nothing, while a filled one took
    the caret where tapped, 165 then 1 giving 1615). A grey load is put in the
    field to be typed over: a digit replaces it, backspace clears it, and left
@@ -381,15 +378,15 @@ export function workoutKey(e: KeyboardEvent): boolean {
    selected the same way. The selection is made on focus, and made again when
    the tap that focused the field is released, whose default would place the
    caret where the finger landed (in WebKit, the engine of every iPhone
-   browser, it did: GitHub's run of r60 typed 1135 over a selected 135, and
-   152.5 over a grey 135 as 1152.535). The first key does what the selection
+   browser, it does: 1135 typed over a selected 135, and 152.5 over a grey
+   135 as 1152.535). The first key does what the selection
    says whatever the screen shows (workoutBeforeInput), so a release that
    still moves the caret cannot splice a digit into the number. A second tap
    on the focused field places the caret as any tap does, and so does an
    arrow key, Home or End. Only a tap or Next does this: a field focused
-   again by a redraw keeps its caret and its text (from the independent
-   review of r60: a field remade mid-number, its focus given back, took the
-   next digit as a new number, 13 then 5 giving 5). iPhone selection
+   again by a redraw keeps its caret and its text (a field remade
+   mid-number, its focus given back, would take the next digit as a new
+   number, 13 then 5 giving 5). iPhone selection
    behaviour is to be tried on V's phone before this ships. */
 // A field of the session screen focused (focusin): on a tap, a load field's number selected, a grey one put in to be typed over.
 function workoutFocus(e: FocusEvent): void {

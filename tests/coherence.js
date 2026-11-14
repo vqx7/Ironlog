@@ -288,9 +288,9 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
         // (a drop set half); with the setting on and RIR not off, any other working
         // set past RIR 3 counts half of that; nothing else counts.
         const half = !!L.state.settings.rirHalf && L.state.settings.rirMode !== 'off';
-        const credit = (q, e) => { if (L.isHard(q, e)) return L.setCredit(q); const work = !q.warm && +q.r > 0; if (!half || !work) return 0; const v = L.rirEst(q, e); return v != null && v > 3 ? L.setCredit(q) * 0.5 : 0; };
+        const credit = (q, e, day) => { if (L.isHard(q, e, day)) return L.setCredit(q); const work = !q.warm && +q.r > 0; if (!half || !work) return 0; const v = L.rirEst(q, e, day); return v != null && v > 3 ? L.setCredit(q) * 0.5 : 0; };
         const cur = L.weekStart(L.today()); let want = 0;
-        for (const x of L.state.sessions) if (x.date >= cur && x.date <= L.addDays(cur, 6)) for (const b of x.ex) { const e = L.EX(b.exId); for (const q of b.sets) want += credit(q, e); }
+        for (const x of L.state.sessions) if (x.date >= cur && x.date <= L.addDays(cur, 6)) for (const b of x.ex) { const e = L.EX(b.exId); for (const q of b.sets) want += credit(q, e, x.date); }
         const got = L.weekStats().got; checked++;
         if (Math.abs(got - want) > 1e-9) out.push({ t, got, want });
       }

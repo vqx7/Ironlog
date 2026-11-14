@@ -1,7 +1,6 @@
 /* Which sections each tab has, in what order, and the choices that shape
    the screens: the accent, the volume views, the weeks the radar averages,
-   the weigh-in cadence, the sheets that hold typed fields (phase 3a, r51;
-   moved unchanged from the legacy script). */
+   the weigh-in cadence, the sheets that hold typed fields. */
 
 import { parseJson } from './records';
 
@@ -31,8 +30,7 @@ export const DSEC_ALIAS: Readonly<Record<string, string>> = {
   svol: 'volume'
 };
 
-/* What Volume on Stats can show. Planned left Stats in r29 (V: Stats is what
-   you did); the plan against the targets is Weekly volume on Plan. */
+/* What Volume on Stats can show. Not Planned (V: Stats is what you did); the plan against the targets is Weekly volume on Plan. */
 export const VOL_MODES: readonly (readonly [string, string])[] = [
   ['region', 'By region'],
   ['week', 'This week'],
@@ -41,14 +39,14 @@ export const VOL_MODES: readonly (readonly [string, string])[] = [
   ['load', 'Load']
 ];
 
-/* The layout a new install starts with (V, r28): every section folded,
+/* The layout a new install starts with (V): every section folded,
    the extras hidden, and a line at the bottom of each tab that adds them
    back in one tap. Existing logs keep their own layout: these only seed a
    fresh state, and Settings > Layout's "Default layout" and "Reset section
    order" go back to them. Today leads with what a session needs (the
    workout, then the muscle map, then the week); Stats leads with Lifts.
-   Plan's Schedule is shown since r70 (381, V 2026-11-03): it is the only
-   place to switch between a cycle and fixed weekdays. */
+   Plan's Schedule is shown (V 2026-11-03): it is the only place to switch
+   between a cycle and fixed weekdays. */
 export const DEFAULT_HIDDEN: readonly string[] = ['today:tiles', 'today:coach', 'today:body', 'program:pvol'];
 const DEFAULT_ORDER: Readonly<Record<string, readonly string[]>> = {
   today: ['moving', 'session', 'map', 'week', 'injuries', 'coach', 'tiles', 'body'],
@@ -63,7 +61,7 @@ export const defaultOrder = (): Record<string, string[]> =>
 
 /** A saved order kept for the sections still present, each missing one placed after the one it follows. */
 export function orderKeys(saved: readonly string[], present: readonly string[]): string[] {
-  // Each key once, at its first place: r57 as first built could save one twice (its review).
+  // Each key once, at its first place, so none is saved twice.
   const order = saved.filter((k, i) => present.includes(k) && saved.indexOf(k) === i);
   present.forEach((k, i) => {
     if (order.includes(k)) return;
@@ -97,7 +95,7 @@ export const FORM_SHEETS: ReadonlySet<string> = new Set([
 ]);
 
 /* The accents Settings > Appearance offers, as a key and a label.
-   Violet, Cyan and Red since r65.2 (V). Ember is the default since r37 (V: "default to the orange ember one for now"): no accent stored reads as Ember. */
+   Violet, Cyan and Red among them (V). Ember is the default (V: "default to the orange ember one for now"): no accent stored reads as Ember. */
 export const ACCENTS: readonly (readonly [string, string])[] = [
   ['ember', 'Ember'],
   ['blue', 'Blue'],
@@ -111,7 +109,7 @@ export const ACCENTS: readonly (readonly [string, string])[] = [
 /** The default accent, read when none is stored; choosing it again removes the stored one. */
 export const ACCENT0 = 'ember';
 
-/* The weeks the radar averages (r31.2, V: one week says little about
+/* The weeks the radar averages (V: one week says little about
    balance): the last 2, 4 or 8 full weeks, 4 unless changed, kept per
    device. Fewer full weeks logged than chosen: those, said so; none yet:
    this week so far, said so. This week on its own is Volume's This week. */
@@ -119,7 +117,7 @@ export const REGION_WKS: readonly (readonly [number, string])[] = [2, 4, 8].map(
 /** The weeks the radar averages until another is picked. */
 export const REGION_WK_DEFAULT = 4;
 
-/* Weigh-ins on a cadence (r34, V: at the start, then every two weeks or so,
+/* Weigh-ins on a cadence (V: at the start, then every two weeks or so,
    the time frame the lifter's to set). Bodyweight lifts use the latest
    weigh-in, so an old one keeps counting until a new one comes in. Every 7,
    14 (the default) or 30 days, or off (Settings > Measurements); Later waits 2
@@ -140,7 +138,7 @@ export function bwEveryKept(v: unknown): 0 | 7 | 30 | undefined {
   return d === BW_EVERY_DEFAULT ? undefined : d;
 }
 
-/** The tabs whose sections keep an order and folds (phase 4, r56; moved from the legacy script). */
+/** The tabs whose sections keep an order and folds. */
 export const SEC_TABS: readonly string[] = ['today', 'program', 'dash', 'history', 'settings'];
 
 /* Sections that can be hidden from Settings > Layout, as tab:key. Hidden

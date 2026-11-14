@@ -37,11 +37,11 @@ const res=await page.evaluate(()=>{
   L.state.settings.rirMode='cal';
   L.state.sessions=[cal(addDays(T,-3),'bench',8,1,11),cal(addDays(T,-2),'bench',8,1,11)];L.invalidate();
   let c=L.calStats();ok(c.recent===2&&c.raw===2&&c.bias===1&&c.cls.c.bias===1&&c.cls.i.recent===0,'2 sets, median +2: shrunk to +1 (2×2/5=0.8 → 1)',[c.raw,c.bias]);
-  ok(L.rirEff({r:8,rir:2},L.state.exercises.find(e=>e.id==='bench'))===3,'compound set at RIR 2 read as 3');
-  ok(L.rirEff({r:8,rir:5},L.state.exercises.find(e=>e.id==='bench'))===5,'RIR 5 is not corrected');
+  ok(L.rirEff({r:8,rir:2},L.state.exercises.find(e=>e.id==='bench'),L.today())===3,'compound set at RIR 2 read as 3');
+  ok(L.rirEff({r:8,rir:5},L.state.exercises.find(e=>e.id==='bench'),L.today())===5,'RIR 5 is not corrected');
   L.state.sessions=Array.from({length:8},(_,i)=>cal(addDays(T,-10+i),'legExt',8,0,14));L.invalidate();
   c=L.calStats();ok(c.raw===6&&c.bias===2,'8 sets at +6: capped at +2',[c.raw,c.bias]);
-  ok(L.rirEff({r:8,rir:1},L.state.exercises.find(e=>e.id==='bench'))===3,'compound falls back to pooled while it has fewer than 2');
+  ok(L.rirEff({r:8,rir:1},L.state.exercises.find(e=>e.id==='bench'),L.today())===3,'compound falls back to pooled while it has fewer than 2');
   L.state.sessions=[cal(addDays(T,-100),'bench',8,1,11),cal(addDays(T,-99),'bench',8,1,11)];L.invalidate();
   c=L.calStats();ok(c.n===2&&c.recent===0&&c.bias===0,'calibration older than 12 weeks expires');
   L.state.settings.rirMode='on';
@@ -113,19 +113,23 @@ const res=await page.evaluate(()=>{
    let I=reset(mix);const bests=I.byEx.bench.map(x=>x.best);
    ok(new Set(bests.map(v=>v.toFixed(6))).size===1&&near(bests[1],L.e1(100,8,2)),'mixed rated and blank at the same load and reps: one estimate, no dips',bests.map(v=>+v.toFixed(1)));
    ok(!I.prs.some(p=>p.exId==='bench'&&p.date>addDays(T,-35)),'rating RIR on some days creates no PRs by itself',I.prs.filter(p=>p.exId==='bench').map(p=>p.type+'@'+p.date));
-   ok(L.rirUsual('bench')===2&&L.rirEst({r:8,w:100,rir:null},L.EX('bench'))===2,'the usual RIR is the median of rated working sets');
+   ok(L.rirUsual('bench',L.today())===2&&L.rirEst({r:8,w:100,rir:null},L.EX('bench'),L.today())===2,'the usual RIR is the median of rated working sets');
    I=reset([S(addDays(T,-14),'bench',[[100,8,2]]),S(addDays(T,-7),'bench',[[100,8,2]]),S(T,'bench',[[100,8,null]])]);
-   ok(L.rirUsual('bench')==null&&near(I.byEx.bench[2].best,L.e1(100,8,0))&&I.weekHard[Object.keys(I.weekHard).pop()]>=1,'fewer than 3 rated sets: a blank is hard and 0 for estimates (errs low)');
+   ok(L.rirUsual('bench',L.today())==null&&near(I.byEx.bench[2].best,L.e1(100,8,0))&&I.weekHard[Object.keys(I.weekHard).pop()]>=1,'fewer than 3 rated sets: a blank is hard and 0 for estimates (errs low)');
    I=reset([S(addDays(T,-14),'inclineCurl',[[20,12,5],[20,12,5],[20,12,5]]),S(T,'inclineCurl',[[20,12,null]])]);
-   ok(L.rirUsual('inclineCurl')===5&&!L.isHard({r:12,w:20,rir:null,warm:false},L.EX('inclineCurl'))&&(I.weekHard[Object.keys(I.weekHard).pop()]||0)===0,'usually 5 in reserve: a blank set there is not hard');
+   ok(L.rirUsual('inclineCurl',L.today())===5&&!L.isHard({r:12,w:20,rir:null,warm:false},L.EX('inclineCurl'),L.today())&&(I.weekHard[Object.keys(I.weekHard).pop()]||0)===0,'usually 5 in reserve: a blank set there is not hard');
    I=reset([S(addDays(T,-7),'bench',[[100,8,0],[100,8,0],[100,8,0]]),S(T,'bench',[[100,8,null],[100,8,null]])]);
-   ok(L.rirUsual('bench')===0&&I.dayMeta[T].chest.fail===0,'recovery reads only entered RIR: blanks never count as failure sets',I.dayMeta[T].chest);
+   ok(L.rirUsual('bench',L.today())===0&&I.dayMeta[T].chest.fail===0,'recovery reads only entered RIR: blanks never count as failure sets',I.dayMeta[T].chest);
    reset([S(addDays(T,-7),'bench',[[100,8,3,{drop:true}],[100,8,3,{drop:true}],[100,8,3,{warm:true}],[100,8,3,{cal:{at:8,pred:3}}]])]);
-   ok(L.rirUsual('bench')==null,'warm-ups, drop sets and RIR checks are not part of the usual RIR');
+   ok(L.rirUsual('bench',L.today())==null,'warm-ups, drop sets and RIR checks are not part of the usual RIR');
+   // REV15-T1: each kind alone, so leaving out one kind and not another fails: two rated working sets and one of the kind.
+   for(const [k,mark] of [['drop sets',{drop:true}],['warm-ups',{warm:true}],['RIR checks',{cal:{at:8,pred:3}}]]){
+     reset([S(addDays(T,-7),'bench',[[100,8,3],[100,8,3],[100,8,3,mark]])]);
+     ok(L.rirUsual('bench',L.today())==null,`${k} alone are not part of the usual RIR: two rated working sets and one of them give none (REV15-T1)`,L.rirUsual('bench',L.today()));}
    reset([S(addDays(T,-90),'bench',[[100,8,2],[100,8,2],[100,8,2]])]);
-   ok(L.rirUsual('bench')==null,'ratings older than 12 weeks do not count');
+   ok(L.rirUsual('bench',L.today())==null,'ratings older than 12 weeks do not count');
    reset(mix);L.state.settings.rirMode='off';L.invalidate();
-   ok(L.rirUsual('bench')==null&&L.isHard({r:8,w:100,rir:5,warm:false},L.EX('bench')),'RIR off: nothing is read, every working set is hard');
+   ok(L.rirUsual('bench',L.today())==null&&L.isHard({r:8,w:100,rir:5,warm:false},L.EX('bench'),L.today()),'RIR off: nothing is read, every working set is hard');
    L.state.settings.rirMode='on';L.invalidate();}
   return out;});
 let f=0;for(const [p,m] of res){console.log((p?'ok  ':'FAIL')+' '+m);if(!p)f++;}

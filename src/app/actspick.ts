@@ -1,9 +1,8 @@
-/* The exercise picker's choice and the exercise editor (r63, from the legacy
-   script's 16-engine.js, 24-sheets.js and 27-actions.js): an exercise added
+/* The exercise picker's choice and the exercise editor: an exercise added
    to a session or a routine day, a swap in either, Pick for me's addition,
    and a new or saved exercise. Each change to the log goes through `act`;
    a change to the session in progress alone leaves the caches as they are
-   (inProgress), as the legacy script's save of the session did. */
+   (inProgress). */
 
 import { uid, numIn } from './util';
 import { BWF, MK, bwShare } from './library';
@@ -34,7 +33,7 @@ const BWF_PCT = { most: 150, off: 0.005, whole: 100 } as const;
    count and superset. Its range, RIR, rest and step come from where it
    already sits in the routine, or from its own default when it is the other
    kind (a timed hold for reps, or reps for a hold: a plank swapped in for
-   bench used to hold for 6 to 10 seconds); otherwise it fills the slot as
+   bench does not hold for 6 to 10 seconds); otherwise it fills the slot as
    planned. */
 /** The plan an exercise swapped in for another takes in a slot. */
 export function swapPlan<P extends Partial<Plan>>(
@@ -46,8 +45,8 @@ export function swapPlan<P extends Partial<Plan>>(
 ): P & Partial<Plan> {
   const R = R0 || activeRoutine();
   const inR = R.days.some(d => d.items.some(it => it.exId === toId));
-  /* A step is the equipment's (R81-8, the review of 2.35: a 10 lb barbell
-     slot gave dumbbell bench a 10 lb step): a lift on other equipment takes
+  /* A step is the equipment's (a 10 lb barbell slot must not give
+     dumbbell bench a 10 lb step): a lift on other equipment takes
      its own, the slot's range, effort and rest kept. */
   if (!inR && !!EX(fromId).timed === !!EX(toId).timed) {
     if (EX(fromId).equip === EX(toId).equip) return { ...p };
@@ -103,7 +102,7 @@ function pickAddDay(m: PickerModal, id: string): void {
     Object.assign(d, trainOn(d));
   });
   rerenderKeepScroll();
-  // Bodyweight, if this lift counts it and none is logged, is asked on Plan under the lift, not here (2.48, the message rule).
+  // Bodyweight, if this lift counts it and none is logged, is asked on Plan under the lift, not here (the message rule).
   toast(`${exName(id)} added to ${dayLabel(R, di)}${m.pm ? ', second workout' : ''}`);
   return;
 }
@@ -168,7 +167,7 @@ function pickAddBlock(m: PickerModal, id: string, d: Draft): void {
     return;
   }
   act(() => d.ex.push(nb), { inProgress: true });
-  // No bodyweight note here: the line under the lift asks, in a saved session being edited too (NEW-116, REV11-2).
+  // No bodyweight note here: the line under the lift asks, in a saved session being edited too.
   afterAdd(d.ex.length - 1);
   return;
 }
@@ -306,11 +305,11 @@ function pickSwapBlock(m: PickerModal, id: string, d: Draft): void {
   }
   const orig: DraftBlock = structuredClone(b);
   const did = d.id;
-  // Sets ticked or typed stay with the exercise they were done on (r25: typed, not ticked, used to vanish).
+  // Sets ticked or typed stay with the exercise they were done on, typed and not ticked too.
   const done = b.sets.filter(x => !rowBlank(b, x));
   const left = b.sets.filter(x => !x.warm && !x.drop && rowBlank(b, x)).length;
   const rows = b.sets.filter(x => !x.warm && !x.drop).length;
-  // r55, the audit: it added the new lift with one set "for the sets left", none being left.
+  // Not the new lift with one set "for the sets left", none being left.
   if (done.length && !left && !m.all) {
     const nn = EX(id).name;
     confirmBox(
@@ -381,12 +380,12 @@ export function applyPick(m: PickerModal | null | undefined, id: string | undefi
     pickAddBlock(m, id, d);
     return;
   }
-  /* Swapping used to replace the whole block, so sets already logged on the
-     old exercise vanished. Now logged sets stay with the exercise they were
-     done on, and the new one takes over the sets still to do. The count comes
+  /* Logged sets stay with the exercise they were done on, and the new one
+     takes over the sets still to do, so a swap never takes away sets already
+     logged on the old exercise. The count comes
      from the rows the exercise has now, not the routine's plan: the plan's
-     count undid Short on time, + Set and − Set. Since r54 nothing is
-     marked: the replacement is read by its own usual, as every lift is. */
+     count would undo Short on time, + Set and − Set. Nothing is marked: the
+     replacement is read by its own usual, as every lift is. */
   if (m.mode === 'swapBlock') {
     pickSwapBlock(m, id, d);
     return;
@@ -525,7 +524,7 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       toast('Give the exercise a name');
       return;
     }
-    // A quick create from search used to default to Chest, so a curl made in a hurry was counted as chest work from then on.
+    // A quick create from search does not default to Chest, which would count a curl made in a hurry as chest work from then on.
     if (!MK.some(k => k === e.primary)) {
       toast('Pick the main muscle it trains');
       const el = document.querySelector('[data-ebind="primary"]');
@@ -599,7 +598,7 @@ export const PICK_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (m.isNew && back && back.kind === 'picker') {
       applyPick(back, e.id);
       toast(
-        /* Joined to what the pick said (2.48, the message rule): a Plan day's add and a session's swap say what they
+        /* Joined to what the pick said (the message rule): a Plan day's add and a session's swap say what they
            did, so this says only that it was created; the others say nothing, so this says it all. */
         back.mode === 'addDay' || back.mode === 'swapBlock'
           ? `${e.name} created`

@@ -2,35 +2,21 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: 2026-11-07. Live: version 2.31 (build 2026.11.07-r77, pull request #76, merged 2026-11-07). Next: 2.32, scope waiting for your go.
+Last updated: 2026-11-12. Live: version 2.50 (pull request #95, merged by you 2026-11-12). Next: #96 (2.51), then 2.52 to 2.57 in order as their pull requests open.
 
 ## Now, in this order
 
-1. A28 (r64 and r65): done, merged by you on 2026-10-30 and live (see Done).
-1a. A29 (r65.1, the look): closed by you unmerged on 2026-10-31 ("lets not push anything into prod"); nothing to do. The live app stays r65.
-1b. A30 (r65.2): done, merged by you (#64, 2026-10-31 18:38 Los Angeles) and live.
-1c. A31 (r66): done, merged by you (#65, 2026-11-01 15:03 Los Angeles) and live.
-1d. A32 (r67): done, merged by you (#66, 2026-11-02 17:23 Los Angeles) and live (see Last updated).
-1e. A33 (r68): done, merged with r69 (#68 took #67's commits into main, 2026-11-03) and live.
-1f. A34 (r69): done, merged by you (#68, 2026-11-03 13:38 Los Angeles) and live (see Last updated).
-1g. A35 (r70): done, merged with r71 (#70 took #69's commits into main, 2026-11-04 12:58 Los Angeles) and live.
-1h. A36 (r71): done, merged by you (#70) and live (see Last updated).
-1i. A37 (r72, 2.27): done, merged by you (#71) and live.
-1j. A38 (2.28, pull request #72): merged by you and live (2026-11-06). Due now, two steps in Supabase, in either order, about 5 minutes; nothing in 2.28 waits for them:
-   - B1a again: paste the block below and Run. It now takes each account's report count and document count one write at a time (2.27-F14: two writes at the same moment could each pass the limit). Safe to run more than once.
-   - B4 again: paste the function below over the old one and Deploy. Its webhook secret is now compared in a way a caller cannot time (2.27-F14).
-   - Then E2 (2 minutes, read-only) if you have not run it yet: it shows what your live project actually has.
-1k. A39 (2.29) and A40 (2.30): 2.29 (#74) was closed unmerged; everything in it shipped in 2.30, pull request #75, merged by you on 2026-11-07 11:25 Los Angeles and live (build 2026.11.06-r76). Nothing to do.
-1l. A41 (2.31): pull request #76, merged by you on 2026-11-07. Nothing to do.
-1m. A42 (2.32 and 2.33): pull request #77, merged by you on 2026-11-08. Nothing to do. 2.34 is being built on branch r80; its pull request comes once it is finished and reviewed.
-2. Problem reports: done (2026-10-30, you). B4's r64 code is deployed, B1a has been run, and a test report from the preview became an issue in `ironlog-feedback`, which confirms B5. See Done.
-3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
+1. Merge #96 (2.51): retargeted to main by Claude after #95, all eight jobs green on its head (f35c9cd). Then each next pull request as it opens (2.52 to 2.57), tried on the preview first (the checks for each are in its pull request).
+2. From 2.28, two steps in Supabase, about 5 minutes, unless you have done them since 2026-11-06 (tell Claude either way, so this list can say so):
+   - B1a again: paste the block below and Run. It takes each account's report count and document count one write at a time (2.27-F14). Safe to run more than once.
+   - B4 again: paste the function below over the old one and Deploy. Its webhook secret is compared in a way a caller cannot time (2.27-F14), and it marks every ticket untrusted (r66).
+   - Then E2 (2 minutes, read-only): it shows what your live project actually has.
+3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry.
 4. D6: delete the old branches and stop them piling up (2 minutes, below).
-5. D5: lock down every account (two-step verification everywhere, push protection, DNSSEC, Claude's GitHub access limited to Ironlog). `docs/SECURITY.md` has the whole list and what each step protects (r66).
-5a. E2: prove the database's rules with one read-only query (2 minutes, below). After r66: B4 again (the function marks every ticket untrusted), then E1 when you want the sign-up bot check.
-6. Before friends sign up, decide item 15 in PENDING.md: optional encryption. Today you can read every account's log in Supabase's Table Editor, and the app's privacy line says so. With encryption on, nobody but the owner of a log can read it, and a forgotten passphrase loses that cloud copy for good. You chose to launch without it (2026-09-27); this is the last point to change that before other people's logs are in it.
-7. After that, if you want it: decision 129 (make the repository private). Note that it hides the repository, not the app: every website's code is downloaded to the phone that opens it, so anyone can read the app's code at ironapp.org either way. No secret key is in it (checked 2026-10-04).
-8. At the gym: Checks on your phone (below).
+5. D5: lock down every account (two-step verification everywhere, push protection, DNSSEC, Claude's GitHub access limited to Ironlog). `docs/SECURITY.md` has the whole list and what each step protects.
+6. E1, the sign-up bot check, when you want it (10 minutes, below).
+7. Before friends sign up, decide item 15 in PENDING.md, optional encryption: today you can read every account's log in Supabase's Table Editor, and the app's privacy line says so. After that, if you want it, decision 129 (make the repository private), which hides the repository, not the app.
+8. At the gym: Checks on your phone (below). The ones that matter most now are at the top of that list.
 
 ## When you want problem reports to reach you (item 58, about 20 minutes)
 
@@ -482,7 +468,16 @@ These are wholly in `main` (GitHub shows each 0 commits ahead of it), so deletin
 Status: in B1a, the r64 block, which adds it only where it is missing. Nothing separate to run.
 
 ## Checks on your phone (items 7 and 63)
-Status: to do whenever you are at the gym; tell Claude what you see.
+Status: to do whenever you are at the gym; tell Claude what you see. Newest first; the rest stay listed until you say they are done.
+- 2.52 to 2.61, in the preview once each is open, in Safari and in the home-screen app:
+  - 2.61: Settings > Rest timer and logging > "In History, show what the app asked for each set": History then lists "Asked:" under each exercise of a workout done from 2.61 on; off, nothing shows;
+  - 2.60: tap ✕ on Today's "Get the app" line: the message says Add to Home Screen stays in the menu at the top right; in the menu, tap your photo: it opens large, with Change photo, Remove photo and Close (a photo added again is sharper);
+  - scroll down any tab: the top bar with the week goes up with the page and comes back at the top; at the top of Today, pull down on the bar: the calendar comes down, and a push up closes it; scrolled a little, a drag down on the bar scrolls the page (NEW-138);
+  - start a workout and wait: the header says Not started until you tick the first set, and the time counts from that tick; set a workout up the evening before and start lifting the next day: it moves to that day;
+  - delete a session, close the app from the app switcher straight away, open it: Undo in Settings still takes the delete back;
+  - edit an old session while a workout is open: the workout is set aside and comes back when you save the edit; Today's card for one set aside says until when it is kept;
+  - All-time bests and Recent PRs read as before; the Guide's PRs paragraph says only a set stronger than every earlier one counts.
+- Every release since: the rest timer across a screen lock; "Update ready" then Update.
 - Rest timer across a screen lock; the share sheet to Files for a backup; the notch in the home-screen app; "Update ready" then Update (from r60; until then "New version ready" then Reload).
 - Auto-mark with the keyboard's Done on a grey reps field; the 3D body's drag and tap; the Add to Home Screen guide on iOS 26 Safari.
 - The app signing itself in after a confirmation link; a past workout from the week bar; the light Today card; a screenshot attached to a report.
@@ -518,6 +513,8 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.
 
 ## Done
+- A29 to A37 (r65.1 to r72, 2026-10-31 to 2026-11-04): each merged by you and live (#64 to #71; r68 with r69, r70 with r71), except A29 (r65.1, the look), closed unmerged 2026-10-31 ("lets not push anything into prod").
+- A38 to A42 and since (2.28 to 2.50): every release merged by you and live, the latest #95 (2.50) on 2026-11-12; 2.29 (#74) closed unmerged, its work shipped in 2.30.
 - A28 (r64 and r65, the hardening of the r63 audit): merged by you on 2026-10-30, r64 (#61, merged by you at 20:22 UTC, published 20:50 from 3391e69, service worker ironlog-2026.10.27-r64-27e517ec0f), then r65 (#62, merged by you at 20:59 UTC, published 21:32 from c83be32, service worker ironlog-2026.10.28-r65-f0e19f0339). Checked by Claude on gh-pages: "Publish 3391e69", then "Publish c83be32", every suite passed in both browsers on each merge.
 - A26 and A27 (r59 to r63): merged by you (#55; #58 with r60 and r61; #59, r62; #60, r63 on 2026-10-27 at 05:28 UTC), r63 live as build 2026.10.27-r63 (checked by Claude on gh-pages, 2026-10-27).
 - A9 to A25 (r30 to r58, 2026-10-04 to 2026-10-25): every release merged and published (pull requests #13 to #54; #32, the restyle, closed unmerged, and #50, r56, closed when #51 took its commits). r58 is live, build 2026.10.24-r58, checked by Claude on GitHub on 2026-10-25 (main at 0ed4bac). Each release's own line is in this file's git history.

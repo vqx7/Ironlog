@@ -4,8 +4,8 @@
    (IDX, the weekly averages, the coach), so a headline and the section under
    it cannot disagree; this module only decides what to say and draws it. The
    charts are drawn after the screen, from graphs.ts. What Stats opens
-   elsewhere is reached by the button's data-act through events.ts's table
-   (r63): a day of the calendar, a goal's sheet, Layout. */
+   elsewhere is reached by the button's data-act through events.ts's table:
+   a day of the calendar, a goal's sheet, Layout. */
 
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
@@ -184,8 +184,8 @@ const HEAT_WEEKS = 12,
 
 /* ---------- the parts more than one section, or another screen, reads ---------- */
 
-/* This used to print under all five charts at once. It is one fact about the
-   page, so it is shown once a draw and the later calls draw nothing. */
+/* One fact about the page, not one for each of the five charts: shown once
+   a draw, and the later calls draw nothing. */
 let chartNoticeUsed = false;
 function chartFallback(): Part {
   if ((window.__libs && window.__libs.chart) || chartNoticeUsed) return nothing;
@@ -232,10 +232,10 @@ function dashSub(key: string, title: string, body: Part, subTxt?: Part): Templat
    table show; otherwise the top set at each end. A number is shown only when
    it points the same way as the word: the word follows the trend, which
    averages every working set, while one top set or one best estimate can go
-   the other way (review of r41: "Up over 4 weeks: 35×13 to 35×12"). Sets past
+   the other way (not "Up over 4 weeks: 35×13 to 35×12"). Sets past
    12 reps to failure have no 1RM estimate (Epley reads them only for
-   direction), so such a lift shows its top sets (review of r41: a leg press
-   at 16 reps read "up about 47 lb" for 30 lb more on the sled). */
+   direction), so such a lift shows its top sets (not a leg press at 16 reps
+   read "up about 47 lb" for 30 lb more on the sled). */
 function liftChange(exId: string, dir: string, ow: string): string {
   const I = IDX();
   const ex = EX(exId);
@@ -255,7 +255,7 @@ function liftChange(exId: string, dir: string, ow: string): string {
 }
 
 /* One line with the verdict and what to do; the numbers behind it (rates,
-   ranges, sessions, how it was read) sit behind an i (r34, V: no walls of
+   ranges, sessions, how it was read) sit behind an i (V: no walls of
    text). The tiles under it already show the best, the change and the rate. */
 /** A lift's headline on Stats: what its trend says and what to do, the numbers behind an i. */
 export function exHeadline(exId: string): Part {
@@ -299,7 +299,7 @@ export function exHeadline(exId: string): Part {
   const ns = `${st.wN} session${st.wN === 1 ? '' : 's'}`;
   // The range named when it trains in more than one.
   const ow = `over ${st.spanW || TREND_WEEKS} weeks${st.rrIn ? ` in the ${repSpan(st.rrIn[0], st.rrIn[1])} range` : ''}`;
-  /* The percentages are behind the i (r41, V asked whether they help: a lifter
+  /* The percentages are behind the i (V asked whether they help: a lifter
      acts on loads and reps, so the line says those and the i keeps the
      change and the rate for anyone who wants them). A range only when it says
      something: perfectly steady numbers give one of zero width. */
@@ -312,8 +312,7 @@ export function exHeadline(exId: string): Part {
     );
   if (!st.useAdj) more.push('Read from loads and reps; RIR is left out of the trend until it is rated on most sets.');
   /* The change compares the ends; the rate fits every session. When they point
-     different ways the reason sits behind the i, not as a line on screen (r40,
-     V: the old note "Change and trend disagree" was confusing on its own). */
+     different ways the reason sits behind the i, not as a line on screen (V: the old note "Change and trend disagree" was confusing on its own). */
   if (
     st.pct != null &&
     st.slope != null &&
@@ -327,7 +326,7 @@ export function exHeadline(exId: string): Part {
   const atTopR = atRangeTop(exId);
   if (st.stalled) {
     // At the top of the range, the advice is load, as on the Coach.
-    /* The span the stall test read, and its rule in the coach's words (r54, from the audit V asked for: "Stalled for 3 weeks" was fixed text, said of a lift flat for ten). */
+    /* The span the stall test read, and its rule in the coach's words (not a fixed "Stalled for 3 weeks" said of a lift flat for ten). */
     parts.push(
       atTopR
         ? "Stalled at the top of the range: due a step up. The session's target says how."
@@ -335,7 +334,7 @@ export function exHeadline(exId: string): Part {
     );
     more.push(STALL_WHY);
   } else if (st.pct == null)
-    // (r55, the audit: said of pull-ups with 8 sessions and no weigh-in)
+    // (not said of pull-ups with 8 sessions and no weigh-in)
     parts.push(
       ex.bw && !((bwRef() ?? 0) > 0)
         ? 'A trend needs a weigh-in: a bodyweight lift is read at your bodyweight.'
@@ -344,7 +343,7 @@ export function exHeadline(exId: string): Part {
   else if (st.moving) parts.push(`${liftChange(exId, 'Up', ow)}.`);
   else if (st.falling) parts.push(`${liftChange(exId, 'Down', ow)}. Look at recovery before adding work.`);
   else if (st.holdRR.length || st.quietRR.length) {
-    // One range down, another not (r55, V).
+    // One range down, another not (V).
     const rs = (a: readonly [number, number][]): string =>
       `the ${andList(a.map(r => repSpan(r[0], r[1])))} range${a.length > 1 ? 's' : ''}`;
     parts.push(
@@ -388,7 +387,7 @@ function muscleHeadline(m: string): TemplateResult {
   const [lo, hi] = bandOf(m);
   const sc = I.scores.find(x => x.m === m);
   const parts: string[] = [];
-  // A muscle with no target has none to be above or below (r29; the one rule since r58, hasTargetIn).
+  // A muscle with no target has none to be above or below (the one rule, hasTargetIn).
   const tr = !hasTarget(m);
   // The status every screen reads (muscleStatus): on plan is said, with why behind an i.
   const st = avg ? (muscleStatus(avg)[m] || { st: null }).st : null;
@@ -400,7 +399,7 @@ function muscleHeadline(m: string): TemplateResult {
         : `${r1(v)} hard sets a week over ${avgWeeksTxt(avg)}, ${st === 'under' || st === 'plan' ? `${r1(lo - v)} below` : st === 'over' ? `${r1(v - hi)} above` : 'inside'} your ${lo} to ${hi} target${st === 'plan' ? ', on plan' : ''}.`
     );
   } else {
-    // With no average yet, what brings one, as the coach says it (avgWait, r54).
+    // With no average yet, what brings one, as the coach says it (avgWait).
     const w = avgWait();
     parts.push(
       tr
@@ -458,8 +457,8 @@ function dashSummary(): TemplateResult {
   /* The reason given is the true one: with enough sessions the changes
      are inside day-to-day noise; "needs 3 sessions" was said to someone with 6. */
   const nTr = Object.values(IDX().exStats).filter(x => x && x.pct != null && x.fresh).length;
-  /* Each lift's change is over the weeks its trend covers (r32, from the
-     third review: "+7.5% over 6 weeks" on a log 19 days old). One span is
+  /* Each lift's change is over the weeks its trend covers (not "+7.5%
+     over 6 weeks" on a log 19 days old). One span is
      said once when the two share it. Names, not percentages: "Incline
      DB Curl +14.6%" is a change in an estimate nobody lifts; the lift's own
      section says it in loads. */
@@ -475,7 +474,7 @@ function dashSummary(): TemplateResult {
       ? `No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.`
       : `A trend needs ${TREND_MIN.sessions} sessions of a lift over ${TREND_MIN.days / WEEK_DAYS} weeks or more, within ${TREND_WEEKS} weeks.`;
   // When the coach's one change is the volume shortfall, the Volume line says it with the action and Change is not repeated;
-  // so too when the coach says why no average shows yet (r54: the two said different weeks), which the Volume line says otherwise.
+  // so too when the coach says why no average shows yet, so the two say the same weeks, which the Volume line says otherwise.
   const cm = c.act && c.act.sec === 'volume' ? c.act.m : null;
   const same = !!(cm && under && under.some(m => m === cm)) || !!c.wait;
   const w = under == null ? avgWait() : null;
@@ -540,8 +539,7 @@ function regionBody(): TemplateResult {
       html`<button class=${rs.n === k ? 'chip on' : 'chip '} data-act="regionWk" data-v=${String(k)} aria-pressed=${String(rs.n === k)}>${l}</button>`
   )}</div></div>`;
   /* The weeks read are named short on the card ("4-week average") and in
-     full in its tip, with what "on target" means when every region is (r69,
-     V, 2026-11-03: the sentence ran two lines under the headline). */
+     full in its tip, with what "on target" means when every region is (V, 2026-11-03: the sentence ran two lines under the headline). */
   const inside = !rs.week && !worst && !plan.length && !high.length;
   return html`<div class="card">${rs.week ? nothing : chips}${rh}<p class="small muted u-m0-0-4">${rs.short || rs.label.charAt(0).toUpperCase() + rs.label.slice(1)} ${tipButton(
     `Using ${rs.label}. ${inside ? 'Every region at or past its minimum, inside its target. ' : ''}Hard sets per region. Dashed ring: the minimum of your weekly targets; on or past it is on target.${plan.length ? ' On plan: ' + ON_PLAN_TIP : ''}${rs.first || rs.src._ff ? ' ' + (rs.back ? BACK_WEEK_WHY : FIRST_WEEK_WHY) : ''}`,
@@ -566,11 +564,11 @@ function trendBody(): TemplateResult {
 /* ---------- Lifts ---------- */
 
 /* What to do next on this lift, the same target its next session shows
-   (r41, V: guide how to progress rather than predict where it lands). */
+   (V: guide how to progress rather than predict where it lands). */
 function nextLine(exId: string): Part {
   // EX() reads a deleted exercise as archived, so this covers both.
   if (EX(exId).archived) return '';
-  // The plan of the next day due that has this lift: one lift on a heavy and a light day has two targets (review of r41).
+  // The plan of the next day due that has this lift: one lift on a heavy and a light day has two targets.
   const R = activeRoutine();
   const d = nextDayWith(exId, R);
   const sg = suggest(exId, d ? planFor(exId, R, d.id) : planFor(exId, R), { deload: isDeloadWeek() });
@@ -580,8 +578,8 @@ function nextLine(exId: string): Part {
     : '';
 }
 /* The next training day due that has the lift, or null: on a weekly plan
-   today's weekday, or tomorrow's once today's day is logged (review of r41:
-   a Monday heavy day done still showed Monday's target over Thursday's);
+   today's weekday, or tomorrow's once today's day is logged (a Monday heavy
+   day done does not show Monday's target over Thursday's);
    on a cycle the cycle's next day, which already counts what is logged. */
 function nextDayWith(exId: string, R: Routine): Routine['days'][number] | null {
   const n = R.days.length;
@@ -671,7 +669,7 @@ export function bestsBoard(): { n: number; html: TemplateResult } {
          record of any kind, read as the date of the heaviest set. A 1RM is shown
          for compound lifts only. */
       const est = r.est && isCompound(ex) ? r.est : null;
-      // A record's date says its year when it is not this one (NEW-111: an old best from 2016 read as this March 1).
+      // A record's date says its year when it is not this one (an old best from 2016 is not this March 1).
       const when = fmtDate;
       const line = (
         e: { v: number; date: string } | null,
@@ -684,7 +682,7 @@ export function bestsBoard(): { n: number; html: TemplateResult } {
           .filter(Boolean)
           .join(' · ');
       const top = line(est, r.heavy);
-      /* Back after a long break with a best ever from before it (NEW-110), the best since you came back is shown
+      /* Back after a long break with a best ever from before it, the best since you came back is shown
          beside it, so the old number stays on record and the new ones show as they come. */
       const b = sinceBack(ex.id);
       const older = !!b && ((!!r.heavy && r.heavy.date < b.from) || (!!est && est.date < b.from));
@@ -704,7 +702,7 @@ export function bestsBoard(): { n: number; html: TemplateResult } {
 /* ---------- Muscles: readiness and size ---------- */
 
 /* The check-in against how sessions went: readiness and its words are in
-   coach.ts since r52; this draws them. */
+   coach.ts; this draws them. */
 function readinessBody(): TemplateResult {
   const r = readiness();
   if (r.n < READINESS_MIN)
@@ -744,7 +742,7 @@ function sizeBody(): TemplateResult {
   // Under TAPE_NOISE_CM is within what a tape repeats to.
   const mdc = (k: string): number => (k === 'chest' ? TAPE_NOISE_CM.chest : TAPE_NOISE_CM.other);
   /* Rows measured on the same days share their stretch, waist, and
-     bodyweight, so those are said once above them (r34, V: the same sentence
+     bodyweight, so those are said once above them (V: the same sentence
      under every row). */
   const span = (r: { from: string; to: string }): string => `${fmtDate(r.from)} to ${fmtDate(r.to)}`;
   const r0 = rows[0];
@@ -767,7 +765,7 @@ function bwRateText(): TemplateResult {
   const g = state.settings.bwGoalPct;
   if (!r) return html`<p class="small muted u-mt6">Two weeks of weigh-ins show your weekly change.</p>`;
   const sign = (v: number): string => (v >= 0 ? '+' : '') + r1(v);
-  // The dates it covers, not "the last N days", which read as up to today (r34.2: said 43 days after the last weigh-in).
+  // The dates it covers, not "the last N days", which read as up to today (said 43 days after the last weigh-in).
   const goal =
     g != null
       ? (() => {
@@ -840,7 +838,7 @@ const MUSCLES_HELP = `Muscles are flagged because the trend is falling, or flat 
 const CONSISTENCY_HELP = `${HEAT_WEEKS} weeks from your first logged session; once you have more, the latest ${HEAT_WEEKS}, with All for the rest. Faded squares are days still ahead. Filled squares are days with a logged lifting session. The streak counts weeks that hit the sessions your routine plans. Cardio minutes are shown under the grid and never count as lifting sessions. Adherence is the planned sessions done over the previous ${AVG_WEEKS} full weeks, each week counted up to its plan.`;
 
 /** Consistency: adherence to the routine over the full weeks before this one, the heat map of days lifted,
-    cardio minutes a week and readiness (out of viewDash since r65, the r63 audit's A-7). */
+    cardio minutes a week and readiness. */
 /* This block vs last: sessions and hard sets a week, and PRs, in the block under way and the one before
    it, by the block length picked here (blocksIn). Read side by side, never as a percentage. */
 /** The tip beside This block vs last: what a block is and what its averages count. */
@@ -854,7 +852,7 @@ function blockBody(): TemplateResult {
   )}</select>`;
   if (!b) return html`<div class="card"><p class="small muted u-m0">Log a session to start this.</p>${sel}</div>`;
   const avg = (v: number | null): string => (v == null ? '–' : String(r1(v)));
-  // Weeks the averages leave out are said beside the dates, as every weekly average says them (avgWeeksTxt; REV6-6).
+  // Weeks the averages leave out are said beside the dates, as every weekly average says them (avgWeeksTxt).
   const out = (x: Block): string => {
     const o = [
       x.missed ? `${x.missed} week${x.missed === 1 ? '' : 's'} missed` : '',
@@ -875,10 +873,10 @@ function blockBody(): TemplateResult {
 function consistencySec(R: ReturnType<typeof activeRoutine>, cur: string): TemplateResult {
   const sessDates = new Set(Object.keys(dateIndex().byDate));
   /* Adherence counts only days the routine actually plans work on: a non-rest
-     day with no exercises in it used to inflate the denominator. Each week is
+     day with no exercises in it would inflate the denominator. Each week is
      capped at its own planned days, so training seven days against a six-day
-     routine no longer reports 117%. The window is the four completed weeks
-     before this one, which the label now says out loud. */
+     routine never reports 117%. The window is the four completed weeks
+     before this one, which the label says out loud. */
   const planned = freeMode() ? 0 : trainDaysOf(R) * weekFactor(R);
   /* Only weeks since your first session count. Before that there was nothing
      to adhere to, and counting those weeks read 0% on day one. */
@@ -891,9 +889,9 @@ function consistencySec(R: ReturnType<typeof activeRoutine>, cur: string): Templ
     if (!firstWk || ws < firstWk) break;
     if (isRestWeek(ws)) continue;
     wks4++;
-    // Sessions, as the ring, This week, and the streak count them (r46: distinct days read a two-a-day as one).
+    // Sessions, as the ring, This week, and the streak count them (distinct days would read a two-a-day as one).
     const n = weekSessions(ws);
-    // What the week asked for, as the streak reads it (r55: the routine as recorded by its sessions).
+    // What the week asked for, as the streak reads it (the routine as recorded by its sessions).
     const nw = weekNeed(ws);
     done4 += Math.min(n, nw);
     need4 += nw;
@@ -905,7 +903,7 @@ function consistencySec(R: ReturnType<typeof activeRoutine>, cur: string): Templ
   const hWin = weekWindow(hFirst, 'heat', HEAT_WEEKS);
   const hN = weeksSpan(hFirst);
   const t = today();
-  // r25: each past day is a button, so a square opens that date (calDay).
+  // Each past day is a button, so a square opens that date (calDay).
   const squares = hWin.flatMap(w =>
     Array.from({ length: WEEK_DAYS }, (_, i) => i).map(i => {
       const d = addDays(w.wk, i);
@@ -1047,7 +1045,7 @@ function weakPoints(
     (reasons[m] || (reasons[m] = [])).push([t, c]);
   };
   for (const m of inj) add(m, 'Injured, targets paused', 'red');
-  // A falling trend is lagging strength; a stalled lift with no clear trend says just that (r32: "Lagging strength" beside "unclear").
+  // A falling trend is lagging strength; a stalled lift with no clear trend says just that (not "Lagging strength" beside "unclear").
   for (const s of I.scores)
     if (s.label === 'lagging' && !inj.has(s.m))
       add(s.m, s.clear ? (s.indirect ? 'Lagging strength (indirect)' : 'Lagging strength') : 'A lift stalled', 'red');
@@ -1059,7 +1057,7 @@ function weakPoints(
   for (const m of MK) {
     if (inj.has(m)) continue;
     if (!hasTarget(m)) continue;
-    // One tag since r29; the routine's plan, when it is the reason, is in the line below.
+    // One tag; the routine's plan, when it is the reason, is in the line below.
     // The status every screen reads (muscleStatus): a muscle on plan is not flagged.
     if (avgSt && avgSt[m] && avgSt[m].st === 'under') add(m, 'Below target', 'yellow');
   }
@@ -1070,8 +1068,8 @@ function weakPoints(
       ? wp.map(([m, rs]) => {
           const tags = rs.map(([t, c]) => html`<span class=${`tag ${c}`}>${t}</span>`);
           /* A flagged joint (the injury sheet lists joints first) has no sets
-             or target to show: its name and its tag. r57 and before read it as
-             a muscle and the whole screen failed to draw. */
+             or target to show: its name and its tag (read as a muscle, it
+             would stop the whole screen drawing). */
           if (!MK.some(x => x === m))
             return html`<div class="u-p6-0_bb1-solid-line"><div class="row spread"><b>${injLabel(m)}</b><div class="chips">${tags}</div></div></div>`;
           const [lo, hi] = bandOf(m);
@@ -1095,7 +1093,7 @@ function stallsBody(stalled: readonly (readonly [string, ExStat])[]): {
   stl: TemplateResult;
   bigN: number;
 } {
-  // stalls (folded inside Lifts, after Recent PRs and All-time bests since r28)
+  // stalls (folded inside Lifts, after Recent PRs and All-time bests)
   const bigN = stalled.length ? fatigueStalls(stalled.map(([id]) => id)).length : 0;
   const lw = lastLighterWeek();
   const stl = html`${
@@ -1264,7 +1262,7 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
   const st = I.exStats[exId];
   const ex = EX(exId);
   const exps = I.byEx[exId] || [];
-  // One best estimate, All-time bests' (PENDING 338 1).
+  // One best estimate, All-time bests'.
   const be = (allTimeBests(exId) || { est: null }).est;
   const e1Mode = isCompound(ex) && exps.some(x => x.best != null);
   const bs = e1Mode ? null : bestSet(exId);
@@ -1305,11 +1303,11 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
 
 /* Strength return on volume, a row a muscle. Rising at or above its target
    needs nothing done, so those muscles share one line and each row left is
-   one to act on (r41, V: clutter; it was 16 rows of "+8%" with nothing to
+   one to act on (V: clutter; it was 16 rows of "+8%" with nothing to
    do). A muscle with no sets lately has an old trend, not a return on volume
-   (r34.2: "Quads +7.6% · 0 sets a week" after a break). */
+   (not "Quads +7.6% · 0 sets a week" after a break). */
 /* The muscles rising at the volume they get, which need nothing done: one
-   line with their count, and their names in its tip (r69, V, 2026-11-03:
+   line with their count, and their names in its tip (V, 2026-11-03:
    four names, "and 18 more", and the advice ran two lines). */
 /** The line for the muscles rising at their volume, and its tip naming every one. */
 export function risingWords(names: readonly string[]): { line: string; tip: string } {
@@ -1337,7 +1335,7 @@ function rankBody(src: Readonly<Record<string, number>>): Part {
       /* Advice only where the trend is clear. "Flat: try 2 more sets"
          was given to every muscle whose lifts were inside the noise, a causal
          call from no signal; a stalled lift is the one flat case stated.
-         Rising at its volume needs nothing done, so it says nothing (r34, V:
+         Rising at its volume needs nothing done, so it says nothing (V:
          "Rising: hold this volume" on every row read as filler). */
       const read = !s.clear
         ? s.stall

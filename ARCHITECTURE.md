@@ -122,9 +122,14 @@ Casts: 49
 Non-null assertions: 22
 Open types: 8
 
-Marks in r52's moved code (from baselines/r51.html): 6 casts, 68 non-null assertions
+**Comments say the reason, not the history (CA-4, 2.62).** A comment in `src/app/` names no tracker row, and a build only where the code still reads what that build saved or does (a field a build before r56.1 left out, the starter routine installs got before r29); the history behind a rule is `docs/ARCHIVE.md`'s. `tests/hygiene.js` refuses a tracker row in a comment and counts the builds named against the number below, which only falls, as the casts' does.
+
+Builds named in comments: 91
+
+Marks in r52's moved code (from baselines/r51.html): 4 casts, 67 non-null assertions
 Marks in r56's moved code (from baselines/r55.html): 2 casts, 1 non-null assertions
 r73 (2.28): 8 open types from 9: a sync document's write typed as the document it is (`CloudDoc`, store.ts) where the store's `set` took any record. 1 non-null assertion from 2 in r56's moved code: the device id `takeLease` asserted, gone with the lease the backend never had (2.27-F1).
+r105 (2.59): 4 casts from 6 and 67 non-null assertions from 68 in r52's moved code: a lift's usual effort (`rirUsualIn`, setread.ts) read as of a workout's day (RC-3), its two `Object.create(null)` records cast to the maps they made became typed `Map`s, and the `!` on its median went with the null the median can now give back.
 r76 (2.30): 68 non-null assertions from 71 in r52's moved code: the three `at!` of progStepIn's rack branch, gone when the rack and the rack read from its spacing are asked through one list of loads (`loadsForIn`, RC-1).
 r81 (2.35): 22 non-null assertions from 23: the import's two `ss.items.get(ex)!` replaced by the item held in a variable when it is read or made (`impFromTable`, R81-3), one of which the fix had added.
 r72: 71 non-null assertions from 72 in r52's moved code: `all!` in suggestCoreIn's never-loaded test, read as `(all || [])` once it moved above the hold's case (R72-6).

@@ -5,9 +5,14 @@
 //   2  Every day of the week shown is listed with what it holds, and a tap does what the calendar's day does.
 //   3  A week before this one reads its own numbers: its sessions against what was planned then, its hard sets,
 //      cardio and weight lifted; a week ahead shows the workouts planned; this week keeps everything it showed.
-//   4  The pull-down: a finger drawn down from the week bar brings the month calendar down from the top, following
-//      the finger; let go past the point and it stays, short of it and it goes back; drawn back up, it closes. A tap
-//      on a day and a sideways move are the bar's own.
+//   4  The pull-down: a finger drawn down from the week bar brings the month calendar out of the bar's bottom edge,
+//      following the finger, the bar in view above it and the page under it dimming as the pull comes (V, 2026-11-12:
+//      "It's pulling the calendar from all the way of the top of the screen not from the bar itself. It's no longer
+//      smooth."); a drag down at the page's top is the pull's from its first move; let go past the point and it stays
+//      under the bar, short of it and it slides back into the bar; drawn back up, it slides into the bar and closes;
+//      a tap on the bar while it is open closes it. A tap on a day and a sideways move are the bar's own. The checks
+//      of the calendar coming out of the bar fail on 2.62's build (`baselines/r108.html`), where it came down from
+//      the top of the screen over the bar, the page dimmed at once, and let go short it vanished.
 //   5-8  The independent review of 2.45 and 2.46 (REV9-1 to REV9-4), each failing on the first build of 2.46 (a2a…):
 //      the calendar left moved up by a push brought back; a workout done earlier shown planned ahead; an empty past week
 //      read against the routine now; a week in another year named without it.
@@ -17,7 +22,7 @@
 //      bar scrolled partly away scrolls the page (pinned, from 2.46 to 2.51 a drag down that began on the bar opened the
 //      calendar wherever the page was). The two fail on 2.51's build (`baselines/r97.html`).
 // WEEK_ONLY=1,4 runs some sections.
-const { open, touchDriver } = require('./h');
+const { open, touchDriver, ENGINE } = require('./h');
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
 const FILE = process.argv[2] || 'index.html';
@@ -152,29 +157,126 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
       return { kind: m && m.kind, open: !document.getElementById('modal').hidden, top: s.classList.contains('fromtop'), y: Math.round(r.top), bottom: Math.round(r.bottom), h: Math.round(r.height), grid: gr ? Math.round(gr.height) : 0, gridIn: !!gr && gr.top >= r.top && gr.bottom <= r.bottom + 1, tf: s.style.transform };
     });
     const drag = async (pts, endAfter = true) => { await touch('touchStart', pts[0][0], pts[0][1]); for (const [x, y] of pts.slice(1)) { await touch('touchMove', x, y); await wait(16); } if (endAfter) await touch('touchEnd', 0, 0); await wait(300); };
-    // A long pull: the calendar comes down from the top and stays.
+    // Where the bar ends; what is drawn at a point (the calendar, the bar, the layer every sheet sits on, or the page);
+    // how dark the page under the calendar is drawn (that layer's colour, and its dimming layer's at its opacity, each by
+    // its alpha); the bar as drawn; and the calendar the frame after the finger lets go.
+    const barB = await page.evaluate(() => Math.round(document.querySelector('header.top').getBoundingClientRect().bottom));
+    const at = (x, y) => page.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return !e ? 'none' : e.closest('#modal .sheet') ? 'calendar' : e.closest('header.top') ? 'bar' : e.id === 'modal' ? 'layer' : 'page'; }, [x, y]);
+    const dim = () => page.evaluate(() => {
+      const al = c => { const m = /rgba?\(([^)]*)\)/.exec(c || ''); if (!m) return 0; const p = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number); return p.length > 3 ? p[3] : 1; };
+      const md = document.getElementById('modal'); const s = getComputedStyle(md), b = getComputedStyle(md, '::before');
+      return +(al(s.backgroundColor) + (b.content && b.content !== 'none' ? al(b.backgroundColor) * Number(b.opacity) : 0)).toFixed(3);
+    });
+    const barShot = () => page.screenshot({ clip: { x: 0, y: 0, width: 390, height: barB - 1 } });
+    const afterEnd = () => page.evaluate(() => { window.__afterEnd = null; document.addEventListener('touchend', () => requestAnimationFrame(() => { const s = document.querySelector('#modal .sheet'); window.__afterEnd = s ? { open: !document.getElementById('modal').hidden, tf: s.style.transform } : { open: false }; }), { once: true }); });
+    const ended = async () => { await wait(60); return page.evaluate(() => window.__afterEnd); };
+    // The bar before the pull, drawn with the page held still as an open sheet holds it (body.modal-open): where the
+    // browser draws a scrollbar, holding the page takes it away and widens the page, which redraws the bar with no
+    // change to the app (WebKit on GitHub, NEW-143).
+    const cw0 = await page.evaluate(() => { const w = document.documentElement.clientWidth; document.body.classList.add('modal-open'); return w; });
+    const bar0 = await barShot();
+    const cw0held = await page.evaluate(() => { const w = document.documentElement.clientWidth; document.body.classList.remove('modal-open'); return w; });
+    // A move down at the page's top is the pull's once it is past what a tap's finger rolls as it lands, and before a
+    // phone starts its own scroll (about 10 px), so the page does not bounce under a pull. A move of a few pixels is left
+    // to the tap: an iPhone sends no click for a touch whose first move the page claims, so a claimed roll lost the tap
+    // (REV16-B1). Dispatched on the bar itself, as a phone sends every move (Chromium's own input holds back a move this
+    // small, inside its tap's slop). WebKit makes a touch only through document.createTouch (its Touch constructor is
+    // refused, NEW-143), as tests/h.js makes them there; Chromium has only the constructor.
+    const firstMove = by => page.evaluate(([x, y, by]) => {
+      const bar = document.getElementById('wkbar');
+      const se = document.scrollingElement || document.documentElement;
+      const mk = (type, yy, live) => {
+        if (typeof document.createTouch === 'function') {
+          const t = document.createTouch(window, bar, 7, x + se.scrollLeft, yy + se.scrollTop, x, yy);
+          const l = live ? document.createTouchList(t) : document.createTouchList();
+          return new TouchEvent(type, { bubbles: true, cancelable: true, composed: true, view: window, touches: l, targetTouches: l, changedTouches: document.createTouchList(t) });
+        }
+        const t = new Touch({ identifier: 7, target: bar, clientX: x, clientY: yy, pageX: x + se.scrollLeft, pageY: yy + se.scrollTop });
+        const l = live ? [t] : [];
+        return new TouchEvent(type, { bubbles: true, cancelable: true, composed: true, view: window, touches: l, targetTouches: l, changedTouches: [t] });
+      };
+      bar.dispatchEvent(mk('touchstart', y, true));
+      const mv = mk('touchmove', y + by, true); bar.dispatchEvent(mv);
+      bar.dispatchEvent(mk('touchend', y + by, false));
+      return { by, prevented: mv.defaultPrevented, opened: !!window.__ironlog.ui.modal };
+    }, [box.x, box.y, by]);
+    const roll = await firstMove(3), first = await firstMove(6);
+    ok(!roll.prevented && !roll.opened, '4. a move of 3 px down on the bar, as a tap\'s finger rolls, is left to the tap, so an iPhone still sends its click', roll);
+    ok(first.prevented && !first.opened, '4. a move of 6 px down, past a tap\'s roll and before a phone starts its own scroll, is the pull\'s, so the page does not bounce under it', first);
+    // A long pull: the calendar comes out of the bar and stays.
     await touch('touchStart', box.x, box.y);
-    for (let k = 1; k <= 8; k++) { await touch('touchMove', box.x, box.y + k * 15); await wait(16); }
+    await touch('touchMove', box.x, box.y + 30); await wait(16);
+    const d30 = await dim();
+    for (let k = 3; k <= 8; k++) { await touch('touchMove', box.x, box.y + k * 15); await wait(16); }
     const mid = await sheet();
-    ok(mid.kind === 'calendar' && mid.top && mid.bottom <= box.y + 8 * 15 + 2 && mid.bottom > box.y, '4. pulled down, the calendar comes from the top and its edge follows the finger', { mid, finger: box.y + 120 });
+    const midAt = { above: await at(box.x, barB - 4), below: await at(box.x, barB + 6), edgeIn: await at(box.x, barB + 120 - 6), edgeOut: await at(box.x, barB + 120 + 8) };
+    ok(mid.kind === 'calendar' && mid.top && midAt.above !== 'calendar' && midAt.below === 'calendar', '4. pulled down, the calendar comes out of the bar: nothing of it above the bar\'s bottom edge', { mid, midAt, barB });
+    ok(midAt.edgeIn === 'calendar' && midAt.edgeOut !== 'calendar', '4. its edge follows the finger, as far below the bar as the finger has come', { midAt, barB });
     await touch('touchEnd', 0, 0); await wait(350);
     const a = await sheet();
-    ok(a.open && a.kind === 'calendar' && a.top && a.y <= 1 && !a.tf, '4. let go past the point, it stays open at the top', a);
+    const barOpen = await barShot();
+    ok(a.open && a.kind === 'calendar' && a.top && Math.abs(a.y - barB) <= 1 && !a.tf, '4. let go past the point, it stays open just under the bar', { a, barB });
+    const cwOpen = await page.evaluate(() => document.documentElement.clientWidth);
+    ok(bar0.equals(barOpen), '4. the bar stays in view above it, drawn as it was before the pull', { cw0, cw0held, cwOpen });
+    const dOpen = await dim();
+    ok(d30 < 0.2 && dOpen >= 0.5, '4. the page under it dims as the pull comes, not all at once, to a sheet\'s dimming once open', { d30, dOpen });
     ok(a.h > 300 && a.grid > 200 && a.gridIn, '4. laid out as the calendar is: the whole month inside the sheet', a);
     const month = await page.evaluate(() => (document.getElementById('calH') || { innerText: '' }).innerText);
     ok(month === 'NOVEMBER 2026' || month === 'November 2026', '4. on this month', month);
+    // A tap on the bar while it is open is a tap outside the calendar: it closes, and the day tapped is not opened.
+    const tab0 = await page.evaluate(() => window.__ironlog.ui.tab);
+    // What the finger reached, for the run's notes: the element at the point, and where the touch and the click went.
+    const name = 'const nm = e => !e ? null : e.id ? "#" + e.id : e.tagName.toLowerCase() + (e.className && typeof e.className === "string" ? "." + e.className.trim().split(/\\s+/).join(".") : "");';
+    await page.evaluate(([x, y, name]) => { const nm = new Function('e', name + ' return nm(e);'); window.__tapSeen = { at: nm(document.elementFromPoint(x, y)), touch: null, click: null }; document.addEventListener('touchstart', e => { window.__tapSeen.touch = nm(e.target); }, { once: true, capture: true, passive: true }); document.addEventListener('click', e => { window.__tapSeen.click = nm(e.target); }, { once: true, capture: true }); }, [box.x, box.y, name]);
+    await page.touchscreen.tap(box.x, box.y); await wait(300);
+    const tb = await page.evaluate(() => ({ modal: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind, tab: window.__ironlog.ui.tab, seen: window.__tapSeen }));
+    console.log(`note week section 4 (${ENGINE}): a finger on the bar with the calendar open reached ${JSON.stringify(tb.seen)}, and the calendar ${tb.modal ? 'stayed open' : 'closed'}`);
+    ok(!tb.modal && tb.tab === tab0, '4. a tap on the bar while it is open closes it, as a tap outside does', tb);
+    if (tb.modal) { await page.evaluate(() => window.__ironlog.ACT.mClose()); await wait(150); }
+    await touch('touchStart', box.x, box.y); for (let k = 1; k <= 8; k++) { await touch('touchMove', box.x, box.y + k * 15); await wait(16); } await touch('touchEnd', 0, 0); await wait(350);
     // Pushed back up a little, it goes back; pushed up far, it closes.
     const sb = await page.evaluate(() => { const r = document.querySelector('#modal .sheet').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.bottom - 12 }; });
     await drag([[sb.x, sb.y], [sb.x, sb.y - 20], [sb.x, sb.y - 40]]);
     const b = await sheet();
-    ok(b.open && b.y <= 1 && !b.tf, '4. a short push up and it goes back', b);
-    await drag([[sb.x, sb.y], [sb.x, sb.y - 40], [sb.x, sb.y - 90], [sb.x, sb.y - 140]]);
+    ok(b.open && Math.abs(b.y - barB) <= 1 && !b.tf, '4. a short push up and it goes back under the bar', { b, barB });
+    await afterEnd();
+    await drag([[sb.x, sb.y], [sb.x, sb.y - 40], [sb.x, sb.y - 90], [sb.x, sb.y - 140]], false);
+    await touch('touchEnd', 0, 0);
+    const c1 = await ended(); await wait(400);
     const c = await sheet();
+    ok(c1 && c1.open && !!c1.tf, '4. pushed up past the point, it slides up into the bar rather than vanishing', c1);
     ok(!c.open || c.kind !== 'calendar', '4. pushed up past the point, it closes', c);
-    // A short pull goes back.
-    await drag([[box.x, box.y], [box.x, box.y + 20], [box.x, box.y + 40]]);
+    // A short pull goes back: it slides back into the bar, then closes.
+    await afterEnd();
+    await drag([[box.x, box.y], [box.x, box.y + 20], [box.x, box.y + 40]], false);
+    await touch('touchEnd', 0, 0);
+    const d1 = await ended(); await wait(400);
     const d = await sheet();
+    ok(d1 && d1.open && !!d1.tf, '4. let go short of the point, it slides back into the bar rather than vanishing', d1);
     ok(!d.open || d.kind !== 'calendar', '4. a short pull goes back, nothing left open', d);
+    // As it slides away the calendar is going: a tap on the page then reaches the page, and a second pull straight away
+    // brings the calendar (REV16-B3: the layer took both for a quarter of a second). With motion reduced, nothing slides
+    // and it is gone at once.
+    const tabAt = await page.evaluate(() => { const r = document.querySelector('#tabs [data-tab="history"]').getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; });
+    await drag([[box.x, box.y], [box.x, box.y + 20], [box.x, box.y + 40]], false);
+    await touch('touchEnd', 0, 0); await wait(60);
+    await page.touchscreen.tap(tabAt.x, tabAt.y); await wait(300);
+    const slid = await page.evaluate(() => ({ tab: window.__ironlog.ui.tab, modal: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind }));
+    ok(slid.tab === 'history' && !slid.modal, '4. a tap on the page as the calendar slides away reaches the page', slid);
+    await page.evaluate(() => { window.__ironlog.ui.tab = 'today'; window.__ironlog.render(); window.scrollTo(0, 0); }); await wait(150);
+    await drag([[box.x, box.y], [box.x, box.y + 20], [box.x, box.y + 40]], false);
+    await touch('touchEnd', 0, 0); await wait(60);
+    await touch('touchStart', box.x, box.y); for (let k = 1; k <= 8; k++) { await touch('touchMove', box.x, box.y + k * 15); await wait(16); }
+    const again = await sheet();
+    await touch('touchEnd', 0, 0); await wait(350);
+    ok(again.open && again.kind === 'calendar' && again.top, '4. a pull begun as the calendar slides away brings it again', again);
+    await page.evaluate(() => window.__ironlog.ACT.mClose()); await wait(150);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await drag([[box.x, box.y], [box.x, box.y + 20], [box.x, box.y + 40]], false);
+    await touch('touchEnd', 0, 0); await wait(40);
+    const calm = await sheet();
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    ok(!calm.open, '4. with motion reduced, a short pull let go is gone at once', calm);
     // A sideways move is the bar's own.
     await drag([[box.x - 60, box.y], [box.x - 20, box.y + 6], [box.x + 40, box.y + 10], [box.x + 90, box.y + 14]]);
     const e = await sheet();
@@ -185,11 +287,24 @@ const tap = (page, sel) => page.evaluate(sel => { const e = document.querySelect
     await page.touchscreen.tap(t.x, t.y); await wait(300);
     const f = await page.evaluate(() => ({ tab: window.__ironlog.ui.tab, modal: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind }));
     ok(f.tab === 'today' && f.modal !== 'calendar', '4. a tap on a day in the bar still opens it', f);
+    // A tap whose finger drifts 2 px down is still a tap: the pull claims the move, and the day still opens. Only in
+    // Chromium, whose touches here are the browser's own input: in WebKit the suite's touches are made by the page's
+    // script (tests/h.js), and a touch made so never becomes a tap in any build.
+    if (ENGINE === 'chromium') {
+      await page.evaluate(() => { window.__ironlog.ui.tab = 'history'; window.__ironlog.render(); window.scrollTo(0, 0); }); await wait(100);
+      await touch('touchStart', t.x, t.y); await touch('touchMove', t.x, t.y + 2); await wait(16); await touch('touchEnd', 0, 0); await wait(300);
+      const f2 = await page.evaluate(() => ({ tab: window.__ironlog.ui.tab, modal: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind }));
+      ok(f2.tab === 'today' && f2.modal !== 'calendar', '4. a tap on a day whose finger drifts 2 px down still opens it', f2);
+    } else console.log('note week section 4: the tap whose finger drifts 2 px runs in Chromium, where the suite\'s touches are the browser\'s own');
     // History's Calendar button still opens the calendar from the bottom, as every sheet.
     await page.evaluate(() => { window.__ironlog.ui.tab = 'history'; window.__ironlog.render(); });
     await tap(page, '[data-act="calOpen"]'); await wait(200);
     const g = await sheet();
     ok(g.open && g.kind === 'calendar' && !g.top, '4. History\'s Calendar still opens from the bottom', g);
+    // For the run's notes, not a check: whether a finger on the dimmed area above an ordinary sheet closes it here.
+    await page.touchscreen.tap(195, 30); await wait(300);
+    const away = await page.evaluate(() => !window.__ironlog.ui.modal);
+    console.log(`note week section 4 (${ENGINE}): a finger on the dimmed area above History's Calendar ${away ? 'closed it' : 'left it open'}`);
     ok(!P.errors.length, '4. no page error', P.errors);
     await P.browser.close();
   }

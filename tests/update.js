@@ -4,13 +4,16 @@
 // downloads in the background and waits; "Update ready" appears without
 // the page changing under the lifter; Later hides it; it comes back after a
 // relaunch; Update switches to the new version once, with the session in
-// progress intact and the old cache gone. Also checks the privacy line.
+// progress intact and the old cache gone. Also checks the privacy line, and that a first install never shows
+// "Update ready": in fifteen first installs in a row, and in the state WebKit can show a first install in, the new
+// worker read as both the one waiting and the one in control (NEW-145: GitHub's WebKit runs showed the bar on a first
+// install in two of about 25).
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { engine } = require('./h');
-const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('FAIL', m); } else console.log('ok  ', m); };
+const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const DIST = path.join(__dirname, '..', 'dist');
 require('./h').build();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-upd-'));
@@ -114,6 +117,37 @@ const server = http.createServer((req, res) => {
     document.querySelectorAll('#view details').forEach(d => d.open = true); const t = document.getElementById('privacy').innerText; delete window.claude; L.render(); return t; });
   ok(/stored with your Claude account/.test(privC) && !/sent nowhere/.test(privC), 'inside Claude the privacy line names the Claude account: ' + privC);
   ok(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));
+
+  // A first install never offers an update. Fifteen first installs, each in a new context: in WebKit the bar showed now
+  // and then (NEW-145), so one is not enough to say. Then the moment WebKit can show: the new worker of a first install
+  // read as the one waiting and as the one in control at once, as its installed step is heard; the app takes it for an
+  // update unless it tells the two apart.
+  let shown = 0;
+  for (let i = 0; i < 15; i++) {
+    const c = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    const pg = await c.newPage();
+    await pg.goto(base); await pg.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
+    await pg.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 }); await pg.waitForTimeout(800);
+    if (await pg.evaluate(() => { const b = document.getElementById('updbar'); return !!b && !b.hidden && b.getBoundingClientRect().height > 0; })) shown++;
+    await c.close();
+  }
+  ok(shown === 0, `a first install shows no update prompt, fifteen times in fifteen (shown ${shown})`);
+  const c2 = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const p2 = await c2.newPage();
+  await p2.goto(base); await p2.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
+  await p2.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 }); await p2.waitForTimeout(500);
+  const both = await p2.evaluate(async () => {
+    const reg = await navigator.serviceWorker.getRegistration();
+    const w = new EventTarget(); Object.defineProperty(w, 'state', { value: 'installed' });
+    Object.defineProperty(reg, 'waiting', { configurable: true, get: () => navigator.serviceWorker.controller });
+    Object.defineProperty(reg, 'installing', { configurable: true, get: () => w });
+    reg.dispatchEvent(new Event('updatefound')); w.dispatchEvent(new Event('statechange'));
+    await new Promise(r => setTimeout(r, 300));
+    const b = document.getElementById('updbar');
+    return { sameObject: reg.waiting === navigator.serviceWorker.controller, bar: !!b && !b.hidden && b.getBoundingClientRect().height > 0 };
+  });
+  ok(both.sameObject && !both.bar, 'a first install\'s worker read as both waiting and in control (as WebKit can) offers no update (NEW-145)', both);
+  await c2.close();
   console.log(fails.length ? `FAILURES ${fails.length}` : 'ALL PASS');
   await browser.close(); server.close(); fs.rmSync(tmp, { recursive: true, force: true });
   process.exit(fails.length ? 1 : 0);

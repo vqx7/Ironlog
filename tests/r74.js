@@ -379,7 +379,7 @@ async function finish(D, date) {
         ses(4, '2026-10-06', [set(95, 8, 1), set(95, 12, null, { at: 8, pred: 2 })]), ses(5, '2026-10-13', [set(95, 8, 1), set(95, 12, null, { at: 8, pred: 2 })])];
       L.state = L.normalize(S); L.invalidate();
       const ex = L.EX('bench');
-      return { usual: L.rirUsual('bench'), blank: L.rirEst({ w: 105, r: 8, rir: null, done: true }, ex), rated: L.rirEst({ w: 105, r: 8, rir: 1, done: true }, ex) };
+      const T = L.today(); return { usual: L.rirUsual('bench', T), blank: L.rirEst({ w: 105, r: 8, rir: null, done: true }, ex, T), rated: L.rirEst({ w: 105, r: 8, rir: 1, done: true }, ex, T) };
     });
     ok(r.usual === 2 && r.blank === 2 && r.rated === 2, '9. R74-3: Corrected RIR on, today: the usual, a blank set and a set rated at the usual all read 2, as on 2.28 (2.29 before: 1, 1, 2)', r);
     ok(!D.errors.length, '9. no page errors', D.errors);

@@ -1,4 +1,4 @@
-// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-35, in the
+// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-36, in the
 // project's claude/ironlog-spec-session.md, built from the code: workout.ts, worksets.ts, worktaps.ts, workfields.ts,
 // workfinish.ts, timer.ts, actsstart.ts, actspick.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
 // expects). A feature suite: each section is one rule, a lifter's log seeded, the workout started from Today's card
@@ -31,11 +31,16 @@ const TOAST_LOG = () => {
   const hook = () => {
     const el = document.getElementById('toast');
     if (!el) { setTimeout(hook, 20); return; }
-    new MutationObserver(() => {
+    const note = () => {
       if (el.hidden) return;
       const t = el.innerText.replace(/\s+/g, ' ').replace(/ Undo$/, '').trim(), last = window.__toasts[window.__toasts.length - 1];
       if (t && t !== last) window.__toasts.push(t);
-    }).observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
+    };
+    // A message the app showed as it started, before this watch began, is taken as it stands: the standalone build
+    // and WebKit start the app before the first look for the box, and the message then never changes for the watch
+    // to see (NEW-143, L-19's removal message).
+    note();
+    new MutationObserver(note).observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
   };
   hook();
 };
@@ -52,7 +57,11 @@ const ROWS = b => [...document.querySelectorAll(`#view .sg`)].filter(r => r.quer
    o.settings sets settings; o.seed (S, L) changes anything else first. */
 async function lifter(o = {}) {
   const items = o.items || [['bench', 3, 6, 10, REST_BENCH], ['dbLateral', 2, 10, 15, REST_RAISE]];
-  // o.movable: a clock the check moves (window.__setClock), from 10:00 on the day, as a lifter's day goes on.
+  // o.movable: a clock the check moves (window.__setClock), from 10:00 on the day, as a lifter's day goes on. A page
+  // loaded again, an app closed and opened on a later day, is given its time by an init script the check adds before
+  // the reload (L-19's reopen), run after this one: a value handed to the script, not storage (in this harness an init
+  // script that read localStorage as a page reloaded sometimes gave that page an empty storage) and not the tab's name
+  // (WebKit gave the reloaded page none, so it opened on the first day: GitHub's WebKit run of 2.59, NEW-143).
   const T0 = JSON.stringify((o.day || DAY) + 'T10:00:00');
   const MOVABLE = `(()=>{const R=Date;let off=new R(${T0}).getTime()-R.now();window.__setClock=t=>{off=new R(t).getTime()-R.now();};class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`;
   const P = await open(FILE, { browser: o.browser, w: o.w || 390, h: 844, clock: o.movable ? undefined : (o.day || DAY) + 'T10:00:00', setup: async ctx => { if (o.movable) await ctx.addInitScript(MOVABLE); await ctx.addInitScript(TOAST_LOG); } });
@@ -139,6 +148,8 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const P = await lifter();
     await start(P);
     await P.tap(tick(0, 0));
+    const away = await P.ev(() => { const b = document.querySelector('#view [data-act="wkAway"]'); return b ? b.textContent.trim() : null; });
+    ok(away === 'Save for later', 'L-4: the button to step away from the workout reads "Save for later" (V, 2026-11-13: it read "Save and leave")', away);
     await P.tap('#view [data-act="wkAway"]', 300);
     ok((await P.toasts()).includes('Saved. Resume it from Today.') && (await P.ev(() => window.__ironlog.ui.tab)) === 'today', 'L-4: backing out says "Saved. Resume it from Today." and goes to Today', await P.toasts());
     await P.tap('#view .hero [data-act="startSession"], #view .hero [data-act="wkResume"]', 300);
@@ -458,6 +469,61 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     ok((await P.toasts()).some(x => x === 'Session updated. Your workout in progress is back: Resume it on Today.'), 'L-19: "Session updated." and the workout set aside is back', await P.toasts());
     const back = await P.draft();
     ok(back && !back.editingId && back.ex[0].sets[0].done, 'L-19: the workout in progress is back as it was', back && back.ex[0].sets.map(x => x.done));
+    await P.close();
+  }
+  if (run('L-19')) {
+    /* The 30 days stand still while the edit the workout set aside waits for is open (V, 2026-11-13: "the draft workout
+       is paused"). REV16-C1: the app left 32 days with the edit open, the copy was removed at the next open, its sets in
+       no session, and no screen the lifter saw had given a date. Saved then, the edit brings the workout back. */
+    const P = await lifter({ settings: { autoDone: false }, movable: true });
+    await start(P); await P.tap(tick(0, 0));
+    await P.tap('#tabs [data-tab="history"]', 200);
+    await P.tap('#view [data-act="histToggle"][data-id="last"]', 150); await P.tap('#view [data-act="histEdit"][data-id="last"]', 300);
+    const lineOf = () => P.ev(() => { const e = document.getElementById('parkedLine'); return e ? e.textContent.replace(/\s+/g, ' ').trim() : null; });
+    await P.ctx.addInitScript(t => { if (window.__setClock) window.__setClock(t); }, '2026-12-13T09:00:00');
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__ironlog.state && document.querySelector('#tabs [data-tab="today"]')); await wait(400);
+    const now = await P.ev(() => new Date().toISOString().slice(0, 10));
+    if (now !== '2026-12-13') ok(false, 'L-19: (setup) the page reopened on 2026-12-13', now);
+    const kept = { held: await P.ev(() => localStorage.getItem(window.__ironlog.KEY + '.parked') != null), line: await lineOf(), said: await P.toasts() };
+    ok(kept.held && kept.line === 'Your workout in progress is set aside. It comes back when you save or discard this one.' && !kept.said.some(x => /removed/.test(x)), 'L-19: opened 32 days later with the edit still open, the workout set aside is kept, its line giving no date: nothing is removed while the edit is open (REV16-C1)', kept);
+    await P.tap('#view [data-act="finish"]', 300);
+    while (await P.modal()) { const mm = await P.modal(); if (mm.kind === 'confirm') await mOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } }
+    const back = await P.draft();
+    ok(back && !back.editingId && back.ex[0].sets[0].done && (await P.toasts()).some(x => /Your workout in progress is back/.test(x)), 'L-19: and the edit saved then brings it back as it was (REV16-C1)', back && back.ex[0].sets.map(x => x.done));
+    await P.close();
+  }
+  if (run('L-19')) {
+    /* NEW-96 (V, 2026-11-09 08:11: "is it possible to delete it after 30 days?"): a workout set aside and never
+       brought back is kept 30 days from the day it was set aside, Today's card saying until when, then removed when
+       the app next opens, said as it goes. Here the app closes while the edit is open and before the edit is saved
+       (the log on the phone then holds no workout), so Today offers the workout set aside. */
+    const P = await lifter({ settings: { autoDone: false }, movable: true });
+    await start(P); await P.tap(tick(0, 0));
+    await P.tap('#tabs [data-tab="history"]', 200);
+    await P.tap('#view [data-act="histToggle"][data-id="last"]', 150); await P.tap('#view [data-act="histEdit"][data-id="last"]', 300);
+    // Reopened: the page loaded again at that time, then Today's tab tapped, as a lifter opens the app to it.
+    const reopen = async t => {
+      await P.ctx.addInitScript(t => { if (window.__setClock) window.__setClock(t); }, t);
+      await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog && window.__ironlog.state && document.querySelector('#tabs [data-tab="today"]'));
+      await wait(300); await P.tap('#tabs [data-tab="today"]', 300);
+      const now = await P.ev(() => new Date().toISOString().slice(0, 10));
+      if (now !== t.slice(0, 10)) ok(false, 'L-19: (setup) the page reopened on ' + t.slice(0, 10), now);
+    };
+    await P.ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); });
+    await reopen('2026-12-11T09:00:00');
+    const card = await P.ev(() => { const c = document.getElementById('parkedCard'); return c ? c.innerText.replace(/\s+/g, ' ') : null; });
+    ok(card && /Set aside while you fixed an earlier one\. Kept until Dec 11\./.test(card), 'L-19: Today\'s card says until when the workout set aside on Nov 11 is kept: "Kept until Dec 11." (NEW-96)', card);
+    await reopen('2026-12-12T09:00:00');
+    const gone = await P.ev(() => ({ card: !!document.getElementById('parkedCard'), held: localStorage.getItem(window.__ironlog.KEY + '.parked') }));
+    const said = await P.toasts();
+    ok(!gone.card && gone.held == null && said.includes('The workout set aside was removed: it was kept until Dec 11.'), 'L-19: opened the day after, it is removed and the app says so: "The workout set aside was removed: it was kept until Dec 11." (NEW-96)', { gone, said });
+    // A copy set aside by a build before 2.57 carries no date: its 30 days count from the day this build first opens
+    // with it, so it is never removed sooner than its card could say.
+    // As 2.56 wrote it: the account and the workout, no date.
+    await P.ev(() => { localStorage.setItem(window.__ironlog.KEY + '.parked', JSON.stringify({ uid: '', draft: { id: 'old1', date: '2026-11-01', ex: [{ exId: 'bench', sets: [{ w: 80, r: 8, done: true }] }] } })); });
+    await reopen('2026-12-20T09:00:00');
+    const old = await P.ev(() => { const c = document.getElementById('parkedCard'); const r = JSON.parse(localStorage.getItem(window.__ironlog.KEY + '.parked') || 'null'); return { card: c ? c.innerText.replace(/\s+/g, ' ') : null, at: r && r.at }; });
+    ok(old.card && /Kept until Jan 19, 2027\./.test(old.card) && typeof old.at === 'number', 'L-19: a copy from before 2.57, first opened Dec 20, is kept until Jan 19, 2027 (NEW-96)', old);
     await P.close();
   }
 
@@ -1075,6 +1141,64 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const hd = await H.ev(() => window.__ironlog.state.draft.date);
     ok(hd === '2026-11-10', 'L-35: a date set by hand stays when the first set is ticked (NEW-132)', hd);
     await H.close();
+  }
+
+  /* ---------- L-36: a ticked set keeps what the app asked of it (391) ---------- */
+  if (run('L-36')) {
+    /* V, 2026-11-05 and 2026-11-12: kept beside what was done, for an engine that later learns how a lifter answers
+       what is asked, and shown only when asked for (a setting, off). Asked of each working set: the exercise's
+       suggested load and the row's grey reps. A load typed over it is kept as typed, beside what was asked. */
+    const P = await lifter({ settings: { autoDone: false } });
+    await start(P);
+    const sw = (await P.draft()).ex[0].sw;
+    await P.tap(tick(0, 0));
+    await P.page.fill(field('w', 0, 1), '190'); await P.page.fill(field('r', 0, 1), '8'); await P.tap(tick(0, 1));
+    await P.tap(tick(0, 2));
+    const d = await P.draft();
+    const sg = d.ex[0].sets.map(x => x.sg || null);
+    ok(sw != null && Math.abs(sw - 185 * LB) < 1e-6 && JSON.stringify(sg) === JSON.stringify([[sw, 8], [sw, 8], [sw, 7]]), 'L-36: each set ticked keeps what was asked of it: the suggested 185 and the grey reps 8, 8 and 7', { sw, sg });
+    ok(Math.abs(d.ex[0].sets[1].w - 190 * LB) < 1e-6, 'L-36: a load typed over the asked one is kept as typed, beside it', d.ex[0].sets[1].w);
+    await P.tap('#view [data-act="finish"]', 400);
+    while (await P.modal()) { const mm = await P.modal(); if (mm.kind === 'confirm') await mOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } }
+    const saved = await P.ev(() => window.__ironlog.state.sessions.find(x => x.id !== 'last'));
+    const bench = saved && saved.ex.find(b => b.exId === 'bench');
+    ok(bench && JSON.stringify(bench.sets.map(x => x.sg || null)) === JSON.stringify([[sw, 8], [sw, 8], [sw, 7]]) && bench.sets.every(x => Object.keys(x).pop() === 'sg'), 'L-36: Finish saves it with each set, last among its fields', bench && bench.sets);
+    // History: not shown until asked for in Settings.
+    await P.tap('#tabs [data-tab="history"]', 200); await P.tap(`#view [data-act="histToggle"][data-id="${saved.id}"]`, 200);
+    let h = await P.ev(() => document.getElementById('view').innerText.replace(/\s+/g, ' '));
+    ok(!/Asked:/.test(h), 'L-36: History does not show it by default', h.slice(0, 200));
+    await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:timer'] = true; L.render(); document.querySelectorAll('#view details').forEach(x => { x.open = true; }); });
+    await wait(150);
+    await P.page.click('#view input[data-bind="askedShow"]'); await wait(250);
+    ok(await P.ev(() => window.__ironlog.state.settings.askedShow === true), 'L-36: Settings turns it on');
+    h = await P.ev(id => { const L = window.__ironlog; L.ui.tab = 'history'; L.ui.histOpen = id; L.render(); return document.getElementById('view').innerText.replace(/\s+/g, ' '); }, saved.id);
+    ok(/Asked: 185×8, 185×8, 185×7/.test(h), 'L-36: then History lists what was asked under what was done: "Asked: 185×8, 185×8, 185×7"', (h.match(/Barbell Bench Press[^]*?Asked:[^.]*/) || [h.slice(0, 300)])[0]);
+    // An edit from History keeps what was asked when the set was first ticked, whatever it asks now.
+    await P.tap(`#view [data-act="histEdit"][data-id="${saved.id}"]`, 300);
+    await P.tap(tick(0, 2)); await P.page.fill(field('r', 0, 2), '9'); await P.tap(tick(0, 2));
+    await P.tap('#view [data-act="finish"]', 300);
+    while (await P.modal()) { const mm = await P.modal(); if (mm.kind === 'confirm') await mOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } }
+    const ed = await P.ev(id => window.__ironlog.state.sessions.find(x => x.id === id).ex.find(b => b.exId === 'bench').sets.map(x => [x.r, x.sg || null]), saved.id);
+    ok(ed[2][0] === 9 && JSON.stringify(ed.map(x => x[1])) === JSON.stringify([[sw, 8], [sw, 8], [sw, 7]]), 'L-36: an edit keeps what was asked when each set was first ticked', ed);
+    await P.close();
+    // A workout typed in afterwards was not done to what was asked: it keeps none.
+    const Q = await lifter({ settings: { autoDone: false } });
+    await start(Q);
+    await Q.ev(() => { const L = window.__ironlog; L.state.draft.past = true; L.render(); });
+    await Q.tap(tick(0, 0));
+    const qd = await Q.draft();
+    ok(qd.ex[0].sets[0].done && !qd.ex[0].sets[0].sg, 'L-36: a set ticked in a workout typed in afterwards keeps nothing asked', qd.ex[0].sets[0]);
+    await Q.close();
+    // Sets typed in the lift's quick entry ("185x8, 8, 7") are ticked by the app, each keeping what was asked of it as a
+    // set ticked by its button does (REV15-7: they kept nothing).
+    const R = await lifter({ settings: { autoDone: false } });
+    await start(R);
+    const rsw = (await R.draft()).ex[0].sw;
+    await R.ev(() => window.__ironlog.ACT.bQuick({ dataset: { b: '0' } })); await wait(250);
+    await R.page.fill('#qTxt', '185x8, 8, 7'); await R.tap('#modal [data-act="qFill"]', 400);
+    const rd = (await R.draft()).ex[0].sets.filter(x => x.done).map(x => x.sg || null);
+    ok(rd.length === 3 && JSON.stringify(rd) === JSON.stringify([[rsw, 8], [rsw, 8], [rsw, 7]]), 'L-36: sets typed in quick entry keep what was asked of each, as sets ticked by their button do (REV15-7)', rd);
+    await R.close();
   }
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');

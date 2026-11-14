@@ -1,14 +1,8 @@
-/* How the screens draw (phase 5, r57; ARCHITECTURE.md, Phase 5 design, item
-   1). lit-html, bundled into the page from its pinned package (no address to
+/* How the screens draw (ARCHITECTURE.md). lit-html, bundled into the page from its pinned package (no address to
    load, so offline and the Content Security Policy need nothing new), draws
    every tab into #view, and owns it: a moved screen is a template of the
    state and `ui`, updated in place on each draw, so its elements, the field
-   being typed in and its focus stay. Until r63 a screen still in the legacy
-   script was drawn here as its markup string (drawLegacy, deleted with the
-   script); every tab is a template now. The parts every screen shares are
-   here, drawing the markup the legacy script's helpers of the same names drew
-   (the legacy copies went with the last screen drawn from it, r60;
-   tests/r57.js compares the two screens with r56.2's). */
+   being typed in and its focus stay. The parts every screen shares are here. */
 
 import { html, nothing, render, noChange, svg } from 'lit-html';
 import type { TemplateResult, AttributePart } from 'lit-html';
@@ -27,7 +21,7 @@ declare global {
   interface Window {
     /** Which of the page's two outside libraries loaded (03-body.html): the drag lists and the charts. */
     __libs?: { sortable: boolean; chart: boolean } | undefined;
-    /** SortableJS, loaded by script tag: the copy a drag out of a list that copies (Plan's library) leaves in it, and the lists a moved screen makes (the session's exercises, r60). */
+    /** SortableJS, loaded by script tag: the copy a drag out of a list that copies (Plan's library) leaves in it, and the lists a moved screen makes (the session's exercises). */
     Sortable?:
       | {
           clone?: Element | null | undefined;
@@ -74,9 +68,9 @@ export type Part = TemplateResult | DirectiveResult | string | number | typeof n
 
 /* The day the screen was last drawn for. A phone keeps the app open
    overnight, and nothing draws it again when it comes back to the screen
-   without an account, so the next morning Today was yesterday's: its date
-   line, the week bar, and Body's date, which a weigh-in typed at once was
-   saved on, over the evening's (the second review of r59; r58 too). */
+   without an account, so the next morning Today would be yesterday's: its date
+   line, the week bar, and Body's date, which a weigh-in typed at once would
+   be saved on, over the evening's. */
 let drawnFor = '';
 /** Whether the screen was last drawn on an earlier day than today, as when the app is brought back the next morning. */
 export function drawnBeforeToday(): boolean {
@@ -84,7 +78,7 @@ export function drawnBeforeToday(): boolean {
 }
 /* While lit-html is drawing a screen: a field it takes away fires its
    change and blur as if the lifter had left it, which must not tick a set or
-   draw the screen again inside the draw (the legacy host's `rebuilding`). */
+   draw the screen again inside the draw. */
 let inDraw = 0;
 /** Whether a screen is being drawn this moment. */
 export const drawing = (): boolean => inDraw > 0;
@@ -98,8 +92,8 @@ export function drawScreen(view: HTMLElement, screen: TemplateResult): void {
     inDraw--;
   }
 }
-/* The suites read some parts as the markup the legacy script made of them
-   (tests/r44.js reads Plan's usual-range note): the part drawn into an
+/* The suites read some parts as markup (tests/r44.js reads Plan's
+   usual-range note): the part drawn into an
    element of its own, lit-html's markers taken out. */
 /** A part as markup, for window.__ironlog. */
 export function markupOf(part: Part): string {
@@ -121,19 +115,18 @@ export function markup(fixed: string): Part {
 
 /* A field shows the value the log holds. While it is being typed in, the text
    under the lifter's fingers stays when it reads as the value saved ("152."
-   for 152, a name with its spaces), as rerenderKeepScroll kept it before r57,
-   and so does text typed and not yet confirmed (r60, PENDING 345 item 11: a
-   field saved only when left, as Settings' numbers, Plan's step and the Set
-   up page's bodyweight are, lost a half-typed number whenever anything drew
-   the page meanwhile, a sync taking in another phone's change, or the new
+   for 152, a name with its spaces), and so does text typed and not yet
+   confirmed (else a field saved only when left, as Settings' numbers, Plan's
+   step and the Set up page's bodyweight are, loses a half-typed number
+   whenever anything draws the page meanwhile, a sync taking in another phone's change, or the new
    day's draw, since the log still held the old value). Text the log saved as
    something else once confirmed (150 typed as a maximum of 100, confirmed
-   with Enter) is replaced by what was saved at once (the review of r57: it
-   showed 150 until the page drew again). The part is told its value is stale
+   with Enter) is replaced by what was saved at once, not left showing 150
+   until the page draws again. The part is told its value is stale
    each time, as lit's `live` does, so a value typed over and left is put
    back even when the log still holds the value drawn last. */
 const unconfirmed = new WeakSet<EventTarget>();
-// Fields showing text the screen put there for the lifter to type over (a grey load, selected on a tap: workout.ts, r60).
+// Fields showing text the screen put there for the lifter to type over (a grey load, selected on a tap: workout.ts).
 const shown = new WeakSet<EventTarget>();
 /** Marks a field as showing text the screen put there to be typed over, kept through a draw while it is focused, or unmarks it. */
 export function fieldShown(el: EventTarget, on: boolean): void {
@@ -184,9 +177,8 @@ export const fieldValue = directive(FieldValue);
    screen lit-html owns those nodes, so the element goes back where it was
    drawn before the screen draws the new order (or, when the page draws in the
    middle of the drag, a sync bringing another phone's change, the drag is
-   dropped, as r56.2's fresh page dropped it); left where the finger had it,
-   it sat outside what lit-html drew, and the next taps saved its section
-   several times (the review of r57). */
+   dropped); left where the finger had it, it would sit outside what lit-html
+   drew, and the next taps save its section several times. */
 interface Home {
   el: Element;
   parent: Node;
@@ -217,26 +209,23 @@ export function dragDrop(): boolean {
 
 /* One component for every foldable block on every tab. Fold state lives in
    memory for this visit only (ui.folds). Each time Ironlog opens, every
-   section starts folded (V, r28: the titles say what is inside), except
+   section starts folded (V: the titles say what is inside), except
    Sessions on History, which is that tab's content. Every fold inside a
-   section starts closed too. Folds used to be saved to the synced settings,
-   where one tap (or another device) could leave a section open or closed
-   for good. One ? button per explanation: the paragraph is in the page but
+   section starts closed too. Saved to the synced settings, one tap (or
+   another device) could leave a section open or closed for good. One ? button per explanation: the paragraph is in the page but
    hidden until tapped, so nothing has to be read twice and nothing has to be
    scrolled past; inside a section the explanation is the first line,
-   How this works, since a ? in the header sat beside the fold arrow. The
-   legacy script's string copies of these parts went with the last screen
-   drawn from it. */
-/** Whether a section is open: what was chosen on this visit, else its default (r28: folded unless it is the tab's content). */
+   How this works, since a ? in the header would sit beside the fold arrow. */
+/** Whether a section is open: what was chosen on this visit, else its default (folded unless it is the tab's content). */
 function isOpen(sk: string, def?: boolean): boolean {
   return Object.prototype.hasOwnProperty.call(ui.folds, sk) ? !!ui.folds[sk] : !!def;
 }
 
-/** "~82 min", flagged when it runs past the lifting budget in Settings (minTxt in the legacy script). */
+/** "~82 min", flagged when it runs past the lifting budget in Settings. */
 export function minPart(m: number): Part {
   const b = state.settings.timeBudget;
   const r = min5(m);
-  // Over by the minutes shown (R81-9, the review of 2.35: 61 minutes showed "~60 min, over your 60 min budget").
+  // Over by the minutes shown (not 61 minutes shown as "~60 min, over your 60 min budget").
   return b && r > b ? html`<span class="overb">${estMin(r)}, over your ${b} min budget</span>` : estMin(r);
 }
 
@@ -263,7 +252,7 @@ export function howText(key: string, text: Part): TemplateResult {
 `;
 }
 
-/** The title at the top of a tab: a kicker, the title, a line under it and its buttons (a lone ? sits at the top right, r28). */
+/** The title at the top of a tab: a kicker, the title, a line under it and its buttons (a lone ? sits at the top right). */
 export function pageTitle(kick: string, title: string, meta: Part, actions?: Part, onlyHelp?: boolean): TemplateResult {
   return html`<div class=${onlyHelp ? 'ph q' : 'ph'}>
 <div>${
@@ -288,12 +277,12 @@ ${
 `;
 }
 
-/** The ? beside a tab's title that shows its explanation (helpBtn in the legacy script). */
+/** The ? beside a tab's title that shows its explanation. */
 export function helpButton(key: string): TemplateResult {
   return html`<button type="button" class="hb" data-act="help" data-h=${key} aria-expanded=${live(String(ui.help.has(key)))} aria-controls=${`help-${key}`} aria-label="What this shows">?</button>`;
 }
 
-/** A fold inside a section, its open state this visit's (subsec in the legacy script); `id` names it for a link that opens it. */
+/** A fold inside a section, its open state this visit's; `id` names it for a link that opens it. */
 export function subsection(sk: string, title: string, body: Part, sub?: Part, id?: string): TemplateResult {
   return html`<details class="subsec" id=${id ?? nothing} data-sk=${sk} .open=${live(isOpen(sk, false))}><summary><span class="subsec-t">${title}</span><span class="sec-s">${sub ?? ''}</span><span class="chev" aria-hidden="true"></span></summary><div class="sec-b">${body}</div></details>`;
 }
@@ -339,8 +328,7 @@ export function placed(
 /* A tab whose movable sections have other elements between them (Plan's
    note about routines to remove sits between Routine and Add exercises):
    the sections take, in their saved order, the places sections hold in the
-   code's order, and the elements between stay where they are, as the legacy
-   applySecOrder moved them; then the hidden sections go (applyHidden). */
+   code's order, and the elements between stay where they are; then the hidden sections go (applyHidden). */
 /** A tab's parts in order, each [its section's key, or null for a part that does not move, the part]. */
 export function slotted(tab: string, parts: readonly (readonly [string | null, Part])[]): Part[] {
   const keyed = parts.flatMap(([key, part]) => (key == null ? [] : [[key, part] as const]));
@@ -362,7 +350,7 @@ export function slotted(tab: string, parts: readonly (readonly [string | null, P
   return out;
 }
 
-/** Whether a hidden section of History has something to show (the legacy MORE_LIVE takes these): cardio logged, or something recently deleted. */
+/** Whether a hidden section of History has something to show: cardio logged, or something recently deleted. */
 const MORE_OFFER: Readonly<Record<string, () => boolean>> = {
   'history:cardio': () => state.cardio.length > 0,
   'history:trash': () => trashShown().length > 0
@@ -371,7 +359,7 @@ const MORE_OFFER: Readonly<Record<string, () => boolean>> = {
 /* The foot of a tab: the hidden sections it can show, one tap each, and the
    way to Layout. The chips say what they do ("+ Coach"), so they need
    no heading, and the link is "Edit sections" here; the menu keeps its full
-   name (r69, V, 2026-11-03: the app read as text heavy). */
+   name (V, 2026-11-03: the app read as text heavy). */
 /** The foot of a tab: the hidden sections it can show, one tap each (with what the tab says of its own, `offer`), and the way to Layout. */
 export function tabFoot(tab: string, offer?: Readonly<Record<string, () => boolean>>): TemplateResult | typeof nothing {
   const list = moreList(tab, state.settings.hidden, offer ? { ...MORE_OFFER, ...offer } : MORE_OFFER);

@@ -1,8 +1,7 @@
 /* The app's own sheets: installing it from a browser,
    getting the new icon, and logging a past workout. Each is drawn by
-   lit-html as the legacy script drew it (tests/r62.js holds them to r61's),
-   and answered by its actions by their data-act (actsapp.ts, actsstart.ts,
-   through events.ts's table since r63).
+   lit-html and answered by its actions by their data-act (actsapp.ts,
+   actsstart.ts, through events.ts's table).
 
    Install: Android and desktop Chrome offer a real install, which the build
    catches and Install uses. An iPhone has no install button for websites
@@ -11,7 +10,7 @@
    inside Claude, or in the plain source file. */
 
 import { html, nothing, svg } from 'lit-html';
-/* The date field follows the date in use even when the lifter's pick was refused (a future date): drawn again in place, an attribute would leave the refused date showing (the independent review of r62). */
+/* The date field follows the date in use even when the lifter's pick was refused (a future date): drawn again in place, an attribute would leave the refused date showing. */
 import { live } from 'lit-html/directives/live.js';
 import type { TemplateResult } from 'lit-html';
 import { APP_NAME, SITE_DIR_FALLBACK, SITE_HOST } from './config';
@@ -121,11 +120,11 @@ function pastDue(R: Routine, date: string): number {
 
 /** Log a past workout: its date, the sessions already on it, and the routine's days with the one due then first, or Freestyle. */
 export function pastSheet(m: { date: string; old?: true | undefined }): TemplateResult {
-  /* Add an old best (380, r70, V 2026-11-03: "Why cant we add single old bests"): a date, then the lift, then its
+  /* Add an old best (V 2026-11-03: "Why cant we add single old bests"): a date, then the lift, then its
      one set typed and Finish, so it is saved as any past workout is and every screen reads it alike: All-time bests
-     shows it; as a lift's only history it is where the return after a break starts (V, r48: "targets then start
+     shows it; as a lift's only history it is where the return after a break starts (V: "targets then start
      from them"); recent sessions lead once there are some, and it is a record like any set: a later set is a PR only when
-     stronger (A PR, CLAUDE.md; R70-7, the review of r70 and r71: the tip had said PRs start again after a break). */
+     stronger (A PR, CLAUDE.md), whatever break came between. */
   if (m.old)
     return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pastH"><div class="sheet-h"><h3 id="pastH">Add an old best</h3>${closeX()}</div>
   <label class="field">When you lifted it<input type="date" data-pbind="date" .value=${live(m.date)} max=${today()}></label>
@@ -137,7 +136,7 @@ export function pastSheet(m: { date: string; old?: true | undefined }): Template
   const R = activeRoutine();
   const due = pastDue(R, m.date);
   const on = sessionsOn(m.date).map(x => x.dayName || 'Session');
-  // On a fixed-weekday routine, each of a day's workouts (r68, 366 (c); the review of r68: one button held both).
+  // On a fixed-weekday routine, each of a day's workouts, not one button for both.
   const weekly = R.schedule === 'weekly';
   const opts = R.days
     .flatMap((d0, i) =>

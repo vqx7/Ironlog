@@ -1,5 +1,5 @@
 /* General helpers with no knowledge of training: text, ids, dates, numbers
-   and a string hash (phase 2, r50; moved unchanged from the legacy script). */
+   and a string hash. */
 
 /* ---------- the numbers everything else is measured in ---------- */
 
@@ -33,7 +33,7 @@ const ID_RADIX = 36;
 
 /* ---------- text ---------- */
 
-/** A list in a sentence (V, r29): "a and b", "a, b, and c", with the
+/** A list in a sentence (V): "a and b", "a, b, and c", with the
     serial comma; max shows that many and then "and N more". */
 export function andList(a?: readonly (string | number | null | undefined)[] | null, max?: number): string {
   a = (a || []).filter(x => x != null && x !== '');
@@ -216,7 +216,7 @@ export function hashStr(str: string): string {
   return (h2 >>> 0).toString(ID_RADIX) + (h1 >>> 0).toString(ID_RADIX);
 }
 
-/* ---------- seeded random numbers (phase 3a, r51; moved unchanged) ---------- */
+/* ---------- seeded random numbers ---------- */
 
 /** Mulberry32's constants (Tommy Ettinger, public domain): its step, its
     three shifts, the odd number of its second multiply, and 2^32, which
@@ -237,8 +237,8 @@ export function mulberry(a: number): () => number {
 
 /* A record saved again under its id replaces the copy there, so one is never
    held twice: a workout in progress on another phone, kept in History at a
-   first link, and then finished on its own phone under the same id (the
-   second review of r55: History showed it twice until a reload). New ones go
+   first link, and then finished on its own phone under the same id (History
+   must not show it twice until a reload). New ones go
    at the end, where a push puts them. */
 /** Puts each item into the list by id, replacing one already there under that id. */
 export function putById<T extends { id: string }>(list: T[], items: readonly T[]): void {

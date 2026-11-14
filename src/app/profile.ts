@@ -1,9 +1,8 @@
-/* Your training (r44, item 271, with items 43 and 44): the profile's choices,
-   its focus numbers, how a saved profile is cleaned, and its tips (phase 3a,
-   r51; moved unchanged from the legacy script). The rules that apply a profile to a plan move with the
-   engine. Since r54 the app's own weekly targets too: a muscle's default with
+/* Your training: the profile's choices, its focus numbers, how a saved
+   profile is cleaned, and its tips. The rules that apply a profile to a plan
+   are the engine's. The app's own weekly targets too: a muscle's default with
    the profile, the floors a first-run routine pick records, and the refit of
-   floors recorded by the reading of a cycle's plan before r54. */
+   floors recorded by the reading of a cycle's plan builds before r54 made. */
 
 import type { MuscleKey, Profile, Routine } from './types';
 import type { Model } from './model';
@@ -53,10 +52,7 @@ export const FOCUS_UP = 1.3,
    TypeScript cannot follow; the casts stand for those checks.
 
    Built in one key order, absent keys left out, so a save hashes the same
-   every time and a phone without the profile syncs nothing new. (Until r51
-   the choices above sat in an earlier part than this function, because
-   normalize read them while the save loaded; in a module they are defined
-   before any of the app runs.) */
+   every time and a phone without the profile syncs nothing new. */
 export function profClean(p: Partial<Record<string, unknown>> | null | undefined): Profile | null {
   if (!p || typeof p !== 'object' || Array.isArray(p)) return null;
   const o: Profile = {};
@@ -95,7 +91,7 @@ export const PROF_GOAL_TIP = `Size keeps the app's defaults. Strength: new barbe
 export const PROF_EXP_TIP = `Under 1 year, whatever the goal: new exercises start at ${F.repMin} to ${F.repMax} reps (sources in the Guide). Compounds stop ${F.rirCompound} reps short and isolation lifts ${F.rirIsolation}, as in the beginner plan (a rule of thumb: easier to judge, further from failure). Apply raises reps in reserve to that and keeps your ranges.`;
 export const PROF_FOCUS_TIP = `Up to ${numWord(FOCUS_MAX)}. Their weekly targets rise about ${pctOf(FOCUS_UP - 1)}%; the other major muscles drop to maintenance, ${shareWords(MAINT_SHARE)} of their usual minimum (studies held size and strength on a third of the volume; sources in the Guide). Targets you typed stay put; removing a focus puts them back. Pick for me favours them.`;
 
-/* ---------- The app's own weekly targets (r44; moved from the legacy script in r54) ---------- */
+/* ---------- The app's own weekly targets ---------- */
 
 /** A muscle's weekly target with a profile (the current one unless given; the defaults with no focus). */
 export function defBandIn(M: Model, m: MuscleKey, p?: Profile | null): [number, number] {
@@ -112,7 +108,7 @@ export function defBandIn(M: Model, m: MuscleKey, p?: Profile | null): [number, 
    the point. A target that reads anything else was typed and never moves;
    typed back to this number, it is the app's again. Nothing is guessed: the
    floors are the one fact that cannot be worked out later, so fitTargets
-   stores them (the r44 review found four bugs in inferring them). */
+   stores them rather than infer them. */
 /** A muscle's target as the app sets it, with a profile (the current one unless given) and floors (the recorded ones unless given). */
 export function appBandIn(
   M: Model,
@@ -127,13 +123,13 @@ export function appBandIn(
   return lo == null || TRACK_ONLY.has(m) || (q.focus || []).includes(m) ? d : [Math.min(d[0], lo), d[1]];
 }
 
-/* Whether a muscle has a weekly target (339 e, V 2026-10-24, r58): one of
+/* Whether a muscle has a weekly target (V 2026-10-24): one of
    TARGETED, which lifters train directly for size, or one the lifter gave a
    target: with Set a target in Weekly set targets (settings.ownTargets), by
-   naming it a focus in Your training, or by a target typed before r58 (one
-   other than the app's own, appBandIn: r44's reading of a typed target, so
-   it counts as it did). Before r58 a target typed on one of TRACK_ONLY's
-   four never counted, so it does not now either. A muscle with none is
+   naming it a focus in Your training, or by a target typed on a build
+   before r58 (one other than the app's own, appBandIn, so it counts as it
+   did). A target typed then on one of TRACK_ONLY's four never counted, so it
+   does not now either. A muscle with none is
    counted and shown, and never reads under or over. The one rule every
    screen reads. */
 /** Whether a muscle has a weekly target, by its key; false for a key that is no muscle. */
@@ -149,10 +145,9 @@ export function hasTargetIn(M: Model, m: string): boolean {
   return b[0] !== a[0] || b[1] !== a[1];
 }
 
-/* The floors a first-run pick of a routine records (fitTargets, r29 and
-   r44): each muscle's planned hard sets a week in whole sets, where under
+/* The floors a first-run pick of a routine records (fitTargets): each muscle's planned hard sets a week in whole sets, where under
    both its default minimum and the profile's, never on a tracked-only
-   muscle. With `actual` (a routine made from an import, r31), no floor above
+   muscle. With `actual` (a routine made from an import), no floor above
    what the log itself averaged on a muscle the routine trains. `share` reads
    the plan another way, as plannedSetsIn does. Built in muscle order, as
    normalize keeps them. */
@@ -179,23 +174,24 @@ const sameFloors = (a: Partial<Record<MuscleKey, number>>, b: Partial<Record<Mus
   MK.every(m => a[m] === b[m]);
 const sameBand = (a: readonly number[], b: readonly number[]): boolean => a[0] === b[0] && a[1] === b[1];
 
-/* Targets a first-run pick fitted to a cycle before r54 follow the plan as
-   r54 reads it (the review of r54). Until r54 each day of a cycle not 7 days
-   long came round 7 divided by its length times a week (weekFactor), so
+/* Targets a first-run pick fitted to a cycle on a build before r54 follow
+   the plan as it is read now. Those builds had each day of a cycle not 7
+   days long come round 7 divided by its length times a week (weekFactor), so
    Strength 5 x 5 planned three and a half sessions' worth, and a first-run
-   pick fitted chest, triceps and upper back to 8 and four muscles to 4.
-   Since r54 it plans the three whole sessions a week counts as on plan
-   (dayShare): 7.5 and 3.75, so a lifter doing every planned set read below
-   targets the app had set and was told to add sets. When the floors
+   pick fitted chest, triceps and upper back to 8 and four muscles to 4. Now
+   it plans the three whole sessions a week counts as on plan (dayShare): 7.5
+   and 3.75, so a lifter doing every planned set would read below targets the
+   app had set and be told to add sets. When the floors
    recorded are exactly that reading's for the routine in use, each target
-   still at the app's own number (appBandIn) moves to the number r54's
-   floors give, and r54's floors are recorded; a target typed since stays.
-   With no floors recorded (a pick before r44 on a phone that has not run
-   r44 to r53 since), every target must read that fit, as fitRecordOld asks
-   of r54's own. Once: afterwards the floors recorded are r54's. Read at
+   still at the app's own number (appBandIn) moves to the number the
+   current floors give, and those floors are recorded; a target typed since
+   stays. With no floors recorded (a pick before r44 on a phone that has not
+   run r44 to r53 since), every target must read that fit, as fitRecordOld
+   asks of the current ones. Once: afterwards the floors recorded are the
+   current ones. Read at
    start on the device's own state, never in normalize, which also runs
    inside the sync comparison and Undo. */
-/** The targets and floors that move from a fit by the plan's reading before r54 to r54's, or null when nothing does. */
+/** The targets and floors that move from a fit by the plan's reading before r54 to the current one, or null when nothing does. */
 export function refitIn(
   M: Model
 ): { bands: Partial<Record<MuscleKey, [number, number]>>; fit: Partial<Record<MuscleKey, number>> } | null {

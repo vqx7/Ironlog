@@ -75,11 +75,20 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   await page.fill('#pickQ', 'curl'); await page.waitForTimeout(80);
   await page.mouse.click(195, 12); await page.waitForTimeout(150);
   ok(await ev(() => document.getElementById('modal').hidden), 'a picker with a search typed still closes on an outside tap');
+  // The same with a finger, as on a phone (NEW-144): in WebKit, as on an iPhone, a finger's tap is a click only on an
+  // element that listens for clicks itself, and the layer around a sheet heard nothing there, so a finger on the dimmed
+  // area closed nothing (GitHub's WebKit run of 2.63: History's Calendar left open). A sheet you type in opens tall,
+  // with no room above it for a finger, so this is the picker, as it opens.
+  await page.click('[data-act="pickSession"]'); await page.waitForTimeout(150);
+  await page.touchscreen.tap(195, 12); await page.waitForTimeout(150);
+  ok(await ev(() => document.getElementById('modal').hidden), 'a finger on the dimmed area outside a sheet closes it, as a click there does (NEW-144)');
   await page.click('[data-act="pickSession"]'); await page.waitForTimeout(150);
   await page.fill('#pickQ', 'Zercher Carry'); await page.waitForTimeout(60);
   await page.click('#pickList .pick.new'); await page.waitForTimeout(150);
   await page.fill('[data-ebind="name"]', 'Zercher Carry 2'); await page.waitForTimeout(60);
-  await page.mouse.click(195, 12); await page.waitForTimeout(150);
+  // Above the sheet: a sheet you type in opens tall, its top 12 px down here, so a tap at 12 px was on the sheet's own
+  // edge and never outside it (NEW-144).
+  await page.mouse.click(195, 5); await page.waitForTimeout(150);
   ok(await ev(() => !document.getElementById('modal').hidden && document.querySelector('[data-ebind="name"]').value === 'Zercher Carry 2'), 'a half-filled new exercise is kept after an outside tap');
   await ev(() => window.__ironlog.ACT.mClose && window.__ironlog.ACT.mClose());
   await ev(() => { if (!document.getElementById('modal').hidden) document.querySelector('#modal [data-act="mClose"]').click(); });

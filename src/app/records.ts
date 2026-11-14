@@ -1,9 +1,8 @@
 /* What a stored record may hold: the schema version, the limits on body
    entries and kept unknown fields, the id checks, the cleaners for a
    calibration set, a check-in and a target, the order of sessions, and how
-   long deleted things are kept (phase 3a, r51; moved unchanged from the
-   legacy script). normalize(),
-   which applies them to a whole save, moves with storage in phase 4. */
+   long deleted things are kept. normalize(), which applies them to a whole
+   save, is normalize.ts's. */
 
 import { hashStr, numOr, isNum, isDate } from './util';
 import { MEAS } from './library';
@@ -60,8 +59,8 @@ export const LIMITS = {
   name: 40,
   /** An exercise's name, in characters: the library's longest is 36. */
   exName: 60,
-  /** A note, in characters: a session's, an exercise's, an injury's (2.28, 2.27-F3: any length before, and one
-      long paste could make a month too large to sync). */
+  /** A note, in characters: a session's, an exercise's, an injury's (one long paste could otherwise make a
+      month too large to sync). */
   note: 5000,
   /** A section key, in characters, and how many a tab's order keeps. */
   secKey: 40,
@@ -155,12 +154,11 @@ export const parseJson = (text: string): unknown => JSON.parse(text) as unknown;
 
 /* ---------- ids ---------- */
 
-/* Stable id for a record that arrived without one. It used to be random, so two
-   devices repairing the same record made two different ids and a merge kept
-   both. The position is included so identical records stay distinct. A
+/* Stable id for a record that arrived without one, not random: two devices
+   repairing the same record must make one id, or a merge keeps both. The position is included so identical records stay distinct. A
    cleaner called on one record alone (a cardio entry typed in) gives no
    position, and the id then carries "undefined" where the position goes, as
-   it did before the storage code moved. */
+   every build has made it. */
 export function did(tag: string, obj: unknown, i: number | undefined): string {
   let j = '';
   try {
@@ -198,7 +196,7 @@ export const safeKey = (k: unknown): boolean => typeof k === 'string' && !/["'<>
 
 /* ---------- fields a newer build added ---------- */
 
-/** The most characters (names included) and fields of unknown data kept per record (keepExtra, r43). */
+/** The most characters (names included) and fields of unknown data kept per record (keepExtra). */
 export const EXTRA_MAX = 2000,
   EXTRA_KEYS = 20;
 
@@ -272,7 +270,7 @@ export function cleanTgt(t: Raw): Target | null {
    deleted, so a copy there can be compared with a live one. */
 export const okSess = (ss: Raw): boolean => !!ss && typeof ss === 'object' && isDate(ss.date) && Array.isArray(ss.ex);
 
-/* One order for sessions everywhere (r34, two-a-days): by date, then by the
+/* One order for sessions everywhere (two-a-days): by date, then by the
    time each started, then by id. Ordered by date alone, a morning and an
    evening session on one day came out in whatever order the list held, and
    after a sync by their random ids, so "last time" could be the morning. */
@@ -289,7 +287,7 @@ export const PIC_MAX = 4;
 /* PIC_MAX is room to add, not a bound on what is kept: a lift done twice in
    a row is saved as one exercise (joinAdjacent), its notes' pictures
    together, so a saved exercise can hold more than one note's four, and
-   cutting them there lost pictures the lifter added (the review of r66).
+   cutting them there would lose pictures the lifter added.
    What a record keeps is bounded only against a damaged save. */
 /** The most picture ids one record keeps as a save is read: ten notes' worth, far past what the app's own saves hold. */
 const PIC_KEEP = 10 * PIC_MAX;

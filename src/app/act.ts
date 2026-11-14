@@ -1,13 +1,10 @@
-/* The one way to change the log (phase 5, r57; ARCHITECTURE.md, Phase 5
-   design, item 2). An action on a moved screen hands its change to `act`,
+/* The one way to change the log (ARCHITECTURE.md). An action on a moved screen hands its change to `act`,
    which does every step a change needs, always in this order: the check,
    the Undo step, the change, the caches dropped, the save on this device and
    the edit noted for the sync (the save does both, saveNow). A change that
-   fails halfway is put back whole, with no save and no Undo step. Before r57 each
-   action placed these by hand, about 170 saves and 41 Undo steps, and one
-   left out was found only when it lost something. The legacy script's
-   direct writes are replaced screen by screen as each moves; tests/hygiene.js
-   refuses a write to the log in a moved screen outside `act`, and
+   fails halfway is put back whole, with no save and no Undo step. Placed by hand in
+   each action, one left out would be found only when it lost something;
+   tests/hygiene.js refuses a write to the log in a screen outside `act`, and
    tests/r57.js reads every step on the page after each action's tap. */
 
 import { CLOSED_KEY, log, prefDel, prefGet, prefSet, snapshot, undoPersist, undoStack } from './storage';
@@ -28,11 +25,11 @@ import { addDays, today } from './util';
 interface ActOpts {
   /** Read first: false refuses the change, and nothing is kept, changed or written. */
   check?: (() => boolean) | undefined;
-  /** An Undo step: true keeps the log as it was before the change, a function reverses the change in place (snapshot's `inv`, for a change a later one may touch). Absent, there is none, as for an edit before r57. */
+  /** An Undo step: true keeps the log as it was before the change, a function reverses the change in place (snapshot's `inv`, for a change a later one may touch). Absent, there is none, as for an edit. */
   undo?: boolean | (() => boolean) | undefined;
   /** Saves once the typing pauses (400 ms, saveSoon), for a change made on every keystroke; the caches are still dropped at once. */
   soon?: boolean | undefined;
-  /** The change touches only the session in progress, which nothing cached reads (the index, the bests, the pace are built from saved sessions): the caches stay, as the legacy session screen left them on every keystroke and tick. */
+  /** The change touches only the session in progress, which nothing cached reads (the index, the bests, the pace are built from saved sessions): the caches stay, through every keystroke and tick. */
   inProgress?: boolean | undefined;
 }
 
@@ -40,14 +37,14 @@ interface ActOpts {
    from an action's change: Settings' Apply re-plans the session's exercises
    not started) is part of it. Its own Undo step, caches and save are the
    outer change's: the log is saved once, when the whole change is made. Run
-   as its own change, it saved half the action, and Undo, which takes the
-   first save after its step as the action's result, kept the rest as if made
-   after it (r60's full run: tests/r44.js, Apply then Undo). Whether a change
+   as its own change, it would save half the action, and Undo, which takes
+   the first save after its step as the action's result, keep the rest as if
+   made after it (tests/r44.js, Apply then Undo). Whether a change
    inside drops the caches is kept for the outer one. */
 let depth = 0;
 let dropInside = false;
 /* The log as it was before the first change to the whole log made inside an outer change to the workout alone: the
-   outer change copied the workout only, so a failure puts the rest back from this (2.28, the review of 2.28). */
+   outer change copied the workout only, so a failure puts the rest back from this. */
 let logBefore: State | null = null;
 // Whether the outer change being made copied the workout alone (inProgress).
 let outerDraftOnly = false;
@@ -76,8 +73,8 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   }
   /* A toast's Undo takes back the change it reports. Once another change is
      made after it, the newest step is no longer that change alone (a set
-     ticked on a lift just swapped in, Undo put the old lift back and moved
-     the new one, its set with it, to the end: the r63 audit's P-S4-9), so
+     ticked on a lift just swapped in, Undo would put the old lift back and
+     move the new one, its set with it, to the end), so
      the toast goes; a change that keeps a step shows its own after this.
      Settings' Undo last delete or reset still takes back the steps kept. */
   fx.undoToastHide();
@@ -87,16 +84,14 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   const top = undoStack[undoStack.length - 1];
   const step = opts.undo && top !== top0 ? top : undefined;
   lastStep = step;
-  /* A step is named only by the message shown with its own change, in the same turn (the review of 2.30: Settings'
-     Your gym in kg showed its message with Undo after making no change, and named an older change's step, which kept
-     no message). A message shown later leaves its step unnamed, which reads "Undone", never wrong words. */
+  /* A step is named only by the message shown with its own change, in the same turn (not Settings' Your gym in kg
+     showing its message with Undo after making no change, naming an older change's step). A message shown later leaves its step unnamed, which reads "Undone", never wrong words. */
   if (step)
     queueMicrotask(() => {
       if (lastStep === step) lastStep = undefined;
     });
   /* What a change that fails halfway is put back to: an exact copy of the workout in progress for a
-     change to it alone, else of the whole log. Before 2.28 the half-changed log stayed, and the next change saved
-     it. */
+     change to it alone, else of the whole log, so the next change never saves a half-changed log. */
   const draftWas = opts.inProgress ? structuredClone(state.draft) : null;
   const logWas = opts.inProgress ? null : structuredClone(state);
   outerUndo = !!opts.undo;
@@ -106,7 +101,7 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   outerBegun = begunBefore();
   try {
     change();
-    // The workout's clock starts with the change that begins it, whichever tap began it (session.ts, NEW-129).
+    // The workout's clock starts with the change that begins it, whichever tap began it (session.ts).
     clockAfter(outerBegun);
     followsAfter(outerBegun);
   } catch (e) {
@@ -145,10 +140,10 @@ function begunBefore(): { id: string; begun: boolean; live: boolean; follows?: s
 }
 /* The workout this phone closed last (finished or discarded), for the next one started here, which notes it
    (follows): a merge with a copy of the closed one that another phone kept working in then knows this phone moved on
-   from it, and keeps the next workout open rather than bringing the closed one back (sync.ts mergeChunk, NEW-134).
-   Kept on the phone (CLOSED_KEY), and for the visit when storage refuses it: a workout finished, the app closed, and
-   the next started later is the usual order, and known for the visit alone the finished workout came back open on
-   both phones (REV15-6). */
+   from it, and keeps the next workout open rather than bringing the closed one back (sync.ts mergeChunk). Kept on the
+   phone (CLOSED_KEY), and for the visit when storage refuses it: a workout finished, the app closed, and the next
+   started later is the usual order, and known for the visit alone the finished workout would come back open on both
+   phones. */
 let closedHere: string | null = null;
 /** Notes a workout closed here, or gives the next one started here the one it follows; after an outer change (act). */
 function followsAfter(
@@ -191,9 +186,9 @@ export function toTrash(kind: Trashed['kind'], data: { id: string }): void {
 
 /* Recently deleted keeps a deletion TRASH_DAYS days by this phone's date. The days are counted where they are shown
    (trashShown) and when something is deleted (toTrash, a change the lifter makes), never where the log is read
-   (normalize), which must read every log the same way on every phone (REV12-T2), and never as a change the app makes
-   by itself: one at open marked the whole core document as edited then, so an older edit kept on this phone beat a
-   later one made on another (the review of 2.53, REV13-9). */
+   (normalize), which must read every log the same way on every phone, and never as a change the app makes by
+   itself: one at open would mark the whole core document as edited then, so an older edit kept on this phone would
+   beat a later one made on another. */
 /** The oldest date Recently deleted still keeps, by this phone's date. */
 const trashCutoff = (): string => addDays(today(), -TRASH_DAYS);
 /** Recently deleted as it is shown: the entries within its days, and every copy put aside from a session or cardio entry held twice (Trashed's clash, kept until the lifter acts on it), newest first. */
@@ -202,10 +197,9 @@ export function trashShown(): Trashed[] {
   return state.trash.filter(t => t.clash || t.date >= cutoff);
 }
 
-/* ---------- Undo (moved from the legacy script's 27-actions.js in r63) ----------
-   Undo used to put back the whole state from before the action, which also
-   threw away every session, weigh-in or set logged since then. Now only the
-   action is reversed: its own reversal while the session it changed is open
+/* ---------- Undo ----------
+   Only the action is reversed, not the whole state put back from before it,
+   which would throw away every session, weigh-in or set logged since then: its own reversal while the session it changed is open
    (an Undo step given a function), else a three-way merge with the state
    right after the action as the base, what is here now as one side and the
    state before the action as the other. Records changed since the action
@@ -253,9 +247,9 @@ export function undoStep(): 'none' | 'failed' | 'unchanged' | { said: string } {
       for (const id of new Set([...Object.keys(P), ...Object.keys(Q), ...Object.keys(C)])) {
         const q = Q[id] || emptyChunk(id);
         /* The session in progress compared in one form, all three normalized,
-           as a reload leaves it: the live one compared raw read every exercise
-           as changed since and nothing went back (r55.1, the audit of r55:
-           Undo after Make it lighter). */
+           as a reload leaves it: the live one compared raw would read every
+           exercise as changed since, and nothing would go back (Undo after
+           Make it lighter). */
         const qd = Q['draft'],
           pd = P['draft'];
         parts[id] =

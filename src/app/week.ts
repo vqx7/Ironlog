@@ -1,10 +1,8 @@
 /* The week: the bar at the top of every tab, Today's This
    week card (the week, or the month, the cycle's row and the hard sets
-   against the plan) and the ring on Today's start card, drawn by lit-html as
-   src/21-pick-session.js drew them. What a day of the bar opens (History, a
-   past workout, Today on that day) stays with that code, by the button's
-   data-act as before. And what the routine plans on a date ahead (329: the
-   calendar shows it). */
+   against the plan) and the ring on Today's start card, drawn by lit-html. What a day of the bar opens (History, a past workout,
+   Today on that day) is reached by the button's data-act. And what the
+   routine plans on a date ahead, which the calendar shows. */
 
 import { html, nothing, render } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
@@ -61,7 +59,7 @@ function weekBar(): TemplateResult[] {
   const weekly = R.schedule === 'weekly';
   const cByDate: Record<string, { min: number }[]> = {};
   for (const c of state.cardio) (cByDate[c.date] = cByDate[c.date] || []).push(c);
-  // A rest week plans nothing, so no day in it reads planned or missed (r55, the audit: the bar said "Upper A, missed" under "Rest week. Nothing planned.").
+  // A rest week plans nothing, so no day in it reads planned or missed (not "Upper A, missed" under "Rest week. Nothing planned.").
   const rw = isRestWeek(cur);
   const plan = rw ? {} : weekPlan(R);
   // Which planned workouts were done, and on which date, wherever in the week.
@@ -81,7 +79,7 @@ function weekBar(): TemplateResult[] {
     // The session in progress sits on its own date, which for a past workout is not today.
     const live = !!state.draft && !state.draft.editingId && d === state.draft.date;
     /* A planned day whose every workout was done on another day this week: not missed, nor still planned when it
-       was done early (NEW-31; the review of r68: Tuesday's Pull done Monday read planned on Tuesday). */
+       was done early (Tuesday's Pull done Monday is not planned on Tuesday). */
     const mine = slots.filter(x => x.di === i);
     const movedTo = !trained && weekly && isPlan && mine.length && mine.every(x => x.doneOn) ? mine : null;
     const cls = [
@@ -114,8 +112,8 @@ function weekBar(): TemplateResult[] {
       : live
         ? 'session in progress'
         : pd && isPlan && weekly && mine.length
-          ? /* Each of the day's workouts in its own words: done on another day, missed, or planned (the review of
-               r68: Monday's Push done Tuesday and its second workout missed read "Push, missed"). */
+          ? /* Each of the day's workouts in its own words: done on another day, missed, or planned (not "Push,
+               missed" for Monday's Push done Tuesday and its second workout missed). */
             mine
               .map(
                 x => `${x.day.name}, ${x.doneOn ? `done ${DAYS[dayOfWeek(x.doneOn)]}` : d < t ? 'missed' : 'planned'}`
@@ -207,9 +205,8 @@ function cycleStrip(R: Routine): TemplateResult {
   })}</div>`;
 }
 
-/* Weight lifted this week, against last week to this point. It moved here from
-   At a glance in r23: This week owns everything about this week,
-   At a glance the longer view. */
+/* Weight lifted this week, against last week to this point: This week owns
+   everything about this week, At a glance the longer view. */
 function liftedLine(): Part {
   const tn = tonnageNow();
   if (!tn.now && !tn.prevFull) return nothing;
@@ -219,7 +216,7 @@ function liftedLine(): Part {
   return html`<button class="linkbtn wklift u-m6-0-0_tdnone_taleft" data-act="goDash" data-sec="svol"><b>${tn.now ? fmtBig(tn.now) : 0} ${U()}</b> lifted</button>`;
 }
 
-/** Whether This week shows the month, remembered on this device (Week or Month, r26). */
+/** Whether This week shows the month, remembered on this device (Week or Month). */
 function monthView(): boolean {
   if (ui.wkView === undefined) ui.wkView = prefGet(WKVIEW_KEY) === 'month' ? 'month' : 'week';
   return ui.wkView === 'month';
@@ -231,7 +228,7 @@ function cardioLine(w: WeekNow): Part {
     : nothing;
 }
 
-/* Any week (NEW-107, V 2026-11-10: "what is this week doing?" Month steps through months and opens its days; Week
+/* Any week (V 2026-11-10: "what is this week doing?" Month steps through months and opens its days; Week
    showed only this week, with its days only in the bar at the top). ‹ and › step a week at a time, as Month steps,
    from the first week with a session or cardio to a year ahead, and every day of the week shown is listed with what
    it holds; a tap does what the same day does in the month calendar (calDay, wkGo). A week before this one is read
@@ -250,7 +247,7 @@ export function weekShown(): string {
   const { min, max } = weekBounds();
   return typeof ws === 'string' && ws >= min && ws <= max ? ws : weekStart(today());
 }
-/** A week's dates in words, "Nov 3 to Nov 9", each with its year when it is not this one (REV9-4). */
+/** A week's dates in words, "Nov 3 to Nov 9", each with its year when it is not this one. */
 function weekWords(ws: string): string {
   const t = today();
   return `${fmtDateFrom(ws, t)} to ${fmtDateFrom(addDays(ws, WEEK_DAYS - 1), t)}`;
@@ -272,7 +269,7 @@ function weekDays(ws: string): TemplateResult {
     const c = state.cardio.filter(x => x.date === d).reduce((a, x) => a + x.min, 0);
     const ahead = d > t ? plan[d] : undefined;
     // A training day ahead is a tap to it on Today; a rest day ahead says so; the calendar reads days ahead the same way.
-    // Done on another day this week, as the bar says: said so, and not offered again (REV9-2).
+    // Done on another day this week, as the bar says: said so, and not offered again.
     const done = moved[d];
     const p = ahead && !ahead.day.rest && ahead.day.items.length && !done ? ahead : undefined;
     const rest = !!ahead && ahead.day.rest;
@@ -327,7 +324,7 @@ function otherWeek(ws: string): TemplateResult {
 function weekBody(w: WeekNow): Part {
   /* The two numbers are counted differently on purpose and the label has to
      say so: the denominator is every hard set the routine plans (RIR 3 or
-     less, halved in a deload week; r27), the numerator is
+     less, halved in a deload week), the numerator is
      only the sets that counted as hard. You cannot reach 100% on a week where
      you left RIR at 4 or above. The day-by-day week is the bar at the top. */
   const month = monthView();
@@ -356,7 +353,7 @@ ${howText('wk', `Each set counts once; a set at RIR 4 or more is not hard and do
 export function weekCard(): TemplateResult {
   const w = weekStats();
   const body = weekBody(w);
-  /* The title follows the view (V, r28): This week, or This month (the
+  /* The title follows the view (V): This week, or This month (the
      month's name for an earlier one) with that month's session count. */
   if (monthView()) {
     const ym = calNow();
@@ -375,7 +372,7 @@ export function weekCard(): TemplateResult {
   const ws = weekShown();
   if (ws !== weekStart(today())) {
     /* Another week: its dates, and its sessions against what was planned then, as its sessions recorded it; with no
-       record, its sessions alone, never against the routine as it is now (REV9-3); or what is planned ahead. */
+       record, its sessions alone, never against the routine as it is now; or what is planned ahead. */
     const n = weekSessions(ws);
     const rec = weekRecorded(ws);
     const ahead = ws > weekStart(today());
@@ -421,31 +418,72 @@ export function weekCard(): TemplateResult {
 }
 
 /* ---------- the pull-down ----------
-   NEW-107 (V, 2026-11-10: "re-attempt fixing the top bar ... so it drags properly"): a finger drawn down from the
-   week bar brings the month calendar down from the top of the screen, following the finger; let go past PULL.open and
-   it stays open, short of it and it goes back. Drawn back up, or a tap outside, closes it. r25's pull opened the
-   calendar from the bottom while the finger pulled down from the top, and V had it removed on 2026-10-01 (item 86).
-   A tap on a day, and a sideways move, stay the bar's: the pull starts only once the finger has gone PULL.start down
-   and more down than sideways, and only with the page at its top (NEW-138: since 2.52 the bar scrolls with the page,
-   so a drag down on it scrolled partly away is the page's scroll back up; pinned, from 2.46 to 2.51, a drag down that
-   began on the bar opened the calendar wherever the page was). */
-/** The pull's distances in CSS pixels: how far down before it starts, and how far before letting go keeps it open. */
-const PULL = { start: 12, open: 70 } as const;
+   A finger drawn down from the week bar brings the month calendar out of the bar's bottom edge, its edge following
+   the finger, with the bar in view above it and the page under it dimming as far as the pull has come (V,
+   2026-11-12: it came down from the top of the screen over the bar, and that did not read as pulled from the bar).
+   Let go past PULL.open and it stays open under the bar; short of it, it slides back into the bar and closes. Drawn
+   back up, it slides into the bar and closes; a tap outside it, the bar included, closes it. It never opens from the
+   bottom while the finger pulls down from the top (V had a pull like that removed on 2026-10-01). A tap on a day,
+   and a sideways move, stay the bar's: the calendar comes only once the finger has gone PULL.start down and more
+   down than sideways, and only with the page at its top: the bar scrolls with the page (V, 2026-11-12), so a drag
+   down on it scrolled partly away is the page's scroll back up. */
+/** The pull's distances in CSS pixels: how far down before it claims the touch from the page, how far before the
+    calendar starts to come, and how far before letting go keeps it open. */
+const PULL = { claim: 4, start: 12, open: 70 } as const;
 /** The calendar sheet that came down from the top, if it is open. */
 const topSheet = (): HTMLElement | null => {
   const el = document.querySelector('#modal .sheet.fromtop');
   return el instanceof HTMLElement ? el : null;
 };
-/** The sheet moved to follow the finger: down from above as it opens (dy from the bar), or up as it closes. */
-function follow(sh: HTMLElement, y: number): void {
-  sh.classList.add('drag');
-  sh.style.transform = `translateY(${Math.round(y)}px)`;
+/** How long the sheet takes to slide into place or into the bar (the stylesheet's transition for .sheet.fromtop), and
+    the time past that a sheet sliding into the bar waits for the slide's end before it closes all the same. */
+const SLIDE = { ms: 220, spare: 60 } as const;
+/** How far the sheet is out of the bar, 0 to 1, given to the layer it sits on, which dims the page by it. */
+function pulled(sh: HTMLElement, p: number): void {
+  const md = sh.parentElement;
+  if (md) md.style.setProperty('--pull', String(Math.max(0, Math.min(1, p))));
 }
-/** The sheet let go: back to its place, or closed. */
+/* The sheet sits just under the bar, and is moved up (y below 0) to be inside it: the part moved above the bar's
+   bottom edge is cut off, so the calendar shows coming out of the bar, never over it. */
+/** The sheet moved to follow the finger: out of the bar as it opens, or back into it as it closes. */
+function follow(sh: HTMLElement, y: number): void {
+  const h = sh.offsetHeight,
+    up = Math.round(Math.max(-h, Math.min(0, y)));
+  sh.classList.add('drag');
+  sh.style.transform = `translateY(${up}px)`;
+  sh.style.clipPath = `inset(${-up}px 0 0 0)`;
+  pulled(sh, h ? 1 + up / h : 1);
+}
+/** The sheet let go: back to its place under the bar, or slid into the bar and closed. */
 function settle(sh: HTMLElement, keep: boolean): void {
   sh.classList.remove('drag');
-  sh.style.transform = '';
-  if (!keep) closeModal();
+  if (keep) {
+    sh.style.transform = '';
+    sh.style.clipPath = '';
+    pulled(sh, 1);
+    return;
+  }
+  // With motion reduced nothing slides: it is gone at once.
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    closeModal();
+    return;
+  }
+  /* Going: the layer lets touches through to the page as it slides (the stylesheet), and the next pull closes it at
+     once (pullStart), so neither a tap nor a pull waits for the slide. */
+  const h = sh.offsetHeight;
+  sh.classList.add('going');
+  sh.style.transform = `translateY(${-h}px)`;
+  sh.style.clipPath = `inset(${h}px 0 0 0)`;
+  pulled(sh, 0);
+  // Closed once it is inside the bar; by the clock as well, in case the slide's end is never told.
+  let gone = false;
+  const close = (): void => {
+    if (gone) return;
+    gone = true;
+    if (topSheet() === sh) closeModal();
+  };
+  sh.addEventListener('transitionend', close, { once: true });
+  setTimeout(close, SLIDE.ms + SLIDE.spare);
 }
 /** Adds the pull-down's listeners to the week bar, and the push-up's to the calendar it opens; run once at start. */
 export function pullStart(): void {
@@ -460,6 +498,8 @@ export function pullStart(): void {
     'touchstart',
     e => {
       const t = e.touches[0];
+      // A calendar still sliding into the bar is as good as closed: a new pull takes its place.
+      if (document.querySelector('#modal .sheet.fromtop.going')) closeModal();
       live = e.touches.length === 1 && !ui.modal && !!t && window.scrollY <= 0;
       on = false;
       dy = 0;
@@ -480,14 +520,24 @@ export function pullStart(): void {
       if (!on) {
         // Sideways, or up: the bar's own (a tap, the page's scroll); the pull is not started for this touch.
         if (Math.abs(dx) > PULL.start && Math.abs(dx) >= dy) live = false;
+        /* Down, with the page at its top, is the pull's from PULL.claim: past the few pixels a tap's finger rolls as
+           it lands, since an iPhone sends no click for a touch whose move the page claims, and before a phone starts
+           its own scroll at about 10 px, which would bounce the page under the finger for the whole touch, the
+           calendar moving over a page that moves too. Nothing is lost to the page, which has nothing above to
+           scroll to. */
+        if (live && dy >= PULL.claim && dy >= Math.abs(dx)) e.preventDefault();
         if (dy < PULL.start || Math.abs(dx) >= dy) return;
         on = true;
+        // Where the bar ends, for the calendar to come out of it there.
+        const md = document.getElementById('modal');
+        const head = bar.closest('header');
+        if (md && head) md.style.setProperty('--bar-b', `${Math.round(head.getBoundingClientRect().bottom)}px`);
         openModal({ kind: 'calendar', ym: monthOf(today()), top: true });
       }
       // The page must not scroll or bounce under the pull.
       e.preventDefault();
       const sh = topSheet();
-      if (sh) follow(sh, Math.min(0, dy - sh.offsetHeight));
+      if (sh) follow(sh, dy - sh.offsetHeight);
     },
     { passive: false }
   );
@@ -531,8 +581,8 @@ export function pullStart(): void {
     },
     { passive: false }
   );
-  // Let go anywhere, a sheet the push moved settles: closed when it ends PULL.open up, else back in place (REV9-1: brought
-  // back down before letting go, it was left moved up, its header off the screen).
+  // Let go anywhere, a sheet the push moved settles: closed when it ends PULL.open up, else back in place (brought back
+  // down before letting go, it is not left moved up, its header off the screen).
   const done = (): void => {
     if (!pushing) return;
     pushing = false;

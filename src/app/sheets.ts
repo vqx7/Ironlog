@@ -1,18 +1,14 @@
 /* The page's sheet layer: every sheet is drawn here, by lit-html.
 
-   A sheet redrawn while someone types in it (r54, PENDING 311 f and 309; V
-   on the r52 preview: after Wrong email or password the email field could
-   not be tapped to change it) was rebuilt from its markup, the field they
-   were in replaced by a new one under the keyboard. Every sheet is a
-   template since r63 (the account sheet, the last written as markup, was
-   put into the old one in place until then), updated in place when it is
-   drawn again, so the fields themselves, and the focus, the caret and the
-   keyboard with them, stay as they are. It sits with the screens' layer.
+   Every sheet is a template, updated in place when it is drawn again, so
+   the fields themselves, and the focus, the caret and the keyboard with
+   them, stay as they are while someone types in it (V: after Wrong email
+   or password, a sheet rebuilt from its markup left an email field that
+   could not be tapped to change it). It sits with the screens' layer.
 
-   Until r54's preview this module also sized the sheets by the part of the
-   screen that shows, to sit above the keyboard; on V's iPhone that showed
-   the page under the sheet, then moved the page as the keyboard came, and
-   it was taken out. */
+   Nothing here sizes a sheet by the part of the screen that shows, to sit
+   above the keyboard: on V's iPhone that showed the page under the sheet,
+   then moved the page as the keyboard came (CLAUDE.md, Phone). */
 
 import { nothing, render } from 'lit-html';
 import type { TemplateResult } from 'lit-html';

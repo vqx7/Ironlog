@@ -97,7 +97,7 @@
 //      says none; All-time bests keeps 315 x 1 with its year and shows the best since you came back beside it.
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
-const { open, engine } = require('./h');
+const { open, engine, touchDriver } = require('./h');
 let browser;
 const FILE = process.argv[2] || process.env.IRONLOG_FILE || 'index.html';
 const fails = [];
@@ -112,7 +112,7 @@ const addD = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOS
    the clock says, as on a phone. */
 async function phone(start, o = {}) {
   const setup = async ctx => { if (o.init) await ctx.addInitScript(o.init); await ctx.addInitScript(`(()=>{const R=Date;let off=new R(${JSON.stringify(start + 'T09:00:00')}).getTime()-R.now();window.__setClock=t=>{off=new R(t).getTime()-R.now();};class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`); };
-  const P = await open(FILE, { browser, realStarter: !!o.realStarter, setup, w: 390, h: 844 });
+  const P = await open(FILE, { browser, realStarter: !!o.realStarter, setup, w: 390, h: 844, touch: !!o.touch });
   const page = P.page;
   const ev = (f, a) => page.evaluate(f, a);
   const sel = (f, b, s) => `#view .sg input[data-f="${f}"][data-b="${b}"][data-s="${s}"]`;
@@ -1170,6 +1170,35 @@ async function finish() {
     const row = await ev(() => { const s = document.querySelector('#view .bests .bx[data-ex="bench"] summary'); return s ? [...s.querySelectorAll('.bs')].map(x => x.textContent.trim()) : null; });
     ok(row && /^All time: .*heaviest 315×1, Mar 1, 2016$/.test(row[0]) && /^Since you came back on Nov 10: .*heaviest 145×10, Nov 17$/.test(row[1] || ''), '17. All-time bests: 315 x 1 from 2016 on record, and the best since you came back beside it', row);
     ok(!H.P.errors.length, '17. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 18. A lifter who checks the month from the top bar (V, 2026-11-12): a pull down from the bar at the top of
+  // Today brings the month out of the bar, the bar in view above it; a short pull goes back; a day logged, tapped in
+  // the month, opens that session in History. Every step a finger on the screen.
+  if (run(18)) {
+    const T0 = '2026-11-12';
+    const H = await phone(T0, { touch: true });
+    const { ev, page } = H;
+    await seed(H, { unit: 'lb', days: [{ id: 'D1', name: 'Push', items: [['bench', 3, 6, 10, 1, 120, 5]] }], sessions: [{ date: addD(T0, -2), day: 'D1', ex: [['bench', [[135, 8, 1], [135, 8, 1], [135, 8, 1]]]] }] });
+    await page.click('#tabs [data-tab="today"]'); await wait(200);
+    await ev(() => window.scrollTo(0, 0)); await wait(100);
+    const tp = await touchDriver(page);
+    const g = await ev(() => { const h = document.querySelector('header.top').getBoundingClientRect(), b = document.getElementById('wkbar').getBoundingClientRect(); return { x: Math.round(b.left + b.width / 2), y: Math.round(b.top + b.height / 2), barB: Math.round(h.bottom) }; });
+    const pull = async n => { await tp('touchStart', g.x, g.y); for (let k = 1; k <= n; k++) { await tp('touchMove', g.x, g.y + k * 15); await wait(16); } await tp('touchEnd', 0, 0); await wait(400); };
+    await pull(2);
+    ok(!(await ev(() => window.__ironlog.ui.modal)), '18. a short pull on the bar goes back, nothing left open');
+    await pull(8);
+    const cal = await ev(([x, y]) => {
+      const s = document.querySelector('#modal .sheet.fromtop'), e = document.elementFromPoint(x, y), h = document.getElementById('calH');
+      return { open: !!s, y: s ? Math.round(s.getBoundingClientRect().top) : null, onBar: !!(e && e.closest('#modal .sheet')), month: h ? h.innerText : '' };
+    }, [g.x, g.y]);
+    ok(cal.open && Math.abs(cal.y - g.barB) <= 1 && !cal.onBar && /november 2026/i.test(cal.month), '18. a long pull brings this month out of the bar, just under it, the bar not covered', { cal, barB: g.barB });
+    const day = await ev(d => { const b = document.querySelector(`#modal .cal-g [data-date="${d}"]`); if (!b) return null; const r = b.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; }, addD(T0, -2));
+    if (day) { await page.touchscreen.tap(day.x, day.y); await wait(300); }
+    const went = await ev(() => { const L = window.__ironlog; const s = L.state.sessions[0]; return { tab: L.ui.tab, open: L.ui.histOpen === (s && s.id), modal: L.ui.modal && L.ui.modal.kind }; });
+    ok(!!day && went.tab === 'history' && went.open && !went.modal, '18. Tuesday, logged, tapped in the month: History opens on that session', { day, went });
+    ok(!H.P.errors.length, '18. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
 

@@ -126,6 +126,12 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(await A.ev(() => { const b = document.getElementById('acctBar'), h = document.querySelector('.hero'); return !!b && !!h && b.getBoundingClientRect().bottom <= h.getBoundingClientRect().top + 1 && b.getBoundingClientRect().height < 70; }), 'Today: the line sits above the session card and stays slim');
   await A.page.click('#acctBar [data-act="acctLater"]'); await wait(150);
   ok(!(await A.ev(() => document.getElementById('acctBar'))), 'Not now hides it');
+  // NEW-140 (V, 2026-11-12): it says what it hid and where that stays, and the menu at the top right has both.
+  const said = await A.ev(() => document.getElementById('toast').innerText.replace(/\s+/g, ' ').trim());
+  ok(said.startsWith('Hidden. Sign in and Create account stay in the menu at the top right.'), 'Not now says what it hid and where it stays (NEW-140)', said);
+  await A.page.click('#saveState'); await wait(250);
+  ok(await A.ev(() => !!document.querySelector('#modal #menuAcct [data-act="acctOpen"][data-mode="signin"]') && !!document.querySelector('#modal #menuAcct [data-act="acctOpen"][data-mode="signup"]')), 'and the menu at the top right has Sign in and Create account');
+  await A.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); await wait(150);
   await A.page.reload(); await A.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(800);
   ok(!(await A.ev(() => document.getElementById('acctBar'))), 'and it stays hidden after a relaunch');
   await openData(A);

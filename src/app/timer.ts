@@ -1,6 +1,5 @@
-/* The rest timer and the screen kept on (r63, from the legacy script's
-   18-ui.js). The timer is the page's (#timer), outside the screens: since
-   r71 a card floating above the tabs, or the compact pill; the session
+/* The rest timer and the screen kept on. The timer is the page's (#timer),
+   outside the screens: a card floating above the tabs, or the compact pill; the session
    screen starts it on a tick and stops it with the session. */
 
 import { html, render } from 'lit-html';
@@ -40,8 +39,8 @@ declare global {
   }
 }
 
-/* navigator.vibrate does not exist on iOS Safari, so the timer used to finish
-   in total silence on an iPhone. The audio context is created on the tap that
+/* navigator.vibrate does not exist on iOS Safari, so without a beep the timer
+   would finish in total silence on an iPhone. The audio context is created on the tap that
    starts the timer, which is a user gesture, so the beep is allowed to play
    later. A backgrounded tab can still suppress it, which is why the bar also
    changes state and the elapsed time is computed from an absolute end stamp
@@ -85,7 +84,7 @@ export function primeAudio(): void {
 }
 /* A locked phone suspends the page, so the timer cannot sound or vibrate
    until you unlock it. Said once per device, the first time a rest starts
-   with the keep-awake setting off, once no other message shows (r54: a PR's). */
+   with the keep-awake setting off, once no other message shows (a PR's, say). */
 function wakeTip(): void {
   if (state.settings.wakeLock) return;
   const k = KEY + '.tipWake';
@@ -293,12 +292,10 @@ export function timerRefresh(): void {
 }
 
 /* A bar bounds the room below only when it sits in the lower half of the
-   screen. r70's first build drew the rest as a ring in the top bar, and read
-   by its top alone it made the whole screen the bottom edge: an exercise
-   dragged during a rest scrolled the page, and on a phone with a
-   notch, where the ring started below the status bar, a tick's effort strip
-   scrolled up under the header. The rest is a bar along the bottom
-   again, and the rule holds wherever a bar is put. Both bars are
+   screen: a rest drawn in the top bar, read by its top alone, would make the
+   whole screen the bottom edge, so an exercise dragged during a rest would
+   scroll the page, and on a phone with a notch a tick's effort strip would
+   scroll up under the header. The rule holds wherever a bar is put. Both bars are
    position:fixed, whose offsetParent is always null, so getClientRects
    tells a shown bar from a hidden one. */
 /** The top of the bars along the bottom of the screen (the tab bar and the rest timer), or the screen's bottom when none shows: what a dragged exercise and the effort strip stay above. */

@@ -72,6 +72,18 @@ await page.click('[data-op="bSwap"]');await page.waitForTimeout(80);
 const sw=await ev(()=>[...document.querySelectorAll('.pick-grp')].map(x=>x.innerText));
 ok(sw.some(x=>/Closest matches/i.test(x)),'swap shows closest matches: '+sw.join(', '));
 await page.click('#modal [data-act="mClose"]');
+// Swap is reached for when the station is taken, so for Cable Fly the same fly on a pin-loaded machine, Pec Deck Fly,
+// is a closest match, ahead of any lift needing the cables (REV16-I3, V 2026-11-13: they were Low-to-High Cable Fly,
+// DB Fly and Incline DB Fly, the cables first).
+await page.click('[data-act="pickSession"]');await page.waitForTimeout(80);
+await page.fill('#pickQ','Cable Fly');await page.waitForTimeout(50);
+await page.click('#pickList .pick[data-ex="cableFly"]');await page.waitForTimeout(700);
+await ev(()=>{const d=window.__ironlog.state.draft;document.querySelector(`[data-act="bMenu"][data-b="${d.ex.length-1}"]`).click();});await page.waitForTimeout(50);
+await page.click('[data-op="bSwap"]');await page.waitForTimeout(80);
+const cm=await ev(()=>{const out=[];let on=false;for(const el of document.querySelectorAll('#pickList > *')){if(el.classList.contains('pick-grp')){on=/Closest matches/i.test(el.innerText);continue;}if(on&&el.matches('.pick'))out.push(el.querySelector('b').innerText);}return out;});
+const pec=cm.indexOf('Pec Deck Fly'),cab=cm.findIndex(n=>/Cable/.test(n));
+ok(pec>=0&&(cab<0||pec<cab),'Cable Fly\'s closest matches have Pec Deck Fly, ahead of the cable lifts: '+cm.join(', '));
+await page.click('#modal [data-act="mClose"]');
 // discard at top
 await ev(()=>window.scrollTo(0,0));
 // Reps typed in a set: Discard asks first (a blank session would go at once, see r21.js).

@@ -1,9 +1,7 @@
 /* The open sheet: one type for every sheet the page can show, each kind
-   with the fields its sheet draws and its actions read and write. Before r63
-   the open sheet was `unknown` to the typed modules, since the legacy script
-   wrote it with whatever fields it liked; the actions that write it are
-   typed now, so each kind says what it holds, and an action reads a sheet's
-   fields only after checking its kind. */
+   with the fields its sheet draws and its actions read and write, so each
+   kind says what it holds, and an action reads a sheet's fields only after
+   checking its kind. */
 
 import type { DraftBlock, Exercise } from './types';
 import type { RoutineUpdate } from './plans';
@@ -24,7 +22,7 @@ export interface ConfirmSheet {
   alt?: { label: string; quiet?: boolean | undefined; only?: boolean | undefined } | null | undefined;
 }
 
-/** A question as it is open: what its answers do, and what closing it without one does (a question the sync asked reads that as Cancel, r56.1). */
+/** A question as it is open: what its answers do, and what closing it without one does (a question the sync asked reads that as Cancel). */
 interface ConfirmModal extends SheetBase, ConfirmSheet {
   kind: 'confirm';
   fn: () => void;
@@ -49,13 +47,13 @@ export interface PickerSheet {
   m?: string | undefined;
   /** The day of the routine shown in Plan (addDay). */
   day?: number | undefined;
-  /** Added to that day's second workout (addDay on a fixed-weekday routine, r68, 366 (c)). */
+  /** Added to that day's second workout (addDay on a fixed-weekday routine). */
   pm?: true | undefined;
   /** The routine item swapped (swapItem). */
   uid?: string | undefined;
   /** The session's exercise swapped (swapBlock). */
   b?: number | undefined;
-  /** Added with one set row (addBlock from Add an old best, r70, 380). */
+  /** Added with one set row (addBlock from Add an old best, 380). */
   one?: true | undefined;
 }
 
@@ -185,7 +183,9 @@ export type Modal =
   | ImpInputModal
   | ImpPreviewModal
   | (SheetBase & { kind: 'install'; how?: string | undefined })
-  | (SheetBase & { kind: 'icon' | 'restwk' | 'injury' | 'routineNew' | 'cardio' | 'pickToday' | 'pickEx' | 'checkin' })
+  | (SheetBase & {
+      kind: 'icon' | 'restwk' | 'injury' | 'routineNew' | 'cardio' | 'pickToday' | 'pickEx' | 'checkin' | 'photo';
+    })
   /* first: opened from the first pages, where the app's tabs are not open yet. */
   | (SheetBase & { kind: 'menu'; first?: true | undefined })
   | (SheetBase & { kind: 'guide'; open?: string | undefined })

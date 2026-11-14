@@ -1,5 +1,4 @@
-/* ---------- importing workouts (r23, PENDING 65 and V's 2026-09-28 ask) ----------
-   Moved from the legacy script's 26-import.js and 27-actions.js in r63.
+/* ---------- importing workouts (V's ask of 2026-09-28) ----------
    Any log a person already keeps comes in the same way: text pasted from
    Notes (or copied from a photo of a handwritten log with the iPhone's Live
    Text), a spreadsheet (a CSV or .xlsx file, or cells copied and pasted),
@@ -68,7 +67,7 @@ declare global {
 const MATCH = { pickAt: 0.6, eqOff: 0.5, modOff: 0.7, shown: 8 } as const;
 /** The characters of a new exercise's name and of an imported session's name. */
 const NAME_CHARS = 60;
-/** Loads and reps that read as misread (r30, from the review): a weighted lift under 5 lb (2.3 kg), or a set past 30 reps. */
+/** Loads and reps that read as misread: a weighted lift under 5 lb (2.3 kg), or a set past 30 reps. */
 const ODD = { kg: 2.3, reps: 30 } as const;
 /** The seconds in a minute. */
 const MINUTE_S = 60;
@@ -242,8 +241,7 @@ const ASSISTED: Readonly<Record<string, string>> = {
 function openPreview(res: ImpRead, tab: ImpTable | null): void {
   const names = [...new Set(res.sessions.flatMap(x => x.items.map(i => i.name)))];
   /* Built from pairs: a name from a lifter's file becomes an own key whatever
-     it is ("__proto__" or "constructor" included), as the records with no
-     prototype the legacy script made for them kept it. */
+     it is ("__proto__" or "constructor" included). */
   const pickE: [string, string][] = [],
     guessE: [string, ImpPreviewModal['guess'][string]][] = [];
   for (const n of names) {
@@ -276,7 +274,7 @@ function openPreview(res: ImpRead, tab: ImpTable | null): void {
   });
 }
 
-/** A new exercise an import makes, as the legacy script made it: normalize completes it (one side at a time, false) when the log takes it in. */
+/** A new exercise an import makes: normalize completes it (one side at a time, false) when the log takes it in. */
 type NewExercise = Omit<Exercise, 'perSide'> & { perSide?: boolean };
 /** One set as it would be saved: load in kilograms, reps, effort, and whether it was a warm-up or a drop set. */
 interface BuiltSet {
@@ -449,8 +447,8 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
         if (exo.assist) q.w = -Math.abs(q.w);
         else if (q.w < 0) q.w = 0;
       }
-      /* Reads that are probably wrong (r30, from the review: a misread line
-         went in without a word): a weighted lift under 5 lb (2.3 kg) or a set
+      /* Reads that are probably wrong, so a misread line does not go in
+         without a word: a weighted lift under 5 lb (2.3 kg) or a set
          past 30 reps. Shown in the preview to check; nothing is changed. */
       if (!exo.bw && !exo.timed)
         for (const q of sets)
@@ -554,7 +552,7 @@ const usualRange = (r: number): readonly [number, number] => {
 /** A block's working sets: no warm-ups or drops. */
 const workSets = (b: Sess['ex'][number]) => b.sets.filter(q => !q.warm && !q.drop);
 
-/** Which sessions are off (a deload, a lighter day): tagged so, or most of their lifts read lighter or short of their usual (r54, the one rule). */
+/** Which sessions are off (a deload, a lighter day): tagged so, or most of their lifts read lighter or short of their usual (the one rule). */
 function offSessions(): (x: Sess) => boolean {
   const I = IDX();
   const tot: Record<string, number> = {},
@@ -666,9 +664,8 @@ function logDay(
 
 /** The days in a cycle with rest days, so it runs about as many days a week as they trained (below). */
 function cycleOf(days: LogDay[], perWeek: number): RoutineOut['days'] {
-  /* Workouts that come round more than once a week repeat in the cycle (r32,
-     from the third review: push, pull, legs twice a week became "3 training
-     days in a 4-day cycle", about 5 a week for someone doing 6). The second
+  /* Workouts that come round more than once a week repeat in the cycle (not "3 training days in a 4-day cycle", about 5 a week, for push, pull,
+     legs twice a week). The second
      round is a copy of the same days, under the same names. */
   const reps = perWeek >= days.length * 2 ? Math.min(FROM_LOG.rounds, Math.floor(perWeek / days.length)) : 1;
   const seq: RoutineOut['days'] = [];
@@ -735,8 +732,8 @@ function dayFinder(named: boolean, days: LogDay[]): (x: Sess) => RoutineOut['day
    Days come in the order they last came round, with rest days so the cycle
    runs about as many days a week as they trained. What each day holds comes
    from its latest 3 full sessions, so a program changed a few weeks ago is
-   the program now (the review saw a bench moved from 5 x 5 to 3 x 8-10
-   brought back as 3 x 3-5): the lifts done in at least half of them, in the
+   the program now (a bench moved from 5 x 5 to 3 x 8-10 is not brought back
+   as 3 x 3-5): the lifts done in at least half of them, in the
    latest order, and each lift's working sets, a rep range around its reps
    (the nearest common range, a convention) and its RIR from its latest full
    session there. Deload and lighter sessions are left out of that. Returns
@@ -782,7 +779,7 @@ export function routineFromLog(
   };
 }
 
-/* The preview only (r29, V): the preview keeps its own log so nothing tried
+/* The preview only (V): the preview keeps its own log so nothing tried
    there reaches the real one, which left its Stats empty. This copies the
    real log in, read-only: the live app's copy on this phone when there is one
    (Android, or both opened in the same browser tab), else the account's cloud
@@ -829,7 +826,7 @@ export async function liveLogFetch(): Promise<{ st: State | null; err: unknown }
 
 /** A backup's text checked and, once confirmed, put in place of the whole log (Undo steps it back); `after` runs once it is in. */
 export function importData(text: string, after?: () => void): void {
-  // Replacing the log waits for a workout set aside for it (parkSettle, REV7-3).
+  // Replacing the log waits for a workout set aside for it (parkSettle).
   if (!parkSettle()) return;
   let obj: unknown;
   try {

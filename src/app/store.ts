@@ -1,15 +1,11 @@
 /* The app's shared state, owned here: the log (state), what
    the screens are showing (ui), the sync's progress (cloud), and the account
-   (acct; the wait for a new account's email is account.ts's own since r63).
-   The legacy script imports them under the same names, so every
-   reader is as it was. An import cannot be assigned to, so the log is
-   replaced only through setState, which returns the value as the
-   assignment did; the properties of ui and the log are still written from
-   many places, and giving those writes one path is the work of phase 5
-   (ARCHITECTURE.md); since 3b the engine and the analytics read the log
-   through live.ts's model instead of importing it, and since r56 cloud is
-   typed field by field, written by sync.ts and a few account actions. The
-   four objects moved unchanged. */
+   (acct; the wait for a new account's email is account.ts's own). An import
+   cannot be assigned to, so the log is replaced only through setState, which
+   returns the value as an assignment would; a change to the log goes through
+   `act` (ARCHITECTURE.md); the engine and the analytics read the log through
+   live.ts's model instead of importing it, and cloud is typed field by
+   field, written by sync.ts and a few account actions. */
 
 import type { DbRack, EngineState, Measurement, Settings } from './types';
 import type { BlkRef, DraftLike } from './session';
@@ -46,10 +42,9 @@ export function setState(next: State): State {
 /* A sheet opened on one of the workout's exercises (Swap, its menu, the check-in set, an old best, quick entry, its
    note and a picture on it) holds it by its place in the list. A log replaced under it (another tab's or phone's change
    merged in, a tab shown again catching up, Undo) may move that exercise: the sheet's place follows it, by its id, and
-   closes when it is gone or the workout is another, so a pick there never acts on the exercise now in its place (the
-   review of 2.53, REV13-11: Swap open on the raises, the other tab moved them up, and the pick replaced the bench; the
-   review of 2.53 to 2.61, REV15-5: the note sheet, which holds its place as `bi`, saved onto the exercise moved into
-   it and replaced that one's note). */
+   closes when it is gone or the workout is another, so a pick there never acts on the exercise now in its place (Swap
+   open on the raises, the other tab moving them up, must not replace the bench; nor a note typed for one land on the
+   exercise moved into its place, over that one's note). */
 /** Where an open sheet holds its exercise in the workout: the note's `bi`, a note picture's `at` (null on the workout's own notes), every other sheet's `b`; null when it holds none. */
 function placeOf(m: Modal): number | null {
   if (m.kind === 'note') return m.bi;
@@ -91,8 +86,7 @@ function sheetFollows(was: State | undefined): void {
     page (kept here, so the state layer imports no screen module). */
 export const HIST_PAGE = 25;
 
-/** What the screens are showing, field by field (r63 closed the index
-    signature the legacy script's own fields went in): a field set only once
+/** What the screens are showing, field by field: a field set only once
     a screen needs it is optional. */
 interface Ui {
   /** The tab shown before this one (Back's entry, and where a report from Settings says it came from). */
@@ -149,7 +143,7 @@ interface Ui {
   calYm?: string | undefined;
   /** This week on Today as the week or the month (remembered on this device). */
   wkView?: 'week' | 'month' | undefined;
-  /** The Monday of the week This week shows when stepped away from this one; absent for this week (NEW-107). */
+  /** The Monday of the week This week shows when stepped away from this one; absent for this week. */
   wkWs?: string | undefined;
   /** The weeks Volume by region averages, picked this visit. */
   regionWk?: number | undefined;
@@ -159,7 +153,7 @@ interface Ui {
   bestsAll?: boolean | undefined;
   /** More options opened on Today's start card. */
   heroMore?: boolean | undefined;
-  /** The workout stepped away from to Today with Save and leave, by its id, so a workout that replaces it (finished and another started elsewhere) opens as any does; any other way back to the tab clears it. */
+  /** The workout stepped away from to Today with Save for later, by its id, so a workout that replaces it (finished and another started elsewhere) opens as any does; any other way back to the tab clears it. */
   away?: string | null | undefined;
 }
 /** What the screens are showing (the type above). */
@@ -197,10 +191,10 @@ export const ui: Ui = {
   refix: null
 };
 
-/** Whether the screen shows the workout in progress: Today's tab with a workout open, unless the lifter stepped away with Save and leave. */
+/** Whether the screen shows the workout in progress: Today's tab with a workout open, unless the lifter stepped away with Save for later. */
 export const sessionShown = (): boolean => ui.tab === 'today' && !!state.draft && !awayFrom();
 
-/** Whether the workout in progress is the one the lifter stepped away from with Save and leave. */
+/** Whether the workout in progress is the one the lifter stepped away from with Save for later. */
 export const awayFrom = (): boolean => !!state.draft && !!ui.away && ui.away === state.draft.id;
 
 /* ---------- the account's documents ---------- */
@@ -210,9 +204,8 @@ interface CloudSnap {
   exists: boolean;
   data(): unknown;
 }
-/** What a write expects a document to hold, read just before it (2.28, the 2.27 review's 2.27-F1): nothing (the
-    document is new), its write mark (`w`, which every write since 2.28 carries), or, for a document a build before
-    2.28 wrote, which carries no mark, its write time (`at`, null when it has none). */
+/** What a write expects a document to hold, read just before it: nothing (the document is new), its write
+    mark (`w`, which every write since 2.28 carries), or, for a document a build before 2.28 wrote, which carries no mark, its write time (`at`, null when it has none). */
 export type CloudSeen = null | { w: string } | { at: number | null };
 /** A sync document as written: its format (1), when it was written and when its content was last edited (each by
     the writing device's clock), its write mark, and its content as JSON. */
@@ -284,9 +277,8 @@ export interface CloudSent {
 /* Where the sync is: on or not, the provider (db, uid), its status, each
    document's last sync note (meta: its hash, when, and the merge base) and
    this device's hashes (localH), when each document was last edited here
-   (editAt) and sent, the queue of writes (chain), and the last error. Typed
-   field by field since r56, when its writers moved into sync.ts. The status
-   becomes one set of states in r56.1. */
+   (editAt) and sent, the queue of writes (chain), and the last error, typed
+   field by field. */
 interface Cloud {
   on: boolean;
   db: CloudDb | null;
@@ -337,8 +329,7 @@ export const cloud: Cloud = {
    and read the first page's state through this one object, filled once at
    start with the page's own functions, since a module of layer 3 may not
    import a screen. The screens themselves (layer 4) import the page's
-   functions from page.ts, toast.ts and timer.ts (r63; until r63 every effect
-   came through here, filled by the legacy script). */
+   functions from page.ts, toast.ts and timer.ts. */
 /** The page's effects the storage and sync code calls. */
 interface Fx {
   /** Redraws the page. */

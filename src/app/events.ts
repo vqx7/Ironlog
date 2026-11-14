@@ -1,9 +1,7 @@
-/* The page's listeners and its actions by data-act (r63, from the legacy
-   script's 18-ui.js, 27-actions.js and 28-events.js). Every screen's and
+/* The page's listeners and its actions by data-act. Every screen's and
    sheet's taps are in their modules' tables, joined here into one; two
    choices name another action to run, so they read the whole table and live
-   with it. The listeners are added by main.ts, in the order the page always
-   added them: each document listener runs in the order it was added, so the
+   with it. The listeners are added by main.ts, in one fixed order: each document listener runs in the order it was added, so the
    order is part of what a tap does. */
 
 import { LIMITS, within } from './records';
@@ -129,7 +127,7 @@ function editorSet(e: ExEdit, k: string, v: string | boolean): void {
 /** The page's own listeners, the first it adds: Back, the return to the front, a new day while on the screen, and the rest timer read again. */
 export function pageListeners(): void {
   window.addEventListener('popstate', pageBack);
-  // Back on a new day, or on the screen as one begins, the screen is drawn again for it (drawnBeforeToday, r59).
+  // Back on a new day, or on the screen as one begins, the screen is drawn again for it (drawnBeforeToday).
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     wakeOn();
@@ -164,28 +162,28 @@ export function pageListeners(): void {
   });
 }
 
-/** A tap: a tab, outside a sheet, or anything with an action (data-act). */
+/** A tap on the dimmed layer around a sheet, outside the sheet: closes it, unless something was typed there. */
+function onOutside(e: MouseEvent): void {
+  if (e.target !== e.currentTarget) return;
+  // A half-filled new exercise or note is not thrown away by a stray tap.
+  if (ui.modal && ui.modal.dirty) {
+    toast(DIRTY_SAID);
+    return;
+  }
+  closeModal();
+}
+/** A tap: a tab, or anything with an action (data-act). */
 function onClick(e: MouseEvent): void {
   const el = e.target;
   if (!(el instanceof Element)) return;
   const tab = el.closest('#tabs button');
   if (tab instanceof HTMLElement) {
     ui.tab = tab.dataset.tab || '';
-    // Back to the tab from anywhere opens the workout in progress (NEW-89, V: Today defaults to it).
+    // Back to the tab from anywhere opens the workout in progress (V: Today defaults to it).
     ui.away = null;
     if (ui.tab === 'program') ui.planView = 'routine';
     window.scrollTo(0, 0);
     render();
-    return;
-  }
-  /* A tap outside a sheet closes it, unless something was typed there: a
-     half-filled new exercise or note is not thrown away by a stray tap. */
-  if (el.id === 'modal') {
-    if (ui.modal && ui.modal.dirty) {
-      toast(DIRTY_SAID);
-      return;
-    }
-    closeModal();
     return;
   }
   const t = el.closest('[data-act]');
@@ -258,9 +256,9 @@ function onChange(e: Event): void {
   if (m && FORM_SHEETS.has(m.kind) && t.closest('#modal')) m.dirty = true;
   // A problem report's screenshot (src/app/report.ts).
   if (reportChange(t)) return;
-  // A picture added to a note (r66, src/app/notepics.ts).
+  // A picture added to a note (src/app/notepics.ts).
   if (picChange(t)) return;
-  // The profile photo, from the menu or Today's line (2.33, src/app/actsapp.ts).
+  // The profile photo, from the menu or Today's line (src/app/actsapp.ts).
   if (photoChange(t)) return;
   // A file to import or restore, and the import preview's choices (src/app/importflow.ts).
   if (importChange(t)) return;
@@ -303,7 +301,7 @@ function onChange(e: Event): void {
   if (workoutChange(t)) return;
   const b = t.dataset.bind;
   if (!b) return;
-  // The moved screens' fields (History and Settings, r57; Plan and Stats, r58; Today, r59): each change through act.
+  // The moved screens' fields (History and Settings; Plan and Stats; Today): each change through act.
   const own = HISTORY_BINDS[b] || SETTINGS_BINDS[b] || PLAN_BINDS[b] || DASH_BINDS[b] || TODAY_BINDS[b];
   if (own) {
     own(t);
@@ -367,6 +365,11 @@ export function eventListeners(): void {
      password; it never navigates (accountSubmit, src/app/account.ts). */
   document.addEventListener('submit', accountSubmit);
   document.addEventListener('click', onClick);
+  /* The tap outside a sheet is heard on the layer around it, not only on the page: an iPhone, as WebKit does, makes a
+     finger's tap a click only on an element that listens for clicks itself, and the layer is a plain element, so a
+     finger there closed nothing while a mouse click did. */
+  const layer = document.getElementById('modal');
+  if (layer) layer.addEventListener('click', onOutside);
   // Muscle-map groups are focusable; Enter or Space activates them like a button.
   document.addEventListener('keydown', onActivateKey);
   document.addEventListener('input', onInput);

@@ -1,8 +1,7 @@
 /* How the log splits into sync documents: core (settings, exercises,
    routines and the rest), the session in progress, a session document per
-   half month (s-YYYY-MM-1 or -2) and a body document per year (b-YYYY)
-   (phase 3a, r51; moved unchanged from the legacy script). Sending, pulling and merging them moves with
-   sync in phase 4. */
+   half month (s-YYYY-MM-1 or -2) and a body document per year (b-YYYY).
+   Sending, pulling and merging them is sync.ts's. */
 
 import { arr, rec, sessCmp } from './records';
 import type { Rec } from './records';
@@ -141,8 +140,7 @@ export const realCount = (st: { sessions: { demo?: boolean }[] }): number => st.
 
 /* The one way demo data leaves a log: Clear demo data, a real session
    finished beside it, and a first link to an account, which demo data never
-   goes into (the review of r55 found an empty account given the demo's 27
-   sessions). Replaces the lists on the object given, so a shallow copy of
+   goes into. Replaces the lists on the object given, so a shallow copy of
    the log can be stripped without touching the log. */
 /** Takes the demo's sessions, weigh-ins, measurements and cardio out of a log, in place. */
 export function stripDemo(s: {
@@ -169,7 +167,7 @@ export const hasDemo = (s: {
 export const CORE_ARR: readonly string[] = ['routines', 'exercises', 'injuries', 'trash'];
 export const CORE_FIELDS: readonly string[] = ['version', 'activeRoutineId', 'deloadWeek'];
 
-/** The account's profile photo's document (2.34, photo.ts): written beside the log's, never one of them (isChunkId). */
+/** The account's profile photo's document (photo.ts): written beside the log's, never one of them (isChunkId). */
 export const PHOTO_DOC = 'photo';
 
 /** A document id the app writes: core, draft, a half-month session document or a year's body document. */

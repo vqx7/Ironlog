@@ -1,4 +1,4 @@
-/* The tips (r63, from the legacy script's 28-events.js). Any element with
+/* The tips. Any element with
    data-tip shows it: after a short hover with a mouse, on keyboard focus, or
    when held for about half a second on a touch screen. A hold never also
    fires the tap underneath. The small i buttons show their tip on a plain
@@ -95,7 +95,7 @@ export function tipLabels(root: Node): void {
   }
 }
 
-/** Adds the tips' listeners and gives the page's labels their i buttons, once, at start, where the legacy script added them. */
+/** Adds the tips' listeners and gives the page's labels their i buttons, once, at start. */
 export function tipsStart(): void {
   document.addEventListener('pointerover', e => {
     if (e.pointerType !== 'mouse') return;

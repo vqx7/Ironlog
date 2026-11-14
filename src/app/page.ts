@@ -1,5 +1,4 @@
-/* The page (r63, from the legacy script's 18-ui.js and 24-sheets.js): the
-   screen drawn into #view, the sheet over it in #modal, Back through both,
+/* The page: the screen drawn into #view, the sheet over it in #modal, Back through both,
    the menu button's save state, and the theme. The screens and the sheets
    import what they need from here; this module imports no screen and no
    sheet, since they import it (a circle, which the bundle would turn into a
@@ -35,7 +34,7 @@ export function setRoot(draw: () => void): void {
   root = draw;
 }
 
-/* A code bug inside a view used to leave a blank screen. Now the error is
+/* A code bug inside a view would leave a blank screen, so the error is
    logged and a recovery screen offers your data and a way back. */
 function renderCrash(e: unknown): void {
   let txt = '';
@@ -59,7 +58,7 @@ function renderCrash(e: unknown): void {
 
 /** Draws the page: the current tab, and the open sheet over it. */
 export function render(): void {
-  // No session, no rest timer or screen kept on: a session erased, restored over or finished on another phone left both running (r55, the audit).
+  // No session, no rest timer or screen kept on: a session erased, restored over or finished on another phone must not leave both running.
   if (!state.draft) {
     const t = document.getElementById('timer');
     if (t && !t.hidden) stopTimer();
@@ -74,8 +73,8 @@ export function render(): void {
   navSync();
 }
 
-/* Re-rendering used to replace #view wholesale, which blew away whatever the
-   user was typing in. A selector for the focused control is made first, then
+/* Re-rendering must not blow away whatever the user is typing in. A
+   selector for the focused control is made first, then
    focus and the caret are put back where they were. */
 /** A selector for an element: its id, or its tag with its data- attributes; null when it has neither. */
 function focusKey(el: Element | null): string | null {
@@ -91,7 +90,7 @@ export function rerenderKeepScroll(): void {
   const y = window.scrollY,
     el = document.activeElement,
     key = focusKey(el);
-  // The text as typed: "152." is 152 stored, and redrawn from the log it lost its point (r55, the audit).
+  // The text as typed: "152." is 152 stored, and redrawn from the log it would lose its point.
   const txt = el instanceof HTMLInputElement && el.type === 'text' ? el.value : null;
   const sel = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el : null;
   const ss = sel && typeof sel.selectionStart === 'number' ? sel.selectionStart : null;
@@ -139,8 +138,8 @@ export function applyTheme(): void {
 // cast: history.state is any in the browser's types; it is read as unknown and checked where it is used.
 const histState = (): unknown => history.state as unknown;
 
-/* The phone's Back gesture used to leave the app with a sheet open. Opening a
-   sheet adds one history entry, and Back closes the sheet instead. Closing
+/* The phone's Back gesture closes an open sheet rather than leave the app:
+   opening a sheet adds one history entry, and Back closes the sheet. Closing
    a sheet with its own buttons leaves that entry in place and the next sheet
    reuses it, rather than calling history.back(), whose delayed event could
    land on a sheet opened a moment later. */
@@ -181,7 +180,7 @@ function navSync(): void {
     // History is best effort in a frame.
   }
 }
-/** Back: closes the open sheet (one with something typed in it stays, as a tap outside it does, r55), or shows the tab of the entry it lands on. */
+/** Back: closes the open sheet (one with something typed in it stays, as a tap outside it does), or shows the tab of the entry it lands on. */
 export function pageBack(): void {
   if (ui.modal) {
     if (ui.modal.dirty) {
@@ -230,8 +229,9 @@ function kindOf<K extends ModalKind>(t: Sheets, m: ModalOf<K>): SheetKind<K> {
   return t[k];
 }
 
-/* Focus used to stay behind the overlay, so keyboard and screen-reader users
-   could tab through the page underneath a supposedly modal sheet. */
+/* Focus goes to the sheet, not left behind the overlay, so keyboard and
+   screen-reader users cannot tab through the page underneath a modal
+   sheet. */
 let modalReturn: Element | null = null;
 /** The open sheet's controls a Tab can reach, in order. */
 export function modalFocusables(): HTMLElement[] {
@@ -258,7 +258,7 @@ function renderModalBody(keep: boolean): void {
     el.hidden = true;
     return;
   }
-  // Every sheet is its template, kept in place when the open sheet is drawn again, so the field in use stays under the keyboard (r54, sheets.ts).
+  // Every sheet is its template, kept in place when the open sheet is drawn again, so the field in use stays under the keyboard (sheets.ts).
   sheetDraw(el, h, keep);
   const sh = el.querySelector('.sheet');
   if (sh) {
@@ -267,9 +267,9 @@ function renderModalBody(keep: boolean): void {
     if (hd && !sh.hasAttribute('aria-label')) sh.setAttribute('aria-label', hd.textContent || 'Dialog');
   }
 }
-/* Re-rendering a sheet used to rebuild it from the top: a tap on a muscle chip
-   halfway down the exercise editor threw the sheet back to its first line and
-   dropped the cursor. When the same sheet is redrawn, its scroll positions and
+/* Rebuilt from the top, a sheet redrawn after a tap on a muscle chip halfway
+   down the exercise editor would go back to its first line and drop the
+   cursor. When the same sheet is redrawn, its scroll positions and
    the focused field (with the caret) are put back. */
 /** Draws the open sheet, or hides the sheet layer when none is open. */
 export function renderModal(): void {
@@ -287,7 +287,7 @@ export function renderModal(): void {
   const ss = sel && typeof sel.selectionStart === 'number' ? sel.selectionStart : null,
     se = sel && typeof sel.selectionEnd === 'number' ? sel.selectionEnd : null;
   renderModalBody(same);
-  // The labels' i buttons now, not when the page's watcher adds them after this task: they change the sheet's height, so a scroll put back before them slipped (r54; at the bottom, 4 px).
+  // The labels' i buttons now, not when the page's watcher adds them after this task: they change the sheet's height, so a scroll put back before them slipped (at the bottom, 4 px).
   tipLabels(el);
   if (el.hidden || !ui.modal) {
     document.body.classList.remove('modal-open');
@@ -377,7 +377,7 @@ export function closeModal(): void {
     const k = kindOf(sheets, was);
     if (k.closed) k.closed(was);
   }
-  // A sheet open since yesterday leaves today's screen when it closes (drawnBeforeToday, r59).
+  // A sheet open since yesterday leaves today's screen when it closes (drawnBeforeToday).
   if (drawnBeforeToday()) rerenderKeepScroll();
   const r = modalReturn;
   modalReturn = null;
@@ -424,7 +424,7 @@ export function ask(title: string, body: string, ok: string, alt: string): Promi
 /* ---------- the menu button ---------- */
 
 let saveShown = '';
-/* The menu button's dot and words (r27; the reading is saveStateNow, in
+/* The menu button's dot and words (the reading is saveStateNow, in
    storage.ts): drawn in place on every save and sync change. */
 /** Draws the menu button's save state; an open menu follows it, redrawn only when it changed, so a tap is never lost to a redraw. */
 export function setSaveState(): void {

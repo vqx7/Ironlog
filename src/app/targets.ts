@@ -1,6 +1,5 @@
-/* The weekly set targets fitted to a routine on a first run (r29, V:
-   "targets that can actually be met"; moved from the legacy script's
-   15-analytics.js in r63). When a new person picks a ready-made routine,
+/* The weekly set targets fitted to a routine on a first run (V:
+   "targets that can actually be met"). When a new person picks a ready-made routine,
    imports their log or loads the demo, and the weekly targets are still the
    defaults, each muscle's minimum comes down to what the routine plans
    (whole sets), so following it is on target. The maximums and the
@@ -21,9 +20,9 @@ import { state } from './store';
    device's state at start, when every target is exactly what a first-run
    pick of the routine in use, the starter or the old default gives, record
    those floors. Any target that differs (typed) leaves it alone. Not in
-   normalize, which also runs inside the sync comparison and Undo. Since r65
-   (the r63 audit's A-5) it only reads the log, and the start records what
-   it gives inside `act`, as every change is made. */
+   normalize, which also runs inside the sync comparison and Undo. It only
+   reads the log, and the start records what it gives inside `act`, as every
+   change is made. */
 /** The floors of a fit made before r44 that are not recorded yet, or null. */
 export function oldFloors(): Record<string, number> | null {
   const s = state.settings;
@@ -55,9 +54,9 @@ export function fitTargets(
 ): boolean {
   if (!R) return false;
   const b = state.settings.bands;
-  /* Still the defaults, or the defaults fitted to the starter routine (r31:
-     Log a workout now fits them to the starter, and an import or a pick
-     after that left targets measured against a routine no longer used). */
+  /* Still the defaults, or the defaults fitted to the starter routine (Log a
+     workout now fits them to the starter, and an import or a pick after that
+     must not leave targets measured against a routine no longer used). */
   const same = (x: Readonly<Record<string, readonly number[]>>) =>
     MK.every(m => b[m] && b[m][0] === x[m][0] && b[m][1] === x[m][1]);
   /* The defaults are the profile's: with focus muscles set, those
@@ -75,17 +74,16 @@ export function fitTargets(
   if (!same(D) && ![starterRoutine(), defaultRoutine()].some(r => same(fitOf(r)))) return false;
   const was = JSON.stringify(MK.map(m => b[m]));
   for (const m of MK) b[m] = [D[m][0], D[m][1]];
-  /* actual (a routine made from an import, r31): no minimum above what the
+  /* actual (a routine made from an import): no minimum above what the
      log itself averaged on a muscle the routine trains. A cycle's planned
      sets a week and the weeks as trained never match exactly (2 days
-     alternating, 3 sessions a week, plans 2.8), and the review saw "Abs
-     below target, add a set to Plank" measured against the lifter's own
-     program. A focus muscle keeps its raised target: raising it is
+     alternating, 3 sessions a week, plans 2.8), and "Abs below target, add a set
+     to Plank" would be measured against the lifter's own program. A focus muscle keeps its raised target: raising it is
      the point of the focus. Each floor is recorded (settings.bandsFit), so a
      later focus change knows which targets are the app's; a focus muscle's
      floor is recorded too, though not applied while it is a focus, so
      taking the focus off later brings it to the plan. The
-     floors are fitFloors' (profile.ts, r54), the one rule the refit of an
+     floors are fitFloors' (profile.ts), the one rule the refit of an
      older fit reads too. */
   const fit = fitFloors(R, actual);
   for (const m of MK) {

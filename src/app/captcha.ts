@@ -1,4 +1,4 @@
-/* The sign-up bot check (r66, PENDING 378, V: "stop bots signing up"):
+/* The sign-up bot check (V: "stop bots signing up"):
    Cloudflare Turnstile, which Supabase Auth checks once its CAPTCHA
    protection is on. Off until V sets TURNSTILE_SITE_KEY in config.ts
    (OWNER.md, E1): with it empty this module loads nothing and draws nothing,

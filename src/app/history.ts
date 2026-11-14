@@ -17,15 +17,15 @@ import { isWork } from './formulas';
 import { TRASH_DAYS, TRASH_MAX, sessCmp } from './records';
 import { CHK_Q, chkWord } from './coach';
 import { addDays, today, weekStart, WEEK_DAYS } from './util';
-import { EX, IDX, U, exName, sessionWords, toD } from './live';
+import { EX, IDX, U, exName, loadLabel, sessionWords, toD } from './live';
 import { loadNote } from './loads';
 import { normalize } from './normalize';
 import { HIST_PAGE, setState, state, ui } from './store';
-import { distShow, distU, fmtK, noLog, setStr } from './display';
+import { distShow, distU, fmtK, noLog, setShort, setStr } from './display';
 import { markup, pageTitle, placed, section, tabFoot } from './view';
 import { PR_ICON } from './icons';
 import type { Field } from './view';
-import type { CardioEntry, Session } from './types';
+import type { CardioEntry, LoggedSet, Session } from './types';
 import type { ExerciseLike, Pr } from './model';
 import { UNDO_DAYS } from './storage';
 import { confirmBox, render, rerenderKeepScroll } from './page';
@@ -41,6 +41,25 @@ function histUnits(ex: ExerciseLike): TemplateResult | typeof nothing {
   if (n) bits.push(n);
   if (ex.perSide) bits.push(ex.timed ? 'seconds per side' : 'reps per side');
   return bits.length ? html` <span class="muted">(${bits.join(', ')})</span>` : nothing;
+}
+
+/* What the app asked of each set as it was ticked (391), listed under what was done when Settings asks for it (off
+   by default, V 2026-11-12: kept, not in the way): a load and reps as a set reads, or the one of them asked. */
+/** The asked line of an exercise in History, or nothing: the setting off, or no set kept what was asked. */
+function askedLine(ex: ExerciseLike, sets: readonly LoggedSet[]): TemplateResult | typeof nothing {
+  if (!state.settings.askedShow) return nothing;
+  const said = sets.flatMap(x =>
+    !x.sg
+      ? []
+      : [
+          x.sg[0] != null && x.sg[1] != null
+            ? setShort(ex, x.sg[0], x.sg[1])
+            : x.sg[1] != null
+              ? `${x.sg[1]} ${ex.timed ? 's' : 'reps'}`
+              : loadLabel(ex, x.sg[0] ?? 0)
+        ]
+  );
+  return said.length ? html`<br /><span class="muted">Asked: ${said.join(', ')}</span>` : nothing;
 }
 
 const IMPORT_TIP = 'From notes, a spreadsheet, or an export from another app. You check it before anything is saved.';
@@ -206,9 +225,9 @@ ${more}`;
   });
 }
 
-/* A session's counted PRs (2.33, V 2026-11-07): a gold cup beside its name,
+/* A session's counted PRs (V 2026-11-07): a gold cup beside its name,
    the count and the words in its name and its tip, so History reads no more
-   text than before (tests/acceptance.js holds its text to r12's); an opened
+   text (tests/acceptance.js holds its text); an opened
    session marks each lift that had one. */
 /** The gold cup on a History row with `n` counted PRs. */
 function prBadge(n: number): TemplateResult {
@@ -226,7 +245,7 @@ function sessionRow(
   prs: readonly Pr[]
 ): TemplateResult {
   const open = ui.histOpen === s.id;
-  // A deload's name ends " (deload)", so beside its tag it read "(deload) deload" (r54, the audit): the tag says it once.
+  // A deload's name ends " (deload)", so beside its tag it would read "(deload) deload": the tag says it once.
   const name = s.deload ? String(s.dayName || 'Session').replace(/ \(deload\)$/, '') : s.dayName || 'Session';
   const tm = (perDay[s.date] || 0) > 1 && sessTm(s) ? `, ${sessTm(s)}` : '';
   const filtered = ui.histEx && !open ? s.ex.find(x => x.exId === ui.histEx) : undefined;
@@ -262,7 +281,7 @@ function sessionPanel(
   }${s.ex.map(b => {
     const ex = EX(b.exId);
     const pr = prs.some(p => p.exId === b.exId);
-    return html`<p class=${pr ? 'small u-m0-0-6 hpr' : 'small u-m0-0-6'}><b>${ex.name}</b>${pr ? html` <span class="tag gold">PR</span>` : nothing}${wTag(s, b.exId)}: ${b.sets.map(x => setStr(ex, x)).join(', ')}${histUnits(ex)}${
+    return html`<p class=${pr ? 'small u-m0-0-6 hpr' : 'small u-m0-0-6'}><b>${ex.name}</b>${pr ? html` <span class="tag gold">PR</span>` : nothing}${wTag(s, b.exId)}: ${b.sets.map(x => setStr(ex, x)).join(', ')}${histUnits(ex)}${askedLine(ex, b.sets)}${
       b.note ? html`<br /><span class="muted">${b.note}</span>` : nothing
     }</p>${picStripSaved(b.pics)}
 `;
@@ -317,7 +336,7 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     );
   },
   /* Recently deleted is already deleted, so one item goes on a tap with Undo;
-     all of them ask first (r34.1, V: no way to clear it). */
+     all of them ask first (V: no way to clear it). */
   trashDel(t) {
     const x = state.trash.find(y => y.id === t.dataset.id && y.kind === t.dataset.k);
     if (!x) return;
@@ -372,7 +391,7 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       { undo: true }
     );
     render();
-    // Its own Undo step, like every change: before, Restore kept none, so the delete's step stayed on top and Undo read "Nothing to undo there".
+    // Its own Undo step, like every change, so the delete's step is not left on top for Undo to read "Nothing to undo there".
     toast(`${x.kind === 'session' ? 'Session' : x.kind === 'cardio' ? 'Cardio entry' : 'Routine'} restored`, true);
   },
   histDel(t) {

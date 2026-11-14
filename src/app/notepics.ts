@@ -102,9 +102,8 @@ export function picChange(t: EventTarget | null): boolean {
       }
       /* The new picture goes after every id the note names, those this phone
          does not hold among them (a backup restored, another phone): each may
-         name a picture held elsewhere, so none is ever taken off to make room
-         (the review of r66: a tab that had not read the other's pictures cut
-         one). Room is counted by the pictures shown here. */
+         name a picture held elsewhere, so none is ever taken off to make room,
+         by a tab that has not read the other's pictures say. Room is counted by the pictures shown here. */
       act(
         () => {
           setAt(at2, [...idsAt(at2), r.id]);

@@ -52,6 +52,15 @@ const IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Ap
   ok(!(await A.ev(() => document.getElementById('installBar'))) && !!(await A.ev(() => document.getElementById('acctBar'))), 'Not now hides it, and the account line stays');
   await A.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); document.querySelectorAll('#view details').forEach(x => x.open = true); });
   ok(!!(await A.ev(() => document.querySelector('#installPanel [data-act="install"]'))), 'Settings > Your data still offers Install');
+  // NEW-140 (V, 2026-11-12): Not now says what it hid and where it stays, from where the lifter is, and that path leads there.
+  await A.ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+  await A.ev(() => { const L = window.__ironlog; localStorage.removeItem(L.KEY + '.installLater'); L.render(); }); await A.page.waitForTimeout(150);
+  await A.page.click('#installBar [data-act="installLater"]'); await A.page.waitForTimeout(150);
+  const said = await A.ev(() => document.getElementById('toast').innerText.replace(/\s+/g, ' ').trim());
+  ok(said.startsWith('Hidden. Install stays in the menu at the top right, under Your data and backups.'), 'Not now says what it hid and where it stays: the menu at the top right, under Your data and backups (NEW-140)', said);
+  await A.page.click('#saveState'); await A.page.waitForTimeout(250);
+  await A.page.click('#modal [data-act="goBackup"]'); await A.page.waitForTimeout(300);
+  ok(!!(await A.ev(() => document.querySelector('#installPanel [data-act="install"]'))), 'and the path it names leads there: the menu > Your data and backups offers Install');
 
   // iPhone Safari: the Share > Add to Home Screen guide.
   const I = await dev({ ua: IPHONE_SAFARI });
@@ -64,6 +73,9 @@ const IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Ap
   ok(t.length < 260, 'the sheet is short: ' + t.length + ' characters', t);
   ok(await I.ev(() => { const b = document.querySelector('#installBar [data-act="install"]'); return b.textContent === 'Add to Home Screen' && b.getBoundingClientRect().right <= document.documentElement.clientWidth; }), 'the Today button reads Add to Home Screen and fits');
   await I.page.click('#modal [data-act="mClose"]');
+  await I.page.click('#installBar [data-act="installLater"]'); await I.page.waitForTimeout(150);
+  const saidI = await I.ev(() => document.getElementById('toast').innerText.replace(/\s+/g, ' ').trim());
+  ok(saidI.startsWith('Hidden. Add to Home Screen stays in the menu at the top right, under Your data and backups.'), 'iPhone: Not now names Add to Home Screen, as its button does (NEW-140)', saidI);
   // iOS 26 Safari: Share is behind ⋯ beside the address (the default compact bar).
   const I26 = await dev({ ua: IPHONE_SAFARI_26 });
   await I26.page.click('#installBar [data-act="install"]'); await I26.page.waitForTimeout(200);

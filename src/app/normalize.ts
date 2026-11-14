@@ -1,5 +1,4 @@
-/* The log as every build reads it (phase 4, r56; moved from the legacy
-   script's storage part, changing nothing it does): normalize() rebuilds a
+/* The log as every build reads it: normalize() rebuilds a
    whole save from what it can trust, field by field, so a backup, a cloud
    document or a half-written save never reaches the screens in a shape they
    cannot draw. Sync rests on it writing the same bytes for the same data on
@@ -10,6 +9,7 @@
    live here too, since the log's fresh state is made from them. */
 
 import type {
+  Asked,
   Bodyweight,
   CardioEntry,
   Day,
@@ -120,7 +120,7 @@ declare global {
 
 /* An object's own fields, spread as `{...v}` spreads any value (a string's
    letters, an array's entries, nothing for a number, a boolean or null), so a
-   field that arrives as the wrong type is read as it was before the move.
+   field that arrives as the wrong type is read as every build reads it.
    Spreading is defined for every value; TypeScript asks for an object, hence
    the cast. */
 const spread = (v: unknown): Rec => ({ ...(v as Rec) });
@@ -134,7 +134,7 @@ const JK_SET: ReadonlySet<string> = new Set(JK);
 const isMuscle = (v: unknown): boolean => typeof v === 'string' && MK_SET.has(v);
 const isMuscleOrJoint = (v: unknown): boolean => typeof v === 'string' && (MK_SET.has(v) || JK_SET.has(v));
 const NEW_V5: ReadonlySet<string> = new Set(NEW_MUSCLES_V5);
-/** A cardio kind, and when it sat against the lifting: one of the lists' keys (r56.1; until then any key Object has, and a list, passed). */
+/** A cardio kind, and when it sat against the lifting: one of the lists' keys (not any key an Object has, nor a list). */
 const CARDIO_KINDS: ReadonlySet<string> = new Set(CARDIO.map(c => c[0]));
 const CARDIO_WHENS: ReadonlySet<string> = new Set(CWHEN.map(c => c[0]));
 /** A time a Date can hold: a whole number of milliseconds after 1970, within what Date represents. */
@@ -174,8 +174,8 @@ function jumpOf(p: Rec): { jump?: number } {
 
 /* Fields a newer build adds to a record, kept as they came. Every record
    is rebuilt from the fields this build knows, so a phone on an older build
-   used to drop anything newer whenever it loaded or synced the log: an r37
-   phone wiped a lift goal set on r38. A field this build does not know is now
+   would drop anything newer whenever it loaded or synced the log (an r37
+   phone wiped a lift goal set on r38). A field this build does not know is
    kept, untouched and never read. Only plain JSON data passes, under a name
    that cannot reach Object's prototype, at most EXTRA_KEYS fields and
    EXTRA_MAX characters of them (names included) per record, so a hostile
@@ -185,9 +185,9 @@ function jumpOf(p: Rec): { jump?: number } {
    With anything kept, the record takes the key order it came in: sync
    documents are compared as written, key order included, so a newer build
    that puts its field mid-record and this one that put it last would rewrite
-   each other's copy on every pull (found by the r43 review, the same loop as
-   r21 and r28's settings). A record with nothing unknown comes out exactly as
-   before, so its fingerprint and the sync are unchanged. */
+   each other's copy on every pull, as settings once did. A record with
+   nothing unknown comes out as if none of this were here, so its fingerprint
+   and the sync are unchanged. */
 /** A record with the unknown fields its source carried kept (above); `keepExtra.n` counts the fields kept, for the suites. */
 export function keepExtra<O extends object>(src: unknown, out: O, known?: ReadonlySet<string>): O {
   keepExtra.n += extraInto(src, out, known);
@@ -195,8 +195,7 @@ export function keepExtra<O extends object>(src: unknown, out: O, known?: Readon
 }
 keepExtra.n = 0;
 /** The work of keepExtra, counted for its caller: the unknown fields of `src` written into `out` within the limits,
-    and how many were kept. The workout in progress and the log itself use it uncounted: before 2.28
-    their unknown fields passed through whole, and the count the suites read is of records' fields. */
+    and how many were kept. The workout in progress and the log itself use it uncounted: the count the suites read is of records' fields. */
 function extraInto(src: unknown, out: object, known?: ReadonlySet<string>): number {
   const S = rec(src);
   if (!S || Array.isArray(src)) return 0;
@@ -325,34 +324,41 @@ export function cleanSess(raw: unknown, si: number): Session {
                   rr && rr.length === 2 && rr.every(v => Number.isFinite(Number(v)) && Number(v) > 0)
                     ? pair(Math.round(Number(rr[0])), Math.round(Number(rr[1])))
                     : null,
-                // Marked trimmed (Short on time, under half its sets) until r53. Neither written nor read since r54 (V's one rule reads the log); kept, here and in drafts, so a record saved before keeps its shape and hash.
+                // Marked trimmed (Short on time, under half its sets) by builds up to r53, and no longer written or read (V's one rule reads the log); kept, here and in drafts, so a record saved with it keeps its shape and hash.
                 cut: b.cut === true ? true : undefined,
-                // One exercise made lighter mid-session (r31, Make it lighter): out of trends and targets, the rest of the session counts.
+                // One exercise made lighter mid-session (Make it lighter): out of trends and targets, the rest of the session counts.
                 light: b.light === true ? true : undefined,
                 // Held for a flagged injury, its key: left out of the stall test. Absent unless held, so earlier records keep their hash.
                 ...(typeof b.inj === 'string' && isMuscleOrJoint(b.inj) ? { inj: b.inj } : {}),
                 sets: (arr(b.sets) || []).flatMap((x0): LoggedSet[] => {
                   const x = rec(x0);
                   if (!x) return [];
+                  const sg = askedOf(x);
                   return [
-                    keepExtra(x0, {
-                      // Below 0 only for assisted sets (bodyweight minus the machine's help).
-                      w: clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
-                      r: Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
-                      rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
-                      warm: !!x.warm,
-                      drop: !!x.drop && !x.warm,
-                      cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
-                      // The row's own id, last, where a build before it kept the unknown field.
-                      ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
-                    })
+                    keepExtra(
+                      x0,
+                      {
+                        // Below 0 only for assisted sets (bodyweight minus the machine's help).
+                        w: clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
+                        r: Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
+                        rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
+                        warm: !!x.warm,
+                        drop: !!x.drop && !x.warm,
+                        cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
+                        // The row's own id, last, where a build before it kept the unknown field.
+                        ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {}),
+                        // What the app asked of it, after the id, where a build before 2.61 keeps it.
+                        ...(sg ? { sg } : {})
+                      },
+                      KNOWN_SETF
+                    )
                   ];
                 }),
                 // The sets its routine's plan gave it when saved, last, as Finish writes it; absent unless recorded, so older records keep their hash.
                 ...(typeof b.ps === 'number' && Number.isInteger(b.ps) && b.ps >= 1 && b.ps <= LIMITS.sets
                   ? { ps: b.ps }
                   : {}),
-                // Done at a new machine or gym (r61, 343 7), last, as Finish writes it; absent unless marked, so older records keep their hash.
+                // Done at a new machine or gym, last, as Finish writes it; absent unless marked, so older records keep their hash.
                 ...(b.nw === true ? { nw: true as const } : {}),
                 // The pictures on its note, by id, last; absent unless there are any, so older records keep their hash.
                 ...picsField(b.pics)
@@ -364,8 +370,8 @@ export function cleanSess(raw: unknown, si: number): Session {
         .filter(b => b.sets.length),
       // When the session started: orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold.
       t: isTime(Math.round(t)) ? Math.round(t) : undefined,
-      // The sessions a week its routine planned when saved (r55, pwOf); absent unless recorded, so older records keep their hash.
-      // At most seven, as every build before reads it: a week of more is not recorded (pwOf, the review of r68).
+      // The sessions a week its routine planned when saved (pwOf); absent unless recorded, so older records keep their hash.
+      // At most seven, as every build before reads it: a week of more is not recorded (pwOf).
       pw: typeof ss.pw === 'number' && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= WEEK_DAYS ? ss.pw : undefined,
       // The pictures on the workout's notes, by id; absent unless there are any, so older records keep their shape and hash.
       ...picsField(ss.pics),
@@ -378,7 +384,7 @@ export function cleanSess(raw: unknown, si: number): Session {
 
 /* ---------- the routine a new install starts with ---------- */
 
-/* The routine a new install starts with (V, decision 114, r29): Upper /
+/* The routine a new install starts with (V, decision 114): Upper /
    lower, 4 days, the all-round choice, so someone who taps Log a workout now
    or Import instead of picking is not dropped into the six-day high-volume
    split. Saves that already have routines keep theirs. The suites built on
@@ -408,7 +414,7 @@ function starterSigBefore(): string {
 }
 
 /* A ready-made routine removed exactly as shipped can be added again from
-   New from a template, so it is not kept in Recently deleted (r34.1, V: the
+   New from a template, so it is not kept in Recently deleted (V: the
    same templates sat there for every new user with no way to clear them). */
 let tplCache: Set<string> | null = null;
 /** The signatures of every ready-made routine, made once. */
@@ -425,7 +431,7 @@ function tplSigs(): Set<string> {
 /** Whether a routine (from the log, or a copy in Recently deleted) is a ready-made one exactly as shipped. */
 export function plainTemplate(r: unknown): boolean {
   try {
-    // routineSig reads the fields a routine has; a record that lacks them throws into the catch, as before the move (the cast).
+    // routineSig reads the fields a routine has; a record that lacks them throws into the catch (the cast).
     return !!r && tplSigs().has(routineSig(r as Parameters<typeof routineSig>[0]));
   } catch (e) {
     // Not a routine at all, so not a ready-made one.
@@ -505,8 +511,8 @@ const muscles = (l: readonly unknown[]): MuscleKey[] =>
   });
 
 /* The settings, merged over the defaults (a save from before a setting
-   existed reads it as the app behaved then, not as a new install starts,
-   r28: auto-mark off, nothing hidden, the code's own section order; only a
+   existed reads it as the app behaved then, not as a new install starts:
+   auto-mark off, nothing hidden, the code's own section order; only a
    new device or Erase everything, s the fresh state itself, gets the
    new-install layout and auto-mark on). Each field is worked out from the
    merged copy and written back into it, the copy's own order kept: a field
@@ -595,24 +601,26 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     timerSound: st.timerSound !== false,
     timerCompact: st.timerCompact === true,
     autoDone: st.autoDone === true,
-    // Optional settings added in r20 stay undefined unless set.
+    // Optional settings stay undefined unless set.
     ...(accent ? { accent } : {}),
     ...(st.rirAsk === true ? { rirAsk: true } : {}),
+    // History lists what the app asked of each set; absent unless on.
+    ...(st.askedShow === true ? { askedShow: true } : {}),
     // Count RIR 4 to 5 as half a set: absent unless on.
     ...(st.rirHalf === true ? { rirHalf: true } : {}),
-    // r34: adjusting the next sets is on unless turned off; only false is stored, so older saves hash as before.
+    // Adjusting the next sets is on unless turned off; only false is stored, so older saves hash as before.
     ...(st.autoAdj === false ? { autoAdj: false } : {}),
-    // r34: weigh-in reminder in days (0 off); absent is every BW_EVERY_DEFAULT days.
+    // The weigh-in reminder in days (0 off); absent is every BW_EVERY_DEFAULT days.
     ...(bwEvery !== undefined ? { bwEvery } : {}),
-    // 2.37: This block vs last's length; absent is BLOCK_WEEKS_DEFAULT, so saves without it hash as before.
+    // This block vs last's length; absent is BLOCK_WEEKS_DEFAULT, so saves without it hash as before.
     ...(blockWeeks !== undefined ? { blockWeeks } : {}),
-    // r34: Today opens on a blank session; absent is the plan's day.
+    // Today opens on a blank session; absent is the plan's day.
     ...(st.todayStart === 'free' ? { todayStart: 'free' } : {}),
-    // r34: rest weeks, week-start dates; the last two years kept.
+    // Rest weeks, week-start dates; the last two years kept.
     ...(restWeeks.length ? { restWeeks } : {}),
-    // r33: effort in half points or RPE; absent is whole RIR, so older saves hash as before.
+    // Effort in half points or RPE; absent is whole RIR, so older saves hash as before.
     ...(rirScale ? { rirScale } : {}),
-    // r25: suggested loads show grey until typed; 'fill' puts them in the rows as before. Unset means grey (V's choice).
+    // Suggested loads show grey until typed; 'fill' puts them in the rows. Unset means grey (V's choice).
     ...(st.loadFill === 'fill' ? { loadFill: 'fill' } : {}),
     ...(userName ? { userName } : {}),
     homeFolded: hf ? strings(hf, k => oneOf(k, ['map', 'body', 'week', 'tiles', 'coach', 'injuries'])) : [],
@@ -620,8 +628,8 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     secOrder,
     folds: fl ? strings(fl, k => safeKey(k) && k.length < LIMITS.foldKey).slice(0, LIMITS.folds) : [],
     wakeLock: st.wakeLock === true,
-    // Small change plates: absent unless on, so saves without it hash as before. Its toggle went with the
-    // plates line in 2.42; a log that has it keeps it, and a build before reads it as it did.
+    // Small change plates: absent unless on, so saves without it hash as before. Nothing sets it now (its
+    // toggle went with the plates line); a log that has it keeps it for builds before 2.42, which read it.
     ...(st.smallPlates === true ? { smallPlates: true } : {}),
     // Your gym and the profile: absent unless set, rebuilt in one key order.
     ...(gym ? { gym } : {}),
@@ -654,6 +662,7 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
 const OPTIONAL_SETTINGS = [
   'accent',
   'rirAsk',
+  'askedShow',
   'rirHalf',
   'autoAdj',
   'bwEvery',
@@ -682,7 +691,7 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     bar = numOr(e.barKg, NaN);
   const gw = g ? numOr(g.w, NaN) : NaN,
     gr = g ? Math.round(numOr(g.r, NaN)) : NaN;
-  // The main muscle as read (an unknown one as chest), and the helpers without it, so a second read changes nothing (r72, the review's R72-7).
+  // The main muscle as read (an unknown one as chest), and the helpers without it, so a second read changes nothing.
   const primary = typeof e.primary === 'string' && isMuscle(e.primary) ? e.primary : 'chest';
   return keepExtra(e0, {
     id: fixId(e.id),
@@ -793,22 +802,45 @@ function cleanRoutine(r0: unknown, ri: number): Routine {
   return keepExtra(r0, { id: rid, name: typeof r.name === 'string' ? r.name : 'Routine', schedule, days });
 }
 
+/* What the app asked of a set (391): a load within the loads a set may have and whole reps within the reps it may
+   have, each null when none was asked; nothing when neither was, when the value is anything else, or on a warm-up, a
+   drop set or a RIR check, which are asked nothing. */
+/** A set's asked load and reps as kept, or null. */
+function askedOf(x: Rec): Asked | null {
+  if (x.warm || x.drop || x.cal) return null;
+  const a = arr(x.sg);
+  if (!a || a.length !== 2) return null;
+  const [w0, r0] = a;
+  const w = w0 == null ? null : isNum(w0) ? clampN(w0, LOAD_MIN, LOAD_MAX, 0) : undefined;
+  const r = r0 == null ? null : isNum(r0) ? Math.round(clampN(r0, 0, LIMITS.reps, 0)) : undefined;
+  return w === undefined || r === undefined || (w == null && r == null) ? null : [w, r];
+}
+/** A set's fields this build reads, so one it drops as unreadable is not kept as a field it does not know. */
+const KNOWN_SETF: ReadonlySet<string> = new Set(['sg']);
+
 /** A set row of the workout in progress as normalize reads it, or none when it is not one. */
 function cleanDraftSet(x0: unknown): DraftSet[] {
   const x = rec(x0);
   if (!x) return [];
+  const sg = askedOf(x);
   return [
-    keepExtra(x0, {
-      w: x.w == null ? null : clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
-      r: x.r == null || x.r === '' ? null : Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
-      rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
-      warm: !!x.warm,
-      drop: !!x.drop && !x.warm,
-      done: !!x.done,
-      cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
-      // The row's own id, last, where a build before it kept the unknown field.
-      ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
-    })
+    keepExtra(
+      x0,
+      {
+        w: x.w == null ? null : clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
+        r: x.r == null || x.r === '' ? null : Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
+        rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
+        warm: !!x.warm,
+        drop: !!x.drop && !x.warm,
+        done: !!x.done,
+        cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
+        // The row's own id, last, where a build before it kept the unknown field.
+        ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {}),
+        // What the app asked of it once ticked (391), after the id.
+        ...(sg ? { sg } : {})
+      },
+      KNOWN_SETF
+    )
   ];
 }
 
@@ -899,7 +931,7 @@ function cleanDraftBlock(b0: unknown): DraftBlock[] {
             ? { date: ln.date, text: ln.text }
             : null,
         sets: (arr(b.sets) || []).flatMap(cleanDraftSet),
-        // Done at a new machine or gym (r61, 343 7), last, where the menu adds it; absent unless marked.
+        // Done at a new machine or gym, last, where the menu adds it; absent unless marked.
         ...(b.nw === true ? { nw: true as const } : {}),
         // The pictures on its note, by id, last; absent unless there are any.
         ...picsField(b.pics)
@@ -922,9 +954,9 @@ const DRAFT_KNOWN: ReadonlySet<string> = new Set(['pics', 'equip', 'begunAt', 'f
 /* The workout in progress, cleaned: called only on one whose exercises are a
    list and whose date is a date (normalize), rebuilt field by field in place,
    as every build since r56 has rebuilt it. The logger reads plan, lastR and
-   every set field directly; the old check only confirmed that ex was a list,
-   so an imported backup carrying a half-written draft threw on first paint
-   with no way back. The fields are written in the order the in-place rebuild
+   every set field directly, and a check that only confirmed that ex was a
+   list let an imported backup carrying a half-written draft throw on first
+   paint with no way back. The fields are written in the order the in-place rebuild
    wrote them, so a field the draft lacks is added where it always was, and
    one it has (a field a newer build saved among them) stays where it
    stands: the draft keeps the key order and the very object it came as. */
@@ -936,19 +968,18 @@ function cleanDraft(d: Rec, date: string): DraftLike {
   // The workout's pictures: kept when valid, else the field goes, so a draft without any keeps its shape.
   const pics = picIds(d.pics);
   const equip = equipList(d.equip);
-  /* The fields this build knows, worked out first; then the draft is cleaned in place, as before 2.28 (its own fields
-     keep their order and the object stays the one given), but a field it does not know is kept only within a
-     record's limits (2.28, 2.27-F2: every unknown field was kept at any size, and a damaged backup could fill the
-     draft past what a sync document holds). An invalid pictures field goes, not kept as unknown. */
+  /* The fields this build knows, worked out first; then the draft is cleaned in place (its own fields keep
+     their order and the object stays the one given), but a field it does not know is kept only within a
+     record's limits (kept at any size, a damaged backup's could fill the draft past what a sync document holds). An invalid pictures field goes, not kept as unknown. */
   const out = {
     date,
     id: typeof d.id === 'string' ? fixId(d.id) : did('x', { date: d.date, dayName: d.dayName }, 0),
     dayIdx: clampN(d.dayIdx, 0, MAX_DAYS - 1, 0),
     dayId: typeof d.dayId === 'string' ? fixId(d.dayId) : null,
     startedAt: isTime(startedAt) ? startedAt : null,
-    // When the lifting began (NEW-129), once it has; absent before, so a workout's record is unchanged until then.
+    // When the lifting began, once it has; absent before, so a workout's record is unchanged until then.
     ...(isTime(begunAt) ? { begunAt } : {}),
-    // The workout closed on this phone just before this one was started here (NEW-134); absent otherwise.
+    // The workout closed on this phone just before this one was started here; absent otherwise.
     ...(typeof d.follows === 'string' && d.follows ? { follows: fixId(d.follows) } : {}),
     durMin: Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null,
     dayName: typeof d.dayName === 'string' ? d.dayName : 'Session',
@@ -964,8 +995,8 @@ function cleanDraft(d: Rec, date: string): DraftLike {
     free: d.free === true ? true : undefined,
     // Started as its day's second workout.
     part: d.part === 2 ? (2 as const) : undefined,
-    // Finish's two questions once answered (sets left, ramp-ups), kept as they came: until 2.28 they passed through
-    // with every field of the draft, and a 2.27 phone writes them, so a 2.28 phone keeps them alike (tests/storage-sync.js, S-12, moved from r56-1c).
+    // Finish's two questions once answered (sets left, ramp-ups), kept as they came: builds up to 2.27 passed them
+    // through with every field of the draft and write them still, so every build keeps them alike (tests/storage-sync.js, S-12).
     _leftAsked: typeof d._leftAsked === 'boolean' ? d._leftAsked : undefined,
     _rampAsked: typeof d._rampAsked === 'boolean' ? d._rampAsked : undefined,
     // A past workout typed in after the fact: no rest timer, no clock, no check-in.
@@ -1044,7 +1075,7 @@ function cleanExercises(listed: unknown[], s: Rec, removedLib: readonly string[]
 /* Entries past Recently deleted's days are hidden by this phone's date where they are shown and dropped when
    something is deleted (act.ts trashShown and toTrash), not here: normalize reads every log the same way on every
    phone (it runs in the sync's comparison too), and by the phone's own date one in Los Angeles kept a deletion that
-   one in Tokyo, a day ahead at that instant, dropped (REV12-T2). */
+   one in Tokyo, a day ahead at that instant, dropped. */
 /** Recently deleted as a save holds it: each entry checked, the oldest past the limits dropped. */
 function cleanTrash(listed: unknown[]): Trashed[] {
   const trash: Trashed[] = listed
@@ -1085,7 +1116,7 @@ function reviveEdited(
     try {
       return !ok(data) || canon(clean(data, 0)) === canon(cur);
     } catch (e) {
-      // A copy that cannot be cleaned is read as the same record, so the deletion stands, as before the move.
+      // A copy that cannot be cleaned is read as the same record, so the deletion stands.
       return true;
     }
   };
@@ -1133,8 +1164,8 @@ function reviveEdited(
 }
 
 /* One id, two different copies: a session moved to a date in another
-   half-month on one device while it was edited on another. Both used to be
-   kept and counted twice. Keep the copy with more logged sets (then the
+   half-month on one device while it was edited on another. Both kept, they
+   would be counted twice. Keep the copy with more logged sets (then the
    later date) and put the other in Recently deleted under its own id, so
    nothing is lost. Every device resolves it the same way. */
 function dedupe<T extends { id: string; date: string }>(
@@ -1161,10 +1192,10 @@ function dedupe<T extends { id: string; date: string }>(
   for (const x of extra) {
     const id = fixId(x.id + '-dup' + hashStr(canon(x)).slice(0, DUP_HASH));
     /* Dated by the copy's own date, not the phone's: every phone puts the same entry in Recently deleted, so one log
-       reads the same on each and the two copies never clash (the review of 2.53, REV13-12: a phone in Los Angeles and
-       one in Tokyo dated it a day apart). Marked as a copy put aside (`clash`), which Recently deleted keeps until the
-       lifter restores or deletes it: by its own date alone, a session from weeks back was hidden at once and dropped by
-       the next deletion, its edit with it (REV15-1). Put where Recently deleted's order puts it, newest first, after
+       reads the same on each and the two copies never clash (by its own date, a phone in Los Angeles and one in
+       Tokyo would date it a day apart). Marked as a copy put aside (`clash`), which Recently deleted keeps until the
+       lifter restores or deletes it: by its own date alone, a session from weeks back would be hidden at once and
+       dropped by the next deletion, its edit with it. Put where Recently deleted's order puts it, newest first, after
        the entries of its date, and the list held to its limits, so reading the log again gives the same list
        (cleanTrash). */
     if (trash.some(t => t.id === id)) continue;
@@ -1242,28 +1273,28 @@ function cleanInjuries(listed: unknown[]): Injury[] {
 function unknownFields(s: Rec, f: Fresh): Rec {
   /* The fields this build does not know, kept as they came and after its own,
      as a spread of the save over the fresh log puts them. Former bests
-     belonged to the Comeback tracker, removed at the owner's request in r19
-     together with any that were saved. Older saves, backups and cloud copies
+     belonged to the Comeback tracker, which V had removed, with any that were
+     saved. Older saves, backups and cloud copies
      still carry them, so they are dropped here on every load, import and
      merge. */
   const rest: Rec = { ...s };
   for (const k of Object.keys(f)) delete rest[k];
   delete rest.priors;
-  // Kept within the limits a record's unknown fields have (2.28, 2.27-F2: at any size before).
+  // Kept within the limits a record's unknown fields have.
   const extra: Rec = {};
   extraInto(rest, extra);
   return extra;
 }
 
-/* Every field below is validated rather than trusted. The old version only
-   checked that five keys were arrays, so a backup containing sessions:[{}]
-   imported cleanly and then threw inside IDX() on the first render, leaving
-   the app unusable with no obvious way back. normalize() runs on both load
+/* Every field below is validated rather than trusted. Checking only that five
+   keys are arrays let a backup containing sessions:[{}] import cleanly and
+   then throw inside IDX() on the first render, leaving the app unusable with
+   no obvious way back. normalize() runs on both load
    and import, so this also protects against a half-written localStorage
    record. Anything unusable is dropped; the count is reported to the caller
    via normalize.dropped. Each record is built against its type, so the
-   compiler checks every field a reader relies on (r61, PENDING 351: until
-   then the log was typed as the State once, at the end, by a cast). */
+   compiler checks every field a reader relies on, rather than one cast to the
+   State at the end. */
 /** A save read as every build reads it (above); `normalize.dropped` counts the damaged records the last call left out. */
 export function normalize(input: unknown): State {
   const f = freshState();
@@ -1271,7 +1302,7 @@ export function normalize(input: unknown): State {
   // A new device and Erase everything both start here, fully normalized:
   // the raw fresh state lacks fields (section order, folds) every view reads.
   const s: Rec = rec(input) || f;
-  // drop() is one record; drop(n) is n, and drop(0) is none (it used to count 1).
+  // drop() is one record; drop(n) is n, and drop(0) is none, not 1.
   const drop = (n?: number): void => {
     normalize.dropped += n == null ? 1 : Math.max(0, n);
   };
@@ -1293,8 +1324,8 @@ export function normalize(input: unknown): State {
     })
     .map((r0, ri) => cleanRoutine(r0, ri));
   /* A save with no routine left gets the one a new install starts with, read
-     as any routine is (r61: added as made until then, its items without the
-     superset field the next load gave them). */
+     as any routine is (added as made, its items would lack the superset
+     field the next load gives them). */
   const routines: Routine[] = kept.length ? kept : [cleanRoutine(starterRoutine(), 0)];
 
   let trash = cleanTrash(list('trash'));
@@ -1318,11 +1349,11 @@ export function normalize(input: unknown): State {
   drop(mBefore - measurements.length);
 
   /* The draft is rendered by the logger, which reads plan, lastR and every set
-     field directly. The old check only confirmed that ex was an array, so an
-     imported backup carrying a half-written draft threw on first paint with no
-     way back. Rebuilt field by field instead (cleanDraft); anything else is
-     no workout in progress (r61: a false, a 0 or an empty string no build
-     writes was kept as it came until then). */
+     field directly. A check that only confirmed ex was an array let an imported
+     backup carrying a half-written draft throw on first paint with no way
+     back, so it is rebuilt field by field (cleanDraft); anything else is no
+     workout in progress (a false, a 0 or an empty string, which no build
+     writes, too). */
   const d = rec(raw.draft);
   const draft = d && Array.isArray(d.ex) && typeof d.date === 'string' && isDate(d.date) ? cleanDraft(d, d.date) : null;
   const dw = raw.deloadWeek;

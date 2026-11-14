@@ -1,15 +1,11 @@
-/* The session screen (r60, phase 5's last screen; ARCHITECTURE.md, Phase 5
-   design): Today with a workout open, drawn by lit-html as src/21-pick-session.js
-   drew it (viewLogger): the sets, the grey reps, the effort strip, minus and
+/* The session screen (ARCHITECTURE.md): Today with a workout open, drawn by
+   lit-html: the sets, the grey reps, the effort strip, minus and
    plus, the folds, the check-in and the cardio cards. Its taps are worktaps.ts
    and its fields workfields.ts; what a set and a tick change is
    worksets.ts. Every change to the session in progress goes through `act`,
    which leaves the caches for a change to the session alone (nothing they hold
    is read from it). The screen is drawn again after each change and lit-html
-   changes only what differs, where the legacy code patched the page by hand
-   (afterSet, the checkmark's classes, the progress bar, the grey numbers, the
-   PR mark, the effort strip put in after a row); the
-   numbers a row shows are read from the session each draw, so the screen
+   changes only what differs, nothing patched by hand; the numbers a row shows are read from the session each draw, so the screen
    cannot say what the log does not. */
 
 import { bwWarn } from './bwnudge';
@@ -80,7 +76,7 @@ const CARDIO_ADD_GAP_PX = 10;
 /* lit-html moves an exercise's nodes, or a row's, with it when the order
    changes (a reorder, a warm-up added above), so the field being typed in
    stays on its set: each is drawn under its own id (the block's bid, the
-   row's rid, r46 and r56.1), or, for one made before those ids, under one
+   row's rid), or, for one made before those ids, under one
    given it for this visit. A repeated id (none is made twice) falls back to
    the place, which is what lit-html would use without ids. */
 const visitKeys = new WeakMap<object, string>();
@@ -126,7 +122,7 @@ function keysOf<X extends object>(xs: readonly X[], id: (x: X) => string | undef
    logged per side. Changing an exercise's setting does not convert past
    sets. The column's heading says it short (LB each, +LB, Stack, Help LB),
    and the reps column says /side when reps are per side. Each heading shows
-   the words in full on a tap (r69, V, 2026-11-03: the line of chips under
+   the words in full on a tap (V, 2026-11-03: the line of chips under
    the exercise said again what the headings say, on every exercise). */
 // The longer words for a load mode; a mode not listed falls to the equipment's words.
 const LOAD_TIPS: Readonly<Record<string, string>> = {
@@ -171,8 +167,8 @@ function adjLine(b: DraftBlock, bi: number): Part {
 
 /* ---------- the screen ---------- */
 
-/* RIR used to be a free-text field, then a native picker; it is picked from a
-   strip of 0 to 5 under the set: the cell shows the value, a tap on it
+/* RIR is picked from a strip of 0 to 5 under the set, not typed or chosen in
+   a native picker: the cell shows the value, a tap on it
    opens the strip, and ticking a set with no RIR opens it by itself when
    asked for in Settings > Effort. Whole RIR is one row of 0 to 5. Half points
    and RPE are a grid under the label: whole numbers on top, each half between
@@ -216,10 +212,9 @@ function rirStrip(bi: number, si: number, cur: string): TemplateResult {
 }
 
 /* The check-in: three taps; how they line up with the sessions is Stats'
-   Readiness and performance (stats.ts). It sat at the top of the session as
-   a fold until r69, when it moved behind the Check-in button beside the date
-   (V, 2026-11-03: the top of the session was text before the first
-   exercise); answered the same way and saved on the session the same way.
+   Readiness and performance (stats.ts). It is behind the Check-in button beside
+   the date, not a fold at the top of the session (V, 2026-11-03: the top of
+   the session was text before the first exercise), and saved on the session.
    What it offers stays at the top of the session, with the two changes
    that answer it: two or more low answers, a lighter session first; one, a
    note to keep a rep more in reserve. Already made lighter: said instead of
@@ -265,8 +260,8 @@ export function readyCard(d: Draft, low: number): Part {
 }
 
 /* Bodyweight, asked once in the first session with a bodyweight lift when
-   none is logged (r32, from the third review: pull-ups and leg raises added
-   nothing to weight lifted, and had no estimate, with no weigh-in). Saved
+   none is logged (with no weigh-in, pull-ups and leg raises add nothing to
+   weight lifted, and have no estimate). Saved
    like a weigh-in on Today; Not now is kept per device. */
 function bwAskCard(d: Draft): Part {
   if (d.editingId || d.past || state.bodyweights.length || !d.ex.some(b => EX(b.exId).bw)) return '';
@@ -300,7 +295,7 @@ function cardioDraftCard(d: Draft): TemplateResult {
   });
 }
 
-/* A session's exercises move by dragging this handle too (V, r29), alongside
+/* A session's exercises move by dragging this handle too (V), alongside
    the ⋯ menu's Move up and Move down, which do the same thing (bUp, bDown). */
 /** The drag handle of exercise bi, named for its lift. */
 export function bgrip(bi: number, name: string): TemplateResult {
@@ -326,9 +321,9 @@ function setRow(
   const p = b.plan;
   const g = greyR(b, si);
   const ph = g == null ? '' : String(g);
-  const pr = rowPR(b, si, d.date);
+  const pr = rowPR(b, si, d);
   const wn = b.sets.slice(0, si + 1).filter(x => !x.warm && !x.drop).length;
-  // Last time's set for this row, beside this time's (r44, V): working sets only, by their order.
+  // Last time's set for this row, beside this time's (V): working sets only, by their order.
   const lt = s.warm || s.drop ? '' : lastCell(b, wn - 1, dupB);
   const gw = s.w == null ? greyW(b, si) : null;
   /* A drop set sits under the set it drops from: set in, marked ↳
@@ -340,10 +335,10 @@ function setRow(
         <button class=${'cbtn ' + (s.done ? 'on' : '')} aria-label=${`Set ${si + 1} ${s.done && isMissed(s) ? 'missed' : 'done'}`} aria-pressed=${s.done ? 'true' : 'false'} data-act="sDone" data-b=${bi} data-s=${si}>✓</button></div>${stripIs(bi, si) ? rirStrip(bi, si, s.rir == null ? '' : String(s.rir)) : nothing}`;
 }
 
-/* Minus and plus (2.37, ST-6; V, 2026-11-08: "stepping by the lift's load step and one rep"). The set row has no room
+/* Minus and plus (V, 2026-11-08: "stepping by the lift's load step and one rep"). The set row has no room
    for four more 44 px buttons (254 px wide at 320, its load field 48), so they sit in one strip under the sets, where a
-   tick moves nothing above them, and change the set you are on (stepAt, NEW-100), which the strip names, on the lift
-   you are on only (liftsOn, NEW-98), not under every lift. Drawn as two accent pills side by side, each with the number
+   tick moves nothing above them, and change the set you are on (stepAt), which the strip names, on the lift
+   you are on only (liftsOn), not under every lift. Drawn as two accent pills side by side, each with the number
    it changes (V, 2026-11-09, after the Stitch drafts' steppers: the whole pill in the one accent, ends included),
    compact beside the set's name. An assisted lift's field takes the help, so only its reps step. Not in an
    edit, where every set is done. */
@@ -353,8 +348,8 @@ function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part 
   if (!s || d.editingId || !liftsOn(d).has(b)) return '';
   const wn = b.sets.slice(0, si + 1).filter(x => !x.warm && !x.drop).length;
   const name = s.warm ? 'Warm-up' : s.drop ? 'Drop set' : `Set ${wn}`;
-  /* The set's name only: its row's tick already says it is done (V, 2026-11-09 21:41, NEW-105: no ", done"). It is the
-     one mark of the set minus and plus change; its number is not also drawn in the accent (V, 22:32, NEW-106). */
+  /* The set's name only: its row's tick already says it is done (V, 2026-11-09 21:41: no ", done"). It is the
+     one mark of the set minus and plus change; its number is not also drawn in the accent (V, 22:32). */
   const said = name;
   const w = effW(b, si) ?? 0;
   const r = +(s.r ?? greyR(b, si) ?? 0) || 0;
@@ -387,7 +382,7 @@ function stepStrip(d: Draft, b: DraftBlock, bi: number, ex: ExerciseLike): Part 
   }${pill('r', r ? String(r) : '–', ex.timed ? 'sec' : 'reps', r <= 0, r >= LIMITS.reps, ex.timed ? 'fewer seconds' : 'one rep fewer', ex.timed ? 'more seconds' : 'one rep more')}</div></div>`;
 }
 
-/* Before the first tick the line keeps its space, blank (NEW-64, picture A of 2026-11-06): it appeared on that tick and
+/* Before the first tick the line keeps its space, blank (picture A of 2026-11-06): it appeared on that tick and
    pushed the sets 23 px down under the finger, so the next tap could land on the row above the one meant. */
 function progressLine(b: DraftBlock, bi: number): Part {
   const p = blockProgress(b);
@@ -415,7 +410,7 @@ function blockPart(
   const nr = !rirShow(ex);
   const side = sideTip(ex);
   const dupB = lastDup(d, bi);
-  /* A superset is drawn as one group (r66, PENDING 375; V picked "Grouped and
+  /* A superset is drawn as one group (V picked "Grouped and
      attached"): its exercises side by side in one box, A1 and A2 on their
      names, the group's letter and its rest said once at the top. */
   const grp = ss ? d.ex.filter(x => x.plan.ss === p.ss) : [];
@@ -424,9 +419,9 @@ function blockPart(
   const ssLbl = ss ? html`<span class="sslbl">${ss}${gk + 1}</span> ` : '';
   if (isFolded(d, b, bi)) {
     const ws = b.sets.filter(x => !x.warm);
-    const prs = b.sets.filter((x, si) => !x.warm && rowPR(b, si, d.date)).length;
+    const prs = b.sets.filter((x, si) => !x.warm && rowPR(b, si, d)).length;
     const done = blockDone(b);
-    // Not done (folded by hand, NEW-101): the sets it has done of its sets, and an empty ring where the tick goes.
+    // Not done (folded by hand): the sets it has done of its sets, and an empty ring where the tick goes.
     const work = b.sets.filter(x => !x.warm && !x.drop);
     const line = done
       ? ws.map(x => setShort(ex, x.w, x.r) + missedTag(x)).join(', ')
@@ -482,8 +477,8 @@ const LOG_HELP =
   'W marks a warm-up (kept, never analysed); tap it again for ↳, a drop set (counts as work and volume, never as a PR or target). + Drop adds one under the last set ticked, with no rest before it; a warm-up is added from the ⋯ menu. Drag an exercise by its ⠿ to change the order. A superset is one box, A1 and A2: after a set of A1 the screen moves to A2, and the rest timer starts after the last exercise of the group. Timed holds log seconds in the Sec column. The date can be changed to log a past session.';
 
 /* When a workout began, in the header: its time on the day it began, and
-   "yesterday" or its date after that (r64, the r63 audit's P-S4-8: left open
-   overnight, "started 9:00 AM" read as this morning). It is saved on the day
+   "yesterday" or its date after that (left open overnight, "started 9:00
+   AM" would read as this morning). It is saved on the day
    it began either way. */
 /** The header's words for when a workout began. */
 function startedWords(t: number): string {
@@ -501,12 +496,12 @@ export function viewWorkout(d: Draft): TemplateResult {
   const left = leftMin(d);
   const sp = sessProgress(d);
   const calIdx = d.editingId ? -1 : calDueIdx(d);
-  /* The bodyweight line, once a session: on the first bodyweight lift still open (r69, V: on every one it read as a
+  /* The bodyweight line, once a session: on the first bodyweight lift still open (V: on every one it read as a
      wall of text). In a saved session being edited too: there it was the only place that said it, the note in a
-     message having gone (REV11-2). */
+     message having gone. */
   const bwAt = d.ex.findIndex((b, bi) => !!EX(b.exId).bw && !isFolded(d, b, bi));
   const letters = ssLetters(d.ex.map(b => b.plan));
-  /* A workout in progress not begun yet (NEW-129): set up ahead, nothing ticked or entered. Begun, it began at begunAt,
+  /* A workout in progress not begun yet: set up ahead, nothing ticked or entered. Begun, it began at begunAt,
      or, begun on a build that keeps no begunAt, when it was opened, as that build reads it. */
   const begun = begunIn(d);
   const notYet = !d.past && !d.editingId && !begun;
@@ -518,11 +513,11 @@ export function viewWorkout(d: Draft): TemplateResult {
       : began
         ? `started ${startedWords(began)}`
         : '';
-  /* The sets done are the bar's to say once it shows (r69, V, 2026-11-03:
+  /* The sets done are the bar's to say once it shows (V, 2026-11-03:
      "0 sets done" beside "0 of 19" said it twice), so the line keeps when the
      workout began and the minutes left; with no sets to count it says the
-     count as before, and before the workout has started, only that (no set can be done yet). The bar names itself
-     to a screen reader, which read the count from this line until then. */
+     count, and before the workout has started, only that (no set can be done yet). The bar names itself to a screen
+     reader. */
   const meta = sp.n
     ? html`${when ? when.charAt(0).toUpperCase() + when.slice(1) : ''}<span id="sessLeft">${left > 0 ? `${when ? ' · ' : ''}${estMin(left)} left` : ''}</span>`
     : notYet
@@ -533,7 +528,7 @@ export function viewWorkout(d: Draft): TemplateResult {
       ? html`<div class="sprog"><div class="band" role="progressbar" aria-label="Sets done" aria-valuemin="0" aria-valuemax=${sp.n} aria-valuenow=${sp.k} aria-valuetext=${`${sp.k} of ${sp.n} sets done`}><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%;--pct:${sp.pct}`}></div></div><span id="sessOf" aria-hidden="true">${sp.k} of ${sp.n}</span></div>`
       : ''
   }
-  <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d.past || d.editingId ? html`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d.durMin ? String(d.durMin) : '')} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : nothing}${d.past ? '' : html`<button class="btn sm" data-act="chkOpen" aria-label=${chkSum(d) ? `Check-in: ${chkSum(d)}` : 'Check-in, optional'}>Check-in</button>`}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}<button class="btn sm" data-act="bwOpen" data-date=${d.date} data-tip="Log or update your weigh-in without leaving the workout">Bodyweight</button><button class="btn sm" data-act="wkAway" data-tip="Everything is saved as you go. Today shows the workout to resume.">Save and leave</button></div></div></div>
+  <div class="row lh-row"><input type="date" data-bind="draftDate" .value=${fieldValue(d.date)} max=${today()} aria-label="Session date" data-tip="Change to log a past session">${d.past || d.editingId ? html`<input type="text" inputmode="numeric" class="minf" data-bind="draftMin" .value=${fieldValue(d.durMin ? String(d.durMin) : '')} placeholder="Minutes" aria-label="Minutes the workout took" data-tip="How long the workout took. Optional." enterkeyhint="done">` : nothing}${d.past ? '' : html`<button class="btn sm" data-act="chkOpen" aria-label=${chkSum(d) ? `Check-in: ${chkSum(d)}` : 'Check-in, optional'}>Check-in</button>`}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}<button class="btn sm" data-act="bwOpen" data-date=${d.date} data-tip="Log or update your weigh-in without leaving the workout">Bodyweight</button><button class="btn sm" data-act="wkAway" data-tip="Everything is saved as you go. Today shows the workout to resume.">Save for later</button></div></div></div>
   ${howText('log', (state.settings.rirMode === 'off' ? 'RIR is switched off in Settings, so every working set counts as hard. ' : LOG_HELP_ON) + LOG_HELP + (d.past ? ' Quick entry: no rest timer, and a set counts as done once its reps are typed.' : state.settings.autoDone ? ' Auto-mark is on: sets tick themselves when you leave the reps field.' : ''))}
   ${
     d.free
@@ -554,11 +549,10 @@ export function viewWorkout(d: Draft): TemplateResult {
 
 /* ---------- drawing it again ---------- */
 
-/* What a full draw of the page puts back as the legacy page's fresh markup
-   did (the host calls this before it draws the session): the effort strip
-   closed and a fold waiting for its
+/* What a full draw of the page puts back (the host calls this before it
+   draws the session): the effort strip closed and a fold waiting for its
    moment done now. A draw of the session in place (redraw, below) keeps
-   them, as the legacy page's patches did. */
+   them. */
 /** Puts back what a full draw of the page resets on the session screen. */
 export function workoutFullDraw(): void {
   W.needAt = null;

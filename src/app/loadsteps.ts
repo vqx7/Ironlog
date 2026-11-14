@@ -1,4 +1,4 @@
-/* The steps a load moves in (CL-1, split from engine.ts): a lift's own step, its equipment's, the gym's racks,
+/* The steps a load moves in: a lift's own step, its equipment's, the gym's racks,
    plates and stacks, the grid every suggestion snaps to and the move of a suggestion onto it, and the loads above and
    below one, for lighter loads and minus and plus. Each function that reads the log, the date or a cache takes the
    model first (model.ts). */
@@ -27,7 +27,7 @@ import { isNum, EPS, EPS_SAME, MILLIONTHS } from './util';
 import { LIGHTER_LOAD, jumpCap, jumpPct, rtfAt, e1At } from './formulas';
 import { RACK, loadMode, noE1, rackKind } from './library';
 import { bwRefLoadIn } from './setread';
-/** Plates: a load within this many kilograms of a load the plates make is that load, at the least (2.34; a thousandth of a step before). */
+/** Plates: a load within this many kilograms of a load the plates make is that load, at the least (a thousandth of a step before). */
 const PLATE_TOL_MIN = 1e-3;
 /** A load is off the unit's step when its distance from the nearest step is more than this share of one: 220.462 from 100 kg is, 185 on a 10 lb step is not. */
 const OFF_STEP = 0.02;
@@ -38,25 +38,23 @@ const RACK_FIT = 0.01;
 /** The newest sessions of a lift its rack spacing is read from. */
 const RACK_READ_N = 12;
 
-/* Loads logged in the other unit (r32, second check: after kg to lb,
-   100 kg read 220.5 lb and the next was "225.5", 16 kg dumbbells "35.3 per
-   dumbbell"): when the last working load is off the step in the unit on
+/* Loads logged in the other unit (after kg to lb, 100 kg reads 220.5 lb,
+   and the next is not "225.5", nor 16 kg dumbbells "35.3 per dumbbell"): when the last working load is off the step in the unit on
    screen, the suggestion is put on the nearest step (down for a lighter
    day), and the words follow. Loads already on the step are untouched, so
    a stack with odd pins keeps its whole steps. On a rack read from its
-   spacing the result then goes onto the rack (gridSnap, r54), as on a rack
+   spacing the result then goes onto the rack (gridSnap), as on a rack
    from Your gym. A lighter day, a deload or a return after a break (down)
-   never comes out heavier than last time's load (r64, the r63 audit's R-2:
-   20 kg logged on the bar, shown in lb, was raised to the 45 lb bar the app
-   assumes, so a Lighter day asked more than last time); when nothing
+   never comes out heavier than last time's load (20 kg logged on the bar,
+   shown in lb, is not raised to the 45 lb bar the app assumes for a Lighter
+   day to ask more than last time); when nothing
    lighter is loadable, last time's own load, which was lifted, is the one
    asked. */
 /** A suggestion put on the nearest step in the unit on screen (onto the rack where the lift has one); going down, never heavier than last time's load. */
 export function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
   const plates = res && res.w != null && !ex.timed && !!plateGridIn(M, ex, plan);
   const out = plates ? plateSnap(M, ex, plan, res, down) : gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
-  /* A lighter day, a deload or a return is never above last time's load (r64,
-     R-2), but never under the bar either (CLAUDE.md, Numbers): the empty 20 kg
+  /* A lighter day, a deload or a return is never above last time's load, but never under the bar either (CLAUDE.md, Numbers): the empty 20 kg
      bar shown in lb is the 45 lb bar, a Lighter day too. */
   if (
     !down ||
@@ -81,19 +79,18 @@ function plateSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down
   const w = res.w,
     top = res.top;
   if (w == null) return res;
-  // The loads Your gym's plates make, from the one list (loadsForIn, 2.31, RC-1), as every other rule reads them.
+  // The loads Your gym's plates make, from the one list (loadsForIn), as every other rule reads them.
   const Ls = loadsForIn(M, ex, plan, top ?? null),
     t = rackTolIn(M);
   const dn = Ls.floor(w) ?? w;
   /* Within the shown digit of a load the plates make, the suggestion is that
-     load itself (PENDING 333, the review of the fix): kept as the number
-     typed (52.486 kg for 52.5), the plate line under it came out a plate
-     short and the next step was taken from it, so it never reached the next
-     plates. The number on screen is the same, so nothing more is said. */
+     load itself: kept as the number typed (52.486 kg for
+     52.5), the plate line under it would come out a plate short and the next
+     step be taken from it, so it would never reach the next plates. The number on screen is the same, so nothing more is said. */
   if (Math.abs(dn - w) <= t) return Math.abs(dn - w) < EPS ? res : swapWIn(M, ex, res, dn);
   /* Up from last time: the heaviest load the plates make not past what was asked, else the next one above last time,
-     but never past the heaviest load the lift has (capOfIn; the review of 2.31: with 102 kg the most there is, 100
-     kg stepped to 105 and was called the heaviest available; 2.30 did the same at 145 lb with 150 the most). */
+     but never past the heaviest load the lift has (capOfIn: with 102 kg the most there is, 100 kg does not step to 105
+     called the heaviest available). */
   const cap = capOfIn(M, ex, plan, top),
     up = top != null ? Ls.above(top) : null,
     upOk = up != null && (cap == null || up <= cap + t);
@@ -110,12 +107,12 @@ function unitSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?
   return moveIn(M, ex, plan, res, nw, `the nearest load in ${UIn(M)}`);
 }
 
-/* The spacing of the loads that exist for a lift, in kg: its load step as it was before 367 (its own, the plan's, Your
-   gym's rack, plates or stack, the rack read from its loads, else the unit's default, 5 lb or 2.5 kg). 367's step by
-   equipment (10 lb on a bar) is how far a load goes up, not which loads exist (V, 2026-11-03, NEW-46: on the 10 lb
-   grid 100 kg shown in lb, 220.5, was held at 225 and stepped to 235, 225 lb shown in kg was held at 100, and a first
-   front squat's 93.7 kg start was rounded down to 90). Taking the finer of 367's step and the unit's default, as
-   first fixed, also took 5 lb over a kg gym's 2.5 kg plates (r67 against r68 on the wide histories). */
+/* The spacing of the loads that exist for a lift, in kg: its own step, the plan's, Your gym's rack,
+   plates or stack, the rack read from its loads, else the unit's default, 5 lb or 2.5 kg. The step by equipment (10
+   lb on a bar) is how far a load goes up, not which loads exist (V, 2026-11-03: on a 10 lb grid 100 kg shown in lb,
+   220.5, was held at 225 and stepped to 235, 225 lb shown in kg was held at 100, and a first front squat's 93.7 kg
+   start was rounded down to 90). The finer of that step and the unit's default would take 5 lb over a kg gym's 2.5
+   kg plates. */
 /** The spacing of the loads that exist for a lift, in kg: which loads exist, not how far a load goes up. */
 export function loadGridIn(M: Model, ex: ExerciseLike, plan?: Pick<Plan, 'inc'> | null): number {
   return stepOfIn(M, ex, plan, undefined, false);
@@ -141,26 +138,26 @@ export function unitGridIn(
   const sl = inUnitIn(M, incOfIn(M, ex, plan));
   if (!(sl > 0)) return null;
   /* Only a step set in the unit on screen makes loads that exist in it: the unit's own,
-     or one typed in it (10 lb on a lb plan, whose loads around a 20 kg bar are the 45 lb bar and 10 lb steps, r64's
-     R-2). A step set in the other unit (5 kg dumbbells seen in lb, a 10 lb curl bar seen in kg) makes its loads from
+     or one typed in it (10 lb on a lb plan, whose loads around a 20 kg bar are the 45 lb bar and 10 lb steps). A
+     step set in the other unit (5 kg dumbbells seen in lb, a 10 lb curl bar seen in kg) makes its loads from
      the last one, so they are shown converted: counted on that step from 0 in the unit on screen, 37.5 kg dumbbells
-     on a 5 kg step were "88.2 lb ... the nearest load in lb", which no rack has, and a 65 lb curl on a 10 lb step
-     read 27.2 kg, which is 60 lb. */
+     on a 5 kg step would be "88.2 lb ... the nearest load in lb", which no rack has, and a 65 lb curl on a 10 lb step
+     would read 27.2 kg, which is 60 lb. */
   const st = inUnitIn(M, loadGridIn(M, ex, plan));
   if (!onStep(st, TYPED_STEP)) return null;
   /* The loads the step makes are counted from the bar on a lift on the full
-     bar typed as the total (loadFloorIn), from 0 on any other (r64, the r63
-     audit's R-2): counted from 0, a 10 lb step made 40 and 50 around a 20 kg
-     bar (44.1 lb), so 50 was called "the nearest load in lb" where the 45
-     lb bar and 10 lb steps make 45, 55 and so on. */
+     bar typed as the total (loadFloorIn), from 0 on any other: counted
+     from 0, a 10 lb step would make 40 and 50 around a 20 kg bar (44.1 lb),
+     and call 50 "the nearest load in lb" where the 45 lb bar and 10 lb steps
+     make 45, 55 and so on. */
   const o = inUnitIn(M, loadFloorIn(M, ex));
   const at = (k: number): number => o + k * st;
   /* Off the step and not a number anyone types (220.462 from 100 kg): a
      custom step (185 lb on a 10 lb step) or microplates (101.25) are left as
      they are. Typed is exact in the unit on screen, as a number typed in it
-     reads back (r54, from the audit V asked for: within a tenth of 0.05, one
-     load in five converted from the other unit passed for typed, so 42.5 kg
-     shown as 93.7 lb was told to add 5 lb, to 98.7). */
+     reads back (within a tenth of 0.05, one load in five converted from the
+     other unit would pass for typed, and 42.5 kg shown as 93.7 lb be told to
+     add 5 lb, to 98.7). */
   const off = (v: number): boolean => {
     const k = (inUnitIn(M, v) - o) / st;
     return Math.abs(k - Math.round(k)) > OFF_STEP;
@@ -172,10 +169,10 @@ export function unitGridIn(
      empty bar on a full-bar lift typed as the total, else one step on a
      loaded lift), and, but on those lighter days, never a tenth or more under
      the load last done (LIGHTER_LOAD): the next session would read as lighter
-     and set no target, so the same snap came back each time. The step above
-     then. From the review of r54's first fix, which rounded down under every
-     target of reps: 2 kg dumbbells read in lb went to 0 lb, the 20 kg bar to
-     40 lb, and 4 kg to 5 lb, three sessions running. */
+     and set no target, so the same snap would come back each time. The step
+     above then. Rounded down under every target of reps, 2 kg dumbbells read
+     in lb went to 0 lb, the 20 kg bar to 40 lb, and 4 kg to 5 lb, three
+     sessions running. */
   const x = inUnitIn(M, w);
   const lo = at(Math.floor((x - o) / st + EPS));
   const loaded = !ex.bw && !ex.assist;
@@ -186,14 +183,13 @@ export function unitGridIn(
   /* Up from last time, never past both what was asked and the cap on one
      session's rise (jumpCap, on the load as moved: a bodyweight lift's share
      of its bodyweight with it) while a step under that is still above last
-     time (r64, the r63 audit's R-2: 57.5 kg on its own 10 lb step, 126.8 lb,
-     was rounded from 136.8 to 140, 10.4% up; a 44 kg kettlebell, 97 lb, from
-     107 to 110). With no step between last time and the cap, the step past
+     time (not 57.5 kg on its own 10 lb step, 126.8 lb, rounded from 136.8 to
+     140, 10.4% up; nor a 44 kg kettlebell, 97 lb, from 107 to 110). With no step between last time and the cap, the step past
      it: one real step at least, as at the top of the range. Asked for a whole
      step (whole: the step at the top of the range), the step under is taken
      only when it is a whole step above last time: a sliver of one (49.5 lb
      to 50 on a 10 lb step, "add 0.5 lb") is none, so the whole step stays
-     and the top of the range builds reps for it first (V, 2026-10-27, NEW-6). */
+     and the top of the range builds reps for it first (V, 2026-10-27). */
   const bwK = bwRefLoadIn(M, ex);
   const tp = inUnitIn(M, top);
   if (!down && !ex.assist && !(ex.bw && !(bwK > 0)) && d > tp + EPS) {
@@ -214,9 +210,9 @@ export function unitGridIn(
 function moveIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, nw: number, why: string): Suggestion {
   if (res.w == null || Math.abs(nw - res.w) < EPS) return res;
   const out = swapWIn(M, ex, res, nw);
-  /* A heavier load under a target of reps (r54, from the audit V asked for:
-     12.5 kg dumbbells read in lb went to 30 lb, 9% heavier, with the reps to
-     beat unchanged, and the lifter fell short): those reps were done lighter,
+  /* A heavier load under a target of reps (12.5 kg dumbbells read in lb
+     going to 30 lb, 9% heavier): with the reps to beat unchanged, the lifter
+     falls short. Those reps were done lighter,
      so the target is that load for the bottom of the range in every set, as
      after any step up. */
   /* Unless the move costs under BIG_STEP_REPS by the rep formula: a load the unit on screen cannot
@@ -239,8 +235,8 @@ function moveIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, nw: num
     };
   }
   /* The step the words name moves with the load, so they add up to what is
-     shown (r54, from the audit: "add 5 lb" to 93.7 lb beside 100 lb, and "take
-     5 lb of help off" beside help that moved by another amount). With no
+     shown (not "add 5 lb" to 93.7 lb beside 100 lb, nor "take 5 lb of help
+     off" beside help that moved by another amount). With no
      load before (a first session), no step is named. */
   if (res.top == null) return out;
   const was = fmtWIn(M, res.w - res.top),
@@ -257,7 +253,7 @@ function moveIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, nw: num
 /* Whether a load moved up from `w` to `nw` costs under BIG_STEP_REPS at the most reps a set did, by the rep formula
    (fitE's, reps read to failure): what makes it the same load for a target of reps. Never on a lift with no estimate,
    or a bodyweight lift with no weigh-in, which have no total load to read it against: those keep the bottom of the
-   range, as before 2.29. */
+   range. */
 function smallMoveIn(M: Model, ex: ExerciseLike, w: number, nw: number, rs: readonly number[]): boolean {
   const bwK = bwRefLoadIn(M, ex);
   if (noE1(ex) || (ex.bw && !(bwK > 0)) || !rs.length) return false;
@@ -267,8 +263,8 @@ function smallMoveIn(M: Model, ex: ExerciseLike, w: number, nw: number, rs: read
   return at != null && r - at < BIG_STEP_REPS;
 }
 
-/* `at`: the load the step is taken from. Only a rack from Your gym needs it
-   (r33): its spacing can change along the rack (2.5 lb steps to 25, then 5). */
+/* `at`: the load the step is taken from. Only a rack from Your gym needs it:
+   its spacing can change along the rack (2.5 lb steps to 25, then 5). */
 /** A lift's load step in kg: its own, the plan's, the gym's rack or plates, or the rack read from its loads. */
 export function incOfIn(
   M: Model,
@@ -292,7 +288,7 @@ function stepOfIn(
     const L = gymRackIn(M, ex, plan);
     if (L) return rackGapIn(M, L, at);
     /* On a rack read from its spacing (rackGridIn) or Your gym's plates: the spacing, or from a load off them the way to
-       the next one up, as every rule that moves a load reads it (loadsForIn, 2.31, RC-1). */
+       the next one up, as every rule that moves a load reads it (loadsForIn). */
     const gr = rackGridIn(M, ex, plan, at);
     if (gr) {
       if (at != null && at > 0 && offGrid(M, ex, plan, at)) {
@@ -339,8 +335,8 @@ function rackSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Su
   return listSnapIn(M, ex, plan, res);
 }
 
-/* One rounding onto a rack, Your gym's or one read from its spacing (2.30, RC-1; before, rackSnapIn and gridSnap, the
-   same rule written twice): a load on the rack, or last time's load (it was lifted), is left; up from last time, the
+/* One rounding onto a rack, Your gym's or one read from its spacing, one rule rather than two to drift
+   apart: a load on the rack, or last time's load (it was lifted), is left; up from last time, the
    heaviest weight not past what was asked that is still above last time, else the next one above last time; anything
    else, the heaviest not past it, at least the lightest. */
 function listSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Suggestion {
@@ -359,8 +355,8 @@ function listSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Su
   return nw == null || Math.abs(nw - w) < EPS ? res : swapWIn(M, ex, res, nw);
 }
 
-/* Dumbbells and kettlebells come in fixed weights (r32, from the third
-   review: 12 kg dumbbells went to 14.5, which no rack has). With no step set
+/* Dumbbells and kettlebells come in fixed weights (12 kg dumbbells do not
+   go to 14.5, which no rack has). With no step set
    on the exercise, the step is the largest common rack spacing that every
    load logged on it fits: 12, 14 and 16 kg is a rack in 2 kg steps, 12.5 and
    15 one in 2.5. Loads that fit both (10, 20) keep the default. Steps are
@@ -368,29 +364,29 @@ function listSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Su
    It is asked only of a dumbbell or kettlebell lift (its callers test
    rackKind first), as the ! after rackKind says, and toD of a number is a
    number, as the other ! says. With nothing logged yet, the load in hand
-   (`at`) is the one weight of the rack known, read the same way (r54, from
-   the audit V asked for: a first session's 6 kg dumbbells, done easily, were
-   stepped to 8.5 kg, which no rack has, and the 6, 8.5 and 11 kg logged after
-   read as a rack in 0.5 kg steps for the next twelve sessions); it is not
+   (`at`) is the one weight of the rack known, read the same way (else a
+   first session's 6 kg dumbbells, done easily, are stepped to 8.5 kg, which no
+   rack has, and the 6, 8.5 and 11 kg logged after read as a rack in 0.5 kg
+   steps for the next twelve sessions); it is not
    kept, since it changes with the load. The loads are read from the newest
-   session back (PENDING 338 C): an older session whose loads fit only a
+   session back: an older session whose loads fit only a
    spacing that is no step of the newer ones' (2.5 kg against 2) is another
    gym's, so it and those before it are left out. Read all together, 22.5,
    25 and 27.5 kg, then 24 at a gym in 2 kg steps, fit only 0.5 kg, and 24.5
-   was asked, which neither rack has. A spacing that is a step of the other
+   would be asked, which neither rack has. A spacing that is a step of the other
    (5 lb and 2.5) is the same rack read more closely. */
 export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): number | null {
   const I = IDXIn(M);
   I._rack = I._rack || {};
-  // Read since a new machine or gym (liftReadIn, r61), its rack another gym's before: kept by where that stretch starts.
+  // Read since a new machine or gym (liftReadIn), its rack another gym's before: kept by where that stretch starts.
   const xs = liftReadIn(M, ex.id);
   const key = UIn(M) + ex.id + '|' + (xs.length ? xs[0].sid : '');
-  /* The spacings tried, largest first. For dumbbells the default step by equipment (367, V's pick of 2026-11-02:
+  /* The spacings tried, largest first. For dumbbells the default step by equipment (V's pick of 2026-11-02:
      2 kg each) is read once the rack is: when every load read fits it too (10, 20, 30 kg), the rack is in 2 kg
      steps; a load only 2.5 kg fits (12.5, 17.5), in any session read, keeps 2.5. Read the other way round, the
-     newest loads alone (20 kg) read as 2 and an older 17.5 was then taken for another gym's, so 22 kg, which
-     that rack does not have, was asked (the review of r68). */
-  // A lift with no rack has no rack step (r67 gave null; reading the rack first made it throw, found comparing r67 and r68).
+     newest loads alone (20 kg) read as 2 and an older 17.5 would be taken for another gym's, so 22 kg, which
+     that rack does not have, would be asked. */
+  // A lift with no rack has no rack step, before the rack is read, which would throw.
   const kind = rackKind(ex);
   if (!kind) return null;
   const all = RACK[kind][UIn(M)];
@@ -430,11 +426,11 @@ export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): numb
    the multiples of the spacing rackStepIn reads, so a weight off them steps
    to the rack's next one rather than by the spacing from where it is. Lb
    dumbbells are read on 5 lb, or 2.5 lb where the weights are on it, never
-   1 (V's call of 2026-10-18, after the review of r54: with nothing logged,
-   12 lb went up to 13, which no lb rack has): 12 lb steps to 15 and 8 to
+   1 (V's call of 2026-10-18: with nothing logged, 12 lb went up to 13, which
+   no lb rack has): 12 lb steps to 15 and 8 to
    10. Kettlebells, and dumbbells in kg, read on the spacing their weights
-   fit, as since r32. A load on the rack's weights steps by the spacing from
-   where it is, as since r32, to the same number; a load off them (offGrid)
+   fit. A load on the rack's weights steps by the spacing from where it is,
+   to the same number; a load off them (offGrid)
    steps to the rack's next weight in every path that steps a load: the step
    (incOfIn), progression (progStepIn), lighter loads (lighterLoadIn),
    heavier ones (heavierLoadIn), the engine's cases that take several steps
@@ -508,7 +504,7 @@ function gridSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Sugg
 export function progStepIn(M: Model, ex: ExerciseLike, plan: Plan, loadKg: number, at?: number | null): number {
   /* On a rack, from Your gym or read from its spacing when the load is off its weights: the heaviest weight within
      the jump, at least the next one up (a load near a weight is that weight, so the next one up is a whole
-     step: NEW-6's rule, V 2026-10-27). */
+     step: V 2026-10-27). */
   if (at != null) {
     const Ls = loadsForIn(M, ex, plan, at);
     if (Ls.kind === 'rack' || Ls.kind === 'grid') {
@@ -525,13 +521,12 @@ export function progStepIn(M: Model, ex: ExerciseLike, plan: Plan, loadKg: numbe
   return inc * Math.max(1, Math.floor((pct * Math.max(0, loadKg)) / inc + EPS));
 }
 
-/* The loads a lift can use. Before 2.31 every rule that moved a load (lighter, heavier, the snap, the
-   step) chose for itself among four kinds of load list, each with its own lookup: Your gym's rack (the bells it
-   lists), a rack read from its spacing (dumbbells and kettlebells, when the load is off its weights, offGrid), Your
-   gym's plates on a bar lift (the bar and pairs of the smallest plate, plateGridIn) and, for everything else, whole
-   steps of the lift's own step from the load it is at. The same choice, in the same order, was written out in each
-   rule, so a fix to one kind in one rule missed the others (NEW-46, R-2, NEW-9, 387-B1, NEW-69, NEW-70). The choice is
-   made here once; each rule asks the list it gets. */
+/* The loads a lift can use, from one of four kinds of load list, each with its own lookup: Your gym's rack (the
+   bells it lists), a rack read from its spacing (dumbbells and kettlebells, when the load is off its weights,
+   offGrid), Your gym's plates on a bar lift (the bar and pairs of the smallest plate, plateGridIn) and, for
+   everything else, whole steps of the lift's own step from the load it is at. Every rule that moves a load
+   (lighter, heavier, the snap, the step) asks this for its list, so the choice is made once: written out in each
+   rule, a fix to one kind in one rule would miss the others. */
 /** The loads a lift can use around a load `at` (kg): the lightest (null when there is no floor of its own), the rung below and above a load, and the heaviest rung not past a load. */
 interface Loads {
   /** Which kind of list this is, for the few rules whose policy still differs by kind (each says why). */
@@ -568,8 +563,8 @@ function loadsForIn(
       has: w => L.some(x => Math.abs(x - w) < EPS_SAME)
     };
   }
-  /* A dumbbell or kettlebell rack read from its spacing (rackGridIn) is the list whatever the load: before 2.30 it was
-     taken only when the load was off its weights, so the kind of list depended on the rule asking. */
+  /* A dumbbell or kettlebell rack read from its spacing (rackGridIn) is the list whatever the load, so the kind of list
+     never depends on the rule asking. */
   const og = rackGridIn(M, ex, plan, at);
   if (og) {
     const t = rackTolIn(M),
@@ -579,8 +574,8 @@ function loadsForIn(
        pounds"). Going up, the next weight on the rack is skipped only when it is a sliver: a load converted from the
        other unit (22.5 kg is 49.6 lb) that is less than the lift's own jump (jumpPct: 2.5% compound, 5% isolation, or
        the plan's) under that weight, so 49.6 goes to 55, never 50, while 17.6 (8 kg) goes to 20 and 8.8 (4 kg)
-       to 10. A load typed in the unit on screen is a weight the lifter has, so its next weight is never skipped (r54:
-       8 lb to 10). Going down is always from the weight lifted: a Lighter day from 12.1 lb (5.5 kg) is 10, never 5. */
+       to 10. A load typed in the unit on screen is a weight the lifter has, so its next weight is never skipped (8 lb
+       to 10). Going down is always from the weight lifted: a Lighter day from 12.1 lb (5.5 kg) is 10, never 5. */
     const typed = (w: number): boolean => onStep(inUnitIn(M, w), TYPED_STEP);
     const jump = jumpPct(ex, plan);
     return {
@@ -601,14 +596,13 @@ function loadsForIn(
       has: w => Math.abs(gridFloor(M, og, w, t) - w) <= t
     };
   }
-  /* The loads Your gym's plates make (plateGridIn), a list lightest first like a rack's, read by the rules the plates'
-     arithmetic steps were read by before 2.34, so on plates that are whole multiples of the smallest every
-     answer is the one it was: floor, the heaviest not past a load by the shown digit, else the bar; below, the load
+  /* The loads Your gym's plates make (plateGridIn), a list lightest first like a rack's, read by the rules of the plates'
+     own arithmetic, so on plates that are whole multiples of the smallest every answer is that arithmetic's: floor, the heaviest not past a load by the shown digit, else the bar; below, the load
      under the one nearest (a tie going up), so a load a little over a rung steps down past it; above, the lightest
      past a load by the shown digit, the bar from under it, and none past the heaviest the plates are counted to. A load
      within the shown digit (half the last digit the screens show, rackTolIn) of one is that load, as a bell typed as
-     shown is that bell (PENDING 333: with Your gym in kg and the app in lb, 50 kg is shown as 110.2 lb, and 110.2
-     typed is 49.986 kg). */
+     shown is that bell (with Your gym in kg and the app in lb, 50 kg is shown as 110.2 lb, and 110.2 typed is
+     49.986 kg). */
   const G = plateGridIn(M, ex, plan);
   if (G) {
     const t = rackTolIn(M),
@@ -651,10 +645,10 @@ function loadsForIn(
 /* A load at or below `to`, reached from `from` in whole steps of the
    exercise's own load step, so a stack stays on its pins and a dumbbell rack
    on its dumbbells, and never below the empty bar on a barbell lift.
-   It used to round to the nearest 5 lb or 2.5 kg whatever the equipment: a
-   15 lb cable raise deloaded to 10, a 150 lb stack with 10 lb pins to 135, a
-   95 lb bench warmed up at 40, under the bar. With no step set, it rounds
-   down to 5 lb or 2.5 kg as before. May return `from` when nothing lighter
+   Rounded to the nearest 5 lb or 2.5 kg whatever the equipment, a 15 lb
+   cable raise would deload to 10, a 150 lb stack with 10 lb pins to 135, a
+   95 lb bench warm up at 40, under the bar. With no step set, it rounds down
+   to 5 lb or 2.5 kg. May return `from` when nothing lighter
    exists (the bar itself). On a list with a lightest load of its own (a rack or the plates): the heaviest load not
    past `to` and under `from`, at least the lightest, or `from` itself when nothing on the list is under it. */
 export function lighterLoadIn(
@@ -680,16 +674,16 @@ export function lighterLoadIn(
   const floor = loadFloorIn(M, ex);
   if (w < floor - EPS_SAME) w = Math.min(floor, from);
   /* Nor under the lightest of a rack's dumbbells or bells: a Lighter
-     day on 5 lb lateral raises was "about 0 lb per dumbbell" until then, as a
-     2.5 lb, 2 kg or 1 kg one was. */
+     day on 5 lb lateral raises is not "about 0 lb per dumbbell", nor on a
+     2.5 lb, 2 kg or 1 kg one. */
   const gr = rackGridIn(M, ex, plan, from);
   if (gr && w < gridStep(M, gr, 0, 1) - EPS_SAME) w = Math.min(gridStep(M, gr, 0, 1), from);
   return Math.max(0, w);
 }
 
 /* A load above `from` and not past `to`, or null when the next one is past
-   it (r34, for adjusting the next sets; moved from the legacy script in r54
-   to read the rack from its spacing): the heaviest load on the lift's list
+   it (for adjusting the next sets, with the rack read from its spacing):
+   the heaviest load on the lift's list
    between them. */
 /** The heaviest load above `from` and not past `to` on the lift's rack or steps, or null. */
 export function heavierLoadIn(

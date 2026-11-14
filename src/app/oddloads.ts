@@ -1,4 +1,4 @@
-/* Loads far off (CL-1, split from engine.ts): a set ticked at a load far from the lift's own, under the bar, or at 0
+/* Loads far off: a set ticked at a load far from the lift's own, under the bar, or at 0
    where the lift is loaded, asked about before it is logged. Each function that reads the log takes the model first. */
 
 import type { DraftBlock } from './types';
@@ -13,7 +13,7 @@ import { LIGHTER_LOAD, isMissed, isWork, sinceLongBreak } from './formulas';
 import { effW } from './session';
 import { bwAtIn, bwLoadIn } from './setread';
 
-/* A load far off (r55, V 2026-10-19: 300 typed after two sets of 50, logged
+/* A load far off (V 2026-10-19: 300 typed after two sets of 50, logged
    without a word). Before a working set is logged the app asks, Log it or
    Fix it, when its load is more than three times the heaviest set ticked in
    the session, or under a third of it, or more than twice the heaviest ever
@@ -27,12 +27,11 @@ import { bwAtIn, bwLoadIn } from './setread';
    is no jump from nothing; an assisted lift (its help typed) and a timed hold
    are not asked about. Null when nothing is far off, else the reason. */
 export const ODD_SESSION = 3;
-/** How many times a lift's heaviest logged load a set may be before the app asks (r55, a convention, above). */
+/** How many times a lift's heaviest logged load a set may be before the app asks (a convention, above). */
 export const ODD_BEST = 2;
-/* Bodyweight typed as added load (r64, V's decision 2 of 2026-10-27, from
-   the r63 audit's P-S2-3: pull-ups at a bodyweight of 180 lb typed as
-   BW+180 were saved with no question and became a PR, "best estimate 463
-   lb"). Read as totals, added load equal to bodyweight sits exactly on the
+/* Bodyweight typed as added load (V's decision 2 of 2026-10-27: pull-ups
+   at a bodyweight of 180 lb typed as BW+180 were saved with no question and
+   became a PR, "best estimate 463 lb"). Read as totals, added load equal to bodyweight sits exactly on the
    limit of twice the heaviest logged, so on a bodyweight lift the added
    load is read on its own too: the app asks, Log it or Fix it, when it is
    ODD_ADDED_BW of the bodyweight or more, or more than ODD_ADDED_BEST times
@@ -40,12 +39,12 @@ export const ODD_BEST = 2;
    conventions, set to catch the bodyweight typed in the field for added
    load and a slipped digit: a vest or belt heavier than nine tenths of the
    lifter is rare, and no lifter doubles their added load in a session. */
-/** The share of bodyweight added load on a bodyweight lift may reach before the app asks (r64, V's decision 2, a convention, above). */
+/** The share of bodyweight added load on a bodyweight lift may reach before the app asks (V's decision 2, a convention, above). */
 export const ODD_ADDED_BW = 0.9;
-/** How many times the most added before a bodyweight lift's added load may be before the app asks (r64, V's decision 2, a convention, above). */
+/** How many times the most added before a bodyweight lift's added load may be before the app asks (V's decision 2, a convention, above). */
 export const ODD_ADDED_BEST = 2;
 /* A set ticked with 0 reps at a load well under the session's working load
-   (r55.1, V 2026-10-19): at a warm weight a slip of the finger is likelier
+   (V 2026-10-19): at a warm weight a slip of the finger is likelier
    than a missed attempt, so it is asked about, Log it as missed or Fix it,
    where at or near the working load a 0 is logged as missed at once. Well
    under is under LIGHTER_LOAD of the heavier of the block's suggested load and
@@ -70,8 +69,8 @@ export function lightZeroIn(M: Model, b: DraftBlock, si: number, date: string): 
   return work > 0 && bw + w >= 0 && bw + w < work * LIGHTER_LOAD - EPS;
 }
 
-/* A load under the bar (V on the r59 preview, 2026-10-25: a set of barbell
-   bench could be logged at 0 lb, "unless you're bench pressing air"). On a
+/* A load under the bar (V, 2026-10-25: a set of barbell bench could be
+   logged at 0 lb, "unless you're bench pressing air"). On a
    lift on the full bar typed as the total (loadFloorIn), no set, a warm-up
    or a drop included, is lighter than the empty bar: a load under it is a
    slip, or a lighter bar not yet set, so it is asked about as a load far off
@@ -119,9 +118,9 @@ export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): st
     return `${say(w)} is more than three times your heaviest set today, ${say(topW)}.`;
   if (top > 0 && load * ODD_SESSION < top - EPS)
     return `${say(w)} is under a third of your heaviest set today, ${say(topW)}.`;
-  /* After a long break with nothing since, the lift starts fresh (NEW-113): a load from years ago is no measure of a
+  /* After a long break with nothing since, the lift starts fresh: a load from years ago is no measure of a
      slipped digit today, as on a lift never done. Once it is back, every session counts, so a load the lifter has
-     lifted before is never called more than twice the heaviest logged (REV10-3: 285 after 135 last week, 315 in 2016). */
+     lifted before is never called more than twice the heaviest logged (285 after 135 last week, 315 in 2016). */
   const all = liftReadIn(M, b.exId, date);
   const read = sinceLongBreak(all, date).length ? all : [];
   let best = 0,

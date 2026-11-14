@@ -1,4 +1,4 @@
-/* How long a session takes (phase 3b, r52; moved from the legacy script): the time model for a day's
+/* How long a session takes: the time model for a day's
    plan, the same model for the sets a past session logged, and your pace,
    the median of how long your timed sessions took against that model. They
    call each other (a day's minutes scale by the pace, which reads past
@@ -34,7 +34,7 @@ export function dayMinutesIn(M: Model, day: { items: readonly TimedItem[] }, hal
   return Math.round((Math.max(0, s - lastRest) * (raw ? 1 : paceIn(M))) / MINUTE_S);
 }
 
-/* Your own pace (r43, V): how long your sessions take against the time model,
+/* Your own pace (V): how long your sessions take against the time model,
    so every estimate (Today, Plan, a session's minutes left, Short on time,
    Pick for me, the recap) follows what your sessions actually take. Each
    timed session in the last PACE_DAYS days is compared with the model for
@@ -46,13 +46,13 @@ export function dayMinutesIn(M: Model, day: { items: readonly TimedItem[] }, hal
    numbers: the model itself is one. A session with no minutes never counts;
    a past workout counts by the minutes typed for it. A drop set is read
    with the set before it: it is done straight after that set, with no rest of
-   its own, so it adds no set and no rest (the review of r67: read as a
-   full set and a full rest, an honest session of drops was saved untimed). */
+   its own, so it adds no set and no rest (read as a full set and a full
+   rest, an honest session of drops would be saved untimed). */
 /** The minutes the time model gives for the sets a session logged, at its own ranges and the plan's rest. */
 export function sessModelMinIn(M: Model, ss: Session): number {
   const R = M.s.routines.find(r => r.id === ss.routineId) || activeRoutineIn(M);
   // Superset links come from the day's plan, so partners rest once, as every
-  // estimate counts them (the r43 review: without it a lifter who supersets
+  // estimate counts them (without it a lifter who supersets
   // read about 30% faster than the model and every estimate came out short).
   const day = ss.dayId ? R.days.find(d => d.id === ss.dayId) : null;
   const link = (id: string): string | null => {

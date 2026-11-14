@@ -1,12 +1,11 @@
-/* The model the app runs on (phase 3b, r52; ARCHITECTURE.md). The engine and
+/* The model the app runs on (ARCHITECTURE.md). The engine and
    the analytics are pure functions of a model (model.ts); the app has one,
    LIVE, whose log is the store's, read at every use, so a log replaced by
    setState is the one read next; whose date is util's today, read at every
-   call, so an app left open past midnight reads the new day as r51 did; and
-   whose caches are built on first use and cleared by invalidate, as r51's
-   were. The screens call the engine through the adapters below, under r51's
-   names, which the legacy script used until r63 so that not one of its calls
-   changed. Every adapter has the one form below: a function of the model,
+   call, so an app left open past midnight reads the new day; and whose caches
+   are built on first use and cleared by invalidate. The screens call the
+   engine through the adapters below, under the engine's first names. Every
+   adapter has the one form below: a function of the model,
    given LIVE. */
 
 import type { Model } from './model';
@@ -152,7 +151,7 @@ export function live<A extends unknown[], R>(f: (M: Model, ...args: A) => R): (.
   };
 }
 
-/** The engine and the analytics under their r51 names, each on LIVE: one
+/** The engine and the analytics under their first names, each on LIVE: one
     adapter per moved reader the screens call, and invalidate, which
     clears LIVE's caches after every change to the log. */
 export const EX = live(EXIn);

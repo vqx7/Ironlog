@@ -1,4 +1,4 @@
-/* Finish and save (r60, from workout.ts): the questions Finish asks first
+/* Finish and save (from workout.ts): the questions Finish asks first
    (sets not done, ramp-up sets, reps with no checkmark, loads or help
    missing), the session saved as the log keeps it, and the recap. */
 
@@ -42,25 +42,24 @@ import { setShort, fmtDateLong, fmtE, prSet, wasE } from './display';
 import { W, blkOpen, blkRef, redraw } from './workstate';
 import type { Draft } from './workstate';
 import type { Pr } from './model';
-import { blockProgress, calDueIdx, draftPlanMin, oddReps, rowBlank, setDone, settleLoad } from './worksets';
+import { blockProgress, calDueIdx, draftPlanMin, noteAsked, oddReps, rowBlank, setDone, settleLoad } from './worksets';
 import { confirmBox, openModal, render } from './page';
 import { stopTimer, wakeOff } from './timer';
 import { toast, undoToastHide } from './toast';
 import type { RoutineUpdate } from './plans';
 
-/** An unmarked set lighter than a session's first top set reads as a warm-up at Finish under this share of the top load, when neither its RIR nor the best estimate says (a convention, r56.2). */
+/** An unmarked set lighter than a session's first top set reads as a warm-up at Finish under this share of the top load, when neither its RIR nor the best estimate says (a convention). */
 const WARM_SHARE = { compound: 0.75, isolation: 0.8 } as const;
 /** A session open longer than this many minutes was left open, so it is not timed. */
 const TIMED_MAX_MIN = 360;
 /** Said when a workout set aside for an edit or a past workout comes back. */
 export const BACK_SAID = ' Your workout in progress is back: Resume it on Today.';
 
-/* A lift back after a long break whose session beat every set since it came back, under its older best (NEW-110,
-   V 2026-11-10: the lifter knows when they hit new numbers; an old best is never the goal). Said in the recap as
+/* A lift back after a long break whose session beat every set since it came back, under its older best (V 2026-11-10: the lifter knows when they hit new numbers; an old best is never the goal). Said in the recap as
    Heaviest yet is, not counted as a PR: the heaviest set since if this session made it, else the set behind the best
    estimate since. The first session back has nothing since to beat; a lift with a PR or Heaviest yet this session
    is named there already. Read by the session, not its date, so a second session the same day never claims the
-   first's set (REV10-2). */
+   first's set. */
 /** The recap's Best since you came back: each lift of the session that beat its sets since it came back, as "Bench 255×3". */
 function backBests(ex: readonly { exId: string }[], prAll: readonly Pr[], sid: string): string[] {
   const out: string[] = [];
@@ -124,14 +123,14 @@ function askRamps(d: Draft): boolean {
     );
     const bi = d.ex.indexOf(b);
     const st = IDX().exStats[b.exId];
-    /* The lift's strength as its targets read it (NEW-113): after a long break it starts fresh, so its best from before
+    /* The lift's strength as its targets read it: after a long break it starts fresh, so its best from before
        is no measure of how easy today's lighter sets were; with sessions since, their best is (sinceBack). */
     const back = sinceBack(b.exId);
     const est = st && longBreak(st.last, d.date) ? undefined : back ? back.est?.v : st ? st.bestAll : undefined;
     const thr = isCompound(e) ? WARM_SHARE.compound : WARM_SHARE.isolation;
     const easy = (x: DraftSet): boolean => {
       if (!(L(x) < top - EPS_SAME)) return false;
-      const q = rirEff(x, e);
+      const q = rirEff(x, e, d);
       if (q != null) return q >= RIR_CALL_TOP;
       if (est && !noE1(e)) {
         const rtf = rtfAt(est, L(x));
@@ -232,6 +231,7 @@ function askUnchecked(d: Draft): boolean {
                 act(
                   () => {
                     settleLoad(b, si);
+                    noteAsked(dd, b, si);
                     s.done = true;
                   },
                   { inProgress: true }
@@ -247,8 +247,8 @@ function askUnchecked(d: Draft): boolean {
   return false;
 }
 
-/* Sets left: finishing with half the planned sets untouched used to
-   save without a word. Asked once, only when something was done, and not for
+/* Sets left: finishing with half the planned sets untouched is never
+   saved without a word. Asked once, only when something was done, and not for
    an edit or a past workout typed in afterwards. Ramp-up sets logged as work
    count as hard sets and inflate weekly volume: a done working set before
    the first set at the exercise's top load is a likely warm-up when it was
@@ -256,13 +256,13 @@ function askUnchecked(d: Draft): boolean {
    estimate says that load allows; with neither, under 75% of the top load on
    a compound lift or 80% on isolation work), never one logged at 4 RIR or
    less (hard pyramid sets stay working sets), never a weighted set with no
-   load (asked about below as a missing load, r31), and never a set at the
-   load the app suggested or one the app itself raised the load after
-   (r34.2). Asked once per session; either answer moves on. Only sets marked
+   load (asked about below as a missing load), and never a set at the
+   load the app suggested or one the app itself raised the load after.
+   Asked once per session; either answer moves on. Only sets marked
    done are saved, but sets with reps and no tick are counted first and the
-   lifter may keep them, a typed 0 (a missed set, r55) among them, warm-ups
-   too (r55, the audit); reps or a load far off ask first, as when ticked
-   (r55, the audit: 110 reps put off once was saved here). */
+   lifter may keep them, a typed 0 (a missed set) among them, warm-ups
+   too; reps or a load far off ask first, as when ticked (not 110 reps put
+   off once saved here). */
 export function finish(): void {
   const d = state.draft;
   if (!d) return;
@@ -272,15 +272,15 @@ export function finish(): void {
   finishNow();
 }
 
-/* Nothing is marked trimmed since r54 (V's one rule, PENDING 312 E): an
+/* Nothing is marked trimmed (V's one rule): an
    exercise with fewer sets than usual, stopped early, Short on time, typed
    in afterwards or edited, is read so from the log (analytics.ts, idxShort),
    so it sets no target and still counts toward its trend. savedEx
    (session.ts) is one source with a first link keeping another device's
    workout; side by side, the same lift is saved as one exercise
-   (r34.2, V), apart each stays where it was done; on a day of a routine each
-   lift keeps the sets its plan gave it (withPlanSets, r58). A blank load on
-   a weighted lift used to save silently as a real 0 set, which drags down
+   (V), apart each stays where it was done; on a day of a routine each
+   lift keeps the sets its plan gave it (withPlanSets). A blank load on
+   a weighted lift would save silently as a real 0 set, which drags down
    volume load and still counts toward your weekly sets: asked as "add them"
    first, Add loads going back to the first one, opened, its
    load field focused. */
@@ -372,13 +372,13 @@ export function finishNow(): void {
 }
 
 /** The recap's counts: working sets, missed sets and hard sets as the week counts them. */
-function setCounts(ex: ReturnType<typeof savedEx>[]): { work: number; miss: number; hard: number } {
+function setCounts(ex: ReturnType<typeof savedEx>[], date: string): { work: number; miss: number; hard: number } {
   const work = ex.reduce((a, b) => a + b.sets.filter(isWork).length, 0),
     miss = ex.reduce((a, b) => a + b.sets.filter(q => !q.warm && !q.drop && isMissed(q)).length, 0),
     hard = r1(
       ex.reduce((a, b) => {
         const e = EX(b.exId);
-        return a + b.sets.reduce((c, q) => c + hardCredit(q, e), 0);
+        return a + b.sets.reduce((c, q) => c + hardCredit(q, e, date), 0);
       }, 0)
     );
   return { work, miss, hard };
@@ -425,7 +425,7 @@ function recapPr(pr: Pr): { name: string; what: string; was: string } {
    An RIR check offered and passed over waits 3 weeks, as Not now does,
    read before the session is saved, since the check counts sessions. An
    edit rebuilds the session from the screen, so fields a newer build stored
-   on it, or on an exercise still in its place, are carried over (r43, as
+   on it, or on an exercise still in its place, are carried over (as
    normalize keeps them), each exercise matched by its lift in order. A new
    session goes in by id: the other phone's copy of this workout, kept at its
    first link, is replaced, never held twice. A real session saved
@@ -438,9 +438,9 @@ function recapPr(pr: Pr): { name: string; what: string; was: string } {
    best estimate is said once, quietly, not counted as a PR; the PR
    moment is its own gold block, each with what it beat. */
 function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioEntry[]): void {
-  /* Timed by the clock from when the lifting began (begunAt, NEW-129), or, begun on a build that keeps no begunAt, from
-     when it was opened, as that build times it (REV13-7); kept when it began on the day it is saved on (one set up the
-     day before is moved to the day it begins, session.ts clockStart; REV13-3, NEW-132), so one that runs past
+  /* Timed by the clock from when the lifting began (begunAt), or, begun on a build that keeps no begunAt, from
+     when it was opened, as that build times it; kept when it began on the day it is saved on (one set up the
+     day before is moved to the day it begins, session.ts clockStart), so one that runs past
      midnight keeps its minutes, while a past workout logged later, or one moved to another date by hand, is not timed
      by it. A past workout and an edit from History take the minutes typed beside the date. */
   const began = d.begunAt || d.startedAt || 0;
@@ -558,7 +558,8 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     return [`${e.name} ${setShort(e, p.w, p.r)}`];
   });
   const backBest = backBests(ex, prAll, sess.id);
-  const { work, miss, hard } = setCounts(ex);
+  // Read with the session saved, as of its day, as the week counts it.
+  const { work, miss, hard } = setCounts(ex, sess.date);
   ui.todayDay = null;
   window.scrollTo(0, 0);
   render();

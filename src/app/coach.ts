@@ -1,5 +1,4 @@
-/* What the analytics tell the lifter (phase 3b, r52; moved from the legacy
-   script): the lifts moving and
+/* What the analytics tell the lifter: the lifts moving and
    stalled, the stalls that point to fatigue, the coach's one line, a muscle's
    trend in words, the size check's sites, and the check-in against how
    sessions went (readiness). */
@@ -69,15 +68,14 @@ interface Mover {
   line: number[];
   top: { w: number; r: number } | null;
 }
-/* Today's Lifts moving (364 b-2, r70, V 2026-11-03: "if they're accurate and
+/* Today's Lifts moving (V 2026-11-03: "if they're accurate and
    not distracting"): the lifts Stats' summary and the coach call clearly
    rising (moversIn), in their order. Each line is exactly what the trend is
    fitted to (ExStat.trendTv: the current range's sessions within the
    trend's weeks, each one's reading), so it rises where the reading does. A
-   load alone was tried first and drew a flat line with one step on a lift
-   whose reps rise between loads (seen on the built page); every session in
-   the trend's weeks mixed a heavy day's and a light day's readings into a
-   zigzag that fell while the lift rose (the review of r70, R70-3). The number beside it is a set the lifter did, never an estimate:
+   load alone draws a flat line with one step on a lift whose reps rise
+   between loads; every session in the trend's weeks mixes a heavy day's and
+   a light day's readings into a zigzag that falls while the lift rises. The number beside it is a set the lifter did, never an estimate:
    the latest session's heaviest working set. */
 /** The rising lifts, each with its line and its latest heaviest set. */
 export function liftsMovingIn(M: Model): Mover[] {
@@ -106,13 +104,13 @@ export function stalledIdsIn(M: Model): string[] {
 export const FATIGUE_STALLS = 3;
 /** The muscles the on-plan line names before "and N more". */
 const ON_PLAN_SHOWN = 4;
-/** Weeks of the last AVG_WEEKS with no training at which the Coach says so first, before any set count (r31, a convention). */
+/** Weeks of the last AVG_WEEKS with no training at which the Coach says so first, before any set count (a convention). */
 export const MISSED_WEEKS_SAID = 2;
 
 /* A lift whose last STALL.sessions sessions logged drop sets and no main sets is read
    from drop sets alone (IDX uses them when there is nothing else); it can
    show as stalled, but it says nothing about fatigue, so it never counts
-   toward "stalled at once" (r45, audit item 289). Read from the log here,
+   toward "stalled at once". Read from the log here,
    so IDX keeps its shape. */
 export function dropOnlyLiftIn(M: Model, id: string): boolean {
   const ss = sortedSessionsIn(M);
@@ -128,7 +126,7 @@ export function dropOnlyLiftIn(M: Model, id: string): boolean {
 
 /* Stalls that can point to whole-body fatigue: compound lifts with a
    strength estimate. A plank held at 60 s or curls stuck at one dumbbell say
-   little about recovery, and they used to count toward "3 lifts stalled at
+   little about recovery, so they do not count toward "3 lifts stalled at
    once, a deload week may help". They are still listed as stalled. */
 export function fatigueStallsIn(M: Model, ids: readonly string[]): string[] {
   return ids.filter(id => {
@@ -138,13 +136,12 @@ export function fatigueStallsIn(M: Model, ids: readonly string[]): string[] {
 }
 
 /* What a stall is, in the words the coach's tip and a lift's headline on
-   Stats both use (r54: the headline's own words, "flat for 3 weeks or more,
-   with no PR in the last 3 sessions", fell behind the rule in r53). */
+   Stats both use, so the headline's words never fall behind the rule. */
 /** The stall rule, as a lifter reads it. */
 export const STALL_WHY = `Flat or down over its last ${STALL.sessions} sessions (or ${STALL.days / WEEK_DAYS} weeks) in each rep range you train it in, leaving out ones done lighter; with no PR in the last ${STALL.noProgress} of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.`;
 
 /* A lift trained in more than one rep range falls only when it falls in
-   each (r55, V 2026-10-19, PENDING 319), said in a lift's headline tip. */
+   each (V 2026-10-19), said in a lift's headline tip. */
 /** The falling rule for a lift in two rep ranges, as a lifter reads it. */
 export const FALL_WHY =
   'A lift trained in more than one rep range reads as falling only when it falls in each, as for a stall.';
@@ -152,12 +149,12 @@ export const FALL_WHY =
 /** Whether a lift's last session not done lighter had every set at its
     working load at the top of its range: the range the routine plans for the
     lift on the day that session was done on, found by the session's day, else
-    by the range the session was done at, else the lift's plan (r32: a lift
+    by the range the session was done at, else the lift's plan (a lift
     there is due a step up, not a new range). The plan as it is now, so a
     range changed since reads as before. One test for the coach and the lift's
-    headline on Stats (r54: both read the lift's plan with no day, the first
-    day's on a lift on two days, so 60 x 12 on a light day of 12 to 15, its
-    bottom, read as the top of the heavy day's 6 to 10, "due a step up"). */
+    headline on Stats (read with no day, the first day's plan on a lift on
+    two days, 60 x 12 on a light day of 12 to 15, its bottom, would read as
+    the top of the heavy day's 6 to 10, "due a step up"). */
 export function atRangeTopIn(M: Model, id: string): boolean {
   const st = IDXIn(M).exStats[id];
   if (!st || !st.last) return false;
@@ -219,9 +216,8 @@ function shortfallLineIn(
     const u = under[0];
     const gap = Math.max(1, Math.ceil(u.lo - u.got));
     const exId = liftFor(u.m).id;
-    /* The plan already reaches the target (r54, from the audit V asked
-       for: a lifter doing every planned set was told for weeks to add
-       sets). The shortfall is then sets skipped, or ended 4 or more in
+    /* The plan already reaches the target (a lifter doing every planned
+       set is not told for weeks to add sets). The shortfall is then sets skipped, or ended 4 or more in
        reserve, as a lift's first sessions are while its load is found, so
        adding sets is not the fix. Not in Freestyle mode, where the plan is
        not what the lifter follows. */
@@ -271,10 +267,10 @@ function lastWordIn(
   }
   // Someone back from a break (nothing since before the last 4 weeks) has
   // history but no recent weeks; "first full week" was wrong for them.
-  /* Since r54 the averages start the week after the log's first
-     (avgFirstWeekIn), so until that week is over the advice waits for the
-     second week; any other time a full week of training brings it, which
-     r53 also called the first full week to a lifter months in. */
+  /* The averages start the week after the log's first (avgFirstWeekIn),
+     so until that week is over the advice waits for the second week; any
+     other time a full week of training brings it, not called the first
+     full week to a lifter months in. */
   if (!avg) {
     const w = avgWaitIn(M);
     const text = `${w.lead}Volume advice ${w.kind === 'back' ? 'comes back' : 'appears here'} after ${w.after}.`;
@@ -306,11 +302,11 @@ export function coachIn(M: Model): CoachLine {
   const quiet = quietWeekIn(M);
   if (quiet) return quiet;
   const stalled = stalledIdsIn(M);
-  /* A deload is not suggested within DELOAD_GAP_DAYS of a lighter week: the
-     review saw "6 lifts stalled, a deload week may help" three weeks after
-     one. Since r53 the week is read from what the lifts did, not the labels,
-     and a week marked as a deload with nothing trained in it counts too, as
-     a rest week has since r34 (recentLighterIn). */
+  /* A deload is not suggested within DELOAD_GAP_DAYS of a lighter week (not
+     "6 lifts stalled, a deload week may help" three weeks after one). The
+     week is read from what the lifts did, not the labels, and a week marked
+     as a deload with nothing trained in it counts too, as a rest week does
+     (recentLighterIn). */
   const rl = recentLighterIn(M, DELOAD_GAP_DAYS);
   const big = fatigueStallsIn(M, stalled);
   if (big.length >= FATIGUE_STALLS && !rl)
@@ -346,12 +342,12 @@ export function coachIn(M: Model): CoachLine {
     /* Largest shortfall in sets first. Sorting by the fraction of target put
        a small muscle at 0 of 2 sets ahead of a major one at 5 of 10, which is
        backwards for a hypertrophy-first plan. The fraction still breaks ties. */
-    /* The lift the coach names for a muscle: one the lifter actually does
-       (r31), one in the routine that has been logged first, then any logged
+    /* The lift the coach names for a muscle: one the lifter actually does,
+       one in the routine that has been logged first, then any logged
        lift for the muscle, then the routine's. Never one the lifter deleted
-       (R81-10) or one that loads a flagged injury, a joint or a helper muscle
-       as well as the muscle itself (R81-4, the review of 2.35: with the knee
-       flagged it asked for back squats). A muscle whose every lift the lifter
+       or one that loads a flagged injury, a joint or a helper muscle
+       as well as the muscle itself (not back squats with the knee
+       flagged). A muscle whose every lift the lifter
        has loads an injury is not pushed at all. */
     const usable = (id: string): boolean =>
       M.s.exercises.some(e => e.id === id && !e.archived) && !exInjuryIn(M, EXIn(M, id));
@@ -381,23 +377,23 @@ export function coachIn(M: Model): CoachLine {
         lag: lagSet.has(m) ? 1 : 0
       }))
       .sort((a, b) => b.pri - a.pri || b.lag - a.lag || b.lo - b.got - (a.lo - a.got) || a.got / a.lo - b.got / b.lo);
-    /* Sessions made against planned come before any set count (PENDING 338
-       D), as weeks trained do above: at 2 of 4 planned sessions a week,
-       every set done hard, the lifter was told to do every planned set, the
-       reason "how the sets are done". Rounded to a whole session, over the
+    /* Sessions made against planned come before any set count, as weeks
+       trained do above: at 2 of 4 planned sessions a week, every set done
+       hard, the lifter is not told to do every planned set, the reason "how
+       the sets are done". Rounded to a whole session, over the
        weeks the average reads; not in Freestyle mode, which plans none. */
     const line = shortfallLineIn(M, R, avg, under, liftFor);
     if (line) return line;
   }
   /* A lift stuck at the top of its range has not run out of progress; the
-     load has not gone up (r32, from the third review: lateral raises at 15
-     of 12-15 for weeks were told to change the range). */
+     load has not gone up (lateral raises at 15 of 12-15 for weeks are not
+     told to change the range). */
   if (stalled.length) {
     const id = stalled[0];
     const st = I.exStats[id];
-    /* How long it has stalled, the span the stall test read (r54, from the
-       audit V asked for: "for 3 weeks" was said of a lift flat for ten, and
-       of its whole stretch at the top of the range, which nothing checks). */
+    /* How long it has stalled, the span the stall test read (not "for
+       3 weeks" of a lift flat for ten, nor of its whole stretch at the top of
+       the range, which nothing checks). */
     const flat = stallWordsIn(M, id);
     // A last session at the top of its range means st was there to read it from, as the ! says.
     if (atRangeTopIn(M, id))
@@ -431,8 +427,8 @@ export function musTrend(sc: Pick<Score, 'clear' | 'n' | 'score' | 'wk'>): strin
    The three check-in taps against how the session went: the share of lifts
    that set a PR (a new best estimate or a rep PR), per answer. First sessions
    of a lift, and work done lighter, are left out because they cannot show
-   progress; a session short of its usual, a bad day or one cut short, is in
-   (r54), since how a session went after a poor night is what this reads. */
+   progress; a session short of its usual, a bad day or one cut short, is in,
+   since how a session went after a poor night is what this reads. */
 /** A check-in answer in a sentence: lower case, except OK. */
 export const chkWord = (n: string): string => (n === 'OK' ? 'OK' : n.toLowerCase());
 
@@ -447,8 +443,8 @@ export const CHK_Q: readonly (readonly [string, string, readonly string[]])[] = 
 export const READINESS_MIN = 6;
 
 /* For each check-in answer, the sessions given it and the share of their
-   lifts that set a PR, as Recent PRs counts one (r58, 343 6: it counted
-   any record, a heavier set that was no PR among them). The sessions read
+   lifts that set a PR, as Recent PRs counts one (not any record, a
+   heavier set that was no PR among them). The sessions read
    are those with a check-in, and each id read from IDX's byEx comes from its
    own keys, as the ! say. */
 export function readinessIn(M: Model) {

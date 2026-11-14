@@ -1,11 +1,11 @@
 /* The shapes of the log's records that the modules read, as normalize()
-   writes them (src/12-storage.js until phase 4 moves it). Types only: nothing
+   writes them. Types only: nothing
    here exists at run time. A function takes the narrowest shape it reads
    (isWork reads a set's warm and reps, nothing else), so a draft row, a saved
    set and a test's literal all fit, and the types claim no more about the data
    than the code does. An optional field may also hold undefined: normalize
-   writes some as keys with no value, which JSON then drops. A shape is added
-   here when code that reads it moves, so that something checks it. */
+   writes some as keys with no value, which JSON then drops. Every shape the
+   code reads is here, so that something checks it. */
 
 /** A muscle's key, in MUSCLES order. */
 export type MuscleKey =
@@ -111,7 +111,7 @@ interface RirCheck {
 
 /** One logged set. `w` is the number as typed (below 0 only on an assisted lift),
     `rir` what was called, null when left blank; `rid` the row's own id, kept
-    from the workout in progress since r56.1 (absent on sets saved before), so
+    from the workout in progress (absent on sets saved before r56.1), so
     a workout finished on one phone and ticked further on another joins row by row. */
 export interface LoggedSet {
   w: number;
@@ -121,18 +121,25 @@ export interface LoggedSet {
   drop: boolean;
   cal?: RirCheck | undefined;
   rid?: string | undefined;
+  /** What the app asked of the set as it was ticked at the gym (V 2026-11-12): its load (kg) and reps, either null
+      when none was asked; absent on a warm-up, a drop set, a RIR check, a set typed in afterwards and a set saved
+      before 2.61. Kept last, where a build before it keeps the unknown field. */
+  sg?: Asked | undefined;
 }
+
+/** A set's load and reps as the app asked them (LoggedSet's sg). */
+export type Asked = [number | null, number | null];
 
 /** One exercise in a saved session: its sets, the planned range at the time
     (null on sessions logged before ranges were kept), and whether it was made
     lighter mid-session, and the injury it was held for (`inj`, a muscle
-    or a joint, r54: its load capped and no target while that was flagged).
-    `cut` marked it trimmed from r24 to r53; since r54 it is neither written
-    nor read (V's one rule reads the log), and sessions saved before keep it.
+    or a joint: its load capped and no target while that was flagged).
+    `cut` marked it trimmed on builds r24 to r53; it is neither written nor
+    read now (V's one rule reads the log), and sessions saved then keep it.
     `ps` is the sets its routine's plan gave it when saved: on
     a session saved on a day of a routine with the lift in it, absent on the
     rest, on an edit's new exercises and on sessions saved before r58.
-    `nw` marks it done at a new machine or gym (r61, 343 7): the lift starts
+    `nw` marks it done at a new machine or gym: the lift starts
     over from this session (sinceNew), absent unless marked. */
 export interface SessionEx {
   exId: string;
@@ -150,7 +157,7 @@ export interface SessionEx {
 
 /** A saved session (cleanSess in the storage part). `t` is when it started,
     which orders two sessions on one day; `chk` the check-in's answers;
-    `pw` the sessions a week its routine planned when it was saved (r55, pwOf). */
+    `pw` the sessions a week its routine planned when it was saved (pwOf). */
 export interface Session {
   id: string;
   date: string;
@@ -160,7 +167,7 @@ export interface Session {
   dayName: string;
   routineId: string;
   notes: string;
-  /** Made by Load demo data. normalize writes it on every session; one just saved by Finish carries it only when it is an edit of a saved session (the new one is read as false until the next load, as before r60). */
+  /** Made by Load demo data. normalize writes it on every session; one just saved by Finish carries it only when it is an edit of a saved session (the new one is read as false until the next load). */
   demo?: boolean;
   deload: boolean;
   light: boolean;
@@ -281,6 +288,8 @@ export interface Settings extends EngineSettings {
   autoDone: boolean;
   accent?: 'blue' | 'volt' | 'ember' | 'pink' | 'violet' | 'cyan' | 'red' | undefined;
   rirAsk?: true | undefined;
+  /** History lists what the app asked of each set under what was done (391): absent, off, unless turned on. */
+  askedShow?: true | undefined;
   autoAdj?: false | undefined;
   bwEvery?: 0 | 7 | 30 | undefined;
   loadFill?: 'fill' | undefined;
@@ -314,11 +323,29 @@ export interface EngineState {
   injuries: Injury[];
   deloadWeek: string | null;
   settings: EngineSettings;
-  /** The session in progress as the rules read it: its day, the lifts it marks as done at a new machine or gym (r61, liftReadIn), and the saved session it is an edit of (2.30, R75-6: its saved version is no earlier session of itself); absent or null with none. */
-  draft?:
-    | { date: string; editingId?: string | null | undefined; ex: readonly { exId: string; nw?: true | undefined }[] }
-    | null
-    | undefined;
+  /** The session in progress as the rules read it (OpenWorkout); absent or null with none. */
+  draft?: OpenWorkout | null | undefined;
+}
+
+/** A row of a workout not yet saved, as its effort is read (setread.ts): the reps as typed, the effort called, its
+    marks, and whether it is ticked, which is what Finish saves. */
+export interface OpenSet {
+  r: number | string | null;
+  rir?: Rir;
+  cal?: RirCheck | null | undefined;
+  done?: boolean | undefined;
+  warm?: boolean | undefined;
+  drop?: boolean | undefined;
+}
+
+/** A workout not yet saved as the rules read it: its id, which its saved copy keeps; its day; the saved session it is
+    an edit of (its saved version is no earlier session of itself); and each lift's rows, with the lifts it
+    marks as done at a new machine or gym (liftReadIn). */
+export interface OpenWorkout {
+  id?: string | undefined;
+  date: string;
+  editingId?: string | null | undefined;
+  ex: readonly { exId: string; nw?: true | undefined; sets: readonly OpenSet[] }[];
 }
 
 /** One set as the analytics read it (a point in IDX's byEx): the load as typed,
@@ -344,7 +371,7 @@ export type LibRow = readonly [
 
 /** A set in the session in progress: the load as typed (null until typed or
     taken from the grey load), the reps as typed (text while being typed),
-    what was called, its marks, and since r56.1 its own id (`rid`), so two
+    what was called, its marks, and its own id (`rid`), so two
     phones' copies of one workout are merged row by row; a row an older build
     made has none and is matched by its place. */
 export interface DraftSet {
@@ -356,6 +383,8 @@ export interface DraftSet {
   drop?: boolean | undefined;
   cal?: RirCheck | null | undefined;
   rid?: string | undefined;
+  /** What the app asked of the set as it was ticked (LoggedSet's sg), absent until then. */
+  sg?: Asked | undefined;
 }
 
 /** One entry of the error log Settings can copy: when, the area, the message, the build, and the first lines of the stack. */
@@ -384,12 +413,12 @@ export interface Target {
     and suggestion it started with, an adjustment made mid-session,
     last time's sets for the Last column, and, for one added on a
     lighter day or in a deload with its sets halved, the count before
-    (`full`, r54), for Finish's offer to the routine. `cut` marked it
-    trimmed until r53, and is neither written nor read since r54. An edit
+    (`full`), for Finish's offer to the routine. `cut` marked it
+    trimmed on builds up to r53, and is neither written nor read now. An edit
     from History keeps the saved range (`keepRR`); an exercise held for an
-    injury carries its key (`inj`, r54). */
+    injury carries its key (`inj`). */
 export interface DraftBlock {
-  /** The exercise's own id in this session, which a move or a merge keeps; absent on a session begun before r46. */
+  /** The exercise's own id in this session, which a move or a merge keeps; absent on a session begun on a build before r46. */
   bid?: string | undefined;
   exId: string;
   /** What it is done for: the sets, rest, superset, range, effort and load step a routine item or the lift's default gave it; normalize writes every one but the jump (a superset's letter key, or null). */
@@ -413,7 +442,7 @@ export interface DraftBlock {
   full?: number | undefined;
   tgt?: Target | null | undefined;
   target?: string | undefined;
-  /** The next sets adjusted from a set: at the row it came from, whose id (`rid`, since PENDING 333) keeps it on that row when rows are added above; the load they take and the one they had, the reps the estimate expects there, up or down, and why. */
+  /** The next sets adjusted from a set: at the row it came from, whose id (`rid`) keeps it on that row when rows are added above; the load they take and the one they had, the reps the estimate expects there, up or down, and why. */
   adj?: NextSetsAdj | null | undefined;
   /** Keep as it was: no adjustment for this exercise for the rest of the session. */
   adjOff?: boolean | undefined;
@@ -423,7 +452,7 @@ export interface DraftBlock {
   last?: string | undefined;
   /** The suggestion's words, shown under the exercise when it has no target. */
   hint?: string | undefined;
-  /** The suggestion's short line, said instead of hint once an earlier lift in the session said its kind (NEW-109). */
+  /** The suggestion's short line, said instead of hint once an earlier lift in the session said its kind. */
   hintAgain?: string | undefined;
   /** Last time's reps per working set, the grey reps. */
   lastR?: (number | null)[] | undefined;
@@ -435,7 +464,7 @@ export interface DraftBlock {
   lastNote?: { date: string; text: string } | null | undefined;
   /** The exercise it was swapped from, for Finish's offer to the routine. */
   swappedFrom?: string | null | undefined;
-  /** Done at a new machine or gym (r61, 343 7): every block of the lift in the session carries it, its suggestion read as a first session's; absent unless marked. */
+  /** Done at a new machine or gym: every block of the lift in the session carries it, its suggestion read as a first session's; absent unless marked. */
   nw?: true | undefined;
   /** The pictures on this exercise's note, by id, carried to the saved exercise by Finish; absent when none. */
   pics?: string[] | undefined;

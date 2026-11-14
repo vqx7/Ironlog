@@ -1,4 +1,4 @@
-/* A lift's usual (CL-1, split from analytics.ts; V's one rule, r54): the sets a session is read by, its strength
+/* A lift's usual (V's one rule): the sets a session is read by, its strength
    reading and reps against the sessions before it, whether it was at its usual load and work, and a session of
    fewer sets than its plan gave it (short). Functions of a lift's exposures, which the analytics index builds. */
 import type { ExPoint, Exposure } from './model';
@@ -7,19 +7,18 @@ import { LIGHTER_LOAD, afterBreak, lighter, sameRR, trendE, USUAL_BEFORE } from 
 
 /** How far under its usual a lift's session may fall and still be at its
     usual level: 97% of the best strength reading of the sessions it is
-    compared with (the r30 audit's tolerance, a convention: at 8 reps and the
+    compared with (a convention: at 8 reps and the
     same load, one of two sets a rep short is within it, every set a rep
     short is not), or, where a lift has no reading, of each one's reps a set
-    (a convention of r53's, stricter: at 12 a set, 12, 12 and 11 is within it
+    (a convention, stricter: at 12 a set, 12, 12 and 11 is within it
     and 12 and 11 is not; on a 60 s hold, 58 s is). */
 export const USUAL_SHARE = 0.97;
 
 /* The middle of a list of numbers, the higher of the two middle ones in an
-   even list (a lift's usual, V's one rule, r54). */
+   even list (a lift's usual, V's one rule). */
 const mid = (v: readonly number[]): number => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)];
 
-/* A lift's sets in a session as its usual sets count them (V's one rule,
-   r54): its working sets at a load, as moved, within a tenth of its working
+/* A lift's sets in a session as its usual sets count them (V's one rule): its working sets at a load, as moved, within a tenth of its working
    load either way (LIGHTER_LOAD), and any heavier set up to its usual
    working load (`usualW`, typed). A set a tenth or more lighter is a
    back-off set or an unmarked warm-up, as a session that much lighter reads
@@ -27,17 +26,15 @@ const mid = (v: readonly number[]): number => [...v].sort((a, b) => a - b)[Math.
    does not build on, unless it was at the usual load: a set at the
    usual load is a usual set, whatever the session's working load came to
    (100 x 3, then 82.5 x 7 three times, is four sets, a day below usual).
-   From the independent review of r54: counting only the sets at the
-   working load read 100 x 10, 9 and 9 with 97.5 x 9, all four planned sets,
-   as fewer sets, and so a heavier last set, and the sets after a load
-   lowered mid-session. With no load to compare (a bodyweight lift with
+   Counting only the sets at the working load would read 100 x 10, 9 and 9
+   with 97.5 x 9, all four planned sets, as fewer sets, and so a heavier
+   last set, and the sets after a load lowered mid-session. With no load to compare (a bodyweight lift with
    nothing added, an assisted one before any weigh-in), every working set.
-   A set tried and missed counts by the same test (r64, the r63 audit's
-   R-1): it was one of the session's sets, short of the range, which the
+   A set tried and missed counts by the same test: it was one of the session's sets, short of the range, which the
    next target reads (triedAt). Left out, 185 x 10, 0, 0 after 185 x 10 x 3
-   read as a session of fewer sets, which sets no target, so the target came
-   from the session before and stepped the load up, "every set at 185 hit
-   10", the sets missed at that very load. */
+   would read as a session of fewer sets, which sets no target, so the target
+   would come from the session before and step the load up, "every set at 185
+   hit 10", the sets missed at that very load. */
 function setsAt(q: Exposure, usualW: number): number {
   const tried: readonly ExPoint[] = q.miss ? [...q.pts, ...q.miss] : q.pts;
   let tw = -Infinity;
@@ -50,12 +47,12 @@ function setsAt(q: Exposure, usualW: number): number {
 }
 
 /* The sets a lift's session tried at a load, in the order done, a missed
-   set among them with its 0 reps and marked as missed (PENDING 338 A).
+   set among them with its 0 reps and marked as missed.
    A missed set counts toward no volume, PR, estimate or trend, but it is a
    set of the session short of the range, which the next target reads: read
-   without it, a 5 x 5 with its last two sets missed twice running read as
-   three sets of 5, every set made, and stepped up, and a 4-set plan read
-   "over your first 2 sets". */
+   without it, a 5 x 5 with its last two sets missed twice running would read
+   as three sets of 5, every set made, and step up, and a 4-set plan would
+   read "over your first 2 sets". */
 /** A session's sets at load w as tried, in order, a missed one with its 0 reps and `missed` set. */
 export function triedAt(x: Exposure, w: number): (ExPoint & { missed?: true })[] {
   const at = (p: ExPoint): boolean => Math.abs(p.w - w) < EPS_SAME;
@@ -81,13 +78,13 @@ const usualSets = (ref: readonly Exposure[]): number => {
    working load, as its target reads the first sets there (the engine's
    tp), or null where it has none (tRaw, the same over every set there, is
    null); and its reps a set over the same sets. So a set beyond the usual
-   never counts against a session (from the independent review of r54: a
-   fourth set of 5 after 11, 10 and 10 brought the average under the usual
-   and held back a target the three planned sets beat). */
-/* A set missed at the working load is one of those sets, read as 0 (r72, the 387 audit's 387-B3, V 2026-11-04: "count
-   as 0 reps"): left out, 185 x 10, 10 and a missed set read as full and asked 21+ reps, where 185 x 10, 10, 2 read
-   below its usual and repeated 31+, so failing a set outright set an easier target than two reps of it. Read as 0,
-   it is below its usual too and the target repeats; the load still never steps up on it (setsAt, r56.2). */
+   never counts against a session (a fourth set of 5 after 11, 10 and 10
+   would bring the average under the usual and hold back a target the three
+   planned sets beat). */
+/* A set missed at the working load is one of those sets, read as 0 (V 2026-11-04: "count as 0 reps"): left out, 185
+   x 10, 10 and a missed set would read as full and ask 21+ reps, where 185 x 10, 10, 2 reads below its usual and
+   repeats 31+, so failing a set outright would set an easier target than two reps of it. Read as 0,
+   it is below its usual too and the target repeats; the load still never steps up on it (setsAt). */
 function readingOf(q: Exposure, k: number): number | null {
   if (q.tRaw == null) return null;
   let sum = 0,
@@ -104,7 +101,7 @@ function readingOf(q: Exposure, k: number): number | null {
       n++;
     }
   }
-  // Every one of them missed reads 0 (the review's R72-8: on a one-set plan it fell back to the session's other sets and read as full).
+  // Every one of them missed reads 0 (on a one-set plan, falling back to the session's other sets, it would read as full).
   return n + missed ? sum / (n + missed) : q.tRaw;
 }
 function repsOf(q: Exposure, k: number): number {
@@ -112,16 +109,16 @@ function repsOf(q: Exposure, k: number): number {
   return at.length ? at.reduce((a, p) => a + p.r, 0) / at.length : q.topReps / q.topN;
 }
 
-/** Whether a lift's session was at its usual load (the r30 audit: a lift
-    done at its usual load in a lighter week is not lighter): its working
+/** Whether a lift's session was at its usual load (a lift done at its
+    usual load in a lighter week is not lighter): its working
     load not under the heaviest working load of its previous sessions in the
     range (`ref`, up to three), and its strength reading, reps alone, no
     further under theirs than USUAL_SHARE allows, each read over as many
-    sets at the working load as theirs usually were (readingOf, r54). The
-    working load since r54: by the heaviest set, a lifter
-    who opens with a heavy single and leaves it out on a lighter day, doing
-    the usual sets after it, read lighter, though the single is not where
-    reps are built. */
+    sets at the working load as theirs usually were (readingOf). The
+    working load, not the heaviest set: by that, a lifter who opens with a
+    heavy single and leaves it out on a lighter day, doing the usual sets
+    after it, would read lighter, though the single is not where reps are
+    built. */
 export function atUsualLoad(x: Exposure, ref: readonly Exposure[]): boolean {
   const k = usualSets(ref);
   const mW = Math.max(...ref.map(q => q.topW)),
@@ -133,13 +130,13 @@ export function atUsualLoad(x: Exposure, ref: readonly Exposure[]): boolean {
 /** Whether a lift's session on a deload or lighter day was at its usual
     load and reps, against its previous sessions in the range not
     done lighter (`ref`, up to three), its sets aside: those V's one rule
-    reads next, as on any day (idxShort, r54). With a strength reading on
+    reads next, as on any day (idxShort). With a strength reading on
     it and on one of them, the usual-load test above. Without one (a timed
     hold, a lift with no estimate such as a hanging leg raise, a bodyweight
     lift before any weigh-in, sets past 20 reps), the load says nothing on
     its own: a bodyweight leg raise is at its usual load on every day, and
-    r53's first version counted 8 leg raises on a lighter day as a full
-    session after 12s. So the working load must be no lighter than any of
+    8 leg raises on a lighter day are no full session after 12s. So the
+    working load must be no lighter than any of
     theirs (less help on an assisted lift), and the reps a set at it
     (seconds on a hold) no further under any of theirs than USUAL_SHARE
     allows. With no earlier session in the range to compare with, it is
@@ -204,7 +201,7 @@ export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string
     /* Its sets near its working load (setsAt). At a heavier working load
        than both before it, a step up, its sets at or above their working
        load count too: an easy first set and the load raised for the rest
-       (r34) is 1 set at the old load and 2 at the new, the old one more than
+       is 1 set at the old load and 2 at the new, the old one more than
        a tenth under the new after a big jump early on. */
     const loads = before.map(q => q.topW);
     const was = Math.max(...loads),
