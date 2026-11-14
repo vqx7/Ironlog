@@ -1,4 +1,4 @@
-// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-36, in the
+// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-37, in the
 // project's claude/ironlog-spec-session.md, built from the code: workout.ts, worksets.ts, worktaps.ts, workfields.ts,
 // workfinish.ts, timer.ts, actsstart.ts, actspick.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
 // expects). A feature suite: each section is one rule, a lifter's log seeded, the workout started from Today's card
@@ -1199,6 +1199,32 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const rd = (await R.draft()).ex[0].sets.filter(x => x.done).map(x => x.sg || null);
     ok(rd.length === 3 && JSON.stringify(rd) === JSON.stringify([[rsw, 8], [rsw, 8], [rsw, 7]]), 'L-36: sets typed in quick entry keep what was asked of each, as sets ticked by their button do (REV15-7)', rd);
     await R.close();
+  }
+
+  /* ---------- L-37: the live line against the target says a previous best only when it reads differently ---------- */
+  if (run('L-37')) {
+    /* A set heavier than the target beats it by its estimate (Brzycki to 10 reps to failure, Epley past it); the best
+       before it is said beside it only when it shows as another number, as the recap and the PR message say it. In kg,
+       estimates show to the half kilo: 97.5 x 9 at 2 in reserve is 133.25 kg, 133.5 shown; 100 x 8 at 2 is 133.33, also
+       133.5 shown, so "previous best 133.5" beside it would read as no gain. 105 x 8 at 2 is 140, past it. */
+    const e1 = (w, rtf) => (rtf <= 10 ? (w * 36) / (37 - rtf) : w * (1 + rtf / 30));
+    const half = v => String(Math.round(v * 2) / 2);
+    for (const [w, r, says] of [
+      [100, 8, `Beaten by load: ${half(e1(100, 10))} kg estimated`],
+      [105, 8, `Beaten by load: ${half(e1(105, 10))} kg estimated, previous best ${half(e1(97.5, 11))}`]
+    ]) {
+      const P = await lifter({ items: [['bench', 3, 6, 10, REST_BENCH]], settings: { unit: 'kg', autoDone: false },
+        seed: (S) => { S.sessions = [{ id: 'last', date: '2026-11-07', dayIdx: 0, dayId: 'A', dayName: 'Push', routineId: 'R1', notes: '', ex: [{ exId: 'bench', rr: [6, 10], ps: 3, sets: [9, 9, 9].map(r => ({ w: 97.5, r, rir: 2, done: true })) }] }]; } });
+      await start(P);
+      for (const [f, v] of [['w', w], ['r', r]]) { await P.page.click(field(f, 0, 0)); await P.page.fill(field(f, 0, 0), ''); await P.page.keyboard.type(String(v)); }
+      await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(80);
+      await P.tap(btn('rirOpen', 0, 0), 100); await P.tap('#view [data-act="rirPick"][data-b="0"][data-s="0"][data-v="2"]', 100);
+      await P.tap(tick(0, 0), 200);
+      if (await P.modal()) await mOk(P);
+      const line = await P.ev(() => { const e = document.getElementById('tp-0'); return e ? e.innerText.trim() : ''; });
+      ok(half(e1(100, 10)) === half(e1(97.5, 11)) && line.endsWith(says), `L-37: in kg after 97.5 x 9 x 3, ${w} x ${r} at 2 in reserve reads "${says}"`, line);
+      await P.close();
+    }
   }
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');

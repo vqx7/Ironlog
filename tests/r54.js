@@ -102,12 +102,13 @@ const FILE = process.argv[2] || 'index.html';
   {
     const pl = await ev(() => { const p = window.__ironlog.planFor('bench'); return { lo: +p.repMin, hi: +p.repMax }; });
     // Bench at 42.5 kg, every set at the top of its range: the next load is on the 5 lb step (set on the lift; the default
-    // by equipment, 10 lb, is tests/r68.js section 4), and the words add the step that gets there.
+    // by equipment, 10 lb, is tests/r68.js section 4), and the words quote the 42.5 kg lifted, as typed, and name the load
+    // to go to (2.65, P-38; until 2.65 they quoted the 93.7 lb it converts to and "add 6.3 lb", a difference no plate makes).
     await log([ses('b1', '2026-10-08', 'bench', [pl.lo, pl.hi], [[42.5, pl.hi], [42.5, pl.hi], [42.5, pl.hi]])], { unit: 'lb' });
     await setStep('bench', 5 * LB);
     await startWith('bench');
     const b = await ev(() => { const L = window.__ironlog; const x = L.state.draft.ex[0]; return { sw: x.sw, hint: x.hint || '' }; });
-    ok(Math.round(b.sw / LB * 1000) / 1000 === 100 && /at 93\.7 lb hit \d+: add 6\.3 lb/.test(b.hint), 'bench logged at 42.5 kg, every set at the top, now shown in lb: the next load is 100 lb, on the 5 lb step, and the words add 6.3 lb to the 93.7 shown (r52: 98.7 lb, "add 5 lb")', { lb: b.sw / LB, hint: b.hint });
+    ok(Math.round(b.sw / LB * 1000) / 1000 === 100 && /Every set at 42\.5 kg hit \d+: go to 100 lb and aim/.test(b.hint) && !/93\.7/.test(b.hint), 'bench logged at 42.5 kg, every set at the top, now shown in lb: the next load is 100 lb, on the 5 lb step, and the words say the 42.5 kg lifted and go to 100 lb (r52: 98.7 lb, "add 5 lb")', { lb: b.sw / LB, hint: b.hint });
     await setStep('bench', null);
     // Incline dumbbell press at 12.5 kg for 11, 10 and 10, short of the top: a target of reps, at 25 lb dumbbells, not 30.
     await log([ses('d1', '2026-10-08', 'incDb', [8, 12], [[12.5, 11], [12.5, 10], [12.5, 10]])], { unit: 'lb' });

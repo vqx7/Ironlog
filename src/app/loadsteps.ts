@@ -20,11 +20,12 @@ import {
   onStep,
   stepReadIn,
   toDIn,
+  typedOtherIn,
   unitStepIn
 } from './units';
 import { fmtWIn, loadLabelIn, loadNote, roundLoadIn, swapWIn } from './loads';
 import { isNum, EPS, EPS_SAME, MILLIONTHS } from './util';
-import { LIGHTER_LOAD, jumpCap, jumpPct, rtfAt, e1At } from './formulas';
+import { E1_MAX_RIR, LIGHTER_LOAD, jumpCap, jumpPct, rtfAt, e1At } from './formulas';
 import { RACK, loadMode, noE1, rackKind } from './library';
 import { bwRefLoadIn } from './setread';
 /** Plates: a load within this many kilograms of a load the plates make is that load, at the least (a thousandth of a step before). */
@@ -203,36 +204,42 @@ export function unitGridIn(
   return cp != null && kgOfIn(M, d) > cp + EPS ? null : kgOfIn(M, d);
 }
 
-/* A suggestion moved to another load (by unitSnap or plateSnap): the load
-   swapped in, a reps target turned into a load target when the load went
-   up, and the step its words name restated. `why` names what the new load
-   is nearest to. */
+/* A suggestion moved to another load (by unitSnap, plateSnap or a rack's snap): the load swapped in, a reps target
+   aimed at the new load, and the step its words name restated. `why` names what the new load is nearest to. */
 function moveIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, nw: number, why: string): Suggestion {
   if (res.w == null || Math.abs(nw - res.w) < EPS) return res;
   const out = swapWIn(M, ex, res, nw);
-  /* A heavier load under a target of reps (12.5 kg dumbbells read in lb
-     going to 30 lb, 9% heavier): with the reps to beat unchanged, the lifter
-     falls short. Those reps were done lighter,
-     so the target is that load for the bottom of the range in every set, as
-     after any step up. */
-  /* Unless the move costs under BIG_STEP_REPS by the rep formula: a load the unit on screen cannot
-     make, rounded to one it can, is the same load, so the reps to beat stand there. A lb lifter's 185 lb for 8s read
-     in kg was 85 kg for 6+, reps back to the bottom for 1.3% more; a 60 lb pressdown done for 15s, 27.5 kg for 10+. */
-  if (nw > res.w + EPS && res.tgt && res.tgt.kind === 'reps' && smallMoveIn(M, ex, res.w, nw, res.tgt.rs || [])) {
-    return {
-      ...out,
-      // The target alone: the rest of the words were said of the load done, and swapped they would say it was done here.
-      text: `${res.last ? res.last + ' ' : ''}${loadLabelIn(M, ex, nw)}${ex.bw ? '' : ' ' + UIn(M)}${loadNote(ex)} is ${why} to what you did: aim for ${out.target}.`
-    };
-  }
-  if (nw > res.w + EPS && res.tgt && res.tgt.kind === 'reps') {
+  const t = res.tgt;
+  if (t && t.kind === 'reps') {
     const lbl = `${loadLabelIn(M, ex, nw)}${ex.bw ? '' : ' ' + UIn(M)}${loadNote(ex)}`;
-    return {
-      ...out,
-      text: `${res.last ? res.last + ' ' : ''}${lbl} is ${why} to what you did: aim for ${plan.repMin}+ reps in every set.`,
-      target: `${lbl} for ${plan.repMin}+ reps in every set`,
-      tgt: { kind: 'load', w: nw, repMin: +plan.repMin, prevBest: res.tgt.prevBest }
-    };
+    // The target alone: the rest of the words were said of the load done, and swapped they would say it was done here.
+    const said = (target: string): string =>
+      `${res.last ? res.last + ' ' : ''}${lbl} is ${why} to what you did: aim for ${target}.`;
+    const at = t.w ?? res.w,
+      rs = t.rs || [],
+      up = nw > at + EPS;
+    /* A heavier load costing BIG_STEP_REPS or more by the rep formula (12.5 kg dumbbells read in lb going to 30 lb, 9%
+       heavier) is a step up: the bottom of the range in every set, as after any step. */
+    if (up && !smallMoveIn(M, ex, at, nw, rs))
+      return {
+        ...out,
+        text: said(`${plan.repMin}+ reps in every set`),
+        target: `${lbl} for ${plan.repMin}+ reps in every set`,
+        tgt: { kind: 'load', w: nw, repMin: +plan.repMin, prevBest: t.prevBest }
+      };
+    /* Otherwise the reps of equal effort there, plus one, as beating last time is at the same load: 24 kg x 10, 10, 9
+       read in lb is 55 lb, 3.9% heavier, where the same effort is about 25 reps, so 26+, not 30+; 26 kg read in lb is
+       55 lb, 4% lighter, about 34, so 35+, not 30+. Where no set changes by a whole rep the load is the same and last
+       time's reps stand (185 lb shown in kg as 85); with no estimate, a heavier load keeps them too and a lighter one is
+       only swapped in, as before. */
+    const a = repsAtIn(M, ex, plan, at, nw, rs);
+    const over = / (in one set|over (?:your first )?\d+ sets) at /.exec(out.target)?.[1];
+    if (!a || a.same || !over) return up ? { ...out, text: said(out.target) } : out;
+    const target = `${a.total + 1}+ reps ${over} at ${lbl}`;
+    const moved: Suggestion = { ...out, text: said(target), target, tgt: { ...t, w: nw, total: a.total, rs: a.rs } };
+    // A build to more reps before a large step was said of last time's load, so it does not carry to this one.
+    delete moved.buildTo;
+    return moved;
   }
   /* The step the words name moves with the load, so they add up to what is
      shown (not "add 5 lb" to 93.7 lb beside 100 lb, nor "take 5 lb of help
@@ -263,6 +270,56 @@ function smallMoveIn(M: Model, ex: ExerciseLike, w: number, nw: number, rs: read
   return at != null && r - at < BIG_STEP_REPS;
 }
 
+/* The reps of equal effort at `nw` for last time's reps `rs` at `at`, by the rep formula (e1At and its inverse, each set
+   read to failure at the plan's reserve, as targets are aimed), in whole reps per set that add up to the total to beat
+   (largest remainders first, so a target counted over fewer sets reads the same), never past the top of the range in
+   every set, since the range's top is where the next step comes from. `same` when no set changes by a whole rep, so
+   the load is the same for the target: a mental conversion (185 lb typed for an 85 kg stack) or a rounding. Null with no estimate to read: a lift with none, or a
+   bodyweight lift with no weigh-in. */
+/** The total reps to beat and the reps per set at `nw` for last time's `rs` at `at`, or null with no estimate. */
+function repsAtIn(
+  M: Model,
+  ex: ExerciseLike,
+  plan: Plan,
+  at: number,
+  nw: number,
+  rs: readonly number[]
+): { same: boolean; total: number; rs: number[] } | null {
+  const bwK = bwRefLoadIn(M, ex);
+  if (noE1(ex) || (ex.bw && !(bwK > 0)) || !rs.length || !(at + bwK > 0) || !(nw + bwK > 0)) return null;
+  const q = Math.min(Math.max(0, isNum(+plan.rir) ? +plan.rir : 0), E1_MAX_RIR);
+  const top = +plan.repMax;
+  const eq: number[] = [];
+  for (const r of rs) {
+    const f = rtfAt(e1At(at + bwK, r + q), nw + bwK);
+    if (f == null) return null;
+    eq.push(Math.min(top, Math.max(0, f - q)));
+  }
+  const last = rs.reduce((s, r) => s + r, 0),
+    sum = eq.reduce((s, r) => s + r, 0);
+  if (eq.every((x, i) => Math.abs(x - Math.min(top, rs[i])) < 1)) return { same: true, total: last, rs: [...rs] };
+  const total = Math.min(Math.floor(sum + EPS), top * rs.length - 1);
+  const per = eq.map(x => Math.floor(x + EPS));
+  const part = (i: number): number => eq[i] - per[i];
+  const order = eq.map((_, i) => i);
+  let have = per.reduce((s, r) => s + r, 0);
+  for (const i of [...order].sort((x, y) => part(y) - part(x) || x - y)) {
+    if (have >= total) break;
+    if (per[i] < top) {
+      per[i]++;
+      have++;
+    }
+  }
+  for (const i of [...order].sort((x, y) => part(x) - part(y) || y - x)) {
+    if (have <= total) break;
+    if (per[i] > 0) {
+      per[i]--;
+      have--;
+    }
+  }
+  return { same: false, total, rs: per };
+}
+
 /* `at`: the load the step is taken from. Only a rack from Your gym needs it:
    its spacing can change along the rack (2.5 lb steps to 25, then 5). */
 /** A lift's load step in kg: its own, the plan's, the gym's rack or plates, or the rack read from its loads. */
@@ -286,7 +343,11 @@ function stepOfIn(
   const v = stepReadIn(M, ex && ex.inc != null ? ex.inc : plan && isNum(+plan.inc) ? +plan.inc : STEP_LB);
   if (ex && ex.inc == null && Math.abs(v - unitStepIn(M)) < EPS_SAME) {
     const L = gymRackIn(M, ex, plan);
-    if (L) return rackGapIn(M, L, at);
+    // From a load in hand, the next weight up by the one list (loadsForIn), as on a rack read from its spacing below.
+    if (L) {
+      const up = at != null && at > 0 ? loadsForIn(M, ex, plan, at).above(at) : null;
+      return up == null ? rackGapIn(M, L, at) : up - (at ?? 0);
+    }
     /* On a rack read from its spacing (rackGridIn) or Your gym's plates: the spacing, or from a load off them the way to
        the next one up, as every rule that moves a load reads it (loadsForIn). */
     const gr = rackGridIn(M, ex, plan, at);
@@ -345,14 +406,24 @@ function listSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Su
   if (w == null || ex.timed) return res;
   const Ls = loadsForIn(M, ex, plan, top ?? null);
   if (Ls.kind !== 'rack' && Ls.kind !== 'grid') return res;
-  if (Ls.has(w) || (top != null && Math.abs(w - top) < EPS_SAME)) return res;
+  if (Ls.has(w)) return res;
+  /* Last time's load asked again was lifted, so it stays, when it was typed in the unit on screen (52.5 lb on a rack in
+     5s). Typed in the other unit it was another rack's weight (24 kg at a rack in 5 lb steps, 52.9 lb): the nearest
+     weight this rack has, a tie going lighter, with the reps aimed at it (moveIn). */
+  const again = top != null && Math.abs(w - top) < EPS_SAME;
+  if (again && !typedOtherIn(M, w)) return res;
   const f = Ls.floor(w);
   let nw: number | null;
-  if (top != null && w > top) {
+  if (again) {
+    // The lightest weight past the one under it, read plainly: the nearest above, with no sliver skipped.
+    const u = f != null ? Ls.above(f) : Ls.first;
+    nw = f == null ? u : u == null ? f : u - w < w - f ? u : f;
+  } else if (top != null && w > top) {
     const u = Ls.above(top);
     nw = f != null && u != null && f >= u - EPS_SAME ? f : u;
   } else nw = f ?? Ls.first;
-  return nw == null || Math.abs(nw - w) < EPS ? res : swapWIn(M, ex, res, nw);
+  const why = Ls.kind === 'rack' ? 'the nearest weight on your rack' : `the nearest load in ${UIn(M)}`;
+  return nw == null || Math.abs(nw - w) < EPS ? res : moveIn(M, ex, plan, res, nw, why);
 }
 
 /* Dumbbells and kettlebells come in fixed weights (12 kg dumbbells do not
@@ -554,12 +625,25 @@ function loadsForIn(
   if (L) {
     const tl = rackTolIn(M),
       tf = rackTolIn(M, L, at);
+    /* A load in hand typed in the other unit is a weight of another unit's rack, so going up it is read as a rack read
+       from its spacing reads one (below): the next weight is skipped only when it is a sliver over it, less than the
+       lift's own jump (22.5 kg is 49.6 lb, so 55, not 50), never by BELL_TOL's share of the gap, which would take 24 kg
+       (52.9 lb) for the 55 lb bell and step it to 60. BELL_TOL stays for a load typed in the unit on screen, a bell's
+       label converted (35 lb for a 16 kg dumbbell). */
+    const conv = at != null && typedOtherIn(M, at),
+      jump = jumpPct(ex, plan);
+    const next = (w: number): number | null => L.find(x => x > w + tl) ?? null;
     return {
       kind: 'rack',
       first: L[0] ?? null,
       below: w => [...L].reverse().find(x => x < w - (at != null && Math.abs(w - at) < EPS_SAME ? tf : tl)) ?? null,
       floor: (w, tol = tl) => [...L].reverse().find(x => x <= w + tol) ?? null,
-      above: w => L.find(x => x > w + (at != null && Math.abs(w - at) < EPS_SAME ? tf : tl)) ?? null,
+      above: w => {
+        if (!(at != null && Math.abs(w - at) < EPS_SAME)) return next(w);
+        if (!conv) return L.find(x => x > w + tf) ?? null;
+        const u = next(w);
+        return u != null && u - w < jump * w ? next(u) : u;
+      },
       has: w => L.some(x => Math.abs(x - w) < EPS_SAME)
     };
   }
