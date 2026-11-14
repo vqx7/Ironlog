@@ -7,7 +7,7 @@
 //     it as missed or Fix it (325 a), and at or near it is logged as missed at
 //     once (a guard);
 //   - a change of units is never a PR: 100 kg x 8, units to lb, then 220.5 x 8
-//     typed, as the Last column shows it, is the same load (327 b);
+//     typed as its conversion (the Last column shows the kg as typed since 2.65), is the same load (327 b);
 //   - a lift trained in two rep ranges, back after a break, restarts each
 //     range on its own first session back: the heavy day after an eased light
 //     day is eased too (327 d), and a lift in one range is as before (a guard);
@@ -47,7 +47,8 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
   const finishRecap = async () => { await ev(() => window.__ironlog.ACT.finish()); await wait(200); for (let k = 0; k < 5; k++) { const m = await modal(); if (!m) return ''; if (m.kind === 'recap') return m.text; await ev(() => window.__ironlog.ACT.mOk()); await wait(200); } return ''; };
 
   // ---- 327 b: a change of units is never a PR. Bench 100 kg x 8 x 4 twice, units set to lb in Settings, then the same load
-  // typed as the Last column shows it, 220.5 lb (100.017 kg). r55 announced a Weight PR and saved one, made of the rounding.
+  // typed as its conversion, 220.5 lb (100.017 kg), the Last column showing 100 kg as typed (2.65, P-38; it showed 220.5
+  // before). r55 announced a Weight PR and saved one, made of the rounding.
   {
     await log([ses('u1', '2026-10-01', 'bench', [6, 10], Array(4).fill([100, 8])), ses('u2', '2026-10-08', 'bench', [6, 10], Array(4).fill([100, 8]))]);
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:general'] = true; L.render(); });
@@ -60,7 +61,7 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
     for (let s = 0; s < 4; s++) { await typ(W(0, s), '220.5'); await typ(R(0, s), 8); if (!(await ev(s => window.__ironlog.state.draft.ex[0].sets[s].done, s))) await page.click(`[data-act="sDone"][data-b="0"][data-s="${s}"]`); await wait(150); if ((await modal()) && (await modal()).kind === 'confirm') { await ev(() => window.__ironlog.ACT.mOk()); await wait(100); } toasts.push(await toastText()); }
     const recap = await finishRecap();
     const after = await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); return L.IDX().prs.filter(p => p.date === '2026-10-15').map(p => p.type + ' ' + p.w + 'x' + p.r); });
-    ok(/220\.5/.test(shown) && !toasts.some(t => /PR/.test(t)) && !/Weight PR|Rep PR|NEW PR/i.test(recap) && /0 of 1 exercise target beaten/.test(recap) && after.length === 0, '100 kg x 8 last time, units changed to lb, and 220.5 x 8 typed as the Last column shows it: no PR toast, none in the recap or the PR list, and the target not read as beaten by load (r55 counted a Weight PR, and a beaten target, made of rounding)', { shown, toasts: toasts.filter(t => /PR/.test(t)), recap, after });
+    ok(/100 kg×8/.test(shown) && !/220\.5/.test(shown) && !toasts.some(t => /PR/.test(t)) && !/Weight PR|Rep PR|NEW PR/i.test(recap) && /0 of 1 exercise target beaten/.test(recap) && after.length === 0, '100 kg x 8 last time, units changed to lb, the Last line saying 100 kg as typed, and 220.5 x 8, its conversion, typed: no PR toast, none in the recap or the PR list, and the target not read as beaten by load (r55 counted a Weight PR, and a beaten target, made of rounding)', { shown, toasts: toasts.filter(t => /PR/.test(t)), recap, after });
     await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'kg'; L.saveNow(); });
     // A guard: a step past the old load is still a PR once past what the old load meant.
     await log([ses('u1', '2026-10-01', 'bench', [6, 10], Array(4).fill([100, 8])), ses('u2', '2026-10-08', 'bench', [6, 10], Array(4).fill([100, 8])), ses('u3', '2026-10-15', 'bench', [6, 10], [[225 * LB, 8], [225 * LB, 8]])]);

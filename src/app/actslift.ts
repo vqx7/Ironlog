@@ -10,7 +10,7 @@ import { LIMITS, within } from './records';
 import { cleanCardio } from './normalize';
 import { effW, greyW } from './session';
 import { rirScale } from './effort';
-import { EX, U, exName, fmtW, fromD, incOf } from './live';
+import { EX, U, exName, fmtW, fromD, incOf, liftMax, loadRead, typedBound } from './live';
 import { state, ui } from './store';
 import { act } from './act';
 import { goalWords } from './display';
@@ -151,6 +151,11 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       return;
     }
     const n = numIn(fieldText('maxVal'));
+    // Saved as it was shown, it is kept as set: one set in the other unit is shown on this unit's equipment (liftMax).
+    if (e.maxLoad != null && n != null && String(numIn(fmtW(liftMax(e) ?? 0))) === String(n)) {
+      closeModal();
+      return;
+    }
     if (n != null && n < 0) {
       toast('Enter a load of 0 or more, or leave it blank');
       return;
@@ -162,7 +167,9 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     });
     refreshEx(e.id);
     rerenderKeepScroll();
-    toast(e.maxLoad != null ? `Heaviest available for ${e.name}: ${fmtW(e.maxLoad)} ${U()}` : `No limit for ${e.name}`);
+    toast(
+      e.maxLoad != null ? `Heaviest available for ${e.name}: ${fmtW(liftMax(e) ?? 0)} ${U()}` : `No limit for ${e.name}`
+    );
   },
   goalOpen(t) {
     openModal({ kind: 'goal', exId: t.dataset.ex || '' });
@@ -188,7 +195,9 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       toast('Enter a load of 0 or more');
       return;
     }
-    const goal = { w: kg(w || 0), r };
+    // A load saved as it was shown is kept as set: a goal set in the other unit is shown on this unit's equipment.
+    const was = e.goal;
+    const goal = { w: was && w != null && String(numIn(fmtW(loadRead(was.w)))) === String(w) ? was.w : kg(w || 0), r };
     act(
       () => {
         e.goal = goal;
@@ -234,13 +243,14 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       closeModal();
       return;
     }
-    // Saved without typing, a lift with no step of its own keeps following its default (Your gym's rack, say).
-    // A number typed is saved, even the one shown (review: typing 5 on a 5 and 2.5 rack did nothing); so is any other number.
-    if (e.inc == null && !sheet.typed && String(numIn(fmtW(incOf(e, sheet.plan)))) === String(n)) {
+    // Saved without typing, nothing changes: a lift with no step of its own keeps following its default (Your gym's rack,
+    // say), and its own step stays as set, one set in the other unit too, shown as its match (stepReadIn). A number typed
+    // is saved, even the one shown (review: typing 5 on a 5 and 2.5 rack did nothing); so is any other number.
+    if (!sheet.typed && String(numIn(fmtW(incOf(e, sheet.plan)))) === String(n)) {
       closeModal();
       return;
     }
-    const inc = Math.min(kg(n), LIMITS.step);
+    const inc = typedBound(n, LIMITS.step);
     closeModal();
     act(() => {
       e.inc = inc;

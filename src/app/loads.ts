@@ -7,7 +7,7 @@ import type { ExerciseLike, Model, Suggestion } from './model';
 import { loadMode, PLATE_SIDE_IDS, isCompound, noE1 } from './library';
 import { r1, EPS } from './util';
 import { UIn } from './model';
-import { DEFAULT_STEP, fromDIn, toDIn } from './units';
+import { DEFAULT_STEP, LB, fromDIn, toDIn, typedUnit } from './units';
 
 /** The load meanings a lifter can choose in the exercise editor. */
 export const LOAD_MODES: readonly (readonly [string, string])[] = [
@@ -64,6 +64,18 @@ export function loadLabelIn(M: Model, ex: Pick<Exercise, 'bw'>, kg: number): str
     return kg > 0 ? `BW+${fmtWIn(M, kg)}` : kg < 0 ? `BW−${fmtWIn(M, -kg)}` : 'BW';
   }
   return fmtWIn(M, kg);
+}
+
+/* A load already lifted is quoted as it was typed: the lifter did 225 lb, so "Every set at 225 lb", never the 102.1 kg
+   it converts to, which no plate shows. In the unit on screen that is the number as shown; typed in the other unit it is
+   its number in that unit with the unit named, since the screen's unit would read it as its own. */
+/** A past load as it was typed: as shown when typed in the unit on screen, else in its own unit, named ("225 lb", "BW+10 kg"). */
+export function typedLabelIn(M: Model, ex: Pick<Exercise, 'bw'>, kg: number): string {
+  const u = typedUnit(kg);
+  if (u == null || u === UIn(M)) return loadLabelIn(M, ex, kg);
+  const n = (v: number): string => String(r1(u === 'lb' ? v / LB : v));
+  const num = ex.bw ? (kg > 0 ? `BW+${n(kg)}` : `BW−${n(-kg)}`) : n(kg);
+  return `${num} ${u}`;
 }
 
 // Puts a new load into a suggestion, its words included.

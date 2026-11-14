@@ -1,4 +1,4 @@
-// Targets and progression, checked against their written rules (CA-1; the spec "Targets and progression", P-1 to P-37,
+// Targets and progression, checked against their written rules (CA-1; the spec "Targets and progression", P-1 to P-42,
 // in the project's claude/ironlog-spec-progression-draft1.md, built from the code, V's rulings deciding). A feature
 // suite: each section is one rule, a lifter's log seeded and the session started from Today's card, and what the
 // session screen shows (the grey load, the grey reps, the target) compared with what the rule gives, worked out here
@@ -23,16 +23,35 @@ const BAR_STEP_LB = 10, JUMP_COMPOUND = 0.025;
 const e1 = (load, rtf) => (rtf <= 10 ? (load * 36) / (37 - rtf) : load * (1 + rtf / 30));
 const loadFor = (est, rtf) => (rtf <= 10 ? (est * (37 - rtf)) / 36 : est / (1 + rtf / 30));
 const stepsDown = (w, step) => Math.floor(w / step + 1e-9) * step;
+// Reps to failure an estimate allows at a load: the inverse of e1, Brzycki to 10, Epley past it.
+const rtfFor = (est, load) => { const b = 37 - (36 * load) / est; return b <= 10 ? b : 30 * (est / load - 1); };
+/* Equal effort at another load (P-40): each set's reps to failure at last time's load read at the new one, less the
+   plan's reserve; the total to beat is the whole reps under their sum, at most one under the top of the range in
+   every set, spread over the sets largest remainder first (each set at most the top). No set changing by a whole rep
+   is the same load, last time's total standing. */
+const LBK = 0.45359237;
+function equalEffort(at, nw, rs, rir, repMax) {
+  const eq = rs.map(r => Math.min(repMax, Math.max(0, rtfFor(e1(at, r + rir), nw) - rir)));
+  const sum = eq.reduce((a, b) => a + b, 0), last = rs.reduce((a, b) => a + b, 0);
+  if (eq.every((x, i) => Math.abs(x - Math.min(repMax, rs[i])) < 1)) return { same: true, total: last, rs };
+  const total = Math.min(Math.floor(sum + 1e-9), repMax * rs.length - 1);
+  const per = eq.map(x => Math.floor(x + 1e-9)); let have = per.reduce((a, b) => a + b, 0);
+  const idx = eq.map((_, i) => i).sort((x, y) => (eq[y] - per[y]) - (eq[x] - per[x]) || x - y);
+  for (const i of idx) { if (have >= total) break; if (per[i] < repMax) { per[i]++; have++; } }
+  return { same: false, total, rs: per };
+}
 const stepUp = (w, step, share) => Math.max(w + step, Math.round((w * (1 + share)) / step) * step);
 
 /* A lifter in lb (o.unit 'kg' for kg) on a routine whose days are given as { id, name, items: [[exId, sets, repMin,
    repMax, rir, more]] }, with sessions as [date, dayId, [[exId, [[load, reps, rir], ...], more]], marks], each saved
    with its day and its plan's sets; `more` adds fields to the item or block (inc, nw), marks to the session (light).
-   o.gym is Your gym, o.bw a weigh-in in lb, o.maxLoad the heaviest bench available, o.inj a flagged muscle. */
+   o.gym is Your gym, o.bw a weigh-in in lb, o.maxLoad the heaviest bench available, o.inj a flagged muscle; o.logUnit the
+   unit the sets were typed in (the app's, o.unit, unless given), o.exInc a lift's own load step as { exId: step in lb },
+   o.exSet fields set on a lift as stored, in kg ({ exId: { maxLoad: 100 } }), o.settings fields set in Settings. */
 async function lifter(days, sessions, o = {}) {
   const P = await open(FILE, { w: 390, h: 844, clock: (o.day || DAY) + 'T10:00:00' });
   await P.page.evaluate(([days, sessions, o]) => {
-    const L = window.__ironlog; const S = L.state; const LB = 0.45359237; const U = o.unit === 'kg' ? 1 : LB;
+    const L = window.__ironlog; const S = L.state; const LB = 0.45359237; const U = (o.logUnit || o.unit) === 'kg' ? 1 : LB;
     S.settings.onboarded = true; S.settings.unit = o.unit || 'lb'; S.settings.autoDone = false;
     if (o.gym) S.settings.gym = o.gym;
     if (o.bw) S.bodyweights = [{ id: 'w1', date: '2026-09-01', kg: o.bw * LB }];
@@ -43,6 +62,9 @@ async function lifter(days, sessions, o = {}) {
       return { id: 's' + i, date, dayIdx: di, dayId, dayName: day.name, routineId: 'R1', notes: '', light: !!(f && f.light), deload: !!(f && f.deload),
         ex: ex.map(([exId, sets, more]) => { const it = day.items.find(x => x[0] === exId); return { exId, rr: [it[2], it[3]], ps: it[1], sets: sets.map(([w, r, rir]) => ({ w: w * U, r, rir, done: true })), ...(more || {}) }; }) }; });
     if (o.maxLoad) S.exercises = S.exercises.map(e => (e.id === 'bench' ? { ...e, maxLoad: o.maxLoad * LB } : e));
+    if (o.exInc) S.exercises = S.exercises.map(e => (o.exInc[e.id] ? { ...e, inc: o.exInc[e.id] * LB } : e));
+    if (o.exSet) S.exercises = S.exercises.map(e => (o.exSet[e.id] ? { ...e, ...o.exSet[e.id] } : e));
+    if (o.settings) Object.assign(S.settings, o.settings);
     if (o.inj) S.injuries = [{ id: 'i1', m: o.inj, note: '', date: '2026-11-01' }];
     L.state = L.normalize(S);
     localStorage.setItem(L.KEY + '.installLater', '1'); localStorage.setItem(L.KEY + '.tipWake', '1');
@@ -769,6 +791,189 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
     await startOn(P, 0);
     const s = await shows(P, 'bench');
     ok(s.rows.every(r => r.w === 180) && !s.tgt && /Injury flagged/.test(s.hint), 'P-37 chest flagged, bench back after seven weeks from 200 x 8 x 3: 180 lb, the way back\'s, with the flag said and nothing to beat', s);
+    await P.ctx.close(); await P.browser.close();
+  }
+
+  // ---- E. Loads typed in the other unit (390, Release A): what was done quoted as typed, steps and rack weights of the
+  // unit on screen, the reps aimed at the load asked.
+  if (run('P-38')) {
+    /* What was lifted is quoted as it was typed, in the Last line and the words after it; a difference across units, a
+       conversion no plate makes, is never named: the load to go to is. 225 x 10 x 3 typed in lb, the app now in kg: bench
+       goes up its step in kg, 5 kg (a bar's, docs/EVIDENCE.md), on the loads that exist in kg (2.5 kg steps from the
+       20 kg bar): 102.06 + 5 is 107.06, nearest 107.5. */
+    let P = await lifter(DAY_BENCH, weeks('A', [[225, 10, 2], [225, 10, 2], [225, 10, 2]]), { unit: 'kg', logUnit: 'lb' });
+    await startOn(P, 0);
+    let s = await shows(P, 'bench');
+    const want = 20 + Math.round((225 * LBK + 5 - 20) / 2.5) * 2.5;
+    const cells = await P.page.evaluate(() => [...document.querySelectorAll('#blk-0 .sg .ls')].map(e => e.textContent));
+    ok(s.hint.startsWith('Last (Nov 3): 225 lb×10, 225 lb×10, 225 lb×10.') && cells.every(c => c === '225 lb×10') && cells.length === 3,
+      'P-38 225 x 10 x 3 typed in lb, the app in kg: the Last line and the Last column say 225 lb, as typed', { hint: s.hint, cells });
+    ok(want === 107.5 && s.rows.every(r => r.w === want) && s.hint.includes(`Every set at 225 lb hit 10: go to ${want} kg and aim for 6+ reps.`) && !/102\.1|add \d/.test(s.hint),
+      'P-38 then the load to go to, 107.5 kg, never the conversion ("102.1 kg", "add 5.4 kg")', s);
+    await P.ctx.close(); await P.browser.close();
+    // A lifter who never changed units reads the Last line as before, no unit named.
+    P = await lifter(DAY_BENCH, weeks('A', [[225, 10, 2], [225, 10, 2], [225, 10, 2]]));
+    await startOn(P, 0);
+    s = await shows(P, 'bench');
+    ok(s.hint.startsWith('Last (Nov 3): 225×10, 225×10, 225×10. Every set at 225 lb hit 10: add 10 lb'), 'P-38 a guard: in one unit the Last line names no unit and the step is said', s.hint);
+    await P.ctx.close(); await P.browser.close();
+  }
+  if (run('P-39')) {
+    /* A step set in one unit, read in the other, is that unit's matching step: the default (5 lb, 2.5 kg) doubled or halved
+       to the nearest by ratio, so a 10 lb step is 5 kg, and the loads are those it makes from the bar, 20 kg and 5 kg
+       steps. 225 x 10 x 3 in lb, the app in kg: 102.06 + 5 is 107.06, nearest 105 (110 is farther), never 106.6. */
+    const want = 20 + Math.round((225 * LBK + 5 - 20) / 5) * 5;
+    for (const [how, days, o] of [
+      ['its own step', DAY_BENCH, { exInc: { bench: 10 } }],
+      ['the plan\'s step', [{ id: 'A', name: 'Push', items: [['bench', 3, 6, 10, 2, { inc: 10 * LBK }]] }], {}]
+    ]) {
+      const P = await lifter(days, weeks('A', [[225, 10, 2], [225, 10, 2], [225, 10, 2]]), { unit: 'kg', logUnit: 'lb', ...o });
+      await startOn(P, 0);
+      const s = await shows(P, 'bench');
+      ok(want === 105 && s.rows.every(r => r.w === want) && s.hint.includes(`go to ${want} kg`) && !/4\.5 kg|106\.6/.test(s.hint), `P-39 a 10 lb step as ${how}, the app in kg, after 225 x 10 x 3: 105 kg, a 5 kg step's load`, s);
+      await P.ctx.close(); await P.browser.close();
+    }
+    const P = await lifter(DAY_BENCH, weeks('A', [[225, 10, 2], [225, 10, 2], [225, 10, 2]]), { exInc: { bench: 10 } });
+    await startOn(P, 0);
+    const s = await shows(P, 'bench');
+    ok(s.rows.every(r => r.w === 235) && s.hint.includes('add 10 lb'), 'P-39 a guard: the same 10 lb step in lb, 235 lb', s);
+    await P.ctx.close(); await P.browser.close();
+  }
+  if (run('P-40')) {
+    /* At the nearest load in the unit on screen, heavier or lighter than what was done, the reps to beat are those of
+       equal effort there by the estimate, plus one, as beating last time is at the same load; where no set changes
+       by a whole rep it is the same load and last time's total stands. Dumbbells in lb come in 5s. */
+    const DAY_DB = [{ id: 'A', name: 'Push', items: [['dbBench', 3, 8, 12, 1]] }];
+    const db = sets => Array.from({ length: 3 }, (_, k) => [addD(DAY, -7 * (3 - k)), 'A', [['dbBench', sets]]]);
+    for (const [kg, side] of [[24, 'heavier'], [26, 'lighter']]) {
+      const P = await lifter(DAY_DB, db([[kg, 10, 1], [kg, 10, 1], [kg, 9, 1]]), { logUnit: 'kg' });
+      await startOn(P, 0);
+      const s = await shows(P, 'dbBench');
+      const at = kg / LBK, nw = Math.round(at / 5) * 5;
+      const E = equalEffort(at, nw, [10, 10, 9], 1, 12);
+      ok(nw === 55 && !E.same && s.rows.every(r => r.w === nw) && s.tgt && s.tgt.kind === 'reps' && s.tgt.total === E.total && JSON.stringify(s.tgt.rs) === JSON.stringify(E.rs)
+        && s.hint.includes(`55 lb per dumbbell is the nearest load in lb to what you did: aim for ${E.total + 1}+ reps over 3 sets at 55 lb per dumbbell.`),
+        `P-40 ${kg} kg x 10, 10, 9 at 1 in reserve, the app in lb: 55 lb, ${side}, ${E.total + 1}+ reps (equal effort there, plus one), not 30+`, { s, E });
+      const t = await restated(P, 'dbBench');
+      ok(t === `Today: ${E.rs[0] + E.rs[1] + 1}+ reps over 2 sets at 55 lb per dumbbell`, `P-40 ${kg} kg: with a set removed, the target counts the 2 left`, t);
+      await P.ctx.close(); await P.browser.close();
+    }
+    // A guard: 50 lb dumbbells seen in kg are 22.5 kg, 0.8% lighter, within a rep: beat 29 as before.
+    const P = await lifter(DAY_DB, db([[50, 10, 1], [50, 10, 1], [50, 9, 1]]), { unit: 'kg', logUnit: 'lb' });
+    await startOn(P, 0);
+    const s = await shows(P, 'dbBench');
+    ok(equalEffort(50 * LBK, 22.5, [10, 10, 9], 1, 12).same && s.rows.every(r => r.w === 22.5) && s.tgt && s.tgt.total === 29, 'P-40 a guard: 50 lb x 10, 10, 9 seen in kg, 22.5 kg: within a rep, 29 to beat', s);
+    await P.ctx.close(); await P.browser.close();
+  }
+  if (run('P-41')) {
+    /* Your gym's rack in one unit and sets typed in the other: a load typed in the other unit is another rack's weight,
+       so it goes to the nearest weight this rack has, with the reps aimed there (P-40), and at the top of the range the
+       next weight up is the first heavier than it, not one past the bell it is near. A load typed in the unit on screen
+       was lifted here and stays. */
+    const DAY_DB = [{ id: 'A', name: 'Push', items: [['dbBench', 3, 8, 12, 1]] }];
+    const db = sets => Array.from({ length: 3 }, (_, k) => [addD(DAY, -7 * (3 - k)), 'A', [['dbBench', sets]]]);
+    const gym = { u: 'lb', db: { lo: 5, hi: 100, st: 5 } };
+    let P = await lifter(DAY_DB, db([[24, 10, 1], [24, 10, 1], [24, 9, 1]]), { logUnit: 'kg', gym });
+    await startOn(P, 0);
+    let s = await shows(P, 'dbBench');
+    const E = equalEffort(24 / LBK, 55, [10, 10, 9], 1, 12);
+    ok(s.rows.every(r => r.w === 55) && s.tgt && s.tgt.total === E.total && s.hint.includes(`55 lb per dumbbell is the nearest weight on your rack to what you did: aim for ${E.total + 1}+ reps`),
+      `P-41 Your gym's dumbbells in 5 lb steps, 24 kg x 10, 10, 9 typed in kg: 55 lb, the nearest the rack has, for ${E.total + 1}+, never 52.9 lb`, s);
+    await P.ctx.close(); await P.browser.close();
+    P = await lifter(DAY_DB, db([[24, 12, 1], [24, 12, 1], [24, 12, 1]]), { logUnit: 'kg', gym });
+    await startOn(P, 0);
+    s = await shows(P, 'dbBench');
+    ok(s.rows.every(r => r.w === 55) && s.tgt && s.tgt.kind === 'load' && s.tgt.repMin === 8 && s.hint.includes('Every set at 24 kg per dumbbell hit 12: go to 55 lb per dumbbell and aim for 8+ reps.'),
+      'P-41 at the top, 24 kg x 12 x 3: 55 lb for 8+, the first weight heavier, not 60 lb nor reps built at 52.9 lb', s);
+    await P.ctx.close(); await P.browser.close();
+    P = await lifter(DAY_DB, db([[52.5, 10, 1], [52.5, 10, 1], [52.5, 9, 1]]), { gym });
+    await startOn(P, 0);
+    s = await shows(P, 'dbBench');
+    ok(s.rows.every(r => r.w === 52.5) && s.tgt && s.tgt.total === 29, 'P-41 a guard: 52.5 lb typed in lb, off the rack in 5s, was lifted and stays: 52.5 lb, 29 to beat', s);
+    await P.ctx.close(); await P.browser.close();
+    /* A load typed in the rack's own unit is one of its weights, whatever unit the app shows: at the top of the range the
+       next weight is the rack's next, and under the range the load drops on the rack, as with the app in the rack's
+       unit. Each case is run in both units and must agree: 45 kg on 1 kg steps goes to 46 (never 47), a lateral raise
+       at 24 kg to 25 (never held for more reps), 110 lb on 2.5 lb steps to 112.5, 30 kg with the plan's 10% jump on
+       2 kg steps to 32, and a lateral raise 2 reps under its range at 25 kg drops to 23. */
+    const KG = { u: 'kg', db: { lo: 1, hi: 50, st: 1 } };
+    const top = (exId, w, r) => Array.from({ length: 3 }, (_, k) => [addD(DAY, -7 * (3 - k)), 'A', [[exId, [[w, r, 1], [w, r, 1], [w, r, 1]]]]]);
+    const under = [[20, 19], [22, 10], [22, 14], [25, 10]].map(([w, r], k) => [addD(DAY, -7 * (4 - k)), 'A', [['dbLateral', [[w, r, 1], [w, r, 1], [w, k === 2 ? 11 : r, 1]]]]]);
+    for (const [name, gym, item, log, want] of [
+      ['DB bench 45 kg x 12 x 3, dumbbells in 1 kg steps', KG, ['dbBench', 3, 8, 12, 1], top('dbBench', 45, 12), 46],
+      ['lateral raise 24 kg x 15 x 3 on 12-15', KG, ['dbLateral', 3, 12, 15, 1], top('dbLateral', 24, 15), 25],
+      ['DB bench 110 lb x 12 x 3, dumbbells in 2.5 lb steps', { u: 'lb', db: { lo: 2.5, hi: 150, st: 2.5 } }, ['dbBench', 3, 8, 12, 1], top('dbBench', 110, 12), 112.5 * LBK],
+      ['DB bench 30 kg x 12 x 3 with a 10% jump, dumbbells in 2 kg steps', { u: 'kg', db: { lo: 2, hi: 50, st: 2 } }, ['dbBench', 3, 8, 12, 1, { jump: 10 }], top('dbBench', 30, 12), 32],
+      ['lateral raise at 25 kg x 10 x 3 on 12-16, under the range', { u: 'kg', db: { lo: 1, hi: 40, st: 1 } }, ['dbLateral', 3, 12, 16, 1], under, 23]
+    ]) {
+      const got = {};
+      for (const unit of ['kg', 'lb']) {
+        P = await lifter([{ id: 'A', name: 'Day', items: [item] }], log, { unit, logUnit: gym.u, gym });
+        await startOn(P, 0);
+        s = await shows(P, item[0]);
+        got[unit] = s.rows.map(r => (unit === 'lb' ? r.w * LBK : r.w));
+        await P.ctx.close(); await P.browser.close();
+      }
+      ok(['kg', 'lb'].every(u => got[u].length === 3 && got[u].every(w => Math.abs(w - want) < 0.03)),
+        `P-41 Your gym in ${gym.u}, the app in either unit, ${name}: ${+(gym.u === 'lb' ? want / LBK : want).toFixed(2)} ${gym.u}, the rack's own weight, in both`, got);
+    }
+  }
+
+  if (run('P-42')) {
+    /* Every other number set on a lift in one unit and read in the other is put on that unit's equipment, as its step is
+       (P-39): a load goes to the nearest load of the unit's own step (5 lb, 2.5 kg), so a heaviest load or a goal of
+       100 kg set in kg reads as 220 lb set in lb does, and a 20 kg bar, the lift's own or Settings', as the 45 lb bar.
+       Each case beside the same lifter with the number set in lb, which must read alike. */
+    const read = async (sets, o, light) => {
+      const P = await lifter(DAY_BENCH, weeks('A', sets), o);
+      if (light) await startLighter(P); else await startOn(P, 0);
+      const s = await shows(P, 'bench');
+      const goal = await P.page.evaluate(() => { const L = window.__ironlog; const g = L.goalState('bench'); return { line: L.goalLine('bench').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(), hit: g && g.hit }; });
+      await P.ctx.close(); await P.browser.close();
+      return { ...s, goal };
+    };
+    const at = (w, r) => [[w, r, 2], [w, r, 2], [w, r, 2]];
+    for (const [w, why] of [[215, 'a step under it'], [220, 'at it']]) {
+      const kg = await read(at(w, 10), { exSet: { bench: { maxLoad: 100 } } }), lb = await read(at(w, 10), { exSet: { bench: { maxLoad: 220 * LBK } } });
+      ok(kg.rows.every(r => r.w === 220) && kg.hint === lb.hint && JSON.stringify(kg.rows) === JSON.stringify(lb.rows) && !/220\.5|0\.5 lb|5\.5 lb/.test(kg.hint),
+        `P-42 a heaviest load of 100 kg set in kg, the app in lb, ${why} (${w} lb x 10 x 3): 220 lb, as 220 lb set in lb reads`, { kg, lb });
+    }
+    const gk = await read(at(220, 5), { exSet: { bench: { goal: { w: 100, r: 5 } } } }), gl = await read(at(220, 5), { exSet: { bench: { goal: { w: 220 * LBK, r: 5 } } } });
+    ok(gk.goal.hit && gk.goal.line === gl.goal.line && /Goal 220 lb × 5/.test(gk.goal.line), 'P-42 a goal of 100 kg x 5 set in kg, the app in lb, after 220 lb x 5 x 3: "Goal 220 lb × 5", reached, as 220 lb set in lb reads', { gk: gk.goal, gl: gl.goal });
+    /* A goal read on the other unit's equipment can read heavier than it was set (225 lb is 102.06 kg, read 102.5), so it
+       is reached by a set at it as set, as by a set at what it reads as: a change of unit never takes a goal reached
+       away. */
+    for (const [log, w, why] of [['lb', 225, '225 lb x 5 x 3, the goal as set'], ['kg', 102.5, '102.5 kg x 5 x 3, the goal as it reads']]) {
+      const g = await read(at(w, 5), { unit: 'kg', logUnit: log, exSet: { bench: { goal: { w: 225 * LBK, r: 5 } } } });
+      ok(g.goal.hit && /^Goal 102\.5 kg × 5 : reached/.test(g.goal.line), `P-42 a goal of 225 lb x 5 set in lb, the app in kg, after ${why}: "Goal 102.5 kg × 5", reached`, g.goal);
+    }
+    for (const [where, kgO, lbO] of [
+      ['the lift\'s own', { exSet: { bench: { barKg: 20 } } }, { exSet: { bench: { barKg: 45 * LBK } } }],
+      ['Settings\'', { settings: { barKg: 20 } }, { settings: { barKg: 45 * LBK } }]
+    ]) {
+      const bk = await read(at(50, 10), kgO, true), bl = await read(at(50, 10), lbO, true);
+      ok(bk.rows.every(r => r.w === 45) && bk.hint === bl.hint && !/44\.1/.test(bk.hint), `P-42 ${where} bar of 20 kg set in kg, the app in lb, a Lighter day after 50 lb x 10 x 3: the 45 lb bar, as 45 lb set in lb reads`, { bk, bl });
+    }
+    /* A bar typed in the unit its field shows is the bar the lifter has and reads as typed, whatever unit Your gym is in:
+       the app in lb and Your gym in kg, 45 typed in Settings' bar is the 45 lb bar, not the gym's 20 kg one, and 25
+       typed as a lift's own bar is 25 lb, never 27.6 (12.5 kg). */
+    const P = await lifter(DAY_BENCH, [], { gym: { u: 'kg', plates: [25, 20, 15, 10, 5, 2.5, 1.25] } });
+    await P.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); }); await wait(200);
+    const q = '#view input[data-bind="barKg"]';
+    await P.page.fill(q, '45'); await P.page.$eval(q, e => e.dispatchEvent(new Event('change', { bubbles: true }))); await wait(250);
+    const st = await P.page.evaluate(() => { const L = window.__ironlog; return { field: document.querySelector('#view input[data-bind="barKg"]').value, lb: +(L.exBarKg(L.EX('bench')) / 0.45359237).toFixed(3) }; });
+    ok(st.field === '45' && st.lb === 45, 'P-42 the app in lb, Your gym in kg: 45 typed in Settings\' bar reads 45 lb, as typed, for every bar lift', st);
+    const edit = async v => {
+      await P.page.evaluate(() => window.__ironlog.ACT.exEdit({ dataset: { ex: 'bench' } })); await wait(250);
+      await P.page.evaluate(() => { const d = document.querySelector('#modal details.more'); if (d) d.open = true; });
+      const f = '#modal input[data-ebind="barRaw"]'; const shown = await P.page.$eval(f, e => e.value);
+      if (v != null) { await P.page.fill(f, v); await P.page.$eval(f, e => { e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); }); await P.page.click('#modal [data-act="exSave"]'); }
+      else await P.page.evaluate(() => window.__ironlog.ACT.mClose({ dataset: {} }));
+      await wait(250); return shown;
+    };
+    await edit('25'); const shown = await edit(null);
+    const own = await P.page.evaluate(() => { const L = window.__ironlog; return +(L.exBarKg(L.EX('bench')) / 0.45359237).toFixed(3); });
+    ok(shown === '25' && own === 25, 'P-42 the app in lb, Your gym in kg: 25 typed as the lift\'s own bar reads 25 lb, as typed', { shown, own });
     await P.ctx.close(); await P.browser.close();
   }
 

@@ -5,7 +5,7 @@
 import type { DbRack, Exercise, Gym, Plan } from './types';
 import type { ExerciseLike, Model } from './model';
 import { isNum, r3, EPS_SAME } from './util';
-import { LB, STEP_LB, stepReadIn, unitStepIn, BAR, TYPED_STEP } from './units';
+import { LB, STEP_LB, stepReadIn, unitStepIn, BAR, TYPED_STEP, loadReadAs, loadReadIn, typedUnit } from './units';
 import { ONE_DB, PLATE_SIDE_IDS, isCompound, loadMode, rackKind } from './library';
 import { UIn, gymOfIn } from './model';
 import { arr } from './records';
@@ -372,7 +372,8 @@ export function capOfIn(
   const L = gymRackIn(M, ex, plan);
   let r = L ? L[L.length - 1] : null;
   if (r != null && top != null && top > r + rackTolIn(M, L, top)) r = null;
-  const c = ex.maxLoad != null ? (r != null ? Math.min(ex.maxLoad, r) : ex.maxLoad) : r;
+  const mx = liftMaxIn(M, ex);
+  const c = mx != null ? (r != null ? Math.min(mx, r) : mx) : r;
   /* With Your gym's plates, the heaviest the lift can be given is the heaviest load the plates make not past it: with 102 kg set and plates that make 100 and 105, the engine aimed at 102, the plates brought it back to
      100, and the step read "add 0 kg, which is the heaviest available". Read here, every rule and screen sees 100. */
   const G = c != null ? plateGridIn(M, ex, plan) : null;
@@ -391,7 +392,8 @@ export function atCapOfIn(
   const L = gymRackIn(M, ex, plan);
   return (
     cap != null &&
-    top >= cap - (L && (ex.maxLoad == null || cap < ex.maxLoad - EPS_SAME) ? rackTolIn(M, L, top) : EPS_SAME)
+    top >=
+      cap - (L && (ex.maxLoad == null || cap < (liftMaxIn(M, ex) ?? 0) - EPS_SAME) ? rackTolIn(M, L, top) : EPS_SAME)
   );
 }
 
@@ -399,14 +401,29 @@ export function atCapOfIn(
    in the exercise editor, else the bar in Settings. An exercise without its
    own bar has none. */
 export function exBarKgIn(M: Model, ex: ExerciseLike | null | undefined): number {
-  return ex && ex.barKg !== undefined && ex.barKg > 0 ? ex.barKg : barKgIn(M);
+  return ex && ex.barKg !== undefined && ex.barKg > 0 ? barReadIn(M, ex.barKg) : barKgIn(M);
+}
+
+/** The heaviest load set on a lift, read in the unit on screen (loadReadIn), or null when none is set. */
+export function liftMaxIn(M: Model, ex: Pick<Exercise, 'maxLoad'>): number | null {
+  return ex.maxLoad != null ? loadReadIn(M, ex.maxLoad) : null;
+}
+
+/* A bar typed in the unit its field shows (the one on screen) is the bar the lifter has, so it reads as typed whatever
+   unit Your gym is in: 45 typed in lb with Your gym in kg is a 45 lb bar, not the gym's 20 kg one. One set in the
+   other unit is read on the gym's equipment, else the screen's. */
+/** A bar's weight as set (kg): as typed when typed in the unit on screen, else read in the unit the gym is labelled in, else the one on screen (loadReadAs). */
+export function barReadIn(M: Model, kg: number): number {
+  if (typedUnit(kg) === UIn(M)) return kg;
+  const g = gymOfIn(M);
+  return loadReadAs(kg, (g && g.u) || UIn(M));
 }
 
 /* The default bar is the gym's: a 20 kg bar in a gym labelled in kg, 45 lb in one in lb,
    whatever unit the app shows (a kg gym with the app in lb is not given a 45 lb bar). */
 export function barKgIn(M: Model): number {
   const b = M.s.settings.barKg;
-  if (b != null) return b;
+  if (b != null) return barReadIn(M, b);
   const g = gymOfIn(M);
   const u = (g && g.u) || UIn(M);
   return u === 'lb' ? BAR.lb * LB : BAR.kg;

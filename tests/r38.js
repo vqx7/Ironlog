@@ -103,7 +103,9 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
 
     // ---------- 5. In kg: the same goal shown in kg ----------
     const kg = await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'kg'; L.invalidate(); L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const t = document.getElementById('goalLine').innerText.replace(/\s+/g, ' '); L.state.settings.unit = 'lb'; L.invalidate(); L.render(); return t; });
-    ok(/^Goal 111(\.1)? kg × 5/.test(kg.trim()), 'switched to kg, the goal reads in kg' + T, kg);
+    // Since 2.65 (390's Release A) a goal set in lb reads in kg as a load kg plates make, the nearest 2.5 kg: 245 lb
+    // (111.1 kg) is 110 kg (tests/progression.js P-42).
+    ok(/^Goal 110 kg × 5/.test(kg.trim()), 'switched to kg, the goal reads in kg, on kg plates' + T, kg);
 
     // ---------- 6. Bodyweight lifts: added load, BW alone ----------
     const bw = await ev(async () => {

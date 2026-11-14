@@ -434,6 +434,8 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
       }
     }
     if (best != null) {
+      /* A best beaten by less than the rounding shows the same number as the one before, so the previous best is said only
+         when it reads differently, as the recap and the PR message say it (wasE). */
       heavyBeat = best > t.prevBest + EPS_SAME;
       const iso = !isCompound(ex);
       const setW = bs ? setShort(ex, +(bs.w ?? 0) || 0, +(bs.r ?? 0)) : '';
@@ -442,7 +444,7 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
           ? `Beaten by load: ${setW}, your best yet`
           : `Heavier than target: ${setW}`
         : heavyBeat
-          ? `Beaten by load: ${fmtE(best)} ${U()} estimated, previous best ${fmtE(t.prevBest)}`
+          ? `Beaten by load: ${fmtE(best)} ${U()} estimated${wasE(best, t.prevBest) ? `, previous best ${wasE(best, t.prevBest)}` : ''}`
           : `Heavier than target, ${fmtE(best)} ${U()} estimated against a best of ${fmtE(t.prevBest)}`;
     }
   }

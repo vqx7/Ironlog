@@ -143,8 +143,10 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       await typeIn(wQ, unit === 'lb' ? 30000 : 20000);
       const load = { field: await fieldOf(wQ), kg: await ev(() => window.__ironlog.state.draft.ex[0].sets[0].w) };
       const want = unit === 'lb' ? { bar: '110.2', step: '1102.3', load: '20000' } : { bar: '50', step: '500', load: '9071.8' };
-      ok(bar.field === want.bar && Math.abs(bar.kg - 50) < 1e-9, `3. ${unit}: a bar typed past 50 kg shows ${want.bar}, the bound a save keeps`, bar);
-      ok(step.field === want.step && Math.abs(step.kg - 500) < 1e-9, `3. ${unit}: a load step typed past 500 kg shows ${want.step}`, step);
+      // Kept as the largest number typed in the unit within the bound (since 2.65), so it reads back as typed in it.
+      const inKg = v => (unit === 'lb' ? Number(v) * LB : Number(v));
+      ok(bar.field === want.bar && Math.abs(bar.kg - inKg(want.bar)) < 1e-9, `3. ${unit}: a bar typed past 50 kg shows ${want.bar}, the bound a save keeps`, bar);
+      ok(step.field === want.step && Math.abs(step.kg - inKg(want.step)) < 1e-9, `3. ${unit}: a load step typed past 500 kg shows ${want.step}`, step);
       ok(load.field === want.load && Math.abs(load.kg - 20000 * LB) < 1e-6, `3. ${unit}: a load typed past 20,000 lb shows ${want.load}`, load);
       // Opened again, the log holds what the fields showed.
       await P.page.reload(); await wait(400);

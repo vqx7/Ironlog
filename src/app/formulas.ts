@@ -5,7 +5,7 @@
 
 import type { Exercise, Point, Rir } from './types';
 import { daysBetween, isNum, pct1, EPS, EPS_SAME, PERCENT, WEEK_DAYS } from './util';
-import { LB, TYPED_STEP, onStep } from './units';
+import { LB, TYPED_STEP, onStep, typedUnit } from './units';
 import { LOAD_STEPS, isCompound } from './library';
 
 /* ---------- the 1RM estimate ---------- */
@@ -152,21 +152,6 @@ export const rtfBand = (rtf: number): PrBand =>
 
 /* A rep PR counts at 90% or more of the strongest set before it (a convention). */
 export const REP_PR_SHARE = 0.9;
-
-/* The unit a load was typed in, read from the number kept (kilograms, every
-   set as typed): one typed in kilograms is a whole number of TYPED_STEP kg,
-   one typed in pounds a whole number of TYPED_STEP lb, and no other load is
-   both. 0, or a load on neither (a number not typed as such, as the engine
-   reads one too), says nothing. Help on an assisted lift is read by its
-   size. */
-/** The unit a load was typed in, from its number, or null when the number does not say. */
-function typedUnit(w: number): 'kg' | 'lb' | null {
-  const a = Math.abs(w);
-  if (!(a > 0)) return null;
-  const kg = onStep(a, TYPED_STEP),
-    lb = onStep(a / LB, TYPED_STEP);
-  return kg === lb ? null : kg ? 'kg' : 'lb';
-}
 
 /* Half the largest spacing loads come in (LOAD_STEPS) that a load is a whole
    number of, in the unit it was typed in, in kilograms: no weight is farther

@@ -17,13 +17,14 @@
 //  13. a load step of 0 is a fixed load, never "add 0 lb"
 //  14. Pick for me halves its sets in a deload or lighter session
 //  15. warm-ups climb to the working load
+//  16. the exercise editor saved without a field touched keeps every number as it was set
 const { open } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const LB = 0.45359237;
 const near = (a, b, e) => a != null && b != null && Math.abs(a - b) < (e || 1e-6);
 
 (async () => {
-  const { browser, page, errors } = await open('index.html', { clock: '2026-10-02T12:00:00' });
+  const { browser, page, errors } = await open(process.argv[2] || 'index.html', { clock: '2026-10-02T12:00:00' });
   const ev = (f, a) => page.evaluate(f, a);
   // A fresh state with the given sessions and exercise changes, in lb or kg.
   await ev(() => {
@@ -313,6 +314,22 @@ const near = (a, b, e) => a != null && b != null && Math.abs(a - b) < (e || 1e-6
     return { full, half, light };
   }, [LB]);
   ok(r14.full.length && r14.half.every(([id, n], i) => r14.full[i] && r14.full[i][0] === id && n === Math.max(1, Math.ceil(r14.full[i][1] / 2))) && JSON.stringify(r14.light) === JSON.stringify(r14.half), '14. Pick for me offers half the sets (rounded up) in a deload or lighter session', r14);
+
+  // ---- 16. The exercise editor saved without a field touched keeps each number as it was set: a step, a heaviest load
+  // and a bar set in kg, the app now in lb, are shown on lb's equipment (10 lb, 220 lb, the 45 lb bar) and kept as set.
+  const r16 = await ev(() => {
+    const A = window.__ironlog;
+    window.__reset('lb', [], { bench: { inc: 5, maxLoad: 100, barKg: 20 }, ezCurl: { inc: 1, barKg: 10 } }, null, true);
+    const out = {};
+    for (const id of ['bench', 'ezCurl']) {
+      A.ACT.exEdit({ dataset: { ex: id } }); const m = A.ui.modal.e; const shown = { inc: m.incRaw, max: m.maxRaw, bar: m.barRaw };
+      A.ACT.exSave(); const e = A.state.exercises.find(x => x.id === id);
+      out[id] = { shown, kept: { inc: e.inc, max: e.maxLoad == null ? null : e.maxLoad, bar: e.barKg } };
+    }
+    return out;
+  });
+  ok(JSON.stringify(r16.bench.kept) === JSON.stringify({ inc: 5, max: 100, bar: 20 }) && JSON.stringify(r16.ezCurl.kept) === JSON.stringify({ inc: 1, max: null, bar: 10 }) && r16.bench.shown.inc === '10' && r16.bench.shown.max === '220' && r16.bench.shown.bar === '45',
+    '16. the exercise editor saved untouched, the app in lb: a 5 kg step, 100 kg heaviest and 20 kg bar shown as 10, 220 and 45 and kept as set, never rewritten as lb', r16);
 
   ok(!errors.length, 'no page errors (' + errors.join(' | ') + ')');
   await browser.close();

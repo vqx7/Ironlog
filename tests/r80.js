@@ -121,7 +121,10 @@ async function shortAt(page, v) {
           const ex = L.EX('bench'), plan = { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150 };
           for (let at = 20; at <= 300; at += 0.37) {
             const f = v => (v == null ? null : Math.round(v * 1000) / 1000);
-            out.push([gu, app, plates.join(','), f(at), f(L.incOf(ex, plan, at)), f(L.lighterLoad(ex, plan, at, at * 0.9)), f(L.heavierLoad(ex, plan, at, at * 1.03)), f(L.capOf({ ...ex, maxLoad: at }, plan))].join('|'));
+            // The heaviest load as a lifter types it, in the unit on screen: one typed in the other unit reads on this unit's
+            // equipment since 2.65 (390's Release A, tests/progression.js P-42), so it is not this guard's.
+            const cap = L.fromD(Math.round(L.toD(at) / 0.05) * 0.05);
+            out.push([gu, app, plates.join(','), f(at), f(L.incOf(ex, plan, at)), f(L.lighterLoad(ex, plan, at, at * 0.9)), f(L.heavierLoad(ex, plan, at, at * 1.03)), f(L.capOf({ ...ex, maxLoad: cap }, plan))].join('|'));
           }
           // A suggestion and a lighter day from a logged session at a few loads.
           for (const w of [60, 84.3, 102.1, 140]) {

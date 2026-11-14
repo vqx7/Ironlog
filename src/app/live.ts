@@ -29,11 +29,11 @@ import {
   rirHalfOnIn,
   sortedSessionsIn
 } from './model';
-import { fromDIn, stepReadIn, toDIn } from './units';
+import { fromDIn, loadReadIn, stepReadIn, toDIn, typedBoundIn } from './units';
 import { defPlanIn, planCreditIn, planSetsPerWeekIn, plannedSetsIn, profPlanIn, profRuleIn } from './routines';
 import { planForIn, routineUpdatesIn } from './plans';
 import { appBandIn, defBandIn, fitFloorsIn, hasTargetIn, refitIn } from './profile';
-import { barKgIn, capOfIn, exBarKgIn, gymRackIn, rackTolIn } from './gym';
+import { barKgIn, barReadIn, capOfIn, exBarKgIn, gymRackIn, liftMaxIn, rackTolIn } from './gym';
 import { fmtWIn, loadLabelIn } from './loads';
 import {
   cycleStateIn,
@@ -188,6 +188,10 @@ export const refit = live(refitIn);
 export const barKg = live(barKgIn);
 export const capOf = live(capOfIn);
 export const exBarKg = live(exBarKgIn);
+export const liftMax = live(liftMaxIn);
+export const barRead = live(barReadIn);
+export const loadRead = live(loadReadIn);
+export const typedBound = live(typedBoundIn);
 export const gymRack = live(gymRackIn);
 export const rackTol = live(rackTolIn);
 export const fmtW = live(fmtWIn);

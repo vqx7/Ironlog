@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.13-r110">
+<meta name="app-build" content="2026.11.13-r111">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2148,8 +2148,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.64";
-  var APP_VERSION = "2026.11.13-r110";
+  var DISPLAY_VERSION = "2.65";
+  var APP_VERSION = "2026.11.13-r111";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2349,18 +2349,41 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   };
   var onStep = (v3, step) => Math.abs(v3 / step - Math.round(v3 / step)) < EPS_SAME;
   var TYPED_STEP = 0.05;
+  function typedUnit(w2) {
+    const a2 = Math.abs(w2);
+    if (!(a2 > 0)) return null;
+    const kg2 = onStep(a2, TYPED_STEP), lb = onStep(a2 / LB, TYPED_STEP);
+    return kg2 === lb ? null : kg2 ? "kg" : "lb";
+  }
+  function typedOtherIn(M3, kg2) {
+    const u4 = typedUnit(kg2);
+    return u4 != null && u4 !== UIn(M3);
+  }
   var PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
   var CHANGE_PLATES = { kg: [2, 1.5, 1, 0.5], lb: [1.25] };
   var inUnitIn = (M3, kg2) => UIn(M3) === "lb" ? kg2 / LB : kg2;
   var kgOfIn = (M3, v3) => UIn(M3) === "lb" ? v3 * LB : v3;
+  function typedBoundIn(M3, v3, most) {
+    return kgOfIn(M3, Math.min(v3, Math.floor(inUnitIn(M3, most) / TYPED_STEP + EPS_SAME) * TYPED_STEP));
+  }
   var toDIn = (M3, kg2) => kg2 == null ? null : inUnitIn(M3, kg2);
   var fromDIn = (M3, v3) => v3 == null ? null : kgOfIn(M3, v3);
   function unitStepIn(M3) {
     return UIn(M3) === "kg" ? DEFAULT_STEP.kg : STEP_LB;
   }
   function stepReadIn(M3, v3) {
-    return Math.abs(v3 - STEP_LB) < EPS_SAME || Math.abs(v3 - DEFAULT_STEP.kg) < EPS_SAME ? unitStepIn(M3) : v3;
+    const u4 = UIn(M3), t4 = typedUnit(v3);
+    if (t4 == null || t4 === u4 || !(v3 > 0)) return v3;
+    const k2 = u4 === "lb" ? LB : 1, d3 = DEFAULT_STEP[u4];
+    return Math.min(LIMITS.step, d3 * 2 ** Math.round(Math.log2(v3 / k2 / d3)) * k2);
   }
+  function loadReadAs(kg2, u4) {
+    const t4 = typedUnit(kg2);
+    if (t4 == null || t4 === u4) return kg2;
+    const k2 = u4 === "lb" ? LB : 1, d3 = DEFAULT_STEP[u4];
+    return Math.max(1, Math.round(kg2 / k2 / d3)) * d3 * k2;
+  }
+  var loadReadIn = (M3, kg2) => loadReadAs(kg2, UIn(M3));
 
   // src/app/formulas.ts
   var E1_MAX_REPS = 12;
@@ -2427,12 +2450,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   ];
   var rtfBand = (rtf) => (PR_BANDS.find((b2) => rtf <= b2.top) ?? PR_BANDS[PR_BANDS.length - 1]).band;
   var REP_PR_SHARE = 0.9;
-  function typedUnit(w2) {
-    const a2 = Math.abs(w2);
-    if (!(a2 > 0)) return null;
-    const kg2 = onStep(a2, TYPED_STEP), lb = onStep(a2 / LB, TYPED_STEP);
-    return kg2 === lb ? null : kg2 ? "kg" : "lb";
-  }
   function halfStep(a2, u4) {
     const k2 = u4 === "lb" ? LB : 1;
     const st = LOAD_STEPS[u4].find((s3) => onStep(a2 / k2, s3));
@@ -3258,21 +3275,30 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const L2 = gymRackIn(M3, ex, plan);
     let r4 = L2 ? L2[L2.length - 1] : null;
     if (r4 != null && top != null && top > r4 + rackTolIn(M3, L2, top)) r4 = null;
-    const c4 = ex.maxLoad != null ? r4 != null ? Math.min(ex.maxLoad, r4) : ex.maxLoad : r4;
+    const mx = liftMaxIn(M3, ex);
+    const c4 = mx != null ? r4 != null ? Math.min(mx, r4) : mx : r4;
     const G = c4 != null ? plateGridIn(M3, ex, plan) : null;
     if (G && c4 != null && c4 > G.bar) return G.loads[Math.max(0, loadsFloorAt(G.loads, c4 + EPS_SAME))] ?? c4;
     return c4;
   }
   function atCapOfIn(M3, ex, plan, top, cap) {
     const L2 = gymRackIn(M3, ex, plan);
-    return cap != null && top >= cap - (L2 && (ex.maxLoad == null || cap < ex.maxLoad - EPS_SAME) ? rackTolIn(M3, L2, top) : EPS_SAME);
+    return cap != null && top >= cap - (L2 && (ex.maxLoad == null || cap < (liftMaxIn(M3, ex) ?? 0) - EPS_SAME) ? rackTolIn(M3, L2, top) : EPS_SAME);
   }
   function exBarKgIn(M3, ex) {
-    return ex && ex.barKg !== void 0 && ex.barKg > 0 ? ex.barKg : barKgIn(M3);
+    return ex && ex.barKg !== void 0 && ex.barKg > 0 ? barReadIn(M3, ex.barKg) : barKgIn(M3);
+  }
+  function liftMaxIn(M3, ex) {
+    return ex.maxLoad != null ? loadReadIn(M3, ex.maxLoad) : null;
+  }
+  function barReadIn(M3, kg2) {
+    if (typedUnit(kg2) === UIn(M3)) return kg2;
+    const g2 = gymOfIn(M3);
+    return loadReadAs(kg2, g2 && g2.u || UIn(M3));
   }
   function barKgIn(M3) {
     const b2 = M3.s.settings.barKg;
-    if (b2 != null) return b2;
+    if (b2 != null) return barReadIn(M3, b2);
     const g2 = gymOfIn(M3);
     const u4 = g2 && g2.u || UIn(M3);
     return u4 === "lb" ? BAR.lb * LB : BAR.kg;
@@ -7302,6 +7328,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return fmtWIn(M3, kg2);
   }
+  function typedLabelIn(M3, ex, kg2) {
+    const u4 = typedUnit(kg2);
+    if (u4 == null || u4 === UIn(M3)) return loadLabelIn(M3, ex, kg2);
+    const n3 = (v3) => String(r1(u4 === "lb" ? v3 / LB : v3));
+    const num3 = ex.bw ? kg2 > 0 ? `BW+${n3(kg2)}` : `BW−${n3(-kg2)}` : n3(kg2);
+    return `${num3} ${u4}`;
+  }
   function swapWIn(M3, ex, res, nw) {
     const a2 = loadLabelIn(M3, ex, res.w), b2 = loadLabelIn(M3, ex, nw);
     const fix = (t4) => t4 ? t4.split(a2).join(b2) : t4;
@@ -7471,25 +7504,29 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function moveIn(M3, ex, plan, res, nw, why) {
     if (res.w == null || Math.abs(nw - res.w) < EPS) return res;
     const out = swapWIn(M3, ex, res, nw);
-    if (nw > res.w + EPS && res.tgt && res.tgt.kind === "reps" && smallMoveIn(M3, ex, res.w, nw, res.tgt.rs || [])) {
-      return {
-        ...out,
-        // The target alone: the rest of the words were said of the load done, and swapped they would say it was done here.
-        text: `${res.last ? res.last + " " : ""}${loadLabelIn(M3, ex, nw)}${ex.bw ? "" : " " + UIn(M3)}${loadNote(ex)} is ${why} to what you did: aim for ${out.target}.`
-      };
-    }
-    if (nw > res.w + EPS && res.tgt && res.tgt.kind === "reps") {
+    const t4 = res.tgt;
+    if (t4 && t4.kind === "reps") {
       const lbl = `${loadLabelIn(M3, ex, nw)}${ex.bw ? "" : " " + UIn(M3)}${loadNote(ex)}`;
-      return {
-        ...out,
-        text: `${res.last ? res.last + " " : ""}${lbl} is ${why} to what you did: aim for ${plan.repMin}+ reps in every set.`,
-        target: `${lbl} for ${plan.repMin}+ reps in every set`,
-        tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest: res.tgt.prevBest }
-      };
+      const said2 = (target2) => `${res.last ? res.last + " " : ""}${lbl} is ${why} to what you did: aim for ${target2}.`;
+      const at2 = t4.w ?? res.w, rs = t4.rs || [], up = nw > at2 + EPS;
+      if (up && !smallMoveIn(M3, ex, at2, nw, rs))
+        return {
+          ...out,
+          text: said2(`${plan.repMin}+ reps in every set`),
+          target: `${lbl} for ${plan.repMin}+ reps in every set`,
+          tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest: t4.prevBest }
+        };
+      const a2 = repsAtIn(M3, ex, plan, at2, nw, rs);
+      const over = / (in one set|over (?:your first )?\d+ sets) at /.exec(out.target)?.[1];
+      if (!a2 || a2.same || !over) return up ? { ...out, text: said2(out.target) } : out;
+      const target = `${a2.total + 1}+ reps ${over} at ${lbl}`;
+      const moved = { ...out, text: said2(target), target, tgt: { ...t4, w: nw, total: a2.total, rs: a2.rs } };
+      delete moved.buildTo;
+      return moved;
     }
     if (res.top == null) return out;
     const was = fmtWIn(M3, res.w - res.top), now2 = fmtWIn(M3, nw - res.top);
-    const say = (t4) => t4.replace(`add ${was} ${UIn(M3)}`, `add ${now2} ${UIn(M3)}`).replace(`take ${was} ${UIn(M3)} of help off`, `take ${now2} ${UIn(M3)} of help off`);
+    const say = (t5) => t5.replace(`add ${was} ${UIn(M3)}`, `add ${now2} ${UIn(M3)}`).replace(`take ${was} ${UIn(M3)} of help off`, `take ${now2} ${UIn(M3)} of help off`);
     out.text = out.last && out.text.startsWith(out.last) ? out.last + say(out.text.slice(out.last.length)) : say(out.text);
     return out;
   }
@@ -7501,6 +7538,40 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const at2 = rtfAt(e1At(w2 + bwK, r4), nw + bwK);
     return at2 != null && r4 - at2 < BIG_STEP_REPS;
   }
+  function repsAtIn(M3, ex, plan, at2, nw, rs) {
+    const bwK = bwRefLoadIn(M3, ex);
+    if (noE1(ex) || ex.bw && !(bwK > 0) || !rs.length || !(at2 + bwK > 0) || !(nw + bwK > 0)) return null;
+    const q = Math.min(Math.max(0, isNum(+plan.rir) ? +plan.rir : 0), E1_MAX_RIR);
+    const top = +plan.repMax;
+    const eq = [];
+    for (const r4 of rs) {
+      const f3 = rtfAt(e1At(at2 + bwK, r4 + q), nw + bwK);
+      if (f3 == null) return null;
+      eq.push(Math.min(top, Math.max(0, f3 - q)));
+    }
+    const last = rs.reduce((s3, r4) => s3 + r4, 0), sum = eq.reduce((s3, r4) => s3 + r4, 0);
+    if (eq.every((x2, i5) => Math.abs(x2 - Math.min(top, rs[i5])) < 1)) return { same: true, total: last, rs: [...rs] };
+    const total = Math.min(Math.floor(sum + EPS), top * rs.length - 1);
+    const per = eq.map((x2) => Math.floor(x2 + EPS));
+    const part = (i5) => eq[i5] - per[i5];
+    const order = eq.map((_2, i5) => i5);
+    let have = per.reduce((s3, r4) => s3 + r4, 0);
+    for (const i5 of [...order].sort((x2, y2) => part(y2) - part(x2) || x2 - y2)) {
+      if (have >= total) break;
+      if (per[i5] < top) {
+        per[i5]++;
+        have++;
+      }
+    }
+    for (const i5 of [...order].sort((x2, y2) => part(x2) - part(y2) || y2 - x2)) {
+      if (have <= total) break;
+      if (per[i5] > 0) {
+        per[i5]--;
+        have--;
+      }
+    }
+    return { same: false, total, rs: per };
+  }
   function incOfIn(M3, ex, plan, at2) {
     return stepOfIn(M3, ex, plan, at2, true);
   }
@@ -7508,7 +7579,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const v3 = stepReadIn(M3, ex && ex.inc != null ? ex.inc : plan && isNum(+plan.inc) ? +plan.inc : STEP_LB);
     if (ex && ex.inc == null && Math.abs(v3 - unitStepIn(M3)) < EPS_SAME) {
       const L2 = gymRackIn(M3, ex, plan);
-      if (L2) return rackGapIn(M3, L2, at2);
+      if (L2) {
+        const up = at2 != null && at2 > 0 ? loadsForIn(M3, ex, plan, at2).above(at2) : null;
+        return up == null ? rackGapIn(M3, L2, at2) : up - (at2 ?? 0);
+      }
       const gr = rackGridIn(M3, ex, plan, at2);
       if (gr) {
         if (at2 != null && at2 > 0 && offGrid(M3, ex, plan, at2)) {
@@ -7544,14 +7618,20 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (w2 == null || ex.timed) return res;
     const Ls = loadsForIn(M3, ex, plan, top ?? null);
     if (Ls.kind !== "rack" && Ls.kind !== "grid") return res;
-    if (Ls.has(w2) || top != null && Math.abs(w2 - top) < EPS_SAME) return res;
+    if (Ls.has(w2)) return res;
+    const again = top != null && Math.abs(w2 - top) < EPS_SAME;
+    if (again && !typedOtherIn(M3, w2)) return res;
     const f3 = Ls.floor(w2);
     let nw;
-    if (top != null && w2 > top) {
+    if (again) {
+      const u4 = f3 != null ? Ls.above(f3) : Ls.first;
+      nw = f3 == null ? u4 : u4 == null ? f3 : u4 - w2 < w2 - f3 ? u4 : f3;
+    } else if (top != null && w2 > top) {
       const u4 = Ls.above(top);
       nw = f3 != null && u4 != null && f3 >= u4 - EPS_SAME ? f3 : u4;
     } else nw = f3 ?? Ls.first;
-    return nw == null || Math.abs(nw - w2) < EPS ? res : swapWIn(M3, ex, res, nw);
+    const why = Ls.kind === "rack" ? "the nearest weight on your rack" : `the nearest load in ${UIn(M3)}`;
+    return nw == null || Math.abs(nw - w2) < EPS ? res : moveIn(M3, ex, plan, res, nw, why);
   }
   function rackStepIn(M3, ex, at2) {
     const I2 = IDXIn(M3);
@@ -7632,12 +7712,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const L2 = gymRackIn(M3, ex, plan);
     if (L2) {
       const tl = rackTolIn(M3), tf = rackTolIn(M3, L2, at2);
+      const conv = at2 != null && typedOtherIn(M3, at2) && !L2.some((x2) => Math.abs(x2 - at2) < EPS_SAME), jump = jumpPct(ex, plan);
+      const next2 = (w2) => L2.find((x2) => x2 > w2 + tl) ?? null;
       return {
         kind: "rack",
         first: L2[0] ?? null,
         below: (w2) => [...L2].reverse().find((x2) => x2 < w2 - (at2 != null && Math.abs(w2 - at2) < EPS_SAME ? tf : tl)) ?? null,
         floor: (w2, tol = tl) => [...L2].reverse().find((x2) => x2 <= w2 + tol) ?? null,
-        above: (w2) => L2.find((x2) => x2 > w2 + (at2 != null && Math.abs(w2 - at2) < EPS_SAME ? tf : tl)) ?? null,
+        above: (w2) => {
+          if (!(at2 != null && Math.abs(w2 - at2) < EPS_SAME)) return next2(w2);
+          if (!conv) return L2.find((x2) => x2 > w2 + tf) ?? null;
+          const u4 = next2(w2);
+          return u4 != null && u4 - w2 < jump * w2 ? next2(u4) : u4;
+        },
         has: (w2) => L2.some((x2) => Math.abs(x2 - w2) < EPS_SAME)
       };
     }
@@ -7753,6 +7840,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     for (let i5 = xs.length - 1; i5 > 0 && offTarget(xs[i5]); i5--)
       if (afterBreak(xs[i5 - 1], xs[i5].date)) return daysBetween(xs[i5 - 1].date, xs[i5].date);
     return 0;
+  }
+  function pastWordsIn(M3, ex, top, lbl) {
+    const other = typedOtherIn(M3, top);
+    return {
+      was: (w2) => typedOtherIn(M3, w2) ? `${typedLabelIn(M3, ex, w2)}${loadNote(ex)}` : lbl(w2),
+      upTo: (nw) => other ? `go to ${lbl(nw)}` : `add ${fmtWIn(M3, nw - top)} ${UIn(M3)}`
+    };
   }
   function suggestIn(M3, exId, plan, opts) {
     opts = opts || {};
@@ -7924,9 +8018,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const capW = (w2) => cap != null ? Math.min(w2, cap) : w2;
     const topPts = triedAt(last, top);
     const planPts = topPts.slice(0, Math.max(1, +plan.sets || topPts.length));
-    const L0 = lastOf(seen, last, (p3) => `${loadLabelIn(M3, ex, p3.w)}×${p3.r}`, M3.today(), +plan.repMin);
+    const L0 = lastOf(seen, last, (p3) => `${typedLabelIn(M3, ex, p3.w)}×${p3.r}`, M3.today(), +plan.repMin);
     const lastR = L0.lastR, lastS = L0.line, basis = L0.basis;
     const lbl = (w2) => `${loadLabelIn(M3, ex, w2)}${ex.bw ? "" : " " + UIn(M3)}${loadNote(ex)}`;
+    const { was, upTo } = pastWordsIn(M3, ex, top, lbl);
     const prevBest = stx.best == null ? null : stx.best;
     if (injM)
       return {
@@ -7979,6 +8074,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       lastS,
       basis,
       lbl,
+      was,
+      upTo,
       prevBest,
       tgtRir,
       early,
@@ -8093,6 +8190,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       lastS,
       basis,
       lbl,
+      was,
       prevBest,
       tgtRir,
       early
@@ -8118,7 +8216,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           return {
             top,
             w: nw,
-            text: `${lastS} ${sc === "rpe" ? "RPE" : "RIR"} ${effAt(sc, rr)} at ${lbl(top)} against a target of ${sc === "rpe" ? "RPE " : ""}${effAt(sc, tgtRir)}, so that load was light. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, "-")} reps.`,
+            text: `${lastS} ${sc === "rpe" ? "RPE" : "RIR"} ${effAt(sc, rr)} at ${was(top)} against a target of ${sc === "rpe" ? "RPE " : ""}${effAt(sc, tgtRir)}, so that load was light. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, "-")} reps.`,
             lastR,
             basis,
             last: lastS,
@@ -8132,7 +8230,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return null;
   }
   function sgPastRangeIn(M3, C2) {
-    const { ex, plan, top, step, noAdd, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early } = C2;
+    const { ex, plan, top, step, noAdd, atCap, capW, topPts, lastR, lastS, basis, lbl, was, prevBest, tgtRir, early } = C2;
     if (step > 0 && !atCap && !noAdd && !noE1(ex) && topPts.length && topPts.every((p3) => p3.r >= +plan.repMax + CLEARLY_OFF)) {
       const est = bestFit(topPts, (p3) => p3.rq)?.est ?? null;
       const bwNow = bwRefLoadIn(M3, ex);
@@ -8152,7 +8250,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           return {
             top,
             w: nw,
-            text: `${lastS} Every set at ${lbl(top)} reached ${minR}+ reps, well past your ${rangeWords(plan)}. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, "-")} reps.`,
+            text: `${lastS} Every set at ${was(top)} reached ${minR}+ reps, well past your ${rangeWords(plan)}. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, "-")} reps.`,
             lastR,
             basis,
             last: lastS,
@@ -8166,7 +8264,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return null;
   }
   function sgBelowRangeIn(M3, C2) {
-    const { ex, plan, last, done, inRR, top, step, noAdd, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir } = C2;
+    const { ex, plan, last, done, inRR, top, step, noAdd, topPts, lastR, lastS, basis, lbl, was, prevBest, tgtRir } = C2;
     if (step > 0 && !noAdd && topPts.length && topPts.every((p3) => p3.r < +plan.repMin)) {
       const gap = +plan.repMin - Math.max(...topPts.map((p3) => p3.r));
       const at2 = done.indexOf(last);
@@ -8196,7 +8294,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
             return {
               top,
               w: nw,
-              text: `${lastS} Top sets at ${lbl(top)} stopped at ${bestR} rep${bestR === 1 ? "" : "s"}, below your ${rangeWords(plan)}. Drop to ${lbl(nw)} and build back up.`,
+              text: `${lastS} Top sets at ${was(top)} stopped at ${bestR} rep${bestR === 1 ? "" : "s"}, below your ${rangeWords(plan)}. Drop to ${lbl(nw)} and build back up.`,
               lastR,
               basis,
               last: lastS,
@@ -8239,7 +8337,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return null;
   }
   function sgTopOfRangeIn(M3, C2) {
-    const { ex, plan, top, cap, capW, topPts, planPts, lastR, lastS, basis, lbl, prevBest, tgtRir, tp } = C2;
+    const { ex, plan, top, cap, capW, topPts, planPts, lastR, lastS, basis, lbl, was, upTo, prevBest, tgtRir, tp } = C2;
     if (planPts.every((p3) => p3.r >= plan.repMax)) {
       const n0 = capW(top + progStepIn(M3, ex, plan, top + bwRefLoadIn(M3, ex), top));
       const nw = ex.assist ? n0 : capW(unitGridIn(M3, ex, plan, top, n0, false, true) ?? n0);
@@ -8248,7 +8346,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         return {
           top,
           w: aw,
-          text: `${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: ${aw === 0 ? "try it without help" : `take ${fmtWIn(M3, aw - top)} ${UIn(M3)} of help off`} and aim for ${plan.repMin}+ reps.`,
+          text: `${lastS} Every set at ${was(top)} hit ${plan.repMax}: ${aw === 0 ? "try it without help" : typedOtherIn(M3, top) ? upTo(aw) : `take ${fmtWIn(M3, aw - top)} ${UIn(M3)} of help off`} and aim for ${plan.repMin}+ reps.`,
           lastR,
           basis,
           last: lastS,
@@ -8285,7 +8383,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           return {
             top,
             w: top,
-            text: `${lastS} Every set at ${lbl(top)} hit ${plan.repMax}. The next step, ${fmtWIn(M3, nw - top)} ${UIn(M3)}, is large for this load, so build every set to ${Z2} here first; then the new load starts inside your range.`,
+            text: `${lastS} Every set at ${was(top)} hit ${plan.repMax}. ${typedOtherIn(M3, top) ? `The next load up, ${lbl(nw)}, is a large step` : `The next step, ${fmtWIn(M3, nw - top)} ${UIn(M3)}, is large`} for this load, so build every set to ${Z2} here first; then the new load starts inside your range.`,
             lastR,
             basis,
             last: lastS,
@@ -8299,7 +8397,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return {
         top,
         w: nw,
-        text: `${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: add ${fmtWIn(M3, nw - top)} ${UIn(M3)}${cap != null && nw >= cap - EPS_SAME ? ", which is the heaviest available," : ""} and aim for ${aim}+ reps${big ? `, then build back to ${plan.repMax}. That step is large for this load, so fewer reps than the range is expected at first` : ""}.`,
+        text: `${lastS} Every set at ${was(top)} hit ${plan.repMax}: ${upTo(nw)}${cap != null && nw >= cap - EPS_SAME ? ", which is the heaviest available," : ""} and aim for ${aim}+ reps${big ? `, then build back to ${plan.repMax}. That step is large for this load, so fewer reps than the range is expected at first` : ""}.`,
         lastR,
         basis,
         last: lastS,
@@ -8311,7 +8409,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return null;
   }
   function sgBadDay(C2) {
-    const { plan, last, done, top, topPts, lastR, lastS, basis, lbl, prevBest } = C2;
+    const { plan, last, done, top, topPts, lastR, lastS, basis, lbl, was, prevBest } = C2;
     {
       const at2 = done.indexOf(last);
       const prv = at2 >= 1 ? done[at2 - 1] : null;
@@ -8320,7 +8418,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         return {
           top,
           w: top,
-          text: `${lastS} Every set fell under ${plan.repMin} at ${lbl(top)}, where you did ${plan.repMin}+ the time before. Stay at ${lbl(top)} and get back to ${plan.repMin}+ in every set.`,
+          text: `${lastS} Every set fell under ${plan.repMin} at ${was(top)}, where you did ${plan.repMin}+ the time before. Stay at ${lbl(top)} and get back to ${plan.repMin}+ in every set.`,
           lastR,
           basis,
           last: lastS,
@@ -8428,7 +8526,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const top = Math.max(...ws.map((p3) => p3.w));
     const topPts = ws.filter((p3) => Math.abs(p3.w - top) < EPS_SAME);
     const lbl = (w2) => `${loadLabelIn(M3, ex, w2)}${ex.bw ? "" : " " + UIn(M3)}${loadNote(ex)}`;
-    const L0 = lastOf(all, last, (p3) => `${loadLabelIn(M3, ex, p3.w)} for ${p3.r}s`, M3.today());
+    const { was, upTo } = pastWordsIn(M3, ex, top, lbl);
+    const L0 = lastOf(all, last, (p3) => `${typedLabelIn(M3, ex, p3.w)} for ${p3.r}s`, M3.today());
     const lastR = L0.lastR, lastS = L0.line, basis = L0.basis;
     if (injM)
       return {
@@ -8494,7 +8593,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         prev: L0.prev,
         prevOff: L0.prevOff,
         w: nw,
-        text: `${lastS} Every hold at ${lbl(top)} reached ${plan.repMax}s: add ${fmtWIn(M3, nw - top)} ${UIn(M3)}${ex.bw ? " (a plate or a vest)" : ""} and aim for ${plan.repMin}s+.`,
+        text: `${lastS} Every hold at ${was(top)} reached ${plan.repMax}s: ${upTo(nw)}${ex.bw ? " (a plate or a vest)" : ""} and aim for ${plan.repMin}s+.`,
         lastR,
         basis,
         last: lastS,
@@ -10050,6 +10149,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var barKg = live(barKgIn);
   var capOf = live(capOfIn);
   var exBarKg = live(exBarKgIn);
+  var liftMax = live(liftMaxIn);
+  var barRead = live(barReadIn);
+  var loadRead = live(loadReadIn);
+  var typedBound = live(typedBoundIn);
   var gymRack = live(gymRackIn);
   var rackTol = live(rackTolIn);
   var fmtW = live(fmtWIn);
@@ -12126,14 +12229,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function goalState(exId) {
     const ex = EX(exId);
-    const g2 = ex && ex.goal;
-    if (!g2 || !goalOk(ex)) return null;
+    const g0 = ex && ex.goal;
+    if (!g0 || !goalOk(ex)) return null;
+    const g2 = { w: loadRead(g0.w), r: g0.r };
     const exps = liftRead(exId);
     const bw = bwRefLoad(ex);
     const noBw = !!ex.bw && !((bwRef() ?? 0) > 0);
+    const reach = Math.min(g0.w, g2.w) - EPS_SAME;
     let hit = null;
     for (const x2 of exps) {
-      if (x2.pts.some((p3) => p3.w >= g2.w - EPS_SAME && p3.r >= g2.r)) {
+      if (x2.pts.some((p3) => p3.w >= reach && p3.r >= g2.r)) {
         hit = x2.date;
         break;
       }
@@ -12148,7 +12253,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return { g: g2, hit, pct, cur: cur2, need, noBw };
   }
   function goalWords(ex, g2) {
-    return `${loadLabel(ex, g2.w)}${ex.bw ? "" : " " + U()}${loadNote(ex)} × ${g2.r}`;
+    return `${loadLabel(ex, loadRead(g2.w))}${ex.bw ? "" : " " + U()}${loadNote(ex)} × ${g2.r}`;
   }
   function regionWk() {
     const v3 = ui.regionWk != null ? ui.regionWk : prefGet(REGION_KEY);
@@ -15815,7 +15920,7 @@ ${more}`;
         heavyBeat = best > t4.prevBest + EPS_SAME;
         const iso2 = !isCompound(ex);
         const setW = bs ? setShort(ex, +(bs.w ?? 0) || 0, +(bs.r ?? 0)) : "";
-        heavyTxt = iso2 ? heavyBeat ? `Beaten by load: ${setW}, your best yet` : `Heavier than target: ${setW}` : heavyBeat ? `Beaten by load: ${fmtE(best)} ${U()} estimated, previous best ${fmtE(t4.prevBest)}` : `Heavier than target, ${fmtE(best)} ${U()} estimated against a best of ${fmtE(t4.prevBest)}`;
+        heavyTxt = iso2 ? heavyBeat ? `Beaten by load: ${setW}, your best yet` : `Heavier than target: ${setW}` : heavyBeat ? `Beaten by load: ${fmtE(best)} ${U()} estimated${wasE(best, t4.prevBest) ? `, previous best ${wasE(best, t4.prevBest)}` : ""}` : `Heavier than target, ${fmtE(best)} ${U()} estimated against a best of ${fmtE(t4.prevBest)}`;
       }
     }
     if (t4.kind === "reps") {
@@ -17704,7 +17809,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     barKg(t4) {
       const n3 = numIn(t4.value);
       act(() => {
-        state.settings.barKg = n3 == null || n3 <= 0 ? null : Math.min(fromD(n3) ?? 0, LIMITS.barKg);
+        state.settings.barKg = n3 == null || n3 <= 0 ? null : typedBound(n3, LIMITS.barKg);
       });
       rerenderKeepScroll();
     },
@@ -17930,7 +18035,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       return b`<div class="card"><p class="u-m0">No exercises match. Clear the filters or create a new exercise.</p></div>`;
     return b`<div class="card">${list.map(
       (e5) => b`<div class="hitem"><div class="row spread u-aistart_fwrnw"><div class="u-minw0"><b>${e5.name}</b>${e5.note ? b` ${tipButton(e5.note, "About " + e5.name)}` : A}<p class="small muted u-m2-0-0">${ML[e5.primary]}${e5.secondary.length ? ", plus " + e5.secondary.map((m3) => ML[m3]).join(", ") : ""}</p></div><div class="row u-fnone_g4"><button class="btn sm" data-act="exEdit" data-ex=${e5.id}>Edit</button><button class="ib sm" data-act="exDel" data-ex=${e5.id} aria-label=${`Delete ${e5.name}`}>✕</button></div></div>
-    <p class="small u-m6-0-0_dflex_fwrwrap_g4">${exTagParts(e5, ui.libKind)}<span class="tag">${EQL[e5.equip] || e5.equip}</span>${e5.custom ? b`<span class="tag blue">Custom</span>` : A}${e5.bw ? b`<span class="tag">Bodyweight + load</span>` : A}<span class="tag">${loadWords(e5)}</span>${e5.perSide ? b`<span class="tag">Reps per side</span>` : A}${e5.timed ? b`<span class="tag">Timed</span>` : A}${e5.maxLoad != null ? b`<span class="tag">Max ${fmtW(e5.maxLoad)} ${U()}</span>` : A}</p></div>`
+    <p class="small u-m6-0-0_dflex_fwrwrap_g4">${exTagParts(e5, ui.libKind)}<span class="tag">${EQL[e5.equip] || e5.equip}</span>${e5.custom ? b`<span class="tag blue">Custom</span>` : A}${e5.bw ? b`<span class="tag">Bodyweight + load</span>` : A}<span class="tag">${loadWords(e5)}</span>${e5.perSide ? b`<span class="tag">Reps per side</span>` : A}${e5.timed ? b`<span class="tag">Timed</span>` : A}${e5.maxLoad != null ? b`<span class="tag">Max ${fmtW(liftMax(e5))} ${U()}</span>` : A}</p></div>`
     )}</div>`;
   }
   function viewLibrary() {
@@ -18237,7 +18342,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
         if (k2 === "jump") f3.it.jump = r1(clamp(n3, 0, LIMITS.jumpPct));
         else if (k2 === "inc") {
           const e5 = state.exercises.find((x2) => x2.id === f3.it.exId);
-          const v3 = Math.min(fromD(Math.max(n3, 0)) ?? 0, LIMITS.step);
+          const v3 = typedBound(Math.max(n3, 0), LIMITS.step);
           f3.it.inc = v3;
           if (e5) e5.inc = v3 > 0 ? v3 : null;
         } else if (k2 === "rir") f3.it.rir = clamp(effIn(n3), 0, EFFORT_TOP);
@@ -24788,6 +24893,13 @@ ${JSON.stringify(ctx, null, 1)}`;
     else delete o3.jump;
     return o3;
   }
+  function shownNumbers(x2) {
+    return {
+      inc: x2.inc != null ? fmtW(stepRead(x2.inc)) : "",
+      max: x2.maxLoad != null ? fmtW(liftMax(x2) ?? 0) : "",
+      bar: x2.barKg != null ? fmtW(barRead(x2.barKg)) : ""
+    };
+  }
   function afterAdd(bi) {
     rerenderKeepScroll();
     const el = document.getElementById("blk-" + bi);
@@ -25151,10 +25263,11 @@ ${JSON.stringify(ctx, null, 1)}`;
       const src = state.exercises.find((x2) => x2.id === t4.dataset.ex);
       if (!src) return;
       const e5 = structuredClone(src);
-      e5.incRaw = e5.inc != null ? fmtW(stepRead(e5.inc)) : "";
+      const sh = shownNumbers(src);
+      e5.incRaw = sh.inc;
       e5.bwfRaw = String(Math.round(bwShare(e5) * BWF_PCT.whole));
-      e5.maxRaw = e5.maxLoad != null ? fmtW(e5.maxLoad) : "";
-      e5.barRaw = e5.barKg != null ? fmtW(e5.barKg) : "";
+      e5.maxRaw = sh.max;
+      e5.barRaw = sh.bar;
       openModal({ kind: "exEdit", isNew: false, e: e5 });
     },
     secToggle(t4) {
@@ -25185,20 +25298,25 @@ ${JSON.stringify(ctx, null, 1)}`;
         return;
       }
       e5.secondary = e5.secondary.filter((k2) => k2 !== e5.primary);
-      {
+      const was = m3.isNew ? void 0 : state.exercises.find((x2) => x2.id === e5.id);
+      const sh = was ? shownNumbers(was) : null;
+      if (sh && e5.incRaw === sh.inc) delete e5.incRaw;
+      else {
         const n3 = numIn(e5.incRaw);
-        e5.inc = n3 != null && n3 > 0 ? Math.min(Number(fromD(n3)), LIMITS.step) : null;
+        e5.inc = n3 != null && n3 > 0 ? typedBound(n3, LIMITS.step) : null;
         delete e5.incRaw;
       }
-      {
+      if (sh && e5.maxRaw === sh.max) delete e5.maxRaw;
+      else {
         const n3 = numIn(e5.maxRaw);
         if (n3 != null && n3 > 0) e5.maxLoad = Number(fromD(Math.min(n3, U() === "lb" ? MAX_LOAD.lb : MAX_LOAD.kg)));
         else delete e5.maxLoad;
         delete e5.maxRaw;
       }
-      {
+      if (sh && e5.barRaw === sh.bar && platesMode(e5) === "bar") delete e5.barRaw;
+      else {
         const n3 = numIn(e5.barRaw);
-        if (n3 != null && n3 > 0 && platesMode(e5) === "bar") e5.barKg = Math.min(Number(fromD(n3)), LIMITS.barKg);
+        if (n3 != null && n3 > 0 && platesMode(e5) === "bar") e5.barKg = typedBound(n3, LIMITS.barKg);
         else delete e5.barKg;
         delete e5.barRaw;
       }
@@ -25933,6 +26051,10 @@ ${JSON.stringify(ctx, null, 1)}`;
         return;
       }
       const n3 = numIn(fieldText("maxVal"));
+      if (e5.maxLoad != null && n3 != null && String(numIn(fmtW(liftMax(e5) ?? 0))) === String(n3)) {
+        closeModal();
+        return;
+      }
       if (n3 != null && n3 < 0) {
         toast("Enter a load of 0 or more, or leave it blank");
         return;
@@ -25944,7 +26066,9 @@ ${JSON.stringify(ctx, null, 1)}`;
       });
       refreshEx(e5.id);
       rerenderKeepScroll();
-      toast(e5.maxLoad != null ? `Heaviest available for ${e5.name}: ${fmtW(e5.maxLoad)} ${U()}` : `No limit for ${e5.name}`);
+      toast(
+        e5.maxLoad != null ? `Heaviest available for ${e5.name}: ${fmtW(liftMax(e5) ?? 0)} ${U()}` : `No limit for ${e5.name}`
+      );
     },
     goalOpen(t4) {
       openModal({ kind: "goal", exId: t4.dataset.ex || "" });
@@ -25969,7 +26093,8 @@ ${JSON.stringify(ctx, null, 1)}`;
         toast("Enter a load of 0 or more");
         return;
       }
-      const goal = { w: kg(w2 || 0), r: r4 };
+      const was = e5.goal;
+      const goal = { w: was && w2 != null && String(numIn(fmtW(loadRead(was.w)))) === String(w2) ? was.w : kg(w2 || 0), r: r4 };
       act(
         () => {
           e5.goal = goal;
@@ -26015,11 +26140,11 @@ ${JSON.stringify(ctx, null, 1)}`;
         closeModal();
         return;
       }
-      if (e5.inc == null && !sheet.typed && String(numIn(fmtW(incOf(e5, sheet.plan)))) === String(n3)) {
+      if (!sheet.typed && String(numIn(fmtW(incOf(e5, sheet.plan)))) === String(n3)) {
         closeModal();
         return;
       }
-      const inc = Math.min(kg(n3), LIMITS.step);
+      const inc = typedBound(n3, LIMITS.step);
       closeModal();
       act(() => {
         e5.inc = inc;
@@ -28085,7 +28210,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const e5 = EX(b2.exId);
     const op = (o3, l4, dis, cls) => b`<button class=${"btn fullw u-mt6 " + (cls || "")} data-act="bMenuDo" data-op=${o3} data-b=${String(m3.b)} ?disabled=${!!dis}>${l4}</button>`;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${exName(b2.exId)}</h3>${closeX()}</div>
-    ${op("bHist", "History and chart")}${op("bMus", "Muscles worked")}${op("wAdd", "Add a warm-up set")}${op("dropAdd", "Add a drop set (about 75% load)")}${op("bQuick", "Type or dictate sets")}${op("bNote", b2.note ? "Edit note" : "Add note")}${op("bSwap", "Swap exercise")}${op("bNew", markedNew(d3, b2.exId) ? "Same machine as before" : "New machine or gym")}${howToLink(e5)}${op("bInc", `Load step: ${fmtW(incOf(e5, b2.plan))} ${U()}`)}${op("bMax", `Heaviest available: ${e5.maxLoad != null ? fmtW(e5.maxLoad) + " " + U() : "no limit"}`)}${rirShow(e5) ? op("bCal", "Calibration set (RIR check)") : ""}${nx ? op("bSs", linked ? "Unlink superset" : `Superset with ${exName(nx.exId)}`) : ""}${op("bUp", "Move up", m3.b === 0)}${op("bDown", "Move down", !nx)}${op("fbOpen", "Report a problem")}${op("bDel", "Remove from session", false, "danger")}</div>`;
+    ${op("bHist", "History and chart")}${op("bMus", "Muscles worked")}${op("wAdd", "Add a warm-up set")}${op("dropAdd", "Add a drop set (about 75% load)")}${op("bQuick", "Type or dictate sets")}${op("bNote", b2.note ? "Edit note" : "Add note")}${op("bSwap", "Swap exercise")}${op("bNew", markedNew(d3, b2.exId) ? "Same machine as before" : "New machine or gym")}${howToLink(e5)}${op("bInc", `Load step: ${fmtW(incOf(e5, b2.plan))} ${U()}`)}${op("bMax", `Heaviest available: ${e5.maxLoad != null ? fmtW(liftMax(e5)) + " " + U() : "no limit"}`)}${rirShow(e5) ? op("bCal", "Calibration set (RIR check)") : ""}${nx ? op("bSs", linked ? "Unlink superset" : `Superset with ${exName(nx.exId)}`) : ""}${op("bUp", "Move up", m3.b === 0)}${op("bDown", "Move down", !nx)}${op("fbOpen", "Report a problem")}${op("bDel", "Remove from session", false, "danger")}</div>`;
   }
   function injurySheet() {
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3>${closeX()}</div>
@@ -28099,7 +28224,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const e5 = EX(m3.exId);
     const g2 = e5.goal;
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="goalH"><div class="sheet-h"><h3 id="goalH">Goal: ${e5.name}</h3>${closeX()}</div>
-    <div class="grid2"><label class="field">${e5.bw ? `Added load (${U()})` : `Load (${U()}${loadNote(e5)})`}<input type="text" inputmode="decimal" id="goalW" value=${g2 ? fmtW(g2.w) : ""} placeholder=${e5.bw ? "0" : ""}></label>
+    <div class="grid2"><label class="field">${e5.bw ? `Added load (${U()})` : `Load (${U()}${loadNote(e5)})`}<input type="text" inputmode="decimal" id="goalW" value=${g2 ? fmtW(loadRead(g2.w)) : ""} placeholder=${e5.bw ? "0" : ""}></label>
     <label class="field">Reps<input type="text" inputmode="numeric" id="goalR" value=${g2 ? String(g2.r) : ""}></label></div>
     <div class="row u-mt12"><button class="btn primary" data-act="goalSave">Save</button>${g2 ? b`<button class="btn danger" data-act="goalClear">Remove goal</button>` : ""}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
@@ -28114,7 +28239,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   function maxSheet(m3) {
     const e5 = EX(m3.exId);
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${e5.name}</h3>${closeX()}</div>
-    <label class="field">Load (${U()}${e5.bw ? ", added to bodyweight" : ""})<input type="text" inputmode="decimal" id="maxVal" value=${e5.maxLoad != null ? fmtW(e5.maxLoad) : ""} placeholder="No limit"></label>
+    <label class="field">Load (${U()}${e5.bw ? ", added to bodyweight" : ""})<input type="text" inputmode="decimal" id="maxVal" value=${e5.maxLoad != null ? fmtW(liftMax(e5)) : ""} placeholder="No limit"></label>
     <p class="small muted">Top of the stack or biggest dumbbell. Blank for no limit.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
@@ -29012,6 +29137,10 @@ ${JSON.stringify(ctx, null, 1)}`;
       starterRoutine,
       starterSigs,
       exBarKg,
+      liftMax,
+      barRead,
+      loadRead,
+      typedBound,
       VOL_MODES,
       liveLogFetch,
       regionSrc,

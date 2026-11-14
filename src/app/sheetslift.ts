@@ -10,7 +10,7 @@ import { html } from 'lit-html';
 import { LIMITS } from './records';
 import type { TemplateResult } from 'lit-html';
 import { JOINTS, MUSCLES, rackKind } from './library';
-import { EX, U, exName, fmtW, gymRack, incOf } from './live';
+import { EX, U, exName, fmtW, gymRack, incOf, liftMax, loadRead } from './live';
 import { rirShow } from './display';
 import { markedNew } from './session';
 import type { DraftBlock } from './types';
@@ -51,7 +51,7 @@ export function bmenuSheet(m: { b: number }): TemplateResult | null {
   const op = (o: string, l: string, dis?: boolean, cls?: string): TemplateResult =>
     html`<button class=${'btn fullw u-mt6 ' + (cls || '')} data-act="bMenuDo" data-op=${o} data-b=${String(m.b)} ?disabled=${!!dis}>${l}</button>`;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${exName(b.exId)}</h3>${closeX()}</div>
-    ${op('bHist', 'History and chart')}${op('bMus', 'Muscles worked')}${op('wAdd', 'Add a warm-up set')}${op('dropAdd', 'Add a drop set (about 75% load)')}${op('bQuick', 'Type or dictate sets')}${op('bNote', b.note ? 'Edit note' : 'Add note')}${op('bSwap', 'Swap exercise')}${op('bNew', markedNew(d, b.exId) ? 'Same machine as before' : 'New machine or gym')}${howToLink(e)}${op('bInc', `Load step: ${fmtW(incOf(e, b.plan))} ${U()}`)}${op('bMax', `Heaviest available: ${e.maxLoad != null ? fmtW(e.maxLoad) + ' ' + U() : 'no limit'}`)}${rirShow(e) ? op('bCal', 'Calibration set (RIR check)') : ''}${nx ? op('bSs', linked ? 'Unlink superset' : `Superset with ${exName(nx.exId)}`) : ''}${op('bUp', 'Move up', m.b === 0)}${op('bDown', 'Move down', !nx)}${op('fbOpen', 'Report a problem')}${op('bDel', 'Remove from session', false, 'danger')}</div>`;
+    ${op('bHist', 'History and chart')}${op('bMus', 'Muscles worked')}${op('wAdd', 'Add a warm-up set')}${op('dropAdd', 'Add a drop set (about 75% load)')}${op('bQuick', 'Type or dictate sets')}${op('bNote', b.note ? 'Edit note' : 'Add note')}${op('bSwap', 'Swap exercise')}${op('bNew', markedNew(d, b.exId) ? 'Same machine as before' : 'New machine or gym')}${howToLink(e)}${op('bInc', `Load step: ${fmtW(incOf(e, b.plan))} ${U()}`)}${op('bMax', `Heaviest available: ${e.maxLoad != null ? fmtW(liftMax(e)) + ' ' + U() : 'no limit'}`)}${rirShow(e) ? op('bCal', 'Calibration set (RIR check)') : ''}${nx ? op('bSs', linked ? 'Unlink superset' : `Superset with ${exName(nx.exId)}`) : ''}${op('bUp', 'Move up', m.b === 0)}${op('bDown', 'Move down', !nx)}${op('fbOpen', 'Report a problem')}${op('bDel', 'Remove from session', false, 'danger')}</div>`;
 }
 
 /** Flag an injury: a joint or a muscle, and a note. */
@@ -69,7 +69,7 @@ export function goalSheet(m: { exId: string }): TemplateResult {
   const e = EX(m.exId);
   const g = e.goal;
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="goalH"><div class="sheet-h"><h3 id="goalH">Goal: ${e.name}</h3>${closeX()}</div>
-    <div class="grid2"><label class="field">${e.bw ? `Added load (${U()})` : `Load (${U()}${loadNote(e)})`}<input type="text" inputmode="decimal" id="goalW" value=${g ? fmtW(g.w) : ''} placeholder=${e.bw ? '0' : ''}></label>
+    <div class="grid2"><label class="field">${e.bw ? `Added load (${U()})` : `Load (${U()}${loadNote(e)})`}<input type="text" inputmode="decimal" id="goalW" value=${g ? fmtW(loadRead(g.w)) : ''} placeholder=${e.bw ? '0' : ''}></label>
     <label class="field">Reps<input type="text" inputmode="numeric" id="goalR" value=${g ? String(g.r) : ''}></label></div>
     <div class="row u-mt12"><button class="btn primary" data-act="goalSave">Save</button>${g ? html`<button class="btn danger" data-act="goalClear">Remove goal</button>` : ''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }
@@ -88,7 +88,7 @@ export function incSheet(m: { exId: string; plan?: DraftBlock['plan'] | undefine
 export function maxSheet(m: { exId: string }): TemplateResult {
   const e = EX(m.exId);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${e.name}</h3>${closeX()}</div>
-    <label class="field">Load (${U()}${e.bw ? ', added to bodyweight' : ''})<input type="text" inputmode="decimal" id="maxVal" value=${e.maxLoad != null ? fmtW(e.maxLoad) : ''} placeholder="No limit"></label>
+    <label class="field">Load (${U()}${e.bw ? ', added to bodyweight' : ''})<input type="text" inputmode="decimal" id="maxVal" value=${e.maxLoad != null ? fmtW(liftMax(e)) : ''} placeholder="No limit"></label>
     <p class="small muted">Top of the stack or biggest dumbbell. Blank for no limit.</p>
     <div class="row u-mt10"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
 }

@@ -3,10 +3,12 @@
 // (`node tests/r72.js baselines/r71.html`), where each section fails:
 //   1  NEW-63: after an exercise's last set the next one comes up by a glide from where the page is, never by a
 //      jump to the top of the session first (r71: the scroll went to 0, the title on screen, then back down).
-//   2  387-B1: a load step of the lift's or the plan's own, viewed in the other unit, is honoured from the last
-//      load: 37.5 kg dumbbells on a 5 kg step read 82.7 lb, never 88.2 (no lb rack has it); a 65 lb curl on a
-//      10 lb step reads 29.5 kg (65 lb), never 27.2 (60 lb). The unit's own step still takes the nearest load in
-//      the unit on screen (NEW-46, a guard).
+//   2  387-B1: a load step of the lift's or the plan's own, viewed in the other unit, makes loads that exist in it,
+//      never 88.2 lb (no lb rack has it) or 27.2 kg (60 lb, with no word of the move). Since 2.65 (390's Release A,
+//      U-2, V's plan of 2026-11-13) the step is read as that unit's matching step (5 kg as 10 lb, 10 lb as 5 kg) and
+//      the load goes to its nearest load, the reps aimed there (U-3, U-5), where r72 kept the load done: 37.5 kg
+//      dumbbells read 80 lb, 41+ reps, and the 65 lb curl 30 kg, 31+. The unit's own step still takes the nearest
+//      load in the unit on screen (NEW-46, a guard).
 //   3  387-B2: every set under the range by 2 or more drops the load whatever the RIR rated: leg press 15-20,
 //      100 x 12 x 3 at RIR 2 (14 reps to failure) drops, as at RIR 0 (r71: held at 100).
 //   4  387-B3: a missed set counts as 0 reps in the session's reading (V, 2026-11-04): after 185 x 10 x 3,
@@ -133,19 +135,23 @@ async function page() {
 
   if (run(2)) {
     const K = set('kg'), L = set('lb');
-    // 37.5 kg dumbbells on the plan's own 5 kg step, 12 x 3 on 12-20: shown in lb, the load done, 82.7 lb.
+    /* 37.5 kg dumbbells on the plan's own 5 kg step, 12 x 3 on 12-20 at 1 in reserve: shown in lb, the step is 10 lb and
+       the load the nearest it makes, 80 lb; equal effort there by the estimate (Epley past 10 reps to failure: 82.67 lb
+       x 13 is 118.5, so 14.4 to failure at 80, 13.4 at 1 in reserve) is 40.3 over 3 sets, so 41+ (U-3, U-5). */
     const pA = { sets: 3, repMin: 12, repMax: 20, rir: 1, rest: 90, inc: 5 };
     await seed({ unit: 'kg', exId: 'dbBench', plan: pA, sessions: [ses('a', add(T, -7), 'dbBench', [12, 20], [[37.5, 12, 1], [37.5, 12, 1], [37.5, 12, 1]].map(K))] });
     await unit('lb');
     const a = await sug('dbBench', pA), al = await sug('dbBench', pA, { light: true });
-    ok(Math.abs(a.w - 37.5) < 1e-6 && /Beat 36 reps over 3 sets at 82\.7 lb/.test(a.text) && !/nearest load/.test(a.text), '2. 387-B1: 37.5 kg dumbbells on the plan\'s 5 kg step, shown in lb: "Beat 36 reps ... at 82.7 lb", the load done (r71: 88.2 lb, "the nearest load in lb")', { lb: lb(a.w), text: a.text });
-    ok(al.w < 37.5 && Math.abs(((37.5 - al.w) / 5) - Math.round((37.5 - al.w) / 5)) < 1e-6, '2. 387-B1: its Lighter day is whole 5 kg steps down from 37.5 kg (r71: 66.1 lb, on no step)', { kg: al.w, lb: lb(al.w) });
-    // A 65 lb curl on the plan's own 10 lb step, shown in kg: 29.5 kg, the 65 lb done.
+    ok(Math.abs(lb(a.w) - 80) < 1e-6 && /80 lb per dumbbell is the nearest load in lb to what you did: aim for 41\+ reps over 3 sets at 80 lb/.test(a.text), '2. 387-B1: 37.5 kg dumbbells on the plan\'s 5 kg step, shown in lb: 80 lb on its 10 lb step, 41+ reps (r71: 88.2 lb; r72 to 2.64: 82.7 lb, the load done)', { lb: lb(a.w), text: a.text });
+    ok(lb(al.w) < 80 && Math.abs(lb(al.w) / 10 - Math.round(lb(al.w) / 10)) < 1e-6, '2. 387-B1: its Lighter day is on its 10 lb step in lb, under 80 lb (r71: 66.1 lb, on no step)', { kg: al.w, lb: lb(al.w) });
+    /* A 65 lb curl on the plan's own 10 lb step, shown in kg: the step is 5 kg and the load 30 kg, the nearest it makes
+       to 29.5 kg; no set changes by a whole rep there (10 to failure at 1 in reserve reads 9.3), so it is the same load
+       and last time's 30 reps stand, 31+. */
     const pD = { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 10 * LB };
     await seed({ unit: 'lb', exId: 'ezCurl', plan: pD, sessions: [ses('a', add(T, -7), 'ezCurl', [8, 12], [[65, 10, 1], [65, 10, 1], [65, 10, 1]].map(L))] });
     await unit('kg');
     const d = await sug('ezCurl', pD);
-    ok(Math.abs(lb(d.w) - 65) < 0.05 && /Beat 30 reps over 3 sets at 29\.5 kg/.test(d.text), '2. 387-B1: a 65 lb curl on its 10 lb step, shown in kg: "Beat 30 reps ... at 29.5 kg" (r71: 27.2 kg, which is 60 lb, with no word of the move)', { lb: lb(d.w), text: d.text });
+    ok(Math.abs(d.w - 30) < 1e-6 && /30 kg is the nearest load in kg to what you did: aim for 31\+ reps over 3 sets at 30 kg/.test(d.text), '2. 387-B1: a 65 lb curl on its 10 lb step, shown in kg: 30 kg on its 5 kg step, 31+ (r71: 27.2 kg, which is 60 lb, with no word of the move; r72 to 2.64: 29.5 kg)', { kg: d.w, text: d.text });
     // The guard: the unit's own step still takes the nearest load in the unit on screen (NEW-46, V 2026-11-03).
     await seed({ unit: 'kg', exId: 'dbBench', plan: { ...pA, inc: 5 * LB }, sessions: [ses('a', add(T, -7), 'dbBench', [12, 20], [[37.5, 12, 1], [37.5, 12, 1], [37.5, 12, 1]].map(K))] });
     await unit('lb');

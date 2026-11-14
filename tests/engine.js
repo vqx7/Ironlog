@@ -136,6 +136,12 @@ const EXTRA = {
   // The minutes left in those same sessions (2.32, NEW-77: the one count Short on time and the session's header read).
   sessLeftMin: (s) => (window.__pd && window.__pd.s === s ? window.__pd.d : []).map(d => [d]),
   // The strength focus on each lift: its stats and its main muscle's recovery, today and on the log's first day.
+  // 2.65 (390's Release A): a heaviest load, a bar and any load set in either unit, read on the unit's equipment, and a
+  // number typed within a bound.
+  liftMax: (s, ids) => ids.slice(0, 3).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e], [{ ...e, maxLoad: 100 }], [{ ...e, maxLoad: 220 * 0.45359237 }]]),
+  barRead: () => [[20], [45 * 0.45359237], [10], [60]],
+  loadRead: () => [[100], [220 * 0.45359237], [0.4], [102.06]],
+  typedBound: () => [[1200, 500], [600, 500], [200, 50], [30, 50]],
   strengthPick: (s, ids) => ids.map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e, window.__ironlog.IDX().exStats[e.id], window.__ironlog.recovery(e.primary)], [e, window.__ironlog.IDX().exStats[e.id], { r: 1, days: null, sets: 0, need: 0 }, s.sessions.length ? s.sessions[0].date : undefined]]),
 };
 // Hand-made histories beside the wide ones, for paths those never reach, each built on a wide history's settings,
@@ -259,6 +265,12 @@ const SCENARIOS = [
   // before the stalled bench, whose coach line the check below reads as the last but one (the long-break history is last).
   h => ({ ...h, raw: { ...h.raw, settings: { ...h.raw.settings, blockWeeks: 'auto' } } }),
   h => ({ ...h, raw: { ...h.raw, settings: { ...h.raw.settings, blockWeeks: 4 } } }),
+  // Dumbbell bench logged in kg (24 kg x 10, 10, 9), the app now in lb with Your gym's dumbbells in 5 lb steps: last
+  // time's load, another rack's weight, goes to the nearest weight this rack has with the reps aimed there (390's
+  // Release A, U-4), which the wide histories, each logged and read in one unit, never reach.
+  h => ({ ...h, ids: ['dbBench', ...h.ids], raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, unit: 'lb', restWeeks: [], gym: { u: 'lb', db: { lo: 5, hi: 100, st: 5 } } },
+    sessions: [-16, -9, -2].map((n, i) => ({ id: 'kgdb' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
+      ex: [{ exId: 'dbBench', rr: [8, 12], sets: [10, 10, 9].map(r => ({ w: 24, r, rir: 1, done: true })) }] })) } }),
   // Bench on the heavy and light days flat a rep under the top of the heavy range, 100 x 4 x 5 and 70 x 10 x 4, the heavy day
   // last: stalled in both and not at the top of its range (the coach's stalled line). Until r64 wide histories reached it through
   // lifts read as stalled across a break of more than four weeks, which since r64 (the r63 audit's P-S2-2) are not stalled.

@@ -11,8 +11,8 @@ import type { LiftBests } from './bests';
 import { EXIn, UIn, exInjuryIn } from './model';
 import { IDXIn, lastOf, liftReadIn } from './analytics';
 import { atCapOfIn, capOfIn, gymRackIn, loadFloorIn } from './gym';
-import { DEFAULT_STEP, fromDIn, toDIn } from './units';
-import { fmtWIn, loadLabelIn, loadNote } from './loads';
+import { DEFAULT_STEP, fromDIn, toDIn, typedOtherIn } from './units';
+import { fmtWIn, loadLabelIn, loadNote, typedLabelIn } from './loads';
 import { addDays, daysBetween, isDate, r1, EPS, EPS_SAME, WEEK_DAYS, pctOf } from './util';
 import {
   BACK_DAYS,
@@ -124,6 +124,8 @@ interface SuggestCtx {
   lastS: string;
   basis: string | null;
   lbl: (w: number) => string;
+  was: (w: number) => string;
+  upTo: (nw: number) => string;
   prevBest: number | null;
   tgtRir: number;
   early: boolean;
@@ -168,6 +170,24 @@ export function backDaysIn(M: Model, exId: string, plan: Plan, opts: SuggestOpts
   for (let i = xs.length - 1; i > 0 && offTarget(xs[i]); i--)
     if (afterBreak(xs[i - 1], xs[i].date)) return daysBetween(xs[i - 1].date, xs[i].date);
   return 0;
+}
+
+/* Words about last time's load. A load already lifted is quoted as it was typed (typedLabelIn): "Every set at 225 lb",
+   never the 102.1 kg it converts to. The way up from it is the step added when it was typed in the unit on screen; from
+   a load typed in the other unit it is the load to go to, since a difference across units is a conversion no plate
+   makes ("add 5.4 kg" to 225 lb). */
+/** The words for last time's load (`was`) and for the way up from it (`upTo`), for one lift's suggestion. */
+function pastWordsIn(
+  M: Model,
+  ex: ExerciseLike,
+  top: number,
+  lbl: (w: number) => string
+): { was: (w: number) => string; upTo: (nw: number) => string } {
+  const other = typedOtherIn(M, top);
+  return {
+    was: w => (typedOtherIn(M, w) ? `${typedLabelIn(M, ex, w)}${loadNote(ex)}` : lbl(w)),
+    upTo: nw => (other ? `go to ${lbl(nw)}` : `add ${fmtWIn(M, nw - top)} ${UIn(M)}`)
+  };
 }
 
 /* What to lift next for one exercise on a plan: the normal prescription
@@ -453,11 +473,12 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
      (tp, below): a set past the plan's count is left out (else 80 x 10 x 4
      and a fifth set of 8 hold the load and ask 41+ reps over 4). */
   const planPts = topPts.slice(0, Math.max(1, +plan.sets || topPts.length));
-  const L0 = lastOf(seen, last, p => `${loadLabelIn(M, ex, p.w)}×${p.r}`, M.today(), +plan.repMin);
+  const L0 = lastOf(seen, last, p => `${typedLabelIn(M, ex, p.w)}×${p.r}`, M.today(), +plan.repMin);
   const lastR = L0.lastR,
     lastS = L0.line,
     basis = L0.basis;
   const lbl = (w: number): string => `${loadLabelIn(M, ex, w)}${ex.bw ? '' : ' ' + UIn(M)}${loadNote(ex)}`;
+  const { was, upTo } = pastWordsIn(M, ex, top, lbl);
   const prevBest = stx.best == null ? null : stx.best;
   /* Injured area: no target to chase, load capped at last time, and a reminder
      to stop short. No target is set, so nothing in this session reads as
@@ -537,6 +558,8 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
     lastS,
     basis,
     lbl,
+    was,
+    upTo,
     prevBest,
     tgtRir,
     early,
@@ -729,6 +752,7 @@ function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
     lastS,
     basis,
     lbl,
+    was,
     prevBest,
     tgtRir,
     early
@@ -777,7 +801,7 @@ function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
         return {
           top,
           w: nw,
-          text: `${lastS} ${sc === 'rpe' ? 'RPE' : 'RIR'} ${effAt(sc, rr)} at ${lbl(top)} against a target of ${sc === 'rpe' ? 'RPE ' : ''}${effAt(sc, tgtRir)}, so that load was light. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, '-')} reps.`,
+          text: `${lastS} ${sc === 'rpe' ? 'RPE' : 'RIR'} ${effAt(sc, rr)} at ${was(top)} against a target of ${sc === 'rpe' ? 'RPE ' : ''}${effAt(sc, tgtRir)}, so that load was light. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, '-')} reps.`,
           lastR,
           basis,
           last: lastS,
@@ -793,7 +817,7 @@ function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
 
 /* Every top set 2 or more reps over the top of the range. */
 function sgPastRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
-  const { ex, plan, top, step, noAdd, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early } = C;
+  const { ex, plan, top, step, noAdd, atCap, capW, topPts, lastR, lastS, basis, lbl, was, prevBest, tgtRir, early } = C;
   /* Well past the range: every top set at least 2 reps over repMax, which is
      what happens when the range is moved down (12s, then a 4 to 6 plan). One
      step a session would take weeks to reach a load that fits, so the same
@@ -829,7 +853,7 @@ function sgPastRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
         return {
           top,
           w: nw,
-          text: `${lastS} Every set at ${lbl(top)} reached ${minR}+ reps, well past your ${rangeWords(plan)}. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, '-')} reps.`,
+          text: `${lastS} Every set at ${was(top)} reached ${minR}+ reps, well past your ${rangeWords(plan)}. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, '-')} reps.`,
           lastR,
           basis,
           last: lastS,
@@ -845,7 +869,7 @@ function sgPastRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
 
 /* Every top set under the range: drop to a load that fits it. */
 function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
-  const { ex, plan, last, done, inRR, top, step, noAdd, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir } = C;
+  const { ex, plan, last, done, inRR, top, step, noAdd, topPts, lastR, lastS, basis, lbl, was, prevBest, tgtRir } = C;
   /* Below the rep range. Every top set fell short of repMin, either by 2 or
      more reps, or by any amount two sessions running at the same load. Adding
      one rep a week from there never reaches the range, so drop the load to
@@ -901,7 +925,7 @@ function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
           return {
             top,
             w: nw,
-            text: `${lastS} Top sets at ${lbl(top)} stopped at ${bestR} rep${bestR === 1 ? '' : 's'}, below your ${rangeWords(plan)}. Drop to ${lbl(nw)} and build back up.`,
+            text: `${lastS} Top sets at ${was(top)} stopped at ${bestR} rep${bestR === 1 ? '' : 's'}, below your ${rangeWords(plan)}. Drop to ${lbl(nw)} and build back up.`,
             lastR,
             basis,
             last: lastS,
@@ -967,7 +991,7 @@ function sgNoStep(C: SuggestCtx): Suggestion | null {
    there (no estimate) reads as 0 in the subtraction, which the casts let
    TypeScript accept. */
 function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
-  const { ex, plan, top, cap, capW, topPts, planPts, lastR, lastS, basis, lbl, prevBest, tgtRir, tp } = C;
+  const { ex, plan, top, cap, capW, topPts, planPts, lastR, lastS, basis, lbl, was, upTo, prevBest, tgtRir, tp } = C;
   if (planPts.every(p => p.r >= plan.repMax)) {
     const n0 = capW(top + progStepIn(M, ex, plan, top + bwRefLoadIn(M, ex), top));
     // On the step in the unit on screen before it is worded (unitGridIn), so the reps aimed for are those of the load shown.
@@ -977,7 +1001,7 @@ function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
       return {
         top,
         w: aw,
-        text: `${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: ${aw === 0 ? 'try it without help' : `take ${fmtWIn(M, aw - top)} ${UIn(M)} of help off`} and aim for ${plan.repMin}+ reps.`,
+        text: `${lastS} Every set at ${was(top)} hit ${plan.repMax}: ${aw === 0 ? 'try it without help' : typedOtherIn(M, top) ? upTo(aw) : `take ${fmtWIn(M, aw - top)} ${UIn(M)} of help off`} and aim for ${plan.repMin}+ reps.`,
         lastR,
         basis,
         last: lastS,
@@ -1042,7 +1066,7 @@ function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
         return {
           top,
           w: top,
-          text: `${lastS} Every set at ${lbl(top)} hit ${plan.repMax}. The next step, ${fmtWIn(M, nw - top)} ${UIn(M)}, is large for this load, so build every set to ${Z} here first; then the new load starts inside your range.`,
+          text: `${lastS} Every set at ${was(top)} hit ${plan.repMax}. ${typedOtherIn(M, top) ? `The next load up, ${lbl(nw)}, is a large step` : `The next step, ${fmtWIn(M, nw - top)} ${UIn(M)}, is large`} for this load, so build every set to ${Z} here first; then the new load starts inside your range.`,
           lastR,
           basis,
           last: lastS,
@@ -1056,7 +1080,7 @@ function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
     return {
       top,
       w: nw,
-      text: `${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: add ${fmtWIn(M, nw - top)} ${UIn(M)}${cap != null && nw >= cap - EPS_SAME ? ', which is the heaviest available,' : ''} and aim for ${aim}+ reps${big ? `, then build back to ${plan.repMax}. That step is large for this load, so fewer reps than the range is expected at first` : ''}.`,
+      text: `${lastS} Every set at ${was(top)} hit ${plan.repMax}: ${upTo(nw)}${cap != null && nw >= cap - EPS_SAME ? ', which is the heaviest available,' : ''} and aim for ${aim}+ reps${big ? `, then build back to ${plan.repMax}. That step is large for this load, so fewer reps than the range is expected at first` : ''}.`,
       lastR,
       basis,
       last: lastS,
@@ -1070,7 +1094,7 @@ function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
 
 /* A bad day under the range at a load done in it before: the bottom of the range again. */
 function sgBadDay(C: SuggestCtx): Suggestion | null {
-  const { plan, last, done, top, topPts, lastR, lastS, basis, lbl, prevBest } = C;
+  const { plan, last, done, top, topPts, lastR, lastS, basis, lbl, was, prevBest } = C;
   /* A bad day at a load already done in the range (not "19+ reps" with 5,
      5, 4, 4 in grey after 7, 7, 6, 6 then 5, 5, 4, 4): every set
      under the range, the session before at this load in it. The target is
@@ -1085,7 +1109,7 @@ function sgBadDay(C: SuggestCtx): Suggestion | null {
       return {
         top,
         w: top,
-        text: `${lastS} Every set fell under ${plan.repMin} at ${lbl(top)}, where you did ${plan.repMin}+ the time before. Stay at ${lbl(top)} and get back to ${plan.repMin}+ in every set.`,
+        text: `${lastS} Every set fell under ${plan.repMin} at ${was(top)}, where you did ${plan.repMin}+ the time before. Stay at ${lbl(top)} and get back to ${plan.repMin}+ in every set.`,
         lastR,
         basis,
         last: lastS,
@@ -1264,7 +1288,8 @@ function suggestTimedIn(
   const top = Math.max(...ws.map(p => p.w));
   const topPts = ws.filter(p => Math.abs(p.w - top) < EPS_SAME);
   const lbl = (w: number): string => `${loadLabelIn(M, ex, w)}${ex.bw ? '' : ' ' + UIn(M)}${loadNote(ex)}`;
-  const L0 = lastOf(all, last, p => `${loadLabelIn(M, ex, p.w)} for ${p.r}s`, M.today());
+  const { was, upTo } = pastWordsIn(M, ex, top, lbl);
+  const L0 = lastOf(all, last, p => `${typedLabelIn(M, ex, p.w)} for ${p.r}s`, M.today());
   const lastR = L0.lastR,
     lastS = L0.line,
     basis = L0.basis;
@@ -1340,7 +1365,7 @@ function suggestTimedIn(
       prev: L0.prev,
       prevOff: L0.prevOff,
       w: nw,
-      text: `${lastS} Every hold at ${lbl(top)} reached ${plan.repMax}s: add ${fmtWIn(M, nw - top)} ${UIn(M)}${ex.bw ? ' (a plate or a vest)' : ''} and aim for ${plan.repMin}s+.`,
+      text: `${lastS} Every hold at ${was(top)} reached ${plan.repMax}s: ${upTo(nw)}${ex.bw ? ' (a plate or a vest)' : ''} and aim for ${plan.repMin}s+.`,
       lastR,
       basis,
       last: lastS,

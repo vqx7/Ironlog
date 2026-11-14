@@ -47,6 +47,7 @@ import {
   isRestWeek,
   defPlan,
   loadLabel,
+  loadRead,
   logBack,
   sortedSessions,
   toD,
@@ -437,16 +438,21 @@ export function goalState(exId: string): {
   noBw: boolean;
 } | null {
   const ex = EX(exId);
-  const g = ex && ex.goal;
-  if (!g || !goalOk(ex)) return null;
+  const g0 = ex && ex.goal;
+  if (!g0 || !goalOk(ex)) return null;
+  // Set in the other unit, the goal is the load of this unit's equipment it reads as (loadReadIn): 100 kg is 220 lb.
+  const g = { w: loadRead(g0.w), r: g0.r };
   // Since a new machine or gym (liftRead): a goal reached at another machine is not reached here.
   const exps = liftRead(exId);
   const bw = bwRefLoad(ex);
   // With no weigh-in a bodyweight lift has no load to compare: say so rather than a number read from the added load alone.
   const noBw = !!ex.bw && !((bwRef() ?? 0) > 0);
+  /* Read on the other unit's equipment a goal can read heavier than it was set (225 lb reads 102.5 kg), so a set at it as
+     set reaches it too: a change of unit never takes a goal reached away. */
+  const reach = Math.min(g0.w, g.w) - EPS_SAME;
   let hit: string | null = null;
   for (const x of exps) {
-    if (x.pts.some(p => p.w >= g.w - EPS_SAME && p.r >= g.r)) {
+    if (x.pts.some(p => p.w >= reach && p.r >= g.r)) {
       hit = x.date;
       break;
     }
@@ -464,7 +470,7 @@ export function goalState(exId: string): {
 }
 /** A goal in words: "225 lb × 5", in the lift's own frame. */
 export function goalWords(ex: ExerciseLike, g: { w: number; r: number }): string {
-  return `${loadLabel(ex, g.w)}${ex.bw ? '' : ' ' + U()}${loadNote(ex)} × ${g.r}`;
+  return `${loadLabel(ex, loadRead(g.w))}${ex.bw ? '' : ' ' + U()}${loadNote(ex)} × ${g.r}`;
 }
 
 /* ---------- Volume by region: what it reads ---------- */
