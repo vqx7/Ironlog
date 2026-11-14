@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-w6QYe5LcWybcT8dwf/g0md+bkwSq1Xqq2JT+yXHuzAQ=' 'sha256-ynWDHrDn8D4sNlSshWTqjrv4IBXf/MOe2SlWnyvS01Y='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-JpatVJli8/TwDaPCEvL3m3uFlDKK/xyq2nqDtcXzx8Y=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.12-r109">
+<meta name="app-build" content="2026.11.13-r110">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -1198,8 +1198,10 @@ details.more>summary .small{display:block;font-weight:400}
 .pick{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:11px 2px;cursor:pointer;color:var(--ink)}
 .pick b{font-weight:650}
 /* Docked under the header: at the bottom it sat over the next set rows and
-   swallowed taps on them. Only its Undo button takes taps. */
-#toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--head-h) + 8px + env(safe-area-inset-top,0px));z-index:60;pointer-events:none;background:var(--ink);color:var(--on-ink);padding:11px 15px;border-radius:var(--r-md);font-size:15px;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+   swallowed taps on them. Only its Undo button takes taps. As wide as its
+   words up to 92% of the screen: from left:50% alone a box lays out in the
+   half of the screen to its right, and a long message ran down four lines. */
+#toast{position:fixed;left:50%;transform:translateX(-50%);width:max-content;top:calc(var(--head-h) + 8px + env(safe-area-inset-top,0px));z-index:60;pointer-events:none;background:var(--ink);color:var(--on-ink);padding:11px 15px;border-radius:var(--r-md);font-size:15px;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 8px 24px rgba(0,0,0,.22)}
 /* Sits under the top bar and stays in view while scrolling, so a new
    version is noticed without covering anything. Since 2.52 the top bar scrolls
    away, so it stays at the top of the screen, as it did on the first-run pages,
@@ -2161,8 +2163,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.63";
-  var APP_VERSION = "2026.11.12-r109";
+  var DISPLAY_VERSION = "2.64";
+  var APP_VERSION = "2026.11.13-r110";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -9023,7 +9025,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     if (!!e5.bw === !!o3.bw) s3 += SWAP_RANK.bw;
     if (!!e5.perSide === !!o3.perSide) s3 += SWAP_RANK.side;
     if (!e5.rare) s3 += SWAP_RANK.common;
-    if (e5.equip === o3.equip) s3 += SWAP_RANK.equip;
+    if (e5.equip === o3.equip || loadMode(e5) === "stack" && loadMode(o3) === "stack") s3 += SWAP_RANK.equip;
     const st = I2.exStats[e5.id];
     if (st && st.stalled) s3 -= SWAP_RANK.stalled;
     if (exInjuryIn(M3, e5)) s3 -= SWAP_RANK.injured;
@@ -29365,7 +29367,7 @@ if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostnam
   let tapped=false,reloading=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(tapped&&!reloading){reloading=true;location.reload();}});
   window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').then(reg=>{
-    const offer=()=>{if(reg.waiting&&navigator.serviceWorker.controller&&window.ironlogUpdateReady)window.ironlogUpdateReady();};
+    const offer=()=>{const w=reg.waiting,c=navigator.serviceWorker.controller;if(w&&c&&w!==c&&window.ironlogUpdateReady)window.ironlogUpdateReady();};
     window.ironlogApplyUpdate=()=>{tapped=true;if(reg.waiting)reg.waiting.postMessage('skipWaiting');else location.reload();};
     reg.addEventListener('updatefound',()=>{const w=reg.installing;if(w)w.addEventListener('statechange',()=>{if(w.state==='installed')offer();});});
     offer();
