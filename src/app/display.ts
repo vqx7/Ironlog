@@ -57,9 +57,11 @@ import {
   toDBody,
   toDOf,
   listLabel,
+  liftMachines,
   weeksAvg
 } from './live';
 import { state, ui } from './store';
+import { NEW_MACHINE } from './analytics';
 import type { ExPoint, Exposure, ExerciseLike, Pr } from './model';
 import type { Day, Exercise, LoggedSet, Measurement, PlanItem, Routine, Session } from './types';
 
@@ -811,4 +813,54 @@ export function planAhead(to: string): Record<string, PlannedDay> {
     if (di != null && day) out[d] = { di, day };
   }
   return out;
+}
+
+/* A lift's machines by name (V, 2026-11-15: "a list of all my frequently used machines ... The dates will get confusing
+   for people cuz u basically have to remember what machine u used"). A name the lifter gave a machine is how every screen
+   says it; a machine with none is said by its last session ("Nov 7 · 140 lb × 10"). A machine marked new in the session
+   in progress gets the session's own id as its key once saved (machineKeys), so a name given before then is kept under
+   that id. */
+/** The key the session in progress gives a machine it marks new (an edit's, the session's own); null with none open. */
+export function newMachineKey(): string | null {
+  const d = state.draft;
+  return d ? d.editingId || d.id || null : null;
+}
+
+/** The name the lifter gave one of a lift's machines (NEW_MACHINE: the one the session in progress marks new), or null. */
+export function machineName(exId: string, key: string): string | null {
+  const e = state.exercises.find(x => x.id === exId);
+  const k = key === NEW_MACHINE ? newMachineKey() : key;
+  return (k && e && e.machines && e.machines[k]) || null;
+}
+
+/** How one of a lift's machines is said: its name, else its last session; null for a machine with neither. */
+export function machineSaid(exId: string, key: string): string | null {
+  const name = machineName(exId, key);
+  if (name) return name;
+  const m = liftMachines(exId).find(x => x.key === key);
+  return m ? `${fmtDate(m.date)} · ${listLabel(EX(exId), m.w, true)} × ${m.r}` : null;
+}
+
+/** The quick picks offered when a machine is named. */
+const MACHINE_CHOICES = 6;
+/** Names given to machines on other lifts, the most used first and then in order, without those this lift has (so a
+    brand typed once, Hammer Strength, is one tap on the next lift); MACHINE_CHOICES at most. */
+export function machineNameChoices(exId: string): string[] {
+  const here = new Set(
+    Object.values(state.exercises.find(x => x.id === exId)?.machines || {}).map(n => n.toLowerCase())
+  );
+  const count = new Map<string, { name: string; n: number }>();
+  for (const e of state.exercises)
+    if (e.id !== exId)
+      for (const name of Object.values(e.machines || {})) {
+        const k = name.toLowerCase();
+        if (here.has(k)) continue;
+        const c = count.get(k);
+        if (c) c.n++;
+        else count.set(k, { name, n: 1 });
+      }
+  return [...count.values()]
+    .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name))
+    .slice(0, MACHINE_CHOICES)
+    .map(c => c.name);
 }

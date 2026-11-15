@@ -215,4 +215,30 @@ for(const [file,label] of [['baselines/r115.html','r115'],['baselines/r114.html'
   ok(!M.errors.length&&!N.errors.length&&!O.errors.length,'no console errors with machines named',[...M.errors,...N.errors,...O.errors]);
   await M.ctx.close();await O.ctx.close();
 }
+// A lift's machines by name (2.71, NEW-168): a save from 2.69 names none, and loads here with its exercises byte for byte
+// (their sync hashes unchanged); one naming machines keeps each name, trimmed, with its machine's key, and drops a name
+// that is empty or no text, and a key no machine could have, as other names cutting one past 40 characters; 2.69 keeps the names, a field it does not know,
+// in their place.
+{
+  const P=await open('baselines/r115.html',{browser,clock:'2026-11-15T10:00:00'});
+  await P.page.evaluate(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.makeDemo();L.state.draft=null;L.saveNow();});
+  await P.page.waitForTimeout(300);
+  const raw=await P.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await P.ctx.close();
+  const N=await open('index.html',{browser,state:JSON.parse(raw),clock:'2026-11-15T10:00:00'});
+  const r=await N.page.evaluate(()=>{const L=window.__ironlog;L.saveNow();const saved=JSON.parse(localStorage.getItem('ironlog.v1'));return {named:saved.exercises.filter(e=>'machines' in e).length,ex:JSON.stringify(saved.exercises)};});
+  const o=JSON.parse(raw);
+  ok(r.named===0&&r.ex===JSON.stringify(o.exercises),'r115: saved again here, no lift given machine names, exercises byte for byte',{named:r.named});
+  await N.ctx.close();
+  const S=JSON.parse(raw);
+  const long='x'.repeat(41);
+  S.exercises=S.exercises.map(e=>e.id==='machPress'?{...e,machines:{'0':'  Hammer   Strength ',s123:'Newtech','':'Nameless key',bad:7,blank:'  ',big:long}}:e.id==='legPress'?{...e,machines:'Booty Builder'}:e);
+  const M=await open('index.html',{browser,state:S,clock:'2026-11-15T10:00:00'});
+  const k=await M.page.evaluate(()=>{const L=window.__ironlog;L.saveNow();const saved=JSON.parse(localStorage.getItem('ironlog.v1'));const ex=id=>saved.exercises.find(e=>e.id===id);return {press:ex('machPress').machines,leg:'machines' in ex('legPress'),keys:Object.keys(ex('machPress'))};});
+  ok(JSON.stringify(k.press)===JSON.stringify({'0':'Hammer Strength',s123:'Newtech',big:'x'.repeat(40)})&&!k.leg,'a lift\'s machine names are kept, each in one line, a long one cut to 40 as other names are, saved again; an empty or non-text name, an empty key and names that are no list are dropped',k);
+  const O=await open('baselines/r115.html',{browser,state:S,clock:'2026-11-15T10:00:00'});
+  const old=await O.page.evaluate(()=>{const L=window.__ironlog;L.saveNow();const saved=JSON.parse(localStorage.getItem('ironlog.v1'));const e=saved.exercises.find(x=>x.id==='machPress');return {has:'machines' in e,keys:Object.keys(e)};});
+  ok(old.has&&JSON.stringify(old.keys)===JSON.stringify(k.keys),'2.69 keeps a lift\'s machine names when it saves, in the same place as here',{old,here:k.keys});
+  ok(!M.errors.length&&!N.errors.length&&!O.errors.length,'no console errors with machines named by name',[...M.errors,...N.errors,...O.errors]);
+  await M.ctx.close();await O.ctx.close();
+}
 console.log(fails.length?'FAILURES '+fails.length:'ALL PASS');await browser.close();})();

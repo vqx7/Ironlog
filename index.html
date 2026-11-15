@@ -670,6 +670,14 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .mcrow.on{border-color:var(--ink)}
 .mcdot{flex:none;width:18px;height:18px;border-radius:50%;border:1.6px solid var(--muted)}
 .mcrow.on .mcdot{border-color:var(--ink);background:radial-gradient(circle,var(--ink) 0 4px,transparent 5px)}
+/* A machine's row with its pencil, which names it; a named machine's last session under its name. */
+.mcitem{display:flex;align-items:center;gap:8px}
+.mcitem .mcrow{flex:1;min-width:0}
+.mcl{display:flex;flex-direction:column;min-width:0}
+.mcsub{font-size:12.5px;color:var(--muted)}
+.mcpen{width:44px;height:44px}
+/* The machine on an exercise's card: a tag that opens its Machine sheet. */
+.mctag{position:relative;border:0;font-family:inherit;cursor:pointer;color:var(--ink)}
 /* "Per side" is "Side" under 360 px, so the load column's heading is one line at every width. */
 @media (max-width:359px){.lhn{display:none}}
 .sg .n{font:700 15px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center}
@@ -1174,7 +1182,7 @@ button[data-tip]{-webkit-user-select:none;user-select:none}
 /* Small controls keep their look but get a touch area of at least 44 px from
    an invisible pseudo-element, so a thumb at the gym does not miss them. */
 .tipi,.hb,.ssb,.ib.sm,.ir .ib,.chip,.wkbar .w,button.n{position:relative}
-.tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before,button.n::before,.bmus::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+.tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before,button.n::before,.bmus::before,.mctag::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
 /* A session card's muscle (r70, 172 b) sits beside the exercise's drag handle: its tap area grows to the right and up and down, not left over the handle, and the handle's 44 px sit above it (NEW-57). */
 .bmus::before{left:0;transform:translateY(-50%)}
 .bh .bgrip{z-index:1}
@@ -2094,7 +2102,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     /** Help on an assisted lift, in kilograms (stored below 0). */
     assistKg: 300,
     /** The heaviest load, in pounds. */
-    loadLb: 2e4
+    loadLb: 2e4,
+    /** The machines one lift keeps a name for. */
+    machineNames: 20
   };
   function within(next2, was, max) {
     if (was.length <= max) return next2.slice(0, max);
@@ -4299,8 +4309,26 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       /* The unit the lift's equipment is marked in, set by a tap on the unit beside its load: kg or lb. Absent when unset,
          so the lift follows the app's unit and a record saved before this existed hashes as before; a build without it
          keeps it among the fields it does not know (keepExtra). */
-      unit: e5.unit === "kg" || e5.unit === "lb" ? e5.unit : void 0
+      unit: e5.unit === "kg" || e5.unit === "lb" ? e5.unit : void 0,
+      /* The names given to the machines the lift was done on, by each machine's key: absent until one is named, so a
+         record saved before names existed hashes as before, and a build without them keeps them (keepExtra). */
+      machines: machineNames(e5.machines)
     });
+  }
+  var MACHINE_KEY = /^[A-Za-z0-9_-]{1,40}$/;
+  function machineNames(v3) {
+    const r4 = rec(v3);
+    if (!r4 || Array.isArray(v3)) return void 0;
+    const out = {};
+    let n3 = 0;
+    for (const [k2, x2] of Object.entries(r4)) {
+      if (n3 >= LIMITS.machineNames) break;
+      const name = typeof x2 === "string" ? x2.replace(/\s+/g, " ").trim().slice(0, LIMITS.name) : "";
+      if (!MACHINE_KEY.test(k2) || !name) continue;
+      out[k2] = name;
+      n3++;
+    }
+    return n3 ? out : void 0;
   }
   function cleanRoutine(r0, ri) {
     const r4 = rec(r0) || {};
@@ -5554,6 +5582,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       d3.done();
       return { why: "This phone could not prepare the photo." };
     }
+    cx.imageSmoothingEnabled = true;
+    cx.imageSmoothingQuality = "high";
     cx.drawImage(d3.img, (d3.w - sw) / 2, (d3.h - sh) / 2, sw, sh, 0, 0, w2, h3);
     d3.done();
     const blob = await new Promise((res) => cv.toBlob(res, "image/jpeg", quality));
@@ -10604,7 +10634,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var FB = () => window.ironlogFeedback && typeof window.ironlogFeedback.send === "function" ? window.ironlogFeedback : null;
 
   // src/app/photo.ts
-  var PHOTO_EDGE = 512;
+  var PHOTO_EDGE = 1024;
   var PHOTO_QUALITY = 0.85;
   var PHOTO_SHAPE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
   function photoOf(v3) {
@@ -12763,6 +12793,38 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (di != null && day) out[d3] = { di, day };
     }
     return out;
+  }
+  function newMachineKey() {
+    const d3 = state.draft;
+    return d3 ? d3.editingId || d3.id || null : null;
+  }
+  function machineName(exId, key) {
+    const e5 = state.exercises.find((x2) => x2.id === exId);
+    const k2 = key === NEW_MACHINE ? newMachineKey() : key;
+    return k2 && e5 && e5.machines && e5.machines[k2] || null;
+  }
+  function machineSaid(exId, key) {
+    const name = machineName(exId, key);
+    if (name) return name;
+    const m3 = liftMachines(exId).find((x2) => x2.key === key);
+    return m3 ? `${fmtDate(m3.date)} · ${listLabel(EX(exId), m3.w, true)} × ${m3.r}` : null;
+  }
+  var MACHINE_CHOICES = 6;
+  function machineNameChoices(exId) {
+    const here = new Set(
+      Object.values(state.exercises.find((x2) => x2.id === exId)?.machines || {}).map((n3) => n3.toLowerCase())
+    );
+    const count = /* @__PURE__ */ new Map();
+    for (const e5 of state.exercises)
+      if (e5.id !== exId)
+        for (const name of Object.values(e5.machines || {})) {
+          const k2 = name.toLowerCase();
+          if (here.has(k2)) continue;
+          const c4 = count.get(k2);
+          if (c4) c4.n++;
+          else count.set(k2, { name, n: 1 });
+        }
+    return [...count.values()].sort((a2, b2) => b2.n - a2.n || a2.name.localeCompare(b2.name)).slice(0, MACHINE_CHOICES).map((c4) => c4.name);
   }
 
   // src/app/sheetsmisc.ts
@@ -21715,6 +21777,17 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
 
   // src/app/workout.ts
   var NEW_TIP = "A new machine or gym: its targets, trend, stalls, PRs and bests start over from this session. Earlier sessions stay in History. Use it only when the loads there don't compare; take it off in the ⋯ menu.";
+  function machineTag(d3, exId, bi) {
+    if (!onMachines(EX(exId)))
+      return markedNew(d3, exId) ? b` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : "";
+    const k2 = draftMachine(exId);
+    const name = k2 ? machineName(exId, k2) : null;
+    const said2 = name || (k2 === NEW_MACHINE ? "New machine" : null);
+    return said2 ? (
+      // The dot before it goes with it when the line wraps.
+      b` <span class="u-wsnw">· <button type="button" class="tag mctag" data-act="machineOpen" data-b=${String(bi)} aria-label=${`Machine: ${said2}. Change`}>${said2}</button></span>`
+    ) : "";
+  }
   var CARDIO_ADD_GAP_PX = 10;
   var visitKeys = /* @__PURE__ */ new WeakMap();
   function repeatKeyed(xs, id, part) {
@@ -21896,7 +21969,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const bl = b2.target ? bestLine(b2.exId, d3.past ? d3.date : "") : "";
     const work = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
     const canFill = !!b2.lastR && b2.lastR.some((r4) => r4 != null) && b2.sets.some((s3, i5) => !s3.done && !s3.warm && !s3.drop && s3.r == null && lastRFor(b2, i5) != null);
-    return b`<section class=${"block" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? b`<p class="ssh">Superset ${ss}</p>` : ""}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : A}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? b` ${tipButton(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · <span class="u-wsnw">${work || p3.sets}×${repSpan(p3.repMin, p3.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}</span>${nr ? "" : b` <span class="u-wsnw">@${b2.inj || (d3.light || d3.deload || b2.light) && b2.last ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p3.rir)}</span>`} · ${p3.rest}s${b2.inj ? b` · <span class="tag red">Injury: ${injLabel(b2.inj)}</span>` : ""}${markedNew(d3, b2.exId) ? b` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ""}</p></div>
+    return b`<section class=${"block" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? b`<p class="ssh">Superset ${ss}</p>` : ""}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : A}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? b` ${tipButton(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · <span class="u-wsnw">${work || p3.sets}×${repSpan(p3.repMin, p3.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}</span>${nr ? "" : b` <span class="u-wsnw">@${b2.inj || (d3.light || d3.deload || b2.light) && b2.last ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p3.rir)}</span>`} · ${p3.rest}s${b2.inj ? b` · <span class="tag red">Injury: ${injLabel(b2.inj)}</span>` : ""}${machineTag(d3, b2.exId, bi)}</p></div>
       <div class="bh-acts"><div class="bh-btns"><button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button><button class=${"ib" + (b2.note || b2.pics && b2.pics.length ? " noted" : "")} aria-label=${b2.note || b2.pics && b2.pics.length ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div><button type="button" class="ubadge" data-act="unitOpen" data-b=${bi} aria-label=${`${ex.name}: weights in ${liftU(ex)}. Change`}>${liftU(ex)}</button></div></div>
       ${b2.target ? b`<p class="hint"><b>${d3.date === today() ? "Today" : "Target"}: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", b2.hintAgain, ex.assist ? "assisted" : ex.bw ? "bodyweight" : "loaded", hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId, d3.date) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
       ${ss && partner && gk === 0 ? b`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? "pair" : "group"}.</p>` : ""}
@@ -26320,6 +26393,59 @@ ${JSON.stringify(ctx, null, 1)}`;
     return el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement ? el.value : "";
   }
   var kg = (ex, n3) => fromDOf(ex, n3) ?? 0;
+  function pickMachine(bi, k2, name) {
+    const d3 = state.draft;
+    const b0 = d3 && d3.ex[bi];
+    const e5 = b0 && state.exercises.find((x2) => x2.id === b0.exId);
+    if (!d3 || !b0 || !e5 || !k2 || k2 === draftMachine(b0.exId)) return;
+    const was = k2 === NEW_MACHINE ? null : liftMachines(b0.exId).find((x2) => x2.key === k2);
+    if (k2 !== NEW_MACHINE && !was) return;
+    const ed = d3.editingId;
+    if (ed && k2 === NEW_MACHINE && draftMachine(b0.exId) === ed) return;
+    const u4 = was && !ed ? typedUnit(was.w) : null;
+    const key = k2 === NEW_MACHINE ? newMachineKey() : k2;
+    act(
+      () => {
+        if (u4) {
+          if (u4 === appU()) delete e5.unit;
+          else e5.unit = u4;
+        }
+        for (const b2 of d3.ex)
+          if (b2.exId === b0.exId) {
+            if (ed) b2.mc = k2 === NEW_MACHINE ? ed : k2;
+            else if (k2 === NEW_MACHINE) {
+              b2.nw = true;
+              delete b2.mc;
+            } else {
+              b2.mc = k2;
+              delete b2.nw;
+            }
+          }
+        if (k2 === NEW_MACHINE && name && key) nameMachine(e5, key, name);
+        if (!ed) {
+          for (const b2 of d3.ex) if (b2.exId === b0.exId) refreshBlock(b2);
+        }
+      },
+      { undo: true }
+    );
+    rerenderKeepScroll();
+    const named2 = k2 === NEW_MACHINE ? name : machineName(e5.id, k2);
+    toast(
+      // The machine's label is one thing to read, so it is kept on one line (no-break spaces) when the message wraps.
+      named2 ? `${e5.name}: ${named2.replace(/ /g, " ")}` : was ? `${e5.name}: ${`${fmtDate(was.date)} · ${listLabel(e5, was.w, true)} × ${was.r}`.replace(/ /g, " ")}` : `${e5.name}: new machine`,
+      true
+    );
+  }
+  function nameMachine(e5, key, name) {
+    const keep = new Set(liftMachines(e5.id).map((x2) => x2.key));
+    const pend = newMachineKey();
+    if (pend) keep.add(pend);
+    const next2 = {};
+    for (const [k2, v3] of Object.entries(e5.machines || {})) if (keep.has(k2) && k2 !== key) next2[k2] = v3;
+    if (name) next2[key] = name;
+    if (Object.keys(next2).length) e5.machines = next2;
+    else delete e5.machines;
+  }
   var LIFT_ACTS = {
     /* The choice applies to the session in progress too: rows still on the
        suggestion switch between grey and filled, typed loads stay as typed. */
@@ -26356,54 +26482,49 @@ ${JSON.stringify(ctx, null, 1)}`;
       const b2 = Number(t4.dataset.b);
       if (state.draft && state.draft.ex[b2]) openModal({ kind: "machine", b: b2 });
     },
-    /* A machine picked for a lift in a session (390 C): every block of it is on that machine, read from that machine's
-       sessions alone. In a workout its target is read again, the sets done kept (a target from another machine is no
-       target here), and a machine done on before brings its own kg or lb (as its weights were typed); New machine marks
-       the lift's session new (nw), so it starts there. In an edit from History the pick names this session's machine
-       and nothing else, never the sessions after it or the lift's unit: a machine done on before by its key, a new one by the session's own; its mark,
-       which later sessions may follow, and the lift's unit stay as they are, and the readings follow once it is saved.
-       One Undo step. */
+    // A machine in the Machine sheet, tapped: the lift on it (pickMachine).
     machinePick(t4) {
-      const d3 = state.draft;
-      const b0 = d3 && d3.ex[Number(t4.dataset.b)];
-      const e5 = b0 && state.exercises.find((x2) => x2.id === b0.exId);
       if (ui.modal && ui.modal.kind === "machine") closeModal();
+      pickMachine(Number(t4.dataset.b), t4.dataset.k, "");
+    },
+    // A machine's pencil, or Add a machine: its name to type, in the same sheet.
+    machineNaming(t4) {
+      const b2 = Number(t4.dataset.b);
+      if (state.draft && state.draft.ex[b2] && t4.dataset.k) openModal({ kind: "machine", b: b2, naming: t4.dataset.k });
+    },
+    // A name given on another lift, tapped: typed into the field, to add or change before saving.
+    machineChip(t4) {
+      const f3 = document.getElementById("mcName");
+      if (f3 instanceof HTMLInputElement && t4.dataset.v) {
+        f3.value = t4.dataset.v;
+        f3.focus();
+      }
+    },
+    /* A machine's name saved. Adding, a new machine is picked under it, as Add a machine's sheet says, in one Undo step;
+       a machine already listed, or the new one already picked, is named and the list shown again. */
+    machineNameSave(t4) {
+      const d3 = state.draft;
+      const b2 = Number(t4.dataset.b);
+      const b0 = d3 && d3.ex[b2];
+      const e5 = b0 && state.exercises.find((x2) => x2.id === b0.exId);
       const k2 = t4.dataset.k;
-      if (!d3 || !b0 || !e5 || !k2 || k2 === draftMachine(b0.exId)) return;
-      const was = k2 === NEW_MACHINE ? null : liftMachines(b0.exId).find((x2) => x2.key === k2);
-      if (k2 !== NEW_MACHINE && !was) return;
-      const ed = d3.editingId;
-      if (ed && k2 === NEW_MACHINE && draftMachine(b0.exId) === ed) return;
-      const u4 = was && !ed ? typedUnit(was.w) : null;
-      act(
-        () => {
-          if (u4) {
-            if (u4 === appU()) delete e5.unit;
-            else e5.unit = u4;
-          }
-          for (const b2 of d3.ex)
-            if (b2.exId === b0.exId) {
-              if (ed) b2.mc = k2 === NEW_MACHINE ? ed : k2;
-              else if (k2 === NEW_MACHINE) {
-                b2.nw = true;
-                delete b2.mc;
-              } else {
-                b2.mc = k2;
-                delete b2.nw;
-              }
-            }
-          if (!ed) {
-            for (const b2 of d3.ex) if (b2.exId === b0.exId) refreshBlock(b2);
-          }
-        },
-        { undo: true }
-      );
+      const f3 = document.getElementById("mcName");
+      if (!d3 || !b0 || !e5 || !k2) return;
+      const name = f3 instanceof HTMLInputElement ? f3.value.replace(/\s+/g, " ").trim().slice(0, LIMITS.name) : "";
+      if (k2 === NEW_MACHINE && draftMachine(b0.exId) !== NEW_MACHINE) {
+        closeModal();
+        pickMachine(b2, k2, name);
+        return;
+      }
+      const key = k2 === NEW_MACHINE ? newMachineKey() : k2;
+      if (!key || (machineName(e5.id, key) || "") === name) {
+        openModal({ kind: "machine", b: b2 });
+        return;
+      }
+      act(() => nameMachine(e5, key, name), { undo: true });
+      openModal({ kind: "machine", b: b2 });
       rerenderKeepScroll();
-      toast(
-        // The machine's label is one thing to read, so it is kept on one line (no-break spaces) when the message wraps.
-        was ? `${e5.name}: ${`${fmtDate(was.date)} · ${listLabel(e5, was.w, true)} × ${was.r}`.replace(/ /g, " ")}` : `${e5.name}: new machine`,
-        true
-      );
+      toast(name ? `Named ${name}` : "Machine name taken off", true);
     },
     unitOpen(t4) {
       const b2 = Number(t4.dataset.b);
@@ -28733,13 +28854,21 @@ ${JSON.stringify(ctx, null, 1)}`;
     const ex = EX(b2.exId);
     const d3 = state.draft;
     const ms = liftMachines(b2.exId);
+    if (m3.naming != null) return machineNameSheet(m3.b, b2.exId, m3.naming);
     const k02 = draftMachine(b2.exId);
     const now2 = d3 && k02 === d3.editingId && !ms.some((x2) => x2.key === k02) ? NEW_MACHINE : k02;
-    const row = (k2, label) => b`<button class=${"mcrow" + (k2 === now2 ? " on" : "")} data-act="machinePick" data-b=${m3.b} data-k=${k2} aria-pressed=${String(k2 === now2)}><span class="mcdot"></span><span>${label}</span></button>`;
+    const row = (k2, name, last) => b`<div class="mcitem"><button class=${"mcrow" + (k2 === now2 ? " on" : "")} data-act="machinePick" data-b=${m3.b} data-k=${k2} aria-pressed=${String(k2 === now2)}><span class="mcdot"></span><span class="mcl">${name ? b`<b>${name}</b>${last ? b`<span class="mcsub">${last}</span>` : A}` : last ?? "New machine"}</span></button><button type="button" class="ib mcpen" data-act="machineNaming" data-b=${m3.b} data-k=${k2} aria-label=${`Name ${name || last || "the new machine"}`}>✎</button></div>`;
+    const lastOf2 = (x2) => `${fmtDate(x2.date)} · ${listLabel(ex, x2.w, true)} × ${x2.r}`;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}</h3>${closeX()}</div>
-    <p class="mc-h">Machine</p><div class="mclist">${ms.map(
-      (x2) => row(x2.key, `${fmtDate(x2.date)} · ${listLabel(ex, x2.w, true)} × ${x2.r}`)
-    )}${row(NEW_MACHINE, "New machine")}</div></div>`;
+    <p class="mc-h">Machine</p><div class="mclist">${ms.map((x2) => row(x2.key, machineName(b2.exId, x2.key), lastOf2(x2)))}${now2 === NEW_MACHINE ? row(NEW_MACHINE, machineName(b2.exId, NEW_MACHINE), null) : b`<button type="button" class="btn fullw" data-act="machineNaming" data-b=${m3.b} data-k=${NEW_MACHINE}>Add a machine</button>`}</div></div>`;
+  }
+  function machineNameSheet(b2, exId, key) {
+    const adding = key === NEW_MACHINE && draftMachine(exId) !== NEW_MACHINE;
+    const picks = machineNameChoices(exId);
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${adding ? "Add a machine" : "Name this machine"}</h3>${closeX()}</div>
+    <input type="text" id="mcName" aria-label="Machine name" maxlength=${LIMITS.name} autocomplete="off" placeholder="Machine name" .value=${machineName(exId, key) || ""} enterkeyhint="done">
+    ${picks.length ? b`<div class="chips u-mt8">${picks.map((n3) => b`<button type="button" class="chip" data-act="machineChip" data-v=${n3}>${n3}</button>`)}</div>` : A}
+    <div class="row u-mt10"><button class="btn primary" data-act="machineNameSave" data-b=${b2} data-k=${key}>${adding ? "Add" : "Save"}</button><button class="btn" data-act="machineOpen" data-b=${b2}>Back</button></div></div>`;
   }
   function noteSheet(m3) {
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m3.title}</h3>${closeX()}</div>

@@ -735,8 +735,31 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     /* The unit the lift's equipment is marked in, set by a tap on the unit beside its load: kg or lb. Absent when unset,
        so the lift follows the app's unit and a record saved before this existed hashes as before; a build without it
        keeps it among the fields it does not know (keepExtra). */
-    unit: e.unit === 'kg' || e.unit === 'lb' ? e.unit : undefined
+    unit: e.unit === 'kg' || e.unit === 'lb' ? e.unit : undefined,
+    /* The names given to the machines the lift was done on, by each machine's key: absent until one is named, so a
+       record saved before names existed hashes as before, and a build without them keeps them (keepExtra). */
+    machines: machineNames(e.machines)
   });
+}
+
+/** What a machine's key looks like: the first machine's or a session's id (machineKeys). */
+const MACHINE_KEY = /^[A-Za-z0-9_-]{1,40}$/;
+
+/** A lift's machine names as stored: each a name in one line within LIMITS.name, under a key a machine can have, in the
+    order they came, at most LIMITS.machineNames of them; undefined when none is left. */
+function machineNames(v: unknown): Record<string, string> | undefined {
+  const r = rec(v);
+  if (!r || Array.isArray(v)) return undefined;
+  const out: Record<string, string> = {};
+  let n = 0;
+  for (const [k, x] of Object.entries(r)) {
+    if (n >= LIMITS.machineNames) break;
+    const name = typeof x === 'string' ? x.replace(/\s+/g, ' ').trim().slice(0, LIMITS.name) : '';
+    if (!MACHINE_KEY.test(k) || !name) continue;
+    out[k] = name;
+    n++;
+  }
+  return n ? out : undefined;
 }
 
 /* A routine, cleaned: called only on one whose days are a list (the reader

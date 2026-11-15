@@ -15,7 +15,7 @@ import type { TemplateResult } from 'lit-html';
 import { repeat } from 'lit-html/directives/repeat.js';
 
 import { parkedHeld } from './park';
-import { CARDIO, CWHEN, ML, injLabel } from './library';
+import { CARDIO, CWHEN, ML, injLabel, onMachines } from './library';
 import { ssLetters } from './routines';
 import { missedTag, repSpan, effLeastShort, LIGHT_RIR, fmtDate, estMin } from './format';
 import { isMissed, DROP_START, LIGHT_SHARE } from './formulas';
@@ -24,7 +24,7 @@ import { loadNote, emptyLoad } from './loads';
 import { CHK_Q, chkWord } from './coach';
 import { rirScale, effShow, effName } from './effort';
 import { prefGet, BWASK_KEY } from './storage';
-import { bodyU, EX, exName, liftU, loadLabel, stepLoad } from './live';
+import { bodyU, draftMachine, EX, exName, liftU, loadLabel, stepLoad } from './live';
 import { sessionShown, state } from './store';
 import {
   effW,
@@ -44,7 +44,7 @@ import {
 } from './session';
 import type { DraftBlock, DraftSet } from './types';
 import type { ExerciseLike } from './model';
-import { distU, distShow, rirShow, setShort, bestLine, effTgt, fmtDateLong, loadColWord } from './display';
+import { distU, distShow, rirShow, setShort, bestLine, effTgt, fmtDateLong, loadColWord, machineName } from './display';
 
 import { section, tipButton, fieldValue, helpButton, howText, drawing, drawScreen } from './view';
 
@@ -65,12 +65,27 @@ import {
   stepAt
 } from './worksets';
 import { LIMITS } from './records';
-import { PICK_DAYS } from './analytics';
+import { NEW_MACHINE, PICK_DAYS } from './analytics';
 import { closeX } from './sheetsmisc';
 
 /** What the New machine tag on an exercise says, tapped. */
 const NEW_TIP =
   "A new machine or gym: its targets, trend, stalls, PRs and bests start over from this session. Earlier sessions stay in History. Use it only when the loads there don't compare; take it off in the ⋯ menu.";
+/* The machine a machine lift is on, named on its card once the lifter names it (V, 2026-11-15, UAT-1), or New machine
+   when the session marks it new; a tap opens its Machine sheet. A machine with no name is not said: its last session
+   would be a date to decode. A free weight marked New machine or gym keeps its tag and tip. */
+/** What an exercise's card says of the machine it is on (above). */
+function machineTag(d: NonNullable<typeof state.draft>, exId: string, bi: number): Part {
+  if (!onMachines(EX(exId)))
+    return markedNew(d, exId) ? html` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : '';
+  const k = draftMachine(exId);
+  const name = k ? machineName(exId, k) : null;
+  const said = name || (k === NEW_MACHINE ? 'New machine' : null);
+  return said
+    ? // The dot before it goes with it when the line wraps.
+      html` <span class="u-wsnw">· <button type="button" class="tag mctag" data-act="machineOpen" data-b=${String(bi)} aria-label=${`Machine: ${said}. Change`}>${said}</button></span>`
+    : '';
+}
 /** The gap above the cardio buttons when there are entries, in pixels. */
 const CARDIO_ADD_GAP_PX = 10;
 /* lit-html moves an exercise's nodes, or a row's, with it when the order
@@ -419,7 +434,7 @@ function blockPart(
     !!b.lastR &&
     b.lastR.some(r => r != null) &&
     b.sets.some((s, i) => !s.done && !s.warm && !s.drop && s.r == null && lastRFor(b, i) != null);
-  return html`<section class=${'block' + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? html`<p class="ssh">Superset ${ss}</p>` : ''}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : nothing}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? html` ${tipButton(ex.note, 'About ' + ex.name)}` : ''}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · <span class="u-wsnw">${work || p.sets}×${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? '/side' : ''}</span>${nr ? '' : html` <span class="u-wsnw">@${b.inj || ((d.light || d.deload || b.light) && b.last) ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}</span>`} · ${p.rest}s${b.inj ? html` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ''}${markedNew(d, b.exId) ? html` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ''}</p></div>
+  return html`<section class=${'block' + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? html`<p class="ssh">Superset ${ss}</p>` : ''}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : nothing}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? html` ${tipButton(ex.note, 'About ' + ex.name)}` : ''}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · <span class="u-wsnw">${work || p.sets}×${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? '/side' : ''}</span>${nr ? '' : html` <span class="u-wsnw">@${b.inj || ((d.light || d.deload || b.light) && b.last) ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}</span>`} · ${p.rest}s${b.inj ? html` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ''}${machineTag(d, b.exId, bi)}</p></div>
       <div class="bh-acts"><div class="bh-btns"><button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button><button class=${'ib' + (b.note || (b.pics && b.pics.length) ? ' noted' : '')} aria-label=${b.note || (b.pics && b.pics.length) ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div><button type="button" class="ubadge" data-act="unitOpen" data-b=${bi} aria-label=${`${ex.name}: weights in ${liftU(ex)}. Change`}>${liftU(ex)}</button></div></div>
       ${
         b.target

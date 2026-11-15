@@ -88,7 +88,9 @@ export const LIMITS = {
   /** Help on an assisted lift, in kilograms (stored below 0). */
   assistKg: 300,
   /** The heaviest load, in pounds. */
-  loadLb: 20000
+  loadLb: 20000,
+  /** The machines one lift keeps a name for. */
+  machineNames: 20
 } as const;
 /** Text as typed, kept within `max` characters. A name or a note saved longer before its limit existed
     is edited, never cut: it may get shorter, and a change that would make it longer still is not taken (the field's

@@ -658,6 +658,14 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .mcrow.on{border-color:var(--ink)}
 .mcdot{flex:none;width:18px;height:18px;border-radius:50%;border:1.6px solid var(--muted)}
 .mcrow.on .mcdot{border-color:var(--ink);background:radial-gradient(circle,var(--ink) 0 4px,transparent 5px)}
+/* A machine's row with its pencil, which names it; a named machine's last session under its name. */
+.mcitem{display:flex;align-items:center;gap:8px}
+.mcitem .mcrow{flex:1;min-width:0}
+.mcl{display:flex;flex-direction:column;min-width:0}
+.mcsub{font-size:12.5px;color:var(--muted)}
+.mcpen{width:44px;height:44px}
+/* The machine on an exercise's card: a tag that opens its Machine sheet. */
+.mctag{position:relative;border:0;font-family:inherit;cursor:pointer;color:var(--ink)}
 /* "Per side" is "Side" under 360 px, so the load column's heading is one line at every width. */
 @media (max-width:359px){.lhn{display:none}}
 .sg .n{font:700 15px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center}
@@ -1162,7 +1170,7 @@ button[data-tip]{-webkit-user-select:none;user-select:none}
 /* Small controls keep their look but get a touch area of at least 44 px from
    an invisible pseudo-element, so a thumb at the gym does not miss them. */
 .tipi,.hb,.ssb,.ib.sm,.ir .ib,.chip,.wkbar .w,button.n{position:relative}
-.tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before,button.n::before,.bmus::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+.tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before,button.n::before,.bmus::before,.mctag::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
 /* A session card's muscle (r70, 172 b) sits beside the exercise's drag handle: its tap area grows to the right and up and down, not left over the handle, and the handle's 44 px sit above it (NEW-57). */
 .bmus::before{left:0;transform:translateY(-50%)}
 .bh .bgrip{z-index:1}

@@ -210,6 +210,9 @@ export async function jpegOf(
     d.done();
     return { why: 'This phone could not prepare the photo.' };
   }
+  // The browser's best shrink: its default is its quickest, which reads a few pixels of each several a photo is shrunk by.
+  cx.imageSmoothingEnabled = true;
+  cx.imageSmoothingQuality = 'high';
   cx.drawImage(d.img, (d.w - sw) / 2, (d.h - sh) / 2, sw, sh, 0, 0, w, h);
   d.done();
   const blob = await new Promise<Blob | null>(res => cv.toBlob(res, 'image/jpeg', quality));

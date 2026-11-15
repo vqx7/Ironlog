@@ -62,6 +62,8 @@ export interface Exercise {
   goal?: { w: number; r: number } | undefined;
   /** The unit this lift's equipment is marked in, when the lifter set it on the lift; absent, the app's unit. */
   unit?: 'kg' | 'lb' | undefined;
+  /** The names the lifter gave the machines this lift was done on, by each machine's key (machineKeys); absent until one is named. */
+  machines?: Record<string, string> | undefined;
 }
 
 /** A routine day's exercise: the plan for it. */

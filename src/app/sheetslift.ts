@@ -6,7 +6,7 @@
    lift or the session is gone, and the sheet host (page.ts) then closes it. */
 
 import { picStrip } from './notepics';
-import { html } from 'lit-html';
+import { html, nothing } from 'lit-html';
 import { LIMITS } from './records';
 import type { TemplateResult } from 'lit-html';
 import { JOINTS, MUSCLES, onMachines, rackKind } from './library';
@@ -25,7 +25,7 @@ import {
 } from './live';
 import { NEW_MACHINE } from './analytics';
 import { fmtDate } from './format';
-import { loadLong, rirShow } from './display';
+import { loadLong, machineName, machineNameChoices, rirShow } from './display';
 import { markedNew } from './session';
 import type { DraftBlock } from './types';
 import { loadNote } from './loads';
@@ -125,25 +125,45 @@ export function unitSheet(m: { b: number }): TemplateResult | null {
     )}</div></div></div>`;
 }
 
-/* A machine lift's machines (390 C): the ones it was done on, the one used most lately first, each by its last
-   session ("Nov 7 · 140 lb × 10"), and New machine; the one it is on today marked. Nothing to name: a machine is known
-   by the weight last done on it. */
-/** The Machine sheet of a lift in a session. */
-export function machineSheet(m: { b: number }): TemplateResult | null {
+/* A machine lift's machines (390 C), by the names the lifter gives them (V, 2026-11-15): the ones it was done on, the
+   one used most lately first, each by its name with its last session beside it, or by that session alone until it is
+   named; the one it is on today marked; and Add a machine, which names a new one. A machine marked new and not yet
+   saved is listed too, by its name or as New machine. Each row's pencil names its machine. */
+/** The Machine sheet of a lift in a session: its machines, or, `naming` a machine's key (NEW_MACHINE: one to add), its name to type. */
+export function machineSheet(m: { b: number; naming?: string | undefined }): TemplateResult | null {
   const b = blockAt(m.b);
   if (!b) return null;
   const ex = EX(b.exId);
   const d = state.draft;
   const ms = liftMachines(b.exId);
+  if (m.naming != null) return machineNameSheet(m.b, b.exId, m.naming);
   // New machine picked in an edit names the session by its own key, a row only once it is saved: until then, New machine.
   const k0 = draftMachine(b.exId);
   const now = d && k0 === d.editingId && !ms.some(x => x.key === k0) ? NEW_MACHINE : k0;
-  const row = (k: string, label: string): TemplateResult =>
-    html`<button class=${'mcrow' + (k === now ? ' on' : '')} data-act="machinePick" data-b=${m.b} data-k=${k} aria-pressed=${String(k === now)}><span class="mcdot"></span><span>${label}</span></button>`;
+  const row = (k: string, name: string | null, last: string | null): TemplateResult =>
+    html`<div class="mcitem"><button class=${'mcrow' + (k === now ? ' on' : '')} data-act="machinePick" data-b=${m.b} data-k=${k} aria-pressed=${String(k === now)}><span class="mcdot"></span><span class="mcl">${
+      name ? html`<b>${name}</b>${last ? html`<span class="mcsub">${last}</span>` : nothing}` : (last ?? 'New machine')
+    }</span></button><button type="button" class="ib mcpen" data-act="machineNaming" data-b=${m.b} data-k=${k} aria-label=${`Name ${name || last || 'the new machine'}`}>✎</button></div>`;
+  const lastOf = (x: (typeof ms)[number]): string => `${fmtDate(x.date)} · ${listLabel(ex, x.w, true)} × ${x.r}`;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}</h3>${closeX()}</div>
-    <p class="mc-h">Machine</p><div class="mclist">${ms.map(x =>
-      row(x.key, `${fmtDate(x.date)} · ${listLabel(ex, x.w, true)} × ${x.r}`)
-    )}${row(NEW_MACHINE, 'New machine')}</div></div>`;
+    <p class="mc-h">Machine</p><div class="mclist">${ms.map(x => row(x.key, machineName(b.exId, x.key), lastOf(x)))}${
+      now === NEW_MACHINE
+        ? row(NEW_MACHINE, machineName(b.exId, NEW_MACHINE), null)
+        : html`<button type="button" class="btn fullw" data-act="machineNaming" data-b=${m.b} data-k=${NEW_MACHINE}>Add a machine</button>`
+    }</div></div>`;
+}
+
+/* A machine's name typed (V, 2026-11-15: "I go ahead and select that machine or add in a new one"): the names given on
+   other lifts offered as one tap each, so a brand is typed once. Adding with no name adds a new machine unnamed, said
+   by its last session once it has one; a name cleared takes the name away. */
+/** The name of one of a lift's machines to type, or of a machine to add (NEW_MACHINE). */
+function machineNameSheet(b: number, exId: string, key: string): TemplateResult {
+  const adding = key === NEW_MACHINE && draftMachine(exId) !== NEW_MACHINE;
+  const picks = machineNameChoices(exId);
+  return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${adding ? 'Add a machine' : 'Name this machine'}</h3>${closeX()}</div>
+    <input type="text" id="mcName" aria-label="Machine name" maxlength=${LIMITS.name} autocomplete="off" placeholder="Machine name" .value=${machineName(exId, key) || ''} enterkeyhint="done">
+    ${picks.length ? html`<div class="chips u-mt8">${picks.map(n => html`<button type="button" class="chip" data-act="machineChip" data-v=${n}>${n}</button>`)}</div>` : nothing}
+    <div class="row u-mt10"><button class="btn primary" data-act="machineNameSave" data-b=${b} data-k=${key}>${adding ? 'Add' : 'Save'}</button><button class="btn" data-act="machineOpen" data-b=${b}>Back</button></div></div>`;
 }
 
 /** A note on a lift in a session, saved with it and shown next time, with its pictures. */

@@ -16,8 +16,8 @@
    kept (sync.ts, photoReconcile).
    It is drawn again as a small square JPEG through the same redraw as a
    note's picture (pics.ts, jpegOf), so a photo's location and camera data
-   never reach storage and SVG is refused. At PHOTO_EDGE pixels it is a few
-   tens of kilobytes. It is read back, from the phone or the account, only as a
+   never reach storage and SVG is refused. At PHOTO_EDGE pixels it is under a
+   hundred kilobytes. It is read back, from the phone or the account, only as a
    JPEG data address, so a value changed by hand can never become an outside
    address or markup. */
 
@@ -26,9 +26,10 @@ import { parseJson, rec } from './records';
 import { PHOTO_KEY, PHOTO_SYNC, PHOTO_ASKED, log, prefDel, prefGet, prefSet } from './storage';
 import { acct, cloud } from './store';
 
-/** The side of the kept photo in pixels: sharp on the menu button and fair opened large (256 is soft once
-    enlarged), and still tens of kilobytes. */
-const PHOTO_EDGE = 512;
+/** The side of the kept photo in pixels: opened large on a phone it fills about 350 points at 3 pixels a point, so
+    1024 is drawn at about its own size (512 was stretched twice over and soft, 256 more so); a phone photo kept so is
+    about 50 to 100 thousand characters on the phone. */
+const PHOTO_EDGE = 1024;
 /** The JPEG quality the photo is kept at. */
 const PHOTO_QUALITY = 0.85;
 /** What a kept photo must look like: a JPEG data address and nothing else. */
