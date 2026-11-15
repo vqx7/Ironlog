@@ -281,6 +281,22 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     s0 = (await Q.draft()).ex[0].sets[0];
     ok(!s0.done && s0.r === 9, 'L-10: with auto-mark off, the reps are kept and nothing is ticked', s0);
     await Q.close();
+    /* Reps put in by minus and plus are the set's reps as if typed: the field left as it is, or the same number typed
+       again (which fires no change), ticks the set, as leaving a field with its grey reps does. Before, only a new
+       number ticked it, so after plus the set stayed unticked however the lifter left the field. */
+    for (const how of ['left', 'retyped', 'next']) {
+      const X = await lifter();
+      await start(X);
+      await X.tap('#view [data-act="sStep"][data-b="0"][data-sf="r"][data-d="1"]', 250);
+      await X.page.click(field('r', 0, 0)); await wait(120);
+      if (how === 'retyped') { await X.page.keyboard.press('Control+A'); await X.page.keyboard.type('9'); }
+      if (how === 'next') await X.page.keyboard.press('Enter');
+      else await X.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+      await wait(300);
+      const x0 = (await X.draft()).ex[0].sets[0];
+      ok(x0.done && x0.r === 9 && Math.abs(x0.w - 185 * LB) < 0.01, `L-10: reps set to 9 by plus, then the field ${how === 'left' ? 'left as it is' : how === 'retyped' ? 'given 9 again and left' : 'left by Next'}: the set is ticked at 9`, x0);
+      await X.close();
+    }
   }
 
   /* ---------- L-11: a row's mark: working, warm-up, drop set; a warm-up counts for nothing and starts no rest ---------- */
@@ -584,7 +600,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await start(P);
     await P.page.fill(field('r', 0, 0), '0'); await P.tap(tick(0, 0));
     const s0 = (await P.draft()).ex[0].sets[0];
-    ok(s0.done && s0.r === 0 && (await P.toasts()).includes('Logged as missed. It counts toward no volume or PRs, and never earns a step up.'), 'L-21: a set ticked with 0 reps is logged as missed, and says what that means', { s0, t: await P.toasts() });
+    ok(s0.done && s0.r === 0 && (await P.toasts()).includes('Logged as missed.') && !(await P.toasts()).some(t => /counts toward|step up/.test(t)), 'L-21: a set ticked with 0 reps is logged as missed, and says so in three words: "Logged as missed." (V, 2026-11-14)', { s0, t: await P.toasts() });
     await P.page.fill(field('w', 0, 1), '95'); await P.page.fill(field('r', 0, 1), '0'); await P.tap(tick(0, 1));
     const m = await P.modal();
     ok(m && m.kind === 'confirm' && /0 reps at a weight well under today's working weight/.test(m.text) && !(await P.draft()).ex[0].sets[1].done, 'L-21: 0 at a load well under the session\'s working load asks first, and nothing is ticked yet', m);
@@ -974,7 +990,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     ok(b1.length === 1, 'L-32: the raises, not started, keep half their sets, rounded up (2 to 1)', b1);
     // 90% of 20 lb is 18; the heaviest whole dumbbell step at or under it is 15 (P-26).
     ok(b1[0].w === '~15' && b1[0].r === '~10', 'L-32: at a lighter load in whole steps (15 lb, from 20) for the bottom of the range (10), nothing to beat', b1);
-    ok((await P.toasts()).includes('Lighter: 1 exercise not started now half the sets at about 90% loads'), 'L-32: it says "Lighter: 1 exercise not started now half the sets at about 90% loads"', await P.toasts());
+    ok((await P.toasts()).includes('Made 1 exercise lighter'), 'L-32: it says "Made 1 exercise lighter", what the tap did; the card says how (V, 2026-11-14: no over-explaining)', await P.toasts());
     ok(d.notes === 'Made lighter after the check-in: exercises not started, half sets at about 90% loads.' && !d.light, 'L-32: the session\'s note says so; the session itself is not marked lighter', { notes: d.notes, light: d.light });
     const card = await P.ev(() => { const c = document.getElementById('readyCard'); return c ? c.innerText.replace(/\s+/g, ' ').trim() : ''; });
     ok(card === 'Made lighter: the exercises not started are half the sets at about 90% loads.' && !(await P.ev(() => !!document.querySelector('[data-act="makeLight"]'))), 'L-32: the card then says what was done instead of offering it again', card);
@@ -1256,6 +1272,27 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
   }
 
   /* ---------- L-39: the unit switched on a lift already started, or in an edit: only the words change ---------- */
+  if (run('L-39')) {
+    /* Minus and plus on a lift switched to the other unit with a set done in the first: the next set's load is a load
+       typed in lb, which no kg load is, so the steps land on loads that exist in kg (NEW-160). 185 lb done, the bench
+       in kg: plus on set 2 is 85 kg, the nearest load a 5 kg step makes from the bar (P-39), then 90; minus twice from
+       there, 85 and 80; never 88.9 or 93.9, which no plates make. A drop set under it is 60 kg (whole steps down from
+       85 to the first at or under 75% of 83.9), never 58.9. */
+    const P = await lifter();
+    await start(P);
+    await P.tap(btn('sDone', 0, 0), 250);
+    await toUnit(P, 0, 'kg');
+    await P.ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
+    const step = d => P.tap(`#view [data-act="sStep"][data-b="0"][data-sf="w"][data-d="${d}"]`, 200);
+    const set2 = () => P.ev(() => { const s = window.__ironlog.state.draft.ex[0].sets[1]; return { w: s.w == null ? null : Math.round(s.w * 1000) / 1000, shown: document.querySelector('#view input[data-f="w"][data-b="0"][data-s="1"]').value }; });
+    const got = [];
+    await step('1'); got.push(await set2()); await step('1'); got.push(await set2()); await step('-1'); await step('-1'); got.push(await set2());
+    ok(JSON.stringify(got.map(x => x.w)) === '[85,90,80]' && got.every(x => String(x.w) === x.shown), 'L-39: plus and minus after 185 lb done and the bench switched to kg land on kg loads: 85, 90, then 80, as shown (NEW-160)', got);
+    await P.tap('#view [data-act="bMenu"][data-b="0"]', 200); await P.tap('#modal [data-act="bMenuDo"][data-op="dropAdd"]', 300);
+    const drop = await P.ev(() => window.__ironlog.state.draft.ex[0].sets.filter(s => s.drop).map(s => Math.round(s.w * 1000) / 1000));
+    ok(JSON.stringify(drop) === '[60]', 'L-39: a drop set under 185 lb, the bench in kg: 60 kg, on the bar\'s 5 kg steps (NEW-160)', drop);
+    await P.close();
+  }
   if (run('L-39')) {
     /* A lift with a set done keeps what it started with when its unit is tapped, as for a change of the app's unit:
        the target is worded in kg at the same load, the sets done at it still count, and Finish beats the target

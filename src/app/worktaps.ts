@@ -871,10 +871,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       { inProgress: true, undo: true }
     );
     rerenderKeepScroll();
-    toast(
-      `Lighter: ${todo.length} exercise${todo.length === 1 ? '' : 's'} not started now half the sets at about ${pctOf(LIGHT_SHARE)}% loads`,
-      true
-    );
+    toast(`Made ${todo.length} exercise${todo.length === 1 ? '' : 's'} lighter`, true);
   },
   calSnooze() {
     act(() => {

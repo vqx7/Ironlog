@@ -5944,7 +5944,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var NIL = "–";
   var missedTag = (s3) => isMissed(s3) ? " missed" : "";
   var DIRTY_SAID = "Save or cancel first. Your changes are still here.";
-  var MISSED_SAID = "Logged as missed. It counts toward no volume or PRs, and never earns a step up.";
+  var MISSED_SAID = "Logged as missed.";
   var fmtG = (v3) => String(r3(v3));
   var repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
   var YEAR_DAYS = 365.25;
@@ -8000,17 +8000,25 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     if (at2 == null)
       return { kind: "step", first: null, below: () => null, floor: () => null, above: () => null, has: () => false };
-    const from = at2;
-    const step = incOfIn(M3, ex, plan, from);
+    const step = incOfIn(M3, ex, plan, at2);
+    const anchor = unitAnchorIn(M3, ex, at2, step);
+    const from = anchor ?? at2;
+    const tk = anchor == null || !(step > 0) ? EPS_SAME : Math.max(EPS_SAME, rackTolIn(M3) / step);
     const k2 = (w2) => (w2 - from) / step;
     return {
       kind: "step",
       first: null,
-      below: (w2) => step > 0 ? from + (Math.ceil(k2(w2) - EPS_SAME) - 1) * step : null,
-      floor: (w2) => step > 0 ? from + Math.floor(k2(w2) + EPS_SAME) * step : null,
-      above: (w2) => step > 0 ? from + (Math.floor(k2(w2) + EPS_SAME) + 1) * step : null,
-      has: (w2) => step > 0 && Math.abs(k2(w2) - Math.round(k2(w2))) < EPS_SAME
+      below: (w2) => step > 0 ? from + (Math.ceil(k2(w2) - tk) - 1) * step : null,
+      floor: (w2) => step > 0 ? from + Math.floor(k2(w2) + tk) * step : null,
+      above: (w2) => step > 0 ? from + (Math.floor(k2(w2) + tk) + 1) * step : null,
+      has: (w2) => step > 0 && Math.abs(k2(w2) - Math.round(k2(w2))) < tk
     };
+  }
+  function unitAnchorIn(M3, ex, at2, step) {
+    const su = inUnitIn(M3, step);
+    if (ex.timed || !typedOtherIn(M3, at2) || !(su > 0) || !onStep(su, TYPED_STEP)) return null;
+    const o3 = inUnitIn(M3, loadFloorIn(M3, ex));
+    return kgOfIn(M3, o3 + Math.round((inUnitIn(M3, at2) - o3) / su) * su);
   }
   function lighterLoadIn(M3, ex, plan, from, to) {
     M3 = liftModelIn(M3, ex);
@@ -16861,8 +16869,8 @@ ${more}`;
     if (!d3 || !state.settings.autoDone || drawing()) return false;
     const b2 = d3.ex[bi];
     const x2 = b2 && b2.sets[si];
-    if (!b2 || !x2 || x2.done || +(x2.r ?? 0) > 0) return false;
-    const lr = greyR(b2, si);
+    if (!b2 || !x2 || x2.done) return false;
+    const lr = +(x2.r ?? 0) > 0 ? +(x2.r ?? 0) : greyR(b2, si);
     if (lr == null || !(lr > 0)) return false;
     act(
       () => {
@@ -21738,7 +21746,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   function bwAskCard(d3) {
     if (d3.editingId || d3.past || state.bodyweights.length || !d3.ex.some((b2) => EX(b2.exId).bw)) return "";
     if (prefGet(BWASK_KEY)) return "";
-    return b`<div class="card" id="bwAsk"><p class="small u-m0-0-8"><b>Your bodyweight</b> counts in bodyweight lifts, for weight lifted and estimates. ${tipButton("Logged as a weigh-in for today. Add more on Today, under Body.", "About bodyweight")}</p>
+    return b`<div class="card" id="bwAsk"><p class="small u-m0-0-8"><b>Your bodyweight</b>, for bodyweight lifts ${tipButton("It counts in bodyweight lifts, for weight lifted and estimates. Logged as a weigh-in for today; add more on Today, under Body.", "About bodyweight")}</p>
   <div class="row"><label class="field u-f1_m0" for="bwVal"><span class="vh">Bodyweight (${bodyU()})</span>${bodyField("bwVal", { placeholder: `Weight (${bodyU()})`, label: `Bodyweight (${bodyU()})` })}</label>${bodyUnitTap("bwVal")}<button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
   }
   function cardioDraftCard(d3) {
@@ -22097,7 +22105,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     if (e5.key === "Enter" && t4 instanceof HTMLInputElement && t4.matches(".sg input[data-f]")) {
       e5.preventDefault();
       const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
-      if (t4.dataset.f === "r" && !t4.value.trim()) acceptGrey(bi, si);
+      if (t4.dataset.f === "r" && (!t4.value.trim() || sameReps(t4))) acceptGrey(bi, si);
       if (needHere(bi, si)) return true;
       const all = [...document.querySelectorAll(".sg input[data-f]")];
       const nx = all[all.indexOf(t4) + 1];
@@ -22183,6 +22191,10 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     greyIn.delete(t4);
     fieldShown(t4, false);
   }
+  function sameReps(t4) {
+    const s3 = draftSet(t4);
+    return !!s3 && !s3.done && +(s3.r ?? 0) > 0 && t4.value.trim() === String(s3.r);
+  }
   function workoutBlur(e5) {
     const t4 = e5.target;
     if (!(t4 instanceof HTMLInputElement)) return;
@@ -22196,7 +22208,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       setTimeout(autoPending, 0);
       return;
     }
-    if (!t4.matches('.sg input[data-f="r"]') || t4.value.trim()) return;
+    if (!t4.matches('.sg input[data-f="r"]') || t4.value.trim() && !sameReps(t4)) return;
     if (t4.dataset.cleared) {
       delete t4.dataset.cleared;
       return;
@@ -27806,10 +27818,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         { inProgress: true, undo: true }
       );
       rerenderKeepScroll();
-      toast(
-        `Lighter: ${todo.length} exercise${todo.length === 1 ? "" : "s"} not started now half the sets at about ${pctOf(LIGHT_SHARE)}% loads`,
-        true
-      );
+      toast(`Made ${todo.length} exercise${todo.length === 1 ? "" : "s"} lighter`, true);
     },
     calSnooze() {
       act(() => {

@@ -1104,7 +1104,7 @@ async function finish() {
     const g = await ev(() => { const a = document.getElementById('blk-1'); const want = a ? parseFloat(getComputedStyle(a).scrollMarginTop) + parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) : null; return { tr: window.__tr, top: a ? Math.round(a.getBoundingClientRect().top) : null, want, folded: !!document.querySelector('#blk-0.folded'), missed: window.__ironlog.state.draft.ex[0].sets[2] }; });
     ok(g.missed && g.missed.done && +g.missed.r === 0, '16. the third bench set is kept as missed, 0 reps ticked', g.missed);
     // What the toast says is what the app then does (NEW-66): a missed set never earns a step, while a step earned before still stands (below).
-    ok(/Logged as missed/.test(missToast) && /never earns a step up/.test(missToast) && !/keeps the load from going up/.test(missToast), '16. the toast as the 0 is ticked: it counts toward no volume or PRs and never earns a step up (r71: "keeps the load from going up", which a step earned before contradicts)', missToast);
+    ok(missToast.trim() === 'Logged as missed.', '16. the toast as the 0 is ticked says what the tap did, "Logged as missed." (V, 2026-11-14: the reason is the Guide\'s)', missToast);
     const y0 = g.tr[0].y, y1 = g.tr[g.tr.length - 1].y, lowest = Math.min(...g.tr.map(x => x.y));
     let back = 0; for (let i = 1; i < g.tr.length; i++) if (g.tr[i].a != null && g.tr[i - 1].a != null) back = Math.max(back, g.tr[i].a - g.tr[i - 1].a);
     ok(g.folded && lowest >= Math.min(y0, y1) - 2 && back <= 2 && Math.abs(g.top - g.want) <= 2, '16. finishing the bench brings the raises up in one glide to the top of the screen: never a jump to the session\'s title, never back down', { y0, y1, lowest, back, top: g.top, want: g.want });

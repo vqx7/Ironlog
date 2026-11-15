@@ -1449,9 +1449,10 @@ export function acceptGrey(bi: number, si: number): boolean {
   if (!d || !state.settings.autoDone || drawing()) return false;
   const b = d.ex[bi];
   const x = b && b.sets[si];
-  // A warm-up or a drop takes its grey reps here too.
-  if (!b || !x || x.done || +(x.r ?? 0) > 0) return false;
-  const lr = greyR(b, si);
+  /* The number the field shows is the one confirmed: reps already in the set (typed, or put there by minus and plus,
+     which leave a set unticked), else its grey reps; a warm-up or a drop takes its grey reps here too. */
+  if (!b || !x || x.done) return false;
+  const lr = +(x.r ?? 0) > 0 ? +(x.r ?? 0) : greyR(b, si);
   if (lr == null || !(lr > 0)) return false;
   // The grey reps and the tick are one change, saved once (as sDone's).
   act(

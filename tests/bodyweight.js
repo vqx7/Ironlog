@@ -272,6 +272,20 @@ async function pickPullups(P, mode) {
     ok(!bad.length, "10. the scale's unit takes 44 px or more each way over no other control, and a tap on the control above it never switches the scale, on Today's Body card, in Settings and in the sheet, at 390 and 320 px", bad.length ? Object.fromEntries(bad) : out);
   }
 
+  if (run(11)) {
+    /* The workout's ask for bodyweight says what it is in a few words; why it counts is in its i (V, 2026-11-14: no
+       over-explaining). */
+    const P = await phone({ onboarded: true });
+    await P.page.evaluate(() => { const L = window.__ironlog; const S = L.state;
+      S.routines = [{ id: 'R1', name: 'Mine', schedule: 'cycle', days: [{ id: 'A', name: 'Pull', rest: false, items: [{ uid: 'A0', exId: 'pullup', sets: 3, repMin: 6, repMax: 12, rir: 2, rest: 120, ss: null }] }] }];
+      S.activeRoutineId = 'R1'; S.sessions = []; L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); });
+    await wait(150);
+    await P.page.click('#view .hero [data-act="startSession"]:not([data-light])'); await wait(300);
+    const words = await P.page.evaluate(() => { const p = document.querySelector('#bwAsk p'); if (!p) return ''; const c = p.cloneNode(true); c.querySelectorAll('button').forEach(b => b.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); });
+    ok(words === 'Your bodyweight, for bodyweight lifts', '11. the workout asks for bodyweight in a few words, its reasons in its i', words);
+    ok(!P.errors.length, '11. no page errors', P.errors);
+    await P.ctx.close(); await P.browser.close();
+  }
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
   process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

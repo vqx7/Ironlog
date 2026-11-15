@@ -108,7 +108,7 @@ export const DIRTY_SAID = 'Save or cancel first. Your changes are still here.';
    sets): it never earns a step up. A step earned by a full session before it still stands, so "keeps the load from
    going up" would be false there. */
 /** Said once when a set is ticked as missed. */
-export const MISSED_SAID = 'Logged as missed. It counts toward no volume or PRs, and never earns a step up.';
+export const MISSED_SAID = 'Logged as missed.';
 
 /** A number to at most three decimals, without trailing zeros. */
 export const fmtG = (v: number): string => String(r3(v));

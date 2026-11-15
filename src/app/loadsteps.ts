@@ -721,17 +721,35 @@ function loadsForIn(
   // Whole steps of the lift's step from the load it is at; with no load to count from there is no list of its own.
   if (at == null)
     return { kind: 'step', first: null, below: () => null, floor: () => null, above: () => null, has: () => false };
-  const from = at;
-  const step = incOfIn(M, ex, plan, from);
+  /* A load typed in the other unit is none of this unit's loads, so whole steps from it are none either (185 lb on a
+     lift now in kg: 83.9, 88.9, 93.9 kg). The steps are counted from the nearest load that exists in the lift's unit
+     instead (85, 90, 95), so every rule that moves a load from it (minus and plus, the drop set, the next sets) lands on
+     a real one. */
+  const step = incOfIn(M, ex, plan, at);
+  const anchor = unitAnchorIn(M, ex, at, step);
+  const from = anchor ?? at;
+  // From a load in the other unit, one within the shown digit of a load here is that load (122.47 kg, 270 lb, is 122.5).
+  const tk = anchor == null || !(step > 0) ? EPS_SAME : Math.max(EPS_SAME, rackTolIn(M) / step);
   const k = (w: number): number => (w - from) / step;
   return {
     kind: 'step',
     first: null,
-    below: w => (step > 0 ? from + (Math.ceil(k(w) - EPS_SAME) - 1) * step : null),
-    floor: w => (step > 0 ? from + Math.floor(k(w) + EPS_SAME) * step : null),
-    above: w => (step > 0 ? from + (Math.floor(k(w) + EPS_SAME) + 1) * step : null),
-    has: w => step > 0 && Math.abs(k(w) - Math.round(k(w))) < EPS_SAME
+    below: w => (step > 0 ? from + (Math.ceil(k(w) - tk) - 1) * step : null),
+    floor: w => (step > 0 ? from + Math.floor(k(w) + tk) * step : null),
+    above: w => (step > 0 ? from + (Math.floor(k(w) + tk) + 1) * step : null),
+    has: w => step > 0 && Math.abs(k(w) - Math.round(k(w))) < tk
   };
+}
+
+/* The nearest load a lift's own step makes in its unit to a load typed in the other unit, counted from the bar or 0 as
+   unitGridIn counts them (P-39: a 5 kg step makes 85 and 90 from a 20 kg bar, so 185 lb, 83.9 kg, is 85); null for a
+   load typed in the lift's unit, a timed hold, or a step that exists only in the other unit. */
+/** The nearest load in the lift's unit, on its step, to a load `at` typed in the other unit (kg), or null where the load is its own. */
+function unitAnchorIn(M: Model, ex: ExerciseLike, at: number, step: number): number | null {
+  const su = inUnitIn(M, step);
+  if (ex.timed || !typedOtherIn(M, at) || !(su > 0) || !onStep(su, TYPED_STEP)) return null;
+  const o = inUnitIn(M, loadFloorIn(M, ex));
+  return kgOfIn(M, o + Math.round((inUnitIn(M, at) - o) / su) * su);
 }
 
 /* A load at or below `to`, reached from `from` in whole steps of the
