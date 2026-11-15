@@ -459,6 +459,41 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const w = await Q.draft(), t = await Q.ev(() => { const el = document.getElementById('toast'); return el && !el.hidden ? !!el.querySelector('[data-act="undo"]') : false; });
     ok(ed && ed.editingId === 'last' && w && !w.editingId && w.ex[0].sets.filter(x => x.done).length === 1 && !t, 'L-17: (guard) an edit discarded with a workout set aside brings the workout back, its set ticked, and offers no Undo', { editing: ed && ed.editingId, back: w && w.ex[0].sets.map(x => x.done), undo: t });
     await Q.close();
+    /* The review of 2.68 to 2.70, REV20-1: an edit discarded keeps no Undo step. Its saved session is untouched, and a
+       step would bring the old edit back after a newer edit of the session is saved, and write over it. Bench saved
+       185 x 8, 8, 7: edited to 9 reps and discarded, then edited to 10 reps on set 2 and saved: the 10 stays. */
+    const E = await lifter({ settings: { autoDone: false } });
+    // History with the session opened (a second visit finds it open still), then Edit.
+    const editLast = async () => { await E.ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.ui.histOpen = 'last'; L.render(); }); await wait(150); await E.tap('#view [data-act="histEdit"][data-id="last"]', 300); };
+    const repsTo = async (s, r) => { await E.page.click(field('r', 0, s)); await E.page.fill(field('r', 0, s), String(r)); await E.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(100); };
+    await editLast(); await repsTo(0, 9);
+    await E.tap('#view [data-act="discard"]', 250); if (await E.modal()) await mOk(E);
+    const t1 = await E.ev(() => { const el = document.getElementById('toast'); return el && !el.hidden ? { text: el.innerText.replace(/\s+/g, ' ').trim(), undo: !!el.querySelector('[data-act="undo"]') } : null; });
+    await editLast(); await repsTo(1, 10);
+    await E.tap('#view [data-act="finish"]', 300); for (let k = 0; k < 4; k++) { const m = await E.modal(); if (!m) break; if (m.kind === 'confirm') await mOk(E); else await E.ev(() => window.__ironlog.ACT.mClose()); }
+    const next = await E.ev(() => (window.__ironlog.undoNext ? window.__ironlog.undoNext() : null));
+    await E.ev(() => window.__ironlog.ACT.undo()); await wait(200);
+    if (await E.draft()) { await E.tap('#view [data-act="finish"]', 300); for (let k = 0; k < 4; k++) { const m = await E.modal(); if (!m) break; if (m.kind === 'confirm') await mOk(E); else await E.ev(() => window.__ironlog.ACT.mClose()); } }
+    const bench = await E.ev(() => window.__ironlog.state.sessions.find(x => x.id === 'last').ex[0].sets.map(x => x.r).join(','));
+    ok(t1 && /^Edits discarded/.test(t1.text) && !t1.undo && next !== 'Edits discarded' && bench === '8,10,7', 'L-17: an edit discarded says "Edits discarded" with no Undo, and a newer edit saved after it stays (REV20-1)', { t1, next, bench });
+    await E.close();
+    /* REV20-3: a workout discarded with Undo, then another started and a set ticked: Undo cannot bring the first back
+       while the second is open, says so, and keeps its step; with the second finished, it brings the first back. */
+    const F = await lifter({ settings: { autoDone: false } });
+    await start(F); await F.tap(tick(0, 0)); await F.tap(tick(0, 1));
+    const first = (await F.draft()).id;
+    await F.tap('#view [data-act="discard"]', 250); await mOk(F);
+    await start(F); await F.tap(tick(0, 0));
+    const second = (await F.draft()).id;
+    await F.ev(() => window.__ironlog.ACT.undo()); await wait(200);
+    const said3 = await F.ev(() => { const el = document.getElementById('toast'); return el && !el.hidden ? el.innerText.replace(/\s+/g, ' ').trim() : ''; });
+    const open3 = await F.draft(), kept3 = await F.ev(() => (window.__ironlog.undoNext ? window.__ironlog.undoNext() : null));
+    ok(open3 && open3.id === second && open3.ex[0].sets.filter(x => x.done).length === 1 && !/^Undone/.test(said3) && /open/i.test(said3) && kept3 === 'Session discarded', 'L-17: with another workout open, Undo of a discarded one says it cannot come back yet, the open one untouched, the step kept (REV20-3)', { said3, open: open3 && open3.id === second, kept3 });
+    await F.tap('#view [data-act="finish"]', 300); for (let k = 0; k < 4; k++) { const m = await F.modal(); if (!m) break; if (m.kind === 'confirm') await mOk(F); else await F.ev(() => window.__ironlog.ACT.mClose()); }
+    await F.ev(() => window.__ironlog.ACT.undo()); await wait(200);
+    const back3 = await F.draft();
+    ok(back3 && back3.id === first && back3.ex[0].sets.filter(x => x.done).length === 2 && (await F.ev(id => window.__ironlog.state.sessions.some(x => x.id === id), second)), 'L-17: with that workout finished, Undo brings the discarded one back, its two sets ticked, and the finished one stays saved', { back: back3 && back3.id === first });
+    await F.close();
   }
 
   /* ---------- L-18: Finish ---------- */

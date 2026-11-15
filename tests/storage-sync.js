@@ -1260,6 +1260,18 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(/closed on another device\. Its ticked sets are saved in History/.test(await A.toast()), 'A is told the workout was closed on the other phone and its sets saved', await A.toast());
       await B.sync();
       ok(!(await B.draft()) && (await B.sessions()).some(s => s.id === xid && s.sets.length === 2), 'B then has that session and stays closed', { draft: await B.draft(), sessions: await B.sessions() });
+      /* The review of 2.68 to 2.70, REV20-2: discarded on A, the phone it was done on, after B only pulled it and wrote it
+         back in its own form, nothing ticked there: the discard stands on A, on B and in the account, and nothing is
+         said of sets saved. The copy kept as a session is only one holding a set the agreed copy lacks. */
+      await A.start(); await A.tick(0, 85, 9); await A.flush(); await B.sync(); await wait(1600); await B.flush();
+      const rid20 = (await A.draft()).id;
+      await A.watch();
+      await A.ev(() => { const L = window.__ironlog; L.ACT.discard(); }); await wait(200);
+      await A.page.click('#modal [data-act="mOk"]'); await wait(200); await A.flush(); await wait(1600); await A.flush();
+      await B.sync(); await B.flush(); await A.sync();
+      const inA = (await A.sessions()).some(s => s.id === rid20), inB = (await B.sessions()).some(s => s.id === rid20);
+      const inCloud = cloud.sessionsIn('u1').some(s => s.id === rid20);
+      ok(!(await A.draft()) && !inA && !inB && !inCloud && !(await A.toasts()).some(t => /saved in History/.test(t)), 'discarded on A after B only pulled it and wrote it back: it stays discarded on A, on B and in the account, and nothing says sets were saved (REV20-2)', { inA, inB, inCloud, toasts: await A.toasts() });
       // Finished on A while B had ticked a set A had not pulled: B's set joins the session saved on A.
       await A.start(); await A.tick(0, 90, 10); await A.flush(); await B.sync();
       const yid = (await A.draft()).id;

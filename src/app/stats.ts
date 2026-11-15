@@ -464,8 +464,12 @@ function dashSummary(): TemplateResult {
   ): TemplateResult =>
     html`<button class="srow" data-act="goDash" data-sec=${attrs.sec} data-ex=${attrs.ex ?? nothing}><i class=${`dot ${tone}`}></i><span class="sl">${label}</span><span class="st">${text}</span><span class="chev2" aria-hidden="true">›</span></button>`;
   /* The reason given is the true one: with enough sessions the changes
-     are inside day-to-day noise; "needs 3 sessions" was said to someone with 6. */
-  const nTr = Object.values(IDX().exStats).filter(x => x && x.pct != null && x.current).length;
+     are inside day-to-day noise; "needs 3 sessions" was said to someone with 6. Within the noise are the lifts with a
+     trend in none of the word's groups, never one stalled or falling, which the lines below name. */
+  const grouped = new Set([...v.rising, ...stalled, ...v.falling]);
+  const nTr = Object.entries(IDX().exStats).filter(
+    ([id, x]) => x && x.pct != null && x.current && !grouped.has(id)
+  ).length;
   /* Each lift's change is over the weeks its trend covers (not "+7.5%
      over 6 weeks" on a log 19 days old). One span is
      said once when the two share it. Names, not percentages: "Incline
@@ -481,7 +485,9 @@ function dashSummary(): TemplateResult {
       ) + (one ? `, over ${m0.wk} weeks` : '')
     : nTr
       ? `No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.`
-      : `A trend needs ${TREND_MIN.sessions} sessions of a lift over ${TREND_MIN.days / WEEK_DAYS} weeks or more, within ${TREND_WEEKS} weeks.`;
+      : grouped.size
+        ? 'No lift rising.'
+        : `A trend needs ${TREND_MIN.sessions} sessions of a lift over ${TREND_MIN.days / WEEK_DAYS} weeks or more, within ${TREND_WEEKS} weeks.`;
   /* The line says the coach's change, so the Volume line under it never says it
      again: with no average yet the line says when one comes, and the Volume line
      is left out; otherwise it names the muscles below target, or none. */

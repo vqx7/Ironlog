@@ -892,6 +892,23 @@ function draftNote(prev: unknown, kept?: Kept, where = 'on another device'): voi
    copy that carried changes the account did not have is kept: the callers
    pass the local copy when it was dirty, and the account's copy a later edit
    here replaced. */
+/* Whether a copy of a workout holds something logged that the copy both sides agreed on lacks: a set ticked or changed
+   once ticked, or cardio entered. Only such a copy is kept when it loses a merge, between tabs and between phones alike:
+   a load being typed, a question answered, or the same workout written back in another phone's form (fields it fills
+   in, its sets as they were, by a phone that only opened the app) is no reason to bring back a workout discarded on
+   the phone it was done on. With no agreed copy every set ticked counts. */
+/** Whether copy `d` holds a set ticked or cardio entered that the agreed copy lacks (above). */
+function loggedSince(d: DraftLike | null | undefined, agreed: DraftLike | null | undefined): boolean {
+  if (!d) return false;
+  const was = agreed && agreed.id === d.id ? agreed : null;
+  const rows = new Set(was ? was.ex.flatMap(b => b.sets.filter(x => x.done).map(x => canon(x))) : []);
+  const cards = new Set(was ? (was.cardio || []).map(c => canon(c)) : []);
+  return (
+    d.ex.some(b => b.sets.some(x => x.done && !rows.has(canon(x)))) ||
+    (d.cardio || []).some(c => !!c.min && !cards.has(canon(c)))
+  );
+}
+
 /** What became of a losing copy (keepLost): its sets saved as a session, joined to the one saved elsewhere, its cardio alone saved, or nothing. */
 type Kept = 'saved' | 'joined' | 'cardio' | 'cardioJoined' | null;
 /** Keeps a losing copy's ticked sets and cardio (above); says what was done, for the toast. */
@@ -1267,8 +1284,9 @@ export async function cloudFlush(): Promise<void> {
             if (x.id === 'draft' && dn) {
               // The copy that lost (this device's, dirty here, or the account's, which a later edit here replaced) keeps its sets.
               const remoteDraft = draftOf(rec(rd));
-              dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
-              dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
+              if (loggedSince(prev, agreed)) dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
+              if (loggedSince(remoteDraft, agreed))
+                dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
               if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
             }
             if (x.id === 'core' && absorbLegacy(legacyBody(rec(rd)))) moreBody = true;
@@ -1552,8 +1570,9 @@ export async function cloudPull(): Promise<void> {
     // A workout merged with the account's copy: the copy that lost keeps its sets (this device's, which held changes the account did not have, or the account's, which a later edit here replaced).
     if (draftMerged) {
       const remoteDraft = remote.draft ? draftOf(rec(remote.draft.data)) : null;
-      kept = keepLost(dr0, state.draft, agreedDraft, draftRemoteWins);
-      lost = keepLost(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
+      if (loggedSince(dr0, agreedDraft)) kept = keepLost(dr0, state.draft, agreedDraft, draftRemoteWins);
+      if (loggedSince(remoteDraft, agreedDraft))
+        lost = keepLost(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
     }
   }
   if (parts || merged) {
@@ -2095,18 +2114,8 @@ function mergeIn(text: string, own: boolean): void {
        workout back in History). Without this, a set ticked in a tab behind, in a workout the other tab had finished,
        would be dropped without a word. */
     const agreed = base.draft;
-    const loggedNew = (d: DraftLike | null | undefined): boolean => {
-      if (!d) return false;
-      const was = agreed && agreed.id === d.id ? agreed : null;
-      const rows = new Set(was ? was.ex.flatMap(b => b.sets.filter(x => x.done).map(x => canon(x))) : []);
-      const cards = new Set(was ? (was.cardio || []).map(c => canon(c)) : []);
-      return (
-        d.ex.some(b => b.sets.some(x => x.done && !rows.has(canon(x)))) ||
-        (d.cardio || []).some(c => !!c.min && !cards.has(canon(c)))
-      );
-    };
-    if (loggedNew(dr0)) kept = keepLost(dr0, state.draft, agreed, true, true);
-    if (loggedNew(incoming.draft)) keepLost(incoming.draft, state.draft, agreed, true, true);
+    if (loggedSince(dr0, agreed)) kept = keepLost(dr0, state.draft, agreed, true, true);
+    if (loggedSince(incoming.draft, agreed)) keepLost(incoming.draft, state.draft, agreed, true, true);
   }
   device.lastSaved = text;
   clearTimer(saveT);

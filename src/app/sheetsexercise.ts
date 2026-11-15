@@ -134,7 +134,12 @@ export function liftTrend(exId: string): TemplateResult | string {
                 ? `slowly down${ow}`
                 : `no clear change over ${st.spanW || 2} weeks`
       : '';
-  if (isCompound(ex) && exps.every(x => x.best != null)) {
+  /* The estimates only where their change points the way the word does, as Stats says a lift's change (liftChange): a
+     lift moving by its load step reads a lower estimate after it, so it shows what was lifted, its top sets. */
+  const e0 = exps[0].best,
+    e1 = exps[exps.length - 1].best;
+  const agrees = e0 == null || e1 == null || (/up/.test(dir) ? e1 > e0 : /down/.test(dir) ? e1 < e0 : true);
+  if (isCompound(ex) && agrees && exps.every(x => x.best != null)) {
     const v = exps.map(x => fmtE(ex, x.best));
     return html`<p class="small muted u-m2-0">Est. 1RM <span class="trend">${v.join(' → ')} ${liftU(ex)}</span>${dir ? ' · ' + dir : ''}${st && !st.useAdj ? html` ${tipButton('Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.', 'About this trend')}` : ''}</p>`;
   }

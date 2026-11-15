@@ -35,6 +35,12 @@ const res=await page.evaluate(()=>{
    ok(st.moving&&!st.falling&&!st.stalled&&L.movers().some(x=>x.id==='bench'),'UAT-8: a rep a week past the load step (195 x 8, 8, 8 after 8, 8, 7): moving, among the lifts moving',[st.pct,st.slope]);
    I=reset(at(climb.slice(0,8)));
    ok(I.exStats.bench.moving,'UAT-8: the step itself (195 x 8, 8, 7 after 185 x 10, 10, 10): moving',I.exStats.bench.pct);
+   /* The review of 2.68 to 2.70, REV20-6: a lift moving by its step is never shown rising beside numbers that fall.
+      185 x 10, 10, 10 twice, then 195 x 7, 7, 6 and 7, 7, 7: Lifts moving's line rises (the loads), and the lift's
+      history line says what was lifted (its top sets) where its estimates fall across the step. */
+   I=reset(at([[[10,10,10],185],[[10,10,10],185],[[7,7,6],195],[[7,7,7],195]]));
+   {const lm=(L.liftsMoving()||[]).find(x=>x.id==='bench');const line=lm?lm.line:[];const sheet=String((L.liftTrend('bench')||{}).strings?L.liftTrend('bench').strings.join('')+L.liftTrend('bench').values.join(' '):L.liftTrend('bench'));
+    ok(I.exStats.bench.moving&&I.exStats.bench.pct<0&&line.length>1&&line[line.length-1]>line[0]&&/up/.test(sheet)&&!/Est\. 1RM/.test(sheet)&&/195/.test(sheet),'REV20-6: moving by its step with the estimate below where it began: Lifts moving\'s line ends higher than it starts, and the history line shows the top sets, not falling estimates beside "up"',{pct:I.exStats.bench.pct,line,sheet});}
    I=reset(at([...climb.slice(0,8),[[8,8,7],195],[[8,8,7],195]]));
    ok(!I.exStats.bench.moving&&!I.exStats.bench.falling,'UAT-8: the same 195 x 8, 8, 7 repeated after the step: not moving, not falling',I.exStats.bench.pct);
    // A step whose estimate reads lower than where the window began: the lift is moving, and its muscle is never pulled
@@ -229,6 +235,14 @@ const res=await page.evaluate(()=>{
    const keepB=JSON.parse(JSON.stringify(L.state.settings.bands));for(const k in L.state.settings.bands)L.state.settings.bands[k]=[0,L.state.settings.bands[k][1]];
    let m=mains(['ohp','incBench','hackSquat','rdl','bbRow','backSquat','legPress']);L.state.settings.bands=keepB;L.invalidate();
    ok(m.v==='Progressing'&&m.stalled.length===3&&!/A deload week may help/.test(m.coach)&&/has stalled|top of its range/.test(m.coach),'NEW-167: four main lifts rising, three flat: Progressing, and the coach names a stalled lift rather than asking for a deload',m);
+   /* The review of 2.68 to 2.70, REV20-4: bench rising and DB bench falling, neither stalled, every muscle at target: the
+      week reads Stalled, and the coach names the falling lift, never "nothing stalled" beside it. */
+   {const keep=JSON.parse(JSON.stringify(L.state.settings.bands));for(const k in L.state.settings.bands)L.state.settings.bands[k]=[0,L.state.settings.bands[k][1]];
+    // The DB bench heavier each week with fewer reps: its load rose, so the stall test reads it moved, while its estimate falls.
+    const db=[[30,9,8,8],[31,8,7,7],[32,7,6,6],[32,6,5,5],[32,5,4,4],[32,4,3,3]];
+    const all=[...lift('bench',i=>80+1*i),...wk6.map((k,i)=>S(addDays(T,k),'dbBench',db[i].slice(1).map(r=>[db[i][0],r,2])))].sort((a,b)=>a.date.localeCompare(b.date));L.state.deloadWeek=null;reset(all);
+    const c=L.coach();const v=verdictOf();L.state.settings.bands=keep;L.invalidate();
+    ok(v.word==='Stalled'&&L.IDX().exStats.dbBench.falling&&!L.IDX().exStats.dbBench.stalled&&/^DB Bench Press is falling over \d+ weeks\./.test(c.text)&&!/nothing stalled/.test(c.text)&&c.act&&c.act.ex==='dbBench','REV20-4: one lift rising and one falling, neither stalled: the coach names the falling lift, never "nothing stalled"',{word:v.word,coach:c.text});}
    m=mains(['ohp','incBench','bbRow','backSquat','legPress']);
    ok(m.v==='Stalled'&&/3 main lifts stalled at once/.test(m.coach),'NEW-167: two rising and the same three flat: Stalled, and the deload is asked for (a guard)',m);}
   return out;});

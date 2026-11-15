@@ -493,6 +493,7 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   undo() {
     const r = undoStep();
     if (r === 'none') toast('Nothing left to undo');
+    else if (r === 'open') toast('Finish or discard the open workout first, then Undo brings this one back.');
     else if (r === 'failed') toast('Could not undo that');
     else if (r === 'unchanged') toast('Nothing to undo: that change was already reversed or edited since.');
     else {

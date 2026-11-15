@@ -264,7 +264,7 @@ import {
   syncStart,
   withTimeout
 } from './sync';
-import { act } from './act';
+import { act, undoNext } from './act';
 import { fitTargets, oldFloors } from './targets';
 import { FB_CTX_MAX } from './feedback';
 import { effShow, rirScale } from './effort';
@@ -425,6 +425,7 @@ function oldLogFixes(): void {
 function exposeForTests(): void {
   window.__ironlog = {
     act,
+    undoNext,
     liftRead,
     draftMachine,
     liftMachines,
