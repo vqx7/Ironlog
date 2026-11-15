@@ -553,7 +553,9 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
       demo: null,
       // Each lift: its load in the first week and its change a week, in kilograms.
       'four rising, three flat': [['ohp', 40, 0.6], ['incBench', 80, 1], ['hackSquat', 120, 1.5], ['rdl', 100, 1.2], ['bbRow', 80, 0], ['backSquat', 120, 0], ['legPress', 150, 0]],
-      'one falling': [['rdl', 110, -2]]
+      'one falling': [['rdl', 110, -2]],
+      // The review of 2.68 to 2.70, REV20-4: one rising and one falling in the same muscle, neither stalled.
+      'one rising, one falling': [['bench', 80, 1], ['dbBench', 34, -0.8]]
     };
     for (const [name, lifts] of Object.entries(logs)) {
       const P = await open(FILE, { browser, clock: '2026-11-16T10:00:00' });
@@ -574,7 +576,10 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
         const rows = Object.fromEntries([...document.querySelectorAll('#dashSummary .srow')].map(e => [t(e.querySelector('.sl')).toLowerCase(), t(e.querySelector('.st'))]));
         const v = L.verdict ? L.verdict() : { word: null, rising: [], stalled: [], falling: [] };
         const names = ids => ids.map(id => L.EX(id).name);
-        return { pill, body, line, rows, fatigue, risingToday: rising ? +rising[1] : 0, v: { word: v.word, rising: v.rising.length, stalled: names(L.stalledIds()), falling: names(v.falling) }, coach: L.coach().text };
+        // The lifts being trained with a trend that are in none of the word's groups: within the noise.
+        const ex = L.IDX().exStats; const grouped = new Set([...v.rising, ...v.stalled, ...v.falling, ...L.stalledIds()]);
+        const noise = Object.keys(ex).filter(id => ex[id] && ex[id].current && ex[id].pct != null && !grouped.has(id)).length;
+        return { pill, body, line, rows, fatigue, risingToday: rising ? +rising[1] : 0, v: { word: v.word, rising: v.rising.length, stalled: names(L.stalledIds()), falling: names(v.falling), noise }, coach: L.coach().text };
       }, lifts);
       const named = (row, list) => list.every(n => (r.rows[row] || '').includes(n)) || (list.length > 2 && /more/.test(r.rows[row] || ''));
       ok(r.v.word && r.line === `${r.v.word}. ${r.body}` && r.pill === r.v.word && r.body === r.coach,
@@ -582,6 +587,11 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
       ok(r.v.rising === r.risingToday && named('stuck', r.v.stalled) && (r.v.falling.length ? named('falling', r.v.falling) : !('falling' in r.rows)),
         `${name}: Why names the lifts the word is read from: as many rising as Today's Lifts moving, the stalled under Stuck, the falling under Falling`, r);
       const deload = /A deload week may help/.test(r.line), f = r.fatigue;
+      // REV20-4 and REV20-5: the line never says nothing is stalled beside a lift stalled or falling, and Moving counts
+      // as within the noise only the lifts in no group.
+      const noise = /(\d+) with a trends?, each within day-to-day noise|(\d+) with a trend, each within day-to-day noise/.exec(r.rows.moving || '');
+      ok(!((r.v.stalled.length || r.v.falling.length) && /nothing stalled/.test(r.line)) && (!noise || +(noise[1] || noise[2]) === r.v.noise),
+        `${name}: the line never says nothing is stalled beside a lift stalled or falling, and Moving counts within the noise only lifts in no group`, { line: r.line, moving: r.rows.moving, v: r.v });
       ok(!(r.v.word === 'Progressing' && deload) && f.stuckRed === f.pillRed && f.pillRed === f.said && (!f.said || r.v.word !== 'Progressing'),
         `${name}: no deload beside a week that is Progressing, and Stats calls lifts flat together likely fatigue in red only where the coach could ask for one`, { word: r.v.word, line: r.line, fatigue: f });
       ok(!P.errors.length, `no page errors (the week's word, ${name})`, P.errors);

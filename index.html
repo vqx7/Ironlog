@@ -10077,6 +10077,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         act: { label: `See ${ML[x2.m]}`, sec: "rank", m: x2.m }
       };
     }
+    const down = verdictIn(M3).falling.flatMap((id) => {
+      const st = I2.exStats[id];
+      return st && st.pct != null ? [{ id, pct: st.pct, wk: st.spanW }] : [];
+    }).sort((a2, b2) => a2.pct - b2.pct)[0];
+    if (down)
+      return {
+        tone: "yellow",
+        text: `${exNameIn(M3, down.id)} is falling over ${down.wk || TREND_WEEKS} weeks. Check sleep and recovery before adding sets.`,
+        act: { label: "See the lift", sec: "exercise", ex: down.id }
+      };
     if (!avg) {
       const w2 = avgWaitIn(M3);
       const text = `${w2.lead}Volume advice ${w2.kind === "back" ? "comes back" : "appears here"} after ${w2.after}.`;
@@ -11230,6 +11240,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       kept === "joined" || kept === "cardioJoined" ? `The workout in progress was saved ${where}. What was done here since was added to it.` : kept === "saved" || kept === "cardio" ? `The workout in progress was ${state.draft ? "replaced by the one" : "closed"} ${where}. Its ${kept === "saved" ? "ticked sets are" : "cardio is"} saved in History.` : state.draft ? saved ? `The workout in progress was replaced by the one ${where}. Its ticked sets are in History.` : `The workout in progress was replaced by the one ${where}.` : saved ? `The workout in progress was saved ${where}.` : `The workout in progress was closed ${where}.`
     );
   }
+  function loggedSince(d3, agreed) {
+    if (!d3) return false;
+    const was = agreed && agreed.id === d3.id ? agreed : null;
+    const rows2 = new Set(was ? was.ex.flatMap((b2) => b2.sets.filter((x2) => x2.done).map((x2) => canon(x2))) : []);
+    const cards = new Set(was ? (was.cardio || []).map((c4) => canon(c4)) : []);
+    return d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !rows2.has(canon(x2)))) || (d3.cardio || []).some((c4) => !!c4.min && !cards.has(canon(c4)));
+  }
   function keepLost(lost, now2, agreed, remoteWins, tabs = false) {
     if (!lost || lost.editingId || now2 && now2.id === lost.id) return null;
     const kept = draftSession(lost), cardio = draftCardio(lost);
@@ -11492,8 +11509,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
               took = { h: hashStr(b2.json), at: Number(b2.at), b: baseOf(x2.id, rd) };
               if (x2.id === "draft" && dn) {
                 const remoteDraft = draftOf(rec(rd));
-                dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
-                dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
+                if (loggedSince(prev, agreed)) dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins) || dn.kept;
+                if (loggedSince(remoteDraft, agreed))
+                  dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins) || dn.lost;
                 if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
               }
               if (x2.id === "core" && absorbLegacy(legacyBody(rec(rd)))) moreBody2 = true;
@@ -11721,8 +11739,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       absorbLegacy(leg);
       if (draftMerged) {
         const remoteDraft = remote.draft ? draftOf(rec(remote.draft.data)) : null;
-        kept = keepLost(dr0, state.draft, agreedDraft, draftRemoteWins);
-        lost = keepLost(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
+        if (loggedSince(dr0, agreedDraft)) kept = keepLost(dr0, state.draft, agreedDraft, draftRemoteWins);
+        if (loggedSince(remoteDraft, agreedDraft))
+          lost = keepLost(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
       }
     }
     if (parts || merged) {
@@ -12092,15 +12111,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         );
       setState(assemble(parts));
       const agreed = base.draft;
-      const loggedNew = (d3) => {
-        if (!d3) return false;
-        const was = agreed && agreed.id === d3.id ? agreed : null;
-        const rows2 = new Set(was ? was.ex.flatMap((b2) => b2.sets.filter((x2) => x2.done).map((x2) => canon(x2))) : []);
-        const cards = new Set(was ? (was.cardio || []).map((c4) => canon(c4)) : []);
-        return d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !rows2.has(canon(x2)))) || (d3.cardio || []).some((c4) => !!c4.min && !cards.has(canon(c4)));
-      };
-      if (loggedNew(dr0)) kept = keepLost(dr0, state.draft, agreed, true, true);
-      if (loggedNew(incoming.draft)) keepLost(incoming.draft, state.draft, agreed, true, true);
+      if (loggedSince(dr0, agreed)) kept = keepLost(dr0, state.draft, agreed, true, true);
+      if (loggedSince(incoming.draft, agreed)) keepLost(incoming.draft, state.draft, agreed, true, true);
     }
     device.lastSaved = text;
     clearTimer(saveT);
@@ -19158,12 +19170,15 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     const onPlan = st ? MK.filter((m3) => !inj.has(m3) && stOf(m3) === "plan") : [];
     const c4 = coach();
     const row = (tone, label, text, attrs) => b`<button class="srow" data-act="goDash" data-sec=${attrs.sec} data-ex=${attrs.ex ?? A}><i class=${`dot ${tone}`}></i><span class="sl">${label}</span><span class="st">${text}</span><span class="chev2" aria-hidden="true">›</span></button>`;
-    const nTr = Object.values(IDX().exStats).filter((x2) => x2 && x2.pct != null && x2.current).length;
+    const grouped = /* @__PURE__ */ new Set([...v3.rising, ...stalled, ...v3.falling]);
+    const nTr = Object.entries(IDX().exStats).filter(
+      ([id, x2]) => x2 && x2.pct != null && x2.current && !grouped.has(id)
+    ).length;
     const m0 = mv[0];
     const one = !!m0 && mv.every((x2) => x2.wk === m0.wk);
     const moving = m0 ? andList(
       mv.map((x2) => `${exName(x2.id)}${one ? "" : ` over ${x2.wk} weeks`}`).concat(mvAll.length > 2 ? [`${mvAll.length - 2} more`] : [])
-    ) + (one ? `, over ${m0.wk} weeks` : "") : nTr ? `No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.` : `A trend needs ${TREND_MIN.sessions} sessions of a lift over ${TREND_MIN.days / WEEK_DAYS} weeks or more, within ${TREND_WEEKS} weeks.`;
+    ) + (one ? `, over ${m0.wk} weeks` : "") : nTr ? `No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.` : grouped.size ? "No lift rising." : `A trend needs ${TREND_MIN.sessions} sessions of a lift over ${TREND_MIN.days / WEEK_DAYS} weeks or more, within ${TREND_WEEKS} weeks.`;
     const above = over && over.length ? ` Above: ${andList(
       over.map((m3) => ML[m3] || m3),
       2

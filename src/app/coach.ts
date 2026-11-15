@@ -267,7 +267,7 @@ function shortfallLineIn(
   return null;
 }
 
-/** The coach with no shortfall and no stall (coachIn): a muscle whose strength falls, the wait for a first average, every muscle on plan, or every muscle at target. */
+/** The coach with no shortfall and no stall (coachIn): a muscle whose strength falls, a lift that falls, the wait for a first average, every muscle on plan, or every muscle at target. */
 function lastWordIn(
   M: Model,
   I: ReturnType<typeof IDXIn>,
@@ -286,6 +286,20 @@ function lastWordIn(
       act: { label: `See ${ML[x.m]}`, sec: 'rank', m: x.m }
     };
   }
+  /* A lift falling while no muscle reads so (another of its muscle's lifts rising, say) is said by the lift, the
+     steepest first, so the week's word is never beside "nothing stalled": the lifts stalled are said before this. */
+  const down = verdictIn(M)
+    .falling.flatMap(id => {
+      const st = I.exStats[id];
+      return st && st.pct != null ? [{ id, pct: st.pct, wk: st.spanW }] : [];
+    })
+    .sort((a, b) => a.pct - b.pct)[0];
+  if (down)
+    return {
+      tone: 'yellow',
+      text: `${exNameIn(M, down.id)} is falling over ${down.wk || TREND_WEEKS} weeks. Check sleep and recovery before adding sets.`,
+      act: { label: 'See the lift', sec: 'exercise', ex: down.id }
+    };
   // Someone back from a break (nothing since before the last 4 weeks) has
   // history but no recent weeks; "first full week" was wrong for them.
   /* The averages start the week after the log's first (avgFirstWeekIn),

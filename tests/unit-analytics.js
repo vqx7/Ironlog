@@ -235,6 +235,14 @@ const res=await page.evaluate(()=>{
    const keepB=JSON.parse(JSON.stringify(L.state.settings.bands));for(const k in L.state.settings.bands)L.state.settings.bands[k]=[0,L.state.settings.bands[k][1]];
    let m=mains(['ohp','incBench','hackSquat','rdl','bbRow','backSquat','legPress']);L.state.settings.bands=keepB;L.invalidate();
    ok(m.v==='Progressing'&&m.stalled.length===3&&!/A deload week may help/.test(m.coach)&&/has stalled|top of its range/.test(m.coach),'NEW-167: four main lifts rising, three flat: Progressing, and the coach names a stalled lift rather than asking for a deload',m);
+   /* The review of 2.68 to 2.70, REV20-4: bench rising and DB bench falling, neither stalled, every muscle at target: the
+      week reads Stalled, and the coach names the falling lift, never "nothing stalled" beside it. */
+   {const keep=JSON.parse(JSON.stringify(L.state.settings.bands));for(const k in L.state.settings.bands)L.state.settings.bands[k]=[0,L.state.settings.bands[k][1]];
+    // The DB bench heavier each week with fewer reps: its load rose, so the stall test reads it moved, while its estimate falls.
+    const db=[[30,9,8,8],[31,8,7,7],[32,7,6,6],[32,6,5,5],[32,5,4,4],[32,4,3,3]];
+    const all=[...lift('bench',i=>80+1*i),...wk6.map((k,i)=>S(addDays(T,k),'dbBench',db[i].slice(1).map(r=>[db[i][0],r,2])))].sort((a,b)=>a.date.localeCompare(b.date));L.state.deloadWeek=null;reset(all);
+    const c=L.coach();const v=verdictOf();L.state.settings.bands=keep;L.invalidate();
+    ok(v.word==='Stalled'&&L.IDX().exStats.dbBench.falling&&!L.IDX().exStats.dbBench.stalled&&/^DB Bench Press is falling over \d+ weeks\./.test(c.text)&&!/nothing stalled/.test(c.text)&&c.act&&c.act.ex==='dbBench','REV20-4: one lift rising and one falling, neither stalled: the coach names the falling lift, never "nothing stalled"',{word:v.word,coach:c.text});}
    m=mains(['ohp','incBench','bbRow','backSquat','legPress']);
    ok(m.v==='Stalled'&&/3 main lifts stalled at once/.test(m.coach),'NEW-167: two rising and the same three flat: Stalled, and the deload is asked for (a guard)',m);}
   return out;});
