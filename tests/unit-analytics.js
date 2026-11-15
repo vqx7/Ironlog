@@ -1,6 +1,8 @@
 // Unit tests: analytics built from constructed logs.
 const {open}=require('./h');
-(async()=>{const {browser,page,errors}=await open('index.html',{clock:'2026-09-26T10:00:00'});
+// A build to run on can be named (node tests/unit-analytics.js baselines/rN.html), as every suite's can.
+const FILE=process.argv[2]||'index.html';
+(async()=>{const {browser,page,errors}=await open(FILE,{clock:'2026-09-26T10:00:00'});
 const res=await page.evaluate(()=>{
   const L=window.__ironlog;const out=[];const ok=(c,m,x)=>out.push([!!c,m+(x!==undefined?' → '+JSON.stringify(x):'')]);
   const near=(a,b,t=1e-6)=>a!=null&&b!=null&&Math.abs(a-b)<=t;
@@ -22,6 +24,24 @@ const res=await page.evaluate(()=>{
   ok(I.exStats.bench.moving&&I.exStats.bench.pct>=3,'steady +1.2%/wk: moving',I.exStats.bench.pct);
   I=reset([0,7,14,21,28,35].map((k,i)=>S(addDays(T,-35+k),'bench',[[100+i*0.3,8,2]])));
   ok(!I.exStats.bench.moving,'+0.3%/wk (1.5% total): not moving',I.exStats.bench.pct);
+  // ---- UAT-8: the load step the targets ask for at the top of the range is progress. A bench lifter on 6 to 10 beats
+  // every target by a rep a week, 185 lb to 10, 10, 10, then 195: the estimate reads the step as a dip (185 x 10 is 247
+  // by Brzycki, 195 x 8 is 242) for weeks while he gains, so he is moving at the step and after it while his reading at
+  // 195 is above the first session's there; the same sets repeated there are not moving, and are left to the stall test.
+  {const LBk=0.45359237;const wk=(reps,lb)=>reps.map(r=>[lb*LBk,r,null]);
+   const climb=[[[8,8,8],185],[[9,8,8],185],[[9,9,8],185],[[9,9,9],185],[[10,9,9],185],[[10,10,9],185],[[10,10,10],185],[[8,8,7],195],[[8,8,8],195]];
+   const at=(list)=>list.map(([r,lb],i)=>S(addDays(T,-7*(list.length-1)+7*i),'bench',wk(r,lb)));
+   I=reset(at(climb));const st=I.exStats.bench;
+   ok(st.moving&&!st.falling&&!st.stalled&&L.movers().some(x=>x.id==='bench'),'UAT-8: a rep a week past the load step (195 x 8, 8, 8 after 8, 8, 7): moving, among the lifts moving',[st.pct,st.slope]);
+   I=reset(at(climb.slice(0,8)));
+   ok(I.exStats.bench.moving,'UAT-8: the step itself (195 x 8, 8, 7 after 185 x 10, 10, 10): moving',I.exStats.bench.pct);
+   I=reset(at([...climb.slice(0,8),[[8,8,7],195],[[8,8,7],195]]));
+   ok(!I.exStats.bench.moving&&!I.exStats.bench.falling,'UAT-8: the same 195 x 8, 8, 7 repeated after the step: not moving, not falling',I.exStats.bench.pct);
+   // A step whose estimate reads lower than where the window began: the lift is moving, and its muscle is never pulled
+   // down by that dip (a muscle's change is read from lifts whose change agrees with their direction).
+   I=reset(at([[[10,10,10],185],[[10,10,10],185],[[7,7,6],195],[[7,7,7],195]]));
+   {const b=I.exStats.bench,sc=I.scores.find(x=>x.m==='chest');
+    ok(b.moving&&b.pct<0&&!b.falling&&(!sc||sc.score>=0),'UAT-8: moving by the step with the estimate below the window\'s start: chest is not read down by it',{pct:b.pct,chest:sc&&{score:sc.score,label:sc.label}});}}
   // The 4-week projection was removed in r41 (V: guide, do not predict); tests/r41.js checks nothing projects.
   // ---- PR bands
   I=reset([S(addDays(T,-20),'bench',[[100,5,0]]),S(addDays(T,-13),'bench',[[80,12,0]]),S(addDays(T,-6),'bench',[[102,5,0]])]);

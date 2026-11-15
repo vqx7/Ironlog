@@ -1062,7 +1062,9 @@ function idxScoresIn(M: Model, exStats: Record<string, ExStat>): Score[] {
     if (st.wN < MUSCLE_TREND_MIN.sessions || st.wSpan < MUSCLE_TREND_MIN.days) continue;
     seenP[ex.primary] = (seenP[ex.primary] || 0) + 1;
     for (const m of ex.secondary) seenS[m] = (seenS[m] || 0) + 1;
-    if (!(st.moving || st.falling)) continue;
+    /* A lift moving by its load step can read a lower estimate than where its window began (trend.ts): its change is
+       read into a muscle only when it agrees with its direction, so that dip never reads a muscle down. */
+    if (!((st.moving && st.pct > 0) || st.falling)) continue;
     (byMuscle[ex.primary] || (byMuscle[ex.primary] = [])).push(st.pct);
     for (const m of ex.secondary) (bySecondary[m] || (bySecondary[m] = [])).push(st.pct);
     // The weeks a muscle's trend covers, said in its line: the longest of its lifts'.

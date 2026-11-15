@@ -6566,13 +6566,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
       const z2 = w2[w2.length - 1], a0 = w2[0];
       const zr = z2.pts.filter((p3) => Math.abs(p3.w - z2.topW) < EPS_SAME).map((p3) => p3.r);
-      if (z2.topW > a0.topW + EPS_SAME && zr.length && Math.min(...zr) >= (z2.rr ? +z2.rr[0] : 1) && pct < 0) {
+      const stepped = z2.topW > a0.topW + EPS_SAME && zr.length > 0 && Math.min(...zr) >= (z2.rr ? +z2.rr[0] : 1);
+      if (stepped && pct < 0) {
         loadUp = true;
         falling = false;
         if (pHi != null && pHi < 0) {
           pLo = null;
           pHi = null;
         }
+      }
+      if (stepped && !moving) {
+        const k2 = w2.findIndex((x2) => x2.topW >= z2.topW - EPS_SAME);
+        const atLoad2 = w2[k2], before2 = k2 > 0 ? w2[k2 - 1] : void 0;
+        if (atLoad2 && before2 && atLoad2.tv < before2.tv && (z2 === atLoad2 || z2.tv > atLoad2.tv + EPS_SAME)) moving = true;
       }
     }
     return { pct, slope, slopeSe, moving, falling, pLo, pHi, spanW, loadUp };
@@ -7347,7 +7353,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (st.wN < MUSCLE_TREND_MIN.sessions || st.wSpan < MUSCLE_TREND_MIN.days) continue;
       seenP[ex.primary] = (seenP[ex.primary] || 0) + 1;
       for (const m3 of ex.secondary) seenS[m3] = (seenS[m3] || 0) + 1;
-      if (!(st.moving || st.falling)) continue;
+      if (!(st.moving && st.pct > 0 || st.falling)) continue;
       (byMuscle[ex.primary] || (byMuscle[ex.primary] = [])).push(st.pct);
       for (const m3 of ex.secondary) (bySecondary[m3] || (bySecondary[m3] = [])).push(st.pct);
       spanP[ex.primary] = Math.max(spanP[ex.primary] || 0, st.spanW || 0);
