@@ -145,10 +145,10 @@ for(const [file,label] of [['baselines/r112.html','r112'],['baselines/r111.html'
   P=await open('index.html',{browser,state:JSON.parse(raw),clock:'2026-11-11T10:00:00',realStarter:true});let a=await read(P);
   ok(a&&a.length===2&&a.every(b=>b.again==='none'&&/^First time/.test(b.hint))&&!P.errors.length,'a workout started on 2.48 loads here with its hints and no short line, which it never had',a);await P.ctx.close();
   P=await start('index.html');a=await read(P);const raw2=await P.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await P.ctx.close();
-  ok(a&&a.every(b=>/^First time: a load you could lift about \d+ times; do 8 to 12 reps\.$/.test(b.again)),'started here, each new lift carries the engine\'s short line',a);
+  ok(a&&a.every(b=>/^First time: pick a load for 8 to 12 reps, about \d+ to spare\.$/.test(b.again)),'started here, each new lift carries the engine\'s short line',a);
   const O=await open('baselines/r94.html',{browser,state:JSON.parse(raw2),clock:'2026-11-11T10:00:00',realStarter:true});
   await O.page.evaluate(()=>window.__ironlog.saveNow());const kept=JSON.parse(await O.page.evaluate(()=>localStorage.getItem('ironlog.v1'))).draft.ex.map(b=>b.hintAgain||'none');await O.ctx.close();
-  ok(kept.every(x=>/^First time: a load/.test(x)),'2.48 keeps the short line when it saves the workout, so it comes back here',kept);
+  ok(kept.length===a.length&&kept.every((x,i)=>x===a[i].again),'2.48 keeps the short line when it saves the workout, word for word, so it comes back here',{kept,a});
 }
 // A workout in progress across 2.51 and 2.52 (NEW-129, the review of 2.52's REV13-7): 2.52 notes when the lifting began
 // (begunAt) beside when the workout was opened (startedAt, as before). Begun here, 2.51 keeps the start when it saves

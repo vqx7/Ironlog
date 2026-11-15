@@ -8391,9 +8391,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         inj: injM
       };
     const rr = +plan.rir || 0;
-    const can = +plan.repMax + Math.round(rr);
     const reps = `${repSpan(plan.repMin, plan.repMax)} rep${+plan.repMax === 1 ? "" : "s"}`;
     const stop = rr >= 1 ? `stopping with about ${rr} still in you` : "to the last rep you can do well";
+    const spare = rr >= 1 ? `about ${rr} to spare` : "to the last good rep";
     const kin = !ex.bw ? kinStartIn(M3, ex, plan, T2) : null;
     const d3 = M3.s.draft;
     const newMachine = !away && !!d3 && d3.ex.some((b2) => b2.exId === ex.id && b2.nw) && (IDXIn(M3).byEx[ex.id] || []).some((x2) => x2.date <= T2);
@@ -8410,8 +8410,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         tgt: null,
         kin: kin.ex.id
       };
-    const text = ex.assist ? `${lead}: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.` : ex.bw ? `${lead}: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.` : `${lead}: pick a load you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
-    const again = ex.assist ? `${lead}: help for about ${can} reps; do ${reps}.` : ex.bw ? `${lead}: bodyweight only; do ${reps}.` : `${lead}: a load you could lift about ${can} times; do ${reps}.`;
+    const text = ex.assist ? `${lead}: set the help for ${reps}, ${spare}.` : ex.bw ? `${lead}: bodyweight only, ${reps}, ${spare}.` : `${lead}: pick a load for ${reps}, ${spare}.`;
+    const again = text;
     return { ...was, w: w0, text, again, lastR: [], last: "", target: "", tgt: null };
   }
   function sgEasyIn(M3, C2) {

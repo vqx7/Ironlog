@@ -233,10 +233,10 @@ function strongCsv(weeks, name) {
     // 9. The first-time line asks for one load, and fits bodyweight lifts.
     const ft = await ev(() => { const L = window.__ironlog; const p = { sets: 3, repMin: 8, repMax: 12, rir: 3, rest: 90, inc: 5 * 0.45359237 };
       return { w: L.suggest('legPress', p).text, bw: L.suggest('pushup', p).text, as: L.suggest('assistPullup', p).text, five: L.suggest('legPress', { ...p, repMin: 5, repMax: 5, rir: 2 }).text }; });
-    ok(/about 15 times/.test(ft.w) && /8 to 12 reps, stopping with about 3 still in you/.test(ft.w), 'first time: a load you could lift about 15 times, 8 to 12 reps with 3 in reserve (one load, both agree)', ft.w);
+    ok(ft.w === 'First time: pick a load for 8 to 12 reps, about 3 to spare.', 'first time: a load for 8 to 12 reps with 3 to spare, in one short line (V, 2026-11-14: never "about 15 times")', ft.w);
     ok(!/load you/.test(ft.bw) && /bodyweight/i.test(ft.bw), 'first time on push-ups: no load to pick', ft.bw);
     ok(/help/.test(ft.as) && !/load you/.test(ft.as), 'first time on an assisted machine: set the help', ft.as);
-    ok(/Do 5 reps/.test(ft.five) && !/5 to 5/.test(ft.five), 'a one-number range reads "5 reps", never "5 to 5"', ft.five);
+    ok(/for 5 reps,/.test(ft.five) && !/5 to 5/.test(ft.five), 'a one-number range reads "5 reps", never "5 to 5"', ft.five);
 
     // 3. Make it lighter after an exercise is done keeps that exercise full.
     const ml = await ev(() => {

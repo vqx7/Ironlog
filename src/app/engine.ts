@@ -704,20 +704,13 @@ function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: stri
       tgt: null,
       inj: injM
     };
-  /* A first session ("pick a load you can take to 6-10 at 2 RIR" is no
-     help to a beginner). Start light, in words a new
-     lifter can act on. The next session's load comes from this one. */
+  /* A first session: the reps and the reps to spare, in one short line a new lifter can act on (V, 2026-11-14: no "a
+     load you could lift about 14 times", which read as 14 reps, and no explaining). The next session's load comes from
+     this one, by up to 25% in the first sessions (jumpCap), so a load picked light is fine. */
   const rr = +plan.rir || 0;
-  // One line per exercise; the warm-up is said once, in the workout preview.
-  /* The load and the reps agree: a load you could lift about as many times
-     as the top of the range and the reps left in you together (not "about 17
-     times" for 8 to 12 with 3 still in you). Nothing is said of a load for
-     push-ups and Nordics, which have none to pick.
-     Erring light is fine: the next session's load is worked out from this
-     one, by up to 25% in the first sessions (jumpCap). */
-  const can = +plan.repMax + Math.round(rr);
   const reps = `${repSpan(plan.repMin, plan.repMax)} rep${+plan.repMax === 1 ? '' : 's'}`;
   const stop = rr >= 1 ? `stopping with about ${rr} still in you` : 'to the last rep you can do well';
+  const spare = rr >= 1 ? `about ${rr} to spare` : 'to the last good rep';
   const kin = !ex.bw ? kinStartIn(M, ex, plan, T) : null;
   /* Back after a long break, it is said as the time away, not as new; on a machine new to a lift done before, as a new
      machine (390 C: no load from another machine compares). The words after it are a first session's, since that is
@@ -745,15 +738,12 @@ function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: stri
       kin: kin.ex.id
     };
   const text = ex.assist
-    ? `${lead}: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.`
+    ? `${lead}: set the help for ${reps}, ${spare}.`
     : ex.bw
-      ? `${lead}: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.`
-      : `${lead}: pick a load you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
-  const again = ex.assist
-    ? `${lead}: help for about ${can} reps; do ${reps}.`
-    : ex.bw
-      ? `${lead}: bodyweight only; do ${reps}.`
-      : `${lead}: a load you could lift about ${can} times; do ${reps}.`;
+      ? `${lead}: bodyweight only, ${reps}, ${spare}.`
+      : `${lead}: pick a load for ${reps}, ${spare}.`;
+  // The line is short enough to say on every exercise; a later one says it again (hintOnce).
+  const again = text;
   return { ...was, w: w0, text, again, lastR: [], last: '', target: '', tgt: null };
 }
 

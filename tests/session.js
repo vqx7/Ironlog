@@ -1497,7 +1497,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const before = await block();
     await pick('new');
     let b = await block();
-    ok(/^Machine Chest Press: new machine$/.test(await P.toast()) && /^New machine: pick a load you could lift about/.test(b.hint) && b.grey.every(x => x === ''), 'L-41: New machine says "Machine Chest Press: new machine" and starts the lift as a first session there, no load asked', { t: await P.toast(), b });
+    ok(/^Machine Chest Press: new machine$/.test(await P.toast()) && /^New machine: pick a load for 8 to 12 reps, about 2 to spare\.$/.test(b.hint) && b.grey.every(x => x === ''), 'L-41: New machine says "Machine Chest Press: new machine" and starts the lift as a first session there, no load asked', { t: await P.toast(), b });
     await P.tap('#toast [data-act="undo"]', 250);
     ok(JSON.stringify(await block()) === JSON.stringify(before), 'L-41: Undo puts the lift back on its machine, its target as it was', { before, after: await block() });
     m = await sheet(); await pick('new');

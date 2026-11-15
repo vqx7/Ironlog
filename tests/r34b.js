@@ -123,7 +123,7 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
       return { a, b, h1, h2, tm: L.sessTm({ t: new Date(2026, 9, 9, 18, 0).getTime() }), tm0: L.sessTm({}) };
     });
     ok(hp.a === 'RPE 9' && hp.b === '1 RIR', 'a plan\'s effort reads "RPE 9" in RPE mode and "1 RIR" otherwise', hp);
-    ok(/Next time's load is worked out from this/.test(hp.h1) && hp.h2 === 'First time: a load you could lift about 12 times; do 6 to 10 reps.', 'the first-time paragraph once, then a short line on later exercises', hp.h2);
+    ok(hp.h1 === 'First time: pick a load for 6 to 10 reps, about 2 to spare.' && hp.h2 === hp.h1, 'the first-time line is one short line, the same on later exercises (V, 2026-11-14: no "about 12 times", no explaining)', hp);
     ok(/6:00/.test(hp.tm) && hp.tm0 === '', 'a session\'s start time reads as a clock time, nothing when unknown', hp);
     ok(!P.errors.length, 'engine checks: no page errors', P.errors);
     await P.ctx.close().catch(() => {});
@@ -169,7 +169,7 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     // 2c. First time on several lifts: the reason once, a short line on the rest.
     await start({ ex: [['bench', {}], ['latPulldown', {}], ['dbCurl', {}]] });
     const hints = await ev(() => [0, 1, 2].map(i => (document.querySelector(`#blk-${i} .hint`) || {}).innerText || ''));
-    ok(/worked out from this/.test(hints[0]) && hints.slice(1).every(h => /^First time: a load you could lift about \d+ times; do .+\.$/.test(h.trim())), 'three new lifts: the first-time paragraph on the first, one short line on the others' + T, hints);
+    ok(hints.length === 3 && hints.every(h => /^First time: pick a load for \d+ to \d+ reps, about \d+ to spare\.$/.test(h.trim())), 'three new lifts: one short first-time line on each (V, 2026-11-14)' + T, hints);
 
     // 2d. The low check-in: one line and an i, with the two buttons.
     const rc = await ev(() => { const L = window.__ironlog; const d = L.state.draft; d.chk = { sleep: 1, energy: 1, joints: 1 }; L.render(); const c = document.getElementById('readyCard'); if (!c) return null; const p = c.querySelector('p'); const txt = [...p.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim(); return { txt, tip: !!p.querySelector('.tipi'), light: !!c.querySelector('[data-act="makeLight"]'), short: !!c.querySelector('[data-act="shortOpen"]') }; });
