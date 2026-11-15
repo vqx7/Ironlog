@@ -360,6 +360,8 @@ export function cleanSess(raw: unknown, si: number): Session {
                   : {}),
                 // Done at a new machine or gym, last, as Finish writes it; absent unless marked, so older records keep their hash.
                 ...(b.nw === true ? { nw: true as const } : {}),
+                // The machine it was done on, after it, as Finish writes it; absent unless named, so older records keep their hash.
+                ...(typeof b.mc === 'string' && b.mc ? { mc: fixId(b.mc) } : {}),
                 // The pictures on its note, by id, last; absent unless there are any, so older records keep their hash.
                 ...picsField(b.pics)
               },
@@ -940,6 +942,8 @@ function cleanDraftBlock(b0: unknown): DraftBlock[] {
         sets: (arr(b.sets) || []).flatMap(cleanDraftSet),
         // Done at a new machine or gym, last, where the menu adds it; absent unless marked.
         ...(b.nw === true ? { nw: true as const } : {}),
+        // The machine picked for it, after it; absent until one is picked.
+        ...(typeof b.mc === 'string' && b.mc ? { mc: fixId(b.mc) } : {}),
         // The pictures on its note, by id, last; absent unless there are any.
         ...picsField(b.pics)
       } satisfies DraftBlock,

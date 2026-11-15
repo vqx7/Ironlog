@@ -147,7 +147,7 @@ async function pickPullups(P, mode) {
     await wait(150);
     await P.page.click('#view .hero [data-act="startSession"]:not([data-light])'); await wait(300);
     const hints = await P.page.evaluate(() => [0, 1, 2].map(i => { const e = document.querySelector(`#blk-${i} p.hint`); return e ? e.textContent.trim() : ''; }));
-    ok(/^First time: your bodyweight only\. Do 6 to 12 reps/.test(hints[0]) && hints.slice(1).every(h => h === 'First time: bodyweight only; do 6 to 12 reps.'), '7. three new bodyweight lifts: the first-time paragraph on the first, one short line on the others (2.48: the paragraph three times)', hints);
+    ok(hints.length === 3 && hints.every(h => h === 'First time: bodyweight only, 6 to 12 reps, about 2 to spare.'), '7. three new bodyweight lifts: one short first-time line on each (2.48: a paragraph three times; V, 2026-11-14: one short line)', hints);
     await P.page.evaluate(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.render(); });
     /* Each kind of first session says its own paragraph once: a new loaded lift's does not stand for a bodyweight or
        assisted lift's, whose advice differs (an easier version; setting the help). Leg extensions, then pull-ups, dips,
@@ -158,7 +158,7 @@ async function pickPullups(P, mode) {
     await wait(150);
     await P.page.click('#view .hero [data-act="startSession"]:not([data-light])'); await wait(300);
     const mixed = await P.page.evaluate(() => [0, 1, 2, 3, 4].map(i => { const e = document.querySelector(`#blk-${i} p.hint`); return e ? e.textContent.trim() : ''; }));
-    ok(/^First time: pick a load/.test(mixed[0]) && /^First time: your bodyweight only\. Do 6 to 12 reps/.test(mixed[1]) && mixed[2] === 'First time: bodyweight only; do 6 to 12 reps.' && /^First time: set the help/.test(mixed[3]) && /^First time: help for about \d+ reps; do 6 to 12 reps\.$/.test(mixed[4]), '7. a new loaded lift, two bodyweight and two assisted: each kind\'s paragraph once, then its short line', mixed);
+    ok(mixed[0] === 'First time: pick a load for 6 to 12 reps, about 2 to spare.' && mixed[1] === 'First time: bodyweight only, 6 to 12 reps, about 2 to spare.' && mixed[2] === mixed[1] && mixed[3] === 'First time: set the help for 6 to 12 reps, about 2 to spare.' && mixed[4] === mixed[3], '7. a new loaded lift, two bodyweight and two assisted: each kind\'s paragraph once, then its short line', mixed);
     ok(!P.errors.length, '7. no page errors', P.errors);
     await P.ctx.close(); await P.browser.close();
   }

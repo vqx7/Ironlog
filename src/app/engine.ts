@@ -9,7 +9,7 @@ import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from '
 import { statsUpToIn } from './bests';
 import type { LiftBests } from './bests';
 import { EXIn, UIn, exInjuryIn, liftModelIn, liftUIn } from './model';
-import { IDXIn, lastOf, liftReadIn } from './analytics';
+import { IDXIn, brokeAfterIn, lastOf, liftOffIn, liftReadIn, sinceLongBreakOnIn } from './analytics';
 import { atCapOfIn, capOfIn, gymRackIn, loadFloorIn } from './gym';
 import { DEFAULT_STEP, fromDIn, loadReadIn, toDIn, typedOtherIn } from './units';
 import { fmtWIn, listLabelIn, loadLabelIn, loadNote, typedLabelIn } from './loads';
@@ -17,7 +17,6 @@ import { addDays, daysBetween, isDate, r1, EPS, EPS_SAME, WEEK_DAYS, pctOf } fro
 import {
   BACK_DAYS,
   afterBreak,
-  sinceLongBreak,
   E1_MAX_RIR,
   LIGHT_SHARE,
   atLoad,
@@ -37,7 +36,7 @@ import {
   CLEARLY_OFF,
   FATIGUE_RIR
 } from './formulas';
-import { KIN_UNI, injLabel, isCompound, loadMode, noE1, patternOf, rackKind } from './library';
+import { KIN_UNI, injLabel, isCompound, loadMode, noE1, onMachines, patternOf, rackKind } from './library';
 import { LIGHT_RIR, awayWords, effAt, effLeast, effScale, fmtDateFrom, rangeWords, repSpan } from './format';
 import { overSets } from './session';
 import {
@@ -151,7 +150,7 @@ export function daysOffIn(M: Model, exId: string, opts?: SuggestOpts | null): nu
 export function backDaysIn(M: Model, exId: string, plan: Plan, opts: SuggestOpts): number {
   const T = opts.before && isDate(opts.before) ? opts.before : M.today();
   // After a long break the lift starts fresh, so only its sessions since are a way back from anything.
-  const all = sinceLongBreak(liftReadIn(M, exId, T), T);
+  const all = sinceLongBreakOnIn(M, exId, liftReadIn(M, exId, T), T);
   /* A lift trained in two rep ranges restarts each on its own first session
      back (else a light day eased after a break ends the heavy day's return
      too, and the heavy day's first session back asks for the load from
@@ -166,9 +165,11 @@ export function backDaysIn(M: Model, exId: string, plan: Plan, opts: SuggestOpts
     ? all.filter(x => sameRR(x.rr, want))
     : all;
   if (!xs.length) return 0;
-  if (afterBreak(xs[xs.length - 1], T)) return daysBetween(xs[xs.length - 1].date, T);
+  // The break's length is the time the lift was off, another machine's sessions filling the rest (liftOffIn).
+  const last = xs[xs.length - 1];
+  if (brokeAfterIn(M, exId, last, T)) return liftOffIn(M, exId, last.mk, last.date, T);
   for (let i = xs.length - 1; i > 0 && offTarget(xs[i]); i--)
-    if (afterBreak(xs[i - 1], xs[i].date)) return daysBetween(xs[i - 1].date, xs[i].date);
+    if (brokeAfterIn(M, exId, xs[i - 1], xs[i].date)) return liftOffIn(M, exId, xs[i].mk, xs[i - 1].date, xs[i].date);
   return 0;
 }
 
@@ -412,8 +413,10 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   const read = every ? liftReadIn(M, exId, T) : every;
   /* And since the lift's last long break: with none since, it starts fresh, as a first session, saying the
      time away (away, in days, from its last session before). */
-  const all = read ? sinceLongBreak(read, T) : read;
-  const away = read && read.length && all && !all.length ? daysBetween(read[read.length - 1].date, T) : 0;
+  const all = read ? sinceLongBreakOnIn(M, exId, read, T) : read;
+  // The time away is the lift's, another machine's sessions filling it (liftOffIn).
+  const lastRead = read && read.length ? read[read.length - 1] : null;
+  const away = lastRead && all && !all.length ? liftOffIn(M, exId, lastRead.mk, lastRead.date, T) : 0;
   const ex = EXIn(M, exId);
   const injM = exInjuryIn(M, ex);
   // The last full session sets the target: not one done lighter, nor one short of its usual (V's one rule). If there is nothing else, use them.
@@ -529,7 +532,7 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
      25%, 200 to 240, where 10% gives 220). */
   const xs = all || [];
   let since = xs.length - 1;
-  while (since > 0 && !afterBreak(xs[since - 1], xs[since].date)) since--;
+  while (since > 0 && !brokeAfterIn(M, exId, xs[since - 1], xs[since].date)) since--;
   const early = xs.length - since <= EARLY_SESSIONS;
   /* The reps a target is set from: last time's sets at the working load over the plan's sets, as done (V
      2026-11-04: "practical, realistic, helpful, not confusing"). One set under the range read as the bottom of it
@@ -613,7 +616,7 @@ function sgAfterReturnIn(M: Model, C: SuggestCtx): Suggestion | null {
   // The first session after the lift's latest break up to its last full session (all is read since a New machine or gym).
   const i = all.indexOf(last);
   let j = i;
-  while (j > 0 && !afterBreak(all[j - 1], all[j].date)) j--;
+  while (j > 0 && !brokeAfterIn(M, C.exId, all[j - 1], all[j].date)) j--;
   if (j < 1) return null;
   // The load from before the break: the last full session before it that the target reads (exps).
   const pre = exps.filter(x => x.date < all[j].date).pop();
@@ -701,24 +704,27 @@ function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: stri
       tgt: null,
       inj: injM
     };
-  /* A first session ("pick a load you can take to 6-10 at 2 RIR" is no
-     help to a beginner). Start light, in words a new
-     lifter can act on. The next session's load comes from this one. */
+  /* A first session: the reps and the reps to spare, in one short line a new lifter can act on (V, 2026-11-14: no "a
+     load you could lift about 14 times", which read as 14 reps, and no explaining). The next session's load comes from
+     this one, by up to 25% in the first sessions (jumpCap), so a load picked light is fine. */
   const rr = +plan.rir || 0;
-  // One line per exercise; the warm-up is said once, in the workout preview.
-  /* The load and the reps agree: a load you could lift about as many times
-     as the top of the range and the reps left in you together (not "about 17
-     times" for 8 to 12 with 3 still in you). Nothing is said of a load for
-     push-ups and Nordics, which have none to pick.
-     Erring light is fine: the next session's load is worked out from this
-     one, by up to 25% in the first sessions (jumpCap). */
-  const can = +plan.repMax + Math.round(rr);
   const reps = `${repSpan(plan.repMin, plan.repMax)} rep${+plan.repMax === 1 ? '' : 's'}`;
   const stop = rr >= 1 ? `stopping with about ${rr} still in you` : 'to the last rep you can do well';
+  const spare = rr >= 1 ? `about ${rr} to spare` : 'to the last good rep';
   const kin = !ex.bw ? kinStartIn(M, ex, plan, T) : null;
-  /* Back after a long break, it is said as the time away, not as new; the words after it are a first
-     session's, since that is how it starts. The time away is kept on the suggestion for the screens (away). */
-  const lead = away ? `Back after ${awayWords(away)}` : 'First time';
+  /* Back after a long break, it is said as the time away, not as new; on a machine new to a lift done before, as a new
+     machine (390 C: no load from another machine compares). The words after it are a first session's, since that is
+     how it starts. The time away is kept on the suggestion for the screens (away). */
+  const d = M.s.draft;
+  const newMachine =
+    !away && !!d && d.ex.some(b => b.exId === ex.id && b.nw) && (IDXIn(M).byEx[ex.id] || []).some(x => x.date <= T);
+  const lead = away
+    ? `Back after ${awayWords(away)}`
+    : newMachine
+      ? onMachines(ex)
+        ? 'New machine'
+        : 'New machine or gym'
+      : 'First time';
   const was = away ? { away } : {};
   if (kin)
     return {
@@ -732,15 +738,12 @@ function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: stri
       kin: kin.ex.id
     };
   const text = ex.assist
-    ? `${lead}: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.`
+    ? `${lead}: set the help for ${reps}, ${spare}.`
     : ex.bw
-      ? `${lead}: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.`
-      : `${lead}: pick a load you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
-  const again = ex.assist
-    ? `${lead}: help for about ${can} reps; do ${reps}.`
-    : ex.bw
-      ? `${lead}: bodyweight only; do ${reps}.`
-      : `${lead}: a load you could lift about ${can} times; do ${reps}.`;
+      ? `${lead}: bodyweight only, ${reps}, ${spare}.`
+      : `${lead}: pick a load for ${reps}, ${spare}.`;
+  // The line is short enough to say on every exercise; a later one says it again (hintOnce).
+  const again = text;
   return { ...was, w: w0, text, again, lastR: [], last: '', target: '', tgt: null };
 }
 

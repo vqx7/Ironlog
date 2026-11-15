@@ -67,32 +67,56 @@ export interface Exposure {
   tv?: number | null;
   progress?: boolean;
   miss?: MissedPoint[];
-  /** Done at a new machine or gym (SessionEx.nw): the lift's stretch starts here (sinceNew). */
+  /** Done at a new machine or gym (SessionEx.nw): a machine of its own starts here (machineKeys). */
   nw?: true;
+  /** The machine it was saved as done on (SessionEx.mc); absent when none was named. */
+  mc?: string;
+  /** The machine it was done on (machineKeys): its key. */
+  mk: string;
+  /** Back from a break (BACK_DAYS) or a long one (LONG_BREAK_DAYS) since the lift's session before on its machine, read on every machine (markBreaks); absent when not. */
+  br?: true;
+  lbr?: true;
   /** Every working set a drop set, so its points are the drops: neither the PR list nor the bests board reads it. */
   dropOnly?: true;
 }
 
-/* A lift's sessions from its newest "New machine or gym" mark (V's
-   decision of 2026-10-24): a session marked so starts the lift
-   over, so its targets, trend, stalls, PRs, bests and rack spacing read from
-   it as from a first session, and the sessions before it, at another
-   machine, are kept and shown (its history, its chart, History) but read by
-   none of them. All of them when none is marked. */
-/** The sessions of a lift since its newest new-machine mark, or all of them when none is marked. */
-export function sinceNew<X extends { nw?: true | undefined }>(xs: readonly X[]): X[] {
-  for (let i = xs.length - 1; i > 0; i--) if (xs[i].nw) return xs.slice(i);
-  return xs.slice();
+/* A lift's machines (390 C, V 2026-11-14). Each session of a lift was done on one machine, named by a key: the one
+   it was saved with (mc), written once the lift has been done on more than one machine; else the machine its stretch
+   began on, the session marked "New machine or gym" (nw) at or before it, or the lift's first machine (FIRST_MACHINE).
+   An unnamed session follows its stretch, never the session before it, so moving one session to another machine in
+   its edit moves only that session. A lift never marked is one machine, as before. Its readings (target, PRs, bests,
+   the estimate, trend, stalls, its usual) read the sessions on one machine; what counts work (sets, volume, the plan,
+   weekly targets) reads every session. A free weight is never named a machine, so its stretches read as before:
+   another machine or gym starts it over. */
+/** The key of a lift's first machine, the one its unmarked sessions before any mark were done on. */
+export const FIRST_MACHINE = '0';
+
+/** Gives each of a lift's sessions (in date order) the key of the machine it was done on (above). */
+export function machineKeys<X extends { sid: string; nw?: true | undefined; mc?: string | undefined; mk: string }>(
+  xs: readonly X[]
+): void {
+  let stretch = FIRST_MACHINE;
+  for (const x of xs) {
+    if (x.nw) stretch = x.sid;
+    x.mk = x.mc || stretch;
+  }
 }
 
-/** A lift's sessions cut at each new-machine mark into its stretches, in order, each read as its own (the PR list). */
-export function stretchesOf<X extends { nw?: true | undefined }>(xs: readonly X[]): X[][] {
-  const out: X[][] = [];
+/** A lift's sessions on one machine, in order: the machine of its last session unless one is named; none when there are none. */
+export function onMachine<X extends { mk: string }>(xs: readonly X[], key?: string): X[] {
+  const k = key ?? (xs.length ? xs[xs.length - 1].mk : FIRST_MACHINE);
+  return xs.filter(x => x.mk === k);
+}
+
+/** A lift's sessions grouped by machine, each in order, the machines in the order first used (the PR list reads each alone). */
+export function machinesOf<X extends { mk: string }>(xs: readonly X[]): X[][] {
+  const by = new Map<string, X[]>();
   for (const x of xs) {
-    if (x.nw || !out.length) out.push([]);
-    out[out.length - 1].push(x);
+    const g = by.get(x.mk);
+    if (g) g.push(x);
+    else by.set(x.mk, [x]);
   }
-  return out;
+  return [...by.values()];
 }
 
 /** A change seen over a lift's last three sessions in range: the load it was

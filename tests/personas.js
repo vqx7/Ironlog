@@ -34,11 +34,11 @@
 //      week after reading its target from before the deload;
 //   8  short on time: Short on time trims sets, nothing typed is lost, and a
 //      lift done with fewer sets than usual repeats its target;
-//   9  a gym change (r61, 343 7): the leg press marked New machine or gym
-//      from its menu reads as a first session (no grey load from the old
-//      gym), the new gym's heavier numbers are no PR while the squat, the
-//      same bar at either gym, keeps its target and its PR, and the week
-//      after the leg press asks from the new gym's own session.
+//   9  a gym change (r61, 343 7; 390 C): the leg press put on a new machine
+//      from its menu's Machine sheet reads as a first session there (no grey
+//      load from the old gym), the new gym's heavier numbers are no PR while
+//      the squat, the same bar at either gym, keeps its target and its PR, and
+//      the week after the leg press asks from the new gym's own session.
 //  10  Pick for me, Limited equipment and Short on time (r62).
 //  11  switching from notes, and reporting a problem (r63: import, the
 //      account's sheets and problem reports moved): a new install imports
@@ -656,14 +656,15 @@ async function finish() {
     const lp = b0.ex.findIndex(b => b.exId === 'legPress'), sq = b0.ex.findIndex(b => b.exId === 'backSquat');
     const sqGrey = (await H.row(sq, 0)).w;
     ok(Number((await H.row(lp, 0)).w) >= 390 && Number(sqGrey) >= 240, '9. at the new gym, before marking: both lifts suggest from the old gym (leg press 390 or more, squat 240 or more)', { lp: await H.row(lp, 0), sq: sqGrey });
-    // The leg press's menu, as a thumb opens it.
+    // The leg press's menu, as a thumb opens it: a machine, so Machine, and in its sheet New machine (390 C).
     await H.page.click(`#view [data-act="bMenu"][data-b="${lp}"]`); await wait(100);
-    if (!ok(!!(await H.page.$('#modal [data-op="bNew"]')), '9. the leg press\'s menu offers New machine or gym')) { await H.P.ctx.close(); return finish(); }
-    await H.page.click('#modal [data-op="bNew"]'); await wait(150);
+    if (!ok(!!(await H.page.$('#modal [data-op="machineOpen"]')) && !(await H.page.$('#modal [data-op="bNew"]')), '9. the leg press\'s menu offers Machine')) { await H.P.ctx.close(); return finish(); }
+    await H.page.click('#modal [data-op="machineOpen"]'); await wait(150);
+    await H.page.click('#modal [data-act="machinePick"][data-k="new"]'); await wait(200);
     const b1 = await H.draft();
     const lpRow = await H.row(lp, 0);
-    ok(b1.ex[lp].nw === true && b1.ex[lp].sw == null && !/^\d/.test(lpRow.w || '') && /First time/.test(await H.text()) && (await H.row(sq, 0)).w === sqGrey,
-      '9. marked New machine or gym: the leg press has no grey load and reads as a first session; the squat is as it was', { lpRow, nw: b1.ex[lp].nw });
+    ok(b1.ex[lp].nw === true && b1.ex[lp].sw == null && !/^\d/.test(lpRow.w || '') && /New machine: pick a load/.test(await H.text()) && (await H.row(sq, 0)).w === sqGrey,
+      '9. New machine picked: the leg press has no grey load and reads as a first session there; the squat is as it was', { lpRow, nw: b1.ex[lp].nw });
     // The new gym's leg press reads heavier: 500 x 10 at 2 in reserve. The squat at its grey load, 6 reps at 2 in reserve.
     for (const s of [0, 1, 2]) { await H.type('w', lp, s, 500); await H.type('r', lp, s, 10); await H.effort(lp, s, 2); await H.quiet(); await H.tick(lp, s); }
     for (const s of [0, 1, 2]) { await H.type('r', sq, s, 6); await H.effort(sq, s, 2); await H.quiet(); await H.tick(sq, s); }

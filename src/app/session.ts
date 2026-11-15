@@ -170,6 +170,7 @@ type Joinable = {
   exId: string;
   light?: boolean | undefined;
   nw?: true | undefined;
+  mc?: string | undefined;
   sets: DraftSet[];
   note?: string | undefined;
   rr?: [number, number] | null | undefined;
@@ -331,7 +332,9 @@ export function typedMin(d: DraftLike): number | null {
 /** A workout in progress as a saved session of its ticked sets, or null when none is ticked or it is an edit. */
 export function draftSession(d: DraftLike, empty?: boolean): Session | null {
   if (d.editingId) return null;
-  const ex = picsLast(withNew(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d));
+  // The machine picked for a lift goes with it; one it was on by default is named when the workout is saved here (machineToSaveIn).
+  const picked = (exId: string): string | null => d.ex.find(b => b.exId === exId && b.mc)?.mc ?? null;
+  const ex = picsLast(withNew(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d, picked));
   // A copy with nothing ticked is no session, unless asked for as the agreed copy of a join (keepLost), where it is the base with no sets.
   if (!ex.length && !empty) return null;
   const chk = cleanChk(d.chk);
@@ -407,6 +410,7 @@ export function sameExOnce<X extends Joinable>(ex: readonly X[]): X[] {
     a.sets.push(...b.sets);
     // A new machine or gym marks the lift in the session, so its one exposure carries the mark when any block does.
     if (b.nw) a.nw = true;
+    if (b.mc && !a.mc) a.mc = b.mc;
     if (wb > wa && b.rr) a.rr = b.rr;
     else if (!a.rr && b.rr) a.rr = b.rr;
   }
@@ -426,9 +430,18 @@ export function markedNew(d: { ex: readonly { exId: string; nw?: true | undefine
   return d.ex.some(b => b.exId === exId && !!b.nw);
 }
 
-/** Saved exercises with the mark on each lift the session marks, last. */
-export function withNew<B extends { exId: string }>(ex: readonly B[], d: Parameters<typeof markedNew>[0]): B[] {
-  return ex.map(b => (markedNew(d, b.exId) ? { ...b, nw: true as const } : b));
+/** Saved exercises with the mark on each lift the session marks and the machine each was done on (`mcOf`, the key to save or null; machineToSaveIn), last, in that order. */
+export function withNew<B extends { exId: string }>(
+  ex: readonly B[],
+  d: Parameters<typeof markedNew>[0],
+  mcOf: (exId: string) => string | null
+): B[] {
+  return ex.map(b => {
+    const mc = mcOf(b.exId);
+    // An edit can name a machine on a session marked new (machinePick): both are saved, the mark first.
+    const nw = markedNew(d, b.exId) ? { nw: true as const } : {};
+    return mc || markedNew(d, b.exId) ? { ...b, ...nw, ...(mc ? { mc } : {}) } : b;
+  });
 }
 
 /* ---------- a session as a whole ---------- */
@@ -519,8 +532,9 @@ export function editFp(d: {
     ex: d.ex.map(b => [
       b.exId,
       (b.note || '').trim(),
-      // A new machine or gym marked or taken off is an edit too.
+      // A new machine or gym marked or taken off is an edit too, and so is another machine picked.
       !!b.nw,
+      b.mc || '',
       // So is a picture added or taken off.
       (b.pics || []).join(),
       b.sets.map(x => [

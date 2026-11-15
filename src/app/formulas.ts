@@ -412,7 +412,7 @@ export function longBreak(prev: { date: string } | null | undefined, date: strin
 }
 
 /** Where a lift's sessions (in date order) start again after their last long break between two of them: the index of the first after it, 0 with none. */
-export function longBreakAt<X extends { date: string }>(xs: readonly X[]): number {
+function longBreakAt<X extends { date: string }>(xs: readonly X[]): number {
   for (let i = xs.length - 1; i > 0; i--) if (longBreak(xs[i - 1], xs[i].date)) return i;
   return 0;
 }

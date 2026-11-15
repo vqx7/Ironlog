@@ -26,6 +26,7 @@ import {
   invalidate,
   liftU,
   lightZero,
+  machineToSave,
   oddLoad,
   rirEff,
   rirHalfOn,
@@ -292,7 +293,8 @@ export function finishNow(): void {
         routineId: activeRoutine().id,
         freestyle: freeMode()
       }),
-      d
+      d,
+      machineToSave
     )
   );
   const cardio = draftCardio(d).map(c => cleanCardio(c));

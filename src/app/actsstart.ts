@@ -633,6 +633,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
               })
             ),
             ...(b.nw ? { nw: true as const } : {}),
+            ...(b.mc ? { mc: b.mc } : {}),
             ...(b.pics && b.pics.length ? { pics: [...b.pics] } : {})
           };
         })

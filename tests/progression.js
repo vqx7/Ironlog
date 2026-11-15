@@ -1,4 +1,4 @@
-// Targets and progression, checked against their written rules (CA-1; the spec "Targets and progression", P-1 to P-43,
+// Targets and progression, checked against their written rules (CA-1; the spec "Targets and progression", P-1 to P-44,
 // in the project's claude/ironlog-spec-progression-draft1.md, built from the code, V's rulings deciding). A feature
 // suite: each section is one rule, a lifter's log seeded and the session started from Today's card, and what the
 // session screen shows (the grey load, the grey reps, the target) compared with what the rule gives, worked out here
@@ -1078,6 +1078,113 @@ const barLoads = (plates, most = 600) => { let set = new Set([0]); for (const p 
         `P-43 the round trip: after ${n === 2 ? '225 lb, then 102.5 kg marked kg' : '225 lb, 102.5 kg, then 225 lb back in lb'}, ${w} ${u} and 24 to beat, no PR`, { s, prs });
       await P.ctx.close(); await P.browser.close();
     }
+  }
+
+  if (run('P-44')) {
+    /* A machine lift is read on one machine (390 C, V 2026-11-14): its target, last time, heaviest and PRs come from
+       the sessions on the machine it is on, the one it was last done on unless another is picked. Chest press 200 lb
+       x 11, 11, 10 twice on its first machine, then a session on another machine (New machine), then back on the first
+       (a session naming it): the target is the first machine's (beat 32 at 200 lb), its last time the 200 lb session,
+       and nothing reads lighter or a PR against the other machine. A harder machine (140 lb) and an easier one (260 lb)
+       both. */
+    const MP = [{ id: 'A', name: 'Push', items: [['machPress', 3, 8, 12, 2]] }];
+    const at = (w, rs) => rs.map(r => [w, r, 2]);
+    for (const other of [140, 260]) {
+      const log = [
+        [addD(DAY, -28), 'A', [['machPress', at(200, [11, 11, 10])]]],
+        [addD(DAY, -21), 'A', [['machPress', at(200, [11, 11, 10])]]],
+        [addD(DAY, -14), 'A', [['machPress', at(other, [12, 12, 12]), { nw: true }]]],
+        [addD(DAY, -7), 'A', [['machPress', at(200, [11, 11, 10]), { mc: '0' }]]]
+      ];
+      const P = await lifter(MP, log);
+      await startOn(P, 0);
+      const s = await shows(P, 'machPress');
+      const prs = await P.page.evaluate(() => window.__ironlog.IDX().prs.filter(p => p.exId === 'machPress').map(p => p.date));
+      ok(s.rows.every(x => x.w === 200) && s.tgt && s.tgt.total === 32 && s.hint.includes('Beat 32 reps over 3 sets at 200 lb') && !new RegExp(`\\b${other}\\b`).test(s.hint) && !/lighter/i.test(s.hint),
+        `P-44 back on its first machine after one session on ${other < 200 ? 'a harder' : 'an easier'} machine (${other} lb): 200 lb and 32 to beat, read from the first machine alone`, s);
+      ok(!prs.includes(addD(DAY, -7)), `P-44 the session back on the first machine is no PR against the ${other} lb machine`, prs);
+      await P.ctx.close(); await P.browser.close();
+    }
+    /* Three machines in turn, each one once after the first's two sessions: the lift is on the one it was last done
+       on, read from it alone (260 lb x 12 x 3 at the top of 8 to 12: a step up from 260). */
+    const nomad = [
+      [addD(DAY, -28), 'A', [['machPress', at(200, [11, 11, 10])]]],
+      [addD(DAY, -21), 'A', [['machPress', at(140, [10, 10, 9]), { nw: true }]]],
+      [addD(DAY, -7), 'A', [['machPress', at(260, [12, 12, 12]), { nw: true }]]]
+    ];
+    const P = await lifter(MP, nomad);
+    await startOn(P, 0);
+    const s = await shows(P, 'machPress');
+    ok(s.rows.length && s.rows.every(x => x.w > 260) && /260/.test(s.hint) && !/\b(140|200)\b/.test(s.hint), 'P-44 a third machine, the one it was last done on: a step up from its 260 lb x 12 x 3, nothing from the other two', s);
+    await P.ctx.close(); await P.browser.close();
+    /* A break is time off the lift, not off a machine (G-25; the review of 2.67, REV18-3): the lift trained every week
+       on another machine is not back from a break on its first one. Two sessions on the first machine at 200 lb, five
+       weeks on another: the first machine picked from the Machine sheet asks its own 200 lb (beat 32), never "Back
+       after 7 weeks" and about 90%; after one session back there done lighter (180 lb x 12 x 3 at 4 in reserve), the
+       target repeats at 200 lb, beat 32, as with one machine (done lighter it sets no target), with no word of a break. */
+    const hop = [
+      [addD(DAY, -56), 'A', [['machPress', at(200, [11, 11, 10])]]],
+      [addD(DAY, -49), 'A', [['machPress', at(200, [11, 11, 10])]]],
+      ...[42, 35, 28, 21, 14].map((n, k) => [addD(DAY, -n), 'A', [['machPress', at(140, [10, 10, 9]), k ? { mc: 's2' } : { nw: true }]]])
+    ];
+    const H = await lifter(MP, hop);
+    await startOn(H, 0);
+    await H.page.click('#view [data-act="bMenu"][data-b="0"]'); await wait(200);
+    await H.page.click('#modal [data-act="bMenuDo"][data-op="machineOpen"]'); await wait(250);
+    await H.page.click('#modal [data-act="machinePick"][data-k="0"]'); await wait(300);
+    const h = await shows(H, 'machPress');
+    ok(h.rows.every(x => x.w === 200) && h.tgt && h.tgt.total === 32 && !/break|Back after/.test(h.hint), 'P-44 its first machine picked after five weeks on another, trained weekly: 200 lb and 32 to beat, no break said', h);
+    await H.ctx.close(); await H.browser.close();
+    const B = await lifter(MP, [...hop, [addD(DAY, -7), 'A', [['machPress', [12, 12, 12].map(r => [180, r, 4]), { mc: '0' }]]]]);
+    await startOn(B, 0);
+    const b = await shows(B, 'machPress');
+    ok(b.rows.every(x => x.w === 200) && b.tgt && b.tgt.total === 32 && /lighter/.test(b.hint) && !/break|Back /.test(b.hint), 'P-44 after one session back on it done lighter (180 x 12 x 3 at 4 in reserve): the target repeats at 200 lb, beat 32, no break said', b);
+    await B.ctx.close(); await B.browser.close();
+  }
+
+  if (run('P-44')) {
+    /* A break is time off the lift, on its machine or another (the review of 2.67's fixes, REV19-2 to REV19-4):
+       - with one machine, as before: a bench trained in two ranges, the heavy one idle five weeks while the light one
+         went on, is back after 5 weeks on the heavy day (P-20 per range), about 125 kg;
+       - the leg press on machine A to Aug 29, then machine B to Oct 3, then nothing: A picked is back after 6 weeks,
+         the time the lift was off, never 11;
+       - a session on A after weeks on B, the lift trained throughout, read below its usual when clearly weaker: the
+         target repeats (beat 31), as with one machine. */
+    const RD = [{ id: 'H', name: 'Heavy', items: [['bench', 3, 4, 6, 2]] }, { id: 'Lt', name: 'Light', items: [['bench', 3, 10, 12, 2]] }];
+    const hv = (n, w) => [addD(DAY, n), 'H', [['bench', [[w, 6, 2], [w, 5, 2], [w, 5, 2]]]]];
+    const lt = (n, w) => [addD(DAY, n), 'Lt', [['bench', [[w, 12, 2], [w, 11, 2], [w, 10, 2]]]]];
+    const ranges = [hv(-63, 130), lt(-60, 100), hv(-56, 132.5), lt(-53, 102.5), hv(-49, 135), lt(-46, 105), hv(-42, 137.5), lt(-39, 107.5), hv(-35, 140),
+      lt(-32, 110), lt(-25, 110), lt(-18, 112.5), lt(-11, 112.5), lt(-4, 115)];
+    let P = await lifter(RD, ranges, { unit: 'kg' });
+    await startOn(P, 0);
+    let s = await shows(P, 'bench');
+    ok(/Back after 5 weeks/.test(s.hint) && s.rows.every(x => x.w === 125), 'P-44 one machine as before: the heavy range idle five weeks while the light one went on is back after 5 weeks, about 125 kg', s);
+    await P.ctx.close(); await P.browser.close();
+    const LP = [{ id: 'A', name: 'Legs', items: [['legPress', 3, 8, 12, 2]] }];
+    const at = (w, rs) => rs.map(r => [w, r, 2]);
+    const legs = [
+      ...[-84, -77].map(n => [addD(DAY, n), 'A', [['legPress', at(190, [12, 10, 9])]]]),
+      [addD(DAY, -49), 'A', [['legPress', at(120, [12, 10, 9]), { nw: true }]]],
+      [addD(DAY, -42), 'A', [['legPress', at(120, [12, 10, 9]), { mc: 's2' }]]]
+    ];
+    P = await lifter(LP, legs, { unit: 'kg' });
+    await startOn(P, 0);
+    await P.page.click('#view [data-act="bMenu"][data-b="0"]'); await wait(200);
+    await P.page.click('#modal [data-act="bMenuDo"][data-op="machineOpen"]'); await wait(250);
+    await P.page.click('#modal [data-act="machinePick"][data-k="0"]'); await wait(300);
+    s = await shows(P, 'legPress');
+    ok(/Back after 6 weeks/.test(s.hint) && !/11 weeks/.test(s.hint), 'P-44 machine A picked, the lift off every machine since B six weeks ago: back after 6 weeks, never 11', s);
+    await P.ctx.close(); await P.browser.close();
+    const weak = [
+      ...[-70, -63].map(n => [addD(DAY, n), 'A', [['legPress', at(205, [11, 10, 10])]]]),
+      ...[-56, -49, -42, -35, -28, -21, -14].map((n, k) => [addD(DAY, n), 'A', [['legPress', at(130, [12, 10, 9]), k ? { mc: 's2' } : { nw: true }]]]),
+      [addD(DAY, -7), 'A', [['legPress', at(205, [8, 7, 6]), { mc: '0' }]]]
+    ];
+    P = await lifter(LP, weak, { unit: 'kg' });
+    await startOn(P, 0);
+    s = await shows(P, 'legPress');
+    ok(s.tgt && s.tgt.total === 31 && s.rows.every(x => x.w === 205) && /below usual/.test(s.hint), 'P-44 back on machine A after weeks on B, the lift trained throughout: a clearly weaker 205 x 8, 7, 6 reads below its usual and the target repeats, beat 31', s);
+    await P.ctx.close(); await P.browser.close();
   }
 
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');

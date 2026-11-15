@@ -5,9 +5,9 @@
    exposures these read (model.ts). */
 
 import type { Exposure, ExerciseLike, Model } from './model';
-import { sinceNew, activeRoutineIn } from './model';
+import { onMachine, activeRoutineIn } from './model';
 import { addDays, daysBetween, EPS_SAME, WEEK_DAYS, PERCENT } from './util';
-import { afterBreak, lighter, sameRR, TREND_DAYS, GROW_PCT, t90, TREND_MIN, STALL } from './formulas';
+import { lighter, sameRR, TREND_DAYS, GROW_PCT, t90, TREND_MIN, STALL } from './formulas';
 
 import { bwRefIn } from './setread';
 
@@ -24,16 +24,16 @@ type Read = { tv: number };
    "look at recovery", while every session back was heavier than the one
    before); and the 6 weeks up to the lift's own last session (ended at the newest
    session of any kind, logging an upper day would move a split squat's trend
-   from +14% to +9% without a new split squat set). A new
-   machine or gym starts the lift over (sinceNew): its sessions before
-   it are another machine's, read by none of these. The stall test reads
+   from +14% to +9% without a new split squat set). Only the sessions on the
+   machine the lift was last done on (onMachine): another machine's are read
+   by none of these. The stall test reads
    the same sessions (inRange). */
 export function trendScope<X extends Exposure>(every: readonly X[], anchor: string) {
-  const exps = sinceNew(every);
+  const exps = onMachine(every);
   const real = exps.filter(x => !lighter(x));
   const curRR = real.length ? real[real.length - 1].rr : null;
   let from = '';
-  for (let i = 1; i < exps.length; i++) if (afterBreak(exps[i - 1], exps[i].date)) from = exps[i].date;
+  for (let i = 1; i < exps.length; i++) if (exps[i].br) from = exps[i].date;
   const inRange = real.filter(x => sameRR(x.rr, curRR) && x.date >= from);
   const lastReal = real.length ? real[real.length - 1] : null;
   /* Its last session of any kind, a lighter one too: whether the lift is on a break today is read from it, as the

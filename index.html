@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.14-r112">
+<meta name="app-build" content="2026.11.14-r113">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -663,6 +663,12 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .ubadge{position:relative;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px 0 13px;border-radius:999px;border:1px solid var(--btn-b);background:var(--btn);color:var(--ink);font:600 13px/1 var(--font);white-space:nowrap;cursor:pointer}
 .ubadge::after{content:'';width:6px;height:6px;margin:-3px 2px 0 1px;border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);transform:rotate(45deg)}
 .ubadge::before{content:'';position:absolute;left:50%;width:max(100%,44px);transform:translateX(-50%);top:-7px;bottom:-7px}
+.mc-h{margin:4px 0 8px;font-size:13px;font-weight:600;color:var(--muted)}
+.mclist{display:flex;flex-direction:column;gap:6px}
+.mcrow{display:flex;align-items:center;gap:12px;min-height:48px;padding:8px 12px;border-radius:var(--r-sm);border:1px solid var(--btn-b);background:var(--btn);color:var(--ink);font:inherit;font-size:15px;text-align:left;cursor:pointer}
+.mcrow.on{border-color:var(--ink)}
+.mcdot{flex:none;width:18px;height:18px;border-radius:50%;border:1.6px solid var(--muted)}
+.mcrow.on .mcdot{border-color:var(--ink);background:radial-gradient(circle,var(--ink) 0 4px,transparent 5px)}
 /* "Per side" is "Side" under 360 px, so the load column's heading is one line at every width. */
 @media (max-width:359px){.lhn{display:none}}
 .sg .n{font:700 15px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center}
@@ -1552,6 +1558,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ["other", "Other"]
   ];
   var EQL = Object.fromEntries(EQUIP);
+  var onMachines = (ex) => ex.equip === "machine" || ex.equip === "cable" || ex.equip === "smith";
   var PLATE_SIDE_IDS = [
     "hackSquat",
     "pendulum",
@@ -2109,7 +2116,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var safeKey = (k2) => typeof k2 === "string" && !/["'<>&`]/.test(k2);
   var EXTRA_MAX = 2e3, EXTRA_KEYS = 20;
   var okExtraKey = (k2) => /^[A-Za-z][\w]{0,39}$/.test(k2) && !(k2 in Object.prototype);
-  var KNOWN_ITEM = /* @__PURE__ */ new Set(["jump", "pm"]), KNOWN_CARDIO = /* @__PURE__ */ new Set(["dist"]), KNOWN_MEAS = new Set(MEAS.map((x2) => x2[0])), KNOWN_SEX = /* @__PURE__ */ new Set(["inj", "ps", "nw", "pics"]), KNOWN_BLOCK = /* @__PURE__ */ new Set(["nw", "pics"]), KNOWN_SESS = /* @__PURE__ */ new Set(["pics", "part"]), KNOWN_DAY = /* @__PURE__ */ new Set(["pmName"]);
+  var KNOWN_ITEM = /* @__PURE__ */ new Set(["jump", "pm"]), KNOWN_CARDIO = /* @__PURE__ */ new Set(["dist"]), KNOWN_MEAS = new Set(MEAS.map((x2) => x2[0])), KNOWN_SEX = /* @__PURE__ */ new Set(["inj", "ps", "nw", "mc", "pics"]), KNOWN_BLOCK = /* @__PURE__ */ new Set(["nw", "mc", "pics"]), KNOWN_SESS = /* @__PURE__ */ new Set(["pics", "part"]), KNOWN_DAY = /* @__PURE__ */ new Set(["pmName"]);
   function cleanCal(c4) {
     if (!c4 || typeof c4 !== "object") return null;
     const at2 = numOr(c4.at, NaN), pred = numOr(c4.pred, NaN);
@@ -2161,8 +2168,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.66";
-  var APP_VERSION = "2026.11.14-r112";
+  var DISPLAY_VERSION = "2.67";
+  var APP_VERSION = "2026.11.14-r113";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2255,17 +2262,26 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var isChunkId = (id) => id === "core" || id === "draft" || /^s-\d{4}-\d{2}-[12]$/.test(id) || /^b-\d{4}$/.test(id);
 
   // src/app/model.ts
-  function sinceNew(xs) {
-    for (let i5 = xs.length - 1; i5 > 0; i5--) if (xs[i5].nw) return xs.slice(i5);
-    return xs.slice();
-  }
-  function stretchesOf(xs) {
-    const out = [];
+  var FIRST_MACHINE = "0";
+  function machineKeys(xs) {
+    let stretch = FIRST_MACHINE;
     for (const x2 of xs) {
-      if (x2.nw || !out.length) out.push([]);
-      out[out.length - 1].push(x2);
+      if (x2.nw) stretch = x2.sid;
+      x2.mk = x2.mc || stretch;
     }
-    return out;
+  }
+  function onMachine(xs, key) {
+    const k2 = key ?? (xs.length ? xs[xs.length - 1].mk : FIRST_MACHINE);
+    return xs.filter((x2) => x2.mk === k2);
+  }
+  function machinesOf(xs) {
+    const by = /* @__PURE__ */ new Map();
+    for (const x2 of xs) {
+      const g2 = by.get(x2.mk);
+      if (g2) g2.push(x2);
+      else by.set(x2.mk, [x2]);
+    }
+    return [...by.values()];
   }
   function freshCaches() {
     return {
@@ -4001,6 +4017,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
                 ...typeof b2.ps === "number" && Number.isInteger(b2.ps) && b2.ps >= 1 && b2.ps <= LIMITS.sets ? { ps: b2.ps } : {},
                 // Done at a new machine or gym, last, as Finish writes it; absent unless marked, so older records keep their hash.
                 ...b2.nw === true ? { nw: true } : {},
+                // The machine it was done on, after it, as Finish writes it; absent unless named, so older records keep their hash.
+                ...typeof b2.mc === "string" && b2.mc ? { mc: fixId(b2.mc) } : {},
                 // The pictures on its note, by id, last; absent unless there are any, so older records keep their hash.
                 ...picsField(b2.pics)
               },
@@ -4433,6 +4451,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           sets: (arr(b2.sets) || []).flatMap(cleanDraftSet),
           // Done at a new machine or gym, last, where the menu adds it; absent unless marked.
           ...b2.nw === true ? { nw: true } : {},
+          // The machine picked for it, after it; absent until one is picked.
+          ...typeof b2.mc === "string" && b2.mc ? { mc: fixId(b2.mc) } : {},
           // The pictures on its note, by id, last; absent unless there are any.
           ...picsField(b2.pics)
         },
@@ -6073,7 +6093,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function draftSession(d3, empty) {
     if (d3.editingId) return null;
-    const ex = picsLast(withNew(joinAdjacent(d3.ex.map(savedEx).filter((b2) => b2.sets.length)), d3));
+    const picked = (exId) => d3.ex.find((b2) => b2.exId === exId && b2.mc)?.mc ?? null;
+    const ex = picsLast(withNew(joinAdjacent(d3.ex.map(savedEx).filter((b2) => b2.sets.length)), d3, picked));
     if (!ex.length && !empty) return null;
     const chk = cleanChk(d3.chk);
     return {
@@ -6130,6 +6151,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const wa = a2.sets.filter(isWork).length, wb = b2.sets.filter(isWork).length;
       a2.sets.push(...b2.sets);
       if (b2.nw) a2.nw = true;
+      if (b2.mc && !a2.mc) a2.mc = b2.mc;
       if (wb > wa && b2.rr) a2.rr = b2.rr;
       else if (!a2.rr && b2.rr) a2.rr = b2.rr;
     }
@@ -6138,8 +6160,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function markedNew(d3, exId) {
     return d3.ex.some((b2) => b2.exId === exId && !!b2.nw);
   }
-  function withNew(ex, d3) {
-    return ex.map((b2) => markedNew(d3, b2.exId) ? { ...b2, nw: true } : b2);
+  function withNew(ex, d3, mcOf) {
+    return ex.map((b2) => {
+      const mc = mcOf(b2.exId);
+      const nw = markedNew(d3, b2.exId) ? { nw: true } : {};
+      return mc || markedNew(d3, b2.exId) ? { ...b2, ...nw, ...mc ? { mc } : {} } : b2;
+    });
   }
   function newRow(over) {
     return {
@@ -6198,8 +6224,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       ex: d3.ex.map((b2) => [
         b2.exId,
         (b2.note || "").trim(),
-        // A new machine or gym marked or taken off is an edit too.
+        // A new machine or gym marked or taken off is an edit too, and so is another machine picked.
         !!b2.nw,
+        b2.mc || "",
         // So is a picture added or taken off.
         (b2.pics || []).join(),
         b2.sets.map((x2) => [
@@ -6453,11 +6480,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/trend.ts
   function trendScope(every, anchor) {
-    const exps = sinceNew(every);
+    const exps = onMachine(every);
     const real = exps.filter((x2) => !lighter(x2));
     const curRR = real.length ? real[real.length - 1].rr : null;
     let from = "";
-    for (let i5 = 1; i5 < exps.length; i5++) if (afterBreak(exps[i5 - 1], exps[i5].date)) from = exps[i5].date;
+    for (let i5 = 1; i5 < exps.length; i5++) if (exps[i5].br) from = exps[i5].date;
     const inRange = real.filter((x2) => sameRR(x2.rr, curRR) && x2.date >= from);
     const lastReal = real.length ? real[real.length - 1] : null;
     const lastAny = exps.length ? exps[exps.length - 1] : null;
@@ -6615,23 +6642,22 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return plan != null && plan > 0 ? Math.min(usualSets2, plan) : usualSets2;
   }
   function idxShort(byEx, planSets) {
-    for (const id of Object.keys(byEx)) {
-      const normal = [];
-      let last = null;
-      for (const x2 of byEx[id]) {
-        if (afterBreak(last, x2.date) || x2.nw) normal.length = 0;
-        last = x2;
-        if (lighter(x2)) continue;
-        const prior = normal.filter((q) => sameRR(q.rr, x2.rr));
-        const before2 = prior.slice(-USUAL_BEFORE);
-        const plan = before2.length && !x2.tag ? planSets(id, x2) : null;
-        const saved = !x2.tag && x2.ps != null ? x2.ps : null;
-        const reached = saved != null && prior.some((q) => setsAt(q, q.topW) >= saved);
-        const sh = before2.length ? shortOf(x2, before2, plan, saved, reached) : void 0;
-        if (sh) x2.short = sh;
-        if (!(x2.tag && x2.short)) normal.push(x2);
+    for (const id of Object.keys(byEx))
+      for (const xs of machinesOf(byEx[id])) {
+        const normal = [];
+        for (const x2 of xs) {
+          if (x2.br) normal.length = 0;
+          if (lighter(x2)) continue;
+          const prior = normal.filter((q) => sameRR(q.rr, x2.rr));
+          const before2 = prior.slice(-USUAL_BEFORE);
+          const plan = before2.length && !x2.tag ? planSets(id, x2) : null;
+          const saved = !x2.tag && x2.ps != null ? x2.ps : null;
+          const reached = saved != null && prior.some((q) => setsAt(q, q.topW) >= saved);
+          const sh = before2.length ? shortOf(x2, before2, plan, saved, reached) : void 0;
+          if (sh) x2.short = sh;
+          if (!(x2.tag && x2.short)) normal.push(x2);
+        }
       }
-    }
     function shortOf(x2, before2, plan, saved, reached) {
       const usual = (v3, own2) => mid(x2.tag ? v3 : [...v3, own2]);
       const loads = before2.map((q) => q.topW);
@@ -6807,6 +6833,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const sessions = sortedSessionsIn(M3);
     const V2 = idxSessionsIn(M3, sessions);
     const byEx = V2.byEx;
+    for (const id of Object.keys(byEx)) {
+      machineKeys(byEx[id]);
+      markBreaks(byEx[id]);
+    }
     const anchor = sessions.length ? sessions[sessions.length - 1].date : M3.today();
     const winStart = addDays(anchor, -TREND_DAYS);
     idxAutoLighter(byEx);
@@ -6820,8 +6850,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const prs = [];
     const exStats = {};
     for (const id of Object.keys(byEx)) {
+      const xs = byEx[id];
+      const now2 = xs.length ? xs[xs.length - 1].mk : null;
       let maxBest = null;
-      for (const part of stretchesOf(byEx[id])) maxBest = idxPRsIn(M3, id, part, prs);
+      for (const part of machinesOf(xs)) {
+        const b2 = idxPRsIn(M3, id, part, prs);
+        if (part[0].mk === now2) maxBest = b2;
+      }
       exStats[id] = idxLiftIn(M3, id, byEx[id], maxBest, anchor, winStart, prs);
     }
     const scores = idxScoresIn(M3, exStats);
@@ -6847,9 +6882,58 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const every = IDXIn(M3).byEx[exId] || [];
     const all = T2 === void 0 ? every : every.filter((x2) => x2.date <= T2);
     const d3 = M3.s.draft;
-    if (d3 && (T2 === void 0 || d3.date <= T2) && d3.ex.some((b2) => b2.exId === exId && b2.nw))
-      return sinceNew(all.filter((x2) => x2.date > d3.date));
-    return sinceNew(all);
+    if (d3 && (T2 === void 0 || d3.date <= T2)) {
+      const bs = d3.ex.filter((b2) => b2.exId === exId);
+      const mc = bs.find((b2) => b2.mc)?.mc;
+      if (mc) return onMachine(all, mc);
+      if (bs.some((b2) => b2.nw)) return onMachine(all.filter((x2) => x2.date > d3.date));
+    }
+    return onMachine(all);
+  }
+  var NEW_MACHINE = "new";
+  function draftMachineIn(M3, exId) {
+    const d3 = M3.s.draft;
+    if (!d3) return null;
+    const bs = d3.ex.filter((b2) => b2.exId === exId);
+    const picked = bs.find((b2) => b2.mc)?.mc;
+    if (picked) return picked;
+    const every = IDXIn(M3).byEx[exId] || [];
+    const own2 = d3.editingId ? every.find((x2) => x2.sid === d3.editingId) : void 0;
+    if (own2) return own2.mk;
+    if (bs.some((b2) => b2.nw)) return NEW_MACHINE;
+    const prior = every.filter((x2) => x2.date <= d3.date && x2.sid !== d3.editingId);
+    return prior.length ? prior[prior.length - 1].mk : FIRST_MACHINE;
+  }
+  function machineToSaveIn(M3, exId) {
+    if (!onMachines(EXIn(M3, exId))) return null;
+    const d3 = M3.s.draft;
+    if (!d3) return null;
+    const key = draftMachineIn(M3, exId);
+    if (key == null || key === NEW_MACHINE) return null;
+    if (d3.editingId && d3.ex.some((b2) => b2.exId === exId && b2.nw)) return key === d3.editingId ? null : key;
+    const others = (IDXIn(M3).byEx[exId] || []).filter((x2) => x2.sid !== d3.editingId);
+    return new Set(others.map((x2) => x2.mk)).add(key).size > 1 ? key : null;
+  }
+  function liftMachinesIn(M3, exId) {
+    return machinesOf(IDXIn(M3).byEx[exId] || []).map((g2) => {
+      const x2 = g2[g2.length - 1];
+      const at2 = x2.pts.filter((p3) => Math.abs(p3.w - x2.topW) < EPS_SAME);
+      return { key: g2[0].mk, date: x2.date, w: x2.topW, r: at2.length ? Math.max(...at2.map((p3) => p3.r)) : x2.topReps };
+    }).sort((a2, b2) => a2.date < b2.date ? 1 : a2.date > b2.date ? -1 : 0);
+  }
+  function liftOffIn(M3, exId, key, from, to) {
+    let at2 = from;
+    for (const x2 of IDXIn(M3).byEx[exId] || []) if (x2.mk !== key && x2.date > at2 && x2.date <= to) at2 = x2.date;
+    return daysBetween(at2, to);
+  }
+  function brokeAfterIn(M3, exId, a2, to) {
+    return afterBreak(a2, to) && liftOffIn(M3, exId, a2.mk, a2.date, to) > BACK_DAYS;
+  }
+  function sinceLongBreakOnIn(M3, exId, xs, T2) {
+    const off = (a2, to) => longBreak(a2, to) && liftOffIn(M3, exId, a2.mk, a2.date, to) > LONG_BREAK_DAYS;
+    if (xs.length && off(xs[xs.length - 1], T2)) return [];
+    for (let i5 = xs.length - 1; i5 > 0; i5--) if (off(xs[i5 - 1], xs[i5].date)) return xs.slice(i5);
+    return xs.slice();
   }
   function tallyIn(M3, ss, b2, ex, novel, T2) {
     const { ws, wc, dm, dx, weekHard, wk, recentFrom } = T2;
@@ -6978,6 +7062,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           rr: b2.rr || null,
           ...b2.ps ? { ps: b2.ps } : {},
           ...b2.nw ? { nw: true } : {},
+          ...b2.mc ? { mc: b2.mc } : {},
+          // Its machine, given by machineKeys once the lift's sessions are all in.
+          mk: FIRST_MACHINE,
           // Read from its drop sets alone: neither the PR list nor the bests board reads it, as no drop set feeds a PR.
           ...main.length ? {} : { dropOnly: true },
           topN: atTop.length,
@@ -6992,82 +7079,90 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return { byEx, sessVol, weekSets, weekConf, dayMus, dayMeta: dayMeta2, weekHard, rirLogged, rirTotal };
   }
+  function markBreaks(xs) {
+    const seen = /* @__PURE__ */ new Set();
+    xs.forEach((x2, i5) => {
+      if (seen.has(x2.mk)) {
+        const off = daysBetween(xs[i5 - 1].date, x2.date);
+        if (off > BACK_DAYS) x2.br = true;
+        if (off > LONG_BREAK_DAYS) x2.lbr = true;
+      }
+      seen.add(x2.mk);
+    });
+  }
   function removeWhere(a2, f3) {
     for (let i5 = a2.length - 1; i5 >= 0; i5--) if (f3(a2[i5])) a2.splice(i5, 1);
   }
   function idxAutoLighter(byEx) {
     const wkAuto = {};
-    for (const id of Object.keys(byEx)) {
-      const exps = byEx[id];
-      const prev = [];
-      let run2 = [];
-      const readAgainst = /* @__PURE__ */ new Map();
-      let before2 = null;
-      for (const x2 of exps) {
-        if (afterBreak(before2, x2.date) || x2.nw) {
-          prev.length = 0;
-          run2 = [];
-        }
-        before2 = x2;
-        const ref2 = prev.filter((q) => sameRR(q.rr, x2.rr)).slice(-LIGHTER_REF);
-        const k2 = weekStart(x2.date);
-        if (x2.deload || x2.light) {
-          if (!atUsualWork(x2, ref2.slice(-USUAL_BEFORE))) continue;
-          x2.tag = x2.deload ? "deload" : "light";
-          x2.deload = false;
-          x2.light = false;
-          (wkAuto[k2] || (wkAuto[k2] = { n: 0, l: 0 })).n++;
-          prev.push(x2);
-          continue;
-        }
-        const o3 = wkAuto[k2] || (wkAuto[k2] = { n: 0, l: 0 });
-        o3.n++;
-        if (ref2.length >= 2) {
-          const mL = Math.max(...ref2.map((q) => q.topL)), mT = Math.max(...ref2.map((q) => q.tRaw == null ? -Infinity : q.tRaw));
-          if (mL > 0 && x2.topL <= mL * LIGHTER_LOAD + EPS && (x2.tRaw == null || !isFinite(mT) || x2.tRaw <= mT * LIGHTER_READING + EPS)) {
-            x2.auto = true;
-            o3.l++;
-            run2.push(x2);
-            readAgainst.set(x2, ref2);
-            const mine = new Set(ref2);
-            const inRun = run2.filter((q) => (readAgainst.get(q) || []).some((r4) => mine.has(r4)));
-            if (inRun.length >= NEW_LEVEL.sessions && daysBetween(inRun[0].date, inRun[inRun.length - 1].date) >= NEW_LEVEL.days) {
-              for (const q of inRun) {
-                q.auto = false;
-                q.keep = true;
-                wkAuto[weekStart(q.date)].l--;
-              }
-              removeWhere(prev, (q) => inRun.some((m3) => sameRR(q.rr, m3.rr)));
-              prev.push(...inRun);
-              removeWhere(run2, (q) => inRun.includes(q));
-            }
+    for (const id of Object.keys(byEx))
+      for (const exps of machinesOf(byEx[id])) {
+        const prev = [];
+        let run2 = [];
+        const readAgainst = /* @__PURE__ */ new Map();
+        for (const x2 of exps) {
+          if (x2.br) {
+            prev.length = 0;
+            run2 = [];
+          }
+          const ref2 = prev.filter((q) => sameRR(q.rr, x2.rr)).slice(-LIGHTER_REF);
+          const k2 = weekStart(x2.date);
+          if (x2.deload || x2.light) {
+            if (!atUsualWork(x2, ref2.slice(-USUAL_BEFORE))) continue;
+            x2.tag = x2.deload ? "deload" : "light";
+            x2.deload = false;
+            x2.light = false;
+            (wkAuto[k2] || (wkAuto[k2] = { n: 0, l: 0 })).n++;
+            prev.push(x2);
             continue;
           }
+          const o3 = wkAuto[k2] || (wkAuto[k2] = { n: 0, l: 0 });
+          o3.n++;
+          if (ref2.length >= 2) {
+            const mL = Math.max(...ref2.map((q) => q.topL)), mT = Math.max(...ref2.map((q) => q.tRaw == null ? -Infinity : q.tRaw));
+            if (mL > 0 && x2.topL <= mL * LIGHTER_LOAD + EPS && (x2.tRaw == null || !isFinite(mT) || x2.tRaw <= mT * LIGHTER_READING + EPS)) {
+              x2.auto = true;
+              o3.l++;
+              run2.push(x2);
+              readAgainst.set(x2, ref2);
+              const mine = new Set(ref2);
+              const inRun = run2.filter((q) => (readAgainst.get(q) || []).some((r4) => mine.has(r4)));
+              if (inRun.length >= NEW_LEVEL.sessions && daysBetween(inRun[0].date, inRun[inRun.length - 1].date) >= NEW_LEVEL.days) {
+                for (const q of inRun) {
+                  q.auto = false;
+                  q.keep = true;
+                  wkAuto[weekStart(q.date)].l--;
+                }
+                removeWhere(prev, (q) => inRun.some((m3) => sameRR(q.rr, m3.rr)));
+                prev.push(...inRun);
+                removeWhere(run2, (q) => inRun.includes(q));
+              }
+              continue;
+            }
+          }
+          removeWhere(run2, (q) => sameRR(q.rr, x2.rr));
+          prev.push(x2);
         }
-        removeWhere(run2, (q) => sameRR(q.rr, x2.rr));
-        prev.push(x2);
       }
-    }
-    for (const id of Object.keys(byEx)) {
-      const prev = [];
-      let before2 = null;
-      for (const x2 of byEx[id]) {
-        if (afterBreak(before2, x2.date) || x2.nw) prev.length = 0;
-        before2 = x2;
-        if (x2.deload || x2.light) continue;
-        if (x2.auto || x2.keep) {
-          if (x2.keep) prev.push(x2);
-          continue;
+    for (const id of Object.keys(byEx))
+      for (const exps of machinesOf(byEx[id])) {
+        const prev = [];
+        for (const x2 of exps) {
+          if (x2.br) prev.length = 0;
+          if (x2.deload || x2.light) continue;
+          if (x2.auto || x2.keep) {
+            if (x2.keep) prev.push(x2);
+            continue;
+          }
+          const o3 = wkAuto[weekStart(x2.date)];
+          const ref2 = prev.filter((q) => sameRR(q.rr, x2.rr)).slice(-LIGHTER_REF);
+          if (o3 && o3.l >= 2 && o3.l * 2 >= o3.n && ref2.length && !atUsualLoad(x2, ref2)) {
+            x2.auto = true;
+            continue;
+          }
+          prev.push(x2);
         }
-        const o3 = wkAuto[weekStart(x2.date)];
-        const ref2 = prev.filter((q) => sameRR(q.rr, x2.rr)).slice(-LIGHTER_REF);
-        if (o3 && o3.l >= 2 && o3.l * 2 >= o3.n && ref2.length && !atUsualLoad(x2, ref2)) {
-          x2.auto = true;
-          continue;
-        }
-        prev.push(x2);
       }
-    }
     return wkAuto;
   }
   function lighterTally(sessions, byEx, deloadWeek) {
@@ -7146,7 +7241,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function idxLiftIn(M3, id, exps, maxBest, anchor, winStart, prs) {
     const sc = trendScope(exps, anchor);
     const { real, curRR, inRange, lastReal } = sc;
-    const cur2 = sinceNew(exps);
+    const cur2 = onMachine(exps);
     const exI = EXIn(M3, id);
     const plC = basePlanIn(M3, id);
     const capL = lastReal ? capOfIn(M3, exI, plC, lastReal.topW) : null;
@@ -7492,7 +7587,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const every = I2.byEx[exId];
     if (!every || !every.length) return null;
     const ed = M3.s.draft && M3.s.draft.editingId;
-    const read = date ? liftReadIn(M3, exId, date) : sinceNew(every);
+    const read = liftReadIn(M3, exId, date || void 0);
     const exps = ed ? read.filter((x2) => x2.sid !== ed) : read;
     if (!exps.length) return null;
     const ex = EXIn(M3, exId);
@@ -7511,15 +7606,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function allTimeBestsIn(M3, id, upTo) {
     const all = IDXIn(M3).byEx[id];
-    const exps = all ? sinceNew(upTo ? all.filter((x2) => x2.date <= upTo) : all) : all;
+    const exps = all ? liftReadIn(M3, id, upTo || void 0) : all;
     if (!exps || !exps.length) return null;
     const ex = EXIn(M3, id);
     return { ex, ...recordsOfIn(M3, ex, exps) };
   }
   function sinceBackIn(M3, id) {
     const all = IDXIn(M3).byEx[id];
-    const exps = all ? sinceNew(all) : [];
-    const i5 = longBreakAt(exps);
+    const exps = all ? liftReadIn(M3, id) : [];
+    const i5 = Math.max(0, exps.map((x2) => !!x2.lbr).lastIndexOf(true));
     if (!i5) return null;
     const back2 = exps.slice(i5);
     const r4 = recordsOfIn(M3, EXIn(M3, id), back2);
@@ -7964,16 +8059,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function backDaysIn(M3, exId, plan, opts) {
     const T2 = opts.before && isDate(opts.before) ? opts.before : M3.today();
-    const all = sinceLongBreak(liftReadIn(M3, exId, T2), T2);
+    const all = sinceLongBreakOnIn(M3, exId, liftReadIn(M3, exId, T2), T2);
     const want = [+plan.repMin, +plan.repMax];
     const xs = rangeInUse(
       all.filter((x2) => !offTarget(x2)),
       want
     ) ? all.filter((x2) => sameRR(x2.rr, want)) : all;
     if (!xs.length) return 0;
-    if (afterBreak(xs[xs.length - 1], T2)) return daysBetween(xs[xs.length - 1].date, T2);
+    const last = xs[xs.length - 1];
+    if (brokeAfterIn(M3, exId, last, T2)) return liftOffIn(M3, exId, last.mk, last.date, T2);
     for (let i5 = xs.length - 1; i5 > 0 && offTarget(xs[i5]); i5--)
-      if (afterBreak(xs[i5 - 1], xs[i5].date)) return daysBetween(xs[i5 - 1].date, xs[i5].date);
+      if (brokeAfterIn(M3, exId, xs[i5 - 1], xs[i5].date)) return liftOffIn(M3, exId, xs[i5].mk, xs[i5 - 1].date, xs[i5].date);
     return 0;
   }
   function pastWordsIn(M3, ex, top, lbl) {
@@ -8130,8 +8226,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const T2 = opts.before && isDate(opts.before) ? opts.before : M3.today();
     const every = IDXIn(M3).byEx[exId];
     const read = every ? liftReadIn(M3, exId, T2) : every;
-    const all = read ? sinceLongBreak(read, T2) : read;
-    const away = read && read.length && all && !all.length ? daysBetween(read[read.length - 1].date, T2) : 0;
+    const all = read ? sinceLongBreakOnIn(M3, exId, read, T2) : read;
+    const lastRead = read && read.length ? read[read.length - 1] : null;
+    const away = lastRead && all && !all.length ? liftOffIn(M3, exId, lastRead.mk, lastRead.date, T2) : 0;
     const ex = EXIn(M3, exId);
     const injM = exInjuryIn(M3, ex);
     const full = all ? all.filter((x2) => !offTarget(x2)) : [];
@@ -8181,7 +8278,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const tgtRir = +plan.rir || 0;
     const xs = all || [];
     let since = xs.length - 1;
-    while (since > 0 && !afterBreak(xs[since - 1], xs[since].date)) since--;
+    while (since > 0 && !brokeAfterIn(M3, exId, xs[since - 1], xs[since].date)) since--;
     const early = xs.length - since <= EARLY_SESSIONS;
     const tp = topPts.slice(0, Math.max(1, +plan.sets || topPts.length));
     const C2 = {
@@ -8229,7 +8326,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (C2.injM || C2.noAdd || ex.assist || noE1(ex) || !(top > 0)) return null;
     const i5 = all.indexOf(last);
     let j3 = i5;
-    while (j3 > 0 && !afterBreak(all[j3 - 1], all[j3].date)) j3--;
+    while (j3 > 0 && !brokeAfterIn(M3, C2.exId, all[j3 - 1], all[j3].date)) j3--;
     if (j3 < 1) return null;
     const pre = exps.filter((x2) => x2.date < all[j3].date).pop();
     if (!pre) return null;
@@ -8294,11 +8391,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         inj: injM
       };
     const rr = +plan.rir || 0;
-    const can = +plan.repMax + Math.round(rr);
     const reps = `${repSpan(plan.repMin, plan.repMax)} rep${+plan.repMax === 1 ? "" : "s"}`;
     const stop = rr >= 1 ? `stopping with about ${rr} still in you` : "to the last rep you can do well";
+    const spare = rr >= 1 ? `about ${rr} to spare` : "to the last good rep";
     const kin = !ex.bw ? kinStartIn(M3, ex, plan, T2) : null;
-    const lead = away ? `Back after ${awayWords(away)}` : "First time";
+    const d3 = M3.s.draft;
+    const newMachine = !away && !!d3 && d3.ex.some((b2) => b2.exId === ex.id && b2.nw) && (IDXIn(M3).byEx[ex.id] || []).some((x2) => x2.date <= T2);
+    const lead = away ? `Back after ${awayWords(away)}` : newMachine ? onMachines(ex) ? "New machine" : "New machine or gym" : "First time";
     const was = away ? { away } : {};
     if (kin)
       return {
@@ -8311,8 +8410,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         tgt: null,
         kin: kin.ex.id
       };
-    const text = ex.assist ? `${lead}: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.` : ex.bw ? `${lead}: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.` : `${lead}: pick a load you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
-    const again = ex.assist ? `${lead}: help for about ${can} reps; do ${reps}.` : ex.bw ? `${lead}: bodyweight only; do ${reps}.` : `${lead}: a load you could lift about ${can} times; do ${reps}.`;
+    const text = ex.assist ? `${lead}: set the help for ${reps}, ${spare}.` : ex.bw ? `${lead}: bodyweight only, ${reps}, ${spare}.` : `${lead}: pick a load for ${reps}, ${spare}.`;
+    const again = text;
     return { ...was, w: w0, text, again, lastR: [], last: "", target: "", tgt: null };
   }
   function sgEasyIn(M3, C2) {
@@ -10153,10 +10252,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/adjust.ts
   function stretchTopIn(M3, exId, plan) {
-    const xs = sinceLongBreak(liftReadIn(M3, exId, M3.today()), M3.today());
+    const xs = sinceLongBreakOnIn(M3, exId, liftReadIn(M3, exId, M3.today()), M3.today());
     if (!xs.length) return null;
     let i5 = xs.length - 1;
-    while (i5 > 0 && !afterBreak(xs[i5 - 1], xs[i5].date)) i5--;
+    while (i5 > 0 && !brokeAfterIn(M3, exId, xs[i5 - 1], xs[i5].date)) i5--;
     let t4 = null;
     for (const x2 of xs.slice(i5)) {
       const w2 = workLoad(x2.pts, +plan.repMin);
@@ -10331,6 +10430,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var hardCredit = live(hardCreditIn);
   var isHard = live(isHardIn);
   var liftRead = live(liftReadIn);
+  var draftMachine = live(draftMachineIn);
+  var liftMachines = live(liftMachinesIn);
+  var machineToSave = live(machineToSaveIn);
   var cycleState = live(cycleStateIn);
   var sessionMuscleSets = live(sessionMuscleSetsIn);
   var rolling7 = live(rolling7In);
@@ -12232,15 +12334,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return unit + (m3 === "each" ? " each" : m3 === "side" ? "/side" : m3 === "stack" ? " stack" : "");
   }
   var LOAD_LONG = {
-    each: "Enter the weight of one dumbbell. Weight lifted counts both.",
-    side: "Enter the plates on one side. Weight lifted counts both sides.",
-    stack: "Enter the pin setting. It is not comparable across machines.",
-    bw: "Enter only what you add (belt, vest, dumbbell); 0 for bodyweight. Your logged bodyweight is added for estimates."
+    each: "Weight of one dumbbell.",
+    side: "Plates on one side.",
+    stack: "Weight on the stack.",
+    bw: "Weight you add. 0 for bodyweight."
   };
   function loadLong(ex) {
-    if (ex.assist)
-      return "Enter the assistance the machine gives, as on its pin. Less assistance is progress; your logged bodyweight minus it is what counts.";
-    return LOAD_LONG[loadMode(ex)] || (ex.equip === "barbell" ? "Enter everything on the bar, the bar included." : ex.equip === "dumbbell" ? "Enter the weight of the one dumbbell you hold." : "Enter the total load.");
+    if (ex.assist) return "Assistance on the machine.";
+    return LOAD_LONG[loadMode(ex)] || (ex.equip === "barbell" ? "Total weight, bar included." : ex.equip === "dumbbell" ? "Weight of the dumbbell." : "Total weight.");
   }
   function loadColWord(ex) {
     if (ex.assist) return "Assist";
@@ -15427,7 +15528,7 @@ ${more}`;
     const ours = heads.some((h3) => /^load_(lb|kg)$/.test(h3)) && heads.includes("exercise_note");
     const strong = heads.includes("workout name") && heads.includes("set order");
     const col = (n3) => ours && heads.includes(n3) ? heads.indexOf(n3) : null;
-    const cNote = col("session_note"), cMin = col("session_minutes"), cHr = col("avg_hr"), cUnit = col("unit"), cTyped = col("typed_load"), cTypedU = col("typed_unit");
+    const cNote = col("session_note"), cMin = col("session_minutes"), cHr = col("avg_hr"), cUnit = col("unit"), cTyped = col("typed_load"), cTypedU = col("typed_unit"), cMachine = col("machine");
     const at2 = (r4, i5) => i5 == null ? "" : csvUnguard(String(r4[i5] == null ? "" : r4[i5]).trim());
     let lastDate = null, lastEx = null, lastName = "";
     let skipped = 0, cardio = 0;
@@ -15496,6 +15597,8 @@ ${more}`;
         it = { name: ex, sets: [], note: "", ...cell("ss") ? { ss: cell("ss") } : {} };
         ss.items.set(ex, it);
       }
+      const mc = at2(r4, cMachine);
+      if (mc && !it.mc) it.mc = mc;
       const en = String(cell("note") || "").trim();
       if (en && !it.note.split("; ").includes(en)) it.note = (it.note ? it.note + "; " + en : en).slice(0, LIMITS.note);
       const n3 = Math.min(Math.max(Math.round(num(cell("sets")) || 1), 1), ROW_SETS);
@@ -23548,7 +23651,14 @@ ${JSON.stringify(ctx, null, 1)}`;
         }
         const prev = ex.find((b2) => b2.exId === exo.id);
         if (prev) prev.sets.push(...sets);
-        else ex.push({ exId: exo.id, note: it.note || "", rr: null, sets });
+        else
+          ex.push({
+            exId: exo.id,
+            note: it.note || "",
+            rr: null,
+            sets,
+            ...it.mc && onMachines(exo) ? { mc: fixId(it.mc) } : {}
+          });
         if (it.ss) grp[exo.id] = it.ss;
       }
       if (ex.length && Object.keys(grp).length) ssOf[sid] = grp;
@@ -24537,9 +24647,26 @@ ${JSON.stringify(ctx, null, 1)}`;
         "unit",
         "calibration",
         "typed_load",
-        "typed_unit"
+        "typed_unit",
+        "machine"
       ]
     ];
+    const machineOf = /* @__PURE__ */ new Map();
+    const byEx = IDX().byEx;
+    for (const id of Object.keys(byEx)) {
+      const xs = byEx[id] || [];
+      const ms = liftMachines(id);
+      if (ms.length < 2) continue;
+      const first = /* @__PURE__ */ new Map();
+      for (const x2 of xs) if (!first.has(x2.mk)) first.set(x2.mk, x2.date);
+      const used = /* @__PURE__ */ new Set();
+      for (const [mk, date] of first) {
+        let name = date;
+        for (let n3 = 2; used.has(name); n3++) name = `${date}-${n3}`;
+        used.add(name);
+        for (const x2 of xs) if (x2.mk === mk) machineOf.set(`${x2.sid}|${id}`, name);
+      }
+    }
     const typed = (ex, w2) => {
       const u4 = typedUnit(w2) ?? liftU(ex);
       return [Math.round((u4 === "lb" ? w2 / LB : w2) * TYPED_CENTS) / TYPED_CENTS, u4];
@@ -24572,7 +24699,8 @@ ${JSON.stringify(ctx, null, 1)}`;
             "",
             ex.timed ? "seconds" : "reps",
             s3.cal ? `stop at ${s3.cal.at}, called ${s3.cal.pred} left` : "",
-            ...typed(ex, +s3.w || 0)
+            ...typed(ex, +s3.w || 0),
+            machineOf.get(`${ss.id}|${b2.exId}`) || ""
           ]);
         });
       }
@@ -24599,6 +24727,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         c4.min,
         c4.hr == null ? "" : c4.hr,
         "minutes",
+        "",
         "",
         "",
         ""
@@ -26090,6 +26219,7 @@ ${JSON.stringify(ctx, null, 1)}`;
                 })
               ),
               ...b2.nw ? { nw: true } : {},
+              ...b2.mc ? { mc: b2.mc } : {},
               ...b2.pics && b2.pics.length ? { pics: [...b2.pics] } : {}
             };
           })
@@ -26155,6 +26285,59 @@ ${JSON.stringify(ctx, null, 1)}`;
        the app's unit it follows the app again, as one never switched does), so every screen and the next session read it;
        the lift's blocks in the workout read their targets again in it, and a load already typed is converted, never read
        as a number of the new unit. */
+    machineOpen(t4) {
+      const b2 = Number(t4.dataset.b);
+      if (state.draft && state.draft.ex[b2]) openModal({ kind: "machine", b: b2 });
+    },
+    /* A machine picked for a lift in a session (390 C): every block of it is on that machine, read from that machine's
+       sessions alone. In a workout its target is read again, the sets done kept (a target from another machine is no
+       target here), and a machine done on before brings its own kg or lb (as its weights were typed); New machine marks
+       the lift's session new (nw), so it starts there. In an edit from History the pick names this session's machine
+       and nothing else, never the sessions after it or the lift's unit: a machine done on before by its key, a new one by the session's own; its mark,
+       which later sessions may follow, and the lift's unit stay as they are, and the readings follow once it is saved.
+       One Undo step. */
+    machinePick(t4) {
+      const d3 = state.draft;
+      const b0 = d3 && d3.ex[Number(t4.dataset.b)];
+      const e5 = b0 && state.exercises.find((x2) => x2.id === b0.exId);
+      if (ui.modal && ui.modal.kind === "machine") closeModal();
+      const k2 = t4.dataset.k;
+      if (!d3 || !b0 || !e5 || !k2 || k2 === draftMachine(b0.exId)) return;
+      const was = k2 === NEW_MACHINE ? null : liftMachines(b0.exId).find((x2) => x2.key === k2);
+      if (k2 !== NEW_MACHINE && !was) return;
+      const ed = d3.editingId;
+      if (ed && k2 === NEW_MACHINE && draftMachine(b0.exId) === ed) return;
+      const u4 = was && !ed ? typedUnit(was.w) : null;
+      act(
+        () => {
+          if (u4) {
+            if (u4 === appU()) delete e5.unit;
+            else e5.unit = u4;
+          }
+          for (const b2 of d3.ex)
+            if (b2.exId === b0.exId) {
+              if (ed) b2.mc = k2 === NEW_MACHINE ? ed : k2;
+              else if (k2 === NEW_MACHINE) {
+                b2.nw = true;
+                delete b2.mc;
+              } else {
+                b2.mc = k2;
+                delete b2.nw;
+              }
+            }
+          if (!ed) {
+            for (const b2 of d3.ex) if (b2.exId === b0.exId) refreshBlock(b2);
+          }
+        },
+        { undo: true }
+      );
+      rerenderKeepScroll();
+      toast(
+        // The machine's label is one thing to read, so it is kept on one line (no-break spaces) when the message wraps.
+        was ? `${e5.name}: ${`${fmtDate(was.date)} · ${listLabel(e5, was.w, true)} × ${was.r}`.replace(/ /g, " ")}` : `${e5.name}: new machine`,
+        true
+      );
+    },
     unitOpen(t4) {
       const b2 = Number(t4.dataset.b);
       if (state.draft && state.draft.ex[b2]) openModal({ kind: "unit", b: b2 });
@@ -26683,7 +26866,8 @@ ${JSON.stringify(ctx, null, 1)}`;
           routineId: activeRoutine().id,
           freestyle: freeMode()
         }),
-        d3
+        d3,
+        machineToSave
       )
     );
     const cardio = draftCardio(d3).map((c4) => cleanCardio(c4));
@@ -28239,7 +28423,8 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Back after more than ${BACK_DAYS / WEEK_DAYS} weeks off a lift</b>, up to ${awayWords(LONG_BREAK_DAYS)}: about ${pctOf(LIGHT_SHARE)}% of its last working weight, with ${BACK_RIR} or more reps in reserve (rule of thumb). The ${BACK_DAYS / WEEK_DAYS} weeks is a rule of thumb for where a break begins: strength falls the longer a lift is left. That first session back is the lift's new start: its trend and stall test start again from it, never drawn across the break. Until the lift is back at its load from before the break, each full session sets the next load: what its sets say fits your usual reps, never lower than the load you did and never past that load (rule of thumb). Back at it in fewer than your planned sets, the next session asks every set at it, for the fewest reps you did there. Then the usual rules. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about ${pctOf(LIGHT_SHARE)}% as long.</p>
    <p><b>Back after more than ${awayWords(LONG_BREAK_DAYS)} off a lift</b>, it starts fresh, as a lift never done: pick a load for your first session back and the next is worked out from it, so nothing from before the break is asked of you (rule of thumb: after that long, the strength left varies too much to guess). Your records stay. All-time bests keeps the best you ever did and, beside it, your best since you came back; a set is a PR only when it beats every set you ever did, and the recap says when you beat your best since you came back.</p>
    <p><b>Your gym</b> (Settings): the dumbbells, kettlebells, plates, and stack steps you have. Suggestions stay on them, and a weight you type for a dumbbell counts as the nearest one.</p>
-   <p><b>New machine or gym</b> (in an exercise's ⋯ menu during a session): the lift starts over from that session, as from a first one, so another machine's loads give no target, PR, or best. Its trend, stalls, and dumbbell steps read from that session on; earlier sessions stay in History and its chart. Tap it again before Finish to take it off. Use it only when the loads there don't compare, such as another brand of machine: plates and dumbbells weigh the same at every gym.</p>
+   <p><b>Machine</b> (in a machine, cable or Smith machine lift's ⋯ menu during a session): the machines the lift was done on, each by the weight last done on it, and New machine. Each machine keeps its own targets, PRs, bests, trend, and kg or lb, so a harder machine never reads as a lighter day and an easier one never makes a PR; pick one you used before and its numbers pick up where they were. A lift stays on the machine it was last done on until you pick another. Its sets and volume count as one exercise either way. Picked the wrong one? Edit the session in History and pick the right one there.</p>
+   <p><b>New machine or gym</b> (in a free weight's ⋯ menu): the lift starts over from that session, as from a first one, so its loads there give no target, PR, or best. Earlier sessions stay in History and its chart. Tap it again before Finish to take it off. Use it only when the loads there don't compare: plates and dumbbells weigh the same at every gym.</p>
    <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the ${numWord(USUAL_BEFORE)} before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks, and in a session on a day of your routine they are the sets the plan gave the lift that day, once a session has done that many, so fewer sets than planned never become the usual there; a blank session saves, with each lift your routine plans, the sets of its day nearest to what you did, among the days that plan it in that session's rep range (the fewer on a tie), and is held to them the same way; in Freestyle (Today opens blank) it saves none, and your own sets lead. Each session keeps the plan it was done to, so a plan changed later never rereads the sessions before it; sessions saved before version 2.12 read their own sets. A set counts toward them when its load is within ${shareWords(1 - LIGHTER_LOAD)} of the session's working weight, or at the usual load (rule of thumb): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set ${shareWords(1 - LIGHTER_LOAD)} or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than ${pctOf(1 - USUAL_SHARE)}% by strength, a rule of thumb), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the ${numWord(USUAL_BEFORE)} before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled fewer sets, below usual, lighter, or deload when it was. When it did not set the target, the next target comes from the last full session, and the i beside the target names its date; grey reps come from that session too after one below usual or done lighter.</p>
    <p><b>Deload week</b>: ${shareWords(LIGHTER_SET_SHARE)} the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the load the normal day would ask for (or of last time's, if lower), in whole steps down (never under the empty bar on a full-bar lift), the bottom of the range, ${LIGHT_RIR} or more reps in reserve. A week with ${LIGHTER_WEEK_WORDS}, stays out of the weekly volume average (a lift done there at its usual load with fewer sets than usual counts as done lighter for this, the sets cut on purpose); each lift done lighter stays out of its trend. A <b>lighter day</b> is the same for one day.</p>
@@ -28427,7 +28612,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const e5 = EX(b2.exId);
     const op = (o3, l4, dis, cls) => b`<button class=${"btn fullw u-mt6 " + (cls || "")} data-act="bMenuDo" data-op=${o3} data-b=${String(m3.b)} ?disabled=${!!dis}>${l4}</button>`;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${exName(b2.exId)}</h3>${closeX()}</div>
-    ${op("bHist", "History and chart")}${op("bMus", "Muscles worked")}${op("wAdd", "Add a warm-up set")}${op("dropAdd", "Add a drop set (about 75% load)")}${op("bQuick", "Type or dictate sets")}${op("bNote", b2.note ? "Edit note" : "Add note")}${op("bSwap", "Swap exercise")}${op("bNew", markedNew(d3, b2.exId) ? "Same machine as before" : "New machine or gym")}${howToLink(e5)}${op("bInc", `Load step: ${fmtWOf(e5, incOf(e5, b2.plan))} ${liftU(e5)}`)}${op("bMax", `Heaviest available: ${e5.maxLoad != null ? fmtWOf(e5, liftMax(e5) ?? 0) + " " + liftU(e5) : "no limit"}`)}${rirShow(e5) ? op("bCal", "Calibration set (RIR check)") : ""}${nx ? op("bSs", linked ? "Unlink superset" : `Superset with ${exName(nx.exId)}`) : ""}${op("bUp", "Move up", m3.b === 0)}${op("bDown", "Move down", !nx)}${op("fbOpen", "Report a problem")}${op("bDel", "Remove from session", false, "danger")}</div>`;
+    ${op("bHist", "History and chart")}${op("bMus", "Muscles worked")}${op("wAdd", "Add a warm-up set")}${op("dropAdd", "Add a drop set (about 75% load)")}${op("bQuick", "Type or dictate sets")}${op("bNote", b2.note ? "Edit note" : "Add note")}${op("bSwap", "Swap exercise")}${onMachines(e5) ? op("machineOpen", "Machine") : op("bNew", markedNew(d3, b2.exId) ? "Same machine as before" : "New machine or gym")}${howToLink(e5)}${op("bInc", `Load step: ${fmtWOf(e5, incOf(e5, b2.plan))} ${liftU(e5)}`)}${op("bMax", `Heaviest available: ${e5.maxLoad != null ? fmtWOf(e5, liftMax(e5) ?? 0) + " " + liftU(e5) : "no limit"}`)}${rirShow(e5) ? op("bCal", "Calibration set (RIR check)") : ""}${nx ? op("bSs", linked ? "Unlink superset" : `Superset with ${exName(nx.exId)}`) : ""}${op("bUp", "Move up", m3.b === 0)}${op("bDown", "Move down", !nx)}${op("fbOpen", "Report a problem")}${op("bDel", "Remove from session", false, "danger")}</div>`;
   }
   function injurySheet() {
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3>${closeX()}</div>
@@ -28469,8 +28654,21 @@ ${JSON.stringify(ctx, null, 1)}`;
     <p>${loadLong(ex)}</p>
     <div class="row spread u-mt10"><span>Weights in</span><div class="seg" role="group" aria-label="Weights in">${["lb", "kg"].map(
       (k2) => b`<button class=${k2 === u4 ? "chip on" : "chip"} data-act="liftUnit" data-b=${m3.b} data-v=${k2} aria-pressed=${String(k2 === u4)}>${k2}</button>`
-    )}</div></div>
-    <p class="small muted">The unit marked on its weights. Other lifts stay in ${appU()}.</p></div>`;
+    )}</div></div></div>`;
+  }
+  function machineSheet(m3) {
+    const b2 = blockAt(m3.b);
+    if (!b2) return null;
+    const ex = EX(b2.exId);
+    const d3 = state.draft;
+    const ms = liftMachines(b2.exId);
+    const k02 = draftMachine(b2.exId);
+    const now2 = d3 && k02 === d3.editingId && !ms.some((x2) => x2.key === k02) ? NEW_MACHINE : k02;
+    const row = (k2, label) => b`<button class=${"mcrow" + (k2 === now2 ? " on" : "")} data-act="machinePick" data-b=${m3.b} data-k=${k2} aria-pressed=${String(k2 === now2)}><span class="mcdot"></span><span>${label}</span></button>`;
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}</h3>${closeX()}</div>
+    <p class="mc-h">Machine</p><div class="mclist">${ms.map(
+      (x2) => row(x2.key, `${fmtDate(x2.date)} · ${listLabel(ex, x2.w, true)} × ${x2.r}`)
+    )}${row(NEW_MACHINE, "New machine")}</div></div>`;
   }
   function noteSheet(m3) {
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m3.title}</h3>${closeX()}</div>
@@ -29184,6 +29382,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     quick: { draw: quickSheet },
     max: { draw: maxSheet },
     unit: { draw: unitSheet },
+    machine: { draw: machineSheet },
     cal: { draw: calibrationSheet },
     // Short on time's trial session (startShort) goes again when the sheet closes without its trim and nothing was logged: only a question was asked.
     short: {
@@ -29275,6 +29474,9 @@ ${JSON.stringify(ctx, null, 1)}`;
     window.__ironlog = {
       act,
       liftRead,
+      draftMachine,
+      liftMachines,
+      machineToSave,
       nextSets,
       bwNoLoad,
       withTimeout,

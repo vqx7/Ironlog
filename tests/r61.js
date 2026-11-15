@@ -326,24 +326,30 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       const L = window.__ironlog; const b = L.state.draft.ex[0]; const el = document.getElementById('blk-0');
       return { target: b.target, hint: b.hint, sw: b.sw, w: b.sets.map(x => x.w), nw: b.nw === true, tag: !!el && !!el.querySelector('.bh') && /New machine/.test(el.querySelector('.bh').innerText), prs: el ? el.querySelectorAll('[data-pr], .bf-pr').length : -1 };
     });
-    // The menu as a lifter opens it: the ⋯ on the exercise, then the option by its words.
-    const menu = async words => {
+    /* The menu as a lifter opens it: the ⋯ on the exercise, then the option by its words. The leg press is a machine, so
+       since 2.67 (390 C) its menu has Machine, whose sheet has New machine and the machines it was done on (the first,
+       "0"): tapped, it puts the lift on the other one, as New machine or gym marked and took off the mark before. It
+       answers the option's words and the machine the sheet marked. */
+    const menu = async (words, to) => {
       await P.page.click('#blk-0 [data-act="bMenu"]'); await wait(100);
-      const label = await ev(() => [...document.querySelectorAll('#modal [data-op="bNew"]')].map(x => x.textContent.trim()).join('|'));
-      if (words && label) { await P.page.click(`#modal [data-op="bNew"]`); await wait(150); }
+      const label = await ev(() => [...document.querySelectorAll('#modal [data-op="machineOpen"]')].map(x => x.textContent.trim()).join('|'));
+      if (!label) { await ev(() => window.__ironlog.ACT.mClose()); return { label, on: null }; }
+      await P.page.click('#modal [data-op="machineOpen"]'); await wait(150);
+      const on = await ev(() => { const b = document.querySelector('#modal [data-act="machinePick"][aria-pressed="true"]'); return b ? b.dataset.k : null; });
+      if (words) { await P.page.click(`#modal [data-act="machinePick"][data-k="${to || (on === 'new' ? '0' : 'new')}"]`); await wait(150); }
       else await ev(() => window.__ironlog.ACT.mClose());
-      return label;
+      return { label, on };
     };
     const before = await block();
     const label0 = await menu(true);
     const marked = await block();
     const label1 = await menu(false);
-    ok(label0 === 'New machine or gym' && label1 === 'Same machine as before', '5. the exercise menu offers New machine or gym, and once tapped, Same machine as before', [label0, label1]);
-    ok(before.target && /225/.test(before.target) && marked.nw && marked.target === '' && /^First time/.test(marked.hint) && marked.sw == null && marked.w.every(w => w == null) && marked.tag,
-      '5. marked, leg press reads as a first session at the new machine: no target from 225 kg, no grey load, the first-time hint, and a New machine tag on the exercise', { before, marked });
+    ok(label0.label === 'Machine' && label0.on === '0' && label1.label === 'Machine' && label1.on === 'new', '5. the leg press\'s menu offers Machine, its sheet on the first machine, and once New machine is picked, on the new one', [label0, label1]);
+    ok(before.target && /225/.test(before.target) && marked.nw && marked.target === '' && /^New machine/.test(marked.hint) && marked.sw == null && marked.w.every(w => w == null) && marked.tag,
+      '5. on a new machine, leg press reads as a first session there: no target from 225 kg, no grey load, the new machine\'s first-session hint, and a New machine tag on the exercise', { before, marked });
     await menu(true);
     const unmarked = await block();
-    ok(!unmarked.nw && unmarked.target === before.target && unmarked.sw === before.sw && !unmarked.tag, '5. tapped again, it reads its history again: the target and load it had before', { before, unmarked });
+    ok(!unmarked.nw && unmarked.target === before.target && unmarked.sw === before.sw && !unmarked.tag, '5. the first machine picked again, it reads its history again: the target and load it had before', { before, unmarked });
     // The new gym's leg press reads heavier (338 B: 280 x 11 read as a weight PR, best estimate 392): marked, it sets no PR.
     await menu(true);
     await ev(() => { const L = window.__ironlog; const d = L.state.draft; for (const x of d.ex[0].sets) Object.assign(x, { w: 280, r: 11, rir: 1, done: true }); L.render(); });
@@ -384,13 +390,15 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       L.ui.tab = 'history'; L.render(); L.ACT.histEdit({ dataset: { id: sv.id } }); await new Promise(r => setTimeout(r, 150));
       return { nw: L.state.draft.ex[0].nw === true, id: sv.id };
     });
-    const label2 = await menu(true);
+    const label2 = await menu(true, '0');
     const ed2 = await ev(async id => {
       const L = window.__ironlog; const d = L.state.draft; d._rampAsked = true; d._leftAsked = true; L.ACT.finishNow(); await new Promise(r => setTimeout(r, 300)); if (L.ui.modal) L.ACT.mClose();
       const sv = L.state.sessions.find(x => x.id === id);
-      return { draft: !!L.state.draft, nw: 'nw' in sv.ex[0], prs: L.IDX().prs.filter(p => p.exId === 'legPress' && p.sid === id).length };
+      return { draft: !!L.state.draft, nw: 'nw' in sv.ex[0], mc: sv.ex[0].mc || null, prs: L.IDX().prs.filter(p => p.exId === 'legPress' && p.sid === id).length };
     }, ed.id);
-    ok(ed.nw && label2 === 'Same machine as before' && !ed2.draft && !ed2.nw && ed2.prs > 0, '5. an edit from History opens with the mark, and saved with it taken off, the session reads against the old gym again (a PR)', { ed, label2, ed2 });
+    /* The edit opens on the machine the session began (its own key), and the first machine picked there names it on
+       that session alone (its mark kept, which sessions after it would follow): read against the old gym, a PR. */
+    ok(ed.nw && label2.on === ed.id && !ed2.draft && ed2.mc === '0' && ed2.prs > 0, '5. an edit from History opens on the new machine, and saved with the first machine picked, the session reads against the old gym again (a PR)', { ed, label2, ed2 });
     // A mark only as true: anything else a damaged save carries is dropped, on a saved exercise and in a workout.
     const clean = await ev(() => {
       const L = window.__ironlog; const f = L.normalize(null);
