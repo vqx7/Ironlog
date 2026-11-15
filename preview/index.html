@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-+US3mXlM2M0S+Jr9mcQ7km63eTkswQi2XRc3X3ake9w=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-UCYRqwDdkU3D/WRBA45cy3z5ZIe4xKL0GSzwwr/7664=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.14-r113">
+<meta name="app-build" content="2026.11.14-r114">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -256,6 +256,7 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
 .u-posrel{position:relative!important}
 .u-taright_fnone{text-align:right!important;flex:none!important}
 .u-w70{width:70px!important}
+.u-wsnw{white-space:nowrap!important}
 [hidden]{display:none!important}
 /* Content inside <details> is rendered through the browser's own shadow slot,
    which the rule above cannot reach, so padded inputs stuck out of their card. */
@@ -2183,8 +2184,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.67";
-  var APP_VERSION = "2026.11.14-r113";
+  var DISPLAY_VERSION = "2.68";
+  var APP_VERSION = "2026.11.14-r114";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -5958,7 +5959,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var NIL = "–";
   var missedTag = (s3) => isMissed(s3) ? " missed" : "";
   var DIRTY_SAID = "Save or cancel first. Your changes are still here.";
-  var MISSED_SAID = "Logged as missed. It counts toward no volume or PRs, and never earns a step up.";
+  var MISSED_SAID = "Logged as missed.";
   var fmtG = (v3) => String(r3(v3));
   var repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
   var YEAR_DAYS = 365.25;
@@ -8014,17 +8015,25 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     if (at2 == null)
       return { kind: "step", first: null, below: () => null, floor: () => null, above: () => null, has: () => false };
-    const from = at2;
-    const step = incOfIn(M3, ex, plan, from);
+    const step = incOfIn(M3, ex, plan, at2);
+    const anchor = unitAnchorIn(M3, ex, at2, step);
+    const from = anchor ?? at2;
+    const tk = anchor == null || !(step > 0) ? EPS_SAME : Math.max(EPS_SAME, rackTolIn(M3) / step);
     const k2 = (w2) => (w2 - from) / step;
     return {
       kind: "step",
       first: null,
-      below: (w2) => step > 0 ? from + (Math.ceil(k2(w2) - EPS_SAME) - 1) * step : null,
-      floor: (w2) => step > 0 ? from + Math.floor(k2(w2) + EPS_SAME) * step : null,
-      above: (w2) => step > 0 ? from + (Math.floor(k2(w2) + EPS_SAME) + 1) * step : null,
-      has: (w2) => step > 0 && Math.abs(k2(w2) - Math.round(k2(w2))) < EPS_SAME
+      below: (w2) => step > 0 ? from + (Math.ceil(k2(w2) - tk) - 1) * step : null,
+      floor: (w2) => step > 0 ? from + Math.floor(k2(w2) + tk) * step : null,
+      above: (w2) => step > 0 ? from + (Math.floor(k2(w2) + tk) + 1) * step : null,
+      has: (w2) => step > 0 && Math.abs(k2(w2) - Math.round(k2(w2))) < tk
     };
+  }
+  function unitAnchorIn(M3, ex, at2, step) {
+    const su = inUnitIn(M3, step);
+    if (ex.timed || !typedOtherIn(M3, at2) || !(su > 0) || !onStep(su, TYPED_STEP)) return null;
+    const o3 = inUnitIn(M3, loadFloorIn(M3, ex));
+    return kgOfIn(M3, o3 + Math.round((inUnitIn(M3, at2) - o3) / su) * su);
   }
   function lighterLoadIn(M3, ex, plan, from, to) {
     M3 = liftModelIn(M3, ex);
@@ -16875,8 +16884,8 @@ ${more}`;
     if (!d3 || !state.settings.autoDone || drawing()) return false;
     const b2 = d3.ex[bi];
     const x2 = b2 && b2.sets[si];
-    if (!b2 || !x2 || x2.done || +(x2.r ?? 0) > 0) return false;
-    const lr = greyR(b2, si);
+    if (!b2 || !x2 || x2.done) return false;
+    const lr = +(x2.r ?? 0) > 0 ? +(x2.r ?? 0) : greyR(b2, si);
     if (lr == null || !(lr > 0)) return false;
     act(
       () => {
@@ -21752,7 +21761,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   function bwAskCard(d3) {
     if (d3.editingId || d3.past || state.bodyweights.length || !d3.ex.some((b2) => EX(b2.exId).bw)) return "";
     if (prefGet(BWASK_KEY)) return "";
-    return b`<div class="card" id="bwAsk"><p class="small u-m0-0-8"><b>Your bodyweight</b> counts in bodyweight lifts, for weight lifted and estimates. ${tipButton("Logged as a weigh-in for today. Add more on Today, under Body.", "About bodyweight")}</p>
+    return b`<div class="card" id="bwAsk"><p class="small u-m0-0-8"><b>Your bodyweight</b>, for bodyweight lifts ${tipButton("It counts in bodyweight lifts, for weight lifted and estimates. Logged as a weigh-in for today; add more on Today, under Body.", "About bodyweight")}</p>
   <div class="row"><label class="field u-f1_m0" for="bwVal"><span class="vh">Bodyweight (${bodyU()})</span>${bodyField("bwVal", { placeholder: `Weight (${bodyU()})`, label: `Bodyweight (${bodyU()})` })}</label>${bodyUnitTap("bwVal")}<button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
   }
   function cardioDraftCard(d3) {
@@ -21848,7 +21857,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const bl = b2.target ? bestLine(b2.exId, d3.past ? d3.date : "") : "";
     const work = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
     const canFill = !!b2.lastR && b2.lastR.some((r4) => r4 != null) && b2.sets.some((s3, i5) => !s3.done && !s3.warm && !s3.drop && s3.r == null && lastRFor(b2, i5) != null);
-    return b`<section class=${"block" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? b`<p class="ssh">Superset ${ss}</p>` : ""}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : A}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? b` ${tipButton(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · ${work || p3.sets}×${repSpan(p3.repMin, p3.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}${nr ? "" : ` @${b2.inj || (d3.light || d3.deload || b2.light) && b2.last ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p3.rir)}`} · ${p3.rest}s${b2.inj ? b` · <span class="tag red">Injury: ${injLabel(b2.inj)}</span>` : ""}${markedNew(d3, b2.exId) ? b` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ""}</p></div>
+    return b`<section class=${"block" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? b`<p class="ssh">Superset ${ss}</p>` : ""}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : A}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? b` ${tipButton(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · <span class="u-wsnw">${work || p3.sets}×${repSpan(p3.repMin, p3.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}</span>${nr ? "" : b` <span class="u-wsnw">@${b2.inj || (d3.light || d3.deload || b2.light) && b2.last ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p3.rir)}</span>`} · ${p3.rest}s${b2.inj ? b` · <span class="tag red">Injury: ${injLabel(b2.inj)}</span>` : ""}${markedNew(d3, b2.exId) ? b` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ""}</p></div>
       <div class="bh-acts"><div class="bh-btns"><button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button><button class=${"ib" + (b2.note || b2.pics && b2.pics.length ? " noted" : "")} aria-label=${b2.note || b2.pics && b2.pics.length ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div><button type="button" class="ubadge" data-act="unitOpen" data-b=${bi} aria-label=${`${ex.name}: weights in ${liftU(ex)}. Change`}>${liftU(ex)}</button></div></div>
       ${b2.target ? b`<p class="hint"><b>Today: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", b2.hintAgain, ex.assist ? "assisted" : ex.bw ? "bodyweight" : "loaded", hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId, d3.date) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
       ${ss && partner && gk === 0 ? b`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? "pair" : "group"}.</p>` : ""}
@@ -22111,7 +22120,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     if (e5.key === "Enter" && t4 instanceof HTMLInputElement && t4.matches(".sg input[data-f]")) {
       e5.preventDefault();
       const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
-      if (t4.dataset.f === "r" && !t4.value.trim()) acceptGrey(bi, si);
+      if (t4.dataset.f === "r" && (!t4.value.trim() || sameReps(t4))) acceptGrey(bi, si);
       if (needHere(bi, si)) return true;
       const all = [...document.querySelectorAll(".sg input[data-f]")];
       const nx = all[all.indexOf(t4) + 1];
@@ -22197,6 +22206,10 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     greyIn.delete(t4);
     fieldShown(t4, false);
   }
+  function sameReps(t4) {
+    const s3 = draftSet(t4);
+    return !!s3 && !s3.done && +(s3.r ?? 0) > 0 && t4.value.trim() === String(s3.r);
+  }
   function workoutBlur(e5) {
     const t4 = e5.target;
     if (!(t4 instanceof HTMLInputElement)) return;
@@ -22210,7 +22223,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       setTimeout(autoPending, 0);
       return;
     }
-    if (!t4.matches('.sg input[data-f="r"]') || t4.value.trim()) return;
+    if (!t4.matches('.sg input[data-f="r"]') || t4.value.trim() && !sameReps(t4)) return;
     if (t4.dataset.cleared) {
       delete t4.dataset.cleared;
       return;
@@ -27820,10 +27833,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         { inProgress: true, undo: true }
       );
       rerenderKeepScroll();
-      toast(
-        `Lighter: ${todo.length} exercise${todo.length === 1 ? "" : "s"} not started now half the sets at about ${pctOf(LIGHT_SHARE)}% loads`,
-        true
-      );
+      toast(`Made ${todo.length} exercise${todo.length === 1 ? "" : "s"} lighter`, true);
     },
     calSnooze() {
       act(() => {
