@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-B1DqsCFxa5UVdegHsGpbZ3sIWFX2mL9y1Ho/HM53q+o=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-d1E4bcyNeRGm3vV9EYKN+MrylUK1avWef15FL+Kv3Ak=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.14-r114">
+<meta name="app-build" content="2026.11.15-r115">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -2184,8 +2184,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.68";
-  var APP_VERSION = "2026.11.14-r114";
+  var DISPLAY_VERSION = "2.69";
+  var APP_VERSION = "2026.11.15-r115";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -6581,13 +6581,19 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       }
       const z2 = w2[w2.length - 1], a0 = w2[0];
       const zr = z2.pts.filter((p3) => Math.abs(p3.w - z2.topW) < EPS_SAME).map((p3) => p3.r);
-      if (z2.topW > a0.topW + EPS_SAME && zr.length && Math.min(...zr) >= (z2.rr ? +z2.rr[0] : 1) && pct < 0) {
+      const stepped = z2.topW > a0.topW + EPS_SAME && zr.length > 0 && Math.min(...zr) >= (z2.rr ? +z2.rr[0] : 1);
+      if (stepped && pct < 0) {
         loadUp = true;
         falling = false;
         if (pHi != null && pHi < 0) {
           pLo = null;
           pHi = null;
         }
+      }
+      if (stepped && !moving) {
+        const k2 = w2.findIndex((x2) => x2.topW >= z2.topW - EPS_SAME);
+        const atLoad2 = w2[k2], before2 = k2 > 0 ? w2[k2 - 1] : void 0;
+        if (atLoad2 && before2 && atLoad2.tv < before2.tv && (z2 === atLoad2 || z2.tv > atLoad2.tv + EPS_SAME)) moving = true;
       }
     }
     return { pct, slope, slopeSe, moving, falling, pLo, pHi, spanW, loadUp };
@@ -7362,7 +7368,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (st.wN < MUSCLE_TREND_MIN.sessions || st.wSpan < MUSCLE_TREND_MIN.days) continue;
       seenP[ex.primary] = (seenP[ex.primary] || 0) + 1;
       for (const m3 of ex.secondary) seenS[m3] = (seenS[m3] || 0) + 1;
-      if (!(st.moving || st.falling)) continue;
+      if (!(st.moving && st.pct > 0 || st.falling)) continue;
       (byMuscle[ex.primary] || (byMuscle[ex.primary] = [])).push(st.pct);
       for (const m3 of ex.secondary) (bySecondary[m3] || (bySecondary[m3] = [])).push(st.pct);
       spanP[ex.primary] = Math.max(spanP[ex.primary] || 0, st.spanW || 0);
@@ -7436,7 +7442,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
 
   // src/app/plans.ts
   function planForIn(M3, exId, R2, dayId, plain, before2, part) {
-    const inR = routinePlanIn(M3, exId, R2, dayId, part);
+    const inR = R2 == null && !dayId && freeModeIn(M3) ? null : routinePlanIn(M3, exId, R2, dayId, part);
     if (inR) return inR;
     const base = defPlanIn(M3, exId, plain);
     if (plain) return base;
@@ -8044,6 +8050,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       const c4 = Ls.floor(to);
       return c4 == null ? Ls.first ?? dn2 : Math.min(dn2, c4);
     }
+    const once = !inHand && typedOtherIn(M3, from) ? unitFloorIn(M3, ex, plan, Math.min(to, from)) : null;
+    if (once != null) return once < from - EPS_SAME ? once : Math.max(0, from);
     const dn = Ls.below(from);
     let w2;
     if (dn != null) w2 = Math.min(dn, Ls.floor(to) ?? dn);
@@ -8053,6 +8061,15 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const gr = rackGridIn(M3, ex, plan, from);
     if (gr && w2 < gridStep(M3, gr, 0, 1) - EPS_SAME) w2 = Math.min(gridStep(M3, gr, 0, 1), from);
     return Math.max(0, w2);
+  }
+  function unitFloorIn(M3, ex, plan, w2) {
+    if (ex.timed || gymRackIn(M3, ex, plan) || plateGridIn(M3, ex, plan)) return null;
+    const st = inUnitIn(M3, loadGridIn(M3, ex, plan));
+    if (!(st > 0) || !onStep(st, TYPED_STEP)) return null;
+    const o3 = inUnitIn(M3, loadFloorIn(M3, ex));
+    const fl = Math.max(o3, !ex.bw && !ex.assist ? st : 0);
+    const d3 = o3 + Math.floor((inUnitIn(M3, w2) - o3) / st + EPS) * st;
+    return kgOfIn(M3, Math.max(d3, fl));
   }
   function heavierLoadIn(M3, ex, plan, from, to, inHand = false) {
     M3 = liftModelIn(M3, ex);
@@ -13847,10 +13864,14 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     );
   }
   var saveShown = "";
+  var notSavingSaid = false;
   function setSaveState() {
     const el = document.getElementById("saveState");
     if (!el) return;
     const { cls, txt } = saveStateNow();
+    const notSaving = cls === "bad";
+    if (notSaving && !notSavingSaid) toast(txt, null, null, "notice");
+    notSavingSaid = notSaving;
     const ph = photoUrl();
     el.className = "ssb" + (ph ? " ph" : "") + (cls ? " " + cls : "");
     D(
@@ -16255,7 +16276,8 @@ ${more}`;
   }
   function calDueIdx(d3) {
     if (state.settings.rirMode === "off") return -1;
-    if (state.sessions.filter((s3) => !s3.demo).length < CAL_OFFER.sessions) return -1;
+    if (state.sessions.filter((s3) => !s3.demo && s3.ex.some((b2) => b2.sets.some((x2) => x2.rir != null && !x2.warm))).length < CAL_OFFER.sessions)
+      return -1;
     const cut = addDays(today(), -WEEK_DAYS * CAL_OFFER.weeks);
     if (state.settings.calSnooze && state.settings.calSnooze > cut) return -1;
     const c4 = calStats();
@@ -21010,7 +21032,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const n3 = bwEvery();
     let last = null;
     for (const x2 of state.bodyweights) if (!last || x2.date > last.date) last = x2;
-    const planned = !last && activeRoutine().days.some((d3) => d3.items.some((i5) => !!EX(i5.exId).bw));
+    const planned = !last && !freeMode() && activeRoutine().days.some((d3) => d3.items.some((i5) => !!EX(i5.exId).bw));
     if (!n3 || noLog() && !planned) return A;
     const t4 = today();
     const ago = last ? daysBetween(last.date, t4) : null;
@@ -21859,7 +21881,7 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
     const canFill = !!b2.lastR && b2.lastR.some((r4) => r4 != null) && b2.sets.some((s3, i5) => !s3.done && !s3.warm && !s3.drop && s3.r == null && lastRFor(b2, i5) != null);
     return b`<section class=${"block" + ssCls} id=${`blk-${bi}`} data-bi=${bi}>${ss && gk === 0 ? b`<p class="ssh">Superset ${ss}</p>` : ""}<div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : A}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? b` ${tipButton(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${ssLbl}<button type="button" class="linkbtn bmus" data-act="bMus" data-b=${String(bi)} aria-label=${`${ML[ex.primary]}: show the muscles worked on the body`}>${ML[ex.primary]}</button> · <span class="u-wsnw">${work || p3.sets}×${repSpan(p3.repMin, p3.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}</span>${nr ? "" : b` <span class="u-wsnw">@${b2.inj || (d3.light || d3.deload || b2.light) && b2.last ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p3.rir)}</span>`} · ${p3.rest}s${b2.inj ? b` · <span class="tag red">Injury: ${injLabel(b2.inj)}</span>` : ""}${markedNew(d3, b2.exId) ? b` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ""}</p></div>
       <div class="bh-acts"><div class="bh-btns"><button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button><button class=${"ib" + (b2.note || b2.pics && b2.pics.length ? " noted" : "")} aria-label=${b2.note || b2.pics && b2.pics.length ? `Note on ${ex.name}: edit` : `Add a note to ${ex.name}`} data-act="bNote" data-b=${bi} data-tip="A note or a picture: a cue, a seat setting, a niggle">✎</button><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div><button type="button" class="ubadge" data-act="unitOpen" data-b=${bi} aria-label=${`${ex.name}: weights in ${liftU(ex)}. Change`}>${liftU(ex)}</button></div></div>
-      ${b2.target ? b`<p class="hint"><b>Today: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", b2.hintAgain, ex.assist ? "assisted" : ex.bw ? "bodyweight" : "loaded", hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId, d3.date) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
+      ${b2.target ? b`<p class="hint"><b>${d3.date === today() ? "Today" : "Target"}: ${targetText(b2)}</b>${why ? b` ${tipButton(why, "Why this target")}` : ""}<span class="tp muted u-dblock">${lastHead(b2, dupB)}</span>${bl ? b`<span class="tp muted u-dblock">${bl}</span>` : ""}${b2.easier ? b`<span class="tp ez">${b2.easier}</span>` : ""}${progressLine(b2, bi)}</p>` : b`<p class="hint">${hintOnce(b2.hint || "", b2.hintAgain, ex.assist ? "assisted" : ex.bw ? "bodyweight" : "loaded", hintSeen)}</p>`}${bi === bwAt2 ? bwWarn(b2.exId, d3.date) : ""}${bi === calIdx ? b`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b=${bi}>Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
       ${ss && partner && gk === 0 ? b`<p class="small muted u-m2-0-0">Superset with ${partner}; rest after the ${grp.length === 2 ? "pair" : "group"}.</p>` : ""}
       ${b2.lastNote && !b2.note ? b`<p class="small lnote">Your note, ${fmtDate(b2.lastNote.date)}: ${b2.lastNote.text} <button class="linkbtn" data-act="noteReuse" data-b=${bi}>Use again</button></p>` : ""}
       ${b2.note ? b`<p class="small bnote" id=${`bn-${bi}`}>${b2.note}</p>` : b`<p class="small bnote" id=${`bn-${bi}`} hidden></p>`}${picStrip(bi, false)}
@@ -27110,9 +27132,10 @@ ${JSON.stringify(ctx, null, 1)}`;
     const prList = prs.map(recapPr);
     if (cardio.length) lines.push(`Cardio and mobility: ${cardio.reduce((a2, c4) => a2 + c4.min, 0)} min`);
     if (demoGone) lines.push("Demo data removed, so your stats show only your own sessions");
+    if (!device.ok) lines.unshift("Export a backup from the menu.");
     openModal({
       kind: "recap",
-      title: "Session saved",
+      title: device.ok ? "Session saved" : "Not saved on this phone",
       lines,
       prs: prList,
       note: prs.length ? "" : state.sessions.filter((x2) => !x2.demo).length <= 1 ? "Your first session: these are your starting numbers." : "No PRs this time.",
@@ -27857,12 +27880,12 @@ ${JSON.stringify(ctx, null, 1)}`;
     discard() {
       const d3 = state.draft;
       if (!d3) return;
-      const out = () => {
+      const out = (keep = false) => {
         act(
           () => {
             state.draft = null;
           },
-          { inProgress: true }
+          { inProgress: true, undo: keep }
         );
         stopTimer();
         wakeOff();
@@ -27884,7 +27907,11 @@ ${JSON.stringify(ctx, null, 1)}`;
         "Discard this session?",
         d3.editingId ? "Your edits will be lost. The saved session stays as it was." : "Sets and cardio logged in this session will not be saved.",
         "Discard",
-        out,
+        () => {
+          const keep = !parkedHere();
+          out(keep);
+          if (keep) toast(d3.editingId ? "Edits discarded" : "Session discarded", true);
+        },
         true
       );
     },
@@ -28292,7 +28319,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     const dot = st.cls ? b`<span class=${"mdot " + st.cls} aria-hidden="true"></span>` : A;
     const acc = u4 ? b`<div class="row spread u-fwrnw_g10"><div class="u-minw0"><p class="small muted u-m0">Signed in as</p><p class="u-m2-0-0_owany"><b>${u4.email}</b></p></div><button class="btn sm" data-act="acctSignOut">Sign out</button></div>
     <p class="small u-m8-0-0">${dot}${cloud.on ? st.txt : "Not syncing right now."}${cloud.on ? A : b` <button class="linkbtn" data-act="acctRetry">Try again</button>`}</p>` : A2 ? b`<p class="u-m0"><b>Not signed in.</b> Your log is on this phone only.</p><div class="row u-mt10"><button class="btn primary" data-act="acctOpen" data-mode="signin">Sign in</button><button class="btn" data-act="acctOpen" data-mode="signup">Create account</button></div>` : b`<p class="small u-m0">${dot}${st.txt}</p>`;
-    const due = backupDue() ? b`<div class="callout yellow row spread u-m10-0-0"><span class="small"><b>Backup due.</b></span><button class="btn sm" data-act="export">Export backup</button></div>` : A;
+    const notSaving = st.cls === "bad";
+    const due = notSaving || backupDue() ? b`<div class="callout yellow row spread u-m10-0-0"><span class="small"><b>${notSaving ? "Not saving." : "Backup due."}</b></span><button class="btn sm" data-act="export">Export backup</button></div>` : A;
     const item = (act2, label, cat) => b`<button type="button" class="mnu" data-act=${act2} data-cat=${cat || A}><span>${label}</span><span aria-hidden="true">›</span></button>`;
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h">${photoHead()}<h3 id="menuH" class="u-f1">${ENV === "preview" ? PREVIEW_NAME : APP_NAME}</h3>${photoUrl() ? b`<button type="button" class="linkbtn u-minh44" data-act="photoDel">Remove photo</button>` : A}${closeX()}</div>
   <div class="panel" id="menuAcct">${acc}</div>${due}
@@ -28413,7 +28441,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>A missed set</b>: type 0 reps and tick it (auto-mark ticks it too). It is kept and shown as missed, and counts toward no volume, PR, or estimate. The next target reads it as a set short of the range, so it never earns a step up, and as 0 reps, so the last target repeats. The next set's grey numbers come from the last set you completed.</p>
    <p><b>A number far off</b> asks before the set is logged, Log it or Fix it: reps over ${ODD_REPS} and more than ${timesWord(ODD_REPS_TIMES)} the top of your range or your most ever, whichever is more, or a load more than ${timesWord(ODD_SESSION)}, or under ${shareWords(1 / ODD_SESSION)} of, the heaviest set you ticked today, or more than ${timesWord(ODD_BEST)} the heaviest you have logged on the exercise (rules of thumb, to catch a slipped digit or the other unit). On a bodyweight lift, so does added load of ${pctOf(ODD_ADDED_BW)}% or more of your bodyweight, or more than ${timesWord(ODD_ADDED_BEST)} the most you have added (rules of thumb too). So does a load under the empty bar, on any set of a lift on the full bar typed as the total (the bar in Settings, or the exercise's own).</p>
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to ${RIR_CALL_TOP} (Settings can switch it to half reps or RPE; RPE ${effAt("rpe", 2)} is RIR 2). ${off ? "RIR is off in Settings, so every working set counts as hard." : `It is optional: a blank reads as your usual RIR on that lift once you have rated ${RIR_USUAL_MIN} of its sets in ${CAL_WEEKS} weeks, and until then as hard.`}</p>
-   <p><b>RIR check</b>: once you have ${CAL_OFFER.sessions} sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits ${CAL_OFFER.weeks} weeks.</p>
+   <p><b>RIR check</b>: once you have rated your sets in ${CAL_OFFER.sessions} sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits ${CAL_OFFER.weeks} weeks.</p>
    <p><b>Last</b>, beside each set, is what you did on that set last time at your working weight, from the session named above the sets; a top single or lighter sets stay in that line. <b>W and D</b>: tap a set's number once for a warm-up (kept, never analysed), twice for a drop set (counts ${shareWords(DROP_CREDIT)} a set of volume, never as a PR or target). <b>+ Drop</b> beside + Set adds one at about ${pctOf(DROP_START)}% once a set is done; warm-ups are in the exercise's ⋯ menu.</p>
    <p><b>Supersets</b>: an exercise's ⋯ menu, Superset with the next one (Finish then offers to keep it in your plan), or Plan's Superset with next. The rest timer waits until the partners are done, and session minutes leave out the rest between them.</p>
    <p><b>The next sets adjust</b> after a set that was clearly off plan, on the sets whose load is still the app's (never one you typed). Up: ${CLEARLY_OFF} or more reps in reserve over your target with the reps in your range, or ${CLEARLY_OFF} or more reps past the top; on a first session back after a break, any set in your range that shows more strength. Down: ${CLEARLY_OFF} or more reps under both the range and what today asked for, without reserve to spare. The new load is what that set says you can do in the middle of the range (up) or at its bottom (down), with ${numWord(FATIGUE_RIR)} more rep in reserve, in real steps, at most ${CAP}% up past the loads you have done since a break (${CAP_LIGHT}% on light isolation lifts), and at least one step when a set was rated ${RIR_CALL_TOP} or more in reserve. On a first session back they aim for the bottom of the range with ${BACK_RIR} or more in reserve, never past the load from before the break. When no heavier load fits, the same load for more reps. A blank effort reads as your usual (on a first session back, as ${BACK_RIR} in reserve). Keep stays on your load. Not on a lighter day, a deload, a past workout, an injured area, an assisted lift, or a bodyweight lift never done with added load. Settings, Rest timer and logging turns it off.</p>
