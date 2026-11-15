@@ -528,10 +528,11 @@ export function bwDueCard(): Part {
   const n = bwEvery();
   let last: (typeof state.bodyweights)[number] | null = null;
   for (const x of state.bodyweights) if (!last || x.date > last.date) last = x;
-  /* Never weighed in, with a bodyweight lift in the routine in use (V: "should be asked or at least warned"): asked from the
-     first day, before anything is logged, since those lifts count only the
-     weight added until it is set. Later still puts it off two days. */
-  const planned = !last && activeRoutine().days.some(d => d.items.some(i => !!EX(i.exId).bw));
+  /* Never weighed in, with a bodyweight lift in the routine followed (V: "should be asked or at least warned"): asked from
+     the first day, before anything is logged, since those lifts count only the weight added until it is set. A
+     freestyler follows no routine, so the one in use (the starter, for one who never picked) asks nothing of him;
+     a bodyweight lift he does asks, below. Later still puts it off two days. */
+  const planned = !last && !freeMode() && activeRoutine().days.some(d => d.items.some(i => !!EX(i.exId).bw));
   if (!n || (noLog() && !planned)) return nothing;
   const t = today();
   const ago = last ? daysBetween(last.date, t) : null;

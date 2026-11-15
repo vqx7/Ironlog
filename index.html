@@ -20995,7 +20995,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const n3 = bwEvery();
     let last = null;
     for (const x2 of state.bodyweights) if (!last || x2.date > last.date) last = x2;
-    const planned = !last && activeRoutine().days.some((d3) => d3.items.some((i5) => !!EX(i5.exId).bw));
+    const planned = !last && !freeMode() && activeRoutine().days.some((d3) => d3.items.some((i5) => !!EX(i5.exId).bw));
     if (!n3 || noLog() && !planned) return A;
     const t4 = today();
     const ago = last ? daysBetween(last.date, t4) : null;
