@@ -219,6 +219,8 @@ function onInput(e: Event): void {
   const m = ui.modal;
   if (m && FORM_SHEETS.has(m.kind) && t.closest('#modal')) m.dirty = true;
   if (t.id === 'incVal' && m && m.kind === 'inc') m.typed = true;
+  // A weigh-in typed over the number kept across a switch of the scale's unit is the lifter's own now (bodyField).
+  if (ui.bwKept && t.id === ui.bwKept.id) ui.bwKept = undefined;
   // The session screen's: a set's load and reps, cardio, the name, the notes.
   if (workoutInput(t)) return;
   // Plan's fields: an exercise's numbers, a day's name, the routine's name, the searches.

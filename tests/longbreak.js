@@ -80,7 +80,7 @@ async function logSet(page, b, s, w, r) {
   if (run(1)) {
     // An old best entered as a lift's only history, at five distances from today.
     const cases = [
-      ['2016-03-01', /^Back after 10 years: pick a load you could lift about 12 times, erring light\./],
+      ['2016-03-01', /^Back after 10 years: pick a load for \d+ to \d+ reps, about 2 to spare\.$/],
       ['2024-03-01', /^Back after 2 years: pick a load/],
       ['2026-04-01', /^Back after 7 months: pick a load/],
       [addD(DAY, -183), /^Back after 6 months: pick a load/],

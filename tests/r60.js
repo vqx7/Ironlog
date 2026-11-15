@@ -98,7 +98,8 @@ const SCREENS = [
   ['a superset', DEMO + START() + TAP('bMenuDo', { op: 'bSs', b: '0' }), null, /Superset A/],
   ['a blank session, named, notes typed', DEMO + FREE(['bench', 'dbRow']) + "L.state.draft.dayName='Arms <b>';L.state.draft.notes='felt <i>good</i>';L.saveNow();"],
   ['bodyweight lifts and the bodyweight ask', DEMO + "L.state.bodyweights=[];L.invalidate();L.saveNow();" + FREE(['pullup', 'pushup', 'dips']), null, /Your bodyweight/],
-  ['timed, per side, assisted and a loaded hold', DEMO + FREE(['plank', 'sidePlank', 'dbRow', 'assistPullup', 'farmerHold']), null, /Sec\/side[\s\S]*machine help/],
+  // The assisted lift's load column says what it holds in one word, Assist (2.66, NEW-150; "machine help" before).
+  ['timed, per side, assisted and a loaded hold', DEMO + FREE(['plank', 'sidePlank', 'dbRow', 'assistPullup', 'farmerHold']), null, /Sec\/side[\s\S]*<span class="lh">"Assist"</],
   // Its plates line is gone (2.42, NEW-103: V removed the plates line and its Small plates toggle; tests/r88.js holds that neither is drawn); the screen is still drawn.
   ['barbell lifts', DEMO + FREE(['bench', 'bbRow', 'ohp']), null, /Barbell Bench Press/],
   ['a lift twice', DEMO + FREE(['bench', 'pecDeck', 'bench']), null, /Barbell Bench Press[\s\S]*Barbell Bench Press/],

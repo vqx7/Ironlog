@@ -17,7 +17,7 @@ import { isWork } from './formulas';
 import { TRASH_DAYS, TRASH_MAX, sessCmp } from './records';
 import { CHK_Q, chkWord } from './coach';
 import { addDays, today, weekStart, WEEK_DAYS } from './util';
-import { EX, IDX, U, exName, loadLabel, sessionWords, toD } from './live';
+import { appU, EX, exName, IDX, loadLabel, sessionWords, toDApp } from './live';
 import { loadNote } from './loads';
 import { normalize } from './normalize';
 import { HIST_PAGE, setState, state, ui } from './store';
@@ -191,7 +191,7 @@ function sessionsSec(ss: readonly Session[], perDay: Record<string, number>): Te
       const lbl =
         wk === thisWk ? 'This week' : wk === addDays(thisWk, -WEEK_DAYS) ? 'Last week' : `Week of ${fmtDate(wk)}`;
       rows.push(
-        html`<div class="hweek"><span class="hw-t">${lbl}</span><span class="hw-s" data-tip=${`${o.n} session${o.n === 1 ? '' : 's'}, ${o.sets} working sets, ${Math.round(toD(o.vol) ?? 0).toLocaleString()} ${U()} lifted`}>${o.sets} sets · ${fmtK(o.vol)} ${U()}</span></div>
+        html`<div class="hweek"><span class="hw-t">${lbl}</span><span class="hw-s" data-tip=${`${o.n} session${o.n === 1 ? '' : 's'}, ${o.sets} working sets, ${Math.round(toDApp(o.vol) ?? 0).toLocaleString()} ${appU()} lifted`}>${o.sets} sets · ${fmtK(o.vol)} ${appU()}</span></div>
 `
       );
     }
@@ -256,7 +256,7 @@ function sessionRow(
     Object.values(wd[s.id] || {}).includes('fewer sets') ? html` <span class="tag">fewer sets</span>` : nothing
   }${s.demo ? html` <span class="tag">demo</span>` : nothing}${
     prs.length ? prBadge(prs.length) : nothing
-  }<br /><span class="small muted">${fmtDateRow(s.date)}${tm}</span></span><span class="num small u-taright_fnone">${nSets} sets<br /><span class="muted">${Math.round(toD(vol) ?? 0).toLocaleString()} ${U()}${s.durMin ? ` · ${s.durMin} min` : ''}</span></span></button>${
+  }<br /><span class="small muted">${fmtDateRow(s.date)}${tm}</span></span><span class="num small u-taright_fnone">${nSets} sets<br /><span class="muted">${Math.round(toDApp(vol) ?? 0).toLocaleString()} ${appU()}${s.durMin ? ` · ${s.durMin} min` : ''}</span></span></button>${
     filtered && fex
       ? html`<p class="small u-m6-0-0">${filtered.sets.map(x => setStr(fex, x)).join(', ')}${histUnits(fex)}</p>
 `

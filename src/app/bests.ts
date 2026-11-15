@@ -4,8 +4,8 @@
 import type { ExPoint, ExStat, Exposure, ExerciseLike, Model } from './model';
 import { noE1 } from './library';
 import { EPS_SAME } from './util';
-import { EXIn, sinceNew } from './model';
-import { prSameLoad, e1, longBreakAt, sameRR } from './formulas';
+import { EXIn } from './model';
+import { prSameLoad, e1, sameRR } from './formulas';
 
 import type { LoadedSet } from './setread';
 import { noBodyIn, prLoadIn } from './setread';
@@ -66,7 +66,7 @@ export function prFrameIn(M: Model, exId: string, s: LoadedSet, date: string): P
      saved until the edit is (left out of every reader, the history sheet's best set would disagree with the PR list
      during an edit). */
   const ed = M.s.draft && M.s.draft.editingId;
-  const read = date ? liftReadIn(M, exId, date) : sinceNew(every);
+  const read = liftReadIn(M, exId, date || undefined);
   const exps = ed ? read.filter(x => x.sid !== ed) : read;
   if (!exps.length) return null;
   const ex = EXIn(M, exId);
@@ -110,8 +110,8 @@ export function allTimeBestsIn(
   last: string | undefined;
 } | null {
   const all = IDXIn(M).byEx[id];
-  // Since a new machine or gym, if one is marked: another machine's loads are no record here.
-  const exps = all ? sinceNew(upTo ? all.filter(x => x.date <= upTo) : all) : all;
+  // On the machine in use (picked in the workout open, else the one last done on): another machine's loads are no record here.
+  const exps = all ? liftReadIn(M, id, upTo || undefined) : all;
   if (!exps || !exps.length) return null;
   const ex = EXIn(M, id);
   return { ex, ...recordsOfIn(M, ex, exps) };
@@ -127,8 +127,9 @@ export function sinceBackIn(
   id: string
 ): { from: string; est: (BestAt & { v: number }) | null; heavy: BestAt | null; first: boolean } | null {
   const all = IDXIn(M).byEx[id];
-  const exps = all ? sinceNew(all) : [];
-  const i = longBreakAt(exps);
+  const exps = all ? liftReadIn(M, id) : [];
+  // Its last long break on the machine, read on every machine (markBreaks).
+  const i = Math.max(0, exps.map(x => !!x.lbr).lastIndexOf(true));
   if (!i) return null;
   const back = exps.slice(i);
   const r = recordsOfIn(M, EXIn(M, id), back);

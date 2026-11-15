@@ -11,16 +11,16 @@ import { NIL, WD2, fmtDate, fmtDateFrom } from './format';
 import { addDays, r1, today, weekStart, monthOf, dayOfMonth, dayOfWeek, WEEK_DAYS } from './util';
 import { firstDate } from './charts';
 import {
-  IDX,
-  U,
   activeRoutine,
+  appU,
+  cycleState,
   dateIndex,
   freeMode,
+  IDX,
   isRestWeek,
   weekRecorded,
   weekSessions,
-  weekStats,
-  cycleState
+  weekStats
 } from './live';
 import { state, ui } from './store';
 import { WKVIEW_KEY, log, prefGet } from './storage';
@@ -213,7 +213,7 @@ function liftedLine(): Part {
   /* No percentage against last week: weight lifted falls when loads
      go up and reps come down, so as a headline it read progress as decline
      ("−5%" on a week of PRs). The number stays; the detail is in Stats. */
-  return html`<button class="linkbtn wklift u-m6-0-0_tdnone_taleft" data-act="goDash" data-sec="svol"><b>${tn.now ? fmtBig(tn.now) : 0} ${U()}</b> lifted</button>`;
+  return html`<button class="linkbtn wklift u-m6-0-0_tdnone_taleft" data-act="goDash" data-sec="svol"><b>${tn.now ? fmtBig(tn.now) : 0} ${appU()}</b> lifted</button>`;
 }
 
 /** Whether This week shows the month, remembered on this device (Week or Month). */
@@ -318,7 +318,7 @@ function otherWeek(ws: string): TemplateResult {
     cmin
       ? html`<p class="small u-m5-0-0">Cardio and mobility: ${cmin} min in ${cardio.length} entr${cardio.length === 1 ? 'y' : 'ies'}</p>`
       : nothing
-  }${vol ? html`<p class="small u-m5-0-0"><b>${fmtBig(vol)} ${U()}</b> lifted</p>` : nothing}`;
+  }${vol ? html`<p class="small u-m5-0-0"><b>${fmtBig(vol)} ${appU()}</b> lifted</p>` : nothing}`;
 }
 
 function weekBody(w: WeekNow): Part {

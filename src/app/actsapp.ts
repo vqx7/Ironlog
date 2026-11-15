@@ -12,7 +12,8 @@ import { PHOTO_ASKED, log, prefSet } from './storage';
 import { photoRemove, photoSet, photoUrl } from './photo';
 import { photoSyncSoon } from './sync';
 import { plainTemplate } from './normalize';
-import { EX, U, fmtW, loadOf, noBody, rirEst, sortedSessions } from './live';
+import { appU, EX, fmtWApp, IDX, liftMachines, liftU, loadOf, noBody, rirEst, sortedSessions } from './live';
+import { LB, typedUnit } from './units';
 import { e1 } from './formulas';
 import { state, ui } from './store';
 import { act, undoStep } from './act';
@@ -163,6 +164,9 @@ function exportBackup(): Promise<void> {
 /* One row per set, in display units, for anyone who wants this in a spreadsheet.
    This is not a backup: it cannot be imported, and it carries no routines or
    settings. The JSON export remains the thing that restores the app. */
+/** Hundredths: a load typed in steps of 0.05 is a whole number of them. */
+const TYPED_CENTS = 100;
+
 /** Exports every set as a spreadsheet's rows (CSV), and cardio after them. */
 export function exportCSV(): Promise<void> | undefined {
   // A cell a spreadsheet would read as a formula gets a ' in front (csvGuard); one with a comma, a quote or a line break is quoted.
@@ -182,19 +186,46 @@ export function exportCSV(): Promise<void> | undefined {
       'dropset',
       'per_side',
       'load_entry',
-      `load_${U()}`,
-      `total_load_${U()}`,
+      `load_${appU()}`,
+      `total_load_${appU()}`,
       'reps',
       'rir',
-      `e1rm_${U()}`,
+      `e1rm_${appU()}`,
       'exercise_note',
       'session_note',
       'session_minutes',
       'avg_hr',
       'unit',
-      'calibration'
+      'calibration',
+      'typed_load',
+      'typed_unit',
+      'machine'
     ]
   ];
+  /* The machine a set was done on, for a lift done on more than one (390 C): named by the day it was first used, the
+     same on every row of it, so a file read back keeps each machine's sessions together; empty for any other lift. */
+  const machineOf = new Map<string, string>();
+  const byEx = IDX().byEx;
+  for (const id of Object.keys(byEx)) {
+    const xs = byEx[id] || [];
+    const ms = liftMachines(id);
+    if (ms.length < 2) continue;
+    const first = new Map<string, string>();
+    for (const x of xs) if (!first.has(x.mk)) first.set(x.mk, x.date);
+    const used = new Set<string>();
+    for (const [mk, date] of first) {
+      let name = date;
+      for (let n = 2; used.has(name); n++) name = `${date}-${n}`;
+      used.add(name);
+      for (const x of xs) if (x.mk === mk) machineOf.set(`${x.sid}|${id}`, name);
+    }
+  }
+  /* Each set's load as it was typed, and the unit it was typed in (390's Release B: lifts are marked in kg or lb each),
+     beside the columns in the app's unit that add up across lifts: a load whose number says no unit is in its lift's. */
+  const typed = (ex: Parameters<typeof liftU>[0], w: number): [number, string] => {
+    const u = typedUnit(w) ?? liftU(ex);
+    return [Math.round((u === 'lb' ? w / LB : w) * TYPED_CENTS) / TYPED_CENTS, u];
+  };
   for (const ss of sortedSessions()) {
     for (const b of ss.ex) {
       const ex = EX(b.exId);
@@ -212,17 +243,19 @@ export function exportCSV(): Promise<void> | undefined {
           s.drop ? 'yes' : 'no',
           ex.perSide ? 'yes' : 'no',
           loadWords(ex),
-          fmtW(+s.w || 0),
-          fmtW(total),
+          fmtWApp(+s.w || 0),
+          fmtWApp(total),
           s.r,
           s.rir == null ? '' : s.rir,
-          est == null ? '' : fmtW(est),
+          est == null ? '' : fmtWApp(est),
           b.note || '',
           ss.notes || '',
           ss.durMin || '',
           '',
           ex.timed ? 'seconds' : 'reps',
-          s.cal ? `stop at ${s.cal.at}, called ${s.cal.pred} left` : ''
+          s.cal ? `stop at ${s.cal.at}, called ${s.cal.pred} left` : '',
+          ...typed(ex, +s.w || 0),
+          machineOf.get(`${ss.id}|${b.exId}`) || ''
         ]);
       });
     }
@@ -250,6 +283,9 @@ export function exportCSV(): Promise<void> | undefined {
       c.min,
       c.hr == null ? '' : c.hr,
       'minutes',
+      '',
+      '',
+      '',
       ''
     ]);
   if (rows.length === 1) {

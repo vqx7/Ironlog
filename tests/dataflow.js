@@ -46,6 +46,41 @@ const [dl]=await Promise.all([page.waitForEvent('download'),ev(()=>window.__iron
 const csv=require('fs').readFileSync(await dl.path(),'utf8').split('\r\n');
 await page.waitForTimeout(100);ok(await ev(()=>window.__ironlog.ui.modal&&window.__ironlog.ui.modal.kind==='confirm'),'asks whether the file downloaded');await page.click('[data-act="mClose"]');
 ok(csv[0].includes('load_entry')&&csv[1].includes('total, bar included'),'CSV carries the load meaning',csv.slice(0,2));
+// Each row says its load as typed and its unit (390's Release B): a set typed in kg in an lb app, bench marked kg, comes
+// back from the CSV as typed, 100 kg, not the 220.5 lb its load column rounds to.
+{
+await ev(()=>{const L=window.__ironlog;const s=L.state.sessions[0];const b=s.ex[0];L.state.exercises.find(e=>e.id===b.exId).unit='kg';b.sets=[{...b.sets[0],w:100},{...b.sets[0],w:135*0.45359237}];s.ex.push({exId:'assistPullup',rr:[6,10],ps:1,sets:[{w:-20,r:8,rir:2,done:true}]});L.invalidate();L.saveNow();});
+const [dl2]=await Promise.all([page.waitForEvent('download'),ev(()=>window.__ironlog.exportCSV())]);
+const text=require('fs').readFileSync(await dl2.path(),'utf8');
+await page.waitForTimeout(100);await page.click('[data-act="mClose"]');
+const back=await ev(text=>{const L=window.__ironlog;const rows=L.impRows(text);const h=rows[0];const i=h.indexOf('typed_load'),j=h.indexOf('typed_unit'),k=h.indexOf('load_lb');const r=L.impFromTable(rows,L.impHeader(rows[0]));const sets=[...r.sessions[0].items.values()][0].sets;
+  const help=[...r.sessions[0].items.values()].flatMap(it=>it.sets).find(x=>x.w<0)||null;
+  return {cells:rows.slice(1,3).map(x=>[x[k],x[i],x[j]]),first:{w:sets[0].w,u:sets[0].u},second:{w:sets[1].w,u:sets[1].u},help:help&&{w:help.w,u:help.u}};},text);
+ok(JSON.stringify(back.cells[0])==='["220.5","100","kg"]'&&back.cells[1][2]==='lb'&&back.cells[1][0]===back.cells[1][1]&&back.first.w===100&&back.first.u==='kg'&&back.second.u==='lb',
+  'CSV: each row gives its load as typed and its unit (100 kg beside 220.5 in load_lb; 135 lb typed in lb on the same lift), and reads back as typed',back);
+ok(back.help&&back.help.w===-20&&back.help.u==='kg','CSV: an assisted lift\'s help typed in kg (-20 kg) reads back as typed, never -20.003 kg from the lb column',back.help);
+}
+// A machine lift done on two machines (390 C): each row names its machine, and a file read back into an empty log keeps
+// each machine's sessions together, so the lift reads the same from it; a lift on one machine names none. On pages of
+// its own, so the log the sections below read is left as it is.
+{
+const LB=0.45359237;
+const P1=await open('index.html',{browser,clock:'2026-10-20T10:00:00'});
+await P1.page.evaluate(LB=>{const L=window.__ironlog;L.state.settings.onboarded=true;const mk=(id,date,w,more)=>({id,date,dayIdx:0,dayId:null,dayName:'Push',routineId:'',free:true,notes:'',ex:[{exId:'machPress',note:'',rr:[8,12],sets:[11,11,10].map(r=>({w:w*LB,r,rir:2,done:true})),...more},{exId:'bench',note:'',rr:[6,10],sets:[{w:185*LB,r:8,rir:2,done:true}]}]});
+  L.state.sessions=[mk('a1','2026-10-01',200,{}),mk('a2','2026-10-08',140,{nw:true}),mk('a3','2026-10-15',200,{mc:'0'})];L.state=L.normalize(L.state);L.invalidate();L.saveNow();},LB);
+const [dl3]=await Promise.all([P1.page.waitForEvent('download'),P1.page.evaluate(()=>window.__ironlog.exportCSV())]);
+const text3=require('fs').readFileSync(await dl3.path(),'utf8');
+await P1.ctx.close();
+const P2=await open('index.html',{browser,clock:'2026-10-20T10:00:00',realStarter:true});
+const got=await P2.page.evaluate(async t=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.saveNow();L.impStart({text:t});await new Promise(r=>setTimeout(r,300));L.ACT.impGo();await new Promise(r=>setTimeout(r,300));
+  const rows=L.impRows(t);const m=rows[0].indexOf('machine'),e=rows[0].indexOf('exercise');
+  const by=L.state.sessions.slice().sort((a,b)=>a.date<b.date?-1:1).map(s=>s.ex.find(b=>b.exId==='machPress')).map(b=>b&&b.mc||null);
+  const mks=(L.IDX().byEx.machPress||[]).map(x=>x.mk);
+  return {col:[...new Set(rows.slice(1).filter(r=>r[e]==='Machine Chest Press').map(r=>r[m]))],bench:[...new Set(rows.slice(1).filter(r=>r[e]==='Barbell Bench Press').map(r=>r[m]))],by,mks};},text3);
+ok(JSON.stringify(got.col)==='["2026-10-01","2026-10-08"]'&&JSON.stringify(got.bench)==='[""]','CSV: each chest press row names its machine by the day it was first used; the bench, on one, names none',got);
+ok(got.by[0]&&got.by[0]===got.by[2]&&got.by[1]&&got.by[1]!==got.by[0]&&got.mks.length===3&&got.mks[0]===got.mks[2]&&got.mks[1]!==got.mks[0],'CSV read back into an empty log: the two 200 lb sessions on one machine, the 140 lb one on the other',got);
+await P2.ctx.close();
+}
 // ---- 4. delete, trash, restore, undo
 await ev(()=>{const L=window.__ironlog;L.ui.tab='history';L.ui.histOpen=L.state.sessions[0].id;L.render();});
 await page.click('[data-act="histDel"]');await page.click('[data-act="mOk"]');await page.waitForTimeout(100);

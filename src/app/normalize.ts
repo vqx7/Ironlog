@@ -360,6 +360,8 @@ export function cleanSess(raw: unknown, si: number): Session {
                   : {}),
                 // Done at a new machine or gym, last, as Finish writes it; absent unless marked, so older records keep their hash.
                 ...(b.nw === true ? { nw: true as const } : {}),
+                // The machine it was done on, after it, as Finish writes it; absent unless named, so older records keep their hash.
+                ...(typeof b.mc === 'string' && b.mc ? { mc: fixId(b.mc) } : {}),
                 // The pictures on its note, by id, last; absent unless there are any, so older records keep their hash.
                 ...picsField(b.pics)
               },
@@ -636,6 +638,8 @@ function cleanSettings(s: Rec, f: Fresh): Settings {
     ...(profile ? { profile } : {}),
     ...(Object.keys(bandsFit).length ? { bandsFit } : {}),
     ...(ownTargets.length ? { ownTargets } : {}),
+    // The scale's unit: absent unless set apart from the app's, so saves without it hash as before.
+    ...(st.bwUnit === 'kg' || st.bwUnit === 'lb' ? { bwUnit: st.bwUnit } : {}),
     // RIR: on (as logged), cal (on, shifted by your calibration sets), off.
     rirMode: pick(st.rirMode, ['on', 'off', 'cal'] as const) ?? 'on',
     hidden: h ? [...new Set(strings(h, k => HIDEABLE_KEYS.has(k)))] : [],
@@ -676,7 +680,8 @@ const OPTIONAL_SETTINGS = [
   'gym',
   'profile',
   'bandsFit',
-  'ownTargets'
+  'ownTargets',
+  'bwUnit'
 ] as const satisfies readonly (keyof Settings)[];
 
 /* An exercise, cleaned: called only on one whose id and name are strings
@@ -726,7 +731,11 @@ function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
     goal:
       g && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e.timed && !e.assist
         ? { w: gw, r: gr }
-        : undefined
+        : undefined,
+    /* The unit the lift's equipment is marked in, set by a tap on the unit beside its load: kg or lb. Absent when unset,
+       so the lift follows the app's unit and a record saved before this existed hashes as before; a build without it
+       keeps it among the fields it does not know (keepExtra). */
+    unit: e.unit === 'kg' || e.unit === 'lb' ? e.unit : undefined
   });
 }
 
@@ -933,6 +942,8 @@ function cleanDraftBlock(b0: unknown): DraftBlock[] {
         sets: (arr(b.sets) || []).flatMap(cleanDraftSet),
         // Done at a new machine or gym, last, where the menu adds it; absent unless marked.
         ...(b.nw === true ? { nw: true as const } : {}),
+        // The machine picked for it, after it; absent until one is picked.
+        ...(typeof b.mc === 'string' && b.mc ? { mc: fixId(b.mc) } : {}),
         // The pictures on its note, by id, last; absent unless there are any.
         ...picsField(b.pics)
       } satisfies DraftBlock,

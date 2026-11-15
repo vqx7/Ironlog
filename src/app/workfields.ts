@@ -9,7 +9,7 @@ import { today, numIn, isDate, EPS } from './util';
 import { LOAD_MAX, LOAD_MIN } from './normalize';
 
 import { log } from './storage';
-import { EX, fromD } from './live';
+import { EX, fromDOf } from './live';
 import { state, ui } from './store';
 
 import { drawing, fieldShown } from './view';
@@ -124,8 +124,8 @@ export function workoutInput(t: Field): boolean {
             n == null
               ? null
               : as
-                ? -Math.min(fromD(Math.abs(n)) ?? 0, -LOAD_MIN)
-                : Math.min(fromD(Math.max(n, 0)) ?? 0, LOAD_MAX);
+                ? -Math.min(fromDOf(bx && EX(bx.exId), Math.abs(n)) ?? 0, -LOAD_MIN)
+                : Math.min(fromDOf(bx && EX(bx.exId), Math.max(n, 0)) ?? 0, LOAD_MAX);
           if (s.w === 0) s.w = 0;
           carried.delete(s);
         } else s.r = n == null ? null : Math.min(Math.max(Math.floor(n + EPS), 0), LIMITS.reps);
@@ -329,7 +329,7 @@ export function workoutKey(e: KeyboardEvent): boolean {
     e.preventDefault();
     const bi = Number(t.dataset.b),
       si = Number(t.dataset.s);
-    if (t.dataset.f === 'r' && !t.value.trim()) acceptGrey(bi, si);
+    if (t.dataset.f === 'r' && (!t.value.trim() || sameReps(t))) acceptGrey(bi, si);
     /* A set whose tick waits for its weight keeps the focus on its
        load field, which setDone gave it (else Next moves on, and the weight typed
        next goes to the set after). */
@@ -465,6 +465,14 @@ function greyTyped(t: HTMLInputElement): void {
   fieldShown(t, false);
 }
 
+/* A reps field holding the reps its set already has: left so, it fires no change (minus and plus put the number there,
+   or it was typed before), so leaving it is the same confirmation as leaving it empty. */
+/** Whether a reps field shows exactly the reps (more than 0) its set holds, unticked. */
+function sameReps(t: HTMLInputElement): boolean {
+  const s = draftSet(t);
+  return !!s && !s.done && +(s.r ?? 0) > 0 && t.value.trim() === String(s.r);
+}
+
 /* Leaving a set's reps field empty takes its grey reps (acceptGrey, worksets.ts),
    unless the lifter went to the same row's load or effort, a button or any
    other control (where the lifter went: the newly focused element, or on an
@@ -492,7 +500,8 @@ function workoutBlur(e: FocusEvent): void {
     setTimeout(autoPending, 0);
     return;
   }
-  if (!t.matches('.sg input[data-f="r"]') || t.value.trim()) return;
+  // A reps field left as it was (empty, so its grey reps, or holding the set's own reps) confirms that number.
+  if (!t.matches('.sg input[data-f="r"]') || (t.value.trim() && !sameReps(t))) return;
   if (t.dataset.cleared) {
     delete t.dataset.cleared;
     return;

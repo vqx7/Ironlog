@@ -4,13 +4,12 @@
 import type { DraftBlock, NextSetsAdj, Plan } from './types';
 import type { ExerciseLike, Model } from './model';
 
-import { EXIn, exInjuryIn } from './model';
-import { IDXIn, liftReadIn } from './analytics';
+import { EXIn, exInjuryIn, liftModelIn } from './model';
+import { IDXIn, brokeAfterIn, liftReadIn, sinceLongBreakOnIn } from './analytics';
 import { capOfIn } from './gym';
 import { EPS, EPS_SAME } from './util';
 import {
   BACK_DAYS,
-  afterBreak,
   sinceLongBreak,
   E1_MAX_RIR,
   e1inv,
@@ -69,10 +68,10 @@ import { bwRefLoadIn, rirEstIn } from './setread';
    is not back after a break, so its last session is in today's stretch. */
 function stretchTopIn(M: Model, exId: string, plan: Plan): number | null {
   // After a long break the lift starts fresh: loads from before it are no re-approach.
-  const xs = sinceLongBreak(liftReadIn(M, exId, M.today()), M.today());
+  const xs = sinceLongBreakOnIn(M, exId, liftReadIn(M, exId, M.today()), M.today());
   if (!xs.length) return null;
   let i = xs.length - 1;
-  while (i > 0 && !afterBreak(xs[i - 1], xs[i].date)) i--;
+  while (i > 0 && !brokeAfterIn(M, exId, xs[i - 1], xs[i].date)) i--;
   let t: number | null = null;
   for (const x of xs.slice(i)) {
     const w = workLoad(x.pts, +plan.repMin);
@@ -95,6 +94,7 @@ export function bwNoLoadIn(M: Model, ex: ExerciseLike | null | undefined, b?: Dr
 
 /** The next sets after ticked set `si` of a block, or null when it was not clearly off or the lift does not take an adjustment (above); `lastR` is last time's reps for that row (the Last column's), or null. */
 export function nextSetsIn(M: Model, b: DraftBlock, si: number, lastR: number | null): NextSetsAdj | null {
+  M = liftModelIn(M, EXIn(M, b.exId));
   const s = b.sets[si];
   if (!s || !(+(s.r ?? 0) > 0) || s.w == null) return null;
   const ex = EXIn(M, b.exId);
@@ -150,18 +150,18 @@ export function nextSetsIn(M: Model, b: DraftBlock, si: number, lastR: number | 
     const lim = back && done != null ? done : Math.max(done ?? -Infinity, Lt * jumpCap(ex, Lt, false) - bw);
     const want = Math.min(byEst, lim);
     const cap = capOfIn(M, ex, p);
-    nw = heavierLoadIn(M, ex, p, s.w, cap != null ? Math.min(want, cap) : want);
+    nw = heavierLoadIn(M, ex, p, s.w, cap != null ? Math.min(want, cap) : want, true);
     /* Rated 5 or more in reserve, the top of the scale, the estimate is
        only a floor, so one real step is always right even where it is
        more than the cap allows (else 20 lb curls at 5+ in
        reserve never move, a 5 lb step being 25% of the load). */
     if (nw == null && q != null && q >= RIR_CALL_TOP) {
       const one = s.w + incOfIn(M, ex, p, s.w);
-      nw = heavierLoadIn(M, ex, p, s.w, cap != null ? Math.min(one, cap) : one);
+      nw = heavierLoadIn(M, ex, p, s.w, cap != null ? Math.min(one, cap) : one, true);
     }
   } else {
     const want = e1inv(est, lo + resDown) - bw;
-    const w = lighterLoadIn(M, ex, p, s.w, Math.max(0, want));
+    const w = lighterLoadIn(M, ex, p, s.w, Math.max(0, want), true);
     nw = w < s.w - EPS_SAME ? w : null;
     if (nw != null && ex.bw && nw < 0) nw = 0;
   }

@@ -16,7 +16,7 @@
 import { APP_NAME, STORAGE_ID } from './config';
 import { addDays, andList, daysBetween, isDate, median, today, uid, WEEK_DAYS } from './util';
 import { KM_MI, LB } from './units';
-import { LIB_NAMES_BEFORE, ML } from './library';
+import { LIB_NAMES_BEFORE, ML, onMachines } from './library';
 import { dropStarter, routineSig } from './routines';
 import { offTarget } from './formulas';
 import { fmtDate } from './format';
@@ -37,11 +37,11 @@ import {
 import type { ImpRead } from './importing';
 import { cleanCardio, normalize, starterSigs } from './normalize';
 import { ENV, log, prefGet, unreadableForget, unreadableRaw } from './storage';
-import { arr, parseJson, rec } from './records';
+import { arr, fixId, parseJson, rec } from './records';
 import { assemble, cloudStop } from './sync';
 import { isChunkId, realCount } from './chunks';
 import type { Rec } from './records';
-import { EX, IDX, U, activeRoutine, actualAvg4, fmtW, invalidate } from './live';
+import { activeRoutine, actualAvg4, appU, EX, fmtWOf, IDX, invalidate, liftU } from './live';
 import { acct, cloud, setState, state, ui } from './store';
 import type { ImpPreviewModal, ImpTable } from './modals';
 import type { CardioEntry, Exercise } from './types';
@@ -267,7 +267,7 @@ function openPreview(res: ImpRead, tab: ImpTable | null): void {
     tab,
     pick,
     guess,
-    unit: res.unit || U(),
+    unit: res.unit || appU(),
     unitKnown: !!res.unit,
     date: today(),
     showAll: false
@@ -293,7 +293,7 @@ interface BuiltSession {
   dayName: string;
   routineId: string;
   free: true;
-  ex: { exId: string; note: string; rr: null; sets: BuiltSet[] }[];
+  ex: { exId: string; note: string; rr: null; sets: BuiltSet[]; mc?: string }[];
   notes: string;
   durMin: number | null;
   deload: boolean;
@@ -453,13 +453,21 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
       if (!exo.bw && !exo.timed)
         for (const q of sets)
           if ((q.w > 0 && q.w < ODD.kg) || q.r > ODD.reps) {
-            odd.push(`${exo.name} ${fmtW(q.w)} ${U()} x ${q.r}${x.date ? `, ${fmtDate(x.date)}` : ''}`);
+            odd.push(`${exo.name} ${fmtWOf(exo, q.w)} ${liftU(exo)} x ${q.r}${x.date ? `, ${fmtDate(x.date)}` : ''}`);
             break;
           }
       // A lift's sets across rows of the same exercise stay together.
       const prev = ex.find(b => b.exId === exo.id);
       if (prev) prev.sets.push(...sets);
-      else ex.push({ exId: exo.id, note: it.note || '', rr: null, sets });
+      // The machine the app's own file names keeps the lift's sessions on each machine together (390 C).
+      else
+        ex.push({
+          exId: exo.id,
+          note: it.note || '',
+          rr: null,
+          sets,
+          ...(it.mc && onMachines(exo) ? { mc: fixId(it.mc) } : {})
+        });
       if (it.ss) grp[exo.id] = it.ss;
     }
     if (ex.length && Object.keys(grp).length) ssOf[sid] = grp;

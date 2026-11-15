@@ -45,6 +45,8 @@ import {
   incSheet,
   injurySheet,
   maxSheet,
+  machineSheet,
+  unitSheet,
   noteSheet,
   quickSheet
 } from './sheetslift';
@@ -356,6 +358,8 @@ export const SHEETS: Sheets = {
   cardio: { draw: cardioSheet },
   quick: { draw: quickSheet },
   max: { draw: maxSheet },
+  unit: { draw: unitSheet },
+  machine: { draw: machineSheet },
   cal: { draw: calibrationSheet },
   // Short on time's trial session (startShort) goes again when the sheet closes without its trim and nothing was logged: only a question was asked.
   short: {

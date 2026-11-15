@@ -232,6 +232,7 @@
 .u-posrel{position:relative!important}
 .u-taright_fnone{text-align:right!important;flex:none!important}
 .u-w70{width:70px!important}
+.u-wsnw{white-space:nowrap!important}
 [hidden]{display:none!important}
 /* Content inside <details> is rendered through the browser's own shadow slot,
    which the rule above cannot reach, so padded inputs stuck out of their card. */
@@ -503,6 +504,11 @@ button.mph{-webkit-appearance:none;appearance:none;border:0;padding:0;margin:0;b
 .btn.primary,.block .btn.primary,.card .btn.primary,.sheet .btn.primary,.panel .btn.primary{background:var(--volt);color:var(--on-volt);border-color:transparent;border-radius:999px}
 .btn.danger{color:var(--red)}
 .btn.sm{min-height:44px;padding:0 12px;font-size:14px;border-radius:var(--r-sm)}
+/* The scale's unit beside a weigh-in field (bodyUnitTap): a button 44 px each way, the field's row aligned on the field. */
+.btn.bunit{min-width:44px;padding:0 8px}
+.bwrow{align-items:flex-end;flex-wrap:nowrap}
+.bw-w{display:flex;gap:8px;align-items:flex-end;min-width:0}
+.bwrow>label.field,.bw-w>label.field{min-width:0}
 /* A full-width button (r66, PENDING 368): fullw, never block, which is a session exercise's card. */
 .btn.fullw{width:100%}
 .btn:disabled{opacity:.4;cursor:default}
@@ -610,7 +616,7 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .sslbl{display:inline-block;min-width:26px;margin-right:2px;padding:1px 6px;border-radius:999px;background:var(--blue-bg);color:var(--blue);font:700 12px/1.4 var(--font);text-align:center;vertical-align:middle}
 .it.ss .imain b::after{content:" · SS";color:var(--blue);font-size:12px}
 .bh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
-.bh-acts{display:flex;gap:3px;flex:none}
+.bh-acts{display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex:none}
 .bh h3{overflow-wrap:anywhere;font-size:24px;text-transform:uppercase;letter-spacing:.02em}
 .bh p{margin-top:3px}
 .bh>div:first-child{min-width:0}
@@ -640,6 +646,20 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
    keep the width they had at 320 px. */
 .sg{position:relative;display:grid;grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) 44px;gap:6px;align-items:center;margin-top:6px}
 .sg.head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:650;margin-top:12px}
+/* The exercise's badge, under its buttons: its unit, a quiet button like the round ones beside it, opening the
+   exercise's sheet (unitSheet). Its touch area is 44 px each way, into the gap above it and the space under it. */
+.bh-btns{display:flex;gap:3px}
+.ubadge{position:relative;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px 0 13px;border-radius:999px;border:1px solid var(--btn-b);background:var(--btn);color:var(--ink);font:600 13px/1 var(--font);white-space:nowrap;cursor:pointer}
+.ubadge::after{content:'';width:6px;height:6px;margin:-3px 2px 0 1px;border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);transform:rotate(45deg)}
+.ubadge::before{content:'';position:absolute;left:50%;width:max(100%,44px);transform:translateX(-50%);top:-7px;bottom:-7px}
+.mc-h{margin:4px 0 8px;font-size:13px;font-weight:600;color:var(--muted)}
+.mclist{display:flex;flex-direction:column;gap:6px}
+.mcrow{display:flex;align-items:center;gap:12px;min-height:48px;padding:8px 12px;border-radius:var(--r-sm);border:1px solid var(--btn-b);background:var(--btn);color:var(--ink);font:inherit;font-size:15px;text-align:left;cursor:pointer}
+.mcrow.on{border-color:var(--ink)}
+.mcdot{flex:none;width:18px;height:18px;border-radius:50%;border:1.6px solid var(--muted)}
+.mcrow.on .mcdot{border-color:var(--ink);background:radial-gradient(circle,var(--ink) 0 4px,transparent 5px)}
+/* "Per side" is "Side" under 360 px, so the load column's heading is one line at every width. */
+@media (max-width:359px){.lhn{display:none}}
 .sg .n{font:700 15px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center}
 button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
 .sg .ls{font:600 12px/1.15 var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center;overflow-wrap:anywhere}

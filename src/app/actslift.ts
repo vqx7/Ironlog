@@ -4,13 +4,31 @@
    `act`; one to the session in progress alone leaves the caches as they are
    (inProgress). */
 
+import type { Exercise } from './types';
 import { isDate, isNum, numIn, today, uid } from './util';
 import { JK, MK, injLabel } from './library';
 import { LIMITS, within } from './records';
 import { cleanCardio } from './normalize';
 import { effW, greyW } from './session';
 import { rirScale } from './effort';
-import { EX, U, exName, fmtW, fromD, incOf } from './live';
+import {
+  appU,
+  draftMachine,
+  EX,
+  exName,
+  fmtWOf,
+  fromDOf,
+  incOf,
+  liftMachines,
+  liftMax,
+  liftU,
+  listLabel,
+  loadReadOf,
+  typedBoundOf
+} from './live';
+import { NEW_MACHINE } from './analytics';
+import { fmtDate } from './format';
+import { typedUnit } from './units';
 import { state, ui } from './store';
 import { act } from './act';
 import { goalWords } from './display';
@@ -18,7 +36,7 @@ import { closeModal, openModal, render, renderModal, rerenderKeepScroll } from '
 import { toast } from './toast';
 import { carried } from './workstate';
 import type { Tap } from './workstate';
-import { distIn, fillSets, parseSets, refreshEx } from './worksets';
+import { blockWords, distIn, fillSets, parseSets, refreshBlock, refreshEx } from './worksets';
 
 /** The heaviest load a lift's limit may be, by the unit typed in. */
 const MAX_LOAD = { lb: 4000, kg: 2000 } as const;
@@ -37,7 +55,8 @@ function fieldText(id: string): string {
     : '';
 }
 /** A load typed, as kilograms. */
-const kg = (n: number): number => fromD(n) ?? 0;
+// A load typed for a lift, in its unit, in kilograms.
+const kg = (ex: Pick<Exercise, 'unit'> | null | undefined, n: number): number => fromDOf(ex, n) ?? 0;
 
 /** A lift's sheets and the log's smaller entries, by data-act. */
 export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
@@ -69,6 +88,96 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
     toast(fill ? 'Loads filled in' : 'Loads in grey');
   },
+  /* The unit beside a lift's loads, tapped: the lift's equipment is marked in the other unit. Kept on the lift (back in
+     the app's unit it follows the app again, as one never switched does), so every screen and the next session read it;
+     the lift's blocks in the workout read their targets again in it, and a load already typed is converted, never read
+     as a number of the new unit. */
+  machineOpen(t) {
+    const b = Number(t.dataset.b);
+    if (state.draft && state.draft.ex[b]) openModal({ kind: 'machine', b });
+  },
+  /* A machine picked for a lift in a session (390 C): every block of it is on that machine, read from that machine's
+     sessions alone. In a workout its target is read again, the sets done kept (a target from another machine is no
+     target here), and a machine done on before brings its own kg or lb (as its weights were typed); New machine marks
+     the lift's session new (nw), so it starts there. In an edit from History the pick names this session's machine
+     and nothing else, never the sessions after it or the lift's unit: a machine done on before by its key, a new one by the session's own; its mark,
+     which later sessions may follow, and the lift's unit stay as they are, and the readings follow once it is saved.
+     One Undo step. */
+  machinePick(t) {
+    const d = state.draft;
+    const b0 = d && d.ex[Number(t.dataset.b)];
+    const e = b0 && state.exercises.find(x => x.id === b0.exId);
+    if (ui.modal && ui.modal.kind === 'machine') closeModal();
+    const k = t.dataset.k;
+    if (!d || !b0 || !e || !k || k === draftMachine(b0.exId)) return;
+    const was = k === NEW_MACHINE ? null : liftMachines(b0.exId).find(x => x.key === k);
+    if (k !== NEW_MACHINE && !was) return;
+    const ed = d.editingId;
+    // A new machine in an edit is named by the session's own key, which is the machine it is on already when it began one.
+    if (ed && k === NEW_MACHINE && draftMachine(b0.exId) === ed) return;
+    const u = was && !ed ? typedUnit(was.w) : null;
+    act(
+      () => {
+        if (u) {
+          if (u === appU()) delete e.unit;
+          else e.unit = u;
+        }
+        for (const b of d.ex)
+          if (b.exId === b0.exId) {
+            if (ed) b.mc = k === NEW_MACHINE ? ed : k;
+            else if (k === NEW_MACHINE) {
+              b.nw = true;
+              delete b.mc;
+            } else {
+              b.mc = k;
+              delete b.nw;
+            }
+          }
+        if (!ed) for (const b of d.ex) if (b.exId === b0.exId) refreshBlock(b);
+      },
+      { undo: true }
+    );
+    rerenderKeepScroll();
+    toast(
+      // The machine's label is one thing to read, so it is kept on one line (no-break spaces) when the message wraps.
+      was
+        ? `${e.name}: ${`${fmtDate(was.date)} · ${listLabel(e, was.w, true)} × ${was.r}`.replace(/ /g, '\u00a0')}`
+        : `${e.name}: new machine`,
+      true
+    );
+  },
+  unitOpen(t) {
+    const b = Number(t.dataset.b);
+    if (state.draft && state.draft.ex[b]) openModal({ kind: 'unit', b });
+  },
+  liftUnit(t) {
+    const d = state.draft;
+    const b = d && d.ex[Number(t.dataset.b)];
+    const e = b && state.exercises.find(x => x.id === b.exId);
+    if (ui.modal && ui.modal.kind === 'unit') closeModal();
+    if (!d || !b || !e) return;
+    // The unit picked in the exercise's sheet; the one it is already in changes nothing.
+    const to: 'kg' | 'lb' =
+      t.dataset.v === 'kg' || t.dataset.v === 'lb' ? t.dataset.v : liftU(e) === 'kg' ? 'lb' : 'kg';
+    if (to === liftU(e)) return;
+    act(
+      () => {
+        if (to === appU()) delete e.unit;
+        else e.unit = to;
+        /* A block not started reads its target again in the new unit; one with a set done keeps what it started
+           with, as for a change of the app's unit, its words said again in the new unit, so the sets done at the
+           load asked still count; an edit of a saved session reads nothing again of today's. */
+        for (const x of d.ex)
+          if (x.exId === b.exId) {
+            if (!d.editingId && !x.sets.some(s => s.done)) refreshBlock(x);
+            else blockWords(x);
+          }
+      },
+      { undo: true }
+    );
+    rerenderKeepScroll();
+    toast(`${e.name} in ${to}`, true);
+  },
   bCal(t) {
     const bi = Number(t.dataset.b);
     const d = state.draft;
@@ -85,7 +194,7 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     openModal({
       kind: 'cal',
       b: bi,
-      w: w != null ? fmtW(w) : '',
+      w: w != null ? fmtWOf(EX(b.exId), w) : '',
       at: '',
       pred: b.plan && isNum(+b.plan.rir) ? Math.min(CAL_PRED_MOST, Math.round(+b.plan.rir)) : 1,
       total: ''
@@ -117,7 +226,15 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!(at >= 1)) return no('Enter the rep you would normally have stopped at.');
     if (!(tot >= at)) return no('Total reps to failure should be at least the rep you would have stopped at.');
     if (tot > CAL_MOST) return no('That is more than 100 reps. Check the number.');
-    const set = { w: kg(Math.max(0, w || 0)), r: tot, rir: 0, warm: false, drop: false, done: true, cal: { at, pred } };
+    const set = {
+      w: kg(ex, Math.max(0, w || 0)),
+      r: tot,
+      rir: 0,
+      warm: false,
+      drop: false,
+      done: true,
+      cal: { at, pred }
+    };
     act(
       () => {
         let si = b.sets.findIndex(x => !x.done && !x.warm && x.r == null);
@@ -151,18 +268,27 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       return;
     }
     const n = numIn(fieldText('maxVal'));
+    // Saved as it was shown, it is kept as set: one set in the other unit is shown on this unit's equipment (liftMax).
+    if (e.maxLoad != null && n != null && String(numIn(fmtWOf(e, liftMax(e) ?? 0))) === String(n)) {
+      closeModal();
+      return;
+    }
     if (n != null && n < 0) {
       toast('Enter a load of 0 or more, or leave it blank');
       return;
     }
     closeModal();
     act(() => {
-      if (n != null && n > 0) e.maxLoad = kg(Math.min(n, U() === 'lb' ? MAX_LOAD.lb : MAX_LOAD.kg));
+      if (n != null && n > 0) e.maxLoad = kg(e, Math.min(n, liftU(e) === 'lb' ? MAX_LOAD.lb : MAX_LOAD.kg));
       else delete e.maxLoad;
     });
     refreshEx(e.id);
     rerenderKeepScroll();
-    toast(e.maxLoad != null ? `Heaviest available for ${e.name}: ${fmtW(e.maxLoad)} ${U()}` : `No limit for ${e.name}`);
+    toast(
+      e.maxLoad != null
+        ? `Heaviest available for ${e.name}: ${fmtWOf(e, liftMax(e) ?? 0)} ${liftU(e)}`
+        : `No limit for ${e.name}`
+    );
   },
   goalOpen(t) {
     openModal({ kind: 'goal', exId: t.dataset.ex || '' });
@@ -188,7 +314,12 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       toast('Enter a load of 0 or more');
       return;
     }
-    const goal = { w: kg(w || 0), r };
+    // A load saved as it was shown is kept as set: a goal set in the other unit is shown on this unit's equipment.
+    const was = e.goal;
+    const goal = {
+      w: was && w != null && String(numIn(fmtWOf(e, loadReadOf(e, was.w)))) === String(w) ? was.w : kg(e, w || 0),
+      r
+    };
     act(
       () => {
         e.goal = goal;
@@ -234,20 +365,21 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       closeModal();
       return;
     }
-    // Saved without typing, a lift with no step of its own keeps following its default (Your gym's rack, say).
-    // A number typed is saved, even the one shown (review: typing 5 on a 5 and 2.5 rack did nothing); so is any other number.
-    if (e.inc == null && !sheet.typed && String(numIn(fmtW(incOf(e, sheet.plan)))) === String(n)) {
+    // Saved without typing, nothing changes: a lift with no step of its own keeps following its default (Your gym's rack,
+    // say), and its own step stays as set, one set in the other unit too, shown as its match (stepReadIn). A number typed
+    // is saved, even the one shown (review: typing 5 on a 5 and 2.5 rack did nothing); so is any other number.
+    if (!sheet.typed && String(numIn(fmtWOf(e, incOf(e, sheet.plan)))) === String(n)) {
       closeModal();
       return;
     }
-    const inc = Math.min(kg(n), LIMITS.step);
+    const inc = typedBoundOf(e, n, LIMITS.step);
     closeModal();
     act(() => {
       e.inc = inc;
     });
     refreshEx(e.id);
     rerenderKeepScroll();
-    toast(`Load step for ${e.name}: ${fmtW(inc)} ${U()}`);
+    toast(`Load step for ${e.name}: ${fmtWOf(e, inc)} ${liftU(e)}`);
   },
   cardioNew() {
     openModal({ kind: 'cardio' });

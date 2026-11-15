@@ -84,6 +84,8 @@ const EXTRA = {
   hasTarget: () => [['chest'], ['traps'], ['serratus'], ['neck'], ['forearms']],
   // A lift's sessions as its rules read them (r61, 343 7): all of them, up to the log's middle session, and up to today.
   liftRead: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : ''], [id, '9999-12-31']]),
+  // 390 C: the machine a lift of the workout in progress is on, the machines each lift was done on, and the machine to save.
+  draftMachine: (s, ids) => ids.map(id => [id]), liftMachines: (s, ids) => ids.map(id => [id]), machineToSave: (s, ids) => ids.map(id => [id]),
   defBand: () => [['chest'], ['serratus'], ['quads', { focus: ['quads'] }], ['biceps', { focus: ['quads'] }]],
   appBand: () => [['chest'], ['serratus'], ['quads', { focus: ['quads'] }], ['chest', null, { chest: 5 }], ['chest', null, null]],
   fitFloors: (s) => s.routines.flatMap(r => [[r], [r, { chest: 3, quads: 4 }], [r, null, 1.75]]),
@@ -136,7 +138,28 @@ const EXTRA = {
   // The minutes left in those same sessions (2.32, NEW-77: the one count Short on time and the session's header read).
   sessLeftMin: (s) => (window.__pd && window.__pd.s === s ? window.__pd.d : []).map(d => [d]),
   // The strength focus on each lift: its stats and its main muscle's recovery, today and on the log's first day.
+  // 2.65 (390's Release A): a heaviest load, a bar and any load set in either unit, read on the unit's equipment, and a
+  // number typed within a bound.
+  liftMax: (s, ids) => ids.slice(0, 3).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e], [{ ...e, maxLoad: 100 }], [{ ...e, maxLoad: 220 * 0.45359237 }]]),
+  barReadOf: (s, ids) => ids.slice(0, 2).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [20, 45 * 0.45359237, 10, 60].flatMap(kg => [[e, kg], [{ ...e, unit: 'kg' }, kg], [{ ...e, unit: 'lb' }, kg]])),
+  loadReadOf: (s, ids) => ids.slice(0, 2).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [100, 220 * 0.45359237, 0.4, 102.06].flatMap(kg => [[e, kg], [{ ...e, unit: 'kg' }, kg], [{ ...e, unit: 'lb' }, kg]])),
+  typedBoundOf: (s, ids) => ids.slice(0, 2).map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[1200, 500], [600, 500], [200, 50], [30, 50]].flatMap(a => [[e, ...a], [{ ...e, unit: 'kg' }, ...a], [{ ...e, unit: 'lb' }, ...a]])),
+  typedBoundApp: () => [[1200, 500], [600, 500], [200, 50], [30, 50]],
   strengthPick: (s, ids) => ids.map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e, window.__ironlog.IDX().exStats[e.id], window.__ironlog.recovery(e.primary)], [e, window.__ironlog.IDX().exStats[e.id], { r: 1, days: null, sets: 0, need: 0 }, s.sessions.length ? s.sessions[0].date : undefined]]),
+  // 2.66 (390's Release B): a lift's own unit, and its loads, steps and past loads in it, for a lift marked in kg, one in lb
+  // and one with no unit of its own (the app's), loads typed in each unit and one the app worked out.
+  liftU: (s, ids) => ids.slice(0, 2).flatMap(id => [[{ id, unit: 'kg' }], [{ id, unit: 'lb' }], [{ id }], [null]]),
+  fmtWOf: () => [[{ unit: 'kg' }, 102.05828325], [{ unit: 'lb' }, 100], [{}, 45.359237], [null, null]],
+  toDOf: () => [[{ unit: 'kg' }, 102.05828325], [{ unit: 'lb' }, 100], [{}, 20], [{ unit: 'lb' }, null]],
+  fromDOf: () => [[{ unit: 'kg' }, 100], [{ unit: 'lb' }, 225], [{}, 50], [null, null]],
+  stepReadOf: () => [[{ unit: 'kg' }, 4.5359237], [{ unit: 'lb' }, 5], [{ unit: 'lb' }, 2.5], [{ unit: 'kg' }, 0.5669904625], [{}, 2.26796185]],
+  // 2.66: the scale's unit, a weigh-in shown, read and typed in it.
+  bodyU: () => [[]],
+  fmtBody: () => [[81.6466266], [90.7], [null]],
+  toDBody: () => [[81.6466266], [90.7], [null]],
+  fromDBody: () => [[180], [90.7], [null]],
+  listLabel: () => [[{ bw: false, unit: 'kg' }, 22.5], [{ bw: false, unit: 'kg' }, 22.6796185], [{ bw: false }, 100], [{ bw: true, unit: 'kg' }, 10, true], [{ bw: false, unit: 'lb' }, 0, true]],
+  typedLabel: () => [[{ bw: false, unit: 'kg' }, 102.05828325], [{ bw: false, unit: 'lb' }, 100], [{ bw: true, unit: 'kg' }, 11.33980925], [{ bw: true, unit: 'lb' }, -4.5359237], [{ bw: false }, 101.7234]],
 };
 // Hand-made histories beside the wide ones, for paths those never reach, each built on a wide history's settings,
 // exercises and routines (since r54): a lifter back this week after ten weeks away, whose weeks count from the
@@ -255,10 +278,39 @@ const SCENARIOS = [
     sessions: [[-28, 'legPress', 160, false], [-21, 'legPress', 165, false], [-14, 'legPress', 230, true], [-7, 'legPress', 235, false], [-7, 'bench', 80, false]].map(([n, exId, w, nw], i) => ({ id: 'nw' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
       ex: [{ exId, rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r: 10, rir: 2, done: true })), ...(nw ? { nw: true } : {}) }] })),
     draft: { id: 'nwd', date: h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: null, r: null }], nw: true }] } } }),
+  // A machine lift on three machines (390 C): its first machine, a new one, back on the first by name, and on the new one by
+  // name; with a workout in progress picking the first machine (and a cable lift never done, on its first), editing the
+  // session that began the new one, kept on it by its mark, and marking it done on a new one; the bench beside it, a free
+  // weight, names none.
+  ...[
+    { exId: 'machPress', mc: '0', sets: [{ w: null, r: null }] },
+    { exId: 'machPress', nw: true, sets: [{ w: 60, r: 10, rir: 2, done: true }] },
+    { exId: 'machPress', nw: true, sets: [{ w: null, r: null }] }
+  ].map((b, k) => h => ({ ...h, ids: ['machPress', 'cableFly', 'bench', ...h.ids], raw: { ...h.raw, injuries: [], deloadWeek: null, settings: { ...h.raw.settings, restWeeks: [] },
+    sessions: [[-28, 90, {}], [-21, 60, { nw: true }], [-14, 92.5, { mc: '0' }], [-7, 62.5, { mc: 'mc1' }]].map(([n, w, more], i) => ({ id: 'mc' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
+      ex: [{ exId: 'machPress', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r: 10, rir: 2, done: true })), ...more }, { exId: 'bench', rr: [6, 10], sets: [{ w: 80, r: 8, rir: 2, done: true }] }] })),
+    draft: { id: 'mcd', date: k === 1 ? day(h.today, -21) : h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ...(k === 1 ? { editingId: 'mc1' } : {}),
+      ex: [b, { exId: 'cableFly', sets: [{ w: null, r: null }] }, { exId: 'bench', sets: [{ w: null, r: null }] }] } } })),
+  // A machine back after weeks on another (390 C, G-25): two sessions on the first, six weeks on another, then the first
+  // again, easy, so its climb is said "on this machine"; and a machine last used over a year ago, picked again after a
+  // session on another, so it starts fresh "on this machine", never as a break the lift did not have.
+  h => ({ ...h, ids: ['machPress', ...h.ids], raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] },
+    sessions: [[-56, 90, 2, {}], [-49, 90, 2, {}], [-42, 60, 2, { nw: true }], [-35, 60, 2, { mc: 'mb1' }], [-28, 60, 2, { mc: 'mb1' }], [-21, 60, 2, { mc: 'mb1' }], [-14, 60, 2, { mc: 'mb1' }], [-7, 80, 4, { mc: '0' }]].map(([n, w, rir, more], i) => ({ id: 'mb' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
+      ex: [{ exId: 'machPress', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r: 12, rir, done: true })), ...more }] })) } }),
+  h => ({ ...h, ids: ['machPress', ...h.ids], raw: { ...h.raw, injuries: [], deloadWeek: null, settings: { ...h.raw.settings, restWeeks: [] },
+    sessions: [[-400, 90, {}], [-390, 60, { nw: true }], [-10, 62.5, { mc: 'ml1' }]].map(([n, w, more], i) => ({ id: 'ml' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
+      ex: [{ exId: 'machPress', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r: 10, rir: 2, done: true })), ...more }] })),
+    draft: { id: 'mld', date: h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'machPress', mc: '0', sets: [{ w: null, r: null }] }] } } }),
   // 2.37 (ST-6): This block vs last by Auto and by 4 weeks, on a wide history with its own lighter and missed weeks;
   // before the stalled bench, whose coach line the check below reads as the last but one (the long-break history is last).
   h => ({ ...h, raw: { ...h.raw, settings: { ...h.raw.settings, blockWeeks: 'auto' } } }),
   h => ({ ...h, raw: { ...h.raw, settings: { ...h.raw.settings, blockWeeks: 4 } } }),
+  // Dumbbell bench logged in kg (24 kg x 10, 10, 9), the app now in lb with Your gym's dumbbells in 5 lb steps: last
+  // time's load, another rack's weight, goes to the nearest weight this rack has with the reps aimed there (390's
+  // Release A, U-4), which the wide histories, each logged and read in one unit, never reach.
+  h => ({ ...h, ids: ['dbBench', ...h.ids], raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, unit: 'lb', restWeeks: [], gym: { u: 'lb', db: { lo: 5, hi: 100, st: 5 } } },
+    sessions: [-16, -9, -2].map((n, i) => ({ id: 'kgdb' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
+      ex: [{ exId: 'dbBench', rr: [8, 12], sets: [10, 10, 9].map(r => ({ w: 24, r, rir: 1, done: true })) }] })) } }),
   // Bench on the heavy and light days flat a rep under the top of the heavy range, 100 x 4 x 5 and 70 x 10 x 4, the heavy day
   // last: stalled in both and not at the top of its range (the coach's stalled line). Until r64 wide histories reached it through
   // lifts read as stalled across a break of more than four weeks, which since r64 (the r63 audit's P-S2-2) are not stalled.

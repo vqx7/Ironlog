@@ -2,8 +2,9 @@
    reading and reps against the sessions before it, whether it was at its usual load and work, and a session of
    fewer sets than its plan gave it (short). Functions of a lift's exposures, which the analytics index builds. */
 import type { ExPoint, Exposure } from './model';
+import { machinesOf } from './model';
 import { EPS, EPS_SAME } from './util';
-import { LIGHTER_LOAD, afterBreak, lighter, sameRR, trendE, USUAL_BEFORE } from './formulas';
+import { LIGHTER_LOAD, lighter, sameRR, trendE, USUAL_BEFORE } from './formulas';
 
 /** How far under its usual a lift's session may fall and still be at its
     usual level: 97% of the best strength reading of the sessions it is
@@ -171,24 +172,24 @@ function setsHeldTo(usualSets: number, plan: number | null, saved: number | null
    the bug that made it, is a row of tests/usual.js; the history is in docs/ARCHIVE.md. */
 /** Marks each of a lift's sessions short of its usual by its sets or its reading, by V's one rule (above). */
 export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string, x: Exposure) => number | null): void {
-  for (const id of Object.keys(byEx)) {
-    const normal: Exposure[] = [];
-    let last: Exposure | null = null;
-    for (const x of byEx[id]) {
-      if (afterBreak(last, x.date) || x.nw) normal.length = 0;
-      last = x;
-      if (lighter(x)) continue;
-      const prior = normal.filter(q => sameRR(q.rr, x.rr));
-      const before = prior.slice(-USUAL_BEFORE);
-      // A label cut the plan, so a labelled session is held to its own sets (above).
-      const plan = before.length && !x.tag ? planSets(id, x) : null;
-      const saved = !x.tag && x.ps != null ? x.ps : null;
-      const reached = saved != null && prior.some(q => setsAt(q, q.topW) >= saved);
-      const sh = before.length ? shortOf(x, before, plan, saved, reached) : undefined;
-      if (sh) x.short = sh;
-      if (!(x.tag && x.short)) normal.push(x);
+  // Each machine's sessions are read against that machine's alone (machineKeys).
+  for (const id of Object.keys(byEx))
+    for (const xs of machinesOf(byEx[id])) {
+      const normal: Exposure[] = [];
+      for (const x of xs) {
+        if (x.br) normal.length = 0;
+        if (lighter(x)) continue;
+        const prior = normal.filter(q => sameRR(q.rr, x.rr));
+        const before = prior.slice(-USUAL_BEFORE);
+        // A label cut the plan, so a labelled session is held to its own sets (above).
+        const plan = before.length && !x.tag ? planSets(id, x) : null;
+        const saved = !x.tag && x.ps != null ? x.ps : null;
+        const reached = saved != null && prior.some(q => setsAt(q, q.topW) >= saved);
+        const sh = before.length ? shortOf(x, before, plan, saved, reached) : undefined;
+        if (sh) x.short = sh;
+        if (!(x.tag && x.short)) normal.push(x);
+      }
     }
-  }
   // Short of its usual by its sets, or by its reading, against the two sessions before it in the range, or not.
   function shortOf(
     x: Exposure,

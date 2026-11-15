@@ -15,7 +15,19 @@ import { cleanDraftCardio, LOAD_MAX } from './normalize';
 
 import { CHK_Q } from './coach';
 import { BWASK_KEY, prefSet } from './storage';
-import { EX, loadLabel, U, exName, lighterLoad, heavierLoad, fromD, oddLoad, lightZero, stepLoad, toD } from './live';
+import {
+  EX,
+  exName,
+  fromDOf,
+  heavierLoad,
+  liftU,
+  lighterLoad,
+  lightZero,
+  loadLabel,
+  oddLoad,
+  stepLoad,
+  toDOf
+} from './live';
 import { state, ui } from './store';
 import { effW, greyW, blockDone, newRow, editFp, markedNew } from './session';
 import type { DraftBlock } from './types';
@@ -132,7 +144,7 @@ function setRemove(t: Tap): void {
         ? `${x.r} rep${Number(x.r) === 1 ? '' : 's'}`
         : setShort(ex, shown ?? 0, x.r)
       : x.w != null
-        ? loadLabel(ex, x.w) + (ex.bw ? '' : ' ' + U())
+        ? loadLabel(ex, x.w) + (ex.bw ? '' : ' ' + liftU(ex))
         : '';
   const at = i;
   confirmBox(
@@ -410,11 +422,11 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (f === 'w') {
       if (ex.assist) return;
       const to = stepLoad(ex, b.plan, effW(b, si) ?? 0, dir);
-      /* As the number typed in the unit on screen, to the hundredth a field takes: the field's own text is rounded to a
+      /* As the number typed in the lift's unit, to the hundredth a field takes: the field's own text is rounded to a
          tenth, and stored from it a 1.25 kg step would go 41.3, 42.6, 43.9, off every load the lift has. */
-      const v = to == null ? null : toD(to);
+      const v = to == null ? null : toDOf(ex, to);
       if (v == null) return;
-      w = Math.min(fromD(Math.max(Math.round(v * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
+      w = Math.min(fromDOf(ex, Math.max(Math.round(v * HUNDREDTHS) / HUNDREDTHS, 0)) ?? 0, LOAD_MAX);
     } else {
       const was = +(s.r ?? greyR(b, si) ?? 0) || 0;
       r = Math.min(Math.max(was + dir * (ex.timed ? STEP_SECONDS : 1), 0), LIMITS.reps);
@@ -459,7 +471,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const frac = WARM_RAMP[Math.min(n, WARM_RAMP.length - 1)];
     let at = 0;
     while (at < b.sets.length && b.sets[at].warm) at++;
-    let w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * frac) : null;
+    let w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * frac, true) : null;
     /* Each warm-up a step heavier than the one before where the loads allow: on a 10 lb step a 50 lb curl's
        third warm-up came out at 30 again, the second's load; it takes the next load up, at most the ramp's top share
        of the working load, so a warm-up never reaches it. Where no load fits there, it repeats the one before, never
@@ -467,7 +479,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const prev = at > 0 ? +(effW(b, at - 1) ?? 0) || 0 : 0;
     const top = WARM_RAMP[WARM_RAMP.length - 1] ?? frac;
     if (w != null && prev > 0 && w <= prev + EPS) {
-      const up = base * top > prev ? heavierLoad(EX(b.exId), b.plan, prev, base * top) : null;
+      const up = base * top > prev ? heavierLoad(EX(b.exId), b.plan, prev, base * top, true) : null;
       w = up != null && up < base - EPS ? up : prev;
     }
     act(
@@ -588,7 +600,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         break;
       }
     }
-    const w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * DROP_START) : null;
+    const w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * DROP_START, true) : null;
     // Attached to the last working set ticked: after it and any drops already under it, not at the end of the exercise.
     let at = -1;
     b.sets.forEach((x, i) => {
@@ -859,10 +871,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       { inProgress: true, undo: true }
     );
     rerenderKeepScroll();
-    toast(
-      `Lighter: ${todo.length} exercise${todo.length === 1 ? '' : 's'} not started now half the sets at about ${pctOf(LIGHT_SHARE)}% loads`,
-      true
-    );
+    toast(`Made ${todo.length} exercise${todo.length === 1 ? '' : 's'} lighter`, true);
   },
   calSnooze() {
     act(() => {

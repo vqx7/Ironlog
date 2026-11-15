@@ -14,7 +14,9 @@ import { state } from './store';
 import { today } from './util';
 import {
   EXIn,
-  UIn,
+  appUIn,
+  bodyUIn,
+  liftUIn,
   activeRoutineIn,
   bandOfIn,
   exInjuryIn,
@@ -29,12 +31,24 @@ import {
   rirHalfOnIn,
   sortedSessionsIn
 } from './model';
-import { fromDIn, stepReadIn, toDIn } from './units';
+import {
+  fromDAppIn,
+  fromDBodyIn,
+  fromDOfIn,
+  loadReadOfIn,
+  stepReadIn,
+  stepReadOfIn,
+  toDAppIn,
+  toDBodyIn,
+  toDOfIn,
+  typedBoundAppIn,
+  typedBoundOfIn
+} from './units';
 import { defPlanIn, planCreditIn, planSetsPerWeekIn, plannedSetsIn, profPlanIn, profRuleIn } from './routines';
 import { planForIn, routineUpdatesIn } from './plans';
 import { appBandIn, defBandIn, fitFloorsIn, hasTargetIn, refitIn } from './profile';
-import { barKgIn, capOfIn, exBarKgIn, gymRackIn, rackTolIn } from './gym';
-import { fmtWIn, loadLabelIn } from './loads';
+import { barKgIn, barReadOfIn, capOfIn, exBarKgIn, gymRackIn, liftMaxIn, rackTolIn } from './gym';
+import { fmtBodyIn, fmtWAppIn, fmtWOfIn, listLabelIn, loadLabelIn, typedLabelIn } from './loads';
 import {
   cycleStateIn,
   dayReasonsIn,
@@ -55,7 +69,10 @@ import {
 import {
   IDXIn,
   dateIndexIn,
+  draftMachineIn,
+  liftMachinesIn,
   liftReadIn,
+  machineToSaveIn,
   sessionWordsIn,
   stallWeeksIn,
   stallWordsIn,
@@ -155,7 +172,13 @@ export function live<A extends unknown[], R>(f: (M: Model, ...args: A) => R): (.
     adapter per moved reader the screens call, and invalidate, which
     clears LIVE's caches after every change to the log. */
 export const EX = live(EXIn);
-export const U = live(UIn);
+export const appU = live(appUIn);
+export const bodyU = live(bodyUIn);
+export const fmtBody = live(fmtBodyIn);
+export const toDBody = live(toDBodyIn);
+export const fromDBody = live(fromDBodyIn);
+/** The unit a lift's loads are marked in: its own, else the app's. */
+export const liftU = live(liftUIn);
 export const activeRoutine = live(activeRoutineIn);
 export const bandOf = live(bandOfIn);
 export const exInjury = live(exInjuryIn);
@@ -169,9 +192,15 @@ export const isRestWeek = live(isRestWeekIn);
 export const prof = live(profIn);
 export const rirHalfOn = live(rirHalfOnIn);
 export const sortedSessions = live(sortedSessionsIn);
-export const fromD = live(fromDIn);
+export const fromDApp = live(fromDAppIn);
+/** A load typed in a lift's unit, in kilograms. */
+export const fromDOf = live(fromDOfIn);
 export const stepRead = live(stepReadIn);
-export const toD = live(toDIn);
+/** A step as stored, read for a lift in its unit. */
+export const stepReadOf = live(stepReadOfIn);
+export const toDApp = live(toDAppIn);
+/** A load in kilograms in a lift's unit. */
+export const toDOf = live(toDOfIn);
 export const defPlan = live(defPlanIn);
 export const planCredit = live(planCreditIn);
 export const planFor = live(planForIn);
@@ -188,10 +217,20 @@ export const refit = live(refitIn);
 export const barKg = live(barKgIn);
 export const capOf = live(capOfIn);
 export const exBarKg = live(exBarKgIn);
+export const liftMax = live(liftMaxIn);
+export const barReadOf = live(barReadOfIn);
+export const loadReadOf = live(loadReadOfIn);
+export const typedBoundOf = live(typedBoundOfIn);
+export const typedBoundApp = live(typedBoundAppIn);
 export const gymRack = live(gymRackIn);
 export const rackTol = live(rackTolIn);
-export const fmtW = live(fmtWIn);
+export const fmtWApp = live(fmtWAppIn);
+/** A load in kilograms as a lift shows it, in its unit. */
+export const fmtWOf = live(fmtWOfIn);
 export const loadLabel = live(loadLabelIn);
+/** A load already lifted, as it was typed: its unit named when it is not the lift's. */
+export const typedLabel = live(typedLabelIn);
+export const listLabel = live(listLabelIn);
 export const IDX = live(IDXIn);
 export const allTimeBests = live(allTimeBestsIn);
 export const sinceBack = live(sinceBackIn);
@@ -206,6 +245,9 @@ export const dateIndex = live(dateIndexIn);
 export const hardCredit = live(hardCreditIn);
 export const isHard = live(isHardIn);
 export const liftRead = live(liftReadIn);
+export const draftMachine = live(draftMachineIn);
+export const liftMachines = live(liftMachinesIn);
+export const machineToSave = live(machineToSaveIn);
 export const cycleState = live(cycleStateIn);
 export const sessionMuscleSets = live(sessionMuscleSetsIn);
 export const rolling7 = live(rolling7In);

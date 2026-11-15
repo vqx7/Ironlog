@@ -19,7 +19,7 @@ type ImpSet = {
   u: 'kg' | 'lb' | null;
 };
 /** An exercise of an imported session, in order of first appearance. */
-type ImpItem = { name: string; sets: ImpSet[]; note: string; ss?: string };
+type ImpItem = { name: string; sets: ImpSet[]; note: string; ss?: string; mc?: string };
 /** An imported session: a date and a workout name, its exercises, whether it was a deload, and its note and minutes, from the app's own file and from Strong and Hevy. */
 type ImpSession = {
   date: string;
@@ -50,6 +50,8 @@ interface ImpReadItem {
   setsText?: string[] | undefined;
   note?: string | undefined;
   ss?: string | undefined;
+  /** The machine it was done on, from the app's own file (its machine column), for a lift done on more than one. */
+  mc?: string | undefined;
 }
 /** A session as the reader found it: no date when the notes gave none (the preview asks for one). */
 interface ImpReadSession {
@@ -786,7 +788,10 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
   const cNote = col('session_note'),
     cMin = col('session_minutes'),
     cHr = col('avg_hr'),
-    cUnit = col('unit');
+    cUnit = col('unit'),
+    cTyped = col('typed_load'),
+    cTypedU = col('typed_unit'),
+    cMachine = col('machine');
   const at = (r: readonly unknown[], i: number | null): string =>
     i == null ? '' : csvUnguard(String(r[i] == null ? '' : r[i]).trim());
   let lastDate: string | null = null,
@@ -855,7 +860,15 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       skipped++;
       continue;
     }
-    const set = rowSet(cell, w, reps, secs, missed, numTypes, rowUnit(r));
+    /* The app's own file gives each set's load as typed and the unit it was typed in (a file from before has neither
+       column): read so, a round trip keeps the number typed (225 lb, the app in kg, comes back as 225 lb, not the 102.1 kg
+       its load column rounds to). */
+    const tu = at(r, cTypedU),
+      tw = num(at(r, cTyped));
+    const tuK: 'kg' | 'lb' | null = tu === 'kg' ? 'kg' : tu === 'lb' ? 'lb' : null;
+    // An assisted lift's help is typed below 0, so a typed load below 0 is read where the row's own load is below 0 too.
+    const asTyped = tuK && tw != null && (tw >= 0 || w < 0) ? { w: tw, u: tuK } : null;
+    const set = rowSet(cell, asTyped ? asTyped.w : w, reps, secs, missed, numTypes, asTyped ? asTyped.u : rowUnit(r));
     const k = date + '|' + name;
     if (!S.has(k)) S.set(k, { date, name, items: new Map<string, ImpItem>(), note: '' });
     // Made just above when it was missing, so it is there (the !).
@@ -870,6 +883,9 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       it = { name: ex, sets: [], note: '', ...(cell('ss') ? { ss: cell('ss') } : {}) };
       ss.items.set(ex, it);
     }
+    // The app's own file names the machine of a lift done on more than one (390 C), the same on each of its rows.
+    const mc = at(r, cMachine);
+    if (mc && !it.mc) it.mc = mc;
     /* An exercise's note may sit on any of its rows (a set's note in another
        app's file, its warm-up row first and blank): every distinct one is
        kept, each once, up to a note's room, so a note after a blank row is
@@ -1018,16 +1034,23 @@ export function readSets(
   ex: { bw?: boolean | undefined },
   defW: number | null | undefined,
   conv: (v: number) => number,
-  rpe?: boolean
+  rpe?: boolean,
+  units?: boolean
 ): TypedSet[] | null {
   const fromRpe = (v: number) => (v >= 1 && v <= EFFORT_TOP ? Math.round((EFFORT_TOP - v) * TENTHS) / TENTHS : NaN);
   let s = String(text || '')
     .toLowerCase()
     .replace(/[×*]/g, 'x')
     .replace(/\bfor\b/g, 'x')
-    .replace(/\bat\b/g, '@')
-    .replace(/\breps?\b/g, '')
-    .replace(/\blbs?\b|\bkgs?\b/g, '');
+    .replace(/\bat\b/g, '@');
+  /* With `units`, a load with its unit named is read in that unit, as a load typed in the other unit is ("100 kg x 5"
+     on a lift in lb is 100 kg, never 100 lb): the unit is kept as a mark on the number (k or p) before the words go. A
+     unit after the reps ("225 x 5 lb") names no load and goes with the other words, as before. */
+  if (units)
+    s = s
+      .replace(/(\d+(?:\.\d+)?)\s*(?:kgs?|kilos?|kilograms?)\b(?=\s*x)/g, '$1k')
+      .replace(/(\d+(?:\.\d+)?)\s*(?:lbs?|pounds?)\b(?=\s*x)/g, '$1p');
+  s = s.replace(/\breps?\b/g, '').replace(/\blbs?\b|\bkgs?\b/g, '');
   let allRir: number | null = null;
   const m = s.match(/\b(rir|rpe)\s*(\d+(?:\.\d+)?)\s*$/);
   if (m) {
@@ -1042,15 +1065,17 @@ export function readSets(
     .trim();
   if (!s) return null;
   const toks = s.split(/[\s,;/]+/).filter(Boolean);
-  const re = /^(?:(bw)(?:\+(\d+(?:\.\d+)?))?x|(\d+(?:\.\d+)?)x)?(\d{1,3})(?:@(\d+(?:\.\d+)?))?$/;
+  const re = /^(?:(bw)(?:\+(\d+(?:\.\d+)?)([kp])?)?x|(\d+(?:\.\d+)?)([kp])?x)?(\d{1,3})(?:@(\d+(?:\.\d+)?))?$/;
+  // A number marked with its unit is that many kilograms or pounds; one with none is in the lift's unit (conv).
+  const read = (v: number, u: string | undefined): number => (u === 'k' ? v : u === 'p' ? v * LB : conv(v));
   let w = defW == null ? null : defW;
   const out: TypedSet[] = [];
   for (const t of toks) {
     const g = t.match(re);
     if (!g) return null;
-    const [, bw, added, load, reps, at] = g;
-    if (bw) w = added ? conv(+added) : 0;
-    else if (load != null) w = conv(+load);
+    const [, bw, added, addedU, load, loadU, reps, at] = g;
+    if (bw) w = added ? read(+added, addedU) : 0;
+    else if (load != null) w = read(+load, loadU);
     const r = +(reps || '');
     if (!(r >= 1 && r <= TYPED.reps)) return null;
     const rir = at != null ? (rpe ? fromRpe(+at) : +at) : allRir;

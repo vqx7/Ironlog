@@ -18,33 +18,35 @@ import { addDays, today, uid, numIn, EPS, EPS_SAME, WEEK_DAYS, r3 } from './util
 import { loadWords } from './loads';
 import { BAND_WORDS, prAdd, prBestOf, prJudge, prSoFar } from './prs';
 import {
-  prFrame,
-  noBody,
-  rirEst,
-  rirEff,
-  loadOf,
-  EX,
-  prLoad,
-  U,
-  loadLabel,
-  fmtW,
-  bwRefLoad,
-  IDX,
-  liftRead,
-  dayMinutes,
-  calStats,
-  daysOff,
-  suggest,
   activeRoutine,
-  invalidate,
-  suggestCore,
-  nextSets,
-  oddLoad,
-  lightZero,
+  appU,
+  bwRefLoad,
+  calStats,
+  dayMinutes,
+  daysOff,
+  EX,
   exName,
-  trimPlan,
+  fmtWOf,
+  fromDOf,
+  IDX,
+  invalidate,
+  liftRead,
+  liftU,
+  lightZero,
+  loadLabel,
+  loadOf,
+  nextSets,
+  noBody,
+  oddLoad,
+  prFrame,
+  prLoad,
+  rirEff,
+  rirEst,
   sessLeftMin,
-  fromD
+  suggest,
+  suggestCore,
+  trimPlan,
+  listLabel
 } from './live';
 import { sessionShown, state, ui } from './store';
 import { lastDup, effTarget, newRow, greyW, effW, blockDone } from './session';
@@ -371,14 +373,12 @@ export function prBeat(exId: string, s: DraftSet, at: ReadDay, pr: string): stri
     if (!isCompound(ex)) return ` (your best for ${bandW})`;
     const all = j.prevAll;
     return all == null || j.value > all + EPS_SAME
-      ? ` (estimated 1RM ${fmtE(j.value)} ${U()}${wasE(j.value, all) ? `; was ${wasE(j.value, all)}` : ''})`
-      : ` (your best for ${bandW}, ${fmtE(j.value)} ${U()})`;
+      ? ` (estimated 1RM ${fmtE(ex, j.value)} ${liftU(ex)}${wasE(ex, j.value, all) ? `; was ${wasE(ex, j.value, all)}` : ''})`
+      : ` (your best for ${bandW}, ${fmtE(ex, j.value)} ${liftU(ex)})`;
   }
   if (pr === 'Weight PR' && j.type === 'Weight PR') {
-    const was = ex.assist
-      ? `less help than ever`
-      : `heaviest before ${ex.bw ? loadLabel(ex, j.prevW) : fmtW(j.prevW) + ' ' + U()}`;
-    return ` (${was}${isCompound(ex) && j.value != null ? `; best estimate for ${bandW} now ${fmtE(j.value)}` : ''})`;
+    const was = ex.assist ? `less help than ever` : `heaviest before ${listLabel(ex, j.prevW, !ex.bw)}`;
+    return ` (${was}${isCompound(ex) && j.value != null ? `; best estimate for ${bandW} now ${fmtE(ex, j.value)}` : ''})`;
   }
   if (j.type === 'Rep PR') return j.prevR ? ` (was ${j.prevR} ${ex.timed ? 's' : 'reps'})` : ' (heaviest yet)';
   return '';
@@ -391,7 +391,7 @@ export function prBeat(exId: string, s: DraftSet, at: ReadDay, pr: string): stri
    takes the help as a plain number, since phone number pads have no minus. */
 /** A load as its field shows it: the help on an assisted lift, blank for none. */
 export const loadIn = (ex: ExerciseLike | null | undefined, w: number | null | undefined): string =>
-  w == null ? '' : fmtW(ex && ex.assist ? -w : w);
+  w == null ? '' : fmtWOf(ex, ex && ex.assist ? -w : w);
 
 /* ---------- progress, time, the calibration set ---------- */
 
@@ -434,6 +434,8 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
       }
     }
     if (best != null) {
+      /* A best beaten by less than the rounding shows the same number as the one before, so the previous best is said only
+         when it reads differently, as the recap and the PR message say it (wasE). */
       heavyBeat = best > t.prevBest + EPS_SAME;
       const iso = !isCompound(ex);
       const setW = bs ? setShort(ex, +(bs.w ?? 0) || 0, +(bs.r ?? 0)) : '';
@@ -442,8 +444,8 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
           ? `Beaten by load: ${setW}, your best yet`
           : `Heavier than target: ${setW}`
         : heavyBeat
-          ? `Beaten by load: ${fmtE(best)} ${U()} estimated, previous best ${fmtE(t.prevBest)}`
-          : `Heavier than target, ${fmtE(best)} ${U()} estimated against a best of ${fmtE(t.prevBest)}`;
+          ? `Beaten by load: ${fmtE(ex, best)} ${liftU(ex)} estimated${wasE(ex, best, t.prevBest) ? `, previous best ${wasE(ex, best, t.prevBest)}` : ''}`
+          : `Heavier than target, ${fmtE(ex, best)} ${liftU(ex)} estimated against a best of ${fmtE(ex, t.prevBest)}`;
     }
   }
   if (t.kind === 'reps') {
@@ -626,6 +628,20 @@ export function refreshBlock(b: DraftBlock): void {
     if (!x.done && !x.warm && !x.drop && x.r == null && x.w === oldW && !carried.has(x)) x.w = sg.w;
 }
 
+/* A workout set aside comes back to a log that may have changed while it waited: the session edited saved, a past
+   workout logged, a lift's unit picked in the edit. It reads them as a workout open reads a change to a lift
+   (refreshEx, the unit picked in a lift's sheet): a lift not started reads its target again, its rows not typed in
+   taking the new load; one with a set done keeps what it started with, its words said again. */
+/** The workout just brought back from being set aside, read again against the log as it is now; inside the change that brings it back (unpark). */
+export function draftBack(): void {
+  const d = state.draft;
+  if (!d || d.editingId) return;
+  for (const b of d.ex) {
+    if (b.sets.some(x => x.done)) blockWords(b);
+    else refreshBlock(b);
+  }
+}
+
 /* A change to an exercise or its plan reaches the session in progress:
    an exercise not started yet re-reads its target, so a new load step, rep
    range or heaviest load shows at once instead of next session. Exercises
@@ -680,23 +696,27 @@ export function unitWords(): void {
   invalidate();
   act(
     () => {
-      for (const b of d.ex) {
-        if (d.deload || d.light || b.light || b.inj) continue;
-        const sg = suggestCore(b.exId, b.plan, { before: d.date });
-        if (b.sw != null && sg.w != null && Math.abs(sg.w - b.sw) > EPS_SAME) continue;
-        Object.assign(b, {
-          hint: sg.text,
-          hintAgain: sg.again || undefined,
-          last: sg.last,
-          prev: sg.prev || undefined,
-          prevOff: sg.prevOff || undefined,
-          target: sg.target,
-          easier: sg.easier || null
-        });
-      }
+      for (const b of d.ex) blockWords(b);
     },
     { inProgress: true }
   );
+}
+
+/** One block's target and last time worded again in its unit, its loads as they are (unitWords); inside a change. */
+export function blockWords(b: DraftBlock): void {
+  const d = state.draft;
+  if (!d || d.deload || d.light || b.light || b.inj) return;
+  const sg = suggestCore(b.exId, b.plan, { before: d.date });
+  if (b.sw != null && sg.w != null && Math.abs(sg.w - b.sw) > EPS_SAME) return;
+  Object.assign(b, {
+    hint: sg.text,
+    hintAgain: sg.again || undefined,
+    last: sg.last,
+    prev: sg.prev || undefined,
+    prevOff: sg.prevOff || undefined,
+    target: sg.target,
+    easier: sg.easier || null
+  });
 }
 
 /* ---------- the next sets adjusted (the rule is nextSetsIn's) ---------- */
@@ -868,7 +888,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
     const ex = EX(b.exId);
     const fix = far ? 'w' : 'r';
     confirmBox(
-      `${setShort(ex, effW(b, si), s.r)}${ex.bw ? '' : ' ' + U()}?`,
+      `${setShort(ex, effW(b, si), s.r, !ex.bw)}?`,
       lz
         ? `0 ${ex.timed ? 'seconds' : 'reps'} at a weight well under today's working weight. Log it as missed, or go back and fix it.`
         : `${far || `${s.r} ${ex.timed ? 'seconds' : 'reps'} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`,
@@ -1174,7 +1194,7 @@ export function mixCheck(bi: number, si: number): void {
   if (mixSeen.has(key)) return;
   mixSeen.add(key);
   toast(
-    `${fmtW(+(s.w ?? 0))} ${U()} is ${r > 1 ? 'well above' : 'well below'} last time's ${fmtW(last)}. This one is logged as ${loadWords(ex)}.`,
+    `${fmtWOf(ex, +(s.w ?? 0))} ${liftU(ex)} is ${r > 1 ? 'well above' : 'well below'} last time's ${fmtWOf(ex, last)}. This one is logged as ${loadWords(ex)}.`,
     false,
     MIX_TOAST_MS
   );
@@ -1429,9 +1449,10 @@ export function acceptGrey(bi: number, si: number): boolean {
   if (!d || !state.settings.autoDone || drawing()) return false;
   const b = d.ex[bi];
   const x = b && b.sets[si];
-  // A warm-up or a drop takes its grey reps here too.
-  if (!b || !x || x.done || +(x.r ?? 0) > 0) return false;
-  const lr = greyR(b, si);
+  /* The number the field shows is the one confirmed: reps already in the set (typed, or put there by minus and plus,
+     which leave a set unticked), else its grey reps; a warm-up or a drop takes its grey reps here too. */
+  if (!b || !x || x.done) return false;
+  const lr = +(x.r ?? 0) > 0 ? +(x.r ?? 0) : greyR(b, si);
   if (lr == null || !(lr > 0)) return false;
   // The grey reps and the tick are one change, saved once (as sDone's).
   act(
@@ -1450,21 +1471,21 @@ export function acceptGrey(bi: number, si: number): boolean {
 /** Distance as typed, in the unit shown (miles to someone logging in lb), as kept: km, absent when none. */
 export const distIn = (v: string): number | null => {
   const n = numIn(v);
-  return n != null && n > 0 ? Math.min(r3(U() === 'kg' ? n : n * KM_MI), LIMITS.distKm) : null;
+  return n != null && n > 0 ? Math.min(r3(appU() === 'kg' ? n : n * KM_MI), LIMITS.distKm) : null;
 };
 
 /* ---------- typed sets ---------- */
 
-/** Sets typed or dictated for a lift (importing.ts's readSets), the loads in the unit on screen unless conv says otherwise. */
+/** Sets typed or dictated for a lift (importing.ts's readSets), the loads in the lift's unit unless conv says otherwise. */
 export function parseSets(
   text: unknown,
-  ex: { bw?: boolean | undefined },
+  ex: { bw?: boolean | undefined; unit?: 'kg' | 'lb' | undefined },
   defW: number | null | undefined,
   conv?: ((v: number) => number) | null,
   rpe?: boolean
 ): TypedSet[] | null {
-  // A load typed is a number, which fromD always turns into one.
-  return readSets(text, ex, defW, conv || ((v: number) => Number(fromD(v))), rpe);
+  // A load typed is a number, which fromD always turns into one; a load typed with its unit is read in that unit.
+  return readSets(text, ex, defW, conv || ((v: number) => Number(fromDOf(ex, v))), rpe, true);
 }
 /* Sets typed for a lift fill its rows from the first one not done, each
    ticked; a set far off is left for setDone's question, as a tick asks it

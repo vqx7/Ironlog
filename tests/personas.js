@@ -34,11 +34,11 @@
 //      week after reading its target from before the deload;
 //   8  short on time: Short on time trims sets, nothing typed is lost, and a
 //      lift done with fewer sets than usual repeats its target;
-//   9  a gym change (r61, 343 7): the leg press marked New machine or gym
-//      from its menu reads as a first session (no grey load from the old
-//      gym), the new gym's heavier numbers are no PR while the squat, the
-//      same bar at either gym, keeps its target and its PR, and the week
-//      after the leg press asks from the new gym's own session.
+//   9  a gym change (r61, 343 7; 390 C): the leg press put on a new machine
+//      from its menu's Machine sheet reads as a first session there (no grey
+//      load from the old gym), the new gym's heavier numbers are no PR while
+//      the squat, the same bar at either gym, keeps its target and its PR, and
+//      the week after the leg press asks from the new gym's own session.
 //  10  Pick for me, Limited equipment and Short on time (r62).
 //  11  switching from notes, and reporting a problem (r63: import, the
 //      account's sheets and problem reports moved): a new install imports
@@ -95,6 +95,10 @@
 //      the bench is back after 10 years and ask no load from it; a first session at 135, then a week on the usual
 //      step up from 135, never a share of 315; the recap says the best since you came back, the first session back
 //      says none; All-time bests keeps 315 x 1 with its year and shows the best since you came back beside it.
+//  19  dumbbells marked in kg at a gym in pounds (2.66, 390's Release B): two weeks of 185 lb bench and 50 lb
+//      dumbbells; in the session, the dumbbells' LB tapped to KG: their rows ask the nearest load in kg, said so, the
+//      bench stays in lb; the sets done as asked and Finish; History shows the dumbbells in kg and the bench in lb; and
+//      the week after the dumbbells read last time in kg, nothing converted back, the bench in lb.
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
 const { open, engine, touchDriver } = require('./h');
@@ -652,14 +656,15 @@ async function finish() {
     const lp = b0.ex.findIndex(b => b.exId === 'legPress'), sq = b0.ex.findIndex(b => b.exId === 'backSquat');
     const sqGrey = (await H.row(sq, 0)).w;
     ok(Number((await H.row(lp, 0)).w) >= 390 && Number(sqGrey) >= 240, '9. at the new gym, before marking: both lifts suggest from the old gym (leg press 390 or more, squat 240 or more)', { lp: await H.row(lp, 0), sq: sqGrey });
-    // The leg press's menu, as a thumb opens it.
+    // The leg press's menu, as a thumb opens it: a machine, so Machine, and in its sheet New machine (390 C).
     await H.page.click(`#view [data-act="bMenu"][data-b="${lp}"]`); await wait(100);
-    if (!ok(!!(await H.page.$('#modal [data-op="bNew"]')), '9. the leg press\'s menu offers New machine or gym')) { await H.P.ctx.close(); return finish(); }
-    await H.page.click('#modal [data-op="bNew"]'); await wait(150);
+    if (!ok(!!(await H.page.$('#modal [data-op="machineOpen"]')) && !(await H.page.$('#modal [data-op="bNew"]')), '9. the leg press\'s menu offers Machine')) { await H.P.ctx.close(); return finish(); }
+    await H.page.click('#modal [data-op="machineOpen"]'); await wait(150);
+    await H.page.click('#modal [data-act="machinePick"][data-k="new"]'); await wait(200);
     const b1 = await H.draft();
     const lpRow = await H.row(lp, 0);
-    ok(b1.ex[lp].nw === true && b1.ex[lp].sw == null && !/^\d/.test(lpRow.w || '') && /First time/.test(await H.text()) && (await H.row(sq, 0)).w === sqGrey,
-      '9. marked New machine or gym: the leg press has no grey load and reads as a first session; the squat is as it was', { lpRow, nw: b1.ex[lp].nw });
+    ok(b1.ex[lp].nw === true && b1.ex[lp].sw == null && !/^\d/.test(lpRow.w || '') && /New machine: pick a load/.test(await H.text()) && (await H.row(sq, 0)).w === sqGrey,
+      '9. New machine picked: the leg press has no grey load and reads as a first session there; the squat is as it was', { lpRow, nw: b1.ex[lp].nw });
     // The new gym's leg press reads heavier: 500 x 10 at 2 in reserve. The squat at its grey load, 6 reps at 2 in reserve.
     for (const s of [0, 1, 2]) { await H.type('w', lp, s, 500); await H.type('r', lp, s, 10); await H.effort(lp, s, 2); await H.quiet(); await H.tick(lp, s); }
     for (const s of [0, 1, 2]) { await H.type('r', sq, s, 6); await H.effort(sq, s, 2); await H.quiet(); await H.tick(sq, s); }
@@ -1099,7 +1104,7 @@ async function finish() {
     const g = await ev(() => { const a = document.getElementById('blk-1'); const want = a ? parseFloat(getComputedStyle(a).scrollMarginTop) + parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) : null; return { tr: window.__tr, top: a ? Math.round(a.getBoundingClientRect().top) : null, want, folded: !!document.querySelector('#blk-0.folded'), missed: window.__ironlog.state.draft.ex[0].sets[2] }; });
     ok(g.missed && g.missed.done && +g.missed.r === 0, '16. the third bench set is kept as missed, 0 reps ticked', g.missed);
     // What the toast says is what the app then does (NEW-66): a missed set never earns a step, while a step earned before still stands (below).
-    ok(/Logged as missed/.test(missToast) && /never earns a step up/.test(missToast) && !/keeps the load from going up/.test(missToast), '16. the toast as the 0 is ticked: it counts toward no volume or PRs and never earns a step up (r71: "keeps the load from going up", which a step earned before contradicts)', missToast);
+    ok(missToast.trim() === 'Logged as missed.', '16. the toast as the 0 is ticked says what the tap did, "Logged as missed." (V, 2026-11-14: the reason is the Guide\'s)', missToast);
     const y0 = g.tr[0].y, y1 = g.tr[g.tr.length - 1].y, lowest = Math.min(...g.tr.map(x => x.y));
     let back = 0; for (let i = 1; i < g.tr.length; i++) if (g.tr[i].a != null && g.tr[i - 1].a != null) back = Math.max(back, g.tr[i].a - g.tr[i - 1].a);
     ok(g.folded && lowest >= Math.min(y0, y1) - 2 && back <= 2 && Math.abs(g.top - g.want) <= 2, '16. finishing the bench brings the raises up in one glide to the top of the screen: never a jump to the session\'s title, never back down', { y0, y1, lowest, back, top: g.top, want: g.want });
@@ -1199,6 +1204,47 @@ async function finish() {
     const went = await ev(() => { const L = window.__ironlog; const s = L.state.sessions[0]; return { tab: L.ui.tab, open: L.ui.histOpen === (s && s.id), modal: L.ui.modal && L.ui.modal.kind }; });
     ok(!!day && went.tab === 'history' && went.open && !went.modal, '18. Tuesday, logged, tapped in the month: History opens on that session', { day, went });
     ok(!H.P.errors.length, '18. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 19. Dumbbells marked in kg at a gym in pounds (2.66, 390's Release B).
+  if (run(19)) {
+    const T0 = '2026-11-16';
+    const H = await phone(T0);
+    await seed(H, { unit: 'lb', days: [{ id: 'P', name: 'Push', items: [['bench', 3, 6, 10, 2, 120], ['dbBench', 3, 8, 12, 2, 90]] }],
+      sessions: [14, 7].map(n => ({ day: 'P', date: addD(T0, -n), ex: [['bench', [[185, 8, 2], [185, 8, 2], [185, 8, 2]]], ['dbBench', [[50, 10, 2], [50, 10, 2], [50, 9, 2]]]] })) });
+    await H.start();
+    const d0 = await H.draft();
+    const bb = d0.ex.findIndex(b => b.exId === 'bench'), db = d0.ex.findIndex(b => b.exId === 'dbBench');
+    // What each exercise shows of its weights: its badge (the unit) and its load column's heading (what the number is).
+    const heads = () => H.ev(() => [...document.querySelectorAll('#view section.block')].map(e => `${e.querySelector('[data-act="unitOpen"]').textContent.trim()} ${e.querySelector('.sg.head .lh').textContent.trim().toUpperCase()}`));
+    const h0 = await heads();
+    await H.page.click(`#view [data-act="unitOpen"][data-b="${db}"]`); await wait(250);
+    await H.page.click('#modal [data-act="liftUnit"][data-v="kg"]'); await wait(250);
+    const h1 = await heads(), t1 = await H.toast(); await H.quiet();
+    const rows = []; for (const s of [0, 1, 2]) rows.push(await H.row(db, s));
+    const hint = await H.ev(b => window.__ironlog.state.draft.ex[b].hint || '', db);
+    const heavy = await H.ev(b => { const e = document.getElementById('blk-' + b); const m = e && /Heaviest [^\n,]*/.exec(e.innerText); return m ? m[0] : ''; }, db);
+    const w = Number(rows[0].w);
+    // 50 lb is 22.68 kg: the nearest dumbbell in kg is a whole half kilogram within 4% of it.
+    ok(h0[db] === 'lb EACH' && h1[db] === 'kg EACH' && h1[bb] === 'lb TOTAL' && /in kg/.test(t1) && Math.abs(w - 22.68) / 22.68 < 0.04 && Math.abs(w * 2 - Math.round(w * 2)) < 1e-9 && rows.every(r => Number(r.w) === w) && /at \d+(\.\d)? kg per dumbbell/.test(hint) && !/ lb/.test(hint.replace(/^Last[^.]*\.\s*/, '')) && /^Heaviest 50 lb×10/.test(heavy),
+      '19. kg picked in the dumbbells\' sheet: their badge kg, their rows the nearest dumbbell in kg, the target in kg, last time and the heaviest quoted as typed (50 lb), the bench still in lb', { h0, h1, t1, rows, hint, heavy });
+    // The sets done as asked: the reps in grey typed, at 2 in reserve, each ticked.
+    for (const [b, s, r] of [[db, 0, rows[0].r], [db, 1, rows[1].r], [db, 2, rows[2].r], [bb, 0, 8], [bb, 1, 8], [bb, 2, 8]]) { await H.type('r', b, s, r); await H.effort(b, s, 2); await H.quiet(); await H.tick(b, s); }
+    const fin = await H.finish();
+    const saved = await H.ev(() => { const L = window.__ironlog; const s = [...L.state.sessions].sort((a, b) => (a.date < b.date ? 1 : -1))[0]; const x = s.ex.find(b => b.exId === 'dbBench'); return { sid: s.id, w: x.sets.map(t => t.w), units: x.sets.map(t => L.typedLabel(L.EX('dbBench'), t.w)) }; });
+    await H.ev(sid => { const L = window.__ironlog; L.ui.tab = 'history'; L.ui.histOpen = sid; L.render(); }, saved.sid); await wait(200);
+    const hist = await H.text();
+    ok(saved.sid !== 'h1' && saved.w.every(x => Math.abs(x - w) < 1e-9) && new RegExp(`${w} ?kg|kg[^\\n]*${w}`).test(hist) && /185/.test(hist), '19. Finish saves the dumbbells at the kilograms done; History shows them in kg and the bench at 185 lb', { saved, fin, hist: hist.slice(0, 600) });
+    await H.day(addD(T0, 7));
+    await H.ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); }); await wait(100);
+    await H.start();
+    const d2 = await H.draft();
+    const db2 = d2.ex.findIndex(b => b.exId === 'dbBench'), bb2 = d2.ex.findIndex(b => b.exId === 'bench');
+    const h2 = await heads();
+    const hint2 = await H.ev(b => window.__ironlog.state.draft.ex[b].hint || '', db2), bhint = await H.ev(b => window.__ironlog.state.draft.ex[b].hint || '', bb2);
+    ok(h2[db2] === 'kg EACH' && h2[bb2] === 'lb TOTAL' && new RegExp(`Last \\(Nov 16\\): ${w}×`).test(hint2) && !/ lb/.test(hint2) && /185|lb/.test(bhint), '19. the week after: the dumbbells read last time in kg, nothing in lb; the bench in lb', { h2, hint2, bhint });
+    ok(!H.P.errors.length, '19. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
 

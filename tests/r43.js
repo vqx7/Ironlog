@@ -94,7 +94,7 @@ const PATHS = (s, k) => {
     const n = L.normalize(JSON.parse(raw)); const e = n.exercises.find(x => x.id === 'bench');
     L.state = n; L.invalidate(); const seen = [];
     for (const t of ['today', 'program', 'dash', 'history', 'settings']) { L.ui.tab = t; L.render(); seen.push(document.getElementById('view').innerHTML.includes('onerror')); }
-    return { polluted: ({}).polluted, proto: Object.getPrototypeOf(e) === Object.prototype, keys: Object.keys(e).filter(x => !['id', 'name', 'primary', 'secondary', 'equip', 'bw', 'rare', 'perSide', 'note', 'custom', 'archived', 'inc', 'plates', 'load', 'timed', 'kind', 'assist', 'bwf', 'maxLoad', 'barKg', 'goal'].includes(x)), size: JSON.stringify(e).length, shown: seen.some(Boolean) }; });
+    return { polluted: ({}).polluted, proto: Object.getPrototypeOf(e) === Object.prototype, keys: Object.keys(e).filter(x => !['id', 'name', 'primary', 'secondary', 'equip', 'bw', 'rare', 'perSide', 'note', 'custom', 'archived', 'inc', 'plates', 'load', 'timed', 'kind', 'assist', 'bwf', 'maxLoad', 'barKg', 'goal', 'unit'].includes(x)), size: JSON.stringify(e).length, shown: seen.some(Boolean) }; });
   await wait(300);
   const pwn = await ev(() => window.__pwn);
   ok(hos.polluted === undefined && hos.proto, 'a "__proto__" field reaches no prototype', hos);
