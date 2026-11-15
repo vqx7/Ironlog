@@ -566,19 +566,24 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
         L.ui.tab = 'today'; L.ui.folds['today:coach'] = true; L.ui.folds['today:moving'] = true; L.render();
         const pill = t(document.querySelector('[data-mkey="coach"] .sec-s .pill')), body = t(document.querySelector('[data-mkey="coach"] .sec-b p'));
         const rising = /(\d+) rising/.exec(t(document.querySelector('[data-mkey="moving"] .sec-s')));
-        L.ui.tab = 'dash'; L.ui.folds['dash:why'] = true; L.render();
+        L.ui.tab = 'dash'; L.ui.folds['dash:why'] = true; L.ui.folds['dash:exercise'] = true; L.ui.folds['dash:sub:stalls'] = true; L.render();
         const line = t(document.querySelector('#dashSummary .vline'));
+        // Where Stats says main lifts flat together point to fatigue: the Stuck line's red, the Stalls pill's, and Stalls' own line.
+        const stuckRow = [...document.querySelectorAll('#dashSummary .srow')].find(e => /stuck/i.test(t(e.querySelector('.sl'))));
+        const fatigue = { stuckRed: !!(stuckRow && stuckRow.querySelector('.dot.red')), pillRed: !!document.querySelector('#sub-stalls > summary .pill.red'), said: /stalled at once: likely fatigue/.test(t(document.getElementById('sub-stalls'))) };
         const rows = Object.fromEntries([...document.querySelectorAll('#dashSummary .srow')].map(e => [t(e.querySelector('.sl')).toLowerCase(), t(e.querySelector('.st'))]));
         const v = L.verdict ? L.verdict() : { word: null, rising: [], stalled: [], falling: [] };
         const names = ids => ids.map(id => L.EX(id).name);
-        return { pill, body, line, rows, risingToday: rising ? +rising[1] : 0, v: { word: v.word, rising: v.rising.length, stalled: names(L.stalledIds()), falling: names(v.falling) }, coach: L.coach().text };
+        return { pill, body, line, rows, fatigue, risingToday: rising ? +rising[1] : 0, v: { word: v.word, rising: v.rising.length, stalled: names(L.stalledIds()), falling: names(v.falling) }, coach: L.coach().text };
       }, lifts);
       const named = (row, list) => list.every(n => (r.rows[row] || '').includes(n)) || (list.length > 2 && /more/.test(r.rows[row] || ''));
       ok(r.v.word && r.line === `${r.v.word}. ${r.body}` && r.pill === r.v.word && r.body === r.coach,
         `${name}: Stats' opening line is the week's word and the coach's change, as Today's Coach says them`, r);
       ok(r.v.rising === r.risingToday && named('stuck', r.v.stalled) && (r.v.falling.length ? named('falling', r.v.falling) : !('falling' in r.rows)),
         `${name}: Why names the lifts the word is read from: as many rising as Today's Lifts moving, the stalled under Stuck, the falling under Falling`, r);
-      ok(!(r.v.word === 'Progressing' && /A deload week may help/.test(r.line)), `${name}: no deload beside a week that is Progressing`, r.line);
+      const deload = /A deload week may help/.test(r.line), f = r.fatigue;
+      ok(!(r.v.word === 'Progressing' && deload) && f.stuckRed === f.pillRed && f.pillRed === f.said && (!f.said || r.v.word !== 'Progressing'),
+        `${name}: no deload beside a week that is Progressing, and Stats calls lifts flat together likely fatigue in red only where the coach could ask for one`, { word: r.v.word, line: r.line, fatigue: f });
       ok(!P.errors.length, `no page errors (the week's word, ${name})`, P.errors);
       await P.ctx.close();
     }

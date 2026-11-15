@@ -103,6 +103,7 @@ import {
   atRangeTopIn,
   coachIn,
   dropOnlyLiftIn,
+  fatigueCallIn,
   fatigueStallsIn,
   liftsMovingIn,
   moversIn,
@@ -304,6 +305,7 @@ export const atRangeTop = live(atRangeTopIn);
 export const coach = live(coachIn);
 export const dropOnlyLift = live(dropOnlyLiftIn);
 export const fatigueStalls = live(fatigueStallsIn);
+export const fatigueCall = live(fatigueCallIn);
 export const movers = live(moversIn);
 export const liftsMoving = live(liftsMovingIn);
 export const readiness = live(readinessIn);

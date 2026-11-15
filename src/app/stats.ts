@@ -51,7 +51,7 @@ import { estInLoad, loadNote } from './loads';
 import { prName, BAND_RANGES } from './prs';
 import { sessionWord } from './analytics';
 import { BACK_WEEK_WHY, FIRST_WEEK_WHY, LIGHTER_WEEK_TIP, ON_PLAN_TIP, avgWeeksTxt, AVG_WEEKS } from './weeks';
-import { FALL_WHY, STALL_WHY, chkWord, musTrend, FATIGUE_STALLS, READINESS_MIN } from './coach';
+import { FALL_WHY, STALL_WHY, chkWord, musTrend, READINESS_MIN } from './coach';
 import { whyTarget } from './session';
 import { ENV, REGION_KEY, prefSet } from './storage';
 import {
@@ -86,6 +86,7 @@ import {
   easierText,
   EX,
   exName,
+  fatigueCall,
   fatigueStalls,
   firstFullWeek,
   freeMode,
@@ -509,7 +510,7 @@ function dashSummary(): TemplateResult {
   // A lift falling is named under Falling, and one also stalled under Stuck too, as Stalls lists it.
   const f0 = v.falling[0];
   const why = html`${row(mv.length ? 'green' : '', 'Moving', moving, { sec: 'exercise', ex: m0 ? m0.id : undefined })}${row(
-    stalled.length ? (fatigueStalls(stalled).length >= FATIGUE_STALLS ? 'red' : 'yellow') : 'green',
+    stalled.length ? (fatigueCall() ? 'red' : 'yellow') : 'green',
     'Stuck',
     stalled.length ? andList(stalled.map(exName), NAMES_SHOWN) : 'Nothing stalled',
     { sec: 'stalls' }
@@ -1105,12 +1106,14 @@ function weakPoints(
   return { body, n: wp.length };
 }
 
-/** Lifts' Stalls: the stalled lifts, a word when several main lifts stall at once, and the last lighter week; and how many main lifts are stalled. */
+/** Lifts' Stalls: the stalled lifts, a word when the main lifts stalled at once point to fatigue, and the last lighter week; and whether they do. */
 function stallsBody(stalled: readonly (readonly [string, ExStat])[]): {
   stl: TemplateResult;
-  bigN: number;
+  tired: boolean;
 } {
   // stalls (folded inside Lifts, after Recent PRs and All-time bests)
+  // Said in red only when the main lifts stalled point to fatigue, as the coach reads it (fatigueCall).
+  const tired = fatigueCall();
   const bigN = stalled.length ? fatigueStalls(stalled.map(([id]) => id)).length : 0;
   const lw = lastLighterWeek();
   const stl = html`${
@@ -1118,19 +1121,19 @@ function stallsBody(stalled: readonly (readonly [string, ExStat])[]): {
       ? html`${stalled.map(
           ([id, s]) =>
             html`<div class="row spread u-p6-0_bb1-solid-line"><span><span class="plate yellow u-h14_van2"></span> ${exName(id)}</span><span class="muted small">last ${fmtDate(s.last.date)}</span></div>`
-        )}${bigN >= FATIGUE_STALLS ? html`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : nothing}`
+        )}${tired ? html`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : nothing}`
       : html`<p class="muted">No stalls detected.</p>`
   }${
     lw
       ? html`<p class="small muted u-mt8">${lw.weeks == null ? 'No lighter week in the last 12.' : `Last lighter week: ${lw.weeks} week${lw.weeks === 1 ? '' : 's'} ago${lw.kind === 'rest' ? ' (a rest week)' : lw.kind === 'off' ? ' (a week off)' : ''}.`} ${tipButton(LIGHTER_WEEK_TIP, 'Lighter week')}</p>`
       : nothing
   }`;
-  return { stl, bigN };
+  return { stl, tired };
 }
 
 /** Lifts: the chosen lift's card (the one logged most often to start), Recent PRs, All-time bests and Stalls. */
 function liftsSec(I: Idx, stalled: readonly (readonly [string, ExStat])[], prs4: number): TemplateResult {
-  const { stl, bigN } = stallsBody(stalled);
+  const { stl, tired } = stallsBody(stalled);
   // exercise trend
   const withData = Object.keys(I.byEx)
     .filter(id => (I.byEx[id] || []).length)
@@ -1174,7 +1177,7 @@ function liftsSec(I: Idx, stalled: readonly (readonly [string, ExStat])[], prs4:
       'All-time bests',
       bests.html,
       bests.n ? `${bests.n} lift${bests.n === 1 ? '' : 's'}` : 'none yet'
-    )}${dashSub('stalls', 'Stalls', stl, stalled.length ? html`<span class=${`pill ${bigN >= FATIGUE_STALLS ? 'red' : 'yellow'}`}>${stalled.length} stalled</span>` : 'none')}`,
+    )}${dashSub('stalls', 'Stalls', stl, stalled.length ? html`<span class=${`pill ${tired ? 'red' : 'yellow'}`}>${stalled.length} stalled</span>` : 'none')}`,
     noLog() ? 'Nothing logged yet' : `${nLifts} lift${nLifts === 1 ? '' : 's'} tracked`
   );
 }

@@ -105,6 +105,16 @@ export function stalledIdsIn(M: Model): string[] {
 
 /** Main lifts stalled at once that suggest a deload week, and the names the line lists. */
 export const FATIGUE_STALLS = 3;
+
+/* Whether the main lifts stalled point to fatigue: FATIGUE_STALLS or more at
+   once, while progress has stopped broadly. In a week whose word is
+   Progressing most lifts trained are rising, so the stalled ones are each the
+   lift's own to change, not a reason for a deload (verdictIn). One test for
+   the coach's deload and for Stats, which says it in red. */
+/** Whether the main lifts stalled at once point to fatigue (above). */
+export function fatigueCallIn(M: Model): boolean {
+  return fatigueStallsIn(M, stalledIdsIn(M)).length >= FATIGUE_STALLS && verdictIn(M).word !== 'Progressing';
+}
 /** The muscles the on-plan line names before "and N more". */
 const ON_PLAN_SHOWN = 4;
 /** Weeks of the last AVG_WEEKS with no training at which the Coach says so first, before any set count (a convention). */
@@ -312,11 +322,7 @@ export function coachIn(M: Model): CoachLine {
      (recentLighterIn). */
   const rl = recentLighterIn(M, DELOAD_GAP_DAYS);
   const big = fatigueStallsIn(M, stalled);
-  /* Main lifts flat together point to fatigue only while progress has
-     stopped broadly: in a week whose word is Progressing, most lifts trained
-     are rising, so the stalled ones are each the lift's own to change, said
-     below, not a reason for a deload (verdictIn). */
-  if (big.length >= FATIGUE_STALLS && !rl && verdictIn(M).word !== 'Progressing')
+  if (fatigueCallIn(M) && !rl)
     return {
       tone: 'red',
       text: `${big.length} main lifts stalled at once: ${andList(
