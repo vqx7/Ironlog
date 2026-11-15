@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-d1E4bcyNeRGm3vV9EYKN+MrylUK1avWef15FL+Kv3Ak=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-zQV5h3S7E0vW2OPHXC2bdgW05pOPy4xo/OIMsairlDM=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.15-r115">
+<meta name="app-build" content="2026.11.15-r116">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -1120,6 +1120,12 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .mvline polyline{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .mvset{text-align:right;font-weight:750;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .srow:last-child{border-bottom:0}
+/* Stats' opening line: the week's word and the coach's one change, with the lines it rests on folded under it (Why). */
+.vline{display:grid;grid-template-columns:8px minmax(0,1fr);gap:10px;align-items:start;margin:0;padding:13px 16px;font-size:15px;line-height:1.45}
+#dashSummary>.subsec{margin:0;padding:0;background:none;border-top:1px solid var(--line-soft);border-radius:0}
+#dashSummary>.subsec>summary{min-height:44px;padding:0 16px}
+#dashSummary>.subsec .subsec-t{font:600 11px var(--font);text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+#dashSummary>.subsec>.sec-b{padding:0}
 .srow.static{cursor:default;grid-template-columns:8px 64px minmax(0,1fr)}
 .srow .sl{font:600 11px var(--font);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding-top:3px}
 .srow .st{font-size:14px;line-height:1.45}
@@ -2184,8 +2190,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.69";
-  var APP_VERSION = "2026.11.15-r115";
+  var DISPLAY_VERSION = "2.70";
+  var APP_VERSION = "2026.11.15-r116";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -6524,7 +6530,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const l4 = wE.slice(i0);
     return daysBetween(l4[0].date, lastE) >= STALL.days ? l4 : null;
   }
-  var stallReads = (inR) => inR.filter((x2) => !x2.held && x2.tv != null);
+  var stallLeftOut = (x2) => x2.held || x2.short === "sets";
+  var stallReads = (inR) => inR.filter((x2) => !stallLeftOut(x2) && x2.tv != null);
   function stallScopesIn(M3, id, sc) {
     const out = [{ rr: sc.curRR, inR: sc.inRange }];
     const last = sc.lastReal;
@@ -7243,7 +7250,10 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return useAdj;
   }
   function stillTrainedIn(M3, id, exI, lastReal, winStart) {
-    return !!lastReal && lastReal.date >= winStart && !afterBreak(lastReal, M3.today()) && !exI.archived && M3.s.exercises.some((e5) => e5.id === id) && !exInjuryIn(M3, exI);
+    return !!lastReal && lastReal.date >= winStart && !afterBreak(lastReal, M3.today()) && !exI.archived && M3.s.exercises.some((e5) => e5.id === id) && !exInjuryIn(M3, exI) && !takenOutIn(M3, id, lastReal);
+  }
+  function takenOutIn(M3, id, lastReal) {
+    return !freeModeIn(M3) && lastReal.ps != null && !activeRoutineIn(M3).days.some((d3) => d3.items.some((it) => it.exId === id));
   }
   function stretchMoved(l4, offSince, listed) {
     const z2 = l4[l4.length - 1], a0 = l4[0];
@@ -7274,9 +7284,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const current = stillTrainedIn(M3, id, exI, lastReal, winStart);
     const listed = (x2) => prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === id);
     const stalledIn = (rr, all) => {
-      const inR = all.filter((x2) => !x2.held);
+      const inR = all.filter((x2) => !stallLeftOut(x2));
       const withE1 = stallReads(all);
-      const offSince = (from) => cur2.filter((x2) => (lighter(x2) || x2.held) && sameRR(x2.rr, rr) && x2.date >= from);
+      const offSince = (from) => cur2.filter((x2) => (lighter(x2) || stallLeftOut(x2)) && sameRR(x2.rr, rr) && x2.date >= from);
       const l4 = stallStretch(withE1);
       if (l4) {
         const moved = stretchMoved(l4, offSince, listed);
@@ -7329,6 +7339,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return {
       n: exps.length,
       stalled,
+      current,
       pct,
       slope,
       slopeSe,
@@ -7364,7 +7375,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         stallP[ex.primary] = true;
         for (const m3 of ex.secondary) stallS[m3] = true;
       }
-      if (st.pct == null || !st.fresh) continue;
+      if (st.pct == null || !st.current) continue;
       if (st.wN < MUSCLE_TREND_MIN.sessions || st.wSpan < MUSCLE_TREND_MIN.days) continue;
       seenP[ex.primary] = (seenP[ex.primary] || 0) + 1;
       for (const m3 of ex.secondary) seenS[m3] = (seenS[m3] || 0) + 1;
@@ -9965,7 +9976,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     ["neck", ["neck"]]
   ];
   function moversIn(M3) {
-    return Object.entries(IDXIn(M3).exStats).filter(([, x2]) => x2.moving && !x2.stalled && x2.fresh).sort((a2, b2) => b2[1].pct - a2[1].pct).map(([id, x2]) => ({ id, pct: x2.pct, wk: x2.spanW || 2 }));
+    return Object.entries(IDXIn(M3).exStats).filter(([, x2]) => x2.moving && !x2.stalled && x2.current).sort((a2, b2) => b2[1].pct - a2[1].pct).map(([id, x2]) => ({ id, pct: x2.pct, wk: x2.spanW || 2 }));
   }
   function liftsMovingIn(M3) {
     const I2 = IDXIn(M3);
@@ -9984,6 +9995,9 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return Object.entries(IDXIn(M3).exStats).filter(([, x2]) => x2.stalled).map(([id]) => id);
   }
   var FATIGUE_STALLS = 3;
+  function fatigueCallIn(M3) {
+    return fatigueStallsIn(M3, stalledIdsIn(M3)).length >= FATIGUE_STALLS && verdictIn(M3).word !== "Progressing";
+  }
   var ON_PLAN_SHOWN = 4;
   var MISSED_WEEKS_SAID = 2;
   function dropOnlyLiftIn(M3, id) {
@@ -10104,7 +10118,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const stalled = stalledIdsIn(M3);
     const rl = recentLighterIn(M3, DELOAD_GAP_DAYS);
     const big = fatigueStallsIn(M3, stalled);
-    if (big.length >= FATIGUE_STALLS && !rl)
+    if (fatigueCallIn(M3) && !rl)
       return {
         tone: "red",
         text: `${big.length} main lifts stalled at once: ${andList(
@@ -10177,6 +10191,19 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       };
     }
     return lastWordIn(M3, I2, avg, mst, inj);
+  }
+  var VERDICT_TONE = {
+    Progressing: "green",
+    Stalled: "yellow",
+    Regressing: "red"
+  };
+  function verdictIn(M3) {
+    const falling = Object.entries(IDXIn(M3).exStats).flatMap(([id, x2]) => x2 && x2.falling && x2.current ? [id] : []);
+    const stalled = stalledIdsIn(M3).filter((id) => !falling.includes(id));
+    const rising = moversIn(M3).map((x2) => x2.id);
+    const up = rising.length, flat = stalled.length, down = falling.length;
+    const word = quietWeekIn(M3) || up + flat + down === 0 ? null : up > flat + down ? "Progressing" : down > up ? "Regressing" : "Stalled";
+    return { word, tone: word ? VERDICT_TONE[word] : "blue", rising, stalled, falling };
   }
   function musTrend(sc) {
     if (!sc.clear)
@@ -10527,10 +10554,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   var coach = live(coachIn);
   var dropOnlyLift = live(dropOnlyLiftIn);
   var fatigueStalls = live(fatigueStallsIn);
+  var fatigueCall = live(fatigueCallIn);
   var movers = live(moversIn);
   var liftsMoving = live(liftsMovingIn);
   var readiness = live(readinessIn);
   var stalledIds = live(stalledIdsIn);
+  var verdict = live(verdictIn);
   var daysOff = live(daysOffIn);
   var easierText = live(easierTextIn);
   var incOf = live(incOfIn);
@@ -19126,6 +19155,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   function dashSummary() {
     const mvAll = movers(), mv = mvAll.slice(0, 2);
     const stalled = stalledIds();
+    const v3 = verdict();
     const avg = actualAvg4();
     const inj = injuredSet();
     const st = avg ? muscleStatus(avg) : null;
@@ -19134,29 +19164,30 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     const onPlan = st ? MK.filter((m3) => !inj.has(m3) && stOf(m3) === "plan") : [];
     const c4 = coach();
     const row = (tone, label, text, attrs) => b`<button class="srow" data-act="goDash" data-sec=${attrs.sec} data-ex=${attrs.ex ?? A}><i class=${`dot ${tone}`}></i><span class="sl">${label}</span><span class="st">${text}</span><span class="chev2" aria-hidden="true">›</span></button>`;
-    const nTr = Object.values(IDX().exStats).filter((x2) => x2 && x2.pct != null && x2.fresh).length;
+    const nTr = Object.values(IDX().exStats).filter((x2) => x2 && x2.pct != null && x2.current).length;
     const m0 = mv[0];
     const one = !!m0 && mv.every((x2) => x2.wk === m0.wk);
     const moving = m0 ? andList(
       mv.map((x2) => `${exName(x2.id)}${one ? "" : ` over ${x2.wk} weeks`}`).concat(mvAll.length > 2 ? [`${mvAll.length - 2} more`] : [])
     ) + (one ? `, over ${m0.wk} weeks` : "") : nTr ? `No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.` : `A trend needs ${TREND_MIN.sessions} sessions of a lift over ${TREND_MIN.days / WEEK_DAYS} weeks or more, within ${TREND_WEEKS} weeks.`;
-    const cm = c4.act && c4.act.sec === "volume" ? c4.act.m : null;
-    const same = !!(cm && under && under.some((m3) => m3 === cm)) || !!c4.wait;
-    const w2 = under == null ? avgWait() : null;
     const above = over && over.length ? ` Above: ${andList(
       over.map((m3) => ML[m3] || m3),
       2
     )}.` : "";
-    const vt = (same ? c4.text : w2 ? `${w2.lead}A volume read comes${w2.kind === "back" ? " back" : ""} after ${w2.after}.` : under && under.length ? `Below target: ${andList(
+    const vt = under == null ? null : (under.length ? `Below target: ${andList(
       under.map((m3) => ML[m3] || m3),
       NAMES_SHOWN
     )}.` : onPlan.length ? "Every muscle on plan." : "Every muscle at or above target.") + above;
-    return b`<div class="card summary" id="dashSummary">${row(mv.length ? "green" : "", "Moving", moving, { sec: "exercise", ex: m0 ? m0.id : void 0 })}${row(
-      stalled.length ? fatigueStalls(stalled).length >= FATIGUE_STALLS ? "red" : "yellow" : "green",
+    const w2 = under == null && !c4.wait ? avgWait() : null;
+    const volText = vt ?? (w2 ? `${w2.lead}A volume read comes${w2.kind === "back" ? " back" : ""} after ${w2.after}.` : null);
+    const f0 = v3.falling[0];
+    const why = b`${row(mv.length ? "green" : "", "Moving", moving, { sec: "exercise", ex: m0 ? m0.id : void 0 })}${row(
+      stalled.length ? fatigueCall() ? "red" : "yellow" : "green",
       "Stuck",
       stalled.length ? andList(stalled.map(exName), NAMES_SHOWN) : "Nothing stalled",
       { sec: "stalls" }
-    )}${row(under == null ? "" : under.length ? "yellow" : "green", "Volume", vt, { sec: "volume" })}${same ? A : b`<div class="srow static"><i class=${`dot ${c4.tone}`}></i><span class="sl">Change</span><span class="st">${c4.text}</span></div>`}</div>`;
+    )}${f0 ? row("red", "Falling", andList(v3.falling.map(exName), NAMES_SHOWN), { sec: "exercise", ex: f0 }) : A}${volText == null ? A : row(under == null ? "" : under.length ? "yellow" : "green", "Volume", volText, { sec: "volume" })}`;
+    return b`<div class="card summary" id="dashSummary"><p class="vline"><i class=${`dot ${v3.word ? v3.tone : c4.tone}`}></i><span>${v3.word ? b`<b>${v3.word}.</b> ` : A}${c4.text}</span></p>${subsection("dash:why", "Why", why)}</div>`;
   }
   function regionBody() {
     const rs = regionSrc();
@@ -19443,9 +19474,9 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
   function dashKpis(R4, nS) {
     const prs4 = R4.prs.length;
     const was = (n3) => R4.back ? ` (${n3} in the ${RECENT_WEEKS} weeks before)` : "";
-    return b`<div class="kpis"><div class="kpi"><div class="v">${nz(R4.sess)}</div><div class="l">Sessions, last ${RECENT_WEEKS} weeks${was(R4.sessP)}</div></div>
+    return b`${nS ? dashSummary() : A}<div class="kpis"><div class="kpi"><div class="v">${nz(R4.sess)}</div><div class="l">Sessions, last ${RECENT_WEEKS} weeks${was(R4.sessP)}</div></div>
   <div class="kpi"><div class="v">${nz(prs4)}</div><div class="l">PRs, last ${RECENT_WEEKS} weeks${was(R4.prsP)}</div></div>
-${extraKpis()}</div>${nS ? dashSummary() : A}`;
+${extraKpis()}</div>`;
   }
   function volumeSec(cov, thisWeek, thisWeekConf, wkHard, avg, nS, confOff) {
     const volCard = () => {
@@ -19500,15 +19531,16 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     return { body, n: wp.length };
   }
   function stallsBody(stalled) {
+    const tired = fatigueCall();
     const bigN = stalled.length ? fatigueStalls(stalled.map(([id]) => id)).length : 0;
     const lw = lastLighterWeek();
     const stl = b`${stalled.length ? b`${stalled.map(
       ([id, s3]) => b`<div class="row spread u-p6-0_bb1-solid-line"><span><span class="plate yellow u-h14_van2"></span> ${exName(id)}</span><span class="muted small">last ${fmtDate(s3.last.date)}</span></div>`
-    )}${bigN >= FATIGUE_STALLS ? b`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : A}` : b`<p class="muted">No stalls detected.</p>`}${lw ? b`<p class="small muted u-mt8">${lw.weeks == null ? "No lighter week in the last 12." : `Last lighter week: ${lw.weeks} week${lw.weeks === 1 ? "" : "s"} ago${lw.kind === "rest" ? " (a rest week)" : lw.kind === "off" ? " (a week off)" : ""}.`} ${tipButton(LIGHTER_WEEK_TIP, "Lighter week")}</p>` : A}`;
-    return { stl, bigN };
+    )}${tired ? b`<p class="small hastip u-cred_mt8" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>` : A}` : b`<p class="muted">No stalls detected.</p>`}${lw ? b`<p class="small muted u-mt8">${lw.weeks == null ? "No lighter week in the last 12." : `Last lighter week: ${lw.weeks} week${lw.weeks === 1 ? "" : "s"} ago${lw.kind === "rest" ? " (a rest week)" : lw.kind === "off" ? " (a week off)" : ""}.`} ${tipButton(LIGHTER_WEEK_TIP, "Lighter week")}</p>` : A}`;
+    return { stl, tired };
   }
   function liftsSec(I2, stalled, prs4) {
-    const { stl, bigN } = stallsBody(stalled);
+    const { stl, tired } = stallsBody(stalled);
     const withData = Object.keys(I2.byEx).filter((id) => (I2.byEx[id] || []).length).sort((a2, b2) => exName(a2).localeCompare(exName(b2)));
     const nOf = (id) => (I2.byEx[id] || []).length;
     if (!ui.dashEx || typeof ui.dashEx !== "string" || !I2.byEx[ui.dashEx])
@@ -19536,7 +19568,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
         "All-time bests",
         bests.html,
         bests.n ? `${bests.n} lift${bests.n === 1 ? "" : "s"}` : "none yet"
-      )}${dashSub("stalls", "Stalls", stl, stalled.length ? b`<span class=${`pill ${bigN >= FATIGUE_STALLS ? "red" : "yellow"}`}>${stalled.length} stalled</span>` : "none")}`,
+      )}${dashSub("stalls", "Stalls", stl, stalled.length ? b`<span class=${`pill ${tired ? "red" : "yellow"}`}>${stalled.length} stalled</span>` : "none")}`,
       noLog() ? "Nothing logged yet" : `${nLifts} lift${nLifts === 1 ? "" : "s"} tracked`
     );
   }
@@ -21343,12 +21375,12 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
       body: homeTiles()
     });
     const c4 = coach();
-    const toneWord = TONE_WORDS[c4.tone] || "Note";
+    const v3 = verdict();
     const coachSec = section({
       sk: "today:coach",
       key: "coach",
       title: "Coach",
-      sub: b`<span class=${`pill ${c4.tone}`}>${toneWord}</span>`,
+      sub: v3.word ? b`<span class=${`pill ${v3.tone}`}>${v3.word}</span>` : b`<span class=${`pill ${c4.tone}`}>${TONE_WORDS[c4.tone] || "Note"}</span>`,
       body: b`<p class="u-m0">${c4.text}${c4.why ? b` ${tipButton(c4.why, "Why")}` : A}</p>${coachButton(c4)}`
     });
     const inj = injuryCard();
@@ -28501,7 +28533,8 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>A lift on Stats</b> says its change in what was lifted: the change in its estimated 1RM on a compound lift you load as a total (a barbell, a plate-loaded machine), the top set at each end on anything else. A number shows only when it points the same way as the trend. The percentages are behind its i. <b>Next session</b> is the target its next workout will show; there are no predictions of where a lift will be.</p>
    <p><b>Goals</b>: on Stats, Lifts, set a goal for a lift as a load for a number of reps (100 x 5). It is reached when a working set matches it, that load or more for those reps or more. Until then it shows how close your best estimate from the last ${BEST_WEEKS} weeks is to what the goal takes done to failure, and, on a compound lift you load as a total, about how much load is left for those reps. It gives no date: your session targets are the steps toward it. On a bodyweight lift the load is the added load.</p>
    <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats every earlier estimate of the lift; a <b>best for its reps</b> beats the earlier best in the same band of reps to failure (${BAND_RANGES.join(", ")}); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least ${pctOf(REP_PR_SHARE)}% as strong as your strongest before it (a rule of thumb: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these. A load in the other unit, after a change of units or gyms, is read as the earlier load it stands for when it is the nearest load over it on its own spacing (a rule of thumb: 155 lb after 70 kg, which is 154.3 lb, is not a weight PR; 157.5 lb is). PRs count on any day, a lighter day, a deload, and an exercise made lighter included, and are announced as you log the set. Only a set stronger than every earlier one is announced and counted: a higher estimate, or, past ${E1_MAX_REPS} reps to failure where the estimate stops, more reps at a load (on a lift with no estimate, or a bodyweight lift before any weigh-in, any of them). A heavier set that is not stronger is named in the recap as heaviest yet. Counting them all made each load step a PR. On a bodyweight lift, PRs, estimates, trends, and charts are all read at your latest weigh-in for every session, so progress is more reps or more added load, never a change on the scale. Weight lifted uses each day's weigh-in, the work actually done. With no weigh-in they count only the weight you add. Estimates and trends wait for one.</p>
-   <p><b>Moving</b>: up ${GROW_PCT}% or more with a trend clearly above zero. <b>Falling</b>: down ${GROW_PCT}% or more with a trend clearly below zero, in each rep range you train it in; a lift on a heavy day and a light day falls only when it falls in both, and its line says which range is down. <b>Stalled</b>: flat or falling over the last ${STALL.sessions} sessions (by the middle of the changes between every pair of them, so one good or bad day does not decide it) in each rep range you train it in, or ${STALL.days / WEEK_DAYS} weeks if that covers more (at least ${STALL.min} sessions); a lift on a heavy day and a light day is stalled only when it is stalled in both. With no PR in the last ${STALL.noProgress} of them, nor, in a session of that range done lighter since the third-last, a set stronger than any before it, the load no heavier than at the start of that stretch, and no more reps at that load than any session before it in the stretch, and only while you still train the lift and no injury it loads is flagged (the app holds its load then). Adding load and dropping reps for a while, or adding reps to later sets, as double progression does, is not a stall. A deload is suggested when ${FATIGUE_STALLS} or more main lifts (compound lifts with an estimate) stall together, and not within ${DELOAD_GAP_DAYS / WEEK_DAYS} weeks of a lighter week (more than half its sessions done lighter, counted once it ends or from the second, or a deload begun mid-week, once its last two or more deload sessions were done lighter), a rest week, or a week with nothing trained in it, a week marked as a deload included; isolation and core lifts are listed but not counted for it.</p>
+   <p><b>Moving</b>: up ${GROW_PCT}% or more with a trend clearly above zero. <b>Falling</b>: down ${GROW_PCT}% or more with a trend clearly below zero, in each rep range you train it in; a lift on a heavy day and a light day falls only when it falls in both, and its line says which range is down. <b>Stalled</b>: flat or falling over the last ${STALL.sessions} sessions (by the middle of the changes between every pair of them, so one good or bad day does not decide it) in each rep range you train it in, or ${STALL.days / WEEK_DAYS} weeks if that covers more (at least ${STALL.min} sessions); a lift on a heavy day and a light day is stalled only when it is stalled in both. With no PR in the last ${STALL.noProgress} of them, nor, in a session of that range done lighter since the third-last, a set stronger than any before it, the load no heavier than at the start of that stretch, and no more reps at that load than any session before it in the stretch, and only while you still train the lift (outside Freestyle, one taken out of your routine is no longer read) and no injury it loads is flagged (the app holds its load then). A session with sets skipped is left out, since its target repeated. Adding load and dropping reps for a while, or adding reps to later sets, as double progression does, is not a stall. A deload is suggested when ${FATIGUE_STALLS} or more main lifts (compound lifts with an estimate) stall together in a week that is not Progressing, and not within ${DELOAD_GAP_DAYS / WEEK_DAYS} weeks of a lighter week (more than half its sessions done lighter, counted once it ends or from the second, or a deload begun mid-week, once its last two or more deload sessions were done lighter), a rest week, or a week with nothing trained in it, a week marked as a deload included; isolation and core lifts are listed but not counted for it.</p>
+   <p><b>The week's word</b> opens Stats and heads Today's Coach: <b>Progressing</b> while the lifts rising outnumber those stalled and falling together, <b>Regressing</b> while more are falling than rising, and <b>Stalled</b> otherwise. Only the lifts you train now count; one skipped, on a break, taken out of your routine, or too new for a trend counts for none. No word in a rest or deload week.</p>
    <p><b>Weekly averages</b> use the weeks you trained of the last ${AVG_WEEKS}, starting the week after your first, or after your first back from over ${BACK_DAYS / WEEK_DAYS} weeks off (${FIRST_WEEK_REASON}). Weeks before that break are not counted as missed. A lighter week (${LIGHTER_WEEK_WORDS}) or a rest week is swapped for an earlier one. A week with no training is left out rather than counted as zero, and when ${MISSED_WEEKS_SAID} or more of the ${AVG_WEEKS} were missed the Coach says so first.</p>
    <p><b>Consistency</b>: weeks with at least as many sessions as the routine you trained that week planned (one session, when Today starts with a blank session). Each session records what its routine planned then, so changing or deleting the routine later does not rescore its weeks; sessions from before that record began read the routine as it is now. A cycle that is not a week long plans the whole number of sessions under its rate: every other day is 3.5 a week, so 3, for the streak, adherence, and This week alike. Rest weeks are skipped.</p>
    <p><b>Bodyweight</b> trends use ${WEEK_DAYS}-day averages. <b>Waist to height</b>: ${whtrBands(String)}.</p>`
@@ -29776,6 +29809,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       livePR,
       movers,
       stalledIds,
+      verdict,
+      fatigueCall,
       muscleStatus,
       actualAvg4,
       plannedPerWeek,
