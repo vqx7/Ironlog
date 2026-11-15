@@ -2,7 +2,10 @@
 const {open}=require('./h');
 const fails=[];const ok=(c,m)=>{if(!c){fails.push(m);console.log('FAIL',m);}else console.log('ok  ',m);};
 (async()=>{
-const {browser,page,errors}=await open('index.html',{touch:true,w:390,h:844});
+// A fixed day, so the demo starts the same day of its plan (Arms) on every run: on its Chest day Pec Deck Fly is in the
+// workout already, so Swap rightly leaves it out of Cable Fly's matches.
+const DAY='2026-11-14T10:00:00';
+const {browser,page,errors}=await open('index.html',{touch:true,w:390,h:844,clock:DAY});
 const ev=(f,a)=>page.evaluate(f,a);
 await ev(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.makeDemo();L.ui.tab='today';L.render();});
 await page.waitForTimeout(100);
@@ -117,7 +120,7 @@ if(rc&&rc.startsWith('confirm')){await page.click('[data-act="mOk"]');await page
 ok(await ev(()=>{const m=window.__ironlog.ui.modal;return m&&m.kind==='recap'&&!m.upd;}),'recap without routine swap offer');
 console.log('errors',errors);ok(!errors.length,'no console errors');
 // First run with demo data: a short note, not the full welcome on top of the demo; one tap back to a clean start.
-{const F=await open('index.html',{browser,touch:true,w:390,h:844});const fe=(f,a)=>F.page.evaluate(f,a);await F.page.waitForTimeout(400);
+{const F=await open('index.html',{browser,touch:true,w:390,h:844,clock:DAY});const fe=(f,a)=>F.page.evaluate(f,a);await F.page.waitForTimeout(400);
 ok(await fe(()=>!!document.getElementById('obPage')),'first run: the setup pages show');
 await fe(()=>{const L=window.__ironlog;L.makeDemo();L.ui.tab='today';L.render();});
 ok(await fe(()=>!!document.getElementById('demoNote')&&!document.getElementById('obPage')),'demo loaded before setup: a short demo note instead of the setup pages');
