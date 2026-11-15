@@ -18,6 +18,7 @@ import {
   sortedSessionsIn
 } from './model';
 import { IDXIn, stallWordsIn } from './analytics';
+import { trendScope, trendW } from './trend';
 import { ON_PLAN_TIP, actualAvg4In, avgWaitIn, muscleStatusIn, recentLighterIn, AVG_WEEKS } from './weeks';
 import { GROW_PCT, atLoad, isWork, lighter, STALL, LIGHT_SHARE, DELOAD_GAP_DAYS, TREND_WEEKS } from './formulas';
 import { MK, ML, isCompound, noE1 } from './library';
@@ -85,7 +86,14 @@ export function liftsMovingIn(M: Model): Mover[] {
   return moversIn(M).map(({ id, wk }) => {
     const all = I.byEx[id] || [];
     const st = I.exStats[id];
-    const line = st ? st.trendTv.slice() : [];
+    /* A lift moving by its load step reads a lower estimate than where its window began (trend.ts): its line is its
+       loads then, which rose, so a line beside "rising" never falls. */
+    const line =
+      st && st.pct != null && st.pct < 0
+        ? trendW(trendScope(all, I.anchor)).map(x => x.topW)
+        : st
+          ? st.trendTv.slice()
+          : [];
     const last = all[all.length - 1];
     let top: Mover['top'] = null;
     for (const p of last ? last.pts : [])

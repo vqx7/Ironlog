@@ -218,8 +218,22 @@ export function undoNext(): string | null {
   return e ? e.said || '' : null;
 }
 
-/** Takes back the newest Undo step: 'none' when there is none, 'failed' when it could not be read, 'unchanged' when nothing it changed is left to undo, else what it took back, in the words of the message that reported the change ('' for a step kept unnamed). */
-export function undoStep(): 'none' | 'failed' | 'unchanged' | { said: string } {
+/* A step that took a workout away (one open before it, none after: a Discard) cannot put it back while another workout
+   is open: two are never open at once, and the merge would keep the open one and read the step as taken. It waits, kept,
+   until that workout is finished or discarded. A step whose state after it was never saved is read as before. */
+/** Whether the newest step would bring back a workout while another is open (above). */
+function waitsForWorkout(e: { pre: string; post: string | null }): boolean {
+  const d = state.draft;
+  if (!d || e.post == null) return false;
+  const was = rec(rec(parseJson(e.pre))?.['draft']);
+  const after = rec(rec(parseJson(e.post))?.['draft']);
+  return !!was && typeof was['id'] === 'string' && was['id'] !== d.id && !after;
+}
+
+/** Takes back the newest Undo step: 'none' when there is none, 'open' when it waits for the workout open now (waitsForWorkout), 'failed' when it could not be read, 'unchanged' when nothing it changed is left to undo, else what it took back, in the words of the message that reported the change ('' for a step kept unnamed). */
+export function undoStep(): 'none' | 'open' | 'failed' | 'unchanged' | { said: string } {
+  const top = undoStack[undoStack.length - 1];
+  if (top && waitsForWorkout(top)) return 'open';
   const e = undoStack.pop();
   if (!e) return 'none';
   lastStep = undefined;
