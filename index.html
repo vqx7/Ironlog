@@ -27848,12 +27848,12 @@ ${JSON.stringify(ctx, null, 1)}`;
     discard() {
       const d3 = state.draft;
       if (!d3) return;
-      const out = () => {
+      const out = (keep = false) => {
         act(
           () => {
             state.draft = null;
           },
-          { inProgress: true }
+          { inProgress: true, undo: keep }
         );
         stopTimer();
         wakeOff();
@@ -27875,7 +27875,11 @@ ${JSON.stringify(ctx, null, 1)}`;
         "Discard this session?",
         d3.editingId ? "Your edits will be lost. The saved session stays as it was." : "Sets and cardio logged in this session will not be saved.",
         "Discard",
-        out,
+        () => {
+          const keep = !parkedHere();
+          out(keep);
+          if (keep) toast(d3.editingId ? "Edits discarded" : "Session discarded", true);
+        },
         true
       );
     },

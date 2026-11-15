@@ -438,7 +438,27 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     ok(!!(await P.draft()), 'L-17: Cancel keeps it');
     await P.tap('#view [data-act="discard"]', 250); await mOk(P);
     ok(!(await P.draft()) && (await P.ev(() => window.__ironlog.state.sessions.length)) === 1, 'L-17: Discard drops it, and saves nothing');
+    /* UAT-2 (V, 2026-11-14 23:56: "undo after discard makes sense"): a confirmed Discard says so with Undo, which brings
+       the workout back as it was, its set ticked, and saves it. */
+    const said = await P.ev(() => { const t = document.getElementById('toast'); return t && !t.hidden ? { text: t.innerText.replace(/\s+/g, ' ').trim(), undo: !!t.querySelector('[data-act="undo"]') } : null; });
+    ok(said && /^Session discarded/.test(said.text) && said.undo, 'L-17: a confirmed Discard says "Session discarded" with Undo', said);
+    if (said && said.undo) await P.tap('#toast [data-act="undo"]', 300);
+    const back = await P.draft(), kept = await P.stored();
+    ok(back && back.ex[0].sets.filter(x => x.done).length === 1 && kept.draft && kept.draft.id === back.id && kept.draft.ex[0].sets.filter(x => x.done).length === 1, 'L-17: Undo brings the workout back with its ticked set, saved on the phone', back && back.ex[0].sets.map(x => x.done));
     await P.close();
+    /* A guard: a workout set aside for an edit comes back when the edit is discarded, so that Discard keeps no Undo step
+       (one taken before it would bring the edit back over the workout and let the set-aside copy go). */
+    const Q = await lifter({ settings: { autoDone: false } });
+    await start(Q); await Q.tap(tick(0, 0));
+    await Q.ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150);
+    await Q.tap('#view [data-act="histToggle"][data-id="last"]', 150); await Q.tap('#view [data-act="histEdit"][data-id="last"]', 300);
+    if ((await Q.modal()) && (await Q.modal()).kind === 'confirm') await mOk(Q);
+    const ed = await Q.draft();
+    await Q.tap(tick(0, 2), 200);
+    await Q.tap('#view [data-act="discard"]', 250); if (await Q.modal()) await mOk(Q);
+    const w = await Q.draft(), t = await Q.ev(() => { const el = document.getElementById('toast'); return el && !el.hidden ? !!el.querySelector('[data-act="undo"]') : false; });
+    ok(ed && ed.editingId === 'last' && w && !w.editingId && w.ex[0].sets.filter(x => x.done).length === 1 && !t, 'L-17: (guard) an edit discarded with a workout set aside brings the workout back, its set ticked, and offers no Undo', { editing: ed && ed.editingId, back: w && w.ex[0].sets.map(x => x.done), undo: t });
+    await Q.close();
   }
 
   /* ---------- L-18: Finish ---------- */

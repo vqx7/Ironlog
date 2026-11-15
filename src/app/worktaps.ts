@@ -6,7 +6,7 @@
    lift's history and muscles, Pick for me, and the recap. */
 
 import { act } from './act';
-import { unpark } from './park';
+import { parkedHere, unpark } from './park';
 import { CARDIOL } from './library';
 import { fixSupersets, linkToggle } from './routines';
 import { isMissed, isWork, DROP_START, WARM_RAMP, LIGHT_SHARE } from './formulas';
@@ -895,12 +895,14 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   discard() {
     const d = state.draft;
     if (!d) return;
-    const out = (): void => {
+    /* What was entered and then discarded comes back with Undo. Not while a workout set aside waits to come back in
+       its place: a step taken before it would put this one back over it, and its copy is let go once it is saved. */
+    const out = (keep = false): void => {
       act(
         () => {
           state.draft = null;
         },
-        { inProgress: true }
+        { inProgress: true, undo: keep }
       );
       stopTimer();
       wakeOff();
@@ -925,7 +927,11 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         ? 'Your edits will be lost. The saved session stays as it was.'
         : 'Sets and cardio logged in this session will not be saved.',
       'Discard',
-      out,
+      () => {
+        const keep = !parkedHere();
+        out(keep);
+        if (keep) toast(d.editingId ? 'Edits discarded' : 'Session discarded', true);
+      },
       true
     );
   },
