@@ -1,4 +1,4 @@
-// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-41, in the
+// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-42, in the
 // project's claude/ironlog-spec-session.md, built from the code: workout.ts, worksets.ts, worktaps.ts, workfields.ts,
 // workfinish.ts, timer.ts, actsstart.ts, actspick.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
 // expects). A feature suite: each section is one rule, a lifter's log seeded, the workout started from Today's card
@@ -1664,6 +1664,27 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await open();
     const on = await P.ev(() => [...document.querySelectorAll('#modal [data-act="machinePick"][aria-pressed="true"]')].map(b => b.dataset.k));
     ok(JSON.stringify(on) === '["new"]', 'L-41: New machine picked in an edit is the one the sheet marks until the edit is saved', on);
+    await P.close();
+  }
+
+  /* ---------- L-42: a target line says "Today" only on its own day; a past workout's, or one left open from an
+     earlier day, says "Target" ---------- */
+  if (run('L-42')) {
+    const hint = X => X.ev(() => ((document.querySelector('#blk-0 .hint b') || {}).innerText || '').replace(/\s+/g, ' ').trim());
+    const P = await lifter({ movable: true, settings: { autoDone: false } });
+    await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150);
+    await P.tap('#view [data-act="pastOpen"]', 250);
+    await P.tap('#modal [data-act="pastGo"][data-day="0"]', 300);
+    const past = await hint(P), pastDate = (await P.draft()).date;
+    ok(pastDate === '2026-11-10' && /^Target: \d+\+ reps over 3 sets at \d+ lb$/.test(past), 'L-42: a past workout\'s target line begins "Target:", never "Today:"', { pastDate, past });
+    await P.tap('#view [data-act="discard"]', 250); if (await P.modal()) await mOk(P);
+    await start(P);
+    const now = await hint(P);
+    ok(/^Today: \d+\+ reps over 3 sets at \d+ lb$/.test(now), 'L-42: today\'s workout\'s target line begins "Today:"', now);
+    await P.tap(tick(0, 0), 250);
+    await P.ev(() => window.__setClock('2026-11-14T10:00:00')); await P.ev(() => window.__ironlog.render()); await wait(150);
+    const later = await hint(P), d = await P.draft();
+    ok(d.date === DAY && later === now.replace(/^Today:/, 'Target:'), 'L-42: the same workout opened three days later keeps its targets, its line beginning "Target:"', { date: d.date, later, now });
     await P.close();
   }
 
