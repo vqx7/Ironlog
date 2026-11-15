@@ -75,7 +75,7 @@ import {
 import type { Draft } from './workstate';
 
 /** A remainder of plates this light, per unit of the gym's plates, is conversion dust when the app shows the other unit: not said. */
-/** The calibration set is offered once CAL_OFFER.sessions sessions are logged, and again CAL_OFFER.weeks weeks after the last (or after Later). */
+/** The calibration set is offered once CAL_OFFER.sessions sessions have rated sets, and again CAL_OFFER.weeks weeks after the last (or after Later). */
 export const CAL_OFFER = { sessions: 3, weeks: 3 } as const;
 /** Reps past ODD_REPS, and more than ODD_REPS_TIMES the top of the range and anything logged on the lift, are asked about first: a slipped digit (a convention). */
 export const ODD_REPS = 30,
@@ -523,14 +523,20 @@ export function draftPlanMin(d: Draft | null | undefined): number {
 
 /* The first machine, cable or Smith exercise in a session is offered a
    calibration set when none was done in the last 3 weeks, RIR is on, and
-   you have at least 3 real sessions. Not now waits another 3 weeks. Not on a
+   you have rated working sets in at least 3 real sessions: it measures your
+   RIR calls, so it never asks a lifter who makes none for a set to failure.
+   Not now waits another 3 weeks. Not on a
    day meant to be easy: a deload, a lighter day, or two or more low
    check-in answers; nor on a lift's first session back after weeks off:
    a set to failure is the last thing it needs. */
 /** The block offered a calibration set, or -1. */
 export function calDueIdx(d: Draft): number {
   if (state.settings.rirMode === 'off') return -1;
-  if (state.sessions.filter(s => !s.demo).length < CAL_OFFER.sessions) return -1;
+  if (
+    state.sessions.filter(s => !s.demo && s.ex.some(b => b.sets.some(x => x.rir != null && !x.warm))).length <
+    CAL_OFFER.sessions
+  )
+    return -1;
   const cut = addDays(today(), -WEEK_DAYS * CAL_OFFER.weeks);
   if (state.settings.calSnooze && state.settings.calSnooze > cut) return -1;
   const c = calStats();

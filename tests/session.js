@@ -1,4 +1,4 @@
-// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-43, in the
+// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-44, in the
 // project's claude/ironlog-spec-session.md, built from the code: workout.ts, worksets.ts, worktaps.ts, workfields.ts,
 // workfinish.ts, timer.ts, actsstart.ts, actspick.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
 // expects). A feature suite: each section is one rule, a lifter's log seeded, the workout started from Today's card
@@ -1724,6 +1724,27 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await Q.ev(() => { const L = window.__ironlog; L.openModal({ kind: 'picker', mode: 'addBlock', title: 'Add exercise to session', q: '', m: '' }); }); await wait(200);
     await Q.tap('#modal [data-act="pickDo"][data-ex="bench"]', 300);
     ok((await Q.rows(0)).length === 4, 'L-43: (guard) a lifter following the routine gets the bench\'s 4 sets from it in a blank workout', (await Q.rows(0)).length);
+    await Q.close();
+  }
+
+  /* ---------- L-44: the RIR check is offered only to a lifter who rates his sets: it measures his calls, so one who
+     makes none is never asked for a set to failure ---------- */
+  if (run('L-44')) {
+    // Three sessions of a machine press, each set rated (o.rir 2) or each left blank (null), then today's workout.
+    const lifts = rir => {
+      const LBk = 0.45359237;
+      return `(S, L) => { const LB = ${LBk}; S.sessions = ['2026-10-28', '2026-11-01', '2026-11-07'].map((date, i) => ({ id: 'm' + i, date, dayIdx: 0, dayId: 'A', dayName: 'Push', routineId: 'R1', notes: '', ex: [{ exId: 'machPress', rr: [8, 12], ps: 3, sets: [10, 10, 9].map(r => ({ w: 150 * LB, r, rir: ${rir}, done: true })) }] })); }`;
+    };
+    const due = X => X.ev(() => { const el = document.querySelector('#blk-0 .caldue'); return el ? el.innerText.replace(/\s+/g, ' ').trim() : ''; });
+    const P = await lifter({ items: [['machPress', 3, 8, 12, 120]], fresh: true, seed: lifts('null'), settings: { autoDone: false } });
+    await start(P);
+    const blank = await due(P);
+    ok(blank === '', 'L-44: a lifter who never rated a set is not offered the RIR check', blank);
+    await P.close();
+    const Q = await lifter({ items: [['machPress', 3, 8, 12, 120]], fresh: true, seed: lifts(2), settings: { autoDone: false } });
+    await start(Q);
+    const rated = await due(Q);
+    ok(/^Due for an RIR check: take one set here to failure\./.test(rated), 'L-44: (guard) a lifter who rated his sets in 3 sessions is offered it, as before', rated);
     await Q.close();
   }
 
