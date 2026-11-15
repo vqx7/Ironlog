@@ -1349,12 +1349,33 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
         await X.page.setViewportSize({ width: w, height: 844 }); await wait(150);
         seen[w] = await X.ev(() => [...document.querySelectorAll('#view section.block')].map(blk => {
           const h = blk.querySelector('.sg.head .lh'), u = blk.querySelector('[data-act="unitOpen"]');
-          return { head: h.innerText.trim().toUpperCase(), one: h.getClientRects().length === 1 && h.getBoundingClientRect().height < 20, badge: u.textContent.trim(), badgeOne: u.getBoundingClientRect().height < 40 };
+          /* The plan's sets and range ("3×6-10") as one piece: the text from the sets to the end of the range read by a
+             Range, whose line boxes all share one top when it is not broken (at the hyphen, say). */
+          const walk = document.createTreeWalker(blk.querySelector('.bh-m'), NodeFilter.SHOW_TEXT);
+          const nodes = []; let n; while ((n = walk.nextNode())) nodes.push(n);
+          const xi = nodes.findIndex(t => t.textContent.includes('×'));
+          let rangeOne = false;
+          if (xi > 0) {
+            const R = document.createRange(); const a = nodes[xi - 1], c = nodes[xi + 1];
+            R.setStart(a, Math.max(0, a.textContent.search(/\d+$/))); R.setEnd(c, (c.textContent.match(/^[\d-]+/) || [''])[0].length);
+            rangeOne = new Set([...R.getClientRects()].filter(r => r.width > 0).map(r => Math.round(r.top))).size === 1 && /^\d+×\d+(-\d+)?$/.test(R.toString());
+          }
+          // The effort ("@2 RIR") as one piece the same way.
+          const at = nodes.find(t => t.textContent.includes('@'));
+          let effOne = false;
+          if (at) {
+            // From the "@" to the end of the effort, whether it is one text or the "@" and its value as two.
+            const end = at.textContent.slice(at.textContent.indexOf('@')).trim() === '@' ? nodes[nodes.indexOf(at) + 1] : at;
+            const R = document.createRange(); R.setStart(at, at.textContent.indexOf('@')); R.setEnd(end, end.textContent.length);
+            effOne = new Set([...R.getClientRects()].filter(r => r.width > 0).map(r => Math.round(r.top))).size === 1 && /^@\S+ \S+$/.test(R.toString().trim());
+          }
+          return { head: h.innerText.trim().toUpperCase(), one: h.getClientRects().length === 1 && h.getBoundingClientRect().height < 20, badge: u.textContent.trim(), badgeOne: u.getBoundingClientRect().height < 40, rangeOne, effOne };
         }));
       }
       const want = [['TOTAL', 'lb'], ['EACH', 'lb'], ['STACK', 'lb'], ['ADDED', 'lb'], ['ASSIST', 'lb']];
       ok(Object.values(seen).every(bs => bs.length === 5 && bs.every((x, i) => x.one && x.badgeOne && x.head === want[i][0] && x.badge === want[i][1])),
         'L-38: at 320, 360, 375, 390 and 430 px every load heading is one word on one line saying what the number is (Total, Each, Stack, Added, Assist), and every badge is the unit alone, lb', seen);
+      ok(Object.values(seen).every(bs => bs.every(x => x.rangeOne && x.effOne)), 'L-38: at every width from 320 to 430 px the plan\'s sets and range under each name ("3×6-10") and its effort ("@2 RIR") each stay on one line, never broken at the hyphen or the space (NEW-159)', seen);
       await X.page.setViewportSize({ width: 390, height: 844 }); await wait(150);
       const said = [];
       for (let b = 0; b < 5; b++) {

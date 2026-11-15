@@ -232,6 +232,7 @@
 .u-posrel{position:relative!important}
 .u-taright_fnone{text-align:right!important;flex:none!important}
 .u-w70{width:70px!important}
+.u-wsnw{white-space:nowrap!important}
 [hidden]{display:none!important}
 /* Content inside <details> is rendered through the browser's own shadow slot,
    which the rule above cannot reach, so padded inputs stuck out of their card. */
