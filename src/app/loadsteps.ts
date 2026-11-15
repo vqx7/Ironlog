@@ -626,7 +626,8 @@ function loadsForIn(
   M: Model,
   ex: ExerciseLike,
   plan: Pick<Plan, 'inc' | 'jump'> | null | undefined,
-  at: number | null
+  at: number | null,
+  inHand = false
 ): Loads {
   const L = gymRackIn(M, ex, plan);
   if (L) {
@@ -722,11 +723,12 @@ function loadsForIn(
   if (at == null)
     return { kind: 'step', first: null, below: () => null, floor: () => null, above: () => null, has: () => false };
   /* A load typed in the other unit is none of this unit's loads, so whole steps from it are none either (185 lb on a
-     lift now in kg: 83.9, 88.9, 93.9 kg). The steps are counted from the nearest load that exists in the lift's unit
-     instead (85, 90, 95), so every rule that moves a load from it (minus and plus, the drop set, the next sets) lands on
-     a real one. */
+     lift now in kg: 83.9, 88.9, 93.9 kg). A target is put on this unit's loads after its rule has run (unitSnap), so
+     the rules that make targets count from the load as it is. A set's load in hand in a workout (inHand: minus and
+     plus, a drop set, a warm-up, the next sets) has nothing after it, so its steps are counted from the nearest load
+     the lift's step makes in its unit instead (85, 90, 95). */
   const step = incOfIn(M, ex, plan, at);
-  const anchor = unitAnchorIn(M, ex, at, step);
+  const anchor = inHand ? unitAnchorIn(M, ex, at, step) : null;
   const from = anchor ?? at;
   // From a load in the other unit, one within the shown digit of a load here is that load (122.47 kg, 270 lb, is 122.5).
   const tk = anchor == null || !(step > 0) ? EPS_SAME : Math.max(EPS_SAME, rackTolIn(M) / step);
@@ -766,10 +768,11 @@ export function lighterLoadIn(
   ex: ExerciseLike,
   plan: Pick<Plan, 'inc' | 'jump'> | null | undefined,
   from: number,
-  to: number
+  to: number,
+  inHand = false
 ): number {
   M = liftModelIn(M, ex);
-  const Ls = loadsForIn(M, ex, plan, from);
+  const Ls = loadsForIn(M, ex, plan, from, inHand);
   if (Ls.kind !== 'step') {
     const dn = Ls.below(from);
     if (dn == null) return Math.max(0, from);
@@ -802,10 +805,11 @@ export function heavierLoadIn(
   ex: ExerciseLike,
   plan: Pick<Plan, 'inc' | 'jump'> | null | undefined,
   from: number,
-  to: number
+  to: number,
+  inHand = false
 ): number | null {
   M = liftModelIn(M, ex);
-  const Ls = loadsForIn(M, ex, plan, from);
+  const Ls = loadsForIn(M, ex, plan, from, inHand);
   const up = Ls.above(from),
     c = Ls.floor(to);
   return up != null && c != null && c >= up - EPS_SAME ? c : null;
@@ -823,7 +827,7 @@ export function stepLoadIn(
   dir: 1 | -1
 ): number | null {
   M = liftModelIn(M, ex);
-  if (dir > 0) return loadsForIn(M, ex, plan, from).above(from);
-  const w = lighterLoadIn(M, ex, plan, from, from - EPS_SAME);
+  if (dir > 0) return loadsForIn(M, ex, plan, from, true).above(from);
+  const w = lighterLoadIn(M, ex, plan, from, from - EPS_SAME, true);
   return w < from - EPS_SAME ? w : null;
 }

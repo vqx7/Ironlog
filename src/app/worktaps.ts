@@ -471,7 +471,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const frac = WARM_RAMP[Math.min(n, WARM_RAMP.length - 1)];
     let at = 0;
     while (at < b.sets.length && b.sets[at].warm) at++;
-    let w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * frac) : null;
+    let w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * frac, true) : null;
     /* Each warm-up a step heavier than the one before where the loads allow: on a 10 lb step a 50 lb curl's
        third warm-up came out at 30 again, the second's load; it takes the next load up, at most the ramp's top share
        of the working load, so a warm-up never reaches it. Where no load fits there, it repeats the one before, never
@@ -479,7 +479,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const prev = at > 0 ? +(effW(b, at - 1) ?? 0) || 0 : 0;
     const top = WARM_RAMP[WARM_RAMP.length - 1] ?? frac;
     if (w != null && prev > 0 && w <= prev + EPS) {
-      const up = base * top > prev ? heavierLoad(EX(b.exId), b.plan, prev, base * top) : null;
+      const up = base * top > prev ? heavierLoad(EX(b.exId), b.plan, prev, base * top, true) : null;
       w = up != null && up < base - EPS ? up : prev;
     }
     act(
@@ -600,7 +600,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         break;
       }
     }
-    const w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * DROP_START) : null;
+    const w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * DROP_START, true) : null;
     // Attached to the last working set ticked: after it and any drops already under it, not at the end of the exercise.
     let at = -1;
     b.sets.forEach((x, i) => {

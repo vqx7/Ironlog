@@ -150,18 +150,18 @@ export function nextSetsIn(M: Model, b: DraftBlock, si: number, lastR: number | 
     const lim = back && done != null ? done : Math.max(done ?? -Infinity, Lt * jumpCap(ex, Lt, false) - bw);
     const want = Math.min(byEst, lim);
     const cap = capOfIn(M, ex, p);
-    nw = heavierLoadIn(M, ex, p, s.w, cap != null ? Math.min(want, cap) : want);
+    nw = heavierLoadIn(M, ex, p, s.w, cap != null ? Math.min(want, cap) : want, true);
     /* Rated 5 or more in reserve, the top of the scale, the estimate is
        only a floor, so one real step is always right even where it is
        more than the cap allows (else 20 lb curls at 5+ in
        reserve never move, a 5 lb step being 25% of the load). */
     if (nw == null && q != null && q >= RIR_CALL_TOP) {
       const one = s.w + incOfIn(M, ex, p, s.w);
-      nw = heavierLoadIn(M, ex, p, s.w, cap != null ? Math.min(one, cap) : one);
+      nw = heavierLoadIn(M, ex, p, s.w, cap != null ? Math.min(one, cap) : one, true);
     }
   } else {
     const want = e1inv(est, lo + resDown) - bw;
-    const w = lighterLoadIn(M, ex, p, s.w, Math.max(0, want));
+    const w = lighterLoadIn(M, ex, p, s.w, Math.max(0, want), true);
     nw = w < s.w - EPS_SAME ? w : null;
     if (nw != null && ex.bw && nw < 0) nw = 0;
   }

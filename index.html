@@ -7936,7 +7936,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const pct = jumpPct(ex, plan);
     return inc * Math.max(1, Math.floor(pct * Math.max(0, loadKg) / inc + EPS));
   }
-  function loadsForIn(M3, ex, plan, at2) {
+  function loadsForIn(M3, ex, plan, at2, inHand = false) {
     const L2 = gymRackIn(M3, ex, plan);
     if (L2) {
       const tl = rackTolIn(M3), tf = rackTolIn(M3, L2, at2);
@@ -8001,7 +8001,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (at2 == null)
       return { kind: "step", first: null, below: () => null, floor: () => null, above: () => null, has: () => false };
     const step = incOfIn(M3, ex, plan, at2);
-    const anchor = unitAnchorIn(M3, ex, at2, step);
+    const anchor = inHand ? unitAnchorIn(M3, ex, at2, step) : null;
     const from = anchor ?? at2;
     const tk = anchor == null || !(step > 0) ? EPS_SAME : Math.max(EPS_SAME, rackTolIn(M3) / step);
     const k2 = (w2) => (w2 - from) / step;
@@ -8020,9 +8020,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const o3 = inUnitIn(M3, loadFloorIn(M3, ex));
     return kgOfIn(M3, o3 + Math.round((inUnitIn(M3, at2) - o3) / su) * su);
   }
-  function lighterLoadIn(M3, ex, plan, from, to) {
+  function lighterLoadIn(M3, ex, plan, from, to, inHand = false) {
     M3 = liftModelIn(M3, ex);
-    const Ls = loadsForIn(M3, ex, plan, from);
+    const Ls = loadsForIn(M3, ex, plan, from, inHand);
     if (Ls.kind !== "step") {
       const dn2 = Ls.below(from);
       if (dn2 == null) return Math.max(0, from);
@@ -8039,16 +8039,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (gr && w2 < gridStep(M3, gr, 0, 1) - EPS_SAME) w2 = Math.min(gridStep(M3, gr, 0, 1), from);
     return Math.max(0, w2);
   }
-  function heavierLoadIn(M3, ex, plan, from, to) {
+  function heavierLoadIn(M3, ex, plan, from, to, inHand = false) {
     M3 = liftModelIn(M3, ex);
-    const Ls = loadsForIn(M3, ex, plan, from);
+    const Ls = loadsForIn(M3, ex, plan, from, inHand);
     const up = Ls.above(from), c4 = Ls.floor(to);
     return up != null && c4 != null && c4 >= up - EPS_SAME ? c4 : null;
   }
   function stepLoadIn(M3, ex, plan, from, dir) {
     M3 = liftModelIn(M3, ex);
-    if (dir > 0) return loadsForIn(M3, ex, plan, from).above(from);
-    const w2 = lighterLoadIn(M3, ex, plan, from, from - EPS_SAME);
+    if (dir > 0) return loadsForIn(M3, ex, plan, from, true).above(from);
+    const w2 = lighterLoadIn(M3, ex, plan, from, from - EPS_SAME, true);
     return w2 < from - EPS_SAME ? w2 : null;
   }
 
@@ -10312,14 +10312,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const lim = back2 && done != null ? done : Math.max(done ?? -Infinity, Lt * jumpCap(ex, Lt, false) - bw);
       const want = Math.min(byEst, lim);
       const cap = capOfIn(M3, ex, p3);
-      nw = heavierLoadIn(M3, ex, p3, s3.w, cap != null ? Math.min(want, cap) : want);
+      nw = heavierLoadIn(M3, ex, p3, s3.w, cap != null ? Math.min(want, cap) : want, true);
       if (nw == null && q != null && q >= RIR_CALL_TOP) {
         const one = s3.w + incOfIn(M3, ex, p3, s3.w);
-        nw = heavierLoadIn(M3, ex, p3, s3.w, cap != null ? Math.min(one, cap) : one);
+        nw = heavierLoadIn(M3, ex, p3, s3.w, cap != null ? Math.min(one, cap) : one, true);
       }
     } else {
       const want = e1inv(est, lo + resDown) - bw;
-      const w2 = lighterLoadIn(M3, ex, p3, s3.w, Math.max(0, want));
+      const w2 = lighterLoadIn(M3, ex, p3, s3.w, Math.max(0, want), true);
       nw = w2 < s3.w - EPS_SAME ? w2 : null;
       if (nw != null && ex.bw && nw < 0) nw = 0;
     }
@@ -27449,11 +27449,11 @@ ${JSON.stringify(ctx, null, 1)}`;
       const frac = WARM_RAMP[Math.min(n3, WARM_RAMP.length - 1)];
       let at2 = 0;
       while (at2 < b2.sets.length && b2.sets[at2].warm) at2++;
-      let w2 = base > 0 ? lighterLoad(EX(b2.exId), b2.plan, base, base * frac) : null;
+      let w2 = base > 0 ? lighterLoad(EX(b2.exId), b2.plan, base, base * frac, true) : null;
       const prev = at2 > 0 ? +(effW(b2, at2 - 1) ?? 0) || 0 : 0;
       const top = WARM_RAMP[WARM_RAMP.length - 1] ?? frac;
       if (w2 != null && prev > 0 && w2 <= prev + EPS) {
-        const up = base * top > prev ? heavierLoad(EX(b2.exId), b2.plan, prev, base * top) : null;
+        const up = base * top > prev ? heavierLoad(EX(b2.exId), b2.plan, prev, base * top, true) : null;
         w2 = up != null && up < base - EPS ? up : prev;
       }
       act(
@@ -27561,7 +27561,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           break;
         }
       }
-      const w2 = base > 0 ? lighterLoad(EX(b2.exId), b2.plan, base, base * DROP_START) : null;
+      const w2 = base > 0 ? lighterLoad(EX(b2.exId), b2.plan, base, base * DROP_START, true) : null;
       let at2 = -1;
       b2.sets.forEach((x2, i5) => {
         if (x2.done && !x2.warm && !x2.drop) at2 = i5;
