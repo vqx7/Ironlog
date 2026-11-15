@@ -7421,7 +7421,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/plans.ts
   function planForIn(M3, exId, R2, dayId, plain, before2, part) {
-    const inR = routinePlanIn(M3, exId, R2, dayId, part);
+    const inR = R2 == null && !dayId && freeModeIn(M3) ? null : routinePlanIn(M3, exId, R2, dayId, part);
     if (inR) return inR;
     const base = defPlanIn(M3, exId, plain);
     if (plain) return base;

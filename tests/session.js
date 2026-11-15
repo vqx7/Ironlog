@@ -1,4 +1,4 @@
-// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-42, in the
+// The session screen, checked against its written rules (CA-1; the spec "The session screen", L-1 to L-43, in the
 // project's claude/ironlog-spec-session.md, built from the code: workout.ts, worksets.ts, worktaps.ts, workfields.ts,
 // workfinish.ts, timer.ts, actsstart.ts, actspick.ts and session.ts, V's rulings deciding, and where neither does, what a lifter
 // expects). A feature suite: each section is one rule, a lifter's log seeded, the workout started from Today's card
@@ -1686,6 +1686,45 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const later = await hint(P), d = await P.draft();
     ok(d.date === DAY && later === now.replace(/^Today:/, 'Target:'), 'L-42: the same workout opened three days later keeps its targets, its line beginning "Target:"', { date: d.date, later, now });
     await P.close();
+  }
+
+  /* ---------- L-43: a lift added to a freestyle workout opens with the sets of its own last full session; a routine
+     the lifter does not follow (freestyle mode) gives it nothing ---------- */
+  if (run('L-43')) {
+    /* The UAT's freestyler (UAT-3, UAT-9): Today in freestyle mode, the routine in use holding the bench at 4 sets, his
+       own last bench 185 x 10, 10, 10 in a freestyle session. + Add exercise brings the bench with his 3 sets, the
+       target over them, and Finish with all 3 ticked asks nothing about sets not done. */
+    const LBk = 0.45359237;
+    const seed = `(S, L) => { const LB = ${LBk}; S.settings.todayStart = 'free'; S.sessions = [{ id: 'f1', date: '2026-11-07', dayIdx: 0, dayId: null, dayName: 'Freestyle', routineId: '', free: true, notes: '', deload: false, light: false, ex: [{ exId: 'bench', rr: [6, 10], sets: [10, 10, 10].map(r => ({ w: 185 * LB, r, rir: 2, done: true })) }] }]; }`;
+    const P = await lifter({ items: [['bench', 4, 6, 10, REST_BENCH]], fresh: true, seed, movable: true, settings: { autoDone: false } });
+    await P.page.click('#tabs [data-tab="today"]'); await wait(120);
+    await P.tap('#view .hero[data-day="free"] [data-act="startFree"]', 300);
+    await P.ev(() => { const L = window.__ironlog; L.openModal({ kind: 'picker', mode: 'addBlock', title: 'Add exercise to session', q: '', m: '' }); }); await wait(200);
+    await P.tap('#modal [data-act="pickDo"][data-ex="bench"]', 300);
+    const rows = await P.rows(0), hint = await P.ev(() => ((document.querySelector('#blk-0 .hint b') || {}).innerText || '').replace(/\s+/g, ' ').trim());
+    ok(rows.length === 3 && hint === 'Today: 195 lb for 6+ reps in every set', 'L-43: the bench added to a freestyle workout opens with its own last session\'s 3 sets (10, 10, 10 at 185 lb, so a step up), not the 4 of a routine not followed', { rows: rows.length, hint });
+    for (const k of [0, 1, 2]) await P.tap(tick(0, k), 200);
+    await P.tap('#view [data-act="finish"]', 300);
+    const m = await P.modal();
+    ok(m && m.kind === 'recap', 'L-43: Finish with every row ticked asks nothing about sets not done', m && { kind: m.kind, title: m.title, text: m.text.slice(0, 160) });
+    await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150); await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); }); await wait(150);
+    const done = await P.ev(() => { const x = window.__ironlog.state.sessions.find(q => q.id !== 'f1'); return x ? x.ex[0].sets.map(q => q.r) : null; });
+    await P.ev(() => window.__setClock('2026-11-14T10:00:00')); await P.ev(() => window.__ironlog.render()); await wait(150);
+    await P.tap('#view .hero[data-day="free"] [data-act="startFree"]', 300);
+    await P.ev(() => { const L = window.__ironlog; L.openModal({ kind: 'picker', mode: 'addBlock', title: 'Add exercise to session', q: '', m: '' }); }); await wait(200);
+    await P.tap('#modal [data-act="pickDo"][data-ex="bench"]', 300);
+    const next = await P.ev(() => ((document.querySelector('#blk-0 .hint b') || {}).innerText || '').replace(/\s+/g, ' ').trim());
+    const sum = (done || []).reduce((a, r) => a + r, 0);
+    ok(done && done.length === 3 && next === `Today: ${sum + 1}+ reps over 3 sets at 195 lb` && (await P.rows(0)).length === 3, 'L-43: the 3 sets done set the next target, three days later, over 3 sets again', { done, next });
+    await P.close();
+    // A guard: a lifter following the routine adds the bench on the same blank workout and gets the routine's 4 sets.
+    const seedPlan = seed.replace("S.settings.todayStart = 'free'; ", '');
+    const Q = await lifter({ items: [['bench', 4, 6, 10, REST_BENCH]], fresh: true, seed: seedPlan, settings: { autoDone: false } });
+    await Q.ev(() => window.__ironlog.ACT.startFree({ dataset: {} })); await wait(300);
+    await Q.ev(() => { const L = window.__ironlog; L.openModal({ kind: 'picker', mode: 'addBlock', title: 'Add exercise to session', q: '', m: '' }); }); await wait(200);
+    await Q.tap('#modal [data-act="pickDo"][data-ex="bench"]', 300);
+    ok((await Q.rows(0)).length === 4, 'L-43: (guard) a lifter following the routine gets the bench\'s 4 sets from it in a blank workout', (await Q.rows(0)).length);
+    await Q.close();
   }
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
