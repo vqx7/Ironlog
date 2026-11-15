@@ -1248,5 +1248,57 @@ async function finish() {
     await H.P.ctx.close();
   }
 
+  // ---- 20. The week's word (2.70, NEW-156 and NEW-166): a lifter whose bench and press go up a step a week while the
+  // row and the leg press stay flat logs today's session, reads Stats, opens Why, takes the leg press out of the routine
+  // and reads Stats again. Every step a tap or typing.
+  if (run(20)) {
+    const T0 = '2026-11-16';
+    const H = await phone(T0);
+    const lifts = [['bench', 185, 8, 5], ['ohp', 95, 8, 5], ['bbRow', 135, 8, 0], ['legPress', 270, 10, 0]];
+    await seed(H, { unit: 'lb', days: [{ id: 'P', name: 'Full', items: lifts.map(([id, , r]) => [id, 3, r === 10 ? 8 : 6, r === 10 ? 12 : 10, 2, 120]) }],
+      sessions: [35, 28, 21, 14, 7].map((n, i) => ({ day: 'P', date: addD(T0, -n), ex: lifts.map(([id, w, r, up]) => [id, [0, 1, 2].map(() => [w + up * i, r, 2])]) })) });
+    // Today's session as the lifter does it: each set's load and reps typed, its effort, ticked; then Finish, which
+    // saves each lift with the sets its plan gave it.
+    await H.start();
+    const d0 = await H.draft();
+    for (const [id, w, r, up] of lifts) { const b = d0.ex.findIndex(x => x.exId === id); for (const s of [0, 1, 2]) { await H.type('w', b, s, w + up * 5); await H.type('r', b, s, r); await H.effort(b, s, 2); await H.quiet(); await H.tick(b, s); } }
+    await H.finish();
+    const stats = () => H.ev(() => {
+      const t = e => e.innerText.replace(/\s+/g, ' ').trim();
+      const line = document.querySelector('#dashSummary .vline'), why = document.querySelector('#dashSummary details');
+      // A row shown: one under a closed fold has no text drawn.
+      const rows = [...document.querySelectorAll('#dashSummary .srow')].map(t).filter(Boolean);
+      return { line: line ? t(line) : '', whyOpen: !!(why && why.open), rows, first: (document.querySelector('#view .card, #view .kpis') || {}).id || '' };
+    });
+    await H.page.click('#tabs [data-tab="dash"]'); await wait(200);
+    let s = await stats();
+    ok(s.first === 'dashSummary' && /^Stalled\. \S/.test(s.line) && !s.whyOpen && !s.rows.length, '20. two lifts rising and two flat: Stats opens with "Stalled." and the coach\'s one change, the lines behind it folded', s);
+    // A build before 2.70 has no fold to tap: each check below then fails rather than the run stopping.
+    if (await H.page.$('#dashSummary details > summary')) { await H.page.click('#dashSummary details > summary'); await wait(150); }
+    s = await stats();
+    ok(s.whyOpen && s.rows.some(x => /^Moving/i.test(x) && /Bench Press/.test(x) && /Overhead Press/.test(x)) && s.rows.some(x => /^Stuck/i.test(x) && /Barbell Row/.test(x) && /Leg Press/.test(x)) && !s.rows.some(x => /^Falling/i.test(x)),
+      '20. Why opens on a tap: Moving names the bench and the press, Stuck the row and the leg press', s.rows);
+    // The leg press taken out of the routine on Plan: its row opened, then Remove.
+    await H.page.click('#tabs [data-tab="program"]'); await wait(200);
+    const item = '#view .it button.imain[data-act="toggleItem"]';
+    const lp = await H.ev(q => { const b = [...document.querySelectorAll(q)].find(x => /Leg Press/.test(x.textContent)); return b ? b.dataset.uid : null; }, item);
+    // Each fold the leg press sits in, tapped open from the outside in, as the lifter opens Days to reach it.
+    for (let k = 0; k < 4; k++) {
+      const fold = await H.ev(q => { let d = document.querySelector(q), out = null; while (d && (d = d.parentElement && d.parentElement.closest('details'))) if (!d.open) out = d.dataset.sk; return out; }, `${item}[data-uid="${lp}"]`);
+      if (!fold) break;
+      await H.page.click(`#view details[data-sk="${fold}"] > summary`); await wait(150);
+    }
+    await H.page.click(`${item}[data-uid="${lp}"]`); await wait(150);
+    await H.page.click('#view [data-act="iDel"]'); await wait(150);
+    const gone = await H.ev(() => !window.__ironlog.activeRoutine().days.some(d => d.items.some(i => i.exId === 'legPress')));
+    await H.quiet();
+    await H.page.click('#tabs [data-tab="dash"]'); await wait(200);
+    s = await stats();
+    ok(gone && /^Progressing\. \S/.test(s.line) && s.rows.some(x => /^Stuck/i.test(x) && /Barbell Row/.test(x) && !/Leg Press/.test(x)) && !s.rows.some(x => /Leg Press/.test(x)),
+      '20. with the leg press taken out of the routine, it is read no more: Progressing, and Stuck names only the row', { gone, s });
+    ok(!H.P.errors.length, '20. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
   return finish();
 })().catch(e => { console.error(e); process.exit(1); });

@@ -135,6 +135,8 @@ export interface Drift {
 export interface ExStat {
   n: number;
   stalled: boolean;
+  /** Being trained now: in the trend's window, not on a break, kept, not held for an injury and not taken out of the routine. Stalled, rising and a muscle's trend read only such a lift. */
+  current: boolean;
   pct: number | null;
   slope: number | null;
   slopeSe: number | null;

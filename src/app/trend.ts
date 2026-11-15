@@ -84,10 +84,16 @@ export function stallStretch<X extends { date: string }>(wE: readonly X[]): X[] 
 }
 
 /* The sessions in a range the stall test reads a strength reading over: those
-   with one, not held for an injury. One list for the
-   test (idxLiftIn) and for the span it says it read (stallSpans), so the
-   span never counts the held sessions. */
-export const stallReads = (inR: readonly Exposure[]): Exposure[] => inR.filter(x => !x.held && x.tv != null);
+   with one, not held for an injury, and not short of the sets the lift is held to,
+   its sets skipped (usual.ts): such a session repeats its target by V's one rule,
+   so it is no test of progress (V, 2026-11-15). A set tried and missed is one of
+   the session's sets, so a session with one is read. One list for the test
+   (idxLiftIn) and for the span it says it read (stallSpans), so the span never
+   counts the sessions left out. */
+/** Whether the stall test leaves a session out: held for an injury, or its sets skipped. */
+export const stallLeftOut = (x: Exposure): boolean => x.held || x.short === 'sets';
+/** The sessions of a range the stall test reads a strength reading over (above). */
+export const stallReads = (inR: readonly Exposure[]): Exposure[] => inR.filter(x => !stallLeftOut(x) && x.tv != null);
 
 /* The rep ranges a lift's stall is read in (V 2026-10-18: "stalled only
    if every range is"): its newest session's, as the trend's, and each other

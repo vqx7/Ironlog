@@ -1096,6 +1096,12 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .mvline polyline{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .mvset{text-align:right;font-weight:750;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .srow:last-child{border-bottom:0}
+/* Stats' opening line: the week's word and the coach's one change, with the lines it rests on folded under it (Why). */
+.vline{display:grid;grid-template-columns:8px minmax(0,1fr);gap:10px;align-items:start;margin:0;padding:13px 16px;font-size:15px;line-height:1.45}
+#dashSummary>.subsec{margin:0;padding:0;background:none;border-top:1px solid var(--line-soft);border-radius:0}
+#dashSummary>.subsec>summary{min-height:44px;padding:0 16px}
+#dashSummary>.subsec .subsec-t{font:600 11px var(--font);text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+#dashSummary>.subsec>.sec-b{padding:0}
 .srow.static{cursor:default;grid-template-columns:8px 64px minmax(0,1fr)}
 .srow .sl{font:600 11px var(--font);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding-top:3px}
 .srow .st{font-size:14px;line-height:1.45}

@@ -8,7 +8,17 @@ import type { Session } from './types';
 import type { DateIndex, DayMeta, ExPoint, ExStat, Exposure, Idx, MissedPoint, Model, Pr, Score } from './model';
 import { MK, SLOW_RECOVERY, noE1, onMachines } from './library';
 import { addDays, daysBetween, median, r1, weekStart, EPS, EPS_SAME, WEEK_DAYS, PERCENT } from './util';
-import { EXIn, exInjuryIn, FIRST_MACHINE, machineKeys, machinesOf, onMachine, sortedSessionsIn } from './model';
+import {
+  EXIn,
+  activeRoutineIn,
+  exInjuryIn,
+  freeModeIn,
+  FIRST_MACHINE,
+  machineKeys,
+  machinesOf,
+  onMachine,
+  sortedSessionsIn
+} from './model';
 import {
   BACK_DAYS,
   GROW_PCT,
@@ -42,7 +52,7 @@ import {
   DRIFT_N
 } from './formulas';
 import { sameExOnce } from './session';
-import { trendScope, trendW, liftTrendIn, stallReads, stallScopesIn, stallStretch } from './trend';
+import { trendScope, trendW, liftTrendIn, stallLeftOut, stallReads, stallScopesIn, stallStretch } from './trend';
 import { basePlanIn, routinePlanIn } from './routines';
 import { atCapOfIn, capOfIn } from './gym';
 import { fmtDateFrom, missedTag } from './format';
@@ -754,7 +764,7 @@ function rirInTrendIn(M: Model, inRange: readonly Exposure[]): boolean {
   return useAdj;
 }
 
-/** Whether a lift can be stalled: still trained (in the window, not on a break today), kept, and not held for a flagged injury (idxLiftIn). */
+/** Whether a lift is being trained now (ExStat.current): in the window, not on a break today, kept, not held for a flagged injury, and not taken out of the routine (idxLiftIn). */
 function stillTrainedIn(
   M: Model,
   id: string,
@@ -768,7 +778,23 @@ function stillTrainedIn(
     !afterBreak(lastReal, M.today()) &&
     !exI.archived &&
     M.s.exercises.some(e => e.id === id) &&
-    !exInjuryIn(M, exI)
+    !exInjuryIn(M, exI) &&
+    !takenOutIn(M, id, lastReal)
+  );
+}
+
+/* A lift taken out of the routine is no longer trained, whatever its last
+   readings said: one the routine planned at its last session (ps, saved only
+   for a lift the routine had then) that no day of the routine in use has now,
+   swapped for a variation as a stall's advice asks, say. Its readings stay
+   true for the 4 weeks before a break, but they are no longer about what the
+   lifter trains, so nothing calls it stalled or rising (V, 2026-11-15). Not in
+   Freestyle, which follows no routine, nor for a lift never planned, done as
+   an extra: each is read until its break, as before. */
+/** Whether a lift the routine planned at its last session is on no day of the routine in use now. */
+function takenOutIn(M: Model, id: string, lastReal: Exposure): boolean {
+  return (
+    !freeModeIn(M) && lastReal.ps != null && !activeRoutineIn(M).days.some(d => d.items.some(it => it.exId === id))
   );
 }
 
@@ -854,15 +880,16 @@ function idxLiftIn(
      (timed, joint-rotation) keeps a count-based test: 4 or more sessions
      and no PR of any kind in the last 3. */
   let stalled = false;
-  /* Only a lift still being trained can be stalled: one not done in the
-     42 days up to the log's newest session, or deleted or archived,
-     would stay stalled forever and keep the Coach calling for a deload.
-     Nor one on a break today (afterBreak, more than BACK_DAYS since
+  /* Only a lift still being trained can be stalled, or read as rising or
+     falling by the screens that say what you train now (ExStat.current): one
+     not done in the 42 days up to the log's newest session, or deleted or
+     archived, would stay stalled forever and keep the Coach calling for a
+     deload. Nor one on a break today (afterBreak, more than BACK_DAYS since
      its last session): its next session starts its readings over, and a
      pull-up last done 39 days ago is not stalled on Stats and by the coach
      until then. Nor one held for a flagged injury: the engine keeps it at
      last time's load on purpose, and three weeks of doing as told are not a
-     stall to change the range. */
+     stall to change the range. Nor one taken out of the routine (takenOutIn). */
   const current = stillTrainedIn(M, id, exI, lastReal, winStart);
   /* A PR is movement whatever the day (V 2026-10-18: a PR is a PR
      whenever it happens). A session where the lift was done lighter is left
@@ -881,12 +908,13 @@ function idxLiftIn(
      it is stalled in each, as each range has its own targets (V
      2026-10-18; stallScopesIn). A session held for a flagged injury, its
      load capped on purpose, is left out as one done lighter is (once the
-     injury is cleared, the held weeks are not a stall). */
+     injury is cleared, the held weeks are not a stall), and so is one with
+     its sets skipped, whose target repeated by rule (stallLeftOut). */
   const stalledIn = (rr: [number, number] | null, all: readonly Exposure[]): boolean => {
-    const inR = all.filter(x => !x.held);
+    const inR = all.filter(x => !stallLeftOut(x));
     const withE1 = stallReads(all);
     const offSince = (from: string): Exposure[] =>
-      cur.filter(x => (lighter(x) || x.held) && sameRR(x.rr, rr) && x.date >= from);
+      cur.filter(x => (lighter(x) || stallLeftOut(x)) && sameRR(x.rr, rr) && x.date >= from);
     const l = stallStretch(withE1);
     if (l) {
       /* More reps at the same working load over no more sets is progress
@@ -997,6 +1025,7 @@ function idxLiftIn(
   return {
     n: exps.length,
     stalled,
+    current,
     pct,
     slope,
     slopeSe,
@@ -1038,7 +1067,7 @@ function idxScoresIn(M: Model, exStats: Record<string, ExStat>): Score[] {
      inside the noise has no score (clear:false), shown as unclear. Counting
      them as 0 would put "Chest +0%" beside a bench press up 10%, and "+0%, try 2
      more sets" on every muscle: not enough signal is not a measurement of
-     zero. Lifts not trained in the last 42 days are left out. */
+     zero. Only lifts being trained now are read (ExStat.current). */
   const byMuscle: Record<string, number[]> = {},
     bySecondary: Record<string, number[]> = {},
     stallP: Record<string, boolean> = {},
@@ -1054,7 +1083,7 @@ function idxScoresIn(M: Model, exStats: Record<string, ExStat>): Score[] {
       stallP[ex.primary] = true;
       for (const m of ex.secondary) stallS[m] = true;
     }
-    if (st.pct == null || !st.fresh) continue;
+    if (st.pct == null || !st.current) continue;
     /* A muscle's trend needs a little more than a lift's (from the third
        review: "Chest +4%, rising: hold this volume" after 3 sessions, off one
        extra rep): its lifts count once they have 4 sessions over 3 weeks or

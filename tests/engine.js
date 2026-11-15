@@ -63,6 +63,8 @@ const EXTRA = {
   withPlanSets: (s, ids) => { const day = ((s.routines.find(r => r.id === s.activeRoutineId) || { days: [] }).days[0] || {}).id || null; const ex = () => ids.slice(0, 4).map((id, k) => ({ exId: id, sets: Array.from({ length: [1, 3, 4, 5][k] }, (_, j) => ({ w: 50, r: 8, warm: j === 0 && k === 3, drop: false })) })); const on = { routineId: s.activeRoutineId, freestyle: false }; return [[ex(), { routineId: s.activeRoutineId, dayId: day }, s.routines, on], [ex(), { routineId: s.activeRoutineId, dayId: day, free: true }, s.routines, on], [ex(), { routineId: s.activeRoutineId, dayId: null }, s.routines, on], [ex(), { routineId: '', dayId: null, free: true }, s.routines, { routineId: s.activeRoutineId, freestyle: true }], [ex(), { routineId: '', dayId: null, free: true }, s.routines, { routineId: 'none', freestyle: false }], [ex(), { routineId: s.activeRoutineId, dayId: day, editingId: 'e1' }, s.routines, on]]; },
   // r70 (364 b-2): Today's Lifts moving, the rising lifts with their lines and latest heaviest sets.
   liftsMoving: () => [[]],
+  // 2.70 (NEW-156): the week's word and the lifts in each of its groups.
+  verdict: () => [[]],
   planItemOf: (s, ids) => s.routines.slice(0, 2).flatMap(r => ids.slice(0, 6).flatMap(id => [[r, id], [r, id, r.days.length > 1 ? r.days[1].id : null]])),
   // A lift's all-time bests, now and as of the log's middle session (a past workout's), and where the weeks are counted from.
   allTimeBests: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : '']]),

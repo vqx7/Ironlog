@@ -150,13 +150,15 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   its usual load and reps for the sets it is held to: its plan's, saved with the session, once it has done them, else
   its usual, never more than the plan (`setsHeldTo` in usual.ts; each case a row of `tests/usual.js`, the history in
   docs/ARCHIVE.md, CL-2); with fewer sets or a
-  clearly weaker reading the target repeats and the session still counts for the trend, stalls and PRs; done
+  clearly weaker reading the target repeats and the session still counts for the trend and PRs, and for stalls
+  unless its sets were skipped (V, 2026-11-15, NEW-165, `stallLeftOut`); done
   lighter it sets no target or trend, and done in full on a
   lighter or deload day it is a full session (a day's label never overrides what a lift did). A break of more than
   four weeks restarts a lift's readings, and the weeks counted (averages and adherence) start after it. More than
   six months off, a lift starts fresh: nothing from before the break is asked of it, while its records and PRs read
   every session and All-time bests shows the best since you came back beside an older best ever (V, 2026-11-10,
-  NEW-110, `sinceLongBreak`). A session
+  NEW-110, `sinceLongBreak`). Stalled, rising and a muscle's trend read only a lift being trained now, which one
+  taken out of the routine is not, outside Freestyle (V, 2026-11-15, NEW-166, `ExStat.current`). A session
   marked New machine or gym restarts them too, its PRs, bests and dumbbell steps with them, and keeps every session
   shown (`liftReadIn`, r61). A machine, cable or Smith lift is read per machine (V, 2026-11-14, 390 C): its ⋯ Machine
   sheet lists the machines it was done on, by date and weight; its target, PRs, bests and readings come from the machine
@@ -171,7 +173,9 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   A PR is a set stronger than every earlier one, the same PR on every screen; a heavier set that is not one is
   Heaviest yet (r58). A muscle has a weekly target by default only when lifters train it directly for size
   (`TARGETED`); any other is tracked only until the lifter gives it one, which then counts everywhere (`hasTargetIn`, r58).
-- **V's rulings on screen:** the Volume radar is drawn from what was logged, never the routine's plan, and always
+- **V's rulings on screen:** Stats opens with the week's word, Progressing, Stalled or Regressing, and the coach's one
+  change, the lines it rests on folded under it; lifts in none of its groups are never shown (V, 2026-11-15, NEW-156,
+  `verdictIn`); the Volume radar is drawn from what was logged, never the routine's plan, and always
   draws; no Planned chip on Stats; the plan's usual-range note is a quiet line on Plan, never a flag and never on
   Stats; no other app is named on screen; no wording about shared phones, someone else or another person; no
   Comeback (former bests); no restyle without V's direction; "on target", the 1RM display and mid-workout

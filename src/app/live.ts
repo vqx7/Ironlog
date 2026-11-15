@@ -107,7 +107,8 @@ import {
   liftsMovingIn,
   moversIn,
   readinessIn,
-  stalledIdsIn
+  stalledIdsIn,
+  verdictIn
 } from './coach';
 import { daysOffIn, easierTextIn, suggestCoreIn, suggestIn } from './engine';
 import { heavierLoadIn, stepLoadIn, incOfIn, lighterLoadIn, progStepIn, rackStepIn } from './loadsteps';
@@ -307,6 +308,7 @@ export const movers = live(moversIn);
 export const liftsMoving = live(liftsMovingIn);
 export const readiness = live(readinessIn);
 export const stalledIds = live(stalledIdsIn);
+export const verdict = live(verdictIn);
 export const daysOff = live(daysOffIn);
 export const easierText = live(easierTextIn);
 export const incOf = live(incOfIn);

@@ -68,6 +68,7 @@ import {
   isRestWeek,
   liftsMoving,
   suggest,
+  verdict,
   weekStats,
   weekStreak,
   bodyU,
@@ -1004,7 +1005,7 @@ const TODAY_OFFER: Readonly<Record<string, () => boolean>> = {
   'today:injuries': () => (state.injuries || []).length > 0,
   'today:moving': () => liftsMoving().length > 0
 };
-/** The coach's tone in words, beside its title. */
+/** The coach's tone in words, beside its title when the week has no verdict word: a quiet week, or no lift read yet. */
 const TONE_WORDS: Readonly<Record<string, string>> = {
   red: 'Act now',
   yellow: 'One change',
@@ -1081,12 +1082,15 @@ function todayRest(o: {
     body: homeTiles()
   });
   const c = coach();
-  const toneWord = TONE_WORDS[c.tone] || 'Note';
+  // The week's word heads the coach's change, as Stats' opening line says them (verdictIn).
+  const v = verdict();
   const coachSec = section({
     sk: 'today:coach',
     key: 'coach',
     title: 'Coach',
-    sub: html`<span class=${`pill ${c.tone}`}>${toneWord}</span>`,
+    sub: v.word
+      ? html`<span class=${`pill ${v.tone}`}>${v.word}</span>`
+      : html`<span class=${`pill ${c.tone}`}>${TONE_WORDS[c.tone] || 'Note'}</span>`,
     body: html`<p class="u-m0">${c.text}${c.why ? html` ${tipButton(c.why, 'Why')}` : nothing}</p>${coachButton(c)}`
   });
   const inj = injuryCard();
