@@ -424,6 +424,9 @@ export function ask(title: string, body: string, ok: string, alt: string): Promi
 /* ---------- the menu button ---------- */
 
 let saveShown = '';
+/* Whether the phone not saving has been said since it began: the dot alone went unseen, so the moment saving stops
+   is news, said once in the state's own words, and said again only if it stops again after resuming. */
+let notSavingSaid = false;
 /* The menu button's dot and words (the reading is saveStateNow, in
    storage.ts): drawn in place on every save and sync change. */
 /** Draws the menu button's save state; an open menu follows it, redrawn only when it changed, so a tap is never lost to a redraw. */
@@ -431,6 +434,9 @@ export function setSaveState(): void {
   const el = document.getElementById('saveState');
   if (!el) return;
   const { cls, txt } = saveStateNow();
+  const notSaving = cls === 'bad';
+  if (notSaving && !notSavingSaid) toast(txt, null, null, 'notice');
+  notSavingSaid = notSaving;
   // The profile photo, where this phone keeps one, takes the menu icon's place; the save state's dot stays on it.
   const ph = photoUrl();
   el.className = 'ssb' + (ph ? ' ph' : '') + (cls ? ' ' + cls : '');

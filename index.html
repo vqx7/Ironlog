@@ -13832,10 +13832,14 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     );
   }
   var saveShown = "";
+  var notSavingSaid = false;
   function setSaveState() {
     const el = document.getElementById("saveState");
     if (!el) return;
     const { cls, txt } = saveStateNow();
+    const notSaving = cls === "bad";
+    if (notSaving && !notSavingSaid) toast(txt, null, null, "notice");
+    notSavingSaid = notSaving;
     const ph = photoUrl();
     el.className = "ssb" + (ph ? " ph" : "") + (cls ? " " + cls : "");
     D(
@@ -27096,9 +27100,10 @@ ${JSON.stringify(ctx, null, 1)}`;
     const prList = prs.map(recapPr);
     if (cardio.length) lines.push(`Cardio and mobility: ${cardio.reduce((a2, c4) => a2 + c4.min, 0)} min`);
     if (demoGone) lines.push("Demo data removed, so your stats show only your own sessions");
+    if (!device.ok) lines.unshift("Export a backup from the menu.");
     openModal({
       kind: "recap",
-      title: "Session saved",
+      title: device.ok ? "Session saved" : "Not saved on this phone",
       lines,
       prs: prList,
       note: prs.length ? "" : state.sessions.filter((x2) => !x2.demo).length <= 1 ? "Your first session: these are your starting numbers." : "No PRs this time.",
@@ -28278,7 +28283,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     const dot = st.cls ? b`<span class=${"mdot " + st.cls} aria-hidden="true"></span>` : A;
     const acc = u4 ? b`<div class="row spread u-fwrnw_g10"><div class="u-minw0"><p class="small muted u-m0">Signed in as</p><p class="u-m2-0-0_owany"><b>${u4.email}</b></p></div><button class="btn sm" data-act="acctSignOut">Sign out</button></div>
     <p class="small u-m8-0-0">${dot}${cloud.on ? st.txt : "Not syncing right now."}${cloud.on ? A : b` <button class="linkbtn" data-act="acctRetry">Try again</button>`}</p>` : A2 ? b`<p class="u-m0"><b>Not signed in.</b> Your log is on this phone only.</p><div class="row u-mt10"><button class="btn primary" data-act="acctOpen" data-mode="signin">Sign in</button><button class="btn" data-act="acctOpen" data-mode="signup">Create account</button></div>` : b`<p class="small u-m0">${dot}${st.txt}</p>`;
-    const due = backupDue() ? b`<div class="callout yellow row spread u-m10-0-0"><span class="small"><b>Backup due.</b></span><button class="btn sm" data-act="export">Export backup</button></div>` : A;
+    const notSaving = st.cls === "bad";
+    const due = notSaving || backupDue() ? b`<div class="callout yellow row spread u-m10-0-0"><span class="small"><b>${notSaving ? "Not saving." : "Backup due."}</b></span><button class="btn sm" data-act="export">Export backup</button></div>` : A;
     const item = (act2, label, cat) => b`<button type="button" class="mnu" data-act=${act2} data-cat=${cat || A}><span>${label}</span><span aria-hidden="true">›</span></button>`;
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h">${photoHead()}<h3 id="menuH" class="u-f1">${ENV === "preview" ? PREVIEW_NAME : APP_NAME}</h3>${photoUrl() ? b`<button type="button" class="linkbtn u-minh44" data-act="photoDel">Remove photo</button>` : A}${closeX()}</div>
   <div class="panel" id="menuAcct">${acc}</div>${due}

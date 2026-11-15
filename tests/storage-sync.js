@@ -374,6 +374,28 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     await P.close();
   }
   if (run('S-3')) {
+    /* UAT-7 (the acceptance review of 2.68): signed out, the phone refusing every save from the second set on. It is said
+       once, as news, the moment it starts; the menu where the red dot is offers Export backup; and Finish never says
+       "Session saved" while nothing reaches the phone: its sheet says it was not saved here and where to export. */
+    const P = await phone();
+    await start(P); await wait(200);
+    await tick(P, 0, 0);
+    await P.ev(() => { window.__toasts = []; window.__full = 'ironlog\\.v1$'; });
+    await tick(P, 0, 1); await wait(250);
+    await tick(P, 0, 2); await wait(250);
+    const said = (await P.toasts()).filter(t => /Not saving/.test(t));
+    ok(said.length === 1 && said[0] === 'Not saving: export a backup', 'S-3: signed out, the phone\'s refused save is said once, as it starts, in the menu\'s words', await P.toasts());
+    await P.page.click('#saveState'); await wait(250);
+    const exp = await P.ev(() => !!document.querySelector('#modal [data-act="export"]'));
+    ok(exp, 'S-3: the menu, where the red dot is, offers Export backup while the phone is not saving', exp);
+    await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150);
+    await P.page.click('#view [data-act="finish"]'); await wait(300);
+    for (let k = 0; k < 4; k++) { const kind = await P.ev(() => (window.__ironlog.ui.modal || {}).kind || ''); if (kind !== 'confirm') break; await P.page.click('#modal [data-act="mOk"]'); await wait(300); }
+    const rc = await P.ev(() => { const m = window.__ironlog.ui.modal; const el = document.querySelector('#modal .sheet'); return m ? { kind: m.kind, title: m.title || '', text: el ? el.innerText.replace(/\s+/g, ' ') : '' } : null; });
+    ok(rc && rc.kind === 'recap' && rc.title === 'Not saved on this phone' && /Export a backup from the menu\./.test(rc.text) && !/Session saved/.test(rc.text), 'S-3: Finish on a phone not saving never says "Session saved": "Not saved on this phone", and where to export', rc);
+    await P.close();
+  }
+  if (run('S-3')) {
     /* REV6-S2 (V, 2026-11-09 08:11: "if phone storage is full hold onto draft copy"): a workout set aside while a saved
        session is edited comes back when the edit is saved, and its set-aside copy on the phone is let go only once a
        save of the log holding it succeeds. Until then that copy is the only one the phone keeps: closed and reopened,

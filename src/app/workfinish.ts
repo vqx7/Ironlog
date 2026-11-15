@@ -15,7 +15,7 @@ import type { Rec } from './records';
 import { loadNote } from './loads';
 import { prName, prOverall } from './prs';
 import { stripDemo } from './chunks';
-import { demoRestore } from './storage';
+import { demoRestore, device } from './storage';
 import {
   activeRoutine,
   bwLoad,
@@ -583,9 +583,11 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
   const prList = prs.map(recapPr);
   if (cardio.length) lines.push(`Cardio and mobility: ${cardio.reduce((a, c) => a + c.min, 0)} min`);
   if (demoGone) lines.push('Demo data removed, so your stats show only your own sessions');
+  // A phone refusing saves kept none of it: the sheet never says saved, and says where to export.
+  if (!device.ok) lines.unshift('Export a backup from the menu.');
   openModal({
     kind: 'recap',
-    title: 'Session saved',
+    title: device.ok ? 'Session saved' : 'Not saved on this phone',
     lines,
     prs: prList,
     note: prs.length
