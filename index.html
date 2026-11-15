@@ -8035,6 +8035,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const c4 = Ls.floor(to);
       return c4 == null ? Ls.first ?? dn2 : Math.min(dn2, c4);
     }
+    const once = !inHand && typedOtherIn(M3, from) ? unitFloorIn(M3, ex, plan, Math.min(to, from)) : null;
+    if (once != null) return once < from - EPS_SAME ? once : Math.max(0, from);
     const dn = Ls.below(from);
     let w2;
     if (dn != null) w2 = Math.min(dn, Ls.floor(to) ?? dn);
@@ -8044,6 +8046,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const gr = rackGridIn(M3, ex, plan, from);
     if (gr && w2 < gridStep(M3, gr, 0, 1) - EPS_SAME) w2 = Math.min(gridStep(M3, gr, 0, 1), from);
     return Math.max(0, w2);
+  }
+  function unitFloorIn(M3, ex, plan, w2) {
+    if (ex.timed || gymRackIn(M3, ex, plan) || plateGridIn(M3, ex, plan)) return null;
+    const st = inUnitIn(M3, loadGridIn(M3, ex, plan));
+    if (!(st > 0) || !onStep(st, TYPED_STEP)) return null;
+    const o3 = inUnitIn(M3, loadFloorIn(M3, ex));
+    const fl = Math.max(o3, !ex.bw && !ex.assist ? st : 0);
+    const d3 = o3 + Math.floor((inUnitIn(M3, w2) - o3) / st + EPS) * st;
+    return kgOfIn(M3, Math.max(d3, fl));
   }
   function heavierLoadIn(M3, ex, plan, from, to, inHand = false) {
     M3 = liftModelIn(M3, ex);

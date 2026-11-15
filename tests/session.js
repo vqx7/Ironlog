@@ -1311,9 +1311,10 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await P.tap('#view [data-act="bMenu"][data-b="0"]', 200); await P.tap('#modal [data-act="bMenuDo"][data-op="dropAdd"]', 300);
     const drop = await P.ev(() => window.__ironlog.state.draft.ex[0].sets.filter(s => s.drop).map(s => Math.round(s.w * 1000) / 1000));
     ok(JSON.stringify(drop) === '[60]', 'L-39: a drop set under 185 lb, the bench in kg: 60 kg, on the bar\'s 5 kg steps (NEW-160)', drop);
-    // Only a set's load in hand is counted from the nearest load: the targets are made as before and put on kg's loads after.
+    /* A set's load in hand is counted from the nearest load; a Lighter day's target is the rule's load put on kg's loads once
+       (P-45, NEW-163): 90% of 83.9 kg is 75.5, so 75 kg. */
     const lt = await P.ev(() => { const g = window.__ironlog.suggest('bench', { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 120 }, { light: true }); return g.w == null ? null : Math.round(g.w * 1000) / 1000; });
-    ok(lt === 72.5, 'L-39 (a guard, passing before and after): a Lighter day\'s target from 185 lb, the bench in kg, is 72.5 kg as before; only a load in hand is counted from the nearest load', lt);
+    ok(lt === 75, 'L-39: a Lighter day\'s target from 185 lb, the bench in kg, is 75 kg, the heaviest kg load at or under 90% (P-45; 72.5 on 2.68)', lt);
     await P.close();
   }
   if (run('L-39')) {
