@@ -272,7 +272,8 @@ const seed = (L, unit, exId, list, rr) => {
       const seed = eval(seedS); const L = window.__ironlog;
       seed(L, 'kg', 'bbRow', [['2026-09-08', [[60, 8], [60, 8], [60, 8]]], ['2026-09-15', [[62.5, 8], [62.5, 8], [62.5, 8]]], ['2026-09-22', [[65, 8], [65, 8], [65, 8]]]], [6, 10]);
       L.state.sessions.push(...[['2026-09-09', 9], ['2026-09-16', 9.5], ['2026-09-23', 10]].map(([d, r], i) => ({ id: 'inc' + i, date: d, dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: 'incDb', rr: [8, 12], sets: [{ w: 30, r: Math.floor(r), rir: 1, warm: false, drop: false }, { w: 30, r: Math.round(r), rir: 1, warm: false, drop: false }] }] })));
-      L.invalidate(); L.ui.tab = 'dash'; L.render();
+      // The lines under the opening line, Why, opened as a lifter opens them (2.70, NEW-156: they start folded).
+      L.invalidate(); L.ui.tab = 'dash'; L.ui.folds['dash:why'] = true; L.render();
       const sum = document.getElementById('dashSummary').innerText; const chest = L.IDX().scores.find(x => x.m === 'chest');
       return { sum, chest: chest || null, moving: L.IDX().exStats.bbRow.moving };
     }, [seed.toString()]);

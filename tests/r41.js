@@ -148,27 +148,31 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
       const R0 = L.activeRoutine(); const d0 = JSON.parse(JSON.stringify(R0.days.find(d => !d.rest && d.items.length)));
       s.routines = [...s.routines, { id: 'oneaweek', name: 'One a week', schedule: 'weekly', days: [d0, ...[1, 2, 3, 4, 5, 6].map(i => ({ id: 'oneaweek-r' + i, name: 'Rest', rest: true, items: [] }))] }];
       s.activeRoutineId = 'oneaweek'; L.state = L.normalize(s); L.invalidate(); return keep; });
+    /* Since 2.70 (NEW-156) the coach's change is Stats' opening line, after the week's word, and the lines it rests on
+       are folded under it (Why), opened here as a lifter opens them. */
     const sum = await ev(() => {
-      const L = window.__ironlog; L.ui.tab = 'dash'; L.render();
+      const L = window.__ironlog; L.ui.tab = 'dash'; L.ui.folds['dash:why'] = true; L.render();
       const tiles = [...document.querySelectorAll('#view > .kpis .kpi .l, #view .kpis:first-of-type .kpi .l')].map(x => x.textContent);
       const rows = [...document.querySelectorAll('#dashSummary .srow')].map(r => ({ l: r.querySelector('.sl').textContent, t: r.querySelector('.st').textContent }));
-      return { tiles, rows, coach: L.coach() };
+      const line = (document.querySelector('#dashSummary .vline') || { textContent: '' }).textContent.replace(/\s+/g, ' ').trim();
+      return { tiles, rows, line, coach: L.coach() };
     });
     ok(!sum.tiles.some(t => /Stalled exercises|Weight lifted this week/.test(t)) && sum.tiles.some(t => /^Sessions, last 4 weeks/.test(t)) && sum.tiles.some(t => /^PRs, last 4 weeks/.test(t)) && !sum.tiles.some(t => /planned|Adherence/.test(t)), 'Stats tiles (V 2026-10-13: done, not planned): sessions and PRs in the last 4 weeks; no stall count (the Stuck line says it) and no weight lifted (Today has it)', sum.tiles);
     const mv = sum.rows.find(r => /Moving/i.test(r.l));
     ok(mv && /Barbell Bench Press|Cable Fly|Pull-up/.test(mv.t) && !/%/.test(mv.t) && /over \d weeks/.test(mv.t), 'Moving names the lifts, with no percentages', mv);
     const vol = sum.rows.find(r => /Volume/i.test(r.l)); const chg = sum.rows.find(r => /Change/i.test(r.l));
-    ok(sum.coach.act && sum.coach.act.sec === 'volume' && vol && vol.t.startsWith(sum.coach.text) && !chg, 'the coach\'s change is the volume shortfall: said once, on the Volume line', sum.rows);
+    ok(sum.coach.act && sum.coach.act.sec === 'volume' && sum.line.endsWith(sum.coach.text) && vol && /^Below target: /.test(vol.t) && !vol.t.includes(sum.coach.text) && !chg, 'the coach\'s change is the volume shortfall: said once, in the opening line, the Volume line naming the muscles below target', { line: sum.line, rows: sum.rows });
     // Chest over a low band while the coach's change is another muscle's shortfall: Above is still said.
-    const over = await ev(() => { const L = window.__ironlog; const b = L.state.settings.bands; const keep = JSON.parse(JSON.stringify(b)); b.chest = [1, 2]; L.invalidate(); L.ui.tab = 'dash'; L.render();
+    const over = await ev(() => { const L = window.__ironlog; const b = L.state.settings.bands; const keep = JSON.parse(JSON.stringify(b)); b.chest = [1, 2]; L.invalidate(); L.ui.tab = 'dash'; L.ui.folds['dash:why'] = true; L.render();
       const t = [...document.querySelectorAll('#dashSummary .srow')].map(r => r.innerText.replace(/\s+/g, ' ')).join(' | ');
       // Every minimum at 0: no shortfall, so the coach's change is something else and keeps its own line.
       for (const m in b) b[m] = [0, b[m][1]]; L.invalidate(); L.render(); const c = L.coach();
       const rows = [...document.querySelectorAll('#dashSummary .srow')].map(r => ({ l: r.querySelector('.sl').textContent, t: r.querySelector('.st').textContent }));
-      L.state.settings.bands = keep; L.invalidate(); return { t, c, rows }; });
-    ok(/Volume .*Above: Chest\./i.test(over.t), 'a muscle above its target is still named when the Volume line carries the coach\'s words', over.t);
+      const line = (document.querySelector('#dashSummary .vline') || { textContent: '' }).textContent.replace(/\s+/g, ' ').trim();
+      L.state.settings.bands = keep; L.invalidate(); return { t, c, rows, line }; });
+    ok(/Volume .*Above: Chest\./i.test(over.t), 'a muscle above its target is still named on the Volume line while the coach\'s change is a shortfall', over.t);
     const ch2 = over.rows.find(r => /Change/i.test(r.l));
-    ok(!(over.c.act && over.c.act.sec === 'volume') && ch2 && ch2.t === over.c.text, 'no shortfall: the coach\'s change keeps its own Change line (' + over.c.text + ')', over.rows);
+    ok(!(over.c.act && over.c.act.sec === 'volume') && !ch2 && over.line.endsWith(over.c.text), 'no shortfall: the coach\'s change is the opening line, as with one (' + over.c.text + ')', { line: over.line, rows: over.rows });
     await ev(k => { const L = window.__ironlog; const s = L.state; s.routines = k.routines; s.activeRoutineId = k.active; L.state = L.normalize(s); L.invalidate(); L.render(); }, routinesBefore);
 
     // ---------- 7. Muscles: rising at target in one line; words, not percentages ----------
