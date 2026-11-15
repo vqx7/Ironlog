@@ -895,8 +895,10 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   discard() {
     const d = state.draft;
     if (!d) return;
-    /* What was entered and then discarded comes back with Undo. Not while a workout set aside waits to come back in
-       its place: a step taken before it would put this one back over it, and its copy is let go once it is saved. */
+    /* What was entered in a workout and then discarded comes back with Undo. Not while a workout set aside waits to
+       come back in its place: a step taken before it would put this one back over it, and its copy is let go once it
+       is saved. Nor for an edit: its saved session stays as it was, and a step would bring the old edit back after a
+       newer edit of the session is saved, and write over it, as a set-aside edit would (park.ts). */
     const out = (keep = false): void => {
       act(
         () => {
@@ -928,9 +930,10 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         : 'Sets and cardio logged in this session will not be saved.',
       'Discard',
       () => {
-        const keep = !parkedHere();
-        out(keep);
-        if (keep) toast(d.editingId ? 'Edits discarded' : 'Session discarded', true);
+        // A workout set aside comes back in its place and says so (out), which is then the one message.
+        const parked = parkedHere();
+        out(!parked && !d.editingId);
+        if (!parked) toast(d.editingId ? 'Edits discarded' : 'Session discarded', !d.editingId);
       },
       true
     );

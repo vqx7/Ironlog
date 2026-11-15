@@ -9968,7 +9968,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return moversIn(M3).map(({ id, wk }) => {
       const all = I2.byEx[id] || [];
       const st = I2.exStats[id];
-      const line = st ? st.trendTv.slice() : [];
+      const line = st && st.pct != null && st.pct < 0 ? trendW(trendScope(all, I2.anchor)).map((x2) => x2.topW) : st ? st.trendTv.slice() : [];
       const last = all[all.length - 1];
       let top = null;
       for (const p3 of last ? last.pts : [])
@@ -12272,7 +12272,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const e5 = undoStack[undoStack.length - 1];
     return e5 ? e5.said || "" : null;
   }
+  function waitsForWorkout(e5) {
+    const d3 = state.draft;
+    if (!d3 || e5.post == null) return false;
+    const was = rec(rec(parseJson(e5.pre))?.["draft"]);
+    const after2 = rec(rec(parseJson(e5.post))?.["draft"]);
+    return !!was && typeof was["id"] === "string" && was["id"] !== d3.id && !after2;
+  }
   function undoStep() {
+    const top = undoStack[undoStack.length - 1];
+    if (top && waitsForWorkout(top)) return "open";
     const e5 = undoStack.pop();
     if (!e5) return "none";
     lastStep = void 0;
@@ -24990,6 +24999,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     undo() {
       const r4 = undoStep();
       if (r4 === "none") toast("Nothing left to undo");
+      else if (r4 === "open") toast("Finish or discard the open workout first, then Undo brings this one back.");
       else if (r4 === "failed") toast("Could not undo that");
       else if (r4 === "unchanged") toast("Nothing to undo: that change was already reversed or edited since.");
       else {
@@ -27925,9 +27935,9 @@ ${JSON.stringify(ctx, null, 1)}`;
         d3.editingId ? "Your edits will be lost. The saved session stays as it was." : "Sets and cardio logged in this session will not be saved.",
         "Discard",
         () => {
-          const keep = !parkedHere();
-          out(keep);
-          if (keep) toast(d3.editingId ? "Edits discarded" : "Session discarded", true);
+          const parked = parkedHere();
+          out(!parked && !d3.editingId);
+          if (!parked) toast(d3.editingId ? "Edits discarded" : "Session discarded", !d3.editingId);
         },
         true
       );
@@ -28848,7 +28858,9 @@ ${JSON.stringify(ctx, null, 1)}`;
     if (exps.length < 2) return "";
     const ow = st && st.spanW ? ` over ${st.spanW} weeks${st.rrIn ? ` in the ${repSpan(st.rrIn[0], st.rrIn[1])} range` : ""}` : "";
     const dir = st && st.fresh && st.pct != null ? st.moving ? `up${ow}` : st.falling ? `down${ow}` : st.holdRR && (st.holdRR.length || st.quietRR.length) ? `down${ow}` : st.pLo != null && st.pLo > 0 ? `slowly up${ow}` : st.pHi != null && st.pHi < 0 ? `slowly down${ow}` : `no clear change over ${st.spanW || 2} weeks` : "";
-    if (isCompound(ex) && exps.every((x2) => x2.best != null)) {
+    const e0 = exps[0].best, e12 = exps[exps.length - 1].best;
+    const agrees = e0 == null || e12 == null || (/up/.test(dir) ? e12 > e0 : /down/.test(dir) ? e12 < e0 : true);
+    if (isCompound(ex) && agrees && exps.every((x2) => x2.best != null)) {
       const v3 = exps.map((x2) => fmtE(ex, x2.best));
       return b`<p class="small muted u-m2-0">Est. 1RM <span class="trend">${v3.join(" → ")} ${liftU(ex)}</span>${dir ? " · " + dir : ""}${st && !st.useAdj ? b` ${tipButton("Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.", "About this trend")}` : ""}</p>`;
     }
@@ -29544,6 +29556,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   function exposeForTests() {
     window.__ironlog = {
       act,
+      undoNext,
       liftRead,
       draftMachine,
       liftMachines,

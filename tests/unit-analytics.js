@@ -35,6 +35,12 @@ const res=await page.evaluate(()=>{
    ok(st.moving&&!st.falling&&!st.stalled&&L.movers().some(x=>x.id==='bench'),'UAT-8: a rep a week past the load step (195 x 8, 8, 8 after 8, 8, 7): moving, among the lifts moving',[st.pct,st.slope]);
    I=reset(at(climb.slice(0,8)));
    ok(I.exStats.bench.moving,'UAT-8: the step itself (195 x 8, 8, 7 after 185 x 10, 10, 10): moving',I.exStats.bench.pct);
+   /* The review of 2.68 to 2.70, REV20-6: a lift moving by its step is never shown rising beside numbers that fall.
+      185 x 10, 10, 10 twice, then 195 x 7, 7, 6 and 7, 7, 7: Lifts moving's line rises (the loads), and the lift's
+      history line says what was lifted (its top sets) where its estimates fall across the step. */
+   I=reset(at([[[10,10,10],185],[[10,10,10],185],[[7,7,6],195],[[7,7,7],195]]));
+   {const lm=(L.liftsMoving()||[]).find(x=>x.id==='bench');const line=lm?lm.line:[];const sheet=String((L.liftTrend('bench')||{}).strings?L.liftTrend('bench').strings.join('')+L.liftTrend('bench').values.join(' '):L.liftTrend('bench'));
+    ok(I.exStats.bench.moving&&I.exStats.bench.pct<0&&line.length>1&&line[line.length-1]>line[0]&&/up/.test(sheet)&&!/Est\. 1RM/.test(sheet)&&/195/.test(sheet),'REV20-6: moving by its step with the estimate below where it began: Lifts moving\'s line ends higher than it starts, and the history line shows the top sets, not falling estimates beside "up"',{pct:I.exStats.bench.pct,line,sheet});}
    I=reset(at([...climb.slice(0,8),[[8,8,7],195],[[8,8,7],195]]));
    ok(!I.exStats.bench.moving&&!I.exStats.bench.falling,'UAT-8: the same 195 x 8, 8, 7 repeated after the step: not moving, not falling',I.exStats.bench.pct);
    // A step whose estimate reads lower than where the window began: the lift is moving, and its muscle is never pulled
