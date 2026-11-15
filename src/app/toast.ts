@@ -80,8 +80,8 @@ function watchTaps(): void {
     document.addEventListener(t, moved, { capture: true, passive: true });
 }
 
-/* A part ends with a full stop when another follows it, so the joined message reads as sentences (W-1: periods once
-   there are two). */
+/* A part ends with a full stop when another follows it, so a message joined from two or more parts reads as
+   sentences. */
 const joined = (parts: readonly string[]): string =>
   parts.map((p, i) => (i < parts.length - 1 && !/[.!?:]$/.test(p) ? p + '.' : p)).join(' ');
 

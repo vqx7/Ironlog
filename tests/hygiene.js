@@ -673,12 +673,13 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     ok(silent.length === 0, 'every catch and promise handler in src/app/ ends in a throw, logs the error or carries a comment saying why the error is expected, and no finally returns, breaks or continues', silent);
   }
   // The history of the code is docs/ARCHIVE.md's, not the comments' (CA-4, from V's audit of 2026-11-10): a comment
-  // says the rule and its reason, which stand on their own, so it names no tracker row (NEW-110, REV13-2, PENDING 338,
-  // 387-B3, RC-3 and the like), and a build (r54, 2.57) only where the code still reads what that build saved or
+  // says the rule and its reason, which stand on their own, so it names no tracker row in any form the tracker's IDs
+  // take (NEW-110, REV13-2, PENDING 338, 387-B3, W-1, F5, 2.27-S1 and the rest below; the specs' rule IDs, such as
+  // S-6 or L-41, are not rows and stay), and a build (r54, 2.57) only where the code still reads what that build saved or
   // does. Those build names are counted against ARCHITECTURE.md's number, which only falls, as the casts' does. A
   // suite's file name (tests/r36.js) is a path to it, not history, and is not counted.
   {
-    const TRACKER = /\b(?:NEW-\d+|REV\d+(?:-\w+)?|R\d{2}-\d+|PENDING \d+|CA-\d+|CL-\d+|ST-\d+|RC-\d+|P-S\d-\d+|\d{3}-[A-Z]\d+|2\.\d{2}-F\d+)\b/g;
+    const TRACKER = /\b(?:NEW-\d+|UAT-\d+|REV\d+(?:-\w+)?|R\d{2}-\d+|R-S?\d+|PENDING \d+|CA-\d+|CL-\d+|ST-\d+|RC-\d+|P-S\d-\d+|P-r\d+b?|U-\d+|W-\d+|A-S?\d+|N-\d+|F\d+|AUD-\d+|HK-r\d+|\d{3}-[A-Z]\d*|\d\.\d{2}-[A-Z]\d+)\b/g;
     const BUILD = /\b(?:r\d{2,3}(?:\.\d)?|2\.\d{2})\b/g;
     const rows = []; let builds = 0;
     for (const id of MODS) {

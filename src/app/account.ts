@@ -308,7 +308,7 @@ export function accountStart(): void {
      foreground: a sign-in that could not refresh offline starts syncing then. */
   window.addEventListener('online', () => {
     if (AUTH() && !cloud.on) cloudInit();
-    // Back from a dead zone: sync now, where the sync waits for the network (r64, F5) or for its retry.
+    // Back from a dead zone: sync now, where the sync waits for the network or for its retry.
     else if (cloud.on && cloud.status === 'offline') resume();
   });
   document.addEventListener('visibilitychange', () => {

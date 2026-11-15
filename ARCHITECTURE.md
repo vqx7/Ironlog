@@ -124,7 +124,7 @@ Open types: 8
 
 **Comments say the reason, not the history (CA-4, 2.62).** A comment in `src/app/` names no tracker row, and a build only where the code still reads what that build saved or does (a field a build before r56.1 left out, the starter routine installs got before r29); the history behind a rule is `docs/ARCHIVE.md`'s. `tests/hygiene.js` refuses a tracker row in a comment and counts the builds named against the number below, which only falls, as the casts' does.
 
-Builds named in comments: 91
+Builds named in comments: 90
 
 Marks in r52's moved code (from baselines/r51.html): 4 casts, 67 non-null assertions
 Marks in r56's moved code (from baselines/r55.html): 2 casts, 1 non-null assertions
