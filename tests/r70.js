@@ -260,7 +260,7 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
       const rows = [...document.querySelectorAll('#view [data-sk="today:session"] .pvi')].map(e => ({ name: e.querySelector('b').textContent, best: (e.querySelector('.pvbest') || { textContent: '' }).textContent }));
       // The board, every lift shown and open.
       L.ui.tab = 'dash'; L.ui.bestsAll = true; L.render();
-      const board = {}; document.querySelectorAll('#view .bests .bx').forEach(b => { const name = b.querySelector('.bn').textContent; const from = b.querySelector('p'); board[name] = { s: b.querySelector('.bs').textContent, from: from ? from.textContent : '' }; });
+      const board = {}; document.querySelectorAll('#view .bests .bx').forEach(b => { const name = b.querySelector('.bn').textContent; const from = b.querySelector('p'); board[name] = { s: b.querySelector('.bs').textContent, from: from ? from.textContent : '', recs: [...b.querySelectorAll('tr')].map(tr => [...tr.cells].map(c => c.textContent.trim())).filter(c => c.length === 3) }; });
       return { rows, board };
     });
     const fmt = x => x.replace(/\s+/g, ' ').trim();
@@ -268,7 +268,12 @@ const routine = n => ({ id: 'Rb', name: 'Chest', schedule: 'weekly', days: [{ id
       const b = r.board[x.name]; if (!b) return { ...x, board: null, ok: false };
       const m = x.best.match(/^(Best|Heaviest) (.+), (\w{3} \d{1,2}(?:, \d{4})?)$/);
       if (!m) return { ...x, board: b, ok: false };
-      const okBest = m[1] === 'Best' ? fmt(b.from) === `Best estimate from ${m[2]}.` && new RegExp(`best est [^·]*, ${m[3]}`).test(b.s) : b.s.includes(`heaviest ${m[2]}, ${m[3]}`);
+      /* Best names the set the estimate is from, or (REV16-C6) a set the board lists at that set's load or heavier
+         with more reps, the stronger one, past the reps an estimate reads. */
+      const wr = t => { const q = /([\d.,]+)×(\d+)/.exec(t || ''); return q ? [+q[1].replace(/,/g, ''), +q[2]] : null; };
+      const est = wr(fmt(b.from).replace(/^Best estimate from /, '')), me = wr(m[2]);
+      const stronger = !!est && !!me && me[0] >= est[0] && me[1] >= est[1] && (me[0] > est[0] || me[1] > est[1]) && b.recs.some(c => c[0] === String(me[0]) && c[1] === String(me[1]) && c[2] === m[3]);
+      const okBest = m[1] === 'Best' ? (fmt(b.from) === `Best estimate from ${m[2]}.` && new RegExp(`best est [^·]*, ${m[3]}`).test(b.s)) || stronger : b.s.includes(`heaviest ${m[2]}, ${m[3]}`);
       return { ...x, board: b, ok: okBest };
     });
     ok(r.rows.length > 0 && agree.every(x => x.ok), '6. 379: each lift on the Workout preview names its best set and date, the same as Stats\' All-time bests (r69: none)', agree.filter(x => !x.ok).slice(0, 3));
