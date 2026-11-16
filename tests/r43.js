@@ -76,8 +76,18 @@ const PATHS = (s, k) => {
   // Sorted keys, undefined left out: the same reading the sync's fingerprints use, written here.
   const canon = v => v === undefined ? 'null' : v === null || typeof v !== 'object' ? JSON.stringify(v) : Array.isArray(v) ? '[' + v.map(canon).join(',') + ']' : '{' + Object.keys(v).filter(x => v[x] !== undefined).sort().map(x => JSON.stringify(x) + ':' + canon(v[x])).join(',') + '}';
   const norm = Pg => Pg.evaluate(raw => JSON.stringify(window.__ironlog.normalize(JSON.parse(raw))), plain);
-  const canonNew = canon(JSON.parse(await norm(P.page))), canonOld = canon(JSON.parse(await norm(O.page)));
-  ok(canonNew === canonOld && canonNew.length > 1000, 'a save with nothing unknown comes out exactly as r42 made it', [canonNew.length, canonOld.length]);
+  /* Since 2.70 every machine lift's session names the machine it reads on (mc, REV22), which r42 never wrote, so that one
+     field is what this build adds, and it is checked for what it must be: each machine lift's block with its sets names
+     the machine the index reads that session on, no other block names one, and with it said, the rest is exactly r42's. */
+  const nNew = JSON.parse(await norm(P.page)), nOld = JSON.parse(await norm(O.page));
+  const machines = await ev(raw => { const L = window.__ironlog; const s = L.normalize(JSON.parse(raw)); const on = new Set(s.exercises.filter(e => ['machine', 'cable', 'smith'].includes(e.equip)).map(e => e.id)); const keep = L.state; L.state = s; L.invalidate(); const by = L.IDX().byEx; const out = {}; for (const id of on) for (const x of by[id] || []) out[x.sid + '|' + id] = x.mk; L.state = keep; L.invalidate(); return out; }, plain);
+  let named = 0, wrong = [];
+  for (const q of nNew.sessions) for (const b of q.ex) {
+    const want = machines[q.id + '|' + b.exId];
+    if (b.mc !== undefined) { named++; if (b.mc !== want) wrong.push([q.id, b.exId, b.mc, want]); delete b.mc; } else if (want !== undefined) wrong.push([q.id, b.exId, 'none', want]);
+  }
+  const canonNew = canon(nNew), canonOld = canon(nOld);
+  ok(named > 0 && !wrong.length && canonNew === canonOld && canonNew.length > 1000, 'a save with nothing unknown comes out as r42 made it, with each machine lift\'s session naming the machine it reads on and nothing else added', { named, wrong: wrong.slice(0, 5), len: [canonNew.length, canonOld.length] });
   await O.ctx.close();
 
   // A field this build knows but finds invalid is dropped, never kept as if it were new.

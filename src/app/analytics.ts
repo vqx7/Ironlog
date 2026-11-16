@@ -185,24 +185,18 @@ export function draftMachineIn(M: Model, exId: string): string | null {
   return prior.length ? prior[prior.length - 1].mk : FIRST_MACHINE;
 }
 
-/* Saved, a machine lift names its machine only when it has been done on more than one, this session's included, so a
-   lift on one machine saves as before (machineKeys); a new machine is named by the session's own mark (nw). */
-/** The machine key to save on a lift of the session in progress, or null to save none (above). */
+/* Saved, every session of a machine lift names the machine it is shown on (draftMachineIn), as the log names every
+   earlier one (normalize.ts pinMachines), so a session's machine changes only by a pick: never by another session
+   deleted, moved, restored or logged before it. A machine added in the session is named by the session's own id, the
+   key its mark (nw) gives it. */
+/** The machine key to save on a lift of the session in progress, or null for a free weight (above). */
 export function machineToSaveIn(M: Model, exId: string): string | null {
   // A free weight's stretches are read as before (machineKeys): its sessions name no machine.
   if (!onMachines(EXIn(M, exId))) return null;
   const d = M.s.draft;
   if (!d) return null;
-  /* The machine the session is shown on (draftMachineIn) is saved by name once the lift has more than one, an edit's
-     too, so a session's machine changes only by a pick: never by a date moved across a new machine's first session,
-     nor for a lift added to an edit. The edited session itself is not counted among the lift's machines. */
   const key = draftMachineIn(M, exId);
-  if (key == null || key === NEW_MACHINE) return null;
-  /* An edited session keeps its New machine mark (sessions after it follow it), and the mark puts it on a machine of
-     its own: that one needs no name, and any other picked for it is named however many the lift has. */
-  if (d.editingId && d.ex.some(b => b.exId === exId && b.nw)) return key === d.editingId ? null : key;
-  const others = (IDXIn(M).byEx[exId] || []).filter(x => x.sid !== d.editingId);
-  return new Set(others.map(x => x.mk)).add(key).size > 1 ? key : null;
+  return key === NEW_MACHINE ? d.editingId || d.id || null : key;
 }
 
 /** One machine a lift was done on, for the Machine sheet: its key, the day it was last done on it, and that day's heaviest set (load and reps). */

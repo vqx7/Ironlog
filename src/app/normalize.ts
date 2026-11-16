@@ -28,6 +28,9 @@ import type {
   Settings
 } from './types';
 import type { DraftLike } from './session';
+import { sameExOnce } from './session';
+import { isWork } from './formulas';
+import { machineKeys } from './model';
 import type { State } from './store';
 import { clampN, hashStr, isDate, isNum, numOr, today, r1, r3, HUNDREDTHS, WEEK_DAYS, SUNDAY } from './util';
 import { LB } from './units';
@@ -44,7 +47,8 @@ import {
   TRACK_ONLY,
   LIB_NAMES_BEFORE,
   LIB_NOTES_BEFORE,
-  libExercises
+  libExercises,
+  onMachines
 } from './library';
 import {
   DAYS,
@@ -89,7 +93,8 @@ import {
   LIMITS,
   EFFORT_TOP,
   V_PER_SIDE,
-  V_NEW_MUSCLES
+  V_NEW_MUSCLES,
+  sessCmp
 } from './records';
 import type { Rec, Trashed } from './records';
 import { gymClean } from './gym';
@@ -438,6 +443,36 @@ export function plainTemplate(r: unknown): boolean {
   } catch (e) {
     // Not a routine at all, so not a ready-made one.
     return false;
+  }
+}
+
+/* Every session of a machine, cable or Smith lift names the machine it was done on (mc), the one it reads on now. A
+   session that names none is read on the machine of the last session before it that began one (machineKeys), so a
+   session deleted, moved, restored or logged before it would move it to another machine; named, it moves only by a
+   pick. Read as the index reads it (sameExOnce, working sets only), so no reading changes. Logs saved before every
+   session was named are named here once; a session an older build saves is named the next time the log is read.
+   Whole logs only: a document of sessions alone cannot tell which lifts are on machines or what came before. */
+/** Names in place the machine of every machine lift's session that names none (above). */
+function pinMachines(sessions: readonly Session[], exercises: readonly Exercise[]): void {
+  const onM = new Set(exercises.filter(onMachines).map(e => e.id));
+  if (!onM.size) return;
+  const byEx = new Map<string, { sid: string; nw?: true; mc?: string; mk: string; blocks: SessionEx[] }[]>();
+  for (const ss of [...sessions].sort(sessCmp))
+    for (const m of sameExOnce(ss.ex)) {
+      if (!onM.has(m.exId) || !m.sets.some(isWork)) continue;
+      const xs = byEx.get(m.exId) || [];
+      byEx.set(m.exId, xs);
+      xs.push({
+        sid: ss.id,
+        ...(m.nw ? { nw: true as const } : {}),
+        ...(m.mc ? { mc: m.mc } : {}),
+        mk: '',
+        blocks: ss.ex.filter(b => b.exId === m.exId && !!b.light === !!m.light)
+      });
+    }
+  for (const xs of byEx.values()) {
+    machineKeys(xs);
+    for (const x of xs) for (const b of x.blocks) if (!b.mc) b.mc = x.mk;
   }
 }
 
@@ -1373,6 +1408,7 @@ export function normalize(input: unknown): State {
   ({ sessions, cardio, trash } = reviveEdited(sessions, list('cardio'), trash));
   sessions = dedupe(sessions, 'session', x => x.ex.reduce((a, b) => a + b.sets.length, 0), trash);
   cardio = dedupe(cardio, 'cardio', x => x.min, trash);
+  if (Array.isArray(s.exercises)) pinMachines(sessions, exercises);
 
   const bBefore = list('bodyweights').length;
   const bodyweights = cleanBodyweights(list('bodyweights'));

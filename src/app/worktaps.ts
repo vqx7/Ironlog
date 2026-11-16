@@ -61,6 +61,7 @@ import {
   draftEntered,
   fillLoads,
   greyR,
+  keepLiftMachine,
   lastRFor,
   mixCheck,
   moveBlock,
@@ -201,17 +202,23 @@ function blockRemove(t: Tap): void {
       return;
     }
     const prevBlk = bi > 0 ? dd.ex[bi - 1] : null;
-    act(() => keepOpen(() => dd.ex.splice(bi, 1)), {
-      inProgress: true,
-      undo: () => {
-        const d3 = state.draft;
-        if (!d3 || d3.id !== did) return false;
-        const k = prevBlk ? d3.ex.indexOf(prevBlk) : -1;
-        d3.ex.splice(prevBlk == null ? 0 : k >= 0 ? k + 1 : Math.min(bi, d3.ex.length), 0, blk);
-        fixSupersets(d3.ex.map(x => x.plan));
-        return true;
+    act(
+      () => {
+        keepLiftMachine(dd, [blk]);
+        keepOpen(() => dd.ex.splice(bi, 1));
+      },
+      {
+        inProgress: true,
+        undo: () => {
+          const d3 = state.draft;
+          if (!d3 || d3.id !== did) return false;
+          const k = prevBlk ? d3.ex.indexOf(prevBlk) : -1;
+          d3.ex.splice(prevBlk == null ? 0 : k >= 0 ? k + 1 : Math.min(bi, d3.ex.length), 0, blk);
+          fixSupersets(d3.ex.map(x => x.plan));
+          return true;
+        }
       }
-    });
+    );
     rerenderKeepScroll();
     toast('Exercise removed', true);
   };

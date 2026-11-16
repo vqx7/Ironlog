@@ -33,7 +33,7 @@ import { closeModal, confirmBox, openModal, renderModal, rerenderKeepScroll } fr
 import { toast } from './toast';
 import { keepOpen } from './workstate';
 import type { Draft, Tap } from './workstate';
-import { newBlock, refreshEx, rowBlank } from './worksets';
+import { keepLiftMachine, newBlock, refreshEx, rowBlank } from './worksets';
 
 /** The most sets an exercise added by Pick for me may take. */
 const MAX_SETS = 30;
@@ -245,7 +245,10 @@ function swapJoin(sw: SwapCtx, ni: number, y: DraftBlock): void {
       if (done.length) {
         b.sets = done;
         b.plan = { ...b.plan, sets: done.filter(x => !x.warm && !x.drop).length || 1 };
-      } else keepOpen(() => d.ex.splice(bi, 1));
+      } else {
+        keepLiftMachine(d, [b]);
+        keepOpen(() => d.ex.splice(bi, 1));
+      }
       fixSupersets(d.ex.map(x => x.plan));
     },
     {
@@ -285,7 +288,10 @@ function swapInPlace(sw: SwapCtx): void {
         b.sets = done;
         b.plan = { ...b.plan, sets: done.filter(x => !x.warm && !x.drop).length || 1 };
         keepOpen(() => d.ex.splice(bi + 1, 0, nb));
-      } else d.ex[bi] = nb;
+      } else {
+        keepLiftMachine(d, [b]);
+        d.ex[bi] = nb;
+      }
       fixSupersets(d.ex.map(x => x.plan));
     },
     {

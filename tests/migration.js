@@ -199,9 +199,11 @@ for(const [file,label] of [['baselines/r115.html','r115'],['baselines/r114.html'
   await P.page.waitForTimeout(300);
   const raw=await P.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await P.ctx.close();
   const N=await open('index.html',{browser,state:JSON.parse(raw),clock:'2026-11-14T10:00:00'});
-  const r=await N.page.evaluate(()=>{const L=window.__ironlog;L.saveNow();const saved=JSON.parse(localStorage.getItem('ironlog.v1'));return {mc:saved.sessions.reduce((a,s)=>a+s.ex.filter(b=>'mc' in b).length,0),ss:JSON.stringify(saved.sessions)};});
-  const o=JSON.parse(raw);
-  ok(r.mc===0&&r.ss===JSON.stringify(o.sessions),'r112: saved again here, no session given a machine, sessions byte for byte',{mc:r.mc});
+  // Since 2.70 every machine lift's session names the machine it reads on (REV22), so each such block gains that and nothing else.
+  const r=await N.page.evaluate(raw=>{const L=window.__ironlog;L.saveNow();const saved=JSON.parse(localStorage.getItem('ironlog.v1'));const o=JSON.parse(raw);const on=new Set(L.state.exercises.filter(e=>['machine','cable','smith'].includes(e.equip)).map(e=>e.id));const by=L.IDX().byEx;
+    const want=o.sessions.map(q=>({...q,ex:q.ex.map(b=>{const x=(by[b.exId]||[]).find(y=>y.sid===q.id);return on.has(b.exId)&&x?{...b,mc:x.mk}:b;})}));
+    return {mc:saved.sessions.reduce((a,s)=>a+s.ex.filter(b=>'mc' in b).length,0),same:JSON.stringify(saved.sessions)===JSON.stringify(want),keys:[...new Set(saved.sessions.flatMap(s=>s.ex.filter(b=>b.mc).map(b=>b.mc)))]};},raw);
+  ok(r.mc>0&&r.same&&JSON.stringify(r.keys)==='["0"]','r112: saved again here, each machine lift\'s session names its one machine (2.66 has no other), and nothing else changes: sessions otherwise byte for byte',r);
   await N.ctx.close();
   const S=JSON.parse(raw);
   const s0=S.sessions[0],s1=S.sessions[1];
@@ -240,5 +242,32 @@ for(const [file,label] of [['baselines/r115.html','r115'],['baselines/r114.html'
   ok(old.has&&JSON.stringify(old.keys)===JSON.stringify(k.keys),'2.69 keeps a lift\'s machine names when it saves, in the same place as here',{old,here:k.keys});
   ok(!M.errors.length&&!N.errors.length&&!O.errors.length,'no console errors with machines named by name',[...M.errors,...N.errors,...O.errors]);
   await M.ctx.close();await O.ctx.close();
+}
+// Every machine lift's session names its machine (2.70, the review of the machine names, REV22): a 2.69 save whose
+// sessions name none (a first machine, a second begun by a session marked new, and a free weight marked new at another
+// gym) loads here with each machine lift's session naming the machine 2.69 reads it on, and nothing else changed; 2.69
+// opens the log saved here on the same machines and saves it as it is.
+{
+  const READ=()=>{const by=window.__ironlog.IDX().byEx;const read={};for(const id of ['machPress','legPress','latPulldown','bench'])read[id]=(by[id]||[]).map(x=>[x.sid,x.mk]);return read;};
+  const P=await open('baselines/r115.html',{browser,clock:'2026-11-15T10:00:00'});
+  const base=await P.page.evaluate(READ=>{const L=window.__ironlog;L.state.settings.onboarded=true;const LB=0.45359237;const mk=(id,date,blocks)=>({id,date,dayIdx:0,dayId:null,dayName:'Session',routineId:'',notes:'',free:true,ex:blocks.map(([exId,w,more])=>({exId,rr:[8,12],sets:[11,11,10].map(r=>({w:w*LB,r,rir:2,done:true})),...(more||{})}))});
+    L.state.sessions=[mk('a1','2026-10-03',[['machPress',200],['bench',185]]),mk('a2','2026-10-10',[['machPress',205],['legPress',300]]),mk('a3','2026-10-17',[['machPress',120,{nw:true}],['bench',165,{nw:true}]]),mk('a4','2026-10-24',[['machPress',125],['legPress',310],['bench',170]]),mk('a5','2026-10-31',[['machPress',130],['latPulldown',140]])];
+    L.state=L.normalize(L.state);L.invalidate();L.saveNow();return {raw:localStorage.getItem('ironlog.v1'),read:new Function('return ('+READ+')')()()};},READ.toString());
+  await P.ctx.close();
+  const N=await open('index.html',{browser,state:JSON.parse(base.raw),clock:'2026-11-15T10:00:00'});
+  const here=await N.page.evaluate(READ=>{const L=window.__ironlog;L.saveNow();return {saved:JSON.parse(localStorage.getItem('ironlog.v1')),read:new Function('return ('+READ+')')()()};},READ.toString());
+  const o=JSON.parse(base.raw);
+  // What 2.69 read, written on each machine lift's blocks; the free weight's blocks and everything else as they were.
+  const want=o.sessions.map(q=>({...q,ex:q.ex.map(b=>{const r=(base.read[b.exId]||[]).find(x=>x[0]===q.id);return ['machPress','legPress','latPulldown'].includes(b.exId)&&r?{...b,mc:r[1]}:b;})}));
+  const brief=xs=>xs.map(q=>q.id+' '+q.ex.map(b=>b.exId+':'+(b.mc||'-')).join(' '));
+  ok(JSON.stringify(here.saved.sessions)===JSON.stringify(want)&&JSON.stringify(brief(want))===JSON.stringify(['a1 machPress:0 bench:-','a2 machPress:0 legPress:0','a3 machPress:a3 bench:-','a4 machPress:a3 legPress:0 bench:-','a5 machPress:a3 latPulldown:0']),'a 2.69 save loads here with each machine lift\'s session naming the machine 2.69 read it on (machPress a1 and a2 on the first, a3 to a5 on the one a3 began), the free weight\'s session marked new and every other field as it was',{here:brief(here.saved.sessions),want:brief(want)});
+  ok(JSON.stringify(here.read)===JSON.stringify(base.read),'and reads every lift on the machines 2.69 read it on',{here:here.read,r115:base.read});
+  ok(JSON.stringify(here.saved.exercises)===JSON.stringify(o.exercises)&&JSON.stringify(here.saved.settings)===JSON.stringify(o.settings),'its exercises and settings byte for byte');
+  await N.ctx.close();
+  const O=await open('baselines/r115.html',{browser,state:here.saved,clock:'2026-11-15T10:00:00'});
+  const back=await O.page.evaluate(READ=>{const L=window.__ironlog;L.saveNow();return {read:new Function('return ('+READ+')')()(),sessions:JSON.parse(localStorage.getItem('ironlog.v1')).sessions};},READ.toString());
+  ok(JSON.stringify(back.read)===JSON.stringify(base.read)&&JSON.stringify(back.sessions)===JSON.stringify(here.saved.sessions),'2.69 opens the log saved here on the same machines and saves its sessions as they are, each machine named',{back:back.read});
+  ok(!N.errors.length&&!O.errors.length,'no console errors naming machines in a 2.69 log',[...N.errors,...O.errors]);
+  await O.ctx.close();
 }
 console.log(fails.length?'FAILURES '+fails.length:'ALL PASS');await browser.close();})();

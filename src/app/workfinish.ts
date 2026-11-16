@@ -38,7 +38,7 @@ import {
 import { state, ui } from './store';
 import { joinAdjacent, savedEx, draftCardio, effTarget, withNew, picsLast, typedMin } from './session';
 import type { DraftSet, CardioEntry, SessionEx, Session } from './types';
-import { setShort, fmtDateLong, fmtE, keepFollowers, prSet, wasE } from './display';
+import { setShort, fmtDateLong, fmtE, prSet, wasE } from './display';
 import { W, blkOpen, blkRef, redraw } from './workstate';
 import type { Draft } from './workstate';
 import type { Pr } from './model';
@@ -544,8 +544,6 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
   const editing = !!d.editingId;
   act(() => {
     const was = d.editingId ? state.sessions.find(x => x.id === d.editingId) : null;
-    // Moved to another day, a session that began a machine leaves the sessions after it on that machine.
-    if (was && d.editingId && was.date !== sess.date) keepFollowers(d.editingId);
     const t0 = was ? was.t : began || Date.now();
     if (t0) sess.t = t0;
     const pw = d.editingId || d.free ? undefined : pwOf(state.routines, d.routineId);

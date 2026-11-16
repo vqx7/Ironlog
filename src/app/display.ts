@@ -4,7 +4,7 @@
 import { IN, KM_MI, FT_IN } from './units';
 import { NIL, fmtDate, fmtWith, missedTag } from './format';
 import { bestFit, e1, fitE, trendE, RECENT_DAYS, BEST_WEEKS, TAPE_WEEKS } from './formulas';
-import { MK, ML, isCommon, isCompound, loadMode, nameMatch, onMachines } from './library';
+import { MK, ML, isCommon, isCompound, loadMode, nameMatch } from './library';
 import { dayParts, dayWorkout, partOf, routineEmpty, routineSig, sessDayIdx } from './routines';
 import { rec } from './records';
 import { REGION_WKS, REGION_WK_DEFAULT } from './layout';
@@ -868,21 +868,6 @@ export function machineName(exId: string, key: string): string | null {
   const e = state.exercises.find(x => x.id === exId);
   const k = key === NEW_MACHINE ? newMachineKey() : key;
   return (k && e && e.machines && e.machines[k]) || null;
-}
-
-/* A session that began a machine (its mark, nw) is followed on it by the sessions after it that name no machine
-   (machineKeys). Deleted, or moved to another day in its edit, it would take them back to the machine before it, mixing
-   two machines' numbers. So first, inside that change, each is saved on the machine it is on by name (mc), the key the
-   names are kept under: a machine's sessions move only by a pick. A free weight names no machine (its stretches are New
-   machine or gym's to start and end). */
-/** Saves on their machine by name the sessions that follow session `sid`'s new machine (above); inside a change. */
-export function keepFollowers(sid: string): void {
-  for (const [exId, xs = []] of Object.entries(IDX().byEx)) {
-    if (!onMachines(EX(exId)) || !xs.some(x => x.sid === sid && x.nw)) continue;
-    for (const x of xs)
-      if (x.sid !== sid && x.mk === sid && !x.mc)
-        for (const b of state.sessions.find(s => s.id === x.sid)?.ex || []) if (b.exId === exId && !b.mc) b.mc = sid;
-  }
 }
 
 /** The quick picks offered when a machine is named. */

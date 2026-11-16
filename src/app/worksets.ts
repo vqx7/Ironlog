@@ -581,10 +581,6 @@ export function newBlock(
   opts?: { deload?: boolean; light?: boolean; before?: string | null } | null
 ): DraftBlock {
   const sg = suggest(exId, plan, opts);
-  /* A lift is on one machine in a session: a block of it added while others are in the workout takes the machine they
-     are on (a pick, or a machine added), so taking one of them out never moves the sets of the rest. */
-  const same = state.draft ? state.draft.ex.filter(b => b.exId === exId) : [];
-  const mc = same.find(b => b.mc)?.mc;
   return {
     bid: uid(),
     exId,
@@ -603,9 +599,23 @@ export function newBlock(
     lastR: sg.lastR,
     basis: sg.basis || undefined,
     sw: sg.w == null ? null : sg.w,
-    sets: Array.from({ length: +plan.sets || DEFAULT_PLAN.sets }, () => newRow({ w: fillLoads() ? sg.w : null })),
-    ...(mc ? { mc } : same.some(b => b.nw) ? { nw: true } : {})
+    sets: Array.from({ length: +plan.sets || DEFAULT_PLAN.sets }, () => newRow({ w: fillLoads() ? sg.w : null }))
   };
+}
+
+/* A lift is on one machine in a workout, whichever of its cards holds the mark (a machine picked, mc, or added, nw):
+   a card taken out first hands its mark to the lift's cards left, so their sets stay on that machine. Inside the
+   change that takes it out, so its Undo puts both back. */
+/** Hands the machine marks of the cards in `gone` to the cards of the same lifts left in workout `d` (above). */
+export function keepLiftMachine(d: { ex: DraftBlock[] }, gone: readonly DraftBlock[]): void {
+  for (const g of gone) {
+    if (!g.mc && !g.nw) continue;
+    for (const b of d.ex)
+      if (b.exId === g.exId && !gone.includes(b) && !b.mc && !b.nw) {
+        if (g.mc) b.mc = g.mc;
+        else b.nw = true;
+      }
+  }
 }
 
 /* Re-run the suggestion for one block, for example after its heaviest

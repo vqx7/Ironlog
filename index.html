@@ -2691,6 +2691,375 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var SHORT_MIN_SETS = 2;
   var JUMP_TIP = `When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: ${pct1(JUMP_COMPOUND)}% on compound lifts, ${pct1(JUMP_ISOLATION)}% on isolation lifts, a rule of thumb. 0: one step every time. Until then the target is to beat last time's total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.`;
 
+  // src/app/format.ts
+  var fmtDateRow = (s3) => parse(s3).toLocaleDateString(void 0, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    ...yearOf(s3) === yearOf(today()) ? {} : { year: "numeric" }
+  });
+  function todayEye() {
+    const d3 = /* @__PURE__ */ new Date();
+    return d3.toLocaleDateString(void 0, { weekday: "short" }) + " " + d3.toLocaleDateString(void 0, { month: "short", day: "numeric" });
+  }
+  function sessTm(x2) {
+    try {
+      return x2.t ? new Date(x2.t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+    } catch (e5) {
+      return "";
+    }
+  }
+  function agoTxt(k2) {
+    return k2 === 0 ? "today" : k2 === 1 ? "yesterday" : `${k2} days ago`;
+  }
+  var WD2 = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+  var MONTHS = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+  ];
+  var MIN_STEP = 5, MIN_STEP_FROM = 10;
+  var min5 = (m3) => m3 >= MIN_STEP_FROM ? Math.round(m3 / MIN_STEP) * MIN_STEP : Math.max(1, Math.round(m3));
+  var estMin = (n3) => `~${n3} min`;
+  var STAMP_FROM = 5, STAMP_TO = 16;
+  var stampShort = (t4) => t4.slice(STAMP_FROM, STAMP_TO).replace("T", " ");
+  var NIL = "–";
+  var missedTag = (s3) => isMissed(s3) ? " missed" : "";
+  var DIRTY_SAID = "Save or cancel first. Your changes are still here.";
+  var MISSED_SAID = "Logged as missed.";
+  var fmtG = (v3) => String(r3(v3));
+  var repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
+  var YEAR_DAYS = 365.25;
+  var YEAR_MONTHS = 12;
+  var AWAY_MONTHS_MAX = 24;
+  function awayWords(days) {
+    const months = Math.round(days * YEAR_MONTHS / YEAR_DAYS);
+    if (months < AWAY_MONTHS_MAX) return `${months} month${months === 1 ? "" : "s"}`;
+    return `${Math.floor(months / YEAR_MONTHS)} years`;
+  }
+  var rangeWords = (p3) => +p3.repMin === +p3.repMax ? `target of ${+p3.repMin}` : `${+p3.repMin}-${+p3.repMax} range`;
+  var DTF = {};
+  var dtf = (k2, o3) => DTF[k2] || (DTF[k2] = new Intl.DateTimeFormat(void 0, o3));
+  var fmtWith = (k2, o3, s3) => {
+    const d3 = parse(s3);
+    return isNaN(+d3) ? "" : dtf(k2, o3).format(d3);
+  };
+  var fmtDay = (s3) => fmtWith("d", { month: "short", day: "numeric" }, s3);
+  var fmtDateFrom = (s3, now2) => yearOf(s3) === yearOf(now2) ? fmtDay(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
+  var fmtDate = (s3) => fmtDateFrom(s3, today());
+  function effScale(v3) {
+    return v3 === "half" || v3 === "rpe" ? v3 : "whole";
+  }
+  function effAt(scale, rir) {
+    return scale === "rpe" ? String(r1(EFFORT_TOP - rir)) : String(r1(rir));
+  }
+  var LIGHT_RIR = 3;
+  var effLeast = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)} or more reps in reserve`;
+  var effLeastShort = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)}+ RIR`;
+
+  // src/app/session.ts
+  function greyW(b2, si) {
+    const s3 = b2 && b2.sets[si];
+    if (!s3 || s3.warm || s3.drop) return null;
+    for (let i5 = si - 1; i5 >= 0; i5--) {
+      const x2 = b2.sets[i5];
+      if (!x2.warm && !x2.drop && x2.w != null && !isMissed(x2)) return b2.adj && b2.adj.at === i5 ? b2.adj.w : x2.w;
+    }
+    return b2.sw == null ? null : b2.sw;
+  }
+  function effW(b2, si) {
+    const s3 = b2 && b2.sets[si];
+    if (!s3) return null;
+    return s3.w != null ? s3.w : greyW(b2, si);
+  }
+  function effTarget(b2) {
+    const t4 = b2.tgt;
+    if (!t4 || t4.kind !== "reps") return t4;
+    const nw = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
+    if (!Array.isArray(t4.rs) || !(nw > 0) || nw >= Number(t4.n)) return t4;
+    return { ...t4, n: nw, total: t4.rs.slice(0, nw).reduce((a2, v3) => a2 + v3, 0) };
+  }
+  function whyTarget(b2) {
+    if (!b2) return "";
+    const h3 = (b2.hint || b2.text || "").trim(), l4 = (b2.last || "").trim();
+    const reason = l4 && h3.startsWith(l4) ? h3.slice(l4.length).trim() : h3;
+    const basis = b2.basis ? ` The target comes from your last full session, ${fmtDate(b2.basis)}; one with fewer sets or reps than usual, or done lighter, does not set one.` : "";
+    return (reason + basis).trim();
+  }
+  function targetText(b2) {
+    const t4 = b2.tgt, e5 = effTarget(b2);
+    if (!t4 || t4 === e5 || !b2.target) return b2.target;
+    const m3 = b2.target.match(
+      /^(\d+)(s?)\+ (reps )?(?:in one set|over (?:your first )?\d+ sets|in one hold|over (?:your first )?\d+ holds)( at .*)$/
+    );
+    if (!m3) return b2.target;
+    const [, , s3, reps, at2] = m3;
+    const hold = s3 === "s";
+    const over = e5.n === 1 ? hold ? "in one hold" : "in one set" : `over ${e5.n} ${hold ? "holds" : "sets"}`;
+    return `${Number(e5.total) + 1}${s3}+ ${reps || ""}${over}${at2}`;
+  }
+  function overSets(n3, plan, kind) {
+    const w2 = kind === "hold" ? "hold" : "set";
+    if (n3 === 1) return `in one ${w2}`;
+    return Number(plan && plan.sets) > n3 ? `over your first ${n3} ${w2}s` : `over ${n3} ${w2}s`;
+  }
+  function blockDone(b2) {
+    const w2 = b2.sets.filter((x2) => !x2.warm);
+    return w2.length > 0 && w2.every((x2) => x2.done);
+  }
+  function sessProgress(d3) {
+    let n3 = 0, k2 = 0;
+    for (const b2 of d3.ex)
+      for (const x2 of b2.sets)
+        if (!x2.warm) {
+          n3++;
+          if (x2.done) k2++;
+        }
+    return { n: n3, k: k2, pct: n3 ? k2 / n3 * PERCENT : 0 };
+  }
+  function lastDup(d3, bi) {
+    const b2 = d3.ex[bi];
+    return !!b2 && d3.ex.slice(0, bi).some((x2) => x2.exId === b2.exId && !!x2.light === !!b2.light);
+  }
+  function lastCell(b2, i5, dup) {
+    return !dup && Array.isArray(b2.prev) && i5 >= 0 && i5 < b2.prev.length ? b2.prev[i5] : "";
+  }
+  function lastHead(b2, dup) {
+    const t4 = b2.last || "";
+    if (dup || !Array.isArray(b2.prev) || !b2.prev.length || b2.prevOff) return t4;
+    const k2 = t4.indexOf("):");
+    return k2 > 0 ? t4.slice(0, k2 + 1) : t4;
+  }
+  function joinable(a2, b2) {
+    return !!a2 && !!b2 && a2.exId === b2.exId && !a2.light === !b2.light;
+  }
+  function joinRows(into, from) {
+    const rows2 = from.sets.filter((x2) => !x2.warm && !x2.drop && !x2.done);
+    into.sets.push(...rows2);
+    into.plan = { ...into.plan, sets: into.sets.filter((x2) => !x2.warm && !x2.drop).length };
+    return rows2;
+  }
+  function savedEx(b2) {
+    const rr = b2.keepRR !== void 0 ? b2.keepRR : b2.plan && Number(b2.plan.repMin) > 0 && Number(b2.plan.repMax) > 0 ? [Number(b2.plan.repMin), Number(b2.plan.repMax)] : null;
+    return {
+      exId: b2.exId,
+      note: b2.note || "",
+      rr,
+      light: b2.light ? true : void 0,
+      ...b2.inj ? { inj: b2.inj } : {},
+      sets: b2.sets.filter((s3) => s3.done).map((s3) => ({
+        w: s3.w == null ? 0 : s3.w,
+        r: Number(s3.r),
+        rir: s3.rir == null || s3.rir === "" ? null : Number(s3.rir),
+        warm: !!s3.warm,
+        drop: !!s3.drop && !s3.warm,
+        cal: s3.cal && !s3.warm ? s3.cal : void 0,
+        // The row's own id, last, where a build before it keeps the unknown field.
+        ...typeof s3.rid === "string" ? { rid: s3.rid } : {},
+        // What the app asked of it as it was ticked (391), after the id, as normalize writes it.
+        ...s3.sg && !s3.warm && !s3.drop && !s3.cal ? { sg: [...s3.sg] } : {}
+      })),
+      // The note's pictures; put last by picsLast once the plan's sets and a new-machine mark are on.
+      ...b2.pics && b2.pics.length ? { pics: [...b2.pics] } : {}
+    };
+  }
+  function picsLast(ex) {
+    return ex.map((b2) => {
+      const { pics, ...rest } = b2;
+      return pics ? { ...rest, pics } : b2;
+    });
+  }
+  function typedMin(d3) {
+    if (!d3.editingId && !d3.past) return null;
+    const t4 = Number(d3.durMin);
+    return Number.isInteger(t4) && t4 >= 1 && t4 <= LIMITS.minutes ? t4 : null;
+  }
+  function draftSession(d3, empty) {
+    if (d3.editingId) return null;
+    const picked = (exId) => d3.ex.find((b2) => b2.exId === exId && b2.mc)?.mc ?? null;
+    const ex = picsLast(withNew(joinAdjacent(d3.ex.map(savedEx).filter((b2) => b2.sets.length)), d3, picked));
+    if (!ex.length && !empty) return null;
+    const chk = cleanChk(d3.chk);
+    return {
+      id: d3.id,
+      date: d3.date,
+      dayIdx: d3.dayIdx,
+      dayId: d3.dayId || null,
+      dayName: (d3.dayName || "").trim() || "Session",
+      routineId: d3.routineId,
+      ex,
+      notes: d3.notes || "",
+      durMin: typedMin(d3),
+      deload: !!d3.deload,
+      light: !!d3.light,
+      free: d3.free ? true : void 0,
+      demo: false,
+      ...chk ? { chk } : {},
+      ...(d3.begunAt || d3.startedAt || 0) > 0 ? { t: d3.begunAt || d3.startedAt || 0 } : {},
+      ...d3.pics && d3.pics.length ? { pics: [...d3.pics] } : {},
+      // The day's second workout, last, as normalize writes it.
+      ...d3.part === 2 ? { part: 2 } : {}
+    };
+  }
+  function draftCardio(d3) {
+    return (d3.cardio || []).filter((c4) => (c4.min || 0) > 0).map((c4) => ({ ...c4, date: d3.date }));
+  }
+  function joinAdjacent(ex) {
+    const out = [];
+    for (const b2 of ex) {
+      const a2 = out[out.length - 1];
+      if (a2 && a2.exId === b2.exId && !a2.light === !b2.light) {
+        a2.sets = [...a2.sets, ...b2.sets];
+        if (b2.note && b2.note.trim()) a2.note = [a2.note, b2.note].filter((x2) => x2 && x2.trim()).join(" ");
+        if (b2.pics && b2.pics.length) a2.pics = picIds([...a2.pics || [], ...b2.pics]);
+        if (!a2.rr && b2.rr) a2.rr = b2.rr;
+        continue;
+      }
+      out.push({ ...b2, sets: [...b2.sets] });
+    }
+    return out;
+  }
+  function sameExOnce(ex) {
+    const by = /* @__PURE__ */ new Map();
+    const out = [];
+    for (const b2 of ex) {
+      const k2 = b2.exId + (b2.light ? "|l" : "");
+      const a2 = by.get(k2);
+      if (!a2) {
+        const c4 = { ...b2, sets: [...b2.sets] };
+        by.set(k2, c4);
+        out.push(c4);
+        continue;
+      }
+      const wa = a2.sets.filter(isWork).length, wb = b2.sets.filter(isWork).length;
+      a2.sets.push(...b2.sets);
+      if (b2.nw) a2.nw = true;
+      if (b2.mc && !a2.mc) a2.mc = b2.mc;
+      if (wb > wa && b2.rr) a2.rr = b2.rr;
+      else if (!a2.rr && b2.rr) a2.rr = b2.rr;
+    }
+    return out;
+  }
+  function markedNew(d3, exId) {
+    return d3.ex.some((b2) => b2.exId === exId && !!b2.nw);
+  }
+  function withNew(ex, d3, mcOf) {
+    return ex.map((b2) => {
+      const mc = mcOf(b2.exId);
+      const nw = markedNew(d3, b2.exId) ? { nw: true } : {};
+      return mc || markedNew(d3, b2.exId) ? { ...b2, ...nw, ...mc ? { mc } : {} } : b2;
+    });
+  }
+  function newRow(over) {
+    return {
+      w: null,
+      r: null,
+      rir: null,
+      warm: false,
+      drop: false,
+      done: false,
+      ...over,
+      rid: over && typeof over.rid === "string" ? over.rid : uid()
+    };
+  }
+  function freeDraft(name, ex) {
+    return {
+      id: uid(),
+      startedAt: Date.now(),
+      date: today(),
+      dayIdx: 0,
+      dayId: null,
+      dayName: name,
+      routineId: "",
+      free: true,
+      deload: false,
+      light: false,
+      cardio: [],
+      notes: "",
+      editingId: null,
+      ex: ex || []
+    };
+  }
+  function begunIn(d3) {
+    return d3.ex.some((b2) => b2.sets.some((s3) => s3.done || s3.r != null)) || (d3.cardio || []).some((c4) => !!c4.min && c4.min > 0);
+  }
+  function clockStart(d3, wasBegun) {
+    if (!d3 || d3.past || d3.editingId) return;
+    const begun = begunIn(d3);
+    if (begun && !wasBegun && !d3.begunAt) {
+      d3.begunAt = Date.now();
+      const day = today();
+      if (d3.startedAt && d3.date === iso(new Date(d3.startedAt)) && d3.date < day) {
+        d3.date = day;
+        if (readAgain) readAgain(d3);
+      }
+    } else if (!begun && d3.begunAt !== void 0) delete d3.begunAt;
+  }
+  var readAgain = null;
+  function onDayMoved(f3) {
+    readAgain = f3;
+  }
+  function editFp(d3) {
+    return JSON.stringify({
+      date: d3.date,
+      notes: (d3.notes || "").trim(),
+      pics: (d3.pics || []).join(),
+      ex: d3.ex.map((b2) => [
+        b2.exId,
+        (b2.note || "").trim(),
+        // A new machine or gym marked or taken off is an edit too, and so is another machine picked.
+        !!b2.nw,
+        b2.mc || "",
+        // So is a picture added or taken off.
+        (b2.pics || []).join(),
+        b2.sets.map((x2) => [
+          x2.w == null ? null : +x2.w,
+          x2.r == null || x2.r === "" ? null : +x2.r,
+          x2.rir == null || x2.rir === "" ? null : +x2.rir,
+          !!x2.done,
+          !!x2.warm,
+          !!x2.drop
+        ])
+      ]),
+      c: (d3.cardio || []).map((c4) => [c4.kind, c4.min, c4.hr, c4.dist || null])
+    });
+  }
+  var DELOAD_NOTE = `Deload: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR}+ RIR.`;
+  var LIGHTER_NOTE = `Lighter session: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR}+ RIR.`;
+  var RIR_OPTS = Array.from({ length: RIR_CALL_TOP + 1 }, (_2, i5) => String(i5));
+  var RIR_HALF_OPTS = Array.from({ length: 2 * RIR_CALL_TOP + 1 }, (_2, i5) => String(i5 / 2));
+  var HINT_ONCE = [
+    "Half the usual sets, nothing to beat.",
+    "Next time's load is worked out from this.",
+    "If the first set is off, change the load.",
+    "Next time picks up from here."
+  ];
+  function hintOnce(t4, again, kind, seen) {
+    if (!t4) return "";
+    if (again) {
+      const key = "first:" + kind;
+      if (seen.has(key)) return again;
+      seen.add(key);
+      return t4;
+    }
+    let out = t4;
+    for (const x2 of HINT_ONCE)
+      if (out.includes(x2)) {
+        if (seen.has(x2)) out = out.replace(" " + x2, "").replace(x2, "");
+        else seen.add(x2);
+      }
+    return out.trim();
+  }
+
   // src/app/routines.ts
   var DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   var MAX_DAYS = 14;
@@ -4083,6 +4452,28 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return false;
     }
   }
+  function pinMachines(sessions, exercises) {
+    const onM = new Set(exercises.filter(onMachines).map((e5) => e5.id));
+    if (!onM.size) return;
+    const byEx = /* @__PURE__ */ new Map();
+    for (const ss of [...sessions].sort(sessCmp))
+      for (const m3 of sameExOnce(ss.ex)) {
+        if (!onM.has(m3.exId) || !m3.sets.some(isWork)) continue;
+        const xs = byEx.get(m3.exId) || [];
+        byEx.set(m3.exId, xs);
+        xs.push({
+          sid: ss.id,
+          ...m3.nw ? { nw: true } : {},
+          ...m3.mc ? { mc: m3.mc } : {},
+          mk: "",
+          blocks: ss.ex.filter((b2) => b2.exId === m3.exId && !!b2.light === !!m3.light)
+        });
+      }
+    for (const xs of byEx.values()) {
+      machineKeys(xs);
+      for (const x2 of xs) for (const b2 of x2.blocks) if (!b2.mc) b2.mc = x2.mk;
+    }
+  }
   function freshState() {
     const r4 = starterRoutine();
     return {
@@ -4752,6 +5143,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ({ sessions, cardio, trash } = reviveEdited(sessions, list("cardio"), trash));
     sessions = dedupe(sessions, "session", (x2) => x2.ex.reduce((a2, b2) => a2 + b2.sets.length, 0), trash);
     cardio = dedupe(cardio, "cardio", (x2) => x2.min, trash);
+    if (Array.isArray(s3.exercises)) pinMachines(sessions, exercises);
     const bBefore = list("bodyweights").length;
     const bodyweights = cleanBodyweights(list("bodyweights"));
     drop3(bBefore - bodyweights.length);
@@ -5971,375 +6363,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
   });
 
-  // src/app/format.ts
-  var fmtDateRow = (s3) => parse(s3).toLocaleDateString(void 0, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    ...yearOf(s3) === yearOf(today()) ? {} : { year: "numeric" }
-  });
-  function todayEye() {
-    const d3 = /* @__PURE__ */ new Date();
-    return d3.toLocaleDateString(void 0, { weekday: "short" }) + " " + d3.toLocaleDateString(void 0, { month: "short", day: "numeric" });
-  }
-  function sessTm(x2) {
-    try {
-      return x2.t ? new Date(x2.t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
-    } catch (e5) {
-      return "";
-    }
-  }
-  function agoTxt(k2) {
-    return k2 === 0 ? "today" : k2 === 1 ? "yesterday" : `${k2} days ago`;
-  }
-  var WD2 = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-  var MONTHS = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December"
-  ];
-  var MIN_STEP = 5, MIN_STEP_FROM = 10;
-  var min5 = (m3) => m3 >= MIN_STEP_FROM ? Math.round(m3 / MIN_STEP) * MIN_STEP : Math.max(1, Math.round(m3));
-  var estMin = (n3) => `~${n3} min`;
-  var STAMP_FROM = 5, STAMP_TO = 16;
-  var stampShort = (t4) => t4.slice(STAMP_FROM, STAMP_TO).replace("T", " ");
-  var NIL = "–";
-  var missedTag = (s3) => isMissed(s3) ? " missed" : "";
-  var DIRTY_SAID = "Save or cancel first. Your changes are still here.";
-  var MISSED_SAID = "Logged as missed.";
-  var fmtG = (v3) => String(r3(v3));
-  var repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
-  var YEAR_DAYS = 365.25;
-  var YEAR_MONTHS = 12;
-  var AWAY_MONTHS_MAX = 24;
-  function awayWords(days) {
-    const months = Math.round(days * YEAR_MONTHS / YEAR_DAYS);
-    if (months < AWAY_MONTHS_MAX) return `${months} month${months === 1 ? "" : "s"}`;
-    return `${Math.floor(months / YEAR_MONTHS)} years`;
-  }
-  var rangeWords = (p3) => +p3.repMin === +p3.repMax ? `target of ${+p3.repMin}` : `${+p3.repMin}-${+p3.repMax} range`;
-  var DTF = {};
-  var dtf = (k2, o3) => DTF[k2] || (DTF[k2] = new Intl.DateTimeFormat(void 0, o3));
-  var fmtWith = (k2, o3, s3) => {
-    const d3 = parse(s3);
-    return isNaN(+d3) ? "" : dtf(k2, o3).format(d3);
-  };
-  var fmtDay = (s3) => fmtWith("d", { month: "short", day: "numeric" }, s3);
-  var fmtDateFrom = (s3, now2) => yearOf(s3) === yearOf(now2) ? fmtDay(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
-  var fmtDate = (s3) => fmtDateFrom(s3, today());
-  function effScale(v3) {
-    return v3 === "half" || v3 === "rpe" ? v3 : "whole";
-  }
-  function effAt(scale, rir) {
-    return scale === "rpe" ? String(r1(EFFORT_TOP - rir)) : String(r1(rir));
-  }
-  var LIGHT_RIR = 3;
-  var effLeast = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)} or more reps in reserve`;
-  var effLeastShort = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)}+ RIR`;
-
-  // src/app/session.ts
-  function greyW(b2, si) {
-    const s3 = b2 && b2.sets[si];
-    if (!s3 || s3.warm || s3.drop) return null;
-    for (let i5 = si - 1; i5 >= 0; i5--) {
-      const x2 = b2.sets[i5];
-      if (!x2.warm && !x2.drop && x2.w != null && !isMissed(x2)) return b2.adj && b2.adj.at === i5 ? b2.adj.w : x2.w;
-    }
-    return b2.sw == null ? null : b2.sw;
-  }
-  function effW(b2, si) {
-    const s3 = b2 && b2.sets[si];
-    if (!s3) return null;
-    return s3.w != null ? s3.w : greyW(b2, si);
-  }
-  function effTarget(b2) {
-    const t4 = b2.tgt;
-    if (!t4 || t4.kind !== "reps") return t4;
-    const nw = b2.sets.filter((x2) => !x2.warm && !x2.drop).length;
-    if (!Array.isArray(t4.rs) || !(nw > 0) || nw >= Number(t4.n)) return t4;
-    return { ...t4, n: nw, total: t4.rs.slice(0, nw).reduce((a2, v3) => a2 + v3, 0) };
-  }
-  function whyTarget(b2) {
-    if (!b2) return "";
-    const h3 = (b2.hint || b2.text || "").trim(), l4 = (b2.last || "").trim();
-    const reason = l4 && h3.startsWith(l4) ? h3.slice(l4.length).trim() : h3;
-    const basis = b2.basis ? ` The target comes from your last full session, ${fmtDate(b2.basis)}; one with fewer sets or reps than usual, or done lighter, does not set one.` : "";
-    return (reason + basis).trim();
-  }
-  function targetText(b2) {
-    const t4 = b2.tgt, e5 = effTarget(b2);
-    if (!t4 || t4 === e5 || !b2.target) return b2.target;
-    const m3 = b2.target.match(
-      /^(\d+)(s?)\+ (reps )?(?:in one set|over (?:your first )?\d+ sets|in one hold|over (?:your first )?\d+ holds)( at .*)$/
-    );
-    if (!m3) return b2.target;
-    const [, , s3, reps, at2] = m3;
-    const hold = s3 === "s";
-    const over = e5.n === 1 ? hold ? "in one hold" : "in one set" : `over ${e5.n} ${hold ? "holds" : "sets"}`;
-    return `${Number(e5.total) + 1}${s3}+ ${reps || ""}${over}${at2}`;
-  }
-  function overSets(n3, plan, kind) {
-    const w2 = kind === "hold" ? "hold" : "set";
-    if (n3 === 1) return `in one ${w2}`;
-    return Number(plan && plan.sets) > n3 ? `over your first ${n3} ${w2}s` : `over ${n3} ${w2}s`;
-  }
-  function blockDone(b2) {
-    const w2 = b2.sets.filter((x2) => !x2.warm);
-    return w2.length > 0 && w2.every((x2) => x2.done);
-  }
-  function sessProgress(d3) {
-    let n3 = 0, k2 = 0;
-    for (const b2 of d3.ex)
-      for (const x2 of b2.sets)
-        if (!x2.warm) {
-          n3++;
-          if (x2.done) k2++;
-        }
-    return { n: n3, k: k2, pct: n3 ? k2 / n3 * PERCENT : 0 };
-  }
-  function lastDup(d3, bi) {
-    const b2 = d3.ex[bi];
-    return !!b2 && d3.ex.slice(0, bi).some((x2) => x2.exId === b2.exId && !!x2.light === !!b2.light);
-  }
-  function lastCell(b2, i5, dup) {
-    return !dup && Array.isArray(b2.prev) && i5 >= 0 && i5 < b2.prev.length ? b2.prev[i5] : "";
-  }
-  function lastHead(b2, dup) {
-    const t4 = b2.last || "";
-    if (dup || !Array.isArray(b2.prev) || !b2.prev.length || b2.prevOff) return t4;
-    const k2 = t4.indexOf("):");
-    return k2 > 0 ? t4.slice(0, k2 + 1) : t4;
-  }
-  function joinable(a2, b2) {
-    return !!a2 && !!b2 && a2.exId === b2.exId && !a2.light === !b2.light;
-  }
-  function joinRows(into, from) {
-    const rows2 = from.sets.filter((x2) => !x2.warm && !x2.drop && !x2.done);
-    into.sets.push(...rows2);
-    into.plan = { ...into.plan, sets: into.sets.filter((x2) => !x2.warm && !x2.drop).length };
-    return rows2;
-  }
-  function savedEx(b2) {
-    const rr = b2.keepRR !== void 0 ? b2.keepRR : b2.plan && Number(b2.plan.repMin) > 0 && Number(b2.plan.repMax) > 0 ? [Number(b2.plan.repMin), Number(b2.plan.repMax)] : null;
-    return {
-      exId: b2.exId,
-      note: b2.note || "",
-      rr,
-      light: b2.light ? true : void 0,
-      ...b2.inj ? { inj: b2.inj } : {},
-      sets: b2.sets.filter((s3) => s3.done).map((s3) => ({
-        w: s3.w == null ? 0 : s3.w,
-        r: Number(s3.r),
-        rir: s3.rir == null || s3.rir === "" ? null : Number(s3.rir),
-        warm: !!s3.warm,
-        drop: !!s3.drop && !s3.warm,
-        cal: s3.cal && !s3.warm ? s3.cal : void 0,
-        // The row's own id, last, where a build before it keeps the unknown field.
-        ...typeof s3.rid === "string" ? { rid: s3.rid } : {},
-        // What the app asked of it as it was ticked (391), after the id, as normalize writes it.
-        ...s3.sg && !s3.warm && !s3.drop && !s3.cal ? { sg: [...s3.sg] } : {}
-      })),
-      // The note's pictures; put last by picsLast once the plan's sets and a new-machine mark are on.
-      ...b2.pics && b2.pics.length ? { pics: [...b2.pics] } : {}
-    };
-  }
-  function picsLast(ex) {
-    return ex.map((b2) => {
-      const { pics, ...rest } = b2;
-      return pics ? { ...rest, pics } : b2;
-    });
-  }
-  function typedMin(d3) {
-    if (!d3.editingId && !d3.past) return null;
-    const t4 = Number(d3.durMin);
-    return Number.isInteger(t4) && t4 >= 1 && t4 <= LIMITS.minutes ? t4 : null;
-  }
-  function draftSession(d3, empty) {
-    if (d3.editingId) return null;
-    const picked = (exId) => d3.ex.find((b2) => b2.exId === exId && b2.mc)?.mc ?? null;
-    const ex = picsLast(withNew(joinAdjacent(d3.ex.map(savedEx).filter((b2) => b2.sets.length)), d3, picked));
-    if (!ex.length && !empty) return null;
-    const chk = cleanChk(d3.chk);
-    return {
-      id: d3.id,
-      date: d3.date,
-      dayIdx: d3.dayIdx,
-      dayId: d3.dayId || null,
-      dayName: (d3.dayName || "").trim() || "Session",
-      routineId: d3.routineId,
-      ex,
-      notes: d3.notes || "",
-      durMin: typedMin(d3),
-      deload: !!d3.deload,
-      light: !!d3.light,
-      free: d3.free ? true : void 0,
-      demo: false,
-      ...chk ? { chk } : {},
-      ...(d3.begunAt || d3.startedAt || 0) > 0 ? { t: d3.begunAt || d3.startedAt || 0 } : {},
-      ...d3.pics && d3.pics.length ? { pics: [...d3.pics] } : {},
-      // The day's second workout, last, as normalize writes it.
-      ...d3.part === 2 ? { part: 2 } : {}
-    };
-  }
-  function draftCardio(d3) {
-    return (d3.cardio || []).filter((c4) => (c4.min || 0) > 0).map((c4) => ({ ...c4, date: d3.date }));
-  }
-  function joinAdjacent(ex) {
-    const out = [];
-    for (const b2 of ex) {
-      const a2 = out[out.length - 1];
-      if (a2 && a2.exId === b2.exId && !a2.light === !b2.light) {
-        a2.sets = [...a2.sets, ...b2.sets];
-        if (b2.note && b2.note.trim()) a2.note = [a2.note, b2.note].filter((x2) => x2 && x2.trim()).join(" ");
-        if (b2.pics && b2.pics.length) a2.pics = picIds([...a2.pics || [], ...b2.pics]);
-        if (!a2.rr && b2.rr) a2.rr = b2.rr;
-        continue;
-      }
-      out.push({ ...b2, sets: [...b2.sets] });
-    }
-    return out;
-  }
-  function sameExOnce(ex) {
-    const by = /* @__PURE__ */ new Map();
-    const out = [];
-    for (const b2 of ex) {
-      const k2 = b2.exId + (b2.light ? "|l" : "");
-      const a2 = by.get(k2);
-      if (!a2) {
-        const c4 = { ...b2, sets: [...b2.sets] };
-        by.set(k2, c4);
-        out.push(c4);
-        continue;
-      }
-      const wa = a2.sets.filter(isWork).length, wb = b2.sets.filter(isWork).length;
-      a2.sets.push(...b2.sets);
-      if (b2.nw) a2.nw = true;
-      if (b2.mc && !a2.mc) a2.mc = b2.mc;
-      if (wb > wa && b2.rr) a2.rr = b2.rr;
-      else if (!a2.rr && b2.rr) a2.rr = b2.rr;
-    }
-    return out;
-  }
-  function markedNew(d3, exId) {
-    return d3.ex.some((b2) => b2.exId === exId && !!b2.nw);
-  }
-  function withNew(ex, d3, mcOf) {
-    return ex.map((b2) => {
-      const mc = mcOf(b2.exId);
-      const nw = markedNew(d3, b2.exId) ? { nw: true } : {};
-      return mc || markedNew(d3, b2.exId) ? { ...b2, ...nw, ...mc ? { mc } : {} } : b2;
-    });
-  }
-  function newRow(over) {
-    return {
-      w: null,
-      r: null,
-      rir: null,
-      warm: false,
-      drop: false,
-      done: false,
-      ...over,
-      rid: over && typeof over.rid === "string" ? over.rid : uid()
-    };
-  }
-  function freeDraft(name, ex) {
-    return {
-      id: uid(),
-      startedAt: Date.now(),
-      date: today(),
-      dayIdx: 0,
-      dayId: null,
-      dayName: name,
-      routineId: "",
-      free: true,
-      deload: false,
-      light: false,
-      cardio: [],
-      notes: "",
-      editingId: null,
-      ex: ex || []
-    };
-  }
-  function begunIn(d3) {
-    return d3.ex.some((b2) => b2.sets.some((s3) => s3.done || s3.r != null)) || (d3.cardio || []).some((c4) => !!c4.min && c4.min > 0);
-  }
-  function clockStart(d3, wasBegun) {
-    if (!d3 || d3.past || d3.editingId) return;
-    const begun = begunIn(d3);
-    if (begun && !wasBegun && !d3.begunAt) {
-      d3.begunAt = Date.now();
-      const day = today();
-      if (d3.startedAt && d3.date === iso(new Date(d3.startedAt)) && d3.date < day) {
-        d3.date = day;
-        if (readAgain) readAgain(d3);
-      }
-    } else if (!begun && d3.begunAt !== void 0) delete d3.begunAt;
-  }
-  var readAgain = null;
-  function onDayMoved(f3) {
-    readAgain = f3;
-  }
-  function editFp(d3) {
-    return JSON.stringify({
-      date: d3.date,
-      notes: (d3.notes || "").trim(),
-      pics: (d3.pics || []).join(),
-      ex: d3.ex.map((b2) => [
-        b2.exId,
-        (b2.note || "").trim(),
-        // A new machine or gym marked or taken off is an edit too, and so is another machine picked.
-        !!b2.nw,
-        b2.mc || "",
-        // So is a picture added or taken off.
-        (b2.pics || []).join(),
-        b2.sets.map((x2) => [
-          x2.w == null ? null : +x2.w,
-          x2.r == null || x2.r === "" ? null : +x2.r,
-          x2.rir == null || x2.rir === "" ? null : +x2.rir,
-          !!x2.done,
-          !!x2.warm,
-          !!x2.drop
-        ])
-      ]),
-      c: (d3.cardio || []).map((c4) => [c4.kind, c4.min, c4.hr, c4.dist || null])
-    });
-  }
-  var DELOAD_NOTE = `Deload: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR}+ RIR.`;
-  var LIGHTER_NOTE = `Lighter session: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR}+ RIR.`;
-  var RIR_OPTS = Array.from({ length: RIR_CALL_TOP + 1 }, (_2, i5) => String(i5));
-  var RIR_HALF_OPTS = Array.from({ length: 2 * RIR_CALL_TOP + 1 }, (_2, i5) => String(i5 / 2));
-  var HINT_ONCE = [
-    "Half the usual sets, nothing to beat.",
-    "Next time's load is worked out from this.",
-    "If the first set is off, change the load.",
-    "Next time picks up from here."
-  ];
-  function hintOnce(t4, again, kind, seen) {
-    if (!t4) return "";
-    if (again) {
-      const key = "first:" + kind;
-      if (seen.has(key)) return again;
-      seen.add(key);
-      return t4;
-    }
-    let out = t4;
-    for (const x2 of HINT_ONCE)
-      if (out.includes(x2)) {
-        if (seen.has(x2)) out = out.replace(" " + x2, "").replace(x2, "");
-        else seen.add(x2);
-      }
-    return out.trim();
-  }
-
   // src/app/setread.ts
   function bwKnownAtIn(M3, date) {
     let best = null;
@@ -6988,10 +7011,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const d3 = M3.s.draft;
     if (!d3) return null;
     const key = draftMachineIn(M3, exId);
-    if (key == null || key === NEW_MACHINE) return null;
-    if (d3.editingId && d3.ex.some((b2) => b2.exId === exId && b2.nw)) return key === d3.editingId ? null : key;
-    const others = (IDXIn(M3).byEx[exId] || []).filter((x2) => x2.sid !== d3.editingId);
-    return new Set(others.map((x2) => x2.mk)).add(key).size > 1 ? key : null;
+    return key === NEW_MACHINE ? d3.editingId || d3.id || null : key;
   }
   function liftMachinesIn(M3, exId) {
     return machinesOf(IDXIn(M3).byEx[exId] || []).map((g2) => {
@@ -12881,15 +12901,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const k2 = key === NEW_MACHINE ? newMachineKey() : key;
     return k2 && e5 && e5.machines && e5.machines[k2] || null;
   }
-  function keepFollowers(sid) {
-    for (const [exId, xs = []] of Object.entries(IDX().byEx)) {
-      if (!onMachines(EX(exId)) || !xs.some((x2) => x2.sid === sid && x2.nw)) continue;
-      for (const x2 of xs)
-        if (x2.sid !== sid && x2.mk === sid && !x2.mc) {
-          for (const b2 of state.sessions.find((s3) => s3.id === x2.sid)?.ex || []) if (b2.exId === exId && !b2.mc) b2.mc = sid;
-        }
-    }
-  }
   var MACHINE_CHOICES = 6;
   function machineNameChoices(exId) {
     const e0 = state.exercises.find((x2) => x2.id === exId);
@@ -15145,7 +15156,6 @@ ${more}`;
             () => {
               const s3 = state.sessions.find((x2) => x2.id === id);
               if (s3 && !s3.demo) toTrash("session", s3);
-              if (id) keepFollowers(id);
               state.sessions = state.sessions.filter((x2) => x2.id !== id);
             },
             { undo: true }
@@ -16460,8 +16470,6 @@ ${more}`;
   }
   function newBlock(exId, plan, opts) {
     const sg = suggest(exId, plan, opts);
-    const same = state.draft ? state.draft.ex.filter((b2) => b2.exId === exId) : [];
-    const mc = same.find((b2) => b2.mc)?.mc;
     return {
       bid: uid(),
       exId,
@@ -16480,9 +16488,18 @@ ${more}`;
       lastR: sg.lastR,
       basis: sg.basis || void 0,
       sw: sg.w == null ? null : sg.w,
-      sets: Array.from({ length: +plan.sets || DEFAULT_PLAN.sets }, () => newRow({ w: fillLoads() ? sg.w : null })),
-      ...mc ? { mc } : same.some((b2) => b2.nw) ? { nw: true } : {}
+      sets: Array.from({ length: +plan.sets || DEFAULT_PLAN.sets }, () => newRow({ w: fillLoads() ? sg.w : null }))
     };
+  }
+  function keepLiftMachine(d3, gone2) {
+    for (const g2 of gone2) {
+      if (!g2.mc && !g2.nw) continue;
+      for (const b2 of d3.ex)
+        if (b2.exId === g2.exId && !gone2.includes(b2) && !b2.mc && !b2.nw) {
+          if (g2.mc) b2.mc = g2.mc;
+          else b2.nw = true;
+        }
+    }
   }
   function refreshBlock(b2) {
     const d3 = state.draft;
@@ -25572,7 +25589,10 @@ ${JSON.stringify(ctx, null, 1)}`;
         if (done.length) {
           b2.sets = done;
           b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
-        } else keepOpen(() => d3.ex.splice(bi, 1));
+        } else {
+          keepLiftMachine(d3, [b2]);
+          keepOpen(() => d3.ex.splice(bi, 1));
+        }
         fixSupersets(d3.ex.map((x2) => x2.plan));
       },
       {
@@ -25608,7 +25628,10 @@ ${JSON.stringify(ctx, null, 1)}`;
           b2.sets = done;
           b2.plan = { ...b2.plan, sets: done.filter((x2) => !x2.warm && !x2.drop).length || 1 };
           keepOpen(() => d3.ex.splice(bi + 1, 0, nb));
-        } else d3.ex[bi] = nb;
+        } else {
+          keepLiftMachine(d3, [b2]);
+          d3.ex[bi] = nb;
+        }
         fixSupersets(d3.ex.map((x2) => x2.plan));
       },
       {
@@ -26169,6 +26192,10 @@ ${JSON.stringify(ctx, null, 1)}`;
             }
             removed.set(b2, gone2);
           }
+          keepLiftMachine(
+            d3,
+            d3.ex.filter((_b, bi) => drop3.has(bi))
+          );
           d3.ex = d3.ex.filter((_b, bi) => !drop3.has(bi));
           fixSupersets(d3.ex.map((b2) => b2.plan));
         },
@@ -27323,7 +27350,6 @@ ${JSON.stringify(ctx, null, 1)}`;
     const editing = !!d3.editingId;
     act(() => {
       const was = d3.editingId ? state.sessions.find((x2) => x2.id === d3.editingId) : null;
-      if (was && d3.editingId && was.date !== sess.date) keepFollowers(d3.editingId);
       const t0 = was ? was.t : began || Date.now();
       if (t0) sess.t = t0;
       const pw = d3.editingId || d3.free ? void 0 : pwOf(state.routines, d3.routineId);
@@ -27507,17 +27533,23 @@ ${JSON.stringify(ctx, null, 1)}`;
         return;
       }
       const prevBlk = bi > 0 ? dd.ex[bi - 1] : null;
-      act(() => keepOpen(() => dd.ex.splice(bi, 1)), {
-        inProgress: true,
-        undo: () => {
-          const d32 = state.draft;
-          if (!d32 || d32.id !== did2) return false;
-          const k2 = prevBlk ? d32.ex.indexOf(prevBlk) : -1;
-          d32.ex.splice(prevBlk == null ? 0 : k2 >= 0 ? k2 + 1 : Math.min(bi, d32.ex.length), 0, blk);
-          fixSupersets(d32.ex.map((x2) => x2.plan));
-          return true;
+      act(
+        () => {
+          keepLiftMachine(dd, [blk]);
+          keepOpen(() => dd.ex.splice(bi, 1));
+        },
+        {
+          inProgress: true,
+          undo: () => {
+            const d32 = state.draft;
+            if (!d32 || d32.id !== did2) return false;
+            const k2 = prevBlk ? d32.ex.indexOf(prevBlk) : -1;
+            d32.ex.splice(prevBlk == null ? 0 : k2 >= 0 ? k2 + 1 : Math.min(bi, d32.ex.length), 0, blk);
+            fixSupersets(d32.ex.map((x2) => x2.plan));
+            return true;
+          }
         }
-      });
+      );
       rerenderKeepScroll();
       toast("Exercise removed", true);
     };

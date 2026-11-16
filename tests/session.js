@@ -1645,7 +1645,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await doSets(60, [10, 10, 9]);
     await finish();
     let day1 = await saved('2026-11-11');
-    ok(day1 && day1.nw === true && day1.mc === null, 'L-41: saved, the session marks the lift done on a new machine', day1);
+    ok(day1 && day1.nw === true && day1.mc === day1.sid, 'L-41: saved, the session marks the lift done on a new machine, named by its own id as every machine session names its machine', day1);
 
     await nextWeek('2026-11-18T10:00:00');
     b = await block();
@@ -1697,7 +1697,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await start(P);
     const blk = await P.ev(() => ({ hint: ((document.querySelector('#blk-0 .hint') || {}).innerText || '').replace(/\s+/g, ' '), grey: [...document.querySelectorAll('#blk-0 input[data-f="w"]')].map(i => i.value || i.placeholder) }));
     m = await sheetAt(0);
-    ok(JSON.stringify(marks) === JSON.stringify([['e1', null, null], ['e2', null, 'e2'], ['e3', null, null]]) && /Today: 33\+ reps over 3 sets at 210 lb/.test(blk.hint) && blk.grey.every(x => x === '210') && /Machine Nov 7 · 210 lb × 11\s*✎\s*Oct 31 · 205 lb × 11\s*✎\s*Add a machine/.test(m.text),
+    ok(JSON.stringify(marks) === JSON.stringify([['e1', null, '0'], ['e2', null, 'e2'], ['e3', null, '0']]) && /Today: 33\+ reps over 3 sets at 210 lb/.test(blk.hint) && blk.grey.every(x => x === '210') && /Machine Nov 7 · 210 lb × 11\s*✎\s*Oct 31 · 205 lb × 11\s*✎\s*Add a machine/.test(m.text),
       'L-41: Oct 31 moved to a new machine in its edit moves alone: Nov 7 stays on the first machine and the next workout reads it (33+ at 210 lb)', { marks, blk, m: m && m.text });
     await P.ev(() => window.__ironlog.ACT.mClose()); await wait(120);
     await P.close();
@@ -1920,7 +1920,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
       await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150);
       await P.tap(`#view [data-act="histToggle"][data-id="${s1.id}"]`, 150); await P.tap(`#view [data-act="histDel"][data-id="${s1.id}"]`, 250); if (await P.modal()) await mOk(P);
       await X.week('2026-11-25T10:00:00'); await start(P);
-      ok(s1.nw === null && s1.mc === null && await X.tag() === 'Hammer' && JSON.stringify(await X.names()) === '{"0":"Hammer"}', 'L-41: saved on the lift\'s first machine with no mark, so with that first session deleted the lift is still on Hammer (REV21-4)', { s1, tag: await X.tag(), nm: await X.names() });
+      ok(s1.nw === null && s1.mc === '0' && await X.tag() === 'Hammer' && JSON.stringify(await X.names()) === '{"0":"Hammer"}', 'L-41: saved on the lift\'s first machine by name, with no new-machine mark, so with that first session deleted the lift is still on Hammer (REV21-4)', { s1, tag: await X.tag(), nm: await X.names() });
       await P.close();
     }
     // The edit of the session that began a machine, now on another: no machine to add, so no name moves.
@@ -1964,6 +1964,89 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
       ok(JSON.stringify(moved) === '[["m1","0"],["m0","0"],["m3","m2"],["m2","m2"]]', 'L-41: moved in its edit past the session after it, that session stays on the machine it began (REV21-4)', moved);
       await Q.close();
     }
+    /* Every session of a machine lift names the machine it was done on, so nothing but a pick moves a session to another
+       machine (the review of the fixes, REV22-1 to REV22-7): a log saved before (2.69's, its sessions naming none) is
+       named as it reads when it is opened, and every session saved names its machine. */
+    {
+      const marksOf = P => P.ev(() => { const L = window.__ironlog; const xs = L.IDX().byEx.machPress || []; return L.state.sessions.slice().sort((a, b) => (a.date < b.date ? -1 : 1)).filter(q => q.ex.some(b => b.exId === 'machPress')).map(q => [q.id, q.ex.filter(b => b.exId === 'machPress').map(b => b.mc || null).join(), (xs.find(x => x.sid === q.id) || {}).mk]); });
+      const hint = P => P.ev(() => ((document.querySelector('#blk-0 .hint') || {}).innerText || '').replace(/\s+/g, ' '));
+      const del = async (P, id) => { await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150); if (!(await P.ev(id => !!document.querySelector(`#view [data-act="histDel"][data-id="${id}"]`), id))) await P.tap(`#view [data-act="histToggle"][data-id="${id}"]`, 150); await P.tap(`#view [data-act="histDel"][data-id="${id}"]`, 250); if (await P.modal()) await mOk(P); };
+      const restore = async (P, id) => { await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150); await P.ev(() => { const x = document.querySelector('[data-sk="history:trash"]'); if (x) x.open = true; }); await wait(100); await P.tap(`#view [data-act="restore"][data-id="${id}"][data-k="session"]`, 300); };
+      const settingsUndo = async P => { await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); }); await wait(150); await P.ev(() => document.querySelectorAll('#view details').forEach(x => { x.open = true; })); await wait(100); await P.tap('#view [data-act="undo"]', 350); };
+      // 2.69 left the session that began a machine marked and the ones after it unnamed: the first machine's deleted.
+      {
+        const seed = `(S, L) => { ${mkS} S.sessions = [mk('m1', '2026-10-24', 120, [11, 11, 10], { nw: true }), mk('m2', '2026-10-31', 125, [11, 11, 10]), mk('m3', '2026-11-07', 125, [11, 11, 10])]; }`;
+        const P = await lifter({ items: [['machPress', 3, 8, 12, 120]], fresh: true, seed, movable: true, settings: { autoDone: false } }); const X = H(P);
+        const opened = await marksOf(P);
+        await del(P, 'm1'); await start(P); await X.sets(0, 125, [8, 8, 7]); await X.finish();
+        await X.week('2026-11-18T10:00:00'); await start(P); const m = await X.sheet();
+        ok(JSON.stringify(opened) === '[["m1","m1","m1"],["m2","m1","m1"],["m3","m1","m1"]]' && /Today: 33\+ reps over 3 sets at 125 lb/.test(await hint(P)) && /Last \(Nov 11, below usual\)/.test(await hint(P)) && /Machine Nov 11 · 125 lb × 8\s*✎\s*Add a machine$/.test(m.text), 'L-41: a 2.69 log opened names each session\'s machine as it reads; its first session deleted, the lift stays on one machine and a poor day repeats the target (33+ at 125 lb, below usual; REV22-1)', { opened, hint: await hint(P), m: m.text });
+        await P.close();
+      }
+      // A past workout logged while a workout on a machine just added is set aside: on the machine of its own day.
+      {
+        const seed = `(S, L) => { ${mkS} S.sessions = [mk('m1', '2026-10-31', 200, [11, 11, 10]), mk('m2', '2026-11-07', 200, [12, 11, 11])]; }`;
+        const P = await lifter({ items: [['machPress', 3, 8, 12, 120]], fresh: true, seed, settings: { autoDone: false } }); const X = H(P);
+        await start(P); await X.sheet(); await addMachine(P, 'Hammer'); await X.sets(0, 120, [10]);
+        await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150);
+        await P.tap('#view [data-act="pastOpen"]', 250);
+        await P.ev(() => { const el = document.querySelector('#modal input[data-pbind="date"]'); el.value = '2026-11-09'; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }); await wait(200);
+        await P.tap('#modal [data-act="pastGo"][data-day="0"]', 350);
+        const past = { tag: await X.tag(), marks: await P.ev(() => window.__ironlog.state.draft.ex.map(b => [b.nw || null, b.mc || null])), hint: await hint(P) };
+        await X.sets(0, 205, [11, 11, 10]); await X.finish();
+        const saved = (await marksOf(P)).find(x => x[0] !== 'm1' && x[0] !== 'm2');
+        ok(past.tag === null && JSON.stringify(past.marks) === '[[null,null]]' && /Target: 3\d\+ reps over 3 sets at 200 lb/.test(past.hint) && saved && saved[1] === '0' && saved[2] === '0', 'L-41: a past workout logged while a workout on a machine just added is set aside is on the machine of its own day, and saved on it by name (REV22-2)', { past, saved });
+        await P.close();
+      }
+      // A machine added, the lift added again, then Settings' Undo of the machine: no card is left on it.
+      {
+        const P = await lifter({ items: [['machPress', 3, 8, 12, 120], ['bench', 3, 6, 10, REST_BENCH]], fresh: true, seed: two, settings: { autoDone: false } }); const X = H(P);
+        await start(P); await X.sheet(); await addMachine(P, 'Hammer');
+        await P.tap('#view [data-act="pickSession"]', 300); await P.page.fill('#pickQ', 'Machine Chest Press'); await wait(250);
+        await P.tap('#modal [data-act="pickDo"][data-ex="machPress"]', 300); if ((await P.modal()) && (await P.modal()).kind === 'confirm') await mOk(P);
+        await settingsUndo(P);
+        const marks = await P.ev(() => window.__ironlog.state.draft.ex.filter(b => b.exId === 'machPress').map(b => [b.nw || null, b.mc || null]));
+        ok(JSON.stringify(marks) === '[[null,null],[null,null]]', 'L-41: Undo of a machine added takes it off every card of the lift, the one added since too (REV22-3)', marks);
+        await P.close();
+      }
+      // The session that began a machine restored after training since, and taken out of its session in an edit: no session moves.
+      {
+        const seed = `(S, L) => { ${mkS} S.sessions = [mk('s1', '2026-10-24', 200, [11, 11, 10]), mk('s2', '2026-10-31', 120, [11, 11, 10], { nw: true })]; S.exercises.find(e => e.id === 'machPress').machines = { 0: 'Cybex', s2: 'Hammer' }; }`;
+        const P = await lifter({ items: [['machPress', 3, 8, 12, 120]], fresh: true, seed, movable: true, settings: { autoDone: false } }); const X = H(P);
+        await del(P, 's2'); await start(P); await X.sets(0, 200, [12, 11, 11]); await X.finish();
+        await restore(P, 's2');
+        const after = await marksOf(P);
+        ok(after.length === 3 && after[2][1] === '0' && after[2][2] === '0', 'L-41: the session that began a machine restored after a workout on the first machine leaves that workout on the first (REV22-4)', after);
+        await P.close();
+        // Oct 15 had the bench too, so the edit that takes the press out still saves a session.
+        const seed2 = `(S, L) => { ${mkS} const g3 = mk('g3', '2026-10-15', 120, [11, 11, 10], { nw: true }); g3.ex.push({ exId: 'bench', rr: [6, 10], ps: 3, sets: [8, 8, 7].map(r => ({ w: 185 * LB, r, rir: 2, done: true })) }); S.sessions = [mk('g1', '2026-10-01', 200, [11, 11, 10]), mk('g2', '2026-10-08', 200, [12, 11, 11]), g3, mk('g4', '2026-10-22', 125, [11, 11, 10]), mk('g5', '2026-10-29', 130, [11, 11, 10])]; }`;
+        const Q = await lifter({ items: [['machPress', 3, 8, 12, 120]], fresh: true, seed: seed2, settings: { autoDone: false } }); const Y = H(Q);
+        await Y.edit('g3'); await Q.tap('#view [data-act="bMenu"][data-b="0"]', 200); await Q.tap('#modal [data-act="bMenuDo"][data-op="bDel"]', 300); if (await Q.modal()) await mOk(Q);
+        await Y.finish();
+        const out = await marksOf(Q);
+        ok(JSON.stringify(out.map(x => [x[0], x[2]])) === '[["g1","0"],["g2","0"],["g4","g3"],["g5","g3"]]', 'L-41: the lift taken out of the session that began its machine leaves the sessions after it on that machine (REV22-5)', out);
+        await Q.close();
+      }
+      // A session on the second machine deleted, then the one that began it, then the first restored: back on its machine.
+      {
+        const seed = `(S, L) => { ${mkS} S.sessions = [mk('g1', '2026-10-01', 200, [11, 11, 10]), mk('g3', '2026-10-15', 120, [11, 11, 10], { nw: true }), mk('g4', '2026-10-22', 125, [11, 11, 10]), mk('g5', '2026-10-29', 130, [11, 11, 10])]; }`;
+        const P = await lifter({ items: [['machPress', 3, 8, 12, 120]], fresh: true, seed, settings: { autoDone: false } });
+        await del(P, 'g4'); await del(P, 'g3'); await restore(P, 'g4');
+        const out = await marksOf(P);
+        ok(JSON.stringify(out.map(x => [x[0], x[2]])) === '[["g1","0"],["g4","g3"],["g5","g3"]]', 'L-41: a session restored after the one that began its machine was deleted is back on that machine (REV22-6)', out);
+        await P.close();
+      }
+      // A pick in the edit of the first machine's only session is kept.
+      {
+        const seed = `(S, L) => { ${mkS} S.sessions = [mk('f1', '2026-10-24', 115, [11, 11, 10]), mk('f2', '2026-10-31', 120, [11, 11, 10], { nw: true }), mk('f3', '2026-11-07', 125, [11, 11, 10])]; S.exercises.find(e => e.id === 'machPress').machines = { f2: 'Hammer' }; }`;
+        const P = await lifter({ items: [['machPress', 3, 8, 12, 120]], fresh: true, seed, settings: { autoDone: false } }); const X = H(P);
+        await X.edit('f1'); await X.sheet(); await P.tap('#modal [data-act="machinePick"][data-k="f2"]', 300); await X.finish();
+        const out = await marksOf(P);
+        ok(JSON.stringify(out.map(x => [x[0], x[2]])) === '[["f1","f2"],["f2","f2"],["f3","f2"]]', 'L-41: a machine picked in the edit of the first machine\'s only session is the one it is saved on (REV22-7)', out);
+        await P.close();
+      }
+    }
+
     // The lift added again, the first card (nothing done) taken out: the sets stay on the machine added.
     {
       const P = await lifter({ items: [['machPress', 3, 8, 12, 120], ['bench', 3, 6, 10, REST_BENCH]], fresh: true, seed: two, movable: true, settings: { autoDone: false } }); const X = H(P);

@@ -21,7 +21,7 @@ import { appU, EX, exName, IDX, loadLabel, sessionWords, toDApp } from './live';
 import { loadNote } from './loads';
 import { normalize } from './normalize';
 import { HIST_PAGE, setState, state, ui } from './store';
-import { distShow, distU, fmtK, keepFollowers, noLog, setShort, setStr } from './display';
+import { distShow, distU, fmtK, noLog, setShort, setStr } from './display';
 import { markup, pageTitle, placed, section, tabFoot } from './view';
 import { PR_ICON } from './icons';
 import type { Field } from './view';
@@ -405,7 +405,6 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           () => {
             const s = state.sessions.find(x => x.id === id);
             if (s && !s.demo) toTrash('session', s);
-            if (id) keepFollowers(id);
             state.sessions = state.sessions.filter(x => x.id !== id);
           },
           { undo: true }
