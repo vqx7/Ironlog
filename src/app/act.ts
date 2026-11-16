@@ -249,7 +249,10 @@ export function undoStep(): 'none' | 'open' | 'failed' | 'unchanged' | { said: s
   if (!e) return 'none';
   lastStep = undefined;
   undoPersist();
-  const before = canon(state);
+  /* The log as it is stored: read as every build reads it, in its documents' order, so an Undo that only wrote a session
+     in normalize's form or put it in date order took back nothing. */
+  const read = (): string => canon(chunksOf(normalize(parseJson(JSON.stringify(state)))));
+  const before = read();
   let done = false;
   if (e.inv) {
     try {
@@ -298,7 +301,7 @@ export function undoStep(): 'none' | 'open' | 'failed' | 'unchanged' | { said: s
   // before the step just undone, not what this undo is about to save.
   const below = undoStack[undoStack.length - 1];
   if (below && below.post == null) below.post = e.pre;
-  if (canon(state) === before) return 'unchanged';
+  if (read() === before) return 'unchanged';
   invalidate();
   saveNow();
   return { said: e.said || '' };

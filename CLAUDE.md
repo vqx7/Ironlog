@@ -74,7 +74,8 @@ stand-in cloud.
   reads as today, the caches) as its first parameter and its name ends in `In` (`suggestIn`, `IDXIn`, `coachIn`).
   `live.ts` holds the one model the app runs on (`LIVE`) and the adapters through which the screens call
   those functions by their old names (`export const suggest = live(suggestIn);`). Storage and sync are typed since
-  r56: `normalize.ts` (the log as every build reads it), `storage.ts` (the keys, where the save stands (`device`),
+  r56: `normalize.ts` (the log as every build reads it), `machines.ts` (the one writer of a machine's name, and how
+  two copies read one the app kept), `storage.ts` (the keys, where the save stands (`device`),
   the error log (`log`), Undo's steps, a log kept aside for another account, in IndexedDB as Undo's copies are) and
   `sync.ts` (every write of the log, the account's documents, the sync notes, another tab, one workout open on two
   phones, the account question); they reach the screens only through `fx` in `store.ts`, which `main.ts`
@@ -169,8 +170,10 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   last session before it that began one. A change that would move a session it does not touch to another machine names
   that session where it was, as part of the change, and a session the change puts in Recently deleted keeps the
   machine it was on (`keepMachines`, act.ts; V 2026-11-15, REV22; 2026-11-16): a session moves to another machine only
-  by a pick, never by another deleted, moved, restored or logged before it. Nothing is named as a log is read: the log
-  holds only what the lifter did. A ticked set
+  by a pick, never by another deleted, moved, restored or logged before it. Nothing is named as a log is read. A name
+  the app keeps is marked kept and is no one's edit: every comparison of two copies (sync, Undo, a first sign-in,
+  Recently deleted, duplicates) reads it as absent and keeps it where the copy kept names none, so it never beats a
+  lifter's correction or pick, and only `machines.ts` writes a machine's name (V, 2026-11-16, REV26; `tests/hygiene.js`). A ticked set
   of 0 reps is a missed set: kept and shown, counted toward no volume, PR, estimate or trend, read by the next target
   as a set short of the range and as 0 reps, so its session reads below its usual and the target repeats (V, 2026-11-04,
   387-B3), and sets missed never earn a step up (r56.2), and asked about first when its load is well

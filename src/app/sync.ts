@@ -20,7 +20,7 @@
 import { NET_MS } from './config';
 import { uid, hashStr, SECOND_MS } from './util';
 import { fmtDate } from './format';
-import { arr, parseJson, rec } from './records';
+import { arr, parseJson, rec, sessCmp } from './records';
 import type { Rec, Trashed } from './records';
 import {
   CORE_ARR,
@@ -38,7 +38,8 @@ import {
   stripDemo,
   unionById
 } from './chunks';
-import { Hx, canon, merge3List, merge3Val, mergeSession, mergeWorkout } from './merge';
+import { Hx, canon, merge3List, merge3Val, mergeSession, mergeWorkout, sameRecord } from './merge';
+import { keptOnSession, unname } from './machines';
 import { draftCardio, draftSession } from './session';
 import type { DraftLike } from './session';
 import type { CardioEntry, Session } from './types';
@@ -1409,10 +1410,10 @@ function firstUnnamed(
 ): { sessions: Session[]; unnamed: Map<string, Set<string>>; own: Set<string> } {
   const there = new Set(other.map(q => q.id)),
     lifts = new Set(other.flatMap(q => q.ex.map(b => b.exId)));
-  // A lift whose earliest session here is in the other log too: both logs' "0" is one machine. Sessions are kept in date order (normalize).
+  // A lift whose earliest session here is in the other log too: both logs' "0" is one machine. Read by date, as a past workout is put last.
   const shared = new Set<string>(),
     seen = new Set<string>();
-  for (const q of ss)
+  for (const q of [...ss].sort(sessCmp))
     for (const b of q.ex)
       if (!seen.has(b.exId)) {
         seen.add(b.exId);
@@ -1430,7 +1431,7 @@ function firstUnnamed(
         const ids = unnamed.get(b.exId) || new Set<string>();
         unnamed.set(b.exId, ids.add(q.id));
         const c = { ...b };
-        delete c.mc;
+        unname(c);
         return c;
       })
     };
@@ -1444,8 +1445,8 @@ function nameJoined(st: State, unnamed: ReadonlyMap<string, ReadonlySet<string>>
   for (const [exId, ids] of unnamed)
     for (const light of [0, 1]) {
       let to: string | undefined;
-      // Sessions are kept in date order (normalize), so the first met is the earliest.
-      for (const q of st.sessions) {
+      // Read by date, so the first met is the earliest, wherever a past workout put it in the log.
+      for (const q of [...st.sessions].sort(sessCmp)) {
         const r = ids.has(q.id) ? rd.get(`${q.id}|${exId}|${light}`) : undefined;
         if (!r) continue;
         if (to === undefined) to = r.key;
@@ -1474,23 +1475,31 @@ function mergeFirstLink(mine: State, rState: State, rids: readonly string[], rem
   const own = firstUnnamed(mine.sessions, rState.sessions);
   /* A session or cardio entry both logs hold with different contents (an old backup restored on the phone, say) keeps
      the account's copy, the one every other device has, and the phone's is put aside in Recently deleted, so nothing
-     the account holds is taken back and nothing is lost. */
+     the account holds is taken back and nothing is lost. Copies that differ only in the machine names the phone kept
+     are the same entry: the account's copy is kept with those names (machines.ts). */
   const trash: Trashed[] = unionById(state.trash, rState.trash);
-  const acct = (
-    list: readonly { id?: string | undefined }[],
-    phone: readonly { id?: string | undefined; date: string }[],
-    kind: 'session' | 'cardio'
-  ): void => {
-    const by = new Map(list.map(x => [x.id, x]));
-    for (const x of phone) {
-      const y = x.id ? by.get(x.id) : undefined;
-      if (x.id && y && canon(y) !== canon(x)) putAside(trash, { ...x, id: x.id }, kind);
-    }
+  const acct = <T extends { id?: string | undefined; date: string }>(
+    list: readonly T[],
+    phone: readonly T[],
+    kind: 'session' | 'cardio',
+    keep: (y: T, x: T) => T
+  ): T[] => {
+    const by = new Map(phone.map(x => [x.id, x]));
+    return list.map(y => {
+      const x = y.id ? by.get(y.id) : undefined;
+      if (!x || !x.id) return y;
+      if (sameRecord(y, x)) return keep(y, x);
+      putAside(trash, { ...x, id: x.id }, kind);
+      return y;
+    });
   };
-  const acctSessions = keptDraft && kept ? [...rState.sessions, kept] : rState.sessions,
-    acctCardio = aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio;
-  acct(acctSessions, own.sessions, 'session');
-  acct(acctCardio, mine.cardio, 'cardio');
+  const acctSessions = acct(
+      keptDraft && kept ? [...rState.sessions, kept] : rState.sessions,
+      own.sessions,
+      'session',
+      keptOnSession
+    ),
+    acctCardio = acct(aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio, mine.cardio, 'cardio', y => y);
   const joined = normalize({
     ...base,
     exercises: unionById(base.exercises, other.exercises),

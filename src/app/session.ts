@@ -8,6 +8,7 @@ import { uid, today, iso, PERCENT, pctOf, shareWords } from './util';
 import { isMissed, isWork, LIGHTER_SET_SHARE, LIGHT_SHARE, RIR_CALL_TOP } from './formulas';
 import { fmtDate, LIGHT_RIR } from './format';
 import { cleanChk, picIds, LIMITS } from './records';
+import { copyName, named } from './machines';
 
 /* ---------- loads and targets ---------- */
 
@@ -410,7 +411,7 @@ export function sameExOnce<X extends Joinable>(ex: readonly X[]): X[] {
     a.sets.push(...b.sets);
     // A new machine or gym marks the lift in the session, so its one exposure carries the mark when any block does.
     if (b.nw) a.nw = true;
-    if (b.mc && !a.mc) a.mc = b.mc;
+    if (!a.mc) copyName(a, b);
     if (wb > wa && b.rr) a.rr = b.rr;
     else if (!a.rr && b.rr) a.rr = b.rr;
   }
@@ -440,7 +441,7 @@ export function withNew<B extends { exId: string }>(
     const mc = mcOf(b.exId);
     // An edit can name a machine on a session marked new (machinePick): both are saved, the mark first.
     const nw = markedNew(d, b.exId) ? { nw: true as const } : {};
-    return mc || markedNew(d, b.exId) ? { ...b, ...nw, ...(mc ? { mc } : {}) } : b;
+    return mc || markedNew(d, b.exId) ? { ...b, ...nw, ...named(mc) } : b;
   });
 }
 

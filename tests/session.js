@@ -2038,6 +2038,28 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
         ok(JSON.stringify(out.map(x => [x[0], x[2]])) === '[["g1","0"],["g4","g3"],["g5","g3"]]', 'L-41: a session restored after the one that began its machine was deleted is back on that machine (REV22-6)', out);
         await P.close();
       }
+      /* The session that began a machine deleted, then a past workout logged between it and the sessions after it on a
+         machine added there, then the delete undone in Settings: those sessions stay on the machine they were on
+         (REV26-3). The first Undo, of the machine added in the workout already saved, says it has nothing to undo and
+         changes nothing (REV26-4). */
+      {
+        const seed = `(S, L) => { ${mkS} S.sessions = [mk('g1', '2026-10-01', 200, [11, 11, 10]), mk('g3', '2026-10-15', 120, [11, 11, 10], { nw: true }), mk('g4', '2026-10-22', 125, [11, 11, 10]), mk('g5', '2026-10-29', 130, [11, 11, 10])]; }`;
+        const P = await lifter({ items: [['machPress', 3, 8, 12, 120]], fresh: true, seed, settings: { autoDone: false } }); const X = H(P);
+        await del(P, 'g3');
+        await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150);
+        await P.tap('#view [data-act="pastOpen"]', 250);
+        await P.ev(() => { const el = document.querySelector('#modal input[data-pbind="date"]'); el.value = '2026-10-18'; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }); await wait(200);
+        await P.tap('#modal [data-act="pastGo"][data-day="0"]', 350);
+        await X.sheet(); await addMachine(P, ''); await X.sets(0, 100, [12, 12, 12]); await X.finish();
+        const saved = await marksOf(P);
+        await settingsUndo(P);
+        const first = { toast: await P.toast(), marks: await marksOf(P) };
+        for (let i = 0; i < 3 && (await P.ev(() => window.__ironlog.state.sessions.every(q => q.id !== 'g3'))); i++) await settingsUndo(P);
+        const out = await marksOf(P), past = out.find(x => !/^g/.test(x[0]));
+        ok(JSON.stringify(out.filter(x => /^g/.test(x[0])).map(x => [x[0], x[2]])) === '[["g1","0"],["g3","g3"],["g4","g3"],["g5","g3"]]' && past && past[2] === past[0], 'L-41: the delete of the session that began a machine undone after a past workout on a machine added before the sessions after it: those sessions stay on the machine they were on, the past workout on its own (REV26-3)', { saved, out });
+        ok(/^Nothing to undo/.test(first.toast) && JSON.stringify(first.marks) === JSON.stringify(saved), 'L-41: Undo of a machine added in a past workout already saved says there is nothing to undo, and changes nothing (REV26-4)', first);
+        await P.close();
+      }
       // A pick in the edit of the first machine's only session is kept.
       {
         const seed = `(S, L) => { ${mkS} S.sessions = [mk('f1', '2026-10-24', 115, [11, 11, 10]), mk('f2', '2026-10-31', 120, [11, 11, 10], { nw: true }), mk('f3', '2026-11-07', 125, [11, 11, 10])]; S.exercises.find(e => e.id === 'machPress').machines = { f2: 'Hammer' }; }`;

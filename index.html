@@ -2133,7 +2133,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var safeKey = (k2) => typeof k2 === "string" && !/["'<>&`]/.test(k2);
   var EXTRA_MAX = 2e3, EXTRA_KEYS = 20;
   var okExtraKey = (k2) => /^[A-Za-z][\w]{0,39}$/.test(k2) && !(k2 in Object.prototype);
-  var KNOWN_ITEM = /* @__PURE__ */ new Set(["jump", "pm"]), KNOWN_CARDIO = /* @__PURE__ */ new Set(["dist"]), KNOWN_MEAS = new Set(MEAS.map((x2) => x2[0])), KNOWN_SEX = /* @__PURE__ */ new Set(["inj", "ps", "nw", "mc", "pics"]), KNOWN_BLOCK = /* @__PURE__ */ new Set(["nw", "mc", "pics"]), KNOWN_SESS = /* @__PURE__ */ new Set(["pics", "part"]), KNOWN_DAY = /* @__PURE__ */ new Set(["pmName"]);
+  var KNOWN_ITEM = /* @__PURE__ */ new Set(["jump", "pm"]), KNOWN_CARDIO = /* @__PURE__ */ new Set(["dist"]), KNOWN_MEAS = new Set(MEAS.map((x2) => x2[0])), KNOWN_SEX = /* @__PURE__ */ new Set(["inj", "ps", "nw", "mc", "kp", "pics"]), KNOWN_BLOCK = /* @__PURE__ */ new Set(["nw", "mc", "kp", "pics"]), KNOWN_SESS = /* @__PURE__ */ new Set(["pics", "part"]), KNOWN_DAY = /* @__PURE__ */ new Set(["pmName"]);
   function cleanCal(c4) {
     if (!c4 || typeof c4 !== "object") return null;
     const at2 = numOr(c4.at, NaN), pred = numOr(c4.pred, NaN);
@@ -2284,7 +2284,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     let stretch = FIRST_MACHINE;
     for (const x2 of xs) {
       if (x2.nw) stretch = x2.sid;
-      x2.mk = x2.mc || stretch;
+      x2.mk = x2.named || stretch;
     }
   }
   function onMachine(xs, key) {
@@ -2766,6 +2766,94 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var effLeast = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)} or more reps in reserve`;
   var effLeastShort = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)}+ RIR`;
 
+  // src/app/machines.ts
+  function named(key) {
+    return key ? { mc: key } : {};
+  }
+  function keptName(key) {
+    return { mc: key, kp: true };
+  }
+  function pickName(b2, key) {
+    b2.mc = key;
+    delete b2.kp;
+  }
+  function unname(b2) {
+    delete b2.mc;
+    delete b2.kp;
+  }
+  function copyName(to, from) {
+    if (!from.mc) return;
+    to.mc = from.mc;
+    if (from.kp) to.kp = true;
+    else delete to.kp;
+  }
+  function cleanName(b2) {
+    return typeof b2.mc === "string" && b2.mc ? { mc: fixId(b2.mc), ...b2.kp === true ? { kp: true } : {} } : {};
+  }
+  function blocksOf(x2) {
+    const R2 = rec(x2);
+    if (!R2) return null;
+    const ex = arr(R2.ex);
+    if (ex) return { R: R2, inData: false, ex };
+    const D2 = rec(R2.data);
+    const dx = D2 && arr(D2.ex);
+    return dx ? { R: R2, inData: true, ex: dx } : null;
+  }
+  function withBlocks(R2, inData, ex) {
+    return inData ? { ...R2, data: { ...rec(R2.data), ex } } : { ...R2, ex };
+  }
+  var liftOf = (exId, light) => typeof exId === "string" ? `${exId}|${light ? 1 : 0}` : null;
+  function unkept(x2) {
+    const at2 = blocksOf(x2);
+    if (!at2 || !at2.ex.some((b2) => rec(b2)?.kp === true)) return x2;
+    return withBlocks(
+      at2.R,
+      at2.inData,
+      at2.ex.map((b2) => {
+        const B5 = rec(b2);
+        if (!B5 || B5.kp !== true) return b2;
+        const o3 = {};
+        for (const k2 of Object.keys(B5)) if (k2 !== "mc" && k2 !== "kp") o3[k2] = B5[k2];
+        return o3;
+      })
+    );
+  }
+  function keptOf(q) {
+    const kept = /* @__PURE__ */ new Map();
+    for (const b2 of blocksOf(q)?.ex || []) {
+      const B5 = rec(b2);
+      const k2 = B5 && B5.kp === true && typeof B5.mc === "string" ? liftOf(B5.exId, B5.light) : null;
+      if (B5 && k2 && typeof B5.mc === "string" && !kept.has(k2)) kept.set(k2, B5.mc);
+    }
+    return kept;
+  }
+  function keptOn(p3, q) {
+    const P2 = blocksOf(p3), kept = keptOf(q);
+    if (!P2 || !kept.size) return p3;
+    let put = false;
+    const ex = P2.ex.map((b2) => {
+      const B5 = rec(b2);
+      const k2 = B5 && !B5.mc ? liftOf(B5.exId, B5.light) : null;
+      const key = k2 ? kept.get(k2) : void 0;
+      if (!B5 || key === void 0) return b2;
+      put = true;
+      return { ...B5, ...keptName(key) };
+    });
+    return put ? withBlocks(P2.R, P2.inData, ex) : p3;
+  }
+  function keptOnSession(p3, q) {
+    const kept = keptOf(q);
+    let put = false;
+    const ex = p3.ex.map((b2) => {
+      const k2 = b2.mc ? null : liftOf(b2.exId, b2.light);
+      const key = k2 ? kept.get(k2) : void 0;
+      if (key === void 0) return b2;
+      put = true;
+      return { ...b2, ...keptName(key) };
+    });
+    return put ? { ...p3, ex } : p3;
+  }
+
   // src/app/session.ts
   function greyW(b2, si) {
     const s3 = b2 && b2.sets[si];
@@ -2943,7 +3031,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const wa = a2.sets.filter(isWork).length, wb = b2.sets.filter(isWork).length;
       a2.sets.push(...b2.sets);
       if (b2.nw) a2.nw = true;
-      if (b2.mc && !a2.mc) a2.mc = b2.mc;
+      if (!a2.mc) copyName(a2, b2);
       if (wb > wa && b2.rr) a2.rr = b2.rr;
       else if (!a2.rr && b2.rr) a2.rr = b2.rr;
     }
@@ -2956,7 +3044,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return ex.map((b2) => {
       const mc = mcOf(b2.exId);
       const nw = markedNew(d3, b2.exId) ? { nw: true } : {};
-      return mc || markedNew(d3, b2.exId) ? { ...b2, ...nw, ...mc ? { mc } : {} } : b2;
+      return mc || markedNew(d3, b2.exId) ? { ...b2, ...nw, ...named(mc) } : b2;
     });
   }
   function newRow(over) {
@@ -3854,7 +3942,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const f3 = rec(x2) || {};
     return "{" + Object.keys(f3).filter((k2) => f3[k2] !== void 0).sort().map((k2) => JSON.stringify(k2) + ":" + canon(f3[k2])).join(",") + "}";
   }
-  var Hx = (x2) => hashStr(canon(x2));
+  var Hx = (x2) => hashStr(canon(unkept(x2)));
+  var sameRecord = (a2, b2) => canon(unkept(a2)) === canon(unkept(b2));
+  function oneCopy(a2, b2) {
+    return canon(a2) <= canon(b2) ? keptOn(a2, b2) : keptOn(b2, a2);
+  }
+  function oneSession(a2, b2) {
+    return canon(a2) <= canon(b2) ? keptOnSession(a2, b2) : keptOnSession(b2, a2);
+  }
   function merge3List(base, l4, r4, remoteWins, stat) {
     const known = !!base;
     base = base || {};
@@ -3871,8 +3966,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     for (const id of [...L2.keys(), ...[...Rm.keys()].filter((k2) => !L2.has(k2))]) {
       const a2 = L2.get(id), b2 = Rm.get(id), bh = known ? base[id] : "?";
       const ah = a2 ? Hx(a2) : void 0, rh = b2 ? Hx(b2) : void 0;
-      if (ah === rh) {
-        out.push(a2);
+      if (a2 && b2 && ah === rh) {
+        out.push(oneCopy(a2, b2));
         continue;
       }
       if (!a2 || !b2) {
@@ -3882,15 +3977,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         continue;
       }
       if (ah === bh) {
-        out.push(b2);
+        out.push(keptOn(b2, a2));
         continue;
       }
       if (rh === bh) {
-        out.push(a2);
+        out.push(keptOn(a2, b2));
         continue;
       }
       stat.conflicts++;
-      out.push(remoteWins ? b2 : a2);
+      out.push(remoteWins ? keptOn(b2, a2) : keptOn(a2, b2));
     }
     return out;
   }
@@ -4403,8 +4498,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
                 ...typeof b2.ps === "number" && Number.isInteger(b2.ps) && b2.ps >= 1 && b2.ps <= LIMITS.sets ? { ps: b2.ps } : {},
                 // Done at a new machine or gym, last, as Finish writes it; absent unless marked, so older records keep their hash.
                 ...b2.nw === true ? { nw: true } : {},
-                // The machine it was done on, after it, as Finish writes it; absent unless named, so older records keep their hash.
-                ...typeof b2.mc === "string" && b2.mc ? { mc: fixId(b2.mc) } : {},
+                // The machine it was done on, after it, as Finish writes it, and whether the app kept that name; absent unless named, so older records keep their hash.
+                ...cleanName(b2),
                 // The pictures on its note, by id, last; absent unless there are any, so older records keep their hash.
                 ...picsField(b2.pics)
               },
@@ -4465,7 +4560,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         xs.push({
           sid: ss.id,
           ...m3.nw ? { nw: true } : {},
-          ...m3.mc ? { mc: m3.mc } : {},
+          ...m3.mc ? { named: m3.mc } : {},
           mk: "",
           k: `${ss.id}|${m3.exId}|${m3.light ? 1 : 0}`,
           ss,
@@ -4480,15 +4575,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function keepMachines(st, before2) {
     if (!before2.size) return false;
-    const named2 = /* @__PURE__ */ new Map();
+    const named3 = /* @__PURE__ */ new Map();
     for (const [k2, now2] of machineReadings(st)) {
       const was = before2.get(k2);
       if (!was || was.key === now2.key) continue;
-      const at2 = named2.get(now2.ss) || /* @__PURE__ */ new Map();
+      const at2 = named3.get(now2.ss) || /* @__PURE__ */ new Map();
       for (const i5 of now2.at) at2.set(i5, was.key);
-      named2.set(now2.ss, at2);
+      named3.set(now2.ss, at2);
     }
-    nameSessions(st, named2);
+    nameSessions(st, named3);
     const here = new Set(st.sessions.map((q) => q.id));
     let gone2 = false;
     for (const t4 of st.trash) {
@@ -4498,20 +4593,29 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const put = ex.map((b2) => {
         const B5 = rec(b2);
         const was = B5 && typeof B5.exId === "string" && !B5.mc ? before2.get(`${t4.id}|${B5.exId}|${B5.light ? 1 : 0}`) : void 0;
-        return was && B5 ? { ...B5, mc: was.key } : b2;
+        return was && B5 ? { ...B5, ...keptName(was.key) } : b2;
       });
       if (put.some((b2, i5) => b2 !== ex[i5])) {
         t4.data = { ...t4.data, ex: put };
         gone2 = true;
       }
     }
-    return named2.size > 0 || gone2;
+    return named3.size > 0 || gone2;
   }
-  function nameSessions(st, named2) {
+  function nameSessions(st, named3) {
     st.sessions.forEach((ss, k2) => {
-      const at2 = named2.get(ss);
+      const at2 = named3.get(ss);
       if (at2)
-        st.sessions[k2] = cleanSess({ ...ss, ex: ss.ex.map((b2, i5) => at2.has(i5) ? { ...b2, mc: at2.get(i5) } : b2) }, k2);
+        st.sessions[k2] = cleanSess(
+          {
+            ...ss,
+            ex: ss.ex.map((b2, i5) => {
+              const key = at2.get(i5);
+              return key === void 0 ? b2 : { ...b2, ...keptName(key) };
+            })
+          },
+          k2
+        );
     });
   }
   function freshState() {
@@ -4917,8 +5021,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           sets: (arr(b2.sets) || []).flatMap(cleanDraftSet),
           // Done at a new machine or gym, last, where the menu adds it; absent unless marked.
           ...b2.nw === true ? { nw: true } : {},
-          // The machine picked for it, after it; absent until one is picked.
-          ...typeof b2.mc === "string" && b2.mc ? { mc: fixId(b2.mc) } : {},
+          // The machine picked for it, after it, the lifter's; absent until one is picked.
+          ...named(typeof b2.mc === "string" && b2.mc ? fixId(b2.mc) : null),
           // The pictures on its note, by id, last; absent unless there are any.
           ...picsField(b2.pics)
         },
@@ -5040,7 +5144,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const revived = /* @__PURE__ */ new Set();
     const same = (cur2, data, clean, ok) => {
       try {
-        return !ok(data) || canon(clean(data, 0)) === canon(cur2);
+        return !ok(data) || sameRecord(clean(data, 0), cur2);
       } catch (e5) {
         return true;
       }
@@ -5080,7 +5184,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       trash: revived.size ? trash.filter((t4) => t4.kind === "routine" || !revived.has(t4.id)) : trash
     };
   }
-  function dedupe(list0, kind, size, trash) {
+  function dedupe(list0, kind, size, trash, one = (a2) => a2) {
     const byId = /* @__PURE__ */ new Map(), extra = [];
     for (const x2 of list0) {
       const o3 = byId.get(x2.id);
@@ -5088,7 +5192,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         byId.set(x2.id, x2);
         continue;
       }
-      if (canon(o3) === canon(x2)) continue;
+      if (sameRecord(o3, x2)) {
+        byId.set(x2.id, one(o3, x2));
+        continue;
+      }
       const keepNew = size(x2) > size(o3) || size(x2) === size(o3) && (x2.date > o3.date || x2.date === o3.date && canon(x2) > canon(o3));
       byId.set(x2.id, keepNew ? x2 : o3);
       extra.push(keepNew ? o3 : x2);
@@ -5182,7 +5289,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     drop3(before2 - sessions.length);
     let cardio;
     ({ sessions, cardio, trash } = reviveEdited(sessions, list("cardio"), trash));
-    sessions = dedupe(sessions, "session", (x2) => x2.ex.reduce((a2, b2) => a2 + b2.sets.length, 0), trash);
+    sessions = dedupe(sessions, "session", (x2) => x2.ex.reduce((a2, b2) => a2 + b2.sets.length, 0), trash, oneSession);
     cardio = dedupe(cardio, "cardio", (x2) => x2.min, trash);
     const bBefore = list("bodyweights").length;
     const bodyweights = cleanBodyweights(list("bodyweights"));
@@ -6075,7 +6182,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     await picsRefresh();
     return { id: row.id };
   }
-  function named() {
+  function named2() {
     const out = /* @__PURE__ */ new Set();
     const add = (v3) => {
       for (const x2 of arr(v3) || []) if (typeof x2 === "string" && isPicId(x2)) out.add(x2);
@@ -6093,7 +6200,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   async function picsTidy(now2 = Date.now()) {
     if (!ready) return;
-    const live2 = named();
+    const live2 = named2();
     const me = owner();
     const seen = [], gone2 = [];
     for (const r4 of rows.values()) {
@@ -7201,7 +7308,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           rr: b2.rr || null,
           ...b2.ps ? { ps: b2.ps } : {},
           ...b2.nw ? { nw: true } : {},
-          ...b2.mc ? { mc: b2.mc } : {},
+          ...b2.mc ? { named: b2.mc } : {},
           // Its machine, given by machineKeys once the lift's sessions are all in.
           mk: FIRST_MACHINE,
           // Read from its drop sets alone: neither the PR list nor the bests board reads it, as no drop set feeds a PR.
@@ -7691,11 +7798,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const num3 = ex.bw ? kg2 > 0 ? `BW+${n3(kg2)}` : `BW−${n3(-kg2)}` : n3(kg2);
     return `${num3} ${u4}`;
   }
-  function listLabelIn(M3, ex, kg2, named2) {
+  function listLabelIn(M3, ex, kg2, named3) {
     const lift = liftUIn(M3, ex), u4 = typedUnit(kg2) ?? lift;
     const label = loadLabelIn(M3, { bw: ex.bw, unit: u4 }, kg2);
     if (ex.bw && kg2 === 0) return label;
-    return named2 || u4 !== UIn(M3) || u4 !== lift || u4 !== appUIn(M3) ? `${label} ${u4}` : label;
+    return named3 || u4 !== UIn(M3) || u4 !== lift || u4 !== appUIn(M3) ? `${label} ${u4}` : label;
   }
   function swapWIn(M3, ex, res, nw) {
     M3 = liftModelIn(M3, ex);
@@ -11734,7 +11841,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function firstUnnamed(ss, other) {
     const there = new Set(other.map((q) => q.id)), lifts = new Set(other.flatMap((q) => q.ex.map((b2) => b2.exId)));
     const shared = /* @__PURE__ */ new Set(), seen = /* @__PURE__ */ new Set();
-    for (const q of ss)
+    for (const q of [...ss].sort(sessCmp))
       for (const b2 of q.ex)
         if (!seen.has(b2.exId)) {
           seen.add(b2.exId);
@@ -11751,7 +11858,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           const ids = unnamed.get(b2.exId) || /* @__PURE__ */ new Set();
           unnamed.set(b2.exId, ids.add(q.id));
           const c4 = { ...b2 };
-          delete c4.mc;
+          unname(c4);
           return c4;
         })
       };
@@ -11760,22 +11867,22 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function nameJoined(st, unnamed, own2) {
     const rd = machineReadings(st);
-    const named2 = /* @__PURE__ */ new Map();
+    const named3 = /* @__PURE__ */ new Map();
     for (const [exId, ids] of unnamed)
       for (const light of [0, 1]) {
         let to;
-        for (const q of st.sessions) {
+        for (const q of [...st.sessions].sort(sessCmp)) {
           const r4 = ids.has(q.id) ? rd.get(`${q.id}|${exId}|${light}`) : void 0;
           if (!r4) continue;
           if (to === void 0) to = r4.key;
           else if (own2.has(r4.key) && !own2.has(to)) {
-            const at2 = named2.get(q) || /* @__PURE__ */ new Map();
+            const at2 = named3.get(q) || /* @__PURE__ */ new Map();
             for (const i5 of r4.at) at2.set(i5, to);
-            named2.set(q, at2);
+            named3.set(q, at2);
           }
         }
       }
-    nameSessions(st, named2);
+    nameSessions(st, named3);
   }
   function mergeFirstLink(mine, rState, rids, remote) {
     const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
@@ -11784,16 +11891,22 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some((x2) => x2.id === kept.id);
     const own2 = firstUnnamed(mine.sessions, rState.sessions);
     const trash = unionById(state.trash, rState.trash);
-    const acct2 = (list, phone, kind) => {
-      const by = new Map(list.map((x2) => [x2.id, x2]));
-      for (const x2 of phone) {
-        const y2 = x2.id ? by.get(x2.id) : void 0;
-        if (x2.id && y2 && canon(y2) !== canon(x2)) putAside(trash, { ...x2, id: x2.id }, kind);
-      }
+    const acct2 = (list, phone, kind, keep) => {
+      const by = new Map(phone.map((x2) => [x2.id, x2]));
+      return list.map((y2) => {
+        const x2 = y2.id ? by.get(y2.id) : void 0;
+        if (!x2 || !x2.id) return y2;
+        if (sameRecord(y2, x2)) return keep(y2, x2);
+        putAside(trash, { ...x2, id: x2.id }, kind);
+        return y2;
+      });
     };
-    const acctSessions = keptDraft && kept ? [...rState.sessions, kept] : rState.sessions, acctCardio = aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio;
-    acct2(acctSessions, own2.sessions, "session");
-    acct2(acctCardio, mine.cardio, "cardio");
+    const acctSessions = acct2(
+      keptDraft && kept ? [...rState.sessions, kept] : rState.sessions,
+      own2.sessions,
+      "session",
+      keptOnSession
+    ), acctCardio = acct2(aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio, mine.cardio, "cardio", (y2) => y2);
     const joined2 = normalize({
       ...base,
       exercises: unionById(base.exercises, other.exercises),
@@ -12378,7 +12491,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     fx.undoToastHide();
     const readings = opts.inProgress || opts.whole ? null : machineReadings(state);
-    let named2 = false;
+    let named3 = false;
     const top0 = undoStack[undoStack.length - 1];
     if (opts.undo) snapshot(typeof opts.undo === "function" ? opts.undo : null);
     const top = undoStack[undoStack.length - 1];
@@ -12398,7 +12511,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     try {
       change();
       const was = readings || (logBefore && !opts.whole ? machineReadings(logBefore) : null);
-      if (was) named2 = keepMachines(state, was);
+      if (was) named3 = keepMachines(state, was);
       clockAfter(outerBegun);
       followsAfter(outerBegun);
     } catch (e5) {
@@ -12419,7 +12532,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       dropInside = false;
       logBefore = null;
     }
-    if (!opts.inProgress || inside || named2) invalidate();
+    if (!opts.inProgress || inside || named3) invalidate();
     if (opts.soon) saveSoon();
     else saveNow();
     return true;
@@ -12488,7 +12601,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!e5) return "none";
     lastStep = void 0;
     undoPersist();
-    const before2 = canon(state);
+    const read = () => canon(chunksOf(normalize(parseJson(JSON.stringify(state)))));
+    const before2 = read();
     let done = false;
     if (e5.inv) {
       try {
@@ -12525,7 +12639,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
     const below = undoStack[undoStack.length - 1];
     if (below && below.post == null) below.post = e5.pre;
-    if (canon(state) === before2) return "unchanged";
+    if (read() === before2) return "unchanged";
     invalidate();
     saveNow();
     return { said: e5.said || "" };
@@ -12564,8 +12678,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   var distU = () => appU() === "kg" ? "km" : "mi";
   var distShow = (km) => Math.round((appU() === "kg" ? km : km / KM_MI) * HUNDREDTHS) / HUNDREDTHS;
-  function setShort(ex, w2, r4, named2) {
-    const l4 = listLabel(ex, +(w2 ?? 0) || 0, named2);
+  function setShort(ex, w2, r4, named3) {
+    const l4 = listLabel(ex, +(w2 ?? 0) || 0, named3);
     return ex.timed ? `${l4} for ${r4}s` : `${l4}×${r4}`;
   }
   function setStr(ex, x2) {
@@ -15914,8 +16028,8 @@ ${more}`;
         it = { name: ex, sets: [], note: "", ...cell("ss") ? { ss: cell("ss") } : {} };
         ss.items.set(ex, it);
       }
-      const mc = at2(r4, cMachine);
-      if (mc && !it.mc) it.mc = mc;
+      const machine = at2(r4, cMachine);
+      if (machine && !it.machine) it.machine = machine;
       const en = String(cell("note") || "").trim();
       if (en && !it.note.split("; ").includes(en)) it.note = (it.note ? it.note + "; " + en : en).slice(0, LIMITS.note);
       const n3 = Math.min(Math.max(Math.round(num(cell("sets")) || 1), 1), ROW_SETS);
@@ -16057,7 +16171,7 @@ ${more}`;
     const lines = String(text).split(/\r?\n/);
     const S4 = [];
     let cur2 = null, ex = null, pend = null, hint = null;
-    const named2 = { kg: false, lb: false };
+    const named3 = { kg: false, lb: false };
     const unread = [];
     const day = (date, name, line) => {
       if (pend) unread.push(pend.raw);
@@ -16082,10 +16196,10 @@ ${more}`;
       const under = li > 0 && !!(lines[li - 1] || "").trim();
       if (/\bkgs?\b|\dkg/i.test(L2)) {
         hint = hint || "kg";
-        named2.kg = true;
+        named3.kg = true;
       } else if (/\blbs?\b|\dlb|#/i.test(L2)) {
         hint = hint || "lb";
-        named2.lb = true;
+        named3.lb = true;
       }
       const words = L2.split(/\s+/);
       let dt = impDate(L2);
@@ -16163,8 +16277,8 @@ ${more}`;
     }
     return {
       sessions: S4.filter((x2) => x2.items.length).map((x2) => ({ date: x2.date, name: x2.name, items: x2.items })),
-      unit: named2.kg && named2.lb ? null : hint,
-      ...named2.kg && named2.lb ? { mixed: true } : {},
+      unit: named3.kg && named3.lb ? null : hint,
+      ...named3.kg && named3.lb ? { mixed: true } : {},
       skipped: 0,
       cardio: 0,
       unread: unread.slice(0, UNREAD_SHOWN),
@@ -16602,7 +16716,7 @@ ${more}`;
       if (!g2.mc && !g2.nw) continue;
       for (const b2 of d3.ex)
         if (b2.exId === g2.exId && !gone2.includes(b2) && !b2.mc && !b2.nw) {
-          if (g2.mc) b2.mc = g2.mc;
+          if (g2.mc) copyName(b2, g2);
           else b2.nw = true;
           handed.push(b2);
         }
@@ -16613,7 +16727,7 @@ ${more}`;
     for (const c4 of cards) {
       const b2 = c4.bid && d3.ex.find((x2) => x2.bid === c4.bid) || (d3.ex.includes(c4) ? c4 : null);
       if (!b2) continue;
-      delete b2.mc;
+      unname(b2);
       delete b2.nw;
     }
   }
@@ -24036,7 +24150,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             note: it.note || "",
             rr: null,
             sets,
-            ...it.mc && onMachines(exo) ? { mc: fixId(it.mc) } : {}
+            ...named(it.machine && onMachines(exo) ? fixId(it.machine) : null)
           });
         if (it.ss) grp[exo.id] = it.ss;
       }
@@ -24119,10 +24233,10 @@ ${JSON.stringify(ctx, null, 1)}`;
       }
     return (x2) => x2.deload || x2.light || (tot[x2.id] || 0) > 0 && (off[x2.id] || 0) * 2 >= (tot[x2.id] || 0);
   }
-  function groupSessions(rec2, named2, offS) {
+  function groupSessions(rec2, named3, offS) {
     const groups = [];
     let pop;
-    if (named2) {
+    if (named3) {
       pop = rec2;
       const by = /* @__PURE__ */ new Map();
       for (const x2 of rec2) {
@@ -24232,9 +24346,9 @@ ${JSON.stringify(ctx, null, 1)}`;
     });
     return cyc;
   }
-  function dayFinder(named2, days) {
+  function dayFinder(named3, days) {
     return (x2) => {
-      if (named2) {
+      if (named3) {
         const k2 = nameOf(x2).slice(0, FROM_LOG.name).toLowerCase();
         const d3 = days.find((q) => q.g.name.toLowerCase() === k2);
         return d3 ? d3.day : null;
@@ -24258,8 +24372,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     const newest = all.reduce((m3, x2) => x2.date > m3 ? x2.date : m3, first.date);
     const rec2 = all.filter((x2) => x2.date >= addDays(newest, 1 - IMPORT_DAYS)).sort(byDate2);
     const offS = offSessions();
-    const named2 = !rec2.some((x2) => GENERIC_WORKOUT.test(nameOf(x2)));
-    const grouped = groupSessions(rec2, named2, offS);
+    const named3 = !rec2.some((x2) => GENERIC_WORKOUT.test(nameOf(x2)));
+    const grouped = groupSessions(rec2, named3, offS);
     let groups = grouped.groups;
     const pop = grouped.pop;
     groups = groups.filter((g2) => g2.list.length >= IMPORT_REPEATS);
@@ -24267,7 +24381,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       return null;
     const lastOf2 = (g2) => g2.list[g2.list.length - 1] || first;
     groups.sort((a2, b2) => byDate2(lastOf2(a2), lastOf2(b2)));
-    if (!named2)
+    if (!named3)
       groups.forEach((g2, i5) => {
         g2.name = "Day " + String.fromCharCode(LETTER_A + i5);
       });
@@ -24280,7 +24394,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     return {
       routine: { id: uid(), name: "From your log", schedule: "cycle", days: cyc },
       perWeek,
-      dayFor: dayFinder(named2, days)
+      dayFor: dayFinder(named3, days)
     };
   }
   async function liveLogFetch() {
@@ -26616,7 +26730,8 @@ ${JSON.stringify(ctx, null, 1)}`;
                 })
               ),
               ...b2.nw ? { nw: true } : {},
-              ...b2.mc ? { mc: b2.mc } : {},
+              // The machine it was saved on, the lifter's in the edit (machines.ts), saved as theirs.
+              ...named(b2.mc),
               ...b2.pics && b2.pics.length ? { pics: [...b2.pics] } : {}
             };
           })
@@ -26669,12 +26784,12 @@ ${JSON.stringify(ctx, null, 1)}`;
         }
         for (const b2 of d3.ex)
           if (b2.exId === b0.exId) {
-            if (ed) b2.mc = k2 === NEW_MACHINE ? ed : k2;
+            if (ed) pickName(b2, k2 === NEW_MACHINE ? ed : k2);
             else if (k2 === NEW_MACHINE) {
               b2.nw = true;
-              delete b2.mc;
+              unname(b2);
             } else {
-              b2.mc = k2;
+              pickName(b2, k2);
               delete b2.nw;
             }
           }
@@ -26686,10 +26801,10 @@ ${JSON.stringify(ctx, null, 1)}`;
       { undo: true }
     );
     rerenderKeepScroll();
-    const named2 = k2 === NEW_MACHINE ? name : machineName(e5.id, k2);
+    const named3 = k2 === NEW_MACHINE ? name : machineName(e5.id, k2);
     toast(
       // The machine's label is one thing to read, so it is kept on one line (no-break spaces) when the message wraps.
-      named2 ? `${e5.name}: ${named2.replace(/ /g, " ")}` : was ? `${e5.name}: ${`${fmtDate(was.date)} · ${listLabel(e5, was.w, true)} × ${was.r}`.replace(/ /g, " ")}` : `${e5.name}: new machine`,
+      named3 ? `${e5.name}: ${named3.replace(/ /g, " ")}` : was ? `${e5.name}: ${`${fmtDate(was.date)} · ${listLabel(e5, was.w, true)} × ${was.r}`.replace(/ /g, " ")}` : `${e5.name}: new machine`,
       true
     );
   }
@@ -30377,8 +30492,8 @@ ${JSON.stringify(ctx, null, 1)}`;
     });
     picsStart().then(
       () => {
-        const named2 = (x2) => !!(x2.pics && x2.pics.length) || x2.ex.some((b2) => !!(b2.pics && b2.pics.length));
-        if (state.draft && named2(state.draft) || state.sessions.some(named2)) rerenderKeepScroll();
+        const named3 = (x2) => !!(x2.pics && x2.pics.length) || x2.ex.some((b2) => !!(b2.pics && b2.pics.length));
+        if (state.draft && named3(state.draft) || state.sessions.some(named3)) rerenderKeepScroll();
       },
       (e5) => {
         log("pics-read", e5);

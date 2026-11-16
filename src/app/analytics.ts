@@ -185,10 +185,10 @@ export function draftMachineIn(M: Model, exId: string): string | null {
   return prior.length ? prior[prior.length - 1].mk : FIRST_MACHINE;
 }
 
-/* Saved, every session of a machine lift names the machine it is shown on (draftMachineIn), as the log names every
-   earlier one (normalize.ts pinMachines), so a session's machine changes only by a pick: never by another session
-   deleted, moved, restored or logged before it. A machine added in the session is named by the session's own id, the
-   key its mark (nw) gives it. */
+/* Saved, every session of a machine lift names the machine it is shown on (draftMachineIn), so a session's machine
+   changes only by a pick: never by another session deleted, moved, restored or logged before it (one saved before the
+   names were, a change keeps where it was: normalize.ts keepMachines). A machine added in the session is named by the
+   session's own id, the key its mark (nw) gives it. */
 /** The machine key to save on a lift of the session in progress, or null for a free weight (above). */
 export function machineToSaveIn(M: Model, exId: string): string | null {
   // A free weight's stretches are read as before (machineKeys): its sessions name no machine.
@@ -466,7 +466,7 @@ function idxSessionsIn(M: Model, sessions: readonly Session[]) {
         rr: b.rr || null,
         ...(b.ps ? { ps: b.ps } : {}),
         ...(b.nw ? { nw: true as const } : {}),
-        ...(b.mc ? { mc: b.mc } : {}),
+        ...(b.mc ? { named: b.mc } : {}),
         // Its machine, given by machineKeys once the lift's sessions are all in.
         mk: FIRST_MACHINE,
         // Read from its drop sets alone: neither the PR list nor the bests board reads it, as no drop set feeds a PR.

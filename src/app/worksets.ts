@@ -97,6 +97,7 @@ import type { TypedSet } from './importing';
 import { toast } from './toast';
 import { confirmBox, rerenderKeepScroll } from './page';
 import { bottomBarsTop, startTimer } from './timer';
+import { copyName, unname } from './machines';
 
 /* ---------- rows and blocks ---------- */
 
@@ -614,7 +615,7 @@ export function keepLiftMachine(d: { ex: DraftBlock[] }, gone: readonly DraftBlo
     if (!g.mc && !g.nw) continue;
     for (const b of d.ex)
       if (b.exId === g.exId && !gone.includes(b) && !b.mc && !b.nw) {
-        if (g.mc) b.mc = g.mc;
+        if (g.mc) copyName(b, g);
         else b.nw = true;
         handed.push(b);
       }
@@ -628,7 +629,7 @@ export function takeBackMachine(d: { ex: DraftBlock[] }, cards: readonly DraftBl
     // By the card's id: an Undo or a merge in between draws the workout's cards again, as other objects.
     const b = (c.bid && d.ex.find(x => x.bid === c.bid)) || (d.ex.includes(c) ? c : null);
     if (!b) continue;
-    delete b.mc;
+    unname(b);
     delete b.nw;
   }
 }

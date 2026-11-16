@@ -420,6 +420,29 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       }
       ok(bad.length === 0, 'a moved screen, and the page\'s start, changes the log only inside act, and never saves or keeps an Undo step by itself', bad);
     }
+    /* A machine's name (mc) and the mark of one the app kept (kp) are made, changed and taken off only in machines.ts,
+       so a name the app kept is never written as the lifter's, never taken for an edit, and never lost (V, 2026-11-16).
+       Read from the syntax tree: an assignment to, or delete of, a property of either name, or an object literal
+       giving one, anywhere else in src/app/. */
+    {
+      const NAMES = new Set(['mc', 'kp']);
+      const prop = n => (ts.isPropertyAccessExpression(n) ? n.name.text : ts.isElementAccessExpression(n) && ts.isStringLiteralLike(n.argumentExpression) ? n.argumentExpression.text : null);
+      const bad = [];
+      for (const m of mods.filter(x => x !== 'machines')) {
+        const txt = fs.readFileSync(path.join(APP, m + '.ts'), 'utf8');
+        const sf = ts.createSourceFile(m, txt, ts.ScriptTarget.Latest, true);
+        const at = n => `${m}.ts:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`;
+        (function walk(n) {
+          let w = null;
+          if (ts.isBinaryExpression(n) && n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && n.operatorToken.kind <= ts.SyntaxKind.LastAssignment && NAMES.has(prop(n.left))) w = n;
+          else if (ts.isDeleteExpression(n) && NAMES.has(prop(n.expression))) w = n;
+          else if ((ts.isPropertyAssignment(n) || ts.isShorthandPropertyAssignment(n)) && ts.isObjectLiteralExpression(n.parent) && n.name && NAMES.has(n.name.text)) w = n;
+          if (w) bad.push(`${at(w)} ${w.getText(sf).slice(0, 60)}`);
+          ts.forEachChild(n, walk);
+        })(sf);
+      }
+      ok(mods.includes('machines') && bad.length === 0, 'a machine\'s name and the mark of one the app kept are written only in machines.ts', bad);
+    }
   }
   // The checker is never switched off: no @ts-nocheck or @ts-ignore, and an
   // expected error only where listed with its reason (the second r51 review

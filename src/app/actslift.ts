@@ -37,6 +37,7 @@ import { toast } from './toast';
 import { carried } from './workstate';
 import type { Tap } from './workstate';
 import { blockWords, distIn, fillSets, parseSets, refreshBlock, refreshEx } from './worksets';
+import { pickName, unname } from './machines';
 
 /** The heaviest load a lift's limit may be, by the unit typed in. */
 const MAX_LOAD = { lb: 4000, kg: 2000 } as const;
@@ -86,12 +87,12 @@ function pickMachine(bi: number, k: string | undefined, name: string): void {
       }
       for (const b of d.ex)
         if (b.exId === b0.exId) {
-          if (ed) b.mc = k === NEW_MACHINE ? ed : k;
+          if (ed) pickName(b, k === NEW_MACHINE ? ed : k);
           else if (k === NEW_MACHINE) {
             b.nw = true;
-            delete b.mc;
+            unname(b);
           } else {
-            b.mc = k;
+            pickName(b, k);
             delete b.nw;
           }
         }

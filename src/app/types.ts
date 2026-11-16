@@ -146,8 +146,8 @@ export type Asked = [number | null, number | null];
     `nw` marks it done at a new machine or gym: the lift starts
     over from this session (a machine of its own, machineKeys), absent unless
     marked. `mc` names the machine it was done on (a machine lift's key,
-    machineKeys), written once the lift has been done on more than one;
-    absent otherwise. */
+    machineKeys), `kp` marking a name the app kept rather than the lifter gave
+    (machines.ts, the only code that writes either); absent when none. */
 export interface SessionEx {
   exId: string;
   note: string;
@@ -159,6 +159,7 @@ export interface SessionEx {
   ps?: number | undefined;
   nw?: true | undefined;
   mc?: string | undefined;
+  kp?: true | undefined;
   /** The pictures on this exercise's note, by id; their bytes are kept on the phone that took them (pics.ts). Absent when none. */
   pics?: string[] | undefined;
 }

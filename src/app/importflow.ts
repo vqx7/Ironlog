@@ -55,6 +55,7 @@ import { toast } from './toast';
 import { parkSettle } from './park';
 import { fitTargets } from './targets';
 import type { Tap } from './workstate';
+import { named } from './machines';
 
 declare global {
   interface Window {
@@ -466,7 +467,7 @@ export function impBuild(m: ImpPreviewModal): ImpBuilt {
           note: it.note || '',
           rr: null,
           sets,
-          ...(it.mc && onMachines(exo) ? { mc: fixId(it.mc) } : {})
+          ...named(it.machine && onMachines(exo) ? fixId(it.machine) : null)
         });
       if (it.ss) grp[exo.id] = it.ss;
     }
