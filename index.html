@@ -17037,7 +17037,8 @@ ${more}`;
     const b2 = d3 && d3.ex[bi];
     const s3 = b2 && b2.sets[si];
     if (!d3 || !b2 || !s3 || !s3.done) return false;
-    const said2 = prSaid(bi, si);
+    const said2 = saidAtFocus && saidAtFocus.s === s3 ? saidAtFocus.msg : prSaid(bi, si);
+    saidAtFocus = null;
     if (W.foldT && W.foldWait.has(b2)) {
       clearTimeout(W.foldT);
       const rf = blkRef(bi);
@@ -17051,6 +17052,12 @@ ${more}`;
     act(() => assessSet(bi, si), { inProgress: true });
     prRetell(said2, bi, si);
     return false;
+  }
+  var saidAtFocus = null;
+  function notePrAtFocus(bi, si) {
+    const d3 = state.draft;
+    const s3 = d3 && d3.ex[bi] && d3.ex[bi].sets[si];
+    saidAtFocus = s3 && s3.done ? { s: s3, msg: prSaid(bi, si) } : null;
   }
   function prSaid(bi, si) {
     const d3 = state.draft;
@@ -22662,7 +22669,10 @@ ${ms.length ? b`<div class="scroll-x u-mt10"><table class="t"><tr><th>Date</th>$
   function workoutFocus(e5) {
     const t4 = e5.target;
     if (!(t4 instanceof HTMLInputElement)) return;
-    if (t4.matches(".sg input[data-f]")) onSetFocus(t4);
+    if (t4.matches(".sg input[data-f]")) {
+      notePrAtFocus(Number(t4.dataset.b), Number(t4.dataset.s));
+      onSetFocus(t4);
+    }
     if (!t4.matches('.sg input[data-f="w"]')) return;
     if (W.lastDown.el !== t4 || Date.now() - W.lastDown.t > TOUCH_MS) return;
     armLoad(t4);

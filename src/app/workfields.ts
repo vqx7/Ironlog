@@ -42,6 +42,7 @@ import {
   liftsOn,
   stepAt,
   doneChanged,
+  notePrAtFocus,
   onLiftDraw
 } from './worksets';
 import { LIMITS, within } from './records';
@@ -392,7 +393,10 @@ export function workoutKey(e: KeyboardEvent): boolean {
 function workoutFocus(e: FocusEvent): void {
   const t = e.target;
   if (!(t instanceof HTMLInputElement)) return;
-  if (t.matches('.sg input[data-f]')) onSetFocus(t);
+  if (t.matches('.sg input[data-f]')) {
+    notePrAtFocus(Number(t.dataset.b), Number(t.dataset.s));
+    onSetFocus(t);
+  }
   if (!t.matches('.sg input[data-f="w"]')) return;
   // Focused by a touch on it just now (noteDown ran first): its release is still to come.
   if (W.lastDown.el !== t || Date.now() - W.lastDown.t > TOUCH_MS) return;

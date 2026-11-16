@@ -1042,7 +1042,9 @@ export function doneChanged(bi: number, si: number, f: 'w' | 'r'): boolean {
   const b = d && d.ex[bi];
   const s = b && b.sets[si];
   if (!d || !b || !s || !s.done) return false;
-  const said = prSaid(bi, si);
+  // The PR the set stood for as its field was focused: the number typed is in the set already.
+  const said = saidAtFocus && saidAtFocus.s === s ? saidAtFocus.msg : prSaid(bi, si);
+  saidAtFocus = null;
   if (W.foldT && W.foldWait.has(b)) {
     clearTimeout(W.foldT);
     const rf = blkRef(bi);
@@ -1056,6 +1058,16 @@ export function doneChanged(bi: number, si: number, f: 'w' | 'r'): boolean {
   act(() => assessSet(bi, si), { inProgress: true });
   prRetell(said, bi, si);
   return false;
+}
+
+/* A ticked set's PR as it stood when one of its fields was focused, so a number typed into it is told against what it
+   was (doneChanged): the set holds the number as it is typed. */
+let saidAtFocus: { s: DraftSet; msg: string | null } | null = null;
+/** Notes the PR message row si of lift bi stands for as one of its fields is focused (above). */
+export function notePrAtFocus(bi: number, si: number): void {
+  const d = state.draft;
+  const s = d && d.ex[bi] && d.ex[bi].sets[si];
+  saidAtFocus = s && s.done ? { s, msg: prSaid(bi, si) } : null;
 }
 
 /** The PR message row si of lift bi of the workout open raises as it stands, or null when it is no PR. */

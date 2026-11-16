@@ -331,6 +331,11 @@ async function stats(P) {
     await rate(0, 0);
     const rated = await showing();
     ok(first === `Weight PR: Barbell Bench Press, 155×7 (heaviest before 135 lb; best estimate for 6 to 10 reps to failure now ${lbE(e1(155, 9))})` && rated === `Weight PR: Barbell Bench Press, 155×7 (heaviest before 135 lb; best estimate for 6 to 10 reps to failure now ${lbE(e1(155, 7))})` && (await P.gold(0, 0)), 'B-7: 155 x 7 ticked as typed says its estimate at the usual effort (199); rated 0 in reserve, the message says the estimate every screen then shows (186) (REV16-C2)', { first, rated });
+    // Its reps typed again (6, at 0 in reserve): the message follows, as it does the effort. 155 x 6 to failure is
+    // 180, no higher than 135 x 8 at 2 in reserve, so it is a Weight PR with no new best estimate.
+    await P.page.fill(field('r', 0, 0), '6'); await P.page.press(field('r', 0, 0), 'Tab'); await wait(300);
+    const retyped = await showing();
+    ok(Math.round(e1(155, 6)) === Math.round(e1(135, 10)) && retyped === 'Weight PR: Barbell Bench Press, 155×6 (heaviest before 135 lb)', 'B-7: the ticked set\'s reps typed again (6), the message says the set it now is, a Weight PR with no new best estimate (REV16-C2)', retyped);
     await P.close();
     const Q = await lifter({ settings: { autoDone: true }, log: [['2026-11-07', [['bench', [[135, 8, 2], [135, 8, 2], [135, 7, 2]]]]]] });
     await start(Q);
