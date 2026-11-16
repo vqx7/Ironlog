@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-pLbL4Pz/m+ZT39qfJI+ruw/kw5Qs001IXOY50y8xGr8=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-UQWTGNt9yooh4IFfaQv4bfWoHZYtl6kMR8x/WcZCSSc=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.15-r116">
@@ -3870,6 +3870,34 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return "{" + Object.keys(f3).filter((k2) => f3[k2] !== void 0).sort().map((k2) => JSON.stringify(k2) + ":" + canon(f3[k2])).join(",") + "}";
   }
   var Hx = (x2) => hashStr(canon(x2));
+  function namesAside(x2) {
+    const R2 = rec(x2);
+    const ex = R2 && arr(R2.ex);
+    if (!R2 || !ex) return x2;
+    return {
+      ...R2,
+      ex: ex.map((b2) => {
+        const B5 = rec(b2);
+        if (!B5 || B5.mc === void 0) return b2;
+        const { mc: _mc, ...rest } = B5;
+        return rest;
+      })
+    };
+  }
+  function namesFrom(x2, from) {
+    const xe = arr(x2.ex), fe = arr(from.ex);
+    if (!xe || !fe) return x2;
+    let named2 = false;
+    const ex = xe.map((b2, i5) => {
+      const B5 = rec(b2);
+      if (!B5 || B5.mc !== void 0) return b2;
+      const F3 = rec(typeof B5.bid === "string" ? fe.find((f3) => rec(f3)?.bid === B5.bid) : fe[i5]);
+      if (!F3 || typeof F3.mc !== "string" || F3.exId !== B5.exId) return b2;
+      named2 = true;
+      return { ...B5, mc: F3.mc };
+    });
+    return named2 ? { ...x2, ex } : x2;
+  }
   function merge3List(base, l4, r4, remoteWins, stat) {
     const known = !!base;
     base = base || {};
@@ -3883,6 +3911,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (R2 && typeof R2.id === "string") Rm.set(R2.id, R2);
     }
     const out = [];
+    const asBase = (x2, h3, bh) => h3 === bh || Hx(namesAside(x2)) === bh;
     for (const id of [...L2.keys(), ...[...Rm.keys()].filter((k2) => !L2.has(k2))]) {
       const a2 = L2.get(id), b2 = Rm.get(id), bh = known ? base[id] : "?";
       const ah = a2 ? Hx(a2) : void 0, rh = b2 ? Hx(b2) : void 0;
@@ -3892,16 +3921,21 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       }
       if (!a2 || !b2) {
         const p3 = a2 || b2, ph = a2 ? ah : rh;
-        if (known && ph === bh) continue;
+        if (known && asBase(p3, ph, bh)) continue;
         out.push(p3);
         continue;
       }
-      if (ah === bh) {
-        out.push(b2);
+      const aSame = known && asBase(a2, ah, bh), bSame = known && asBase(b2, rh, bh);
+      if (aSame && bSame) {
+        out.push(ah === bh ? b2 : rh === bh ? a2 : remoteWins ? b2 : a2);
         continue;
       }
-      if (rh === bh) {
-        out.push(a2);
+      if (aSame) {
+        out.push(namesFrom(b2, a2));
+        continue;
+      }
+      if (bSame) {
+        out.push(namesFrom(a2, b2));
         continue;
       }
       stat.conflicts++;
@@ -5027,7 +5061,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const revived = /* @__PURE__ */ new Set();
     const same = (cur2, data, clean, ok) => {
       try {
-        return !ok(data) || canon(clean(data, 0)) === canon(cur2);
+        return !ok(data) || canon(namesAside(clean(data, 0))) === canon(namesAside(cur2));
       } catch (e5) {
         return true;
       }
@@ -11643,7 +11677,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
             continue;
           }
           const at2 = Date.now();
-          const doc = { v: 1, at: at2, et: cloud.editAt[x2.id] || at2, w: writeMark(), json };
+          const et = cloud.editAt[x2.id] || (b2 ? Number(b2.et) || Number(b2.at) || at2 : at2);
+          const doc = { v: 1, at: at2, et, w: writeMark(), json };
           cloud.sent[x2.id] = {
             w: doc.w,
             uid: cloud.uid || "",
@@ -11718,40 +11753,55 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     }
     return remote;
   }
-  function firstUnnamed(ss, lifts) {
-    return ss.map(
-      (q) => q.ex.some((b2) => b2.mc === FIRST_MACHINE && lifts.has(b2.exId)) ? {
+  function firstUnnamed(ss, other) {
+    const lifts = new Set(other.flatMap((q) => q.ex.map((b2) => b2.exId))), there = new Set(other.map((q) => q.id));
+    const unnamed = /* @__PURE__ */ new Map();
+    const sessions = ss.map((q) => {
+      if (there.has(q.id) || !q.ex.some((b2) => b2.mc === FIRST_MACHINE && lifts.has(b2.exId))) return q;
+      return {
         ...q,
         ex: q.ex.map((b2) => {
           if (b2.mc !== FIRST_MACHINE || !lifts.has(b2.exId)) return b2;
+          const ids = unnamed.get(b2.exId) || /* @__PURE__ */ new Set();
+          unnamed.set(b2.exId, ids.add(q.id));
           const c4 = { ...b2 };
           delete c4.mc;
           return c4;
         })
-      } : q
-    );
+      };
+    });
+    return { sessions, unnamed };
   }
-  var liftsIn = (ss) => new Set(ss.flatMap((q) => q.ex.map((b2) => b2.exId)));
+  function nameJoined(st, unnamed) {
+    nameMachines(st);
+    for (const [exId, ids] of unnamed) {
+      let to;
+      for (const q of st.sessions)
+        for (const b2 of q.ex)
+          if (b2.exId === exId && ids.has(q.id) && b2.mc !== void 0) {
+            if (to === void 0) to = b2.mc;
+            else b2.mc = to;
+          }
+    }
+  }
   function mergeFirstLink(mine, rState, rids, remote) {
     const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
     const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
     const kept = aside ? draftSession(aside) : null;
     const keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some((x2) => x2.id === kept.id);
+    const own2 = firstUnnamed(mine.sessions, rState.sessions);
     const joined2 = normalize({
       ...base,
       exercises: unionById(base.exercises, other.exercises),
       routines: unionById(base.routines, other.routines),
-      sessions: unionById(
-        firstUnnamed(mine.sessions, liftsIn(rState.sessions)),
-        keptDraft && kept ? [...rState.sessions, kept] : rState.sessions
-      ),
+      sessions: unionById(own2.sessions, keptDraft && kept ? [...rState.sessions, kept] : rState.sessions),
       bodyweights: unionById(mine.bodyweights, rState.bodyweights),
       measurements: unionById(mine.measurements, rState.measurements),
       cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio),
       trash: unionById(arr(state.trash) || [], arr(rState.trash) || []),
       draft: state.draft || rState.draft
     });
-    nameMachines(joined2);
+    nameJoined(joined2, own2.unnamed);
     setState(joined2);
     for (const id of rids) {
       cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
@@ -11997,21 +12047,19 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
   function joinLogs(base, here) {
     const away = base.draft && here.draft && here.draft.id !== base.draft.id ? base.draft : null;
     const kept = away ? draftSession(away) : null;
+    const own2 = firstUnnamed(kept ? [...here.sessions, kept] : here.sessions, base.sessions);
     const joined2 = normalize({
       ...base,
       exercises: unionById(base.exercises, here.exercises),
       routines: unionById(base.routines, here.routines),
-      sessions: unionById(
-        base.sessions,
-        firstUnnamed(kept ? [...here.sessions, kept] : here.sessions, liftsIn(base.sessions))
-      ),
+      sessions: unionById(base.sessions, own2.sessions),
       bodyweights: unionById(base.bodyweights, here.bodyweights),
       measurements: unionById(base.measurements, here.measurements),
       cardio: unionById(base.cardio, away ? [...here.cardio, ...draftCardio(away)] : here.cardio),
       trash: unionById(arr(base.trash) || [], arr(here.trash) || []),
       draft: here.draft || base.draft
     });
-    nameMachines(joined2);
+    nameJoined(joined2, own2.unnamed);
     return joined2;
   }
   async function keepHere(from) {
@@ -16555,8 +16603,10 @@ ${more}`;
     }
     return handed;
   }
-  function takeBackMachine(cards) {
-    for (const b2 of cards) {
+  function takeBackMachine(d3, cards) {
+    for (const c4 of cards) {
+      const b2 = c4.bid && d3.ex.find((x2) => x2.bid === c4.bid) || (d3.ex.includes(c4) ? c4 : null);
+      if (!b2) continue;
       delete b2.mc;
       delete b2.nw;
     }
@@ -25248,6 +25298,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       else if (r4 === "unchanged") toast("Nothing to undo: that change was already reversed or edited since.");
       else {
         toastHide();
+        if (state.draft) act(() => draftBack(), { inProgress: true });
         render();
         toast(r4.said ? `Undone: ${r4.said}` : "Undone");
       }
@@ -25671,7 +25722,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             if (i5 < 0) return false;
             dd.ex[i5] = orig;
           } else dd.ex.splice(dd.ex.indexOf(yy) + (ni < bi ? 1 : 0), 0, orig);
-          takeBackMachine(handed);
+          takeBackMachine(dd, handed);
           return true;
         }
       }
@@ -25711,7 +25762,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             if (i5 >= 0) dd.ex[i5] = orig;
             else return false;
           } else dd.ex[at2] = orig;
-          takeBackMachine(handed);
+          takeBackMachine(dd, handed);
           return true;
         }
       }
@@ -26278,7 +26329,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             order.forEach((b2, i5) => {
               if (drop3.has(i5) && !dd.ex.includes(b2)) dd.ex.splice(Math.min(i5, dd.ex.length), 0, b2);
             });
-            takeBackMachine(handed);
+            takeBackMachine(dd, handed);
             fixSupersets(dd.ex.map((b2) => b2.plan));
             return true;
           }
@@ -27613,7 +27664,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             if (!d32 || d32.id !== did2) return false;
             const k2 = prevBlk ? d32.ex.indexOf(prevBlk) : -1;
             d32.ex.splice(prevBlk == null ? 0 : k2 >= 0 ? k2 + 1 : Math.min(bi, d32.ex.length), 0, blk);
-            takeBackMachine(handed);
+            takeBackMachine(d32, handed);
             fixSupersets(d32.ex.map((x2) => x2.plan));
             return true;
           }
