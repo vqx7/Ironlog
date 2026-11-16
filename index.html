@@ -5565,6 +5565,33 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return null;
     }
   }
+  var READ_PX = 16e6;
+  var RGBA = 4;
+  function areaShrink(src, out) {
+    const sw = src.width, sh = src.height, w2 = out.width, h3 = out.height, s3 = src.data, o3 = out.data;
+    const fx2 = sw / w2, fy = sh / h3, per = 1 / (fx2 * fy);
+    const row = new Float32Array(sw * RGBA);
+    const px = new Float32Array(RGBA);
+    for (let y2 = 0; y2 < h3; y2++) {
+      row.fill(0);
+      const y0 = y2 * fy, y1 = y0 + fy;
+      for (let sy = Math.floor(y0); sy < Math.min(sh, Math.ceil(y1)); sy++) {
+        const wy = Math.min(y1, sy + 1) - Math.max(y0, sy);
+        const at2 = sy * sw * RGBA;
+        for (let i5 = 0; i5 < sw * RGBA; i5++) row[i5] += s3[at2 + i5] * wy;
+      }
+      for (let x2 = 0; x2 < w2; x2++) {
+        const x0 = x2 * fx2, x1 = x0 + fx2, k2 = (y2 * w2 + x2) * RGBA;
+        px.fill(0);
+        for (let sx = Math.floor(x0); sx < Math.min(sw, Math.ceil(x1)); sx++) {
+          const wx = Math.min(x1, sx + 1) - Math.max(x0, sx);
+          for (let c4 = 0; c4 < RGBA; c4++) px[c4] += row[sx * RGBA + c4] * wx;
+        }
+        for (let c4 = 0; c4 < RGBA; c4++) o3[k2 + c4] = px[c4] * per;
+      }
+    }
+    return out;
+  }
   async function jpegOf(f3, edge, quality, square = false) {
     const no = picRefusal(f3);
     if (no) return { why: no };
@@ -5574,18 +5601,26 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const sw = square ? side : d3.w, sh = square ? side : d3.h;
     const k2 = Math.min(1, edge / Math.max(sw, sh));
     const w2 = Math.max(1, Math.round(sw * k2)), h3 = Math.max(1, Math.round(sh * k2));
+    const r4 = Math.min(1, Math.sqrt(READ_PX / (sw * sh)));
+    const rw = Math.max(w2, Math.round(sw * r4)), rh = Math.max(h3, Math.round(sh * r4));
+    const rc = document.createElement("canvas");
+    rc.width = rw;
+    rc.height = rh;
+    const rx = rc.getContext("2d", { willReadFrequently: true });
     const cv = document.createElement("canvas");
     cv.width = w2;
     cv.height = h3;
     const cx = cv.getContext("2d");
-    if (!cx) {
+    if (!rx || !cx) {
       d3.done();
       return { why: "This phone could not prepare the photo." };
     }
-    cx.imageSmoothingEnabled = true;
-    cx.imageSmoothingQuality = "high";
-    cx.drawImage(d3.img, (d3.w - sw) / 2, (d3.h - sh) / 2, sw, sh, 0, 0, w2, h3);
+    rx.imageSmoothingEnabled = true;
+    rx.imageSmoothingQuality = "high";
+    rx.drawImage(d3.img, (d3.w - sw) / 2, (d3.h - sh) / 2, sw, sh, 0, 0, rw, rh);
     d3.done();
+    cx.putImageData(areaShrink(rx.getImageData(0, 0, rw, rh), cx.createImageData(w2, h3)), 0, 0);
+    rc.width = rc.height = 0;
     const blob = await new Promise((res) => cv.toBlob(res, "image/jpeg", quality));
     if (!blob) return { why: "This phone could not prepare the photo." };
     return { blob, w: w2, h: h3 };
@@ -12819,6 +12854,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const d3 = state.draft;
     return d3 ? d3.editingId || d3.id || null : null;
   }
+  function pendingMachine(exId) {
+    const d3 = state.draft;
+    const k2 = d3 ? draftMachine(exId) : null;
+    if (k2 === NEW_MACHINE) return true;
+    return !!d3 && !!d3.editingId && k2 === d3.editingId && !liftMachines(exId).some((x2) => x2.key === k2);
+  }
+  function canAddMachine(exId) {
+    const d3 = state.draft;
+    if (!d3 || pendingMachine(exId)) return false;
+    const ed = d3.editingId;
+    if (!(IDX().byEx[exId] || []).some((x2) => x2.sid !== ed)) return false;
+    return !ed || !liftMachines(exId).some((x2) => x2.key === ed);
+  }
   function machineNamesOf(e5) {
     if (!e5.machines) return {};
     const has = new Set(liftMachines(e5.id).map((x2) => x2.key));
@@ -12832,6 +12880,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const e5 = state.exercises.find((x2) => x2.id === exId);
     const k2 = key === NEW_MACHINE ? newMachineKey() : key;
     return k2 && e5 && e5.machines && e5.machines[k2] || null;
+  }
+  function keepFollowers(sid) {
+    for (const [exId, xs = []] of Object.entries(IDX().byEx)) {
+      if (!onMachines(EX(exId)) || !xs.some((x2) => x2.sid === sid && x2.nw)) continue;
+      for (const x2 of xs)
+        if (x2.sid !== sid && x2.mk === sid && !x2.mc) {
+          for (const b2 of state.sessions.find((s3) => s3.id === x2.sid)?.ex || []) if (b2.exId === exId && !b2.mc) b2.mc = sid;
+        }
+    }
   }
   var MACHINE_CHOICES = 6;
   function machineNameChoices(exId) {
@@ -15088,6 +15145,7 @@ ${more}`;
             () => {
               const s3 = state.sessions.find((x2) => x2.id === id);
               if (s3 && !s3.demo) toTrash("session", s3);
+              if (id) keepFollowers(id);
               state.sessions = state.sessions.filter((x2) => x2.id !== id);
             },
             { undo: true }
@@ -16402,6 +16460,8 @@ ${more}`;
   }
   function newBlock(exId, plan, opts) {
     const sg = suggest(exId, plan, opts);
+    const same = state.draft ? state.draft.ex.filter((b2) => b2.exId === exId) : [];
+    const mc = same.find((b2) => b2.mc)?.mc;
     return {
       bid: uid(),
       exId,
@@ -16420,7 +16480,8 @@ ${more}`;
       lastR: sg.lastR,
       basis: sg.basis || void 0,
       sw: sg.w == null ? null : sg.w,
-      sets: Array.from({ length: +plan.sets || DEFAULT_PLAN.sets }, () => newRow({ w: fillLoads() ? sg.w : null }))
+      sets: Array.from({ length: +plan.sets || DEFAULT_PLAN.sets }, () => newRow({ w: fillLoads() ? sg.w : null })),
+      ...mc ? { mc } : same.some((b2) => b2.nw) ? { nw: true } : {}
     };
   }
   function refreshBlock(b2) {
@@ -26463,7 +26524,7 @@ ${JSON.stringify(ctx, null, 1)}`;
               delete b2.nw;
             }
           }
-        if (k2 === NEW_MACHINE && name && key) nameMachine(e5, key, name);
+        if (k2 === NEW_MACHINE && key) nameMachine(e5, key, name);
         if (!ed) {
           for (const b2 of d3.ex) if (b2.exId === b0.exId) refreshBlock(b2);
         }
@@ -26479,9 +26540,9 @@ ${JSON.stringify(ctx, null, 1)}`;
     );
   }
   function nameMachine(e5, key, name) {
-    const next2 = machineNamesOf(e5);
-    delete next2[key];
+    const next2 = { ...e5.machines || {} };
     if (name) next2[key] = name;
+    else delete next2[key];
     if (Object.keys(next2).length) e5.machines = next2;
     else delete e5.machines;
   }
@@ -26547,7 +26608,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const f3 = document.getElementById("mcName");
       if (!d3 || !b0 || !e5 || !k2) return;
       const name = f3 instanceof HTMLInputElement ? f3.value.replace(/\s+/g, " ").trim().slice(0, LIMITS.name) : "";
-      if (k2 === NEW_MACHINE && draftMachine(b0.exId) !== NEW_MACHINE) {
+      if (k2 === NEW_MACHINE && !pendingMachine(b0.exId)) {
         closeModal();
         pickMachine(b2, k2, name);
         return;
@@ -27262,6 +27323,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     const editing = !!d3.editingId;
     act(() => {
       const was = d3.editingId ? state.sessions.find((x2) => x2.id === d3.editingId) : null;
+      if (was && d3.editingId && was.date !== sess.date) keepFollowers(d3.editingId);
       const t0 = was ? was.t : began || Date.now();
       if (t0) sess.t = t0;
       const pw = d3.editingId || d3.free ? void 0 : pwOf(state.routines, d3.routineId);
@@ -28685,7 +28747,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Back after more than ${BACK_DAYS / WEEK_DAYS} weeks off a lift</b>, up to ${awayWords(LONG_BREAK_DAYS)}: about ${pctOf(LIGHT_SHARE)}% of its last working weight, with ${BACK_RIR} or more reps in reserve (rule of thumb). The ${BACK_DAYS / WEEK_DAYS} weeks is a rule of thumb for where a break begins: strength falls the longer a lift is left. That first session back is the lift's new start: its trend and stall test start again from it, never drawn across the break. Until the lift is back at its load from before the break, each full session sets the next load: what its sets say fits your usual reps, never lower than the load you did and never past that load (rule of thumb). Back at it in fewer than your planned sets, the next session asks every set at it, for the fewest reps you did there. Then the usual rules. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about ${pctOf(LIGHT_SHARE)}% as long.</p>
    <p><b>Back after more than ${awayWords(LONG_BREAK_DAYS)} off a lift</b>, it starts fresh, as a lift never done: pick a load for your first session back and the next is worked out from it, so nothing from before the break is asked of you (rule of thumb: after that long, the strength left varies too much to guess). Your records stay. All-time bests keeps the best you ever did and, beside it, your best since you came back; a set is a PR only when it beats every set you ever did, and the recap says when you beat your best since you came back.</p>
    <p><b>Your gym</b> (Settings): the dumbbells, kettlebells, plates, and stack steps you have. Suggestions stay on them, and a weight you type for a dumbbell counts as the nearest one.</p>
-   <p><b>Machine</b> (in a machine, cable or Smith machine lift's ⋯ menu during a session, or tap the machine's name on the card): the machines the lift was done on, by the names you give them, and Add a machine. ✎ names one; a name you gave on another lift is one tap. A machine with no name shows the weight last done on it. Each machine keeps its own targets, PRs, bests, trend, and kg or lb, so a harder machine never reads as a lighter day and an easier one never makes a PR; pick one you used before and its numbers pick up where they were. A lift stays on the machine it was last done on until you pick another. Its sets and volume count as one exercise either way. Picked the wrong one? Edit the session in History and pick the right one there.</p>
+   <p><b>Machine</b> (in a machine, cable or Smith machine lift's ⋯ menu during a session, or tap the machine's name on the card): the machines the lift was done on, by the names you give them, and Add a machine; a lift's first workout lists the one you are on. ✎ names one; a name you gave on another lift is one tap. A machine with no name shows the weight last done on it. Each machine keeps its own targets, PRs, bests, trend, and kg or lb, so a harder machine never reads as a lighter day and an easier one never makes a PR; pick one you used before and its numbers pick up where they were. A lift stays on the machine it was last done on until you pick another. Its sets and volume count as one exercise either way. Picked the wrong one? Edit the session in History and pick the right one there.</p>
    <p><b>New machine or gym</b> (in a free weight's ⋯ menu): the lift starts over from that session, as from a first one, so its loads there give no target, PR, or best. Earlier sessions stay in History and its chart. Tap it again before Finish to take it off. Use it only when the loads there don't compare: plates and dumbbells weigh the same at every gym.</p>
    <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the ${numWord(USUAL_BEFORE)} before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks, and in a session on a day of your routine they are the sets the plan gave the lift that day, once a session has done that many, so fewer sets than planned never become the usual there; a blank session saves, with each lift your routine plans, the sets of its day nearest to what you did, among the days that plan it in that session's rep range (the fewer on a tie), and is held to them the same way; in Freestyle (Today opens blank) it saves none, and your own sets lead. Each session keeps the plan it was done to, so a plan changed later never rereads the sessions before it; sessions saved before version 2.12 read their own sets. A set counts toward them when its load is within ${shareWords(1 - LIGHTER_LOAD)} of the session's working weight, or at the usual load (rule of thumb): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set ${shareWords(1 - LIGHTER_LOAD)} or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than ${pctOf(1 - USUAL_SHARE)}% by strength, a rule of thumb), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the ${numWord(USUAL_BEFORE)} before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled fewer sets, below usual, lighter, or deload when it was. When it did not set the target, the next target comes from the last full session, and the i beside the target names its date; grey reps come from that session too after one below usual or done lighter.</p>
@@ -28923,19 +28985,18 @@ ${JSON.stringify(ctx, null, 1)}`;
     const b2 = blockAt(m3.b);
     if (!b2) return null;
     const ex = EX(b2.exId);
-    const d3 = state.draft;
     const ms = liftMachines(b2.exId);
     if (m3.naming != null) return machineNameSheet(m3.b, b2.exId, m3.naming);
     const k02 = draftMachine(b2.exId);
-    const own2 = !!d3 && !!d3.editingId && k02 === d3.editingId;
-    const now2 = own2 && !ms.some((x2) => x2.key === k02) ? NEW_MACHINE : k02;
+    const now2 = pendingMachine(b2.exId) ? NEW_MACHINE : k02;
     const row = (k2, name, last) => b`<div class="mcitem"><button class=${"mcrow" + (k2 === now2 ? " on" : "")} data-act="machinePick" data-b=${m3.b} data-k=${k2} aria-pressed=${String(k2 === now2)}><span class="mcdot"></span><span class="mcl">${name ? b`<b>${name}</b>${last ? b`<span class="mcsub">${last}</span>` : A}` : last ?? "New machine"}</span></button><button type="button" class="ib mcpen" data-act="machineNaming" data-b=${m3.b} data-k=${k2} aria-label=${`Name ${name || last || "the new machine"}`}>✎</button></div>`;
     const lastOf2 = (x2) => `${fmtDate(x2.date)} · ${listLabel(ex, x2.w, true)} × ${x2.r}`;
+    const unlisted = now2 && !ms.some((x2) => x2.key === now2) ? row(now2, machineName(b2.exId, now2), null) : A;
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}</h3>${closeX()}</div>
-    <p class="mc-h">Machine</p><div class="mclist">${ms.map((x2) => row(x2.key, machineName(b2.exId, x2.key), lastOf2(x2)))}${now2 === NEW_MACHINE ? row(NEW_MACHINE, machineName(b2.exId, NEW_MACHINE), null) : own2 ? A : b`<button type="button" class="btn fullw" data-act="machineNaming" data-b=${m3.b} data-k=${NEW_MACHINE}>Add a machine</button>`}</div></div>`;
+    <p class="mc-h">Machine</p><div class="mclist">${ms.map((x2) => row(x2.key, machineName(b2.exId, x2.key), lastOf2(x2)))}${unlisted}${canAddMachine(b2.exId) ? b`<button type="button" class="btn fullw" data-act="machineNaming" data-b=${m3.b} data-k=${NEW_MACHINE}>Add a machine</button>` : A}</div></div>`;
   }
   function machineNameSheet(b2, exId, key) {
-    const adding = key === NEW_MACHINE && draftMachine(exId) !== NEW_MACHINE;
+    const adding = key === NEW_MACHINE && !pendingMachine(exId);
     const picks = machineNameChoices(exId);
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${adding ? "Add a machine" : "Name this machine"}</h3>${closeX()}</div>
     <input type="text" id="mcName" aria-label="Machine name" maxlength=${LIMITS.name} autocomplete="off" placeholder="Machine name" .value=${machineName(exId, key) || ""} enterkeyhint="done">

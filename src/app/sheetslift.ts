@@ -25,7 +25,7 @@ import {
 } from './live';
 import { NEW_MACHINE } from './analytics';
 import { fmtDate } from './format';
-import { loadLong, machineName, machineNameChoices, rirShow } from './display';
+import { canAddMachine, loadLong, machineName, machineNameChoices, pendingMachine, rirShow } from './display';
 import { markedNew } from './session';
 import type { DraftBlock } from './types';
 import { loadNote } from './loads';
@@ -134,27 +134,23 @@ export function machineSheet(m: { b: number; naming?: string | undefined }): Tem
   const b = blockAt(m.b);
   if (!b) return null;
   const ex = EX(b.exId);
-  const d = state.draft;
   const ms = liftMachines(b.exId);
   if (m.naming != null) return machineNameSheet(m.b, b.exId, m.naming);
-  /* In an edit, a machine added names the session by its own key, a row only once it is saved: until then, New
-     machine. A session on its own key already (the one that began a machine) can begin no other, so nothing is offered
-     to add. */
+  // The machine in use: one added and not saved is listed as New machine (by its name once given) until it is saved.
   const k0 = draftMachine(b.exId);
-  const own = !!d && !!d.editingId && k0 === d.editingId;
-  const now = own && !ms.some(x => x.key === k0) ? NEW_MACHINE : k0;
+  const now = pendingMachine(b.exId) ? NEW_MACHINE : k0;
   const row = (k: string, name: string | null, last: string | null): TemplateResult =>
     html`<div class="mcitem"><button class=${'mcrow' + (k === now ? ' on' : '')} data-act="machinePick" data-b=${m.b} data-k=${k} aria-pressed=${String(k === now)}><span class="mcdot"></span><span class="mcl">${
       name ? html`<b>${name}</b>${last ? html`<span class="mcsub">${last}</span>` : nothing}` : (last ?? 'New machine')
     }</span></button><button type="button" class="ib mcpen" data-act="machineNaming" data-b=${m.b} data-k=${k} aria-label=${`Name ${name || last || 'the new machine'}`}>✎</button></div>`;
   const lastOf = (x: (typeof ms)[number]): string => `${fmtDate(x.date)} · ${listLabel(ex, x.w, true)} × ${x.r}`;
+  // A lift never done is on its first machine, listed so its pencil can name it.
+  const unlisted = now && !ms.some(x => x.key === now) ? row(now, machineName(b.exId, now), null) : nothing;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}</h3>${closeX()}</div>
-    <p class="mc-h">Machine</p><div class="mclist">${ms.map(x => row(x.key, machineName(b.exId, x.key), lastOf(x)))}${
-      now === NEW_MACHINE
-        ? row(NEW_MACHINE, machineName(b.exId, NEW_MACHINE), null)
-        : own
-          ? nothing
-          : html`<button type="button" class="btn fullw" data-act="machineNaming" data-b=${m.b} data-k=${NEW_MACHINE}>Add a machine</button>`
+    <p class="mc-h">Machine</p><div class="mclist">${ms.map(x => row(x.key, machineName(b.exId, x.key), lastOf(x)))}${unlisted}${
+      canAddMachine(b.exId)
+        ? html`<button type="button" class="btn fullw" data-act="machineNaming" data-b=${m.b} data-k=${NEW_MACHINE}>Add a machine</button>`
+        : nothing
     }</div></div>`;
 }
 
@@ -163,7 +159,7 @@ export function machineSheet(m: { b: number; naming?: string | undefined }): Tem
    by its last session once it has one; a name cleared takes the name away. */
 /** The name of one of a lift's machines to type, or of a machine to add (NEW_MACHINE). */
 function machineNameSheet(b: number, exId: string, key: string): TemplateResult {
-  const adding = key === NEW_MACHINE && draftMachine(exId) !== NEW_MACHINE;
+  const adding = key === NEW_MACHINE && !pendingMachine(exId);
   const picks = machineNameChoices(exId);
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${adding ? 'Add a machine' : 'Name this machine'}</h3>${closeX()}</div>
     <input type="text" id="mcName" aria-label="Machine name" maxlength=${LIMITS.name} autocomplete="off" placeholder="Machine name" .value=${machineName(exId, key) || ''} enterkeyhint="done">

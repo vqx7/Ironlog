@@ -31,7 +31,7 @@ import { fmtDate } from './format';
 import { typedUnit } from './units';
 import { state, ui } from './store';
 import { act } from './act';
-import { goalWords, machineName, machineNamesOf, newMachineKey } from './display';
+import { goalWords, machineName, newMachineKey, pendingMachine } from './display';
 import { closeModal, openModal, render, renderModal, rerenderKeepScroll } from './page';
 import { toast } from './toast';
 import { carried } from './workstate';
@@ -95,7 +95,8 @@ function pickMachine(bi: number, k: string | undefined, name: string): void {
             delete b.nw;
           }
         }
-      if (k === NEW_MACHINE && name && key) nameMachine(e, key, name);
+      // A machine added is named as its field was left: cleared, it has no name.
+      if (k === NEW_MACHINE && key) nameMachine(e, key, name);
       if (!ed) for (const b of d.ex) if (b.exId === b0.exId) refreshBlock(b);
     },
     { undo: true }
@@ -113,14 +114,16 @@ function pickMachine(bi: number, k: string | undefined, name: string): void {
   );
 }
 
-/* A lift's machine named, inside a change: the name under the machine's key (none takes it away), and the names of
-   machines the lift no longer has (one marked new in a workout left unsaved) dropped, so the lift keeps only names it
-   can show. Absent once none is left, as on a lift never named. */
+/* A lift's machine named, inside a change: the name under the machine's key, in its place among the others (none
+   takes it away), and every other name kept as it is, whether or not its machine is in the log now: a workout set aside,
+   a session in Recently deleted or a workout discarded and brought back by Undo brings its machine back, and with it its
+   name. A name whose machine is gone is never offered or said (machineNamesOf). Absent once none is left, as on a lift
+   never named. */
 /** Names machine `key` of lift `e` (an empty name takes the name away), as above. */
 function nameMachine(e: Exercise, key: string, name: string): void {
-  const next = machineNamesOf(e);
-  delete next[key];
+  const next: Record<string, string> = { ...(e.machines || {}) };
   if (name) next[key] = name;
+  else delete next[key];
   if (Object.keys(next).length) e.machines = next;
   else delete e.machines;
 }
@@ -189,7 +192,7 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const f = document.getElementById('mcName');
     if (!d || !b0 || !e || !k) return;
     const name = f instanceof HTMLInputElement ? f.value.replace(/\s+/g, ' ').trim().slice(0, LIMITS.name) : '';
-    if (k === NEW_MACHINE && draftMachine(b0.exId) !== NEW_MACHINE) {
+    if (k === NEW_MACHINE && !pendingMachine(b0.exId)) {
       closeModal();
       pickMachine(b, k, name);
       return;

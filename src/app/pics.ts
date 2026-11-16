@@ -181,6 +181,53 @@ async function decode(f: Blob): Promise<{ img: CanvasImageSource; w: number; h: 
   }
 }
 
+/** The most pixels a photo is read at to be shrunk: an iPhone's canvas holds about 16.7 million, so a larger photo is first drawn smaller. */
+const READ_PX = 16_000_000;
+
+/* A photo shrunk by giving each new pixel the average of every pixel it covers, worked out here rather than left to
+   the browser: WebKit, every iPhone's browser, shrinks by reading one pixel of each several, so a photo shrunk 3
+   times came out grainy and fine lines in bands. Rows are added up one new row at a time, so the only large memory
+   is the photo itself. */
+/** The values of one pixel in an ImageData: red, green, blue and alpha. */
+const RGBA = 4;
+
+/** `src` shrunk into `out` by area average (above); `out` returned. */
+function areaShrink(src: ImageData, out: ImageData): ImageData {
+  const sw = src.width,
+    sh = src.height,
+    w = out.width,
+    h = out.height,
+    s = src.data,
+    o = out.data;
+  const fx = sw / w,
+    fy = sh / h,
+    per = 1 / (fx * fy);
+  const row = new Float32Array(sw * RGBA);
+  const px = new Float32Array(RGBA);
+  for (let y = 0; y < h; y++) {
+    row.fill(0);
+    const y0 = y * fy,
+      y1 = y0 + fy;
+    for (let sy = Math.floor(y0); sy < Math.min(sh, Math.ceil(y1)); sy++) {
+      const wy = Math.min(y1, sy + 1) - Math.max(y0, sy);
+      const at = sy * sw * RGBA;
+      for (let i = 0; i < sw * RGBA; i++) row[i] += s[at + i] * wy;
+    }
+    for (let x = 0; x < w; x++) {
+      const x0 = x * fx,
+        x1 = x0 + fx,
+        k = (y * w + x) * RGBA;
+      px.fill(0);
+      for (let sx = Math.floor(x0); sx < Math.min(sw, Math.ceil(x1)); sx++) {
+        const wx = Math.min(x1, sx + 1) - Math.max(x0, sx);
+        for (let c = 0; c < RGBA; c++) px[c] += row[sx * RGBA + c] * wx;
+      }
+      for (let c = 0; c < RGBA; c++) o[k + c] = px[c] * per;
+    }
+  }
+  return out;
+}
+
 /* Every photo the app keeps, a note's picture or the profile photo,
    goes through this one redraw, so the refusals and the stripping of a
    photo's hidden data are the same for both. `square` crops the middle of
@@ -202,19 +249,29 @@ export async function jpegOf(
   const k = Math.min(1, edge / Math.max(sw, sh));
   const w = Math.max(1, Math.round(sw * k)),
     h = Math.max(1, Math.round(sh * k));
+  // The photo read at its own size, or drawn smaller first when it is too large to read whole.
+  const r = Math.min(1, Math.sqrt(READ_PX / (sw * sh)));
+  const rw = Math.max(w, Math.round(sw * r)),
+    rh = Math.max(h, Math.round(sh * r));
+  const rc = document.createElement('canvas');
+  rc.width = rw;
+  rc.height = rh;
+  const rx = rc.getContext('2d', { willReadFrequently: true });
   const cv = document.createElement('canvas');
   cv.width = w;
   cv.height = h;
   const cx = cv.getContext('2d');
-  if (!cx) {
+  if (!rx || !cx) {
     d.done();
     return { why: 'This phone could not prepare the photo.' };
   }
-  // The browser's best shrink: its default is its quickest, which reads a few pixels of each several a photo is shrunk by.
-  cx.imageSmoothingEnabled = true;
-  cx.imageSmoothingQuality = 'high';
-  cx.drawImage(d.img, (d.w - sw) / 2, (d.h - sh) / 2, sw, sh, 0, 0, w, h);
+  rx.imageSmoothingEnabled = true;
+  rx.imageSmoothingQuality = 'high';
+  rx.drawImage(d.img, (d.w - sw) / 2, (d.h - sh) / 2, sw, sh, 0, 0, rw, rh);
   d.done();
+  cx.putImageData(areaShrink(rx.getImageData(0, 0, rw, rh), cx.createImageData(w, h)), 0, 0);
+  // The large canvas is let go at once: a phone holds only so much canvas at a time.
+  rc.width = rc.height = 0;
   const blob = await new Promise<Blob | null>(res => cv.toBlob(res, 'image/jpeg', quality));
   if (!blob) return { why: 'This phone could not prepare the photo.' };
   return { blob, w, h };

@@ -4,7 +4,7 @@
 import { IN, KM_MI, FT_IN } from './units';
 import { NIL, fmtDate, fmtWith, missedTag } from './format';
 import { bestFit, e1, fitE, trendE, RECENT_DAYS, BEST_WEEKS, TAPE_WEEKS } from './formulas';
-import { MK, ML, isCommon, isCompound, loadMode, nameMatch } from './library';
+import { MK, ML, isCommon, isCompound, loadMode, nameMatch, onMachines } from './library';
 import { dayParts, dayWorkout, partOf, routineEmpty, routineSig, sessDayIdx } from './routines';
 import { rec } from './records';
 import { REGION_WKS, REGION_WK_DEFAULT } from './layout';
@@ -44,6 +44,7 @@ import {
   dateIndex,
   dayMinutes,
   defPlan,
+  draftMachine,
   EX,
   IDX,
   isRestWeek,
@@ -826,9 +827,33 @@ export function newMachineKey(): string | null {
   return d ? d.editingId || d.id || null : null;
 }
 
+/* A lift's machine added in the session in progress and not saved yet: a workout marks the lift new (NEW_MACHINE); an
+   edit puts the session on its own key, which is new while no session of the lift is on it. Its name is kept under the
+   key it will have (newMachineKey). */
+/** Whether the session in progress has lift `exId` on a machine added in it and not saved yet (above). */
+export function pendingMachine(exId: string): boolean {
+  const d = state.draft;
+  const k = d ? draftMachine(exId) : null;
+  if (k === NEW_MACHINE) return true;
+  return !!d && !!d.editingId && k === d.editingId && !liftMachines(exId).some(x => x.key === k);
+}
+
+/* A machine is added only beside another the lift was done on, and only as one it has not got: a lift never done, or
+   the edit of its only session, has one machine, the one in use, named by its pencil; while one added is not saved,
+   there is no second; and in an edit a machine added takes the session's own key, so where that key is a machine of
+   the lift already (the session began it) one added would be that machine again. */
+/** Whether the Machine sheet offers to add a machine for lift `exId` in the session in progress (above). */
+export function canAddMachine(exId: string): boolean {
+  const d = state.draft;
+  if (!d || pendingMachine(exId)) return false;
+  const ed = d.editingId;
+  if (!(IDX().byEx[exId] || []).some(x => x.sid !== ed)) return false;
+  return !ed || !liftMachines(exId).some(x => x.key === ed);
+}
+
 /** The names of a lift's machines it has: those it was done on, and the one the session in progress marks new (a name
     kept from a workout discarded is no machine's, so it is never offered or said). */
-export function machineNamesOf(e: Exercise): Record<string, string> {
+function machineNamesOf(e: Exercise): Record<string, string> {
   if (!e.machines) return {};
   const has = new Set(liftMachines(e.id).map(x => x.key));
   const pend = newMachineKey();
@@ -843,6 +868,21 @@ export function machineName(exId: string, key: string): string | null {
   const e = state.exercises.find(x => x.id === exId);
   const k = key === NEW_MACHINE ? newMachineKey() : key;
   return (k && e && e.machines && e.machines[k]) || null;
+}
+
+/* A session that began a machine (its mark, nw) is followed on it by the sessions after it that name no machine
+   (machineKeys). Deleted, or moved to another day in its edit, it would take them back to the machine before it, mixing
+   two machines' numbers. So first, inside that change, each is saved on the machine it is on by name (mc), the key the
+   names are kept under: a machine's sessions move only by a pick. A free weight names no machine (its stretches are New
+   machine or gym's to start and end). */
+/** Saves on their machine by name the sessions that follow session `sid`'s new machine (above); inside a change. */
+export function keepFollowers(sid: string): void {
+  for (const [exId, xs = []] of Object.entries(IDX().byEx)) {
+    if (!onMachines(EX(exId)) || !xs.some(x => x.sid === sid && x.nw)) continue;
+    for (const x of xs)
+      if (x.sid !== sid && x.mk === sid && !x.mc)
+        for (const b of state.sessions.find(s => s.id === x.sid)?.ex || []) if (b.exId === exId && !b.mc) b.mc = sid;
+  }
 }
 
 /** The quick picks offered when a machine is named. */
