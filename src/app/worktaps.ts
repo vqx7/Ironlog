@@ -56,6 +56,8 @@ import {
   adjRows,
   adjSync,
   assessSet,
+  prRetell,
+  prSaid,
   autoFold,
   carryLoad,
   draftEntered,
@@ -669,6 +671,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const s = b && b.sets[si];
     if (!d || !b || !s) return;
     const n = numIn(t.dataset.v || '');
+    const said = prSaid(bi, si);
     act(
       () => {
         s.rir = n == null ? null : Math.min(Math.max(n, 0), EFFORT_TOP);
@@ -678,6 +681,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     );
     rirClose();
     redraw();
+    prRetell(said, bi, si);
     const btn = document.querySelector<HTMLElement>(`.rirb[data-b="${bi}"][data-s="${si}"]`);
     if (btn)
       try {

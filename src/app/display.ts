@@ -464,8 +464,17 @@ export function bestLine(exId: string, upTo?: string): string {
 export function bestSetLine(exId: string): string {
   const r = allTimeBests(exId);
   if (!r) return '';
-  if (r.est && isCompound(r.ex))
-    return `Best ${setShort(r.ex, r.est.p.w, r.est.p.r)}${loadNote(r.ex)}, ${fmtDate(r.est.date)}`;
+  if (r.est && isCompound(r.ex)) {
+    /* A set at the estimate's load or heavier for as many reps or more is stronger than the set the estimate comes from
+       (120 x 12 at 1 in reserve, past the reps an estimate reads, beside 120 x 11 to failure): that set is the best,
+       the heaviest such. */
+    const e = r.est;
+    const over = r.front
+      .filter(f => f.p.pl >= e.p.pl - EPS_SAME && f.p.r >= e.p.r && (f.p.pl > e.p.pl + EPS_SAME || f.p.r > e.p.r))
+      .sort((a, b) => b.p.pl - a.p.pl || b.p.r - a.p.r)[0];
+    const best = over || e;
+    return `Best ${setShort(r.ex, best.p.w, best.p.r)}${loadNote(r.ex)}, ${fmtDate(best.date)}`;
+  }
   return r.heavy
     ? `Heaviest ${setShort(r.ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(r.ex)}, ${fmtDate(r.heavy.date)}`
     : '';

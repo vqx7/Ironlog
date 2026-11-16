@@ -244,6 +244,25 @@ async function stats(P) {
     await P.close();
   }
 
+  if (run('B-4') || run('B-5')) {
+    /* Heavier than every session before, a set lighter than one lifted minutes earlier in the session is no Weight PR:
+       155 x 7, then 145 x 10 at 2 in reserve, a higher estimate (REV16-C3). Saved, the recap's Weight PR line says no
+       estimate of its own when another set of the session set a higher one, the one Stats names (REV16-C4). */
+    const P = await lifter({ log: [['2026-11-07', [['bench', [[135, 8, 2], [135, 8, 2], [135, 7, 2]]]]]] });
+    await start(P);
+    await logSet(P, 0, 0, 155, 7, 2);
+    const a = await P.prToasts();
+    await P.clearToasts();
+    await logSet(P, 0, 1, 145, 10, 2);
+    const b = await P.prToasts();
+    ok(a[0] === `Weight PR: Barbell Bench Press, 155×7 (heaviest before 135 lb; best estimate for 6 to 10 reps to failure now ${lbE(e1(155, 9))})` && b[0] === `New best estimate: Barbell Bench Press, 145×10 (estimated 1RM ${lbE(e1(145, 12))} lb; was ${lbE(e1(135, 10))})` && (await P.gold(0, 1)), 'B-4, B-5: 145 x 10 after 155 x 7 in the session, heavier than every session before: a best estimate, never a Weight PR "heaviest before 135" (REV16-C3)', { a, b });
+    const rc = await finish(P);
+    const st = await stats(P);
+    const bb = st.board.find(x => x.ex === 'bench');
+    ok(/Barbell Bench Press: Weight PR, 155×7 \(heaviest before 135 lb\)/.test(rc || '') && !/best estimate \d/.test(rc || '') && bb && bb.lines[0].startsWith(`best est ${lbE(e1(145, 12))} lb`), 'B-4: the recap\'s Weight PR line names no estimate of its own when the session set a higher one, so it never says 199 where Stats says 203 (REV16-C4)', { rc, board: bb && bb.lines });
+    await P.close();
+  }
+
   /* ---------- B-6: heavier but not stronger is Heaviest yet, said once and not counted ---------- */
   if (run('B-6')) {
     const P = await lifter();
@@ -297,6 +316,31 @@ async function stats(P) {
     const st = await stats(P);
     ok(st.prs.length === 1 && new RegExp(`^Barbell Bench Press Best estimate ${lbE(e1(185, 12))} lb Nov 11`).test(st.prs[0] || ''), 'B-7: Recent PRs holds that same one', st.prs);
     await P.close();
+  }
+
+  if (run('B-7')) {
+    /* The effort rated after the tick (auto-mark ticks a set as the keyboard closes, the blank read as the lift's
+       usual): the PR message follows it, said again with its new number while it is one, taken back when it is no
+       longer one, so no message keeps a number no screen shows (REV16-C2). */
+    const P = await lifter({ settings: { autoDone: true }, log: [['2026-11-07', [['bench', [[135, 8, 2], [135, 8, 2], [135, 7, 2]]]]]] });
+    await start(P);
+    const rate = async (si, v) => { await P.tap(`#view [data-act="rirOpen"][data-b="0"][data-s="${si}"]`, 120); await P.tap(`#view [data-act="rirPick"][data-b="0"][data-s="${si}"][data-v="${v}"]`, 250); };
+    const showing = () => P.ev(() => { const el = document.getElementById('toast'); return el && !el.hidden ? el.innerText.replace(/\s+/g, ' ').trim() : null; });
+    await P.page.fill(field('w', 0, 0), '155'); await P.page.fill(field('r', 0, 0), '7'); await P.page.press(field('r', 0, 0), 'Tab'); await wait(300);
+    const first = await showing();
+    await rate(0, 0);
+    const rated = await showing();
+    ok(first === `Weight PR: Barbell Bench Press, 155×7 (heaviest before 135 lb; best estimate for 6 to 10 reps to failure now ${lbE(e1(155, 9))})` && rated === `Weight PR: Barbell Bench Press, 155×7 (heaviest before 135 lb; best estimate for 6 to 10 reps to failure now ${lbE(e1(155, 7))})` && (await P.gold(0, 0)), 'B-7: 155 x 7 ticked as typed says its estimate at the usual effort (199); rated 0 in reserve, the message says the estimate every screen then shows (186) (REV16-C2)', { first, rated });
+    await P.close();
+    const Q = await lifter({ settings: { autoDone: true }, log: [['2026-11-07', [['bench', [[135, 8, 2], [135, 8, 2], [135, 7, 2]]]]]] });
+    await start(Q);
+    const showQ = () => Q.ev(() => { const el = document.getElementById('toast'); return el && !el.hidden ? el.innerText.replace(/\s+/g, ' ').trim() : null; });
+    await Q.page.fill(field('w', 0, 0), '135'); await Q.page.fill(field('r', 0, 0), '9'); await Q.page.press(field('r', 0, 0), 'Tab'); await wait(300);
+    const said = await showQ();
+    await Q.tap('#view [data-act="rirOpen"][data-b="0"][data-s="0"]', 120); await Q.tap('#view [data-act="rirPick"][data-b="0"][data-s="0"][data-v="0"]', 250);
+    const after = await showQ();
+    ok(said === `New best estimate: Barbell Bench Press, 135×9 (estimated 1RM ${lbE(e1(135, 11))} lb; was ${lbE(e1(135, 10))})` && !(after && /best estimate/i.test(after)) && !(await Q.gold(0, 0)), 'B-7: 135 x 9 said a new best estimate at the usual effort; rated 0 in reserve it is none (174 under 180): the message is taken back and the row is not gold (REV16-C2)', { said, after });
+    await Q.close();
   }
 
   /* ---------- B-8: warm-ups, drop sets and missed sets make no PR and are never the set to beat ---------- */
@@ -597,6 +641,20 @@ async function stats(P) {
     await P.tap('#view [data-act="bestsAll"]', 250);
     st = await stats(P);
     ok(st.board.length === 7 && st.board[6].ex === 'bench', 'B-16: "Show all 7 lifts" shows the seventh', st.board.map(x => x.ex));
+    await P.close();
+  }
+
+  if (run('B-16')) {
+    /* A set at the estimate's load or heavier for more reps is the best, though past the reps an estimate reads: five
+       weeks of lat pulldown at 120 x 12 at 1 in reserve and one 120 x 11 to failure, the estimate's own set: Today's
+       preview names 120 x 12 Best, never the weaker 120 x 11 (REV16-C6). */
+    const log = ['2026-10-01', '2026-10-08', '2026-10-15', '2026-10-22', '2026-10-29'].map(d => [d, [['latPulldown', [[120, 12, 1], [120, 12, 1]]]]]).concat([['2026-11-05', [['latPulldown', [[120, 11, 0]]]]]]);
+    const P = await lifter({ items: [['latPulldown', 2, 8, 12]], log });
+    await P.ev(() => document.querySelectorAll('#view details').forEach(d => { d.open = true; })); await wait(300);
+    const best = await P.ev(() => (document.querySelector('#view').innerText.replace(/\s+/g, ' ').match(/(Best|Heaviest) \d[^,]*, [A-Z][a-z]{2} \d+/) || [''])[0]);
+    const st = await stats(P);
+    const b = st.board.find(x => x.ex === 'latPulldown');
+    ok(best === 'Best 120×12, Oct 1' && b && b.est === 'Best estimate from 120×11.', 'B-16: Today\'s preview names 120 x 12 at 1 in reserve Best, the stronger set, and the board still says where its estimate comes from (120 x 11) (REV16-C6)', { best, est: b && b.est });
     await P.close();
   }
 

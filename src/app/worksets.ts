@@ -94,7 +94,7 @@ const ORDER_MS = { soon: 900, again: 1500 } as const;
 import { LIMITS, sessCmp } from './records';
 import { readSets } from './importing';
 import type { TypedSet } from './importing';
-import { toast } from './toast';
+import { toast, toastTakeBack } from './toast';
 import { confirmBox, rerenderKeepScroll } from './page';
 import { bottomBarsTop, startTimer } from './timer';
 import { copyName, unname } from './machines';
@@ -346,12 +346,24 @@ export function rowPR(b: DraftBlock, si: number, at: ReadDay): string | null {
   // As strong: a higher score, or the same with as many reps at as much load (prJudge's big).
   const asStrong = (x: DraftSet): boolean =>
     scq(x) > me + EPS || (scq(x) >= me - EPS && prLoad(ex, x, date) >= myLoad - EPS && +(x.r ?? 0) >= myR);
-  return b.sets.some(
-    (x, i) => i < si && x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && asStrong(x) && livePR(b.exId, x, at)
+  if (
+    b.sets.some(
+      (x, i) => i < si && x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && asStrong(x) && livePR(b.exId, x, at)
+    )
   )
-    ? null
-    : pr;
+    return null;
+  /* Heavier than every session before, it is no Weight PR after a set of this session as heavy or heavier: it is
+     named by its next kind, a best estimate when it set one (145 x 10 after 155 x 7), else more reps. */
+  if (pr === 'Weight PR' && earlierSets(b, si).some(x => prLoad(ex, x, date) >= myLoad - EPS)) {
+    const m = liveMade(b.exId, s, at);
+    return m && m.pr && m.pr.type === 'Weight PR' && m.pr.value != null ? 'Best' : ex.timed ? 'Time PR' : 'Rep PR';
+  }
+  return pr;
 }
+
+/** The working sets ticked before row si of a block, with reps: this session's sets a PR said at row si comes after. */
+const earlierSets = (b: DraftBlock, si: number): DraftSet[] =>
+  b.sets.filter((x, i) => i < si && x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0);
 
 /* What a live PR beat, as a short tail for the toast: the old best estimate
    in the set's band, or the most reps done at this load or heavier, judged as
@@ -369,7 +381,7 @@ export function prBeat(exId: string, s: DraftSet, at: ReadDay, pr: string): stri
   if (!m || !j) return '';
   const { ex } = m;
   const bandW = (j.type !== 'Rep PR' && j.bb != null && BAND_WORDS[j.bb]) || '';
-  if (pr === 'Best' && j.type === 'e1RM') {
+  if (pr === 'Best' && (j.type === 'e1RM' || j.type === 'Weight PR')) {
     if (j.value == null) return '';
     if (!isCompound(ex)) return ` (your best for ${bandW})`;
     const all = j.prevAll;
@@ -969,15 +981,9 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
   if (val && isMissed(s) && !s.warm && !s.drop) toast(MISSED_SAID);
   if (val && !d.editingId && blockDone(b) && !blkIsOpen(bi, b)) W.foldWait.add(b);
   onLiftDraw(bi, redraw);
-  const pr = rowPR(b, si, d);
-  if (pr && !wasPR) {
-    const ex = EX(b.exId);
-    toast(
-      `${pr === 'Best' ? (isCompound(ex) ? 'New best estimate' : 'PR') : pr}: ${exName(b.exId)}, ${setShort(ex, +(s.w ?? 0) || 0, s.r)}${prBeat(b.exId, s, d, pr)}`,
-      false,
-      PR_TOAST_MS,
-      'pr'
-    );
+  const said = prSaid(bi, si);
+  if (said && !wasPR) {
+    toast(said, false, PR_TOAST_MS, 'pr');
     /* The PR moment: a short gold pulse on the row, and a buzz where
        the phone allows it (Android; iPhones give web apps no vibration). */
     const btn = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
@@ -1036,6 +1042,7 @@ export function doneChanged(bi: number, si: number, f: 'w' | 'r'): boolean {
   const b = d && d.ex[bi];
   const s = b && b.sets[si];
   if (!d || !b || !s || !s.done) return false;
+  const said = prSaid(bi, si);
   if (W.foldT && W.foldWait.has(b)) {
     clearTimeout(W.foldT);
     const rf = blkRef(bi);
@@ -1047,7 +1054,31 @@ export function doneChanged(bi: number, si: number, f: 'w' | 'r'): boolean {
     return true;
   }
   act(() => assessSet(bi, si), { inProgress: true });
+  prRetell(said, bi, si);
   return false;
+}
+
+/** The PR message row si of lift bi of the workout open raises as it stands, or null when it is no PR. */
+export function prSaid(bi: number, si: number): string | null {
+  const d = state.draft;
+  const b = d && d.ex[bi];
+  const s = b && b.sets[si];
+  if (!d || !b || !s || !s.done) return null;
+  const pr = rowPR(b, si, d);
+  if (!pr) return null;
+  const ex = EX(b.exId);
+  return `${pr === 'Best' ? (isCompound(ex) ? 'New best estimate' : 'PR') : pr}: ${exName(b.exId)}, ${setShort(ex, +(s.w ?? 0) || 0, s.r)}${prBeat(b.exId, s, d, pr)}`;
+}
+
+/* A ticked set changed after its PR was said (its effort rated, its load or reps typed again) is told again as it now
+   stands, so a message never keeps a number no screen shows: the one said is taken back, and the one it is now, if
+   any, said. */
+/** After a ticked set changes: takes back the PR message `said` before the change when it no longer holds, and says the one row si raises now. */
+export function prRetell(said: string | null, bi: number, si: number): void {
+  const now = prSaid(bi, si);
+  if (now === said) return;
+  if (said) toastTakeBack(said);
+  if (now) toast(now, false, PR_TOAST_MS, 'pr');
 }
 
 /* The lift the screen brings up after lift i: the next one below it not done, else the first not yet started (a lift

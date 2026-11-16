@@ -12894,8 +12894,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function bestSetLine(exId) {
     const r4 = allTimeBests(exId);
     if (!r4) return "";
-    if (r4.est && isCompound(r4.ex))
-      return `Best ${setShort(r4.ex, r4.est.p.w, r4.est.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.est.date)}`;
+    if (r4.est && isCompound(r4.ex)) {
+      const e5 = r4.est;
+      const over = r4.front.filter((f3) => f3.p.pl >= e5.p.pl - EPS_SAME && f3.p.r >= e5.p.r && (f3.p.pl > e5.p.pl + EPS_SAME || f3.p.r > e5.p.r)).sort((a2, b2) => b2.p.pl - a2.p.pl || b2.p.r - a2.p.r)[0];
+      const best = over || e5;
+      return `Best ${setShort(r4.ex, best.p.w, best.p.r)}${loadNote(r4.ex)}, ${fmtDate(best.date)}`;
+    }
     return r4.heavy ? `Heaviest ${setShort(r4.ex, r4.heavy.p.w, r4.heavy.p.r)}${loadNote(r4.ex)}, ${fmtDate(r4.heavy.date)}` : "";
   }
   function goalState(exId) {
@@ -13561,6 +13565,15 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       clearTimeout(toastT);
       gone(el);
     }
+  }
+  function toastTakeBack(msg) {
+    const el = box();
+    if (!el || el.hidden || !cur || !cur.parts.includes(msg)) return;
+    cur.parts = cur.parts.filter((p3) => p3 !== msg);
+    if (!cur.parts.length) {
+      clearTimeout(toastT);
+      gone(el);
+    } else draw(el);
   }
   function toastHide() {
     const el = box();
@@ -16576,17 +16589,24 @@ ${more}`;
     };
     const me = scq(s3), myLoad = prLoad(ex, s3, date), myR = +(s3.r ?? 0);
     const asStrong = (x2) => scq(x2) > me + EPS || scq(x2) >= me - EPS && prLoad(ex, x2, date) >= myLoad - EPS && +(x2.r ?? 0) >= myR;
-    return b2.sets.some(
+    if (b2.sets.some(
       (x2, i5) => i5 < si && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0 && asStrong(x2) && livePR(b2.exId, x2, at2)
-    ) ? null : pr;
+    ))
+      return null;
+    if (pr === "Weight PR" && earlierSets(b2, si).some((x2) => prLoad(ex, x2, date) >= myLoad - EPS)) {
+      const m3 = liveMade(b2.exId, s3, at2);
+      return m3 && m3.pr && m3.pr.type === "Weight PR" && m3.pr.value != null ? "Best" : ex.timed ? "Time PR" : "Rep PR";
+    }
+    return pr;
   }
+  var earlierSets = (b2, si) => b2.sets.filter((x2, i5) => i5 < si && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0);
   function prBeat(exId, s3, at2, pr) {
     const m3 = liveMade(exId, s3, at2);
     const j3 = m3 && m3.pr;
     if (!m3 || !j3) return "";
     const { ex } = m3;
     const bandW = j3.type !== "Rep PR" && j3.bb != null && BAND_WORDS[j3.bb] || "";
-    if (pr === "Best" && j3.type === "e1RM") {
+    if (pr === "Best" && (j3.type === "e1RM" || j3.type === "Weight PR")) {
       if (j3.value == null) return "";
       if (!isCompound(ex)) return ` (your best for ${bandW})`;
       const all = j3.prevAll;
@@ -16974,15 +16994,9 @@ ${more}`;
     if (val && isMissed(s3) && !s3.warm && !s3.drop) toast(MISSED_SAID);
     if (val && !d3.editingId && blockDone(b2) && !blkIsOpen(bi, b2)) W.foldWait.add(b2);
     onLiftDraw(bi, redraw);
-    const pr = rowPR(b2, si, d3);
-    if (pr && !wasPR) {
-      const ex = EX(b2.exId);
-      toast(
-        `${pr === "Best" ? isCompound(ex) ? "New best estimate" : "PR" : pr}: ${exName(b2.exId)}, ${setShort(ex, +(s3.w ?? 0) || 0, s3.r)}${prBeat(b2.exId, s3, d3, pr)}`,
-        false,
-        PR_TOAST_MS,
-        "pr"
-      );
+    const said2 = prSaid(bi, si);
+    if (said2 && !wasPR) {
+      toast(said2, false, PR_TOAST_MS, "pr");
       const btn = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
       const row = btn && btn.closest(".sg");
       if (row instanceof HTMLElement) {
@@ -17023,6 +17037,7 @@ ${more}`;
     const b2 = d3 && d3.ex[bi];
     const s3 = b2 && b2.sets[si];
     if (!d3 || !b2 || !s3 || !s3.done) return false;
+    const said2 = prSaid(bi, si);
     if (W.foldT && W.foldWait.has(b2)) {
       clearTimeout(W.foldT);
       const rf = blkRef(bi);
@@ -17034,7 +17049,24 @@ ${more}`;
       return true;
     }
     act(() => assessSet(bi, si), { inProgress: true });
+    prRetell(said2, bi, si);
     return false;
+  }
+  function prSaid(bi, si) {
+    const d3 = state.draft;
+    const b2 = d3 && d3.ex[bi];
+    const s3 = b2 && b2.sets[si];
+    if (!d3 || !b2 || !s3 || !s3.done) return null;
+    const pr = rowPR(b2, si, d3);
+    if (!pr) return null;
+    const ex = EX(b2.exId);
+    return `${pr === "Best" ? isCompound(ex) ? "New best estimate" : "PR" : pr}: ${exName(b2.exId)}, ${setShort(ex, +(s3.w ?? 0) || 0, s3.r)}${prBeat(b2.exId, s3, d3, pr)}`;
+  }
+  function prRetell(said2, bi, si) {
+    const now2 = prSaid(bi, si);
+    if (now2 === said2) return;
+    if (said2) toastTakeBack(said2);
+    if (now2) toast(now2, false, PR_TOAST_MS, "pr");
   }
   function nextLift(d3, i5) {
     const open = (x2, j3) => !blkIsShut(j3, x2);
@@ -27544,12 +27576,15 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   function recapPr(pr) {
     const e5 = EX(pr.exId);
-    if (pr.type === "Weight PR")
+    if (pr.type === "Weight PR") {
+      const top = prSet(pr.exId, pr.date);
+      const own2 = pr.value != null && isCompound(e5) && !(top && top.v > pr.value + EPS_SAME);
       return {
         name: e5.name,
-        what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${pr.value != null && isCompound(e5) ? `, best estimate ${fmtE(e5, pr.value)} ${liftU(e5)}${loadNote(e5)}` : ""}`,
+        what: `Weight PR, ${setShort(e5, pr.w, pr.r)}${own2 && pr.value != null ? `, best estimate ${fmtE(e5, pr.value)} ${liftU(e5)}${loadNote(e5)}` : ""}`,
         was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${listLabel(e5, pr.prevW ?? 0, !e5.bw)}` : ""
       };
+    }
     const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.date) : null;
     if (ps) return { name: e5.name, what: `PR, ${setShort(e5, ps.w, ps.r)}`, was: "your best for that number of reps" };
     return pr.type === "e1RM" ? {
@@ -28205,6 +28240,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       const s3 = b2 && b2.sets[si];
       if (!d3 || !b2 || !s3) return;
       const n3 = numIn(t4.dataset.v || "");
+      const said2 = prSaid(bi, si);
       act(
         () => {
           s3.rir = n3 == null ? null : Math.min(Math.max(n3, 0), EFFORT_TOP);
@@ -28214,6 +28250,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       );
       rirClose();
       redraw();
+      prRetell(said2, bi, si);
       const btn = document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
       if (btn)
         try {

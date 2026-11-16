@@ -185,6 +185,17 @@ export function undoToastHide(): void {
   }
 }
 
+/** Takes `msg` out of the message showing, the message going when nothing else is left in it (a PR said and no longer one). */
+export function toastTakeBack(msg: string): void {
+  const el = box();
+  if (!el || el.hidden || !cur || !cur.parts.includes(msg)) return;
+  cur.parts = cur.parts.filter(p => p !== msg);
+  if (!cur.parts.length) {
+    clearTimeout(toastT);
+    gone(el);
+  } else draw(el);
+}
+
 /** Hides the toast whatever it says (Undo done); news waiting its turn then shows. */
 export function toastHide(): void {
   const el = box();

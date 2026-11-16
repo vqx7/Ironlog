@@ -438,16 +438,21 @@ function setCounts(ex: ReturnType<typeof savedEx>[], date: string): { work: numb
 /** A PR as the recap says it: the lift, what was done, and what it beat. */
 function recapPr(pr: Pr): { name: string; what: string; was: string } {
   const e = EX(pr.exId);
-  if (pr.type === 'Weight PR')
+  if (pr.type === 'Weight PR') {
+    /* The weight PR set's own estimate is said only when it is the session's best for the lift: after 155 x 7, 145 x 10
+       set a higher one, and Stats names that (203), so 199 here would be a second best estimate. */
+    const top = prSet(pr.exId, pr.date);
+    const own = pr.value != null && isCompound(e) && !(top && top.v > pr.value + EPS_SAME);
     return {
       name: e.name,
-      what: `Weight PR, ${setShort(e, pr.w, pr.r)}${pr.value != null && isCompound(e) ? `, best estimate ${fmtE(e, pr.value)} ${liftU(e)}${loadNote(e)}` : ''}`,
+      what: `Weight PR, ${setShort(e, pr.w, pr.r)}${own && pr.value != null ? `, best estimate ${fmtE(e, pr.value)} ${liftU(e)}${loadNote(e)}` : ''}`,
       was: e.assist
         ? 'less help than ever'
         : isFinite(pr.prevW ?? NaN)
           ? `heaviest before ${listLabel(e, pr.prevW ?? 0, !e.bw)}`
           : ''
     };
+  }
   const ps = pr.type === 'e1RM' && !isCompound(e) ? prSet(pr.exId, pr.date) : null;
   if (ps) return { name: e.name, what: `PR, ${setShort(e, ps.w, ps.r)}`, was: 'your best for that number of reps' };
   return pr.type === 'e1RM'
