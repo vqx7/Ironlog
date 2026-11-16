@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<meta name="app-build" content="2026.11.15-r116">
+<meta name="app-build" content="2026.11.16-r117">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2185,8 +2185,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
   var DARK_BG = "#08090b";
-  var DISPLAY_VERSION = "2.70";
-  var APP_VERSION = "2026.11.15-r116";
+  var DISPLAY_VERSION = "2.71";
+  var APP_VERSION = "2026.11.16-r117";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -5441,6 +5441,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var DEMOSET_KEY = KEY + ".demoSettings";
   var ASIDE_KEY = KEY + ".aside.";
   var device = { ok: true, boot: true, hadLocal: false, hadLog: false, lastSaved: null };
+  var keepAsked = false;
+  function keepStorage() {
+    if (keepAsked) return;
+    keepAsked = true;
+    const s3 = navigator.storage;
+    if (!s3 || typeof s3.persist !== "function" || typeof s3.persisted !== "function") return;
+    s3.persisted().then((kept) => kept || s3.persist()).catch((e5) => {
+      log("storage", e5);
+    });
+  }
   var clearTimer = (t4) => {
     if (t4 != null) clearTimeout(t4);
   };
@@ -10951,6 +10961,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function writeLocal(j3) {
     localStorage.setItem(KEY, j3);
     device.lastSaved = j3;
+    keepStorage();
     for (const f3 of savedHooks)
       try {
         f3();
@@ -26235,7 +26246,6 @@ ${JSON.stringify(ctx, null, 1)}`;
       ex: day.items.map((it) => newBlock(it.exId, it, { before: date }))
     };
   }
-  var PARKED_SAID = "Your workout in progress is set aside. It comes back when you save or discard this one.";
   function resumeOpen() {
     if (!state.draft) return false;
     ui.away = null;
@@ -26664,10 +26674,8 @@ ${JSON.stringify(ctx, null, 1)}`;
       };
       closeModal();
       const d3 = state.draft;
-      if (d3 && parkDraft()) {
-        go();
-        toast(PARKED_SAID);
-      } else if (d3 && (d3.editingId || draftEntered(d3)))
+      if (d3 && parkDraft()) go();
+      else if (d3 && (d3.editingId || draftEntered(d3)))
         confirmBox(
           "Replace the session in progress?",
           d3.editingId ? "Editing a saved session. The edits will be lost." : "An unsaved session is open. Starting this one discards it.",
@@ -26740,10 +26748,8 @@ ${JSON.stringify(ctx, null, 1)}`;
         ui.tab = "today";
         begin(d3, false);
       };
-      if (state.draft && parkDraft()) {
-        go();
-        toast(PARKED_SAID);
-      } else if (state.draft)
+      if (state.draft && parkDraft()) go();
+      else if (state.draft)
         confirmBox(
           "Replace the session in progress?",
           state.draft.editingId ? "Editing a saved session. The edits will be lost." : "An unsaved session is open. Editing this one discards it.",
