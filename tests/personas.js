@@ -797,6 +797,9 @@ async function finish() {
     const all = S.flatMap(s => s.ex);
     const LIKE = [/bench/i, /incline/i, /squat/i, /leg press/i];
     ok(all.every(b => !b.custom) && S.every(s => s.ex.every((b, j) => LIKE[(s.date === '2026-09-24' || s.date === '2026-10-01' ? 0 : 2) + j].test(b.name))), '11. each lift is matched to the library\'s, none made new', all.map(b => b.name));
+    // A machine lift's sessions name the machine they were done on, an imported one's too: the one it reads on.
+    const legs = await ev(() => { const L = window.__ironlog; return L.state.sessions.flatMap(s => s.ex.filter(b => b.exId === 'legPress').map(b => [s.id, b.mc || null, ((L.IDX().byEx.legPress || []).find(x => x.sid === s.id) || {}).mk])); });
+    ok(legs.length === 2 && legs.every(([, mc, mk]) => mc != null && mc === mk), '11. each imported leg press session names the machine it reads on', legs);
     const R = after.routine;
     const trained = R ? R.days.filter(d => !d.rest && d.items.length) : [];
     ok(after.onboarded && trained.length === 2 && trained.every(d => d.items.length === 2) && trained.map(d => d.name).sort().join() === 'Legs,Push', '11. a routine is made from the days that repeat, Push and Legs, and the app opens on it', R && R.days.map(d => [d.name, d.items.map(i => i.exId)]));

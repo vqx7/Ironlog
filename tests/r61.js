@@ -311,14 +311,15 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     const P = await open(FILE, { browser, clock: '2026-10-15T10:00:00' });
     const ev = (f, a) => P.page.evaluate(f, a);
     const wait = ms => new Promise(r => setTimeout(r, ms));
-    // Leg press at the old gym: six weekly sessions of 3 x 10, 200 to 225 kg, on a routine's one day, saved as Finish saves them.
+    // Leg press at the old gym: six weekly sessions of 3 x 10, 200 to 225 kg, on a routine's one day, saved as Finish saves
+    // them, each naming its machine.
     await ev(() => {
       const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg'; s.settings.autoDone = false;
       const R = { id: 'R61', name: 'R61', schedule: 'cycle', days: [{ id: 'D61', name: 'Legs', rest: false, items: [{ uid: 'i61', exId: 'legPress', sets: 3, repMin: 8, repMax: 12, rir: 2, rest: 120, inc: 5, ss: null }] }] };
       s.routines = [R]; s.activeRoutineId = 'R61'; s.draft = null; s.injuries = [];
       const days = ['2026-09-01', '2026-09-08', '2026-09-15', '2026-09-22', '2026-09-29', '2026-10-06'];
       s.sessions = days.map((date, i) => ({ id: 'g' + i, date, dayIdx: 0, dayId: 'D61', dayName: 'Legs', routineId: 'R61', notes: '', ex: [{ exId: 'legPress', note: '', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w: 200 + 5 * i, r: 10, rir: 2, warm: false, drop: false })), ps: 3 }] }));
-      L.state = L.normalize(s); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
+      L.state = L.normalize(s); if (L.nameMachines) L.nameMachines(L.state); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
       L.ACT.startSession({ dataset: { day: '0' } });
     });
     await wait(200);

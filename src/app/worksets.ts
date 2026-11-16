@@ -604,17 +604,29 @@ export function newBlock(
 }
 
 /* A lift is on one machine in a workout, whichever of its cards holds the mark (a machine picked, mc, or added, nw):
-   a card taken out first hands its mark to the lift's cards left, so their sets stay on that machine. Inside the
-   change that takes it out, so its Undo puts both back. */
-/** Hands the machine marks of the cards in `gone` to the cards of the same lifts left in workout `d` (above). */
-export function keepLiftMachine(d: { ex: DraftBlock[] }, gone: readonly DraftBlock[]): void {
+   a card taken out first hands its mark to the lift's cards left, so their sets stay on that machine, and the change's
+   Undo, putting the card back, takes the handed marks back (takeBackMachine), so a later Undo of the pick finds them as
+   it left them. */
+/** Hands the machine marks of the cards in `gone` to the cards of the same lifts left in workout `d` (above); the cards given one. */
+export function keepLiftMachine(d: { ex: DraftBlock[] }, gone: readonly DraftBlock[]): DraftBlock[] {
+  const handed: DraftBlock[] = [];
   for (const g of gone) {
     if (!g.mc && !g.nw) continue;
     for (const b of d.ex)
       if (b.exId === g.exId && !gone.includes(b) && !b.mc && !b.nw) {
         if (g.mc) b.mc = g.mc;
         else b.nw = true;
+        handed.push(b);
       }
+  }
+  return handed;
+}
+
+/** Takes off the marks keepLiftMachine handed to `cards`, as a removal's Undo puts the card that held them back. */
+export function takeBackMachine(cards: readonly DraftBlock[]): void {
+  for (const b of cards) {
+    delete b.mc;
+    delete b.nw;
   }
 }
 
@@ -1224,10 +1236,12 @@ export function mixCheck(bi: number, si: number): void {
   const s = b && b.sets[si];
   if (!d || !b || !s || s.warm || s.drop || !(+(s.w ?? 0) > 0)) return;
   const ex = EX(b.exId);
-  const st = IDX().exStats[b.exId];
-  const last = st && st.last ? st.last.topW : 0;
+  // Last time on the machine (or gym) in use, as the target reads it: one just added has none, so nothing is far off.
+  const prev = liftRead(b.exId, d.date).filter(x => x.sid !== d.editingId && x.date <= d.date);
+  const lastX = prev[prev.length - 1];
+  const last = lastX ? lastX.topW : 0;
   // After a long break the lift starts fresh: a load far under one from years ago is no mix-up.
-  if (!(last > 0) || (st && longBreak(st.last, d.date))) return;
+  if (!(last > 0) || longBreak(lastX, d.date)) return;
   const r = +(s.w ?? 0) / last;
   if (r >= MIX_RANGE[0] && r <= MIX_RANGE[1]) return;
   const key = d.id + ':' + bi;

@@ -33,7 +33,7 @@ import { closeModal, confirmBox, openModal, renderModal, rerenderKeepScroll } fr
 import { toast } from './toast';
 import { keepOpen } from './workstate';
 import type { Draft, Tap } from './workstate';
-import { keepLiftMachine, newBlock, refreshEx, rowBlank } from './worksets';
+import { keepLiftMachine, newBlock, refreshEx, rowBlank, takeBackMachine } from './worksets';
 
 /** The most sets an exercise added by Pick for me may take. */
 const MAX_SETS = 30;
@@ -239,6 +239,7 @@ function swapJoin(sw: SwapCtx, ni: number, y: DraftBlock): void {
   const { d, bi, b, nb, orig, did, done, id } = sw;
   const plan = { ...y.plan };
   let added: ReturnType<typeof joinRows> = [];
+  let handed: DraftBlock[] = [];
   act(
     () => {
       added = joinRows(y, nb);
@@ -246,7 +247,7 @@ function swapJoin(sw: SwapCtx, ni: number, y: DraftBlock): void {
         b.sets = done;
         b.plan = { ...b.plan, sets: done.filter(x => !x.warm && !x.drop).length || 1 };
       } else {
-        keepLiftMachine(d, [b]);
+        handed = keepLiftMachine(d, [b]);
         keepOpen(() => d.ex.splice(bi, 1));
       }
       fixSupersets(d.ex.map(x => x.plan));
@@ -265,6 +266,7 @@ function swapJoin(sw: SwapCtx, ni: number, y: DraftBlock): void {
           if (i < 0) return false;
           dd.ex[i] = orig;
         } else dd.ex.splice(dd.ex.indexOf(yy) + (ni < bi ? 1 : 0), 0, orig);
+        takeBackMachine(handed);
         return true;
       }
     }
@@ -282,6 +284,7 @@ function swapJoin(sw: SwapCtx, ni: number, y: DraftBlock): void {
 /** The swap in place: the new lift takes the sets still to do, after the one they were done on, or in its place when none were. */
 function swapInPlace(sw: SwapCtx): void {
   const { d, bi, b, nb, orig, did, done, left, id } = sw;
+  let handed: DraftBlock[] = [];
   act(
     () => {
       if (done.length) {
@@ -289,7 +292,7 @@ function swapInPlace(sw: SwapCtx): void {
         b.plan = { ...b.plan, sets: done.filter(x => !x.warm && !x.drop).length || 1 };
         keepOpen(() => d.ex.splice(bi + 1, 0, nb));
       } else {
-        keepLiftMachine(d, [b]);
+        handed = keepLiftMachine(d, [b]);
         d.ex[bi] = nb;
       }
       fixSupersets(d.ex.map(x => x.plan));
@@ -307,6 +310,7 @@ function swapInPlace(sw: SwapCtx): void {
           if (i >= 0) dd.ex[i] = orig;
           else return false;
         } else dd.ex[at] = orig;
+        takeBackMachine(handed);
         return true;
       }
     }

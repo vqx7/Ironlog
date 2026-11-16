@@ -1901,6 +1901,25 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     ok(onB.undo <= undo0, 'S-13: the sign-in leaves no Undo step to take it back', { before: undo0, after: onB.undo });
     ok((await A.ev(() => window.__ironlog.state.sessions.map(s => s.id).sort().join())) === 'acct,mine', 'S-13: and the account\'s other phone receives them');
     await A.close();
+    /* A machine lift on both logs. Each log names its own first machine the same way, so the phone's first is not the
+       account's: a session the phone did on no machine picked is read, at the sign-in, on the machine the lift is on
+       by then in the account. The account did the chest press on its first machine in October, a second from Oct 24;
+       the phone did it once, on Nov 7, at the second machine's load. */
+    {
+      const C2 = cloudOf();
+      const mk = (id, date, kg, x) => ({ id, date, dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'machPress', rr: [8, 12], ps: 3, sets: [11, 11, 10].map(r => ({ w: kg, r, rir: 2, done: true })), ...x }] });
+      const acct = [mk('a1', '2026-10-10', 90, { mc: '0' }), mk('a2', '2026-10-17', 90, { mc: '0' }), mk('b1', '2026-10-24', 55, { nw: true, mc: 'b1' }), mk('c1', '2026-10-31', 57.5, { mc: 'b1' })];
+      const D = await phone({ cloud: C2, uid: 'u13m', arg: acct, seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      ok(await D.settled(), 'S-13: (setup) the account holds a chest press on two machines');
+      const E = await phone({ cloud: C2, uid: null, who: 'E', browser: D.browser, clock: await clockOf(D), arg: [mk('mine', '2026-11-07', 59, { mc: '0' })], seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      await E.ev(() => { window.__uid = 'u13m'; window.__ironlog.cloudInit(); });
+      ok(await E.settled(), 'S-13: the phone with its own chest press signs in and syncs');
+      await D.sync();
+      const read = P => P.ev(() => { const L = window.__ironlog; const s = L.state.sessions.find(x => x.id === 'mine'); return { mc: s && s.ex[0].mc, mk: ((L.IDX().byEx.machPress || []).find(x => x.sid === 'mine') || {}).mk }; });
+      const onE = await read(E), onD = await read(D);
+      ok(onE.mc === 'b1' && onE.mk === 'b1' && onD.mc === 'b1' && onD.mk === 'b1', 'S-13: the phone\'s chest press, done on no machine picked, is read on the machine the lift is on in the account, on both phones, never on the account\'s first machine (REV23-2)', { onE, onD });
+      await D.close();
+    }
   }
 
   /* ---------- S-15: news about the log is never lost under a tap's message ---------- */

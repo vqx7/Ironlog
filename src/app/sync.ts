@@ -41,9 +41,10 @@ import {
 import { Hx, canon, merge3List, merge3Val, mergeSession, mergeWorkout } from './merge';
 import { draftCardio, draftSession } from './session';
 import type { DraftLike } from './session';
-import type { CardioEntry } from './types';
+import type { CardioEntry, Session } from './types';
 import { routineEmpty } from './routines';
-import { cleanCardio, normalize, plainTemplate } from './normalize';
+import { cleanCardio, nameMachines, normalize, plainTemplate } from './normalize';
+import { FIRST_MACHINE } from './model';
 import { invalidate } from './live';
 import { AUTH, codeOf } from './providers';
 import { photoHeld, photoNote, photoOf, photoPending, photoSent, photoTake } from './photo';
@@ -1394,6 +1395,28 @@ function remoteDocs(docs: readonly { id: string; exists: boolean; data(): unknow
   return remote;
 }
 
+/* Each log names a lift's first machine "0", its own first machine. Joined with another log that has the lift too, the
+   sessions this phone named "0" are left unnamed, and the joined log named (nameMachines), so they read on the machine
+   the joined log has them on by their dates, as the two logs read before every session named its machine. */
+/** The sessions `ss` with the first machine's name taken off the lifts `lifts` holds (above). */
+function firstUnnamed(ss: readonly Session[], lifts: ReadonlySet<string>): Session[] {
+  return ss.map(q =>
+    q.ex.some(b => b.mc === FIRST_MACHINE && lifts.has(b.exId))
+      ? {
+          ...q,
+          ex: q.ex.map(b => {
+            if (b.mc !== FIRST_MACHINE || !lifts.has(b.exId)) return b;
+            const c = { ...b };
+            delete c.mc;
+            return c;
+          })
+        }
+      : q
+  );
+}
+/** The lifts a log's sessions hold. */
+const liftsIn = (ss: readonly Session[]): Set<string> => new Set(ss.flatMap(q => q.ex.map(b => b.exId)));
+
 /** A first sign-in on a phone that holds a log of its own: the two combined (below), the account's copy made the agreed base; true when the other phone's workout in progress was saved as a session. */
 function mergeFirstLink(mine: State, rState: State, rids: readonly string[], remote: Record<string, Remote>): boolean {
   // a routine or exercise made here is the phone's own too, never replaced by the account's
@@ -1406,19 +1429,22 @@ function mergeFirstLink(mine: State, rState: State, rids: readonly string[], rem
   const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
   const kept = aside ? draftSession(aside) : null;
   const keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some(x => x.id === kept.id);
-  setState(
-    normalize({
-      ...base,
-      exercises: unionById(base.exercises, other.exercises),
-      routines: unionById(base.routines, other.routines),
-      sessions: unionById(mine.sessions, keptDraft && kept ? [...rState.sessions, kept] : rState.sessions),
-      bodyweights: unionById(mine.bodyweights, rState.bodyweights),
-      measurements: unionById(mine.measurements, rState.measurements),
-      cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio),
-      trash: unionById(arr(state.trash) || [], arr(rState.trash) || []),
-      draft: state.draft || rState.draft
-    })
-  );
+  const joined = normalize({
+    ...base,
+    exercises: unionById(base.exercises, other.exercises),
+    routines: unionById(base.routines, other.routines),
+    sessions: unionById(
+      firstUnnamed(mine.sessions, liftsIn(rState.sessions)),
+      keptDraft && kept ? [...rState.sessions, kept] : rState.sessions
+    ),
+    bodyweights: unionById(mine.bodyweights, rState.bodyweights),
+    measurements: unionById(mine.measurements, rState.measurements),
+    cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio),
+    trash: unionById(arr(state.trash) || [], arr(rState.trash) || []),
+    draft: state.draft || rState.draft
+  });
+  nameMachines(joined);
+  setState(joined);
   // The cloud copy becomes the agreed base, so the merged result is what
   // the flush writes, rather than being merged a second time.
   for (const id of rids) {
@@ -1782,17 +1808,22 @@ function holdsLog(): boolean {
 function joinLogs(base: State, here: State): State {
   const away = base.draft && here.draft && here.draft.id !== base.draft.id ? base.draft : null;
   const kept = away ? draftSession(away) : null;
-  return normalize({
+  const joined = normalize({
     ...base,
     exercises: unionById(base.exercises, here.exercises),
     routines: unionById(base.routines, here.routines),
-    sessions: unionById(base.sessions, kept ? [...here.sessions, kept] : here.sessions),
+    sessions: unionById(
+      base.sessions,
+      firstUnnamed(kept ? [...here.sessions, kept] : here.sessions, liftsIn(base.sessions))
+    ),
     bodyweights: unionById(base.bodyweights, here.bodyweights),
     measurements: unionById(base.measurements, here.measurements),
     cardio: unionById(base.cardio, away ? [...here.cardio, ...draftCardio(away)] : here.cardio),
     trash: unionById(arr(base.trash) || [], arr(here.trash) || []),
     draft: here.draft || base.draft
   });
+  nameMachines(joined);
+  return joined;
 }
 /** Keeps the log here aside for its account, with its notes, as it stands once written (a set ticked while the copy is written makes a second copy): 'room' when the phone has no room for it. */
 async function keepHere(from: string): Promise<'kept' | 'room' | 'busy'> {

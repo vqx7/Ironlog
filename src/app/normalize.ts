@@ -449,14 +449,17 @@ export function plainTemplate(r: unknown): boolean {
 /* Every session of a machine, cable or Smith lift names the machine it was done on (mc), the one it reads on now. A
    session that names none is read on the machine of the last session before it that began one (machineKeys), so a
    session deleted, moved, restored or logged before it would move it to another machine; named, it moves only by a
-   pick. Read as the index reads it (sameExOnce, working sets only), so no reading changes. Logs saved before every
-   session was named are named here once; a session an older build saves is named the next time the log is read. Every
-   log read is named so, a document of sessions alone too (by the library's lifts and its own sessions), so a log read
-   twice is the log read once: a session already named is never named again. */
-/** Names in place the machine of every machine lift's session that names none (above). */
-function pinMachines(sessions: Session[], exercises: readonly Exercise[]): void {
-  const onM = new Set(exercises.filter(onMachines).map(e => e.id));
-  if (!onM.size) return;
+   pick. Read as the index reads it (sameExOnce, working sets only), so no reading changes. A log is named as it is
+   opened, before and after every change (act.ts: a session that came in unnamed, from a backup, an import, Recently
+   deleted, another tab or an older build, is named before a change can move it, and what a change brings in is named
+   with it) and where two logs are joined at a sign-in (sync.ts). normalize never names: it also reads a document of
+   sessions alone, which cannot tell which lifts the lifter has on machines or what came before, and what it reads twice
+   must read as once. A session named is never named again. */
+/** Names in place the machine of every machine lift's session in log `st` that names none (above); true when it named one. */
+export function nameMachines(st: State): boolean {
+  const { sessions } = st;
+  const onM = new Set(st.exercises.filter(onMachines).map(e => e.id));
+  if (!sessions.some(ss => ss.ex.some(b => !b.mc && onM.has(b.exId) && b.sets.some(isWork)))) return false;
   const byEx = new Map<string, { sid: string; nw?: true; mc?: string; mk: string; ss: Session; at: number[] }[]>();
   for (const ss of [...sessions].sort(sessCmp))
     for (const m of sameExOnce(ss.ex)) {
@@ -486,6 +489,7 @@ function pinMachines(sessions: Session[], exercises: readonly Exercise[]): void 
     const at = named.get(ss);
     if (at) sessions[k] = cleanSess({ ...ss, ex: ss.ex.map((b, i) => (at.has(i) ? { ...b, mc: at.get(i) } : b)) }, k);
   });
+  return named.size > 0;
 }
 
 /* ---------- the whole log ---------- */
@@ -1420,7 +1424,6 @@ export function normalize(input: unknown): State {
   ({ sessions, cardio, trash } = reviveEdited(sessions, list('cardio'), trash));
   sessions = dedupe(sessions, 'session', x => x.ex.reduce((a, b) => a + b.sets.length, 0), trash);
   cardio = dedupe(cardio, 'cardio', x => x.min, trash);
-  pinMachines(sessions, exercises);
 
   const bBefore = list('bodyweights').length;
   const bodyweights = cleanBodyweights(list('bodyweights'));

@@ -25,7 +25,7 @@ import { toast, toastQuiet } from './toast';
 import { stopTimer, wakeOff, wakeOn } from './timer';
 import { editFp0 } from './workstate';
 import type { Tap } from './workstate';
-import { draftEntered, keepLiftMachine, newBlock, rowBlank, shortPlan } from './worksets';
+import { draftEntered, keepLiftMachine, newBlock, rowBlank, shortPlan, takeBackMachine } from './worksets';
 import { swapPlan } from './actspick';
 
 /** The most sets a lift done again in a deload records as its full count. */
@@ -302,6 +302,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const removed = new Map<DraftBlock, DraftBlock['sets']>(),
       order = d.ex.slice(),
       did = d.id;
+    let handed: DraftBlock[] = [];
     act(
       () => {
         for (const x of pl.bl) {
@@ -324,7 +325,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           }
           removed.set(b, gone);
         }
-        keepLiftMachine(
+        handed = keepLiftMachine(
           d,
           d.ex.filter((_b, bi) => drop.has(bi))
         );
@@ -344,6 +345,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           order.forEach((b, i) => {
             if (drop.has(i) && !dd.ex.includes(b)) dd.ex.splice(Math.min(i, dd.ex.length), 0, b);
           });
+          takeBackMachine(handed);
           fixSupersets(dd.ex.map(b => b.plan));
           return true;
         }

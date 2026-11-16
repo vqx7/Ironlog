@@ -164,9 +164,10 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   sheet lists the machines it was done on, by the names the lifter gives them (one with none by its last session's
   date and weight; V, 2026-11-15, NEW-168), the name of the one in use on its card; its target, PRs, bests and readings come from the machine
   it is on, the one last done on unless another is picked; its sets and volume count as one exercise; the app never
-  guesses a machine. Every session of a machine lift names the machine it was done on (`mc`), a log saved before named
-  once as it reads when opened (`pinMachines`, V 2026-11-15, REV22: those sessions re-sync once), so a session moves to
-  another machine only by a pick, never by another deleted, moved, restored or logged before it. A ticked set
+  guesses a machine. Every session of a machine lift names the machine it was done on (`mc`); one that came in naming
+  none (a log saved before, an import, an older build's) is named as it reads when the log is opened and before and
+  after every change (`nameMachines`, V 2026-11-15, REV22, REV23: those sessions re-sync once; normalize never names), so
+  a session moves to another machine only by a pick, never by another deleted, moved, restored or logged before it. A ticked set
   of 0 reps is a missed set: kept and shown, counted toward no volume, PR, estimate or trend, read by the next target
   as a set short of the range and as 0 reps, so its session reads below its usual and the target repeats (V, 2026-11-04,
   387-B3), and sets missed never earn a step up (r56.2), and asked about first when its load is well
