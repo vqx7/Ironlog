@@ -1159,7 +1159,7 @@ function liftsSec(I: Idx, stalled: readonly (readonly [string, ExStat])[], prs4:
     ? html`${bigPR.slice(0, PRS_SHOWN).map(p => {
         const ex = EX(p.exId);
         const iso = p.type === 'e1RM' && !isCompound(ex);
-        const ps = iso ? prSet(p.exId, p.date) : null;
+        const ps = iso ? prSet(p.exId, p.sid) : null;
         const tag = ex.timed && p.type === 'Rep PR' ? 'Time PR' : p.type === 'e1RM' ? (iso ? 'PR' : prName(p)) : p.type;
         const val =
           p.type === 'e1RM'

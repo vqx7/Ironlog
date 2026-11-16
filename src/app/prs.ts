@@ -130,7 +130,8 @@ type Each<P> = P extends Pr ? Omit<P, 'date' | 'sid' | 'exId'> : never;
 export function prJudge(
   ex: ExerciseLike,
   h: PrSoFar,
-  x: Pick<Exposure, 'pts' | 'pb' | 'pbb'>
+  x: Pick<Exposure, 'pts' | 'pb' | 'pbb'>,
+  heaviestHere = -Infinity
 ): { pr: PrMade | null; progress: boolean } {
   if (h.none) return { pr: null, progress: false };
   let repPR: ExPoint | null = null;
@@ -190,9 +191,13 @@ export function prJudge(
      weight, the strongest by the same score (as the live toast
      names it, so the recap does not name 82.5 x 11 beside the estimate of
      82.5 x 10). */
+  /* `heaviestHere`: the heaviest set of the session before the one judged alone (prCounted). A set no heavier than it is
+     no Weight PR however heavy against the sessions before, and is named by its next kind (145 x 10 after 155 x 7: a
+     best estimate), as the set's own message names it (worksets.ts rowPR). What it beat is still the heaviest before
+     the session. */
   const wJ = !ex.timed
     ? pts
-        .filter(p => p.r > 0 && p.w > h.prevMaxW + EPS_SAME)
+        .filter(p => p.r > 0 && p.w > Math.max(h.prevMaxW, heaviestHere) + EPS_SAME)
         .sort((a, b) => b.w - a.w || prScore(b) - prScore(a) || b.r - a.r)[0]
     : null;
   const wPR = wJ ? asLogged(wJ) : null;
@@ -266,8 +271,11 @@ function prCounted(ex: ExerciseLike, h: PrSoFar, x: Pick<Exposure, 'pts'>, noBod
   const ORDER: readonly PrMade['type'][] = ['Rep PR', 'e1RM', 'Weight PR'];
   const rank = (t: PrMade['type']): number => ORDER.indexOf(t);
   let top: { pr: PrMade; key: number } | null = null;
+  // The heaviest set done before each one in the session (prJudge).
+  let before = -Infinity;
   for (const p of x.pts) {
-    const { pr } = prJudge(ex, h, { pts: [p], ...prBestOf(ex, [p], noBody) });
+    const { pr } = prJudge(ex, h, { pts: [p], ...prBestOf(ex, [p], noBody) }, before);
+    if (p.r > 0) before = Math.max(before, p.w);
     if (!pr || !pr.big) continue;
     // Within a kind: the heaviest weight PR, the highest estimate, the strongest rep PR.
     const key = pr.type === 'Weight PR' ? pr.w : pr.type === 'e1RM' ? (pr.value ?? 0) : prScore(p);

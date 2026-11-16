@@ -361,9 +361,16 @@ export function rowPR(b: DraftBlock, si: number, at: ReadDay): string | null {
   return pr;
 }
 
-/** The working sets ticked before row si of a block, with reps: this session's sets a PR said at row si comes after. */
-const earlierSets = (b: DraftBlock, si: number): DraftSet[] =>
-  b.sets.filter((x, i) => i < si && x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0);
+/** The working sets ticked before row si of a block, with reps, its lift's earlier cards in the workout included (the
+    session reads them as one, prs.ts): this session's sets a PR said at row si comes after. */
+const earlierSets = (b: DraftBlock, si: number): DraftSet[] => {
+  const ex = state.draft ? state.draft.ex : [];
+  const at = ex.indexOf(b);
+  const cards = at > 0 ? ex.slice(0, at).filter(x => x.exId === b.exId && !!x.light === !!b.light) : [];
+  return [...cards.flatMap(x => x.sets), ...b.sets.slice(0, si)].filter(
+    x => x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0
+  );
+};
 
 /* What a live PR beat, as a short tail for the toast: the old best estimate
    in the set's band, or the most reps done at this load or heavier, judged as

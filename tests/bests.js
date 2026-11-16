@@ -263,6 +263,33 @@ async function stats(P) {
     await P.close();
   }
 
+  if (run('B-4') || run('B-5')) {
+    /* A set no heavier than one lifted earlier in the session is no Weight PR in the recap and Recent PRs either, as its
+       message said: 205 x 2 (heavier, weaker, no PR), then 195 x 8, a best estimate, after 185 x 8 last week (REV25-7). */
+    let P = await lifter({ items: [['bench', 3, 6, 10]], log: [['2026-11-07', [['bench', [[185, 8, 2], [185, 8, 2], [185, 7, 2]]]]]] });
+    await start(P);
+    await logSet(P, 0, 0, 205, 2, 2);
+    await P.clearToasts();
+    await logSet(P, 0, 1, 195, 8, 2);
+    const said = await P.prToasts();
+    let rc = await finish(P);
+    let st = await stats(P);
+    const benchPr = st.prs.find(x => /Bench/.test(x)) || '';
+    ok(/^New best estimate: Barbell Bench Press, 195×8/.test(said[0] || '') && !/Barbell Bench Press: Weight PR/.test(rc || '') && new RegExp(`Barbell Bench Press: [^\\n]*${lbE(e1(195, 10))} lb`).test(rc || '') && !/Weight PR/.test(benchPr), 'B-4: 195 x 8 after 205 x 2 in the session is a best estimate in its message, the recap and Recent PRs alike, never a Weight PR (REV25-7)', { said, rc, benchPr });
+    await P.close();
+    /* The day's second workout of a lift: the recap reads the PR's own session, never the morning's (REV25-6). Bench at
+       135 this morning; tonight 155 x 7, then 145 x 10 sets the higher estimate, so the Weight PR line says none of its
+       own. Raises 20 x 8 this morning (no PR); tonight 20 x 9 is the PR, and the recap names that set. */
+    P = await lifter({ items: [['bench', 3, 6, 10], ['dbLateral', 2, 8, 12]], log: [['2026-11-07', [['bench', [[135, 8, 2], [135, 8, 2], [135, 7, 2]]], ['dbLateral', [[20, 8, 2], [20, 8, 2]]]]], ['2026-11-11', [['bench', [[135, 8, 2]]], ['dbLateral', [[20, 8, 2]]]]]] });
+    await start(P);
+    await logSet(P, 0, 0, 155, 7, 2);
+    await logSet(P, 0, 1, 145, 10, 2);
+    await logSet(P, 1, 0, 20, 9, 2);
+    rc = await finish(P);
+    ok(/Barbell Bench Press: Weight PR, 155×7 \(heaviest before 135 lb\)/.test(rc || '') && !/best estimate \d/.test(rc || '') && /DB Lateral Raise: PR, 20×9 \(your best for that number of reps\)/.test(rc || ''), 'B-4: in the day\'s second workout the recap reads its own session: no estimate of the Weight PR\'s own when 145 x 10 set a higher one, and the raises\' PR named as 20 x 9, not the morning\'s 20 x 8 (REV25-6)', rc);
+    await P.close();
+  }
+
   /* ---------- B-6: heavier but not stronger is Heaviest yet, said once and not counted ---------- */
   if (run('B-6')) {
     const P = await lifter();

@@ -242,9 +242,9 @@ export function bestSet(exId: string): { v: number; w: number; r: number; date: 
 
 /* An isolation lift's best-estimate PR is shown as the set that set it, not
    as a 1RM: the strongest set of that lift in that session. */
-/** The set with the best estimate in a lift's session on a date, or null. */
-export function prSet(exId: string, date: string): { v: number; w: number; r: number } | null {
-  const x = (IDX().byEx[exId] || []).find(q => q.date === date);
+/** The set with the best estimate in a lift's session (by the session's id: two on one day are two sessions), or null. */
+export function prSet(exId: string, sid: string): { v: number; w: number; r: number } | null {
+  const x = (IDX().byEx[exId] || []).find(q => q.sid === sid);
   if (!x) return null;
   let b: { v: number; w: number; r: number } | null = null;
   for (const p of x.pts) {

@@ -6983,7 +6983,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return { pb, pbb };
   }
-  function prJudge(ex, h3, x2) {
+  function prJudge(ex, h3, x2, heaviestHere = -Infinity) {
     if (h3.none) return { pr: null, progress: false };
     let repPR = null;
     const judged = x2.pts.map((p3) => {
@@ -7010,7 +7010,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     const pb = (bandJ != null ? h3.byBand[bandJ] : void 0) ?? h3.maxPb;
     const e1PR = pbJ != null && pb != null && pbJ > pb + EPS_SAME;
-    const wJ = !ex.timed ? pts.filter((p3) => p3.r > 0 && p3.w > h3.prevMaxW + EPS_SAME).sort((a2, b2) => b2.w - a2.w || prScore(b2) - prScore(a2) || b2.r - a2.r)[0] : null;
+    const wJ = !ex.timed ? pts.filter((p3) => p3.r > 0 && p3.w > Math.max(h3.prevMaxW, heaviestHere) + EPS_SAME).sort((a2, b2) => b2.w - a2.w || prScore(b2) - prScore(a2) || b2.r - a2.r)[0] : null;
     const wPR = wJ ? asLogged(wJ) : null;
     const progress = !!repPR || e1PR || !!wPR;
     const big = noE1(ex) || !!ex.timed || !!ex.bw && !pts.some((q) => q.pl > 0) || pts.some((q) => prScore(q) > h3.topSc + EPS || prScore(q) >= h3.topSc - EPS && !prDominated(h3, q));
@@ -7049,8 +7049,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const ORDER2 = ["Rep PR", "e1RM", "Weight PR"];
     const rank = (t4) => ORDER2.indexOf(t4);
     let top = null;
+    let before2 = -Infinity;
     for (const p3 of x2.pts) {
-      const { pr } = prJudge(ex, h3, { pts: [p3], ...prBestOf(ex, [p3], noBody2) });
+      const { pr } = prJudge(ex, h3, { pts: [p3], ...prBestOf(ex, [p3], noBody2) }, before2);
+      if (p3.r > 0) before2 = Math.max(before2, p3.w);
       if (!pr || !pr.big) continue;
       const key = pr.type === "Weight PR" ? pr.w : pr.type === "e1RM" ? pr.value ?? 0 : prScore(p3);
       if (!top || rank(pr.type) > rank(top.pr.type) || rank(pr.type) === rank(top.pr.type) && key > top.key + EPS_SAME)
@@ -12757,8 +12759,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
     return b2;
   }
-  function prSet(exId, date) {
-    const x2 = (IDX().byEx[exId] || []).find((q) => q.date === date);
+  function prSet(exId, sid) {
+    const x2 = (IDX().byEx[exId] || []).find((q) => q.sid === sid);
     if (!x2) return null;
     let b2 = null;
     for (const p3 of x2.pts) {
@@ -16599,7 +16601,14 @@ ${more}`;
     }
     return pr;
   }
-  var earlierSets = (b2, si) => b2.sets.filter((x2, i5) => i5 < si && x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0);
+  var earlierSets = (b2, si) => {
+    const ex = state.draft ? state.draft.ex : [];
+    const at2 = ex.indexOf(b2);
+    const cards = at2 > 0 ? ex.slice(0, at2).filter((x2) => x2.exId === b2.exId && !!x2.light === !!b2.light) : [];
+    return [...cards.flatMap((x2) => x2.sets), ...b2.sets.slice(0, si)].filter(
+      (x2) => x2.done && !x2.warm && !x2.drop && +(x2.r ?? 0) > 0
+    );
+  };
   function prBeat(exId, s3, at2, pr) {
     const m3 = liveMade(exId, s3, at2);
     const j3 = m3 && m3.pr;
@@ -19999,7 +20008,7 @@ ${extraKpis()}</div>`;
     const prBody = bigPR.length ? b`${bigPR.slice(0, PRS_SHOWN).map((p3) => {
       const ex = EX(p3.exId);
       const iso2 = p3.type === "e1RM" && !isCompound(ex);
-      const ps = iso2 ? prSet(p3.exId, p3.date) : null;
+      const ps = iso2 ? prSet(p3.exId, p3.sid) : null;
       const tag = ex.timed && p3.type === "Rep PR" ? "Time PR" : p3.type === "e1RM" ? iso2 ? "PR" : prName(p3) : p3.type;
       const val = p3.type === "e1RM" ? iso2 ? ps ? setShort(ex, ps.w, ps.r) : "" : fmtE(ex, p3.value) + " " + liftU(ex) : setShort(ex, p3.w, p3.r);
       return b`<div class="row spread u-p6-0_bb1-solid-line"><span>${ex.name} <span class=${`tag ${p3.type === "Rep PR" ? "blue" : "green"}`}>${tag}</span></span><span class="num">${val} <span class="muted small">${fmtDate(p3.date)}</span></span></div>`;
@@ -27587,7 +27596,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   function recapPr(pr) {
     const e5 = EX(pr.exId);
     if (pr.type === "Weight PR") {
-      const top = prSet(pr.exId, pr.date);
+      const top = prSet(pr.exId, pr.sid);
       const own2 = pr.value != null && isCompound(e5) && !(top && top.v > pr.value + EPS_SAME);
       return {
         name: e5.name,
@@ -27595,7 +27604,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         was: e5.assist ? "less help than ever" : isFinite(pr.prevW ?? NaN) ? `heaviest before ${listLabel(e5, pr.prevW ?? 0, !e5.bw)}` : ""
       };
     }
-    const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.date) : null;
+    const ps = pr.type === "e1RM" && !isCompound(e5) ? prSet(pr.exId, pr.sid) : null;
     if (ps) return { name: e5.name, what: `PR, ${setShort(e5, ps.w, ps.r)}`, was: "your best for that number of reps" };
     return pr.type === "e1RM" ? {
       name: e5.name,

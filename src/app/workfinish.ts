@@ -441,7 +441,7 @@ function recapPr(pr: Pr): { name: string; what: string; was: string } {
   if (pr.type === 'Weight PR') {
     /* The weight PR set's own estimate is said only when it is the session's best for the lift: after 155 x 7, 145 x 10
        set a higher one, and Stats names that (203), so 199 here would be a second best estimate. */
-    const top = prSet(pr.exId, pr.date);
+    const top = prSet(pr.exId, pr.sid);
     const own = pr.value != null && isCompound(e) && !(top && top.v > pr.value + EPS_SAME);
     return {
       name: e.name,
@@ -453,7 +453,7 @@ function recapPr(pr: Pr): { name: string; what: string; was: string } {
           : ''
     };
   }
-  const ps = pr.type === 'e1RM' && !isCompound(e) ? prSet(pr.exId, pr.date) : null;
+  const ps = pr.type === 'e1RM' && !isCompound(e) ? prSet(pr.exId, pr.sid) : null;
   if (ps) return { name: e.name, what: `PR, ${setShort(e, ps.w, ps.r)}`, was: 'your best for that number of reps' };
   return pr.type === 'e1RM'
     ? {
