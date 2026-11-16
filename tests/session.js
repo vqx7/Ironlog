@@ -81,7 +81,7 @@ async function lifter(o = {}) {
     if (o.seed) new Function('return ' + o.seed)()(S, L);
     // Read as the app reads a log it opens: cleaned, and each machine session that names no machine named as it reads
     // (a build before 2.70 names none, and one run to show a check fails there reads the log as it did).
-    L.state = L.normalize(S); if (L.nameMachines) L.nameMachines(L.state);
+    L.state = L.normalize(S);
     localStorage.setItem(L.KEY + '.installLater', '1'); localStorage.setItem(L.KEY + '.tipWake', '1');
     L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
   }, [items, { settings: o.settings, fresh: !!o.fresh, seed: o.seed ? String(o.seed) : '', more: o.more || [] }, LB]);

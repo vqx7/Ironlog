@@ -267,6 +267,20 @@ const plain = rows => (rows || []).map(s => `${s.w}x${s.r}`).join(',');
     const m3 = async P => P.ev(() => { const q = window.__ironlog.state.sessions.find(x => x.id === 'm3'); return q ? q.ex[0].sets.map(x => x.r).join() : null; });
     const kept = { A: await m3(D0), B: await m3(E), account: JSON.parse(C8.content()).filter(([k]) => /s-2026-10-2$/.test(k)).map(([, j]) => ((JSON.parse(j).sessions || []).find(x => x.id === 'm3') || { ex: [{ sets: [] }] }).ex[0].sets.map(x => x.r).join()).join() };
     ok(kept.A === '12,12,12' && kept.B === '12,12,12' && kept.account === '12,12,12', '(7) a correction made with no signal on a phone still on 2.69 stands after another phone takes the update: on both phones and in the account (REV24-2)', kept);
+    // (g) Phone B, still on 2.69 and with no signal, deletes Oct 10's chest press; phone A takes the update and syncs;
+    // B gets its signal back: A sent nothing it did not change, so the delete stands on both (NEW-175).
+    const CG = cloudOf();
+    const GA0 = await phone(browser, CG, R115, 'u9g'); pages.push(GA0);
+    await seedLog(GA0); await GA0.settle();
+    const GB = await phone(browser, CG, R115, 'u9g'); pages.push(GB);
+    await wait(900); await GB.settle();
+    await GB.ev(() => { window.__offline = true; const L = window.__ironlog; L.ACT.histDel({ dataset: { id: 'm2' } }); });
+    await wait(200); await GB.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mOk(); }); await wait(600);
+    const GA = await update(GA0, 'u9g', CG); pages.push(GA);
+    await GA.settle();
+    await GB.ev(() => { window.__offline = false; }); await GB.settle(); await GA.settle();
+    const gone = { A: await ids(GA), B: await ids(GB) };
+    ok(gone.A === 'f1 m1 m3' && gone.B === 'f1 m1 m3', '(7) a delete made with no signal on a phone still on 2.69 stands on both phones after the other takes the update (NEW-175)', gone);
     /* (f) A machine picked for a session with no signal is kept when the other phone took the update and made a later
        edit in the same half month (REV25-1): picked on 2.69 before the update, and picked on this build after an update
        taken with no signal. The chest press began a second machine on Oct 17; Oct 24 reads on it by its date, and the
