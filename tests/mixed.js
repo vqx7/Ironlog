@@ -25,9 +25,13 @@
 //       decide (pinned), since this build only sees what that phone sends;
 //   (6) a lift's unit and the scale's (2.66) reach the older phone, are kept
 //       there through its own edits and come back, with nothing more written.
+//   (7) the update from 2.69: names a phone or tab gives its machine sessions
+//       as it reads are no edit, so a delete, a correction or an Undo made on
+//       2.69 stands, and a copy sent with no edit made on it never reads as
+//       the later edit against a correction not yet sent.
 // `node tests/mixed.js <older page>` runs it against another build (default
 // baselines/r55.html); this build is index.html, or IRONLOG_FILE.
-const { open, engine } = require('./h');
+const { open, tab, engine } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 800) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const OLD = process.argv[2] || 'baselines/r55.html';
@@ -44,7 +48,9 @@ function cloudOf() {
       window.__uid = u;
       window.claude = { use: async k => {
         if (k === 'user') return { id: async () => window.__uid };
-        if (k === 'db') return { doc: p => ({ get: async () => { const v = await window.__dbGet(p); return v == null ? { exists: false, data: () => null } : { exists: true, data: () => JSON.parse(v) }; }, set: async o => { await window.__dbSet(p, JSON.stringify(o)); return true; } }), collection: p => ({ get: async () => { const l = JSON.parse(await window.__dbList(p)); return { docs: l.map(([id, v]) => ({ id, exists: true, data: () => JSON.parse(v) })) }; } }) };
+        // A phone with no signal (window.__offline): every read and write of the account fails, as the network's would.
+        const off = () => { if (window.__offline) throw { code: 'unavailable', message: 'offline' }; };
+        if (k === 'db') return { doc: p => ({ get: async () => { off(); const v = await window.__dbGet(p); return v == null ? { exists: false, data: () => null } : { exists: true, data: () => JSON.parse(v) }; }, set: async o => { off(); await window.__dbSet(p, JSON.stringify(o)); return true; } }), collection: p => ({ get: async () => { off(); const l = JSON.parse(await window.__dbList(p)); return { docs: l.map(([id, v]) => ({ id, exists: true, data: () => JSON.parse(v) })) }; } }) };
         return null;
       } };
     }, uid);
@@ -54,8 +60,8 @@ function cloudOf() {
   return { store, setup, content, writes: () => writes };
 }
 // A phone: a page of the given build on the cloud, signed in as uid, past the first page.
-async function phone(browser, cloud, file, uid) {
-  const P = await open(file, { browser, clock: CLOCK, realStarter: true, setup: cloud.setup(uid) });
+async function phone(browser, cloud, file, uid, clock = CLOCK) {
+  const P = await open(file, { browser, clock, realStarter: true, setup: cloud.setup(uid) });
   P.ev = (f, a) => P.page.evaluate(f, a);
   await P.ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); });
   P.sync = async () => { await P.ev(() => window.__ironlog.sync()); await wait(150); };
@@ -75,6 +81,8 @@ async function phone(browser, cloud, file, uid) {
   P.toast = () => P.ev(() => { const el = document.getElementById('toast'); return el && !el.hidden ? el.innerText : ''; });
   return P;
 }
+// A second page of a phone (tests/h.js tab) given the phone's own helpers, as the same phone.
+phone.dress = async (T, P) => { const Q = Object.create(P); Q.page = T.page; Q.errors = T.errors; Q.ev = (f, a) => T.page.evaluate(f, a); Q.sync = async () => { await Q.ev(() => window.__ironlog.sync()); await wait(150); }; Q.flush = async () => { await Q.ev(() => window.__ironlog.flush()); await wait(150); }; Q.settle = async () => { for (let i = 0; i < 2; i++) { await Q.flush(); await Q.sync(); } }; return Q; };
 const plain = rows => (rows || []).map(s => `${s.w}x${s.r}`).join(',');
 
 (async () => {
@@ -172,6 +180,95 @@ const plain = rows => (rows || []).map(s => `${s.w}x${s.r}`).join(',');
   ok(sn.bw === 'kg' && sn.theme === 'dark' && sn.keys === keys0, 'the scale\'s unit too, through the older phone\'s edit to the settings, its key where it stood', { sn, keys0 });
   const w6 = cloud.writes(); await N.settle(); await O.settle(); await N.settle();
   ok(cloud.writes() === w6, 'and the two phones then write nothing more', { writes: cloud.writes() - w6 });
+
+  /* ---- (7) The update from 2.69 (baselines/r115.html), the build before every machine lift's session named its machine
+     (2.70). A phone or tab that takes the update names its log's machine sessions as each reads; that is no edit of
+     them, so what a device or tab still on 2.69 did to one stands: a delete (REV24-1, REV24-3), a correction with no
+     clash said (REV24-2), and Undo of a step 2.69 kept takes back all it did (REV24-5). */
+  {
+    const R115 = 'baselines/r115.html', LB = 0.45359237;
+    const C7 = cloudOf();
+    const seedLog = P => P.ev(LB => {
+      const L = window.__ironlog; const S = L.state;
+      S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.lastExport = '2026-10-21';
+      const mk = (id, date, exId, w, rs) => ({ id, date, dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId, rr: [8, 12], sets: rs.map(r => ({ w: w * LB, r, rir: 2, done: true })) }] });
+      S.sessions = [mk('m1', '2026-10-03', 'machPress', 200, [11, 11, 10]), mk('f1', '2026-10-06', 'bench', 185, [8, 8, 7]), mk('m2', '2026-10-10', 'machPress', 200, [11, 11, 11]), mk('m3', '2026-10-17', 'machPress', 205, [10, 10, 9])];
+      L.state = L.normalize(S); L.invalidate(); L.saveNow();
+    }, LB);
+    // The update: this page closed and the app opened again on this build, its storage and account kept.
+    const update = async (P, uid, C = C7) => { await P.page.close(); const T = await tab(P, 'index.html', uid ? C.setup(uid) : undefined); const Q = await phone.dress(T, P); await wait(600); return Q; };
+    const ids = P => P.ev(() => window.__ironlog.state.sessions.map(x => x.id).sort().join(' '));
+    // (a) Phone B, still on 2.69, deletes the chest press session of Oct 10 and corrects Oct 17's; phone A then updates.
+    const A0 = await phone(browser, C7, R115, 'u7'); pages.push(A0);
+    await seedLog(A0); await A0.settle();
+    const B = await phone(browser, C7, R115, 'u7'); pages.push(B);
+    await wait(900); await B.settle();
+    await B.ev(() => { const L = window.__ironlog; L.ACT.histDel({ dataset: { id: 'm2' } }); });
+    await wait(200); await B.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mOk(); });
+    await B.ev(() => { const L = window.__ironlog; const q = L.state.sessions.find(x => x.id === 'm3'); q.ex[0].sets.forEach(x => { x.r = 12; }); L.saveNow(); });
+    await B.settle();
+    const A = await update(A0, 'u7'); pages.push(A);
+    await A.settle(); await B.settle(); await A.settle();
+    const onA = await A.ev(() => { const L = window.__ironlog; const q = L.state.sessions.find(x => x.id === 'm3'); return { ids: L.state.sessions.map(x => x.id).sort().join(' '), m3: q ? q.ex[0].sets.map(x => x.r).join() : null, named: L.state.sessions.filter(x => x.ex[0].exId === 'machPress').every(x => typeof x.ex[0].mc === 'string'), toast: (document.getElementById('toast') || {}).innerText || '' }; });
+    ok(onA.ids === 'f1 m1 m3' && onA.m3 === '12,12,12' && onA.named && !/edited on two devices/.test(onA.toast), '(7) a phone updated from 2.69 names its machine sessions, and phone B\'s delete (Oct 10) and correction (Oct 17, 12 reps) made on 2.69 stand, with no clash said (REV24-1, REV24-2)', onA);
+    ok((await ids(B)) === 'f1 m1 m3', '(7) and phone B, still on 2.69, keeps the session deleted', await ids(B));
+    // (b) One phone, two tabs: tab 1 takes the update, tab 2 is still the 2.69 page and deletes Oct 17's session.
+    const T0 = await phone(browser, cloudOf(), R115, null); pages.push(T0);
+    await seedLog(T0);
+    const T2 = await tab(T0, R115); T2.ev = (f, a) => T2.page.evaluate(f, a); pages.push(T2);
+    const T1 = await update(T0, null); pages.push(T1);
+    await wait(400);
+    await T2.ev(() => { const L = window.__ironlog; L.ACT.histDel({ dataset: { id: 'm3' } }); });
+    await wait(200); await T2.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mOk(); }); await wait(800);
+    const tabs = [await ids(T1), await ids(T2), await T1.ev(() => window.__ironlog.state.trash.map(t => t.id).join())];
+    ok(tabs[0] === 'f1 m1 m2' && tabs[1] === 'f1 m1 m2' && tabs[2] === 'm3', '(7) a tab still on 2.69 deletes a chest press session after the other tab updated: it stays deleted in both, in Recently deleted (REV24-3)', tabs);
+    // (c) Five sessions imported on 2.69 (three chest press), the app then updated: Settings' Undo takes back all five.
+    const U0 = await phone(browser, cloudOf(), R115, null); pages.push(U0);
+    await U0.ev(LB => {
+      const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb';
+      L.state = L.normalize(S); L.saveNow();
+      const mk = (id, date, exId, w) => ({ id, date, dayIdx: 0, dayName: 'Imported', notes: '', ex: [{ exId, rr: [8, 12], sets: [10, 10, 9].map(r => ({ w: w * LB, r, rir: 2, done: true })) }] });
+      L.act(() => { L.state.sessions.push(mk('i1', '2026-10-03', 'machPress', 200), mk('i2', '2026-10-06', 'bench', 185), mk('i3', '2026-10-10', 'machPress', 200), mk('i4', '2026-10-13', 'bench', 185), mk('i5', '2026-10-17', 'machPress', 205)); }, { undo: true });
+      L.toast('Imported 5 sessions', true);
+    }, LB);
+    await wait(300);
+    const U = await update(U0, null); pages.push(U);
+    const before = await ids(U);
+    await U.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); });
+    await wait(200); await U.ev(() => document.querySelectorAll('#view details').forEach(x => { x.open = true; })); await wait(100);
+    await U.page.click('#view [data-act="undo"]'); await wait(400);
+    ok(before === 'i1 i2 i3 i4 i5' && (await ids(U)) === '', '(7) Undo of an import made on 2.69, after the update, takes back every session it brought in, the machine lifts\' too (REV24-5)', { before, after: await ids(U) });
+    // (e) One phone, two tabs, both on this build after the update from 2.69; Erase everything in tab 2: no session
+    // comes back from tab 1, which never saved since the update (REV24-3).
+    const W0 = await phone(browser, cloudOf(), R115, null); pages.push(W0);
+    await seedLog(W0); await wait(300);
+    const W1 = await update(W0, null); pages.push(W1);
+    const W2 = await tab(W1, 'index.html'); W2.ev = (f, a) => W2.page.evaluate(f, a); pages.push(W2);
+    await wait(500);
+    const both = [await ids(W1), await ids(W2)];
+    await W2.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); }); await wait(200);
+    await W2.ev(() => document.querySelectorAll('#view details').forEach(x => { x.open = true; })); await wait(100);
+    await W2.page.click('#view [data-act="resetAll"]'); await wait(300); await W2.page.click('#modal [data-act="mOk"]'); await wait(1500);
+    const erased = [await ids(W1), await ids(W2), await W1.ev(() => JSON.parse(localStorage.getItem('ironlog.v1')).sessions.length)];
+    ok(both[0] === 'f1 m1 m2 m3' && both[1] === both[0] && erased[0] === '' && erased[1] === '' && erased[2] === 0, '(7) two tabs on this build after the update: Erase everything in one leaves no session in either, nor on the phone (REV24-3)', { both, erased });
+    // (d) Two phones on 2.69. Phone A, with no signal, corrects Oct 17's chest press (12 reps); an hour later by its
+    // clock phone B takes the update and sends its named log; A, still on 2.69, gets its signal back. B's copy holds no
+    // edit made on B, so it is not the later edit: the correction stands on both phones and in the account (B names
+    // the session again at its next change, as it does any session that comes in naming none).
+    const C8 = cloudOf();
+    const D0 = await phone(browser, C8, R115, 'u8'); pages.push(D0);
+    await seedLog(D0); await D0.settle();
+    const E0 = await phone(browser, C8, R115, 'u8', '2026-10-21T11:00:00'); pages.push(E0);
+    await wait(900); await E0.settle();
+    await D0.ev(() => { window.__offline = true; const L = window.__ironlog; const q = L.state.sessions.find(x => x.id === 'm3'); q.ex[0].sets.forEach(x => { x.r = 12; }); L.saveNow(); });
+    await wait(1500);
+    const E = await update(E0, 'u8', C8); pages.push(E);
+    await E.settle();
+    await D0.ev(() => { window.__offline = false; }); await D0.settle(); await E.settle(); await D0.settle();
+    const m3 = async P => P.ev(() => { const q = window.__ironlog.state.sessions.find(x => x.id === 'm3'); return q ? q.ex[0].sets.map(x => x.r).join() : null; });
+    const kept = { A: await m3(D0), B: await m3(E), account: JSON.parse(C8.content()).filter(([k]) => /s-2026-10-2$/.test(k)).map(([, j]) => ((JSON.parse(j).sessions || []).find(x => x.id === 'm3') || { ex: [{ sets: [] }] }).ex[0].sets.map(x => x.r).join()).join() };
+    ok(kept.A === '12,12,12' && kept.B === '12,12,12' && kept.account === '12,12,12', '(7) a correction made with no signal on a phone still on 2.69 stands after another phone takes the update and sends its named log: on both phones and in the account (REV24-2)', kept);
+  }
 
   const errors = pages.flatMap(P => P.errors);
   ok(!errors.length, 'no page errors', errors.slice(0, 4));

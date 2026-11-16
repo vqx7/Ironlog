@@ -2122,6 +2122,26 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
       await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); }); await wait(150); await P.ev(() => document.querySelectorAll('#view details').forEach(x => { x.open = true; })); await wait(100); await P.tap('#view [data-act="undo"]', 350);
       const none = await marks();
       ok(JSON.stringify(handed) === '[[true,null]]' && JSON.stringify(back) === '[[true,null],[null,null]]' && JSON.stringify(none) === '[[null,null],[null,null]]', 'L-41: a card taken out and put back by Undo takes back the machine it handed the lift\'s other card, so the Undo of that machine leaves no card on it (REV23-6)', { handed, back, none });
+      await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); }); await wait(200);
+      const second = await P.ev(() => { const L = window.__ironlog; const i = L.state.draft.ex.map(b => b.exId).lastIndexOf('machPress'); const el = document.querySelector(`#blk-${i} .hint`); return el ? el.innerText.replace(/\s+/g, ' ') : ''; });
+      ok(/^Today: /.test(second) && !/New machine/.test(second), 'L-41: and the lift\'s second card, added while the machine was, reads the lift\'s target on its machine again, never "New machine" (REV24-7)', second);
+      await P.close();
+    }
+    // The same with another Undo between: the machine added renamed on the card left, then Settings' Undo three times
+    // (the name, the card taken out, the machine added): no card is left on a machine (REV24-8).
+    {
+      const P = await lifter({ items: [['machPress', 3, 8, 12, 120], ['bench', 3, 6, 10, REST_BENCH]], fresh: true, seed: two, settings: { autoDone: false } }); const X = H(P);
+      const marks = () => P.ev(() => window.__ironlog.state.draft.ex.filter(b => b.exId === 'machPress').map(b => [b.nw || null, b.mc || null]));
+      const undoIn = async () => { await P.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ui.tab = 'settings'; L.render(); }); await wait(150); await P.ev(() => document.querySelectorAll('#view details').forEach(x => { x.open = true; })); await wait(100); await P.tap('#view [data-act="undo"]', 350); };
+      await start(P); await X.sheet(); await addMachine(P, 'Hammer');
+      await P.tap('#view [data-act="pickSession"]', 300); await P.page.fill('#pickQ', 'Machine Chest Press'); await wait(250);
+      await P.tap('#modal [data-act="pickDo"][data-ex="machPress"]', 300); if ((await P.modal()) && (await P.modal()).kind === 'confirm') await mOk(P);
+      await P.tap('#view [data-act="bMenu"][data-b="0"]', 200); await P.tap('#modal [data-act="bMenuDo"][data-op="bDel"]', 300); if ((await P.modal()) && (await P.modal()).kind === 'confirm') await mOk(P);
+      await X.sheet(1); await X.pencil('new'); await X.save('Hammer 2');
+      const renamed = await marks();
+      for (let k = 0; k < 3; k++) await undoIn();
+      const none = await marks();
+      ok(JSON.stringify(renamed) === '[[true,null]]' && JSON.stringify(none) === '[[null,null],[null,null]]', 'L-41: with the machine added renamed on the card left between, three Undos (the name, the card taken out, the machine added) leave no card on a machine (REV24-8)', { renamed, none });
       await P.close();
     }
     // The lift added again, the first card (nothing done) taken out: the sets stay on the machine added.

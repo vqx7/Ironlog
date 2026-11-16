@@ -1920,6 +1920,32 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(onE.mc === 'b1' && onE.mk === 'b1' && onD.mc === 'b1' && onD.mk === 'b1', 'S-13: the phone\'s chest press, done on no machine picked, is read on the machine the lift is on in the account, on both phones, never on the account\'s first machine (REV23-2)', { onE, onD });
       await D.close();
     }
+    /* The phone's first machine stays one machine at the sign-in: Nov 1 on it, Nov 8 on a machine added (Hammer), Nov 15
+       back on the first, picked. Nov 15 is read with Nov 1, never on Hammer, where the lifter did 80 lb (REV24-4). And
+       the same log restored from a backup and then signed in to its own account keeps every name (REV24-4). */
+    {
+      const C3 = cloudOf();
+      const mk = (id, date, kg, x) => ({ id, date, dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'machPress', rr: [8, 12], ps: 3, sets: [11, 11, 11].map(r => ({ w: kg, r, rir: 2, done: true })), ...x }] });
+      const acct = [mk('a1', '2026-10-10', 90, { mc: '0' }), mk('a2', '2026-10-17', 90, { mc: '0' })];
+      const mine = [mk('p1', '2026-11-01', 59, { mc: '0' }), mk('p2', '2026-11-08', 36, { nw: true, mc: 'p2' }), mk('p3', '2026-11-10', 61, { mc: '0' })];
+      const D = await phone({ cloud: C3, uid: 'u13n', arg: acct, seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      ok(await D.settled(), 'S-13: (setup) the account holds a chest press on its first machine');
+      const E = await phone({ cloud: C3, uid: null, who: 'E', browser: D.browser, clock: await clockOf(D), arg: mine, seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      await E.ev(() => { window.__uid = 'u13n'; window.__ironlog.cloudInit(); });
+      ok(await E.settled(), 'S-13: the phone with its chest press on two machines signs in and syncs');
+      const mcs = await E.ev(() => Object.fromEntries(window.__ironlog.state.sessions.map(q => [q.id, q.ex[0].mc])));
+      ok(mcs.p3 === mcs.p1 && mcs.p2 === 'p2' && mcs.p3 !== 'p2', 'S-13: the session back on the phone\'s first machine stays with the others on it, never on the machine added after (REV24-4)', mcs);
+      await D.close();
+      const C4 = cloudOf();
+      const F = await phone({ cloud: C4, uid: 'u13r', arg: mine, seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      ok(await F.settled(), 'S-13: (setup) an account holds the log');
+      const G = await phone({ cloud: C4, uid: null, who: 'G', browser: F.browser, clock: await clockOf(F), arg: mine, seed: (S, L, xs) => { S.sessions.push(...xs); S.settings.lastExport = '2026-11-11'; } });
+      await G.ev(() => { window.__uid = 'u13r'; window.__ironlog.cloudInit(); });
+      ok(await G.settled(), 'S-13: the same log on a new phone signs in to its own account');
+      const same = await G.ev(() => window.__ironlog.state.sessions.map(q => `${q.id}:${q.ex[0].mc}`).join(' '));
+      ok(same === 'p1:0 p2:p2 p3:0', 'S-13: and every session keeps its machine name (REV24-4)', same);
+      await F.close();
+    }
   }
 
   /* ---------- S-15: news about the log is never lost under a tap's message ---------- */

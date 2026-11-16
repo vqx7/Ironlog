@@ -44,6 +44,43 @@ export function canon(x: unknown): string {
 /** A record's fingerprint. */
 export const Hx = (x: unknown): string => hashStr(canon(x));
 
+/* Every session of a machine lift names its machine (mc on its exercise); one saved before that was kept, or by an older
+   build, is named as it reads, which is no edit of the session. So a copy that differs from the copy it is compared with
+   only by names that copy lacks is the same session: to a merge (unchanged on its side, its names kept) and to Recently
+   deleted (the deletion stands). A name changed (a pick) is an edit. */
+/** A session with its exercises' machine names left out; any other record as it is. */
+export function namesAside(x: unknown): unknown {
+  const R = rec(x);
+  const ex = R && arr(R.ex);
+  if (!R || !ex) return x;
+  return {
+    ...R,
+    ex: ex.map(b => {
+      const B = rec(b);
+      if (!B || B.mc === undefined) return b;
+      const { mc: _mc, ...rest } = B;
+      return rest;
+    })
+  };
+}
+/** Session `x` with the machine names of `from` (the same session) on its exercises that name none; any other record as it is. */
+function namesFrom(x: Rec, from: Rec): Rec {
+  const xe = arr(x.ex),
+    fe = arr(from.ex);
+  if (!xe || !fe) return x;
+  let named = false;
+  const ex = xe.map((b, i) => {
+    const B = rec(b);
+    if (!B || B.mc !== undefined) return b;
+    // The same exercise: by its own id, else by its place and lift.
+    const F = rec(typeof B.bid === 'string' ? fe.find(f => rec(f)?.bid === B.bid) : fe[i]);
+    if (!F || typeof F.mc !== 'string' || F.exId !== B.exId) return b;
+    named = true;
+    return { ...B, mc: F.mc };
+  });
+  return named ? { ...x, ex } : x;
+}
+
 /** Merges two versions of a list of records with ids against their base (id
     to fingerprint), record by record as described at the top. With no base
     (as on a first sync) nothing reads as deleted. Local records keep their
@@ -70,6 +107,8 @@ export function merge3List(
     if (R && typeof R.id === 'string') Rm.set(R.id, R);
   }
   const out: Rec[] = [];
+  // Unchanged on its side: the base itself, or the base with machine names it lacked (namesAside).
+  const asBase = (x: Rec, h: string | undefined, bh: string): boolean => h === bh || Hx(namesAside(x)) === bh;
   for (const id of [...L.keys(), ...[...Rm.keys()].filter(k => !L.has(k))]) {
     const a = L.get(id),
       b = Rm.get(id),
@@ -84,20 +123,27 @@ export function merge3List(
     }
     if (!a || !b) {
       // Present on one side only (so a || b is there, the !). Deleted by the other
-      // side if the present copy is exactly the base; otherwise it is new or
+      // side if the present copy is the base; otherwise it is new or
       // edited there, so keep it.
       const p = (a || b)!,
         ph = a ? ah : rh;
-      if (known && ph === bh) continue;
+      if (known && asBase(p, ph, bh)) continue;
       out.push(p);
       continue;
     }
-    if (ah === bh) {
-      out.push(b);
+    const aSame = known && asBase(a, ah, bh),
+      bSame = known && asBase(b, rh, bh);
+    // Neither changed but by names: the copy that names its machines, the later edit's when both do.
+    if (aSame && bSame) {
+      out.push(ah === bh ? b : rh === bh ? a : remoteWins ? b : a);
       continue;
     }
-    if (rh === bh) {
-      out.push(a);
+    if (aSame) {
+      out.push(namesFrom(b, a));
+      continue;
+    }
+    if (bSame) {
+      out.push(namesFrom(a, b));
       continue;
     }
     stat.conflicts++;

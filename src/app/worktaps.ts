@@ -216,7 +216,7 @@ function blockRemove(t: Tap): void {
           if (!d3 || d3.id !== did) return false;
           const k = prevBlk ? d3.ex.indexOf(prevBlk) : -1;
           d3.ex.splice(prevBlk == null ? 0 : k >= 0 ? k + 1 : Math.min(bi, d3.ex.length), 0, blk);
-          takeBackMachine(handed);
+          takeBackMachine(d3, handed);
           fixSupersets(d3.ex.map(x => x.plan));
           return true;
         }

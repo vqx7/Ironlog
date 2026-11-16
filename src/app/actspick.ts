@@ -266,7 +266,7 @@ function swapJoin(sw: SwapCtx, ni: number, y: DraftBlock): void {
           if (i < 0) return false;
           dd.ex[i] = orig;
         } else dd.ex.splice(dd.ex.indexOf(yy) + (ni < bi ? 1 : 0), 0, orig);
-        takeBackMachine(handed);
+        takeBackMachine(dd, handed);
         return true;
       }
     }
@@ -310,7 +310,7 @@ function swapInPlace(sw: SwapCtx): void {
           if (i >= 0) dd.ex[i] = orig;
           else return false;
         } else dd.ex[at] = orig;
-        takeBackMachine(handed);
+        takeBackMachine(dd, handed);
         return true;
       }
     }

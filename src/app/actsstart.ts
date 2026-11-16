@@ -345,7 +345,7 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           order.forEach((b, i) => {
             if (drop.has(i) && !dd.ex.includes(b)) dd.ex.splice(Math.min(i, dd.ex.length), 0, b);
           });
-          takeBackMachine(handed);
+          takeBackMachine(dd, handed);
           fixSupersets(dd.ex.map(b => b.plan));
           return true;
         }

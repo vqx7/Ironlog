@@ -17,6 +17,7 @@ import { LB, typedUnit } from './units';
 import { e1 } from './formulas';
 import { state, ui } from './store';
 import { act, undoStep } from './act';
+import { draftBack } from './worksets';
 import { isStandalone, installKind } from './env';
 import { distShow, distU } from './display';
 import { closeModal, confirmBox, openModal, render, renderModal, rerenderKeepScroll, setSaveState } from './page';
@@ -498,6 +499,9 @@ export const APP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     else if (r === 'unchanged') toast('Nothing to undo: that change was already reversed or edited since.');
     else {
       toastHide();
+      /* What a lift's cards in the workout open read can change with an Undo (a machine added taken back, a session
+         put back or taken away): the workout reads the log again, as one set aside does as it comes back. */
+      if (state.draft) act(() => draftBack(), { inProgress: true });
       render();
       // What was taken back, in the words its own message used; never a count of the steps kept.
       toast(r.said ? `Undone: ${r.said}` : 'Undone');

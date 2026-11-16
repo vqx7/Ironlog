@@ -99,7 +99,7 @@ import {
 import type { Rec, Trashed } from './records';
 import { gymClean } from './gym';
 import { profClean } from './profile';
-import { canon } from './merge';
+import { canon, namesAside } from './merge';
 import {
   DEFAULT_HIDDEN,
   DSEC_FOLDED,
@@ -1199,7 +1199,8 @@ function reviveEdited(
   const revived = new Set<string>();
   const same = (cur: unknown, data: Rec, clean: (x: unknown, i: number) => unknown, ok: (x: unknown) => boolean) => {
     try {
-      return !ok(data) || canon(clean(data, 0)) === canon(cur);
+      // Machine names filled in on either copy are no edit (merge.ts namesAside).
+      return !ok(data) || canon(namesAside(clean(data, 0))) === canon(namesAside(cur));
     } catch (e) {
       // A copy that cannot be cleaned is read as the same record, so the deletion stands.
       return true;

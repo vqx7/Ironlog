@@ -622,9 +622,12 @@ export function keepLiftMachine(d: { ex: DraftBlock[] }, gone: readonly DraftBlo
   return handed;
 }
 
-/** Takes off the marks keepLiftMachine handed to `cards`, as a removal's Undo puts the card that held them back. */
-export function takeBackMachine(cards: readonly DraftBlock[]): void {
-  for (const b of cards) {
+/** Takes off the marks keepLiftMachine handed to `cards` from workout `d`, as a removal's Undo puts the card that held them back. */
+export function takeBackMachine(d: { ex: DraftBlock[] }, cards: readonly DraftBlock[]): void {
+  for (const c of cards) {
+    // By the card's id: an Undo or a merge in between draws the workout's cards again, as other objects.
+    const b = (c.bid && d.ex.find(x => x.bid === c.bid)) || (d.ex.includes(c) ? c : null);
+    if (!b) continue;
     delete b.mc;
     delete b.nw;
   }
