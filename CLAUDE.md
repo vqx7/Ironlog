@@ -161,7 +161,8 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   taken out of the routine is not, outside Freestyle (V, 2026-11-15, NEW-166, `ExStat.current`). A session
   marked New machine or gym restarts them too, its PRs, bests and dumbbell steps with them, and keeps every session
   shown (`liftReadIn`, r61). A machine, cable or Smith lift is read per machine (V, 2026-11-14, 390 C): its ⋯ Machine
-  sheet lists the machines it was done on, by date and weight; its target, PRs, bests and readings come from the machine
+  sheet lists the machines it was done on, by the names the lifter gives them (one with none by its last session's
+  date and weight; V, 2026-11-15, NEW-168), the name of the one in use on its card; its target, PRs, bests and readings come from the machine
   it is on, the one last done on unless another is picked; its sets and volume count as one exercise; the app never
   guesses a machine (`machineKeys`). A ticked set
   of 0 reps is a missed set: kept and shown, counted toward no volume, PR, estimate or trend, read by the next target

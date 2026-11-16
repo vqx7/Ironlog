@@ -83,8 +83,8 @@ export const ODD_REPS = 30,
 /** A PR's toast stays this many milliseconds, and the phone buzzes this pattern where it can. */
 const PR_TOAST_MS = 4200,
   PR_BUZZ = [30, 50, 30];
-/** The effort strip is scrolled into view when its bottom is within STRIP_ROOM_PX.edge of what covers the screen, leaving STRIP_ROOM_PX.gap. */
-const STRIP_ROOM_PX = { edge: 8, gap: 16 } as const;
+/** The effort strip, or the set to do next, is scrolled into view when its bottom is within BAR_ROOM_PX.edge of the bars along the bottom, leaving BAR_ROOM_PX.gap. */
+const BAR_ROOM_PX = { edge: 8, gap: 16 } as const;
 /** A load under MIX_RANGE[0] or over MIX_RANGE[1] of last time's is asked about once: a per-dumbbell or per-side mix-up (a convention). */
 const MIX_RANGE = [0.6, 1.4] as const;
 /** The mix-up toast stays this many milliseconds: it has two sentences. */
@@ -987,6 +987,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean, t
   if (askRir) rirShowStrip(bi, si);
   else if (!val) rirClose();
   if (val && !again && !askRir && !d.editingId && b.plan.ss && !(nx && nx.drop && !nx.done)) ssNext(b);
+  else if (val && !again && !askRir && !d.editingId && !b.plan.ss && !blockDone(b)) nextSetClear(bi);
   if (val && !askRir && !d.editingId && blockDone(b)) {
     const rf = blkRef(bi);
     W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
@@ -1136,6 +1137,24 @@ function ssNext(b: DraftBlock): void {
   });
 }
 
+/* The set to do next, after a tick, is lifted clear of the bars along the bottom when it sits under them, as the
+   effort strip is: the rest timer rises with the tick, and the row it names would be under it, to be scrolled to before
+   it can be read or tapped. Only the view moves, and only when the row is covered. */
+function nextSetClear(bi: number): void {
+  const b = state.draft && state.draft.ex[bi];
+  const si = b ? b.sets.findIndex(y => !y.done && !y.warm) : -1;
+  if (si < 0) return;
+  requestAnimationFrame(() => {
+    const row = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
+    const el = row && row.closest('.sg');
+    if (!el) return;
+    const lim = bottomBarsTop();
+    const r = el.getBoundingClientRect();
+    if (r.bottom > lim - BAR_ROOM_PX.edge)
+      window.scrollBy({ top: r.bottom - lim + BAR_ROOM_PX.gap, behavior: 'smooth' });
+  });
+}
+
 /* Typed reps, then a tap on the same row's RIR box: auto-mark waits
    until the RIR strip closes, picked or not. Ticking at once started the
    rest timer, whose bar rose under the finger near the bottom of the
@@ -1167,8 +1186,8 @@ export function rirShowStrip(bi: number, si: number): void {
     if (!st) return;
     const lim = bottomBarsTop();
     const r = st.getBoundingClientRect();
-    if (r.bottom > lim - STRIP_ROOM_PX.edge)
-      window.scrollBy({ top: r.bottom - lim + STRIP_ROOM_PX.gap, behavior: 'smooth' });
+    if (r.bottom > lim - BAR_ROOM_PX.edge)
+      window.scrollBy({ top: r.bottom - lim + BAR_ROOM_PX.gap, behavior: 'smooth' });
   });
 }
 

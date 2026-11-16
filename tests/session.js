@@ -389,6 +389,17 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await P.tap(tick(1, 0)); l = await left();
     ok(l > REST_RAISE - 5 && l <= REST_RAISE, `L-14: the raises rest their own ${REST_RAISE} s`, l);
     await P.close();
+    /* The set to do next is never left under the rest timer (UAT-14): a tick that starts the rest brings the next set
+       clear of the timer when it would sit under it, and moves nothing when it is clear. Three lifts, so the page
+       scrolls, on a 393 px phone. */
+    const T = await lifter({ settings: { autoDone: false }, w: 393, items: [['bench', 3, 6, 10, REST_BENCH], ['dbLateral', 3, 10, 15, REST_RAISE], ['triPushdown', 3, 10, 15, REST_RAISE]] });
+    await start(T);
+    const at = () => T.ev(() => { const t = document.getElementById('timer').getBoundingClientRect(); const rows = [...document.querySelectorAll('#view .sg')].filter(r => r.querySelector('[data-act="sDone"][data-b="0"]')).map(r => Math.round(r.getBoundingClientRect().bottom)); return { top: Math.round(t.top), rows, y: Math.round(window.scrollY) }; });
+    await T.tap(tick(0, 0), 900); const a1 = await at();
+    ok(a1.y === 0 && a1.rows[1] <= a1.top, 'L-14: after the first tick the next set is clear of the rest timer, and the page stays where it was', a1);
+    await T.tap(tick(0, 1), 900); const a2 = await at();
+    ok(a2.rows[2] <= a2.top - 8, 'L-14: after the second, the next set (3), which would sit under the timer, is brought clear of it', a2);
+    await T.close();
     const M = await lifter({ settings: { autoDone: false, timerMode: 'manual' } });
     await start(M); await M.tap(tick(0, 0));
     ok(!((await M.ev(() => window.__ironlog.timer.end)) > (await M.ev(() => Date.now()))), 'L-14: with the timer set to start by hand, a tick starts nothing');
@@ -517,10 +528,14 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     ok(!!(await P.draft()), 'L-18: Keep going keeps the workout open');
     // A set with reps typed and no tick is asked about rather than lost.
     await P.page.fill(field('r', 0, 2), '7'); await wait(500);
+    // Sets left and a set with reps and no tick are one question, not two in turn: the typed one named, Mark it done
+    // and save, Save without them, or Cancel to keep going (UAT-18).
     await P.tap('#view [data-act="finish"]', 250); m = await P.modal();
-    if (m && m.title === '2 of 5 sets not done') { await mOk(P); m = await P.modal(); }
-    ok(m && m.title === 'Some sets are not marked done' && m.text.includes('Barbell Bench Press (1 set)'), 'L-18: a set with reps and no tick is named before saving: "Some sets are not marked done"', m);
+    ok(m && m.title === '3 of 5 sets not done' && m.text.includes('Barbell Bench Press (1 set) has reps and no checkmark.') && m.text.includes('The other 2 are empty and left out.') && JSON.stringify(m.buttons) === '["Mark it done and save","Save without them","Cancel"]',
+      'L-18: sets left and a set with reps and no tick are one question: "3 of 5 sets not done", the typed one named, Mark it done and save or Save without them', m);
     await mOk(P);
+    m = await P.modal();
+    ok(m && m.kind === 'recap', 'L-18: Mark it done and save saves at once, with no second question', m && { kind: m.kind, title: m.title, text: m.text.slice(0, 120) });
     while (await P.modal()) { const mm = await P.modal(); if (mm.kind === 'confirm') await mOk(P); else { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(150); } }
     const saved = await P.ev(() => window.__ironlog.state.sessions.find(x => x.date === '2026-11-11'));
     ok(!(await P.draft()) && saved && saved.ex.length === 1 && saved.ex[0].exId === 'bench' && saved.ex[0].sets.length === 3 && saved.ex[0].sets.every(x => x.done !== false), 'L-18: the saved session holds the sets ticked (the typed one, ticked on that answer), and leaves out an exercise with none', saved && saved.ex.map(b => [b.exId, b.sets.length]));

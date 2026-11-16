@@ -16138,7 +16138,7 @@ ${more}`;
   var CAL_OFFER = { sessions: 3, weeks: 3 };
   var ODD_REPS = 30, ODD_REPS_TIMES = 2;
   var PR_TOAST_MS = 4200, PR_BUZZ = [30, 50, 30];
-  var STRIP_ROOM_PX = { edge: 8, gap: 16 };
+  var BAR_ROOM_PX = { edge: 8, gap: 16 };
   var MIX_RANGE = [0.6, 1.4];
   var MIX_TOAST_MS = 7e3;
   var ORDER_MS = { soon: 900, again: 1500 };
@@ -16692,6 +16692,7 @@ ${more}`;
     if (askRir) rirShowStrip(bi, si);
     else if (!val) rirClose();
     if (val && !again && !askRir && !d3.editingId && b2.plan.ss && !(nx && nx.drop && !nx.done)) ssNext(b2);
+    else if (val && !again && !askRir && !d3.editingId && !b2.plan.ss && !blockDone(b2)) nextSetClear(bi);
     if (val && !askRir && !d3.editingId && blockDone(b2)) {
       const rf = blkRef(bi);
       W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
@@ -16786,6 +16787,20 @@ ${more}`;
         }
     });
   }
+  function nextSetClear(bi) {
+    const b2 = state.draft && state.draft.ex[bi];
+    const si = b2 ? b2.sets.findIndex((y2) => !y2.done && !y2.warm) : -1;
+    if (si < 0) return;
+    requestAnimationFrame(() => {
+      const row = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
+      const el = row && row.closest(".sg");
+      if (!el) return;
+      const lim = bottomBarsTop();
+      const r4 = el.getBoundingClientRect();
+      if (r4.bottom > lim - BAR_ROOM_PX.edge)
+        window.scrollBy({ top: r4.bottom - lim + BAR_ROOM_PX.gap, behavior: "smooth" });
+    });
+  }
   function autoPending() {
     const p3 = W.pendAuto;
     W.pendAuto = null;
@@ -16810,8 +16825,8 @@ ${more}`;
       if (!st) return;
       const lim = bottomBarsTop();
       const r4 = st.getBoundingClientRect();
-      if (r4.bottom > lim - STRIP_ROOM_PX.edge)
-        window.scrollBy({ top: r4.bottom - lim + STRIP_ROOM_PX.gap, behavior: "smooth" });
+      if (r4.bottom > lim - BAR_ROOM_PX.edge)
+        window.scrollBy({ top: r4.bottom - lim + BAR_ROOM_PX.gap, behavior: "smooth" });
     });
   }
   function rirClose() {
@@ -26913,33 +26928,87 @@ ${JSON.stringify(ctx, null, 1)}`;
     return out;
   }
   var HEAVIEST_SHOWN = 4;
+  var typedNotDone = (s3) => !s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3));
+  function uncheckedIn(d3) {
+    const out = [];
+    for (const b2 of d3.ex) {
+      const n3 = b2.sets.filter(typedNotDone).length;
+      if (n3) out.push({ n: n3, name: EX(b2.exId).name });
+    }
+    return out;
+  }
+  function markAll() {
+    const dd = state.draft;
+    if (!dd) return;
+    for (const [bi, b2] of dd.ex.entries())
+      for (const [si, s3] of b2.sets.entries())
+        if (typedNotDone(s3)) {
+          if (oddReps(b2, s3) || oddLoad(b2, si, dd.date) || lightZero(b2, si, dd.date)) {
+            setDone(bi, si, true, false, markAll);
+            if (!s3.done) return;
+          } else
+            act(
+              () => {
+                settleLoad(b2, si);
+                noteAsked(dd, b2, si);
+                s3.done = true;
+              },
+              { inProgress: true }
+            );
+        }
+    saveAfterRamps();
+  }
   function askSetsLeft(d3) {
-    let n3 = 0, left = 0;
+    let n3 = 0, left = 0, typedWork = 0, any = false;
     for (const b2 of d3.ex)
       for (const x2 of b2.sets) {
         if (x2.warm) continue;
         n3++;
-        if (!x2.done && rowBlank(b2, x2)) left++;
+        if (x2.done) any = true;
+        else if (rowBlank(b2, x2)) left++;
+        else if (typedNotDone(x2)) typedWork++;
       }
-    const any = d3.ex.some((b2) => b2.sets.some((x2) => x2.done && !x2.warm));
-    if (any && left > 0) {
+    if (!any || left === 0) return false;
+    const asked = () => {
+      const dd = state.draft;
+      if (dd) dd._leftAsked = true;
+    };
+    const fewer = "An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.";
+    const typed = uncheckedIn(d3);
+    if (typed.length) {
+      const total = typed.reduce((a2, u4) => a2 + u4.n, 0);
       confirmBox(
-        `${left} of ${n3} sets not done`,
-        `Finish now and they are left out. An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.`,
-        "Finish now",
+        `${left + typedWork} of ${n3} sets not done`,
+        `${andList(typed.map((u4) => `${u4.name} (${u4.n} set${u4.n > 1 ? "s" : ""})`))} ${typed.length > 1 ? "have" : "has"} reps and no checkmark. ${left > 1 ? `The other ${left} are empty and left out.` : "The other set is empty and left out."} ${fewer}`,
+        `Mark ${total > 1 ? "them" : "it"} done and save`,
         () => {
-          const dd = state.draft;
-          if (!dd) return;
-          dd._leftAsked = true;
-          finish();
+          asked();
+          markAll();
         },
         false,
-        { label: "Keep going", fn: () => {
-        } }
+        {
+          label: "Save without them",
+          fn: () => {
+            asked();
+            saveAfterRamps();
+          }
+        }
       );
       return true;
     }
-    return false;
+    confirmBox(
+      `${left} of ${n3} sets not done`,
+      `Finish now and they are left out. ${fewer}`,
+      "Finish now",
+      () => {
+        asked();
+        finish();
+      },
+      false,
+      { label: "Keep going", fn: () => {
+      } }
+    );
+    return true;
   }
   function askRamps(d3) {
     const ramps = [];
@@ -26984,7 +27053,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           },
           { inProgress: true }
         );
-        finish();
+        saveAfterRamps();
       };
       confirmBox(
         "These look like ramp-up sets",
@@ -27020,55 +27089,32 @@ ${JSON.stringify(ctx, null, 1)}`;
     return false;
   }
   function askUnchecked(d3) {
-    const unchecked = [];
-    for (const b2 of d3.ex) {
-      const n3 = b2.sets.filter((s3) => !s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3))).length;
-      if (n3) unchecked.push({ n: n3, name: EX(b2.exId).name });
-    }
-    if (unchecked.length) {
-      const list = unchecked.map((u4) => `${u4.name} (${u4.n} set${u4.n > 1 ? "s" : ""})`).join(", ");
-      const total = unchecked.reduce((a2, u4) => a2 + u4.n, 0);
-      confirmBox(
-        "Some sets are not marked done",
-        `${total} set${total > 1 ? "s have" : " has"} reps entered but no checkmark, so ${total > 1 ? "they" : "it"} will not be saved: ${list}.`,
-        `Mark ${total > 1 ? "them" : "it"} done and save`,
-        /* Each set is ticked in turn; one far off asks first, and once it is logged the rest are ticked and the
-           session saved, with no second tap on Finish. Fix it leaves the workout open there. */
-        function markAll() {
-          const dd = state.draft;
-          if (!dd) return;
-          for (const [bi, b2] of dd.ex.entries())
-            for (const [si, s3] of b2.sets.entries())
-              if (!s3.done && (+(s3.r ?? 0) > 0 || isMissed(s3))) {
-                if (oddReps(b2, s3) || oddLoad(b2, si, dd.date) || lightZero(b2, si, dd.date)) {
-                  setDone(bi, si, true, false, markAll);
-                  if (!s3.done) return;
-                } else
-                  act(
-                    () => {
-                      settleLoad(b2, si);
-                      noteAsked(dd, b2, si);
-                      s3.done = true;
-                    },
-                    { inProgress: true }
-                  );
-              }
-          finishNow();
-        },
-        false,
-        { label: "Save without them", fn: () => finishNow() }
-      );
-      return true;
-    }
-    return false;
+    const unchecked = uncheckedIn(d3);
+    if (!unchecked.length) return false;
+    const list = unchecked.map((u4) => `${u4.name} (${u4.n} set${u4.n > 1 ? "s" : ""})`).join(", ");
+    const total = unchecked.reduce((a2, u4) => a2 + u4.n, 0);
+    confirmBox(
+      "Some sets are not marked done",
+      `${total} set${total > 1 ? "s have" : " has"} reps entered but no checkmark, so ${total > 1 ? "they" : "it"} will not be saved: ${list}.`,
+      `Mark ${total > 1 ? "them" : "it"} done and save`,
+      markAll,
+      false,
+      { label: "Save without them", fn: saveAfterRamps }
+    );
+    return true;
+  }
+  function saveAfterRamps() {
+    const d3 = state.draft;
+    if (!d3) return;
+    if (!d3._rampAsked && askRamps(d3)) return;
+    finishNow();
   }
   function finish() {
     const d3 = state.draft;
     if (!d3) return;
     if (!d3._leftAsked && !d3.editingId && !d3.past && askSetsLeft(d3)) return;
-    if (!d3._rampAsked && askRamps(d3)) return;
     if (askUnchecked(d3)) return;
-    finishNow();
+    saveAfterRamps();
   }
   function finishNow() {
     const d3 = state.draft;
