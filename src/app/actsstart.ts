@@ -101,9 +101,6 @@ function pastDraft(date: string, di: number | null, part: 1 | 2 = 1): DraftLike 
   };
 }
 
-/** What is said when the workout open is set aside for an edit or a past workout. */
-const PARKED_SAID = 'Your workout in progress is set aside. It comes back when you save or discard this one.';
-
 /* A start with a workout already open opens that one instead: Today
    offers starts while the lifter has stepped away from a workout, and a start
    never discards one unasked. */
@@ -572,10 +569,8 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     closeModal();
     const d = state.draft;
     // The workout open is set aside and comes back when this one is saved or discarded; else asked, as before.
-    if (d && parkDraft()) {
-      go();
-      toast(PARKED_SAID);
-    } else if (d && (d.editingId || draftEntered(d)))
+    if (d && parkDraft()) go();
+    else if (d && (d.editingId || draftEntered(d)))
       confirmBox(
         'Replace the session in progress?',
         d.editingId
@@ -651,10 +646,8 @@ export const START_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       begin(d, false);
     };
     // The workout open is set aside and comes back when the edit is saved or cancelled; else asked, as before.
-    if (state.draft && parkDraft()) {
-      go();
-      toast(PARKED_SAID);
-    } else if (state.draft)
+    if (state.draft && parkDraft()) go();
+    else if (state.draft)
       confirmBox(
         'Replace the session in progress?',
         state.draft.editingId

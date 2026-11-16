@@ -74,6 +74,7 @@ import {
   parkedRetag,
   dropAside,
   load,
+  keepStorage,
   undoForget
 } from './storage';
 
@@ -131,6 +132,7 @@ export function onSaved(f: () => void): void {
 function writeLocal(j: string): void {
   localStorage.setItem(KEY, j);
   device.lastSaved = j;
+  keepStorage();
   for (const f of savedHooks)
     try {
       f();

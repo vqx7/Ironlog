@@ -293,6 +293,20 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
     ok(first && first.at - last <= SAVE_TYPED_MS + LATE_MS, `S-1: typing is saved ${SAVE_TYPED_MS} ms after it pauses, not later`, { delay: first && first.at - last });
     await P.close();
 
+    /* The phone is asked to keep the site's storage, so a browser short of space or Safari after a week away does not
+       clear the log: once a visit, at its first save (the start writes the log), never again in that visit (UAT-13). */
+    {
+      const ask = `(()=>{window.__keep=[];const api={persisted:()=>{window.__keep.push('persisted');return Promise.resolve(false);},persist:()=>{window.__keep.push('persist');return Promise.resolve(true);}};Object.defineProperty(Navigator.prototype,'storage',{get:()=>api,configurable:true});})()`;
+      const K = await phone({ setup: async ctx => { await ctx.addInitScript(ask); } });
+      const opened = await K.ev(() => window.__keep.slice());
+      await start(K); await K.page.fill('#view input[data-f="w"][data-b="0"][data-s="0"]', '100'); await K.page.fill('#view input[data-f="r"][data-b="0"][data-s="0"]', '8');
+      await K.page.click(tickBtn(0, 0)); await wait(100);
+      await K.page.click(tickBtn(0, 1)); await wait(100);
+      const saved = await K.ev(() => window.__keep.slice());
+      ok(JSON.stringify(opened) === '["persisted","persist"]' && JSON.stringify(saved) === '["persisted","persist"]', 'S-1: the phone is asked to keep the log once a visit, at its first save, and not again as sets are ticked (UAT-13)', { opened, saved });
+      await K.close();
+    }
+
     // With an account: the account's copy follows 1.2 s after the last change.
     const C = cloudOf();
     const A = await phone({ cloud: C, uid: 'u1' });

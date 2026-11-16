@@ -89,6 +89,25 @@ interface Device {
 /** Where the save on this device stands (the type above). */
 export const device: Device = { ok: true, boot: true, hadLocal: false, hadLog: false, lastSaved: null };
 
+/* Safari clears a site's stored data after seven days of use with no visit to it, an app on the home screen counted
+   apart, and any browser may clear a site's storage when the phone runs short of space, unless the site asked to be
+   kept and the browser granted it. A phone that holds a log asks, once a visit, at its first save; the browser decides
+   without a question to the lifter (Chrome and Safari by how the app is used, a home-screen app among them). */
+let keepAsked = false;
+/** Asks the browser, once a visit, to keep this site's storage (above). */
+export function keepStorage(): void {
+  if (keepAsked) return;
+  keepAsked = true;
+  const s = navigator.storage;
+  // A browser without the ask (an older one) keeps storage by its own rules; nothing to do.
+  if (!s || typeof s.persist !== 'function' || typeof s.persisted !== 'function') return;
+  s.persisted()
+    .then(kept => kept || s.persist())
+    .catch((e: unknown) => {
+      log('storage', e);
+    });
+}
+
 /** Clears a timer that may not be set (a browser takes null, TypeScript's types do not). */
 export const clearTimer = (t: number | null): void => {
   if (t != null) clearTimeout(t);

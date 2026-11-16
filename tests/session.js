@@ -552,7 +552,8 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await P.tap('#tabs [data-tab="history"]', 200);
     await P.tap('#view [data-act="histToggle"][data-id="last"]', 150); await P.tap('#view [data-act="histEdit"][data-id="last"]', 300);
     const t = await P.toasts();
-    ok(t.includes('Your workout in progress is set aside. It comes back when you save or discard this one.'), 'L-19: editing a saved session sets the workout in progress aside, and says so', t);
+    const line = await P.ev(() => (document.getElementById('parkedLine') || {}).textContent || '');
+    ok(line === 'Your workout in progress is set aside. It comes back when you save or discard this one.' && !t.some(x => /set aside/.test(x)), 'L-19: editing a saved session sets the workout in progress aside, and says so once, under the edit\'s title, never again in a message over it (REV16-C5)', { line, t });
     const d = await P.draft();
     ok(d && d.editingId === 'last' && d.ex[0].sets.every(x => x.done), 'L-19: the saved session opens with its sets ticked', d && { id: d.editingId });
     // A set unticked and ticked again in the edit, with 8 reps typed: a tick that would start a rest in a workout.
