@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-UQWTGNt9yooh4IFfaQv4bfWoHZYtl6kMR8x/WcZCSSc=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-wPLzC73GEvbNYrNhXc1Ex1rpB3qzO9VWswCq4wNE6RU=' 'sha256-bhW7fEldWjyemyMLv0xsJ+WRYp/KXVur8qFnW39IUcU=' 'sha256-pwltkfWC8L3LQa1gx4cqcI1QHOgciz+ME9dpOfHt31A='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="app-build" content="2026.11.15-r116">
@@ -3870,34 +3870,6 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return "{" + Object.keys(f3).filter((k2) => f3[k2] !== void 0).sort().map((k2) => JSON.stringify(k2) + ":" + canon(f3[k2])).join(",") + "}";
   }
   var Hx = (x2) => hashStr(canon(x2));
-  function namesAside(x2) {
-    const R2 = rec(x2);
-    const ex = R2 && arr(R2.ex);
-    if (!R2 || !ex) return x2;
-    return {
-      ...R2,
-      ex: ex.map((b2) => {
-        const B5 = rec(b2);
-        if (!B5 || B5.mc === void 0) return b2;
-        const { mc: _mc, ...rest } = B5;
-        return rest;
-      })
-    };
-  }
-  function namesFrom(x2, from) {
-    const xe = arr(x2.ex), fe = arr(from.ex);
-    if (!xe || !fe) return x2;
-    let named2 = false;
-    const ex = xe.map((b2, i5) => {
-      const B5 = rec(b2);
-      if (!B5 || B5.mc !== void 0) return b2;
-      const F3 = rec(typeof B5.bid === "string" ? fe.find((f3) => rec(f3)?.bid === B5.bid) : fe[i5]);
-      if (!F3 || typeof F3.mc !== "string" || F3.exId !== B5.exId) return b2;
-      named2 = true;
-      return { ...B5, mc: F3.mc };
-    });
-    return named2 ? { ...x2, ex } : x2;
-  }
   function merge3List(base, l4, r4, remoteWins, stat) {
     const known = !!base;
     base = base || {};
@@ -3911,7 +3883,6 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       if (R2 && typeof R2.id === "string") Rm.set(R2.id, R2);
     }
     const out = [];
-    const asBase = (x2, h3, bh) => h3 === bh || Hx(namesAside(x2)) === bh;
     for (const id of [...L2.keys(), ...[...Rm.keys()].filter((k2) => !L2.has(k2))]) {
       const a2 = L2.get(id), b2 = Rm.get(id), bh = known ? base[id] : "?";
       const ah = a2 ? Hx(a2) : void 0, rh = b2 ? Hx(b2) : void 0;
@@ -3921,21 +3892,16 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       }
       if (!a2 || !b2) {
         const p3 = a2 || b2, ph = a2 ? ah : rh;
-        if (known && asBase(p3, ph, bh)) continue;
+        if (known && ph === bh) continue;
         out.push(p3);
         continue;
       }
-      const aSame = known && asBase(a2, ah, bh), bSame = known && asBase(b2, rh, bh);
-      if (aSame && bSame) {
-        out.push(ah === bh ? b2 : rh === bh ? a2 : remoteWins ? b2 : a2);
+      if (ah === bh) {
+        out.push(b2);
         continue;
       }
-      if (aSame) {
-        out.push(namesFrom(b2, a2));
-        continue;
-      }
-      if (bSame) {
-        out.push(namesFrom(a2, b2));
+      if (rh === bh) {
+        out.push(a2);
         continue;
       }
       stat.conflicts++;
@@ -4501,12 +4467,12 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       return false;
     }
   }
-  function nameMachines(st) {
-    const { sessions } = st;
+  function machineReadings(st) {
     const onM = new Set(st.exercises.filter(onMachines).map((e5) => e5.id));
-    if (!sessions.some((ss) => ss.ex.some((b2) => !b2.mc && onM.has(b2.exId) && b2.sets.some(isWork)))) return false;
+    const out = /* @__PURE__ */ new Map();
+    if (!st.sessions.some((ss) => ss.ex.some((b2) => !b2.mc && onM.has(b2.exId) && b2.sets.some(isWork)))) return out;
     const byEx = /* @__PURE__ */ new Map();
-    for (const ss of [...sessions].sort(sessCmp))
+    for (const ss of [...st.sessions].sort(sessCmp))
       for (const m3 of sameExOnce(ss.ex)) {
         if (!onM.has(m3.exId) || !m3.sets.some(isWork)) continue;
         const xs = byEx.get(m3.exId) || [];
@@ -4516,24 +4482,52 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
           ...m3.nw ? { nw: true } : {},
           ...m3.mc ? { mc: m3.mc } : {},
           mk: "",
+          k: `${ss.id}|${m3.exId}|${m3.light ? 1 : 0}`,
           ss,
           at: ss.ex.flatMap((b2, i5) => b2.exId === m3.exId && !!b2.light === !!m3.light && !b2.mc ? [i5] : [])
         });
       }
-    const named2 = /* @__PURE__ */ new Map();
     for (const xs of byEx.values()) {
       machineKeys(xs);
-      for (const x2 of xs)
-        for (const i5 of x2.at) {
-          const at2 = named2.get(x2.ss) || /* @__PURE__ */ new Map();
-          named2.set(x2.ss, at2.set(i5, x2.mk));
-        }
+      for (const x2 of xs) if (x2.at.length) out.set(x2.k, { key: x2.mk, ss: x2.ss, at: x2.at });
     }
-    sessions.forEach((ss, k2) => {
+    return out;
+  }
+  function keepMachines(st, before2) {
+    if (!before2.size) return false;
+    const named2 = /* @__PURE__ */ new Map();
+    for (const [k2, now2] of machineReadings(st)) {
+      const was = before2.get(k2);
+      if (!was || was.key === now2.key) continue;
+      const at2 = named2.get(now2.ss) || /* @__PURE__ */ new Map();
+      for (const i5 of now2.at) at2.set(i5, was.key);
+      named2.set(now2.ss, at2);
+    }
+    nameSessions(st, named2);
+    const here = new Set(st.sessions.map((q) => q.id));
+    let gone2 = false;
+    for (const t4 of st.trash) {
+      if (t4.kind !== "session" || here.has(t4.id)) continue;
+      const ex = arr(t4.data.ex);
+      if (!ex) continue;
+      const put = ex.map((b2) => {
+        const B5 = rec(b2);
+        const was = B5 && typeof B5.exId === "string" && !B5.mc ? before2.get(`${t4.id}|${B5.exId}|${B5.light ? 1 : 0}`) : void 0;
+        return was && B5 ? { ...B5, mc: was.key } : b2;
+      });
+      if (put.some((b2, i5) => b2 !== ex[i5])) {
+        t4.data = { ...t4.data, ex: put };
+        gone2 = true;
+      }
+    }
+    return named2.size > 0 || gone2;
+  }
+  function nameSessions(st, named2) {
+    st.sessions.forEach((ss, k2) => {
       const at2 = named2.get(ss);
-      if (at2) sessions[k2] = cleanSess({ ...ss, ex: ss.ex.map((b2, i5) => at2.has(i5) ? { ...b2, mc: at2.get(i5) } : b2) }, k2);
+      if (at2)
+        st.sessions[k2] = cleanSess({ ...ss, ex: ss.ex.map((b2, i5) => at2.has(i5) ? { ...b2, mc: at2.get(i5) } : b2) }, k2);
     });
-    return named2.size > 0;
   }
   function freshState() {
     const r4 = starterRoutine();
@@ -5061,7 +5055,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const revived = /* @__PURE__ */ new Set();
     const same = (cur2, data, clean, ok) => {
       try {
-        return !ok(data) || canon(namesAside(clean(data, 0))) === canon(namesAside(cur2));
+        return !ok(data) || canon(clean(data, 0)) === canon(cur2);
       } catch (e5) {
         return true;
       }
@@ -5115,15 +5109,16 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       extra.push(keepNew ? o3 : x2);
     }
     if (!extra.length) return list0;
-    for (const x2 of extra) {
-      const id = fixId(x2.id + "-dup" + hashStr(canon(x2)).slice(0, DUP_HASH));
-      if (trash.some((t4) => t4.id === id)) continue;
-      const at2 = trash.findIndex((t4) => t4.date < x2.date);
-      trash.splice(at2 < 0 ? trash.length : at2, 0, { id, kind, date: x2.date, data: { ...rec(x2), id }, clash: true });
-    }
+    for (const x2 of extra) putAside(trash, x2, kind);
+    return [...byId.values()];
+  }
+  function putAside(trash, x2, kind) {
+    const id = fixId(x2.id + "-dup" + hashStr(canon(x2)).slice(0, DUP_HASH));
+    if (trash.some((t4) => t4.id === id)) return;
+    const at2 = trash.findIndex((t4) => t4.date < x2.date);
+    trash.splice(at2 < 0 ? trash.length : at2, 0, { id, kind, date: x2.date, data: { ...rec(x2), id }, clash: true });
     trash.splice(TRASH_MAX);
     while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
-    return [...byId.values()];
   }
   function cleanBodyweights(listed) {
     return listed.filter((b0) => {
@@ -5606,7 +5601,6 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       raw = localStorage.getItem(KEY);
       if (raw) {
         const st = normalize(parseJson(raw));
-        nameMachines(st);
         device.hadLocal = true;
         device.lastSaved = raw;
         return st;
@@ -11677,8 +11671,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
             continue;
           }
           const at2 = Date.now();
-          const et = cloud.editAt[x2.id] || (b2 ? Number(b2.et) || Number(b2.at) || at2 : at2);
-          const doc = { v: 1, at: at2, et, w: writeMark(), json };
+          const doc = { v: 1, at: at2, et: cloud.editAt[x2.id] || at2, w: writeMark(), json };
           cloud.sent[x2.id] = {
             w: doc.w,
             uid: cloud.uid || "",
@@ -11754,14 +11747,22 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     return remote;
   }
   function firstUnnamed(ss, other) {
-    const lifts = new Set(other.flatMap((q) => q.ex.map((b2) => b2.exId))), there = new Set(other.map((q) => q.id));
+    const there = new Set(other.map((q) => q.id)), lifts = new Set(other.flatMap((q) => q.ex.map((b2) => b2.exId)));
+    const shared = /* @__PURE__ */ new Set(), seen = /* @__PURE__ */ new Set();
+    for (const q of ss)
+      for (const b2 of q.ex)
+        if (!seen.has(b2.exId)) {
+          seen.add(b2.exId);
+          if (there.has(q.id)) shared.add(b2.exId);
+        }
+    const strip = (b2) => b2.mc === FIRST_MACHINE && lifts.has(b2.exId) && !shared.has(b2.exId);
     const unnamed = /* @__PURE__ */ new Map();
     const sessions = ss.map((q) => {
-      if (there.has(q.id) || !q.ex.some((b2) => b2.mc === FIRST_MACHINE && lifts.has(b2.exId))) return q;
+      if (there.has(q.id) || !q.ex.some(strip)) return q;
       return {
         ...q,
         ex: q.ex.map((b2) => {
-          if (b2.mc !== FIRST_MACHINE || !lifts.has(b2.exId)) return b2;
+          if (!strip(b2)) return b2;
           const ids = unnamed.get(b2.exId) || /* @__PURE__ */ new Set();
           unnamed.set(b2.exId, ids.add(q.id));
           const c4 = { ...b2 };
@@ -11770,19 +11771,26 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
         })
       };
     });
-    return { sessions, unnamed };
+    return { sessions, unnamed, own: new Set(ss.filter((q) => !there.has(q.id)).map((q) => q.id)) };
   }
-  function nameJoined(st, unnamed) {
-    nameMachines(st);
-    for (const [exId, ids] of unnamed) {
-      let to;
-      for (const q of st.sessions)
-        for (const b2 of q.ex)
-          if (b2.exId === exId && ids.has(q.id) && b2.mc !== void 0) {
-            if (to === void 0) to = b2.mc;
-            else b2.mc = to;
+  function nameJoined(st, unnamed, own2) {
+    const rd = machineReadings(st);
+    const named2 = /* @__PURE__ */ new Map();
+    for (const [exId, ids] of unnamed)
+      for (const light of [0, 1]) {
+        let to;
+        for (const q of st.sessions) {
+          const r4 = ids.has(q.id) ? rd.get(`${q.id}|${exId}|${light}`) : void 0;
+          if (!r4) continue;
+          if (to === void 0) to = r4.key;
+          else if (own2.has(r4.key) && !own2.has(to)) {
+            const at2 = named2.get(q) || /* @__PURE__ */ new Map();
+            for (const i5 of r4.at) at2.set(i5, to);
+            named2.set(q, at2);
           }
-    }
+        }
+      }
+    nameSessions(st, named2);
   }
   function mergeFirstLink(mine, rState, rids, remote) {
     const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
@@ -11790,18 +11798,29 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     const kept = aside ? draftSession(aside) : null;
     const keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some((x2) => x2.id === kept.id);
     const own2 = firstUnnamed(mine.sessions, rState.sessions);
+    const trash = unionById(state.trash, rState.trash);
+    const acct2 = (list, phone, kind) => {
+      const by = new Map(list.map((x2) => [x2.id, x2]));
+      for (const x2 of phone) {
+        const y2 = x2.id ? by.get(x2.id) : void 0;
+        if (x2.id && y2 && canon(y2) !== canon(x2)) putAside(trash, { ...x2, id: x2.id }, kind);
+      }
+    };
+    const acctSessions = keptDraft && kept ? [...rState.sessions, kept] : rState.sessions, acctCardio = aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio;
+    acct2(acctSessions, own2.sessions, "session");
+    acct2(acctCardio, mine.cardio, "cardio");
     const joined2 = normalize({
       ...base,
       exercises: unionById(base.exercises, other.exercises),
       routines: unionById(base.routines, other.routines),
-      sessions: unionById(own2.sessions, keptDraft && kept ? [...rState.sessions, kept] : rState.sessions),
+      sessions: unionById(acctSessions, own2.sessions),
       bodyweights: unionById(mine.bodyweights, rState.bodyweights),
       measurements: unionById(mine.measurements, rState.measurements),
-      cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio),
-      trash: unionById(arr(state.trash) || [], arr(rState.trash) || []),
+      cardio: unionById(acctCardio, mine.cardio),
+      trash,
       draft: state.draft || rState.draft
     });
-    nameJoined(joined2, own2.unnamed);
+    nameJoined(joined2, own2.unnamed, own2.own);
     setState(joined2);
     for (const id of rids) {
       cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
@@ -12059,7 +12078,7 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       trash: unionById(arr(base.trash) || [], arr(here.trash) || []),
       draft: here.draft || base.draft
     });
-    nameJoined(joined2, own2.unnamed);
+    nameJoined(joined2, own2.unnamed, own2.own);
     return joined2;
   }
   async function keepHere(from) {
@@ -12373,7 +12392,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
       return true;
     }
     fx.undoToastHide();
-    let named2 = nameMachines(state);
+    const readings = opts.inProgress || opts.whole ? null : machineReadings(state);
+    let named2 = false;
     const top0 = undoStack[undoStack.length - 1];
     if (opts.undo) snapshot(typeof opts.undo === "function" ? opts.undo : null);
     const top = undoStack[undoStack.length - 1];
@@ -12392,7 +12412,8 @@ loadScript(['vendor/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;i
     outerBegun = begunBefore();
     try {
       change();
-      named2 = nameMachines(state) || named2;
+      const was = readings || (logBefore && !opts.whole ? machineReadings(logBefore) : null);
+      if (was) named2 = keepMachines(state, was);
       clockAfter(outerBegun);
       followsAfter(outerBegun);
     } catch (e5) {
@@ -18278,7 +18299,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
               if (!cloud.on) cloudStop(true);
               asideClear();
             },
-            { undo: true }
+            { undo: true, whole: true }
           );
           picsClear().catch((e5) => {
             log("pics-clear", e5);
@@ -23662,10 +23683,13 @@ ${JSON.stringify(ctx, null, 1)}`;
           prefDel(OB_ACCT);
         }
         if (remove)
-          act(() => {
-            undoForget();
-            setState(normalize(null));
-          });
+          act(
+            () => {
+              undoForget();
+              setState(normalize(null));
+            },
+            { whole: true }
+          );
         if (!mid2) {
           ui.tab = "today";
           window.scrollTo(0, 0);
@@ -24349,7 +24373,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             setState(clean);
             if (!cloud.on) cloudStop(true);
           },
-          { undo: true }
+          { undo: true, whole: true }
         );
         closeModal();
         ui.tab = "today";
@@ -24502,7 +24526,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             setState(st);
             if (!cloud.on) cloudStop(true);
           },
-          { undo: true }
+          { undo: true, whole: true }
         );
         closeModal();
         ui.tab = "today";
@@ -30198,7 +30222,6 @@ ${JSON.stringify(ctx, null, 1)}`;
       makeDemo,
       invalidate,
       normalize,
-      nameMachines,
       snapshot,
       saveNow,
       timer,
