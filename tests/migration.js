@@ -215,7 +215,7 @@ for(const [file,label] of [['baselines/r115.html','r115'],['baselines/r114.html'
   ok(!M.errors.length&&!N.errors.length&&!O.errors.length,'no console errors with machines named',[...M.errors,...N.errors,...O.errors]);
   await M.ctx.close();await O.ctx.close();
 }
-// A lift's machines by name (2.71, NEW-168): a save from 2.69 names none, and loads here with its exercises byte for byte
+// A lift's machines by name (2.70, NEW-168): a save from 2.69 names none, and loads here with its exercises byte for byte
 // (their sync hashes unchanged); one naming machines keeps each name, trimmed, with its machine's key, and drops a name
 // that is empty or no text, and a key no machine could have, as other names cutting one past 40 characters; 2.69 keeps the names, a field it does not know,
 // in their place.

@@ -327,8 +327,8 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       return { target: b.target, hint: b.hint, sw: b.sw, w: b.sets.map(x => x.w), nw: b.nw === true, tag: !!el && !!el.querySelector('.bh') && /New machine/.test(el.querySelector('.bh').innerText), prs: el ? el.querySelectorAll('[data-pr], .bf-pr').length : -1 };
     });
     /* The menu as a lifter opens it: the ⋯ on the exercise, then the option by its words. The leg press is a machine, so
-       since 2.67 (390 C) its menu has Machine, whose sheet has New machine and the machines it was done on (the first,
-       "0"): tapped, it puts the lift on the other one, as New machine or gym marked and took off the mark before. It
+       since 2.67 (390 C) its menu has Machine, whose sheet has the machines it was done on (the first, "0") and Add a
+       machine: tapped, it puts the lift on the other one, as New machine or gym marked and took off the mark before. It
        answers the option's words and the machine the sheet marked. */
     const menu = async (words, to) => {
       await P.page.click('#blk-0 [data-act="bMenu"]'); await wait(100);
@@ -336,7 +336,10 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       if (!label) { await ev(() => window.__ironlog.ACT.mClose()); return { label, on: null }; }
       await P.page.click('#modal [data-op="machineOpen"]'); await wait(150);
       const on = await ev(() => { const b = document.querySelector('#modal [data-act="machinePick"][aria-pressed="true"]'); return b ? b.dataset.k : null; });
-      if (words) { await P.page.click(`#modal [data-act="machinePick"][data-k="${to || (on === 'new' ? '0' : 'new')}"]`); await wait(150); }
+      const k = to || (on === 'new' ? '0' : 'new');
+      // A new machine is added from Add a machine, here with no name (2.70); one listed is tapped.
+      if (words && k === 'new') { await P.page.click('#modal [data-act="machineNaming"][data-k="new"]'); await wait(120); await P.page.click('#modal [data-act="machineNameSave"]'); await wait(150); }
+      else if (words) { await P.page.click(`#modal [data-act="machinePick"][data-k="${k}"]`); await wait(150); }
       else await ev(() => window.__ironlog.ACT.mClose());
       return { label, on };
     };

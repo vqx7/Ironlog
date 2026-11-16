@@ -137,9 +137,12 @@ export function machineSheet(m: { b: number; naming?: string | undefined }): Tem
   const d = state.draft;
   const ms = liftMachines(b.exId);
   if (m.naming != null) return machineNameSheet(m.b, b.exId, m.naming);
-  // New machine picked in an edit names the session by its own key, a row only once it is saved: until then, New machine.
+  /* In an edit, a machine added names the session by its own key, a row only once it is saved: until then, New
+     machine. A session on its own key already (the one that began a machine) can begin no other, so nothing is offered
+     to add. */
   const k0 = draftMachine(b.exId);
-  const now = d && k0 === d.editingId && !ms.some(x => x.key === k0) ? NEW_MACHINE : k0;
+  const own = !!d && !!d.editingId && k0 === d.editingId;
+  const now = own && !ms.some(x => x.key === k0) ? NEW_MACHINE : k0;
   const row = (k: string, name: string | null, last: string | null): TemplateResult =>
     html`<div class="mcitem"><button class=${'mcrow' + (k === now ? ' on' : '')} data-act="machinePick" data-b=${m.b} data-k=${k} aria-pressed=${String(k === now)}><span class="mcdot"></span><span class="mcl">${
       name ? html`<b>${name}</b>${last ? html`<span class="mcsub">${last}</span>` : nothing}` : (last ?? 'New machine')
@@ -149,7 +152,9 @@ export function machineSheet(m: { b: number; naming?: string | undefined }): Tem
     <p class="mc-h">Machine</p><div class="mclist">${ms.map(x => row(x.key, machineName(b.exId, x.key), lastOf(x)))}${
       now === NEW_MACHINE
         ? row(NEW_MACHINE, machineName(b.exId, NEW_MACHINE), null)
-        : html`<button type="button" class="btn fullw" data-act="machineNaming" data-b=${m.b} data-k=${NEW_MACHINE}>Add a machine</button>`
+        : own
+          ? nothing
+          : html`<button type="button" class="btn fullw" data-act="machineNaming" data-b=${m.b} data-k=${NEW_MACHINE}>Add a machine</button>`
     }</div></div>`;
 }
 

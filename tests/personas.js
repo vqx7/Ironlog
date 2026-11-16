@@ -656,15 +656,18 @@ async function finish() {
     const lp = b0.ex.findIndex(b => b.exId === 'legPress'), sq = b0.ex.findIndex(b => b.exId === 'backSquat');
     const sqGrey = (await H.row(sq, 0)).w;
     ok(Number((await H.row(lp, 0)).w) >= 390 && Number(sqGrey) >= 240, '9. at the new gym, before marking: both lifts suggest from the old gym (leg press 390 or more, squat 240 or more)', { lp: await H.row(lp, 0), sq: sqGrey });
-    // The leg press's menu, as a thumb opens it: a machine, so Machine, and in its sheet New machine (390 C).
+    // The leg press's menu, as a thumb opens it: a machine, so Machine, and in its sheet Add a machine (390 C).
     await H.page.click(`#view [data-act="bMenu"][data-b="${lp}"]`); await wait(100);
     if (!ok(!!(await H.page.$('#modal [data-op="machineOpen"]')) && !(await H.page.$('#modal [data-op="bNew"]')), '9. the leg press\'s menu offers Machine')) { await H.P.ctx.close(); return finish(); }
     await H.page.click('#modal [data-op="machineOpen"]'); await wait(150);
-    await H.page.click('#modal [data-act="machinePick"][data-k="new"]'); await wait(200);
+    // Add a machine, its name typed as the lifter reads it off the machine, then Add.
+    await H.page.click('#modal [data-act="machineNaming"][data-k="new"]'); await wait(150);
+    await H.page.fill('#mcName', 'Newtech'); await H.page.click('#modal [data-act="machineNameSave"]'); await wait(200);
     const b1 = await H.draft();
     const lpRow = await H.row(lp, 0);
-    ok(b1.ex[lp].nw === true && b1.ex[lp].sw == null && !/^\d/.test(lpRow.w || '') && /New machine: pick a load/.test(await H.text()) && (await H.row(sq, 0)).w === sqGrey,
-      '9. New machine picked: the leg press has no grey load and reads as a first session there; the squat is as it was', { lpRow, nw: b1.ex[lp].nw });
+    const lpTag = () => H.ev(lp => { const t = document.querySelector(`#blk-${lp} .mctag`); return t ? t.textContent.trim() : null; }, lp);
+    ok(b1.ex[lp].nw === true && b1.ex[lp].sw == null && !/^\d/.test(lpRow.w || '') && /New machine: pick a load/.test(await H.text()) && (await H.row(sq, 0)).w === sqGrey && await lpTag() === 'Newtech',
+      '9. Newtech added: the leg press has no grey load and reads as a first session there, its card naming Newtech; the squat is as it was', { lpRow, nw: b1.ex[lp].nw, tag: await lpTag() });
     // The new gym's leg press reads heavier: 500 x 10 at 2 in reserve. The squat at its grey load, 6 reps at 2 in reserve.
     for (const s of [0, 1, 2]) { await H.type('w', lp, s, 500); await H.type('r', lp, s, 10); await H.effort(lp, s, 2); await H.quiet(); await H.tick(lp, s); }
     for (const s of [0, 1, 2]) { await H.type('r', sq, s, 6); await H.effort(sq, s, 2); await H.quiet(); await H.tick(sq, s); }
@@ -680,7 +683,13 @@ async function finish() {
     const lp2 = b2.ex.findIndex(b => b.exId === 'legPress');
     const g2 = Number((await H.row(lp2, 0)).w);
     const saved = await H.ev(() => { const L = window.__ironlog; return { n: L.state.sessions.filter(x => x.ex.some(b => b.exId === 'legPress')).length, nw: L.state.sessions.filter(x => x.ex.some(b => b.exId === 'legPress' && b.nw)).length }; });
-    ok(g2 >= 500 && !b2.ex[lp2].nw, '9. the week after: the leg press asks from the new gym\'s 500 x 10, unmarked', { grey: g2, tgt: b2.ex[lp2].tgt });
+    const tag2 = await H.ev(lp => { const t = document.querySelector(`#blk-${lp} .mctag`); return t ? t.textContent.trim() : null; }, lp2);
+    ok(g2 >= 500 && !b2.ex[lp2].nw && tag2 === 'Newtech', '9. the week after: the leg press is on Newtech by name and asks from its 500 x 10, unmarked', { grey: g2, tgt: b2.ex[lp2].tgt, tag2 });
+    // The old gym's leg press, by its last session in the sheet the card's name opens, named as the lifter names it.
+    await H.page.click(`#blk-${lp2} .mctag`); await wait(150);
+    const listed = await H.ev(() => document.querySelector('#modal .sheet').innerText.replace(/\s+/g, ' '));
+    ok(/Newtech\s*\S+ \d+ · 500 lb × 10\s*✎\s*\S+ \d+ · 390 lb × 10\s*✎\s*Add a machine/.test(listed), '9. the name on the card opens the Machine sheet: Newtech first, the old gym\'s leg press by its last session', listed);
+    await H.ev(() => window.__ironlog.ACT.mClose()); await wait(120);
     ok(saved.n === 5 && saved.nw === 1, '9. History keeps all five leg press sessions, the new gym\'s marked', saved);
     ok(!H.P.errors.length, '9. no page errors', H.P.errors);
     await H.P.ctx.close();

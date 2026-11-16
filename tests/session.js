@@ -98,6 +98,13 @@ async function lifter(o = {}) {
 async function start(P) { await P.page.click('#tabs [data-tab="today"]'); await wait(120); await P.tap('#view .hero [data-act="startSession"]:not([data-light])', 300); }
 const tick = (b, s) => `#view [data-act="sDone"][data-b="${b}"][data-s="${s}"]`;
 const field = (f, b, s) => `#view input[data-f="${f}"][data-b="${b}"][data-s="${s}"]`;
+/* A machine added in the open Machine sheet (2.70, NEW-168): Add a machine, its name typed (none given, none typed),
+   then Add. */
+async function addMachine(P, name = '') {
+  await P.tap('#modal [data-act="machineNaming"][data-k="new"]', 250);
+  if (name) await P.page.fill('#mcName', name);
+  await P.tap('#modal [data-act="machineNameSave"]', 300);
+}
 // A row's button by its action, for exercise b's row s (or the exercise's own when s is null).
 const btn = (act, b, s) => `#view [data-act="${act}"][data-b="${b}"]${s == null ? '' : `[data-s="${s}"]`}`;
 // A lift's weights switched as a lifter does it: its badge opens its sheet, and the unit is picked there (L-38).
@@ -1590,8 +1597,8 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
   if (run('L-41')) {
     /* A machine, cable or Smith lift's ⋯ menu has Machine where a free weight's has New machine or gym. Its sheet lists
        the machines the lift was done on, the one used most lately first, each by its last session's heaviest set
-       ("Nov 7 · 200 lb × 11"), and New machine; the one it is on marked. New machine starts it as a first session
-       ("New machine: pick a load ..."), with Undo. Saved, the lift is on that machine next time (the one last done on),
+       ("Nov 7 · 200 lb × 11") until it is named, and Add a machine; the one it is on marked. A machine added (here with
+       no name) starts it as a first session ("New machine: pick a load ..."), with Undo. Saved, the lift is on that machine next time (the one last done on),
        read from it alone; the first one picked again reads its own sessions and brings its kg or lb with it. A session
        logged on the wrong machine is moved in its edit from History, from the same sheet. */
     const LBk = 0.45359237;
@@ -1610,14 +1617,14 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const menus = [await menu(0), await menu(1)];
     ok(menus[0].includes('Machine') && !menus[0].includes('New machine or gym') && menus[1].includes('New machine or gym') && !menus[1].includes('Machine'), 'L-41: the chest press\'s ⋯ menu has Machine; the bench\'s keeps New machine or gym', menus);
     let m = await sheet();
-    ok(m && m.kind === 'machine' && /Machine Nov 7 · 200 lb × 11 New machine/.test(m.text), 'L-41: the sheet lists the one machine by its last session, "Nov 7 · 200 lb × 11", and New machine', m);
+    ok(m && m.kind === 'machine' && /Machine Nov 7 · 200 lb × 11\s*✎\s*Add a machine/.test(m.text), 'L-41: the sheet lists the one machine by its last session, "Nov 7 · 200 lb × 11", and Add a machine', m);
     const before = await block();
-    await pick('new');
+    await addMachine(P);
     let b = await block();
     ok(/^Machine Chest Press: new machine$/.test(await P.toast()) && /^New machine: pick a load for 8 to 12 reps, about 2 to spare\.$/.test(b.hint) && b.grey.every(x => x === ''), 'L-41: New machine says "Machine Chest Press: new machine" and starts the lift as a first session there, no load asked', { t: await P.toast(), b });
     await P.tap('#toast [data-act="undo"]', 250);
     ok(JSON.stringify(await block()) === JSON.stringify(before), 'L-41: Undo puts the lift back on its machine, its target as it was', { before, after: await block() });
-    m = await sheet(); await pick('new');
+    m = await sheet(); await addMachine(P);
     // The new machine is marked kg (its stack is in kg): its badge, kept by the lift.
     await toUnit(P, 0, 'kg');
     await doSets(60, [10, 10, 9]);
@@ -1628,7 +1635,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await nextWeek('2026-11-18T10:00:00');
     b = await block();
     m = await sheet();
-    ok(b.badge === 'kg' && /Today: 30\+ reps over 3 sets at 60 kg/.test(b.hint) && !/200|lb/.test(b.hint) && b.grey.every(x => x === '60') && /Machine Nov 11 · 60 kg × 10 Nov 7 · 200 lb × 11 New machine/.test(m.text),
+    ok(b.badge === 'kg' && /Today: 30\+ reps over 3 sets at 60 kg/.test(b.hint) && !/200|lb/.test(b.hint) && b.grey.every(x => x === '60') && /Machine Nov 11 · 60 kg × 10\s*✎\s*Nov 7 · 200 lb × 11\s*✎\s*Add a machine/.test(m.text),
       'L-41: a week later the lift is on the machine it was last done on, in its kg, read from it alone (30+ at 60 kg); the sheet lists it first, then the first machine', { b, m: m && m.text });
     await pick('0');
     b = await block();
@@ -1648,7 +1655,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     const bi = await P.ev(() => window.__ironlog.state.draft.ex.findIndex(x => x.exId === 'machPress'));
     await P.tap(`#view [data-act="bMenu"][data-b="${bi}"]`, 200); await P.tap('#modal [data-act="bMenuDo"][data-op="machineOpen"]', 250);
     m = await P.modal();
-    ok(m && /Machine Nov 18 · 200 lb × 11 Nov 11 · 60 kg × 10 New machine/.test(m.text), 'L-41: in the edit, the sheet marks the machine the session was saved on', m && m.text);
+    ok(m && /Machine Nov 18 · 200 lb × 11\s*✎\s*Nov 11 · 60 kg × 10\s*✎\s*Add a machine/.test(m.text), 'L-41: in the edit, the sheet marks the machine the session was saved on', m && m.text);
     await pick(day1.sid);
     await finish();
     const moved = await saved('2026-11-18');
@@ -1669,13 +1676,13 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await P.ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); }); await wait(150);
     await P.tap('#view [data-act="histToggle"][data-id="e2"]', 150); await P.tap('#view [data-act="histEdit"][data-id="e2"]', 300);
     let m = await sheetAt(0);
-    await P.tap('#modal [data-act="machinePick"][data-k="new"]', 300);
+    await addMachine(P);
     await finish();
     const marks = await P.ev(() => window.__ironlog.state.sessions.map(s => [s.id, s.ex[0].nw || null, s.ex[0].mc || null]));
     await start(P);
     const blk = await P.ev(() => ({ hint: ((document.querySelector('#blk-0 .hint') || {}).innerText || '').replace(/\s+/g, ' '), grey: [...document.querySelectorAll('#blk-0 input[data-f="w"]')].map(i => i.value || i.placeholder) }));
     m = await sheetAt(0);
-    ok(JSON.stringify(marks) === JSON.stringify([['e1', null, null], ['e2', null, 'e2'], ['e3', null, null]]) && /Today: 33\+ reps over 3 sets at 210 lb/.test(blk.hint) && blk.grey.every(x => x === '210') && /Machine Nov 7 · 210 lb × 11 Oct 31 · 205 lb × 11 New machine/.test(m.text),
+    ok(JSON.stringify(marks) === JSON.stringify([['e1', null, null], ['e2', null, 'e2'], ['e3', null, null]]) && /Today: 33\+ reps over 3 sets at 210 lb/.test(blk.hint) && blk.grey.every(x => x === '210') && /Machine Nov 7 · 210 lb × 11\s*✎\s*Oct 31 · 205 lb × 11\s*✎\s*Add a machine/.test(m.text),
       'L-41: Oct 31 moved to a new machine in its edit moves alone: Nov 7 stays on the first machine and the next workout reads it (33+ at 210 lb)', { marks, blk, m: m && m.text });
     await P.ev(() => window.__ironlog.ACT.mClose()); await wait(120);
     await P.close();
@@ -1700,7 +1707,9 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     /* A session's machine changes only by a pick (the review of 2.67's fixes, REV19-1, REV19-5): a chest press on its
        first machine on Oct 1 and 8, a new one from Oct 15 (Oct 22 and 29 on it, saved as 2.66 saved them, unnamed).
        Oct 8's date moved to Oct 26 in its edit, nothing else: it stays on the first machine, and the new one's next
-       workout reads its own 130 lb. New machine picked in an edit is marked in the sheet until it is saved. */
+       workout reads its own 130 lb. A machine added in an edit is marked in the sheet until it is saved. In the edit of
+       the session that began a machine, the sheet offers no machine to add: the session is on a machine of its own
+       already, so one added would be that machine again, and the tap would do nothing. */
     const LBk = 0.45359237;
     const seed = `(S, L) => { const LB = ${LBk}; const mk = (id, date, w, more) => ({ id, date, dayIdx: 0, dayId: 'A', dayName: 'Push', routineId: 'R1', notes: '', ex: [{ exId: 'machPress', rr: [8, 12], ps: 3, sets: [11, 11, 10].map(r => ({ w: w * LB, r, rir: 2, done: true })), ...more }] }); S.sessions = [mk('g1', '2026-10-01', 200, {}), mk('g2', '2026-10-08', 205, {}), mk('g3', '2026-10-15', 120, { nw: true }), mk('g4', '2026-10-22', 125, {}), mk('g5', '2026-10-29', 130, {})]; }`;
     const P = await lifter({ items: [['machPress', 3, 8, 12, 120]], fresh: true, seed, settings: { autoDone: false } });
@@ -1716,10 +1725,90 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     await P.tap('#view [data-act="discard"]', 250); if (await P.modal()) await mOk(P);
     await edit('g5');
     const open = async () => { await P.tap('#view [data-act="bMenu"][data-b="0"]', 200); await P.tap('#modal [data-act="bMenuDo"][data-op="machineOpen"]', 250); };
-    await open(); await P.tap('#modal [data-act="machinePick"][data-k="new"]', 300);
+    await open(); await addMachine(P);
     await open();
     const on = await P.ev(() => [...document.querySelectorAll('#modal [data-act="machinePick"][aria-pressed="true"]')].map(b => b.dataset.k));
-    ok(JSON.stringify(on) === '["new"]', 'L-41: New machine picked in an edit is the one the sheet marks until the edit is saved', on);
+    ok(JSON.stringify(on) === '["new"]', 'L-41: a machine added in an edit is the one the sheet marks until the edit is saved', on);
+    await P.ev(() => window.__ironlog.ACT.mClose()); await wait(120);
+    await P.tap('#view [data-act="discard"]', 250); if (await P.modal()) await mOk(P);
+    await edit('g3'); await open();
+    const own = await P.ev(() => ({ text: document.querySelector('#modal .sheet').innerText.replace(/\s+/g, ' '), on: [...document.querySelectorAll('#modal [aria-pressed="true"]')].map(b => b.dataset.k), add: !!document.querySelector('#modal [data-k="new"]') }));
+    ok(!own.add && JSON.stringify(own.on) === '["g3"]' && /Machine Oct 29 · 130 lb × 11\s*✎?\s*Oct 26 · 205 lb × 11\s*✎?$/.test(own.text), 'L-41: in the edit of the session that began a machine, the sheet marks that machine and offers none to add (it would be the same machine)', own);
+    await P.close();
+  }
+
+  if (run('L-41')) {
+    /* Machines by name (V, 2026-11-15: "a list of all my frequently used machines ... I go ahead and select that
+       machine or add in a new one"). A chest press on one machine, unnamed (Oct 31 and Nov 7, 200 lb); the pec deck's
+       machine named Hammer Strength, the leg extension's Hammer Strength, the lat pulldown's Life Fitness, and a name
+       kept on the leg extension for a machine it does not have. A machine's pencil names it, the names given on other
+       lifts offered as one tap each, the most used first, those the lift has and those of no machine left out; the card
+       then says the name, and the sheet lists it by name with its last session small beside it. Add a machine takes a
+       name: the lift starts there, the card naming it, one Undo step taking the machine and its name away together.
+       Saved, the next workout is on it by name; the other picked by name reads its own sessions. A name cleared is taken
+       off, and the machine is said by its last session again. */
+    const LBk = 0.45359237;
+    const seed = `(S, L) => { const LB = ${LBk}; const mk = (id, date, ex) => ({ id, date, dayIdx: 0, dayId: 'A', dayName: 'Push', routineId: 'R1', notes: '', ex: ex.map(([exId, w, rs]) => ({ exId, rr: [8, 12], ps: 3, sets: rs.map(r => ({ w: w * LB, r, rir: 2, done: true })) })) }); S.sessions = [mk('n1', '2026-10-31', [['machPress', 200, [10, 10, 9]], ['pecDeck', 120, [12, 12, 11]], ['legExt', 150, [12, 12, 12]], ['latPulldown', 140, [10, 10, 10]]]), mk('n2', '2026-11-07', [['machPress', 200, [11, 11, 10]], ['pecDeck', 120, [12, 12, 12]]])]; const nm = (id, m) => { S.exercises.find(e => e.id === id).machines = m; }; nm('pecDeck', { 0: 'Hammer Strength' }); nm('legExt', { 0: 'Hammer Strength', zz: 'Ghost' }); nm('latPulldown', { 0: 'Life Fitness' }); }`;
+    const P = await lifter({ items: [['machPress', 3, 8, 12, 120], ['pecDeck', 3, 8, 12, 90]], fresh: true, seed, movable: true, settings: { autoDone: false } });
+    const sheet = async () => { await P.tap('#view [data-act="bMenu"][data-b="0"]', 200); await P.tap('#modal [data-act="bMenuDo"][data-op="machineOpen"]', 250); return P.ev(() => ({ text: document.querySelector('#modal .sheet').innerText.replace(/\s+/g, ' ').trim(), on: [...document.querySelectorAll('#modal [data-act="machinePick"][aria-pressed="true"]')].map(b => b.dataset.k) })); };
+    const naming = async k => { await P.tap(`#modal [data-act="machineNaming"][data-k="${k}"]`, 250); return P.ev(() => ({ title: (document.querySelector('#modal .sheet h3') || {}).textContent, field: document.getElementById('mcName').value, chips: [...document.querySelectorAll('#modal [data-act="machineChip"]')].map(b => b.textContent.trim()), save: (document.querySelector('#modal [data-act="machineNameSave"]') || {}).textContent })); };
+    const save = async () => P.tap('#modal [data-act="machineNameSave"]', 300);
+    const close = async () => { await P.ev(() => window.__ironlog.ACT.mClose()); await wait(120); };
+    const tag = b => P.ev(b => { const t = document.querySelector(`#blk-${b} .mctag`); return t ? t.textContent.trim() : null; }, b);
+    const hint = () => P.ev(() => ((document.querySelector('#blk-0 .hint') || {}).innerText || '').replace(/\s+/g, ' '));
+    const names = () => P.ev(() => { const st = JSON.parse(localStorage.getItem('ironlog.v1')); const e = (st.exercises || []).find(x => x.id === 'machPress'); return { live: window.__ironlog.state.exercises.find(x => x.id === 'machPress').machines || null, stored: (e && e.machines) || null }; });
+    const undo = async () => { await close(); await P.tap('#toast [data-act="undo"]', 300); };
+    const doSets = async (w, rs) => { for (let i = 0; i < rs.length; i++) { await P.page.fill(field('w', 0, i), String(w)); await P.page.fill(field('r', 0, i), String(rs[i])); await P.ev(() => { const a = document.activeElement; if (a && a.blur) a.blur(); }); await wait(60); await P.tap(tick(0, i), 120); } };
+    const finish = async () => { await P.ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; }); await P.tap('#view [data-act="finish"]', 300); for (let k = 0; k < 6; k++) { const m = await P.modal(); if (!m) break; if (m.kind === 'confirm') await mOk(P); else { await close(); } } };
+
+    await start(P);
+    ok(await tag(0) === null && await tag(1) === 'Hammer Strength', 'L-41: a machine with no name puts nothing on the card; the pec deck\'s card names its machine, Hammer Strength', [await tag(0), await tag(1)]);
+    let m = await sheet();
+    ok(/^Machine Chest Press ✕ Machine Nov 7 · 200 lb × 11 ✎ Add a machine$/.test(m.text), 'L-41: unnamed, the machine is listed by its last session', m);
+    let n = await naming('0');
+    ok(n.title === 'Name this machine' && n.field === '' && JSON.stringify(n.chips) === '["Hammer Strength","Life Fitness"]' && n.save === 'Save', 'L-41: its pencil asks its name, offering the names given on other lifts, the most used first (Hammer Strength on two), and no name of a machine a lift does not have (Ghost)', n);
+    await P.tap('#modal [data-act="machineChip"][data-v="Hammer Strength"]', 120);
+    ok(await P.ev(() => document.getElementById('mcName').value) === 'Hammer Strength', 'L-41: a name offered, tapped, is typed into the field');
+    await save();
+    m = await P.ev(() => ({ text: document.querySelector('#modal .sheet').innerText.replace(/\s+/g, ' ').trim() }));
+    ok(/^Named Hammer Strength$/.test(await P.toast()) && /Machine Hammer Strength\s*Nov 7 · 200 lb × 11\s*✎\s*Add a machine$/.test(m.text) && await tag(0) === 'Hammer Strength', 'L-41: saved, "Named Hammer Strength", the sheet lists it by name with its last session beside it, and the card names it', { t: await P.toast(), m, tag: await tag(0) });
+    let nm = await names();
+    ok(JSON.stringify(nm.live) === '{"0":"Hammer Strength"}' && JSON.stringify(nm.stored) === '{"0":"Hammer Strength"}', 'L-41: the name is kept on the lift, and saved on the phone', nm);
+    await undo();
+    nm = await names();
+    ok(nm.live === null && await tag(0) === null, 'L-41: Undo takes the name off', { nm, tag: await tag(0) });
+
+    // Named by typing, then a second machine added by name.
+    await sheet(); await naming('0'); await P.page.fill('#mcName', '  Hammer   Strength '); await save();
+    n = await naming('new');
+    ok(n.title === 'Add a machine' && n.field === '' && JSON.stringify(n.chips) === '["Life Fitness"]' && n.save === 'Add', 'L-41: Add a machine asks its name, offering the names this lift does not have yet', n);
+    await P.page.fill('#mcName', 'Newtech'); await save();
+    ok(/^Machine Chest Press: Newtech$/.test(await P.toast()) && /^New machine: pick a load for 8 to 12 reps, about 2 to spare\.$/.test(await hint()) && await tag(0) === 'Newtech', 'L-41: added, "Machine Chest Press: Newtech": the lift starts there as a first session, and the card names it', { t: await P.toast(), h: await hint(), tag: await tag(0) });
+    m = await sheet();
+    ok(/Machine Hammer Strength\s*Nov 7 · 200 lb × 11\s*✎\s*Newtech\s*✎$/.test(m.text) && JSON.stringify(m.on) === '["new"]', 'L-41: the sheet lists both by name (the name typed with its spaces tidied), Newtech marked, and offers no other to add while it is new', m);
+    await undo();
+    nm = await names();
+    ok(await tag(0) === 'Hammer Strength' && /Today: 33\+ reps over 3 sets at 200 lb/.test(await hint()) && JSON.stringify(nm.live) === '{"0":"Hammer Strength"}', 'L-41: one Undo takes the machine added and its name away together: back on Hammer Strength, its target as it was', { nm, h: await hint(), tag: await tag(0) });
+    await sheet(); await naming('new'); await P.page.fill('#mcName', 'Newtech'); await save();
+    await doSets(120, [10, 10, 9]);
+    await finish();
+    const sid = await P.ev(() => window.__ironlog.state.sessions.find(x => x.date === '2026-11-11').id);
+    nm = await names();
+    ok(nm.stored && nm.stored['0'] === 'Hammer Strength' && nm.stored[sid] === 'Newtech', 'L-41: saved, the new machine keeps its name under the session that began it', { nm, sid });
+
+    // A week later: on Newtech by name; Hammer Strength picked by name reads its own sessions.
+    await P.ev(t => window.__setClock(t), '2026-11-18T10:00:00'); await P.ev(() => { const L = window.__ironlog; L.invalidate(); L.ui.tab = 'today'; L.render(); }); await wait(150); await start(P);
+    m = await sheet();
+    ok(await tag(0) === 'Newtech' && /Today: 30\+ reps over 3 sets at 120 lb/.test(await hint()) && new RegExp(`Machine Newtech\\s*Nov 11 · 120 lb × 10\\s*✎\\s*Hammer Strength\\s*Nov 7 · 200 lb × 11\\s*✎\\s*Add a machine$`).test(m.text) && JSON.stringify(m.on) === JSON.stringify([sid]), 'L-41: a week later the lift is on Newtech, its card naming it, read from it alone (30+ at 120 lb); the sheet lists it first, marked, then Hammer Strength', { tag: await tag(0), h: await hint(), m });
+    await P.tap('#modal [data-act="machinePick"][data-k="0"]', 300);
+    ok(/^Machine Chest Press: Hammer Strength$/.test(await P.toast()) && await tag(0) === 'Hammer Strength' && /Today: 33\+ reps over 3 sets at 200 lb/.test(await hint()), 'L-41: Hammer Strength picked: "Machine Chest Press: Hammer Strength", the card names it, read from its own sessions (33+ at 200 lb)', { t: await P.toast(), tag: await tag(0), h: await hint() });
+    await sheet(); n = await naming(sid);
+    ok(n.title === 'Name this machine' && n.field === 'Newtech', 'L-41: a named machine\'s pencil opens its name to change', n);
+    await P.page.fill('#mcName', ''); await save();
+    m = await P.ev(() => ({ text: document.querySelector('#modal .sheet').innerText.replace(/\s+/g, ' ').trim() }));
+    nm = await names();
+    ok(/^Machine name taken off$/.test(await P.toast()) && /Machine Nov 11 · 120 lb × 10\s*✎\s*Hammer Strength\s*Nov 7 · 200 lb × 11\s*✎\s*Add a machine$/.test(m.text) && JSON.stringify(nm.live) === '{"0":"Hammer Strength"}', 'L-41: a name cleared is taken off: "Machine name taken off", the machine said by its last session again', { t: await P.toast(), m, nm });
+    ok(!P.errors || !P.errors.length, 'L-41: no page errors', P.errors);
     await P.close();
   }
 

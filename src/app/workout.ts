@@ -71,7 +71,7 @@ import { closeX } from './sheetsmisc';
 /** What the New machine tag on an exercise says, tapped. */
 const NEW_TIP =
   "A new machine or gym: its targets, trend, stalls, PRs and bests start over from this session. Earlier sessions stay in History. Use it only when the loads there don't compare; take it off in the ⋯ menu.";
-/* The machine a machine lift is on, named on its card once the lifter names it (V, 2026-11-15, UAT-1), or New machine
+/* The machine a machine lift is on, named on its card once the lifter names it (V, 2026-11-15), or New machine
    when the session marks it new; a tap opens its Machine sheet. A machine with no name is not said: its last session
    would be a date to decode. A free weight marked New machine or gym keeps its tag and tip. */
 /** What an exercise's card says of the machine it is on (above). */

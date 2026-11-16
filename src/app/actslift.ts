@@ -31,7 +31,7 @@ import { fmtDate } from './format';
 import { typedUnit } from './units';
 import { state, ui } from './store';
 import { act } from './act';
-import { goalWords, machineName, newMachineKey } from './display';
+import { goalWords, machineName, machineNamesOf, newMachineKey } from './display';
 import { closeModal, openModal, render, renderModal, rerenderKeepScroll } from './page';
 import { toast } from './toast';
 import { carried } from './workstate';
@@ -58,7 +58,6 @@ function fieldText(id: string): string {
 // A load typed for a lift, in its unit, in kilograms.
 const kg = (ex: Pick<Exercise, 'unit'> | null | undefined, n: number): number => fromDOf(ex, n) ?? 0;
 
-/** A lift's sheets and the log's smaller entries, by data-act. */
 /* A machine picked for a lift in a session (390 C): every block of it is on that machine, read from that machine's
    sessions alone. In a workout its target is read again, the sets done kept (a target from another machine is no
    target here), and a machine done on before brings its own kg or lb (as its weights were typed); New machine marks
@@ -119,16 +118,14 @@ function pickMachine(bi: number, k: string | undefined, name: string): void {
    can show. Absent once none is left, as on a lift never named. */
 /** Names machine `key` of lift `e` (an empty name takes the name away), as above. */
 function nameMachine(e: Exercise, key: string, name: string): void {
-  const keep = new Set(liftMachines(e.id).map(x => x.key));
-  const pend = newMachineKey();
-  if (pend) keep.add(pend);
-  const next: Record<string, string> = {};
-  for (const [k, v] of Object.entries(e.machines || {})) if (keep.has(k) && k !== key) next[k] = v;
+  const next = machineNamesOf(e);
+  delete next[key];
   if (name) next[key] = name;
   if (Object.keys(next).length) e.machines = next;
   else delete e.machines;
 }
 
+/** A lift's sheets and the log's smaller entries, by data-act. */
 export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   /* The choice applies to the session in progress too: rows still on the
      suggestion switch between grey and filled, typed loads stay as typed. */
@@ -158,10 +155,7 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
     toast(fill ? 'Loads filled in' : 'Loads in grey');
   },
-  /* The unit beside a lift's loads, tapped: the lift's equipment is marked in the other unit. Kept on the lift (back in
-     the app's unit it follows the app again, as one never switched does), so every screen and the next session read it;
-     the lift's blocks in the workout read their targets again in it, and a load already typed is converted, never read
-     as a number of the new unit. */
+  // A machine lift's Machine sheet, from its card or its ⋯ menu.
   machineOpen(t) {
     const b = Number(t.dataset.b);
     if (state.draft && state.draft.ex[b]) openModal({ kind: 'machine', b });
@@ -210,6 +204,10 @@ export const LIFT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     rerenderKeepScroll();
     toast(name ? `Named ${name}` : 'Machine name taken off', true);
   },
+  /* The unit beside a lift's loads, tapped: the lift's equipment is marked in the other unit. Kept on the lift (back in
+     the app's unit it follows the app again, as one never switched does), so every screen and the next session read it;
+     the lift's blocks in the workout read their targets again in it, and a load already typed is converted, never read
+     as a number of the new unit. */
   unitOpen(t) {
     const b = Number(t.dataset.b);
     if (state.draft && state.draft.ex[b]) openModal({ kind: 'unit', b });

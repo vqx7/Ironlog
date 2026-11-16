@@ -826,6 +826,18 @@ export function newMachineKey(): string | null {
   return d ? d.editingId || d.id || null : null;
 }
 
+/** The names of a lift's machines it has: those it was done on, and the one the session in progress marks new (a name
+    kept from a workout discarded is no machine's, so it is never offered or said). */
+export function machineNamesOf(e: Exercise): Record<string, string> {
+  if (!e.machines) return {};
+  const has = new Set(liftMachines(e.id).map(x => x.key));
+  const pend = newMachineKey();
+  if (pend) has.add(pend);
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(e.machines || {})) if (has.has(k)) out[k] = v;
+  return out;
+}
+
 /** The name the lifter gave one of a lift's machines (NEW_MACHINE: the one the session in progress marks new), or null. */
 export function machineName(exId: string, key: string): string | null {
   const e = state.exercises.find(x => x.id === exId);
@@ -833,26 +845,17 @@ export function machineName(exId: string, key: string): string | null {
   return (k && e && e.machines && e.machines[k]) || null;
 }
 
-/** How one of a lift's machines is said: its name, else its last session; null for a machine with neither. */
-export function machineSaid(exId: string, key: string): string | null {
-  const name = machineName(exId, key);
-  if (name) return name;
-  const m = liftMachines(exId).find(x => x.key === key);
-  return m ? `${fmtDate(m.date)} · ${listLabel(EX(exId), m.w, true)} × ${m.r}` : null;
-}
-
 /** The quick picks offered when a machine is named. */
 const MACHINE_CHOICES = 6;
 /** Names given to machines on other lifts, the most used first and then in order, without those this lift has (so a
     brand typed once, Hammer Strength, is one tap on the next lift); MACHINE_CHOICES at most. */
 export function machineNameChoices(exId: string): string[] {
-  const here = new Set(
-    Object.values(state.exercises.find(x => x.id === exId)?.machines || {}).map(n => n.toLowerCase())
-  );
+  const e0 = state.exercises.find(x => x.id === exId);
+  const here = new Set(Object.values(e0 ? machineNamesOf(e0) : {}).map(n => n.toLowerCase()));
   const count = new Map<string, { name: string; n: number }>();
   for (const e of state.exercises)
     if (e.id !== exId)
-      for (const name of Object.values(e.machines || {})) {
+      for (const name of Object.values(machineNamesOf(e))) {
         const k = name.toLowerCase();
         if (here.has(k)) continue;
         const c = count.get(k);
