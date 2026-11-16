@@ -364,10 +364,10 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       const sv = L.state.sessions.find(x => x.date === '2026-10-15'); const I = L.IDX(); const st = I.exStats.legPress;
       const sg = L.suggest('legPress', { sets: 3, repMin: 8, repMax: 12, rir: 2, rest: 120, inc: 5 }, {});
       const bests = L.allTimeBests('legPress');
-      return { keys: sv ? Object.keys(sv.ex[0]) : null, nw: sv && sv.ex[0].nw, prs: I.prs.filter(p => p.exId === 'legPress' && p.sid === (sv && sv.id)).length, oldPrs: I.prs.filter(p => p.exId === 'legPress').length,
+      return { keys: sv ? Object.keys(sv.ex[0]) : null, nw: sv && sv.ex[0].nw, mc: sv && sv.ex[0].mc, sid: sv && sv.id, prs: I.prs.filter(p => p.exId === 'legPress' && p.sid === (sv && sv.id)).length, oldPrs: I.prs.filter(p => p.exId === 'legPress').length,
         n: st.n, best: st.bestAll, pct: st.pct, stalled: st.stalled, line: L.liftTrend('legPress'), bestDate: bests && bests.est && bests.est.date, heavy: L.bestLine('legPress'), target: sg.target, w: sg.w, exps: I.byEx.legPress.length, hist: L.state.sessions.length };
     });
-    ok(fin.nw === true && fin.keys && fin.keys.slice(-2).join() === 'ps,nw', '5. Finish saves the mark on the exercise, last, after the sets its plan gave it', fin);
+    ok(fin.nw === true && fin.mc === fin.sid && fin.keys && fin.keys.slice(-3).join() === 'ps,nw,mc', '5. Finish saves the mark on the exercise, after the sets its plan gave it, and last the machine it began, named by the session (2.70: every machine lift\'s session names its machine)', fin);
     ok(fin.prs === 0 && fin.bestDate === '2026-10-15' && /280/.test(fin.heavy) && fin.n === 7 && fin.exps === 7 && fin.hist === 7,
       '5. saved: no PR, its bests are the new machine\'s (the best estimate and heaviest set from today), and its seven sessions are all kept and counted', fin);
     ok(fin.line === '', '5. the lift\'s history sheet shows no trend line from the old gym\'s sessions: one session at the new machine is none yet (the independent review of r61)', fin.line);

@@ -450,13 +450,14 @@ export function plainTemplate(r: unknown): boolean {
    session that names none is read on the machine of the last session before it that began one (machineKeys), so a
    session deleted, moved, restored or logged before it would move it to another machine; named, it moves only by a
    pick. Read as the index reads it (sameExOnce, working sets only), so no reading changes. Logs saved before every
-   session was named are named here once; a session an older build saves is named the next time the log is read.
-   Whole logs only: a document of sessions alone cannot tell which lifts are on machines or what came before. */
+   session was named are named here once; a session an older build saves is named the next time the log is read. Every
+   log read is named so, a document of sessions alone too (by the library's lifts and its own sessions), so a log read
+   twice is the log read once: a session already named is never named again. */
 /** Names in place the machine of every machine lift's session that names none (above). */
-function pinMachines(sessions: readonly Session[], exercises: readonly Exercise[]): void {
+function pinMachines(sessions: Session[], exercises: readonly Exercise[]): void {
   const onM = new Set(exercises.filter(onMachines).map(e => e.id));
   if (!onM.size) return;
-  const byEx = new Map<string, { sid: string; nw?: true; mc?: string; mk: string; blocks: SessionEx[] }[]>();
+  const byEx = new Map<string, { sid: string; nw?: true; mc?: string; mk: string; ss: Session; at: number[] }[]>();
   for (const ss of [...sessions].sort(sessCmp))
     for (const m of sameExOnce(ss.ex)) {
       if (!onM.has(m.exId) || !m.sets.some(isWork)) continue;
@@ -467,13 +468,24 @@ function pinMachines(sessions: readonly Session[], exercises: readonly Exercise[
         ...(m.nw ? { nw: true as const } : {}),
         ...(m.mc ? { mc: m.mc } : {}),
         mk: '',
-        blocks: ss.ex.filter(b => b.exId === m.exId && !!b.light === !!m.light)
+        ss,
+        at: ss.ex.flatMap((b, i) => (b.exId === m.exId && !!b.light === !!m.light && !b.mc ? [i] : []))
       });
     }
+  const named = new Map<Session, Map<number, string>>();
   for (const xs of byEx.values()) {
     machineKeys(xs);
-    for (const x of xs) for (const b of x.blocks) if (!b.mc) b.mc = x.mk;
+    for (const x of xs)
+      for (const i of x.at) {
+        const at = named.get(x.ss) || new Map<number, string>();
+        named.set(x.ss, at.set(i, x.mk));
+      }
   }
+  // Each session named read again as any session is, so the name sits where cleanSess writes it and a log read twice is the log read once.
+  sessions.forEach((ss, k) => {
+    const at = named.get(ss);
+    if (at) sessions[k] = cleanSess({ ...ss, ex: ss.ex.map((b, i) => (at.has(i) ? { ...b, mc: at.get(i) } : b)) }, k);
+  });
 }
 
 /* ---------- the whole log ---------- */
@@ -1408,7 +1420,7 @@ export function normalize(input: unknown): State {
   ({ sessions, cardio, trash } = reviveEdited(sessions, list('cardio'), trash));
   sessions = dedupe(sessions, 'session', x => x.ex.reduce((a, b) => a + b.sets.length, 0), trash);
   cardio = dedupe(cardio, 'cardio', x => x.min, trash);
-  if (Array.isArray(s.exercises)) pinMachines(sessions, exercises);
+  pinMachines(sessions, exercises);
 
   const bBefore = list('bodyweights').length;
   const bodyweights = cleanBodyweights(list('bodyweights'));

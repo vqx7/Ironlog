@@ -4466,13 +4466,23 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           ...m3.nw ? { nw: true } : {},
           ...m3.mc ? { mc: m3.mc } : {},
           mk: "",
-          blocks: ss.ex.filter((b2) => b2.exId === m3.exId && !!b2.light === !!m3.light)
+          ss,
+          at: ss.ex.flatMap((b2, i5) => b2.exId === m3.exId && !!b2.light === !!m3.light && !b2.mc ? [i5] : [])
         });
       }
+    const named2 = /* @__PURE__ */ new Map();
     for (const xs of byEx.values()) {
       machineKeys(xs);
-      for (const x2 of xs) for (const b2 of x2.blocks) if (!b2.mc) b2.mc = x2.mk;
+      for (const x2 of xs)
+        for (const i5 of x2.at) {
+          const at2 = named2.get(x2.ss) || /* @__PURE__ */ new Map();
+          named2.set(x2.ss, at2.set(i5, x2.mk));
+        }
     }
+    sessions.forEach((ss, k2) => {
+      const at2 = named2.get(ss);
+      if (at2) sessions[k2] = cleanSess({ ...ss, ex: ss.ex.map((b2, i5) => at2.has(i5) ? { ...b2, mc: at2.get(i5) } : b2) }, k2);
+    });
   }
   function freshState() {
     const r4 = starterRoutine();
@@ -5143,7 +5153,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ({ sessions, cardio, trash } = reviveEdited(sessions, list("cardio"), trash));
     sessions = dedupe(sessions, "session", (x2) => x2.ex.reduce((a2, b2) => a2 + b2.sets.length, 0), trash);
     cardio = dedupe(cardio, "cardio", (x2) => x2.min, trash);
-    if (Array.isArray(s3.exercises)) pinMachines(sessions, exercises);
+    pinMachines(sessions, exercises);
     const bBefore = list("bodyweights").length;
     const bodyweights = cleanBodyweights(list("bodyweights"));
     drop3(bBefore - bodyweights.length);
