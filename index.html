@@ -5897,6 +5897,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (asideIdx.length && ui.tab === "settings" && !ui.modal) fx.rerenderKeepScroll();
   }
   var BACKUP_DAYS = 7;
+  var LOG_CAP_CHARS = 25e5;
+  var LOG_NEAR_SHARE = 0.6;
+  function logNearFull() {
+    return (device.lastSaved || "").length >= LOG_CAP_CHARS * LOG_NEAR_SHARE;
+  }
   function backupDue() {
     if (!state.sessions.some((s3) => !s3.demo)) return false;
     const synced = cloud.on && cloud.last && Date.now() - cloud.last < BACKUP_DAYS * DAY_MS;
@@ -17869,6 +17874,7 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
 <p class="small u-m0_f1n1n180"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in ${APP_NAME} stays as it is.</p>
 <button class="btn sm primary" data-act="previewCopy">Copy my log in</button></div>
 ` : A}${asideLine()}${privacyLine()}${safetyLine()}${backupDue() ? b`<p class="callout yellow u-m10-0-0"><b>Backup due.</b> ${s3.lastExport ? `Last backup file ${fmtDate(s3.lastExport)}.` : "No backup file yet."}${cloud.on ? " Your account has not synced this week. Export one below." : ""}</p>
+` : A}${logNearFull() ? b`<p class="callout yellow u-m10-0-0" id="logNearFull"><b>Your log is near this browser's storage limit.</b> ${cloud.on ? "Your account keeps it. Export a backup too." : "Sign in or export a backup, so nothing is lost when it fills."}</p>
 ` : A}${device.ok ? A : b`<p class="small u-cred">This browser blocks storage: nothing is kept after a reload unless you sync.</p>
 `}${unreadableRaw() ? b`<div class="panel u-mt8" id="unreadPanel">
 <p class="small u-m0-0-6"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p>

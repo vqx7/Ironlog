@@ -186,5 +186,6 @@ Since r61 every number a rule uses is a named constant in `src/app/`, declared o
 - `MAX_DAYS` 14 (routines): the most days a routine has, a numbered cycle of 1 to 14 (schema v3).
 - `UNDO_DAYS` 7 and `UNDO_MAX` 20 (storage): Undo keeps 20 steps at most, and since r22 keeps them 7 days after the app is closed. Conventions; `UNDO_MAX`'s release not recorded.
 - `BACKUP_DAYS` 7 (storage): a backup is due 7 days after the last when this phone holds the only copy. A convention, release not recorded.
+- `LOG_CAP_CHARS` 2500000 and `LOG_NEAR_SHARE` 0.6 (storage): browsers keep up to 5 MiB of a site's local storage (MDN, "Storage quotas and eviction criteria"), counted in UTF-16 (2 bytes a character), so about 2.5 million characters of the log's text, past which every save fails; Settings says the log is near the limit from 60% of it, a convention (UAT-4, 2.71).
 - `TRASH_DAYS` 30 and `TRASH_MAX` 20 (records): Recently deleted keeps the 20 most recent for 30 days. A convention (Recently deleted came with schema v4).
 - `PARK_KEEP_DAYS` 30 (park): a workout set aside for an edit and never brought back is kept 30 days from the day it was set aside, Today's card saying until when, then removed when the app next opens, said as it goes. V's choice (NEW-96, V 2026-11-09 08:11), a convention, in step with Recently deleted.

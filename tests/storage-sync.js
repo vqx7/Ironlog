@@ -306,6 +306,18 @@ const noPageErrors = (rule, pages, expected) => { const errors = pages.flatMap(P
       ok(JSON.stringify(opened) === '["persisted","persist"]' && JSON.stringify(saved) === '["persisted","persist"]', 'S-1: the phone is asked to keep the log once a visit, at its first save, and not again as sets are ticked (UAT-13)', { opened, saved });
       await K.close();
     }
+    /* A log near the browser's limit (5 MiB of local storage, about 2.5 million characters): Settings says so from 60% of
+       it, with what to do, and says nothing for a log well under it (UAT-4). */
+    {
+      const K = await phone();
+      const line = () => K.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); const el = document.getElementById('logNearFull'); return el ? el.textContent.replace(/\s+/g, ' ').trim() : null; });
+      const small = await line();
+      await K.ev(() => { const L = window.__ironlog; const mk = i => ({ id: 'big' + i, date: '2026-0' + (1 + (i % 9)) + '-1' + (i % 10), dayIdx: 0, dayName: 'Day 1', notes: 'n'.repeat(2400), ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 2, done: true }] }] }); L.act(() => { for (let i = 0; i < 700; i++) L.state.sessions.push(mk(i)); }); });
+      const size = await K.ev(() => localStorage.getItem('ironlog.v1').length);
+      const big = await line();
+      ok(small === null && size > 1500000 && big === 'Your log is near this browser\'s storage limit. Sign in or export a backup, so nothing is lost when it fills.', 'S-1: a log past 60% of the browser\'s storage limit is said in Settings with what to do; one well under it is not (UAT-4)', { small, size, big });
+      await K.close();
+    }
 
     // With an account: the account's copy follows 1.2 s after the last change.
     const C = cloudOf();

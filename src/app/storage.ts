@@ -766,6 +766,17 @@ async function asideStart(): Promise<void> {
 
 /** A backup is due this many days after the last one when this device holds the only copy, and an account counts as synced when it synced within as many. */
 const BACKUP_DAYS = 7;
+/* A browser keeps up to 5 MiB of a site's local storage, counted in UTF-16, about 2.5 million characters of the log's
+   text; past it every save fails. Settings says so from 60% of it, a rule of thumb, while there is time to sign in or
+   export a backup (docs/EVIDENCE.md). */
+/** The characters of the log's text a browser keeps at most (above). */
+const LOG_CAP_CHARS = 2_500_000;
+/** The share of LOG_CAP_CHARS from which Settings says the log is near the limit (above). */
+const LOG_NEAR_SHARE = 0.6;
+/** Whether the log saved on this device is near the browser's limit (above). */
+export function logNearFull(): boolean {
+  return (device.lastSaved || '').length >= LOG_CAP_CHARS * LOG_NEAR_SHARE;
+}
 
 /* Everything lives in this one browser, so a backup is the only thing that
    survives a cleared cache or a new phone. Once real sessions exist, the
