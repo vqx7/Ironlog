@@ -747,10 +747,13 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
       // The phone's copy goes with the sign-out: an empty log, saved, and no Undo back into the account's (undoForget).
       if (remove)
-        act(() => {
-          undoForget();
-          setState(normalize(null));
-        });
+        act(
+          () => {
+            undoForget();
+            setState(normalize(null));
+          },
+          { whole: true }
+        );
       if (!mid) {
         ui.tab = 'today';
         window.scrollTo(0, 0);

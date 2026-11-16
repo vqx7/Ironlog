@@ -99,7 +99,7 @@ import {
 import type { Rec, Trashed } from './records';
 import { gymClean } from './gym';
 import { profClean } from './profile';
-import { canon, namesAside } from './merge';
+import { canon } from './merge';
 import {
   DEFAULT_HIDDEN,
   DSEC_FOLDED,
@@ -446,22 +446,23 @@ export function plainTemplate(r: unknown): boolean {
   }
 }
 
-/* Every session of a machine, cable or Smith lift names the machine it was done on (mc), the one it reads on now. A
-   session that names none is read on the machine of the last session before it that began one (machineKeys), so a
-   session deleted, moved, restored or logged before it would move it to another machine; named, it moves only by a
-   pick. Read as the index reads it (sameExOnce, working sets only), so no reading changes. A log is named as it is
-   opened, before and after every change (act.ts: a session that came in unnamed, from a backup, an import, Recently
-   deleted, another tab or an older build, is named before a change can move it, and what a change brings in is named
-   with it) and where two logs are joined at a sign-in (sync.ts). normalize never names: it also reads a document of
-   sessions alone, which cannot tell which lifts the lifter has on machines or what came before, and what it reads twice
-   must read as once. A session named is never named again. */
-/** Names in place the machine of every machine lift's session in log `st` that names none (above); true when it named one. */
-export function nameMachines(st: State): boolean {
-  const { sessions } = st;
+/* A machine, cable or Smith lift's session names its machine (mc) when it is saved and when the lifter picks one; one
+   that names none (saved before, imported, or by an older build) is read on the machine of the last session before it
+   that began one (machineKeys). The log keeps only what the lifter did. So a change that would move a session it does
+   not touch to another machine (deleting, moving or taking the lift out of the session that began one, restoring one,
+   a past workout dated before it) names that session where it was, as part of the change (act.ts): a session moves to
+   another machine only by a pick, and the name syncs and is undone with the change that gave it. Read as the index reads
+   (sameExOnce, working sets only). */
+/** Where each machine lift's sessions that name no machine read, in log `st`: by session, lift and kind (light or not), the machine's key and the exercises it names. */
+export function machineReadings(st: State): Map<string, { key: string; ss: Session; at: number[] }> {
   const onM = new Set(st.exercises.filter(onMachines).map(e => e.id));
-  if (!sessions.some(ss => ss.ex.some(b => !b.mc && onM.has(b.exId) && b.sets.some(isWork)))) return false;
-  const byEx = new Map<string, { sid: string; nw?: true; mc?: string; mk: string; ss: Session; at: number[] }[]>();
-  for (const ss of [...sessions].sort(sessCmp))
+  const out = new Map<string, { key: string; ss: Session; at: number[] }>();
+  if (!st.sessions.some(ss => ss.ex.some(b => !b.mc && onM.has(b.exId) && b.sets.some(isWork)))) return out;
+  const byEx = new Map<
+    string,
+    { sid: string; nw?: true; mc?: string; mk: string; k: string; ss: Session; at: number[] }[]
+  >();
+  for (const ss of [...st.sessions].sort(sessCmp))
     for (const m of sameExOnce(ss.ex)) {
       if (!onM.has(m.exId) || !m.sets.some(isWork)) continue;
       const xs = byEx.get(m.exId) || [];
@@ -471,25 +472,61 @@ export function nameMachines(st: State): boolean {
         ...(m.nw ? { nw: true as const } : {}),
         ...(m.mc ? { mc: m.mc } : {}),
         mk: '',
+        k: `${ss.id}|${m.exId}|${m.light ? 1 : 0}`,
         ss,
         at: ss.ex.flatMap((b, i) => (b.exId === m.exId && !!b.light === !!m.light && !b.mc ? [i] : []))
       });
     }
-  const named = new Map<Session, Map<number, string>>();
   for (const xs of byEx.values()) {
     machineKeys(xs);
-    for (const x of xs)
-      for (const i of x.at) {
-        const at = named.get(x.ss) || new Map<number, string>();
-        named.set(x.ss, at.set(i, x.mk));
-      }
+    for (const x of xs) if (x.at.length) out.set(x.k, { key: x.mk, ss: x.ss, at: x.at });
   }
-  // Each session named read again as any session is, so the name sits where cleanSess writes it and a log read twice is the log read once.
-  sessions.forEach((ss, k) => {
+  return out;
+}
+/** Names in place, in log `st` after a change, each session that names no machine and now reads on another than it did
+    before the change (`before`, machineReadings of the log then) with the machine it was on, and each the change put in
+    Recently deleted with the one it was on there, so it comes back to it (above); true when it named one. */
+export function keepMachines(
+  st: State,
+  before: ReadonlyMap<string, { key: string; ss: Session; at: number[] }>
+): boolean {
+  if (!before.size) return false;
+  const named = new Map<Session, Map<number, string>>();
+  for (const [k, now] of machineReadings(st)) {
+    const was = before.get(k);
+    if (!was || was.key === now.key) continue;
+    const at = named.get(now.ss) || new Map<number, string>();
+    for (const i of now.at) at.set(i, was.key);
+    named.set(now.ss, at);
+  }
+  nameSessions(st, named);
+  const here = new Set(st.sessions.map(q => q.id));
+  let gone = false;
+  for (const t of st.trash) {
+    if (t.kind !== 'session' || here.has(t.id)) continue;
+    const ex = arr(t.data.ex);
+    if (!ex) continue;
+    const put = ex.map(b => {
+      const B = rec(b);
+      const was =
+        B && typeof B.exId === 'string' && !B.mc ? before.get(`${t.id}|${B.exId}|${B.light ? 1 : 0}`) : undefined;
+      return was && B ? { ...B, mc: was.key } : b;
+    });
+    if (put.some((b, i) => b !== ex[i])) {
+      t.data = { ...t.data, ex: put };
+      gone = true;
+    }
+  }
+  return named.size > 0 || gone;
+}
+/** Names in place the exercises of log `st` given in `named` (a session, then each exercise's place and its machine's key). */
+export function nameSessions(st: State, named: ReadonlyMap<Session, ReadonlyMap<number, string>>): void {
+  // Each session named read again as any session is, so the name sits where cleanSess writes it.
+  st.sessions.forEach((ss, k) => {
     const at = named.get(ss);
-    if (at) sessions[k] = cleanSess({ ...ss, ex: ss.ex.map((b, i) => (at.has(i) ? { ...b, mc: at.get(i) } : b)) }, k);
+    if (at)
+      st.sessions[k] = cleanSess({ ...ss, ex: ss.ex.map((b, i) => (at.has(i) ? { ...b, mc: at.get(i) } : b)) }, k);
   });
-  return named.size > 0;
 }
 
 /* ---------- the whole log ---------- */
@@ -1199,8 +1236,7 @@ function reviveEdited(
   const revived = new Set<string>();
   const same = (cur: unknown, data: Rec, clean: (x: unknown, i: number) => unknown, ok: (x: unknown) => boolean) => {
     try {
-      // Machine names filled in on either copy are no edit (merge.ts namesAside).
-      return !ok(data) || canon(namesAside(clean(data, 0))) === canon(namesAside(cur));
+      return !ok(data) || canon(clean(data, 0)) === canon(cur);
     } catch (e) {
       // A copy that cannot be cleaned is read as the same record, so the deletion stands.
       return true;
@@ -1275,22 +1311,23 @@ function dedupe<T extends { id: string; date: string }>(
     extra.push(keepNew ? o : x);
   }
   if (!extra.length) return list0;
-  for (const x of extra) {
-    const id = fixId(x.id + '-dup' + hashStr(canon(x)).slice(0, DUP_HASH));
-    /* Dated by the copy's own date, not the phone's: every phone puts the same entry in Recently deleted, so one log
-       reads the same on each and the two copies never clash (by its own date, a phone in Los Angeles and one in
-       Tokyo would date it a day apart). Marked as a copy put aside (`clash`), which Recently deleted keeps until the
-       lifter restores or deletes it: by its own date alone, a session from weeks back would be hidden at once and
-       dropped by the next deletion, its edit with it. Put where Recently deleted's order puts it, newest first, after
-       the entries of its date, and the list held to its limits, so reading the log again gives the same list
-       (cleanTrash). */
-    if (trash.some(t => t.id === id)) continue;
-    const at = trash.findIndex(t => t.date < x.date);
-    trash.splice(at < 0 ? trash.length : at, 0, { id, kind, date: x.date, data: { ...rec(x), id }, clash: true });
-  }
+  for (const x of extra) putAside(trash, x, kind);
+  return [...byId.values()];
+}
+/* A copy put aside is dated by its own date, not the phone's: every phone puts the same entry in Recently deleted, so
+   one log reads the same on each and the two copies never clash (by its own date, a phone in Los Angeles and one in
+   Tokyo would date it a day apart). Marked as a copy put aside (`clash`), which Recently deleted keeps until the lifter
+   restores or deletes it: by its own date alone, a session from weeks back would be hidden at once and dropped by the
+   next deletion, its edit with it. Put where Recently deleted's order puts it, newest first, after the entries of its
+   date, and the list held to its limits, so reading the log again gives the same list (cleanTrash). */
+/** Puts copy `x` of a session or cardio entry in Recently deleted as a copy put aside, beside the one the log keeps (above). */
+export function putAside(trash: Trashed[], x: { id: string; date: string }, kind: 'session' | 'cardio'): void {
+  const id = fixId(x.id + '-dup' + hashStr(canon(x)).slice(0, DUP_HASH));
+  if (trash.some(t => t.id === id)) return;
+  const at = trash.findIndex(t => t.date < x.date);
+  trash.splice(at < 0 ? trash.length : at, 0, { id, kind, date: x.date, data: { ...rec(x), id }, clash: true });
   trash.splice(TRASH_MAX);
   while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
-  return [...byId.values()];
 }
 
 /** The weigh-ins a save holds, each checked. */

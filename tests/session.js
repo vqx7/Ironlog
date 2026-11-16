@@ -1695,7 +1695,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
     let m = await sheetAt(0);
     await addMachine(P);
     await finish();
-    const marks = await P.ev(() => window.__ironlog.state.sessions.map(s => [s.id, s.ex[0].nw || null, s.ex[0].mc || null]));
+    const marks = await P.ev(() => { const L = window.__ironlog; const xs = L.IDX().byEx.machPress || []; return L.state.sessions.map(s => [s.id, s.ex[0].nw || null, (xs.find(x => x.sid === s.id) || {}).mk || null]); });
     await start(P);
     const blk = await P.ev(() => ({ hint: ((document.querySelector('#blk-0 .hint') || {}).innerText || '').replace(/\s+/g, ' '), grey: [...document.querySelectorAll('#blk-0 input[data-f="w"]')].map(i => i.value || i.placeholder) }));
     m = await sheetAt(0);
@@ -1982,7 +1982,7 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
         const opened = await marksOf(P);
         await del(P, 'm1'); await start(P); await X.sets(0, 125, [8, 8, 7]); await X.finish();
         await X.week('2026-11-18T10:00:00'); await start(P); const m = await X.sheet();
-        ok(JSON.stringify(opened) === '[["m1","m1","m1"],["m2","m1","m1"],["m3","m1","m1"]]' && /Today: 33\+ reps over 3 sets at 125 lb/.test(await hint(P)) && /Last \(Nov 11, below usual\)/.test(await hint(P)) && /Machine Nov 11 · 125 lb × 8\s*✎\s*Add a machine$/.test(m.text), 'L-41: a 2.69 log opened names each session\'s machine as it reads; its first session deleted, the lift stays on one machine and a poor day repeats the target (33+ at 125 lb, below usual; REV22-1)', { opened, hint: await hint(P), m: m.text });
+        ok(JSON.stringify(opened) === '[["m1","","m1"],["m2","","m1"],["m3","","m1"]]' && /Today: 33\+ reps over 3 sets at 125 lb/.test(await hint(P)) && /Last \(Nov 11, below usual\)/.test(await hint(P)) && /Machine Nov 11 · 125 lb × 8\s*✎\s*Add a machine$/.test(m.text), 'L-41: a 2.69 log is opened as it is, each session read on the machine its marks give; its first session deleted, the lift stays on one machine and a poor day repeats the target (33+ at 125 lb, below usual; REV22-1)', { opened, hint: await hint(P), m: m.text });
         await P.close();
       }
       // A past workout logged while a workout on a machine just added is set aside: on the machine of its own day.
@@ -2060,13 +2060,13 @@ const mAlt = P => P.tap('#modal [data-act="mAlt"]', 250);
         ok(named.length === 5 && named.every(x => x === null) && /Today: 33\+ reps over 3 sets at 70 lb/.test(await hint(P)), 'L-41: a library machine lift set to Barbell, a session deleted and brought back by Undo: none names a machine, and the next target is its last load (33+ at 70 lb; REV23-1)', { named, hint: await hint(P) });
         await P.close();
       }
-      // A session deleted before the update, kept in Recently deleted naming no machine, restored: it names the one it reads on.
+      // A session deleted before the update, kept in Recently deleted naming no machine, restored: read by its date.
       {
         const seed = `(S, L) => { ${mkOf('machPress')} S.sessions = [mk('a1', '2026-10-10', 200), mk('c1', '2026-10-31', 200)]; S.trash = [{ id: 'a2', kind: 'session', date: '2026-11-10', data: mk('a2', '2026-10-17', 200) }]; }`;
         const P = await lifter({ items: [['machPress', 3, 8, 12, 120]], fresh: true, seed, settings: { autoDone: false } });
         await restore(P, 'a2');
         const back = await P.ev(() => { const L = window.__ironlog; const q = L.state.sessions.find(x => x.id === 'a2'); return [q ? q.ex[0].mc || null : 'gone', ((L.IDX().byEx.machPress || []).find(x => x.sid === 'a2') || {}).mk]; });
-        ok(back[0] === '0' && back[1] === '0', 'L-41: a session deleted before every machine session was named, restored, names the machine it reads on', back);
+        ok(back[1] === '0', 'L-41: a session deleted on 2.69, kept in Recently deleted naming no machine, restored: it reads on the machine its date gives', back);
         await P.close();
       }
       // A load far off is told against the machine in use, as the target reads it: the first machine picked, its 200 lb

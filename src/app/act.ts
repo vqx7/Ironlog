@@ -1,8 +1,8 @@
 /* The one way to change the log (ARCHITECTURE.md). An action on a moved screen hands its change to `act`,
    which does every step a change needs, always in this order: the check,
    the Undo step, the change, the caches dropped, the save on this device and
-   the edit noted for the sync (the save does both, saveNow), every machine
-   lift's session named before and after the change (nameMachines). A change that
+   the edit noted for the sync (the save does both, saveNow), and the sessions the
+   change would move to another machine named where they were (keepMachines). A change that
    fails halfway is put back whole, with no save and no Undo step. Placed by hand in
    each action, one left out would be found only when it lost something;
    tests/hygiene.js refuses a write to the log in a screen outside `act`, and
@@ -14,7 +14,7 @@ import { canon, mergeDraft } from './merge';
 import { chunksOf, emptyChunk } from './chunks';
 import type { Rec } from './records';
 import { invalidate } from './live';
-import { nameMachines, normalize, plainTemplate } from './normalize';
+import { keepMachines, machineReadings, normalize, plainTemplate } from './normalize';
 import { begunIn, clockStart } from './session';
 import { TRASH_BYTES, TRASH_DAYS, TRASH_MAX, parseJson, rec } from './records';
 import type { Trashed } from './records';
@@ -30,6 +30,9 @@ interface ActOpts {
   undo?: boolean | (() => boolean) | undefined;
   /** Saves once the typing pauses (400 ms, saveSoon), for a change made on every keystroke; the caches are still dropped at once. */
   soon?: boolean | undefined;
+  /** The change puts another log in place of this one (a backup restored, Erase everything): it is taken as it is, no
+      session named to stay where this log had it. */
+  whole?: boolean | undefined;
   /** The change touches only the session in progress, which nothing cached reads (the index, the bests, the pace are built from saved sessions): the caches stay, through every keystroke and tick. */
   inProgress?: boolean | undefined;
 }
@@ -79,10 +82,9 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
      the toast goes; a change that keeps a step shows its own after this.
      Settings' Undo last delete or reset still takes back the steps kept. */
   fx.undoToastHide();
-  /* Every machine lift's session names its machine before the change (normalize.ts nameMachines): one that came in
-     unnamed is named as it reads now, so the change moves no session to another machine. Before the Undo step, so Undo
-     never takes a name back. */
-  let named = nameMachines(state);
+  // Where the sessions that name no machine read before the change, so the change moves none of them (keepMachines).
+  const readings = opts.inProgress || opts.whole ? null : machineReadings(state);
+  let named = false;
   const top0 = undoStack[undoStack.length - 1];
   if (opts.undo) snapshot(typeof opts.undo === 'function' ? opts.undo : null);
   // The step this change keeps: a new entry on top, none when the snapshot could not be taken.
@@ -106,8 +108,10 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   outerBegun = begunBefore();
   try {
     change();
-    // And what the change brought in (an import, a session restored, a lift given a machine's equipment) is named with it.
-    named = nameMachines(state) || named;
+    /* A session the change would move to another machine stays where it was (normalize.ts keepMachines); for a change
+       to the workout that changed the whole log inside it, against the log it found. */
+    const was = readings || (logBefore && !opts.whole ? machineReadings(logBefore) : null);
+    if (was) named = keepMachines(state, was);
     // The workout's clock starts with the change that begins it, whichever tap began it (session.ts).
     clockAfter(outerBegun);
     followsAfter(outerBegun);

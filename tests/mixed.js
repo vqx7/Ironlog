@@ -25,10 +25,9 @@
 //       decide (pinned), since this build only sees what that phone sends;
 //   (6) a lift's unit and the scale's (2.66) reach the older phone, are kept
 //       there through its own edits and come back, with nothing more written.
-//   (7) the update from 2.69: names a phone or tab gives its machine sessions
-//       as it reads are no edit, so a delete, a correction or an Undo made on
-//       2.69 stands, and a copy sent with no edit made on it never reads as
-//       the later edit against a correction not yet sent.
+//   (7) the update from 2.69: a phone or tab that takes it reads the log as
+//       it is and writes nothing it did not change, so a delete, a correction
+//       or an Undo made on 2.69 stands, in two tabs and on two phones.
 // `node tests/mixed.js <older page>` runs it against another build (default
 // baselines/r55.html); this build is index.html, or IRONLOG_FILE.
 const { open, tab, engine } = require('./h');
@@ -181,10 +180,11 @@ const plain = rows => (rows || []).map(s => `${s.w}x${s.r}`).join(',');
   const w6 = cloud.writes(); await N.settle(); await O.settle(); await N.settle();
   ok(cloud.writes() === w6, 'and the two phones then write nothing more', { writes: cloud.writes() - w6 });
 
-  /* ---- (7) The update from 2.69 (baselines/r115.html), the build before every machine lift's session named its machine
-     (2.70). A phone or tab that takes the update names its log's machine sessions as each reads; that is no edit of
-     them, so what a device or tab still on 2.69 did to one stands: a delete (REV24-1, REV24-3), a correction with no
-     clash said (REV24-2), and Undo of a step 2.69 kept takes back all it did (REV24-5). */
+  /* ---- (7) The update from 2.69 (baselines/r115.html). A phone or tab that takes the update reads the log as it is
+     (a session names its machine when saved or picked, and a change names those it would move, normalize.ts
+     keepMachines) and sends nothing it did not change, so what a device or tab still on 2.69 did stands: a delete
+     (REV24-1, REV24-3), a correction with no clash said (REV24-2), and Undo of a step 2.69 kept takes back all it did
+     (REV24-5). */
   {
     const R115 = 'baselines/r115.html', LB = 0.45359237;
     const C7 = cloudOf();
@@ -209,8 +209,8 @@ const plain = rows => (rows || []).map(s => `${s.w}x${s.r}`).join(',');
     await B.settle();
     const A = await update(A0, 'u7'); pages.push(A);
     await A.settle(); await B.settle(); await A.settle();
-    const onA = await A.ev(() => { const L = window.__ironlog; const q = L.state.sessions.find(x => x.id === 'm3'); return { ids: L.state.sessions.map(x => x.id).sort().join(' '), m3: q ? q.ex[0].sets.map(x => x.r).join() : null, named: L.state.sessions.filter(x => x.ex[0].exId === 'machPress').every(x => typeof x.ex[0].mc === 'string'), toast: (document.getElementById('toast') || {}).innerText || '' }; });
-    ok(onA.ids === 'f1 m1 m3' && onA.m3 === '12,12,12' && onA.named && !/edited on two devices/.test(onA.toast), '(7) a phone updated from 2.69 names its machine sessions, and phone B\'s delete (Oct 10) and correction (Oct 17, 12 reps) made on 2.69 stand, with no clash said (REV24-1, REV24-2)', onA);
+    const onA = await A.ev(() => { const L = window.__ironlog; const q = L.state.sessions.find(x => x.id === 'm3'); return { ids: L.state.sessions.map(x => x.id).sort().join(' '), m3: q ? q.ex[0].sets.map(x => x.r).join() : null, toast: (document.getElementById('toast') || {}).innerText || '' }; });
+    ok(onA.ids === 'f1 m1 m3' && onA.m3 === '12,12,12' && !/edited on two devices/.test(onA.toast), '(7) a phone updated from 2.69: phone B\'s delete (Oct 10) and correction (Oct 17, 12 reps) made on 2.69 stand, with no clash said (REV24-1, REV24-2)', onA);
     ok((await ids(B)) === 'f1 m1 m3', '(7) and phone B, still on 2.69, keeps the session deleted', await ids(B));
     // (b) One phone, two tabs: tab 1 takes the update, tab 2 is still the 2.69 page and deletes Oct 17's session.
     const T0 = await phone(browser, cloudOf(), R115, null); pages.push(T0);
@@ -252,9 +252,8 @@ const plain = rows => (rows || []).map(s => `${s.w}x${s.r}`).join(',');
     const erased = [await ids(W1), await ids(W2), await W1.ev(() => JSON.parse(localStorage.getItem('ironlog.v1')).sessions.length)];
     ok(both[0] === 'f1 m1 m2 m3' && both[1] === both[0] && erased[0] === '' && erased[1] === '' && erased[2] === 0, '(7) two tabs on this build after the update: Erase everything in one leaves no session in either, nor on the phone (REV24-3)', { both, erased });
     // (d) Two phones on 2.69. Phone A, with no signal, corrects Oct 17's chest press (12 reps); an hour later by its
-    // clock phone B takes the update and sends its named log; A, still on 2.69, gets its signal back. B's copy holds no
-    // edit made on B, so it is not the later edit: the correction stands on both phones and in the account (B names
-    // the session again at its next change, as it does any session that comes in naming none).
+    // clock phone B takes the update and syncs; A, still on 2.69, gets its signal back. B changed nothing, so it sent
+    // nothing: the correction stands on both phones and in the account.
     const C8 = cloudOf();
     const D0 = await phone(browser, C8, R115, 'u8'); pages.push(D0);
     await seedLog(D0); await D0.settle();
@@ -267,7 +266,46 @@ const plain = rows => (rows || []).map(s => `${s.w}x${s.r}`).join(',');
     await D0.ev(() => { window.__offline = false; }); await D0.settle(); await E.settle(); await D0.settle();
     const m3 = async P => P.ev(() => { const q = window.__ironlog.state.sessions.find(x => x.id === 'm3'); return q ? q.ex[0].sets.map(x => x.r).join() : null; });
     const kept = { A: await m3(D0), B: await m3(E), account: JSON.parse(C8.content()).filter(([k]) => /s-2026-10-2$/.test(k)).map(([, j]) => ((JSON.parse(j).sessions || []).find(x => x.id === 'm3') || { ex: [{ sets: [] }] }).ex[0].sets.map(x => x.r).join()).join() };
-    ok(kept.A === '12,12,12' && kept.B === '12,12,12' && kept.account === '12,12,12', '(7) a correction made with no signal on a phone still on 2.69 stands after another phone takes the update and sends its named log: on both phones and in the account (REV24-2)', kept);
+    ok(kept.A === '12,12,12' && kept.B === '12,12,12' && kept.account === '12,12,12', '(7) a correction made with no signal on a phone still on 2.69 stands after another phone takes the update: on both phones and in the account (REV24-2)', kept);
+    /* (f) A machine picked for a session with no signal is kept when the other phone took the update and made a later
+       edit in the same half month (REV25-1): picked on 2.69 before the update, and picked on this build after an update
+       taken with no signal. The chest press began a second machine on Oct 17; Oct 24 reads on it by its date, and the
+       pick puts it back on the first. */
+    for (const how of ['picked on 2.69, then the update', 'the update with no signal, then picked']) {
+      const CF = cloudOf(), uid = how.startsWith('picked') ? 'u9a' : 'u9b';
+      const F0 = await phone(browser, CF, R115, uid); pages.push(F0);
+      await F0.ev(LB => {
+        const L = window.__ironlog; const S = L.state;
+        S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.lastExport = '2026-10-21';
+        const mk = (id, date, w, x) => ({ id, date, dayIdx: 0, dayName: 'Day 1', notes: '', ex: [{ exId: 'machPress', rr: [8, 12], sets: [11, 11, 10].map(r => ({ w: w * LB, r, rir: 2, done: true })), ...(x || {}) }] });
+        S.sessions = [mk('g1', '2026-10-03', 200), mk('g2', '2026-10-10', 200), mk('g3', '2026-10-17', 120, { nw: true }), mk('g4', '2026-10-24', 125)];
+        L.state = L.normalize(S); L.invalidate(); L.saveNow();
+      }, LB);
+      await F0.settle();
+      const G0 = await phone(browser, CF, R115, uid, '2026-10-21T11:00:00'); pages.push(G0);
+      await wait(900); await G0.settle();
+      const pick = P => P.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'g4').ex[0].mc = '0'; }); });
+      let F = F0;
+      if (how.startsWith('picked')) {
+        await F0.ev(() => { window.__offline = true; const L = window.__ironlog; L.state.sessions.find(s => s.id === 'g4').ex[0].mc = '0'; L.saveNow(); });
+        await wait(600);
+      } else {
+        await F0.ctx.addInitScript(() => { window.__offline = true; });
+        F = await update(F0, uid, CF); pages.push(F);
+        await pick(F); await wait(600);
+      }
+      const G = await update(G0, uid, CF); pages.push(G);
+      await G.settle();
+      await G.ev(() => { const L = window.__ironlog; L.act(() => { L.state.sessions.find(s => s.id === 'g3').ex[0].sets.forEach(x => { x.r = 12; }); }); });
+      await G.settle();
+      if (how.startsWith('picked')) { F = await update(F0, uid, CF); pages.push(F); }
+      else await F.ev(() => { window.__offline = false; });
+      await F.settle(); await G.settle(); await F.settle();
+      const mcOf = P => P.ev(() => { const q = window.__ironlog.state.sessions.find(s => s.id === 'g4'); return q ? q.ex[0].mc || '-' : 'gone'; });
+      const inAcct = (JSON.parse(CF.content()).find(([k]) => k === `data/users/${uid}/s-2026-10-2`) || [null, '{"sessions":[]}'])[1];
+      const g4 = { F: await mcOf(F), G: await mcOf(G), account: ((JSON.parse(inAcct).sessions || []).find(s => s.id === 'g4') || { ex: [{}] }).ex[0].mc || '-' };
+      ok(g4.F === '0' && g4.G === '0' && g4.account === '0', `(7) a machine picked for a session with no signal (${how}) is kept on both phones and in the account, the other phone having taken the update and made a later edit in the same half month (REV25-1)`, g4);
+    }
   }
 
   const errors = pages.flatMap(P => P.errors);

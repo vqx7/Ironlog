@@ -14,7 +14,7 @@ import { arr, fixId, parseJson, rec } from './records';
 import type { Rec } from './records';
 import type { LogEntry } from './types';
 import { realCount } from './chunks';
-import { nameMachines, normalize } from './normalize';
+import { normalize } from './normalize';
 import { cloud, fx, setState, state, ui } from './store';
 import type { State } from './store';
 
@@ -472,7 +472,6 @@ export function load(): State {
     raw = localStorage.getItem(KEY);
     if (raw) {
       const st = normalize(parseJson(raw));
-      nameMachines(st);
       device.hadLocal = true;
       device.lastSaved = raw;
       return st;

@@ -1381,7 +1381,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
             if (!cloud.on) cloudStop(true);
             asideClear();
           },
-          { undo: true }
+          { undo: true, whole: true }
         );
         // Pictures are not part of the log Undo keeps, so they go at once, as the question says. The profile photo
         // with them: from the account too while it syncs, as the cloud copy of the log goes, else from this phone.

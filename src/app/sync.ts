@@ -21,7 +21,7 @@ import { NET_MS } from './config';
 import { uid, hashStr, SECOND_MS } from './util';
 import { fmtDate } from './format';
 import { arr, parseJson, rec } from './records';
-import type { Rec } from './records';
+import type { Rec, Trashed } from './records';
 import {
   CORE_ARR,
   CORE_FIELDS,
@@ -43,7 +43,7 @@ import { draftCardio, draftSession } from './session';
 import type { DraftLike } from './session';
 import type { CardioEntry, Session } from './types';
 import { routineEmpty } from './routines';
-import { cleanCardio, nameMachines, normalize, plainTemplate } from './normalize';
+import { cleanCardio, machineReadings, nameSessions, normalize, plainTemplate, putAside } from './normalize';
 import { FIRST_MACHINE } from './model';
 import { invalidate } from './live';
 import { AUTH, codeOf } from './providers';
@@ -1308,11 +1308,7 @@ export async function cloudFlush(): Promise<void> {
           continue;
         }
         const at = Date.now();
-        /* A copy with no edit noted here holds nothing the lifter changed on this device since the account's copy (the
-           names given to machine sessions as the log was read, say), so it keeps that copy's edit time: it is never the
-           later edit against one another device made and has not sent yet. */
-        const et = cloud.editAt[x.id] || (b ? Number(b.et) || Number(b.at) || at : at);
-        const doc: CloudDoc = { v: 1, at, et, w: writeMark(), json };
+        const doc: CloudDoc = { v: 1, at, et: cloud.editAt[x.id] || at, w: writeMark(), json };
         // Kept until the answer comes, so a write applied whose answer is lost is known as this device's own (ownWrite).
         cloud.sent[x.id] = {
           w: doc.w,
@@ -1400,25 +1396,37 @@ function remoteDocs(docs: readonly { id: string; exists: boolean; data(): unknow
 }
 
 /* Each log names a lift's first machine "0", its own first machine. Joined with another log that has the lift too, the
-   sessions only this phone holds that it named "0" are left unnamed, and the joined log named (nameMachines), so they
-   read on the machine the joined log has them on by their dates, as the two logs read before every session named its
-   machine; then all of a lift's go on the machine the earliest of them was named on, so the phone's first machine stays
-   one machine (a session back on it after another machine was added never moves to that one). A session the other log
-   holds too (the same log, restored from a backup) keeps its name. */
-/** The sessions `ss` with the first machine's name taken off those `other` lacks of the lifts it holds (above), and which ids lost it, by lift. */
+   sessions only this phone holds that it named "0" are left unnamed, so they read on the machine the joined log has
+   them on by their dates, as the two logs read before sessions named their machines. One of them that then reads on a
+   machine this phone added (a session back on its first machine after another was added) is named where the earliest
+   of them reads, so the phone's first machine never becomes one it added. When the phone's earliest session of the lift
+   is one the other log holds too (the same log, restored from a backup), both logs' first machine is the same one and
+   every name stays. */
+/** The sessions `ss` with the first machine's name taken off those `other` lacks (above); which ids lost it, by lift; and the ids of the sessions only `ss` holds, the keys of the machines it added. */
 function firstUnnamed(
   ss: readonly Session[],
   other: readonly Session[]
-): { sessions: Session[]; unnamed: Map<string, Set<string>> } {
-  const lifts = new Set(other.flatMap(q => q.ex.map(b => b.exId))),
-    there = new Set(other.map(q => q.id));
+): { sessions: Session[]; unnamed: Map<string, Set<string>>; own: Set<string> } {
+  const there = new Set(other.map(q => q.id)),
+    lifts = new Set(other.flatMap(q => q.ex.map(b => b.exId)));
+  // A lift whose earliest session here is in the other log too: both logs' "0" is one machine. Sessions are kept in date order (normalize).
+  const shared = new Set<string>(),
+    seen = new Set<string>();
+  for (const q of ss)
+    for (const b of q.ex)
+      if (!seen.has(b.exId)) {
+        seen.add(b.exId);
+        if (there.has(q.id)) shared.add(b.exId);
+      }
+  const strip = (b: Session['ex'][number]): boolean =>
+    b.mc === FIRST_MACHINE && lifts.has(b.exId) && !shared.has(b.exId);
   const unnamed = new Map<string, Set<string>>();
   const sessions = ss.map(q => {
-    if (there.has(q.id) || !q.ex.some(b => b.mc === FIRST_MACHINE && lifts.has(b.exId))) return q;
+    if (there.has(q.id) || !q.ex.some(strip)) return q;
     return {
       ...q,
       ex: q.ex.map(b => {
-        if (b.mc !== FIRST_MACHINE || !lifts.has(b.exId)) return b;
+        if (!strip(b)) return b;
         const ids = unnamed.get(b.exId) || new Set<string>();
         unnamed.set(b.exId, ids.add(q.id));
         const c = { ...b };
@@ -1427,21 +1435,28 @@ function firstUnnamed(
       })
     };
   });
-  return { sessions, unnamed };
+  return { sessions, unnamed, own: new Set(ss.filter(q => !there.has(q.id)).map(q => q.id)) };
 }
-/** Names the joined log `st` (above): each machine lift's session as it reads, then each lift's sessions in `unnamed` on the machine the earliest of them reads on. */
-function nameJoined(st: State, unnamed: ReadonlyMap<string, ReadonlySet<string>>): void {
-  nameMachines(st);
-  for (const [exId, ids] of unnamed) {
-    let to: string | undefined;
-    // Sessions are kept in date order (normalize), so the first met is the earliest.
-    for (const q of st.sessions)
-      for (const b of q.ex)
-        if (b.exId === exId && ids.has(q.id) && b.mc !== undefined) {
-          if (to === undefined) to = b.mc;
-          else b.mc = to;
+/** In the joined log `st` (above), names each session of `unnamed` that reads on a machine of `own` where the earliest of its lift's reads. */
+function nameJoined(st: State, unnamed: ReadonlyMap<string, ReadonlySet<string>>, own: ReadonlySet<string>): void {
+  const rd = machineReadings(st);
+  const named = new Map<Session, Map<number, string>>();
+  for (const [exId, ids] of unnamed)
+    for (const light of [0, 1]) {
+      let to: string | undefined;
+      // Sessions are kept in date order (normalize), so the first met is the earliest.
+      for (const q of st.sessions) {
+        const r = ids.has(q.id) ? rd.get(`${q.id}|${exId}|${light}`) : undefined;
+        if (!r) continue;
+        if (to === undefined) to = r.key;
+        else if (own.has(r.key) && !own.has(to)) {
+          const at = named.get(q) || new Map<number, string>();
+          for (const i of r.at) at.set(i, to);
+          named.set(q, at);
         }
-  }
+      }
+    }
+  nameSessions(st, named);
 }
 
 /** A first sign-in on a phone that holds a log of its own: the two combined (below), the account's copy made the agreed base; true when the other phone's workout in progress was saved as a session. */
@@ -1457,18 +1472,37 @@ function mergeFirstLink(mine: State, rState: State, rids: readonly string[], rem
   const kept = aside ? draftSession(aside) : null;
   const keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some(x => x.id === kept.id);
   const own = firstUnnamed(mine.sessions, rState.sessions);
+  /* A session or cardio entry both logs hold with different contents (an old backup restored on the phone, say) keeps
+     the account's copy, the one every other device has, and the phone's is put aside in Recently deleted, so nothing
+     the account holds is taken back and nothing is lost. */
+  const trash: Trashed[] = unionById(state.trash, rState.trash);
+  const acct = (
+    list: readonly { id?: string | undefined }[],
+    phone: readonly { id?: string | undefined; date: string }[],
+    kind: 'session' | 'cardio'
+  ): void => {
+    const by = new Map(list.map(x => [x.id, x]));
+    for (const x of phone) {
+      const y = x.id ? by.get(x.id) : undefined;
+      if (x.id && y && canon(y) !== canon(x)) putAside(trash, { ...x, id: x.id }, kind);
+    }
+  };
+  const acctSessions = keptDraft && kept ? [...rState.sessions, kept] : rState.sessions,
+    acctCardio = aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio;
+  acct(acctSessions, own.sessions, 'session');
+  acct(acctCardio, mine.cardio, 'cardio');
   const joined = normalize({
     ...base,
     exercises: unionById(base.exercises, other.exercises),
     routines: unionById(base.routines, other.routines),
-    sessions: unionById(own.sessions, keptDraft && kept ? [...rState.sessions, kept] : rState.sessions),
+    sessions: unionById(acctSessions, own.sessions),
     bodyweights: unionById(mine.bodyweights, rState.bodyweights),
     measurements: unionById(mine.measurements, rState.measurements),
-    cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio),
-    trash: unionById(arr(state.trash) || [], arr(rState.trash) || []),
+    cardio: unionById(acctCardio, mine.cardio),
+    trash,
     draft: state.draft || rState.draft
   });
-  nameJoined(joined, own.unnamed);
+  nameJoined(joined, own.unnamed, own.own);
   setState(joined);
   // The cloud copy becomes the agreed base, so the merged result is what
   // the flush writes, rather than being merged a second time.
@@ -1845,7 +1879,7 @@ function joinLogs(base: State, here: State): State {
     trash: unionById(arr(base.trash) || [], arr(here.trash) || []),
     draft: here.draft || base.draft
   });
-  nameJoined(joined, own.unnamed);
+  nameJoined(joined, own.unnamed, own.own);
   return joined;
 }
 /** Keeps the log here aside for its account, with its notes, as it stands once written (a set ticked while the copy is written makes a second copy): 'room' when the phone has no room for it. */

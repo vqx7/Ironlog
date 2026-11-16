@@ -234,7 +234,7 @@ import {
   weekStats,
   weekStreak
 } from './live';
-import { keepExtra, nameMachines, normalize, plainTemplate, starterRoutine, starterSigs } from './normalize';
+import { keepExtra, normalize, plainTemplate, starterRoutine, starterSigs } from './normalize';
 import {
   APP_INSTALLED,
   asideList,
@@ -665,7 +665,6 @@ function exposeForTests(): void {
     makeDemo,
     invalidate,
     normalize,
-    nameMachines,
     snapshot,
     saveNow,
     timer,

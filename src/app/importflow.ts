@@ -885,7 +885,7 @@ export function importData(text: string, after?: () => void): void {
           setState(clean);
           if (!cloud.on) cloudStop(true);
         },
-        { undo: true }
+        { undo: true, whole: true }
       );
       closeModal();
       ui.tab = 'today';
@@ -1052,7 +1052,7 @@ export const IMPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           setState(st);
           if (!cloud.on) cloudStop(true);
         },
-        { undo: true }
+        { undo: true, whole: true }
       );
       closeModal();
       ui.tab = 'today';
